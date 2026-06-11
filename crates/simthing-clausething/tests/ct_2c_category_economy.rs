@@ -13,8 +13,8 @@ use simthing_driver::{
 };
 use simthing_gpu::{GpuContext, SlotAllocator};
 use simthing_spec::{
-    ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode, compile_property,
-    deserialize_game_mode_ron,
+    BaseFlowDirectionSpec, ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode,
+    compile_property, deserialize_game_mode_ron,
 };
 
 const CATEGORY_FIXTURE: &str = include_str!("fixtures/ct2c_categories.clause");
@@ -42,12 +42,29 @@ fn canonical_json(game_mode: &GameModeSpec) -> String {
 fn ct2c_scenario(hosted_count: usize, game_mode: &GameModeSpec) -> Scenario {
     let mut registry = DimensionRegistry::new();
     for prop in &game_mode.properties {
-        compile_property(prop, &mut registry)
-            .expect("seed scenario registry from hydrated property");
+        if prop.name == "settlement_food_flow" {
+            compile_property(prop, &mut registry)
+                .expect("seed scenario registry from hydrated property");
+        }
+    }
+    for prop in &game_mode.properties {
+        if prop.name != "settlement_food_flow" {
+            compile_property(prop, &mut registry)
+                .expect("seed scenario registry from hydrated property");
+        }
     }
     let mut root = SimThing::new(SimThingKind::World, 0);
-    for _ in 0..hosted_count {
-        root.add_child(SimThing::new(SimThingKind::Cohort, 0));
+    let mut farmer_target = None;
+    for i in 0..hosted_count {
+        let child = SimThing::new(SimThingKind::Cohort, 0);
+        if i == 0 {
+            farmer_target = Some(child.id);
+        }
+        root.add_child(child);
+    }
+    let mut install_targets = HashMap::new();
+    if let Some(id) = farmer_target {
+        install_targets.insert("farmer".into(), vec![id]);
     }
     Scenario {
         name: "ct2c_category".into(),
@@ -59,7 +76,7 @@ fn ct2c_scenario(hosted_count: usize, game_mode: &GameModeSpec) -> Scenario {
         root,
         shadow_seeds: Vec::new(),
         tick_patches: Vec::new(),
-        install_targets: HashMap::new(),
+        install_targets,
     }
 }
 
@@ -93,6 +110,18 @@ fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
     (slot * n_dims + col) as usize
 }
 
+fn cell(values: &[f32], slot: u32, col: u32, n_dims: u32) -> f32 {
+    values[idx(slot, col, n_dims)]
+}
+
+fn global_flow_col(
+    registry: &DimensionRegistry,
+    flow_id: simthing_core::SimPropertyId,
+    local_col: u32,
+) -> u32 {
+    registry.column_range(flow_id).start as u32 + local_col
+}
+
 #[test]
 fn category_hydrated_game_mode_matches_ron_baseline() {
     let hydrated = hydrate_category();
@@ -116,6 +145,29 @@ fn category_hydrated_game_mode_matches_ron_baseline() {
         .expect("energy contribution");
     assert_eq!(energy.axis, EconomicAxis::Upkeep);
     assert_eq!(energy.rate, -1.0);
+    let obligations = &hydrated
+        .game_mode
+        .resource_flow
+        .as_ref()
+        .expect("resource flow")
+        .base_obligations;
+    assert_eq!(obligations.len(), 2);
+    let food_obligation = obligations
+        .iter()
+        .find(|o| o.id == "farmer_settlement_food_produce")
+        .expect("food base obligation");
+    assert_eq!(food_obligation.arena, "settlement_food");
+    assert_eq!(food_obligation.direction, BaseFlowDirectionSpec::Produce);
+    assert_eq!(food_obligation.rate, 6.0);
+    assert_eq!(food_obligation.signed_rate(), 6.0);
+    let energy_obligation = obligations
+        .iter()
+        .find(|o| o.id == "farmer_settlement_energy_upkeep")
+        .expect("energy base obligation");
+    assert_eq!(energy_obligation.arena, "settlement_energy");
+    assert_eq!(energy_obligation.direction, BaseFlowDirectionSpec::Upkeep);
+    assert_eq!(energy_obligation.rate, 1.0);
+    assert_eq!(energy_obligation.signed_rate(), -1.0);
     assert_eq!(hydrated.decoded_modifier_keys.len(), 2);
 }
 
@@ -258,6 +310,57 @@ fn installed_category_arena_participation_is_explicit_and_bounded() {
 }
 
 #[test]
+fn install_consumes_category_base_obligations_without_manual_side_channel() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
+    let hydrated = hydrate_category();
+    let session = open_ct2c_session(&hydrated);
+    let flow_id = session
+        .proto
+        .registry
+        .id_of("simthing", "settlement_food_flow")
+        .expect("settlement_food_flow registered");
+    let cols = resolve_node_columns(
+        &session.proto.registry.property(flow_id).layout,
+        "settlement_food",
+    )
+    .expect("column refs");
+    let food_arena_idx = session
+        .spec_state
+        .arena_registry
+        .arenas
+        .iter()
+        .position(|arena| arena.name == "settlement_food")
+        .expect("settlement_food arena") as u32;
+    let layout = build_execution_plan(
+        &session.proto.registry,
+        &session.spec_state.arena_registry.arenas,
+        &session.proto.root,
+        &session.proto.allocator,
+        &session.spec_state.arena_participant_scaffold,
+        session.spec_state.arena_registry.generation,
+    )
+    .expect("execution plan")
+    .arenas
+    .into_iter()
+    .find(|arena| arena.arena_idx == food_arena_idx)
+    .expect("settlement_food arena");
+    let root_slot = layout.participant_roots[0].participant_slot;
+    let n_dims = session.coord.n_dims();
+    let intrinsic_global =
+        global_flow_col(&session.proto.registry, flow_id, cols.intrinsic_flow_col);
+    assert_eq!(
+        cell(&session.coord.shadow, root_slot, intrinsic_global, n_dims).to_bits(),
+        6.0_f32.to_bits(),
+        "install must seed farmer food produce obligation"
+    );
+}
+
+#[test]
 fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping GPU assertions: no GPU");
@@ -268,9 +371,6 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     let hydrated = hydrate_category();
     let mut session = open_ct2c_session(&hydrated);
     assert!(session.proto.flags.use_accumulator_resource_flow);
-    session
-        .sync_resource_flow_if_enabled()
-        .expect("resource flow sync");
 
     let flow_id = session
         .proto
@@ -311,31 +411,51 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         .collect();
     assert_eq!(leaves.len(), 2, "flat-star D=2 expects two leaves");
 
-    let food_rate = hydrated
-        .contributions
-        .iter()
-        .find(|c| c.resource == "food")
-        .expect("food contribution")
-        .rate;
+    let n_dims = session.state.n_dims;
+    let mut values = session.state.read_values();
+    let intrinsic_global =
+        global_flow_col(&session.proto.registry, flow_id, cols.intrinsic_flow_col);
+    let weight_global = global_flow_col(&session.proto.registry, flow_id, cols.weight_col);
+    assert_eq!(
+        cell(&values, root, intrinsic_global, n_dims).to_bits(),
+        6.0_f32.to_bits(),
+        "install must seed farmer food produce obligation"
+    );
+
     let leaf_weights = [1.0_f32, 3.0];
-    let mut inputs = HashMap::from([((root, cols.intrinsic_flow_col), food_rate)]);
     for (slot, &weight) in leaves.iter().zip(leaf_weights.iter()) {
-        inputs.insert((*slot, cols.weight_col), weight);
+        values[idx(*slot, weight_global, n_dims)] = weight;
     }
+    session.state.write_values(&values);
 
-    let n_dims = session.proto.registry.total_columns as u32;
-    let mut flat = session.state.read_values();
-    for (&(slot, col), &v) in &inputs {
-        flat[idx(slot, col, n_dims)] = v;
+    let mut oracle = HashMap::new();
+    for node in layout.iter_all() {
+        for local_col in [
+            cols.intrinsic_flow_col,
+            cols.allocated_flow_col,
+            cols.weight_col,
+            cols.intrinsic_flow_sum_col,
+            cols.weight_sum_col,
+            cols.propagated_intrinsic_flow_col,
+            cols.propagated_allocated_flow_col,
+            cols.propagated_weight_sum_col,
+        ] {
+            oracle.insert(
+                (node.participant_slot, local_col),
+                cell(
+                    &values,
+                    node.participant_slot,
+                    global_flow_col(&session.proto.registry, flow_id, local_col),
+                    n_dims,
+                ),
+            );
+        }
     }
-    session.state.write_values(&flat);
-
-    let mut oracle = inputs.clone();
     run_arena_allocation_oracle(&layout, &mut oracle, 1.0);
 
     session
         .state
-        .run_resource_flow_bands(session.state.accumulator_resource_flow_bands, 1.0);
+        .run_resource_flow_bands(layout.band_layout.total_bands_used, 1.0);
 
     let gpu_out = session.state.read_values();
     for &leaf in &leaves {
@@ -343,13 +463,25 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
             .get(&(leaf, cols.allocated_flow_col))
             .copied()
             .unwrap_or(0.0);
-        let gpu = gpu_out[idx(leaf, cols.allocated_flow_col, n_dims)];
+        let gpu = gpu_out[idx(
+            leaf,
+            global_flow_col(&session.proto.registry, flow_id, cols.allocated_flow_col),
+            n_dims,
+        )];
         assert_eq!(
             cpu.to_bits(),
             gpu.to_bits(),
             "leaf {leaf} E-11 oracle/GPU bit parity"
         );
     }
+    assert_eq!(
+        oracle[&(leaves[0], cols.allocated_flow_col)].to_bits(),
+        1.5_f32.to_bits()
+    );
+    assert_eq!(
+        oracle[&(leaves[1], cols.allocated_flow_col)].to_bits(),
+        4.5_f32.to_bits()
+    );
 
     drop(session);
     drop(ctx);

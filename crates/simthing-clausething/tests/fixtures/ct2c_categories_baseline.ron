@@ -134,5 +134,21 @@ GameModeSpec(
             ),
         ],
         couplings: [],
+        base_obligations: [
+            (
+                id: "farmer_settlement_food_produce",
+                arena: "settlement_food",
+                install: ScenarioListed(target_id: "farmer"),
+                direction: Produce,
+                rate: 6.0,
+            ),
+            (
+                id: "farmer_settlement_energy_upkeep",
+                arena: "settlement_energy",
+                install: ScenarioListed(target_id: "farmer"),
+                direction: Upkeep,
+                rate: 1.0,
+            ),
+        ],
     )),
 )

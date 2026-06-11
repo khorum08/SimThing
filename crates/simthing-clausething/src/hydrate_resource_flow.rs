@@ -124,6 +124,7 @@ pub fn hydrate_resource_flow_pack(
             wildcard_admission: None,
         }],
         couplings: vec![],
+        base_obligations: vec![],
     };
 
     Ok(HydratedResourceFlowPack {
