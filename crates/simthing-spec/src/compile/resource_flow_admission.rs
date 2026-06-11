@@ -93,6 +93,7 @@ pub fn compile_resource_flow_admission(
             }
         }
     }
+    validate_base_obligations(spec, &arena_names)?;
 
     let property_bindings = scan_property_arena_bindings(registry)?;
     validate_property_arena_references(&property_bindings, &arena_names)?;
@@ -166,6 +167,32 @@ pub fn compile_resource_flow_admission(
         arenas: compiled_arenas,
         couplings: compiled_couplings,
     })
+}
+
+fn validate_base_obligations(
+    spec: &ResourceFlowSpec,
+    arena_names: &HashSet<&str>,
+) -> Result<(), SpecError> {
+    let mut ids = HashSet::new();
+    for obligation in &spec.base_obligations {
+        if !ids.insert(obligation.id.clone()) {
+            return Err(SpecError::DuplicateBaseFlowObligation {
+                id: obligation.id.clone(),
+            });
+        }
+        if !obligation.rate.is_finite() || obligation.rate < 0.0 {
+            return Err(SpecError::InvalidBaseFlowObligationRate {
+                id: obligation.id.clone(),
+            });
+        }
+        if !arena_names.contains(obligation.arena.as_str()) {
+            return Err(SpecError::UnknownArenaReference {
+                arena: obligation.arena.clone(),
+                context: format!("base_obligations.{}", obligation.id),
+            });
+        }
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug)]

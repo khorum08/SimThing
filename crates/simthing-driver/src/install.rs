@@ -9,7 +9,8 @@
 
 use simthing_core::DimensionRegistry;
 use simthing_core::{
-    kind_matches, Overlay, OverlayId, PropertyValue, SimThing, SimThingId, SimThingKind,
+    kind_matches, AccumulatorRole, Overlay, OverlayId, PropertyValue, SimPropertyId, SimThing,
+    SimThingId, SimThingKind,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
@@ -17,7 +18,7 @@ use simthing_spec::{
     CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec,
     CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec, EffectSpec, EffectTarget,
     EventSpec, GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec,
-    SpecError,
+    ResourceFlowSpec, SpecError,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
@@ -63,6 +64,23 @@ pub enum InstallError {
 
     #[error("resource economy compile: {0}")]
     ResourceEconomy(#[from] ResourceEconomyCompileError),
+
+    #[error("Resource Flow base obligation `{obligation}` targets SimThing {subtree_root_id} which is not admitted to arena `{arena}`")]
+    BaseFlowObligationTargetNotAdmitted {
+        obligation: String,
+        arena: String,
+        subtree_root_id: u32,
+    },
+
+    #[error("Resource Flow base obligation `{obligation}` admitted participant slot {slot} in arena `{arena}` has no owner")]
+    BaseFlowObligationParticipantSlotMissing {
+        obligation: String,
+        arena: String,
+        slot: u32,
+    },
+
+    #[error("Resource Flow base obligation `{obligation}` arena `{arena}` flow property has no IntrinsicFlow sub-field")]
+    BaseFlowObligationMissingIntrinsicFlow { obligation: String, arena: String },
 
     #[error("event `{event_id}` references unknown overlay `{overlay_ref}` (no standalone pack overlay with that authored id)")]
     UnknownOverlayRef {
@@ -184,6 +202,7 @@ pub fn compile_and_install(
     //      identity preflight after live slot allocation, then materialize registry.
     if let Some(resource_flow) = &game_mode.resource_flow {
         let resolved = resolve_resource_flow_enrollment(resource_flow, scenario, root, allocator)?;
+        let base_obligations = resolve_base_flow_obligation_targets(&resolved, scenario, root)?;
         validate_resource_flow_preflight(&resolved, allocator)?;
         let scaffold = materialize_arena_participants(&resolved, registry, root, allocator)?;
         if allocator.capacity() > n_slots_cap {
@@ -193,6 +212,7 @@ pub fn compile_and_install(
             });
         }
         let (arena_registry, _report) = compile_and_materialize_resource_flow(&resolved, registry)?;
+        seed_base_flow_obligations(&base_obligations, registry, root, allocator, &scaffold)?;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
     }
@@ -374,6 +394,143 @@ fn resource_economy_property_keys(spec: &ResourceEconomySpec) -> Vec<PropertyKey
     });
     keys.dedup_by(|a, b| a.namespace == b.namespace && a.name == b.name);
     keys
+}
+
+#[derive(Clone, Debug)]
+struct ResolvedBaseFlowObligation {
+    obligation: String,
+    arena: String,
+    arena_idx: u32,
+    flow_property: PropertyKey,
+    signed_rate: f32,
+    hosted_ids: Vec<SimThingId>,
+}
+
+fn resolve_base_flow_obligation_targets(
+    spec: &ResourceFlowSpec,
+    scenario: &Scenario,
+    root: &SimThing,
+) -> Result<Vec<ResolvedBaseFlowObligation>, InstallError> {
+    let mut out = Vec::with_capacity(spec.base_obligations.len());
+    for obligation in &spec.base_obligations {
+        let (arena_idx, arena) = spec
+            .arenas
+            .iter()
+            .enumerate()
+            .find(|(_, arena)| arena.name == obligation.arena)
+            .ok_or_else(|| SpecError::UnknownArenaReference {
+                arena: obligation.arena.clone(),
+                context: format!("base_obligations.{}", obligation.id),
+            })?;
+        let hosted_ids = resolve_install_target(&obligation.install, scenario, root)?;
+        if hosted_ids.is_empty() {
+            return Err(InstallError::NoMatchingOwners {
+                tree_id: obligation.id.clone(),
+                target: obligation.install.clone(),
+            });
+        }
+        for hosted_id in &hosted_ids {
+            let raw = hosted_id.raw();
+            let admitted = arena
+                .explicit_participants
+                .iter()
+                .any(|participant| participant.subtree_root_id == raw);
+            if !admitted {
+                return Err(InstallError::BaseFlowObligationTargetNotAdmitted {
+                    obligation: obligation.id.clone(),
+                    arena: arena.name.clone(),
+                    subtree_root_id: raw,
+                });
+            }
+        }
+        out.push(ResolvedBaseFlowObligation {
+            obligation: obligation.id.clone(),
+            arena: arena.name.clone(),
+            arena_idx: arena_idx as u32,
+            flow_property: arena.flow_property.clone(),
+            signed_rate: obligation.signed_rate(),
+            hosted_ids,
+        });
+    }
+    Ok(out)
+}
+
+fn seed_base_flow_obligations(
+    obligations: &[ResolvedBaseFlowObligation],
+    registry: &DimensionRegistry,
+    root: &mut SimThing,
+    allocator: &SlotAllocator,
+    scaffold: &crate::arena_participant::ArenaParticipantScaffold,
+) -> Result<(), InstallError> {
+    for obligation in obligations {
+        let flow_property_id = resolve_base_flow_property(registry, &obligation.flow_property)?;
+        let intrinsic_offset =
+            intrinsic_flow_offset(registry, flow_property_id).ok_or_else(|| {
+                InstallError::BaseFlowObligationMissingIntrinsicFlow {
+                    obligation: obligation.obligation.clone(),
+                    arena: obligation.arena.clone(),
+                }
+            })?;
+        for hosted_id in &obligation.hosted_ids {
+            let participant_slot = scaffold
+                .index
+                .participant_slot(*hosted_id, obligation.arena_idx)
+                .ok_or_else(|| InstallError::BaseFlowObligationTargetNotAdmitted {
+                    obligation: obligation.obligation.clone(),
+                    arena: obligation.arena.clone(),
+                    subtree_root_id: hosted_id.raw(),
+                })?;
+            let participant_id = allocator.owner_of(participant_slot).ok_or_else(|| {
+                InstallError::BaseFlowObligationParticipantSlotMissing {
+                    obligation: obligation.obligation.clone(),
+                    arena: obligation.arena.clone(),
+                    slot: participant_slot,
+                }
+            })?;
+            let Some(participant_node) = find_simthing_mut(root, participant_id) else {
+                return Err(InstallError::BaseFlowObligationParticipantSlotMissing {
+                    obligation: obligation.obligation.clone(),
+                    arena: obligation.arena.clone(),
+                    slot: participant_slot,
+                });
+            };
+            let Some(value) = participant_node.properties.get_mut(&flow_property_id) else {
+                return Err(InstallError::Spec(SpecError::ValidationFailed));
+            };
+            value.data[intrinsic_offset] += obligation.signed_rate;
+        }
+    }
+    Ok(())
+}
+
+fn resolve_base_flow_property(
+    registry: &DimensionRegistry,
+    key: &PropertyKey,
+) -> Result<SimPropertyId, InstallError> {
+    registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
+        InstallError::Spec(SpecError::UnknownResourceFlowProperty {
+            property: format!("{}::{}", key.namespace, key.name),
+        })
+    })
+}
+
+fn intrinsic_flow_offset(
+    registry: &DimensionRegistry,
+    property_id: SimPropertyId,
+) -> Option<usize> {
+    registry
+        .property(property_id)
+        .layout
+        .sub_fields
+        .iter()
+        .enumerate()
+        .find_map(|(offset, sub_field)| {
+            sub_field
+                .accumulator_spec
+                .as_ref()
+                .filter(|spec| matches!(spec.role, AccumulatorRole::IntrinsicFlow))
+                .map(|_| offset)
+        })
 }
 
 fn build_tree<'spec>(

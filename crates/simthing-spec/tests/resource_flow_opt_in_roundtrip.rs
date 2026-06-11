@@ -40,6 +40,7 @@ fn resource_flow_opt_in_mode_roundtrips_ron() {
             opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
             arenas: vec![sample_arena()],
             couplings: vec![],
+            base_obligations: vec![],
         }),
         resource_economy: None,
         ..Default::default()
@@ -59,6 +60,7 @@ fn resource_flow_opt_in_default_disabled() {
         opt_in_mode: Disabled,
         arenas: [],
         couplings: [],
+        base_obligations: [],
     )"#;
     let spec: ResourceFlowSpec = ron::from_str(text).expect("parse partial flow spec");
     assert_eq!(spec.opt_in_mode, ResourceFlowOptInMode::Disabled);
@@ -88,6 +90,7 @@ fn resource_flow_execution_profile_roundtrips_ron() {
             opt_in_mode: ResourceFlowOptInMode::Disabled,
             arenas: vec![sample_arena()],
             couplings: vec![],
+            base_obligations: vec![],
         }),
         resource_economy: None,
         resource_flow_execution_profile: ResourceFlowExecutionProfile::FlatStarResourceFlow,
