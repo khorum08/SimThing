@@ -1,4 +1,10 @@
-//! CT-1a admission/install snapshot via existing `simthing-spec` compile path.
+//! CT-1a CPU overlay/property parity via existing `simthing-spec` compile path.
+//!
+//! **Not** the driver installed-tree proof. `LiteralInstallSnapshot` exercises
+//! `compile_property` / `compile_overlay` admission plus CPU
+//! `PropertyTransformDelta::apply_to_data` only. Domain-pack standalone overlays
+//! are not wired through `simthing-driver::install_atomic` today (see
+//! `compile_pack_properties` in `crates/simthing-driver/src/install.rs`).
 
 use simthing_core::{DimensionRegistry, SubFieldRole};
 use simthing_spec::compile::{compile_overlay, compile_property};
@@ -7,7 +13,7 @@ use simthing_spec::spec::domain_pack::DomainPackSpec;
 use crate::error::HydrateError;
 use crate::hydrate::HydratedEntityPack;
 
-/// Canonical install snapshot for CT-1a parity.
+/// CPU overlay/property parity snapshot for CT-1a (not installed-tree parity).
 #[derive(Debug, Clone, PartialEq)]
 pub struct LiteralInstallSnapshot {
     pub property_keys: Vec<String>,
