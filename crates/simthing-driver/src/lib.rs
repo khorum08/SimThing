@@ -3,6 +3,7 @@ pub mod arena_allocation_plan;
 pub mod arena_allocation_sync;
 pub mod arena_hierarchy;
 pub mod arena_participant;
+pub mod arena_pressure;
 pub mod arena_registry;
 pub mod atlas_0080_0;
 pub mod bench_limits;
@@ -95,6 +96,7 @@ pub use arena_participant::{
     DynamicEnrollmentError, GapAllocError, NestedFissionGapReport,
     PendingDynamicArenaRootParticipant, ReservedGapPool,
 };
+pub use arena_pressure::{project_arena_pressure_seeds, ArenaPressureError};
 pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
     ArenaRefreshReport, ArenaRegistry, ArenaRegistryBuilder, ArenaRegistryError, CouplingDelay,

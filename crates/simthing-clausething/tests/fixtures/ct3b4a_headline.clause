@@ -1,0 +1,55 @@
+simthing_ct3b4a_headline = {
+    display_name = "CT-3b+4a Headline Vertical"
+    description = "RF-fed movement-front heatmap with ai_will_do commitment."
+    resource_flow = {
+        opt_in = FlatStarOptIn
+        max_participants = 16
+        max_coupling_fanout = 4
+        max_orderband_depth = 16
+    }
+    category_map = {
+        settlement = { kind = Cohort depth = 2 parent = polity }
+        polity = { kind = Faction depth = 1 }
+    }
+    resource = {
+        id = "simthing_food"
+        namespace = "simthing"
+        name = "food"
+        display_name = "Food"
+    }
+    unit_template = {
+        id = "farmer"
+        category = settlement
+        resources = {
+            produces = { settlement_food_produces_add = 6 }
+        }
+    }
+    modifier = {
+        id = "irrigation"
+        settlement_food_produces_mult = 0.25
+    }
+    modifier = {
+        id = "tithe"
+        polity_food_produces_mult = 0.5
+    }
+    region_field = {
+        name = "disruption"
+        grid_size = 4
+        horizon = 1
+        alpha_self = 0.5
+        gamma_neighbor = 0.125
+        cadence = EveryTick
+        urgency = {
+            weight_pressure = 1.0
+            weight_resource = 1.0
+            threshold = 16.4
+            event_kind = 7
+        }
+        pressure_binding = {
+            arena = settlement_food
+            source = IntrinsicFlow
+            placement = { target = farmer row = 1 col = 1 }
+        }
+    }
+    mapping = { profile = SparseRegionFieldV1 }
+}

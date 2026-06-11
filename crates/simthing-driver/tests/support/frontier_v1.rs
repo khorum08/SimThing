@@ -449,11 +449,14 @@ pub fn frontier_v1_mapping_field_spec() -> RegionFieldSpec {
         parent_formula: Some(RegionFieldFormulaBindingSpec {
             formula_class: "field_urgency".into(),
             tree_id: Some(7),
+            weight_pressure: None,
+            weight_resource: None,
         }),
         commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: Some(65536),
         summary_policy: RegionFieldSummaryPolicySpec::default(),
+        pressure_binding: None,
     }
 }
 

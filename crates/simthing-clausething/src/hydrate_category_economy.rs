@@ -10,6 +10,12 @@ use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
+use simthing_spec::spec::region_field::{
+    ArenaPressureBindingSpec, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
+    MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, RegionFieldCadenceSpec,
+    RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
+    RegionFieldReductionSpec, RegionFieldSpec,
+};
 use simthing_spec::spec::resource_economy::{
     RecipeInputSpec, ResourceEconomyOptInMode, ResourceEconomySpec, ResourceRecipeSpec,
     ResourceTransferSpec,
@@ -156,6 +162,8 @@ pub fn hydrate_category_economy_pack(
     let mut arena_defaults = ArenaDefaults::default();
     let mut unit_templates = Vec::new();
     let mut modifier_blocks = Vec::new();
+    let mut region_fields = Vec::new();
+    let mut mapping_profile = MappingExecutionProfile::Disabled;
 
     for property in &body.properties {
         match property.key.text.as_str() {
@@ -174,6 +182,8 @@ pub fn hydrate_category_economy_pack(
             "resource_flow" => arena_defaults = parse_resource_flow_defaults(property)?,
             "unit_template" => unit_templates.push(property),
             "modifier" => modifier_blocks.push(property),
+            "region_field" => region_fields.push(parse_region_field_block(property)?),
+            "mapping" => mapping_profile = parse_mapping_block(property)?,
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported CT-2c category fixture field `{other}`"),
@@ -253,12 +263,253 @@ pub fn hydrate_category_economy_pack(
             }),
             resource_economy: None,
             resource_flow_execution_profile: Default::default(),
-            region_fields: vec![],
-            mapping_execution_profile: Default::default(),
+            region_fields,
+            mapping_execution_profile: mapping_profile,
         },
         contributions,
         decoded_modifier_keys,
     })
+}
+
+/// CT-3b+4a: `region_field { … }` → [`RegionFieldSpec`]. Designer authors the
+/// physical knobs; the slot/column layout is derived mechanically from
+/// `grid_size` to match the first-slice mapping runtime contract
+/// (field col 0; EML resource/wa/wb/urgency cols 1–4; parent slot = grid²).
+fn parse_region_field_block(property: &RawProperty) -> Result<RegionFieldSpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`region_field` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    let mut name = None;
+    let mut grid_size = None;
+    let mut horizon = None;
+    let mut alpha_self = None;
+    let mut gamma_neighbor = None;
+    let mut cadence = None;
+    let mut urgency = None;
+    let mut pressure_binding = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "name" => name = Some(read_scalar_text(field, "name")?),
+            "grid_size" => grid_size = Some(read_scalar_u32(field, "grid_size")?),
+            "horizon" => horizon = Some(read_scalar_u32(field, "horizon")?),
+            "alpha_self" => alpha_self = Some(read_scalar_f32(field, "alpha_self")?),
+            "gamma_neighbor" => gamma_neighbor = Some(read_scalar_f32(field, "gamma_neighbor")?),
+            "cadence" => {
+                let text = read_scalar_text(field, "cadence")?;
+                cadence = Some(match text.as_str() {
+                    "EveryTick" => RegionFieldCadenceSpec::EveryTick,
+                    "OnEvent" => RegionFieldCadenceSpec::OnEvent,
+                    other => {
+                        return Err(HydrateError::new_spanned(
+                            format!("unsupported cadence `{other}` (EveryTick or OnEvent)"),
+                            Some(field.key.span.clone()),
+                        ));
+                    }
+                });
+            }
+            "urgency" => urgency = Some(parse_urgency_block(field)?),
+            "pressure_binding" => pressure_binding = Some(parse_pressure_binding_block(field)?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported region_field field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    let grid_size = require_field(grid_size, "grid_size", property)?;
+    let cell_count = grid_size * grid_size;
+    let (weights, threshold, event_kind) = require_field(urgency, "urgency", property)?;
+
+    Ok(RegionFieldSpec {
+        name: require_field(name, "name", property)?,
+        grid_size,
+        n_dims: 5,
+        source_col: 0,
+        target_col: 0,
+        operator: RegionFieldOperatorSpec::Normalized,
+        horizon: require_field(horizon, "horizon", property)?,
+        allow_extended_horizon: false,
+        alpha_self: require_field(alpha_self, "alpha_self", property)?,
+        gamma_neighbor: require_field(gamma_neighbor, "gamma_neighbor", property)?,
+        source_cap: None,
+        source_policy: Default::default(),
+        cadence: require_field(cadence, "cadence", property)?,
+        grid_profile: RegionFieldGridProfile::StandardSquare,
+        reduction: Some(RegionFieldReductionSpec {
+            child_slot_start: 0,
+            child_slot_count: cell_count,
+            child_col: 0,
+            parent_slot: cell_count,
+            parent_col: 0,
+            order_band: 0,
+        }),
+        parent_formula: Some(RegionFieldFormulaBindingSpec {
+            formula_class: "field_urgency".into(),
+            tree_id: Some(1),
+            weight_pressure: Some(weights.0),
+            weight_resource: Some(weights.1),
+        }),
+        commitment: Some(FirstSliceCommitmentSpec {
+            source_formula_class: "field_urgency".into(),
+            parent_slot: cell_count,
+            urgency_col: 4,
+            threshold,
+            direction: FirstSliceCommitmentDirectionSpec::Upward,
+            event_kind,
+        }),
+        request_atlas_batching: false,
+        max_region_field_vram_bytes: None,
+        summary_policy: Default::default(),
+        pressure_binding,
+    })
+}
+
+fn parse_urgency_block(property: &RawProperty) -> Result<((f32, f32), f32, u32), HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`urgency` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut weight_pressure = None;
+    let mut weight_resource = None;
+    let mut threshold = None;
+    let mut event_kind = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "weight_pressure" => weight_pressure = Some(read_scalar_f32(field, "weight_pressure")?),
+            "weight_resource" => weight_resource = Some(read_scalar_f32(field, "weight_resource")?),
+            "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
+            "event_kind" => event_kind = Some(read_scalar_u32(field, "event_kind")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported urgency field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok((
+        (
+            require_field(weight_pressure, "weight_pressure", property)?,
+            require_field(weight_resource, "weight_resource", property)?,
+        ),
+        require_field(threshold, "threshold", property)?,
+        require_field(event_kind, "event_kind", property)?,
+    ))
+}
+
+fn parse_pressure_binding_block(
+    property: &RawProperty,
+) -> Result<ArenaPressureBindingSpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`pressure_binding` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut arena = None;
+    let mut source = None;
+    let mut placements = Vec::new();
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "arena" => arena = Some(read_scalar_text(field, "arena")?),
+            "source" => {
+                let text = read_scalar_text(field, "source")?;
+                source = Some(match text.as_str() {
+                    "IntrinsicFlow" => PressureSourceSpec::IntrinsicFlow,
+                    "AllocatedFlow" => PressureSourceSpec::AllocatedFlow,
+                    other => {
+                        return Err(HydrateError::new_spanned(
+                            format!("unsupported pressure source `{other}`"),
+                            Some(field.key.span.clone()),
+                        ));
+                    }
+                });
+            }
+            "placement" => {
+                let RawValue::Block(body) = &field.value else {
+                    return Err(HydrateError::new_spanned(
+                        "`placement` must be a block",
+                        Some(field.key.span.clone()),
+                    ));
+                };
+                let mut target = None;
+                let mut row = None;
+                let mut col = None;
+                for entry in &body.properties {
+                    match entry.key.text.as_str() {
+                        "target" => target = Some(read_scalar_text(entry, "target")?),
+                        "row" => row = Some(read_scalar_u32(entry, "row")?),
+                        "col" => col = Some(read_scalar_u32(entry, "col")?),
+                        other => {
+                            return Err(HydrateError::new_spanned(
+                                format!("unsupported placement field `{other}`"),
+                                Some(entry.key.span.clone()),
+                            ));
+                        }
+                    }
+                }
+                placements.push(PressurePlacementSpec {
+                    target_id: require_field(target, "target", field)?,
+                    row: require_field(row, "row", field)?,
+                    col: require_field(col, "col", field)?,
+                });
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported pressure_binding field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(ArenaPressureBindingSpec {
+        arena: require_field(arena, "arena", property)?,
+        source: require_field(source, "source", property)?,
+        placements,
+    })
+}
+
+fn parse_mapping_block(property: &RawProperty) -> Result<MappingExecutionProfile, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`mapping` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut profile = MappingExecutionProfile::Disabled;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "profile" => {
+                let text = read_scalar_text(field, "profile")?;
+                profile = match text.as_str() {
+                    "Disabled" => MappingExecutionProfile::Disabled,
+                    "SparseRegionFieldV1" => MappingExecutionProfile::SparseRegionFieldV1,
+                    other => {
+                        return Err(HydrateError::new_spanned(
+                            format!("unsupported mapping profile `{other}`"),
+                            Some(field.key.span.clone()),
+                        ));
+                    }
+                };
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported mapping field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(profile)
 }
 
 /// Hydrate the minimal CT-2c discrete Daily Economy dialect to ResourceEconomySpec.

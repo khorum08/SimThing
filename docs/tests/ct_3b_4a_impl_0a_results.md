@@ -1,0 +1,143 @@
+# CT-3b+4a 0A implementation results — RF-fed movement-front heatmap spine
+
+Status: **SUBSTRATE 0A PASS** (2026-06-11, frontier agent + executive design authority).
+**The headline spine runs end to end from ClauseScript, including the mandatory CT-4a leg:**
+
+```
+ClauseScript fixture (ct3b4a_headline.clause)
+→ hydration → GameModeSpec (CT-2c economy + RegionFieldSpec + pressure binding + ai_will_do)
+→ install: BaseFlowObligationSpec seeds IntrinsicFlow (static modifiers folded: 6 × 1.75 = 10.5)
+→ GPU Resource Flow arena bands resolve flows
+→ admitted arena-to-cell projection reads the farmer's resolved IntrinsicFlow (bit-exact 10.5 seed)
+→ bounded stencil heatmap (Normalized, horizon-capped, seed-then-zero)
+→ Layer-2 Sum reduce to parent summary
+→ ai_will_do field_urgency EvalEML over reduced parent columns (authored weights)
+→ authored threshold crossing fires with the authored event kind (GPU Pass-7 scan)
+→ BoundaryRequest::AttachOverlay commitment applied through apply_structural_mutations
+   onto the acting SimThing
+```
+
+CPU-oracle parity holds at every computed seam; the counterfactual run (no arena pressure)
+stays below the threshold — **the commitment genuinely depends on Resource Flow pressure**.
+
+## Named consumer
+
+CT-3b+4a headline vertical (amended ORIENT-0): the SEAD/suppression-disruption heatmap spine over
+Resource Flow arena pressure, plus the mandatory `ai_will_do → Layer-3 EML → threshold
+commitment` leg. This 0A slice is the substrate + spine proof; the exact full-rung remainder is
+listed under **Remaining exit blockers**.
+
+## Spec/admission surfaces added
+
+1. **`ArenaPressureBindingSpec`** on `RegionFieldSpec` (`pressure_binding`, serde-default):
+   `{ arena, source: IntrinsicFlow|AllocatedFlow, placements: [{target_id, row, col}] }`.
+   Admission (`compile_region_field_preview`): named arena, non-empty bounded placements
+   (≤ cell count), in-bounds rows/cols, no duplicate cells — all spanned `SpecError`s; the
+   out-of-bounds rejection is test-proven. Spec presence enables nothing.
+2. **`ai_will_do` weights** on `RegionFieldFormulaBindingSpec` (`weight_pressure`,
+   `weight_resource`, serde-default `None`) — the Layer-3 personality weights are spec-visible
+   authored data, no longer harness constants.
+
+## Driver surface added
+
+**`arena_pressure::project_arena_pressure_seeds`** — resolves each placement through the live
+install (scenario install target → admitted arena participant slot via the participant scaffold →
+flow-property column via `resolve_node_columns` + `column_range`) and reads the projected value
+from resolved session values. Boundary-time **consumption** of GPU-resolved state. Hard errors:
+unknown arena, unknown target, target not admitted in the arena, non-finite pressure. Multiple
+hosted participants per target sum deterministically.
+
+## How RF arena pressure feeds the heatmap
+
+Install-seeded folded obligations → GPU arena reduce/allocate bands → projection reads the bound
+participant's `IntrinsicFlow` column (proven bit-exact: seed = 10.5 = the CT-2c folded effective
+rate) → seeds the admitted region field under the caller-managed one-shot-seed-then-zero source
+policy → `StructuredFieldStencilOp` propagation (existing WGSL kernel, bounded horizon) → Layer-2
+Sum reduction → Layer-3 EML. No `contributions` side-channel, no hand seeds, no presentation map.
+
+## The CT-4a leg (mandatory, included)
+
+`ai_will_do` lowers at hydration to the `field_urgency` formula binding with authored weights;
+the runtime's EvalEML (`ExactDeterministic`, 8 nodes ≤ 32) computes
+`urgency = weight_pressure × reduced_pressure + weight_resource × reduced_resource` on GPU over
+the parent slot; the authored `FirstSliceCommitmentSpec` threshold (16.4, event_kind 7) is
+scanned GPU-side; the crossing event drives a `BoundaryRequest::AttachOverlay` commitment applied
+through `simthing_sim::apply_structural_mutations` onto the acting SimThing (overlay verified in
+the tree). Threshold discrimination is proven both ways (fires with RF pressure at urgency
+≈ 16.80; counterfactual floor 16.0 stays silent).
+
+## CPU/oracle parity & exactness classification
+
+- **RF leg:** the folded-rate install path is the CT-2c-REMEDIAL-3 substrate (bit-exact oracle
+  proof already standing); the projected seed is asserted bit-exact (`to_bits`).
+- **Heatmap + urgency:** CPU oracle replays the runtime's exact sequence — seed write, one
+  source-setup step (`cpu_stencil_step`), seed-then-zero, `cpu_horizon(horizon)` — then the
+  Layer-3 formula. GPU vs oracle asserted within 1e-3 at the diagnostic readback seam
+  (consistent with the standing first-slice commitment fixtures). Classification:
+  **GpuVerified vs CPU recurrence oracle**; no new exact-authority claim is made at this seam.
+- **GPU/JIT/WGSL used:** the existing `StructuredFieldStencilOp` WGSL kernel, the existing
+  `EvalEML` interpreter (field_urgency tree), the existing arena reduce/allocate kernels, and the
+  GPU threshold scan — all bounded arithmetic over admitted buffers. **No new kernel-side code
+  was needed for 0A**; the lifted-WGSL allowance was exercised through the existing kernels.
+- **Exact GPU sqrt rule:** not applicable — no sqrt, magnitude, distance, or gradient norm
+  anywhere in this slice. A future gradient-magnitude consumer must route exactness through
+  `m_jit_sqrt_f_exact`.
+
+## Remaining exit blockers (exact, for the full CT-3b+4a 0B closure)
+
+1. **CT-RF-EML-RATE-0 not implemented.** Exact blocker: the per-tick effective-rate EvalEML band
+   needs base/gate column plumbing inside the RF arena execution plan (a pre-reduce OrderBand
+   registering an `EvalEML` AccumulatorOp over explicit base/mult/gate columns writing the
+   intrinsic column the reduce consumes) plus gate-flag column registration at install. The
+   design is pinned in the §6 ticket; nothing in this slice forecloses it. Until it lands,
+   trigger-gated produces/upkeep and `value:` formula trees remain spanned hard errors naming
+   the ticket.
+2. **GPU-side projection copy.** 0A projects seeds via boundary-time CPU readback (consumption,
+   not recomputation). The full rung should add the direct session-buffer → stencil-buffer copy
+   (bounded arithmetic, allowed and expected under the WGSL lift) with parity.
+3. **Per-tick session integration.** The mapping runtime remains a standalone opt-in runtime
+   driven by the harness at boundary cadence; full-rung closure should drive it from the
+   session loop under the same explicit profile.
+
+## Files changed
+
+- `crates/simthing-spec/src/spec/region_field.rs` — binding + weights specs
+- `crates/simthing-spec/src/compile/region_field_admission.rs` — binding admission
+- `crates/simthing-spec/src/lib.rs`, `src/spec/mod.rs` — exports
+- `crates/simthing-driver/src/arena_pressure.rs` (new) + `src/lib.rs` — projection
+- `crates/simthing-clausething/src/hydrate_category_economy.rs` — `region_field`/`mapping`
+  dialect (urgency, pressure_binding, derived slot/column layout)
+- `crates/simthing-clausething/tests/ct_3b_4a_headline.rs` + `fixtures/ct3b4a_headline.clause`
+- Test-literal updates for the new optional fields (spec + driver test files, incl. the
+  pre-existing `resource_flow_opt_in.rs` breakage from #592, fixed)
+- This report; production ledger row
+
+## Confirmations
+
+No semantic GPU code (kernels see floats/indices; bindings resolve at admission/install). No
+`simthing-sim` changes — it remains ClauseThing-, map-, and arena-blind (the commitment applies
+through its existing generic mutation path). No runtime category dispatch (categories folded
+away at hydration). No noun engines, no global mover registry, no CPU planner (the commitment is
+a GPU threshold crossing; the CPU applies the structural result). Participants explicit and
+bounded; Resource Flow and mapping both authored opt-in; `ResourceFlowSpec` presence alone
+inactive (standing tests re-run green). Mobile concepts remain ordinary SimThings. No
+Paradox/lab corpus. Stale CT-2c memo semantics not resurrected (no dead overlays; folded rates
+consumed). No side-channel heatmap seeds.
+
+## Tests run
+
+```text
+cargo test -p simthing-clausething --test ct_3b_4a_headline      # 2 passed (GPU spine proof ran)
+cargo test -p simthing-clausething                               # all 11 suites green
+cargo test -p simthing-spec --test region_field_spec_admission   # 26 passed
+cargo test -p simthing-driver --test phase_m_first_slice_runtime                     # 28 passed
+cargo test -p simthing-driver --test phase_m_first_slice_product_commitment_fixture # 7 passed
+cargo test -p simthing-driver --test phase_m_first_slice_scenario_spec              # 9 passed
+cargo test -p simthing-driver --test phase_m_first_slice_summary_validity           # 11 passed
+cargo test -p simthing-driver --test resource_flow_opt_in                           # 13 passed
+cargo test -p simthing-driver --test resource_flow_base_intrinsic                   # 3 passed
+cargo fmt --all -- --check                                       # clean
+```
+
+`cargo test --workspace` — **not run**. Lab scans — not run (decoder corpus obligation remains
+standing, deliberately not mixed into this PR).

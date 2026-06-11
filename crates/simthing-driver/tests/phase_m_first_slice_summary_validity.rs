@@ -60,6 +60,7 @@ fn summary_policy_ron_admits() {
 
     let default_spec = compile_region_field_preview(&RegionFieldSpec {
         summary_policy: RegionFieldSummaryPolicySpec::default(),
+        pressure_binding: None,
         ..scenario.region_field.clone()
     })
     .expect("default summary policy admits");

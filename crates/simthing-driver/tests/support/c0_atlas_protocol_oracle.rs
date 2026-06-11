@@ -137,6 +137,7 @@ pub fn c0_region_field_spec_no_atlas() -> RegionFieldSpec {
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
         summary_policy: Default::default(),
+        pressure_binding: None,
     }
 }
 
