@@ -123,9 +123,16 @@ never downgrades.
 
 Recorded so gaps are tickets, not surprises. Each is a `simthing-spec` change with its own gate:
 
-- **`ScopeRef` successor** (T2, via SCOPE-MEMO): symbolic scope algebra replacing
-  `{Current, Slot(u32)}`; `Slot(u32)` is authoring-hostile (runtime index at authoring time) and
-  is retired from authored surfaces when the successor lands.
+- **`ScopeRef` successor — ticket SPEC-SCOPE-1, CUT** (T2, frontier; accepted SCOPE-MEMO
+  [`clausething/scope_memo.md`](clausething/scope_memo.md) §2/§5): `ScopeChainRef` symbolic atom
+  chains replacing `{Current, Slot(u32)}` on authored surfaces (`Current` ≡ `[This]`);
+  `Slot(u32)` is authoring-hostile (runtime index at authoring time) and is retired from authored
+  surfaces when the successor lands. **Named consumer: CT-1c** (capability payload/prereq
+  contexts), or CT-1b earlier only on demonstrated cross-scope need.
+- **Registered scope-step table — ticket SPEC-SCOPE-2, CUT** (T1 once SPEC-SCOPE-1 lands; memo
+  §2.4/§5): `ScopeStepSpec` Supported/Output typing + resolution bindings (spatial-ancestor /
+  relation-column), populated consumer-pulled. **Named consumer: the first rung registering a
+  real step** (expected CT-1b follow-on or CT-1c).
 - **`EffectSpec` widening** (T1 per batch, architecturally-mapped only): from three variants
   toward the mapped subset of `effects.log` (`add_resource` → flow delta, `add_modifier` → overlay
   attach, `set_variable` → Named-column write, …). Unknown effect = hard admission error + spanned
@@ -141,7 +148,10 @@ Recorded so gaps are tickets, not surprises. Each is a `simthing-spec` change wi
   runtime-constructed flag/variable *names* (§3.6) collide with admission-time column
   registration — names must be statically enumerable; dynamic construction is rejected at
   admission or bounded to a pre-declared per-scope name family.
-- **`EmitEvent` payload context** (T2, via SCOPE-MEMO): `from`/`root` chain support.
+- **`EmitEvent` payload context — ticket SPEC-SCOPE-3, CUT** (T2; memo §3/§5): boundary-layer
+  `EventScopeContext { root, from_stack, named_targets }` — `from`/`root` chains as explicit
+  bounded payload fields, statically enumerated `event_target:` names, GPU `EmissionRecord`
+  unchanged. **Named consumer: the future event-chain rung** (post-CT-1c).
 - **List-registry + `category_map` tables** (T1): the duplication policy's list registry and the
   category default table as first-class, documented spec inputs.
 - **Modifier-key grammar — the classifier engine** (T1, **frontier-gated**, lands with CT-2c):
@@ -331,7 +341,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 | CT-0c expansion passes | **IMPLEMENTED / PASS** | [`docs/tests/ct_0c_impl_results.md`](tests/ct_0c_impl_results.md) |
 | CT-0d scope extraction + frequency report | **IMPLEMENTED / PASS** (lab aggregate scan closed 2026-06-10 via CT-0d-LAB-CLOSURE-0) | [`docs/tests/ct_0d_impl_results.md`](tests/ct_0d_impl_results.md) |
 | CT-1a bit-identical entity | **IMPLEMENTED / PASS** (installed-tree parity closed by CT-1a-INSTALL-PARITY-CLOSURE-1: domain-pack standalone overlays wired through `preview_install` / `install_atomic`) | [`docs/tests/ct_1a_impl_results.md`](tests/ct_1a_impl_results.md) |
-| SCOPE-MEMO design gate | **DESIGN MEMO / READY FOR REVIEW** (memo authored 2026-06-11 by frontier design agent; widening tickets SPEC-SCOPE-1/2/3 proposed in the memo, cut into §6 on design-authority acceptance; no code) | [`docs/clausething/scope_memo.md`](clausething/scope_memo.md) |
+| SCOPE-MEMO design gate | **IMPLEMENTED / PASS** (memo authored and **accepted 2026-06-11** by the rung's design authority — Claude Fable 5 high effort, by product delegation; widening tickets SPEC-SCOPE-1/2/3 cut into §6; no code; CT-1b proceeds same-scope-only) | [`docs/clausething/scope_memo.md`](clausething/scope_memo.md) |
 | CT-1b recalc stress measurement | NOT STARTED | — |
 | CT-1c capability tree | NOT STARTED | — |
 | CT-2a intrinsic flows | NOT STARTED | — |

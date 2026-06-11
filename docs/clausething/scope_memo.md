@@ -1,7 +1,8 @@
 # SCOPE-MEMO — Symbolic Scope Model for ClauseThing Hydration
 
-> **Status: DESIGN MEMO / READY FOR REVIEW (authored 2026-06-11, frontier design agent per track
-> §5 gating; acceptance is a design-authority ruling recorded in the track ledger).** This is the
+> **Status: ACCEPTED (design authority for this rung — Claude Fable 5, high effort, by product
+> delegation — 2026-06-11; widening tickets SPEC-SCOPE-1/2/3 cut into the track §6 backlog at
+> acceptance).** This is the
 > SCOPE-MEMO rung of [`../design_0_0_8_1_clausething_production_track.md`](../design_0_0_8_1_clausething_production_track.md)
 > (§5): a **design memo, not an implementation**. No production code changes ride with it, and no
 > implementation may start from it before acceptance. Authority: the 0.0.8.1 constitution §0/§2,
@@ -368,8 +369,9 @@ items and is not pulled by this memo.
 16. **Visibility artifacts:** none needed — this memo plus the PR body answer closure; no
     `docs/tests` report created.
 17. **`cargo test --workspace`:** not run (docs-only rung; no Rust tests run at all).
-18. **Ledger honesty:** SCOPE-MEMO row set to DESIGN MEMO / READY FOR REVIEW with a pointer here;
-    CT-1b/CT-1c remain NOT STARTED; tickets are *proposed pending acceptance*, not cut.
+18. **Ledger honesty:** SCOPE-MEMO row set to IMPLEMENTED / PASS at explicit design-authority
+    acceptance (rung authority delegated to the authoring frontier agent by product, recorded in
+    the ledger row); CT-1b/CT-1c remain NOT STARTED; tickets SPEC-SCOPE-1/2/3 cut into §6.
 
 **Non-goals, restated:** no production code, no `simthing-sim`/`simthing-gpu`/WGSL/driver-runtime
 edits, no `simthing-spec` struct edits in this PR, no tests, no lab scans, no CT-1b/CT-1c/CT-2x
