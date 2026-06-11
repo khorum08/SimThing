@@ -12,3 +12,5 @@ When running **final** verification for a gate (e.g. `cargo test` that must pass
 - On Windows PowerShell, run plain `cargo test …` with **no** stdout/stderr redirection (see `no-shell-redirection.mdc`).
 
 Diagnostic or exploratory runs may use background only if the user explicitly asks.
+
+See `shell-timeout-budgets.mdc` for minimum `block_until_ms` values. Git push/merge is never background — see `no-background-git-operations.mdc`.

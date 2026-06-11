@@ -1,0 +1,26 @@
+---
+description: Git and gh commit/push/merge run foreground only (Windows-safe)
+alwaysApply: true
+---
+
+# Git and GitHub operations — foreground only
+
+On **Windows PowerShell**, backgrounding `git` / `gh` during commit, push, PR create, or merge causes the agent to **hang or lose sync** (waiting on a shell that never reports completion, or racing on `.git/index.lock`).
+
+## Required
+
+- Run **one plain command per shell invocation** for `git` and `gh` (same as `no-shell-redirection.mdc`).
+- **Commit, push, `gh pr create`, and `gh pr merge` always run in the foreground** with a blocking shell — never `block_until_ms: 0` or background mode.
+- Use adequate `block_until_ms`: push/merge **60000**; large diffs or slow network **120000**.
+- After `gh pr merge --delete-branch`, run `git checkout master` (or target branch) in a **separate** invocation if needed — do not chain with `;` when any leg may write to stderr.
+- Prefer `git commit -m "title" -m "body"` on Windows; avoid bash HEREDOC patterns that fail in PowerShell.
+
+## Forbidden
+
+- Background push, merge, or PR workflows while the agent continues other work.
+- Chaining `git status; git diff; git log` on one line when diagnosing commits — use **parallel separate invocations** instead.
+- `git … 2>&1`, pipes, or `Select-Object` / `Select-String` on `git` / `gh` output.
+
+## On failure
+
+- If `index.lock` exists after a failed or interrupted git op, **do not delete the lock file**; wait and retry the single command in a fresh foreground invocation.
