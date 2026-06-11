@@ -1,0 +1,138 @@
+GameModeSpec(
+    id: "simthing_ct2c_categories",
+    display_name: "CT-2c Category Economy",
+    description: "Synthetic category economy fixture for ClauseThing CT-2c.",
+    spec_version: (major: 1, minor: 0, patch: 0),
+    properties: [
+        PropertySpec(
+            id: "simthing_settlement_energy_flow",
+            namespace: "simthing",
+            name: "settlement_energy_flow",
+            display_name: "settlement Energy flow",
+            sub_fields: [
+                (
+                    role: Named("flow"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "flow",
+                    accumulator_spec: Some((
+                        role: IntrinsicFlow,
+                        log_tier: Summary,
+                    )),
+                ),
+                (
+                    role: Named("allocated"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "allocated",
+                    accumulator_spec: Some((
+                        role: AllocatedFlow(arena: "settlement_energy"),
+                        log_tier: Summary,
+                    )),
+                ),
+                (
+                    role: Named("weight"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "weight",
+                    accumulator_spec: Some((
+                        role: AllocatorWeight(arena: "settlement_energy"),
+                        log_tier: Summary,
+                    )),
+                ),
+            ],
+        ),
+        PropertySpec(
+            id: "simthing_settlement_food_flow",
+            namespace: "simthing",
+            name: "settlement_food_flow",
+            display_name: "settlement Food flow",
+            sub_fields: [
+                (
+                    role: Named("flow"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "flow",
+                    accumulator_spec: Some((
+                        role: IntrinsicFlow,
+                        log_tier: Summary,
+                    )),
+                ),
+                (
+                    role: Named("allocated"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "allocated",
+                    accumulator_spec: Some((
+                        role: AllocatedFlow(arena: "settlement_food"),
+                        log_tier: Summary,
+                    )),
+                ),
+                (
+                    role: Named("weight"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "weight",
+                    accumulator_spec: Some((
+                        role: AllocatorWeight(arena: "settlement_food"),
+                        log_tier: Summary,
+                    )),
+                ),
+            ],
+        ),
+    ],
+    overlays: [
+        OverlaySpec(
+            id: "irrigation_settlement_food_produces_mult",
+            targets_property: "simthing::settlement_food_flow",
+            sub_field_deltas: [
+                (Named("flow"), Multiply(1.1)),
+            ],
+            lifecycle: Permanent,
+            kind: Policy,
+            source: Player,
+            install: AllOfKind(kind: "Cohort"),
+        ),
+        OverlaySpec(
+            id: "irrigation_settlement_energy_upkeep_add",
+            targets_property: "simthing::settlement_energy_flow",
+            sub_field_deltas: [
+                (Named("flow"), Add(-0.25)),
+            ],
+            lifecycle: Permanent,
+            kind: Policy,
+            source: Player,
+            install: AllOfKind(kind: "Cohort"),
+        ),
+    ],
+    resource_flow: Some((
+        opt_in_mode: FlatStarOptIn,
+        arenas: [
+            (
+                name: "settlement_energy",
+                flow_property: (namespace: "simthing", name: "settlement_energy_flow"),
+                max_participants: 16,
+                max_coupling_fanout: 4,
+                max_orderband_depth: 16,
+                fission_policy: Reject,
+                explicit_participants: [],
+            ),
+            (
+                name: "settlement_food",
+                flow_property: (namespace: "simthing", name: "settlement_food_flow"),
+                max_participants: 16,
+                max_coupling_fanout: 4,
+                max_orderband_depth: 16,
+                fission_policy: Reject,
+                explicit_participants: [],
+            ),
+        ],
+        couplings: [],
+    )),
+)
