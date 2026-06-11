@@ -1,0 +1,19 @@
+simthing_ct1a_bad = {
+    display_name = "Bad Entity"
+    property = {
+        id = simthing_potency
+        namespace = simthing
+        name = potency
+        display_name = "Potency"
+        seed_amount = 10
+    }
+    modifier = {
+        id = ct1a_potency_boost
+        display_name = "Boost"
+        targets_property = simthing::potency
+        amount_mult = 1.1
+    }
+    triggered_modifier = {
+        id = forbidden
+    }
+}
