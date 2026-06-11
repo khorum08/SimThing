@@ -29,11 +29,11 @@ pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
 pub use property::PropertySpec;
 pub use region_field::{
-    CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
-    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec,
-    RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
-    RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
-    RegionFieldSummaryPolicySpec,
+    ArenaPressureBindingSpec, CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec,
+    FirstSliceCommitmentSpec, GradientAxisSpec, MappingExecutionProfile, PressurePlacementSpec,
+    PressureSourceSpec, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
 pub use resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,

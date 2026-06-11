@@ -516,6 +516,63 @@ pub fn compile_region_field_stencil_config(
 }
 
 /// Validate and compile a RegionFieldSpec into generic substrate preview configs.
+/// CT-3b+4a: pressure-binding admission — bounded, explicit, in-bounds, no
+/// duplicate cells. Arena/target resolution happens at driver projection time
+/// against the live install; this gate rejects everything checkable
+/// spec-locally.
+fn validate_pressure_binding(spec: &RegionFieldSpec) -> Result<(), SpecError> {
+    let Some(binding) = &spec.pressure_binding else {
+        return Ok(());
+    };
+    if binding.arena.is_empty() {
+        return Err(field_err(
+            &spec.name,
+            "pressure_binding arena must be named",
+        ));
+    }
+    if binding.placements.is_empty() {
+        return Err(field_err(
+            &spec.name,
+            "pressure_binding requires at least one placement",
+        ));
+    }
+    let cells = (spec.grid_size as u64) * (spec.grid_size as u64);
+    if binding.placements.len() as u64 > cells {
+        return Err(field_err(
+            &spec.name,
+            "pressure_binding placements exceed grid cell count",
+        ));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for placement in &binding.placements {
+        if placement.target_id.is_empty() {
+            return Err(field_err(
+                &spec.name,
+                "pressure_binding placement target_id must be named",
+            ));
+        }
+        if placement.row >= spec.grid_size || placement.col >= spec.grid_size {
+            return Err(field_err(
+                &spec.name,
+                format!(
+                    "pressure_binding placement ({}, {}) outside {}×{} grid",
+                    placement.row, placement.col, spec.grid_size, spec.grid_size
+                ),
+            ));
+        }
+        if !seen.insert((placement.row, placement.col)) {
+            return Err(field_err(
+                &spec.name,
+                format!(
+                    "duplicate pressure_binding cell ({}, {})",
+                    placement.row, placement.col
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub fn compile_region_field_preview(
     spec: &RegionFieldSpec,
 ) -> Result<CompiledRegionFieldPreview, SpecError> {
@@ -530,6 +587,7 @@ pub fn compile_region_field_preview(
     validate_columns(spec)?;
     validate_operator_and_source(spec)?;
     validate_horizon(spec)?;
+    validate_pressure_binding(spec)?;
 
     if !spec.alpha_self.is_finite() || !spec.gamma_neighbor.is_finite() {
         return Err(field_err(

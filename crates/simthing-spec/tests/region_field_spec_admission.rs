@@ -41,6 +41,7 @@ fn standard_suppression_field() -> RegionFieldSpec {
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
         summary_policy: Default::default(),
+        pressure_binding: None,
     }
 }
 
@@ -289,6 +290,8 @@ fn test_g_eml_formula_class_admission() {
         spec.parent_formula = Some(RegionFieldFormulaBindingSpec {
             formula_class: class.into(),
             tree_id: None,
+            weight_pressure: None,
+            weight_resource: None,
         });
         admit_region_field_formula_class(&spec, class).expect("admit class");
         compile_region_field_preview(&spec).expect("compile with class");
@@ -299,6 +302,8 @@ fn test_g_eml_formula_class_admission() {
         spec.parent_formula = Some(RegionFieldFormulaBindingSpec {
             formula_class: rejected.into(),
             tree_id: None,
+            weight_pressure: None,
+            weight_resource: None,
         });
         assert_region_field_err(&spec, "unknown or unbounded");
     }
@@ -389,11 +394,14 @@ fn test_j_first_slice_compile_preview_only() {
         parent_formula: Some(RegionFieldFormulaBindingSpec {
             formula_class: "field_urgency".into(),
             tree_id: Some(42),
+            weight_pressure: None,
+            weight_resource: None,
         }),
         commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
         summary_policy: Default::default(),
+        pressure_binding: None,
     };
 
     let preview = compile_region_field_preview(&spec).expect("first slice admit");
@@ -435,6 +443,8 @@ fn test_k_first_slice_commitment_spec_admission() {
     spec.parent_formula = Some(RegionFieldFormulaBindingSpec {
         formula_class: "field_urgency".into(),
         tree_id: Some(7),
+        weight_pressure: None,
+        weight_resource: None,
     });
     spec.commitment = Some(FirstSliceCommitmentSpec {
         source_formula_class: "field_urgency".into(),
@@ -485,6 +495,7 @@ fn gradient_field(axis: GradientAxisSpec, output_col: u32) -> RegionFieldSpec {
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
         summary_policy: Default::default(),
+        pressure_binding: None,
     }
 }
 

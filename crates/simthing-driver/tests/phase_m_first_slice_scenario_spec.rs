@@ -365,6 +365,8 @@ fn invalid_scenario_specs_reject() {
     wrong_formula.region_field.parent_formula = Some(RegionFieldFormulaBindingSpec {
         formula_class: "field_pressure".into(),
         tree_id: Some(7),
+        weight_pressure: None,
+        weight_resource: None,
     });
     assert_scenario_err(
         &wrong_formula,

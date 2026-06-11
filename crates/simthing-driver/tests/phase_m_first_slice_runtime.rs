@@ -56,11 +56,14 @@ fn first_slice_spec() -> RegionFieldSpec {
         parent_formula: Some(RegionFieldFormulaBindingSpec {
             formula_class: "field_urgency".into(),
             tree_id: Some(1),
+            weight_pressure: None,
+            weight_resource: None,
         }),
         commitment: None,
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
         summary_policy: Default::default(),
+        pressure_binding: None,
     }
 }
 

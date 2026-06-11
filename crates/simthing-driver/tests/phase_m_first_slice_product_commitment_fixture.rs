@@ -163,6 +163,8 @@ fn product_commitment_invalid_specs_reject() {
     wrong_parent_formula.parent_formula = Some(RegionFieldFormulaBindingSpec {
         formula_class: "field_pressure".into(),
         tree_id: Some(7),
+        weight_pressure: None,
+        weight_resource: None,
     });
     assert_region_field_err(
         &wrong_parent_formula,

@@ -40,6 +40,40 @@ pub struct RegionFieldSpec {
     /// Summary validity policy when dense field execution is skipped (Phase M SummaryValidity V1).
     #[serde(default)]
     pub summary_policy: RegionFieldSummaryPolicySpec,
+    /// CT-3b+4a: admitted Resource Flow arena → cell seed projection. Spec
+    /// presence alone enables nothing; projection reads resolved session
+    /// state through the driver, never a side-channel map.
+    #[serde(default)]
+    pub pressure_binding: Option<ArenaPressureBindingSpec>,
+}
+
+/// CT-3b+4a: projection of admitted Resource Flow arena participant output
+/// into region-field seed cells. Bounded and explicit: every placement names
+/// a scenario install target and an in-bounds cell; the driver resolves the
+/// participant's flow column at projection time and hard-errors on anything
+/// unresolvable.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ArenaPressureBindingSpec {
+    /// Arena name in `ResourceFlowSpec.arenas`.
+    pub arena: String,
+    /// Which resolved flow sub-field projects as pressure.
+    pub source: PressureSourceSpec,
+    pub placements: Vec<PressurePlacementSpec>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum PressureSourceSpec {
+    IntrinsicFlow,
+    AllocatedFlow,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PressurePlacementSpec {
+    /// Scenario install-target id resolving to the participant SimThing.
+    pub target_id: String,
+    pub row: u32,
+    pub col: u32,
 }
 
 /// Square grid admission profile (designer/spec layer).
@@ -99,11 +133,19 @@ pub struct RegionFieldReductionSpec {
     pub order_band: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RegionFieldFormulaBindingSpec {
     pub formula_class: String,
     #[serde(default)]
     pub tree_id: Option<u32>,
+    /// CT-3b+4a: authored `ai_will_do` personality weights for the
+    /// `field_urgency` formula — `urgency = weight_pressure × reduced_pressure
+    /// + weight_resource × reduced_resource`. Spec-visible authoring data;
+    /// the runtime consumes them per tick.
+    #[serde(default)]
+    pub weight_pressure: Option<f32>,
+    #[serde(default)]
+    pub weight_resource: Option<f32>,
 }
 
 /// First-slice designer-authored threshold binding over parent `field_urgency`.

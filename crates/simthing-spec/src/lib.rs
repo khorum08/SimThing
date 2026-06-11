@@ -379,11 +379,11 @@ pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::property::PropertySpec;
 pub use spec::region_field::{
-    CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
-    GradientAxisSpec, MappingExecutionProfile, RegionFieldCadenceSpec,
-    RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
-    RegionFieldReductionSpec, RegionFieldSourcePolicySpec, RegionFieldSpec,
-    RegionFieldSummaryPolicySpec,
+    ArenaPressureBindingSpec, CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec,
+    FirstSliceCommitmentSpec, GradientAxisSpec, MappingExecutionProfile, PressurePlacementSpec,
+    PressureSourceSpec, RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec,
+    RegionFieldGridProfile, RegionFieldOperatorSpec, RegionFieldReductionSpec,
+    RegionFieldSourcePolicySpec, RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
 pub use spec::resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec,
