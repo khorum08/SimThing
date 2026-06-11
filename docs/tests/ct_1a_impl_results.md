@@ -1,97 +1,111 @@
 # CT-1a implementation results — ClauseThing literal entity hydration parity
 
-Status: **IMPLEMENTED / PASS**
+Status: **PARTIAL / INSTALL PARITY PENDING** (remedial CT-1a-INSTALL-PARITY-REMEDIAL-0, 2026-06-10)
 
-## Scope ledger
-- `crates/simthing-clausething/src/hydrate.rs` — CT-1a literal entity hydration into
-  `DomainPackSpec` + install-time `seed_amount`.
-- `crates/simthing-clausething/src/literal_install.rs` — admission/install snapshot via
-  existing `compile_property` / `compile_overlay` and CPU `PropertyTransformDelta::apply_to_data`.
-- `crates/simthing-clausething/src/error.rs` — `HydrateError` with optional `RawSpan`.
-- `crates/simthing-clausething/src/lib.rs` — module wiring and public exports.
-- `crates/simthing-clausething/Cargo.toml` — added `simthing-spec` + `simthing-core`
-  dependencies (designer-layer only; no runtime wiring).
-- `crates/simthing-clausething/tests/ct_1a_entity.rs` — 3 parity/rejection tests.
-- `crates/simthing-clausething/tests/fixtures/ct1a_demo_entity.clause` — ClauseScript fixture.
-- `crates/simthing-clausething/tests/fixtures/ct1a_demo_entity_baseline.ron` — hand-authored RON baseline.
-- `crates/simthing-clausething/tests/fixtures/ct1a_unsupported_field.clause` — rejection fixture.
-- `docs/design_0_0_8_1_clausething_production_track.md` — §11 CT-1a row updated.
+Hydration, canonical authoring equality, CPU overlay/property parity, and unsupported-field
+rejection are **implemented and passing**. Installed-tree bit-exact parity through the existing
+driver install path is **not yet proven** and remains the blocking gap before CT-1a can close to
+PASS and SCOPE-MEMO can proceed.
 
-## Files changed
-See scope ledger. No `simthing-spec` production code, `simthing-sim`, `simthing-gpu`, WGSL, or
-`simthing-driver` changes.
+## Remedial finding: installed-tree path investigation
+
+**Was an actual existing installed-tree path found for CT-1a's fixture shape?** Partially.
+
+| API | Location | What it installs for `DomainPackSpec` |
+|---|---|---|
+| `simthing-driver::preview_install` | `crates/simthing-driver/src/install.rs` | Full session install preview (`InstallPreview`: registry, root, allocator, `SpecSessionState`) |
+| `simthing-driver::install_atomic` | same | Commits `preview_install` result to caller state |
+| `simthing-driver::compile_and_install` | same | In-place worker used by the above |
+| `compile_pack_properties` | `install.rs` (private helper) | **Properties only** — iterates `pack.properties` via `compile_property`; **does not process `pack.overlays`** |
+| `simthing-spec::compile_overlay` | `crates/simthing-spec/src/compile/overlay.rs` | Admission compile to `Overlay`; doc states caller attaches at runtime — no domain-pack install orchestration |
+
+Global/game-mode overlays are explicitly deferred in `compile_and_install` (ADR
+`game_mode_session_installation.md` §4). Capability-tree overlays install only through
+`CapabilityTreeBuilder::build` + per-owner clone — not through standalone domain-pack
+`modifier` blocks.
+
+**Conclusion:** For the CT-1a demo entity (one `PropertySpec` + one standalone `OverlaySpec`),
+the public driver install path registers the property in `DimensionRegistry` but **never attaches
+the overlay to any `SimThing` tree node**. There is no test-available helper that produces a
+bit-identical installed tree including standalone domain-pack modifiers without driver production
+widening.
+
+**Decision needed from design authority:** Wire domain-pack standalone `OverlaySpec` installation
+through the existing `compile_and_install` / `install_atomic` path (or accept an alternate
+documented install artifact for CT-1a), then re-run installed-tree parity.
+
+## Scope ledger (cumulative + remedial)
+- `crates/simthing-clausething/src/hydrate.rs` — literal entity hydration → `DomainPackSpec`.
+- `crates/simthing-clausething/src/literal_install.rs` — CPU overlay/property parity only
+  (remedial: doc clarified; not installed-tree substitute).
+- `crates/simthing-clausething/tests/ct_1a_entity.rs` — remedial: test renamed to
+  `clause_and_ron_cpu_overlay_parity_match`.
+- `docs/design_0_0_8_1_clausething_production_track.md` — §11 CT-1a row updated to PARTIAL.
+
+## Files changed (this remedial)
+- `crates/simthing-clausething/src/literal_install.rs`
+- `crates/simthing-clausething/tests/ct_1a_entity.rs`
+- `docs/tests/ct_1a_impl_results.md`
+- `docs/design_0_0_8_1_clausething_production_track.md`
 
 ## Fixture paths
 - ClauseScript: `crates/simthing-clausething/tests/fixtures/ct1a_demo_entity.clause`
 - RON baseline: `crates/simthing-clausething/tests/fixtures/ct1a_demo_entity_baseline.ron`
 
-## Hydration mapping summary
+## Hydration mapping summary (unchanged)
 | ClauseScript field | `simthing-spec` target |
 |---|---|
 | Top-level entity key | `DomainPackSpec.id` |
 | `display_name` | `DomainPackSpec.display_name` |
 | `property { id, namespace, name, display_name }` | `PropertySpec` |
-| `property.seed_amount` | install-time seed (not in RON struct; used for CPU overlay apply proof) |
+| `property.seed_amount` | install-time seed (CPU parity proof only) |
 | `modifier { id, display_name, targets_property, amount_mult }` | `OverlaySpec` with `TransformOp::Multiply` on `SubFieldRole::Amount` |
-| `modifier.amount_add` | `TransformOp::Add` on `SubFieldRole::Amount` (supported; unused in demo fixture) |
 
-Default overlay metadata: `OverlayLifecycle::Permanent`, `OverlayKind::Policy`, `OverlaySource::Player`.
+## Authoring canonical equality result
+**Pass.** Hydrated `DomainPackSpec` canonical JSON matches hand-authored RON baseline
+(`hydrated_domain_pack_matches_ron_baseline`).
+
+## Installed-tree parity result
+**Pending — not proven.**
+
+- Driver `install_atomic` / `preview_install` were identified but **not exercised** in this
+  remedial: they cannot produce overlay-inclusive installed-tree parity for standalone domain-pack
+  modifiers without production widening.
+- `LiteralInstallSnapshot` is **not** claimed as installed-tree proof.
+
+## CPU overlay/property parity result
+**Pass.** `compile_property` / `compile_overlay` admission + `PropertyTransformDelta::apply_to_data`
+on Amount column. ClauseScript and RON paths match:
+- `property_keys`: `["simthing::potency"]`
+- `seeded_amount`: `40.0`, `final_amount`: `50.0` (40 × 1.25)
 
 ## Unsupported forms / rejections
-Hard-error with spanned `HydrateError` for: unknown top-level entity fields (e.g.
-`triggered_modifier`), unknown `property`/`modifier` sub-fields, missing required fields,
-non-scalar values, both `amount_mult` and `amount_add`, neither transform op, duplicate
-`property` blocks, documents without exactly one top-level entity template.
+Unchanged — `triggered_modifier` and other unknown fields hard-error with spanned `HydrateError`.
 
 ## Commands run
-- `cargo test -p simthing-clausething` — pass (CT-0a 1; CT-0b 3/1 ignored; CT-0c 16/1 ignored;
-  CT-0d 9/2 ignored; CT-1a 3).
 - `cargo test -p simthing-clausething --test ct_1a_entity` — pass (3 tests).
+- `cargo test -p simthing-clausething` — pass.
 - `cargo fmt --all -- --check` — clean.
-- `cargo test --workspace` — **not run** (only `simthing-clausething` + docs changed; new
-  `simthing-clausething → simthing-spec/simthing-core` deps validated by targeted crate tests).
+- `cargo test --workspace` — **not run**.
 
-## Installed-tree comparison evidence
-`LiteralInstallSnapshot` via existing spec admission (`compile_property`, `compile_overlay`) +
-CPU `apply_to_data` on the standard Amount column. ClauseScript-hydrated and RON-baseline paths
-produce identical snapshots:
-- `property_keys`: `["simthing::potency"]`
-- `overlay_specs`: `ct1a_potency_boost` → `simthing::potency`, `Multiply(1.25)` on `Amount`
-- `seeded_amount`: `40.0`
-- `final_amount`: `50.0` (40 × 1.25)
-
-Full driver `install_atomic` tree not exercised (driver production code out of scope); spec
-compile + CPU overlay apply is the existing admission firewall proof for CT-1a.
-
-## RON-diff / canonical diff result
-Hydrated `DomainPackSpec` canonical JSON matches hand-authored RON baseline canonical JSON
-(`hydrated_domain_pack_matches_ron_baseline` test).
-
-## CPU-oracle overlay/property parity
-**Tested** via `PropertyTransformDelta::apply_to_data` in `literal_install.rs` (same helper path
-used by `simthing-core` CPU reference evaluator). Seeded Amount `40.0` with `Multiply(1.25)`
-yields `final_amount = 50.0` identically for ClauseScript and RON paths.
-
-## Closure questions
-1. **Specified vs implemented?** Yes — one literal synthetic entity with flat property + literal
-   modifier hydrates to existing `DomainPackSpec` and passes spec admission + CPU overlay apply
-   parity vs RON baseline.
-2. **ClauseScript fixture?** `ct1a_demo_entity.clause` (`simthing_ct1a_demo`).
-3. **RON baseline?** `ct1a_demo_entity_baseline.ron`.
-4. **Flat literal properties?** `id`, `namespace`, `name`, `display_name`, `seed_amount`.
-5. **Literal modifier blocks?** `id`, `display_name`, `targets_property`, `amount_mult`.
-6. **Same authoring/canonical form?** Yes (canonical JSON equality).
-7. **Installed tree identical?** Canonically identical via `LiteralInstallSnapshot` equality.
-8. **CPU-oracle parity?** Yes — `apply_to_data` on Amount column; `50.0` verified.
-9. **Unsupported fields rejected?** Yes — `triggered_modifier` hard-errors with span.
-10. **simthing-spec admission/install firewall?** Yes — `compile_property` / `compile_overlay`.
-11. **Paradox/lab corpus committed?** No — synthetic SimThing-authored fixtures only.
-12. **simthing-sim untouched?** Yes.
-13. **simthing-gpu/WGSL untouched?** Yes.
-14. **Runtime/default wiring untouched?** Yes.
-15. **Unneeded artifacts deleted?** Yes — no scratch dumps or logs retained.
-16. **Artifacts under docs/tests only?** Yes — this report only.
-17. **cargo test --workspace avoided?** Yes.
+## Closure questions (remedial)
+1. **Actual installed-tree path found?** Public driver install APIs exist, but none install
+   standalone domain-pack `OverlaySpec` for the CT-1a fixture without production widening.
+2. **Path exercised for ClauseScript and RON?** No — installed-tree path not reachable in scope.
+3. **Installed artifacts bit-identical?** **Pending** — not demonstrated.
+4. **`LiteralInstallSnapshot` only CPU parity?** **Yes** — explicitly documented; not installed-tree substitute.
+5. **Canonical authoring equality?** **Yes** — still passes.
+6. **CPU overlay/property parity?** **Yes** — still passes.
+7. **Unsupported fields hard-error?** **Yes** — unchanged.
+8. **simthing-spec admission firewall?** **Yes** — `compile_property` / `compile_overlay`.
+9. **Paradox/lab corpus committed?** **No.**
+10. **simthing-sim untouched?** **Yes.**
+11. **simthing-gpu/WGSL untouched?** **Yes.**
+12. **Runtime/default wiring untouched?** **Yes.**
+13. **Unneeded artifacts deleted?** **Yes.**
+14. **Artifacts under docs/tests only?** **Yes.**
+15. **cargo test --workspace avoided?** **Yes.**
+16. **Production ledger updated honestly?** **Yes** — PARTIAL / INSTALL PARITY PENDING.
 
 ## Confirmations
 - No Paradox / lab corpus material committed: **confirmed**.
@@ -99,3 +113,4 @@ yields `final_amount = 50.0` identically for ClauseScript and RON paths.
 - `simthing-gpu` / WGSL untouched: **confirmed**.
 - No runtime/default wiring: **confirmed**.
 - `cargo test --workspace` not run: **confirmed**.
+- SCOPE-MEMO not advanced: **confirmed** (blocked until CT-1a honestly closes).

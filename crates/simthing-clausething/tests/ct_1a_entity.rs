@@ -35,14 +35,17 @@ fn hydrated_domain_pack_matches_ron_baseline() {
 }
 
 #[test]
-fn clause_and_ron_install_snapshots_match() {
+fn clause_and_ron_cpu_overlay_parity_match() {
     let hydrated = hydrate_from_clause();
     let baseline = load_ron_baseline();
 
     let from_clause = admit_and_apply_pack(&hydrated).expect("admit hydrated pack");
     let from_ron = admit_and_apply_domain_pack(&baseline, SEED_AMOUNT).expect("admit RON baseline");
 
-    assert_eq!(from_clause, from_ron);
+    assert_eq!(
+        from_clause, from_ron,
+        "CPU overlay/property parity must match between ClauseScript and RON paths"
+    );
     assert_eq!(from_clause.seeded_amount, SEED_AMOUNT);
     assert_eq!(from_clause.final_amount, 50.0);
     assert_eq!(
