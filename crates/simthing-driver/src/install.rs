@@ -518,19 +518,18 @@ fn intrinsic_flow_offset(
     registry: &DimensionRegistry,
     property_id: SimPropertyId,
 ) -> Option<usize> {
-    registry
-        .property(property_id)
-        .layout
-        .sub_fields
-        .iter()
-        .enumerate()
-        .find_map(|(offset, sub_field)| {
-            sub_field
-                .accumulator_spec
-                .as_ref()
-                .filter(|spec| matches!(spec.role, AccumulatorRole::IntrinsicFlow))
-                .map(|_| offset)
-        })
+    // invariant: local index arithmetic has one home — resolve the role,
+    // then go through `PropertyLayout::offset_of` (enumeration position is
+    // only coincidentally correct while every sub-field has width 1).
+    let layout = &registry.property(property_id).layout;
+    let role = layout.sub_fields.iter().find_map(|sub_field| {
+        sub_field
+            .accumulator_spec
+            .as_ref()
+            .filter(|spec| matches!(spec.role, AccumulatorRole::IntrinsicFlow))
+            .map(|_| sub_field.role.clone())
+    })?;
+    layout.offset_of(&role)
 }
 
 fn build_tree<'spec>(

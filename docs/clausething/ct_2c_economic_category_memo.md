@@ -1,8 +1,17 @@
 # CT-2c-DESIGN-1 — Economic Category Mapping Memo
 
-> **Status: DESIGN MEMO / READY FOR REVIEW (2026-06-11).** This is a design/admission-shape memo,
-> not an implementation. No production code rides with it, and CT-2c implementation may not start
-> before design-authority acceptance. Authority: the 0.0.8.1 constitution,
+> **Status: ACCEPTED WITH AMENDMENTS (executive design authority, 2026-06-11, at the
+> CT-2c-REMEDIAL-3 review — retroactive: implementation had started before acceptance, against
+> this memo's own gate; that process violation is recorded in the REMEDIAL-3 report).**
+> Amendments binding over the body text: (1) §4's "static `_mult`/`_add` → runtime overlay"
+> rows are superseded for **rate-typed** targets by the **hydration-time fold**
+> (`effective = (base + Σadd) × (1 + Σmult)`, additive-in-effect, deterministic order) — a
+> per-tick transform on a rate column compounds and is rejected as a mechanism; overlays remain
+> the lowering for value-typed targets. (2) The §2.1 `value:` narrowing (literals + folded
+> `@vars` only) is accepted as a recorded Deviation; formula trees belong to
+> **CT-RF-EML-RATE-0** (track §6), as do trigger-gated rate forms — "CT-2b" is not a ladder
+> rung and is no longer cited as a deferral target. (3) The §3 lab `modifiers.log` round-trip
+> remains a standing evidence obligation on the decoder's corpus claims. Authority: the 0.0.8.1 constitution,
 > [`../simthing_core_design.md`](../simthing_core_design.md), [`../invariants.md`](../invariants.md),
 > [`../design_0_0_8_1.md`](../design_0_0_8_1.md) §0/§2, the production track
 > [`../design_0_0_8_1_clausething_production_track.md`](../design_0_0_8_1_clausething_production_track.md)

@@ -152,23 +152,99 @@ fn category_hydrated_game_mode_matches_ron_baseline() {
         .expect("resource flow")
         .base_obligations;
     assert_eq!(obligations.len(), 2);
+    // Inheritance asymmetry, folded at hydration: the settlement-level mult
+    // (0.25) and the polity-level mult (0.5, parent sweep) both scale food;
+    // the leaf `_add` (-0.25) applies to energy only at its exact category.
+    // effective = (base + Σadd) × (1 + Σmult), deterministic order.
     let food_obligation = obligations
         .iter()
         .find(|o| o.id == "farmer_settlement_food_produce")
         .expect("food base obligation");
     assert_eq!(food_obligation.arena, "settlement_food");
     assert_eq!(food_obligation.direction, BaseFlowDirectionSpec::Produce);
-    assert_eq!(food_obligation.rate, 6.0);
-    assert_eq!(food_obligation.signed_rate(), 6.0);
+    assert_eq!(food_obligation.rate.to_bits(), 10.5_f32.to_bits());
+    assert_eq!(food_obligation.signed_rate().to_bits(), 10.5_f32.to_bits());
     let energy_obligation = obligations
         .iter()
         .find(|o| o.id == "farmer_settlement_energy_upkeep")
         .expect("energy base obligation");
     assert_eq!(energy_obligation.arena, "settlement_energy");
     assert_eq!(energy_obligation.direction, BaseFlowDirectionSpec::Upkeep);
-    assert_eq!(energy_obligation.rate, 1.0);
-    assert_eq!(energy_obligation.signed_rate(), -1.0);
-    assert_eq!(hydrated.decoded_modifier_keys.len(), 2);
+    assert_eq!(energy_obligation.rate.to_bits(), 0.75_f32.to_bits());
+    assert_eq!(
+        energy_obligation.signed_rate().to_bits(),
+        (-0.75_f32).to_bits()
+    );
+    assert_eq!(hydrated.decoded_modifier_keys.len(), 3);
+}
+
+#[test]
+fn dead_modifier_matching_no_production_is_hard_error() {
+    let source = br#"
+simthing_ct2c_bad = {
+    resource_flow = { opt_in = Disabled }
+    category_map = { settlement = { kind = Cohort depth = 2 } }
+    resource = { id = "food" namespace = "simthing" name = "food" }
+    resource = { id = "energy" namespace = "simthing" name = "energy" }
+    unit_template = {
+        id = "farmer"
+        category = settlement
+        resources = { produces = { settlement_food_produces_add = 6 } }
+    }
+    modifier = { id = "dead" settlement_energy_upkeep_add = 1 }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse");
+    let err = hydrate_category_economy_pack(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("matches no authored production"),
+        "{err}"
+    );
+}
+
+#[test]
+fn negative_effective_rate_after_fold_is_hard_error() {
+    let source = br#"
+simthing_ct2c_bad = {
+    resource_flow = { opt_in = Disabled }
+    category_map = { settlement = { kind = Cohort depth = 2 } }
+    resource = { id = "food" namespace = "simthing" name = "food" }
+    unit_template = {
+        id = "farmer"
+        category = settlement
+        resources = { produces = { settlement_food_produces_add = 6 } }
+    }
+    modifier = { id = "famine" settlement_food_produces_add = -7 }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse");
+    let err = hydrate_category_economy_pack(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("must be finite and non-negative"),
+        "{err}"
+    );
+}
+
+#[test]
+fn category_parent_must_be_shallower_than_child() {
+    let source = br#"
+simthing_ct2c_bad = {
+    resource_flow = { opt_in = Disabled }
+    category_map = {
+        settlement = { kind = Cohort depth = 1 parent = polity }
+        polity = { kind = Faction depth = 2 }
+    }
+    resource = { id = "food" namespace = "simthing" name = "food" }
+    unit_template = {
+        id = "farmer"
+        category = settlement
+        resources = { produces = { settlement_food_produces_add = 6 } }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse");
+    let err = hydrate_category_economy_pack(&document).unwrap_err();
+    assert!(err.to_string().contains("broadcast is down-only"), "{err}");
 }
 
 #[test]
@@ -355,8 +431,8 @@ fn install_consumes_category_base_obligations_without_manual_side_channel() {
         global_flow_col(&session.proto.registry, flow_id, cols.intrinsic_flow_col);
     assert_eq!(
         cell(&session.coord.shadow, root_slot, intrinsic_global, n_dims).to_bits(),
-        6.0_f32.to_bits(),
-        "install must seed farmer food produce obligation"
+        10.5_f32.to_bits(),
+        "install must seed the folded effective farmer food produce rate"
     );
 }
 
@@ -418,8 +494,8 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     let weight_global = global_flow_col(&session.proto.registry, flow_id, cols.weight_col);
     assert_eq!(
         cell(&values, root, intrinsic_global, n_dims).to_bits(),
-        6.0_f32.to_bits(),
-        "install must seed farmer food produce obligation"
+        10.5_f32.to_bits(),
+        "install must seed the folded effective farmer food produce rate"
     );
 
     let leaf_weights = [1.0_f32, 3.0];
@@ -476,11 +552,12 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     }
     assert_eq!(
         oracle[&(leaves[0], cols.allocated_flow_col)].to_bits(),
-        1.5_f32.to_bits()
+        // folded effective produce 10.5 disbursed by weights 1:3
+        2.625_f32.to_bits()
     );
     assert_eq!(
         oracle[&(leaves[1], cols.allocated_flow_col)].to_bits(),
-        4.5_f32.to_bits()
+        7.875_f32.to_bits()
     );
 
     drop(session);

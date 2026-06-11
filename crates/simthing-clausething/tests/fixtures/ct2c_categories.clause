@@ -8,7 +8,7 @@ simthing_ct2c_categories = {
         max_orderband_depth = 16
     }
     category_map = {
-        settlement = { kind = Cohort depth = 2 }
+        settlement = { kind = Cohort depth = 2 parent = polity }
         polity = { kind = Faction depth = 1 }
         pop_category_bio_trophy = { kind = Cohort depth = 3 }
         pop = { kind = Cohort depth = 3 }
@@ -47,7 +47,11 @@ simthing_ct2c_categories = {
     }
     modifier = {
         id = "irrigation"
-        settlement_food_produces_mult = 0.10
+        settlement_food_produces_mult = 0.25
         settlement_energy_upkeep_add = -0.25
+    }
+    modifier = {
+        id = "tithe"
+        polity_food_produces_mult = 0.5
     }
 }

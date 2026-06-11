@@ -1,8 +1,17 @@
 # CT-3b+4a-ORIENT-0 — Resource Flow Movement-Front Heatmap Design Memo
 
-> **Status: DESIGN MEMO / READY FOR REVIEW (2026-06-11).** This is a guardrail + design-orientation
-> rung only. No production code, no WGSL, no tests, and no implementation may start before
-> design-authority acceptance. Authority: the 0.0.8.1 constitution,
+> **Status: ACCEPTED WITH AMENDMENTS (executive design authority, 2026-06-11).**
+> Amendments binding over the body text: (1) §12's listing of `ai_will_do` Layer-3 compilation
+> as "optional" is **reversed** — the CT-4a half of the rung (`ai_will_do` → EML
+> urgency/pressure over **reduced parent columns** → `Threshold` + `EmitEvent` commitment) is
+> **mandatory in the implementation exit**, alongside the heatmap; the reorientation adds the
+> Resource Flow pressure feed, it does not drop the FIELD_POLICY leg. (2) The orientation
+> ruling's re-scope of the §5 ladder row is **ratified as a recorded amendment** in the
+> production track (an implementing agent may not silently re-scope a rung). (3) The gated-rate
+> EML band (**CT-RF-EML-RATE-0**, cut at the CT-2c-REMEDIAL-3 review) is added to §11's allowed
+> GPU-resident computations and is expected to land with this implementation rung.
+> This is a guardrail + design-orientation memo. No production code, no WGSL, no tests;
+> implementation may start only against the amended text. Authority: the 0.0.8.1 constitution,
 > [`../simthing_core_design.md`](../simthing_core_design.md), [`../invariants.md`](../invariants.md),
 > [`../design_0_0_8_1.md`](../design_0_0_8_1.md) §0/§2, the production track
 > [`../design_0_0_8_1_clausething_production_track.md`](../design_0_0_8_1_clausething_production_track.md)
