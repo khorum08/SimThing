@@ -2,7 +2,7 @@
 //!
 //! Categories are parsed as ClauseThing-side admission metadata only. The emitted
 //! [`GameModeSpec`] contains ordinary properties, overlays, Resource Flow arenas,
-//! and ResourceEconomy registrations; no category runtime artifact is produced.
+//! base-flow obligations, and ResourceEconomy registrations; no category runtime artifact is produced.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -16,7 +16,9 @@ use simthing_spec::spec::resource_economy::{
     RecipeInputSpec, ResourceEconomyOptInMode, ResourceEconomySpec, ResourceRecipeSpec,
     ResourceTransferSpec,
 };
-use simthing_spec::spec::resource_flow::{ResourceFlowOptInMode, ResourceFlowSpec};
+use simthing_spec::spec::resource_flow::{
+    BaseFlowDirectionSpec, BaseFlowObligationSpec, ResourceFlowOptInMode, ResourceFlowSpec,
+};
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
 
@@ -26,6 +28,7 @@ use crate::raw::{RawDocument, RawProperty, RawValue};
 #[derive(Debug, Clone)]
 pub struct HydratedCategoryEconomyPack {
     pub game_mode: GameModeSpec,
+    /// Diagnostic mirror of literal `_add` contributions; not consumed by install/session proof.
     pub contributions: Vec<CategoryFlowContribution>,
     pub decoded_modifier_keys: Vec<DecodedEconomicKey>,
 }
@@ -170,6 +173,7 @@ pub fn hydrate_category_economy_pack(
     let resource_names = resources.keys().cloned().collect::<Vec<_>>();
     let mut used_pairs: BTreeMap<(String, String), (PropertySpec, ArenaSpec)> = BTreeMap::new();
     let mut contributions = Vec::new();
+    let mut base_obligations = Vec::new();
     let mut decoded_modifier_keys = Vec::new();
     let mut overlays = Vec::new();
 
@@ -183,6 +187,7 @@ pub fn hydrate_category_economy_pack(
             &arena_defaults,
             &mut used_pairs,
             &mut contributions,
+            &mut base_obligations,
         )?;
     }
 
@@ -218,6 +223,7 @@ pub fn hydrate_category_economy_pack(
                 opt_in_mode: arena_defaults.opt_in_mode,
                 arenas,
                 couplings: vec![],
+                base_obligations,
             }),
             resource_economy: None,
             resource_flow_execution_profile: Default::default(),
@@ -313,6 +319,7 @@ fn parse_unit_template(
     arena_defaults: &ArenaDefaults,
     used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
     contributions: &mut Vec<CategoryFlowContribution>,
+    base_obligations: &mut Vec<BaseFlowObligationSpec>,
 ) -> Result<(), HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
@@ -321,15 +328,14 @@ fn parse_unit_template(
         ));
     };
 
-    let mut id_seen = false;
+    let mut template_id = None;
     let mut category_seen = None;
     let mut resources_block = None;
 
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => {
-                read_scalar_text(field, "id")?;
-                id_seen = true;
+                template_id = Some(read_scalar_text(field, "id")?);
             }
             "category" => category_seen = Some(read_scalar_text(field, "category")?),
             "resources" => resources_block = Some(field),
@@ -342,12 +348,12 @@ fn parse_unit_template(
         }
     }
 
-    if !id_seen {
-        return Err(HydrateError::new_spanned(
+    let template_id = template_id.ok_or_else(|| {
+        HydrateError::new_spanned(
             "unit_template requires `id`",
             Some(property.key.span.clone()),
-        ));
-    }
+        )
+    })?;
     let category = category_seen.ok_or_else(|| {
         HydrateError::new_spanned(
             "unit_template requires `category`",
@@ -447,15 +453,59 @@ fn parse_unit_template(
                 EconomicAxis::Cost => unreachable!("cost rejected above"),
             };
             contributions.push(CategoryFlowContribution {
-                category: decoded.category,
-                resource: decoded.resource,
+                category: decoded.category.clone(),
+                resource: decoded.resource.clone(),
                 axis: decoded.axis,
                 property: property_key,
-                arena: arena_name,
+                arena: arena_name.clone(),
                 rate: signed,
             });
+            push_base_flow_obligation(
+                base_obligations,
+                &template_id,
+                &decoded.category,
+                &decoded.resource,
+                &arena_name,
+                decoded.axis,
+                amount,
+            )?;
         }
     }
+    Ok(())
+}
+
+fn push_base_flow_obligation(
+    base_obligations: &mut Vec<BaseFlowObligationSpec>,
+    template_id: &str,
+    category: &str,
+    resource: &str,
+    arena_name: &str,
+    axis: EconomicAxis,
+    rate: f32,
+) -> Result<(), HydrateError> {
+    if !rate.is_finite() || rate < 0.0 {
+        return Err(HydrateError::new(format!(
+            "base flow rate must be finite and non-negative, got `{rate}`"
+        )));
+    }
+    let (direction, axis_label) = match axis {
+        EconomicAxis::Produces => (BaseFlowDirectionSpec::Produce, "produce"),
+        EconomicAxis::Upkeep => (BaseFlowDirectionSpec::Upkeep, "upkeep"),
+        EconomicAxis::Cost => {
+            return Err(HydrateError::new(
+                "`cost` keys require a discrete ResourceEconomySpec context",
+            ));
+        }
+    };
+    base_obligations.push(BaseFlowObligationSpec {
+        id: format!("{template_id}_{category}_{resource}_{axis_label}"),
+        arena: arena_name.into(),
+        install: InstallTargetSpec::ScenarioListed {
+            target_id: template_id.into(),
+        },
+        direction,
+        rate,
+    });
     Ok(())
 }
 
