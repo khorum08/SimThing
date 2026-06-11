@@ -15,8 +15,9 @@ use simthing_gpu::SlotAllocator;
 use simthing_spec::{
     compile_event, compile_overlay, compile_property, compile_resource_economy, CapabilityEntryKey,
     CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec,
-    CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec, EffectTarget, EventSpec,
-    GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec, SpecError,
+    CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec, EffectSpec, EffectTarget,
+    EventSpec, GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec,
+    SpecError,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
@@ -62,6 +63,22 @@ pub enum InstallError {
 
     #[error("resource economy compile: {0}")]
     ResourceEconomy(#[from] ResourceEconomyCompileError),
+
+    #[error("event `{event_id}` references unknown overlay `{overlay_ref}` (no standalone pack overlay with that authored id)")]
+    UnknownOverlayRef {
+        event_id: String,
+        overlay_ref: String,
+    },
+
+    #[error("event `{event_id}` overlay ref `{overlay_ref}` resolved to {installed} installed overlay instances; per-owner effect resolution needs the SCOPE-MEMO successor — install on a single owner")]
+    AmbiguousOverlayRef {
+        event_id: String,
+        overlay_ref: String,
+        installed: usize,
+    },
+
+    #[error("duplicate standalone overlay authored id `{overlay_ref}` across domain packs")]
+    DuplicateOverlayRefId { overlay_ref: String },
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -99,8 +116,18 @@ pub fn compile_and_install(
     }
 
     // ── 1b. Domain-pack standalone overlays (after properties are registered).
+    //       The authored-id → installed OverlayId map feeds event effect
+    //       resolution in step 5 (CT-1b `ActivateOverlayRef`).
+    let mut overlay_ref_ids: HashMap<String, Vec<OverlayId>> = HashMap::new();
     for pack in &game_mode.domain_packs {
-        install_pack_standalone_overlays(pack, registry, scenario, root, allocator)?;
+        install_pack_standalone_overlays(
+            pack,
+            registry,
+            scenario,
+            root,
+            allocator,
+            &mut overlay_ref_ids,
+        )?;
     }
 
     // Global overlays from the game mode envelope are deferred per the ADR
@@ -193,11 +220,27 @@ pub fn compile_and_install(
     state.set_session_root_owner(root.id);
     state.set_scripted_current_slot(root_slot);
     for event_spec in &game_mode.events {
-        compile_and_install_event(event_spec, registry, scenario, root, allocator, &mut state)?;
+        compile_and_install_event(
+            event_spec,
+            registry,
+            scenario,
+            root,
+            allocator,
+            &mut state,
+            &overlay_ref_ids,
+        )?;
     }
     for pack in &game_mode.domain_packs {
         for event_spec in &pack.events {
-            compile_and_install_event(event_spec, registry, scenario, root, allocator, &mut state)?;
+            compile_and_install_event(
+                event_spec,
+                registry,
+                scenario,
+                root,
+                allocator,
+                &mut state,
+                &overlay_ref_ids,
+            )?;
         }
     }
 
@@ -231,9 +274,16 @@ fn install_pack_standalone_overlays(
     scenario: &Scenario,
     root: &mut SimThing,
     allocator: &mut SlotAllocator,
+    overlay_ref_ids: &mut HashMap<String, Vec<OverlayId>>,
 ) -> Result<(), InstallError> {
     for overlay_spec in &pack.overlays {
-        install_standalone_overlay(overlay_spec, registry, scenario, root)?;
+        if overlay_ref_ids.contains_key(&overlay_spec.id) {
+            return Err(InstallError::DuplicateOverlayRefId {
+                overlay_ref: overlay_spec.id.clone(),
+            });
+        }
+        let installed = install_standalone_overlay(overlay_spec, registry, scenario, root)?;
+        overlay_ref_ids.insert(overlay_spec.id.clone(), installed);
     }
     if !pack.overlays.is_empty() && allocator.slot_of(root.id).is_none() {
         allocator.populate_from_tree(root);
@@ -246,7 +296,7 @@ fn install_standalone_overlay(
     registry: &DimensionRegistry,
     scenario: &Scenario,
     root: &mut SimThing,
-) -> Result<(), InstallError> {
+) -> Result<Vec<OverlayId>, InstallError> {
     let (template, diag) = compile_overlay(overlay_spec, registry).map_err(InstallError::Spec)?;
     if !diag.diagnostics.is_empty() {
         return Err(InstallError::Spec(SpecError::ValidationFailed));
@@ -264,6 +314,7 @@ fn install_standalone_overlay(
     let mut props_to_seed = HashSet::new();
     props_to_seed.insert(prop_id);
 
+    let mut installed_ids = Vec::with_capacity(owners.len());
     for owner_id in owners {
         seed_effect_props_on(root, owner_id, &props_to_seed, registry);
         let overlay = Overlay {
@@ -275,11 +326,12 @@ fn install_standalone_overlay(
             lifecycle: template.lifecycle.clone(),
         };
         if let Some(host) = find_simthing_mut(root, owner_id) {
+            installed_ids.push(overlay.id);
             host.add_overlay(overlay);
         }
     }
 
-    Ok(())
+    Ok(installed_ids)
 }
 
 fn ensure_resource_economy_properties(
@@ -339,8 +391,10 @@ fn compile_and_install_event(
     root: &SimThing,
     allocator: &SlotAllocator,
     state: &mut SpecSessionState,
+    overlay_ref_ids: &HashMap<String, Vec<OverlayId>>,
 ) -> Result<(), InstallError> {
-    let (definition, _diag) = compile_event(spec, registry)?;
+    let resolved = resolve_event_overlay_refs(spec, overlay_ref_ids)?;
+    let (definition, _diag) = compile_event(&resolved, registry)?;
     let owners = resolve_install_target(&spec.install, scenario, root)?;
     if owners.is_empty() {
         return Err(InstallError::NoMatchingOwners {
@@ -359,6 +413,52 @@ fn compile_and_install_event(
             state.attach_scripted_event_instance(definition_id, event_id.clone(), owner_id, slot);
     }
     Ok(())
+}
+
+/// Resolve `ActivateOverlayRef` effects against the standalone-overlay install
+/// map. A ref must resolve to exactly one installed overlay instance —
+/// per-owner resolution over shared event definitions is SCOPE-MEMO
+/// SPEC-SCOPE-1 territory and is rejected here, not approximated.
+fn resolve_event_overlay_refs(
+    spec: &EventSpec,
+    overlay_ref_ids: &HashMap<String, Vec<OverlayId>>,
+) -> Result<EventSpec, InstallError> {
+    if !spec
+        .effects
+        .iter()
+        .any(|effect| matches!(effect, EffectSpec::ActivateOverlayRef { .. }))
+    {
+        return Ok(spec.clone());
+    }
+    let mut resolved = spec.clone();
+    for effect in &mut resolved.effects {
+        let EffectSpec::ActivateOverlayRef {
+            target,
+            overlay_ref,
+        } = effect
+        else {
+            continue;
+        };
+        let installed =
+            overlay_ref_ids
+                .get(overlay_ref)
+                .ok_or_else(|| InstallError::UnknownOverlayRef {
+                    event_id: spec.id.clone(),
+                    overlay_ref: overlay_ref.clone(),
+                })?;
+        let [overlay_id] = installed.as_slice() else {
+            return Err(InstallError::AmbiguousOverlayRef {
+                event_id: spec.id.clone(),
+                overlay_ref: overlay_ref.clone(),
+                installed: installed.len(),
+            });
+        };
+        *effect = EffectSpec::ActivateOverlay {
+            target: *target,
+            overlay_id: *overlay_id,
+        };
+    }
+    Ok(resolved)
 }
 
 /// Resolve a `InstallTargetSpec` against the scenario's current root and the

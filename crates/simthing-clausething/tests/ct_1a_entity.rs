@@ -333,7 +333,7 @@ fn unsupported_entity_field_is_hard_error() {
     let document = parse_raw_document(text.as_bytes()).expect("parse unsupported fixture");
     let err = hydrate_entity_pack(&document).expect_err("unsupported field must fail");
     assert!(
-        err.message.contains("triggered_modifier"),
+        err.message.contains("on_action"),
         "expected unsupported field diagnostic, got: {}",
         err.message
     );

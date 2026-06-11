@@ -137,6 +137,9 @@ Recorded so gaps are tickets, not surprises. Each is a `simthing-spec` change wi
   toward the mapped subset of `effects.log` (`add_resource` → flow delta, `add_modifier` → overlay
   attach, `set_variable` → Named-column write, …). Unknown effect = hard admission error + spanned
   diagnostic + suggested mapping; the diagnostic stream is the backlog's priority queue.
+  **First batch landed with CT-1b (2026-06-11):** `ActivateOverlayRef` — authored overlay
+  activation by `OverlaySpec` id, resolved to runtime ids at install; ambiguous (multi-owner)
+  refs are rejected pending SPEC-SCOPE-1.
 - **`TriggerSpec` relational forms** (T1/T2 by case): count/any/every-style predicates over
   enrollment selections; flag triggers.
 - **Iterator/selector machinery** (T2): `every_`/`any_`/`random_` lists → enrollment-selector
@@ -342,7 +345,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 | CT-0d scope extraction + frequency report | **IMPLEMENTED / PASS** (lab aggregate scan closed 2026-06-10 via CT-0d-LAB-CLOSURE-0) | [`docs/tests/ct_0d_impl_results.md`](tests/ct_0d_impl_results.md) |
 | CT-1a bit-identical entity | **IMPLEMENTED / PASS** (installed-tree parity closed by CT-1a-INSTALL-PARITY-CLOSURE-1: domain-pack standalone overlays wired through `preview_install` / `install_atomic`) | [`docs/tests/ct_1a_impl_results.md`](tests/ct_1a_impl_results.md) |
 | SCOPE-MEMO design gate | **IMPLEMENTED / PASS** (memo authored and **accepted 2026-06-11** by the rung's design authority — Claude Fable 5 high effort, by product delegation; widening tickets SPEC-SCOPE-1/2/3 cut into §6; no code; CT-1b proceeds same-scope-only) | [`docs/clausething/scope_memo.md`](clausething/scope_memo.md) |
-| CT-1b recalc stress measurement | NOT STARTED | — |
+| CT-1b recalc stress measurement | **IMPLEMENTED / PASS** (2026-06-11; "every-tick is a net simplification" **confirmed**: zero steady-state boundary cost, sub-linear tick scaling, armed corpus cheaper than active permanent overlays at N=256; `EffectSpec::ActivateOverlayRef` widening landed per §6) | [`docs/tests/ct_1b_impl_results.md`](tests/ct_1b_impl_results.md) |
 | CT-1c capability tree | NOT STARTED | — |
 | CT-2a intrinsic flows | NOT STARTED | — |
 | CT-2c category economy | NOT STARTED | — |

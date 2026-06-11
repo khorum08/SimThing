@@ -13,7 +13,7 @@ simthing_ct1a_bad = {
         targets_property = simthing::potency
         amount_mult = 1.1
     }
-    triggered_modifier = {
+    on_action = {
         id = forbidden
     }
 }
