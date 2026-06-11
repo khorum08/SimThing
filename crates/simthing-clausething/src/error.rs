@@ -94,3 +94,38 @@ impl fmt::Display for ExpandError {
 }
 
 impl std::error::Error for ExpandError {}
+
+/// Failure while hydrating a literal entity into `simthing-spec` authoring structs.
+#[derive(Debug)]
+pub struct HydrateError {
+    pub message: String,
+    pub span: Option<crate::raw::RawSpan>,
+}
+
+impl HydrateError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self::new_spanned(message, None)
+    }
+
+    pub fn new_spanned(message: impl Into<String>, span: Option<crate::raw::RawSpan>) -> Self {
+        Self {
+            message: message.into(),
+            span,
+        }
+    }
+}
+
+impl fmt::Display for HydrateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.span {
+            Some(span) => write!(
+                f,
+                "ClauseThing hydration error at token {}: {}",
+                span.token_index, self.message
+            ),
+            None => write!(f, "ClauseThing hydration error: {}", self.message),
+        }
+    }
+}
+
+impl std::error::Error for HydrateError {}

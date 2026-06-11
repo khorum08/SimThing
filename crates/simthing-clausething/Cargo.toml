@@ -9,10 +9,14 @@ description = "ClauseScript front-end parser for SimThing (default-off; CT track
 doctest = false
 
 [dependencies]
-serde      = { workspace = true }
-serde_json = { workspace = true }
+serde           = { workspace = true }
+serde_json      = { workspace = true }
+simthing-core   = { path = "../simthing-core" }
+simthing-spec   = { path = "../simthing-spec" }
 
 [dev-dependencies]
+ron        = "0.8"
+serde_json = { workspace = true }
 
 [features]
 default = []

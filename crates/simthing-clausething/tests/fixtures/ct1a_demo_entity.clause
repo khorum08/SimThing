@@ -1,0 +1,16 @@
+simthing_ct1a_demo = {
+    display_name = "CT-1a Demo Entity"
+    property = {
+        id = simthing_potency
+        namespace = simthing
+        name = potency
+        display_name = "Potency"
+        seed_amount = 40
+    }
+    modifier = {
+        id = ct1a_potency_boost
+        display_name = "CT-1a Potency Boost"
+        targets_property = simthing::potency
+        amount_mult = 1.25
+    }
+}

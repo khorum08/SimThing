@@ -5,7 +5,8 @@
 //! CT-0c: expansion passes (@vars, inline_script, $PARAM$, [[PARAM]] conditionals)
 //! with `@[ ]` inline math preserved symbolically and `value:` left symbolic.
 //! CT-0d: symbolic scope-chain extraction and lab-only frequency evidence.
-//! No hydration to `simthing-spec`, no runtime wiring, default-off.
+//! CT-1a: literal entity hydration into existing `simthing-spec` authoring structs.
+//! No runtime wiring, default-off.
 
 pub mod error;
 pub mod expand;
@@ -14,18 +15,25 @@ pub mod raw;
 pub mod scope;
 
 mod emit;
+mod hydrate;
 mod json;
+mod literal_install;
 mod parse;
 mod scope_json;
 mod scope_lab;
 
 pub use emit::emit_text;
-pub use error::{EmitError, ExpandError, ParseError};
+pub use error::{EmitError, ExpandError, HydrateError, ParseError};
 pub use expand::{
     ExpansionInput, ExpansionOptions, expand_document, is_inline_math, is_value_reference,
 };
+pub use hydrate::{HydratedEntityPack, hydrate_entity_pack};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;
+pub use literal_install::{
+    LiteralInstallSnapshot, OverlaySpecFingerprint, admit_and_apply_domain_pack,
+    admit_and_apply_pack,
+};
 pub use parse::parse_raw_document;
 pub use raw::RawDocument;
 pub use scope::{
