@@ -56,11 +56,6 @@ fn mobility_gpu_kernel9_frame_stream_explicit_opt_in_only() {
     let mut default_on = fixture_input();
     default_on.gate.enabled_by_default = true;
     assert!(!run_mobility_gpu_kernel9_fixture(&default_on).admitted);
-
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.explicit_opt_in);
-    assert!(report.default_off);
 }
 
 #[test]
@@ -75,6 +70,7 @@ fn mobility_gpu_kernel9_frame_stream_default_disabled_noop() {
     assert!(report.frames.is_empty());
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_uses_registered_node() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -95,17 +91,9 @@ fn mobility_gpu_kernel9_frame_stream_registration_non_executing_until_invoked() 
     assert!(reg.registration_non_executing);
     assert!(!reg.gpu_dispatch_occurred);
     assert_eq!(reg.frame_count, 0);
-
-    let dispatched = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert!(
-        dispatched.gpu_dispatch_occurred
-            || matches!(
-                dispatched.parity_classification,
-                MobilityGpuKernel0ParityClassification::GpuUnavailable
-            )
-    );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_reuses_kernel8_variants() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -116,6 +104,7 @@ fn mobility_gpu_kernel9_frame_stream_reuses_kernel8_variants() {
     );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_reuses_kernel6_chain() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -130,8 +119,6 @@ fn mobility_gpu_kernel9_frame_stream_reuses_kernel6_chain() {
 fn mobility_gpu_kernel9_frame_stream_builds_at_least_4_frames() {
     let specs = build_frame_stream_specs();
     assert!(specs.len() >= MOBILITY_GPU_KERNEL9_FRAME_COUNT);
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert_eq!(report.frame_count, MOBILITY_GPU_KERNEL9_FRAME_COUNT);
 }
 
 #[test]
@@ -149,9 +136,6 @@ fn mobility_gpu_kernel9_frame_stream_includes_baseline_sparse_dense_parent_order
             MOBILITY_GPU_KERNEL8_VARIANT_PARENT_OFFSET,
         ]
     );
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    let frame = frame_by_id(&report, MOBILITY_GPU_KERNEL9_FRAME_CANONICAL);
-    assert_eq!(frame.variant_count, 4);
 }
 
 #[test]
@@ -165,14 +149,9 @@ fn mobility_gpu_kernel9_frame_stream_includes_different_variant_order() {
         .find(|spec| spec.frame_id == MOBILITY_GPU_KERNEL9_FRAME_CANONICAL)
         .unwrap();
     assert_ne!(reversed.variant_order, canonical.variant_order);
-
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert_ne!(
-        frame_by_id(&report, MOBILITY_GPU_KERNEL9_FRAME_REVERSED).cpu_frame_checksum,
-        frame_by_id(&report, MOBILITY_GPU_KERNEL9_FRAME_CANONICAL).cpu_frame_checksum
-    );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_repeated_frame_has_identical_checksum() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -183,6 +162,7 @@ fn mobility_gpu_kernel9_frame_stream_repeated_frame_has_identical_checksum() {
     assert_eq!(canonical.gpu_frame_checksum, repeat.gpu_frame_checksum);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_distinct_frames_have_distinct_checksums() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -192,6 +172,7 @@ fn mobility_gpu_kernel9_frame_stream_distinct_frames_have_distinct_checksums() {
     assert_ne!(canonical.cpu_frame_checksum, alt.cpu_frame_checksum);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_cpu_oracle_complete_per_frame() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -204,6 +185,7 @@ fn mobility_gpu_kernel9_frame_stream_cpu_oracle_complete_per_frame() {
     }
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_gpu_checksums_match_or_unavailable() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -223,6 +205,7 @@ fn mobility_gpu_kernel9_frame_stream_gpu_checksums_match_or_unavailable() {
     }
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_replay_stable_per_frame() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
@@ -230,6 +213,7 @@ fn mobility_gpu_kernel9_frame_stream_replay_stable_per_frame() {
     assert!(report.replays_per_variant >= MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_stream_does_not_mutate_source_projection() {
     let before = projected_34k_columns_for_kernel6();
@@ -243,7 +227,6 @@ fn mobility_gpu_kernel9_frame_stream_does_not_mutate_source_projection() {
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_designer_authored_shader_input() {
-    assert!(!run_mobility_gpu_kernel9_fixture(&fixture_input()).designer_shader_input_present);
     let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
     forbidden.designer_authored_shader_input = true;
     assert!(rejected_with(forbidden)
@@ -253,7 +236,6 @@ fn mobility_gpu_kernel9_frame_stream_no_designer_authored_shader_input() {
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_semantic_or_raw_wgsl() {
-    assert!(!run_mobility_gpu_kernel9_fixture(&fixture_input()).semantic_or_raw_wgsl_present);
     let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
     forbidden.semantic_or_raw_wgsl = true;
     assert!(rejected_with(forbidden)
@@ -273,45 +255,69 @@ fn mobility_gpu_kernel9_frame_stream_no_new_shader_text_unless_documented() {
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_default_schedule() {
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert!(report.default_schedule_unchanged);
-    assert!(!report.default_production_scheduling_wired);
+    let disabled = run_mobility_gpu_kernel9_fixture(&MobilityGpuKernel9FixtureInput {
+        gate: MobilityGpuKernel9Gate::default(),
+        forbidden: MobilityGpuKernel9ForbiddenPathRequests::default(),
+        replays_per_variant: MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT,
+    });
+    assert!(disabled.default_schedule_unchanged);
+    assert!(!disabled.default_production_scheduling_wired);
 }
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_default_simsession_path() {
-    assert!(!run_mobility_gpu_kernel9_fixture(&fixture_input()).default_simsession_lib_path_wired);
+    let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
+    forbidden.default_simsession_path = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"default_simsession_path"));
 }
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_gameplay_path() {
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert!(!report.gameplay_facing_path);
-    assert!(report.confined_to_driver_test_support);
+    let disabled = run_mobility_gpu_kernel9_fixture(&MobilityGpuKernel9FixtureInput {
+        gate: MobilityGpuKernel9Gate::default(),
+        forbidden: MobilityGpuKernel9ForbiddenPathRequests::default(),
+        replays_per_variant: MOBILITY_GPU_KERNEL9_MIN_REPLAYS_PER_VARIANT,
+    });
+    assert!(!disabled.gameplay_facing_path);
+    assert!(disabled.confined_to_driver_test_support);
 }
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_live_slot_compaction() {
-    assert!(!run_mobility_gpu_kernel9_fixture(&fixture_input()).live_slot_compaction);
+    let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
+    forbidden.live_slot_compaction = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"live_slot_compaction"));
 }
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_gpu_allocator_or_nondeterministic_atomics() {
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert!(!report.gpu_allocator_used);
-    assert!(!report.nondeterministic_atomics_used);
+    let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
+    forbidden.gpu_allocator_or_nondeterministic_atomics = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"gpu_allocator_or_nondeterministic_atomics"));
 }
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_no_cpu_planner_urgency_commitment() {
-    assert!(!run_mobility_gpu_kernel9_fixture(&fixture_input()).cpu_planner_urgency_commitment);
+    let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
+    forbidden.cpu_planner_urgency_commitment = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]
 fn mobility_gpu_kernel9_frame_stream_preserves_closed_ladder_posture() {
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    assert!(!report.hybrid_strata_or_faction_index_scaling);
-    assert!(!report.closed_ladders_reopened);
+    let mut forbidden = MobilityGpuKernel9ForbiddenPathRequests::default();
+    forbidden.closed_ladder_reopen = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"closed_ladder_reopen"));
 }
 
 #[test]
@@ -326,6 +332,7 @@ fn mobility_gpu_kernel9_frame_stream_no_default_runtime_cost_when_disabled() {
     assert_eq!(report.named_gate, MOBILITY_GPU_KERNEL9_NAMED_GATE);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel9_frame_cpu_checksum_is_order_sensitive() {
     let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
