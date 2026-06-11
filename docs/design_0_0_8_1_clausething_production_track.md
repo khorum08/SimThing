@@ -326,7 +326,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 
 | Rung | Status | Report |
 |---|---|---|
-| CT-0a vendor + skeleton + licenses | **OPEN — next** | — |
+| CT-0a vendor + skeleton + licenses | **IMPLEMENTED / PASS** | [`docs/tests/ct_0a_impl_results.md`](tests/ct_0a_impl_results.md) |
 | CT-0b lossless raw model | NOT STARTED | — |
 | CT-0c expansion passes | NOT STARTED | — |
 | CT-0d scope extraction + frequency report | NOT STARTED | — |
