@@ -278,9 +278,11 @@ CapabilitySpec(
     unlock_video:  Some("assets/tech/videos/warp_drive_unlock.mp4"),
     model_preview: Some("assets/models/engines/warp_drive.gltf"),
 
-    // Prereqs — within same category by id, cross-category by category::id
+    // Prereqs — `category` is always the `namespace::name` category ref
+    // (the builder's `parse_category_ref` format; corrected 2026-06-11,
+    // CT-1c — bare names are rejected with `UnknownPrereqCategory`)
     prereqs: [
-        CapabilityPrereqSpec(category: "propulsion", entry_id: "ion_drive"),
+        CapabilityPrereqSpec(category: "tech::propulsion", entry_id: "ion_drive"),
     ],
 
     // Builder/construction unlocks
@@ -363,7 +365,7 @@ CapabilityTreeSpec(
                     icon:          "assets/tech/icons/ion_drive.png",
                     prereqs: [
                         CapabilityPrereqSpec(
-                            category: "propulsion",
+                            category: "tech::propulsion",
                             entry_id: "chemical_drive",
                         ),
                     ],
@@ -399,7 +401,7 @@ CapabilityTreeSpec(
                     icon:          "assets/tech/icons/plasma_drive.png",
                     prereqs: [
                         CapabilityPrereqSpec(
-                            category: "propulsion",
+                            category: "tech::propulsion",
                             entry_id: "ion_drive",
                         ),
                     ],
@@ -442,12 +444,12 @@ CapabilityTreeSpec(
                     unlock_video:  Some("assets/tech/videos/warp_drive_unlock.mp4"),
                     prereqs: [
                         CapabilityPrereqSpec(
-                            category: "propulsion",
+                            category: "tech::propulsion",
                             entry_id: "plasma_drive",
                         ),
                         // Cross-category prereq: requires gravitic theory from physics
                         CapabilityPrereqSpec(
-                            category: "physics",
+                            category: "tech::physics",
                             entry_id: "gravitic_theory",
                         ),
                     ],
@@ -516,7 +518,7 @@ CapabilityTreeSpec(
                     icon:          "assets/tech/icons/steel_production.png",
                     prereqs: [
                         CapabilityPrereqSpec(
-                            category: "industry",
+                            category: "tech::industry",
                             entry_id: "iron_smelting",
                         ),
                     ],
@@ -777,7 +779,7 @@ CapabilityTreeSpec(
                     icon:          "assets/talents/icons/master_administrator.png",
                     prereqs: [
                         CapabilityPrereqSpec(
-                            category: "administrative",
+                            category: "talents::administrative",
                             entry_id: "efficient_bureaucracy",
                         ),
                     ],
@@ -839,7 +841,7 @@ CapabilityTreeSpec(
                     unlock_video:  Some("assets/talents/videos/legendary_commander.mp4"),
                     prereqs: [
                         CapabilityPrereqSpec(
-                            category: "military_talent",
+                            category: "talents::military_talent",
                             entry_id: "tactician",
                         ),
                     ],

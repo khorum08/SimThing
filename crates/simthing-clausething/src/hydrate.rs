@@ -6,6 +6,10 @@
 //! (`ScopeRef::Current`) per the accepted SCOPE-MEMO §8.
 
 use simthing_core::{OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, TransformOp};
+use simthing_spec::spec::capability::{
+    CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec, CapabilitySpec,
+    CapabilityTreeSpec, EffectTarget,
+};
 use simthing_spec::spec::domain_pack::DomainPackSpec;
 use simthing_spec::spec::effect::EffectSpec;
 use simthing_spec::spec::event::EventSpec;
@@ -52,6 +56,7 @@ pub fn hydrate_entity_pack(document: &RawDocument) -> Result<HydratedEntityPack,
     let mut display_name = pack_id.clone();
     let mut properties = Vec::new();
     let mut overlays = Vec::new();
+    let mut capability_trees = Vec::new();
     let mut events = Vec::new();
     let mut seeds: Vec<(String, f32)> = Vec::new();
 
@@ -73,6 +78,9 @@ pub fn hydrate_entity_pack(document: &RawDocument) -> Result<HydratedEntityPack,
                 overlays.push(overlay);
                 events.push(event);
             }
+            "tradition_tree" => {
+                capability_trees.push(parse_tradition_tree_block(property)?);
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported entity field `{other}`"),
@@ -85,9 +93,9 @@ pub fn hydrate_entity_pack(document: &RawDocument) -> Result<HydratedEntityPack,
     if properties.is_empty() {
         return Err(HydrateError::new("entity requires a `property` block"));
     }
-    if overlays.is_empty() {
+    if overlays.is_empty() && capability_trees.is_empty() {
         return Err(HydrateError::new(
-            "entity requires a `modifier` or `triggered_modifier` block",
+            "entity requires a `modifier`, `triggered_modifier`, or `tradition_tree` block",
         ));
     }
 
@@ -99,7 +107,7 @@ pub fn hydrate_entity_pack(document: &RawDocument) -> Result<HydratedEntityPack,
             metadata: Default::default(),
             properties,
             overlays,
-            capability_trees: Vec::new(),
+            capability_trees,
             events,
         },
         seed_amount,
@@ -277,6 +285,259 @@ fn parse_triggered_modifier_block(
     };
 
     Ok((overlay, event))
+}
+
+/// CT-1c: `tradition_tree { id kind owner category { … tradition { … } } }`
+/// → [`CapabilityTreeSpec`] on the `capability_tree_v1` pattern. Prereqs come
+/// from `possible { has_tradition = X }` (same-category, source order);
+/// payload `modifier` blocks become Owner-targeted `Permanent` effects.
+fn parse_tradition_tree_block(property: &RawProperty) -> Result<CapabilityTreeSpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`tradition_tree` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    let mut tree_id = None;
+    let mut tree_kind = None;
+    let mut owner_kind = None;
+    let mut categories = Vec::new();
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => tree_id = Some(read_scalar_text(field, "id")?),
+            "kind" => tree_kind = Some(read_scalar_text(field, "kind")?),
+            "owner" => owner_kind = Some(read_scalar_text(field, "owner")?),
+            "category" => categories.push(parse_tradition_category_block(field)?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported tradition_tree field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if categories.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "tradition_tree requires at least one `category` block",
+            Some(property.key.span.clone()),
+        ));
+    }
+
+    let owner_kind = require_field(owner_kind, "owner", property)?;
+    Ok(CapabilityTreeSpec {
+        tree_id: require_field(tree_id, "id", property)?,
+        tree_kind: require_field(tree_kind, "kind", property)?,
+        owner_kind: owner_kind.clone(),
+        categories,
+        install: InstallTargetSpec::AllOfKind { kind: owner_kind },
+    })
+}
+
+fn parse_tradition_category_block(
+    property: &RawProperty,
+) -> Result<CapabilityCategorySpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`category` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    let mut namespace = None;
+    let mut name = None;
+    let mut display_name = String::new();
+    let mut entries = Vec::new();
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "namespace" => namespace = Some(read_scalar_text(field, "namespace")?),
+            "name" => name = Some(read_scalar_text(field, "name")?),
+            "display_name" => display_name = read_scalar_text(field, "display_name")?,
+            "tradition" => entries.push(parse_tradition_entry_block(field)?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported category field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if entries.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "category requires at least one `tradition` block",
+            Some(property.key.span.clone()),
+        ));
+    }
+
+    let namespace = require_field(namespace, "namespace", property)?;
+    let name = require_field(name, "name", property)?;
+    let mut category = CapabilityCategorySpec {
+        property_namespace: namespace.clone(),
+        property_name: name.clone(),
+        display_name,
+        tier: 0,
+        max_active: None,
+        entries,
+    };
+    // `possible { has_tradition = X }` prereqs are same-category in the v1
+    // dialect; stamp the `namespace::name` category ref the parser could not
+    // know mid-entry (the builder's `parse_category_ref` format).
+    let category_ref = format!("{namespace}::{name}");
+    for entry in &mut category.entries {
+        for prereq in &mut entry.prereqs {
+            prereq.category = category_ref.clone();
+        }
+    }
+    Ok(category)
+}
+
+fn parse_tradition_entry_block(property: &RawProperty) -> Result<CapabilitySpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`tradition` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    let mut id = None;
+    let mut display_name = String::new();
+    let mut cost = None;
+    let mut prereqs = Vec::new();
+    let mut effects = Vec::new();
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => id = Some(read_scalar_text(field, "id")?),
+            "display_name" => display_name = read_scalar_text(field, "display_name")?,
+            "cost" => cost = Some(read_scalar_f32(field, "cost")?),
+            "possible" => parse_possible_block(field, &mut prereqs)?,
+            "modifier" => effects.push(parse_tradition_effect_block(field)?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported tradition field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if effects.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "tradition requires at least one `modifier` block",
+            Some(property.key.span.clone()),
+        ));
+    }
+
+    Ok(CapabilitySpec {
+        id: require_field(id, "id", property)?,
+        display_name,
+        description: String::new(),
+        flavor_text: String::new(),
+        research_cost: require_field(cost, "cost", property)?,
+        activation: Default::default(),
+        icon: String::new(),
+        thumbnail: String::new(),
+        card_image: String::new(),
+        unlock_video: None,
+        model_preview: None,
+        prereqs,
+        unlocks_ship_components: Vec::new(),
+        unlocks_buildings: Vec::new(),
+        unlocks_units: Vec::new(),
+        unlocks_weapons: Vec::new(),
+        effects,
+    })
+}
+
+fn parse_possible_block(
+    property: &RawProperty,
+    prereqs: &mut Vec<CapabilityPrereqSpec>,
+) -> Result<(), HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`possible` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "has_tradition" => {
+                prereqs.push(CapabilityPrereqSpec {
+                    // Same-category in the v1 dialect; the category name is
+                    // stamped by `parse_tradition_category_block`.
+                    category: String::new(),
+                    entry_id: read_scalar_text(field, "has_tradition")?,
+                });
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported possible field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn parse_tradition_effect_block(
+    property: &RawProperty,
+) -> Result<CapabilityEffectSpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`modifier` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    let mut targets_property = None;
+    let mut amount_mult = None;
+    let mut amount_add = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "targets_property" => {
+                targets_property = Some(read_scalar_text(field, "targets_property")?);
+            }
+            "amount_mult" => amount_mult = Some(read_scalar_f32(field, "amount_mult")?),
+            "amount_add" => amount_add = Some(read_scalar_f32(field, "amount_add")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported tradition modifier field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    let transform = match (amount_mult, amount_add) {
+        (Some(mult), None) => TransformOp::Multiply(mult),
+        (None, Some(add)) => TransformOp::Add(add),
+        (Some(_), Some(_)) => {
+            return Err(HydrateError::new_spanned(
+                "tradition modifier cannot specify both amount_mult and amount_add",
+                Some(property.key.span.clone()),
+            ));
+        }
+        (None, None) => {
+            return Err(HydrateError::new_spanned(
+                "tradition modifier requires amount_mult or amount_add",
+                Some(property.key.span.clone()),
+            ));
+        }
+    };
+
+    Ok(CapabilityEffectSpec {
+        targets_property: require_field(targets_property, "targets_property", property)?,
+        sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
+        when_activated: OverlayLifecycle::Permanent,
+        effect_target: EffectTarget::Owner,
+    })
 }
 
 fn parse_potential_block(property: &RawProperty) -> Result<(PropertyKey, f32), HydrateError> {

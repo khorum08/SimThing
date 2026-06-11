@@ -1,0 +1,53 @@
+simthing_ct1c_traditions = {
+    display_name = "CT-1c Tradition Set"
+    property = {
+        id = ct1c_potency
+        namespace = ct1c
+        name = potency
+        display_name = "Potency"
+        seed_amount = 0.0
+    }
+    tradition_tree = {
+        id = adaptability
+        kind = tradition_tree
+        owner = Faction
+        category = {
+            namespace = traditions
+            name = adaptability
+            display_name = "Adaptability"
+            tradition = {
+                id = tr_adapt_adopt
+                display_name = "Adopt Adaptability"
+                cost = 10.0
+                modifier = {
+                    targets_property = ct1c::potency
+                    amount_add = 5.0
+                }
+            }
+            tradition = {
+                id = tr_adapt_recycling
+                display_name = "Recycling"
+                cost = 15.0
+                possible = {
+                    has_tradition = tr_adapt_adopt
+                }
+                modifier = {
+                    targets_property = ct1c::potency
+                    amount_add = 7.0
+                }
+            }
+            tradition = {
+                id = tr_adapt_finisher
+                display_name = "Adaptability Finisher"
+                cost = 20.0
+                possible = {
+                    has_tradition = tr_adapt_recycling
+                }
+                modifier = {
+                    targets_property = ct1c::potency
+                    amount_add = 9.0
+                }
+            }
+        }
+    }
+}

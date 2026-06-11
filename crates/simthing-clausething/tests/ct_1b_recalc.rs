@@ -325,14 +325,15 @@ fn triggered_modifier_fires_and_activates_overlay() {
     // ticks_per_day = 1: the boundary consumes the firing tick's events
     // directly (threshold events are per-tick readback, not day-latched).
     let scenario = ct1b_scenario(1, 3);
+    // Probe GPU availability separately so a real install error fails the
+    // test instead of masquerading as a missing adapter.
+    if let Err(err) = SimSession::open(scenario.clone()) {
+        eprintln!("skipping: no GPU session ({err})");
+        return;
+    }
     let mut session =
-        match SimSession::open_from_spec(scenario, &game_mode_with_pack(hydrated.domain_pack)) {
-            Ok(session) => session,
-            Err(err) => {
-                eprintln!("skipping: no GPU session ({err})");
-                return;
-            }
-        };
+        SimSession::open_from_spec(scenario, &game_mode_with_pack(hydrated.domain_pack))
+            .expect("open_from_spec with hydrated corpus");
 
     let (suspended_before, permanent_before) = lifecycle_counts(&session.proto.root);
     assert_eq!(suspended_before, n);
