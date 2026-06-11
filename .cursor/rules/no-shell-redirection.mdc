@@ -13,7 +13,7 @@ On **Windows PowerShell**, never redirect or merge stdout/stderr when running sh
 - Piping native commands to filter output: `cargo … | Select-Object`, `git … | Select-String`, `gh … | Select-Object -First N`
 - Chaining multiple native commands in one line when any leg might write to stderr: `git …; git log … 2>&1; gh … 2>&1`
 
-These patterns turn **informational stderr** from `cargo`, `git`, and `gh` into **terminating `NativeCommandError`** failures and abort the agent turn.
+These patterns turn **informational stderr** from `cargo`, `git`, and `gh` into **terminating `NativeCommandError`** failures and abort the agent turn. This is the most common “agent crash” on this repo — especially `cargo test 2>&1` and `cargo test | Select-Object`.
 
 ## Required
 
