@@ -1,0 +1,3 @@
+before_marker = 1
+inline_script = "simthing/order_probe"
+after_marker = 2

@@ -1,0 +1,15 @@
+@blight_base_rate = 0.04
+
+relay_blight_outbreak = {
+    inline_script = {
+        script = "simthing/blight_wave"
+        SEVERITY = 3
+        QUARANTINE = $QSTATE$
+    }
+    decay = {
+        rate = @blight_base_rate
+        rate = 0.01
+    }
+    mortality = value:blight_mortality
+    surge = @[100*$WAVE_SCALE$]
+}
