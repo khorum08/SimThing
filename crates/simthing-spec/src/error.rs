@@ -24,6 +24,12 @@ pub enum SpecError {
     #[error("validation failed")]
     ValidationFailed,
 
+    // ── Event effect compilation (CT-1b) ─────────────────────────────────────
+    #[error(
+        "effect references overlay `{overlay_ref}` by authored id; install-time resolution did not run"
+    )]
+    UnresolvedOverlayRef { overlay_ref: String },
+
     // ── Property compilation (PR 2) ──────────────────────────────────────────
     #[error("duplicate property registration `{namespace}::{name}`")]
     DuplicateProperty { namespace: String, name: String },
