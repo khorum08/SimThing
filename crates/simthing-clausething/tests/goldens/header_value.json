@@ -1,0 +1,74 @@
+{
+  "root": {
+    "kind": "block",
+    "properties": [
+      {
+        "key": {
+          "form": "unquoted",
+          "text": "simthing_header_demo",
+          "span": {
+            "token_index": 0
+          }
+        },
+        "operator": null,
+        "value": {
+          "kind": "block",
+          "properties": [
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "tint",
+                "span": {
+                  "token_index": 2
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "header",
+                "header": {
+                  "form": "header",
+                  "text": "rgb",
+                  "span": {
+                    "token_index": 3
+                  }
+                },
+                "payload": {
+                  "kind": "array",
+                  "items": [
+                    {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "10",
+                      "span": {
+                        "token_index": 5
+                      }
+                    },
+                    {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "20",
+                      "span": {
+                        "token_index": 6
+                      }
+                    },
+                    {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "30",
+                      "span": {
+                        "token_index": 7
+                      }
+                    }
+                  ],
+                  "mixed": false
+                }
+              }
+            }
+          ],
+          "mixed": false
+        }
+      }
+    ],
+    "mixed": false
+  }
+}

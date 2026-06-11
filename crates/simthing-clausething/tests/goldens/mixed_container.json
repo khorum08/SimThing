@@ -1,0 +1,79 @@
+{
+  "root": {
+    "kind": "block",
+    "properties": [
+      {
+        "key": {
+          "form": "unquoted",
+          "text": "simthing_mixed_container_demo",
+          "span": {
+            "token_index": 0
+          }
+        },
+        "operator": null,
+        "value": {
+          "kind": "block",
+          "properties": [
+            {
+              "key": {
+                "form": "unquoted",
+                "text": "bundle",
+                "span": {
+                  "token_index": 2
+                }
+              },
+              "operator": null,
+              "value": {
+                "kind": "block",
+                "properties": [
+                  {
+                    "key": {
+                      "form": "unquoted",
+                      "text": "keyed",
+                      "span": {
+                        "token_index": 4
+                      }
+                    },
+                    "operator": null,
+                    "value": {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "alpha",
+                      "span": {
+                        "token_index": 5
+                      }
+                    }
+                  }
+                ],
+                "mixed": true,
+                "tail": {
+                  "items": [
+                    {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "beta",
+                      "span": {
+                        "token_index": 7
+                      }
+                    },
+                    {
+                      "kind": "scalar",
+                      "form": "unquoted",
+                      "text": "gamma",
+                      "span": {
+                        "token_index": 8
+                      }
+                    }
+                  ],
+                  "mixed": true
+                }
+              }
+            }
+          ],
+          "mixed": false
+        }
+      }
+    ],
+    "mixed": false
+  }
+}

@@ -1,0 +1,7 @@
+simthing_nested_demo = {
+    outer = {
+        inner = {
+            leaf = 7
+        }
+    }
+}

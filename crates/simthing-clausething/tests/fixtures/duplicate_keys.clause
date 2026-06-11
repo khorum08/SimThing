@@ -1,0 +1,5 @@
+simthing_dup_demo = {
+    label = first
+    label = second
+    label = third
+}

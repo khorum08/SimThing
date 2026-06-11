@@ -1,0 +1,5 @@
+simthing_quote_demo = {
+    plain = alpha
+    quoted = "beta gamma"
+    pathish = "delta/epsilon"
+}

@@ -1,0 +1,5 @@
+simthing_mixed_demo = {
+    scalar_a = one
+    block_b = { nested = two }
+    scalar_c = three
+}

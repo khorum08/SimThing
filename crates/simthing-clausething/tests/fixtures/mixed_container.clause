@@ -1,0 +1,7 @@
+simthing_mixed_container_demo = {
+    bundle = {
+        keyed = alpha
+        beta
+        gamma
+    }
+}
