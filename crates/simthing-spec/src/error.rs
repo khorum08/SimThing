@@ -204,6 +204,12 @@ pub enum SpecError {
         computed: u32,
     },
 
+    #[error("duplicate Resource Flow base obligation id `{id}`")]
+    DuplicateBaseFlowObligation { id: String },
+
+    #[error("Resource Flow base obligation `{id}` rate must be finite and >= 0")]
+    InvalidBaseFlowObligationRate { id: String },
+
     // ── Resource Flow preflight (E-10R, driver-mapped) ─────────────────────────
     #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} is unknown in the live session")]
     UnknownExplicitParticipantSimThing { arena: String, subtree_root_id: u32 },

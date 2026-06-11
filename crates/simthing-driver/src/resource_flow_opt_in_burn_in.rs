@@ -375,6 +375,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                     },
                 ],
                 couplings: vec![],
+                base_obligations: vec![],
             });
             let mut alloc = SlotAllocator::new();
             alloc.populate_from_tree(&scenario.root);
@@ -403,6 +404,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 opt_in_mode: ResourceFlowOptInMode::FlatStarOptIn,
                 arenas: vec![arena],
                 couplings: vec![],
+                base_obligations: vec![],
             });
             fill_explicit_roots(&mut mode, scenario);
         }
@@ -417,6 +419,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 opt_in_mode: fixture.opt_in_mode,
                 arenas: vec![food_arena_spec(max_participants, fission)],
                 couplings: vec![],
+                base_obligations: vec![],
             });
             if matches!(
                 fixture.enrollment,

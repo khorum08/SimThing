@@ -6,9 +6,10 @@ use simthing_core::{
 };
 use simthing_driver::compile_and_materialize_resource_flow;
 use simthing_spec::{
-    compile_property, compile_resource_flow_admission, ArenaSpec, CouplingDelaySpec, CouplingSpec,
-    ExplicitParticipantSpec, FissionPolicySpec, PropertyKey, PropertySpec, ResourceFlowSpec,
-    SpecError, WildcardAdmissionSpec,
+    compile_property, compile_resource_flow_admission, ArenaSpec, BaseFlowDirectionSpec,
+    BaseFlowObligationSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec,
+    FissionPolicySpec, InstallTargetSpec, PropertyKey, PropertySpec, ResourceFlowSpec, SpecError,
+    WildcardAdmissionSpec,
 };
 
 fn flow_subfield(role_name: &str, accumulator: AccumulatorSpec) -> SubFieldSpec {
@@ -89,6 +90,18 @@ fn setup_two_arena_registry() -> DimensionRegistry {
     reg
 }
 
+fn base_obligation(id: &str, arena: &str, rate: f32) -> BaseFlowObligationSpec {
+    BaseFlowObligationSpec {
+        id: id.into(),
+        arena: arena.into(),
+        install: InstallTargetSpec::ScenarioListed {
+            target_id: "producer".into(),
+        },
+        direction: BaseFlowDirectionSpec::Produce,
+        rate,
+    }
+}
+
 #[test]
 fn e10_rejects_implicit_participation() {
     let reg = setup_two_arena_registry();
@@ -105,6 +118,81 @@ fn e10_rejects_implicit_participation() {
 
     let err = compile_and_materialize_resource_flow(&spec, &reg).unwrap_err();
     assert!(matches!(err, SpecError::ImplicitParticipation { .. }));
+}
+
+#[test]
+fn e10_accepts_base_intrinsic_flow_obligation_authoring() {
+    let reg = setup_two_arena_registry();
+    let spec = ResourceFlowSpec {
+        arenas: vec![food_arena_spec(4)],
+        couplings: vec![],
+        base_obligations: vec![
+            base_obligation("food_produce", "food", 10.0),
+            BaseFlowObligationSpec {
+                id: "food_upkeep".into(),
+                arena: "food".into(),
+                install: InstallTargetSpec::ScenarioListed {
+                    target_id: "producer".into(),
+                },
+                direction: BaseFlowDirectionSpec::Upkeep,
+                rate: 2.0,
+            },
+        ],
+        ..Default::default()
+    };
+    let compiled = compile_resource_flow_admission(&spec, &reg).expect("compile");
+    assert_eq!(compiled.arenas.len(), 1);
+}
+
+#[test]
+fn e10_rejects_duplicate_base_intrinsic_flow_obligation_ids() {
+    let reg = setup_two_arena_registry();
+    let spec = ResourceFlowSpec {
+        arenas: vec![food_arena_spec(4)],
+        couplings: vec![],
+        base_obligations: vec![
+            base_obligation("food_base", "food", 10.0),
+            base_obligation("food_base", "food", 1.0),
+        ],
+        ..Default::default()
+    };
+    let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
+    assert!(matches!(
+        err,
+        SpecError::DuplicateBaseFlowObligation { id } if id == "food_base"
+    ));
+}
+
+#[test]
+fn e10_rejects_base_intrinsic_flow_obligation_unknown_arena() {
+    let reg = setup_two_arena_registry();
+    let spec = ResourceFlowSpec {
+        arenas: vec![food_arena_spec(4)],
+        couplings: vec![],
+        base_obligations: vec![base_obligation("missing", "energy", 1.0)],
+        ..Default::default()
+    };
+    let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
+    assert!(matches!(
+        err,
+        SpecError::UnknownArenaReference { arena, .. } if arena == "energy"
+    ));
+}
+
+#[test]
+fn e10_rejects_base_intrinsic_flow_obligation_invalid_rate() {
+    let reg = setup_two_arena_registry();
+    let spec = ResourceFlowSpec {
+        arenas: vec![food_arena_spec(4)],
+        couplings: vec![],
+        base_obligations: vec![base_obligation("bad_rate", "food", f32::NAN)],
+        ..Default::default()
+    };
+    let err = compile_resource_flow_admission(&spec, &reg).unwrap_err();
+    assert!(matches!(
+        err,
+        SpecError::InvalidBaseFlowObligationRate { id } if id == "bad_rate"
+    ));
 }
 
 #[test]

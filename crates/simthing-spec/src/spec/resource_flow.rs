@@ -20,6 +20,8 @@ pub struct ResourceFlowSpec {
     pub arenas: Vec<ArenaSpec>,
     #[serde(default)]
     pub couplings: Vec<CouplingSpec>,
+    #[serde(default)]
+    pub base_obligations: Vec<BaseFlowObligationSpec>,
 }
 
 /// Resource Flow GPU execution opt-in (RF-T1). Mirrors `ResourceEconomyOptInMode` posture.
@@ -87,6 +89,42 @@ pub struct ArenaSpec {
     pub enrollment: Option<EnrollmentSelectorSpec>,
     #[serde(default)]
     pub wildcard_admission: Option<WildcardAdmissionSpec>,
+}
+
+/// Install-consumed base intrinsic-flow obligation for admitted arena participants.
+///
+/// This is the Resource Flow substrate's base-rate authoring surface. It seeds the
+/// arena participant's `AccumulatorRole::IntrinsicFlow` sub-field during install and
+/// is intentionally distinct from overlay modifiers.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BaseFlowObligationSpec {
+    pub id: String,
+    pub arena: String,
+    pub install: InstallTargetSpec,
+    pub direction: BaseFlowDirectionSpec,
+    pub rate: f32,
+}
+
+impl BaseFlowObligationSpec {
+    pub fn signed_rate(&self) -> f32 {
+        self.direction.sign() * self.rate
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum BaseFlowDirectionSpec {
+    Produce,
+    Upkeep,
+}
+
+impl BaseFlowDirectionSpec {
+    pub fn sign(self) -> f32 {
+        match self {
+            Self::Produce => 1.0,
+            Self::Upkeep => -1.0,
+        }
+    }
 }
 
 /// Resource Flow arena enrollment selector (E-2B).
