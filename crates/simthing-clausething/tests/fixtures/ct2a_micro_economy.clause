@@ -1,0 +1,25 @@
+simthing_ct2a_micro = {
+    display_name = "CT-2a Micro Economy"
+    flow_property = {
+        id = "simthing_food_flow"
+        namespace = "simthing"
+        name = "food_flow"
+        display_name = "Food Flow"
+    }
+    arena = {
+        name = "ct2a_food"
+        flow_property = simthing::food_flow
+        max_participants = 16
+        max_coupling_fanout = 4
+        max_orderband_depth = 16
+        opt_in = FlatStarOptIn
+    }
+    produces = {
+        property = simthing::food_flow
+        rate = 10
+    }
+    upkeep = {
+        property = simthing::food_flow
+        rate = 2
+    }
+}

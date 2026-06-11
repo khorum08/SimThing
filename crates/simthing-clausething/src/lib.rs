@@ -6,6 +6,7 @@
 //! with `@[ ]` inline math preserved symbolically and `value:` left symbolic.
 //! CT-0d: symbolic scope-chain extraction and lab-only frequency evidence.
 //! CT-1a: literal entity hydration into existing `simthing-spec` authoring structs.
+//! CT-2a: literal `produces`/`upkeep` hydration into Resource Flow authoring.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -16,6 +17,7 @@ pub mod scope;
 
 mod emit;
 mod hydrate;
+mod hydrate_resource_flow;
 mod json;
 mod literal_install;
 mod parse;
@@ -28,6 +30,9 @@ pub use expand::{
     ExpansionInput, ExpansionOptions, expand_document, is_inline_math, is_value_reference,
 };
 pub use hydrate::{HydratedEntityPack, hydrate_entity_pack};
+pub use hydrate_resource_flow::{
+    HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
+};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;
 pub use literal_install::{

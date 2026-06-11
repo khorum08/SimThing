@@ -1,0 +1,63 @@
+GameModeSpec(
+    id: "simthing_ct2a_micro",
+    display_name: "CT-2a Micro Economy",
+    spec_version: (major: 1, minor: 0, patch: 0),
+    properties: [
+        PropertySpec(
+            id: "simthing_food_flow",
+            namespace: "simthing",
+            name: "food_flow",
+            display_name: "Food Flow",
+            sub_fields: [
+                (
+                    role: Named("flow"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "flow",
+                    accumulator_spec: Some((
+                        role: IntrinsicFlow,
+                        log_tier: Summary,
+                    )),
+                ),
+                (
+                    role: Named("allocated"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "allocated",
+                    accumulator_spec: Some((
+                        role: AllocatedFlow(arena: "ct2a_food"),
+                        log_tier: Summary,
+                    )),
+                ),
+                (
+                    role: Named("weight"),
+                    width: 1,
+                    clamp: Unbounded,
+                    default: 0.0,
+                    display_name: "weight",
+                    accumulator_spec: Some((
+                        role: AllocatorWeight(arena: "ct2a_food"),
+                        log_tier: Summary,
+                    )),
+                ),
+            ],
+        ),
+    ],
+    resource_flow: Some((
+        opt_in_mode: FlatStarOptIn,
+        arenas: [
+            (
+                name: "ct2a_food",
+                flow_property: (namespace: "simthing", name: "food_flow"),
+                max_participants: 16,
+                max_coupling_fanout: 4,
+                max_orderband_depth: 16,
+                fission_policy: Reject,
+                explicit_participants: [],
+            ),
+        ],
+        couplings: [],
+    )),
+)
