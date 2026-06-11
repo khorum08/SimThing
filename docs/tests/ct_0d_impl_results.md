@@ -1,9 +1,9 @@
 # CT-0d-IMPL-0 — Results
 
-**Verdict: PARTIAL / LAB SCAN PENDING (synthetic closure PASS).** Symbolic scope-chain extraction,
-validation, safe synthetic goldens, and ignored lab scanner are implemented in
-`simthing-clausething` only. Always-on tests pass. `CLAUSER_LAB_DIR` was not set on the
-implementation host, so aggregate `scopes.log` frequency evidence was not produced locally.
+**Verdict: IMPLEMENTED / PASS (CT-0d-LAB-CLOSURE-0, 2026-06-10).** Symbolic scope-chain
+extraction, safe synthetic goldens, and lab-only aggregate `scopes.log` frequency evidence are
+complete. Remedial parser fix in `scope_lab.rs` aligned aggregate scanning with the real
+`scopes.log` line shape (`<name> - <description>` entries, not `name:` headers).
 
 ## Scope ledger
 
@@ -16,7 +16,7 @@ implementation host, so aggregate `scopes.log` frequency evidence was not produc
 | Malformed chain diagnostics with spans | **Done** |
 | Unknown domain scope not silently accepted | **Done** |
 | Ignored lab scanner via `CLAUSER_LAB_DIR` | **Done** — `src/scope_lab.rs`, ignored test |
-| Aggregate frequency report | **Pending** — lab dir unavailable locally |
+| Aggregate frequency report | **Done** — lab scan 2026-06-10 (remedial closure) |
 | No `simthing-spec` / `simthing-sim` / GPU / runtime wiring | **Confirmed** |
 | `cargo test --workspace` not run | **Confirmed** |
 
@@ -88,25 +88,55 @@ cargo fmt --all -- --check
 
 `cargo test --workspace` — **not run** (parser-isolated rung).
 
-Lab scan — **not run** (`CLAUSER_LAB_DIR` unset on implementation host).
+Lab scan (CT-0d-IMPL-0) — **not run** (`CLAUSER_LAB_DIR` unset on first implementation host).
+
+Lab scan (CT-0d-LAB-CLOSURE-0) — **run** on remedial host with local lab corpus available.
 
 ## Lab scanner status
 
 - **Implemented**: `scan_lab_scopes`, ignored test `lab_scopes_log_frequency_scan`.
-- **Env var**: `CLAUSER_LAB_DIR` (required for lab run).
-- **Local run**: unavailable — env not set.
-- **Output policy**: aggregate counts only; no raw lab text committed or printed beyond counts.
+- **Env var**: `CLAUSER_LAB_DIR` pointing at local lab root (Paradox `script_documentation/` subtree).
+- **Remedial code change**: `scope_lab.rs` parser updated for real `scopes.log` entry format;
+  synthetic unit test added (`scope_lab::tests::synthetic_scopes_log_aggregate_counts`).
+- **Output policy**: aggregate counts only; no raw lab text committed or retained.
 
-To run locally:
+### Aggregate frequency evidence (lab scan)
+
+| Field | Value |
+|---|---|
+| `scopes.log` found | yes |
+| Total scope names | 90 |
+| Output scope classes | 25 |
+| Supported relation count | 356 |
+| Malformed lines | 0 |
+| Unhandled lines | 0 |
+
+Top output-scope aggregates (count): `country=21`, `various=11`, `planet=10`, `species=9`,
+`fleet=8`, `leader=5`, `federation=3`, `galactic_object=3`, `cosmic_storm_influence_field=2`,
+`design=2`.
+
+**Conclusion:** frequency evidence produced; counts align with production-track expectation of
+~90 scopes. No raw lab content committed.
+
+### Lab scanner command (remedial)
 
 ```text
-CLAUSER_LAB_DIR=<path> cargo test -p simthing-clausething --test ct_0d_scope -- --ignored lab_scopes_log_frequency_scan
+$env:CLAUSER_LAB_DIR="<local lab root>"; cargo test -p simthing-clausething --test ct_0d_scope -- --ignored lab_scopes_log_frequency_scan
 ```
+
+### Remedial verification commands
+
+```text
+cargo test -p simthing-clausething
+cargo test -p simthing-clausething --test ct_0d_scope
+cargo fmt --all -- --check
+```
+
+`cargo test --workspace` — **not run**.
 
 ## Closure answers
 
-1. **Specified vs implemented?** Synthetic scope extraction/validation fully implemented; lab
-   frequency aggregate report pending local `CLAUSER_LAB_DIR` run.
+1. **Specified vs implemented?** Fully implemented including lab aggregate frequency evidence.
 2. **Runs after CT-0c expansion?** Yes — `scope_post_expand` golden + `extraction_runs_after_ct_0c_expansion`.
 3. **Symbolic representation?** `ScopeChain`, `ScopeAtom`, `ScopeReference`, `ScopeExtractionReport`, `ScopeDiagnostic`.
 4. **Recognized atoms/chains?** `this`, `root`, `from*`/`prev*`, domain segments, dot paths, `event_target:`.
@@ -117,7 +147,7 @@ CLAUSER_LAB_DIR=<path> cargo test -p simthing-clausething --test ct_0d_scope -- 
 9. **Deterministic source order?** Yes — `scope_order` test.
 10. **Fixtures + goldens?** Yes — 8 fixtures, 3 goldens.
 11. **`scopes.log` lab validation?** Ignored scanner implemented; not run in CI/default tests.
-12. **`CLAUSER_LAB_DIR` used?** No — unavailable locally.
+12. **`CLAUSER_LAB_DIR` used?** Yes — remedial closure run (local lab root).
 13. **Raw Paradox/lab corpus committed?** No.
 14. **`simthing-spec` untouched?** Yes.
 15. **`simthing-sim` untouched?** Yes.

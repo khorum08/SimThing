@@ -329,7 +329,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 | CT-0a vendor + skeleton + licenses | **IMPLEMENTED / PASS** (remedial verify closed 2026-06-10; unrelated pre-existing GPU fingerprint failure on this host documented in report) | [`docs/tests/ct_0a_impl_results.md`](tests/ct_0a_impl_results.md) |
 | CT-0b lossless raw model | **IMPLEMENTED / PASS** | [`docs/tests/ct_0b_impl_results.md`](tests/ct_0b_impl_results.md) |
 | CT-0c expansion passes | **IMPLEMENTED / PASS** | [`docs/tests/ct_0c_impl_results.md`](tests/ct_0c_impl_results.md) |
-| CT-0d scope extraction + frequency report | **PARTIAL / LAB SCAN PENDING** (synthetic extraction/validation PASS; aggregate `scopes.log` scan requires local `CLAUSER_LAB_DIR`) | [`docs/tests/ct_0d_impl_results.md`](tests/ct_0d_impl_results.md) |
+| CT-0d scope extraction + frequency report | **IMPLEMENTED / PASS** (lab aggregate scan closed 2026-06-10 via CT-0d-LAB-CLOSURE-0) | [`docs/tests/ct_0d_impl_results.md`](tests/ct_0d_impl_results.md) |
 | CT-1a bit-identical entity | NOT STARTED | — |
 | SCOPE-MEMO design gate | NOT STARTED (blocked on CT-0d/CT-1a) | — |
 | CT-1b recalc stress measurement | NOT STARTED | — |
