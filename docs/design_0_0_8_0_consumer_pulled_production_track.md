@@ -916,7 +916,7 @@ column-flip — each its own gate.
 **R4 detail (exact-sqrt chain — design authority).** The FIELD_POLICY gradient magnitude must be
 **exact-authoritative** so move/sit decisions are deterministic across GPU adapters (I8). Chain:
 fixed-point `dx/dy` → **exact pre-sqrt mag2** (`m_jit_mag2_fixed_exact` / `ExactFixedPointDxDy`) →
-**Candidate F sqrt** (`m_jit_mag_f_from_exact_mag2`, artifact hash `e2e9e27601ee2e13`) → exact Euclidean
+**Candidate F sqrt** (`m_jit_mag_f_from_exact_mag2`, artifact hash `59ab4b2892e3c690` — LF-canonical re-pin 2026-06-11, SQRT-REPIN-0) → exact Euclidean
 magnitude → threshold. Raw f32 `dx/dy` magnitude is `ApproximateDiagnostic` and **may not gate the
 commitment** (invariants: "Exact Euclidean magnitude requires exact pre-sqrt mag2"; "Exact sqrt authority
 is artifact-backed (Candidate F)"). The composite the mover reads is the **multi-channel cell weighted by

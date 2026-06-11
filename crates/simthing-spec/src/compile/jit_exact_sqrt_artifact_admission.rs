@@ -28,7 +28,13 @@ pub struct ExactSqrtArtifactDescriptor {
 
 pub const SQRT_F_DESCRIPTOR_ID: &str = "m_jit_sqrt_f_exact";
 pub const SQRT_F_ARTIFACT_PATH: &str = "crates/simthing-driver/tests/wgsl/sqrt_cr_f_candidate.wgsl";
-pub const SQRT_F_ARTIFACT_HASH: &str = "e2e9e27601ee2e13";
+// Re-pinned 2026-06-11 to the canonical LF repository bytes (5855 bytes). The
+// original pin `e2e9e27601ee2e13` was computed on a CRLF working tree (5964
+// bytes, archived proof log); the shader text is character-identical, and the
+// exhaustive max_ulp==0 sweep was re-run over the canonical artifact at
+// re-pin (proof report addendum). The repo's .gitattributes pins LF checkout,
+// so this hash is now stable across hosts.
+pub const SQRT_F_ARTIFACT_HASH: &str = "59ab4b2892e3c690";
 pub const SQRT_F_ENTRYPOINT: &str = "sqrt_cr_f_bits";
 pub const SQRT_F_IO_CONTRACT: &str = "u32_bit_io";
 pub const SQRT_F_PROOF_REPORT: &str =
