@@ -1098,6 +1098,8 @@ dependencies = [
  "serde",
  "serde_json",
  "simthing-core",
+ "simthing-driver",
+ "simthing-gpu",
  "simthing-spec",
 ]
 

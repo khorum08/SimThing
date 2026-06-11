@@ -5,6 +5,7 @@
 
 use simthing_core::{OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, TransformOp};
 use simthing_spec::spec::domain_pack::DomainPackSpec;
+use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 
@@ -206,6 +207,7 @@ fn parse_modifier_block(property: &RawProperty) -> Result<OverlaySpec, HydrateEr
         lifecycle: OverlayLifecycle::Permanent,
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
+        install: InstallTargetSpec::SessionRoot,
     })
 }
 
