@@ -13,10 +13,10 @@ use simthing_core::{
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
-    compile_event, compile_property, compile_resource_economy, CapabilityEntryKey,
+    compile_event, compile_overlay, compile_property, compile_resource_economy, CapabilityEntryKey,
     CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec,
     CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec, EffectTarget, EventSpec,
-    GameModeSpec, InstallTargetSpec, PropertyKey, ResourceEconomySpec, SpecError,
+    GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec, SpecError,
 };
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
@@ -96,6 +96,11 @@ pub fn compile_and_install(
     }
     for prop_spec in &game_mode.properties {
         compile_property(prop_spec, registry)?;
+    }
+
+    // ── 1b. Domain-pack standalone overlays (after properties are registered).
+    for pack in &game_mode.domain_packs {
+        install_pack_standalone_overlays(pack, registry, scenario, root, allocator)?;
     }
 
     // Global overlays from the game mode envelope are deferred per the ADR
@@ -213,6 +218,67 @@ fn compile_pack_properties(
     for prop_spec in &pack.properties {
         compile_property(prop_spec, registry)?;
     }
+    Ok(())
+}
+
+/// Install standalone `DomainPackSpec::overlays` through the same host/affects
+/// semantics as capability-tree effect overlays: compile via `compile_overlay`,
+/// resolve `OverlaySpec::install`, seed the target property on each owner host,
+/// attach one re-stamped overlay per owner with `affects = [owner_id]`.
+fn install_pack_standalone_overlays(
+    pack: &DomainPackSpec,
+    registry: &DimensionRegistry,
+    scenario: &Scenario,
+    root: &mut SimThing,
+    allocator: &mut SlotAllocator,
+) -> Result<(), InstallError> {
+    for overlay_spec in &pack.overlays {
+        install_standalone_overlay(overlay_spec, registry, scenario, root)?;
+    }
+    if !pack.overlays.is_empty() && allocator.slot_of(root.id).is_none() {
+        allocator.populate_from_tree(root);
+    }
+    Ok(())
+}
+
+fn install_standalone_overlay(
+    overlay_spec: &OverlaySpec,
+    registry: &DimensionRegistry,
+    scenario: &Scenario,
+    root: &mut SimThing,
+) -> Result<(), InstallError> {
+    let (template, diag) = compile_overlay(overlay_spec, registry).map_err(InstallError::Spec)?;
+    if !diag.diagnostics.is_empty() {
+        return Err(InstallError::Spec(SpecError::ValidationFailed));
+    }
+
+    let owners = resolve_install_target(&overlay_spec.install, scenario, root)?;
+    if owners.is_empty() {
+        return Err(InstallError::NoMatchingOwners {
+            tree_id: overlay_spec.id.clone(),
+            target: overlay_spec.install.clone(),
+        });
+    }
+
+    let prop_id = template.transform.property_id;
+    let mut props_to_seed = HashSet::new();
+    props_to_seed.insert(prop_id);
+
+    for owner_id in owners {
+        seed_effect_props_on(root, owner_id, &props_to_seed, registry);
+        let overlay = Overlay {
+            id: OverlayId::new(),
+            kind: template.kind.clone(),
+            source: template.source.clone(),
+            affects: vec![owner_id],
+            transform: template.transform.clone(),
+            lifecycle: template.lifecycle.clone(),
+        };
+        if let Some(host) = find_simthing_mut(root, owner_id) {
+            host.add_overlay(overlay);
+        }
+    }
+
     Ok(())
 }
 
@@ -942,6 +1008,73 @@ mod tests {
     /// `install_atomic` on a succeeding spec commits the scratch state
     /// back to the caller and returns the same `SpecSessionState` shape
     /// as the in-place worker.
+    #[test]
+    fn domain_pack_standalone_overlay_installs_on_session_root() {
+        use simthing_core::{
+            OverlayKind, OverlayLifecycle, OverlaySource, SubFieldRole, TransformOp,
+        };
+        use simthing_spec::{DomainPackSpec, OverlaySpec, PropertySpec};
+
+        let world = SimThing::new(SimThingKind::World, 0);
+        let scenario = empty_scenario(world);
+        let (registry, root, allocator) = fresh_caller_state(&scenario);
+        let game_mode = GameModeSpec {
+            id: "ct1a_overlay_install".into(),
+            display_name: "CT-1a Overlay Install".into(),
+            description: String::new(),
+            spec_version: SpecVersion::default(),
+            metadata: Default::default(),
+            domain_packs: vec![DomainPackSpec {
+                id: "simthing_ct1a_demo".into(),
+                display_name: "CT-1a Demo Entity".into(),
+                metadata: Default::default(),
+                properties: vec![PropertySpec {
+                    id: "simthing_potency".into(),
+                    namespace: "simthing".into(),
+                    name: "potency".into(),
+                    display_name: "Potency".into(),
+                    description: String::new(),
+                    sub_fields: vec![],
+                }],
+                overlays: vec![OverlaySpec {
+                    id: "ct1a_potency_boost".into(),
+                    display_name: "CT-1a Potency Boost".into(),
+                    targets_property: "simthing::potency".into(),
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(1.25))],
+                    lifecycle: OverlayLifecycle::Permanent,
+                    kind: OverlayKind::Policy,
+                    source: OverlaySource::Player,
+                    install: InstallTargetSpec::SessionRoot,
+                }],
+                capability_trees: Vec::new(),
+                events: Vec::new(),
+            }],
+            properties: Vec::new(),
+            overlays: Vec::new(),
+            capability_trees: Vec::new(),
+            events: Vec::new(),
+            resource_flow: None,
+            resource_economy: None,
+            resource_flow_execution_profile: Default::default(),
+            region_fields: vec![],
+            mapping_execution_profile: Default::default(),
+        };
+
+        let preview = preview_install(&game_mode, &scenario, &registry, &root, &allocator)
+            .expect("domain-pack standalone overlay must install");
+
+        let prop_id = preview
+            .registry
+            .id_of("simthing", "potency")
+            .expect("property registered");
+        assert_eq!(preview.root.overlays.len(), 1);
+        let overlay = &preview.root.overlays[0];
+        assert_eq!(overlay.affects, vec![preview.root.id]);
+        assert_eq!(overlay.transform.property_id, prop_id);
+        assert!(preview.root.properties.contains_key(&prop_id));
+        assert!(preview.allocator.slot_of(preview.root.id).is_some());
+    }
+
     #[test]
     fn install_atomic_commits_on_success_equivalently_to_worker() {
         let world_a = SimThing::new(SimThingKind::World, 0);

@@ -15,8 +15,10 @@ simthing-core   = { path = "../simthing-core" }
 simthing-spec   = { path = "../simthing-spec" }
 
 [dev-dependencies]
-ron        = "0.8"
-serde_json = { workspace = true }
+ron              = "0.8"
+serde_json       = { workspace = true }
+simthing-driver  = { path = "../simthing-driver" }
+simthing-gpu     = { path = "../simthing-gpu" }
 
 [features]
 default = []

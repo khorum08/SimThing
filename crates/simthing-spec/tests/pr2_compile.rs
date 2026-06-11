@@ -155,6 +155,7 @@ fn fleet_speed_overlay() -> OverlaySpec {
         lifecycle: OverlayLifecycle::Permanent,
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
+        install: simthing_spec::InstallTargetSpec::SessionRoot,
     }
 }
 
