@@ -495,6 +495,15 @@ existing SQRT-0 harness and its `FORBIDDEN_SEMANTIC_TERMS` scan):
 > depends on exact mag2 construction; SQRT-MAG2-0 provides the first fixed-point path if landed.
 > **Update (SQRT-MAG2-PERF-0):** F remains exact hot-path sqrt. End-to-end exact magnitude cost is
 > dominated by pre-sqrt mag2 construction unless optimized; see SQRT-MAG2-PERF-0.
+> **Update (SQRT-REPIN-0, 2026-06-11):** the F artifact hash is re-pinned to
+> **`59ab4b2892e3c690`** — the canonical LF repository bytes (5855 B). The original pin
+> `e2e9e27601ee2e13` was computed over a CRLF working-tree checkout (5964 B; the archived proof
+> log's byte count confirms), so the hash guard failed on every canonical/LF checkout and passed
+> only on line-ending-mangled ones. The shader text is character-identical; the full-domain
+> exhaustive sweep was **re-run over the canonical artifact at re-pin** (2,139,095,040 values,
+> `max_ulp == 0`, flush 0 — addendum in the proof report) so exact authority attaches to the
+> canonical identity. `.gitattributes` now pins LF checkout repo-wide, making the hash
+> host-stable. Native sqrt remains non-exact; nothing else changes.
 
 ```
 ApproximateJitOnly            ← native/raw sqrt (stays here — never exact-authoritative)
@@ -504,7 +513,8 @@ ExactDeterministicCandidate   ← E3 (4E) and F (5F) both proven over the full d
         │  design-authority release on the proof + artifact-hash pinning
         ▼
 ExactDeterministic            ← admission grants exact-output authority to the F ARTIFACT
-                                (hash e2e9e27601ee2e13), via SQRT-PROMOTE-0 descriptor wiring
+                                (hash 59ab4b2892e3c690, LF canonical — SQRT-REPIN-0),
+                                via SQRT-PROMOTE-0 descriptor wiring
                                 **LANDED** — `m_jit_sqrt_f_exact` in landed descriptors
 ```
 

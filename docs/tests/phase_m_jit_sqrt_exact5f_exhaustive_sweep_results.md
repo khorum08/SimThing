@@ -117,3 +117,32 @@ Interpretation:
 ## Final verdict
 
 **PASS — SQRT-EXACT-5F completed the exhaustive Candidate F finite non-negative `f32` sweep.** Candidate F achieved `max_ulp == 0` across the full domain with exact bit parity and `flush_count == 0`, is now `ExactDeterministicCandidate` pending separate descriptor/admission promotion, Candidate C/f64 was not implemented, no production exact sqrt admission or `mag2` authority flip was added in this pass, M-JIT remains closed at PROD-0, and V7.7 / Mapping ADR / FIELD_POLICY guardrails remain intact.
+
+---
+
+## Addendum — SQRT-REPIN-0 (2026-06-11): hash re-pinned to LF-canonical bytes; proof renewed
+
+The hash recorded above (`e2e9e27601ee2e13`) was computed over the proof host's **CRLF
+working-tree checkout** of the artifact (the archive's `bytes=5964` line confirms: 5855 canonical
+bytes + 109 newlines). The repository's canonical committed content is LF, so the admission hash
+guard (`sqrt_promote0_f_artifact_hash_guard` and the six driver-side `include_str!` guards)
+**failed on every LF checkout** and passed only on CRLF-converted working trees — recorded as a
+"pre-existing unrelated failure" in the CT-0a/CT-1a/CT-1b reports until diagnosed.
+
+Resolution:
+
+- `SQRT_F_ARTIFACT_HASH` re-pinned to **`59ab4b2892e3c690`** (FNV-1a64 of the canonical LF
+  artifact, 5855 bytes). The shader text is character-identical to the proven artifact; only the
+  checkout line-ending bytes differed. The repo `.gitattributes` now pins LF, making the hash
+  host-stable.
+- **Renewed exhaustive proof over the canonical artifact** (strict reading of "any F artifact
+  change requires renewed exhaustive proof"), same command as above, 2026-06-11:
+  `split=full_or_explicit_range start=0x00000000 end=0x7f7fffff tested=2139095040
+  exact_bits=2139095040 max_ulp=0 flush_count=0 worst=none` (~66.6 s on this host/GPU; batch
+  line appended to `phase_m_jit_sqrt_exact5f_exhaustive_batches.log`).
+- All hash-guard suites re-run green: `jit_exact_sqrt_artifact_admission` (10),
+  `field_policy_obs0_overlay_score_admission` (29), driver `obs0/obs2/obs3/obs4/pipe0/event1`
+  files, and the candidate battery (35).
+- Historical reports retaining the old hash describe what their runs measured and are unchanged;
+  active normative docs (`workshop/sqrt_candidates.md`, `workshop/mapping_current_guidance.md`,
+  the 0.0.8.0 ledger R4 chain) carry the re-pin.
