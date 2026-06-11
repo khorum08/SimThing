@@ -1,0 +1,8 @@
+simthing_scope_order = {
+    first = this
+    second = root
+    third = from
+    owner = {
+        fourth = prev
+    }
+}

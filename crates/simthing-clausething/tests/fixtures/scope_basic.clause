@@ -1,0 +1,8 @@
+simthing_scope_basic = {
+    anchor = this
+    origin = root
+    parent_ctx = from
+    owner = {
+        is_alerted = yes
+    }
+}

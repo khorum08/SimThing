@@ -1,0 +1,132 @@
+{
+  "references": [
+    {
+      "role": "block_scope_key",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "relay_blight_outbreak"
+            },
+            "raw_text": "relay_blight_outbreak",
+            "span": {
+              "token_index": 4
+            }
+          }
+        ],
+        "raw_text": "relay_blight_outbreak",
+        "span": {
+          "token_index": 4
+        }
+      },
+      "context_path": [
+        "simthing_scope_post_expand"
+      ]
+    },
+    {
+      "role": "block_scope_key",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "wave_marker"
+            },
+            "raw_text": "wave_marker",
+            "span": {
+              "token_index": 0
+            }
+          }
+        ],
+        "raw_text": "wave_marker",
+        "span": {
+          "token_index": 0
+        }
+      },
+      "context_path": [
+        "simthing_scope_post_expand",
+        "relay_blight_outbreak"
+      ]
+    },
+    {
+      "role": "block_scope_key",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "owner"
+            },
+            "raw_text": "owner",
+            "span": {
+              "token_index": 4
+            }
+          }
+        ],
+        "raw_text": "owner",
+        "span": {
+          "token_index": 4
+        }
+      },
+      "context_path": [
+        "simthing_scope_post_expand",
+        "relay_blight_outbreak",
+        "wave_marker"
+      ]
+    },
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "root"
+            },
+            "raw_text": "root"
+          },
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "owner"
+            },
+            "raw_text": "owner"
+          },
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "capital_relay"
+            },
+            "raw_text": "capital_relay"
+          }
+        ],
+        "raw_text": "root.owner.capital_relay",
+        "span": {
+          "token_index": 14
+        }
+      },
+      "context_path": [
+        "simthing_scope_post_expand",
+        "relay_blight_outbreak"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "kind": "unknown_domain_scope",
+      "message": "unknown domain scope `relay_blight_outbreak` (not in validation table)",
+      "span": {
+        "token_index": 4
+      },
+      "raw_text": "relay_blight_outbreak"
+    },
+    {
+      "kind": "unknown_domain_scope",
+      "message": "unknown domain scope `wave_marker` (not in validation table)",
+      "span": {
+        "token_index": 0
+      },
+      "raw_text": "wave_marker"
+    }
+  ]
+}

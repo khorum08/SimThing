@@ -1,0 +1,10 @@
+simthing_scope_post_expand = {
+    WAVE = 2
+    relay_blight_outbreak = {
+        inline_script = {
+            script = simthing/scope_wave
+            WAVE = $WAVE$
+        }
+        path = root.owner.capital_relay
+    }
+}
