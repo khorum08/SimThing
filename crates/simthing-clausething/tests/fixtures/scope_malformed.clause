@@ -1,0 +1,4 @@
+simthing_scope_malformed = {
+    broken = root..owner
+    gap = .from
+}

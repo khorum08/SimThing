@@ -1,0 +1,90 @@
+{
+  "references": [
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "this"
+            },
+            "raw_text": "this"
+          }
+        ],
+        "raw_text": "this",
+        "span": {
+          "token_index": 3
+        }
+      },
+      "context_path": [
+        "simthing_scope_basic"
+      ]
+    },
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "root"
+            },
+            "raw_text": "root"
+          }
+        ],
+        "raw_text": "root",
+        "span": {
+          "token_index": 5
+        }
+      },
+      "context_path": [
+        "simthing_scope_basic"
+      ]
+    },
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "from",
+              "repeat": 1
+            },
+            "raw_text": "from"
+          }
+        ],
+        "raw_text": "from",
+        "span": {
+          "token_index": 7
+        }
+      },
+      "context_path": [
+        "simthing_scope_basic"
+      ]
+    },
+    {
+      "role": "block_scope_key",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "owner"
+            },
+            "raw_text": "owner",
+            "span": {
+              "token_index": 8
+            }
+          }
+        ],
+        "raw_text": "owner",
+        "span": {
+          "token_index": 8
+        }
+      },
+      "context_path": [
+        "simthing_scope_basic"
+      ]
+    }
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,112 @@
+{
+  "references": [
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "root"
+            },
+            "raw_text": "root"
+          },
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "owner"
+            },
+            "raw_text": "owner"
+          },
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "capital_scope"
+            },
+            "raw_text": "capital_scope"
+          }
+        ],
+        "raw_text": "root.owner.capital_scope",
+        "span": {
+          "token_index": 3
+        }
+      },
+      "context_path": [
+        "simthing_scope_chains"
+      ]
+    },
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "prev",
+              "repeat": 2
+            },
+            "raw_text": "prevprev"
+          }
+        ],
+        "raw_text": "prevprev",
+        "span": {
+          "token_index": 5
+        }
+      },
+      "context_path": [
+        "simthing_scope_chains"
+      ]
+    },
+    {
+      "role": "scalar_path",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "from",
+              "repeat": 2
+            },
+            "raw_text": "fromfrom"
+          },
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "solar_system"
+            },
+            "raw_text": "solar_system"
+          }
+        ],
+        "raw_text": "fromfrom.solar_system",
+        "span": {
+          "token_index": 7
+        }
+      },
+      "context_path": [
+        "simthing_scope_chains"
+      ]
+    },
+    {
+      "role": "block_scope_key",
+      "chain": {
+        "atoms": [
+          {
+            "kind": {
+              "kind": "domain",
+              "name": "station"
+            },
+            "raw_text": "station",
+            "span": {
+              "token_index": 8
+            }
+          }
+        ],
+        "raw_text": "station",
+        "span": {
+          "token_index": 8
+        }
+      },
+      "context_path": [
+        "simthing_scope_chains"
+      ]
+    }
+  ],
+  "diagnostics": []
+}

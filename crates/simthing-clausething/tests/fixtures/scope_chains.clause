@@ -1,0 +1,8 @@
+simthing_scope_chains = {
+    relay = root.owner.capital_scope
+    prior = prevprev
+    chained_from = fromfrom.solar_system
+    station = {
+        orbit_ok = yes
+    }
+}

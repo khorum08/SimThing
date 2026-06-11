@@ -1,0 +1,4 @@
+simthing_scope_event_target = {
+    province_id = event_target:relay_province
+    nested = root.event_target:relay_owner.is_capital
+}

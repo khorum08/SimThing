@@ -1,0 +1,6 @@
+wave_marker = {
+    wave_strength = $WAVE$
+    owner = {
+        is_alerted = yes
+    }
+}

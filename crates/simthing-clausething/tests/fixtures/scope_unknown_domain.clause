@@ -1,0 +1,5 @@
+simthing_scope_unknown = {
+    fictitious_relay_scope = {
+        probe = yes
+    }
+}
