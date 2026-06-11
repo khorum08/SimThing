@@ -87,30 +87,6 @@ GameModeSpec(
             ],
         ),
     ],
-    overlays: [
-        OverlaySpec(
-            id: "irrigation_settlement_food_produces_mult",
-            targets_property: "simthing::settlement_food_flow",
-            sub_field_deltas: [
-                (Named("flow"), Multiply(1.1)),
-            ],
-            lifecycle: Permanent,
-            kind: Policy,
-            source: Player,
-            install: AllOfKind(kind: "Cohort"),
-        ),
-        OverlaySpec(
-            id: "irrigation_settlement_energy_upkeep_add",
-            targets_property: "simthing::settlement_energy_flow",
-            sub_field_deltas: [
-                (Named("flow"), Add(-0.25)),
-            ],
-            lifecycle: Permanent,
-            kind: Policy,
-            source: Player,
-            install: AllOfKind(kind: "Cohort"),
-        ),
-    ],
     resource_flow: Some((
         opt_in_mode: FlatStarOptIn,
         arenas: [
@@ -135,19 +111,22 @@ GameModeSpec(
         ],
         couplings: [],
         base_obligations: [
+            // Effective rates after the deterministic modifier fold:
+            // food    = (6 + 0) × (1 + 0.25 [irrigation, settlement] + 0.5 [tithe, polity sweep]) = 10.5
+            // energy  = (1 + (-0.25) [irrigation, leaf add]) × (1 + 0) = 0.75
             (
                 id: "farmer_settlement_food_produce",
                 arena: "settlement_food",
                 install: ScenarioListed(target_id: "farmer"),
                 direction: Produce,
-                rate: 6.0,
+                rate: 10.5,
             ),
             (
                 id: "farmer_settlement_energy_upkeep",
                 arena: "settlement_energy",
                 install: ScenarioListed(target_id: "farmer"),
                 direction: Upkeep,
-                rate: 1.0,
+                rate: 0.75,
             ),
         ],
     )),

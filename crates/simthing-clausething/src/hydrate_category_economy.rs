@@ -7,11 +7,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, OverlayKind, OverlayLifecycle,
-    OverlaySource, SubFieldRole, SubFieldSpec, TransformOp,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
-use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::resource_economy::{
     RecipeInputSpec, ResourceEconomyOptInMode, ResourceEconomySpec, ResourceRecipeSpec,
     ResourceTransferSpec,
@@ -43,7 +41,7 @@ pub struct CategoryFlowContribution {
     pub rate: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EconomicAxis {
     Produces,
     Upkeep,
@@ -66,7 +64,10 @@ pub struct DecodedEconomicKey {
 
 #[derive(Debug, Clone)]
 struct CategoryEntry {
+    #[allow(dead_code)] // application-level kind; used by CT-3b+4a binding hydration
     kind: String,
+    depth: u32,
+    parent: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +75,30 @@ struct ResourceEntry {
     namespace: String,
     name: String,
     display_name: String,
+}
+
+/// One template-authored literal `_add` base rate, pre-fold.
+#[derive(Debug, Clone)]
+struct BaseRateRow {
+    template_id: String,
+    category: String,
+    resource: String,
+    axis: EconomicAxis,
+    arena: String,
+    base: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ModifierFoldKey {
+    category: String,
+    resource: String,
+    axis: EconomicAxis,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ModifierFold {
+    mult_sum: f32,
+    add_sum: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -169,13 +194,15 @@ pub fn hydrate_category_economy_pack(
         ));
     }
 
+    validate_category_table(&categories)?;
+
     let category_names = categories.keys().cloned().collect::<Vec<_>>();
     let resource_names = resources.keys().cloned().collect::<Vec<_>>();
     let mut used_pairs: BTreeMap<(String, String), (PropertySpec, ArenaSpec)> = BTreeMap::new();
     let mut contributions = Vec::new();
-    let mut base_obligations = Vec::new();
+    let mut base_rates = Vec::new();
     let mut decoded_modifier_keys = Vec::new();
-    let mut overlays = Vec::new();
+    let mut folds: BTreeMap<ModifierFoldKey, ModifierFold> = BTreeMap::new();
 
     for template in unit_templates {
         parse_unit_template(
@@ -187,23 +214,22 @@ pub fn hydrate_category_economy_pack(
             &arena_defaults,
             &mut used_pairs,
             &mut contributions,
-            &mut base_obligations,
+            &mut base_rates,
         )?;
     }
 
     for modifier in modifier_blocks {
-        let modifier_overlays = parse_modifier_block(
+        parse_modifier_folds(
             modifier,
             &categories,
-            &resources,
             &category_names,
             &resource_names,
-            &arena_defaults,
-            &mut used_pairs,
+            &mut folds,
             &mut decoded_modifier_keys,
         )?;
-        overlays.extend(modifier_overlays);
     }
+
+    let base_obligations = apply_modifier_folds(&base_rates, &folds, &categories)?;
 
     let (properties, arenas): (Vec<_>, Vec<_>) = used_pairs.into_values().unzip();
 
@@ -216,7 +242,7 @@ pub fn hydrate_category_economy_pack(
             metadata: Default::default(),
             domain_packs: vec![],
             properties,
-            overlays,
+            overlays: vec![],
             capability_trees: vec![],
             events: vec![],
             resource_flow: Some(ResourceFlowSpec {
@@ -319,7 +345,7 @@ fn parse_unit_template(
     arena_defaults: &ArenaDefaults,
     used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
     contributions: &mut Vec<CategoryFlowContribution>,
-    base_obligations: &mut Vec<BaseFlowObligationSpec>,
+    base_rates: &mut Vec<BaseRateRow>,
 ) -> Result<(), HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
@@ -405,7 +431,7 @@ fn parse_unit_template(
         for entry in &entries.properties {
             if entry.key.text == "triggered_produces_modifier" || entry.key.text == "trigger" {
                 return Err(HydrateError::new_spanned(
-                    "triggered/gated produces forms are deferred to CT-2b",
+                    "triggered/gated produces forms are deferred to the EML effective-rate band (CT-RF-EML-RATE-0; consumer CT-3b+4a implementation)",
                     Some(entry.key.span.clone()),
                 ));
             }
@@ -460,65 +486,118 @@ fn parse_unit_template(
                 arena: arena_name.clone(),
                 rate: signed,
             });
-            push_base_flow_obligation(
-                base_obligations,
-                &template_id,
-                &decoded.category,
-                &decoded.resource,
-                &arena_name,
-                decoded.axis,
-                amount,
-            )?;
+            if !amount.is_finite() || amount < 0.0 {
+                return Err(HydrateError::new_spanned(
+                    format!("base flow rate must be finite and non-negative, got `{amount}`"),
+                    Some(entry.key.span.clone()),
+                ));
+            }
+            base_rates.push(BaseRateRow {
+                template_id: template_id.clone(),
+                category: decoded.category.clone(),
+                resource: decoded.resource.clone(),
+                axis: decoded.axis,
+                arena: arena_name.clone(),
+                base: amount,
+            });
         }
     }
     Ok(())
 }
 
-fn push_base_flow_obligation(
-    base_obligations: &mut Vec<BaseFlowObligationSpec>,
-    template_id: &str,
-    category: &str,
-    resource: &str,
-    arena_name: &str,
-    axis: EconomicAxis,
-    rate: f32,
-) -> Result<(), HydrateError> {
-    if !rate.is_finite() || rate < 0.0 {
-        return Err(HydrateError::new(format!(
-            "base flow rate must be finite and non-negative, got `{rate}`"
-        )));
-    }
-    let (direction, axis_label) = match axis {
-        EconomicAxis::Produces => (BaseFlowDirectionSpec::Produce, "produce"),
-        EconomicAxis::Upkeep => (BaseFlowDirectionSpec::Upkeep, "upkeep"),
-        EconomicAxis::Cost => {
-            return Err(HydrateError::new(
-                "`cost` keys require a discrete ResourceEconomySpec context",
-            ));
+/// CT-2c-REMEDIAL-3 — static category modifiers fold into effective base
+/// rates at hydration, per the §6 inheritance asymmetry:
+///
+/// - `_add` folds match the row's **exact** category (leaf-only, per-producer);
+/// - `_mult` folds sweep the row's category **ancestor chain** (subtree
+///   broadcast-down, expanded at compile time — never a runtime category walk);
+/// - stacking is **additive-in-effect**: `effective = (base + Σadd) × (1 + Σmult)`,
+///   summed in deterministic BTreeMap key order. Rates are per-tick flow
+///   magnitudes, so install-time folding is exact; a per-tick `Multiply`
+///   overlay on a rate column would compound and is rejected as a mechanism.
+/// - a fold no authored production consumes is a hard error (no dead modifiers);
+/// - a negative or non-finite effective rate is a hard error.
+fn apply_modifier_folds(
+    base_rates: &[BaseRateRow],
+    folds: &BTreeMap<ModifierFoldKey, ModifierFold>,
+    categories: &BTreeMap<String, CategoryEntry>,
+) -> Result<Vec<BaseFlowObligationSpec>, HydrateError> {
+    let mut consumed: BTreeSet<ModifierFoldKey> = BTreeSet::new();
+    let mut obligations = Vec::with_capacity(base_rates.len());
+
+    for row in base_rates {
+        let chain = category_ancestor_chain(&row.category, categories)?;
+        let mut add_sum = 0.0_f32;
+        let mut mult_sum = 0.0_f32;
+        for (key, fold) in folds {
+            if key.resource != row.resource || key.axis != row.axis {
+                continue;
+            }
+            if key.category == row.category {
+                add_sum += fold.add_sum;
+                consumed.insert(key.clone());
+            }
+            if chain.iter().any(|ancestor| *ancestor == key.category) {
+                mult_sum += fold.mult_sum;
+                consumed.insert(key.clone());
+            }
         }
-    };
-    base_obligations.push(BaseFlowObligationSpec {
-        id: format!("{template_id}_{category}_{resource}_{axis_label}"),
-        arena: arena_name.into(),
-        install: InstallTargetSpec::ScenarioListed {
-            target_id: template_id.into(),
-        },
-        direction,
-        rate,
-    });
-    Ok(())
+        let effective = (row.base + add_sum) * (1.0 + mult_sum);
+        if !effective.is_finite() || effective < 0.0 {
+            return Err(HydrateError::new(format!(
+                "effective {} rate for `{}` on `{}_{}` is `{effective}` after modifier fold — must be finite and non-negative",
+                match row.axis {
+                    EconomicAxis::Produces => "produce",
+                    EconomicAxis::Upkeep => "upkeep",
+                    EconomicAxis::Cost => "cost",
+                },
+                row.template_id,
+                row.category,
+                row.resource,
+            )));
+        }
+        let (direction, axis_label) = match row.axis {
+            EconomicAxis::Produces => (BaseFlowDirectionSpec::Produce, "produce"),
+            EconomicAxis::Upkeep => (BaseFlowDirectionSpec::Upkeep, "upkeep"),
+            EconomicAxis::Cost => {
+                return Err(HydrateError::new(
+                    "`cost` keys require a discrete ResourceEconomySpec context",
+                ));
+            }
+        };
+        obligations.push(BaseFlowObligationSpec {
+            id: format!(
+                "{}_{}_{}_{axis_label}",
+                row.template_id, row.category, row.resource
+            ),
+            arena: row.arena.clone(),
+            install: InstallTargetSpec::ScenarioListed {
+                target_id: row.template_id.clone(),
+            },
+            direction,
+            rate: effective,
+        });
+    }
+
+    for key in folds.keys() {
+        if !consumed.contains(key) {
+            return Err(HydrateError::new(format!(
+                "modifier key for category `{}` resource `{}` matches no authored production — dead modifiers are rejected",
+                key.category, key.resource
+            )));
+        }
+    }
+    Ok(obligations)
 }
 
-fn parse_modifier_block(
+fn parse_modifier_folds(
     property: &RawProperty,
     categories: &BTreeMap<String, CategoryEntry>,
-    resources: &BTreeMap<String, ResourceEntry>,
     category_names: &[String],
     resource_names: &[String],
-    arena_defaults: &ArenaDefaults,
-    used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
+    folds: &mut BTreeMap<ModifierFoldKey, ModifierFold>,
     decoded_modifier_keys: &mut Vec<DecodedEconomicKey>,
-) -> Result<Vec<OverlaySpec>, HydrateError> {
+) -> Result<(), HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
             "`modifier` must be a block",
@@ -526,18 +605,16 @@ fn parse_modifier_block(
         ));
     };
 
-    let mut id = None;
-    let mut overlays = Vec::new();
+    let mut decoded_any = false;
 
     for field in &block.properties {
         match field.key.text.as_str() {
-            "id" => id = Some(read_scalar_text(field, "id")?),
-            "display_name" => {
-                read_scalar_text(field, "display_name")?;
+            "id" | "display_name" => {
+                read_scalar_text(field, field.key.text.as_str())?;
             }
             "triggered_produces_modifier" => {
                 return Err(HydrateError::new_spanned(
-                    "triggered/gated generated forms are deferred to CT-2b",
+                    "triggered/gated generated forms are deferred to the EML effective-rate band (CT-RF-EML-RATE-0; consumer CT-3b+4a implementation)",
                     Some(field.key.span.clone()),
                 ));
             }
@@ -554,46 +631,41 @@ fn parse_modifier_block(
                         Some(field.key.span.clone()),
                     ));
                 }
+                debug_assert!(
+                    categories.contains_key(&decoded.category),
+                    "decoder only returns registered categories"
+                );
                 let amount = read_scalar_f32(field, key)?;
-                let (property_key, _) = ensure_flow_pair(
-                    &decoded.category,
-                    &decoded.resource,
-                    resources,
-                    arena_defaults,
-                    used_pairs,
-                )?;
-                let category = categories
-                    .get(&decoded.category)
-                    .expect("decoder only returns registered category");
-                let transform = match decoded.op {
-                    EconomicOp::Add => TransformOp::Add(amount),
-                    EconomicOp::Mult => TransformOp::Multiply(1.0 + amount),
-                };
-                let modifier_id = id.clone().unwrap_or_else(|| "ct2c_modifier".into());
-                overlays.push(OverlaySpec {
-                    id: format!("{modifier_id}_{key}"),
-                    display_name: String::new(),
-                    targets_property: format!("{}::{}", property_key.namespace, property_key.name),
-                    sub_field_deltas: vec![(SubFieldRole::Named("flow".into()), transform)],
-                    lifecycle: OverlayLifecycle::Permanent,
-                    kind: OverlayKind::Policy,
-                    source: OverlaySource::Player,
-                    install: InstallTargetSpec::AllOfKind {
-                        kind: category.kind.clone(),
-                    },
-                });
+                if !amount.is_finite() {
+                    return Err(HydrateError::new_spanned(
+                        format!("modifier amount must be finite, got `{amount}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                let fold = folds
+                    .entry(ModifierFoldKey {
+                        category: decoded.category.clone(),
+                        resource: decoded.resource.clone(),
+                        axis: decoded.axis,
+                    })
+                    .or_default();
+                match decoded.op {
+                    EconomicOp::Add => fold.add_sum += amount,
+                    EconomicOp::Mult => fold.mult_sum += amount,
+                }
                 decoded_modifier_keys.push(decoded);
+                decoded_any = true;
             }
         }
     }
 
-    if overlays.is_empty() {
+    if !decoded_any {
         return Err(HydrateError::new_spanned(
             "modifier requires at least one economic modifier key",
             Some(property.key.span.clone()),
         ));
     }
-    Ok(overlays)
+    Ok(())
 }
 
 fn ensure_flow_pair(
@@ -661,7 +733,7 @@ fn decode_economic_modifier_key_spanned(
     }
     if key.contains("triggered_produces_modifier") {
         return Err(HydrateError::new_spanned(
-            "triggered/gated generated forms are deferred to CT-2b",
+            "triggered/gated generated forms are deferred to the EML effective-rate band (CT-RF-EML-RATE-0; consumer CT-3b+4a implementation)",
             span,
         ));
     }
@@ -777,10 +849,12 @@ fn merge_category_map(
         };
         let mut kind = None;
         let mut depth = None;
+        let mut parent = None;
         for field in &body.properties {
             match field.key.text.as_str() {
                 "kind" => kind = Some(read_scalar_text(field, "kind")?),
                 "depth" => depth = Some(read_scalar_u32(field, "depth")?),
+                "parent" => parent = Some(read_scalar_text(field, "parent")?),
                 other => {
                     return Err(HydrateError::new_spanned(
                         format!("unsupported category_map field `{other}`"),
@@ -793,9 +867,10 @@ fn merge_category_map(
             entry.key.text.clone(),
             CategoryEntry {
                 kind: require_field(kind, "kind", entry)?,
+                depth: require_field(depth, "depth", entry)?,
+                parent,
             },
         );
-        require_field(depth, "depth", entry)?;
     }
     Ok(())
 }
@@ -1152,13 +1227,69 @@ fn parse_property_key(property: &RawProperty) -> Result<PropertyKey, HydrateErro
 
 fn builtin_categories() -> BTreeMap<String, CategoryEntry> {
     [
-        ("country", "Faction", 1),
-        ("planet", "Location", 2),
-        ("pop", "Cohort", 3),
+        ("country", "Faction", 1, None),
+        ("planet", "Location", 2, Some("country")),
+        ("pop", "Cohort", 3, Some("planet")),
     ]
     .into_iter()
-    .map(|(name, kind, _depth)| (name.into(), CategoryEntry { kind: kind.into() }))
+    .map(|(name, kind, depth, parent)| {
+        (
+            name.into(),
+            CategoryEntry {
+                kind: kind.into(),
+                depth,
+                parent: parent.map(Into::into),
+            },
+        )
+    })
     .collect()
+}
+
+/// Walk `category` plus its ancestor chain (self first), erroring on unknown
+/// parents or cycles. Inheritance asymmetry consumes this: `_mult` folds
+/// sweep the chain; `_add` folds match the exact category only.
+fn category_ancestor_chain(
+    category: &str,
+    categories: &BTreeMap<String, CategoryEntry>,
+) -> Result<Vec<String>, HydrateError> {
+    let mut chain = vec![category.to_string()];
+    let mut current = category;
+    while let Some(parent) = categories
+        .get(current)
+        .and_then(|entry| entry.parent.as_deref())
+    {
+        if chain.iter().any(|seen| seen == parent) {
+            return Err(HydrateError::new(format!(
+                "category parent cycle through `{parent}`"
+            )));
+        }
+        if !categories.contains_key(parent) {
+            return Err(HydrateError::new(format!(
+                "category `{current}` names unknown parent `{parent}`"
+            )));
+        }
+        chain.push(parent.to_string());
+        current = parent;
+    }
+    Ok(chain)
+}
+
+fn validate_category_table(
+    categories: &BTreeMap<String, CategoryEntry>,
+) -> Result<(), HydrateError> {
+    for (name, entry) in categories {
+        let chain = category_ancestor_chain(name, categories)?;
+        if let Some(parent) = chain.get(1) {
+            let parent_depth = categories[parent.as_str()].depth;
+            if parent_depth >= entry.depth {
+                return Err(HydrateError::new(format!(
+                    "category `{name}` (depth {}) must be deeper than parent `{parent}` (depth {parent_depth}) — broadcast is down-only",
+                    entry.depth
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn unmapped_category_error(category: &str, span: Option<crate::raw::RawSpan>) -> HydrateError {
