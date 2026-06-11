@@ -8,6 +8,7 @@ members = [
     "crates/simthing-driver",
     "crates/simthing-spec",
     "crates/simthing-workshop",
+    "crates/simthing-clausething",
 ]
 
 [workspace.package]

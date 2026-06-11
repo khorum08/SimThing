@@ -1,0 +1,18 @@
+[package]
+name    = "simthing-clausething"
+version.workspace = true
+edition = "2024"
+authors.workspace = true
+description = "ClauseScript front-end parser for SimThing (default-off; CT track)"
+
+[lib]
+doctest = false
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]
+default = []
+serde = []
+faster_writer = []
