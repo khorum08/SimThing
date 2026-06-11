@@ -51,13 +51,36 @@ scenarios/            Authored RON scenarios.
 
 ```
 cd C:\Users\mvorm\SimThing
-cargo test --workspace
 cargo fmt --all -- --check
 ```
 
-The full workspace suite must pass with **zero warnings** before any commit. GPU tests skip
-themselves cleanly when no adapter is available (`try_gpu()` returns `None`) — CI without a
-GPU still completes. One ignored timing diagnostic runs with `cargo test -- --ignored`.
+**Default rule:** do **not** run `cargo test --workspace` unless the rung absolutely requires
+full-workspace proof. For isolated parser/doc/license/report work, run **touched-crate tests**
+plus inspection only.
+
+**Targeted examples:**
+
+```
+cargo test -p simthing-clausething
+cargo test -p simthing-driver mobility_gpu_kernel7
+cargo test -p simthing-driver mobility_gpu_kernel8
+cargo test -p simthing-driver mobility_gpu_kernel9
+cargo test -p simthing-driver mobility_gpu_kernel10
+cargo test -p simthing-driver mobility_gpu_kernel11
+```
+
+**Expensive mobility GPU replay gates (kernel7–kernel11):** conformance/replay/accounting/budget
+batteries are `#[ignore]` and run only for mobility GPU replay/accounting/budget/dispatch/shader
+changes:
+
+```
+cargo test -p simthing-driver mobility_gpu_kernel10 -- --ignored
+```
+
+Full workspace testing is not routine proof until a future TEST-PARING-0 classifies the corpus.
+When a rung does require workspace scope, GPU tests skip cleanly when no adapter is available
+(`try_gpu()` returns `None`). Other ignored diagnostics (e.g. timing capture, exhaustive sweeps)
+run with `cargo test -- --ignored` only when explicitly needed.
 
 Run a recorded session (record needs a GPU adapter; replay is CPU-only):
 

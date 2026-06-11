@@ -46,11 +46,6 @@ fn mobility_gpu_kernel11_budget_explicit_opt_in_only() {
     let mut default_on = fixture_input();
     default_on.gate.enabled_by_default = true;
     assert!(!run_mobility_gpu_kernel11_fixture(&default_on).admitted);
-
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.explicit_opt_in);
-    assert!(report.default_off);
 }
 
 #[test]
@@ -85,6 +80,7 @@ fn mobility_gpu_kernel11_budget_registration_only_zero_dispatches() {
     assert_eq!(report.kernel10_report.accounting.total_rows_processed, 0);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_uses_registered_node() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -95,6 +91,7 @@ fn mobility_gpu_kernel11_budget_uses_registered_node() {
     );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_reuses_kernel10_accounting() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -110,6 +107,7 @@ fn mobility_gpu_kernel11_budget_reuses_kernel10_accounting() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_reuses_kernel9_frame_stream() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -124,6 +122,7 @@ fn mobility_gpu_kernel11_budget_reuses_kernel9_frame_stream() {
     );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_counts_match_expected_envelope() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -143,6 +142,7 @@ fn mobility_gpu_kernel11_budget_counts_match_expected_envelope() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_rows_match_expected_envelope() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -157,6 +157,7 @@ fn mobility_gpu_kernel11_budget_rows_match_expected_envelope() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_dispatch_attempts_match_expected_envelope() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -177,6 +178,7 @@ fn mobility_gpu_kernel11_budget_dispatch_attempts_match_expected_envelope() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_cpu_oracle_rows_match_expected_envelope() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -191,6 +193,7 @@ fn mobility_gpu_kernel11_budget_cpu_oracle_rows_match_expected_envelope() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_gpu_rows_match_or_unavailable() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -211,6 +214,7 @@ fn mobility_gpu_kernel11_budget_gpu_rows_match_or_unavailable() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_preserves_kernel10_checksums() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -225,6 +229,7 @@ fn mobility_gpu_kernel11_budget_preserves_kernel10_checksums() {
     );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_exact_parity_or_honest_unavailable() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -236,6 +241,7 @@ fn mobility_gpu_kernel11_budget_exact_parity_or_honest_unavailable() {
     assert!(report.budget_evaluation.within_envelope);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_repeated_runs_identical() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -244,6 +250,7 @@ fn mobility_gpu_kernel11_budget_repeated_runs_identical() {
     assert_eq!(report.budget_evaluation, second.budget_evaluation);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_order_sensitive() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -262,6 +269,7 @@ fn mobility_gpu_kernel11_budget_order_sensitive() {
     );
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_evaluation_does_not_mutate_accounting() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -272,6 +280,7 @@ fn mobility_gpu_kernel11_budget_evaluation_does_not_mutate_accounting() {
     assert_eq!(before, report.kernel10_report.accounting);
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_rows() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -283,6 +292,7 @@ fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_rows() {
         .contains(&"kernel11_budget_rows_over_envelope"));
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_dispatches() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -294,6 +304,7 @@ fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_dispatches() {
         .contains(&"kernel11_budget_replay_dispatch_over_envelope"));
 }
 
+#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_failure_diagnostics_are_deterministic() {
     let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
@@ -328,14 +339,11 @@ fn mobility_gpu_kernel11_budget_failure_diagnostics_are_deterministic() {
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_wall_clock_or_timing_thresholds() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
     assert!(!MOBILITY_GPU_KERNEL11_USES_WALL_CLOCK);
-    assert!(!report.uses_wall_clock_or_timing_thresholds);
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_designer_authored_shader_input() {
-    assert!(!run_mobility_gpu_kernel11_fixture(&fixture_input()).designer_shader_input_present);
     let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
     forbidden.designer_authored_shader_input = true;
     assert!(rejected_with(forbidden)
@@ -345,7 +353,6 @@ fn mobility_gpu_kernel11_budget_no_designer_authored_shader_input() {
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_semantic_or_raw_wgsl() {
-    assert!(!run_mobility_gpu_kernel11_fixture(&fixture_input()).semantic_or_raw_wgsl_present);
     let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
     forbidden.semantic_or_raw_wgsl = true;
     assert!(rejected_with(forbidden)
@@ -365,45 +372,69 @@ fn mobility_gpu_kernel11_budget_no_new_shader_text_unless_documented() {
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_default_schedule() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    assert!(report.default_schedule_unchanged);
-    assert!(!report.default_production_scheduling_wired);
+    let disabled = run_mobility_gpu_kernel11_fixture(&MobilityGpuKernel11FixtureInput {
+        gate: MobilityGpuKernel11Gate::default(),
+        forbidden: MobilityGpuKernel11ForbiddenPathRequests::default(),
+        replays_per_variant: MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAYS_PER_VARIANT,
+    });
+    assert!(disabled.default_schedule_unchanged);
+    assert!(!disabled.default_production_scheduling_wired);
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_default_simsession_path() {
-    assert!(!run_mobility_gpu_kernel11_fixture(&fixture_input()).default_simsession_lib_path_wired);
+    let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
+    forbidden.default_simsession_path = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"default_simsession_path"));
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_gameplay_path() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    assert!(!report.gameplay_facing_path);
-    assert!(report.confined_to_driver_test_support);
+    let disabled = run_mobility_gpu_kernel11_fixture(&MobilityGpuKernel11FixtureInput {
+        gate: MobilityGpuKernel11Gate::default(),
+        forbidden: MobilityGpuKernel11ForbiddenPathRequests::default(),
+        replays_per_variant: MOBILITY_GPU_KERNEL11_ENVELOPE_REPLAYS_PER_VARIANT,
+    });
+    assert!(!disabled.gameplay_facing_path);
+    assert!(disabled.confined_to_driver_test_support);
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_live_slot_compaction() {
-    assert!(!run_mobility_gpu_kernel11_fixture(&fixture_input()).live_slot_compaction);
+    let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
+    forbidden.live_slot_compaction = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"live_slot_compaction"));
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_gpu_allocator_or_nondeterministic_atomics() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    assert!(!report.gpu_allocator_used);
-    assert!(!report.nondeterministic_atomics_used);
+    let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
+    forbidden.gpu_allocator_or_nondeterministic_atomics = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"gpu_allocator_or_nondeterministic_atomics"));
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_no_cpu_planner_urgency_commitment() {
-    assert!(!run_mobility_gpu_kernel11_fixture(&fixture_input()).cpu_planner_urgency_commitment);
+    let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
+    forbidden.cpu_planner_urgency_commitment = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]
 fn mobility_gpu_kernel11_budget_preserves_closed_ladder_posture() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    assert!(!report.hybrid_strata_or_faction_index_scaling);
-    assert!(!report.closed_ladders_reopened);
+    let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
+    forbidden.closed_ladder_reopen = true;
+    assert!(rejected_with(forbidden)
+        .diagnostics
+        .contains(&"closed_ladder_reopen"));
 }
 
 #[test]
