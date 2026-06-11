@@ -1,0 +1,53 @@
+simthing_ct2c_categories = {
+    display_name = "CT-2c Category Economy"
+    description = "Synthetic category economy fixture for ClauseThing CT-2c."
+    resource_flow = {
+        opt_in = FlatStarOptIn
+        max_participants = 16
+        max_coupling_fanout = 4
+        max_orderband_depth = 16
+    }
+    category_map = {
+        settlement = { kind = Cohort depth = 2 }
+        polity = { kind = Faction depth = 1 }
+        pop_category_bio_trophy = { kind = Cohort depth = 3 }
+        pop = { kind = Cohort depth = 3 }
+    }
+    resource = {
+        id = "simthing_food"
+        namespace = "simthing"
+        name = "food"
+        display_name = "Food"
+    }
+    resource = {
+        id = "simthing_energy"
+        namespace = "simthing"
+        name = "energy"
+        display_name = "Energy"
+    }
+    resource = {
+        id = "simthing_unity"
+        namespace = "simthing"
+        name = "unity"
+        display_name = "Unity"
+    }
+    resource = {
+        id = "simthing_category_bio_trophy_unity"
+        namespace = "simthing"
+        name = "category_bio_trophy_unity"
+        display_name = "Ambiguous Unity"
+    }
+    unit_template = {
+        id = "farmer"
+        category = settlement
+        resources = {
+            produces = { settlement_food_produces_add = 6 }
+            upkeep = { settlement_energy_upkeep_add = 1 }
+        }
+    }
+    modifier = {
+        id = "irrigation"
+        settlement_food_produces_mult = 0.10
+        settlement_energy_upkeep_add = -0.25
+    }
+}

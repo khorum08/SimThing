@@ -1,0 +1,61 @@
+phase_m_daily_economy_banking = {
+    display_name = "Phase M Daily Economy Banking"
+    description = "Example boundary banking fixture: host interprets ticks_per_day=1 as one day via discrete resource economy transfers/recipes."
+    property = {
+        id = "core_treasury"
+        namespace = "core"
+        name = "treasury"
+        display_name = "Treasury"
+        default = 100
+    }
+    property = {
+        id = "core_producer"
+        namespace = "core"
+        name = "producer"
+        display_name = "Producer"
+        default = 10
+    }
+    property = {
+        id = "core_food"
+        namespace = "core"
+        name = "food"
+        display_name = "Food"
+        default = 60
+    }
+    property = {
+        id = "core_ore"
+        namespace = "core"
+        name = "ore"
+        display_name = "Ore"
+        default = 60
+    }
+    property = {
+        id = "core_upkeep_sink"
+        namespace = "core"
+        name = "upkeep_sink"
+        display_name = "Upkeep Sink"
+        default = 0
+    }
+    resource_economy = { opt_in = TransferOnly }
+    transfer = {
+        id = "bank_daily_income"
+        source = core::producer
+        target = core::treasury
+        amount = 10
+        order_band = 0
+    }
+    transfer = {
+        id = "daily_upkeep"
+        source = core::treasury
+        target = core::upkeep_sink
+        amount = 3
+        order_band = 1
+    }
+    recipe = {
+        id = "daily_income"
+        input = { property = core::food unit_cost = 1 }
+        input = { property = core::ore unit_cost = 1 }
+        target = core::producer
+        throttle = 10
+    }
+}
