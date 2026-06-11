@@ -1,0 +1,83 @@
+DomainPackSpec(
+    id: "simthing_ct1c_traditions",
+    display_name: "CT-1c Tradition Set",
+    properties: [
+        PropertySpec(
+            id: "ct1c_potency",
+            namespace: "ct1c",
+            name: "potency",
+            display_name: "Potency",
+        ),
+    ],
+    capability_trees: [
+        CapabilityTreeSpec(
+            tree_id: "adaptability",
+            tree_kind: "tradition_tree",
+            owner_kind: "Faction",
+            install: AllOfKind(kind: "Faction"),
+            categories: [
+                CapabilityCategorySpec(
+                    property_namespace: "traditions",
+                    property_name: "adaptability",
+                    display_name: "Adaptability",
+                    entries: [
+                        CapabilitySpec(
+                            id: "tr_adapt_adopt",
+                            display_name: "Adopt Adaptability",
+                            research_cost: 10.0,
+                            effects: [
+                                CapabilityEffectSpec(
+                                    targets_property: "ct1c::potency",
+                                    sub_field_deltas: [
+                                        (Amount, Add(5.0)),
+                                    ],
+                                    when_activated: Permanent,
+                                ),
+                            ],
+                        ),
+                        CapabilitySpec(
+                            id: "tr_adapt_recycling",
+                            display_name: "Recycling",
+                            research_cost: 15.0,
+                            prereqs: [
+                                CapabilityPrereqSpec(
+                                    category: "traditions::adaptability",
+                                    entry_id: "tr_adapt_adopt",
+                                ),
+                            ],
+                            effects: [
+                                CapabilityEffectSpec(
+                                    targets_property: "ct1c::potency",
+                                    sub_field_deltas: [
+                                        (Amount, Add(7.0)),
+                                    ],
+                                    when_activated: Permanent,
+                                ),
+                            ],
+                        ),
+                        CapabilitySpec(
+                            id: "tr_adapt_finisher",
+                            display_name: "Adaptability Finisher",
+                            research_cost: 20.0,
+                            prereqs: [
+                                CapabilityPrereqSpec(
+                                    category: "traditions::adaptability",
+                                    entry_id: "tr_adapt_recycling",
+                                ),
+                            ],
+                            effects: [
+                                CapabilityEffectSpec(
+                                    targets_property: "ct1c::potency",
+                                    sub_field_deltas: [
+                                        (Amount, Add(9.0)),
+                                    ],
+                                    when_activated: Permanent,
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ],
+)

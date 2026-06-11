@@ -346,7 +346,7 @@ caveat are binding; scope comes from the §5 ladder only, never from the book.
 | CT-1a bit-identical entity | **IMPLEMENTED / PASS** (installed-tree parity closed by CT-1a-INSTALL-PARITY-CLOSURE-1: domain-pack standalone overlays wired through `preview_install` / `install_atomic`) | [`docs/tests/ct_1a_impl_results.md`](tests/ct_1a_impl_results.md) |
 | SCOPE-MEMO design gate | **IMPLEMENTED / PASS** (memo authored and **accepted 2026-06-11** by the rung's design authority — Claude Fable 5 high effort, by product delegation; widening tickets SPEC-SCOPE-1/2/3 cut into §6; no code; CT-1b proceeds same-scope-only) | [`docs/clausething/scope_memo.md`](clausething/scope_memo.md) |
 | CT-1b recalc stress measurement | **IMPLEMENTED / PASS** (2026-06-11; "every-tick is a net simplification" **confirmed**: zero steady-state boundary cost, sub-linear tick scaling, armed corpus cheaper than active permanent overlays at N=256; `EffectSpec::ActivateOverlayRef` widening landed per §6) | [`docs/tests/ct_1b_impl_results.md`](tests/ct_1b_impl_results.md) |
-| CT-1c capability tree | NOT STARTED | — |
+| CT-1c capability tree | **IMPLEMENTED / PASS** (2026-06-11; ClauseScript tradition set → `capability_tree_v1` verbatim; prereq DAG ordering + payload activation proven on GPU; same-scope only per SCOPE-MEMO §8 — no SPEC-SCOPE ticket pulled; `capability_tree_v1.md` prereq category-ref examples corrected against source) | [`docs/tests/ct_1c_impl_results.md`](tests/ct_1c_impl_results.md) |
 | CT-2a intrinsic flows | NOT STARTED | — |
 | CT-2c category economy | NOT STARTED | — |
 | CT-3b+4a headline vertical | NOT STARTED | — |
