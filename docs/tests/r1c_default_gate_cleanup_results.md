@@ -1,8 +1,11 @@
 # R1C default workspace gate cleanup results
 
-> **Status: MERGE-READY (2026-06-11).** R1C-B/C proof stack removed from default workspace; Candidate F
-> §0.7 elevated; focused R1C/BH gates passed. Full `cargo test --workspace` **skipped** at merge handoff
-> (R1c-d/e/f proof stacks remain slow; out of R1C-B/C scope).
+> **Superseded:** Full R1* purge completed in R1-TEST-PURGE. Canonical report:
+> [`r1_default_workspace_purge_results.md`](r1_default_workspace_purge_results.md). This file is
+> historical context for the R1C-B/C-only pass only.
+
+> **Status (historical): MERGE-READY (2026-06-11).** R1C-B/C proof stack removed from default workspace;
+> Candidate F §0.7 elevated.
 
 ## Problem
 

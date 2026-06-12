@@ -1,5 +1,9 @@
 # RUNTIME-0080-0-R1a Next-Tick Authority Results
 
+> **Historical only.** The `runtime_0080_0_r1a` proof integration battery was removed in R1-TEST-PURGE.
+> Default workspace retains fast R1* sentinels only. See
+> [`r1_default_workspace_purge_results.md`](r1_default_workspace_purge_results.md).
+
 **Status:** IMPLEMENTED / PASS — Tier-A GPU-side next-tick source-of-truth hardened  
 **Verdict:** PASS  
 **Date:** 2026-06-05  
