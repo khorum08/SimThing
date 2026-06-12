@@ -1,8 +1,8 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-2S CLOSED; BH-2S-API-DOC handoff (2026-06-11).** Named consumer
-> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition and BH-2S stress feedstock.
-> BH-2C/BH-2D remain deferred. Seated as a generic GPU utility, PALMA-style. Product
+> **Status: BH-0…BH-2C CLOSED; BH-2D deferred (2026-06-11).** Named consumer
+> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition, BH-2S stress feedstock, and
+> BH-2C PALMA feedstock proof. BH-2D remains deferred. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
 > heatmap pass** on late-game crowded maps — no border service, no segmentation pass, no border
 > objects. Adjudicated by executive design authority from the C_u proposition digest
@@ -181,7 +181,7 @@ exact values (`to_bits`).
 | **BH-1R** | T1 | compact GPU choke threshold consumer | Compact 4-float GPU readback; CPU oracle test-only |
 | **BH-1R-SCALE** | T1 | staged parallel GPU reduction | No single-lane full-grid scan; multi-workgroup + partial fold |
 | **BH-2** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | GPU W composition from base W + choke columns | BH-2A contract + BH-2B kernel; no movement/pathfinding |
-| **BH-2C** | deferred | PALMA feedstock proof | PALMA consumes composed W generically |
+| **BH-2C** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | PALMA feedstock proof | Composed W → GpuInterleavedW → resident D; compact probe only |
 | **BH-2D** | deferred | CT-4b fixture proof | 200×200 two-field fixture; test names only |
 | **BH-3** | deferred (consumer-pulled) | ClauseThing authoring surface for the operator | Opens with the first ClauseScript-authored consumer |
 
@@ -202,8 +202,8 @@ A PARTIAL row with a precise blocker is a success state; a creative reinterpreta
 
 No semantic WGSL. No border objects/services/graphs — borders are field readouts.
 `simthing-sim` stays map-free and BH-blind. Opt-in, default-off; spec presence enables nothing.
-CPU readback is oracle/diagnostic only. PALMA coupling deferred until BH-2C. Fixtures original and
-synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
+CPU readback is oracle/diagnostic only. PALMA coupling proven at BH-2C (composed W → resident D).
+Fixtures original and synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 
 ## 8. Status ledger
 
@@ -217,7 +217,7 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 | BH-2B W composition kernel | IMPLEMENTED / PASS | [`tests/bh2_w_composition_results.md`](tests/bh2_w_composition_results.md) |
 | BH-2S multi-field overlap stress | IMPLEMENTED / PASS | [`tests/bh2s_overlap_stress_results.md`](tests/bh2s_overlap_stress_results.md) |
 | BH-2S-API-DOC consumer service surface | DOCUMENTED / PASS | §11 (this doc) |
-| BH-2C PALMA feedstock proof | DEFERRED | — |
+| BH-2C PALMA feedstock proof | IMPLEMENTED / PASS | [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md) |
 | BH-2D CT-4b fixture proof | DEFERRED | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
 
@@ -286,7 +286,7 @@ weighted composition only.
 | BH-2A | IMPLEMENTED / PASS | This addendum + status rows |
 | BH-2B | IMPLEMENTED / PASS | Generic GPU W composition operator + admission |
 | BH-2S | IMPLEMENTED / PASS | Generic GPU stress field algebra (overlap/mismatch/weighted/velocity) |
-| BH-2C | DEFERRED | PALMA consumes composed W; D stays resident |
+| BH-2C | IMPLEMENTED / PASS | Composed W → PALMA GpuInterleavedW → resident D + compact probe |
 | BH-2D | DEFERRED | CT-4b 200×200 fixture proof |
 
 ## 10. BH-2S: Multi-Field Overlap Stress (scenario-track addendum)
@@ -382,7 +382,7 @@ for production decisions.
 |---|---|
 | Spec | `WImpedanceComposeSpec` + `compile_w_impedance_compose_preview` |
 | GPU | `WImpedanceComposeOp` |
-| Driver | `compiled_w_impedance_compose_to_gpu_config` |
+| Driver | `compiled_w_impedance_compose_to_gpu_config`; **BH-2C:** `composed_w_min_plus_stencil_config` |
 
 Composes one or more choke columns into impedance `W`:
 
@@ -524,3 +524,46 @@ native sqrt/magnitude/norm.
 - Batch profiles when needed; compose in chunks if binding pressure grows.
 - **Do not** add one texture binding per resource — use packed columns / admitted profile tables.
 - If the harness cannot support fan-in cleanly, stop and report **PARTIAL**.
+
+## 12. BH-2C: PALMA feedstock proof (composed W → resident D)
+
+**Purpose:** prove BH-2B `WImpedanceComposeOp` output feeds the existing PALMA/min-plus traversal
+utility as numeric impedance `W`, with resident `D` output and compact probe readback only. Feedstock
+proof — not movement policy, not pathfinding, not route/predecessor objects.
+
+**Production GPU chain (pinned):**
+
+```text
+interleaved field buffer (base_w, choke_a, choke_b, …, output_w_col, d_col)
+  → WImpedanceComposeOp::compose_resident_field (same buffer, in-place)
+  → MinPlusTraversalInput::GpuInterleavedW (zero-copy; w_col = output_w_col)
+  → MinPlusTraversalFieldOp::dispatch_traversal_from_input (GpuResident)
+  → MinPlusTraversalDProbeOp::probe_resident_d (compact readback only)
+```
+
+**Live production API (promoted):**
+
+| Symbol | Role |
+|---|---|
+| `composed_w_min_plus_stencil_config` | Maps admitted compose profile `output_w_col` → PALMA `w_col` on the same interleaved buffer |
+| `compiled_w_impedance_compose_to_gpu_config` | BH-2B compose config bridge (unchanged) |
+
+**Test-only scaffolding (quarantined):** `build_interleaved_fixture`, `cpu_oracle_probe`, and
+`run_compose_then_traversal_probe` live in `bh2c_palma_w_feedstock.rs` only. Production bridge
+and GPU ops do not invoke CPU oracle or test fixture builders.
+
+**Scaffolding discipline:** production PASS does not depend on test helpers. CPU oracle is
+test/diagnostic only. No full W or D field readback on the GpuResident production path.
+
+**Forbidden:** pathfinding engine; movement engine; route object; predecessor table; border/frontline
+service; CPU segmentation; semantic WGSL; full-field CPU readback for decisions; native sqrt
+(BH-2C uses additive min-plus impedance only).
+
+**Candidate-F:** BH-2C does not require sqrt. Any future sqrt-like work routes through
+`m_jit_sqrt_f_exact`.
+
+**Tests:** `bh2c_composed_w_feeds_palma_gpu_traversal`, `bh2c_choke_weight_changes_traversal_cost`,
+`bh2c_resident_d_no_full_field_readback`, `bh2c_cpu_oracle_test_only`,
+`bh2c_no_route_or_predecessor_objects`, `bh2c_no_native_sqrt_in_hot_path`,
+`bh2c_scaffolding_not_required_for_production_pass`. Report:
+[`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md).

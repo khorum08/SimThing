@@ -608,4 +608,6 @@ pub use spec_session::{
     CapabilityInstanceKey, PreBoundarySnapshot, SpecSessionError, SpecSessionState,
 };
 pub use stress_compose_bridge::compiled_stress_compose_to_gpu_config;
-pub use w_impedance_compose_bridge::compiled_w_impedance_compose_to_gpu_config;
+pub use w_impedance_compose_bridge::{
+    compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config,
+};
