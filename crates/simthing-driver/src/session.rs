@@ -612,7 +612,7 @@ impl SimSession {
             .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         let report = m
             .mapping
-            .tick_with_commitment_spec_fixture(
+            .tick_with_commitment_spec(
                 ctx,
                 crate::first_slice_mapping_runtime::FirstSliceTickOptions::hot_path(),
                 m.weights,
