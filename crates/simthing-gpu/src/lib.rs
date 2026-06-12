@@ -71,6 +71,7 @@ pub use min_plus_stencil::{
     max_d_field_error, pack_w_and_initial_d, MinPlusPingPongSide, MinPlusStencilConfig,
     MinPlusStencilError, MinPlusStencilOp, MinPlusTraversalDispatchReport,
     MinPlusTraversalExecutionMode, MinPlusTraversalExecutionOptions, MinPlusTraversalFieldOp,
+    MinPlusTraversalGpuOutputHandle, MinPlusTraversalInput, MinPlusTraversalWInputKind,
     MIN_PLUS_INF, MIN_PLUS_MAX_ITERATIONS,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};

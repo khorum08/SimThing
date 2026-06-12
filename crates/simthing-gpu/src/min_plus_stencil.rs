@@ -18,6 +18,7 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
+use crate::indexed_scatter::{IndexedScatterError, IndexedScatterOp, ScatterEntry};
 
 pub const MIN_PLUS_INF: f32 = f32::INFINITY;
 pub const MIN_PLUS_WORKGROUP_SIZE: u32 = 8;
@@ -122,6 +123,10 @@ pub enum MinPlusStencilError {
     IterationsCapExceeded { iterations: u32, cap: u32 },
     #[error("values buffer length {actual} < required {required}")]
     BufferTooShort { actual: usize, required: usize },
+    #[error(transparent)]
+    Scatter(#[from] IndexedScatterError),
+    #[error("GPU W buffer byte size {actual} < required {required}")]
+    GpuWBufferTooShort { actual: u64, required: u64 },
 }
 
 #[repr(C)]
@@ -282,6 +287,46 @@ pub fn cpu_min_plus_d_from_w(
     extract_d_flat(&final_values, config)
 }
 
+fn build_flat_w_scatter_entries(config: &MinPlusStencilConfig) -> Vec<ScatterEntry> {
+    let n_dims = config.n_dims;
+    let w_col = config.w_col;
+    (0..config.cells())
+        .map(|i| ScatterEntry {
+            src_index: i,
+            dst_index: i * n_dims + w_col,
+        })
+        .collect()
+}
+
+fn build_interleaved_w_scatter_entries(config: &MinPlusStencilConfig) -> Vec<ScatterEntry> {
+    let n_dims = config.n_dims;
+    let w_col = config.w_col;
+    (0..config.cells())
+        .map(|i| ScatterEntry {
+            src_index: i * n_dims + w_col,
+            dst_index: i * n_dims + w_col,
+        })
+        .collect()
+}
+
+fn build_d_seed_scatter(config: &MinPlusStencilConfig) -> (Vec<ScatterEntry>, Vec<f32>) {
+    let n_dims = config.n_dims;
+    let d_col = config.d_col;
+    let dest = config.dest_idx();
+    let inf = config.inf_sentinel;
+    let cells = config.cells() as usize;
+    let template: Vec<f32> = (0..cells)
+        .map(|i| if i == dest { 0.0 } else { inf })
+        .collect();
+    let entries = (0..cells as u32)
+        .map(|i| ScatterEntry {
+            src_index: i,
+            dst_index: i * n_dims + d_col,
+        })
+        .collect();
+    (entries, template)
+}
+
 /// GPU min-plus stencil session with ping-pong buffers.
 pub struct MinPlusStencilOp {
     params_buffer: Buffer,
@@ -290,6 +335,11 @@ pub struct MinPlusStencilOp {
     pipeline: wgpu::ComputePipeline,
     bind_group_layout: wgpu::BindGroupLayout,
     config: MinPlusStencilConfig,
+    scatter_op: IndexedScatterOp,
+    flat_w_scatter_entries: Vec<ScatterEntry>,
+    interleaved_w_scatter_entries: Vec<ScatterEntry>,
+    d_scatter_entries: Vec<ScatterEntry>,
+    d_seed_buffer: Buffer,
 }
 
 /// Which ping-pong buffer holds the latest values after an odd/even iteration count.
@@ -297,6 +347,43 @@ pub struct MinPlusStencilOp {
 pub enum MinPlusPingPongSide {
     Input,
     Output,
+}
+
+/// How W impedance was supplied for a traversal dispatch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MinPlusTraversalWInputKind {
+    PackedCpuValues,
+    GpuFlatW,
+    GpuInterleavedW,
+}
+
+/// W source for min-plus traversal dispatch.
+#[derive(Clone, Copy, Debug)]
+pub enum MinPlusTraversalInput<'a> {
+    /// Compatibility: CPU-packed interleaved values uploaded once per dispatch.
+    PackedCpuValues(&'a [f32]),
+    /// GPU-native: flat `cells` f32 buffer (row-major W per cell).
+    GpuFlatW(&'a Buffer),
+    /// GPU-native: interleaved values buffer with W in `config.w_col`.
+    GpuInterleavedW(&'a Buffer),
+}
+
+impl MinPlusTraversalInput<'_> {
+    pub fn kind(&self) -> MinPlusTraversalWInputKind {
+        match self {
+            Self::PackedCpuValues(_) => MinPlusTraversalWInputKind::PackedCpuValues,
+            Self::GpuFlatW(_) => MinPlusTraversalWInputKind::GpuFlatW,
+            Self::GpuInterleavedW(_) => MinPlusTraversalWInputKind::GpuInterleavedW,
+        }
+    }
+}
+
+/// GPU-resident traversal-potential output handle after dispatch.
+#[derive(Clone, Copy, Debug)]
+pub struct MinPlusTraversalGpuOutputHandle<'a> {
+    pub buffer: &'a Buffer,
+    pub side: MinPlusPingPongSide,
+    pub iterations: u32,
 }
 
 /// Production execution mode for min-plus traversal field dispatch.
@@ -348,6 +435,7 @@ pub struct MinPlusTraversalDispatchReport {
     /// True when D output remains GPU-resident (no CPU readback).
     pub gpu_resident: bool,
     pub diagnostic_readback: bool,
+    pub w_input_kind: MinPlusTraversalWInputKind,
     pub resident_side: MinPlusPingPongSide,
     /// Present only when diagnostic/oracle readback was requested.
     pub values: Option<Vec<f32>>,
@@ -439,6 +527,15 @@ impl MinPlusStencilOp {
             mapped_at_creation: false,
         });
 
+        let (d_scatter_entries, d_seed_template) = build_d_seed_scatter(&config);
+        let d_seed_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("min_plus_stencil_d_seed"),
+            contents: bytemuck::cast_slice(&d_seed_template),
+            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+        });
+        let flat_w_scatter_entries = build_flat_w_scatter_entries(&config);
+        let interleaved_w_scatter_entries = build_interleaved_w_scatter_entries(&config);
+
         Ok(Self {
             params_buffer,
             input_buffer,
@@ -446,6 +543,11 @@ impl MinPlusStencilOp {
             pipeline,
             bind_group_layout,
             config,
+            scatter_op: IndexedScatterOp::new(ctx),
+            flat_w_scatter_entries,
+            interleaved_w_scatter_entries,
+            d_scatter_entries,
+            d_seed_buffer,
         })
     }
 
@@ -603,17 +705,98 @@ impl MinPlusStencilOp {
         self.values_buffer(Self::resident_side_after_ping_pong(iterations))
     }
 
-    /// Dispatch min-plus relaxation with explicit production/diagnostic execution mode.
-    ///
-    /// Default production path (`GpuResident`) does not read D back to CPU.
-    pub fn dispatch_traversal(
+    pub fn output_handle(&self, iterations: u32) -> MinPlusTraversalGpuOutputHandle<'_> {
+        MinPlusTraversalGpuOutputHandle {
+            buffer: self.resident_values_buffer(iterations),
+            side: Self::resident_side_after_ping_pong(iterations),
+            iterations,
+        }
+    }
+
+    fn validate_flat_w_buffer(&self, w_buffer: &Buffer) -> Result<(), MinPlusStencilError> {
+        let required = (self.config.cells() as u64) * std::mem::size_of::<f32>() as u64;
+        if w_buffer.size() < required {
+            return Err(MinPlusStencilError::GpuWBufferTooShort {
+                actual: w_buffer.size(),
+                required,
+            });
+        }
+        Ok(())
+    }
+
+    fn validate_interleaved_w_buffer(&self, w_buffer: &Buffer) -> Result<(), MinPlusStencilError> {
+        let required = (self.config.values_len() * std::mem::size_of::<f32>()) as u64;
+        if w_buffer.size() < required {
+            return Err(MinPlusStencilError::GpuWBufferTooShort {
+                actual: w_buffer.size(),
+                required,
+            });
+        }
+        Ok(())
+    }
+
+    /// Scatter flat GPU W into the stencil input buffer and seed initial D on GPU.
+    pub fn prepare_input_from_gpu_flat_w(
         &self,
         ctx: &GpuContext,
-        input_values: &[f32],
+        w_buffer: &Buffer,
+    ) -> Result<(), MinPlusStencilError> {
+        self.validate_flat_w_buffer(w_buffer)?;
+        self.scatter_op.dispatch(
+            ctx,
+            w_buffer,
+            &self.input_buffer,
+            &self.flat_w_scatter_entries,
+        )?;
+        self.seed_initial_d_column(ctx)
+    }
+
+    /// Scatter GPU interleaved W column into the stencil input buffer and seed initial D on GPU.
+    pub fn prepare_input_from_gpu_interleaved_w(
+        &self,
+        ctx: &GpuContext,
+        w_buffer: &Buffer,
+    ) -> Result<(), MinPlusStencilError> {
+        self.validate_interleaved_w_buffer(w_buffer)?;
+        self.scatter_op.dispatch(
+            ctx,
+            w_buffer,
+            &self.input_buffer,
+            &self.interleaved_w_scatter_entries,
+        )?;
+        self.seed_initial_d_column(ctx)
+    }
+
+    fn seed_initial_d_column(&self, ctx: &GpuContext) -> Result<(), MinPlusStencilError> {
+        self.scatter_op.dispatch(
+            ctx,
+            &self.d_seed_buffer,
+            &self.input_buffer,
+            &self.d_scatter_entries,
+        )?;
+        Ok(())
+    }
+
+    /// Dispatch min-plus relaxation with explicit W source and execution mode.
+    ///
+    /// Default production path (`GpuResident`) does not read D back to CPU.
+    pub fn dispatch_traversal_from_input(
+        &self,
+        ctx: &GpuContext,
+        input: MinPlusTraversalInput<'_>,
         w_for_oracle: Option<&[f32]>,
         options: MinPlusTraversalExecutionOptions,
     ) -> Result<MinPlusTraversalDispatchReport, MinPlusStencilError> {
-        self.upload_values(ctx, input_values)?;
+        let w_input_kind = input.kind();
+        match input {
+            MinPlusTraversalInput::PackedCpuValues(values) => self.upload_values(ctx, values)?,
+            MinPlusTraversalInput::GpuFlatW(w_buffer) => {
+                self.prepare_input_from_gpu_flat_w(ctx, w_buffer)?
+            }
+            MinPlusTraversalInput::GpuInterleavedW(w_buffer) => {
+                self.prepare_input_from_gpu_interleaved_w(ctx, w_buffer)?
+            }
+        }
         self.dispatch_ping_pong(ctx, options.iterations)?;
 
         let resident_side = Self::resident_side_after_ping_pong(options.iterations);
@@ -648,10 +831,27 @@ impl MinPlusStencilOp {
             iterations: options.iterations,
             gpu_resident: options.mode == MinPlusTraversalExecutionMode::GpuResident,
             diagnostic_readback: need_readback,
+            w_input_kind,
             resident_side,
             values,
             max_oracle_error,
         })
+    }
+
+    /// Dispatch min-plus relaxation with CPU-packed interleaved input (compatibility path).
+    pub fn dispatch_traversal(
+        &self,
+        ctx: &GpuContext,
+        input_values: &[f32],
+        w_for_oracle: Option<&[f32]>,
+        options: MinPlusTraversalExecutionOptions,
+    ) -> Result<MinPlusTraversalDispatchReport, MinPlusStencilError> {
+        self.dispatch_traversal_from_input(
+            ctx,
+            MinPlusTraversalInput::PackedCpuValues(input_values),
+            w_for_oracle,
+            options,
+        )
     }
 }
 

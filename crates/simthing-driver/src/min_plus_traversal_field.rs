@@ -4,10 +4,12 @@
 //! **D** GPU-resident by default. CPU readback and shadow/property scatter are diagnostic modes only.
 
 use simthing_core::SimThingId;
+use simthing_gpu::wgpu::Buffer;
 use simthing_gpu::{
     extract_d_flat, GpuContext, MinPlusStencilConfig, MinPlusStencilError,
     MinPlusTraversalDispatchReport, MinPlusTraversalExecutionMode,
-    MinPlusTraversalExecutionOptions, MinPlusTraversalFieldOp, SlotAllocator,
+    MinPlusTraversalExecutionOptions, MinPlusTraversalFieldOp, MinPlusTraversalInput,
+    MinPlusTraversalWInputKind, SlotAllocator,
 };
 use thiserror::Error;
 
@@ -24,6 +26,33 @@ pub const TRAVERSAL_FIELD_REGION_ID: FieldRegionId = FieldRegionId(0);
 
 pub use simthing_gpu::MinPlusTraversalExecutionMode as TraversalFieldExecutionMode;
 pub use simthing_gpu::MinPlusTraversalExecutionOptions as TraversalFieldExecutionOptions;
+pub use simthing_gpu::MinPlusTraversalGpuOutputHandle as TraversalFieldGpuOutputHandle;
+pub use simthing_gpu::MinPlusTraversalWInputKind as TraversalFieldWInputKind;
+
+/// W source for one traversal band tick.
+#[derive(Debug)]
+pub enum TraversalFieldInput<'a> {
+    /// Compatibility: gather flat W from CPU shadow columns via slot allocator.
+    ShadowColumns {
+        shadow: &'a mut [f32],
+        n_dims: usize,
+        alloc: &'a SlotAllocator,
+    },
+    /// GPU-native: flat `cells` f32 buffer produced by an upstream field pass.
+    GpuFlatW { buffer: &'a Buffer },
+    /// GPU-native: interleaved values buffer with W in `binding.w_col`.
+    GpuInterleavedW { buffer: &'a Buffer },
+}
+
+impl<'a> TraversalFieldInput<'a> {
+    pub fn w_input_kind(&self) -> TraversalFieldWInputKind {
+        match self {
+            Self::ShadowColumns { .. } => MinPlusTraversalWInputKind::PackedCpuValues,
+            Self::GpuFlatW { .. } => MinPlusTraversalWInputKind::GpuFlatW,
+            Self::GpuInterleavedW { .. } => MinPlusTraversalWInputKind::GpuInterleavedW,
+        }
+    }
+}
 
 /// Grid binding: row-major gridcell ids map to session shadow W/D columns.
 #[derive(Clone, Debug, PartialEq)]
@@ -107,6 +136,7 @@ pub struct TraversalFieldBandTickReport {
     pub enabled: bool,
     pub scheduled: bool,
     pub execution_mode: MinPlusTraversalExecutionMode,
+    pub w_input_kind: TraversalFieldWInputKind,
     pub dispatch: Option<MinPlusTraversalDispatchReport>,
     pub shadow_writeback: bool,
     pub scheduler_report: FieldSchedulerReport,
@@ -162,6 +192,13 @@ impl TraversalFieldBandSession {
 
     pub fn last_dispatch(&self) -> Option<&MinPlusTraversalDispatchReport> {
         self.last_dispatch.as_ref()
+    }
+
+    /// GPU-resident D output handle from the last scheduled dispatch, when present.
+    pub fn resident_d_output(&self) -> Option<TraversalFieldGpuOutputHandle<'_>> {
+        let report = self.last_dispatch.as_ref()?;
+        let op = self.op.as_ref()?;
+        Some(op.output_handle(report.iterations))
     }
 
     fn ensure_op(
@@ -239,19 +276,19 @@ impl TraversalFieldBandSession {
         Ok(())
     }
 
-    /// One band tick using explicit execution mode.
+    /// One band tick using explicit execution mode and W input source.
     ///
-    /// `shadow_writeback` applies only in diagnostic/oracle modes — copies readback D into CPU
-    /// shadow columns. Production `GpuResident` mode never readbacks or writes shadow D.
-    pub fn tick(
+    /// `shadow_writeback` applies only in diagnostic/oracle modes with shadow-column input —
+    /// copies readback D into CPU shadow columns. Production `GpuResident` mode never readbacks
+    /// or writes shadow D.
+    pub fn tick_with_input(
         &mut self,
         ctx: &GpuContext,
-        shadow: &mut [f32],
-        n_dims: usize,
-        alloc: &SlotAllocator,
+        input: TraversalFieldInput<'_>,
         mode: MinPlusTraversalExecutionMode,
         shadow_writeback: bool,
     ) -> Result<TraversalFieldBandTickReport, TraversalFieldBandError> {
+        let w_input_kind = input.w_input_kind();
         let tick = self.tick;
         if !self.enabled {
             self.tick += 1;
@@ -261,6 +298,7 @@ impl TraversalFieldBandSession {
                 enabled: false,
                 scheduled: false,
                 execution_mode: mode,
+                w_input_kind,
                 dispatch: None,
                 shadow_writeback: false,
                 scheduler_report: FieldSchedulerReport {
@@ -284,28 +322,52 @@ impl TraversalFieldBandSession {
         let mut did_shadow_writeback = false;
 
         if scheduled {
-            let w = Self::gather_w_from_shadow(shadow, n_dims, alloc, &self.binding)?;
             let config = self.binding.stencil_config();
             let iterations = self.binding.iterations;
-            let op = self.ensure_op(ctx)?;
-            let packed = simthing_gpu::pack_w_and_initial_d(&w, &config)
-                .map_err(TraversalFieldBandError::from)?;
-            let w_oracle = if mode == MinPlusTraversalExecutionMode::OracleVerification {
-                Some(w.as_slice())
-            } else {
-                None
+
+            let mut packed_cpu: Option<Vec<f32>> = None;
+            let mut w_oracle: Option<Vec<f32>> = None;
+            let mut shadow_for_writeback: Option<(&mut [f32], usize, &SlotAllocator)> = None;
+
+            let gpu_input = match input {
+                TraversalFieldInput::ShadowColumns {
+                    shadow,
+                    n_dims,
+                    alloc,
+                } => {
+                    let w = Self::gather_w_from_shadow(shadow, n_dims, alloc, &self.binding)?;
+                    if mode == MinPlusTraversalExecutionMode::OracleVerification {
+                        w_oracle = Some(w.clone());
+                    }
+                    packed_cpu = Some(
+                        simthing_gpu::pack_w_and_initial_d(&w, &config)
+                            .map_err(TraversalFieldBandError::from)?,
+                    );
+                    shadow_for_writeback = Some((shadow, n_dims, alloc));
+                    MinPlusTraversalInput::PackedCpuValues(
+                        packed_cpu.as_ref().expect("packed").as_slice(),
+                    )
+                }
+                TraversalFieldInput::GpuFlatW { buffer } => MinPlusTraversalInput::GpuFlatW(buffer),
+                TraversalFieldInput::GpuInterleavedW { buffer } => {
+                    MinPlusTraversalInput::GpuInterleavedW(buffer)
+                }
             };
-            let report = op.dispatch_traversal(
+
+            let op = self.ensure_op(ctx)?;
+            let report = op.dispatch_traversal_from_input(
                 ctx,
-                &packed,
-                w_oracle,
+                gpu_input,
+                w_oracle.as_deref(),
                 MinPlusTraversalExecutionOptions { mode, iterations },
             )?;
             dispatch_report = Some(report.clone());
             self.last_dispatch = Some(report.clone());
 
             if shadow_writeback && report.diagnostic_readback {
-                if let Some(values) = &report.values {
+                if let (Some(values), Some((shadow, n_dims, alloc))) =
+                    (&report.values, shadow_for_writeback)
+                {
                     let d = extract_d_flat(values, &config)?;
                     Self::scatter_d_to_shadow(shadow, n_dims, alloc, &self.binding, &d)?;
                     did_shadow_writeback = true;
@@ -320,9 +382,32 @@ impl TraversalFieldBandSession {
             enabled: true,
             scheduled,
             execution_mode: mode,
+            w_input_kind,
             dispatch: dispatch_report,
             shadow_writeback: did_shadow_writeback,
             scheduler_report,
         })
+    }
+
+    /// Compatibility tick: gather W from CPU shadow columns (PATH-5/6/7 bridge).
+    pub fn tick(
+        &mut self,
+        ctx: &GpuContext,
+        shadow: &mut [f32],
+        n_dims: usize,
+        alloc: &SlotAllocator,
+        mode: MinPlusTraversalExecutionMode,
+        shadow_writeback: bool,
+    ) -> Result<TraversalFieldBandTickReport, TraversalFieldBandError> {
+        self.tick_with_input(
+            ctx,
+            TraversalFieldInput::ShadowColumns {
+                shadow,
+                n_dims,
+                alloc,
+            },
+            mode,
+            shadow_writeback,
+        )
     }
 }
