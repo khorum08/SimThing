@@ -22,6 +22,7 @@ pub mod reduction;
 pub mod reduction_orderband;
 pub mod saturating_flux_choke_threshold;
 pub mod slot;
+pub mod stress_compose;
 pub mod structured_field_stencil;
 pub mod transfer_accumulator;
 pub mod velocity_accumulator;
@@ -101,6 +102,12 @@ pub use saturating_flux_choke_threshold::{
     CHOKE_THRESHOLD_PARTIAL_FLOATS, CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE,
 };
 pub use slot::{SlotAllocError, SlotAllocator};
+pub use stress_compose::{
+    cpu_stress_compose_oracle, StressComposeConfig, StressComposeError, StressComposeOp,
+    StressComposeProfile, STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES,
+    STRESS_COMPOSE_WORKGROUP_SIZE, STRESS_OP_MISMATCH, STRESS_OP_OVERLAP, STRESS_OP_VELOCITY,
+    STRESS_OP_WEIGHTED,
+};
 pub use structured_field_stencil::{
     cpu_compute_c_at, cpu_compute_choke_at, cpu_compute_choke_readout_at, cpu_horizon,
     cpu_stencil_step, params_from_config, FieldStencilParamsGpu, StructuredFieldExecutionOptions,

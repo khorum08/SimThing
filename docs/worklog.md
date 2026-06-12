@@ -1,3 +1,8 @@
+# 2026-06-11 - BH-2S: multi-field overlap stress field algebra
+
+- **Scenario addendum under CT-4b:** generic GPU `StressComposeOp` computes overlap, mismatch, weighted, and velocity stress columns from resident choke fields; spec/admission in `simthing-spec`; bridge in `stress_compose_bridge.rs`.
+- **Report:** [`tests/bh2s_overlap_stress_results.md`](tests/bh2s_overlap_stress_results.md)
+
 # 2026-06-11 - BH-2A/B: CT-4b consumer contract + GPU W composition feedstock
 
 - **Named consumer:** `CT-4b_Local_Automata_W_Feedstock` opens BH-2. Generic GPU `WImpedanceComposeOp` composes `output_w = base_w + weight_a*choke_a + weight_b*choke_b` per admitted profile; spec/admission in `simthing-spec`; bridge in `w_impedance_compose_bridge.rs` (not `first_slice_mapping_runtime.rs`).

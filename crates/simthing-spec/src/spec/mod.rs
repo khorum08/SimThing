@@ -13,6 +13,7 @@ pub mod resource_economy;
 pub mod resource_flow;
 pub mod scenario;
 pub mod script;
+pub mod stress_compose;
 pub mod trigger;
 pub mod w_impedance_compose;
 
@@ -51,6 +52,11 @@ pub use resource_flow::{
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
+};
+pub use stress_compose::{
+    StressComposeProfileSpec, StressComposeSpec, StressOperatorSpec,
+    STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES, STRESS_OP_MISMATCH,
+    STRESS_OP_OVERLAP, STRESS_OP_VELOCITY, STRESS_OP_WEIGHTED,
 };
 pub use trigger::{TriggerDirection, TriggerSpec};
 pub use w_impedance_compose::{

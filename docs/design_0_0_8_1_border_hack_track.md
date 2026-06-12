@@ -215,6 +215,7 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 | BH-1R-SCALE staged parallel GPU reduction | IMPLEMENTED / PASS | [`tests/bh1r_scale_parallel_reduction_results.md`](tests/bh1r_scale_parallel_reduction_results.md) |
 | BH-2A named consumer contract | IMPLEMENTED / PASS | §9 addendum (this doc) |
 | BH-2B W composition kernel | IMPLEMENTED / PASS | [`tests/bh2_w_composition_results.md`](tests/bh2_w_composition_results.md) |
+| BH-2S multi-field overlap stress | IMPLEMENTED / PASS | [`tests/bh2s_overlap_stress_results.md`](tests/bh2s_overlap_stress_results.md) |
 | BH-2C PALMA feedstock proof | DEFERRED | — |
 | BH-2D CT-4b fixture proof | DEFERRED | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
@@ -283,5 +284,41 @@ weighted composition only.
 |---|---|---|
 | BH-2A | IMPLEMENTED / PASS | This addendum + status rows |
 | BH-2B | IMPLEMENTED / PASS | Generic GPU W composition operator + admission |
+| BH-2S | IMPLEMENTED / PASS | Generic GPU stress field algebra (overlap/mismatch/weighted/velocity) |
 | BH-2C | DEFERRED | PALMA consumes composed W; D stays resident |
 | BH-2D | DEFERRED | CT-4b 200×200 fixture proof |
+
+## 10. BH-2S: Multi-Field Overlap Stress (scenario-track addendum)
+
+**Purpose:** extend the BH-2 / CT-4b scenario track so multiple SaturatingFlux-derived choke
+fields produce resident stress/motivation feedstock for FIELD_POLICY movement-front behavior
+without semantic GPU code, border objects, AI planners, or CPU segmentation.
+
+Each admitted pressure field: `field_k → BH-0 → BH-1 choke_k` where `choke_k = 1 − C_k/χ_k`.
+Use `choke_k` for stress maps (not raw stored C).
+
+**Minimal field algebra (pinned):**
+
+```text
+stress_overlap  = choke_a * choke_b
+stress_mismatch = abs(choke_a - choke_b)
+stress_weighted = weight_a * choke_a + weight_b * choke_b
+stress_velocity = abs(choke_now - choke_prev)
+```
+
+**Resource-flow spine:** RF → pressure columns → BH-0/BH-1 → BH-2/BH-2S stress → FIELD_POLICY
+threshold columns → threshold crossing → EmitEvent / BoundaryRequest. No CPU planner.
+
+**Stowaway budget:** single-pass GPU field algebra over resident columns; admission-capped
+`max_input_fields` (4) and `max_profiles` (8); CPU oracle test-only; no full-field readback.
+
+**Architectural boundary:**
+
+| Layer | Role |
+|---|---|
+| `simthing-spec` | `StressComposeSpec` + admission |
+| `simthing-gpu` | `StressComposeOp` |
+| `simthing-driver` | `compiled_stress_compose_to_gpu_config` bridge only |
+
+Forbidden production vocabulary: `border`, `frontline`, `culture`, `Terran`, `Pirate`,
+`ambush`, `hegemony`, `fleet_ai`, `pathfinding`, `movement_engine`, `route`, `predecessor`.
