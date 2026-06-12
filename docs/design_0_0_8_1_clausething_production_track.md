@@ -449,4 +449,7 @@ control-flow, effect-ordering, CT-2c ship grammars), not closure debts; each ope
 consumer names it. Standing external-evidence position: the `modifiers.log` round-trip remains
 the admission bar for any future *corpus-wide* decoder claim — no such claim was made (CT-2c
 decodes against closed registered sets), so no unproven claim stands. Lab fixtures stayed
-lab-only throughout; `simthing-sim` ends the track exactly as ClauseThing-blind as it began.
+lab-only throughout; `simthing-sim` ends the track exactly as ClauseThing-blind as it began. **Consumer entry point:**
+[`clausething/ct_vertical_consumer_contract.md`](clausething/ct_vertical_consumer_contract.md)
+(CT-CONSUMER-0) — the frozen production-vs-fixture API contract for consuming the closed
+vertical without re-auditing the ladder.
