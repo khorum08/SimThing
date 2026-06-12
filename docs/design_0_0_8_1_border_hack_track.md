@@ -1,6 +1,9 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: OPEN (2026-06-12) — seated as a generic GPU utility, PALMA-style.** Product
+> **Status: BH-0…BH-1R-SCALE CLOSED (2026-06-11); BH-2+ gated (2026-06-11).** BH-0 through
+> BH-1R-SCALE are accepted and closed. **Do not open BH-2** unless a named movement/traversal
+> consumer explicitly requests choke→`W` impedance feedstock. Seated as a generic GPU utility,
+> PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
 > heatmap pass** on late-game crowded maps — no border service, no segmentation pass, no border
 > objects. Adjudicated by executive design authority from the C_u proposition digest
@@ -175,8 +178,10 @@ exact values (`to_bits`).
 | Rung | Gate | Scope | Exit criteria |
 |---|---|---|---|
 | **BH-0** | T2 (substrate gate) | §2 contract, complete | All seven §2.6 tests green; report + status row |
-| **BH-1** | T1 | §3 contract | Choke readout column + GPU compact reduce/threshold consumer (BH-1R); parity extended |
-| **BH-2** | deferred (named-consumer gate) | `1−C/χ` choke column as PALMA min-plus impedance feedstock `W` (gradient-valley coupling) | Opens when a movement consumer names it; D stays a field |
+| **BH-1** | T1 | §3 contract | Choke readout column; parity extended |
+| **BH-1R** | T1 | compact GPU choke threshold consumer | Compact 4-float GPU readback; CPU oracle test-only |
+| **BH-1R-SCALE** | T1 | staged parallel GPU reduction | No single-lane full-grid scan; multi-workgroup + partial fold |
+| **BH-2** | deferred (named-consumer gate) | `1−C/χ` choke column as PALMA min-plus impedance feedstock `W` (gradient-valley coupling) | Opens **only** when a named movement/traversal consumer names it; D stays a field |
 | **BH-3** | deferred (consumer-pulled) | ClauseThing authoring surface for the operator | Opens with the first ClauseScript-authored consumer |
 
 BH-0 was frontier-gated at seating; with §2 pinned to file-and-formula level it is
@@ -205,9 +210,19 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 |---|---|---|
 | BH-0 saturating-flux operator | IMPLEMENTED / PASS | [`tests/bh0_saturating_flux_results.md`](tests/bh0_saturating_flux_results.md) |
 | BH-1 choke readout | IMPLEMENTED / PASS | [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md) |
-| BH-1R choke GPU consumption | IMPLEMENTED / PASS (staged parallel reducer, BH-1R-SCALE) | [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md), [`tests/bh1r_scale_parallel_reduction_results.md`](tests/bh1r_scale_parallel_reduction_results.md) |
+| BH-1R compact choke threshold consumer | IMPLEMENTED / PASS | [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md) |
+| BH-1R-SCALE staged parallel GPU reduction | IMPLEMENTED / PASS | [`tests/bh1r_scale_parallel_reduction_results.md`](tests/bh1r_scale_parallel_reduction_results.md) |
 | BH-2 PALMA impedance coupling | DEFERRED (named-consumer gate) | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
+
+**Track-forward (2026-06-11):** No named movement/traversal consumer currently requests BH-2.
+Accepted production shape: generic `SaturatingFlux`; GPU-resident choke readout column `1−C/χ`;
+staged parallel compact threshold consumer; CPU oracle test-only; compact readback only;
+Candidate-F/native-sqrt audit clean on BH hot paths. BH-2 remains closed until a consumer names
+choke→`W` composition — not a border service, pathfinding engine, movement engine, route object,
+predecessor table, or semantic WGSL branch. Candidate-F rule applies to every future BH/PALMA
+handoff: GPU-resident sqrt/magnitude/norm paths route through `m_jit_sqrt_f_exact`; prefer linear,
+sum, max, count, abs, clamp, threshold scalar logic.
 
 *Opened 2026-06-12; §2–§6 expanded same day by executive design authority for unsupervised
 Codex/Cursor execution after re-evaluation found the 2-hop gather and boundary semantics

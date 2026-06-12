@@ -1,3 +1,10 @@
+# 2026-06-11 - BH TRACK-FORWARD: BH-0…BH-1R-SCALE closed; BH-2 gated on named consumer
+
+- **Closure preserved:** BH-0 (`SaturatingFlux`), BH-1 (GPU-resident choke readout column), BH-1R (compact GPU threshold consumer), and BH-1R-SCALE (staged parallel reduction) are all **IMPLEMENTED / PASS**. No remedial work; no runtime changes this handoff.
+- **BH-2 not opened:** no named movement/traversal consumer currently requests choke→`W` impedance feedstock for PALMA/min-plus. Track-forward rule: do not open BH-2 without such a consumer; no PR shipped.
+- **Accepted production shape:** generic semantic-free `SaturatingFlux`; choke as numeric field column; GPU-resident compact threshold; staged parallel reducer (not single-lane full-grid scan); CPU oracle test-only; compact readback only; Candidate-F/native-sqrt audit clean on BH hot paths. No border service, pathfinding engine, movement engine, route/predecessor objects, PALMA coupling, ClauseThing runtime changes, or `simthing-sim` semantic changes.
+- **Docs:** [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md) status ledger split BH-1R / BH-1R-SCALE; [`design_0_0_8_1.md`](design_0_0_8_1.md) §6 pointer records BH-2 DEFERRED.
+
 # 2026-06-12 - BH TRACK OPENED: the C_u saturating-flux border hack adjudicated and seated
 
 - **Adjudication (executive design authority):** the C_u boundary-relaxation stowaway (Gu & Yang 2025 digest) is (1) genuinely new capability — state-dependent stencil weights are inexpressible on the fixed-weight operators, and EvalEML cannot gather neighbors; (2) admissible under the standing Tier-2 generic-kernel gate (semantic-free, oracle-paritied, meaning at admission); (3) an engineering ansatz, NOT a paper theorem — the binding provenance caveat forbids paper-fidelity claims in any PASS row; properties (conservation, CFL-bounded stability, choke walls, fixed-point convergence) are tested directly instead. Bonus the digest undersold: the symmetric pairwise flux is mass-conserving by construction — the natural operator for conservative RF-fed pressure.
