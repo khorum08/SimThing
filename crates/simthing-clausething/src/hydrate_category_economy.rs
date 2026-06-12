@@ -8,13 +8,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
+    TransformOp,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::region_field::{
-    ArenaPressureBindingSpec, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
-    MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec, RegionFieldCadenceSpec,
-    RegionFieldFormulaBindingSpec, RegionFieldGridProfile, RegionFieldOperatorSpec,
-    RegionFieldReductionSpec, RegionFieldSpec,
+    ArenaPressureBindingSpec, CommitmentEffectSpec, FirstSliceCommitmentDirectionSpec,
+    FirstSliceCommitmentSpec, MappingExecutionProfile, PressurePlacementSpec, PressureSourceSpec,
+    RegionFieldCadenceSpec, RegionFieldFormulaBindingSpec, RegionFieldGridProfile,
+    RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSpec,
 };
 use simthing_spec::spec::resource_economy::{
     RecipeInputSpec, ResourceEconomyOptInMode, ResourceEconomySpec, ResourceRecipeSpec,
@@ -354,7 +355,7 @@ fn parse_region_field_block(property: &RawProperty) -> Result<RegionFieldSpec, H
 
     let grid_size = require_field(grid_size, "grid_size", property)?;
     let cell_count = grid_size * grid_size;
-    let (weights, threshold, event_kind) = require_field(urgency, "urgency", property)?;
+    let (weights, threshold, event_kind, effect) = require_field(urgency, "urgency", property)?;
 
     Ok(RegionFieldSpec {
         name: require_field(name, "name", property)?,
@@ -392,6 +393,7 @@ fn parse_region_field_block(property: &RawProperty) -> Result<RegionFieldSpec, H
             threshold,
             direction: FirstSliceCommitmentDirectionSpec::Upward,
             event_kind,
+            effect,
         }),
         request_atlas_batching: false,
         max_region_field_vram_bytes: None,
@@ -400,7 +402,9 @@ fn parse_region_field_block(property: &RawProperty) -> Result<RegionFieldSpec, H
     })
 }
 
-fn parse_urgency_block(property: &RawProperty) -> Result<((f32, f32), f32, u32), HydrateError> {
+type UrgencyParts = ((f32, f32), f32, u32, Option<CommitmentEffectSpec>);
+
+fn parse_urgency_block(property: &RawProperty) -> Result<UrgencyParts, HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
             "`urgency` must be a block",
@@ -411,12 +415,14 @@ fn parse_urgency_block(property: &RawProperty) -> Result<((f32, f32), f32, u32),
     let mut weight_resource = None;
     let mut threshold = None;
     let mut event_kind = None;
+    let mut effect = None;
     for field in &block.properties {
         match field.key.text.as_str() {
             "weight_pressure" => weight_pressure = Some(read_scalar_f32(field, "weight_pressure")?),
             "weight_resource" => weight_resource = Some(read_scalar_f32(field, "weight_resource")?),
             "threshold" => threshold = Some(read_scalar_f32(field, "threshold")?),
             "event_kind" => event_kind = Some(read_scalar_u32(field, "event_kind")?),
+            "effect" => effect = Some(parse_commitment_effect_block(field)?),
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported urgency field `{other}`"),
@@ -432,7 +438,58 @@ fn parse_urgency_block(property: &RawProperty) -> Result<((f32, f32), f32, u32),
         ),
         require_field(threshold, "threshold", property)?,
         require_field(event_kind, "event_kind", property)?,
+        effect,
     ))
+}
+
+/// `effect { target targets_property amount_add|amount_mult }` → the authored
+/// commitment consequence (Permanent latch overlay on the acting SimThing).
+fn parse_commitment_effect_block(
+    property: &RawProperty,
+) -> Result<CommitmentEffectSpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`effect` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut target = None;
+    let mut targets_property = None;
+    let mut amount_mult = None;
+    let mut amount_add = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "target" => target = Some(read_scalar_text(field, "target")?),
+            "targets_property" => {
+                targets_property = Some(read_scalar_text(field, "targets_property")?);
+            }
+            "amount_mult" => amount_mult = Some(read_scalar_f32(field, "amount_mult")?),
+            "amount_add" => amount_add = Some(read_scalar_f32(field, "amount_add")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported effect field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    let transform = match (amount_mult, amount_add) {
+        (Some(mult), None) => TransformOp::Multiply(mult),
+        (None, Some(add)) => TransformOp::Add(add),
+        _ => {
+            return Err(HydrateError::new_spanned(
+                "effect requires exactly one of amount_mult / amount_add",
+                Some(property.key.span.clone()),
+            ));
+        }
+    };
+    Ok(CommitmentEffectSpec {
+        target_id: require_field(target, "target", property)?,
+        targets_property: require_field(targets_property, "targets_property", property)?,
+        sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
+        lifecycle: Default::default(),
+        once: true,
+    })
 }
 
 fn parse_pressure_binding_block(

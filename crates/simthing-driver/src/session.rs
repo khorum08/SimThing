@@ -61,6 +61,7 @@ pub struct RunSummary {
     pub resource_flow_band_dispatches: u64,
     pub mapping_ticks: u64,
     pub mapping_commitment_events: u64,
+    pub mapping_commitment_effects_applied: u64,
     pub boundary_total_ms: f64,
     pub boundary_value_readback_ms: f64,
     pub boundary_alert_collect_ms: f64,
@@ -111,6 +112,7 @@ impl RunSummary {
             resource_flow_band_dispatches: 0,
             mapping_ticks: 0,
             mapping_commitment_events: 0,
+            mapping_commitment_effects_applied: 0,
             boundary_total_ms: 0.0,
             boundary_value_readback_ms: 0.0,
             boundary_alert_collect_ms: 0.0,
@@ -195,6 +197,18 @@ pub struct SessionMappingState {
     cells: Vec<(u32, u32)>,
     weights: (f32, f32),
     commitment: simthing_spec::CompiledFirstSliceCommitmentThreshold,
+    effect: Option<ResolvedCommitmentEffect>,
+    /// Journal watermark: crossings already considered for effect application.
+    commitments_consumed: usize,
+}
+
+/// Install-resolved authored commitment consequence (CT-3b+4a closure).
+struct ResolvedCommitmentEffect {
+    target: simthing_core::SimThingId,
+    property_id: simthing_core::SimPropertyId,
+    deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
+    once: bool,
+    fired: bool,
 }
 
 /// One mapping commitment crossing observed by the session loop.
@@ -465,6 +479,53 @@ impl SimSession {
             field,
         )
         .map_err(|e| SessionError::Mapping(format!("{e}")))?;
+        let effect = match field.commitment.as_ref().and_then(|c| c.effect.as_ref()) {
+            None => None,
+            Some(spec) => {
+                let targets = self
+                    .scenario
+                    .install_targets
+                    .get(&spec.target_id)
+                    .filter(|ids| ids.len() == 1)
+                    .ok_or_else(|| {
+                        SessionError::Mapping(format!(
+                            "commitment effect target `{}` must resolve to exactly one SimThing",
+                            spec.target_id
+                        ))
+                    })?;
+                let (namespace, name) =
+                    spec.targets_property.split_once("::").ok_or_else(|| {
+                        SessionError::Mapping(
+                            "commitment effect targets_property must be `namespace::name`".into(),
+                        )
+                    })?;
+                let property_id = self.proto.registry.id_of(namespace, name).ok_or_else(|| {
+                    SessionError::Mapping(format!(
+                        "commitment effect property `{}` is not registered",
+                        spec.targets_property
+                    ))
+                })?;
+                let target = targets[0];
+                // The overlay-compile path requires the host to carry the
+                // effect property; seed it now and re-sync GPU shape.
+                let mut props = std::collections::HashSet::new();
+                props.insert(property_id);
+                crate::install::seed_effect_props_on(
+                    &mut self.proto.root,
+                    target,
+                    &props,
+                    &self.proto.registry,
+                );
+                self.proto.initial_gpu_sync(&self.coord, &mut self.state);
+                Some(ResolvedCommitmentEffect {
+                    target,
+                    property_id,
+                    deltas: spec.sub_field_deltas.clone(),
+                    once: spec.once,
+                    fired: false,
+                })
+            }
+        };
         let mapping = crate::first_slice_mapping_runtime::FirstSliceMappingSession::open(
             &self.state.ctx,
             game_mode.mapping_execution_profile,
@@ -479,8 +540,55 @@ impl SimSession {
             cells,
             weights: (weight_pressure, weight_resource),
             commitment,
+            effect,
+            commitments_consumed: 0,
         });
         Ok(())
+    }
+
+    /// CT-3b+4a closure: convert journaled commitment crossings into the
+    /// authored `BoundaryRequest::AttachOverlay` consequence, submitted into
+    /// the ordinary boundary channel (drained and applied by the existing
+    /// structural machinery). Returns `true` when a request was submitted so
+    /// the caller never takes the empty-boundary fast path past it.
+    fn submit_commitment_effects(
+        &mut self,
+        summary: &mut RunSummary,
+    ) -> Result<bool, SessionError> {
+        let Some(m) = self.mapping.as_mut() else {
+            return Ok(false);
+        };
+        let pending = self.mapping_commitments.len() > m.commitments_consumed;
+        m.commitments_consumed = self.mapping_commitments.len();
+        if !pending {
+            return Ok(false);
+        }
+        let Some(effect) = m.effect.as_mut() else {
+            return Ok(false);
+        };
+        if effect.once && effect.fired {
+            return Ok(false);
+        }
+        effect.fired = true;
+        let overlay = simthing_core::Overlay {
+            id: simthing_core::OverlayId::new(),
+            kind: simthing_core::OverlayKind::Custom("mapping_commitment".into()),
+            source: simthing_core::OverlaySource::System,
+            affects: vec![effect.target],
+            transform: simthing_core::PropertyTransformDelta {
+                property_id: effect.property_id,
+                sub_field_deltas: effect.deltas.clone(),
+            },
+            lifecycle: simthing_core::OverlayLifecycle::Permanent,
+        };
+        self.tx
+            .submit_boundary(simthing_feeder::BoundaryRequest::AttachOverlay {
+                target: effect.target,
+                overlay,
+            })
+            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        summary.mapping_commitment_effects_applied += 1;
+        Ok(true)
     }
 
     /// One in-loop mapping step: on-device pressure scatter, the bounded
@@ -571,9 +679,11 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
-                if !self
-                    .spec_state
-                    .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
+                let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
+                if !commitment_effect_submitted
+                    && !self
+                        .spec_state
+                        .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
                     && self
                         .proto
                         .can_skip_empty_boundary(&tick.events, &self.patcher)
@@ -686,9 +796,11 @@ impl SimSession {
 
             if tick.boundary_reached {
                 let day = tick.day_index;
-                if !self
-                    .spec_state
-                    .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
+                let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
+                if !commitment_effect_submitted
+                    && !self
+                        .spec_state
+                        .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
                     && self
                         .proto
                         .can_skip_empty_boundary(&tick.events, &self.patcher)

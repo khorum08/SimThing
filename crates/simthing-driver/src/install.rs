@@ -879,7 +879,7 @@ fn resolve_effect_target(
 /// `affects` list points outside the clone itself. Silently ignores
 /// targets not found in the tree (should not happen — owner_id came
 /// from install resolution against `root`).
-fn seed_effect_props_on(
+pub(crate) fn seed_effect_props_on(
     root: &mut SimThing,
     target_id: SimThingId,
     props: &HashSet<simthing_core::SimPropertyId>,
