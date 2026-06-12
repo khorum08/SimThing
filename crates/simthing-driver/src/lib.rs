@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
+pub mod palma_min_plus_field_band;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
 pub mod resource_economy_boundary_schedule;
@@ -335,6 +336,11 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use palma_min_plus_field_band::{
+    PalmaMinPlusFieldBandError, PalmaMinPlusFieldBandSession, PalmaMinPlusFieldBandTickReport,
+    PalmaMinPlusGridBinding, PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED,
+    PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID, PALMA_MIN_PLUS_FIELD_ID, PALMA_MIN_PLUS_REGION_ID,
 };
 pub use production_path_0080_0::{
     replay_production_path_0080_0, run_production_path_0080_0, LocalPatrolEconomyCell,

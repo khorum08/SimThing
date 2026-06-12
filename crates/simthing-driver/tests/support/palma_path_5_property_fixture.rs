@@ -275,6 +275,35 @@ impl PalmaPath5PropertyTree {
             y: CONVOY_START.1,
         }
     }
+
+    /// Row-major gridcell ids for PATH-6 session band binding.
+    pub fn gridcell_ids_row_major(&self) -> Vec<SimThingId> {
+        let width = FIXTURE_WIDTH as usize;
+        let height = FIXTURE_HEIGHT as usize;
+        let mut ids = Vec::with_capacity(width * height);
+        for y in 0..height {
+            for x in 0..width {
+                ids.push(gridcell_simthing_id(x, y));
+            }
+        }
+        ids
+    }
+
+    /// Copy D from session shadow columns into gridcell property columns.
+    pub fn sync_d_from_shadow_to_properties(&mut self) -> Result<(), MinPlusStencilError> {
+        let width = FIXTURE_WIDTH as usize;
+        let height = FIXTURE_HEIGHT as usize;
+        let n_dims = self.inner.n_dims;
+        let mut d = Vec::with_capacity(width * height);
+        for y in 0..height {
+            for x in 0..width {
+                let id = gridcell_simthing_id(x, y);
+                let slot = self.inner.alloc.slot_of(id).expect("gridcell slot") as usize;
+                d.push(self.inner.shadow[slot * n_dims + self.d_global_col]);
+            }
+        }
+        self.write_d_flat_to_properties(&d)
+    }
 }
 
 pub fn find_node_mut<'a>(node: &'a mut SimThing, id: SimThingId) -> Option<&'a mut SimThing> {

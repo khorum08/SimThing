@@ -71,7 +71,7 @@ World
 | Movable D sampling via properties | **PASS** |
 | Generic Reparent on admitted tree | **PASS** (PATH-3R harness) |
 | RegionField spec operator for min-plus | **Not added** — reuses standalone `MinPlusStencilOp` |
-| SimSession default tick schedules min-plus band | **Not wired** — fixture invokes op directly |
+| SimSession default tick schedules min-plus band | **Not wired at PATH-5** — PATH-6 adds opt-in test-profile band; default `SimSession` still unwired |
 | Full install/session round-trip | **Not required** for this proof |
 | Production movement policy | **Not landed** |
 
