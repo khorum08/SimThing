@@ -119,6 +119,7 @@ fn e11_burn_in_flag_on_uploads_expected_op_count() {
         &fx.session.spec_state.arena_participant_scaffold,
         &fx.session.proto.root,
         &fx.session.proto.allocator,
+        &[],
         true,
     )
     .expect("resync");

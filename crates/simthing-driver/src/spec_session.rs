@@ -92,6 +92,9 @@ pub struct SpecSessionState {
     pub arena_registry: ArenaRegistry,
     /// Arena-participant SimThing scaffold (E-10R2). Driver-only topology artifact.
     pub arena_participant_scaffold: crate::arena_participant::ArenaParticipantScaffold,
+    /// CT-RF-EML-RATE-0: install-resolved gated rate terms consumed by the
+    /// resource-flow sync (effective-rate EvalEML band before reduce bands).
+    pub resolved_gated_rates: Vec<crate::gated_rates::ResolvedGatedRate>,
     /// Materialized production transfer/recipe/emission/threshold registrations (Phase T-3/T-4).
     pub resource_economy_registry: Option<crate::resource_economy_compile::ResourceEconomyRegistry>,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,

@@ -125,6 +125,7 @@ pub fn hydrate_resource_flow_pack(
         }],
         couplings: vec![],
         base_obligations: vec![],
+        gated_rates: vec![],
     };
 
     Ok(HydratedResourceFlowPack {

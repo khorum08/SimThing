@@ -97,6 +97,14 @@ pub enum InstallError {
 
     #[error("duplicate standalone overlay authored id `{overlay_ref}` across domain packs")]
     DuplicateOverlayRefId { overlay_ref: String },
+
+    #[error(
+        "gated rate `{gated}` requires a `rate_base` sub-field on arena `{arena}`'s flow property"
+    )]
+    GatedRateMissingBaseColumn { gated: String, arena: String },
+
+    #[error("gated rate `{gated}` references unresolvable trigger property `{property}`")]
+    GatedRateUnknownTriggerProperty { gated: String, property: String },
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -213,6 +221,13 @@ pub fn compile_and_install(
         }
         let (arena_registry, _report) = compile_and_materialize_resource_flow(&resolved, registry)?;
         seed_base_flow_obligations(&base_obligations, registry, root, allocator, &scaffold)?;
+        // CT-RF-EML-RATE-0: resolve gated rates and copy the folded static
+        // rate into the base column the per-tick EvalEML band reads.
+        let gated = crate::gated_rates::resolve_gated_rates(
+            &resolved, scenario, root, registry, &scaffold,
+        )?;
+        crate::gated_rates::seed_gated_rate_base_columns(&gated, registry, root, allocator)?;
+        state.resolved_gated_rates = gated;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
     }
@@ -882,7 +897,7 @@ fn seed_effect_props_on(
     }
 }
 
-fn find_simthing_mut(node: &mut SimThing, target: SimThingId) -> Option<&mut SimThing> {
+pub(crate) fn find_simthing_mut(node: &mut SimThing, target: SimThingId) -> Option<&mut SimThing> {
     if node.id == target {
         return Some(node);
     }

@@ -300,7 +300,7 @@ fn rejected_key_forms_hard_error_with_spans() {
         ),
         (
             "produces = { triggered_produces_modifier = 1 }",
-            "triggered/gated produces forms are deferred",
+            "bare triggered forms are not authorable",
         ),
     ] {
         let source = format!(

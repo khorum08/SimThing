@@ -94,6 +94,7 @@ pub fn compile_resource_flow_admission(
         }
     }
     validate_base_obligations(spec, &arena_names)?;
+    validate_gated_rates(spec, &arena_names)?;
 
     let property_bindings = scan_property_arena_bindings(registry)?;
     validate_property_arena_references(&property_bindings, &arena_names)?;
@@ -167,6 +168,44 @@ pub fn compile_resource_flow_admission(
         arenas: compiled_arenas,
         couplings: compiled_couplings,
     })
+}
+
+/// CT-RF-EML-RATE-0: gated-rate admission. The per-(arena, install-target)
+/// term count is capped so each compiled effective-rate `EvalEML` tree stays
+/// within the exact-class node budget.
+fn validate_gated_rates(
+    spec: &ResourceFlowSpec,
+    arena_names: &HashSet<&str>,
+) -> Result<(), SpecError> {
+    let mut ids = HashSet::new();
+    let mut per_target: HashMap<(String, String), u32> = HashMap::new();
+    for gated in &spec.gated_rates {
+        if !ids.insert(gated.id.clone()) {
+            return Err(SpecError::DuplicateBaseFlowObligation {
+                id: gated.id.clone(),
+            });
+        }
+        if !gated.rate.is_finite() || gated.rate < 0.0 || !gated.trigger.at_least.is_finite() {
+            return Err(SpecError::InvalidBaseFlowObligationRate {
+                id: gated.id.clone(),
+            });
+        }
+        if !arena_names.contains(gated.arena.as_str()) {
+            return Err(SpecError::UnknownArenaReference {
+                arena: gated.arena.clone(),
+                context: format!("gated_rates.{}", gated.id),
+            });
+        }
+        let key = (gated.arena.clone(), format!("{:?}", gated.install));
+        let count = per_target.entry(key).or_insert(0);
+        *count += 1;
+        if *count > 4 {
+            return Err(SpecError::InvalidBaseFlowObligationRate {
+                id: format!("{} (more than 4 gated terms per arena target)", gated.id),
+            });
+        }
+    }
+    Ok(())
 }
 
 fn validate_base_obligations(

@@ -41,6 +41,7 @@ fn resource_flow_opt_in_mode_roundtrips_ron() {
             arenas: vec![sample_arena()],
             couplings: vec![],
             base_obligations: vec![],
+            gated_rates: vec![],
         }),
         resource_economy: None,
         ..Default::default()
@@ -91,6 +92,7 @@ fn resource_flow_execution_profile_roundtrips_ron() {
             arenas: vec![sample_arena()],
             couplings: vec![],
             base_obligations: vec![],
+            gated_rates: vec![],
         }),
         resource_economy: None,
         resource_flow_execution_profile: ResourceFlowExecutionProfile::FlatStarResourceFlow,

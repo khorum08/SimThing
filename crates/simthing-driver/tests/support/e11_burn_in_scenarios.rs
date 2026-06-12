@@ -112,6 +112,7 @@ pub fn run_scenario_burn_in(
         &fx.session.spec_state.arena_participant_scaffold,
         &fx.session.proto.root,
         &fx.session.proto.allocator,
+        &[],
         true,
     )
     .expect("scenario sync");

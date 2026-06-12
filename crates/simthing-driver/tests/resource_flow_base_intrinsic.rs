@@ -180,6 +180,7 @@ fn game_mode(
                     2.0,
                 ),
             ],
+            gated_rates: vec![],
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),
