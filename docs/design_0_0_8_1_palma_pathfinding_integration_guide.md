@@ -299,7 +299,8 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 5 | **PALMA-PATH-3R** | Admitted Location/gridcell/convoy tree + generic Reparent | **IMPLEMENTED / PASS** — [`tests/palma_path_3r_simthing_tree_fixture_results.md`](tests/palma_path_3r_simthing_tree_fixture_results.md) |
 | 6 | **PALMA-PATH-4** | Toy-axis benchmark (32–128 grids) | **IMPLEMENTED / PASS** — [`tests/palma_path_4_benchmark_results.md`](tests/palma_path_4_benchmark_results.md) |
 | 7 | **PALMA-PATH-4S** | Stellaris-scale 180×180 / 150-fleet representative workload | **IMPLEMENTED / METRICS REMEDIAL PASS** — [`tests/palma_path_4_stellaris_scale_benchmark_results.md`](tests/palma_path_4_stellaris_scale_benchmark_results.md) |
-| 8 | **PALMA-PATH-5** | Admitted Location/gridcell property-column integration | **IMPLEMENTED / PASS** — [`tests/palma_path_5_install_session_property_results.md`](tests/palma_path_5_install_session_property_results.md) (session RegionField min-plus scheduling not default-wired; ledgered in report) |
+| 8 | **PALMA-PATH-5** | Admitted Location/gridcell property-column integration | **IMPLEMENTED / PASS** — [`tests/palma_path_5_install_session_property_results.md`](tests/palma_path_5_install_session_property_results.md) |
+| 9 | **PALMA-PATH-6** | Opt-in session/RegionField min-plus band over W/D columns | **PARTIAL / TEST-PROFILE PASS** — [`tests/palma_path_6_session_regionfield_results.md`](tests/palma_path_6_session_regionfield_results.md) (default `SimSession` tick not wired) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
