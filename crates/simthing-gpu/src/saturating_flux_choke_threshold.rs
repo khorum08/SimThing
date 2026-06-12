@@ -1,8 +1,8 @@
-//! BH-1R: compact GPU-resident sum/threshold consumer over a choke readout column.
+//! BH-1R / BH-1R-SCALE: compact GPU-resident sum/threshold consumer over a choke readout column.
 //!
-//! Reads a GPU-resident structured field buffer and writes a compact 4-float result
-//! (sum, max, count-above-threshold, crossed flag). Only the compact buffer is read
-//! back — never the full field.
+//! Two-pass parallel reduction: pass 1 dispatches one workgroup per 256 cells; pass 2
+//! folds workgroup partials into a compact 4-float result. Only the compact buffer is
+//! read back — never the full field.
 
 use bytemuck::{Pod, Zeroable};
 use thiserror::Error;
@@ -11,6 +11,8 @@ use wgpu::util::DeviceExt;
 use crate::context::GpuContext;
 
 pub const CHOKE_THRESHOLD_COMPACT_FLOATS: u32 = 4;
+pub const CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE: u32 = 256;
+pub const CHOKE_THRESHOLD_PARTIAL_FLOATS: u32 = 3;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -20,6 +22,8 @@ struct ChokeThresholdParamsGpu {
     n_dims: u32,
     choke_col: u32,
     threshold: f32,
+    n_partials: u32,
+    _pad: u32,
 }
 
 /// Configuration for GPU choke-column reduce/threshold.
@@ -35,6 +39,10 @@ pub struct SaturatingFluxChokeThresholdConfig {
 impl SaturatingFluxChokeThresholdConfig {
     pub fn cells(&self) -> u32 {
         self.width * self.height
+    }
+
+    pub fn pass1_workgroup_count(&self) -> u32 {
+        pass1_workgroup_count(self.cells())
     }
 
     pub fn validate(&self) -> Result<(), SaturatingFluxChokeThresholdError> {
@@ -55,8 +63,21 @@ impl SaturatingFluxChokeThresholdConfig {
                 self.threshold,
             ));
         }
+        let cells = self.width as u64 * self.height as u64;
+        if cells > u32::MAX as u64 {
+            return Err(SaturatingFluxChokeThresholdError::ShapeOverflow);
+        }
+        let values_len = cells * self.n_dims as u64;
+        if values_len > u32::MAX as u64 {
+            return Err(SaturatingFluxChokeThresholdError::ShapeOverflow);
+        }
         Ok(())
     }
+}
+
+/// Pass-1 workgroup count for a cell total (exported for scale tests).
+pub fn pass1_workgroup_count(cells: u32) -> u32 {
+    cells.div_ceil(CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE)
 }
 
 /// Compact GPU reduce/threshold result.
@@ -76,15 +97,18 @@ pub enum SaturatingFluxChokeThresholdError {
     InvalidColumn { choke_col: u32, n_dims: u32 },
     #[error("threshold must be finite (got {0})")]
     InvalidThreshold(f32),
+    #[error("width * height * n_dims overflows representable flat buffer length")]
+    ShapeOverflow,
     #[error("resident values buffer too short: need {required} bytes, got {actual}")]
     ResidentBufferTooShort { required: u64, actual: u64 },
     #[error("GPU choke threshold output map failed")]
     MapFailed,
 }
 
-/// Generic GPU session: sum + threshold over a resident choke column.
+/// Generic GPU session: parallel sum + threshold over a resident choke column.
 pub struct SaturatingFluxChokeThresholdOp {
-    pipeline: wgpu::ComputePipeline,
+    pass1_pipeline: wgpu::ComputePipeline,
+    pass2_pipeline: wgpu::ComputePipeline,
     layout: wgpu::BindGroupLayout,
 }
 
@@ -110,15 +134,27 @@ impl SaturatingFluxChokeThresholdOp {
             bind_group_layouts: &[&layout],
             push_constant_ranges: &[],
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("saturating_flux_choke_threshold_pipeline"),
+        let pass1_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("saturating_flux_choke_threshold_pass1"),
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: "reduce_choke_threshold",
+            entry_point: "reduce_choke_partials_pass1",
             compilation_options: Default::default(),
             cache: None,
         });
-        Self { pipeline, layout }
+        let pass2_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("saturating_flux_choke_threshold_pass2"),
+            layout: Some(&pipeline_layout),
+            module: &shader,
+            entry_point: "reduce_choke_final_pass2",
+            compilation_options: Default::default(),
+            cache: None,
+        });
+        Self {
+            pass1_pipeline,
+            pass2_pipeline,
+            layout,
+        }
     }
 
     /// Reduce/threshold over GPU-resident field values; read back compact result only.
@@ -138,10 +174,14 @@ impl SaturatingFluxChokeThresholdOp {
             });
         }
 
+        let n_partials = pass1_workgroup_count(cells);
+        let partials_floats = (n_partials * CHOKE_THRESHOLD_PARTIAL_FLOATS) as u64;
+        let partials_bytes = partials_floats * std::mem::size_of::<f32>() as u64;
+        let compact_bytes =
+            (CHOKE_THRESHOLD_COMPACT_FLOATS as u64) * std::mem::size_of::<f32>() as u64;
+
         let device = &ctx.device;
         let queue = &ctx.queue;
-        let output_bytes =
-            (CHOKE_THRESHOLD_COMPACT_FLOATS as u64) * std::mem::size_of::<f32>() as u64;
 
         let params = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("saturating_flux_choke_threshold_params"),
@@ -151,24 +191,32 @@ impl SaturatingFluxChokeThresholdOp {
                 n_dims: config.n_dims,
                 choke_col: config.choke_col,
                 threshold: config.threshold,
+                n_partials,
+                _pad: 0,
             }),
             usage: wgpu::BufferUsages::UNIFORM,
         });
-        let output = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("saturating_flux_choke_threshold_output"),
-            size: output_bytes,
+        let partials = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("saturating_flux_choke_threshold_partials"),
+            size: partials_bytes.max(std::mem::size_of::<f32>() as u64 * 3),
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        let compact = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("saturating_flux_choke_threshold_compact"),
+            size: compact_bytes,
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("saturating_flux_choke_threshold_readback"),
-            size: output_bytes,
+            size: compact_bytes,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("saturating_flux_choke_threshold_bg"),
+        let pass1_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("saturating_flux_choke_threshold_pass1_bg"),
             layout: &self.layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -181,7 +229,25 @@ impl SaturatingFluxChokeThresholdOp {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: output.as_entire_binding(),
+                    resource: partials.as_entire_binding(),
+                },
+            ],
+        });
+        let pass2_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("saturating_flux_choke_threshold_pass2_bg"),
+            layout: &self.layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: params.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: partials.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: compact.as_entire_binding(),
                 },
             ],
         });
@@ -191,14 +257,23 @@ impl SaturatingFluxChokeThresholdOp {
         });
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("saturating_flux_choke_threshold_pass"),
+                label: Some("saturating_flux_choke_threshold_pass1"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
+            pass.set_pipeline(&self.pass1_pipeline);
+            pass.set_bind_group(0, &pass1_bg, &[]);
+            pass.dispatch_workgroups(n_partials, 1, 1);
+        }
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("saturating_flux_choke_threshold_pass2"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.pass2_pipeline);
+            pass.set_bind_group(0, &pass2_bg, &[]);
             pass.dispatch_workgroups(1, 1, 1);
         }
-        encoder.copy_buffer_to_buffer(&output, 0, &staging, 0, output_bytes);
+        encoder.copy_buffer_to_buffer(&compact, 0, &staging, 0, compact_bytes);
         queue.submit(Some(encoder.finish()));
 
         let slice = staging.slice(..);
