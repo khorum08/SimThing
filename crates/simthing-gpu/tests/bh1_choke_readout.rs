@@ -237,7 +237,8 @@ fn bh1_zero_flux_boundary_does_not_create_false_drain() {
 }
 
 #[test]
-fn bh1_consumption_proof_reduce_threshold_crossing() {
+fn bh1_crowded_fixture_choke_oracle_only() {
+    // BH-1 readout oracle only — GPU consumption is BH-1R (`SaturatingFluxChokeThresholdOp`).
     let config = choke_config(3, 3, 1, 1.0, 0.25, 1);
     let params = params_from_config(&config);
     let mut values = vec![0.0f32; config.values_len()];
