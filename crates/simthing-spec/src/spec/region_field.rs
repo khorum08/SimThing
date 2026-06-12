@@ -61,11 +61,18 @@ pub struct ArenaPressureBindingSpec {
     pub placements: Vec<PressurePlacementSpec>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum PressureSourceSpec {
     IntrinsicFlow,
     AllocatedFlow,
+    /// Project any named sub-field on the arena's flow property. This is the
+    /// gadget composition hook: an EML/gadget op writing a named column makes
+    /// that column heatmap feedstock — arena state shapes the field through
+    /// authored formulas, all GPU-resident.
+    Named {
+        sub_field: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

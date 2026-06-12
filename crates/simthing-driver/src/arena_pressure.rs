@@ -64,9 +64,17 @@ pub fn project_arena_pressure_seeds(
             reason: format!("{e:?}"),
         }
     })?;
-    let local_col = match binding.source {
+    let local_col = match &binding.source {
         PressureSourceSpec::IntrinsicFlow => cols.intrinsic_flow_col,
         PressureSourceSpec::AllocatedFlow => cols.allocated_flow_col,
+        // The gadget composition hook: any named column an EML/gadget op
+        // writes on the flow property is projectable heatmap feedstock.
+        PressureSourceSpec::Named { sub_field } => layout
+            .offset_of(&simthing_core::SubFieldRole::Named(sub_field.clone()))
+            .ok_or_else(|| ArenaPressureError::ColumnResolution {
+                arena: binding.arena.clone(),
+                reason: format!("named sub-field `{sub_field}` not in flow layout"),
+            })? as u32,
     };
     let global_col = registry.column_range(descriptor.flow_property_id).start as u32 + local_col;
 
@@ -110,4 +118,84 @@ pub fn project_arena_pressure_seeds(
         });
     }
     Ok(seeds)
+}
+
+/// Compile the binding to on-device scatter entries: session values buffer
+/// index → stencil input buffer index. The GPU path never reads values back
+/// to the host; the 0A CPU path above is its oracle. v1 limit: one admitted
+/// participant per placement (summing multiple sources needs a staging
+/// column written by a session EML op — the gadget hook — then a `Named`
+/// projection of that column).
+pub fn compile_arena_pressure_scatter(
+    binding: &ArenaPressureBindingSpec,
+    scenario: &Scenario,
+    registry: &DimensionRegistry,
+    arena_registry: &ArenaRegistry,
+    scaffold: &ArenaParticipantScaffold,
+    session_n_dims: u32,
+    field: &simthing_spec::RegionFieldSpec,
+) -> Result<(Vec<simthing_gpu::ScatterEntry>, Vec<(u32, u32)>), ArenaPressureError> {
+    let (arena_idx, descriptor) = arena_registry
+        .arenas
+        .iter()
+        .enumerate()
+        .find(|(_, arena)| arena.name == binding.arena)
+        .ok_or_else(|| ArenaPressureError::UnknownArena {
+            arena: binding.arena.clone(),
+        })?;
+    let layout = &registry.property(descriptor.flow_property_id).layout;
+    let cols = resolve_node_columns(layout, &binding.arena).map_err(|e| {
+        ArenaPressureError::ColumnResolution {
+            arena: binding.arena.clone(),
+            reason: format!("{e:?}"),
+        }
+    })?;
+    let local_col = match &binding.source {
+        PressureSourceSpec::IntrinsicFlow => cols.intrinsic_flow_col,
+        PressureSourceSpec::AllocatedFlow => cols.allocated_flow_col,
+        PressureSourceSpec::Named { sub_field } => layout
+            .offset_of(&simthing_core::SubFieldRole::Named(sub_field.clone()))
+            .ok_or_else(|| ArenaPressureError::ColumnResolution {
+                arena: binding.arena.clone(),
+                reason: format!("named sub-field `{sub_field}` not in flow layout"),
+            })? as u32,
+    };
+    let global_col = registry.column_range(descriptor.flow_property_id).start as u32 + local_col;
+
+    let mut entries = Vec::with_capacity(binding.placements.len());
+    let mut cells = Vec::with_capacity(binding.placements.len());
+    for placement in &binding.placements {
+        let hosted = scenario
+            .install_targets
+            .get(&placement.target_id)
+            .filter(|ids| !ids.is_empty())
+            .ok_or_else(|| ArenaPressureError::UnknownTarget {
+                target_id: placement.target_id.clone(),
+            })?;
+        let mut slots = hosted
+            .iter()
+            .filter_map(|id| scaffold.index.participant_slot(*id, arena_idx as u32));
+        let Some(slot) = slots.next() else {
+            return Err(ArenaPressureError::TargetNotAdmitted {
+                target_id: placement.target_id.clone(),
+                arena: binding.arena.clone(),
+            });
+        };
+        if slots.next().is_some() {
+            return Err(ArenaPressureError::ColumnResolution {
+                arena: binding.arena.clone(),
+                reason: format!(
+                    "target `{}` resolves to multiple participants; GPU scatter takes one source per cell — stage a summed column via a session EML op and project it as Named",
+                    placement.target_id
+                ),
+            });
+        }
+        let cell = placement.row * field.grid_size + placement.col;
+        entries.push(simthing_gpu::ScatterEntry {
+            src_index: slot * session_n_dims + global_col,
+            dst_index: cell * field.n_dims + field.source_col,
+        });
+        cells.push((placement.row, placement.col));
+    }
+    Ok((entries, cells))
 }

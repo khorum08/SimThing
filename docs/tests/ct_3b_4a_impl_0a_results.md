@@ -114,9 +114,17 @@ one** — the binding ordering ("rate before reduce") is structural, not schedul
    magnitudes and always-on dynamic terms) and lower to formula subtrees on the same band.
    GPU proof bit-exact incl. the ceiling clamp and live input reads. Flat formulas only;
    recursion rejected at hydration.
-2. **GPU-side projection copy.** 0A projects seeds via boundary-time CPU readback (consumption,
-   not recomputation). The full rung should add the direct session-buffer → stencil-buffer copy
-   (bounded arithmetic, allowed and expected under the WGSL lift) with parity.
+2. ~~GPU-side projection copy~~ — **implemented** (same day): a generic indexed gather-scatter
+   WGSL kernel (`simthing_gpu::IndexedScatterOp`, one dispatch, host-validated bounds, duplicate
+   destinations rejected, CPU oracle) moves session values buffer → stencil input buffer
+   on-device; the mapping runtime gained a GPU-seed path that runs the one-shot
+   seed-then-zero sequence with **zero host value writes**. Proven **bit-identical** against the
+   0A CPU projection through the full heatmap → ai_will_do → commitment chain (threat, urgency,
+   and threshold events all `to_bits`-equal). **The gadget composition hook:**
+   `PressureSourceSpec::Named { sub_field }` projects *any* named flow-property column — a
+   session EML/gadget op writing a named column makes that column heatmap feedstock, so arena
+   state shapes the spatial field through authored formulas with no new interpreter: behavior
+   stays data over EvalEML (Anchor B), and the new WGSL is pure bounded data movement.
 3. **Per-tick session integration.** The mapping runtime remains a standalone opt-in runtime
    driven by the harness at boundary cadence; full-rung closure should drive it from the
    session loop under the same explicit profile.
