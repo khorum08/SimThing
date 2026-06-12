@@ -42,4 +42,4 @@ PALMA-PATH-3: **PARTIAL / NUMERIC+GPU FIXTURE PASS** — [`palma_path_3_terran_p
 
 PALMA-PATH-3R: **IMPLEMENTED / PASS** — [`palma_path_3r_simthing_tree_fixture_results.md`](palma_path_3r_simthing_tree_fixture_results.md)
 
-PALMA-PATH-4: not started.
+PALMA-PATH-4: **IMPLEMENTED / PASS** — [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md)
