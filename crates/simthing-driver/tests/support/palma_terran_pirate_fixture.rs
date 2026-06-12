@@ -192,11 +192,12 @@ pub fn reparent_toward_sampled_gridcell(
     }
 }
 
-/// Fixture gridcell SimThing ids (deterministic placeholders for BoundaryRequest shape proof).
+/// Stable gridcell SimThing ids shared by PATH-3 numeric fixture and PATH-3R admitted tree.
 pub fn gridcell_simthing_id(x: usize, y: usize) -> simthing_core::SimThingId {
     simthing_core::SimThingId::from_session_raw(1 + (y * FIXTURE_WIDTH as usize + x) as u32)
 }
 
+/// Terran convoy fixture id — ordinary movable SimThing (`Fleet`) in PATH-3R tree.
 pub fn convoy_simthing_id() -> simthing_core::SimThingId {
     simthing_core::SimThingId::from_session_raw(9001)
 }

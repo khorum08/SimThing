@@ -38,6 +38,8 @@ PALMA-PATH-1R: **IMPLEMENTED / PASS** — [`palma_path_1_cpu_oracle_results.md`]
 
 PALMA-PATH-2: **IMPLEMENTED / PASS** — [`palma_path_2_gpu_min_plus_results.md`](palma_path_2_gpu_min_plus_results.md)
 
-PALMA-PATH-3: **IMPLEMENTED / PASS** — [`palma_path_3_terran_pirate_fixture_results.md`](palma_path_3_terran_pirate_fixture_results.md)
+PALMA-PATH-3: **PARTIAL / NUMERIC+GPU FIXTURE PASS** — [`palma_path_3_terran_pirate_fixture_results.md`](palma_path_3_terran_pirate_fixture_results.md)
+
+PALMA-PATH-3R: **IMPLEMENTED / PASS** — [`palma_path_3r_simthing_tree_fixture_results.md`](palma_path_3r_simthing_tree_fixture_results.md)
 
 PALMA-PATH-4: not started.
