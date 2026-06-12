@@ -1,6 +1,9 @@
-# CT-3b+4a 0A implementation results — RF-fed movement-front heatmap spine
+# CT-3b+4a implementation results — RF-fed movement-front heatmap spine
 
-Status: **SUBSTRATE 0A PASS** (2026-06-11, frontier agent + executive design authority).
+Status: **IMPLEMENTED / PASS** (2026-06-11; 0A spine + same-day 0B closures: CT-RF-EML-RATE-0,
+`value:` lowering, GPU projection, and **Line 3 session-loop integration** — final addendum
+below. One named deferral: in-loop commitment *consequence* application; see the Line 3
+addendum. Frontier agent + executive design authority.)
 **The headline spine runs end to end from ClauseScript, including the mandatory CT-4a leg:**
 
 ```
@@ -125,9 +128,39 @@ one** — the binding ordering ("rate before reduce") is structural, not schedul
    session EML/gadget op writing a named column makes that column heatmap feedstock, so arena
    state shapes the spatial field through authored formulas with no new interpreter: behavior
    stays data over EvalEML (Anchor B), and the new WGSL is pure bounded data movement.
-3. **Per-tick session integration.** The mapping runtime remains a standalone opt-in runtime
-   driven by the harness at boundary cadence; full-rung closure should drive it from the
-   session loop under the same explicit profile.
+3. ~~Per-tick session integration~~ — **implemented (Line 3, final addendum).**
+
+## Addendum — Line 3 session-loop integration IMPLEMENTED (closes the rung)
+
+`SimSession::run()` (and `record_to_path`) now execute the opt-in GPU work inside the
+production tick loop:
+
+1. **RF arena bands dispatch per tick** when `use_accumulator_resource_flow` is on — the bands
+   (including the CT-RF-EML-RATE-0 effective-rate band at OrderBand 0) were previously only ever
+   driven by test harnesses. `RunSummary.resource_flow_band_dispatches` counts them.
+2. **The mapping chain runs per tick** under `SessionMappingState`, installed by
+   `open_from_spec` iff the game mode authored `SparseRegionFieldV1` + exactly one region field
+   + a pressure binding + ai_will_do weights + a commitment threshold: on-device indexed
+   scatter (session values → stencil input), GPU seed-then-zero, bounded stencil propagation,
+   Layer-2 reduce, ai_will_do EML, GPU commitment scan. **No value readback anywhere on this
+   path.** Half-authored configurations are hard open errors naming the missing surface; the
+   profile default stays `Disabled` and presence of `region_fields` alone wires nothing
+   (test-proven).
+3. **Commitment crossings are journaled** per tick (`SimSession.mapping_commitments`:
+   tick + `ThresholdEvent` with the authored event kind) and counted in `RunSummary`.
+
+Proof (`ct_3b_4a_session_loop.rs`, GPU): a 3-boundary `session.run(3)` over the ClauseScript
+headline fixture dispatches RF bands and the mapping chain on every tick and journals authored
+event-kind-7 crossings; the disabled-profile run installs nothing and journals nothing; the
+stripped-binding open fails loudly.
+
+**Named deferral (scope ledger):** the in-loop *consequence* of a commitment crossing —
+converting journaled events into authored `BoundaryRequest`s at the boundary — is deferred,
+consumer-named: `FirstSliceCommitmentSpec` carries no authored effect payload, and inventing one
+here would be speculative widening. The event→`BoundaryRequest::AttachOverlay` application
+itself is already proven through `apply_structural_mutations` in the 0A harness; the journal is
+the boundary-consumable surface until a rung authors commitment effects. PALMA/min-plus was
+deliberately not touched — Line 3 needed no traversal utility.
 
 ## Files changed
 

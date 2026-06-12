@@ -35,6 +35,8 @@ pub enum SessionError {
     ResourceFlow(#[from] crate::arena_allocation_sync::ResourceFlowSyncError),
     #[error("resource economy sync: {0}")]
     ResourceEconomy(#[from] crate::resource_economy_sync::ResourceEconomySyncError),
+    #[error("session mapping: {0}")]
+    Mapping(String),
     #[error("resource flow opt-in: {0}")]
     ResourceFlowOptIn(String),
 }
@@ -56,6 +58,9 @@ pub struct RunSummary {
     pub tick_event_readback_ms: f64,
     pub tick_event_readback_bytes: u64,
     pub submit_tick_patches_ms: f64,
+    pub resource_flow_band_dispatches: u64,
+    pub mapping_ticks: u64,
+    pub mapping_commitment_events: u64,
     pub boundary_total_ms: f64,
     pub boundary_value_readback_ms: f64,
     pub boundary_alert_collect_ms: f64,
@@ -103,6 +108,9 @@ impl RunSummary {
             tick_event_readback_ms: 0.0,
             tick_event_readback_bytes: 0,
             submit_tick_patches_ms: 0.0,
+            resource_flow_band_dispatches: 0,
+            mapping_ticks: 0,
+            mapping_commitment_events: 0,
             boundary_total_ms: 0.0,
             boundary_value_readback_ms: 0.0,
             boundary_alert_collect_ms: 0.0,
@@ -168,6 +176,32 @@ pub struct SimSession {
     pub resource_flow_flag_source: crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource,
     /// RF-T4: authored scenario-class / execution profile at session open.
     pub resource_flow_execution_profile: ResourceFlowExecutionProfile,
+    /// CT-3b+4a Line 3: profile-gated in-loop mapping state. `None` unless
+    /// the game mode authored `SparseRegionFieldV1` + a region field with a
+    /// pressure binding; presence alone never wires anything.
+    pub mapping: Option<SessionMappingState>,
+    /// Commitment journal: every mapping threshold crossing observed in the
+    /// session loop, in tick order. Consumed at boundaries; diagnostic
+    /// readback never feeds runtime decisions.
+    pub mapping_commitments: Vec<MappingCommitmentRecord>,
+}
+
+/// CT-3b+4a Line 3: everything the session loop needs to run the admitted
+/// RF-fed heatmap chain per tick, GPU-resident end to end.
+pub struct SessionMappingState {
+    pub mapping: crate::first_slice_mapping_runtime::FirstSliceMappingSession,
+    scatter: simthing_gpu::IndexedScatterOp,
+    entries: Vec<simthing_gpu::ScatterEntry>,
+    cells: Vec<(u32, u32)>,
+    weights: (f32, f32),
+    commitment: simthing_spec::CompiledFirstSliceCommitmentThreshold,
+}
+
+/// One mapping commitment crossing observed by the session loop.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MappingCommitmentRecord {
+    pub tick: u64,
+    pub event: simthing_gpu::ThresholdEvent,
 }
 
 impl SimSession {
@@ -214,6 +248,8 @@ impl SimSession {
             resource_flow_flag_source:
                 crate::resource_flow_opt_in_telemetry::ResourceFlowFlagSource::DefaultDisabled,
             resource_flow_execution_profile: ResourceFlowExecutionProfile::DefaultDisabled,
+            mapping: None,
+            mapping_commitments: Vec::new(),
         })
     }
 
@@ -353,6 +389,7 @@ impl SimSession {
             validate_resource_flow_flat_star_execution(game_mode, &spec_state)?;
         }
         session.install_spec_state(spec_state)?;
+        session.install_session_mapping(game_mode)?;
         Ok(session)
     }
 
@@ -378,6 +415,112 @@ impl SimSession {
         self.proto.root = preview.root;
         self.proto.allocator = preview.allocator;
         self.install_spec_state(preview.state)
+    }
+
+    /// CT-3b+4a Line 3: wire the in-loop mapping chain when (and only when)
+    /// the game mode authored the explicit profile, one region field, and a
+    /// pressure binding. Absence of any piece leaves the session mapping-free;
+    /// a half-authored configuration is a hard open error, never a silent skip.
+    fn install_session_mapping(&mut self, game_mode: &GameModeSpec) -> Result<(), SessionError> {
+        if !game_mode.mapping_execution_profile.enables_execution()
+            || game_mode.region_fields.is_empty()
+        {
+            return Ok(());
+        }
+        if game_mode.region_fields.len() != 1 {
+            return Err(SessionError::Mapping(
+                "session-loop mapping v1 integrates exactly one region field".into(),
+            ));
+        }
+        let field = &game_mode.region_fields[0];
+        let preview = simthing_spec::compile_region_field_preview(field)
+            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        let Some(commitment) = preview.commitment.clone() else {
+            return Err(SessionError::Mapping(
+                "session-loop mapping requires an authored commitment threshold".into(),
+            ));
+        };
+        let formula = field.parent_formula.as_ref().ok_or_else(|| {
+            SessionError::Mapping("session-loop mapping requires parent_formula".into())
+        })?;
+        let (Some(weight_pressure), Some(weight_resource)) =
+            (formula.weight_pressure, formula.weight_resource)
+        else {
+            return Err(SessionError::Mapping(
+                "session-loop mapping requires authored ai_will_do weights".into(),
+            ));
+        };
+        let Some(binding) = field.pressure_binding.as_ref() else {
+            return Err(SessionError::Mapping(
+                "session-loop mapping requires a pressure_binding (RF-fed spine)".into(),
+            ));
+        };
+        let (entries, cells) = crate::arena_pressure::compile_arena_pressure_scatter(
+            binding,
+            &self.scenario,
+            &self.proto.registry,
+            &self.spec_state.arena_registry,
+            &self.spec_state.arena_participant_scaffold,
+            self.state.n_dims,
+            field,
+        )
+        .map_err(|e| SessionError::Mapping(format!("{e}")))?;
+        let mapping = crate::first_slice_mapping_runtime::FirstSliceMappingSession::open(
+            &self.state.ctx,
+            game_mode.mapping_execution_profile,
+            field,
+        )
+        .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        let scatter = simthing_gpu::IndexedScatterOp::new(&self.state.ctx);
+        self.mapping = Some(SessionMappingState {
+            mapping,
+            scatter,
+            entries,
+            cells,
+            weights: (weight_pressure, weight_resource),
+            commitment,
+        });
+        Ok(())
+    }
+
+    /// One in-loop mapping step: on-device pressure scatter, the bounded
+    /// stencil + reduce + ai_will_do EML + commitment scan, and journal the
+    /// crossings. Entirely GPU-resident; no value readback on this path.
+    fn run_mapping_step(&mut self, summary: &mut RunSummary) -> Result<(), SessionError> {
+        let Some(m) = self.mapping.as_mut() else {
+            return Ok(());
+        };
+        let ctx = &self.state.ctx;
+        m.scatter
+            .dispatch(
+                ctx,
+                &self.state.values,
+                m.mapping.stencil_input_buffer(),
+                &m.entries,
+            )
+            .map_err(|e| SessionError::Mapping(format!("{e}")))?;
+        m.mapping
+            .queue_gpu_seed_cells(&m.cells)
+            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        let report = m
+            .mapping
+            .tick_with_commitment_spec_fixture(
+                ctx,
+                crate::first_slice_mapping_runtime::FirstSliceTickOptions::hot_path(),
+                m.weights,
+                &m.commitment,
+            )
+            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
+        summary.mapping_ticks += 1;
+        summary.mapping_commitment_events += report.threshold_events.len() as u64;
+        let tick = summary.ticks_run;
+        self.mapping_commitments.extend(
+            report
+                .threshold_events
+                .into_iter()
+                .map(|event| MappingCommitmentRecord { tick, event }),
+        );
+        Ok(())
     }
 
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
@@ -411,6 +554,20 @@ impl SimSession {
             summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
             summary.tick_event_readback_ms += tick.event_readback_ms;
             summary.tick_event_readback_bytes += tick.event_readback_bytes;
+
+            // CT-3b+4a Line 3: opt-in GPU work rides the same tick — RF
+            // arena bands when the pipeline flag is on, then the admitted
+            // mapping chain (scatter → stencil → reduce → EML → commitment).
+            if self.proto.flags.use_accumulator_resource_flow
+                && self.state.accumulator_resource_flow_active
+            {
+                self.state.run_resource_flow_bands(
+                    self.state.accumulator_resource_flow_bands,
+                    self.scenario.dt,
+                );
+                summary.resource_flow_band_dispatches += 1;
+            }
+            self.run_mapping_step(&mut summary)?;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
@@ -512,6 +669,20 @@ impl SimSession {
             summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
             summary.tick_event_readback_ms += tick.event_readback_ms;
             summary.tick_event_readback_bytes += tick.event_readback_bytes;
+
+            // CT-3b+4a Line 3: opt-in GPU work rides the same tick — RF
+            // arena bands when the pipeline flag is on, then the admitted
+            // mapping chain (scatter → stencil → reduce → EML → commitment).
+            if self.proto.flags.use_accumulator_resource_flow
+                && self.state.accumulator_resource_flow_active
+            {
+                self.state.run_resource_flow_bands(
+                    self.state.accumulator_resource_flow_bands,
+                    self.scenario.dt,
+                );
+                summary.resource_flow_band_dispatches += 1;
+            }
+            self.run_mapping_step(&mut summary)?;
 
             if tick.boundary_reached {
                 let day = tick.day_index;
