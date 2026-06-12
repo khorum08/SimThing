@@ -12,6 +12,7 @@ pub mod context;
 pub mod emission_accumulator;
 pub mod indexed_scatter;
 pub mod intensity_accumulator;
+pub mod min_plus_stencil;
 pub mod overlay_orderband;
 pub mod overlay_prep;
 pub mod passes;
@@ -64,6 +65,11 @@ pub use indexed_scatter::{
 pub use intensity_accumulator::{
     build_intensity_eml_entries, plan_intensity_eml_ops, register_intensity_eml_formulas,
     IntensityEmlEntry, IntensityEmlPlan,
+};
+pub use min_plus_stencil::{
+    cell_index, cpu_min_plus_d_from_w, cpu_min_plus_relaxation, cpu_min_plus_step, extract_d_flat,
+    max_d_field_error, pack_w_and_initial_d, MinPlusStencilConfig, MinPlusStencilError,
+    MinPlusStencilOp, MIN_PLUS_INF, MIN_PLUS_MAX_ITERATIONS,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use overlay_prep::build_overlay_deltas;
