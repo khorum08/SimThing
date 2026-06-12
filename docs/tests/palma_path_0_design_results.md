@@ -46,4 +46,4 @@ PALMA-PATH-4: **IMPLEMENTED / PASS** (toy axis) — [`palma_path_4_benchmark_res
 
 PALMA-PATH-4S: **IMPLEMENTED / METRICS REMEDIAL PASS** — [`palma_path_4_stellaris_scale_benchmark_results.md`](palma_path_4_stellaris_scale_benchmark_results.md)
 
-PALMA-PATH-5: not started (admitted Location/gridcell property-column integration).
+PALMA-PATH-5: **IMPLEMENTED / PASS** — [`palma_path_5_install_session_property_results.md`](palma_path_5_install_session_property_results.md)

@@ -121,7 +121,7 @@ At churn **0%**, **8** iter: incremental **~81 ms** vs Dijkstra **~203 ms** with
 
 ### Not production integration
 
-PATH-4S is a **representative numeric W/D benchmark**. It is **not** install/session property-column integration. **PATH-5** (admitted Location/gridcell property columns) remains next. No production movement policy has landed.
+PATH-4S is a **representative numeric W/D benchmark**. It is **not** install/session property-column integration (**PATH-5** owns property-column gather/writeback proof). No production movement policy has landed.
 
 ## Constitutional boundaries
 
