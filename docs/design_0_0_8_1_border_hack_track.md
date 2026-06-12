@@ -1,8 +1,8 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-2C CLOSED; BH-2D deferred (2026-06-11).** Named consumer
-> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition, BH-2S stress feedstock, and
-> BH-2C PALMA feedstock proof. BH-2D remains deferred. Seated as a generic GPU utility, PALMA-style. Product
+> **Status: BH-0…BH-2D CLOSED (2026-06-11).** Named consumer
+> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition, BH-2S stress feedstock,
+> BH-2C PALMA feedstock, and BH-2D CT-4b 200×200 fixture proof. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
 > heatmap pass** on late-game crowded maps — no border service, no segmentation pass, no border
 > objects. Adjudicated by executive design authority from the C_u proposition digest
@@ -182,7 +182,7 @@ exact values (`to_bits`).
 | **BH-1R-SCALE** | T1 | staged parallel GPU reduction | No single-lane full-grid scan; multi-workgroup + partial fold |
 | **BH-2** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | GPU W composition from base W + choke columns | BH-2A contract + BH-2B kernel; no movement/pathfinding |
 | **BH-2C** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | PALMA feedstock proof | Composed W → GpuInterleavedW → resident D; compact probe only |
-| **BH-2D** | deferred | CT-4b fixture proof | 200×200 two-field fixture; test names only |
+| **BH-2D** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | CT-4b 200×200 fixture proof | Full resident feedstock chain; compact probe only |
 | **BH-3** | deferred (consumer-pulled) | ClauseThing authoring surface for the operator | Opens with the first ClauseScript-authored consumer |
 
 BH-0 was frontier-gated at seating; with §2 pinned to file-and-formula level it is
@@ -218,7 +218,7 @@ Fixtures original and synthetic. No sqrt anywhere in this track (exact-sqrt rule
 | BH-2S multi-field overlap stress | IMPLEMENTED / PASS | [`tests/bh2s_overlap_stress_results.md`](tests/bh2s_overlap_stress_results.md) |
 | BH-2S-API-DOC consumer service surface | DOCUMENTED / PASS | §11 (this doc) |
 | BH-2C PALMA feedstock proof | IMPLEMENTED / PASS | [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md) |
-| BH-2D CT-4b fixture proof | DEFERRED | — |
+| BH-2D CT-4b 200×200 fixture proof | IMPLEMENTED / PASS | [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md) |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
 
 **Track-forward (2026-06-11):** Named consumer `CT-4b_Local_Automata_W_Feedstock` opens BH-2.
@@ -241,10 +241,11 @@ lines, CPU segmentation, route objects, or a pathfinding service. The consumer e
 vector steps by gradient descent / min-plus traversal over resident PALMA fields. **BH-2 only
 supplies numeric `W` feedstock.** BH-2 does not implement movement policy.
 
-### 9.1 Conceptual fixture (BH-2D scope — not implemented in BH-2A/B)
+### 9.1 Conceptual fixture (BH-2D — IMPLEMENTED / PASS)
 
 200×200 grid; 100 star/source points; 150 local automata (75 source family A, 75 source family B).
 Fixture docs/tests may say Terran/Pirate; production substrate must not encode those semantics.
+Proof: [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md).
 
 ### 9.2 Two-field topology
 
@@ -287,7 +288,7 @@ weighted composition only.
 | BH-2B | IMPLEMENTED / PASS | Generic GPU W composition operator + admission |
 | BH-2S | IMPLEMENTED / PASS | Generic GPU stress field algebra (overlap/mismatch/weighted/velocity) |
 | BH-2C | IMPLEMENTED / PASS | Composed W → PALMA GpuInterleavedW → resident D + compact probe |
-| BH-2D | DEFERRED | CT-4b 200×200 fixture proof |
+| BH-2D | IMPLEMENTED / PASS | CT-4b 200×200 fixture proof; full resident feedstock chain |
 
 ## 10. BH-2S: Multi-Field Overlap Stress (scenario-track addendum)
 
@@ -567,3 +568,45 @@ service; CPU segmentation; semantic WGSL; full-field CPU readback for decisions;
 `bh2c_no_route_or_predecessor_objects`, `bh2c_no_native_sqrt_in_hot_path`,
 `bh2c_scaffolding_not_required_for_production_pass`. Report:
 [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md).
+
+## 13. BH-2D: CT-4b 200×200 fixture proof
+
+**Purpose:** prove the full CT-4b scenario shape over resident generic field surfaces at 200×200
+scale — not a movement engine, not local automata decisions, not route planning.
+
+**Fixture shape (test-only module `ct4b_field_fixture.rs`):**
+
+| Parameter | Value |
+|---|---|
+| Grid | 200 × 200 (40,000 cells) |
+| Source points | 100 (50 `field_a`, 50 `field_b`) |
+| Local automata | 150 (metadata only in BH-2D) |
+| Column layout | `base_w`, pressure/choke per family, two `output_w` profiles, stress overlap/mismatch, `d_col` |
+
+**Production GPU chain (pinned):**
+
+```text
+seeded pressure → BH-0/BH-1 choke readout (GPU flux) → BH-2B W compose (2 profiles)
+  → BH-2S stress compose → PALMA GpuInterleavedW → resident D → compact probe
+```
+
+**Live production APIs (unchanged from BH-2B/BH-2C):** `compiled_w_impedance_compose_to_gpu_config`,
+`compiled_stress_compose_to_gpu_config`, `composed_w_min_plus_stencil_config`.
+
+**Test-only scaffolding (quarantined):** `Ct4bFixture`, `readback_buffer`, `cpu_oracle_probe` in
+`bh2d_ct4b_fixture.rs` and `support/ct4b_field_fixture.rs`. Production bridge/GPU ops do not
+invoke fixture builders or CPU oracle.
+
+**Probe discipline:** compact `MinPlusTraversalDProbeOp` readback only; probe anchor within the
+64-iteration min-plus reach cone from destination. No full-field W/D readback on production path.
+
+**Forbidden:** border/frontline service; pathfinding engine; movement engine; route/predecessor
+objects; CPU planner; semantic WGSL; faction-specific production code; full-field CPU decision
+readback.
+
+**Tests:** `bh2d_ct4b_fixture_builds_200x200_generic_fields`,
+`bh2d_two_profiles_produce_distinct_w_outputs`, `bh2d_composed_w_feeds_resident_palma_d`,
+`bh2d_profile_weight_changes_compact_d_probe`, `bh2d_overlap_stress_available_as_field_policy_feedstock`,
+`bh2d_no_full_field_cpu_readback_for_decision`, `bh2d_no_route_or_predecessor_objects`,
+`bh2d_scaffolding_promoted_or_quarantined`, `bh2d_no_native_sqrt_in_hot_path`. Report:
+[`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md).

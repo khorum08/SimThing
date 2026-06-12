@@ -1,3 +1,8 @@
+# 2026-06-11 - BH-2D: CT-4b 200×200 fixture proof
+
+- **Fixture proof:** test-only `Ct4bFixture` (200×200, 100 source points, 150 automata metadata) runs BH-0/BH-1 flux+choke → BH-2B W (2 profiles) → BH-2S stress → PALMA GpuInterleavedW → compact D probe. No movement engine.
+- **Report:** [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md)
+
 # 2026-06-11 - BH-2C: composed W feeds resident PALMA traversal
 
 - **Feedstock proof:** BH-2B `WImpedanceComposeOp` → `MinPlusTraversalInput::GpuInterleavedW` → resident D + compact `MinPlusTraversalDProbeOp`. Live API: `composed_w_min_plus_stencil_config`. Test scaffolding quarantined in `bh2c_palma_w_feedstock.rs`.
