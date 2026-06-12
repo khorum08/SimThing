@@ -13,6 +13,7 @@ pub mod emission_accumulator;
 pub mod indexed_scatter;
 pub mod intensity_accumulator;
 pub mod min_plus_stencil;
+pub mod min_plus_traversal_d_probe;
 pub mod overlay_orderband;
 pub mod overlay_prep;
 pub mod passes;
@@ -73,6 +74,10 @@ pub use min_plus_stencil::{
     MinPlusTraversalExecutionMode, MinPlusTraversalExecutionOptions, MinPlusTraversalFieldOp,
     MinPlusTraversalGpuOutputHandle, MinPlusTraversalInput, MinPlusTraversalWInputKind,
     MIN_PLUS_INF, MIN_PLUS_MAX_ITERATIONS,
+};
+pub use min_plus_traversal_d_probe::{
+    cpu_probe_d_at_candidates, MinPlusTraversalDProbeConfig, MinPlusTraversalDProbeError,
+    MinPlusTraversalDProbeOp, MinPlusTraversalDProbeResult, TRAVERSAL_D_PROBE_MAX_CANDIDATES,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use overlay_prep::build_overlay_deltas;
