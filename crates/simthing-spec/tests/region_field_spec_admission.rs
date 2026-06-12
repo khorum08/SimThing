@@ -462,6 +462,7 @@ fn test_k_first_slice_commitment_spec_admission() {
         threshold: 5490.8657,
         direction: FirstSliceCommitmentDirectionSpec::Upward,
         event_kind: 0x5345_4144,
+        effect: None,
     });
 
     let preview = compile_region_field_preview(&spec).expect("commitment admits");

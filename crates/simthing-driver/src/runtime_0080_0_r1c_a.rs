@@ -652,3 +652,28 @@ fn mix_u64(hash: &mut u64, value: u64) {
         *hash = hash.wrapping_mul(FNV_PRIME);
     }
 }
+
+#[cfg(test)]
+mod fast_mark_sentinel_tests {
+    use super::expected_marked_slots;
+    use crate::runtime_0080_0_r1b::Runtime0080R1bFreeSlotMarkSource;
+
+    #[test]
+    fn r1_fast_mark_table_marks_one_slot_from_sources() {
+        let sources = vec![
+            Runtime0080R1bFreeSlotMarkSource {
+                tick: 1,
+                slot: 4,
+                reason: "zero_cohort_departure",
+                source_event_kind: "ZeroCohort",
+            },
+            Runtime0080R1bFreeSlotMarkSource {
+                tick: 2,
+                slot: 4,
+                reason: "duplicate_slot_deduped",
+                source_event_kind: "ZeroCohort",
+            },
+        ];
+        assert_eq!(expected_marked_slots(&sources), vec![4]);
+    }
+}

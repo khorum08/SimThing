@@ -1062,3 +1062,28 @@ fn mix_u64(hash: &mut u64, value: u64) {
 fn _journal_slot_col_idx(slot: u32, col: u32) -> usize {
     slot_col_idx(slot, col)
 }
+
+#[cfg(test)]
+mod fast_event_journal_sentinel_tests {
+    use super::free_slot_mark_sources_from_events;
+    use crate::dress_rehearsal_r6c_integrated_run::{R1bStructuralEvent, R1bStructuralEventKind};
+
+    #[test]
+    fn r1_fast_event_journal_marks_one_free_slot_from_structural_event() {
+        let events = vec![R1bStructuralEvent {
+            tick: 3,
+            event_kind: R1bStructuralEventKind::ZeroCohort,
+            source_slot: 7,
+            target_slot: 7,
+            source_cell: 0,
+            target_cell: 0,
+            owner_code: 2,
+            amount_or_delta: 0,
+            threshold_code: 0,
+        }];
+        let marks = free_slot_mark_sources_from_events(&events);
+        assert_eq!(marks.len(), 1);
+        assert_eq!(marks[0].slot, 7);
+        assert_eq!(marks[0].reason, "zero_cohort_departure");
+    }
+}

@@ -641,10 +641,9 @@ aggregate max-column metrics only. Production BH/PALMA ops unchanged.
 cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation --ignored --nocapture
 ```
 
-## 15. R1C workspace gate hygiene (not BH track)
+## 15. R1 workspace gate hygiene (not BH track)
 
-Legacy R1C-B/C proof/report replay tests were removed or quarantined from the default workspace gate.
-Default workspace retains only fast production-relevant allocation/membership sentinels. Candidate F
-exact-sqrt authority is in the 0.0.8.1 transient constitution (§0.7). The BH track does not depend on
-R1C proof scaffolding. Report:
-[`tests/r1c_default_gate_cleanup_results.md`](tests/r1c_default_gate_cleanup_results.md).
+Legacy R1* proof-ledger/report/checksum tests were deleted or quarantined from the default workspace
+gate. Default workspace now retains only fast production-relevant R1* sentinels. Historical proof
+batteries must not be reintroduced as default tests. The BH track does not depend on R1* proof
+scaffolding. Report: [`tests/r1_default_workspace_purge_results.md`](tests/r1_default_workspace_purge_results.md).
