@@ -1,10 +1,12 @@
 # PALMA-PATH-4S Stellaris-scale fleet movement field benchmark results
 
-Status: **IMPLEMENTED / PASS** (2026-06-11)
+Status: **IMPLEMENTED / METRICS REMEDIAL PASS** (2026-06-11; PALMA-PATH-4S-R)
 
 Supersedes toy-shaped PALMA-PATH-4 samples as the **representative workload** for the stowaway-heatmap thesis. PATH-4 toy matrix remains in [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md) for axis exploration.
 
 Guide: [`../design_0_0_8_1_palma_pathfinding_integration_guide.md`](../design_0_0_8_1_palma_pathfinding_integration_guide.md)
+
+**PALMA-PATH-4S-R:** removed mixed CPU-dest + GPU-warm “path eval” total and `max()` tick obscuring. Each strategy is reported side-by-side with explicit pressure-included and pressure-already-paid incremental costs.
 
 ## Environment
 
@@ -34,112 +36,96 @@ Not run: `cargo test --workspace`, broad driver suite, ClauseThing tests.
 | Fleets per faction | **75** |
 | Total fleets | **150** |
 | Stars | **100** spaced cells |
-| Distinct fleet destinations (default mix) | **75** (hostile/frontier/random star assignment) |
+| Distinct fleet destinations (default mix) | **75** |
 
-### Star placement
+Star placement: stratified **10×10 regions** + deterministic LCG jitter (no duplicates). Fleet placement: near faction-owned stars. Destination mix: 50% hostile / 30% frontier / 20% random star (benchmark labels only).
 
-Stratified **10×10 regions** on the 180×180 grid — one star per region at region center + deterministic LCG jitter. No duplicates (asserted).
+W composition: test-local pressure spread + numeric compose (hostile/friendly disks, blockade band, fuel gradient, star traffic, churn jitter). Min-plus/GPU see **flat `W`/`D` only**.
 
-### Fleet placement
+## Metric definitions (formulas)
 
-Each faction’s 75 fleets spawn near owned stars (home star + ±3 cell jitter).
+All times in **microseconds (µs)** per simulated tick unless noted.
 
-### Destination selection (benchmark labels only)
-
-Per fleet deterministic mix: **50%** hostile faction star, **30%** owned/frontier star, **20%** random star.
-
-### W composition (numeric only)
-
-Test-local **pressure/SEAD-reduction stand-in** then numeric compose:
-
-1. Hostile fleet pressure disks (radius 3) at each fleet position
-2. Friendly congestion disks on faction cluster samples
-3. Two-pass neighbor spread/decay (movement-front reduction stand-in)
-4. Base `W = 1 + pressure` (clamped)
-5. Vertical blockade band at map midline (numeric high-`W` corridor)
-6. Fuel/supply gradient on distant cells (`x+y` threshold)
-7. Star traffic bump at star cells
-8. Optional churn jitter on `churn_pct`% of cells
-
-Min-plus / GPU code sees **flat `W`/`D` only** — no semantic branches.
-
-## Baseline definitions
-
-| Axis | Definition |
+| Component | Formula |
 |---|---|
-| **Pressure/SEAD reduction** | Timed `reduce_pressure_and_compose_w` (spread + compose). **Not free** — reported separately. |
-| **CPU per-fleet baseline (A)** | 150× test-local Dijkstra (cell-entry `W`, early exit at dest star). |
-| **CPU per-destination fields (B1)** | One min-plus field per **distinct** destination star among fleets; then sample all 150 fleets. |
-| **CPU faction objective fields (B2)** | **2** min-plus fields (faction rally stars); sample all 150 fleets on faction field. |
-| **CPU unique-destination worst case (B3)** | Force **150** unique destinations; one field each — amortization lower bound stress. |
-| **GPU field (C)** | `MinPlusStencilOp` on **one** primary rally-star field: setup, cold dispatch (upload+dispatch), warm dispatch, **readback reported separately**. |
-| **Sampling** | PATH-3 lowest-neighbor-`D` argmin per fleet. |
+| `pressure_reduction_us` | Timed `reduce_pressure_and_compose_w` |
+| `cpu_per_fleet_total_us` | Σ 150× Dijkstra queries |
+| `cpu_per_dest_fields_us` | Σ min-plus fields for **distinct** fleet destination stars |
+| `cpu_sample_total_us` | 150× neighbor-`D` argmin on per-dest fields |
+| `cpu_faction_fields_us` | **2** min-plus fields (faction rally stars) |
+| `cpu_faction_sample_us` | 150× argmin on faction rally fields |
+| `cpu_unique_dest_fields_us` | **150** min-plus fields (stress case) |
+| `cpu_unique_sample_us` | 150× argmin on unique-dest fields |
+| `gpu_single_field_*` | **One** primary rally-star `MinPlusStencilOp` — **not** 75 destination fields |
+| `total_pressure_plus_*` | `pressure_reduction_us + strategy_path_cost` |
+| `incremental_*_if_pressure_paid` | Strategy path cost only (pressure assumed sunk) |
+| `total_pressure_plus_gpu_single_field_warm_us` | `pressure + gpu_warm_dispatch + gpu_readback` for **one** field |
+
+**Removed (4S-R):** `path_eval_pressure_already_paid_us` mixing CPU dest fields + GPU warm; `max()` “total tick” hiding side-by-side strategies.
 
 ## Exactness
 
-- Iterations **1/2/4/8** are **movement-front approximations**, not guaranteed shortest-path closure on 180×180.
-- Do **not** claim exact routes unless comparing to Dijkstra or full relaxation on limited cases.
-- f32 arithmetic; no `sqrt`/magnitude added.
+Iterations **1/2/4/8** are **movement-front approximations**, not guaranteed full-map shortest-path closure. f32 only; no `sqrt`/magnitude.
 
-## Timing table (µs — measured 2026-06-11)
+## Timing table — side-by-side strategy totals (µs, measured 2026-06-11)
 
-`distinct_dests=75` for default fleet mix. GPU columns only on churn **0%**, iters **4/8** (primary rally field).
+`distinct_dests=75` for default fleet mix. GPU columns only when `churn=0%`, `iters∈{4,8}` (one rally field).
 
-| churn | iters | pressure | cpu_fleet_total | cpu_fleet_avg | cpu_dest_fields | cpu_faction_fields | cpu_unique_fields | cpu_sample | gpu_setup | gpu_cold | gpu_warm | gpu_rb | total_w_pressure | path_dest_if_pressure_paid |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0% | 1 | 295 | 197069 | 1314 | 14617 | 389 | 29520 | 13 | — | — | — | — | 197364 | 14630 |
-| 0% | 4 | 320 | 200644 | 1338 | 43811 | 1510 | 85137 | 17 | 2282 | 1243 | 1215 | 1005 | 200965 | 45043 |
-| 0% | 8 | 274 | 212921 | 1420 | 83408 | 2179 | 166737 | 20 | 869 | 531 | 187 | 1140 | 213195 | 83615 |
-| 5% | 8 | 290 | 271341 | 1809 | 147939 | 3975 | 193337 | 26 | — | — | — | — | 271631 | 147965 |
-| 20% | 8 | 356 | 299870 | 1999 | 151193 | 4868 | 227233 | 47 | — | — | — | — | 300227 | 151240 |
+| churn | iters | pressure | +pressure+dijkstra | +pressure+cpu_dest | +pressure+cpu_faction | +pressure+cpu_unique | incr. dijkstra | incr. cpu_dest | incr. cpu_faction | incr. cpu_unique |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0% | 1 | 303 | 200777 | 18748 | 710 | 37906 | 200473 | 18445 | 407 | 37603 |
+| 0% | 4 | 340 | 204666 | 43268 | 1473 | 86286 | 204326 | 42928 | 1134 | 85947 |
+| 0% | 8 | 324 | 203474 | 81202 | 2437 | 160216 | 203150 | 80878 | 2113 | 159893 |
+| 5% | 8 | 255 | 259648 | 137138 | 2357 | 237079 | 259393 | 136883 | 2102 | 236824 |
+| 20% | 8 | 288 | 283556 | 113643 | 2342 | 216562 | 283268 | 113355 | 2054 | 216273 |
 
-Full 16-row matrix (churn 0/1/5/20 × iters 1/2/4/8): run ignored test locally.
+### GPU single-field (one rally star — not 75 fields)
 
-## Break-even / stowaway discussion
+| churn | iters | setup | cold dispatch | warm dispatch | readback | +pressure+gpu1_warm | incr. gpu1 (warm+readback) |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0% | 4 | 1903 | 12213 | 112 | 951 | 1403 | 1063 |
+| 0% | 8 | 752 | 888 | 351 | 1166 | 1840 | 1517 |
 
-### Pressure reduction is already required
+Full 16-row matrix: run ignored test locally.
 
-Pressure compose + spread costs **~0.25–0.35 ms/tick** here — small vs path evaluation, but **explicitly counted**. When 150 fleets move, this stand-in represents work the Location must do anyway for SEAD/movement-front heatmaps. Min-plus **`D`** refresh can **piggyback** on the same numeric `W` buffer — it is **not** free pathfinding, but may be **free-ish** relative to a separate per-fleet planner farm.
+## Honest conclusions
 
-### CPU per-fleet Dijkstra (A)
+### Measured, not simulated
 
-**~200–300 ms/tick** for 150 fleets on 180×180 (`~1.3–2.0 ms/fleet`). Scales linearly with fleet count. Still competitive for **very few** movers or **one** near-destination query (see PATH-4 counterexample test).
+All rows come from `palma_path_4s_stellaris_scale_benchmark` on the actual 180×180 `W` array, 100 stars, 150 fleet positions/destinations, Dijkstra baseline, CPU min-plus fields, and GPU `MinPlusStencilOp` where noted.
 
-### Shared destination fields (B1) — wins at scale here
+### Pressure/W composition is explicitly timed
 
-At churn **0%**, **8** iterations: **83 ms** for 75 distinct destination fields + **0.02 ms** sampling vs **213 ms** Dijkstra — **~2.5×** faster path evaluation **after** pressure is paid (`83615 µs` vs `212921 µs`).
+**~0.25–0.35 ms/tick** here — small vs path evaluation but **never hidden**. Min-plus `D` may piggyback on the same numeric `W` buffer the movement/SEAD heatmap pass already maintains — **stowaway**, not free pathfinding.
 
-Break-even vs Dijkstra (ignoring pressure): `83408 / 1420 ≈ 59` fleets with shared-dest amortization at 8 iterations.
+### GPU timing is one field only
 
-### Faction objective fields (B2) — strongest amortization
+Warm dispatch **~0.1–0.4 ms** for **one** rally-star field. **Do not** compare this as a replacement for **75** CPU per-destination fields without a multi-field GPU batch (not implemented). Setup, cold path, and readback are reported separately.
 
-**~2.2 ms** for 2 faction rally fields + negligible sampling vs **213 ms** Dijkstra when fleets share strategic fronts. This models Stellaris-like **shared war goals** — field approach most compelling.
+### CPU per-fleet Dijkstra wins when…
 
-### Unique destinations (B3) — honest weak case
+- **Few movers** or **spot queries** near destination (PATH-4 counterexample).
+- **Unique-destination stress (B3):** at churn 0%, 8 iter, incremental cpu_unique (**~160 ms**) approaches incremental Dijkstra (**~203 ms**).
 
-**~167 ms** for 150 unique destination fields (8 iter) — approaches Dijkstra total (**213 ms**) without GPU batching. Reports **field amortization failure** when every fleet has a unique objective.
+### CPU faction rally fields (B2) — strongest amortization
 
-### GPU (C)
+At churn **0%**, **8** iter: incremental **~2.1 ms** vs Dijkstra **~203 ms** when fleets share strategic fronts.
 
-Single-field GPU warm dispatch **~0.2–1.2 ms** (churn 0%, 8 iter) vs **~83 ms** CPU for **75** CPU destination fields. **Do not** extrapolate to universal GPU victory: benchmark measures **one** GPU field; **75** distinct GPU fields would require multi-pass or batched stencil (not implemented). Readback **~1 ms** reported separately — hidden if fields stay GPU-resident.
+### CPU per-destination fields (B1) — wins when distinct dest count is low enough
 
-### Total tick framing
+At churn **0%**, **8** iter: incremental **~81 ms** vs Dijkstra **~203 ms** with **75** distinct destinations.
 
-| Strategy | churn 0%, 8 iter (µs) |
-|---|---|
-| pressure + Dijkstra | **213195** |
-| pressure + per-dest fields + sample | **83615** (pressure already paid) + 274 ≈ **84k** incremental path |
-| pressure + faction fields + sample | **~2200** path eval + 274 pressure |
+### Partial iterations
 
-## Cases where CPU wins
+1/2/4/8-iteration fields are movement-front decisions, not exact shortest-path closure on 180×180.
 
-- **Few fleets / spot queries** near destination on large grids (PATH-4 counterexample).
-- **150 unique destinations** — per-destination field count approaches per-fleet Dijkstra cost.
-- **Cold GPU + many distinct GPU fields + readback** — setup dominates if not amortized.
+### Not production integration
+
+PATH-4S is a **representative numeric W/D benchmark**. It is **not** install/session property-column integration. **PATH-5** (admitted Location/gridcell property columns) remains next. No production movement policy has landed.
 
 ## Constitutional boundaries
 
-No pathfinding engine, graph manager, route object, predecessor table, movement policy, semantic SEAD runtime, ClauseThing runtime, simthing-sim semantic changes, or semantic GPU branches. All scenario naming is test-local.
+No pathfinding engine, graph manager, route object, predecessor table, movement policy, semantic SEAD runtime, ClauseThing runtime, simthing-sim semantic changes, or semantic GPU branches.
 
 ## Code
 

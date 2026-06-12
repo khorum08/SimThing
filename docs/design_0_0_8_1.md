@@ -372,4 +372,5 @@ product-authorized.
 - Active status table + read order: [`workshop/mapping_current_guidance.md`](workshop/mapping_current_guidance.md)
 - Recursive rehearsal closure evidence: [`tests/runtime_0080_rr_4_results.md`](tests/runtime_0080_rr_4_results.md)
 - PALMA semiring pathfinding integration guide (PATH-0): [`design_0_0_8_1_palma_pathfinding_integration_guide.md`](design_0_0_8_1_palma_pathfinding_integration_guide.md)
+- PALMA ladder status: PATH-0 through PATH-4S are proof/benchmark rungs over **numeric W/D fields** (see guide §15). **PATH-4S** is a measured 180×180 representative benchmark — **not** install/session property-column integration. **PATH-5** (admitted Location/gridcell property columns) is next. **No production movement policy** has landed on this ladder.
 - Archived design lineage (historical only): `archive/superseded_design/`

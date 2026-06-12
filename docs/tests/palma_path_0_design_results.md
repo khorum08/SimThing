@@ -44,4 +44,6 @@ PALMA-PATH-3R: **IMPLEMENTED / PASS** — [`palma_path_3r_simthing_tree_fixture_
 
 PALMA-PATH-4: **IMPLEMENTED / PASS** (toy axis) — [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md)
 
-PALMA-PATH-4S: **IMPLEMENTED / PASS** (Stellaris-scale representative) — [`palma_path_4_stellaris_scale_benchmark_results.md`](palma_path_4_stellaris_scale_benchmark_results.md)
+PALMA-PATH-4S: **IMPLEMENTED / METRICS REMEDIAL PASS** — [`palma_path_4_stellaris_scale_benchmark_results.md`](palma_path_4_stellaris_scale_benchmark_results.md)
+
+PALMA-PATH-5: not started (admitted Location/gridcell property-column integration).

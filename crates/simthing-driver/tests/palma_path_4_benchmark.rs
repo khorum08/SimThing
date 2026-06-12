@@ -173,8 +173,7 @@ fn palma_path_4s_stellaris_scale_benchmark() {
         scenario.fleets.len(),
         scenario.distinct_destinations
     );
-    eprintln!("churn | iters | distinct_dests | pressure_us | cpu_fleet_total | cpu_fleet_avg | cpu_dest_fields | cpu_faction_fields | cpu_unique_fields | cpu_sample | gpu_setup | gpu_cold | gpu_warm | gpu_readback | total_w_pressure | path_if_pressure_paid");
-    eprintln!("---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---");
+    eprintln!("PALMA-PATH-4S strategy metrics (one line per churn/iter row):");
 
     with_gpu(|ctx| {
         for churn in stellaris_churn_matrix() {
