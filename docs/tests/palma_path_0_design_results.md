@@ -32,8 +32,10 @@ Resource Flow ADR, CT-3b+4a movement-front memo. PALMA paper §2.2, §2.3, §2.6
 
 None (docs-only). **`cargo test --workspace` not run.**
 
-## Next rung
+PALMA-PATH-0: **ACCEPTED / GUIDE**
 
-PALMA-PATH-1: **IMPLEMENTED / PASS** — [`palma_path_1_cpu_oracle_results.md`](palma_path_1_cpu_oracle_results.md)
+PALMA-PATH-1R: **IMPLEMENTED / PASS** — [`palma_path_1_cpu_oracle_results.md`](palma_path_1_cpu_oracle_results.md)
 
-PALMA-PATH-2: GPU/JIT min-plus stencil — not started.
+PALMA-PATH-2: **IMPLEMENTED / PASS** — [`palma_path_2_gpu_min_plus_results.md`](palma_path_2_gpu_min_plus_results.md)
+
+PALMA-PATH-3/4: not started.

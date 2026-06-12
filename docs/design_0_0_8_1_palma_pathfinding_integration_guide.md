@@ -292,11 +292,11 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 
 | Rung | ID | Scope | Status |
 |---|---|---|---|
-| 1 | **PALMA-PATH-0** | This guide (+ optional design results) | **READY FOR REVIEW** |
-| 2 | **PALMA-PATH-1** | Tiny CPU oracle: 5×5 min-plus **D** over **W**; blockade corridor; clear W | After PATH-0 acceptance |
-| 3 | **PALMA-PATH-2** | GPU/JIT min-plus stencil; CPU parity; fixed iterations | After PATH-1 acceptance |
-| 4 | **PALMA-PATH-3** | Terran convoy / pirate fleet fixture; field sampling only if movement path exists | After PATH-2/3 |
-| 5 | **PALMA-PATH-4** | Benchmark: CPU per-mover vs CPU field vs GPU field | After PATH-2/3 |
+| 1 | **PALMA-PATH-0** | Integration guide | **ACCEPTED / GUIDE** |
+| 2 | **PALMA-PATH-1R** | Hardened CPU oracle: detour/gap bend, INF cut, scalar field only | **IMPLEMENTED / PASS** — [`tests/palma_path_1_cpu_oracle_results.md`](tests/palma_path_1_cpu_oracle_results.md) |
+| 3 | **PALMA-PATH-2** | GPU/JIT min-plus stencil; CPU parity | **IMPLEMENTED / PASS** — [`tests/palma_path_2_gpu_min_plus_results.md`](tests/palma_path_2_gpu_min_plus_results.md) |
+| 4 | **PALMA-PATH-3** | Terran convoy / pirate fleet fixture; field sampling only if movement path exists | Not started |
+| 5 | **PALMA-PATH-4** | Benchmark: CPU per-mover vs CPU field vs GPU field | Not started |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
