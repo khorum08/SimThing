@@ -1,3 +1,9 @@
+# 2026-06-11 - BH-2A/B: CT-4b consumer contract + GPU W composition feedstock
+
+- **Named consumer:** `CT-4b_Local_Automata_W_Feedstock` opens BH-2. Generic GPU `WImpedanceComposeOp` composes `output_w = base_w + weight_a*choke_a + weight_b*choke_b` per admitted profile; spec/admission in `simthing-spec`; bridge in `w_impedance_compose_bridge.rs` (not `first_slice_mapping_runtime.rs`).
+- **BH-2C/BH-2D deferred:** PALMA feedstock proof and CT-4b 200×200 fixture proof remain open.
+- **Report:** [`tests/bh2_w_composition_results.md`](tests/bh2_w_composition_results.md)
+
 # 2026-06-11 - BH TRACK-FORWARD: BH-0…BH-1R-SCALE closed; BH-2 gated on named consumer
 
 - **Closure preserved:** BH-0 (`SaturatingFlux`), BH-1 (GPU-resident choke readout column), BH-1R (compact GPU threshold consumer), and BH-1R-SCALE (staged parallel reduction) are all **IMPLEMENTED / PASS**. No remedial work; no runtime changes this handoff.

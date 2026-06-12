@@ -32,6 +32,7 @@ pub mod resource_economy;
 pub mod resource_economy_admission;
 pub mod resource_flow_admission;
 pub mod trigger;
+pub mod w_impedance_compose_admission;
 
 pub use capability::{CapabilityTreeBuildOutput, CapabilityTreeBuilder};
 pub use context::CompileContext;
@@ -174,3 +175,7 @@ pub use resource_flow_admission::{
     ResourceFlowExpansionReport,
 };
 pub use trigger::compile_trigger;
+pub use w_impedance_compose_admission::{
+    compile_w_impedance_compose_preview, CompiledWImpedanceCompose,
+    CompiledWImpedanceComposeProfile,
+};

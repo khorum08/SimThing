@@ -1,9 +1,8 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-1R-SCALE CLOSED (2026-06-11); BH-2+ gated (2026-06-11).** BH-0 through
-> BH-1R-SCALE are accepted and closed. **Do not open BH-2** unless a named movement/traversal
-> consumer explicitly requests choke→`W` impedance feedstock. Seated as a generic GPU utility,
-> PALMA-style. Product
+> **Status: BH-0…BH-1R-SCALE CLOSED; BH-2A/B OPEN (2026-06-11).** Named consumer
+> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition feedstock. BH-2C/BH-2D remain
+> deferred. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
 > heatmap pass** on late-game crowded maps — no border service, no segmentation pass, no border
 > objects. Adjudicated by executive design authority from the C_u proposition digest
@@ -181,7 +180,9 @@ exact values (`to_bits`).
 | **BH-1** | T1 | §3 contract | Choke readout column; parity extended |
 | **BH-1R** | T1 | compact GPU choke threshold consumer | Compact 4-float GPU readback; CPU oracle test-only |
 | **BH-1R-SCALE** | T1 | staged parallel GPU reduction | No single-lane full-grid scan; multi-workgroup + partial fold |
-| **BH-2** | deferred (named-consumer gate) | `1−C/χ` choke column as PALMA min-plus impedance feedstock `W` (gradient-valley coupling) | Opens **only** when a named movement/traversal consumer names it; D stays a field |
+| **BH-2** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | GPU W composition from base W + choke columns | BH-2A contract + BH-2B kernel; no movement/pathfinding |
+| **BH-2C** | deferred | PALMA feedstock proof | PALMA consumes composed W generically |
+| **BH-2D** | deferred | CT-4b fixture proof | 200×200 two-field fixture; test names only |
 | **BH-3** | deferred (consumer-pulled) | ClauseThing authoring surface for the operator | Opens with the first ClauseScript-authored consumer |
 
 BH-0 was frontier-gated at seating; with §2 pinned to file-and-formula level it is
@@ -201,7 +202,7 @@ A PARTIAL row with a precise blocker is a success state; a creative reinterpreta
 
 No semantic WGSL. No border objects/services/graphs — borders are field readouts.
 `simthing-sim` stays map-free and BH-blind. Opt-in, default-off; spec presence enables nothing.
-CPU readback is oracle/diagnostic only. PALMA untouched until BH-2 opens. Fixtures original and
+CPU readback is oracle/diagnostic only. PALMA coupling deferred until BH-2C. Fixtures original and
 synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 
 ## 8. Status ledger
@@ -212,18 +213,75 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 | BH-1 choke readout | IMPLEMENTED / PASS | [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md) |
 | BH-1R compact choke threshold consumer | IMPLEMENTED / PASS | [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md) |
 | BH-1R-SCALE staged parallel GPU reduction | IMPLEMENTED / PASS | [`tests/bh1r_scale_parallel_reduction_results.md`](tests/bh1r_scale_parallel_reduction_results.md) |
-| BH-2 PALMA impedance coupling | DEFERRED (named-consumer gate) | — |
+| BH-2A named consumer contract | IMPLEMENTED / PASS | §9 addendum (this doc) |
+| BH-2B W composition kernel | IMPLEMENTED / PASS | [`tests/bh2_w_composition_results.md`](tests/bh2_w_composition_results.md) |
+| BH-2C PALMA feedstock proof | DEFERRED | — |
+| BH-2D CT-4b fixture proof | DEFERRED | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
 
-**Track-forward (2026-06-11):** No named movement/traversal consumer currently requests BH-2.
-Accepted production shape: generic `SaturatingFlux`; GPU-resident choke readout column `1−C/χ`;
-staged parallel compact threshold consumer; CPU oracle test-only; compact readback only;
-Candidate-F/native-sqrt audit clean on BH hot paths. BH-2 remains closed until a consumer names
-choke→`W` composition — not a border service, pathfinding engine, movement engine, route object,
-predecessor table, or semantic WGSL branch. Candidate-F rule applies to every future BH/PALMA
-handoff: GPU-resident sqrt/magnitude/norm paths route through `m_jit_sqrt_f_exact`; prefer linear,
-sum, max, count, abs, clamp, threshold scalar logic.
+**Track-forward (2026-06-11):** Named consumer `CT-4b_Local_Automata_W_Feedstock` opens BH-2.
+BH-2A/B land generic GPU W composition (`WImpedanceComposeOp`) — linear weighted feedstock only;
+no movement policy, pathfinding engine, route/predecessor objects, or semantic WGSL. Bridge:
+`compiled_w_impedance_compose_to_gpu_config` in `w_impedance_compose_bridge.rs` (not
+`first_slice_mapping_runtime.rs`). Candidate-F rule applies to every future BH/PALMA handoff.
 
 *Opened 2026-06-12; §2–§6 expanded same day by executive design authority for unsupervised
 Codex/Cursor execution after re-evaluation found the 2-hop gather and boundary semantics
 unpinned — the two seams where an unsupervised pass would most plausibly have gone wrong.*
+
+## 9. BH-2 Named Consumer Contract: `CT-4b_Local_Automata_W_Feedstock`
+
+BH-2 is opened by named traversal consumer **`CT-4b_Local_Automata_W_Feedstock`**.
+
+**Consumer need:** local fleet/movement automata need an admitted numeric impedance field `W`
+that reflects live choke pressure without consulting raw coordinates, high-level faction border
+lines, CPU segmentation, route objects, or a pathfinding service. The consumer evaluates local
+vector steps by gradient descent / min-plus traversal over resident PALMA fields. **BH-2 only
+supplies numeric `W` feedstock.** BH-2 does not implement movement policy.
+
+### 9.1 Conceptual fixture (BH-2D scope — not implemented in BH-2A/B)
+
+200×200 grid; 100 star/source points; 150 local automata (75 source family A, 75 source family B).
+Fixture docs/tests may say Terran/Pirate; production substrate must not encode those semantics.
+
+### 9.2 Two-field topology
+
+Two independent semantic-free `SaturatingFlux` fields (`choke_a`, `choke_b` readouts). Each uses
+BH-0/BH-1; no stored C field; no CPU border service.
+
+### 9.3 BH-2 W composition (BH-2B — pinned)
+
+Per cell, for each admitted profile `p`:
+
+```text
+output_w[p] = base_w + weight_a[p] * choke_a + weight_b[p] * choke_b
+```
+
+Allowed vocabulary: `base_w`, `choke_a`, `choke_b`, `weight_a`, `weight_b`, `output_w`,
+`profile`, `impedance`, `compose`.
+
+Forbidden production vocabulary: `Terran`, `Pirate`, `border`, `frontline`, `ambush`,
+`fleet_ai`, `pathfinding`, `movement_engine`, `route`, `predecessor`.
+
+### 9.4 Architectural boundary
+
+| Layer | Role |
+|---|---|
+| `simthing-spec` | author/admit `WImpedanceComposeSpec` |
+| `simthing-gpu` | `WImpedanceComposeOp` GPU-resident kernel |
+| `simthing-driver` | `compiled_w_impedance_compose_to_gpu_config` bridge only |
+| `first_slice_mapping_runtime.rs` | **must not** host W composition semantics |
+
+### 9.5 Candidate-F sqrt rule
+
+GPU-resident sqrt/magnitude/norm paths route through `m_jit_sqrt_f_exact`. BH-2 uses linear
+weighted composition only.
+
+### 9.6 BH-2 ladder
+
+| Rung | Status | Scope |
+|---|---|---|
+| BH-2A | IMPLEMENTED / PASS | This addendum + status rows |
+| BH-2B | IMPLEMENTED / PASS | Generic GPU W composition operator + admission |
+| BH-2C | DEFERRED | PALMA consumes composed W; D stays resident |
+| BH-2D | DEFERRED | CT-4b 200×200 fixture proof |
