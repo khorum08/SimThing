@@ -303,6 +303,7 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 9 | **PALMA-PATH-6** | Opt-in session/RegionField min-plus band over W/D columns | **PARTIAL / TEST-PROFILE PASS** — [`tests/palma_path_6_session_regionfield_results.md`](tests/palma_path_6_session_regionfield_results.md) (default `SimSession` tick not wired) |
 | 10 | **PALMA-PATH-7** | Production GPU traversal utility seating | **IMPLEMENTED / PASS** — [`tests/palma_path_7_gpu_traversal_utility_results.md`](tests/palma_path_7_gpu_traversal_utility_results.md) |
 | 11 | **PALMA-PATH-8** | GPU-native W input / D output field graph connection | **IMPLEMENTED / PASS** — [`tests/palma_path_8_gpu_native_field_graph_results.md`](tests/palma_path_8_gpu_native_field_graph_results.md) |
+| 12 | **PALMA-PATH-8R** | Remove public `tick()` scaffold; explicit GPU dispatch | **IMPLEMENTED / PASS** — [`tests/palma_path_8r_remove_tick_scaffold_results.md`](tests/palma_path_8r_remove_tick_scaffold_results.md) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
@@ -320,13 +321,15 @@ W impedance (property/buffer)
   → CPU only via explicit diagnostic readback or committed BoundaryRequests
 ```
 
-**Default production mode:** `MinPlusTraversalExecutionMode::GpuResident` — no CPU readback, no shadow/property D scatter.
+**Default production mode:** explicit `dispatch_gpu_resident` with `TraversalFieldGpuInput` — no CPU readback, no shadow/property D scatter, **no public `tick()` scaffold**.
 
-**Diagnostic modes:** `DiagnosticReadback` and `OracleVerification` preserve PATH-5/PATH-6 proof behavior when explicitly selected.
+**Diagnostic modes:** `dispatch_diagnostic_readback`, `dispatch_shadow_column_compatibility`, `dispatch_oracle_verification_*` — explicit only.
+
+**Removed (PATH-8R):** public `tick()` / `tick_with_input()` — CPU-shadow gather is not reachable via a friendly default wrapper.
 
 **Not landed:** pathfinding engine, movement policy, route object, predecessor table, mandatory per-tick CPU D readback, default `SimSession` band scheduling.
 
-**Fable handoff:** use `simthing_gpu::MinPlusTraversalFieldOp` + `simthing_driver::TraversalFieldBandSession`; do not retread PATH-1–6 proof sequence unless changing algebra or admission.
+**Fable handoff:** use `MinPlusTraversalFieldOp::dispatch_traversal_from_input` or `TraversalFieldBandSession::dispatch_gpu_resident`; do not retread PATH-1–6 proof sequence unless changing algebra or admission.
 
 ---
 
@@ -341,17 +344,34 @@ GPU W impedance buffer (flat or interleaved w_col)
   → downstream GPU field / EML / threshold consumers (deferred wiring)
 ```
 
-**W input modes (`TraversalFieldInput` / `MinPlusTraversalInput`):**
+**W input modes:**
 
-| Mode | Role |
-|---|---|
-| `ShadowColumns` / `PackedCpuValues` | PATH-5/6/7 compatibility bridge — CPU gather + upload |
-| `GpuFlatW` | Production — flat `cells` f32 buffer from upstream field pass |
-| `GpuInterleavedW` | Production — interleaved values buffer with W in `w_col` |
+| Mode | API | Role |
+|---|---|---|
+| `TraversalFieldGpuInput::FlatW` / `InterleavedW` | `dispatch_gpu_resident`, `dispatch_diagnostic_readback`, `dispatch_oracle_verification_gpu` | **Production** — GPU W from upstream field pass |
+| `TraversalFieldShadowColumnCompatInput` | `dispatch_shadow_column_compatibility`, `dispatch_oracle_verification_shadow_compat` | **Diagnostic/compatibility only** — explicit CPU shadow gather |
 
-**D output:** `MinPlusTraversalGpuOutputHandle` / `TraversalFieldBandSession::resident_d_output()` exposes the resident ping-pong buffer. No CPU readback in `GpuResident` mode.
+**D output:** `MinPlusTraversalGpuOutputHandle` / `TraversalFieldBandSession::resident_d_output()` exposes the resident ping-pong buffer. No CPU readback in `dispatch_gpu_resident`.
+
+**Removed (PATH-8R):** `tick()`, `tick_with_input()`, and generic `TraversalFieldInput` — no default CPU-shadow path.
 
 **Not landed:** automatic `SimSession` / RegionField pass-graph wiring, downstream GPU threshold consumer on D, pathfinding engine, movement policy.
+
+---
+
+## 15c. Tick scaffold removal (PATH-8R)
+
+Public `tick()` implied a runtime subsystem and let tests pass via CPU-shadow compatibility without proving GPU-native production shape.
+
+Production callers must use explicit dispatch:
+
+```text
+TraversalFieldGpuInput
+  → dispatch_gpu_resident
+  → resident_d_output()
+```
+
+Diagnostic/compatibility callers must name their mode explicitly (`dispatch_shadow_column_compatibility`, `dispatch_oracle_verification_*`, `dispatch_diagnostic_readback`).
 
 ---
 

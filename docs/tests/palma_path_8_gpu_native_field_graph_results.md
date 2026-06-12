@@ -14,7 +14,8 @@ Connect the seated generic min-plus traversal utility to GPU-native W input and 
 | `MinPlusStencilOp` | GPU W scatter via `IndexedScatterOp`; D seed on GPU; `dispatch_traversal_from_input` |
 | `MinPlusTraversalGpuOutputHandle` | Resident D buffer + ping-pong side |
 | `TraversalFieldInput` | Driver band input enum mirroring GPU W sources |
-| `TraversalFieldBandSession::tick_with_input` | GPU-native tick path; `tick()` preserves shadow compat |
+| `TraversalFieldBandSession::dispatch_gpu_resident` | Production GPU-native dispatch |
+| `TraversalFieldBandSession::dispatch_*` (diagnostic/oracle/shadow compat) | Explicit modes only — no `tick()` |
 | `TraversalFieldBandSession::resident_d_output` | Downstream consumer handle accessor |
 
 ## Tests (targeted)

@@ -3,9 +3,11 @@
 mod support;
 
 use simthing_driver::{
-    FieldCadence, TraversalFieldBandSession, TraversalFieldExecutionMode,
-    TraversalFieldGridBinding, TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_UTILITY_ID,
+    FieldCadence, TraversalFieldBandSession, TraversalFieldExecutionMode, TraversalFieldGpuInput,
+    TraversalFieldGridBinding, TraversalFieldShadowColumnCompatInput,
+    TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_UTILITY_ID,
 };
+use simthing_gpu::wgpu::{self, util::DeviceExt};
 use simthing_gpu::{
     GpuContext, MinPlusTraversalExecutionMode, MinPlusTraversalExecutionOptions,
     MinPlusTraversalFieldOp,
@@ -38,6 +40,16 @@ fn grid_binding(tree: &PalmaPath5PropertyTree) -> TraversalFieldGridBinding {
     }
 }
 
+fn upload_flat_w_buffer(ctx: &GpuContext, w: &[f32]) -> simthing_gpu::wgpu::Buffer {
+    ctx.device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("palma_path_7_flat_w"),
+            contents: bytemuck::cast_slice(w),
+            usage: simthing_gpu::wgpu::BufferUsages::STORAGE
+                | simthing_gpu::wgpu::BufferUsages::COPY_DST,
+        })
+}
+
 #[test]
 fn traversal_utility_default_off_and_named_generically() {
     assert!(!TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED);
@@ -46,24 +58,18 @@ fn traversal_utility_default_off_and_named_generically() {
 
 #[test]
 fn gpu_resident_mode_dispatches_without_cpu_readback_or_shadow_mutation() {
-    let mut tree = PalmaPath5PropertyTree::build_default();
-    tree.sync_shadow_from_tree();
+    let tree = PalmaPath5PropertyTree::build_default();
+    let w = tree.gather_w_flat_from_properties();
     let d_props_before = tree.gather_d_flat_from_properties();
     let binding = grid_binding(&tree);
     let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
     band.enable();
 
     with_gpu(|ctx| {
+        let w_buffer = upload_flat_w_buffer(ctx, &w);
         let report = band
-            .tick(
-                ctx,
-                &mut tree.inner.shadow,
-                tree.inner.n_dims,
-                &tree.inner.alloc,
-                TraversalFieldExecutionMode::GpuResident,
-                false,
-            )
-            .expect("tick");
+            .dispatch_gpu_resident(ctx, TraversalFieldGpuInput::FlatW { buffer: &w_buffer })
+            .expect("dispatch");
         let dispatch = report.dispatch.expect("dispatch");
         assert!(dispatch.gpu_resident);
         assert!(!dispatch.diagnostic_readback);
@@ -110,15 +116,17 @@ fn diagnostic_readback_mode_preserves_path5_path6_writeback() {
     band.enable();
 
     with_gpu(|ctx| {
-        band.tick(
+        band.dispatch_shadow_column_compatibility(
             ctx,
-            &mut tree.inner.shadow,
-            tree.inner.n_dims,
-            &tree.inner.alloc,
+            TraversalFieldShadowColumnCompatInput {
+                shadow: &mut tree.inner.shadow,
+                n_dims: tree.inner.n_dims,
+                alloc: &tree.inner.alloc,
+            },
             TraversalFieldExecutionMode::DiagnosticReadback,
             true,
         )
-        .expect("tick");
+        .expect("diagnostic shadow compat");
     });
 
     tree.sync_d_from_shadow_to_properties()
@@ -140,15 +148,15 @@ fn oracle_verification_mode_preserves_cpu_parity() {
 
     with_gpu(|ctx| {
         let report = band
-            .tick(
+            .dispatch_oracle_verification_shadow_compat(
                 ctx,
-                &mut tree.inner.shadow,
-                tree.inner.n_dims,
-                &tree.inner.alloc,
-                TraversalFieldExecutionMode::OracleVerification,
-                false,
+                TraversalFieldShadowColumnCompatInput {
+                    shadow: &mut tree.inner.shadow,
+                    n_dims: tree.inner.n_dims,
+                    alloc: &tree.inner.alloc,
+                },
             )
-            .expect("tick");
+            .expect("oracle shadow compat");
         let err = report
             .dispatch
             .and_then(|d| d.max_oracle_error)

@@ -340,14 +340,16 @@ pub use install::{
 };
 pub use min_plus_traversal_field::{
     TraversalFieldBandError, TraversalFieldBandSession, TraversalFieldBandTickReport,
-    TraversalFieldExecutionMode, TraversalFieldExecutionOptions, TraversalFieldGpuOutputHandle,
-    TraversalFieldGridBinding, TraversalFieldInput, TraversalFieldWInputKind,
+    TraversalFieldDispatchReport, TraversalFieldExecutionMode, TraversalFieldExecutionOptions,
+    TraversalFieldGpuInput, TraversalFieldGpuOutputHandle, TraversalFieldGridBinding,
+    TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind,
     TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_ID, TRAVERSAL_FIELD_REGION_ID,
     TRAVERSAL_FIELD_UTILITY_ID,
 };
 pub use palma_min_plus_field_band::{
     PalmaMinPlusFieldBandError, PalmaMinPlusFieldBandSession, PalmaMinPlusFieldBandTickReport,
-    PalmaMinPlusGridBinding, PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED,
+    PalmaMinPlusFieldDispatchReport, PalmaMinPlusGridBinding,
+    PalmaMinPlusShadowColumnCompatInput, PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED,
     PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID, PALMA_MIN_PLUS_FIELD_ID, PALMA_MIN_PLUS_REGION_ID,
 };
 pub use production_path_0080_0::{
