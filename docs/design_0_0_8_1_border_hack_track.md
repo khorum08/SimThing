@@ -153,9 +153,7 @@ exact values (`to_bits`).
 - Admission: `choke_output_col < n_dims`, distinct from `source_col`; the choke column is a
   **strict sink** (may not be the `source_col` of any same-frame field — reuse the
   frame-gradient-sink validation pattern verbatim).
-- Consumption proof: a synthetic crowded fixture reduces the choke column through the existing
-  Layer-2 Sum reduce → threshold path and fires a "frontline formed" crossing; default-off;
-  no new runtime surface beyond the column.
+- Consumption proof: a synthetic crowded fixture reduces the choke column through a **compact GPU sum/threshold consumer** (`SaturatingFluxChokeThresholdOp`, BH-1R). Same-frame Layer-2 admission wiring remains deferred; strict sink admission unchanged.
 - Oracle: `cpu_stencil_step` writes the same choke values; parity test extends test 1.
 
 ## 4. Voiding list (any one of these voids the rung regardless of green tests)
@@ -177,7 +175,7 @@ exact values (`to_bits`).
 | Rung | Gate | Scope | Exit criteria |
 |---|---|---|---|
 | **BH-0** | T2 (substrate gate) | §2 contract, complete | All seven §2.6 tests green; report + status row |
-| **BH-1** | T1 | §3 contract | Choke column consumed via reduce→threshold on a crowded fixture; parity extended |
+| **BH-1** | T1 | §3 contract | Choke readout column + GPU compact reduce/threshold consumer (BH-1R); parity extended |
 | **BH-2** | deferred (named-consumer gate) | `1−C/χ` choke column as PALMA min-plus impedance feedstock `W` (gradient-valley coupling) | Opens when a movement consumer names it; D stays a field |
 | **BH-3** | deferred (consumer-pulled) | ClauseThing authoring surface for the operator | Opens with the first ClauseScript-authored consumer |
 
@@ -206,7 +204,8 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 | Rung | Status | Report |
 |---|---|---|
 | BH-0 saturating-flux operator | IMPLEMENTED / PASS | [`tests/bh0_saturating_flux_results.md`](tests/bh0_saturating_flux_results.md) |
-| BH-1 choke readout + consumption | IMPLEMENTED / PASS | [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md) |
+| BH-1 choke readout | IMPLEMENTED / PASS | [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md) |
+| BH-1R choke GPU consumption | IMPLEMENTED / PASS | [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md) |
 | BH-2 PALMA impedance coupling | DEFERRED (named-consumer gate) | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
 

@@ -20,6 +20,7 @@ pub mod passes;
 pub mod projection;
 pub mod reduction;
 pub mod reduction_orderband;
+pub mod saturating_flux_choke_threshold;
 pub mod slot;
 pub mod structured_field_stencil;
 pub mod transfer_accumulator;
@@ -91,6 +92,11 @@ pub use reduction::{
 pub use reduction_orderband::{
     plan_reduction_orderband, reduction_soft_band_for_depth_bucket, ReductionOrderBandPlan,
     ReductionPlanError,
+};
+pub use saturating_flux_choke_threshold::{
+    cpu_choke_threshold_oracle, SaturatingFluxChokeThresholdConfig,
+    SaturatingFluxChokeThresholdError, SaturatingFluxChokeThresholdOp,
+    SaturatingFluxChokeThresholdResult, CHOKE_THRESHOLD_COMPACT_FLOATS,
 };
 pub use slot::{SlotAllocError, SlotAllocator};
 pub use structured_field_stencil::{

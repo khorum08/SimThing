@@ -1,6 +1,6 @@
 # BH-1 choke readout — test results
 
-**Rung:** BH-1 GPU-resident choke readout + consumption proof  
+**Rung:** BH-1 GPU-resident choke readout (consumption deferred to BH-1R)  
 **Date:** 2026-06-11  
 **PR:** BH-1: expose GPU-resident choke readout
 
@@ -23,6 +23,8 @@ Guard test: `bh1_no_native_sqrt_in_hot_path` (`crates/simthing-gpu/tests/bh1_cho
 
 Default-off: `choke_output_col: None` preserves BH-0 behavior.
 
+**Consumption:** not implemented in BH-1. The landed `bh1_consumption_proof_*` test was CPU-side sum/threshold only. GPU consumption is **BH-1R** (`SaturatingFluxChokeThresholdOp`).
+
 ## Targeted gates
 
 ```text
@@ -43,7 +45,7 @@ cargo test -p simthing-spec --test bh1_choke_readout_admission
 | `bh1_crowding_increases_choke_readout` | PASS |
 | `bh1_uniform_field_has_neutral_choke` | PASS |
 | `bh1_zero_flux_boundary_does_not_create_false_drain` | PASS |
-| `bh1_consumption_proof_reduce_threshold_crossing` | PASS |
+| `bh1_crowded_fixture_choke_oracle_only` | PASS |
 | `bh1_admission_rejects_invalid_output_shape` | PASS |
 | BH-0 regression (`bh0_saturating_flux`, `bh0_saturating_flux_admission`) | PASS |
 
