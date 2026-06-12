@@ -61,6 +61,6 @@ target/debug/deps/palma_path_5_install_session_property-*.exe
 
 ## Fable handoff
 
-Use `MinPlusTraversalFieldOp::dispatch_traversal` with `MinPlusTraversalExecutionOptions::gpu_resident(iterations)` or `TraversalFieldBandSession::tick(..., GpuResident, false)`. Do **not** assume CPU shadow/property D is updated each dispatch. For debug/tests, opt into `DiagnosticReadback` or `OracleVerification` explicitly.
+Use `MinPlusTraversalFieldOp::dispatch_traversal_from_input` with `MinPlusTraversalExecutionOptions::gpu_resident(iterations)` or `TraversalFieldBandSession::dispatch_gpu_resident` with `TraversalFieldGpuInput`. Do **not** assume CPU shadow/property D is updated each dispatch. For debug/tests, use explicit `dispatch_diagnostic_readback`, `dispatch_shadow_column_compatibility`, or `dispatch_oracle_verification_*` — **no public `tick()`**.
 
 No pathfinding engine, route object, movement engine, semantic SEAD, ClauseThing/simthing-sim changes, or sqrt/magnitude.
