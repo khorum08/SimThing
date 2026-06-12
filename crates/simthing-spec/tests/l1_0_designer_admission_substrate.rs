@@ -10,12 +10,15 @@ use simthing_spec::{
 #[test]
 fn l1_0_guardrail_diagnostic_codes_are_stable() {
     let codes = all_designer_admission_diagnostic_codes();
-    assert_eq!(codes.len(), 26, "expected 26 stable diagnostic codes");
+    assert_eq!(codes.len(), 38, "expected 38 stable diagnostic codes");
 
     let mut seen = std::collections::BTreeSet::new();
     for code in codes {
         let s = code.as_str();
-        assert!(s.starts_with("L1-0-"), "code must be L1-0 prefixed: {s}");
+        assert!(
+            s.starts_with("L1-0-") || s.starts_with("MOBILITY-SCENARIO-0-"),
+            "code must be L1-0 or MOBILITY-SCENARIO-0 prefixed: {s}"
+        );
         assert!(seen.insert(s), "duplicate diagnostic code: {s}");
     }
 
