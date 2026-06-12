@@ -1,3 +1,8 @@
+# 2026-06-11 - BH-2S-API-DOC: consumer service surface handoff
+
+- **Docs-only:** §11 of [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md) documents admitted BH service surfaces (SaturatingFlux, ChokeReadout, ChokeThresholdConsumer, WComposition, OverlapStressComposition, FIELD_POLICY feedstock), scenario use-cases as interpretations only, Candidate-F sqrt rule, stowaway budget, and binding caps (4 input fields / 8 profiles for stress compose).
+- **No runtime changes.**
+
 # 2026-06-11 - BH-2S: multi-field overlap stress field algebra
 
 - **Scenario addendum under CT-4b:** generic GPU `StressComposeOp` computes overlap, mismatch, weighted, and velocity stress columns from resident choke fields; spec/admission in `simthing-spec`; bridge in `stress_compose_bridge.rs`.

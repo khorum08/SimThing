@@ -1,8 +1,8 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-1R-SCALE CLOSED; BH-2A/B OPEN (2026-06-11).** Named consumer
-> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition feedstock. BH-2C/BH-2D remain
-> deferred. Seated as a generic GPU utility, PALMA-style. Product
+> **Status: BH-0…BH-2S CLOSED; BH-2S-API-DOC handoff (2026-06-11).** Named consumer
+> `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition and BH-2S stress feedstock.
+> BH-2C/BH-2D remain deferred. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
 > heatmap pass** on late-game crowded maps — no border service, no segmentation pass, no border
 > objects. Adjudicated by executive design authority from the C_u proposition digest
@@ -216,6 +216,7 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 | BH-2A named consumer contract | IMPLEMENTED / PASS | §9 addendum (this doc) |
 | BH-2B W composition kernel | IMPLEMENTED / PASS | [`tests/bh2_w_composition_results.md`](tests/bh2_w_composition_results.md) |
 | BH-2S multi-field overlap stress | IMPLEMENTED / PASS | [`tests/bh2s_overlap_stress_results.md`](tests/bh2s_overlap_stress_results.md) |
+| BH-2S-API-DOC consumer service surface | DOCUMENTED / PASS | §11 (this doc) |
 | BH-2C PALMA feedstock proof | DEFERRED | — |
 | BH-2D CT-4b fixture proof | DEFERRED | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
@@ -322,3 +323,204 @@ threshold columns → threshold crossing → EmitEvent / BoundaryRequest. No CPU
 
 Forbidden production vocabulary: `border`, `frontline`, `culture`, `Terran`, `Pirate`,
 `ambush`, `hegemony`, `fleet_ai`, `pathfinding`, `movement_engine`, `route`, `predecessor`.
+
+## 11. BH service surfaces exposed to consumers
+
+These are admitted field-operation surfaces, not semantic services. **“Service surface”** means
+admitted API / driver / GPU field-operation surface — not a semantic game service. The GPU must
+remain semantic-free.
+
+The runtime sees:
+
+- field columns;
+- profile weights;
+- scalar composition operators;
+- compact reductions;
+- thresholds;
+- `BoundaryRequest` / `EmitEvent`.
+
+The runtime must **not** see: Terran, Pirate, culture, border object, frontline, ambush, fleet AI,
+route, predecessor, movement engine, or pathfinding engine.
+
+### 11.1 `SaturatingFlux` (BH-0)
+
+| Layer | Surface |
+|---|---|
+| Spec | `RegionFieldOperatorSpec::SaturatingFlux { u_sat, chi, choke_output_col }` |
+| GPU | `StructuredFieldStencilOperator::SaturatingFlux` in `structured_field_stencil.rs` |
+| Driver | `compiled_stencil_to_gpu_config` (bridge only) |
+
+Conservative field relaxation with symmetric `(C_i + C_j) * 0.5` flux and zero-flux boundaries.
+**Emits no border object.** **Stores no C field** — C is register-transient in the 13-point diamond
+gather. Mass-conserving by antisymmetric pairwise flux construction.
+
+### 11.2 `ChokeReadout` (BH-1)
+
+Optional `choke_output_col` on the `SaturatingFlux` variant. Same dispatch writes resident scalar
+column:
+
+```text
+choke = 1 − C/χ     (0 = clear, 1 = fully choked)
+```
+
+Generic pressure/choke feedstock. Not a border, frontline, or segmentation artifact.
+
+### 11.3 `ChokeThresholdConsumer` (BH-1R / BH-1R-SCALE)
+
+| Layer | Surface |
+|---|---|
+| GPU | `SaturatingFluxChokeThresholdOp` — compact GPU reduction over resident choke column |
+| Scale | BH-1R-SCALE: staged parallel reduction (256-thread pass 1 + partial fold pass 2) |
+
+GPU-resident compact reduction. Outputs **compact aggregate values only** (e.g. four-float
+readback). **CPU oracle test-only.** **No CPU-side classification.** No full-field CPU readback
+for production decisions.
+
+### 11.4 `WComposition` (BH-2B)
+
+| Layer | Surface |
+|---|---|
+| Spec | `WImpedanceComposeSpec` + `compile_w_impedance_compose_preview` |
+| GPU | `WImpedanceComposeOp` |
+| Driver | `compiled_w_impedance_compose_to_gpu_config` |
+
+Composes one or more choke columns into impedance `W`:
+
+```text
+output_w[p] = base_w + weight_a[p] * choke_a + weight_b[p] * choke_b
+```
+
+Generic numeric profile weights. **No faction/movement semantics in production code.**
+Admission cap: **`max_profiles = 8`**. Two input choke columns (`choke_a`, `choke_b`) per
+operator — columnar storage-buffer layout; no one-texture-per-resource design.
+
+### 11.5 `OverlapStressComposition` (BH-2S)
+
+| Layer | Surface |
+|---|---|
+| Spec | `StressComposeSpec` + `compile_stress_compose_preview` |
+| GPU | `StressComposeOp` |
+| Driver | `compiled_stress_compose_to_gpu_config` |
+
+Exposes BH-2S stress field algebra over **already-produced resident choke columns**. Supported
+forms (single-pass, semantic-free scalar ops):
+
+```text
+stress_overlap  = choke_a * choke_b
+stress_mismatch = abs(choke_a - choke_b)
+stress_weighted = weight_a * choke_a + weight_b * choke_b
+stress_velocity = abs(choke_now - choke_prev)
+```
+
+Resident scalar fields, **not borders**. **No sqrt required** — linear, absolute, product,
+min/max, clamp, sum, and threshold logic only.
+
+Admission caps (binding budget):
+
+- **`max_input_fields = 4`** distinct input field columns referenced per operator;
+- **`max_profiles = 8`** stress profiles per operator;
+- column indices and weights passed via storage-buffer / profile table — **not** one texture
+  binding per resource;
+- column aliasing rejected at admission.
+
+### 11.6 `FIELD_POLICY` feedstock
+
+Stress, W, and choke columns may feed:
+
+- threshold rules;
+- urgency columns;
+- commitment gates;
+- compact GPU reductions;
+- movement-front local sampling (downstream consumer);
+- PALMA/min-plus traversal over resident W/D fields (BH-2C — deferred).
+
+Motivation emerges from field pressure crossing thresholds — **no AI planner.** Stress/W/choke
+columns feed thresholds and events only through admitted properties / `AccumulatorOp`
+registrations.
+
+**Resource-flow spine (unchanged):**
+
+```text
+RF arena / overlays / admitted sources
+→ resolved pressure columns
+→ BH-0 SaturatingFlux per admitted field
+→ BH-1 choke readout columns
+→ BH-2 W composition and/or BH-2S stress composition
+→ FIELD_POLICY threshold columns
+→ threshold crossing
+→ EmitEvent / BoundaryRequest
+```
+
+### 11.7 Scenario-level use-cases (examples only — not production semantics)
+
+These use-cases are authored scenario interpretations of generic fields. **They are not GPU
+runtime semantics.** The GPU sees only field columns, profile weights, scalar composition ops,
+reductions, and thresholds.
+
+| Scenario interpretation (fixture/docs only) | Generic field surface consumed |
+|---|---|
+| Contested fleet projection vs disruption overlap | `stress_overlap` over two choke columns |
+| Patrol-gap detection | high `stress_mismatch` or low `stress_overlap` thresholds |
+| Imperial overextension signal | weighted choke sum crossing commitment threshold |
+| Military overreach signal | velocity + weighted stress crossing urgency gate |
+| Economic-flow / security-flow mismatch | `stress_mismatch` between two admitted fields |
+| Multi-system chokepoint score | compact GPU reduction over weighted stress column |
+| Border-velocity / instability signal | `stress_velocity` from prev/current choke columns |
+| W impedance shaping for PALMA/min-plus traversal | composed `output_w` column (BH-2B) |
+| Convoy, patrol, raider, or fleet automata sampling resident W/D | local FIELD_POLICY sampling over resident columns — not a movement engine |
+
+Fixture naming may use Terran/Pirate, culture, economy, or fleet language in docs/tests only.
+Production code must see only numeric field/profile identifiers.
+
+### 11.8 Forbidden interpretation (binding)
+
+The following are **explicitly forbidden** as production paths on this track:
+
+- border service;
+- frontline service;
+- pathfinding engine;
+- movement engine;
+- route object;
+- predecessor table;
+- CPU segmentation pass;
+- CPU border classifier;
+- semantic WGSL branches;
+- faction-specific production code;
+- full-field CPU readback for decisions.
+
+### 11.9 Candidate-F sqrt rule (every BH/PALMA handoff)
+
+Any GPU-resident sqrt, magnitude, distance, gradient norm, movement-front norm, threshold path,
+or parity-sensitive exact path must route through:
+
+```text
+m_jit_sqrt_f_exact
+```
+
+Native WGSL `sqrt`, Rust `sqrt`, `length`, `distance`, `normalize`, `hypot`, magnitude, or norm
+is **forbidden** in authoritative BH / BH-2S / PALMA-adjacent paths. Existing BH-2S
+overlap/mismatch/weighted/velocity stress operators **do not require sqrt**.
+
+### 11.10 Stowaway budget rule
+
+BH-2S is accepted only while it remains nearly-free resident field algebra over already-produced
+choke columns. If it requires full-field CPU readback, CPU border analysis, graph segmentation,
+unbounded field fan-in, or extra semantic passes, it must stop as **PARTIAL**.
+
+Allowed: single-pass per-cell GPU field algebra; fused/batched composition with W where practical;
+compact GPU reduction; existing prev/current column machinery; admission-capped input fields and
+profiles; CPU oracle for tests only.
+
+Not allowed: extra BH-0 passes solely for flavor; N² all-field pairwise matrices without an
+admission cap; full-field CPU readback; CPU border detection; CPU route planning; semantic WGSL;
+persistent border objects; unbounded resource-field fan-in; storing raw C fields globally;
+native sqrt/magnitude/norm.
+
+### 11.11 Binding / fan-in discipline
+
+- Prefer existing **columnar storage-buffer layout**; pass column indices and weights.
+- Cap `max_input_fields` and `max_profiles` at admission (`StressComposeSpec`: **4** input
+  fields, **8** profiles; `WImpedanceComposeSpec`: **8** profiles).
+- Batch profiles when needed; compose in chunks if binding pressure grows.
+- **Do not** add one texture binding per resource — use packed columns / admitted profile tables.
+- If the harness cannot support fan-in cleanly, stop and report **PARTIAL**.
