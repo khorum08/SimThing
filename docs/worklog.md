@@ -1,3 +1,8 @@
+# 2026-06-11 - BH-2D-OBS-100: 100-tick CT-4b scenario observation pass
+
+- **Observation runner:** test-only `ct4b_100tick_runner` (100 ticks, compact PALMA D probes + diagnostic max-column aggregates). Ignored integration test regenerates report.
+- **Report:** [`tests/bh2d_ct4b_100tick_scenario_observations.md`](tests/bh2d_ct4b_100tick_scenario_observations.md)
+
 # 2026-06-11 - BH-2D: CT-4b 200×200 fixture proof
 
 - **Fixture proof:** test-only `Ct4bFixture` (200×200, 100 source points, 150 automata metadata) runs BH-0/BH-1 flux+choke → BH-2B W (2 profiles) → BH-2S stress → PALMA GpuInterleavedW → compact D probe. No movement engine.

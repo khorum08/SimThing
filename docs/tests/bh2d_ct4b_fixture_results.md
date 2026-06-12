@@ -3,6 +3,10 @@
 > **Status: IMPLEMENTED / PASS (2026-06-11).** Full resident feedstock chain at 200×200 over
 > generic `field_a` / `field_b` choke columns. No movement engine, pathfinding, route, or
 > predecessor objects.
+>
+> **100-tick observation narrative:** superseded for time-series field behavior by
+> [`bh2d_ct4b_100tick_scenario_observations.md`](bh2d_ct4b_100tick_scenario_observations.md)
+> (BH-2D-OBS-100). This file retains the binary fixture proof gates only.
 
 ## Fixture (test-only)
 

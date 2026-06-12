@@ -1,6 +1,6 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-2D CLOSED (2026-06-11).** Named consumer
+> **Status: BH-0…BH-2D CLOSED (2026-06-11); BH-2D-OBS-100 observation report (2026-06-11).** Named consumer
 > `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition, BH-2S stress feedstock,
 > BH-2C PALMA feedstock, and BH-2D CT-4b 200×200 fixture proof. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
@@ -610,3 +610,23 @@ readback.
 `bh2d_no_full_field_cpu_readback_for_decision`, `bh2d_no_route_or_predecessor_objects`,
 `bh2d_scaffolding_promoted_or_quarantined`, `bh2d_no_native_sqrt_in_hot_path`. Report:
 [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md).
+
+## 14. BH-2D-OBS-100: 100-tick CT-4b scenario observation pass
+
+**Purpose:** human-readable time-series report over the same CT-4b fixture shape — observed choke/border
+pressure, stress evolution, W-profile divergence, and PALMA compact D probe / candidate movement-front
+tendencies. **Not** a movement engine, route planner, or border service.
+
+**Runner (test-only):** `support/ct4b_100tick_runner.rs`, invoked by ignored integration test
+`bh2d_ct4b_100tick_observation` (smoke: 10 ticks in CI; full 100 ticks run explicitly).
+
+**Observation discipline:** compact probe readback for PALMA D; test-only full-field readback for
+aggregate max-column metrics in the report generator only. Production path unchanged.
+
+**Report:** [`tests/bh2d_ct4b_100tick_scenario_observations.md`](tests/bh2d_ct4b_100tick_scenario_observations.md).
+
+**Regenerate:**
+
+```text
+cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation --ignored --nocapture
+```
