@@ -32,7 +32,10 @@ pub struct ResourceFlowSpec {
     pub gated_rates: Vec<GatedRateSpec>,
 }
 
-/// One trigger-gated rate contribution (CT-RF-EML-RATE-0).
+/// One dynamic rate contribution (CT-RF-EML-RATE-0). With a `trigger` the
+/// term is gated (`× gate`); without one it is an always-on dynamic term.
+/// With a `rate_formula` the magnitude is a `value:` formula tree evaluated
+/// per tick over explicit columns; otherwise the literal `rate` applies.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GatedRateSpec {
     pub id: String,
@@ -41,9 +44,50 @@ pub struct GatedRateSpec {
     pub direction: BaseFlowDirectionSpec,
     pub op: GatedRateOpSpec,
     /// Non-negative magnitude for `Add` (sign from `direction`); fractional
-    /// bonus for `Mult` (additive-in-effect across gated mults).
+    /// bonus for `Mult` (additive-in-effect across gated mults). Ignored when
+    /// `rate_formula` is present.
     pub rate: f32,
-    pub trigger: GatedRateTriggerSpec,
+    #[serde(default)]
+    pub trigger: Option<GatedRateTriggerSpec>,
+    /// `value:` formula tree (CT-3b+4a `value:` lowering): evaluated on the
+    /// effective-rate EvalEML band, never CPU-side, never cached.
+    #[serde(default)]
+    pub rate_formula: Option<RateFormulaSpec>,
+}
+
+/// Authored `value:` script-value formula: `base`, then ordered operations
+/// applied left to right. Flat (no script-value recursion in v1; recursive
+/// references are a hard hydration error naming this limit).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RateFormulaSpec {
+    pub base: f32,
+    pub ops: Vec<RateFormulaOpSpec>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct RateFormulaOpSpec {
+    pub op: RateFormulaOp,
+    pub operand: RateFormulaOperandSpec,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum RateFormulaOp {
+    Add,
+    Mult,
+    /// Result is at least the operand (Paradox script-value `min`).
+    FloorAt,
+    /// Result is at most the operand (Paradox script-value `max`).
+    CeilAt,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum RateFormulaOperandSpec {
+    Literal(f32),
+    /// Per-tick read of the participant's registered property column
+    /// (Amount sub-field) — `value:` formulas consume live game state.
+    Property(PropertyKey),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

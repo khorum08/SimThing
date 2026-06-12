@@ -13,11 +13,12 @@ use simthing_driver::{
     RATE_BASE_SUB_FIELD, Scenario, SimSession, build_execution_plan, resolve_node_columns,
 };
 use simthing_gpu::SlotAllocator;
-use simthing_spec::{ExplicitParticipantSpec, GameModeSpec, GatedRateOpSpec};
+use simthing_spec::{
+    ExplicitParticipantSpec, GameModeSpec, GatedRateOpSpec, RateFormulaOp, RateFormulaOperandSpec,
+};
 
 const FIXTURE: &str = include_str!("fixtures/ct_rf_eml_rate.clause");
 const FOLDED_BASE: f32 = 10.5; // 6 × (1 + 0.25 + 0.5) — CT-2c static fold
-const GATED_ON: f32 = 14.5; // (10.5 + 4×1) × (1 + 0)
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
@@ -66,14 +67,29 @@ fn scenario(game_mode: &GameModeSpec) -> (Scenario, SimThingId) {
 fn gated_rate_hydrates_with_base_column_and_trigger() {
     let hydrated = hydrate();
     let flow = hydrated.game_mode.resource_flow.as_ref().unwrap();
-    assert_eq!(flow.gated_rates.len(), 1);
+    assert_eq!(flow.gated_rates.len(), 2);
     let gated = &flow.gated_rates[0];
     assert_eq!(gated.arena, "settlement_food");
     assert_eq!(gated.op, GatedRateOpSpec::Add);
     assert_eq!(gated.rate, 4.0);
-    assert_eq!(gated.trigger.property.namespace, "simthing");
-    assert_eq!(gated.trigger.property.name, "morale");
-    assert_eq!(gated.trigger.at_least, 5.0);
+    assert!(gated.rate_formula.is_none());
+    let trigger = gated.trigger.as_ref().expect("gated trigger");
+    assert_eq!(trigger.property.namespace, "simthing");
+    assert_eq!(trigger.property.name, "morale");
+    assert_eq!(trigger.at_least, 5.0);
+
+    // The `value:` rate hydrates as an always-on formula term.
+    let dynamic = &flow.gated_rates[1];
+    assert!(dynamic.trigger.is_none());
+    let formula = dynamic.rate_formula.as_ref().expect("value: formula");
+    assert_eq!(formula.base, 2.0);
+    assert_eq!(formula.ops.len(), 3);
+    assert_eq!(
+        formula.ops[0].operand,
+        RateFormulaOperandSpec::Property(simthing_spec::PropertyKey::new("simthing", "fertility"))
+    );
+    assert_eq!(formula.ops[1].op, RateFormulaOp::Mult);
+    assert_eq!(formula.ops[2].op, RateFormulaOp::CeilAt);
 
     let flow_property = hydrated
         .game_mode
@@ -126,12 +142,30 @@ fn gated_rate_band_tracks_trigger_edges_exactly_on_gpu() {
     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
     assert!(session.proto.flags.use_accumulator_resource_flow);
 
-    // Install resolved one gated term and seeded the base column with the
-    // folded static rate.
-    assert_eq!(session.spec_state.resolved_gated_rates.len(), 1);
+    // Install resolved the gated literal term and the always-on `value:`
+    // formula term, and seeded the base column with the folded static rate.
+    assert_eq!(session.spec_state.resolved_gated_rates.len(), 2);
     let resolved = session.spec_state.resolved_gated_rates[0].clone();
     assert!(!resolved.is_mult);
-    assert_eq!(resolved.rate.to_bits(), 4.0_f32.to_bits());
+    assert_eq!(
+        resolved.magnitude,
+        simthing_driver::gated_rates::ResolvedMagnitude::Literal(4.0)
+    );
+    let (trigger_col, at_least) = resolved.trigger.expect("resolved trigger");
+    assert_eq!(at_least.to_bits(), 5.0_f32.to_bits());
+    let dynamic = session.spec_state.resolved_gated_rates[1].clone();
+    assert!(dynamic.trigger.is_none());
+    let fertility_col = match &dynamic.magnitude {
+        simthing_driver::gated_rates::ResolvedMagnitude::Formula { base, ops, negate } => {
+            assert_eq!(base.to_bits(), 2.0_f32.to_bits());
+            assert!(!negate);
+            match ops[0].1 {
+                simthing_driver::gated_rates::ResolvedOperand::Column(col) => col,
+                other => panic!("expected resolved column operand, got {other:?}"),
+            }
+        }
+        other => panic!("expected resolved formula magnitude, got {other:?}"),
+    };
 
     let registry = &session.proto.registry;
     let flow_id = registry
@@ -163,18 +197,22 @@ fn gated_rate_band_tracks_trigger_edges_exactly_on_gpu() {
     let n_dims = session.state.n_dims;
     let slot = resolved.participant_slot;
     let cell = |values: &[f32], col: u32| values[(slot * n_dims + col) as usize];
-    let oracle = |morale: f32| {
+    // CPU oracle mirrors the EML postfix order exactly:
+    // (base + gated×gate + min((2 + fertility) × 1.5, 12)) × (1 + 0)
+    let oracle = |morale: f32, fertility: f32| {
         let gate = if morale >= 5.0 { 1.0f32 } else { 0.0f32 };
-        (FOLDED_BASE + 4.0 * gate) * (1.0 + 0.0)
+        let value_term = ((2.0f32 + fertility) * 1.5).min(12.0);
+        (FOLDED_BASE + 4.0 * gate + value_term) * 1.0
     };
 
-    let mut set_morale = |session: &mut SimSession, morale: f32| {
+    let set_inputs = |session: &mut SimSession, morale: f32, fertility: f32| {
         let mut values = session.state.read_values();
-        values[(slot * n_dims + resolved.trigger_col) as usize] = morale;
+        values[(slot * n_dims + trigger_col) as usize] = morale;
+        values[(slot * n_dims + fertility_col) as usize] = fertility;
         session.state.write_values(&values);
     };
 
-    // Tick 1 — gate off (morale 0 < 5): intrinsic stays at the folded base.
+    // Tick 1 — gate off, fertility 0: base + value formula floor state.
     session.state.run_resource_flow_bands(total_bands, 1.0);
     let values = session.state.read_values();
     assert_eq!(
@@ -183,38 +221,51 @@ fn gated_rate_band_tracks_trigger_edges_exactly_on_gpu() {
     );
     assert_eq!(
         cell(&values, intrinsic_col).to_bits(),
-        oracle(0.0).to_bits(),
-        "gate off: intrinsic = folded base"
+        oracle(0.0, 0.0).to_bits(),
+        "gate off: intrinsic = folded base + ungated value term"
     );
 
-    // Tick 2 — rising edge (morale 7 ≥ 5): intrinsic = base + gated rate.
-    set_morale(&mut session, 7.0);
+    // Tick 2 — rising edge + live formula input (morale 7, fertility 3).
+    set_inputs(&mut session, 7.0, 3.0);
     session.state.run_resource_flow_bands(total_bands, 1.0);
     let values = session.state.read_values();
     assert_eq!(
         cell(&values, intrinsic_col).to_bits(),
-        oracle(7.0).to_bits(),
-        "rising edge: intrinsic = base + gated rate"
+        oracle(7.0, 3.0).to_bits(),
+        "rising edge + formula reads live fertility"
     );
-    assert_eq!(oracle(7.0).to_bits(), GATED_ON.to_bits());
 
     // Tick 3 — held high: NO compounding (the band recomputes from base).
     session.state.run_resource_flow_bands(total_bands, 1.0);
     let values = session.state.read_values();
     assert_eq!(
         cell(&values, intrinsic_col).to_bits(),
-        GATED_ON.to_bits(),
+        oracle(7.0, 3.0).to_bits(),
         "held gate must not compound"
     );
 
-    // Tick 4 — falling edge (morale 3 < 5): exact fall-back to base.
-    set_morale(&mut session, 3.0);
+    // Tick 4 — the formula ceiling bites (fertility 8 → 15 ceiled to 12).
+    set_inputs(&mut session, 7.0, 8.0);
     session.state.run_resource_flow_bands(total_bands, 1.0);
     let values = session.state.read_values();
     assert_eq!(
         cell(&values, intrinsic_col).to_bits(),
-        oracle(3.0).to_bits(),
-        "falling edge: intrinsic returns to folded base exactly"
+        oracle(7.0, 8.0).to_bits(),
+        "value formula ceil_at clamps on GPU exactly"
+    );
+    assert_eq!(
+        oracle(7.0, 8.0).to_bits(),
+        (FOLDED_BASE + 4.0 + 12.0).to_bits()
+    );
+
+    // Tick 5 — falling edge (morale 3 < 5): gated term drops, formula stays.
+    set_inputs(&mut session, 3.0, 8.0);
+    session.state.run_resource_flow_bands(total_bands, 1.0);
+    let values = session.state.read_values();
+    assert_eq!(
+        cell(&values, intrinsic_col).to_bits(),
+        oracle(3.0, 8.0).to_bits(),
+        "falling edge: gated term drops exactly; ungated formula persists"
     );
     assert_eq!(
         cell(&values, resolved.base_col).to_bits(),

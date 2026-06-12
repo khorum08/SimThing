@@ -22,6 +22,19 @@ simthing_ct_rf_rate = {
         name = "morale"
         display_name = "Morale"
     }
+    trigger_property = {
+        id = "simthing_fertility"
+        namespace = "simthing"
+        name = "fertility"
+        display_name = "Fertility"
+    }
+    script_value = {
+        id = harvest_bonus
+        base = 2.0
+        add = { property = simthing::fertility }
+        mult = 1.5
+        ceil_at = 12.0
+    }
     unit_template = {
         id = "farmer"
         category = settlement
@@ -32,6 +45,7 @@ simthing_ct_rf_rate = {
                     trigger = { property = simthing::morale at_least = 5.0 }
                     settlement_food_produces_add = 4
                 }
+                settlement_food_produces_add = value:harvest_bonus
             }
         }
     }

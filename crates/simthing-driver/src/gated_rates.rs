@@ -19,7 +19,9 @@ use simthing_core::{
     EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
     ScaleSpec, SimThing, SourceSpec, SubFieldRole,
 };
-use simthing_spec::{GatedRateOpSpec, GatedRateSpec, ResourceFlowSpec, SpecError};
+use simthing_spec::{
+    GatedRateOpSpec, RateFormulaOp, RateFormulaOperandSpec, ResourceFlowSpec, SpecError,
+};
 use std::collections::BTreeMap;
 
 use crate::arena_hierarchy::resolve_node_columns;
@@ -34,7 +36,7 @@ pub const RATE_BASE_SUB_FIELD: &str = "rate_base";
 /// formulas the arena sync registers).
 const GATED_RATE_TREE_BASE: u32 = 7_100_000;
 
-/// One fully resolved gated rate term, ready for tree building and seeding.
+/// One fully resolved dynamic rate term, ready for tree building and seeding.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedGatedRate {
     pub id: String,
@@ -45,11 +47,29 @@ pub struct ResolvedGatedRate {
     /// Global columns (EML SLOT_VALUE / op targets).
     pub base_col: u32,
     pub intrinsic_col: u32,
-    pub trigger_col: u32,
-    pub at_least: f32,
-    /// Add terms carry direction sign; mult terms carry the raw fraction.
-    pub rate: f32,
+    /// `(trigger_col, at_least)` for gated terms; `None` = always-on dynamic.
+    pub trigger: Option<(u32, f32)>,
+    pub magnitude: ResolvedMagnitude,
     pub is_mult: bool,
+}
+
+/// Per-tick term magnitude: a signed literal, or a resolved `value:` formula
+/// chain whose property operands are already global columns.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ResolvedMagnitude {
+    Literal(f32),
+    Formula {
+        base: f32,
+        ops: Vec<(RateFormulaOp, ResolvedOperand)>,
+        /// Upkeep add-formulas negate after evaluation (bit-exact sign flip).
+        negate: bool,
+    },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ResolvedOperand {
+    Literal(f32),
+    Column(u32),
 }
 
 /// Resolve every authored gated rate against the live install: arena →
@@ -99,26 +119,54 @@ pub fn resolve_gated_rates(
         })?;
         let flow_start = registry.column_range(flow_property_id).start as u32;
 
-        let trigger_id = registry
-            .id_of(
-                &gated.trigger.property.namespace,
-                &gated.trigger.property.name,
-            )
-            .ok_or_else(|| InstallError::GatedRateUnknownTriggerProperty {
-                gated: gated.id.clone(),
-                property: format!(
-                    "{}::{}",
-                    gated.trigger.property.namespace, gated.trigger.property.name
-                ),
-            })?;
-        let trigger_layout = &registry.property(trigger_id).layout;
-        let trigger_col = registry
-            .column_range(trigger_id)
-            .col_for_role(&SubFieldRole::Amount, trigger_layout)
-            .ok_or_else(|| InstallError::GatedRateUnknownTriggerProperty {
-                gated: gated.id.clone(),
-                property: "trigger Amount sub-field".into(),
-            })? as u32;
+        let amount_col =
+            |key: &simthing_spec::PropertyKey, what: &str| -> Result<u32, InstallError> {
+                let property_id = registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
+                    InstallError::GatedRateUnknownTriggerProperty {
+                        gated: gated.id.clone(),
+                        property: format!("{}::{} ({what})", key.namespace, key.name),
+                    }
+                })?;
+                let property_layout = &registry.property(property_id).layout;
+                Ok(registry
+                    .column_range(property_id)
+                    .col_for_role(&SubFieldRole::Amount, property_layout)
+                    .ok_or_else(|| InstallError::GatedRateUnknownTriggerProperty {
+                        gated: gated.id.clone(),
+                        property: format!("{what} Amount sub-field"),
+                    })? as u32)
+            };
+
+        let trigger = match &gated.trigger {
+            Some(trigger) => Some((amount_col(&trigger.property, "trigger")?, trigger.at_least)),
+            None => None,
+        };
+
+        let is_mult = matches!(gated.op, GatedRateOpSpec::Mult);
+        let magnitude = match &gated.rate_formula {
+            Some(formula) => {
+                let mut ops = Vec::with_capacity(formula.ops.len());
+                for op in &formula.ops {
+                    let operand = match &op.operand {
+                        RateFormulaOperandSpec::Literal(value) => ResolvedOperand::Literal(*value),
+                        RateFormulaOperandSpec::Property(key) => {
+                            ResolvedOperand::Column(amount_col(key, "formula operand")?)
+                        }
+                    };
+                    ops.push((op.op, operand));
+                }
+                ResolvedMagnitude::Formula {
+                    base: formula.base,
+                    ops,
+                    negate: !is_mult && gated.direction.sign() < 0.0,
+                }
+            }
+            None => ResolvedMagnitude::Literal(if is_mult {
+                gated.rate
+            } else {
+                gated.direction.sign() * gated.rate
+            }),
+        };
 
         let hosted = resolve_install_target(&gated.install, scenario, root)?;
         if hosted.is_empty() {
@@ -127,10 +175,6 @@ pub fn resolve_gated_rates(
                 target: gated.install.clone(),
             });
         }
-        let (is_mult, rate) = match gated.op {
-            GatedRateOpSpec::Add => (false, gated.direction.sign() * gated.rate),
-            GatedRateOpSpec::Mult => (true, gated.rate),
-        };
         for hosted_id in hosted {
             let participant_slot = scaffold
                 .index
@@ -147,9 +191,8 @@ pub fn resolve_gated_rates(
                 intrinsic_offset: cols.intrinsic_flow_col as usize,
                 base_col: flow_start + base_offset as u32,
                 intrinsic_col: flow_start + cols.intrinsic_flow_col,
-                trigger_col,
-                at_least: gated.trigger.at_least,
-                rate,
+                trigger,
+                magnitude: magnitude.clone(),
                 is_mult,
             });
         }
@@ -226,12 +269,47 @@ fn op_node(opcode: u32) -> EmlNodeGpu {
     }
 }
 
-fn gate_term(nodes: &mut Vec<EmlNodeGpu>, term: &ResolvedGatedRate) {
-    nodes.push(slot_value(term.trigger_col));
-    nodes.push(literal(term.at_least));
-    nodes.push(op_node(eml_nodes::opcode::CMP_GE));
-    nodes.push(literal(term.rate));
-    nodes.push(op_node(eml_nodes::opcode::MUL));
+fn push_operand(nodes: &mut Vec<EmlNodeGpu>, operand: &ResolvedOperand) {
+    match operand {
+        ResolvedOperand::Literal(value) => nodes.push(literal(*value)),
+        ResolvedOperand::Column(col) => nodes.push(slot_value(*col)),
+    }
+}
+
+/// Push the term's magnitude — a literal, or the `value:` formula chain
+/// (`base`, then ordered Add/Mult/FloorAt/CeilAt; FloorAt = "at least" →
+/// `MAX`, CeilAt = "at most" → `MIN`).
+fn push_magnitude(nodes: &mut Vec<EmlNodeGpu>, magnitude: &ResolvedMagnitude) {
+    match magnitude {
+        ResolvedMagnitude::Literal(value) => nodes.push(literal(*value)),
+        ResolvedMagnitude::Formula { base, ops, negate } => {
+            nodes.push(literal(*base));
+            for (op, operand) in ops {
+                push_operand(nodes, operand);
+                nodes.push(op_node(match op {
+                    RateFormulaOp::Add => eml_nodes::opcode::ADD,
+                    RateFormulaOp::Mult => eml_nodes::opcode::MUL,
+                    RateFormulaOp::FloorAt => eml_nodes::opcode::MAX,
+                    RateFormulaOp::CeilAt => eml_nodes::opcode::MIN,
+                }));
+            }
+            if *negate {
+                nodes.push(op_node(eml_nodes::opcode::NEG));
+            }
+        }
+    }
+}
+
+/// Push one dynamic term and fold it into the running sum: `… magnitude
+/// [× gate] ADD`. Ungated terms contribute unconditionally.
+fn push_term(nodes: &mut Vec<EmlNodeGpu>, term: &ResolvedGatedRate) {
+    push_magnitude(nodes, &term.magnitude);
+    if let Some((trigger_col, at_least)) = term.trigger {
+        nodes.push(slot_value(trigger_col));
+        nodes.push(literal(at_least));
+        nodes.push(op_node(eml_nodes::opcode::CMP_GE));
+        nodes.push(op_node(eml_nodes::opcode::MUL));
+    }
     nodes.push(op_node(eml_nodes::opcode::ADD));
 }
 
@@ -254,11 +332,11 @@ pub fn build_gated_rate_ops(
         let base_col = terms[0].base_col;
         let mut nodes = vec![slot_value(base_col)];
         for term in terms.iter().filter(|t| !t.is_mult) {
-            gate_term(&mut nodes, term);
+            push_term(&mut nodes, term);
         }
         nodes.push(literal(1.0));
         for term in terms.iter().filter(|t| t.is_mult) {
-            gate_term(&mut nodes, term);
+            push_term(&mut nodes, term);
         }
         nodes.push(op_node(eml_nodes::opcode::MUL));
         nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
