@@ -302,6 +302,7 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 8 | **PALMA-PATH-5** | Admitted Location/gridcell property-column integration | **IMPLEMENTED / PASS** — [`tests/palma_path_5_install_session_property_results.md`](tests/palma_path_5_install_session_property_results.md) |
 | 9 | **PALMA-PATH-6** | Opt-in session/RegionField min-plus band over W/D columns | **PARTIAL / TEST-PROFILE PASS** — [`tests/palma_path_6_session_regionfield_results.md`](tests/palma_path_6_session_regionfield_results.md) (default `SimSession` tick not wired) |
 | 10 | **PALMA-PATH-7** | Production GPU traversal utility seating | **IMPLEMENTED / PASS** — [`tests/palma_path_7_gpu_traversal_utility_results.md`](tests/palma_path_7_gpu_traversal_utility_results.md) |
+| 11 | **PALMA-PATH-8** | GPU-native W input / D output field graph connection | **IMPLEMENTED / PASS** — [`tests/palma_path_8_gpu_native_field_graph_results.md`](tests/palma_path_8_gpu_native_field_graph_results.md) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
@@ -326,6 +327,31 @@ W impedance (property/buffer)
 **Not landed:** pathfinding engine, movement policy, route object, predecessor table, mandatory per-tick CPU D readback, default `SimSession` band scheduling.
 
 **Fable handoff:** use `simthing_gpu::MinPlusTraversalFieldOp` + `simthing_driver::TraversalFieldBandSession`; do not retread PATH-1–6 proof sequence unless changing algebra or admission.
+
+---
+
+## 15b. GPU-native field graph connection (PATH-8)
+
+PATH-8 connects the seated utility to upstream GPU field buffers without mandatory CPU W gather:
+
+```text
+GPU W impedance buffer (flat or interleaved w_col)
+  → IndexedScatter prepare + MinPlusTraversalFieldOp
+  → GPU-resident D (`MinPlusTraversalGpuOutputHandle` / `resident_d_output()`)
+  → downstream GPU field / EML / threshold consumers (deferred wiring)
+```
+
+**W input modes (`TraversalFieldInput` / `MinPlusTraversalInput`):**
+
+| Mode | Role |
+|---|---|
+| `ShadowColumns` / `PackedCpuValues` | PATH-5/6/7 compatibility bridge — CPU gather + upload |
+| `GpuFlatW` | Production — flat `cells` f32 buffer from upstream field pass |
+| `GpuInterleavedW` | Production — interleaved values buffer with W in `w_col` |
+
+**D output:** `MinPlusTraversalGpuOutputHandle` / `TraversalFieldBandSession::resident_d_output()` exposes the resident ping-pong buffer. No CPU readback in `GpuResident` mode.
+
+**Not landed:** automatic `SimSession` / RegionField pass-graph wiring, downstream GPU threshold consumer on D, pathfinding engine, movement policy.
 
 ---
 

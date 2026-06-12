@@ -340,7 +340,8 @@ pub use install::{
 };
 pub use min_plus_traversal_field::{
     TraversalFieldBandError, TraversalFieldBandSession, TraversalFieldBandTickReport,
-    TraversalFieldExecutionMode, TraversalFieldExecutionOptions, TraversalFieldGridBinding,
+    TraversalFieldExecutionMode, TraversalFieldExecutionOptions, TraversalFieldGpuOutputHandle,
+    TraversalFieldGridBinding, TraversalFieldInput, TraversalFieldWInputKind,
     TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_ID, TRAVERSAL_FIELD_REGION_ID,
     TRAVERSAL_FIELD_UTILITY_ID,
 };

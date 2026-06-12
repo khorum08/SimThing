@@ -24,7 +24,7 @@ struct ScatterParams {
     _pad: [u32; 3],
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Clone, Copy, Debug, PartialEq, thiserror::Error)]
 pub enum IndexedScatterError {
     #[error("scatter entry {entry} src index {index} exceeds source length {len}")]
     SrcOutOfBounds { entry: usize, index: u32, len: u64 },
