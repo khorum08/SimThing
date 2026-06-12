@@ -172,6 +172,30 @@ specified recursive/structured design and then claim it IMPLEMENTED / PASS / CLO
 Binding enforcement lives in `invariants.md` → "Specification Fidelity & Anti-Ceremony". This §0.6 is the
 doctrine; the invariant table is the gate.
 
+### 0.7 Exact numeric authority for decision gates
+
+Decision-critical gradient magnitude, movement-front magnitude, threshold magnitude, and similar
+parity-sensitive scalar gates must use artifact-backed exact primitives. Raw f32 magnitude, WGSL `sqrt`,
+`length`, `distance`, `normalize`, `hypot`, or Rust native sqrt-like operations are
+`ApproximateDiagnostic` only and may not gate commitments.
+
+The current exact-authoritative chain is:
+
+fixed-point `dx/dy`
+→ exact pre-sqrt mag2 (`m_jit_mag2_fixed_exact` / `ExactFixedPointDxDy`)
+→ Candidate F sqrt (`m_jit_mag_f_from_exact_mag2`, artifact hash `59ab4b2892e3c690`, LF-canonical
+re-pin 2026-06-11, `SQRT-REPIN-0`)
+→ exact Euclidean magnitude
+→ threshold.
+
+Any GPU-resident sqrt, magnitude, distance, gradient norm, movement-front norm, threshold path, or
+parity-sensitive exact path must route through Candidate F or another explicitly admitted
+artifact-backed exact primitive. Native sqrt-like paths may exist only as diagnostics.
+
+Historical R4 ledger detail remains in
+[`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md);
+§0.7 is the carry-forward constitutional rule.
+
 ---
 
 ## 1. Design lineage v4 → 0.0.8.1 (non-binding archaeology; sources archived)
@@ -375,3 +399,4 @@ product-authorized.
 - PALMA / min-plus traversal: **production GPU utility seated** (PATH-7) with **GPU-native W input / resident D output** (PATH-8), **no public `tick()` scaffold** (PATH-8R), **no public PALMA legacy aliases** (PATH-8R-CLEAN), and **downstream GPU D probe smoke** (PATH-9). Runtime API is generic `min_plus_traversal_field` + `MinPlusTraversalDProbeOp` — explicit `dispatch_gpu_resident` + `TraversalFieldGpuInput`; compact probe readback only for downstream consumer assertions. CPU shadow gather/full-D readback only via named diagnostic/compatibility dispatch. PATH-0–5 proof/benchmark rungs; PATH-6 opt-in band scheduling (**default `SimSession` tick not wired**). **No pathfinding engine or movement policy.** Fable handoff: [`tests/palma_path_9_downstream_gpu_consumer_results.md`](tests/palma_path_9_downstream_gpu_consumer_results.md). Guide: [`design_0_0_8_1_palma_pathfinding_integration_guide.md`](design_0_0_8_1_palma_pathfinding_integration_guide.md)
 - BH / saturating-flux operator: **BH-0 IMPLEMENTED / PASS** — generic GPU `SaturatingFlux` stencil with transient register-local C, symmetric `0.5*(C_i+C_j)` flux, zero-flux boundaries, opt-in/default-off admission (`RegionFieldOperatorSpec::SaturatingFlux { u_sat, chi, choke_output_col }`, `chi ≤ 0.25`). **BH-1 IMPLEMENTED / PASS** — optional GPU-resident choke readout column `1 − C/χ` in the same dispatch. **BH-1R IMPLEMENTED / PASS** — compact GPU `SaturatingFluxChokeThresholdOp` (4-float readback). **BH-1R-SCALE IMPLEMENTED / PASS** — staged parallel reduction (256-thread pass 1 + partial fold pass 2; no single-lane full-grid scan). **BH-2A IMPLEMENTED / PASS** — named consumer `CT-4b_Local_Automata_W_Feedstock` opens BH-2. **BH-2B IMPLEMENTED / PASS** — generic GPU `WImpedanceComposeOp` (linear `base_w + weight_a*choke_a + weight_b*choke_b` per profile; admission via `WImpedanceComposeSpec`; bridge `compiled_w_impedance_compose_to_gpu_config`). **BH-2S IMPLEMENTED / PASS** — generic GPU `StressComposeOp` (overlap/mismatch/weighted/velocity stress algebra; admission via `StressComposeSpec`; bridge `compiled_stress_compose_to_gpu_config`; max 4 input field columns, max 8 profiles). **BH-2S-API-DOC DOCUMENTED / PASS** — consumer service-surface handoff (§11). **BH-2C IMPLEMENTED / PASS** — composed W feeds PALMA `GpuInterleavedW` → resident D + compact probe; live API `composed_w_min_plus_stencil_config`. **BH-2D IMPLEMENTED / PASS** — CT-4b 200×200 fixture proof over generic source-family fields; full resident feedstock chain; test fixture quarantined in `ct4b_field_fixture.rs`. **BH-2D-OBS-100R OBSERVATION / PASS** — 100-tick CT-4b dynamic scenario observation (test-only pulsed/mobile emitters + candidate sampler displacement; compact probe + diagnostic aggregates). CPU oracle test-only; no native sqrt in BH hot paths. No border service, pathfinding engine, movement policy, route/predecessor objects. Handoff: [`tests/bh0_saturating_flux_results.md`](tests/bh0_saturating_flux_results.md), [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md), [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md), [`tests/bh1r_scale_parallel_reduction_results.md`](tests/bh1r_scale_parallel_reduction_results.md), [`tests/bh2_w_composition_results.md`](tests/bh2_w_composition_results.md), [`tests/bh2s_overlap_stress_results.md`](tests/bh2s_overlap_stress_results.md), [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md), [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md), [`tests/bh2d_ct4b_100tick_scenario_observations.md`](tests/bh2d_ct4b_100tick_scenario_observations.md). Track: [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md) (§11 API surfaces, §12 BH-2C, §13 BH-2D, §14 BH-2D-OBS-100R)
 - Archived design lineage (historical only): `archive/superseded_design/`
+- **R1C-GATE (2026-06-11):** Legacy R1C-B/C proof-report replay tests were removed or quarantined from the default workspace gate. Default workspace retains only fast production-relevant allocation/membership sentinels. Report: [`tests/r1c_default_gate_cleanup_results.md`](tests/r1c_default_gate_cleanup_results.md)
