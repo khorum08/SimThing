@@ -94,12 +94,13 @@ pub use reduction_orderband::{
 };
 pub use slot::{SlotAllocError, SlotAllocator};
 pub use structured_field_stencil::{
-    cpu_compute_c_at, cpu_horizon, cpu_stencil_step, params_from_config, FieldStencilParamsGpu,
-    StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilDebugReport, StructuredFieldStencilError, StructuredFieldStencilMaskMode,
-    StructuredFieldStencilOp, StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
-    DEFAULT_HORIZON_CAP, EXTENDED_HORIZON_CAP, SATURATING_FLUX_CHI_CFL_MAX,
+    cpu_compute_c_at, cpu_compute_choke_at, cpu_compute_choke_readout_at, cpu_horizon,
+    cpu_stencil_step, params_from_config, FieldStencilParamsGpu, StructuredFieldExecutionOptions,
+    StructuredFieldExecutionReport, StructuredFieldStencilBoundaryMode,
+    StructuredFieldStencilConfig, StructuredFieldStencilDebugReport, StructuredFieldStencilError,
+    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
+    StructuredFieldStencilSourcePolicy, DEFAULT_HORIZON_CAP, EXTENDED_HORIZON_CAP,
+    SATURATING_FLUX_CHI_CFL_MAX,
 };
 pub use transfer_accumulator::{
     conjunctive_recipe_registration_to_transfer, conjunctive_recipe_registrations_to_transfer,

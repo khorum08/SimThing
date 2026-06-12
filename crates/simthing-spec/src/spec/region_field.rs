@@ -104,9 +104,12 @@ pub enum RegionFieldOperatorSpec {
         output_col: u32,
     },
     /// BH-0: conservative saturating-flux operator (state-dependent C_u, zero-flux boundary).
+    /// BH-1: optional `choke_output_col` writes `1 − C(i)/χ` in the same dispatch.
     SaturatingFlux {
         u_sat: f32,
         chi: f32,
+        #[serde(default)]
+        choke_output_col: Option<u32>,
     },
 }
 

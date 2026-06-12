@@ -60,9 +60,15 @@ pub fn compiled_stencil_to_gpu_config(
                 simthing_spec::CompiledGradientAxis::X => StructuredFieldStencilOperator::GradientX,
                 simthing_spec::CompiledGradientAxis::Y => StructuredFieldStencilOperator::GradientY,
             },
-            CompiledRegionFieldOperator::SaturatingFlux { u_sat, chi } => {
-                StructuredFieldStencilOperator::SaturatingFlux { u_sat, chi }
-            }
+            CompiledRegionFieldOperator::SaturatingFlux {
+                u_sat,
+                chi,
+                choke_output_col,
+            } => StructuredFieldStencilOperator::SaturatingFlux {
+                u_sat,
+                chi,
+                choke_output_col,
+            },
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,

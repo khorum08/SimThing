@@ -15,6 +15,7 @@ fn base_spec() -> RegionFieldSpec {
         operator: RegionFieldOperatorSpec::SaturatingFlux {
             u_sat: 2.0,
             chi: 0.25,
+            choke_output_col: None,
         },
         horizon: 4,
         allow_extended_horizon: false,
@@ -40,6 +41,7 @@ fn bh0_invalid_cfl_rejected() {
     spec.operator = RegionFieldOperatorSpec::SaturatingFlux {
         u_sat: 2.0,
         chi: SATURATING_FLUX_CHI_CFL_MAX + 0.01,
+        choke_output_col: None,
     };
     let err = compile_region_field_preview(&spec).unwrap_err();
     assert!(err.to_string().contains("CFL"));
@@ -51,6 +53,7 @@ fn saturating_flux_admission_rejects_invalid_shapes() {
     spec.operator = RegionFieldOperatorSpec::SaturatingFlux {
         u_sat: 0.0,
         chi: 0.25,
+        choke_output_col: None,
     };
     assert!(compile_region_field_preview(&spec).is_err());
 
@@ -58,6 +61,7 @@ fn saturating_flux_admission_rejects_invalid_shapes() {
     spec.operator = RegionFieldOperatorSpec::SaturatingFlux {
         u_sat: 2.0,
         chi: 0.0,
+        choke_output_col: None,
     };
     assert!(compile_region_field_preview(&spec).is_err());
 
@@ -76,9 +80,14 @@ fn saturating_flux_admission_accepts_valid_shape() {
     let spec = base_spec();
     let preview = compile_region_field_preview(&spec).expect("valid spec");
     match preview.stencil.operator {
-        simthing_spec::CompiledRegionFieldOperator::SaturatingFlux { u_sat, chi } => {
+        simthing_spec::CompiledRegionFieldOperator::SaturatingFlux {
+            u_sat,
+            chi,
+            choke_output_col,
+        } => {
             assert_eq!(u_sat, 2.0);
             assert_eq!(chi, 0.25);
+            assert_eq!(choke_output_col, None);
         }
         other => panic!("expected SaturatingFlux, got {other:?}"),
     }
