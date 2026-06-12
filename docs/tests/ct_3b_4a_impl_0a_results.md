@@ -1,9 +1,9 @@
 # CT-3b+4a implementation results — RF-fed movement-front heatmap spine
 
-Status: **IMPLEMENTED / PASS** (2026-06-11; 0A spine + same-day 0B closures: CT-RF-EML-RATE-0,
-`value:` lowering, GPU projection, and **Line 3 session-loop integration** — final addendum
-below. One named deferral: in-loop commitment *consequence* application; see the Line 3
-addendum. Frontier agent + executive design authority.)
+Status: **IMPLEMENTED / PASS — NO OPEN DEFERRALS** (2026-06-12; 0A spine + 0B closures:
+CT-RF-EML-RATE-0, `value:` lowering, GPU projection, Line 3 session-loop integration, and the
+**commitment-effects closure** — final addendum below. Frontier agent + executive design
+authority.)
 **The headline spine runs end to end from ClauseScript, including the mandatory CT-4a leg:**
 
 ```
@@ -154,13 +154,33 @@ headline fixture dispatches RF bands and the mapping chain on every tick and jou
 event-kind-7 crossings; the disabled-profile run installs nothing and journals nothing; the
 stripped-binding open fails loudly.
 
-**Named deferral (scope ledger):** the in-loop *consequence* of a commitment crossing —
-converting journaled events into authored `BoundaryRequest`s at the boundary — is deferred,
-consumer-named: `FirstSliceCommitmentSpec` carries no authored effect payload, and inventing one
-here would be speculative widening. The event→`BoundaryRequest::AttachOverlay` application
-itself is already proven through `apply_structural_mutations` in the 0A harness; the journal is
-the boundary-consumable surface until a rung authors commitment effects. PALMA/min-plus was
+~~Named deferral~~ — **closed by the commitment-effects addendum below.** PALMA/min-plus was
 deliberately not touched — Line 3 needed no traversal utility.
+
+## Addendum — authored commitment effects (track-closing PR, 2026-06-12)
+
+The last deferral is implemented: `FirstSliceCommitmentSpec.effect: Option<CommitmentEffectSpec>`
+authors the structural consequence of a crossing — `{ target_id, targets_property,
+sub_field_deltas, lifecycle (closed set, v1 Permanent), once (default true — a decision latch) }`.
+ClauseScript: `effect { target targets_property amount_add|amount_mult }` inside the `urgency`
+block. Admission rejects unnamed targets, malformed property refs, and empty deltas.
+
+At install, the session resolves the target (exactly one SimThing), the property column, and
+seeds the effect property on the host (the overlay-compile contract). In the loop, when a
+boundary arrives with new journaled crossings, the session builds the authored overlay
+(`Custom("mapping_commitment")`, System source) and submits
+`BoundaryRequest::AttachOverlay` through `tx.submit_boundary` — **the ordinary feeder channel,
+drained and applied by the existing boundary structural machinery**, with the empty-boundary
+fast path suppressed for that boundary. The once-latch consumes the journal watermark so held
+crossings never re-fire.
+
+Proof (GPU, in `ct_3b_4a_session_loop.rs`): across a 3-boundary run with crossings every tick,
+the effect applies **exactly once**; exactly one commitment overlay sits on the acting farmer;
+and the overlay's `Permanent` transform raises the authored `simthing::alarm` column on
+subsequent GPU ticks (read back > 0). `RunSummary.mapping_commitment_effects_applied` counts
+applications. The full authored loop is now closed: ClauseScript economy → RF pressure →
+heatmap → ai_will_do → threshold → **authored structural consequence on the world tree** —
+GPU decides, the boundary consumes, nothing recomputes.
 
 ## Files changed
 

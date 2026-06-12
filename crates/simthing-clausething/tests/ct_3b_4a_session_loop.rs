@@ -85,7 +85,7 @@ fn session_loop_runs_rf_heatmap_and_journals_commitments() {
     let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let hydrated = hydrate();
-    let (scenario, _farmer_id) = scenario(&hydrated.game_mode, 3);
+    let (scenario, farmer_id) = scenario(&hydrated.game_mode, 3);
     let game_mode = prepared_game_mode(&hydrated, &scenario);
 
     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
@@ -116,6 +116,45 @@ fn session_loop_runs_rf_heatmap_and_journals_commitments() {
             .iter()
             .all(|record| record.event.event_kind == 7),
         "journal carries only authored crossings"
+    );
+
+    // The authored commitment effect lands once (latch) on the acting
+    // SimThing through the real boundary path, and its Permanent overlay
+    // transforms the alarm column on subsequent GPU ticks.
+    assert_eq!(
+        summary.mapping_commitment_effects_applied, 1,
+        "once-latched effect applies exactly once across boundaries"
+    );
+    fn find<'a>(node: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
+        if node.id == id {
+            return Some(node);
+        }
+        node.children.iter().find_map(|c| find(c, id))
+    }
+    let farmer = find(&session.proto.root, farmer_id).expect("farmer in tree");
+    let commitment_overlays = farmer
+        .overlays
+        .iter()
+        .filter(
+            |o| matches!(&o.kind, simthing_core::OverlayKind::Custom(k) if k == "mapping_commitment"),
+        )
+        .count();
+    assert_eq!(commitment_overlays, 1, "exactly one commitment overlay");
+    let registry = &session.proto.registry;
+    let alarm_id = registry.id_of("simthing", "alarm").expect("alarm property");
+    let alarm_col = registry
+        .column_range(alarm_id)
+        .col_for_role(
+            &simthing_core::SubFieldRole::Amount,
+            &registry.property(alarm_id).layout,
+        )
+        .expect("alarm col");
+    let farmer_slot = session.proto.allocator.slot_of(farmer_id).expect("slot");
+    let values = session.state.read_values();
+    let alarm = values[farmer_slot as usize * session.coord.n_dims() as usize + alarm_col];
+    assert!(
+        alarm > 0.0,
+        "commitment overlay transforms the alarm column on GPU ticks, got {alarm}"
     );
 }
 

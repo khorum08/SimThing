@@ -376,6 +376,26 @@ fn compile_commitment(
     if !commitment.threshold.is_finite() {
         return Err(field_err(&spec.name, "commitment threshold must be finite"));
     }
+    if let Some(effect) = &commitment.effect {
+        if effect.target_id.is_empty() {
+            return Err(field_err(
+                &spec.name,
+                "commitment effect target_id must be named",
+            ));
+        }
+        if effect.targets_property.split_once("::").is_none() {
+            return Err(field_err(
+                &spec.name,
+                "commitment effect targets_property must be `namespace::name`",
+            ));
+        }
+        if effect.sub_field_deltas.is_empty() {
+            return Err(field_err(
+                &spec.name,
+                "commitment effect requires at least one sub-field delta",
+            ));
+        }
+    }
     if commitment.event_kind == 0 {
         return Err(field_err(
             &spec.name,

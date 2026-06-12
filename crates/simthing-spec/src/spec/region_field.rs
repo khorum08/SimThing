@@ -164,6 +164,43 @@ pub struct FirstSliceCommitmentSpec {
     pub threshold: f32,
     pub direction: FirstSliceCommitmentDirectionSpec,
     pub event_kind: u32,
+    /// CT-3b+4a closure: authored consequence of a crossing. `None` keeps
+    /// crossings journal-only (pre-closure behavior).
+    #[serde(default)]
+    pub effect: Option<CommitmentEffectSpec>,
+}
+
+/// Authored structural consequence of a commitment crossing: attach one
+/// overlay to the resolved acting SimThing through the ordinary
+/// `BoundaryRequest` path at the next boundary. No new primitive — this is
+/// the 0A-proven consequence made authorable.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct CommitmentEffectSpec {
+    /// Scenario install-target id resolving to the acting SimThing.
+    pub target_id: String,
+    /// `"namespace::name"` of the property the overlay transforms.
+    pub targets_property: String,
+    pub sub_field_deltas: Vec<(simthing_core::SubFieldRole, simthing_core::TransformOp)>,
+    #[serde(default)]
+    pub lifecycle: CommitmentEffectLifecycleSpec,
+    /// `true` (default): the commitment is a latch — the effect applies at
+    /// the first crossing only. `false`: every boundary with crossings
+    /// re-applies.
+    #[serde(default = "default_commitment_once")]
+    pub once: bool,
+}
+
+/// Closed authored lifecycle set for commitment-effect overlays (v1:
+/// `Permanent` only; richer lifecycles open when a consumer names them).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum CommitmentEffectLifecycleSpec {
+    #[default]
+    Permanent,
+}
+
+fn default_commitment_once() -> bool {
+    true
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -44,12 +44,23 @@ simthing_ct3b4a_headline = {
             weight_resource = 1.0
             threshold = 16.4
             event_kind = 7
+            effect = {
+                target = farmer
+                targets_property = simthing::alarm
+                amount_add = 1.0
+            }
         }
         pressure_binding = {
             arena = settlement_food
             source = IntrinsicFlow
             placement = { target = farmer row = 1 col = 1 }
         }
+    }
+    trigger_property = {
+        id = "simthing_alarm"
+        namespace = "simthing"
+        name = "alarm"
+        display_name = "Alarm"
     }
     mapping = { profile = SparseRegionFieldV1 }
 }
