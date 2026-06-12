@@ -41,7 +41,11 @@ fn saturating_config(
         weight_east: 0.0,
         weight_west: 0.0,
         source_cap: None,
-        operator: StructuredFieldStencilOperator::SaturatingFlux { u_sat, chi },
+        operator: StructuredFieldStencilOperator::SaturatingFlux {
+            u_sat,
+            chi,
+            choke_output_col: None,
+        },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
         mask_mode: StructuredFieldStencilMaskMode::All,

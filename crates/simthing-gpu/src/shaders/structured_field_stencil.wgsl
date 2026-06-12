@@ -20,7 +20,7 @@ struct FieldStencilParams {
     target_col_y: u32,
     u_sat: f32,
     chi: f32,
-    _pad: u32,
+    choke_output_enabled: u32,
 }
 
 @group(0) @binding(0) var<uniform> params: FieldStencilParams;
@@ -146,6 +146,16 @@ fn stencil_step(@builtin(global_invocation_id) gid: vec3<u32>) {
             output_values[base + d] = input_values[base + d];
         }
         output_values[base + params.target_col] = next;
+        if params.choke_output_enabled != 0u {
+            var choke = 1.0 - c_i / params.chi;
+            if choke < 0.0 {
+                choke = 0.0;
+            }
+            if choke > 1.0 {
+                choke = 1.0;
+            }
+            output_values[base + params.target_col_y] = choke;
+        }
         return;
     }
 

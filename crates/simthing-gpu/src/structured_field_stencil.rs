@@ -58,9 +58,11 @@ pub enum StructuredFieldStencilOperator {
         target_col_y: u32,
     },
     /// BH-0: conservative saturating-flux operator with transient register-local C.
+    /// BH-1: optional `choke_output_col` writes `1 − C(i)/χ` in the same dispatch.
     SaturatingFlux {
         u_sat: f32,
         chi: f32,
+        choke_output_col: Option<u32>,
     },
 }
 
@@ -223,7 +225,12 @@ impl StructuredFieldStencilConfig {
         {
             return Err(StructuredFieldStencilError::NonFiniteCoefficients);
         }
-        if let StructuredFieldStencilOperator::SaturatingFlux { u_sat, chi } = self.operator {
+        if let StructuredFieldStencilOperator::SaturatingFlux {
+            u_sat,
+            chi,
+            choke_output_col,
+        } = self.operator
+        {
             if !u_sat.is_finite() || u_sat <= 0.0 {
                 return Err(StructuredFieldStencilError::InvalidUSat(u_sat));
             }
@@ -244,6 +251,20 @@ impl StructuredFieldStencilConfig {
             }
             if self.source_cap.is_some() {
                 return Err(StructuredFieldStencilError::SourceCapRequiresOperator);
+            }
+            if let Some(choke_col) = choke_output_col {
+                if choke_col >= self.n_dims {
+                    return Err(StructuredFieldStencilError::ChokeOutputColOutOfRange {
+                        choke_output_col: choke_col,
+                        n_dims: self.n_dims,
+                    });
+                }
+                if choke_col == self.source_col {
+                    return Err(StructuredFieldStencilError::ChokeOutputColAliasedSource {
+                        choke_output_col: choke_col,
+                        source_col: self.source_col,
+                    });
+                }
             }
         }
         if let StructuredFieldStencilOperator::GradientXY { target_col_y } = self.operator {
@@ -358,6 +379,15 @@ pub enum StructuredFieldStencilError {
     ChiExceedsCflBound { chi: f32, max: f32 },
     #[error("SaturatingFlux requires source_col == target_col (source={source_col} target={target_col})")]
     SaturatingFluxColumnMismatch { source_col: u32, target_col: u32 },
+    #[error("SaturatingFlux choke_output_col {choke_output_col} out of range for n_dims {n_dims}")]
+    ChokeOutputColOutOfRange { choke_output_col: u32, n_dims: u32 },
+    #[error(
+        "SaturatingFlux choke_output_col {choke_output_col} must differ from source_col {source_col}"
+    )]
+    ChokeOutputColAliasedSource {
+        choke_output_col: u32,
+        source_col: u32,
+    },
 }
 
 #[repr(C)]
@@ -382,7 +412,7 @@ pub struct FieldStencilParamsGpu {
     target_col_y: u32,
     u_sat: f32,
     chi: f32,
-    _pad: u32,
+    choke_output_enabled: u32,
 }
 
 impl FieldStencilParamsGpu {
@@ -440,6 +470,10 @@ impl FieldStencilParamsGpu {
             )),
             target_col_y: match config.operator {
                 StructuredFieldStencilOperator::GradientXY { target_col_y } => target_col_y,
+                StructuredFieldStencilOperator::SaturatingFlux {
+                    choke_output_col: Some(col),
+                    ..
+                } => col,
                 _ => 0,
             },
             u_sat: match config.operator {
@@ -450,7 +484,13 @@ impl FieldStencilParamsGpu {
                 StructuredFieldStencilOperator::SaturatingFlux { chi, .. } => chi,
                 _ => 0.0,
             },
-            _pad: 0,
+            choke_output_enabled: match config.operator {
+                StructuredFieldStencilOperator::SaturatingFlux {
+                    choke_output_col: Some(_),
+                    ..
+                } => 1,
+                _ => 0,
+            },
         }
     }
 }
@@ -1116,6 +1156,27 @@ pub fn cpu_compute_c_at(values: &[f32], params: &FieldStencilParamsGpu, x: i32, 
     c
 }
 
+/// BH-1: choke readout `1 − C/χ`, clamped to `[0, 1]`.
+pub fn cpu_compute_choke_at(c: f32, chi: f32) -> f32 {
+    let mut choke = 1.0 - c / chi;
+    if choke < 0.0 {
+        choke = 0.0;
+    } else if choke > 1.0 {
+        choke = 1.0;
+    }
+    choke
+}
+
+/// BH-1: choke readout at `(x, y)` for oracle introspection (tests only).
+pub fn cpu_compute_choke_readout_at(
+    values: &[f32],
+    params: &FieldStencilParamsGpu,
+    x: i32,
+    y: i32,
+) -> f32 {
+    cpu_compute_choke_at(cpu_compute_c_at(values, params, x, y), params.chi)
+}
+
 fn cpu_saturating_flux_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f32> {
     let mut out = values.to_vec();
     let w = params.width;
@@ -1154,6 +1215,10 @@ fn cpu_saturating_flux_step(values: &[f32], params: &FieldStencilParamsGpu) -> V
             }
 
             out[(idx * nd + tc) as usize] = next;
+            if params.choke_output_enabled != 0 {
+                let choke = cpu_compute_choke_at(c_i, params.chi);
+                out[(idx * nd + params.target_col_y) as usize] = choke;
+            }
         }
     }
     out

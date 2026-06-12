@@ -206,7 +206,7 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 | Rung | Status | Report |
 |---|---|---|
 | BH-0 saturating-flux operator | IMPLEMENTED / PASS | [`tests/bh0_saturating_flux_results.md`](tests/bh0_saturating_flux_results.md) |
-| BH-1 choke readout + consumption | NOT STARTED (contract pinned §3; opens after BH-0) | — |
+| BH-1 choke readout + consumption | IMPLEMENTED / PASS | [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md) |
 | BH-2 PALMA impedance coupling | DEFERRED (named-consumer gate) | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
 

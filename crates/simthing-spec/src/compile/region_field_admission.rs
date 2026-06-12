@@ -40,8 +40,14 @@ pub const ADMITTED_REGION_FIELD_FORMULA_CLASSES: &[&str] = &[
 pub enum CompiledRegionFieldOperator {
     Normalized,
     SourceCappedNormalized,
-    Gradient { axis: CompiledGradientAxis },
-    SaturatingFlux { u_sat: f32, chi: f32 },
+    Gradient {
+        axis: CompiledGradientAxis,
+    },
+    SaturatingFlux {
+        u_sat: f32,
+        chi: f32,
+        choke_output_col: Option<u32>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -254,7 +260,11 @@ fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError>
                 ));
             }
         }
-        RegionFieldOperatorSpec::SaturatingFlux { u_sat, chi } => {
+        RegionFieldOperatorSpec::SaturatingFlux {
+            u_sat,
+            chi,
+            choke_output_col,
+        } => {
             if spec.source_cap.is_some() {
                 return Err(field_err(
                     &spec.name,
@@ -286,6 +296,24 @@ fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError>
                     &spec.name,
                     "SaturatingFlux requires source_col == target_col",
                 ));
+            }
+            if let Some(choke_col) = choke_output_col {
+                if choke_col >= spec.n_dims {
+                    return Err(field_err(
+                        &spec.name,
+                        format!(
+                            "SaturatingFlux choke_output_col {choke_col} out of range for n_dims"
+                        ),
+                    ));
+                }
+                if choke_col == spec.source_col {
+                    return Err(field_err(
+                        &spec.name,
+                        format!(
+                            "SaturatingFlux choke_output_col {choke_col} must differ from source_col"
+                        ),
+                    ));
+                }
             }
         }
     }
@@ -510,7 +538,7 @@ fn compile_commitment(
 pub fn validate_region_field_frame_gradient_sinks(
     fields: &[&RegionFieldSpec],
 ) -> Result<(), SpecError> {
-    let mut gradient_sinks: Vec<(u32, &str)> = Vec::new();
+    let mut strict_sinks: Vec<(u32, &str)> = Vec::new();
     for spec in fields {
         if let RegionFieldOperatorSpec::Gradient { output_col, .. } = spec.operator {
             if output_col == spec.source_col {
@@ -521,21 +549,36 @@ pub fn validate_region_field_frame_gradient_sinks(
                     ),
                 ));
             }
-            gradient_sinks.push((output_col, spec.name.as_str()));
+            strict_sinks.push((output_col, spec.name.as_str()));
+        }
+        if let RegionFieldOperatorSpec::SaturatingFlux {
+            choke_output_col: Some(choke_col),
+            ..
+        } = spec.operator
+        {
+            if choke_col == spec.source_col {
+                return Err(field_err(
+                    &spec.name,
+                    format!(
+                        "SaturatingFlux choke_output_col {choke_col} must differ from source_col (same-pass read/write loop)"
+                    ),
+                ));
+            }
+            strict_sinks.push((choke_col, spec.name.as_str()));
         }
     }
 
-    if gradient_sinks.is_empty() {
+    if strict_sinks.is_empty() {
         return Ok(());
     }
 
     for spec in fields {
-        for &(sink_col, gradient_name) in &gradient_sinks {
+        for &(sink_col, sink_name) in &strict_sinks {
             if spec.source_col == sink_col {
                 return Err(field_err(
                     &spec.name,
                     format!(
-                        "gradient output_col {sink_col} from `{gradient_name}` cannot be used as same-frame source_col by `{}`",
+                        "strict sink column {sink_col} from `{sink_name}` cannot be used as same-frame source_col by `{}`",
                         spec.name
                     ),
                 ));
@@ -708,8 +751,16 @@ pub fn compile_region_field_preview(
                 output_col,
             )
         }
-        RegionFieldOperatorSpec::SaturatingFlux { u_sat, chi } => (
-            CompiledRegionFieldOperator::SaturatingFlux { u_sat, chi },
+        RegionFieldOperatorSpec::SaturatingFlux {
+            u_sat,
+            chi,
+            choke_output_col,
+        } => (
+            CompiledRegionFieldOperator::SaturatingFlux {
+                u_sat,
+                chi,
+                choke_output_col,
+            },
             1.0,
             0.0,
             0.0,
