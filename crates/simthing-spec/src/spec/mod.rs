@@ -14,6 +14,7 @@ pub mod resource_flow;
 pub mod scenario;
 pub mod script;
 pub mod trigger;
+pub mod w_impedance_compose;
 
 pub use capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
@@ -52,3 +53,7 @@ pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
 pub use trigger::{TriggerDirection, TriggerSpec};
+pub use w_impedance_compose::{
+    WImpedanceComposeProfileSpec, WImpedanceComposeSpec, CT_4B_LOCAL_AUTOMATA_W_FEEDSTOCK,
+    W_IMPEDANCE_COMPOSE_MAX_PROFILES,
+};

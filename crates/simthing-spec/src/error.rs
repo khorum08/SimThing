@@ -336,6 +336,10 @@ pub enum SpecError {
     #[error("region field `{field}`: {reason}")]
     RegionFieldAdmission { field: String, reason: String },
 
+    // ── W impedance compose admission (BH-2B) ────────────────────────────────
+    #[error("W impedance compose admission: {reason}")]
+    WImpedanceComposeAdmission { reason: String },
+
     // ── EML Gadget Library (Phase M EML-GADGET-1) ────────────────────────────
     #[error("EML gadget `{gadget}`: {reason}")]
     EmlGadgetAdmission { gadget: String, reason: String },

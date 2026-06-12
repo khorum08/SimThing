@@ -25,6 +25,7 @@ pub mod slot;
 pub mod structured_field_stencil;
 pub mod transfer_accumulator;
 pub mod velocity_accumulator;
+pub mod w_impedance_compose;
 pub mod world_state;
 
 pub use accumulator_op::{
@@ -118,6 +119,11 @@ pub use transfer_accumulator::{
 pub use velocity_accumulator::{
     plan_governed_integration, plan_governed_integration_at_band, plan_velocity_integration,
     GovernedIntegrationPlan, PlannerError, VelocityAccumulatorPlan,
+};
+pub use w_impedance_compose::{
+    cpu_w_impedance_compose_oracle, WImpedanceComposeConfig, WImpedanceComposeError,
+    WImpedanceComposeOp, WImpedanceComposeProfile, W_IMPEDANCE_COMPOSE_MAX_PROFILES,
+    W_IMPEDANCE_COMPOSE_WORKGROUP_SIZE,
 };
 pub use world_state::{
     build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta,
