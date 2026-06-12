@@ -151,9 +151,6 @@ pub struct TraversalFieldDispatchReport {
     pub scheduler_report: FieldSchedulerReport,
 }
 
-/// Legacy alias — prefer [`TraversalFieldDispatchReport`].
-pub type TraversalFieldBandTickReport = TraversalFieldDispatchReport;
-
 impl TraversalFieldBandSession {
     pub fn new(
         binding: TraversalFieldGridBinding,
