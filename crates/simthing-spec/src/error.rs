@@ -340,6 +340,10 @@ pub enum SpecError {
     #[error("W impedance compose admission: {reason}")]
     WImpedanceComposeAdmission { reason: String },
 
+    // ── Stress compose admission (BH-2S) ─────────────────────────────────────
+    #[error("stress compose admission: {reason}")]
+    StressComposeAdmission { reason: String },
+
     // ── EML Gadget Library (Phase M EML-GADGET-1) ────────────────────────────
     #[error("EML gadget `{gadget}`: {reason}")]
     EmlGadgetAdmission { gadget: String, reason: String },

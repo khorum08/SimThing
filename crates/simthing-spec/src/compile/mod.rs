@@ -31,6 +31,7 @@ pub mod region_field_budget;
 pub mod resource_economy;
 pub mod resource_economy_admission;
 pub mod resource_flow_admission;
+pub mod stress_compose_admission;
 pub mod trigger;
 pub mod w_impedance_compose_admission;
 
@@ -173,6 +174,9 @@ pub use resource_flow_admission::{
     compile_resource_flow_admission, CompiledArenaAdmission, CompiledCouplingAdmission,
     CompiledCouplingDelay, CompiledResourceFlowAdmission, ResourceFlowDiagnostic,
     ResourceFlowExpansionReport,
+};
+pub use stress_compose_admission::{
+    compile_stress_compose_preview, CompiledStressCompose, CompiledStressComposeProfile,
 };
 pub use trigger::compile_trigger;
 pub use w_impedance_compose_admission::{

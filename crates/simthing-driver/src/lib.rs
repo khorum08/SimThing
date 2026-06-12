@@ -73,6 +73,7 @@ pub mod scenario;
 pub mod session;
 pub mod spec_replay;
 pub mod spec_session;
+pub mod stress_compose_bridge;
 pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
@@ -606,4 +607,5 @@ pub use spec_replay::{
 pub use spec_session::{
     CapabilityInstanceKey, PreBoundarySnapshot, SpecSessionError, SpecSessionState,
 };
+pub use stress_compose_bridge::compiled_stress_compose_to_gpu_config;
 pub use w_impedance_compose_bridge::compiled_w_impedance_compose_to_gpu_config;
