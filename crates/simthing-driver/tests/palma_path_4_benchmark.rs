@@ -104,3 +104,85 @@ fn palma_path_4_benchmark_full_matrix() {
         }
     });
 }
+
+#[test]
+fn palma_path_4s_scenario_has_100_stars_and_150_fleets() {
+    use support::palma_path_4_stellaris_scale::{
+        build_scenario, fleets_with_unique_destinations, reduce_pressure_and_compose_w, BENCH_SEED,
+        FACTION_COUNT, FLEETS_PER_FACTION, GRID, STAR_COUNT, TOTAL_FLEETS,
+    };
+
+    let scenario = build_scenario(BENCH_SEED);
+    assert_eq!(scenario.stars.len(), STAR_COUNT);
+    assert_eq!(scenario.fleets.len(), TOTAL_FLEETS);
+    assert_eq!(
+        scenario
+            .stars
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        STAR_COUNT
+    );
+
+    let mut faction_counts = [0_usize; FACTION_COUNT];
+    for fleet in &scenario.fleets {
+        assert!(fleet.faction < FACTION_COUNT as u8);
+        faction_counts[fleet.faction as usize] += 1;
+        assert!(fleet.pos.0 < GRID as usize && fleet.pos.1 < GRID as usize);
+        assert!(fleet.dest.0 < GRID as usize && fleet.dest.1 < GRID as usize);
+    }
+    assert_eq!(faction_counts[0], FLEETS_PER_FACTION);
+    assert_eq!(faction_counts[1], FLEETS_PER_FACTION);
+    assert!(scenario.distinct_destinations >= 10);
+
+    let (w, pressure_us) = reduce_pressure_and_compose_w(&scenario, 5, BENCH_SEED);
+    assert_eq!(w.len(), (GRID * GRID) as usize);
+    assert!(pressure_us.is_finite() && pressure_us > 0.0);
+    assert!(w.iter().all(|v| v.is_finite() && *v >= 1.0));
+
+    let unique = fleets_with_unique_destinations(&scenario);
+    assert_eq!(
+        unique
+            .iter()
+            .map(|f| f.dest)
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        TOTAL_FLEETS
+    );
+}
+
+/// Stellaris-scale benchmark — run with `PALMA_PATH_4_BENCH=1`.
+#[test]
+#[ignore = "180×180 150-fleet Stellaris-scale matrix; set PALMA_PATH_4_BENCH=1"]
+fn palma_path_4s_stellaris_scale_benchmark() {
+    if std::env::var("PALMA_PATH_4_BENCH").ok().as_deref() != Some("1") {
+        eprintln!("skip palma_path_4s_stellaris_scale_benchmark (set PALMA_PATH_4_BENCH=1)");
+        return;
+    }
+
+    use support::palma_path_4_stellaris_scale::{
+        build_scenario, format_stellaris_row, run_stellaris_row, stellaris_churn_matrix,
+        stellaris_iteration_matrix, BENCH_SEED, GRID,
+    };
+
+    let scenario = build_scenario(BENCH_SEED);
+    eprintln!(
+        "PALMA-PATH-4S grid={} stars={} fleets={} distinct_dests={}",
+        GRID,
+        scenario.stars.len(),
+        scenario.fleets.len(),
+        scenario.distinct_destinations
+    );
+    eprintln!("churn | iters | distinct_dests | pressure_us | cpu_fleet_total | cpu_fleet_avg | cpu_dest_fields | cpu_faction_fields | cpu_unique_fields | cpu_sample | gpu_setup | gpu_cold | gpu_warm | gpu_readback | total_w_pressure | path_if_pressure_paid");
+    eprintln!("---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---");
+
+    with_gpu(|ctx| {
+        for churn in stellaris_churn_matrix() {
+            for iter in stellaris_iteration_matrix() {
+                let include_gpu = churn == 0 && (iter == 4 || iter == 8);
+                let row = run_stellaris_row(&scenario, churn, iter, Some(ctx), include_gpu);
+                eprintln!("{}", format_stellaris_row(&row));
+            }
+        }
+    });
+}

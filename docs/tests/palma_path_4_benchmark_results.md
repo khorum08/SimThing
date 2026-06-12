@@ -1,6 +1,8 @@
 # PALMA-PATH-4 min-plus Location field benchmark results
 
-Status: **IMPLEMENTED / PASS** (2026-06-11)
+Status: **IMPLEMENTED / PASS — toy axis explorer** (2026-06-11)
+
+Representative Stellaris-scale workload: **PALMA-PATH-4S** — [`palma_path_4_stellaris_scale_benchmark_results.md`](palma_path_4_stellaris_scale_benchmark_results.md)
 
 Guide: [`../design_0_0_8_1_palma_pathfinding_integration_guide.md`](../design_0_0_8_1_palma_pathfinding_integration_guide.md)
 
@@ -30,7 +32,8 @@ Not run: `cargo test --workspace`, broad driver suite, ClauseThing tests.
 | `palma_path_4_dijkstra_baseline_matches_min_plus_when_relaxed_enough` | Dijkstra baseline matches CPU min-plus at 64 iterations (8×8 mixed W) |
 | `palma_path_4_cpu_per_mover_wins_single_near_dest_query_on_large_grid` | Honest CPU-win case: one mover adjacent to dest on 128×128 beats full 8-iter field |
 | `palma_path_4_benchmark_smoke_matrix` | CI-safe representative timings + GPU sample |
-| `palma_path_4_benchmark_full_matrix` | Ignored full matrix (`PALMA_PATH_4_BENCH=1`) |
+| `palma_path_4s_scenario_has_100_stars_and_150_fleets` | CI: 180×180 / 100 stars / 150 fleets shape + W compose |
+| `palma_path_4s_stellaris_scale_benchmark` | Ignored Stellaris-scale matrix (`PALMA_PATH_4_BENCH=1`) |
 
 Code:
 
