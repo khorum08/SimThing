@@ -8,3 +8,4 @@ pub mod first_slice_scenario_fixture;
 pub mod frontier_v1;
 pub mod palma_min_plus_oracle;
 pub mod palma_terran_pirate_fixture;
+pub mod palma_terran_pirate_tree;

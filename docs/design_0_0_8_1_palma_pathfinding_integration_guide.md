@@ -295,8 +295,9 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 1 | **PALMA-PATH-0** | Integration guide | **ACCEPTED / GUIDE** |
 | 2 | **PALMA-PATH-1R** | Hardened CPU oracle: detour/gap bend, INF cut, scalar field only | **IMPLEMENTED / PASS** — [`tests/palma_path_1_cpu_oracle_results.md`](tests/palma_path_1_cpu_oracle_results.md) |
 | 3 | **PALMA-PATH-2** | GPU/JIT min-plus stencil; CPU parity | **IMPLEMENTED / PASS** — [`tests/palma_path_2_gpu_min_plus_results.md`](tests/palma_path_2_gpu_min_plus_results.md) |
-| 4 | **PALMA-PATH-3** | Terran convoy / pirate fleet field sampling | **IMPLEMENTED / PASS** — [`tests/palma_path_3_terran_pirate_fixture_results.md`](tests/palma_path_3_terran_pirate_fixture_results.md) |
-| 5 | **PALMA-PATH-4** | Benchmark: CPU per-mover vs CPU field vs GPU field | Not started |
+| 4 | **PALMA-PATH-3** | Terran convoy / pirate fleet field sampling (numeric + GPU) | **PARTIAL / NUMERIC+GPU FIXTURE PASS** — live SimThing tree deferred to PATH-3R — [`tests/palma_path_3_terran_pirate_fixture_results.md`](tests/palma_path_3_terran_pirate_fixture_results.md) |
+| 5 | **PALMA-PATH-3R** | Admitted Location/gridcell/convoy tree + generic Reparent | **IMPLEMENTED / PASS** — [`tests/palma_path_3r_simthing_tree_fixture_results.md`](tests/palma_path_3r_simthing_tree_fixture_results.md) |
+| 6 | **PALMA-PATH-4** | Benchmark: CPU per-mover vs CPU field vs GPU field | Not started |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 

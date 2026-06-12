@@ -16,9 +16,10 @@ use support::palma_min_plus_oracle::cell_index;
 use support::palma_terran_pirate_fixture::{
     apply_pirate_pressure, build_location_w_field, clear_blockade_gap, convoy_simthing_id,
     gridcell_simthing_id, reparent_toward_sampled_gridcell, sample_lowest_d_neighbor, GridCoord,
-    LocationImpedanceField, CONVOY_START, FIXTURE_ITERATIONS, FIXTURE_WIDTH, GAP_CELL,
-    PIRATE_ANCHOR,
+    LocationImpedanceField, CONVOY_START, FIXTURE_HEIGHT, FIXTURE_ITERATIONS, FIXTURE_WIDTH,
+    GAP_CELL, PIRATE_ANCHOR,
 };
+use support::palma_terran_pirate_tree::PalmaAdmittedTree;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
@@ -168,4 +169,87 @@ fn gap_corridor_yields_lower_d_at_convoy_than_closed_gap() {
     let gap = cell_index(GAP_CELL.0, GAP_CELL.1, FIXTURE_WIDTH as usize);
     let wall = cell_index(4, 3, FIXTURE_WIDTH as usize);
     assert!(d_open[gap] + 10.0 < d_open[wall]);
+}
+
+#[test]
+fn admitted_location_gridcell_tree_maps_sample_to_reparent() {
+    let tree = PalmaAdmittedTree::build();
+
+    assert_eq!(
+        tree.gridcell_ids().len(),
+        (FIXTURE_WIDTH * FIXTURE_HEIGHT) as usize
+    );
+    for id in tree.gridcell_ids() {
+        assert!(tree.is_gridcell_child_of_location(id));
+    }
+    assert_eq!(
+        tree.parent_id(tree.convoy_id),
+        Some(tree.convoy_parent_gridcell_id)
+    );
+    assert!(tree.is_gridcell_child_of_location(tree.convoy_parent_gridcell_id));
+
+    let field = build_location_w_field(true, None, false);
+    let d = field.compute_d().expect("d field");
+    let step =
+        sample_lowest_d_neighbor(&d, field.width, field.height, convoy_coord()).expect("sample");
+    let target = gridcell_simthing_id(step.to.x, step.to.y);
+
+    assert!(tree.is_gridcell_child_of_location(target));
+    assert_ne!(target, tree.convoy_id);
+
+    let request = reparent_toward_sampled_gridcell(tree.convoy_id, target);
+    match request {
+        simthing_feeder::BoundaryRequest::Reparent { child, new_parent } => {
+            assert_eq!(child, tree.convoy_id);
+            assert_eq!(new_parent, target);
+        }
+        other => panic!("expected generic Reparent, got {other:?}"),
+    }
+
+    assert!(step.sampled_d.is_finite());
+    gpu_d_matches_cpu(&field);
+}
+
+#[test]
+fn reparent_request_updates_live_parent_if_supported() {
+    let mut tree = PalmaAdmittedTree::build();
+    let field = build_location_w_field(true, None, false);
+    let d = field.compute_d().expect("d field");
+    let step =
+        sample_lowest_d_neighbor(&d, field.width, field.height, convoy_coord()).expect("sample");
+    let target = gridcell_simthing_id(step.to.x, step.to.y);
+    let original_slot = tree.alloc.slot_of(tree.convoy_id).expect("convoy slot");
+
+    assert_eq!(
+        tree.parent_id(tree.convoy_id),
+        Some(tree.convoy_parent_gridcell_id)
+    );
+
+    let out = tree.apply_reparent(reparent_toward_sampled_gridcell(tree.convoy_id, target));
+
+    assert_eq!(out.reparents, 1);
+    assert_eq!(out.rejected_unknown_target, 0);
+    assert_eq!(tree.parent_id(tree.convoy_id), Some(target));
+    assert_eq!(
+        tree.alloc.slot_of(tree.convoy_id),
+        Some(original_slot),
+        "reparent preserves slot — no movement engine"
+    );
+}
+
+#[test]
+fn fixture_ledgers_missing_reparent_application_if_not_supported() {
+    // PALMA-PATH-3R: `simthing_sim::apply_structural_mutations` accepts generic Reparent on
+    // admitted trees — no PATH-3R blocker for structural application in driver tests.
+    let mut tree = PalmaAdmittedTree::build();
+    let gridcells = tree.gridcell_ids();
+    assert_eq!(gridcells.len(), 64);
+    assert!(gridcells.contains(&tree.convoy_parent_gridcell_id));
+
+    let neighbor = gridcell_simthing_id(CONVOY_START.0 - 1, CONVOY_START.1);
+    assert!(tree.is_gridcell_child_of_location(neighbor));
+
+    let out = tree.apply_reparent(reparent_toward_sampled_gridcell(tree.convoy_id, neighbor));
+    assert_eq!(out.reparents, 1, "harness supports Reparent — not blocked");
+    assert_eq!(tree.parent_id(tree.convoy_id), Some(neighbor));
 }
