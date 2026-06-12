@@ -374,6 +374,9 @@ pub struct FirstSliceMappingSession {
     acc_session: AccumulatorOpSession,
     tree_id: u32,
     pending_seeds: Vec<FirstSliceSeed>,
+    /// Cells whose seed values were written GPU-side (indexed scatter) —
+    /// no host mirror; the seed sequence runs without host writes.
+    pending_gpu_seed_cells: Vec<(u32, u32)>,
     eml_weight_a_col: u32,
     eml_weight_b_col: u32,
     eml_output_col: u32,
@@ -531,6 +534,7 @@ impl FirstSliceMappingSession {
             region_id,
             tree_id,
             pending_seeds: Vec::new(),
+            pending_gpu_seed_cells: Vec::new(),
             eml_registry,
             eml_table,
             acc_session,
@@ -734,6 +738,37 @@ impl FirstSliceMappingSession {
         Ok(())
     }
 
+    /// CT-3b+4a GPU projection: the seed values are already in the stencil
+    /// input buffer (written on-device by the indexed scatter); register the
+    /// cells so the one-shot seed-then-zero sequence runs without any host
+    /// value write. Host values become stale until the next readback.
+    pub fn queue_gpu_seed_cells(
+        &mut self,
+        cells: &[(u32, u32)],
+    ) -> Result<(), FirstSliceMappingError> {
+        let height = self.preview.stencil.height;
+        for (row, col) in cells {
+            if *row >= height || *col >= self.width {
+                return Err(FirstSliceMappingError::InvalidSeed {
+                    row: *row,
+                    col: *col,
+                    width: self.width,
+                    height,
+                });
+            }
+        }
+        self.pending_gpu_seed_cells.extend_from_slice(cells);
+        self.seeds_applied_this_tick = true;
+        self.host_values_valid = false;
+        self.mark_dirty_source();
+        Ok(())
+    }
+
+    /// Stencil input buffer — the destination of on-device pressure scatter.
+    pub fn stencil_input_buffer(&self) -> &simthing_gpu::wgpu::Buffer {
+        &self.stencil.input_buffer
+    }
+
     fn mark_dirty_source(&mut self) {
         if let Some(region) = self
             .scheduler
@@ -773,7 +808,8 @@ impl FirstSliceMappingSession {
                 self.values[i] = seed.value;
             }
         }
-        self.seeds_applied_this_tick = !self.pending_seeds.is_empty();
+        self.seeds_applied_this_tick =
+            !self.pending_seeds.is_empty() || !self.pending_gpu_seed_cells.is_empty();
     }
 
     fn run_caller_managed_stencil(
@@ -785,9 +821,20 @@ impl FirstSliceMappingSession {
         let mut source_setup_dispatches = 0u32;
 
         if self.seeds_applied_this_tick {
-            let (writes, zeros) = self.seed_slot_col_writes();
-            self.stencil
-                .write_cell_values(ctx, &self.stencil.input_buffer, &writes)?;
+            let (writes, mut zeros) = self.seed_slot_col_writes();
+            // GPU-scattered seeds are already in the input buffer; they only
+            // join the one-shot zero list.
+            let source_col = self.source_col;
+            let width = self.width;
+            zeros.extend(
+                self.pending_gpu_seed_cells
+                    .iter()
+                    .map(|(row, col)| (row * width + col, source_col)),
+            );
+            if !writes.is_empty() {
+                self.stencil
+                    .write_cell_values(ctx, &self.stencil.input_buffer, &writes)?;
+            }
             source_setup_dispatches += self.stencil.dispatch_once(
                 ctx,
                 &self.stencil.input_buffer,
@@ -797,6 +844,7 @@ impl FirstSliceMappingSession {
                 .zero_cell_values(ctx, &self.stencil.output_buffer, &zeros)?;
             self.stencil.copy_output_to_input(ctx);
             self.pending_seeds.clear();
+            self.pending_gpu_seed_cells.clear();
             self.seeds_applied_this_tick = false;
         }
 

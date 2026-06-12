@@ -97,7 +97,9 @@ pub use arena_participant::{
     DynamicEnrollmentError, GapAllocError, NestedFissionGapReport,
     PendingDynamicArenaRootParticipant, ReservedGapPool,
 };
-pub use arena_pressure::{project_arena_pressure_seeds, ArenaPressureError};
+pub use arena_pressure::{
+    compile_arena_pressure_scatter, project_arena_pressure_seeds, ArenaPressureError,
+};
 pub use arena_registry::{
     ArenaCoupling, ArenaDiagnostic, ArenaExpansionReport, ArenaIdx, ArenaParticipant,
     ArenaRefreshReport, ArenaRegistry, ArenaRegistryBuilder, ArenaRegistryError, CouplingDelay,

@@ -4,11 +4,13 @@
 //! reads or writes. CPU-side preparation, compute pipelines, and the GPU pass
 //! sequencer build on top of `WorldGpuState`.
 
+pub use wgpu;
 pub mod accumulator_op;
 pub mod atlas_mask;
 pub mod candidate_f_magnitude;
 pub mod context;
 pub mod emission_accumulator;
+pub mod indexed_scatter;
 pub mod intensity_accumulator;
 pub mod overlay_orderband;
 pub mod overlay_prep;
@@ -54,6 +56,10 @@ pub use emission_accumulator::{
     EmissionPlan, EmissionPlanError, EmissionRegistration, EmissionSyncError,
     FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR, NO_CONSTANT,
     NO_MAX_EMIT, NO_TREE_ID,
+};
+pub use indexed_scatter::{
+    cpu_scatter_indexed, validate_scatter_entries, IndexedScatterError, IndexedScatterOp,
+    ScatterEntry,
 };
 pub use intensity_accumulator::{
     build_intensity_eml_entries, plan_intensity_eml_ops, register_intensity_eml_formulas,
