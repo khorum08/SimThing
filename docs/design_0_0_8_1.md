@@ -371,4 +371,5 @@ product-authorized.
 - Live production status ledger: [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md)
 - Active status table + read order: [`workshop/mapping_current_guidance.md`](workshop/mapping_current_guidance.md)
 - Recursive rehearsal closure evidence: [`tests/runtime_0080_rr_4_results.md`](tests/runtime_0080_rr_4_results.md)
+- PALMA semiring pathfinding integration guide (PATH-0): [`design_0_0_8_1_palma_pathfinding_integration_guide.md`](design_0_0_8_1_palma_pathfinding_integration_guide.md)
 - Archived design lineage (historical only): `archive/superseded_design/`
