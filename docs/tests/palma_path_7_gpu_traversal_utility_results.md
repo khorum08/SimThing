@@ -9,8 +9,7 @@ Seat min-plus traversal as a **generic GPU field utility** (PALMA remains algebr
 | Layer | Symbol | Role |
 |---|---|---|
 | GPU op | `MinPlusTraversalFieldOp` (`simthing_gpu`) | Ping-pong min-plus dispatch + execution modes |
-| Driver band | `TraversalFieldBandSession` (`simthing_driver::min_plus_traversal_field`) | Opt-in `FieldScheduler` band over admitted W/D columns |
-| Legacy aliases | `PalmaMinPlusFieldBandSession`, … | PATH-6 test compatibility only |
+| Driver band | `TraversalFieldBandSession` (`simthing_driver::min_plus_traversal_field`) | Opt-in `FieldScheduler` band; explicit dispatch API only |
 
 Tests: `crates/simthing-driver/tests/palma_path_7_gpu_traversal_utility.rs` (6 tests)
 

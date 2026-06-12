@@ -2,20 +2,20 @@
 
 Status: **PARTIAL / TEST-PROFILE PASS** (2026-06-11)
 
-Default `SimSession` tick does **not** schedule this band — opt-in profile only (ledgered below). The band itself is implemented in `simthing-driver` and invoked by `PalmaMinPlusFieldBandSession::tick`, not by manual test-body GPU calls.
+Default `SimSession` tick does **not** schedule this band — opt-in profile only (ledgered below). The band is `TraversalFieldBandSession` in `min_plus_traversal_field`; tests use explicit `dispatch_*` methods (no public `tick()`).
 
 ## Deliverable
 
-- `crates/simthing-driver/src/palma_min_plus_field_band.rs` — opt-in `PalmaMinPlusFieldBandSession` (FieldScheduler + GPU `MinPlusStencilOp`)
-- `crates/simthing-driver/tests/palma_path_6_session_regionfield.rs` — 7 proof tests on PATH-5 property tree
+- `crates/simthing-driver/src/min_plus_traversal_field.rs` — opt-in `TraversalFieldBandSession` (FieldScheduler + GPU min-plus utility)
+- `crates/simthing-driver/tests/palma_path_6_session_regionfield.rs` — 8 proof tests on PATH-5 property tree
 
 Guide: [`../design_0_0_8_1_palma_pathfinding_integration_guide.md`](../design_0_0_8_1_palma_pathfinding_integration_guide.md)
 
 ## Schedule type
 
-**Test-profile / explicit opt-in** — `PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED = false`. Callers `enable()` then `tick()`. Uses generic `FieldScheduler` cadence (same posture as `FirstSliceMappingSession`), **not** default production pass graph or `SimSession::tick`.
+**Test-profile / explicit opt-in** — `TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED = false`. Callers `enable()` then explicit `dispatch_*`. Uses generic `FieldScheduler` cadence (same posture as `FirstSliceMappingSession`), **not** default production pass graph or `SimSession::tick`.
 
-Profile id: `palma_min_plus_traversal_v1`.
+Profile id: `min_plus_traversal_field_v1` (`TRAVERSAL_FIELD_UTILITY_ID`).
 
 ## Fixture shape
 
@@ -23,7 +23,7 @@ Same 8×8 PATH-5 admitted tree:
 
 - Location → 64 gridcells with `palma/grid_traversal` Named `w` / `d` columns
 - Fleet convoy under start gridcell (7,7)
-- Row-major gridcell id binding in `PalmaMinPlusGridBinding`
+- Row-major gridcell id binding in `TraversalFieldGridBinding`
 
 ## W source column resolution
 

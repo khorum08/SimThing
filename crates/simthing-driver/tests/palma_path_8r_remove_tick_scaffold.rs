@@ -3,8 +3,9 @@
 mod support;
 
 use simthing_driver::{
-    FieldCadence, TraversalFieldBandSession, TraversalFieldExecutionMode, TraversalFieldGpuInput,
-    TraversalFieldGridBinding, TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind,
+    FieldCadence, TraversalFieldBandSession, TraversalFieldDispatchReport,
+    TraversalFieldExecutionMode, TraversalFieldGpuInput, TraversalFieldGridBinding,
+    TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind, TRAVERSAL_FIELD_UTILITY_ID,
 };
 use simthing_gpu::wgpu::{self, util::DeviceExt};
 use simthing_gpu::{GpuContext, MinPlusTraversalExecutionOptions, MinPlusTraversalFieldOp};
@@ -51,6 +52,25 @@ fn no_public_tick_scaffold_remains() {
     fn assert_no_tick<T>() {}
     assert_no_tick::<TraversalFieldBandSession>();
     // Compile-time guard: `tick` / `tick_with_input` are not public methods on the band session.
+}
+
+#[test]
+fn legacy_palma_aliases_are_not_public() {
+    let lib_rs = include_str!("../src/lib.rs");
+    for forbidden in [
+        "palma_min_plus_field_band",
+        "PalmaMinPlusFieldBandSession",
+        "PalmaMinPlusFieldBandTickReport",
+        "TraversalFieldBandTickReport",
+        "PALMA_MIN_PLUS_FIELD_BAND",
+    ] {
+        assert!(
+            !lib_rs.contains(forbidden),
+            "lib.rs must not export legacy PALMA alias: {forbidden}"
+        );
+    }
+    assert_eq!(TRAVERSAL_FIELD_UTILITY_ID, "min_plus_traversal_field_v1");
+    fn _generic_api(_: TraversalFieldDispatchReport) {}
 }
 
 #[test]

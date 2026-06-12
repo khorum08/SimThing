@@ -304,6 +304,7 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 10 | **PALMA-PATH-7** | Production GPU traversal utility seating | **IMPLEMENTED / PASS** — [`tests/palma_path_7_gpu_traversal_utility_results.md`](tests/palma_path_7_gpu_traversal_utility_results.md) |
 | 11 | **PALMA-PATH-8** | GPU-native W input / D output field graph connection | **IMPLEMENTED / PASS** — [`tests/palma_path_8_gpu_native_field_graph_results.md`](tests/palma_path_8_gpu_native_field_graph_results.md) |
 | 12 | **PALMA-PATH-8R** | Remove public `tick()` scaffold; explicit GPU dispatch | **IMPLEMENTED / PASS** — [`tests/palma_path_8r_remove_tick_scaffold_results.md`](tests/palma_path_8r_remove_tick_scaffold_results.md) |
+| 13 | **PALMA-PATH-8R-CLEAN** | Remove public PALMA legacy field-band aliases | **IMPLEMENTED / PASS** — [`tests/palma_path_8r_cleanup_results.md`](tests/palma_path_8r_cleanup_results.md) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
@@ -372,6 +373,16 @@ TraversalFieldGpuInput
 ```
 
 Diagnostic/compatibility callers must name their mode explicitly (`dispatch_shadow_column_compatibility`, `dispatch_oracle_verification_*`, `dispatch_diagnostic_readback`).
+
+---
+
+## 15d. Legacy PALMA alias removal (PATH-8R-CLEAN)
+
+Public `palma_min_plus_field_band` re-exports (`PalmaMinPlusFieldBandSession`, `PALMA_MIN_PLUS_*`, `TraversalFieldBandTickReport`) were removed.
+
+**Runtime API:** `simthing_driver::min_plus_traversal_field` only — `TraversalFieldBandSession`, `TraversalFieldDispatchReport`, `TRAVERSAL_FIELD_*` constants.
+
+**PALMA** remains algebraic provenance in docs and test fixture names only — not a production subsystem noun.
 
 ---
 

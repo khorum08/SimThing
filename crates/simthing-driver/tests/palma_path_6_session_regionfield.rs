@@ -3,9 +3,9 @@
 mod support;
 
 use simthing_driver::{
-    FieldCadence, PalmaMinPlusFieldBandSession, PalmaMinPlusGridBinding,
-    PalmaMinPlusShadowColumnCompatInput, TraversalFieldExecutionMode, TraversalFieldGpuInput,
-    PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED, PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID,
+    FieldCadence, TraversalFieldBandSession, TraversalFieldExecutionMode, TraversalFieldGpuInput,
+    TraversalFieldGridBinding, TraversalFieldShadowColumnCompatInput,
+    TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_UTILITY_ID,
 };
 use simthing_gpu::wgpu::{self, util::DeviceExt};
 use simthing_gpu::GpuContext;
@@ -28,8 +28,8 @@ fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
     f(&ctx);
 }
 
-fn grid_binding(tree: &PalmaPath5PropertyTree) -> PalmaMinPlusGridBinding {
-    PalmaMinPlusGridBinding {
+fn grid_binding(tree: &PalmaPath5PropertyTree) -> TraversalFieldGridBinding {
+    TraversalFieldGridBinding {
         width: FIXTURE_WIDTH,
         height: FIXTURE_HEIGHT,
         dest_x: DESTINATION.0,
@@ -53,8 +53,8 @@ fn upload_flat_w_buffer(ctx: &GpuContext, w: &[f32]) -> simthing_gpu::wgpu::Buff
 
 fn shadow_compat<'a>(
     tree: &'a mut PalmaPath5PropertyTree,
-) -> PalmaMinPlusShadowColumnCompatInput<'a> {
-    PalmaMinPlusShadowColumnCompatInput {
+) -> TraversalFieldShadowColumnCompatInput<'a> {
+    TraversalFieldShadowColumnCompatInput {
         shadow: &mut tree.inner.shadow,
         n_dims: tree.inner.n_dims,
         alloc: &tree.inner.alloc,
@@ -79,14 +79,13 @@ fn snapshot_d_shadow(tree: &PalmaPath5PropertyTree) -> Vec<f32> {
 #[test]
 fn min_plus_band_default_off() {
     assert!(
-        !PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED,
-        "PALMA min-plus band must be opt-in / default off"
+        !TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED,
+        "traversal field band must be opt-in / default off"
     );
     let tree = PalmaPath5PropertyTree::build_default();
     let w = tree.gather_w_flat_from_properties();
     let binding = grid_binding(&tree);
-    let mut band =
-        PalmaMinPlusFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
+    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
     assert!(!band.enabled());
     with_gpu(|ctx| {
         let w_buffer = upload_flat_w_buffer(ctx, &w);
@@ -94,7 +93,7 @@ fn min_plus_band_default_off() {
             .dispatch_gpu_resident(ctx, TraversalFieldGpuInput::FlatW { buffer: &w_buffer })
             .expect("disabled dispatch");
         assert!(report.dispatch.is_none());
-        assert_eq!(report.utility_id, PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID);
+        assert_eq!(report.utility_id, TRAVERSAL_FIELD_UTILITY_ID);
     });
 }
 
@@ -103,7 +102,7 @@ fn session_band_gathers_w_from_admitted_shadow_columns() {
     let tree = PalmaPath5PropertyTree::build_default();
     let binding = grid_binding(&tree);
     let w_props = tree.gather_w_flat_from_properties();
-    let w_shadow = PalmaMinPlusFieldBandSession::gather_w_from_shadow(
+    let w_shadow = TraversalFieldBandSession::gather_w_from_shadow(
         &tree.inner.shadow,
         tree.inner.n_dims,
         &tree.inner.alloc,
@@ -118,8 +117,7 @@ fn session_band_dispatches_gpu_min_plus_not_manual_test_body() {
     let mut tree = PalmaPath5PropertyTree::build_default();
     tree.sync_shadow_from_tree();
     let binding = grid_binding(&tree);
-    let mut band =
-        PalmaMinPlusFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
+    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
     band.enable();
 
     with_gpu(|ctx| {
@@ -151,8 +149,7 @@ fn session_band_writes_d_to_shadow_and_property_columns() {
         .expect("cpu oracle before band");
 
     let binding = grid_binding(&tree);
-    let mut band =
-        PalmaMinPlusFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
+    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
     band.enable();
 
     with_gpu(|ctx| {
@@ -182,8 +179,7 @@ fn gpu_resident_band_does_not_readback_or_write_shadow_d() {
     let d_before = snapshot_d_shadow(&tree);
     let w = tree.gather_w_flat_from_properties();
     let binding = grid_binding(&tree);
-    let mut band =
-        PalmaMinPlusFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
+    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
     band.enable();
 
     with_gpu(|ctx| {
@@ -211,8 +207,7 @@ fn after_band_movable_samples_d_and_reparents_generically() {
     let mut tree = PalmaPath5PropertyTree::build_default();
     tree.sync_shadow_from_tree();
     let binding = grid_binding(&tree);
-    let mut band =
-        PalmaMinPlusFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
+    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
     band.enable();
 
     with_gpu(|ctx| {
@@ -252,7 +247,7 @@ fn after_band_movable_samples_d_and_reparents_generically() {
 
 #[test]
 fn path6_blocker_ledger_default_simsession_not_wired() {
-    assert!(!PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED);
+    assert!(!TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED);
     let tree = PalmaPath5PropertyTree::build_default();
     let layout = tree
         .inner
@@ -277,7 +272,7 @@ fn on_event_cadence_skips_until_dirty() {
     let tree = PalmaPath5PropertyTree::build_default();
     let w = tree.gather_w_flat_from_properties();
     let binding = grid_binding(&tree);
-    let mut band = PalmaMinPlusFieldBandSession::new(binding, FieldCadence::OnEvent).expect("band");
+    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::OnEvent).expect("band");
     band.enable();
 
     with_gpu(|ctx| {
