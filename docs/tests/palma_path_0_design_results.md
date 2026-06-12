@@ -42,4 +42,6 @@ PALMA-PATH-3: **PARTIAL / NUMERIC+GPU FIXTURE PASS** — [`palma_path_3_terran_p
 
 PALMA-PATH-3R: **IMPLEMENTED / PASS** — [`palma_path_3r_simthing_tree_fixture_results.md`](palma_path_3r_simthing_tree_fixture_results.md)
 
-PALMA-PATH-4: **IMPLEMENTED / PASS** — [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md)
+PALMA-PATH-4: **IMPLEMENTED / PASS** (toy axis) — [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md)
+
+PALMA-PATH-4S: **IMPLEMENTED / PASS** (Stellaris-scale representative) — [`palma_path_4_stellaris_scale_benchmark_results.md`](palma_path_4_stellaris_scale_benchmark_results.md)
