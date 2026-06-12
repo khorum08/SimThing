@@ -37,7 +37,7 @@ pub enum FieldPolicyPipelineVersion {
     Other,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FrontierTheaterSpec {
     pub theater_count: u32,
     pub grid_width: u32,
@@ -90,7 +90,7 @@ pub struct FrontierEconomyFieldCouplingSpec {
     pub coupling_requested: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FrontierV1ScenarioSkeleton {
     pub profile_name: &'static str,
     pub enabled_by_default: bool,

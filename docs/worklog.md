@@ -1,3 +1,8 @@
+# 2026-06-11 - BH-2C: composed W feeds resident PALMA traversal
+
+- **Feedstock proof:** BH-2B `WImpedanceComposeOp` → `MinPlusTraversalInput::GpuInterleavedW` → resident D + compact `MinPlusTraversalDProbeOp`. Live API: `composed_w_min_plus_stencil_config`. Test scaffolding quarantined in `bh2c_palma_w_feedstock.rs`.
+- **Report:** [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md)
+
 # 2026-06-11 - BH-2S-API-DOC: consumer service surface handoff
 
 - **Docs-only:** §11 of [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md) documents admitted BH service surfaces (SaturatingFlux, ChokeReadout, ChokeThresholdConsumer, WComposition, OverlapStressComposition, FIELD_POLICY feedstock), scenario use-cases as interpretations only, Candidate-F sqrt rule, stowaway budget, and binding caps (4 input fields / 8 profiles for stress compose).
