@@ -24,6 +24,8 @@ pub const REGION_FIELD_MAX_CELL_COUNT: u32 = 1024;
 pub const REGION_FIELD_DEFAULT_HORIZON_CAP: u32 = 8;
 pub const REGION_FIELD_EXTENDED_HORIZON_CAP: u32 = 16;
 pub const FIRST_SLICE_FIELD_URGENCY_COL: u32 = 4;
+/// BH-0 CFL bound: dt is fixed at 1.0, so chi must satisfy dt * chi <= 0.25.
+pub const SATURATING_FLUX_CHI_CFL_MAX: f32 = 0.25;
 
 /// Admitted field formula classes at the designer/spec policy layer (M-3).
 pub const ADMITTED_REGION_FIELD_FORMULA_CLASSES: &[&str] = &[
@@ -34,11 +36,12 @@ pub const ADMITTED_REGION_FIELD_FORMULA_CLASSES: &[&str] = &[
     "conversion_rate",
 ];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CompiledRegionFieldOperator {
     Normalized,
     SourceCappedNormalized,
     Gradient { axis: CompiledGradientAxis },
+    SaturatingFlux { u_sat: f32, chi: f32 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -248,6 +251,40 @@ fn validate_operator_and_source(spec: &RegionFieldSpec) -> Result<(), SpecError>
                 return Err(field_err(
                     &spec.name,
                     "allow_extended_horizon is not allowed with Gradient",
+                ));
+            }
+        }
+        RegionFieldOperatorSpec::SaturatingFlux { u_sat, chi } => {
+            if spec.source_cap.is_some() {
+                return Err(field_err(
+                    &spec.name,
+                    "source_cap is not allowed with SaturatingFlux",
+                ));
+            }
+            if !u_sat.is_finite() || u_sat <= 0.0 {
+                return Err(field_err(
+                    &spec.name,
+                    "SaturatingFlux u_sat must be finite and > 0",
+                ));
+            }
+            if !chi.is_finite() || chi <= 0.0 {
+                return Err(field_err(
+                    &spec.name,
+                    "SaturatingFlux chi must be finite and > 0",
+                ));
+            }
+            if chi > SATURATING_FLUX_CHI_CFL_MAX {
+                return Err(field_err(
+                    &spec.name,
+                    format!(
+                        "SaturatingFlux chi {chi} exceeds CFL bound {SATURATING_FLUX_CHI_CFL_MAX} (dt=1.0)"
+                    ),
+                ));
+            }
+            if spec.source_col != spec.target_col {
+                return Err(field_err(
+                    &spec.name,
+                    "SaturatingFlux requires source_col == target_col",
                 ));
             }
         }
@@ -671,6 +708,16 @@ pub fn compile_region_field_preview(
                 output_col,
             )
         }
+        RegionFieldOperatorSpec::SaturatingFlux { u_sat, chi } => (
+            CompiledRegionFieldOperator::SaturatingFlux { u_sat, chi },
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            spec.target_col,
+        ),
     };
 
     let cadence = compile_cadence(spec)?;

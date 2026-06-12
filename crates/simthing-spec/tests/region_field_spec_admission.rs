@@ -71,6 +71,9 @@ fn to_gpu_stencil_config(
                 simthing_spec::CompiledGradientAxis::X => StructuredFieldStencilOperator::GradientX,
                 simthing_spec::CompiledGradientAxis::Y => StructuredFieldStencilOperator::GradientY,
             },
+            CompiledRegionFieldOperator::SaturatingFlux { u_sat, chi } => {
+                StructuredFieldStencilOperator::SaturatingFlux { u_sat, chi }
+            }
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
