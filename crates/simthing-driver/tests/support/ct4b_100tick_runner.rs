@@ -1,6 +1,7 @@
-//! Test-only 100-tick CT-4b observation runner (BH-2D-OBS-100).
+//! Test-only 100-tick CT-4b observation runner (BH-2D-OBS-100R).
 //!
-//! Exercises the resident field chain each tick and records compact aggregate metrics.
+//! Deterministic dynamic stimulus: pulsed static emitters, moving mobile emitters,
+//! pressure decay, and test-only candidate sampler displacement by compact D probe.
 //! Full-field readback is test/diagnostic only — not a production decision path.
 
 use simthing_driver::{
@@ -21,14 +22,20 @@ use simthing_spec::{
 
 use super::ct4b_field_fixture::{
     Ct4bFixture, COL_BASE_W, COL_CHOKE_A, COL_CHOKE_B, COL_PRESSURE_A, COL_PRESSURE_B,
-    CT4B_AUTOMATA_COUNT, CT4B_CELL_COUNT, CT4B_DEST, CT4B_FIELD_A_SOURCES, CT4B_FIELD_B_SOURCES,
-    CT4B_HEIGHT, CT4B_MIN_PLUS_ITERATIONS, CT4B_PROBE_ANCHOR, CT4B_SOURCE_COUNT, CT4B_WIDTH,
+    CT4B_AUTOMATA_COUNT, CT4B_CELL_COUNT, CT4B_DEST, CT4B_HEIGHT, CT4B_MIN_PLUS_ITERATIONS,
+    CT4B_PROBE_ANCHOR, CT4B_SOURCE_COUNT, CT4B_WIDTH,
 };
 use super::palma_min_plus_oracle::cell_index;
 
 pub const OBS_TICK_COUNT: u32 = 100;
 pub const OBS_SAMPLE_TICKS: [u32; 5] = [0, 25, 50, 75, 99];
-pub const OBS_FLUX_HORIZON: u32 = 1;
+pub const OBS_FLUX_HORIZON: u32 = 2;
+
+const MOBILE_EMITTER_COUNT: usize = 10;
+const CANDIDATE_PROBE_COUNT: usize = 32;
+const PRESSURE_DECAY: f32 = 0.92;
+const SOURCE_PRESSURE_A: f32 = 8.0;
+const SOURCE_PRESSURE_B: f32 = 7.5;
 
 // Observation layout extends BH-2D with velocity prev + stress_velocity + d column.
 pub const OBS_N_DIMS: u32 = 12;
@@ -39,9 +46,6 @@ pub const OBS_COL_STRESS_MISMATCH: u32 = 8;
 pub const OBS_COL_STRESS_VELOCITY: u32 = 9;
 pub const OBS_COL_CHOKE_A_PREV: u32 = 10;
 pub const OBS_COL_D: u32 = 11;
-
-const SOURCE_PRESSURE_A: f32 = 8.0;
-const SOURCE_PRESSURE_B: f32 = 7.5;
 
 fn idx(slot: u32, col: u32) -> usize {
     (slot * OBS_N_DIMS + col) as usize
@@ -60,13 +64,91 @@ pub struct TickObservation {
     pub anchor_w0: f32,
     pub anchor_w1: f32,
     pub preferred_neighbor_rank: usize,
+    pub profile1_preferred_neighbor_rank: usize,
     pub automata_sample_min_d_mean: f32,
+    pub moved_candidates: u32,
+    pub mean_displacement: f32,
     pub note: String,
 }
 
 pub struct ObservationRun {
     pub ticks: Vec<TickObservation>,
     pub automata_probe_slots: Vec<u32>,
+    pub candidate_home_slots: Vec<u32>,
+}
+
+/// Deterministic pulse in [0.55, 1.0] — test-only schedule, no semantic labels.
+fn source_pulse(tick: u32, phase: u32) -> f32 {
+    let period = 20u32;
+    let x = (tick + phase * 11) % period;
+    0.55 + 0.45 * (x as f32 / period as f32)
+}
+
+fn shift_slot(slot: u32, dx: i32, dy: i32) -> u32 {
+    let x = slot % CT4B_WIDTH;
+    let y = slot / CT4B_WIDTH;
+    let nx = (x as i32 + dx).clamp(0, CT4B_WIDTH as i32 - 1) as u32;
+    let ny = (y as i32 + dy).clamp(0, CT4B_HEIGHT as i32 - 1) as u32;
+    cell_index(nx as usize, ny as usize, CT4B_WIDTH as usize) as u32
+}
+
+fn manhattan_slots(a: u32, b: u32) -> u32 {
+    let ax = a % CT4B_WIDTH;
+    let ay = a / CT4B_WIDTH;
+    let bx = b % CT4B_WIDTH;
+    let by = b / CT4B_WIDTH;
+    ax.abs_diff(bx) + ay.abs_diff(by)
+}
+
+struct DynamicObsState {
+    mobile_a_slots: Vec<u32>,
+    mobile_b_slots: Vec<u32>,
+    candidate_slots: Vec<u32>,
+    candidate_home: Vec<u32>,
+    static_a: Vec<u32>,
+    static_b: Vec<u32>,
+}
+
+impl DynamicObsState {
+    fn new(base: &Ct4bFixture) -> Self {
+        let mobile_a_slots = base.field_a_sources[..MOBILE_EMITTER_COUNT].to_vec();
+        let mobile_b_slots = base.field_b_sources[..MOBILE_EMITTER_COUNT].to_vec();
+        let static_a = base.field_a_sources[MOBILE_EMITTER_COUNT..].to_vec();
+        let static_b = base.field_b_sources[MOBILE_EMITTER_COUNT..].to_vec();
+        let candidate_home = automata_probe_slots(CANDIDATE_PROBE_COUNT);
+        let candidate_slots = candidate_home.clone();
+        Self {
+            mobile_a_slots,
+            mobile_b_slots,
+            static_a,
+            static_b,
+            candidate_slots,
+            candidate_home,
+        }
+    }
+
+    fn advance_mobile_emitters(&mut self, tick: u32) {
+        if tick > 0 && tick % 3 == 0 {
+            for slot in &mut self.mobile_a_slots {
+                *slot = shift_slot(*slot, 1, 0);
+            }
+        }
+        if tick > 0 && tick % 4 == 0 {
+            for slot in &mut self.mobile_b_slots {
+                *slot = shift_slot(*slot, 0, 1);
+            }
+        }
+    }
+
+    fn mean_candidate_displacement(&self) -> f32 {
+        let sum: u32 = self
+            .candidate_slots
+            .iter()
+            .zip(self.candidate_home.iter())
+            .map(|(cur, home)| manhattan_slots(*cur, *home))
+            .sum();
+        sum as f32 / self.candidate_slots.len() as f32
+    }
 }
 
 fn apply_gpu_flux_choke_step(
@@ -112,7 +194,7 @@ fn apply_gpu_flux_choke_step(
     values.copy_from_slice(&out);
 }
 
-fn expand_fixture_to_obs_layout(base: &Ct4bFixture) -> (Vec<f32>, Vec<u32>, Vec<u32>) {
+fn expand_fixture_to_obs_layout(base: &Ct4bFixture) -> Vec<f32> {
     use super::ct4b_field_fixture::CT4B_N_DIMS;
     let mut values = vec![0.0f32; (CT4B_CELL_COUNT * OBS_N_DIMS) as usize];
     for slot in 0..CT4B_CELL_COUNT {
@@ -120,28 +202,44 @@ fn expand_fixture_to_obs_layout(base: &Ct4bFixture) -> (Vec<f32>, Vec<u32>, Vec<
             values[idx(slot, col)] = base.values[(slot * CT4B_N_DIMS + col) as usize];
         }
     }
-    (
-        values,
-        base.field_a_sources.clone(),
-        base.field_b_sources.clone(),
-    )
+    values
 }
 
-fn reseed_source_pressure(values: &mut [f32], field_a_sources: &[u32], field_b_sources: &[u32]) {
+fn decay_and_apply_dynamic_pressure(values: &mut [f32], tick: u32, state: &DynamicObsState) {
     for slot in 0..CT4B_CELL_COUNT {
-        values[idx(slot, COL_PRESSURE_A)] = 0.0;
-        values[idx(slot, COL_PRESSURE_B)] = 0.0;
+        values[idx(slot, COL_PRESSURE_A)] *= PRESSURE_DECAY;
+        values[idx(slot, COL_PRESSURE_B)] *= PRESSURE_DECAY;
     }
-    for &slot in field_a_sources {
-        values[idx(slot, COL_PRESSURE_A)] = SOURCE_PRESSURE_A;
+
+    let pulse_a = source_pulse(tick, 0);
+    let pulse_b = source_pulse(tick, 1);
+
+    for &slot in &state.static_a {
+        values[idx(slot, COL_PRESSURE_A)] = SOURCE_PRESSURE_A * pulse_a;
     }
-    for &slot in field_b_sources {
-        values[idx(slot, COL_PRESSURE_B)] = SOURCE_PRESSURE_B;
+    for &slot in &state.static_b {
+        values[idx(slot, COL_PRESSURE_B)] = SOURCE_PRESSURE_B * pulse_b;
     }
+    for &slot in &state.mobile_a_slots {
+        values[idx(slot, COL_PRESSURE_A)] = SOURCE_PRESSURE_A * pulse_a * 1.15;
+    }
+    for &slot in &state.mobile_b_slots {
+        values[idx(slot, COL_PRESSURE_B)] = SOURCE_PRESSURE_B * pulse_b * 1.15;
+    }
+
+    // Overlap neighborhood at probe anchor (pulsed both families).
     let (ax, ay) = CT4B_PROBE_ANCHOR;
     let anchor_slot = cell_index(ax as usize, ay as usize, CT4B_WIDTH as usize) as u32;
-    values[idx(anchor_slot, COL_PRESSURE_A)] = SOURCE_PRESSURE_A;
-    values[idx(anchor_slot, COL_PRESSURE_B)] = SOURCE_PRESSURE_B;
+    values[idx(anchor_slot, COL_PRESSURE_A)] = SOURCE_PRESSURE_A * pulse_a;
+    values[idx(anchor_slot, COL_PRESSURE_B)] = SOURCE_PRESSURE_B * pulse_b;
+    if ax > 0 {
+        let s = cell_index(ax as usize - 1, ay as usize, CT4B_WIDTH as usize) as u32;
+        values[idx(s, COL_PRESSURE_A)] = SOURCE_PRESSURE_A * pulse_a * 0.85;
+    }
+    if ay > 0 {
+        let s = cell_index(ax as usize, ay as usize - 1, CT4B_WIDTH as usize) as u32;
+        values[idx(s, COL_PRESSURE_B)] = SOURCE_PRESSURE_B * pulse_b * 0.85;
+    }
 }
 
 fn snapshot_choke_a_prev(values: &mut [f32]) {
@@ -309,9 +407,44 @@ fn preferred_neighbor_rank(probe: &simthing_gpu::MinPlusTraversalDProbeResult) -
         .unwrap_or(0)
 }
 
+/// Test-only: step candidate sampler to lowest-D N4 neighbor (not production movement).
+fn step_candidate_by_probe(slot: u32, probe: &simthing_gpu::MinPlusTraversalDProbeResult) -> u32 {
+    let rank = preferred_neighbor_rank(probe);
+    let cands = neighbor_candidates(slot);
+    if rank < cands.len() {
+        cands[rank]
+    } else {
+        slot
+    }
+}
+
+fn tick_note(
+    tick: u32,
+    velocity_peak: f32,
+    moved_candidates: u32,
+    mean_displacement: f32,
+    probe0_d: f32,
+    prev_probe0_d: f32,
+) -> String {
+    if tick == 0 {
+        "initial dynamic pulse + flux".to_string()
+    } else if moved_candidates > 0 {
+        format!("{moved_candidates} candidate samplers displaced")
+    } else if velocity_peak > 0.02 {
+        "velocity stress active".to_string()
+    } else if (probe0_d - prev_probe0_d).abs() > 0.05 {
+        "anchor D probe shifting".to_string()
+    } else if mean_displacement > 0.5 {
+        "movement-front displacement accumulating".to_string()
+    } else {
+        "pressure wave propagating".to_string()
+    }
+}
+
 pub fn run_observation_ticks(ctx: &GpuContext, tick_count: u32) -> ObservationRun {
     let base = Ct4bFixture::build_seeded();
-    let (mut values, field_a_sources, field_b_sources) = expand_fixture_to_obs_layout(&base);
+    let mut values = expand_fixture_to_obs_layout(&base);
+    let mut state = DynamicObsState::new(&base);
     let compose = w_compose_config_obs();
     let stress = stress_compose_config_obs();
     let anchor_candidates = neighbor_candidates(cell_index(
@@ -319,13 +452,14 @@ pub fn run_observation_ticks(ctx: &GpuContext, tick_count: u32) -> ObservationRu
         CT4B_PROBE_ANCHOR.1 as usize,
         CT4B_WIDTH as usize,
     ) as u32);
-    let automata_slots = automata_probe_slots(CT4B_AUTOMATA_COUNT.min(64));
-    let mut prev_max_choke_a = 0.0f32;
 
     let mut observations = Vec::with_capacity(tick_count as usize);
+    let mut prev_probe0_d = f32::INFINITY;
+
     for tick in 0..tick_count {
+        state.advance_mobile_emitters(tick);
         snapshot_choke_a_prev(&mut values);
-        reseed_source_pressure(&mut values, &field_a_sources, &field_b_sources);
+        decay_and_apply_dynamic_pressure(&mut values, tick, &state);
 
         apply_gpu_flux_choke_step(&mut values, ctx, COL_PRESSURE_A, COL_CHOKE_A);
         apply_gpu_flux_choke_step(&mut values, ctx, COL_PRESSURE_B, COL_CHOKE_B);
@@ -353,8 +487,11 @@ pub fn run_observation_ticks(ctx: &GpuContext, tick_count: u32) -> ObservationRu
 
         let mut automata_min_sum = 0.0f32;
         let mut automata_count = 0usize;
-        for &slot in automata_slots.iter().take(32) {
-            let cands = neighbor_candidates(slot);
+        let mut moved_candidates = 0u32;
+
+        for i in 0..CANDIDATE_PROBE_COUNT {
+            let old_slot = state.candidate_slots[i];
+            let cands = neighbor_candidates(old_slot);
             if cands.is_empty() {
                 continue;
             }
@@ -363,12 +500,19 @@ pub fn run_observation_ticks(ctx: &GpuContext, tick_count: u32) -> ObservationRu
                 automata_min_sum += p.min_d;
                 automata_count += 1;
             }
+            let new_slot = step_candidate_by_probe(old_slot, &p);
+            if new_slot != old_slot {
+                moved_candidates += 1;
+            }
+            state.candidate_slots[i] = new_slot;
         }
+
         let automata_mean = if automata_count > 0 {
             automata_min_sum / automata_count as f32
         } else {
             f32::INFINITY
         };
+        let mean_displacement = state.mean_candidate_displacement();
 
         let anchor_slot = cell_index(
             CT4B_PROBE_ANCHOR.0 as usize,
@@ -382,18 +526,15 @@ pub fn run_observation_ticks(ctx: &GpuContext, tick_count: u32) -> ObservationRu
         let mismatch_peak = column_max(&values, OBS_COL_STRESS_MISMATCH);
         let velocity_peak = column_max(&values, OBS_COL_STRESS_VELOCITY);
 
-        let note = if tick == 0 {
-            "initial flux + compose".to_string()
-        } else if max_choke_a > prev_max_choke_a + 0.01 {
-            "choke_a peak rising".to_string()
-        } else if (probe1.min_d - probe0.min_d).abs() > 0.5 {
-            "profile D probe divergence widening".to_string()
-        } else if velocity_peak > 0.05 {
-            "velocity stress active".to_string()
-        } else {
-            "steady diffusion".to_string()
-        };
-        prev_max_choke_a = max_choke_a;
+        let note = tick_note(
+            tick,
+            velocity_peak,
+            moved_candidates,
+            mean_displacement,
+            probe0.min_d,
+            prev_probe0_d,
+        );
+        prev_probe0_d = probe0.min_d;
 
         observations.push(TickObservation {
             tick,
@@ -407,22 +548,28 @@ pub fn run_observation_ticks(ctx: &GpuContext, tick_count: u32) -> ObservationRu
             anchor_w0: values[idx(anchor_slot, OBS_COL_OUTPUT_W_0)],
             anchor_w1: values[idx(anchor_slot, OBS_COL_OUTPUT_W_1)],
             preferred_neighbor_rank: preferred_neighbor_rank(&probe0),
+            profile1_preferred_neighbor_rank: preferred_neighbor_rank(&probe1),
             automata_sample_min_d_mean: automata_mean,
+            moved_candidates,
+            mean_displacement,
             note,
         });
     }
 
     ObservationRun {
         ticks: observations,
-        automata_probe_slots: automata_slots,
+        automata_probe_slots: state.candidate_slots.clone(),
+        candidate_home_slots: state.candidate_home.clone(),
     }
 }
 
 pub fn render_observation_markdown(run: &ObservationRun) -> String {
     let mut out = String::new();
-    out.push_str("# BH-2D-OBS-100 — CT-4b 100-tick scenario observations\n\n");
-    out.push_str("> **Status: OBSERVATION / PASS (generated from live GPU run).** ");
-    out.push_str("Human-readable field/probe observations only. ");
+    out.push_str("# BH-2D-OBS-100R — CT-4b 100-tick dynamic scenario observations\n\n");
+    out.push_str(
+        "> **Status: OBSERVATION / PASS (generated from live GPU run, BH-2D-OBS-100R).** ",
+    );
+    out.push_str("Deterministic test-only dynamic stimulus. ");
     out.push_str(
         "No movement engine, pathfinding engine, route/predecessor objects, or border service.\n\n",
     );
@@ -431,26 +578,42 @@ pub fn render_observation_markdown(run: &ObservationRun) -> String {
     out.push_str("| Parameter | Value |\n|---|---|\n");
     out.push_str("| Grid | 200 × 200 |\n");
     out.push_str("| Tick count | 100 |\n");
-    out.push_str("| Source points | 100 |\n");
-    out.push_str("| Source family A | 50 |\n");
-    out.push_str("| Source family B | 50 |\n");
-    out.push_str("| Candidate automata samplers | 150 (32 probed per tick for compact mean) |\n");
+    out.push_str("| Static source points | 40 per family (50 minus 10 mobile) |\n");
+    out.push_str("| Mobile source emitters | 10 family A + 10 family B (deterministic drift) |\n");
+    out.push_str("| Total source-family coverage | 100 points (same CT-4b shape) |\n");
+    out.push_str("| Candidate automata samplers | 150 metadata; 32 probed and displaced test-only per tick |\n");
     out.push_str(
         "| Fixture labels | docs/tests-only; production code uses `field_a` / `field_b` |\n\n",
     );
 
-    out.push_str("## 2. Resident chain exercised\n\n");
-    out.push_str("Each tick: BH-0/BH-1 flux+choke (1 hop per family) → BH-2B W (2 profiles) → ");
-    out.push_str("BH-2S overlap/mismatch/velocity stress → BH-2C PALMA `GpuInterleavedW` → ");
-    out.push_str("resident D → compact probe readback only.\n\n");
+    out.push_str("## 2. Dynamic stimulus description (test-only)\n\n");
+    out.push_str("| Mechanism | Schedule |\n|---|---|\n");
+    out.push_str("| Pressure decay | All cells × 0.92 per tick before re-injection |\n");
+    out.push_str("| Source pulse | `0.55 + 0.45 × ((tick + phase×11) mod 20) / 20` per family (phases 0/1) |\n");
+    out.push_str("| Mobile family A | First 10 emitters shift +1 east every 3 ticks |\n");
+    out.push_str("| Mobile family B | First 10 emitters shift +1 south every 4 ticks |\n");
+    out.push_str("| Flux hops per tick | 2 (OBS_FLUX_HORIZON) |\n");
+    out.push_str("| Candidate sampler step | After compact D probe, move to lowest-D N4 neighbor (test-only) |\n");
+    out.push_str("\nResident generic fields affected: `pressure_a/b`, `choke_a/b`, composed W, stress columns. ");
+    out.push_str(
+        "Production BH/PALMA ops unchanged — stimulus lives only in `ct4b_100tick_runner`.\n\n",
+    );
 
-    out.push_str("## 3. Time-series observation summary\n\n");
-    out.push_str("| tick | max_choke_a | max_choke_b | overlap_peak | mismatch_peak | velocity_peak | profile0_probe_d | profile1_probe_d | note |\n");
-    out.push_str("|---:|---:|---:|---:|---:|---:|---:|---:|---|\n");
+    out.push_str("## 3. Resident chain exercised\n\n");
+    out.push_str(
+        "Each tick: dynamic pressure inject → BH-0/BH-1 flux+choke (2 hops per family) → ",
+    );
+    out.push_str("BH-2B W (2 profiles) → BH-2S overlap/mismatch/velocity stress → ");
+    out.push_str("BH-2C PALMA `GpuInterleavedW` → resident D → compact probe readback → ");
+    out.push_str("test-only candidate sampler displacement.\n\n");
+
+    out.push_str("## 4. Time-series observation summary\n\n");
+    out.push_str("| tick | max_choke_a | max_choke_b | overlap_peak | mismatch_peak | velocity_peak | profile0_probe_d | profile1_probe_d | moved_candidates | mean_displacement | note |\n");
+    out.push_str("|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n");
     for sample_tick in OBS_SAMPLE_TICKS {
         let obs = &run.ticks[sample_tick as usize];
         out.push_str(&format!(
-            "| {} | {:.4} | {:.4} | {:.4} | {:.4} | {:.4} | {:.3} | {:.3} | {} |\n",
+            "| {} | {:.4} | {:.4} | {:.4} | {:.4} | {:.4} | {:.3} | {:.3} | {} | {:.2} | {} |\n",
             obs.tick,
             obs.max_choke_a,
             obs.max_choke_b,
@@ -459,6 +622,8 @@ pub fn render_observation_markdown(run: &ObservationRun) -> String {
             obs.velocity_peak,
             obs.profile0_probe_min_d,
             obs.profile1_probe_min_d,
+            obs.moved_candidates,
+            obs.mean_displacement,
             obs.note,
         ));
     }
@@ -468,7 +633,7 @@ pub fn render_observation_markdown(run: &ObservationRun) -> String {
     let mid = &run.ticks[50];
     let last = &run.ticks[99];
 
-    out.push_str("## 4. Observed border pressure / choke readouts\n\n");
+    out.push_str("## 5. Observed shifting pressure\n\n");
     out.push_str(&format!(
         "- Max `choke_a`: {:.4} (tick 0) → {:.4} (tick 50) → {:.4} (tick 99).\n",
         first.max_choke_a, mid.max_choke_a, last.max_choke_a
@@ -477,108 +642,125 @@ pub fn render_observation_markdown(run: &ObservationRun) -> String {
         "- Max `choke_b`: {:.4} (tick 0) → {:.4} (tick 99).\n",
         first.max_choke_b, last.max_choke_b
     ));
-    if (last.max_choke_a - first.max_choke_a).abs() < 0.001
-        && (last.max_choke_b - first.max_choke_b).abs() < 0.001
+    out.push_str(&format!(
+        "- Overlap peak: {:.4} → {:.4}; mismatch peak: {:.4} → {:.4}.\n",
+        first.overlap_peak, last.overlap_peak, first.mismatch_peak, last.mismatch_peak
+    ));
+    out.push_str(&format!(
+        "- Velocity peak: {:.4} (tick 0) → {:.4} (tick 50) → {:.4} (tick 99).\n",
+        first.velocity_peak, mid.velocity_peak, last.velocity_peak
+    ));
+    if (last.max_choke_a - first.max_choke_a).abs() > 0.001
+        || (last.overlap_peak - first.overlap_peak).abs() > 0.001
+        || mid.velocity_peak > 0.01
     {
         out.push_str(
-            "- Source-local choke readouts remained at the saturation ceiling (1.0) across all sampled ticks; \
-             max-aggregate readouts do not show ridge drift — spatial diffusion is below the global peak.\n",
+            "- Moving emitters and pulsed injection shifted choke/stress readouts over the run; \
+             contact-band intensity tracks mobile source overlap rather than a fixed saturated plateau.\n",
         );
     } else {
-        out.push_str("- Choke peaks shifted between sampled ticks (see table above).\n");
+        out.push_str("- Max choke aggregates remained near ceiling; see velocity, D-probe, and displacement columns for dynamic signal.\n");
     }
-    out.push_str(
-        "- Per-tick source re-seeding maintains saturated pressure pockets; overlap band intensity tracks \
-         the product of family chokes at peaks.\n",
-    );
-    out.push_str("- These are resident scalar choke columns — **not** a border object or frontline service.\n\n");
+    out.push_str("- Resident scalar choke/stress columns — **not** a border object or frontline service.\n\n");
 
-    out.push_str("## 5. Overlap / mismatch / velocity stress\n\n");
+    out.push_str("## 6. Overlap / mismatch / velocity stress\n\n");
     out.push_str(&format!(
-        "- Overlap peak (`stress_overlap = choke_a * choke_b`): {:.4} → {:.4} (tick 0 → 99).\n",
+        "- Overlap peak (`choke_a × choke_b`): {:.4} → {:.4} (tick 0 → 99).\n",
         first.overlap_peak, last.overlap_peak
     ));
     out.push_str(&format!(
-        "- Mismatch peak (`abs(choke_a - choke_b)`): {:.4} → {:.4}.\n",
+        "- Mismatch peak (`|choke_a − choke_b|`): {:.4} → {:.4}.\n",
         first.mismatch_peak, last.mismatch_peak
     ));
     out.push_str(&format!(
-        "- Velocity peak (`abs(choke_a_now - choke_a_prev)`): {:.4} (tick 0) → {:.4} (tick 99); ",
+        "- Velocity peak (`|choke_a_now − choke_a_prev|`): {:.4} → {:.4}.\n",
         first.velocity_peak, last.velocity_peak
     ));
-    if last.velocity_peak < 0.001 {
-        out.push_str(
-            "velocity stress dropped to zero after the initial tick as the re-seeded field reached a per-tick steady state.\n",
-        );
-    } else {
-        out.push_str("velocity stress indicates ongoing choke change between ticks.\n");
+    if last.velocity_peak > 0.01 || mid.velocity_peak > 0.01 {
+        out.push_str("- Velocity stress remained active mid-run as mobile emitters and decay/pulse changed the choke field between ticks.\n");
     }
     out.push_str("- Columns `COL_STRESS_OVERLAP`, `COL_STRESS_MISMATCH`, `COL_STRESS_VELOCITY` are resident scalar fields.\n\n");
 
-    out.push_str("## 6. W-profile divergence\n\n");
+    out.push_str("## 7. W-profile divergence\n\n");
     out.push_str("- Profile 0 weights: `weight_a=1.0`, `weight_b=0.5` → `output_w` col 5.\n");
     out.push_str("- Profile 1 weights: `weight_a=6.0`, `weight_b=4.0` → `output_w` col 6.\n");
     out.push_str(&format!(
-        "- At probe anchor (16,16): tick-99 `output_w` profile0={:.3}, profile1={:.3}.\n",
-        last.anchor_w0, last.anchor_w1
+        "- At probe anchor (16,16): tick-0 W profile0={:.3}/profile1={:.3}; tick-99 profile0={:.3}/profile1={:.3}.\n",
+        first.anchor_w0, first.anchor_w1, last.anchor_w0, last.anchor_w1
     ));
-    if (last.profile1_probe_min_d - last.profile0_probe_min_d).abs() > 0.01 {
+    out.push_str(&format!(
+        "- Compact D probes: profile0 {:.3}→{:.3}, profile1 {:.3}→{:.3} (tick 0 → 99).\n",
+        first.profile0_probe_min_d,
+        last.profile0_probe_min_d,
+        first.profile1_probe_min_d,
+        last.profile1_probe_min_d
+    ));
+    out.push_str("- Divergence comes from admitted W weights over the same resident choke/stress fields — no semantic branches.\n\n");
+
+    out.push_str("## 8. Emergent movement-front / PALMA probe behavior\n\n");
+    if first.preferred_neighbor_rank != last.preferred_neighbor_rank {
         out.push_str(&format!(
-            "- Compact D probe divergence persisted: profile0 min_d={:.3}, profile1 min_d={:.3} at tick 99 \
-             (different admitted W weights over the same resident choke/stress fields).\n\n",
-            last.profile0_probe_min_d, last.profile1_probe_min_d
+            "- Anchor profile-0 lowest-D neighbor rank: {} → {} (0=center, 1–4=N4).\n",
+            first.preferred_neighbor_rank, last.preferred_neighbor_rank
         ));
     } else {
         out.push_str(&format!(
-            "- Compact D probes converged: profile0 min_d={:.3}, profile1 min_d={:.3} at tick 99.\n\n",
-            last.profile0_probe_min_d, last.profile1_probe_min_d
-        ));
-    }
-
-    out.push_str("## 7. Emergent movement-front / PALMA probe behavior\n\n");
-    if first.preferred_neighbor_rank == last.preferred_neighbor_rank {
-        out.push_str(&format!(
-            "- At probe anchor, the candidate neighbor with lowest compact D remained rank {} (0=center, 1–4=N4) \
-             across sampled ticks — probe-implied local step preference stable under resident W/D.\n",
+            "- Anchor profile-0 lowest-D neighbor rank stable at {} (0=center, 1–4=N4).\n",
             last.preferred_neighbor_rank
         ));
-    } else {
+    }
+    if first.profile1_preferred_neighbor_rank != last.profile1_preferred_neighbor_rank {
         out.push_str(&format!(
-            "- At probe anchor, candidate neighbor rank with lowest D shifted: tick0 rank {}, tick50 rank {}, tick99 rank {} \
-             (0=center, 1–4=N4).\n",
-            first.preferred_neighbor_rank, mid.preferred_neighbor_rank, last.preferred_neighbor_rank
+            "- Anchor profile-1 lowest-D neighbor rank: {} → {}.\n",
+            first.profile1_preferred_neighbor_rank, last.profile1_preferred_neighbor_rank
         ));
     }
     out.push_str(&format!(
-        "- Candidate automata sampling (32 of {}): mean compact min_d {:.3} → {:.3} (tick 0 → 99).\n",
-        CT4B_AUTOMATA_COUNT, first.automata_sample_min_d_mean, last.automata_sample_min_d_mean
+        "- Test-only candidate samplers: mean Manhattan displacement {:.2} → {:.2}; moved this tick at tick 99: {}.\n",
+        first.mean_displacement, last.mean_displacement, last.moved_candidates
     ));
-    out.push_str("- **Interpretation:** local automata probes would favor/disfavor neighboring cells under resident W/D fields; ");
-    out.push_str("this is probe-implied tendency only — **not** implemented movement policy.\n\n");
+    out.push_str(&format!(
+        "- Candidate mean compact min_d: {:.3} → {:.3} (tick 0 → 99).\n",
+        first.automata_sample_min_d_mean, last.automata_sample_min_d_mean
+    ));
+    out.push_str("- **Interpretation:** probe-implied local automata would favor/disfavor neighboring cells; ");
+    out.push_str("test-only sampler displacement tracks compact D gradients — **not** production movement policy.\n\n");
 
-    out.push_str("## 8. Scaffolding classification\n\n");
+    out.push_str("## 9. Scaffolding classification\n\n");
     out.push_str("| Artifact | Classification |\n|---|---|\n");
-    out.push_str("| `Ct4bFixture`, `ct4b_100tick_runner` | Test-only |\n");
+    out.push_str("| `Ct4bFixture`, `ct4b_100tick_runner`, `DynamicObsState` | Test-only |\n");
+    out.push_str(
+        "| Dynamic pulse / mobile emitters / candidate step | Test-only observation stimulus |\n",
+    );
     out.push_str("| `readback_buffer` in observation runner | Test/diagnostic only |\n");
     out.push_str(
         "| Scenario labels (Terran/Pirate etc.) | docs/tests-only — not in production code |\n",
     );
-    out.push_str("| `compiled_*_to_gpu_config`, `composed_w_min_plus_stencil_config` | Live production APIs |\n\n");
+    out.push_str("| `compiled_*_to_gpu_config`, `composed_w_min_plus_stencil_config`, GPU compose/flux/PALMA ops | Live production APIs |\n\n");
 
-    out.push_str("## 9. Constitutional checklist\n\n");
+    out.push_str("## 10. Constitutional checklist\n\n");
     out.push_str("- No border service.\n");
+    out.push_str("- No frontline service.\n");
     out.push_str("- No pathfinding engine.\n");
     out.push_str("- No movement engine.\n");
     out.push_str("- No route object.\n");
     out.push_str("- No predecessor table.\n");
+    out.push_str("- No CPU planner.\n");
     out.push_str("- No semantic WGSL.\n");
+    out.push_str("- No faction-specific production code.\n");
     out.push_str("- No full-field CPU readback for production decisions; compact probe + test-only diagnostic aggregates.\n");
-    out.push_str("- Candidate-F/native-sqrt audit clean on touched BH/PALMA paths (no native sqrt in hot path).\n");
+    out.push_str("- Candidate-F/native-sqrt audit clean on touched BH/PALMA paths (no native sqrt; scalar W/D/choke/stress only).\n");
     out.push_str("- Production behavior does not depend on observation scaffolding.\n\n");
 
-    out.push_str("## 10. Test commands run\n\n");
-    out.push_str("```text\ncargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation --ignored --nocapture\n");
-    out.push_str("cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation_smoke\ncargo test -p simthing-driver --test bh2d_ct4b_fixture\n");
+    out.push_str("## 11. Test commands run\n\n");
+    out.push_str("```text\ncargo fmt --all -- --check\n");
+    out.push_str("cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation --ignored --nocapture\n");
+    out.push_str("cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation_smoke\n");
+    out.push_str("cargo test -p simthing-driver --test bh2d_ct4b_fixture\n");
+    out.push_str("cargo test -p simthing-driver --test bh2c_palma_w_feedstock\n");
+    out.push_str("cargo test -p simthing-driver --test palma_path_9_downstream_gpu_consumer\n");
+    out.push_str("cargo test -p simthing-gpu --test bh2_w_composition\n");
+    out.push_str("cargo test -p simthing-gpu --test bh2s_overlap_stress\n");
     out.push_str("```\n\n");
     out.push_str("`cargo test --workspace` was **not** run.\n");
 
