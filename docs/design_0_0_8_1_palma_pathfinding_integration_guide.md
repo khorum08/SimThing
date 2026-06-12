@@ -297,7 +297,7 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 3 | **PALMA-PATH-2** | GPU/JIT min-plus stencil; CPU parity | **IMPLEMENTED / PASS** — [`tests/palma_path_2_gpu_min_plus_results.md`](tests/palma_path_2_gpu_min_plus_results.md) |
 | 4 | **PALMA-PATH-3** | Terran convoy / pirate fleet field sampling (numeric + GPU) | **PARTIAL / NUMERIC+GPU FIXTURE PASS** — live SimThing tree deferred to PATH-3R — [`tests/palma_path_3_terran_pirate_fixture_results.md`](tests/palma_path_3_terran_pirate_fixture_results.md) |
 | 5 | **PALMA-PATH-3R** | Admitted Location/gridcell/convoy tree + generic Reparent | **IMPLEMENTED / PASS** — [`tests/palma_path_3r_simthing_tree_fixture_results.md`](tests/palma_path_3r_simthing_tree_fixture_results.md) |
-| 6 | **PALMA-PATH-4** | Benchmark: CPU per-mover vs CPU field vs GPU field | Not started |
+| 6 | **PALMA-PATH-4** | Benchmark: CPU per-mover vs CPU field vs GPU field | **IMPLEMENTED / PASS** — [`tests/palma_path_4_benchmark_results.md`](tests/palma_path_4_benchmark_results.md) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
@@ -322,7 +322,7 @@ PATH-1 represents pirate/blockade/fuel as **numeric W arrays only** — no convo
 
 ## 17. Benchmark plan (PALMA-PATH-4 — not run in PATH-0/1)
 
-Compare (honest, no overclaim):
+Compare (honest, no overclaim) — **run completed PALMA-PATH-4**; see [`tests/palma_path_4_benchmark_results.md`](tests/palma_path_4_benchmark_results.md).
 
 | Axis | Values |
 |---|---|

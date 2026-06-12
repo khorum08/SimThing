@@ -50,4 +50,4 @@ Not run: `cargo test --workspace`, broad driver suite, ClauseThing tests.
 
 ## Next rung
 
-PALMA-PATH-3 (Terran convoy field sampling fixture) — not started; requires generic movement commitment path if sampling is proven.
+PALMA-PATH-3 — [`palma_path_3_terran_pirate_fixture_results.md`](palma_path_3_terran_pirate_fixture_results.md); PATH-4 benchmark — [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md).

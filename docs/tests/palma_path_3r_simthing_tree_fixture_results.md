@@ -56,4 +56,4 @@ Not run: `cargo test --workspace`, broad driver suite, ClauseThing tests.
 
 ## Next rung
 
-PALMA-PATH-4 (benchmark) — not started.
+PALMA-PATH-4 (benchmark) — **IMPLEMENTED / PASS** — [`palma_path_4_benchmark_results.md`](palma_path_4_benchmark_results.md)
