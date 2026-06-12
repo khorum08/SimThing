@@ -1,6 +1,6 @@
-# BH-2D-OBS-100 — CT-4b 100-tick scenario observations
+# BH-2D-OBS-100R — CT-4b 100-tick dynamic scenario observations
 
-> **Status: OBSERVATION / PASS (generated from live GPU run).** Human-readable field/probe observations only. No movement engine, pathfinding engine, route/predecessor objects, or border service.
+> **Status: OBSERVATION / PASS (generated from live GPU run, BH-2D-OBS-100R).** Deterministic test-only dynamic stimulus. No movement engine, pathfinding engine, route/predecessor objects, or border service.
 
 ## 1. Scenario identity
 
@@ -8,81 +8,108 @@
 |---|---|
 | Grid | 200 × 200 |
 | Tick count | 100 |
-| Source points | 100 |
-| Source family A | 50 |
-| Source family B | 50 |
-| Candidate automata samplers | 150 (32 probed per tick for compact mean) |
+| Static source points | 40 per family (50 minus 10 mobile) |
+| Mobile source emitters | 10 family A + 10 family B (deterministic drift) |
+| Total source-family coverage | 100 points (same CT-4b shape) |
+| Candidate automata samplers | 150 metadata; 32 probed and displaced test-only per tick |
 | Fixture labels | docs/tests-only; production code uses `field_a` / `field_b` |
 
-## 2. Resident chain exercised
+## 2. Dynamic stimulus description (test-only)
 
-Each tick: BH-0/BH-1 flux+choke (1 hop per family) → BH-2B W (2 profiles) → BH-2S overlap/mismatch/velocity stress → BH-2C PALMA `GpuInterleavedW` → resident D → compact probe readback only.
+| Mechanism | Schedule |
+|---|---|
+| Pressure decay | All cells × 0.92 per tick before re-injection |
+| Source pulse | `0.55 + 0.45 × ((tick + phase×11) mod 20) / 20` per family (phases 0/1) |
+| Mobile family A | First 10 emitters shift +1 east every 3 ticks |
+| Mobile family B | First 10 emitters shift +1 south every 4 ticks |
+| Flux hops per tick | 2 (OBS_FLUX_HORIZON) |
+| Candidate sampler step | After compact D probe, move to lowest-D N4 neighbor (test-only) |
 
-## 3. Time-series observation summary
+Resident generic fields affected: `pressure_a/b`, `choke_a/b`, composed W, stress columns. Production BH/PALMA ops unchanged — stimulus lives only in `ct4b_100tick_runner`.
 
-| tick | max_choke_a | max_choke_b | overlap_peak | mismatch_peak | velocity_peak | profile0_probe_d | profile1_probe_d | note |
-|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| 0 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 32.500 | 41.000 | initial flux + compose |
-| 25 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 32.500 | 41.000 | profile D probe divergence widening |
-| 50 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 32.500 | 41.000 | profile D probe divergence widening |
-| 75 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 32.500 | 41.000 | profile D probe divergence widening |
-| 99 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | 32.500 | 41.000 | profile D probe divergence widening |
+## 3. Resident chain exercised
 
-## 4. Observed border pressure / choke readouts
+Each tick: dynamic pressure inject → BH-0/BH-1 flux+choke (2 hops per family) → BH-2B W (2 profiles) → BH-2S overlap/mismatch/velocity stress → BH-2C PALMA `GpuInterleavedW` → resident D → compact probe readback → test-only candidate sampler displacement.
 
-- Max `choke_a`: 1.0000 (tick 0) → 1.0000 (tick 50) → 1.0000 (tick 99).
-- Max `choke_b`: 1.0000 (tick 0) → 1.0000 (tick 99).
-- Source-local choke readouts remained at the saturation ceiling (1.0) across all sampled ticks; max-aggregate readouts do not show ridge drift — spatial diffusion is below the global peak.
-- Per-tick source re-seeding maintains saturated pressure pockets; overlap band intensity tracks the product of family chokes at peaks.
-- These are resident scalar choke columns — **not** a border object or frontline service.
+## 4. Time-series observation summary
 
-## 5. Overlap / mismatch / velocity stress
+| tick | max_choke_a | max_choke_b | overlap_peak | mismatch_peak | velocity_peak | profile0_probe_d | profile1_probe_d | moved_candidates | mean_displacement | note |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 0 | 0.6327 | 0.9500 | 0.6002 | 0.8025 | 0.6327 | 32.535 | 41.954 | 1 | 0.03 | initial dynamic pulse + flux |
+| 25 | 0.9450 | 1.0000 | 0.8748 | 1.0000 | 0.0911 | 33.379 | 47.502 | 1 | 0.81 | 1 candidate samplers displaced |
+| 50 | 1.0000 | 0.9386 | 0.7066 | 1.0000 | 0.0776 | 33.144 | 45.399 | 0 | 1.12 | velocity stress active |
+| 75 | 1.0000 | 0.9406 | 0.8576 | 1.0000 | 0.9175 | 33.223 | 46.241 | 0 | 1.12 | velocity stress active |
+| 99 | 1.0000 | 1.0000 | 0.9500 | 1.0000 | 0.9764 | 33.229 | 46.467 | 0 | 1.12 | velocity stress active |
 
-- Overlap peak (`stress_overlap = choke_a * choke_b`): 1.0000 → 1.0000 (tick 0 → 99).
-- Mismatch peak (`abs(choke_a - choke_b)`): 1.0000 → 1.0000.
-- Velocity peak (`abs(choke_a_now - choke_a_prev)`): 1.0000 (tick 0) → 0.0000 (tick 99); velocity stress dropped to zero after the initial tick as the re-seeded field reached a per-tick steady state.
+## 5. Observed shifting pressure
+
+- Max `choke_a`: 0.6327 (tick 0) → 1.0000 (tick 50) → 1.0000 (tick 99).
+- Max `choke_b`: 0.9500 (tick 0) → 1.0000 (tick 99).
+- Overlap peak: 0.6002 → 0.9500; mismatch peak: 0.8025 → 1.0000.
+- Velocity peak: 0.6327 (tick 0) → 0.0776 (tick 50) → 0.9764 (tick 99).
+- Moving emitters and pulsed injection shifted choke/stress readouts over the run; contact-band intensity tracks mobile source overlap rather than a fixed saturated plateau.
+- Resident scalar choke/stress columns — **not** a border object or frontline service.
+
+## 6. Overlap / mismatch / velocity stress
+
+- Overlap peak (`choke_a × choke_b`): 0.6002 → 0.9500 (tick 0 → 99).
+- Mismatch peak (`|choke_a − choke_b|`): 0.8025 → 1.0000.
+- Velocity peak (`|choke_a_now − choke_a_prev|`): 0.6327 → 0.9764.
+- Velocity stress remained active mid-run as mobile emitters and decay/pulse changed the choke field between ticks.
 - Columns `COL_STRESS_OVERLAP`, `COL_STRESS_MISMATCH`, `COL_STRESS_VELOCITY` are resident scalar fields.
 
-## 6. W-profile divergence
+## 7. W-profile divergence
 
 - Profile 0 weights: `weight_a=1.0`, `weight_b=0.5` → `output_w` col 5.
 - Profile 1 weights: `weight_a=6.0`, `weight_b=4.0` → `output_w` col 6.
-- At probe anchor (16,16): tick-99 `output_w` profile0=1.000, profile1=1.000.
-- Compact D probe divergence persisted: profile0 min_d=32.500, profile1 min_d=41.000 at tick 99 (different admitted W weights over the same resident choke/stress fields).
+- At probe anchor (16,16): tick-0 W profile0=1.986/profile1=7.732; tick-99 profile0=2.429/profile1=10.428.
+- Compact D probes: profile0 32.535→33.229, profile1 41.954→46.467 (tick 0 → 99).
+- Divergence comes from admitted W weights over the same resident choke/stress fields — no semantic branches.
 
-## 7. Emergent movement-front / PALMA probe behavior
+## 8. Emergent movement-front / PALMA probe behavior
 
-- At probe anchor, the candidate neighbor with lowest compact D remained rank 1 (0=center, 1–4=N4) across sampled ticks — probe-implied local step preference stable under resident W/D.
-- Candidate automata sampling (32 of 150): mean compact min_d 35.000 → 35.000 (tick 0 → 99).
-- **Interpretation:** local automata probes would favor/disfavor neighboring cells under resident W/D fields; this is probe-implied tendency only — **not** implemented movement policy.
+- Anchor profile-0 lowest-D neighbor rank stable at 3 (0=center, 1–4=N4).
+- Anchor profile-1 lowest-D neighbor rank: 1 → 3.
+- Test-only candidate samplers: mean Manhattan displacement 0.03 → 1.12; moved this tick at tick 99: 0.
+- Candidate mean compact min_d: 35.000 → 0.000 (tick 0 → 99).
+- **Interpretation:** probe-implied local automata would favor/disfavor neighboring cells; test-only sampler displacement tracks compact D gradients — **not** production movement policy.
 
-## 8. Scaffolding classification
+## 9. Scaffolding classification
 
 | Artifact | Classification |
 |---|---|
-| `Ct4bFixture`, `ct4b_100tick_runner` | Test-only |
+| `Ct4bFixture`, `ct4b_100tick_runner`, `DynamicObsState` | Test-only |
+| Dynamic pulse / mobile emitters / candidate step | Test-only observation stimulus |
 | `readback_buffer` in observation runner | Test/diagnostic only |
 | Scenario labels (Terran/Pirate etc.) | docs/tests-only — not in production code |
-| `compiled_*_to_gpu_config`, `composed_w_min_plus_stencil_config` | Live production APIs |
+| `compiled_*_to_gpu_config`, `composed_w_min_plus_stencil_config`, GPU compose/flux/PALMA ops | Live production APIs |
 
-## 9. Constitutional checklist
+## 10. Constitutional checklist
 
 - No border service.
+- No frontline service.
 - No pathfinding engine.
 - No movement engine.
 - No route object.
 - No predecessor table.
+- No CPU planner.
 - No semantic WGSL.
+- No faction-specific production code.
 - No full-field CPU readback for production decisions; compact probe + test-only diagnostic aggregates.
-- Candidate-F/native-sqrt audit clean on touched BH/PALMA paths (no native sqrt in hot path).
+- Candidate-F/native-sqrt audit clean on touched BH/PALMA paths (no native sqrt; scalar W/D/choke/stress only).
 - Production behavior does not depend on observation scaffolding.
 
-## 10. Test commands run
+## 11. Test commands run
 
 ```text
+cargo fmt --all -- --check
 cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation --ignored --nocapture
 cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation_smoke
 cargo test -p simthing-driver --test bh2d_ct4b_fixture
+cargo test -p simthing-driver --test bh2c_palma_w_feedstock
+cargo test -p simthing-driver --test palma_path_9_downstream_gpu_consumer
+cargo test -p simthing-gpu --test bh2_w_composition
+cargo test -p simthing-gpu --test bh2s_overlap_stress
 ```
 
 `cargo test --workspace` was **not** run.

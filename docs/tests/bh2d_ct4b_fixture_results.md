@@ -6,7 +6,7 @@
 >
 > **100-tick observation narrative:** superseded for time-series field behavior by
 > [`bh2d_ct4b_100tick_scenario_observations.md`](bh2d_ct4b_100tick_scenario_observations.md)
-> (BH-2D-OBS-100). This file retains the binary fixture proof gates only.
+> (BH-2D-OBS-100R dynamic stimulus). This file retains the binary fixture proof gates only.
 
 ## Fixture (test-only)
 

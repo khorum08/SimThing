@@ -1,3 +1,8 @@
+# 2026-06-11 - BH-2D-OBS-100R: dynamic 100-tick CT-4b observation pass
+
+- **Remedial:** prior OBS-100 report was flat (saturated steady state). Added deterministic test-only dynamic stimulus: pressure decay, pulsed sources, mobile emitters, candidate sampler displacement by compact D probe.
+- **Report:** [`tests/bh2d_ct4b_100tick_scenario_observations.md`](tests/bh2d_ct4b_100tick_scenario_observations.md)
+
 # 2026-06-11 - BH-2D-OBS-100: 100-tick CT-4b scenario observation pass
 
 - **Observation runner:** test-only `ct4b_100tick_runner` (100 ticks, compact PALMA D probes + diagnostic max-column aggregates). Ignored integration test regenerates report.

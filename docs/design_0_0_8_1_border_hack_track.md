@@ -1,6 +1,6 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-2D CLOSED (2026-06-11); BH-2D-OBS-100 observation report (2026-06-11).** Named consumer
+> **Status: BH-0…BH-2D CLOSED (2026-06-11); BH-2D-OBS-100R dynamic observation report (2026-06-11).** Named consumer
 > `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition, BH-2S stress feedstock,
 > BH-2C PALMA feedstock, and BH-2D CT-4b 200×200 fixture proof. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
@@ -611,17 +611,27 @@ readback.
 `bh2d_scaffolding_promoted_or_quarantined`, `bh2d_no_native_sqrt_in_hot_path`. Report:
 [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md).
 
-## 14. BH-2D-OBS-100: 100-tick CT-4b scenario observation pass
+## 14. BH-2D-OBS-100R: dynamic 100-tick CT-4b scenario observation pass
 
-**Purpose:** human-readable time-series report over the same CT-4b fixture shape — observed choke/border
-pressure, stress evolution, W-profile divergence, and PALMA compact D probe / candidate movement-front
-tendencies. **Not** a movement engine, route planner, or border service.
+**Purpose:** human-readable time-series report over the CT-4b fixture shape with **deterministic test-only
+dynamic stimulus** — observed shifting choke/border pressure, stress evolution, W-profile divergence,
+PALMA compact D probe changes, and probe-implied candidate sampler displacement. **Not** a movement engine,
+route planner, or border service.
 
-**Runner (test-only):** `support/ct4b_100tick_runner.rs`, invoked by ignored integration test
-`bh2d_ct4b_100tick_observation` (smoke: 10 ticks in CI; full 100 ticks run explicitly).
+**Dynamic stimulus (test-only, `ct4b_100tick_runner`):**
+
+| Mechanism | Schedule |
+|---|---|
+| Pressure decay | ×0.92 per tick before re-injection |
+| Source pulse | Deterministic 20-tick ramp per family |
+| Mobile emitters | 10 family A (+1 east / 3 ticks), 10 family B (+1 south / 4 ticks) |
+| Candidate sampler step | Compact D probe → lowest-D N4 neighbor (test-only) |
+
+**Runner:** `support/ct4b_100tick_runner.rs` + ignored test `bh2d_ct4b_100tick_observation`
+(smoke: 10 ticks in CI).
 
 **Observation discipline:** compact probe readback for PALMA D; test-only full-field readback for
-aggregate max-column metrics in the report generator only. Production path unchanged.
+aggregate max-column metrics only. Production BH/PALMA ops unchanged.
 
 **Report:** [`tests/bh2d_ct4b_100tick_scenario_observations.md`](tests/bh2d_ct4b_100tick_scenario_observations.md).
 
