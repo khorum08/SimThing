@@ -178,17 +178,50 @@ fn validate_gated_rates(
     arena_names: &HashSet<&str>,
 ) -> Result<(), SpecError> {
     let mut ids = HashSet::new();
-    let mut per_target: HashMap<(String, String), u32> = HashMap::new();
+    // Per-(arena, install-target) EML node budget: base read + combine
+    // skeleton is 4 nodes; each term costs its estimate below. Cap with
+    // headroom under the 32-node exact-class tree limit.
+    let mut per_target_nodes: HashMap<(String, String), u32> = HashMap::new();
     for gated in &spec.gated_rates {
         if !ids.insert(gated.id.clone()) {
             return Err(SpecError::DuplicateBaseFlowObligation {
                 id: gated.id.clone(),
             });
         }
-        if !gated.rate.is_finite() || gated.rate < 0.0 || !gated.trigger.at_least.is_finite() {
+        if !gated.rate.is_finite() || gated.rate < 0.0 {
             return Err(SpecError::InvalidBaseFlowObligationRate {
                 id: gated.id.clone(),
             });
+        }
+        if let Some(trigger) = &gated.trigger {
+            if !trigger.at_least.is_finite() {
+                return Err(SpecError::InvalidBaseFlowObligationRate {
+                    id: gated.id.clone(),
+                });
+            }
+        }
+        let mut term_nodes = 2u32; // magnitude push + combining ADD
+        if let Some(formula) = &gated.rate_formula {
+            if !formula.base.is_finite() {
+                return Err(SpecError::InvalidBaseFlowObligationRate {
+                    id: gated.id.clone(),
+                });
+            }
+            for op in &formula.ops {
+                if let crate::spec::resource_flow::RateFormulaOperandSpec::Literal(value) =
+                    &op.operand
+                {
+                    if !value.is_finite() {
+                        return Err(SpecError::InvalidBaseFlowObligationRate {
+                            id: gated.id.clone(),
+                        });
+                    }
+                }
+            }
+            term_nodes += 2 * formula.ops.len() as u32;
+        }
+        if gated.trigger.is_some() {
+            term_nodes += 4; // trigger read + threshold + CMP_GE + gate MUL
         }
         if !arena_names.contains(gated.arena.as_str()) {
             return Err(SpecError::UnknownArenaReference {
@@ -197,11 +230,14 @@ fn validate_gated_rates(
             });
         }
         let key = (gated.arena.clone(), format!("{:?}", gated.install));
-        let count = per_target.entry(key).or_insert(0);
-        *count += 1;
-        if *count > 4 {
+        let nodes = per_target_nodes.entry(key).or_insert(4);
+        *nodes += term_nodes;
+        if *nodes > 28 {
             return Err(SpecError::InvalidBaseFlowObligationRate {
-                id: format!("{} (more than 4 gated terms per arena target)", gated.id),
+                id: format!(
+                    "{} (effective-rate tree exceeds the EML node budget for this arena target)",
+                    gated.id
+                ),
             });
         }
     }

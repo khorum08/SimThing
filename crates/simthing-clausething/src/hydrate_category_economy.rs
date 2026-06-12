@@ -22,7 +22,8 @@ use simthing_spec::spec::resource_economy::{
 };
 use simthing_spec::spec::resource_flow::{
     BaseFlowDirectionSpec, BaseFlowObligationSpec, GatedRateOpSpec, GatedRateSpec,
-    GatedRateTriggerSpec, ResourceFlowOptInMode, ResourceFlowSpec,
+    GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec, RateFormulaOperandSpec,
+    RateFormulaSpec, ResourceFlowOptInMode, ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
@@ -166,6 +167,7 @@ pub fn hydrate_category_economy_pack(
     let mut region_fields = Vec::new();
     let mut mapping_profile = MappingExecutionProfile::Disabled;
     let mut trigger_properties = Vec::new();
+    let mut script_values: BTreeMap<String, RateFormulaSpec> = BTreeMap::new();
 
     for property in &body.properties {
         match property.key.text.as_str() {
@@ -187,6 +189,15 @@ pub fn hydrate_category_economy_pack(
             "region_field" => region_fields.push(parse_region_field_block(property)?),
             "mapping" => mapping_profile = parse_mapping_block(property)?,
             "trigger_property" => trigger_properties.push(parse_trigger_property_block(property)?),
+            "script_value" => {
+                let (id, formula) = parse_script_value_block(property)?;
+                if script_values.insert(id, formula).is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate script_value id",
+                        Some(property.key.span.clone()),
+                    ));
+                }
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported CT-2c category fixture field `{other}`"),
@@ -232,6 +243,7 @@ pub fn hydrate_category_economy_pack(
             &mut base_rates,
             &mut gated_rates,
             &mut gated_pairs,
+            &script_values,
         )?;
     }
 
@@ -616,6 +628,7 @@ fn parse_unit_template(
     base_rates: &mut Vec<BaseRateRow>,
     gated_rates: &mut Vec<GatedRateSpec>,
     gated_pairs: &mut BTreeSet<(String, String)>,
+    script_values: &BTreeMap<String, RateFormulaSpec>,
 ) -> Result<(), HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
@@ -713,6 +726,7 @@ fn parse_unit_template(
                     used_pairs,
                     gated_rates,
                     gated_pairs,
+                    script_values,
                 )?;
                 continue;
             }
@@ -745,6 +759,46 @@ fn parse_unit_template(
                     ),
                     Some(entry.key.span.clone()),
                 ));
+            }
+            // `value:` rates are dynamic — they bypass the static fold and
+            // become always-on terms on the effective-rate EvalEML band.
+            if let RawValue::Scalar(scalar) = &entry.value {
+                if scalar.text.starts_with("value:") {
+                    let formula =
+                        resolve_script_value(&scalar.text, script_values, &entry.key.span)?;
+                    let (_, arena_name) = ensure_flow_pair(
+                        &decoded.category,
+                        &decoded.resource,
+                        resources,
+                        arena_defaults,
+                        used_pairs,
+                    )?;
+                    gated_pairs.insert((decoded.category.clone(), decoded.resource.clone()));
+                    let index = gated_rates.len();
+                    gated_rates.push(GatedRateSpec {
+                        id: format!(
+                            "{template_id}_{}_{}_value{index}",
+                            decoded.category, decoded.resource
+                        ),
+                        arena: arena_name,
+                        install: InstallTargetSpec::ScenarioListed {
+                            target_id: template_id.clone(),
+                        },
+                        direction: match decoded.axis {
+                            EconomicAxis::Produces => BaseFlowDirectionSpec::Produce,
+                            EconomicAxis::Upkeep => BaseFlowDirectionSpec::Upkeep,
+                            EconomicAxis::Cost => unreachable!("cost rejected above"),
+                        },
+                        op: match decoded.op {
+                            EconomicOp::Add => GatedRateOpSpec::Add,
+                            EconomicOp::Mult => GatedRateOpSpec::Mult,
+                        },
+                        rate: 0.0,
+                        trigger: None,
+                        rate_formula: Some(formula),
+                    });
+                    continue;
+                }
             }
             if decoded.op != EconomicOp::Add {
                 return Err(HydrateError::new_spanned(
@@ -1439,6 +1493,7 @@ fn parse_gated_entry(
     used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
     gated_rates: &mut Vec<GatedRateSpec>,
     gated_pairs: &mut BTreeSet<(String, String)>,
+    script_values: &BTreeMap<String, RateFormulaSpec>,
 ) -> Result<(), HydrateError> {
     let _ = categories;
     let RawValue::Block(block) = &entry.value else {
@@ -1449,7 +1504,7 @@ fn parse_gated_entry(
     };
 
     let mut trigger = None;
-    let mut rate_entry: Option<(DecodedEconomicKey, f32)> = None;
+    let mut rate_entry: Option<(DecodedEconomicKey, f32, Option<RateFormulaSpec>)> = None;
 
     for field in &block.properties {
         match field.key.text.as_str() {
@@ -1482,6 +1537,14 @@ fn parse_gated_entry(
                         Some(field.key.span.clone()),
                     ));
                 }
+                if let RawValue::Scalar(scalar) = &field.value {
+                    if scalar.text.starts_with("value:") {
+                        let formula =
+                            resolve_script_value(&scalar.text, script_values, &field.key.span)?;
+                        rate_entry = Some((decoded, 0.0, Some(formula)));
+                        continue;
+                    }
+                }
                 let amount = read_scalar_f32(field, key)?;
                 if !amount.is_finite() || amount < 0.0 {
                     return Err(HydrateError::new_spanned(
@@ -1489,7 +1552,7 @@ fn parse_gated_entry(
                         Some(field.key.span.clone()),
                     ));
                 }
-                rate_entry = Some((decoded, amount));
+                rate_entry = Some((decoded, amount, None));
             }
         }
     }
@@ -1500,7 +1563,7 @@ fn parse_gated_entry(
             Some(entry.key.span.clone()),
         )
     })?;
-    let (decoded, amount) = rate_entry.ok_or_else(|| {
+    let (decoded, amount, rate_formula) = rate_entry.ok_or_else(|| {
         HydrateError::new_spanned(
             "gated block requires one economic key",
             Some(entry.key.span.clone()),
@@ -1543,9 +1606,132 @@ fn parse_gated_entry(
         direction,
         op,
         rate: amount,
-        trigger,
+        trigger: Some(trigger),
+        rate_formula,
     });
     Ok(())
+}
+
+/// Resolve a `value:NAME` scalar against the fixture's `script_value`
+/// definitions. Flat in v1 — recursion is rejected at parse (formulas hold
+/// only literal/property operands, so reference cycles cannot be authored).
+fn resolve_script_value(
+    text: &str,
+    script_values: &BTreeMap<String, RateFormulaSpec>,
+    span: &crate::raw::RawSpan,
+) -> Result<RateFormulaSpec, HydrateError> {
+    let name = text.strip_prefix("value:").unwrap_or(text);
+    script_values.get(name).cloned().ok_or_else(|| {
+        HydrateError::new_spanned(format!("unknown script_value `{name}`"), Some(span.clone()))
+    })
+}
+
+/// `script_value { id base add/mult/floor_at/ceil_at … }` → [`RateFormulaSpec`].
+/// Operands: scalar literal, or `{ property = ns::name }` for a per-tick
+/// column read. Ordered in source order (list-collect duplication policy).
+fn parse_script_value_block(
+    property: &RawProperty,
+) -> Result<(String, RateFormulaSpec), HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`script_value` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+
+    let mut id = None;
+    let mut base = None;
+    let mut ops = Vec::new();
+
+    for field in &block.properties {
+        let op = match field.key.text.as_str() {
+            "id" => {
+                id = Some(read_scalar_text(field, "id")?);
+                continue;
+            }
+            "base" => {
+                base = Some(read_scalar_f32(field, "base")?);
+                continue;
+            }
+            "add" => RateFormulaOp::Add,
+            "mult" => RateFormulaOp::Mult,
+            "floor_at" => RateFormulaOp::FloorAt,
+            "ceil_at" => RateFormulaOp::CeilAt,
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported script_value field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        };
+        let operand = match &field.value {
+            RawValue::Scalar(scalar) => {
+                if scalar.text.starts_with("value:") {
+                    return Err(HydrateError::new_spanned(
+                        "script_value recursion is not admitted in v1 (flat formulas only)",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                RateFormulaOperandSpec::Literal(read_scalar_f32(field, &field.key.text)?)
+            }
+            RawValue::Block(operand_block) => {
+                let mut key = None;
+                for entry in &operand_block.properties {
+                    match entry.key.text.as_str() {
+                        "property" => {
+                            let text = read_scalar_text(entry, "property")?;
+                            let Some((namespace, name)) = text.split_once("::") else {
+                                return Err(HydrateError::new_spanned(
+                                    format!(
+                                        "operand `property` must be `namespace::name`, got `{text}`"
+                                    ),
+                                    Some(entry.key.span.clone()),
+                                ));
+                            };
+                            key = Some(PropertyKey::new(namespace, name));
+                        }
+                        other => {
+                            return Err(HydrateError::new_spanned(
+                                format!("unsupported operand field `{other}`"),
+                                Some(entry.key.span.clone()),
+                            ));
+                        }
+                    }
+                }
+                RateFormulaOperandSpec::Property(key.ok_or_else(|| {
+                    HydrateError::new_spanned(
+                        "operand block requires `property`",
+                        Some(field.key.span.clone()),
+                    )
+                })?)
+            }
+            _ => {
+                return Err(HydrateError::new_spanned(
+                    "operand must be a scalar or `{ property = ns::name }`",
+                    Some(field.key.span.clone()),
+                ));
+            }
+        };
+        ops.push(RateFormulaOpSpec { op, operand });
+    }
+
+    Ok((
+        id.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "script_value requires `id`",
+                Some(property.key.span.clone()),
+            )
+        })?,
+        RateFormulaSpec {
+            base: base.ok_or_else(|| {
+                HydrateError::new_spanned(
+                    "script_value requires `base`",
+                    Some(property.key.span.clone()),
+                )
+            })?,
+            ops,
+        },
+    ))
 }
 
 fn parse_gated_trigger_block(property: &RawProperty) -> Result<GatedRateTriggerSpec, HydrateError> {

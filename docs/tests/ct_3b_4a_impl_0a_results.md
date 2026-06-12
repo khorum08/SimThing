@@ -108,8 +108,12 @@ one** — the binding ordering ("rate before reduce") is structural, not schedul
 
 ## Remaining exit blockers (exact, for the full CT-3b+4a 0B closure)
 
-1. ~~CT-RF-EML-RATE-0~~ — **implemented** (addendum above); only `value:` tree lowering onto the
-   existing band remains, hard-errored with the extension named.
+1. ~~CT-RF-EML-RATE-0~~ — **implemented**, including `value:` tree lowering: `script_value`
+   formulas (base + ordered add/mult/floor_at/ceil_at over literals and live property-column
+   reads) hydrate from `value:NAME` references at both rate consumption points (gated
+   magnitudes and always-on dynamic terms) and lower to formula subtrees on the same band.
+   GPU proof bit-exact incl. the ceiling clamp and live input reads. Flat formulas only;
+   recursion rejected at hydration.
 2. **GPU-side projection copy.** 0A projects seeds via boundary-time CPU readback (consumption,
    not recomputation). The full rung should add the direct session-buffer → stencil-buffer copy
    (bounded arithmetic, allowed and expected under the WGSL lift) with parity.

@@ -393,8 +393,9 @@ pub use spec::resource_economy::{
 pub use spec::resource_flow::{
     ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec, CouplingDelaySpec, CouplingSpec,
     EnrollmentSelectorSpec, ExplicitParticipantSpec, FissionPolicySpec, GatedRateOpSpec,
-    GatedRateSpec, GatedRateTriggerSpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
-    ResourceFlowSpec, WildcardAdmissionSpec,
+    GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec, RateFormulaOperandSpec,
+    RateFormulaSpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec,
+    WildcardAdmissionSpec,
 };
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
