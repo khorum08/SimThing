@@ -305,6 +305,7 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 11 | **PALMA-PATH-8** | GPU-native W input / D output field graph connection | **IMPLEMENTED / PASS** — [`tests/palma_path_8_gpu_native_field_graph_results.md`](tests/palma_path_8_gpu_native_field_graph_results.md) |
 | 12 | **PALMA-PATH-8R** | Remove public `tick()` scaffold; explicit GPU dispatch | **IMPLEMENTED / PASS** — [`tests/palma_path_8r_remove_tick_scaffold_results.md`](tests/palma_path_8r_remove_tick_scaffold_results.md) |
 | 13 | **PALMA-PATH-8R-CLEAN** | Remove public PALMA legacy field-band aliases | **IMPLEMENTED / PASS** — [`tests/palma_path_8r_cleanup_results.md`](tests/palma_path_8r_cleanup_results.md) |
+| 14 | **PALMA-PATH-9** | Downstream GPU probe consumes resident D (compact readback only) | **IMPLEMENTED / PASS** — [`tests/palma_path_9_downstream_gpu_consumer_results.md`](tests/palma_path_9_downstream_gpu_consumer_results.md) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
 
@@ -383,6 +384,28 @@ Public `palma_min_plus_field_band` re-exports (`PalmaMinPlusFieldBandSession`, `
 **Runtime API:** `simthing_driver::min_plus_traversal_field` only — `TraversalFieldBandSession`, `TraversalFieldDispatchReport`, `TRAVERSAL_FIELD_*` constants.
 
 **PALMA** remains algebraic provenance in docs and test fixture names only — not a production subsystem noun.
+
+---
+
+## 15e. Downstream GPU consumer smoke (PATH-9)
+
+PATH-9 proves resident traversal D can feed a downstream GPU consumer without full-D CPU readback:
+
+```text
+GPU W impedance buffer
+  → dispatch_gpu_resident / MinPlusTraversalFieldOp
+  → GPU-resident D (`MinPlusTraversalGpuOutputHandle` / `resident_d_output()`)
+  → MinPlusTraversalDProbe (gather D at candidate cell indices + min reduction)
+  → compact probe buffer readback (test assertion / diagnostic only)
+```
+
+**Production path:** `MinPlusTraversalDProbeOp::probe_resident_d` binds the resident interleaved values buffer directly — no full D field readback.
+
+**Probe output:** `MinPlusTraversalDProbeResult { gathered, min_d }` — one f32 per candidate plus min D across the set (cap `TRAVERSAL_D_PROBE_MAX_CANDIDATES = 64`).
+
+**CPU oracle:** `cpu_probe_d_at_candidates` compares against CPU-computed flat D at the same indices — oracle verification only; not the production hot path.
+
+**Not landed:** pathfinding engine, movement policy, route object, predecessor table, automatic SimSession pass-graph wiring, semantic GPU interpretation of D.
 
 ---
 
