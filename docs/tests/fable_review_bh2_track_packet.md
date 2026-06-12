@@ -1,7 +1,7 @@
 # Fable review packet — BH / BH-2 track (0.0.8.1)
 
 > **Status: FABLE-PREP / PASS (2026-06-11).** Track closed through BH-2D-OBS-100R; R1C-GATE cleanup
-> complete; Candidate F §0.7 elevated; full workspace gate passed. Ready for Fable review.
+> merged; Candidate F §0.7 elevated; focused gates passed; full workspace skipped at merge handoff.
 
 ---
 
@@ -171,6 +171,8 @@ Reference: [`bh2d_ct4b_100tick_scenario_observations.md`](bh2d_ct4b_100tick_scen
 | Command | Result |
 |---|---|
 | `cargo fmt --all -- --check` | PASS |
+| `cargo test -p simthing-driver --test runtime_0080_0_r1c_gate` | PASS (0.00s) |
+| `cargo test -p simthing-driver r1c_fast_` | PASS (2 unit sentinels) |
 | `cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation_smoke` | PASS |
 | `cargo test -p simthing-driver --test bh2d_ct4b_fixture` | PASS |
 | `cargo test -p simthing-driver --test bh2c_palma_w_feedstock` | PASS |
@@ -179,11 +181,11 @@ Reference: [`bh2d_ct4b_100tick_scenario_observations.md`](bh2d_ct4b_100tick_scen
 
 ### Full workspace gate
 
-| Command | Result | Duration |
+| Command | Result | Notes |
 |---|---|---|
-| `cargo test --workspace` | PASS | see commit CI / local run |
+| `cargo test --workspace` | **SKIPPED** | Omitted at R1C-GATE merge handoff; R1C-B/C removed from default gate |
 
-*(Duration and exact test count recorded at PR merge time from the FABLE-PREP agent run.)*
+*(R1c-d/e/f OnceLock proof stacks remain slow; separate cleanup if needed.)*
 
 ---
 

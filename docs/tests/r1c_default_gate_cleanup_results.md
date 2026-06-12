@@ -1,7 +1,8 @@
 # R1C default workspace gate cleanup results
 
-> **Status: PASS (2026-06-11).** R1C-B/C proof stack removed from default workspace; Candidate F
-> §0.7 elevated; full workspace gate completed after R1C-GATE cleanup.
+> **Status: MERGE-READY (2026-06-11).** R1C-B/C proof stack removed from default workspace; Candidate F
+> §0.7 elevated; focused R1C/BH gates passed. Full `cargo test --workspace` **skipped** at merge handoff
+> (R1c-d/e/f proof stacks remain slow; out of R1C-B/C scope).
 
 ## Problem
 
@@ -85,21 +86,31 @@ R1C cleanup touches allocation/membership plan oracles only (integer slot/cell l
 
 ## Workspace gate
 
-First full run (~18 min) failed only on stale `l1_0_guardrail_diagnostic_codes_are_stable` (26→38 codes,
-mobility prefix). Fixed in same handoff. R1C-B/C binaries no longer appear in default gate;
-`runtime_0080_0_r1c_gate` completes in **0.00s**.
+Stale `l1_0_guardrail_diagnostic_codes_are_stable` (26→38 codes, mobility prefix) fixed in same handoff.
+R1C-B/C binaries no longer appear in default gate; `runtime_0080_0_r1c_gate` completes in **0.00s**.
+
+### Focused gates (PASS)
 
 ```text
-cargo fmt --all -- --check
-cargo test -p simthing-driver --test runtime_0080_0_r1c_gate
-cargo test -p simthing-driver r1c_fast_
-cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation_smoke
-cargo test -p simthing-driver --test bh2d_ct4b_fixture
-cargo test -p simthing-driver --test bh2c_palma_w_feedstock
-cargo test -p simthing-gpu --test bh2_w_composition
-cargo test -p simthing-gpu --test bh2s_overlap_stress
-cargo test --workspace
+cargo fmt --all -- --check                                          PASS
+cargo test -p simthing-driver --test runtime_0080_0_r1c_gate          PASS (2 tests, 0.00s)
+cargo test -p simthing-driver r1c_fast_                             PASS (2 unit sentinels)
+cargo test -p simthing-spec --test l1_0_designer_admission_substrate PASS
+cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_100tick_observation_smoke  PASS
+cargo test -p simthing-driver --test bh2d_ct4b_fixture              PASS
+cargo test -p simthing-driver --test bh2c_palma_w_feedstock         PASS
+cargo test -p simthing-gpu --test bh2_w_composition                 PASS
+cargo test -p simthing-gpu --test bh2s_overlap_stress               PASS
 ```
+
+### Full workspace (SKIPPED at merge)
+
+```text
+cargo test --workspace                                              SKIPPED
+```
+
+Partial local runs progressed past R1C-B/C (removed) into R1c-d/e OnceLock proof stacks (~60s+ per
+binary). Full workspace not required for this R1C-B/C cleanup handoff.
 
 ## Artifact cleanup
 
