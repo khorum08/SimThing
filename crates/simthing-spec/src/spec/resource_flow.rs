@@ -22,6 +22,42 @@ pub struct ResourceFlowSpec {
     pub couplings: Vec<CouplingSpec>,
     #[serde(default)]
     pub base_obligations: Vec<BaseFlowObligationSpec>,
+    /// CT-RF-EML-RATE-0: trigger-gated rate contributions evaluated per tick
+    /// by an `EvalEML` effective-rate band ordered before the arena reduce
+    /// bands — `intrinsic = (base + Σ add×gate) × (1 + Σ mult×gate)`,
+    /// gate = `trigger_property ≥ at_least`. Rising and falling edges are
+    /// exact by per-tick recomputation from the base column; per-tick
+    /// transforms directly on rate columns are rejected (compounding).
+    #[serde(default)]
+    pub gated_rates: Vec<GatedRateSpec>,
+}
+
+/// One trigger-gated rate contribution (CT-RF-EML-RATE-0).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GatedRateSpec {
+    pub id: String,
+    pub arena: String,
+    pub install: InstallTargetSpec,
+    pub direction: BaseFlowDirectionSpec,
+    pub op: GatedRateOpSpec,
+    /// Non-negative magnitude for `Add` (sign from `direction`); fractional
+    /// bonus for `Mult` (additive-in-effect across gated mults).
+    pub rate: f32,
+    pub trigger: GatedRateTriggerSpec,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum GatedRateOpSpec {
+    Add,
+    Mult,
+}
+
+/// Same-scope threshold gate over an explicit registered property column.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct GatedRateTriggerSpec {
+    pub property: PropertyKey,
+    pub at_least: f32,
 }
 
 /// Resource Flow GPU execution opt-in (RF-T1). Mirrors `ResourceEconomyOptInMode` posture.

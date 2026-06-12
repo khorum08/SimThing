@@ -29,6 +29,7 @@ pub mod field_scheduler;
 pub mod first_slice_mapping_runtime;
 pub mod gameplay_0080_0;
 pub mod gameplay_0080_1;
+pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
@@ -312,6 +313,10 @@ pub use gameplay_0080_1::{
     Gameplay0081Gate, Gameplay0081Input, Gameplay0081MovementRow, Gameplay0081ObservationReport,
     Gameplay0081StarmapShape, Gameplay0081Summary, Gameplay0081Surface, Gameplay0081Transcript,
     GAMEPLAY_0080_1_ID, GAMEPLAY_0080_1_SCENARIO, GAMEPLAY_0080_1_STATUS_PASS,
+};
+pub use gated_rates::{
+    build_gated_rate_ops, resolve_gated_rates, seed_gated_rate_base_columns, ResolvedGatedRate,
+    RATE_BASE_SUB_FIELD,
 };
 pub use gpu_measure_0080_0::{
     render_gpu_measure_0080_0_report, replay_gpu_measure_0080_0, run_gpu_measure_0080_0,

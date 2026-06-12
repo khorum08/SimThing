@@ -29,6 +29,10 @@ pub enum ResourceFlowSyncError {
 }
 
 /// Plan and upload E-11 allocation ops when `use_accumulator_resource_flow` is enabled.
+///
+/// When gated rates exist (CT-RF-EML-RATE-0), every arena op shifts up one
+/// OrderBand and the effective-rate `EvalEML` ops occupy band 0, so the
+/// intrinsic columns are recomputed from base/gate state before any reduce.
 pub fn sync_resource_flow_accumulator(
     state: &mut WorldGpuState,
     registry: &DimensionRegistry,
@@ -36,6 +40,7 @@ pub fn sync_resource_flow_accumulator(
     scaffold: &ArenaParticipantScaffold,
     root: &simthing_core::SimThing,
     allocator: &simthing_gpu::SlotAllocator,
+    gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     enabled: bool,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if !enabled || arena_registry.arenas.is_empty() {
@@ -78,6 +83,19 @@ pub fn sync_resource_flow_accumulator(
             })?;
         max_bands = max_bands.max(alloc.n_bands);
         combined_cpu.extend(alloc.cpu_ops);
+    }
+
+    if !gated_rates.is_empty() {
+        for op in &mut combined_cpu {
+            if let simthing_core::GateSpec::OrderBand(band) = op.gate {
+                op.gate = simthing_core::GateSpec::OrderBand(band + 1);
+            }
+        }
+        let rate_ops = crate::gated_rates::build_gated_rate_ops(gated_rates, &mut eml_registry);
+        let mut all_ops = rate_ops;
+        all_ops.extend(combined_cpu);
+        combined_cpu = all_ops;
+        max_bands += 1;
     }
 
     state.sync_resource_flow_ops_from_cpu(&combined_cpu, max_bands, &eml_registry)?;

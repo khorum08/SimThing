@@ -83,15 +83,33 @@ the tree). Threshold discrimination is proven both ways (fires with RF pressure 
   anywhere in this slice. A future gradient-magnitude consumer must route exactness through
   `m_jit_sqrt_f_exact`.
 
+## Addendum — CT-RF-EML-RATE-0 IMPLEMENTED (same day, follow-up PR)
+
+The largest 0B blocker is closed. Trigger-gated produces/upkeep now lower to a **per-tick
+`EvalEML` effective-rate band at OrderBand 0, with every arena reduce/allocate band shifted up
+one** — the binding ordering ("rate before reduce") is structural, not scheduled by convention.
+
+- **Authoring:** `gated { trigger { property = ns::name at_least = T } <economic_key> = N }`
+  inside `produces`/`upkeep` → `GatedRateSpec` on `ResourceFlowSpec.gated_rates` (admission:
+  finite rates/thresholds, named arenas, ≤4 terms per arena target to hold the ≤32-node budget);
+  `trigger_property` blocks register the watched property. Gated pairs carry an immutable
+  `rate_base` sub-field.
+- **Semantics:** `intrinsic = (folded_base + Σ add×gate) × (1 + Σ mult×gate)`,
+  `gate = trigger ≥ at_least` computed **inside the EML tree** (`SLOT_VALUE`, `LITERAL_F32`,
+  `CMP_GE`, `MUL`, `ADD` — all exact-class opcodes). Gated terms compose after the static
+  CT-2c fold; the folded base column is written once at install and never mutated.
+- **Proof (GPU, bit-exact `to_bits` equality):** gate off holds the folded base (10.5); rising
+  edge lands `(10.5 + 4) = 14.5`; a **held gate does not compound** across ticks; falling edge
+  returns exactly to base; the base column is asserted immutable. Registered
+  `ExactDeterministic`; no per-tick Add/Multiply overlay touches any rate column anywhere.
+- **`value:` formula trees** remain spanned hard errors: the EML band they lower onto now
+  exists, so the remaining work is pure formula-to-nodes lowering — a mechanical consumer-pulled
+  extension, no longer a substrate gap.
+
 ## Remaining exit blockers (exact, for the full CT-3b+4a 0B closure)
 
-1. **CT-RF-EML-RATE-0 not implemented.** Exact blocker: the per-tick effective-rate EvalEML band
-   needs base/gate column plumbing inside the RF arena execution plan (a pre-reduce OrderBand
-   registering an `EvalEML` AccumulatorOp over explicit base/mult/gate columns writing the
-   intrinsic column the reduce consumes) plus gate-flag column registration at install. The
-   design is pinned in the §6 ticket; nothing in this slice forecloses it. Until it lands,
-   trigger-gated produces/upkeep and `value:` formula trees remain spanned hard errors naming
-   the ticket.
+1. ~~CT-RF-EML-RATE-0~~ — **implemented** (addendum above); only `value:` tree lowering onto the
+   existing band remains, hard-errored with the extension named.
 2. **GPU-side projection copy.** 0A projects seeds via boundary-time CPU readback (consumption,
    not recomputation). The full rung should add the direct session-buffer → stencil-buffer copy
    (bounded arithmetic, allowed and expected under the WGSL lift) with parity.

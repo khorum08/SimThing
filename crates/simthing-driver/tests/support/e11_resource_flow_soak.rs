@@ -102,6 +102,7 @@ pub fn run_flat_star_soak(
         &fx.session.spec_state.arena_participant_scaffold,
         &fx.session.proto.root,
         &fx.session.proto.allocator,
+        &[],
         true,
     )
     .expect("initial soak sync");

@@ -1,0 +1,46 @@
+simthing_ct_rf_rate = {
+    display_name = "CT-RF-EML-RATE-0 Gated Rates"
+    resource_flow = {
+        opt_in = FlatStarOptIn
+        max_participants = 16
+        max_coupling_fanout = 4
+        max_orderband_depth = 16
+    }
+    category_map = {
+        settlement = { kind = Cohort depth = 2 parent = polity }
+        polity = { kind = Faction depth = 1 }
+    }
+    resource = {
+        id = "simthing_food"
+        namespace = "simthing"
+        name = "food"
+        display_name = "Food"
+    }
+    trigger_property = {
+        id = "simthing_morale"
+        namespace = "simthing"
+        name = "morale"
+        display_name = "Morale"
+    }
+    unit_template = {
+        id = "farmer"
+        category = settlement
+        resources = {
+            produces = {
+                settlement_food_produces_add = 6
+                gated = {
+                    trigger = { property = simthing::morale at_least = 5.0 }
+                    settlement_food_produces_add = 4
+                }
+            }
+        }
+    }
+    modifier = {
+        id = "irrigation"
+        settlement_food_produces_mult = 0.25
+    }
+    modifier = {
+        id = "tithe"
+        polity_food_produces_mult = 0.5
+    }
+}

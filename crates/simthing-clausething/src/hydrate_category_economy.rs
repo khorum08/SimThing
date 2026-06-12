@@ -21,7 +21,8 @@ use simthing_spec::spec::resource_economy::{
     ResourceTransferSpec,
 };
 use simthing_spec::spec::resource_flow::{
-    BaseFlowDirectionSpec, BaseFlowObligationSpec, ResourceFlowOptInMode, ResourceFlowSpec,
+    BaseFlowDirectionSpec, BaseFlowObligationSpec, GatedRateOpSpec, GatedRateSpec,
+    GatedRateTriggerSpec, ResourceFlowOptInMode, ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{ArenaSpec, FissionPolicySpec, GameModeSpec, PropertySpec, SpecVersion};
@@ -164,6 +165,7 @@ pub fn hydrate_category_economy_pack(
     let mut modifier_blocks = Vec::new();
     let mut region_fields = Vec::new();
     let mut mapping_profile = MappingExecutionProfile::Disabled;
+    let mut trigger_properties = Vec::new();
 
     for property in &body.properties {
         match property.key.text.as_str() {
@@ -184,6 +186,7 @@ pub fn hydrate_category_economy_pack(
             "modifier" => modifier_blocks.push(property),
             "region_field" => region_fields.push(parse_region_field_block(property)?),
             "mapping" => mapping_profile = parse_mapping_block(property)?,
+            "trigger_property" => trigger_properties.push(parse_trigger_property_block(property)?),
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported CT-2c category fixture field `{other}`"),
@@ -213,6 +216,8 @@ pub fn hydrate_category_economy_pack(
     let mut base_rates = Vec::new();
     let mut decoded_modifier_keys = Vec::new();
     let mut folds: BTreeMap<ModifierFoldKey, ModifierFold> = BTreeMap::new();
+    let mut gated_rates = Vec::new();
+    let mut gated_pairs: BTreeSet<(String, String)> = BTreeSet::new();
 
     for template in unit_templates {
         parse_unit_template(
@@ -225,6 +230,8 @@ pub fn hydrate_category_economy_pack(
             &mut used_pairs,
             &mut contributions,
             &mut base_rates,
+            &mut gated_rates,
+            &mut gated_pairs,
         )?;
     }
 
@@ -241,7 +248,16 @@ pub fn hydrate_category_economy_pack(
 
     let base_obligations = apply_modifier_folds(&base_rates, &folds, &categories)?;
 
-    let (properties, arenas): (Vec<_>, Vec<_>) = used_pairs.into_values().unzip();
+    // CT-RF-EML-RATE-0: gated pairs carry the immutable `rate_base` column
+    // the per-tick effective-rate band recomputes the intrinsic column from.
+    for pair in &gated_pairs {
+        if let Some((property, _)) = used_pairs.get_mut(pair) {
+            property.sub_fields.push(rate_base_subfield());
+        }
+    }
+
+    let (mut properties, arenas): (Vec<_>, Vec<_>) = used_pairs.into_values().unzip();
+    properties.extend(trigger_properties);
 
     Ok(HydratedCategoryEconomyPack {
         game_mode: GameModeSpec {
@@ -260,6 +276,7 @@ pub fn hydrate_category_economy_pack(
                 arenas,
                 couplings: vec![],
                 base_obligations,
+                gated_rates,
             }),
             resource_economy: None,
             resource_flow_execution_profile: Default::default(),
@@ -597,6 +614,8 @@ fn parse_unit_template(
     used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
     contributions: &mut Vec<CategoryFlowContribution>,
     base_rates: &mut Vec<BaseRateRow>,
+    gated_rates: &mut Vec<GatedRateSpec>,
+    gated_pairs: &mut BTreeSet<(String, String)>,
 ) -> Result<(), HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
@@ -680,9 +699,26 @@ fn parse_unit_template(
             ));
         };
         for entry in &entries.properties {
+            if entry.key.text == "gated" {
+                parse_gated_entry(
+                    entry,
+                    &template_id,
+                    &category,
+                    axis,
+                    categories,
+                    resources,
+                    category_names,
+                    resource_names,
+                    arena_defaults,
+                    used_pairs,
+                    gated_rates,
+                    gated_pairs,
+                )?;
+                continue;
+            }
             if entry.key.text == "triggered_produces_modifier" || entry.key.text == "trigger" {
                 return Err(HydrateError::new_spanned(
-                    "triggered/gated produces forms are deferred to the EML effective-rate band (CT-RF-EML-RATE-0; consumer CT-3b+4a implementation)",
+                    "bare triggered forms are not authorable; use a `gated { trigger { … } … }` block (CT-RF-EML-RATE-0)",
                     Some(entry.key.span.clone()),
                 ));
             }
@@ -1383,6 +1419,249 @@ fn parse_recipe_input_block(property: &RawProperty) -> Result<RecipeInputSpec, H
         role: amount_role(),
         unit_cost: require_field(unit_cost, "unit_cost", property)?,
     })
+}
+
+/// CT-RF-EML-RATE-0: one `gated { trigger { … } <economic_key> = N }` entry
+/// inside a `produces`/`upkeep` block → [`GatedRateSpec`]. The decoded key
+/// must match the template's category and the enclosing axis; both `_add`
+/// and `_mult` ops are admitted (additive-in-effect for `_mult`).
+#[allow(clippy::too_many_arguments)]
+fn parse_gated_entry(
+    entry: &RawProperty,
+    template_id: &str,
+    category: &str,
+    axis: EconomicAxis,
+    categories: &BTreeMap<String, CategoryEntry>,
+    resources: &BTreeMap<String, ResourceEntry>,
+    category_names: &[String],
+    resource_names: &[String],
+    arena_defaults: &ArenaDefaults,
+    used_pairs: &mut BTreeMap<(String, String), (PropertySpec, ArenaSpec)>,
+    gated_rates: &mut Vec<GatedRateSpec>,
+    gated_pairs: &mut BTreeSet<(String, String)>,
+) -> Result<(), HydrateError> {
+    let _ = categories;
+    let RawValue::Block(block) = &entry.value else {
+        return Err(HydrateError::new_spanned(
+            "`gated` must be a block",
+            Some(entry.key.span.clone()),
+        ));
+    };
+
+    let mut trigger = None;
+    let mut rate_entry: Option<(DecodedEconomicKey, f32)> = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "trigger" => trigger = Some(parse_gated_trigger_block(field)?),
+            key => {
+                let decoded = decode_economic_modifier_key_spanned(
+                    key,
+                    category_names,
+                    resource_names,
+                    Some(field.key.span.clone()),
+                )?;
+                if decoded.category != category {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "gated key category `{}` does not match unit_template category `{category}`",
+                            decoded.category
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                if decoded.axis != axis {
+                    return Err(HydrateError::new_spanned(
+                        "gated key axis does not belong in this block",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                if rate_entry.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "one economic key per `gated` block; author multiple blocks",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                let amount = read_scalar_f32(field, key)?;
+                if !amount.is_finite() || amount < 0.0 {
+                    return Err(HydrateError::new_spanned(
+                        format!("gated rate must be finite and non-negative, got `{amount}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                rate_entry = Some((decoded, amount));
+            }
+        }
+    }
+
+    let trigger = trigger.ok_or_else(|| {
+        HydrateError::new_spanned(
+            "gated block requires `trigger`",
+            Some(entry.key.span.clone()),
+        )
+    })?;
+    let (decoded, amount) = rate_entry.ok_or_else(|| {
+        HydrateError::new_spanned(
+            "gated block requires one economic key",
+            Some(entry.key.span.clone()),
+        )
+    })?;
+
+    let (_, arena_name) = ensure_flow_pair(
+        &decoded.category,
+        &decoded.resource,
+        resources,
+        arena_defaults,
+        used_pairs,
+    )?;
+    gated_pairs.insert((decoded.category.clone(), decoded.resource.clone()));
+
+    let direction = match decoded.axis {
+        EconomicAxis::Produces => BaseFlowDirectionSpec::Produce,
+        EconomicAxis::Upkeep => BaseFlowDirectionSpec::Upkeep,
+        EconomicAxis::Cost => {
+            return Err(HydrateError::new_spanned(
+                "`cost` keys require a discrete ResourceEconomySpec context",
+                Some(entry.key.span.clone()),
+            ));
+        }
+    };
+    let op = match decoded.op {
+        EconomicOp::Add => GatedRateOpSpec::Add,
+        EconomicOp::Mult => GatedRateOpSpec::Mult,
+    };
+    let index = gated_rates.len();
+    gated_rates.push(GatedRateSpec {
+        id: format!(
+            "{template_id}_{}_{}_gated{index}",
+            decoded.category, decoded.resource
+        ),
+        arena: arena_name,
+        install: InstallTargetSpec::ScenarioListed {
+            target_id: template_id.into(),
+        },
+        direction,
+        op,
+        rate: amount,
+        trigger,
+    });
+    Ok(())
+}
+
+fn parse_gated_trigger_block(property: &RawProperty) -> Result<GatedRateTriggerSpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`trigger` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut property_key = None;
+    let mut at_least = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "property" => {
+                let text = read_scalar_text(field, "property")?;
+                let Some((namespace, name)) = text.split_once("::") else {
+                    return Err(HydrateError::new_spanned(
+                        format!("trigger `property` must be `namespace::name`, got `{text}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                };
+                property_key = Some(PropertyKey::new(namespace, name));
+            }
+            "at_least" => at_least = Some(read_scalar_f32(field, "at_least")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported trigger field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(GatedRateTriggerSpec {
+        property: property_key.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "trigger requires `property`",
+                Some(property.key.span.clone()),
+            )
+        })?,
+        at_least: at_least.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "trigger requires `at_least`",
+                Some(property.key.span.clone()),
+            )
+        })?,
+    })
+}
+
+/// Plain registered property carrying the gate's watched Amount value.
+fn parse_trigger_property_block(property: &RawProperty) -> Result<PropertySpec, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`trigger_property` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut id = None;
+    let mut namespace = None;
+    let mut name = None;
+    let mut display_name = String::new();
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => id = Some(read_scalar_text(field, "id")?),
+            "namespace" => namespace = Some(read_scalar_text(field, "namespace")?),
+            "name" => name = Some(read_scalar_text(field, "name")?),
+            "display_name" => display_name = read_scalar_text(field, "display_name")?,
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported trigger_property field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    let missing = |what: &str| {
+        HydrateError::new_spanned(
+            format!("trigger_property requires `{what}`"),
+            Some(property.key.span.clone()),
+        )
+    };
+    Ok(PropertySpec {
+        id: id.ok_or_else(|| missing("id"))?,
+        namespace: namespace.ok_or_else(|| missing("namespace"))?,
+        name: name.ok_or_else(|| missing("name"))?,
+        display_name,
+        description: String::new(),
+        sub_fields: vec![SubFieldSpec {
+            role: SubFieldRole::Amount,
+            width: 1,
+            clamp: ClampBehavior::Unbounded,
+            velocity_max: None,
+            default: 0.0,
+            display_name: "Amount".into(),
+            display_range: None,
+            governed_by: None,
+            reduction_override: None,
+            soft_aggregate_guard: None,
+            accumulator_spec: None,
+        }],
+    })
+}
+
+fn rate_base_subfield() -> SubFieldSpec {
+    SubFieldSpec {
+        role: SubFieldRole::Named("rate_base".into()),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: "rate_base".into(),
+        display_range: None,
+        governed_by: None,
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: None,
+    }
 }
 
 fn build_flow_property_spec(

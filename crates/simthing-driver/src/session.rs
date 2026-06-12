@@ -244,6 +244,7 @@ impl SimSession {
             &self.spec_state.arena_participant_scaffold,
             &self.proto.root,
             &self.proto.allocator,
+            &self.spec_state.resolved_gated_rates,
             enabled,
         )?;
         Ok(())
