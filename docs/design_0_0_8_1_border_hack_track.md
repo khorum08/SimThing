@@ -205,7 +205,7 @@ synthetic. No sqrt anywhere in this track (exact-sqrt rule untriggered).
 |---|---|---|
 | BH-0 saturating-flux operator | IMPLEMENTED / PASS | [`tests/bh0_saturating_flux_results.md`](tests/bh0_saturating_flux_results.md) |
 | BH-1 choke readout | IMPLEMENTED / PASS | [`tests/bh1_choke_readout_results.md`](tests/bh1_choke_readout_results.md) |
-| BH-1R choke GPU consumption | IMPLEMENTED / PASS | [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md) |
+| BH-1R choke GPU consumption | IMPLEMENTED / PASS (staged parallel reducer, BH-1R-SCALE) | [`tests/bh1r_choke_consumption_results.md`](tests/bh1r_choke_consumption_results.md), [`tests/bh1r_scale_parallel_reduction_results.md`](tests/bh1r_scale_parallel_reduction_results.md) |
 | BH-2 PALMA impedance coupling | DEFERRED (named-consumer gate) | — |
 | BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
 

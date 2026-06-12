@@ -94,9 +94,10 @@ pub use reduction_orderband::{
     ReductionPlanError,
 };
 pub use saturating_flux_choke_threshold::{
-    cpu_choke_threshold_oracle, SaturatingFluxChokeThresholdConfig,
+    cpu_choke_threshold_oracle, pass1_workgroup_count, SaturatingFluxChokeThresholdConfig,
     SaturatingFluxChokeThresholdError, SaturatingFluxChokeThresholdOp,
     SaturatingFluxChokeThresholdResult, CHOKE_THRESHOLD_COMPACT_FLOATS,
+    CHOKE_THRESHOLD_PARTIAL_FLOATS, CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE,
 };
 pub use slot::{SlotAllocError, SlotAllocator};
 pub use structured_field_stencil::{

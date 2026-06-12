@@ -20,11 +20,11 @@ Guard test: `bh1r_no_native_sqrt_in_hot_path`.
 
 | Surface | Change |
 |---|---|
-| `SaturatingFluxChokeThresholdOp` | GPU sum/max/count + threshold flag over resident choke column |
+| `SaturatingFluxChokeThresholdOp` | Staged parallel GPU reducer: pass 1 (`256`-thread workgroups × `ceil(cells/256)`), pass 2 fold to compact 4-float output |
 | Compact readback | 4 floats only (`sum`, `max`, `count_above`, `crossed`) |
 | `cpu_choke_threshold_oracle` | test-only parity oracle |
 
-Pipeline: `StructuredFieldStencilOp` (choke readout) → resident buffer → `SaturatingFluxChokeThresholdOp` → compact readback.
+**BH-1R-SCALE:** single-lane reducer remediated — see [`bh1r_scale_parallel_reduction_results.md`](bh1r_scale_parallel_reduction_results.md).
 
 No full-field CPU readback for threshold decision. No border service, pathfinding, movement, PALMA, or stored C field.
 
