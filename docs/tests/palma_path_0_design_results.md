@@ -34,4 +34,6 @@ None (docs-only). **`cargo test --workspace` not run.**
 
 ## Next rung
 
-PALMA-PATH-1: CPU oracle in `simthing-driver` — see [`palma_path_1_cpu_oracle_results.md`](palma_path_1_cpu_oracle_results.md) when landed.
+PALMA-PATH-1: **IMPLEMENTED / PASS** — [`palma_path_1_cpu_oracle_results.md`](palma_path_1_cpu_oracle_results.md)
+
+PALMA-PATH-2: GPU/JIT min-plus stencil — not started.
