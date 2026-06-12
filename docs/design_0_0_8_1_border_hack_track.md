@@ -1,6 +1,6 @@
 # SimThing 0.0.8.1 — Border Hack Track (`BH-`): the C_u saturating-flux stencil operator
 
-> **Status: BH-0…BH-2D-OBS-100R CLOSED; FABLE-PREP PASS (2026-06-11).** Named consumer
+> **Status: BH-0…BH-2D-OBS-100R CLOSED; FABLE-REVIEW-FREEZE (2026-06-11).** Named consumer
 > `CT-4b_Local_Automata_W_Feedstock` opens BH-2 W composition, BH-2S stress feedstock,
 > BH-2C PALMA feedstock, and BH-2D CT-4b 200×200 fixture proof. Seated as a generic GPU utility, PALMA-style. Product
 > authorization: borders, frontlines, and choke topology as **free-ish side effects of the
@@ -646,4 +646,5 @@ cargo test -p simthing-driver --test bh2d_ct4b_100tick_observation -- bh2d_ct4b_
 Legacy R1* proof-ledger/report/checksum tests were deleted or quarantined from the default workspace
 gate. Default workspace now retains only fast production-relevant R1* sentinels. Historical proof
 batteries must not be reintroduced as default tests. The BH track does not depend on R1* proof
-scaffolding. Report: [`tests/r1_default_workspace_purge_results.md`](tests/r1_default_workspace_purge_results.md).
+scaffolding. Reports: [`tests/r1_default_workspace_purge_results.md`](tests/r1_default_workspace_purge_results.md),
+[`tests/fable_review_bh2_track_packet.md`](tests/fable_review_bh2_track_packet.md) (FABLE-REVIEW-FREEZE).
