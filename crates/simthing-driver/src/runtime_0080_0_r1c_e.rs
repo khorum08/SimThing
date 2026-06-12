@@ -1867,3 +1867,48 @@ fn mix_str(hash: &mut u64, value: &str) {
         *hash = hash.wrapping_mul(FNV_PRIME);
     }
 }
+
+#[cfg(test)]
+mod fast_apply_sentinel_tests {
+    use super::{
+        compacted_expected_row, remap_expected_row, PlannedCompactedSlotRow, PlannedSlotRemapRow,
+        REASON_ACTIVE_CARRY_FORWARD,
+    };
+
+    #[test]
+    fn r1_fast_compaction_remap_preserves_one_compacted_slot_row() {
+        let planned = PlannedCompactedSlotRow {
+            tick: 6,
+            slot_id: 3,
+            source_old_slot: 8,
+            owner_code: 2,
+            cell_or_membership_code: 42,
+            active: true,
+            lineage_event_id: 11,
+        };
+        let row = compacted_expected_row(&planned, true);
+        assert_eq!(row.slot_id, 3);
+        assert_eq!(row.source_old_slot, 8);
+        assert!(row.applied_by_gpu);
+    }
+
+    #[test]
+    fn r1_fast_cpu_shadow_observes_remap_without_redeciding() {
+        let planned = PlannedSlotRemapRow {
+            tick: 7,
+            old_slot: 1,
+            new_slot_or_tombstone: Some(1),
+            survivor_slot: None,
+            owner_code: 4,
+            reason: REASON_ACTIVE_CARRY_FORWARD,
+            active_before: true,
+            active_after: true,
+            source_compaction_index: 0,
+        };
+        let gpu_row = remap_expected_row(&planned, true);
+        let shadow_row = remap_expected_row(&planned, false);
+        assert!(gpu_row.cpu_shadow_match);
+        assert!(!shadow_row.applied_by_gpu);
+        assert!(!shadow_row.cpu_shadow_match);
+    }
+}

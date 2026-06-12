@@ -1711,3 +1711,54 @@ fn mix_u64(hash: &mut u64, value: u64) {
         *hash = hash.wrapping_mul(FNV_PRIME);
     }
 }
+
+#[cfg(test)]
+mod fast_compaction_lineage_sentinel_tests {
+    use super::{
+        build_compacted_view, compaction_expected_row, lineage_expected_row, PlannedCompactionRow,
+        PlannedLineageRow, LINEAGE_BIRTH, REASON_FUSION_ABSORBED,
+    };
+
+    #[test]
+    fn r1_fast_compaction_remap_preserves_one_lineage_row() {
+        let planned = PlannedLineageRow {
+            tick: 5,
+            lineage_event_id: 12,
+            source_slot: 1,
+            target_slot: 2,
+            owner_code: 3,
+            lineage_kind: LINEAGE_BIRTH,
+            amount_or_delta: 1,
+            source_event_kind: "LocalBirthRequest",
+            source_event_index: 0,
+        };
+        let row = lineage_expected_row(&planned, true);
+        assert_eq!(row.lineage_event_id, 12);
+        assert_eq!(row.lineage_kind, "Birth");
+        assert!(row.applied_by_gpu);
+        assert!(row.cpu_shadow_match);
+    }
+
+    #[test]
+    fn r1_fast_cpu_shadow_observes_compaction_without_redeciding() {
+        let planned = PlannedCompactionRow {
+            tick: 4,
+            old_slot: 2,
+            new_slot_or_tombstone: Some(9),
+            owner_code: 1,
+            reason: REASON_FUSION_ABSORBED,
+            active_before: true,
+            active_after: false,
+            source_event_kind: "FusionRequest",
+            source_event_index: 0,
+        };
+        let gpu_row = compaction_expected_row(&planned, true);
+        let shadow_row = compaction_expected_row(&planned, false);
+        assert!(gpu_row.cpu_shadow_match);
+        assert!(!shadow_row.applied_by_gpu);
+        assert!(!shadow_row.cpu_shadow_match);
+        let view = build_compacted_view(&[gpu_row]);
+        assert_eq!(view[0].survivor_slot, Some(9));
+        assert_eq!(view[0].reason_code, "FusionAbsorbed");
+    }
+}
