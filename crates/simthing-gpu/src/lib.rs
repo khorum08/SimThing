@@ -68,8 +68,10 @@ pub use intensity_accumulator::{
 };
 pub use min_plus_stencil::{
     cell_index, cpu_min_plus_d_from_w, cpu_min_plus_relaxation, cpu_min_plus_step, extract_d_flat,
-    max_d_field_error, pack_w_and_initial_d, MinPlusStencilConfig, MinPlusStencilError,
-    MinPlusStencilOp, MIN_PLUS_INF, MIN_PLUS_MAX_ITERATIONS,
+    max_d_field_error, pack_w_and_initial_d, MinPlusPingPongSide, MinPlusStencilConfig,
+    MinPlusStencilError, MinPlusStencilOp, MinPlusTraversalDispatchReport,
+    MinPlusTraversalExecutionMode, MinPlusTraversalExecutionOptions, MinPlusTraversalFieldOp,
+    MIN_PLUS_INF, MIN_PLUS_MAX_ITERATIONS,
 };
 pub use overlay_orderband::{plan_overlay_orderband, OverlayOrderBandPlan};
 pub use overlay_prep::build_overlay_deltas;

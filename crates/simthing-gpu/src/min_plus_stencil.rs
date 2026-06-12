@@ -292,6 +292,71 @@ pub struct MinPlusStencilOp {
     config: MinPlusStencilConfig,
 }
 
+/// Which ping-pong buffer holds the latest values after an odd/even iteration count.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MinPlusPingPongSide {
+    Input,
+    Output,
+}
+
+/// Production execution mode for min-plus traversal field dispatch.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MinPlusTraversalExecutionMode {
+    /// Dispatch only; D remains in GPU ping-pong buffer (default production mode).
+    #[default]
+    GpuResident,
+    /// Read D back to CPU; optional caller-side shadow/property scatter.
+    DiagnosticReadback,
+    /// Diagnostic readback plus CPU oracle comparison (tests / verification gates).
+    OracleVerification,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MinPlusTraversalExecutionOptions {
+    pub mode: MinPlusTraversalExecutionMode,
+    pub iterations: u32,
+}
+
+impl MinPlusTraversalExecutionOptions {
+    pub fn gpu_resident(iterations: u32) -> Self {
+        Self {
+            mode: MinPlusTraversalExecutionMode::GpuResident,
+            iterations,
+        }
+    }
+
+    pub fn diagnostic_readback(iterations: u32) -> Self {
+        Self {
+            mode: MinPlusTraversalExecutionMode::DiagnosticReadback,
+            iterations,
+        }
+    }
+
+    pub fn oracle_verification(iterations: u32) -> Self {
+        Self {
+            mode: MinPlusTraversalExecutionMode::OracleVerification,
+            iterations,
+        }
+    }
+}
+
+/// Result of a min-plus traversal dispatch.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MinPlusTraversalDispatchReport {
+    pub gpu_dispatched: bool,
+    pub iterations: u32,
+    /// True when D output remains GPU-resident (no CPU readback).
+    pub gpu_resident: bool,
+    pub diagnostic_readback: bool,
+    pub resident_side: MinPlusPingPongSide,
+    /// Present only when diagnostic/oracle readback was requested.
+    pub values: Option<Vec<f32>>,
+    pub max_oracle_error: Option<f32>,
+}
+
+/// Production alias — generic GPU traversal field op (PALMA is algebraic provenance only).
+pub type MinPlusTraversalFieldOp = MinPlusStencilOp;
+
 impl MinPlusStencilOp {
     pub fn new(
         ctx: &GpuContext,
@@ -517,6 +582,76 @@ impl MinPlusStencilOp {
     ) -> Result<Vec<f32>, MinPlusStencilError> {
         self.dispatch_ping_pong(ctx, iterations)?;
         Ok(self.readback_after_ping_pong(ctx, iterations))
+    }
+
+    pub fn resident_side_after_ping_pong(iterations: u32) -> MinPlusPingPongSide {
+        if iterations % 2 == 1 {
+            MinPlusPingPongSide::Output
+        } else {
+            MinPlusPingPongSide::Input
+        }
+    }
+
+    pub fn values_buffer(&self, side: MinPlusPingPongSide) -> &Buffer {
+        match side {
+            MinPlusPingPongSide::Input => &self.input_buffer,
+            MinPlusPingPongSide::Output => &self.output_buffer,
+        }
+    }
+
+    pub fn resident_values_buffer(&self, iterations: u32) -> &Buffer {
+        self.values_buffer(Self::resident_side_after_ping_pong(iterations))
+    }
+
+    /// Dispatch min-plus relaxation with explicit production/diagnostic execution mode.
+    ///
+    /// Default production path (`GpuResident`) does not read D back to CPU.
+    pub fn dispatch_traversal(
+        &self,
+        ctx: &GpuContext,
+        input_values: &[f32],
+        w_for_oracle: Option<&[f32]>,
+        options: MinPlusTraversalExecutionOptions,
+    ) -> Result<MinPlusTraversalDispatchReport, MinPlusStencilError> {
+        self.upload_values(ctx, input_values)?;
+        self.dispatch_ping_pong(ctx, options.iterations)?;
+
+        let resident_side = Self::resident_side_after_ping_pong(options.iterations);
+        let need_readback = matches!(
+            options.mode,
+            MinPlusTraversalExecutionMode::DiagnosticReadback
+                | MinPlusTraversalExecutionMode::OracleVerification
+        );
+
+        let values = if need_readback {
+            Some(self.readback_after_ping_pong(ctx, options.iterations))
+        } else {
+            None
+        };
+
+        let max_oracle_error = if options.mode == MinPlusTraversalExecutionMode::OracleVerification
+        {
+            let w = w_for_oracle.ok_or(MinPlusStencilError::BufferTooShort {
+                actual: 0,
+                required: self.config.cells() as usize,
+            })?;
+            let cpu_d = cpu_min_plus_d_from_w(w, &self.config, options.iterations)?;
+            let gpu_values = values.as_ref().expect("oracle mode requires readback");
+            let gpu_d = extract_d_flat(gpu_values, &self.config)?;
+            Some(max_d_field_error(&cpu_d, &gpu_d))
+        } else {
+            None
+        };
+
+        Ok(MinPlusTraversalDispatchReport {
+            gpu_dispatched: true,
+            iterations: options.iterations,
+            gpu_resident: options.mode == MinPlusTraversalExecutionMode::GpuResident,
+            diagnostic_readback: need_readback,
+            resident_side,
+            values,
+            max_oracle_error,
+        })
     }
 }
 

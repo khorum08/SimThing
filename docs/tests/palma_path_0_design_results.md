@@ -49,3 +49,5 @@ PALMA-PATH-4S: **IMPLEMENTED / METRICS REMEDIAL PASS** — [`palma_path_4_stella
 PALMA-PATH-5: **IMPLEMENTED / PASS** — [`palma_path_5_install_session_property_results.md`](palma_path_5_install_session_property_results.md)
 
 PALMA-PATH-6: **PARTIAL / TEST-PROFILE PASS** — [`palma_path_6_session_regionfield_results.md`](palma_path_6_session_regionfield_results.md)
+
+PALMA-PATH-7: **IMPLEMENTED / PASS** — [`palma_path_7_gpu_traversal_utility_results.md`](palma_path_7_gpu_traversal_utility_results.md)

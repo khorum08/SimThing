@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
+pub mod min_plus_traversal_field;
 pub mod palma_min_plus_field_band;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
@@ -336,6 +337,12 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use min_plus_traversal_field::{
+    TraversalFieldBandError, TraversalFieldBandSession, TraversalFieldBandTickReport,
+    TraversalFieldExecutionMode, TraversalFieldExecutionOptions, TraversalFieldGridBinding,
+    TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_ID, TRAVERSAL_FIELD_REGION_ID,
+    TRAVERSAL_FIELD_UTILITY_ID,
 };
 pub use palma_min_plus_field_band::{
     PalmaMinPlusFieldBandError, PalmaMinPlusFieldBandSession, PalmaMinPlusFieldBandTickReport,

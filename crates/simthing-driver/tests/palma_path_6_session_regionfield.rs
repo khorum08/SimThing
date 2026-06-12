@@ -4,7 +4,8 @@ mod support;
 
 use simthing_driver::{
     FieldCadence, PalmaMinPlusFieldBandSession, PalmaMinPlusGridBinding,
-    PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED, PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID,
+    TraversalFieldExecutionMode, PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED,
+    PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID,
 };
 use simthing_gpu::GpuContext;
 use std::sync::Mutex;
@@ -39,6 +40,21 @@ fn grid_binding(tree: &PalmaPath5PropertyTree) -> PalmaMinPlusGridBinding {
     }
 }
 
+fn snapshot_d_shadow(tree: &PalmaPath5PropertyTree) -> Vec<f32> {
+    let width = FIXTURE_WIDTH as usize;
+    let height = FIXTURE_HEIGHT as usize;
+    let n_dims = tree.inner.n_dims;
+    let mut out = Vec::with_capacity(width * height);
+    for y in 0..height {
+        for x in 0..width {
+            let id = support::palma_terran_pirate_fixture::gridcell_simthing_id(x, y);
+            let slot = tree.inner.alloc.slot_of(id).expect("slot") as usize;
+            out.push(tree.inner.shadow[slot * n_dims + tree.d_global_col]);
+        }
+    }
+    out
+}
+
 #[test]
 fn min_plus_band_default_off() {
     assert!(
@@ -58,11 +74,12 @@ fn min_plus_band_default_off() {
                 &mut tree.inner.shadow,
                 tree.inner.n_dims,
                 &tree.inner.alloc,
+                TraversalFieldExecutionMode::GpuResident,
                 false,
             )
             .expect("disabled tick");
-        assert!(!report.gpu_dispatched);
-        assert_eq!(report.profile_id, PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID);
+        assert!(report.dispatch.is_none());
+        assert_eq!(report.utility_id, PALMA_MIN_PLUS_FIELD_BAND_PROFILE_ID);
     });
 }
 
@@ -97,17 +114,19 @@ fn session_band_dispatches_gpu_min_plus_not_manual_test_body() {
                 &mut tree.inner.shadow,
                 tree.inner.n_dims,
                 &tree.inner.alloc,
-                true,
+                TraversalFieldExecutionMode::OracleVerification,
+                false,
             )
             .expect("band tick");
         assert!(report.scheduled);
+        let dispatch = report.dispatch.expect("dispatch report");
         assert!(
-            report.gpu_dispatched,
+            dispatch.gpu_dispatched,
             "GPU must be invoked by band tick, not test body"
         );
-        assert_eq!(report.iterations, FIXTURE_ITERATIONS);
-        assert!(report.verification_readback);
-        let err = report.max_oracle_error.expect("oracle compare");
+        assert_eq!(dispatch.iterations, FIXTURE_ITERATIONS);
+        assert!(dispatch.diagnostic_readback);
+        let err = dispatch.max_oracle_error.expect("oracle compare");
         assert!(
             err < 1e-4,
             "CPU oracle parity via band verification readback: max err {err}"
@@ -134,17 +153,55 @@ fn session_band_writes_d_to_shadow_and_property_columns() {
             &mut tree.inner.shadow,
             tree.inner.n_dims,
             &tree.inner.alloc,
-            false,
+            TraversalFieldExecutionMode::DiagnosticReadback,
+            true,
         )
         .expect("band tick");
     });
 
+    assert!(band.last_dispatch().unwrap().diagnostic_readback);
     tree.sync_d_from_shadow_to_properties()
         .expect("property writeback from shadow");
     let from_props = tree.gather_d_flat_from_properties();
     assert!(
         max_d_field_error_public(&cpu_d, &from_props) < 1e-4,
         "D property columns must match CPU oracle after band"
+    );
+}
+
+#[test]
+fn gpu_resident_band_does_not_readback_or_write_shadow_d() {
+    let mut tree = PalmaPath5PropertyTree::build_default();
+    tree.sync_shadow_from_tree();
+    let d_before = snapshot_d_shadow(&tree);
+    let binding = grid_binding(&tree);
+    let mut band =
+        PalmaMinPlusFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
+    band.enable();
+
+    with_gpu(|ctx| {
+        let report = band
+            .tick(
+                ctx,
+                &mut tree.inner.shadow,
+                tree.inner.n_dims,
+                &tree.inner.alloc,
+                TraversalFieldExecutionMode::GpuResident,
+                false,
+            )
+            .expect("gpu resident tick");
+        assert!(report.scheduled);
+        let dispatch = report.dispatch.expect("dispatch");
+        assert!(dispatch.gpu_resident);
+        assert!(!dispatch.diagnostic_readback);
+        assert!(dispatch.values.is_none());
+        assert!(!report.shadow_writeback);
+    });
+
+    let d_after = snapshot_d_shadow(&tree);
+    assert_eq!(
+        d_before, d_after,
+        "GpuResident must not mutate CPU shadow D"
     );
 }
 
@@ -163,7 +220,8 @@ fn after_band_movable_samples_d_and_reparents_generically() {
             &mut tree.inner.shadow,
             tree.inner.n_dims,
             &tree.inner.alloc,
-            false,
+            TraversalFieldExecutionMode::DiagnosticReadback,
+            true,
         )
         .expect("band tick");
     });
@@ -195,7 +253,6 @@ fn after_band_movable_samples_d_and_reparents_generically() {
 
 #[test]
 fn path6_blocker_ledger_default_simsession_not_wired() {
-    // Honest limit: band is opt-in test/profile module — not default SimSession tick wiring.
     assert!(!PALMA_MIN_PLUS_FIELD_BAND_DEFAULT_ENABLED);
     let tree = PalmaPath5PropertyTree::build_default();
     let layout = tree
@@ -231,11 +288,12 @@ fn on_event_cadence_skips_until_dirty() {
                 &mut tree.inner.shadow,
                 tree.inner.n_dims,
                 &tree.inner.alloc,
+                TraversalFieldExecutionMode::GpuResident,
                 false,
             )
             .expect("on-event tick without pending event");
         assert!(
-            !report.gpu_dispatched,
+            report.dispatch.is_none(),
             "OnEvent cadence must skip without event_pending"
         );
     });
