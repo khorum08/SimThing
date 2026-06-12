@@ -51,16 +51,27 @@ pub struct StellarisScaleRow {
     pub cpu_per_fleet_total_us: f64,
     pub cpu_per_fleet_avg_us: f64,
     pub cpu_per_dest_fields_us: f64,
-    pub cpu_faction_fields_us: f64,
-    pub cpu_unique_dest_fields_us: f64,
     pub cpu_sample_total_us: f64,
+    pub cpu_faction_fields_us: f64,
     pub cpu_faction_sample_us: f64,
-    pub gpu_setup_us: Option<f64>,
-    pub gpu_cold_dispatch_us: Option<f64>,
-    pub gpu_warm_dispatch_us: Option<f64>,
-    pub gpu_readback_us: Option<f64>,
-    pub total_tick_with_pressure_us: f64,
-    pub path_eval_pressure_already_paid_us: f64,
+    pub cpu_unique_dest_fields_us: f64,
+    pub cpu_unique_sample_us: f64,
+    pub gpu_single_field_setup_us: Option<f64>,
+    pub gpu_single_field_cold_dispatch_us: Option<f64>,
+    pub gpu_single_field_warm_dispatch_us: Option<f64>,
+    pub gpu_single_field_readback_us: Option<f64>,
+    pub total_pressure_plus_dijkstra_us: f64,
+    pub total_pressure_plus_cpu_dest_fields_us: f64,
+    pub total_pressure_plus_cpu_faction_fields_us: f64,
+    pub total_pressure_plus_cpu_unique_fields_us: f64,
+    /// One primary rally-star GPU field (warm dispatch + readback). Not 75 destination fields.
+    pub total_pressure_plus_gpu_single_field_warm_us: Option<f64>,
+    pub incremental_dijkstra_if_pressure_paid_us: f64,
+    pub incremental_cpu_dest_fields_if_pressure_paid_us: f64,
+    pub incremental_cpu_faction_fields_if_pressure_paid_us: f64,
+    pub incremental_cpu_unique_fields_if_pressure_paid_us: f64,
+    /// One GPU field only — warm dispatch + readback if verification readback is required.
+    pub incremental_gpu_single_field_if_pressure_paid_us: Option<f64>,
 }
 
 fn lcg_next(state: &mut u64) -> u64 {
@@ -458,11 +469,17 @@ pub fn run_stellaris_row(
         time_sample_fleets_faction_fields(&scenario.fleets, &faction_fields, repeats);
 
     let unique_fleets = fleets_with_unique_destinations(scenario);
-    let (cpu_unique_dest_fields_us, _) =
+    let (cpu_unique_dest_fields_us, unique_fields) =
         time_per_destination_fields(&w, &unique_fleets, iterations, repeats);
+    let cpu_unique_sample_us =
+        time_sample_fleets_on_fields(&unique_fleets, &unique_fields, repeats);
 
-    let (gpu_setup_us, gpu_cold_dispatch_us, gpu_warm_dispatch_us, gpu_readback_us) = if include_gpu
-    {
+    let (
+        gpu_single_field_setup_us,
+        gpu_single_field_cold_dispatch_us,
+        gpu_single_field_warm_dispatch_us,
+        gpu_single_field_readback_us,
+    ) = if include_gpu {
         if let Some(ctx) = gpu_ctx {
             let primary_dest = scenario.faction_rally[0];
             let (s, c, w, r) = time_gpu_primary_field_split(ctx, &w, primary_dest, iterations);
@@ -474,10 +491,24 @@ pub fn run_stellaris_row(
         (None, None, None, None)
     };
 
-    let path_eval_pressure_already_paid_us =
-        cpu_per_dest_fields_us + cpu_sample_total_us + gpu_warm_dispatch_us.unwrap_or(0.0);
-    let total_tick_with_pressure_us =
-        pressure_reduction_us + cpu_per_fleet_total_us.max(path_eval_pressure_already_paid_us);
+    let cpu_dest_path_us = cpu_per_dest_fields_us + cpu_sample_total_us;
+    let cpu_faction_path_us = cpu_faction_fields_us + cpu_faction_sample_us;
+    let cpu_unique_path_us = cpu_unique_dest_fields_us + cpu_unique_sample_us;
+
+    let total_pressure_plus_dijkstra_us = pressure_reduction_us + cpu_per_fleet_total_us;
+    let total_pressure_plus_cpu_dest_fields_us = pressure_reduction_us + cpu_dest_path_us;
+    let total_pressure_plus_cpu_faction_fields_us = pressure_reduction_us + cpu_faction_path_us;
+    let total_pressure_plus_cpu_unique_fields_us = pressure_reduction_us + cpu_unique_path_us;
+
+    let total_pressure_plus_gpu_single_field_warm_us = gpu_single_field_warm_dispatch_us
+        .map(|warm| pressure_reduction_us + warm + gpu_single_field_readback_us.unwrap_or(0.0));
+
+    let incremental_dijkstra_if_pressure_paid_us = cpu_per_fleet_total_us;
+    let incremental_cpu_dest_fields_if_pressure_paid_us = cpu_dest_path_us;
+    let incremental_cpu_faction_fields_if_pressure_paid_us = cpu_faction_path_us;
+    let incremental_cpu_unique_fields_if_pressure_paid_us = cpu_unique_path_us;
+    let incremental_gpu_single_field_if_pressure_paid_us = gpu_single_field_warm_dispatch_us
+        .map(|warm| warm + gpu_single_field_readback_us.unwrap_or(0.0));
 
     StellarisScaleRow {
         churn_pct,
@@ -487,38 +518,56 @@ pub fn run_stellaris_row(
         cpu_per_fleet_total_us,
         cpu_per_fleet_avg_us,
         cpu_per_dest_fields_us,
-        cpu_faction_fields_us,
-        cpu_unique_dest_fields_us,
         cpu_sample_total_us,
+        cpu_faction_fields_us,
         cpu_faction_sample_us,
-        gpu_setup_us,
-        gpu_cold_dispatch_us,
-        gpu_warm_dispatch_us,
-        gpu_readback_us,
-        total_tick_with_pressure_us,
-        path_eval_pressure_already_paid_us,
+        cpu_unique_dest_fields_us,
+        cpu_unique_sample_us,
+        gpu_single_field_setup_us,
+        gpu_single_field_cold_dispatch_us,
+        gpu_single_field_warm_dispatch_us,
+        gpu_single_field_readback_us,
+        total_pressure_plus_dijkstra_us,
+        total_pressure_plus_cpu_dest_fields_us,
+        total_pressure_plus_cpu_faction_fields_us,
+        total_pressure_plus_cpu_unique_fields_us,
+        total_pressure_plus_gpu_single_field_warm_us,
+        incremental_dijkstra_if_pressure_paid_us,
+        incremental_cpu_dest_fields_if_pressure_paid_us,
+        incremental_cpu_faction_fields_if_pressure_paid_us,
+        incremental_cpu_unique_fields_if_pressure_paid_us,
+        incremental_gpu_single_field_if_pressure_paid_us,
     }
 }
 
 pub fn format_stellaris_row(row: &StellarisScaleRow) -> String {
     format!(
-        "| {}% | {} | {} | {:.0} | {:.0} | {:.1} | {:.0} | {:.0} | {:.0} | {:.0} | {} | {} | {} | {} | {:.0} | {:.0} |",
+        "churn={}% iters={} distinct_dests={} | pressure={:.0} | dijkstra={:.0} dest_fields={:.0} dest_sample={:.0} faction_fields={:.0} faction_sample={:.0} unique_fields={:.0} unique_sample={:.0} | +pressure+dijkstra={:.0} +pressure+cpu_dest={:.0} +pressure+cpu_faction={:.0} +pressure+cpu_unique={:.0} +pressure+gpu1_warm={} | if_pressure_paid: dijkstra={:.0} cpu_dest={:.0} cpu_faction={:.0} cpu_unique={:.0} gpu1={} | gpu1_field_only: setup={} cold={} warm={} readback={}",
         row.churn_pct,
         row.iterations,
         row.distinct_dests,
         row.pressure_reduction_us,
         row.cpu_per_fleet_total_us,
-        row.cpu_per_fleet_avg_us,
         row.cpu_per_dest_fields_us,
-        row.cpu_faction_fields_us,
-        row.cpu_unique_dest_fields_us,
         row.cpu_sample_total_us,
-        fmt_opt(row.gpu_setup_us),
-        fmt_opt(row.gpu_cold_dispatch_us),
-        fmt_opt(row.gpu_warm_dispatch_us),
-        fmt_opt(row.gpu_readback_us),
-        row.total_tick_with_pressure_us,
-        row.path_eval_pressure_already_paid_us,
+        row.cpu_faction_fields_us,
+        row.cpu_faction_sample_us,
+        row.cpu_unique_dest_fields_us,
+        row.cpu_unique_sample_us,
+        row.total_pressure_plus_dijkstra_us,
+        row.total_pressure_plus_cpu_dest_fields_us,
+        row.total_pressure_plus_cpu_faction_fields_us,
+        row.total_pressure_plus_cpu_unique_fields_us,
+        fmt_opt(row.total_pressure_plus_gpu_single_field_warm_us),
+        row.incremental_dijkstra_if_pressure_paid_us,
+        row.incremental_cpu_dest_fields_if_pressure_paid_us,
+        row.incremental_cpu_faction_fields_if_pressure_paid_us,
+        row.incremental_cpu_unique_fields_if_pressure_paid_us,
+        fmt_opt(row.incremental_gpu_single_field_if_pressure_paid_us),
+        fmt_opt(row.gpu_single_field_setup_us),
+        fmt_opt(row.gpu_single_field_cold_dispatch_us),
+        fmt_opt(row.gpu_single_field_warm_dispatch_us),
+        fmt_opt(row.gpu_single_field_readback_us),
     )
 }
 
