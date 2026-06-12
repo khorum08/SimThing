@@ -38,14 +38,15 @@ Same 8×8 PATH-5 admitted tree:
 
 ## GPU invocation path
 
-**Session band `tick()`** — when scheduler dispatches:
+**Session band `tick(mode, shadow_writeback)`** — when scheduler dispatches:
 
 1. Gather W from shadow
-2. `MinPlusStencilOp::upload_values` + `dispatch_ping_pong` (64 iterations)
-3. Optional verification readback + CPU oracle compare (diagnostic only)
-4. Scatter D to shadow
+2. `MinPlusTraversalFieldOp::dispatch_traversal` with explicit execution mode
+3. **Production default:** `GpuResident` — no CPU readback, no shadow D writeback
+4. **Diagnostic:** `DiagnosticReadback` + `shadow_writeback=true` for PATH-5/6 property path
+5. **Verification:** `OracleVerification` for CPU oracle compare (tests)
 
-Tests do **not** call `MinPlusStencilOp` directly in the proof path (PATH-5 manual path preserved for regression).
+PATH-7 refactored proof scaffolding out of the production hot path — see [`palma_path_7_gpu_traversal_utility_results.md`](palma_path_7_gpu_traversal_utility_results.md).
 
 ## Proof coverage
 

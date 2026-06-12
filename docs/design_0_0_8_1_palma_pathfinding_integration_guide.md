@@ -301,8 +301,31 @@ PALMA-PATH-0/1 do not exercise sqrt paths.
 | 7 | **PALMA-PATH-4S** | Stellaris-scale 180×180 / 150-fleet representative workload | **IMPLEMENTED / METRICS REMEDIAL PASS** — [`tests/palma_path_4_stellaris_scale_benchmark_results.md`](tests/palma_path_4_stellaris_scale_benchmark_results.md) |
 | 8 | **PALMA-PATH-5** | Admitted Location/gridcell property-column integration | **IMPLEMENTED / PASS** — [`tests/palma_path_5_install_session_property_results.md`](tests/palma_path_5_install_session_property_results.md) |
 | 9 | **PALMA-PATH-6** | Opt-in session/RegionField min-plus band over W/D columns | **PARTIAL / TEST-PROFILE PASS** — [`tests/palma_path_6_session_regionfield_results.md`](tests/palma_path_6_session_regionfield_results.md) (default `SimSession` tick not wired) |
+| 10 | **PALMA-PATH-7** | Production GPU traversal utility seating | **IMPLEMENTED / PASS** — [`tests/palma_path_7_gpu_traversal_utility_results.md`](tests/palma_path_7_gpu_traversal_utility_results.md) |
 
 One rung per PR. Codex/Cursor must not attempt the full ladder at once.
+
+---
+
+## 15a. Production seating (PATH-7 — generic GPU utility)
+
+PALMA names the **semiring algebra provenance** in docs. Runtime code uses the generic GPU traversal field utility:
+
+```text
+W impedance (property/buffer)
+  → MinPlusTraversalFieldOp / TraversalFieldBandSession
+  → D traversal potential (GPU-resident by default)
+  → downstream GPU EML / threshold / field consumers (future)
+  → CPU only via explicit diagnostic readback or committed BoundaryRequests
+```
+
+**Default production mode:** `MinPlusTraversalExecutionMode::GpuResident` — no CPU readback, no shadow/property D scatter.
+
+**Diagnostic modes:** `DiagnosticReadback` and `OracleVerification` preserve PATH-5/PATH-6 proof behavior when explicitly selected.
+
+**Not landed:** pathfinding engine, movement policy, route object, predecessor table, mandatory per-tick CPU D readback, default `SimSession` band scheduling.
+
+**Fable handoff:** use `simthing_gpu::MinPlusTraversalFieldOp` + `simthing_driver::TraversalFieldBandSession`; do not retread PATH-1–6 proof sequence unless changing algebra or admission.
 
 ---
 
