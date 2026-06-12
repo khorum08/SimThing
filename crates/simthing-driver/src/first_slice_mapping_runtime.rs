@@ -60,6 +60,9 @@ pub fn compiled_stencil_to_gpu_config(
                 simthing_spec::CompiledGradientAxis::X => StructuredFieldStencilOperator::GradientX,
                 simthing_spec::CompiledGradientAxis::Y => StructuredFieldStencilOperator::GradientY,
             },
+            CompiledRegionFieldOperator::SaturatingFlux { u_sat, chi } => {
+                StructuredFieldStencilOperator::SaturatingFlux { u_sat, chi }
+            }
         },
         source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
         boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
@@ -647,6 +650,7 @@ impl FirstSliceMappingSession {
                 simthing_spec::CompiledGradientAxis::X => "gradient_x",
                 simthing_spec::CompiledGradientAxis::Y => "gradient_y",
             },
+            CompiledRegionFieldOperator::SaturatingFlux { .. } => "saturating_flux",
         }
     }
 

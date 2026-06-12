@@ -94,7 +94,7 @@ pub enum RegionFieldGridProfile {
     ExtendedSquare,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum RegionFieldOperatorSpec {
     Normalized,
@@ -102,6 +102,11 @@ pub enum RegionFieldOperatorSpec {
     Gradient {
         axis: GradientAxisSpec,
         output_col: u32,
+    },
+    /// BH-0: conservative saturating-flux operator (state-dependent C_u, zero-flux boundary).
+    SaturatingFlux {
+        u_sat: f32,
+        chi: f32,
     },
 }
 

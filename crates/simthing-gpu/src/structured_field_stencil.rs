@@ -27,6 +27,10 @@ const VARIANT_NORMALIZED: u32 = 1;
 const VARIANT_DIRECTED: u32 = 2;
 const VARIANT_SOURCE_CAPPED: u32 = 5;
 const VARIANT_GRADIENT_XY: u32 = 6;
+const VARIANT_SATURATING_FLUX: u32 = 7;
+
+/// BH-0 CFL bound with dt fixed at 1.0.
+pub const SATURATING_FLUX_CHI_CFL_MAX: f32 = 0.25;
 
 const BOUNDARY_ZERO: u32 = 0;
 const BOUNDARY_CLAMP: u32 = 1;
@@ -35,7 +39,7 @@ const DIRECTED_SE: u32 = 0;
 const DIRECTED_NW: u32 = 1;
 
 /// Stencil operator mode.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum StructuredFieldStencilOperator {
     Normalized,
     SourceCappedNormalized,
@@ -52,6 +56,11 @@ pub enum StructuredFieldStencilOperator {
     /// (no-aliasing admission). Optimization of running `GradientX` then `GradientY`.
     GradientXY {
         target_col_y: u32,
+    },
+    /// BH-0: conservative saturating-flux operator with transient register-local C.
+    SaturatingFlux {
+        u_sat: f32,
+        chi: f32,
     },
 }
 
@@ -161,7 +170,8 @@ impl StructuredFieldStencilConfig {
             StructuredFieldStencilOperator::GradientY => (-0.5, 0.5, 0.0, 0.0),
             StructuredFieldStencilOperator::GradientXY { .. } => (-0.5, 0.5, 0.5, -0.5),
             StructuredFieldStencilOperator::Normalized
-            | StructuredFieldStencilOperator::SourceCappedNormalized => {
+            | StructuredFieldStencilOperator::SourceCappedNormalized
+            | StructuredFieldStencilOperator::SaturatingFlux { .. } => {
                 let w = self.gamma_neighbor / 4.0;
                 (w, w, w, w)
             }
@@ -208,9 +218,33 @@ impl StructuredFieldStencilConfig {
             StructuredFieldStencilOperator::GradientX
                 | StructuredFieldStencilOperator::GradientY
                 | StructuredFieldStencilOperator::GradientXY { .. }
+                | StructuredFieldStencilOperator::SaturatingFlux { .. }
         ) && !self.gamma_neighbor.is_finite()
         {
             return Err(StructuredFieldStencilError::NonFiniteCoefficients);
+        }
+        if let StructuredFieldStencilOperator::SaturatingFlux { u_sat, chi } = self.operator {
+            if !u_sat.is_finite() || u_sat <= 0.0 {
+                return Err(StructuredFieldStencilError::InvalidUSat(u_sat));
+            }
+            if !chi.is_finite() || chi <= 0.0 {
+                return Err(StructuredFieldStencilError::InvalidChi(chi));
+            }
+            if chi > SATURATING_FLUX_CHI_CFL_MAX {
+                return Err(StructuredFieldStencilError::ChiExceedsCflBound {
+                    chi,
+                    max: SATURATING_FLUX_CHI_CFL_MAX,
+                });
+            }
+            if self.source_col != self.target_col {
+                return Err(StructuredFieldStencilError::SaturatingFluxColumnMismatch {
+                    source_col: self.source_col,
+                    target_col: self.target_col,
+                });
+            }
+            if self.source_cap.is_some() {
+                return Err(StructuredFieldStencilError::SourceCapRequiresOperator);
+            }
         }
         if let StructuredFieldStencilOperator::GradientXY { target_col_y } = self.operator {
             if target_col_y >= self.n_dims {
@@ -316,6 +350,14 @@ pub enum StructuredFieldStencilError {
     GradientXyTargetYOutOfRange { target_col_y: u32, n_dims: u32 },
     #[error("GradientXY output columns must differ (no aliasing): target_col={target_col} target_col_y={target_col_y}")]
     GradientXyAliasedOutputs { target_col: u32, target_col_y: u32 },
+    #[error("SaturatingFlux u_sat must be finite and > 0 (got {0})")]
+    InvalidUSat(f32),
+    #[error("SaturatingFlux chi must be finite and > 0 (got {0})")]
+    InvalidChi(f32),
+    #[error("SaturatingFlux chi {chi} exceeds CFL bound {max} (dt=1.0)")]
+    ChiExceedsCflBound { chi: f32, max: f32 },
+    #[error("SaturatingFlux requires source_col == target_col (source={source_col} target={target_col})")]
+    SaturatingFluxColumnMismatch { source_col: u32, target_col: u32 },
 }
 
 #[repr(C)]
@@ -338,6 +380,9 @@ pub struct FieldStencilParamsGpu {
     directed_mode: u32,
     use_active_mask: u32,
     target_col_y: u32,
+    u_sat: f32,
+    chi: f32,
+    _pad: u32,
 }
 
 impl FieldStencilParamsGpu {
@@ -351,6 +396,7 @@ impl FieldStencilParamsGpu {
             StructuredFieldStencilOperator::GradientX
             | StructuredFieldStencilOperator::GradientY => VARIANT_NORMALIZED,
             StructuredFieldStencilOperator::GradientXY { .. } => VARIANT_GRADIENT_XY,
+            StructuredFieldStencilOperator::SaturatingFlux { .. } => VARIANT_SATURATING_FLUX,
         };
         let directed_mode = match config.operator {
             StructuredFieldStencilOperator::Directed { northwest } => {
@@ -396,6 +442,15 @@ impl FieldStencilParamsGpu {
                 StructuredFieldStencilOperator::GradientXY { target_col_y } => target_col_y,
                 _ => 0,
             },
+            u_sat: match config.operator {
+                StructuredFieldStencilOperator::SaturatingFlux { u_sat, .. } => u_sat,
+                _ => 0.0,
+            },
+            chi: match config.operator {
+                StructuredFieldStencilOperator::SaturatingFlux { chi, .. } => chi,
+                _ => 0.0,
+            },
+            _pad: 0,
         }
     }
 }
@@ -959,8 +1014,11 @@ impl StructuredFieldStencilDebugReport {
     }
 }
 
-/// CPU oracle for parity tests (normalized / source-capped / directed modes).
+/// CPU oracle for parity tests (normalized / source-capped / directed / saturating-flux modes).
 pub fn cpu_stencil_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f32> {
+    if params.variant == VARIANT_SATURATING_FLUX {
+        return cpu_saturating_flux_step(values, params);
+    }
     let mut out = values.to_vec();
     let w = params.width;
     let h = params.height;
@@ -1008,6 +1066,91 @@ pub fn cpu_stencil_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f
 
             if params.variant == VARIANT_SOURCE_CAPPED && params.source_cap > 0.0 {
                 next = next.clamp(0.0, params.source_cap);
+            }
+
+            out[(idx * nd + tc) as usize] = next;
+        }
+    }
+    out
+}
+
+fn sigma_u(u: f32, u_sat: f32) -> f32 {
+    let x = u / u_sat;
+    if x < 0.0 {
+        0.0
+    } else if x > 1.0 {
+        1.0
+    } else {
+        x
+    }
+}
+
+fn read_u_source(values: &[f32], params: &FieldStencilParamsGpu, x: i32, y: i32) -> f32 {
+    let idx = y as u32 * params.width + x as u32;
+    values[(idx * params.n_dims + params.source_col) as usize]
+}
+
+/// Compute transient C at `(x, y)` for oracle introspection (BH-0 tests).
+pub fn cpu_compute_c_at(values: &[f32], params: &FieldStencilParamsGpu, x: i32, y: i32) -> f32 {
+    let w = params.width as i32;
+    let h = params.height as i32;
+    let u_sat = params.u_sat;
+    let mut c = params.chi;
+
+    if y - 1 >= 0 && y - 1 < h && x >= 0 && x < w {
+        let u = read_u_source(values, params, x, y - 1);
+        c *= 1.0 - sigma_u(u, u_sat);
+    }
+    if y + 1 >= 0 && y + 1 < h && x >= 0 && x < w {
+        let u = read_u_source(values, params, x, y + 1);
+        c *= 1.0 - sigma_u(u, u_sat);
+    }
+    if x + 1 >= 0 && x + 1 < w && y >= 0 && y < h {
+        let u = read_u_source(values, params, x + 1, y);
+        c *= 1.0 - sigma_u(u, u_sat);
+    }
+    if x - 1 >= 0 && x - 1 < w && y >= 0 && y < h {
+        let u = read_u_source(values, params, x - 1, y);
+        c *= 1.0 - sigma_u(u, u_sat);
+    }
+    c
+}
+
+fn cpu_saturating_flux_step(values: &[f32], params: &FieldStencilParamsGpu) -> Vec<f32> {
+    let mut out = values.to_vec();
+    let w = params.width;
+    let h = params.height;
+    let nd = params.n_dims;
+    let tc = params.target_col;
+
+    for y in 0..h {
+        for x in 0..w {
+            let idx = y * w + x;
+            let ix = x as i32;
+            let iy = y as i32;
+            let u_i = read_u_source(values, params, ix, iy);
+            let c_i = cpu_compute_c_at(values, params, ix, iy);
+            let mut next = u_i;
+
+            if iy - 1 >= 0 {
+                let c_n = cpu_compute_c_at(values, params, ix, iy - 1);
+                let u_n = read_u_source(values, params, ix, iy - 1);
+                next += ((c_i + c_n) * 0.5) * (u_n - u_i);
+            }
+            if iy + 1 < h as i32 {
+                let c_s = cpu_compute_c_at(values, params, ix, iy + 1);
+                let u_s = read_u_source(values, params, ix, iy + 1);
+                next += ((c_i + c_s) * 0.5) * (u_s - u_i);
+            }
+            if ix + 1 < w as i32 {
+                let c_e = cpu_compute_c_at(values, params, ix + 1, iy);
+                let u_e = read_u_source(values, params, ix + 1, iy);
+                next += ((c_i + c_e) * 0.5) * (u_e - u_i);
+            }
+            if ix - 1 >= 0 {
+                let c_w = cpu_compute_c_at(values, params, ix - 1, iy);
+                let u_w = read_u_source(values, params, ix - 1, iy);
+                next += ((c_i + c_w) * 0.5) * (u_w - u_i);
             }
 
             out[(idx * nd + tc) as usize] = next;
