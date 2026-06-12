@@ -377,6 +377,10 @@ pub struct FirstSliceMappingSession {
     /// Cells whose seed values were written GPU-side (indexed scatter) —
     /// no host mirror; the seed sequence runs without host writes.
     pending_gpu_seed_cells: Vec<(u32, u32)>,
+    /// Line 3R: whether the commitment scan's GPU-resident previous-values
+    /// baseline has been initialized (zeroed once at first scan, then
+    /// snapshotted on-device after every scan — never reset per tick).
+    commitment_scan_initialized: bool,
     eml_weight_a_col: u32,
     eml_weight_b_col: u32,
     eml_output_col: u32,
@@ -535,6 +539,7 @@ impl FirstSliceMappingSession {
             tree_id,
             pending_seeds: Vec::new(),
             pending_gpu_seed_cells: Vec::new(),
+            commitment_scan_initialized: false,
             eml_registry,
             eml_table,
             acc_session,
@@ -998,6 +1003,82 @@ impl FirstSliceMappingSession {
         let threat = out[self.slot_idx(parent_slot, parent_col)];
         let urgency = out[self.slot_idx(parent_slot, self.eml_output_col)];
         Ok((Some(threat), Some(urgency)))
+    }
+
+    /// Line 3R production commitment scan: edge-detected on GPU. The
+    /// previous-values baseline persists on-device across scans (zeroed once
+    /// at first scan — the first above-threshold value is a genuine rising
+    /// edge), so a held above-threshold urgency emits **no** repeated upward
+    /// crossings, while falling below and rising again emits a fresh one.
+    /// CPU reads back compact threshold events only; the decision is GPU-side.
+    fn scan_commitment_threshold_edge(
+        &mut self,
+        ctx: &GpuContext,
+        threshold: f32,
+        event_kind: u32,
+    ) -> Result<Vec<ThresholdEvent>, FirstSliceMappingError> {
+        let reduction = self.preview.reduction.as_ref().expect("validated at open");
+        let parent_slot = reduction.parent_slot;
+        if !self.commitment_scan_initialized {
+            let previous = vec![0.0f32; self.acc_session.values_len()];
+            self.acc_session.upload_previous_values(ctx, &previous);
+            self.commitment_scan_initialized = true;
+        }
+        self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
+        self.acc_session
+            .upload_threshold_ops(
+                ctx,
+                &[ThresholdRegistration {
+                    slot: parent_slot,
+                    col: self.eml_output_col,
+                    threshold,
+                    direction: DIR_UPWARD,
+                    event_kind,
+                    buffer: THRESH_BUF_VALUES,
+                }],
+            )
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        self.acc_session
+            .tick(ctx, 0)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        let events = self
+            .acc_session
+            .readback_threshold_events(ctx)
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
+        self.acc_session.copy_values_to_previous(ctx);
+        Ok(events)
+    }
+
+    /// Line 3R production tick: the mapping chain plus the edge-detected
+    /// commitment scan. Production session code calls this — never the
+    /// `*_fixture` variants (which reset the baseline every scan and are
+    /// retained only for standing single-tick fixtures).
+    pub fn tick_with_commitment_spec(
+        &mut self,
+        ctx: &GpuContext,
+        options: FirstSliceTickOptions,
+        eml_weights: (f32, f32),
+        commitment: &CompiledFirstSliceCommitmentThreshold,
+    ) -> Result<FirstSliceCommitmentReport, FirstSliceMappingError> {
+        let mapping = self.tick(ctx, options, eml_weights)?;
+        let mut threshold_events = Vec::new();
+        let mut summary_used_for_commitment_scan = false;
+        if mapping.enabled && mapping.scheduled && mapping.eml_executed {
+            threshold_events = self.scan_commitment_threshold_edge(
+                ctx,
+                commitment.threshold,
+                commitment.event_kind,
+            )?;
+            summary_used_for_commitment_scan = true;
+        }
+        let mut mapping = mapping;
+        mapping.summary.summary_used_for_commitment_scan = summary_used_for_commitment_scan;
+        Ok(FirstSliceCommitmentReport {
+            mapping,
+            threshold: commitment.threshold,
+            event_kind: commitment.event_kind,
+            threshold_events,
+        })
     }
 
     fn scan_commitment_threshold(

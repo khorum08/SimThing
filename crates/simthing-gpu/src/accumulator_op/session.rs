@@ -559,6 +559,25 @@ impl AccumulatorOpSession {
             .write_buffer(&self.values_buffer, 0, bytemuck::cast_slice(&zeros));
     }
 
+    /// Snapshot the current values buffer into the previous-values buffer
+    /// on-device — the threshold kernel's edge baseline for the next scan.
+    /// Pure data movement; no readback.
+    pub fn copy_values_to_previous(&self, ctx: &GpuContext) {
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&CommandEncoderDescriptor {
+                label: Some("accumulator_values_to_previous_copy"),
+            });
+        encoder.copy_buffer_to_buffer(
+            &self.values_buffer,
+            0,
+            &self.previous_values_buffer,
+            0,
+            self.values_byte_len(),
+        );
+        ctx.queue.submit(Some(encoder.finish()));
+    }
+
     /// Copy a prefix from an external GPU buffer into the values buffer.
     pub fn copy_values_prefix_from_buffer(
         &self,

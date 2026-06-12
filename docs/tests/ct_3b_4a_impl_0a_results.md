@@ -157,6 +157,31 @@ stripped-binding open fails loudly.
 ~~Named deferral~~ — **closed by the commitment-effects addendum below.** PALMA/min-plus was
 deliberately not touched — Line 3 needed no traversal utility.
 
+## Addendum — Line 3R: GPU commitment crossing state hardened (2026-06-12)
+
+PR #616's loop still called the `*_fixture` commitment scan, which uploaded an all-zero
+previous-values baseline before **every** scan — level-triggered semantics that journaled a
+fresh "crossing" each held-above tick (masked by the `once` latch). Remediated:
+
+- **Production API:** `FirstSliceMappingSession::tick_with_commitment_spec` /
+  `scan_commitment_threshold_edge` — `SimSession::run_mapping_step` no longer calls any
+  `*_fixture` method (those retain their per-scan-zero behavior solely for the standing
+  single-tick fixtures).
+- **GPU-resident edge state:** the previous-values baseline is zeroed exactly once at the first
+  scan (the first above-threshold value is a genuine rising edge), then snapshotted **on-device**
+  after every scan via the new `AccumulatorOpSession::copy_values_to_previous` (one
+  `copy_buffer_to_buffer`, no readback). The Pass-7 kernel's prev-vs-current comparison
+  therefore edge-detects: held above-threshold urgency emits no repeated upward crossings;
+  falling below and rising again emits a fresh one.
+- **Decision authority unchanged:** the threshold decision stays GPU-side; CPU reads back
+  compact threshold events only; the fall-below check in the new test uses the *diagnostic*
+  readback explicitly, never the runtime path.
+- **Proof (GPU):** in-loop, a 3-boundary run with sustained urgency journals **exactly one**
+  crossing (effect still applies once; alarm still transformed); standalone, the edge test
+  drives rise → hold → hold (1, 0, 0 events), decays below threshold without pressure
+  (0 events throughout), then re-seeds and fires exactly once more. Authored effect behavior,
+  default-off, and half-authored hard errors all re-proven unchanged.
+
 ## Addendum — authored commitment effects (track-closing PR, 2026-06-12)
 
 The last deferral is implemented: `FirstSliceCommitmentSpec.effect: Option<CommitmentEffectSpec>`

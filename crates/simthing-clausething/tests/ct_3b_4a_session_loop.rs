@@ -104,10 +104,11 @@ fn session_loop_runs_rf_heatmap_and_journals_commitments() {
         summary.mapping_ticks, summary.ticks_run,
         "the mapping chain runs in-loop every tick"
     );
-    assert!(
-        summary.mapping_commitment_events >= 1,
-        "the authored ai_will_do threshold fires inside the loop"
+    assert_eq!(
+        summary.mapping_commitment_events, 1,
+        "edge semantics: held above-threshold urgency journals exactly one upward crossing"
     );
+    assert_eq!(session.mapping_commitments.len(), 1);
     let first = &session.mapping_commitments[0];
     assert_eq!(first.event.event_kind, 7, "authored commitment event kind");
     assert!(
@@ -199,4 +200,89 @@ fn scenario_fn_again(
     hydrated: &simthing_clausething::HydratedCategoryEconomyPack,
 ) -> (Scenario, SimThingId) {
     scenario(&hydrated.game_mode, 1)
+}
+
+#[test]
+fn commitment_crossing_is_edge_detected_with_re_cross_after_falling() {
+    let Ok(ctx) = simthing_gpu::GpuContext::new_blocking() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+
+    let hydrated = hydrate();
+    let field = hydrated.game_mode.region_fields[0].clone();
+    let profile = hydrated.game_mode.mapping_execution_profile;
+    let preview = simthing_spec::compile_region_field_preview(&field).expect("field admits");
+    let commitment = preview.commitment.clone().expect("commitment admitted");
+    let formula = field.parent_formula.as_ref().unwrap();
+    let weights = (
+        formula.weight_pressure.unwrap(),
+        formula.weight_resource.unwrap(),
+    );
+    let seed = simthing_driver::FirstSliceSeed {
+        row: 1,
+        col: 1,
+        value: 10.5,
+    };
+
+    let mut mapping = simthing_driver::FirstSliceMappingSession::open(&ctx, profile, &field)
+        .expect("open mapping");
+    let mut tick =
+        |mapping: &mut simthing_driver::FirstSliceMappingSession, seeded: bool| -> usize {
+            if seeded {
+                mapping.queue_seeds(&[seed]).expect("queue seed");
+            }
+            mapping
+                .tick_with_commitment_spec(
+                    &ctx,
+                    simthing_driver::FirstSliceTickOptions::hot_path(),
+                    weights,
+                    &commitment,
+                )
+                .expect("commitment tick")
+                .threshold_events
+                .len()
+        };
+
+    // Rising edge fires once; holding above threshold must not re-fire.
+    assert_eq!(tick(&mut mapping, true), 1, "first crossing fires");
+    assert_eq!(
+        tick(&mut mapping, true),
+        0,
+        "held above: no repeat crossing"
+    );
+    assert_eq!(
+        tick(&mut mapping, true),
+        0,
+        "still held: no repeat crossing"
+    );
+
+    // Without fresh pressure the field decays below threshold (resource term
+    // alone is 16.0 < 16.4)…
+    let mut fell = false;
+    for _ in 0..6 {
+        if tick(&mut mapping, false) != 0 {
+            panic!("decay must not emit upward crossings");
+        }
+        let (_, urgency) = mapping
+            .diagnostic_readback_reduction_eml(&ctx, weights)
+            .expect("diagnostic readback");
+        if urgency < commitment.threshold {
+            fell = true;
+            break;
+        }
+    }
+    assert!(
+        fell,
+        "urgency must decay below the threshold without pressure"
+    );
+
+    // …and re-seeding produces a second genuine rising edge.
+    assert_eq!(
+        tick(&mut mapping, true),
+        1,
+        "re-cross after falling fires again"
+    );
+    assert_eq!(tick(&mut mapping, true), 0, "and holds without repeats");
 }
