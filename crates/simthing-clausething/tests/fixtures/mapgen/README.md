@@ -1,6 +1,6 @@
 # MapGen test fixtures (0.0.8.2.5)
 
-Hand-authored equivalents for the MapGen PR ladder. **Not parsed by MapGen in PR1.**
+Hand-authored equivalents for the MapGen PR ladder.
 
 ## Policy
 
@@ -23,7 +23,7 @@ See [`docs/clausething/mapgen_corpus_manifest.md`](../../../../../docs/clausethi
 
 | File | Status |
 |---|---|
-| `tiny_static_starmap_slice.clause` | Inert stub — **not yet parsed by MapGen** (PR2+) |
+| `tiny_static_starmap_slice.clause` | Inert PR1 stub — ClauseScript scenario shape; **not parsed by MapGen** |
 
 **Corpus inspiration (read-only, not copied):**
 
@@ -32,6 +32,22 @@ See [`docs/clausething/mapgen_corpus_manifest.md`](../../../../../docs/clausethi
 
 **Contents (hand-authored):** five system locations, five bounded N4-style links, one deposit child,
 optional nebula metadata comment on the hub sector.
+
+## PR2 raw parse fixture — `tiny_pentad_hub_slice_raw.clause`
+
+| File | Status |
+|---|---|
+| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter (parse-only; not lowered) |
+
+Stellaris-style raw authoring idioms: `static_galaxy_scenario`, repeated `system` / `add_hyperlane`,
+`nebula`, and `example_rim_initializer` with `planet` + `deposit` child. Header uses jomini `#` line
+comment (Paradox-style) with required hand-authored disclaimer; no Paradox copy.
+
+**Test command:**
+
+```text
+cargo test -p simthing-clausething --test mapgen_neutral_ast_parse
+```
 
 ## Closeout guardrails (unchanged)
 
@@ -42,4 +58,4 @@ cargo test -p simthing-clausething --test ct_scenario_container
 cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
 
-MapGen tests are added in later rungs only.
+MapGen PR2 adds a focused parse-only test battery only.

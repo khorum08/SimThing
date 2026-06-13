@@ -1,0 +1,52 @@
+# Hand-authored equivalent. No Paradox file copied. Parse-only neutral-AST fixture. Not lowered in PR2.
+
+tiny_pentad_hub_slice_raw = {
+    static_galaxy_scenario = {
+        name = "Tiny Pentad Hub Slice"
+        random_hyperlanes = no
+        system = {
+            id = "0"
+            name = ""
+            position = { x = 0 y = 0 z = 0 }
+        }
+        system = {
+            id = "9"
+            name = ""
+            position = { x = 8 y = -10 z = 0 }
+        }
+        system = {
+            id = "31"
+            name = ""
+            position = { x = -9 y = -19 z = 0 }
+        }
+        system = {
+            id = "2"
+            name = ""
+            position = { x = -5 y = 40 z = 0 }
+        }
+        system = {
+            id = "15"
+            name = ""
+            position = { x = 7 y = 33 z = 0 }
+            initializer = example_rim_initializer
+        }
+        add_hyperlane = { from = "0" to = "9" }
+        add_hyperlane = { from = "0" to = "31" }
+        add_hyperlane = { from = "0" to = "2" }
+        add_hyperlane = { from = "9" to = "15" }
+        add_hyperlane = { from = "31" to = "15" }
+        nebula = { name = "Example Nebula Sector" radius = 20 }
+    }
+    example_rim_initializer = {
+        name = "Example Rim"
+        class = "rl_standard_stars"
+        planet = {
+            count = 1
+            orbit_distance = 40
+            size = 20
+        }
+        deposit = {
+            resources = { minerals = 4 }
+        }
+    }
+}

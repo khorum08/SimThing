@@ -10,6 +10,7 @@
 //! CT-2c: category economy hydration into Resource Flow and ResourceEconomy authoring.
 //! CT-PR2/3: scenario-container hydration into generic spec surfaces plus a SimThing tree and
 //! bounded grid-link metadata.
+//! MapGen PR2: neutral-AST parse-only adapter (M1) — no semantic mapping.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -28,6 +29,7 @@ mod hydrate_scenario;
 mod hydrate_scenario_commitment;
 mod json;
 mod literal_install;
+mod mapgen_neutral_ast;
 mod parse;
 mod scope_json;
 mod scope_lab;
@@ -66,6 +68,7 @@ pub use literal_install::{
     LiteralInstallSnapshot, OverlaySpecFingerprint, admit_and_apply_domain_pack,
     admit_and_apply_pack,
 };
+pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
 pub use parse::parse_raw_document;
 pub use raw::RawDocument;
 pub use scope::{
