@@ -532,3 +532,9 @@ admit/install + compact GPU evidence). Per-PR2–PR6 result reports and PR8-WIN-
 PR7/PR8/PR9 evidence is folded there. PR9 test battery is the live focused guardrail battery. Focused
 guardrail battery reran green under DA review (`ct_scenario_container` 45 passed; `ct_bh3_closeout_sample_driver`
 2 passed with GPU). Next recommended track: editor/corpus/export boundary.
+
+**0.0.8.2.5 extension (2026-06-13, MapGen track OPENED).** The deferred corpus-import / map-generation
+consumer is now **named and pulled** by a Stellaris starmap adapter — planning artifact
+[`design_0_0_8_2_5_mapgen_ladder.md`](design_0_0_8_2_5_mapgen_ladder.md), reference
+[`clausething/MapGenThing.md`](clausething/MapGenThing.md). This widens the front-end only; the 0.0.8.2
+sign-off stands. Editor/corpus/export remains the subsequent track.

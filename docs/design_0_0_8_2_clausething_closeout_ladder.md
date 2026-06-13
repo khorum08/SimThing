@@ -518,3 +518,18 @@ The closeout target is **authoring/import/runtime-feedstock closure, not playabl
 - **Untouched (binding):** `design_0_0_8_1.md` §0.7 stays the Candidate F home;
   `simthing_core_design.md` stays principle-level — the Candidate F artifact chain does **not**
   move there.
+
+## 12. Track extension — 0.0.8.2.5 MapGen (named consumer pulled, 2026-06-13)
+
+The 0.0.8.2 sign-off (above) **stands and is not reopened.** The closeout deferred the
+corpus-import/map-generation consumer and left PALMA "awaiting a named consumer" and BH-3 ClauseThing
+authoring "deferred until a named consumer." That consumer is now **named and pulled** by a single
+front-end: a **Stellaris starmap adapter**, planned in
+[`design_0_0_8_2_5_mapgen_ladder.md`](design_0_0_8_2_5_mapgen_ladder.md) with the Stellaris-side
+reference promoted in-repo at [`clausething/MapGenThing.md`](clausething/MapGenThing.md).
+
+0.0.8.2.5 widens only the **front-end** (parse raw Stellaris text → map a starmap slice → lower into
+the already-closed `scenario`/`location`/`link`/field/PALMA/commitment surfaces). It opens **no**
+closed runtime/GPU surface, vendors **no** Paradox corpus files, and **guards** (never crosses) the
+Candidate-F Euclidean boundary. The **editor/corpus/export seam (§10 / `FIELD-MOVIE-DATASET-0`)
+remains the subsequent track**, unchanged — 0.0.8.2.5 sequences *before* it, not instead of it.
