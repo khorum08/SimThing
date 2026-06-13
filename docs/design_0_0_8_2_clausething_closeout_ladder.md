@@ -385,15 +385,18 @@ Artifact cleanup: none.
 Acceptance: sample admits/installs; GPU path exercised; compact readback only; no sim leakage.
 Stop conditions: install needs a new sim-aware surface, or full-field readback to decide (→ escalate).
 
-**Status: PASS (2026-06-13, Cursor PR 8 — DA REVIEW REQUIRED BEFORE MERGE).** Added
-`crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` with two focused tests: (A)
+**Status: PASS / DA APPROVED (2026-06-13, Cursor PR 8; Opus / Design Authority review + remedial).**
+Added `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` with two focused tests: (A)
 canonical sample parse/hydrate → `install_atomic` + default-off session posture; (B) explicit
 test-only `SparseRegionFieldV1` mapping harness + BH-2C PALMA GPU chain with compact probe/threshold
 evidence only. PALMA W compose admission is derived from PR5 feedstock DTO in the test bridge
-(canonical sample has no `field_impedance` block). No new GPU kernels, `simthing-sim` types,
-movement, pathfinding, routes, predecessors, border, frontline, or Candidate-F changes. Result
-artifact: `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` (PROBATION). **Do not merge until
-Design Authority reviews the final diff.**
+(canonical sample has no `field_impedance` block; the generic operator's second choke input is a null
+spare column). No new GPU kernels, `simthing-sim` types, movement, pathfinding, routes, predecessors,
+border, frontline, or Candidate-F changes. DA refused the original conditional verdict, ran the blocked
+driver test (Windows `os error 740` was a UAC installer-name heuristic, bypassed with
+`__COMPAT_LAYER=RunAsInvoker`), found and fixed two test-only bugs (W-compose column aliasing; duplicate
+property registration), and confirmed `cargo test -p simthing-driver --test ct_bh3_closeout_sample_install`
+→ **2 passed**. Result artifact: `docs/tests/bh3_closeout_pr8_driver_gpu_results.md`.
 
 ### PR 9 — Test battery + artifact promotion/deletion
 Owner: Cursor

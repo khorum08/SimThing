@@ -57,10 +57,14 @@ fn hydrate_canonical_sample() -> HydratedScenarioPack {
 }
 
 fn scenario_from_pack(pack: &HydratedScenarioPack) -> Scenario {
+    // Mirror the `open_from_spec` convention: the base scenario registry carries only a
+    // placeholder; install registers the authored spec properties (see session_integration.rs).
     let mut registry = DimensionRegistry::new();
-    for property in &pack.game_mode.properties {
-        simthing_spec::compile_property(property, &mut registry).expect("register property");
-    }
+    let _ = registry.register(simthing_core::SimProperty::simple(
+        "_placeholder",
+        "seed",
+        0,
+    ));
     let slot_count = count_simthings(&pack.root) as u32;
     Scenario {
         name: pack.scenario_id.clone(),
@@ -95,6 +99,25 @@ fn eml_weights(pack: &HydratedScenarioPack) -> (f32, f32) {
     )
 }
 
+/// Test-only bridge: the canonical SaturatingFlux authors a single choke readout, but the generic
+/// W-impedance compose operator consumes two distinct choke inputs. Use the smallest column index
+/// not already claimed by the sample's source / authored choke / PALMA W/D outputs as the operator's
+/// second (null) choke input, keeping every compose column distinct without fabricating semantics.
+fn spare_choke_b_col(palma: &HydratedScenarioPalmaFeedstock) -> u32 {
+    let choke_a = palma
+        .choke_output_col
+        .expect("palma feedstock requires saturating_flux choke_output_col");
+    let claimed = [
+        palma.source_col,
+        choke_a,
+        palma.w_output_col,
+        palma.d_output_col,
+    ];
+    (0..palma.n_dims)
+        .find(|col| !claimed.contains(col))
+        .expect("canonical sample n_dims must leave a spare column for the second choke input")
+}
+
 /// Test-only bridge: derive generic W compose admission from PR5 PALMA feedstock DTO.
 fn w_compose_spec_from_palma(palma: &HydratedScenarioPalmaFeedstock) -> WImpedanceComposeSpec {
     let choke_a = palma
@@ -106,7 +129,7 @@ fn w_compose_spec_from_palma(palma: &HydratedScenarioPalmaFeedstock) -> WImpedan
         n_dims: palma.n_dims,
         base_w_col: palma.source_col,
         choke_a_col: choke_a,
-        choke_b_col: choke_a.saturating_add(1),
+        choke_b_col: spare_choke_b_col(palma),
         profiles: vec![WImpedanceComposeProfileSpec {
             weight_a: 1.0,
             weight_b: 1.0,
@@ -260,16 +283,20 @@ fn closeout_sample_gpu_resident_path_exercises_compact_evidence() {
     let n_dims = field.n_dims as usize;
     let mut values = vec![0.0f32; cells * n_dims];
     let idx = |slot: u32, col: u32| (slot as usize * n_dims) + col as usize;
+    let choke_a = match &field.operator {
+        RegionFieldOperatorSpec::SaturatingFlux {
+            choke_output_col: Some(col),
+            ..
+        } => *col,
+        _ => panic!("canonical sample field operator must author a choke output column"),
+    };
+    let choke_b = spare_choke_b_col(palma);
     for slot in 0..cells as u32 {
         values[idx(slot, field.source_col)] = 1.0;
-        if let RegionFieldOperatorSpec::SaturatingFlux {
-            choke_output_col: Some(choke_a),
-            ..
-        } = &field.operator
-        {
-            values[idx(slot, *choke_a)] = 0.75;
-            values[idx(slot, *choke_a + 1)] = 0.25;
-        }
+        values[idx(slot, choke_a)] = 0.75;
+        // The canonical sample authors only one choke readout; the generic operator's second
+        // choke input is the null spare column (no second authored impedance).
+        values[idx(slot, choke_b)] = 0.0;
     }
 
     let values_buffer = ctx

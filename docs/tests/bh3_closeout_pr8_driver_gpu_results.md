@@ -1,22 +1,39 @@
 # BH3 Closeout PR8 Driver/GPU Sample Results
 
-> **Artifact lifecycle: PROBATION** (fresh PR8 driver admit/install + GPU-resident exercise proof;
-> requires Design Authority review before merge; review for promotion, archive, or deletion by PR 9).
+> **Artifact lifecycle: PROBATION** (PR8 result report; review for promotion, archive, or deletion by
+> PR 9). The driver test guardrail itself is LIVE_GUARDRAIL after successful execution (see below).
 
-> **DA REVIEW REQUIRED BEFORE MERGE**
+> **DA REVIEW: APPROVED (2026-06-13, Opus / Design Authority).** Driver test executed and passed on a
+> real GPU adapter after two test-only bugs were found and fixed during DA review (see "DA review
+> findings" below).
 
 ## Verdict
 
-**PASS (pending CI driver test execution)** — canonical sample `ct_bh3_closeout_sample` admits through
+**PASS — driver test executed successfully.** Canonical sample `ct_bh3_closeout_sample` admits through
 existing generic driver install surfaces, honors default-off posture, and exercises bounded
 GPU-resident SaturatingFlux + commitment + PALMA W/D paths with compact evidence only. No new
 `simthing-sim` semantics, GPU kernels, movement, pathfinding, routes, predecessors, border, or
 frontline services were added.
 
-Local agent environment could not spawn `simthing-driver` integration test binaries (Windows os error
-740 — elevation required for all driver test executables linking the GPU stack). Compile verified via
-`cargo check -p simthing-driver --tests`; runtime gate deferred to CI for
-`cargo test -p simthing-driver --test ct_bh3_closeout_sample_install`.
+`cargo test -p simthing-driver --test ct_bh3_closeout_sample_install` → **2 passed; 0 failed** on a
+machine with a real GPU adapter. The Windows `os error 740` seen by the implementing agent was a UAC
+installer-detection heuristic triggered by the `..._install` binary name; it was worked around with
+`__COMPAT_LAYER=RunAsInvoker` (not a test defect). The test was **not** merged on a conditional/pending
+basis — it ran and passed before approval.
+
+## DA review findings (remediation applied)
+
+DA refused to accept the original "PASS (pending CI)" verdict and ran the blocked test. It **failed**,
+confirming the reviewer's concern. Two test-only defects were found and fixed in this PR (no production
+code changed):
+
+1. **W-compose column aliasing.** The test bridge set `choke_b_col = choke_a + 1`, which collided with
+   the PALMA `w_output_col`. Fixed via `spare_choke_b_col`, choosing the smallest column not claimed by
+   source / authored choke / W / D outputs as the generic operator's null second choke input.
+2. **Duplicate property registration.** `scenario_from_pack` pre-registered the game-mode properties
+   into the base scenario registry, then `install_atomic` registered them again → `DuplicateProperty`.
+   Fixed by following the `open_from_spec` convention (placeholder-only base registry; install registers
+   spec properties).
 
 ## Files changed
 
@@ -99,16 +116,18 @@ No full-field CPU decision readback. No canonical sample mutation to `enabled = 
 | Command | Result |
 |---|---|
 | `cargo test -p simthing-clausething --test ct_scenario_container` | 45 passed |
-| `cargo check -p simthing-driver --tests` | pass (includes new test binary) |
-| `cargo test -p simthing-driver --test ct_bh3_closeout_sample_install` | **not executed locally** (Windows os error 740 spawning driver test binary) |
+| `cargo test -p simthing-driver --test ct_bh3_closeout_sample_install` | **2 passed; 0 failed** (real GPU adapter; `__COMPAT_LAYER=RunAsInvoker` to bypass UAC installer-name heuristic) |
+| `cargo check -p simthing-driver --tests` | pass |
 | `cargo fmt --all -- --check` | pass |
 | `git diff --check` | pass |
 
 ## GPU availability / skip status
 
-- Test A runs without GPU (CPU install path); optional session check gated on adapter presence
-- Test B uses `GpuContext::new_blocking()` early return with stderr skip message when adapter unavailable
-- Local agent: driver test binary spawn blocked (elevation); GPU runtime not verified in-agent
+- Test A admits/installs via the CPU `install_atomic` path; the optional `open_from_spec` session check
+  is gated on adapter presence
+- Test B uses `GpuContext::new_blocking()` early return with a stderr skip message when no adapter exists
+- DA review machine had a real GPU adapter: Test B's GPU-resident SaturatingFlux + commitment + PALMA
+  min-plus + compact D probe all executed (not skipped)
 
 ## Docs updated
 
@@ -120,11 +139,25 @@ No full-field CPU decision readback. No canonical sample mutation to `enabled = 
 
 ## DA review status
 
-**REQUIRED BEFORE MERGE.** DA must confirm: no new `simthing-sim` semantics; no new runtime noun
-engine; no new GPU kernels; no CPU planner logic; no full-field CPU decision readback; no
-movement/pathfinding/route/predecessor/border/frontline semantics; PALMA remains W/D feedstock;
-SaturatingFlux remains field math; FIELD_POLICY remains threshold feedstock; Candidate F authority
-intact; proof/test lifecycle regime followed.
+**APPROVED (2026-06-13, Opus / Design Authority).** DA verified the full change scope is one test file
+plus docs — no `simthing-sim`, `simthing-gpu` kernel, or driver `src/` changes. Checklist confirmed:
+
+1. No new `simthing-sim` semantics — change scope excludes the crate entirely
+2. No new runtime noun engine
+3. No new GPU kernels — reuses `WImpedanceComposeOp`, `MinPlusTraversalFieldOp`,
+   `MinPlusTraversalDProbeOp`, `FirstSliceMappingSession`
+4. No CPU planner logic
+5. No full-field CPU decision readback — asserts `field_values.is_none()`,
+   `reduction_parent_value.is_none()`, `eml_output.is_none()`, traversal `values.is_none()`; only a
+   compact EML scalar, one threshold-event row, and one compact D-probe value are read
+6. No movement/pathfinding/route/predecessor/border/frontline semantics (forbidden-token grep enforced)
+7. PALMA remains W/D feedstock
+8. SaturatingFlux remains generic field math
+9. FIELD_POLICY remains threshold/commitment feedstock
+10. Candidate F untouched — min-plus is additive cost relaxation, not Euclidean magnitude; no
+    sqrt/length/distance/normalize/hypot in the exercised bridge
+11. Proof/test lifecycle regime followed
+12. The driver test actually runs and passes (2 passed; 0 failed)
 
 ## Remaining risks
 
