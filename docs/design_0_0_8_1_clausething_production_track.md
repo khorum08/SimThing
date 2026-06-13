@@ -461,3 +461,12 @@ ClauseScript `scenario` documents lower to a generic `GameModeSpec`, a root `Wor
 ids. This is parse/lower scaffolding only. It does not add adjacency/link semantics, PALMA
 feedstock, SaturatingFlux authoring closure, FIELD_POLICY unification, driver install closure,
 runtime behavior, GPU kernels, Bevy/editor code, or any `simthing-sim` awareness.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR3).** The closed 0.0.8.1 track remains closed.
+`hydrate_scenario` now admits top-level `link = { from to }` declarations only between scenario
+locations and lowers them to bounded `HydratedScenarioGridMetadata`: row-major square-grid cell
+placements keyed by scenario install-target id plus canonical N4-adjacent links. This is
+ClauseThing admission/import metadata shaped for later RegionField placement consumers. It is not
+a graph object, route/path system, movement engine, runtime topology service, driver install
+change, GPU kernel, Bevy/editor feature, or `simthing-sim` concept. Non-grid arbitrary topology
+stays deferred to a future topology-spec rung. PR3 carries the 0.0.8.2 DA review gate before merge.

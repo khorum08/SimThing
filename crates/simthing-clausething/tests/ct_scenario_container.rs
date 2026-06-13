@@ -1,14 +1,22 @@
-//! BH3-CLOSEOUT PR2 scenario-container grammar/lowering guardrails.
+//! BH3-CLOSEOUT PR2/PR3 scenario-container grammar/lowering guardrails.
 
-use simthing_clausething::{hydrate_scenario, parse_raw_document};
+use simthing_clausething::{
+    HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,
+};
 use simthing_core::{SimThingKind, TransformOp};
 use simthing_spec::InstallTargetSpec;
 
 const FIXTURE: &str = include_str!("fixtures/ct_scenario_container_minimal.clause");
+const LINK_FIXTURE: &str = include_str!("fixtures/ct_scenario_container_with_links.clause");
 
 fn hydrate_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document = parse_raw_document(FIXTURE.as_bytes()).expect("parse scenario fixture");
     hydrate_scenario(&document).expect("hydrate scenario fixture")
+}
+
+fn hydrate_link_fixture() -> simthing_clausething::HydratedScenarioPack {
+    let document = parse_raw_document(LINK_FIXTURE.as_bytes()).expect("parse linked fixture");
+    hydrate_scenario(&document).expect("hydrate linked fixture")
 }
 
 #[test]
@@ -39,6 +47,7 @@ fn minimal_multi_location_scenario_parses_and_lowers() {
     assert_eq!(pack.game_mode.id, "bh3_closeout_pr2_minimal");
     assert_eq!(pack.game_mode.properties.len(), 3);
     assert_eq!(pack.game_mode.overlays.len(), 2);
+    assert!(pack.grid_metadata.links.is_empty());
 }
 
 #[test]
@@ -78,6 +87,153 @@ fn location_properties_overlays_and_children_survive_lowering() {
 }
 
 #[test]
+fn scenario_links_lower_to_bounded_grid_metadata() {
+    let pack = hydrate_link_fixture();
+
+    assert_eq!(pack.scenario_id, "bh3_closeout_pr3_links");
+    assert_eq!(pack.root.children.len(), 3);
+    assert_eq!(pack.grid_metadata.grid_size, 2);
+    assert_eq!(pack.grid_metadata.max_fanout, 4);
+    assert_eq!(
+        pack.grid_metadata.links,
+        vec![HydratedScenarioLink {
+            from: "alpha".into(),
+            to: "beta".into()
+        }]
+    );
+    assert_eq!(
+        pack.grid_metadata.placements,
+        vec![
+            HydratedScenarioGridPlacement {
+                location_id: "alpha".into(),
+                target_id: "alpha".into(),
+                row: 0,
+                col: 0
+            },
+            HydratedScenarioGridPlacement {
+                location_id: "beta".into(),
+                target_id: "beta".into(),
+                row: 0,
+                col: 1
+            },
+            HydratedScenarioGridPlacement {
+                location_id: "gamma".into(),
+                target_id: "gamma".into(),
+                row: 1,
+                col: 0
+            }
+        ]
+    );
+    assert!(pack.install_targets.contains_key("alpha"));
+    assert!(pack.install_targets.contains_key("beta"));
+
+    let json = serde_json::to_string(&pack.game_mode).expect("serialize game mode");
+    assert!(!json.contains("grid_metadata"));
+    assert!(!json.contains("\"links\""));
+}
+
+#[test]
+fn duplicate_and_reversed_links_are_canonicalized_deterministically() {
+    let source = br#"
+scenario = duplicate_links {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    link = { from = beta to = alpha }
+    link = { from = alpha to = beta }
+    link = { from = beta to = alpha }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse duplicate links scenario");
+    let pack = hydrate_scenario(&document).expect("hydrate duplicate links scenario");
+
+    assert_eq!(
+        pack.grid_metadata.links,
+        vec![HydratedScenarioLink {
+            from: "alpha".into(),
+            to: "beta".into()
+        }]
+    );
+}
+
+#[test]
+fn link_unknown_endpoint_is_rejected() {
+    let source = br#"
+scenario = unknown_link_endpoint {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    link = { from = alpha to = delta }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse unknown endpoint scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("link endpoint `delta` is not a scenario location"),
+        "{err}"
+    );
+}
+
+#[test]
+fn self_link_is_rejected_with_distinct_endpoint_error() {
+    let source = br#"
+scenario = self_link_rejected {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    link = { from = alpha to = alpha }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse self-link scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("link endpoints must be distinct scenario locations"),
+        "{err}"
+    );
+}
+
+#[test]
+fn link_fanout_cap_is_rejected_before_any_topology_runtime_exists() {
+    let source = br#"
+scenario = too_many_links {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    location = gamma { name = "Gamma" }
+    location = delta { name = "Delta" }
+    location = epsilon { name = "Epsilon" }
+    location = zeta { name = "Zeta" }
+    link = { from = alpha to = beta }
+    link = { from = alpha to = gamma }
+    link = { from = alpha to = delta }
+    link = { from = alpha to = epsilon }
+    link = { from = alpha to = zeta }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse fanout scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("above PR3 N4 cap"), "{err}");
+}
+
+#[test]
+fn non_n4_links_are_rejected_instead_of_becoming_arbitrary_topology() {
+    let source = br#"
+scenario = diagonal_link {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    location = gamma { name = "Gamma" }
+    location = delta { name = "Delta" }
+    link = { from = alpha to = delta }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse diagonal link scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("outside PR3 row-major N4 grid adjacency"),
+        "{err}"
+    );
+}
+
+#[test]
 fn game_mode_debug_json_is_stable_for_generic_surfaces() {
     let pack = hydrate_fixture();
     let json = serde_json::to_string(&pack.game_mode).expect("serialize game mode");
@@ -107,16 +263,21 @@ scenario = duplicate_location_ids {
 }
 
 #[test]
-fn link_route_path_and_predecessor_are_not_pr2_grammar() {
+fn route_path_movement_and_arbitrary_topology_are_not_pr3_grammar() {
     for forbidden in [
-        r#"link = { from = "alpha" to = "beta" }"#,
         r#"route = { from = "alpha" to = "beta" }"#,
         r#"path = { from = "alpha" to = "beta" }"#,
         r#"predecessor = "alpha""#,
+        r#"movement = { from = "alpha" to = "beta" }"#,
+        r#"border = "north""#,
+        r#"frontline = "north""#,
+        r#"pathfinding = yes"#,
+        r#"arbitrary_graph = { node = "alpha" }"#,
+        r#"non_grid_topology = yes"#,
     ] {
         let source = format!(
             r#"
-scenario = forbidden_pr2_field {{
+scenario = forbidden_pr3_field {{
     location = alpha {{ name = "Alpha" }}
     {forbidden}
 }}
@@ -126,10 +287,30 @@ scenario = forbidden_pr2_field {{
         let err = hydrate_scenario(&document).unwrap_err();
         assert!(
             err.to_string()
-                .contains("outside PR2 scenario-container grammar"),
+                .contains("outside PR3 scenario-container grammar"),
             "{err}"
         );
     }
+}
+
+#[test]
+fn nested_link_is_rejected_so_links_remain_scenario_level_metadata() {
+    let source = br#"
+scenario = nested_link {
+    location = alpha {
+        name = "Alpha"
+        link = { from = alpha to = beta }
+    }
+    location = beta { name = "Beta" }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse nested link scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("outside PR3 scenario-container grammar"),
+        "{err}"
+    );
 }
 
 #[test]
