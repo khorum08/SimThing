@@ -26,7 +26,7 @@
 | `hydrate_resource_flow` | `ResourceFlowSpec` | CLOSED |
 | capability / tradition trees (CT-1c) | `CapabilityTreeSpec` | CLOSED |
 | All parsing | jomini text path → `RawDocument` (`parse_raw_document`) | CLOSED |
-| `hydrate_scenario` (PR2) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids | **PASS / PROBATION evidence** |
+| `hydrate_scenario` (PR2/PR3) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata | **PASS / PROBATION evidence; PR3 DA REVIEW REQUIRED BEFORE MERGE** |
 
 **Driver/runtime spine (0.0.8.1, accepted):** `open_from_spec` installs a `GameModeSpec`; the
 session loop runs RF arena bands → on-device pressure scatter → stencil heatmap (incl.
@@ -34,10 +34,11 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The remaining closure gap (precise after PR2):** ClauseThing now has the first
+**The remaining closure gap (precise after PR3):** ClauseThing now has the first
 scenario-container parse/lower surface for metadata, locations, properties, overlays, children,
-and existing scenario-listed install-target ids. It still has **no adjacency/link lowering**,
-**no authored PALMA W/D binding from ClauseScript**, and **no canonical end-to-end sample**
+existing scenario-listed install-target ids, and bounded top-level `link` declarations lowered to
+row-major square-grid cell-placement metadata. It still has **no authored PALMA W/D binding from
+ClauseScript**, and **no canonical end-to-end sample**
 (parse → lower → admit → install → exercise) as one scenario. These are the spine of the remaining
 ladder; everything else is guardrail-hardening and lifecycle hygiene.
 
@@ -162,6 +163,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 |---|---|---|---|
 | `docs/tests/bh3_authoring_0_results.md` | PROBATION | Fresh BH-3 authoring bridge proof; supports PR 4 promotion | Keep under `docs/tests/`; review at PR 4/9 |
 | `docs/tests/bh3_closeout_pr2_scenario_container_results.md` | PROBATION | Fresh PR2 scenario-container parse/lower proof; supports PR 3/7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
+| `docs/tests/bh3_closeout_pr3_link_topology_results.md` | PROBATION | Fresh PR3 scenario link/grid-placement proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -251,6 +253,17 @@ Docs: ClauseThing_Spec adjacency note + the A2 "no graph object" rule.
 Artifact cleanup: none.
 Acceptance: links lower to bounded grid metadata; grammar has no route/edge production.
 Stop conditions: a consumer needs non-grid arbitrary-graph adjacency (→ defer per A2; do not build).
+
+**Status: PASS / DA REVIEW REQUIRED BEFORE MERGE (2026-06-13, Codex PR 3).** Added top-level
+`link = { from to }` grammar to `hydrate_scenario` and lowered it into
+`HydratedScenarioGridMetadata`: deterministic square-grid row/column placements keyed by scenario
+install-target ids plus canonical, de-duplicated N4 links. Validation rejects unknown endpoints,
+self-links, nested links, fanout above the N4 cap, non-N4/diagonal links, and the route/path/
+predecessor/movement/border/frontline/pathfinding/arbitrary-graph vocabulary. No `simthing-spec`,
+driver, `simthing-sim`, PALMA, SaturatingFlux, FIELD_POLICY, GPU, Bevy/editor, or Candidate-F
+surfaces changed. Result artifact:
+`docs/tests/bh3_closeout_pr3_link_topology_results.md` (PROBATION). Per A2/section 5, the PR
+requires design-authority review before merge.
 
 ### PR 4 — BH-3 SaturatingFlux authoring closure
 Owner: Cursor

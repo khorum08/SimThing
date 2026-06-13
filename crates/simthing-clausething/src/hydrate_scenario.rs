@@ -1,8 +1,9 @@
-//! PR2 scenario-container hydration over existing generic authoring surfaces.
+//! PR2/PR3 scenario-container hydration over existing generic authoring surfaces.
 //!
 //! This module composes a ClauseScript `scenario` document into a root
-//! `SimThing` tree plus `GameModeSpec` property/overlay declarations. It does
-//! not add driver/runtime semantics, adjacency, movement, or pathfinding.
+//! `SimThing` tree plus `GameModeSpec` property/overlay declarations and bounded
+//! PR3 grid placement/link metadata. It does not add driver/runtime semantics,
+//! arbitrary graph topology, movement, routes, or pathfinding.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -19,7 +20,26 @@ use simthing_spec::spec::property::PropertySpec;
 use crate::error::HydrateError;
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawValue};
 
-const FORBIDDEN_PR2_FIELDS: &[&str] = &[
+pub const PR3_MAX_LINK_FANOUT: usize = 4;
+
+const FORBIDDEN_SCENARIO_FIELDS: &[&str] = &[
+    "adjacency",
+    "edge",
+    "route",
+    "path",
+    "predecessor",
+    "movement",
+    "movement_order",
+    "waypoint",
+    "destination",
+    "frontline",
+    "border",
+    "pathfinding",
+    "arbitrary_graph",
+    "non_grid_topology",
+];
+
+const FORBIDDEN_NODE_FIELDS: &[&str] = &[
     "link",
     "adjacency",
     "edge",
@@ -30,6 +50,11 @@ const FORBIDDEN_PR2_FIELDS: &[&str] = &[
     "movement_order",
     "waypoint",
     "destination",
+    "frontline",
+    "border",
+    "pathfinding",
+    "arbitrary_graph",
+    "non_grid_topology",
 ];
 
 /// Scenario-container hydration result.
@@ -45,6 +70,10 @@ pub struct HydratedScenarioPack {
     /// Existing driver `Scenario` surface consumes this shape; no driver
     /// dependency is required at the ClauseThing front-end layer.
     pub install_targets: BTreeMap<String, Vec<SimThingId>>,
+    /// PR3 bounded grid metadata for scenario locations. This is authoring /
+    /// admission feedstock shaped like RegionField pressure placements, not a
+    /// runtime topology object.
+    pub grid_metadata: HydratedScenarioGridMetadata,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -57,6 +86,28 @@ pub struct HydratedScenarioNode {
     pub properties: Vec<PropertySpec>,
     pub overlays: Vec<OverlaySpec>,
     pub children: Vec<HydratedScenarioNode>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedScenarioGridMetadata {
+    pub grid_size: u32,
+    pub max_fanout: usize,
+    pub placements: Vec<HydratedScenarioGridPlacement>,
+    pub links: Vec<HydratedScenarioLink>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedScenarioGridPlacement {
+    pub location_id: String,
+    pub target_id: String,
+    pub row: u32,
+    pub col: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct HydratedScenarioLink {
+    pub from: String,
+    pub to: String,
 }
 
 pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, HydrateError> {
@@ -90,9 +141,10 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     seen_node_ids.insert(scenario_id.clone());
     let mut seen_property_ids = BTreeSet::new();
     let mut seen_overlay_ids = BTreeSet::new();
+    let mut raw_links = Vec::new();
 
     for field in &body.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_scenario_field(field)?;
         match field.key.text.as_str() {
             "id" => {}
             "metadata" => metadata = parse_metadata_block(field)?,
@@ -106,6 +158,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                 )?;
                 locations.push(node);
             }
+            "link" => raw_links.push(parse_link(field)?),
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported scenario field `{other}`"),
@@ -120,6 +173,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
             "scenario requires at least one `location` block",
         ));
     }
+
+    let grid_metadata = build_grid_metadata(&locations, raw_links)?;
 
     let display_name = metadata
         .get("display_name")
@@ -174,6 +229,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         root,
         root_node,
         install_targets,
+        grid_metadata,
     })
 }
 
@@ -194,7 +250,7 @@ fn parse_node(
     let mut children = Vec::new();
 
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         match field.key.text.as_str() {
             "id" => {
                 let explicit_id = read_scalar_text(field, "id")?;
@@ -275,7 +331,7 @@ fn parse_metadata_block(property: &RawProperty) -> Result<BTreeMap<String, Strin
     let block = require_block(property, "metadata")?;
     let mut metadata = BTreeMap::new();
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         if metadata
             .insert(
                 field.key.text.clone(),
@@ -299,7 +355,7 @@ fn parse_properties_block(
     let block = require_block(property, "properties")?;
     let mut properties = Vec::new();
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         if field.key.text != "property" {
             return Err(HydrateError::new_spanned(
                 format!("unsupported properties field `{}`", field.key.text),
@@ -327,7 +383,7 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
     let mut description = String::new();
 
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         match field.key.text.as_str() {
             "id" => id = Some(read_scalar_text(field, "id")?),
             "namespace" => namespace = Some(read_scalar_text(field, "namespace")?),
@@ -361,7 +417,7 @@ fn parse_overlays_block(
     let block = require_block(property, "overlays")?;
     let mut overlays = Vec::new();
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         if field.key.text != "modifier" {
             return Err(HydrateError::new_spanned(
                 format!("unsupported overlays field `{}`", field.key.text),
@@ -392,7 +448,7 @@ fn parse_modifier_spec(
     let mut amount_add = None;
 
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         match field.key.text.as_str() {
             "id" => id = Some(read_scalar_text(field, "id")?),
             "display_name" => display_name = read_scalar_text(field, "display_name")?,
@@ -450,7 +506,7 @@ fn parse_children_block(
     let block = require_block(property, "children")?;
     let mut children = Vec::new();
     for field in &block.properties {
-        reject_forbidden_pr2_field(field)?;
+        reject_forbidden_node_field(field)?;
         if field.key.text != "child" {
             return Err(HydrateError::new_spanned(
                 format!("unsupported children field `{}`", field.key.text),
@@ -466,6 +522,139 @@ fn parse_children_block(
         )?);
     }
     Ok(children)
+}
+
+fn parse_link(property: &RawProperty) -> Result<HydratedScenarioLink, HydrateError> {
+    let block = require_block(property, "link")?;
+    let mut from = None;
+    let mut to = None;
+
+    for field in &block.properties {
+        reject_forbidden_node_field(field)?;
+        match field.key.text.as_str() {
+            "from" => from = Some(read_scalar_text(field, "from")?),
+            "to" => to = Some(read_scalar_text(field, "to")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported link field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    Ok(canonical_link(
+        require_field(from, "from", property)?,
+        require_field(to, "to", property)?,
+        property,
+    )?)
+}
+
+fn build_grid_metadata(
+    locations: &[HydratedScenarioNode],
+    raw_links: Vec<HydratedScenarioLink>,
+) -> Result<HydratedScenarioGridMetadata, HydrateError> {
+    let grid_size = smallest_square_edge(locations.len());
+    let mut location_ids = BTreeSet::new();
+    let mut placements = Vec::new();
+    let mut placement_by_id = BTreeMap::new();
+
+    for (index, location) in locations.iter().enumerate() {
+        location_ids.insert(location.id.clone());
+        let index = index as u32;
+        let placement = HydratedScenarioGridPlacement {
+            location_id: location.id.clone(),
+            target_id: location.id.clone(),
+            row: index / grid_size,
+            col: index % grid_size,
+        };
+        placement_by_id.insert(location.id.clone(), (placement.row, placement.col));
+        placements.push(placement);
+    }
+
+    let mut links = BTreeSet::new();
+    let mut fanout: BTreeMap<String, usize> = BTreeMap::new();
+    for link in raw_links {
+        if !location_ids.contains(&link.from) {
+            return Err(HydrateError::new(format!(
+                "link endpoint `{}` is not a scenario location",
+                link.from
+            )));
+        }
+        if !location_ids.contains(&link.to) {
+            return Err(HydrateError::new(format!(
+                "link endpoint `{}` is not a scenario location",
+                link.to
+            )));
+        }
+        if links.insert(link.clone()) {
+            *fanout.entry(link.from.clone()).or_default() += 1;
+            *fanout.entry(link.to.clone()).or_default() += 1;
+        }
+    }
+
+    for (location_id, count) in fanout {
+        if count > PR3_MAX_LINK_FANOUT {
+            return Err(HydrateError::new(format!(
+                "link fanout for `{location_id}` is {count}, above PR3 N4 cap {PR3_MAX_LINK_FANOUT}"
+            )));
+        }
+    }
+
+    let links: Vec<_> = links.into_iter().collect();
+    for link in &links {
+        let from = placement_by_id
+            .get(&link.from)
+            .expect("validated link endpoint has a placement");
+        let to = placement_by_id
+            .get(&link.to)
+            .expect("validated link endpoint has a placement");
+        if !is_n4_neighbor(*from, *to) {
+            return Err(HydrateError::new(format!(
+                "link `{}` -> `{}` is outside PR3 row-major N4 grid adjacency",
+                link.from, link.to
+            )));
+        }
+    }
+
+    Ok(HydratedScenarioGridMetadata {
+        grid_size,
+        max_fanout: PR3_MAX_LINK_FANOUT,
+        placements,
+        links,
+    })
+}
+
+fn smallest_square_edge(count: usize) -> u32 {
+    let count = count as u32;
+    let mut edge: u32 = 1;
+    while edge.saturating_mul(edge) < count {
+        edge += 1;
+    }
+    edge
+}
+
+fn is_n4_neighbor(left: (u32, u32), right: (u32, u32)) -> bool {
+    (left.0 == right.0 && left.1.abs_diff(right.1) == 1)
+        || (left.1 == right.1 && left.0.abs_diff(right.0) == 1)
+}
+
+fn canonical_link(
+    from: String,
+    to: String,
+    property: &RawProperty,
+) -> Result<HydratedScenarioLink, HydrateError> {
+    if from == to {
+        return Err(HydrateError::new_spanned(
+            "link endpoints must be distinct scenario locations",
+            Some(property.key.span.clone()),
+        ));
+    }
+    if from < to {
+        Ok(HydratedScenarioLink { from, to })
+    } else {
+        Ok(HydratedScenarioLink { from: to, to: from })
+    }
 }
 
 fn flatten_node(
@@ -558,11 +747,22 @@ fn require_block<'a>(property: &'a RawProperty, field: &str) -> Result<&'a RawBl
     Ok(block)
 }
 
-fn reject_forbidden_pr2_field(property: &RawProperty) -> Result<(), HydrateError> {
+fn reject_forbidden_scenario_field(property: &RawProperty) -> Result<(), HydrateError> {
     let key = property.key.text.as_str();
-    if FORBIDDEN_PR2_FIELDS.contains(&key) {
+    if FORBIDDEN_SCENARIO_FIELDS.contains(&key) {
         return Err(HydrateError::new_spanned(
-            format!("`{key}` is outside PR2 scenario-container grammar"),
+            format!("`{key}` is outside PR3 scenario-container grammar"),
+            Some(property.key.span.clone()),
+        ));
+    }
+    Ok(())
+}
+
+fn reject_forbidden_node_field(property: &RawProperty) -> Result<(), HydrateError> {
+    let key = property.key.text.as_str();
+    if FORBIDDEN_NODE_FIELDS.contains(&key) {
+        return Err(HydrateError::new_spanned(
+            format!("`{key}` is outside PR3 scenario-container grammar"),
             Some(property.key.span.clone()),
         ));
     }

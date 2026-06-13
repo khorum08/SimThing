@@ -189,10 +189,10 @@ golden-file testing), a write API (round-trip / canonicalization), and a fuzzed,
 >1 GB/s parser. Binary save format support exists in `jomini` but is permanently
 out of scope for ClauseThing — we ingest authoring `.txt`, not save games (§10).
 
-### 3.1 Scenario containers (0.0.8.2 PR2)
+### 3.1 Scenario containers (0.0.8.2 PR2/PR3)
 
 The closeout ladder adds a narrow scenario-container importer as a composing front end, not as a
-new runtime concept. The admitted PR2 shape uses the existing jomini header-block idiom:
+new runtime concept. The admitted shape uses the existing jomini header-block idiom:
 
 ```clause
 scenario = sample_scenario {
@@ -222,6 +222,13 @@ scenario = sample_scenario {
             }
         }
     }
+    location = beta {
+        name = "Beta"
+    }
+    link = {
+        from = alpha
+        to = beta
+    }
 }
 ```
 
@@ -232,10 +239,18 @@ scenario = sample_scenario {
 - ClauseThing retains a `HydratedScenarioNode` tree so authored ids, properties, overlays, and
   children survive before driver admission/registry compilation.
 - Standalone overlays install through existing `InstallTargetSpec::ScenarioListed` ids.
+- PR3 top-level `link` declarations lower to `HydratedScenarioGridMetadata`: bounded square-grid
+  cell placements keyed by scenario install-target id plus canonical N4-adjacent links. This is
+  admission/import metadata shaped for RegionField pressure placement, not a runtime topology
+  object.
 
-PR2 deliberately has no `link`, adjacency, route, path, predecessor, movement, PALMA, field
-operator, FIELD_POLICY, GPU, Bevy, or editor grammar. Those are later 0.0.8.2 rungs. `simthing-sim`
-remains unaware of ClauseThing.
+PR3 admits links only between top-level scenario locations; endpoints must exist, self-links are
+rejected, duplicate/reversed links canonicalize deterministically, fanout is capped at the N4
+degree, and row-major cell placement must make every explicit link an N4 neighbor. There is still
+no `route`, `path`, `edge`, `predecessor`, `waypoint`, `movement_order`, `destination`, `border`,
+`frontline`, pathfinding, arbitrary graph, PALMA, field operator, FIELD_POLICY, GPU, Bevy, or
+editor grammar in the scenario container. Non-grid topology is deferred to a future topology-spec
+rung. `simthing-sim` remains unaware of ClauseThing.
 
 ---
 

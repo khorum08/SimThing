@@ -1,0 +1,23 @@
+scenario = bh3_closeout_pr3_links {
+    metadata = {
+        display_name = "BH3 Closeout PR3 Linked Scenario"
+        description = "Scenario link grammar lowering into bounded grid metadata."
+    }
+
+    location = alpha {
+        name = "Alpha Basin"
+    }
+
+    location = beta {
+        name = "Beta Shelf"
+    }
+
+    location = gamma {
+        name = "Gamma Reach"
+    }
+
+    link = {
+        from = alpha
+        to = beta
+    }
+}
