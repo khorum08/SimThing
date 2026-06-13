@@ -115,7 +115,7 @@ PALMA-adjacent paths follow PATH-track Candidate-F discipline.
 > See [`fable_review_0_0_8_1_result.md`](fable_review_0_0_8_1_result.md) §6/§8.
 
 Sentinel inventory: [`r1_default_workspace_purge_results.md`](r1_default_workspace_purge_results.md).
-Prior R1C-B/C-only note (superseded): [`r1c_default_gate_cleanup_results.md`](r1c_default_gate_cleanup_results.md).
+Prior R1C-B/C-only note (superseded): [`r1c_default_gate_cleanup_results.md`](../archive/superseded_tests/r1c_default_gate_cleanup_results.md).
 
 ---
 
@@ -134,7 +134,7 @@ Prior R1C-B/C-only note (superseded): [`r1c_default_gate_cleanup_results.md`](r1
 
 | Artifact | Disposition |
 |---|---|
-| [`r1c_default_gate_cleanup_results.md`](r1c_default_gate_cleanup_results.md) | Superseded by full R1 purge report; kept for history |
+| [`r1c_default_gate_cleanup_results.md`](../archive/superseded_tests/r1c_default_gate_cleanup_results.md) | Superseded by full R1 purge report; archived under `docs/archive/superseded_tests/` |
 | [`runtime_0080_0_r1a_next_tick_authority_results.md`](runtime_0080_0_r1a_next_tick_authority_results.md) | Historical R1a closure; proof integration tests deleted |
 | `docs/archive/superseded_tests/runtime_0080_0_r1*` | Historical proof markdown only |
 | `phase_m_jit_sqrt_exact5f_exhaustive_batches.log` | **Deleted** (scratch log; Phase-M sweep retained as `.md`) |
