@@ -1,7 +1,7 @@
 # BH3 Closeout PR7 Sample Import Results
 
-> **Artifact lifecycle: PROBATION** (fresh PR7 canonical sample import proof; review for promotion,
-> archive, or deletion by PR 9).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR7 canonical sample import proof; promoted by PR9 for
+> PR10 closeout citation).
 
 ## Verdict
 
@@ -25,14 +25,14 @@ default-off posture preserved and no runtime/movement/pathfinding semantics.
 
 | Artifact | Classification | Action |
 |---|---|---|
-| `docs/tests/bh3_closeout_pr2..pr6_*` | PROBATION | Retained; not superseded by PR7 |
+| `docs/tests/bh3_closeout_pr2..pr6_*` | ARCHIVE | Moved to `docs/archive/superseded_tests/` by PR9; superseded by canonical sample + `ct_scenario_container` battery |
 | Fable/BH2 review packets | CURRENT_EVIDENCE | Retained |
 | `ct_scenario_container.rs` canonical sample tests | LIVE_GUARDRAIL | Extended (45 tests) |
 | Scratch logs / duplicate reports / `target/` / worktrees | DELETE | None found |
 
 ## Deleted/superseded artifacts
 
-None. PR2–PR6 per-PR reports remain PROBATION evidence for PR9 promotion review.
+None in PR7. PR9 archived PR2–PR6 per-PR reports (see `bh3_closeout_pr9_test_battery_results.md`).
 
 ## Canonical sample path
 

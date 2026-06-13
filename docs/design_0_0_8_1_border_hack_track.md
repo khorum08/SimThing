@@ -219,24 +219,24 @@ Fixtures original and synthetic. No sqrt anywhere in this track (exact-sqrt rule
 | BH-2S-API-DOC consumer service surface | DOCUMENTED / PASS | §11 (this doc) |
 | BH-2C PALMA feedstock proof | IMPLEMENTED / PASS | [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md) |
 | BH-2D CT-4b 200×200 fixture proof | IMPLEMENTED / PASS | [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md) |
-| BH-3-AUTHORING-0 ClauseThing field-operator bridge | IMPLEMENTED / PASS | [`tests/bh3_authoring_0_results.md`](tests/bh3_authoring_0_results.md) |
-| BH-3 scenario-container closure (0.0.8.2 PR4) | IMPLEMENTED / PASS | [`tests/bh3_closeout_pr4_field_operator_results.md`](tests/bh3_closeout_pr4_field_operator_results.md) |
+| BH-3-AUTHORING-0 ClauseThing field-operator bridge | IMPLEMENTED / PASS | [`../archive/superseded_tests/bh3_authoring_0_results.md`](../archive/superseded_tests/bh3_authoring_0_results.md) (ARCHIVE) |
+| BH-3 scenario-container closure (0.0.8.2 PR4) | IMPLEMENTED / PASS | [`../archive/superseded_tests/bh3_closeout_pr4_field_operator_results.md`](../archive/superseded_tests/bh3_closeout_pr4_field_operator_results.md) (ARCHIVE); guardrail: `ct_scenario_container` |
 
 **BH-3-AUTHORING-0 (2026-06-11):** Adds a ClauseThing authoring/lowering surface for existing
 BH/PALMA field operators (`saturating_flux`, `field_impedance`, `field_stress`,
 `threshold_feedstock`). Lowers into generic `simthing-spec` admission surfaces and existing
 driver GPU bridges only. Does **not** add runtime semantics, movement/pathfinding/border
 services, or ClauseThing visibility in `simthing-sim`. Does **not** change Candidate F authority.
-New proof artifact [`tests/bh3_authoring_0_results.md`](tests/bh3_authoring_0_results.md) is
-**PROBATION** unless promoted later.
+Historical proof artifact [`../archive/superseded_tests/bh3_authoring_0_results.md`](../archive/superseded_tests/bh3_authoring_0_results.md) is
+**ARCHIVE** (superseded by PR4/PR7/PR9 closeout battery).
 
 **BH-3 scenario-container closure (2026-06-13, 0.0.8.2 PR4):** `hydrate_scenario` now composes
 one scenario-contained `field_operator` block through the existing BH-3 hydrator into generic
 `RegionFieldSpec` with hydrate-time SaturatingFlux guardrails (missing `u_sat`, non-finite values,
 `chi > 0.25`, bad choke bindings) and default-off posture preserved. PALMA W/D authoring,
 FIELD_POLICY threshold unification, driver install closure, GPU changes, and border/frontline/
-movement/pathfinding semantics were not added. Primary proof:
-[`tests/bh3_closeout_pr4_field_operator_results.md`](tests/bh3_closeout_pr4_field_operator_results.md)
+movement/pathfinding semantics were not added. Primary historical proof (ARCHIVE):
+[`../archive/superseded_tests/bh3_closeout_pr4_field_operator_results.md`](../archive/superseded_tests/bh3_closeout_pr4_field_operator_results.md)
 (**PROBATION**).
 
 **Track-forward (2026-06-11):** Named consumer `CT-4b_Local_Automata_W_Feedstock` opens BH-2.
@@ -667,9 +667,15 @@ batteries must not be reintroduced as default tests. The BH track does not depen
 scaffolding. Reports: [`tests/r1_default_workspace_purge_results.md`](tests/r1_default_workspace_purge_results.md),
 [`tests/fable_review_bh2_track_packet.md`](tests/fable_review_bh2_track_packet.md) (FABLE-REVIEW-FREEZE).
 
-**0.0.8.2 closeout addendum (2026-06-13, PR8 — DA REVIEW REQUIRED BEFORE MERGE).** The canonical
+**0.0.8.2 closeout addendum (2026-06-13, PR8 — DA APPROVED).** The canonical
 ClauseThing closeout sample now admits/installs through existing driver-facing SaturatingFlux /
 choke-column surfaces and exercises GPU-resident field math via the first-slice mapping harness. PALMA
 W/D remains feedstock consumed by the existing BH-2C `WImpedanceComposeOp` → min-plus bridge — not a
-border or frontline service. No new GPU kernels or semantic WGSL. **Do not merge until Design
-Authority reviews the final diff.**
+border or frontline service. No new GPU kernels or semantic WGSL.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR9).** PR9 consolidated the final closeout guardrail
+battery. Active proof commands: `cargo test -p simthing-clausething --test ct_scenario_container`
+(PR2–PR7 surfaces) and `cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver` (PR8
+driver/GPU). Per-PR2–PR6 result reports and PR8-WIN-HYGIENE note are **ARCHIVE** under
+`docs/archive/superseded_tests/`. PR7/PR8 result reports remain **CURRENT_EVIDENCE** for PR10. No
+proof theater remains active. PR10 closeout report + DA sign-off remains.

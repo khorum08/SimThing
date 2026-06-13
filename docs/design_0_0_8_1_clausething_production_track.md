@@ -514,5 +514,14 @@ evidence only. Default-off posture is preserved; the canonical sample is not mut
 `enabled = true`. The PR8 driver test executed and passed on a real GPU adapter (2 passed) after Design
 Authority review caught and fixed two test-only bugs. This is runtime-feedstock closure proof only —
 not movement, pathfinding, routes, predecessors, border/frontline services, new GPU kernels, CPU
-planner logic, full-field CPU decision readback, Bevy/editor work, or `simthing-sim` awareness. PR9
-battery consolidation remains.
+planner logic, full-field CPU decision readback, Bevy/editor work, or `simthing-sim` awareness. PR10
+closeout report + DA sign-off remains.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR9).** PR9 consolidated the final closeout guardrail
+battery without adding runtime/GPU/editor semantics. **LIVE_GUARDRAIL commands:**
+`cargo test -p simthing-clausething --test ct_scenario_container` (parse/lower for canonical sample +
+PR2–PR7 surfaces) and `cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver` (PR8
+admit/install + compact GPU evidence). Per-PR2–PR6 result reports and PR8-WIN-HYGIENE note moved to
+**ARCHIVE** under `docs/archive/superseded_tests/`. PR7 and PR8 result reports remain
+**CURRENT_EVIDENCE** for PR10. No proof theater remains active; no unclassified closeout scaffolding
+remains active.

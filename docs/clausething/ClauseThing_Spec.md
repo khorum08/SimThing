@@ -343,11 +343,23 @@ one FIELD_POLICY `commitment`. Import tests prove parse → lower coherence into
 no driver admit/install, GPU exercise, movement, pathfinding, routes, predecessors, borders,
 frontlines, or `simthing-sim` awareness.
 
-**PR8 driver closure (0.0.8.2 — DA REVIEW REQUIRED BEFORE MERGE):** focused driver tests in
+**PR8 driver closure (0.0.8.2 — DA APPROVED):** focused driver tests in
 `crates/simthing-driver/tests/ct_bh3_closeout_sample_driver.rs` prove the same canonical sample
 admits/installs through existing generic driver surfaces and exercises GPU-resident SaturatingFlux +
 commitment + PALMA paths with compact evidence only. Default-off posture is preserved; no new GPU
-kernels or `simthing-sim` semantics.
+kernels or `simthing-sim` semantics. Windows-safe command:
+`cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver`.
+
+**PR9 closeout battery (0.0.8.2):** PR9 consolidated fast guardrails without new runtime semantics.
+Primary commands:
+
+```text
+cargo test -p simthing-clausething --test ct_scenario_container
+cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
+```
+
+Per-PR2–PR6 result reports are **ARCHIVE** under `docs/archive/superseded_tests/`. PR7/PR8 result
+reports remain **CURRENT_EVIDENCE** for PR10. No proof theater remains active.
 
 ---
 

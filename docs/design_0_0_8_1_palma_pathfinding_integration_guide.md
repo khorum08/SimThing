@@ -488,10 +488,14 @@ BH-2C `GpuInterleavedW` → min-plus `d_col`/`w_col` bridge. This is W/D **feeds
 only** — not pathfinding, movement, routes, predecessors, or a PALMA runtime service. Driver
 install and GPU exercise remain PR8; FIELD_POLICY unification remains PR6.
 
-**0.0.8.2 closeout addendum (2026-06-13, PR8 — DA REVIEW REQUIRED BEFORE MERGE).** PR8 proves the
+**0.0.8.2 closeout addendum (2026-06-13, PR8 — DA APPROVED).** PR8 proves the
 canonical closeout sample's PALMA W/D feedstock DTO admits through existing driver W compose + min-plus
 stencil bridges and exercises GPU-resident D via compact probe readback only. PALMA remains W/D
-feedstock — not pathfinding, movement, routes, or predecessors. **Do not merge until Design Authority
-reviews the final diff.**
+feedstock — not pathfinding, movement, routes, or predecessors.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR9).** PR9 promoted the consolidated closeout battery.
+PALMA W/D feedstock guardrails live in `ct_scenario_container` (authoring/lowering) and
+`ct_bh3_closeout_sample_driver` (driver/GPU). Per-PR5 result report is **ARCHIVE**; PR7/PR8 result
+reports remain **CURRENT_EVIDENCE** for PR10.
 
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

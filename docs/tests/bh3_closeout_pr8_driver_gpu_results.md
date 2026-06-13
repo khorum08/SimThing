@@ -1,7 +1,7 @@
 # BH3 Closeout PR8 Driver/GPU Sample Results
 
-> **Artifact lifecycle: PROBATION** (PR8 result report; review for promotion, archive, or deletion by
-> PR 9). The driver test guardrail itself is LIVE_GUARDRAIL after successful execution (see below).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR8 driver admit/install + GPU exercise proof; promoted
+> by PR9 for PR10 closeout citation). The driver test guardrail is LIVE_GUARDRAIL (see below).
 
 > **DA REVIEW: APPROVED (2026-06-13, Opus / Design Authority).** Driver test executed and passed on a
 > real GPU adapter after two test-only bugs were found and fixed during DA review (see "DA review
@@ -51,7 +51,8 @@ code changed):
 
 | Artifact | Classification | Action |
 |---|---|---|
-| `docs/tests/bh3_closeout_pr2..pr7_*` | PROBATION | Retained; not superseded by PR8 |
+| `docs/tests/bh3_closeout_pr2..pr6_*` | ARCHIVE | Moved to `docs/archive/superseded_tests/` by PR9 |
+| `docs/tests/bh3_closeout_pr7_sample_import_results.md` | CURRENT_EVIDENCE | Promoted by PR9 for PR10 citation |
 | Fable/BH2 review packets | CURRENT_EVIDENCE | Retained |
 | `ct_scenario_container.rs` canonical sample tests | LIVE_GUARDRAIL | Unchanged (45 tests) |
 | `ct_bh3_closeout_sample_driver.rs` | LIVE_GUARDRAIL | New fast driver closeout guardrail |
@@ -59,7 +60,8 @@ code changed):
 
 ## Deleted/superseded artifacts
 
-None. PR2–PR7 per-PR reports remain PROBATION evidence for PR9 promotion review.
+None in PR8. PR9 archived PR2–PR6 per-PR reports and PR8-WIN-HYGIENE hygiene note (see
+`bh3_closeout_pr9_test_battery_results.md`).
 
 ## Admit/install shape
 
