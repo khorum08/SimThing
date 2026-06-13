@@ -481,4 +481,11 @@ Stop and escalate to design authority if:
 - [x] PR ladder proposed
 - [x] No runtime implementation in PATH-0
 
+**0.0.8.2 closeout addendum (2026-06-13, PR5).** ClauseThing scenario containers now author one
+`palma_feedstock` block lowering to `HydratedScenarioPalmaFeedstock`: `w_source` binds to a scenario
+`field_operator` id; `w_output_col` and `d_output_col` are generic column bindings for the existing
+BH-2C `GpuInterleavedW` → min-plus `d_col`/`w_col` bridge. This is W/D **feedstock authoring
+only** — not pathfinding, movement, routes, predecessors, or a PALMA runtime service. Driver
+install and GPU exercise remain PR8; FIELD_POLICY unification remains PR6.
+
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

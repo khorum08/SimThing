@@ -280,6 +280,28 @@ field math — not a border/frontline/movement/pathfinding service. PALMA W/D fe
 FIELD_POLICY threshold unification, driver install closure, GPU kernels, and runtime semantics are
 still out of scope for PR4.
 
+### 3.3 Scenario-contained PALMA W/D feedstock (0.0.8.2 PR5)
+
+PR5 admits one top-level scenario `palma_feedstock = id { ... }` block bound to an existing
+scenario `field_operator` id:
+
+```clause
+palma_feedstock = alpha_wd {
+    w_source = alpha_choke_flux
+    w_output_col = 3
+    d_output_col = 4
+    enabled = false
+}
+```
+
+`hydrate_scenario` lowers this into `HydratedScenarioPalmaFeedstock` on `HydratedScenarioPack`:
+generic W/D column bindings plus grid/`n_dims` context copied from the referenced field operator.
+This is inert authoring feedstock for later driver/admission consumption via existing
+`MinPlusStencilConfig` / `GpuInterleavedW` bridges — not a pathfinding service, route planner,
+movement engine, or runtime PALMA service. `enabled = true` is rejected; scenario execution remains
+default-off. FIELD_POLICY threshold unification, canonical sample closure, GPU kernels, and
+`simthing-sim` awareness remain out of scope for PR5.
+
 ---
 
 ## 4. The deep correspondence (why the mapping is natural)

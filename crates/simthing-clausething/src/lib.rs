@@ -22,6 +22,7 @@ mod emit;
 mod hydrate;
 mod hydrate_category_economy;
 mod hydrate_field_operator;
+mod hydrate_palma_feedstock;
 mod hydrate_resource_flow;
 mod hydrate_scenario;
 mod json;
@@ -45,6 +46,9 @@ pub use hydrate_field_operator::{
     BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES,
     BH3_SATURATING_FLUX_CHI_CFL_MAX, HydratedFieldOperatorPack, hydrate_field_operator_pack,
     hydrate_field_operator_property,
+};
+pub use hydrate_palma_feedstock::{
+    HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
 };
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
