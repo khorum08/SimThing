@@ -1,0 +1,12 @@
+simthing_bh3_invalid_chi = {
+    display_name = "Invalid chi"
+    grid_size = 10
+    source_col = 0
+    target_col = 0
+    n_dims = 6
+    saturating_flux = {
+        u_sat = 1.0
+        chi = 0.5
+        choke_output_col = 2
+    }
+}

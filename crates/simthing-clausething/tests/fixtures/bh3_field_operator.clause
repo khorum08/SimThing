@@ -1,0 +1,46 @@
+simthing_bh3_field_operator = {
+    display_name = "BH-3 Field Operator Authoring"
+    grid_size = 10
+    source_col = 0
+    target_col = 0
+    n_dims = 6
+    alpha_self = 0.5
+    gamma_neighbor = 0.125
+    horizon = 8
+
+    saturating_flux = {
+        u_sat = 1.0
+        chi = 0.25
+        choke_output_col = 2
+    }
+
+    field_impedance = {
+        base_w_col = 1
+        choke_a_col = 2
+        choke_b_col = 3
+        weight_a = 1.0
+        weight_b = 0.5
+        output_w_col = 4
+    }
+
+    field_stress = {
+        operator = overlap
+        choke_a_col = 2
+        choke_b_col = 3
+        output_col = 5
+    }
+
+    threshold_feedstock = {
+        parent_slot = 100
+        urgency_col = 4
+        threshold = 5490.8657
+        direction = upward
+        event_kind = 1398039876
+    }
+
+    parent_formula = {
+        formula_class = field_urgency
+        weight_pressure = 1.0
+        weight_resource = 0.5
+    }
+}

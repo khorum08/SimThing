@@ -183,7 +183,7 @@ exact values (`to_bits`).
 | **BH-2** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | GPU W composition from base W + choke columns | BH-2A contract + BH-2B kernel; no movement/pathfinding |
 | **BH-2C** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | PALMA feedstock proof | Composed W → GpuInterleavedW → resident D; compact probe only |
 | **BH-2D** | named consumer (`CT-4b_Local_Automata_W_Feedstock`) | CT-4b 200×200 fixture proof | Full resident feedstock chain; compact probe only |
-| **BH-3** | deferred (consumer-pulled) | ClauseThing authoring surface for the operator | Opens with the first ClauseScript-authored consumer |
+| **BH-3** | BH-3-AUTHORING-0 | ClauseThing authoring surface for field operators | First ClauseScript profile lowers to generic spec + existing bridges; default-off |
 
 BH-0 was frontier-gated at seating; with §2 pinned to file-and-formula level it is
 **downgraded to mechanical (Codex/Cursor-eligible) under §4 and §6 discipline** — the design
@@ -219,7 +219,15 @@ Fixtures original and synthetic. No sqrt anywhere in this track (exact-sqrt rule
 | BH-2S-API-DOC consumer service surface | DOCUMENTED / PASS | §11 (this doc) |
 | BH-2C PALMA feedstock proof | IMPLEMENTED / PASS | [`tests/bh2c_palma_feedstock_results.md`](tests/bh2c_palma_feedstock_results.md) |
 | BH-2D CT-4b 200×200 fixture proof | IMPLEMENTED / PASS | [`tests/bh2d_ct4b_fixture_results.md`](tests/bh2d_ct4b_fixture_results.md) |
-| BH-3 ClauseThing authoring | DEFERRED (consumer-pulled) | — |
+| BH-3-AUTHORING-0 ClauseThing field-operator bridge | IMPLEMENTED / PASS | [`tests/bh3_authoring_0_results.md`](tests/bh3_authoring_0_results.md) |
+
+**BH-3-AUTHORING-0 (2026-06-11):** Adds a ClauseThing authoring/lowering surface for existing
+BH/PALMA field operators (`saturating_flux`, `field_impedance`, `field_stress`,
+`threshold_feedstock`). Lowers into generic `simthing-spec` admission surfaces and existing
+driver GPU bridges only. Does **not** add runtime semantics, movement/pathfinding/border
+services, or ClauseThing visibility in `simthing-sim`. Does **not** change Candidate F authority.
+New proof artifact [`tests/bh3_authoring_0_results.md`](tests/bh3_authoring_0_results.md) is
+**PROBATION** unless promoted later.
 
 **Track-forward (2026-06-11):** Named consumer `CT-4b_Local_Automata_W_Feedstock` opens BH-2.
 BH-2A/B land generic GPU W composition (`WImpedanceComposeOp`) — linear weighted feedstock only;

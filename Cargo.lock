@@ -1126,6 +1126,7 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
+ "simthing-clausething",
  "simthing-core",
  "simthing-feeder",
  "simthing-gpu",
