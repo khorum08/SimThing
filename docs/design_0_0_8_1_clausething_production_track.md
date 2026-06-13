@@ -496,3 +496,12 @@ existing CT-3b+4a path into generic `FirstSliceCommitmentSpec`, optional `Commit
 threshold crossings, not CPU planner logic, movement, pathfinding, routes, predecessors, runtime
 FIELD_POLICY services, GPU changes, or `simthing-sim` awareness. Canonical sample closure and
 driver install/GPU exercise remain deferred to PR7–PR8.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR7).** The closed 0.0.8.1 track remains closed.
+Canonical sample `ct_bh3_closeout_sample` now exercises PR2–PR6 scenario-container import
+surfaces together: metadata, locations, properties, overlays, children, bounded N4 links,
+SaturatingFlux field operator, PALMA W/D feedstock, and FIELD_POLICY commitment. Tests prove
+parse → lower into one coherent `HydratedScenarioPack` with default-off posture preserved. This is
+authoring/import coherence proof only — not driver admit/install, GPU exercise, movement,
+pathfinding, routes, predecessors, runtime services, or `simthing-sim` awareness. Driver closure
+for the sample remains deferred to PR8.

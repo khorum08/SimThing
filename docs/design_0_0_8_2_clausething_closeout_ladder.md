@@ -34,14 +34,11 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The remaining closure gap (precise after PR6):** ClauseThing now has scenario-container import
-for metadata, locations, properties, overlays, children, bounded top-level `link` declarations,
-one scenario-contained SaturatingFlux `field_operator`, one scenario-contained PALMA W/D
-`palma_feedstock`, and one scenario-contained FIELD_POLICY `commitment` lowered into generic
-`FirstSliceCommitmentSpec` / `CommitmentEffectSpec` feedstock on the referenced region field. It
-still has **no canonical end-to-end sample**
-(parse → lower → admit → install → exercise) as one scenario. These are the spine of the remaining
-ladder; everything else is guardrail-hardening and lifecycle hygiene.
+**The remaining closure gap (precise after PR7):** ClauseThing now has a canonical sample
+ClauseScript scenario (`ct_bh3_closeout_sample`) that parses and lowers through all accepted
+PR2–PR6 scenario-container surfaces into one coherent `HydratedScenarioPack`. It still has **no
+driver admit/install → GPU exercise** closure for that sample. That is PR8; everything else
+remaining is guardrail-hardening and lifecycle hygiene.
 
 **Contamination note (adjudicated):** the Bevy/editor discussion is **excluded** from this ladder
 (editor is deferred until closure; the handoff forbids editor work). It is *useful* only in one
@@ -168,6 +165,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/tests/bh3_closeout_pr4_field_operator_results.md` | PROBATION | Fresh PR4 scenario field-operator proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` | PROBATION | Fresh PR5 scenario PALMA feedstock proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr6_field_policy_threshold_results.md` | PROBATION | Fresh PR6 scenario commitment/threshold proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
+| `docs/tests/bh3_closeout_pr7_sample_import_results.md` | PROBATION | Fresh PR7 canonical sample import proof; supports PR 9 promotion or archive | Keep under `docs/tests/`; review at PR 9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -361,6 +359,15 @@ Docs: examples/README pointer.
 Artifact cleanup: none.
 Acceptance: sample imports and lowers; every required element present; original (not Paradox) content.
 Stop conditions: sample cannot be expressed in the minimal grammar (→ grammar gap, escalate).
+
+**Status: PASS (2026-06-13, Cursor PR 7).** Canonical sample `ct_bh3_closeout_sample` added under
+`docs/clausething/examples/` and test fixtures. The sample exercises scenario metadata, three
+locations (properties, overlays, children), two bounded N4 links, SaturatingFlux field operator,
+PALMA W/D feedstock, and FIELD_POLICY commitment authoring together. Tests prove parse → lower
+into one coherent `HydratedScenarioPack` with default-off posture and no movement/pathfinding
+semantics. Tests: `ct_scenario_container` (45/45). Result artifact:
+`docs/tests/bh3_closeout_pr7_sample_import_results.md` (PROBATION). No driver install, GPU
+exercise, `simthing-sim`, movement, route, border, frontline, or Candidate-F changes.
 
 ### PR 8 — Driver admit/install closure for the sample
 Owner: Cursor (DA review)

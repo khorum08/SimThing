@@ -332,6 +332,17 @@ movement, pathfinding, routes, predecessor tables, borders, frontlines, driver i
 canonical sample closure, GPU exercise, or `simthing-sim` awareness. `enabled = true` is rejected;
 scenario execution remains default-off.
 
+### 3.5 Canonical closeout sample (0.0.8.2 PR7)
+
+PR7 adds one canonical sample at `docs/clausething/examples/ct_bh3_closeout_sample.clause`
+(mirrored in `crates/simthing-clausething/tests/fixtures/ct_bh3_closeout_sample.clause`). The sample
+exercises PR2–PR6 together: scenario metadata, three locations with properties/overlays/children,
+two bounded N4 grid links, one SaturatingFlux `field_operator`, one PALMA `palma_feedstock`, and
+one FIELD_POLICY `commitment`. Import tests prove parse → lower coherence into a single
+`HydratedScenarioPack` with default-off posture preserved. This is authoring/lowering proof only —
+no driver admit/install, GPU exercise, movement, pathfinding, routes, predecessors, borders,
+frontlines, or `simthing-sim` awareness.
+
 ---
 
 ## 4. The deep correspondence (why the mapping is natural)

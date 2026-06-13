@@ -1,4 +1,4 @@
-//! BH3-CLOSEOUT PR2/PR3/PR4/PR5/PR6 scenario-container grammar/lowering guardrails.
+//! BH3-CLOSEOUT PR2/PR3/PR4/PR5/PR6/PR7 scenario-container grammar/lowering guardrails.
 
 use simthing_clausething::{
     HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,
@@ -18,6 +18,7 @@ const PALMA_FEEDSTOCK_FIXTURE: &str =
     include_str!("fixtures/ct_scenario_container_with_palma_feedstock.clause");
 const COMMITMENT_FIXTURE: &str =
     include_str!("fixtures/ct_scenario_container_with_commitment.clause");
+const CANONICAL_SAMPLE_FIXTURE: &str = include_str!("fixtures/ct_bh3_closeout_sample.clause");
 
 fn hydrate_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document = parse_raw_document(FIXTURE.as_bytes()).expect("parse scenario fixture");
@@ -45,6 +46,12 @@ fn hydrate_commitment_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document =
         parse_raw_document(COMMITMENT_FIXTURE.as_bytes()).expect("parse commitment fixture");
     hydrate_scenario(&document).expect("hydrate commitment fixture")
+}
+
+fn hydrate_canonical_sample_fixture() -> simthing_clausething::HydratedScenarioPack {
+    let document =
+        parse_raw_document(CANONICAL_SAMPLE_FIXTURE.as_bytes()).expect("parse canonical sample");
+    hydrate_scenario(&document).expect("hydrate canonical sample")
 }
 
 #[test]
@@ -1216,6 +1223,104 @@ scenario = forbidden_commitment {{
         assert!(
             err.to_string().contains("outside PR6 commitment grammar"),
             "{err}"
+        );
+    }
+}
+
+#[test]
+fn canonical_sample_parses_and_lowers() {
+    let pack = hydrate_canonical_sample_fixture();
+    assert_eq!(pack.scenario_id, "ct_bh3_closeout_sample");
+    assert_eq!(
+        pack.metadata.get("display_name").map(String::as_str),
+        Some("BH3 Closeout Canonical Sample")
+    );
+
+    assert_eq!(pack.root_node.children.len(), 3);
+    let location_ids: Vec<_> = pack
+        .root_node
+        .children
+        .iter()
+        .map(|node| node.id.as_str())
+        .collect();
+    assert_eq!(location_ids, vec!["alpha", "beta", "gamma"]);
+
+    let alpha = pack
+        .root_node
+        .children
+        .iter()
+        .find(|node| node.id == "alpha")
+        .expect("alpha");
+    assert_eq!(alpha.properties.len(), 1);
+    assert_eq!(alpha.overlays.len(), 1);
+    assert_eq!(alpha.children.len(), 1);
+    assert_eq!(alpha.children[0].kind, SimThingKind::Cohort);
+
+    assert_eq!(pack.game_mode.properties.len(), 4);
+    assert_eq!(pack.game_mode.overlays.len(), 2);
+    assert_eq!(pack.grid_metadata.links.len(), 2);
+    assert!(pack.grid_metadata.links.contains(&HydratedScenarioLink {
+        from: "alpha".into(),
+        to: "beta".into(),
+    }));
+    assert!(pack.grid_metadata.links.contains(&HydratedScenarioLink {
+        from: "alpha".into(),
+        to: "gamma".into(),
+    }));
+
+    assert_eq!(pack.game_mode.region_fields.len(), 1);
+    let field = &pack.game_mode.region_fields[0];
+    assert!(matches!(
+        field.operator,
+        RegionFieldOperatorSpec::SaturatingFlux { .. }
+    ));
+    assert!(field.parent_formula.is_some());
+    assert!(field.reduction.is_some());
+    assert!(field.commitment.is_some());
+
+    let palma = pack.palma_feedstock.as_ref().expect("palma feedstock");
+    assert_eq!(palma.feedstock_id, "alpha_wd");
+    assert_eq!(palma.w_source_field_operator_id, "alpha_choke_flux");
+
+    let commitment = pack.commitment.as_ref().expect("commitment metadata");
+    assert_eq!(commitment.commitment_id, "stabilize_alpha");
+    assert_eq!(commitment.commitment.threshold, 0.75);
+    assert_eq!(
+        commitment.commitment.urgency_col,
+        FIRST_SLICE_FIELD_URGENCY_COL
+    );
+}
+
+#[test]
+fn canonical_sample_preserves_default_off_posture() {
+    let pack = hydrate_canonical_sample_fixture();
+    assert_eq!(
+        pack.game_mode.mapping_execution_profile,
+        MappingExecutionProfile::Disabled
+    );
+    let json = serde_json::to_string(&pack).expect("serialize scenario pack");
+    assert!(!json.contains("\"enabled\":true"));
+}
+
+#[test]
+fn canonical_sample_contains_no_movement_or_pathfinding_semantics() {
+    let pack = hydrate_canonical_sample_fixture();
+    let json = serde_json::to_string(&pack.game_mode).expect("serialize game mode");
+    for forbidden in [
+        "pathfinding",
+        "predecessor",
+        "movement_order",
+        "waypoint",
+        "destination",
+        "frontline",
+        "border",
+        "arbitrary_graph",
+        "non_grid_topology",
+        "cpu_planner",
+    ] {
+        assert!(
+            !json.contains(forbidden),
+            "canonical sample must not contain `{forbidden}` semantics"
         );
     }
 }
