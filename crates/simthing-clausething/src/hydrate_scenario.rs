@@ -1,4 +1,4 @@
-//! PR2/PR3/PR4/PR5 scenario-container hydration over existing generic authoring surfaces.
+//! PR2/PR3/PR4/PR5/PR6 scenario-container hydration over existing generic authoring surfaces.
 //!
 //! This module composes a ClauseScript `scenario` document into a root
 //! `SimThing` tree plus `GameModeSpec` property/overlay declarations, bounded
@@ -17,7 +17,7 @@ use simthing_spec::spec::game_mode::GameModeSpec;
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
-use simthing_spec::spec::region_field::MappingExecutionProfile;
+use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 
@@ -26,6 +26,10 @@ use crate::hydrate_field_operator::hydrate_field_operator_property;
 use crate::hydrate_palma_feedstock::{
     HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK, finalize_palma_feedstock,
     parse_palma_feedstock_property,
+};
+use crate::hydrate_scenario_commitment::{
+    HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT, ParsedCommitmentEffectDraft,
+    finalize_scenario_commitment, parse_commitment_property,
 };
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawValue};
 
@@ -91,6 +95,8 @@ pub struct HydratedScenarioPack {
     pub stress_compose: Option<StressComposeSpec>,
     /// PR5 optional PALMA W/D feedstock metadata for later driver/admission consumption.
     pub palma_feedstock: Option<HydratedScenarioPalmaFeedstock>,
+    /// PR6 optional FIELD_POLICY threshold / commitment feedstock metadata.
+    pub commitment: Option<HydratedScenarioCommitment>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -163,6 +169,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut field_operator_pack = None;
     let mut palma_feedstock_count = 0_usize;
     let mut palma_feedstock_draft = None;
+    let mut commitment_count = 0_usize;
+    let mut commitment_draft = None;
 
     for field in &body.properties {
         reject_forbidden_scenario_field(field)?;
@@ -215,6 +223,24 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     ));
                 }
                 palma_feedstock_draft = Some(parse_palma_feedstock_property(field)?);
+            }
+            "commitment" => {
+                commitment_count += 1;
+                if commitment_count > PR6_MAX_SCENARIO_COMMITMENT {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "scenario admits at most {PR6_MAX_SCENARIO_COMMITMENT} commitment block"
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                if commitment_draft.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate scenario commitment block",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                commitment_draft = Some(parse_commitment_property(field)?);
             }
             other => {
                 return Err(HydrateError::new_spanned(
@@ -287,9 +313,26 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         None
     };
 
+    let commitment = if let Some(mut draft) = commitment_draft {
+        let operator = field_operator_pack.as_ref().ok_or_else(|| {
+            HydrateError::new("commitment requires a scenario field_operator block")
+        })?;
+        let effect = resolve_commitment_effect(draft.effect.take(), &root_node)?;
+        Some(finalize_scenario_commitment(draft, operator, effect)?)
+    } else {
+        None
+    };
+
     let mut w_impedance_compose = None;
     let mut stress_compose = None;
-    if let Some(operator) = field_operator_pack {
+    if let Some(mut operator) = field_operator_pack {
+        if let Some(finalized) = commitment.as_ref() {
+            if let Some(field) = operator.game_mode.region_fields.first_mut() {
+                field.parent_formula = Some(finalized.parent_formula.clone());
+                field.reduction = Some(finalized.reduction.clone());
+                field.commitment = Some(finalized.metadata.commitment.clone());
+            }
+        }
         game_mode
             .region_fields
             .extend(operator.game_mode.region_fields);
@@ -310,6 +353,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         w_impedance_compose,
         stress_compose,
         palma_feedstock,
+        commitment: commitment.map(|finalized| finalized.metadata),
     })
 }
 
@@ -887,4 +931,63 @@ fn require_field<T>(
             Some(property.key.span.clone()),
         )
     })
+}
+
+fn resolve_commitment_effect(
+    effect: Option<ParsedCommitmentEffectDraft>,
+    root_node: &HydratedScenarioNode,
+) -> Result<Option<CommitmentEffectSpec>, HydrateError> {
+    match effect {
+        None => Ok(None),
+        Some(ParsedCommitmentEffectDraft::Resolved(spec)) => {
+            if find_node_by_id(root_node, &spec.target_id).is_none() {
+                return Err(HydrateError::new(format!(
+                    "commitment effect target `{}` is not a scenario node id",
+                    spec.target_id
+                )));
+            }
+            Ok(Some(spec))
+        }
+        Some(ParsedCommitmentEffectDraft::AttachOverlay {
+            target_id,
+            overlay_id,
+        }) => {
+            let node = find_node_by_id(root_node, &target_id).ok_or_else(|| {
+                HydrateError::new(format!(
+                    "commitment effect target `{target_id}` is not a scenario node id"
+                ))
+            })?;
+            let overlay = node
+                .overlays
+                .iter()
+                .find(|overlay| overlay.id == overlay_id)
+                .ok_or_else(|| {
+                    HydrateError::new(format!(
+                        "commitment effect attach_overlay `{overlay_id}` is not declared on target `{target_id}`"
+                    ))
+                })?;
+            Ok(Some(CommitmentEffectSpec {
+                target_id,
+                targets_property: overlay.targets_property.clone(),
+                sub_field_deltas: overlay.sub_field_deltas.clone(),
+                lifecycle: Default::default(),
+                once: true,
+            }))
+        }
+    }
+}
+
+fn find_node_by_id<'a>(
+    node: &'a HydratedScenarioNode,
+    id: &str,
+) -> Option<&'a HydratedScenarioNode> {
+    if node.id == id {
+        return Some(node);
+    }
+    for child in &node.children {
+        if let Some(found) = find_node_by_id(child, id) {
+            return Some(found);
+        }
+    }
+    None
 }

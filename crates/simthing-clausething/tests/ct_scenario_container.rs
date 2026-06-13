@@ -1,11 +1,14 @@
-//! BH3-CLOSEOUT PR2/PR3/PR4/PR5 scenario-container grammar/lowering guardrails.
+//! BH3-CLOSEOUT PR2/PR3/PR4/PR5/PR6 scenario-container grammar/lowering guardrails.
 
 use simthing_clausething::{
     HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,
 };
 use simthing_core::{SimThingKind, TransformOp};
 use simthing_spec::compile_region_field_preview;
-use simthing_spec::{InstallTargetSpec, MappingExecutionProfile, RegionFieldOperatorSpec};
+use simthing_spec::{
+    FIRST_SLICE_FIELD_URGENCY_COL, InstallTargetSpec, MappingExecutionProfile,
+    RegionFieldOperatorSpec,
+};
 
 const FIXTURE: &str = include_str!("fixtures/ct_scenario_container_minimal.clause");
 const LINK_FIXTURE: &str = include_str!("fixtures/ct_scenario_container_with_links.clause");
@@ -13,6 +16,8 @@ const FIELD_OPERATOR_FIXTURE: &str =
     include_str!("fixtures/ct_scenario_container_with_field_operator.clause");
 const PALMA_FEEDSTOCK_FIXTURE: &str =
     include_str!("fixtures/ct_scenario_container_with_palma_feedstock.clause");
+const COMMITMENT_FIXTURE: &str =
+    include_str!("fixtures/ct_scenario_container_with_commitment.clause");
 
 fn hydrate_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document = parse_raw_document(FIXTURE.as_bytes()).expect("parse scenario fixture");
@@ -34,6 +39,12 @@ fn hydrate_palma_feedstock_fixture() -> simthing_clausething::HydratedScenarioPa
     let document = parse_raw_document(PALMA_FEEDSTOCK_FIXTURE.as_bytes())
         .expect("parse palma feedstock fixture");
     hydrate_scenario(&document).expect("hydrate palma feedstock fixture")
+}
+
+fn hydrate_commitment_fixture() -> simthing_clausething::HydratedScenarioPack {
+    let document =
+        parse_raw_document(COMMITMENT_FIXTURE.as_bytes()).expect("parse commitment fixture");
+    hydrate_scenario(&document).expect("hydrate commitment fixture")
 }
 
 #[test]
@@ -850,4 +861,361 @@ scenario = two_palma {
         err.to_string().contains("at most 1 palma_feedstock"),
         "{err}"
     );
+}
+
+#[test]
+fn scenario_with_commitment_parses_and_lowers() {
+    let pack = hydrate_commitment_fixture();
+    assert_eq!(pack.scenario_id, "bh3_closeout_pr6_commitment");
+    assert!(pack.palma_feedstock.is_some());
+    let commitment = pack.commitment.as_ref().expect("commitment metadata");
+    assert_eq!(commitment.commitment_id, "stabilize_alpha");
+    assert_eq!(commitment.source_field_operator_id, "alpha_choke_flux");
+    assert_eq!(commitment.field_urgency_column, Some(2));
+    assert_eq!(commitment.commitment.threshold, 0.75);
+    assert_eq!(commitment.commitment.event_kind, 7);
+    assert_eq!(
+        commitment.commitment.urgency_col,
+        FIRST_SLICE_FIELD_URGENCY_COL
+    );
+
+    let field = &pack.game_mode.region_fields[0];
+    assert!(field.parent_formula.is_some());
+    assert!(field.reduction.is_some());
+    let region_commitment = field.commitment.as_ref().expect("region field commitment");
+    assert_eq!(region_commitment.threshold, 0.75);
+    let effect = region_commitment
+        .effect
+        .as_ref()
+        .expect("commitment effect");
+    assert_eq!(effect.target_id, "alpha");
+    assert_eq!(effect.targets_property, "simthing::alpha_pressure");
+}
+
+#[test]
+fn scenario_commitment_lowers_without_runtime_semantics() {
+    let pack = hydrate_commitment_fixture();
+    let json = serde_json::to_string(&pack.game_mode).expect("serialize game mode");
+    assert!(!json.contains("pathfinding"));
+    assert!(!json.contains("cpu_planner"));
+    assert!(!json.contains("movement"));
+    assert_eq!(
+        pack.game_mode.mapping_execution_profile,
+        MappingExecutionProfile::Disabled
+    );
+}
+
+#[test]
+fn scenario_commitment_missing_threshold_is_rejected() {
+    let source = br#"
+scenario = missing_threshold {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = stabilize_alpha {
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse missing threshold scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("threshold"), "{err}");
+}
+
+#[test]
+fn scenario_commitment_non_finite_threshold_is_rejected() {
+    let source = br#"
+scenario = bad_threshold {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = stabilize_alpha {
+        threshold = NaN
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse bad threshold scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("finite"), "{err}");
+}
+
+#[test]
+fn scenario_commitment_unknown_source_is_rejected() {
+    let source = br#"
+scenario = unknown_source {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = stabilize_alpha {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = missing_flux
+            column = 2
+            weight = 1.0
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse unknown source scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("not a scenario field_operator id"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_commitment_bad_column_is_rejected() {
+    let source = br#"
+scenario = bad_column {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = stabilize_alpha {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 9
+            weight = 1.0
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse bad column scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("column") && err.to_string().contains("out of range"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_commitment_non_finite_weight_is_rejected() {
+    let source = br#"
+scenario = bad_weight {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = stabilize_alpha {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = NaN
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse bad weight scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("finite"), "{err}");
+}
+
+#[test]
+fn scenario_commitment_unknown_attach_overlay_is_rejected() {
+    let source = br#"
+scenario = unknown_overlay {
+    location = alpha {
+        name = "Alpha"
+        overlays = {
+            modifier = {
+                id = "alpha_pressure_bonus"
+                targets_property = "simthing::alpha_pressure"
+                amount_add = 2
+            }
+        }
+    }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = stabilize_alpha {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+        effect = {
+            attach_overlay = missing_overlay
+            target = alpha
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse unknown overlay scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("attach_overlay") && err.to_string().contains("missing_overlay"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_second_commitment_is_rejected() {
+    let source = br#"
+scenario = two_commitments {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    commitment = first_commit {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+    }
+    commitment = second_commit {
+        threshold = 0.5
+        event_kind = 8
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse two commitment scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("at most 1 commitment"), "{err}");
+}
+
+#[test]
+fn scenario_commitment_route_and_movement_vocabulary_is_rejected() {
+    for forbidden in [
+        r#"route = { from = alpha to = beta }"#,
+        r#"path = alpha"#,
+        r#"predecessor = alpha"#,
+        r#"movement = yes"#,
+        r#"movement_order = 1"#,
+        r#"waypoint = alpha"#,
+        r#"destination = beta"#,
+        r#"pathfinding = yes"#,
+        r#"border = north"#,
+        r#"frontline = north"#,
+        r#"arbitrary_graph = yes"#,
+        r#"non_grid_topology = yes"#,
+    ] {
+        let source = format!(
+            r#"
+scenario = forbidden_commitment {{
+    location = alpha {{ name = "Alpha" }}
+    location = beta {{ name = "Beta" }}
+    field_operator = alpha_choke_flux {{
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {{
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }}
+    }}
+    commitment = stabilize_alpha {{
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {{
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }}
+        {forbidden}
+    }}
+}}
+"#
+        );
+        let document = parse_raw_document(source.as_bytes()).expect("parse forbidden commitment");
+        let err = hydrate_scenario(&document).unwrap_err();
+        assert!(
+            err.to_string().contains("outside PR6 commitment grammar"),
+            "{err}"
+        );
+    }
 }

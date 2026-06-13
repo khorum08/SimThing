@@ -302,6 +302,36 @@ movement engine, or runtime PALMA service. `enabled = true` is rejected; scenari
 default-off. FIELD_POLICY threshold unification, canonical sample closure, GPU kernels, and
 `simthing-sim` awareness remain out of scope for PR5.
 
+### 3.4 Scenario-contained FIELD_POLICY threshold / commitment (0.0.8.2 PR6)
+
+PR6 admits one top-level scenario `commitment = id { ... }` block bound to an existing scenario
+`field_operator` id:
+
+```clause
+commitment = stabilize_alpha {
+    threshold = 0.75
+    event_kind = 7
+    field_urgency = {
+        source = alpha_choke_flux
+        column = 2
+        weight = 1.0
+    }
+    effect = {
+        attach_overlay = alpha_pressure_bonus
+        target = alpha
+    }
+}
+```
+
+`hydrate_scenario` lowers this through the existing CT-3b+4a commitment path into generic
+`FirstSliceCommitmentSpec`, optional `CommitmentEffectSpec`, `RegionFieldFormulaBindingSpec`
+(`field_urgency`), and reduction feedstock on the referenced scenario `RegionFieldSpec`. Effect
+blocks may also use the CT-3b+4a `target` / `targets_property` / `amount_add|amount_mult` shape.
+This is threshold feedstock only — GPU-resident threshold crossings, not CPU planner logic,
+movement, pathfinding, routes, predecessor tables, borders, frontlines, driver install closure,
+canonical sample closure, GPU exercise, or `simthing-sim` awareness. `enabled = true` is rejected;
+scenario execution remains default-off.
+
 ---
 
 ## 4. The deep correspondence (why the mapping is natural)

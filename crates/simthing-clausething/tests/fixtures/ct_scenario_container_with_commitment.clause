@@ -1,0 +1,74 @@
+scenario = bh3_closeout_pr6_commitment {
+    metadata = {
+        display_name = "BH3 Closeout PR6 Commitment Scenario"
+        description = "Scenario-contained FIELD_POLICY threshold feedstock authoring."
+    }
+
+    location = alpha {
+        name = "Alpha Basin"
+        properties = {
+            property = {
+                id = "alpha_pressure"
+                namespace = "simthing"
+                name = "alpha_pressure"
+                display_name = "Alpha Pressure"
+                description = "Local authoring property for alpha."
+            }
+        }
+        overlays = {
+            modifier = {
+                id = "alpha_pressure_bonus"
+                display_name = "Alpha Pressure Bonus"
+                targets_property = "simthing::alpha_pressure"
+                amount_add = 2
+            }
+        }
+    }
+
+    location = beta {
+        name = "Beta Shelf"
+    }
+
+    link = {
+        from = alpha
+        to = beta
+    }
+
+    field_operator = alpha_choke_flux {
+        display_name = "Alpha Choke Flux"
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        alpha_self = 0.5
+        gamma_neighbor = 0.125
+        horizon = 8
+
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+
+    palma_feedstock = alpha_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 3
+        d_output_col = 4
+        enabled = false
+    }
+
+    commitment = stabilize_alpha {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+        effect = {
+            attach_overlay = alpha_pressure_bonus
+            target = alpha
+        }
+    }
+}

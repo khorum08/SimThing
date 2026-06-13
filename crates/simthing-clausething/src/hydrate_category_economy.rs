@@ -444,7 +444,7 @@ fn parse_urgency_block(property: &RawProperty) -> Result<UrgencyParts, HydrateEr
 
 /// `effect { target targets_property amount_add|amount_mult }` → the authored
 /// commitment consequence (Permanent latch overlay on the acting SimThing).
-fn parse_commitment_effect_block(
+pub(crate) fn parse_commitment_effect_block(
     property: &RawProperty,
 ) -> Result<CommitmentEffectSpec, HydrateError> {
     let RawValue::Block(block) = &property.value else {
