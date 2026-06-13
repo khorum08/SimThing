@@ -1,0 +1,65 @@
+scenario = bh3_closeout_pr2_minimal {
+    metadata = {
+        display_name = "BH3 Closeout PR2 Minimal Scenario"
+        description = "Scenario-container import fixture only; no adjacency or movement semantics."
+        tags = "closeout,scenario_container"
+    }
+    location = alpha {
+        name = "Alpha Basin"
+        properties = {
+            property = {
+                id = "alpha_pressure"
+                namespace = "simthing"
+                name = "alpha_pressure"
+                display_name = "Alpha Pressure"
+                description = "Local authoring property for alpha."
+            }
+        }
+        overlays = {
+            modifier = {
+                id = "alpha_pressure_bonus"
+                display_name = "Alpha Pressure Bonus"
+                targets_property = "simthing::alpha_pressure"
+                amount_add = 2
+            }
+        }
+        children = {
+            child = alpha_worker_band {
+                kind = Cohort
+                display_name = "Alpha Worker Band"
+                properties = {
+                    property = {
+                        id = "alpha_worker_capacity"
+                        namespace = "simthing"
+                        name = "alpha_worker_capacity"
+                        display_name = "Alpha Worker Capacity"
+                        description = "Child declaration property."
+                    }
+                }
+            }
+        }
+    }
+    location = beta {
+        name = "Beta Shelf"
+        properties = {
+            property = {
+                id = "beta_pressure"
+                namespace = "simthing"
+                name = "beta_pressure"
+                display_name = "Beta Pressure"
+                description = "Local authoring property for beta."
+            }
+        }
+        overlays = {
+            modifier = {
+                id = "beta_pressure_mult"
+                display_name = "Beta Pressure Mult"
+                targets_property = "simthing::beta_pressure"
+                amount_mult = 1.25
+            }
+        }
+    }
+    location = gamma {
+        name = "Gamma Fold"
+    }
+}

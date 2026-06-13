@@ -189,6 +189,54 @@ golden-file testing), a write API (round-trip / canonicalization), and a fuzzed,
 >1 GB/s parser. Binary save format support exists in `jomini` but is permanently
 out of scope for ClauseThing — we ingest authoring `.txt`, not save games (§10).
 
+### 3.1 Scenario containers (0.0.8.2 PR2)
+
+The closeout ladder adds a narrow scenario-container importer as a composing front end, not as a
+new runtime concept. The admitted PR2 shape uses the existing jomini header-block idiom:
+
+```clause
+scenario = sample_scenario {
+    metadata = {
+        display_name = "Sample Scenario"
+        description = "Import container only."
+    }
+    location = alpha {
+        name = "Alpha"
+        properties = {
+            property = {
+                id = "alpha_pressure"
+                namespace = "simthing"
+                name = "alpha_pressure"
+            }
+        }
+        overlays = {
+            modifier = {
+                id = "alpha_pressure_bonus"
+                targets_property = "simthing::alpha_pressure"
+                amount_add = 1
+            }
+        }
+        children = {
+            child = alpha_cohort {
+                kind = Cohort
+            }
+        }
+    }
+}
+```
+
+`hydrate_scenario` lowers this into existing generic surfaces:
+
+- `GameModeSpec` carries flattened `PropertySpec` and `OverlaySpec` declarations.
+- A real root `SimThingKind::World` contains authored `Location` children.
+- ClauseThing retains a `HydratedScenarioNode` tree so authored ids, properties, overlays, and
+  children survive before driver admission/registry compilation.
+- Standalone overlays install through existing `InstallTargetSpec::ScenarioListed` ids.
+
+PR2 deliberately has no `link`, adjacency, route, path, predecessor, movement, PALMA, field
+operator, FIELD_POLICY, GPU, Bevy, or editor grammar. Those are later 0.0.8.2 rungs. `simthing-sim`
+remains unaware of ClauseThing.
+
 ---
 
 ## 4. The deep correspondence (why the mapping is natural)

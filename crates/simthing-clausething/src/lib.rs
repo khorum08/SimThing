@@ -8,6 +8,7 @@
 //! CT-1a: literal entity hydration into existing `simthing-spec` authoring structs.
 //! CT-2a: literal `produces`/`upkeep` hydration into Resource Flow authoring.
 //! CT-2c: category economy hydration into Resource Flow and ResourceEconomy authoring.
+//! CT-PR2: scenario-container hydration into generic spec surfaces plus a SimThing tree.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -21,6 +22,7 @@ mod hydrate;
 mod hydrate_category_economy;
 mod hydrate_field_operator;
 mod hydrate_resource_flow;
+mod hydrate_scenario;
 mod json;
 mod literal_install;
 mod parse;
@@ -45,6 +47,7 @@ pub use hydrate_field_operator::{
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
 };
+pub use hydrate_scenario::{HydratedScenarioNode, HydratedScenarioPack, hydrate_scenario};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;
 pub use literal_install::{

@@ -26,6 +26,7 @@
 | `hydrate_resource_flow` | `ResourceFlowSpec` | CLOSED |
 | capability / tradition trees (CT-1c) | `CapabilityTreeSpec` | CLOSED |
 | All parsing | jomini text path → `RawDocument` (`parse_raw_document`) | CLOSED |
+| `hydrate_scenario` (PR2) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids | **PASS / PROBATION evidence** |
 
 **Driver/runtime spine (0.0.8.1, accepted):** `open_from_spec` installs a `GameModeSpec`; the
 session loop runs RF arena bands → on-device pressure scatter → stencil heatmap (incl.
@@ -33,11 +34,11 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The closure gap (precise):** every hydrator consumes **one top-level entity/fixture**. There is
-**no scenario-container import** — no single ClauseScript document declaring multiple
-location/SimThing nodes plus adjacency, composing the above sub-blocks. PALMA W/D has a driver
-bridge but **no authored binding from ClauseScript**. There is **no canonical end-to-end sample**
-(parse → lower → admit → install → exercise) as one scenario. These three are the spine of the
+**The remaining closure gap (precise after PR2):** ClauseThing now has the first
+scenario-container parse/lower surface for metadata, locations, properties, overlays, children,
+and existing scenario-listed install-target ids. It still has **no adjacency/link lowering**,
+**no authored PALMA W/D binding from ClauseScript**, and **no canonical end-to-end sample**
+(parse → lower → admit → install → exercise) as one scenario. These are the spine of the remaining
 ladder; everything else is guardrail-hardening and lifecycle hygiene.
 
 **Contamination note (adjudicated):** the Bevy/editor discussion is **excluded** from this ladder
@@ -160,6 +161,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | Artifact | Classification | Rationale | Action |
 |---|---|---|---|
 | `docs/tests/bh3_authoring_0_results.md` | PROBATION | Fresh BH-3 authoring bridge proof; supports PR 4 promotion | Keep under `docs/tests/`; review at PR 4/9 |
+| `docs/tests/bh3_closeout_pr2_scenario_container_results.md` | PROBATION | Fresh PR2 scenario-container parse/lower proof; supports PR 3/7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -223,6 +225,16 @@ Docs: ClauseThing_Spec scenario grammar section.
 Artifact cleanup: none.
 Acceptance: multi-location scenario lowers to generic specs; no new `SimThingKind`; no sim import.
 Stop conditions: scenario shape needs a sim-side type (→ escalate, A1 breach).
+
+**Status: PASS (2026-06-13, Codex PR 2).** Added `hydrate_scenario` as a ClauseThing composing
+front end over existing generic surfaces. The admitted PR2 grammar uses jomini header-block ids
+(`scenario = id { ... }`, `location = id { ... }`) plus `metadata`, `properties`, `overlays`, and
+`children`. Lowering emits `GameModeSpec` property/overlay declarations, a root `World` SimThing
+with `Location` children, retained authoring nodes, and existing `ScenarioListed` install-target
+ids. Focused tests are in `crates/simthing-clausething/tests/ct_scenario_container.rs`; result
+artifact: `docs/tests/bh3_closeout_pr2_scenario_container_results.md` (PROBATION). No
+`simthing-sim`, driver, spec, PALMA, adjacency/link, FIELD_POLICY, GPU, Bevy/editor, movement,
+route, path, predecessor, or Candidate-F code changed.
 
 ### PR 3 — Adjacency / link grammar → grid-topology lowering
 Owner: Cursor (DA review)

@@ -453,3 +453,11 @@ lab-only throughout; `simthing-sim` ends the track exactly as ClauseThing-blind 
 [`clausething/ct_vertical_consumer_contract.md`](clausething/ct_vertical_consumer_contract.md)
 (CT-CONSUMER-0) — the frozen production-vs-fixture API contract for consuming the closed
 vertical without re-auditing the ladder.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR2).** The closed 0.0.8.1 track is not reopened.
+`hydrate_scenario` now provides the first closeout-ladder scenario-container import surface:
+ClauseScript `scenario` documents lower to a generic `GameModeSpec`, a root `World` SimThing with
+`Location` children, a retained authoring node tree, and existing `ScenarioListed` install-target
+ids. This is parse/lower scaffolding only. It does not add adjacency/link semantics, PALMA
+feedstock, SaturatingFlux authoring closure, FIELD_POLICY unification, driver install closure,
+runtime behavior, GPU kernels, Bevy/editor code, or any `simthing-sim` awareness.
