@@ -1,0 +1,125 @@
+scenario = ct_bh3_closeout_sample {
+    metadata = {
+        display_name = "BH3 Closeout Canonical Sample"
+        description = "Canonical ClauseThing sample exercising PR2–PR6 scenario import surfaces."
+        tags = "closeout,canonical_sample,scenario_container"
+    }
+
+    location = alpha {
+        name = "Alpha Basin"
+        properties = {
+            property = {
+                id = "alpha_pressure"
+                namespace = "simthing"
+                name = "alpha_pressure"
+                display_name = "Alpha Pressure"
+                description = "Pressure feedstock for alpha basin."
+            }
+        }
+        overlays = {
+            modifier = {
+                id = "alpha_pressure_bonus"
+                display_name = "Alpha Pressure Bonus"
+                targets_property = "simthing::alpha_pressure"
+                amount_add = 2
+            }
+        }
+        children = {
+            child = alpha_worker_band {
+                kind = Cohort
+                display_name = "Alpha Worker Band"
+                properties = {
+                    property = {
+                        id = "alpha_worker_capacity"
+                        namespace = "simthing"
+                        name = "alpha_worker_capacity"
+                        display_name = "Alpha Worker Capacity"
+                        description = "Child cohort capacity declaration."
+                    }
+                }
+            }
+        }
+    }
+
+    location = beta {
+        name = "Beta Shelf"
+        properties = {
+            property = {
+                id = "beta_pressure"
+                namespace = "simthing"
+                name = "beta_pressure"
+                display_name = "Beta Pressure"
+                description = "Pressure feedstock for beta shelf."
+            }
+        }
+        overlays = {
+            modifier = {
+                id = "beta_pressure_mult"
+                display_name = "Beta Pressure Mult"
+                targets_property = "simthing::beta_pressure"
+                amount_mult = 1.25
+            }
+        }
+    }
+
+    location = gamma {
+        name = "Gamma Reach"
+        properties = {
+            property = {
+                id = "gamma_pressure"
+                namespace = "simthing"
+                name = "gamma_pressure"
+                display_name = "Gamma Pressure"
+                description = "Pressure feedstock for gamma reach."
+            }
+        }
+    }
+
+    link = {
+        from = alpha
+        to = beta
+    }
+
+    link = {
+        from = alpha
+        to = gamma
+    }
+
+    field_operator = alpha_choke_flux {
+        display_name = "Alpha Choke Flux"
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        alpha_self = 0.5
+        gamma_neighbor = 0.125
+        horizon = 8
+
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+
+    palma_feedstock = alpha_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 3
+        d_output_col = 4
+        enabled = false
+    }
+
+    commitment = stabilize_alpha {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = alpha_choke_flux
+            column = 2
+            weight = 1.0
+        }
+        effect = {
+            attach_overlay = alpha_pressure_bonus
+            target = alpha
+        }
+    }
+}
