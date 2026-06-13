@@ -9,18 +9,23 @@
 > doc supplies the Stellaris-side detail those rungs lower from. Where this doc and the ladder's §3
 > disagree, **the ladder governs.**
 >
-> **GOVERNING SUBSTRATE ADRs — these outrank this reference.** MapGen generates SimThing star mapping
-> onto two binding substrates; read them before mapping anything:
-> [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (the map = spatial tree +
-> overlays; dense fields are **bounded local theaters** evolved by `StructuredFieldStencilOp`; strategic
-> awareness is **hierarchy + parent EML, never dense-global diffusion**; a RegionCell is a mapping-role
-> on a SimThing, **not** a `SimThingKind`) and
-> [`../adr/resource_flow_substrate.md`](../adr/resource_flow_substrate.md) (the economy + the
-> suppression/disruption "SEAD" front are **resource-flow arenas**; scale comes from **hierarchical
-> fanout absorption**; every arena declares explicit selectors + hard caps + fission policy and is
-> rejected at build if unsafe). Anything in this textbook that reads as "run a dense field across the
-> whole galaxy" or "give each star a coordinate the sim reads" is **wrong against these ADRs** — the
-> ladder's M4/M5 corrections govern.
+> **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
+> automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
+> [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei
+> arXiv:2602.01651, whose model is academically named **SEAD = Spatiotemporal Evolution with Attractor
+> Dynamics** — that acronym is **not** used in-repo; the engine name is **Movement-Front**, never
+> "SEAD"). The galaxy **is** a 2D gridcell lattice (canonical ~200×150) with star systems occupying a
+> subset of cells; one system = one gridcell; a gridcell is a **mapping-role on a SimThing, not a
+> `SimThingKind`** ([`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)). The
+> Layer-1 stencil **does** run across the whole lattice — values spill with falloff — but the **per-tick
+> horizon is bounded** (P1 light cone; fronts cross the galaxy over many ticks; cadence/dirty make
+> compute follow the wavefront). The economy and the **suppression/disruption front are resource-flow
+> arenas** ([`../adr/resource_flow_substrate.md`](../adr/resource_flow_substrate.md)) with explicit
+> selectors + hard caps + fission policy, rejected at build if unsafe. **Wrong against the paradigm
+> (not merely against this textbook):** *widening the stencil horizon to gain instant strategic
+> awareness* (use L2 hierarchy instead — P1); *a per-cell bespoke rule* (P2); *giving a star a Euclidean
+> coordinate the sim reads for distance/adjacency* (position is inert metadata; distance is min-plus —
+> §0.7). The ladder's §0/M4/M5 govern.
 >
 > **Stellaris corpus is referenced, not vendored.** The vanilla game files and generated logs
 > (`common/solar_system_initializers/`, `map/setup_scenarios/`, `map/galaxy/`,
