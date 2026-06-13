@@ -502,4 +502,10 @@ evidence folded into [`tests/clausething_closeout_results.md`](tests/clausething
 closeout is **CLOSED** for authoring/import/runtime-feedstock closure. PALMA remains W/D feedstock — not
 pathfinding. Final report: [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md).
 
+**PALMA named consumer activated (2026-06-13, 0.0.8.2.5 MapGen).** The "seated generic GPU utility
+awaiting a named consumer" is now consumed by the Stellaris starmap adapter for map traversal / influence
+spread: [`design_0_0_8_2_5_mapgen_ladder.md`](design_0_0_8_2_5_mapgen_ladder.md) (§3 M5/M6). D stays a
+field (impedance/min-plus, no sqrt) — never a route or predecessor. The Gu-Yang ∥ PALMA parallelization is
+composition/scheduling over existing ops; any fused kernel is DA-gated and invariant-preserving.
+
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

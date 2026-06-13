@@ -684,3 +684,9 @@ driver/GPU). Per-PR2–PR6 result reports and PR8-WIN-HYGIENE note are **ARCHIVE
 closeout is **CLOSED** for authoring/import/runtime-feedstock closure. SaturatingFlux remains generic
 field math; PALMA W/D remains feedstock — not border or pathfinding. Final report:
 [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md).
+
+**BH-3 ClauseThing authoring — named consumer pulled (2026-06-13, 0.0.8.2.5).** The deferred BH-3 hook
+for map-specific SaturatingFlux / field behaviors is pulled by the MapGen starmap adapter:
+[`design_0_0_8_2_5_mapgen_ladder.md`](design_0_0_8_2_5_mapgen_ladder.md) (§3 M4/M6). SaturatingFlux stays
+generic field math; the adapter authors a domain-neutral suppression/disruption front, and the
+Gu-Yang ∥ PALMA parallelization stays composition-first (no new primitive without DA gate + measured win).
