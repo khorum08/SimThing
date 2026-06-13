@@ -26,7 +26,7 @@
 | `hydrate_resource_flow` | `ResourceFlowSpec` | CLOSED |
 | capability / tradition trees (CT-1c) | `CapabilityTreeSpec` | CLOSED |
 | All parsing | jomini text path → `RawDocument` (`parse_raw_document`) | CLOSED |
-| `hydrate_scenario` (PR2/PR3/PR4) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata + optional scenario field operator | **PASS / PROBATION evidence** |
+| `hydrate_scenario` (PR2/PR3/PR4/PR5) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata + optional scenario field operator + optional PALMA feedstock DTO | **PASS / PROBATION evidence** |
 
 **Driver/runtime spine (0.0.8.1, accepted):** `open_from_spec` installs a `GameModeSpec`; the
 session loop runs RF arena bands → on-device pressure scatter → stencil heatmap (incl.
@@ -34,10 +34,10 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The remaining closure gap (precise after PR4):** ClauseThing now has scenario-container import
+**The remaining closure gap (precise after PR5):** ClauseThing now has scenario-container import
 for metadata, locations, properties, overlays, children, bounded top-level `link` declarations,
-and one scenario-contained SaturatingFlux `field_operator` lowered through the existing BH-3
-surfaces. It still has **no authored PALMA W/D binding from ClauseScript**, and **no canonical
+one scenario-contained SaturatingFlux `field_operator`, and one scenario-contained PALMA W/D
+`palma_feedstock` lowered into `HydratedScenarioPalmaFeedstock`. It still has **no canonical
 end-to-end sample**
 (parse → lower → admit → install → exercise) as one scenario. These are the spine of the remaining
 ladder; everything else is guardrail-hardening and lifecycle hygiene.
@@ -165,6 +165,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/tests/bh3_closeout_pr2_scenario_container_results.md` | PROBATION | Fresh PR2 scenario-container parse/lower proof; supports PR 3/7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr3_link_topology_results.md` | PROBATION | Fresh PR3 scenario link/grid-placement proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr4_field_operator_results.md` | PROBATION | Fresh PR4 scenario field-operator proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
+| `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` | PROBATION | Fresh PR5 scenario PALMA feedstock proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -307,6 +308,17 @@ Docs: ClauseThing_Spec PALMA feedstock note + the A3 "D is a field, not a route"
 Artifact cleanup: none.
 Acceptance: imported scenario may configure W/D feedstock; may not declare routes/plans/predecessors.
 Stop conditions: feedstock would need destination/route semantics (→ escalate, A3 breach).
+
+**Status: PASS (2026-06-13, Cursor PR 5).** Scenario containers admit one top-level
+`palma_feedstock` block bound to an existing scenario `field_operator` id. Lowering emits
+`HydratedScenarioPalmaFeedstock` on `HydratedScenarioPack` with `w_source`, `w_output_col`,
+`d_output_col`, and grid/`n_dims` context for later `MinPlusStencilConfig` / `GpuInterleavedW`
+consumption. Hydrate-time guardrails reject missing bindings, invalid columns, unknown
+`w_source`, duplicate blocks, forbidden route/movement/pathfinding vocabulary, and
+`enabled = true`. Default-off posture preserved. Tests: `ct_scenario_container` (32/32). Result
+artifact: `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` (PROBATION). No FIELD_POLICY,
+canonical sample, driver, GPU, `simthing-sim`, movement, route, border, frontline, or Candidate-F
+changes.
 
 ### PR 6 — FIELD_POLICY threshold feedstock unification
 Owner: Cursor

@@ -1,4 +1,4 @@
-//! PR2/PR3/PR4 scenario-container hydration over existing generic authoring surfaces.
+//! PR2/PR3/PR4/PR5 scenario-container hydration over existing generic authoring surfaces.
 //!
 //! This module composes a ClauseScript `scenario` document into a root
 //! `SimThing` tree plus `GameModeSpec` property/overlay declarations, bounded
@@ -23,6 +23,10 @@ use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 
 use crate::error::HydrateError;
 use crate::hydrate_field_operator::hydrate_field_operator_property;
+use crate::hydrate_palma_feedstock::{
+    HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK, finalize_palma_feedstock,
+    parse_palma_feedstock_property,
+};
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawValue};
 
 pub const PR3_MAX_LINK_FANOUT: usize = 4;
@@ -85,6 +89,8 @@ pub struct HydratedScenarioPack {
     pub w_impedance_compose: Option<WImpedanceComposeSpec>,
     /// PR4 optional stress compose lowered from a scenario field operator.
     pub stress_compose: Option<StressComposeSpec>,
+    /// PR5 optional PALMA W/D feedstock metadata for later driver/admission consumption.
+    pub palma_feedstock: Option<HydratedScenarioPalmaFeedstock>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -155,6 +161,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut raw_links = Vec::new();
     let mut field_operator_count = 0_usize;
     let mut field_operator_pack = None;
+    let mut palma_feedstock_count = 0_usize;
+    let mut palma_feedstock_draft = None;
 
     for field in &body.properties {
         reject_forbidden_scenario_field(field)?;
@@ -189,6 +197,24 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     ));
                 }
                 field_operator_pack = Some(hydrate_field_operator_property(field)?);
+            }
+            "palma_feedstock" => {
+                palma_feedstock_count += 1;
+                if palma_feedstock_count > PR5_MAX_SCENARIO_PALMA_FEEDSTOCK {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "scenario admits at most {PR5_MAX_SCENARIO_PALMA_FEEDSTOCK} palma_feedstock block"
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                if palma_feedstock_draft.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate scenario palma_feedstock block",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                palma_feedstock_draft = Some(parse_palma_feedstock_property(field)?);
             }
             other => {
                 return Err(HydrateError::new_spanned(
@@ -252,6 +278,15 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     game_mode.properties = properties;
     game_mode.overlays = overlays;
 
+    let palma_feedstock = if let Some(draft) = palma_feedstock_draft {
+        let operator = field_operator_pack.as_ref().ok_or_else(|| {
+            HydrateError::new("palma_feedstock requires a scenario field_operator block")
+        })?;
+        Some(finalize_palma_feedstock(draft, operator)?)
+    } else {
+        None
+    };
+
     let mut w_impedance_compose = None;
     let mut stress_compose = None;
     if let Some(operator) = field_operator_pack {
@@ -274,6 +309,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         grid_metadata,
         w_impedance_compose,
         stress_compose,
+        palma_feedstock,
     })
 }
 

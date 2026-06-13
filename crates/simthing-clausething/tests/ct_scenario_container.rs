@@ -1,4 +1,4 @@
-//! BH3-CLOSEOUT PR2/PR3/PR4 scenario-container grammar/lowering guardrails.
+//! BH3-CLOSEOUT PR2/PR3/PR4/PR5 scenario-container grammar/lowering guardrails.
 
 use simthing_clausething::{
     HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,
@@ -11,6 +11,8 @@ const FIXTURE: &str = include_str!("fixtures/ct_scenario_container_minimal.claus
 const LINK_FIXTURE: &str = include_str!("fixtures/ct_scenario_container_with_links.clause");
 const FIELD_OPERATOR_FIXTURE: &str =
     include_str!("fixtures/ct_scenario_container_with_field_operator.clause");
+const PALMA_FEEDSTOCK_FIXTURE: &str =
+    include_str!("fixtures/ct_scenario_container_with_palma_feedstock.clause");
 
 fn hydrate_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document = parse_raw_document(FIXTURE.as_bytes()).expect("parse scenario fixture");
@@ -26,6 +28,12 @@ fn hydrate_field_operator_fixture() -> simthing_clausething::HydratedScenarioPac
     let document =
         parse_raw_document(FIELD_OPERATOR_FIXTURE.as_bytes()).expect("parse field op fixture");
     hydrate_scenario(&document).expect("hydrate field op fixture")
+}
+
+fn hydrate_palma_feedstock_fixture() -> simthing_clausething::HydratedScenarioPack {
+    let document = parse_raw_document(PALMA_FEEDSTOCK_FIXTURE.as_bytes())
+        .expect("parse palma feedstock fixture");
+    hydrate_scenario(&document).expect("hydrate palma feedstock fixture")
 }
 
 #[test]
@@ -552,6 +560,294 @@ scenario = forbidden_field_op {
     assert!(
         err.to_string()
             .contains("outside BH-3 field_operator grammar"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_with_palma_feedstock_parses_and_lowers() {
+    let pack = hydrate_palma_feedstock_fixture();
+    assert_eq!(pack.scenario_id, "bh3_closeout_pr5_palma");
+    assert_eq!(pack.game_mode.region_fields.len(), 1);
+    let palma = pack
+        .palma_feedstock
+        .as_ref()
+        .expect("palma feedstock metadata");
+    assert_eq!(palma.feedstock_id, "alpha_wd");
+    assert_eq!(palma.w_source_field_operator_id, "alpha_choke_flux");
+    assert_eq!(palma.w_output_col, 3);
+    assert_eq!(palma.d_output_col, 4);
+    assert_eq!(palma.n_dims, 6);
+    assert_eq!(palma.choke_output_col, Some(2));
+}
+
+#[test]
+fn scenario_palma_feedstock_lowers_without_runtime_semantics() {
+    let pack = hydrate_palma_feedstock_fixture();
+    let json = serde_json::to_string(&pack.game_mode).expect("serialize game mode");
+    assert!(!json.contains("pathfinding"));
+    assert!(!json.contains("predecessor"));
+    assert!(!json.contains("movement"));
+    assert_eq!(
+        pack.game_mode.mapping_execution_profile,
+        MappingExecutionProfile::Disabled
+    );
+}
+
+#[test]
+fn scenario_palma_feedstock_missing_w_source_is_rejected() {
+    let source = br#"
+scenario = missing_w_source {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    palma_feedstock = alpha_wd {
+        w_output_col = 3
+        d_output_col = 4
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse missing w_source scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("w_source"), "{err}");
+}
+
+#[test]
+fn scenario_palma_feedstock_missing_w_output_col_is_rejected() {
+    let source = br#"
+scenario = missing_w_output {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    palma_feedstock = alpha_wd {
+        w_source = alpha_choke_flux
+        d_output_col = 4
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse missing w_output scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("w_output_col"), "{err}");
+}
+
+#[test]
+fn scenario_palma_feedstock_missing_d_output_col_is_rejected() {
+    let source = br#"
+scenario = missing_d_output {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    palma_feedstock = alpha_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 3
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse missing d_output scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("d_output_col"), "{err}");
+}
+
+#[test]
+fn scenario_palma_feedstock_unknown_w_source_is_rejected() {
+    let source = br#"
+scenario = unknown_w_source {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    palma_feedstock = alpha_wd {
+        w_source = missing_flux
+        w_output_col = 3
+        d_output_col = 4
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse unknown w_source scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("not a scenario field_operator id"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_palma_feedstock_invalid_w_output_col_is_rejected() {
+    let source = br#"
+scenario = bad_w_output {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    palma_feedstock = alpha_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 9
+        d_output_col = 4
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse bad w_output scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("w_output_col") && err.to_string().contains("out of range"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_palma_feedstock_requires_field_operator() {
+    let source = br#"
+scenario = palma_without_field_op {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    palma_feedstock = alpha_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 3
+        d_output_col = 4
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse palma without field op scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("requires a scenario field_operator"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_palma_feedstock_route_and_movement_vocabulary_is_rejected() {
+    for forbidden in [
+        r#"route = { from = alpha to = beta }"#,
+        r#"path = alpha"#,
+        r#"predecessor = alpha"#,
+        r#"movement = yes"#,
+        r#"movement_order = 1"#,
+        r#"waypoint = alpha"#,
+        r#"destination = beta"#,
+        r#"pathfinding = yes"#,
+        r#"border = north"#,
+        r#"frontline = north"#,
+        r#"arbitrary_graph = yes"#,
+        r#"non_grid_topology = yes"#,
+    ] {
+        let source = format!(
+            r#"
+scenario = forbidden_palma {{
+    location = alpha {{ name = "Alpha" }}
+    location = beta {{ name = "Beta" }}
+    field_operator = alpha_choke_flux {{
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {{
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }}
+    }}
+    palma_feedstock = alpha_wd {{
+        w_source = alpha_choke_flux
+        w_output_col = 3
+        d_output_col = 4
+        {forbidden}
+    }}
+}}
+"#
+        );
+        let document = parse_raw_document(source.as_bytes()).expect("parse forbidden palma");
+        let err = hydrate_scenario(&document).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("outside PR5 palma_feedstock grammar"),
+            "{err}"
+        );
+    }
+}
+
+#[test]
+fn scenario_second_palma_feedstock_is_rejected() {
+    let source = br#"
+scenario = two_palma {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    palma_feedstock = first_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 3
+        d_output_col = 4
+    }
+    palma_feedstock = second_wd {
+        w_source = alpha_choke_flux
+        w_output_col = 5
+        d_output_col = 4
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse two palma scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("at most 1 palma_feedstock"),
         "{err}"
     );
 }

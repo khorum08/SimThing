@@ -478,3 +478,12 @@ existing BH-3 hydrator into generic `RegionFieldSpec` (+ optional compose surfac
 scenario-container path. PALMA W/D feedstock, FIELD_POLICY threshold unification, driver install
 closure, GPU kernels, runtime semantics, movement/pathfinding/border/frontline services, and
 `simthing-sim` awareness remain out of scope.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR5).** The closed 0.0.8.1 track remains closed.
+`hydrate_scenario` now admits one scenario-contained `palma_feedstock` block that lowers into
+`HydratedScenarioPalmaFeedstock` on `HydratedScenarioPack`, binding `w_source` to an existing
+scenario `field_operator` id plus generic `w_output_col` / `d_output_col` column metadata for later
+BH-2C / min-plus driver consumption. This is feedstock authoring only — not pathfinding,
+movement, routes, predecessors, runtime PALMA services, GPU changes, or `simthing-sim` awareness.
+FIELD_POLICY threshold unification, canonical sample closure, and driver install exercise remain
+deferred to PR6–PR8.
