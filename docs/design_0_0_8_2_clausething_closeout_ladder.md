@@ -34,11 +34,10 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The remaining closure gap (precise after PR7):** ClauseThing now has a canonical sample
-ClauseScript scenario (`ct_bh3_closeout_sample`) that parses and lowers through all accepted
-PR2–PR6 scenario-container surfaces into one coherent `HydratedScenarioPack`. It still has **no
-driver admit/install → GPU exercise** closure for that sample. That is PR8; everything else
-remaining is guardrail-hardening and lifecycle hygiene.
+**The remaining closure gap (precise after PR8):** ClauseThing now has a canonical sample that
+parses, lowers, admits, installs, and exercises the existing GPU-resident field path under focused
+driver tests. PR9 battery consolidation and PROBATION artifact promotion remain; the editor/corpus
+boundary stays deferred (§10).
 
 **Contamination note (adjudicated):** the Bevy/editor discussion is **excluded** from this ladder
 (editor is deferred until closure; the handoff forbids editor work). It is *useful* only in one
@@ -166,6 +165,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` | PROBATION | Fresh PR5 scenario PALMA feedstock proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr6_field_policy_threshold_results.md` | PROBATION | Fresh PR6 scenario commitment/threshold proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr7_sample_import_results.md` | PROBATION | Fresh PR7 canonical sample import proof; supports PR 9 promotion or archive | Keep under `docs/tests/`; review at PR 9 |
+| `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` | PROBATION | Fresh PR8 driver admit/install + GPU exercise proof; DA review before merge | Keep under `docs/tests/`; review at PR 9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -197,6 +197,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `crates/simthing-spec/tests/bh{0,1,2s,3}_*_admission.rs`, `region_field_spec_admission.rs`, `e10_resource_flow_admission.rs`, `resource_flow_*roundtrip.rs` | LIVE_GUARDRAIL | Fast admission guardrails for BH + RF surfaces | Keep active |
 | `crates/simthing-spec/tests/clause_spec0_frontier_v2_admission.rs` | PROBATION | CLAUSE-SPEC-0 admission; historical FrontierV2 target, not closeout gate | Keep; not default closeout battery |
 | `crates/simthing-driver/tests/bh3_authoring_installs_existing_operator.rs` | LIVE_GUARDRAIL | Fast install bridge for BH-3 authoring | Keep active |
+| `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` | LIVE_GUARDRAIL | PR8 canonical sample driver admit/install + GPU-resident guardrail | Keep active |
 | `crates/simthing-driver/tests/bh2c_palma_w_feedstock.rs`, `bh2d_ct4b_fixture.rs` | LIVE_GUARDRAIL | Fast BH-2C/2D driver guardrails | Keep active |
 | `crates/simthing-driver/tests/bh2d_ct4b_100tick_observation.rs` | PROBATION | Slow/ignored dynamic observation harness; report is evidence not guardrail | Keep ignored; not default gate |
 | `crates/simthing-driver/tests/runtime_0080_0_r1_gate.rs` | LIVE_GUARDRAIL | Fast R1 default-off contract sentinel | Keep active |
@@ -383,6 +384,19 @@ Docs: none beyond the closeout report.
 Artifact cleanup: none.
 Acceptance: sample admits/installs; GPU path exercised; compact readback only; no sim leakage.
 Stop conditions: install needs a new sim-aware surface, or full-field readback to decide (→ escalate).
+
+**Status: PASS / DA APPROVED (2026-06-13, Cursor PR 8; Opus / Design Authority review + remedial).**
+Added `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` with two focused tests: (A)
+canonical sample parse/hydrate → `install_atomic` + default-off session posture; (B) explicit
+test-only `SparseRegionFieldV1` mapping harness + BH-2C PALMA GPU chain with compact probe/threshold
+evidence only. PALMA W compose admission is derived from PR5 feedstock DTO in the test bridge
+(canonical sample has no `field_impedance` block; the generic operator's second choke input is a null
+spare column). No new GPU kernels, `simthing-sim` types, movement, pathfinding, routes, predecessors,
+border, frontline, or Candidate-F changes. DA refused the original conditional verdict, ran the blocked
+driver test (Windows `os error 740` was a UAC installer-name heuristic, bypassed with
+`__COMPAT_LAYER=RunAsInvoker`), found and fixed two test-only bugs (W-compose column aliasing; duplicate
+property registration), and confirmed `cargo test -p simthing-driver --test ct_bh3_closeout_sample_install`
+→ **2 passed**. Result artifact: `docs/tests/bh3_closeout_pr8_driver_gpu_results.md`.
 
 ### PR 9 — Test battery + artifact promotion/deletion
 Owner: Cursor

@@ -505,3 +505,14 @@ parse → lower into one coherent `HydratedScenarioPack` with default-off postur
 authoring/import coherence proof only — not driver admit/install, GPU exercise, movement,
 pathfinding, routes, predecessors, runtime services, or `simthing-sim` awareness. Driver closure
 for the sample remains deferred to PR8.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR8 — DA APPROVED).** The closed 0.0.8.1 track remains
+closed. Canonical sample `ct_bh3_closeout_sample` now admits/installs through existing generic driver
+surfaces (`install_atomic`, `SimSession::open_from_spec`) and exercises the existing GPU-resident
+first-slice mapping + BH-2C PALMA chain under focused driver tests with compact probe/threshold
+evidence only. Default-off posture is preserved; the canonical sample is not mutated to
+`enabled = true`. The PR8 driver test executed and passed on a real GPU adapter (2 passed) after Design
+Authority review caught and fixed two test-only bugs. This is runtime-feedstock closure proof only —
+not movement, pathfinding, routes, predecessors, border/frontline services, new GPU kernels, CPU
+planner logic, full-field CPU decision readback, Bevy/editor work, or `simthing-sim` awareness. PR9
+battery consolidation remains.
