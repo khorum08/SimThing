@@ -344,7 +344,7 @@ no driver admit/install, GPU exercise, movement, pathfinding, routes, predecesso
 frontlines, or `simthing-sim` awareness.
 
 **PR8 driver closure (0.0.8.2 — DA REVIEW REQUIRED BEFORE MERGE):** focused driver tests in
-`crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` prove the same canonical sample
+`crates/simthing-driver/tests/ct_bh3_closeout_sample_driver.rs` prove the same canonical sample
 admits/installs through existing generic driver surfaces and exercises GPU-resident SaturatingFlux +
 commitment + PALMA paths with compact evidence only. Default-off posture is preserved; no new GPU
 kernels or `simthing-sim` semantics.

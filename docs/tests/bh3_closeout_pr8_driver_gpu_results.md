@@ -15,11 +15,11 @@ GPU-resident SaturatingFlux + commitment + PALMA W/D paths with compact evidence
 `simthing-sim` semantics, GPU kernels, movement, pathfinding, routes, predecessors, border, or
 frontline services were added.
 
-`cargo test -p simthing-driver --test ct_bh3_closeout_sample_install` → **2 passed; 0 failed** on a
-machine with a real GPU adapter. The Windows `os error 740` seen by the implementing agent was a UAC
-installer-detection heuristic triggered by the `..._install` binary name; it was worked around with
-`__COMPAT_LAYER=RunAsInvoker` (not a test defect). The test was **not** merged on a conditional/pending
-basis — it ran and passed before approval.
+`cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver` → **2 passed; 0 failed** on a
+machine with a real GPU adapter. The Windows `os error 740` seen during initial PR8 implementation was a UAC
+installer-detection heuristic triggered by the former `..._install` binary name (fixed in PR8-WIN-HYGIENE by
+renaming to `ct_bh3_closeout_sample_driver`). The test was **not** merged on a conditional/pending basis —
+it ran and passed before approval.
 
 ## DA review findings (remediation applied)
 
@@ -39,7 +39,7 @@ code changed):
 
 | Area | Path |
 |---|---|
-| Driver closeout tests | `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` |
+| Driver closeout tests | `crates/simthing-driver/tests/ct_bh3_closeout_sample_driver.rs` |
 | Closeout ladder | `docs/design_0_0_8_2_clausething_closeout_ladder.md` |
 | Production track | `docs/design_0_0_8_1_clausething_production_track.md` |
 | Border hack track | `docs/design_0_0_8_1_border_hack_track.md` |
@@ -54,7 +54,7 @@ code changed):
 | `docs/tests/bh3_closeout_pr2..pr7_*` | PROBATION | Retained; not superseded by PR8 |
 | Fable/BH2 review packets | CURRENT_EVIDENCE | Retained |
 | `ct_scenario_container.rs` canonical sample tests | LIVE_GUARDRAIL | Unchanged (45 tests) |
-| `ct_bh3_closeout_sample_install.rs` | LIVE_GUARDRAIL | New fast driver closeout guardrail |
+| `ct_bh3_closeout_sample_driver.rs` | LIVE_GUARDRAIL | New fast driver closeout guardrail |
 | Scratch logs / duplicate reports / `target/` / worktrees | DELETE | None found |
 
 ## Deleted/superseded artifacts
@@ -116,7 +116,7 @@ No full-field CPU decision readback. No canonical sample mutation to `enabled = 
 | Command | Result |
 |---|---|
 | `cargo test -p simthing-clausething --test ct_scenario_container` | 45 passed |
-| `cargo test -p simthing-driver --test ct_bh3_closeout_sample_install` | **2 passed; 0 failed** (real GPU adapter; `__COMPAT_LAYER=RunAsInvoker` to bypass UAC installer-name heuristic) |
+| `cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver` | **2 passed; 0 failed** (real GPU adapter; PR8-WIN-HYGIENE renamed binary — no UAC workaround required) |
 | `cargo check -p simthing-driver --tests` | pass |
 | `cargo fmt --all -- --check` | pass |
 | `git diff --check` | pass |
@@ -172,4 +172,4 @@ plus docs — no `simthing-sim`, `simthing-gpu` kernel, or driver `src/` changes
 | Artifact | Classification |
 |---|---|
 | `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` | PROBATION |
-| `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` | LIVE_GUARDRAIL |
+| `crates/simthing-driver/tests/ct_bh3_closeout_sample_driver.rs` | LIVE_GUARDRAIL |

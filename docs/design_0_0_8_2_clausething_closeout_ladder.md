@@ -197,7 +197,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `crates/simthing-spec/tests/bh{0,1,2s,3}_*_admission.rs`, `region_field_spec_admission.rs`, `e10_resource_flow_admission.rs`, `resource_flow_*roundtrip.rs` | LIVE_GUARDRAIL | Fast admission guardrails for BH + RF surfaces | Keep active |
 | `crates/simthing-spec/tests/clause_spec0_frontier_v2_admission.rs` | PROBATION | CLAUSE-SPEC-0 admission; historical FrontierV2 target, not closeout gate | Keep; not default closeout battery |
 | `crates/simthing-driver/tests/bh3_authoring_installs_existing_operator.rs` | LIVE_GUARDRAIL | Fast install bridge for BH-3 authoring | Keep active |
-| `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` | LIVE_GUARDRAIL | PR8 canonical sample driver admit/install + GPU-resident guardrail | Keep active |
+| `crates/simthing-driver/tests/ct_bh3_closeout_sample_driver.rs` | LIVE_GUARDRAIL | PR8 canonical sample driver admit/install + GPU-resident guardrail | Keep active |
 | `crates/simthing-driver/tests/bh2c_palma_w_feedstock.rs`, `bh2d_ct4b_fixture.rs` | LIVE_GUARDRAIL | Fast BH-2C/2D driver guardrails | Keep active |
 | `crates/simthing-driver/tests/bh2d_ct4b_100tick_observation.rs` | PROBATION | Slow/ignored dynamic observation harness; report is evidence not guardrail | Keep ignored; not default gate |
 | `crates/simthing-driver/tests/runtime_0080_0_r1_gate.rs` | LIVE_GUARDRAIL | Fast R1 default-off contract sentinel | Keep active |
@@ -386,7 +386,7 @@ Acceptance: sample admits/installs; GPU path exercised; compact readback only; n
 Stop conditions: install needs a new sim-aware surface, or full-field readback to decide (→ escalate).
 
 **Status: PASS / DA APPROVED (2026-06-13, Cursor PR 8; Opus / Design Authority review + remedial).**
-Added `crates/simthing-driver/tests/ct_bh3_closeout_sample_install.rs` with two focused tests: (A)
+Added `crates/simthing-driver/tests/ct_bh3_closeout_sample_driver.rs` with two focused tests: (A)
 canonical sample parse/hydrate → `install_atomic` + default-off session posture; (B) explicit
 test-only `SparseRegionFieldV1` mapping harness + BH-2C PALMA GPU chain with compact probe/threshold
 evidence only. PALMA W compose admission is derived from PR5 feedstock DTO in the test bridge
@@ -395,8 +395,11 @@ spare column). No new GPU kernels, `simthing-sim` types, movement, pathfinding, 
 border, frontline, or Candidate-F changes. DA refused the original conditional verdict, ran the blocked
 driver test (Windows `os error 740` was a UAC installer-name heuristic, bypassed with
 `__COMPAT_LAYER=RunAsInvoker`), found and fixed two test-only bugs (W-compose column aliasing; duplicate
-property registration), and confirmed `cargo test -p simthing-driver --test ct_bh3_closeout_sample_install`
-→ **2 passed**. Result artifact: `docs/tests/bh3_closeout_pr8_driver_gpu_results.md`.
+property registration), and confirmed `cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver`
+→ **2 passed**. Result artifact: `docs/tests/bh3_closeout_pr8_driver_gpu_results.md`. **PR8-WIN-HYGIENE**
+(2026-06-13) renamed the integration test to `ct_bh3_closeout_sample_driver.rs` so the Cargo binary
+no longer contains `install` and Windows UAC installer-detection no longer blocks execution; see
+`docs/tests/pr8_windows_test_binary_rename_results.md`.
 
 ### PR 9 — Test battery + artifact promotion/deletion
 Owner: Cursor
