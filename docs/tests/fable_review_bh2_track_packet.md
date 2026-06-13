@@ -100,10 +100,17 @@ PALMA-adjacent paths follow PATH-track Candidate-F discipline.
 | R1* proof-ledger/report/checksum tests in default workspace | ✓ Removed (R1-TEST-PURGE) |
 | Fast production-relevant R1* sentinels retained | ✓ `runtime_0080_0_r1_gate` + unit oracles |
 | Historical R1* proof reports | ✓ Archived under `docs/archive/superseded_tests/` only |
-| `*_report_checksum_stable` in default gate | ✓ None |
+| `*_report_checksum_stable` in **R1\*** default gate | ✓ None (r1a/r1b/r1c/r1c_a..f checksum binaries deleted; `r1_gate` sentinel has none) |
 | Workspace R1* 60-second warnings | ✓ Eliminated (~95s workspace; zero R1* 60s warnings post-purge) |
 
 **Discipline:** Historical R1* proof batteries must not be reintroduced as default tests.
+
+> **Fable-review correction (2026-06-12):** the checksum-purge claim is scoped to the **R1\***
+> series. Eight `*_report_checksum_stable` tests remain in **non-R1** 0080-series binaries
+> (`runtime_0080_0_r0`, `runtime_0080_0_r2`, `runtime_0080_rr_0..4`, `gpu_measure_0080_0`) and run
+> in the default workspace; they are CPU-deterministic, pre-existing, and were never in
+> R1-TEST-PURGE scope. Trimming them is an optional future hygiene rung, not a 0.0.8.1 blocker.
+> See [`fable_review_0_0_8_1_result.md`](fable_review_0_0_8_1_result.md) §6/§8.
 
 Sentinel inventory: [`r1_default_workspace_purge_results.md`](r1_default_workspace_purge_results.md).
 Prior R1C-B/C-only note (superseded): [`r1c_default_gate_cleanup_results.md`](r1c_default_gate_cleanup_results.md).
