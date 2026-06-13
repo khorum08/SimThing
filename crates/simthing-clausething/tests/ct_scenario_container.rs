@@ -1,13 +1,16 @@
-//! BH3-CLOSEOUT PR2/PR3 scenario-container grammar/lowering guardrails.
+//! BH3-CLOSEOUT PR2/PR3/PR4 scenario-container grammar/lowering guardrails.
 
 use simthing_clausething::{
     HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,
 };
 use simthing_core::{SimThingKind, TransformOp};
-use simthing_spec::InstallTargetSpec;
+use simthing_spec::compile_region_field_preview;
+use simthing_spec::{InstallTargetSpec, MappingExecutionProfile, RegionFieldOperatorSpec};
 
 const FIXTURE: &str = include_str!("fixtures/ct_scenario_container_minimal.clause");
 const LINK_FIXTURE: &str = include_str!("fixtures/ct_scenario_container_with_links.clause");
+const FIELD_OPERATOR_FIXTURE: &str =
+    include_str!("fixtures/ct_scenario_container_with_field_operator.clause");
 
 fn hydrate_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document = parse_raw_document(FIXTURE.as_bytes()).expect("parse scenario fixture");
@@ -17,6 +20,12 @@ fn hydrate_fixture() -> simthing_clausething::HydratedScenarioPack {
 fn hydrate_link_fixture() -> simthing_clausething::HydratedScenarioPack {
     let document = parse_raw_document(LINK_FIXTURE.as_bytes()).expect("parse linked fixture");
     hydrate_scenario(&document).expect("hydrate linked fixture")
+}
+
+fn hydrate_field_operator_fixture() -> simthing_clausething::HydratedScenarioPack {
+    let document =
+        parse_raw_document(FIELD_OPERATOR_FIXTURE.as_bytes()).expect("parse field op fixture");
+    hydrate_scenario(&document).expect("hydrate field op fixture")
 }
 
 #[test]
@@ -329,4 +338,220 @@ scenario = bad_child_kind {
     let document = parse_raw_document(source).expect("parse child kind scenario");
     let err = hydrate_scenario(&document).unwrap_err();
     assert!(err.to_string().contains("not admitted for PR2"), "{err}");
+}
+
+#[test]
+fn scenario_with_field_operator_parses_and_lowers() {
+    let pack = hydrate_field_operator_fixture();
+
+    assert_eq!(pack.scenario_id, "bh3_closeout_pr4_field_op");
+    assert_eq!(pack.root.children.len(), 2);
+    assert_eq!(
+        pack.grid_metadata.links,
+        vec![HydratedScenarioLink {
+            from: "alpha".into(),
+            to: "beta".into()
+        }]
+    );
+    assert_eq!(pack.game_mode.region_fields.len(), 1);
+    assert_eq!(
+        pack.game_mode.region_fields[0].name,
+        "alpha_choke_flux_field"
+    );
+}
+
+#[test]
+fn scenario_field_operator_lowers_through_bh3_generic_surfaces() {
+    let pack = hydrate_field_operator_fixture();
+    let field = &pack.game_mode.region_fields[0];
+
+    assert!(matches!(
+        field.operator,
+        RegionFieldOperatorSpec::SaturatingFlux {
+            u_sat,
+            chi,
+            choke_output_col: Some(2),
+        } if (u_sat - 1.0).abs() < f32::EPSILON && (chi - 0.25).abs() < f32::EPSILON
+    ));
+    assert!(pack.w_impedance_compose.is_none());
+    assert!(pack.stress_compose.is_none());
+
+    compile_region_field_preview(field).expect("admitted region field");
+}
+
+#[test]
+fn scenario_field_operator_preserves_default_off_posture() {
+    let pack = hydrate_field_operator_fixture();
+    assert_eq!(
+        pack.game_mode.mapping_execution_profile,
+        MappingExecutionProfile::Disabled
+    );
+}
+
+#[test]
+fn scenario_field_operator_missing_u_sat_is_rejected() {
+    let source = br#"
+scenario = missing_u_sat {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse missing u_sat scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("u_sat"), "{err}");
+}
+
+#[test]
+fn scenario_field_operator_chi_above_cfl_is_rejected() {
+    let source = br#"
+scenario = bad_chi {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.5
+            choke_output_col = 2
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse bad chi scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("CFL") || err.to_string().contains("chi"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_field_operator_non_finite_values_are_rejected() {
+    let source = br#"
+scenario = non_finite {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = NaN
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse non-finite scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(err.to_string().contains("finite"), "{err}");
+}
+
+#[test]
+fn scenario_field_operator_unknown_output_binding_is_rejected() {
+    let source = br#"
+scenario = bad_choke_col {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 9
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse bad choke col scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("choke_output_col") || err.to_string().contains("out of range"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_second_field_operator_is_rejected() {
+    let source = br#"
+scenario = two_field_ops {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = first_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+    field_operator = second_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse two field ops scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("at most 1 field_operator"),
+        "{err}"
+    );
+}
+
+#[test]
+fn scenario_field_operator_forbidden_service_vocabulary_is_rejected() {
+    let source = br#"
+scenario = forbidden_field_op {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    field_operator = alpha_choke_flux {
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        border = north
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse forbidden field op scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("outside BH-3 field_operator grammar"),
+        "{err}"
+    );
 }

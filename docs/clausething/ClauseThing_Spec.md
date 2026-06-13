@@ -248,9 +248,37 @@ PR3 admits links only between top-level scenario locations; endpoints must exist
 rejected, duplicate/reversed links canonicalize deterministically, fanout is capped at the N4
 degree, and row-major cell placement must make every explicit link an N4 neighbor. There is still
 no `route`, `path`, `edge`, `predecessor`, `waypoint`, `movement_order`, `destination`, `border`,
-`frontline`, pathfinding, arbitrary graph, PALMA, field operator, FIELD_POLICY, GPU, Bevy, or
-editor grammar in the scenario container. Non-grid topology is deferred to a future topology-spec
-rung. `simthing-sim` remains unaware of ClauseThing.
+`frontline`, pathfinding, arbitrary graph, PALMA, FIELD_POLICY-unification, GPU, Bevy, or
+editor grammar in the scenario container beyond PR4's one accepted `field_operator` block. Non-grid
+topology is deferred to a future topology-spec rung. `simthing-sim` remains unaware of
+ClauseThing.
+
+### 3.2 Scenario-contained field operators (0.0.8.2 PR4)
+
+PR4 admits one top-level scenario `field_operator = id { ... }` block using the existing BH-3
+authoring shape:
+
+```clause
+field_operator = alpha_choke_flux {
+    display_name = "Alpha Choke Flux"
+    grid_size = 10
+    source_col = 0
+    target_col = 0
+    n_dims = 6
+    saturating_flux = {
+        u_sat = 1.0
+        chi = 0.25
+        choke_output_col = 2
+    }
+}
+```
+
+`hydrate_scenario` composes this through `hydrate_field_operator_property` into generic
+`RegionFieldSpec` on the scenario `GameModeSpec`, optional W/stress compose slots on
+`HydratedScenarioPack`, and `MappingExecutionProfile::Disabled`. SaturatingFlux remains generic
+field math — not a border/frontline/movement/pathfinding service. PALMA W/D feedstock,
+FIELD_POLICY threshold unification, driver install closure, GPU kernels, and runtime semantics are
+still out of scope for PR4.
 
 ---
 
