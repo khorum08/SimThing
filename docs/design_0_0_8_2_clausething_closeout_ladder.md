@@ -26,7 +26,7 @@
 | `hydrate_resource_flow` | `ResourceFlowSpec` | CLOSED |
 | capability / tradition trees (CT-1c) | `CapabilityTreeSpec` | CLOSED |
 | All parsing | jomini text path → `RawDocument` (`parse_raw_document`) | CLOSED |
-| `hydrate_scenario` (PR2/PR3/PR4/PR5) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata + optional scenario field operator + optional PALMA feedstock DTO | **PASS / PROBATION evidence** |
+| `hydrate_scenario` (PR2/PR3/PR4/PR5/PR6) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata + optional scenario field operator + optional PALMA feedstock DTO + optional FIELD_POLICY commitment feedstock | **PASS / PROBATION evidence** |
 
 **Driver/runtime spine (0.0.8.1, accepted):** `open_from_spec` installs a `GameModeSpec`; the
 session loop runs RF arena bands → on-device pressure scatter → stencil heatmap (incl.
@@ -34,11 +34,12 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The remaining closure gap (precise after PR5):** ClauseThing now has scenario-container import
+**The remaining closure gap (precise after PR6):** ClauseThing now has scenario-container import
 for metadata, locations, properties, overlays, children, bounded top-level `link` declarations,
-one scenario-contained SaturatingFlux `field_operator`, and one scenario-contained PALMA W/D
-`palma_feedstock` lowered into `HydratedScenarioPalmaFeedstock`. It still has **no canonical
-end-to-end sample**
+one scenario-contained SaturatingFlux `field_operator`, one scenario-contained PALMA W/D
+`palma_feedstock`, and one scenario-contained FIELD_POLICY `commitment` lowered into generic
+`FirstSliceCommitmentSpec` / `CommitmentEffectSpec` feedstock on the referenced region field. It
+still has **no canonical end-to-end sample**
 (parse → lower → admit → install → exercise) as one scenario. These are the spine of the remaining
 ladder; everything else is guardrail-hardening and lifecycle hygiene.
 
@@ -166,6 +167,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/tests/bh3_closeout_pr3_link_topology_results.md` | PROBATION | Fresh PR3 scenario link/grid-placement proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr4_field_operator_results.md` | PROBATION | Fresh PR4 scenario field-operator proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` | PROBATION | Fresh PR5 scenario PALMA feedstock proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
+| `docs/tests/bh3_closeout_pr6_field_policy_threshold_results.md` | PROBATION | Fresh PR6 scenario commitment/threshold proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -332,6 +334,18 @@ Docs: ClauseThing_Spec commitment/threshold note.
 Artifact cleanup: none.
 Acceptance: scenario-level FIELD_POLICY thresholds lower to `FirstSliceCommitmentSpec`; effect optional.
 Stop conditions: threshold needs CPU planner logic (→ escalate; decisions stay GPU-side).
+
+**Status: PASS (2026-06-13, Cursor PR 6).** Scenario containers admit one top-level `commitment`
+block bound to an existing scenario `field_operator` id. Lowering composes CT-3b+4a threshold
+feedstock into the referenced `RegionFieldSpec`: `FirstSliceCommitmentSpec`, optional
+`CommitmentEffectSpec` (including scenario `attach_overlay` resolution), `field_urgency`
+`parent_formula`, and reduction binding. Hydrate-time guardrails reject missing/non-finite
+threshold, unknown `field_urgency.source`, invalid column bindings, non-finite weights, unknown
+overlay/target bindings, duplicate blocks, forbidden route/movement/pathfinding vocabulary, and
+`enabled = true`. Default-off posture preserved. Tests: `ct_scenario_container` (42/42). Result
+artifact: `docs/tests/bh3_closeout_pr6_field_policy_threshold_results.md` (PROBATION). No canonical
+sample, driver install, GPU exercise, `simthing-sim`, movement, route, border, frontline, or
+Candidate-F changes.
 
 ### PR 7 — Canonical sample ClauseScript scenario
 Owner: Cursor

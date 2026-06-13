@@ -25,6 +25,7 @@ mod hydrate_field_operator;
 mod hydrate_palma_feedstock;
 mod hydrate_resource_flow;
 mod hydrate_scenario;
+mod hydrate_scenario_commitment;
 mod json;
 mod literal_install;
 mod parse;
@@ -58,6 +59,7 @@ pub use hydrate_scenario::{
     HydratedScenarioNode, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
     PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
 };
+pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;
 pub use literal_install::{

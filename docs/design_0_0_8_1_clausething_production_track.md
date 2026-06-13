@@ -487,3 +487,12 @@ BH-2C / min-plus driver consumption. This is feedstock authoring only — not pa
 movement, routes, predecessors, runtime PALMA services, GPU changes, or `simthing-sim` awareness.
 FIELD_POLICY threshold unification, canonical sample closure, and driver install exercise remain
 deferred to PR6–PR8.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR6).** The closed 0.0.8.1 track remains closed.
+`hydrate_scenario` now admits one scenario-contained `commitment` block that lowers through the
+existing CT-3b+4a path into generic `FirstSliceCommitmentSpec`, optional `CommitmentEffectSpec`,
+`field_urgency` `parent_formula`, and reduction feedstock on the referenced scenario
+`field_operator` / `RegionFieldSpec`. This is threshold feedstock authoring only — GPU-resident
+threshold crossings, not CPU planner logic, movement, pathfinding, routes, predecessors, runtime
+FIELD_POLICY services, GPU changes, or `simthing-sim` awareness. Canonical sample closure and
+driver install/GPU exercise remain deferred to PR7–PR8.
