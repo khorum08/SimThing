@@ -9,7 +9,7 @@
 Default workspace no longer runs historical R1* proof-ledger/report/checksum batteries. Fast live
 sentinels remain where needed. Historical proof batteries must not be reintroduced as default tests.
 
-Prior R1C-B/C-only cleanup: [`r1c_default_gate_cleanup_results.md`](r1c_default_gate_cleanup_results.md).
+Prior R1C-B/C-only cleanup: [`r1c_default_gate_cleanup_results.md`](../archive/superseded_tests/r1c_default_gate_cleanup_results.md).
 
 ## Classification table
 

@@ -146,7 +146,68 @@ Artifact cleanup: delete any DELETE-class scratch now; archive nothing yet.
 Acceptance: every artifact classified; no unclassified proof scaffolding remains active.
 Stop conditions: an artifact cannot be classified (→ PARTIAL, §9.8).
 
-### PR 2 — Scenario-container grammar + core declarations
+**Status: PASS (2026-06-13, Cursor PR 1).** Census recorded in §6.1 below; seven superseded
+reports moved to `docs/archive/superseded_tests/`; no DELETE items found; no runtime/GPU/grammar
+changes.
+
+### PR 1 artifact lifecycle census
+
+Inventory scope: `docs/tests/`, `docs/archive/superseded_tests/`, `crates/simthing-clausething/tests/`,
+`crates/simthing-spec/tests/`, `crates/simthing-driver/tests/`, `crates/simthing-gpu/tests/` (BH
+GPU guardrails only). Stale-keyword sweep: BH-0..BH-3, BH-1R, BH-2C/2D/2S, PALMA PATH-*,
+ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
+
+| Artifact | Classification | Rationale | Action |
+|---|---|---|---|
+| `docs/tests/bh3_authoring_0_results.md` | PROBATION | Fresh BH-3 authoring bridge proof; supports PR 4 promotion | Keep under `docs/tests/`; review at PR 4/9 |
+| `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
+| `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
+| `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
+| `docs/tests/r1_default_workspace_purge_results.md` | CURRENT_EVIDENCE | Canonical R1 default-gate posture; cited by `design_0_0_8_1.md` | Keep |
+| `docs/tests/bh0_saturating_flux_results.md` | PROBATION | Landed BH-0 rung report; not a guardrail | Keep; promote/archive at PR 9 |
+| `docs/tests/bh1_choke_readout_results.md` | PROBATION | Landed BH-1 rung report | Keep; promote/archive at PR 9 |
+| `docs/tests/bh1r_choke_consumption_results.md` | PROBATION | Landed BH-1R rung report | Keep; promote/archive at PR 9 |
+| `docs/tests/bh1r_scale_parallel_reduction_results.md` | PROBATION | Landed BH-1R-SCALE rung report | Keep; promote/archive at PR 9 |
+| `docs/tests/bh2_w_composition_results.md` | PROBATION | Landed BH-2 W-composition report | Keep; promote/archive at PR 9 |
+| `docs/tests/bh2s_overlap_stress_results.md` | PROBATION | Landed BH-2S rung report | Keep; promote/archive at PR 9 |
+| `docs/tests/bh2c_palma_feedstock_results.md` | PROBATION | Landed BH-2C PALMA feedstock report | Keep; promote/archive at PR 9 |
+| `docs/tests/bh2d_ct4b_fixture_results.md` | PROBATION | BH-2D binary fixture proof report | Keep; promote/archive at PR 9 |
+| `docs/tests/palma_path_0_design_results.md` … `palma_path_9_downstream_gpu_consumer_results.md` (12 files) | PROBATION | PALMA PATH rung closure reports; production seating evidence, not guardrails | Keep under `docs/tests/`; consolidate at PR 10 |
+| `docs/tests/ct_0a_impl_results.md` … `ct_3b_4a_impl_0a_results.md`, `ct_0d_impl_results.md` (10 files) | CURRENT_EVIDENCE | Active ClauseThing CT-* implementation ledger | Keep |
+| `docs/tests/runtime_0080_rr_4_results.md` | CURRENT_EVIDENCE | Referenced by `design_0_0_8_1.md` runtime posture | Keep |
+| `docs/tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md` | CURRENT_EVIDENCE | Active 0.0.8.x runtime rehearsal evidence | Keep |
+| `docs/tests/runtime_0080_0_r2_profiling_capture.md` | CURRENT_EVIDENCE | Companion profiling capture for R2 rehearsal | Keep |
+| `docs/tests/runtime_0080_0_r1a_next_tick_authority_results.md` | CURRENT_EVIDENCE | Historical R1a closure; Fable packet marks non-default-gate | Keep |
+| `docs/tests/status_ledger_reconcile_0_results.md` | CURRENT_EVIDENCE | Track ledger reconcile artifact for 0.0.8.x | Keep |
+| `docs/tests/phase_m_jit_sqrt_exact5f_exhaustive_sweep_results.md` | CURRENT_EVIDENCE | Candidate F authority chain (§0.7); do not move | Keep |
+| `docs/archive/superseded_tests/r1c_default_gate_cleanup_results.md` | ARCHIVE | Superseded by full R1 purge report | Moved from `docs/tests/` |
+| `docs/archive/superseded_tests/phase_m_frontier_v1_5_live_field_agent_route_results.md` | ARCHIVE | Frontier V1 closed; L1/CLAUSE-SPEC superseded default-gate evidence | Moved from `docs/tests/` |
+| `docs/archive/superseded_tests/phase_m_frontier_v2_{0..4}_*_results.md` (5 files) | ARCHIVE | Frontier V2 fixture-only proof complete; not 0.0.8.2 closeout gate | Moved from `docs/tests/` |
+| `docs/archive/superseded_tests/` (remaining ~252 files) | ARCHIVE | Historical proof batteries, prior-rung reports, scratch captures | No PR-1 action |
+| `crates/simthing-clausething/tests/ct_0{a,b,c,d}_*.rs`, `ct_1{a,b,c}_*.rs`, `ct_2{a,c}_*.rs`, `ct_3b_4a_*.rs`, `ct_rf_eml_rate.rs` | LIVE_GUARDRAIL | Fast closed-surface parse/lower tests for production hydrators | Keep active |
+| `crates/simthing-clausething/tests/bh3_authoring_parse.rs` | LIVE_GUARDRAIL | Fast BH-3 field-operator parse/lower guardrail | Keep active |
+| `crates/simthing-clausething/tests/fixtures/bh3_*.clause` (3 files) | PROBATION | BH-3 provisional fixtures; tied to `hydrate_field_operator` | Keep; promote at PR 4 |
+| `crates/simthing-clausething/tests/fixtures/` (non-BH-3) | LIVE_GUARDRAIL | CT closed-surface goldens/fixtures consumed by fast tests | Keep active |
+| `crates/simthing-spec/tests/bh{0,1,2s,3}_*_admission.rs`, `region_field_spec_admission.rs`, `e10_resource_flow_admission.rs`, `resource_flow_*roundtrip.rs` | LIVE_GUARDRAIL | Fast admission guardrails for BH + RF surfaces | Keep active |
+| `crates/simthing-spec/tests/clause_spec0_frontier_v2_admission.rs` | PROBATION | CLAUSE-SPEC-0 admission; historical FrontierV2 target, not closeout gate | Keep; not default closeout battery |
+| `crates/simthing-driver/tests/bh3_authoring_installs_existing_operator.rs` | LIVE_GUARDRAIL | Fast install bridge for BH-3 authoring | Keep active |
+| `crates/simthing-driver/tests/bh2c_palma_w_feedstock.rs`, `bh2d_ct4b_fixture.rs` | LIVE_GUARDRAIL | Fast BH-2C/2D driver guardrails | Keep active |
+| `crates/simthing-driver/tests/bh2d_ct4b_100tick_observation.rs` | PROBATION | Slow/ignored dynamic observation harness; report is evidence not guardrail | Keep ignored; not default gate |
+| `crates/simthing-driver/tests/runtime_0080_0_r1_gate.rs` | LIVE_GUARDRAIL | Fast R1 default-off contract sentinel | Keep active |
+| `crates/simthing-driver/tests/palma_path_{3,4,5,6,7,8,8r,9}_*.rs`, `palma_path_min_plus_oracle.rs` | PROBATION | PALMA PATH fixture proofs; valuable but not closeout guardrails | Keep; consolidate at PR 9/10 |
+| `crates/simthing-driver/tests/phase_m_frontier_v{1_5,2_0..2_4}_*.rs` (6 binaries) | PROBATION | Historical Frontier closed-loop fixtures; reports archived | Keep tests; not LIVE_GUARDRAIL |
+| `crates/simthing-gpu/tests/bh{0,1,1r,2_w,2s}_*.rs` (6 files) | LIVE_GUARDRAIL | Fast GPU-resident BH operator guardrails | Keep active |
+| Scratch logs, duplicate reports, `target/`, `.claude/worktrees/` | DELETE | Not found in tracked tree at census time | None removed |
+
+**PR 1 summary**
+
+- DELETE items removed: **none found** (no scratch logs, duplicate reports, or committed `target/` / worktrees in scope).
+- ARCHIVE items moved under `docs/archive/superseded_tests/`: **7** (R1C cleanup + Frontier V1-5 + V2-0..4 reports).
+- CURRENT_EVIDENCE retained under `docs/tests/`: Fable packets, R1 purge, CT impl ledger, Candidate F sweep, runtime R2/RR evidence, BH-2D 100-tick observation.
+- PROBATION artifacts identified with expected expiration: BH-3 (`bh3_*`, PR 4); landed BH/PALMA rung reports (PR 9/10); Frontier/PALMA driver fixtures (PR 9/10).
+- LIVE_GUARDRAIL tests are fast and production-relevant: CT closed-surface, BH admission/GPU, BH-3 parse/install, R1 gate sentinel.
+- No implementation work was performed.
+
 Owner: Cursor (DA review)
 Purpose: Add `hydrate_scenario` composing front-end (A1) — multi-location scenario document.
 Scope: parse + lower; no new sim/driver types.
