@@ -158,14 +158,16 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 
 | Artifact | Classification | Rationale | Action |
 |---|---|---|---|
-| `docs/tests/bh3_authoring_0_results.md` | PROBATION | Original standalone BH-3 bridge proof; superseded as primary scenario-path evidence by PR4 report | Keep; review at PR 9 |
-| `docs/tests/bh3_closeout_pr2_scenario_container_results.md` | PROBATION | Fresh PR2 scenario-container parse/lower proof; supports PR 3/7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
-| `docs/tests/bh3_closeout_pr3_link_topology_results.md` | PROBATION | Fresh PR3 scenario link/grid-placement proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
-| `docs/tests/bh3_closeout_pr4_field_operator_results.md` | PROBATION | Fresh PR4 scenario field-operator proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
-| `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` | PROBATION | Fresh PR5 scenario PALMA feedstock proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
-| `docs/tests/bh3_closeout_pr6_field_policy_threshold_results.md` | PROBATION | Fresh PR6 scenario commitment/threshold proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
-| `docs/tests/bh3_closeout_pr7_sample_import_results.md` | PROBATION | Fresh PR7 canonical sample import proof; supports PR 9 promotion or archive | Keep under `docs/tests/`; review at PR 9 |
-| `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` | PROBATION | Fresh PR8 driver admit/install + GPU exercise proof; DA review before merge | Keep under `docs/tests/`; review at PR 9 |
+| `docs/archive/superseded_tests/bh3_authoring_0_results.md` | ARCHIVE | Original standalone BH-3 bridge proof; superseded by PR4/PR7/PR9 battery | Moved by PR 9 |
+| `docs/archive/superseded_tests/bh3_closeout_pr2_scenario_container_results.md` | ARCHIVE | Fresh PR2 scenario-container parse/lower proof | Moved by PR 9 |
+| `docs/archive/superseded_tests/bh3_closeout_pr3_link_topology_results.md` | ARCHIVE | Fresh PR3 scenario link/grid-placement proof | Moved by PR 9 |
+| `docs/archive/superseded_tests/bh3_closeout_pr4_field_operator_results.md` | ARCHIVE | Fresh PR4 scenario field-operator proof | Moved by PR 9 |
+| `docs/archive/superseded_tests/bh3_closeout_pr5_palma_feedstock_results.md` | ARCHIVE | Fresh PR5 scenario PALMA feedstock proof | Moved by PR 9 |
+| `docs/archive/superseded_tests/bh3_closeout_pr6_field_policy_threshold_results.md` | ARCHIVE | Fresh PR6 scenario commitment/threshold proof | Moved by PR 9 |
+| `docs/archive/superseded_tests/pr8_windows_test_binary_rename_results.md` | ARCHIVE | PR8-WIN-HYGIENE Windows UAC rename note; folded into PR8/PR9 reports | Moved by PR 9 |
+| `docs/tests/bh3_closeout_pr7_sample_import_results.md` | CURRENT_EVIDENCE | PR7 canonical sample import proof for PR10 closeout citation | Keep |
+| `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` | CURRENT_EVIDENCE | PR8 driver admit/install + GPU exercise proof for PR10 closeout citation | Keep |
+| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | PROBATION | PR9 battery consolidation report; PR10 decides promotion | New in PR 9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -191,6 +193,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/archive/superseded_tests/phase_m_frontier_v2_{0..4}_*_results.md` (5 files) | ARCHIVE | Frontier V2 fixture-only proof complete; not 0.0.8.2 closeout gate | Moved from `docs/tests/` |
 | `docs/archive/superseded_tests/` (remaining ~252 files) | ARCHIVE | Historical proof batteries, prior-rung reports, scratch captures | No PR-1 action |
 | `crates/simthing-clausething/tests/ct_0{a,b,c,d}_*.rs`, `ct_1{a,b,c}_*.rs`, `ct_2{a,c}_*.rs`, `ct_3b_4a_*.rs`, `ct_rf_eml_rate.rs` | LIVE_GUARDRAIL | Fast closed-surface parse/lower tests for production hydrators | Keep active |
+| `crates/simthing-clausething/tests/ct_scenario_container.rs` | LIVE_GUARDRAIL | PR2–PR7 closeout battery: canonical sample + scenario-container surfaces | Keep active |
 | `crates/simthing-clausething/tests/bh3_authoring_parse.rs` | LIVE_GUARDRAIL | Fast BH-3 field-operator parse/lower guardrail (standalone + shared PR4 surfaces) | Keep active |
 | `crates/simthing-clausething/tests/fixtures/bh3_*.clause` (3 files) | LIVE_GUARDRAIL | BH-3 guardrail fixtures consumed by fast parse tests | Keep active |
 | `crates/simthing-clausething/tests/fixtures/` (non-BH-3) | LIVE_GUARDRAIL | CT closed-surface goldens/fixtures consumed by fast tests | Keep active |
@@ -237,7 +240,7 @@ front end over existing generic surfaces. The admitted PR2 grammar uses jomini h
 `children`. Lowering emits `GameModeSpec` property/overlay declarations, a root `World` SimThing
 with `Location` children, retained authoring nodes, and existing `ScenarioListed` install-target
 ids. Focused tests are in `crates/simthing-clausething/tests/ct_scenario_container.rs`; result
-artifact: `docs/tests/bh3_closeout_pr2_scenario_container_results.md` (PROBATION). No
+artifact: `docs/archive/superseded_tests/bh3_closeout_pr2_scenario_container_results.md` (ARCHIVE). No
 `simthing-sim`, driver, spec, PALMA, adjacency/link, FIELD_POLICY, GPU, Bevy/editor, movement,
 route, path, predecessor, or Candidate-F code changed.
 
@@ -265,7 +268,7 @@ self-links, nested links, fanout above the N4 cap, non-N4/diagonal links, and th
 predecessor/movement/border/frontline/pathfinding/arbitrary-graph vocabulary. No `simthing-spec`,
 driver, `simthing-sim`, PALMA, SaturatingFlux, FIELD_POLICY, GPU, Bevy/editor, or Candidate-F
 surfaces changed. Result artifact:
-`docs/tests/bh3_closeout_pr3_link_topology_results.md` (PROBATION). Per A2/section 5, the PR
+`docs/archive/superseded_tests/bh3_closeout_pr3_link_topology_results.md` (ARCHIVE). Per A2/section 5, the PR
 requires design-authority review before merge.
 
 ### PR 4 — BH-3 SaturatingFlux authoring closure
@@ -290,7 +293,7 @@ Stop conditions: authoring would require weakening symmetric-flux/zero-flux doct
 now reject missing `u_sat`, non-finite values, `chi > 0.25`, and out-of-range choke bindings.
 `MappingExecutionProfile::Disabled` is preserved. Tests: `ct_scenario_container` (22/22),
 `bh3_authoring_parse` (4/4). Result artifact:
-`docs/tests/bh3_closeout_pr4_field_operator_results.md` (PROBATION). No PALMA, FIELD_POLICY
+`docs/archive/superseded_tests/bh3_closeout_pr4_field_operator_results.md` (ARCHIVE). No PALMA, FIELD_POLICY
 unification, driver, GPU, `simthing-sim`, movement, route, border, frontline, or Candidate-F
 changes.
 
@@ -317,7 +320,7 @@ Stop conditions: feedstock would need destination/route semantics (→ escalate,
 consumption. Hydrate-time guardrails reject missing bindings, invalid columns, unknown
 `w_source`, duplicate blocks, forbidden route/movement/pathfinding vocabulary, and
 `enabled = true`. Default-off posture preserved. Tests: `ct_scenario_container` (32/32). Result
-artifact: `docs/tests/bh3_closeout_pr5_palma_feedstock_results.md` (PROBATION). No FIELD_POLICY,
+artifact: `docs/archive/superseded_tests/bh3_closeout_pr5_palma_feedstock_results.md` (ARCHIVE). No FIELD_POLICY,
 canonical sample, driver, GPU, `simthing-sim`, movement, route, border, frontline, or Candidate-F
 changes.
 
@@ -342,7 +345,7 @@ feedstock into the referenced `RegionFieldSpec`: `FirstSliceCommitmentSpec`, opt
 threshold, unknown `field_urgency.source`, invalid column bindings, non-finite weights, unknown
 overlay/target bindings, duplicate blocks, forbidden route/movement/pathfinding vocabulary, and
 `enabled = true`. Default-off posture preserved. Tests: `ct_scenario_container` (42/42). Result
-artifact: `docs/tests/bh3_closeout_pr6_field_policy_threshold_results.md` (PROBATION). No canonical
+artifact: `docs/archive/superseded_tests/bh3_closeout_pr6_field_policy_threshold_results.md` (ARCHIVE). No canonical
 sample, driver install, GPU exercise, `simthing-sim`, movement, route, border, frontline, or
 Candidate-F changes.
 
@@ -399,7 +402,7 @@ property registration), and confirmed `cargo test -p simthing-driver --test ct_b
 → **2 passed**. Result artifact: `docs/tests/bh3_closeout_pr8_driver_gpu_results.md`. **PR8-WIN-HYGIENE**
 (2026-06-13) renamed the integration test to `ct_bh3_closeout_sample_driver.rs` so the Cargo binary
 no longer contains `install` and Windows UAC installer-detection no longer blocks execution; see
-`docs/tests/pr8_windows_test_binary_rename_results.md`.
+`docs/archive/superseded_tests/pr8_windows_test_binary_rename_results.md`.
 
 ### PR 9 — Test battery + artifact promotion/deletion
 Owner: Cursor
@@ -416,6 +419,16 @@ Docs: none.
 Artifact cleanup: delete superseded; archive sparingly under `docs/archive/superseded_tests/`.
 Acceptance: battery fast + focused; no proof theater; no unclassified scaffolding.
 Stop conditions: battery cannot stay fast/focused (→ PARTIAL, §9.7).
+
+**Status: PASS (2026-06-13, Cursor PR 9).** Consolidated the final closeout guardrail battery
+without runtime/GPU/editor changes. Archived seven superseded closeout reports (PR2–PR6,
+PR8-WIN-HYGIENE, `bh3_authoring_0`) to `docs/archive/superseded_tests/`. Promoted PR7/PR8 result
+reports to **CURRENT_EVIDENCE**; new PR9 report is **PROBATION** for PR10. Active guardrail commands:
+`cargo test -p simthing-clausething --test ct_scenario_container` and
+`cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver`. No active docs or test commands
+reference `ct_bh3_closeout_sample_install` except historical context in the archived PR8-WIN-HYGIENE
+report. No proof theater remains active. Result artifact:
+`docs/tests/bh3_closeout_pr9_test_battery_results.md`. PR10 closeout report + DA sign-off remains.
 
 ### PR 10 — Closeout report + docs + ledger close
 Owner: Cursor (DA sign-off)

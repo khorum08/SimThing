@@ -1,4 +1,8 @@
-//! BH3-CLOSEOUT PR2/PR3/PR4/PR5/PR6/PR7 scenario-container grammar/lowering guardrails.
+//! BH3-CLOSEOUT PR2–PR7 scenario-container grammar/lowering guardrails (LIVE_GUARDRAIL battery).
+//!
+//! Focused closeout command: `cargo test -p simthing-clausething --test ct_scenario_container`.
+//! Covers parse/lower for canonical sample, SaturatingFlux, PALMA W/D feedstock, FIELD_POLICY
+//! commitment, bounded links/grid metadata, default-off posture, and semantic-free lowering.
 
 use simthing_clausething::{
     HydratedScenarioGridPlacement, HydratedScenarioLink, hydrate_scenario, parse_raw_document,

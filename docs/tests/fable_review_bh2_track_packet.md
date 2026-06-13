@@ -24,7 +24,7 @@ This packet is the canonical handoff for Fable review. Production docs:
 | **BH-2C** | ACCEPTED | Composed W → PALMA `GpuInterleavedW` → resident D | [`bh2c_palma_feedstock_results.md`](bh2c_palma_feedstock_results.md) | PALMA is utility, not pathfinding engine |
 | **BH-2D** | ACCEPTED | CT-4b 200×200 fixture resident feedstock chain | [`bh2d_ct4b_fixture_results.md`](bh2d_ct4b_fixture_results.md) | Fixture proof; test harness quarantined |
 | **BH-2D-OBS-100R** | ACCEPTED | Dynamic 100-tick observation (test-only stimulus) | [`bh2d_ct4b_100tick_scenario_observations.md`](bh2d_ct4b_100tick_scenario_observations.md) | Probe-implied movement-front only; not production movement |
-| **BH-3-AUTHORING-0** | ACCEPTED | ClauseThing `hydrate_field_operator_pack` → generic spec + driver bridges | [`bh3_authoring_0_results.md`](bh3_authoring_0_results.md) | Provisional authoring syntax; session install wiring deferred |
+| **BH-3-AUTHORING-0** | ACCEPTED | ClauseThing `hydrate_field_operator_pack` → generic spec + driver bridges | [`../archive/superseded_tests/bh3_authoring_0_results.md`](../archive/superseded_tests/bh3_authoring_0_results.md) | Superseded as primary proof by PR4/PR7/PR9 battery; historical only |
 | **R1-TEST-PURGE** | ACCEPTED | Fast R1* sentinels only in default workspace | [`r1_default_workspace_purge_results.md`](r1_default_workspace_purge_results.md) | Do not reintroduce proof-ledger batteries |
 | **CANDIDATE-F-DOC** | ACCEPTED | §0.7 transient constitution exact-sqrt rule | [`design_0_0_8_1.md`](../design_0_0_8_1.md) §0.7 | Artifact hash pinned; not in core design |
 
