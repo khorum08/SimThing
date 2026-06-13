@@ -1,7 +1,7 @@
 # BH3 Closeout PR9 Test Battery Results
 
-> **Artifact lifecycle: PROBATION** (PR9 battery consolidation report; PR10 decides promotion to
-> CURRENT_EVIDENCE or fold into closeout report).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR9 battery consolidation report; folded into
+> [`clausething_closeout_results.md`](clausething_closeout_results.md)).
 
 ## Verdict
 
@@ -151,7 +151,7 @@ commands reference `ct_bh3_closeout_sample_install`.
 
 - Landed BH/PALMA rung reports (`bh0_*` … `palma_path_*`) remain PROBATION; PR10 should consolidate
   or archive without reintroducing proof theater.
-- PR9 report itself is PROBATION until PR10 closeout report + DA sign-off.
+- PR9 report promoted to CURRENT_EVIDENCE by PR10 closeout report + DA sign-off (2026-06-13, APPROVED).
 - Non-R1 `*_report_checksum_stable` tests in 0080-series binaries remain pre-existing and out of
   R1-TEST-PURGE scope; PR10 should note but not expand them.
 
@@ -159,4 +159,4 @@ commands reference `ct_bh3_closeout_sample_install`.
 
 | Artifact | Classification |
 |---|---|
-| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | PROBATION |
+| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | CURRENT_EVIDENCE |

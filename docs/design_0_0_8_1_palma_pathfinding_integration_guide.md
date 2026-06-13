@@ -495,7 +495,11 @@ feedstock — not pathfinding, movement, routes, or predecessors.
 
 **0.0.8.2 closeout addendum (2026-06-13, PR9).** PR9 promoted the consolidated closeout battery.
 PALMA W/D feedstock guardrails live in `ct_scenario_container` (authoring/lowering) and
-`ct_bh3_closeout_sample_driver` (driver/GPU). Per-PR5 result report is **ARCHIVE**; PR7/PR8 result
-reports remain **CURRENT_EVIDENCE** for PR10.
+`ct_bh3_closeout_sample_driver` (driver/GPU). Per-PR5 result report is **ARCHIVE**; PR7/PR8/PR9
+evidence folded into [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md).
+
+**0.0.8.2 closeout addendum (2026-06-13, PR10 — DA SIGN-OFF: APPROVED, Opus / Design Authority).** 0.0.8.2
+closeout is **CLOSED** for authoring/import/runtime-feedstock closure. PALMA remains W/D feedstock — not
+pathfinding. Final report: [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md).
 
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

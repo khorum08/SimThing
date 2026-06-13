@@ -1,7 +1,7 @@
 # BH3 Closeout PR7 Sample Import Results
 
-> **Artifact lifecycle: CURRENT_EVIDENCE** (PR7 canonical sample import proof; promoted by PR9 for
-> PR10 closeout citation).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR7 canonical sample import proof; folded into
+> [`clausething_closeout_results.md`](clausething_closeout_results.md)).
 
 ## Verdict
 

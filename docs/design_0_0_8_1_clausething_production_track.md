@@ -522,6 +522,13 @@ battery without adding runtime/GPU/editor semantics. **LIVE_GUARDRAIL commands:*
 `cargo test -p simthing-clausething --test ct_scenario_container` (parse/lower for canonical sample +
 PR2–PR7 surfaces) and `cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver` (PR8
 admit/install + compact GPU evidence). Per-PR2–PR6 result reports and PR8-WIN-HYGIENE note moved to
-**ARCHIVE** under `docs/archive/superseded_tests/`. PR7 and PR8 result reports remain
-**CURRENT_EVIDENCE** for PR10. No proof theater remains active; no unclassified closeout scaffolding
-remains active.
+**ARCHIVE** under `docs/archive/superseded_tests/`. PR7/PR8/PR9 result reports remain
+**CURRENT_EVIDENCE**, folded into the final closeout report.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR10 — DA SIGN-OFF: APPROVED, Opus / Design Authority).** The
+0.0.8.2 ClauseThing/BH/PALMA closeout track is **CLOSED** for authoring/import/runtime-feedstock closure
+— not playable-game, editor, or corpus/export closure. Final report:
+[`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md) (**CURRENT_EVIDENCE**).
+PR7/PR8/PR9 evidence is folded there. PR9 test battery is the live focused guardrail battery. Focused
+guardrail battery reran green under DA review (`ct_scenario_container` 45 passed; `ct_bh3_closeout_sample_driver`
+2 passed with GPU). Next recommended track: editor/corpus/export boundary.

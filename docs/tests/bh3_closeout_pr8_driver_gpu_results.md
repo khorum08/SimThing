@@ -1,7 +1,8 @@
 # BH3 Closeout PR8 Driver/GPU Sample Results
 
-> **Artifact lifecycle: CURRENT_EVIDENCE** (PR8 driver admit/install + GPU exercise proof; promoted
-> by PR9 for PR10 closeout citation). The driver test guardrail is LIVE_GUARDRAIL (see below).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR8 driver admit/install + GPU exercise proof; folded
+> into [`clausething_closeout_results.md`](clausething_closeout_results.md)). The driver test
+> guardrail is LIVE_GUARDRAIL.
 
 > **DA REVIEW: APPROVED (2026-06-13, Opus / Design Authority).** Driver test executed and passed on a
 > real GPU adapter after two test-only bugs were found and fixed during DA review (see "DA review
