@@ -1,4 +1,4 @@
-//! BH-3-AUTHORING-0: ClauseScript field-operator profile → generic `simthing-spec` surfaces.
+//! BH-3-AUTHORING-0 / PR4: ClauseScript field-operator profile → generic `simthing-spec` surfaces.
 //!
 //! Provisional project-local authoring syntax lowers into existing RegionField,
 //! W impedance compose, stress compose, and threshold feedstock structs.
@@ -19,12 +19,32 @@ use simthing_spec::spec::w_impedance_compose::{
 use simthing_spec::{GameModeSpec, SpecVersion};
 
 use crate::error::HydrateError;
-use crate::raw::{RawDocument, RawProperty, RawValue};
+use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
 /// Maximum authored impedance profiles per field-operator block (BH-3 v0 cap).
 pub const BH3_MAX_FIELD_IMPEDANCE_PROFILES: usize = 1;
 /// Maximum authored stress profiles per field-operator block (BH-3 v0 cap).
 pub const BH3_MAX_FIELD_STRESS_PROFILES: usize = 1;
+/// BH-0 CFL bound mirrored at hydrate time: dt is fixed at 1.0, so chi <= 0.25.
+pub const BH3_SATURATING_FLUX_CHI_CFL_MAX: f32 = 0.25;
+
+const FORBIDDEN_FIELD_OPERATOR_FIELDS: &[&str] = &[
+    "adjacency",
+    "edge",
+    "route",
+    "path",
+    "predecessor",
+    "movement",
+    "movement_order",
+    "waypoint",
+    "destination",
+    "frontline",
+    "border",
+    "pathfinding",
+    "arbitrary_graph",
+    "non_grid_topology",
+    "palma_feedstock",
+];
 
 /// Hydrated BH-3 field-operator pack: generic spec surfaces only.
 #[derive(Debug, Clone)]
@@ -46,16 +66,58 @@ pub fn hydrate_field_operator_pack(
             "BH-3 expects exactly one top-level field_operator block",
         ));
     }
-    let entity = &root.properties[0];
-    let RawValue::Block(body) = &entity.value else {
-        return Err(HydrateError::new_spanned(
-            "top-level field_operator value must be a block",
-            Some(entity.key.span.clone()),
-        ));
-    };
+    hydrate_field_operator_property(&root.properties[0])
+}
 
-    let pack_id = entity.key.text.clone();
-    let mut display_name = pack_id.clone();
+/// Hydrate one authored `field_operator` property block (standalone or scenario-contained).
+pub fn hydrate_field_operator_property(
+    property: &RawProperty,
+) -> Result<HydratedFieldOperatorPack, HydrateError> {
+    let (pack_id, body) = field_operator_pack_id_and_body(property)?;
+    hydrate_field_operator_body(&pack_id, body, Some(property.key.span.clone()))
+}
+
+fn field_operator_pack_id_and_body<'a>(
+    property: &'a RawProperty,
+) -> Result<(String, &'a RawBlock), HydrateError> {
+    match &property.value {
+        RawValue::Header(RawHeaderValue { header, payload }) => {
+            let RawValue::Block(block) = payload.as_ref() else {
+                return Err(HydrateError::new_spanned(
+                    "`field_operator` header payload must be a block",
+                    Some(header.span.clone()),
+                ));
+            };
+            if header.text.is_empty() {
+                return Err(HydrateError::new_spanned(
+                    "`field_operator` requires an id",
+                    Some(header.span.clone()),
+                ));
+            }
+            Ok((header.text.clone(), block))
+        }
+        RawValue::Block(block) => {
+            if property.key.text.is_empty() {
+                return Err(HydrateError::new_spanned(
+                    "`field_operator` requires an id",
+                    Some(property.key.span.clone()),
+                ));
+            }
+            Ok((property.key.text.clone(), block))
+        }
+        _ => Err(HydrateError::new_spanned(
+            "`field_operator` must be a block or header block",
+            Some(property.key.span.clone()),
+        )),
+    }
+}
+
+fn hydrate_field_operator_body(
+    pack_id: &str,
+    body: &RawBlock,
+    pack_span: Option<RawSpan>,
+) -> Result<HydratedFieldOperatorPack, HydrateError> {
+    let mut display_name = pack_id.to_string();
     let mut grid_size = None;
     let mut source_col = None;
     let mut target_col = None;
@@ -70,6 +132,7 @@ pub fn hydrate_field_operator_pack(
     let mut parent_formula = None;
 
     for property in &body.properties {
+        reject_forbidden_field_operator_field(property)?;
         match property.key.text.as_str() {
             "display_name" => display_name = read_scalar_text(property, "display_name")?,
             "grid_size" => grid_size = Some(read_scalar_u32(property, "grid_size")?),
@@ -103,11 +166,21 @@ pub fn hydrate_field_operator_pack(
         }
     }
 
-    let grid_size = require_field(grid_size, "grid_size", entity)?;
-    let source_col = require_field(source_col, "source_col", entity)?;
-    let target_col = require_field(target_col, "target_col", entity)?;
-    let n_dims = require_field(n_dims, "n_dims", entity)?;
-    let (u_sat, chi, choke_output_col) = require_field(saturating_flux, "saturating_flux", entity)?;
+    let grid_size = require_field(grid_size, "grid_size", pack_span.clone())?;
+    let source_col = require_field(source_col, "source_col", pack_span.clone())?;
+    let target_col = require_field(target_col, "target_col", pack_span.clone())?;
+    let n_dims = require_field(n_dims, "n_dims", pack_span.clone())?;
+    let (u_sat, chi, choke_output_col) =
+        require_field(saturating_flux, "saturating_flux", pack_span.clone())?;
+
+    validate_saturating_flux_params(
+        u_sat,
+        chi,
+        choke_output_col,
+        source_col,
+        n_dims,
+        pack_span.clone(),
+    )?;
 
     let field_impedance = field_impedance_property
         .map(|property| parse_field_impedance_block(property, choke_output_col))
@@ -117,8 +190,9 @@ pub fn hydrate_field_operator_pack(
         .transpose()?;
 
     if source_col != target_col {
-        return Err(HydrateError::new(
+        return Err(HydrateError::new_spanned(
             "SaturatingFlux authoring requires source_col == target_col",
+            pack_span,
         ));
     }
 
@@ -194,7 +268,7 @@ pub fn hydrate_field_operator_pack(
 
     Ok(HydratedFieldOperatorPack {
         game_mode: GameModeSpec {
-            id: pack_id,
+            id: pack_id.to_string(),
             display_name,
             description: String::new(),
             spec_version: SpecVersion::default(),
@@ -213,6 +287,62 @@ pub fn hydrate_field_operator_pack(
         w_impedance_compose,
         stress_compose,
     })
+}
+
+fn validate_saturating_flux_params(
+    u_sat: f32,
+    chi: f32,
+    choke_output_col: Option<u32>,
+    source_col: u32,
+    n_dims: u32,
+    span: Option<RawSpan>,
+) -> Result<(), HydrateError> {
+    if !u_sat.is_finite() || u_sat <= 0.0 {
+        return Err(HydrateError::new_spanned(
+            "SaturatingFlux u_sat must be finite and > 0",
+            span.clone(),
+        ));
+    }
+    if !chi.is_finite() || chi <= 0.0 {
+        return Err(HydrateError::new_spanned(
+            "SaturatingFlux chi must be finite and > 0",
+            span.clone(),
+        ));
+    }
+    if chi > BH3_SATURATING_FLUX_CHI_CFL_MAX {
+        return Err(HydrateError::new_spanned(
+            format!(
+                "SaturatingFlux chi {chi} exceeds CFL bound {BH3_SATURATING_FLUX_CHI_CFL_MAX} (dt=1.0)"
+            ),
+            span.clone(),
+        ));
+    }
+    if let Some(choke_col) = choke_output_col {
+        if choke_col >= n_dims {
+            return Err(HydrateError::new_spanned(
+                format!("SaturatingFlux choke_output_col {choke_col} out of range for n_dims"),
+                span.clone(),
+            ));
+        }
+        if choke_col == source_col {
+            return Err(HydrateError::new_spanned(
+                format!("SaturatingFlux choke_output_col {choke_col} must differ from source_col"),
+                span,
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn reject_forbidden_field_operator_field(property: &RawProperty) -> Result<(), HydrateError> {
+    let key = property.key.text.as_str();
+    if FORBIDDEN_FIELD_OPERATOR_FIELDS.contains(&key) {
+        return Err(HydrateError::new_spanned(
+            format!("`{key}` is outside BH-3 field_operator grammar"),
+            Some(property.key.span.clone()),
+        ));
+    }
+    Ok(())
 }
 
 fn parse_saturating_flux_block(
@@ -246,8 +376,8 @@ fn parse_saturating_flux_block(
     }
 
     Ok((
-        require_field(u_sat, "u_sat", property)?,
-        require_field(chi, "chi", property)?,
+        require_field(u_sat, "u_sat", Some(property.key.span.clone()))?,
+        require_field(chi, "chi", Some(property.key.span.clone()))?,
         choke_output_col,
     ))
 }
@@ -303,12 +433,16 @@ fn parse_field_impedance_block(
         })?;
 
     Ok((
-        require_field(base_w_col, "base_w_col", property)?,
+        require_field(base_w_col, "base_w_col", Some(property.key.span.clone()))?,
         choke_a,
         choke_b,
-        require_field(weight_a, "weight_a", property)?,
-        require_field(weight_b, "weight_b", property)?,
-        require_field(output_w_col, "output_w_col", property)?,
+        require_field(weight_a, "weight_a", Some(property.key.span.clone()))?,
+        require_field(weight_b, "weight_b", Some(property.key.span.clone()))?,
+        require_field(
+            output_w_col,
+            "output_w_col",
+            Some(property.key.span.clone()),
+        )?,
     ))
 }
 
@@ -375,8 +509,8 @@ fn parse_field_stress_block(
     Ok((
         choke_a,
         choke_b,
-        require_field(operator, "operator", property)?,
-        require_field(output_col, "output_col", property)?,
+        require_field(operator, "operator", Some(property.key.span.clone()))?,
+        require_field(output_col, "output_col", Some(property.key.span.clone()))?,
     ))
 }
 
@@ -433,11 +567,11 @@ fn parse_threshold_feedstock_block(
 
     Ok(FirstSliceCommitmentSpec {
         source_formula_class: "field_urgency".into(),
-        parent_slot: require_field(parent_slot, "parent_slot", property)?,
-        urgency_col: require_field(urgency_col, "urgency_col", property)?,
-        threshold: require_field(threshold, "threshold", property)?,
-        direction: require_field(direction, "direction", property)?,
-        event_kind: require_field(event_kind, "event_kind", property)?,
+        parent_slot: require_field(parent_slot, "parent_slot", Some(property.key.span.clone()))?,
+        urgency_col: require_field(urgency_col, "urgency_col", Some(property.key.span.clone()))?,
+        threshold: require_field(threshold, "threshold", Some(property.key.span.clone()))?,
+        direction: require_field(direction, "direction", Some(property.key.span.clone()))?,
+        event_kind: require_field(event_kind, "event_kind", Some(property.key.span.clone()))?,
         effect: None,
     })
 }
@@ -475,7 +609,11 @@ fn parse_parent_formula_block(
     }
 
     Ok(RegionFieldFormulaBindingSpec {
-        formula_class: require_field(formula_class, "formula_class", property)?,
+        formula_class: require_field(
+            formula_class,
+            "formula_class",
+            Some(property.key.span.clone()),
+        )?,
         tree_id: None,
         weight_pressure,
         weight_resource,
@@ -494,12 +632,19 @@ fn read_scalar_text(property: &RawProperty, field: &str) -> Result<String, Hydra
 
 fn read_scalar_f32(property: &RawProperty, field: &str) -> Result<f32, HydrateError> {
     let text = read_scalar_text(property, field)?;
-    text.parse::<f32>().map_err(|_| {
+    let value = text.parse::<f32>().map_err(|_| {
         HydrateError::new_spanned(
             format!("`{field}` must be a numeric literal, got `{text}`"),
             Some(property.key.span.clone()),
         )
-    })
+    })?;
+    if !value.is_finite() {
+        return Err(HydrateError::new_spanned(
+            format!("`{field}` must be finite"),
+            Some(property.key.span.clone()),
+        ));
+    }
+    Ok(value)
 }
 
 fn read_scalar_u32(property: &RawProperty, field: &str) -> Result<u32, HydrateError> {
@@ -515,12 +660,8 @@ fn read_scalar_u32(property: &RawProperty, field: &str) -> Result<u32, HydrateEr
 fn require_field<T>(
     value: Option<T>,
     field: &str,
-    property: &RawProperty,
+    span: Option<RawSpan>,
 ) -> Result<T, HydrateError> {
-    value.ok_or_else(|| {
-        HydrateError::new_spanned(
-            format!("missing required field `{field}`"),
-            Some(property.key.span.clone()),
-        )
-    })
+    value
+        .ok_or_else(|| HydrateError::new_spanned(format!("missing required field `{field}`"), span))
 }

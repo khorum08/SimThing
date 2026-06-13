@@ -1,0 +1,36 @@
+scenario = bh3_closeout_pr4_field_op {
+    metadata = {
+        display_name = "BH3 Closeout PR4 Field Operator Scenario"
+        description = "Scenario-contained SaturatingFlux field operator."
+    }
+
+    location = alpha {
+        name = "Alpha Basin"
+    }
+
+    location = beta {
+        name = "Beta Shelf"
+    }
+
+    link = {
+        from = alpha
+        to = beta
+    }
+
+    field_operator = alpha_choke_flux {
+        display_name = "Alpha Choke Flux"
+        grid_size = 10
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        alpha_self = 0.5
+        gamma_neighbor = 0.125
+        horizon = 8
+
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+}

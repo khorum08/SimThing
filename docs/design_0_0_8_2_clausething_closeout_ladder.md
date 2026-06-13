@@ -22,11 +22,11 @@
 |---|---|---|
 | `hydrate_entity_pack` (CT-1a) | `DomainPackSpec` (properties + overlays) | CLOSED |
 | `hydrate_category_economy` (CT-2c) | `GameModeSpec`: RF arenas, `RegionFieldSpec`, gated/`value:` rates, `pressure_binding`, ai_will_do `field_urgency`, `FirstSliceCommitmentSpec` + `CommitmentEffectSpec` | CLOSED |
-| `hydrate_field_operator` (BH-3 provisional) | `RegionFieldOperatorSpec::SaturatingFlux`, W-impedance compose, stress compose, threshold feedstock structs | **PROBATION** |
+| `hydrate_field_operator` (BH-3 provisional) | `RegionFieldOperatorSpec::SaturatingFlux`, W-impedance compose, stress compose, threshold feedstock structs | **CLOSED in scenario path (PR4); standalone path closed** |
 | `hydrate_resource_flow` | `ResourceFlowSpec` | CLOSED |
 | capability / tradition trees (CT-1c) | `CapabilityTreeSpec` | CLOSED |
 | All parsing | jomini text path → `RawDocument` (`parse_raw_document`) | CLOSED |
-| `hydrate_scenario` (PR2/PR3) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata | **PASS / PROBATION evidence; PR3 DA REVIEW REQUIRED BEFORE MERGE** |
+| `hydrate_scenario` (PR2/PR3/PR4) | `GameModeSpec` + root `World`/`Location` SimThing tree + `ScenarioListed` install-target ids + bounded grid placement/link metadata + optional scenario field operator | **PASS / PROBATION evidence** |
 
 **Driver/runtime spine (0.0.8.1, accepted):** `open_from_spec` installs a `GameModeSpec`; the
 session loop runs RF arena bands → on-device pressure scatter → stencil heatmap (incl.
@@ -34,11 +34,11 @@ session loop runs RF arena bands → on-device pressure scatter → stencil heat
 crossing → authored `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay`. PALMA W/D exists
 at driver level (BH-2C: `WImpedanceComposeOp` → `GpuInterleavedW` → resident D + compact probe).
 
-**The remaining closure gap (precise after PR3):** ClauseThing now has the first
-scenario-container parse/lower surface for metadata, locations, properties, overlays, children,
-existing scenario-listed install-target ids, and bounded top-level `link` declarations lowered to
-row-major square-grid cell-placement metadata. It still has **no authored PALMA W/D binding from
-ClauseScript**, and **no canonical end-to-end sample**
+**The remaining closure gap (precise after PR4):** ClauseThing now has scenario-container import
+for metadata, locations, properties, overlays, children, bounded top-level `link` declarations,
+and one scenario-contained SaturatingFlux `field_operator` lowered through the existing BH-3
+surfaces. It still has **no authored PALMA W/D binding from ClauseScript**, and **no canonical
+end-to-end sample**
 (parse → lower → admit → install → exercise) as one scenario. These are the spine of the remaining
 ladder; everything else is guardrail-hardening and lifecycle hygiene.
 
@@ -161,9 +161,10 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 
 | Artifact | Classification | Rationale | Action |
 |---|---|---|---|
-| `docs/tests/bh3_authoring_0_results.md` | PROBATION | Fresh BH-3 authoring bridge proof; supports PR 4 promotion | Keep under `docs/tests/`; review at PR 4/9 |
+| `docs/tests/bh3_authoring_0_results.md` | PROBATION | Original standalone BH-3 bridge proof; superseded as primary scenario-path evidence by PR4 report | Keep; review at PR 9 |
 | `docs/tests/bh3_closeout_pr2_scenario_container_results.md` | PROBATION | Fresh PR2 scenario-container parse/lower proof; supports PR 3/7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/bh3_closeout_pr3_link_topology_results.md` | PROBATION | Fresh PR3 scenario link/grid-placement proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
+| `docs/tests/bh3_closeout_pr4_field_operator_results.md` | PROBATION | Fresh PR4 scenario field-operator proof; supports PR 7/9 promotion or archive | Keep under `docs/tests/`; review at PR 7/9 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -189,8 +190,8 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/archive/superseded_tests/phase_m_frontier_v2_{0..4}_*_results.md` (5 files) | ARCHIVE | Frontier V2 fixture-only proof complete; not 0.0.8.2 closeout gate | Moved from `docs/tests/` |
 | `docs/archive/superseded_tests/` (remaining ~252 files) | ARCHIVE | Historical proof batteries, prior-rung reports, scratch captures | No PR-1 action |
 | `crates/simthing-clausething/tests/ct_0{a,b,c,d}_*.rs`, `ct_1{a,b,c}_*.rs`, `ct_2{a,c}_*.rs`, `ct_3b_4a_*.rs`, `ct_rf_eml_rate.rs` | LIVE_GUARDRAIL | Fast closed-surface parse/lower tests for production hydrators | Keep active |
-| `crates/simthing-clausething/tests/bh3_authoring_parse.rs` | LIVE_GUARDRAIL | Fast BH-3 field-operator parse/lower guardrail | Keep active |
-| `crates/simthing-clausething/tests/fixtures/bh3_*.clause` (3 files) | PROBATION | BH-3 provisional fixtures; tied to `hydrate_field_operator` | Keep; promote at PR 4 |
+| `crates/simthing-clausething/tests/bh3_authoring_parse.rs` | LIVE_GUARDRAIL | Fast BH-3 field-operator parse/lower guardrail (standalone + shared PR4 surfaces) | Keep active |
+| `crates/simthing-clausething/tests/fixtures/bh3_*.clause` (3 files) | LIVE_GUARDRAIL | BH-3 guardrail fixtures consumed by fast parse tests | Keep active |
 | `crates/simthing-clausething/tests/fixtures/` (non-BH-3) | LIVE_GUARDRAIL | CT closed-surface goldens/fixtures consumed by fast tests | Keep active |
 | `crates/simthing-spec/tests/bh{0,1,2s,3}_*_admission.rs`, `region_field_spec_admission.rs`, `e10_resource_flow_admission.rs`, `resource_flow_*roundtrip.rs` | LIVE_GUARDRAIL | Fast admission guardrails for BH + RF surfaces | Keep active |
 | `crates/simthing-spec/tests/clause_spec0_frontier_v2_admission.rs` | PROBATION | CLAUSE-SPEC-0 admission; historical FrontierV2 target, not closeout gate | Keep; not default closeout battery |
@@ -280,6 +281,16 @@ Docs: BH track §status → BH-3 authoring closed; ClauseThing_Spec field_operat
 Artifact cleanup: promote the PROBATION field_operator tests to CURRENT_EVIDENCE or delete superseded ones.
 Acceptance: authored SaturatingFlux profiles admit/install or hard-error; doctrine preserved; default-off.
 Stop conditions: authoring would require weakening symmetric-flux/zero-flux doctrine (→ escalate).
+
+**Status: PASS (2026-06-13, Cursor PR 4).** Scenario containers admit one top-level
+`field_operator` block lowered through `hydrate_field_operator_property` into generic
+`RegionFieldSpec` (+ optional compose surfaces on `HydratedScenarioPack`). Hydrate-time guardrails
+now reject missing `u_sat`, non-finite values, `chi > 0.25`, and out-of-range choke bindings.
+`MappingExecutionProfile::Disabled` is preserved. Tests: `ct_scenario_container` (22/22),
+`bh3_authoring_parse` (4/4). Result artifact:
+`docs/tests/bh3_closeout_pr4_field_operator_results.md` (PROBATION). No PALMA, FIELD_POLICY
+unification, driver, GPU, `simthing-sim`, movement, route, border, frontline, or Candidate-F
+changes.
 
 ### PR 5 — PALMA W/D feedstock authoring + lowering
 Owner: Cursor
@@ -391,7 +402,7 @@ Every PR opens with an inventory + classification pass. New report/test artifact
 archive, or deletion. DELETE items are deleted in the PR that finds them. Archive only
 historically useful proof markdown under `docs/archive/superseded_tests/`. New visibility only
 under `docs/tests/`. **No PASS is marked while stale/unclassified proof scaffolding is active.**
-The `hydrate_field_operator` provisional artifacts are PROBATION until PR 4 promotes or deletes them.
+The `hydrate_field_operator` artifacts are closed at PR4; promote/delete PROBATION reports at PR 9.
 
 ## 9. Stop conditions (any → PARTIAL with the precise gap; do not improvise)
 

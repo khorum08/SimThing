@@ -1,9 +1,10 @@
-//! PR2/PR3 scenario-container hydration over existing generic authoring surfaces.
+//! PR2/PR3/PR4 scenario-container hydration over existing generic authoring surfaces.
 //!
 //! This module composes a ClauseScript `scenario` document into a root
-//! `SimThing` tree plus `GameModeSpec` property/overlay declarations and bounded
-//! PR3 grid placement/link metadata. It does not add driver/runtime semantics,
-//! arbitrary graph topology, movement, routes, or pathfinding.
+//! `SimThing` tree plus `GameModeSpec` property/overlay declarations, bounded
+//! PR3 grid placement/link metadata, and PR4 scenario-contained field operators.
+//! It does not add driver/runtime semantics, arbitrary graph topology, movement,
+//! routes, or pathfinding.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -16,11 +17,17 @@ use simthing_spec::spec::game_mode::GameModeSpec;
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
+use simthing_spec::spec::region_field::MappingExecutionProfile;
+use simthing_spec::spec::stress_compose::StressComposeSpec;
+use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 
 use crate::error::HydrateError;
+use crate::hydrate_field_operator::hydrate_field_operator_property;
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawValue};
 
 pub const PR3_MAX_LINK_FANOUT: usize = 4;
+/// PR4 admits one scenario-contained SaturatingFlux field operator per document.
+pub const PR4_MAX_SCENARIO_FIELD_OPERATORS: usize = 1;
 
 const FORBIDDEN_SCENARIO_FIELDS: &[&str] = &[
     "adjacency",
@@ -74,6 +81,10 @@ pub struct HydratedScenarioPack {
     /// admission feedstock shaped like RegionField pressure placements, not a
     /// runtime topology object.
     pub grid_metadata: HydratedScenarioGridMetadata,
+    /// PR4 optional W impedance compose lowered from a scenario field operator.
+    pub w_impedance_compose: Option<WImpedanceComposeSpec>,
+    /// PR4 optional stress compose lowered from a scenario field operator.
+    pub stress_compose: Option<StressComposeSpec>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -142,6 +153,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut seen_property_ids = BTreeSet::new();
     let mut seen_overlay_ids = BTreeSet::new();
     let mut raw_links = Vec::new();
+    let mut field_operator_count = 0_usize;
+    let mut field_operator_pack = None;
 
     for field in &body.properties {
         reject_forbidden_scenario_field(field)?;
@@ -159,6 +172,24 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                 locations.push(node);
             }
             "link" => raw_links.push(parse_link(field)?),
+            "field_operator" => {
+                field_operator_count += 1;
+                if field_operator_count > PR4_MAX_SCENARIO_FIELD_OPERATORS {
+                    return Err(HydrateError::new_spanned(
+                        format!(
+                            "scenario admits at most {PR4_MAX_SCENARIO_FIELD_OPERATORS} field_operator block"
+                        ),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                if field_operator_pack.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate scenario field_operator block",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                field_operator_pack = Some(hydrate_field_operator_property(field)?);
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported scenario field `{other}`"),
@@ -221,6 +252,17 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     game_mode.properties = properties;
     game_mode.overlays = overlays;
 
+    let mut w_impedance_compose = None;
+    let mut stress_compose = None;
+    if let Some(operator) = field_operator_pack {
+        game_mode
+            .region_fields
+            .extend(operator.game_mode.region_fields);
+        game_mode.mapping_execution_profile = MappingExecutionProfile::Disabled;
+        w_impedance_compose = operator.w_impedance_compose;
+        stress_compose = operator.stress_compose;
+    }
+
     root_node.simthing_id = root.id;
     Ok(HydratedScenarioPack {
         scenario_id,
@@ -230,6 +272,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         root_node,
         install_targets,
         grid_metadata,
+        w_impedance_compose,
+        stress_compose,
     })
 }
 

@@ -65,9 +65,9 @@ fn bh3_authoring_rejects_missing_u_sat() {
 #[test]
 fn bh3_authoring_rejects_invalid_chi_literal() {
     let document = parse_raw_document(INVALID_CHI.as_bytes()).expect("parse invalid chi fixture");
-    let pack = hydrate_field_operator_pack(&document).expect("hydrate for admission check");
-    let err =
-        simthing_spec::compile_region_field_preview(&pack.game_mode.region_fields[0]).unwrap_err();
-    let msg = err.to_string();
-    assert!(msg.contains("chi") || msg.contains("SaturatingFlux"));
+    let err = hydrate_field_operator_pack(&document).unwrap_err();
+    assert!(
+        err.to_string().contains("chi") || err.to_string().contains("CFL"),
+        "{err}"
+    );
 }

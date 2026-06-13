@@ -42,15 +42,17 @@ pub use hydrate_category_economy::{
     hydrate_daily_economy_game_mode,
 };
 pub use hydrate_field_operator::{
-    BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES, HydratedFieldOperatorPack,
-    hydrate_field_operator_pack,
+    BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES,
+    BH3_SATURATING_FLUX_CHI_CFL_MAX, HydratedFieldOperatorPack, hydrate_field_operator_pack,
+    hydrate_field_operator_property,
 };
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
 };
 pub use hydrate_scenario::{
     HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioLink,
-    HydratedScenarioNode, HydratedScenarioPack, PR3_MAX_LINK_FANOUT, hydrate_scenario,
+    HydratedScenarioNode, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
+    PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
 };
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;

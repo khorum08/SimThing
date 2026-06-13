@@ -470,3 +470,11 @@ ClauseThing admission/import metadata shaped for later RegionField placement con
 a graph object, route/path system, movement engine, runtime topology service, driver install
 change, GPU kernel, Bevy/editor feature, or `simthing-sim` concept. Non-grid arbitrary topology
 stays deferred to a future topology-spec rung. PR3 carries the 0.0.8.2 DA review gate before merge.
+
+**0.0.8.2 closeout addendum (2026-06-13, PR4).** The closed 0.0.8.1 track remains closed.
+`hydrate_scenario` now admits one scenario-contained `field_operator` block lowered through the
+existing BH-3 hydrator into generic `RegionFieldSpec` (+ optional compose surfaces on
+`HydratedScenarioPack`) with default-off posture preserved. This closes BH-3 authoring inside the
+scenario-container path. PALMA W/D feedstock, FIELD_POLICY threshold unification, driver install
+closure, GPU kernels, runtime semantics, movement/pathfinding/border/frontline services, and
+`simthing-sim` awareness remain out of scope.
