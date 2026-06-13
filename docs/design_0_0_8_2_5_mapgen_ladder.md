@@ -1,370 +1,348 @@
-# SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → ClauseThing)
+# SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (2026-06-13, executive design authority).**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (revised 2026-06-13, executive design authority).**
 > This is the planning artifact that **pulls the deferred corpus-import / map-generation consumer**
-> named in the 0.0.8.2 closeout. It is not an implementation PR. It pins the schema judgments (§3)
-> so the implementation rungs are Cursor-mechanical, names the Stellaris-side detail by reference to
-> [`clausething/MapGenThing.md`](clausething/MapGenThing.md), and reserves only the leakage-sensitive
-> and architecture rungs for Opus / design-authority review.
+> named in the 0.0.8.2 closeout. It is not an implementation PR. It pins schema judgments (§3) so the
+> rungs are Cursor-mechanical, and it is **subordinate to two governing ADRs (§0).**
 >
-> **0.0.8.2.5 rationale — extension, not reopening of sign-off.** 0.0.8.2 closed the
-> ClauseThing/BH/PALMA **authoring-import / runtime-feedstock** surfaces with DA sign-off
-> (2026-06-13, [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md)) and
-> explicitly **deferred** the corpus-import consumer. That sign-off **stands and is not reopened.**
-> What 0.0.8.2.5 does is *name the consumer the closeout was waiting for*: the standing guardrail
-> "PALMA/min-plus is a seated generic GPU utility **awaiting a named consumer**"
-> ([`clausething/ct_vertical_consumer_contract.md`](clausething/ct_vertical_consumer_contract.md))
-> and the deferred "BH-3 ClauseThing authoring of map-specific field behaviors"
-> ([`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md)) are both pulled by
-> **one consumer: a Stellaris starmap adapter**. It earns a point-five doc because it widens the
-> *front-end* (parse + map) without reopening the closed runtime/GPU spine. The editor/corpus/export
-> seam (0.0.8.2 §10 / `FIELD-MOVIE-DATASET-0`) remains the **subsequent** track, untouched here.
+> **What MapGen is.** MapGen *ingests* ClauseScript / Stellaris mapping script and *generates*
+> **SimThing star mapping** — a spatial hierarchical tree + resource-flow arena enrollment + a bounded
+> three-layer suppression/disruption ("SEAD") heatmap — shaped for exactly the substrates SimThing
+> already runs: Resource Flow and the RegionCell mapping field model. It is a **front-end / generator**,
+> not a new runtime, not a Stellaris importer, not a whole-game decoder.
 >
-> **No constitution change.** `design_0_0_8_1.md` §0.7 (Candidate F) and `simthing_core_design.md`
-> are untouched. This ladder adds a named consumer; it does not amend doctrine. The single doctrinal
-> tripwire it must respect is the Candidate-F Euclidean boundary (§3 M7), which it **guards**, never
-> crosses by default.
+> **0.0.8.2.5 is an extension, not a reopening of sign-off.** The 0.0.8.2 DA sign-off
+> ([`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md)) **stands.** MapGen
+> names the consumer the closeout deferred (PALMA "awaiting a named consumer"; BH-3 authoring). The
+> editor/corpus/export seam (`FIELD-MOVIE-DATASET-0`) remains the **subsequent** track.
 
 ---
 
-## 1. Current-state assessment (verified 2026-06-13)
+## 0. Binding substrate ADRs — READ FIRST (non-negotiable)
 
-**The destination is closed and signed off.** Everything a starmap lowers *into* already exists as
-generic `simthing-spec` surfaces (0.0.8.2 DA-approved). MapGen adds a *source-side adapter*, not new
-runtime:
+> Every rung is subordinate to these two ADRs. **If a rung's behavior is not expressible within both,
+> the rung STOPS and escalates (§9) — it does not improvise a wider substrate.** The executive design
+> authority drifted from the mapping ADR while sketching this track on 2026-06-13; that is precisely
+> the drift Cursor will reproduce if these are not load-bearing in every rung. They are cited inline in
+> §3 and §6 by section. **Do not write a rung without re-reading the cited ADR section.**
 
-| What MapGen needs to emit | Already-closed target surface | Source |
+**ADR-MAP — [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) (Approved 2026-05-28).**
+The map, constitutionally:
+- **The spatial tree is the physical map.** Political/faction structure is overlays on the tree, not nodes in it.
+- **A RegionCell is NOT a `SimThingKind`.** It is an *authored mapping-role / profile on a SimThing*, backed by a slot range in dense matrices, addressed positionally by `(width, height, col)`. `simthing-core` gains no variant; `simthing-sim` stays semantic-free (flat columns + opaque `AccumulatorOp` only).
+- **Three-layer model (load-bearing):** **L1** `StructuredFieldStencilOp` over a *bounded local theater* (first slice ≤ 32×32, H ≤ 8, `source_capped_normalized`, ping-pong) for dense tactical fields; **L2** `SlotRange` Sum reduction cell→parent for strategic awareness (~15× cheaper than widening the stencil); **L3** parent `EvalEML` interpretation → threshold → commitment. Reduce-before-interpret; propagation by later-band cascade.
+- **The rejected pattern (the load-bearing negative result):** **dense, lateral, long-horizon diffusion over a large/global grid is over budget and is REJECTED as a strategic-awareness mechanism** (~3236 ms/tick at 30k cells). Strategic awareness is hierarchy + parent EML, **never dense-and-global.**
+- Opt-in / bounded / default-off (`MappingExecutionProfile::Disabled`). Atlas batching, active masks, perception fields, behavioral source policy are **Provisional/Deferred** with hard gates — `request_atlas_batching` stays rejected at admission.
+
+**ADR-RF — [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md) (Accepted 2026-05-26).**
+Continuous resource dynamics:
+- **Hierarchical fanout absorption is the scaling mechanism.** `faction(1) → planet(100) → district(1000) → factory(100000)`; each level ≤ ~100 children, so per-level contention is bounded **regardless of total count.** This is *the* reason 2000+ stars are cheap — it is the same hierarchy as ADR-MAP L2.
+- **One unified field substrate, many named arenas** distinguished by column range, not kernel variant (food, research, **`piracy_suppression`**, …). The suppression/disruption ("SEAD") front is a **resource-flow arena**, not a bespoke field.
+- **Four constitutional rules:** capability universal; **participation explicit** (selector admission — property possession never admits); **expansion bounded** (every arena declares `max_participants`, `max_coupling_fanout`, `max_orderband_depth`); **unsafe content rejected at import / session build**, not clamped at runtime. The spec compiler emits an **expansion report** per build.
+- Per-coupling delay form (`Algebraic` / `OneTickDelay` / `BoundaryStage` / `AccumulatorState`); a cycle of all-`Algebraic` edges is rejected. `FissionPolicy ∈ {Inherit, Reevaluate(default), Reject}`. `AccumulatorRole` is compile-time metadata only — compiles away before `simthing-sim`. `ArenaRegistry` lives in `simthing-driver`; `simthing-sim` never sees it.
+- **No new GPU primitive** — the substrate is a registration discipline over AccumulatorOp v2. ("All conflict is resource flow" — `design_0_0_8_0.md` §0.3.)
+
+**Read order for any MapGen rung:** `docs/invariants.md` → ADR-MAP → ADR-RF → this ladder §3 → the closed authoring surfaces (`clausething/ct_vertical_consumer_contract.md`, CT-2c economy) → [`clausething/MapGenThing.md`](clausething/MapGenThing.md) for Stellaris-side detail.
+
+---
+
+## 1. What MapGen ingests and what it generates
+
+**Ingest:** raw Stellaris/Clausewitz mapping script (solar_system_initializers, setup_scenarios, static_galaxy_scenario, add_hyperlane, deposits, nebulas) and/or ClauseScript scenario authoring, via the existing jomini neutral-AST path.
+
+**Generate (SimThing star mapping — three coordinated outputs, all on already-closed surfaces):**
+
+| Generated output | Target surface (already exists / closed) | Governing ADR |
 |---|---|---|
-| star system / sector node | `scenario.location { … }` → child of root `World` (`hydrate_scenario`) | closeout A1 |
-| planet / deposit / moon under a system | `children` + properties + overlays | CT-1a / CT-2c |
-| hyperlane adjacency | `link { from to }` → **bounded N4 grid metadata** (never a graph object) | closeout A2 |
-| nebula / storm / threat / supply / influence map field | `RegionFieldSpec` + `RegionFieldOperatorSpec::SaturatingFlux` (Gu-Yang) | BH-0 / closeout A* |
-| map traversal / reach / influence spread | composed-W → `min_plus_traversal_field` D (PALMA) | BH-2C / PALMA PATH-8 |
-| map decision (fortify / expand / cut-supply) | ai_will_do urgency → threshold → `CommitmentEffectSpec` via `BoundaryRequest::AttachOverlay` | CT-3b+4a |
-| parse of raw text | jomini text path → `RawDocument` (`parse_raw_document`) | CLOSED |
+| **(a) Spatial hierarchical tree** — galaxy → sector/cluster → system (`location`) → planet/structure → deposit (`children`) | `scenario` + `hydrate_scenario` → root `World`/`Location` tree; closeout A1 | ADR-MAP (tree = map) |
+| **(b) Resource-flow arena enrollment** — deposits = `IntrinsicFlow` sources; system/sector/faction = hierarchical allocators; arenas for minerals/energy/research + a `suppression` arena | CT-2c economy: `ResourceFlowSpec`, gated/`value:` rates, RF arenas, `pressure_binding`; ArenaRegistry (driver) | ADR-RF (arenas, hierarchy, caps) |
+| **(c) Bounded 3-layer SEAD heatmap** — suppression-arena pressure → RegionField; L1 bounded theaters, L2 hierarchy reduction, L3 parent EML → threshold → commitment | `RegionFieldSpec` + `StructuredFieldStencilOp`/`SaturatingFlux` (L1) + `SlotRange` Sum (L2) + `ai_will_do` EvalEML (L3) + `FirstSliceCommitmentSpec` | ADR-MAP (3 layers), ADR-RF (`piracy_suppression`) |
+| Hyperlane adjacency | `link` → bounded grid/lane-coupling metadata (never a graph object) | closeout A2 |
+| Map traversal / influence reach | composed-W → `min_plus_traversal_field` D (PALMA) | BH-2C; closeout A3 |
 
-**What is missing (the entire scope of this track):** there is **no adapter from raw
-Stellaris/Clausewitz text into the ClauseThing scenario surfaces.** No file-family mapping
-(`solar_system_initializers`, `setup_scenarios`, `static_galaxy_scenario`), no
-initializer→location/children mapping, no `add_hyperlane`→link mapping, no map-field authoring from
-Stellaris idioms. The closeout report says this verbatim: *full ClauseScript corpus coverage and
-corpus/import scope remain deferred.* 0.0.8.2.5 builds a **thin, one-directional, slice-scoped**
-adapter — not a whole-game importer.
+**What is missing (the whole track):** there is no adapter from Stellaris/ClauseScript mapping script into these generated outputs. MapGen builds a **thin, slice-scoped** generator. It does **not** build a whole-game importer, new substrate, or new GPU kernel.
 
-**Corpus availability.** The full vanilla Stellaris corpus + generated logs are present read-only at
-`C:\Users\mvorm\Clauser\Paradox\` (`vanilla/common/solar_system_initializers/*.txt`,
-`vanilla/map/setup_scenarios/{tiny,small,medium,large,huge,static_galaxy_example}.txt`,
-`vanilla/map/galaxy/`, `script_documentation/{effects,triggers,scopes,modifiers,localizations}.log`).
-It is **not vendored** into this repo (see §3 M8).
+**Corpus:** vanilla files + logs are read-only at `C:\Users\mvorm\Clauser\Paradox\` and are **not vendored** (§3 M10).
 
 ## 2. MapGen closure definition (what 0.0.8.2.5 closes)
 
-MapGen 0.0.8.2.5 is **closed** when a **single starmap slice** — derived from the vanilla corpus but
-authored as hand-checked fixtures — does all of the following with **zero `simthing-sim` semantic
-leakage**:
+MapGen 0.0.8.2.5 is **closed** when a **single starmap slice** (≤ 5 systems, derived from the vanilla
+corpus, authored as hand-checked fixtures) is *ingested* and *generates* SimThing star mapping that:
 
-1. **Parses** representative raw Stellaris text (one `solar_system_initializer` + a minimal
-   `static_galaxy_scenario`) into the existing `RawDocument` neutral AST, preserving repeated keys,
-   declaration order, and nesting, **making no semantic decisions in the parse pass**.
-2. **Maps** that slice into the existing `scenario`/`location`/`link`/`children` surfaces and the
-   field/PALMA/commitment sub-blocks — reusing `hydrate_scenario`, introducing **no new
-   `SimThingKind`, no new spec lowering target, no graph object**.
-3. **Authors map-scale fields** (nebula/storm/threat as a `RegionField` + Gu-Yang `SaturatingFlux`
-   suppression/disruption front) and **map traversal feedstock** (composed-W → PALMA D), default-off.
-4. **Admits and installs** through the driver (`open_from_spec`) and **exercises the GPU-resident
-   field path** (Gu-Yang + PALMA + commitment) under a focused test with **compact evidence only**
-   (no full-field CPU decision readback).
-5. **Honors the Candidate-F Euclidean boundary** (§3 M7): position is inert metadata, adjacency is
-   topological, no Euclidean magnitude on any runtime path.
-6. Is **documented** as to exactly what is complete vs deferred.
+1. **Parses** raw Stellaris/ClauseScript into the neutral AST, **no semantic decisions in the parse pass.**
+2. **Generates the spatial hierarchical tree** (galaxy → sector → system → planet → deposit) via `hydrate_scenario`, with **no new `SimThingKind`** and **no RegionCell-as-entity** (ADR-MAP).
+3. **Generates resource-flow arena enrollment** — deposits → intrinsic flow; a bounded shallow hierarchy of allocators; **every arena declares explicit selectors + caps + FissionPolicy**, passes the ADR-RF draconian spec firewall, and emits an **expansion report** (ADR-RF).
+4. **Generates the bounded 3-layer SEAD heatmap** — suppression-arena pressure → RegionField; **L1 dense stencil only over a bounded theater** (≤ 32×32, H ≤ 8, `source_capped_normalized`, ping-pong); **L2 hierarchy reduction** for the galaxy-scale picture; **L3** parent EML → threshold → commitment. **No dense-global diffusion** (ADR-MAP).
+5. **Admits and installs** through the driver and **exercises the GPU-resident path** (resource-flow reduction → L2 → L3 commitment, plus a bounded-theater field exercise) with **compact evidence only** (no full-field CPU decision readback).
+6. **Honors every ADR guardrail** — opt-in/default-off, bounded caps, the Candidate-F Euclidean boundary (§3 M9), no atlas/active-mask/perception.
+7. Is **documented** as to exactly what is complete vs deferred.
 
-**This is starmap-adapter / authoring closure for one slice — not a Stellaris importer, not playable
-gameplay, not editor/corpus/export.** Whole-corpus coverage, scripted triggers/effects
-interpretation, localization, prescripted empires, and the graphical galaxy stay deferred (§10).
+**This is slice-scoped starmap-generation closure — not a Stellaris importer, not playable gameplay,
+not editor/corpus/export, not deep galaxy-scale hierarchical allocation.** (§10.)
 
 ## 3. Schema adjudications (executive design authority — spent here so PRs are mechanical)
 
-> These extend, and do not weaken, the 0.0.8.2 closeout adjudications A1–A5. Where this track touches
-> a surface the closeout already adjudicated, the closeout letter is cited and **inherited verbatim.**
+> These extend, and never weaken, the 0.0.8.2 closeout (A1–A5), ADR-MAP, and ADR-RF. Each cites the
+> governing ADR section. Where MapGen and an ADR disagree, **the ADR governs and the rung stops.**
 
-**M1 — Stellaris neutral AST (no semantic decisions in parse).** Raw `.txt` is parsed through the
-existing jomini text path into `RawDocument`. The parser **preserves repeated keys** (Clausewitz
-allows `planet = {…} planet = {…}`), declaration order, and nested blocks, and makes **zero** mapping
-decisions. Semantic mapping is a **separate pass** over the neutral AST. No load-order resolution, no
-override merging, no localization, no trigger/effect evaluation in this track — those are explicitly
-out of scope (§10). The neutral AST is a faithful structural mirror, nothing more.
+**M1 — Neutral AST (no semantic decisions in parse).** Raw text → `RawDocument` via the jomini path;
+preserve repeated keys, order, nesting; zero mapping decisions. Mapping is a separate pass. No
+load-order/override/localization/trigger interpretation (§10).
 
-**M2 — `solar_system_initializer` / static `system` → `location` + children (inherits closeout A1).**
-An initializer (or a `static_galaxy_scenario` `system = { … }` entry) maps to one `scenario.location`
-node. `planet`/`moon`/`deposit` children map to `children` SimThing nodes with properties/overlays
-(planet class/size → property tags; deposit → intrinsic resource flow per CT-2c). `init_effect`
-payloads map to authored `CommitmentEffectSpec` / init overlays (closeout PR6 path), **never** to a
-runtime effect interpreter. Reusable initializers map to reusable fixture fragments. **No new sim
-type; locations are children of root**, exactly as A1.
+**M2 — Spatial hierarchical tree generation (ADR-MAP: tree = map; ADR-RF: hierarchical fanout).** Generate
+`galaxy(root) → sector/cluster → system(location) → planet/structure → deposit(children)`. Stellaris
+clusters / `home_system_partitions` map to the sector level; each level holds ≤ ~100 children so the
+tree is fanout-absorbing. Systems are **location SimThings**; planets/deposits are `children` with
+properties/overlays. **A RegionCell is never a `SimThingKind`** — where a system participates in a
+heatmap theater, that is a *mapping-role profile binding it to a slot range*, not a tree node (ADR-MAP
+"the map, restated"). No new sim type.
 
-**M3 — `add_hyperlane` → bounded link (inherits closeout A2 verbatim — highest leakage risk).** A
-hyperlane edge maps to `link { from to }`, lowered to **bounded admission-time grid topology
-metadata** (N4 neighborhood, validated endpoints, bounded fan-out ≤ 4). **A link is never a graph
-object, edge struct, or topology engine in `simthing-sim`.** Stellaris galaxies are arbitrary graphs;
-v1 MapGen represents only the **grid-embeddable** subset. The day a slice needs non-grid adjacency,
-the rung **STOPS** (§9) and opens a topology-spec rung — it does **not** silently widen `link` into a
-graph. `random_hyperlanes`/procedural density are engine concepts with **no production** in this
-grammar (the adapter authors explicit topology or nothing).
+**M3 — Resource-flow arena generation (ADR-RF §"Four architectural commitments" + §"Draconian
+guardrail").** Deposits → `IntrinsicFlow` sources; system/sector → hierarchical allocators
+(`AllocatorWeight` / `AllocatedFlow`); arenas for the economy (minerals/energy/research) **and** a
+`suppression` arena (the SEAD source). **Every arena MUST declare:** explicit participant selectors
+(no implicit/property-possession admission), hard caps (`max_participants`, `max_coupling_fanout`,
+`max_orderband_depth`), a `FissionPolicy` (default `Reevaluate`), and per-edge coupling delay forms
+(no all-`Algebraic` cycle). The generator must produce specs that **pass the spec-layer firewall and
+emit a clean expansion report** — unsafe content is rejected at session build, never clamped at
+runtime. `AccumulatorRole` stays compile-time metadata. **v1 targets the EXISTING closed CT-2c
+resource-flow authoring surface with a shallow hierarchy**; deep multi-level galaxy-scale allocation
+and large arena coupling are the *architectural target* (the scaling justification) but are **deferred**
+until a slice demonstrates the need and a rung opens them under ADR-RF caps (§10).
 
-**M4 — Map-scale fields → Gu-Yang `SaturatingFlux` suppression/disruption front (domain-neutral).**
-Nebula/storm/threat/supply/influence become `RegionField`s over the location grid, shaped by the
-Gu-Yang `SaturatingFlux` operator (state-dependent conservative flux; choke/saturation output).
-**Terminology discipline (binding, per PR #539 / the heatmap memo):** the decision front is named
-with **domain-neutral** vocabulary — *suppression/disruption front*, *management front*, *pressure
-front* — in all code, spec, and test identifiers. "SEAD" is retained **only** as design-intent
-shorthand in prose for *the richness of that composed front*; literal SEAD/air-defense domain
-semantics are **not** imported into any runtime path. The richness goal ("SEAD richness") is achieved
-by composing **many regime-distinct independently-sourced fields**, not by special-case engines.
+**M4 — SEAD/suppression heatmap is bounded 3-layer, NEVER dense-global (ADR-MAP §"three-layer model"
++ §"Hard prohibitions").** The galaxy-scale suppression picture is **L2 hierarchy reduction** (the
+resource-flow upward sweep into sector/faction suppression columns) **+ L3 parent EML** — *not* a
+galaxy-spanning stencil. **L1 dense `SaturatingFlux`/stencil is used only over a bounded local theater**
+(≤ 32×32, H ≤ 8, `source_capped_normalized`, ping-pong) where a genuine 2D tactical gradient is wanted.
+Decisions emerge as **threshold crossings over the L3 parent pressure columns** (Threshold + EmitEvent
+→ commitment); **no CPU planner.** Terminology stays domain-neutral (*suppression/disruption front*);
+"SEAD" is design-intent prose only (PR #539 discipline). Default-off.
 
-**M5 — Map traversal → PALMA W/D feedstock (inherits closeout A3 verbatim).** Influence spread /
-reachability / "shortest-hyperlane-equivalent" gradients map to composed-W
-(`base_w + Σ weightᵢ·chokeᵢ` over threat/supply/congestion) → `min_plus_traversal_field` D. D is a
-**field**, never a route. The grammar has **no production** for `route`, `path`, `plan`,
-`predecessor`, `waypoint`, `movement_order`, or destinations — unrepresentable, not merely rejected.
-PALMA stays the seated generic GPU utility; **this track is the named consumer that activates it.**
+**M5 — Scale & grid (the corrected decision; supersedes the 2026-06-13 "one galaxy grid sized to N"
+sketch).** Galaxy scale is carried by the **sparse hierarchical tree + lane coupling + L2 hierarchy** —
+*that* is why 2000+ stars are cheap, not because a dense grid is cheap. **One system = one cell** holds
+as **identity/addressing** (one flat column slot per system) and **within a bounded theater**; the
+flat per-system column space grows ~linearly with N (fanout-absorbed), which is the only legitimate
+sense of "dimensions expand." **No galaxy-spanning dense stencil grid exists** (it would be the rejected
+ADR-MAP pattern). Sub-cell x/y is never introduced; Stellaris `position` is inert render metadata (M9).
+Dense RegionCell stencil grids are **bounded theaters only**; multi-theater atlas is Provisional and
+**not** built here.
 
-**M6 — Gu-Yang ∥ PALMA parallelization (efficiency + front richness; composition-first, no new
-primitive by default).** The proven baseline (BH-2C) is the **serial** per-tick chain: Gu-Yang shapes
-choke columns → W-compose → PALMA min-plus relaxes D. That baseline is the fallback and the
-correctness oracle. The parallelization this track seeks is achieved **by scheduling and composition
-over the existing primitives — not a new kernel:**
-  - **(a) Field-family concurrency.** Independent regime-distinct fields (threat, supply, influence,
-    congestion) each get their own `SaturatingFlux` dispatch; these are **data-independent** and are
-    encoded in one command buffer without intervening barriers so the GPU overlaps them. *This is
-    where "SEAD richness" comes from* — more independent fronts at ~constant wall-time given occupancy
-    headroom.
-  - **(b) Cross-tick software pipelining.** PALMA min-plus needs K relaxation iterations (the long
-    pole); Gu-Yang is one CFL-bounded pass. Overlap tick N+1 field-shaping with the tail of tick N's
-    PALMA relaxation using double-buffered resident columns — **zero readback**.
-  - **(c) Shared resident tiling.** Both are N4 stencils over the same grid; share workgroup
-    tiling/resident buffers so choke columns feed W-compose in place, avoiding round-trips.
-  A genuinely **fused single-kernel** Gu-Yang-flux + min-plus relaxation IS a new GPU primitive and is
-  **NOT in the default ladder.** It may be *explored* (PR 7) strictly as an opt-in, gated behind: this
-  named consumer (satisfied) **+** explicit DA review **+** a measured win over the
-  scheduled-concurrency baseline **+** preservation of the BH-0 invariants (symmetric flux, zero-flux
-  boundary, CFL χ ≤ 0.25) and the min-plus `D = W + min(N4 D)` exactness (no sqrt). If it does not
-  clearly earn its place, **scheduled concurrency is the answer and the fused kernel is dropped.**
+**M6 — Hyperlane → bounded link / lane coupling (inherits closeout A2 verbatim — highest leakage risk).**
+A hyperlane → `link { from to }` → bounded admission-time topology metadata (validated endpoints,
+fan-out ≤ a declared cap). Inter-system field spread is a **bounded gather over lane-neighbors** (a
+sparse coupling, ADR-MAP-L2-flavored / ADR-RF coupling edge), **never a dense N4 stencil across a
+galaxy raster** and **never a graph object** in `simthing-sim`. Arbitrary non-grid/high-degree topology
+beyond the bounded representation → **STOP** (§9), open a topology-spec rung. `random_hyperlanes` has no
+production (author explicit topology or nothing).
 
-**M7 — Candidate-F Euclidean tripwire (the single highest doctrinal risk — GUARDED, not crossed).**
-Stellaris positions are Euclidean (`position = { x y }`; `distance = { type = euclidean }`). The
-adjudication:
-  - **Position is inert layout/presentation metadata** carried on the location node. It is **not** a
-    runtime magnitude and **not** a source of adjacency or fields.
-  - **Adjacency is topological** (links / grid N4), per M3. **Map distance is impedance/min-plus
-    (Manhattan/topological)**, per M5 — never a Euclidean norm.
-  - Area/radius effects (nebula "within radius R") are expressed as **field stencils over the grid**,
-    not Euclidean point-radius queries.
-  - **If any rung is tempted to compute a true Euclidean-distance field or spatial magnitude, it
-    STOPS for design review.** Such a consumer is out of MapGen scope; if ever pulled, it routes
-    through `m_jit_mag_f_from_exact_mag2` per `design_0_0_8_1.md` §0.7. Default MapGen needs none of
-    it. PR 8 is a dedicated guard rung proving position is inert and no Euclidean magnitude reaches a
-    runtime path.
+**M7 — Map traversal → PALMA W/D feedstock (inherits closeout A3 verbatim).** Influence/reach →
+composed-W → `min_plus_traversal_field` D over lane impedance. D is a **field**, never a route; no
+`route`/`path`/`predecessor`/`waypoint` production. PALMA is the seated utility; **MapGen is its named
+consumer.**
 
-**M8 — Corpus discipline (referenced, not vendored).** The vanilla corpus at
-`C:\Users\mvorm\Clauser\Paradox\` is **read-only reference**. Rungs **hand-author tiny fixtures**
-(a few lines excerpted/transcribed into `crates/simthing-clausething/tests/fixtures/mapgen/`), never
-copy Paradox files into the repo (licensing + hygiene). Any claim of *corpus-wide* decode breadth must
-pass the `modifiers.log` round-trip admission bar (CT consumer contract) — but **0.0.8.2.5 makes no
-corpus-wide claim**; it proves one slice. Fixture provenance (which vanilla file a fixture transcribes)
-is recorded in the fixture header comment.
+**M8 — Gu-Yang ∥ PALMA parallelization (efficiency + front richness; composition-first; within the
+ADR-MAP/ADR-RF budget).** Parallelization is **scheduling/composition over existing ops**: (a)
+independent regime-distinct suppression fields → concurrent dispatches in one encoder (this is the
+"SEAD richness" lever — more independent bounded fronts, not a wider grid); (b) cross-tick software
+pipelining of bounded-theater shaping with PALMA relaxation; (c) shared resident tiling. **A fused
+single kernel is a new primitive: NOT in the default ladder**, opt-in only behind this named consumer
++ DA review + a measured win + preservation of BH-0 (symmetric flux, zero-flux, CFL χ ≤ 0.25) and
+min-plus (`D = W + min(N4 D)`, no sqrt) invariants. **None of this may become galaxy-wide dense
+diffusion** — concurrency is over *bounded* theaters/fields, not a global raster (ADR-MAP).
 
-**M9 — Deferred boundary (named, not built).** Out of 0.0.8.2.5 scope and explicitly deferred:
-whole-corpus coverage; load-order/override resolution; scripted trigger/effect interpretation;
-`spawn_weight`/`neighbor_system` weighted procedural placement (authored-weight sugar only, no engine
-emulation); localization; `prescripted_countries`; graphical galaxy (`map/galaxy/*`, textures,
-sprites); arbitrary-graph topology; pathfinding/movement/route/predecessor; editor/corpus/export
-(`FIELD-MOVIE-DATASET-0`, the next track). None of these is implemented here.
+**M9 — Candidate-F Euclidean tripwire (GUARDED, not crossed; §0.7).** Position is inert metadata;
+adjacency is topological (links/lane-coupling); map distance is min-plus/impedance, never Euclidean.
+Area/radius effects are bounded-theater field stencils, not Euclidean point-radius queries. Any true
+Euclidean-distance/spatial-magnitude consumer → **STOP** for §0.7 review (routes through
+`m_jit_mag_f_from_exact_mag2` only if ever pulled; out of MapGen scope). PR 9 is the guard rung.
+
+**M10 — Corpus referenced, not vendored.** Vanilla files at `C:\Users\mvorm\Clauser\Paradox\` are
+read-only; rungs hand-author tiny fixtures under `tests/fixtures/mapgen/`; no Paradox files committed
+(licensing + hygiene). No corpus-wide decode claim in 0.0.8.2.5; any future such claim passes the
+`modifiers.log` round-trip bar.
+
+**M11 — Deferred boundary (named, not built).** Out of scope and deferred: deep galaxy-scale
+hierarchical allocation + large arena coupling (ADR-RF caps); atlas batching / active masks /
+perception fields / behavioral source policy (ADR-MAP Provisional/Deferred — `request_atlas_batching`
+stays rejected); whole-corpus coverage; load-order/override; trigger/effect interpretation;
+`spawn_weight`/`neighbor_system` procedural placement; localization; `prescripted_countries`; graphical
+galaxy; arbitrary-graph topology; pathfinding/movement; editor/corpus/export (`FIELD-MOVIE-DATASET-0`,
+the next track).
 
 ## 4. PR ladder table
 
-| PR | Title | Owner | Theme | Depends on |
+| PR | Title | Owner | ADR-sensitive? | Depends on |
 |---|---|---|---|---|
-| 1 | MapGen ladder index + corpus reference manifest + slice selection | Cursor | scoping | — |
-| 2 | Stellaris neutral-AST adapter spike (parse-only, no semantics) | Cursor (DA review) | M1 | 1 |
-| 3 | `solar_system_initializer` → `location` + children mapping | Cursor (DA review) | M2 | 2 |
-| 4 | `add_hyperlane` / static `system` → bounded link + position-metadata | Cursor (DA review) | M3 | 3 |
-| 5 | Map-scale field authoring (Gu-Yang suppression/disruption front) | Cursor | M4 | 3 |
-| 6 | PALMA W/D map-traversal feedstock authoring | Cursor | M5 | 5 |
-| 7 | Gu-Yang ∥ PALMA parallelization spike (scheduled concurrency; fused kernel opt-in) | Cursor (DA review) | M6 | 6 |
-| 8 | Candidate-F Euclidean tripwire guard + position-as-metadata proof | Cursor (DA review) | M7 | 4 |
-| 9 | Canonical MapGen starmap sample: parse→lower→admit→install→GPU exercise | Cursor (DA review) | M2–M6 | 4,6,8 |
-| 10 | MapGen closeout report + docs + ledger | Cursor (DA sign-off) | M9 | 7,9 |
+| 1 | Index + corpus manifest + slice selection + ADR read-order | Cursor | — | — |
+| 2 | Neutral-AST adapter spike (parse-only, no semantics) | Cursor (DA review) | M1 | 1 |
+| 3 | Spatial hierarchical tree generation (galaxy→sector→system→planet→deposit) | Cursor (DA review) | ADR-MAP, ADR-RF · M2 | 2 |
+| 4 | Resource-flow arena generation (intrinsic flow + allocators + caps + selectors + expansion report) | Cursor (DA review) | ADR-RF · M3 | 3 |
+| 5 | Hyperlane → bounded link + lane coupling + inert position metadata | Cursor (DA review) | A2 · M6 · M9 | 3 |
+| 6 | SEAD heatmap: L1 bounded theater + L2 hierarchy reduce + L3 parent EML → commitment | Cursor (DA review) | ADR-MAP · M4 | 4,5 |
+| 7 | PALMA W/D map-traversal feedstock (min-plus over lane impedance) | Cursor | A3 · M7 | 5,6 |
+| 8 | Gu-Yang ∥ PALMA parallelization spike (bounded; fused kernel opt-in, DA-gated) | Cursor (DA review) | ADR-MAP · M8 | 6,7 |
+| 9 | Candidate-F Euclidean + no-dense-global-diffusion + no-galaxy-raster guard | Cursor (DA review) | §0.7 · M4 · M5 · M9 | 5,6 |
+| 10 | Canonical sample: ingest → generate tree+arenas+heatmap → admit/install → GPU exercise | Cursor (DA review) | all | 4,6,7,9 |
+| 11 | Closeout report + docs + ledger | Cursor (DA sign-off) | M11 | 8,10 |
 
-"DA review" = executive design authority reviews the merge diff against §3 (no fresh design pass; the
-judgment is pre-spent here). A rung **stops and escalates** only on a §9 stop condition.
+"DA review" = executive design authority reviews the merge diff against §0/§3. No rung needs a fresh
+design pass; §3 closed the gates. A rung **stops and escalates** only on a §9 stop condition.
 
 ## 5. Rare Opus / design-authority gates
 
-Schema, leakage-boundary, and architecture decisions are **adjudicated in §3**. Residual
-design-authority involvement is **merge-time review** of the leakage-/architecture-sensitive rungs —
-**PR 2** (no-semantics parse boundary), **PR 3** and **PR 4** (the A1/A2 mapping + the link
-leakage boundary), **PR 7** (the parallelization architecture / any fused-kernel proposal), **PR 8**
-(the Candidate-F guard) — and **sign-off** on the closeout report (PR 10). No rung requires a new Opus
-*design* pass; §3 closed those gates.
+Design-authority involvement is **merge-time review** of the ADR-sensitive rungs — **2** (no-semantics
+parse), **3** (tree/hierarchy + RegionCell-not-a-kind), **4** (arena firewall + caps + expansion
+report), **5** (link/lane-coupling boundary), **6** (3-layer / no-dense-global), **8** (parallelization
+architecture / any fused-kernel proposal), **9** (Euclidean + scale guards) — and **sign-off** on the
+closeout (11). §3 + §0 pre-spent the design gates.
 
 ## 6. Cursor-granular PR handoffs
 
-### PR 1 — MapGen ladder index + corpus reference manifest + slice selection
-Owner: Cursor. Scope: docs only.
-Files: this doc (append §6.1 manifest); none else.
-Steps: Record the exact vanilla files the slice draws from (lab path, read-only); name the chosen
-slice — **one `solar_system_initializer` + a ≤5-system `static_galaxy_scenario` with explicit
-`add_hyperlane`** (prefer `vanilla/map/setup_scenarios/static_galaxy_example.txt` as the static
-reference and one small entry from `vanilla/common/solar_system_initializers/`); restate the
-not-vendored rule (M8). Create `crates/simthing-clausething/tests/fixtures/mapgen/` with a README
-stating fixture-provenance discipline.
-Tests: none. Acceptance: slice + corpus manifest pinned; not-vendored rule restated. Stop: corpus file
-needed for the slice is absent at the lab path (→ PARTIAL).
+> Each rung: re-read the cited ADR section **before** writing code. Acceptance includes "no ADR
+> guardrail crossed." Stop conditions cite §9.
 
-### PR 2 — Stellaris neutral-AST adapter spike (parse-only)
-Owner: Cursor (DA review). Scope: parse path + fixtures; **no mapping**.
-Files: a `mapgen` parse helper in `simthing-clausething` over the existing jomini text path; tiny
-hand-authored fixtures under `tests/fixtures/mapgen/`.
-Steps: Parse the slice fixtures into `RawDocument`; assert repeated keys preserved, order preserved,
-nesting faithful. **No semantic mapping, no spec types touched.**
-Tests: `mapgen_neutral_ast_parse` (round-trip structural asserts). Acceptance: faithful neutral AST;
-zero semantic decisions; no `simthing-spec`/`simthing-sim` change. Stop: the jomini path cannot
-represent a needed Clausewitz construct (→ escalate; do not hand-roll a second parser).
+### PR 1 — Index + corpus manifest + slice selection + ADR read-order
+Owner: Cursor. Scope: docs only. Files: this doc (append §6.1 manifest); `tests/fixtures/mapgen/README`.
+Steps: pin the vanilla files the slice draws from (lab path, read-only); name the slice — **one
+`solar_system_initializer` + a ≤ 5-system `static_galaxy_scenario` with explicit `add_hyperlane` and at
+least one deposit** (use `vanilla/map/setup_scenarios/static_galaxy_example.txt` + one entry from
+`vanilla/common/solar_system_initializers/`); restate M10 (not vendored) and the §0 read-order.
+Acceptance: slice + manifest pinned; read-order restated. Stop: §9.
 
-### PR 3 — `solar_system_initializer` → `location` + children
-Owner: Cursor (DA review). Scope: mapping pass + lowering via `hydrate_scenario`.
-Files: a `mapgen` mapping module; clausething tests.
-Steps: Map one initializer → `scenario.location` + `children` (planet/deposit → child nodes +
-properties/overlays + CT-2c intrinsic flows). Lower through `hydrate_scenario` to
-`HydratedScenarioPack`. **No new `SimThingKind`/spec target.**
-Tests: `mapgen_initializer_lowers_to_location_children` (+ default-off, semantic-free asserts).
-Acceptance: initializer slice lowers into existing surfaces; no sim leakage. Stop: a child needs a new
-sim type or a runtime effect interpreter (→ escalate).
+### PR 2 — Neutral-AST adapter spike (parse-only)
+Owner: Cursor (DA review). Scope: parse path + fixtures; **no mapping, no spec types.** Re-read ADR-MAP
+§"constitutional placement" (semantic-free) before starting. Steps: parse slice fixtures → `RawDocument`;
+assert repeated keys/order/nesting preserved; zero semantic decisions. Tests: `mapgen_neutral_ast_parse`.
+Acceptance: faithful AST; no `simthing-spec`/`-sim` change. Stop: jomini can't represent a construct → escalate (§9), don't hand-roll a parser.
 
-### PR 4 — `add_hyperlane` / static `system` → bounded link + position metadata
-Owner: Cursor (DA review). Scope: link + position-metadata mapping (A2/M3, M7).
-Files: `mapgen` mapping module; clausething tests.
-Steps: Map static `system { id position initializer }` → location (position as **inert metadata
-only**); `add_hyperlane { from to }` → `link` with endpoint validation + fan-out ≤ 4. Reject /
-**STOP** on arbitrary-graph need. Prove position never feeds adjacency or a field.
-Tests: `mapgen_hyperlane_lowers_to_bounded_link`, `mapgen_position_is_inert_metadata`,
-`mapgen_arbitrary_topology_is_rejected`. Acceptance: links bounded + validated; position inert; no
-graph object. Stop: slice needs non-grid topology (→ escalate, topology-spec rung).
+### PR 3 — Spatial hierarchical tree generation
+Owner: Cursor (DA review). Re-read ADR-MAP §"the map, restated" + ADR-RF §"hierarchical fanout."
+Scope: mapping pass → `hydrate_scenario`. Steps: generate `galaxy→sector→system→planet→deposit`
+(≤ ~100 children/level); systems = `location`, planets/deposits = `children` + properties/overlays +
+CT-2c intrinsic flows. **No new `SimThingKind`; no RegionCell entity.** Tests:
+`mapgen_tree_lowers_to_hierarchy`, `mapgen_no_new_simthingkind`, default-off/semantic-free asserts.
+Acceptance: hierarchical tree on existing surfaces; ADR-MAP tree model honored. Stop: a node needs a new sim type / RegionCell-as-entity → escalate (§9).
 
-### PR 5 — Map-scale field authoring (Gu-Yang suppression/disruption front)
-Owner: Cursor. Scope: field authoring via existing `RegionFieldSpec` + `SaturatingFlux`.
-Files: `mapgen` mapping module; clausething tests.
-Steps: Author a nebula/threat field as a `RegionField` over the location grid with a Gu-Yang
-`SaturatingFlux` operator (domain-neutral identifiers per M4); default-off; preserve BH-0 invariants
-in admission. Multiple independent fields allowed (sets up M6 richness).
-Tests: `mapgen_field_lowers_to_saturating_flux`, `mapgen_field_default_off`, neutral-naming guard.
-Acceptance: field lowers to generic operator; default-off; no border/frontline service vocabulary.
-Stop: a field wants state the operator can't carry without a new kernel (→ escalate).
+### PR 4 — Resource-flow arena generation
+Owner: Cursor (DA review). Re-read ADR-RF §"Four commitments" + §"Draconian guardrail" + §"Invariants."
+Scope: arena enrollment on the CT-2c surface. Steps: deposits → `IntrinsicFlow`; shallow allocator
+hierarchy; declare **selectors + caps (`max_participants`/`max_coupling_fanout`/`max_orderband_depth`) +
+`FissionPolicy` + coupling delay forms**; produce a clean **expansion report**; one `suppression` arena
+as the SEAD source. Tests: `mapgen_arena_enrolls_with_caps`, `mapgen_arena_rejects_uncapped`,
+`mapgen_arena_rejects_algebraic_cycle`, `mapgen_expansion_report`. Acceptance: arenas pass the firewall;
+expansion report clean; `AccumulatorRole` compiles away. Stop: the slice needs deep multi-level
+allocation / large coupling beyond CT-2c (→ escalate, §9 / §10 deferral).
 
-### PR 6 — PALMA W/D map-traversal feedstock authoring
-Owner: Cursor. Scope: composed-W + min-plus D authoring (A3/M5).
-Files: `mapgen` mapping module; clausething tests.
-Steps: Author `palma_feedstock { w_source d_output_col }` composing W from PR5 chokes; lower via the
-BH-2C bridge to `min_plus_traversal_field`. **No route/predecessor grammar.**
-Tests: `mapgen_palma_feedstock_lowers`, route/movement-vocabulary rejection. Acceptance: D is a field;
-no route production; PALMA activated as named consumer. Stop: a consumer wants a route/predecessor
-object (→ escalate; that is a different track).
+### PR 5 — Hyperlane → bounded link + lane coupling + position metadata
+Owner: Cursor (DA review). Re-read closeout A2 + M6 + M9. Scope: link + lane-coupling + position
+mapping. Steps: static `system` → location (position = **inert metadata only**); `add_hyperlane` →
+`link` (endpoint validation, fan-out cap); inter-system coupling as a **bounded lane-neighbor gather**,
+not a dense raster. Tests: `mapgen_hyperlane_bounded_link`, `mapgen_position_inert`,
+`mapgen_arbitrary_topology_rejected`, `mapgen_no_dense_galaxy_raster`. Acceptance: bounded links;
+position inert; lane coupling sparse/bounded. Stop: non-grid topology need / dense raster temptation → escalate (§9).
 
-### PR 7 — Gu-Yang ∥ PALMA parallelization spike
-Owner: Cursor (DA review). Scope: scheduling/composition over existing GPU ops; **driver/gpu test**.
-Files: a driver/gpu spike test; possibly a command-encoder composition helper — **no new WGSL
-semantics** unless a fused-kernel proposal is explicitly escalated.
-Steps: Build the scheduled-concurrency path (M6 a/b/c): multiple independent `SaturatingFlux`
-dispatches + W-compose + PALMA in one encoder, double-buffered resident columns, zero readback;
-**measure wall-time vs the serial BH-2C baseline** with compact evidence. If a fused single kernel is
-proposed, it is a **separate escalation** carrying the M6 gate (DA review + measured win + invariant
-preservation); the ladder does not require it.
-Tests: `mapgen_gu_yang_palma_scheduled_concurrency` (GPU-gated; skips cleanly without adapter; compact
-timing/probe evidence only). Acceptance: scheduled-concurrency path correct vs serial oracle, no
-readback, no new primitive; any fused-kernel work is DA-gated and invariant-preserving. Stop: a win
-requires a new primitive without DA approval, or violates BH-0/min-plus invariants (→ escalate).
+### PR 6 — SEAD heatmap (L1 bounded theater + L2 hierarchy + L3 parent EML)
+Owner: Cursor (DA review). **Re-read ADR-MAP §"three-layer model" + §"Hard prohibitions" before
+starting — this is the rung most prone to the drift this ladder exists to prevent.** Scope: heatmap
+generation on RegionFieldSpec + first-slice surfaces. Steps: suppression-arena pressure → RegionField;
+**L1 stencil only over a bounded theater (≤ 32×32, H ≤ 8, `source_capped_normalized`, ping-pong);** L2
+`SlotRange` Sum into sector/faction suppression columns; L3 `ai_will_do` EML → threshold → commitment;
+default-off. **No galaxy-spanning stencil; no long-horizon dense diffusion.** Tests:
+`mapgen_heatmap_l1_bounded_theater`, `mapgen_heatmap_l2_hierarchy_reduce`, `mapgen_heatmap_l3_commitment`,
+`mapgen_heatmap_default_off`, `mapgen_no_dense_global_diffusion`. Acceptance: 3-layer honored; theater
+bounded; strategic via hierarchy; domain-neutral naming. Stop: a field wants galaxy-wide dense diffusion
+or H beyond bounded contract → escalate (§9).
 
-### PR 8 — Candidate-F Euclidean tripwire guard
-Owner: Cursor (DA review). Scope: guard tests + admission assertions (M7).
-Files: clausething/spec guard tests.
-Steps: Prove position is inert metadata (never read into a field/adjacency); prove no Euclidean
-magnitude / sqrt / `length` / `normalize` / `distance(type=euclidean)` reaches any runtime path; assert
-map distance is min-plus/topological only. Add a banned-construct guard test mirroring the existing
-forbidden-vocabulary guards.
-Tests: `mapgen_no_euclidean_magnitude_guard`, `mapgen_position_inert_guard`. Acceptance: tripwire
-enforced by test; Candidate F not implicated. Stop: the slice genuinely needs Euclidean distance
-(→ escalate to §0.7 design review; out of MapGen scope).
+### PR 7 — PALMA W/D map-traversal feedstock
+Owner: Cursor. Re-read closeout A3 + M7. Steps: author `palma_feedstock { w_source d_output_col }`
+composing W from suppression/lane chokes → `min_plus_traversal_field`. Tests: `mapgen_palma_feedstock_lowers`,
+route/movement-vocabulary rejection. Acceptance: D is a field; no route. Stop: route/predecessor need → escalate (§9).
 
-### PR 9 — Canonical MapGen starmap sample (end to end)
-Owner: Cursor (DA review). Scope: canonical fixture + parse→lower→admit→install→GPU exercise.
-Files: canonical `mapgen` fixture; driver test (reuse `open_from_spec` + session loop).
-Steps: A small authored starmap (≤5 systems, 1–2 initializers, explicit hyperlanes, one
-suppression/disruption field, one PALMA D, one commitment). Parse → map → `hydrate_scenario` →
-`open_from_spec` → run a few ticks → assert compact probe/threshold event (no full-field readback).
-Tests: `mapgen_canonical_sample_installs_and_runs` (GPU-gated; CPU path for non-GPU; skips Test-B-style
-cleanly). Acceptance: full slice admits/installs/exercises; compact evidence only; zero sim leakage.
-Stop: install needs a new sim-aware surface or full-field readback to decide (→ escalate).
+### PR 8 — Gu-Yang ∥ PALMA parallelization spike
+Owner: Cursor (DA review). Re-read M8 + ADR-MAP budget. Scope: scheduling/composition over existing GPU
+ops; driver/gpu test. Steps: build scheduled-concurrency (independent bounded suppression fields + W
+compose + PALMA in one encoder, double-buffered, zero readback); **measure vs serial BH-2C baseline**;
+any fused kernel is a separate DA-gated escalation carrying the M8 gate. Tests:
+`mapgen_gu_yang_palma_scheduled_concurrency` (GPU-gated, compact timing). Acceptance: concurrency correct
+vs serial oracle; bounded (no global raster); no new primitive un-gated. Stop: win needs a new primitive
+without DA gate, or violates BH-0/min-plus invariants, or implies galaxy-wide diffusion → escalate (§9).
 
-### PR 10 — MapGen closeout report + docs + ledger
-Owner: Cursor (DA sign-off). Scope: docs only.
-Files: `docs/tests/mapgen_0_0_8_2_5_closeout_results.md` (new, CURRENT_EVIDENCE); this ladder's ledger;
-pointers in `design_0_0_8_1_border_hack_track.md` (BH-3 authoring consumer pulled),
-`design_0_0_8_1_palma_pathfinding_integration_guide.md` (PALMA named consumer activated),
-`clausething/MapGenThing.md` (status), and `design_0_0_8_2_clausething_closeout_ladder.md` §11.
-Steps: Write the closeout report; state complete vs deferred (§2/§9); record the Gu-Yang∥PALMA result;
-confirm Candidate F unmoved; classify all MapGen artifacts. **Do not declare closed until DA sign-off.**
-Tests: `cargo fmt --all -- --check`; `cargo test -p simthing-clausething`; `-p simthing-driver`;
-`git diff --check`. Acceptance: §2 criteria met; honest complete-vs-deferred; Candidate F unmoved.
-Stop: any §2 criterion unmet (→ PARTIAL with the precise gap).
+### PR 9 — Candidate-F Euclidean + scale guards
+Owner: Cursor (DA review). Re-read M5 + M9 + §0.7. Scope: guard tests. Steps: prove position inert; no
+Euclidean magnitude/sqrt/`length`/`normalize`/`distance(type=euclidean)` on any runtime path; map
+distance is min-plus; **no galaxy-spanning dense stencil exists**; per-system columns scale by hierarchy
+not raster. Tests: `mapgen_no_euclidean_magnitude_guard`, `mapgen_position_inert_guard`,
+`mapgen_no_galaxy_dense_grid_guard`. Acceptance: tripwires enforced by test. Stop: genuine Euclidean
+need → §0.7 escalation (out of scope).
+
+### PR 10 — Canonical sample (end to end)
+Owner: Cursor (DA review). Scope: canonical fixture + ingest→generate→admit→install→GPU exercise. Steps:
+a ≤ 5-system slice → neutral AST → generate tree + arenas (capped, expansion report) + bounded heatmap +
+PALMA D + commitment → `open_from_spec` → run a few ticks → assert resource-flow reduction + L2/L3
+commitment + bounded-theater field via **compact probe/threshold only.** Tests:
+`mapgen_canonical_sample_installs_and_runs` (GPU-gated; CPU path otherwise). Acceptance: full slice
+ingests/generates/admits/installs/exercises; compact evidence; zero sim leakage; all ADR guardrails
+intact. Stop: install needs a new sim-aware surface / full-field readback / uncapped arena → escalate (§9).
+
+### PR 11 — Closeout report + docs + ledger
+Owner: Cursor (DA sign-off). Scope: docs only. Files: `docs/tests/mapgen_0_0_8_2_5_closeout_results.md`
+(new, CURRENT_EVIDENCE); this ladder's ledger; pointers in `design_0_0_8_1_border_hack_track.md`,
+`design_0_0_8_1_palma_pathfinding_integration_guide.md`, `clausething/MapGenThing.md`,
+`design_0_0_8_2_clausething_closeout_ladder.md` §12. Steps: write the closeout (complete vs deferred per
+§2/§11); confirm both ADRs honored and Candidate F unmoved; classify all MapGen artifacts. **Do not
+declare closed until DA sign-off.** Tests: `cargo fmt --all -- --check`; `cargo test -p simthing-clausething`;
+`-p simthing-driver`; `git diff --check`. Acceptance: §2 met; ADRs honored; Candidate F unmoved. Stop: any §2 criterion unmet (→ PARTIAL).
 
 ## 7. Test strategy
 
-Focused, fast, GPU-skipping-clean — mirror the closeout battery. Cover once each: neutral-AST parse
-fidelity; initializer→location/children lowering; hyperlane→bounded-link; position-inert;
-arbitrary-topology rejection; field→Gu-Yang default-off; PALMA-D-not-route; scheduled-concurrency vs
-serial oracle (compact timing); Euclidean/sqrt guard; end-to-end admit/install/GPU compact exercise.
-**No** report-checksum gates, replay theater, prior-rung parity ledgers, or >60s default tests. New
-guardrail commands at close:
-`cargo test -p simthing-clausething --test mapgen_scenario` and the canonical driver test.
+Focused, fast, GPU-skipping-clean. Cover once each: neutral-AST fidelity; hierarchical-tree lowering;
+no-new-`SimThingKind`; arena caps + selector admission + **uncapped/cycle rejection** + expansion
+report; hyperlane→bounded-link; position-inert; **no-dense-global-diffusion** and **no-galaxy-raster**
+guards; L1-bounded-theater / L2-hierarchy / L3-commitment; default-off; PALMA-D-not-route;
+scheduled-concurrency vs serial oracle (compact timing); Euclidean/sqrt guard; end-to-end compact
+exercise. **Forbidden:** report-checksum gates, replay theater, prior-rung parity ledgers, > 60s default
+tests. Close-out guardrail commands: `cargo test -p simthing-clausething --test mapgen_scenario` + the
+canonical driver test.
 
-## 8. SimThing principle compliance (binding, restated for MapGen)
+## 8. Principle compliance (binding, restated for MapGen)
 
-- **Everything is a SimThing.** Systems/planets/deposits are locations/children; no per-system map
-  objects, no noun engines.
-- **No new GPU primitives by default** (M6); any fused kernel is DA-gated and invariant-preserving.
-- **`simthing-sim` stays ClauseThing/Stellaris-blind.** The adapter lives in `simthing-clausething`
-  (+ tests); the sim sees only the resolved tree + columns + links + fields.
-- **No movement/pathfinding/route/predecessor/border/frontline** vocabulary or objects (M5/M3).
-- **Management/suppression-disruption front** is the decision arena: composed pressure → ai_will_do
-  urgency → threshold → `BoundaryRequest` commitment. C_u (Gu-Yang) *shapes*; it does not *decide*.
-- **Candidate F unmoved**; Euclidean boundary guarded (M7).
-- **Default-off** (`MappingExecutionProfile::Disabled`); opt-in `SparseRegionFieldV1` + pressure
-  binding gates the vertical; bounded fan-out / stowaway budgets respected.
+- **ADR-RF four rules:** capability universal; participation explicit (selectors); expansion bounded
+  (declared caps + expansion report); unsafe content rejected at build. `simthing-sim` arena-ignorant.
+- **ADR-MAP three layers:** dense only in bounded theaters (L1); strategic via hierarchy (L2) + parent
+  EML (L3); **never dense-global.** RegionCell = mapping-role on a SimThing, not a `SimThingKind`.
+- **Everything is a SimThing.** No per-system map objects, no noun engines, no CPU planner.
+- **No new GPU primitive by default** (M8); fused kernels DA-gated + invariant-preserving.
+- **No movement/pathfinding/route/predecessor/border/frontline** (M6/M7).
+- **Decisions = threshold crossings** over L3 pressure columns. C_u/Gu-Yang shapes; it does not decide.
+- **Candidate F unmoved; Euclidean boundary guarded** (M9). **Default-off** (`MappingExecutionProfile::Disabled`).
 
-## 9. Stop conditions (escalate, do not improvise)
+## 9. Stop conditions (escalate → PARTIAL; do not improvise)
 
-A rung halts → PARTIAL and escalates if it hits: arbitrary-graph topology need (M3 breach);
-route/predecessor production temptation (M5 breach); a Euclidean-distance/magnitude consumer (M7
-tripwire); a new `SimThingKind`/sim-aware surface required to install; full-field CPU readback to make
-a decision; a fused GPU kernel proposed without the M6 gate; a fixture requiring a vendored Paradox
-file (M8 breach); whole-corpus decode breadth claimed without the `modifiers.log` round-trip.
+Halt and escalate if a rung hits: **dense-global / long-horizon diffusion temptation** (ADR-MAP rejected
+pattern); **a galaxy-spanning dense stencil grid** (M5 breach); **an arena without declared caps /
+selectors / a fission policy, or an all-`Algebraic` coupling cycle** (ADR-RF firewall); **RegionCell
+treated as a `SimThingKind`/entity** (ADR-MAP breach); arbitrary-graph topology (M6); route/predecessor
+production (M7); a Euclidean-distance/magnitude consumer (M9 / §0.7); a new `SimThingKind`/sim-aware
+surface to install; full-field CPU readback to decide; a fused GPU kernel without the M8 gate; deep
+galaxy-scale hierarchical allocation beyond CT-2c (M3/§10); a fixture needing a vendored Paradox file
+(M10); atlas/active-mask/perception without its ADR-MAP gate.
 
 ## 10. Deferred boundary (the subsequent tracks)
 
-0.0.8.2.5 closes **one starmap slice adapter**. Explicitly deferred and **not** closed here:
-whole-corpus coverage; load-order/override; scripted trigger/effect interpretation; weighted
-procedural placement (`spawn_weight`/`neighbor_system` engine behavior); localization;
-`prescripted_countries`; graphical galaxy; arbitrary-graph topology; pathfinding/movement; and the
-**editor/corpus/export seam** (`FIELD-MOVIE-DATASET-0`), which remains the next minor track on the
-0.0.8.2 §10 boundary, with its intrinsic-vs-ambient JEPA-corpus discipline pinned there.
+Deferred, **not** closed here: deep galaxy-scale hierarchical allocation + large arena coupling (ADR-RF
+caps); atlas batching / active masks / perception fields / behavioral source policy (ADR-MAP
+Provisional/Deferred); whole-corpus coverage; load-order/override; trigger/effect interpretation;
+weighted procedural placement; localization; `prescripted_countries`; graphical galaxy; arbitrary-graph
+topology; pathfinding/movement; and the **editor/corpus/export seam** (`FIELD-MOVIE-DATASET-0`), the next
+minor track on the 0.0.8.2 §10 boundary with its intrinsic-vs-ambient JEPA-corpus discipline pinned there.
 
 ## 11. References
 
-- Stellaris-side detail (reference textbook): [`clausething/MapGenThing.md`](clausething/MapGenThing.md)
-- Destination surfaces / production contract: [`clausething/ct_vertical_consumer_contract.md`](clausething/ct_vertical_consumer_contract.md)
-- Closeout this extends (sign-off stands): [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md), [`design_0_0_8_2_clausething_closeout_ladder.md`](design_0_0_8_2_clausething_closeout_ladder.md)
-- BH-3 authoring / SaturatingFlux: [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md)
-- PALMA W/D utility (named-consumer-activated): [`design_0_0_8_1_palma_pathfinding_integration_guide.md`](design_0_0_8_1_palma_pathfinding_integration_guide.md)
-- Candidate F authority: [`design_0_0_8_1.md`](design_0_0_8_1.md) §0.7
-- Heatmap front / terminology discipline: [`clausething/ct_3b_4a_movement_front_heatmap_memo.md`](clausething/ct_3b_4a_movement_front_heatmap_memo.md)
-- Stellaris corpus (read-only, not vendored): `C:\Users\mvorm\Clauser\Paradox\`
+- **Governing ADRs (read first):** [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md), [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md); plus `docs/invariants.md` (Mapping + Resource Flow rows).
+- Destination / production contract: [`clausething/ct_vertical_consumer_contract.md`](clausething/ct_vertical_consumer_contract.md); CT-2c economy memo [`clausething/ct_2c_economic_category_memo.md`](clausething/ct_2c_economic_category_memo.md); heatmap/terminology [`clausething/ct_3b_4a_movement_front_heatmap_memo.md`](clausething/ct_3b_4a_movement_front_heatmap_memo.md).
+- Stellaris-side detail: [`clausething/MapGenThing.md`](clausething/MapGenThing.md).
+- Closeout this extends (sign-off stands): [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md), [`design_0_0_8_2_clausething_closeout_ladder.md`](design_0_0_8_2_clausething_closeout_ladder.md).
+- BH-3 / SaturatingFlux: [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md). PALMA: [`design_0_0_8_1_palma_pathfinding_integration_guide.md`](design_0_0_8_1_palma_pathfinding_integration_guide.md). Candidate F: [`design_0_0_8_1.md`](design_0_0_8_1.md) §0.7.
+- Stellaris corpus (read-only, not vendored): `C:\Users\mvorm\Clauser\Paradox\`.
