@@ -9,6 +9,10 @@
 > doc supplies the Stellaris-side detail those rungs lower from. Where this doc and the ladder's §3
 > disagree, **the ladder governs.**
 >
+> **PR1 corpus pin (2026-06-13):** read-only manifest and tiny slice selection live in
+> [`mapgen_corpus_manifest.md`](mapgen_corpus_manifest.md). Hand-authored fixture stub:
+> `crates/simthing-clausething/tests/fixtures/mapgen/` (**inert until PR2**). No Paradox files committed.
+>
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei

@@ -1,0 +1,52 @@
+// MAPGEN PR1 — inert hand-authored stub. NOT parsed by MapGen yet (PR2 neutral-AST adapter).
+// Slice: tiny_pentad_hub_slice (5 systems). Corpus inspiration documented in README.md.
+// Stellaris position metadata is inert render-only; sim uses lattice + bounded links only.
+
+scenario = tiny_pentad_hub_slice {
+    metadata = {
+        display_name = "Tiny Pentad Hub Slice"
+        description = "Hand-authored 5-system starmap slice stub for MapGen PR1 pin."
+        tags = "mapgen,tiny_slice,inert_stub"
+        // render_metadata: hub sector nebula tag (inert; not a field kernel in PR1)
+        nebula_tag = "example_nebula_sector"
+    }
+
+    location = sys_hub {
+        name = "Hub Sector"
+        // render_metadata: position { x = 0 y = 0 z = 0 } — inert only
+    }
+
+    location = sys_inner_a {
+        name = "Inner A"
+        // render_metadata: position { x = 8 y = -10 } — inert only
+    }
+
+    location = sys_inner_b {
+        name = "Inner B"
+        // render_metadata: position { x = -9 y = -19 } — inert only
+    }
+
+    location = sys_rim_a {
+        name = "Rim A"
+        // render_metadata: position { x = -5 y = 40 } — inert only
+    }
+
+    location = sys_rim_b {
+        name = "Rim B"
+        children = {
+            child = iron_deposit_01 {
+                kind = Location
+                display_name = "Iron Deposit"
+                description = "Deposit child placeholder for CT-2c enrollment in later MapGen rungs."
+            }
+        }
+        // render_metadata: position { x = 7 y = 33 } — inert only
+        // initializer inspiration: example_initializer pedagogical payload (not copied)
+    }
+
+    link = { from = sys_hub to = sys_inner_a }
+    link = { from = sys_hub to = sys_inner_b }
+    link = { from = sys_hub to = sys_rim_a }
+    link = { from = sys_inner_a to = sys_rim_b }
+    link = { from = sys_inner_b to = sys_rim_b }
+}
