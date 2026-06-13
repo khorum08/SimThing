@@ -32,7 +32,8 @@ as a cellular automaton** — the **Movement-Front automaton**, the engine-nativ
 Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks* (arXiv:2602.01651). (Wei's
 model is named **SEAD = "Spatiotemporal Evolution with Attractor Dynamics"**; that academic acronym is
 **not** used in-repo — the engine name is **Movement-Front**. Do not write "SEAD" in code/spec/tests.)
-- **The galaxy IS a 2D gridcell lattice** (canonical galaxy grid ~**200×150**); star systems **occupy a
+- **The galaxy IS a 2D gridcell lattice** — **base canonical dimensions are always square** (default
+  "medium" **200×200**, scaling up *square* when star density demands more cells). Star systems **occupy a
   subset** of cells; empty cells are deep space carrying ambient field. A gridcell is **an authored
   mapping-role on an ordinary SimThing — not a new `SimThingKind`** — with columns laid out positionally
   `(width, height, col)` so the stencil walks neighbors by index arithmetic.
@@ -173,7 +174,8 @@ stability-bounded operators + ping-pong (P3). Domain-neutral identifiers only �
 
 **M5 — Scale & gridcell lattice (supersedes BOTH 2026-06-13 sketches: the naive "big dense grid O(N)/tick"
 AND the over-corrected "no galaxy grid / bounded theaters only").** The starmap **IS a galaxy gridcell
-lattice run as the Movement-Front automaton** (core §7; canonical galaxy ~200×150). **One system = one
+lattice run as the Movement-Front automaton** (core §7; **base canonical dimensions are always square** —
+default "medium" 200×200, scaling up square with star density). **One system = one
 gridcell** (the user's binding requirement); **no sub-cell x/y ever** — `position` quantizes to a free
 cell and survives only as **inert render metadata** (M9). Density never subdivides a cell: stars occupy a
 **subset** of the lattice; the lattice has room and empty cells carry ambient field. Scaling to 2000+

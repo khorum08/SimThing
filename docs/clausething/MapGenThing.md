@@ -14,7 +14,8 @@
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei
 > arXiv:2602.01651, whose model is academically named **SEAD = Spatiotemporal Evolution with Attractor
 > Dynamics** — that acronym is **not** used in-repo; the engine name is **Movement-Front**, never
-> "SEAD"). The galaxy **is** a 2D gridcell lattice (canonical ~200×150) with star systems occupying a
+> "SEAD"). The galaxy **is** a 2D gridcell lattice — **base canonical dimensions are always square**
+> (default "medium" 200×200, scaling up square with star density) — with star systems occupying a
 > subset of cells; one system = one gridcell; a gridcell is a **mapping-role on a SimThing, not a
 > `SimThingKind`** ([`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)). The
 > Layer-1 stencil **does** run across the whole lattice — values spill with falloff — but the **per-tick
