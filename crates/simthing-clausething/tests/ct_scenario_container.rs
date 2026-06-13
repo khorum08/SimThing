@@ -174,6 +174,24 @@ scenario = unknown_link_endpoint {
 }
 
 #[test]
+fn self_link_is_rejected_with_distinct_endpoint_error() {
+    let source = br#"
+scenario = self_link_rejected {
+    location = alpha { name = "Alpha" }
+    location = beta { name = "Beta" }
+    link = { from = alpha to = alpha }
+}
+"#;
+    let document = parse_raw_document(source).expect("parse self-link scenario");
+    let err = hydrate_scenario(&document).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("link endpoints must be distinct scenario locations"),
+        "{err}"
+    );
+}
+
+#[test]
 fn link_fanout_cap_is_rejected_before_any_topology_runtime_exists() {
     let source = br#"
 scenario = too_many_links {

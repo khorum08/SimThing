@@ -94,3 +94,18 @@ topology-spec rung if a consumer proves the need.
 
 `docs/tests/bh3_closeout_pr3_link_topology_results.md`: PROBATION. Review at PR7/PR9 for
 promotion, archive, or deletion.
+
+## DA review addendum (2026-06-13)
+
+**DA REVIEW: APPROVE.** PR #641 implements the approved A2 PR3 shape — scenario-level `link`
+declarations lower to bounded row-major grid placement/link metadata (`HydratedScenarioGridMetadata`,
+inert serde DTO) with N4 adjacency, endpoint, self-link, fanout, and reversed-dedup validation.
+No graph/edge runtime object, no route/predecessor/movement/border/frontline/pathfinding production
+(forbidden at both scenario and node level, with tests); no `simthing-sim`/GPU/PALMA/SaturatingFlux/
+FIELD_POLICY/Candidate-F/Bevy surface touched; `simthing-clausething` depends only on `simthing-spec`
++ `simthing-core`. Row-major N4 accepted as the PR3 v1 convention.
+
+One pre-merge remedial applied by DA: the self-link guard (`canonical_link`, "link endpoints must be
+distinct scenario locations") was rejected in code and claimed in the report but **had no test** — a
+claimed-but-unproven guard is not accepted on faith. Added `self_link_is_rejected_with_distinct_endpoint_error`
+to `ct_scenario_container`; battery now 13/13 green, `cargo fmt --all -- --check` clean, `git diff --check` clean.
