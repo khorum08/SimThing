@@ -9,6 +9,19 @@
 > doc supplies the Stellaris-side detail those rungs lower from. Where this doc and the ladder's §3
 > disagree, **the ladder governs.**
 >
+> **GOVERNING SUBSTRATE ADRs — these outrank this reference.** MapGen generates SimThing star mapping
+> onto two binding substrates; read them before mapping anything:
+> [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md) (the map = spatial tree +
+> overlays; dense fields are **bounded local theaters** evolved by `StructuredFieldStencilOp`; strategic
+> awareness is **hierarchy + parent EML, never dense-global diffusion**; a RegionCell is a mapping-role
+> on a SimThing, **not** a `SimThingKind`) and
+> [`../adr/resource_flow_substrate.md`](../adr/resource_flow_substrate.md) (the economy + the
+> suppression/disruption "SEAD" front are **resource-flow arenas**; scale comes from **hierarchical
+> fanout absorption**; every arena declares explicit selectors + hard caps + fission policy and is
+> rejected at build if unsafe). Anything in this textbook that reads as "run a dense field across the
+> whole galaxy" or "give each star a coordinate the sim reads" is **wrong against these ADRs** — the
+> ladder's M4/M5 corrections govern.
+>
 > **Stellaris corpus is referenced, not vendored.** The vanilla game files and generated logs
 > (`common/solar_system_initializers/`, `map/setup_scenarios/`, `map/galaxy/`,
 > `script_documentation/{effects,triggers,scopes,modifiers,localizations}.log`) live at the lab path
