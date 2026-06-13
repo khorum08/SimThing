@@ -666,3 +666,10 @@ gate. Default workspace now retains only fast production-relevant R1* sentinels.
 batteries must not be reintroduced as default tests. The BH track does not depend on R1* proof
 scaffolding. Reports: [`tests/r1_default_workspace_purge_results.md`](tests/r1_default_workspace_purge_results.md),
 [`tests/fable_review_bh2_track_packet.md`](tests/fable_review_bh2_track_packet.md) (FABLE-REVIEW-FREEZE).
+
+**0.0.8.2 closeout addendum (2026-06-13, PR8 — DA REVIEW REQUIRED BEFORE MERGE).** The canonical
+ClauseThing closeout sample now admits/installs through existing driver-facing SaturatingFlux /
+choke-column surfaces and exercises GPU-resident field math via the first-slice mapping harness. PALMA
+W/D remains feedstock consumed by the existing BH-2C `WImpedanceComposeOp` → min-plus bridge — not a
+border or frontline service. No new GPU kernels or semantic WGSL. **Do not merge until Design
+Authority reviews the final diff.**
