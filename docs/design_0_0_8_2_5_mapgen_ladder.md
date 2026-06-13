@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (revised 2026-06-13, executive design authority).**
+> **Status: PR1 PASS (2026-06-13); PR2+ pending.** Planning artifact that **pulls the deferred
 > Planning artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -253,11 +253,43 @@ boundary), **6** (Movement-Front 3-layer + P1 horizon), **8** (parallelization /
 > paradigm/ADR guardrail crossed." Stop conditions cite §9. **Never introduce "SEAD" into code/spec/tests.**
 
 ### PR 1 — Index + corpus manifest + slice selection + read-order
-Owner: Cursor. Docs only. Files: this doc (append §6.1 manifest); `tests/fixtures/mapgen/README`.
+Owner: Cursor. Docs only. Files: this doc (§6.1 manifest); `docs/clausething/mapgen_corpus_manifest.md`;
+`tests/fixtures/mapgen/README`; optional `docs/tests/mapgen_pr1_corpus_manifest_results.md`.
 Steps: pin the vanilla files the slice draws from (read-only); name the slice — **one
 `solar_system_initializer` + a ≤ 5-system `static_galaxy_scenario` with explicit `add_hyperlane` and ≥ 1
 deposit** (use `vanilla/map/setup_scenarios/static_galaxy_example.txt` + one
 `vanilla/common/solar_system_initializers/` entry); restate M10 + §0 read-order. Acceptance: pinned. Stop: §9.
+
+**Status: PASS (2026-06-13, Cursor PR 1).** Pinned read-only corpus manifest
+([`clausething/mapgen_corpus_manifest.md`](clausething/mapgen_corpus_manifest.md)); selected
+**`tiny_pentad_hub_slice`** (5 systems, hub pentad + explicit links, one deposit child, optional nebula
+metadata). Added inert hand-authored fixture stub
+`crates/simthing-clausething/tests/fixtures/mapgen/tiny_static_starmap_slice.clause` (**not parsed** until
+PR2). Performed artifact lifecycle audit; no scratch DELETE items; closeout guardrails unchanged. Result:
+[`tests/mapgen_pr1_corpus_manifest_results.md`](tests/mapgen_pr1_corpus_manifest_results.md) (PROBATION).
+No parser/importer/runtime/GPU/editor code.
+
+### PR 1 artifact lifecycle audit (§6.1)
+
+Re-ingested closeout + BH/PALMA artifact posture before MapGen work. No closeout PROBATION artifacts
+remain. MapGen PR1 adds only docs/fixtures.
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `docs/tests/clausething_closeout_results.md` | CURRENT_EVIDENCE | Unchanged; 0.0.8.2 closed |
+| `docs/tests/bh3_closeout_pr7..pr9_*` | CURRENT_EVIDENCE | Folded into closeout report |
+| `docs/archive/superseded_tests/bh3_closeout_pr2..pr6_*` | ARCHIVE | Unchanged |
+| `docs/tests/fable_review_*`, `bh2d_ct4b_100tick_*`, `r1_default_workspace_purge_*` | CURRENT_EVIDENCE | Unchanged |
+| `docs/tests/phase_m_jit_sqrt_exact5f_exhaustive_sweep_results.md` | CURRENT_EVIDENCE | Candidate F chain |
+| `docs/tests/bh0_*` … `bh2d_*`, `palma_path_*` | CURRENT_EVIDENCE | 0.0.8.1 track seating |
+| `ct_scenario_container`, `ct_bh3_closeout_sample_driver` | LIVE_GUARDRAIL | Unchanged |
+| `docs/clausething/mapgen_corpus_manifest.md` | CURRENT_EVIDENCE | New PR1 manifest pin |
+| `docs/tests/mapgen_pr1_corpus_manifest_results.md` | PROBATION | New PR1 report |
+| Scratch logs / duplicate reports / `target/` / worktrees | DELETE | None found |
+
+**Corpus manifest pin:** [`clausething/mapgen_corpus_manifest.md`](clausething/mapgen_corpus_manifest.md).
+
+**Slice pin:** `tiny_pentad_hub_slice` — see manifest § "PR1 tiny slice pin".
 
 ### PR 2 — Neutral-AST adapter spike (parse-only)
 Owner: Cursor (DA review). Re-read ADR-MAP semantic-free posture. Parse fixtures → `RawDocument`; assert
@@ -377,6 +409,7 @@ graphical galaxy; arbitrary-graph topology; pathfinding/movement; and the **edit
 - **Governing ADRs:** [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md), [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md).
 - Destination / production contract: [`clausething/ct_vertical_consumer_contract.md`](clausething/ct_vertical_consumer_contract.md); CT-2c economy [`clausething/ct_2c_economic_category_memo.md`](clausething/ct_2c_economic_category_memo.md); heatmap/terminology [`clausething/ct_3b_4a_movement_front_heatmap_memo.md`](clausething/ct_3b_4a_movement_front_heatmap_memo.md).
 - Stellaris-side detail: [`clausething/MapGenThing.md`](clausething/MapGenThing.md).
+- Corpus manifest (PR1): [`clausething/mapgen_corpus_manifest.md`](clausething/mapgen_corpus_manifest.md).
 - Closeout this extends (sign-off stands): [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md), [`design_0_0_8_2_clausething_closeout_ladder.md`](design_0_0_8_2_clausething_closeout_ladder.md).
 - Gu-Yang `SaturatingFlux`: [`design_0_0_8_1_border_hack_track.md`](design_0_0_8_1_border_hack_track.md) (arXiv:2509.20797). PALMA: [`design_0_0_8_1_palma_pathfinding_integration_guide.md`](design_0_0_8_1_palma_pathfinding_integration_guide.md) (arXiv:2601.17028). Candidate F: [`design_0_0_8_1.md`](design_0_0_8_1.md) §0.7.
 - Stellaris corpus (read-only, not vendored): `C:\Users\mvorm\Clauser\Paradox\`.

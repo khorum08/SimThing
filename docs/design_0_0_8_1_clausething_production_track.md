@@ -538,3 +538,10 @@ consumer is now **named and pulled** by a Stellaris starmap adapter — planning
 [`design_0_0_8_2_5_mapgen_ladder.md`](design_0_0_8_2_5_mapgen_ladder.md), reference
 [`clausething/MapGenThing.md`](clausething/MapGenThing.md). This widens the front-end only; the 0.0.8.2
 sign-off stands. Editor/corpus/export remains the subsequent track.
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR1).** **0.0.8.2 remains closed.** MapGen is the active named
+consumer track. PR1 performed read-order re-ingest, proof/test lifecycle audit, read-only corpus manifest
+pin ([`clausething/mapgen_corpus_manifest.md`](clausething/mapgen_corpus_manifest.md)), and **`tiny_pentad_hub_slice`**
+(≤5 systems) fixture stub under `crates/simthing-clausething/tests/fixtures/mapgen/` — **not parsed** until
+PR2. **FIELD-MOVIE-DATASET-0** / editor/corpus/export remains subsequent, not current. No parser/importer,
+runtime, GPU, or editor code in PR1.
