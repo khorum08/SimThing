@@ -19,6 +19,7 @@ pub mod scope;
 mod emit;
 mod hydrate;
 mod hydrate_category_economy;
+mod hydrate_field_operator;
 mod hydrate_resource_flow;
 mod json;
 mod literal_install;
@@ -36,6 +37,10 @@ pub use hydrate_category_economy::{
     CategoryFlowContribution, DecodedEconomicKey, EconomicAxis, EconomicOp,
     HydratedCategoryEconomyPack, decode_economic_modifier_key, hydrate_category_economy_pack,
     hydrate_daily_economy_game_mode,
+};
+pub use hydrate_field_operator::{
+    BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES, HydratedFieldOperatorPack,
+    hydrate_field_operator_pack,
 };
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,

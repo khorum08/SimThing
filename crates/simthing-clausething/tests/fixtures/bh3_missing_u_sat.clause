@@ -1,0 +1,11 @@
+simthing_bh3_missing_u_sat = {
+    display_name = "Missing u_sat"
+    grid_size = 10
+    source_col = 0
+    target_col = 0
+    n_dims = 6
+    saturating_flux = {
+        chi = 0.25
+        choke_output_col = 2
+    }
+}
