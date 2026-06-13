@@ -167,20 +167,21 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/archive/superseded_tests/pr8_windows_test_binary_rename_results.md` | ARCHIVE | PR8-WIN-HYGIENE Windows UAC rename note; folded into PR8/PR9 reports | Moved by PR 9 |
 | `docs/tests/bh3_closeout_pr7_sample_import_results.md` | CURRENT_EVIDENCE | PR7 canonical sample import proof for PR10 closeout citation | Keep |
 | `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` | CURRENT_EVIDENCE | PR8 driver admit/install + GPU exercise proof for PR10 closeout citation | Keep |
-| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | PROBATION | PR9 battery consolidation report; PR10 decides promotion | New in PR 9 |
+| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | CURRENT_EVIDENCE | PR9 battery report; folded into PR10 closeout report | Keep |
+| `docs/tests/clausething_closeout_results.md` | CURRENT_EVIDENCE | PR10 final closeout report; DA sign-off pending | New in PR 10 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
 | `docs/tests/r1_default_workspace_purge_results.md` | CURRENT_EVIDENCE | Canonical R1 default-gate posture; cited by `design_0_0_8_1.md` | Keep |
-| `docs/tests/bh0_saturating_flux_results.md` | PROBATION | Landed BH-0 rung report; not a guardrail | Keep; promote/archive at PR 9 |
-| `docs/tests/bh1_choke_readout_results.md` | PROBATION | Landed BH-1 rung report | Keep; promote/archive at PR 9 |
-| `docs/tests/bh1r_choke_consumption_results.md` | PROBATION | Landed BH-1R rung report | Keep; promote/archive at PR 9 |
-| `docs/tests/bh1r_scale_parallel_reduction_results.md` | PROBATION | Landed BH-1R-SCALE rung report | Keep; promote/archive at PR 9 |
-| `docs/tests/bh2_w_composition_results.md` | PROBATION | Landed BH-2 W-composition report | Keep; promote/archive at PR 9 |
-| `docs/tests/bh2s_overlap_stress_results.md` | PROBATION | Landed BH-2S rung report | Keep; promote/archive at PR 9 |
-| `docs/tests/bh2c_palma_feedstock_results.md` | PROBATION | Landed BH-2C PALMA feedstock report | Keep; promote/archive at PR 9 |
-| `docs/tests/bh2d_ct4b_fixture_results.md` | PROBATION | BH-2D binary fixture proof report | Keep; promote/archive at PR 9 |
-| `docs/tests/palma_path_0_design_results.md` … `palma_path_9_downstream_gpu_consumer_results.md` (12 files) | PROBATION | PALMA PATH rung closure reports; production seating evidence, not guardrails | Keep under `docs/tests/`; consolidate at PR 10 |
+| `docs/tests/bh0_saturating_flux_results.md` | CURRENT_EVIDENCE | Landed BH-0 rung report; 0.0.8.1 track seating | Keep |
+| `docs/tests/bh1_choke_readout_results.md` | CURRENT_EVIDENCE | Landed BH-1 rung report | Keep |
+| `docs/tests/bh1r_choke_consumption_results.md` | CURRENT_EVIDENCE | Landed BH-1R rung report | Keep |
+| `docs/tests/bh1r_scale_parallel_reduction_results.md` | CURRENT_EVIDENCE | Landed BH-1R-SCALE rung report | Keep |
+| `docs/tests/bh2_w_composition_results.md` | CURRENT_EVIDENCE | Landed BH-2 W-composition report | Keep |
+| `docs/tests/bh2s_overlap_stress_results.md` | CURRENT_EVIDENCE | Landed BH-2S rung report | Keep |
+| `docs/tests/bh2c_palma_feedstock_results.md` | CURRENT_EVIDENCE | Landed BH-2C PALMA feedstock report | Keep |
+| `docs/tests/bh2d_ct4b_fixture_results.md` | CURRENT_EVIDENCE | BH-2D binary fixture proof report | Keep |
+| `docs/tests/palma_path_0_design_results.md` … `palma_path_9_downstream_gpu_consumer_results.md` (12 files) | CURRENT_EVIDENCE | PALMA PATH rung closure reports; 0.0.8.1 track seating | Keep |
 | `docs/tests/ct_0a_impl_results.md` … `ct_3b_4a_impl_0a_results.md`, `ct_0d_impl_results.md` (10 files) | CURRENT_EVIDENCE | Active ClauseThing CT-* implementation ledger | Keep |
 | `docs/tests/runtime_0080_rr_4_results.md` | CURRENT_EVIDENCE | Referenced by `design_0_0_8_1.md` runtime posture | Keep |
 | `docs/tests/runtime_0080_0_r2_stable_100_tick_rehearsal_results.md` | CURRENT_EVIDENCE | Active 0.0.8.x runtime rehearsal evidence | Keep |
@@ -204,7 +205,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `crates/simthing-driver/tests/bh2c_palma_w_feedstock.rs`, `bh2d_ct4b_fixture.rs` | LIVE_GUARDRAIL | Fast BH-2C/2D driver guardrails | Keep active |
 | `crates/simthing-driver/tests/bh2d_ct4b_100tick_observation.rs` | PROBATION | Slow/ignored dynamic observation harness; report is evidence not guardrail | Keep ignored; not default gate |
 | `crates/simthing-driver/tests/runtime_0080_0_r1_gate.rs` | LIVE_GUARDRAIL | Fast R1 default-off contract sentinel | Keep active |
-| `crates/simthing-driver/tests/palma_path_{3,4,5,6,7,8,8r,9}_*.rs`, `palma_path_min_plus_oracle.rs` | PROBATION | PALMA PATH fixture proofs; valuable but not closeout guardrails | Keep; consolidate at PR 9/10 |
+| `crates/simthing-driver/tests/palma_path_{3,4,5,6,7,8,8r,9}_*.rs`, `palma_path_min_plus_oracle.rs` | PROBATION | PALMA PATH fixture proofs; not closeout guardrails | Keep; not default gate |
 | `crates/simthing-driver/tests/phase_m_frontier_v{1_5,2_0..2_4}_*.rs` (6 binaries) | PROBATION | Historical Frontier closed-loop fixtures; reports archived | Keep tests; not LIVE_GUARDRAIL |
 | `crates/simthing-gpu/tests/bh{0,1,1r,2_w,2s}_*.rs` (6 files) | LIVE_GUARDRAIL | Fast GPU-resident BH operator guardrails | Keep active |
 | Scratch logs, duplicate reports, `target/`, `.claude/worktrees/` | DELETE | Not found in tracked tree at census time | None removed |
@@ -446,6 +447,14 @@ Docs: all of the above.
 Artifact cleanup: final superseded-report sweep.
 Acceptance: §10 closeout criteria all met; docs state complete vs deferred; Candidate F unmoved.
 Stop conditions: any §10 criterion unmet (→ PARTIAL with the precise gap).
+
+**Status: PASS / DA SIGN-OFF PENDING (2026-06-13, Cursor PR 10).** Added
+`docs/tests/clausething_closeout_results.md` as **CURRENT_EVIDENCE** final closeout report. Updated
+production docs (ClauseThing spec, production track, border hack track, PALMA guide, Fable packet)
+to record **CLOSED / PARKED** for authoring/import/runtime-feedstock closure with honest
+complete-vs-deferred boundaries. Resolved all closeout PROBATION artifacts (PR7/PR8/PR9 promoted and
+folded; BH/PALMA rung reports classified CURRENT_EVIDENCE for 0.0.8.1 seating). Focused guardrail
+tests pass. No runtime/GPU/editor/source changes. **Track close awaits Design Authority sign-off.**
 
 ## 7. Test strategy
 

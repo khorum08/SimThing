@@ -1,7 +1,7 @@
 # BH3 Closeout PR9 Test Battery Results
 
-> **Artifact lifecycle: PROBATION** (PR9 battery consolidation report; PR10 decides promotion to
-> CURRENT_EVIDENCE or fold into closeout report).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR9 battery consolidation report; folded into
+> [`clausething_closeout_results.md`](clausething_closeout_results.md)).
 
 ## Verdict
 
@@ -159,4 +159,4 @@ commands reference `ct_bh3_closeout_sample_install`.
 
 | Artifact | Classification |
 |---|---|
-| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | PROBATION |
+| `docs/tests/bh3_closeout_pr9_test_battery_results.md` | CURRENT_EVIDENCE |
