@@ -354,12 +354,18 @@ The map is not a system; it is **more tree, run as a cellular automaton.** This 
 which gridcell/location SimThings surface their local conditions as a heat map whose values spill
 across the lattice as propagating, falloff-shaped fronts.
 
-A grid (galaxy 200×150, system 10×10, planet surface 5×5/10×10) is a parent SimThing whose children
+A grid (galaxy 200×200 default "medium", system 10×10, planet surface 5×5/10×10) is a parent SimThing
+whose children
 are **gridcell SimThings** laid out as a 2D map. A gridcell is an authored mapping-role on an
 ordinary SimThing — **not a new kind** — backed by a slot range whose **data columns are allocated
 positionally according to the parent's 2D map of child cells**, addressed as `(width, height, col)`
 so the GPU stencil can walk neighbors as pure index arithmetic. The parent collects its cells the
 same way every parent collects every child: `SlotRange` reduction over their columns.
+
+**Base canonical grid dimensions are always square** (P2 symmetry has no preferred axis): the default
+"medium" galaxy is **200×200**, and the galaxy grid **scales up — staying square** — when star density
+demands more cells than the default holds. Star systems occupy a subset of the lattice; empty cells are
+deep space carrying ambient field. (The superseded 200×150 is retired.)
 
 ### 7.1 The three postulates, enforced as engine law
 
