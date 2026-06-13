@@ -191,12 +191,18 @@ moved into `simthing_core_design.md`. PR10 introduced no new numeric algorithms.
 
 ## DA sign-off status
 
-**PENDING — DA SIGN-OFF REQUIRED BEFORE TRACK CLOSE.**
+**APPROVED — 2026-06-13, Opus / Design Authority.**
 
-This report and PR10 doc updates are prepared for Design Authority review. The track must not be
-declared closed in production ledgers until Opus / Design Authority explicitly signs off against the
-checklist in [`design_0_0_8_2_clausething_closeout_ladder.md`](../design_0_0_8_2_clausething_closeout_ladder.md)
-PR10 handoff and §10 acceptance criteria.
+Design Authority signed off against the PR10 handoff checklist and §10 acceptance criteria in
+[`design_0_0_8_2_clausething_closeout_ladder.md`](../design_0_0_8_2_clausething_closeout_ladder.md).
+DA review confirmed: the PR is docs-only (no runtime/GPU/editor/source semantics); the complete-vs-deferred
+boundary is honest; the proof/test lifecycle is closed cleanly with no PROBATION closeout artifacts and no
+proof theater; Candidate F §0.7 authority is unmoved and not relocated into `simthing_core_design.md`; the
+focused guardrail battery reran green under DA review (`ct_scenario_container` 45 passed;
+`ct_bh3_closeout_sample_driver` 2 passed with GPU available); `cargo fmt --all -- --check` and
+`git diff --check` clean. The 0.0.8.2 ClauseThing/BH/PALMA authoring-import/runtime-feedstock track is
+**CLOSED**. Playable-game, Bevy/editor, and corpus/export closure remain explicitly deferred to a future
+minor version.
 
 ## Remaining risks
 

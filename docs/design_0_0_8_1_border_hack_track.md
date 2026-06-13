@@ -680,8 +680,7 @@ driver/GPU). Per-PR2–PR6 result reports and PR8-WIN-HYGIENE note are **ARCHIVE
 `docs/archive/superseded_tests/`. PR7/PR8/PR9 evidence folded into
 [`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md).
 
-**0.0.8.2 closeout addendum (2026-06-13, PR10 — DA SIGN-OFF PENDING).** 0.0.8.2 closeout is
-**CLOSED / PARKED** for authoring/import/runtime-feedstock closure. SaturatingFlux remains generic
+**0.0.8.2 closeout addendum (2026-06-13, PR10 — DA SIGN-OFF: APPROVED, Opus / Design Authority).** 0.0.8.2
+closeout is **CLOSED** for authoring/import/runtime-feedstock closure. SaturatingFlux remains generic
 field math; PALMA W/D remains feedstock — not border or pathfinding. Final report:
-[`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md). **Awaiting Design
-Authority sign-off before track close is final.**
+[`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md).

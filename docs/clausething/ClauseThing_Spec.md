@@ -362,9 +362,9 @@ Per-PR2–PR6 result reports are **ARCHIVE** under `docs/archive/superseded_test
 evidence is **CURRENT_EVIDENCE**, folded into
 [`docs/tests/clausething_closeout_results.md`](../tests/clausething_closeout_results.md).
 
-**PR10 closeout (0.0.8.2 — DA SIGN-OFF PENDING):** the ClauseThing/BH/PALMA closeout track is
-**CLOSED / PARKED** for authoring/import/runtime-feedstock closure — not playable-game, editor, or
-corpus/export closure. Final report:
+**PR10 closeout (0.0.8.2 — DA SIGN-OFF: APPROVED, 2026-06-13, Opus / Design Authority):** the
+ClauseThing/BH/PALMA closeout track is **CLOSED** for authoring/import/runtime-feedstock closure — not
+playable-game, editor, or corpus/export closure. Final report:
 [`docs/tests/clausething_closeout_results.md`](../tests/clausething_closeout_results.md). Primary
 guardrail commands remain:
 
@@ -372,8 +372,6 @@ guardrail commands remain:
 cargo test -p simthing-clausething --test ct_scenario_container
 cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
-
-**Awaiting Design Authority sign-off before track close is final.**
 
 ---
 

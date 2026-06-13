@@ -168,7 +168,7 @@ ClauseThing CT-*, R1 purge, Candidate F, Frontier V1/V2 reports.
 | `docs/tests/bh3_closeout_pr7_sample_import_results.md` | CURRENT_EVIDENCE | PR7 canonical sample import proof for PR10 closeout citation | Keep |
 | `docs/tests/bh3_closeout_pr8_driver_gpu_results.md` | CURRENT_EVIDENCE | PR8 driver admit/install + GPU exercise proof for PR10 closeout citation | Keep |
 | `docs/tests/bh3_closeout_pr9_test_battery_results.md` | CURRENT_EVIDENCE | PR9 battery report; folded into PR10 closeout report | Keep |
-| `docs/tests/clausething_closeout_results.md` | CURRENT_EVIDENCE | PR10 final closeout report; DA sign-off pending | New in PR 10 |
+| `docs/tests/clausething_closeout_results.md` | CURRENT_EVIDENCE | PR10 final closeout report; DA sign-off APPROVED 2026-06-13 | New in PR 10 |
 | `docs/tests/fable_review_0_0_8_1_result.md` | CURRENT_EVIDENCE | Active Fable review of 0.0.8.1 posture; cited by track packets | Keep |
 | `docs/tests/fable_review_bh2_track_packet.md` | CURRENT_EVIDENCE | Canonical BH/Fable handoff; updated archive links | Keep |
 | `docs/tests/bh2d_ct4b_100tick_scenario_observations.md` | CURRENT_EVIDENCE | Canonical dynamic observation; cited by border-hack track + Fable packet | Keep |
@@ -448,13 +448,16 @@ Artifact cleanup: final superseded-report sweep.
 Acceptance: §10 closeout criteria all met; docs state complete vs deferred; Candidate F unmoved.
 Stop conditions: any §10 criterion unmet (→ PARTIAL with the precise gap).
 
-**Status: PASS / DA SIGN-OFF PENDING (2026-06-13, Cursor PR 10).** Added
+**Status: PASS / DA SIGN-OFF: APPROVED (2026-06-13, Cursor PR 10; Opus / Design Authority).** Added
 `docs/tests/clausething_closeout_results.md` as **CURRENT_EVIDENCE** final closeout report. Updated
 production docs (ClauseThing spec, production track, border hack track, PALMA guide, Fable packet)
-to record **CLOSED / PARKED** for authoring/import/runtime-feedstock closure with honest
+to record **CLOSED** for authoring/import/runtime-feedstock closure with honest
 complete-vs-deferred boundaries. Resolved all closeout PROBATION artifacts (PR7/PR8/PR9 promoted and
-folded; BH/PALMA rung reports classified CURRENT_EVIDENCE for 0.0.8.1 seating). Focused guardrail
-tests pass. No runtime/GPU/editor/source changes. **Track close awaits Design Authority sign-off.**
+folded; BH/PALMA rung reports classified CURRENT_EVIDENCE for 0.0.8.1 seating). No runtime/GPU/editor/source
+changes (docs-only diff verified). **DA review (2026-06-13):** all §10 criteria confirmed met; PR is
+docs-only; Candidate F §0.7 unmoved; focused guardrail battery reran green under DA review
+(`ct_scenario_container` 45 passed; `ct_bh3_closeout_sample_driver` 2 passed with GPU available);
+`cargo fmt --check` and `git diff --check` clean. **0.0.8.2 track CLOSED. Next track: editor/corpus/export boundary.**
 
 ## 7. Test strategy
 
