@@ -432,6 +432,23 @@ back into true columns; only explicit gameplay events through the `BoundaryReque
 ground truth. Mapping is opt-in, bounded, default-off, and `simthing-sim` remains map-free: it sees
 flat columns and opaque registrations.
 
+**Production operators — the realized rule (Gu-Yang flux) and the reach utility (PALMA).** Two seated,
+semantic-free GPU operators give the automaton its production form, each a generic
+`StructuredFieldStencilOp`-family utility, not a new primitive or a semantic engine:
+
+- **Gu-Yang `SaturatingFlux`** — an engineering ansatz *inspired by* Gu & Yang's hydrodynamic-limit
+  results (arXiv:2509.20797), not a literal implementation — is the conservative, state-dependent
+  stencil rule: a symmetric `(C_i + C_j)/2` flux with **zero-*flux*** (not zero-value) boundaries and a
+  CFL cap (χ ≤ 0.25), so a front **saturates and chokes** at bottlenecks instead of blowing up. It is
+  the same kernel, the same authored weights at every cell (P2), stability-bounded (P3) — and it is the
+  operator that makes chokepoints and contested boundaries *emerge from the flow* rather than from a
+  bespoke border service. The optional choke readout is one resident scalar column in the same dispatch.
+- **PALMA** min-plus traversal (tropical algebra, arXiv:2601.17028) is the seated **reach/impedance
+  utility** over the front: `D = W + min(N4 D)` is a *field*, not a route — it realizes "the front is
+  the route" (§7.2) as the reach metric a supply/threat gradient implies. No sqrt, no predecessor, no
+  path object; it is a generic GPU utility a Movement-Front consumer composes (impedance W from choke
+  fields → D), never a pathfinding engine.
+
 ### 7.3 Trade-off geometry over the front — the Pareto-knee toolkit (deferred; guidance only)
 
 **Status: not an opcode, not a gadget, not implemented anywhere — deferred under the consumer-pulled
@@ -553,3 +570,8 @@ masking, crossing thresholds, and propagating Movement-Fronts. Build toward that
 - Giovannelli, Raimundo, Vicente, *Pareto sensitivity, most-changing sub-fronts, and knee solutions*
   (arXiv:2501.16993) — the least-maximal-change knee / MCF formalization behind the deferred §7.3
   toolkit.
+- Gu & Yang, hydrodynamic-limit results (arXiv:2509.20797) — the inspiration for the `SaturatingFlux`
+  conservative-flux stencil ansatz that gives the Movement-Front its saturation/choke dynamics (§7.2).
+- *PALMA: A Lightweight Tropical Algebra Library for ARM-Based Embedded Systems* (arXiv:2601.17028) —
+  the min-plus / tropical-algebra basis for the seated reach/impedance traversal utility over the
+  front (§7.2).
