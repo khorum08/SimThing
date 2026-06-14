@@ -677,7 +677,6 @@ with inert integer positions and bareword initializer refs, plus minimal sibling
 does **not** widen 0.0.8.2.5 MapGen front-end/lowering, and does **not** emit `hydrate_scenario` `scenario/location`
 grammar, topology, links, field operators, RF, Movement-Front, PALMA, runtime, GPU, simthing-sim, new `SimThingKind`,
 pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority in output, or
-FIELD-MOVIE-DATASET-0 export. **Original PR4 rejected by DA (Opus); remediated on #678 — do not merge until DA
-re-review.** See [`mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md)
-(PROBATION). **PR5 next:** parse/lowering through existing `mapgen_lattice` path — still no topology and no GPU
-unless DA scopes it. **PR6/PR9** remain responsible for `add_hyperlane`/nebula/`field_operator` extensions.
+FIELD-MOVIE-DATASET-0 export. **DA-APPROVED (2026-06-14, #678).** See [`mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md) (CURRENT_EVIDENCE). **PR5 next:** parse/lowering proof — requires prior child-id amendment; PR5 must contain zero closed `src/` changes.
+
+**0.0.8.2.5 MapGen addendum (2026-06-14, lowerer child-id amendment).** Closed lowerer bugfix: scope initializer payload child IDs per system (`{system.id}_{initializer.id}_planet/_deposit`) so multiple systems sharing one initializer hydrate without duplicate global node IDs. **Not a reopening** of 0.0.8.2.5 scope. See [`mapgen_lowerer_child_id_amendment_results.md`](tests/mapgen_lowerer_child_id_amendment_results.md) (PROBATION). **0.0.8.6 PR5 may rebase after DA approval.**
