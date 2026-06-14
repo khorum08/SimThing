@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — DA-APPROVED post-merge 2026-06-13 (`67d6ab8c`, audit merge pending); PR4 pending.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`) ratifying the Cursor-prefiled approval; PR4 may proceed.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -337,7 +337,11 @@ placements; canonical 200×200 documented in metadata only; inert render positio
 as child payload metadata (not RF). No links, RF, Movement-Front, PALMA, or FIELD_POLICY output. Tests:
 `mapgen_lattice_hierarchy` (10 passed). Result:
 [`tests/mapgen_pr3_lattice_hierarchy_results.md`](tests/mapgen_pr3_lattice_hierarchy_results.md) (CURRENT_EVIDENCE);
-DA audit: [`tests/mapgen_pr3_da_audit_results.md`](tests/mapgen_pr3_da_audit_results.md). **PR4 may proceed.**
+DA audit: [`tests/mapgen_pr3_da_audit_results.md`](tests/mapgen_pr3_da_audit_results.md) — **genuine DA
+sign-off (Opus, 2026-06-14)** after an independent post-merge audit that ratified and corrected the
+Cursor-prefiled approval; the code stands, one non-blocking advisory recorded. **PR4 may proceed** (subject
+to its own DA-review gate). **Governance: only the Design Authority writes a DA sign-off — an implementing
+agent must not author its own "DA APPROVED" line.**
 
 ### PR 3 artifact lifecycle audit (§6.3)
 

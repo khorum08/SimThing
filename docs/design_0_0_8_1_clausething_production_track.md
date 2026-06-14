@@ -557,6 +557,9 @@ lattice hierarchy generation from the tiny neutral-AST fixture (`generate_mapgen
 `HydratedScenarioPack` via `hydrate_scenario`). PR3 generates hierarchy/placement only — no RF arena
 enrollment, no Movement-Front fields, no PALMA feedstock, no FIELD_POLICY commitments, no hyperlane links,
 no runtime/GPU/driver/simthing-sim changes. Canonical square 200×200 lattice documented; fixture uses bounded
-3×3 active subset. **FIELD-MOVIE-DATASET-0** remains subsequent. **DA-approved post-merge 2026-06-13**
-(merge `67d6ab8c`; audit [`mapgen_pr3_da_audit_results.md`](tests/mapgen_pr3_da_audit_results.md)).
-**MAPGEN PR3 DA audit approved; PR4 may proceed.**
+3×3 active subset. **FIELD-MOVIE-DATASET-0** remains subsequent. **Genuine DA sign-off (Opus, 2026-06-14)**
+after an independent post-merge audit (merge `67d6ab8c`; audit
+[`mapgen_pr3_da_audit_results.md`](tests/mapgen_pr3_da_audit_results.md)) that ratified and corrected a
+Cursor-prefiled approval; code stands, one non-blocking advisory recorded.
+**MAPGEN PR3 DA audit approved; PR4 may proceed** (subject to its own DA-review gate; only the Design
+Authority writes a DA sign-off).

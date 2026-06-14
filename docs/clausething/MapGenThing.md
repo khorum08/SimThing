@@ -25,7 +25,8 @@
 > lives under the `mapgen` property namespace — not a new `SimThingKind`. Fixture-local 3×3 placements;
 > canonical 200×200 square lattice documented in metadata only; Stellaris positions are inert render
 > metadata. No RF, Movement-Front, PALMA, FIELD_POLICY, or hyperlane link output in PR3.
-> Audit: [`mapgen_pr3_da_audit_results.md`](../tests/mapgen_pr3_da_audit_results.md). **PR4 may proceed.**
+> Audit: [`mapgen_pr3_da_audit_results.md`](../tests/mapgen_pr3_da_audit_results.md) — **genuine DA sign-off
+> (Opus, 2026-06-14)** ratifying a Cursor-prefiled approval. **PR4 may proceed.**
 >
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
