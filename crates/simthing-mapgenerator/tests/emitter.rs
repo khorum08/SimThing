@@ -250,10 +250,21 @@ fn emitter_uses_bucket_as_initializer_ref() {
 #[test]
 fn emitter_uses_safe_default_initializer_when_bucket_missing() {
     let text = emit_sample(&elliptical_params(1, 2, 16));
+    let first_system = text
+        .split("            id = \"0\"")
+        .nth(1)
+        .expect("system 0")
+        .split("\n        }")
+        .next()
+        .expect("system 0 body");
+    assert!(first_system.contains(&format!("initializer = {DEFAULT_INITIALIZER_REF}")));
     let second_system = text
         .split("            id = \"1\"")
         .nth(1)
-        .expect("system 1");
+        .expect("system 1")
+        .split("\n        }")
+        .next()
+        .expect("system 1 body");
     assert!(second_system.contains(&format!("initializer = {DEFAULT_INITIALIZER_REF}")));
 }
 
