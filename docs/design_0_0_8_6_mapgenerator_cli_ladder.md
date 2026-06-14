@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 DA-APPROVED & MERGED (2026-06-14, #674). PR2 DA-APPROVED & MERGED (2026-06-14, #676): SplitMix64 RNG + square lattice + core mask + one-system-per-cell occupancy with deterministic relocation — no shape generation. PR3 DA-APPROVED & MERGED (2026-06-14, #677): ShapeStrategy trait + data-driven registry dispatch + elliptical/static in-memory strategy seams (C10 seam genuine) — no emitter. PR4 may proceed. (DA notes carried to the scale-envelope rung: O(cells) relocation + `cell_count` overflow bound; new: single-source the strategy dispatch/names lists before PR8, and unify the procedural mode-gate for static vs arbitrary_static.)**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 DA-APPROVED & MERGED (2026-06-14, #674). PR2 DA-APPROVED & MERGED (2026-06-14, #676). PR3 DA-APPROVED & MERGED (2026-06-14, #677): ShapeStrategy trait + data-driven registry dispatch + elliptical/static in-memory strategy seams — no emitter. PR4 PASS pending DA review: deterministic declarative scenario text emitter — no topology and no lowering. PR5 next after DA approval. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -218,12 +218,14 @@ mechanical under §3.
   (uniform-ish disc) and `static` (passthrough). Accept: strategies resolved by name from the registry;
   unknown shape ⇒ clean error listing registered shapes; adding a strategy touches only registry+tests.
   Stop: registry pressure to encode runtime semantics (§7).
-  **Status: PASS pending DA review (2026-06-14).** Result:
-  [`tests/mapgenerator_cli_pr3_strategy_results.md`](tests/mapgenerator_cli_pr3_strategy_results.md) (PROBATION).
-  **PR4 next:** declarative scenario emitter for tiny in-memory placements — still no topology and no lowering.
+  **Status: DA-APPROVED (2026-06-14, #677).** Result:
+  [`tests/mapgenerator_cli_pr3_strategy_results.md`](tests/mapgenerator_cli_pr3_strategy_results.md) (CURRENT_EVIDENCE).
 - **PR4** — emit declarative `scenario { metadata, location { position(inert) initializer-ref } }` text from
   a strategy's placements. Accept: text only; positions inert; no links/fields yet. Stop: emitter wants to
   build spec structs (§7).
+  **Status: PASS pending DA review (2026-06-14).** Result:
+  [`tests/mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md) (PROBATION).
+  **PR5 next:** generated tiny scenario through existing MapGen parse/lowering surface — still no topology and no GPU unless DA scopes it.
 - **PR5** — feed PR4 text through `parse_mapgen_neutral_document` → `hydrate_scenario`/MapGen front-end;
   assert it lowers to the same surfaces (gridcell `Location`s, default-off). Accept: lowers **without
   changing the lowering layer**; LIVE_GUARDRAIL battery green. Stop: front-end rejects ⇒ fix the *producer

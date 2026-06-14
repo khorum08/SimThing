@@ -667,6 +667,15 @@ next:** `ShapeStrategy` trait + registry + elliptical/static strategy seam — s
 only the `ShapeStrategy` trait, data-driven registry dispatch, and minimal in-memory elliptical/static strategy seams.
 No scenario emitter, topology generation, MapGen lowering, runtime, GPU, simthing-sim, new `SimThingKind`,
 pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority in output, or
+FIELD-MOVIE-DATASET-0 export. **DA-APPROVED (2026-06-14).** See
+[`mapgenerator_cli_pr3_strategy_results.md`](tests/mapgenerator_cli_pr3_strategy_results.md) (CURRENT_EVIDENCE). **PR4
+next:** declarative scenario emitter for tiny in-memory placements — still no topology and no lowering.
+
+**0.0.8.6 MapGeneratorCLI addendum (2026-06-14, PR4).** **0.0.8.2.5 MapGen remains closed.** MapGeneratorCLI PR4 adds
+only deterministic declarative scenario text emission for tiny in-memory placements. The emitter produces metadata,
+lattice, and location blocks with inert integer positions and initializer references. No topology, links, field
+operators, MapGen lowering, runtime, GPU, simthing-sim, new `SimThingKind`,
+pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority in output, or
 FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
-[`mapgenerator_cli_pr3_strategy_results.md`](tests/mapgenerator_cli_pr3_strategy_results.md) (PROBATION). **PR4 next:**
-declarative scenario emitter for tiny in-memory placements — still no topology and no lowering.
+[`mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md) (PROBATION). **PR5 next:**
+generated tiny scenario through existing MapGen parse/lowering surface — still no topology and no GPU unless DA scopes it.
