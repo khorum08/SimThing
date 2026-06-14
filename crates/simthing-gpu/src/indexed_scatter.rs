@@ -32,6 +32,8 @@ pub enum IndexedScatterError {
     DstOutOfBounds { entry: usize, index: u32, len: u64 },
     #[error("duplicate scatter destination index {index}")]
     DuplicateDst { index: u32 },
+    #[error("scatter entries must not be empty")]
+    EmptyEntries,
 }
 
 /// Validate entries against buffer lengths (in f32 elements) and reject
@@ -139,6 +141,45 @@ impl IndexedScatterOp {
         if entries.is_empty() {
             return Ok(());
         }
+        let bind_group = self.bind_group(ctx, src, dst, entries)?;
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("indexed_scatter_encoder"),
+            });
+        self.record_dispatch(&mut encoder, &bind_group, entries.len());
+        ctx.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    /// Record one scatter dispatch into an existing command encoder (no queue submit).
+    pub fn record_dispatch(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        bind_group: &wgpu::BindGroup,
+        entry_count: usize,
+    ) {
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("indexed_scatter_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.dispatch_workgroups(entry_count.div_ceil(64) as u32, 1, 1);
+    }
+
+    /// Build scatter bind group for batched encoder recording.
+    pub fn bind_group(
+        &self,
+        ctx: &GpuContext,
+        src: &wgpu::Buffer,
+        dst: &wgpu::Buffer,
+        entries: &[ScatterEntry],
+    ) -> Result<wgpu::BindGroup, IndexedScatterError> {
+        validate_scatter_entries(entries, src.size() / 4, dst.size() / 4)?;
+        if entries.is_empty() {
+            return Err(IndexedScatterError::EmptyEntries);
+        }
         let entries_buffer = ctx
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -157,7 +198,7 @@ impl IndexedScatterOp {
                 contents: bytemuck::bytes_of(&params),
                 usage: wgpu::BufferUsages::UNIFORM,
             });
-        let bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        Ok(ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("indexed_scatter_bind"),
             layout: &self.layout,
             entries: &[
@@ -178,23 +219,7 @@ impl IndexedScatterOp {
                     resource: params_buffer.as_entire_binding(),
                 },
             ],
-        });
-        let mut encoder = ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("indexed_scatter_encoder"),
-            });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("indexed_scatter_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(entries.len().div_ceil(64) as u32, 1, 1);
-        }
-        ctx.queue.submit(Some(encoder.finish()));
-        Ok(())
+        }))
     }
 }
 

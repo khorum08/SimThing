@@ -515,4 +515,11 @@ PALMA W/D is field feedstock only — not pathfinding, routes, predecessors, or 
 exercise remains PR8/PR10. Report: [`tests/mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md)
 (PROBATION).
 
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR8).** MapGen PR8 adds `mapgen_pr8_scheduled_concurrency` driver tests
+and generic `scheduled_w_palma_batch` helpers comparing serial vs single-encoder W compose + PALMA min-plus
+over the PR7 tiny slice. Compact D probe only — not pathfinding, routes, or movement. No fused kernel. Driver
+GPU exercise only; **DA review required before merge.** Report:
+[`tests/mapgen_pr8_scheduled_concurrency_results.md`](tests/mapgen_pr8_scheduled_concurrency_results.md)
+(PROBATION).
+
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

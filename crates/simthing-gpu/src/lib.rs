@@ -21,6 +21,7 @@ pub mod projection;
 pub mod reduction;
 pub mod reduction_orderband;
 pub mod saturating_flux_choke_threshold;
+pub mod scheduled_w_palma_batch;
 pub mod slot;
 pub mod stress_compose;
 pub mod structured_field_stencil;
@@ -100,6 +101,10 @@ pub use saturating_flux_choke_threshold::{
     SaturatingFluxChokeThresholdError, SaturatingFluxChokeThresholdOp,
     SaturatingFluxChokeThresholdResult, CHOKE_THRESHOLD_COMPACT_FLOATS,
     CHOKE_THRESHOLD_PARTIAL_FLOATS, CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE,
+};
+pub use scheduled_w_palma_batch::{
+    dispatch_scheduled_w_palma_chain, dispatch_serial_w_palma_chain, ScheduledWPalmaChainError,
+    ScheduledWPalmaChainEvidence,
 };
 pub use slot::{SlotAllocError, SlotAllocator};
 pub use stress_compose::{

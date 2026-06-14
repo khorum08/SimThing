@@ -53,6 +53,7 @@ cargo test -p simthing-clausething --test mapgen_resource_flow
 cargo test -p simthing-clausething --test mapgen_links
 cargo test -p simthing-clausething --test mapgen_movement_front
 cargo test -p simthing-clausething --test mapgen_palma
+cargo test -p simthing-driver --test mapgen_pr8_scheduled_concurrency
 ```
 
 PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `Location` SimThings with
@@ -83,6 +84,17 @@ orders, no runtime/GPU/driver/simthing-sim output in PR7.
 cargo test -p simthing-clausething --test mapgen_palma
 ```
 
+## PR8 — scheduled-concurrency GPU measurement (DA review)
+
+Driver test `mapgen_pr8_scheduled_concurrency` compares serial queue submits vs single-encoder W compose +
+PALMA min-plus over the PR7 tiny slice. Compact D probe readback only — no full-field CPU decision readback,
+no fused kernel, no simthing-sim changes.
+
+```text
+cargo test -p simthing-driver --test mapgen_pr8_scheduled_concurrency
+cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
+```
+
 ## Closeout guardrails (unchanged)
 
 0.0.8.2 closeout batteries remain the active ClauseThing guardrails:
@@ -94,4 +106,5 @@ cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 
 MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
 MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests. MapGen PR6 adds
-`mapgen_movement_front` tests. MapGen PR7 adds `mapgen_palma` tests.
+`mapgen_movement_front` tests. MapGen PR7 adds `mapgen_palma` tests. MapGen PR8 adds
+`mapgen_pr8_scheduled_concurrency` driver GPU measurement tests (DA review before merge).
