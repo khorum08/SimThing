@@ -545,3 +545,9 @@ pin ([`clausething/mapgen_corpus_manifest.md`](clausething/mapgen_corpus_manifes
 (≤5 systems) fixture stub under `crates/simthing-clausething/tests/fixtures/mapgen/` — **not parsed** until
 PR2. **FIELD-MOVIE-DATASET-0** / editor/corpus/export remains subsequent, not current. No parser/importer,
 runtime, GPU, or editor code in PR1.
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR2).** **0.0.8.2 remains closed.** MapGen PR2 adds the
+neutral-AST parse-only adapter (`parse_mapgen_neutral_document` → `RawDocument`). PR2 is parse-only: no
+semantic mapping, no generated SimThing structure, no parser/importer runtime, no Paradox files committed.
+PR3 is the first hierarchy-generation rung. **FIELD-MOVIE-DATASET-0** / editor/corpus/export remains
+subsequent. DA review required before merge.

@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2+ pending.** Planning artifact that **pulls the deferred
+> **Status: PR1 PASS (2026-06-13); PR2 PASS pending DA review; PR3+ pending.** Planning artifact that **pulls the deferred
 > Planning artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -295,6 +295,30 @@ remain. MapGen PR1 adds only docs/fixtures.
 Owner: Cursor (DA review). Re-read ADR-MAP semantic-free posture. Parse fixtures → `RawDocument`; assert
 repeated keys/order/nesting; **zero semantic decisions; no spec/sim change.** Tests: `mapgen_neutral_ast_parse`.
 Stop: jomini can't represent a construct → escalate (§9).
+
+**Status: PASS pending DA review (2026-06-13, Cursor PR 2).** Added parse-only neutral-AST adapter
+(`mapgen_neutral_ast.rs`: `parse_mapgen_neutral_document` → `RawDocument` via jomini). Hand-authored raw
+fixture `tiny_pentad_hub_slice_raw.clause` (Stellaris-style idioms; not lowered). Focused tests assert
+repeated keys, nesting, and sibling order/count; no semantic mapping; no SimThing structures. PR2 is
+parse-only — PR3 is the first hierarchy-generation rung. No Paradox files committed. No
+parser/importer/runtime/GPU/driver/simthing-sim change. Result:
+[`tests/mapgen_pr2_neutral_ast_results.md`](tests/mapgen_pr2_neutral_ast_results.md) (PROBATION).
+
+### PR 2 artifact lifecycle audit (§6.2)
+
+Re-ingested PR1 + closeout posture before PR2 implementation. No scratch DELETE items; closeout
+guardrails unchanged.
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `docs/tests/clausething_closeout_results.md` | CURRENT_EVIDENCE | Unchanged; 0.0.8.2 closed |
+| `docs/clausething/mapgen_corpus_manifest.md` | CURRENT_EVIDENCE | Unchanged |
+| `docs/tests/mapgen_pr1_corpus_manifest_results.md` | PROBATION | Unchanged |
+| `tiny_static_starmap_slice.clause` | PROBATION | Inert PR1 stub; still not MapGen-parsed |
+| `tiny_pentad_hub_slice_raw.clause` | CURRENT_EVIDENCE | New PR2 raw parse fixture |
+| `mapgen_neutral_ast.rs`, `mapgen_neutral_ast_parse.rs` | CURRENT_EVIDENCE | New PR2 adapter + tests |
+| `ct_scenario_container`, `ct_bh3_closeout_sample_driver` | LIVE_GUARDRAIL | Unchanged |
+| Scratch logs / duplicate reports / `target/` / worktrees | DELETE | None found |
 
 ### PR 3 — Gridcell-lattice spatial hierarchy generation
 Owner: Cursor (DA review). **Re-read core §7 + §2 + ADR-RF fanout.** Generate
