@@ -1,10 +1,21 @@
 # MapGen PR10 End-to-End Compact Evidence Results
 
-> **Artifact lifecycle: PROBATION** (PR10 end-to-end report; DA review before merge).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR10 end-to-end report; DA-approved 2026-06-14).
 
 ## Verdict
 
-**PASS pending DA review (2026-06-13, Cursor PR 10)** — tiny MapGen canonical sample executes end-to-end
+**PASS / DA-APPROVED (2026-06-14, Opus / Design Authority; Cursor PR 10)** — DA performed a genuine
+pre-merge audit (branch source, not the PR body) and reran the full battery green on a real GPU adapter
+(`mapgen_pr10_end_to_end_compact_evidence` 3 passed; clausething 8/10/16/19/23/19/21/45; `mapgen_pr8` 6;
+`ct_bh3` 2; fmt/`git diff --check` clean). Confirmed: a GPU risky-token scan found **no new
+WGSL/compute-pipeline/shader-module, no new `SimThingKind`, no sqrt/distance/normalize/euclidean, no
+Route/Predecessor** in added source; the generator edits are **install-correctness only** (per-system
+unique property names + arena `explicit_participants` resolving **real install slots** via a DFS tree
+walk instead of `enumerate()` indices, so the pack actually admits/installs — still inert render
+positions, no new capability); the harness does real `install_atomic` + `SimSession::open_from_spec` +
+`FirstSliceMappingSession` with **compact evidence only** (`field_values`/`reduction_parent_value`/`eml_output`
+all `is_none()` — no full-field CPU decision readback), GPU-adapter required, mapping default-off
+preserved. tiny MapGen canonical sample executes end-to-end
 through PR2 neutral parse → PR3 lattice → PR4 RF → PR5 links → PR6 Movement-Front → PR7 PALMA →
 `install_atomic` admission → GPU-resident mapping tick + scheduled W/PALMA chain + compact D probe on a
 real adapter. Compact evidence only; no full-field CPU decision readback; no CPU planner; no route/path/
@@ -104,8 +115,8 @@ Bounded counts from the PR10 GPU test (hub cell row=1 col=1):
 |---|---|---|
 | `mapgen_pr1`–`mapgen_pr8` reports/guardrails | CURRENT_EVIDENCE / LIVE_GUARDRAIL | Unchanged |
 | `mapgen_pr9_constitution_guards_results.md` | CURRENT_EVIDENCE | Unchanged (DA-approved) |
-| `mapgen_pr10_end_to_end_compact_evidence.rs` | PROBATION | New PR10 harness |
-| `mapgen_pr10_end_to_end_results.md` | PROBATION | This report |
+| `mapgen_pr10_end_to_end_compact_evidence.rs` | LIVE_GUARDRAIL | Promoted at DA approval |
+| `mapgen_pr10_end_to_end_results.md` | CURRENT_EVIDENCE | This report; DA-approved |
 | Prior `mapgen_*` guard batteries | LIVE_GUARDRAIL | Unchanged |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
@@ -149,8 +160,10 @@ git diff --check
 
 ## DA sign-off status
 
-**Pending DA review before merge.**
+**DA-APPROVED (2026-06-14, Opus / Design Authority)** after a genuine pre-merge audit + full-battery rerun
+on a real GPU adapter. The end-to-end harness `mapgen_pr10_end_to_end_compact_evidence` is durable and
+confirmed **LIVE_GUARDRAIL**. Only the Design Authority writes a DA sign-off.
 
 ## PR11 closeout
 
-**May proceed only after DA approves PR10.**
+**May now proceed** — under its own DA-review gate.
