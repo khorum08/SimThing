@@ -606,4 +606,12 @@ paths, predecessors, movement orders, driver/GPU exercise, pathfinding, border/f
 runtime/GPU/driver/simthing-sim changes, or GPU opt-in. **FIELD-MOVIE-DATASET-0** remains subsequent.
 **PASS — stayed inside pre-adjudicated M7 boundary; no DA escalation required.** See
 [`mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md) (PROBATION). **PR8 scheduled-concurrency/GPU
-measurement remains later** (DA review).
+measurement remains later** (DA review). **PR8 scheduled-concurrency spike — DA-APPROVED (Opus, 2026-06-14)** — see
+[`mapgen_pr8_scheduled_concurrency_results.md`](tests/mapgen_pr8_scheduled_concurrency_results.md) (CURRENT_EVIDENCE).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR8).** **0.0.8.2 remains closed.** MapGen PR8 measures
+scheduled-concurrency over existing Gu-Yang / W-compose / PALMA-compatible GPU-resident operations via
+`mapgen_pr8_scheduled_concurrency` driver tests and generic `scheduled_w_palma_batch` helpers. PR8 is not a
+gameplay engine, pathfinding engine, movement engine, or corpus/export seam. **FIELD-MOVIE-DATASET-0** remains
+subsequent. **DA-APPROVED (Opus, 2026-06-14)** after a genuine GPU-source audit (scheduling-only, no fused
+kernel) + real-adapter battery rerun. **PR9 may proceed** under its own DA-review gate.

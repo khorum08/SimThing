@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 may proceed (DA review).** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 may proceed (DA review).** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -471,8 +471,29 @@ pre-adjudicated M7 boundary — no DA escalation required. Tests: `mapgen_palma`
 Owner: Cursor (DA review). Re-read M8 + P1. Scheduled-concurrency (independent suppression fields + W
 compose + PALMA in one encoder, double-buffered, zero readback); **measure vs serial BH-2C baseline**;
 fused kernel only as a DA-gated escalation carrying the M8 gate. Tests:
-`mapgen_gu_yang_palma_scheduled_concurrency` (GPU-gated, compact timing). Stop: needs a new primitive
+`mapgen_pr8_scheduled_concurrency` (GPU-gated, compact timing). Stop: needs a new primitive
 un-gated, violates BH-0/min-plus invariants, or widens a horizon into a global pass → escalate (§9).
+
+**Status: PASS / DA-APPROVED (Cursor PR 8; Opus / Design Authority sign-off 2026-06-14 — genuine GPU-source
+audit confirmed scheduling-only over existing W-compose/min-plus ops, no fused kernel / new WGSL / sqrt; serial
+(7 submits) ≈ scheduled (1 submit) compact D probe within 1e-3 on a real adapter; battery reran green incl.
+`mapgen_pr8_scheduled_concurrency` 6 passed, GPU ran).** Added generic
+`scheduled_w_palma_batch` helpers in `simthing-gpu` plus `mapgen_pr8_scheduled_concurrency` driver test
+comparing serial queue submits vs single-encoder W compose + PALMA min-plus over the PR7 MapGen tiny slice.
+Compact D probe readback only; no full-field CPU decision readback; no new fused kernel; no semantic WGSL;
+no simthing-sim changes. **Do not merge until DA review.** Result:
+[`tests/mapgen_pr8_scheduled_concurrency_results.md`](tests/mapgen_pr8_scheduled_concurrency_results.md)
+(PROBATION).
+
+### PR 8 artifact lifecycle audit (§6.8)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `scheduled_w_palma_batch.rs` | PROBATION | New generic GPU batching helper |
+| `mapgen_pr8_scheduled_concurrency.rs` (tests) | PROBATION | New PR8 measurement harness |
+| `docs/tests/mapgen_pr8_scheduled_concurrency_results.md` | PROBATION | New PR8 report |
+| Prior PR1–PR7 guardrails | unchanged | See PR7 audit |
+| Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ### PR 9 — Candidate-F + P1/scale guards
 Owner: Cursor (DA review). Re-read M5 + M9 + §0.7. Prove position inert; no Euclidean

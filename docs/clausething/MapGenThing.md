@@ -63,6 +63,12 @@
 > Euclidean authority, no runtime/GPU/driver/simthing-sim output in PR7. Report:
 > [`mapgen_pr7_palma_results.md`](../tests/mapgen_pr7_palma_results.md).
 >
+> **PR8 scheduled-concurrency GPU measurement (2026-06-13, DA-APPROVED Opus 2026-06-14 — scheduling-only, no fused kernel):**
+> `mapgen_pr8_scheduled_concurrency` driver test + `scheduled_w_palma_batch` helpers compare serial queue
+> submits vs single-encoder W compose + PALMA min-plus on the PR7 tiny slice. Compact D probe only. No fused
+> kernel, no semantic WGSL, no simthing-sim changes. Report:
+> [`mapgen_pr8_scheduled_concurrency_results.md`](../tests/mapgen_pr8_scheduled_concurrency_results.md).
+>
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei

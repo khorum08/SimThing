@@ -198,6 +198,24 @@ impl WImpedanceComposeOp {
         resident_values: &wgpu::Buffer,
         config: &WImpedanceComposeConfig,
     ) -> Result<(), WImpedanceComposeError> {
+        let bind_group = self.compose_bind_group(ctx, resident_values, config)?;
+        let mut encoder = ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("w_impedance_compose_enc"),
+            });
+        self.record_compose_pass(&mut encoder, &bind_group, config);
+        ctx.queue.submit(Some(encoder.finish()));
+        Ok(())
+    }
+
+    /// Build bind group for W compose (batched encoder scheduling).
+    pub fn compose_bind_group(
+        &self,
+        ctx: &GpuContext,
+        resident_values: &wgpu::Buffer,
+        config: &WImpedanceComposeConfig,
+    ) -> Result<wgpu::BindGroup, WImpedanceComposeError> {
         config.validate()?;
         let required = (config.values_len() as u64) * std::mem::size_of::<f32>() as u64;
         if resident_values.size() < required {
@@ -219,8 +237,6 @@ impl WImpedanceComposeOp {
             .collect();
 
         let device = &ctx.device;
-        let queue = &ctx.queue;
-
         let params = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("w_impedance_compose_params"),
             contents: bytemuck::bytes_of(&WImpedanceComposeParamsGpu {
@@ -241,7 +257,7 @@ impl WImpedanceComposeOp {
             usage: wgpu::BufferUsages::STORAGE,
         });
 
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        Ok(device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("w_impedance_compose_bg"),
             layout: &self.layout,
             entries: &[
@@ -258,22 +274,23 @@ impl WImpedanceComposeOp {
                     resource: profiles_buffer.as_entire_binding(),
                 },
             ],
-        });
+        }))
+    }
 
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("w_impedance_compose_enc"),
+    /// Record W compose compute pass into an existing command encoder (no queue submit).
+    pub fn record_compose_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        bind_group: &wgpu::BindGroup,
+        config: &WImpedanceComposeConfig,
+    ) {
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("w_impedance_compose_pass"),
+            timestamp_writes: None,
         });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("w_impedance_compose_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(config.workgroup_count(), 1, 1);
-        }
-        queue.submit(Some(encoder.finish()));
-        Ok(())
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.dispatch_workgroups(config.workgroup_count(), 1, 1);
     }
 }
 

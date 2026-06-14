@@ -608,20 +608,89 @@ impl MinPlusStencilOp {
         let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
             label: Some("min_plus_stencil_dispatch"),
         });
-        {
-            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("min_plus_stencil_pass"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &bg, &[]);
-            pass.dispatch_workgroups(
-                self.config.width.div_ceil(MIN_PLUS_WORKGROUP_SIZE),
-                self.config.height.div_ceil(MIN_PLUS_WORKGROUP_SIZE),
-                1,
+        self.record_dispatch_once(&mut encoder, &bg);
+        queue.submit(Some(encoder.finish()));
+    }
+
+    /// Record one min-plus relaxation pass into an existing command encoder (no queue submit).
+    pub fn record_dispatch_once(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        bind_group: &wgpu::BindGroup,
+    ) {
+        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("min_plus_stencil_pass"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, bind_group, &[]);
+        pass.dispatch_workgroups(
+            self.config.width.div_ceil(MIN_PLUS_WORKGROUP_SIZE),
+            self.config.height.div_ceil(MIN_PLUS_WORKGROUP_SIZE),
+            1,
+        );
+    }
+
+    /// Record all ping-pong iterations into one command encoder (caller submits once).
+    pub fn record_ping_pong(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        iterations: u32,
+    ) -> Result<(), MinPlusStencilError> {
+        self.config.validate_iterations(iterations)?;
+        let mut read_input = true;
+        for _ in 0..iterations {
+            if read_input {
+                let bg = self.bind_group(device, &self.input_buffer, &self.output_buffer);
+                self.record_dispatch_once(encoder, &bg);
+            } else {
+                let bg = self.bind_group(device, &self.output_buffer, &self.input_buffer);
+                self.record_dispatch_once(encoder, &bg);
+            }
+            read_input = !read_input;
+        }
+        Ok(())
+    }
+
+    /// Record interleaved-W prep scatters into one command encoder (caller submits once).
+    pub fn record_prepare_from_gpu_interleaved_w(
+        &self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        w_buffer: &Buffer,
+    ) -> Result<(), MinPlusStencilError> {
+        self.validate_interleaved_w_buffer(w_buffer)?;
+        if !self.interleaved_w_scatter_entries.is_empty() {
+            let w_bg = self.scatter_op.bind_group(
+                ctx,
+                w_buffer,
+                &self.input_buffer,
+                &self.interleaved_w_scatter_entries,
+            )?;
+            self.scatter_op.record_dispatch(
+                encoder,
+                &w_bg,
+                self.interleaved_w_scatter_entries.len(),
             );
         }
-        queue.submit(Some(encoder.finish()));
+        if !self.d_scatter_entries.is_empty() {
+            let d_bg = self.scatter_op.bind_group(
+                ctx,
+                &self.d_seed_buffer,
+                &self.input_buffer,
+                &self.d_scatter_entries,
+            )?;
+            self.scatter_op
+                .record_dispatch(encoder, &d_bg, self.d_scatter_entries.len());
+        }
+        Ok(())
+    }
+
+    /// Count queue submits for the serial W→PALMA chain (diagnostic evidence only).
+    pub fn serial_w_palma_queue_submit_count(iterations: u32) -> u32 {
+        // W compose (1) + interleaved W scatter (1) + D seed scatter (1) + min-plus iterations.
+        3 + iterations
     }
 
     pub fn dispatch_ping_pong(
