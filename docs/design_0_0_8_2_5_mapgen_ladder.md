@@ -35,9 +35,10 @@ Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*
 the engine name agents use in code/spec/tests is **Movement-Front**. Do not write "SEAD" anywhere.)
 - **The galaxy IS a 2D gridcell lattice** — **base canonical dimensions are always square** (default
   "medium" **200×200**, scaling up *square* when star density demands more cells). Star systems **occupy a
-  subset** of cells; empty cells are deep space carrying ambient field. A gridcell is **an authored
-  mapping-role on an ordinary SimThing — not a new `SimThingKind`** — with columns laid out positionally
-  `(width, height, col)` so the stencil walks neighbors by index arithmetic.
+  subset** of cells; empty cells are deep space carrying ambient field. A gridcell **is a `Location`
+  SimThing** — the spatial/grid identity is **intrinsic** to the `Location` kind, not a detachable role;
+  **not a new `SimThingKind`** — with its RegionField columns laid out positionally `(width, height, col)`
+  so the stencil walks neighbors by index arithmetic.
 - **The three postulates are engine law.** **P1 Locality:** a cell's next state depends only on its
   stencil neighborhood; fronts advance at **finite speed** (H ≤ 8 tactical per tick, later-band cascade);
   they propagate across the galaxy **over many ticks** (light cone). What is **permanently rejected** is
@@ -57,8 +58,9 @@ the engine name agents use in code/spec/tests is **Movement-Front**. Do not writ
 
 **ADR-MAP — [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md) (Approved 2026-05-28).**
 The RegionCell architecture under the paradigm:
-- **A RegionCell is NOT a `SimThingKind`** — a mapping-role/profile on a SimThing, backed by a
-  `(width, height, col)` slot range. `simthing-sim` stays semantic-free (flat columns + opaque `AccumulatorOp`).
+- **A RegionCell/gridcell IS a `Location` SimThing** (intrinsic spatial/grid identity), backed by
+  RegionField columns at a `(width, height, col)` slot — **not** a new `SimThingKind` and **not** a
+  detachable mapping-role (core §7). `simthing-sim` stays semantic-free (flat columns + opaque `AccumulatorOp`).
 - **The rejected pattern is *long-horizon dense diffusion as a strategic-awareness shortcut*** (≈15×
   over budget) — i.e. P1. It is **not** a ban on the galaxy lattice itself: the Movement-Front L1 stencil
   runs across the 2D lattice with **bounded per-tick horizon + cadence/dirty**, and strategic rollup is
@@ -149,8 +151,8 @@ load-order/override/localization/trigger interpretation (§10).
 **M2 — Gridcell-lattice spatial hierarchy (core §2/§7; ADR-RF fanout).** Generate
 `galaxy(2D map) → sector/cluster → system(gridcell SimThing) → planet → deposit(children)`; Stellaris
 clusters/partitions → the sector level; ≤ ~100 children/level. **Systems are gridcell SimThings
-occupying cells of the galaxy lattice** — a gridcell is a **mapping-role on an ordinary SimThing, never
-a `SimThingKind`** (core §7). Star systems occupy a **subset** of cells; the lattice is larger than the
+occupying cells of the galaxy lattice** — a gridcell **is a `Location` SimThing** (intrinsic spatial
+identity, never a new `SimThingKind` and not a detachable role; core §7). Star systems occupy a **subset** of cells; the lattice is larger than the
 star count (empty = deep space, ambient field). Planets/deposits are `children` + CT-2c intrinsic flows.
 
 **M3 — Resource-flow arena generation (ADR-RF).** Deposits → `IntrinsicFlow`; system/sector →
@@ -453,7 +455,7 @@ report-checksum gates, replay theater, prior-rung parity ledgers, > 60s default 
   threshold attractor projection (P3).
 - **ADR-RF four rules:** capability universal; participation explicit (selectors); expansion bounded
   (caps + expansion report); unsafe content rejected at build. `simthing-sim` arena-ignorant.
-- **ADR-MAP:** RegionCell/gridcell = mapping-role on a SimThing, **not a `SimThingKind`**; opt-in/default-off.
+- **ADR-MAP:** a RegionCell/gridcell **is a `Location` SimThing** (intrinsic spatial identity; the field columns are its backing, not a detachable role), **not a new `SimThingKind`**; opt-in/default-off.
 - **Everything is a SimThing.** No per-system map objects, no noun engines, no CPU planner. Decisions =
   threshold crossings over L3 columns. **No movement/pathfinding/route/predecessor/border** objects (M6/M7).
 - **No new GPU primitive by default** (M8); fused kernels DA-gated + invariant-preserving. **Candidate F
