@@ -6,7 +6,6 @@ use simthing_mapgenerator::{
 
 const FORBIDDEN_OUTPUT_TERMS: &[&str] = &[
     "link =",
-    "hyperlane",
     "field_operator",
     " route",
     " path",
@@ -76,50 +75,67 @@ fn assert_no_forbidden_terms(text: &str) {
 }
 
 #[test]
-fn emitter_outputs_metadata_block() {
-    let params = elliptical_params(42, 2, 32);
-    let text = emit_sample(&params);
-    assert!(text.contains("metadata = {"));
-    assert!(text.contains("generated_by = \"MapGeneratorCLI\""));
-    assert!(text.contains("shape = \"elliptical\""));
-    assert!(text.contains("seed = 42"));
+fn emitter_outputs_single_root_scenario_id_block() {
+    let text = emit_sample(&elliptical_params(42, 2, 32));
+    assert!(text.starts_with("generated_elliptical = {\n"));
+    assert!(text.ends_with("}\n"));
+    assert!(!text.starts_with("scenario = "));
 }
 
 #[test]
-fn emitter_outputs_square_lattice_block() {
-    let params = elliptical_params(1, 2, 32);
-    let text = emit_sample(&params);
-    assert!(text.contains("lattice = { width = 32 height = 32 }"));
-}
-
-#[test]
-fn emitter_outputs_one_location_per_placed_system() {
+fn emitter_outputs_static_galaxy_scenario_child() {
     let text = emit_sample(&elliptical_params(1, 2, 32));
-    assert_eq!(text.matches("location = system_").count(), 2);
+    assert!(text.contains("    static_galaxy_scenario = {\n"));
 }
 
 #[test]
-fn emitter_uses_integer_lattice_positions() {
+fn emitter_outputs_random_hyperlanes_no() {
     let text = emit_sample(&elliptical_params(1, 2, 32));
-    assert!(text.contains("position = { x = 12 y = 9 }"));
-    assert!(text.contains("position = { x = 3 y = 4 }"));
-    assert!(!text.contains("position = { x = 12.0"));
+    assert!(text.contains("        random_hyperlanes = no"));
 }
 
 #[test]
-fn emitter_location_names_are_unique_and_stable() {
+fn emitter_outputs_one_system_per_placed_system() {
     let text = emit_sample(&elliptical_params(1, 2, 32));
-    assert!(text.contains("location = system_000000"));
-    assert!(text.contains("location = system_000001"));
-    let names: Vec<_> = text
-        .lines()
-        .filter(|line| line.trim_start().starts_with("location = system_"))
-        .collect();
-    assert_eq!(names.len(), 2);
+    assert_eq!(text.matches("        system = {").count(), 2);
 }
 
 #[test]
-fn emitter_same_input_is_byte_stable() {
+fn system_id_is_quoted_scalar() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(text.contains("            id = \"0\""));
+    assert!(text.contains("            id = \"1\""));
+}
+
+#[test]
+fn system_name_is_empty_string_or_stable_name() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(text.contains("            name = \"\""));
+}
+
+#[test]
+fn system_position_has_x_y_z_zero() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(text.contains("            position = { x = 12 y = 9 z = 0 }"));
+    assert!(text.contains("            position = { x = 3 y = 4 z = 0 }"));
+}
+
+#[test]
+fn system_initializer_is_bareword_not_string() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(text.contains("            initializer = example_rim_initializer"));
+    assert!(!text.contains("initializer = \"example_rim_initializer\""));
+}
+
+#[test]
+fn emitter_outputs_sibling_initializer_definition() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(text.contains("    example_rim_initializer = {"));
+    assert!(text.contains("        planet = { count = 1 }"));
+}
+
+#[test]
+fn output_is_byte_stable_for_same_input() {
     let params = elliptical_params(7, 2, 16);
     let a = emit_sample(&params);
     let b = emit_sample(&params);
@@ -127,45 +143,70 @@ fn emitter_same_input_is_byte_stable() {
 }
 
 #[test]
-fn emitter_different_seed_metadata_changes_if_seed_differs() {
-    let a = emit_sample(&elliptical_params(1, 2, 16));
-    let b = emit_sample(&elliptical_params(2, 2, 16));
-    assert_ne!(a, b);
-    assert!(a.contains("seed = 1"));
-    assert!(b.contains("seed = 2"));
+fn location_names_or_system_ids_are_unique_and_stable() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(text.contains("            id = \"0\""));
+    assert!(text.contains("            id = \"1\""));
 }
 
 #[test]
-fn emitter_uses_bucket_as_initializer_ref() {
-    let text = emit_sample(&elliptical_params(1, 2, 16));
-    assert!(text.contains("initializer = \"example_rim_initializer\""));
+fn positions_are_integer_lattice_values() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("x = 12.0"));
+    assert!(!text.contains("y = 9.0"));
 }
 
 #[test]
-fn emitter_uses_safe_default_initializer_when_bucket_missing() {
-    let text = emit_sample(&elliptical_params(1, 2, 16));
-    let second_block = text
-        .split("location = system_000001")
-        .nth(1)
-        .expect("second loc");
-    assert!(second_block.contains(&format!("initializer = \"{DEFAULT_INITIALIZER_REF}\"")));
+fn emitter_outputs_no_metadata_block() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("metadata = {"));
 }
 
 #[test]
-fn emitter_outputs_no_links() {
-    let text = emit_sample(&elliptical_params(1, 2, 16));
-    assert!(!text.contains("link ="));
+fn emitter_outputs_no_lattice_block() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("lattice = {"));
 }
 
 #[test]
-fn emitter_outputs_no_field_operators() {
-    let text = emit_sample(&elliptical_params(1, 2, 16));
+fn emitter_outputs_no_location_blocks() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("location = "));
+}
+
+#[test]
+fn emitter_outputs_no_quoted_initializer_ref() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("initializer = \""));
+}
+
+#[test]
+fn emitter_outputs_no_add_hyperlane() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("add_hyperlane"));
+}
+
+#[test]
+fn emitter_outputs_no_nebula() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("nebula"));
+}
+
+#[test]
+fn emitter_outputs_no_field_operator() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
     assert!(!text.contains("field_operator"));
 }
 
 #[test]
+fn emitter_outputs_no_links() {
+    let text = emit_sample(&elliptical_params(1, 2, 32));
+    assert!(!text.contains("link ="));
+}
+
+#[test]
 fn emitter_outputs_no_runtime_payloads() {
-    let text = emit_sample(&elliptical_params(1, 2, 16));
+    let text = emit_sample(&elliptical_params(1, 2, 32));
     assert_no_forbidden_terms(&text);
     assert!(!text.contains("SimThingKind"));
     assert!(!text.contains("HydratedScenario"));
@@ -201,6 +242,31 @@ fn emitter_outputs_no_euclidean_authority_terms() {
 }
 
 #[test]
+fn emitter_uses_bucket_as_initializer_ref() {
+    let text = emit_sample(&elliptical_params(1, 2, 16));
+    assert!(text.contains("            initializer = example_rim_initializer"));
+}
+
+#[test]
+fn emitter_uses_safe_default_initializer_when_bucket_missing() {
+    let text = emit_sample(&elliptical_params(1, 2, 16));
+    let second_system = text
+        .split("            id = \"1\"")
+        .nth(1)
+        .expect("system 1");
+    assert!(second_system.contains(&format!("initializer = {DEFAULT_INITIALIZER_REF}")));
+}
+
+#[test]
+fn emitter_scenario_display_name_reflects_seed() {
+    let a = emit_sample(&elliptical_params(1, 2, 16));
+    let b = emit_sample(&elliptical_params(2, 2, 16));
+    assert!(a.contains("seed 1"));
+    assert!(b.contains("seed 2"));
+    assert_ne!(a, b);
+}
+
+#[test]
 fn crate_still_has_no_forbidden_sim_runtime_deps() {
     let manifest = include_str!("../Cargo.toml");
     for forbidden in [
@@ -218,19 +284,20 @@ fn crate_still_has_no_forbidden_sim_runtime_deps() {
 }
 
 #[test]
-fn place_and_emit_pipeline_produces_scenario_text() {
+fn place_and_emit_pipeline_produces_static_galaxy_scenario_text() {
     let params = elliptical_params(99, 5, 24);
     validate_default(&params).expect("valid");
     let registry = ShapeRegistry::default();
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
     let text = place_and_emit_scenario(&params, &registry, None, &emitter).expect("pipeline");
-    assert!(text.as_str().contains("scenario = generated_elliptical"));
-    assert_eq!(text.as_str().matches("location = system_").count(), 5);
+    assert!(text.as_str().starts_with("generated_elliptical = {"));
+    assert!(text.as_str().contains("static_galaxy_scenario = {"));
+    assert_eq!(text.as_str().matches("        system = {").count(), 5);
     assert_no_forbidden_terms(text.as_str());
 }
 
 #[test]
-fn emitter_scenario_name_follows_shape() {
+fn emitter_scenario_id_follows_shape() {
     let params = elliptical_params(1, 1, 8);
     let (lattice, _, _, _) = build_placement_context(&params).expect("ctx");
     let placement = ShapePlacement {
@@ -242,5 +309,5 @@ fn emitter_scenario_name_follows_shape() {
     };
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
     let text = emitter.emit(&params, &lattice, &placement).expect("emit");
-    assert!(text.as_str().starts_with("scenario = generated_elliptical"));
+    assert!(text.as_str().starts_with("generated_elliptical = {"));
 }

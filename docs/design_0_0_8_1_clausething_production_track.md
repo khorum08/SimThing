@@ -671,11 +671,13 @@ FIELD-MOVIE-DATASET-0 export. **DA-APPROVED (2026-06-14).** See
 [`mapgenerator_cli_pr3_strategy_results.md`](tests/mapgenerator_cli_pr3_strategy_results.md) (CURRENT_EVIDENCE). **PR4
 next:** declarative scenario emitter for tiny in-memory placements — still no topology and no lowering.
 
-**0.0.8.6 MapGeneratorCLI addendum (2026-06-14, PR4).** **0.0.8.2.5 MapGen remains closed.** MapGeneratorCLI PR4 adds
-only deterministic declarative scenario text emission for tiny in-memory placements. The emitter produces metadata,
-lattice, and location blocks with inert integer positions and initializer references. No topology, links, field
-operators, MapGen lowering, runtime, GPU, simthing-sim, new `SimThingKind`,
+**0.0.8.6 MapGeneratorCLI addendum (2026-06-14, PR4).** **0.0.8.2.5 MapGen remains closed.** MapGeneratorCLI PR4 emits
+only `static_galaxy_scenario` neutral-AST text from tiny in-memory placements (single root block, `system` entries
+with inert integer positions and bareword initializer refs, plus minimal sibling `*_initializer` definitions). It
+does **not** widen 0.0.8.2.5 MapGen front-end/lowering, and does **not** emit `hydrate_scenario` `scenario/location`
+grammar, topology, links, field operators, RF, Movement-Front, PALMA, runtime, GPU, simthing-sim, new `SimThingKind`,
 pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority in output, or
-FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
-[`mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md) (PROBATION). **PR5 next:**
-generated tiny scenario through existing MapGen parse/lowering surface — still no topology and no GPU unless DA scopes it.
+FIELD-MOVIE-DATASET-0 export. **Original PR4 rejected by DA (Opus); remediated on #678 — do not merge until DA
+re-review.** See [`mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md)
+(PROBATION). **PR5 next:** parse/lowering through existing `mapgen_lattice` path — still no topology and no GPU
+unless DA scopes it. **PR6/PR9** remain responsible for `add_hyperlane`/nebula/`field_operator` extensions.

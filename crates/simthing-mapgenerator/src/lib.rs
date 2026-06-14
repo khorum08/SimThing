@@ -3,7 +3,7 @@
 //! PR1: parameter model, shape registry descriptor shell, and validation only.
 //! PR2: deterministic RNG, square lattice, core mask, occupancy primitives.
 //! PR3: ShapeStrategy trait, registry dispatch, elliptical/static in-memory seams.
-//! PR4: deterministic declarative scenario text emitter.
+//! PR4: deterministic `static_galaxy_scenario` neutral-AST text emitter.
 
 pub mod emitter;
 pub mod lattice;
@@ -16,7 +16,7 @@ pub mod strategy;
 
 pub use emitter::{
     ScenarioEmitError, ScenarioEmitter, ScenarioEmitterConfig, ScenarioText,
-    DEFAULT_INITIALIZER_REF, DEFAULT_SCENARIO_NAME,
+    DEFAULT_INITIALIZER_DISPLAY_NAME, DEFAULT_INITIALIZER_REF, DEFAULT_SCENARIO_ID,
 };
 pub use lattice::{CoreMask, LatticeCoord, LatticeError, SquareLattice};
 pub use occupancy::{OccupancyError, OccupancyGrid};
