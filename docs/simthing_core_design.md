@@ -372,19 +372,27 @@ Location is — a star system, a planet-surface tile, a sector — is scenario d
 Future agents: treat "is a `Location`," "is a gridcell," and "occupies a coordinate in the spatial
 arena" as one statement, and never demote a Location to a position-less abstract node.
 
-**The parent owns the grid; its child Locations are the cells; their columns are the cell state — this
-is the load-bearing column formation.** A parent SimThing lays out its child Location SimThings
-positionally as a grid map. Each child Location occupies a `(width, height, col)` slot — a **3-axis
-layout**: the spatial position of the cell (`width × height`) crossed with the per-cell **column stack**
-(`col`) — so the GPU stencil walks neighbors as pure index arithmetic. The hard-won integration this
-formation exists for: **a child Location's resource-flow accumulator-arena columns (§5) are laid out
-*onto* the parent's grid** at the child's coordinate. The values a Location's own subtree reduces and
-disburses into those flow columns (§3, §5) **are** the cell-state columns the Movement-Front stencil
-evolves — the suppression / threat / supply arena pressure accumulated *at* a cell **is** the field
-*at* that cell. Channeling a Location's children onto its cell and propagating that cell across the map
-are therefore the **same columns**, seen once by resource-flow reduction and once by the stencil —
-never a copy into a separate "field" object. (The parent also reduces its cells the way every parent
-reduces every child — `SlotRange` over their columns — the upward, strategic half of §7.2 Layer 2.)
+**The parent owns the grid; its child Locations are the cells; the arena-pressure projection seeds the
+field — this is the load-bearing column formation.** A parent SimThing lays out its child Location
+SimThings positionally as a grid map. Each child Location occupies a `(width, height, col)` slot — a
+**3-axis layout**: the spatial position of the cell (`width × height`) crossed with the per-cell
+**column stack** (`col`) — so the GPU stencil walks neighbors as pure index arithmetic. The hard-won
+integration this formation exists for is the **arena-pressure projection** (`ArenaPressureBindingSpec`):
+a child Location is a resource-flow arena participant; its subtree reduces and disburses into its flow
+columns (§3, §5); and an authored binding projects that resolved flow — `(arena, sub_field) →
+(target_id, row, col)` — **onto the Location's own grid cell** as the RegionField seed. The projection
+is **on-device and GPU-resident — no readback, no side-channel test map**: arena state *shapes the
+field* directly, so the suppression / threat / supply pressure a Location accumulates *is* what seeds
+its cell. The seeded `RegionField` is its own bounded column range (its `source_col` / `target_col`),
+evolved by the Movement-Front stencil — distinct from the arena flow column it is *projected from*, not
+a duplicate of it. The whole `RegionFieldSpec` carries the three-layer model in one struct: **L1** =
+`pressure_binding` (this seed) + operator / horizon / `alpha_self` / `gamma_neighbor` (the falloff);
+**L2** = `reduction` (cell → parent); **L3** = `parent_formula` (`ai_will_do` urgency) + `commitment`
+(threshold → `CommitmentEffectSpec` → `BoundaryRequest`). (The parent also reduces its cells the way
+every parent reduces every child — `SlotRange` over their columns — that L2 half.) Execution is opt-in
+(`MappingExecutionProfile::SparseRegionFieldV1`, default `Disabled`); the implemented first slice is a
+small square grid (≤ 10/32 cells per edge), with the canonical 200×200 the design target a later
+multi-theater / atlas rung admits.
 
 **A cell is shaped by its neighbors — falloff is the spatial arena's flow.** Exactly as a flow-arena
 participant is shaped by the budget disbursed to it, a gridcell Location is **influenced by the falloff

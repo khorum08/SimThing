@@ -44,8 +44,9 @@
 > **STEAD** (*SpatioTemporal Evolution with Attractor Dynamics*) — never the military-connoted "SEAD";
 > the engine name agents use in code/spec/tests is **Movement-Front**). The galaxy **is** a 2D gridcell lattice — **base canonical dimensions are always square**
 > (default "medium" 200×200, scaling up square with star density) — with star systems occupying a
-> subset of cells; one system = one gridcell; a gridcell is a **mapping-role on a SimThing, not a
-> `SimThingKind`** ([`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)). The
+> subset of cells; one system = one gridcell; a gridcell **is a `Location` SimThing** (intrinsic spatial
+> identity, never a new **`SimThingKind`** and not a detachable mapping-role; core §7 + the alignment
+> amendment in [`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)). The
 > Layer-1 stencil **does** run across the whole lattice — values spill with falloff — but the **per-tick
 > horizon is bounded** (P1 light cone; fronts cross the galaxy over many ticks; cadence/dirty make
 > compute follow the wavefront). The economy and the **suppression/disruption front are resource-flow

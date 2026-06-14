@@ -158,6 +158,15 @@ carry field values, addressed positionally by `(width, height, col)` exactly as
 `AccumulatorOp` registrations. Mapping *consumes* the primitive; it is not the
 primitive, and it is not runtime authorized here.
 
+> **Alignment amendment (2026-06-14, design authority — defers to `simthing_core_design.md` §7,
+> which outranks this ADR on the mapping paradigm).** "Mapping-role" names the **field-column
+> backing**, not a separable or optional identity. The RegionCell of a spatial node *is* that
+> `Location`-kind SimThing wearing its grid coordinate — a gridcell **is** a `Location` SimThing, the
+> terms are interchangeable, and the spatial/grid identity is **intrinsic to the `Location` kind**
+> (there is no non-spatial `Location`). This does not change "no new `SimThingKind`" — `Location`
+> remains the kind — nor any technical content below; it corrects only the framing that read a
+> gridcell as a detachable role bolted onto an otherwise-ordinary node.
+
 ---
 
 ## The three-layer model
