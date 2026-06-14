@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR1 — Lever Params + Shape Registry Shell Results
 
-> **Artifact lifecycle: PROBATION** (PR1 report; DA review before merge; promote to CURRENT_EVIDENCE after DA approval).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent audit; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA review (2026-06-14, Cursor PR1)** — CLI crate skeleton, full §3A lever parameter surface, data-driven
+**PASS — DA-APPROVED (2026-06-14, executive design authority, after independent audit; Cursor PR1)** — CLI crate skeleton, full §3A lever parameter surface, data-driven
 shape registry descriptor shell, arbitrary/static mode parameter shell, and validation-only dry-run. **No generation,
 placement, topology, scenario emission, lowering, runtime, GPU, simthing-sim, or FIELD-MOVIE-DATASET-0 work.**
 
@@ -22,7 +22,7 @@ contract. **0.0.8.2.5 MapGen remains closed and is not reopened.**
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
 | `docs/design_0_0_8_6_mapgenerator_cli_ladder.md` | CURRENT_EVIDENCE (track plan) | Updated PR1 status |
 | `docs/clausething/MapGeneratorCLI.md` | PROPOSAL / reference | Unchanged |
-| `mapgenerator_cli_pr1_params_results.md` | PROBATION | New (this report) |
+| `mapgenerator_cli_pr1_params_results.md` | CURRENT_EVIDENCE (DA-approved) | New (this report) |
 | 0.0.8.2.5 LIVE_GUARDRAIL tests | LIVE_GUARDRAIL | Unchanged — not modified |
 
 No MapGen baseline artifacts deleted or archived.
@@ -95,8 +95,16 @@ git diff --check
 
 ## DA sign-off status
 
-**Pending DA review before merge.**
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent audit performed (not relying on the
+Cursor report): crate manifest verified to depend only on `clap`/`serde`/`serde_json`/`thiserror` (no
+`simthing-*`); `lib.rs`/`main.rs`/`params.rs`/`shape_registry.rs` read in full; the shape set confirmed a
+data-driven `BTreeMap` registry (C10), not a baked enum; `arbitrary_static` confirmed a registered entry
+(C11 seam); inert metadata confirmed validated-and-carried-only (never generated/simulated); `main` confirmed
+validation + dry-run only ("generation is not implemented"). Battery rerun locally: `cargo fmt --all --check`
+clean, `cargo test -p simthing-mapgenerator` 21 passed (18 params + 3 registry), `mapgen_constitution_guards`
+21 passed (closed-contract guards intact), `git diff --check` clean. One remediation applied by the DA before
+sign-off: removed a dead no-op `if` block in `validate_mode` (params.rs).
 
 ## PR2 may proceed?
 
-**Yes, after DA approves PR1** — next rung: deterministic RNG + square lattice occupancy core (`design_0_0_8_6_mapgenerator_cli_ladder.md` PR2).
+**Yes — DA approved PR1 (2026-06-14).** Next rung: deterministic RNG + square lattice occupancy core (`design_0_0_8_6_mapgenerator_cli_ladder.md` PR2).
