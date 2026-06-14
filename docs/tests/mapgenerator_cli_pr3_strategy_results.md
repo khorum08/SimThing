@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR3 — Shape Strategy Registry Seam Results
 
-> **Artifact lifecycle: PROBATION** (pending DA review — do not treat as CURRENT_EVIDENCE until DA approves).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA review** — `ShapeStrategy` trait, data-driven registry dispatch, and minimal in-memory
+**PASS — DA-APPROVED (2026-06-14, executive design authority, after independent branch-source audit; Cursor PR3)** — `ShapeStrategy` trait, data-driven registry dispatch, and minimal in-memory
 elliptical/static strategy seams. **No scenario emitter, topology, MapGen lowering, runtime, GPU, simthing-sim,
 or FIELD-MOVIE-DATASET-0 work.**
 
@@ -22,7 +22,7 @@ remains closed and is not reopened.**
 | `docs/tests/mapgenerator_cli_pr2_lattice_results.md` | CURRENT_EVIDENCE | Unchanged (DA-approved PR2) |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
-| `mapgenerator_cli_pr3_strategy_results.md` | PROBATION | New (this report) |
+| `mapgenerator_cli_pr3_strategy_results.md` | CURRENT_EVIDENCE (DA-approved) | New (this report) |
 | 0.0.8.2.5 LIVE_GUARDRAIL tests | LIVE_GUARDRAIL | Unchanged — not modified |
 
 No MapGen baseline artifacts deleted or archived.
@@ -101,12 +101,36 @@ git diff --check
 
 ## DA sign-off status
 
-**Pending DA review.** Only the Design Authority writes DA sign-off. This report does not pre-file approval.
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent branch-source audit (not relying on the
+Cursor report): `strategy.rs`, `strategies/{mod,elliptical,static_arbitrary}.rs`, and the `shape_registry.rs`/
+`lib.rs` diffs read in full. Confirmed:
+- **C10 seam genuine** — the shape SET is the data-driven `BTreeMap` descriptor registry; `ShapeRegistry::place`
+  gates on the data-driven `contains()` first, then resolves an executable strategy, yielding `UnknownShape`
+  (lists descriptors) vs `StrategyNotImplemented` (lists executables) — so descriptor-only shapes (`ring`,
+  `spiral_2/4`) fail gracefully rather than crash. Adding a shape = descriptor + impl + one dispatch arm; the
+  emitter/lowering contract is untouched (there is none yet).
+- **Candidate-F respected** — `PlacedSystemSeed` carries integer `LatticeCoord` only; the elliptical seam does
+  producer-side float ellipse math but uses a **squared** inclusion test (no `sqrt`) and emits only quantized
+  cells; no Euclidean magnitude/distance reaches output (and PR3 emits nothing). Static seam uses `try_insert`
+  (errors on collision rather than silently relocating explicit placements — correct for arbitrary layouts).
+- **Determinism (C3)** — Fisher-Yates shuffle over stable row-major candidates via the pinned RNG.
+- Forbidden-token scan of new strategy code (`simthing_sim`/`spec`/route/predecessor/pathfind/movement/wgsl/gpu/
+  euclid/sqrt/hypot/distance) returned NONE in code; no new deps; `vanilla_pr1()` alias preserved so PR1 tests pass.
+
+Battery rerun locally on the branch: `cargo fmt --all --check` clean; `cargo test -p simthing-mapgenerator`
+53 passed; `mapgen_constitution_guards` 21 passed (closed 0.0.8.2.5 contract intact); `git diff --check` clean.
+
+**New non-blocking DA notes (carried; not PR3 defects):**
+1. **DRY/consistency risk** — `strategies::strategy_by_name` (match arms) and `executable_strategy_names()`
+   (hardcoded `NAMES` vec) are two lists that must stay in sync. Harmless now (same small module), but **single-source
+   them before PR8 fills the remaining 8 vanilla shapes**, or a descriptor/impl drift could mislist executables.
+2. **Mode-gate asymmetry** — procedural validation rejects `shape="arbitrary_static"` but not `shape="static"`;
+   the latter fails gracefully later at `ExplicitCellsRequired`. Harmless; consider unifying the gate.
 
 ## Whether PR4 may proceed
 
-**No — await DA review of PR3.** After DA approval, PR4 = declarative scenario emitter for tiny in-memory
-placements, still no topology and no lowering.
+**Yes — DA approved PR3 (2026-06-14).** PR4 = declarative scenario emitter for tiny in-memory placements, still
+no topology and no lowering.
 
 ## Carried-forward DA notes (from PR2 — not addressed in PR3)
 
