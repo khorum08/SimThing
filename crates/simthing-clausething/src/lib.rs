@@ -14,6 +14,7 @@
 //! MapGen PR3: gridcell lattice hierarchy generator — scenario-container output only.
 //! MapGen PR4: bounded Resource Flow enrollment/feedstock from PR3 hierarchy — front-end only.
 //! MapGen PR5: bounded hyperlane-to-link and lane-coupling authoring from PR4 enrollment — front-end only.
+//! MapGen PR6: Movement-Front L1/L2/L3 authoring feedstock from PR5 enrollment — front-end only.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -34,6 +35,7 @@ mod json;
 mod literal_install;
 mod mapgen_lattice;
 mod mapgen_links;
+mod mapgen_movement_front;
 mod mapgen_neutral_ast;
 mod mapgen_resource_flow;
 mod parse;
@@ -85,6 +87,14 @@ pub use mapgen_links::{
     MAPGEN_PR5_DEFAULT_MAX_LINKS, MapGenLaneCoupling, MapGenLinksEnrollment, MapGenLinksError,
     MapGenLinksExpansionReport, MapGenLinksOptions, extract_hyperlane_declarations,
     generate_default_mapgen_links_enrollment, generate_mapgen_links, lower_hyperlane_topology,
+};
+pub use mapgen_movement_front::{
+    MAPGEN_MF_CHOKE_OUTPUT_COL, MAPGEN_MF_COMMITMENT_ID, MAPGEN_MF_DEFAULT_HORIZON,
+    MAPGEN_MF_FIELD_OPERATOR_ID, MAPGEN_MF_L2_REDUCTION_SCOPE, MAPGEN_MF_MAX_HORIZON,
+    MAPGEN_MF_N_DIMS, MAPGEN_MF_SOURCE_COL, MapGenMovementFrontAuthoring,
+    MapGenMovementFrontAuthoringReport, MapGenMovementFrontError, MapGenMovementFrontOptions,
+    assert_no_palma_feedstock, generate_default_mapgen_movement_front_authoring,
+    generate_mapgen_movement_front_authoring, validate_l1_operator_locality, validate_options,
 };
 pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
 pub use mapgen_resource_flow::{

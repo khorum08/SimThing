@@ -47,6 +47,15 @@
 > runtime/GPU/driver/simthing-sim output in PR5. Report:
 > [`mapgen_pr5_links_results.md`](../tests/mapgen_pr5_links_results.md).
 >
+> **PR6 Movement-Front L1/L2/L3 authoring (2026-06-14, PASS pending DA review):**
+> `generate_mapgen_movement_front_authoring` in `mapgen_movement_front.rs` lowers PR5 enrollment into
+> existing Movement-Front authoring surfaces: L1 bounded `SaturatingFlux`/`RegionFieldSpec` with suppression
+> RF `ArenaPressureBindingSpec`; L2 hierarchy `RegionFieldReductionSpec`; L3
+> `FirstSliceCommitmentSpec`/`HydratedScenarioCommitment`. Default-off mapping profile preserved. No PALMA,
+> no driver/GPU execution, no pathfinding/movement/routes/predecessors/border/frontline, no Euclidean
+> authority, no runtime/GPU/driver/simthing-sim output in PR6. Report:
+> [`mapgen_pr6_movement_front_results.md`](../tests/mapgen_pr6_movement_front_results.md).
+>
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei

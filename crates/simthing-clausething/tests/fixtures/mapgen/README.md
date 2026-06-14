@@ -38,7 +38,7 @@ sector.
 
 | File | Status |
 |---|---|
-| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter; **lowered by PR3** hierarchy generator; **RF-enrolled by PR4**; **link/coupling lowered by PR5** |
+| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2**; **lowered by PR3**; **RF-enrolled by PR4**; **link/coupling by PR5**; **Movement-Front authoring by PR6** |
 
 Stellaris-style raw authoring idioms: `static_galaxy_scenario`, repeated `system` / `add_hyperlane`,
 `nebula`, and `example_rim_initializer` with `planet` + `deposit` child. Header uses jomini `#` line
@@ -51,6 +51,7 @@ cargo test -p simthing-clausething --test mapgen_neutral_ast_parse
 cargo test -p simthing-clausething --test mapgen_lattice_hierarchy
 cargo test -p simthing-clausething --test mapgen_resource_flow
 cargo test -p simthing-clausething --test mapgen_links
+cargo test -p simthing-clausething --test mapgen_movement_front
 ```
 
 PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `Location` SimThings with
@@ -65,6 +66,11 @@ inert authoring properties (long-range edges). Adjacency uses PR3 lattice placem
 `position` coordinates. No pathfinding, movement, routes, predecessors, border/frontline, Movement-Front,
 PALMA, FIELD_POLICY, or runtime/GPU/driver/simthing-sim output in PR5.
 
+PR6 adds Movement-Front L1/L2/L3 authoring feedstock on the PR5-enrolled pack: bounded `SaturatingFlux`
+lattice field operator with suppression RF `pressure_binding`, hierarchy reduction feedstock, and threshold
+commitment feedstock. Authoring/lowering only — no driver/GPU execution, no PALMA, no runtime/GPU/driver/
+simthing-sim output in PR6.
+
 ## Closeout guardrails (unchanged)
 
 0.0.8.2 closeout batteries remain the active ClauseThing guardrails:
@@ -75,4 +81,5 @@ cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
 
 MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
-MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests.
+MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests. MapGen PR6 adds
+`mapgen_movement_front` tests.

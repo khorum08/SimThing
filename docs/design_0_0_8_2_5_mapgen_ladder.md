@@ -422,9 +422,27 @@ Owner: Cursor (DA review). **Re-read core §7 + ADR-MAP three-layer + P1 — the
 this ladder exists to prevent.** Suppression-arena pressure = cell columns; **L1 Gu-Yang stencil across the
 lattice, bounded per-tick horizon (H ≤ 8, `source_capped_normalized`, ping-pong), cadence/dirty;** L2
 `SlotRange` Sum → sector/faction columns; L3 `ai_will_do` EML → threshold → commitment; default-off.
-**No horizon-widening-as-strategic-shortcut.** Tests: `mapgen_front_l1_lattice_stencil`,
-`mapgen_front_l2_hierarchy_reduce`, `mapgen_front_l3_commitment`, `mapgen_front_default_off`,
-`mapgen_no_horizon_widening`. Stop: a field wants a wider horizon for strategic awareness → escalate (§9).
+**No horizon-widening-as-strategic-shortcut.** Tests: `mapgen_movement_front`. Stop: a field wants a wider
+horizon for strategic awareness → escalate (§9).
+
+**Status: PASS pending DA review (Cursor PR 6, 2026-06-14).** Added
+`generate_mapgen_movement_front_authoring` (`mapgen_movement_front.rs`) lowering PR5 enrollment into
+existing Movement-Front authoring surfaces: L1 `RegionFieldSpec`/`SaturatingFlux` with bounded horizon and
+`ArenaPressureBindingSpec` from PR4 suppression RF; L2 `RegionFieldReductionSpec` hierarchy feedstock; L3
+`FirstSliceCommitmentSpec`/`HydratedScenarioCommitment` threshold feedstock. No PALMA, no driver/GPU/runtime
+execution, no pathfinding/movement/route/predecessor/border/frontline semantics, no Euclidean authority, no
+new `SimThingKind`. Tests: `mapgen_movement_front` (23 passed). Result:
+[`tests/mapgen_pr6_movement_front_results.md`](tests/mapgen_pr6_movement_front_results.md) (PROBATION).
+
+### PR 6 artifact lifecycle audit (§6.6)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `mapgen_movement_front.rs` | PROBATION | New PR6 generator |
+| `mapgen_movement_front.rs` (tests) | PROBATION | New PR6 guardrail battery |
+| `docs/tests/mapgen_pr6_movement_front_results.md` | PROBATION | New PR6 report |
+| Prior PR1–PR5 guardrails | unchanged | See PR5 audit |
+| Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ### PR 7 — PALMA W/D reach feedstock
 Owner: Cursor. Re-read A3 + M7 + core §7. `palma_feedstock { w_source d_output_col }` composing W from
