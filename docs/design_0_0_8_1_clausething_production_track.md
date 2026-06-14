@@ -638,9 +638,9 @@ tests, updates the MapGen ladder and production docs, and records the final 0.0.
 implemented and DA-approved where required. The tiny MapGen canonical sample flows end-to-end through ingest,
 generation, admission/install, and GPU compact evidence. The mini-track did not add a gameplay engine,
 pathfinding engine, movement engine, semantic WGSL, new GPU kernel, new `SimThingKind`, CPU planner, full-field
-CPU decision readback, `simthing-sim` semantics, or FIELD-MOVIE-DATASET-0 export. **Do not merge until DA
-review.** See [`mapgen_pr11_closeout_results.md`](tests/mapgen_pr11_closeout_results.md) (PROBATION).
-**0.0.8.2.5 MapGen closes after DA approves PR11** as the ingest/lowering target contract. The **immediate
+CPU decision readback, `simthing-sim` semantics, or FIELD-MOVIE-DATASET-0 export. **DA-APPROVED (Opus,
+2026-06-14).** See [`mapgen_pr11_closeout_results.md`](tests/mapgen_pr11_closeout_results.md) (CURRENT_EVIDENCE).
+**0.0.8.2.5 MapGen is CLOSED** as the ingest/lowering target contract. The **immediate
 next consumer** is **MapGeneratorCLI / map generator completion**, which must produce declarative payloads
 conforming to the closed MapGen contract. **FIELD-MOVIE-DATASET-0 remains later/subsequent** and must not be
 opened by PR11.

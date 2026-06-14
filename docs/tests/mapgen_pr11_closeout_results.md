@@ -1,10 +1,16 @@
 # MapGen 0.0.8.2.5 Closeout Results (PR11)
 
-> **Artifact lifecycle: PROBATION** (PR11 closeout report; DA review before merge; promote to CURRENT_EVIDENCE after DA approval).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR11 closeout report; DA-approved 2026-06-14 — **0.0.8.2.5 MapGen CLOSED**).
 
 ## Verdict
 
-**PASS pending DA review (2026-06-13, Cursor PR 11)** — closeout / ledger / proof-lifecycle only. No new
+**PASS / DA-APPROVED (2026-06-14, Opus / Design Authority; Cursor PR 11)** — DA verified the closeout is
+docs/ledger/lifecycle-only (no Rust source, no new tests), preserves every MapGen baseline artifact (corpus
+manifest, `fixtures/mapgen/` tree, pr1/6/7/10/11 results) for the MapGeneratorCLI producer track, retargets the
+immediate next consumer to **MapGeneratorCLI / map generator completion**, and parks **FIELD-MOVIE-DATASET-0**
+as later/subsequent. fmt/`git diff --check` clean; the 172-test LIVE_GUARDRAIL battery is unchanged (no source
+touched). The closeout honestly closes the **ingest/lowering** target contract and does **not** claim high-level
+galaxy generation is complete (that is the MapGeneratorCLI track). Closeout / ledger / proof-lifecycle only. No new
 generator capability, runtime behavior, GPU kernel, semantic WGSL, `SimThingKind`, pathfinding/movement/route/
 predecessor/border/frontline semantics, `simthing-sim` changes, or FIELD-MOVIE-DATASET-0 export.
 
@@ -188,9 +194,9 @@ git diff --check
 
 ## DA sign-off status
 
-**Pending DA review before merge.**
-
-After DA approval, this report promotes to CURRENT_EVIDENCE and **0.0.8.2.5 MapGen is CLOSED**.
+**DA-APPROVED (2026-06-14, Opus / Design Authority).** This report is CURRENT_EVIDENCE and
+**0.0.8.2.5 MapGen is CLOSED.** Only the Design Authority writes a DA sign-off; the immediate next track is
+**0.0.8.6 MapGeneratorCLI** (a producer of declarative payloads for this closed contract), under its own DA gate.
 
 ## Subsequent tracks
 

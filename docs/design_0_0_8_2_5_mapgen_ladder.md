@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 PASS — DA-APPROVED (Opus, 2026-06-14; end-to-end admit/install + GPU compact evidence on a real adapter); PR11 PASS pending DA review (closeout/ledger only).** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 PASS — DA-APPROVED (Opus, 2026-06-14; end-to-end admit/install + GPU compact evidence on a real adapter); PR11 PASS — DA-APPROVED (Opus, 2026-06-14; closeout/ledger only) — **0.0.8.2.5 MapGen ingest/lowering ladder CLOSED**; immediate next track is **0.0.8.6 MapGeneratorCLI** (producer layer); FIELD-MOVIE-DATASET-0 later/subsequent.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -560,7 +560,7 @@ confirm core §7 + both ADRs honored and Candidate F unmoved. **No close until D
 `cargo fmt --all -- --check`; focused MapGen + closeout guard battery (§7); `git diff --check`. Stop: §2 unmet
 (→ PARTIAL); any code feature slips in (→ PARTIAL).
 
-**Status: PASS pending DA review (2026-06-13, Cursor PR 11).** Closeout/ledger/proof-lifecycle only — no new
+**Status: PASS / DA-APPROVED (Cursor PR 11; Opus / Design Authority 2026-06-14 — closeout-only, no Rust source, baseline artifacts preserved for MapGeneratorCLI, immediate next consumer retargeted to 0.0.8.6 MapGeneratorCLI, FIELD-MOVIE-DATASET-0 parked, 172-test battery unchanged).** Closeout/ledger/proof-lifecycle only — no new
 generator capability, runtime behavior, GPU kernel, semantic WGSL, `SimThingKind`, pathfinding/movement/route/
 predecessor/border/frontline semantics, `simthing-sim` changes, or FIELD-MOVIE-DATASET-0 export. Promoted
 PR1/PR2/PR7 reports to CURRENT_EVIDENCE; confirmed PR3–PR10 CURRENT_EVIDENCE; listed LIVE_GUARDRAIL tests;
