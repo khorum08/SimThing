@@ -1,17 +1,19 @@
 # MapGen PR3 Lattice Hierarchy Results
 
-> **Artifact lifecycle: PROBATION** (PR3 hierarchy generator report; MapGen closeout decides promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR3 hierarchy generator report; DA-approved post-merge audit
+> `mapgen_pr3_da_audit_results.md`).
 
 ## Verdict
 
-**PASS pending DA review** — tiny neutral-AST fixture generates scenario-container-compatible gridcell
+**PASS / DA-APPROVED (2026-06-13, post-merge audit PR #658; merge `67d6ab8c`)** — tiny neutral-AST fixture generates scenario-container-compatible gridcell
 hierarchy; all gridcells are ordinary `SimThingKind::Location` nodes with mapping-role metadata; no new
 `SimThingKind`; one-system-per-cell enforced on fixture-local 3×3 lattice; canonical 200×200 documented as
 metadata only; no RF/PALMA/FIELD_POLICY/Movement-Front/link output; focused tests pass.
 
 ## Track scope
 
-0.0.8.2.5 MapGen PR3: gridcell lattice hierarchy generation (M2/M5). **Do not merge until DA review.**
+0.0.8.2.5 MapGen PR3: gridcell lattice hierarchy generation (M2/M5). **DA-approved post-merge (audit
+`mapgen_pr3_da_audit_results.md`).**
 
 PR3 generates hierarchy/placement only. PR3 does not enroll RF arenas. PR3 does not generate
 Movement-Front fields. PR3 does not generate PALMA feedstock. PR3 does not generate FIELD_POLICY
@@ -56,8 +58,8 @@ import.
 | `docs/tests/mapgen_pr1_corpus_manifest_results.md` | PROBATION | Unchanged |
 | `docs/tests/mapgen_pr2_neutral_ast_results.md` | PROBATION | Unchanged |
 | `mapgen_neutral_ast_parse.rs` | LIVE_GUARDRAIL | Unchanged |
-| `mapgen_lattice_hierarchy.rs` | CURRENT_EVIDENCE | New PR3 tests |
-| `mapgen_lattice.rs` | CURRENT_EVIDENCE | New PR3 generator |
+| `mapgen_lattice_hierarchy.rs` | LIVE_GUARDRAIL | Promoted at DA audit |
+| `mapgen_lattice.rs` | CURRENT_EVIDENCE | PR3 generator source |
 | `tiny_pentad_hub_slice_raw.clause` | PROBATION / active fixture | Unchanged |
 | `ct_scenario_container`, `ct_bh3_closeout_sample_driver` | LIVE_GUARDRAIL | Unchanged |
 | Scratch logs / duplicates / `target/` / worktrees | DELETE | None found |
@@ -103,21 +105,7 @@ git diff --check
 
 ## DA review checklist
 
-- [ ] Gridcell is not a SimThingKind
-- [ ] No RegionCellKind/GridCellKind/SystemKind was added
-- [ ] Output is scenario-container-compatible generic structure
-- [ ] No RF arena enrollment yet
-- [ ] No Movement-Front operator yet
-- [ ] No PALMA feedstock yet
-- [ ] No FIELD_POLICY commitment yet
-- [ ] No runtime/GPU/driver/simthing-sim changes
-- [ ] No horizon widening
-- [ ] No Euclidean authority
-- [ ] Authored positions are inert/render-only
-- [ ] One-system-per-cell is enforced
-- [ ] No pathfinding/movement/route/predecessor/border/frontline semantics
-- [ ] Proof/test lifecycle performed
-- [ ] Tests are focused and not proof theater
+Recorded in [`mapgen_pr3_da_audit_results.md`](mapgen_pr3_da_audit_results.md) — all items **PASS** (2026-06-13).
 
 ## Constraints preserved
 
@@ -129,5 +117,7 @@ git diff --check
 
 | Artifact | Classification |
 |---|---|
-| `docs/tests/mapgen_pr3_lattice_hierarchy_results.md` | PROBATION |
-| `mapgen_lattice.rs`, `mapgen_lattice_hierarchy.rs` | CURRENT_EVIDENCE |
+| `docs/tests/mapgen_pr3_lattice_hierarchy_results.md` | CURRENT_EVIDENCE |
+| `docs/tests/mapgen_pr3_da_audit_results.md` | CURRENT_EVIDENCE |
+| `mapgen_lattice.rs` | CURRENT_EVIDENCE |
+| `mapgen_lattice_hierarchy.rs` | LIVE_GUARDRAIL |

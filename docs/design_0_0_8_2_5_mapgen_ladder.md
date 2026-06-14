@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS pending DA review; PR4+ pending.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — DA-APPROVED post-merge 2026-06-13 (`67d6ab8c`, audit merge pending); PR4 pending.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -328,14 +328,16 @@ no new kind)** occupying lattice cells; ≤ ~100 children/level; deposits carry 
 Tests: `mapgen_gridcell_lattice_hierarchy`, `mapgen_no_new_simthingkind`, `mapgen_gridcell_is_mapping_role`,
 default-off/semantic-free. Stop: a node needs a new sim type / RegionCell-as-entity → escalate (§9).
 
-**Status: PASS pending DA review (2026-06-13, Cursor PR 3).** Added
+**Status: PASS / DA-APPROVED (2026-06-13, PR #658 merge `67d6ab8c`; post-merge audit
+[`mapgen_pr3_da_audit_results.md`](tests/mapgen_pr3_da_audit_results.md)).** Added
 `generate_mapgen_lattice_hierarchy` (`mapgen_lattice.rs`) lowering the tiny neutral-AST fixture into
 scenario-container-compatible hierarchy via existing `hydrate_scenario`. Galaxy → sector → gridcell systems
 as ordinary `SimThingKind::Location` nodes with `mapgen` mapping-role metadata; fixture-local 3×3 lattice
 placements; canonical 200×200 documented in metadata only; inert render positions; initializer planet/deposit
 as child payload metadata (not RF). No links, RF, Movement-Front, PALMA, or FIELD_POLICY output. Tests:
 `mapgen_lattice_hierarchy` (10 passed). Result:
-[`tests/mapgen_pr3_lattice_hierarchy_results.md`](tests/mapgen_pr3_lattice_hierarchy_results.md) (PROBATION).
+[`tests/mapgen_pr3_lattice_hierarchy_results.md`](tests/mapgen_pr3_lattice_hierarchy_results.md) (CURRENT_EVIDENCE);
+DA audit: [`tests/mapgen_pr3_da_audit_results.md`](tests/mapgen_pr3_da_audit_results.md). **PR4 may proceed.**
 
 ### PR 3 artifact lifecycle audit (§6.3)
 
@@ -343,7 +345,10 @@ as child payload metadata (not RF). No links, RF, Movement-Front, PALMA, or FIEL
 |---|---|---|
 | `docs/tests/mapgen_pr2_neutral_ast_results.md` | PROBATION | Unchanged |
 | `mapgen_neutral_ast_parse.rs` | LIVE_GUARDRAIL | Unchanged |
-| `mapgen_lattice.rs`, `mapgen_lattice_hierarchy.rs` | CURRENT_EVIDENCE | New PR3 generator + tests |
+| `mapgen_lattice.rs` | CURRENT_EVIDENCE | PR3 generator source |
+| `mapgen_lattice_hierarchy.rs` | LIVE_GUARDRAIL | Promoted at DA audit |
+| `docs/tests/mapgen_pr3_lattice_hierarchy_results.md` | CURRENT_EVIDENCE | Promoted at DA audit |
+| `docs/tests/mapgen_pr3_da_audit_results.md` | CURRENT_EVIDENCE | Post-merge DA audit |
 | `tiny_pentad_hub_slice_raw.clause` | PROBATION / active fixture | Unchanged |
 | `ct_scenario_container`, `ct_bh3_closeout_sample_driver` | LIVE_GUARDRAIL | Unchanged |
 | Scratch logs / duplicate reports / `target/` / worktrees | DELETE | None found |
