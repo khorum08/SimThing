@@ -47,7 +47,7 @@
 > runtime/GPU/driver/simthing-sim output in PR5. Report:
 > [`mapgen_pr5_links_results.md`](../tests/mapgen_pr5_links_results.md).
 >
-> **PR6 Movement-Front L1/L2/L3 authoring (2026-06-14, PASS pending DA review):**
+> **PR6 Movement-Front L1/L2/L3 authoring (2026-06-13, DA-APPROVED + merged `3f411fda`):**
 > `generate_mapgen_movement_front_authoring` in `mapgen_movement_front.rs` lowers PR5 enrollment into
 > existing Movement-Front authoring surfaces: L1 bounded `SaturatingFlux`/`RegionFieldSpec` with suppression
 > RF `ArenaPressureBindingSpec`; L2 hierarchy `RegionFieldReductionSpec`; L3
@@ -55,6 +55,13 @@
 > no driver/GPU execution, no pathfinding/movement/routes/predecessors/border/frontline, no Euclidean
 > authority, no runtime/GPU/driver/simthing-sim output in PR6. Report:
 > [`mapgen_pr6_movement_front_results.md`](../tests/mapgen_pr6_movement_front_results.md).
+>
+> **PR7 PALMA W/D reach feedstock (2026-06-13, PASS):**
+> `generate_mapgen_palma_feedstock` in `mapgen_palma.rs` lowers PR6 enrollment into existing
+> `HydratedScenarioPalmaFeedstock` + generic `WImpedanceComposeSpec` (W from PR6 choke column, D col 4).
+> Default-off authoring only. No routes/paths/predecessors/movement orders, no driver/GPU execution, no
+> Euclidean authority, no runtime/GPU/driver/simthing-sim output in PR7. Report:
+> [`mapgen_pr7_palma_results.md`](../tests/mapgen_pr7_palma_results.md).
 >
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design

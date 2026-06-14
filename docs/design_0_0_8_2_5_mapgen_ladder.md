@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 may proceed.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS pending merge (2026-06-13); PR8 may proceed (DA review).** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -446,8 +446,26 @@ new `SimThingKind`. Tests: `mapgen_movement_front` (23 passed). Result:
 
 ### PR 7 — PALMA W/D reach feedstock
 Owner: Cursor. Re-read A3 + M7 + core §7. `palma_feedstock { w_source d_output_col }` composing W from
-suppression/choke columns → `min_plus_traversal_field`. Tests: `mapgen_palma_feedstock_lowers`,
+suppression/choke columns → `min_plus_traversal_field`. Tests: `mapgen_palma`,
 route/movement-vocabulary rejection. Stop: route/predecessor need → escalate (§9).
+
+**Status: PASS (Cursor PR 7, 2026-06-13).** Added `generate_mapgen_palma_feedstock` (`mapgen_palma.rs`)
+lowering PR6 Movement-Front enrollment into existing `HydratedScenarioPalmaFeedstock` plus generic
+`WImpedanceComposeSpec` bound to PR6 SaturatingFlux choke/suppression columns (W col 3, D col 4 on the
+tiny slice). Default-off mapping profile preserved. No routes/paths/predecessors/movement orders,
+no driver/GPU execution, no Euclidean authority, no runtime/GPU/driver/simthing-sim changes. Stays inside
+pre-adjudicated M7 boundary — no DA escalation required. Tests: `mapgen_palma` (19 passed). Result:
+[`tests/mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md) (PROBATION).
+
+### PR 7 artifact lifecycle audit (§6.7)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `mapgen_palma.rs` | PROBATION | New PR7 generator |
+| `mapgen_palma.rs` (tests) | PROBATION | New PR7 guardrail battery |
+| `docs/tests/mapgen_pr7_palma_results.md` | PROBATION | New PR7 report |
+| Prior PR1–PR6 guardrails | unchanged | See PR6 audit |
+| Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ### PR 8 — Gu-Yang ∥ PALMA parallelization spike
 Owner: Cursor (DA review). Re-read M8 + P1. Scheduled-concurrency (independent suppression fields + W

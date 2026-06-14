@@ -52,6 +52,7 @@ cargo test -p simthing-clausething --test mapgen_lattice_hierarchy
 cargo test -p simthing-clausething --test mapgen_resource_flow
 cargo test -p simthing-clausething --test mapgen_links
 cargo test -p simthing-clausething --test mapgen_movement_front
+cargo test -p simthing-clausething --test mapgen_palma
 ```
 
 PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `Location` SimThings with
@@ -71,6 +72,17 @@ lattice field operator with suppression RF `pressure_binding`, hierarchy reducti
 commitment feedstock. Authoring/lowering only — no driver/GPU execution, no PALMA, no runtime/GPU/driver/
 simthing-sim output in PR6.
 
+## PR7 — PALMA W/D reach feedstock
+
+`generate_mapgen_palma_feedstock` lowers PR6 Movement-Front enrollment into existing
+`HydratedScenarioPalmaFeedstock` + generic `WImpedanceComposeSpec` (W from PR6 SaturatingFlux choke column,
+D output col 4). Authoring/lowering only — no driver/GPU execution, no routes/paths/predecessors/movement
+orders, no runtime/GPU/driver/simthing-sim output in PR7.
+
+```text
+cargo test -p simthing-clausething --test mapgen_palma
+```
+
 ## Closeout guardrails (unchanged)
 
 0.0.8.2 closeout batteries remain the active ClauseThing guardrails:
@@ -82,4 +94,4 @@ cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 
 MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
 MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests. MapGen PR6 adds
-`mapgen_movement_front` tests.
+`mapgen_movement_front` tests. MapGen PR7 adds `mapgen_palma` tests.
