@@ -76,12 +76,25 @@
 > PR10 end-to-end sample. Report:
 > [`mapgen_pr9_constitution_guards_results.md`](../tests/mapgen_pr9_constitution_guards_results.md).
 >
-> **PR10 end-to-end canonical sample (2026-06-14, DA review before merge):**
+> **PR10 end-to-end canonical sample (2026-06-14, DA-APPROVED Opus 2026-06-14):**
 > `mapgen_pr10_end_to_end_compact_evidence` proves the tiny pentad fixture through PR2 neutral parse → PR3
 > lattice → PR4 RF → PR5 links → PR6 Movement-Front → PR7 PALMA → driver admit/install → GPU-resident
 > mapping tick + scheduled W/PALMA chain + compact D probe. End-to-end proof only — no new gameplay semantics,
 > no pathfinding/movement/routes/predecessors, no semantic WGSL, no new GPU kernel, no FIELD-MOVIE-DATASET-0
-> export. Report: [`mapgen_pr10_end_to_end_results.md`](../tests/mapgen_pr10_end_to_end_results.md).
+> export. Report: [`mapgen_pr10_end_to_end_results.md`](../tests/mapgen_pr10_end_to_end_results.md)
+> (CURRENT_EVIDENCE).
+>
+> **PR11 closeout (2026-06-13, DA review before merge):** docs/ledger/proof-lifecycle only — promotes PR1–PR10
+> reports to CURRENT_EVIDENCE, lists LIVE_GUARDRAIL tests, closes 0.0.8.2.5 MapGen after DA approval.
+> Report: [`mapgen_pr11_closeout_results.md`](../tests/mapgen_pr11_closeout_results.md) (PROBATION).
+> **0.0.8.2.5 MapGen closes after DA approval** as the ingest/lowering target contract. The **immediate next
+> consumer** is **MapGeneratorCLI / map generator completion** (producer of declarative payloads). This
+> document remains the **target grammar/reference** for those payloads — not the CLI algorithm implementation.
+> **FIELD-MOVIE-DATASET-0 remains later/subsequent.**
+>
+> **Final MapGen pipeline (0.0.8.2.5):** PR2 parse → PR3 gridcell lattice → PR4 RF enrollment → PR5 bounded
+> links/lane coupling → PR6 Movement-Front feedstock → PR7 PALMA W/D feedstock → PR8 scheduled-concurrency
+> measurement → PR9 constitution guards → PR10 end-to-end GPU compact evidence → PR11 closeout.
 >
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design

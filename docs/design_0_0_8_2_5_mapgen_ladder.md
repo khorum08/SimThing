@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 PASS — DA-APPROVED (Opus, 2026-06-14; end-to-end admit/install + GPU compact evidence on a real adapter); PR11 closeout may proceed.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 PASS — DA-APPROVED (Opus, 2026-06-14; end-to-end admit/install + GPU compact evidence on a real adapter); PR11 PASS — DA-APPROVED (Opus, 2026-06-14; closeout/ledger only) — **0.0.8.2.5 MapGen ingest/lowering ladder CLOSED**; immediate next track is **0.0.8.6 MapGeneratorCLI** (producer layer); FIELD-MOVIE-DATASET-0 later/subsequent.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -12,8 +12,10 @@
 >
 > **0.0.8.2.5 extends, it does not reopen sign-off.** The 0.0.8.2 DA sign-off
 > ([`tests/clausething_closeout_results.md`](tests/clausething_closeout_results.md)) **stands.** MapGen
-> names the consumer the closeout deferred (PALMA "awaiting a named consumer"; BH-3 authoring). The
-> editor/corpus/export seam (`FIELD-MOVIE-DATASET-0`) remains the **subsequent** track.
+> names the consumer the closeout deferred (PALMA "awaiting a named consumer"; BH-3 authoring). PR11 closes
+> the 0.0.8.2.5 MapGen **ingest/lowering** mini-track; the **immediate next consumer** is **MapGeneratorCLI /
+> map generator completion** (a producer layer that emits declarative scenario payloads for this closed path).
+> The editor/corpus/export seam (`FIELD-MOVIE-DATASET-0`) remains **later/subsequent**.
 
 ---
 
@@ -537,24 +539,52 @@ parse → PR3 lattice → PR4 RF → PR5 links → PR6 Movement-Front → PR7 PA
 existing GPU-resident mapping tick + scheduled W/PALMA chain + compact D probe. Compact evidence only; real
 GPU run required for PASS; no full-field CPU decision readback; no new GPU kernel; no semantic WGSL; no
 simthing-sim changes; no FIELD-MOVIE-DATASET-0 export. Result:
-[`tests/mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md) (PROBATION).
+[`tests/mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md) (CURRENT_EVIDENCE).
 
 ### PR 10 artifact lifecycle audit (§6.10)
 
 | Artifact | Classification | Action |
 |---|---|---|
-| `mapgen_pr10_end_to_end_compact_evidence.rs` (tests) | PROBATION | New PR10 end-to-end harness |
-| `docs/tests/mapgen_pr10_end_to_end_results.md` | PROBATION | New PR10 report |
+| `mapgen_pr10_end_to_end_compact_evidence.rs` (tests) | LIVE_GUARDRAIL | Promoted at PR11 closeout |
+| `docs/tests/mapgen_pr10_end_to_end_results.md` | CURRENT_EVIDENCE | Promoted at DA approval |
 | `mapgen_pr1`–`mapgen_pr9` reports/guardrails | CURRENT_EVIDENCE / LIVE_GUARDRAIL | Unchanged; PR9 CURRENT_EVIDENCE |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ### PR 11 — Closeout report + docs + ledger
-Owner: Cursor (DA sign-off). Docs only. Files: `docs/tests/mapgen_0_0_8_2_5_closeout_results.md` (new,
-CURRENT_EVIDENCE); this ladder's ledger; pointers in `design_0_0_8_1_border_hack_track.md`,
+Owner: Cursor (DA sign-off). Docs only. Files: `docs/tests/mapgen_pr11_closeout_results.md` (new,
+PROBATION until DA approves); this ladder's ledger; pointers in `design_0_0_8_1_clausething_production_track.md`,
 `design_0_0_8_1_palma_pathfinding_integration_guide.md`, `clausething/MapGenThing.md`,
-`design_0_0_8_2_clausething_closeout_ladder.md` §12. Write complete-vs-deferred (§2/§11); confirm core §7
-+ both ADRs honored and Candidate F unmoved; classify artifacts. **No close until DA sign-off.** Tests:
-`cargo fmt --all -- --check`; `cargo test -p simthing-clausething`; `-p simthing-driver`; `git diff --check`. Stop: §2 unmet (→ PARTIAL).
+`crates/simthing-clausething/tests/fixtures/mapgen/README.md`. Promote PR1/PR2/PR7 reports from PROBATION
+to CURRENT_EVIDENCE; confirm PR3–PR10 CURRENT_EVIDENCE; list LIVE_GUARDRAIL battery; classify artifacts;
+confirm core §7 + both ADRs honored and Candidate F unmoved. **No close until DA sign-off.** Tests:
+`cargo fmt --all -- --check`; focused MapGen + closeout guard battery (§7); `git diff --check`. Stop: §2 unmet
+(→ PARTIAL); any code feature slips in (→ PARTIAL).
+
+**Status: PASS / DA-APPROVED (Cursor PR 11; Opus / Design Authority 2026-06-14 — closeout-only, no Rust source, baseline artifacts preserved for MapGeneratorCLI, immediate next consumer retargeted to 0.0.8.6 MapGeneratorCLI, FIELD-MOVIE-DATASET-0 parked, 172-test battery unchanged).** Closeout/ledger/proof-lifecycle only — no new
+generator capability, runtime behavior, GPU kernel, semantic WGSL, `SimThingKind`, pathfinding/movement/route/
+predecessor/border/frontline semantics, `simthing-sim` changes, or FIELD-MOVIE-DATASET-0 export. Promoted
+PR1/PR2/PR7 reports to CURRENT_EVIDENCE; confirmed PR3–PR10 CURRENT_EVIDENCE; listed LIVE_GUARDRAIL tests;
+no scratch DELETE items. Result: [`tests/mapgen_pr11_closeout_results.md`](tests/mapgen_pr11_closeout_results.md)
+(PROBATION). **0.0.8.2.5 MapGen closes after DA approves PR11** as the ingest/lowering target contract.
+**MapGeneratorCLI / map generator completion** is the immediate next consumer (producer of declarative payloads
+conforming to this closed contract). **FIELD-MOVIE-DATASET-0 remains later/subsequent.** **Do-not-delete:**
+`docs/clausething/mapgen_corpus_manifest.md`, `crates/simthing-clausething/tests/fixtures/mapgen/`, and all
+`docs/tests/mapgen_pr*_results.md` — preserved baseline for MapGeneratorCLI unless DA explicitly approves
+archiving.
+
+### PR 11 artifact lifecycle audit (§6.11)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `mapgen_pr11_closeout_results.md` | PROBATION | New PR11 closeout report |
+| `mapgen_pr1_corpus_manifest_results.md` | CURRENT_EVIDENCE | Promoted at PR11 closeout |
+| `mapgen_pr2_neutral_ast_results.md` | CURRENT_EVIDENCE | Promoted at PR11 closeout |
+| `mapgen_pr7_palma_results.md` | CURRENT_EVIDENCE | Promoted at PR11 closeout |
+| `mapgen_pr3`–`mapgen_pr6`, `mapgen_pr8`–`mapgen_pr10` reports | CURRENT_EVIDENCE | Unchanged |
+| LIVE_GUARDRAIL tests (§7) | LIVE_GUARDRAIL | Listed in closeout report |
+| `mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Do-not-delete for MapGeneratorCLI |
+| `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Do-not-delete for MapGeneratorCLI |
+| Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ## 7. Test strategy
 
@@ -591,13 +621,19 @@ route/predecessor production (M7); a Euclidean-distance/magnitude consumer (M9 /
 the M8 gate; deep galaxy-scale allocation beyond CT-2c (M3/§10); a vendored-Paradox-file fixture (M10);
 atlas/active-mask/perception without its ADR-MAP gate.
 
-## 10. Deferred boundary (the subsequent tracks)
+## 10. Deferred boundary (subsequent tracks)
+
+**Immediate next consumer (after PR11 DA approval):** **MapGeneratorCLI / map generator completion** — a thin
+producer that emits declarative galaxy scenario payloads consumable by the closed 0.0.8.2.5 MapGen ingest/lowering
+path. This document and the preserved baseline artifacts (corpus manifest, fixtures, PR evidence reports) define
+the target contract; MapGeneratorCLI is the producer, not implemented here.
 
 Deferred, not closed here: deep galaxy-scale hierarchical allocation + large coupling; atlas batching /
 active masks / perception / behavioral source policy; whole-corpus coverage; load-order/override;
 trigger/effect interpretation; weighted procedural placement; localization; `prescripted_countries`;
 graphical galaxy; arbitrary-graph topology; pathfinding/movement; and the **editor/corpus/export seam**
-(`FIELD-MOVIE-DATASET-0`), the next minor track on the 0.0.8.2 §10 boundary.
+(`FIELD-MOVIE-DATASET-0`) — **later/subsequent** after the MapGeneratorCLI producer track on the 0.0.8.2 §10
+boundary.
 
 ## 11. References
 

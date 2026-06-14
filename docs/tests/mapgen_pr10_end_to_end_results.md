@@ -25,7 +25,7 @@ WGSL; no new GPU kernel; no `simthing-sim` changes; no FIELD-MOVIE-DATASET-0 exp
 ## Track scope
 
 0.0.8.2.5 MapGen PR10: first rung proving the tiny pentad fixture end-to-end through ingest, generation,
-admission/install, and GPU compact evidence. **Do not merge until DA review.**
+admission/install, and GPU compact evidence. **DA-APPROVED (Opus, 2026-06-14).**
 
 PR10 runs the tiny MapGen sample end-to-end through ingest/generate/admit/install/GPU compact evidence.
 PR10 uses existing GPU-resident surfaces. PR10 does not add new gameplay semantics. PR10 does not add

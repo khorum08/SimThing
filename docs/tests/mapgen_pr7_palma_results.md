@@ -1,6 +1,6 @@
 # MapGen PR7 PALMA W/D Reach Feedstock Results
 
-> **Artifact lifecycle: PROBATION** (PR7 PALMA report; pending MapGen closeout promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR7 PALMA feedstock report; promoted at MapGen PR11 closeout).
 
 ## Verdict
 
