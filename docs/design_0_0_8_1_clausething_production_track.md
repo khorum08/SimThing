@@ -644,3 +644,12 @@ CPU decision readback, `simthing-sim` semantics, or FIELD-MOVIE-DATASET-0 export
 next consumer** is **MapGeneratorCLI / map generator completion**, which must produce declarative payloads
 conforming to the closed MapGen contract. **FIELD-MOVIE-DATASET-0 remains later/subsequent** and must not be
 opened by PR11.
+
+**0.0.8.6 MapGeneratorCLI addendum (2026-06-14, PR1).** **0.0.8.2.5 MapGen remains closed.** MapGeneratorCLI PR1
+adds only the standalone producer crate skeleton (`simthing-mapgenerator`), the full corpus-grounded lever parameter
+model, a data-driven shape registry descriptor shell, arbitrary/static mode parameter shell, and validation-only CLI
+dry-run. No generation algorithms, placement, topology, scenario emitter, MapGen lowering calls, runtime, GPU,
+simthing-sim, new `SimThingKind`, pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority
+in output, or FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
+[`mapgenerator_cli_pr1_params_results.md`](tests/mapgenerator_cli_pr1_params_results.md) (PROBATION). **PR2 next:**
+deterministic RNG + square lattice occupancy core.

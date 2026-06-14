@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus).**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 PASS pending DA review (2026-06-14): standalone `simthing-mapgenerator` crate + full §3A parameter surface + shape registry descriptor shell + validation-only dry-run — no generation.**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -202,11 +202,14 @@ mechanical under §3.
 
 ## 6. Per-rung acceptance/stop (granular handoffs)
 
-- **PR1** — new CLI crate (`crates/mapgen-cli` or equiv) + arg/params-file parsing of the **entire §3A
+- **PR1** — new CLI crate (`crates/simthing-mapgenerator`) + arg/params-file parsing of the **entire §3A
   surface** (scale/core, shape+params, clustering, partitioning, hyperlane geometry, special routes,
   nebulas, initializer buckets, inert metadata); prints parsed params in dry-run; **no placement, no
   emission.** Accept: builds; no `simthing-*` runtime dep; no sim/kind; inert metadata parsed but flagged
   non-generating. Stop: a param needs sim/spec types (§7).
+  **Status: PASS pending DA review (2026-06-14).** Result:
+  [`tests/mapgenerator_cli_pr1_params_results.md`](tests/mapgenerator_cli_pr1_params_results.md) (PROBATION).
+  **PR2 next:** deterministic RNG + square lattice occupancy core.
 - **PR2** — seeded RNG (pinned algorithm) + square-lattice occupancy set; `core_radius` masks central
   cells; place N points one-per-cell with deterministic collision relocation. Accept: same seed ⇒ identical
   occupancy; square; no sub-cell coords. Stop: needs Euclidean *authority* (only quantized float allowed).
