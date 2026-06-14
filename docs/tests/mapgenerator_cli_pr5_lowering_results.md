@@ -1,12 +1,22 @@
 # MapGeneratorCLI PR5 — Generated static_galaxy_scenario Lowering Proof Results
 
-> **Artifact lifecycle: PROBATION** (pending DA review — do not treat as CURRENT_EVIDENCE until DA approves).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + battery rerun; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA review** — PR4 `static_galaxy_scenario` output parses through the existing neutral-AST
+**PASS — DA-APPROVED (2026-06-14, executive design authority)** — PR4 `static_galaxy_scenario` output parses through the existing neutral-AST
 parser and lowers through the **amended** closed `generate_mapgen_lattice_hierarchy` path without front-end
 widening. **This cleaned PR5 contains zero closed `crates/simthing-clausething/src/` changes.**
+
+> **PROOF-SCOPE CLASSIFICATION (DA, binding — read before citing PR5).** PR5 proves exactly:
+> *generated `static_galaxy_scenario` text parses, lowers to gridcell `Location`s, preserves the emitted
+> integer coords as **inert render metadata**, and resolves shared initializers.* It does **NOT** prove —
+> and must never be cited as proving — that authored producer coordinates drive **authoritative gridcell
+> placement**. `assign_system_placements` assigns grid row/col by system index/order, and authored `x/y/z`
+> are inert by mandate. **This is correct and constitutional, not a gap to close:** index/topological
+> placement with inert authored coords is required by Candidate-F (§0.7) and M5/M7 (the Euclidean tripwire).
+> Making authored positions authoritative grid coordinates would **violate** the constitution, so there is
+> **no** planned rung to do so (contra a naive "authored-position → placement" follow-up).
 **No topology, links, field operators, RF, Movement-Front, PALMA, driver/GPU, or FIELD-MOVIE-DATASET-0 work.**
 
 ## Track scope
@@ -142,13 +152,21 @@ git diff --name-only mapgen-lowerer-child-id-amendment...HEAD
 
 ## DA sign-off status
 
-**Pending DA review.** Only the Design Authority writes DA sign-off. This report does not pre-file approval.
-Requires Part A amendment (#680) DA approval and merge before PR5 merge.
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent branch-source audit: net diff vs current
+master (which now carries the Part A amendment #680) is **producer + test + docs only** — confirmed **zero**
+`crates/simthing-clausething/src/` (or any closed-crate `src/`) changes; `simthing-mapgenerator` is a
+**dev-dependency** of `simthing-clausething` (test-only) and the producer carries no `simthing-*` dep. The test
+drives the real path (`place_and_emit_scenario` → `parse_mapgen_neutral_document` → `generate_mapgen_lattice_hierarchy`).
+Battery rerun locally on the branch: `cargo fmt --check` clean; `mapgenerator_cli_pr5_generated_static_lowers`
+18 passed; `cargo test -p simthing-mapgenerator` green; `mapgen_constitution_guards` 21 passed. Report claims
+verified accurate — scoped to parse/lower + inert-coord preservation + count/id match, no placement overclaim
+(see the binding PROOF-SCOPE CLASSIFICATION above; this resolves the Codex placement-gap finding by classifying
+PR5 correctly rather than "fixing" a non-defect). Part A (#680) is DA-approved and merged first, as required.
 
 ## Whether PR6 may proceed
 
-**No — await DA approval of Part A (#680) and cleaned PR5 (#679).** After both merge, PR6 = bounded hyperlane
-topology / `add_hyperlane` emission — still no route/path/predecessor semantics and no GPU.
+**Yes — DA approved Part A (#680) and cleaned PR5 (#679).** PR6 = bounded hyperlane topology /
+`add_hyperlane` emission — still no route/path/predecessor semantics and no GPU.
 
 ## Carried-forward DA notes (not addressed in PR5)
 
