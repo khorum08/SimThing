@@ -22,9 +22,9 @@
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei
-> arXiv:2602.01651, whose model is academically named **SEAD = Spatiotemporal Evolution with Attractor
-> Dynamics** — that acronym is **not** used in-repo; the engine name is **Movement-Front**, never
-> "SEAD"). The galaxy **is** a 2D gridcell lattice — **base canonical dimensions are always square**
+> [arXiv:2602.01651](https://arxiv.org/abs/2602.01651), whose concept is referred to in prose as
+> **STEAD** (*SpatioTemporal Evolution with Attractor Dynamics*) — never the military-connoted "SEAD";
+> the engine name agents use in code/spec/tests is **Movement-Front**). The galaxy **is** a 2D gridcell lattice — **base canonical dimensions are always square**
 > (default "medium" 200×200, scaling up square with star density) — with star systems occupying a
 > subset of cells; one system = one gridcell; a gridcell is a **mapping-role on a SimThing, not a
 > `SimThingKind`** ([`../adr/mapping_sparse_regioncell.md`](../adr/mapping_sparse_regioncell.md)). The
