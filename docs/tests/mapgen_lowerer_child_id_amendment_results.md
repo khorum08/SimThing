@@ -1,6 +1,6 @@
 # MapGen 0.0.8.2.5 Lowerer Child-ID Amendment Results
 
-> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + regression-battery rerun; promoted from PROBATION).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + regression-battery rerun; promoted from PROBATION. NOTE: amendment merged in #680 `a1103705`; this DA sign-off was re-applied as a record correction because the approval commit was lost from the #680 merge — the audit + battery below were genuinely performed before merge).
 
 ## Verdict
 
@@ -96,7 +96,7 @@ is the decisive regression check (RF arenas still resolve deposit participants u
 unnecessary for this minimal id-uniqueness fix: the affected surfaces (hydration ids, RF arena participant
 resolution, link grid metadata, kind allow-list) are all covered by the non-GPU battery above; the install/GPU
 path resolves slots by DFS over *unique* property names, which only benefits from more-unique child ids; and the
-report makes no GPU claim. My earlier "full 0.0.8.2.5 battery" phrasing is hereby scoped to the regression
+report makes no GPU claim. The earlier "full 0.0.8.2.5 battery" phrasing is hereby scoped to the regression
 surface of this change — the non-GPU `mapgen_*` + RF battery, which is sufficient. If a future amendment touches
 install/GPU semantics, PR10 e2e on a real adapter is required.
 
