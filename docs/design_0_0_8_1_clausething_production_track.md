@@ -585,3 +585,15 @@ needed** — `mapgen::lane_coupling` is inert authoring metadata only; N4 classi
 `(row,col)` only; battery reran green. See
 [`mapgen_pr5_links_results.md`](tests/mapgen_pr5_links_results.md) (CURRENT_EVIDENCE). **PR6 may proceed**
 (subject to its own DA-review gate; only the Design Authority writes a DA sign-off).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR6).** **0.0.8.2 remains closed.** MapGen PR6 adds Movement-Front
+L1/L2/L3 authoring feedstock from the tiny MapGen slice (`generate_mapgen_movement_front_authoring` →
+existing `RegionFieldSpec`/`SaturatingFlux`, `RegionFieldReductionSpec`, and
+`FirstSliceCommitmentSpec`/`HydratedScenarioCommitment` on the PR5-enrolled pack). PR6 remains front-end
+authoring/lowering only — no PALMA, no driver/GPU exercise, no pathfinding/movement/routes/predecessors,
+border/frontline, runtime/GPU/driver/simthing-sim changes, or GPU opt-in. **FIELD-MOVIE-DATASET-0** remains
+subsequent. **Genuine DA sign-off (Opus, 2026-06-13): APPROVE — no fix needed** — L1 bounded local
+SaturatingFlux only; L2 reduction does not widen L1 horizon; L3 threshold/commitment feedstock only; battery
+reran green. See [`mapgen_pr6_movement_front_results.md`](tests/mapgen_pr6_movement_front_results.md)
+(CURRENT_EVIDENCE). **PR7 may proceed** (subject to its own DA-review gate; only the Design Authority writes
+a DA sign-off).
