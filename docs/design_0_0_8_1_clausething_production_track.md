@@ -650,6 +650,15 @@ adds only the standalone producer crate skeleton (`simthing-mapgenerator`), the 
 model, a data-driven shape registry descriptor shell, arbitrary/static mode parameter shell, and validation-only CLI
 dry-run. No generation algorithms, placement, topology, scenario emitter, MapGen lowering calls, runtime, GPU,
 simthing-sim, new `SimThingKind`, pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority
-in output, or FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
-[`mapgenerator_cli_pr1_params_results.md`](tests/mapgenerator_cli_pr1_params_results.md) (PROBATION). **PR2 next:**
-deterministic RNG + square lattice occupancy core.
+in output, or FIELD-MOVIE-DATASET-0 export. **DA-APPROVED (2026-06-14).** See
+[`mapgenerator_cli_pr1_params_results.md`](tests/mapgenerator_cli_pr1_params_results.md) (CURRENT_EVIDENCE). **PR2
+next:** deterministic RNG + square lattice occupancy core.
+
+**0.0.8.6 MapGeneratorCLI addendum (2026-06-14, PR2).** **0.0.8.2.5 MapGen remains closed.** MapGeneratorCLI PR2 adds
+only deterministic RNG (`MapGenRng` / SplitMix64), square integer lattice, producer-side core mask, and
+one-system-per-cell occupancy with deterministic collision relocation. No shape generation algorithms, topology,
+scenario emitter, MapGen lowering calls, runtime, GPU, simthing-sim, new `SimThingKind`,
+pathfinding/movement/route/predecessor/border/frontline semantics, Euclidean authority in output, or
+FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
+[`mapgenerator_cli_pr2_lattice_results.md`](tests/mapgenerator_cli_pr2_lattice_results.md) (PROBATION). **PR3 next:**
+`ShapeStrategy` trait + registry + elliptical/static strategy seam — still no emitter.

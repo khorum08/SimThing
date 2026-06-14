@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 DA-APPROVED & MERGED (2026-06-14, #674, remediation in this PR): standalone `simthing-mapgenerator` crate + full §3A parameter surface + data-driven shape registry descriptor shell + validation-only dry-run — no generation. PR2 may proceed.**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 DA-APPROVED & MERGED (2026-06-14, #674). PR2 DA-APPROVED & MERGED (2026-06-14, #676): SplitMix64 RNG + square lattice + core mask + one-system-per-cell occupancy with deterministic relocation — no shape generation. PR3 may proceed. (DA notes carried: O(cells) relocation + `cell_count` overflow bound, both for the scale-envelope rung.)**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -207,12 +207,14 @@ mechanical under §3.
   nebulas, initializer buckets, inert metadata); prints parsed params in dry-run; **no placement, no
   emission.** Accept: builds; no `simthing-*` runtime dep; no sim/kind; inert metadata parsed but flagged
   non-generating. Stop: a param needs sim/spec types (§7).
-  **Status: PASS pending DA review (2026-06-14).** Result:
-  [`tests/mapgenerator_cli_pr1_params_results.md`](tests/mapgenerator_cli_pr1_params_results.md) (PROBATION).
-  **PR2 next:** deterministic RNG + square lattice occupancy core.
+  **Status: DA-APPROVED (2026-06-14, #674).** Result:
+  [`tests/mapgenerator_cli_pr1_params_results.md`](tests/mapgenerator_cli_pr1_params_results.md) (CURRENT_EVIDENCE).
 - **PR2** — seeded RNG (pinned algorithm) + square-lattice occupancy set; `core_radius` masks central
   cells; place N points one-per-cell with deterministic collision relocation. Accept: same seed ⇒ identical
   occupancy; square; no sub-cell coords. Stop: needs Euclidean *authority* (only quantized float allowed).
+  **Status: PASS pending DA review (2026-06-14).** Result:
+  [`tests/mapgenerator_cli_pr2_lattice_results.md`](tests/mapgenerator_cli_pr2_lattice_results.md) (PROBATION).
+  **PR3 next:** `ShapeStrategy` trait + registry + elliptical/static strategy seam — still no emitter.
 - **PR3** — `ShapeStrategy` trait + registry + descriptor (advertised name/params); register `elliptical`
   (uniform-ish disc) and `static` (passthrough). Accept: strategies resolved by name from the registry;
   unknown shape ⇒ clean error listing registered shapes; adding a strategy touches only registry+tests.
