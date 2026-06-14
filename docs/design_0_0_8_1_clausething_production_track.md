@@ -574,3 +574,14 @@ remains subsequent. **Genuine DA sign-off (Opus, 2026-06-14) after a targeted DA
 arena enrollment was repaired from `InstallTarget(deposits[0])` to `ExplicitOnly` (multi-deposit-safe);
 battery reran green. **PR5 may proceed** under its own DA-review gate (only the Design Authority writes a
 DA sign-off).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR5).** **0.0.8.2 remains closed.** MapGen PR5 adds bounded
+hyperlane-to-link/lane-coupling authoring from the tiny MapGen slice (`generate_mapgen_links` → N4 lattice
+links plus `mapgen::lane_coupling` inert properties on the PR4-enrolled pack). PR5 remains front-end
+topology/coupling authoring only — no pathfinding, movement, routes, predecessors, border/frontline,
+Movement-Front, PALMA W/D, FIELD_POLICY, runtime/GPU/driver/simthing-sim changes, or GPU opt-in.
+**FIELD-MOVIE-DATASET-0** remains subsequent. **Genuine DA sign-off (Opus, 2026-06-14): APPROVE — no fix
+needed** — `mapgen::lane_coupling` is inert authoring metadata only; N4 classification uses lattice
+`(row,col)` only; battery reran green. See
+[`mapgen_pr5_links_results.md`](tests/mapgen_pr5_links_results.md) (CURRENT_EVIDENCE). **PR6 may proceed**
+(subject to its own DA-review gate; only the Design Authority writes a DA sign-off).

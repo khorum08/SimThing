@@ -30,14 +30,15 @@ See [`docs/clausething/mapgen_corpus_manifest.md`](../../../../../docs/clausethi
 - `vanilla/map/setup_scenarios/static_galaxy_example.txt` — hub pentad + explicit hyperlanes
 - `vanilla/common/solar_system_initializers/example.txt` — pedagogical initializer payload shape
 
-**Contents (hand-authored):** five system locations, five bounded N4-style links, one deposit child,
-optional nebula metadata comment on the hub sector.
+**Contents (hand-authored):** five system locations, five hyperlane declarations (lowered in PR5 to three
+N4 lattice links plus two lane couplings), one deposit child, optional nebula metadata comment on the hub
+sector.
 
 ## PR2 raw parse fixture — `tiny_pentad_hub_slice_raw.clause`
 
 | File | Status |
 |---|---|
-| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter; **lowered by PR3** hierarchy generator; **RF-enrolled by PR4** |
+| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter; **lowered by PR3** hierarchy generator; **RF-enrolled by PR4**; **link/coupling lowered by PR5** |
 
 Stellaris-style raw authoring idioms: `static_galaxy_scenario`, repeated `system` / `add_hyperlane`,
 `nebula`, and `example_rim_initializer` with `planet` + `deposit` child. Header uses jomini `#` line
@@ -49,6 +50,7 @@ comment (Paradox-style) with required hand-authored disclaimer; no Paradox copy.
 cargo test -p simthing-clausething --test mapgen_neutral_ast_parse
 cargo test -p simthing-clausething --test mapgen_lattice_hierarchy
 cargo test -p simthing-clausething --test mapgen_resource_flow
+cargo test -p simthing-clausething --test mapgen_links
 ```
 
 PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `Location` SimThings with
@@ -57,6 +59,11 @@ PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `L
 PR4 adds bounded Resource Flow enrollment from the PR3 hierarchy: deposit minerals intrinsic-flow
 feedstock + suppression/disruption arena with explicit participants, caps, and expansion report. No
 Movement-Front, PALMA, FIELD_POLICY, or hyperlane output in PR4.
+
+PR5 lowers `add_hyperlane` declarations into bounded N4 lattice links plus bounded `mapgen::lane_coupling`
+inert authoring properties (long-range edges). Adjacency uses PR3 lattice placements only — not Stellaris
+`position` coordinates. No pathfinding, movement, routes, predecessors, border/frontline, Movement-Front,
+PALMA, FIELD_POLICY, or runtime/GPU/driver/simthing-sim output in PR5.
 
 ## Closeout guardrails (unchanged)
 
@@ -68,4 +75,4 @@ cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
 
 MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
-MapGen PR4 adds `mapgen_resource_flow` tests.
+MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests.

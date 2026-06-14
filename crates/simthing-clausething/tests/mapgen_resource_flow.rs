@@ -94,7 +94,10 @@ fn generated_rf_participants_are_explicit_not_property_possession_implicit() {
     // DA repair (PR4): both arenas enroll via ExplicitOnly over their authoritative
     // explicit_participants list — the deposit arena must NOT single out one deposit via an
     // InstallTarget selector (multi-deposit-safe; see mapgen_resource_flow.rs deposit-arena note).
-    assert_eq!(deposit.enrollment, Some(EnrollmentSelectorSpec::ExplicitOnly));
+    assert_eq!(
+        deposit.enrollment,
+        Some(EnrollmentSelectorSpec::ExplicitOnly)
+    );
     assert_eq!(suppression.explicit_participants.len(), 5);
     assert_eq!(
         suppression.enrollment,
