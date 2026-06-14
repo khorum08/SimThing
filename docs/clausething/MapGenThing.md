@@ -19,12 +19,13 @@
 > locations, links, RF arenas, PALMA feedstock, or commitments. PR3 is the first hierarchy-generation rung.
 > No Paradox files committed. No parser/importer runtime.
 >
-> **PR3 gridcell lattice hierarchy (2026-06-13, DA review pending):** `generate_mapgen_lattice_hierarchy`
+> **PR3 gridcell lattice hierarchy (2026-06-13, DA-APPROVED post-merge):** `generate_mapgen_lattice_hierarchy`
 > in `mapgen_lattice.rs` lowers the tiny raw fixture into scenario-container-compatible hierarchy
 > (`galaxy_map` → `pentad_sector` → gridcell systems as ordinary `Location` nodes). Mapping-role metadata
 > lives under the `mapgen` property namespace — not a new `SimThingKind`. Fixture-local 3×3 placements;
 > canonical 200×200 square lattice documented in metadata only; Stellaris positions are inert render
 > metadata. No RF, Movement-Front, PALMA, FIELD_POLICY, or hyperlane link output in PR3.
+> Audit: [`mapgen_pr3_da_audit_results.md`](../tests/mapgen_pr3_da_audit_results.md). **PR4 may proceed.**
 >
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
