@@ -361,23 +361,38 @@ falloff-shaped fronts.
 > Dynamics* ([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)) — deliberately **not** "SEAD",
 > which carries an unrelated military connotation. Never write "SEAD" anywhere in the repo.
 
-A **grid** is a parent SimThing whose children are **gridcell SimThings** laid out as a 2D map. A
-gridcell is an authored mapping-role on an ordinary SimThing — **not a new kind** — backed by a slot
-range whose **data columns are allocated positionally according to the parent's 2D map of child
-cells**, addressed as `(width, height, col)` so the GPU stencil can walk neighbors as pure index
-arithmetic. The parent collects its cells the same way every parent collects every child: `SlotRange`
-reduction over their columns. Grids exist at **whatever scales a scenario authors** — the engine
-carries no fixed roster of grid kinds; *what* a grid or a cell represents is scenario data, never
-engine knowledge.
+**A `Location` SimThing *is* a gridcell SimThing — the terms are interchangeable, and the spatial
+identity is intrinsic.** Every SimThing of kind `Location` carries a **grid coordinate**: a position in
+its parent's grid map of child cells. Owning that coordinate and participating in the **spatial arena**
+is what `Location` *means* — it is **not** an optional "mapping-role" bolted onto an otherwise-ordinary
+node. "Gridcell," "Location SimThing," and "spatial-arena participant" name the same thing; there is no
+non-spatial `Location`. This is **not a new `SimThingKind`** — `Location` is the kind, and the gridcell
+identity is what that kind already carries. The engine holds no fixed roster of grid kinds; *what* a
+Location is — a star system, a planet-surface tile, a sector — is scenario data, never engine knowledge.
+Future agents: treat "is a `Location`," "is a gridcell," and "occupies a coordinate in the spatial
+arena" as one statement, and never demote a Location to a position-less abstract node.
 
-**Location SimThings are spatial — always.** Every SimThing of kind `Location` (and every gridcell,
-which is a `Location` wearing a mapping-role) participates as a **spatial entity**: it holds its
-resource-flow channels (§6) as a cell of some grid, so its **accumulated property values are
-expressible as magnitudes on the heat map** the Movement-Front automaton evolves and reduces (§7.2).
-There is no non-spatial `Location` — spatial participation in a grid is what `Location` *means*, and
-this holds generically for any domain a scenario authors, with no engine notion of what the location
-*is*. Future agents: treat "is a `Location`/gridcell" and "participates spatially in a grid" as the
-same statement.
+**The parent owns the grid; its child Locations are the cells; their columns are the cell state — this
+is the load-bearing column formation.** A parent SimThing lays out its child Location SimThings
+positionally as a grid map. Each child Location occupies a `(width, height, col)` slot — a **3-axis
+layout**: the spatial position of the cell (`width × height`) crossed with the per-cell **column stack**
+(`col`) — so the GPU stencil walks neighbors as pure index arithmetic. The hard-won integration this
+formation exists for: **a child Location's resource-flow accumulator-arena columns (§5) are laid out
+*onto* the parent's grid** at the child's coordinate. The values a Location's own subtree reduces and
+disburses into those flow columns (§3, §5) **are** the cell-state columns the Movement-Front stencil
+evolves — the suppression / threat / supply arena pressure accumulated *at* a cell **is** the field
+*at* that cell. Channeling a Location's children onto its cell and propagating that cell across the map
+are therefore the **same columns**, seen once by resource-flow reduction and once by the stencil —
+never a copy into a separate "field" object. (The parent also reduces its cells the way every parent
+reduces every child — `SlotRange` over their columns — the upward, strategic half of §7.2 Layer 2.)
+
+**A cell is shaped by its neighbors — falloff is the spatial arena's flow.** Exactly as a flow-arena
+participant is shaped by the budget disbursed to it, a gridcell Location is **influenced by the falloff
+of nearby gridcell Locations**: the stencil (§7.2; Gu-Yang) spreads each cell's value across its
+bounded neighborhood, so a Location's resolved state is its own seeded value **plus the falloff reaching
+it from neighboring cells**. The moving contour where opposing falloffs meet **is the front**. This is
+the spatial-arena analogue of reduce-up / disburse-down: seed a cell from its subtree, let
+bounded-horizon falloff carry it to its neighbors, and read the resulting gradient as the heat map.
 
 **Base canonical grid dimensions are always square** (P2 symmetry has no preferred axis): the default
 "medium" grid is **200×200**, scaling up — staying square — when cell density demands more than the
