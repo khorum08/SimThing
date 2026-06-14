@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR6R — PR6 Record Correction + Hyperlane Option Fail-Closed Hardening
 
-> **Artifact lifecycle: PROBATION** (pending DA approval after independent branch-source audit).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after merge #685; promoted from PROBATION).
 
 ## Verdict
 
-**PROBATION — pending DA review.** Remedial PR before PR6b/PR7: corrects PR6 production-doc evidence status and adds
+**PASS — DA-APPROVED & MERGED (#685, 2026-06-14).** Remedial PR before PR6b/PR7: corrects PR6 production-doc evidence status and adds
 fail-closed validation for public `HyperlaneOptions`. **Zero** `crates/simthing-clausething/src/` changes. No
 route/path/predecessor/movement/border/frontline semantics, field operators, RF, Movement-Front, PALMA, driver/GPU,
 or FIELD-MOVIE-DATASET-0 work.
@@ -19,7 +19,7 @@ closed and is not reopened.** PR6b (special routes) and PR7 (partition/bridge) a
 | Artifact | Classification | Action |
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr6_hyperlane_results.md` | CURRENT_EVIDENCE | Unchanged — PR6 proof preserved |
-| `docs/tests/mapgenerator_cli_pr6r_hardening_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_pr6r_hardening_results.md` | CURRENT_EVIDENCE (DA-approved #685) | Promoted from PROBATION |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/tests/mapgenerator_cli_pr2_lattice_results.md` | CURRENT_EVIDENCE | Unchanged |
@@ -100,9 +100,8 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**PROBATION — pending DA approval.** No executive sign-off yet.
+**DA-APPROVED & MERGED — 2026-06-14 (#685).** Project owner approval recorded after merge.
 
 ## Whether PR6b or PR7 may proceed
 
-**No — await DA approval of PR6R.** After DA approves this remedial PR, **PR6b** (bounded special-route emission) may
-proceed; **PR7** (partition/bridge structural producer + clustering) remains after PR6b per ladder ordering.
+**PR6b may proceed** — PR6R record correction and hyperlane hardening are complete. **PR7** (partition/bridge structural producer + clustering) remains after PR6b per ladder ordering.

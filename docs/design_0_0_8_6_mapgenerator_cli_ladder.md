@@ -254,6 +254,18 @@ mechanical under §3.
   emission; complete them as a small PR6b (same bounded coupling surface) before or alongside the §3A special-routes
   proof. Result: [`tests/mapgenerator_cli_pr6_hyperlane_results.md`](tests/mapgenerator_cli_pr6_hyperlane_results.md)
   (CURRENT_EVIDENCE). DA note: `generate_hyperlane_topology` is O(N²) candidate enumeration — bound before the PR11 scale rung.
+- **PR6R** — record correction + fail-closed `HyperlaneOptions` validation (`InvalidEdgeCounts`, `InvalidFanoutCap`,
+  `UnsatisfiedMinEdgeCount`). Accept: zero closed `src/`; PR6 happy path unchanged; invalid public options return
+  `Err` not panic. Stop: needs route/path semantics or closed-front-end widening (§7).
+  **Status: DA-APPROVED & MERGED (2026-06-14, #685).** Result:
+  [`tests/mapgenerator_cli_pr6r_hardening_results.md`](tests/mapgenerator_cli_pr6r_hardening_results.md) (CURRENT_EVIDENCE).
+- **PR6b** — bounded wormhole-pair / gateway special-route endpoint selection represented **only** as existing
+  `add_hyperlane` declarations; long-range pairs lower as bounded lane couplings via closed `mapgen_links` (no new
+  grammar). Accept: `num_wormhole_pairs` / `num_gateways` bounded; deterministic; fail-closed when impossible; zero
+  closed `src/`; no route/predecessor/path/movement/border/frontline. Stop: new wormhole/gateway grammar or closed
+  lowerer amendment required (§7).
+  **Status: PROBATION — pending DA review.** Result:
+  [`tests/mapgenerator_cli_special_routes_results.md`](tests/mapgenerator_cli_special_routes_results.md) (PROBATION).
   **PR7 next:** partition/bridge structural producer + clustering — no route/path/predecessor semantics and no GPU.
 - **PR7** — partition placed stars into home/open RegionCells (`max/min_systems`, `method`
   breadth/depth_first) and connect partitions with `min/max_bridges` bounded couplings; emit `cluster_count`
