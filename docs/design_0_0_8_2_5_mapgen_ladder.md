@@ -1,7 +1,7 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS pending DA review; PR3+ pending.** Planning artifact that **pulls the deferred
-> Planning artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3+ pending.** Planning
+> artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
 >
@@ -296,7 +296,7 @@ Owner: Cursor (DA review). Re-read ADR-MAP semantic-free posture. Parse fixtures
 repeated keys/order/nesting; **zero semantic decisions; no spec/sim change.** Tests: `mapgen_neutral_ast_parse`.
 Stop: jomini can't represent a construct → escalate (§9).
 
-**Status: PASS pending DA review (2026-06-13, Cursor PR 2).** Added parse-only neutral-AST adapter
+**Status: PASS / DA-APPROVED (2026-06-13, Cursor PR 2; Opus / Design Authority — battery reran green under DA review: `mapgen_neutral_ast_parse` 8 passed, `ct_scenario_container` 45 passed; `fmt`/`git diff --check` clean; merge `edeab38a`).** Added parse-only neutral-AST adapter
 (`mapgen_neutral_ast.rs`: `parse_mapgen_neutral_document` → `RawDocument` via jomini). Hand-authored raw
 fixture `tiny_pentad_hub_slice_raw.clause` (Stellaris-style idioms; not lowered). Focused tests assert
 repeated keys, nesting, and sibling order/count; no semantic mapping; no SimThing structures. PR2 is

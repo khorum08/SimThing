@@ -4,9 +4,12 @@
 
 ## Verdict
 
-**PASS pending DA review** — neutral-AST parse-only adapter exists; tiny hand-authored raw mapgen fixture
-parses; repeated keys, nesting, and sibling order/count preserved by tests; no semantic mapping; no SimThing
-structures produced; no Paradox files committed; lifecycle audit recorded; focused tests pass.
+**PASS / DA-APPROVED (2026-06-13, Opus / Design Authority; merge `edeab38a`)** — neutral-AST parse-only
+adapter exists; tiny hand-authored raw mapgen fixture parses; repeated keys, nesting, and sibling
+order/count preserved by tests; no semantic mapping; no SimThing structures produced; no Paradox files
+committed; lifecycle audit recorded; focused tests pass. DA reran the battery green
+(`mapgen_neutral_ast_parse` 8 passed, `ct_scenario_container` 45 passed, `fmt`/`git diff --check` clean)
+and verified all checklist items independently. `mapgen_neutral_ast_parse` promoted to LIVE_GUARDRAIL.
 
 ## Track scope
 
@@ -94,18 +97,18 @@ git diff --check
 | `mapgen_neutral_ast_parse` | 8 passed |
 | `ct_scenario_container` | 45 passed |
 
-## DA review checklist
+## DA review checklist (verified 2026-06-13, Opus / Design Authority)
 
-- [ ] No semantic decisions in parse
-- [ ] No mapgen typed semantic AST yet
-- [ ] Repeated keys, order, and nesting are preserved
-- [ ] No generated SimThing structures
-- [ ] No runtime/GPU/driver/simthing-sim changes
-- [ ] No Paradox files committed
-- [ ] No movement/pathfinding/route/predecessor/border/frontline semantics
-- [ ] No Candidate F implication
-- [ ] Read-order and lifecycle audit performed
-- [ ] Tests are focused and not proof theater
+- [x] No semantic decisions in parse
+- [x] No mapgen typed semantic AST yet
+- [x] Repeated keys, order, and nesting are preserved
+- [x] No generated SimThing structures
+- [x] No runtime/GPU/driver/simthing-sim changes
+- [x] No Paradox files committed
+- [x] No movement/pathfinding/route/predecessor/border/frontline semantics
+- [x] No Candidate F implication
+- [x] Read-order and lifecycle audit performed
+- [x] Tests are focused and not proof theater
 
 ## Constraints preserved
 

@@ -550,4 +550,4 @@ runtime, GPU, or editor code in PR1.
 neutral-AST parse-only adapter (`parse_mapgen_neutral_document` → `RawDocument`). PR2 is parse-only: no
 semantic mapping, no generated SimThing structure, no parser/importer runtime, no Paradox files committed.
 PR3 is the first hierarchy-generation rung. **FIELD-MOVIE-DATASET-0** / editor/corpus/export remains
-subsequent. DA review required before merge.
+subsequent. **DA-approved and merged 2026-06-13 (merge `edeab38a`).**
