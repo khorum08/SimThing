@@ -76,6 +76,13 @@
 > PR10 end-to-end sample. Report:
 > [`mapgen_pr9_constitution_guards_results.md`](../tests/mapgen_pr9_constitution_guards_results.md).
 >
+> **PR10 end-to-end canonical sample (2026-06-14, DA review before merge):**
+> `mapgen_pr10_end_to_end_compact_evidence` proves the tiny pentad fixture through PR2 neutral parse → PR3
+> lattice → PR4 RF → PR5 links → PR6 Movement-Front → PR7 PALMA → driver admit/install → GPU-resident
+> mapping tick + scheduled W/PALMA chain + compact D probe. End-to-end proof only — no new gameplay semantics,
+> no pathfinding/movement/routes/predecessors, no semantic WGSL, no new GPU kernel, no FIELD-MOVIE-DATASET-0
+> export. Report: [`mapgen_pr10_end_to_end_results.md`](../tests/mapgen_pr10_end_to_end_results.md).
+>
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei

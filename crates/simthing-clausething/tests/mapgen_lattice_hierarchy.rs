@@ -47,7 +47,7 @@ fn gridcells_are_ordinary_location_nodes_with_mapping_role_metadata() {
         assert_eq!(node.kind, SimThingKind::Location);
         assert!(node.properties.iter().any(|property| {
             property.namespace == "mapgen"
-                && property.name == "mapping_role"
+                && property.name.starts_with("gridcell_mapping_role_")
                 && property.id.starts_with("mapgen_gridcell_mapping_role_")
                 && property.description.contains("gridcell")
         }));
@@ -60,13 +60,13 @@ fn authored_positions_are_inert_render_metadata_only() {
     let hierarchy = generate_default_hierarchy();
     let hub = find_node(&hierarchy.pack.root_node, "0").expect("hub system");
     assert!(hub.properties.iter().any(|property| {
-        property.name == "render_position_x" && property.description.contains("inert=0")
+        property.name.starts_with("render_position_x_") && property.description.contains("inert=0")
     }));
     assert!(hub.properties.iter().any(|property| {
-        property.name == "render_position_y" && property.description.contains("inert=0")
+        property.name.starts_with("render_position_y_") && property.description.contains("inert=0")
     }));
     assert!(hub.properties.iter().any(|property| {
-        property.name == "render_position_z" && property.description.contains("inert=0")
+        property.name.starts_with("render_position_z_") && property.description.contains("inert=0")
     }));
 }
 
@@ -94,7 +94,8 @@ fn initializer_payloads_lower_as_child_metadata_not_new_kinds() {
     assert_eq!(rim.children[0].kind, SimThingKind::Cohort);
     assert_eq!(rim.children[1].kind, SimThingKind::Location);
     assert!(rim.children[1].properties.iter().any(|property| {
-        property.name == "deposit_minerals_authored" && property.description.contains("inert=4")
+        property.name.starts_with("deposit_minerals_authored_")
+            && property.description.contains("inert=4")
     }));
 }
 

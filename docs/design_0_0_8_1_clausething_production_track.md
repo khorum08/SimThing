@@ -621,7 +621,13 @@ constitutional/admission guards before PR10: Candidate F / Euclidean authority, 
 one-system-per-cell, inert render positions, and no route/path/predecessor/movement/border/frontline semantics.
 PR9 is guard hardening only — no new generator feature beyond guards, no new GPU kernel, no semantic WGSL, no
 runtime engine, no simthing-sim changes, no PR10 end-to-end sample execution, no FIELD-MOVIE-DATASET-0 export.
-**DA-APPROVED (Opus, 2026-06-14)** after a genuine pre-merge audit + battery rerun. **PR10 may proceed**
-under its own DA-review gate. See
+**DA-APPROVED (Opus, 2026-06-14)** after a genuine pre-merge audit + battery rerun. See
 [`mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md) (CURRENT_EVIDENCE).
-**PR10 may proceed** after PR9 DA approval.
+
+**0.0.8.2.5 MapGen addendum (2026-06-14, PR10).** **0.0.8.2 remains closed.** MapGen PR10 proves the tiny
+canonical MapGen sample through ingest, generation, admission/install, and GPU compact evidence via
+`mapgen_pr10_end_to_end_compact_evidence`. PR10 is not a gameplay engine, pathfinding engine, movement engine,
+or corpus/export seam. PR10 uses existing GPU-resident surfaces only — no new GPU kernel, no semantic WGSL, no
+simthing-sim changes, no FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
+[`mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md) (PROBATION). **PR11 closeout
+remains next if DA approves PR10.**

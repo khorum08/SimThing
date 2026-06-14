@@ -106,6 +106,17 @@ no PR10 end-to-end sample.
 cargo test -p simthing-clausething --test mapgen_constitution_guards
 ```
 
+## PR10 — end-to-end canonical sample (DA review)
+
+Driver test `mapgen_pr10_end_to_end_compact_evidence` runs the tiny pentad fixture through PR2 neutral parse
+→ PR3 lattice → PR4 RF → PR5 links → PR6 Movement-Front → PR7 PALMA → `install_atomic` admission →
+GPU-resident mapping tick + scheduled W/PALMA chain + compact D probe. Real GPU adapter required for PASS;
+GPU skip is not PASS. No full-field CPU decision readback, no new GPU kernel, no simthing-sim changes.
+
+```text
+cargo test -p simthing-driver --test mapgen_pr10_end_to_end_compact_evidence
+```
+
 ## Closeout guardrails (unchanged)
 
 0.0.8.2 closeout batteries remain the active ClauseThing guardrails:
@@ -119,4 +130,5 @@ MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_latti
 MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests. MapGen PR6 adds
 `mapgen_movement_front` tests. MapGen PR7 adds `mapgen_palma` tests. MapGen PR8 adds
 `mapgen_pr8_scheduled_concurrency` driver GPU measurement tests. MapGen PR9 adds
-`mapgen_constitution_guards` consolidated constitutional guard tests (DA review before merge).
+`mapgen_constitution_guards` consolidated constitutional guard tests. MapGen PR10 adds
+`mapgen_pr10_end_to_end_compact_evidence` driver end-to-end harness (DA review before merge).
