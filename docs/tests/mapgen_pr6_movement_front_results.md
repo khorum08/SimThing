@@ -1,20 +1,27 @@
 # MapGen PR6 Movement-Front Authoring Results
 
-> **Artifact lifecycle: PROBATION** (PR6 Movement-Front report; pending DA review before merge promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR6 Movement-Front report; DA-approved 2026-06-13).
 
 ## Verdict
 
-**PASS pending DA review** — PR6 lowers the PR5-enrolled tiny MapGen slice into existing Movement-Front
-authoring feedstock only: L1 bounded `SaturatingFlux`/`RegionFieldSpec` with suppression-arena
-`ArenaPressureBindingSpec`; L2 `RegionFieldReductionSpec` hierarchy feedstock; L3
-`FirstSliceCommitmentSpec`/`HydratedScenarioCommitment` threshold feedstock. No PALMA, no driver/GPU
-runtime execution, no pathfinding/movement/route/predecessor/border/frontline semantics, no Euclidean
-authority, no new `SimThingKind`, no runtime/GPU/driver/simthing-sim file changes.
+**PASS / DA-APPROVED (2026-06-13, Opus / Design Authority)** — DA performed a genuine pre-merge audit
+against the branch source (not the PR body), reran the battery green (`mapgen_movement_front` 23,
+`mapgen_neutral_ast_parse` 8, `mapgen_lattice_hierarchy` 10, `mapgen_resource_flow` 16, `mapgen_links`
+19, `ct_scenario_container` 45; fmt/`git diff --check` clean), and confirmed: L1 is bounded local
+`SaturatingFlux`/`RegionFieldSpec` only (horizon 4, cap 8, `allow_extended_horizon: false`; rejects
+Normalized/Gradient/dense-global profiles); L2 is `RegionFieldReductionSpec` slot-range hierarchy feedstock
+that does not widen L1 horizon; L3 is `FirstSliceCommitmentSpec`/`HydratedScenarioCommitment` threshold
+feedstock, not CPU planning; PR4 suppression-arena `ArenaPressureBindingSpec` binds `mapgen_suppression::flow`
+onto PR3 gridcell placements (not Stellaris positions); pack explicitly clears PALMA/W/stress compose;
+forbidden route/path/predecessor/movement/border/frontline/cpu_planner vocabulary guarded; no sqrt/distance/
+Euclidean authority in generator source; no runtime/GPU/driver/simthing-sim file changes; no new
+`SimThingKind`; no semantic WGSL. **PR6 lowers the PR5-enrolled tiny MapGen slice into existing
+Movement-Front authoring feedstock only.**
 
 ## Track scope
 
-0.0.8.2.5 MapGen PR6: Movement-Front L1/L2/L3 authoring/lowering (core §7). **Do not merge until DA
-review.**
+0.0.8.2.5 MapGen PR6: Movement-Front L1/L2/L3 authoring/lowering (core §7). **Merged after genuine DA
+sign-off (Opus, 2026-06-13).**
 
 PR6 generates Movement-Front authoring/lowering feedstock only. PR6 uses existing GPU-resident
 field/reduction/threshold surfaces. PR6 does not add new GPU kernels. PR6 does not execute driver/GPU
@@ -62,9 +69,14 @@ not import the whole Stellaris corpus.
 | Artifact | Classification | Action |
 |---|---|---|
 | `mapgen_pr1`–`mapgen_pr5` reports/guardrails | CURRENT_EVIDENCE / LIVE_GUARDRAIL | Unchanged |
-| `mapgen_movement_front.rs` | PROBATION | New PR6 generator |
-| `mapgen_movement_front.rs` (tests) | PROBATION | New PR6 guardrail battery |
-| `docs/tests/mapgen_pr6_movement_front_results.md` | PROBATION | This report |
+| `mapgen_neutral_ast_parse.rs` | LIVE_GUARDRAIL | Unchanged |
+| `mapgen_lattice_hierarchy.rs` | LIVE_GUARDRAIL | Unchanged |
+| `mapgen_resource_flow.rs` | LIVE_GUARDRAIL | Unchanged |
+| `mapgen_links.rs` | LIVE_GUARDRAIL | Unchanged |
+| `ct_scenario_container.rs` | LIVE_GUARDRAIL | Unchanged |
+| `mapgen_movement_front.rs` | CURRENT_EVIDENCE | New PR6 generator (DA-approved) |
+| `mapgen_movement_front.rs` (tests) | LIVE_GUARDRAIL | Promoted at DA approval |
+| `docs/tests/mapgen_pr6_movement_front_results.md` | CURRENT_EVIDENCE | This report; DA-approved |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ## L1/L2/L3 lowering summary (tiny pentad fixture)
@@ -108,4 +120,5 @@ Driver/spec tests not required — no spec-facing admission API changes outside 
 
 ## Governance
 
-Only the Design Authority writes a DA sign-off. PR7 may proceed only after DA approval of PR6.
+**Genuine DA sign-off (Opus / Design Authority, 2026-06-13): APPROVE — no fix needed.** PR7 may proceed
+(subject to its own DA-review gate; only the Design Authority writes a DA sign-off).

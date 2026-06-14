@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 may proceed.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED pending merge (Opus, 2026-06-13); PR7 may proceed.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -425,22 +425,22 @@ lattice, bounded per-tick horizon (H ≤ 8, `source_capped_normalized`, ping-pon
 **No horizon-widening-as-strategic-shortcut.** Tests: `mapgen_movement_front`. Stop: a field wants a wider
 horizon for strategic awareness → escalate (§9).
 
-**Status: PASS pending DA review (Cursor PR 6, 2026-06-14).** Added
+**Status: PASS — DA-APPROVED (Opus, 2026-06-13).** Added
 `generate_mapgen_movement_front_authoring` (`mapgen_movement_front.rs`) lowering PR5 enrollment into
 existing Movement-Front authoring surfaces: L1 `RegionFieldSpec`/`SaturatingFlux` with bounded horizon and
 `ArenaPressureBindingSpec` from PR4 suppression RF; L2 `RegionFieldReductionSpec` hierarchy feedstock; L3
 `FirstSliceCommitmentSpec`/`HydratedScenarioCommitment` threshold feedstock. No PALMA, no driver/GPU/runtime
 execution, no pathfinding/movement/route/predecessor/border/frontline semantics, no Euclidean authority, no
 new `SimThingKind`. Tests: `mapgen_movement_front` (23 passed). Result:
-[`tests/mapgen_pr6_movement_front_results.md`](tests/mapgen_pr6_movement_front_results.md) (PROBATION).
+[`tests/mapgen_pr6_movement_front_results.md`](tests/mapgen_pr6_movement_front_results.md) (CURRENT_EVIDENCE).
 
 ### PR 6 artifact lifecycle audit (§6.6)
 
 | Artifact | Classification | Action |
 |---|---|---|
-| `mapgen_movement_front.rs` | PROBATION | New PR6 generator |
-| `mapgen_movement_front.rs` (tests) | PROBATION | New PR6 guardrail battery |
-| `docs/tests/mapgen_pr6_movement_front_results.md` | PROBATION | New PR6 report |
+| `mapgen_movement_front.rs` | CURRENT_EVIDENCE | New PR6 generator (DA-approved) |
+| `mapgen_movement_front.rs` (tests) | LIVE_GUARDRAIL | Promoted at DA approval |
+| `docs/tests/mapgen_pr6_movement_front_results.md` | CURRENT_EVIDENCE | New PR6 report; DA-approved |
 | Prior PR1–PR5 guardrails | unchanged | See PR5 audit |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
