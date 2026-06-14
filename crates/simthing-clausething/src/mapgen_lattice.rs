@@ -441,8 +441,8 @@ fn build_scenario_clause(
             })?;
             out.push_str("                        children = {\n");
             out.push_str(&format!(
-                "                            child = {}_planet {{\n",
-                initializer.id
+                "                            child = {}_{}_planet {{\n",
+                system.id, initializer.id
             ));
             out.push_str("                                kind = Cohort\n");
             out.push_str(&format!(
@@ -459,8 +459,8 @@ fn build_scenario_clause(
             out.push_str("                            }\n");
             if let Some(minerals) = &initializer.deposit_minerals {
                 out.push_str(&format!(
-                    "                            child = {}_deposit {{\n",
-                    initializer.id
+                    "                            child = {}_{}_deposit {{\n",
+                    system.id, initializer.id
                 ));
                 out.push_str("                                kind = Location\n");
                 out.push_str(

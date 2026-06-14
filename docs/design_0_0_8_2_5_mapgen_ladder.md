@@ -586,6 +586,20 @@ archiving.
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Do-not-delete for MapGeneratorCLI |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
+### Post-closeout amendment — lowerer child-id scoping (2026-06-14)
+
+**Purpose:** Fix latent duplicate hydrated child node IDs when multiple systems share one initializer bareword.
+**Not a reopening** of 0.0.8.2.5 scope — a DA-authorized closed lowerer bugfix exposed by 0.0.8.6 producer
+lowering proof work.
+
+**Change:** `{initializer.id}_planet/_deposit` → `{system.id}_{initializer.id}_planet/_deposit` in
+`mapgen_lattice.rs` only.
+
+**Status: PASS pending DA review.** Result:
+[`tests/mapgen_lowerer_child_id_amendment_results.md`](tests/mapgen_lowerer_child_id_amendment_results.md)
+(PROBATION). **0.0.8.6 MapGeneratorCLI PR5 may rebase onto this amendment; PR5 itself must not contain closed
+`src/` edits.**
+
 ## 7. Test strategy
 
 Focused, fast, GPU-skipping-clean. Cover once each: neutral-AST fidelity; gridcell-lattice hierarchy;

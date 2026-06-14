@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 DA-APPROVED & MERGED (2026-06-14, #674). PR2 DA-APPROVED & MERGED (2026-06-14, #676). PR3 DA-APPROVED & MERGED (2026-06-14, #677). PR4 REJECTED then REMEDIATED & DA-APPROVED & MERGED (2026-06-14, #678): emitter retargeted from the rejected `hydrate_scenario` `scenario{location}` form to the `static_galaxy_scenario` neutral-AST grammar the closed `mapgen_lattice` reader + fixtures actually consume (bareword initializers + sibling defs; inert integer positions); no topology, no lowering, no front-end widening. PR5 may proceed. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1–PR4 DA-APPROVED & MERGED (#674, #676, #677, #678). PR5 requires prior 0.0.8.2.5 lowerer child-id amendment (separate PR); cleaned PR5 must have **zero** `crates/simthing-clausething/src/` changes. Mandatory producer-track gate: closed `src/` edit ⇒ stop and split to 0.0.8.2.5 amendment PR. PR6 next after PR5 DA approval: bounded hyperlane / `add_hyperlane` — no route/path/predecessor semantics and no GPU. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -32,6 +32,10 @@
 > surfaces, honoring every 0.0.8.2.5 adjudication (M1–M11) and the core/ADR paradigm. **If a rung's
 > behavior is not expressible as declarative output the closed front-end already accepts, it STOPS and
 > escalates (§7) — it never widens the lowering layer, the spec, or the runtime.**
+>
+> **Mandatory closed-`src/` gate (PR5+):** If any file under `crates/simthing-clausething/src/` would change,
+> **stop immediately** — do not continue the producer PR. Open a separate DA-authorized 0.0.8.2.5 amendment PR,
+> merge it, then resume the producer proof PR with zero closed `src/` changes.
 
 **Governing reads (in order):** `docs/invariants.md` → `simthing_core_design.md` §1.1 + §7 →
 `adr/mapping_sparse_regioncell.md` → `adr/resource_flow_substrate.md` → **`design_0_0_8_2_5_mapgen_ladder.md`
@@ -224,13 +228,15 @@ mechanical under §3.
   root block, `system { id position initializer }`, sibling minimal `*_initializer` definition). Accept: text
   only; positions inert; no links/fields yet; **not** `hydrate_scenario` `scenario/location` grammar. Stop:
   emitter wants to build spec structs or widen the closed front-end (§7).
-  **Status: REJECTED (Opus DA, #678) → REMEDIATED, PASS pending DA re-review (2026-06-14).** Result:
-  [`tests/mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md) (PROBATION).
-  **PR5 next:** parse/lowering through existing `mapgen_lattice`/`mapgen_links` path — still no topology and no GPU unless DA scopes it.
-- **PR5** — feed PR4 text through `parse_mapgen_neutral_document` → `generate_mapgen_lattice_hierarchy` /
-  existing MapGen front-end; assert it lowers to gridcell `Location`s (default-off). Accept: lowers **without
-  changing the lowering layer**; LIVE_GUARDRAIL battery green. Stop: front-end rejects ⇒ fix the *producer
-  output*, never the front-end (§7).
+  **Status: DA-APPROVED (2026-06-14, #678).** Result:
+  [`tests/mapgenerator_cli_pr4_emitter_results.md`](tests/mapgenerator_cli_pr4_emitter_results.md) (CURRENT_EVIDENCE).
+- **PR5** — feed PR4 text through `parse_mapgen_neutral_document` → `generate_mapgen_lattice_hierarchy` on the
+  **amended** closed lowerer; assert gridcell `Location`s. Accept: **zero** `crates/simthing-clausething/src/`
+  changes in PR5; `simthing-mapgenerator` dev-dependency only; every system emits initializer bareword; LIVE_GUARDRAIL
+  battery green. Stop: front-end rejects ⇒ fix producer output; closed defect ⇒ split to 0.0.8.2.5 amendment PR (§0 gate).
+  **Status: PASS pending DA review (#679).** Requires merged child-id amendment first. Result:
+  [`tests/mapgenerator_cli_pr5_lowering_results.md`](tests/mapgenerator_cli_pr5_lowering_results.md) (PROBATION).
+  **PR6 next:** bounded hyperlane topology / `add_hyperlane` emission — no route/path/predecessor semantics and no GPU.
 - **PR6** — emit bounded `link`/`add_hyperlane` honoring `max_hyperlane_distance` adjacency +
   `num_hyperlanes` density scaling + `random_hyperlanes` toggle + `prevent_hyperlane`; emit wormhole-pair /
   gateway **special routes** as bounded long-range lane couplings (per defaults/min-max). Accept: M3/M6 caps
