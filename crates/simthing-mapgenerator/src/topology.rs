@@ -74,12 +74,47 @@ pub enum HyperlaneError {
     EmptyPlacement,
     #[error("fixture lattice edge must be positive")]
     InvalidFixtureEdge,
+    #[error(
+        "hyperlane edge counts invalid: min={min_edge_count}, max={max_edge_count}, target={target_edge_count}"
+    )]
+    InvalidEdgeCounts {
+        min_edge_count: u32,
+        max_edge_count: u32,
+        target_edge_count: u32,
+    },
+    #[error("max_per_node_fanout must be positive")]
+    InvalidFanoutCap,
+    #[error(
+        "selected hyperlane count {selected_count} is below required minimum {min_edge_count}"
+    )]
+    UnsatisfiedMinEdgeCount {
+        selected_count: u32,
+        min_edge_count: u32,
+    },
     #[error("unknown system id '{id}'")]
     UnknownSystemId { id: String },
     #[error("hyperlane self-link for system '{id}'")]
     SelfLink { id: String },
     #[error("duplicate hyperlane edge ({from}, {to})")]
     DuplicateEdge { from: String, to: String },
+}
+
+/// Fail-closed validation for directly constructed [`HyperlaneOptions`].
+pub fn validate_hyperlane_options(options: &HyperlaneOptions) -> Result<(), HyperlaneError> {
+    if options.fixture_lattice_edge == 0 {
+        return Err(HyperlaneError::InvalidFixtureEdge);
+    }
+    if options.min_edge_count > options.max_edge_count {
+        return Err(HyperlaneError::InvalidEdgeCounts {
+            min_edge_count: options.min_edge_count,
+            max_edge_count: options.max_edge_count,
+            target_edge_count: options.target_edge_count,
+        });
+    }
+    if options.max_per_node_fanout == 0 {
+        return Err(HyperlaneError::InvalidFanoutCap);
+    }
+    Ok(())
 }
 
 /// Smallest square edge whose capacity fits `system_count` lowered grid slots.
@@ -124,9 +159,7 @@ pub fn generate_hyperlane_topology(
     if placement.systems.is_empty() {
         return Err(HyperlaneError::EmptyPlacement);
     }
-    if options.fixture_lattice_edge == 0 {
-        return Err(HyperlaneError::InvalidFixtureEdge);
-    }
+    validate_hyperlane_options(options)?;
 
     let ids: Vec<String> = placement.systems.iter().map(system_id_scalar).collect();
     let positions: Vec<(u32, u32)> = (0..placement.systems.len())
@@ -196,9 +229,17 @@ pub fn generate_hyperlane_topology(
         selected.push(HyperlaneEdge { from, to });
     }
 
+    let selected_count = selected.len() as u32;
+    if selected_count < options.min_edge_count {
+        return Err(HyperlaneError::UnsatisfiedMinEdgeCount {
+            selected_count,
+            min_edge_count: options.min_edge_count,
+        });
+    }
+
     let report = HyperlaneGenerationReport {
         candidate_count,
-        selected_count: selected.len() as u32,
+        selected_count,
         rejected_prevent,
         rejected_fanout,
     };
