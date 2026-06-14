@@ -621,6 +621,7 @@ constitutional/admission guards before PR10: Candidate F / Euclidean authority, 
 one-system-per-cell, inert render positions, and no route/path/predecessor/movement/border/frontline semantics.
 PR9 is guard hardening only — no new generator feature beyond guards, no new GPU kernel, no semantic WGSL, no
 runtime engine, no simthing-sim changes, no PR10 end-to-end sample execution, no FIELD-MOVIE-DATASET-0 export.
-**PASS pending DA review.** See
-[`mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md) (PROBATION).
+**DA-APPROVED (Opus, 2026-06-14)** after a genuine pre-merge audit + battery rerun. **PR10 may proceed**
+under its own DA-review gate. See
+[`mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md) (CURRENT_EVIDENCE).
 **PR10 may proceed** after PR9 DA approval.

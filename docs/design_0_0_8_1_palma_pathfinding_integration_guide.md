@@ -526,7 +526,7 @@ GPU exercise only; **DA-APPROVED (Opus, 2026-06-14)** — genuine GPU-source aud
 guard battery plus `validate_one_system_per_gridcell` admission helper. Hardens Candidate F / Euclidean,
 P1 bounded horizon, one-system-per-cell, inert positions, and forbidden route/path/predecessor/movement
 semantics across PR1–PR8 surfaces. Guard hardening only — no new GPU kernel, no PR10 end-to-end sample.
-**PASS pending DA review.** Report:
+**DA-APPROVED (Opus, 2026-06-14)** — guard-hardening only; battery reran green. Report:
 [`tests/mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md)
 (PROBATION).
 

@@ -1,10 +1,22 @@
 # MapGen PR9 Constitutional Guard Hardening Results
 
-> **Artifact lifecycle: PROBATION** (PR9 guard-hardening report; promotion deferred to MapGen closeout).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR9 guard-hardening report; DA-approved 2026-06-14).
 
 ## Verdict
 
-**PASS pending DA review** — PR9 consolidates constitutional guards before PR10 end-to-end sample. No new
+**PASS / DA-APPROVED (2026-06-14, Opus / Design Authority)** — DA performed a genuine pre-merge audit (not
+the PR body) and reran the battery green (`mapgen_constitution_guards` 21; clausething 8/10/16/19/23/19/45;
+`mapgen_pr8_scheduled_concurrency` 6; `ct_bh3_closeout_sample_driver` 2; fmt/`git diff --check` clean).
+Confirmed: this is **guard-hardening only** — the sole new source is `validate_one_system_per_gridcell` (a
+grid-metadata `(row,col)` uniqueness check wired into `generate_mapgen_lattice_hierarchy`, no render coords,
+no new kind). The 21-test battery is **meaningful, not theater**: it `include_str!`-scans the **actual
+source** of all six active generators (PR1–PR7) + the PR8 GPU/driver helpers for Euclidean-authority /
+forbidden-vocabulary / forbidden-kind tokens, and pairs every scan with a **behavioral** test
+(horizon-cap-rejected, allow_extended-rejected, dense/global-rejected, duplicate-cell-rejected,
+links-use-lattice-not-render-coords, positions-inert, PALMA-not-route, L2-doesn't-widen-L1, default-off, and
+a scan asserting the PR8 harness keeps `field_values.is_none()`). No new generator feature, GPU kernel,
+semantic WGSL, runtime engine, simthing-sim change, CPU planner, full-field readback, or FIELD-MOVIE-DATASET-0
+export. PR9 consolidates constitutional guards before PR10 end-to-end sample. No new
 generator capabilities, no new GPU kernel, no semantic WGSL, no runtime engine, no simthing-sim changes,
 no PR10 install exercise, no FIELD-MOVIE-DATASET-0 export.
 
@@ -100,8 +112,11 @@ git diff --check                    PASS
 
 ## DA sign-off status
 
-**Pending DA review before merge.**
+**DA-APPROVED (2026-06-14, Opus / Design Authority)** after a genuine pre-merge audit + battery rerun. The
+guard battery `mapgen_constitution_guards` is durable and is confirmed **LIVE_GUARDRAIL**. Only the Design
+Authority writes a DA sign-off.
 
 ## PR10 readiness
 
-PR10 may proceed **after** DA approval of PR9 guard hardening.
+**PR10 may now proceed** — end-to-end canonical sample (ingest → generate → admit/install → GPU compact
+evidence) — under its own DA-review gate.

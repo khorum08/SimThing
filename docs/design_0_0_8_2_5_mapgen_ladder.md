@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS pending DA review; PR10 may proceed after PR9 DA approval.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 may proceed.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -501,7 +501,10 @@ locality, one-system-per-cell, inert render positions, and no route/path/predece
 frontline semantics across MapGen PR1–PR8 surfaces. Tests: `mapgen_constitution_guards`. Stop: genuine
 Euclidean need → §0.7 escalation.
 
-**Status: PASS pending DA review (Cursor PR 9).** Added `mapgen_constitution_guards` consolidated guard
+**Status: PASS / DA-APPROVED (Cursor PR 9; Opus / Design Authority sign-off 2026-06-14 — guard-hardening
+only; the source scans `include_str!`-cover all six active generators + the PR8 GPU/driver helpers and are
+paired with behavioral tests (not theater); `validate_one_system_per_gridcell` wired into generation;
+battery reran green incl. `mapgen_constitution_guards` 21).** Added `mapgen_constitution_guards` consolidated guard
 battery plus `validate_one_system_per_gridcell` admission helper. PR9 is guard hardening only — no new
 generator capabilities, no new GPU kernel, no semantic WGSL, no runtime engine, no simthing-sim changes, no
 PR10 end-to-end sample execution, no FIELD-MOVIE-DATASET-0 export. Result:
