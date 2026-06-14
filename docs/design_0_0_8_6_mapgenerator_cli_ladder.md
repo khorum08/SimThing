@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1–PR5 DA-APPROVED & MERGED (#674, #676, #677, #678, #679) + the DA-authorized 0.0.8.2.5 lowerer child-id amendment (#680, sign-off recorded #681). Governance: PR5's first remediation smuggled a closed `src/` edit into the producer PR — DA caught it and forced the split (closed-layer fix → #680 amendment with its own battery; cleaned PR5 #679 = producer+test only, **zero** closed `src/`, dev-dep only). **PR5 PROOF SCOPE (binding): parse/lower + INERT render-coordinate preservation only — NOT authored-position→authoritative-placement (grid placement is index/topological by Candidate-F §0.7 + M5/M7; authored coords are inert by mandate; making them authoritative would violate the constitution — no such rung exists).** Mandatory producer-track gate stands: closed `src/` edit ⇒ stop and split to a DA-authorized 0.0.8.2.5 amendment PR. PR6 next: bounded hyperlane / `add_hyperlane` — no route/path/predecessor semantics and no GPU. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1–PR5 DA-APPROVED & MERGED (#674, #676, #677, #678, #682) + the DA-authorized 0.0.8.2.5 lowerer child-id amendment (#680, sign-off recorded #681). Governance: PR5's first remediation smuggled a closed `src/` edit into the producer PR — DA caught it and forced the split (closed-layer fix → #680 amendment with its own battery; cleaned PR5 #682 = producer+test only, **zero** closed `src/`, dev-dep only; auto-closed #679 superseded). **PR5 PROOF SCOPE (binding): parse/lower + INERT render-coordinate preservation only — NOT authored-position→authoritative-placement (grid placement is index/topological by Candidate-F §0.7 + M5/M7; authored coords are inert by mandate; making them authoritative would violate the constitution — no such rung exists).** Mandatory producer-track gate stands: closed `src/` edit ⇒ stop and split to a DA-authorized 0.0.8.2.5 amendment PR. PR6 next: bounded hyperlane / `add_hyperlane` — no route/path/predecessor semantics and no GPU. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -8,10 +8,13 @@
 >
 > **What MapGeneratorCLI is.** A **thin, standalone, declarative producer**: it turns the high-level galaxy
 > lever surface (§3A — scale, **a registered shape**, clustering, partitioning/bridges, hyperlane geometry,
-> special routes, nebula fields, plus an inert metadata passthrough) into the **declarative ClauseScript
-> `scenario { location … link … field_operator … initializer refs … }` payload** that the *already-closed*
-> 0.0.8.2.5 MapGen front-end ingests and lowers. **It is NOT a runtime, NOT the MapGen lowerer, NOT a UI** —
-> it is the missing "Galaxy Shape Generator" between UI levers and the lowering path.
+> special routes, nebula fields, plus an inert metadata passthrough) into **declarative MapGen neutral-AST
+> text** that the *already-closed* 0.0.8.2.5 MapGen front-end ingests and lowers. **Current proven PR4/PR5
+> output path:** MapGeneratorCLI emits `static_galaxy_scenario` neutral-AST text (not `hydrate_scenario`
+> `scenario/location` grammar). **Later rungs** may add `add_hyperlane` and `field_operator` declarations
+> only through already-accepted closed MapGen surfaces — never by widening `hydrate_scenario` or the lowerer.
+> **It is NOT a runtime, NOT the MapGen lowerer, NOT a UI** — it is the missing "Galaxy Shape Generator"
+> between UI levers and the lowering path.
 > Reference: [`clausething/MapGeneratorCLI.md`](clausething/MapGeneratorCLI.md). Where this ladder and the
 > reference disagree, **the ladder governs.**
 >
@@ -52,9 +55,11 @@ Corpus (read-only, **not vendored**): `C:\Users\mvorm\Clauser\Paradox\vanilla\ma
 - an **arbitrary/static mode** (§3 C11): admit an explicit point-cloud + explicit graph (the
   `static_galaxy_scenario` shape — `system{ id position initializer spawn_weight }` + `add_hyperlane` /
   `prevent_hyperlane` + `nebula`, optionally with a `coordinate_transform`), quantized to the lattice;
-- declarative `scenario { metadata, location …, link …, field_operator …, system_initializer refs }` text
-  (preferred: the `hydrate_scenario` ClauseScript form; fallbacks: `static_galaxy_scenario` block or a
-  manifest + tiny `.txt` initializer library);
+- **Current proven output (PR4/PR5):** `static_galaxy_scenario` neutral-AST text (`system { id position initializer }`
+  plus sibling `*_initializer` definitions) — lowered by the existing neutral-AST parser and closed
+  `mapgen_lattice` path; **not** `hydrate_scenario` `scenario/location` grammar.
+- **Later rungs (PR6+):** may add `add_hyperlane`, `field_operator`, and related declarations only through
+  already-accepted closed MapGen surfaces; never by widening `hydrate_scenario` or the lowerer.
 - bounded explicit links + bounded long-range couplings — hyperlanes (per M3/M6 fanout + `max_hyperlane_distance`
   caps), and **special routes** (wormhole pairs / gateways) as bounded long-range lane couplings;
 - **partition/bridge structure** (home/open partitions → RegionCell grouping; min/max bridges → bounded
@@ -128,10 +133,11 @@ sole lever:
 
 ### 3C. Core adjudications
 
-- **C1 — Output is declarative ClauseScript scenario form** (preferred `scenario { location … link …
-  field_operator … system_initializer refs }`, lowered by the existing `hydrate_scenario`/MapGen
-  front-end). `static_galaxy_scenario`/manifest are admitted fallbacks. The CLI emits *text*; it never
-  builds `simthing-spec`/sim structures.
+- **C1 — Output is declarative MapGen neutral-AST text.** **Current proven path (PR4/PR5):**
+  `static_galaxy_scenario` blocks lowered via `parse_mapgen_neutral_document` → closed `mapgen_lattice`.
+  **Later rungs** may add `add_hyperlane` / `field_operator` through already-accepted closed surfaces only —
+  not by reopening `hydrate_scenario` or widening the lowerer. The CLI emits *text*; it never builds
+  `simthing-spec`/sim structures.
 - **C2 — Square lattice, one-system-per-cell** (core §7 + M5). Lattice edge derived square from
   `num_stars`/`radius` (or `--lattice_size`), default "medium" 200×200; `core_radius` masks central cells;
   quantize every placement to a free integer cell; reject/relocate collisions deterministically. No
@@ -179,8 +185,8 @@ sole lever:
 | 1 | CLI crate + **full §3A parameter surface** + params-file parse; **no generation** | Cursor (DA review) | C7 | 0 |
 | 2 | Deterministic RNG + square lattice occupancy core (one-per-cell, `core_radius` mask) | Cursor (DA review) | C2/C3 | 1 |
 | 3 | **`ShapeStrategy` registry + descriptor model** (extensibility seam) + trivial `elliptical`/uniform + `static` strategies | Cursor (DA review) | C10/C11 | 2 |
-| 4 | Declarative scenario emitter (`scenario { location … }` text) for trivial strategies | Cursor (DA review) | C1/C5 | 3 |
-| 5 | Generated tiny scenario **through existing MapGen lowering** (parse/hydrate) | Cursor (DA review) | C1/C7 | 4 |
+| 4 | Declarative `static_galaxy_scenario` emitter for trivial strategies | Cursor (DA review) | C1/C5 | 3 |
+| 5 | Generated tiny scenario **through existing MapGen lowering** (neutral AST → lattice) | Cursor (DA review) | C1/C7 | 4 |
 | 6 | Bounded hyperlane geometry (`max_hyperlane_distance`, `num_hyperlanes`, `random_hyperlanes`, `prevent`) **+ special routes** (wormhole/gateway couplings) | Cursor (DA review) | C4 | 5 |
 | 7 | **Partition/bridge structural producer** (home/open partitions → RegionCells; bridges → bounded couplings) **+ clustering** (satellite groups) | Cursor (DA review) | C4/C9 | 6 |
 | 8 | **Fill the shape registry** (spiral_2/3/4/6, ring, bar, starburst, cartwheel, spoked) as registered strategies (curve math quantized) | Cursor (DA review) | C10 | 7 |
@@ -234,8 +240,8 @@ mechanical under §3.
   **amended** closed lowerer; assert gridcell `Location`s. Accept: **zero** `crates/simthing-clausething/src/`
   changes in PR5; `simthing-mapgenerator` dev-dependency only; every system emits initializer bareword; LIVE_GUARDRAIL
   battery green. Stop: front-end rejects ⇒ fix producer output; closed defect ⇒ split to 0.0.8.2.5 amendment PR (§0 gate).
-  **Status: PASS pending DA review (#679).** Requires merged child-id amendment first. Result:
-  [`tests/mapgenerator_cli_pr5_lowering_results.md`](tests/mapgenerator_cli_pr5_lowering_results.md) (PROBATION).
+  **Status: DA-APPROVED (2026-06-14, #682, superseding auto-closed #679).** Requires merged child-id amendment (#680) first. Result:
+  [`tests/mapgenerator_cli_pr5_lowering_results.md`](tests/mapgenerator_cli_pr5_lowering_results.md) (CURRENT_EVIDENCE).
   **PR6 next:** bounded hyperlane topology / `add_hyperlane` emission — no route/path/predecessor semantics and no GPU.
 - **PR6** — emit bounded `link`/`add_hyperlane` honoring `max_hyperlane_distance` adjacency +
   `num_hyperlanes` density scaling + `random_hyperlanes` toggle + `prevent_hyperlane`; emit wormhole-pair /

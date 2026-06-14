@@ -36,10 +36,10 @@ PR5 rebases on that amendment and proves lowering only — it does not carry the
 | `docs/tests/mapgenerator_cli_pr2_lattice_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/tests/mapgenerator_cli_pr3_strategy_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/tests/mapgenerator_cli_pr4_emitter_results.md` | CURRENT_EVIDENCE | Unchanged |
-| `docs/tests/mapgen_lowerer_child_id_amendment_results.md` | PROBATION | Prerequisite amendment (Part A, #680) |
+| `docs/tests/mapgen_lowerer_child_id_amendment_results.md` | CURRENT_EVIDENCE | DA-approved Part A amendment (#680); promoted from PROBATION |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
-| `mapgenerator_cli_pr5_lowering_results.md` | PROBATION | Updated for decoupled remediation |
+| `mapgenerator_cli_pr5_lowering_results.md` | CURRENT_EVIDENCE | DA-approved cleaned PR5 (#682); promoted from PROBATION |
 | 0.0.8.2.5 LIVE_GUARDRAIL tests | LIVE_GUARDRAIL | Unchanged — not modified in PR5 |
 
 No MapGen baseline artifacts deleted or archived.
@@ -165,7 +165,7 @@ PR5 correctly rather than "fixing" a non-defect). Part A (#680) is DA-approved a
 
 ## Whether PR6 may proceed
 
-**Yes — DA approved Part A (#680) and cleaned PR5 (#679).** PR6 = bounded hyperlane topology /
+**Yes — DA approved Part A (#680) and cleaned PR5 (#682, superseding auto-closed #679).** PR6 = bounded hyperlane topology /
 `add_hyperlane` emission — still no route/path/predecessor semantics and no GPU.
 
 ## Carried-forward DA notes (not addressed in PR5)
