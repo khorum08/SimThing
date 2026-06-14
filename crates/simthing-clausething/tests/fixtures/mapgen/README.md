@@ -117,6 +117,32 @@ GPU skip is not PASS. No full-field CPU decision readback, no new GPU kernel, no
 cargo test -p simthing-driver --test mapgen_pr10_end_to_end_compact_evidence
 ```
 
+## PR11 — MapGen closeout (DA review)
+
+PR11 is docs/ledger/proof-lifecycle only. Promotes PR1–PR10 reports to CURRENT_EVIDENCE, lists LIVE_GUARDRAIL
+tests, closes 0.0.8.2.5 MapGen after DA approval. No new generator capability, runtime behavior, GPU kernel,
+semantic WGSL, or FIELD-MOVIE-DATASET-0 export.
+
+**Closeout guard battery:**
+
+```text
+cargo fmt --all -- --check
+cargo test -p simthing-clausething --test mapgen_neutral_ast_parse
+cargo test -p simthing-clausething --test mapgen_lattice_hierarchy
+cargo test -p simthing-clausething --test mapgen_resource_flow
+cargo test -p simthing-clausething --test mapgen_links
+cargo test -p simthing-clausething --test mapgen_movement_front
+cargo test -p simthing-clausething --test mapgen_palma
+cargo test -p simthing-clausething --test mapgen_constitution_guards
+cargo test -p simthing-clausething --test ct_scenario_container
+cargo test -p simthing-driver --test mapgen_pr8_scheduled_concurrency
+cargo test -p simthing-driver --test mapgen_pr10_end_to_end_compact_evidence
+cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
+git diff --check
+```
+
+Report: [`docs/tests/mapgen_pr11_closeout_results.md`](../../../../../docs/tests/mapgen_pr11_closeout_results.md).
+
 ## Closeout guardrails (unchanged)
 
 0.0.8.2 closeout batteries remain the active ClauseThing guardrails:
@@ -131,4 +157,5 @@ MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tes
 `mapgen_movement_front` tests. MapGen PR7 adds `mapgen_palma` tests. MapGen PR8 adds
 `mapgen_pr8_scheduled_concurrency` driver GPU measurement tests. MapGen PR9 adds
 `mapgen_constitution_guards` consolidated constitutional guard tests. MapGen PR10 adds
-`mapgen_pr10_end_to_end_compact_evidence` driver end-to-end harness (DA review before merge).
+`mapgen_pr10_end_to_end_compact_evidence` driver end-to-end harness (DA-approved). MapGen PR11 is closeout
+only — see `mapgen_pr11_closeout_results.md`.

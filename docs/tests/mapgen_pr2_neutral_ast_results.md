@@ -1,6 +1,6 @@
 # MapGen PR2 Neutral-AST Parse Results
 
-> **Artifact lifecycle: PROBATION** (PR2 parse-only adapter report; MapGen closeout decides promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR2 neutral-AST parse report; DA-approved; promoted at MapGen PR11 closeout).
 
 ## Verdict
 

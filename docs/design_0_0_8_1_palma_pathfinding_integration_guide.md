@@ -533,8 +533,14 @@ semantics across PR1–PR8 surfaces. Guard hardening only — no new GPU kernel,
 **0.0.8.2.5 MapGen addendum (2026-06-14, PR10).** MapGen PR10 adds `mapgen_pr10_end_to_end_compact_evidence`
 driver test: tiny pentad fixture through PR2–PR7 generation, `install_atomic` admission, GPU-resident mapping
 tick + scheduled W/PALMA chain + compact D probe. PALMA remains W/D feedstock — not pathfinding, routes,
-predecessors, or movement orders. Compact evidence only; real GPU required for PASS. **Do not merge until DA
-review.** Report: [`tests/mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md)
-(PROBATION).
+predecessors, or movement orders. Compact evidence only; real GPU required for PASS. **DA-APPROVED (Opus,
+2026-06-14).** Report: [`tests/mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md)
+(CURRENT_EVIDENCE).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR11).** MapGen PR11 closes the 0.0.8.2.5 mini-track: promotes
+PR1–PR10 reports to CURRENT_EVIDENCE, lists LIVE_GUARDRAIL tests, updates ladder/production docs. Closeout only
+— no new generator capability, runtime behavior, GPU kernel, semantic WGSL, or FIELD-MOVIE-DATASET-0 export.
+**Do not merge until DA review.** Report: [`tests/mapgen_pr11_closeout_results.md`](tests/mapgen_pr11_closeout_results.md)
+(PROBATION). **0.0.8.2.5 MapGen closes after DA approves PR11.** **FIELD-MOVIE-DATASET-0 remains subsequent.**
 
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

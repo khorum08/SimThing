@@ -1,6 +1,6 @@
 # MapGen PR1 Corpus Manifest Results
 
-> **Artifact lifecycle: PROBATION** (PR1 immersion/cleaning report; PR11 closeout decides promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR1 corpus manifest report; promoted at MapGen PR11 closeout).
 
 ## Verdict
 

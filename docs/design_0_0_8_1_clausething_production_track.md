@@ -605,7 +605,7 @@ SaturatingFlux choke column, D col declared). PR7 remains front-end authoring/lo
 paths, predecessors, movement orders, driver/GPU exercise, pathfinding, border/frontline,
 runtime/GPU/driver/simthing-sim changes, or GPU opt-in. **FIELD-MOVIE-DATASET-0** remains subsequent.
 **PASS — stayed inside pre-adjudicated M7 boundary; no DA escalation required.** See
-[`mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md) (PROBATION). **PR8 scheduled-concurrency/GPU
+[`mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md) (CURRENT_EVIDENCE). **PR8 scheduled-concurrency/GPU
 measurement remains later** (DA review). **PR8 scheduled-concurrency spike — DA-APPROVED (Opus, 2026-06-14)** — see
 [`mapgen_pr8_scheduled_concurrency_results.md`](tests/mapgen_pr8_scheduled_concurrency_results.md) (CURRENT_EVIDENCE).
 
@@ -628,6 +628,16 @@ runtime engine, no simthing-sim changes, no PR10 end-to-end sample execution, no
 canonical MapGen sample through ingest, generation, admission/install, and GPU compact evidence via
 `mapgen_pr10_end_to_end_compact_evidence`. PR10 is not a gameplay engine, pathfinding engine, movement engine,
 or corpus/export seam. PR10 uses existing GPU-resident surfaces only — no new GPU kernel, no semantic WGSL, no
-simthing-sim changes, no FIELD-MOVIE-DATASET-0 export. **Do not merge until DA review.** See
-[`mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md) (PROBATION). **PR11 closeout
-remains next if DA approves PR10.**
+simthing-sim changes, no FIELD-MOVIE-DATASET-0 export. **DA-APPROVED (Opus, 2026-06-14).** See
+[`mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md) (CURRENT_EVIDENCE). **PR11
+closeout may proceed.**
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR11).** **0.0.8.2 remains closed.** MapGen PR11 is closeout only:
+promotes durable PR1–PR10 reports to CURRENT_EVIDENCE (including PR1/PR2/PR7 promotions), lists LIVE_GUARDRAIL
+tests, updates the MapGen ladder and production docs, and records the final 0.0.8.2.5 handoff. PR1–PR10 are
+implemented and DA-approved where required. The tiny MapGen canonical sample flows end-to-end through ingest,
+generation, admission/install, and GPU compact evidence. The mini-track did not add a gameplay engine,
+pathfinding engine, movement engine, semantic WGSL, new GPU kernel, new `SimThingKind`, CPU planner, full-field
+CPU decision readback, `simthing-sim` semantics, or FIELD-MOVIE-DATASET-0 export. **Do not merge until DA
+review.** See [`mapgen_pr11_closeout_results.md`](tests/mapgen_pr11_closeout_results.md) (PROBATION).
+**0.0.8.2.5 MapGen closes after DA approves PR11.** **FIELD-MOVIE-DATASET-0 remains subsequent.**
