@@ -1,10 +1,22 @@
 # MapGen PR8 Scheduled-Concurrency GPU Measurement Results
 
-> **Artifact lifecycle: PROBATION** (PR8 scheduled-concurrency report; pending DA review before merge promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR8 scheduled-concurrency report; DA-approved 2026-06-14).
 
 ## Verdict
 
-**PASS pending DA review** — PR8 adds a GPU-resident measurement harness comparing serial queue submits vs
+**PASS / DA-APPROVED (2026-06-14, Opus / Design Authority)** — DA performed a genuine pre-merge audit of
+the GPU source (not the PR body) and confirmed the M8 boundary holds: **scheduling only, no new kernel**.
+`scheduled_w_palma_batch.rs` is pure command-encoder glue over the existing `WImpedanceComposeOp` +
+`MinPlusStencilOp`; the edits to `indexed_scatter` / `min_plus_stencil` / `w_impedance_compose` are
+record-into-encoder refactors reusing the existing pipelines (min-plus `D = W + min(N4 D)` math untouched);
+a GPU risky-token scan found **no new WGSL / compute-pipeline / shader-module / sqrt / distance / normalize /
+hypot / euclidean**. Serial (7 submits) and scheduled (1 submit) use the **identical seed buffer** and the
+test asserts their compact single-cell D probes match within 1e-3 — proving the scheduled path does the same
+work (not a no-op shell, serial not penalized). No full-field CPU decision readback (`report.values.is_none()`
+asserted), no CPU planner, default-off preserved, no simthing-sim/new-`SimThingKind`/Euclidean. **DA reran the
+battery green on a real GPU adapter** (`mapgen_pr8_scheduled_concurrency` 6 passed in ~1.3s — the GPU path
+ran; clausething 8/10/16/19/23/19/45; `ct_bh3_closeout_sample_driver` 2 passed; fmt/`git diff --check` clean).
+PR8 adds a GPU-resident measurement harness comparing serial queue submits vs
 single-encoder scheduled W compose + PALMA min-plus over the PR7 MapGen tiny pentad slice. Uses existing
 `WImpedanceComposeOp`, `MinPlusStencilOp`, and `MinPlusTraversalDProbeOp` only — no fused kernel, no semantic
 WGSL, no simthing-sim changes, no route/path/predecessor/movement semantics, no full-field CPU decision
@@ -53,9 +65,9 @@ reopen 0.0.8.2 closeout.
 | Artifact | Classification | Action |
 |---|---|---|
 | `mapgen_pr1`–`mapgen_pr7` reports/guardrails | CURRENT_EVIDENCE / LIVE_GUARDRAIL / PROBATION (PR7) | Unchanged |
-| `scheduled_w_palma_batch.rs` | PROBATION | New generic GPU batching helper |
-| `mapgen_pr8_scheduled_concurrency.rs` (tests) | PROBATION | New PR8 measurement harness |
-| `docs/tests/mapgen_pr8_scheduled_concurrency_results.md` | PROBATION | This report |
+| `scheduled_w_palma_batch.rs` | CURRENT_EVIDENCE | Generic GPU batching helper (DA-approved) |
+| `mapgen_pr8_scheduled_concurrency.rs` (tests) | LIVE_GUARDRAIL | Promoted at DA approval |
+| `docs/tests/mapgen_pr8_scheduled_concurrency_results.md` | CURRENT_EVIDENCE | This report; DA-approved |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ## Measurement summary
@@ -98,7 +110,10 @@ git diff --check                    PASS
 
 ## DA sign-off status
 
-**Pending DA review before merge.** Only the Design Authority writes a DA sign-off.
+**DA-APPROVED (2026-06-14, Opus / Design Authority)** after a genuine pre-merge GPU-source audit + battery
+rerun on a real adapter. The M8 boundary holds (scheduling-only, no fused kernel). `scheduled_w_palma_batch`
++ `min_plus_stencil`/`indexed_scatter`/`w_impedance_compose` record-refactors and the harness test promoted
+per the lifecycle table.
 
 ## Governance
 
