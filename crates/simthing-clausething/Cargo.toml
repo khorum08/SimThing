@@ -21,6 +21,7 @@ simthing-driver  = { path = "../simthing-driver" }
 simthing-feeder  = { path = "../simthing-feeder" }
 simthing-gpu     = { path = "../simthing-gpu" }
 simthing-sim     = { path = "../simthing-sim" }
+simthing-mapgenerator = { path = "../simthing-mapgenerator" }
 
 [features]
 default = []
