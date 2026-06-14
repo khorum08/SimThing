@@ -59,7 +59,7 @@ fn emit_sample(params: &MapGeneratorParams) -> String {
         SquareLattice::new(params.scale_core.lattice_size.unwrap_or(32)).expect("lattice");
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(params));
     emitter
-        .emit(params, &lattice, &sample_placement())
+        .emit(params, &lattice, &sample_placement(), None)
         .expect("emit")
         .into_string()
 }
@@ -319,6 +319,114 @@ fn emitter_scenario_id_follows_shape() {
         }],
     };
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
-    let text = emitter.emit(&params, &lattice, &placement).expect("emit");
+    let text = emitter
+        .emit(&params, &lattice, &placement, None)
+        .expect("emit");
     assert!(text.as_str().starts_with("generated_elliptical = {"));
+}
+
+fn hyperlane_placement() -> ShapePlacement {
+    ShapePlacement {
+        systems: vec![
+            PlacedSystemSeed {
+                id: 0,
+                coord: LatticeCoord { col: 0, row: 0 },
+                bucket: None,
+            },
+            PlacedSystemSeed {
+                id: 1,
+                coord: LatticeCoord { col: 1, row: 0 },
+                bucket: None,
+            },
+            PlacedSystemSeed {
+                id: 2,
+                coord: LatticeCoord { col: 2, row: 0 },
+                bucket: None,
+            },
+        ],
+    }
+}
+
+fn hyperlane_topology() -> simthing_mapgenerator::HyperlaneTopology {
+    simthing_mapgenerator::HyperlaneTopology {
+        edges: vec![
+            simthing_mapgenerator::HyperlaneEdge {
+                from: "0".into(),
+                to: "1".into(),
+            },
+            simthing_mapgenerator::HyperlaneEdge {
+                from: "1".into(),
+                to: "2".into(),
+            },
+        ],
+    }
+}
+
+const ROUTE_FORBIDDEN_TERMS: &[&str] = &[
+    " route",
+    " path",
+    "predecessor",
+    "movement",
+    "border",
+    "frontline",
+];
+
+#[test]
+fn emitter_outputs_add_hyperlane_blocks_when_edges_exist() {
+    let params = elliptical_params(1, 3, 8);
+    let (lattice, _, _, _) = build_placement_context(&params).expect("ctx");
+    let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
+    let text = emitter
+        .emit(
+            &params,
+            &lattice,
+            &hyperlane_placement(),
+            Some(&hyperlane_topology()),
+        )
+        .expect("emit");
+    assert_eq!(
+        text.as_str().matches("        add_hyperlane = {").count(),
+        2
+    );
+    assert!(text.as_str().contains("            from = \"0\""));
+    assert!(text.as_str().contains("            to = \"1\""));
+}
+
+#[test]
+fn emitter_outputs_no_add_hyperlane_when_edges_empty() {
+    let params = elliptical_params(1, 2, 8);
+    let (lattice, _, _, _) = build_placement_context(&params).expect("ctx");
+    let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
+    let text = emitter
+        .emit(
+            &params,
+            &lattice,
+            &sample_placement(),
+            Some(&simthing_mapgenerator::HyperlaneTopology { edges: vec![] }),
+        )
+        .expect("emit");
+    assert!(!text.as_str().contains("add_hyperlane"));
+}
+
+#[test]
+fn emitter_output_has_no_route_path_predecessor_movement_border_frontline_terms() {
+    let params = elliptical_params(1, 3, 8);
+    let (lattice, _, _, _) = build_placement_context(&params).expect("ctx");
+    let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
+    let text = emitter
+        .emit(
+            &params,
+            &lattice,
+            &hyperlane_placement(),
+            Some(&hyperlane_topology()),
+        )
+        .expect("emit")
+        .into_string();
+    let lower = text.to_ascii_lowercase();
+    for term in ROUTE_FORBIDDEN_TERMS {
+        assert!(
+            !lower.contains(&term.to_ascii_lowercase()),
+            "forbidden {term:?}"
+        );
+    }
 }
