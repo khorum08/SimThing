@@ -479,10 +479,8 @@ impl MapGeneratorParams {
             {
                 return Err(ValidationError::ArbitraryPathsMissing);
             }
-            if self.shape.shape != "arbitrary_static" {
-                // Accept arbitrary mode with arbitrary_static shape only for PR1 shell.
-                // Params file may set shape separately; mode wins for validation messaging.
-            }
+            // PR1 shell: a params file may set `shape` independently of `mode`; mode drives
+            // validation messaging and shape is not constrained to `arbitrary_static` here.
         }
         Ok(())
     }

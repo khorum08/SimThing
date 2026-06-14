@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 PASS pending DA review (2026-06-14): standalone `simthing-mapgenerator` crate + full §3A parameter surface + shape registry descriptor shell + validation-only dry-run — no generation.**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1 DA-APPROVED & MERGED (2026-06-14, #674, remediation in this PR): standalone `simthing-mapgenerator` crate + full §3A parameter surface + data-driven shape registry descriptor shell + validation-only dry-run — no generation. PR2 may proceed.**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
