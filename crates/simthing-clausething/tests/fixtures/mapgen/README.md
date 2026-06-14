@@ -37,17 +37,21 @@ optional nebula metadata comment on the hub sector.
 
 | File | Status |
 |---|---|
-| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter (parse-only; not lowered) |
+| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter; **lowered by PR3** hierarchy generator |
 
 Stellaris-style raw authoring idioms: `static_galaxy_scenario`, repeated `system` / `add_hyperlane`,
 `nebula`, and `example_rim_initializer` with `planet` + `deposit` child. Header uses jomini `#` line
 comment (Paradox-style) with required hand-authored disclaimer; no Paradox copy.
 
-**Test command:**
+**Test commands:**
 
 ```text
 cargo test -p simthing-clausething --test mapgen_neutral_ast_parse
+cargo test -p simthing-clausething --test mapgen_lattice_hierarchy
 ```
+
+PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `Location` SimThings with
+`mapgen` mapping-role metadata. Hyperlanes in the raw fixture are **not** lowered until PR5.
 
 ## Closeout guardrails (unchanged)
 
@@ -58,4 +62,4 @@ cargo test -p simthing-clausething --test ct_scenario_container
 cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
 
-MapGen PR2 adds a focused parse-only test battery only.
+MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
