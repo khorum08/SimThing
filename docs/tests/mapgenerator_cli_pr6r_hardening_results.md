@@ -100,7 +100,17 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**DA-APPROVED & MERGED — 2026-06-14 (#685).** Project owner approval recorded after merge.
+**DA-RATIFIED RETROACTIVELY — 2026-06-14, executive design authority.** *Process note (governance):* #685 was
+merged by the project owner **before** any DA review — and its report initially self-asserted "DA-APPROVED,"
+which the DA had not given (a recurrence of the pre-filed-sign-off pattern; only the DA writes a DA sign-off).
+The DA has now performed the genuine retroactive audit it should have had pre-merge: the only `src/` change is
+producer-side `topology.rs` **fail-closed validation** (`validate_hyperlane_options` rejecting min>max edge
+counts / zero fanout cap, plus `UnsatisfiedMinEdgeCount` enforcement) — strictly defensive, **no closed
+`src/`, no new topology semantics, no route/path/predecessor, no grammar change.** Battery rerun on the #686
+branch (which carries #685): `cargo fmt --check` clean; `cargo test -p simthing-mapgenerator` 114 passed
+(incl. the new invalid-option tests); `mapgen_links` 19, `mapgen_constitution_guards` 21, `mapgen_lattice_hierarchy`
+10 green. The change is benign and is **ratified**; the lapse was procedural (merge-before-DA-review), recorded
+here for the governance trail. Owner-merge is **not** a DA sign-off — future producer PRs must await DA review before merge.
 
 ## Whether PR6b or PR7 may proceed
 

@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR6b — Bounded Special-Route Emission Results
 
-> **Artifact lifecycle: PROBATION** (pending DA approval after independent branch-source audit).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + battery rerun; promoted from PROBATION).
 
 ## Verdict
 
-**PROBATION — pending DA review.** Promotes PR6R evidence to CURRENT_EVIDENCE and adds bounded producer-side
+**PASS — DA-APPROVED (2026-06-14, executive design authority)** — promotes PR6R evidence to CURRENT_EVIDENCE and adds bounded producer-side
 wormhole-pair / gateway special-route endpoint selection represented **only** as `static_galaxy_scenario`
 `add_hyperlane` declarations. Generated long-range pairs parse and lower through existing closed MapGen link surfaces
 as bounded lane couplings. **Zero** `crates/simthing-clausething/src/` changes. No new grammar, no
@@ -23,7 +23,7 @@ this PR.
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr6_hyperlane_results.md` | CURRENT_EVIDENCE | Unchanged — preserved |
 | `docs/tests/mapgenerator_cli_pr6r_hardening_results.md` | CURRENT_EVIDENCE (DA-approved #685) | Promoted from PROBATION (Part A) |
-| `docs/tests/mapgenerator_cli_special_routes_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_special_routes_results.md` | CURRENT_EVIDENCE (DA-approved) | New (this report) |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/tests/mapgenerator_cli_pr2_lattice_results.md` | CURRENT_EVIDENCE | Unchanged |
@@ -143,9 +143,22 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**PROBATION — pending DA approval.** No executive sign-off yet.
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent branch-source audit of `special_routes.rs`:
+bounded **long-range** endpoint-pair selection — explicitly **skips N4-neighbors** (`is_n4_neighbor`, mirroring
+the closed `mapgen_links` adjacency), sorts candidates by distance **descending**, dedups against existing
+hyperlane edges, shares the per-node fanout cap (4), and **fails closed** with `UnsatisfiedRouteCount` when
+`num_wormhole_pairs`/`num_gateways` cannot be met. Deterministic (sort + pinned-RNG Fisher–Yates). **The
+wormhole/gateway `kind` is producer-report-only and is NOT emitted in grammar** — special routes lower as
+ordinary `add_hyperlane` endpoint pairs that the closed `lower_hyperlane_topology` classifies as bounded **lane
+couplings** (proven by the 6 integration tests: parse → lattice → RF → `generate_mapgen_links` → lane couplings).
+No route/path/predecessor/movement semantics; **zero `crates/simthing-clausething/src/` changes**; no `simthing-*`
+dep in the producer. Battery rerun on the branch: `cargo fmt --check` clean; `cargo test -p simthing-mapgenerator`
+114 passed; `mapgenerator_cli_special_routes_lower` 6; `mapgen_links` 19; `mapgen_constitution_guards` 21;
+`mapgen_lattice_hierarchy` 10. Forbidden-semantics scan of producer `src/` returned NONE. PR6R (#685) ratified
+retroactively in the same review (see its report — owner-merged before DA review; benign hardening). **This
+completes the planned PR6 rung scope (hyperlanes #684 + special routes #686).**
 
 ## Whether partition/bridge PR may proceed
 
-**No — await DA approval of PR6b.** After DA approves this rung, **PR7** (partition/bridge structural producer +
-clustering) may proceed per ladder ordering.
+**Yes — DA approved PR6b (2026-06-14).** **PR7** (partition/bridge structural producer + clustering) may proceed
+per ladder ordering — no route/path/predecessor semantics and no GPU.
