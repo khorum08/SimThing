@@ -4,6 +4,7 @@
 //! PR2: deterministic RNG, square lattice, core mask, occupancy primitives.
 //! PR3: ShapeStrategy trait, registry dispatch, elliptical/static in-memory seams.
 //! PR4: deterministic `static_galaxy_scenario` neutral-AST text emitter.
+//! PR6: bounded hyperlane topology + `add_hyperlane` emission.
 
 pub mod emitter;
 pub mod lattice;
@@ -13,6 +14,7 @@ pub mod rng;
 pub mod shape_registry;
 pub mod strategies;
 pub mod strategy;
+pub mod topology;
 
 pub use emitter::{
     ScenarioEmitError, ScenarioEmitter, ScenarioEmitterConfig, ScenarioText,
@@ -33,6 +35,12 @@ pub use shape_registry::{
 };
 pub use strategy::{
     PlacedSystemSeed, ShapePlacement, ShapePlacementError, ShapeStrategy, ShapeStrategyContext,
+};
+pub use topology::{
+    canonical_pair, fixture_lattice_edge_for_system_count, generate_hyperlane_topology,
+    grid_chebyshev_distance, lowered_grid_position, system_id_scalar, validate_hyperlane_edges,
+    HyperlaneEdge, HyperlaneError, HyperlaneGenerationReport, HyperlaneOptions, HyperlaneTopology,
+    DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 /// Validate params against the default vanilla registry.
@@ -60,6 +68,17 @@ pub fn place_and_emit_scenario(
     explicit_cells: Option<&[LatticeCoord]>,
     emitter: &ScenarioEmitter,
 ) -> Result<ScenarioText, PlaceAndEmitError> {
+    place_and_emit_scenario_with_hyperlanes(params, registry, explicit_cells, emitter, None)
+}
+
+/// Place, optionally generate bounded hyperlanes, and emit declarative scenario text (PR6).
+pub fn place_and_emit_scenario_with_hyperlanes(
+    params: &MapGeneratorParams,
+    registry: &ShapeRegistry,
+    explicit_cells: Option<&[LatticeCoord]>,
+    emitter: &ScenarioEmitter,
+    hyperlane_options: Option<HyperlaneOptions>,
+) -> Result<ScenarioText, PlaceAndEmitError> {
     validate_default(params)?;
     let (lattice, core_mask, mut occupancy, mut rng) = build_placement_context(params)?;
     let placement = registry.place(
@@ -70,7 +89,13 @@ pub fn place_and_emit_scenario(
         &mut rng,
         explicit_cells,
     )?;
-    let text = emitter.emit(params, &lattice, &placement)?;
+    let hyperlanes = if let Some(options) = hyperlane_options {
+        let (topology, _report) = generate_hyperlane_topology(&placement, &options, &mut rng)?;
+        Some(topology)
+    } else {
+        None
+    };
+    let text = emitter.emit(params, &lattice, &placement, hyperlanes.as_ref())?;
     Ok(text)
 }
 
@@ -82,6 +107,8 @@ pub enum PlaceAndEmitError {
     Lattice(#[from] LatticeError),
     #[error("placement error: {0}")]
     Placement(#[from] ShapePlacementError),
+    #[error("hyperlane error: {0}")]
+    Hyperlane(#[from] HyperlaneError),
     #[error("emit error: {0}")]
     Emit(#[from] ScenarioEmitError),
 }

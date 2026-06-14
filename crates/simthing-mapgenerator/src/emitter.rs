@@ -1,7 +1,7 @@
-//! Deterministic declarative scenario text emitter (PR4 — no topology, no lowering).
+//! Deterministic declarative scenario text emitter (PR4/PR6 — lowering via closed MapGen readers).
 //!
 //! Emits a single-root `static_galaxy_scenario` neutral-AST block compatible with the closed
-//! 0.0.8.2.5 `mapgen_lattice` reader. Positions are inert integer lattice metadata only.
+//! 0.0.8.2.5 `mapgen_lattice` / `mapgen_links` readers. Positions are inert integer lattice metadata only.
 
 use std::collections::BTreeSet;
 
@@ -10,6 +10,7 @@ use thiserror::Error;
 use crate::lattice::SquareLattice;
 use crate::params::MapGeneratorParams;
 use crate::strategy::{PlacedSystemSeed, ShapePlacement};
+use crate::topology::HyperlaneTopology;
 
 pub const DEFAULT_INITIALIZER_REF: &str = "example_rim_initializer";
 pub const DEFAULT_SCENARIO_ID: &str = "generated_mapgen";
@@ -92,6 +93,7 @@ impl ScenarioEmitter {
         params: &MapGeneratorParams,
         _lattice: &SquareLattice,
         placement: &ShapePlacement,
+        hyperlanes: Option<&HyperlaneTopology>,
     ) -> Result<ScenarioText, ScenarioEmitError> {
         let _ = params;
         if placement.systems.is_empty() {
@@ -111,7 +113,7 @@ impl ScenarioEmitter {
 
         let mut out = String::new();
         write_line(&mut out, &format!("{} = {{", self.config.scenario_id));
-        write_static_galaxy_block(&mut out, &self.config, placement)?;
+        write_static_galaxy_block(&mut out, &self.config, placement, hyperlanes)?;
         for initializer in initializer_refs {
             write_initializer_definition(&mut out, &initializer)?;
         }
@@ -124,6 +126,7 @@ fn write_static_galaxy_block(
     out: &mut String,
     config: &ScenarioEmitterConfig,
     placement: &ShapePlacement,
+    hyperlanes: Option<&HyperlaneTopology>,
 ) -> Result<(), ScenarioEmitError> {
     out.push_str("    static_galaxy_scenario = {\n");
     write_line(
@@ -139,8 +142,21 @@ fn write_static_galaxy_block(
         write_system_block(out, system, &config.default_initializer_ref)?;
         out.push('\n');
     }
+    if let Some(topology) = hyperlanes {
+        for edge in &topology.edges {
+            write_hyperlane_block(out, &edge.from, &edge.to);
+            out.push('\n');
+        }
+    }
     out.push_str("    }\n\n");
     Ok(())
+}
+
+fn write_hyperlane_block(out: &mut String, from: &str, to: &str) {
+    out.push_str("        add_hyperlane = {\n");
+    write_line(out, &format!("            from = \"{from}\""));
+    write_line(out, &format!("            to = \"{to}\""));
+    out.push_str("        }\n");
 }
 
 fn write_system_block(
