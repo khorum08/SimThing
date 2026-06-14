@@ -13,7 +13,7 @@
 > [`mapgen_corpus_manifest.md`](mapgen_corpus_manifest.md). Hand-authored fixture stub:
 > `crates/simthing-clausething/tests/fixtures/mapgen/` (**inert until PR2**). No Paradox files committed.
 >
-> **PR2 neutral-AST parse-only (2026-06-13, DA review pending):** `parse_mapgen_neutral_document` in
+> **PR2 neutral-AST parse-only (2026-06-13, DA-APPROVED):** `parse_mapgen_neutral_document` in
 > `mapgen_neutral_ast.rs` wraps the existing jomini/`RawDocument` path. Raw fixture
 > `tiny_pentad_hub_slice_raw.clause` is parsed with zero semantic decisions — no lowering to `scenario`,
 > locations, links, RF arenas, PALMA feedstock, or commitments. PR3 is the first hierarchy-generation rung.
