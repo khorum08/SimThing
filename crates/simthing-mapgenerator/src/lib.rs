@@ -5,6 +5,7 @@
 //! PR3: ShapeStrategy trait, registry dispatch, elliptical/static in-memory seams.
 //! PR4: deterministic `static_galaxy_scenario` neutral-AST text emitter.
 //! PR6: bounded hyperlane topology + `add_hyperlane` emission.
+//! PR6b: bounded wormhole/gateway special routes as long-range `add_hyperlane` pairs.
 
 pub mod emitter;
 pub mod lattice;
@@ -12,6 +13,7 @@ pub mod occupancy;
 pub mod params;
 pub mod rng;
 pub mod shape_registry;
+pub mod special_routes;
 pub mod strategies;
 pub mod strategy;
 pub mod topology;
@@ -32,6 +34,11 @@ pub use rng::{MapGenRng, MapGenSeed};
 pub use shape_registry::{
     RegisteredShapeName, RegistryResolveError, ShapeParameterDescriptor, ShapeRegistry,
     ShapeStrategyDescriptor,
+};
+pub use special_routes::{
+    generate_special_routes, validate_special_route_edges, validate_special_route_options,
+    SpecialRouteEdge, SpecialRouteError, SpecialRouteKind, SpecialRouteOptions, SpecialRouteReport,
+    SpecialRouteTopology,
 };
 pub use strategy::{
     PlacedSystemSeed, ShapePlacement, ShapePlacementError, ShapeStrategy, ShapeStrategyContext,
@@ -79,6 +86,25 @@ pub fn place_and_emit_scenario_with_hyperlanes(
     emitter: &ScenarioEmitter,
     hyperlane_options: Option<HyperlaneOptions>,
 ) -> Result<ScenarioText, PlaceAndEmitError> {
+    place_and_emit_scenario_with_couplings(
+        params,
+        registry,
+        explicit_cells,
+        emitter,
+        hyperlane_options,
+        None,
+    )
+}
+
+/// Place, optionally generate bounded hyperlanes and special routes, and emit scenario text (PR6/PR6b).
+pub fn place_and_emit_scenario_with_couplings(
+    params: &MapGeneratorParams,
+    registry: &ShapeRegistry,
+    explicit_cells: Option<&[LatticeCoord]>,
+    emitter: &ScenarioEmitter,
+    hyperlane_options: Option<HyperlaneOptions>,
+    special_route_options: Option<SpecialRouteOptions>,
+) -> Result<ScenarioText, PlaceAndEmitError> {
     validate_default(params)?;
     let (lattice, core_mask, mut occupancy, mut rng) = build_placement_context(params)?;
     let placement = registry.place(
@@ -89,11 +115,31 @@ pub fn place_and_emit_scenario_with_hyperlanes(
         &mut rng,
         explicit_cells,
     )?;
-    let hyperlanes = if let Some(options) = hyperlane_options {
+    let mut hyperlane_edges = Vec::new();
+    if let Some(options) = hyperlane_options {
         let (topology, _report) = generate_hyperlane_topology(&placement, &options, &mut rng)?;
-        Some(topology)
-    } else {
+        hyperlane_edges.extend(topology.edges);
+    }
+    if let Some(options) = special_route_options {
+        let existing: Vec<(String, String)> = hyperlane_edges
+            .iter()
+            .map(|edge| (edge.from.clone(), edge.to.clone()))
+            .collect();
+        let (topology, _report) =
+            generate_special_routes(&placement, &options, &existing, &mut rng)?;
+        hyperlane_edges.extend(
+            topology
+                .edges
+                .into_iter()
+                .map(|edge| edge.to_hyperlane_edge()),
+        );
+    }
+    let hyperlanes = if hyperlane_edges.is_empty() {
         None
+    } else {
+        Some(HyperlaneTopology {
+            edges: hyperlane_edges,
+        })
     };
     let text = emitter.emit(params, &lattice, &placement, hyperlanes.as_ref())?;
     Ok(text)
@@ -109,6 +155,8 @@ pub enum PlaceAndEmitError {
     Placement(#[from] ShapePlacementError),
     #[error("hyperlane error: {0}")]
     Hyperlane(#[from] HyperlaneError),
+    #[error("special route error: {0}")]
+    SpecialRoute(#[from] SpecialRouteError),
     #[error("emit error: {0}")]
     Emit(#[from] ScenarioEmitError),
 }

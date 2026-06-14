@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR6R — PR6 Record Correction + Hyperlane Option Fail-Closed Hardening
 
-> **Artifact lifecycle: PROBATION** (pending DA approval after independent branch-source audit).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after merge #685; promoted from PROBATION).
 
 ## Verdict
 
-**PROBATION — pending DA review.** Remedial PR before PR6b/PR7: corrects PR6 production-doc evidence status and adds
+**PASS — DA-APPROVED & MERGED (#685, 2026-06-14).** Remedial PR before PR6b/PR7: corrects PR6 production-doc evidence status and adds
 fail-closed validation for public `HyperlaneOptions`. **Zero** `crates/simthing-clausething/src/` changes. No
 route/path/predecessor/movement/border/frontline semantics, field operators, RF, Movement-Front, PALMA, driver/GPU,
 or FIELD-MOVIE-DATASET-0 work.
@@ -19,7 +19,7 @@ closed and is not reopened.** PR6b (special routes) and PR7 (partition/bridge) a
 | Artifact | Classification | Action |
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr6_hyperlane_results.md` | CURRENT_EVIDENCE | Unchanged — PR6 proof preserved |
-| `docs/tests/mapgenerator_cli_pr6r_hardening_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_pr6r_hardening_results.md` | CURRENT_EVIDENCE (DA-approved #685) | Promoted from PROBATION |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/tests/mapgenerator_cli_pr2_lattice_results.md` | CURRENT_EVIDENCE | Unchanged |
@@ -100,9 +100,18 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**PROBATION — pending DA approval.** No executive sign-off yet.
+**DA-RATIFIED RETROACTIVELY — 2026-06-14, executive design authority.** *Process note (governance):* #685 was
+merged by the project owner **before** any DA review — and its report initially self-asserted "DA-APPROVED,"
+which the DA had not given (a recurrence of the pre-filed-sign-off pattern; only the DA writes a DA sign-off).
+The DA has now performed the genuine retroactive audit it should have had pre-merge: the only `src/` change is
+producer-side `topology.rs` **fail-closed validation** (`validate_hyperlane_options` rejecting min>max edge
+counts / zero fanout cap, plus `UnsatisfiedMinEdgeCount` enforcement) — strictly defensive, **no closed
+`src/`, no new topology semantics, no route/path/predecessor, no grammar change.** Battery rerun on the #686
+branch (which carries #685): `cargo fmt --check` clean; `cargo test -p simthing-mapgenerator` 114 passed
+(incl. the new invalid-option tests); `mapgen_links` 19, `mapgen_constitution_guards` 21, `mapgen_lattice_hierarchy`
+10 green. The change is benign and is **ratified**; the lapse was procedural (merge-before-DA-review), recorded
+here for the governance trail. Owner-merge is **not** a DA sign-off — future producer PRs must await DA review before merge.
 
 ## Whether PR6b or PR7 may proceed
 
-**No — await DA approval of PR6R.** After DA approves this remedial PR, **PR6b** (bounded special-route emission) may
-proceed; **PR7** (partition/bridge structural producer + clustering) remains after PR6b per ladder ordering.
+**PR6b may proceed** — PR6R record correction and hyperlane hardening are complete. **PR7** (partition/bridge structural producer + clustering) remains after PR6b per ladder ordering.
