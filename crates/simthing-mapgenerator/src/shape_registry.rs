@@ -1,8 +1,16 @@
-//! Data-driven shape strategy registry (descriptor shell only — no placement algorithms in PR1).
+//! Data-driven shape strategy registry: descriptors + executable strategy dispatch (PR3).
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+use crate::lattice::{CoreMask, SquareLattice};
+use crate::occupancy::OccupancyGrid;
+use crate::params::MapGeneratorParams;
+use crate::rng::MapGenRng;
+use crate::strategies;
+use crate::strategy::{ShapePlacement, ShapePlacementError, ShapeStrategy, ShapeStrategyContext};
 
 /// Advertised shape name resolved through the registry (not a fixed enum of strategies).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -23,7 +31,7 @@ pub struct ShapeParameterDescriptor {
     pub required: bool,
 }
 
-/// Descriptor for a registered shape strategy (algorithm deferred to later PRs).
+/// Descriptor for a registered shape strategy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShapeStrategyDescriptor {
     pub name: RegisteredShapeName,
@@ -42,22 +50,33 @@ impl ShapeStrategyDescriptor {
     }
 }
 
-/// Data-driven registry of shape strategy descriptors.
+/// Data-driven registry of shape strategy descriptors and PR3 executable dispatch.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShapeRegistry {
     strategies: BTreeMap<String, ShapeStrategyDescriptor>,
 }
 
+#[derive(Debug, Error, PartialEq)]
+pub enum RegistryResolveError {
+    #[error("shape '{shape}' is not registered; registered shapes: {registered}")]
+    UnknownShape { shape: String, registered: String },
+    #[error(
+        "shape '{shape}' is registered but has no executable strategy in PR3; executable shapes: {executable}"
+    )]
+    StrategyNotImplemented { shape: String, executable: String },
+}
+
 impl Default for ShapeRegistry {
     fn default() -> Self {
-        Self::vanilla_pr1()
+        Self::vanilla()
     }
 }
 
 impl ShapeRegistry {
-    pub fn vanilla_pr1() -> Self {
+    pub fn vanilla() -> Self {
         let mut strategies = BTreeMap::new();
         for descriptor in [
+            Self::static_descriptor(),
             Self::arbitrary_static_descriptor(),
             Self::elliptical_descriptor(),
             Self::ring_descriptor(),
@@ -67,6 +86,11 @@ impl ShapeRegistry {
             strategies.insert(descriptor.name.0.clone(), descriptor);
         }
         Self { strategies }
+    }
+
+    /// Back-compat alias for PR1 tests/docs.
+    pub fn vanilla_pr1() -> Self {
+        Self::vanilla()
     }
 
     pub fn get(&self, name: &str) -> Option<&ShapeStrategyDescriptor> {
@@ -87,6 +111,81 @@ impl ShapeRegistry {
 
     pub fn descriptors(&self) -> impl Iterator<Item = &ShapeStrategyDescriptor> {
         self.strategies.values()
+    }
+
+    /// Names with executable PR3 strategy implementations.
+    pub fn executable_names_sorted(&self) -> Vec<String> {
+        strategies::executable_strategy_names()
+            .iter()
+            .map(|s| (*s).to_string())
+            .collect()
+    }
+
+    /// Resolve an executable strategy by name (data-driven; not a Rust enum dispatch).
+    pub fn resolve_strategy(
+        &self,
+        name: &str,
+    ) -> Result<&'static dyn ShapeStrategy, RegistryResolveError> {
+        if !self.contains(name) {
+            return Err(RegistryResolveError::UnknownShape {
+                shape: name.to_string(),
+                registered: self.registered_names_sorted().join(", "),
+            });
+        }
+        strategies::strategy_by_name(name).ok_or_else(|| {
+            RegistryResolveError::StrategyNotImplemented {
+                shape: name.to_string(),
+                executable: self.executable_names_sorted().join(", "),
+            }
+        })
+    }
+
+    /// Run a registered executable strategy and return in-memory placements.
+    pub fn place(
+        &self,
+        params: &MapGeneratorParams,
+        lattice: &SquareLattice,
+        core_mask: &CoreMask,
+        occupancy: &mut OccupancyGrid,
+        rng: &mut MapGenRng,
+        explicit_cells: Option<&[crate::lattice::LatticeCoord]>,
+    ) -> Result<ShapePlacement, ShapePlacementError> {
+        let shape = params.shape.shape.as_str();
+        let strategy = self.resolve_strategy(shape).map_err(|err| match err {
+            RegistryResolveError::UnknownShape { shape, registered } => {
+                ShapePlacementError::UnknownShape { shape, registered }
+            }
+            RegistryResolveError::StrategyNotImplemented { shape, executable } => {
+                ShapePlacementError::StrategyNotImplemented { shape, executable }
+            }
+        })?;
+        let descriptor = self
+            .get(shape)
+            .expect("resolve_strategy implies descriptor exists");
+        let mut ctx = ShapeStrategyContext {
+            params,
+            descriptor,
+            lattice,
+            core_mask,
+            occupancy,
+            rng,
+            explicit_cells,
+        };
+        strategy.place(&mut ctx)
+    }
+
+    fn static_descriptor() -> ShapeStrategyDescriptor {
+        ShapeStrategyDescriptor {
+            name: RegisteredShapeName("static".into()),
+            display_name: "Static".into(),
+            description: "Explicit integer lattice cells (in-memory passthrough; PR3 test seam)."
+                .into(),
+            parameters: vec![param(
+                "coordinate_transform",
+                "Optional coordinate transform label",
+                false,
+            )],
+        }
     }
 
     fn arbitrary_static_descriptor() -> ShapeStrategyDescriptor {
