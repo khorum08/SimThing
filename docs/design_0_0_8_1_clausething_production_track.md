@@ -563,3 +563,11 @@ after an independent post-merge audit (merge `67d6ab8c`; audit
 Cursor-prefiled approval; code stands, one non-blocking advisory recorded.
 **MAPGEN PR3 DA audit approved; PR4 may proceed** (subject to its own DA-review gate; only the Design
 Authority writes a DA sign-off).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR4).** **0.0.8.2 remains closed.** MapGen PR4 adds bounded
+Resource Flow enrollment/feedstock from the PR3 lattice hierarchy (`generate_mapgen_resource_flow_enrollment`
+→ `ResourceFlowSpec` on `HydratedScenarioPack`). PR4 enrolls deposit minerals intrinsic-flow feedstock and a
+suppression/disruption arena with explicit participants, caps, shallow coupling, and expansion report. PR4
+remains front-end/resource-flow authoring only — no Movement-Front, SaturatingFlux, PALMA W/D, FIELD_POLICY,
+hyperlane lane coupling, runtime/GPU/driver/simthing-sim changes, or GPU opt-in. **FIELD-MOVIE-DATASET-0**
+remains subsequent. **DA review required before merge.**

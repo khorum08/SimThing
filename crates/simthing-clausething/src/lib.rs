@@ -12,6 +12,7 @@
 //! bounded grid-link metadata.
 //! MapGen PR2: neutral-AST parse-only adapter (M1) — no semantic mapping.
 //! MapGen PR3: gridcell lattice hierarchy generator — scenario-container output only.
+//! MapGen PR4: bounded Resource Flow enrollment/feedstock from PR3 hierarchy — front-end only.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -32,6 +33,7 @@ mod json;
 mod literal_install;
 mod mapgen_lattice;
 mod mapgen_neutral_ast;
+mod mapgen_resource_flow;
 mod parse;
 mod scope_json;
 mod scope_lab;
@@ -77,6 +79,15 @@ pub use mapgen_lattice::{
     generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
 };
 pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
+pub use mapgen_resource_flow::{
+    MAPGEN_RF_DEFAULT_DEPOSIT_MAX_PARTICIPANTS, MAPGEN_RF_DEFAULT_MAX_COUPLING_FANOUT,
+    MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH, MAPGEN_RF_DEFAULT_SUPPRESSION_MAX_PARTICIPANTS,
+    MAPGEN_RF_DEPOSIT_ARENA, MAPGEN_RF_PROPERTY_NAMESPACE, MAPGEN_RF_SUPPRESSION_ARENA,
+    MapGenResourceFlowArenaExpansion, MapGenResourceFlowEnrollment, MapGenResourceFlowError,
+    MapGenResourceFlowExpansionReport, MapGenResourceFlowOptions,
+    generate_default_mapgen_resource_flow_enrollment, generate_mapgen_resource_flow_enrollment,
+    validate_arena_caps, validate_explicit_enrollment, validate_resource_flow_enrollment,
+};
 pub use parse::parse_raw_document;
 pub use raw::RawDocument;
 pub use scope::{

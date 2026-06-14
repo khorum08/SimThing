@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`) ratifying the Cursor-prefiled approval; PR4 may proceed.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS pending DA review; PR5+ pending.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -363,6 +363,22 @@ Deposits → `IntrinsicFlow`; shallow allocator hierarchy; declare **selectors +
 coupling delay forms**; clean **expansion report**; one **suppression arena** as the Movement-Front source.
 Tests: `mapgen_arena_enrolls_with_caps`, `mapgen_arena_rejects_uncapped`, `mapgen_arena_rejects_algebraic_cycle`,
 `mapgen_expansion_report`. Stop: deep multi-level allocation / large coupling beyond CT-2c → escalate (§9 / §10).
+
+**Status: PASS pending DA review (2026-06-13, Cursor PR 4).** Added
+`generate_mapgen_resource_flow_enrollment` (`mapgen_resource_flow.rs`) lowering PR3 hierarchy into bounded
+`ResourceFlowSpec` enrollment: deposit minerals intrinsic-flow feedstock arena (1 explicit participant) +
+suppression/disruption arena (5 gridcell participants), all caps declared, shallow deposit→suppression coupling,
+expansion report, `opt_in_mode = Disabled`. No Movement-Front, SaturatingFlux, PALMA, FIELD_POLICY, hyperlane,
+or runtime/GPU/driver/simthing-sim changes. Tests: `mapgen_resource_flow` (16 passed). Result:
+[`tests/mapgen_pr4_resource_flow_results.md`](tests/mapgen_pr4_resource_flow_results.md) (PROBATION).
+
+### PR 4 artifact lifecycle audit (§6.4)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `mapgen_resource_flow.rs`, `mapgen_resource_flow.rs` (tests) | CURRENT_EVIDENCE | New PR4 generator + tests |
+| `docs/tests/mapgen_pr4_resource_flow_results.md` | PROBATION | New PR4 report |
+| Prior PR1–PR3 guardrails | unchanged | See PR3 audit |
 
 ### PR 5 — Hyperlane → bounded link + lane coupling + position metadata
 Owner: Cursor (DA review). Re-read A2 + M6 + M9. Static `system` → gridcell (position **inert metadata**,
