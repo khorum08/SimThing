@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED pending merge (Opus, 2026-06-13); PR7 may proceed.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 may proceed.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
