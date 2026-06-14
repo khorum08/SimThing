@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 may proceed (DA review).** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS pending DA review; PR10 may proceed after PR9 DA approval.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -495,12 +495,28 @@ no simthing-sim changes. **Do not merge until DA review.** Result:
 | Prior PR1–PR7 guardrails | unchanged | See PR7 audit |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
-### PR 9 — Candidate-F + P1/scale guards
-Owner: Cursor (DA review). Re-read M5 + M9 + §0.7. Prove position inert; no Euclidean
-magnitude/sqrt/`length`/`normalize`/`distance(type=euclidean)`; reach is min-plus; **one system per cell;
-per-tick horizon bounded (no horizon-widening-as-strategic-shortcut).** Tests:
-`mapgen_no_euclidean_magnitude_guard`, `mapgen_position_inert_guard`, `mapgen_one_system_per_cell_guard`,
-`mapgen_bounded_horizon_guard`. Stop: genuine Euclidean need → §0.7 escalation.
+### PR 9 — Candidate-F + P1/scale constitutional guard hardening
+Owner: Cursor (DA review). Re-read M5 + M9 + §0.7. Harden Euclidean tripwire, P1 bounded-horizon
+locality, one-system-per-cell, inert render positions, and no route/path/predecessor/movement/border/
+frontline semantics across MapGen PR1–PR8 surfaces. Tests: `mapgen_constitution_guards`. Stop: genuine
+Euclidean need → §0.7 escalation.
+
+**Status: PASS pending DA review (Cursor PR 9).** Added `mapgen_constitution_guards` consolidated guard
+battery plus `validate_one_system_per_gridcell` admission helper. PR9 is guard hardening only — no new
+generator capabilities, no new GPU kernel, no semantic WGSL, no runtime engine, no simthing-sim changes, no
+PR10 end-to-end sample execution, no FIELD-MOVIE-DATASET-0 export. Result:
+[`tests/mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md)
+(PROBATION).
+
+### PR 9 artifact lifecycle audit (§6.9)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `mapgen_constitution_guards.rs` (tests) | LIVE_GUARDRAIL | New PR9 consolidated guard battery |
+| `validate_one_system_per_gridcell` | LIVE_GUARDRAIL | Small admission helper in `mapgen_lattice.rs` |
+| `docs/tests/mapgen_pr9_constitution_guards_results.md` | PROBATION | New PR9 report |
+| `mapgen_pr1`–`mapgen_pr8` reports/guardrails | CURRENT_EVIDENCE / LIVE_GUARDRAIL | Unchanged; PR8 CURRENT_EVIDENCE |
+| Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ### PR 10 — Canonical sample (end to end)
 Owner: Cursor (DA review). A ≤ 5-system slice → neutral AST → generate gridcell lattice + arenas (capped,

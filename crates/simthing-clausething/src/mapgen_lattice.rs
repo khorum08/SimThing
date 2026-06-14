@@ -124,6 +124,7 @@ pub fn generate_mapgen_lattice_hierarchy(
     let raw = parse_raw_document(scenario_clause.as_bytes())?;
     let mut pack = hydrate_scenario(&raw)?;
     pack.grid_metadata = build_mapgen_grid_metadata(&placements, fixture_lattice_edge);
+    validate_one_system_per_gridcell(&pack.grid_metadata)?;
     assert_no_deferred_surfaces(&pack)?;
     assert_no_forbidden_generated_properties(&pack)?;
     assert_allowed_simthing_kinds(&pack.root_node)?;
@@ -561,6 +562,22 @@ fn reject_forbidden_property_name(property: &PropertySpec) -> Result<(), MapGenL
         if haystack.contains(forbidden) {
             return Err(MapGenLatticeError::new(format!(
                 "generated property must not reference forbidden vocabulary `{forbidden}`"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// PR9 guard: each gridcell hosts at most one system placement.
+pub fn validate_one_system_per_gridcell(
+    metadata: &HydratedScenarioGridMetadata,
+) -> Result<(), MapGenLatticeError> {
+    let mut occupied = BTreeSet::new();
+    for placement in &metadata.placements {
+        if !occupied.insert((placement.row, placement.col)) {
+            return Err(MapGenLatticeError::new(format!(
+                "duplicate gridcell placement at row={} col={}",
+                placement.row, placement.col
             )));
         }
     }

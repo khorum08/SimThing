@@ -69,6 +69,13 @@
 > kernel, no semantic WGSL, no simthing-sim changes. Report:
 > [`mapgen_pr8_scheduled_concurrency_results.md`](../tests/mapgen_pr8_scheduled_concurrency_results.md).
 >
+> **PR9 constitutional guard hardening (2026-06-13, PASS pending DA review):**
+> `mapgen_constitution_guards` consolidates Candidate F / Euclidean, P1 horizon locality,
+> one-system-per-cell, inert render positions, and forbidden route/path/predecessor/movement/border/frontline
+> scans across MapGen PR1–PR8 surfaces. Guard hardening only — no new generator capability, no GPU kernel, no
+> PR10 end-to-end sample. Report:
+> [`mapgen_pr9_constitution_guards_results.md`](../tests/mapgen_pr9_constitution_guards_results.md).
+>
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei

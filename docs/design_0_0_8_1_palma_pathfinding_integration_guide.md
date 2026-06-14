@@ -520,6 +520,14 @@ and generic `scheduled_w_palma_batch` helpers comparing serial vs single-encoder
 over the PR7 tiny slice. Compact D probe only — not pathfinding, routes, or movement. No fused kernel. Driver
 GPU exercise only; **DA-APPROVED (Opus, 2026-06-14)** — genuine GPU-source audit (scheduling-only, no fused kernel) + real-adapter battery. Report:
 [`tests/mapgen_pr8_scheduled_concurrency_results.md`](tests/mapgen_pr8_scheduled_concurrency_results.md)
+(CURRENT_EVIDENCE).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR9).** MapGen PR9 adds `mapgen_constitution_guards` consolidated
+guard battery plus `validate_one_system_per_gridcell` admission helper. Hardens Candidate F / Euclidean,
+P1 bounded horizon, one-system-per-cell, inert positions, and forbidden route/path/predecessor/movement
+semantics across PR1–PR8 surfaces. Guard hardening only — no new GPU kernel, no PR10 end-to-end sample.
+**PASS pending DA review.** Report:
+[`tests/mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md)
 (PROBATION).
 
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

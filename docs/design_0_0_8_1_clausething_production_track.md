@@ -615,3 +615,12 @@ scheduled-concurrency over existing Gu-Yang / W-compose / PALMA-compatible GPU-r
 gameplay engine, pathfinding engine, movement engine, or corpus/export seam. **FIELD-MOVIE-DATASET-0** remains
 subsequent. **DA-APPROVED (Opus, 2026-06-14)** after a genuine GPU-source audit (scheduling-only, no fused
 kernel) + real-adapter battery rerun. **PR9 may proceed** under its own DA-review gate.
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR9).** **0.0.8.2 remains closed.** MapGen PR9 hardens
+constitutional/admission guards before PR10: Candidate F / Euclidean authority, P1 bounded-horizon locality,
+one-system-per-cell, inert render positions, and no route/path/predecessor/movement/border/frontline semantics.
+PR9 is guard hardening only — no new generator feature beyond guards, no new GPU kernel, no semantic WGSL, no
+runtime engine, no simthing-sim changes, no PR10 end-to-end sample execution, no FIELD-MOVIE-DATASET-0 export.
+**PASS pending DA review.** See
+[`mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md) (PROBATION).
+**PR10 may proceed** after PR9 DA approval.
