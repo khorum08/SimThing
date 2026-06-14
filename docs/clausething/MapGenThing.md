@@ -87,7 +87,10 @@
 > **PR11 closeout (2026-06-13, DA review before merge):** docs/ledger/proof-lifecycle only — promotes PR1–PR10
 > reports to CURRENT_EVIDENCE, lists LIVE_GUARDRAIL tests, closes 0.0.8.2.5 MapGen after DA approval.
 > Report: [`mapgen_pr11_closeout_results.md`](../tests/mapgen_pr11_closeout_results.md) (PROBATION).
-> **FIELD-MOVIE-DATASET-0 remains subsequent.**
+> **0.0.8.2.5 MapGen closes after DA approval** as the ingest/lowering target contract. The **immediate next
+> consumer** is **MapGeneratorCLI / map generator completion** (producer of declarative payloads). This
+> document remains the **target grammar/reference** for those payloads — not the CLI algorithm implementation.
+> **FIELD-MOVIE-DATASET-0 remains later/subsequent.**
 >
 > **Final MapGen pipeline (0.0.8.2.5):** PR2 parse → PR3 gridcell lattice → PR4 RF enrollment → PR5 bounded
 > links/lane coupling → PR6 Movement-Front feedstock → PR7 PALMA W/D feedstock → PR8 scheduled-concurrency

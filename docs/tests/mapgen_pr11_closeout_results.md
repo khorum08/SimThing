@@ -9,7 +9,8 @@ generator capability, runtime behavior, GPU kernel, semantic WGSL, `SimThingKind
 predecessor/border/frontline semantics, `simthing-sim` changes, or FIELD-MOVIE-DATASET-0 export.
 
 PR11 confirms MapGen PR1–PR10 are landed and DA-approved where required, promotes durable reports to
-CURRENT_EVIDENCE, lists LIVE_GUARDRAIL tests, and hands off explicitly to FIELD-MOVIE-DATASET-0 as subsequent.
+CURRENT_EVIDENCE, lists LIVE_GUARDRAIL tests, and preserves baseline artifacts for the immediate subsequent
+consumer: **MapGeneratorCLI / map generator completion**.
 
 ## Track scope
 
@@ -52,14 +53,38 @@ The mini-track did **not** add a gameplay engine, pathfinding engine, movement e
 kernel, new `SimThingKind`, CPU planner, full-field CPU decision readback, `simthing-sim` semantics, or
 FIELD-MOVIE-DATASET-0 export.
 
-## What remains deferred (subsequent track)
+## What remains deferred (subsequent tracks)
 
-**FIELD-MOVIE-DATASET-0** — editor/corpus/export seam on the 0.0.8.2 §10 boundary. Must begin from this closed
-MapGen artifact set and must not reopen 0.0.8.2.5 unless a regression is discovered.
+The **immediate subsequent consumer** is **MapGeneratorCLI / map generator completion**: a thin producer that
+emits declarative galaxy scenario payloads consumable by the closed 0.0.8.2.5 MapGen ingest/lowering path.
+**FIELD-MOVIE-DATASET-0** remains **later/subsequent** after the CLI producer track (editor/corpus/export seam
+on the 0.0.8.2 §10 boundary). PR11 must not open FIELD-MOVIE-DATASET-0.
 
 Also deferred (not closed here): whole-corpus import, vendored Paradox files, load-order interpreter,
 localization interpreter, scripted trigger/effect interpreter, deep galaxy-scale allocation, atlas batching /
 active masks / perception, pathfinding/movement services, arbitrary-graph topology.
+
+## Preserved baseline artifacts for MapGeneratorCLI
+
+The following artifacts are intentionally preserved and must not be archived/deleted by generic cleanup because
+they are reusable target-contract assets for the MapGeneratorCLI producer track:
+
+- `docs/clausething/mapgen_corpus_manifest.md`
+- `crates/simthing-clausething/tests/fixtures/mapgen/`
+- `docs/tests/mapgen_pr1_corpus_manifest_results.md`
+- `docs/tests/mapgen_pr6_movement_front_results.md`
+- `docs/tests/mapgen_pr7_palma_results.md`
+- `docs/tests/mapgen_pr10_end_to_end_results.md`
+- `docs/tests/mapgen_pr11_closeout_results.md`
+- per-PR artifact lifecycle audit tables in the MapGen reports
+
+Prefer preserving all `docs/tests/mapgen_pr*_results.md` through the CLI bootstrap unless DA explicitly
+approves archiving. Do not delete any MapGen fixture, tiny slice, corpus manifest, or MapGen evidence report in
+this PR.
+
+These artifacts define the accepted declarative input shape, corpus discipline, lowering expectations,
+compact-evidence style, guardrail battery, and end-to-end target contract that generated CLI outputs must
+satisfy.
 
 ## Artifact lifecycle audit
 
@@ -80,6 +105,8 @@ active masks / perception, pathfinding/movement services, arbitrary-graph topolo
 | `mapgen_pr10_end_to_end_results.md` | Unchanged (already CURRENT_EVIDENCE) |
 | `clausething_closeout_results.md` | Unchanged (0.0.8.2 parent closeout) |
 | `mapgen_pr11_closeout_results.md` | PROBATION (this report until DA approves PR11) |
+| `mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE |
+| `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE |
 
 ### LIVE_GUARDRAIL tests
 
@@ -105,6 +132,7 @@ active masks / perception, pathfinding/movement services, arbitrary-graph topolo
 | Stale generated dumps / worktree artifacts | None found |
 | Obsolete pre-DA MapGen reports | None retained — all PR1–PR10 reports are current |
 | Superseded MapGen test snapshots | None — no MapGen artifacts moved to `docs/archive/superseded_tests/` (nothing superseded) |
+| MapGen corpus manifest / fixtures / PR reports | **Preserved** — do-not-delete baseline for MapGeneratorCLI (see § Preserved baseline artifacts) |
 
 ## Files changed (PR11)
 
@@ -164,6 +192,8 @@ git diff --check
 
 After DA approval, this report promotes to CURRENT_EVIDENCE and **0.0.8.2.5 MapGen is CLOSED**.
 
-## Subsequent track
+## Subsequent tracks
 
-**FIELD-MOVIE-DATASET-0** may be opened only after PR11 is DA-approved and merged.
+The immediate subsequent consumer is **MapGeneratorCLI / map generator completion**: a thin producer that emits
+declarative galaxy scenario payloads consumable by the closed 0.0.8.2.5 MapGen ingest/lowering path.
+**FIELD-MOVIE-DATASET-0** remains later/subsequent after the CLI producer track and must not be opened by PR11.

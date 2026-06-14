@@ -640,4 +640,7 @@ generation, admission/install, and GPU compact evidence. The mini-track did not 
 pathfinding engine, movement engine, semantic WGSL, new GPU kernel, new `SimThingKind`, CPU planner, full-field
 CPU decision readback, `simthing-sim` semantics, or FIELD-MOVIE-DATASET-0 export. **Do not merge until DA
 review.** See [`mapgen_pr11_closeout_results.md`](tests/mapgen_pr11_closeout_results.md) (PROBATION).
-**0.0.8.2.5 MapGen closes after DA approves PR11.** **FIELD-MOVIE-DATASET-0 remains subsequent.**
+**0.0.8.2.5 MapGen closes after DA approves PR11** as the ingest/lowering target contract. The **immediate
+next consumer** is **MapGeneratorCLI / map generator completion**, which must produce declarative payloads
+conforming to the closed MapGen contract. **FIELD-MOVIE-DATASET-0 remains later/subsequent** and must not be
+opened by PR11.

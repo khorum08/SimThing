@@ -2,6 +2,16 @@
 
 Hand-authored equivalents for the MapGen PR ladder.
 
+## Preservation (MapGeneratorCLI baseline)
+
+This fixture tree is a **preserved baseline** for the **MapGeneratorCLI** track. It defines the minimal
+declarative shape, lowering target, and regression harness pattern that generated CLI outputs must satisfy.
+**Do not delete or archive this tree** during generic MapGen closeout cleanup without explicit DA approval.
+
+See also [`docs/clausething/mapgen_corpus_manifest.md`](../../../../../docs/clausething/mapgen_corpus_manifest.md)
+and [`docs/tests/mapgen_pr11_closeout_results.md`](../../../../../docs/tests/mapgen_pr11_closeout_results.md)
+(§ Preserved baseline artifacts for MapGeneratorCLI).
+
 ## Policy
 
 - Fixtures are **hand-authored equivalents** derived from read-only local corpus inspection
@@ -120,8 +130,9 @@ cargo test -p simthing-driver --test mapgen_pr10_end_to_end_compact_evidence
 ## PR11 — MapGen closeout (DA review)
 
 PR11 is docs/ledger/proof-lifecycle only. Promotes PR1–PR10 reports to CURRENT_EVIDENCE, lists LIVE_GUARDRAIL
-tests, closes 0.0.8.2.5 MapGen after DA approval. No new generator capability, runtime behavior, GPU kernel,
-semantic WGSL, or FIELD-MOVIE-DATASET-0 export.
+tests, preserves MapGen baseline artifacts for MapGeneratorCLI, closes 0.0.8.2.5 MapGen ingest/lowering after
+DA approval. No new generator capability, runtime behavior, GPU kernel, semantic WGSL, MapGeneratorCLI
+implementation, or FIELD-MOVIE-DATASET-0 export.
 
 **Closeout guard battery:**
 
