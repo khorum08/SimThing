@@ -1,12 +1,40 @@
 # MapGen PR4 Resource Flow Enrollment Results
 
-> **Artifact lifecycle: PROBATION** (PR4 RF enrollment report; MapGen closeout decides promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR4 RF enrollment report; DA-approved after a targeted repair).
 
 ## Verdict
 
-**PASS pending DA review** — PR3 lattice hierarchy generates bounded Resource Flow enrollment with
-explicit selector admission, arena caps, deposit intrinsic-flow feedstock, suppression/disruption arena,
-expansion report, and no Movement-Front/PALMA/FIELD_POLICY/hyperlane/runtime leakage.
+**PASS / DA-APPROVED after a targeted DA repair (2026-06-14, Opus / Design Authority)** — PR3 lattice
+hierarchy generates bounded Resource Flow enrollment with explicit selector admission, arena caps, deposit
+intrinsic-flow feedstock, suppression/disruption arena, expansion report, and no
+Movement-Front/PALMA/FIELD_POLICY/hyperlane/runtime leakage. **One DA finding was raised and fixed before
+merge** — see "DA review & repair" below.
+
+## DA review & repair (Opus / Design Authority, 2026-06-14)
+
+Genuine pre-merge DA audit against ladder §0/§3/§6 PR4, ADR-RF, ADR-MAP, core §7 — verified independently
+against the branch source, not the PR body. RF participation is explicit via `explicit_participants` (the
+admission compile `resource_flow_admission.rs` reads **only** `explicit_participants`;
+`validate_no_property_possession_admission` is enforced); every arena declares
+`max_participants`/`max_coupling_fanout`/`max_orderband_depth`; `FissionPolicy::Reject`;
+`ResourceFlowOptInMode::Disabled`; a single `OneTickDelay` coupling (fanout 1 ≤ 4, no all-`Algebraic`
+cycle); bounded expansion report; no Movement-Front/SaturatingFlux/PALMA/FIELD_POLICY/hyperlane output
+(`assert_no_deferred_pr4_surfaces`); no new `SimThingKind` (`assert_allowed_simthing_kinds`); no Candidate F
+(minerals rate parsed from inert metadata, no distance/sqrt). `lib.rs` is pure module wiring; no
+driver/GPU/sim files touched.
+
+**Finding (DA SIGN-OFF: REQUEST_CHANGES → fixed before merge).** The deposit arena originally authored
+`enrollment = InstallTarget(ScenarioListed { deposits[0] })` while `explicit_participants` listed *every*
+deposit — a selector naming only the first deposit, harmless for the single-deposit pentad fixture but a
+**latent multi-deposit generalization bug** (the exact ambiguity the handoff flagged for DA attention).
+**DA-applied targeted repair:** the deposit arena now enrolls via `EnrollmentSelectorSpec::ExplicitOnly`
+(matching the suppression arena and the authoritative participant list), removing the `deposits[0]`
+dependency entirely; the test now asserts **both** arenas use `ExplicitOnly`.
+
+**Battery reran green after the repair:** `cargo fmt --check` clean, `git diff --check` clean,
+`mapgen_resource_flow` 16, `mapgen_lattice_hierarchy` 10, `mapgen_neutral_ast_parse` 8,
+`ct_scenario_container` 45. `mapgen_resource_flow` promoted to **LIVE_GUARDRAIL**. **PR5 may proceed** under
+its own DA-review gate — only the Design Authority writes the sign-off (governance rule carried from PR3).
 
 ## Track scope
 
@@ -59,8 +87,8 @@ not import the whole Stellaris corpus.
 | `docs/tests/mapgen_pr3_da_audit_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `mapgen_neutral_ast_parse.rs` | LIVE_GUARDRAIL | Unchanged |
 | `mapgen_lattice_hierarchy.rs` | LIVE_GUARDRAIL | Unchanged |
-| `mapgen_resource_flow.rs` | CURRENT_EVIDENCE | New PR4 generator |
-| `mapgen_resource_flow.rs` (tests) | CURRENT_EVIDENCE | New PR4 tests |
+| `mapgen_resource_flow.rs` | CURRENT_EVIDENCE | New PR4 generator (DA repair applied) |
+| `mapgen_resource_flow.rs` (tests) | LIVE_GUARDRAIL | New PR4 tests; promoted at DA approval |
 | `ct_scenario_container` | LIVE_GUARDRAIL | Unchanged |
 | `docs/tests/mapgen_pr4_resource_flow_results.md` | PROBATION | New PR4 report |
 | Scratch logs / duplicates / worktrees | DELETE | None found |
@@ -69,7 +97,7 @@ not import the whole Stellaris corpus.
 
 - Deposit minerals authored value → `BaseFlowObligationSpec` produce rate (feedstock only)
 - Two bounded arenas: `mapgen_deposit_minerals` (1 participant) + `mapgen_suppression` (5 gridcells)
-- Explicit `EnrollmentSelectorSpec` + `explicit_participants` on every arena
+- Both arenas enroll via `EnrollmentSelectorSpec::ExplicitOnly` over their authoritative `explicit_participants` — multi-deposit-safe (DA repair; deposit arena no longer singles out `deposits[0]`)
 - All arenas declare `max_participants`, `max_coupling_fanout`, `max_orderband_depth`
 - Shallow coupling deposit → suppression (`OneTickDelay`); fanout capped
 - `ResourceFlowOptInMode::Disabled` — no GPU execution in PR4
@@ -103,26 +131,27 @@ git diff --check
 | `mapgen_resource_flow` | 16 passed |
 | `ct_scenario_container` | 45 passed |
 
-## DA review checklist
+## DA review checklist (verified 2026-06-14, Opus / Design Authority; deposit-selector finding fixed)
 
-- [ ] Resource Flow participation is explicit
-- [ ] Property possession alone does not admit a participant
-- [ ] Every arena has max_participants
-- [ ] Every arena has max_coupling_fanout
-- [ ] Every arena has max_orderband_depth
-- [ ] Expansion report exists and is bounded
-- [ ] No deep unbounded fanout
-- [ ] No runtime/GPU/driver/simthing-sim changes
-- [ ] No Movement-Front output
-- [ ] No SaturatingFlux field_operator output
-- [ ] No PALMA feedstock output
-- [ ] No FIELD_POLICY commitment output
-- [ ] No hyperlane lane coupling output
-- [ ] No pathfinding/movement/route/predecessor/border/frontline semantics
-- [ ] No new SimThingKind
-- [ ] No Candidate F implication
-- [ ] Proof/test lifecycle performed
-- [ ] Tests are focused and not proof theater
+- [x] Resource Flow participation is explicit
+- [x] Property possession alone does not admit a participant
+- [x] Every arena has max_participants
+- [x] Every arena has max_coupling_fanout
+- [x] Every arena has max_orderband_depth
+- [x] Expansion report exists and is bounded
+- [x] No deep unbounded fanout
+- [x] No runtime/GPU/driver/simthing-sim changes
+- [x] No Movement-Front output
+- [x] No SaturatingFlux field_operator output
+- [x] No PALMA feedstock output
+- [x] No FIELD_POLICY commitment output
+- [x] No hyperlane lane coupling output
+- [x] No pathfinding/movement/route/predecessor/border/frontline semantics
+- [x] No new SimThingKind
+- [x] No Candidate F implication
+- [x] Proof/test lifecycle performed
+- [x] Tests are focused and not proof theater
+- [x] Deposit-arena enrollment selector is multi-deposit-safe (`ExplicitOnly`) — DA repair applied
 
 ## Constraints preserved
 

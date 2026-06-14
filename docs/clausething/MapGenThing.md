@@ -28,11 +28,13 @@
 > Audit: [`mapgen_pr3_da_audit_results.md`](../tests/mapgen_pr3_da_audit_results.md) — **genuine DA sign-off
 > (Opus, 2026-06-14)** ratifying a Cursor-prefiled approval. **PR4 may proceed.**
 >
-> **PR4 bounded RF enrollment (2026-06-13, DA review pending):** `generate_mapgen_resource_flow_enrollment`
-> in `mapgen_resource_flow.rs` lowers the PR3 hierarchy into bounded `ResourceFlowSpec` enrollment: deposit
-> minerals intrinsic-flow feedstock + suppression/disruption arena with explicit selector admission, arena caps,
-> shallow deposit→suppression coupling, and expansion report. No Movement-Front, SaturatingFlux, PALMA,
-> FIELD_POLICY, hyperlane, or runtime/GPU/driver/simthing-sim output in PR4.
+> **PR4 bounded RF enrollment (2026-06-13, DA-APPROVED after a targeted repair, Opus 2026-06-14):**
+> `generate_mapgen_resource_flow_enrollment` in `mapgen_resource_flow.rs` lowers the PR3 hierarchy into
+> bounded `ResourceFlowSpec` enrollment: deposit minerals intrinsic-flow feedstock + suppression/disruption
+> arena. **Both arenas enroll via `ExplicitOnly`** over their authoritative `explicit_participants`
+> (multi-deposit-safe — DA repaired the deposit arena from an `InstallTarget(deposits[0])` selector), with
+> arena caps, shallow deposit→suppression coupling, and expansion report. No Movement-Front, SaturatingFlux,
+> PALMA, FIELD_POLICY, hyperlane, or runtime/GPU/driver/simthing-sim output in PR4.
 > Report: [`mapgen_pr4_resource_flow_results.md`](../tests/mapgen_pr4_resource_flow_results.md).
 >
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front

@@ -570,4 +570,7 @@ Resource Flow enrollment/feedstock from the PR3 lattice hierarchy (`generate_map
 suppression/disruption arena with explicit participants, caps, shallow coupling, and expansion report. PR4
 remains front-end/resource-flow authoring only — no Movement-Front, SaturatingFlux, PALMA W/D, FIELD_POLICY,
 hyperlane lane coupling, runtime/GPU/driver/simthing-sim changes, or GPU opt-in. **FIELD-MOVIE-DATASET-0**
-remains subsequent. **DA review required before merge.**
+remains subsequent. **Genuine DA sign-off (Opus, 2026-06-14) after a targeted DA repair** — the deposit
+arena enrollment was repaired from `InstallTarget(deposits[0])` to `ExplicitOnly` (multi-deposit-safe);
+battery reran green. **PR5 may proceed** under its own DA-review gate (only the Design Authority writes a
+DA sign-off).

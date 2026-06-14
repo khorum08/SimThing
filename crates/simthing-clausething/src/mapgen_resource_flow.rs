@@ -199,11 +199,13 @@ pub fn generate_mapgen_resource_flow_enrollment(
         reserved_gap_per_intermediate: 0,
         expected_max_children_per_intermediate: 0,
         explicit_participants: deposit_participants.clone(),
-        enrollment: Some(EnrollmentSelectorSpec::InstallTarget(
-            InstallTargetSpec::ScenarioListed {
-                target_id: deposits[0].node_id.clone(),
-            },
-        )),
+        // DA repair (PR4): `explicit_participants` authoritatively lists EVERY deposit, so the deposit
+        // arena enrolls via `ExplicitOnly` (matching the suppression arena). The earlier
+        // `InstallTarget(ScenarioListed { deposits[0] })` named only the first deposit — harmless for
+        // the single-deposit pentad fixture but a latent multi-deposit generalization bug, since a
+        // later slice with N deposits would have a selector implying only deposit 0 is the admission
+        // source. `ExplicitOnly` is multi-deposit-safe: admission is the full participant list.
+        enrollment: Some(EnrollmentSelectorSpec::ExplicitOnly),
         wildcard_admission: None,
     };
     let suppression_arena = ArenaSpec {
