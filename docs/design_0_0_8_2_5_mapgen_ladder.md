@@ -1,6 +1,6 @@
 # SimThing 0.0.8.2.5 — MapGen PR Ladder (Stellaris Starmap → SimThing Star Mapping)
 
-> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 may proceed.** Planning
+> **Status: PR1 PASS (2026-06-13); PR2 PASS — DA-APPROVED + merged 2026-06-13 (`edeab38a`); PR3 PASS — genuine DA sign-off (Opus, 2026-06-14, `67d6ab8c`); PR4 PASS — DA-APPROVED after a targeted DA repair (Opus, 2026-06-14); PR5 PASS — DA-APPROVED + merged 2026-06-14 (`172d0c47`); PR6 PASS — DA-APPROVED + merged 2026-06-13 (`3f411fda`); PR7 PASS + merged 2026-06-13 (`0d9b9349`); PR8 PASS — DA-APPROVED (Opus, 2026-06-14; GPU-source audit + real-adapter battery); PR9 PASS — DA-APPROVED (Opus, 2026-06-14; guard-hardening); PR10 PASS — DA-APPROVED (Opus, 2026-06-14; end-to-end admit/install + GPU compact evidence on a real adapter); PR11 closeout may proceed.** Planning
 > artifact that **pulls the deferred corpus-import / map-generation consumer** named in the
 > 0.0.8.2 closeout. Not an implementation PR. It pins schema judgments (§3) so the rungs are
 > Cursor-mechanical, and it is **subordinate to the core-design paradigm and two governing ADRs (§0).**
@@ -525,8 +525,28 @@ PR10 end-to-end sample execution, no FIELD-MOVIE-DATASET-0 export. Result:
 Owner: Cursor (DA review). A ≤ 5-system slice → neutral AST → generate gridcell lattice + arenas (capped,
 expansion report) + Movement-Front heatmap + PALMA D + commitment → `open_from_spec` → run a few ticks →
 assert resource-flow reduction + L1/L2/L3 commitment via **compact probe/threshold only.** Tests:
-`mapgen_canonical_sample_installs_and_runs` (GPU-gated; CPU path otherwise). Stop: install needs a new
-sim-aware surface / full-field readback / uncapped arena → escalate (§9).
+`mapgen_pr10_end_to_end_compact_evidence` (GPU required for PASS; CPU path for admit/default-off). Stop:
+install needs a new sim-aware surface / full-field readback / uncapped arena → escalate (§9).
+
+**Status: PASS / DA-APPROVED (Cursor PR 10; Opus / Design Authority sign-off 2026-06-14 — genuine audit:
+end-to-end ingest→generate→admit/install→GPU compact evidence, no full-field readback; generator edits are
+install-correctness only (unique property names + real install-slot resolution), no new kernel/WGSL/sim/kind/Euclidean;
+full battery green on a real adapter incl. `mapgen_pr10_end_to_end_compact_evidence` 3 passed).** Added
+`mapgen_pr10_end_to_end_compact_evidence` driver test exercising the tiny pentad fixture through PR2 neutral
+parse → PR3 lattice → PR4 RF → PR5 links → PR6 Movement-Front → PR7 PALMA → `install_atomic` admission →
+existing GPU-resident mapping tick + scheduled W/PALMA chain + compact D probe. Compact evidence only; real
+GPU run required for PASS; no full-field CPU decision readback; no new GPU kernel; no semantic WGSL; no
+simthing-sim changes; no FIELD-MOVIE-DATASET-0 export. Result:
+[`tests/mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md) (PROBATION).
+
+### PR 10 artifact lifecycle audit (§6.10)
+
+| Artifact | Classification | Action |
+|---|---|---|
+| `mapgen_pr10_end_to_end_compact_evidence.rs` (tests) | PROBATION | New PR10 end-to-end harness |
+| `docs/tests/mapgen_pr10_end_to_end_results.md` | PROBATION | New PR10 report |
+| `mapgen_pr1`–`mapgen_pr9` reports/guardrails | CURRENT_EVIDENCE / LIVE_GUARDRAIL | Unchanged; PR9 CURRENT_EVIDENCE |
+| Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ### PR 11 — Closeout report + docs + ledger
 Owner: Cursor (DA sign-off). Docs only. Files: `docs/tests/mapgen_0_0_8_2_5_closeout_results.md` (new,

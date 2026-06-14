@@ -247,19 +247,19 @@ fn render_positions_are_inert_metadata_only() {
     let authoring = full_palma_authoring();
     for id in collect_gridcell_location_ids(&authoring.pack.root_node) {
         let node = find_node(&authoring.pack.root_node, &id).expect("gridcell");
-        for axis in [
-            "render_position_x",
-            "render_position_y",
-            "render_position_z",
+        for axis_prefix in [
+            "render_position_x_",
+            "render_position_y_",
+            "render_position_z_",
         ] {
             let property = node
                 .properties
                 .iter()
-                .find(|p| p.name == axis)
-                .unwrap_or_else(|| panic!("missing {axis} on {id}"));
+                .find(|p| p.name.starts_with(axis_prefix))
+                .unwrap_or_else(|| panic!("missing {axis_prefix} on {id}"));
             assert!(
                 property.description.contains("inert="),
-                "{axis} on {id} must be inert metadata"
+                "{axis_prefix} on {id} must be inert metadata"
             );
         }
     }

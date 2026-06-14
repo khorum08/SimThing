@@ -99,7 +99,7 @@ fn authored_render_positions_remain_inert_metadata() {
     let render_x = system_31
         .properties
         .iter()
-        .find(|p| p.name == "render_position_x")
+        .find(|p| p.name.starts_with("render_position_x_"))
         .expect("render x");
     assert_eq!(render_x.description, "inert=-9");
     assert!(

@@ -355,11 +355,12 @@ fn canonical_pair(from: &str, to: &str) -> (String, String) {
 }
 
 fn lane_coupling_property(coupling: &MapGenLaneCoupling) -> PropertySpec {
+    let name = format!("lane_coupling_{}_{}", coupling.from, coupling.to);
     PropertySpec {
-        id: format!("mapgen_lane_coupling_{}_{}", coupling.from, coupling.to),
+        id: format!("mapgen_{name}"),
         namespace: "mapgen".into(),
-        name: "lane_coupling".into(),
-        display_name: "lane_coupling".into(),
+        name: name.clone(),
+        display_name: name,
         description: format!("inert={}:{}", coupling.from, coupling.to),
         sub_fields: vec![],
     }

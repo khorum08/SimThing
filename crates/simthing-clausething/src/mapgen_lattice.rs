@@ -338,7 +338,7 @@ fn build_scenario_clause(
     out.push_str("        properties = {\n");
     push_mapping_role_property(
         &mut out,
-        "mapping_role",
+        "galaxy_mapping_role",
         "mapgen_galaxy_mapping_role",
         "galaxy",
         4,
@@ -358,7 +358,7 @@ fn build_scenario_clause(
     out.push_str("                properties = {\n");
     push_mapping_role_property(
         &mut out,
-        "mapping_role",
+        "sector_mapping_role",
         "mapgen_sector_mapping_role",
         "sector",
         5,
@@ -390,7 +390,7 @@ fn build_scenario_clause(
         out.push_str("                        properties = {\n");
         push_mapping_role_property(
             &mut out,
-            "mapping_role",
+            &format!("gridcell_mapping_role_{}", system.id),
             &format!("mapgen_gridcell_mapping_role_{}", system.id),
             "gridcell",
             6,
@@ -398,35 +398,35 @@ fn build_scenario_clause(
         push_inert_property(
             &mut out,
             &format!("mapgen_grid_row_{}", system.id),
-            "grid_row",
+            &format!("grid_row_{}", system.id),
             &placement.row.to_string(),
             6,
         );
         push_inert_property(
             &mut out,
             &format!("mapgen_grid_col_{}", system.id),
-            "grid_col",
+            &format!("grid_col_{}", system.id),
             &placement.col.to_string(),
             6,
         );
         push_inert_property(
             &mut out,
             &format!("mapgen_render_x_{}", system.id),
-            "render_position_x",
+            &format!("render_position_x_{}", system.id),
             &system.render_x,
             6,
         );
         push_inert_property(
             &mut out,
             &format!("mapgen_render_y_{}", system.id),
-            "render_position_y",
+            &format!("render_position_y_{}", system.id),
             &system.render_y,
             6,
         );
         push_inert_property(
             &mut out,
             &format!("mapgen_render_z_{}", system.id),
-            "render_position_z",
+            &format!("render_position_z_{}", system.id),
             &system.render_z,
             6,
         );
@@ -452,7 +452,7 @@ fn build_scenario_clause(
             push_inert_property_block(
                 &mut out,
                 &format!("mapgen_planet_count_{}", system.id),
-                "planet_count_authored",
+                &format!("planet_count_authored_{}", system.id),
                 &initializer.planet_count,
                 8,
             );
@@ -469,7 +469,7 @@ fn build_scenario_clause(
                 push_inert_property_block(
                     &mut out,
                     &format!("mapgen_deposit_minerals_{}", system.id),
-                    "deposit_minerals_authored",
+                    &format!("deposit_minerals_authored_{}", system.id),
                     minerals,
                     8,
                 );
@@ -615,7 +615,7 @@ pub fn collect_gridcell_location_ids(node: &HydratedScenarioNode) -> Vec<String>
 fn collect_gridcell_location_ids_inner(node: &HydratedScenarioNode, ids: &mut Vec<String>) {
     if node.properties.iter().any(|property| {
         property.namespace == "mapgen"
-            && property.name == "mapping_role"
+            && property.name.starts_with("gridcell_mapping_role_")
             && property.id.starts_with("mapgen_gridcell_mapping_role_")
     }) {
         ids.push(node.id.clone());

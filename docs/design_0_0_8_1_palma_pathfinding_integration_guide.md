@@ -528,6 +528,13 @@ P1 bounded horizon, one-system-per-cell, inert positions, and forbidden route/pa
 semantics across PR1–PR8 surfaces. Guard hardening only — no new GPU kernel, no PR10 end-to-end sample.
 **DA-APPROVED (Opus, 2026-06-14)** — guard-hardening only; battery reran green. Report:
 [`tests/mapgen_pr9_constitution_guards_results.md`](tests/mapgen_pr9_constitution_guards_results.md)
+(CURRENT_EVIDENCE).
+
+**0.0.8.2.5 MapGen addendum (2026-06-14, PR10).** MapGen PR10 adds `mapgen_pr10_end_to_end_compact_evidence`
+driver test: tiny pentad fixture through PR2–PR7 generation, `install_atomic` admission, GPU-resident mapping
+tick + scheduled W/PALMA chain + compact D probe. PALMA remains W/D feedstock — not pathfinding, routes,
+predecessors, or movement orders. Compact evidence only; real GPU required for PASS. **Do not merge until DA
+review.** Report: [`tests/mapgen_pr10_end_to_end_results.md`](tests/mapgen_pr10_end_to_end_results.md)
 (PROBATION).
 
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

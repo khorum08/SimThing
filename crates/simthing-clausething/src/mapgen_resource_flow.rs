@@ -5,7 +5,8 @@
 //! PALMA, FIELD_POLICY, hyperlane coupling, or runtime/GPU/driver/simthing-sim surfaces.
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SimThing, SimThingId, SubFieldRole,
+    SubFieldSpec,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::{
@@ -174,18 +175,36 @@ pub fn generate_mapgen_resource_flow_enrollment(
 
     let deposit_participants: Vec<ExplicitParticipantSpec> = deposits
         .iter()
-        .enumerate()
-        .map(|(slot, deposit)| {
-            ExplicitParticipantSpec::flat(slot as u32, deposit.simthing_id.raw())
+        .map(|deposit| {
+            let slot = install_slot_for_simthing(&hierarchy.pack.root, deposit.simthing_id)
+                .ok_or_else(|| {
+                    MapGenResourceFlowError::new(format!(
+                        "deposit node `{}` missing from install slot map",
+                        deposit.node_id
+                    ))
+                })?;
+            Ok(ExplicitParticipantSpec::flat(
+                slot,
+                deposit.simthing_id.raw(),
+            ))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
     let suppression_participants: Vec<ExplicitParticipantSpec> = gridcells
         .iter()
-        .enumerate()
-        .map(|(slot, gridcell)| {
-            ExplicitParticipantSpec::flat(slot as u32, gridcell.simthing_id.raw())
+        .map(|gridcell| {
+            let slot = install_slot_for_simthing(&hierarchy.pack.root, gridcell.simthing_id)
+                .ok_or_else(|| {
+                    MapGenResourceFlowError::new(format!(
+                        "gridcell node `{}` missing from install slot map",
+                        gridcell.node_id
+                    ))
+                })?;
+            Ok(ExplicitParticipantSpec::flat(
+                slot,
+                gridcell.simthing_id.raw(),
+            ))
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     let deposit_arena = ArenaSpec {
         name: MAPGEN_RF_DEPOSIT_ARENA.into(),
@@ -410,6 +429,25 @@ fn validate_coupling_fanout(
     Ok(())
 }
 
+fn install_slot_for_simthing(root: &SimThing, target: SimThingId) -> Option<u32> {
+    let mut next_slot = 0u32;
+    install_slot_walk(root, target, &mut next_slot)
+}
+
+fn install_slot_walk(node: &SimThing, target: SimThingId, next_slot: &mut u32) -> Option<u32> {
+    let slot = *next_slot;
+    if node.id == target {
+        return Some(slot);
+    }
+    *next_slot += 1;
+    for child in &node.children {
+        if let Some(found) = install_slot_walk(child, target, next_slot) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 fn collect_deposit_feedstock(
     pack: &HydratedScenarioPack,
 ) -> Result<Vec<DepositFeedstock>, MapGenResourceFlowError> {
@@ -456,11 +494,11 @@ fn parse_inert_rate(
     node: &crate::hydrate_scenario::HydratedScenarioNode,
     property_name: &str,
 ) -> Result<Option<f32>, MapGenResourceFlowError> {
-    let Some(property) = node
-        .properties
-        .iter()
-        .find(|property| property.namespace == "mapgen" && property.name == property_name)
-    else {
+    let Some(property) = node.properties.iter().find(|property| {
+        property.namespace == "mapgen"
+            && (property.name == property_name
+                || property.name.starts_with(&format!("{property_name}_")))
+    }) else {
         return Ok(None);
     };
     let Some(value) = property.description.strip_prefix("inert=") else {
