@@ -61,8 +61,9 @@ determinism break poisons the corpus as surely as it breaks the game.
 The paradigm is not folklore; it rests on two published results that every agent should internalize,
 because they explain *why* the engine's constraints generalize where bespoke systems collapse:
 
-**Anchor A — Movement-Front: the cellular-automaton physics of the map.** Zichao Wei,
-*On the Spatiotemporal Dynamics of Generalization in Neural Networks* (arXiv:2602.01651), derives
+**Anchor A — Movement-Front (Wei's *STEAD* concept): the cellular-automaton physics of the map.**
+Zichao Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*
+([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)), derives
 from three physical postulates that any system achieving lossless causal generalization is
 necessarily a cellular automaton of locally-coupled cells iterated to convergence:
 
@@ -350,22 +351,38 @@ wrong — escalate, don't special-case.
 ## 7. Mapping — the Movement-Front automaton over gridcell SimThings
 
 The map is not a system; it is **more tree, run as a cellular automaton.** This is the
-**Movement-Front system**: the engine-native realization of Anchor A (Wei, arXiv:2602.01651), in
-which gridcell/location SimThings surface their local conditions as a heat map whose values spill
-across the lattice as propagating, falloff-shaped fronts.
+**Movement-Front system**: the engine-native realization of Anchor A (Wei,
+[arXiv:2602.01651](https://arxiv.org/abs/2602.01651)), in which gridcell/location SimThings surface
+their local conditions as a heat map whose values spill across the lattice as propagating,
+falloff-shaped fronts.
 
-A grid (galaxy 200×200 default "medium", system 10×10, planet surface 5×5/10×10) is a parent SimThing
-whose children
-are **gridcell SimThings** laid out as a 2D map. A gridcell is an authored mapping-role on an
-ordinary SimThing — **not a new kind** — backed by a slot range whose **data columns are allocated
-positionally according to the parent's 2D map of child cells**, addressed as `(width, height, col)`
-so the GPU stencil can walk neighbors as pure index arithmetic. The parent collects its cells the
-same way every parent collects every child: `SlotRange` reduction over their columns.
+> **Naming.** *Movement-Front* is the engine name — use it in code, spec, and tests. Wei's underlying
+> concept is referred to in prose/design as **STEAD** — *SpatioTemporal Evolution with Attractor
+> Dynamics* ([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)) — deliberately **not** "SEAD",
+> which carries an unrelated military connotation. Never write "SEAD" anywhere in the repo.
+
+A **grid** is a parent SimThing whose children are **gridcell SimThings** laid out as a 2D map. A
+gridcell is an authored mapping-role on an ordinary SimThing — **not a new kind** — backed by a slot
+range whose **data columns are allocated positionally according to the parent's 2D map of child
+cells**, addressed as `(width, height, col)` so the GPU stencil can walk neighbors as pure index
+arithmetic. The parent collects its cells the same way every parent collects every child: `SlotRange`
+reduction over their columns. Grids exist at **whatever scales a scenario authors** — the engine
+carries no fixed roster of grid kinds; *what* a grid or a cell represents is scenario data, never
+engine knowledge.
+
+**Location SimThings are spatial — always.** Every SimThing of kind `Location` (and every gridcell,
+which is a `Location` wearing a mapping-role) participates as a **spatial entity**: it holds its
+resource-flow channels (§6) as a cell of some grid, so its **accumulated property values are
+expressible as magnitudes on the heat map** the Movement-Front automaton evolves and reduces (§7.2).
+There is no non-spatial `Location` — spatial participation in a grid is what `Location` *means*, and
+this holds generically for any domain a scenario authors, with no engine notion of what the location
+*is*. Future agents: treat "is a `Location`/gridcell" and "participates spatially in a grid" as the
+same statement.
 
 **Base canonical grid dimensions are always square** (P2 symmetry has no preferred axis): the default
-"medium" galaxy is **200×200**, and the galaxy grid **scales up — staying square** — when star density
-demands more cells than the default holds. Star systems occupy a subset of the lattice; empty cells are
-deep space carrying ambient field. (The superseded 200×150 is retired.)
+"medium" grid is **200×200**, scaling up — staying square — when cell density demands more than the
+default holds. A grid's cells are occupied as the scenario requires; unoccupied cells carry ambient
+field. (The superseded 200×150 is retired.)
 
 ### 7.1 The three postulates, enforced as engine law
 
@@ -568,8 +585,9 @@ masking, crossing thresholds, and propagating Movement-Fronts. Build toward that
 ## References
 
 - Zichao Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*
-  (arXiv:2602.01651) — the locality / symmetry / stability postulates and attractor-dynamics
-  cellular-automaton architecture underlying the Movement-Front system (§1.1, §7).
+  ([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)) — Wei's **STEAD** (*SpatioTemporal Evolution
+  with Attractor Dynamics*) concept; the locality / symmetry / stability postulates and
+  attractor-dynamics cellular-automaton architecture underlying the Movement-Front system (§1.1, §7).
 - Andrzej Odrzywołek, *All elementary functions from a single operator* (arXiv:2603.21852) — the
   single-operator (`eml(x,y) = exp(x) − ln(y)`) universality result underlying the `EvalEML`
   interpreter, the gadget library, and the JIT compiler discipline (§1.1, §4.1).

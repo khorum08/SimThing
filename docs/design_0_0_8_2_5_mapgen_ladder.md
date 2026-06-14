@@ -29,9 +29,10 @@
 **ANCHOR / core paradigm — [`simthing_core_design.md`](simthing_core_design.md) §1.1 (Anchor A) + §7
 (this OUTRANKS the ADRs where scale is concerned).** The map **is** a grid of **gridcell SimThings run
 as a cellular automaton** — the **Movement-Front automaton**, the engine-native realization of Zichao
-Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks* (arXiv:2602.01651). (Wei's
-model is named **SEAD = "Spatiotemporal Evolution with Attractor Dynamics"**; that academic acronym is
-**not** used in-repo — the engine name is **Movement-Front**. Do not write "SEAD" in code/spec/tests.)
+Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*
+([arXiv:2602.01651](https://arxiv.org/abs/2602.01651)). (Wei's concept is referred to in prose as
+**STEAD** — *SpatioTemporal Evolution with Attractor Dynamics* — never the military-connoted "SEAD";
+the engine name agents use in code/spec/tests is **Movement-Front**. Do not write "SEAD" anywhere.)
 - **The galaxy IS a 2D gridcell lattice** — **base canonical dimensions are always square** (default
   "medium" **200×200**, scaling up *square* when star density demands more cells). Star systems **occupy a
   subset** of cells; empty cells are deep space carrying ambient field. A gridcell is **an authored
