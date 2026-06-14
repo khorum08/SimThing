@@ -580,6 +580,8 @@ hyperlane-to-link/lane-coupling authoring from the tiny MapGen slice (`generate_
 links plus `mapgen::lane_coupling` inert properties on the PR4-enrolled pack). PR5 remains front-end
 topology/coupling authoring only — no pathfinding, movement, routes, predecessors, border/frontline,
 Movement-Front, PALMA W/D, FIELD_POLICY, runtime/GPU/driver/simthing-sim changes, or GPU opt-in.
-**FIELD-MOVIE-DATASET-0** remains subsequent. **PASS pending DA review** — see
-[`mapgen_pr5_links_results.md`](tests/mapgen_pr5_links_results.md) (PROBATION). **PR6 may proceed only
-after DA approval of PR5** (only the Design Authority writes a DA sign-off).
+**FIELD-MOVIE-DATASET-0** remains subsequent. **Genuine DA sign-off (Opus, 2026-06-14): APPROVE — no fix
+needed** — `mapgen::lane_coupling` is inert authoring metadata only; N4 classification uses lattice
+`(row,col)` only; battery reran green. See
+[`mapgen_pr5_links_results.md`](tests/mapgen_pr5_links_results.md) (CURRENT_EVIDENCE). **PR6 may proceed**
+(subject to its own DA-review gate; only the Design Authority writes a DA sign-off).

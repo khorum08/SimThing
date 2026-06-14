@@ -1,10 +1,19 @@
 # MapGen PR5 Hyperlane Link / Lane-Coupling Results
 
-> **Artifact lifecycle: PROBATION** (PR5 link/coupling report; pending DA review before merge promotion).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (PR5 link/coupling report; DA-approved 2026-06-14).
 
 ## Verdict
 
-**PASS pending DA review** — PR5 lowers five `add_hyperlane` declarations from the tiny neutral-AST
+**PASS / DA-APPROVED (2026-06-14, Opus / Design Authority)** — DA performed a genuine pre-merge audit
+against the branch source (not the PR body), reran the battery green (`mapgen_links` 19, `mapgen_neutral_ast_parse`
+8, `mapgen_lattice_hierarchy` 10, `mapgen_resource_flow` 16, `ct_scenario_container` 45; fmt/`git diff --check`
+clean), and confirmed: N4 classification uses integer `(row,col)` `abs_diff` (no Euclidean / sqrt / render-position
+authority; the test self-guards this); `mapgen::lane_coupling` is **inert authoring metadata only** (a `{from,to}`
+record + an empty-`sub_fields` property, consumed by no driver/GPU/runtime, no route/path/predecessor, cannot
+widen L1 horizon — field-propagation consumption deferred to later rungs); all four caps (links / lane-couplings /
+per-node fanout / lane-coupling fanout) enforced; self-links + unknown endpoints hard-rejected; duplicates
+canonicalized deterministically; no Movement-Front/SaturatingFlux/PALMA/FIELD_POLICY/runtime/GPU/driver/simthing-sim
+output; no new `SimThingKind`; no Candidate F. **PR5 lowers five `add_hyperlane` declarations** from the tiny neutral-AST
 fixture into three bounded N4 lattice links plus two bounded lane-coupling authoring properties on the
 PR4-enrolled pack. Endpoints are validated; self-links and unknown endpoints are rejected; duplicates
 canonicalize deterministically; link, lane-coupling, and per-node fanout caps are enforced; authored
@@ -14,8 +23,8 @@ FIELD_POLICY/runtime/GPU/driver/simthing-sim output; no new `SimThingKind`.
 
 ## Track scope
 
-0.0.8.2.5 MapGen PR5: bounded hyperlane-to-link and lane-coupling authoring (M6). **Do not merge until
-DA review.**
+0.0.8.2.5 MapGen PR5: bounded hyperlane-to-link and lane-coupling authoring (M6). **Merged after
+genuine DA sign-off (Opus, 2026-06-14).**
 
 PR5 lowers hyperlane-like declarations to bounded link/coupling metadata only. PR5 does not implement
 pathfinding. PR5 does not implement movement. PR5 does not implement routes or predecessors. PR5 does
@@ -68,9 +77,9 @@ runtime/GPU/driver/simthing-sim. PR5 does not import the whole Stellaris corpus.
 | `mapgen_lattice_hierarchy.rs` | LIVE_GUARDRAIL | Unchanged |
 | `mapgen_resource_flow.rs` | LIVE_GUARDRAIL | Unchanged |
 | `ct_scenario_container.rs` | LIVE_GUARDRAIL | Unchanged |
-| `mapgen_links.rs` | PROBATION | New PR5 generator |
-| `mapgen_links.rs` (tests) | PROBATION | New PR5 guardrail battery |
-| `docs/tests/mapgen_pr5_links_results.md` | PROBATION | This report |
+| `mapgen_links.rs` | CURRENT_EVIDENCE | New PR5 generator (DA-approved) |
+| `mapgen_links.rs` (tests) | LIVE_GUARDRAIL | Promoted at DA approval |
+| `docs/tests/mapgen_pr5_links_results.md` | CURRENT_EVIDENCE | This report; DA-approved |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
 ## Lowering summary (tiny pentad fixture)
@@ -120,4 +129,5 @@ injected hyperlane lists and tightened caps.
 
 ## Governance
 
-Only the Design Authority writes a DA sign-off. PR6 may proceed only after DA approval of PR5.
+**Genuine DA sign-off (Opus / Design Authority, 2026-06-14): APPROVE — no fix needed.** PR6 may proceed
+(subject to its own DA-review gate; only the Design Authority writes a DA sign-off).

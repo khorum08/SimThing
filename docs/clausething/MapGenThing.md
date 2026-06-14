@@ -37,7 +37,7 @@
 > PALMA, FIELD_POLICY, hyperlane, or runtime/GPU/driver/simthing-sim output in PR4.
 > Report: [`mapgen_pr4_resource_flow_results.md`](../tests/mapgen_pr4_resource_flow_results.md).
 >
-> **PR5 bounded hyperlane links + lane coupling (2026-06-13, PASS pending DA review):**
+> **PR5 bounded hyperlane links + lane coupling (2026-06-13, DA-APPROVED Opus 2026-06-14):**
 > `generate_mapgen_links` in `mapgen_links.rs` lowers PR4 enrollment plus neutral-AST `add_hyperlane`
 > declarations into bounded N4 lattice links (`HydratedScenarioGridMetadata.links`) and bounded
 > `mapgen::lane_coupling` inert authoring properties for long-range edges. Endpoints validated;

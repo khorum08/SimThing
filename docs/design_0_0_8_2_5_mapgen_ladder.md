@@ -394,7 +394,8 @@ quantized to a free cell); `add_hyperlane` → `link` (endpoint validation, fan-
 **bounded long-range gather** layered on the lattice. Tests: `mapgen_links`. Stop:
 non-representable topology → escalate (§9).
 
-**Status: PASS pending DA review (Cursor PR 5, 2026-06-13).** Added
+**Status: PASS / DA-APPROVED (Cursor PR 5, 2026-06-13; Opus / Design Authority sign-off
+2026-06-14).** Added
 `generate_mapgen_links` / `lower_hyperlane_topology` (`mapgen_links.rs`) lowering PR4 enrollment plus
 neutral-AST `add_hyperlane` declarations into bounded `HydratedScenarioGridMetadata.links` (N4-adjacent
 lattice edges only) and bounded `mapgen::lane_coupling` inert authoring properties (long-range edges).
@@ -402,16 +403,17 @@ Validated endpoints; rejected self-links and unknown endpoints; deterministic du
 link/lane-coupling/per-node fanout caps; expansion report; inert render positions preserved; no Euclidean
 adjacency authority; no route/path/predecessor/movement/border/frontline semantics; no
 Movement-Front/SaturatingFlux/PALMA/FIELD_POLICY/runtime/GPU/driver/simthing-sim changes; no new
-`SimThingKind`. Tests: `mapgen_links` (19 passed). Result:
-[`tests/mapgen_pr5_links_results.md`](tests/mapgen_pr5_links_results.md) (PROBATION).
+`SimThingKind`. DA confirmed `mapgen::lane_coupling` is inert authoring metadata only (field-propagation
+consumption deferred to later rungs). Tests: `mapgen_links` (19 passed). Result:
+[`tests/mapgen_pr5_links_results.md`](tests/mapgen_pr5_links_results.md) (CURRENT_EVIDENCE).
 
 ### PR 5 artifact lifecycle audit (§6.5)
 
 | Artifact | Classification | Action |
 |---|---|---|
-| `mapgen_links.rs` | PROBATION | New PR5 generator |
-| `mapgen_links.rs` (tests) | PROBATION | New PR5 guardrail battery |
-| `docs/tests/mapgen_pr5_links_results.md` | PROBATION | New PR5 report |
+| `mapgen_links.rs` | CURRENT_EVIDENCE | New PR5 generator (DA-approved) |
+| `mapgen_links.rs` (tests) | LIVE_GUARDRAIL | Promoted at DA approval |
+| `docs/tests/mapgen_pr5_links_results.md` | CURRENT_EVIDENCE | New PR5 report; DA-approved |
 | Prior PR1–PR4 guardrails | unchanged | See PR4 audit |
 | Scratch logs / duplicate reports / worktrees | DELETE | None found |
 
