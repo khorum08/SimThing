@@ -9,6 +9,7 @@ members = [
     "crates/simthing-spec",
     "crates/simthing-workshop",
     "crates/simthing-clausething",
+    "crates/simthing-mapgenerator",
 ]
 
 [workspace.package]

@@ -1,0 +1,23 @@
+[package]
+name = "simthing-mapgenerator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Standalone MapGeneratorCLI producer: high-level galaxy levers → declarative MapGen payloads (0.0.8.6)"
+publish = false
+
+[[bin]]
+name = "mapgen"
+path = "src/main.rs"
+
+[lib]
+doctest = false
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
