@@ -37,7 +37,7 @@ optional nebula metadata comment on the hub sector.
 
 | File | Status |
 |---|---|
-| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter; **lowered by PR3** hierarchy generator |
+| `tiny_pentad_hub_slice_raw.clause` | **Parsed by PR2** neutral-AST adapter; **lowered by PR3** hierarchy generator; **RF-enrolled by PR4** |
 
 Stellaris-style raw authoring idioms: `static_galaxy_scenario`, repeated `system` / `add_hyperlane`,
 `nebula`, and `example_rim_initializer` with `planet` + `deposit` child. Header uses jomini `#` line
@@ -48,10 +48,15 @@ comment (Paradox-style) with required hand-authored disclaimer; no Paradox copy.
 ```text
 cargo test -p simthing-clausething --test mapgen_neutral_ast_parse
 cargo test -p simthing-clausething --test mapgen_lattice_hierarchy
+cargo test -p simthing-clausething --test mapgen_resource_flow
 ```
 
 PR3 generates `galaxy_map → pentad_sector → gridcell systems` as ordinary `Location` SimThings with
 `mapgen` mapping-role metadata. Hyperlanes in the raw fixture are **not** lowered until PR5.
+
+PR4 adds bounded Resource Flow enrollment from the PR3 hierarchy: deposit minerals intrinsic-flow
+feedstock + suppression/disruption arena with explicit participants, caps, and expansion report. No
+Movement-Front, PALMA, FIELD_POLICY, or hyperlane output in PR4.
 
 ## Closeout guardrails (unchanged)
 
@@ -63,3 +68,4 @@ cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
 
 MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
+MapGen PR4 adds `mapgen_resource_flow` tests.
