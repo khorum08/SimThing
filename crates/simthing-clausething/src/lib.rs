@@ -11,6 +11,7 @@
 //! CT-PR2/3: scenario-container hydration into generic spec surfaces plus a SimThing tree and
 //! bounded grid-link metadata.
 //! MapGen PR2: neutral-AST parse-only adapter (M1) — no semantic mapping.
+//! MapGen PR3: gridcell lattice hierarchy generator — scenario-container output only.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -29,6 +30,7 @@ mod hydrate_scenario;
 mod hydrate_scenario_commitment;
 mod json;
 mod literal_install;
+mod mapgen_lattice;
 mod mapgen_neutral_ast;
 mod parse;
 mod scope_json;
@@ -67,6 +69,12 @@ pub use json::to_canonical_json;
 pub use literal_install::{
     LiteralInstallSnapshot, OverlaySpecFingerprint, admit_and_apply_domain_pack,
     admit_and_apply_pack,
+};
+pub use mapgen_lattice::{
+    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, MAPGEN_MAX_LATTICE_EDGE,
+    MapGenLatticeError, MapGenLatticeHierarchy, MapGenLatticeOptions,
+    assert_allowed_simthing_kinds, collect_gridcell_location_ids,
+    generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
 };
 pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
 pub use parse::parse_raw_document;

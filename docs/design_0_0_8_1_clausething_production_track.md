@@ -551,3 +551,10 @@ neutral-AST parse-only adapter (`parse_mapgen_neutral_document` → `RawDocument
 semantic mapping, no generated SimThing structure, no parser/importer runtime, no Paradox files committed.
 PR3 is the first hierarchy-generation rung. **FIELD-MOVIE-DATASET-0** / editor/corpus/export remains
 subsequent. **DA-approved and merged 2026-06-13 (merge `edeab38a`).**
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR3).** **0.0.8.2 remains closed.** MapGen PR3 adds gridcell
+lattice hierarchy generation from the tiny neutral-AST fixture (`generate_mapgen_lattice_hierarchy` →
+`HydratedScenarioPack` via `hydrate_scenario`). PR3 generates hierarchy/placement only — no RF arena
+enrollment, no Movement-Front fields, no PALMA feedstock, no FIELD_POLICY commitments, no hyperlane links,
+no runtime/GPU/driver/simthing-sim changes. Canonical square 200×200 lattice documented; fixture uses bounded
+3×3 active subset. **FIELD-MOVIE-DATASET-0** remains subsequent. DA review required before merge.
