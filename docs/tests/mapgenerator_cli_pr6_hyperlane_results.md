@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR6 — Bounded Hyperlane / add_hyperlane Emission Results
 
-> **Artifact lifecycle: PROBATION** (pending DA review — do not treat as CURRENT_EVIDENCE until DA approves).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + battery rerun; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA review** — MapGeneratorCLI PR6 adds bounded producer-side hyperlane edge selection and
+**PASS — DA-APPROVED (2026-06-14, executive design authority)** — MapGeneratorCLI PR6 adds bounded producer-side hyperlane edge selection and
 `static_galaxy_scenario` `add_hyperlane` emission. Generated output parses and lowers through existing closed
 MapGen neutral-AST → `mapgen_lattice` → `lower_hyperlane_topology` surfaces without front-end widening.
 **Zero** `crates/simthing-clausething/src/` changes. **No route/path/predecessor/movement/border/frontline
@@ -28,7 +28,7 @@ topology only. **0.0.8.2.5 MapGen remains closed and is not reopened.**
 | `docs/tests/mapgen_lowerer_child_id_amendment_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
-| `mapgenerator_cli_pr6_hyperlane_results.md` | PROBATION | New (this report) |
+| `mapgenerator_cli_pr6_hyperlane_results.md` | CURRENT_EVIDENCE (DA-approved) | New (this report) |
 | 0.0.8.2.5 LIVE_GUARDRAIL tests | LIVE_GUARDRAIL | Unchanged — not modified |
 
 No MapGen baseline artifacts deleted or archived.
@@ -134,12 +134,30 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**Pending DA review.** Only the Design Authority writes DA sign-off. This report does not pre-file approval.
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent branch-source audit: `topology.rs`
+read in full — output is **undirected `from/to` endpoint pairs only** (no predecessor/route/path/direction/
+weight — M3/M6 bounded-grid honored); adjacency is Chebyshev distance on **lowered index-order grid
+positions** (`index/edge, index%edge` — matches closed `assign_system_placements`; authored producer coords
+unused, consistent with the binding PR5 inert-coordinate ruling); bounded by `max_hyperlane_distance` +
+`target_edge_count` clamp(min,max) + per-node fanout cap 4 + `prevent_pairs`; deterministic (distance/id sort +
+optional pinned-RNG Fisher–Yates); validation rejects self-links/duplicates/unknown endpoints. The integration
+test drives the **existing closed** link surface (`extract_hyperlane_declarations` + `lower_hyperlane_topology`
+in `mapgen_links.rs` — confirmed unchanged) and includes a `rejects_unknown_endpoint_without_widening` proof
+that the closed reader still enforces validity. **Zero `crates/simthing-clausething/src/` changes; no
+`simthing-*` dep in the producer.** Battery rerun locally on the branch: `cargo fmt --check` clean;
+`cargo test -p simthing-mapgenerator` all pass; `mapgenerator_cli_pr6_generated_hyperlanes_lower` 8 passed;
+`mapgen_links` 19 passed; `mapgen_constitution_guards` 21 passed.
+
+**Deferral accepted as honest (not an overclaim):** full `generate_mapgen_links` RF enrollment (deposit-coupled)
+is deferred until deposit-bearing initializer emission exists; PR6 proves the **link-lowering** surface
+(`lower_hyperlane_topology` → `grid_metadata.links`/`lane_couplings`), which is the correct scope for a
+hyperlane-emission rung. **New non-blocking DA note:** `generate_hyperlane_topology` enumerates candidate pairs
+O(N²) — fine for tiny fixtures, but joins the scale-envelope notes (bound/optimize before the PR11 1000-star rung).
 
 ## Whether PR7 may proceed
 
-**No — await DA approval of PR6.** After DA approval, PR7 = partition/bridge structural producer + clustering —
-still no route/path/predecessor semantics and no GPU.
+**Yes — DA approved PR6 (2026-06-14).** PR7 = partition/bridge structural producer + clustering — still no
+route/path/predecessor semantics and no GPU.
 
 ## Carried-forward DA notes (not addressed in PR6)
 
