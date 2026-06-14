@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR4 — Declarative Scenario Emitter Results
 
-> **Artifact lifecycle: PROBATION** (pending DA review — do not treat as CURRENT_EVIDENCE until DA approves).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source re-review of the remediation; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA re-review (remediation)** — deterministic `static_galaxy_scenario` neutral-AST text emission
+**PASS — DA-APPROVED (2026-06-14, executive design authority, after independent branch-source re-review of the remediation; Cursor PR4)** — deterministic `static_galaxy_scenario` neutral-AST text emission
 from in-memory placements. **No links, topology, field operators, MapGen lowering, front-end widening,
 runtime, GPU, simthing-sim, simthing-clausething dependency, or FIELD-MOVIE-DATASET-0 work.**
 
@@ -33,7 +33,7 @@ closed and is not reopened.**
 | `docs/tests/mapgenerator_cli_pr3_strategy_results.md` | CURRENT_EVIDENCE | Unchanged (DA-approved PR3) |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
-| `mapgenerator_cli_pr4_emitter_results.md` | PROBATION | Updated (this report) |
+| `mapgenerator_cli_pr4_emitter_results.md` | CURRENT_EVIDENCE (DA-approved) | Updated (this report) |
 | 0.0.8.2.5 LIVE_GUARDRAIL tests | LIVE_GUARDRAIL | Unchanged — not modified |
 
 No MapGen baseline artifacts deleted or archived.
@@ -130,11 +130,30 @@ Lowering proof deferred to PR5 (`parse_mapgen_neutral_document` → `mapgen_latt
 
 ## DA sign-off status
 
-**Pending DA re-review.** Only the Design Authority writes DA sign-off. This report does not pre-file approval.
+**DA-APPROVED — 2026-06-14, executive design authority (remediation re-review).** Independent branch-source
+audit of commit `abe32048`: `emitter.rs` read in full and checked field-by-field against the
+`mapgen_lattice.rs` reader (lines 188–246) and the preserved fixture `tiny_pentad_hub_slice_raw.clause`.
+Confirmed the prior rejection is fully resolved:
+- Emits a single-root `<id> = { static_galaxy_scenario = { name, random_hyperlanes=no, system{…} } <name>_initializer{…} }`.
+- Each `system` block carries `id` (quoted scalar), `name=""`, `position = { x y z=0 }` (required x/y present),
+  and `initializer` as a **bareword** (prior quoting defect fixed) that resolves to an emitted
+  `*_initializer = { name planet{count=1} }` sibling definition — matching the reader's initializer map.
+- The previously-rejected `metadata`/`lattice`/`location` blocks are **gone**; no `add_hyperlane`/`nebula`/
+  `field_operator` (correct for locations-only PR4). Positions are inert integers (col→x, row→y) — Candidate-F clean.
+- Duplicate-id and initializer-bareword validation guard malformed output; output is byte-stable/deterministic.
+- Forbidden-token scan of `emitter.rs` returned NONE; no `simthing-*` dependency added (emitter is text-only and
+  does not link the lowerer — lowering remains PR5's gate).
+
+Battery rerun locally on the branch: `cargo fmt --all --check` clean; `cargo test -p simthing-mapgenerator`
+82 passed (29 emitter + 8 lattice + 8 occupancy + 18 params + 4 registry + 15 strategy);
+`mapgen_constitution_guards` 21 passed (closed 0.0.8.2.5 contract intact); `git diff --check` clean.
+
+The grammar now structurally matches the closed reader + fixtures; PR5 must still *prove* it lowers via
+`parse_mapgen_neutral_document` → `mapgen_lattice`/`mapgen_links` **without front-end changes** (its gate).
 
 ## Whether PR5 may proceed
 
-**No — await DA approval of remediated PR4.** After DA approval, PR5 proves parse/lowering through the existing
+**Yes — DA approved remediated PR4 (2026-06-14).** PR5 proves parse/lowering through the existing
 `mapgen_lattice` / `mapgen_links` path without changing the closed front-end.
 
 ## Carried-forward DA notes (not addressed in PR4)
