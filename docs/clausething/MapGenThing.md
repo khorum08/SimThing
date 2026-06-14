@@ -37,6 +37,16 @@
 > PALMA, FIELD_POLICY, hyperlane, or runtime/GPU/driver/simthing-sim output in PR4.
 > Report: [`mapgen_pr4_resource_flow_results.md`](../tests/mapgen_pr4_resource_flow_results.md).
 >
+> **PR5 bounded hyperlane links + lane coupling (2026-06-13, PASS pending DA review):**
+> `generate_mapgen_links` in `mapgen_links.rs` lowers PR4 enrollment plus neutral-AST `add_hyperlane`
+> declarations into bounded N4 lattice links (`HydratedScenarioGridMetadata.links`) and bounded
+> `mapgen::lane_coupling` inert authoring properties for long-range edges. Endpoints validated;
+> self-links/unknown endpoints rejected; duplicates canonicalized; caps enforced; Stellaris positions remain
+> inert render metadata; lattice row/col adjacency only (no Euclidean authority). No pathfinding, movement,
+> routes, predecessors, border/frontline, Movement-Front, SaturatingFlux, PALMA, FIELD_POLICY, or
+> runtime/GPU/driver/simthing-sim output in PR5. Report:
+> [`mapgen_pr5_links_results.md`](../tests/mapgen_pr5_links_results.md).
+>
 > **GOVERNING PARADIGM + ADRs — these outrank this reference.** The map is the **Movement-Front
 > automaton**: a grid of **gridcell SimThings run as a cellular automaton** (core design
 > [`simthing_core_design.md`](simthing_core_design.md) §1.1 Anchor A + §7, after Zichao Wei

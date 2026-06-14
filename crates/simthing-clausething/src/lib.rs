@@ -13,6 +13,7 @@
 //! MapGen PR2: neutral-AST parse-only adapter (M1) — no semantic mapping.
 //! MapGen PR3: gridcell lattice hierarchy generator — scenario-container output only.
 //! MapGen PR4: bounded Resource Flow enrollment/feedstock from PR3 hierarchy — front-end only.
+//! MapGen PR5: bounded hyperlane-to-link and lane-coupling authoring from PR4 enrollment — front-end only.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -32,6 +33,7 @@ mod hydrate_scenario_commitment;
 mod json;
 mod literal_install;
 mod mapgen_lattice;
+mod mapgen_links;
 mod mapgen_neutral_ast;
 mod mapgen_resource_flow;
 mod parse;
@@ -77,6 +79,12 @@ pub use mapgen_lattice::{
     MapGenLatticeError, MapGenLatticeHierarchy, MapGenLatticeOptions,
     assert_allowed_simthing_kinds, collect_gridcell_location_ids,
     generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
+};
+pub use mapgen_links::{
+    MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLING_FANOUT, MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLINGS,
+    MAPGEN_PR5_DEFAULT_MAX_LINKS, MapGenLaneCoupling, MapGenLinksEnrollment, MapGenLinksError,
+    MapGenLinksExpansionReport, MapGenLinksOptions, extract_hyperlane_declarations,
+    generate_default_mapgen_links_enrollment, generate_mapgen_links, lower_hyperlane_topology,
 };
 pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
 pub use mapgen_resource_flow::{
