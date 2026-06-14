@@ -508,4 +508,11 @@ spread: [`design_0_0_8_2_5_mapgen_ladder.md`](design_0_0_8_2_5_mapgen_ladder.md)
 field (impedance/min-plus, no sqrt) — never a route or predecessor. The Gu-Yang ∥ PALMA parallelization is
 composition/scheduling over existing ops; any fused kernel is DA-gated and invariant-preserving.
 
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR7).** MapGen PR7 adds `generate_mapgen_palma_feedstock` in
+`mapgen_palma.rs`: lowers the PR6-enrolled tiny slice into existing `HydratedScenarioPalmaFeedstock` plus
+generic `WImpedanceComposeSpec` with W bound to PR6 SaturatingFlux choke column (not Stellaris positions).
+PALMA W/D is field feedstock only — not pathfinding, routes, predecessors, or movement orders. Driver/GPU
+exercise remains PR8/PR10. Report: [`tests/mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md)
+(PROBATION).
+
 **Report:** [`tests/palma_path_0_design_results.md`](tests/palma_path_0_design_results.md)

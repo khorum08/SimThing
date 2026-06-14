@@ -597,3 +597,13 @@ SaturatingFlux only; L2 reduction does not widen L1 horizon; L3 threshold/commit
 reran green. See [`mapgen_pr6_movement_front_results.md`](tests/mapgen_pr6_movement_front_results.md)
 (CURRENT_EVIDENCE). **PR7 may proceed** (subject to its own DA-review gate; only the Design Authority writes
 a DA sign-off).
+
+**0.0.8.2.5 MapGen addendum (2026-06-13, PR7).** **0.0.8.2 remains closed.** MapGen PR7 adds PALMA W/D reach
+feedstock from the tiny MapGen slice (`generate_mapgen_palma_feedstock` → existing
+`HydratedScenarioPalmaFeedstock` + generic `WImpedanceComposeSpec` on the PR6-enrolled pack, W bound to PR6
+SaturatingFlux choke column, D col declared). PR7 remains front-end authoring/lowering only — no routes,
+paths, predecessors, movement orders, driver/GPU exercise, pathfinding, border/frontline,
+runtime/GPU/driver/simthing-sim changes, or GPU opt-in. **FIELD-MOVIE-DATASET-0** remains subsequent.
+**PASS — stayed inside pre-adjudicated M7 boundary; no DA escalation required.** See
+[`mapgen_pr7_palma_results.md`](tests/mapgen_pr7_palma_results.md) (PROBATION). **PR8 scheduled-concurrency/GPU
+measurement remains later** (DA review).

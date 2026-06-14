@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use simthing_spec::RegionFieldOperatorSpec;
+use simthing_spec::spec::region_field::RegionFieldSpec;
 
 use crate::error::HydrateError;
 use crate::hydrate_field_operator::HydratedFieldOperatorPack;
@@ -58,6 +59,39 @@ pub(crate) struct ParsedPalmaFeedstockDraft {
     pub w_source: String,
     pub w_output_col: u32,
     pub d_output_col: u32,
+}
+
+/// Build PALMA W/D feedstock metadata from an admitted SaturatingFlux region field.
+pub fn build_palma_feedstock_from_region_field(
+    feedstock_id: impl Into<String>,
+    w_source_field_operator_id: impl Into<String>,
+    w_output_col: u32,
+    d_output_col: u32,
+    field: &RegionFieldSpec,
+) -> Result<HydratedScenarioPalmaFeedstock, HydrateError> {
+    let choke_output_col = match &field.operator {
+        RegionFieldOperatorSpec::SaturatingFlux {
+            choke_output_col, ..
+        } => *choke_output_col,
+        _ => {
+            return Err(HydrateError::new(
+                "palma_feedstock w_source field_operator must lower SaturatingFlux",
+            ));
+        }
+    };
+
+    validate_palma_columns(w_output_col, d_output_col, field.n_dims, field.source_col)?;
+
+    Ok(HydratedScenarioPalmaFeedstock {
+        feedstock_id: feedstock_id.into(),
+        w_source_field_operator_id: w_source_field_operator_id.into(),
+        w_output_col,
+        d_output_col,
+        grid_size: field.grid_size,
+        n_dims: field.n_dims,
+        source_col: field.source_col,
+        choke_output_col,
+    })
 }
 
 pub fn finalize_palma_feedstock(

@@ -15,6 +15,7 @@
 //! MapGen PR4: bounded Resource Flow enrollment/feedstock from PR3 hierarchy — front-end only.
 //! MapGen PR5: bounded hyperlane-to-link and lane-coupling authoring from PR4 enrollment — front-end only.
 //! MapGen PR6: Movement-Front L1/L2/L3 authoring feedstock from PR5 enrollment — front-end only.
+//! MapGen PR7: PALMA W/D reach feedstock from PR6 Movement-Front enrollment — front-end only.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -37,6 +38,7 @@ mod mapgen_lattice;
 mod mapgen_links;
 mod mapgen_movement_front;
 mod mapgen_neutral_ast;
+mod mapgen_palma;
 mod mapgen_resource_flow;
 mod parse;
 mod scope_json;
@@ -60,6 +62,7 @@ pub use hydrate_field_operator::{
 };
 pub use hydrate_palma_feedstock::{
     HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
+    build_palma_feedstock_from_region_field,
 };
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
@@ -97,6 +100,13 @@ pub use mapgen_movement_front::{
     generate_mapgen_movement_front_authoring, validate_l1_operator_locality, validate_options,
 };
 pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
+pub use mapgen_palma::{
+    MAPGEN_PALMA_D_OUTPUT_COL, MAPGEN_PALMA_FEEDSTOCK_ID, MAPGEN_PALMA_W_OUTPUT_COL,
+    MapGenPalmaAuthoringReport, MapGenPalmaError, MapGenPalmaFeedstockAuthoring,
+    MapGenPalmaOptions, build_w_impedance_compose_from_palma,
+    generate_default_mapgen_palma_feedstock, generate_mapgen_palma_feedstock,
+    validate_palma_options,
+};
 pub use mapgen_resource_flow::{
     MAPGEN_RF_DEFAULT_DEPOSIT_MAX_PARTICIPANTS, MAPGEN_RF_DEFAULT_MAX_COUPLING_FANOUT,
     MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH, MAPGEN_RF_DEFAULT_SUPPRESSION_MAX_PARTICIPANTS,
