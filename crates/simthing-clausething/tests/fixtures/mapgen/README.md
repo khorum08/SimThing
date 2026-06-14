@@ -95,6 +95,17 @@ cargo test -p simthing-driver --test mapgen_pr8_scheduled_concurrency
 cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 ```
 
+## PR9 — constitutional guard hardening (DA review)
+
+`mapgen_constitution_guards` consolidates Candidate F / Euclidean, P1 horizon locality,
+one-system-per-cell, inert render positions, and forbidden route/path/predecessor/movement/border/frontline
+scans across MapGen PR1–PR8 surfaces. Guard hardening only — no new generator capability, no GPU kernel,
+no PR10 end-to-end sample.
+
+```text
+cargo test -p simthing-clausething --test mapgen_constitution_guards
+```
+
 ## Closeout guardrails (unchanged)
 
 0.0.8.2 closeout batteries remain the active ClauseThing guardrails:
@@ -107,4 +118,5 @@ cargo test -p simthing-driver --test ct_bh3_closeout_sample_driver
 MapGen PR2 adds a focused parse-only test battery. MapGen PR3 adds `mapgen_lattice_hierarchy` tests.
 MapGen PR4 adds `mapgen_resource_flow` tests. MapGen PR5 adds `mapgen_links` tests. MapGen PR6 adds
 `mapgen_movement_front` tests. MapGen PR7 adds `mapgen_palma` tests. MapGen PR8 adds
-`mapgen_pr8_scheduled_concurrency` driver GPU measurement tests (DA review before merge).
+`mapgen_pr8_scheduled_concurrency` driver GPU measurement tests. MapGen PR9 adds
+`mapgen_constitution_guards` consolidated constitutional guard tests (DA review before merge).

@@ -16,6 +16,7 @@
 //! MapGen PR5: bounded hyperlane-to-link and lane-coupling authoring from PR4 enrollment — front-end only.
 //! MapGen PR6: Movement-Front L1/L2/L3 authoring feedstock from PR5 enrollment — front-end only.
 //! MapGen PR7: PALMA W/D reach feedstock from PR6 Movement-Front enrollment — front-end only.
+//! MapGen PR9: constitutional guard hardening (Candidate F, P1/horizon, one-system-per-cell) — tests/docs only.
 //! No runtime wiring, default-off.
 
 pub mod error;
@@ -84,6 +85,7 @@ pub use mapgen_lattice::{
     MapGenLatticeError, MapGenLatticeHierarchy, MapGenLatticeOptions,
     assert_allowed_simthing_kinds, collect_gridcell_location_ids,
     generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
+    validate_one_system_per_gridcell,
 };
 pub use mapgen_links::{
     MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLING_FANOUT, MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLINGS,
