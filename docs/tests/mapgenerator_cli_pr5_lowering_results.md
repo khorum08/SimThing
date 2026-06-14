@@ -132,7 +132,7 @@ git diff --name-only mapgen-lowerer-child-id-amendment...HEAD
 | Command | Result |
 |---|---|
 | `cargo fmt --all -- --check` | pass |
-| `cargo test -p simthing-mapgenerator` | pass |
+| `cargo test -p simthing-mapgenerator` | 82 passed |
 | `cargo test -p simthing-clausething --test mapgenerator_cli_pr5_generated_static_lowers` | 18 passed |
 | `cargo test -p simthing-clausething --test mapgen_neutral_ast_parse` | pass |
 | `cargo test -p simthing-clausething --test mapgen_lattice_hierarchy` | pass |
