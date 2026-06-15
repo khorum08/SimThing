@@ -145,7 +145,7 @@ fn no_stress_compose_or_runtime_surfaces_are_generated() {
 fn expansion_report_declares_required_fields() {
     let authoring = default_palma();
     let report = &authoring.expansion_report;
-    assert_eq!(report.grid_size, 3);
+    assert_eq!(report.grid_size, 7);
     assert_eq!(report.n_dims, 6);
     assert_eq!(report.source_col, MAPGEN_MF_SOURCE_COL);
     assert_eq!(report.choke_output_col, MAPGEN_MF_CHOKE_OUTPUT_COL);

@@ -74,14 +74,32 @@ imprecision; corrected to the on-device projection).
   `D` is a **field, not a route**: there are no predecessors, no `came_from`, no path objects. "Pathfinding"
   is reach computed as a min-plus field and consumed by threshold crossings.
 
-### D6 — **Candidate F** is the only exact-magnitude authority; positions are inert
-Decision-critical magnitude/distance/threshold gates route through the artifact-backed exact chain
-(`m_jit_mag2_fixed_exact` → Candidate F sqrt `m_jit_mag_f_from_exact_mag2`). Raw f32 `sqrt`/`length`/
-`distance`/`normalize`/`hypot` are `ApproximateDiagnostic` only. In the lowered output, **positions are
-inert render metadata and adjacency is lattice/topological** — there is **no Euclidean authority** in any
-sim-authoritative path. Producer-side float math (spiral `cos/sin`, ellipse sampling, Chebyshev distances,
-cluster anchors, bridge selection) is permitted **only** because it is *quantized to integer cells /
-topological edges before emission* and never reaches sim. (Carries §0.7.)
+### D6 — **Candidate F** is the only exact-magnitude authority; gridcell **positions are structural-spatial** (corrected — STEAD-PRIVILEGE-0, 2026-06-15)
+> **Correction.** An earlier revision of this ADR (and my PR5/PR10/PR11 review rulings) claimed "positions are
+> inert render metadata; grid placement is index/topological; authored-position-as-authoritative-placement is
+> forbidden." **That was a drift and is withdrawn.** It conflated §0.7 (no float-`sqrt`/distance/magnitude
+> authority in *decision gates*) with the *spatial layout*, contradicting **core §7 (STEAD)**: a `Location`'s
+> gridcell coordinate is **intrinsic and structural** — "the parent lays out its child Locations *positionally*
+> as a grid map… a cell is shaped by its neighbors — falloff is the spatial arena's flow." The Movement-Front
+> stencil / PALMA / heatmap propagate over **spatial lattice neighbors**, so where a Location sits *is* the
+> physics.
+
+**Two orthogonal rules:**
+- **§0.7 (Candidate F) — decision-gate magnitudes.** Decision-critical magnitude/distance/threshold gates route
+  through the artifact-backed exact chain (`m_jit_mag2_fixed_exact` → Candidate F sqrt `m_jit_mag_f_from_exact_mag2`).
+  Raw f32 `sqrt`/`length`/`distance`/`normalize`/`hypot` are `ApproximateDiagnostic` only. **No float Euclidean
+  magnitude gates a commitment.**
+- **§7 (STEAD) — spatial layout.** The lowerer **honors the emitted integer `position` as the authoritative
+  gridcell `(col,row)`** (translated to a 0-based sparse lattice; one-system-per-cell), so the emitted galactic
+  pattern (spiral, ring, …) **becomes the lattice**. This adds **zero Euclidean authority** — placement and the
+  stencil's neighbor walk are **integer index arithmetic**, not float distance.
+
+Producer-side float math (spiral `cos/sin`, ellipse sampling, Chebyshev distances, cluster anchors, bridge
+selection) is permitted because it is *quantized to integer cells / topological edges before emission*; those
+integer cells are then the **authoritative spatial layout**, not inert. (Implemented by the closed-lowerer
+amendment **STEAD-PRIVILEGE-0** in `mapgen_lattice.rs::assign_system_placements`; first-slice Movement-Front
+*execution* remains ≤10/32 per edge per §7 — the **layout** is now correct at any edge ≤256, larger
+*execution* is the parked atlas rung.) Carries §0.7 **and** §7.
 
 ### D7 — Bounded topology only; links/routes are **bounded couplings**, never graph objects
 Hyperlanes, special routes (wormhole/gateway), partition bridges, and cluster bridges all lower as bounded
@@ -130,8 +148,10 @@ admission. Extensibility is structural (registry rows, arena specs), not surgica
   **admitting/installing it at scale is blocked by the closed RF participant/slot caps** and was correctly
   **not widened**. Raising those caps (or adding scalable deposit-initializer feedstock) is the one
   outstanding **DA-authorized 0.0.8.2.5 amendment candidate** (§5) — never a producer-only patch.
-- **Shape is cosmetic; topology is the lattice.** Authored positions are inert (D6); grid placement and
-  adjacency are index-order/topological. The elaborate shapes are render metadata, not simulated geometry.
+- **Shape is structural — the emitted galactic pattern IS the lattice** (D6, corrected). The lowerer honors the
+  emitted integer positions as the authoritative gridcell `(col,row)`, so the Movement-Front falloff/heatmap
+  propagates over the real spatial structure. (Movement-Front *execution* is still ≤10/32 per edge first-slice;
+  larger *layout* lowers, larger *execution* is the parked atlas rung.)
 - The PR10 tiny-fixture real-adapter GPU compact-evidence test remains a **live GPU guardrail**.
 
 **Negative / watch-items.** Long-range producer enumeration is O(N²)-examined (heap-capped to O(log cap)
@@ -143,8 +163,10 @@ the map-gen path is the only proven one.
 - **A bespoke map/combat/economy/AI/pathfinding engine** — violates §0.1/§0.3 (the whole premise).
 - **`gridcell` as a new `SimThingKind`** — rejected (D2); spatial identity is intrinsic to `Location`.
 - **Dense-global diffusion for strategic awareness / horizon-widening** — rejected (D3); awareness is hierarchy.
-- **Euclidean authority in the lowered output / authored-position-as-authoritative-placement** — rejected
-  (D6); the binding PR5 ruling fixes placement as index/topological.
+- **Float Euclidean *magnitude* gating a commitment** — rejected (§0.7/D6); decision-gate magnitudes route
+  through Candidate F. *(Note: honoring emitted **integer** positions as spatial layout is NOT this — it is
+  required by §7. The earlier "authored-position-as-placement is forbidden / placement is index-order" ruling
+  was a drift, corrected by STEAD-PRIVILEGE-0.)*
 - **Emitting `field_operator`/`hydrate_scenario` grammar from the producer** — rejected (D9); the producer
   targets the accepted `static_galaxy_scenario`/`nebula` surfaces only, never widening the lowerer.
 - **Producer PR editing the closed lowerer** — rejected (D10); split to a DA-authorized amendment.

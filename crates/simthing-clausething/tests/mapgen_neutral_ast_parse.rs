@@ -147,7 +147,7 @@ fn preserves_nesting() {
         panic!("expected position block");
     };
     assert_eq!(property_keys(position), vec!["x", "y", "z"]);
-    assert_eq!(scalar_text(block_value(position, "x")), "0");
+    assert_eq!(scalar_text(block_value(position, "x")), "4");
 
     let RawValue::Block(initializer) = block_value(slice, "example_rim_initializer") else {
         panic!("expected initializer block");

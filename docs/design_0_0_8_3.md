@@ -216,6 +216,12 @@ declarative SimThing structure and lowered onto the generic `accumulate → redu
 1. **Closed lowering layers are closed.** A producer/front-end PR makes **zero** `crates/simthing-clausething/src/` edits; a needed lowerer change splits to a **DA-authorized 0.0.8.2.5 amendment** (precedent `#680`).
 2. **Producers emit only already-accepted grammar** (`static_galaxy_scenario` neutral-AST), never widening `hydrate_scenario`/the lowerer.
 3. **Per-rung DA-sensitivity governs merges; only the DA writes a DA sign-off, never pre-filed.**
+4. **STEAD spatial layout is privileged (STEAD-PRIVILEGE-0, 2026-06-15 amendment).** A `Location`'s gridcell
+   coordinate is **structural-spatial** (core §7): the closed lowerer **honors the emitted integer position** as
+   the authoritative `(col,row)`, so the generated galactic pattern **is** the lattice the Movement-Front
+   automaton runs on. §0.7 (Candidate F) governs **decision-gate magnitudes only** — it never licensed treating
+   positions as inert or placing cells by emission order. A prior "positions inert / index-order placement"
+   ruling was a drift, **withdrawn and corrected** (ADR D6).
 
 **One outstanding item (future, separate, DA-authorized — not a producer PR):** an **RF capacity amendment**
 (raise/scale RF participant/slot caps or add scalable deposit-initializer feedstock) is required before

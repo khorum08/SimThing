@@ -101,7 +101,7 @@ fn authored_render_positions_remain_inert_metadata() {
         .iter()
         .find(|p| p.name.starts_with("render_position_x_"))
         .expect("render x");
-    assert_eq!(render_x.description, "inert=-9");
+    assert_eq!(render_x.description, "inert=8");
     assert!(
         enrollment
             .lane_couplings

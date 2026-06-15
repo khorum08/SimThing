@@ -59,7 +59,7 @@ fn l1_local_lattice_field_operator_feedstock_exists() {
     ));
     assert_eq!(field.horizon, MAPGEN_MF_DEFAULT_HORIZON);
     assert!(!field.allow_extended_horizon);
-    assert_eq!(field.grid_size, 3);
+    assert_eq!(field.grid_size, 7);
     assert!(field.pressure_binding.is_some());
     assert_eq!(
         field.pressure_binding.as_ref().unwrap().arena,
@@ -81,8 +81,8 @@ fn l2_reduction_feedstock_exists_without_widening_l1_horizon() {
     let authoring = default_authoring();
     let field = &authoring.pack.game_mode.region_fields[0];
     let reduction = field.reduction.as_ref().expect("L2 reduction");
-    assert_eq!(reduction.child_slot_count, 9);
-    assert_eq!(reduction.parent_slot, 9);
+    assert_eq!(reduction.child_slot_count, 49);
+    assert_eq!(reduction.parent_slot, 49);
     assert_eq!(authoring.expansion_report.l2_reduction_count, 1);
     assert_eq!(
         authoring.expansion_report.l2_reduction_scope,
