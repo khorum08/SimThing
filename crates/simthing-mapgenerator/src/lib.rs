@@ -13,6 +13,7 @@
 //! Post-closeout: producer-side 1000×1000 PNG preview for UI handoff (not runtime semantics).
 
 pub mod cluster;
+pub mod coupling;
 pub mod emitter;
 pub mod field_operator;
 pub mod lattice;
@@ -30,11 +31,13 @@ pub mod strategies;
 pub mod strategy;
 pub mod success_galaxy;
 pub mod topology;
+pub mod visual_spiral;
 
 pub use cluster::{
     assign_clusters, generate_cluster_bridges, validate_cluster_options, ClusterAssignment,
     ClusterBridgeEdge, ClusterError, ClusterId, ClusterOptions, ClusterReport,
 };
+pub use coupling::{ClassifiedCouplingEdge, CouplingEdgeKind};
 pub use emitter::{
     ScenarioEmitError, ScenarioEmitter, ScenarioEmitterConfig, ScenarioText,
     DEFAULT_INITIALIZER_DISPLAY_NAME, DEFAULT_INITIALIZER_REF, DEFAULT_SCENARIO_ID,
@@ -64,8 +67,11 @@ pub use partition::{
     PartitionKind, PartitionOptions, PartitionReport,
 };
 pub use preview_png::{
-    render_galaxy_preview_png, write_galaxy_preview_png, GalaxyPreviewScene, PreviewPngError,
-    GALAXY_PREVIEW_PNG_SIZE,
+    cell_center_pixel, collect_cell_center_pixels, collect_rendered_star_pixels,
+    count_bridge_edges, deterministic_unit_hash, jitter_fraction_from_hash,
+    render_galaxy_preview_png, render_galaxy_preview_png_bytes, rendered_star_pixel,
+    star_render_radius, write_galaxy_preview_png, GalaxyPreviewOptions, GalaxyPreviewScene,
+    HyperlanePreviewFilter, PreviewPngError, GALAXY_PREVIEW_PNG_SIZE,
 };
 pub use rng::{MapGenRng, MapGenSeed};
 pub use shape_registry::{
@@ -86,6 +92,10 @@ pub use topology::{
     grid_chebyshev_distance, lowered_grid_position, system_id_scalar, validate_hyperlane_edges,
     HyperlaneEdge, HyperlaneError, HyperlaneGenerationReport, HyperlaneOptions, HyperlaneTopology,
     DEFAULT_MAX_PER_NODE_FANOUT,
+};
+pub use visual_spiral::{
+    generate_visual_spiral_1500, visual_spiral_1500_params, VISUAL_SPIRAL_1500_LATTICE_EDGE,
+    VISUAL_SPIRAL_1500_SEED, VISUAL_SPIRAL_1500_STARS,
 };
 
 /// Validate params against the default vanilla registry.
@@ -109,27 +119,50 @@ pub fn build_placement_context(
 /// Full producer galaxy generation output (scenario text + preview scene inputs).
 #[derive(Debug, Clone)]
 pub struct GalaxyGenerationResult {
+    pub seed: u64,
     pub scenario: ScenarioText,
     pub lattice: SquareLattice,
     pub core_mask: CoreMask,
     pub placement: ShapePlacement,
+    /// Base bounded hyperlane topology edges only (not bridges or special routes).
+    pub base_hyperlane_edges: Vec<HyperlaneEdge>,
+    /// All emitted `add_hyperlane` pairs including bridges and special routes.
     pub hyperlane_edges: Vec<HyperlaneEdge>,
+    /// Producer-side edge classification for preview/report only.
+    pub classified_edges: Vec<ClassifiedCouplingEdge>,
     pub nebulas: Vec<NebulaField>,
 }
 
 impl GalaxyGenerationResult {
     pub fn preview_scene(&self) -> GalaxyPreviewScene {
+        self.preview_scene_with_options(GalaxyPreviewOptions {
+            seed: self.seed,
+            ..GalaxyPreviewOptions::default()
+        })
+    }
+
+    pub fn preview_scene_with_options(&self, options: GalaxyPreviewOptions) -> GalaxyPreviewScene {
         GalaxyPreviewScene {
+            seed: self.seed,
+            options,
             lattice: self.lattice.clone(),
             core_mask: self.core_mask.clone(),
             placement: self.placement.clone(),
-            hyperlane_edges: self.hyperlane_edges.clone(),
+            base_hyperlane_edges: self.base_hyperlane_edges.clone(),
+            classified_edges: self.classified_edges.clone(),
             nebulas: self.nebulas.clone(),
         }
     }
 
     pub fn render_preview_png(&self) -> Result<Vec<u8>, PreviewPngError> {
-        render_galaxy_preview_png(&self.preview_scene())
+        render_galaxy_preview_png_bytes(&self.preview_scene())
+    }
+
+    pub fn render_preview_png_with_options(
+        &self,
+        options: GalaxyPreviewOptions,
+    ) -> Result<Vec<u8>, PreviewPngError> {
+        render_galaxy_preview_png_bytes(&self.preview_scene_with_options(options))
     }
 }
 
@@ -175,10 +208,16 @@ pub fn generate_galaxy_with_structure(
         &mut rng,
         explicit_cells,
     )?;
+    let mut base_hyperlane_edges = Vec::new();
     let mut hyperlane_edges = Vec::new();
+    let mut classified_edges = Vec::new();
     if let Some(options) = hyperlane_options {
         let (topology, _report) = generate_hyperlane_topology(&placement, &options, &mut rng)?;
-        hyperlane_edges.extend(topology.edges);
+        base_hyperlane_edges = topology.edges.clone();
+        classified_edges.extend(topology.edges.into_iter().map(|edge| {
+            ClassifiedCouplingEdge::new(edge.clone(), CouplingEdgeKind::BaseHyperlane)
+        }));
+        hyperlane_edges.extend(base_hyperlane_edges.iter().cloned());
     }
     if let Some(options) = special_route_options {
         let existing: Vec<(String, String)> = hyperlane_edges
@@ -187,12 +226,14 @@ pub fn generate_galaxy_with_structure(
             .collect();
         let (topology, _report) =
             generate_special_routes(&placement, &options, &existing, &mut rng)?;
-        hyperlane_edges.extend(
-            topology
-                .edges
-                .into_iter()
-                .map(|edge| edge.to_hyperlane_edge()),
-        );
+        for edge in topology.edges {
+            let hyperlane = edge.to_hyperlane_edge();
+            classified_edges.push(ClassifiedCouplingEdge::new(
+                hyperlane.clone(),
+                CouplingEdgeKind::SpecialRouteCoupling,
+            ));
+            hyperlane_edges.push(hyperlane);
+        }
     }
     if let Some(ref options) = partition_options {
         let existing: Vec<(String, String)> = hyperlane_edges
@@ -202,7 +243,14 @@ pub fn generate_galaxy_with_structure(
         let (assignments, _report) = assign_partitions(&placement, options)?;
         let (bridges, _report) =
             generate_partition_bridges(&placement, &assignments, options, &existing, &mut rng)?;
-        hyperlane_edges.extend(bridges.into_iter().map(|edge| edge.to_hyperlane_edge()));
+        for edge in bridges {
+            let hyperlane = edge.to_hyperlane_edge();
+            classified_edges.push(ClassifiedCouplingEdge::new(
+                hyperlane.clone(),
+                CouplingEdgeKind::PartitionBridgeCoupling,
+            ));
+            hyperlane_edges.push(hyperlane);
+        }
     }
     let mut cluster_assignments = None;
     if let Some(options) = cluster_options {
@@ -235,7 +283,14 @@ pub fn generate_galaxy_with_structure(
             &existing,
             &mut rng,
         )?;
-        hyperlane_edges.extend(bridges.into_iter().map(|edge| edge.to_hyperlane_edge()));
+        for edge in bridges {
+            let hyperlane = edge.to_hyperlane_edge();
+            classified_edges.push(ClassifiedCouplingEdge::new(
+                hyperlane.clone(),
+                CouplingEdgeKind::ClusterBridgeCoupling,
+            ));
+            hyperlane_edges.push(hyperlane);
+        }
         cluster_assignments = Some(assignments);
     }
     if let Some(assignments) = cluster_assignments.as_ref() {
@@ -262,11 +317,14 @@ pub fn generate_galaxy_with_structure(
         Some(&nebulas),
     )?;
     Ok(GalaxyGenerationResult {
+        seed: params.seed,
         scenario,
         lattice,
         core_mask,
         placement,
+        base_hyperlane_edges,
         hyperlane_edges,
+        classified_edges,
         nebulas,
     })
 }
