@@ -123,7 +123,8 @@ fn inject_deposit_for_rf(text: &str) -> String {
 
 fn emit_generated_pr10_scenario() -> (String, u32) {
     let params = pr10_params();
-    let fixture_edge = fixture_lattice_edge_for_system_count(NUM_STARS as usize);
+    let fixture_edge =
+        fixture_lattice_edge_for_system_count(NUM_STARS as usize).expect("fixture edge");
     validate_default(&params).expect("params valid");
     let registry = ShapeRegistry::default();
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
@@ -476,7 +477,7 @@ fn generated_pr10_extended_layout_lowers_special_route_as_add_hyperlane() {
     params.special_routes.num_wormhole_pairs = 1;
     params.special_routes.num_gateways = 0;
     params.partitioning.partition_max_systems = 5;
-    let fixture_edge = fixture_lattice_edge_for_system_count(9);
+    let fixture_edge = fixture_lattice_edge_for_system_count(9).expect("fixture edge");
     validate_default(&params).expect("params valid");
     let cells = vec![
         simthing_mapgenerator::LatticeCoord { col: 0, row: 0 },

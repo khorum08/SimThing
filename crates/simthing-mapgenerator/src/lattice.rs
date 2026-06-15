@@ -30,6 +30,8 @@ pub struct CoreMask {
 pub enum LatticeError {
     #[error("square lattice edge must be > 0")]
     ZeroEdge,
+    #[error("square lattice capacity overflow: edge={edge}, capacity={capacity}")]
+    CapacityOverflow { edge: u64, capacity: u64 },
 }
 
 impl SquareLattice {
@@ -44,8 +46,20 @@ impl SquareLattice {
         self.edge
     }
 
+    pub fn cell_count_u64(&self) -> u64 {
+        (self.edge as u64).saturating_mul(self.edge as u64)
+    }
+
+    pub fn try_cell_count(&self) -> Result<u32, LatticeError> {
+        let capacity = self.cell_count_u64();
+        u32::try_from(capacity).map_err(|_| LatticeError::CapacityOverflow {
+            edge: self.edge as u64,
+            capacity,
+        })
+    }
+
     pub fn cell_count(&self) -> u32 {
-        self.edge * self.edge
+        self.try_cell_count().unwrap_or(u32::MAX)
     }
 
     pub fn contains(&self, coord: LatticeCoord) -> bool {
@@ -60,7 +74,8 @@ impl SquareLattice {
     }
 
     pub fn from_index(&self, index: u32) -> Option<LatticeCoord> {
-        if index >= self.cell_count() {
+        let capacity = self.try_cell_count().ok()?;
+        if index >= capacity {
             return None;
         }
         Some(LatticeCoord {

@@ -7,12 +7,13 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use thiserror::Error;
 
+use crate::pair_candidates::{collect_farthest_pairs_with_filter, collect_pairs_within_chebyshev};
 use crate::params::{MapGeneratorParams, PartitionMethod};
 use crate::rng::MapGenRng;
 use crate::strategy::ShapePlacement;
 use crate::topology::{
-    canonical_pair, grid_chebyshev_distance, lowered_grid_position, system_id_scalar,
-    HyperlaneEdge, DEFAULT_MAX_PER_NODE_FANOUT,
+    canonical_pair, lowered_grid_position, system_id_scalar, HyperlaneEdge,
+    DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 /// Producer-side partition kind (reporting only).
@@ -96,6 +97,8 @@ pub struct PartitionReport {
     pub bridge_count: u32,
     pub rejected_fanout: u32,
     pub rejected_duplicate: u32,
+    pub examined_pairs: u64,
+    pub candidate_cap_hit: bool,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -261,8 +264,8 @@ pub fn generate_partition_bridges(
     }
 
     let mut candidates = Vec::new();
-    for left in 0..ids.len() {
-        for right in left + 1..ids.len() {
+    let (pair_rows, pair_stats) =
+        collect_farthest_pairs_with_filter(&positions, |left, right, _distance| {
             let left_partition = partition_by_system
                 .get(&ids[left])
                 .map(|(id, _)| *id)
@@ -271,13 +274,19 @@ pub fn generate_partition_bridges(
                 .get(&ids[right])
                 .map(|(id, _)| *id)
                 .unwrap_or(PartitionId(0));
-            if left_partition == right_partition {
-                continue;
-            }
-            let distance = grid_chebyshev_distance(positions[left], positions[right]);
-            let pair = canonical_pair(&ids[left], &ids[right]);
-            candidates.push((distance, pair.0, pair.1, left_partition, right_partition));
-        }
+            left_partition != right_partition
+        });
+    for (distance, left, right) in pair_rows {
+        let left_partition = partition_by_system
+            .get(&ids[left])
+            .map(|(id, _)| *id)
+            .unwrap_or(PartitionId(0));
+        let right_partition = partition_by_system
+            .get(&ids[right])
+            .map(|(id, _)| *id)
+            .unwrap_or(PartitionId(0));
+        let pair = canonical_pair(&ids[left], &ids[right]);
+        candidates.push((distance, pair.0, pair.1, left_partition, right_partition));
     }
 
     let bridge_candidate_count = candidates.len() as u32;
@@ -341,6 +350,8 @@ pub fn generate_partition_bridges(
         bridge_count,
         rejected_fanout,
         rejected_duplicate,
+        examined_pairs: pair_stats.examined_pairs,
+        candidate_cap_hit: pair_stats.capped,
     };
     Ok((selected, report))
 }
@@ -385,13 +396,10 @@ fn ordered_system_indices(placement: &ShapePlacement, options: &PartitionOptions
         .collect();
 
     let mut adjacency = vec![Vec::new(); count];
-    for left in 0..count {
-        for right in left + 1..count {
-            if grid_chebyshev_distance(positions[left], positions[right]) <= 2 {
-                adjacency[left].push(right);
-                adjacency[right].push(left);
-            }
-        }
+    let (pair_rows, _) = collect_pairs_within_chebyshev(&positions, 2);
+    for (_, left, right) in pair_rows {
+        adjacency[left].push(right);
+        adjacency[right].push(left);
     }
     for neighbors in &mut adjacency {
         neighbors.sort_unstable();

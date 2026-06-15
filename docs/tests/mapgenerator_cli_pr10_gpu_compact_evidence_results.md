@@ -25,7 +25,7 @@ declarative nebula feedstock parse/lowering only — no GPU/runtime execution, n
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` through `pr8` | CURRENT_EVIDENCE | Unchanged — preserved |
 | `docs/tests/mapgenerator_cli_pr9_field_operator_results.md` | CURRENT_EVIDENCE | Promoted (#689) in Part A |
-| `docs/tests/mapgenerator_cli_pr10_gpu_compact_evidence_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_pr10_gpu_compact_evidence_results.md` | CURRENT_EVIDENCE | Promoted (#690) in PR11 Part A |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/tests/mapgen_lowerer_child_id_amendment_results.md` | CURRENT_EVIDENCE | Unchanged |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |

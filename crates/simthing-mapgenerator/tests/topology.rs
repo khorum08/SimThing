@@ -154,8 +154,8 @@ fn hyperlane_generation_respects_per_node_fanout_cap() {
 
 #[test]
 fn fixture_lattice_edge_for_system_count_matches_capacity() {
-    assert_eq!(fixture_lattice_edge_for_system_count(4), 2);
-    assert_eq!(fixture_lattice_edge_for_system_count(5), 3);
+    assert_eq!(fixture_lattice_edge_for_system_count(4).expect("edge"), 2);
+    assert_eq!(fixture_lattice_edge_for_system_count(5).expect("edge"), 3);
 }
 
 #[test]

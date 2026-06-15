@@ -9,6 +9,7 @@
 //! PR7: bounded partition/cluster assignment and cross-group bridge `add_hyperlane` pairs.
 //! PR8: single-source vanilla shape registry + executable strategy dispatch.
 //! PR9: nebula field declarations, initializer bucket emission, inert metadata reporting.
+//! PR11: scale envelope hardening (u64 lattice capacity, occupancy free-list, bounded pair enumeration).
 
 pub mod cluster;
 pub mod emitter;
@@ -17,6 +18,7 @@ pub mod lattice;
 pub mod metadata;
 pub mod nebula;
 pub mod occupancy;
+pub mod pair_candidates;
 pub mod params;
 pub mod partition;
 pub mod rng;
@@ -42,6 +44,11 @@ pub use nebula::{
     NebulaReport,
 };
 pub use occupancy::{OccupancyError, OccupancyGrid};
+pub use pair_candidates::{
+    build_position_index, collect_farthest_pairs_with_filter, collect_pairs_with_filter,
+    collect_pairs_within_chebyshev, PairCandidateStats, PRODUCER_MAX_HYPERLANE_DISTANCE,
+    PRODUCER_PAIR_CANDIDATE_CAP,
+};
 pub use params::{
     ArbitraryHyperlaneSourceMode, ArbitraryStaticParams, ClusterCountMethod, ClusteringParams,
     GenerationMode, HyperlaneGeometryParams, InertMetadataParams, InitializerBucketParams,
@@ -210,7 +217,7 @@ pub fn place_and_emit_scenario_with_structure(
         let (min_bridges, max_bridges, fixture_edge, fanout) = bridge_bounds.unwrap_or((
             0,
             1,
-            fixture_lattice_edge_for_system_count(placement.systems.len()),
+            fixture_lattice_edge_for_system_count(placement.systems.len())?,
             DEFAULT_MAX_PER_NODE_FANOUT,
         ));
         let (bridges, _report) = generate_cluster_bridges(

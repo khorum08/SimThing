@@ -1,4 +1,7 @@
 //! One-system-per-cell occupancy with deterministic collision relocation (PR2).
+//!
+//! PR11: placeable cells are precomputed once; relocation probes the free-placeable list without
+//! rebuilding the full lattice scan per insertion.
 
 use thiserror::Error;
 
@@ -24,15 +27,29 @@ pub struct OccupancyGrid {
     core_mask: CoreMask,
     occupied: Vec<LatticeCoord>,
     occupied_set: std::collections::BTreeSet<(u32, u32)>,
+    /// Precomputed placeable cells in stable row-major order.
+    placeable_cells: Vec<LatticeCoord>,
+    /// Indices into `placeable_cells` that remain free.
+    free_placeable_indices: Vec<usize>,
+    /// Diagnostic counter; remains zero when relocation uses the precomputed free list only.
+    placeable_full_scan_count: u32,
 }
 
 impl OccupancyGrid {
     pub fn new(lattice: SquareLattice, core_mask: CoreMask) -> Self {
+        let placeable_cells: Vec<LatticeCoord> = lattice
+            .iter_coords()
+            .filter(|coord| core_mask.is_placeable(*coord))
+            .collect();
+        let free_placeable_indices: Vec<usize> = (0..placeable_cells.len()).collect();
         Self {
             lattice,
             core_mask,
             occupied: Vec::new(),
             occupied_set: std::collections::BTreeSet::new(),
+            placeable_cells,
+            free_placeable_indices,
+            placeable_full_scan_count: 0,
         }
     }
 
@@ -56,6 +73,18 @@ impl OccupancyGrid {
         self.occupied.len()
     }
 
+    pub fn placeable_cell_count(&self) -> usize {
+        self.placeable_cells.len()
+    }
+
+    pub fn free_placeable_count(&self) -> usize {
+        self.free_placeable_indices.len()
+    }
+
+    pub fn placeable_full_scan_count(&self) -> u32 {
+        self.placeable_full_scan_count
+    }
+
     fn validate_placeable(&self, coord: LatticeCoord) -> Result<(), OccupancyError> {
         if !self.lattice.contains(coord) {
             return Err(OccupancyError::OutOfBounds);
@@ -66,9 +95,20 @@ impl OccupancyGrid {
         Ok(())
     }
 
+    fn remove_free_coord(&mut self, coord: LatticeCoord) {
+        if let Some(index) = self
+            .free_placeable_indices
+            .iter()
+            .position(|&placeable_index| self.placeable_cells[placeable_index] == coord)
+        {
+            self.free_placeable_indices.swap_remove(index);
+        }
+    }
+
     fn commit(&mut self, coord: LatticeCoord) {
         self.occupied_set.insert((coord.col, coord.row));
         self.occupied.push(coord);
+        self.remove_free_coord(coord);
     }
 
     /// Insert only when the cell is free; rejects duplicates.
@@ -100,20 +140,21 @@ impl OccupancyGrid {
     }
 
     fn insert_relocated(&mut self, rng: &mut MapGenRng) -> Result<LatticeCoord, OccupancyError> {
-        let placeable: Vec<LatticeCoord> = self
-            .lattice
-            .iter_coords()
-            .filter(|c| self.core_mask.is_placeable(*c) && !self.contains(*c))
-            .collect();
-        if placeable.is_empty() {
+        if self.free_placeable_indices.is_empty() {
             return Err(OccupancyError::LatticeExhausted);
         }
-        let start = rng.gen_index(placeable.len() as u32) as usize;
-        for offset in 0..placeable.len() {
-            let coord = placeable[(start + offset) % placeable.len()];
+        let start = rng.gen_index(self.free_placeable_indices.len() as u32) as usize;
+        for offset in 0..self.free_placeable_indices.len() {
+            let slot = (start + offset) % self.free_placeable_indices.len();
+            let placeable_index = self.free_placeable_indices[slot];
+            let coord = self.placeable_cells[placeable_index];
             if !self.contains(coord) {
                 self.commit(coord);
                 return Ok(coord);
+            }
+            self.free_placeable_indices.swap_remove(slot);
+            if self.free_placeable_indices.is_empty() {
+                break;
             }
         }
         Err(OccupancyError::LatticeExhausted)

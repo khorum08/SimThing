@@ -310,21 +310,24 @@ mechanical under §3.
   `SimSession::open_from_spec` + GPU mapping tick with **compact evidence only** (`field_values`/`reduction_parent_value`/`eml_output`
   `is_none()`), GPU-adapter gated, default-off. Accept: mirrors the 0.0.8.2.5 MapGen PR10 harness; real GPU run;
   zero closed `src/` edits. Stop: needs full-field readback or new kernel (§7).
-  **Status: IMPLEMENTED — PROBATION pending DA review.** Five-system static layout admits/installs within RF slot cap;
+  **Status: DA-APPROVED & MERGED (2026-06-15, #690).** Five-system static layout admits/installs within RF slot cap;
   extended nine-system layout proves special-route `add_hyperlane` lowering (parse/links only). Result:
-  [`tests/mapgenerator_cli_pr10_gpu_compact_evidence_results.md`](tests/mapgenerator_cli_pr10_gpu_compact_evidence_results.md) (PROBATION).
-  **PR11 next:** scale-envelope proof / 1000-star generated map stress (bound O(cells), u32 edge² overflow,
-  O(N²) topology/bridge enumeration, artifact lifecycle closeout).
-- **PR11** — admit the arbitrary/static form (explicit `system`+`add_hyperlane`/`prevent_hyperlane`+`nebula`,
-  `coordinate_transform`, per-system `spawn_weight`/`spawn_design`); optional importer for an external
-  point-list / lattice mask → quantized to cells; lower-check (parse/hydrate admits). Then a 1000-star (or
-  chosen scale) **manifest/dry-run only** + lower-check; **no galaxy-scale dense install**. Accept:
-  arbitrary layout round-trips & lowers; manifest emitted; bounded. Stop: import needs Euclidean authority
-  or unbounded degree (§7).
+  [`tests/mapgenerator_cli_pr10_gpu_compact_evidence_results.md`](tests/mapgenerator_cli_pr10_gpu_compact_evidence_results.md) (CURRENT_EVIDENCE).
+  **PR11 next:** scale-envelope proof / 1000-star generated map stress.
+- **PR11** — prove the **1000-star producer scale envelope** and close carried scale risks: lattice capacity
+  overflow (`u32` edge²), occupancy relocation scaling, bounded topology/special-route/partition/cluster pair
+  enumeration (`PRODUCER_PAIR_CANDIDATE_CAP`), 1000-star `static_galaxy_scenario` generation + parse/lattice proof,
+  honest admission/GPU status under closed RF slot caps (no galaxy-scale dense install). Accept: producer-only
+  hardening in `simthing-mapgenerator`; integration tests in `simthing-clausething`; PR10 GPU harness remains live;
+  zero closed `src/` edits. Stop: needs closed lowerer widening or galaxy-scale GPU install (§7).
+  **Status: IMPLEMENTED — PROBATION pending DA review.** Result:
+  [`tests/mapgenerator_cli_pr11_scale_envelope_results.md`](tests/mapgenerator_cli_pr11_scale_envelope_results.md) (PROBATION).
+  **PR12 next:** docs-only closeout report + artifact lifecycle ledger + UI/extensibility handoff note.
 - **PR12** — closeout report + ledger; classify CLI artifacts; **UI handoff note** (the UI is the next,
   separate consumer) + an **extensibility note** (register a new `ShapeStrategy`, or supply an
   arbitrary/static layout, without touching the producer core or the lowering contract). Accept: docs-only;
-  honest; battery green.
+  honest; battery green. **Deferred arbitrary/static importer form** from the prior PR11 sketch remains a
+  separate future track item unless DA reorders.
 
 ## 7. Stop conditions (escalate → PARTIAL; do not improvise)
 
