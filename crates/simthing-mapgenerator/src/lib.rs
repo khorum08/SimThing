@@ -71,7 +71,7 @@ pub use preview_png::{
     count_bridge_edges, deterministic_unit_hash, jitter_fraction_from_hash,
     render_galaxy_preview_png, render_galaxy_preview_png_bytes, rendered_star_pixel,
     star_render_radius, write_galaxy_preview_png, GalaxyPreviewOptions, GalaxyPreviewScene,
-    HyperlanePreviewFilter, PreviewPngError, GALAXY_PREVIEW_PNG_SIZE,
+    HyperlanePreviewFilter, PreviewPngError, DEFAULT_HYPERLANE_RGBA, GALAXY_PREVIEW_PNG_SIZE,
 };
 pub use rng::{MapGenRng, MapGenSeed};
 pub use shape_registry::{

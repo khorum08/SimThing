@@ -6,7 +6,7 @@ use simthing_mapgenerator::{
     structure_options_from_params, success_galaxy_1000_params, visual_spiral_1500_params,
     ArbitraryHyperlaneSourceMode, GalaxyPreviewOptions, GenerationMode, HyperlanePreviewFilter,
     MapGeneratorParams, OutputFormat, PartitionMethod, ScenarioEmitter, ScenarioEmitterConfig,
-    ShapeRegistry, ValidationError, GALAXY_PREVIEW_PNG_SIZE,
+    ShapeRegistry, ValidationError, DEFAULT_HYPERLANE_RGBA, GALAXY_PREVIEW_PNG_SIZE,
 };
 
 #[derive(Debug, Parser)]
@@ -63,6 +63,10 @@ struct Cli {
     #[arg(long)]
     num_hyperlanes_max: Option<u32>,
 
+    /// Target number of base hyperlanes (starlanes) to select (sets num_hyperlanes_default).
+    #[arg(long, alias = "num-hyperlanes")]
+    num_hyperlanes_target: Option<u32>,
+
     #[arg(long)]
     random_hyperlanes: Option<bool>,
 
@@ -99,6 +103,10 @@ struct Cli {
     /// Which hyperlane couplings to draw in the preview PNG.
     #[arg(long, value_enum, default_value_t = CliHyperlanePreview::Base)]
     hyperlanes: CliHyperlanePreview,
+
+    /// Colour of starlane segments in the preview PNG.
+    #[arg(long, value_enum, default_value_t = CliLaneColor::Faint)]
+    hyperlane_color: CliLaneColor,
 
     /// Apply deterministic within-cell star jitter in the preview PNG.
     #[arg(long, default_value_t = true)]
@@ -141,6 +149,27 @@ enum CliHyperlanePreview {
     #[default]
     Base,
     All,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, Default)]
+enum CliLaneColor {
+    /// Faint grey-blue (default; matches prior preview output).
+    #[default]
+    Faint,
+    Blue,
+    Cyan,
+    White,
+}
+
+impl CliLaneColor {
+    fn rgba(self) -> [u8; 4] {
+        match self {
+            CliLaneColor::Faint => DEFAULT_HYPERLANE_RGBA,
+            CliLaneColor::Blue => [64, 132, 240, 205],
+            CliLaneColor::Cyan => [70, 200, 235, 200],
+            CliLaneColor::White => [235, 240, 255, 160],
+        }
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -232,6 +261,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             max_hyperlane_chebyshev: Some(
                 params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32
             ),
+            hyperlane_rgba: cli.hyperlane_color.rgba(),
         };
         let png = generation.render_preview_png_with_options(preview_options)?;
         if let Some(parent) = path.parent() {
@@ -306,6 +336,9 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
     }
     if let Some(v) = cli.num_hyperlanes_max {
         params.hyperlane.num_hyperlanes_max = v;
+    }
+    if let Some(v) = cli.num_hyperlanes_target {
+        params.hyperlane.num_hyperlanes_default = v;
     }
     if let Some(v) = cli.random_hyperlanes {
         params.hyperlane.random_hyperlanes = v;
