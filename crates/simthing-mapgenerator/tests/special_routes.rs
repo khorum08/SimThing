@@ -168,6 +168,8 @@ fn special_routes_respect_fanout_cap() {
 fn special_routes_emit_as_add_hyperlane_pairs_only() {
     let mut params = MapGeneratorParams::default();
     params.shape.shape = "static".into();
+    params.mode = simthing_mapgenerator::GenerationMode::ArbitraryStatic;
+    params.arbitrary.explicit_point_cloud_path = Some("test/fixture.json".into());
     params.scale_core.num_stars = 6;
     params.scale_core.lattice_size = Some(8);
     params.scale_core.core_radius = 0.0;
@@ -210,6 +212,8 @@ fn special_routes_emit_as_add_hyperlane_pairs_only() {
 fn special_routes_emit_no_route_path_predecessor_movement_border_frontline_terms() {
     let mut params = MapGeneratorParams::default();
     params.shape.shape = "static".into();
+    params.mode = simthing_mapgenerator::GenerationMode::ArbitraryStatic;
+    params.arbitrary.explicit_point_cloud_path = Some("test/fixture.json".into());
     params.scale_core.num_stars = 6;
     params.scale_core.lattice_size = Some(8);
     params.scale_core.core_radius = 0.0;

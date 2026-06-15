@@ -16,6 +16,8 @@ fn test_params(shape: &str, num_stars: u32, seed: u64, lattice_size: u32) -> Map
 fn static_params(seed: u64, lattice_size: u32) -> MapGeneratorParams {
     let mut params = test_params("static", 1, seed, lattice_size);
     params.shape.shape = "static".into();
+    params.mode = simthing_mapgenerator::GenerationMode::ArbitraryStatic;
+    params.arbitrary.explicit_point_cloud_path = Some("test/fixture.json".into());
     params
 }
 
@@ -68,8 +70,7 @@ fn adding_strategy_is_registry_data_driven() {
     let registry = ShapeRegistry::default();
     assert!(!registry.contains("modded_custom_shape"));
     assert!(registry.contains("elliptical"));
-    // Executable set is keyed by string lookup — no Rust enum of all shapes.
-    assert!(registry.resolve_strategy("spiral_4").is_err());
+    assert!(registry.resolve_strategy("spiral_4").is_ok());
 }
 
 #[test]

@@ -7,6 +7,7 @@
 //! PR6: bounded hyperlane topology + `add_hyperlane` emission.
 //! PR6b: bounded wormhole/gateway special routes as long-range `add_hyperlane` pairs.
 //! PR7: bounded partition/cluster assignment and cross-group bridge `add_hyperlane` pairs.
+//! PR8: single-source vanilla shape registry + executable strategy dispatch.
 
 pub mod cluster;
 pub mod emitter;

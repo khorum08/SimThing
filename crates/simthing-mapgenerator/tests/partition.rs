@@ -191,6 +191,8 @@ fn home_and_open_partition_kinds_are_assigned() {
 fn emitted_partition_bridge_output_uses_add_hyperlane_only() {
     let mut params = MapGeneratorParams::default();
     params.shape.shape = "static".into();
+    params.mode = simthing_mapgenerator::GenerationMode::ArbitraryStatic;
+    params.arbitrary.explicit_point_cloud_path = Some("test/fixture.json".into());
     params.scale_core.num_stars = 9;
     params.scale_core.lattice_size = Some(10);
     params.scale_core.core_radius = 0.0;
@@ -244,6 +246,8 @@ fn emitted_partition_bridge_output_uses_add_hyperlane_only() {
 fn emitted_partition_bridge_output_has_no_partition_cluster_bridge_route_path_predecessor_terms() {
     let mut params = MapGeneratorParams::default();
     params.shape.shape = "static".into();
+    params.mode = simthing_mapgenerator::GenerationMode::ArbitraryStatic;
+    params.arbitrary.explicit_point_cloud_path = Some("test/fixture.json".into());
     params.scale_core.num_stars = 9;
     params.scale_core.lattice_size = Some(10);
     params.scale_core.core_radius = 0.0;
