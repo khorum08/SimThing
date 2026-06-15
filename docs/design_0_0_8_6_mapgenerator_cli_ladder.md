@@ -1,6 +1,10 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1–PR10 DA-APPROVED & MERGED (#674, #676, #677, #678, #682, #684 hyperlanes, #685 PR6R hardening [DA-ratified retroactively — owner-merged before review], #686 PR6b special routes, #687 PR7 partition/bridge+clustering, #688 PR8 shape registry + single-source dispatch + mode-gate fix, #689 PR9 nebula/field feedstock [mechanical rung per §4/§5 — Cursor-merged, no DA review required; DA confirmatory audit clean], #690 PR10 admit/install + real-adapter GPU compact evidence, #692 PR11 1000-star scale envelope [DA heap remediation: 43s→1s]) — PR6–PR11 COMPLETE; all three carried scale notes CLOSED; carried PR3 notes (single-source dispatch + mode gate) CLOSED + the DA-authorized 0.0.8.2.5 lowerer child-id amendment (#680, sign-off recorded #681). Governance: PR5's first remediation smuggled a closed `src/` edit into the producer PR — DA caught it and forced the split (closed-layer fix → #680 amendment with its own battery; cleaned PR5 #682 = producer+test only, **zero** closed `src/`, dev-dep only; auto-closed #679 superseded). **PR5 PROOF SCOPE (binding): parse/lower + INERT render-coordinate preservation only — NOT authored-position→authoritative-placement (grid placement is index/topological by Candidate-F §0.7 + M5/M7; authored coords are inert by mandate; making them authoritative would violate the constitution — no such rung exists).** Mandatory producer-track gate stands: closed `src/` edit ⇒ stop and split to a DA-authorized 0.0.8.2.5 amendment PR. **PR12 next (FINAL, docs-only closeout): ledger + UI handoff + extensibility note. PR11 (#692) proved 1000-star producer generation + parse/lattice-lower (RF/admit/GPU-at-scale honestly BLOCKED by closed RF slot caps — a DA-authorized 0.0.8.2.5 amendment candidate, NOT a producer edit). GOVERNANCE (accurate form): the ladder's per-rung *DA-sensitive?* column governs — DA-review-marked rungs (1–8,10,11 per §5) await DA review before merge; mechanical rungs (PR9) are correctly Cursor-merged. PR9 (#689) was a mechanical rung merged correctly; an earlier note wrongly flagged it as an owner-merge breach — withdrawn. (The one genuine governance event in this track was PR5's smuggled closed-`src/` edit, caught and split to amendment #680.)** (DA scale notes carried to PR11: O(cells)-per-insert relocation; `cell_count` edge² u32 overflow; O(N²) topology/bridge/special-route enumeration. If installing a large generated pack needs the RF slot cap raised, that is a DA-authorized 0.0.8.2.5 amendment, not a producer-PR edit.)**
+> **Status: CLOSED — DA-APPROVED (2026-06-15, #693). PR1–PR11 DA-APPROVED & MERGED (#674–#692). PR12
+> (docs-only closeout ledger + UI handoff + extensibility note) — PROBATION pending DA review. Next track:
+> FIELD-MOVIE-DATASET-0 unless DA reorders.** (Executive summary of PR11: 1000-star producer generation +
+> parse/lattice-lower proven; RF/admit/GPU-at-scale blocked by closed RF slot caps — DA-authorized 0.0.8.2.5
+> amendment candidate, not widened. PR10 tiny-fixture GPU compact evidence remains LIVE guardrail.)
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -325,12 +329,43 @@ mechanical under §3.
   enumeration O(log cap)/pair). 1000-star producer generation + parse/lattice-lower proven; RF/admit/GPU-at-scale
   honestly BLOCKED by closed RF slot caps (DA-authorized 0.0.8.2.5 amendment candidate, not widened here). Result:
   [`tests/mapgenerator_cli_pr11_scale_envelope_results.md`](tests/mapgenerator_cli_pr11_scale_envelope_results.md) (CURRENT_EVIDENCE).
-  **PR12 next:** docs-only closeout report + artifact lifecycle ledger + UI/extensibility handoff note.
 - **PR12** — closeout report + ledger; classify CLI artifacts; **UI handoff note** (the UI is the next,
   separate consumer) + an **extensibility note** (register a new `ShapeStrategy`, or supply an
   arbitrary/static layout, without touching the producer core or the lowering contract). Accept: docs-only;
-  honest; battery green. **Deferred arbitrary/static importer form** from the prior PR11 sketch remains a
-  separate future track item unless DA reorders.
+  honest; no code. Stop: any `crates/` path in diff (§7).
+  **Status: DA-APPROVED & MERGED (2026-06-15, #693) — closeout sign-off.** Docs-only closeout ledger, artifact lifecycle
+  promotion, UI/editor handoff, extensibility note, RF cap amendment candidate, FIELD-MOVIE-DATASET-0 pointer.
+  Result: [`tests/mapgenerator_cli_pr12_closeout_results.md`](tests/mapgenerator_cli_pr12_closeout_results.md)
+  (CURRENT_EVIDENCE). **0.0.8.6 MapGeneratorCLI — CLOSED (DA-APPROVED 2026-06-15, #693).**
+
+### Track closeout table (PR12)
+
+| Rung | Status | Evidence class |
+|---|---|---|
+| PR1 | COMPLETE | CURRENT_EVIDENCE |
+| PR2 | COMPLETE | CURRENT_EVIDENCE |
+| PR3 | COMPLETE | CURRENT_EVIDENCE |
+| PR4 | COMPLETE | CURRENT_EVIDENCE |
+| PR5 | COMPLETE | CURRENT_EVIDENCE |
+| PR6 | COMPLETE | CURRENT_EVIDENCE |
+| PR6R | COMPLETE | CURRENT_EVIDENCE |
+| PR6b | COMPLETE | CURRENT_EVIDENCE |
+| PR7 | COMPLETE | CURRENT_EVIDENCE |
+| PR8 | COMPLETE | CURRENT_EVIDENCE |
+| PR9 | COMPLETE | CURRENT_EVIDENCE |
+| PR10 | COMPLETE | CURRENT_EVIDENCE + LIVE GPU GUARDRAIL |
+| PR11 | COMPLETE | CURRENT_EVIDENCE |
+| PR12 | COMPLETE (DA-APPROVED #693) | CURRENT_EVIDENCE |
+
+**Honest 1000-star scope (PR11, binding):** producer generation, parse, and lattice lower are proven.
+1000-star RF/admit/install/GPU remain blocked by closed RF lowerer caps. No closed lowerer caps were widened
+in PR11.
+
+**RF cap amendment (deferred):** future galaxy-scale admission/install requires a DA-authorized 0.0.8.2+
+closed-lowerer capacity amendment (raise/scalable RF participant/slot caps and/or scalable deposit initializer
+feedstock). No producer-only patch may silently bypass the gate.
+
+**Next track:** FIELD-MOVIE-DATASET-0 unless DA reorders.
 
 ## 7. Stop conditions (escalate → PARTIAL; do not improvise)
 

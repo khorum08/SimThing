@@ -10,7 +10,8 @@
 > This track is **not** FIELD-MOVIE-DATASET-0 (which remains later/subsequent) and does **not** reopen
 > 0.0.8.2.5.
 >
-> **Status: PROPOSAL (2026-06-13).** This document proposes a thin, standalone CLI (and eventual library) that accepts high-level Stellaris-style galaxy parameters and procedurally emits the declarative ClauseScript structures expected by the 0.0.8.2.5 MapGen front-end and the lowering layer documented in `mapgenthing.md` (now also at `docs/clausething/MapGenThing.md` in the repo).
+> **Status: TRACK CLOSED — DA-APPROVED (2026-06-15, #693). PR1–PR11 DA-APPROVED & MERGED; PR12 docs-only
+> closeout — DA-APPROVED & MERGED (#693). Next track: FIELD-MOVIE-DATASET-0 unless DA reorders.**
 
 > **Relationship to existing work (binding):**  
 > - `clausething/MapGenThing.md` / `Clauser/mapgenthing.md` is the **target grammar reference** (what declarative payloads look like and how they map to SimThing surfaces). It deliberately contains **no generation algorithms**.  
@@ -53,7 +54,7 @@ The current `mapgenthing.md` explains the *what* (the Stellaris idioms and their
 - Basic support for the most common shapes (spiral_2/3/4/6, elliptical, ring, bar, starburst, cartwheel, spoked, and static/arbitrary_static override modes). **PR8 (2026-06-14):** all vanilla shapes are registered in a single-source `ShapeStrategyEntry` map (`strategies/registry.rs`); executable names derive from registry entries — no parallel match ladder.
 - **PR9 (2026-06-14, #689):** bounded producer-side nebula placement emits closed `static_galaxy_scenario` `nebula = { name radius }` feedstock only; initializer bucket bareword refs with sibling definitions emitted once; inert metadata (`num_empires`, crisis levers, etc.) captured in dry-run reports until a closed surface admits it. Generated output parses and lowers through existing MapGen lattice + Movement-Front `RegionFieldSpec` surfaces — no GPU/runtime execution, no new grammar, no closed `src/` edits. **DA-APPROVED & MERGED.**
 - **PR10 (2026-06-15, #690):** MapGeneratorCLI-generated `static_galaxy_scenario` text admits/installs through the existing path and produces GPU-resident compact evidence on a real adapter via `mapgenerator_cli_pr10_gpu_compact_evidence`. Compact readback only; no new kernels or closed lowerer edits. **DA-APPROVED & MERGED.**
-- **PR11 (in flight):** 1000-star elliptical producer scale envelope (`scale_envelope` + `mapgenerator_cli_pr11_scale_envelope` tests). Producer hardening only in `simthing-mapgenerator`; parse/lattice proven at 1000 stars; RF/admit/install/GPU at galaxy scale honestly deferred under closed lowerer caps. PR10 tiny GPU harness remains the live compact-evidence guardrail.
+- **PR11 (2026-06-15, #692):** 1000-star elliptical producer scale envelope + DA heap remediation. Parse/lattice proven at 1000 stars; RF/admit/install/GPU at galaxy scale honestly deferred under closed lowerer caps. **DA-APPROVED & MERGED.**
 - Emission of at least one suppression / environmental field operator (so the output exercises the RF-pressure → RegionField → Gu-Yang → PALMA path).
 
 **Explicitly out of scope (defer to later tracks or the lowering layer):**
@@ -160,9 +161,9 @@ The CLI implements a **declarative-first procedural generator**. It never tries 
 
 The CLI's job is to produce **declarative payload**, not runtime objects.
 
-**Proven ingest path (PR1–PR10):** emit a self-contained `static_galaxy_scenario { ... }` block with bareword
-initializer refs, `add_hyperlane` topology, and closed `nebula = { name radius }` feedstock. The closed MapGen
-neutral-AST parser and lowerers consume this directly.
+**Proven ingest path (PR1–PR11):** emit a self-contained `static_galaxy_scenario { ... }` block with bareword
+initializer refs, sibling initializer definitions, `add_hyperlane` topology, and closed `nebula = { name radius }`
+feedstock. The closed MapGen neutral-AST parser and lowerers consume this directly.
 
 **Aspirational / legacy sketch** (scenario-container `hydrate_scenario` form — not the proven MapGeneratorCLI
 output contract today):
@@ -265,14 +266,74 @@ The resulting scenario exercises the full vertical the closeout and MapGen ladde
 - `design_0_0_8_2_clausething_closeout_ladder.md` — the parent closeout that named this consumer.
 - `simthing_core_design.md` §7 + `adr/mapping_sparse_regioncell.md` + `adr/resource_flow_substrate.md` — the runtime surfaces everything lowers onto.
 - `clausething/ClauseThing_Spec.md` — broader ClauseScript-to-spec contract.
-- Existing scenario container tests and `hydrate_scenario.rs` — the current implementation target for `location` + `link` + field operators + feedstock.
+- Existing MapGen neutral-AST tests and the closed `mapgen_*` guard batteries — the proven ingest/lowering path for generated `static_galaxy_scenario` text.
 
 ---
 
-**Next steps (suggested):**
-1. Implement the CLI (or at least a spike for the 4-armed spiral case) producing the `scenario { location ... link ... }` form.
-2. Wire a tiny end-to-end test that feeds the output through the MapGen front-end (or direct hydrate) and exercises the GPU path with compact evidence.
-3. Once the generation rules are stable, the UI layer becomes a straightforward parameter collector + CLI (or library) caller.
+## 11. Track closeout (PR12)
+
+### Current proven output contract
+
+MapGeneratorCLI emits **`static_galaxy_scenario` neutral-AST text** only.
+
+**Supported emitted surfaces:**
+
+- `system` blocks (id, inert position, bareword initializer ref)
+- bareword initializer refs + sibling initializer definitions
+- `add_hyperlane` endpoint pairs (hyperlanes, special routes, partition/cluster bridges)
+- `nebula = { name radius }` blocks
+
+**Unsupported / deferred:**
+
+- arbitrary new metadata grammar
+- new `field_operator` grammar beyond closed nebula feedstock
+- route/path/predecessor/movement grammar
+- partition/cluster/bridge grammar (identities are producer-report-only)
+- runtime/GPU execution
+
+The **`hydrate_scenario scenario { location ... }`** form is **not** the current proven path — see the legacy sketch in §5 only as superseded history.
+
+### Track closeout summary
+
+PR1–PR11 proved producer-side generation through shapes, topology, fields, tiny admit/install + real-adapter GPU
+compact evidence, and a 1000-star scale envelope. PR12 records closeout only (docs). 0.0.8.2.5 MapGen remains
+closed. `simthing-mapgenerator` has no runtime crate dependencies.
+
+### UI/editor handoff
+
+The UI/editor may call MapGeneratorCLI as a **producer**. It should expose high-level galaxy levers: shape, seed,
+star count, lattice size, hyperlane density, special-route counts, partition/cluster settings, nebula settings,
+initializer buckets. Generated output is **reviewable `static_galaxy_scenario` text** before admission. The
+UI/editor must **not** treat MapGeneratorCLI as a runtime simulation service and must **not** add
+route/path/predecessor/movement semantics.
+
+### Extensibility model
+
+New shapes are added by **registry entries** and producer-side strategy implementations. New emitted surfaces
+require **already-accepted closed grammar/lowering surfaces**. MapGeneratorCLI cannot create new runtime
+semantics, widen the lowerer, introduce runtime crate dependencies, or emit authoritative Euclidean
+distances/magnitudes.
+
+### Deferred closed-track capacity amendment
+
+Full **1000-star RF/admit/install/GPU** is blocked by closed RF lowerer caps. A future galaxy-scale path requires
+a **DA-authorized 0.0.8.2+ closed-lowerer capacity amendment** (raise/scalable RF participant/slot caps and/or
+scalable deposit initializer feedstock). No producer-only patch may silently bypass this gate. PR10 tiny-fixture
+GPU compact evidence remains the **LIVE GPU GUARDRAIL**.
+
+### Next track: FIELD-MOVIE-DATASET-0
+
+**FIELD-MOVIE-DATASET-0** should begin after PR12 closeout. It is a new production track and must start from
+closed MapGen/MapGeneratorCLI evidence — it is not part of PR12.
+
+Closeout report: [`../tests/mapgenerator_cli_pr12_closeout_results.md`](../tests/mapgenerator_cli_pr12_closeout_results.md) (PROBATION).
+
+---
+
+**Superseded next steps (pre-PR4 history — do not treat as current guidance):**
+1. ~~Implement the CLI producing the `scenario { location ... link ... }` form.~~ **Done:** proven path is `static_galaxy_scenario` neutral-AST (PR4+).
+2. ~~Wire end-to-end through hydrate.~~ **Done:** PR5/PR10 prove parse/lattice/admit + GPU compact evidence on generated text.
+3. UI layer: parameter collector + producer caller — see §11 UI/editor handoff.
 
 This document supplies the missing "how to turn shape selections into declarative map description" layer that mapgenthing.md intentionally left out. With it, your vision of levers for 4-armed spirals, tightness, clustering, etc. becomes buildable on top of the already-scoped MapGen work. 
 
@@ -326,10 +387,5 @@ The rest of the superseded 0.0.8.1 probation/scratch material can safely follow 
 If you decide to halt (or partially pause) the cleanup PR for the mapgen-specific artifacts, I can immediately add a "Preserved baseline artifacts" subsection here with exact paths and justification. Let me know your decision and I will update this document + any related ladders accordingly. 
 
 (References for this determination: full ingestion of `design_0_0_8_2_5_mapgen_ladder.md` §3 M10 + §6 PR handoffs + artifact audits, `clausething/mapgen_corpus_manifest.md`, `tests/mapgen_pr1_corpus_manifest_results.md`, `tests/mapgen_pr10_end_to_end_results.md`, and cross-checks against the 0.0.8.2 closeout ladder and current tests/ listing as of 2026-06-13.)
-1. Implement the CLI (or at least a spike for the 4-armed spiral case) producing the `scenario { location ... link ... }` form.
-2. Wire a tiny end-to-end test that feeds the output through the MapGen front-end (or direct hydrate) and exercises the GPU path with compact evidence.
-3. Once the generator rules are stable, the UI layer becomes a straightforward parameter collector + CLI (or library) caller.
 
-This document supplies the missing "how to turn shape selections into declarative map description" layer that mapgenthing.md intentionally left out. With it, your vision of levers for 4-armed spirals, tightness, clustering, etc. becomes buildable on top of the already-scoped MapGen work. 
-
-(End of proposal.)
+(End of reference document — track closeout: §11.)

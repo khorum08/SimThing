@@ -150,6 +150,6 @@ zero failures; `scale_envelope` 15 (1.00s); `mapgenerator_cli_pr11_scale_envelop
 
 ## Whether 0.0.8.6 can close or needs PR12
 
-**PR12 required** for docs-only closeout ledger, artifact lifecycle promotion of this report after DA approval,
-UI handoff note, and extensibility note. Producer scale envelope is proven to the extent above; track closeout is
-not complete until PR12.
+**PR12 delivered (PROBATION).** Docs-only closeout ledger, UI handoff, and extensibility note in
+[`mapgenerator_cli_pr12_closeout_results.md`](mapgenerator_cli_pr12_closeout_results.md). **0.0.8.6 MapGeneratorCLI
+is CLOSED after PR12 DA approval.**
