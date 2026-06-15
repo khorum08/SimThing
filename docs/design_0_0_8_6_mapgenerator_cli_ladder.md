@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: CLOSED after PR12 DA approval (2026-06-15). PR1–PR11 DA-APPROVED & MERGED (#674–#692). PR12
+> **Status: CLOSED — DA-APPROVED (2026-06-15, #693). PR1–PR11 DA-APPROVED & MERGED (#674–#692). PR12
 > (docs-only closeout ledger + UI handoff + extensibility note) — PROBATION pending DA review. Next track:
 > FIELD-MOVIE-DATASET-0 unless DA reorders.** (Executive summary of PR11: 1000-star producer generation +
 > parse/lattice-lower proven; RF/admit/GPU-at-scale blocked by closed RF slot caps — DA-authorized 0.0.8.2.5
@@ -333,10 +333,10 @@ mechanical under §3.
   separate consumer) + an **extensibility note** (register a new `ShapeStrategy`, or supply an
   arbitrary/static layout, without touching the producer core or the lowering contract). Accept: docs-only;
   honest; no code. Stop: any `crates/` path in diff (§7).
-  **Status: IMPLEMENTED — PROBATION pending DA review.** Docs-only closeout ledger, artifact lifecycle
+  **Status: DA-APPROVED & MERGED (2026-06-15, #693) — closeout sign-off.** Docs-only closeout ledger, artifact lifecycle
   promotion, UI/editor handoff, extensibility note, RF cap amendment candidate, FIELD-MOVIE-DATASET-0 pointer.
   Result: [`tests/mapgenerator_cli_pr12_closeout_results.md`](tests/mapgenerator_cli_pr12_closeout_results.md)
-  (PROBATION). **0.0.8.6 MapGeneratorCLI — CLOSED after PR12 DA approval.**
+  (CURRENT_EVIDENCE). **0.0.8.6 MapGeneratorCLI — CLOSED (DA-APPROVED 2026-06-15, #693).**
 
 ### Track closeout table (PR12)
 
@@ -355,7 +355,7 @@ mechanical under §3.
 | PR9 | COMPLETE | CURRENT_EVIDENCE |
 | PR10 | COMPLETE | CURRENT_EVIDENCE + LIVE GPU GUARDRAIL |
 | PR11 | COMPLETE | CURRENT_EVIDENCE |
-| PR12 | PROBATION → COMPLETE after DA approval | PROBATION → CURRENT_EVIDENCE |
+| PR12 | COMPLETE (DA-APPROVED #693) | CURRENT_EVIDENCE |
 
 **Honest 1000-star scope (PR11, binding):** producer generation, parse, and lattice lower are proven.
 1000-star RF/admit/install/GPU remain blocked by closed RF lowerer caps. No closed lowerer caps were widened

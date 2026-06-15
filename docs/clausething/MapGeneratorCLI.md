@@ -10,8 +10,8 @@
 > This track is **not** FIELD-MOVIE-DATASET-0 (which remains later/subsequent) and does **not** reopen
 > 0.0.8.2.5.
 >
-> **Status: TRACK CLOSED after PR12 DA approval (2026-06-15). PR1–PR11 DA-APPROVED & MERGED; PR12 docs-only
-> closeout — PROBATION pending DA review. Next track: FIELD-MOVIE-DATASET-0 unless DA reorders.**
+> **Status: TRACK CLOSED — DA-APPROVED (2026-06-15, #693). PR1–PR11 DA-APPROVED & MERGED; PR12 docs-only
+> closeout — DA-APPROVED & MERGED (#693). Next track: FIELD-MOVIE-DATASET-0 unless DA reorders.**
 
 > **Relationship to existing work (binding):**  
 > - `clausething/MapGenThing.md` / `Clauser/mapgenthing.md` is the **target grammar reference** (what declarative payloads look like and how they map to SimThing surfaces). It deliberately contains **no generation algorithms**.  

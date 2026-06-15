@@ -1,19 +1,19 @@
 # MapGeneratorCLI PR12 — 0.0.8.6 Track Closeout Results
 
-> **Artifact lifecycle: PROBATION** (pending DA approval).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-15, executive design authority — closeout sign-off; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA review** — docs-only closeout for the 0.0.8.6 MapGeneratorCLI track. PR1–PR11 evidence
+**PASS — DA-APPROVED (2026-06-15, executive design authority; closeout sign-off rung)** — docs-only closeout for the 0.0.8.6 MapGeneratorCLI track. PR1–PR11 evidence
 preserved and classified; PR11 honest 1000-star scope recorded; UI/editor handoff and extensibility notes
 added; RF cap closed-track amendment candidate recorded; FIELD-MOVIE-DATASET-0 named as next track. **Zero**
 `crates/` changes.
 
 ## Whether 0.0.8.6 is CLOSED
 
-**CLOSED after PR12 DA approval.** Producer track complete; runtime remains semantic-free; 0.0.8.2.5 MapGen
-remains closed. Full 1000-star RF/admit/install/GPU remains a deferred closed-lowerer amendment — not proven
-in this track.
+**CLOSED — DA-APPROVED 2026-06-15 (#693).** Producer track complete; runtime remains semantic-free; 0.0.8.2.5 MapGen
+remains closed. Full 1000-star RF/admit/install/GPU remains a deferred closed-lowerer amendment — **honestly not
+proven in this track** (correctly not widened).
 
 ## Artifact lifecycle audit
 
@@ -150,4 +150,15 @@ cargo test -p simthing-clausething --test mapgen_constitution_guards
 
 ## DA sign-off status
 
-**Pending** — only DA writes sign-off. This report becomes CURRENT_EVIDENCE only after DA approval.
+**DA-APPROVED — 2026-06-15, executive design authority (closeout sign-off, ladder §5 rung 12).** Docs-only
+closeout audited and confirmed honest: docs-only diff verified (5 files under `docs/`, zero `crates/`); the rung
+table + merge numbers are accurate; the 1000-star RF/admit/install/GPU limitations are recorded as **BLOCKED /
+NOT CLAIMED** (not overstated, closed lowerer correctly not widened); the PR11 heap remediation is captured; the
+PR9 entry carries **no** breach framing (consistent with the withdrawn over-flag — PR9 was a mechanical rung
+correctly Cursor-merged); `hydrate_scenario` is properly demoted to superseded history with `static_galaxy_scenario`
+neutral-AST as the proven path; no artifacts deleted; no pre-filed sign-off (report was correctly PROBATION). The
+PR10 tiny-fixture real-adapter GPU compact evidence is preserved as the LIVE GPU GUARDRAIL. Constitution guards
+21/21 (confirmed). **The 0.0.8.6 MapGeneratorCLI track is hereby CLOSED.** Outstanding for a future, separate,
+DA-authorized **0.0.8.2.5 amendment** (not a producer PR): raise/scale the RF participant/slot caps (or add
+scalable deposit-initializer feedstock) to admit galaxy-scale generated packs. Next track: **FIELD-MOVIE-DATASET-0**
+unless the DA reorders.
