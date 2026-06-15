@@ -1,7 +1,8 @@
 //! Deterministic declarative scenario text emitter (PR4/PR6 — lowering via closed MapGen readers).
 //!
 //! Emits a single-root `static_galaxy_scenario` neutral-AST block compatible with the closed
-//! 0.0.8.2.5 `mapgen_lattice` / `mapgen_links` readers. Positions are inert integer lattice metadata only.
+//! 0.0.8.2.5 `mapgen_lattice` / `mapgen_links` readers. Emitted integer positions are **structural**
+//! gridcell coordinates — the closed lowerer honors them as the authoritative `(col,row)` layout (STEAD).
 
 use std::collections::BTreeSet;
 

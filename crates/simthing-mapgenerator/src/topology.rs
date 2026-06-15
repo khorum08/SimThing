@@ -1,7 +1,11 @@
 //! Bounded producer-side hyperlane topology (PR6 — declarative endpoint pairs only).
 //!
-//! Uses index-order grid positions matching the closed `mapgen_lattice` placement contract.
-//! Producer lattice coords are not used for adjacency — authored positions are inert.
+//! Producer-side hyperlane **adjacency heuristic**. **Follow-up (STEAD-CONTRACT-0 objection):** this
+//! currently uses *lowered index-order* positions, but since STEAD-PRIVILEGE-0 the closed `mapgen_lattice`
+//! honors the **emitted authored** positions as the authoritative structural `(col,row)` layout — so this
+//! heuristic should migrate to the authored positions for spatial fidelity (a producer behavior change
+//! with its own tests). Until then, the emitted `add_hyperlane` pairs still lower correctly (the lowerer
+//! classifies them on the structural grid); only the producer's *which-pairs* heuristic is on stale coords.
 
 use std::collections::{BTreeMap, BTreeSet};
 

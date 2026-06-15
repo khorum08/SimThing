@@ -114,6 +114,11 @@ mapgen --params=ui_selections.json --seed=42
 The CLI implements a **declarative-first procedural generator**. It never tries to simulate the runtime automaton. It only decides *where the systems go* and *what declarative payload each location carries*, then emits the structures the MapGen front-end expects.
 
 ### 4.1 Lattice & Coordinate System
+> **STEAD contract (mandatory).** The emitted integer `(col,row)` are **structural gridcell coordinates** the
+> closed lowerer honors as authoritative layout — never render metadata, emission order, or row-major fill. Read
+> [`../stead_spatial_contract.md`](../stead_spatial_contract.md) before changing any placement, coordinate, or
+> Movement-Front/PALMA behavior; it is enforced by `stead_spatial_contract_guards.rs`.
+
 - **Structural gridcell layout has NO fixed edge cap** (STEAD-SCALE-1): it scales by explicit admission budgets + memory (`MapgenStructuralGridBudget`, checked-`u128`), not a magic constant. **200×200 is a *small* reference, not a canonical upper bound**; `65,535` was a temporary arithmetic ceiling and is **not doctrine**. Execution profiles may impose bounded-theater limits — a vast layout may be admitted even when a particular dense execution profile defers to atlas scheduling.
 - Allocate a sparse square 2D grid of `Location` cells (sized to the authored positions; scale up squarely as needed).
 - Every system occupies exactly one grid cell (one-system-per-cell invariant from the ladder).

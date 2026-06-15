@@ -1,9 +1,10 @@
 //! MapGen PR3 — gridcell lattice hierarchy generator (M2/M5).
 //!
-//! Lowers a tiny neutral-AST MapGen fixture into scenario-container-compatible hierarchy with
-//! ordinary `SimThingKind::Location` gridcells (mapping-role metadata only), inert render positions,
-//! and bounded fixture-local lattice placement. No RF, Movement-Front, PALMA, FIELD_POLICY, links,
-//! or runtime surfaces.
+//! Lowers a neutral-AST MapGen document into scenario-container-compatible hierarchy with ordinary
+//! `SimThingKind::Location` gridcells whose emitted integer `(col,row)` positions are **structural**
+//! gridcell coordinates (STEAD/Mapping — honored as the authoritative layout, never inert; see
+//! `docs/stead_spatial_contract.md`), admitted by a structural budget (no fixed edge cap). No RF,
+//! Movement-Front, PALMA, FIELD_POLICY, links, or runtime surfaces.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -50,8 +51,11 @@ const FORBIDDEN_GENERATED_PROPERTY_NAMES: &[&str] = &[
 /// Structural lattice options for MapGen hierarchy generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MapGenLatticeOptions {
-    /// Advisory only since STEAD-PRIVILEGE-0 (the edge is derived from honored authored positions);
-    /// retained for back-compat / positivity.
+    /// **DEPRECATED / legacy (do not teach fixture-local placement as production placement).** Structural
+    /// scale is governed by `structural_budget` ([`MapgenStructuralGridBudget`]) and the derived
+    /// [`StructuralGridFrame`]; the lattice edge is the bounding box of the **honored authored positions**
+    /// (STEAD-PRIVILEGE-0). This field is advisory positivity only — it does **not** cap, compact, or place.
+    /// Follow-up (recorded in `stead_contract_0_results.md`): rename to `legacy_fixture_lattice_edge: Option<u32>`.
     pub fixture_lattice_edge: u32,
     /// Explicit structural-grid admission budget. Default is **unbounded** (no fixed edge cap).
     pub structural_budget: MapgenStructuralGridBudget,
@@ -142,6 +146,29 @@ pub struct StructuralGridStats {
     pub occupied_cells: u64,
     pub link_count: u64,
     pub estimated_metadata_bytes: u128,
+}
+
+/// The **structural spatial frame** of a gridcell-`Location` lattice — the STEAD/Mapping substrate that a
+/// spatially-bound Resource-Flow / Accumulator / PALMA / Movement-Front surface indexes *through* (see
+/// `docs/stead_spatial_contract.md`). `width`/`height` are the **structural** lattice extent derived from
+/// the authoritative `(row,col)` placements — **never** render coordinates. A `Location` participant's
+/// spatial identity *is* its placement in this frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StructuralGridFrame {
+    pub width: u32,
+    pub height: u32,
+    pub occupied_cells: u64,
+}
+
+impl StructuralGridFrame {
+    /// Derive the structural frame from hydrated grid metadata (the authoritative structural placements).
+    pub fn from_grid_metadata(metadata: &HydratedScenarioGridMetadata) -> Self {
+        Self {
+            width: metadata.grid_size,
+            height: metadata.grid_size,
+            occupied_cells: metadata.placements.len() as u64,
+        }
+    }
 }
 
 /// Admit a **structural** gridcell layout against an explicit budget. There is **no fixed edge cap**:
@@ -454,7 +481,7 @@ fn build_scenario_clause(
         "        display_name = \"{}\"\n",
         escape_clause_string(&slice.scenario_name)
     ));
-    out.push_str("        description = \"MapGen PR3 gridcell lattice hierarchy; render positions are inert metadata only.\"\n");
+    out.push_str("        description = \"MapGen gridcell lattice hierarchy; emitted (col,row) are structural gridcell coordinates honored as authoritative layout (STEAD).\"\n");
     out.push_str("        tags = \"mapgen,pr3,gridcell_lattice\"\n");
     out.push_str(&format!(
         "        mapgen_canonical_lattice_edge = \"{MAPGEN_CANONICAL_LATTICE_EDGE}\"\n"

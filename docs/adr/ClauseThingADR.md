@@ -108,6 +108,13 @@ theater** (≤10/32 per edge, P1 — dense-global over a vast grid is the reject
 covered by **many bounded theaters (the deferred atlas rung)**, never one giant field, with hierarchy (L2) for
 cross-theater awareness. The lowerer honors positions at any layout edge and **honestly defers** the Movement-Front
 front to the atlas above the bounded-theater edge — never shrinking a layout to fit the theater cap. Carries §0.7 **and** §7.
+>
+> **STEAD-CONTRACT-0 (2026-06-15).** This corrected doctrine is now an executable contract:
+> [`../stead_spatial_contract.md`](../stead_spatial_contract.md) (8 terms, 9 sections, normative) enforced by
+> `crates/simthing-clausething/tests/stead_spatial_contract_guards.rs` (section-aware forbidden-phrase scan +
+> structural guards) and `mapgen_rf_stead_binding.rs` (RF/Accumulator arenas over gridcell Locations require
+> structural `grid_metadata` placements; `SpatialArenaBindingReport`). **Candidate F is permanently enshrined**:
+> bit-exact Euclidean/sqrt decision-gate ops route *through* it, never avoided.
 
 ### D7 — Bounded topology only; links/routes are **bounded couplings**, never graph objects
 Hyperlanes, special routes (wormhole/gateway), partition bridges, and cluster bridges all lower as bounded
