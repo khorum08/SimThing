@@ -1,8 +1,7 @@
 use simthing_mapgenerator::{
     canonical_pair, fixture_lattice_edge_for_system_count, generate_hyperlane_topology,
-    grid_chebyshev_distance, lowered_grid_position, validate_hyperlane_edges, HyperlaneError,
-    HyperlaneOptions, LatticeCoord, MapGenRng, MapGenSeed, MapGeneratorParams, PlacedSystemSeed,
-    ShapePlacement,
+    grid_chebyshev_distance, validate_hyperlane_edges, HyperlaneError, HyperlaneOptions,
+    LatticeCoord, MapGenRng, MapGenSeed, MapGeneratorParams, PlacedSystemSeed, ShapePlacement,
 };
 
 fn line_placement(count: u32) -> ShapePlacement {
@@ -108,8 +107,11 @@ fn hyperlane_generation_respects_max_hyperlane_distance() {
     let mut rng = MapGenRng::from_seed(MapGenSeed::new(11));
     let (topology, _) =
         generate_hyperlane_topology(&placement, &options, &mut rng).expect("topology");
-    let positions: Vec<_> = (0..4)
-        .map(|index| lowered_grid_position(index, options.fixture_lattice_edge))
+    // STEAD: edges must respect the bound on AUTHORED structural coordinates, not lowered index-order.
+    let positions: Vec<(u32, u32)> = placement
+        .systems
+        .iter()
+        .map(|system| (system.coord.row, system.coord.col))
         .collect();
     for edge in &topology.edges {
         let left = edge.from.parse::<usize>().expect("left id");
