@@ -1,7 +1,9 @@
 # STEAD-CONTRACT-0 — results (executable spatial contract and RF binding)
 
-> **Status: PROBATION — awaiting design-authority audit.** This report documents the change; it does **not**
-> assert approval. DA sign-off is recorded only after a genuine audit (see "DA sign-off status" below).
+> **Status: DA-APPROVED 2026-06-15 (owner sign-off) — PROBATION cleared.** The owner/design authority
+> reviewed STEAD-CONTRACT-0 (#701/#702) and the STEAD-CONTRACT-0R hardening (#703/#704) and approved all
+> conclusions. Both are now CURRENT_EVIDENCE in `current_evidence_index.md`. Open follow-ups (§9 items 1, 2,
+> 4, 5) remain as future tickets, not blockers.
 > Owner-directed handoff (2026-06-15) to make STEAD/Mapping impossible to drift out of context again after
 > three catastrophic drifts (positions-inert, dense-global, edge-cap).
 
@@ -118,6 +120,8 @@ design**: those producer modules are deliberately in-scope for the central guard
 rename), #2 (producer `topology.rs` index-order adjacency heuristic), #4, #5 remain open follow-ups.
 
 ## 11. DA sign-off status
-**PENDING.** No approval is pre-filed. Design authority records sign-off here only after auditing the contract
-doc, the guards, the RF binding, the §0.8 carry-forward anchor, and this report against core §0/§7 and
-`stead_spatial_contract.md`.
+**DA-APPROVED 2026-06-15 (owner sign-off).** The owner — the design authority for the Mapping/STEAD track —
+reviewed #701/#702 and the #703/#704 (STEAD-CONTRACT-0R) hardening, confirmed the contract is anchored in
+transient constitution §0.8 and that producer-side scanning covers MapGeneratorCLI/topology drift, and
+approved promoting both from PROBATION to CURRENT_EVIDENCE. Remaining open follow-ups (§9 items 1, 2, 4, 5)
+are tracked as future tickets, not blockers. Track parked pending the next window.

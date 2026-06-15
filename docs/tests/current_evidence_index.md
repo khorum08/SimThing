@@ -33,8 +33,8 @@
 | **STEAD-PRIVILEGE-0** — gridcell positions are structural; lowerer honors emitted `(col,row)` | #698 | `b1dcd63b` | CURRENT_EVIDENCE (closed-lowerer amendment) |
 | **STEAD-SCALE-0** — layout/execution scale decoupled; Movement-Front bounded-theater + atlas deferral | #699 | `3162ca84` / merge `4ec32995` | CURRENT_EVIDENCE |
 | **STEAD-SCALE-1** — removed fixed structural edge cap; budget-based `admit_structural_grid`; typed atlas deferral; current-evidence index | #700 | `793d2633` / merge `3f0ece0a` | CURRENT_EVIDENCE |
-| **STEAD-CONTRACT-0** — executable STEAD spatial contract doc + guards; RF/Accumulator spatial binding over Locations; PALMA/Gu-Yang/MF structural-frame references; evidence-index repair | #701 | `a4977b1f` / merge `3e26bf58` | PROBATION (merged; **stays PROBATION until STEAD-CONTRACT-0R lands**; DA sign-off pending — `stead_contract_0_results.md`) |
-| **STEAD-CONTRACT-0R** — probation-hardening: transient-constitution **§0.8** STEAD carry-forward clause; guard proves §0 carries the clause + contract pointer; producer `emitter`/`topology` added to phrase scan | #703 | `8cb5bfe1` / merge `9d957fe8` | PROBATION (hardens #701; DA sign-off pending) |
+| **STEAD-CONTRACT-0** — executable STEAD spatial contract doc + guards; RF/Accumulator spatial binding over Locations; PALMA/Gu-Yang/MF structural-frame references; evidence-index repair | #701 | `a4977b1f` / merge `3e26bf58` | CURRENT_EVIDENCE — DA-APPROVED 2026-06-15 (owner sign-off; PROBATION cleared after 0R) |
+| **STEAD-CONTRACT-0R** — probation-hardening: transient-constitution **§0.8** STEAD carry-forward clause; guard proves §0 carries the clause + contract pointer; producer `emitter`/`topology` added to phrase scan | #703 | `8cb5bfe1` / merge `9d957fe8` | CURRENT_EVIDENCE — DA-APPROVED 2026-06-15 (owner sign-off) |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
