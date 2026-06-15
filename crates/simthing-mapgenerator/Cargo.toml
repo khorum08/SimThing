@@ -15,9 +15,11 @@ doctest = false
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+png = "0.17"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+png = "0.17"
 serde_json = { workspace = true }
