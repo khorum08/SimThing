@@ -51,6 +51,7 @@ The current `mapgenthing.md` explains the *what* (the Stellaris idioms and their
 - Reproducible via seed.
 - Plausible but not physically perfect spirals / clusters / hyperlane graphs.
 - Basic support for the most common shapes (spiral_2/3/4/6, elliptical, ring, bar, starburst, cartwheel, spoked, and static/arbitrary_static override modes). **PR8 (2026-06-14):** all vanilla shapes are registered in a single-source `ShapeStrategyEntry` map (`strategies/registry.rs`); executable names derive from registry entries — no parallel match ladder.
+- **PR9 (2026-06-13):** bounded producer-side nebula placement emits closed `static_galaxy_scenario` `nebula = { name radius }` feedstock only; initializer bucket bareword refs with sibling definitions emitted once; inert metadata (`num_empires`, crisis levers, etc.) captured in dry-run reports until a closed surface admits it. Generated output parses and lowers through existing MapGen lattice + Movement-Front `RegionFieldSpec` surfaces — no GPU/runtime execution, no new grammar, no closed `src/` edits.
 - Emission of at least one suppression / environmental field operator (so the output exercises the RF-pressure → RegionField → Gu-Yang → PALMA path).
 
 **Explicitly out of scope (defer to later tracks or the lowering layer):**

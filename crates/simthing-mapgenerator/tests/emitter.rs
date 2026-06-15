@@ -34,6 +34,7 @@ fn elliptical_params(seed: u64, num_stars: u32, lattice_size: u32) -> MapGenerat
     params.scale_core.lattice_size = Some(lattice_size);
     params.scale_core.core_radius = 0.0;
     params.seed = seed;
+    params.nebula.num_nebulas = 0;
     params
 }
 
@@ -59,7 +60,7 @@ fn emit_sample(params: &MapGeneratorParams) -> String {
         SquareLattice::new(params.scale_core.lattice_size.unwrap_or(32)).expect("lattice");
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(params));
     emitter
-        .emit(params, &lattice, &sample_placement(), None)
+        .emit(params, &lattice, &sample_placement(), None, None)
         .expect("emit")
         .into_string()
 }
@@ -320,7 +321,7 @@ fn emitter_scenario_id_follows_shape() {
     };
     let emitter = ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params));
     let text = emitter
-        .emit(&params, &lattice, &placement, None)
+        .emit(&params, &lattice, &placement, None, None)
         .expect("emit");
     assert!(text.as_str().starts_with("generated_elliptical = {"));
 }
@@ -382,6 +383,7 @@ fn emitter_outputs_add_hyperlane_blocks_when_edges_exist() {
             &lattice,
             &hyperlane_placement(),
             Some(&hyperlane_topology()),
+            None,
         )
         .expect("emit");
     assert_eq!(
@@ -403,6 +405,7 @@ fn emitter_outputs_no_add_hyperlane_when_edges_empty() {
             &lattice,
             &sample_placement(),
             Some(&simthing_mapgenerator::HyperlaneTopology { edges: vec![] }),
+            None,
         )
         .expect("emit");
     assert!(!text.as_str().contains("add_hyperlane"));
@@ -419,6 +422,7 @@ fn emitter_output_has_no_route_path_predecessor_movement_border_frontline_terms(
             &lattice,
             &hyperlane_placement(),
             Some(&hyperlane_topology()),
+            None,
         )
         .expect("emit")
         .into_string();

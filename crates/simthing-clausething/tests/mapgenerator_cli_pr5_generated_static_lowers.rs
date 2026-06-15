@@ -58,6 +58,7 @@ fn static_sample() -> GeneratedSample {
     params.scale_core.lattice_size = Some(8);
     params.scale_core.core_radius = 0.0;
     params.seed = 4242;
+    params.nebula.num_nebulas = 0;
     let cells = vec![
         LatticeCoord { col: 1, row: 2 },
         LatticeCoord { col: 5, row: 3 },
@@ -88,6 +89,7 @@ fn elliptical_sample() -> GeneratedSample {
     params.scale_core.lattice_size = Some(12);
     params.scale_core.core_radius = 0.0;
     params.seed = 77;
+    params.nebula.num_nebulas = 0;
     let config = ScenarioEmitterConfig::from_params(&params);
     let scenario_id = config.scenario_id.clone();
     let registry = ShapeRegistry::default();

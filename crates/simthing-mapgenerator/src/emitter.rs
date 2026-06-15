@@ -7,7 +7,9 @@ use std::collections::BTreeSet;
 
 use thiserror::Error;
 
+use crate::field_operator::emit_nebula_declarations;
 use crate::lattice::SquareLattice;
+use crate::nebula::NebulaField;
 use crate::params::MapGeneratorParams;
 use crate::strategy::{PlacedSystemSeed, ShapePlacement};
 use crate::topology::HyperlaneTopology;
@@ -94,6 +96,7 @@ impl ScenarioEmitter {
         _lattice: &SquareLattice,
         placement: &ShapePlacement,
         hyperlanes: Option<&HyperlaneTopology>,
+        nebulas: Option<&[NebulaField]>,
     ) -> Result<ScenarioText, ScenarioEmitError> {
         let _ = params;
         if placement.systems.is_empty() {
@@ -113,7 +116,13 @@ impl ScenarioEmitter {
 
         let mut out = String::new();
         write_line(&mut out, &format!("{} = {{", self.config.scenario_id));
-        write_static_galaxy_block(&mut out, &self.config, placement, hyperlanes)?;
+        write_static_galaxy_block(
+            &mut out,
+            &self.config,
+            placement,
+            hyperlanes,
+            nebulas.unwrap_or(&[]),
+        )?;
         for initializer in initializer_refs {
             write_initializer_definition(&mut out, &initializer)?;
         }
@@ -127,6 +136,7 @@ fn write_static_galaxy_block(
     config: &ScenarioEmitterConfig,
     placement: &ShapePlacement,
     hyperlanes: Option<&HyperlaneTopology>,
+    nebulas: &[NebulaField],
 ) -> Result<(), ScenarioEmitError> {
     out.push_str("    static_galaxy_scenario = {\n");
     write_line(
@@ -148,6 +158,7 @@ fn write_static_galaxy_block(
             out.push('\n');
         }
     }
+    emit_nebula_declarations(out, nebulas);
     out.push_str("    }\n\n");
     Ok(())
 }

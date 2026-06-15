@@ -44,6 +44,7 @@ fn hyperlane_params(seed: u64) -> MapGeneratorParams {
     params.scale_core.lattice_size = Some(8);
     params.scale_core.core_radius = 0.0;
     params.seed = seed;
+    params.nebula.num_nebulas = 0;
     params.hyperlane.max_hyperlane_distance = 4.0;
     params.hyperlane.num_hyperlanes_min = 1;
     params.hyperlane.num_hyperlanes_max = 4;

@@ -297,10 +297,15 @@ mechanical under §3.
   `src/`; spiral_4/ring lower through closed surfaces. Result:
   [`tests/mapgenerator_cli_pr8_shape_registry_results.md`](tests/mapgenerator_cli_pr8_shape_registry_results.md) (CURRENT_EVIDENCE).
   **PR9 next:** nebula / field_operator declarative producer — no GPU/runtime.
-- **PR9** — `num_nebulas`/`nebula_size`/`nebula_min_dist` → ≥1 `field_operator` lowering to a
-  `RegionFieldSpec` operator; initializer-bucket assignment (core/arm/fringe/cluster) referencing corpus
-  families; carry inert metadata into scenario `metadata`. Accept: refs only; field_operator lowers;
-  metadata never generated/simulated.
+- **PR9** — bounded producer-side nebula placement (`num_nebulas`/`nebula_size`/`nebula_min_dist`) → closed
+  `static_galaxy_scenario` `nebula = { name radius }` feedstock; initializer-bucket bareword refs with sibling
+  definitions emitted once; inert metadata captured in dry-run report only (deferred from scenario text). Accept:
+  parse + lattice + Movement-Front `RegionFieldSpec` lowering through existing closed surfaces; zero closed
+  `src/`; no GPU/runtime. Stop: new grammar, closed lowerer amendment, or metadata emission requiring widening (§7).
+  **Status: IMPLEMENTED — PROBATION pending DA review.** Emits only accepted `nebula` keys (`name`, `radius`);
+  Movement-Front produces SaturatingFlux from PR3–PR6 pipeline; metadata passthrough explicitly deferred. Result:
+  [`tests/mapgenerator_cli_pr9_field_operator_results.md`](tests/mapgenerator_cli_pr9_field_operator_results.md) (PROBATION).
+  **PR10 next:** generated scenario admit/install + GPU compact evidence on real adapter.
 - **PR10** — take one generated (shaped) slice through `install_atomic` + `SimSession::open_from_spec` +
   GPU mapping tick with **compact evidence only** (`field_values`/`reduction_parent_value`/`eml_output`
   `is_none()`), GPU-adapter gated, default-off. Accept: mirrors the PR10 0.0.8.2.5 harness; real GPU run.
