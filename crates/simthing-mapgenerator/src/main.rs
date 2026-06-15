@@ -230,7 +230,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 CliHyperlanePreview::All => HyperlanePreviewFilter::AllCouplings,
             },
             max_hyperlane_chebyshev: Some(
-                params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32,
+                params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32
             ),
         };
         let png = generation.render_preview_png_with_options(preview_options)?;

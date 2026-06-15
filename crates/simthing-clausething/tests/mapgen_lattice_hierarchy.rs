@@ -1,8 +1,8 @@
 //! MapGen PR3 — gridcell lattice hierarchy generator tests.
 
 use simthing_clausething::{
-    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, MAPGEN_MAX_LATTICE_EDGE,
-    MapGenLatticeOptions, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
+    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_MAX_LATTICE_EDGE, MapGenLatticeOptions,
+    assert_allowed_simthing_kinds, collect_gridcell_location_ids,
     generate_mapgen_lattice_hierarchy, parse_mapgen_neutral_document,
     validate_fixture_lattice_edge,
 };
@@ -26,10 +26,9 @@ fn tiny_raw_fixture_generates_scenario_container_hierarchy() {
         hierarchy.canonical_lattice_edge,
         MAPGEN_CANONICAL_LATTICE_EDGE
     );
-    assert_eq!(
-        hierarchy.fixture_lattice_edge,
-        MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE
-    );
+    // STEAD §7: the sparse lattice edge is DERIVED from the authored position bounding box
+    // (pentad spans 0..=8 on each axis → edge 7), not a compact emission-order default.
+    assert_eq!(hierarchy.fixture_lattice_edge, 7);
     assert_eq!(pack.root.kind, SimThingKind::World);
     assert_eq!(pack.root_node.children.len(), 1);
     assert_eq!(pack.root_node.children[0].id, "galaxy_map");
@@ -56,27 +55,43 @@ fn gridcells_are_ordinary_location_nodes_with_mapping_role_metadata() {
 }
 
 #[test]
-fn authored_positions_are_inert_render_metadata_only() {
+fn authored_positions_drive_gridcell_placement() {
+    // STEAD §7 (STEAD-PRIVILEGE-0): a `Location`'s gridcell coordinate is structural-spatial — the
+    // emitted galactic pattern IS the lattice. Grid placement MUST honor the emitted position
+    // (x→col, y→row), never emission order. This is the guard against the index-order drift.
     let hierarchy = generate_default_hierarchy();
+    let placement_of = |id: &str| -> (u32, u32) {
+        hierarchy
+            .pack
+            .grid_metadata
+            .placements
+            .iter()
+            .find(|placement| placement.location_id == id)
+            .map(|placement| (placement.col, placement.row))
+            .expect("gridcell placement")
+    };
+    // Compact spatial pentad (authored x=col, y=row, normalized 0-based to edge 7).
+    assert_eq!(placement_of("0"), (1, 2)); // hub
+    assert_eq!(placement_of("9"), (1, 1)); // N4 neighbour of hub
+    assert_eq!(placement_of("31"), (5, 6)); // far corner (long-range)
+    assert_eq!(placement_of("2"), (0, 2)); // N4 neighbour of hub
+    assert_eq!(placement_of("15"), (1, 0)); // N4 neighbour of 9
+    // NOT an emission-order row-major fill: index #1 ("9") would land at (col=1,row=0), but it does not.
+    assert_ne!(placement_of("9"), (1, 0));
+    // The authored position is still mirrored as inert render metadata (now == the grid position).
     let hub = find_node(&hierarchy.pack.root_node, "0").expect("hub system");
-    assert!(hub.properties.iter().any(|property| {
-        property.name.starts_with("render_position_x_") && property.description.contains("inert=0")
-    }));
-    assert!(hub.properties.iter().any(|property| {
-        property.name.starts_with("render_position_y_") && property.description.contains("inert=0")
-    }));
-    assert!(hub.properties.iter().any(|property| {
-        property.name.starts_with("render_position_z_") && property.description.contains("inert=0")
-    }));
+    assert!(
+        hub.properties
+            .iter()
+            .any(|property| property.name.starts_with("render_position_x_"))
+    );
 }
 
 #[test]
 fn one_system_per_fixture_gridcell_is_enforced() {
     let hierarchy = generate_default_hierarchy();
-    assert_eq!(
-        hierarchy.pack.grid_metadata.grid_size,
-        MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE
-    );
+    // Sparse spatial lattice sized to the authored pentad (edge 7), not a compact default.
+    assert_eq!(hierarchy.pack.grid_metadata.grid_size, 7);
     assert_eq!(hierarchy.pack.grid_metadata.placements.len(), 5);
 
     let mut occupied = std::collections::BTreeSet::new();
@@ -120,16 +135,19 @@ fn fixture_lattice_edge_beyond_cap_is_rejected() {
 }
 
 #[test]
-fn system_count_beyond_fixture_capacity_is_rejected() {
+fn lattice_edge_is_derived_from_authored_positions_not_the_option() {
+    // STEAD §7: a small requested edge no longer compacts the spatial layout — the edge is derived
+    // from the authored position bounding box, so authored positions (not emission order) place cells.
     let neutral = parse_mapgen_neutral_document(RAW_FIXTURE.as_bytes()).expect("parse raw fixture");
-    let err = generate_mapgen_lattice_hierarchy(
+    let hierarchy = generate_mapgen_lattice_hierarchy(
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: 2,
         },
     )
-    .expect_err("2x2 lattice cannot host five systems");
-    assert!(err.message.contains("capacity"));
+    .expect("authored positions drive placement regardless of requested edge");
+    assert_eq!(hierarchy.fixture_lattice_edge, 7);
+    assert_eq!(hierarchy.pack.grid_metadata.grid_size, 7);
 }
 
 #[test]

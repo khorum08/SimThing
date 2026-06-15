@@ -221,8 +221,10 @@ fn encode_preview_rgba(scene: &GalaxyPreviewScene) -> Result<Vec<u8>, PreviewPng
             systems_by_id.get(&edge_pair.from),
             systems_by_id.get(&edge_pair.to),
         ) {
-            if grid_chebyshev_distance((from.coord.col, from.coord.row), (to.coord.col, to.coord.row))
-                > max_lane_dist
+            if grid_chebyshev_distance(
+                (from.coord.col, from.coord.row),
+                (to.coord.col, to.coord.row),
+            ) > max_lane_dist
             {
                 continue;
             }

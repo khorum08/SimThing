@@ -117,9 +117,11 @@ pub fn generate_mapgen_lattice_hierarchy(
     document: &MapGenNeutralDocument,
     options: MapGenLatticeOptions,
 ) -> Result<MapGenLatticeHierarchy, MapGenLatticeError> {
-    let fixture_lattice_edge = validate_fixture_lattice_edge(options.fixture_lattice_edge)?;
+    let _requested_lattice_edge = validate_fixture_lattice_edge(options.fixture_lattice_edge)?;
     let slice = extract_mapgen_slice(document)?;
-    let placements = assign_system_placements(&slice.systems, fixture_lattice_edge)?;
+    // STEAD §7: a Location's gridcell coordinate is structural-spatial. Placement honors the
+    // emitted integer position; the sparse lattice edge is derived from those positions.
+    let (placements, fixture_lattice_edge) = assign_system_placements(&slice.systems)?;
     let scenario_clause = build_scenario_clause(&slice, &placements)?;
     let raw = parse_raw_document(scenario_clause.as_bytes())?;
     let mut pack = hydrate_scenario(&raw)?;
@@ -262,36 +264,62 @@ fn extract_mapgen_slice(
     })
 }
 
+/// Assign each Location its **structural-spatial** gridcell coordinate from its emitted integer
+/// `position` (STEAD §7: "the parent lays out its child Locations *positionally* as a grid map";
+/// "a cell is shaped by its neighbors — falloff is the spatial arena's flow"). The emitted galactic
+/// pattern (spiral, ring, …) therefore **becomes the lattice**, so the Movement-Front stencil / PALMA
+/// / heatmap propagate over the real spatial structure — not an emission-order proxy.
+///
+/// `position.x → col`, `position.y → row`. Stellaris-centered coordinates may be negative, so all
+/// positions are translated by their min into a 0-based **sparse** lattice; this is a pure integer
+/// translation that preserves spatial structure and introduces **no Euclidean authority** (§0.7 governs
+/// decision-gate *magnitudes*, not the integer gridcell layout — the stencil walks neighbors by index
+/// arithmetic). The lattice edge is derived from the position bounding box. Returns `(placements, edge)`.
 fn assign_system_placements(
     systems: &[ExtractedSystem],
-    fixture_lattice_edge: u32,
-) -> Result<Vec<SystemPlacement>, MapGenLatticeError> {
-    let capacity = fixture_lattice_edge.saturating_mul(fixture_lattice_edge);
-    if systems.len() as u32 > capacity {
-        return Err(MapGenLatticeError::new(format!(
-            "system count {} exceeds fixture lattice capacity {capacity}",
-            systems.len()
-        )));
+) -> Result<(Vec<SystemPlacement>, u32), MapGenLatticeError> {
+    if systems.is_empty() {
+        return Ok((Vec::new(), 1));
     }
+
+    let mut raw = Vec::with_capacity(systems.len());
+    for system in systems {
+        let x = parse_gridcell_axis(&system.render_x, "x", &system.id)?;
+        let y = parse_gridcell_axis(&system.render_y, "y", &system.id)?;
+        raw.push((system.id.clone(), x, y));
+    }
+    let min_x = raw.iter().map(|(_, x, _)| *x).min().unwrap_or(0);
+    let min_y = raw.iter().map(|(_, _, y)| *y).min().unwrap_or(0);
 
     let mut occupied = BTreeSet::new();
     let mut placements = Vec::with_capacity(systems.len());
-    for (index, system) in systems.iter().enumerate() {
-        let index = index as u32;
-        let row = index / fixture_lattice_edge;
-        let col = index % fixture_lattice_edge;
+    let mut max_axis = 0u32;
+    for (id, x, y) in raw {
+        let col = (x - min_x) as u32;
+        let row = (y - min_y) as u32;
+        max_axis = max_axis.max(col).max(row);
         if !occupied.insert((row, col)) {
             return Err(MapGenLatticeError::new(format!(
-                "duplicate gridcell placement at row={row} col={col}"
+                "duplicate gridcell placement at authored position row={row} col={col} (system {id}); \
+                 one-system-per-cell requires distinct emitted positions"
             )));
         }
         placements.push(SystemPlacement {
-            system_id: system.id.clone(),
+            system_id: id,
             row,
             col,
         });
     }
-    Ok(placements)
+    let edge = validate_fixture_lattice_edge(max_axis + 1)?;
+    Ok((placements, edge))
+}
+
+fn parse_gridcell_axis(value: &str, axis: &str, id: &str) -> Result<i64, MapGenLatticeError> {
+    value.trim().parse::<i64>().map_err(|_| {
+        MapGenLatticeError::new(format!(
+            "system {id}: position.{axis} '{value}' must be an integer gridcell coordinate"
+        ))
+    })
 }
 
 fn build_scenario_clause(

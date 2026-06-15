@@ -44,7 +44,7 @@ SimThing tree. See [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md) D1.
 | **Movement-Front (STEAD)** | The map run as a cellular automaton (Wei, arXiv:2602.01651); P1 locality / P2 symmetry / P3 stability. Prose: **STEAD**, never "SEAD". | ADR D3, [[movement-front-automaton]] |
 | **RegionFieldSpec (3-layer)** | L1 `pressure_binding` (on-device arena→cell projection) + operator/horizon; L2 `reduction`; L3 `parent_formula` + `commitment`. | ADR D4 |
 | **SaturatingFlux / PALMA** | Gu-Yang conservative-flux stencil; PALMA min-plus `D = W + min(N4 D)` (tropical, no sqrt). PALMA `D` is a **field, not a route**. | ADR D5 |
-| **Candidate F** | The only exact-magnitude authority; positions inert; no Euclidean authority in lowered output. | ADR D6, constitution §0.7 |
+| **Candidate F** | The only exact-magnitude authority for *decision gates* (no float `sqrt`/distance gates a commitment). **Gridcell positions are structural-spatial** (§7) — the lowerer honors emitted **integer** positions as the lattice layout; that is not "Euclidean authority" (placement/stencil are integer index arithmetic). | ADR D6, constitution §0.7 + §7 |
 | **Bounded coupling** | Hyperlanes / special routes / bridges = bounded `add_hyperlane` pairs → `mapgen_links`; no graph/route/predecessor. | ADR D7 |
 
 ## 3. Practices (how to work in this vertical — binding)
@@ -56,9 +56,11 @@ SimThing tree. See [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md) D1.
    `crates/simthing-clausething/src/`. If you need a lowerer change, **STOP and split** it into a
    DA-authorized 0.0.8.2.5 amendment PR with its own battery (precedent: `#680`). (ADR D10.)
 3. **Producer emits the proven grammar only.** `static_galaxy_scenario { system{ id name position{x y z} initializer } add_hyperlane nebula } <name>_initializer{…}` — the form `mapgen_lattice` reads. **Not** `hydrate_scenario` `scenario { location … }` (superseded history). (ADR D9.)
-4. **Quantize before emission.** Producer-side float (cos/sin, ellipse, distances, anchors) is fine **only**
-   if quantized to integer cells / topological edges before emission. The output carries integer
-   `LatticeCoord` and topological adjacency — **never** Euclidean magnitude/distance. (ADR D6.)
+4. **Quantize before emission; positions are the spatial layout.** Producer-side float (cos/sin, ellipse,
+   distances, anchors) is fine **only** if quantized to integer cells before emission. The output carries integer
+   `LatticeCoord` — and the lowerer **honors those positions as the authoritative gridcell `(col,row)`** (§7,
+   STEAD-PRIVILEGE-0): the emitted galactic pattern **is** the lattice. No float Euclidean magnitude gates a
+   commitment (§0.7), but integer positions are **structural**, not inert. (ADR D6.)
 5. **Bounded everything, fail closed.** Every topology/arena pass declares hard caps and fails closed when
    impossible (`UnsatisfiedRouteCount`, `UnsatisfiedBridgeCount`, `CapacityOverflow`, …). No arbitrary graph.
 6. **Add a shape = one registry row + a strategy module.** The `ShapeStrategyEntry` registry is the single
@@ -79,7 +81,7 @@ SimThing tree. See [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md) D1.
 | `shape_registry.rs` + `strategies/` | `ShapeStrategyEntry` single-source registry; 12 vanilla shapes (elliptical, spiral_2/3/4/6, ring, bar, starburst, cartwheel, spoked, static, arbitrary_static); `common.rs::quantize_polar` (float→integer cells). |
 | `topology.rs` / `special_routes.rs` / `partition.rs` / `cluster.rs` | Bounded `add_hyperlane` couplings; report-only kinds; producer-side BFS/DFS partition ordering (Stellaris method mirror, not pathfinding). |
 | `pair_candidates.rs` | Bounded enumeration: windowed hyperlanes (`collect_pairs_within_chebyshev`), heap-capped long-range (`collect_farthest_pairs_with_filter`, O(log cap)/pair). |
-| `emitter.rs` | `static_galaxy_scenario` neutral-AST text; bareword initializers + sibling defs; inert integer positions. |
+| `emitter.rs` | `static_galaxy_scenario` neutral-AST text; bareword initializers + sibling defs; **structural integer positions** (honored by the lowerer as the gridcell layout). |
 | `lib.rs` | `place_and_emit_scenario*` pipelines (validate → place → topology → emit). |
 | binary `mapgen` | CLI (`--shape --num_stars --seed --dry-run …`). |
 
