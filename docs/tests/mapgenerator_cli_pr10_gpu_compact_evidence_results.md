@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR10 — Generated Scenario Admit/Install + GPU Compact Evidence Results
 
-> **Artifact lifecycle: PROBATION** (pending DA approval).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-15 after independent branch-source audit + real-adapter GPU battery rerun; promoted from PROBATION).
 
 ## Verdict
 
-**PASS pending DA review** — a tiny deterministic MapGeneratorCLI-generated `static_galaxy_scenario` parses through
+**PASS — DA-APPROVED (2026-06-15, executive design authority)** — a tiny deterministic MapGeneratorCLI-generated `static_galaxy_scenario` parses through
 `parse_mapgen_neutral_document`, lowers through closed MapGen lattice / RF / links / Movement-Front surfaces,
 admits/installs via `install_atomic` + compile previews, and produces GPU-resident compact evidence on a real
 adapter using the existing generic W/PALMA + compact D-probe harness (mirrors 0.0.8.2.5 MapGen PR10). **Zero**
@@ -162,9 +162,32 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**Pending** — only DA writes sign-off. Do not pre-file approval.
+**DA-APPROVED — 2026-06-15, executive design authority.** Independent branch-source audit: the harness mirrors the
+closed `mapgen_pr10_end_to_end_compact_evidence` pattern but feeds **MapGeneratorCLI-generated** scenarios through
+`parse_mapgen_neutral_document` → lattice/RF/links/Movement-Front lowering → `install_atomic` +
+`SimSession::open_from_spec` → **GPU compact evidence on a real adapter**. Compact-readback-only is enforced by a
+self-test asserting the harness contains `field_values.is_none()` / `reduction_parent_value.is_none()` /
+`eml_output.is_none()` / `traversal_report.values.is_none()` (no full-field readback); `pr10_pass_requires_gpu_adapter`
+gates on a real adapter (default-off). **Zero `crates/simthing-clausething/src/` changes** (test/docs/Cargo dev-dep
+only); no new kernel/WGSL; producer carries no `simthing-*` dep. Battery rerun on the branch: `cargo fmt --check`
+clean; `cargo test -p simthing-mapgenerator` zero failures; **`mapgenerator_cli_pr10_gpu_compact_evidence` 12 passed
+including `generated_pr10_gpu_compact_evidence_real_adapter` (1.13s — real GPU executed, not skipped)**; PR9 integration
+6; `mapgen_constitution_guards` 21; `mapgen_resource_flow` 16; `mapgen_links` 19.
+
+**Honest scope accepted (correct §0 discipline):** the primary admit/install + GPU fixture is a 5-system pentad-style
+static layout (seed 10100) because larger generated packs hit `ResourceFlowSlotOverflow` under the existing RF slot
+cap — and widening that cap would require a **closed lowerer edit, which §0 forbids in a producer PR.** Cursor
+correctly STOPPED at the gate and used a small fixture rather than touching closed `src/` (special routes covered
+separately in the 9-system extended layout via parse + hyperlane extraction). This mirrors the closed 0.0.8.2.5 PR10,
+which also proved compact evidence on a tiny pentad; the 1000-star scale is explicitly **PR11's** job. *(If PR11 needs
+the RF slot cap raised to install a large generated pack, that is a DA-authorized 0.0.8.2.5 amendment — never a
+producer-PR edit.)*
+
+PR9 (#689) was **owner-merged before DA review** and its report had been edited to self-assert a DA sign-off; the DA
+ratified it retroactively in this same review (see `mapgenerator_cli_pr9_field_operator_results.md`). **Governance
+reminder (third occurrence): route producer PRs through DA review before merging — owner-merge is not a DA sign-off.**
 
 ## Whether PR11 1000-star scale envelope may proceed
 
-**Yes, pending DA approval of this PR10 report.** PR11 = scale-envelope proof / 1000-star generated map stress:
+**Yes — DA approved PR10 (2026-06-15).** PR11 = scale-envelope proof / 1000-star generated map stress:
 bound O(cells), u32 edge² overflow, O(N²) topology/bridge enumeration, and artifact lifecycle closeout.

@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR9 — Nebula / Field-Operator Declarative Producer Results
 
-> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14, merged #689).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-RATIFIED RETROACTIVELY 2026-06-15 after independent audit; #689 was owner-merged before DA review — see sign-off).
 
 ## Verdict
 
-**DA-APPROVED & MERGED (#689, 2026-06-14)** — bounded producer-side nebula placement and closed-surface `nebula = { name radius }`
+**PASS — DA-RATIFIED RETROACTIVELY (2026-06-15, executive design authority; #689 owner-merged before DA review)** — bounded producer-side nebula placement and closed-surface `nebula = { name radius }`
 feedstock emission; initializer bucket refs emit sibling definitions once; inert metadata passthrough **deferred**
 (dry-run report only). Generated output parses and lowers through existing closed `mapgen_lattice` +
 Movement-Front `RegionFieldSpec` surfaces without front-end widening. **Zero** `crates/simthing-clausething/src/`
@@ -129,4 +129,15 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**DA-APPROVED & MERGED (#689, 2026-06-14).** PR10 (MapGeneratorCLI admit/install + GPU compact evidence) may proceed.
+**DA-RATIFIED RETROACTIVELY — 2026-06-15, executive design authority.** *Process note (governance):* #689 was
+**owner-merged (khorum08) before any DA review**, and this report was subsequently edited (in PR #690) to
+self-assert "DA-APPROVED & MERGED" — a sign-off the DA never gave (the report was originally, correctly, "Pending
+— only DA writes sign-off"). This is the **third** occurrence of the owner-merge-before-review / pre-filed-sign-off
+pattern (cf. #685 PR6R, and now #689). The DA has now performed the genuine retroactive audit: `field_operator.rs`
+emits **only** the closed-surface `nebula = { name radius }` block that `mapgen_lattice` already accepts — it does
+**not** invent a `field_operator`/`gpu_operator` grammar block (it even ships `forbidden_field_surface_term()` to
+scan emitted text); `nebula.rs`/`metadata.rs` are producer-side placement + inert reporting; inert metadata is
+report-only (never emitted/simulated). **Zero closed `src/`; no `simthing-*` dep.** Battery rerun: `cargo fmt
+--check` clean; `cargo test -p simthing-mapgenerator` zero failures; `mapgenerator_cli_pr9_field_operator_lower`
+6 passed; `mapgen_constitution_guards` 21, `mapgen_resource_flow` 16, `mapgen_links` 19 green. The change is benign
+and is **ratified**. **Owner-merge is NOT a DA sign-off** — future producer PRs must await DA review before merge.
