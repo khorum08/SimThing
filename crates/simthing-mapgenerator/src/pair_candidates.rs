@@ -2,7 +2,8 @@
 //!
 //! Uses lattice-neighborhood windows instead of full O(N²) scans where a Chebyshev radius applies.
 
-use std::collections::BTreeMap;
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BinaryHeap};
 
 /// Max Chebyshev distance considered for hyperlane candidate enumeration.
 pub const PRODUCER_MAX_HYPERLANE_DISTANCE: u32 = 64;
@@ -137,6 +138,13 @@ fn neighbor_coords(row: u32, col: u32, dr: u32, dc: u32) -> [(u32, u32); 4] {
 }
 
 /// Enumerate pairs matching `pair_filter`, retaining up to cap farthest-distance rows.
+///
+/// Uses a min-heap keyed on `(distance, left, right)` so that, once the candidate cap is reached,
+/// each further pair costs O(log cap) (evict the smallest retained tuple if the new pair is larger)
+/// rather than an O(cap) linear min-scan. The retained set is the cap pairs with the largest
+/// `(distance, left, right)` tuples; downstream passes sort by distance-descending and select only
+/// the farthest few, so this is output-identical to a full scan while removing the O(N²·cap) time
+/// cliff. The returned vector is sorted for deterministic ordering.
 pub fn collect_farthest_pairs_with_filter<F>(
     positions: &[(u32, u32)],
     mut pair_filter: F,
@@ -144,7 +152,7 @@ pub fn collect_farthest_pairs_with_filter<F>(
 where
     F: FnMut(usize, usize, u32) -> bool,
 {
-    let mut out: Vec<(u32, usize, usize)> = Vec::new();
+    let mut heap: BinaryHeap<Reverse<(u32, usize, usize)>> = BinaryHeap::new();
     let mut examined_pairs = 0u64;
     let mut capped = false;
 
@@ -158,22 +166,23 @@ where
             if !pair_filter(left, right, distance) {
                 continue;
             }
-            if out.len() < PRODUCER_PAIR_CANDIDATE_CAP {
-                out.push((distance, left, right));
+            let row = (distance, left, right);
+            if heap.len() < PRODUCER_PAIR_CANDIDATE_CAP {
+                heap.push(Reverse(row));
             } else {
                 capped = true;
-                if let Some((min_index, _)) = out
-                    .iter()
-                    .enumerate()
-                    .min_by_key(|(_, (distance, _, _))| *distance)
-                {
-                    if distance > out[min_index].0 {
-                        out[min_index] = (distance, left, right);
+                if let Some(&Reverse(smallest)) = heap.peek() {
+                    if row > smallest {
+                        heap.pop();
+                        heap.push(Reverse(row));
                     }
                 }
             }
         }
     }
+
+    let mut out: Vec<(u32, usize, usize)> = heap.into_iter().map(|Reverse(row)| row).collect();
+    out.sort_unstable();
 
     let stored_candidates = out.len() as u32;
     (
