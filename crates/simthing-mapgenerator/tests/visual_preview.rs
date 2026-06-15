@@ -254,6 +254,7 @@ fn jitter_stays_inside_cell() {
 }
 
 #[test]
-fn lattice_capacity_supports_visual_preset() {
-    SquareLattice::new(VISUAL_SPIRAL_1500_LATTICE_EDGE).expect("300 lattice");
+fn renderer_applies_placed_coordinate_chebyshev_cap_by_default() {
+    let scene = spiral_scene();
+    assert_eq!(scene.options.max_hyperlane_chebyshev, Some(4));
 }
