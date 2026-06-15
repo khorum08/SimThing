@@ -13,6 +13,7 @@
 //! Post-closeout: producer-side 1000×1000 PNG preview for UI handoff (not runtime semantics).
 
 pub mod cluster;
+pub mod connectivity;
 pub mod coupling;
 pub mod emitter;
 pub mod field_operator;
@@ -37,6 +38,7 @@ pub use cluster::{
     assign_clusters, generate_cluster_bridges, validate_cluster_options, ClusterAssignment,
     ClusterBridgeEdge, ClusterError, ClusterId, ClusterOptions, ClusterReport,
 };
+pub use connectivity::{connect_components, ConnectivityReport};
 pub use coupling::{ClassifiedCouplingEdge, CouplingEdgeKind};
 pub use emitter::{
     ScenarioEmitError, ScenarioEmitter, ScenarioEmitterConfig, ScenarioText,
@@ -217,6 +219,22 @@ pub fn generate_galaxy_with_structure(
         classified_edges.extend(topology.edges.into_iter().map(|edge| {
             ClassifiedCouplingEdge::new(edge.clone(), CouplingEdgeKind::BaseHyperlane)
         }));
+        // Guarantee ONE interconnected galaxy (no island clusters) by adding minimal short bridges over
+        // authored coordinates. Connectivity is part of the BASE hyperlane network (as in Stellaris).
+        if params.hyperlane.ensure_connected {
+            let existing: Vec<(String, String)> = base_hyperlane_edges
+                .iter()
+                .map(|edge| (edge.from.clone(), edge.to.clone()))
+                .collect();
+            let (bridges, _report) = connect_components(&placement, &existing);
+            for edge in bridges {
+                classified_edges.push(ClassifiedCouplingEdge::new(
+                    edge.clone(),
+                    CouplingEdgeKind::BaseHyperlane,
+                ));
+                base_hyperlane_edges.push(edge);
+            }
+        }
         hyperlane_edges.extend(base_hyperlane_edges.iter().cloned());
     }
     if let Some(options) = special_route_options {
