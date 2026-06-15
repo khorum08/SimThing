@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR8 — Vanilla Shape Registry + Single-Source Strategy Dispatch Results
 
-> **Artifact lifecycle: PROBATION** (pending DA approval after independent branch-source audit).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + battery rerun; promoted from PROBATION).
 
 ## Verdict
 
-**PROBATION — pending DA review.** Completes remaining vanilla shape registry descriptors and single-sources
+**PASS — DA-APPROVED (2026-06-14, executive design authority)** — completes remaining vanilla shape registry descriptors and single-sources
 executable strategy dispatch/names via `ShapeStrategyEntry` rows. All required procedural shapes are executable
 and tested; generated procedural output parses and lowers lattice through existing closed surfaces. **Zero**
 `crates/simthing-clausething/src/` changes. No topology/link/routing work, no new grammar, no route/path/
@@ -22,7 +22,7 @@ field_operator declarative producer) is **not** started in this PR.
 | Artifact | Classification | Action |
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` through `pr7` | CURRENT_EVIDENCE | Unchanged — preserved |
-| `docs/tests/mapgenerator_cli_pr8_shape_registry_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_pr8_shape_registry_results.md` | CURRENT_EVIDENCE (DA-approved) | New (this report) |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
@@ -144,9 +144,35 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**PROBATION — pending DA approval.** No executive sign-off yet.
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent branch-source audit:
+- **C10 single-source registry GENUINELY achieved (closes the carried PR3 note):** `strategies/registry.rs::vanilla_entries()`
+  builds **one** `BTreeMap<String, ShapeStrategyEntry>` where each row pairs a descriptor **and** its executable
+  strategy; `ShapeRegistry` consumes that map, with `get()` (descriptor) and `executable_names_sorted()`
+  (`filter(strategy.is_some())`) both derived from it. The prior parallel `strategy_by_name` match + `executable_strategy_names`
+  vec are **removed** (`mod.rs` exports only `vanilla_entries`). Adding a shape = one `entry()` row + a strategy
+  module — core/emitter/lowering contract untouched (proves C10).
+- **12 shapes executable** (static, arbitrary_static, elliptical, spiral_2/3/4/6, ring, bar, starburst, cartwheel,
+  spoked). Float **polar sampling quantizes to integer cells** (`common.rs::quantize_polar` → `.round() as u32`;
+  annulus uses squared radii, no sqrt); output is `LatticeCoord` only — **no Euclidean authority in emitted output**
+  (cos/sin sampling is the Candidate-F-permitted producer-side convenience, quantized before emission). One-per-cell
+  via `insert_or_relocate`; deterministic.
+- **Mode-gate asymmetry fixed (closes the carried PR3 note):** procedural mode now rejects **both** `arbitrary_static`
+  (`ArbitraryShapeInProceduralMode`) and `static` (new `ExplicitShapeInProceduralMode`); prior static integration
+  tests updated to `mode=arbitrary_static` with fixture paths (benign test updates, all green).
+- **Zero `crates/simthing-clausething/src/` changes**; no `simthing-*` dep; forbidden/Euclidean-token scan of
+  producer `src/` returned NONE. Integration (`mapgenerator_cli_pr8_shape_registry_lower`) proves procedural
+  spiral_4/ring parse + lattice-lower through the closed surfaces.
+
+Battery rerun on the branch: `cargo fmt --check` clean; `cargo test -p simthing-mapgenerator` **160 passed,
+zero failures** (every binary "0 failed"); `mapgenerator_cli_pr8_shape_registry_lower` 3; `mapgen_constitution_guards`
+21; `mapgen_lattice_hierarchy` 10; `mapgen_links` 19. (The 160-vs-168 count is a per-binary summation method
+difference, not a failure.) Pushed for DA review, not owner-merged — governance intact.
+
+**This rung closes two carried DA notes** (PR3 single-source dispatch + static/arbitrary_static mode gate). Carried
+scale notes (O(N²) enumeration; `cell_count` overflow; O(cells) relocation) remain for the PR11 scale-envelope rung.
 
 ## Whether PR9 may proceed
 
-**No — await DA approval of PR8.** After DA approves this rung, **PR9** (nebula / field_operator declarative
-producer) may proceed per ladder ordering.
+**Yes — DA approved PR8 (2026-06-14).** **PR9** (nebula / `field_operator` declarative producer + initializer
+buckets + inert metadata passthrough) may proceed per ladder ordering — no GPU/runtime; field operator lowers to a
+`RegionFieldSpec` operator through the closed surface only.
