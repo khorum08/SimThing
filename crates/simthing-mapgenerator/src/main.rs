@@ -3,15 +3,16 @@ use std::path::PathBuf;
 use clap::{Parser, ValueEnum};
 use simthing_mapgenerator::{
     generate_galaxy_with_structure, generate_success_galaxy_with_preview,
-    structure_options_from_params, success_galaxy_1000_params, ArbitraryHyperlaneSourceMode,
-    GenerationMode, MapGeneratorParams, OutputFormat, PartitionMethod, ScenarioEmitter,
-    ScenarioEmitterConfig, ShapeRegistry, ValidationError, GALAXY_PREVIEW_PNG_SIZE,
+    structure_options_from_params, success_galaxy_1000_params, visual_spiral_1500_params,
+    ArbitraryHyperlaneSourceMode, GalaxyPreviewOptions, GenerationMode, HyperlanePreviewFilter,
+    MapGeneratorParams, OutputFormat, PartitionMethod, ScenarioEmitter, ScenarioEmitterConfig,
+    ShapeRegistry, ValidationError, GALAXY_PREVIEW_PNG_SIZE,
 };
 
 #[derive(Debug, Parser)]
 #[command(
     name = "mapgen",
-    about = "MapGeneratorCLI producer — declarative galaxy generation + optional 1000×1000 preview PNG"
+    about = "MapGeneratorCLI producer — declarative galaxy generation + optional preview PNG"
 )]
 struct Cli {
     /// Load full parameter JSON from a file (overrides individual flags when present).
@@ -22,13 +23,17 @@ struct Cli {
     #[arg(long)]
     success_galaxy: bool,
 
+    /// Use the visual remediation 1500-star spiral_4 preset (300×300 lattice).
+    #[arg(long)]
+    spiral_visual: bool,
+
     #[arg(long, value_enum, default_value_t = CliMode::Procedural)]
     mode: CliMode,
 
     #[arg(long)]
     shape: Option<String>,
 
-    #[arg(long)]
+    #[arg(long, alias = "stars")]
     num_stars: Option<u32>,
 
     #[arg(long)]
@@ -37,7 +42,7 @@ struct Cli {
     #[arg(long)]
     core_radius: Option<f64>,
 
-    #[arg(long)]
+    #[arg(long, alias = "lattice-edge")]
     lattice_size: Option<u32>,
 
     #[arg(long)]
@@ -83,9 +88,29 @@ struct Cli {
     #[arg(long)]
     output: Option<PathBuf>,
 
-    /// Write a 1000×1000 PNG preview of the generated galaxy.
-    #[arg(long)]
+    /// Write a preview PNG of the generated galaxy.
+    #[arg(long, alias = "render-png")]
     preview_png: Option<PathBuf>,
+
+    /// Preview PNG edge length in pixels.
+    #[arg(long, default_value_t = GALAXY_PREVIEW_PNG_SIZE)]
+    png_size: u32,
+
+    /// Which hyperlane couplings to draw in the preview PNG.
+    #[arg(long, value_enum, default_value_t = CliHyperlanePreview::Base)]
+    hyperlanes: CliHyperlanePreview,
+
+    /// Apply deterministic within-cell star jitter in the preview PNG.
+    #[arg(long, default_value_t = true)]
+    jitter_stars: bool,
+
+    /// Suppress grid/core-mask debug painting in the preview PNG.
+    #[arg(long, default_value_t = true)]
+    no_grid: bool,
+
+    /// Draw nebula fields in the preview PNG (off by default).
+    #[arg(long)]
+    draw_nebulas: bool,
 
     /// Validate and print parameter summary without generation or emission.
     #[arg(long)]
@@ -111,11 +136,20 @@ enum CliOutputFormat {
     Manifest,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum, Default)]
+enum CliHyperlanePreview {
+    #[default]
+    Base,
+    All,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     let registry = ShapeRegistry::default();
     let mut params = if cli.success_galaxy {
         success_galaxy_1000_params()
+    } else if is_visual_spiral_request(&cli) {
+        visual_spiral_1500_params()
     } else if let Some(ref path) = cli.params {
         let json = std::fs::read_to_string(path)?;
         MapGeneratorParams::from_json_str(&json)?
@@ -135,7 +169,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let preview_path = cli.preview_png.clone().or_else(|| {
-        if cli.success_galaxy {
+        if is_visual_spiral_request(&cli) {
+            Some(PathBuf::from(
+                "docs/tests/mapgenerator_cli_visual_spiral_1500.png",
+            ))
+        } else if cli.success_galaxy {
             Some(PathBuf::from("success_galaxy.png"))
         } else {
             params.output.output.clone()
@@ -145,6 +183,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let generation = if cli.success_galaxy {
         generate_success_galaxy_with_preview(&registry)?
+    } else if is_visual_spiral_request(&cli) {
+        let (hyperlane, special, partition, _cluster) = structure_options_from_params(&params)?;
+        generate_galaxy_with_structure(
+            &params,
+            &registry,
+            None,
+            &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
+            Some(hyperlane),
+            Some(special),
+            Some(partition),
+            None,
+        )?
     } else {
         let (hyperlane, special, partition, cluster) = structure_options_from_params(&params)?;
         generate_galaxy_with_structure(
@@ -169,12 +219,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if let Some(ref path) = preview_path {
-        let png = generation.render_preview_png()?;
+        let preview_options = GalaxyPreviewOptions {
+            seed: generation.seed,
+            png_size: cli.png_size,
+            jitter_stars: cli.jitter_stars,
+            draw_nebulas: cli.draw_nebulas,
+            draw_core_mask: !cli.no_grid,
+            hyperlane_filter: match cli.hyperlanes {
+                CliHyperlanePreview::Base => HyperlanePreviewFilter::BaseOnly,
+                CliHyperlanePreview::All => HyperlanePreviewFilter::AllCouplings,
+            },
+        };
+        let png = generation.render_preview_png_with_options(preview_options)?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(path, png)?;
         println!(
-            "wrote {}x{} preview PNG -> {}",
-            GALAXY_PREVIEW_PNG_SIZE,
-            GALAXY_PREVIEW_PNG_SIZE,
+            "wrote {}x{} preview PNG ({} base hyperlane segments) -> {}",
+            cli.png_size,
+            cli.png_size,
+            generation.base_hyperlane_edges.len(),
             path.display()
         );
     }
@@ -270,4 +335,11 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
 
 fn format_validation(err: ValidationError) -> String {
     format!("validation error: {err}")
+}
+
+fn is_visual_spiral_request(cli: &Cli) -> bool {
+    cli.spiral_visual
+        || (cli.shape.as_deref() == Some("spiral_4")
+            && cli.num_stars == Some(1500)
+            && cli.lattice_size == Some(300))
 }
