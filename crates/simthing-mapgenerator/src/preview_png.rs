@@ -35,7 +35,12 @@ pub struct GalaxyPreviewOptions {
     pub hyperlane_filter: HyperlanePreviewFilter,
     /// Render-only: skip hyperlane segments whose placed lattice Chebyshev distance exceeds this.
     pub max_hyperlane_chebyshev: Option<u32>,
+    /// Render-only RGBA for hyperlane (starlane) segments.
+    pub hyperlane_rgba: [u8; 4],
 }
+
+/// Default faint starlane colour (preserves prior preview output).
+pub const DEFAULT_HYPERLANE_RGBA: [u8; 4] = [45, 50, 58, 90];
 
 impl Default for GalaxyPreviewOptions {
     fn default() -> Self {
@@ -47,6 +52,7 @@ impl Default for GalaxyPreviewOptions {
             draw_core_mask: false,
             hyperlane_filter: HyperlanePreviewFilter::BaseOnly,
             max_hyperlane_chebyshev: Some(DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV),
+            hyperlane_rgba: DEFAULT_HYPERLANE_RGBA,
         }
     }
 }
@@ -244,7 +250,15 @@ fn encode_preview_rgba(scene: &GalaxyPreviewScene) -> Result<Vec<u8>, PreviewPng
                 size,
                 scene.options.jitter_stars,
             );
-            draw_line(&mut rgba, size, x0, y0, x1, y1, [45, 50, 58, 90]);
+            draw_line(
+                &mut rgba,
+                size,
+                x0,
+                y0,
+                x1,
+                y1,
+                scene.options.hyperlane_rgba,
+            );
         }
     }
 
@@ -257,7 +271,9 @@ fn encode_preview_rgba(scene: &GalaxyPreviewScene) -> Result<Vec<u8>, PreviewPng
             size,
             scene.options.jitter_stars,
         );
-        let radius = star_render_radius(scene.seed, system.id);
+        // Scale star size with the canvas (1.0× at the canonical 1000px) so large renders stay legible.
+        let scale = size as f32 / GALAXY_PREVIEW_PNG_SIZE as f32;
+        let radius = star_render_radius(scene.seed, system.id) * scale;
         paint_star(&mut rgba, size, x, y, radius);
     }
 
@@ -348,21 +364,25 @@ fn fill_rect(rgba: &mut [u8], size: u32, x0: f32, y0: f32, x1: f32, y1: f32, col
 }
 
 fn draw_line(rgba: &mut [u8], size: u32, x0: f32, y0: f32, x1: f32, y1: f32, color: [u8; 4]) {
-    let mut x = x0;
-    let mut y = y0;
+    // Stroke half-width scales with image size (0 at the canonical 1000px → 1-px line; thicker on larger
+    // canvases for legibility) so the 1000px preview is byte-identical to before.
+    let half_width = (size / 2000) as i32;
     let dx = x1 - x0;
     let dy = y1 - y0;
     let steps = dx.abs().max(dy.abs()).ceil().max(1.0) as i32;
     for i in 0..=steps {
         let t = i as f32 / steps as f32;
-        let px = (x0 + dx * t).round() as i32;
-        let py = (y0 + dy * t).round() as i32;
-        if px >= 0 && py >= 0 && (px as u32) < size && (py as u32) < size {
-            blend_pixel(rgba, size, px as u32, py as u32, color);
+        let cx = (x0 + dx * t).round() as i32;
+        let cy = (y0 + dy * t).round() as i32;
+        for oy in -half_width..=half_width {
+            for ox in -half_width..=half_width {
+                let px = cx + ox;
+                let py = cy + oy;
+                if px >= 0 && py >= 0 && (px as u32) < size && (py as u32) < size {
+                    blend_pixel(rgba, size, px as u32, py as u32, color);
+                }
+            }
         }
-        let _ = (x, y);
-        x = x0 + dx * t;
-        y = y0 + dy * t;
     }
 }
 
