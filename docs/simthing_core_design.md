@@ -390,9 +390,21 @@ a duplicate of it. The whole `RegionFieldSpec` carries the three-layer model in 
 **L2** = `reduction` (cell → parent); **L3** = `parent_formula` (`ai_will_do` urgency) + `commitment`
 (threshold → `CommitmentEffectSpec` → `BoundaryRequest`). (The parent also reduces its cells the way
 every parent reduces every child — `SlotRange` over their columns — that L2 half.) Execution is opt-in
-(`MappingExecutionProfile::SparseRegionFieldV1`, default `Disabled`); the implemented first slice is a
-small square grid (≤ 10/32 cells per edge), with the canonical 200×200 the design target a later
-multi-theater / atlas rung admits.
+(`MappingExecutionProfile::SparseRegionFieldV1`, default `Disabled`).
+
+**Layout scale and execution scale are decoupled — and SimThing models VAST spatial domains.** The
+**gridcell-Location lattice LAYOUT** (each Location's structural `(col,row)`) is integer and sparse, so it
+scales **freely** to far larger than any single reference — **200×200 is a *small* map; vast lattices
+(thousands+ cells per edge) are anticipated** and lay out at full fidelity (occupied cells where the
+scenario places them, unoccupied cells carrying ambient field). The **dense Movement-Front stencil
+EXECUTION**, by contrast, is a **bounded local theater** (the implemented first slice is ≤ 10/32 cells per
+edge — P1: dense-global diffusion over a vast grid is the permanently-rejected pattern). A vast lattice is
+therefore covered by **many bounded theaters** — the multi-theater **atlas** rung — never by one giant
+dense field; strategic awareness across theaters is **hierarchy (Layer 2)**, not a bigger stencil. **Never
+shrink a layout to fit the theater cap, and never grow the theater to cover a vast layout:** the layout is
+authoritative and unbounded; the stencil is a bounded window; the atlas tiles. (Lowerer: the gridcell
+`(col,row)` is honored as authoritative layout at any edge — STEAD-PRIVILEGE-0 — while the Movement-Front
+front honestly defers to the atlas above the bounded-theater edge.)
 
 **A cell is shaped by its neighbors — falloff is the spatial arena's flow.** Exactly as a flow-arena
 participant is shaped by the budget disbursed to it, a gridcell Location is **influenced by the falloff

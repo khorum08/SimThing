@@ -97,9 +97,14 @@ imprecision; corrected to the on-device projection).
 Producer-side float math (spiral `cos/sin`, ellipse sampling, Chebyshev distances, cluster anchors, bridge
 selection) is permitted because it is *quantized to integer cells / topological edges before emission*; those
 integer cells are then the **authoritative spatial layout**, not inert. (Implemented by the closed-lowerer
-amendment **STEAD-PRIVILEGE-0** in `mapgen_lattice.rs::assign_system_placements`; first-slice Movement-Front
-*execution* remains ≤10/32 per edge per §7 — the **layout** is now correct at any edge ≤256, larger
-*execution* is the parked atlas rung.) Carries §0.7 **and** §7.
+amendment **STEAD-PRIVILEGE-0** in `mapgen_lattice.rs::assign_system_placements`.) **Layout scale and execution
+scale are decoupled, and SimThing models VAST spatial domains:** the gridcell-Location lattice **layout** scales
+**freely** (`MAPGEN_MAX_LATTICE_EDGE` raised to 65535 — **200×200 is a *small* reference**, vast lattices are
+anticipated and lay out at full fidelity); the dense Movement-Front **stencil execution** stays a **bounded local
+theater** (≤10/32 per edge, P1 — dense-global over a vast grid is the rejected pattern), so a vast lattice is
+covered by **many bounded theaters (the deferred atlas rung)**, never one giant field, with hierarchy (L2) for
+cross-theater awareness. The lowerer honors positions at any layout edge and **honestly defers** the Movement-Front
+front to the atlas above the bounded-theater edge — never shrinking a layout to fit the theater cap. Carries §0.7 **and** §7.
 
 ### D7 — Bounded topology only; links/routes are **bounded couplings**, never graph objects
 Hyperlanes, special routes (wormhole/gateway), partition bridges, and cluster bridges all lower as bounded
