@@ -189,6 +189,15 @@ Any GPU-resident sqrt, magnitude, distance, gradient norm, movement-front norm, 
 parity-sensitive exact path must route through Candidate F or another explicitly admitted
 artifact-backed exact primitive. Native sqrt-like paths may exist only as diagnostics.
 
+**Candidate F is permanently enshrined (STEAD-CONTRACT-0, owner-directed).** Bit-exact Euclidean
+distance and other sqrt-requiring decision-gate operations are **first-class and routed *through*
+Candidate F — never demoted, avoided, or designed around.** The earlier instinct to "avoid Euclidean /
+avoid sqrt to stay exact" is **withdrawn**: the artifact *is* the exact path, so exactness no longer
+costs the operation. This applies to STEAD/Movement-Front magnitudes whenever an exact gate is needed;
+it does **not** license treating gridcell positions as inert — the integer stencil still walks neighbors
+by index arithmetic (core §0, §7), and Candidate F governs the *magnitude* of a gate, not whether space
+is real. (See [`stead_spatial_contract.md`](stead_spatial_contract.md) invariant 8.)
+
 Historical R4 ledger detail remains in
 [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md);
 §0.7 is the carry-forward constitutional rule.

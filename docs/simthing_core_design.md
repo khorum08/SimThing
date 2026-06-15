@@ -13,6 +13,37 @@
 
 ---
 
+## 0. Spatial substrate: STEAD/Mapping is not optional
+
+**Read this before any downstream example.** SimThing is, at its core, a **spatial** simulator. The map
+is not a backdrop or a render artifact — it **is** a grid of gridcell `SimThing`s run as a cellular
+automaton (the **Movement-Front automaton**, §7). A `SimThingKind::Location` **is** a gridcell with an
+intrinsic structural `(col,row)` on the lattice. This is load-bearing, not decorative, and it has
+drifted catastrophically three times — each time by treating the spatial substrate as inert metadata.
+It never is.
+
+Eight non-negotiable invariants (full normative form: [`stead_spatial_contract.md`](stead_spatial_contract.md), enforced by `stead_spatial_contract_guards`):
+
+1. A `Location` **is** a structural gridcell; spatial identity is intrinsic, not a detachable role.
+2. The parent grid owns the spatial arena; placements live in `grid_metadata`, never render metadata.
+3. Emitted integer `(col,row)` are **structural** coordinates, honored by the lowerer — not render, not
+   emission-order, not row-major fill.
+4. Unoccupied cells are **ambient field**, not absent ontology; lattices are sparse and may be **vast**
+   (`200×200` is a *small* reference, not a ceiling).
+5. Heatmaps, falloff, fronts, Gu-Yang/SaturatingFlux, PALMA, and RF pressure are **expressions over the
+   structural substrate**, not independent services.
+6. **Layout admission** (budget-based, no fixed edge cap) is separate from **execution-profile
+   admission** (the ≤10/32-per-edge bounded local theater). A vast layout may pass while a dense
+   execution profile **defers to the atlas** — that is not "the map is too large."
+7. Dense bounded-theater caps **cannot** shrink, compact, or invalidate the structural layout.
+8. Candidate F governs exact-magnitude decision gates (constitution §0.7) but **does not** license
+   treating positions as inert — exact sqrt/Euclidean ops route *through* it, they are never *avoided*.
+
+§7 below is the full automaton model; this section is its non-skippable summary. If a change reasons as
+if any of the above is false, the change is wrong.
+
+---
+
 ## 1. The SimThing Principle — the unitary vision
 
 **Everything is a SimThing.** A SimThing is a recursive `{ properties, overlays, children }` node.
@@ -349,6 +380,10 @@ wrong — escalate, don't special-case.
 ---
 
 ## 7. Mapping — the Movement-Front automaton over gridcell SimThings
+
+> This section is the full model behind §0 ("Spatial substrate: STEAD/Mapping is not optional"). §0 is
+> the non-skippable summary; the eight invariants there are normative and enforced by
+> `stead_spatial_contract_guards`. The binding contract is [`stead_spatial_contract.md`](stead_spatial_contract.md).
 
 The map is not a system; it is **more tree, run as a cellular automaton.** This is the
 **Movement-Front system**: the engine-native realization of Anchor A (Wei,

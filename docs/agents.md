@@ -28,6 +28,14 @@
    start at [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md) (clearinghouse:
    concepts/practices/APIs) and [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) (decisions).
    The production-track ladders are archived under `archive/closed_production/`.
+6. **MANDATORY for any spatial task** — [`stead_spatial_contract.md`](stead_spatial_contract.md)
+   is **required reading** (in addition to core §0/§7) before you touch any of: MapGen lattice,
+   MapGeneratorCLI, Location grids / `grid_metadata` placements, the Movement-Front engine, STEAD,
+   heatmaps / falloff / fronts, PALMA, Gu-Yang / SaturatingFlux, Resource Flow or Accumulator
+   arenas whose participants are gridcell `Location`s, structural vs render coordinates, layout
+   vs execution-profile admission, or field visualization. It is short, normative, and enforced by
+   `crates/simthing-clausething/tests/stead_spatial_contract_guards.rs`. STEAD/Mapping has drifted
+   catastrophically three times; this contract exists to make that impossible.
 
 Nothing else by default. If your handoff cites additional rung-local links (≤3), read those
 too. If something seems missing, search the repo before re-deriving from priors —

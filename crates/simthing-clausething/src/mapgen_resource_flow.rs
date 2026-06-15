@@ -88,6 +88,9 @@ pub struct MapGenResourceFlowArenaExpansion {
     pub source_properties_enrolled: Vec<String>,
     pub rejected_implicit_participants_count: u32,
     pub unsafe_expansion_flags: Vec<String>,
+    /// STEAD/Mapping spatial binding (STEAD-CONTRACT-0): whether this arena is spatially bound to gridcell
+    /// `Location`s and, if so, the structural grid frame it indexes through.
+    pub spatial_binding: SpatialArenaBindingReport,
 }
 
 /// MapGen PR4 expansion report for bounded RF enrollment.
@@ -125,6 +128,87 @@ impl std::fmt::Display for MapGenResourceFlowError {
 
 impl std::error::Error for MapGenResourceFlowError {}
 
+/// How a Resource-Flow / Accumulator arena relates to the STEAD/Mapping spatial substrate
+/// (`docs/stead_spatial_contract.md` §5). RF stays generic, **but an arena whose participants are gridcell
+/// `Location`s is spatially indexed through STEAD** — it cannot ignore the structural grid. (Owner
+/// correction, STEAD-CONTRACT-0: anything touching resource-flow code over Locations must confront this.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SpatialBindingMode {
+    /// Generic resource flow; participants are not gridcell Locations; no structural grid required.
+    #[default]
+    SpatiallyNeutral,
+    /// Participants **are** gridcell `Location`s; each must have a structural grid placement (never render
+    /// metadata), and the arena is indexed through the [`crate::StructuralGridFrame`].
+    SpatiallyBoundToGridcellLocations,
+}
+
+/// Records an RF arena's relationship to the STEAD structural grid, so every spatially-bound arena
+/// confronts STEAD/Mapping in its expansion report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpatialArenaBindingReport {
+    pub binding_mode: SpatialBindingMode,
+    pub grid_width: Option<u32>,
+    pub grid_height: Option<u32>,
+    pub occupied_cells: Option<u64>,
+}
+
+impl SpatialArenaBindingReport {
+    pub fn neutral() -> Self {
+        Self {
+            binding_mode: SpatialBindingMode::SpatiallyNeutral,
+            grid_width: None,
+            grid_height: None,
+            occupied_cells: None,
+        }
+    }
+    pub fn bound(frame: crate::mapgen_lattice::StructuralGridFrame) -> Self {
+        Self {
+            binding_mode: SpatialBindingMode::SpatiallyBoundToGridcellLocations,
+            grid_width: Some(frame.width),
+            grid_height: Some(frame.height),
+            occupied_cells: Some(frame.occupied_cells),
+        }
+    }
+}
+
+/// Validate gridcell-`Location` participants bind to STEAD **structural** placements, not render metadata.
+/// `SpatiallyNeutral` arenas need no grid (generic RF). `SpatiallyBoundToGridcellLocations` requires every
+/// participant node id to have a one-per-cell structural `(row,col)` placement in `grid_metadata`.
+pub fn validate_spatial_binding(
+    mode: SpatialBindingMode,
+    participant_node_ids: &[String],
+    grid_metadata: &crate::hydrate_scenario::HydratedScenarioGridMetadata,
+) -> Result<(), MapGenResourceFlowError> {
+    if mode == SpatialBindingMode::SpatiallyNeutral {
+        return Ok(());
+    }
+    let mut placed: std::collections::BTreeMap<&str, (u32, u32)> =
+        std::collections::BTreeMap::new();
+    for placement in &grid_metadata.placements {
+        if placed
+            .insert(
+                placement.location_id.as_str(),
+                (placement.row, placement.col),
+            )
+            .is_some()
+        {
+            return Err(MapGenResourceFlowError::new(format!(
+                "spatially-bound RF: duplicate structural grid placement for Location `{}`",
+                placement.location_id
+            )));
+        }
+    }
+    for id in participant_node_ids {
+        if !placed.contains_key(id.as_str()) {
+            return Err(MapGenResourceFlowError::new(format!(
+                "spatially-bound RF: Location participant `{id}` has no structural grid placement \
+                 (STEAD/Mapping: Location participation is spatially indexed through grid_metadata, never render metadata)"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Generate bounded Resource Flow enrollment from a PR3 lattice hierarchy.
 pub fn generate_mapgen_resource_flow_enrollment(
     hierarchy: &MapGenLatticeHierarchy,
@@ -157,6 +241,20 @@ pub fn generate_mapgen_resource_flow_enrollment(
             options.deposit_max_participants
         )));
     }
+
+    // STEAD-CONTRACT-0 owner correction: this MapGen RF substrate is SPATIALLY BOUND to gridcell
+    // `Location`s. Validate every Location participant has a STRUCTURAL grid placement (`grid_metadata`,
+    // not render metadata) and capture the structural frame for the expansion report.
+    let grid_frame = crate::mapgen_lattice::StructuralGridFrame::from_grid_metadata(
+        &hierarchy.pack.grid_metadata,
+    );
+    let gridcell_participant_ids: Vec<String> =
+        gridcells.iter().map(|cell| cell.node_id.clone()).collect();
+    validate_spatial_binding(
+        SpatialBindingMode::SpatiallyBoundToGridcellLocations,
+        &gridcell_participant_ids,
+        &hierarchy.pack.grid_metadata,
+    )?;
 
     let deposit_flow_key = PropertyKey::new(MAPGEN_RF_PROPERTY_NAMESPACE, "deposit_minerals_flow");
     let suppression_flow_key = PropertyKey::new(MAPGEN_RF_PROPERTY_NAMESPACE, "suppression_flow");
@@ -296,6 +394,7 @@ pub fn generate_mapgen_resource_flow_enrollment(
         &deposits,
         &gridcells,
         options,
+        grid_frame,
     );
 
     Ok(MapGenResourceFlowEnrollment {
@@ -569,6 +668,7 @@ fn build_expansion_report(
     deposits: &[DepositFeedstock],
     gridcells: &[GridcellEnrollment],
     options: MapGenResourceFlowOptions,
+    grid_frame: crate::mapgen_lattice::StructuralGridFrame,
 ) -> MapGenResourceFlowExpansionReport {
     let mut out_fanout = std::collections::BTreeMap::<&str, u32>::new();
     let mut in_fanout = std::collections::BTreeMap::<&str, u32>::new();
@@ -616,6 +716,9 @@ fn build_expansion_report(
                 source_properties_enrolled,
                 rejected_implicit_participants_count,
                 unsafe_expansion_flags,
+                // The MapGen RF substrate (deposit feedstock + suppression front) is spatially anchored to
+                // the gridcell `Location` lattice; both arenas record the structural frame they index through.
+                spatial_binding: SpatialArenaBindingReport::bound(grid_frame),
             }
         })
         .collect();

@@ -27,9 +27,10 @@
 > **PR3 gridcell lattice hierarchy (2026-06-13, DA-APPROVED post-merge):** `generate_mapgen_lattice_hierarchy`
 > in `mapgen_lattice.rs` lowers the tiny raw fixture into scenario-container-compatible hierarchy
 > (`galaxy_map` → `pentad_sector` → gridcell systems as ordinary `Location` nodes). Mapping-role metadata
-> lives under the `mapgen` property namespace — not a new `SimThingKind`. Fixture-local 3×3 placements;
-> canonical 200×200 square lattice documented in metadata only; Stellaris positions are inert render
-> metadata. No RF, Movement-Front, PALMA, FIELD_POLICY, or hyperlane link output in PR3.
+> lives under the `mapgen` property namespace — not a new `SimThingKind`. Emitted `(col,row)` positions are
+> **structural gridcell coordinates** honored by the lowerer as the authoritative layout (STEAD-PRIVILEGE-0;
+> 200×200 is a *small* reference, not a cap — structural scale is budget-based, STEAD-SCALE-1). No RF,
+> Movement-Front, PALMA, FIELD_POLICY, or hyperlane link output in PR3.
 > Audit: [`mapgen_pr3_da_audit_results.md`](../tests/mapgen_pr3_da_audit_results.md) — **genuine DA sign-off
 > (Opus, 2026-06-14)** ratifying a Cursor-prefiled approval. **PR4 may proceed.**
 >

@@ -83,10 +83,10 @@ pub use literal_install::{
 pub use mapgen_lattice::{
     MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, MapGenLatticeError,
     MapGenLatticeHierarchy, MapGenLatticeOptions, MapgenStructuralGridBudget,
-    STRUCTURAL_BYTES_PER_LINK, STRUCTURAL_BYTES_PER_OCCUPIED_CELL, StructuralGridStats,
-    admit_structural_grid, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
-    generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
-    validate_one_system_per_gridcell,
+    STRUCTURAL_BYTES_PER_LINK, STRUCTURAL_BYTES_PER_OCCUPIED_CELL, StructuralGridFrame,
+    StructuralGridStats, admit_structural_grid, assert_allowed_simthing_kinds,
+    collect_gridcell_location_ids, generate_mapgen_lattice_hierarchy,
+    validate_fixture_lattice_edge, validate_one_system_per_gridcell,
 };
 pub use mapgen_links::{
     MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLING_FANOUT, MAPGEN_PR5_DEFAULT_MAX_LANE_COUPLINGS,
@@ -116,9 +116,10 @@ pub use mapgen_resource_flow::{
     MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH, MAPGEN_RF_DEFAULT_SUPPRESSION_MAX_PARTICIPANTS,
     MAPGEN_RF_DEPOSIT_ARENA, MAPGEN_RF_PROPERTY_NAMESPACE, MAPGEN_RF_SUPPRESSION_ARENA,
     MapGenResourceFlowArenaExpansion, MapGenResourceFlowEnrollment, MapGenResourceFlowError,
-    MapGenResourceFlowExpansionReport, MapGenResourceFlowOptions,
-    generate_default_mapgen_resource_flow_enrollment, generate_mapgen_resource_flow_enrollment,
-    validate_arena_caps, validate_explicit_enrollment, validate_resource_flow_enrollment,
+    MapGenResourceFlowExpansionReport, MapGenResourceFlowOptions, SpatialArenaBindingReport,
+    SpatialBindingMode, generate_default_mapgen_resource_flow_enrollment,
+    generate_mapgen_resource_flow_enrollment, validate_arena_caps, validate_explicit_enrollment,
+    validate_resource_flow_enrollment, validate_spatial_binding,
 };
 pub use parse::parse_raw_document;
 pub use raw::RawDocument;
