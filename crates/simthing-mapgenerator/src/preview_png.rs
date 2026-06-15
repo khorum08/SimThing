@@ -8,10 +8,11 @@ use crate::coupling::{ClassifiedCouplingEdge, CouplingEdgeKind};
 use crate::lattice::{CoreMask, SquareLattice};
 use crate::nebula::NebulaField;
 use crate::strategy::ShapePlacement;
-use crate::topology::{system_id_scalar, HyperlaneEdge};
+use crate::topology::{grid_chebyshev_distance, system_id_scalar, HyperlaneEdge};
 
 const PREVIEW_MARGIN: f32 = 0.04;
 const JITTER_FRAC: f32 = 0.42;
+const DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV: u32 = 4;
 
 /// Default PNG edge length for producer preview artifacts.
 pub const GALAXY_PREVIEW_PNG_SIZE: u32 = 1000;
@@ -32,6 +33,8 @@ pub struct GalaxyPreviewOptions {
     pub draw_nebulas: bool,
     pub draw_core_mask: bool,
     pub hyperlane_filter: HyperlanePreviewFilter,
+    /// Render-only: skip hyperlane segments whose placed lattice Chebyshev distance exceeds this.
+    pub max_hyperlane_chebyshev: Option<u32>,
 }
 
 impl Default for GalaxyPreviewOptions {
@@ -43,6 +46,7 @@ impl Default for GalaxyPreviewOptions {
             draw_nebulas: false,
             draw_core_mask: false,
             hyperlane_filter: HyperlanePreviewFilter::BaseOnly,
+            max_hyperlane_chebyshev: Some(DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV),
         }
     }
 }
@@ -208,11 +212,20 @@ fn encode_preview_rgba(scene: &GalaxyPreviewScene) -> Result<Vec<u8>, PreviewPng
             .map(|system| (system_id_scalar(system), system))
             .collect();
     let hyperlanes = scene.hyperlane_edges_for_preview();
+    let max_lane_dist = scene
+        .options
+        .max_hyperlane_chebyshev
+        .unwrap_or(DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV);
     for edge_pair in &hyperlanes {
         if let (Some(from), Some(to)) = (
             systems_by_id.get(&edge_pair.from),
             systems_by_id.get(&edge_pair.to),
         ) {
+            if grid_chebyshev_distance((from.coord.col, from.coord.row), (to.coord.col, to.coord.row))
+                > max_lane_dist
+            {
+                continue;
+            }
             let (x0, y0) = rendered_star_pixel(
                 scene.seed,
                 from.id,

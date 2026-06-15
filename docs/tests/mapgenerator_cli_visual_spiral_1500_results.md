@@ -64,6 +64,7 @@ render = base + jitter
 - Same seed + system id → same jitter.
 - Jitter stays within ±42% of cell footprint.
 - Hyperlane endpoints use the same rendered star coordinates.
+- Render-only placed-coordinate Chebyshev cap (default 4) skips drawing base edges that would appear as long cross-galaxy segments when fixture topology and spiral placement diverge.
 - Scenario text, lattice coords, topology generation, and lowering are unchanged.
 
 ## Hyperlane rendering
