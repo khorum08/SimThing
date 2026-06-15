@@ -47,11 +47,12 @@ The current `mapgenthing.md` explains the *what* (the Stellaris idioms and their
 **In scope (v1):**
 - High-level parameter set modeled on Stellaris galaxy setup + common community extensions.
 - Procedural (but deterministic) generation of declarative output structures.
-- Output in a form the MapGen ladder can ingest (preferred: the custom ClauseScript `scenario { location ... link ... system_initializer ... }` form already supported by `hydrate_scenario`; fallback: a minimal static_galaxy_scenario-style block or initializer library + manifest).
+- Output in a form the MapGen ladder can ingest. **Proven current path (PR1–PR10):** closed `static_galaxy_scenario` neutral-AST text (`system`, `add_hyperlane`, `nebula`, bareword initializer refs) consumed by `parse_mapgen_neutral_document` and the closed MapGen lowerers — **not** scenario-container `hydrate_scenario scenario { location ... }` blocks. The ladder governs where documents disagree; legacy `scenario { location ... }` sketches below remain aspirational UI targets only.
 - Reproducible via seed.
 - Plausible but not physically perfect spirals / clusters / hyperlane graphs.
 - Basic support for the most common shapes (spiral_2/3/4/6, elliptical, ring, bar, starburst, cartwheel, spoked, and static/arbitrary_static override modes). **PR8 (2026-06-14):** all vanilla shapes are registered in a single-source `ShapeStrategyEntry` map (`strategies/registry.rs`); executable names derive from registry entries — no parallel match ladder.
-- **PR9 (2026-06-13):** bounded producer-side nebula placement emits closed `static_galaxy_scenario` `nebula = { name radius }` feedstock only; initializer bucket bareword refs with sibling definitions emitted once; inert metadata (`num_empires`, crisis levers, etc.) captured in dry-run reports until a closed surface admits it. Generated output parses and lowers through existing MapGen lattice + Movement-Front `RegionFieldSpec` surfaces — no GPU/runtime execution, no new grammar, no closed `src/` edits.
+- **PR9 (2026-06-14, #689):** bounded producer-side nebula placement emits closed `static_galaxy_scenario` `nebula = { name radius }` feedstock only; initializer bucket bareword refs with sibling definitions emitted once; inert metadata (`num_empires`, crisis levers, etc.) captured in dry-run reports until a closed surface admits it. Generated output parses and lowers through existing MapGen lattice + Movement-Front `RegionFieldSpec` surfaces — no GPU/runtime execution, no new grammar, no closed `src/` edits. **DA-APPROVED & MERGED.**
+- **PR10 (in flight):** MapGeneratorCLI-generated `static_galaxy_scenario` text admits/installs through the existing path and produces GPU-resident compact evidence on a real adapter via the closed MapGen PR10-style harness (`mapgenerator_cli_pr10_gpu_compact_evidence`). Compact readback only; no new kernels or closed lowerer edits.
 - Emission of at least one suppression / environmental field operator (so the output exercises the RF-pressure → RegionField → Gu-Yang → PALMA path).
 
 **Explicitly out of scope (defer to later tracks or the lowering layer):**
@@ -158,7 +159,12 @@ The CLI implements a **declarative-first procedural generator**. It never tries 
 
 The CLI's job is to produce **declarative payload**, not runtime objects.
 
-Preferred output (directly consumable by the MapGen front-end and `hydrate_scenario`):
+**Proven ingest path (PR1–PR10):** emit a self-contained `static_galaxy_scenario { ... }` block with bareword
+initializer refs, `add_hyperlane` topology, and closed `nebula = { name radius }` feedstock. The closed MapGen
+neutral-AST parser and lowerers consume this directly.
+
+**Aspirational / legacy sketch** (scenario-container `hydrate_scenario` form — not the proven MapGeneratorCLI
+output contract today):
 
 ```clause
 scenario = ui_4armed_1000 {
