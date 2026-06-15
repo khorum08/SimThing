@@ -128,6 +128,10 @@ struct Cli {
     #[arg(long)]
     draw_nebulas: bool,
 
+    /// Draw a bright galactic-core glow over the inaccessible core void.
+    #[arg(long)]
+    draw_core: bool,
+
     /// Validate and print parameter summary without generation or emission.
     #[arg(long)]
     dry_run: bool,
@@ -278,6 +282,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Some(params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32)
             },
             hyperlane_rgba: cli.hyperlane_color.rgba(),
+            draw_core_glow: cli.draw_core,
         };
         let png = generation.render_preview_png_with_options(preview_options)?;
         if let Some(parent) = path.parent() {

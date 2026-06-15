@@ -143,6 +143,23 @@ impl CoreMask {
     pub fn is_placeable(&self, coord: LatticeCoord) -> bool {
         !self.is_masked(coord)
     }
+
+    /// Masked-core centre in lattice cells.
+    pub fn center(&self) -> LatticeCoord {
+        LatticeCoord {
+            col: self.center_col,
+            row: self.center_row,
+        }
+    }
+
+    /// Core void radius in lattice cells (`floor(sqrt(radius_sq))`; integer, render-only).
+    pub fn radius_cells(&self) -> u32 {
+        let mut r = 0u32;
+        while (r + 1).saturating_mul(r + 1) <= self.radius_sq {
+            r += 1;
+        }
+        r
+    }
 }
 
 fn quantize_core_radius_cells(edge: u32, core_radius: f64, radius: f64) -> u32 {

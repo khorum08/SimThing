@@ -1,35 +1,45 @@
-# MapGeneratorCLI — connected disc galaxy, 1500 stars, clustered, 3000px
+# MapGeneratorCLI — connected disc galaxy with bright core, 1500 stars, clustered, 3000px
 
 **Classification: PROBATION visual evidence (DA sign-off pending).** Owner-requested render: a **disc**-shaped
-galaxy, 1500 stars, 300×300 lattice, with the Stellaris-style logical clustering (local faction-start areas)
-and a **guaranteed single interconnected galaxy — no island clusters**, blue starlanes, no wormholes, 3000px.
+galaxy, 1500 stars, 300×300 lattice, with the Stellaris-style logical clustering (local faction-start areas),
+a **bright inaccessible galactic core**, and a **guaranteed single interconnected galaxy — no island
+clusters** — blue starlanes, no wormholes, 3000px.
 
 ## Artifact
-`docs/tests/mapgenerator_cli_disc_1500_connected_3000.png` (3000×3000). 1500 stars, **1713 base starlanes**
-(local lanes + minimal connectivity bridges).
+`docs/tests/mapgenerator_cli_disc_1500_connected_3000.png` (3000×3000). 1500 stars, **2722 base starlanes**,
+a bright warm galactic core over the inaccessible core void.
 
 ## Regeneration command
 ```
 cargo run -p simthing-mapgenerator --bin mapgen -- \
   --shape elliptical --stars 1500 --lattice-edge 300 --seed 770421 \
-  --radius 1.0 --core-radius 0 \
   --num-wormhole-pairs 0 --num-gateways 0 \
-  --max-hyperlane-distance 3 \
+  --max-hyperlane-distance 7 \
   --num-hyperlanes-min 1 --num-hyperlanes-max 5000 --num-hyperlanes 5000 \
   --connect-galaxy --no-partitions \
   --cluster-count 5 --cluster-radius 400 \
-  --hyperlanes base --hyperlane-color blue \
+  --hyperlanes base --hyperlane-color blue --draw-core \
   --png-size 3000 \
   --render-png docs/tests/mapgenerator_cli_disc_1500_connected_3000.png
 ```
-`--core-radius 0` fills the disc to the centre (the default leaves a core void); `--shape elliptical` is the
-filled-disc strategy.
+The default `core_radius=120` leaves the **galactic-core void** (~40 cells, where stars can't be placed — it's
+inaccessible in game); `--draw-core` paints the bright core glow over it.
+
+## Owner-feedback corrections (this revision)
+1. **The core void was correct** — it is the galactic core (bright, inaccessible). Restored (do **not** pass
+   `--core-radius 0`) and added `--draw-core` to render the bright core graphic.
+2. **Island clusters fixed at the root.** The previous render used `--max-hyperlane-distance 3`, but on this
+   disc the stars sit ~5 cells apart, so distance-3 couldn't reach nearest neighbours: the base graph
+   fragmented into **702 components** that connectivity then joined with 701 hair-thin threads (graph-
+   connected, but it *read* as a sea of islands). Raising the link distance to **7** lets each star reach its
+   real neighbours, so the base graph is naturally connected (24 components) and connectivity adds only ~23
+   short bridges → a genuine connected web.
 
 ## Both hard requirements verified on this exact render
-- **One interconnected galaxy, no islands:** the base hyperlane graph (local lanes + connectivity bridges) is
-  a **single connected component** (measured: COMPONENTS = 1 over all 1500 systems).
-- **Filled disc (not a ring):** the central 60×60 region holds **102 stars** — the disc is filled to the
-  centre, not an annulus.
+- **One interconnected galaxy, no islands:** measured **COMPONENTS = 1**, **largest component = 1500**, and
+  **all 1500 stars have at least one lane** — literally no isolated system.
+- **Galactic-core void preserved + lit:** the ~40-cell central void is kept (inaccessible) and rendered as a
+  bright warm core.
 
 ## How connectivity is guaranteed (the new pass)
 `connectivity::connect_components` runs as part of generation when `--connect-galaxy` is set, over the
@@ -51,16 +61,19 @@ faction starts. (Cluster *bridge* couplings are a separate classification and ar
 preview; the connected base web already ties the galaxy together.)
 
 ## The starlanes are the genuine algorithm
-Same `generate_hyperlane_topology` on authored coords (STEAD-0/-1): candidates within Chebyshev-3, shortest
-first, per-node fanout cap 4, dedup/self-link rejected. On a **scattered disc**, nearest neighbours fan out
-in all directions, so the network is the Stellaris-style web of local clusters (unlike the thin-armed spiral,
-which traced its arms). No wormholes/gateways (`--num-wormhole-pairs 0 --num-gateways 0`).
+Same `generate_hyperlane_topology` on authored coords (STEAD-0/-1): candidates within Chebyshev-7 (matched to
+the disc's ~5-cell inter-star spacing so the web connects), shortest first, per-node fanout cap 4, dedup/
+self-link rejected. On a **scattered disc**, nearest neighbours fan out in all directions, so the network is
+the Stellaris-style web of local clusters (unlike the thin-armed spiral, which traced its arms). No
+wormholes/gateways (`--num-wormhole-pairs 0 --num-gateways 0`).
 
 ## New capabilities (committed with this artifact)
 - `connectivity` module + `connect_components` (lib) — guarantees one connected galaxy.
 - `HyperlaneGeometryParams::ensure_connected` (serde-default false) + CLI `--connect-galaxy`.
 - CLI `--no-partitions` — skip galaxy partition/bridge generation (the defaults don't scale to 1500 stars;
   clustering still runs).
+- CLI `--draw-core` + `GalaxyPreviewOptions::draw_core_glow` — paint a bright galactic-core glow over the
+  inaccessible core void (`CoreMask::radius_cells`/`center`, integer; render-only).
 - When connectivity is on, the preview draws **all** base lanes (so the intentional connectivity bridges are
   visible, not filtered by the render distance cap).
 

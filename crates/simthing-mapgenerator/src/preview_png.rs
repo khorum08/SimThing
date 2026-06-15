@@ -37,6 +37,8 @@ pub struct GalaxyPreviewOptions {
     pub max_hyperlane_chebyshev: Option<u32>,
     /// Render-only RGBA for hyperlane (starlane) segments.
     pub hyperlane_rgba: [u8; 4],
+    /// Render-only: paint a bright galactic-core glow over the (inaccessible) core void.
+    pub draw_core_glow: bool,
 }
 
 /// Default faint starlane colour (preserves prior preview output).
@@ -53,6 +55,7 @@ impl Default for GalaxyPreviewOptions {
             hyperlane_filter: HyperlanePreviewFilter::BaseOnly,
             max_hyperlane_chebyshev: Some(DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV),
             hyperlane_rgba: DEFAULT_HYPERLANE_RGBA,
+            draw_core_glow: false,
         }
     }
 }
@@ -201,6 +204,10 @@ fn encode_preview_rgba(scene: &GalaxyPreviewScene) -> Result<Vec<u8>, PreviewPng
     let mut rgba = vec![0u8; (size as usize) * (size as usize) * 4];
     paint_black_background(&mut rgba, size);
 
+    if scene.options.draw_core_glow {
+        paint_core_glow(&mut rgba, size, &scene.lattice, &scene.core_mask);
+    }
+
     if scene.options.draw_core_mask {
         paint_core_mask(&mut rgba, size, &scene.lattice, &scene.core_mask);
     }
@@ -296,6 +303,38 @@ fn paint_black_background(rgba: &mut [u8], size: u32) {
         px[3] = 255;
     }
     let _ = size;
+}
+
+/// Paint a bright galactic-core glow over the inaccessible core void (warm-white centre, soft halo).
+fn paint_core_glow(rgba: &mut [u8], size: u32, lattice: &SquareLattice, core_mask: &CoreMask) {
+    let edge = lattice.edge() as u32;
+    let core_cells = core_mask.radius_cells().max(1);
+    let (cell_w, _) = cell_pixel_size(edge, size);
+    let center = cell_center_pixel(core_mask.center(), edge, size);
+    let core_px = core_cells as f32 * cell_w;
+    let glow_px = (core_px * 1.6).max(1.0);
+    let glow_sq = glow_px * glow_px;
+    let x0 = (center.0 - glow_px).floor().max(0.0) as u32;
+    let x1 = (center.0 + glow_px).ceil().min(size as f32) as u32;
+    let y0 = (center.1 - glow_px).floor().max(0.0) as u32;
+    let y1 = (center.1 + glow_px).ceil().min(size as f32) as u32;
+    for py in y0..y1 {
+        for px in x0..x1 {
+            let dx = px as f32 + 0.5 - center.0;
+            let dy = py as f32 + 0.5 - center.1;
+            let dist_sq = dx * dx + dy * dy;
+            if dist_sq > glow_sq {
+                continue;
+            }
+            let ratio = dist_sq / glow_sq; // 0 at centre .. 1 at glow edge
+            let intensity = (1.0 - ratio).powf(1.8); // bright concentrated core
+            let r = (255.0 * intensity).min(255.0) as u8;
+            let g = (235.0 * intensity).min(255.0) as u8;
+            let b = (205.0 * intensity).max(45.0 * (1.0 - ratio)).min(255.0) as u8;
+            let a = (intensity * 255.0) as u8;
+            blend_pixel(rgba, size, px, py, [r, g, b, a]);
+        }
+    }
 }
 
 fn paint_core_mask(rgba: &mut [u8], size: u32, lattice: &SquareLattice, core_mask: &CoreMask) {
