@@ -225,21 +225,22 @@ fn encode_preview_rgba(scene: &GalaxyPreviewScene) -> Result<Vec<u8>, PreviewPng
             .map(|system| (system_id_scalar(system), system))
             .collect();
     let hyperlanes = scene.hyperlane_edges_for_preview();
-    let max_lane_dist = scene
-        .options
-        .max_hyperlane_chebyshev
-        .unwrap_or(DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV);
+    // `None` means NO distance clip — draw every lane (e.g. when connectivity bridges tie clusters
+    // together, they must not be hidden). `Some(d)` clips lanes longer than `d` cells.
+    let max_lane_dist = scene.options.max_hyperlane_chebyshev;
     for edge_pair in &hyperlanes {
         if let (Some(from), Some(to)) = (
             systems_by_id.get(&edge_pair.from),
             systems_by_id.get(&edge_pair.to),
         ) {
-            if grid_chebyshev_distance(
-                (from.coord.col, from.coord.row),
-                (to.coord.col, to.coord.row),
-            ) > max_lane_dist
-            {
-                continue;
+            if let Some(max_lane_dist) = max_lane_dist {
+                if grid_chebyshev_distance(
+                    (from.coord.col, from.coord.row),
+                    (to.coord.col, to.coord.row),
+                ) > max_lane_dist
+                {
+                    continue;
+                }
             }
             let (x0, y0) = rendered_star_pixel(
                 scene.seed,
