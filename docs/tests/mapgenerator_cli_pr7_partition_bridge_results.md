@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR7 — Partition / Bridge Structural Producer + Clustering Results
 
-> **Artifact lifecycle: PROBATION** (pending DA approval after independent branch-source audit).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14 after independent branch-source audit + battery rerun; promoted from PROBATION).
 
 ## Verdict
 
-**PROBATION — pending DA review.** Adds bounded producer-side partition/cluster assignment and cross-group bridge
+**PASS — DA-APPROVED (2026-06-14, executive design authority)** — adds bounded producer-side partition/cluster assignment and cross-group bridge
 endpoint selection represented **only** as `static_galaxy_scenario` `add_hyperlane` declarations. Generated output
 parses and lowers through existing closed MapGen lattice/link surfaces without front-end widening. **Zero**
 `crates/simthing-clausething/src/` changes. No new grammar, no route/path/predecessor/movement/border/frontline
@@ -22,7 +22,7 @@ started in this PR.
 | Artifact | Classification | Action |
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` through `pr6b` | CURRENT_EVIDENCE | Unchanged — preserved |
-| `docs/tests/mapgenerator_cli_pr7_partition_bridge_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_pr7_partition_bridge_results.md` | CURRENT_EVIDENCE (DA-approved) | New (this report) |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
@@ -148,9 +148,38 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**PROBATION — pending DA approval.** No executive sign-off yet.
+**DA-APPROVED — 2026-06-14, executive design authority.** Independent branch-source audit of `partition.rs` +
+`cluster.rs`:
+- **Bounded + fail-closed:** partition system bounds (min>max, `UnsatisfiedPartitionStructure` when
+  system_count ∉ [partitions·min, partitions·max]), bridge bounds (`UnsatisfiedBridgeCount` < min_bridges),
+  cluster radius/count/bridge counts all fail closed; shared per-node fanout cap 4; dedup vs existing edges.
+- **Output is bounded `add_hyperlane` endpoint pairs only** (partition + cluster bridges via `to_hyperlane_edge`);
+  `PartitionKind`/`ClusterId`/assignments are **producer-report-only, not emitted in grammar**. Bridges connect
+  **different** partitions/clusters → bounded cross-group lane couplings (C9). Cluster assignment is single-pass
+  nearest-anchor by Chebyshev distance (no unbounded k-means iteration).
+- **CONSTITUTIONAL RULING on the BFS/DFS partition ordering** (`ordered_system_indices` → `breadth_first_order`/
+  `depth_first_order` over a Chebyshev≤2 adjacency on lowered index-order positions): this is **producer-side
+  partition ordering that mirrors the Stellaris corpus `home_system_partitions { method = breadth_first |
+  depth_first }`** — it is **NOT runtime pathfinding**: no source→target shortest path, no predecessors stored,
+  no planning over *fields*, and nothing traversal-related reaches the lowered output (which is only bounded
+  `add_hyperlane` pairs + producer reports). It lives entirely in the offline generator layer, categorically
+  distinct from the forbidden sim pathfinder/movement-front engine. **Approved; do not flag as pathfinding.**
+- **Zero `crates/simthing-clausething/src/` changes**; no `simthing-*` dep in producer; forbidden-semantics scan
+  of producer `src/` returned NONE. The integration test drives the **closed** surfaces (`generate_mapgen_lattice_hierarchy`
+  + `extract_hyperlane_declarations` + `generate_mapgen_links`) and proves lowering to links/lane-couplings with
+  **zero** unknown-endpoint/self-link/duplicate rejections + a no-widening check. The test-side
+  `suppression_max_participants: 12` / `max_lane_couplings: 12` are `MapGenLinksOptions` values for the 9-system
+  fixture (test config, not closed `src/`).
+
+Battery rerun on the branch: `cargo fmt --check` clean; `cargo test -p simthing-mapgenerator` 134 passed
+(incl. partition 13 + cluster 7); `mapgenerator_cli_partition_bridge_lower` 6; `mapgen_links` 19;
+`mapgen_constitution_guards` 21; `mapgen_lattice_hierarchy` 10; `mapgen_resource_flow` 16.
+
+**New non-blocking DA note:** `ordered_system_indices` builds an O(N²) adjacency and `generate_partition_bridges`
+enumerates O(N²) cross-partition candidate pairs (as do special-routes/hyperlanes) — bound/optimize before the
+PR11 1000-star scale rung. PR7 was correctly **pushed for DA review (not owner-merged)** — governance restored.
 
 ## Whether PR8 may proceed
 
-**No — await DA approval of PR7.** After DA approves this rung, **PR8** (remaining vanilla shape registry /
-executable strategy dispatch) may proceed per ladder ordering.
+**Yes — DA approved PR7 (2026-06-14).** **PR8** (fill the remaining vanilla shape registry / executable
+strategy dispatch — and single-source the dispatch/names lists per the carried PR3 note) may proceed per ladder ordering.
