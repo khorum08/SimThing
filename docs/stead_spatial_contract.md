@@ -2,7 +2,9 @@
 
 > **Status: BINDING CONTRACT (STEAD-CONTRACT-0, 2026-06-15, executive design authority).** STEAD/Mapping
 > is a central pillar of SimThing (see `simthing_core_design.md` → "Spatial substrate: STEAD/Mapping is not
-> optional" and §7). This contract is **mandatory reading** (`agents.md`) for any task touching MapGen,
+> optional" and §7, and the transient constitution `design_0_0_8_3.md` §0.8 — a **carry-forward** clause
+> that, with this pointer, every future constitution version must propagate verbatim). This contract is
+> **mandatory reading** (`agents.md`) for any task touching MapGen,
 > MapGeneratorCLI, Location grids, Movement-Front, STEAD, heatmaps, falloff, PALMA, Gu-Yang/SaturatingFlux,
 > Resource Flow or Accumulator arenas over Location participants, field visualization, or spatial dynamics.
 > Short, normative, hard to misread. Three catastrophic drifts (positions-inert, dense-global, edge-cap)
