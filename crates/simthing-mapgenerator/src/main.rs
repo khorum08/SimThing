@@ -70,6 +70,14 @@ struct Cli {
     #[arg(long)]
     random_hyperlanes: Option<bool>,
 
+    /// Add minimal bridges so the galaxy is one connected network (no island clusters).
+    #[arg(long)]
+    connect_galaxy: bool,
+
+    /// Skip galaxy partition/bridge generation (clustering still runs).
+    #[arg(long)]
+    no_partitions: bool,
+
     #[arg(long)]
     num_wormhole_pairs: Option<u32>,
 
@@ -233,7 +241,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
             Some(hyperlane),
             Some(special),
-            Some(partition),
+            if cli.no_partitions {
+                None
+            } else {
+                Some(partition)
+            },
             Some(cluster),
         )?
     };
@@ -258,9 +270,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 CliHyperlanePreview::Base => HyperlanePreviewFilter::BaseOnly,
                 CliHyperlanePreview::All => HyperlanePreviewFilter::AllCouplings,
             },
-            max_hyperlane_chebyshev: Some(
-                params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32
-            ),
+            // When connectivity is on, draw every base lane (including the intentional long bridges that
+            // tie island clusters together); otherwise keep the render distance filter.
+            max_hyperlane_chebyshev: if cli.connect_galaxy {
+                None
+            } else {
+                Some(params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32)
+            },
             hyperlane_rgba: cli.hyperlane_color.rgba(),
         };
         let png = generation.render_preview_png_with_options(preview_options)?;
@@ -342,6 +358,9 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
     }
     if let Some(v) = cli.random_hyperlanes {
         params.hyperlane.random_hyperlanes = v;
+    }
+    if cli.connect_galaxy {
+        params.hyperlane.ensure_connected = true;
     }
     if let Some(v) = cli.num_wormhole_pairs {
         params.special_routes.num_wormhole_pairs = v;
