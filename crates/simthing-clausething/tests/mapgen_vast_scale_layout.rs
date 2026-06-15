@@ -10,7 +10,7 @@
 //!    multi-theater **atlas** rung. The layout is valid; only the bounded-stencil execution is gated.
 
 use simthing_clausething::{
-    MAPGEN_CANONICAL_LATTICE_EDGE, MapGenLatticeOptions,
+    MAPGEN_CANONICAL_LATTICE_EDGE, MapGenLatticeOptions, MapGenMovementFrontErrorKind,
     generate_default_mapgen_movement_front_authoring, generate_mapgen_lattice_hierarchy,
     parse_mapgen_neutral_document,
 };
@@ -77,16 +77,21 @@ fn movement_front_execution_over_a_vast_lattice_defers_to_the_atlas_not_dense_gl
     // field — it defers to the multi-theater atlas rung. The error must make clear the LAYOUT is valid and
     // only the bounded EXECUTION is gated.
     let neutral = parse_mapgen_neutral_document(VAST_DOC.as_bytes()).expect("parse vast doc");
+    // Layout admits at vast scale (proven above); the dense front is what defers.
+    generate_mapgen_lattice_hierarchy(&neutral, MapGenLatticeOptions::default())
+        .expect("vast layout admits structurally");
     let err = generate_default_mapgen_movement_front_authoring(&neutral).expect_err(
         "dense Movement-Front execution over a vast lattice must defer to the atlas rung",
     );
-    let message = err.to_string();
+    // TYPED deferral (STEAD-SCALE-1) — callers match a variant, not a string.
     assert!(
-        message.contains("ATLAS") || message.contains("bounded local theater"),
-        "deferral must name the bounded-theater / atlas posture, got: {message}"
+        err.is_atlas_deferral(),
+        "deferral must be the typed AtlasDeferralRequired, got kind {:?}: {}",
+        err.kind,
+        err.message
     );
-    assert!(
-        message.contains("LAYOUT") || message.contains("valid"),
-        "deferral must affirm the layout is valid at this scale, got: {message}"
+    assert_eq!(
+        err.kind,
+        MapGenMovementFrontErrorKind::AtlasDeferralRequired
     );
 }

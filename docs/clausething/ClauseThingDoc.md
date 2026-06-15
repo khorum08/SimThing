@@ -46,6 +46,7 @@ SimThing tree. See [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md) D1.
 | **SaturatingFlux / PALMA** | Gu-Yang conservative-flux stencil; PALMA min-plus `D = W + min(N4 D)` (tropical, no sqrt). PALMA `D` is a **field, not a route**. | ADR D5 |
 | **Candidate F** | The only exact-magnitude authority for *decision gates* (no float `sqrt`/distance gates a commitment). **Gridcell positions are structural-spatial** (§7) — the lowerer honors emitted **integer** positions as the lattice layout; that is not "Euclidean authority" (placement/stencil are integer index arithmetic). | ADR D6, constitution §0.7 + §7 |
 | **Bounded coupling** | Hyperlanes / special routes / bridges = bounded `add_hyperlane` pairs → `mapgen_links`; no graph/route/predecessor. | ADR D7 |
+| **Structural grid budget (no edge cap)** | Structural layout has **no fixed edge cap** — it scales by explicit `MapgenStructuralGridBudget` (cells / occupied / links / metadata-bytes; checked-`u128`, default unbounded). `200×200` is a *small* reference; `65,535` was a temporary arithmetic ceiling, not doctrine. Decoupled from **execution-profile** limits (bounded theater ≤10/32): a vast layout may admit while a dense field defers to atlas. | core §7, STEAD-SCALE-1, `admit_structural_grid` |
 
 ## 3. Practices (how to work in this vertical — binding)
 

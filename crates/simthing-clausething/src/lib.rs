@@ -81,9 +81,10 @@ pub use literal_install::{
     admit_and_apply_pack,
 };
 pub use mapgen_lattice::{
-    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, MAPGEN_MAX_LATTICE_EDGE,
-    MapGenLatticeError, MapGenLatticeHierarchy, MapGenLatticeOptions,
-    assert_allowed_simthing_kinds, collect_gridcell_location_ids,
+    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE, MapGenLatticeError,
+    MapGenLatticeHierarchy, MapGenLatticeOptions, MapgenStructuralGridBudget,
+    STRUCTURAL_BYTES_PER_LINK, STRUCTURAL_BYTES_PER_OCCUPIED_CELL, StructuralGridStats,
+    admit_structural_grid, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
     generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
     validate_one_system_per_gridcell,
 };
@@ -97,9 +98,10 @@ pub use mapgen_movement_front::{
     MAPGEN_MF_CHOKE_OUTPUT_COL, MAPGEN_MF_COMMITMENT_ID, MAPGEN_MF_DEFAULT_HORIZON,
     MAPGEN_MF_FIELD_OPERATOR_ID, MAPGEN_MF_L2_REDUCTION_SCOPE, MAPGEN_MF_MAX_HORIZON,
     MAPGEN_MF_N_DIMS, MAPGEN_MF_SOURCE_COL, MapGenMovementFrontAuthoring,
-    MapGenMovementFrontAuthoringReport, MapGenMovementFrontError, MapGenMovementFrontOptions,
-    assert_no_palma_feedstock, generate_default_mapgen_movement_front_authoring,
-    generate_mapgen_movement_front_authoring, validate_l1_operator_locality, validate_options,
+    MapGenMovementFrontAuthoringReport, MapGenMovementFrontError, MapGenMovementFrontErrorKind,
+    MapGenMovementFrontOptions, assert_no_palma_feedstock,
+    generate_default_mapgen_movement_front_authoring, generate_mapgen_movement_front_authoring,
+    validate_l1_operator_locality, validate_options,
 };
 pub use mapgen_neutral_ast::{MapGenNeutralDocument, parse_mapgen_neutral_document};
 pub use mapgen_palma::{

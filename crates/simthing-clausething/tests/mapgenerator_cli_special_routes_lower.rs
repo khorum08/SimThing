@@ -108,6 +108,7 @@ fn full_links_enrollment(text: &str) -> simthing_clausething::MapGenLinksEnrollm
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("generate lattice hierarchy");
@@ -149,6 +150,7 @@ fn generated_special_routes_lower_lattice() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("lattice");

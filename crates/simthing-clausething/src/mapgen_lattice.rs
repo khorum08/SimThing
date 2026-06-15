@@ -19,18 +19,17 @@ use crate::mapgen_neutral_ast::MapGenNeutralDocument;
 use crate::parse::parse_raw_document;
 use crate::raw::{RawBlock, RawProperty, RawValue};
 
-/// A **small** reference galaxy lattice edge (square). 200×200 is a *small* map: SimThing models vast
-/// spatial domains, and far larger gridcell-Location lattices are anticipated (see `MAPGEN_MAX_LATTICE_EDGE`).
-/// The **layout** scales freely; the dense Movement-Front *stencil* stays a bounded local theater (§7 P1),
-/// and a vast lattice is covered by many bounded theaters — the atlas rung.
+/// A **small** reference galaxy lattice edge (square). 200×200 is a *small* map, **not** a canonical
+/// upper bound: SimThing's gridcell-Location lattice is the generic spatial substrate and **has no fixed
+/// edge cap** — it scales by explicit admission budgets + memory (`MapgenStructuralGridBudget`), not a
+/// magic constant. The layout scales freely; the dense Movement-Front *stencil* stays a bounded local
+/// theater (§7 P1), and a vast lattice is covered by many bounded theaters — the atlas rung.
 pub const MAPGEN_CANONICAL_LATTICE_EDGE: u32 = 200;
 
-/// Maximum admitted gridcell-lattice **layout** edge. The lattice LAYOUT (grid_metadata `(row,col)`) is
-/// integer and sparse, so it scales to **vast** spatial domains far beyond the small 200×200 reference;
-/// this cap exists only to bound `edge²` within `u64` cell-count math, not to cap the modelled map size.
-/// (Movement-Front / PALMA *execution* is separately bounded to a local theater — §7 P1 — so vast layouts
-/// lay out freely while their dense-stencil front is a bounded theater, multi-theater coverage = atlas.)
-pub const MAPGEN_MAX_LATTICE_EDGE: u32 = 65_535;
+// NOTE: there is intentionally **no** `MAPGEN_MAX_LATTICE_EDGE`. A fixed structural edge cap is not
+// SimThing doctrine (the prior `65_535` was a temporary arithmetic ceiling, now removed). Structural grids
+// are admitted by `admit_structural_grid` against an explicit `MapgenStructuralGridBudget`, with all
+// capacity math in checked `u128`; width/height are bounded only by the `u32` coordinate type.
 
 /// Default fixture-local lattice edge for the tiny pentad slice (3×3 active subset).
 pub const MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE: u32 = 3;
@@ -48,16 +47,21 @@ const FORBIDDEN_GENERATED_PROPERTY_NAMES: &[&str] = &[
     "fleet_path",
 ];
 
-/// Fixture-local square lattice options for MapGen PR3 hierarchy generation.
+/// Structural lattice options for MapGen hierarchy generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MapGenLatticeOptions {
+    /// Advisory only since STEAD-PRIVILEGE-0 (the edge is derived from honored authored positions);
+    /// retained for back-compat / positivity.
     pub fixture_lattice_edge: u32,
+    /// Explicit structural-grid admission budget. Default is **unbounded** (no fixed edge cap).
+    pub structural_budget: MapgenStructuralGridBudget,
 }
 
 impl Default for MapGenLatticeOptions {
     fn default() -> Self {
         Self {
             fixture_lattice_edge: MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE,
+            structural_budget: MapgenStructuralGridBudget::default(),
         }
     }
 }
@@ -104,17 +108,119 @@ impl From<crate::error::ParseError> for MapGenLatticeError {
     }
 }
 
-/// Validate a fixture-local square lattice edge.
+/// Per-element **heuristic** byte estimates for the `max_metadata_bytes` budget (documented
+/// approximations of the sparse footprint — not an exact serialized-byte count).
+pub const STRUCTURAL_BYTES_PER_OCCUPIED_CELL: u128 = 256;
+/// Heuristic per-link byte estimate (see [`STRUCTURAL_BYTES_PER_OCCUPIED_CELL`]).
+pub const STRUCTURAL_BYTES_PER_LINK: u128 = 64;
+
+/// Explicit **structural-grid admission budget**. SimThing gridcell layouts have **no fixed edge cap** —
+/// the lattice is the generic spatial substrate and scales by explicit budgets + memory, never a magic
+/// constant. Every field is `None` by default (**unbounded**); a grid is admitted unless a *configured*
+/// budget is exceeded. This is orthogonal to **execution-profile** admission (Movement-Front / PALMA / RF
+/// dense fields, ≤10/32-per-edge bounded local theater in `simthing-spec`): a vast layout may pass
+/// `admit_structural_grid` while a specific dense execution profile defers to atlas scheduling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct MapgenStructuralGridBudget {
+    /// Max total cells (`width × height`), checked in `u128`. `None` = unbounded.
+    pub max_cells: Option<u128>,
+    /// Max occupied (placed) cells — the sparse footprint that actually costs memory. `None` = unbounded.
+    pub max_occupied_cells: Option<u64>,
+    /// Max link / lane-coupling edges. `None` = unbounded.
+    pub max_links: Option<u64>,
+    /// Max **estimated** metadata bytes (heuristic, see the `STRUCTURAL_BYTES_PER_*` constants). `None` = unbounded.
+    pub max_metadata_bytes: Option<u128>,
+}
+
+/// Sparse-footprint statistics of an admitted structural grid.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StructuralGridStats {
+    pub width: u32,
+    pub height: u32,
+    /// `width × height` in checked `u128` — never wraps.
+    pub cell_count: u128,
+    pub occupied_cells: u64,
+    pub link_count: u64,
+    pub estimated_metadata_bytes: u128,
+}
+
+/// Admit a **structural** gridcell layout against an explicit budget. There is **no fixed edge cap**:
+/// width/height are bounded only by `u32`, and admission fails only when a *configured* budget is exceeded.
+/// All capacity math is **checked `u128`** (no `saturating_mul` for capacity decisions — it never wraps).
+/// On rejection the error names exactly which budget was exceeded. Execution-profile limits
+/// (Movement-Front/PALMA/RF bounded theater) are enforced **separately**; this is layout only.
+pub fn admit_structural_grid(
+    width: u32,
+    height: u32,
+    occupied_cells: u64,
+    link_count: u64,
+    budget: &MapgenStructuralGridBudget,
+) -> Result<StructuralGridStats, MapGenLatticeError> {
+    if width == 0 || height == 0 {
+        return Err(MapGenLatticeError::new(
+            "structural grid requires positive width and height",
+        ));
+    }
+    // u32 × u32 always fits u128; checked anyway as the doctrine forbids capacity guesses.
+    let cell_count = (width as u128)
+        .checked_mul(height as u128)
+        .ok_or_else(|| MapGenLatticeError::new("structural grid cell-count arithmetic overflow"))?;
+    let estimated_metadata_bytes = (occupied_cells as u128)
+        .checked_mul(STRUCTURAL_BYTES_PER_OCCUPIED_CELL)
+        .and_then(|cells| {
+            (link_count as u128)
+                .checked_mul(STRUCTURAL_BYTES_PER_LINK)
+                .and_then(|links| cells.checked_add(links))
+        })
+        .ok_or_else(|| {
+            MapGenLatticeError::new("structural grid metadata-byte estimate arithmetic overflow")
+        })?;
+
+    if let Some(max) = budget.max_cells {
+        if cell_count > max {
+            return Err(MapGenLatticeError::new(format!(
+                "structural grid budget exceeded: cell_count {cell_count} > max_cells {max}"
+            )));
+        }
+    }
+    if let Some(max) = budget.max_occupied_cells {
+        if occupied_cells > max {
+            return Err(MapGenLatticeError::new(format!(
+                "structural grid budget exceeded: occupied_cells {occupied_cells} > max_occupied_cells {max}"
+            )));
+        }
+    }
+    if let Some(max) = budget.max_links {
+        if link_count > max {
+            return Err(MapGenLatticeError::new(format!(
+                "structural grid budget exceeded: links {link_count} > max_links {max}"
+            )));
+        }
+    }
+    if let Some(max) = budget.max_metadata_bytes {
+        if estimated_metadata_bytes > max {
+            return Err(MapGenLatticeError::new(format!(
+                "structural grid budget exceeded: estimated_metadata_bytes {estimated_metadata_bytes} > max_metadata_bytes {max}"
+            )));
+        }
+    }
+    Ok(StructuralGridStats {
+        width,
+        height,
+        cell_count,
+        occupied_cells,
+        link_count,
+        estimated_metadata_bytes,
+    })
+}
+
+/// Validate a structural lattice edge is positive. There is **no fixed maximum edge** — structural scale
+/// is governed by [`admit_structural_grid`] against a [`MapgenStructuralGridBudget`], not a magic constant.
 pub fn validate_fixture_lattice_edge(edge: u32) -> Result<u32, MapGenLatticeError> {
     if edge == 0 {
         return Err(MapGenLatticeError::new(
-            "fixture lattice edge must be positive",
+            "structural lattice edge must be positive",
         ));
-    }
-    if edge > MAPGEN_MAX_LATTICE_EDGE {
-        return Err(MapGenLatticeError::new(format!(
-            "fixture lattice edge {edge} exceeds PR3 cap {MAPGEN_MAX_LATTICE_EDGE}"
-        )));
     }
     Ok(edge)
 }
@@ -127,8 +233,10 @@ pub fn generate_mapgen_lattice_hierarchy(
     let _requested_lattice_edge = validate_fixture_lattice_edge(options.fixture_lattice_edge)?;
     let slice = extract_mapgen_slice(document)?;
     // STEAD §7: a Location's gridcell coordinate is structural-spatial. Placement honors the
-    // emitted integer position; the sparse lattice edge is derived from those positions.
-    let (placements, fixture_lattice_edge) = assign_system_placements(&slice.systems)?;
+    // emitted integer position; the sparse lattice edge is derived from those positions and admitted
+    // against the explicit structural budget (no fixed edge cap — STEAD-SCALE-1).
+    let (placements, fixture_lattice_edge) =
+        assign_system_placements(&slice.systems, &options.structural_budget)?;
     let scenario_clause = build_scenario_clause(&slice, &placements)?;
     let raw = parse_raw_document(scenario_clause.as_bytes())?;
     let mut pack = hydrate_scenario(&raw)?;
@@ -284,6 +392,7 @@ fn extract_mapgen_slice(
 /// arithmetic). The lattice edge is derived from the position bounding box. Returns `(placements, edge)`.
 fn assign_system_placements(
     systems: &[ExtractedSystem],
+    budget: &MapgenStructuralGridBudget,
 ) -> Result<(Vec<SystemPlacement>, u32), MapGenLatticeError> {
     if systems.is_empty() {
         return Ok((Vec::new(), 1));
@@ -317,7 +426,12 @@ fn assign_system_placements(
             col,
         });
     }
-    let edge = validate_fixture_lattice_edge(max_axis + 1)?;
+    // STRUCTURAL admission (STEAD-SCALE-1): NO fixed edge cap. Checked-`u128` capacity against an explicit
+    // budget (default unbounded); width/height bounded only by `u32`. Execution-profile (Movement-Front /
+    // PALMA / RF dense field) limits are enforced separately — a vast layout may pass here while a dense
+    // execution profile defers to atlas.
+    let edge = max_axis + 1;
+    admit_structural_grid(edge, edge, placements.len() as u64, 0, budget)?;
     Ok((placements, edge))
 }
 

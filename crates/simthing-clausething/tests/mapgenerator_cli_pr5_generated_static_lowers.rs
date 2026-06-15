@@ -163,6 +163,7 @@ fn lower_generated(sample: &GeneratedSample) -> simthing_clausething::MapGenLatt
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: sample.fixture_lattice_edge,
+            ..Default::default()
         },
     )
     .expect("generate lattice hierarchy from generated output")

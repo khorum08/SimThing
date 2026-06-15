@@ -79,6 +79,7 @@ fn generated_1000_star_scenario_lowers_lattice() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -105,6 +106,7 @@ fn generated_1000_star_link_lowering_deferred_without_deposit_feedstock() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -130,6 +132,7 @@ fn generated_1000_star_admission_status_is_honest() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");

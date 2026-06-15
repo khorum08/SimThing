@@ -1,10 +1,9 @@
 //! MapGen PR3 — gridcell lattice hierarchy generator tests.
 
 use simthing_clausething::{
-    MAPGEN_CANONICAL_LATTICE_EDGE, MAPGEN_MAX_LATTICE_EDGE, MapGenLatticeOptions,
-    assert_allowed_simthing_kinds, collect_gridcell_location_ids,
-    generate_mapgen_lattice_hierarchy, parse_mapgen_neutral_document,
-    validate_fixture_lattice_edge,
+    MAPGEN_CANONICAL_LATTICE_EDGE, MapGenLatticeOptions, assert_allowed_simthing_kinds,
+    collect_gridcell_location_ids, generate_mapgen_lattice_hierarchy,
+    parse_mapgen_neutral_document, validate_fixture_lattice_edge,
 };
 use simthing_core::SimThingKind;
 
@@ -130,8 +129,12 @@ fn zero_or_negative_fixture_lattice_edge_is_rejected() {
 }
 
 #[test]
-fn fixture_lattice_edge_beyond_cap_is_rejected() {
-    assert!(validate_fixture_lattice_edge(MAPGEN_MAX_LATTICE_EDGE + 1).is_err());
+fn no_fixed_structural_edge_cap_remains() {
+    // STEAD-SCALE-1: there is NO fixed maximum structural edge. An edge far beyond the old 65_535
+    // arithmetic ceiling validates — structural scale is governed by an explicit budget, not a constant.
+    assert!(validate_fixture_lattice_edge(70_000).is_ok());
+    assert!(validate_fixture_lattice_edge(u32::MAX).is_ok());
+    assert!(validate_fixture_lattice_edge(0).is_err()); // only positivity remains
 }
 
 #[test]
@@ -143,6 +146,7 @@ fn lattice_edge_is_derived_from_authored_positions_not_the_option() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: 2,
+            ..Default::default()
         },
     )
     .expect("authored positions drive placement regardless of requested edge");
