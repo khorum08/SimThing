@@ -222,6 +222,14 @@ declarative SimThing structure and lowered onto the generic `accumulate → redu
    automaton runs on. §0.7 (Candidate F) governs **decision-gate magnitudes only** — it never licensed treating
    positions as inert or placing cells by emission order. A prior "positions inert / index-order placement"
    ruling was a drift, **withdrawn and corrected** (ADR D6).
+5. **Structural scale is budget-based — no fixed edge cap (STEAD-SCALE-0/-1, 2026-06-15).** Structural gridcell
+   layout **has no fixed edge cap**; it scales by **explicit admission budgets and memory constraints**
+   (`MapgenStructuralGridBudget`, checked-`u128` capacity), not a magic constant — `200×200` is a *small*
+   reference (not a canonical upper bound) and `65,535` was a temporary arithmetic ceiling, **not doctrine**
+   (removed). **Layout and execution scale are decoupled:** execution profiles (Movement-Front/PALMA/RF dense
+   fields) may impose bounded-theater limits, and **a vast layout may be admitted even when a particular dense
+   execution profile defers to atlas scheduling** — represented as *layout admitted, execution requires
+   atlas/tile scheduling*, never "the map is too large."
 
 **One outstanding item (future, separate, DA-authorized — not a producer PR):** an **RF capacity amendment**
 (raise/scale RF participant/slot caps or add scalable deposit-initializer feedstock) is required before

@@ -151,6 +151,7 @@ fn run_full_authoring(text: &str, fixture_edge: u32) -> MapGenPalmaFeedstockAuth
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -296,6 +297,7 @@ fn generated_pr10_scenario_lowers_lattice() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -315,6 +317,7 @@ fn generated_pr10_scenario_lowers_resource_flow_enrollment() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -350,6 +353,7 @@ fn generated_pr10_scenario_lowers_movement_front_region_field() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: fixture_edge,
+            ..Default::default()
         },
     )
     .expect("lattice");

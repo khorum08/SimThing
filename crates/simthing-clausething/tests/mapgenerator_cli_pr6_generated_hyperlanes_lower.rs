@@ -95,6 +95,7 @@ fn lower_links(text: &str) -> simthing_clausething::MapGenLinksEnrollment {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("generate lattice hierarchy");
@@ -129,6 +130,7 @@ fn generated_hyperlane_scenario_lowers_lattice() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -180,6 +182,7 @@ fn generated_hyperlane_scenario_rejects_unknown_endpoint_without_widening() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -197,6 +200,7 @@ fn generated_hyperlane_scenario_rejects_self_link_without_widening() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("lattice");
@@ -214,6 +218,7 @@ fn generated_hyperlane_scenario_rejects_duplicate_link_without_widening() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
+            ..Default::default()
         },
     )
     .expect("lattice");

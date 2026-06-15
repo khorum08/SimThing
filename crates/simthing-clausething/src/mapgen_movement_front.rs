@@ -111,17 +111,48 @@ pub struct MapGenMovementFrontAuthoring {
     pub expansion_report: MapGenMovementFrontAuthoringReport,
 }
 
+/// Distinguishes a genuine Movement-Front authoring failure from a **bounded-theater atlas deferral**
+/// (STEAD-SCALE-1) — so callers match a variant rather than string-scanning the message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MapGenMovementFrontErrorKind {
+    /// A genuine authoring/admission failure.
+    #[default]
+    Generic,
+    /// **Not a layout failure.** The structural gridcell layout is valid at this scale, but the dense
+    /// Movement-Front stencil execution exceeds the bounded local theater (§7 P1) and requires the deferred
+    /// multi-theater **atlas** rung. The layout stands; only the bounded-stencil execution is gated.
+    AtlasDeferralRequired,
+}
+
 /// MapGen PR6 Movement-Front authoring failure.
 #[derive(Debug)]
 pub struct MapGenMovementFrontError {
     pub message: String,
+    pub kind: MapGenMovementFrontErrorKind,
 }
 
 impl MapGenMovementFrontError {
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
+            kind: MapGenMovementFrontErrorKind::Generic,
         }
+    }
+
+    /// A bounded-theater **atlas deferral** — the structural layout is valid; only dense execution defers.
+    pub fn deferred_atlas(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            kind: MapGenMovementFrontErrorKind::AtlasDeferralRequired,
+        }
+    }
+
+    /// `true` iff this is a bounded-theater atlas deferral (layout valid, dense execution deferred).
+    pub fn is_atlas_deferral(&self) -> bool {
+        matches!(
+            self.kind,
+            MapGenMovementFrontErrorKind::AtlasDeferralRequired
+        )
     }
 }
 
@@ -201,7 +232,7 @@ fn build_movement_front_surfaces(
     // many bounded theaters is the deferred **atlas** rung; the first slice executes one theater. So MF
     // execution is bounded here even though the *layout* may be far larger.
     if grid_size > simthing_spec::REGION_FIELD_STANDARD_MAX_GRID {
-        return Err(MapGenMovementFrontError::new(format!(
+        return Err(MapGenMovementFrontError::deferred_atlas(format!(
             "Movement-Front first-slice executes ONE bounded local theater (≤{} per edge, §7 P1); the \
              gridcell lattice LAYOUT (edge {grid_size}) is valid at this scale, but covering it with the \
              dense stencil requires the deferred multi-theater ATLAS rung — only the bounded-stencil \

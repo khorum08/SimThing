@@ -402,9 +402,16 @@ edge — P1: dense-global diffusion over a vast grid is the permanently-rejected
 therefore covered by **many bounded theaters** — the multi-theater **atlas** rung — never by one giant
 dense field; strategic awareness across theaters is **hierarchy (Layer 2)**, not a bigger stencil. **Never
 shrink a layout to fit the theater cap, and never grow the theater to cover a vast layout:** the layout is
-authoritative and unbounded; the stencil is a bounded window; the atlas tiles. (Lowerer: the gridcell
-`(col,row)` is honored as authoritative layout at any edge — STEAD-PRIVILEGE-0 — while the Movement-Front
-front honestly defers to the atlas above the bounded-theater edge.)
+authoritative and unbounded; the stencil is a bounded window; the atlas tiles. **Structural gridcell
+layout has NO fixed edge cap** — it scales by explicit **admission budgets and memory constraints**
+(`MapgenStructuralGridBudget`, checked-`u128` capacity), never a magic constant. **200×200 is a small
+reference, not a canonical upper bound**, and `65,535` was a temporary arithmetic ceiling, **not doctrine**
+(removed in STEAD-SCALE-1). Execution profiles may impose bounded-theater limits; **a vast layout may be
+admitted even when a particular dense execution profile defers to atlas scheduling** — that is *layout
+admitted, execution profile requires atlas/tile scheduling*, never "the map is too large." (Lowerer: the
+gridcell `(col,row)` is honored as authoritative layout at any edge — STEAD-PRIVILEGE-0 — admitted by
+`admit_structural_grid` against the budget — STEAD-SCALE-1 — while the Movement-Front front returns a typed
+atlas deferral above the bounded-theater edge.)
 
 **A cell is shaped by its neighbors — falloff is the spatial arena's flow.** Exactly as a flow-arena
 participant is shaped by the budget disbursed to it, a gridcell Location is **influenced by the falloff

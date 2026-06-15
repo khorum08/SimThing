@@ -99,7 +99,10 @@ selection) is permitted because it is *quantized to integer cells / topological 
 integer cells are then the **authoritative spatial layout**, not inert. (Implemented by the closed-lowerer
 amendment **STEAD-PRIVILEGE-0** in `mapgen_lattice.rs::assign_system_placements`.) **Layout scale and execution
 scale are decoupled, and SimThing models VAST spatial domains:** the gridcell-Location lattice **layout** scales
-**freely** (`MAPGEN_MAX_LATTICE_EDGE` raised to 65535 — **200×200 is a *small* reference**, vast lattices are
+**freely** with **no fixed edge cap** — structural scale is governed by an explicit `MapgenStructuralGridBudget`
+(checked-`u128` capacity, default unbounded) + memory, not a magic constant (STEAD-SCALE-1: `MAPGEN_MAX_LATTICE_EDGE`
+removed; `65,535` was a temporary arithmetic ceiling, not doctrine). **200×200 is a *small* reference**, not a
+canonical upper bound; vast lattices are
 anticipated and lay out at full fidelity); the dense Movement-Front **stencil execution** stays a **bounded local
 theater** (≤10/32 per edge, P1 — dense-global over a vast grid is the rejected pattern), so a vast lattice is
 covered by **many bounded theaters (the deferred atlas rung)**, never one giant field, with hierarchy (L2) for

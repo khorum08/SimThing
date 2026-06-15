@@ -65,6 +65,7 @@ fn lower(text: &str) -> simthing_clausething::MapGenLatticeHierarchy {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: 3,
+            ..Default::default()
         },
     )
     .expect("generate lattice hierarchy")

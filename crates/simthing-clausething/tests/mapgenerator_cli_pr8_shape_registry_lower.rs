@@ -43,6 +43,7 @@ fn generated_procedural_spiral_scenario_lowers_lattice() {
         &neutral,
         MapGenLatticeOptions {
             fixture_lattice_edge: 3,
+            ..Default::default()
         },
     )
     .expect("lattice");
