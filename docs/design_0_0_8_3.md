@@ -202,6 +202,43 @@ Historical R4 ledger detail remains in
 [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md);
 §0.7 is the carry-forward constitutional rule.
 
+### 0.8 STEAD/Mapping spatial substrate carry-forward (STEAD-CONTRACT-0)
+
+> **STEAD/Mapping is a load-bearing pillar of SimThing, not an optional feature. This clause and its
+> mandatory pointer to [`stead_spatial_contract.md`](stead_spatial_contract.md) MUST propagate to every
+> future constitution version verbatim, amended only by addition.** It exists because the spatial
+> substrate drifted out of context **three** times (positions-inert, dense-global, edge-cap); enshrining
+> it in §0 is what makes a fourth drift a constitutional violation, not a forgivable oversight.
+
+The map **is** a grid of gridcell `SimThing`s run as a cellular automaton (the Movement-Front automaton,
+[`simthing_core_design.md`](simthing_core_design.md) §0 + §7). A `SimThingKind::Location` **is** a
+structural gridcell; spatial identity is intrinsic, never inert metadata. The binding, normative form —
+8 defined terms, 9 sections — is [`stead_spatial_contract.md`](stead_spatial_contract.md), **mandatory
+reading** (`agents.md`) for any task touching MapGen, Location grids, Movement-Front, STEAD, heatmaps,
+falloff, PALMA, Gu-Yang/SaturatingFlux, or RF/Accumulator arenas over gridcell Locations.
+
+The non-negotiable invariants (full text in the contract; summarized in core §0):
+1. A `Location` **is** a structural gridcell; the parent grid owns the spatial arena (`grid_metadata`).
+2. Emitted integer `(col,row)` are **structural** coordinates the lowerer honors — never render,
+   emission-order, or row-major fill.
+3. Unoccupied cells are **ambient field**; lattices are sparse and may be **vast** (`200×200` is small).
+4. Heatmaps, falloff, fronts, Gu-Yang, PALMA, and RF pressure are **expressions over the structural
+   substrate**, not independent services.
+5. **Layout admission** (budget-based, no fixed edge cap) is separate from **execution-profile admission**
+   (the ≤10/32-per-edge bounded theater); a vast layout may pass while a dense profile **defers to the
+   atlas** — that is not "the map is too large." Dense theater caps cannot shrink or invalidate the layout.
+6. RF/Accumulator stays generic, **but** an arena over gridcell `Location`s is **spatially bound**: each
+   participant requires a structural `grid_metadata` placement (`validate_spatial_binding`), and the arena
+   records its `StructuralGridFrame`. Spatially-neutral arenas need no grid. **Whenever generic
+   RF/Accumulator code admits a new arena, it must confront whether that arena is spatially bound.**
+7. Candidate F (§0.7) governs exact-magnitude **decision gates** but **never** licenses treating positions
+   as inert; exact sqrt/Euclidean ops route *through* it, never avoided.
+
+Enforced by `crates/simthing-clausething/tests/stead_spatial_contract_guards.rs` (section-aware
+withdrawn-phrase scan + structural/MF/PALMA/ledger guards, including a guard that **this §0.8 clause and
+its `stead_spatial_contract.md` pointer remain present in §0**) and `mapgen_rf_stead_binding.rs`. A future
+constitution that drops this clause or the pointer is **defective** (§0 preamble).
+
 ---
 
 ## A. Closeout addendum — the ClauseThing vertical (ratified 2026-06-15)

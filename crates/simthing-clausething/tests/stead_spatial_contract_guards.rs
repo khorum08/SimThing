@@ -66,8 +66,19 @@ const ACTIVE_SOURCE: &[(&str, &str)] = &[
     ),
     ("mapgen_palma", include_str!("../src/mapgen_palma.rs")),
     ("mapgen_links", include_str!("../src/mapgen_links.rs")),
+    // Producer-side (MapGeneratorCLI) modules most prone to reintroducing positions-inert drift. The
+    // closed lowerer is upstream of these, but a producer comment can still poison the doctrine.
+    (
+        "mapgenerator_emitter",
+        include_str!("../../simthing-mapgenerator/src/emitter.rs"),
+    ),
+    (
+        "mapgenerator_topology",
+        include_str!("../../simthing-mapgenerator/src/topology.rs"),
+    ),
 ];
 const EVIDENCE_INDEX: &str = include_str!("../../../docs/tests/current_evidence_index.md");
+const ACTIVE_CONSTITUTION: &str = include_str!("../../../docs/design_0_0_8_3.md");
 
 /// A markdown section is "exempt" (may quote forbidden phrases) iff its heading names a withdrawal.
 fn heading_is_exempt(heading: &str) -> bool {
@@ -254,6 +265,41 @@ fn palma_feedstock_indexes_structural_grid_and_emits_no_routes() {
     assert_eq!(
         palma.expansion_report.predecessor_surface_count, 0,
         "PALMA emits no predecessors/came_from — it is a field, not pathfinding"
+    );
+}
+
+#[test]
+fn transient_constitution_section_0_must_carry_stead_clause_and_contract_pointer() {
+    // §0 is the carry-forward spine that every future constitution must copy forward verbatim. The STEAD
+    // substrate must be anchored THERE (not only in agents.md / core design), or a mechanical "copy §0"
+    // promotion could drop it. Prove the §0.8 clause + the mandatory contract pointer live inside §0
+    // (between the "## 0." heading and the next top-level "## " heading).
+    let lines: Vec<&str> = ACTIVE_CONSTITUTION.lines().collect();
+    let start = lines
+        .iter()
+        .position(|l| l.starts_with("## 0.") || l.trim_start().starts_with("## 0 "))
+        .expect("constitution has a `## 0.` transient-constitution section");
+    let end = lines[start + 1..]
+        .iter()
+        .position(|l| l.starts_with("## ") && !l.starts_with("## 0"))
+        .map(|rel| start + 1 + rel)
+        .unwrap_or(lines.len());
+    let section_0 = lines[start..end].join("\n");
+
+    assert!(
+        section_0.contains("### 0.8 STEAD/Mapping spatial substrate carry-forward"),
+        "transient constitution §0 must contain the §0.8 STEAD/Mapping carry-forward clause (it drifted \
+         three times; §0 is what makes it survive a mechanical `copy §0` constitution promotion)"
+    );
+    assert!(
+        section_0.contains("stead_spatial_contract.md"),
+        "§0.8 must carry the mandatory `stead_spatial_contract.md` pointer forward inside §0"
+    );
+    assert!(
+        section_0
+            .to_ascii_lowercase()
+            .contains("propagate to every future"),
+        "§0.8 must state the clause + pointer MUST propagate to every future constitution version"
     );
 }
 

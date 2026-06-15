@@ -100,6 +100,24 @@ git diff --check                                             # no whitespace err
    means structural admission is permissive by default; explicit budgets gate when a caller wants a ceiling.
 5. **Metadata-bytes budget is a heuristic estimate**, not a measured allocation.
 
-## 10. DA sign-off status
+## 10. STEAD-CONTRACT-0R — probation-hardening follow-up (owner-directed, post-#701 review)
+The owner's review of #701/#702 cleared the substance but withheld PROBATION-clearance until the contract is
+anchored in the **transient constitution §0** (so a mechanical "copy §0 forward" promotion cannot drop it) and
+producer-side source is scanned. Landed in STEAD-CONTRACT-0R:
+1. **`design_0_0_8_3.md` §0.8 "STEAD/Mapping spatial substrate carry-forward"** — new §0 subsection (by
+   addition) stating the clause **and** the `stead_spatial_contract.md` pointer MUST propagate to every future
+   constitution version verbatim; a version that drops either is defective.
+2. **Guard `transient_constitution_section_0_must_carry_stead_clause_and_contract_pointer`** — proves §0.8 +
+   the contract pointer + the "propagate to every future" mandate live **inside** §0.
+3. **Producer scan** — `simthing-mapgenerator/src/emitter.rs` + `topology.rs` added to the active-source
+   phrase scan (the named producer modules most prone to positions-inert drift).
+4. Evidence index keeps #701 **PROBATION until 0R lands** and records the 0R row.
+
+Objection #3 above (producer-comment quarantine outside literal clausething scope) is now **resolved by
+design**: those producer modules are deliberately in-scope for the central guard. Objections #1 (`fixture_lattice_edge`
+rename), #2 (producer `topology.rs` index-order adjacency heuristic), #4, #5 remain open follow-ups.
+
+## 11. DA sign-off status
 **PENDING.** No approval is pre-filed. Design authority records sign-off here only after auditing the contract
-doc, the guards, the RF binding, and this report against core §0/§7 and `stead_spatial_contract.md`.
+doc, the guards, the RF binding, the §0.8 carry-forward anchor, and this report against core §0/§7 and
+`stead_spatial_contract.md`.
