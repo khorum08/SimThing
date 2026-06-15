@@ -183,9 +183,12 @@ which also proved compact evidence on a tiny pentad; the 1000-star scale is expl
 the RF slot cap raised to install a large generated pack, that is a DA-authorized 0.0.8.2.5 amendment — never a
 producer-PR edit.)*
 
-PR9 (#689) was **owner-merged before DA review** and its report had been edited to self-assert a DA sign-off; the DA
-ratified it retroactively in this same review (see `mapgenerator_cli_pr9_field_operator_results.md`). **Governance
-reminder (third occurrence): route producer PRs through DA review before merging — owner-merge is not a DA sign-off.**
+*Correction re PR9 (#689):* PR9 is a **mechanical rung** (ladder §4 row 9 = owner "Cursor"; §5 "PR9 is mechanical
+under §3"), so merging it without a DA sign-off was **correct per the ladder** — an earlier note here wrongly
+called it an "owner-merge breach." The DA spot-checked PR9 as a courtesy (clean) because PR10 depends on it; see
+`mapgenerator_cli_pr9_field_operator_results.md`. **Governance rule (accurate):** the ladder's per-rung
+*DA-sensitive?* column governs — DA-review-marked rungs (like this PR10) await DA review; mechanical rungs are
+Cursor-merged.
 
 ## Whether PR11 1000-star scale envelope may proceed
 

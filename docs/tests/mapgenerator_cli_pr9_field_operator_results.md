@@ -1,10 +1,10 @@
 # MapGeneratorCLI PR9 — Nebula / Field-Operator Declarative Producer Results
 
-> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-RATIFIED RETROACTIVELY 2026-06-15 after independent audit; #689 was owner-merged before DA review — see sign-off).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (MERGED #689 — mechanical rung per ladder §4/§5, no DA sign-off required; DA confirmatory audit clean — see sign-off).
 
 ## Verdict
 
-**PASS — DA-RATIFIED RETROACTIVELY (2026-06-15, executive design authority; #689 owner-merged before DA review)** — bounded producer-side nebula placement and closed-surface `nebula = { name radius }`
+**PASS — MERGED (#689); mechanical rung (ladder §4 row 9 = "Cursor", no DA review required); DA confirmatory audit clean** — bounded producer-side nebula placement and closed-surface `nebula = { name radius }`
 feedstock emission; initializer bucket refs emit sibling definitions once; inert metadata passthrough **deferred**
 (dry-run report only). Generated output parses and lowers through existing closed `mapgen_lattice` +
 Movement-Front `RegionFieldSpec` surfaces without front-end widening. **Zero** `crates/simthing-clausething/src/`
@@ -129,15 +129,21 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**DA-RATIFIED RETROACTIVELY — 2026-06-15, executive design authority.** *Process note (governance):* #689 was
-**owner-merged (khorum08) before any DA review**, and this report was subsequently edited (in PR #690) to
-self-assert "DA-APPROVED & MERGED" — a sign-off the DA never gave (the report was originally, correctly, "Pending
-— only DA writes sign-off"). This is the **third** occurrence of the owner-merge-before-review / pre-filed-sign-off
-pattern (cf. #685 PR6R, and now #689). The DA has now performed the genuine retroactive audit: `field_operator.rs`
-emits **only** the closed-surface `nebula = { name radius }` block that `mapgen_lattice` already accepts — it does
-**not** invent a `field_operator`/`gpu_operator` grammar block (it even ships `forbidden_field_surface_term()` to
-scan emitted text); `nebula.rs`/`metadata.rs` are producer-side placement + inert reporting; inert metadata is
-report-only (never emitted/simulated). **Zero closed `src/`; no `simthing-*` dep.** Battery rerun: `cargo fmt
---check` clean; `cargo test -p simthing-mapgenerator` zero failures; `mapgenerator_cli_pr9_field_operator_lower`
-6 passed; `mapgen_constitution_guards` 21, `mapgen_resource_flow` 16, `mapgen_links` 19 green. The change is benign
-and is **ratified**. **Owner-merge is NOT a DA sign-off** — future producer PRs must await DA review before merge.
+**MERGED — MECHANICAL RUNG, NO DA SIGN-OFF REQUIRED (#689).** *Correction (2026-06-15):* PR9 is designated a
+**mechanical rung** in the ladder — §4 PR table row 9 is owner **"Cursor"** (not "Cursor (DA review)"), and §5
+states verbatim *"PR9 is mechanical under §3."* So merging PR9 without a DA sign-off was **correct per the ladder**,
+not a governance lapse. An earlier revision of this report wrongly framed it as an "owner-merge-before-review breach"
+and stamped it "DA-RATIFIED RETROACTIVELY"; that framing is **withdrawn**. The only accurate nit: a mechanical rung
+should not carry a "DA-APPROVED" label at all (mechanical rungs receive no DA sign-off) — hence this "merged,
+mechanical" status instead.
+
+**DA confirmatory audit (optional, not a required gate): clean.** While reviewing the DA-sensitive PR10 (which
+depends on PR9), the DA spot-checked PR9 and found it sound: `field_operator.rs` emits **only** the closed-surface
+`nebula = { name radius }` block that `mapgen_lattice` already accepts — it does **not** invent a
+`field_operator`/`gpu_operator` grammar block (it ships `forbidden_field_surface_term()` to scan emitted text);
+`nebula.rs`/`metadata.rs` are producer-side placement + inert reporting; inert metadata is report-only. **Zero
+closed `src/`; no `simthing-*` dep.** Battery (run as part of PR10 review): `cargo fmt --check` clean;
+`cargo test -p simthing-mapgenerator` zero failures; `mapgenerator_cli_pr9_field_operator_lower` 6 passed;
+`mapgen_constitution_guards` 21, `mapgen_resource_flow` 16, `mapgen_links` 19 green. **Governance rule (accurate
+form):** the ladder's per-rung *DA-sensitive?* column governs — DA-review-marked rungs await DA review before merge;
+**mechanical rungs (like PR9) are correctly Cursor-merged.**
