@@ -195,6 +195,20 @@ fn build_movement_front_surfaces(
             "PR6 requires a positive fixture lattice grid_size",
         ));
     }
+    // §7 P1 (STEAD): the dense Movement-Front stencil runs over a **bounded local theater** — a vast
+    // gridcell-Location lattice LAYS OUT freely, but its front is computed per bounded theater (dense
+    // global diffusion over a vast grid is the permanently-rejected pattern). Covering a vast lattice with
+    // many bounded theaters is the deferred **atlas** rung; the first slice executes one theater. So MF
+    // execution is bounded here even though the *layout* may be far larger.
+    if grid_size > simthing_spec::REGION_FIELD_STANDARD_MAX_GRID {
+        return Err(MapGenMovementFrontError::new(format!(
+            "Movement-Front first-slice executes ONE bounded local theater (≤{} per edge, §7 P1); the \
+             gridcell lattice LAYOUT (edge {grid_size}) is valid at this scale, but covering it with the \
+             dense stencil requires the deferred multi-theater ATLAS rung — only the bounded-stencil \
+             EXECUTION is gated, never the layout.",
+            simthing_spec::REGION_FIELD_STANDARD_MAX_GRID
+        )));
+    }
     let cell_count = grid_size.saturating_mul(grid_size);
     if pack.grid_metadata.placements.is_empty() {
         return Err(MapGenMovementFrontError::new(

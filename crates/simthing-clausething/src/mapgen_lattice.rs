@@ -19,11 +19,18 @@ use crate::mapgen_neutral_ast::MapGenNeutralDocument;
 use crate::parse::parse_raw_document;
 use crate::raw::{RawBlock, RawProperty, RawValue};
 
-/// Canonical medium galaxy lattice edge (square). Fixture-local subsets document this authority.
+/// A **small** reference galaxy lattice edge (square). 200×200 is a *small* map: SimThing models vast
+/// spatial domains, and far larger gridcell-Location lattices are anticipated (see `MAPGEN_MAX_LATTICE_EDGE`).
+/// The **layout** scales freely; the dense Movement-Front *stencil* stays a bounded local theater (§7 P1),
+/// and a vast lattice is covered by many bounded theaters — the atlas rung.
 pub const MAPGEN_CANONICAL_LATTICE_EDGE: u32 = 200;
 
-/// Maximum admitted fixture-local lattice edge for PR3 generator options.
-pub const MAPGEN_MAX_LATTICE_EDGE: u32 = 256;
+/// Maximum admitted gridcell-lattice **layout** edge. The lattice LAYOUT (grid_metadata `(row,col)`) is
+/// integer and sparse, so it scales to **vast** spatial domains far beyond the small 200×200 reference;
+/// this cap exists only to bound `edge²` within `u64` cell-count math, not to cap the modelled map size.
+/// (Movement-Front / PALMA *execution* is separately bounded to a local theater — §7 P1 — so vast layouts
+/// lay out freely while their dense-stencil front is a bounded theater, multi-theater coverage = atlas.)
+pub const MAPGEN_MAX_LATTICE_EDGE: u32 = 65_535;
 
 /// Default fixture-local lattice edge for the tiny pentad slice (3×3 active subset).
 pub const MAPGEN_DEFAULT_FIXTURE_LATTICE_EDGE: u32 = 3;
