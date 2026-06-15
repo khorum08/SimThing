@@ -10,6 +10,7 @@
 //! PR8: single-source vanilla shape registry + executable strategy dispatch.
 //! PR9: nebula field declarations, initializer bucket emission, inert metadata reporting.
 //! PR11: scale envelope hardening (u64 lattice capacity, occupancy free-list, bounded pair enumeration).
+//! Post-closeout: producer-side 1000×1000 PNG preview for UI handoff (not runtime semantics).
 
 pub mod cluster;
 pub mod emitter;
@@ -21,11 +22,13 @@ pub mod occupancy;
 pub mod pair_candidates;
 pub mod params;
 pub mod partition;
+pub mod preview_png;
 pub mod rng;
 pub mod shape_registry;
 pub mod special_routes;
 pub mod strategies;
 pub mod strategy;
+pub mod success_galaxy;
 pub mod topology;
 
 pub use cluster::{
@@ -60,6 +63,10 @@ pub use partition::{
     validate_partition_options, BridgeEdge, PartitionAssignment, PartitionError, PartitionId,
     PartitionKind, PartitionOptions, PartitionReport,
 };
+pub use preview_png::{
+    render_galaxy_preview_png, write_galaxy_preview_png, GalaxyPreviewScene, PreviewPngError,
+    GALAXY_PREVIEW_PNG_SIZE,
+};
 pub use rng::{MapGenRng, MapGenSeed};
 pub use shape_registry::{
     RegisteredShapeName, RegistryResolveError, ShapeParameterDescriptor, ShapeRegistry,
@@ -73,6 +80,7 @@ pub use special_routes::{
 pub use strategy::{
     PlacedSystemSeed, ShapePlacement, ShapePlacementError, ShapeStrategy, ShapeStrategyContext,
 };
+pub use success_galaxy::success_galaxy_1000_params;
 pub use topology::{
     canonical_pair, fixture_lattice_edge_for_system_count, generate_hyperlane_topology,
     grid_chebyshev_distance, lowered_grid_position, system_id_scalar, validate_hyperlane_edges,
@@ -98,59 +106,56 @@ pub fn build_placement_context(
     Ok((lattice, core_mask, occupancy, rng))
 }
 
-/// Place via registry and emit declarative scenario text (PR3 + PR4 pipeline).
-pub fn place_and_emit_scenario(
-    params: &MapGeneratorParams,
-    registry: &ShapeRegistry,
-    explicit_cells: Option<&[LatticeCoord]>,
-    emitter: &ScenarioEmitter,
-) -> Result<ScenarioText, PlaceAndEmitError> {
-    place_and_emit_scenario_with_hyperlanes(params, registry, explicit_cells, emitter, None)
+/// Full producer galaxy generation output (scenario text + preview scene inputs).
+#[derive(Debug, Clone)]
+pub struct GalaxyGenerationResult {
+    pub scenario: ScenarioText,
+    pub lattice: SquareLattice,
+    pub core_mask: CoreMask,
+    pub placement: ShapePlacement,
+    pub hyperlane_edges: Vec<HyperlaneEdge>,
+    pub nebulas: Vec<NebulaField>,
 }
 
-/// Place, optionally generate bounded hyperlanes, and emit declarative scenario text (PR6).
-pub fn place_and_emit_scenario_with_hyperlanes(
-    params: &MapGeneratorParams,
-    registry: &ShapeRegistry,
-    explicit_cells: Option<&[LatticeCoord]>,
-    emitter: &ScenarioEmitter,
-    hyperlane_options: Option<HyperlaneOptions>,
-) -> Result<ScenarioText, PlaceAndEmitError> {
-    place_and_emit_scenario_with_structure(
-        params,
-        registry,
-        explicit_cells,
-        emitter,
-        hyperlane_options,
-        None,
-        None,
-        None,
-    )
+impl GalaxyGenerationResult {
+    pub fn preview_scene(&self) -> GalaxyPreviewScene {
+        GalaxyPreviewScene {
+            lattice: self.lattice.clone(),
+            core_mask: self.core_mask.clone(),
+            placement: self.placement.clone(),
+            hyperlane_edges: self.hyperlane_edges.clone(),
+            nebulas: self.nebulas.clone(),
+        }
+    }
+
+    pub fn render_preview_png(&self) -> Result<Vec<u8>, PreviewPngError> {
+        render_galaxy_preview_png(&self.preview_scene())
+    }
 }
 
-/// Place, optionally generate bounded hyperlanes and special routes, and emit scenario text (PR6/PR6b).
-pub fn place_and_emit_scenario_with_couplings(
+/// Build bounded topology options from params using requested star count as fixture capacity.
+pub fn structure_options_from_params(
     params: &MapGeneratorParams,
-    registry: &ShapeRegistry,
-    explicit_cells: Option<&[LatticeCoord]>,
-    emitter: &ScenarioEmitter,
-    hyperlane_options: Option<HyperlaneOptions>,
-    special_route_options: Option<SpecialRouteOptions>,
-) -> Result<ScenarioText, PlaceAndEmitError> {
-    place_and_emit_scenario_with_structure(
-        params,
-        registry,
-        explicit_cells,
-        emitter,
-        hyperlane_options,
-        special_route_options,
-        None,
-        None,
-    )
+) -> Result<
+    (
+        HyperlaneOptions,
+        SpecialRouteOptions,
+        PartitionOptions,
+        ClusterOptions,
+    ),
+    HyperlaneError,
+> {
+    let fixture_edge = fixture_lattice_edge_for_system_count(params.scale_core.num_stars as usize)?;
+    Ok((
+        HyperlaneOptions::from_params(params, fixture_edge),
+        SpecialRouteOptions::from_params(params, fixture_edge),
+        PartitionOptions::from_params(params, fixture_edge),
+        ClusterOptions::from_params(params),
+    ))
 }
 
-/// Place, optionally generate topology couplings and partition/cluster bridges, and emit scenario text (PR6–PR7).
-pub fn place_and_emit_scenario_with_structure(
+/// Generate scenario text plus preview inputs using the full bounded producer pipeline.
+pub fn generate_galaxy_with_structure(
     params: &MapGeneratorParams,
     registry: &ShapeRegistry,
     explicit_cells: Option<&[LatticeCoord]>,
@@ -159,7 +164,7 @@ pub fn place_and_emit_scenario_with_structure(
     special_route_options: Option<SpecialRouteOptions>,
     partition_options: Option<PartitionOptions>,
     cluster_options: Option<ClusterOptions>,
-) -> Result<ScenarioText, PlaceAndEmitError> {
+) -> Result<GalaxyGenerationResult, PlaceAndEmitError> {
     validate_default(params)?;
     let (lattice, core_mask, mut occupancy, mut rng) = build_placement_context(params)?;
     let mut placement = registry.place(
@@ -246,17 +251,117 @@ pub fn place_and_emit_scenario_with_structure(
         None
     } else {
         Some(HyperlaneTopology {
-            edges: hyperlane_edges,
+            edges: hyperlane_edges.clone(),
         })
     };
-    let text = emitter.emit(
+    let scenario = emitter.emit(
         params,
         &lattice,
         &placement,
         hyperlanes.as_ref(),
         Some(&nebulas),
     )?;
-    Ok(text)
+    Ok(GalaxyGenerationResult {
+        scenario,
+        lattice,
+        core_mask,
+        placement,
+        hyperlane_edges,
+        nebulas,
+    })
+}
+
+/// Generate the proven PR11 1000-star success galaxy and a 1000×1000 preview PNG.
+pub fn generate_success_galaxy_with_preview(
+    registry: &ShapeRegistry,
+) -> Result<GalaxyGenerationResult, PlaceAndEmitError> {
+    let params = success_galaxy_1000_params();
+    let (hyperlane, special, partition, cluster) = structure_options_from_params(&params)?;
+    generate_galaxy_with_structure(
+        &params,
+        registry,
+        None,
+        &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
+        Some(hyperlane),
+        Some(special),
+        Some(partition),
+        Some(cluster),
+    )
+}
+
+/// Place via registry and emit declarative scenario text (PR3 + PR4 pipeline).
+pub fn place_and_emit_scenario(
+    params: &MapGeneratorParams,
+    registry: &ShapeRegistry,
+    explicit_cells: Option<&[LatticeCoord]>,
+    emitter: &ScenarioEmitter,
+) -> Result<ScenarioText, PlaceAndEmitError> {
+    place_and_emit_scenario_with_hyperlanes(params, registry, explicit_cells, emitter, None)
+}
+
+/// Place, optionally generate bounded hyperlanes, and emit declarative scenario text (PR6).
+pub fn place_and_emit_scenario_with_hyperlanes(
+    params: &MapGeneratorParams,
+    registry: &ShapeRegistry,
+    explicit_cells: Option<&[LatticeCoord]>,
+    emitter: &ScenarioEmitter,
+    hyperlane_options: Option<HyperlaneOptions>,
+) -> Result<ScenarioText, PlaceAndEmitError> {
+    place_and_emit_scenario_with_structure(
+        params,
+        registry,
+        explicit_cells,
+        emitter,
+        hyperlane_options,
+        None,
+        None,
+        None,
+    )
+}
+
+/// Place, optionally generate bounded hyperlanes and special routes, and emit scenario text (PR6/PR6b).
+pub fn place_and_emit_scenario_with_couplings(
+    params: &MapGeneratorParams,
+    registry: &ShapeRegistry,
+    explicit_cells: Option<&[LatticeCoord]>,
+    emitter: &ScenarioEmitter,
+    hyperlane_options: Option<HyperlaneOptions>,
+    special_route_options: Option<SpecialRouteOptions>,
+) -> Result<ScenarioText, PlaceAndEmitError> {
+    place_and_emit_scenario_with_structure(
+        params,
+        registry,
+        explicit_cells,
+        emitter,
+        hyperlane_options,
+        special_route_options,
+        None,
+        None,
+    )
+}
+
+/// Place, optionally generate topology couplings and partition/cluster bridges, and emit scenario text (PR6–PR7).
+pub fn place_and_emit_scenario_with_structure(
+    params: &MapGeneratorParams,
+    registry: &ShapeRegistry,
+    explicit_cells: Option<&[LatticeCoord]>,
+    emitter: &ScenarioEmitter,
+    hyperlane_options: Option<HyperlaneOptions>,
+    special_route_options: Option<SpecialRouteOptions>,
+    partition_options: Option<PartitionOptions>,
+    cluster_options: Option<ClusterOptions>,
+) -> Result<ScenarioText, PlaceAndEmitError> {
+    Ok(generate_galaxy_with_structure(
+        params,
+        registry,
+        explicit_cells,
+        emitter,
+        hyperlane_options,
+        special_route_options,
+        partition_options,
+        cluster_options,
+    )?
+    .scenario)
 }
 
 #[derive(Debug, thiserror::Error)]
