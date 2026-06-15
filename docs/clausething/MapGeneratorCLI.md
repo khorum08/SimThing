@@ -50,7 +50,7 @@ The current `mapgenthing.md` explains the *what* (the Stellaris idioms and their
 - Output in a form the MapGen ladder can ingest (preferred: the custom ClauseScript `scenario { location ... link ... system_initializer ... }` form already supported by `hydrate_scenario`; fallback: a minimal static_galaxy_scenario-style block or initializer library + manifest).
 - Reproducible via seed.
 - Plausible but not physically perfect spirals / clusters / hyperlane graphs.
-- Basic support for the most common shapes (4-armed spiral, 2-armed spiral, elliptical, ring, irregular / clustered, and a "static" override mode).
+- Basic support for the most common shapes (spiral_2/3/4/6, elliptical, ring, bar, starburst, cartwheel, spoked, and static/arbitrary_static override modes). **PR8 (2026-06-14):** all vanilla shapes are registered in a single-source `ShapeStrategyEntry` map (`strategies/registry.rs`); executable names derive from registry entries — no parallel match ladder.
 - Emission of at least one suppression / environmental field operator (so the output exercises the RF-pressure → RegionField → Gu-Yang → PALMA path).
 
 **Explicitly out of scope (defer to later tracks or the lowering layer):**

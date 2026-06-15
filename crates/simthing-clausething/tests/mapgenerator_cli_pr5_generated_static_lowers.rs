@@ -52,6 +52,8 @@ struct GeneratedSample {
 fn static_sample() -> GeneratedSample {
     let mut params = MapGeneratorParams::default();
     params.shape.shape = "static".into();
+    params.mode = simthing_mapgenerator::GenerationMode::ArbitraryStatic;
+    params.arbitrary.explicit_point_cloud_path = Some("test/fixture.json".into());
     params.scale_core.num_stars = 4;
     params.scale_core.lattice_size = Some(8);
     params.scale_core.core_radius = 0.0;

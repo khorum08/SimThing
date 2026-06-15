@@ -281,6 +281,10 @@ pub enum ValidationError {
     ArbitraryPathsMissing,
     #[error("procedural mode cannot use shape 'arbitrary_static'; use mode=arbitrary_static")]
     ArbitraryShapeInProceduralMode,
+    #[error(
+        "procedural mode cannot use shape '{shape}'; supply explicit cells via the static placement API or use mode=arbitrary_static"
+    )]
+    ExplicitShapeInProceduralMode { shape: String },
 }
 
 impl MapGeneratorParams {
@@ -368,8 +372,15 @@ impl MapGeneratorParams {
                 });
             }
         }
-        if self.mode == GenerationMode::Procedural && self.shape.shape == "arbitrary_static" {
-            return Err(ValidationError::ArbitraryShapeInProceduralMode);
+        if self.mode == GenerationMode::Procedural {
+            if self.shape.shape == "arbitrary_static" {
+                return Err(ValidationError::ArbitraryShapeInProceduralMode);
+            }
+            if self.shape.shape == "static" {
+                return Err(ValidationError::ExplicitShapeInProceduralMode {
+                    shape: self.shape.shape.clone(),
+                });
+            }
         }
         Ok(())
     }
