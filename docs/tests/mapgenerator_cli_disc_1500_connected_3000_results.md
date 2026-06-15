@@ -25,7 +25,17 @@ cargo run -p simthing-mapgenerator --bin mapgen -- \
 The default `core_radius=120` leaves the **galactic-core void** (~40 cells, where stars can't be placed — it's
 inaccessible in game); `--draw-core` paints the bright core glow over it.
 
-## Owner-feedback corrections (this revision)
+## Owner-feedback correction (render-clip bug — the real cause of "orphans")
+The galaxy data was **always** fully connected (COMPONENTS=1, every star laned), but the preview still
+*showed* orphaned stars and disconnected clusters. Root cause was a one-line render bug: the preview lane
+filter read `max_hyperlane_chebyshev.unwrap_or(DEFAULT_PREVIEW_MAX_HYPERLANE_CHEBYSHEV)`, so the intended
+"draw all lanes" sentinel (`None`) silently became a **4-cell clip**. Base lanes are generated up to distance
+7 (max 9), so every lane longer than 4 cells — including all the connecting bridges — was hidden, making a
+connected galaxy *look* like a field of islands. Fixed: `None` now means **no clip** (draw every lane);
+`Some(d)` still clips. This was **not** an N-connections/connectivity issue — `connect_components` already
+guarantees a single component; the preview was just hiding the lanes that prove it.
+
+## Owner-feedback corrections (earlier revision)
 1. **The core void was correct** — it is the galactic core (bright, inaccessible). Restored (do **not** pass
    `--core-radius 0`) and added `--draw-core` to render the bright core graphic.
 2. **Island clusters fixed at the root.** The previous render used `--max-hyperlane-distance 3`, but on this
