@@ -1,5 +1,11 @@
 # SimThing — Design 0.0.8.1 Constitution (Consumer-Pulled Phase, Recursive-Rehearsal Horizon Reached)
 
+> **⚠ SUPERSEDED 2026-06-15 by [`design_0_0_8_3.md`](design_0_0_8_3.md) (the ACTIVE constitution).**
+> The transient constitution **§0** was carried forward verbatim into 0.0.8.3. This file is **retained
+> in place** (not archived) because 0.0.8.3 §B incorporates this doc's still-binding **operating doctrine
+> (§2), parked inventory (§3), and closed questions (§4)** by explicit reference, and because the repo's
+> cross-link web points here. Read 0.0.8.3 for active authority; consult §§1–4 below as the cited source.
+>
 > **Status: ACTIVE constitution (synthesized 2026-06-07, design authority Opus; editorially
 > compressed 2026-06-09 under DOCS-TRIM-0, product-mandated — all binding doctrine preserved,
 > history relocated to reports/archive).** 0.0.8.1 is the single, self-contained design doc for the

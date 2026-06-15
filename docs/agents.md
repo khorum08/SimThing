@@ -17,11 +17,17 @@
    and the drift-detector litmus tests.
 2. [`invariants.md`](invariants.md) — the binding rule tables. A violation is a compile
    error, a test failure, or a voided closure.
-3. [`design_0_0_8_1.md`](design_0_0_8_1.md) §0 + §2 — carry-forward doctrine and operating
-   mechanics (tiers, gating, anti-loop, non-negotiables).
+3. [`design_0_0_8_3.md`](design_0_0_8_3.md) — **the ACTIVE constitution** (carry-forward
+   transient constitution §0 + the ClauseThing-vertical closeout addendum §A). It supersedes
+   `design_0_0_8_1.md`; that predecessor stays in place and §B of 0.0.8.3 incorporates its
+   operating mechanics (§2), parked inventory (§3), and closed questions (§4) by reference.
 4. The live status ledger row for your track
    ([`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md))
    and **the one test report for the slice you are touching.**
+5. **If your task is in the ClauseScript / MapThing / MapGenerator vertical** (now CLOSED):
+   start at [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md) (clearinghouse:
+   concepts/practices/APIs) and [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) (decisions).
+   The production-track ladders are archived under `archive/closed_production/`.
 
 Nothing else by default. If your handoff cites additional rung-local links (≤3), read those
 too. If something seems missing, search the repo before re-deriving from priors —

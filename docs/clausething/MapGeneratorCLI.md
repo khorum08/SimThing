@@ -1,10 +1,15 @@
 # MapGeneratorCLI — High-Level Galaxy Shape Generator for SimThing MapGen
 
+> **⚠ TRACK CLOSED & CONSOLIDATED (2026-06-15).** The 0.0.8.6 MapGeneratorCLI track is closed (PR1–PR12).
+> **Entry point is now [`ClauseThingDoc.md`](ClauseThingDoc.md)** (concepts/practices/APIs) +
+> [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md) (decisions). This file is the producer *reference*;
+> the ladder is archived at [`../archive/closed_production/design_0_0_8_6_mapgenerator_cli_ladder.md`](../archive/closed_production/design_0_0_8_6_mapgenerator_cli_ladder.md).
+
 > **IN-REPO REFERENCE (promoted 2026-06-14, executive design authority).** Target-direction document for
 > the **0.0.8.6 MapGeneratorCLI** track — the declarative *producer* layer above the closed 0.0.8.2.5
 > MapGen ingest/lowering path. **Binding plan + adjudications live in
-> [`../design_0_0_8_6_mapgenerator_cli_ladder.md`](../design_0_0_8_6_mapgenerator_cli_ladder.md); where
-> this reference and that ladder disagree, the ladder governs.** This is a *proposal/reference*, not an
+> [`../archive/closed_production/design_0_0_8_6_mapgenerator_cli_ladder.md`](../archive/closed_production/design_0_0_8_6_mapgenerator_cli_ladder.md); where
+> this reference and that ladder disagree, the ADR + clearinghouse govern.** This is a *proposal/reference*, not an
 > authorization to widen the lowering layer, `simthing-spec`, or the runtime. The CLI produces declarative
 > payloads only and honors every 0.0.8.2.5 adjudication (M1–M11) + the §0 hard prohibitions in the ladder.
 > This track is **not** FIELD-MOVIE-DATASET-0 (which remains later/subsequent) and does **not** reopen
