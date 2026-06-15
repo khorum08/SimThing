@@ -51,6 +51,7 @@ fn partition_bridge_params(seed: u64) -> MapGeneratorParams {
     params.scale_core.lattice_size = Some(10);
     params.scale_core.core_radius = 0.0;
     params.seed = seed;
+    params.nebula.num_nebulas = 0;
     params.partitioning.home_system_partitions = 2;
     params.partitioning.open_space_partitions = 1;
     params.partitioning.partition_min_systems = 2;

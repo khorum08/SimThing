@@ -48,6 +48,7 @@ fn special_route_params(seed: u64) -> MapGeneratorParams {
     params.scale_core.lattice_size = Some(8);
     params.scale_core.core_radius = 0.0;
     params.seed = seed;
+    params.nebula.num_nebulas = 0;
     params.special_routes.num_wormhole_pairs = 1;
     params.special_routes.num_gateways = 1;
     params

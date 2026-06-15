@@ -8,10 +8,14 @@
 //! PR6b: bounded wormhole/gateway special routes as long-range `add_hyperlane` pairs.
 //! PR7: bounded partition/cluster assignment and cross-group bridge `add_hyperlane` pairs.
 //! PR8: single-source vanilla shape registry + executable strategy dispatch.
+//! PR9: nebula field declarations, initializer bucket emission, inert metadata reporting.
 
 pub mod cluster;
 pub mod emitter;
+pub mod field_operator;
 pub mod lattice;
+pub mod metadata;
+pub mod nebula;
 pub mod occupancy;
 pub mod params;
 pub mod partition;
@@ -30,7 +34,13 @@ pub use emitter::{
     ScenarioEmitError, ScenarioEmitter, ScenarioEmitterConfig, ScenarioText,
     DEFAULT_INITIALIZER_DISPLAY_NAME, DEFAULT_INITIALIZER_REF, DEFAULT_SCENARIO_ID,
 };
+pub use field_operator::{forbidden_field_surface_term, ACCEPTED_NEBULA_KEYS};
 pub use lattice::{CoreMask, LatticeCoord, LatticeError, SquareLattice};
+pub use metadata::{metadata_passthrough_report, MetadataPassthroughReport};
+pub use nebula::{
+    apply_cluster_initializer_buckets, place_nebulas, NebulaError, NebulaField, NebulaOptions,
+    NebulaReport,
+};
 pub use occupancy::{OccupancyError, OccupancyGrid};
 pub use params::{
     ArbitraryHyperlaneSourceMode, ArbitraryStaticParams, ClusterCountMethod, ClusteringParams,
@@ -145,7 +155,7 @@ pub fn place_and_emit_scenario_with_structure(
 ) -> Result<ScenarioText, PlaceAndEmitError> {
     validate_default(params)?;
     let (lattice, core_mask, mut occupancy, mut rng) = build_placement_context(params)?;
-    let placement = registry.place(
+    let mut placement = registry.place(
         params,
         &lattice,
         &core_mask,
@@ -182,6 +192,7 @@ pub fn place_and_emit_scenario_with_structure(
             generate_partition_bridges(&placement, &assignments, options, &existing, &mut rng)?;
         hyperlane_edges.extend(bridges.into_iter().map(|edge| edge.to_hyperlane_edge()));
     }
+    let mut cluster_assignments = None;
     if let Some(options) = cluster_options {
         let existing: Vec<(String, String)> = hyperlane_edges
             .iter()
@@ -213,7 +224,17 @@ pub fn place_and_emit_scenario_with_structure(
             &mut rng,
         )?;
         hyperlane_edges.extend(bridges.into_iter().map(|edge| edge.to_hyperlane_edge()));
+        cluster_assignments = Some(assignments);
     }
+    if let Some(assignments) = cluster_assignments.as_ref() {
+        apply_cluster_initializer_buckets(
+            &mut placement,
+            assignments,
+            &params.initializers.initializer_bucket_cluster,
+        );
+    }
+    let nebula_options = NebulaOptions::from_params(params);
+    let (nebulas, _nebula_report) = place_nebulas(&placement, &lattice, nebula_options, &mut rng)?;
     let hyperlanes = if hyperlane_edges.is_empty() {
         None
     } else {
@@ -221,7 +242,13 @@ pub fn place_and_emit_scenario_with_structure(
             edges: hyperlane_edges,
         })
     };
-    let text = emitter.emit(params, &lattice, &placement, hyperlanes.as_ref())?;
+    let text = emitter.emit(
+        params,
+        &lattice,
+        &placement,
+        hyperlanes.as_ref(),
+        Some(&nebulas),
+    )?;
     Ok(text)
 }
 
@@ -241,6 +268,8 @@ pub enum PlaceAndEmitError {
     Partition(#[from] PartitionError),
     #[error("cluster error: {0}")]
     Cluster(#[from] ClusterError),
+    #[error("nebula error: {0}")]
+    Nebula(#[from] NebulaError),
     #[error("emit error: {0}")]
     Emit(#[from] ScenarioEmitError),
 }
