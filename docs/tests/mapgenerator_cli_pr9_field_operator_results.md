@@ -1,15 +1,21 @@
 # MapGeneratorCLI PR9 — Nebula / Field-Operator Declarative Producer Results
 
-> **Artifact lifecycle: PROBATION** (pending DA approval).
+> **Artifact lifecycle: CURRENT_EVIDENCE** (DA-approved 2026-06-14, merged #689).
 
 ## Verdict
 
-**PASS pending DA review** — bounded producer-side nebula placement and closed-surface `nebula = { name radius }`
+**DA-APPROVED & MERGED (#689, 2026-06-14)** — bounded producer-side nebula placement and closed-surface `nebula = { name radius }`
 feedstock emission; initializer bucket refs emit sibling definitions once; inert metadata passthrough **deferred**
 (dry-run report only). Generated output parses and lowers through existing closed `mapgen_lattice` +
 Movement-Front `RegionFieldSpec` surfaces without front-end widening. **Zero** `crates/simthing-clausething/src/`
 changes. No route/path/predecessor/movement/border/frontline semantics, runtime/GPU execution, semantic WGSL,
 simthing-sim, new `SimThingKind`, Euclidean authority in output, or FIELD-MOVIE-DATASET-0 work.
+
+**PR9 proof scope (unchanged):** declarative nebula feedstock parses and lowers through closed lattice +
+Movement-Front RegionFieldSpec surfaces only. PR9 did **not** execute GPU or runtime field stepping, did **not**
+emit scenario-container `field_operator` blocks, and did **not** widen the lowerer.
+
+**PR10 proceeded** under MapGeneratorCLI PR10 (generated scenario admit/install + GPU compact evidence).
 
 ## Track scope
 
@@ -26,7 +32,7 @@ declarative field path remains fully closed-surface).
 | Artifact | Classification | Action |
 |---|---|---|
 | `docs/tests/mapgenerator_cli_pr1_params_results.md` through `pr8` | CURRENT_EVIDENCE | Unchanged — preserved |
-| `docs/tests/mapgenerator_cli_pr9_field_operator_results.md` | PROBATION | New (this report) |
+| `docs/tests/mapgenerator_cli_pr9_field_operator_results.md` | CURRENT_EVIDENCE | Promoted after DA approval (#689) |
 | `docs/tests/mapgen_pr*_results.md` | CURRENT_EVIDENCE | Unchanged — preserved baseline |
 | `docs/clausething/mapgen_corpus_manifest.md` | PRESERVED BASELINE / CURRENT_EVIDENCE | Unchanged |
 | `crates/simthing-clausething/tests/fixtures/mapgen/` | PRESERVED BASELINE | Unchanged |
@@ -123,9 +129,4 @@ git diff --name-only master...HEAD
 
 ## DA sign-off status
 
-**Pending** — only DA writes sign-off. Do not pre-file approval.
-
-## Whether PR10 may proceed
-
-**Yes, pending DA approval of this PR9 report.** PR10 requires the declarative nebula feedstock path to parse
-and lower through closed surfaces without widening — satisfied here at authoring/lowering only (no GPU execution).
+**DA-APPROVED & MERGED (#689, 2026-06-14).** PR10 (MapGeneratorCLI admit/install + GPU compact evidence) may proceed.

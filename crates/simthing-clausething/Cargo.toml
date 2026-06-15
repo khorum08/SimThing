@@ -22,6 +22,8 @@ simthing-feeder  = { path = "../simthing-feeder" }
 simthing-gpu     = { path = "../simthing-gpu" }
 simthing-sim     = { path = "../simthing-sim" }
 simthing-mapgenerator = { path = "../simthing-mapgenerator" }
+wgpu             = { workspace = true }
+bytemuck         = { workspace = true }
 
 [features]
 default = []
