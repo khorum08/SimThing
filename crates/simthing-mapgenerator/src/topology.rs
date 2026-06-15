@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use thiserror::Error;
 
+use crate::pair_candidates::{collect_pairs_within_chebyshev, PRODUCER_PAIR_CANDIDATE_CAP};
 use crate::params::MapGeneratorParams;
 use crate::rng::MapGenRng;
 use crate::strategy::{PlacedSystemSeed, ShapePlacement};
@@ -66,6 +67,8 @@ pub struct HyperlaneGenerationReport {
     pub selected_count: u32,
     pub rejected_prevent: u32,
     pub rejected_fanout: u32,
+    pub examined_pairs: u64,
+    pub candidate_cap_hit: bool,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -97,6 +100,14 @@ pub enum HyperlaneError {
     SelfLink { id: String },
     #[error("duplicate hyperlane edge ({from}, {to})")]
     DuplicateEdge { from: String, to: String },
+    #[error(
+        "fixture lattice edge overflow for {system_count} systems (capacity would exceed u32::MAX)"
+    )]
+    FixtureLatticeOverflow { system_count: usize },
+    #[error(
+        "hyperlane candidate cap {cap} exceeded before selection (examined {examined_pairs} pairs)"
+    )]
+    CandidateCapExceeded { cap: usize, examined_pairs: u64 },
 }
 
 /// Fail-closed validation for directly constructed [`HyperlaneOptions`].
@@ -118,12 +129,18 @@ pub fn validate_hyperlane_options(options: &HyperlaneOptions) -> Result<(), Hype
 }
 
 /// Smallest square edge whose capacity fits `system_count` lowered grid slots.
-pub fn fixture_lattice_edge_for_system_count(system_count: usize) -> u32 {
-    let mut edge = 1u32;
-    while (edge as u64).saturating_mul(edge as u64) < system_count as u64 {
-        edge += 1;
+pub fn fixture_lattice_edge_for_system_count(system_count: usize) -> Result<u32, HyperlaneError> {
+    if system_count == 0 {
+        return Ok(1);
     }
-    edge.max(1)
+    let mut edge = 1u64;
+    while edge.saturating_mul(edge) < system_count as u64 {
+        edge += 1;
+        if edge > u32::MAX as u64 {
+            return Err(HyperlaneError::FixtureLatticeOverflow { system_count });
+        }
+    }
+    Ok(edge as u32)
 }
 
 /// Lowered grid row/col for a system index (matches closed `assign_system_placements`).
@@ -174,19 +191,27 @@ pub fn generate_hyperlane_topology(
 
     let mut candidates = Vec::new();
     let mut rejected_prevent = 0u32;
-    for left in 0..ids.len() {
-        for right in left + 1..ids.len() {
-            let distance = grid_chebyshev_distance(positions[left], positions[right]);
-            if distance == 0 || distance > options.max_hyperlane_distance {
-                continue;
-            }
-            let pair = canonical_pair(&ids[left], &ids[right]);
-            if prevent.contains(&pair) {
-                rejected_prevent += 1;
-                continue;
-            }
-            candidates.push((distance, pair.0, pair.1));
+    let (pair_rows, pair_stats) =
+        collect_pairs_within_chebyshev(&positions, options.max_hyperlane_distance);
+    if pair_stats.capped {
+        return Err(HyperlaneError::CandidateCapExceeded {
+            cap: PRODUCER_PAIR_CANDIDATE_CAP,
+            examined_pairs: pair_stats.examined_pairs,
+        });
+    }
+    for (distance, left, right) in pair_rows {
+        let pair = canonical_pair(&ids[left], &ids[right]);
+        if prevent.contains(&pair) {
+            rejected_prevent += 1;
+            continue;
         }
+        if candidates
+            .iter()
+            .any(|(_, from, to)| from == &pair.0 && to == &pair.1)
+        {
+            continue;
+        }
+        candidates.push((distance, pair.0, pair.1));
     }
 
     let candidate_count = candidates.len() as u32;
@@ -214,9 +239,14 @@ pub fn generate_hyperlane_topology(
     let mut fanout: BTreeMap<String, u32> = BTreeMap::new();
     let mut selected = Vec::new();
     let mut rejected_fanout = 0u32;
+    let mut seen_selected: BTreeSet<(String, String)> = BTreeSet::new();
     for (from, to) in ordered {
         if selected.len() >= target {
             break;
+        }
+        let pair = canonical_pair(&from, &to);
+        if !seen_selected.insert(pair) {
+            continue;
         }
         if fanout.get(&from).copied().unwrap_or(0) >= options.max_per_node_fanout
             || fanout.get(&to).copied().unwrap_or(0) >= options.max_per_node_fanout
@@ -242,6 +272,8 @@ pub fn generate_hyperlane_topology(
         selected_count,
         rejected_prevent,
         rejected_fanout,
+        examined_pairs: pair_stats.examined_pairs,
+        candidate_cap_hit: pair_stats.capped,
     };
 
     Ok((HyperlaneTopology { edges: selected }, report))

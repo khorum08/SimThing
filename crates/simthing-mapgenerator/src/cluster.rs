@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use thiserror::Error;
 
+use crate::pair_candidates::collect_farthest_pairs_with_filter;
 use crate::params::MapGeneratorParams;
 use crate::rng::MapGenRng;
 use crate::strategy::{PlacedSystemSeed, ShapePlacement};
@@ -63,6 +64,8 @@ pub struct ClusterReport {
     pub assigned_cluster_count: u32,
     pub rejected_out_of_radius: u32,
     pub cluster_bridge_count: u32,
+    pub examined_pairs: u64,
+    pub candidate_cap_hit: bool,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -168,6 +171,8 @@ pub fn assign_clusters(
             assigned_cluster_count: used_clusters.len() as u32,
             rejected_out_of_radius,
             cluster_bridge_count: 0,
+            examined_pairs: 0,
+            candidate_cap_hit: false,
         },
     ))
 }
@@ -237,8 +242,8 @@ pub fn generate_cluster_bridges(
     }
 
     let mut candidates = Vec::new();
-    for left in 0..ids.len() {
-        for right in left + 1..ids.len() {
+    let (pair_rows, pair_stats) =
+        collect_farthest_pairs_with_filter(&positions, |left, right, _distance| {
             let left_cluster = cluster_by_system
                 .get(&ids[left])
                 .copied()
@@ -247,13 +252,19 @@ pub fn generate_cluster_bridges(
                 .get(&ids[right])
                 .copied()
                 .unwrap_or(ClusterId(0));
-            if left_cluster == right_cluster {
-                continue;
-            }
-            let distance = grid_chebyshev_distance(positions[left], positions[right]);
-            let pair = canonical_pair(&ids[left], &ids[right]);
-            candidates.push((distance, pair.0, pair.1, left_cluster, right_cluster));
-        }
+            left_cluster != right_cluster
+        });
+    for (distance, left, right) in pair_rows {
+        let left_cluster = cluster_by_system
+            .get(&ids[left])
+            .copied()
+            .unwrap_or(ClusterId(0));
+        let right_cluster = cluster_by_system
+            .get(&ids[right])
+            .copied()
+            .unwrap_or(ClusterId(0));
+        let pair = canonical_pair(&ids[left], &ids[right]);
+        candidates.push((distance, pair.0, pair.1, left_cluster, right_cluster));
     }
 
     candidates.sort_by(|left, right| {
@@ -314,6 +325,8 @@ pub fn generate_cluster_bridges(
         selected,
         ClusterReport {
             cluster_bridge_count: bridge_count,
+            examined_pairs: pair_stats.examined_pairs,
+            candidate_cap_hit: pair_stats.capped,
             ..ClusterReport::default()
         },
     ))

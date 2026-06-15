@@ -7,12 +7,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use thiserror::Error;
 
+use crate::pair_candidates::collect_farthest_pairs_with_filter;
 use crate::params::MapGeneratorParams;
 use crate::rng::MapGenRng;
 use crate::strategy::ShapePlacement;
 use crate::topology::{
-    canonical_pair, grid_chebyshev_distance, lowered_grid_position, system_id_scalar,
-    HyperlaneEdge, DEFAULT_MAX_PER_NODE_FANOUT,
+    canonical_pair, lowered_grid_position, system_id_scalar, HyperlaneEdge,
+    DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 /// Producer-side special-route kind (reporting only — not emitted in scenario grammar).
@@ -73,6 +74,8 @@ pub struct SpecialRouteReport {
     pub gateway_count: u32,
     pub rejected_fanout: u32,
     pub rejected_duplicate: u32,
+    pub examined_pairs: u64,
+    pub candidate_cap_hit: bool,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -146,20 +149,16 @@ pub fn generate_special_routes(
     }
 
     let mut candidates = Vec::new();
-    for left in 0..ids.len() {
-        for right in left + 1..ids.len() {
-            let left_pos = positions[left];
-            let right_pos = positions[right];
-            if is_n4_neighbor(left_pos, right_pos) {
-                continue;
-            }
-            let distance = grid_chebyshev_distance(left_pos, right_pos);
+    let (pair_rows, pair_stats) =
+        collect_farthest_pairs_with_filter(&positions, |left, right, distance| {
             if distance == 0 {
-                continue;
+                return false;
             }
-            let pair = canonical_pair(&ids[left], &ids[right]);
-            candidates.push((distance, pair.0, pair.1));
-        }
+            !is_n4_neighbor(positions[left], positions[right])
+        });
+    for (distance, left, right) in pair_rows {
+        let pair = canonical_pair(&ids[left], &ids[right]);
+        candidates.push((distance, pair.0, pair.1));
     }
 
     let long_range_candidate_count = candidates.len() as u32;
@@ -212,6 +211,8 @@ pub fn generate_special_routes(
         gateway_count,
         rejected_fanout,
         rejected_duplicate,
+        examined_pairs: pair_stats.examined_pairs,
+        candidate_cap_hit: pair_stats.capped,
     };
 
     Ok((SpecialRouteTopology { edges: selected }, report))
