@@ -1,6 +1,6 @@
 # SimThing 0.0.8.6 — MapGeneratorCLI PR Ladder (high-level galaxy params → declarative MapGen payloads)
 
-> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1–PR6 DA-APPROVED & MERGED (#674, #676, #677, #678, #682, #684 hyperlanes, #685 PR6R hardening [DA-ratified retroactively — owner-merged before review], #686 PR6b special routes) — PR6 rung now COMPLETE (hyperlanes + special routes) + the DA-authorized 0.0.8.2.5 lowerer child-id amendment (#680, sign-off recorded #681). Governance: PR5's first remediation smuggled a closed `src/` edit into the producer PR — DA caught it and forced the split (closed-layer fix → #680 amendment with its own battery; cleaned PR5 #682 = producer+test only, **zero** closed `src/`, dev-dep only; auto-closed #679 superseded). **PR5 PROOF SCOPE (binding): parse/lower + INERT render-coordinate preservation only — NOT authored-position→authoritative-placement (grid placement is index/topological by Candidate-F §0.7 + M5/M7; authored coords are inert by mandate; making them authoritative would violate the constitution — no such rung exists).** Mandatory producer-track gate stands: closed `src/` edit ⇒ stop and split to a DA-authorized 0.0.8.2.5 amendment PR. PR7 next: partition/bridge structural producer + clustering — no route/path/predecessor semantics and no GPU. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
+> **Status: DESIGN / READY FOR CURSOR EXECUTION (track-opening plan, 2026-06-14, executive design authority; lever-surface + extensibility revision 2026-06-14 after a deep read of the Stellaris corpus). PR1–PR6b DA-APPROVED & MERGED (#674, #676, #677, #678, #682, #684 hyperlanes, #685 PR6R hardening [DA-ratified retroactively — owner-merged before review], #686 PR6b special routes) — PR6 rung now COMPLETE (hyperlanes + special routes) + the DA-authorized 0.0.8.2.5 lowerer child-id amendment (#680, sign-off recorded #681). Governance: PR5's first remediation smuggled a closed `src/` edit into the producer PR — DA caught it and forced the split (closed-layer fix → #680 amendment with its own battery; cleaned PR5 #682 = producer+test only, **zero** closed `src/`, dev-dep only; auto-closed #679 superseded). **PR5 PROOF SCOPE (binding): parse/lower + INERT render-coordinate preservation only — NOT authored-position→authoritative-placement (grid placement is index/topological by Candidate-F §0.7 + M5/M7; authored coords are inert by mandate; making them authoritative would violate the constitution — no such rung exists).** Mandatory producer-track gate stands: closed `src/` edit ⇒ stop and split to a DA-authorized 0.0.8.2.5 amendment PR. **PR7 PROBATION — pending DA review** (partition/bridge structural producer + clustering). **PR8 next:** registry completion / remaining vanilla shape descriptors / single-source executable strategy dispatch, unless DA reorders. (DA notes carried: O(cells) relocation + `cell_count` overflow bound; single-source strategy dispatch before PR8; unify static/arbitrary_static mode gate.)**
 > This is the planning artifact for the **producer layer** above the now-closed 0.0.8.2.5 MapGen
 > ingest/lowering ladder. It is not an implementation PR. It pins the producer-side schema judgments (§3)
 > so the rungs are Cursor-mechanical with Codex reviews, and it is **subordinate to the core-design
@@ -267,13 +267,18 @@ mechanical under §3.
   grammar). Accept: `num_wormhole_pairs` / `num_gateways` bounded; deterministic; fail-closed when impossible; zero
   closed `src/`; no route/predecessor/path/movement/border/frontline. Stop: new wormhole/gateway grammar or closed
   lowerer amendment required (§7).
-  **Status: PROBATION — pending DA review.** Result:
-  [`tests/mapgenerator_cli_special_routes_results.md`](tests/mapgenerator_cli_special_routes_results.md) (PROBATION).
+  **Status: DA-APPROVED & MERGED (2026-06-14, #686).** Result:
+  [`tests/mapgenerator_cli_special_routes_results.md`](tests/mapgenerator_cli_special_routes_results.md) (CURRENT_EVIDENCE).
   **PR7 next:** partition/bridge structural producer + clustering — no route/path/predecessor semantics and no GPU.
-- **PR7** — partition placed stars into home/open RegionCells (`max/min_systems`, `method`
-  breadth/depth_first) and connect partitions with `min/max_bridges` bounded couplings; emit `cluster_count`
-  satellite groups offset by `cluster_distance_from_core`. Accept: bounded; deterministic; declarative
-  grouping/coupling only; lowers green. Stop: partitioning implies CPU planning/pathing over fields (§7).
+- **PR7** — bounded producer-side partition/cluster assignment and cross-group bridge endpoint selection
+  represented **only** as existing `add_hyperlane` declarations; partition/cluster identities in producer reports
+  only. Accept: bounded; deterministic; fail-closed when impossible; dedup against hyperlanes/special routes; fanout
+  cap; lowers through closed `mapgen_links`. Stop: new partition/cluster/bridge grammar, route/path semantics, or
+  closed lowerer amendment (§7).
+  **Status: PROBATION — pending DA review.** Result:
+  [`tests/mapgenerator_cli_pr7_partition_bridge_results.md`](tests/mapgenerator_cli_partition_bridge_results.md) (PROBATION).
+  **PR8 next:** registry completion / remaining vanilla shape descriptors / single-source executable strategy
+  dispatch, unless DA reorders.
 - **PR8** — register the remaining vanilla shapes (spiral_2/3/4/6, ring, bar, starburst, cartwheel, spoked)
   as strategies; arm/curve/jitter float math quantized to cells; per-scale `supports_shape` advertisement.
   Accept: each shape deterministic, square, one-per-cell; **producer core/emitter/lowering contract
