@@ -11,9 +11,7 @@ use crate::pair_candidates::collect_farthest_pairs_with_filter;
 use crate::params::MapGeneratorParams;
 use crate::rng::MapGenRng;
 use crate::strategy::{PlacedSystemSeed, ShapePlacement};
-use crate::topology::{
-    canonical_pair, grid_chebyshev_distance, lowered_grid_position, system_id_scalar, HyperlaneEdge,
-};
+use crate::topology::{canonical_pair, grid_chebyshev_distance, system_id_scalar, HyperlaneEdge};
 
 /// Stable cluster identifier (producer-side only).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -226,9 +224,10 @@ pub fn generate_cluster_bridges(
         .collect();
 
     let ids: Vec<String> = placement.systems.iter().map(system_id_scalar).collect();
-    let positions: Vec<(u32, u32)> = (0..placement.systems.len())
-        .map(|index| lowered_grid_position(index, fixture_lattice_edge.max(1)))
-        .collect();
+    // STEAD (MAPGENCLI-TOPOLOGY-STEAD-1): cluster-bridge adjacency is over AUTHORED structural gridcell
+    // coordinates (matching the assignment phase's `lattice_coord`), never lowered index-order. The
+    // `fixture_lattice_edge` arg is retained for back-compat but no longer drives bridge positions.
+    let positions: Vec<(u32, u32)> = placement.systems.iter().map(lattice_coord).collect();
 
     let occupied: BTreeSet<(String, String)> = existing_edges
         .iter()

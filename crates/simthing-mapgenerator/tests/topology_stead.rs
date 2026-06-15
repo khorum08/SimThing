@@ -216,6 +216,58 @@ fn spiral_1500_base_hyperlanes_have_no_unknown_endpoints() {
 }
 
 #[test]
+fn spiral_1500_placement_is_spatially_dispersed_not_a_brick() {
+    // Integrity guard: the 1500 gridcells must be a SPARSE, dispersed spiral over the lattice — never a
+    // contiguous row-major brick. The renderer draws each star at its authored `coord` (+ sub-cell jitter),
+    // so this is exactly what the preview shows. A brick would be near-100% fill in a tight rectangle with
+    // ~edge stars per row; a spiral is low-fill across a large bbox with few stars per row.
+    let placement = spiral_1500_placement();
+    let n = placement.systems.len();
+    assert_eq!(n, NUM_STARS_1500 as usize);
+
+    let distinct: BTreeSet<(u32, u32)> = placement
+        .systems
+        .iter()
+        .map(|s| (s.coord.col, s.coord.row))
+        .collect();
+    assert_eq!(
+        distinct.len(),
+        n,
+        "one system per cell — no coincident coords (not a brick)"
+    );
+
+    let (mut min_c, mut max_c, mut min_r, mut max_r) = (u32::MAX, 0u32, u32::MAX, 0u32);
+    let mut per_row: std::collections::BTreeMap<u32, u32> = std::collections::BTreeMap::new();
+    for s in &placement.systems {
+        min_c = min_c.min(s.coord.col);
+        max_c = max_c.max(s.coord.col);
+        min_r = min_r.min(s.coord.row);
+        max_r = max_r.max(s.coord.row);
+        *per_row.entry(s.coord.row).or_insert(0) += 1;
+    }
+    let bbox_w = (max_c - min_c + 1) as u64;
+    let bbox_h = (max_r - min_r + 1) as u64;
+    let bbox_area = bbox_w * bbox_h;
+    // Dispersed: stars occupy a small fraction of their bounding box (a brick would be ~1.0).
+    assert!(
+        (n as f64) < 0.25 * bbox_area as f64,
+        "fill ratio {:.3} too high — looks like a packed brick, not a dispersed spiral",
+        n as f64 / bbox_area as f64
+    );
+    // No single row is densely packed (a brick row would hold ~bbox_w stars).
+    let max_in_row = per_row.values().copied().max().unwrap_or(0) as u64;
+    assert!(
+        max_in_row < bbox_w / 4,
+        "row packing {max_in_row} is brick-like vs bbox width {bbox_w}"
+    );
+    // The layout genuinely spreads across the lattice, not a tiny corner block.
+    assert!(
+        bbox_w >= 100 && bbox_h >= 100,
+        "spiral must span the lattice, got {bbox_w}x{bbox_h}"
+    );
+}
+
+#[test]
 fn spiral_1500_base_hyperlanes_are_local_in_authored_grid() {
     let (placement, topology) = spiral_1500_topology();
     let by_id: std::collections::BTreeMap<String, &PlacedSystemSeed> = placement

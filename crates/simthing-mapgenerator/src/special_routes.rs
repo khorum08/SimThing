@@ -12,8 +12,7 @@ use crate::params::MapGeneratorParams;
 use crate::rng::MapGenRng;
 use crate::strategy::ShapePlacement;
 use crate::topology::{
-    canonical_pair, lowered_grid_position, system_id_scalar, HyperlaneEdge,
-    DEFAULT_MAX_PER_NODE_FANOUT,
+    canonical_pair, system_id_scalar, HyperlaneEdge, DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 /// Producer-side special-route kind (reporting only — not emitted in scenario grammar).
@@ -133,8 +132,13 @@ pub fn generate_special_routes(
     }
 
     let ids: Vec<String> = placement.systems.iter().map(system_id_scalar).collect();
-    let positions: Vec<(u32, u32)> = (0..placement.systems.len())
-        .map(|index| lowered_grid_position(index, options.fixture_lattice_edge))
+    // STEAD (MAPGENCLI-TOPOLOGY-STEAD-1): long-range special-route adjacency is over AUTHORED structural
+    // gridcell coordinates, never lowered index-order — so wormhole/gateway couplings span systems that are
+    // genuinely far apart in the generated layout, not far apart in emission order.
+    let positions: Vec<(u32, u32)> = placement
+        .systems
+        .iter()
+        .map(|system| (system.coord.col, system.coord.row))
         .collect();
 
     let occupied: BTreeSet<(String, String)> = existing_edges

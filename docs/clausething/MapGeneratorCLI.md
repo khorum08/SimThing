@@ -149,12 +149,15 @@ The CLI implements a **declarative-first procedural generator**. It never tries 
 - Accept an explicit list of (id, x, y, initializer) or a minimal static_galaxy_scenario fragment. Useful for hand-crafted maps or loading previous outputs.
 
 ### 4.3 Hyperlane Topology Rules (declarative, not runtime paths)
-> **STEAD (MAPGENCLI-TOPOLOGY-STEAD-0).** Base hyperlane adjacency is selected from **authored structural
-> gridcell coordinates** (`PlacedSystemSeed.coord`), **not** emission order or lowerer fixture placement.
-> Generated `add_hyperlane` pairs remain declarative endpoint pairs and lower through the closed structural
-> grid path. This is **producer-side topology only — no pathfinding service or runtime route semantics**, and
-> no Euclidean sqrt (adjacency is integer Chebyshev over the authored `(col,row)` layout). Enforced by
-> `crates/simthing-mapgenerator/tests/topology_stead.rs`.
+> **STEAD (MAPGENCLI-TOPOLOGY-STEAD-0 / -1).** **All** producer-side adjacency — base hyperlanes
+> (`topology.rs`), long-range special routes / wormholes / gateways (`special_routes.rs`), partition bridges
+> and BFS/DFS partition ordering (`partition.rs`), and cluster bridges (`cluster.rs`) — is selected from
+> **authored structural gridcell coordinates** (`PlacedSystemSeed.coord`), **not** emission order or lowerer
+> fixture placement. Generated `add_hyperlane` pairs remain declarative endpoint pairs and lower through the
+> closed structural grid path. This is **producer-side topology only — no pathfinding service or runtime
+> route semantics**, and no Euclidean sqrt (adjacency is integer Chebyshev over the authored `(col,row)`
+> layout). Enforced by `crates/simthing-mapgenerator/tests/topology_stead.rs` (which also guards that the
+> 1500-star spiral placement is a **dispersed sparse layout, never a row-major brick**).
 
 - Within each arm (or ring band): high local connectivity (dense short hyperlanes).
 - Between adjacent arms: sparser "bridge" hyperlanes at regular intervals (creates natural chokepoints).
