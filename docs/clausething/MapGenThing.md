@@ -1,8 +1,13 @@
 # MapGenThing: Stellaris Starmap Generation with ClauseScript — Rigorous Engineering Reference
 
+> **⚠ TRACK CLOSED & CONSOLIDATED (2026-06-15).** The 0.0.8.2.5 MapThing/MapGen track is closed.
+> **Entry point is now [`ClauseThingDoc.md`](ClauseThingDoc.md)** + [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md);
+> the ladder is archived at [`../archive/closed_production/design_0_0_8_2_5_mapgen_ladder.md`](../archive/closed_production/design_0_0_8_2_5_mapgen_ladder.md).
+> This file remains the MapGen *reference textbook*.
+
 > **IN-REPO AUTHORITY (added 2026-06-13, executive design authority).** This reference was promoted
 > from the lab corpus into the formal `docs/clausething/` set to power the **0.0.8.2.5 MapGen PR
-> ladder** ([`../design_0_0_8_2_5_mapgen_ladder.md`](../design_0_0_8_2_5_mapgen_ladder.md)). It is a
+> ladder** ([`../archive/closed_production/design_0_0_8_2_5_mapgen_ladder.md`](../archive/closed_production/design_0_0_8_2_5_mapgen_ladder.md)). It is a
 > **reference textbook**, not a runtime spec or a license to widen `simthing-spec`: implement the
 > *isomorphism* onto the already-closed ClauseThing/BH/PALMA surfaces (0.0.8.2, DA-signed-off), never
 > the Clausewitz engine model. Binding adjudications and rung boundaries live in the ladder's §3; this

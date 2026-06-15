@@ -1,8 +1,14 @@
 # ClauseThing — Clausewitz Scripting as SimThing's Designer-Facing Language
 
+> **⚠ TRACK CLOSED & CONSOLIDATED (2026-06-15).** The `CT-` track is closed. **Entry point is now the
+> clearinghouse [`ClauseThingDoc.md`](ClauseThingDoc.md)** + decision record
+> [`../adr/ClauseThingADR.md`](../adr/ClauseThingADR.md). This file is retained as the strategy/
+> correspondence *reference*; the production ladder is archived at
+> [`../archive/closed_production/design_0_0_8_1_clausething_production_track.md`](../archive/closed_production/design_0_0_8_1_clausething_production_track.md).
+
 > **Status: AUTHORIZED — the `CT-` production track is OPEN (2026-06-10).** This document is the
 > strategy and correspondence reference for the track; the **live ladder, gates, and status ledger**
-> are in [`../design_0_0_8_1_clausething_production_track.md`](../design_0_0_8_1_clausething_production_track.md).
+> are in [`../archive/closed_production/design_0_0_8_1_clausething_production_track.md`](../archive/closed_production/design_0_0_8_1_clausething_production_track.md).
 > This repo copy is **canonical**. The original in `C:\Users\mvorm\Clauser\` is the lab copy, kept
 > beside the materials that intentionally stay out of the repo: the `jomini` reference clone and
 > the Paradox `script_documentation/` dumps. The ClauseScript textbook now lives beside this file

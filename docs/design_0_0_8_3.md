@@ -1,0 +1,240 @@
+# SimThing — Design 0.0.8.3 Constitution (unified; ClauseThing vertical closed)
+
+> **Status: ACTIVE constitution (promoted 2026-06-15, executive design authority).** Supersedes
+> [`design_0_0_8_1.md`](design_0_0_8_1.md) (now SUPERSEDED-but-cited). It sits *beneath*
+> [`simthing_core_design.md`](simthing_core_design.md) — the permanent paradigm — and *above* the
+> production tracks. This version **carries §0 (the transient constitution) forward verbatim** per §0's
+> own propagation mandate, **ratifies the closed ClauseThing / MapThing / MapGeneratorCLI vertical**
+> (§A), and **incorporates the predecessor's still-binding mechanics by explicit reference** (§B) — no
+> binding doctrine is silently dropped (§0.6).
+>
+> **What changed from 0.0.8.1:** the version-specific lineage/track/pointers are refreshed; the
+> ClauseThing vertical is recorded as closed with its decision record and clearinghouse named; §0 is
+> unchanged (amended only by addition is permitted, and none was needed). Enforcement still lives in
+> [`invariants.md`](invariants.md).
+
+---
+
+## 0. Transient constitution — carry-forward doctrine (MUST propagate to every future version)
+
+> **This section is transient by design and is the cross-version spine.** It holds doctrine that
+> outlives any single constitution version. **Every future constitution version MUST copy §0 forward
+> verbatim**, amending only by *addition* — never silent removal or weakening. The version-specific
+> track, parked inventory, and operating mechanics below §0 are not carried forward automatically; §0
+> is. If a future version omits §0, that version is defective. (Carried verbatim from 0.0.8.0 → 0.0.8.1 → 0.0.8.3.)
+
+### 0.0 Purpose — the unitary vision (why §0 is transient)
+Maximal SimThing conformance is in the transient constitution for **one** reason: it is the mechanism
+by which **conflict, opportunity, ambition, and extraction collapse into a single generic,
+GPU-resident SimThing.** Each is the *same* mechanism wearing a different label —
+- **conflict** → combat (`HP/Damage` arena), disruption (decaying accumulator);
+- **opportunity** → desirability fields and gradients (where to go);
+- **ambition** → faction drives, expansion, fight-or-flight (threshold-gated value decisions);
+- **extraction** → resource extraction, raiding, the production/energy economy —
+
+and all of them reduce to: **accumulation/flow, reduced up and masked down the one recursive tree,
+resolved by threshold crossings on the resulting field.** There is no combat engine, no economy engine,
+no AI engine — there is one *accumulate → reduce → mask → threshold* loop that resolves all of them in
+the same GPU pass.
+
+The payoff, and the entire point, is that **resolution lives as GPU automata in a FIELD_POLICY model.**
+Decisions — engage/withdraw, move, raid, expand, allocate — are not computed by a CPU planner; they
+**emerge as GPU-resident threshold crossings over the resolved, masked field**, exactly as combat,
+movement, and engage/withdraw fall out of a single pass (§0.2, §0.3). The moment any behavior is modeled
+as a privileged *structural* special-case — the rejected **D=3 ownership-node** is the canonical
+example: ownership smuggled back in as a bespoke tree shape instead of a decaying owner overlay — it
+leaves the generic substrate, can no longer be resolved as uniform GPU automata, and the unitary vision
+breaks. That is why conformance is non-negotiable and carries forward across every version: it is not a
+style preference, it is the **precondition** for the whole simulation being one GPU-resident FIELD_POLICY
+automaton rather than a federation of bespoke subsystems.
+
+### 0.1 Maximal SimThing conformance (the founding premise)
+**Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
+gamesession, factions, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
+all SimThings in one recursive `{properties, overlays, children}` tree. New behavior is modeled by
+adding SimThings, properties, overlays, and `AccumulatorOp` registrations — **never** by a bespoke
+subsystem sitting outside the tree. When a design seems to need special-case logic, the correct move is
+almost always to express it as *more SimThing*. (This is the antidote to the math-in-a-vacuum drift that
+`invariants.md` "Scenario Proof" now also guards: behavior is proved through the tree, not beside it.)
+
+### 0.2 Allocation is always recursive (overrides the flat-star carve-out)
+Resource flow is **one** mechanism: reduction **up** the tree (each parent reduces its children's flow
+into a surplus or deficit and passes it to its parent) and disbursement **down** the tree (the
+gamesession root sends flow down; factions hold the stockpiled values, resolve deficits from the
+stockpile, and the resolved values sweep back up to the root and down again). **"Flat-star" vs "nested"
+is not a structural fork:** local balance is simply where a masked flow nets to zero at a *leaf level*
+of the one recursive hierarchy — same machinery, different settling depth. This **explicitly overrides**
+the "combat is flat-star within the cell, nesting lives only above" carve-out in
+`docs/workshop/mobility_and_transfer_allocation.md` §3.2: a cell-local arena is the leaf-most level of
+the recursive hierarchy, not a different mechanism.
+> *Status note:* the recursive ladder is proven end-to-end on GPU against a recursive CPU oracle
+> (RUNTIME-0080-RR-0…RR-4, §4A); §0.2 is demonstrated doctrine, not yet default `SimSession`
+> wiring. Bounded by §0.6: parking specified depth is honest only as a recorded, approved
+> Deviation — never a silent flat proxy.
+
+### 0.3 All conflict is resource flow
+**Every adversarial interaction is expressed as resource-flow dynamics** — accumulation, reduction, and
+threshold crossings over SimThing participants — never as bespoke conflict logic. Binding named instances:
+- **Combat** is an `HP/Damage` resource-flow arena: fleet/ship cohorts are participants; damage is a
+  `SubtractFromSource` transfer; HP recovery is `governed_by` integration; a cohort crossing zero HP
+  fires `Threshold` + `EmitEvent` → boundary removal.
+- **Disruption** is a resource-flow arena whose value accumulates and decays as a location SimThing's
+  `disruption` property (the BoundedFeedback recurrence); patrols and pirates are participants
+  (suppress / emit); the disruption vector reduces up to the starmap, where it accumulates as the heatmap.
+
+Diplomacy, trade, and any future adversarial system follow the same law. This **supersedes** the
+"Combat / Diplomacy / Trade as a Flow arena — out of scope" deferral in
+`docs/adr/resource_flow_substrate.md` §"Out of scope": those are now **in scope, as arenas**, by this
+directive. The substrate stays semantic-free — these names live at the spec/driver layer and compile
+away to generic `AccumulatorOp` registrations; `simthing-sim` never learns the word "combat."
+
+### 0.4 Substrate consequence — endgame scale is never prohibited
+Large-scale concurrency (e.g. one cell hosting a very large fleet count at endgame) is **never** solved
+by prohibiting scale. The participant cap is on **concurrent** participants (bounded by the global
+cohort population), **not** cumulative and **not** cells × capacity. Slots recycle through the REENROLL
+free-list — deregister marks a slot inactive (consistent with the no-compaction rule); a new enrollment
+reuses a free slot. Pool growth, when the global population itself rises, happens at a **boundary**,
+never per tick — the load-bearing "no per-tick device creation" invariant is preserved. Pulling REENROLL
+into a production path is the named-consumer gate that opens it.
+
+### 0.5 Track harness discipline — the base every production PR track carries
+The §0 drift (math-in-a-vacuum, kind-as-behavior, structural special-cases like the rejected D=3
+ownership-node) was a **context-harness failure, not a doctrine failure**: low-context implementation
+agents had no tight harness, so they re-derived architecture from conventional priors and drifted. The
+fix is a **fixed, small, citable base harness on every production PR track**:
+
+- **Rule 1 — every track opens with a fixed-size harness header citing the high-signal set.**
+  Fixed base = 4–6 durable, load-bearing links (always: this constitution **§0**, the track's
+  **one canonical design file**, and [`simthing_core_design.md`](simthing_core_design.md)). A
+  handoff may add ≤3 rung-local links it directly consumes; rung-local links are ephemeral and
+  never accrete into the base — promote durable ones into the canonical design file. Plus a
+  **one-screen** "established decisions / do-not-re-derive" checklist. High-signal density, not
+  link count.
+- **Rule 2 — every rung handoff cites the harness and self-checks the diff against the base principles
+  below**, stating in one line that the change holds them. A handoff that cannot cite the harness is rejected.
+- **Rule 3 — link out, never inline.** Detail lives in the canonical design file and the linked code;
+  the header points, it does not restate. Restating is what overburdened the old tracks.
+
+**The base SimThing principles — the harness checklist, every track, every rung:**
+1. **Everything is a SimThing** (§0.1). New behavior = SimThings + properties + overlays + `AccumulatorOp`
+   registrations — never a subsystem outside the tree, never a runtime `match kind`.
+2. **All conflict/opportunity/ambition/extraction is resource flow** (§0.0, §0.3):
+   `accumulate → reduce → mask → threshold`. No combat / economy / AI engine.
+3. **Allocation is recursive; settling depth is emergent** (§0.2). Reduce-up / disburse-down through the
+   one tree. No per-relation depth assignment, no flat-star special case.
+4. **Decisions are GPU-resident threshold crossings — FIELD_POLICY, not a CPU planner** (§0.0, §2.6):
+   `Threshold` + `EmitEvent` → `BoundaryRequest`.
+5. **`simthing-sim` is semantic-free; exact claims carry CPU-oracle bit-exact parity** (§2.6). Semantics
+   compile away to flat `AccumulatorOp` / overlay / threshold registrations.
+6. **Proven only through a real reduction** (`invariants.md` "Scenario Proof"); **opt-in / default-off**,
+   no default wiring without a gate. A CPU math module is an oracle, never the proof.
+
+If a change cannot be expressed within 1–6, that is the signal to **escalate to design authority** — not
+to add a special case. The checklist is six lines on purpose: a low-context agent will hold six lines and
+drift past sixty.
+
+### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)
+> **Added 2026-06-07 by design authority on direct product mandate (draconian), after a specified
+> recursive structure was silently flattened to a flat galactic-tier proxy and closed as a PASS
+> rehearsal. Like the rest of §0, this carries forward verbatim, amended only by addition.**
+
+**What gets specified gets implemented — or the deviation is recorded in the open and approved.** An
+implementation may **not** silently substitute a flattened, collapsed, or proxy structure for a
+specified recursive/structured design and then claim it IMPLEMENTED / PASS / CLOSED. The bindings:
+
+1. **No silent tier collapse.** When a spec defines a containment hierarchy (parent → child tiers /
+   gridcells / surfaces / building-children), an implementation may not collapse those tiers into a flat
+   proxy and claim the spec is met. Modelling 13 star-systems as flat galactic cells when the spec calls
+   for 13 × 10×10 system subgrids each with a 10×10 planet surface and pop/factory children is a
+   **collapse**, not an implementation.
+2. **Deviation Record or it did not pass.** Any gap between the governing spec and what was built is a
+   **Deviation** that MUST be written at the top of the track's results doc, enumerating every specified
+   element not implemented, the proxy used in its place, the reason, and the consumer impact — and MUST be
+   explicitly approved by design authority. A PASS / CLOSED that lacks a required Deviation Record for a
+   real gap is **constitutionally VOID** and the track is reopened.
+3. **Scope Ledger on every closure.** Every CLOSE / ACCEPT ruling MUST carry a *Specified vs Implemented*
+   ledger: each spec element marked `implemented` / `proxied` / `deferred` / `parked`, with evidence. A
+   closure without a complete ledger is invalid.
+4. **"Parked / not-yet-wired" is a Deviation, never a free pass.** The §0.2 status note is **not** a
+   licence to close a track against a richer spec while shipping a flat proxy. Parking a specified tier is
+   itself a Deviation that must be recorded and approved per (2); it may never be left implicit.
+5. **Hygiene theater is void.** Progress is **working, spec-faithful code under test** — never the count
+   of memos, packets, reviews, status rows, reports, or harness ceremony. Documents *record* progress;
+   they never *constitute* it. A PASS / CLOSED asserted via documentation churn, report-only aggregation
+   of predecessor artifacts, or harness ceremony in place of the specified consumer actually running is
+   void (sibling of `invariants.md` "Scenario Proof" and the gating policy §6 stop rule, now binding for
+   closure). "Project-management cosplay" — activity that produces governance artifacts instead of the
+   specified feature — is the failure mode this law exists to kill.
+
+Binding enforcement lives in `invariants.md` → "Specification Fidelity & Anti-Ceremony". This §0.6 is the
+doctrine; the invariant table is the gate.
+
+### 0.7 Exact numeric authority for decision gates
+
+Decision-critical gradient magnitude, movement-front magnitude, threshold magnitude, and similar
+parity-sensitive scalar gates must use artifact-backed exact primitives. Raw f32 magnitude, WGSL `sqrt`,
+`length`, `distance`, `normalize`, `hypot`, or Rust native sqrt-like operations are
+`ApproximateDiagnostic` only and may not gate commitments.
+
+The current exact-authoritative chain is:
+
+fixed-point `dx/dy`
+→ exact pre-sqrt mag2 (`m_jit_mag2_fixed_exact` / `ExactFixedPointDxDy`)
+→ Candidate F sqrt (`m_jit_mag_f_from_exact_mag2`, artifact hash `59ab4b2892e3c690`, LF-canonical
+re-pin 2026-06-11, `SQRT-REPIN-0`)
+→ exact Euclidean magnitude
+→ threshold.
+
+Any GPU-resident sqrt, magnitude, distance, gradient norm, movement-front norm, threshold path, or
+parity-sensitive exact path must route through Candidate F or another explicitly admitted
+artifact-backed exact primitive. Native sqrt-like paths may exist only as diagnostics.
+
+Historical R4 ledger detail remains in
+[`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md);
+§0.7 is the carry-forward constitutional rule.
+
+---
+
+## A. Closeout addendum — the ClauseThing vertical (ratified 2026-06-15)
+
+> *Small by mandate (constitution §0.5 Rule 3 — link out, never inline). The durable decisions live in
+> the ADR; the concepts/practices/APIs live in the clearinghouse; the blow-by-blow lives in the archived
+> ladders.*
+
+The **ClauseScript → MapThing → MapGeneratorCLI** vertical — designer-facing Clausewitz ingestion, the
+Stellaris-starmap ingest/lowering layer, and the standalone galaxy producer — is **CLOSED and ratified**.
+It is one proof, three times over, of the §0 premise: *foreign grand-strategy content is ingested as
+declarative SimThing structure and lowered onto the generic `accumulate → reduce → mask → threshold` tree
+— no new engine, no new `SimThingKind`, no Euclidean/pathfinding authority in the lowered output.*
+
+- **Decision record:** [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) (D1–D10 — the durable adjudications).
+- **Clearinghouse (concepts / practices / APIs):** [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md).
+- **Governing ADRs (unchanged):** [`adr/mapping_sparse_regioncell.md`](adr/mapping_sparse_regioncell.md), [`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md). Core mapping doctrine: [`simthing_core_design.md`](simthing_core_design.md) §7.
+- **Archived production tracks** (`archive/closed_production/`): ClauseThing (`design_0_0_8_1_clausething_production_track.md`, `design_0_0_8_2_clausething_closeout_ladder.md`), MapThing/MapGen (`design_0_0_8_2_5_mapgen_ladder.md`), MapGeneratorCLI (`design_0_0_8_6_mapgenerator_cli_ladder.md`), substrate sub-tracks (`design_0_0_8_1_border_hack_track.md`, `design_0_0_8_1_palma_pathfinding_integration_guide.md`).
+
+**Carry-forward gates this vertical added to the project's working rules** (enforced per-track, not §0 amendments):
+1. **Closed lowering layers are closed.** A producer/front-end PR makes **zero** `crates/simthing-clausething/src/` edits; a needed lowerer change splits to a **DA-authorized 0.0.8.2.5 amendment** (precedent `#680`).
+2. **Producers emit only already-accepted grammar** (`static_galaxy_scenario` neutral-AST), never widening `hydrate_scenario`/the lowerer.
+3. **Per-rung DA-sensitivity governs merges; only the DA writes a DA sign-off, never pre-filed.**
+
+**One outstanding item (future, separate, DA-authorized — not a producer PR):** an **RF capacity amendment**
+(raise/scale RF participant/slot caps or add scalable deposit-initializer feedstock) is required before
+galaxy-scale generated packs can admit/install. Until then galaxy-scale runtime is gated and that gate is
+honest (ADR §5). **Next track:** FIELD-MOVIE-DATASET-0 (editor/corpus/export) — not opened here.
+
+## B. Carried mechanics (incorporated by explicit reference — not silently dropped)
+
+Per §0's mandate, only §0 carries forward automatically; the predecessor's version-specific **operating
+mechanics remain binding and are incorporated here by reference** until folded:
+
+- **Operating doctrine** — [`design_0_0_8_1.md`](design_0_0_8_1.md) §2 (consolidated; read before any 0.0.8.x work).
+- **Parked capability inventory** (proven, default-off, awaiting a consumer) — `design_0_0_8_1.md` §3.
+- **Closed questions** (no dangling open design questions) — `design_0_0_8_1.md` §4.
+- **Design lineage** (v4 → 0.0.8.1, archived `archive/superseded_design/`) — `design_0_0_8_1.md` §1.
+
+`design_0_0_8_1.md` is **SUPERSEDED by this 0.0.8.3** as the active constitution but retained in place as
+the cited source for the above (moving it would break the cross-link web; it carries a superseded banner).
+
+## C. Pointers
+- Permanent paradigm: [`simthing_core_design.md`](simthing_core_design.md). Structural invariants / gates: [`invariants.md`](invariants.md). State authority: [`state-authority.md`](state-authority.md). Agent router: [`agents.md`](agents.md).
+- The ClauseThing vertical: [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) + [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md).
