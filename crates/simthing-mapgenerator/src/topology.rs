@@ -1,11 +1,12 @@
 //! Bounded producer-side hyperlane topology (PR6 — declarative endpoint pairs only).
 //!
-//! Producer-side hyperlane **adjacency heuristic**. **Follow-up (STEAD-CONTRACT-0 objection):** this
-//! currently uses *lowered index-order* positions, but since STEAD-PRIVILEGE-0 the closed `mapgen_lattice`
-//! honors the **emitted authored** positions as the authoritative structural `(col,row)` layout — so this
-//! heuristic should migrate to the authored positions for spatial fidelity (a producer behavior change
-//! with its own tests). Until then, the emitted `add_hyperlane` pairs still lower correctly (the lowerer
-//! classifies them on the structural grid); only the producer's *which-pairs* heuristic is on stale coords.
+//! Producer-side **base-hyperlane adjacency heuristic over authored structural gridcell coordinates**
+//! (`PlacedSystemSeed.coord`; STEAD-PRIVILEGE-0 / STEAD-CONTRACT-0 / MAPGENCLI-TOPOLOGY-STEAD-0).
+//! Candidate pairs are chosen by Chebyshev proximity on the **authored `(col,row)` layout** the closed
+//! `mapgen_lattice` honors as authoritative — NOT lowered index-order / emission order. The emitted
+//! `add_hyperlane` pairs remain declarative endpoint pairs that lower through the closed structural grid
+//! path; there are no routes, predecessors, movement orders, or pathfinding semantics, and no Euclidean
+//! sqrt — adjacency is integer Chebyshev only.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -35,6 +36,9 @@ pub struct HyperlaneTopology {
 /// Bounded hyperlane generation options.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HyperlaneOptions {
+    /// **Deprecated for adjacency (MAPGENCLI-TOPOLOGY-STEAD-0).** Candidate positions now come from
+    /// authored `PlacedSystemSeed.coord`, not this lowered fixture edge. Retained for back-compat /
+    /// fail-closed validation only; it is **not** used to compute candidate coordinates.
     pub fixture_lattice_edge: u32,
     pub max_hyperlane_distance: u32,
     pub min_edge_count: u32,
@@ -183,8 +187,13 @@ pub fn generate_hyperlane_topology(
     validate_hyperlane_options(options)?;
 
     let ids: Vec<String> = placement.systems.iter().map(system_id_scalar).collect();
-    let positions: Vec<(u32, u32)> = (0..placement.systems.len())
-        .map(|index| lowered_grid_position(index, options.fixture_lattice_edge))
+    // STEAD: candidate adjacency is over AUTHORED structural gridcell coordinates — the `(col,row)`
+    // layout the closed lowerer honors (STEAD-PRIVILEGE-0) — never lowered index-order / emission order.
+    // Tuple is `(row, col)` to match `pair_candidates` internal naming; Chebyshev is order-symmetric.
+    let positions: Vec<(u32, u32)> = placement
+        .systems
+        .iter()
+        .map(|system| (system.coord.row, system.coord.col))
         .collect();
 
     let prevent: BTreeSet<(String, String)> = options

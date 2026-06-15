@@ -149,6 +149,13 @@ The CLI implements a **declarative-first procedural generator**. It never tries 
 - Accept an explicit list of (id, x, y, initializer) or a minimal static_galaxy_scenario fragment. Useful for hand-crafted maps or loading previous outputs.
 
 ### 4.3 Hyperlane Topology Rules (declarative, not runtime paths)
+> **STEAD (MAPGENCLI-TOPOLOGY-STEAD-0).** Base hyperlane adjacency is selected from **authored structural
+> gridcell coordinates** (`PlacedSystemSeed.coord`), **not** emission order or lowerer fixture placement.
+> Generated `add_hyperlane` pairs remain declarative endpoint pairs and lower through the closed structural
+> grid path. This is **producer-side topology only — no pathfinding service or runtime route semantics**, and
+> no Euclidean sqrt (adjacency is integer Chebyshev over the authored `(col,row)` layout). Enforced by
+> `crates/simthing-mapgenerator/tests/topology_stead.rs`.
+
 - Within each arm (or ring band): high local connectivity (dense short hyperlanes).
 - Between adjacent arms: sparser "bridge" hyperlanes at regular intervals (creates natural chokepoints).
 - Long-range "lane coupling" edges for strategic connectivity (these become the bounded long-range couplings the ladder describes on top of the geometric lattice).

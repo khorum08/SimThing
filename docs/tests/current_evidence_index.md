@@ -20,6 +20,7 @@
 | **Vast-scale layout / atlas deferral** | `simthing-clausething/tests/mapgen_vast_scale_layout.rs` | A ~1000-edge lattice lays out with honored positions; Movement-Front over a vast lattice **typed-defers** to the atlas without invalidating the layout. |
 | **STEAD spatial contract** | `simthing-clausething/tests/stead_spatial_contract_guards.rs` | Active source/docs (incl. producer `mapgenerator_emitter`/`topology`) never reassert withdrawn drift doctrine; budget admission exported; no fixed edge cap; positions honored; MF typed atlas deferral; PALMA structural/no-routes; **constitution §0 carries the §0.8 STEAD clause + `stead_spatial_contract.md` pointer forward**; index has no stale pending rows. |
 | **RF ⇄ STEAD binding** | `simthing-clausething/tests/mapgen_rf_stead_binding.rs` | RF/Accumulator arenas over gridcell Locations require structural placements + record the `StructuralGridFrame`; spatially-neutral arenas need no grid. |
+| **Producer topology STEAD** | `simthing-mapgenerator/tests/topology_stead.rs` | Base hyperlane adjacency is selected from **authored structural gridcell coordinates** (`PlacedSystemSeed.coord`), not emission order; authored-near connects, emission-near-but-authored-far does not; 1500-star spiral base hyperlanes are local with no self/duplicate/unknown-endpoint links. |
 | **Candidate F exact sqrt** | `simthing-driver/tests/phase_m_jit_sqrt_exact5f_exhaustive_sweep.rs` (+ artifact) | The **permanently enshrined** exact-magnitude chain for decision gates (constitution §0.7) — bit-exact Euclidean/sqrt ops route through Candidate F, never avoided. |
 
 ## Amendment / closeout provenance (PR # · merge SHA · status)
@@ -35,6 +36,7 @@
 | **STEAD-SCALE-1** — removed fixed structural edge cap; budget-based `admit_structural_grid`; typed atlas deferral; current-evidence index | #700 | `793d2633` / merge `3f0ece0a` | CURRENT_EVIDENCE |
 | **STEAD-CONTRACT-0** — executable STEAD spatial contract doc + guards; RF/Accumulator spatial binding over Locations; PALMA/Gu-Yang/MF structural-frame references; evidence-index repair | #701 | `a4977b1f` / merge `3e26bf58` | CURRENT_EVIDENCE — DA-APPROVED 2026-06-15 (owner sign-off; PROBATION cleared after 0R) |
 | **STEAD-CONTRACT-0R** — probation-hardening: transient-constitution **§0.8** STEAD carry-forward clause; guard proves §0 carries the clause + contract pointer; producer `emitter`/`topology` added to phrase scan | #703 | `8cb5bfe1` / merge `9d957fe8` | CURRENT_EVIDENCE — DA-APPROVED 2026-06-15 (owner sign-off) |
+| **MAPGENCLI-TOPOLOGY-STEAD-0** — producer base-hyperlane adjacency selects on authored structural coords (`PlacedSystemSeed.coord`), not lowered index-order; `topology_stead.rs` regressions; spiral-1500 PNG regenerated | (this PR) | (pending) | PROBATION (DA sign-off pending — `mapgenerator_cli_topology_stead_0_results.md`) |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
