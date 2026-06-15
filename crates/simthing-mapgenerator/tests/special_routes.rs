@@ -137,7 +137,23 @@ fn special_routes_respect_requested_gateway_count() {
 
 #[test]
 fn special_routes_fail_closed_when_count_impossible() {
-    let placement = grid_placement(2);
+    // STEAD: adjacency is now over AUTHORED coords. Special routes are long-range (non-N4) couplings, so
+    // the genuinely-impossible case is two N4-adjacent systems — their only pair is orthogonally adjacent
+    // and thus skipped, leaving zero candidates. (A diagonal pair would be a valid long-range candidate.)
+    let placement = ShapePlacement {
+        systems: vec![
+            PlacedSystemSeed {
+                id: 0,
+                coord: LatticeCoord { col: 0, row: 0 },
+                bucket: None,
+            },
+            PlacedSystemSeed {
+                id: 1,
+                coord: LatticeCoord { col: 1, row: 0 },
+                bucket: None,
+            },
+        ],
+    };
     let options = special_route_options(3, 1, 0);
     let mut rng = MapGenRng::from_seed(MapGenSeed::new(1));
     let err = generate_special_routes(&placement, &options, &[], &mut rng).unwrap_err();

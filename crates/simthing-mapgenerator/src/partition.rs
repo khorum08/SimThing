@@ -12,8 +12,7 @@ use crate::params::{MapGeneratorParams, PartitionMethod};
 use crate::rng::MapGenRng;
 use crate::strategy::ShapePlacement;
 use crate::topology::{
-    canonical_pair, lowered_grid_position, system_id_scalar, HyperlaneEdge,
-    DEFAULT_MAX_PER_NODE_FANOUT,
+    canonical_pair, system_id_scalar, HyperlaneEdge, DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 /// Producer-side partition kind (reporting only).
@@ -248,8 +247,12 @@ pub fn generate_partition_bridges(
         .collect();
 
     let ids: Vec<String> = placement.systems.iter().map(system_id_scalar).collect();
-    let positions: Vec<(u32, u32)> = (0..placement.systems.len())
-        .map(|index| lowered_grid_position(index, options.fixture_lattice_edge))
+    // STEAD (MAPGENCLI-TOPOLOGY-STEAD-1): partition-bridge adjacency is over AUTHORED structural gridcell
+    // coordinates, never lowered index-order / emission order.
+    let positions: Vec<(u32, u32)> = placement
+        .systems
+        .iter()
+        .map(|system| (system.coord.col, system.coord.row))
         .collect();
 
     let occupied: BTreeSet<(String, String)> = existing_edges
@@ -391,8 +394,12 @@ pub fn validate_bridge_edges(
 
 fn ordered_system_indices(placement: &ShapePlacement, options: &PartitionOptions) -> Vec<usize> {
     let count = placement.systems.len();
-    let positions: Vec<(u32, u32)> = (0..count)
-        .map(|index| lowered_grid_position(index, options.fixture_lattice_edge))
+    // STEAD (MAPGENCLI-TOPOLOGY-STEAD-1): BFS/DFS partition ordering walks adjacency over AUTHORED
+    // structural gridcell coordinates, never lowered index-order. (Still offline ordering, not a route.)
+    let positions: Vec<(u32, u32)> = placement
+        .systems
+        .iter()
+        .map(|system| (system.coord.col, system.coord.row))
         .collect();
 
     let mut adjacency = vec![Vec::new(); count];
