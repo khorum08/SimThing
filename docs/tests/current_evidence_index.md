@@ -33,7 +33,7 @@
 | **STEAD-PRIVILEGE-0** — gridcell positions are structural; lowerer honors emitted `(col,row)` | #698 | `b1dcd63b` | CURRENT_EVIDENCE (closed-lowerer amendment) |
 | **STEAD-SCALE-0** — layout/execution scale decoupled; Movement-Front bounded-theater + atlas deferral | #699 | `3162ca84` / merge `4ec32995` | CURRENT_EVIDENCE |
 | **STEAD-SCALE-1** — removed fixed structural edge cap; budget-based `admit_structural_grid`; typed atlas deferral; current-evidence index | #700 | `793d2633` / merge `3f0ece0a` | CURRENT_EVIDENCE |
-| **STEAD-CONTRACT-0** — executable STEAD spatial contract doc + guards; RF/Accumulator spatial binding over Locations; PALMA/Gu-Yang/MF structural-frame references; evidence-index repair | (this PR) | (pending DA approval) | PROBATION |
+| **STEAD-CONTRACT-0** — executable STEAD spatial contract doc + guards; RF/Accumulator spatial binding over Locations; PALMA/Gu-Yang/MF structural-frame references; evidence-index repair | #701 | `a4977b1f` / merge `3e26bf58` | PROBATION (merged; DA sign-off pending — `stead_contract_0_results.md`) |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
