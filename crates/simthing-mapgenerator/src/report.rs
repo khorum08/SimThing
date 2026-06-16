@@ -13,6 +13,21 @@ use crate::GalaxyGenerationResult;
 
 pub const REPORT_SCHEMA_VERSION: &str = "mapgenerator.report.v1";
 
+/// Topology target ratio below this fails map quality (`topology_target_ratio`).
+pub const TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD: f64 = 0.50;
+/// Connectivity bridge share above this warns (`connectivity_bridge_ratio`).
+pub const CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD: f64 = 0.25;
+/// Connectivity bridge share above this fails map quality.
+pub const CONNECTIVITY_BRIDGE_RATIO_FAIL_THRESHOLD: f64 = 0.50;
+/// Average degree below this warns on dense preview maps (`star_count` or target ≥ 1000).
+pub const DENSE_PREVIEW_AVG_DEGREE_WARN_THRESHOLD: f64 = 2.5;
+/// Longest connectivity-bridge Chebyshev span above this warns (documented producer threshold).
+pub const LONGEST_BRIDGE_CHEBYSHEV_WARN_THRESHOLD: u32 = 32;
+
+pub const MAP_QUALITY_PASS: &str = "PASS";
+pub const MAP_QUALITY_WARN: &str = "WARN";
+pub const MAP_QUALITY_FAIL: &str = "FAIL";
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct GenerationReport {
     pub schema_version: &'static str,
@@ -57,12 +72,17 @@ pub struct BoundingBox {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct OutputSection {
     pub system_count: u32,
+    /// Total base hyperlane edges after connectivity repair (topology + connectivity bridges).
     pub base_hyperlane_count: u32,
-    pub topology_hyperlane_count: u32,
+    /// Pre-connectivity bounded topology edges (local adjacency heuristic only).
+    #[serde(alias = "topology_hyperlane_count")]
+    pub actual_topology_hyperlanes: u32,
     pub special_route_count: u32,
     pub partition_bridge_count: u32,
     pub cluster_bridge_count: u32,
-    pub bridge_count: u32,
+    /// Connectivity-repair bridges only (not partition/cluster/special routes).
+    #[serde(alias = "bridge_count")]
+    pub connectivity_bridge_count: u32,
     pub component_count: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub components_before: Option<u32>,
@@ -75,6 +95,18 @@ pub struct OutputSection {
     pub bounding_box: BoundingBox,
     pub occupied_cell_count: u32,
     pub duplicate_cell_count: u32,
+    /// Requested `--num-hyperlanes` / `num_hyperlanes_default` (before clamp).
+    pub requested_target_hyperlanes: u32,
+    /// Same as `base_hyperlane_count` (explicit alias for editor consumption).
+    pub actual_base_hyperlanes: u32,
+    /// Effective topology target after clamping to `[num_hyperlanes_min, num_hyperlanes_max]`.
+    pub effective_target_hyperlanes: u32,
+    pub topology_target_satisfied: bool,
+    pub topology_target_deficit: u32,
+    pub topology_target_ratio: f64,
+    pub connectivity_bridge_ratio: f64,
+    pub map_quality_status: &'static str,
+    pub map_quality_warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -136,15 +168,52 @@ pub fn build_generation_report(
         .connectivity
         .map(|report| report.bridges_added)
         .unwrap_or(0);
-    let topology_hyperlane_count = result
-        .base_hyperlane_edges
-        .len()
-        .saturating_sub(connectivity_bridge_count as usize)
-        as u32;
+    let actual_topology_hyperlanes = result.pre_connectivity_topology_count;
+    let actual_base_hyperlanes = result.base_hyperlane_edges.len() as u32;
+    let requested_target_hyperlanes = params.hyperlane.num_hyperlanes_default;
+    let effective_target_hyperlanes = if result.effective_target_hyperlanes > 0 {
+        result.effective_target_hyperlanes
+    } else {
+        requested_target_hyperlanes.clamp(
+            params.hyperlane.num_hyperlanes_min,
+            params.hyperlane.num_hyperlanes_max,
+        )
+    };
     let component_count = result
         .connectivity
         .map(|c| c.components_after)
         .unwrap_or_else(|| count_components(&result.placement, &result.base_hyperlane_edges));
+
+    let topology_target_deficit =
+        requested_target_hyperlanes.saturating_sub(actual_topology_hyperlanes);
+    let topology_target_ratio = if requested_target_hyperlanes == 0 {
+        1.0
+    } else {
+        (actual_topology_hyperlanes as f64) / (requested_target_hyperlanes as f64)
+    };
+    let topology_target_ratio = round_ratio(topology_target_ratio);
+    let topology_target_satisfied = actual_topology_hyperlanes >= effective_target_hyperlanes;
+    let connectivity_bridge_ratio = if actual_base_hyperlanes == 0 {
+        0.0
+    } else {
+        round_ratio(connectivity_bridge_count as f64 / actual_base_hyperlanes as f64)
+    };
+
+    let quality = evaluate_map_quality(MapQualityInput {
+        requested_star_count: params.scale_core.num_stars,
+        system_count: result.placement.systems.len() as u32,
+        duplicate_cell_count: placement_stats.duplicate_cell_count,
+        ensure_connected: params.hyperlane.ensure_connected,
+        component_count,
+        isolated_system_count: degree_stats.isolated,
+        requested_target_hyperlanes,
+        effective_target_hyperlanes,
+        actual_topology_hyperlanes,
+        topology_target_ratio,
+        connectivity_bridge_ratio,
+        average_degree: degree_stats.average,
+        longest_bridge_chebyshev: result.connectivity.map(|c| c.max_bridge_chebyshev),
+    });
 
     GenerationReport {
         schema_version: REPORT_SCHEMA_VERSION,
@@ -159,19 +228,19 @@ pub fn build_generation_report(
             star_count: params.scale_core.num_stars,
             lattice_width: edge,
             lattice_height: edge,
-            target_hyperlanes: params.hyperlane.num_hyperlanes_default,
+            target_hyperlanes: requested_target_hyperlanes,
             ensure_connected: params.hyperlane.ensure_connected,
             allow_disconnected: !params.hyperlane.ensure_connected,
             shape_params: params.shape.shape_params.clone(),
         },
         output: OutputSection {
             system_count: result.placement.systems.len() as u32,
-            base_hyperlane_count: result.base_hyperlane_edges.len() as u32,
-            topology_hyperlane_count,
+            base_hyperlane_count: actual_base_hyperlanes,
+            actual_topology_hyperlanes,
             special_route_count: coupling_counts.special_route,
             partition_bridge_count: coupling_counts.partition_bridge,
             cluster_bridge_count: coupling_counts.cluster_bridge,
-            bridge_count: connectivity_bridge_count,
+            connectivity_bridge_count,
             component_count,
             components_before: result.connectivity.map(|c| c.components_before),
             isolated_system_count: degree_stats.isolated,
@@ -182,6 +251,15 @@ pub fn build_generation_report(
             bounding_box: placement_stats.bounding_box,
             occupied_cell_count: placement_stats.occupied_cell_count,
             duplicate_cell_count: placement_stats.duplicate_cell_count,
+            requested_target_hyperlanes,
+            actual_base_hyperlanes,
+            effective_target_hyperlanes,
+            topology_target_satisfied,
+            topology_target_deficit,
+            topology_target_ratio,
+            connectivity_bridge_ratio,
+            map_quality_status: quality.status,
+            map_quality_warnings: quality.warnings,
         },
         artifacts: ArtifactsSection {
             scenario_path: path_to_report_string(artifacts.scenario_path),
@@ -242,6 +320,117 @@ struct CouplingCounts {
     special_route: u32,
     partition_bridge: u32,
     cluster_bridge: u32,
+}
+
+struct MapQualityInput {
+    requested_star_count: u32,
+    system_count: u32,
+    duplicate_cell_count: u32,
+    ensure_connected: bool,
+    component_count: u32,
+    isolated_system_count: u32,
+    requested_target_hyperlanes: u32,
+    effective_target_hyperlanes: u32,
+    actual_topology_hyperlanes: u32,
+    topology_target_ratio: f64,
+    connectivity_bridge_ratio: f64,
+    average_degree: f64,
+    longest_bridge_chebyshev: Option<u32>,
+}
+
+struct MapQualityEvaluation {
+    status: &'static str,
+    warnings: Vec<String>,
+}
+
+fn round_ratio(value: f64) -> f64 {
+    (value * 10_000.0).round() / 10_000.0
+}
+
+fn evaluate_map_quality(input: MapQualityInput) -> MapQualityEvaluation {
+    let mut fails = Vec::new();
+    let mut warns = Vec::new();
+
+    if input.system_count != input.requested_star_count {
+        fails.push(format!(
+            "system_count {0} != requested star_count {1}",
+            input.system_count, input.requested_star_count
+        ));
+    }
+    if input.duplicate_cell_count > 0 {
+        fails.push(format!(
+            "duplicate_cell_count {} > 0",
+            input.duplicate_cell_count
+        ));
+    }
+    if input.ensure_connected && input.component_count != 1 {
+        fails.push(format!(
+            "component_count {} != 1 with ensure_connected",
+            input.component_count
+        ));
+    }
+    if input.ensure_connected && input.isolated_system_count > 0 {
+        fails.push(format!(
+            "isolated_system_count {} > 0 with ensure_connected",
+            input.isolated_system_count
+        ));
+    }
+    if input.requested_target_hyperlanes > input.effective_target_hyperlanes {
+        warns.push(format!(
+            "topology target clamped from {} to {} by num_hyperlanes_max/min",
+            input.requested_target_hyperlanes, input.effective_target_hyperlanes
+        ));
+    }
+    if input.topology_target_ratio < TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD {
+        fails.push(format!(
+            "topology_target_ratio {0:.4} < {1} (actual_topology_hyperlanes={2}, requested_target_hyperlanes={3})",
+            input.topology_target_ratio,
+            TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD,
+            input.actual_topology_hyperlanes,
+            input.requested_target_hyperlanes
+        ));
+    }
+    if input.connectivity_bridge_ratio > CONNECTIVITY_BRIDGE_RATIO_FAIL_THRESHOLD {
+        fails.push(format!(
+            "connectivity_bridge_ratio {0:.4} > {1}",
+            input.connectivity_bridge_ratio, CONNECTIVITY_BRIDGE_RATIO_FAIL_THRESHOLD
+        ));
+    } else if input.connectivity_bridge_ratio > CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD {
+        warns.push(format!(
+            "connectivity_bridge_ratio {0:.4} > {1}",
+            input.connectivity_bridge_ratio, CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD
+        ));
+    }
+    let dense_preview =
+        input.requested_star_count >= 1000 || input.requested_target_hyperlanes >= 1000;
+    if dense_preview && input.average_degree < DENSE_PREVIEW_AVG_DEGREE_WARN_THRESHOLD {
+        warns.push(format!(
+            "average_degree {0:.2} < {1} for dense preview map",
+            input.average_degree, DENSE_PREVIEW_AVG_DEGREE_WARN_THRESHOLD
+        ));
+    }
+    if let Some(longest) = input.longest_bridge_chebyshev {
+        if longest > LONGEST_BRIDGE_CHEBYSHEV_WARN_THRESHOLD {
+            warns.push(format!(
+                "longest_bridge_chebyshev {longest} > {LONGEST_BRIDGE_CHEBYSHEV_WARN_THRESHOLD}"
+            ));
+        }
+    }
+
+    let status = if !fails.is_empty() {
+        MAP_QUALITY_FAIL
+    } else if !warns.is_empty() {
+        MAP_QUALITY_WARN
+    } else {
+        MAP_QUALITY_PASS
+    };
+    let mut warnings = fails;
+    warnings.extend(warns);
+    MapQualityEvaluation { status, warnings }
+}
+
+pub fn map_quality_is_acceptable_for_editor(report: &GenerationReport) -> bool {
+    report.output.map_quality_status == MAP_QUALITY_PASS
 }
 
 fn path_to_report_string(path: Option<&Path>) -> Option<String> {

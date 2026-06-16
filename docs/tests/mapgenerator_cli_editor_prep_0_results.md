@@ -102,5 +102,6 @@ All `simthing-mapgenerator` tests (including `editor_prep.rs` ×16). STEAD spati
 ## Known caveats
 
 - `ShapeParamSpec` numeric bounds are minimal (not exhaustive per-shape tuning docs); richer `--help` listing deferred.
-- `topology_hyperlane_count` is derived as `base_hyperlane_count - bridge_count` when connectivity ran.
+- ~~`topology_hyperlane_count` is derived as `base_hyperlane_count - bridge_count` when connectivity ran.~~ **Superseded by 0R:** see `mapgenerator_cli_editor_prep_0r_results.md` for explicit topology vs connectivity fields and quality gates.
 - Sample JSON/PNG paths use `_editor_prep` suffix to avoid conflicting with DA-approved dense spiral artifacts.
+- **Sample stats superseded in-place by MAPGENCLI-EDITOR-PREP-0R** (healthy topology; bad 3-edge / 2996-bridge class now FAILs quality gates).

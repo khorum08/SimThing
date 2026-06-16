@@ -1,4 +1,4 @@
-//! MAPGENCLI-EDITOR-PREP-0 — fail-closed shape params + JSON generation report.
+//! MAPGENCLI-EDITOR-PREP-0 / 0R — fail-closed shape params + JSON generation report + quality gates.
 
 use std::collections::BTreeMap;
 
@@ -7,7 +7,9 @@ use simthing_mapgenerator::{
     normalized_report_json, parse_shape_param_assignment, structure_options_from_params,
     validate_shape_params_for_params, write_generation_report_json, GenerationReport,
     MapGeneratorParams, ReportArtifacts, ScenarioEmitter, ScenarioEmitterConfig,
-    ShapeParamParseError, ShapeRegistry, ValidationError, REPORT_SCHEMA_VERSION,
+    ShapeParamParseError, ShapeRegistry, ValidationError, CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD,
+    MAP_QUALITY_FAIL, MAP_QUALITY_PASS, REPORT_SCHEMA_VERSION,
+    TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD,
 };
 
 fn registry() -> ShapeRegistry {
@@ -62,8 +64,7 @@ fn shape_param_rejects_non_numeric_value() {
 
 #[test]
 fn shape_param_rejects_unknown_param() {
-    let mut params =
-        spiral_2_params_with_shape_params(BTreeMap::from([("unknown_param".into(), 1.0)]));
+    let params = spiral_2_params_with_shape_params(BTreeMap::from([("unknown_param".into(), 1.0)]));
     let err = validate_shape_params_for_params(&params, &registry()).unwrap_err();
     assert!(matches!(err, ValidationError::UnknownShapeParam { .. }));
     assert!(err.to_string().contains("unknown_param"));
@@ -88,18 +89,52 @@ fn shape_param_rejects_duplicate_equals_in_value() {
     assert!(matches!(err, ShapeParamParseError::InvalidFormat { .. }));
 }
 
+#[test]
+fn shape_param_rejects_nan() {
+    let err = parse_shape_param_assignment("arm_width=NaN").unwrap_err();
+    assert!(matches!(err, ShapeParamParseError::NonNumeric { .. }));
+}
+
+#[test]
+fn shape_param_rejects_inf() {
+    let err = parse_shape_param_assignment("jitter=inf").unwrap_err();
+    assert!(matches!(err, ShapeParamParseError::NonNumeric { .. }));
+}
+
+#[test]
+fn coordinate_transform_is_not_accepted_as_numeric_label_param() {
+    let mut params = MapGeneratorParams::default();
+    params.shape.shape = "static".into();
+    params
+        .shape
+        .shape_params
+        .insert("coordinate_transform".into(), 1.0);
+    let err = validate_shape_params_for_params(&params, &registry()).unwrap_err();
+    assert!(matches!(err, ValidationError::NonNumericShapeParam { .. }));
+}
+
 fn generate_small_spiral_report(
     seed: u64,
     shape_params: BTreeMap<String, f64>,
+) -> GenerationReport {
+    generate_spiral_report_with_hyperlane_settings(seed, shape_params, 40, 80, 4.0)
+}
+
+fn generate_spiral_report_with_hyperlane_settings(
+    seed: u64,
+    shape_params: BTreeMap<String, f64>,
+    target: u32,
+    max: u32,
+    max_distance: f64,
 ) -> GenerationReport {
     let mut params = MapGeneratorParams::default();
     params.shape.shape = "spiral_2".into();
     params.scale_core.num_stars = 80;
     params.scale_core.lattice_size = Some(64);
     params.seed = seed;
-    params.hyperlane.num_hyperlanes_default = 40;
-    params.hyperlane.num_hyperlanes_max = 80;
-    params.hyperlane.max_hyperlane_distance = 4.0;
+    params.hyperlane.num_hyperlanes_default = target;
+    params.hyperlane.num_hyperlanes_max = max;
+    params.hyperlane.max_hyperlane_distance = max_distance;
     params.hyperlane.ensure_connected = true;
     params.shape.shape_params = shape_params;
     params
@@ -118,6 +153,71 @@ fn generate_small_spiral_report(
         Some(cluster),
     )
     .expect("generation");
+    build_generation_report(&params, &result, ReportArtifacts::new())
+}
+
+fn editor_prep_dense_spiral_params() -> MapGeneratorParams {
+    let mut params = MapGeneratorParams::default();
+    params.shape.shape = "spiral_2".into();
+    params.scale_core.num_stars = 3000;
+    params.scale_core.lattice_size = Some(300);
+    params.seed = 42;
+    params.hyperlane.num_hyperlanes_default = 6000;
+    params.hyperlane.num_hyperlanes_max = 6000;
+    params.hyperlane.num_hyperlanes_min = 1;
+    params.hyperlane.max_hyperlane_distance = 8.0;
+    params.hyperlane.ensure_connected = true;
+    params.shape.shape_params = BTreeMap::from([
+        ("arm_width".into(), 14.0),
+        ("arm_tightness".into(), 0.6),
+        ("jitter".into(), 2.0),
+    ]);
+    params.clustering.cluster_count = Some(4);
+    params.clustering.cluster_radius = 500.0;
+    params.partitioning.home_system_partitions = 0;
+    params.partitioning.open_space_partitions = 0;
+    params
+}
+
+fn generate_editor_prep_dense_report() -> GenerationReport {
+    let params = editor_prep_dense_spiral_params();
+    params.validate(&registry()).expect("dense params valid");
+    let (hyperlane, special, _partition, cluster) =
+        structure_options_from_params(&params).expect("structure options");
+    let result = generate_galaxy_with_structure(
+        &params,
+        &registry(),
+        None,
+        &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
+        Some(hyperlane),
+        Some(special),
+        None,
+        Some(cluster),
+    )
+    .expect("dense generation");
+    build_generation_report(&params, &result, ReportArtifacts::new())
+}
+
+fn bad_editor_prep_class_report() -> GenerationReport {
+    let mut params = editor_prep_dense_spiral_params();
+    // Reproduce #723 sample failure mode: target 6000 but max still 3 → 3 topology edges.
+    params.hyperlane.num_hyperlanes_max = 3;
+    params
+        .validate(&registry())
+        .expect("bad-class params valid");
+    let (hyperlane, special, _partition, cluster) =
+        structure_options_from_params(&params).expect("structure options");
+    let result = generate_galaxy_with_structure(
+        &params,
+        &registry(),
+        None,
+        &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
+        Some(hyperlane),
+        Some(special),
+        None,
+        Some(cluster),
+    )
+    .expect("bad-class generation");
     build_generation_report(&params, &result, ReportArtifacts::new())
 }
 
@@ -206,4 +306,73 @@ fn report_json_changes_when_seed_changes_where_expected() {
     let second =
         normalized_report_json(&generate_small_spiral_report(2, BTreeMap::new())).expect("json");
     assert_ne!(first, second);
+}
+
+#[test]
+fn report_json_distinguishes_topology_edges_from_connectivity_bridges() {
+    let report = generate_small_spiral_report(42, BTreeMap::new());
+    assert!(
+        report.output.actual_topology_hyperlanes <= report.output.actual_base_hyperlanes,
+        "topology edges must not exceed post-connectivity base count"
+    );
+    assert_eq!(
+        report.output.actual_base_hyperlanes,
+        report.output.actual_topology_hyperlanes + report.output.connectivity_bridge_count
+    );
+}
+
+#[test]
+fn report_json_flags_topology_target_deficit() {
+    let report = bad_editor_prep_class_report();
+    assert_eq!(report.output.requested_target_hyperlanes, 6000);
+    assert!(
+        report.output.actual_topology_hyperlanes < 3000,
+        "bad class should have far fewer topology edges than requested"
+    );
+    assert!(report.output.topology_target_deficit > 0);
+    assert!(report.output.topology_target_ratio < TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD);
+    assert_eq!(report.output.map_quality_status, MAP_QUALITY_FAIL);
+}
+
+#[test]
+fn report_json_flags_high_connectivity_bridge_ratio() {
+    let report = bad_editor_prep_class_report();
+    assert!(report.output.connectivity_bridge_ratio > CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD);
+    assert_eq!(report.output.map_quality_status, MAP_QUALITY_FAIL);
+}
+
+#[test]
+fn report_json_flags_low_average_degree_for_dense_preview() {
+    let report = bad_editor_prep_class_report();
+    assert!(report.output.average_degree < 2.5);
+    assert!(report
+        .output
+        .map_quality_warnings
+        .iter()
+        .any(|w| w.contains("average_degree")));
+}
+
+#[test]
+fn report_json_quality_passes_for_healthy_dense_spiral_sample() {
+    let report = generate_editor_prep_dense_report();
+    assert_eq!(report.output.component_count, 1);
+    assert_eq!(report.output.isolated_system_count, 0);
+    assert!(
+        report.output.actual_topology_hyperlanes * 2 >= report.output.requested_target_hyperlanes,
+        "topology should reach at least half of requested target (actual={})",
+        report.output.actual_topology_hyperlanes
+    );
+    assert!(report.output.connectivity_bridge_ratio <= 0.25);
+    assert!(report.output.average_degree >= 2.5);
+    assert_eq!(report.output.map_quality_status, MAP_QUALITY_PASS);
+}
+
+#[test]
+fn editor_prep_sample_does_not_have_three_topology_edges() {
+    let report = generate_editor_prep_dense_report();
+    assert!(
+        report.output.actual_topology_hyperlanes > 100,
+        "healthy editor-prep sample must not collapse to a handful of topology edges (got {})",
+        report.output.actual_topology_hyperlanes
+    );
 }

@@ -8,7 +8,7 @@ use simthing_mapgenerator::{
     ArbitraryHyperlaneSourceMode, GalaxyPreviewOptions, GenerationMode, HyperlanePreviewFilter,
     MapGeneratorParams, OutputFormat, PartitionMethod, ReportArtifacts, ScenarioEmitter,
     ScenarioEmitterConfig, ShapeRegistry, ValidationError, DEFAULT_HYPERLANE_RGBA,
-    GALAXY_PREVIEW_PNG_SIZE,
+    GALAXY_PREVIEW_PNG_SIZE, MAP_QUALITY_FAIL, MAP_QUALITY_PASS, MAP_QUALITY_WARN,
 };
 
 #[derive(Debug, Parser)]
@@ -150,6 +150,10 @@ struct Cli {
     /// Write a deterministic machine-readable generation report (JSON).
     #[arg(long)]
     report_json: Option<PathBuf>,
+
+    /// Exit with failure when the generation report map quality is WARN or FAIL.
+    #[arg(long)]
+    fail_on_quality_warn: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -344,6 +348,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let report = build_generation_report(&params, &generation, artifacts);
         write_generation_report_json(&report, path)?;
         println!("wrote generation report -> {}", path.display());
+        if report.output.map_quality_status == MAP_QUALITY_WARN {
+            eprintln!(
+                "map quality: WARN — {}",
+                report.output.map_quality_warnings.join("; ")
+            );
+        } else if report.output.map_quality_status == MAP_QUALITY_FAIL {
+            eprintln!(
+                "map quality: FAIL — {}",
+                report.output.map_quality_warnings.join("; ")
+            );
+        }
+        if cli.fail_on_quality_warn && report.output.map_quality_status != MAP_QUALITY_PASS {
+            return Err(format!(
+                "generation report map quality is {} (see --report-json)",
+                report.output.map_quality_status
+            )
+            .into());
+        }
     }
 
     Ok(())
@@ -405,6 +427,9 @@ fn apply_cli_overrides(
     }
     if let Some(v) = cli.num_hyperlanes_target {
         params.hyperlane.num_hyperlanes_default = v;
+        if params.hyperlane.num_hyperlanes_max < v {
+            params.hyperlane.num_hyperlanes_max = v;
+        }
     }
     if let Some(v) = cli.random_hyperlanes {
         params.hyperlane.random_hyperlanes = v;

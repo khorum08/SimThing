@@ -88,7 +88,7 @@ pub fn shape_param_specs(shape: &str) -> &'static [ShapeParamSpec] {
         "ring" => &RING_SPECS,
         "bar" => &BAR_SPECS,
         "starburst" | "cartwheel" | "spoked" => &SPOKE_SPECS,
-        "static" | "arbitrary_static" => &STATIC_SPECS,
+        "static" | "arbitrary_static" => &[],
         _ => &[],
     }
 }
@@ -96,6 +96,9 @@ pub fn shape_param_specs(shape: &str) -> &'static [ShapeParamSpec] {
 pub fn spec_for_key(shape: &str, key: &str) -> Option<&'static ShapeParamSpec> {
     shape_param_specs(shape).iter().find(|spec| spec.key == key)
 }
+
+/// Keys declared in the shape registry but not accepted as numeric `--shape-param` assignments.
+const NON_NUMERIC_SHAPE_PARAM_KEYS: &[&str] = &["coordinate_transform"];
 
 /// Validate shape params against registry + numeric bounds.
 pub fn validate_shape_params(
@@ -110,6 +113,9 @@ pub fn validate_shape_params(
             registered: registry.registered_names_sorted().join(", "),
         })?;
     for (key, value) in shape_params {
+        if NON_NUMERIC_SHAPE_PARAM_KEYS.contains(&key.as_str()) {
+            return Err(ValidationError::NonNumericShapeParam { key: key.clone() });
+        }
         if !descriptor.allows_key(key) {
             if key_declared_for_other_shape(shape, key) {
                 return Err(ValidationError::ShapeParamNotValidForShape {
@@ -345,15 +351,6 @@ const SPOKE_SPECS: [ShapeParamSpec; 4] = [
         description: "Ring band center radius (cartwheel)",
     },
 ];
-
-const STATIC_SPECS: [ShapeParamSpec; 1] = [ShapeParamSpec {
-    key: "coordinate_transform",
-    required: false,
-    min: None,
-    max: None,
-    default: None,
-    description: "Optional coordinate transform label",
-}];
 
 fn key_declared_for_other_shape(current: &str, key: &str) -> bool {
     [
