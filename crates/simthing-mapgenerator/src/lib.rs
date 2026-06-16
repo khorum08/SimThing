@@ -25,7 +25,9 @@ pub mod pair_candidates;
 pub mod params;
 pub mod partition;
 pub mod preview_png;
+pub mod report;
 pub mod rng;
+pub mod shape_param_spec;
 pub mod shape_registry;
 pub mod special_routes;
 pub mod strategies;
@@ -75,7 +77,16 @@ pub use preview_png::{
     star_render_radius, write_galaxy_preview_png, GalaxyPreviewOptions, GalaxyPreviewScene,
     HyperlanePreviewFilter, PreviewPngError, DEFAULT_HYPERLANE_RGBA, GALAXY_PREVIEW_PNG_SIZE,
 };
+pub use report::{
+    build_generation_report, generation_report_to_json, normalized_report_json,
+    write_generation_report_json, GenerationReport, ReportArtifacts, ReportError,
+    REPORT_SCHEMA_VERSION,
+};
 pub use rng::{MapGenRng, MapGenSeed};
+pub use shape_param_spec::{
+    apply_cli_shape_params, parse_shape_param_assignment, shape_param_specs, spec_for_key,
+    validate_shape_params, validate_shape_params_for_params, ShapeParamParseError, ShapeParamSpec,
+};
 pub use shape_registry::{
     RegisteredShapeName, RegistryResolveError, ShapeParameterDescriptor, ShapeRegistry,
     ShapeStrategyDescriptor,

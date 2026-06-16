@@ -410,3 +410,37 @@ If you decide to halt (or partially pause) the cleanup PR for the mapgen-specifi
 (References for this determination: full ingestion of `design_0_0_8_2_5_mapgen_ladder.md` §3 M10 + §6 PR handoffs + artifact audits, `clausething/mapgen_corpus_manifest.md`, `tests/mapgen_pr1_corpus_manifest_results.md`, `tests/mapgen_pr10_end_to_end_results.md`, and cross-checks against the 0.0.8.2 closeout ladder and current tests/ listing as of 2026-06-13.)
 
 (End of reference document — track closeout: §11.)
+
+---
+
+## Editor-facing producer contract (MAPGENCLI-EDITOR-PREP-0)
+
+Future Bevy/editor frontends should **not scrape stdout**. They should invoke `mapgen` (or the
+`simthing-mapgenerator` library) and consume the deterministic JSON report from `--report-json`.
+
+**Shape params fail closed:**
+- Each `--shape-param KEY=VALUE` must parse as a numeric assignment; malformed tokens error immediately.
+- Unknown keys error (`Unknown shape param 'foo' for shape spiral_2`).
+- Keys valid on other shapes but not the selected shape error (`Shape param 'arm_width' is not valid for shape elliptical`).
+- Numeric bounds are enforced via `ShapeParamSpec` (`shape_param_spec.rs`).
+
+**Structural vs render:**
+- Emitted `(col,row)` remain authoritative structural gridcell coordinates (STEAD contract).
+- PNG jitter/glow/colour are presentation-only and must not feed topology or lowering.
+
+**Machine-readable report (`mapgenerator.report.v1`):**
+```bash
+cargo run -p simthing-mapgenerator --bin mapgen -- \
+  --shape spiral_2 --stars 3000 --lattice-edge 300 --seed 42 \
+  --num-hyperlanes 6000 \
+  --shape-param arm_width=14 --shape-param arm_tightness=0.6 --shape-param jitter=2 \
+  --no-partitions --cluster-count 4 --cluster-radius 500 --hyperlanes base --hyperlane-color blue --draw-core \
+  --png-size 3000 \
+  --render-png docs/tests/mapgenerator_cli_spiral2_dense_3000_editor_prep.png \
+  --report-json docs/tests/mapgenerator_cli_spiral2_dense_3000_editor_prep.report.json
+```
+Connectivity is **ON by default** (`ensure_connected`); use `--allow-disconnected` to opt out.
+
+Report fields include request/options, topology counts, connectivity/degree stats, artifact paths, and
+constitution flags. See `crates/simthing-mapgenerator/tests/editor_prep.rs` and
+`docs/tests/mapgenerator_cli_editor_prep_0_results.md`.

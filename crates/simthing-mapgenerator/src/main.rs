@@ -2,11 +2,13 @@ use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use simthing_mapgenerator::{
-    generate_galaxy_with_structure, generate_success_galaxy_with_preview,
-    structure_options_from_params, success_galaxy_1000_params, visual_spiral_1500_params,
+    apply_cli_shape_params, build_generation_report, generate_galaxy_with_structure,
+    generate_success_galaxy_with_preview, structure_options_from_params,
+    success_galaxy_1000_params, visual_spiral_1500_params, write_generation_report_json,
     ArbitraryHyperlaneSourceMode, GalaxyPreviewOptions, GenerationMode, HyperlanePreviewFilter,
-    MapGeneratorParams, OutputFormat, PartitionMethod, ScenarioEmitter, ScenarioEmitterConfig,
-    ShapeRegistry, ValidationError, DEFAULT_HYPERLANE_RGBA, GALAXY_PREVIEW_PNG_SIZE,
+    MapGeneratorParams, OutputFormat, PartitionMethod, ReportArtifacts, ScenarioEmitter,
+    ScenarioEmitterConfig, ShapeRegistry, ValidationError, DEFAULT_HYPERLANE_RGBA,
+    GALAXY_PREVIEW_PNG_SIZE,
 };
 
 #[derive(Debug, Parser)]
@@ -144,6 +146,10 @@ struct Cli {
     /// Validate and print parameter summary without generation or emission.
     #[arg(long)]
     dry_run: bool,
+
+    /// Write a deterministic machine-readable generation report (JSON).
+    #[arg(long)]
+    report_json: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -207,7 +213,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         MapGeneratorParams::default()
     };
 
-    apply_cli_overrides(&mut params, &cli);
+    apply_cli_overrides(&mut params, &cli)?;
 
     params
         .validate(&registry)
@@ -322,19 +328,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    if scenario_path.is_none() && preview_path.is_none() {
+    if scenario_path.is_none() && preview_path.is_none() && cli.report_json.is_none() {
         println!(
-            "generated {} systems; pass --output and/or --preview-png to write artifacts",
+            "generated {} systems; pass --output, --preview-png, and/or --report-json to write artifacts",
             generation.placement.systems.len()
         );
+    }
+
+    let mut artifacts = ReportArtifacts::new();
+    artifacts.scenario_path = scenario_path.as_deref();
+    artifacts.png_path = preview_path.as_deref();
+    artifacts.report_path = cli.report_json.as_deref();
+
+    if let Some(ref path) = cli.report_json {
+        let report = build_generation_report(&params, &generation, artifacts);
+        write_generation_report_json(&report, path)?;
+        println!("wrote generation report -> {}", path.display());
     }
 
     Ok(())
 }
 
-fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
+fn apply_cli_overrides(
+    params: &mut MapGeneratorParams,
+    cli: &Cli,
+) -> Result<(), Box<dyn std::error::Error>> {
     if cli.success_galaxy {
-        return;
+        return Ok(());
     }
     params.mode = match cli.mode {
         CliMode::Procedural => GenerationMode::Procedural,
@@ -351,13 +371,7 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
     if let Some(shape) = &cli.shape {
         params.shape.shape = shape.clone();
     }
-    for kv in &cli.shape_params {
-        if let Some((key, value)) = kv.split_once('=') {
-            if let Ok(v) = value.trim().parse::<f64>() {
-                params.shape.shape_params.insert(key.trim().to_string(), v);
-            }
-        }
-    }
+    apply_cli_shape_params(&mut params.shape, &cli.shape_params).map_err(|err| err.to_string())?;
     if let Some(v) = cli.num_stars {
         params.scale_core.num_stars = v;
     }
@@ -427,6 +441,7 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
     if let Some(path) = &cli.preview_png {
         params.output.output = Some(path.clone());
     }
+    Ok(())
 }
 
 fn format_validation(err: ValidationError) -> String {

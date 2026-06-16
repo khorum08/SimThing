@@ -1,0 +1,59 @@
+{
+  "schema_version": "mapgenerator.report.v1",
+  "generator": {
+    "crate": "simthing-mapgenerator",
+    "crate_version": "0.1.0",
+    "track": "MapGeneratorCLI",
+    "seed": 42
+  },
+  "request": {
+    "shape": "spiral_2",
+    "star_count": 3000,
+    "lattice_width": 300,
+    "lattice_height": 300,
+    "target_hyperlanes": 6000,
+    "ensure_connected": true,
+    "allow_disconnected": false,
+    "shape_params": {
+      "arm_tightness": 0.6,
+      "arm_width": 14.0,
+      "jitter": 2.0
+    }
+  },
+  "output": {
+    "system_count": 3000,
+    "base_hyperlane_count": 2999,
+    "topology_hyperlane_count": 3,
+    "special_route_count": 0,
+    "partition_bridge_count": 0,
+    "cluster_bridge_count": 1,
+    "bridge_count": 2996,
+    "component_count": 1,
+    "components_before": 2997,
+    "isolated_system_count": 0,
+    "min_degree": 1,
+    "max_degree": 6,
+    "average_degree": 2.0,
+    "longest_bridge_chebyshev": 29,
+    "bounding_box": {
+      "min_col": 20,
+      "max_col": 280,
+      "min_row": 31,
+      "max_row": 270
+    },
+    "occupied_cell_count": 3000,
+    "duplicate_cell_count": 0
+  },
+  "artifacts": {
+    "scenario_path": null,
+    "png_path": "docs/tests/mapgenerator_cli_spiral2_dense_3000_editor_prep.png",
+    "report_path": "docs/tests/mapgenerator_cli_spiral2_dense_3000_editor_prep.report.json"
+  },
+  "constitution": {
+    "structural_coordinates": "authored_gridcell",
+    "render_coordinates_authoritative": false,
+    "uses_native_sqrt_authority": false,
+    "uses_pathfinding_semantics": false,
+    "uses_runtime_simulation": false
+  }
+}
