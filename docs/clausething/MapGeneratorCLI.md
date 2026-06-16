@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r5_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r6_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -589,3 +589,20 @@ still carried too much haze at overview distance:
 - Hyperlane camera-depth fading and shape-param scoping remain unchanged.
 - Structural gridcell coordinates remain authoritative. The tuning changes only editor presentation metadata;
   no runtime simulation, MapGenerator topology, pathfinding, ClauseThing lowering, or save/load behavior changes.
+
+### PR2R6 aura cap and mid-to-horizon falloff refinement (2026-06-16)
+
+PR2R6 applies one more narrow render-only tuning pass after owner feedback that the R5 result was much
+better, but the largest near-camera aura was still too broad and mid/far stars needed stronger recession:
+
+- The maximum star aura radius is reduced another 50% from the PR2R5 merged baseline while preserving
+  the current near-camera peak core luminosity.
+- Normalized star depth remains `0.0` at the near band and `1.0` at the horizon. From depth `0.5` to
+  `1.0`, aura radius and luminosity receive an extra linear taper from `1.0` down to `0.75`.
+- Near-half stars keep the current brightness ceiling, just with the tighter aura cap.
+- Far-half stars are dimmer and carry smaller glow envelopes on top of the existing distance attenuation.
+- Stars, picking, base hyperlane endpoints, and selected incident-lane highlights continue to share the
+  PR2R4 render anchors; hyperlane camera-depth fading remains presentation-only and camera-relative.
+- Structural gridcell coordinates remain authoritative. This changes only editor presentation metadata and
+  does not alter MapGenerator topology, ClauseThing lowering, simulation semantics, pathfinding, save/load,
+  or live-sim behavior.

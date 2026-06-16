@@ -20,6 +20,11 @@ pub const PR2R5_STAR_NEAR_AURA_SCALE: f32 =
     PR2R4_STAR_NEAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR;
 pub const PR2R5_STAR_FAR_CORE_ALPHA: f32 =
     PR2R4_STAR_FAR_CORE_ALPHA_BASELINE * DISTANT_STAR_LUMINOSITY_FALLOFF_FACTOR;
+pub const PR2R6_AURA_CAP_REDUCTION_FACTOR: f32 = 0.50;
+pub const MID_TO_HORIZON_FALLOFF_START_DEPTH: f32 = 0.50;
+pub const MID_TO_HORIZON_FALLOFF_FACTOR: f32 = 0.75;
+pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
+    PR2R5_STAR_NEAR_AURA_SCALE * PR2R6_AURA_CAP_REDUCTION_FACTOR;
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
     "star distance attenuation, core/aura scale, alpha, and bloom are editor render metadata only";
 
@@ -57,11 +62,10 @@ pub fn star_distance_visual(
     hovered: bool,
     meta: &StudioGalaxyRenderMeta,
 ) -> StarDistanceVisual {
-    let near = meta.star_near_distance.max(0.0);
-    let far = meta.star_far_distance.max(near + f32::EPSILON);
-    let t = ((camera_distance - near) / (far - near)).clamp(0.0, 1.0);
+    let t = normalized_star_camera_depth(camera_distance, meta);
     let eased_far = t * t * (3.0 - 2.0 * t);
     let close = 1.0 - eased_far;
+    let far_half_taper = mid_to_horizon_extra_falloff(t);
     let scale_mul = if selected {
         meta.selected_star_scale_multiplier
     } else if hovered {
@@ -78,16 +82,37 @@ pub fn star_distance_visual(
     };
     StarDistanceVisual {
         core_scale: lerp(meta.star_far_core_scale, meta.star_near_core_scale, close) * scale_mul,
-        aura_scale: lerp(meta.star_far_aura_scale, meta.star_near_aura_scale, close) * scale_mul,
+        aura_scale: lerp(meta.star_far_aura_scale, meta.star_near_aura_scale, close)
+            * scale_mul
+            * far_half_taper,
         core_alpha: (lerp(meta.star_far_core_alpha, meta.star_near_core_alpha, close)
             * alpha_boost)
             .min(meta.star_near_core_alpha.max(meta.star_far_core_alpha))
-            .clamp(0.0, 1.0),
+            .clamp(0.0, 1.0)
+            * far_half_taper,
         aura_alpha: (lerp(meta.star_far_aura_alpha, meta.star_near_aura_alpha, close)
             * alpha_boost)
             .min(meta.star_near_aura_alpha)
-            .clamp(0.0, 1.0),
+            .clamp(0.0, 1.0)
+            * far_half_taper,
     }
+}
+
+pub fn normalized_star_camera_depth(camera_distance: f32, meta: &StudioGalaxyRenderMeta) -> f32 {
+    let near = meta.star_near_distance.max(0.0);
+    let far = meta.star_far_distance.max(near + f32::EPSILON);
+    ((camera_distance - near) / (far - near)).clamp(0.0, 1.0)
+}
+
+pub fn mid_to_horizon_extra_falloff(normalized_depth: f32) -> f32 {
+    let depth = normalized_depth.clamp(0.0, 1.0);
+    if depth <= MID_TO_HORIZON_FALLOFF_START_DEPTH {
+        return 1.0;
+    }
+    let t = ((depth - MID_TO_HORIZON_FALLOFF_START_DEPTH)
+        / (1.0 - MID_TO_HORIZON_FALLOFF_START_DEPTH))
+        .clamp(0.0, 1.0);
+    lerp(1.0, MID_TO_HORIZON_FALLOFF_FACTOR, t)
 }
 
 pub fn star_scale_multiplier(selected: bool, hovered: bool) -> f32 {
@@ -229,33 +254,24 @@ mod tests {
     }
 
     #[test]
-    fn star_render_params_apply_reduced_aura_scale() {
+    fn maximum_aura_radius_is_half_of_current_baseline_rule() {
         let meta = star_visual_defaults();
         assert!(
-            (meta.star_far_aura_scale
-                - PR2R4_STAR_FAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR)
-                .abs()
-                < f32::EPSILON
-        );
-        assert!(
             (meta.star_near_aura_scale
-                - PR2R4_STAR_NEAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR)
+                - PR2R5_STAR_NEAR_AURA_SCALE * PR2R6_AURA_CAP_REDUCTION_FACTOR)
                 .abs()
                 < f32::EPSILON
         );
+        let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
+        assert!((near.aura_scale - meta.star_near_aura_scale).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn distant_star_brightness_is_lower_than_current_baseline_rule() {
+    fn nearest_star_peak_luminosity_preserved() {
         let meta = star_visual_defaults();
-        let far = star_distance_visual(meta.star_far_distance, false, false, &meta);
-        assert!(
-            (far.core_alpha
-                - PR2R4_STAR_FAR_CORE_ALPHA_BASELINE * DISTANT_STAR_LUMINOSITY_FALLOFF_FACTOR)
-                .abs()
-                < f32::EPSILON
-        );
-        assert!(far.core_alpha < PR2R4_STAR_FAR_CORE_ALPHA_BASELINE);
+        let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
+        assert!((near.core_alpha - meta.star_near_core_alpha).abs() < f32::EPSILON);
+        assert_eq!(mid_to_horizon_extra_falloff(0.0), 1.0);
     }
 
     #[test]
@@ -266,6 +282,51 @@ mod tests {
         assert!(near.core_alpha >= 0.95);
         assert!(near.aura_scale > 0.0);
         assert!(near.aura_alpha > 0.0);
+    }
+
+    #[test]
+    fn mid_to_horizon_extra_falloff_applies_to_aura_radius() {
+        let meta = star_visual_defaults();
+        let mid_distance = distance_for_depth(&meta, MID_TO_HORIZON_FALLOFF_START_DEPTH);
+        let horizon_distance = distance_for_depth(&meta, 1.0);
+        let mid = star_distance_visual(mid_distance, false, false, &meta);
+        let horizon = star_distance_visual(horizon_distance, false, false, &meta);
+        let horizon_base_aura = lerp(meta.star_far_aura_scale, meta.star_near_aura_scale, 0.0);
+        assert_eq!(
+            mid_to_horizon_extra_falloff(MID_TO_HORIZON_FALLOFF_START_DEPTH),
+            1.0
+        );
+        assert_eq!(
+            mid_to_horizon_extra_falloff(1.0),
+            MID_TO_HORIZON_FALLOFF_FACTOR
+        );
+        assert!(mid.aura_scale > horizon.aura_scale);
+        assert!(
+            (horizon.aura_scale - horizon_base_aura * MID_TO_HORIZON_FALLOFF_FACTOR).abs()
+                < f32::EPSILON
+        );
+    }
+
+    #[test]
+    fn mid_to_horizon_extra_falloff_applies_to_luminosity() {
+        let meta = star_visual_defaults();
+        let horizon = star_distance_visual(meta.star_far_distance, false, false, &meta);
+        assert!(
+            (horizon.core_alpha - meta.star_far_core_alpha * MID_TO_HORIZON_FALLOFF_FACTOR).abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (horizon.aura_alpha - meta.star_far_aura_alpha * MID_TO_HORIZON_FALLOFF_FACTOR).abs()
+                < f32::EPSILON
+        );
+    }
+
+    #[test]
+    fn mid_to_horizon_extra_falloff_interpolates_between_half_and_horizon() {
+        assert_eq!(mid_to_horizon_extra_falloff(0.25), 1.0);
+        assert_eq!(mid_to_horizon_extra_falloff(0.5), 1.0);
+        assert!((mid_to_horizon_extra_falloff(0.75) - 0.875).abs() < f32::EPSILON);
+        assert_eq!(mid_to_horizon_extra_falloff(1.0), 0.75);
     }
 
     #[test]
@@ -302,7 +363,10 @@ mod tests {
     fn aura_overview_scale_is_below_max_threshold() {
         let meta = star_visual_defaults();
         let visual = star_distance_visual(meta.star_far_distance, false, false, &meta);
-        assert!(visual.aura_scale <= PR2R5_STAR_FAR_AURA_SCALE + f32::EPSILON);
+        assert!(
+            visual.aura_scale
+                <= PR2R5_STAR_FAR_AURA_SCALE * MID_TO_HORIZON_FALLOFF_FACTOR + f32::EPSILON
+        );
     }
 
     #[test]
@@ -316,5 +380,9 @@ mod tests {
     fn star_visual_metadata_is_render_only() {
         assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("editor render metadata only"));
         assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("bloom"));
+    }
+
+    fn distance_for_depth(meta: &StudioGalaxyRenderMeta, depth: f32) -> f32 {
+        meta.star_near_distance + (meta.star_far_distance - meta.star_near_distance) * depth
     }
 }

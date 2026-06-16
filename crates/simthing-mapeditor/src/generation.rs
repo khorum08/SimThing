@@ -461,6 +461,19 @@ mod tests {
     }
 
     #[test]
+    fn editor_shape_generation_regressions_absent() {
+        for preset in [
+            GenerationPreset::Elliptical1000,
+            GenerationPreset::Disc1500Connected,
+            GenerationPreset::Spiral4Visual1500,
+        ] {
+            let output = run_generation(&preset.to_profile()).expect("preset generation");
+            assert!(!output.result.placement.systems.is_empty());
+            assert!(!output.result.base_hyperlane_edges.is_empty());
+        }
+    }
+
+    #[test]
     fn disc_preset_clears_or_deactivates_spiral_params() {
         let profile = GenerationPreset::Disc1500Connected.to_profile();
         let params = profile.to_map_generator_params();
