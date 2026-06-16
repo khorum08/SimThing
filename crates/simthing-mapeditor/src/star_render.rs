@@ -1,12 +1,21 @@
 //! Render-only star and hyperlane visual tuning helpers.
 
-use crate::hyperlane_buckets::{bucket_base_rgba, HyperlaneDepthBucket};
-use crate::view_model::StudioGalaxyRenderMeta;
+use crate::hyperlane_buckets::{bucket_alpha_for_meta, HyperlaneDepthBucket};
+use crate::view_model::{StudioGalaxyRenderMeta, StudioStarView};
 
-pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 3.5;
-pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.45;
-pub const MIN_STAR_WORLD_SCALE: f32 = 0.75;
-pub const STAR_BASE_RADIUS: f32 = 0.55;
+pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 4.5;
+pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
+pub const MIN_STAR_WORLD_SCALE: f32 = 1.35;
+pub const STAR_BASE_RADIUS: f32 = 0.72;
+pub const STAR_BILLBOARD_Y_LIFT: f32 = 0.85;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StarRenderInstance {
+    pub system_id: u32,
+    pub position: [f32; 3],
+    pub scale: f32,
+    pub emissive_strength: f32,
+}
 
 pub fn star_visual_defaults() -> StudioGalaxyRenderMeta {
     StudioGalaxyRenderMeta {
@@ -17,10 +26,12 @@ pub fn star_visual_defaults() -> StudioGalaxyRenderMeta {
         star_visibility_scale: DEFAULT_STAR_VISIBILITY_SCALE,
         lane_visibility_scale: DEFAULT_LANE_VISIBILITY_SCALE,
         min_star_world_scale: MIN_STAR_WORLD_SCALE,
-        hyperlane_alpha_near: 0.72,
-        hyperlane_alpha_far: 0.08,
-        hyperlane_depth_fade_start: 20.0,
-        hyperlane_depth_fade_end: 120.0,
+        lane_near_alpha: 0.75,
+        lane_mid_alpha: 0.42,
+        lane_far_alpha: 0.16,
+        lane_far_min_alpha: 0.045,
+        hyperlane_depth_near_max: 100.0,
+        hyperlane_depth_mid_max: 155.0,
     }
 }
 
@@ -32,19 +43,45 @@ pub fn star_world_scale(meta: &StudioGalaxyRenderMeta, radius_unit: f32) -> f32 
     scaled.max(meta.min_star_world_scale)
 }
 
+pub fn star_scale_multiplier(selected: bool, hovered: bool) -> f32 {
+    if selected {
+        2.0
+    } else if hovered {
+        1.5
+    } else {
+        1.0
+    }
+}
+
 pub fn star_emissive_strength(base: f32, selected: bool, hovered: bool) -> f32 {
     let multiplier = if selected {
-        2.4
+        3.0
     } else if hovered {
-        1.7
+        2.1
     } else {
-        1.35
+        1.55
     };
     base * multiplier
 }
 
 pub fn hyperlane_bucket_alpha(bucket: HyperlaneDepthBucket, meta: &StudioGalaxyRenderMeta) -> f32 {
-    bucket_base_rgba(bucket).3 * meta.lane_visibility_scale
+    bucket_alpha_for_meta(bucket, meta)
+}
+
+pub fn prepare_star_render_instances(stars: &[StudioStarView]) -> Vec<StarRenderInstance> {
+    stars
+        .iter()
+        .map(|star| StarRenderInstance {
+            system_id: star.system_id,
+            position: [
+                star.world_x,
+                star.world_y + STAR_BILLBOARD_Y_LIFT,
+                star.world_z,
+            ],
+            scale: star.sprite_scale,
+            emissive_strength: star.emissive_strength,
+        })
+        .collect()
 }
 
 pub fn hyperlane_default_opacity_is_less_than_star_emphasis() {
@@ -54,6 +91,8 @@ pub fn hyperlane_default_opacity_is_less_than_star_emphasis() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::generation::{run_generation, GenerationProfile};
+    use crate::view_model::StudioGalaxyViewModel;
 
     #[test]
     fn star_render_meta_default_size_is_visible_at_overview() {
@@ -78,8 +117,10 @@ mod tests {
         let meta = star_visual_defaults();
         let near_lane = hyperlane_bucket_alpha(HyperlaneDepthBucket::Near, &meta);
         let star_emissive = star_emissive_strength(0.6, false, false);
-        assert!(near_lane < 0.35);
+        let selected_star_emissive = star_emissive_strength(0.6, true, false);
+        assert!(near_lane < 0.65);
         assert!(star_emissive > near_lane);
+        assert!(selected_star_emissive > near_lane * 3.0);
     }
 
     #[test]
@@ -88,10 +129,21 @@ mod tests {
         assert!(
             star_emissive_strength(base, true, false) > star_emissive_strength(base, false, false)
         );
+        assert!(star_scale_multiplier(true, false) > star_scale_multiplier(false, false));
     }
 
     #[test]
     fn starburst_render_meta_is_render_only() {
         assert!(crate::starburst::STARBURST_RENDER_ONLY_NOTE.contains("presentation-only"));
+    }
+
+    #[test]
+    fn star_render_preparation_count_matches_system_count() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let instances = prepare_star_render_instances(&vm.stars);
+        assert_eq!(instances.len(), vm.stars.len());
+        assert_eq!(instances.len(), output.result.placement.systems.len());
     }
 }

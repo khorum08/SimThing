@@ -247,6 +247,8 @@ fn draw_left_panel(
                 ui.separator();
                 generation_fields(ui, &mut state.profile, dialog);
                 ui.separator();
+                render_debug_controls(ui, state);
+                ui.separator();
                 ui.label("Camera");
                 if ui.button("Overhead (O)").clicked() {
                     snap_overhead(camera);
@@ -264,6 +266,29 @@ fn draw_left_panel(
             });
         });
     state.left_panel_hovered = area.response.hovered();
+}
+
+fn render_debug_controls(ui: &mut egui::Ui, state: &mut StudioAppState) {
+    egui::CollapsingHeader::new("Render debug")
+        .default_open(false)
+        .show(ui, |ui| {
+            ui.checkbox(&mut state.show_stars, "Show stars");
+            ui.checkbox(&mut state.show_hyperlanes, "Show hyperlanes");
+            ui.horizontal(|ui| {
+                if ui.button("Stars only").clicked() {
+                    state.show_stars = true;
+                    state.show_hyperlanes = false;
+                }
+                if ui.button("Hyperlanes only").clicked() {
+                    state.show_stars = false;
+                    state.show_hyperlanes = true;
+                }
+                if ui.button("Both").clicked() {
+                    state.show_stars = true;
+                    state.show_hyperlanes = true;
+                }
+            });
+        });
 }
 
 fn generation_fields(

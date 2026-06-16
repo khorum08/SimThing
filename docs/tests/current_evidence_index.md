@@ -51,6 +51,7 @@
 | **BEVY-MAPGEN-EDITOR-PR1R** — Studio shell contract repair: floating panel, warning-clickable controls, camera/orbit, hyperlane depth buckets | #727 | `ef5e0ec0` / merge `71d60cc0` | PROBATION — `docs/tests/bevy_mapgen_editor_pr1r_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2** — star hover/click selection, selected-system inspector, incident hyperlane highlight, starburst sprites | #728 | `91ca1f19` / merge `8db9c4f6` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R** — star visibility at overview scale + shape-param scoping (Disc no longer blocked by dormant spiral arm_* params) | #729 | `9f047bb2` / merge `131f1e32` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2R2** — starfield-first visibility + camera-relative hyperlane depth fade | pending | pending | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r2_results.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

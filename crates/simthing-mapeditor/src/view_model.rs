@@ -14,10 +14,12 @@ pub struct StudioGalaxyRenderMeta {
     pub star_visibility_scale: f32,
     pub lane_visibility_scale: f32,
     pub min_star_world_scale: f32,
-    pub hyperlane_alpha_near: f32,
-    pub hyperlane_alpha_far: f32,
-    pub hyperlane_depth_fade_start: f32,
-    pub hyperlane_depth_fade_end: f32,
+    pub lane_near_alpha: f32,
+    pub lane_mid_alpha: f32,
+    pub lane_far_alpha: f32,
+    pub lane_far_min_alpha: f32,
+    pub hyperlane_depth_near_max: f32,
+    pub hyperlane_depth_mid_max: f32,
 }
 
 impl Default for StudioGalaxyRenderMeta {
@@ -30,10 +32,12 @@ impl Default for StudioGalaxyRenderMeta {
             star_visibility_scale: crate::star_render::DEFAULT_STAR_VISIBILITY_SCALE,
             lane_visibility_scale: crate::star_render::DEFAULT_LANE_VISIBILITY_SCALE,
             min_star_world_scale: crate::star_render::MIN_STAR_WORLD_SCALE,
-            hyperlane_alpha_near: 0.72,
-            hyperlane_alpha_far: 0.08,
-            hyperlane_depth_fade_start: 20.0,
-            hyperlane_depth_fade_end: 120.0,
+            lane_near_alpha: 0.75,
+            lane_mid_alpha: 0.42,
+            lane_far_alpha: 0.16,
+            lane_far_min_alpha: 0.045,
+            hyperlane_depth_near_max: 100.0,
+            hyperlane_depth_mid_max: 155.0,
         }
     }
 }
@@ -166,6 +170,7 @@ impl StudioGalaxyViewModel {
                     to_system_id: edge.to,
                     from,
                     to,
+                    // Initial bucket is render-only bootstrap data; Bevy rebuckets by camera every frame.
                     depth_bucket: crate::hyperlane_buckets::classify_hyperlane_depth_bucket(
                         dist / max_dist,
                     ),
@@ -260,7 +265,7 @@ mod tests {
         params.hyperlane.num_hyperlanes_max = 3;
         let registry = ShapeRegistry::default();
         params.validate(&registry).expect("valid");
-        let (hyperlane, special, partition, cluster) =
+        let (hyperlane, special, _partition, cluster) =
             structure_options_from_params(&params).expect("opts");
         let result = generate_galaxy_with_structure(
             &params,

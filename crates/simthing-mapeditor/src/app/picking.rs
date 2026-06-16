@@ -7,7 +7,7 @@ use bevy_egui::EguiContexts;
 use crate::selection::{
     apply_star_click, pick_nearest_star_screen, ScreenStarProjection, DEFAULT_PICK_RADIUS_PX,
 };
-use crate::star_render::star_emissive_strength;
+use crate::star_render::{star_emissive_strength, star_scale_multiplier};
 
 use super::camera::MainCamera;
 use super::galaxy_render::{rebuild_highlight_hyperlanes, GalaxyStar};
@@ -125,17 +125,12 @@ pub fn sync_star_visuals_system(
         };
         let selected = state.selection.selected_system_id == Some(star.system_id);
         let hovered = state.selection.hovered_system_id == Some(star.system_id);
-        let scale_mul = if selected {
-            1.35
-        } else if hovered {
-            1.15
-        } else {
-            1.0
-        };
+        let scale_mul = star_scale_multiplier(selected, hovered);
         transform.scale = Vec3::splat(view.sprite_scale * scale_mul);
         if let Some(material) = materials.get_mut(&material_handle.0) {
             let emissive = star_emissive_strength(view.emissive_strength, selected, hovered);
-            material.emissive = LinearRgba::new(emissive * 0.9, emissive * 0.95, emissive, 1.0);
+            material.emissive =
+                LinearRgba::new(emissive * 1.25, emissive * 1.32, emissive * 1.45, 1.0);
         }
     }
 }
