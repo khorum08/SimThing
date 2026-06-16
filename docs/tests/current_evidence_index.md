@@ -49,7 +49,7 @@
 | **MAPGENCLI-EDITOR-PREP-0R** — topology target/bridge-ratio quality gates + healthy editor-prep sample regeneration | #724 | `c4c766da` / merge `3a4a0c88` | PROBATION — sample report at `docs/tests/mapgenerator_cli_spiral2_dense_3000_editor_prep.report.json` |
 | **BEVY-MAPGEN-EDITOR-PR1** — Windows SimThing Studio shell: Bevy borderless window, egui panels, 3D galaxy viewer via typed MapGenerator path | #725 | `014fbeec` / merge `dd2d3af3` | PROBATION — `docs/tests/bevy_mapgen_editor_pr1_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR1R** — Studio shell contract repair: floating panel, warning-clickable controls, camera/orbit, hyperlane depth buckets | #727 | `ef5e0ec0` / merge `71d60cc0` | PROBATION — `docs/tests/bevy_mapgen_editor_pr1r_results.md` |
-| **BEVY-MAPGEN-EDITOR-PR2** — star hover/click selection, selected-system inspector, incident hyperlane highlight, starburst sprites | pending | pending | PROBATION — `docs/tests/bevy_mapgen_editor_pr2_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2** — star hover/click selection, selected-system inspector, incident hyperlane highlight, starburst sprites | #728 | `91ca1f19` / merge `8db9c4f6` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2_results.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

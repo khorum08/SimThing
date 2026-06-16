@@ -95,4 +95,4 @@ git diff --check
 
 ## Merge
 
-Pending PR merge.
+- PR [#728](https://github.com/khorum08/SimThing/pull/728) — commit `91ca1f19`, merge `8db9c4f6`
