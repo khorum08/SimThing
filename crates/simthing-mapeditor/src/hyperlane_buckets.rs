@@ -24,9 +24,9 @@ pub fn classify_hyperlane_depth_bucket(normalized_midpoint_dist: f32) -> Hyperla
 
 pub fn bucket_base_rgba(bucket: HyperlaneDepthBucket) -> (f32, f32, f32, f32) {
     match bucket {
-        HyperlaneDepthBucket::Near => (0.50, 0.78, 1.0, 0.72),
-        HyperlaneDepthBucket::Mid => (0.38, 0.58, 0.88, 0.38),
-        HyperlaneDepthBucket::Far => (0.28, 0.32, 0.48, 0.12),
+        HyperlaneDepthBucket::Near => (0.42, 0.62, 0.92, 0.32),
+        HyperlaneDepthBucket::Mid => (0.30, 0.46, 0.68, 0.16),
+        HyperlaneDepthBucket::Far => (0.20, 0.24, 0.36, 0.06),
     }
 }
 

@@ -4,11 +4,10 @@ use bevy::prelude::*;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_asset::RenderAssetUsages;
 
-use crate::hyperlane_buckets::{
-    bucket_alpha_for_camera_distance, bucket_base_rgba, HyperlaneDepthBucket,
-};
+use crate::hyperlane_buckets::{bucket_base_rgba, HyperlaneDepthBucket};
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
+use crate::star_render::hyperlane_bucket_alpha;
 use crate::starburst::generate_starburst_image;
 
 use super::GalaxySceneRoot;
@@ -242,12 +241,13 @@ pub fn sync_hyperlane_colors_system(
             })
             .sum::<f32>()
             / lanes.len() as f32;
-        let alpha = bucket_alpha_for_camera_distance(
-            bucket,
-            avg_dist,
-            meta.hyperlane_depth_fade_start,
-            meta.hyperlane_depth_fade_end,
-        );
+        let alpha = {
+            let scaled = hyperlane_bucket_alpha(bucket, meta);
+            let t = ((avg_dist - meta.hyperlane_depth_fade_start)
+                / (meta.hyperlane_depth_fade_end - meta.hyperlane_depth_fade_start))
+                .clamp(0.0, 1.0);
+            scaled * (1.0 - t * 0.85)
+        };
         let (r, g, b, _) = bucket_base_rgba(bucket);
         for (mat_handle, marker) in &hyperlanes {
             if marker.0 != bucket {

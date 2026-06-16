@@ -6,6 +6,11 @@ use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 pub const STARBURST_RENDER_ONLY_NOTE: &'static str =
     "starburst sprite scale/texture/emissive are presentation-only; structural (col,row) remain authoritative";
 
+/// Billboard forward for a star quad facing the camera (render-only helper).
+pub fn starburst_billboard_forward(star_pos: Vec3, camera_pos: Vec3) -> Vec3 {
+    (camera_pos - star_pos).normalize_or_zero()
+}
+
 pub fn generate_starburst_image(size: u32) -> Image {
     let mut data = vec![0u8; (size * size * 4) as usize];
     let center = size as f32 * 0.5;
@@ -49,5 +54,11 @@ mod tests {
     fn starburst_render_meta_is_render_only() {
         assert!(STARBURST_RENDER_ONLY_NOTE.contains("presentation-only"));
         assert!(STARBURST_RENDER_ONLY_NOTE.contains("structural"));
+    }
+
+    #[test]
+    fn starburst_billboard_faces_camera_helper() {
+        let forward = starburst_billboard_forward(Vec3::ZERO, Vec3::new(0.0, 0.0, 10.0));
+        assert!(forward.z > 0.9);
     }
 }
