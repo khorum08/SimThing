@@ -70,9 +70,14 @@ struct Cli {
     #[arg(long)]
     random_hyperlanes: Option<bool>,
 
-    /// Add minimal bridges so the galaxy is one connected network (no island clusters).
+    /// Add minimal bridges so the galaxy is one connected network (no island clusters). On by default;
+    /// this flag is now redundant (kept for back-compat). Use `--allow-disconnected` to opt out.
     #[arg(long)]
     connect_galaxy: bool,
+
+    /// Opt out of the connected-galaxy guarantee — permit orphaned/island systems in the generated map.
+    #[arg(long)]
+    allow_disconnected: bool,
 
     /// Skip galaxy partition/bridge generation (clustering still runs).
     #[arg(long)]
@@ -289,9 +294,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 CliHyperlanePreview::Base => HyperlanePreviewFilter::BaseOnly,
                 CliHyperlanePreview::All => HyperlanePreviewFilter::AllCouplings,
             },
-            // When connectivity is on, draw every base lane (including the intentional long bridges that
-            // tie island clusters together); otherwise keep the render distance filter.
-            max_hyperlane_chebyshev: if cli.connect_galaxy {
+            // When connectivity is on (the default), draw every base lane (including the connectivity
+            // bridges that tie clusters together); otherwise keep the render distance filter.
+            max_hyperlane_chebyshev: if params.hyperlane.ensure_connected {
                 None
             } else {
                 Some(params.hyperlane.max_hyperlane_distance.round().max(1.0) as u32)
@@ -379,8 +384,13 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
     if let Some(v) = cli.random_hyperlanes {
         params.hyperlane.random_hyperlanes = v;
     }
+    // Connected-by-default (params default ON). `--connect-galaxy` is redundant but explicit;
+    // `--allow-disconnected` is the opt-out and wins if both are given.
     if cli.connect_galaxy {
         params.hyperlane.ensure_connected = true;
+    }
+    if cli.allow_disconnected {
+        params.hyperlane.ensure_connected = false;
     }
     if let Some(v) = cli.num_wormhole_pairs {
         params.special_routes.num_wormhole_pairs = v;

@@ -16,12 +16,15 @@ cargo run -p simthing-mapgenerator --bin mapgen -- \
   --num-wormhole-pairs 0 --num-gateways 0 \
   --max-hyperlane-distance 7 \
   --num-hyperlanes-min 1 --num-hyperlanes-max 5000 --num-hyperlanes 5000 \
-  --connect-galaxy --no-partitions \
+  --no-partitions \
   --cluster-count 5 --cluster-radius 400 \
   --hyperlanes base --hyperlane-color blue --draw-core \
   --png-size 3000 \
   --render-png docs/tests/mapgenerator_cli_disc_1500_connected_3000.png
 ```
+**Connectivity is ON by default** (`HyperlaneGeometryParams::ensure_connected` defaults true — a galaxy
+with orphaned systems is unusable), so `--connect-galaxy` is no longer needed. A designer can opt out with
+`--allow-disconnected` (or add/remove links at runtime in-game).
 The default `core_radius=120` leaves the **galactic-core void** (~40 cells, where stars can't be placed — it's
 inaccessible in game); `--draw-core` paints the bright core glow over it.
 
