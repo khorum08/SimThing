@@ -48,9 +48,9 @@ impl Default for StudioGalaxyRenderMeta {
             star_far_distance: 210.0,
             star_far_core_scale: 0.10,
             star_near_core_scale: 0.68,
-            star_far_aura_scale: 0.16,
-            star_near_aura_scale: 1.10,
-            star_far_core_alpha: 0.72,
+            star_far_aura_scale: crate::star_render::PR2R5_STAR_FAR_AURA_SCALE,
+            star_near_aura_scale: crate::star_render::PR2R5_STAR_NEAR_AURA_SCALE,
+            star_far_core_alpha: crate::star_render::PR2R5_STAR_FAR_CORE_ALPHA,
             star_near_core_alpha: 1.0,
             star_far_aura_alpha: 0.008,
             star_near_aura_alpha: 0.22,
@@ -380,6 +380,23 @@ mod tests {
             anchor_for_system_str(&vm.render_anchors, &segment.to_system_id).expect("to anchor");
         assert_eq!(segment.from, from.world_position);
         assert_eq!(segment.to, to.world_position);
+    }
+
+    #[test]
+    fn hyperlane_anchor_coherence_unchanged() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let segments = vm.hyperlane_render_segments();
+        assert_eq!(segments.len(), vm.hyperlanes.len());
+        for segment in &segments {
+            let from = anchor_for_system_str(&vm.render_anchors, &segment.from_system_id)
+                .expect("from anchor");
+            let to = anchor_for_system_str(&vm.render_anchors, &segment.to_system_id)
+                .expect("to anchor");
+            assert_eq!(segment.from, from.world_position);
+            assert_eq!(segment.to, to.world_position);
+        }
     }
 
     #[test]

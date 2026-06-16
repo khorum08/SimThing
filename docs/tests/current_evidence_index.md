@@ -53,7 +53,8 @@
 | **BEVY-MAPGEN-EDITOR-PR2R** — star visibility at overview scale + shape-param scoping (Disc no longer blocked by dormant spiral arm_* params) | #729 | `9f047bb2` / merge `131f1e32` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R2** — starfield-first visibility + camera-relative hyperlane depth fade | #730 | `c9c03b10` / merge `0c963961` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r2_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R3** — distance-attenuated core/aura star sprites + camera-depth hyperlane shader inputs | #731 | `2daea5f2` / merge `3888e430` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r3_results.md` |
-| **BEVY-MAPGEN-EDITOR-PR2R4** — shared render anchors for stars, picking, and hyperlane endpoints | pending | pending | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r4_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2R4** — shared render anchors for stars, picking, and hyperlane endpoints | #732 | `cb1cf894` / merge `d802756c` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r4_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2R5** — reduced star aura extent + stronger distant-star luminosity falloff | pending | pending | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r5_results.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

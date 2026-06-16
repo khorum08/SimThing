@@ -9,6 +9,17 @@ pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 4.5;
 pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
 pub const MIN_STAR_WORLD_SCALE: f32 = 1.35;
 pub const STAR_BASE_RADIUS: f32 = 0.72;
+pub const PR2R4_STAR_FAR_AURA_SCALE_BASELINE: f32 = 0.16;
+pub const PR2R4_STAR_NEAR_AURA_SCALE_BASELINE: f32 = 1.10;
+pub const PR2R4_STAR_FAR_CORE_ALPHA_BASELINE: f32 = 0.72;
+pub const STAR_AURA_EXTENT_REDUCTION_FACTOR: f32 = 0.50;
+pub const DISTANT_STAR_LUMINOSITY_FALLOFF_FACTOR: f32 = 0.75;
+pub const PR2R5_STAR_FAR_AURA_SCALE: f32 =
+    PR2R4_STAR_FAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR;
+pub const PR2R5_STAR_NEAR_AURA_SCALE: f32 =
+    PR2R4_STAR_NEAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR;
+pub const PR2R5_STAR_FAR_CORE_ALPHA: f32 =
+    PR2R4_STAR_FAR_CORE_ALPHA_BASELINE * DISTANT_STAR_LUMINOSITY_FALLOFF_FACTOR;
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
     "star distance attenuation, core/aura scale, alpha, and bloom are editor render metadata only";
 
@@ -29,33 +40,7 @@ pub struct StarDistanceVisual {
 }
 
 pub fn star_visual_defaults() -> StudioGalaxyRenderMeta {
-    StudioGalaxyRenderMeta {
-        vertical_thickness_scale: 1.0,
-        core_bulge_strength: 0.85,
-        core_bulge_radius: 0.22,
-        star_sprite_scale: 1.0,
-        star_visibility_scale: DEFAULT_STAR_VISIBILITY_SCALE,
-        lane_visibility_scale: DEFAULT_LANE_VISIBILITY_SCALE,
-        min_star_world_scale: MIN_STAR_WORLD_SCALE,
-        star_near_distance: 45.0,
-        star_far_distance: 210.0,
-        star_far_core_scale: 0.10,
-        star_near_core_scale: 0.68,
-        star_far_aura_scale: 0.16,
-        star_near_aura_scale: 1.10,
-        star_far_core_alpha: 0.72,
-        star_near_core_alpha: 1.0,
-        star_far_aura_alpha: 0.008,
-        star_near_aura_alpha: 0.22,
-        selected_star_scale_multiplier: 1.85,
-        hovered_star_scale_multiplier: 1.22,
-        lane_near_alpha: 0.75,
-        lane_mid_alpha: 0.42,
-        lane_far_alpha: 0.16,
-        lane_far_min_alpha: 0.045,
-        hyperlane_depth_near_max: 100.0,
-        hyperlane_depth_mid_max: 155.0,
-    }
+    StudioGalaxyRenderMeta::default()
 }
 
 pub fn star_world_scale(meta: &StudioGalaxyRenderMeta, radius_unit: f32) -> f32 {
@@ -244,6 +229,46 @@ mod tests {
     }
 
     #[test]
+    fn star_render_params_apply_reduced_aura_scale() {
+        let meta = star_visual_defaults();
+        assert!(
+            (meta.star_far_aura_scale
+                - PR2R4_STAR_FAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR)
+                .abs()
+                < f32::EPSILON
+        );
+        assert!(
+            (meta.star_near_aura_scale
+                - PR2R4_STAR_NEAR_AURA_SCALE_BASELINE * STAR_AURA_EXTENT_REDUCTION_FACTOR)
+                .abs()
+                < f32::EPSILON
+        );
+    }
+
+    #[test]
+    fn distant_star_brightness_is_lower_than_current_baseline_rule() {
+        let meta = star_visual_defaults();
+        let far = star_distance_visual(meta.star_far_distance, false, false, &meta);
+        assert!(
+            (far.core_alpha
+                - PR2R4_STAR_FAR_CORE_ALPHA_BASELINE * DISTANT_STAR_LUMINOSITY_FALLOFF_FACTOR)
+                .abs()
+                < f32::EPSILON
+        );
+        assert!(far.core_alpha < PR2R4_STAR_FAR_CORE_ALPHA_BASELINE);
+    }
+
+    #[test]
+    fn near_star_visibility_not_zeroed() {
+        let meta = star_visual_defaults();
+        let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
+        assert!(near.core_scale > 0.0);
+        assert!(near.core_alpha >= 0.95);
+        assert!(near.aura_scale > 0.0);
+        assert!(near.aura_alpha > 0.0);
+    }
+
+    #[test]
     fn star_distance_visual_near_is_larger_than_far() {
         let meta = star_visual_defaults();
         let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
@@ -277,7 +302,7 @@ mod tests {
     fn aura_overview_scale_is_below_max_threshold() {
         let meta = star_visual_defaults();
         let visual = star_distance_visual(meta.star_far_distance, false, false, &meta);
-        assert!(visual.aura_scale <= 0.20);
+        assert!(visual.aura_scale <= PR2R5_STAR_FAR_AURA_SCALE + f32::EPSILON);
     }
 
     #[test]
