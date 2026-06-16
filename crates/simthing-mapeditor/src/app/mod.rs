@@ -15,6 +15,8 @@ use crate::settings::EditorSettings;
 
 use resources::{StudioDialog, StudioSettings};
 
+use crate::panel_layout;
+
 pub fn run_studio() {
     let settings = EditorSettings::load();
     App::new()
@@ -55,7 +57,7 @@ pub fn run_studio() {
 #[derive(Resource, Default)]
 pub struct GalaxySceneRoot {
     pub stars: Vec<Entity>,
-    pub hyperlanes: Option<Entity>,
+    pub hyperlane_buckets: [Option<Entity>; 3],
     pub core_glow: Option<Entity>,
 }
 
@@ -80,7 +82,7 @@ fn setup_scene(
 ) {
     state.profile = settings.last_generation_params.clone();
     state.left_panel_collapsed = settings.left_panel_collapsed;
-    state.left_panel_width_frac = settings.last_panel_width.clamp(0.2, 0.5);
+    state.left_panel_width_frac = panel_layout::PANEL_WIDTH_FRAC;
     commands.spawn((
         DirectionalLight {
             illuminance: 800.0,

@@ -3,8 +3,11 @@
 //! ClauseThing/MapGenerator generates structural galaxy data; the editor breathes SimThing as a
 //! render/UI metatable. Bevy transforms and visual z-height are render-only — never structural truth.
 
+pub mod camera_control;
 pub mod dialog;
 pub mod generation;
+pub mod hyperlane_buckets;
+pub mod panel_layout;
 pub mod session;
 pub mod settings;
 pub mod view_model;

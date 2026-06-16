@@ -3,18 +3,21 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
-use crate::dialog::{unimplemented_action_response, StudioAction, WarningDialogModel};
+use crate::dialog::{
+    inactive_control_warning, unimplemented_action_response, StudioAction, WarningDialogModel,
+};
 use crate::generation::{run_generation, GenerationPreset, GenerationProfile};
+use crate::panel_layout::{
+    compute_collapsed_panel_tab, compute_floating_panel_layout, left_panel_title,
+    should_auto_collapse_panel,
+};
 use crate::session::StudioSession;
 use crate::settings::WindowModeSetting;
 
-use super::camera::{reset_camera_after_generation, StudioCamera};
+use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
 use super::galaxy_render::rebuild_galaxy_scene;
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_session, GalaxySceneRoot, StudioAppState};
-
-const PANEL_MIN_FRAC: f32 = 0.20;
-const PANEL_MAX_FRAC: f32 = 0.50;
 
 pub fn panel_opacity_system(mut state: ResMut<StudioAppState>, time: Res<Time>) {
     let target = if state.left_panel_hovered || state.left_panel_target_opacity > 0.55 {
@@ -45,19 +48,27 @@ pub fn studio_ui_system(
     };
     let screen = ctx.screen_rect();
     let screen_w = screen.width();
-    let min_panel_w = screen_w * PANEL_MIN_FRAC;
-    if min_panel_w > screen_w * PANEL_MAX_FRAC {
+    let screen_h = screen.height();
+
+    if should_auto_collapse_panel(screen_w) {
         state.left_panel_collapsed = true;
     }
 
     draw_window_controls(ctx, &mut settings, &mut windows, &mut exit);
     if !state.left_panel_collapsed {
-        draw_left_panel(ctx, &mut state, &mut dialog, screen_w);
+        draw_left_panel(
+            ctx,
+            &mut state,
+            &mut dialog,
+            &mut camera,
+            screen_w,
+            screen_h,
+        );
     } else {
-        draw_collapsed_tab(ctx, &mut state);
+        draw_collapsed_tab(ctx, &mut state, screen_w, screen_h);
     }
     if state.session.is_some() {
-        draw_right_panel(ctx, &state);
+        draw_right_panel(ctx, &state, screen_w, screen_h);
     }
     draw_warning_dialog(ctx, &mut dialog);
 
@@ -65,7 +76,6 @@ pub fn studio_ui_system(
         return;
     }
 
-    // Handle generate flag via egui memory
     if ctx.data(|d| {
         d.get_temp::<bool>(egui::Id::new("do_generate"))
             .unwrap_or(false)
@@ -95,7 +105,7 @@ pub fn studio_ui_system(
     }
 }
 
-fn studio_panel_frame(opacity: f32) -> egui::Frame {
+fn studio_panel_frame(opacity: f32, corner_radius: f32) -> egui::Frame {
     egui::Frame::new()
         .fill(egui::Color32::from_rgba_unmultiplied(
             12,
@@ -108,7 +118,18 @@ fn studio_panel_frame(opacity: f32) -> egui::Frame {
             egui::Color32::from_rgba_unmultiplied(70, 110, 170, (opacity * 180.0) as u8),
         ))
         .inner_margin(12.0)
-        .corner_radius(6.0)
+        .corner_radius(corner_radius)
+}
+
+fn inactive_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
+    ui.add(
+        egui::Button::new(egui::RichText::new(label).color(egui::Color32::from_gray(120)))
+            .fill(egui::Color32::from_rgba_unmultiplied(28, 32, 42, 120))
+            .stroke(egui::Stroke::new(
+                1.0,
+                egui::Color32::from_rgba_unmultiplied(60, 70, 90, 100),
+            )),
+    )
 }
 
 fn draw_window_controls(
@@ -138,9 +159,15 @@ fn draw_window_controls(
         });
 }
 
-fn draw_collapsed_tab(ctx: &egui::Context, state: &mut StudioAppState) {
+fn draw_collapsed_tab(
+    ctx: &egui::Context,
+    state: &mut StudioAppState,
+    screen_w: f32,
+    screen_h: f32,
+) {
+    let tab = compute_collapsed_panel_tab(screen_w, screen_h);
     egui::Area::new(egui::Id::new("left_collapsed"))
-        .fixed_pos(egui::pos2(8.0, 48.0))
+        .fixed_pos(egui::pos2(tab.x, tab.y))
         .show(ctx, |ui| {
             if ui.button(">>").clicked() {
                 state.left_panel_collapsed = false;
@@ -152,30 +179,27 @@ fn draw_left_panel(
     ctx: &egui::Context,
     state: &mut StudioAppState,
     dialog: &mut WarningDialogModel,
+    camera: &mut StudioCamera,
     screen_w: f32,
+    screen_h: f32,
 ) {
-    let width = (screen_w * state.left_panel_width_frac)
-        .clamp(screen_w * PANEL_MIN_FRAC, screen_w * PANEL_MAX_FRAC);
+    let layout = compute_floating_panel_layout(screen_w, screen_h, false);
     state.left_panel_hovered = ctx.is_pointer_over_area();
     let opacity = state.left_panel_opacity;
-    let title = state
-        .session
-        .as_ref()
-        .map(|s| s.galaxy_name().to_string())
-        .unwrap_or_default();
+    let title = left_panel_title(state.session.as_ref().map(|s| s.galaxy_name()));
 
     egui::Area::new(egui::Id::new("left_panel"))
-        .fixed_pos(egui::pos2(0.0, 0.0))
+        .fixed_pos(egui::pos2(layout.x, layout.y))
         .show(ctx, |ui| {
-            studio_panel_frame(opacity).show(ui, |ui| {
-                ui.set_width(width);
-                ui.set_min_height(ctx.screen_rect().height());
+            studio_panel_frame(opacity, layout.corner_radius).show(ui, |ui| {
+                ui.set_width(layout.width);
+                ui.set_min_height(layout.height);
                 ui.horizontal(|ui| {
-                    ui.heading(if title.is_empty() {
-                        "SimThing Studio".to_string()
+                    if title.is_empty() {
+                        ui.label("");
                     } else {
-                        title
-                    });
+                        ui.heading(title);
+                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("<<").clicked() {
                             state.left_panel_collapsed = true;
@@ -184,13 +208,13 @@ fn draw_left_panel(
                 });
                 ui.separator();
                 ui.horizontal(|ui| {
-                    if ui.add_enabled(false, egui::Button::new("New")).clicked() {
+                    if inactive_button(ui, "New").clicked() {
                         *dialog = unimplemented_action_response(StudioAction::New);
                     }
-                    if ui.add_enabled(false, egui::Button::new("Load")).clicked() {
+                    if inactive_button(ui, "Load").clicked() {
                         *dialog = unimplemented_action_response(StudioAction::Load);
                     }
-                    if ui.add_enabled(false, egui::Button::new("Save")).clicked() {
+                    if inactive_button(ui, "Save").clicked() {
                         *dialog = unimplemented_action_response(StudioAction::Save);
                     }
                     if ui.button("Generate").clicked() {
@@ -209,32 +233,38 @@ fn draw_left_panel(
                         {
                             state.profile = preset.to_profile();
                         }
-                    } else if ui.add_enabled(false, egui::Button::new(label)).clicked() {
+                    } else if inactive_button(ui, label).clicked() {
                         *dialog = unimplemented_action_response(StudioAction::InactivePreset(
                             preset.id().into(),
                         ));
                     }
                 }
                 ui.separator();
-                generation_fields(ui, &mut state.profile);
+                generation_fields(ui, &mut state.profile, dialog);
                 ui.separator();
                 ui.label("Camera");
                 if ui.button("Overhead (O)").clicked() {
-                    // handled by hotkey too
+                    snap_overhead(camera);
                 }
                 if ui.button("Reset (R)").clicked() {
-                    // handled by hotkey too
+                    reset_camera_after_generation(camera);
                 }
                 if let Some(err) = &state.generation_error {
                     ui.colored_label(egui::Color32::RED, err);
                 } else if !state.status_message.is_empty() {
                     ui.label(&state.status_message);
                 }
+                ui.add_space(8.0);
+                ui.label(egui::RichText::new("SimThing Studio").small().weak());
             });
         });
 }
 
-fn generation_fields(ui: &mut egui::Ui, profile: &mut GenerationProfile) {
+fn generation_fields(
+    ui: &mut egui::Ui,
+    profile: &mut GenerationProfile,
+    dialog: &mut WarningDialogModel,
+) {
     ui.label("Active generation controls");
     egui::Grid::new("gen_grid").show(ui, |ui| {
         ui.label("Shape");
@@ -279,22 +309,33 @@ fn generation_fields(ui: &mut egui::Ui, profile: &mut GenerationProfile) {
     });
     ui.separator();
     ui.label("Deferred (visible, inactive)");
-    ui.add_enabled(false, egui::Button::new("Import / Export settings"));
-    ui.add_enabled(false, egui::Button::new("Simulation session settings"));
-    ui.add_enabled(false, egui::Button::new("Layer toggles"));
-    ui.add_enabled(false, egui::Button::new("Clausewitz UI import experiment"));
+    for label in [
+        "Import / Export settings",
+        "Simulation session settings",
+        "Layer toggles",
+        "Clausewitz UI import experiment",
+    ] {
+        if inactive_button(ui, label).clicked() {
+            *dialog = inactive_control_warning(label);
+        }
+    }
 }
 
-fn draw_right_panel(ctx: &egui::Context, state: &StudioAppState) {
+fn draw_right_panel(ctx: &egui::Context, state: &StudioAppState, screen_w: f32, screen_h: f32) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
     let report = session.report();
     let width = 320.0;
+    let (_, margin_y) = crate::panel_layout::panel_margin(screen_w, screen_h);
     egui::Area::new(egui::Id::new("right_panel"))
-        .fixed_pos(egui::pos2(ctx.screen_rect().max.x - width - 8.0, 48.0))
+        .fixed_pos(egui::pos2(
+            screen_w - width - screen_w * 0.03,
+            margin_y.max(48.0),
+        ))
         .show(ctx, |ui| {
-            studio_panel_frame(0.72).show(ui, |ui| {
+            let corner = crate::panel_layout::corner_radius_for_panel_width(width);
+            studio_panel_frame(0.72, corner).show(ui, |ui| {
                 ui.set_width(width);
                 ui.heading("Galaxy status");
                 ui.separator();

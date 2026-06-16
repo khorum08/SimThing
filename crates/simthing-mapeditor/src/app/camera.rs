@@ -1,7 +1,12 @@
 #![cfg(windows)]
 
-use bevy::input::mouse::MouseWheel;
+use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
+
+use crate::camera_control::{
+    apply_orbit_delta, reset_camera_after_generation as reset_orbit, snap_overhead as snap_orbit,
+    OrbitCameraState, DEFAULT_ORBIT_SENSITIVITY,
+};
 
 pub struct StudioCameraPlugin;
 
@@ -25,15 +30,36 @@ pub struct StudioCamera {
 
 impl Default for StudioCamera {
     fn default() -> Self {
+        let orbit = OrbitCameraState::default();
         Self {
-            orbit_yaw: 0.6,
-            orbit_pitch: 0.55,
-            orbit_distance: 95.0,
-            orbit_target: Vec3::ZERO,
-            overhead: false,
+            orbit_yaw: orbit.orbit_yaw,
+            orbit_pitch: orbit.orbit_pitch,
+            orbit_distance: orbit.orbit_distance,
+            orbit_target: Vec3::from_array(orbit.orbit_target),
+            overhead: orbit.overhead,
             move_speed: 40.0,
             rmb_held: false,
         }
+    }
+}
+
+impl StudioCamera {
+    fn to_orbit_state(&self) -> OrbitCameraState {
+        OrbitCameraState {
+            orbit_yaw: self.orbit_yaw,
+            orbit_pitch: self.orbit_pitch,
+            orbit_distance: self.orbit_distance,
+            orbit_target: self.orbit_target.to_array(),
+            overhead: self.overhead,
+        }
+    }
+
+    fn apply_orbit_state(&mut self, state: OrbitCameraState) {
+        self.orbit_yaw = state.orbit_yaw;
+        self.orbit_pitch = state.orbit_pitch;
+        self.orbit_distance = state.orbit_distance;
+        self.orbit_target = Vec3::from_array(state.orbit_target);
+        self.overhead = state.overhead;
     }
 }
 
@@ -49,18 +75,15 @@ fn spawn_camera(mut commands: Commands) {
 }
 
 pub fn reset_camera_after_generation(camera: &mut StudioCamera) {
-    camera.orbit_yaw = 0.55;
-    camera.orbit_pitch = 0.62;
-    camera.orbit_distance = 95.0;
-    camera.orbit_target = Vec3::ZERO;
-    camera.overhead = false;
+    let mut state = camera.to_orbit_state();
+    reset_orbit(&mut state);
+    camera.apply_orbit_state(state);
 }
 
 pub fn snap_overhead(camera: &mut StudioCamera) {
-    camera.overhead = true;
-    camera.orbit_pitch = std::f32::consts::FRAC_PI_2 - 0.001;
-    camera.orbit_yaw = 0.0;
-    camera.orbit_distance = 110.0;
+    let mut state = camera.to_orbit_state();
+    snap_orbit(&mut state);
+    camera.apply_orbit_state(state);
 }
 
 pub fn camera_hotkeys_system(
@@ -78,6 +101,7 @@ pub fn camera_hotkeys_system(
 pub fn camera_control_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
+    mut mouse_motion: EventReader<MouseMotion>,
     mut scroll: EventReader<MouseWheel>,
     mut camera: ResMut<StudioCamera>,
     mut transforms: Query<&mut Transform, With<MainCamera>>,
@@ -106,16 +130,19 @@ pub fn camera_control_system(
     }
 
     if camera.rmb_held {
-        // simple orbit drag
-        camera.orbit_yaw += 0.005;
+        let mut motion = Vec2::ZERO;
+        for ev in mouse_motion.read() {
+            motion += ev.delta;
+        }
+        let mut state = camera.to_orbit_state();
+        apply_orbit_delta(&mut state, motion.x, motion.y, DEFAULT_ORBIT_SENSITIVITY);
+        camera.apply_orbit_state(state);
+    } else {
+        for _ in mouse_motion.read() {}
     }
 
     for ev in scroll.read() {
         camera.orbit_distance = (camera.orbit_distance - ev.y * 4.0).clamp(25.0, 220.0);
-    }
-
-    if !camera.overhead && keyboard.pressed(KeyCode::ShiftLeft) {
-        camera.orbit_pitch = (camera.orbit_pitch + 0.01).clamp(0.15, 1.2);
     }
 
     let pitch = if camera.overhead {
