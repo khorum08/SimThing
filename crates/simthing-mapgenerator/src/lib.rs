@@ -133,6 +133,9 @@ pub struct GalaxyGenerationResult {
     /// Producer-side edge classification for preview/report only.
     pub classified_edges: Vec<ClassifiedCouplingEdge>,
     pub nebulas: Vec<NebulaField>,
+    /// Connectivity proof when `ensure_connected` ran: `components_after == 1` means one interconnected
+    /// galaxy (no island clusters). `None` when connectivity was not requested.
+    pub connectivity: Option<ConnectivityReport>,
 }
 
 impl GalaxyGenerationResult {
@@ -213,6 +216,7 @@ pub fn generate_galaxy_with_structure(
     let mut base_hyperlane_edges = Vec::new();
     let mut hyperlane_edges = Vec::new();
     let mut classified_edges = Vec::new();
+    let mut connectivity = None;
     if let Some(options) = hyperlane_options {
         let (topology, _report) = generate_hyperlane_topology(&placement, &options, &mut rng)?;
         base_hyperlane_edges = topology.edges.clone();
@@ -226,7 +230,7 @@ pub fn generate_galaxy_with_structure(
                 .iter()
                 .map(|edge| (edge.from.clone(), edge.to.clone()))
                 .collect();
-            let (bridges, _report) = connect_components(&placement, &existing);
+            let (bridges, report) = connect_components(&placement, &existing);
             for edge in bridges {
                 classified_edges.push(ClassifiedCouplingEdge::new(
                     edge.clone(),
@@ -234,6 +238,7 @@ pub fn generate_galaxy_with_structure(
                 ));
                 base_hyperlane_edges.push(edge);
             }
+            connectivity = Some(report);
         }
         hyperlane_edges.extend(base_hyperlane_edges.iter().cloned());
     }
@@ -344,6 +349,7 @@ pub fn generate_galaxy_with_structure(
         hyperlane_edges,
         classified_edges,
         nebulas,
+        connectivity,
     })
 }
 

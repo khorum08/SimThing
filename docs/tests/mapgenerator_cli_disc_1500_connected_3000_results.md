@@ -77,8 +77,16 @@ self-link rejected. On a **scattered disc**, nearest neighbours fan out in all d
 the Stellaris-style web of local clusters (unlike the thin-armed spiral, which traced its arms). No
 wormholes/gateways (`--num-wormhole-pairs 0 --num-gateways 0`).
 
+## The connectivity proof is a production output (not just a test)
+`GalaxyGenerationResult.connectivity: Option<ConnectivityReport>` carries the proof on the **production**
+result of `generate_galaxy_with_structure`: `components_before/after`, `bridges_added`, `max_bridge_chebyshev`.
+Any caller can assert "one interconnected galaxy" without re-deriving it, and the `mapgen` CLI prints it:
+`connectivity: 1 component(s) after N bridge(s) … — one interconnected galaxy, no island clusters`. Proven
+end-to-end by `connectivity::production_generation_result_surfaces_the_connectivity_proof`.
+
 ## New capabilities (committed with this artifact)
-- `connectivity` module + `connect_components` (lib) — guarantees one connected galaxy.
+- `connectivity` module + `connect_components` (lib) — guarantees one connected galaxy; the
+  `ConnectivityReport` is surfaced on `GalaxyGenerationResult` and printed by the CLI.
 - `HyperlaneGeometryParams::ensure_connected` (serde-default false) + CLI `--connect-galaxy`.
 - CLI `--no-partitions` — skip galaxy partition/bridge generation (the defaults don't scale to 1500 stars;
   clustering still runs).

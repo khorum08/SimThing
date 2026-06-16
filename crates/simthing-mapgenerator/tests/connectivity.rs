@@ -3,9 +3,10 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use simthing_mapgenerator::{
-    build_placement_context, connect_components, generate_hyperlane_topology, validate_default,
-    HyperlaneOptions, LatticeCoord, MapGenRng, MapGenSeed, MapGeneratorParams, PlacedSystemSeed,
-    ShapePlacement, ShapeRegistry,
+    build_placement_context, connect_components, generate_galaxy_with_structure,
+    generate_hyperlane_topology, structure_options_from_params, validate_default, HyperlaneOptions,
+    LatticeCoord, MapGenRng, MapGenSeed, MapGeneratorParams, PlacedSystemSeed, ScenarioEmitter,
+    ScenarioEmitterConfig, ShapePlacement, ShapeRegistry,
 };
 
 /// Count connected components over an edge id-pair list, given the full system id set.
@@ -199,4 +200,50 @@ fn disc_1500_galaxy_is_fully_connected_after_pass() {
     // Sanity: the base network alone was NOT already trivially one component for this scattered disc,
     // so the pass did real work (or, if it happened to be connected, bridges_added == 0 is also fine).
     assert!(report.components_before >= 1);
+}
+
+#[test]
+fn production_generation_result_surfaces_the_connectivity_proof() {
+    // The connectivity guarantee must be a PRODUCTION OUTPUT, not just a test computation: a full
+    // `generate_galaxy_with_structure` run carries `connectivity` on its result so any caller can verify
+    // "one interconnected galaxy" without re-deriving it.
+    let mut params = disc_1500_params();
+    params.hyperlane.max_hyperlane_distance = 7.0; // matched to disc spacing → naturally connected web
+    params.clustering.cluster_count = Some(5);
+    params.clustering.cluster_radius = 400.0;
+    let (hyperlane, special, _partition, cluster) =
+        structure_options_from_params(&params).expect("structure options");
+    let result = generate_galaxy_with_structure(
+        &params,
+        &ShapeRegistry::default(),
+        None,
+        &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
+        Some(hyperlane),
+        Some(special),
+        None,
+        Some(cluster),
+    )
+    .expect("galaxy generates");
+
+    let connectivity = result
+        .connectivity
+        .expect("connectivity proof is surfaced on the production result");
+    assert_eq!(
+        connectivity.components_after, 1,
+        "production result must prove ONE interconnected galaxy (no island clusters)"
+    );
+
+    // And it must agree with the actual emitted base network: every system reachable, one component.
+    let ids: BTreeSet<String> = result
+        .placement
+        .systems
+        .iter()
+        .map(|s| s.id.to_string())
+        .collect();
+    let edges: Vec<(String, String)> = result
+        .base_hyperlane_edges
+        .iter()
+        .map(|e| (e.from.clone(), e.to.clone()))
+        .collect();
+    assert_eq!(component_count(&ids, &edges), 1);
 }
