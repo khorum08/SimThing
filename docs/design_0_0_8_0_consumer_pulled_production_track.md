@@ -961,7 +961,7 @@ currency); ClauseThing/ClauseScript L3 (no front-end); dense per-cell temporal m
 per-cell, not dense temporal); atlas sparse-residency scheduler / M-4A (static map); FrontierV2-5;
 Hybrid-Strata ECON scaling beyond the 2-faction set (Terran/Pirate ECON-SCALE is reused, not extended).
 
-**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2/PR2R/PR2R2/PR2R3/PR2R4/PR2R5, PROBATION):** Windows-only
+**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2/PR2R/PR2R2/PR2R3/PR2R4/PR2R5/PR2R6, PROBATION):** Windows-only
 `simthing-mapeditor` studio shell: borderless black window, detached floating egui generation panel (20%
 width, 3% margin), 3D galaxy view from MapGenerator typed output + JSON report quality status.
 Presentation/authoring only — no live simulation, no save/load sessions. PR2 adds hover/click star
@@ -976,6 +976,8 @@ points with minimal aura while close/selected stars can bloom locally. PR2R4 cen
 system anchors so stars, picking, base hyperlane endpoints, and selected incident-lane highlights share
 the same render coordinate frame and height. PR2R5 halves the PR2R4 aura extent and applies an additional
 25% distant-star luminosity falloff while preserving those anchors, lane fade, and shape-param scoping.
+PR2R6 halves the PR2R5 maximum aura cap and adds a depth-0.5-to-horizon 1.0→0.75 taper to aura radius
+and luminosity while preserving near-camera peak brightness.
 PR1R repairs shell contract
 (warning-clickable greyed controls, mouse-delta orbit, hyperlane depth buckets). Bevy transforms,
 camera-space coordinates, star size, sprite scale, aura alpha, bloom, hyperlane color/materials, and

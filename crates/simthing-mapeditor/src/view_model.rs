@@ -49,7 +49,7 @@ impl Default for StudioGalaxyRenderMeta {
             star_far_core_scale: 0.10,
             star_near_core_scale: 0.68,
             star_far_aura_scale: crate::star_render::PR2R5_STAR_FAR_AURA_SCALE,
-            star_near_aura_scale: crate::star_render::PR2R5_STAR_NEAR_AURA_SCALE,
+            star_near_aura_scale: crate::star_render::PR2R6_STAR_NEAR_AURA_SCALE,
             star_far_core_alpha: crate::star_render::PR2R5_STAR_FAR_CORE_ALPHA,
             star_near_core_alpha: 1.0,
             star_far_aura_alpha: 0.008,
