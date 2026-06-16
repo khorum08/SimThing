@@ -7,6 +7,7 @@ use crate::camera_control::{
     apply_orbit_delta, reset_camera_after_generation as reset_orbit, snap_overhead as snap_orbit,
     OrbitCameraState, DEFAULT_ORBIT_SENSITIVITY,
 };
+use crate::settings::PersistedCameraState;
 
 pub struct StudioCameraPlugin;
 
@@ -60,6 +61,14 @@ impl StudioCamera {
         self.orbit_distance = state.orbit_distance;
         self.orbit_target = Vec3::from_array(state.orbit_target);
         self.overhead = state.overhead;
+    }
+
+    pub fn apply_persisted(&mut self, persisted: &PersistedCameraState) {
+        self.apply_orbit_state(OrbitCameraState::from(*persisted));
+    }
+
+    pub fn to_persisted(&self) -> PersistedCameraState {
+        PersistedCameraState::from(&self.to_orbit_state())
     }
 }
 
