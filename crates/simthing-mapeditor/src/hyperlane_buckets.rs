@@ -180,6 +180,28 @@ mod tests {
     }
 
     #[test]
+    fn camera_relative_lane_fade_still_present() {
+        let meta = StudioGalaxyRenderMeta::default();
+        let camera = [0.0, 0.0, 0.0];
+        let thresholds = HyperlaneCameraDepthThresholds::from_meta(&meta);
+        let near = classify_hyperlane_camera_depth_bucket(
+            camera,
+            [10.0, 0.0, 0.0],
+            [20.0, 0.0, 0.0],
+            thresholds,
+        );
+        let far = classify_hyperlane_camera_depth_bucket(
+            camera,
+            [220.0, 0.0, 0.0],
+            [240.0, 0.0, 0.0],
+            thresholds,
+        );
+        assert_eq!(near, HyperlaneDepthBucket::Near);
+        assert_eq!(far, HyperlaneDepthBucket::Far);
+        assert!(bucket_alpha_for_meta(near, &meta) > bucket_alpha_for_meta(far, &meta));
+    }
+
+    #[test]
     fn far_hyperlane_alpha_has_legible_minimum() {
         let mut meta = StudioGalaxyRenderMeta::default();
         meta.lane_visibility_scale = 0.01;

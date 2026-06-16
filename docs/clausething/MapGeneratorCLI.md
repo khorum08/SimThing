@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r4_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r5_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -573,3 +573,19 @@ PR2R4 repairs the visual detachment where stars appeared to float away from the 
 - Structural gridcell coordinates remain authoritative. Shape params remain scoped by selected shape.
 - Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains
   deferred research.
+
+### PR2R5 star aura and distant falloff tuning (2026-06-16)
+
+PR2R5 applies a narrow visual tuning pass after owner feedback that the R4 coherence fix worked but stars
+still carried too much haze at overview distance:
+
+- Star aura extent is reduced another 50% from the PR2R4 accepted baseline while preserving the core star
+  point/starburst.
+- Distant-star core alpha uses an additional 25% falloff (`0.75x` of the previous far-core-alpha rule), so
+  far stars recede by brightness as well as scale.
+- Near stars keep readable core brightness; selected/hovered multipliers remain render-only editor metadata.
+- Stars and hyperlanes continue to share the PR2R4 render anchors, so base lane endpoints, selected
+  incident-lane highlights, selection hitboxes, and star visuals remain in the same render coordinate frame.
+- Hyperlane camera-depth fading and shape-param scoping remain unchanged.
+- Structural gridcell coordinates remain authoritative. The tuning changes only editor presentation metadata;
+  no runtime simulation, MapGenerator topology, pathfinding, ClauseThing lowering, or save/load behavior changes.

@@ -433,6 +433,34 @@ mod tests {
     }
 
     #[test]
+    fn shape_param_scoping_unchanged() {
+        let elliptical = GenerationPreset::Elliptical1000.to_profile();
+        let disc = GenerationPreset::Disc1500Connected.to_profile();
+        let spiral = GenerationPreset::Spiral4Visual1500.to_profile();
+        assert_eq!(
+            elliptical.to_map_generator_params().shape.shape,
+            "elliptical"
+        );
+        assert_eq!(disc.to_map_generator_params().shape.shape, "elliptical");
+        assert_eq!(spiral.to_map_generator_params().shape.shape, "spiral_4");
+        assert!(!elliptical
+            .to_map_generator_params()
+            .shape
+            .shape_params
+            .contains_key("arm_width"));
+        assert!(!disc
+            .to_map_generator_params()
+            .shape
+            .shape_params
+            .contains_key("arm_width"));
+        assert!(spiral
+            .to_map_generator_params()
+            .shape
+            .shape_params
+            .contains_key("arm_width"));
+    }
+
+    #[test]
     fn disc_preset_clears_or_deactivates_spiral_params() {
         let profile = GenerationPreset::Disc1500Connected.to_profile();
         let params = profile.to_map_generator_params();
