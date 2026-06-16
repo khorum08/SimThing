@@ -5,9 +5,11 @@ use bevy::window::PrimaryWindow;
 use bevy_egui::EguiContexts;
 
 use crate::selection::{
-    apply_star_click, pick_nearest_star_screen, ScreenStarProjection, DEFAULT_PICK_RADIUS_PX,
+    apply_star_click, pick_nearest_star_screen, screen_star_projection_from_anchor,
+    DEFAULT_PICK_RADIUS_PX,
 };
 use crate::star_render::{star_distance_visual, star_emissive_strength};
+use crate::view_model::anchor_for_system;
 
 use super::camera::MainCamera;
 use super::galaxy_render::{rebuild_highlight_hyperlanes, GalaxyStar, StarVisualLayer};
@@ -53,17 +55,17 @@ pub fn star_pick_system(
         return;
     };
 
-    let mut projections = Vec::with_capacity(session.view_model.stars.len());
-    for star in &session.view_model.stars {
-        let world = Vec3::new(star.world_x, star.world_y, star.world_z);
+    let mut projections = Vec::with_capacity(session.view_model.render_anchors.len());
+    for anchor in &session.view_model.render_anchors {
+        let world = Vec3::from_array(anchor.world_position);
         if let Ok(viewport) = camera.world_to_viewport(camera_transform, world) {
-            let depth = camera_transform.translation().distance(world);
-            projections.push(ScreenStarProjection {
-                system_id: star.system_id,
-                screen_x: viewport.x,
-                screen_y: viewport.y,
-                depth,
-            });
+            let projection = screen_star_projection_from_anchor(
+                anchor,
+                viewport.x,
+                viewport.y,
+                camera_transform.translation().to_array(),
+            );
+            projections.push(projection);
         }
     }
 
@@ -131,7 +133,11 @@ pub fn sync_star_visuals_system(
         };
         let selected = state.selection.selected_system_id == Some(star.system_id);
         let hovered = state.selection.hovered_system_id == Some(star.system_id);
-        let star_pos = Vec3::new(view.world_x, view.world_y, view.world_z);
+        let Some(anchor) = anchor_for_system(&session.view_model.render_anchors, star.system_id)
+        else {
+            continue;
+        };
+        let star_pos = Vec3::from_array(anchor.world_position);
         let visual = star_distance_visual(camera_pos.distance(star_pos), selected, hovered, meta);
         let (layer_scale, alpha, emissive_factor, color) = match star.layer {
             StarVisualLayer::Core => (visual.core_scale, visual.core_alpha, 1.0, (0.88, 0.95, 1.0)),

@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r3_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r4_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -552,5 +552,24 @@ pathfinding, or GPU semantic authority:
   metadata only.
 - Shape params remain scoped by selected shape. Inactive/dormant params are visible as editor state but are
   not submitted to MapGenerator; CLI/generator validation remains fail-closed for submitted params.
+- Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains
+  deferred research.
+
+### PR2R4 render-anchor coherence (2026-06-16)
+
+PR2R4 repairs the visual detachment where stars appeared to float away from the starlane mesh:
+
+- Stars, selection hitboxes, base hyperlane endpoints, and selected incident-lane highlights now consume
+  one render-only system anchor per generated system.
+- Render anchors derive from structural gridcell `(col,row)` plus editor render metadata, including
+  render-only visual height/thickness, but they are not structural authority and never write back to the
+  generated scenario.
+- Hyperlane visual endpoint height follows the star render anchor. If a star is rendered above or below the
+  plane, its incident lane segment terminates at that same 3D anchor.
+- Star aura/size remain render metadata; overview aura stays small enough for lane attachment to remain
+  visible.
+- Hyperlane camera-depth material/bucketing remains presentation-only and camera-relative by segment
+  midpoint.
+- Structural gridcell coordinates remain authoritative. Shape params remain scoped by selected shape.
 - Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains
   deferred research.
