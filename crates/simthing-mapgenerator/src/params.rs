@@ -93,8 +93,14 @@ pub struct HyperlaneGeometryParams {
     pub num_hyperlanes_default: u32,
     pub random_hyperlanes: bool,
     /// Add minimal bridges so the base hyperlane network is one connected galaxy (no island clusters).
-    #[serde(default)]
+    /// **Default ON** — a galaxy with orphaned systems is unusable; a designer can opt out explicitly
+    /// (or add/remove links at runtime).
+    #[serde(default = "default_ensure_connected")]
     pub ensure_connected: bool,
+}
+
+fn default_ensure_connected() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -215,7 +221,7 @@ impl Default for MapGeneratorParams {
                 num_hyperlanes_max: 3,
                 num_hyperlanes_default: 2,
                 random_hyperlanes: true,
-                ensure_connected: false,
+                ensure_connected: true,
             },
             special_routes: SpecialRouteParams {
                 num_wormhole_pairs: 0,

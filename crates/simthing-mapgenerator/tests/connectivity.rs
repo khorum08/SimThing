@@ -203,6 +203,15 @@ fn disc_1500_galaxy_is_fully_connected_after_pass() {
 }
 
 #[test]
+fn connectivity_is_on_by_default() {
+    // A galaxy with orphaned systems is unusable, so the generator must default to connected.
+    assert!(
+        MapGeneratorParams::default().hyperlane.ensure_connected,
+        "ensure_connected must default ON (designers opt out explicitly)"
+    );
+}
+
+#[test]
 fn production_generation_result_surfaces_the_connectivity_proof() {
     // The connectivity guarantee must be a PRODUCTION OUTPUT, not just a test computation: a full
     // `generate_galaxy_with_structure` run carries `connectivity` on its result so any caller can verify
