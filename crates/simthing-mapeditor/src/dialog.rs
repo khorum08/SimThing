@@ -16,32 +16,33 @@ impl WarningDialogModel {
             StudioAction::New => Self {
                 visible: true,
                 title: "New session".into(),
-                message: "New session (clear studio state) is not implemented in PR1.".into(),
+                message: "New session (clear studio state) is not implemented in PR1R.".into(),
             },
             StudioAction::Load => Self {
                 visible: true,
                 title: "Load session".into(),
-                message: "Load session (RON/JSON editor session) is not implemented in PR1.".into(),
+                message: "Load session (RON/JSON editor session) is not implemented in PR1R."
+                    .into(),
             },
             StudioAction::Save => Self {
                 visible: true,
                 title: "Save session".into(),
                 message:
-                    "Save session (editor session + scenario + report) is not implemented in PR1."
+                    "Save session (editor session + scenario + report) is not implemented in PR1R."
                         .into(),
             },
             StudioAction::InactivePreset(name) => Self {
                 visible: true,
                 title: "Preset unavailable".into(),
                 message: format!(
-                    "Preset '{name}' is visible for roadmap continuity but is not active in PR1."
+                    "Preset '{name}' is visible for roadmap continuity but is not active in PR1R."
                 ),
             },
             StudioAction::InactiveControl(name) => Self {
                 visible: true,
                 title: "Control unavailable".into(),
                 message: format!(
-                    "'{name}' is visible for roadmap continuity but is not implemented in PR1."
+                    "'{name}' is visible for roadmap continuity but is not implemented in PR1R."
                 ),
             },
         }
@@ -65,6 +66,18 @@ pub fn unimplemented_action_response(action: StudioAction) -> WarningDialogModel
     WarningDialogModel::for_action(action)
 }
 
+pub fn inactive_control_click_action(label: &str) -> StudioAction {
+    StudioAction::InactiveControl(label.to_string())
+}
+
+pub fn inactive_control_warning(label: &str) -> WarningDialogModel {
+    unimplemented_action_response(inactive_control_click_action(label))
+}
+
+pub fn new_load_save_actions() -> [StudioAction; 3] {
+    [StudioAction::New, StudioAction::Load, StudioAction::Save]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,5 +89,33 @@ mod tests {
         assert!(dialog.message.contains("not implemented"));
         let preset = unimplemented_action_response(StudioAction::InactivePreset("static".into()));
         assert!(preset.message.contains("static"));
+    }
+
+    #[test]
+    fn inactive_control_click_returns_warning_action() {
+        let action = inactive_control_click_action("Layer toggles");
+        assert_eq!(
+            action,
+            StudioAction::InactiveControl("Layer toggles".into())
+        );
+        let dialog = inactive_control_warning("Layer toggles");
+        assert!(dialog.visible);
+        assert!(dialog.message.contains("Layer toggles"));
+    }
+
+    #[test]
+    fn inactive_preset_click_returns_warning_action() {
+        let dialog = unimplemented_action_response(StudioAction::InactivePreset("disc".into()));
+        assert!(dialog.visible);
+        assert!(dialog.message.contains("disc"));
+    }
+
+    #[test]
+    fn new_load_save_warning_actions_are_reachable() {
+        for action in new_load_save_actions() {
+            let dialog = unimplemented_action_response(action);
+            assert!(dialog.visible);
+            assert!(dialog.message.contains("not implemented"));
+        }
     }
 }

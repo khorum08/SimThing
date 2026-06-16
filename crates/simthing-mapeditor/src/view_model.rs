@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 use simthing_mapgenerator::{
     deterministic_unit_hash, grid_chebyshev_distance, GalaxyGenerationResult, GenerationReport,
-    HyperlaneEdge,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -52,6 +51,7 @@ pub struct StudioHyperlaneView {
     pub to_system_id: String,
     pub from: [f32; 3],
     pub to: [f32; 3],
+    pub depth_bucket: crate::hyperlane_buckets::HyperlaneDepthBucket,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -134,20 +134,39 @@ impl StudioGalaxyViewModel {
             })
             .collect();
 
-        let hyperlanes = result
-            .base_hyperlane_edges
-            .iter()
-            .filter_map(|edge: &HyperlaneEdge| {
-                let from = id_to_world.get(&edge.from)?;
-                let to = id_to_world.get(&edge.to)?;
-                Some(StudioHyperlaneView {
-                    from_system_id: edge.from.clone(),
-                    to_system_id: edge.to.clone(),
-                    from: *from,
-                    to: *to,
+        let hyperlanes = {
+            let mut lanes = Vec::new();
+            let mut dists = Vec::new();
+            for edge in &result.base_hyperlane_edges {
+                let Some(from) = id_to_world.get(&edge.from) else {
+                    continue;
+                };
+                let Some(to) = id_to_world.get(&edge.to) else {
+                    continue;
+                };
+                let mid = [
+                    (from[0] + to[0]) * 0.5,
+                    (from[1] + to[1]) * 0.5,
+                    (from[2] + to[2]) * 0.5,
+                ];
+                let dist = (mid[0] * mid[0] + mid[2] * mid[2]).sqrt();
+                dists.push(dist);
+                lanes.push((edge.clone(), *from, *to, mid, dist));
+            }
+            let max_dist = dists.iter().copied().fold(1.0_f32, f32::max).max(1.0);
+            lanes
+                .into_iter()
+                .map(|(edge, from, to, _mid, dist)| StudioHyperlaneView {
+                    from_system_id: edge.from,
+                    to_system_id: edge.to,
+                    from,
+                    to,
+                    depth_bucket: crate::hyperlane_buckets::classify_hyperlane_depth_bucket(
+                        dist / max_dist,
+                    ),
                 })
-            })
-            .collect();
+                .collect::<Vec<_>>()
+        };
 
         Self {
             seed: result.seed,

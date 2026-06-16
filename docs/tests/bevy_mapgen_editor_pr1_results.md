@@ -103,3 +103,10 @@ cargo run -p simthing-mapeditor --bin simthing-studio
 ## DA status
 
 **PROBATION** — pending owner/design-authority approval. Do not pre-file DA approval.
+
+## PR1R addendum (2026-06-16)
+
+PR1R (`docs/tests/bevy_mapgen_editor_pr1r_results.md`) repairs shell contract bugs found in Windows live
+run: floating left panel (20% width, 3% margin), warning-clickable greyed controls, empty pre-generation
+title bar, real auto-collapse, Overhead/Reset wiring, mouse-delta orbit, hyperlane depth buckets, and
+non-Windows main fallback. Stars remain interim emissive spheres (not starburst sprites).

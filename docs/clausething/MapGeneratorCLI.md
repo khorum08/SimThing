@@ -487,4 +487,16 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md` and `docs/tests/bevy_mapgen_editor_pr1r_results.md`.
+
+### PR1R shell contract repair (2026-06-16)
+
+PR1R repairs Windows live-run defects before DA promotion:
+
+- Left panel is a **detached floating panel** (20% width, 3% viewport margin, 5% rounded corners) — not a docked sidebar.
+- Greyed New/Load/Save and inactive presets are **warning-clickable** (not disabled egui widgets).
+- Left title bar is **empty before generation**; galaxy name after generation.
+- Overhead/Reset buttons wired; RMB orbit uses **mouse delta**.
+- Hyperlanes render in **near/mid/far depth buckets** with independent materials.
+- Stars remain **emissive unlit spheres** (interim); starburst sprites deferred to PR2/polish.
+- Non-Windows builds exit with a clear message (main fallback not hidden by crate cfg).

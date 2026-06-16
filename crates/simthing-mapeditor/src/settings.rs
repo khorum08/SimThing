@@ -39,7 +39,7 @@ impl Default for EditorSettings {
             window_mode: WindowModeSetting::default(),
             exclusive_fullscreen_enabled: false,
             last_window_size: [1600, 900],
-            last_panel_width: 0.28,
+            last_panel_width: 0.20,
             left_panel_collapsed: false,
             last_generation_params: GenerationProfile::default_spiral_2_dense_3000(),
             last_session_path: None,
