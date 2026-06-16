@@ -96,7 +96,7 @@ pub fn studio_ui_system(
 }
 
 fn studio_panel_frame(opacity: f32) -> egui::Frame {
-    egui::Frame::none()
+    egui::Frame::new()
         .fill(egui::Color32::from_rgba_unmultiplied(
             12,
             18,
@@ -108,7 +108,7 @@ fn studio_panel_frame(opacity: f32) -> egui::Frame {
             egui::Color32::from_rgba_unmultiplied(70, 110, 170, (opacity * 180.0) as u8),
         ))
         .inner_margin(12.0)
-        .rounding(6.0)
+        .corner_radius(6.0)
 }
 
 fn draw_window_controls(

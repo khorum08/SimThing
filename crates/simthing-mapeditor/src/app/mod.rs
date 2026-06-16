@@ -7,7 +7,7 @@ mod ui;
 mod window;
 
 use bevy::prelude::*;
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 use crate::generation::GenerationProfile;
 use crate::session::StudioSession;
@@ -38,10 +38,10 @@ pub fn run_studio() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(camera::StudioCameraPlugin)
         .add_systems(Startup, (window::apply_initial_window_mode, setup_scene))
+        .add_systems(EguiPrimaryContextPass, ui::studio_ui_system)
         .add_systems(
             Update,
             (
-                ui::studio_ui_system,
                 ui::panel_opacity_system,
                 camera::camera_control_system,
                 camera::camera_hotkeys_system,
