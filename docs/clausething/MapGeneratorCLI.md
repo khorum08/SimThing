@@ -520,3 +520,15 @@ PR2R repairs two Windows live defects before DA promotion:
 - CLI/generator **fail-closed validation remains intact** for invalid submitted params.
 - Starburst/visibility tuning and hyperlane fades are **presentation-only**; structural gridcell `(col,row)` coordinates remain authoritative.
 - Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains deferred research.
+
+### PR2R2 star and camera-depth lane visibility repair (2026-06-16)
+
+PR2R2 repairs the remaining Studio presentation blockers:
+
+- Starburst billboards remain render-only sprites, now with stronger overview-scale defaults, double-sided materials, and selected/hovered scale/emissive boosts so the map reads first as a starfield.
+- Render debug toggles expose **Show stars**, **Show hyperlanes**, **Stars only**, and **Hyperlanes only** for diagnosing spawned-vs-hidden layers without mutating the generated galaxy.
+- Hyperlane near/mid/far buckets are rebuilt from camera-relative segment-midpoint distance. Near lanes are light blue and legible; mid lanes are muted blue; far lanes fade toward dark grey/blue while preserving a minimum alpha.
+- Selected incident lanes use a visual-only highlight overlay that overrides the base depth fade.
+- Hyperlane materials, lane alpha, camera-space distance, star sprite scale, starburst texture, and Bevy transforms are presentation/editor metadata only. They do not become simulation GPU authority and do not change structural gridcell coordinates.
+- Shape params remain scoped by selected shape: inactive/dormant params stay visible as editor state but are not submitted to MapGenerator; CLI/generator fail-closed validation remains intact for submitted params.
+- Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains deferred research.

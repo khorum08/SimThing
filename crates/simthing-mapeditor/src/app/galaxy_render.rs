@@ -4,10 +4,13 @@ use bevy::prelude::*;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_asset::RenderAssetUsages;
 
-use crate::hyperlane_buckets::{bucket_base_rgba, HyperlaneDepthBucket};
+use crate::hyperlane_buckets::{
+    bucket_alpha_for_meta, bucket_base_rgba, classify_hyperlane_camera_depth_bucket,
+    selected_incident_lane_alpha, HyperlaneCameraDepthThresholds, HyperlaneDepthBucket,
+};
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
-use crate::star_render::hyperlane_bucket_alpha;
+use crate::star_render::prepare_star_render_instances;
 use crate::starburst::generate_starburst_image;
 
 use super::GalaxySceneRoot;
@@ -19,6 +22,9 @@ pub struct GalaxyStar {
 
 #[derive(Component)]
 pub struct GalaxyHyperlanes(pub HyperlaneDepthBucket);
+
+#[derive(Component)]
+pub struct SelectedHyperlaneHighlight;
 
 #[derive(Resource)]
 pub struct StarVisualAssets {
@@ -46,27 +52,28 @@ pub fn rebuild_galaxy_scene(
 ) {
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
-    for star in &vm.stars {
+    for star in prepare_star_render_instances(&vm.stars) {
         let material = materials.add(StandardMaterial {
-            base_color: Color::WHITE,
+            base_color: Color::srgba(0.86, 0.94, 1.0, 0.98),
             base_color_texture: Some(assets.texture.clone()),
             emissive: LinearRgba::new(
-                star.emissive_strength * 0.9,
-                star.emissive_strength * 0.95,
-                star.emissive_strength,
+                star.emissive_strength * 1.25,
+                star.emissive_strength * 1.32,
+                star.emissive_strength * 1.45,
                 1.0,
             ),
             emissive_texture: Some(assets.texture.clone()),
             unlit: true,
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Add,
+            cull_mode: None,
             ..default()
         });
         let entity = commands
             .spawn((
                 Mesh3d(assets.quad.clone()),
                 MeshMaterial3d(material),
-                Transform::from_xyz(star.world_x, star.world_y, star.world_z)
-                    .with_scale(Vec3::splat(star.sprite_scale)),
+                Transform::from_xyz(star.position[0], star.position[1], star.position[2])
+                    .with_scale(Vec3::splat(star.scale)),
                 GalaxyStar {
                     system_id: star.system_id,
                 },
@@ -92,18 +99,17 @@ fn spawn_hyperlane_bucket(
     vm: &crate::view_model::StudioGalaxyViewModel,
     bucket: HyperlaneDepthBucket,
 ) {
-    let mut positions = Vec::new();
-    for lane in vm
+    let positions: Vec<[f32; 3]> = vm
         .hyperlanes
         .iter()
         .filter(|lane| lane.depth_bucket == bucket)
-    {
-        positions.push([lane.from[0], lane.from[1], lane.from[2]]);
-        positions.push([lane.to[0], lane.to[1], lane.to[2]]);
-    }
-    if positions.is_empty() {
-        return;
-    }
+        .flat_map(|lane| {
+            [
+                [lane.from[0], lane.from[1], lane.from[2]],
+                [lane.to[0], lane.to[1], lane.to[2]],
+            ]
+        })
+        .collect();
     let mut mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     let mesh_handle = meshes.add(mesh);
@@ -164,14 +170,18 @@ pub fn rebuild_highlight_hyperlanes(
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     let mesh_handle = meshes.add(mesh);
     let material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.65, 0.88, 1.0, 0.95),
+        base_color: Color::srgba(0.72, 0.92, 1.0, selected_incident_lane_alpha()),
         unlit: true,
         alpha_mode: AlphaMode::Blend,
         ..default()
     });
     root.highlight_hyperlanes = Some(
         commands
-            .spawn((Mesh3d(mesh_handle), MeshMaterial3d(material)))
+            .spawn((
+                Mesh3d(mesh_handle),
+                MeshMaterial3d(material),
+                SelectedHyperlaneHighlight,
+            ))
             .id(),
     );
 }
@@ -204,8 +214,13 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
 pub fn sync_hyperlane_colors_system(
     session: Res<super::StudioAppState>,
     camera: Query<&GlobalTransform, With<super::camera::MainCamera>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    hyperlanes: Query<(&MeshMaterial3d<StandardMaterial>, &GalaxyHyperlanes)>,
+    hyperlanes: Query<(
+        &Mesh3d,
+        &MeshMaterial3d<StandardMaterial>,
+        &GalaxyHyperlanes,
+    )>,
 ) {
     let Some(session) = session.session.as_ref() else {
         return;
@@ -218,44 +233,70 @@ pub fn sync_hyperlane_colors_system(
     };
     let cam_pos = cam.translation();
     let meta = &session.view_model.render_meta;
+    let thresholds = HyperlaneCameraDepthThresholds::from_meta(meta);
+    let mut near_positions = Vec::new();
+    let mut mid_positions = Vec::new();
+    let mut far_positions = Vec::new();
 
-    for bucket in HyperlaneDepthBucket::ALL {
-        let lanes: Vec<_> = session
-            .view_model
-            .hyperlanes
-            .iter()
-            .filter(|lane| lane.depth_bucket == bucket)
-            .collect();
-        if lanes.is_empty() {
-            continue;
-        }
-        let avg_dist = lanes
-            .iter()
-            .map(|lane| {
-                let mid = Vec3::new(
-                    (lane.from[0] + lane.to[0]) * 0.5,
-                    (lane.from[1] + lane.to[1]) * 0.5,
-                    (lane.from[2] + lane.to[2]) * 0.5,
-                );
-                cam_pos.distance(mid)
-            })
-            .sum::<f32>()
-            / lanes.len() as f32;
-        let alpha = {
-            let scaled = hyperlane_bucket_alpha(bucket, meta);
-            let t = ((avg_dist - meta.hyperlane_depth_fade_start)
-                / (meta.hyperlane_depth_fade_end - meta.hyperlane_depth_fade_start))
-                .clamp(0.0, 1.0);
-            scaled * (1.0 - t * 0.85)
+    for lane in &session.view_model.hyperlanes {
+        let bucket = classify_hyperlane_camera_depth_bucket(
+            cam_pos.to_array(),
+            lane.from,
+            lane.to,
+            thresholds,
+        );
+        let positions = match bucket {
+            HyperlaneDepthBucket::Near => &mut near_positions,
+            HyperlaneDepthBucket::Mid => &mut mid_positions,
+            HyperlaneDepthBucket::Far => &mut far_positions,
         };
-        let (r, g, b, _) = bucket_base_rgba(bucket);
-        for (mat_handle, marker) in &hyperlanes {
-            if marker.0 != bucket {
-                continue;
-            }
-            if let Some(material) = materials.get_mut(&mat_handle.0) {
-                material.base_color = Color::srgba(r, g, b, alpha);
-            }
+        positions.push(lane.from);
+        positions.push(lane.to);
+    }
+
+    for (mesh_handle, mat_handle, marker) in &hyperlanes {
+        let positions = match marker.0 {
+            HyperlaneDepthBucket::Near => &near_positions,
+            HyperlaneDepthBucket::Mid => &mid_positions,
+            HyperlaneDepthBucket::Far => &far_positions,
+        };
+        if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions.clone());
         }
+        let (r, g, b, _) = bucket_base_rgba(marker.0);
+        if let Some(material) = materials.get_mut(&mat_handle.0) {
+            material.base_color = Color::srgba(r, g, b, bucket_alpha_for_meta(marker.0, meta));
+        }
+    }
+}
+
+pub fn sync_render_debug_visibility_system(
+    state: Res<super::StudioAppState>,
+    mut visibility_queries: ParamSet<(
+        Query<&mut Visibility, With<GalaxyStar>>,
+        Query<&mut Visibility, With<GalaxyHyperlanes>>,
+        Query<&mut Visibility, With<SelectedHyperlaneHighlight>>,
+    )>,
+) {
+    for mut visibility in &mut visibility_queries.p0() {
+        *visibility = if state.show_stars {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+    for mut visibility in &mut visibility_queries.p1() {
+        *visibility = if state.show_hyperlanes {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+    for mut visibility in &mut visibility_queries.p2() {
+        *visibility = if state.show_hyperlanes {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
     }
 }

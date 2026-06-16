@@ -57,6 +57,7 @@ pub fn run_studio() {
                 picking::sync_star_visuals_system,
                 picking::billboard_stars_system,
                 galaxy_render::sync_hyperlane_colors_system,
+                galaxy_render::sync_render_debug_visibility_system,
                 window::persist_settings_on_exit,
             ),
         )
@@ -84,6 +85,8 @@ pub struct StudioAppState {
     pub generation_busy: bool,
     pub generation_error: Option<String>,
     pub status_message: String,
+    pub show_stars: bool,
+    pub show_hyperlanes: bool,
 }
 
 impl StudioAppState {
@@ -102,6 +105,8 @@ impl StudioAppState {
             generation_busy: false,
             generation_error: None,
             status_message: String::new(),
+            show_stars: true,
+            show_hyperlanes: true,
         }
     }
 }

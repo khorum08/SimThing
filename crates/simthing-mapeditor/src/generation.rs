@@ -371,10 +371,38 @@ mod tests {
     }
 
     #[test]
+    fn elliptical_generation_does_not_submit_spiral_params() {
+        let profile = GenerationPreset::Elliptical1000.to_profile();
+        let params = profile.to_map_generator_params();
+        assert_eq!(params.shape.shape, "elliptical");
+        assert!(!params.shape.shape_params.contains_key("arm_width"));
+        assert!(!params.shape.shape_params.contains_key("arm_tightness"));
+    }
+
+    #[test]
+    fn disc_generation_does_not_submit_spiral_params() {
+        let profile = GenerationPreset::Disc1500Connected.to_profile();
+        let params = profile.to_map_generator_params();
+        assert_eq!(params.shape.shape, "elliptical");
+        assert!(!params.shape.shape_params.contains_key("arm_width"));
+        assert!(!params.shape.shape_params.contains_key("arm_tightness"));
+    }
+
+    #[test]
     fn editor_spiral_generation_submits_spiral_params() {
         let mut profile = GenerationProfile::default_spiral_2_dense_3000();
         profile.init_shape_param_storage();
         let params = profile.to_map_generator_params();
+        assert_eq!(params.shape.shape_params.get("arm_width"), Some(&14.0));
+        assert_eq!(params.shape.shape_params.get("arm_tightness"), Some(&0.6));
+        assert_eq!(params.shape.shape_params.get("jitter"), Some(&2.0));
+    }
+
+    #[test]
+    fn spiral_generation_still_submits_spiral_params() {
+        let profile = GenerationPreset::Spiral4Visual1500.to_profile();
+        let params = profile.to_map_generator_params();
+        assert_eq!(params.shape.shape, "spiral_4");
         assert_eq!(params.shape.shape_params.get("arm_width"), Some(&14.0));
         assert_eq!(params.shape.shape_params.get("arm_tightness"), Some(&0.6));
         assert_eq!(params.shape.shape_params.get("jitter"), Some(&2.0));
@@ -412,5 +440,22 @@ mod tests {
         assert!(!report_has_spiral_only_params(
             &output.report.request.shape_params
         ));
+    }
+
+    #[test]
+    fn inactive_shape_params_are_visible_but_not_submitted() {
+        let mut profile = GenerationProfile::default_spiral_2_dense_3000();
+        profile.init_shape_param_storage();
+        profile.arm_width = 22.0;
+        profile.arm_tightness = 0.25;
+        profile.jitter = 3.0;
+        profile.switch_shape("spiral_2", "elliptical");
+        assert_eq!(profile.arm_width, 22.0);
+        assert_eq!(profile.arm_tightness, 0.25);
+
+        let params = profile.to_map_generator_params();
+        assert!(!params.shape.shape_params.contains_key("arm_width"));
+        assert!(!params.shape.shape_params.contains_key("arm_tightness"));
+        assert_eq!(params.shape.shape_params.get("jitter"), Some(&2.0));
     }
 }
