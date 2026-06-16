@@ -1,0 +1,80 @@
+//! Reusable warning dialog model for unimplemented controls.
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct WarningDialogModel {
+    pub visible: bool,
+    pub title: String,
+    pub message: String,
+}
+
+impl WarningDialogModel {
+    pub const DEFAULT_MESSAGE: &'static str =
+        "This option is visible for roadmap continuity but is not implemented in this build.";
+
+    pub fn for_action(action: StudioAction) -> Self {
+        match action {
+            StudioAction::New => Self {
+                visible: true,
+                title: "New session".into(),
+                message: "New session (clear studio state) is not implemented in PR1.".into(),
+            },
+            StudioAction::Load => Self {
+                visible: true,
+                title: "Load session".into(),
+                message: "Load session (RON/JSON editor session) is not implemented in PR1.".into(),
+            },
+            StudioAction::Save => Self {
+                visible: true,
+                title: "Save session".into(),
+                message:
+                    "Save session (editor session + scenario + report) is not implemented in PR1."
+                        .into(),
+            },
+            StudioAction::InactivePreset(name) => Self {
+                visible: true,
+                title: "Preset unavailable".into(),
+                message: format!(
+                    "Preset '{name}' is visible for roadmap continuity but is not active in PR1."
+                ),
+            },
+            StudioAction::InactiveControl(name) => Self {
+                visible: true,
+                title: "Control unavailable".into(),
+                message: format!(
+                    "'{name}' is visible for roadmap continuity but is not implemented in PR1."
+                ),
+            },
+        }
+    }
+
+    pub fn dismiss(&mut self) {
+        self.visible = false;
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioAction {
+    New,
+    Load,
+    Save,
+    InactivePreset(String),
+    InactiveControl(String),
+}
+
+pub fn unimplemented_action_response(action: StudioAction) -> WarningDialogModel {
+    WarningDialogModel::for_action(action)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn editor_unimplemented_action_returns_warning_dialog_model() {
+        let dialog = unimplemented_action_response(StudioAction::Save);
+        assert!(dialog.visible);
+        assert!(dialog.message.contains("not implemented"));
+        let preset = unimplemented_action_response(StudioAction::InactivePreset("static".into()));
+        assert!(preset.message.contains("static"));
+    }
+}

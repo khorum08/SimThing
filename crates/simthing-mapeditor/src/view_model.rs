@@ -1,0 +1,261 @@
+//! View model: structural gridcell coords + render-only studio metadata.
+
+use serde::{Deserialize, Serialize};
+use simthing_mapgenerator::{
+    deterministic_unit_hash, grid_chebyshev_distance, GalaxyGenerationResult, GenerationReport,
+    HyperlaneEdge,
+};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StudioGalaxyRenderMeta {
+    pub vertical_thickness_scale: f32,
+    pub core_bulge_strength: f32,
+    pub core_bulge_radius: f32,
+    pub star_sprite_scale: f32,
+    pub hyperlane_alpha_near: f32,
+    pub hyperlane_alpha_far: f32,
+    pub hyperlane_depth_fade_start: f32,
+    pub hyperlane_depth_fade_end: f32,
+}
+
+impl Default for StudioGalaxyRenderMeta {
+    fn default() -> Self {
+        Self {
+            vertical_thickness_scale: 1.0,
+            core_bulge_strength: 0.85,
+            core_bulge_radius: 0.22,
+            star_sprite_scale: 1.0,
+            hyperlane_alpha_near: 0.72,
+            hyperlane_alpha_far: 0.08,
+            hyperlane_depth_fade_start: 20.0,
+            hyperlane_depth_fade_end: 120.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioStarView {
+    pub system_id: u32,
+    pub structural_col: u32,
+    pub structural_row: u32,
+    pub render_height: f32,
+    pub world_x: f32,
+    pub world_y: f32,
+    pub world_z: f32,
+    pub sprite_scale: f32,
+    pub emissive_strength: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioHyperlaneView {
+    pub from_system_id: String,
+    pub to_system_id: String,
+    pub from: [f32; 3],
+    pub to: [f32; 3],
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGalaxyViewModel {
+    pub seed: u64,
+    pub lattice_edge: u32,
+    pub core_col: f32,
+    pub core_row: f32,
+    pub cell_world_scale: f32,
+    pub render_meta: StudioGalaxyRenderMeta,
+    pub stars: Vec<StudioStarView>,
+    pub hyperlanes: Vec<StudioHyperlaneView>,
+    pub structural_only_note: &'static str,
+}
+
+impl StudioGalaxyViewModel {
+    pub const RENDER_ONLY_NOTE: &'static str =
+        "world positions and render_height are presentation-only; structural (col,row) remain authoritative";
+
+    pub fn from_generation(result: &GalaxyGenerationResult, _report: &GenerationReport) -> Self {
+        let meta = StudioGalaxyRenderMeta::default();
+        let lattice_edge = result.lattice.edge();
+        let cell_world_scale = 100.0 / lattice_edge as f32;
+        let center = lattice_edge as f32 * 0.5;
+        let core_col = center;
+        let core_row = center;
+        let max_core_dist = (center * 0.95).max(1.0);
+
+        let mut stars = Vec::with_capacity(result.placement.systems.len());
+        for system in &result.placement.systems {
+            let col = system.coord.col as f32;
+            let row = system.coord.row as f32;
+            let cheb = grid_chebyshev_distance(
+                (system.coord.col, system.coord.row),
+                (core_col as u32, core_row as u32),
+            ) as f32;
+            let distance_from_core_norm = (cheb / max_core_dist).clamp(0.0, 1.0);
+            let edge_thickness = 0.15 * meta.vertical_thickness_scale;
+            let core_thickness = 2.8 * meta.vertical_thickness_scale * meta.core_bulge_strength;
+            let height_amplitude = lerp(
+                edge_thickness,
+                core_thickness,
+                1.0 - distance_from_core_norm,
+            );
+            let signed_noise =
+                deterministic_unit_hash(result.seed, system.id, "height") * 2.0 - 1.0;
+            let render_height = signed_noise * height_amplitude;
+            let world_x = (col - center) * cell_world_scale;
+            let world_z = (row - center) * cell_world_scale;
+            let radius_unit = deterministic_unit_hash(result.seed, system.id, "radius");
+            let sprite_scale =
+                meta.star_sprite_scale * (0.55 + radius_unit * 0.35) * star_render_radius_scale();
+            let emissive_strength = 0.6 + radius_unit * 0.8;
+            stars.push(StudioStarView {
+                system_id: system.id,
+                structural_col: system.coord.col,
+                structural_row: system.coord.row,
+                render_height,
+                world_x,
+                world_y: render_height,
+                world_z,
+                sprite_scale,
+                emissive_strength,
+            });
+        }
+
+        let id_to_world: std::collections::HashMap<String, [f32; 3]> = result
+            .placement
+            .systems
+            .iter()
+            .map(|system| {
+                let star = stars
+                    .iter()
+                    .find(|s| s.system_id == system.id)
+                    .expect("star view");
+                (
+                    system.id.to_string(),
+                    [star.world_x, star.world_y, star.world_z],
+                )
+            })
+            .collect();
+
+        let hyperlanes = result
+            .base_hyperlane_edges
+            .iter()
+            .filter_map(|edge: &HyperlaneEdge| {
+                let from = id_to_world.get(&edge.from)?;
+                let to = id_to_world.get(&edge.to)?;
+                Some(StudioHyperlaneView {
+                    from_system_id: edge.from.clone(),
+                    to_system_id: edge.to.clone(),
+                    from: *from,
+                    to: *to,
+                })
+            })
+            .collect();
+
+        Self {
+            seed: result.seed,
+            lattice_edge,
+            core_col,
+            core_row,
+            cell_world_scale,
+            render_meta: meta,
+            stars,
+            hyperlanes,
+            structural_only_note: Self::RENDER_ONLY_NOTE,
+        }
+    }
+
+    pub fn galaxy_center(&self) -> [f32; 3] {
+        [0.0, 0.0, 0.0]
+    }
+}
+
+fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
+
+fn star_render_radius_scale() -> f32 {
+    0.22
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::generation::{run_generation, GenerationProfile};
+
+    #[test]
+    fn editor_view_model_uses_structural_grid_coords() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        assert_eq!(vm.stars.len(), output.result.placement.systems.len());
+        for (star, system) in vm.stars.iter().zip(output.result.placement.systems.iter()) {
+            assert_eq!(star.structural_col, system.coord.col);
+            assert_eq!(star.structural_row, system.coord.row);
+        }
+    }
+
+    #[test]
+    fn editor_view_model_render_height_is_render_only() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        assert!(vm.stars.iter().any(|s| s.render_height != 0.0));
+        for system in &output.result.placement.systems {
+            assert_eq!(system.coord.col, system.coord.col);
+        }
+        assert_eq!(
+            vm.structural_only_note,
+            StudioGalaxyViewModel::RENDER_ONLY_NOTE
+        );
+    }
+
+    #[test]
+    fn editor_view_model_hyperlanes_match_generated_edges() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        assert_eq!(
+            vm.hyperlanes.len(),
+            output.result.base_hyperlane_edges.len()
+        );
+    }
+
+    #[test]
+    fn editor_quality_panel_accepts_pass_report() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        assert!(crate::generation::quality_panel_accepts_report(
+            &output.report
+        ));
+    }
+
+    #[test]
+    fn editor_quality_panel_flags_warn_or_fail_report() {
+        use simthing_mapgenerator::{
+            build_generation_report, generate_galaxy_with_structure, structure_options_from_params,
+            ReportArtifacts, ScenarioEmitter, ScenarioEmitterConfig, ShapeRegistry,
+            MAP_QUALITY_FAIL,
+        };
+        let mut profile = GenerationProfile::default_spiral_2_dense_3000();
+        profile.target_hyperlanes = 6000;
+        let mut params = profile.to_map_generator_params();
+        params.hyperlane.num_hyperlanes_max = 3;
+        let registry = ShapeRegistry::default();
+        params.validate(&registry).expect("valid");
+        let (hyperlane, special, partition, cluster) =
+            structure_options_from_params(&params).expect("opts");
+        let result = generate_galaxy_with_structure(
+            &params,
+            &registry,
+            None,
+            &ScenarioEmitter::new(ScenarioEmitterConfig::from_params(&params)),
+            Some(hyperlane),
+            Some(special),
+            None,
+            Some(cluster),
+        )
+        .expect("gen");
+        let report = build_generation_report(&params, &result, ReportArtifacts::new());
+        assert_eq!(report.output.map_quality_status, MAP_QUALITY_FAIL);
+        assert!(crate::generation::quality_panel_flags_report(&report));
+        assert!(!crate::generation::quality_panel_accepts_report(&report));
+    }
+}

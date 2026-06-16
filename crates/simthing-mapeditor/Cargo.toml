@@ -1,0 +1,30 @@
+[package]
+name = "simthing-mapeditor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "SimThing Studio — Bevy map editor shell (presentation/authoring over MapGenerator output)"
+publish = false
+
+[[bin]]
+name = "simthing-studio"
+path = "src/main.rs"
+
+[lib]
+doctest = false
+
+[dependencies]
+bevy = { version = "0.16", default-features = true, features = ["bevy_ui"] }
+bevy_egui = { version = "0.36", default-features = true, features = ["serde"] }
+directories = "6"
+ron = "0.8"
+serde = { workspace = true }
+serde_json = { workspace = true }
+simthing-mapgenerator = { path = "../simthing-mapgenerator" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }

@@ -460,3 +460,31 @@ Report fields include request/options, topology counts, connectivity/degree stat
 constitution flags. See `crates/simthing-mapgenerator/tests/editor_prep.rs`,
 `docs/tests/mapgenerator_cli_editor_prep_0_results.md`, and
 `docs/tests/mapgenerator_cli_editor_prep_0r_results.md`.
+
+---
+
+## SimThing Studio (BEVY-MAPGEN-EDITOR-PR1)
+
+**ClauseThing ends. The Editor breathes SimThing.**
+
+`crates/simthing-mapeditor` (`simthing-studio` binary) is the first Windows-only Bevy presentation/authoring
+shell. It is **not** runtime simulation and **not** a generic map toy.
+
+Architecture:
+
+```text
+MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
+  → StudioSession / StudioGalaxyViewModel (editor metatable)
+  → Bevy render world + egui panels
+```
+
+- Consumes the **library path** (`run_generation`) and in-process `build_generation_report` — **never stdout**.
+- Settings persist as RON (`%APPDATA%/SimThing/Studio/settings.ron`).
+- Bevy world positions, galactic thickness (Y), sprites, and lane fades are **render-only**; structural
+  `(col,row)` from `PlacedSystemSeed.coord` remain authoritative (STEAD).
+- Live SimThing simulation after scenario import is a **future Studio horizon** — not PR1.
+- PR1 UI is Bevy-native/egui. HTML/CSS/WebView and Clausewitz UI import are deferred research tracks.
+
+Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
+
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`.
