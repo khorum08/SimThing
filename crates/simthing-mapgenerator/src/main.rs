@@ -254,6 +254,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?
     };
 
+    if let Some(c) = generation.connectivity {
+        println!(
+            "connectivity: {} component(s) after {} bridge(s) (was {}; longest bridge {} cells){}",
+            c.components_after,
+            c.bridges_added,
+            c.components_before,
+            c.max_bridge_chebyshev,
+            if c.components_after == 1 {
+                " — one interconnected galaxy, no island clusters"
+            } else {
+                ""
+            }
+        );
+    }
+
     if let Some(ref path) = scenario_path {
         std::fs::write(path, generation.scenario.as_str())?;
         println!(
