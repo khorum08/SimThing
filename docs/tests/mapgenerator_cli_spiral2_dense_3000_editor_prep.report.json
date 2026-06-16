@@ -22,18 +22,18 @@
   },
   "output": {
     "system_count": 3000,
-    "base_hyperlane_count": 2999,
-    "topology_hyperlane_count": 3,
+    "base_hyperlane_count": 5919,
+    "actual_topology_hyperlanes": 5917,
     "special_route_count": 0,
     "partition_bridge_count": 0,
     "cluster_bridge_count": 1,
-    "bridge_count": 2996,
+    "connectivity_bridge_count": 2,
     "component_count": 1,
-    "components_before": 2997,
+    "components_before": 3,
     "isolated_system_count": 0,
     "min_degree": 1,
-    "max_degree": 6,
-    "average_degree": 2.0,
+    "max_degree": 5,
+    "average_degree": 3.95,
     "longest_bridge_chebyshev": 29,
     "bounding_box": {
       "min_col": 20,
@@ -42,7 +42,16 @@
       "max_row": 270
     },
     "occupied_cell_count": 3000,
-    "duplicate_cell_count": 0
+    "duplicate_cell_count": 0,
+    "requested_target_hyperlanes": 6000,
+    "actual_base_hyperlanes": 5919,
+    "effective_target_hyperlanes": 6000,
+    "topology_target_satisfied": false,
+    "topology_target_deficit": 83,
+    "topology_target_ratio": 0.9862,
+    "connectivity_bridge_ratio": 0.0003,
+    "map_quality_status": "PASS",
+    "map_quality_warnings": []
   },
   "artifacts": {
     "scenario_path": null,

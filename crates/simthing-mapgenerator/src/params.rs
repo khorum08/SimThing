@@ -277,6 +277,8 @@ pub enum ValidationError {
     UnknownShapeParam { shape: String, key: String },
     #[error("Shape param '{key}' is not valid for shape {shape}")]
     ShapeParamNotValidForShape { shape: String, key: String },
+    #[error("Shape param '{key}' is not accepted via --shape-param (non-numeric producer field)")]
+    NonNumericShapeParam { key: String },
     #[error("Invalid shape param '{key}': expected KEY=VALUE with numeric VALUE")]
     ShapeParamNonNumeric { key: String, value: String },
     #[error("Shape param '{key}' value {value} is out of range for shape {shape}")]

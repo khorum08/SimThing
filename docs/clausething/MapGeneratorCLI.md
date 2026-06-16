@@ -413,7 +413,7 @@ If you decide to halt (or partially pause) the cleanup PR for the mapgen-specifi
 
 ---
 
-## Editor-facing producer contract (MAPGENCLI-EDITOR-PREP-0)
+## Editor-facing producer contract (MAPGENCLI-EDITOR-PREP-0 / 0R)
 
 Future Bevy/editor frontends should **not scrape stdout**. They should invoke `mapgen` (or the
 `simthing-mapgenerator` library) and consume the deterministic JSON report from `--report-json`.
@@ -422,6 +422,7 @@ Future Bevy/editor frontends should **not scrape stdout**. They should invoke `m
 - Each `--shape-param KEY=VALUE` must parse as a numeric assignment; malformed tokens error immediately.
 - Unknown keys error (`Unknown shape param 'foo' for shape spiral_2`).
 - Keys valid on other shapes but not the selected shape error (`Shape param 'arm_width' is not valid for shape elliptical`).
+- Non-numeric registry keys such as `coordinate_transform` are rejected (`NonNumericShapeParam`).
 - Numeric bounds are enforced via `ShapeParamSpec` (`shape_param_spec.rs`).
 
 **Structural vs render:**
@@ -433,6 +434,7 @@ Future Bevy/editor frontends should **not scrape stdout**. They should invoke `m
 cargo run -p simthing-mapgenerator --bin mapgen -- \
   --shape spiral_2 --stars 3000 --lattice-edge 300 --seed 42 \
   --num-hyperlanes 6000 \
+  --max-hyperlane-distance 8 \
   --shape-param arm_width=14 --shape-param arm_tightness=0.6 --shape-param jitter=2 \
   --no-partitions --cluster-count 4 --cluster-radius 500 --hyperlanes base --hyperlane-color blue --draw-core \
   --png-size 3000 \
@@ -441,6 +443,20 @@ cargo run -p simthing-mapgenerator --bin mapgen -- \
 ```
 Connectivity is **ON by default** (`ensure_connected`); use `--allow-disconnected` to opt out.
 
+When `--num-hyperlanes` exceeds the default `num_hyperlanes_max` (3), the CLI raises `num_hyperlanes_max`
+to match the requested target so topology is not silently clamped to a handful of edges.
+
+**Quality gates (0R):** the report `output` section exposes `actual_topology_hyperlanes` vs
+`connectivity_bridge_count`, target satisfaction (`topology_target_ratio`, `topology_target_deficit`),
+`connectivity_bridge_ratio`, and `map_quality_status` (`PASS` / `WARN` / `FAIL`) with
+`map_quality_warnings`. Editors should reject WARN/FAIL maps without parsing stdout. CLI prints WARN/FAIL
+to stderr; use `--fail-on-quality-warn` to exit non-zero.
+
+Thresholds (see `report.rs`): `topology_target_ratio` FAIL &lt; 0.50; `connectivity_bridge_ratio` WARN
+&gt; 0.25 / FAIL &gt; 0.50; dense preview (`stars` or target ≥ 1000) WARN if `average_degree` &lt; 2.5;
+WARN if `longest_bridge_chebyshev` &gt; 32.
+
 Report fields include request/options, topology counts, connectivity/degree stats, artifact paths, and
-constitution flags. See `crates/simthing-mapgenerator/tests/editor_prep.rs` and
-`docs/tests/mapgenerator_cli_editor_prep_0_results.md`.
+constitution flags. See `crates/simthing-mapgenerator/tests/editor_prep.rs`,
+`docs/tests/mapgenerator_cli_editor_prep_0_results.md`, and
+`docs/tests/mapgenerator_cli_editor_prep_0r_results.md`.

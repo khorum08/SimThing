@@ -78,9 +78,12 @@ pub use preview_png::{
     HyperlanePreviewFilter, PreviewPngError, DEFAULT_HYPERLANE_RGBA, GALAXY_PREVIEW_PNG_SIZE,
 };
 pub use report::{
-    build_generation_report, generation_report_to_json, normalized_report_json,
-    write_generation_report_json, GenerationReport, ReportArtifacts, ReportError,
-    REPORT_SCHEMA_VERSION,
+    build_generation_report, generation_report_to_json, map_quality_is_acceptable_for_editor,
+    normalized_report_json, write_generation_report_json, GenerationReport, ReportArtifacts,
+    ReportError, CONNECTIVITY_BRIDGE_RATIO_FAIL_THRESHOLD,
+    CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD, DENSE_PREVIEW_AVG_DEGREE_WARN_THRESHOLD,
+    LONGEST_BRIDGE_CHEBYSHEV_WARN_THRESHOLD, MAP_QUALITY_FAIL, MAP_QUALITY_PASS, MAP_QUALITY_WARN,
+    REPORT_SCHEMA_VERSION, TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD,
 };
 pub use rng::{MapGenRng, MapGenSeed};
 pub use shape_param_spec::{
@@ -147,6 +150,10 @@ pub struct GalaxyGenerationResult {
     /// Connectivity proof when `ensure_connected` ran: `components_after == 1` means one interconnected
     /// galaxy (no island clusters). `None` when connectivity was not requested.
     pub connectivity: Option<ConnectivityReport>,
+    /// Base hyperlane edges selected by the bounded topology pass **before** connectivity repair.
+    pub pre_connectivity_topology_count: u32,
+    /// Topology target after clamping `num_hyperlanes_default` to `[min, max]`.
+    pub effective_target_hyperlanes: u32,
 }
 
 impl GalaxyGenerationResult {
@@ -228,8 +235,12 @@ pub fn generate_galaxy_with_structure(
     let mut hyperlane_edges = Vec::new();
     let mut classified_edges = Vec::new();
     let mut connectivity = None;
+    let mut pre_connectivity_topology_count = 0u32;
+    let mut effective_target_hyperlanes = 0u32;
     if let Some(options) = hyperlane_options {
+        effective_target_hyperlanes = options.target_edge_count;
         let (topology, _report) = generate_hyperlane_topology(&placement, &options, &mut rng)?;
+        pre_connectivity_topology_count = topology.edges.len() as u32;
         base_hyperlane_edges = topology.edges.clone();
         classified_edges.extend(topology.edges.into_iter().map(|edge| {
             ClassifiedCouplingEdge::new(edge.clone(), CouplingEdgeKind::BaseHyperlane)
@@ -361,6 +372,8 @@ pub fn generate_galaxy_with_structure(
         classified_edges,
         nebulas,
         connectivity,
+        pre_connectivity_topology_count,
+        effective_target_hyperlanes,
     })
 }
 
