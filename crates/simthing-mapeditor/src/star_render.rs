@@ -8,6 +8,8 @@ pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
 pub const MIN_STAR_WORLD_SCALE: f32 = 1.35;
 pub const STAR_BASE_RADIUS: f32 = 0.72;
 pub const STAR_BILLBOARD_Y_LIFT: f32 = 0.85;
+pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
+    "star distance attenuation, core/aura scale, alpha, and bloom are editor render metadata only";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StarRenderInstance {
@@ -15,6 +17,14 @@ pub struct StarRenderInstance {
     pub position: [f32; 3],
     pub scale: f32,
     pub emissive_strength: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StarDistanceVisual {
+    pub core_scale: f32,
+    pub aura_scale: f32,
+    pub core_alpha: f32,
+    pub aura_alpha: f32,
 }
 
 pub fn star_visual_defaults() -> StudioGalaxyRenderMeta {
@@ -26,6 +36,18 @@ pub fn star_visual_defaults() -> StudioGalaxyRenderMeta {
         star_visibility_scale: DEFAULT_STAR_VISIBILITY_SCALE,
         lane_visibility_scale: DEFAULT_LANE_VISIBILITY_SCALE,
         min_star_world_scale: MIN_STAR_WORLD_SCALE,
+        star_near_distance: 45.0,
+        star_far_distance: 210.0,
+        star_far_core_scale: 0.10,
+        star_near_core_scale: 0.68,
+        star_far_aura_scale: 0.16,
+        star_near_aura_scale: 1.10,
+        star_far_core_alpha: 0.72,
+        star_near_core_alpha: 1.0,
+        star_far_aura_alpha: 0.008,
+        star_near_aura_alpha: 0.22,
+        selected_star_scale_multiplier: 1.85,
+        hovered_star_scale_multiplier: 1.22,
         lane_near_alpha: 0.75,
         lane_mid_alpha: 0.42,
         lane_far_alpha: 0.16,
@@ -41,6 +63,45 @@ pub fn star_world_scale(meta: &StudioGalaxyRenderMeta, radius_unit: f32) -> f32 
         * STAR_BASE_RADIUS
         * (0.65 + radius_unit * 0.35);
     scaled.max(meta.min_star_world_scale)
+}
+
+pub fn star_distance_visual(
+    camera_distance: f32,
+    selected: bool,
+    hovered: bool,
+    meta: &StudioGalaxyRenderMeta,
+) -> StarDistanceVisual {
+    let near = meta.star_near_distance.max(0.0);
+    let far = meta.star_far_distance.max(near + f32::EPSILON);
+    let t = ((camera_distance - near) / (far - near)).clamp(0.0, 1.0);
+    let eased_far = t * t * (3.0 - 2.0 * t);
+    let close = 1.0 - eased_far;
+    let scale_mul = if selected {
+        meta.selected_star_scale_multiplier
+    } else if hovered {
+        meta.hovered_star_scale_multiplier
+    } else {
+        1.0
+    };
+    let alpha_boost = if selected {
+        1.35
+    } else if hovered {
+        1.12
+    } else {
+        1.0
+    };
+    StarDistanceVisual {
+        core_scale: lerp(meta.star_far_core_scale, meta.star_near_core_scale, close) * scale_mul,
+        aura_scale: lerp(meta.star_far_aura_scale, meta.star_near_aura_scale, close) * scale_mul,
+        core_alpha: (lerp(meta.star_far_core_alpha, meta.star_near_core_alpha, close)
+            * alpha_boost)
+            .min(meta.star_near_core_alpha.max(meta.star_far_core_alpha))
+            .clamp(0.0, 1.0),
+        aura_alpha: (lerp(meta.star_far_aura_alpha, meta.star_near_aura_alpha, close)
+            * alpha_boost)
+            .min(meta.star_near_aura_alpha)
+            .clamp(0.0, 1.0),
+    }
 }
 
 pub fn star_scale_multiplier(selected: bool, hovered: bool) -> f32 {
@@ -82,6 +143,10 @@ pub fn prepare_star_render_instances(stars: &[StudioStarView]) -> Vec<StarRender
             emissive_strength: star.emissive_strength,
         })
         .collect()
+}
+
+fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
 }
 
 pub fn hyperlane_default_opacity_is_less_than_star_emphasis() {
@@ -145,5 +210,57 @@ mod tests {
         let instances = prepare_star_render_instances(&vm.stars);
         assert_eq!(instances.len(), vm.stars.len());
         assert_eq!(instances.len(), output.result.placement.systems.len());
+    }
+
+    #[test]
+    fn star_distance_visual_far_is_small_point() {
+        let meta = star_visual_defaults();
+        let visual = star_distance_visual(meta.star_far_distance + 100.0, false, false, &meta);
+        assert!(visual.core_scale <= meta.star_far_core_scale + f32::EPSILON);
+        assert!(visual.core_scale < meta.star_near_core_scale);
+    }
+
+    #[test]
+    fn star_distance_visual_far_aura_is_minimal() {
+        let meta = star_visual_defaults();
+        let visual = star_distance_visual(meta.star_far_distance + 100.0, false, false, &meta);
+        assert!(visual.aura_alpha <= 0.01);
+        assert!(visual.aura_scale <= meta.star_far_aura_scale + f32::EPSILON);
+    }
+
+    #[test]
+    fn star_distance_visual_near_is_larger_than_far() {
+        let meta = star_visual_defaults();
+        let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
+        let far = star_distance_visual(meta.star_far_distance, false, false, &meta);
+        assert!(near.core_scale > far.core_scale);
+        assert!(near.aura_scale > far.aura_scale);
+        assert!(near.aura_alpha > far.aura_alpha);
+    }
+
+    #[test]
+    fn star_distance_visual_selected_is_larger_or_brighter_than_unselected() {
+        let meta = star_visual_defaults();
+        let distance = (meta.star_near_distance + meta.star_far_distance) * 0.5;
+        let selected = star_distance_visual(distance, true, false, &meta);
+        let unselected = star_distance_visual(distance, false, false, &meta);
+        assert!(selected.core_scale > unselected.core_scale);
+        assert!(selected.core_alpha >= unselected.core_alpha);
+        assert!(selected.aura_alpha >= unselected.aura_alpha);
+    }
+
+    #[test]
+    fn star_distance_visual_aura_never_exceeds_configured_max() {
+        let meta = star_visual_defaults();
+        for distance in [0.0, meta.star_near_distance, 120.0, meta.star_far_distance] {
+            let visual = star_distance_visual(distance, true, false, &meta);
+            assert!(visual.aura_alpha <= meta.star_near_aura_alpha);
+        }
+    }
+
+    #[test]
+    fn star_visual_metadata_is_render_only() {
+        assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("editor render metadata only"));
+        assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("bloom"));
     }
 }

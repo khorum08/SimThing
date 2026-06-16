@@ -131,7 +131,7 @@ mod tests {
     }
 
     #[test]
-    fn camera_depth_bucket_classifies_near_mid_far_lanes() {
+    fn hyperlane_camera_depth_classifies_near_mid_far() {
         let thresholds = HyperlaneCameraDepthThresholds {
             near_max_distance: 20.0,
             mid_max_distance: 60.0,
@@ -167,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn camera_depth_bucket_alpha_ordering_near_greater_than_mid_greater_than_far() {
+    fn hyperlane_camera_depth_alpha_ordering_near_greater_than_mid_greater_than_far() {
         let meta = StudioGalaxyRenderMeta::default();
         assert!(
             bucket_alpha_for_meta(HyperlaneDepthBucket::Near, &meta)
@@ -180,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn far_lane_alpha_has_legible_minimum() {
+    fn far_hyperlane_alpha_has_legible_minimum() {
         let mut meta = StudioGalaxyRenderMeta::default();
         meta.lane_visibility_scale = 0.01;
         assert_eq!(

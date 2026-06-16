@@ -961,7 +961,7 @@ currency); ClauseThing/ClauseScript L3 (no front-end); dense per-cell temporal m
 per-cell, not dense temporal); atlas sparse-residency scheduler / M-4A (static map); FrontierV2-5;
 Hybrid-Strata ECON scaling beyond the 2-faction set (Terran/Pirate ECON-SCALE is reused, not extended).
 
-**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2/PR2R/PR2R2, PROBATION):** Windows-only
+**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2/PR2R/PR2R2/PR2R3, PROBATION):** Windows-only
 `simthing-mapeditor` studio shell: borderless black window, detached floating egui generation panel (20%
 width, 3% margin), 3D galaxy view from MapGenerator typed output + JSON report quality status.
 Presentation/authoring only — no live simulation, no save/load sessions. PR2 adds hover/click star
@@ -970,11 +970,15 @@ PR2R repairs star visibility at overview scale and scopes shape params by select
 generation is not blocked by dormant spiral arm params; hyperlane visibility tuning is render-only.
 PR2R2 strengthens starburst overview readability, adds render debug toggles, and makes hyperlane
 near/mid/far visual fade camera-relative by segment midpoint; light-blue foreground lanes and darker
-far lanes are presentation-only materials, not simulation GPU authority. PR1R repairs shell contract
+far lanes are presentation-only materials, not simulation GPU authority. PR2R3 splits star sprites into
+render-only core/aura layers and applies camera-distance attenuation so overview stars read as crisp
+points with minimal aura while close/selected stars can bloom locally. PR1R repairs shell contract
 (warning-clickable greyed controls, mouse-delta orbit, hyperlane depth buckets). Bevy transforms,
-camera-space coordinates, star scale/glow, and lane alpha are render metadata; structural gridcell
-coordinates remain authoritative. Selection is editor/view state only. Clausewitz UI import / HTML skin
-layer is a horizon goal.
+camera-space coordinates, star size, sprite scale, aura alpha, bloom, hyperlane color/materials, and
+lane alpha are render metadata; structural gridcell coordinates remain authoritative. Selection is
+editor/view state only. Shape params remain scoped by selected shape; inactive/dormant params are visible
+but not submitted, while CLI/generator validation stays fail-closed for submitted params. Clausewitz UI
+import / HTML skin layer is a horizon goal.
 
 ---
 

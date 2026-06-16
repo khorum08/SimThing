@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r3_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -532,3 +532,25 @@ PR2R2 repairs the remaining Studio presentation blockers:
 - Hyperlane materials, lane alpha, camera-space distance, star sprite scale, starburst texture, and Bevy transforms are presentation/editor metadata only. They do not become simulation GPU authority and do not change structural gridcell coordinates.
 - Shape params remain scoped by selected shape: inactive/dormant params stay visible as editor state but are not submitted to MapGenerator; CLI/generator fail-closed validation remains intact for submitted params.
 - Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains deferred research.
+
+### PR2R3 distance-attenuated stars + depth lanes (2026-06-16)
+
+PR2R3 narrows the remaining visual problem without changing MapGenerator, ClauseThing, runtime simulation,
+pathfinding, or GPU semantic authority:
+
+- Star sprites are now split into render-only **core** and **aura** billboard layers. The core stays as a
+  crisp point at overview distance while the diffuse aura shrinks and fades to near-zero alpha, preventing
+  dense regions from merging into a cyan fog.
+- `star_distance_visual()` computes presentation-only camera-distance attenuation for core scale, aura
+  scale, core alpha, and aura alpha. Close/selected stars can bloom locally; selected and hovered stars use
+  render metadata multipliers only.
+- Hyperlanes remain camera-relative by segment midpoint: near lanes are light blue/high alpha, mid lanes
+  muted blue, and far lanes dark grey-blue with a faint legible minimum alpha. Selected incident lanes keep
+  their visual-only highlight override.
+- Structural gridcell coordinates remain authoritative. Bevy transforms, render height, star size, sprite
+  scale, aura alpha, bloom, camera-depth alpha, and hyperlane color/materials are editor presentation
+  metadata only.
+- Shape params remain scoped by selected shape. Inactive/dormant params are visible as editor state but are
+  not submitted to MapGenerator; CLI/generator validation remains fail-closed for submitted params.
+- Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains
+  deferred research.
