@@ -8,8 +8,10 @@ pub mod dialog;
 pub mod generation;
 pub mod hyperlane_buckets;
 pub mod panel_layout;
+pub mod selection;
 pub mod session;
 pub mod settings;
+pub mod starburst;
 pub mod view_model;
 
 #[cfg(windows)]
@@ -28,8 +30,9 @@ pub fn run() {
 
 pub use dialog::{StudioAction, WarningDialogModel};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
+pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::StudioSession;
-pub use settings::{EditorSettings, WindowModeSetting};
+pub use settings::{EditorSettings, PersistedCameraState, WindowModeSetting};
 pub use view_model::{
     StudioGalaxyRenderMeta, StudioGalaxyViewModel, StudioHyperlaneView, StudioStarView,
 };

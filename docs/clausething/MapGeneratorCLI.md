@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md` and `docs/tests/bevy_mapgen_editor_pr1r_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, and `docs/tests/bevy_mapgen_editor_pr2_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -500,3 +500,13 @@ PR1R repairs Windows live-run defects before DA promotion:
 - Hyperlanes render in **near/mid/far depth buckets** with independent materials.
 - Stars remain **emissive unlit spheres** (interim); starburst sprites deferred to PR2/polish.
 - Non-Windows builds exit with a clear message (main fallback not hidden by crate cfg).
+
+### PR2 selection and inspector (2026-06-16)
+
+PR2 adds the first editor inspection loop:
+
+- **Hover/click star selection** by `system_id` using screen-space picking on render positions.
+- **Selected-system inspector** in the right panel (structural col/row, render-only height, degree, neighbors).
+- **Visual highlight** for hovered/selected stars and incident hyperlane overlay.
+- **Starburst billboard sprites** (procedural 64×64 texture) replace interim spheres.
+- Selection is **editor/view state only** — no scenario mutation, no live simulation, no save/load.

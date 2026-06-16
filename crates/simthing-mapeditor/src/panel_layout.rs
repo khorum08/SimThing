@@ -80,6 +80,23 @@ pub fn uses_floating_area_not_docked_sidebar(layout: &FloatingPanelLayout) -> bo
     layout.x > 0.0 && layout.y > 0.0
 }
 
+pub fn left_panel_contains_point(layout: &FloatingPanelLayout, x: f32, y: f32) -> bool {
+    x >= layout.x && x <= layout.x + layout.width && y >= layout.y && y <= layout.y + layout.height
+}
+
+pub fn right_panel_rect(screen_width: f32, screen_height: f32) -> (f32, f32, f32, f32) {
+    let width = 320.0;
+    let (margin_x, margin_y) = panel_margin(screen_width, screen_height);
+    let x = screen_width - width - margin_x;
+    let y = margin_y.max(48.0);
+    (x, y, width, screen_height - y - margin_y)
+}
+
+pub fn right_panel_contains_point(screen_width: f32, screen_height: f32, x: f32, y: f32) -> bool {
+    let (rx, ry, rw, rh) = right_panel_rect(screen_width, screen_height);
+    x >= rx && x <= rx + rw && y >= ry && y <= ry + rh
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,5 +178,36 @@ mod tests {
     fn left_panel_does_not_auto_collapse_at_normal_width() {
         assert!(!should_auto_collapse_panel(SCREEN_W));
         assert!(!should_auto_collapse_panel(1600.0)); // 320 == 320, not less
+    }
+
+    #[test]
+    fn left_panel_hover_ignores_right_panel_area() {
+        let layout = compute_floating_panel_layout(SCREEN_W, SCREEN_H, false);
+        let (rx, ry, rw, rh) = right_panel_rect(SCREEN_W, SCREEN_H);
+        let right_center_x = rx + rw * 0.5;
+        let right_center_y = ry + rh * 0.5;
+        assert!(!left_panel_contains_point(
+            &layout,
+            right_center_x,
+            right_center_y
+        ));
+        assert!(right_panel_contains_point(
+            SCREEN_W,
+            SCREEN_H,
+            right_center_x,
+            right_center_y
+        ));
+    }
+
+    #[test]
+    fn left_panel_hover_ignores_warning_dialog_area() {
+        let layout = compute_floating_panel_layout(SCREEN_W, SCREEN_H, false);
+        let dialog_center_x = SCREEN_W * 0.5;
+        let dialog_center_y = SCREEN_H * 0.5;
+        assert!(!left_panel_contains_point(
+            &layout,
+            dialog_center_x,
+            dialog_center_y
+        ));
     }
 }

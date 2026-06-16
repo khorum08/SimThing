@@ -3,7 +3,9 @@
 use bevy::prelude::*;
 use bevy::window::{MonitorSelection, VideoModeSelection, WindowMode, WindowResolution};
 
+use super::camera::StudioCamera;
 use super::resources::StudioSettings;
+use super::StudioAppState;
 use crate::settings::WindowModeSetting;
 
 pub fn primary_window_from_settings(settings: &crate::settings::EditorSettings) -> Window {
@@ -62,7 +64,8 @@ pub fn minimize_window(windows: &mut Query<&mut Window, With<bevy::window::Prima
 pub fn persist_settings_on_exit(
     mut exit_events: EventReader<AppExit>,
     settings: Res<StudioSettings>,
-    state: Res<super::StudioAppState>,
+    state: Res<StudioAppState>,
+    camera: Res<StudioCamera>,
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
 ) {
     if exit_events.read().next().is_none() {
@@ -72,6 +75,8 @@ pub fn persist_settings_on_exit(
     copy.last_generation_params = state.profile.clone();
     copy.left_panel_collapsed = state.left_panel_collapsed;
     copy.last_panel_width = state.left_panel_width_frac;
+    copy.last_selected_system_id = state.selection.selected_system_id;
+    copy.last_camera = camera.to_persisted();
     if let Ok(window) = windows.single() {
         copy.last_window_size = [
             window.resolution.width() as u32,

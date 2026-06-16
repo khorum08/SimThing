@@ -961,14 +961,14 @@ currency); ClauseThing/ClauseScript L3 (no front-end); dense per-cell temporal m
 per-cell, not dense temporal); atlas sparse-residency scheduler / M-4A (static map); FrontierV2-5;
 Hybrid-Strata ECON scaling beyond the 2-faction set (Terran/Pirate ECON-SCALE is reused, not extended).
 
-**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R, PROBATION):** Windows-only
+**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2, PROBATION):** Windows-only
 `simthing-mapeditor` studio shell: borderless black window, detached floating egui generation panel (20%
 width, 3% margin), 3D galaxy view from MapGenerator typed output + JSON report quality status.
-Presentation/authoring only — no live simulation, no selection/inspection (PR2), no save/load sessions.
+Presentation/authoring only — no live simulation, no save/load sessions. PR2 adds hover/click star
+selection, selected-system inspector, incident hyperlane highlight, and procedural starburst sprites.
 PR1R repairs shell contract (warning-clickable greyed controls, mouse-delta orbit, hyperlane depth
 buckets). Bevy transforms are render metadata; structural gridcell coordinates remain authoritative.
-Interim star markers are emissive spheres (not starburst sprites). Clausewitz UI import / HTML skin layer
-is a horizon goal.
+Selection is editor/view state only. Clausewitz UI import / HTML skin layer is a horizon goal.
 
 ---
 

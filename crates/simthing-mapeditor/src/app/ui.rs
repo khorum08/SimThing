@@ -11,13 +11,14 @@ use crate::panel_layout::{
     compute_collapsed_panel_tab, compute_floating_panel_layout, left_panel_title,
     should_auto_collapse_panel,
 };
-use crate::session::StudioSession;
+use crate::selection::selected_system_details;
 use crate::settings::WindowModeSetting;
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
-use super::galaxy_render::rebuild_galaxy_scene;
+use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_session, GalaxySceneRoot, StudioAppState};
+use crate::session::StudioSession;
 
 pub fn panel_opacity_system(mut state: ResMut<StudioAppState>, time: Res<Time>) {
     let target = if state.left_panel_hovered || state.left_panel_target_opacity > 0.55 {
@@ -42,6 +43,7 @@ pub fn studio_ui_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut scene_root: ResMut<GalaxySceneRoot>,
+    assets: Res<StarVisualAssets>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -68,7 +70,7 @@ pub fn studio_ui_system(
         draw_collapsed_tab(ctx, &mut state, screen_w, screen_h);
     }
     if state.session.is_some() {
-        draw_right_panel(ctx, &state, screen_w, screen_h);
+        draw_right_panel(ctx, &mut state, screen_w, screen_h);
     }
     draw_warning_dialog(ctx, &mut dialog);
 
@@ -86,15 +88,18 @@ pub fn studio_ui_system(
         match run_generation(&profile) {
             Ok(output) => {
                 let session = StudioSession::from_generation(profile, output);
-                rebuild_galaxy_scene(
-                    &mut commands,
-                    &mut meshes,
-                    &mut materials,
-                    &mut scene_root,
-                    &session,
-                );
-                reset_camera_after_generation(&mut camera);
                 adopt_session(session, &mut settings, &mut state);
+                if let Some(session) = state.session.as_ref() {
+                    rebuild_galaxy_scene(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &assets,
+                        &mut scene_root,
+                        session,
+                    );
+                }
+                reset_camera_after_generation(&mut camera);
                 let _ = settings.save();
             }
             Err(err) => {
@@ -184,11 +189,10 @@ fn draw_left_panel(
     screen_h: f32,
 ) {
     let layout = compute_floating_panel_layout(screen_w, screen_h, false);
-    state.left_panel_hovered = ctx.is_pointer_over_area();
     let opacity = state.left_panel_opacity;
     let title = left_panel_title(state.session.as_ref().map(|s| s.galaxy_name()));
 
-    egui::Area::new(egui::Id::new("left_panel"))
+    let area = egui::Area::new(egui::Id::new("left_panel"))
         .fixed_pos(egui::pos2(layout.x, layout.y))
         .show(ctx, |ui| {
             studio_panel_frame(opacity, layout.corner_radius).show(ui, |ui| {
@@ -258,6 +262,7 @@ fn draw_left_panel(
                 ui.label(egui::RichText::new("SimThing Studio").small().weak());
             });
         });
+    state.left_panel_hovered = area.response.hovered();
 }
 
 fn generation_fields(
@@ -321,7 +326,7 @@ fn generation_fields(
     }
 }
 
-fn draw_right_panel(ctx: &egui::Context, state: &StudioAppState, screen_w: f32, screen_h: f32) {
+fn draw_right_panel(ctx: &egui::Context, state: &mut StudioAppState, screen_w: f32, screen_h: f32) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
@@ -337,6 +342,36 @@ fn draw_right_panel(ctx: &egui::Context, state: &StudioAppState, screen_w: f32, 
             let corner = crate::panel_layout::corner_radius_for_panel_width(width);
             studio_panel_frame(0.72, corner).show(ui, |ui| {
                 ui.set_width(width);
+                if let Some(selected_id) = state.selection.selected_system_id {
+                    ui.heading("Selected system");
+                    ui.separator();
+                    if let Some(details) = selected_system_details(&session.view_model, selected_id)
+                    {
+                        ui.label(format!("System id: {}", details.system_id));
+                        ui.label(format!(
+                            "Structural grid: col {}, row {}",
+                            details.structural_col, details.structural_row
+                        ));
+                        ui.label(format!(
+                            "Render height (render-only): {:.3}",
+                            details.render_height
+                        ));
+                        ui.label(format!("Hyperlane degree: {}", details.degree));
+                        if details.incident_neighbor_ids.is_empty() {
+                            ui.label("Incident neighbors: (none)");
+                        } else {
+                            ui.label("Incident neighbors:");
+                            for neighbor in &details.incident_neighbor_ids {
+                                ui.label(format!("  • {neighbor}"));
+                            }
+                        }
+                        ui.label(egui::RichText::new(details.render_only_note).small().weak());
+                        if ui.button("Clear selection (Esc)").clicked() {
+                            state.selection.clear();
+                        }
+                    }
+                    ui.separator();
+                }
                 ui.heading("Galaxy status");
                 ui.separator();
                 ui.label(format!("Galaxy: {}", session.galaxy_name()));
