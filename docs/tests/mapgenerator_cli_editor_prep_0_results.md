@@ -91,6 +91,10 @@ git diff --check
 
 All `simthing-mapgenerator` tests (including `editor_prep.rs` ×16). STEAD spatial contract guards (11 green).
 
+## Merge
+
+- PR [#723](https://github.com/khorum08/SimThing/pull/723) — commit `8102bacf`, merge `4584c65e`
+
 ## DA status
 
 **PROBATION** — pending owner/design-authority approval. Do not pre-file DA approval.
