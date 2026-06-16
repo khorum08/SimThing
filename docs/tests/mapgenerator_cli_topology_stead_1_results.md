@@ -84,4 +84,5 @@ regenerated (base-only preview is unchanged by sibling couplings).
 - `docs/tests/current_evidence_index.md`, `docs/tests/mapgenerator_cli_topology_stead_1_results.md`
 
 ## DA status
-**PROBATION — DA sign-off pending.** No approval pre-filed.
+**DA-APPROVED 2026-06-15 (owner sign-off).** The owner — design authority for the MapGeneratorCLI/Mapping
+track — reviewed and approved; PROBATION cleared → CURRENT_EVIDENCE in `current_evidence_index.md`.

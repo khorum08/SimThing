@@ -93,4 +93,5 @@ priority: high — cluster/partition/special-route couplings are visualized and 
 order.
 
 ## DA status
-**PROBATION — DA sign-off pending.** No approval pre-filed.
+**DA-APPROVED 2026-06-15 (owner sign-off).** The owner — design authority for the MapGeneratorCLI/Mapping
+track — reviewed and approved; PROBATION cleared → CURRENT_EVIDENCE in `current_evidence_index.md`.

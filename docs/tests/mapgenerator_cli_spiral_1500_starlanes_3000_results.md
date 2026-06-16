@@ -55,4 +55,5 @@ visual-preview tests are unaffected (scaling is a no-op at 1000px). Render-only 
 lowerer, runtime, GPU, or spec changes; no STEAD doctrine touched.
 
 ## DA status
-**PROBATION — DA sign-off pending.** No approval pre-filed.
+**DA-APPROVED 2026-06-15 (owner sign-off).** The owner — design authority for the MapGeneratorCLI/Mapping
+track — reviewed and approved; PROBATION cleared → CURRENT_EVIDENCE in `current_evidence_index.md`.
