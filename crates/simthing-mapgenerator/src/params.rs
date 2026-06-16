@@ -263,7 +263,7 @@ impl Default for MapGeneratorParams {
     }
 }
 
-#[derive(Debug, Error, PartialEq, Eq)]
+#[derive(Debug, Error, PartialEq)]
 pub enum ValidationError {
     #[error("{field}: must be > 0")]
     MustBePositive { field: &'static str },
@@ -273,8 +273,20 @@ pub enum ValidationError {
     MustBeFiniteNonNegative { field: &'static str },
     #[error("shape '{shape}' is not registered; registered shapes: {registered}")]
     UnknownShape { shape: String, registered: String },
-    #[error("shape param '{key}' is not declared for shape '{shape}'")]
+    #[error("Unknown shape param '{key}' for shape {shape}")]
     UnknownShapeParam { shape: String, key: String },
+    #[error("Shape param '{key}' is not valid for shape {shape}")]
+    ShapeParamNotValidForShape { shape: String, key: String },
+    #[error("Invalid shape param '{key}': expected KEY=VALUE with numeric VALUE")]
+    ShapeParamNonNumeric { key: String, value: String },
+    #[error("Shape param '{key}' value {value} is out of range for shape {shape}")]
+    ShapeParamOutOfRange {
+        shape: String,
+        key: String,
+        value: f64,
+        min: Option<f64>,
+        max: Option<f64>,
+    },
     #[error("required shape param '{key}' missing for shape '{shape}'")]
     MissingRequiredShapeParam { shape: String, key: String },
     #[error("{field}: min must be <= max")]
@@ -359,29 +371,17 @@ impl MapGeneratorParams {
     }
 
     fn validate_shape(&self, registry: &ShapeRegistry) -> Result<(), ValidationError> {
-        let descriptor =
-            registry
-                .get(&self.shape.shape)
-                .ok_or_else(|| ValidationError::UnknownShape {
-                    shape: self.shape.shape.clone(),
-                    registered: registry.registered_names_sorted().join(", "),
-                })?;
-        for key in self.shape.shape_params.keys() {
-            if !descriptor.allows_key(key) {
-                return Err(ValidationError::UnknownShapeParam {
-                    shape: self.shape.shape.clone(),
-                    key: key.clone(),
-                });
-            }
-        }
-        for param in &descriptor.parameters {
-            if param.required && !self.shape.shape_params.contains_key(&param.key) {
-                return Err(ValidationError::MissingRequiredShapeParam {
-                    shape: self.shape.shape.clone(),
-                    key: param.key.clone(),
-                });
-            }
-        }
+        registry
+            .get(&self.shape.shape)
+            .ok_or_else(|| ValidationError::UnknownShape {
+                shape: self.shape.shape.clone(),
+                registered: registry.registered_names_sorted().join(", "),
+            })?;
+        crate::shape_param_spec::validate_shape_params(
+            &self.shape.shape,
+            &self.shape.shape_params,
+            registry,
+        )?;
         if self.mode == GenerationMode::Procedural {
             if self.shape.shape == "arbitrary_static" {
                 return Err(ValidationError::ArbitraryShapeInProceduralMode);
