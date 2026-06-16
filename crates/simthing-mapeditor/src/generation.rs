@@ -426,6 +426,13 @@ mod tests {
     }
 
     #[test]
+    fn inactive_shape_params_do_not_block_generation() {
+        let profile = GenerationPreset::Elliptical1000.to_profile();
+        run_generation(&profile)
+            .expect("elliptical generation must not fail on dormant spiral params");
+    }
+
+    #[test]
     fn disc_preset_clears_or_deactivates_spiral_params() {
         let profile = GenerationPreset::Disc1500Connected.to_profile();
         let params = profile.to_map_generator_params();

@@ -7,10 +7,10 @@ use bevy_egui::EguiContexts;
 use crate::selection::{
     apply_star_click, pick_nearest_star_screen, ScreenStarProjection, DEFAULT_PICK_RADIUS_PX,
 };
-use crate::star_render::{star_emissive_strength, star_scale_multiplier};
+use crate::star_render::{star_distance_visual, star_emissive_strength};
 
 use super::camera::MainCamera;
-use super::galaxy_render::{rebuild_highlight_hyperlanes, GalaxyStar};
+use super::galaxy_render::{rebuild_highlight_hyperlanes, GalaxyStar, StarVisualLayer};
 use super::StudioAppState;
 
 pub fn selection_keyboard_system(
@@ -104,6 +104,7 @@ pub fn sync_selection_highlight_system(
 
 pub fn sync_star_visuals_system(
     state: Res<StudioAppState>,
+    camera: Query<&GlobalTransform, With<MainCamera>>,
     mut stars: Query<(
         &GalaxyStar,
         &mut Transform,
@@ -114,6 +115,11 @@ pub fn sync_star_visuals_system(
     let Some(session) = state.session.as_ref() else {
         return;
     };
+    let Ok(camera_transform) = camera.single() else {
+        return;
+    };
+    let camera_pos = camera_transform.translation();
+    let meta = &session.view_model.render_meta;
     for (star, mut transform, material_handle) in &mut stars {
         let Some(view) = session
             .view_model
@@ -125,12 +131,27 @@ pub fn sync_star_visuals_system(
         };
         let selected = state.selection.selected_system_id == Some(star.system_id);
         let hovered = state.selection.hovered_system_id == Some(star.system_id);
-        let scale_mul = star_scale_multiplier(selected, hovered);
-        transform.scale = Vec3::splat(view.sprite_scale * scale_mul);
+        let star_pos = Vec3::new(view.world_x, view.world_y, view.world_z);
+        let visual = star_distance_visual(camera_pos.distance(star_pos), selected, hovered, meta);
+        let (layer_scale, alpha, emissive_factor, color) = match star.layer {
+            StarVisualLayer::Core => (visual.core_scale, visual.core_alpha, 1.0, (0.88, 0.95, 1.0)),
+            StarVisualLayer::Aura => (
+                visual.aura_scale,
+                visual.aura_alpha,
+                0.20,
+                (0.34, 0.66, 1.0),
+            ),
+        };
+        transform.scale = Vec3::splat(view.sprite_scale * layer_scale);
         if let Some(material) = materials.get_mut(&material_handle.0) {
             let emissive = star_emissive_strength(view.emissive_strength, selected, hovered);
-            material.emissive =
-                LinearRgba::new(emissive * 1.25, emissive * 1.32, emissive * 1.45, 1.0);
+            material.base_color = Color::srgba(color.0, color.1, color.2, alpha);
+            material.emissive = LinearRgba::new(
+                emissive * 1.25 * alpha * emissive_factor,
+                emissive * 1.32 * alpha * emissive_factor,
+                emissive * 1.45 * alpha * emissive_factor,
+                1.0,
+            );
         }
     }
 }

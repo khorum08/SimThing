@@ -11,13 +11,20 @@ use crate::hyperlane_buckets::{
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::prepare_star_render_instances;
-use crate::starburst::generate_starburst_image;
+use crate::starburst::{generate_star_aura_image, generate_starburst_image};
 
 use super::GalaxySceneRoot;
 
 #[derive(Component)]
 pub struct GalaxyStar {
     pub system_id: u32,
+    pub layer: StarVisualLayer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StarVisualLayer {
+    Core,
+    Aura,
 }
 
 #[derive(Component)]
@@ -28,7 +35,8 @@ pub struct SelectedHyperlaneHighlight;
 
 #[derive(Resource)]
 pub struct StarVisualAssets {
-    pub texture: Handle<Image>,
+    pub core_texture: Handle<Image>,
+    pub aura_texture: Handle<Image>,
     pub quad: Handle<Mesh>,
 }
 
@@ -37,9 +45,14 @@ pub fn init_star_visual_assets(
     mut images: ResMut<Assets<Image>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    let texture = images.add(generate_starburst_image(64));
+    let core_texture = images.add(generate_starburst_image(64));
+    let aura_texture = images.add(generate_star_aura_image(64));
     let quad = meshes.add(Rectangle::new(1.0, 1.0));
-    commands.insert_resource(StarVisualAssets { texture, quad });
+    commands.insert_resource(StarVisualAssets {
+        core_texture,
+        aura_texture,
+        quad,
+    });
 }
 
 pub fn rebuild_galaxy_scene(
@@ -53,33 +66,44 @@ pub fn rebuild_galaxy_scene(
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
     for star in prepare_star_render_instances(&vm.stars) {
-        let material = materials.add(StandardMaterial {
-            base_color: Color::srgba(0.86, 0.94, 1.0, 0.98),
-            base_color_texture: Some(assets.texture.clone()),
-            emissive: LinearRgba::new(
-                star.emissive_strength * 1.25,
-                star.emissive_strength * 1.32,
-                star.emissive_strength * 1.45,
-                1.0,
-            ),
-            emissive_texture: Some(assets.texture.clone()),
-            unlit: true,
-            alpha_mode: AlphaMode::Add,
-            cull_mode: None,
-            ..default()
-        });
-        let entity = commands
-            .spawn((
-                Mesh3d(assets.quad.clone()),
-                MeshMaterial3d(material),
-                Transform::from_xyz(star.position[0], star.position[1], star.position[2])
-                    .with_scale(Vec3::splat(star.scale)),
-                GalaxyStar {
-                    system_id: star.system_id,
-                },
-            ))
-            .id();
-        root.stars.push((star.system_id, entity));
+        for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
+            let texture = match layer {
+                StarVisualLayer::Core => assets.core_texture.clone(),
+                StarVisualLayer::Aura => assets.aura_texture.clone(),
+            };
+            let (base_color, emissive_factor) = match layer {
+                StarVisualLayer::Core => (Color::srgba(0.88, 0.95, 1.0, 0.9), 1.0),
+                StarVisualLayer::Aura => (Color::srgba(0.34, 0.66, 1.0, 0.08), 0.22),
+            };
+            let material = materials.add(StandardMaterial {
+                base_color,
+                base_color_texture: Some(texture.clone()),
+                emissive: LinearRgba::new(
+                    star.emissive_strength * 1.25 * emissive_factor,
+                    star.emissive_strength * 1.32 * emissive_factor,
+                    star.emissive_strength * 1.45 * emissive_factor,
+                    1.0,
+                ),
+                emissive_texture: Some(texture),
+                unlit: true,
+                alpha_mode: AlphaMode::Add,
+                cull_mode: None,
+                ..default()
+            });
+            let entity = commands
+                .spawn((
+                    Mesh3d(assets.quad.clone()),
+                    MeshMaterial3d(material),
+                    Transform::from_xyz(star.position[0], star.position[1], star.position[2])
+                        .with_scale(Vec3::splat(star.scale)),
+                    GalaxyStar {
+                        system_id: star.system_id,
+                        layer,
+                    },
+                ))
+                .id();
+            root.stars.push((star.system_id, entity));
+        }
     }
 
     if vm.hyperlanes.is_empty() {
