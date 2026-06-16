@@ -96,6 +96,10 @@ cargo run -p simthing-mapeditor --bin simthing-studio
 - Starburst sprite atlas (using emissive spheres interim)
 - Non-Windows platforms
 
+## Merge
+
+- PR [#725](https://github.com/khorum08/SimThing/pull/725) — commit `014fbeec`, merge `dd2d3af3`
+
 ## DA status
 
 **PROBATION** — pending owner/design-authority approval. Do not pre-file DA approval.
