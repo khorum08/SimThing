@@ -33,6 +33,10 @@ struct Cli {
     #[arg(long)]
     shape: Option<String>,
 
+    /// Shape-specific tuning params, repeatable: `--shape-param arm_width=12 --shape-param jitter=2`.
+    #[arg(long = "shape-param", value_name = "KEY=VALUE")]
+    shape_params: Vec<String>,
+
     #[arg(long, alias = "stars")]
     num_stars: Option<u32>,
 
@@ -346,6 +350,13 @@ fn apply_cli_overrides(params: &mut MapGeneratorParams, cli: &Cli) {
     };
     if let Some(shape) = &cli.shape {
         params.shape.shape = shape.clone();
+    }
+    for kv in &cli.shape_params {
+        if let Some((key, value)) = kv.split_once('=') {
+            if let Ok(v) = value.trim().parse::<f64>() {
+                params.shape.shape_params.insert(key.trim().to_string(), v);
+            }
+        }
     }
     if let Some(v) = cli.num_stars {
         params.scale_core.num_stars = v;
