@@ -67,6 +67,15 @@ impl Default for StudioGalaxyRenderMeta {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct StudioSystemRenderAnchor {
+    pub system_id: u32,
+    pub structural_col: u32,
+    pub structural_row: u32,
+    pub world_position: [f32; 3],
+    pub render_height: f32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioStarView {
     pub system_id: u32,
     pub structural_col: u32,
@@ -89,6 +98,15 @@ pub struct StudioHyperlaneView {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct HyperlaneRenderSegment {
+    pub from_system_id: String,
+    pub to_system_id: String,
+    pub from: [f32; 3],
+    pub to: [f32; 3],
+    pub depth_bucket: crate::hyperlane_buckets::HyperlaneDepthBucket,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGalaxyViewModel {
     pub seed: u64,
     pub lattice_edge: u32,
@@ -96,6 +114,7 @@ pub struct StudioGalaxyViewModel {
     pub core_row: f32,
     pub cell_world_scale: f32,
     pub render_meta: StudioGalaxyRenderMeta,
+    pub render_anchors: Vec<StudioSystemRenderAnchor>,
     pub stars: Vec<StudioStarView>,
     pub hyperlanes: Vec<StudioHyperlaneView>,
     pub structural_only_note: &'static str,
@@ -115,6 +134,7 @@ impl StudioGalaxyViewModel {
         let max_core_dist = (center * 0.95).max(1.0);
 
         let mut stars = Vec::with_capacity(result.placement.systems.len());
+        let mut render_anchors = Vec::with_capacity(result.placement.systems.len());
         for system in &result.placement.systems {
             let col = system.coord.col as f32;
             let row = system.coord.row as f32;
@@ -135,6 +155,13 @@ impl StudioGalaxyViewModel {
             let render_height = signed_noise * height_amplitude;
             let world_x = (col - center) * cell_world_scale;
             let world_z = (row - center) * cell_world_scale;
+            let anchor = StudioSystemRenderAnchor {
+                system_id: system.id,
+                structural_col: system.coord.col,
+                structural_row: system.coord.row,
+                world_position: [world_x, render_height, world_z],
+                render_height,
+            };
             let radius_unit = deterministic_unit_hash(result.seed, system.id, "radius");
             let sprite_scale = crate::star_render::star_world_scale(&meta, radius_unit);
             let emissive_strength = 0.6 + radius_unit * 0.8;
@@ -149,22 +176,12 @@ impl StudioGalaxyViewModel {
                 sprite_scale,
                 emissive_strength,
             });
+            render_anchors.push(anchor);
         }
 
-        let id_to_world: std::collections::HashMap<String, [f32; 3]> = result
-            .placement
-            .systems
+        let id_to_world: std::collections::HashMap<String, [f32; 3]> = render_anchors
             .iter()
-            .map(|system| {
-                let star = stars
-                    .iter()
-                    .find(|s| s.system_id == system.id)
-                    .expect("star view");
-                (
-                    system.id.to_string(),
-                    [star.world_x, star.world_y, star.world_z],
-                )
-            })
+            .map(|anchor| (anchor.system_id.to_string(), anchor.world_position))
             .collect();
 
         let hyperlanes = {
@@ -209,6 +226,7 @@ impl StudioGalaxyViewModel {
             core_row,
             cell_world_scale,
             render_meta: meta,
+            render_anchors,
             stars,
             hyperlanes,
             structural_only_note: Self::RENDER_ONLY_NOTE,
@@ -218,6 +236,45 @@ impl StudioGalaxyViewModel {
     pub fn galaxy_center(&self) -> [f32; 3] {
         [0.0, 0.0, 0.0]
     }
+
+    pub fn hyperlane_render_segments(&self) -> Vec<HyperlaneRenderSegment> {
+        build_hyperlane_render_segments(&self.hyperlanes, &self.render_anchors)
+    }
+}
+
+pub fn anchor_for_system(
+    anchors: &[StudioSystemRenderAnchor],
+    system_id: u32,
+) -> Option<&StudioSystemRenderAnchor> {
+    anchors.iter().find(|anchor| anchor.system_id == system_id)
+}
+
+pub fn anchor_for_system_str<'a>(
+    anchors: &'a [StudioSystemRenderAnchor],
+    system_id: &str,
+) -> Option<&'a StudioSystemRenderAnchor> {
+    let id = system_id.parse::<u32>().ok()?;
+    anchor_for_system(anchors, id)
+}
+
+pub fn build_hyperlane_render_segments(
+    hyperlanes: &[StudioHyperlaneView],
+    anchors: &[StudioSystemRenderAnchor],
+) -> Vec<HyperlaneRenderSegment> {
+    hyperlanes
+        .iter()
+        .filter_map(|lane| {
+            let from = anchor_for_system_str(anchors, &lane.from_system_id)?;
+            let to = anchor_for_system_str(anchors, &lane.to_system_id)?;
+            Some(HyperlaneRenderSegment {
+                from_system_id: lane.from_system_id.clone(),
+                to_system_id: lane.to_system_id.clone(),
+                from: from.world_position,
+                to: to.world_position,
+                depth_bucket: lane.depth_bucket,
+            })
+        })
+        .collect()
 }
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 {
@@ -239,6 +296,48 @@ mod tests {
             assert_eq!(star.structural_col, system.coord.col);
             assert_eq!(star.structural_row, system.coord.row);
         }
+    }
+
+    #[test]
+    fn render_anchor_count_matches_system_count() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        assert_eq!(
+            vm.render_anchors.len(),
+            output.result.placement.systems.len()
+        );
+        assert_eq!(vm.render_anchors.len(), vm.stars.len());
+    }
+
+    #[test]
+    fn render_anchor_preserves_structural_col_row() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        for star in &vm.stars {
+            let anchor = anchor_for_system(&vm.render_anchors, star.system_id).expect("anchor");
+            assert_eq!(anchor.structural_col, star.structural_col);
+            assert_eq!(anchor.structural_row, star.structural_row);
+        }
+    }
+
+    #[test]
+    fn render_anchor_world_position_includes_render_height() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let star = vm
+            .stars
+            .iter()
+            .find(|star| star.render_height != 0.0)
+            .expect("non-flat star");
+        let anchor = anchor_for_system(&vm.render_anchors, star.system_id).expect("anchor");
+        assert_eq!(
+            anchor.world_position,
+            [star.world_x, star.render_height, star.world_z]
+        );
+        assert_eq!(anchor.world_position[1], anchor.render_height);
     }
 
     #[test]
@@ -265,6 +364,73 @@ mod tests {
             vm.hyperlanes.len(),
             output.result.base_hyperlane_edges.len()
         );
+    }
+
+    #[test]
+    fn hyperlane_endpoints_use_render_anchor_positions() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let segments = vm.hyperlane_render_segments();
+        assert_eq!(segments.len(), vm.hyperlanes.len());
+        let segment = segments.first().expect("segment");
+        let from = anchor_for_system_str(&vm.render_anchors, &segment.from_system_id)
+            .expect("from anchor");
+        let to =
+            anchor_for_system_str(&vm.render_anchors, &segment.to_system_id).expect("to anchor");
+        assert_eq!(segment.from, from.world_position);
+        assert_eq!(segment.to, to.world_position);
+    }
+
+    #[test]
+    fn incident_highlight_lanes_use_render_anchor_positions() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let selected = vm
+            .stars
+            .iter()
+            .find(|star| {
+                crate::selection::incident_hyperlanes_for_system(&vm.hyperlanes, star.system_id)
+                    .len()
+                    > 0
+            })
+            .expect("connected star");
+        let selected_anchor =
+            anchor_for_system(&vm.render_anchors, selected.system_id).expect("selected anchor");
+        let incident =
+            crate::selection::incident_hyperlanes_for_system(&vm.hyperlanes, selected.system_id);
+        let segments = vm.hyperlane_render_segments();
+        for (from_id, to_id) in incident {
+            let segment = segments
+                .iter()
+                .find(|segment| segment.from_system_id == from_id && segment.to_system_id == to_id)
+                .expect("incident segment");
+            assert!(
+                segment.from == selected_anchor.world_position
+                    || segment.to == selected_anchor.world_position
+            );
+        }
+    }
+
+    #[test]
+    fn render_anchor_is_render_only_metadata() {
+        assert!(StudioGalaxyViewModel::RENDER_ONLY_NOTE.contains("presentation-only"));
+        assert!(StudioGalaxyViewModel::RENDER_ONLY_NOTE.contains("structural"));
+    }
+
+    #[test]
+    fn camera_depth_bucket_uses_segment_midpoint_from_render_anchors() {
+        let segment = HyperlaneRenderSegment {
+            from_system_id: "1".into(),
+            to_system_id: "2".into(),
+            from: [0.0, 4.0, 0.0],
+            to: [0.0, 8.0, 10.0],
+            depth_bucket: crate::hyperlane_buckets::HyperlaneDepthBucket::Near,
+        };
+        let midpoint =
+            crate::hyperlane_buckets::hyperlane_segment_midpoint(segment.from, segment.to);
+        assert_eq!(midpoint, [0.0, 6.0, 5.0]);
     }
 
     #[test]

@@ -12,6 +12,7 @@ use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::prepare_star_render_instances;
 use crate::starburst::{generate_star_aura_image, generate_starburst_image};
+use crate::view_model::build_hyperlane_render_segments;
 
 use super::GalaxySceneRoot;
 
@@ -65,7 +66,7 @@ pub fn rebuild_galaxy_scene(
 ) {
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
-    for star in prepare_star_render_instances(&vm.stars) {
+    for star in prepare_star_render_instances(&vm.stars, &vm.render_anchors) {
         for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
             let texture = match layer {
                 StarVisualLayer::Core => assets.core_texture.clone(),
@@ -124,7 +125,7 @@ fn spawn_hyperlane_bucket(
     bucket: HyperlaneDepthBucket,
 ) {
     let positions: Vec<[f32; 3]> = vm
-        .hyperlanes
+        .hyperlane_render_segments()
         .iter()
         .filter(|lane| lane.depth_bucket == bucket)
         .flat_map(|lane| {
@@ -175,10 +176,9 @@ pub fn rebuild_highlight_hyperlanes(
         return;
     }
     let mut positions = Vec::with_capacity(incident.len() * 2);
+    let segments = session.view_model.hyperlane_render_segments();
     for (from_id, to_id) in &incident {
-        let Some(lane) = session
-            .view_model
-            .hyperlanes
+        let Some(lane) = segments
             .iter()
             .find(|lane| lane.from_system_id == *from_id && lane.to_system_id == *to_id)
         else {
@@ -262,7 +262,11 @@ pub fn sync_hyperlane_colors_system(
     let mut mid_positions = Vec::new();
     let mut far_positions = Vec::new();
 
-    for lane in &session.view_model.hyperlanes {
+    let segments = build_hyperlane_render_segments(
+        &session.view_model.hyperlanes,
+        &session.view_model.render_anchors,
+    );
+    for lane in &segments {
         let bucket = classify_hyperlane_camera_depth_bucket(
             cam_pos.to_array(),
             lane.from,

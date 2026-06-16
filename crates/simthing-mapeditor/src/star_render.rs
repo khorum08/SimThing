@@ -1,13 +1,14 @@
 //! Render-only star and hyperlane visual tuning helpers.
 
 use crate::hyperlane_buckets::{bucket_alpha_for_meta, HyperlaneDepthBucket};
-use crate::view_model::{StudioGalaxyRenderMeta, StudioStarView};
+use crate::view_model::{
+    anchor_for_system, StudioGalaxyRenderMeta, StudioStarView, StudioSystemRenderAnchor,
+};
 
 pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 4.5;
 pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
 pub const MIN_STAR_WORLD_SCALE: f32 = 1.35;
 pub const STAR_BASE_RADIUS: f32 = 0.72;
-pub const STAR_BILLBOARD_Y_LIFT: f32 = 0.85;
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
     "star distance attenuation, core/aura scale, alpha, and bloom are editor render metadata only";
 
@@ -129,18 +130,20 @@ pub fn hyperlane_bucket_alpha(bucket: HyperlaneDepthBucket, meta: &StudioGalaxyR
     bucket_alpha_for_meta(bucket, meta)
 }
 
-pub fn prepare_star_render_instances(stars: &[StudioStarView]) -> Vec<StarRenderInstance> {
+pub fn prepare_star_render_instances(
+    stars: &[StudioStarView],
+    anchors: &[StudioSystemRenderAnchor],
+) -> Vec<StarRenderInstance> {
     stars
         .iter()
-        .map(|star| StarRenderInstance {
-            system_id: star.system_id,
-            position: [
-                star.world_x,
-                star.world_y + STAR_BILLBOARD_Y_LIFT,
-                star.world_z,
-            ],
-            scale: star.sprite_scale,
-            emissive_strength: star.emissive_strength,
+        .filter_map(|star| {
+            let anchor = anchor_for_system(anchors, star.system_id)?;
+            Some(StarRenderInstance {
+                system_id: star.system_id,
+                position: anchor.world_position,
+                scale: star.sprite_scale,
+                emissive_strength: star.emissive_strength,
+            })
         })
         .collect()
 }
@@ -207,9 +210,21 @@ mod tests {
         let profile = GenerationProfile::default_spiral_2_dense_3000();
         let output = run_generation(&profile).expect("generate");
         let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
-        let instances = prepare_star_render_instances(&vm.stars);
+        let instances = prepare_star_render_instances(&vm.stars, &vm.render_anchors);
         assert_eq!(instances.len(), vm.stars.len());
         assert_eq!(instances.len(), output.result.placement.systems.len());
+    }
+
+    #[test]
+    fn star_visual_uses_render_anchor_position() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let instances = prepare_star_render_instances(&vm.stars, &vm.render_anchors);
+        let instance = instances.first().expect("star instance");
+        let anchor = crate::view_model::anchor_for_system(&vm.render_anchors, instance.system_id)
+            .expect("anchor");
+        assert_eq!(instance.position, anchor.world_position);
     }
 
     #[test]
@@ -256,6 +271,20 @@ mod tests {
             let visual = star_distance_visual(distance, true, false, &meta);
             assert!(visual.aura_alpha <= meta.star_near_aura_alpha);
         }
+    }
+
+    #[test]
+    fn aura_overview_scale_is_below_max_threshold() {
+        let meta = star_visual_defaults();
+        let visual = star_distance_visual(meta.star_far_distance, false, false, &meta);
+        assert!(visual.aura_scale <= 0.20);
+    }
+
+    #[test]
+    fn aura_overview_alpha_is_below_max_threshold() {
+        let meta = star_visual_defaults();
+        let visual = star_distance_visual(meta.star_far_distance, false, false, &meta);
+        assert!(visual.aura_alpha <= 0.01);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! Editor selection model — view state only; never mutates structural galaxy data.
 
-use crate::view_model::{StudioGalaxyViewModel, StudioHyperlaneView};
+use crate::view_model::{StudioGalaxyViewModel, StudioHyperlaneView, StudioSystemRenderAnchor};
 
 pub const DEFAULT_PICK_RADIUS_PX: f32 = 18.0;
 
@@ -93,6 +93,23 @@ pub struct ScreenStarProjection {
     pub screen_x: f32,
     pub screen_y: f32,
     pub depth: f32,
+}
+
+pub fn screen_star_projection_from_anchor(
+    anchor: &StudioSystemRenderAnchor,
+    screen_x: f32,
+    screen_y: f32,
+    camera_position: [f32; 3],
+) -> ScreenStarProjection {
+    let dx = camera_position[0] - anchor.world_position[0];
+    let dy = camera_position[1] - anchor.world_position[1];
+    let dz = camera_position[2] - anchor.world_position[2];
+    ScreenStarProjection {
+        system_id: anchor.system_id,
+        screen_x,
+        screen_y,
+        depth: (dx * dx + dy * dy + dz * dz).sqrt(),
+    }
 }
 
 pub fn pick_nearest_star_screen(
@@ -225,6 +242,35 @@ mod tests {
             details.render_only_note,
             StudioGalaxyViewModel::RENDER_ONLY_NOTE
         );
+    }
+
+    #[test]
+    fn picking_uses_render_anchor_position() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let anchor = vm.render_anchors.first().expect("anchor");
+        let projection = screen_star_projection_from_anchor(
+            anchor,
+            20.0,
+            30.0,
+            [anchor.world_position[0], 10.0, anchor.world_position[2]],
+        );
+        assert_eq!(projection.system_id, anchor.system_id);
+        assert_eq!(projection.depth, (10.0 - anchor.world_position[1]).abs());
+    }
+
+    #[test]
+    fn selected_system_anchor_matches_inspector_system_id() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let anchor = vm.render_anchors.first().expect("anchor");
+        let details = selected_system_details(&vm, anchor.system_id).expect("details");
+        assert_eq!(details.system_id, anchor.system_id);
+        assert_eq!(details.structural_col, anchor.structural_col);
+        assert_eq!(details.structural_row, anchor.structural_row);
+        assert_eq!(details.render_height, anchor.render_height);
     }
 
     #[test]
