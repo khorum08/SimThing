@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, and `docs/tests/bevy_mapgen_editor_pr2_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -510,3 +510,13 @@ PR2 adds the first editor inspection loop:
 - **Visual highlight** for hovered/selected stars and incident hyperlane overlay.
 - **Starburst billboard sprites** (procedural 64×64 texture) replace interim spheres.
 - Selection is **editor/view state only** — no scenario mutation, no live simulation, no save/load.
+
+### PR2R visibility + shape-param scoping repair (2026-06-13)
+
+PR2R repairs two Windows live defects before DA promotion:
+
+- **Star visibility:** render-only `star_visibility_scale` / `min_star_world_scale` enlarge starburst billboards at default overview camera; hyperlane bucket alphas lowered and scaled by `lane_visibility_scale` so lanes stay legible but subordinate.
+- **Shape-param scoping:** editor stores params per shape in `shape_params_by_shape`; only **active** shape params are submitted to MapGenerator. Dormant spiral `arm_*` values do not block Disc/elliptical generation.
+- CLI/generator **fail-closed validation remains intact** for invalid submitted params.
+- Starburst/visibility tuning and hyperlane fades are **presentation-only**; structural gridcell `(col,row)` coordinates remain authoritative.
+- Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains deferred research.

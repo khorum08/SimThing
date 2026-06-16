@@ -11,6 +11,8 @@ pub mod panel_layout;
 pub mod selection;
 pub mod session;
 pub mod settings;
+pub mod shape_params;
+pub mod star_render;
 pub mod starburst;
 pub mod view_model;
 

@@ -13,6 +13,7 @@ use crate::panel_layout::{
 };
 use crate::selection::selected_system_details;
 use crate::settings::WindowModeSetting;
+use crate::shape_params::spiral_arm_params_active;
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
 use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
@@ -273,7 +274,13 @@ fn generation_fields(
     ui.label("Active generation controls");
     egui::Grid::new("gen_grid").show(ui, |ui| {
         ui.label("Shape");
+        let old_shape = profile.shape.clone();
         ui.text_edit_singleline(&mut profile.shape);
+        if profile.shape != old_shape {
+            profile.init_shape_param_storage();
+            let new_shape = profile.shape.clone();
+            profile.switch_shape(&old_shape, &new_shape);
+        }
         ui.end_row();
         ui.label("Stars");
         ui.add(egui::DragValue::new(&mut profile.star_count).range(1..=10000));
@@ -302,16 +309,36 @@ fn generation_fields(
         ui.end_row();
         ui.checkbox(&mut profile.render_lanes, "Render lanes");
         ui.end_row();
+        let spiral_active = spiral_arm_params_active(&profile.shape);
         ui.label("arm_width");
-        ui.add(egui::DragValue::new(&mut profile.arm_width).speed(0.1));
+        if spiral_active {
+            ui.add(egui::DragValue::new(&mut profile.arm_width).speed(0.1));
+        } else if inactive_button(ui, &format!("{:.1}", profile.arm_width)).clicked() {
+            *dialog = inactive_control_warning("arm_width (inactive for selected shape)");
+        }
         ui.end_row();
         ui.label("arm_tightness");
-        ui.add(egui::DragValue::new(&mut profile.arm_tightness).speed(0.05));
+        if spiral_active {
+            ui.add(egui::DragValue::new(&mut profile.arm_tightness).speed(0.05));
+        } else if inactive_button(ui, &format!("{:.2}", profile.arm_tightness)).clicked() {
+            *dialog = inactive_control_warning("arm_tightness (inactive for selected shape)");
+        }
         ui.end_row();
         ui.label("jitter");
-        ui.add(egui::DragValue::new(&mut profile.jitter).speed(0.1));
+        if spiral_active || profile.shape == "elliptical" {
+            ui.add(egui::DragValue::new(&mut profile.jitter).speed(0.1));
+        } else if inactive_button(ui, &format!("{:.1}", profile.jitter)).clicked() {
+            *dialog = inactive_control_warning("jitter (inactive for selected shape)");
+        }
         ui.end_row();
     });
+    if !spiral_arm_params_active(&profile.shape) {
+        ui.label(
+            egui::RichText::new("Spiral arm params inactive for selected shape — not submitted.")
+                .small()
+                .weak(),
+        );
+    }
     ui.separator();
     ui.label("Deferred (visible, inactive)");
     for label in [

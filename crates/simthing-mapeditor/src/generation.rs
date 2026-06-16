@@ -9,6 +9,11 @@ use simthing_mapgenerator::{
     ReportArtifacts, ReportError, ScenarioEmitter, ScenarioEmitterConfig, ShapeRegistry,
     ValidationError, MAP_QUALITY_FAIL, MAP_QUALITY_PASS, MAP_QUALITY_WARN,
 };
+
+use crate::shape_params::{
+    apply_editable_values_to_profile_fields, default_params_for_shape,
+    editable_values_from_profile_fields, spiral_arm_params_active, store_dormant_shape_params,
+};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GenerationProfile {
     pub preset_id: String,
@@ -28,6 +33,8 @@ pub struct GenerationProfile {
     pub cluster_count: u32,
     pub cluster_radius: f64,
     pub no_partitions: bool,
+    #[serde(default)]
+    pub shape_params_by_shape: BTreeMap<String, BTreeMap<String, f64>>,
 }
 
 #[derive(Debug, Clone)]
@@ -116,9 +123,11 @@ impl GenerationPreset {
                 p.lattice_edge = 300;
                 p.target_hyperlanes = 5000;
                 p.max_hyperlane_distance = 3.0;
-                p.arm_width = 0.0;
-                p.arm_tightness = 1.0;
-                p.jitter = 0.0;
+                p.arm_width = 14.0;
+                p.arm_tightness = 0.6;
+                p.jitter = 2.0;
+                p.init_shape_param_storage();
+                p.switch_shape("spiral_2", "elliptical");
                 p
             }
             GenerationPreset::Elliptical1000 => {
@@ -129,6 +138,8 @@ impl GenerationPreset {
                 p.lattice_edge = 200;
                 p.target_hyperlanes = 2000;
                 p.max_hyperlane_distance = 4.0;
+                p.init_shape_param_storage();
+                p.switch_shape("spiral_2", "elliptical");
                 p
             }
             GenerationPreset::StaticImport | GenerationPreset::ArbitraryStatic => {
@@ -172,7 +183,63 @@ impl GenerationProfile {
             cluster_count: 4,
             cluster_radius: 500.0,
             no_partitions: true,
+            shape_params_by_shape: BTreeMap::new(),
         }
+    }
+
+    pub fn init_shape_param_storage(&mut self) {
+        if !self.shape_params_by_shape.is_empty() {
+            return;
+        }
+        let editable =
+            editable_values_from_profile_fields(self.arm_width, self.arm_tightness, self.jitter);
+        store_dormant_shape_params(&self.shape, &editable, &mut self.shape_params_by_shape);
+    }
+
+    pub fn sync_editable_fields_from_active_shape(&mut self) {
+        let active =
+            crate::shape_params::active_shape_params_for(&self.shape, &self.shape_params_by_shape);
+        apply_editable_values_to_profile_fields(
+            &active,
+            &mut self.arm_width,
+            &mut self.arm_tightness,
+            &mut self.jitter,
+        );
+    }
+
+    pub fn persist_editable_fields_for_active_shape(&mut self) {
+        if !spiral_arm_params_active(&self.shape) {
+            let mut editable = BTreeMap::new();
+            if crate::shape_params::param_keys_for_shape(&self.shape).contains(&"jitter") {
+                editable.insert("jitter".into(), self.jitter);
+            }
+            store_dormant_shape_params(&self.shape, &editable, &mut self.shape_params_by_shape);
+            return;
+        }
+        let editable =
+            editable_values_from_profile_fields(self.arm_width, self.arm_tightness, self.jitter);
+        store_dormant_shape_params(&self.shape, &editable, &mut self.shape_params_by_shape);
+    }
+
+    pub fn switch_shape(&mut self, old_shape: &str, new_shape: &str) {
+        if old_shape != new_shape {
+            let editable = editable_values_from_profile_fields(
+                self.arm_width,
+                self.arm_tightness,
+                self.jitter,
+            );
+            store_dormant_shape_params(old_shape, &editable, &mut self.shape_params_by_shape);
+        }
+        self.shape = new_shape.to_string();
+        if !self.shape_params_by_shape.contains_key(new_shape) {
+            self.shape_params_by_shape
+                .insert(new_shape.to_string(), default_params_for_shape(new_shape));
+        }
+        self.sync_editable_fields_from_active_shape();
+    }
+
+    pub fn submission_shape_params(&self) -> BTreeMap<String, f64> {
+        crate::shape_params::active_shape_params_for(&self.shape, &self.shape_params_by_shape)
     }
 
     pub fn matches_known_healthy_editor_prep_params(&self) -> bool {
@@ -213,11 +280,7 @@ impl GenerationProfile {
         params.hyperlane.num_hyperlanes_min = 1;
         params.hyperlane.max_hyperlane_distance = self.max_hyperlane_distance;
         params.hyperlane.ensure_connected = self.ensure_connected && !self.allow_disconnected;
-        params.shape.shape_params = BTreeMap::from([
-            ("arm_width".into(), self.arm_width),
-            ("arm_tightness".into(), self.arm_tightness),
-            ("jitter".into(), self.jitter),
-        ]);
+        params.shape.shape_params = self.submission_shape_params();
         params.clustering.cluster_count = Some(self.cluster_count);
         params.clustering.cluster_radius = self.cluster_radius;
         if self.no_partitions {
@@ -242,6 +305,8 @@ pub enum GenerationError {
 
 pub fn run_generation(profile: &GenerationProfile) -> Result<GenerationRunOutput, GenerationError> {
     let registry = ShapeRegistry::default();
+    let mut profile = profile.clone();
+    profile.persist_editable_fields_for_active_shape();
     let params = profile.to_map_generator_params();
     params.validate(&registry)?;
     let (hyperlane, special, partition, cluster) = structure_options_from_params(&params)?;
@@ -287,10 +352,65 @@ pub fn quality_panel_flags_report(report: &GenerationReport) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::shape_params::report_has_spiral_only_params;
 
     #[test]
     fn editor_default_generation_profile_matches_known_healthy_report_params() {
         let profile = GenerationProfile::default_spiral_2_dense_3000();
         assert!(profile.matches_known_healthy_editor_prep_params());
+    }
+
+    #[test]
+    fn editor_disc_generation_does_not_submit_spiral_params() {
+        let mut profile = GenerationProfile::default_spiral_2_dense_3000();
+        profile.init_shape_param_storage();
+        profile.switch_shape("spiral_2", "elliptical");
+        let params = profile.to_map_generator_params();
+        assert!(!params.shape.shape_params.contains_key("arm_width"));
+        assert!(!params.shape.shape_params.contains_key("arm_tightness"));
+    }
+
+    #[test]
+    fn editor_spiral_generation_submits_spiral_params() {
+        let mut profile = GenerationProfile::default_spiral_2_dense_3000();
+        profile.init_shape_param_storage();
+        let params = profile.to_map_generator_params();
+        assert_eq!(params.shape.shape_params.get("arm_width"), Some(&14.0));
+        assert_eq!(params.shape.shape_params.get("arm_tightness"), Some(&0.6));
+        assert_eq!(params.shape.shape_params.get("jitter"), Some(&2.0));
+    }
+
+    #[test]
+    fn shape_change_preserves_old_shape_params_as_dormant_state() {
+        let mut profile = GenerationProfile::default_spiral_2_dense_3000();
+        profile.init_shape_param_storage();
+        profile.arm_width = 20.0;
+        profile.persist_editable_fields_for_active_shape();
+        profile.switch_shape("spiral_2", "elliptical");
+        profile.switch_shape("elliptical", "spiral_2");
+        assert!((profile.arm_width - 20.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn inactive_shape_params_do_not_validate_or_block_generation() {
+        let profile = GenerationPreset::Disc1500Connected.to_profile();
+        run_generation(&profile).expect("disc generation must not fail on dormant spiral params");
+    }
+
+    #[test]
+    fn disc_preset_clears_or_deactivates_spiral_params() {
+        let profile = GenerationPreset::Disc1500Connected.to_profile();
+        let params = profile.to_map_generator_params();
+        assert!(!params.shape.shape_params.contains_key("arm_width"));
+        assert!(!params.shape.shape_params.contains_key("arm_tightness"));
+    }
+
+    #[test]
+    fn report_for_disc_has_no_spiral_only_params() {
+        let profile = GenerationPreset::Disc1500Connected.to_profile();
+        let output = run_generation(&profile).expect("disc generation");
+        assert!(!report_has_spiral_only_params(
+            &output.report.request.shape_params
+        ));
     }
 }

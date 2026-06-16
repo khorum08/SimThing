@@ -11,6 +11,9 @@ pub struct StudioGalaxyRenderMeta {
     pub core_bulge_strength: f32,
     pub core_bulge_radius: f32,
     pub star_sprite_scale: f32,
+    pub star_visibility_scale: f32,
+    pub lane_visibility_scale: f32,
+    pub min_star_world_scale: f32,
     pub hyperlane_alpha_near: f32,
     pub hyperlane_alpha_far: f32,
     pub hyperlane_depth_fade_start: f32,
@@ -24,6 +27,9 @@ impl Default for StudioGalaxyRenderMeta {
             core_bulge_strength: 0.85,
             core_bulge_radius: 0.22,
             star_sprite_scale: 1.0,
+            star_visibility_scale: crate::star_render::DEFAULT_STAR_VISIBILITY_SCALE,
+            lane_visibility_scale: crate::star_render::DEFAULT_LANE_VISIBILITY_SCALE,
+            min_star_world_scale: crate::star_render::MIN_STAR_WORLD_SCALE,
             hyperlane_alpha_near: 0.72,
             hyperlane_alpha_far: 0.08,
             hyperlane_depth_fade_start: 20.0,
@@ -102,8 +108,7 @@ impl StudioGalaxyViewModel {
             let world_x = (col - center) * cell_world_scale;
             let world_z = (row - center) * cell_world_scale;
             let radius_unit = deterministic_unit_hash(result.seed, system.id, "radius");
-            let sprite_scale =
-                meta.star_sprite_scale * (0.55 + radius_unit * 0.35) * star_render_radius_scale();
+            let sprite_scale = crate::star_render::star_world_scale(&meta, radius_unit);
             let emissive_strength = 0.6 + radius_unit * 0.8;
             stars.push(StudioStarView {
                 system_id: system.id,
@@ -188,10 +193,6 @@ impl StudioGalaxyViewModel {
 
 fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
-}
-
-fn star_render_radius_scale() -> f32 {
-    0.22
 }
 
 #[cfg(test)]
