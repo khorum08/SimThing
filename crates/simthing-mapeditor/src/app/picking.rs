@@ -8,8 +8,10 @@ use crate::selection::{
     apply_star_click, pick_nearest_star_screen, screen_star_projection_from_anchor,
     DEFAULT_PICK_RADIUS_PX,
 };
-use crate::star_render::{star_distance_visual, star_emissive_strength};
-use crate::view_model::anchor_for_system;
+use crate::star_render::{
+    compute_star_distance_visual, normalized_billboard_camera_depth_percent,
+    star_emissive_strength, StarBillboardRenderSettings,
+};
 
 use super::camera::MainCamera;
 use super::galaxy_render::{rebuild_highlight_hyperlanes, GalaxyStar, StarVisualLayer};
@@ -121,36 +123,28 @@ pub fn sync_star_visuals_system(
         return;
     };
     let camera_pos = camera_transform.translation();
-    let meta = &session.view_model.render_meta;
+    let settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
     for (star, mut transform, material_handle) in &mut stars {
-        let Some(view) = session
-            .view_model
-            .stars
-            .iter()
-            .find(|s| s.system_id == star.system_id)
-        else {
-            continue;
-        };
-        let selected = state.selection.selected_system_id == Some(star.system_id);
-        let hovered = state.selection.hovered_system_id == Some(star.system_id);
-        let Some(anchor) = anchor_for_system(&session.view_model.render_anchors, star.system_id)
-        else {
-            continue;
-        };
-        let star_pos = Vec3::from_array(anchor.world_position);
-        let visual = star_distance_visual(camera_pos.distance(star_pos), selected, hovered, meta);
+        let selected = state.selection.selected_system_id == Some(star.instance.system_id);
+        let hovered = state.selection.hovered_system_id == Some(star.instance.system_id);
+        let instance = star.instance.with_view_state(selected, hovered);
+        let distance = camera_pos.distance(instance.anchor_position);
+        let depth_percent = normalized_billboard_camera_depth_percent(distance, &settings);
+        let visual = compute_star_distance_visual(depth_percent, selected, hovered, &settings);
         let (layer_scale, alpha, emissive_factor, color) = match star.layer {
             StarVisualLayer::Core => (visual.core_scale, visual.core_alpha, 1.0, (0.88, 0.95, 1.0)),
             StarVisualLayer::Aura => (
-                visual.aura_scale,
+                visual.aura_radius,
                 visual.aura_alpha,
                 0.20,
                 (0.34, 0.66, 1.0),
             ),
         };
-        transform.scale = Vec3::splat(view.sprite_scale * layer_scale);
+        transform.translation = instance.anchor_position;
+        transform.scale = Vec3::splat(instance.base_scale_variation * layer_scale);
         if let Some(material) = materials.get_mut(&material_handle.0) {
-            let emissive = star_emissive_strength(view.emissive_strength, selected, hovered);
+            let emissive =
+                star_emissive_strength(instance.base_intensity_variation, selected, hovered);
             material.base_color = Color::srgba(color.0, color.1, color.2, alpha);
             material.emissive = LinearRgba::new(
                 emissive * 1.25 * alpha * emissive_factor,

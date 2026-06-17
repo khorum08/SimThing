@@ -1,5 +1,7 @@
 //! Render-only star and hyperlane visual tuning helpers.
 
+use bevy::prelude::*;
+
 use crate::hyperlane_buckets::{bucket_alpha_for_meta, HyperlaneDepthBucket};
 use crate::view_model::{
     anchor_for_system, StudioGalaxyRenderMeta, StudioStarView, StudioSystemRenderAnchor,
@@ -66,6 +68,74 @@ pub struct StarFalloffVisual {
     pub opacity: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StarBillboardRenderSettings {
+    pub base_star_blur_radius: f32,
+    pub falloff_distance_percent: f32,
+    pub falloff_star_blur_radius_percent: f32,
+    pub falloff_star_opacity_percent: f32,
+    pub near_distance: f32,
+    pub far_horizon_distance: f32,
+    pub selected_star_scale_multiplier: f32,
+    pub hovered_star_scale_multiplier: f32,
+    pub far_core_scale: f32,
+    pub near_core_scale: f32,
+    pub near_core_alpha: f32,
+    pub near_aura_alpha: f32,
+}
+
+impl StarBillboardRenderSettings {
+    pub fn from_meta(meta: &StudioGalaxyRenderMeta) -> Self {
+        let falloff = meta.star_falloff_settings.clamped();
+        Self {
+            base_star_blur_radius: falloff.base_blur_radius,
+            falloff_distance_percent: falloff.falloff_distance_percent,
+            falloff_star_blur_radius_percent: falloff.falloff_blur_radius_percent,
+            falloff_star_opacity_percent: falloff.falloff_opacity_percent,
+            near_distance: meta.star_near_distance.max(0.0),
+            far_horizon_distance: meta
+                .star_far_distance
+                .max(meta.star_near_distance.max(0.0) + f32::EPSILON),
+            selected_star_scale_multiplier: meta.selected_star_scale_multiplier,
+            hovered_star_scale_multiplier: meta.hovered_star_scale_multiplier,
+            far_core_scale: meta.star_far_core_scale,
+            near_core_scale: meta.star_near_core_scale,
+            near_core_alpha: meta.star_near_core_alpha,
+            near_aura_alpha: meta.star_near_aura_alpha,
+        }
+    }
+
+    pub fn falloff_settings(&self) -> StarFalloffSettings {
+        StarFalloffSettings {
+            base_blur_radius: self.base_star_blur_radius,
+            falloff_distance_percent: self.falloff_distance_percent,
+            falloff_blur_radius_percent: self.falloff_star_blur_radius_percent,
+            falloff_opacity_percent: self.falloff_star_opacity_percent,
+        }
+        .clamped()
+    }
+}
+
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct StarBillboardInstance {
+    pub system_id: u32,
+    pub structural_col: u32,
+    pub structural_row: u32,
+    pub anchor_position: Vec3,
+    pub base_scale_variation: f32,
+    pub base_intensity_variation: f32,
+    pub selected: bool,
+    pub hovered: bool,
+}
+
+impl StarBillboardInstance {
+    pub fn with_view_state(mut self, selected: bool, hovered: bool) -> Self {
+        self.selected = selected;
+        self.hovered = hovered;
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StarRenderInstance {
     pub system_id: u32,
@@ -78,8 +148,10 @@ pub struct StarRenderInstance {
 pub struct StarDistanceVisual {
     pub core_scale: f32,
     pub aura_scale: f32,
+    pub aura_radius: f32,
     pub core_alpha: f32,
     pub aura_alpha: f32,
+    pub luminosity: f32,
 }
 
 pub fn star_visual_defaults() -> StudioGalaxyRenderMeta {
@@ -100,14 +172,25 @@ pub fn star_distance_visual(
     hovered: bool,
     meta: &StudioGalaxyRenderMeta,
 ) -> StarDistanceVisual {
-    let t = normalized_star_camera_depth(camera_distance, meta);
-    let falloff = compute_star_falloff_visual(t * 100.0, meta.star_falloff_settings);
+    let settings = StarBillboardRenderSettings::from_meta(meta);
+    let depth_percent = normalized_billboard_camera_depth_percent(camera_distance, &settings);
+    compute_star_distance_visual(depth_percent, selected, hovered, &settings)
+}
+
+pub fn compute_star_distance_visual(
+    camera_depth_percent: f32,
+    selected: bool,
+    hovered: bool,
+    settings: &StarBillboardRenderSettings,
+) -> StarDistanceVisual {
+    let t = (camera_depth_percent / 100.0).clamp(0.0, 1.0);
+    let falloff = compute_star_falloff_visual(camera_depth_percent, settings.falloff_settings());
     let eased_far = t * t * (3.0 - 2.0 * t);
     let close = 1.0 - eased_far;
     let scale_mul = if selected {
-        meta.selected_star_scale_multiplier
+        settings.selected_star_scale_multiplier
     } else if hovered {
-        meta.hovered_star_scale_multiplier
+        settings.hovered_star_scale_multiplier
     } else {
         1.0
     };
@@ -118,22 +201,37 @@ pub fn star_distance_visual(
     } else {
         1.0
     };
+    let core_alpha = (settings.near_core_alpha * falloff.opacity * alpha_boost)
+        .min(settings.near_core_alpha)
+        .clamp(0.0, 1.0);
+    let aura_alpha = (settings.near_aura_alpha * falloff.opacity * alpha_boost)
+        .min(settings.near_aura_alpha)
+        .clamp(0.0, 1.0);
+    let aura_radius = falloff.blur_radius * scale_mul;
     StarDistanceVisual {
-        core_scale: lerp(meta.star_far_core_scale, meta.star_near_core_scale, close) * scale_mul,
-        aura_scale: falloff.blur_radius * scale_mul,
-        core_alpha: (meta.star_near_core_alpha * falloff.opacity * alpha_boost)
-            .min(meta.star_near_core_alpha.max(meta.star_far_core_alpha))
-            .clamp(0.0, 1.0),
-        aura_alpha: (meta.star_near_aura_alpha * falloff.opacity * alpha_boost)
-            .min(meta.star_near_aura_alpha)
-            .clamp(0.0, 1.0),
+        core_scale: lerp(settings.far_core_scale, settings.near_core_scale, close) * scale_mul,
+        aura_scale: aura_radius,
+        aura_radius,
+        core_alpha,
+        aura_alpha,
+        luminosity: core_alpha,
     }
 }
 
 pub fn normalized_star_camera_depth(camera_distance: f32, meta: &StudioGalaxyRenderMeta) -> f32 {
-    let near = meta.star_near_distance.max(0.0);
-    let far = meta.star_far_distance.max(near + f32::EPSILON);
-    ((camera_distance - near) / (far - near)).clamp(0.0, 1.0)
+    normalized_billboard_camera_depth_percent(
+        camera_distance,
+        &StarBillboardRenderSettings::from_meta(meta),
+    ) / 100.0
+}
+
+pub fn normalized_billboard_camera_depth_percent(
+    camera_distance: f32,
+    settings: &StarBillboardRenderSettings,
+) -> f32 {
+    let near = settings.near_distance.max(0.0);
+    let far = settings.far_horizon_distance.max(near + f32::EPSILON);
+    (((camera_distance - near) / (far - near)).clamp(0.0, 1.0)) * 100.0
 }
 
 pub fn mid_to_horizon_extra_falloff(normalized_depth: f32) -> f32 {
@@ -217,15 +315,36 @@ pub fn prepare_star_render_instances(
     stars: &[StudioStarView],
     anchors: &[StudioSystemRenderAnchor],
 ) -> Vec<StarRenderInstance> {
+    prepare_star_billboard_instances(stars, anchors, None, None)
+        .into_iter()
+        .map(|star| StarRenderInstance {
+            system_id: star.system_id,
+            position: star.anchor_position.to_array(),
+            scale: star.base_scale_variation,
+            emissive_strength: star.base_intensity_variation,
+        })
+        .collect()
+}
+
+pub fn prepare_star_billboard_instances(
+    stars: &[StudioStarView],
+    anchors: &[StudioSystemRenderAnchor],
+    selected_system_id: Option<u32>,
+    hovered_system_id: Option<u32>,
+) -> Vec<StarBillboardInstance> {
     stars
         .iter()
         .filter_map(|star| {
             let anchor = anchor_for_system(anchors, star.system_id)?;
-            Some(StarRenderInstance {
+            Some(StarBillboardInstance {
                 system_id: star.system_id,
-                position: anchor.world_position,
-                scale: star.sprite_scale,
-                emissive_strength: star.emissive_strength,
+                structural_col: anchor.structural_col,
+                structural_row: anchor.structural_row,
+                anchor_position: Vec3::from_array(anchor.world_position),
+                base_scale_variation: star.sprite_scale,
+                base_intensity_variation: star.emissive_strength,
+                selected: selected_system_id == Some(star.system_id),
+                hovered: hovered_system_id == Some(star.system_id),
             })
         })
         .collect()
@@ -289,22 +408,49 @@ mod tests {
     }
 
     #[test]
-    fn star_render_preparation_count_matches_system_count() {
+    fn star_billboard_instance_count_matches_system_count() {
         let profile = GenerationProfile::default_spiral_2_dense_3000();
         let output = run_generation(&profile).expect("generate");
         let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
-        let instances = prepare_star_render_instances(&vm.stars, &vm.render_anchors);
+        let instances = prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None);
         assert_eq!(instances.len(), vm.stars.len());
         assert_eq!(instances.len(), output.result.placement.systems.len());
     }
 
     #[test]
-    fn star_visual_uses_render_anchor_position() {
+    fn star_billboard_instances_use_render_anchors() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let instances = prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None);
+        let instance = instances.first().expect("star instance");
+        let anchor = crate::view_model::anchor_for_system(&vm.render_anchors, instance.system_id)
+            .expect("anchor");
+        assert_eq!(instance.anchor_position.to_array(), anchor.world_position);
+    }
+
+    #[test]
+    fn star_billboard_anchor_preserves_structural_coord_reference() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let instances = prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None);
+        for instance in instances {
+            let anchor =
+                crate::view_model::anchor_for_system(&vm.render_anchors, instance.system_id)
+                    .expect("anchor");
+            assert_eq!(instance.structural_col, anchor.structural_col);
+            assert_eq!(instance.structural_row, anchor.structural_row);
+        }
+    }
+
+    #[test]
+    fn legacy_star_render_instances_wrap_billboard_instances() {
         let profile = GenerationProfile::default_spiral_2_dense_3000();
         let output = run_generation(&profile).expect("generate");
         let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
         let instances = prepare_star_render_instances(&vm.stars, &vm.render_anchors);
-        let instance = instances.first().expect("star instance");
+        let instance = instances.first().expect("legacy star instance");
         let anchor = crate::view_model::anchor_for_system(&vm.render_anchors, instance.system_id)
             .expect("anchor");
         assert_eq!(instance.position, anchor.world_position);
@@ -340,10 +486,11 @@ mod tests {
     }
 
     #[test]
-    fn nearest_star_peak_luminosity_preserved() {
+    fn star_distance_visual_near_peak_luminosity_preserved() {
         let meta = star_visual_defaults();
         let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
         assert!((near.core_alpha - meta.star_near_core_alpha).abs() < f32::EPSILON);
+        assert!((near.luminosity - meta.star_near_core_alpha).abs() < f32::EPSILON);
         assert_eq!(mid_to_horizon_extra_falloff(0.0), 1.0);
     }
 
@@ -403,7 +550,17 @@ mod tests {
     }
 
     #[test]
-    fn star_distance_visual_selected_is_larger_or_brighter_than_unselected() {
+    fn star_distance_visual_far_is_smaller_than_near() {
+        let meta = star_visual_defaults();
+        let near = star_distance_visual(meta.star_near_distance, false, false, &meta);
+        let far = star_distance_visual(meta.star_far_distance, false, false, &meta);
+        assert!(far.core_scale < near.core_scale);
+        assert!(far.aura_radius < near.aura_radius);
+        assert!(far.luminosity < near.luminosity);
+    }
+
+    #[test]
+    fn selected_star_visual_is_larger_or_brighter_than_unselected() {
         let meta = star_visual_defaults();
         let distance = (meta.star_near_distance + meta.star_far_distance) * 0.5;
         let selected = star_distance_visual(distance, true, false, &meta);
@@ -411,6 +568,17 @@ mod tests {
         assert!(selected.core_scale > unselected.core_scale);
         assert!(selected.core_alpha >= unselected.core_alpha);
         assert!(selected.aura_alpha >= unselected.aura_alpha);
+    }
+
+    #[test]
+    fn hovered_star_visual_is_larger_or_brighter_than_unhovered() {
+        let meta = star_visual_defaults();
+        let distance = (meta.star_near_distance + meta.star_far_distance) * 0.5;
+        let hovered = star_distance_visual(distance, false, true, &meta);
+        let unhovered = star_distance_visual(distance, false, false, &meta);
+        assert!(hovered.core_scale > unhovered.core_scale);
+        assert!(hovered.core_alpha >= unhovered.core_alpha);
+        assert!(hovered.aura_alpha >= unhovered.aura_alpha);
     }
 
     #[test]
@@ -509,6 +677,79 @@ mod tests {
         };
         let visual = compute_star_falloff_visual(40.0, settings);
         assert!((visual.opacity - 0.7).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn star_distance_visual_reaches_settings_falloff_radius_at_falloff_distance() {
+        let settings = StarBillboardRenderSettings {
+            base_star_blur_radius: 0.8,
+            falloff_distance_percent: 40.0,
+            falloff_star_blur_radius_percent: 25.0,
+            falloff_star_opacity_percent: 70.0,
+            near_distance: 10.0,
+            far_horizon_distance: 110.0,
+            selected_star_scale_multiplier: 1.85,
+            hovered_star_scale_multiplier: 1.22,
+            far_core_scale: 0.1,
+            near_core_scale: 0.68,
+            near_core_alpha: 1.0,
+            near_aura_alpha: 0.22,
+        };
+        let visual = compute_star_distance_visual(
+            settings.falloff_distance_percent,
+            false,
+            false,
+            &settings,
+        );
+        assert!((visual.aura_radius - 0.2).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn star_distance_visual_reaches_settings_falloff_opacity_at_falloff_distance() {
+        let settings = StarBillboardRenderSettings {
+            base_star_blur_radius: 0.8,
+            falloff_distance_percent: 40.0,
+            falloff_star_blur_radius_percent: 25.0,
+            falloff_star_opacity_percent: 70.0,
+            near_distance: 10.0,
+            far_horizon_distance: 110.0,
+            selected_star_scale_multiplier: 1.85,
+            hovered_star_scale_multiplier: 1.22,
+            far_core_scale: 0.1,
+            near_core_scale: 0.68,
+            near_core_alpha: 1.0,
+            near_aura_alpha: 0.22,
+        };
+        let visual = compute_star_distance_visual(
+            settings.falloff_distance_percent,
+            false,
+            false,
+            &settings,
+        );
+        assert!((visual.luminosity - 0.7).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn settings_update_changes_star_visual_without_regenerating_galaxy() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let mut vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let seed = vm.seed;
+        let star_count = vm.stars.len();
+        let anchor_count = vm.render_anchors.len();
+        let before = star_distance_visual(120.0, false, false, &vm.render_meta);
+        vm.apply_star_falloff_settings(StarFalloffSettings {
+            base_blur_radius: 0.25,
+            falloff_distance_percent: 50.0,
+            falloff_blur_radius_percent: 10.0,
+            falloff_opacity_percent: 20.0,
+        });
+        let after = star_distance_visual(120.0, false, false, &vm.render_meta);
+        assert_eq!(vm.seed, seed);
+        assert_eq!(vm.stars.len(), star_count);
+        assert_eq!(vm.render_anchors.len(), anchor_count);
+        assert_ne!(before.aura_radius, after.aura_radius);
+        assert_ne!(before.luminosity, after.luminosity);
     }
 
     fn distance_for_depth(meta: &StudioGalaxyRenderMeta, depth: f32) -> f32 {
