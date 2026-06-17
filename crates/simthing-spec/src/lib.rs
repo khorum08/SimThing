@@ -401,11 +401,12 @@ pub use spec::resource_flow::{
     WildcardAdmissionSpec,
 };
 pub use spec::scenario::{
-    apply_gridcell_property_edit, deserialize_scenario_authority, property_u32,
-    reserve_simthing_ids_from_scenario, resolve_map_container, resolve_map_container_mut,
-    serialize_scenario_authority, structural_property_value_u32, validate_scenario_links,
-    validate_stead_mapping_consistency, ScenarioEditError, ScenarioLinkError, ScenarioSerdeError,
-    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    apply_gridcell_property_edit, canonical_scenario_link_key, canonical_scenario_link_pair,
+    deserialize_scenario_authority, property_u32, reserve_simthing_ids_from_scenario,
+    resolve_map_container, resolve_map_container_mut, serialize_scenario_authority,
+    structural_property_value_u32, validate_scenario_links, validate_stead_mapping_consistency,
+    ScenarioEditError, ScenarioLinkError, ScenarioSerdeError, SimThingScenarioGrid,
+    SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
     SimThingStructuralGridFrame, SimThingStructuralGridPlacement, SteadMappingError,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
     SCENARIO_RENDER_WORLD_Y_PROPERTY_ID, SCENARIO_RENDER_WORLD_Z_PROPERTY_ID,

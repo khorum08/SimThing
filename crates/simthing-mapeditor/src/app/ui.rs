@@ -13,8 +13,8 @@ use crate::hyperlane_buckets::{
 };
 use crate::panel_layout::{
     clamp_dialog_rect_away_from_panels, compute_collapsed_panel_tab, compute_floating_panel_layout,
-    left_panel_title, rect_from_xywh, right_panel_rect, should_auto_collapse_panel,
-    FloatingDialogBounds,
+    left_panel_content_scroll_height, left_panel_title, rect_from_xywh, right_panel_rect,
+    should_auto_collapse_panel, FloatingDialogBounds,
 };
 use crate::selection::selected_system_details;
 use crate::settings::WindowModeSetting;
@@ -620,12 +620,13 @@ fn draw_left_panel(
     let opacity = state.left_panel_opacity;
     let title = left_panel_title(state.session.as_ref().map(|s| s.galaxy_name()));
 
+    let scroll_height = left_panel_content_scroll_height(&layout);
     let area = egui::Area::new(egui::Id::new("left_panel"))
         .fixed_pos(egui::pos2(layout.x, layout.y))
         .show(ctx, |ui| {
             studio_panel_frame(opacity, layout.corner_radius).show(ui, |ui| {
                 ui.set_width(layout.width);
-                ui.set_min_height(layout.height);
+                ui.set_max_height(layout.height);
                 ui.horizontal(|ui| {
                     if title.is_empty() {
                         ui.label("");
@@ -639,67 +640,72 @@ fn draw_left_panel(
                     });
                 });
                 ui.separator();
-                ui.horizontal(|ui| {
-                    if inactive_button(ui, "New").clicked() {
-                        *dialog = unimplemented_action_response(StudioAction::New);
-                    }
-                    if inactive_button(ui, "Load").clicked() {
-                        *dialog = unimplemented_action_response(StudioAction::Load);
-                    }
-                    if inactive_button(ui, "Save").clicked() {
-                        *dialog = unimplemented_action_response(StudioAction::Save);
-                    }
-                    if ui.button("Generate").clicked() {
-                        ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_generate"), true));
-                    }
-                });
-                ui.separator();
-                ui.label("Presets");
-                for preset in GenerationPreset::all() {
-                    let active = preset.is_active();
-                    let label = preset.label();
-                    if active {
-                        if ui
-                            .selectable_label(state.profile.preset_id == preset.id(), label)
-                            .clicked()
-                        {
-                            state.profile = preset.to_profile();
+                egui::ScrollArea::vertical()
+                    .id_salt("left_panel_scroll")
+                    .max_height(scroll_height)
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if inactive_button(ui, "New").clicked() {
+                                *dialog = unimplemented_action_response(StudioAction::New);
+                            }
+                            if inactive_button(ui, "Load").clicked() {
+                                *dialog = unimplemented_action_response(StudioAction::Load);
+                            }
+                            if inactive_button(ui, "Save").clicked() {
+                                *dialog = unimplemented_action_response(StudioAction::Save);
+                            }
+                            if ui.button("Generate").clicked() {
+                                ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_generate"), true));
+                            }
+                        });
+                        ui.separator();
+                        ui.label("Presets");
+                        for preset in GenerationPreset::all() {
+                            let active = preset.is_active();
+                            let label = preset.label();
+                            if active {
+                                if ui
+                                    .selectable_label(state.profile.preset_id == preset.id(), label)
+                                    .clicked()
+                                {
+                                    state.profile = preset.to_profile();
+                                }
+                            } else if inactive_button(ui, label).clicked() {
+                                *dialog = unimplemented_action_response(
+                                    StudioAction::InactivePreset(preset.id().into()),
+                                );
+                            }
                         }
-                    } else if inactive_button(ui, label).clicked() {
-                        *dialog = unimplemented_action_response(StudioAction::InactivePreset(
-                            preset.id().into(),
-                        ));
-                    }
-                }
-                ui.separator();
-                generation_fields(ui, &mut state.profile, dialog);
-                ui.separator();
-                draw_scenario_io_controls(ctx, ui, state);
-                ui.separator();
-                render_debug_controls(ui, state);
-                ui.separator();
-                ui.label("Camera");
-                ui.horizontal(|ui| {
-                    ui.label(format!("View: {}", camera.view_mode().label()));
-                    if ui.button("Toggle (Tab)").clicked() {
-                        camera.toggle_view_mode();
-                    }
-                });
-                if ui.button("Overhead (O)").clicked() {
-                    snap_overhead(camera);
-                }
-                if ui.button("Reset (R)").clicked() {
-                    reset_camera_after_generation(camera);
-                }
-                if let Some(err) = &state.generation_error {
-                    ui.colored_label(egui::Color32::RED, err);
-                } else if !state.last_scenario_io_status.is_empty() {
-                    ui.label(&state.last_scenario_io_status);
-                } else if !state.status_message.is_empty() {
-                    ui.label(&state.status_message);
-                }
-                ui.add_space(8.0);
-                ui.label(egui::RichText::new("SimThing Studio").small().weak());
+                        ui.separator();
+                        generation_fields(ui, &mut state.profile, dialog);
+                        ui.separator();
+                        draw_scenario_io_controls(ctx, ui, state);
+                        ui.separator();
+                        render_debug_controls(ui, state);
+                        ui.separator();
+                        ui.label("Camera");
+                        ui.horizontal(|ui| {
+                            ui.label(format!("View: {}", camera.view_mode().label()));
+                            if ui.button("Toggle (Tab)").clicked() {
+                                camera.toggle_view_mode();
+                            }
+                        });
+                        if ui.button("Overhead (O)").clicked() {
+                            snap_overhead(camera);
+                        }
+                        if ui.button("Reset (R)").clicked() {
+                            reset_camera_after_generation(camera);
+                        }
+                        if let Some(err) = &state.generation_error {
+                            ui.colored_label(egui::Color32::RED, err);
+                        } else if !state.last_scenario_io_status.is_empty() {
+                            ui.label(&state.last_scenario_io_status);
+                        } else if !state.status_message.is_empty() {
+                            ui.label(&state.status_message);
+                        }
+                        ui.add_space(8.0);
+                        ui.label(egui::RichText::new("SimThing Studio").small().weak());
+                    });
             });
         });
     state.left_panel_hovered = area.response.hovered();
