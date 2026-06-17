@@ -48,6 +48,29 @@ pub fn panel_margin(screen_width: f32, screen_height: f32) -> (f32, f32) {
     )
 }
 
+/// Estimated title/header block height reserved above the scrollable panel body.
+pub const LEFT_PANEL_TITLE_BLOCK_ESTIMATE_PX: f32 = 48.0;
+
+/// Floating left panel rectangle: `(x, y, width, height)`.
+/// Bottom inset equals the left inset (`margin_x`), not the top inset.
+pub fn left_panel_rect(screen_width: f32, screen_height: f32) -> (f32, f32, f32, f32) {
+    let (margin_x, margin_y) = panel_margin(screen_width, screen_height);
+    let width = resting_panel_width(screen_width);
+    let x = margin_x;
+    let y = margin_y;
+    let height = screen_height - margin_y - margin_x;
+    (x, y, width, height)
+}
+
+pub fn left_panel_bottom_y(screen_width: f32, screen_height: f32) -> f32 {
+    let (margin_x, _) = panel_margin(screen_width, screen_height);
+    screen_height - margin_x
+}
+
+pub fn left_panel_content_scroll_height(layout: &FloatingPanelLayout) -> f32 {
+    (layout.height - LEFT_PANEL_TITLE_BLOCK_ESTIMATE_PX).max(64.0)
+}
+
 pub fn corner_radius_for_panel_width(panel_width: f32) -> f32 {
     (panel_width * CORNER_RADIUS_FRAC_OF_WIDTH).max(MIN_CORNER_RADIUS_PX)
 }
@@ -61,12 +84,10 @@ pub fn compute_floating_panel_layout(
     screen_height: f32,
     collapsed: bool,
 ) -> FloatingPanelLayout {
-    let (margin_x, margin_y) = panel_margin(screen_width, screen_height);
-    let width = resting_panel_width(screen_width);
-    let height = screen_height - margin_y * 2.0;
+    let (x, y, width, height) = left_panel_rect(screen_width, screen_height);
     FloatingPanelLayout {
-        x: margin_x,
-        y: margin_y,
+        x,
+        y,
         width,
         height,
         corner_radius: corner_radius_for_panel_width(width),
@@ -161,6 +182,38 @@ mod tests {
         assert!((layout.y - margin_y).abs() < f32::EPSILON);
         assert!((margin_x - SCREEN_W * 0.03).abs() < f32::EPSILON);
         assert!((margin_y - SCREEN_H * 0.03).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn left_panel_bottom_gap_matches_left_gap() {
+        let layout = compute_floating_panel_layout(SCREEN_W, SCREEN_H, false);
+        let (margin_x, _) = panel_margin(SCREEN_W, SCREEN_H);
+        let bottom_y = layout.y + layout.height;
+        assert!((bottom_y - left_panel_bottom_y(SCREEN_W, SCREEN_H)).abs() < 0.01);
+        assert!((SCREEN_H - bottom_y - margin_x).abs() < 0.01);
+        assert!((layout.x - margin_x).abs() < 0.01);
+    }
+
+    #[test]
+    fn left_panel_bottom_gap_survives_resize() {
+        for (w, h) in [(1280.0, 720.0), (1920.0, 1080.0), (2560.0, 1440.0)] {
+            let layout = compute_floating_panel_layout(w, h, false);
+            let (margin_x, _) = panel_margin(w, h);
+            let bottom_gap = h - (layout.y + layout.height);
+            assert!(
+                (bottom_gap - margin_x).abs() < 0.01,
+                "bottom gap {bottom_gap} != left gap {margin_x} at {w}x{h}"
+            );
+        }
+    }
+
+    #[test]
+    fn left_panel_content_scrolls_inside_inset_panel() {
+        let layout = compute_floating_panel_layout(SCREEN_W, SCREEN_H, false);
+        let scroll_h = left_panel_content_scroll_height(&layout);
+        assert!(scroll_h > 0.0);
+        assert!(scroll_h < layout.height);
+        assert!(scroll_h <= layout.height - LEFT_PANEL_TITLE_BLOCK_ESTIMATE_PX + f32::EPSILON);
     }
 
     #[test]

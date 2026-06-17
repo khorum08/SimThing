@@ -143,6 +143,12 @@ pub enum SteadMappingError {
 pub enum ScenarioLinkError {
     #[error("scenario authority link references unknown endpoint from={from} to={to}")]
     InvalidEndpoint { from: String, to: String },
+    #[error("scenario authority link is a self-link for system {system_id}")]
+    SelfLink { system_id: String },
+    #[error("scenario authority link is a duplicate adjacency edge from={from} to={to}")]
+    DuplicateLink { from: String, to: String },
+    #[error("scenario authority link is a reversed duplicate adjacency edge from={from} to={to}")]
+    ReversedDuplicateLink { from: String, to: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -315,6 +321,34 @@ pub fn serialize_scenario_authority(
     serde_json::to_string(spec).map_err(|err| ScenarioSerdeError::Serialize(err.to_string()))
 }
 
+pub fn canonical_scenario_link_pair(
+    from: &str,
+    to: &str,
+) -> Result<(String, String), ScenarioLinkError> {
+    if from.is_empty() || to.is_empty() {
+        return Err(ScenarioLinkError::InvalidEndpoint {
+            from: from.to_string(),
+            to: to.to_string(),
+        });
+    }
+    if from == to {
+        return Err(ScenarioLinkError::SelfLink {
+            system_id: from.to_string(),
+        });
+    }
+    if from < to {
+        Ok((from.to_string(), to.to_string()))
+    } else {
+        Ok((to.to_string(), from.to_string()))
+    }
+}
+
+pub fn canonical_scenario_link_key(
+    link: &SimThingScenarioLink,
+) -> Result<(String, String), ScenarioLinkError> {
+    canonical_scenario_link_pair(&link.from_system_id, &link.to_system_id)
+}
+
 pub fn validate_scenario_links(spec: &SimThingScenarioSpec) -> Result<(), ScenarioLinkError> {
     let known_ids: BTreeSet<String> = spec
         .structural_grid
@@ -322,13 +356,46 @@ pub fn validate_scenario_links(spec: &SimThingScenarioSpec) -> Result<(), Scenar
         .iter()
         .map(|placement| placement.system_id.to_string())
         .collect();
+    let mut seen_canonical: BTreeMap<(String, String), (String, String)> = BTreeMap::new();
     for link in &spec.links {
-        if !known_ids.contains(&link.from_system_id) || !known_ids.contains(&link.to_system_id) {
+        if link.from_system_id.is_empty() || link.to_system_id.is_empty() {
             return Err(ScenarioLinkError::InvalidEndpoint {
                 from: link.from_system_id.clone(),
                 to: link.to_system_id.clone(),
             });
         }
+        if !known_ids.contains(&link.from_system_id) {
+            return Err(ScenarioLinkError::InvalidEndpoint {
+                from: link.from_system_id.clone(),
+                to: link.to_system_id.clone(),
+            });
+        }
+        if !known_ids.contains(&link.to_system_id) {
+            return Err(ScenarioLinkError::InvalidEndpoint {
+                from: link.from_system_id.clone(),
+                to: link.to_system_id.clone(),
+            });
+        }
+        if link.from_system_id == link.to_system_id {
+            return Err(ScenarioLinkError::SelfLink {
+                system_id: link.from_system_id.clone(),
+            });
+        }
+        let canonical = canonical_scenario_link_pair(&link.from_system_id, &link.to_system_id)?;
+        let directed = (link.from_system_id.clone(), link.to_system_id.clone());
+        if let Some((first_from, first_to)) = seen_canonical.get(&canonical) {
+            if first_from == &directed.0 && first_to == &directed.1 {
+                return Err(ScenarioLinkError::DuplicateLink {
+                    from: directed.0,
+                    to: directed.1,
+                });
+            }
+            return Err(ScenarioLinkError::ReversedDuplicateLink {
+                from: directed.0,
+                to: directed.1,
+            });
+        }
+        seen_canonical.insert(canonical, directed);
     }
     Ok(())
 }
@@ -578,6 +645,71 @@ mod tests {
     use super::*;
     use simthing_core::{SimThingId, SimThingKind};
 
+    fn add_gridcell(
+        map: &mut SimThing,
+        system_id: u32,
+        row: u32,
+        col: u32,
+    ) -> (u32, SimThingStructuralGridPlacement) {
+        let mut cell = SimThing::new(SimThingKind::Location, 0);
+        cell.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(system_id),
+        );
+        cell.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(col),
+        );
+        cell.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(row),
+        );
+        let mut payload = SimThing::new(SimThingKind::Cohort, 0);
+        payload.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(system_id),
+        );
+        cell.add_child(payload);
+        let cell_raw = cell.id.raw();
+        let placement = SimThingStructuralGridPlacement {
+            location_id: format!("cell_{system_id}"),
+            target_id: format!("cell_{system_id}"),
+            system_id,
+            row,
+            col,
+            simthing_id_raw: cell_raw,
+        };
+        map.add_child(cell);
+        (cell_raw, placement)
+    }
+
+    fn two_cell_scenario() -> SimThingScenarioSpec {
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut map = SimThing::new(SimThingKind::Location, 0);
+        let map_raw = map.id.raw();
+        let (_, placement_a) = add_gridcell(&mut map, 1, 2, 3);
+        let (_, placement_b) = add_gridcell(&mut map, 2, 2, 4);
+        root.add_child(map);
+        SimThingScenarioSpec {
+            scenario_id: "two_cell_spec".to_string(),
+            root,
+            structural_grid: SimThingScenarioGrid {
+                frame: SimThingStructuralGridFrame {
+                    width: 8,
+                    height: 8,
+                    occupied_cells: 2,
+                },
+                map_container_id: map_raw.to_string(),
+                placements: vec![placement_a, placement_b],
+            },
+            links: vec![SimThingScenarioLink {
+                from_system_id: "1".to_string(),
+                to_system_id: "2".to_string(),
+            }],
+            provenance: SimThingScenarioProvenance::default(),
+        }
+    }
+
     fn small_scenario() -> SimThingScenarioSpec {
         let mut root = SimThing::new(SimThingKind::World, 0);
         let mut map = SimThing::new(SimThingKind::Location, 0);
@@ -817,14 +949,112 @@ mod tests {
 
     #[test]
     fn simthing_scenario_spec_roundtrip_preserves_links() {
-        let mut scenario = small_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "1".to_string(),
-        });
+        let scenario = two_cell_scenario();
         let json = serialize_scenario_authority(&scenario).expect("serialize");
         let round = deserialize_scenario_authority(&json).expect("deserialize");
         assert_eq!(round.links, scenario.links);
+    }
+
+    #[test]
+    fn scenario_links_accept_known_distinct_endpoints() {
+        let scenario = two_cell_scenario();
+        validate_scenario_links(&scenario).expect("valid link");
+    }
+
+    #[test]
+    fn scenario_links_reject_unknown_from_endpoint() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].from_system_id = "999".to_string();
+        let err = validate_scenario_links(&scenario).expect_err("unknown from");
+        assert!(matches!(err, ScenarioLinkError::InvalidEndpoint { .. }));
+    }
+
+    #[test]
+    fn scenario_links_reject_unknown_to_endpoint() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].to_system_id = "999".to_string();
+        let err = validate_scenario_links(&scenario).expect_err("unknown to");
+        assert!(matches!(err, ScenarioLinkError::InvalidEndpoint { .. }));
+    }
+
+    #[test]
+    fn scenario_links_reject_self_link() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].to_system_id = "1".to_string();
+        let err = validate_scenario_links(&scenario).expect_err("self link");
+        assert!(matches!(err, ScenarioLinkError::SelfLink { .. }));
+    }
+
+    #[test]
+    fn scenario_links_reject_direct_duplicate() {
+        let mut scenario = two_cell_scenario();
+        scenario.links.push(SimThingScenarioLink {
+            from_system_id: "1".to_string(),
+            to_system_id: "2".to_string(),
+        });
+        let err = validate_scenario_links(&scenario).expect_err("duplicate");
+        assert!(matches!(err, ScenarioLinkError::DuplicateLink { .. }));
+    }
+
+    #[test]
+    fn scenario_links_reject_reversed_duplicate() {
+        let mut scenario = two_cell_scenario();
+        scenario.links.push(SimThingScenarioLink {
+            from_system_id: "2".to_string(),
+            to_system_id: "1".to_string(),
+        });
+        let err = validate_scenario_links(&scenario).expect_err("reversed duplicate");
+        assert!(matches!(
+            err,
+            ScenarioLinkError::ReversedDuplicateLink { .. }
+        ));
+    }
+
+    #[test]
+    fn scenario_link_canonical_key_is_deterministic() {
+        let forward = SimThingScenarioLink {
+            from_system_id: "2".to_string(),
+            to_system_id: "1".to_string(),
+        };
+        let reverse = SimThingScenarioLink {
+            from_system_id: "1".to_string(),
+            to_system_id: "2".to_string(),
+        };
+        assert_eq!(
+            canonical_scenario_link_key(&forward).expect("forward"),
+            canonical_scenario_link_key(&reverse).expect("reverse")
+        );
+        assert_eq!(
+            canonical_scenario_link_key(&forward).expect("forward"),
+            ("1".to_string(), "2".to_string())
+        );
+    }
+
+    #[test]
+    fn deserialize_scenario_authority_rejects_self_link() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].to_system_id = "1".to_string();
+        let json = serialize_scenario_authority(&scenario).expect("serialize");
+        let err = deserialize_scenario_authority(&json).expect_err("self link");
+        assert!(matches!(
+            err,
+            ScenarioSerdeError::LinkValidation(ScenarioLinkError::SelfLink { .. })
+        ));
+    }
+
+    #[test]
+    fn deserialize_scenario_authority_rejects_duplicate_link() {
+        let mut scenario = two_cell_scenario();
+        scenario.links.push(SimThingScenarioLink {
+            from_system_id: "1".to_string(),
+            to_system_id: "2".to_string(),
+        });
+        let json = serialize_scenario_authority(&scenario).expect("serialize");
+        let err = deserialize_scenario_authority(&json).expect_err("duplicate");
+        assert!(matches!(
+            err,
+            ScenarioSerdeError::LinkValidation(ScenarioLinkError::DuplicateLink { .. })
+        ));
     }
 
     #[test]
