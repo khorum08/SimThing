@@ -65,6 +65,8 @@
 
 | **BEVY-MAPGEN-EDITOR-PR2R12** - Settings X hitbox excludes title drag | #741 | branch evidence | PROBATION - `docs/tests/bevy_mapgen_editor_pr2r12_results.md` |
 
+| **STUDIO-HYDRATION-BOUNDARY-0** - generated maps hydrate into Studio SimThing grids before save/load | branch evidence | branch evidence | PROBATION - `docs/tests/studio_hydration_boundary_0_results.md` |
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."

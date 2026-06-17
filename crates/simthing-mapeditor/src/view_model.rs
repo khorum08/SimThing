@@ -5,6 +5,8 @@ use simthing_mapgenerator::{
     deterministic_unit_hash, grid_chebyshev_distance, GalaxyGenerationResult, GenerationReport,
 };
 
+use crate::hydration::{hydrate_generation_result_into_studio_grid, StudioHydrationBoundary};
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StudioGalaxyRenderMeta {
     pub vertical_thickness_scale: f32,
@@ -130,22 +132,28 @@ impl StudioGalaxyViewModel {
     pub const RENDER_ONLY_NOTE: &'static str =
         "world positions and render_height are presentation-only; structural (col,row) remain authoritative";
 
-    pub fn from_generation(result: &GalaxyGenerationResult, _report: &GenerationReport) -> Self {
+    pub fn from_generation(result: &GalaxyGenerationResult, report: &GenerationReport) -> Self {
+        let hydration = hydrate_generation_result_into_studio_grid(result, report)
+            .expect("generation output must hydrate before Studio view projection");
+        Self::from_hydration(&hydration)
+    }
+
+    pub fn from_hydration(hydration: &StudioHydrationBoundary) -> Self {
         let meta = StudioGalaxyRenderMeta::default();
-        let lattice_edge = result.lattice.edge();
+        let lattice_edge = hydration.grid.grid_width;
         let cell_world_scale = 100.0 / lattice_edge as f32;
         let center = lattice_edge as f32 * 0.5;
         let core_col = center;
         let core_row = center;
         let max_core_dist = (center * 0.95).max(1.0);
 
-        let mut stars = Vec::with_capacity(result.placement.systems.len());
-        let mut render_anchors = Vec::with_capacity(result.placement.systems.len());
-        for system in &result.placement.systems {
-            let col = system.coord.col as f32;
-            let row = system.coord.row as f32;
+        let mut stars = Vec::with_capacity(hydration.grid.gridcells.len());
+        let mut render_anchors = Vec::with_capacity(hydration.grid.gridcells.len());
+        for cell in &hydration.grid.gridcells {
+            let col = cell.structural_col as f32;
+            let row = cell.structural_row as f32;
             let cheb = grid_chebyshev_distance(
-                (system.coord.col, system.coord.row),
+                (cell.structural_col, cell.structural_row),
                 (core_col as u32, core_row as u32),
             ) as f32;
             let distance_from_core_norm = (cheb / max_core_dist).clamp(0.0, 1.0);
@@ -157,24 +165,27 @@ impl StudioGalaxyViewModel {
                 1.0 - distance_from_core_norm,
             );
             let signed_noise =
-                deterministic_unit_hash(result.seed, system.id, "height") * 2.0 - 1.0;
+                deterministic_unit_hash(hydration.report_summary.seed, cell.system_id, "height")
+                    * 2.0
+                    - 1.0;
             let render_height = signed_noise * height_amplitude;
             let world_x = (col - center) * cell_world_scale;
             let world_z = (row - center) * cell_world_scale;
             let anchor = StudioSystemRenderAnchor {
-                system_id: system.id,
-                structural_col: system.coord.col,
-                structural_row: system.coord.row,
+                system_id: cell.system_id,
+                structural_col: cell.structural_col,
+                structural_row: cell.structural_row,
                 world_position: [world_x, render_height, world_z],
                 render_height,
             };
-            let radius_unit = deterministic_unit_hash(result.seed, system.id, "radius");
+            let radius_unit =
+                deterministic_unit_hash(hydration.report_summary.seed, cell.system_id, "radius");
             let sprite_scale = crate::star_render::star_world_scale(&meta, radius_unit);
             let emissive_strength = 0.6 + radius_unit * 0.8;
             stars.push(StudioStarView {
-                system_id: system.id,
-                structural_col: system.coord.col,
-                structural_row: system.coord.row,
+                system_id: cell.system_id,
+                structural_col: cell.structural_col,
+                structural_row: cell.structural_row,
                 render_height,
                 world_x,
                 world_y: render_height,
@@ -193,11 +204,11 @@ impl StudioGalaxyViewModel {
         let hyperlanes = {
             let mut lanes = Vec::new();
             let mut dists = Vec::new();
-            for edge in &result.base_hyperlane_edges {
-                let Some(from) = id_to_world.get(&edge.from) else {
+            for edge in &hydration.grid.hyperlanes {
+                let Some(from) = id_to_world.get(&edge.from_system_id) else {
                     continue;
                 };
-                let Some(to) = id_to_world.get(&edge.to) else {
+                let Some(to) = id_to_world.get(&edge.to_system_id) else {
                     continue;
                 };
                 let mid = [
@@ -213,8 +224,8 @@ impl StudioGalaxyViewModel {
             lanes
                 .into_iter()
                 .map(|(edge, from, to, _mid, dist)| StudioHyperlaneView {
-                    from_system_id: edge.from,
-                    to_system_id: edge.to,
+                    from_system_id: edge.from_system_id.clone(),
+                    to_system_id: edge.to_system_id.clone(),
                     from,
                     to,
                     // Initial bucket is render-only bootstrap data; Bevy rebuckets by camera every frame.
@@ -226,7 +237,7 @@ impl StudioGalaxyViewModel {
         };
 
         Self {
-            seed: result.seed,
+            seed: hydration.report_summary.seed,
             lattice_edge,
             core_col,
             core_row,
@@ -322,6 +333,48 @@ mod tests {
         for (star, system) in vm.stars.iter().zip(output.result.placement.systems.iter()) {
             assert_eq!(star.structural_col, system.coord.col);
             assert_eq!(star.structural_row, system.coord.row);
+        }
+    }
+
+    #[test]
+    fn view_model_derives_from_hydration_not_raw_render_metadata() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let mut output = run_generation(&profile).expect("generate");
+        let hydration =
+            crate::hydration::hydrate_generation_into_studio_grid(&output).expect("hydrate");
+        let first_cell = hydration.grid.gridcells.first().expect("cell").clone();
+        output.result.placement.systems[0].coord.col = output.result.placement.systems[0]
+            .coord
+            .col
+            .saturating_add(1);
+
+        let vm = StudioGalaxyViewModel::from_hydration(&hydration);
+        let star = vm
+            .stars
+            .iter()
+            .find(|star| star.system_id == first_cell.system_id)
+            .expect("star");
+
+        assert_eq!(star.structural_col, first_cell.structural_col);
+        assert_eq!(star.structural_row, first_cell.structural_row);
+    }
+
+    #[test]
+    fn view_model_preserves_structural_coords_from_hydration() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let hydration =
+            crate::hydration::hydrate_generation_into_studio_grid(&output).expect("hydrate");
+        let vm = StudioGalaxyViewModel::from_hydration(&hydration);
+
+        for cell in &hydration.grid.gridcells {
+            let star = vm
+                .stars
+                .iter()
+                .find(|star| star.system_id == cell.system_id)
+                .expect("star");
+            assert_eq!(star.structural_col, cell.structural_col);
+            assert_eq!(star.structural_row, cell.structural_row);
         }
     }
 

@@ -474,11 +474,18 @@ Architecture:
 
 ```text
 MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
-  → StudioSession / StudioGalaxyViewModel (editor metatable)
+  → hydrate_generation_into_studio_grid / StudioHydrationBoundary
+  → StudioSession hydrated authority
+  → StudioGalaxyViewModel projection
   → Bevy render world + egui panels
 ```
 
 - Consumes the **library path** (`run_generation`) and in-process `build_generation_report` — **never stdout**.
+- Successful Studio generation means MapGenerator output **plus** a hydrated Studio SimThing grid. The editor
+  does not adopt a generated run until hydration succeeds.
+- The hydrated grid is the future save/load authority: world root, map container, one `Location`/gridcell
+  SimThing per generated system, structural `(col,row)` on every gridcell, and child star payloads under
+  each star/gridcell.
 - Settings persist as RON (`%APPDATA%/SimThing/Studio/settings.ron`).
 - Bevy world positions, galactic thickness (Y), sprites, and lane fades are **render-only**; structural
   `(col,row)` from `PlacedSystemSeed.coord` remain authoritative (STEAD).
@@ -487,7 +494,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, `docs/tests/bevy_mapgen_editor_pr2r9_results.md`, `docs/tests/bevy_mapgen_editor_pr2r10_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r11_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, `docs/tests/bevy_mapgen_editor_pr2r9_results.md`, `docs/tests/bevy_mapgen_editor_pr2r10_results.md`, `docs/tests/bevy_mapgen_editor_pr2r11_results.md`, `docs/tests/bevy_mapgen_editor_pr2r12_results.md`, and `docs/tests/studio_hydration_boundary_0_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -704,3 +711,23 @@ PR2R11 repairs edge-on foreground lane collapse and adds a presentation-only str
 - Structural gridcell coordinates and generated topology remain authoritative.
 - Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains
   deferred research.
+
+### STUDIO-HYDRATION-BOUNDARY-0 generated grid hydration (2026-06-17)
+
+STUDIO-HYDRATION-BOUNDARY-0 adds the editor-side post-generation authority boundary before save/load work:
+
+- Generation success is now `run_generation` plus `hydrate_generation_into_studio_grid`; `StudioSession`
+  only adopts the map after hydration returns a `StudioHydrationBoundary`.
+- The new Studio hydration object contains a world root, a map container, hydrated grid metadata, one
+  `Location`/gridcell SimThing per generated system, structural `(col,row)` for each gridcell, generated
+  base hyperlane endpoint pairs, and child star payloads under every star/gridcell.
+- `StudioGalaxyViewModel::from_hydration` derives stars, render anchors, and hyperlane view data from the
+  hydrated grid. The older `from_generation` helper now hydrates first, then projects.
+- Existing ClauseThing/MapGen hydration remains in `crates/simthing-clausething/src/hydrate_scenario.rs`
+  and `crates/simthing-clausething/src/mapgen_lattice.rs`; Studio previously bypassed that family by
+  projecting Bevy view data directly from MapGenerator output.
+- Bevy transforms, render height, star aura/size, camera depth, ribbon width, visibility, and Settings
+  values remain presentation-only. They are not written into the hydrated grid.
+- The hydrated grid is the table-setting authority for future save/load/new/live-sim work. This pass does
+  not implement save/load UI behavior, live simulation, pathfinding, movement orders, route/predecessor
+  semantics, GPU kernels, Clausewitz import, CSS/WebView, or new SimThing kinds.
