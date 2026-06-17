@@ -9,9 +9,9 @@ falloff correction and exposes live Studio controls so the owner can tune the vi
 
 ## Settings dialog behavior
 
-- A small `Gear` button appears with the existing top window controls.
+- A small `⚙` gear-icon button appears with the existing top window controls.
 - Tooltip text is `Settings`.
-- Clicking `Gear` toggles the in-app Settings dialog; hidden dialogs keep their values and position.
+- Clicking `⚙` toggles the in-app Settings dialog; hidden dialogs keep their values and position.
 - The dialog uses the same translucent dark-blue/frosted-glass frame as the main Studio panel.
 - The title bar text is `Settings`.
 - Top-right `X` and bottom `Close` both hide the dialog without destroying settings.
@@ -92,9 +92,9 @@ interactive DA visual approval is pre-filed.
 
 | Check | Status |
 |---|---|
-| Gear icon/button appears and is visually consistent | Covered by implementation; pending DA visual confirmation |
-| Gear tooltip says `Settings` | Implemented; pending DA visual confirmation |
-| Gear opens Settings dialog | Implemented; pending DA visual confirmation |
+| `⚙` gear icon/button appears and is visually consistent | Covered by implementation; pending DA visual confirmation |
+| `⚙` tooltip says `Settings` | Implemented and covered by `settings_button_is_gear_icon_with_settings_tooltip`; pending DA visual confirmation |
+| `⚙` opens Settings dialog | Implemented; pending DA visual confirmation |
 | Settings dialog has frosted-glass style and title `Settings` | Implemented; pending DA visual confirmation |
 | Dragging title bar moves dialog | Pure bounds tests PASS; pending DA visual confirmation |
 | Dialog stops at left panel and right info panel bounds | Pure bounds tests PASS |
@@ -113,7 +113,7 @@ interactive DA visual approval is pre-filed.
 
 | Artifact | Lifecycle | Notes |
 |---|---|---|
-| `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated with PR2R6 merge provenance and PR2R7 probation row |
+| `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated with PR2R6 and PR2R7 merge provenance |
 | `docs/tests/bevy_mapgen_editor_pr1_results.md` | PROBATION | Unchanged lifecycle |
 | `docs/tests/bevy_mapgen_editor_pr1r_results.md` | PROBATION | Unchanged lifecycle |
 | `docs/tests/bevy_mapgen_editor_pr2_results.md` | PROBATION | Unchanged lifecycle |

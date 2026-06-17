@@ -24,6 +24,8 @@ use super::{adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
 
 const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(380.0, 310.0);
+const SETTINGS_BUTTON_LABEL: &str = "⚙";
+const SETTINGS_TOOLTIP: &str = "Settings";
 
 pub fn panel_opacity_system(mut state: ResMut<StudioAppState>, time: Res<Time>) {
     let target = if state.left_panel_hovered || state.left_panel_target_opacity > 0.55 {
@@ -154,7 +156,11 @@ fn draw_window_controls(
         .fixed_pos(egui::pos2(ctx.screen_rect().max.x - 190.0, 8.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if ui.small_button("Gear").on_hover_text("Settings").clicked() {
+                if ui
+                    .small_button(SETTINGS_BUTTON_LABEL)
+                    .on_hover_text(SETTINGS_TOOLTIP)
+                    .clicked()
+                {
                     state.settings_dialog.toggle_visible();
                     settings.settings_dialog_visible = state.settings_dialog.visible;
                     let _ = settings.save();
@@ -174,6 +180,17 @@ fn draw_window_controls(
                 }
             });
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_button_is_gear_icon_with_settings_tooltip() {
+        assert_eq!(SETTINGS_BUTTON_LABEL, "⚙");
+        assert_eq!(SETTINGS_TOOLTIP, "Settings");
+    }
 }
 
 fn draw_settings_dialog(
