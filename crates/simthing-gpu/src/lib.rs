@@ -25,6 +25,7 @@ pub mod scheduled_w_palma_batch;
 pub mod slot;
 pub mod stress_compose;
 pub mod structural_upload;
+pub mod structural_validation;
 pub mod structured_field_stencil;
 pub mod transfer_accumulator;
 pub mod velocity_accumulator;
@@ -115,11 +116,16 @@ pub use stress_compose::{
     STRESS_OP_WEIGHTED,
 };
 pub use structural_upload::{
-    readback_matches_source, readback_structural_upload_blocking, source_row_bytes,
-    upload_structural_rows_to_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
-    StructuralLocationGpuRow, StructuralUploadError, StructuralUploadGpuBuffers,
-    StructuralUploadGpuReport, StructuralUploadReadback, StructuralUploadRows, FRAME_ROW_BYTES,
-    LINK_ROW_BYTES, LOCATION_ROW_BYTES,
+    readback_buffer_bytes_blocking, readback_matches_source, readback_pod_blocking,
+    readback_structural_upload_blocking, source_row_bytes, upload_structural_rows_to_gpu,
+    StructuralFrameGpuRow, StructuralLinkGpuRow, StructuralLocationGpuRow, StructuralUploadError,
+    StructuralUploadGpuBuffers, StructuralUploadGpuReport, StructuralUploadReadback,
+    StructuralUploadRows, FRAME_ROW_BYTES, LINK_ROW_BYTES, LOCATION_ROW_BYTES,
+};
+pub use structural_validation::{
+    initial_validation_report, scan_for_forbidden_validation_tokens,
+    validate_structural_rows_on_gpu, validate_structural_upload_on_gpu, StructuralValidationError,
+    StructuralValidationReportGpu, VALIDATION_REPORT_BYTES,
 };
 pub use structured_field_stencil::{
     cpu_compute_c_at, cpu_compute_choke_at, cpu_compute_choke_readout_at, cpu_horizon,

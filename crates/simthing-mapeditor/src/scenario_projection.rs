@@ -10,8 +10,9 @@ use simthing_spec::{
 
 use simthing_gpu::{
     readback_matches_source, readback_structural_upload_blocking, upload_structural_rows_to_gpu,
-    StructuralFrameGpuRow, StructuralLinkGpuRow, StructuralLocationGpuRow,
-    StructuralUploadGpuReport, StructuralUploadReadback, StructuralUploadRows,
+    validate_structural_rows_on_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
+    StructuralLocationGpuRow, StructuralUploadGpuReport, StructuralUploadReadback,
+    StructuralUploadRows, StructuralValidationReportGpu,
 };
 
 use crate::hydration::{
@@ -109,6 +110,13 @@ pub struct StudioGpuBufferResidencyProof {
     pub deferred_reason: Option<String>,
     pub report: Option<StructuralUploadGpuReport>,
     pub readback: Option<StructuralUploadReadback>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGpuStructuralValidationProof {
+    pub ready: bool,
+    pub deferred_reason: Option<String>,
+    pub validation_report: Option<StructuralValidationReportGpu>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -361,7 +369,18 @@ pub fn prove_gpu_buffer_residency_blocking(
     let rows = to_structural_gpu_rows(packet);
     match upload_structural_rows_to_gpu(device, queue, rows.frame, &rows.locations, &rows.links) {
         Ok((buffers, report)) => {
-            let readback = readback_structural_upload_blocking(device, queue, &buffers, &report);
+            let readback =
+                match readback_structural_upload_blocking(device, queue, &buffers, &report) {
+                    Ok(readback) => readback,
+                    Err(err) => {
+                        return StudioGpuBufferResidencyProof {
+                            ready: false,
+                            deferred_reason: Some(format!("GPU structural readback failed: {err}")),
+                            report: Some(report),
+                            readback: None,
+                        };
+                    }
+                };
             if readback_matches_source(&readback, rows.frame, &rows.locations, &rows.links) {
                 StudioGpuBufferResidencyProof {
                     ready: true,
@@ -385,6 +404,38 @@ pub fn prove_gpu_buffer_residency_blocking(
             deferred_reason: Some(format!("GPU structural upload failed: {err}")),
             report: None,
             readback: None,
+        },
+    }
+}
+
+pub fn prove_gpu_structural_validation_blocking(
+    device: &simthing_gpu::wgpu::Device,
+    queue: &simthing_gpu::wgpu::Queue,
+    packet: &StudioGpuStructuralUploadPacket,
+) -> StudioGpuStructuralValidationProof {
+    let rows = to_structural_gpu_rows(packet);
+    match validate_structural_rows_on_gpu(device, queue, &rows) {
+        Ok(validation_report) => {
+            let valid = validation_report.invalid_link_endpoint_count == 0
+                && validation_report.self_link_count == 0;
+            StudioGpuStructuralValidationProof {
+                ready: valid,
+                deferred_reason: if valid {
+                    None
+                } else {
+                    Some(format!(
+                        "GPU structural validation reported invalid_link_endpoint_count={} self_link_count={}",
+                        validation_report.invalid_link_endpoint_count,
+                        validation_report.self_link_count
+                    ))
+                },
+                validation_report: Some(validation_report),
+            }
+        }
+        Err(err) => StudioGpuStructuralValidationProof {
+            ready: false,
+            deferred_reason: Some(format!("GPU structural validation failed: {err}")),
+            validation_report: None,
         },
     }
 }
@@ -1101,6 +1152,23 @@ mod tests {
         assert!(proof.ready, "{:?}", proof.deferred_reason);
         assert!(proof.report.is_some());
         assert!(proof.readback.is_some());
+    }
+
+    #[test]
+    fn gpu_structural_validation_proof_reports_valid_packet() {
+        use simthing_gpu::context::GpuContext;
+
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let proof = prove_gpu_structural_validation_blocking(&ctx.device, &ctx.queue, &packet);
+        assert!(proof.ready, "{:?}", proof.deferred_reason);
+        let report = proof.validation_report.expect("report");
+        assert_eq!(report.invalid_link_endpoint_count, 0);
+        assert_eq!(report.self_link_count, 0);
     }
 
     #[test]

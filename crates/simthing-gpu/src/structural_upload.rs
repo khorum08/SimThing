@@ -85,6 +85,13 @@ pub enum StructuralUploadError {
     LocationCountMismatch,
     #[error("frame link_count does not match link row slice")]
     LinkCountMismatch,
+    #[error("GPU buffer map_async failed")]
+    MapAsyncFailed,
+    #[error("GPU readback failed for {buffer}: {reason}")]
+    ReadbackFailed {
+        buffer: &'static str,
+        reason: String,
+    },
 }
 
 pub const FRAME_ROW_BYTES: u64 = std::mem::size_of::<StructuralFrameGpuRow>() as u64;
@@ -144,27 +151,27 @@ pub fn upload_structural_rows_to_gpu(
     let frame_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("structural_upload_frame"),
         contents: bytemuck::bytes_of(&frame),
-        usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+        usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC | BufferUsages::STORAGE,
     });
 
     let location_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("structural_upload_locations"),
         contents: bytemuck::cast_slice(locations),
-        usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+        usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC | BufferUsages::STORAGE,
     });
 
     let link_buffer = if links.is_empty() {
         device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("structural_upload_links_empty"),
             size: link_bytes,
-            usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC | BufferUsages::STORAGE,
             mapped_at_creation: false,
         })
     } else {
         device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("structural_upload_links"),
             contents: bytemuck::cast_slice(links),
-            usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC | BufferUsages::STORAGE,
         })
     };
 
@@ -188,7 +195,13 @@ pub fn upload_structural_rows_to_gpu(
     ))
 }
 
-fn readback_buffer_bytes(device: &Device, queue: &Queue, src: &Buffer, byte_len: u64) -> Vec<u8> {
+pub fn readback_buffer_bytes_blocking(
+    device: &Device,
+    queue: &Queue,
+    src: &Buffer,
+    byte_len: u64,
+    buffer: &'static str,
+) -> Result<Vec<u8>, StructuralUploadError> {
     let staging = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("structural_upload_readback_staging"),
         size: byte_len,
@@ -201,13 +214,52 @@ fn readback_buffer_bytes(device: &Device, queue: &Queue, src: &Buffer, byte_len:
     encoder.copy_buffer_to_buffer(src, 0, &staging, 0, byte_len);
     queue.submit(Some(encoder.finish()));
     let slice = staging.slice(..);
-    slice.map_async(wgpu::MapMode::Read, |_| {});
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(wgpu::MapMode::Read, move |result| {
+        let _ = tx.send(result);
+    });
     device.poll(wgpu::Maintain::Wait);
+    match rx.recv() {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => {
+            return Err(StructuralUploadError::ReadbackFailed {
+                buffer,
+                reason: format!("map_async: {err:?}"),
+            });
+        }
+        Err(_) => return Err(StructuralUploadError::MapAsyncFailed),
+    }
     let data = slice.get_mapped_range();
     let out = data.to_vec();
     drop(data);
     staging.unmap();
-    out
+    Ok(out)
+}
+
+pub fn readback_pod_blocking<T: Pod>(
+    device: &Device,
+    queue: &Queue,
+    src: &Buffer,
+    buffer: &'static str,
+) -> Result<T, StructuralUploadError> {
+    let bytes = readback_buffer_bytes_blocking(
+        device,
+        queue,
+        src,
+        std::mem::size_of::<T>() as u64,
+        buffer,
+    )?;
+    if bytes.len() != std::mem::size_of::<T>() {
+        return Err(StructuralUploadError::ReadbackFailed {
+            buffer,
+            reason: format!(
+                "expected {} bytes, got {}",
+                std::mem::size_of::<T>(),
+                bytes.len()
+            ),
+        });
+    }
+    Ok(*bytemuck::from_bytes::<T>(&bytes))
 }
 
 pub fn readback_structural_upload_blocking(
@@ -215,22 +267,30 @@ pub fn readback_structural_upload_blocking(
     queue: &Queue,
     buffers: &StructuralUploadGpuBuffers,
     report: &StructuralUploadGpuReport,
-) -> StructuralUploadReadback {
-    StructuralUploadReadback {
-        frame_bytes: readback_buffer_bytes(
+) -> Result<StructuralUploadReadback, StructuralUploadError> {
+    Ok(StructuralUploadReadback {
+        frame_bytes: readback_buffer_bytes_blocking(
             device,
             queue,
             &buffers.frame_buffer,
             report.frame_bytes,
-        ),
-        location_bytes: readback_buffer_bytes(
+            "frame_buffer",
+        )?,
+        location_bytes: readback_buffer_bytes_blocking(
             device,
             queue,
             &buffers.location_buffer,
             report.location_bytes,
-        ),
-        link_bytes: readback_buffer_bytes(device, queue, &buffers.link_buffer, report.link_bytes),
-    }
+            "location_buffer",
+        )?,
+        link_bytes: readback_buffer_bytes_blocking(
+            device,
+            queue,
+            &buffers.link_buffer,
+            report.link_bytes,
+            "link_buffer",
+        )?,
+    })
 }
 
 pub fn source_row_bytes<T: Pod>(rows: &[T]) -> Vec<u8> {
@@ -409,7 +469,8 @@ mod tests {
             upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
                 .expect("upload");
         let readback =
-            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report);
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report)
+                .expect("readback");
         assert_eq!(readback.frame_bytes, bytemuck::bytes_of(&frame).to_vec());
     }
 
@@ -424,7 +485,8 @@ mod tests {
             upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
                 .expect("upload");
         let readback =
-            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report);
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report)
+                .expect("readback");
         assert_eq!(readback.location_bytes, source_row_bytes(&locations));
     }
 
@@ -439,9 +501,42 @@ mod tests {
             upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
                 .expect("upload");
         let readback =
-            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report);
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report)
+                .expect("readback");
         assert!(readback_matches_source(
             &readback, frame, &locations, &links
+        ));
+    }
+
+    #[test]
+    fn structural_upload_readback_returns_result() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let (frame, locations, links) = sample_rows();
+        let (buffers, report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
+                .expect("upload");
+        assert!(
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report).is_ok()
+        );
+    }
+
+    #[test]
+    fn structural_upload_readback_reports_map_failure_if_simulated_or_unit_testable() {
+        let err = StructuralUploadError::MapAsyncFailed;
+        assert!(matches!(err, StructuralUploadError::MapAsyncFailed));
+        let err = StructuralUploadError::ReadbackFailed {
+            buffer: "frame_buffer",
+            reason: "map_async: simulated".to_string(),
+        };
+        assert!(matches!(
+            err,
+            StructuralUploadError::ReadbackFailed {
+                buffer: "frame_buffer",
+                ..
+            }
         ));
     }
 }
