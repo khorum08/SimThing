@@ -29,8 +29,24 @@ use super::{adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
 
 const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 560.0);
+const SETTINGS_TITLE_CLOSE_DRAG_GAP: f32 = 6.0;
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SettingsTitleBarRects {
+    pub title_rect: egui::Rect,
+    pub close_rect: egui::Rect,
+    pub drag_rect: egui::Rect,
+}
+
+pub fn settings_title_bar_drag_rect(
+    title_rect: egui::Rect,
+    close_rect: egui::Rect,
+    padding: f32,
+) -> egui::Rect {
+    let max_x = (close_rect.min.x - padding).clamp(title_rect.min.x, title_rect.max.x);
+    egui::Rect::from_min_max(title_rect.min, egui::pos2(max_x, title_rect.max.y))
+}
 
 pub fn panel_opacity_system(mut state: ResMut<StudioAppState>, time: Res<Time>) {
     let target = if state.left_panel_hovered || state.left_panel_target_opacity > 0.55 {
@@ -196,6 +212,25 @@ mod tests {
         assert_eq!(SETTINGS_BUTTON_LABEL, "⚙");
         assert_eq!(SETTINGS_TOOLTIP, "Settings");
     }
+    #[test]
+    fn settings_title_drag_rect_does_not_overlap_close_rect() {
+        let title_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(380.0, 32.0));
+        let close_rect = egui::Rect::from_min_max(egui::pos2(340.0, 4.0), egui::pos2(372.0, 28.0));
+        let drag_rect = settings_title_bar_drag_rect(title_rect, close_rect, 6.0);
+        assert!(drag_rect.max.x <= close_rect.min.x - 6.0);
+        assert!(!drag_rect.intersects(close_rect));
+    }
+
+    #[test]
+    fn settings_title_drag_rect_covers_title_area() {
+        let title_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(380.0, 32.0));
+        let close_rect = egui::Rect::from_min_max(egui::pos2(340.0, 4.0), egui::pos2(372.0, 28.0));
+        let drag_rect = settings_title_bar_drag_rect(title_rect, close_rect, 6.0);
+        assert_eq!(drag_rect.min, title_rect.min);
+        assert_eq!(drag_rect.max.y, title_rect.max.y);
+        assert!(drag_rect.contains(egui::pos2(24.0, 16.0)));
+        assert!(drag_rect.max.x < title_rect.max.x);
+    }
 }
 
 fn draw_settings_dialog(
@@ -228,18 +263,30 @@ fn draw_settings_dialog(
             studio_panel_frame(0.82, 10.0).show(ui, |ui| {
                 ui.set_width(SETTINGS_DIALOG_SIZE.x - 24.0);
                 ui.set_min_height(SETTINGS_DIALOG_SIZE.y - 24.0);
+                let mut close_rect = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::ZERO);
                 let title_response = ui
                     .horizontal(|ui| {
                         ui.heading("Settings");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("X").clicked() {
+                            let close_response = ui.button("X");
+                            close_rect = close_response.rect;
+                            if close_response.clicked() {
                                 close_settings_dialog_from_icon(state, settings);
                             }
                         });
                     })
                     .response;
+                let title_rects = SettingsTitleBarRects {
+                    title_rect: title_response.rect,
+                    close_rect,
+                    drag_rect: settings_title_bar_drag_rect(
+                        title_response.rect,
+                        close_rect,
+                        SETTINGS_TITLE_CLOSE_DRAG_GAP,
+                    ),
+                };
                 let title_drag = ui.interact(
-                    title_response.rect,
+                    title_rects.drag_rect,
                     ui.id().with("settings_title_drag"),
                     egui::Sense::drag(),
                 );
