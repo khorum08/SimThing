@@ -15,6 +15,7 @@ pub mod settings;
 pub mod shape_params;
 pub mod star_render;
 pub mod starburst;
+pub mod studio_config;
 pub mod view_model;
 
 #[cfg(windows)]
@@ -42,6 +43,10 @@ pub use hydration::{
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::StudioSession;
 pub use settings::{EditorSettings, PersistedCameraState, WindowModeSetting};
+pub use studio_config::{
+    SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
+    STUDIO_CONFIG_SCHEMA_VERSION,
+};
 pub use view_model::{
     StudioGalaxyRenderMeta, StudioGalaxyViewModel, StudioHyperlaneView, StudioStarView,
 };

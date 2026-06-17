@@ -8,6 +8,7 @@ use crate::camera_control::{
     OrbitCameraState, DEFAULT_ORBIT_SENSITIVITY,
 };
 use crate::settings::PersistedCameraState;
+use crate::studio_config::StudioViewModeSetting;
 
 pub struct StudioCameraPlugin;
 
@@ -133,6 +134,18 @@ impl StudioCamera {
         self.view_mode = StudioViewMode::ThreeD;
         self.saved_three_d_state = None;
         self.saved_overhead_state = None;
+    }
+
+    pub fn apply_loaded_view_mode(&mut self, mode: StudioViewModeSetting) {
+        match mode {
+            StudioViewModeSetting::ThreeD => {
+                self.view_mode = StudioViewMode::ThreeD;
+            }
+            StudioViewModeSetting::OverheadStrategic => {
+                self.view_mode = StudioViewMode::OverheadStrategic;
+                self.apply_orbit_state(strategic_overhead_state(self.orbit_target.to_array()));
+            }
+        }
     }
 
     pub fn to_persisted(&self) -> PersistedCameraState {

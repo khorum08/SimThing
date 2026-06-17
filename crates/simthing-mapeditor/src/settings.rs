@@ -1,4 +1,7 @@
-//! Persistent editor settings (RON).
+//! Persistent editor settings (RON) and Studio presentation config (`simthing-studio-config.json`).
+//!
+//! `SimThingStudioConfig` in `studio_config.rs` is presentation-only. Scenario/model authority
+//! remains in `SimThingScenarioSpec` and is not stored in the Studio config file.
 
 use std::path::{Path, PathBuf};
 
