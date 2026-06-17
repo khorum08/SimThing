@@ -862,7 +862,6 @@ fn draw_right_panel(ctx: &egui::Context, state: &mut StudioAppState, screen_w: f
     let Some(session) = state.session.as_ref() else {
         return;
     };
-    let report = session.report();
     let width = 320.0;
     let (_, margin_y) = crate::panel_layout::panel_margin(screen_w, screen_h);
     egui::Area::new(egui::Id::new("right_panel"))
@@ -907,38 +906,79 @@ fn draw_right_panel(ctx: &egui::Context, state: &mut StudioAppState, screen_w: f
                 ui.heading("Galaxy status");
                 ui.separator();
                 ui.label(format!("Galaxy: {}", session.galaxy_name()));
-                ui.label(format!("Shape: {}", report.request.shape));
-                ui.label(format!("Seed: {}", report.generator.seed));
-                ui.label(format!("Systems: {}", report.output.system_count));
-                ui.label(format!(
-                    "Grid: {}×{}",
-                    report.request.lattice_width, report.request.lattice_height
-                ));
-                ui.label(format!(
-                    "Base hyperlanes: {}",
-                    report.output.base_hyperlane_count
-                ));
-                ui.label(format!(
-                    "Topology hyperlanes: {}",
-                    report.output.actual_topology_hyperlanes
-                ));
-                ui.label(format!(
-                    "Connectivity bridges: {}",
-                    report.output.connectivity_bridge_count
-                ));
-                ui.label(format!("Components: {}", report.output.component_count));
-                ui.label(format!(
-                    "Average degree: {:.2}",
-                    report.output.average_degree
-                ));
-                ui.label(format!(
-                    "Isolated systems: {}",
-                    report.output.isolated_system_count
-                ));
-                ui.label(format!("Map quality: {}", report.output.map_quality_status));
-                if !report.output.map_quality_warnings.is_empty() {
-                    for warn in &report.output.map_quality_warnings {
-                        ui.colored_label(egui::Color32::YELLOW, warn);
+                if session.is_generated() {
+                    if let Some(report) = session.report() {
+                        ui.label(format!("Shape: {}", report.request.shape));
+                        ui.label(format!("Seed: {}", report.generator.seed));
+                        ui.label(format!("Systems: {}", report.output.system_count));
+                        ui.label(format!(
+                            "Grid: {}×{}",
+                            report.request.lattice_width, report.request.lattice_height
+                        ));
+                        ui.label(format!(
+                            "Base hyperlanes: {}",
+                            report.output.base_hyperlane_count
+                        ));
+                        ui.label(format!(
+                            "Topology hyperlanes: {}",
+                            report.output.actual_topology_hyperlanes
+                        ));
+                        ui.label(format!(
+                            "Connectivity bridges: {}",
+                            report.output.connectivity_bridge_count
+                        ));
+                        ui.label(format!("Components: {}", report.output.component_count));
+                        ui.label(format!(
+                            "Average degree: {:.2}",
+                            report.output.average_degree
+                        ));
+                        ui.label(format!(
+                            "Isolated systems: {}",
+                            report.output.isolated_system_count
+                        ));
+                        ui.label(format!("Map quality: {}", report.output.map_quality_status));
+                        if !report.output.map_quality_warnings.is_empty() {
+                            for warn in &report.output.map_quality_warnings {
+                                ui.colored_label(egui::Color32::YELLOW, warn);
+                            }
+                        }
+                    }
+                } else {
+                    let summary = &session.scenario_summary;
+                    ui.label("Source: loaded scenario authority");
+                    ui.label(format!("Systems: {}", summary.system_count));
+                    ui.label(format!("Links: {}", summary.link_count));
+                    ui.label(format!(
+                        "Grid: {}×{} ({} occupied)",
+                        summary.grid_width, summary.grid_height, summary.occupied_cells
+                    ));
+                    ui.label(format!(
+                        "STEAD: {}",
+                        if summary.stead_valid {
+                            "valid"
+                        } else {
+                            "invalid"
+                        }
+                    ));
+                    ui.label(format!(
+                        "RF ready: {}",
+                        if summary.rf_ready { "yes" } else { "no" }
+                    ));
+                    ui.label(format!(
+                        "Heatmap readiness: {:?}",
+                        summary.heatmap_readiness
+                    ));
+                    let gpu = &session.gpu_residency_readiness;
+                    ui.label(format!(
+                        "GPU index ready: {}",
+                        if gpu.dense_location_index_ready {
+                            "yes"
+                        } else {
+                            "no"
+                        }
+                    ));
+                    if gpu.atlas_required {
+                        ui.label("Atlas required for dense MF execution");
                     }
                 }
                 if let Some(path) = &session.report_path {

@@ -251,11 +251,7 @@ pub fn adopt_session(
     state: &mut StudioAppState,
 ) {
     state.last_scenario_io_status.clear();
-    let status_message = format!(
-        "Generated {} systems — quality {}",
-        session.report().output.system_count,
-        session.report().output.map_quality_status
-    );
+    let status_message = session.status_message();
     adopt_session_with_status(&mut session, settings, state, status_message);
     state.session = Some(session);
 }
@@ -277,8 +273,9 @@ fn adopt_session_with_status(
     state: &mut StudioAppState,
     status_message: String,
 ) {
-    settings.last_generation_params = session.profile.clone();
-    state.profile = session.profile.clone();
+    let profile = session.profile();
+    settings.last_generation_params = profile.clone();
+    state.profile = profile;
     apply_star_falloff_settings_to_meta(
         &mut session.view_model.render_meta,
         state.star_falloff_settings,

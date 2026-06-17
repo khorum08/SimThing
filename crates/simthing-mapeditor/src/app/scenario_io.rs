@@ -152,7 +152,7 @@ mod tests {
     use super::*;
     use crate::generation::{run_generation, GenerationProfile};
     use crate::scenario_io::save_scenario_authority_to_path;
-    use crate::session::StudioSession;
+    use crate::session::{StudioSession, StudioSessionSource};
     use crate::studio_config::{
         save_studio_config_to_path, SimThingStudioConfig, STUDIO_CONFIG_FILE_NAME,
         STUDIO_CONFIG_SCHEMA_VERSION,
@@ -406,7 +406,46 @@ mod tests {
             session.scenario_authority.structural_grid,
             authority.structural_grid
         );
-        // Synthetic GenerationRunOutput is a report/projection bridge — not model authority.
-        assert!(session.output.result.scenario.0.is_empty());
+        assert!(session.is_loaded_scenario());
+        assert!(session.generated_output.is_none());
+    }
+
+    #[test]
+    fn save_load_ui_preserves_loaded_session_source() {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join("source-preserve.simthing-scenario.json");
+        let original = state_with_session();
+        save_scenario_authority_to_path(
+            &path,
+            &original.session.as_ref().unwrap().scenario_authority,
+        )
+        .expect("seed");
+
+        let mut state = StudioAppState::default();
+        let ScenarioActionResult::Loaded { session, .. } = load_scenario_action(&mut state, &path)
+        else {
+            panic!("expected load success");
+        };
+        assert!(session.is_loaded_scenario());
+        assert!(!session.is_generated());
+        assert!(session.generated_output.is_none());
+        assert!(matches!(
+            session.source,
+            StudioSessionSource::LoadedScenario { .. }
+        ));
+    }
+
+    #[test]
+    fn load_failure_preserves_session_source() {
+        let mut state = state_with_session();
+        assert!(state.session.as_ref().unwrap().is_generated());
+        let before_source = state.session.as_ref().unwrap().source.clone();
+        let missing = PathBuf::from("missing-source.simthing-scenario.json");
+        let result = load_scenario_action(&mut state, &missing);
+        assert!(matches!(result, ScenarioActionResult::Failed { .. }));
+        let after = state.session.as_ref().unwrap();
+        assert!(after.is_generated());
+        assert_eq!(after.source, before_source);
+        assert!(after.generated_output.is_some());
     }
 }

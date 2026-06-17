@@ -6,17 +6,13 @@
 
 use std::path::Path;
 
-use simthing_mapgenerator::{
-    build_generation_report, CoreMask, GalaxyGenerationResult, HyperlaneEdge, LatticeCoord,
-    PlacedSystemSeed, ReportArtifacts, ScenarioText, ShapePlacement, SquareLattice,
-};
 use simthing_spec::{
     deserialize_scenario_authority, serialize_scenario_authority, ScenarioSerdeError,
     SimThingScenarioSpec,
 };
 use thiserror::Error;
 
-use crate::generation::{GenerationProfile, GenerationRunOutput};
+use crate::generation::GenerationProfile;
 use crate::hydration::StudioHydrationError;
 use crate::session::StudioSession;
 
@@ -64,96 +60,8 @@ pub fn load_studio_session_from_scenario_path(
     profile_hint: Option<GenerationProfile>,
 ) -> Result<StudioSession, ScenarioIoError> {
     let scenario_authority = load_scenario_authority_from_path(path)?;
-    let profile = profile_from_scenario(&scenario_authority, profile_hint);
-    let output = synthetic_generation_output_for_loaded_scenario(&scenario_authority, &profile);
-    let mut session = StudioSession::from_scenario_authority(
-        profile,
-        output,
-        scenario_authority,
-        Some(path.to_path_buf()),
-    )?;
-    session.scenario_path = Some(path.to_path_buf());
-    Ok(session)
-}
-
-fn profile_from_scenario(
-    scenario: &SimThingScenarioSpec,
-    profile_hint: Option<GenerationProfile>,
-) -> GenerationProfile {
-    if let Some(profile) = profile_hint {
-        return profile;
-    }
-    let mut profile = GenerationProfile::default_spiral_2_dense_3000();
-    if !scenario.provenance.generator_shape.is_empty() {
-        profile.shape = scenario.provenance.generator_shape.clone();
-    }
-    profile.seed = scenario.provenance.generator_seed;
-    profile.star_count = scenario.structural_grid.frame.occupied_cells as u32;
-    profile.lattice_edge = scenario.structural_grid.frame.width;
-    profile.target_hyperlanes = scenario.links.len() as u32;
-    profile
-}
-
-// This synthetic `GenerationRunOutput` is a projection/report compatibility bridge for loaded
-// scenarios. It is not authority. The authority remains `scenario_authority`.
-// TODO: make loaded sessions scenario-native and avoid synthetic MapGenerator output where no
-// generation occurred.
-fn synthetic_generation_output_for_loaded_scenario(
-    scenario: &SimThingScenarioSpec,
-    profile: &GenerationProfile,
-) -> GenerationRunOutput {
-    let result = stub_generation_result_from_scenario(scenario);
-    let report = build_generation_report(
-        &profile.to_map_generator_params(),
-        &result,
-        ReportArtifacts::new(),
-    );
-    GenerationRunOutput {
-        result,
-        report,
-        galaxy_display_name: scenario.scenario_id.clone(),
-    }
-}
-
-fn stub_generation_result_from_scenario(scenario: &SimThingScenarioSpec) -> GalaxyGenerationResult {
-    let edge = scenario.structural_grid.frame.width.max(1);
-    let lattice = SquareLattice::new(edge).expect("scenario lattice edge must be > 0");
-    let center = edge / 2;
-    let systems = scenario
-        .structural_grid
-        .placements
-        .iter()
-        .map(|placement| PlacedSystemSeed {
-            id: placement.system_id,
-            coord: LatticeCoord {
-                col: placement.col,
-                row: placement.row,
-            },
-            bucket: None,
-        })
-        .collect();
-    let base_hyperlane_edges: Vec<HyperlaneEdge> = scenario
-        .links
-        .iter()
-        .map(|link| HyperlaneEdge {
-            from: link.from_system_id.clone(),
-            to: link.to_system_id.clone(),
-        })
-        .collect();
-    GalaxyGenerationResult {
-        seed: scenario.provenance.generator_seed,
-        scenario: ScenarioText(String::new()),
-        lattice,
-        core_mask: CoreMask::new(center, center, 0),
-        placement: ShapePlacement { systems },
-        base_hyperlane_edges: base_hyperlane_edges.clone(),
-        hyperlane_edges: base_hyperlane_edges,
-        classified_edges: Vec::new(),
-        nebulas: Vec::new(),
-        connectivity: None,
-        pre_connectivity_topology_count: scenario.links.len() as u32,
-        effective_target_hyperlanes: scenario.links.len() as u32,
-    }
+    StudioSession::from_loaded_scenario(scenario_authority, path.to_path_buf(), profile_hint)
+        .map_err(ScenarioIoError::from)
 }
 
 fn atomic_write(path: &Path, contents: &str) -> Result<(), ScenarioIoError> {
@@ -276,7 +184,7 @@ mod tests {
         let scenario_path = dir.path().join("model.simthing-scenario.json");
         let config_path = dir.path().join(STUDIO_CONFIG_FILE_NAME);
         let session = generated_session();
-        save_current_session_scenario_to_path(&session, &scenario_path).expect("save scenario");
+        save_current_session_scenario_to_path(&session, &scenario_path).expect("save");
         save_studio_config_to_path(&config_path, &SimThingStudioConfig::default())
             .expect("save config");
         let scenario_text = std::fs::read_to_string(&scenario_path).expect("read scenario");
@@ -474,8 +382,8 @@ mod tests {
         let dir = TempDir::new().expect("tempdir");
         let path = dir.path().join("hydration.simthing-scenario.json");
         save_current_session_scenario_to_path(&session, &path).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, Some(session.profile.clone()))
-            .expect("load session");
+        let loaded =
+            load_studio_session_from_scenario_path(&path, Some(session.profile())).expect("load");
         assert_eq!(
             loaded.hydration.grid.occupied_cells,
             session.hydration.grid.occupied_cells
@@ -492,8 +400,8 @@ mod tests {
         let dir = TempDir::new().expect("tempdir");
         let path = dir.path().join("vm.simthing-scenario.json");
         save_current_session_scenario_to_path(&session, &path).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, Some(session.profile.clone()))
-            .expect("load session");
+        let loaded =
+            load_studio_session_from_scenario_path(&path, Some(session.profile())).expect("load");
         assert_eq!(
             loaded.view_model.stars.len(),
             session.view_model.stars.len()
@@ -510,8 +418,8 @@ mod tests {
         let dir = TempDir::new().expect("tempdir");
         let path = dir.path().join("structural.simthing-scenario.json");
         save_current_session_scenario_to_path(&session, &path).expect("save");
-        let loaded = load_studio_session_from_scenario_path(&path, Some(session.profile.clone()))
-            .expect("load session");
+        let loaded =
+            load_studio_session_from_scenario_path(&path, Some(session.profile())).expect("load");
         for (star, placement) in loaded
             .view_model
             .stars
@@ -534,10 +442,10 @@ mod tests {
         let scenario_path = dir.path().join("after-io.simthing-scenario.json");
         let config_path = dir.path().join(STUDIO_CONFIG_FILE_NAME);
         let session = generated_session();
-        save_current_session_scenario_to_path(&session, &scenario_path).expect("save scenario");
+        save_current_session_scenario_to_path(&session, &scenario_path).expect("save");
         save_studio_config_to_path(&config_path, &SimThingStudioConfig::default())
             .expect("save config");
-        load_studio_session_from_scenario_path(&scenario_path, Some(session.profile))
+        load_studio_session_from_scenario_path(&scenario_path, Some(session.profile()))
             .expect("load scenario");
         let config_text = std::fs::read_to_string(&config_path).expect("read config");
         assert!(!config_text.contains("structural_grid"));

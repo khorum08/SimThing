@@ -72,6 +72,7 @@
 | **SIMTHING-STUDIO-CONFIG-0** - persist Studio presentation config (`simthing-studio-config.json`) | branch evidence | branch evidence | PROBATION - `docs/tests/simthing_studio_config_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 | **SCENARIO-SAVELOAD-IO-0** - SimThing-Spec scenario file IO (`.simthing-scenario.json`) separate from studio config | branch evidence | branch evidence | PROBATION - `docs/tests/scenario_saveload_io_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 | **SCENARIO-SAVELOAD-UI-0** - Studio Save Scenario / Load Scenario UI over scenario authority | branch evidence | branch evidence | PROBATION - `docs/tests/scenario_saveload_ui_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
+| **SCENARIO-NATIVE-SESSION-0** - scenario-native loaded sessions; GPU-resident projection/readiness manifest; synthetic GenerationRunOutput bridge removed for loads | branch evidence | branch evidence | PROBATION - `docs/tests/scenario_native_session_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
