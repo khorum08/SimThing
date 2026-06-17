@@ -401,8 +401,13 @@ pub use spec::resource_flow::{
     WildcardAdmissionSpec,
 };
 pub use spec::scenario::{
-    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+    reserve_simthing_ids_from_scenario, validate_stead_mapping_consistency, SimThingScenarioGrid,
+    SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, SteadMappingError,
+    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
+    SCENARIO_RENDER_WORLD_Y_PROPERTY_ID, SCENARIO_RENDER_WORLD_Z_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
