@@ -4,8 +4,12 @@ use serde::{Deserialize, Serialize};
 use simthing_mapgenerator::{
     deterministic_unit_hash, grid_chebyshev_distance, GalaxyGenerationResult, GenerationReport,
 };
+use simthing_spec::SimThingScenarioSpec;
 
-use crate::hydration::{hydrate_generation_result_into_studio_grid, StudioHydrationBoundary};
+use crate::hydration::{
+    hydrate_generation_result_into_studio_grid, studio_projection_from_simthing_spec,
+    StudioHydrationBoundary,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StudioGalaxyRenderMeta {
@@ -250,6 +254,15 @@ impl StudioGalaxyViewModel {
         }
     }
 
+    pub fn from_simthing_spec_scenario(
+        scenario: &SimThingScenarioSpec,
+        report: &GenerationReport,
+    ) -> Self {
+        let hydration = studio_projection_from_simthing_spec(scenario, report)
+            .expect("SimThing-Spec scenario must project into Studio view model");
+        Self::from_hydration(&hydration)
+    }
+
     pub fn galaxy_center(&self) -> [f32; 3] {
         [0.0, 0.0, 0.0]
     }
@@ -357,6 +370,45 @@ mod tests {
 
         assert_eq!(star.structural_col, first_cell.structural_col);
         assert_eq!(star.structural_row, first_cell.structural_row);
+    }
+
+    #[test]
+    fn view_model_derives_from_simthing_spec_scenario() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let scenario =
+            crate::hydration::generate_simthing_spec_scenario(&output).expect("spec authority");
+        let vm = StudioGalaxyViewModel::from_simthing_spec_scenario(&scenario, &output.report);
+
+        assert_eq!(vm.stars.len(), scenario.structural_grid.placements.len());
+        let first_placement = scenario
+            .structural_grid
+            .placements
+            .first()
+            .expect("placement");
+        let star = vm
+            .stars
+            .iter()
+            .find(|star| star.system_id == first_placement.system_id)
+            .expect("star");
+        assert_eq!(star.structural_col, first_placement.col);
+        assert_eq!(star.structural_row, first_placement.row);
+    }
+
+    #[test]
+    fn view_model_rebuilds_from_simthing_spec_scenario() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let scenario =
+            crate::hydration::generate_simthing_spec_scenario(&output).expect("spec authority");
+        let rebuilt_a =
+            StudioGalaxyViewModel::from_simthing_spec_scenario(&scenario, &output.report);
+        let rebuilt_b =
+            StudioGalaxyViewModel::from_simthing_spec_scenario(&scenario, &output.report);
+
+        assert_eq!(rebuilt_a.stars, rebuilt_b.stars);
+        assert_eq!(rebuilt_a.hyperlanes, rebuilt_b.hyperlanes);
+        assert_eq!(rebuilt_a.render_anchors, rebuilt_b.render_anchors);
     }
 
     #[test]

@@ -1,10 +1,12 @@
-//! Studio session — typed generated data trusted by the editor (not Bevy-owned truth).
+//! Studio session — SimThing-Spec scenario authority plus editor projections.
 
 use simthing_mapgenerator::GenerationReport;
+use simthing_spec::SimThingScenarioSpec;
 
 use crate::generation::{GenerationProfile, GenerationRunOutput};
 use crate::hydration::{
-    hydrate_generation_into_studio_grid, StudioHydrationBoundary, StudioHydrationError,
+    generate_simthing_spec_scenario, studio_projection_from_simthing_spec, StudioHydrationBoundary,
+    StudioHydrationError,
 };
 use crate::view_model::StudioGalaxyViewModel;
 
@@ -12,6 +14,7 @@ use crate::view_model::StudioGalaxyViewModel;
 pub struct StudioSession {
     pub profile: GenerationProfile,
     pub output: GenerationRunOutput,
+    pub simthing_spec_scenario: SimThingScenarioSpec,
     pub hydration: StudioHydrationBoundary,
     pub view_model: StudioGalaxyViewModel,
     pub report_path: Option<std::path::PathBuf>,
@@ -23,11 +26,14 @@ impl StudioSession {
         profile: GenerationProfile,
         output: GenerationRunOutput,
     ) -> Result<Self, StudioHydrationError> {
-        let hydration = hydrate_generation_into_studio_grid(&output)?;
+        let simthing_spec_scenario = generate_simthing_spec_scenario(&output)?;
+        let hydration =
+            studio_projection_from_simthing_spec(&simthing_spec_scenario, &output.report)?;
         let view_model = StudioGalaxyViewModel::from_hydration(&hydration);
         Ok(Self {
             profile,
             output,
+            simthing_spec_scenario,
             hydration,
             view_model,
             report_path: None,
