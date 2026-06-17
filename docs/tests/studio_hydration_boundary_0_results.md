@@ -9,7 +9,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added STUDIO-HYDRATION-BOUNDARY-0 PROBATION row |
 | `docs/tests/studio_hydration_boundary_0_results.md` | PROBATION | This report |
 | `docs/clausething/MapGeneratorCLI.md` | ACTIVE_DOC | Studio architecture now names the hydration boundary before view/render |
-| `docs/design_0_0_8_0_consumer_pulled_production_track.md` | ACTIVE_TRACK_DOC | Studio row now lists the hydrated grid as future save/load authority |
+| `docs/design_0_0_8_0_consumer_pulled_production_track.md` | ACTIVE_TRACK_DOC | Studio row now lists the hydration boundary before view/render; STUDIO-SIMTHING-SPEC-BOUNDARY-1 supersedes hydrated-grid-as-authority wording |
 | Screenshots | Not retained | No visual artifact required for this non-render authority boundary |
 
 ## Boundary diagnosis
@@ -34,7 +34,7 @@ run_generation
   -> GenerationRunOutput
   -> hydrate_generation_into_studio_grid
   -> StudioHydrationBoundary
-  -> StudioSession hydrated authority
+  -> StudioSession hydrated projection/index
   -> StudioGalaxyViewModel::from_hydration
   -> Bevy presentation
 ```
@@ -66,10 +66,11 @@ presentation-only and are not written to hydration.
 
 ## Save/load table-setting
 
-The new `future_save_authority_manifest` names the hydrated Studio SimThing grid as the future save/load
-authority, alongside the generation profile and report summary. This pass does not implement save/load UI
-behavior. New-map flow, live SimThing adoption, route/predecessor semantics, movement orders, pathfinding,
-GPU kernels, Clausewitz import, and CSS/WebView remain deferred.
+STUDIO-SIMTHING-SPEC-BOUNDARY-1 supersedes this report's original hydrated-grid-as-authority wording. The
+hydrated Studio grid remains a projection/index over generated map structure; future save/load authority is
+now the SimThing-Spec-compliant scenario, alongside the generation profile and report summary. This pass did
+not implement save/load UI behavior. New-map flow, live SimThing adoption, route/predecessor semantics,
+movement orders, pathfinding, GPU kernels, Clausewitz import, and CSS/WebView remain deferred.
 
 ## Tests added or updated
 
@@ -86,7 +87,7 @@ GPU kernels, Clausewitz import, and CSS/WebView remain deferred.
 - `view_model_preserves_structural_coords_from_hydration`
 - `bevy_render_metadata_not_written_to_hydration`
 - `failed_hydration_does_not_adopt_session`
-- `future_save_authority_manifest_mentions_hydrated_grid`
+- `future_save_authority_manifest_mentions_studio_projection`
 
 ## Commands run
 

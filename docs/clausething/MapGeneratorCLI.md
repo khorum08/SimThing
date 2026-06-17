@@ -474,18 +474,21 @@ Architecture:
 
 ```text
 MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
-  → hydrate_generation_into_studio_grid / StudioHydrationBoundary
-  → StudioSession hydrated authority
+  → generate_simthing_spec_scenario / SimThingScenarioSpec
+  → StudioHydrationBoundary projection/index
   → StudioGalaxyViewModel projection
   → Bevy render world + egui panels
 ```
 
 - Consumes the **library path** (`run_generation`) and in-process `build_generation_report` — **never stdout**.
-- Successful Studio generation means MapGenerator output **plus** a hydrated Studio SimThing grid. The editor
-  does not adopt a generated run until hydration succeeds.
-- The hydrated grid is the future save/load authority: world root, map container, one `Location`/gridcell
-  SimThing per generated system, structural `(col,row)` on every gridcell, and child star payloads under
-  each star/gridcell.
+- Successful Studio generation means MapGenerator output **plus** a SimThing-Spec-compliant scenario
+  authority. The editor does not adopt a generated run until that authority and its Studio projection build
+  successfully.
+- The SimThing-Spec scenario is the future save/load authority: world root, map container, one
+  `Location`/gridcell SimThing per generated system, structural `(col,row)` on every gridcell, and child
+  star payloads under each star/gridcell.
+- `StudioHydrationBoundary`, `StudioHydratedGrid`, `StudioGalaxyViewModel`, render anchors, Bevy entities,
+  and Settings values are projections/indexes/presentation metadata over that authority.
 - Settings persist as RON (`%APPDATA%/SimThing/Studio/settings.ron`).
 - Bevy world positions, galactic thickness (Y), sprites, and lane fades are **render-only**; structural
   `(col,row)` from `PlacedSystemSeed.coord` remain authoritative (STEAD).
@@ -728,6 +731,33 @@ STUDIO-HYDRATION-BOUNDARY-0 adds the editor-side post-generation authority bound
   projecting Bevy view data directly from MapGenerator output.
 - Bevy transforms, render height, star aura/size, camera depth, ribbon width, visibility, and Settings
   values remain presentation-only. They are not written into the hydrated grid.
-- The hydrated grid is the table-setting authority for future save/load/new/live-sim work. This pass does
-  not implement save/load UI behavior, live simulation, pathfinding, movement orders, route/predecessor
-  semantics, GPU kernels, Clausewitz import, CSS/WebView, or new SimThing kinds.
+- BOUNDARY-0 was a Studio projection/index table-setting pass. Its earlier "hydrated grid as future
+  authority" wording is superseded by STUDIO-SIMTHING-SPEC-BOUNDARY-1: future save/load/new/live-sim work
+  must treat the SimThing-Spec scenario as authority and the hydrated grid as a derived Studio index. This
+  pass did not implement save/load UI behavior, live simulation, pathfinding, movement orders,
+  route/predecessor semantics, GPU kernels, Clausewitz import, CSS/WebView, or new SimThing kinds.
+
+### STUDIO-SIMTHING-SPEC-BOUNDARY-1 scenario authority (2026-06-17)
+
+STUDIO-SIMTHING-SPEC-BOUNDARY-1 strengthens the BOUNDARY-0 table setting: after generation, everything
+the editor breathes is SimThing-Spec-derived SimThing.
+
+- `simthing-spec::SimThingScenarioSpec` is the canonical post-generation authority. It owns the recursive
+  `SimThing` world root plus structural grid frame, placements, and generated link endpoint metadata.
+- Generation now flows through `generate_simthing_spec_scenario` /
+  `hydrate_mapgen_result_into_simthing_spec` before any Studio projection. `StudioSession` carries the
+  `SimThingScenarioSpec`; `StudioHydrationBoundary` and `StudioHydratedGrid` are projection/index objects.
+- The generated galaxy map structurally contains `World -> galaxy map Location -> Location/gridcell
+  SimThings -> child payload SimThings`. Each generated star/system maps to exactly one gridcell Location,
+  every placement preserves structural `(col,row)`, and every gridcell has children.
+- `StudioGalaxyViewModel::from_simthing_spec_scenario` rebuilds render anchors, stars, and hyperlane views
+  from the SimThing-Spec scenario via the Studio projection. Bevy never becomes canonical authority.
+- RF/Accumulator readiness and heatmap/Movement-Front readiness derive from the SimThing-Spec structural
+  placements/frame. Readiness reports use no render coordinates; oversized dense execution reports
+  `AtlasRequired`, which is a bounded-theater execution deferral, not layout failure.
+- Future save/load must serialize the SimThing-Spec-compliant scenario authority plus generation
+  provenance/report, structural frame/placements, editor render settings, camera/view state, and UI
+  settings. Studio DTOs, view models, Bevy entities/transforms, star radii, hyperlane opacity/thickness,
+  camera-depth buckets, and screen-space positions are projections only.
+- Save/load UI, live SimThing simulation, heatmap rendering, RF simulation, pathfinding, movement-order
+  logic, route/predecessor semantics, GPU kernels, Clausewitz import, and CSS/WebView remain future work.

@@ -50,6 +50,10 @@ pub use resource_flow::{
     RateFormulaSpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec,
     WildcardAdmissionSpec,
 };
+pub use scenario::{
+    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+};
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };

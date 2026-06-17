@@ -34,7 +34,10 @@ pub fn run() {
 pub use dialog::{StudioAction, WarningDialogModel};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
 pub use hydration::{
-    hydrate_generation_into_studio_grid, StudioHydrationBoundary, StudioHydrationError,
+    generate_simthing_spec_scenario, heatmap_readiness_from_simthing_spec,
+    hydrate_generation_into_studio_grid, rf_accumulator_readiness_from_simthing_spec,
+    studio_projection_from_simthing_spec, StudioHeatmapReadiness, StudioHeatmapReadinessKind,
+    StudioHydrationBoundary, StudioHydrationError, StudioRfAccumulatorReadiness,
 };
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::StudioSession;

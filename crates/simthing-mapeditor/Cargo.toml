@@ -22,6 +22,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 simthing-core = { path = "../simthing-core" }
 simthing-mapgenerator = { path = "../simthing-mapgenerator" }
+simthing-spec = { path = "../simthing-spec" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
