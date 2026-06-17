@@ -38,9 +38,12 @@ impl StudioHydrationBoundary {
     }
 }
 
+pub const LOADED_SCENARIO_MAP_QUALITY_STATUS: &str = "LOADED";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioHydrationSourceKind {
     MapGeneratorLibrary,
+    LoadedScenarioAuthority,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -345,9 +348,46 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
     Ok(scenario)
 }
 
+pub fn studio_projection_from_scenario_authority(
+    scenario: &SimThingScenarioSpec,
+) -> Result<StudioHydrationBoundary, StudioHydrationError> {
+    let placement_count = scenario.structural_grid.placements.len() as u32;
+    studio_projection_with_summary(
+        scenario,
+        StudioHydrationReportSummary {
+            seed: scenario.provenance.generator_seed,
+            shape: scenario.provenance.generator_shape.clone(),
+            requested_systems: placement_count,
+            hydrated_systems: placement_count,
+            base_hyperlane_count: scenario.links.len() as u32,
+            map_quality_status: LOADED_SCENARIO_MAP_QUALITY_STATUS,
+        },
+        StudioHydrationSourceKind::LoadedScenarioAuthority,
+    )
+}
+
 pub fn studio_projection_from_simthing_spec(
     scenario: &SimThingScenarioSpec,
     report: &GenerationReport,
+) -> Result<StudioHydrationBoundary, StudioHydrationError> {
+    studio_projection_with_summary(
+        scenario,
+        StudioHydrationReportSummary {
+            seed: report.generator.seed,
+            shape: report.request.shape.clone(),
+            requested_systems: report.request.star_count,
+            hydrated_systems: scenario.structural_grid.placements.len() as u32,
+            base_hyperlane_count: report.output.base_hyperlane_count,
+            map_quality_status: report.output.map_quality_status,
+        },
+        StudioHydrationSourceKind::MapGeneratorLibrary,
+    )
+}
+
+fn studio_projection_with_summary(
+    scenario: &SimThingScenarioSpec,
+    report_summary: StudioHydrationReportSummary,
+    source_kind: StudioHydrationSourceKind,
 ) -> Result<StudioHydrationBoundary, StudioHydrationError> {
     validate_stead_mapping_consistency(scenario)
         .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
@@ -447,14 +487,14 @@ pub fn studio_projection_from_simthing_spec(
     Ok(StudioHydrationBoundary {
         boundary_version: STUDIO_HYDRATION_BOUNDARY_VERSION,
         simthing_spec_scenario_id: scenario.scenario_id.clone(),
-        source_kind: StudioHydrationSourceKind::MapGeneratorLibrary,
+        source_kind,
         report_summary: StudioHydrationReportSummary {
-            seed: report.generator.seed,
-            shape: report.request.shape.clone(),
-            requested_systems: report.request.star_count,
+            seed: report_summary.seed,
+            shape: report_summary.shape,
+            requested_systems: report_summary.requested_systems,
             hydrated_systems: gridcells.len() as u32,
-            base_hyperlane_count: report.output.base_hyperlane_count,
-            map_quality_status: report.output.map_quality_status,
+            base_hyperlane_count: report_summary.base_hyperlane_count,
+            map_quality_status: report_summary.map_quality_status,
         },
         grid: StudioHydratedGrid {
             root_id: STUDIO_WORLD_ROOT_ID.to_string(),
