@@ -26,8 +26,9 @@ use crate::star_render::{
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
 use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
+use super::scenario_io::{load_scenario_action, save_scenario_action, ScenarioActionResult};
 use super::window::{minimize_window, set_window_mode};
-use super::{adopt_session, GalaxySceneRoot, StudioAppState};
+use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
 
 const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 560.0);
@@ -142,6 +143,36 @@ pub fn studio_ui_system(
             }
         }
         state.generation_busy = false;
+    }
+
+    if let Some(path) =
+        ctx.data(|d| d.get_temp::<std::path::PathBuf>(egui::Id::new("do_save_scenario")))
+    {
+        ctx.data_mut(|d| d.remove::<std::path::PathBuf>(egui::Id::new("do_save_scenario")));
+        save_scenario_action(&mut state, &path);
+    }
+
+    if let Some(path) =
+        ctx.data(|d| d.get_temp::<std::path::PathBuf>(egui::Id::new("do_load_scenario")))
+    {
+        ctx.data_mut(|d| d.remove::<std::path::PathBuf>(egui::Id::new("do_load_scenario")));
+        match load_scenario_action(&mut state, &path) {
+            ScenarioActionResult::Loaded { session, message } => {
+                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                if let Some(session) = state.session.as_ref() {
+                    rebuild_galaxy_scene(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &assets,
+                        &mut scene_root,
+                        session,
+                    );
+                }
+                reset_camera_after_generation(&mut camera);
+            }
+            _ => {}
+        }
     }
 }
 
@@ -643,6 +674,8 @@ fn draw_left_panel(
                 ui.separator();
                 generation_fields(ui, &mut state.profile, dialog);
                 ui.separator();
+                draw_scenario_io_controls(ctx, ui, state);
+                ui.separator();
                 render_debug_controls(ui, state);
                 ui.separator();
                 ui.label("Camera");
@@ -660,6 +693,8 @@ fn draw_left_panel(
                 }
                 if let Some(err) = &state.generation_error {
                     ui.colored_label(egui::Color32::RED, err);
+                } else if !state.last_scenario_io_status.is_empty() {
+                    ui.label(&state.last_scenario_io_status);
                 } else if !state.status_message.is_empty() {
                     ui.label(&state.status_message);
                 }
@@ -668,6 +703,49 @@ fn draw_left_panel(
             });
         });
     state.left_panel_hovered = area.response.hovered();
+}
+
+fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut StudioAppState) {
+    ui.label(egui::RichText::new("Scenario (model authority)").strong());
+    ui.label(
+        egui::RichText::new("Separate from simthing-studio-config.json")
+            .small()
+            .weak(),
+    );
+    ui.horizontal(|ui| {
+        ui.label("Scenario path:");
+        ui.text_edit_singleline(&mut state.scenario_path_text);
+    });
+    ui.horizontal(|ui| {
+        let save_enabled = state.session.is_some();
+        if save_enabled {
+            if ui.button("Save Scenario").clicked() {
+                if let Ok(path) = super::scenario_io::scenario_path_from_state(state) {
+                    ctx.data_mut(|d| {
+                        d.insert_temp(egui::Id::new("do_save_scenario"), path);
+                    });
+                } else {
+                    state.last_scenario_io_status =
+                        "Scenario save failed: invalid scenario path".into();
+                    state.status_message = state.last_scenario_io_status.clone();
+                }
+            }
+        } else if inactive_button(ui, "Save Scenario").clicked() {
+            state.last_scenario_io_status = "Scenario save failed: no active session".into();
+            state.status_message = state.last_scenario_io_status.clone();
+        }
+        if ui.button("Load Scenario").clicked() {
+            if let Ok(path) = super::scenario_io::scenario_path_from_state(state) {
+                ctx.data_mut(|d| {
+                    d.insert_temp(egui::Id::new("do_load_scenario"), path);
+                });
+            } else {
+                state.last_scenario_io_status =
+                    "Scenario load failed: invalid scenario path".into();
+                state.status_message = state.last_scenario_io_status.clone();
+            }
+        }
+    });
 }
 
 fn render_debug_controls(ui: &mut egui::Ui, state: &mut StudioAppState) {
