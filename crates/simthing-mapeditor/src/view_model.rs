@@ -258,6 +258,10 @@ impl StudioGalaxyViewModel {
         scenario: &SimThingScenarioSpec,
         report: &GenerationReport,
     ) -> Self {
+        Self::from_scenario(scenario, report)
+    }
+
+    pub fn from_scenario(scenario: &SimThingScenarioSpec, report: &GenerationReport) -> Self {
         let hydration = studio_projection_from_simthing_spec(scenario, report)
             .expect("SimThing-Spec scenario must project into Studio view model");
         Self::from_hydration(&hydration)
@@ -409,6 +413,19 @@ mod tests {
         assert_eq!(rebuilt_a.stars, rebuilt_b.stars);
         assert_eq!(rebuilt_a.hyperlanes, rebuilt_b.hyperlanes);
         assert_eq!(rebuilt_a.render_anchors, rebuilt_b.render_anchors);
+    }
+
+    #[test]
+    fn view_model_rebuilds_from_scenario_authority() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let scenario =
+            crate::hydration::generate_simthing_spec_scenario(&output).expect("spec authority");
+
+        let vm = StudioGalaxyViewModel::from_scenario(&scenario, &output.report);
+
+        assert_eq!(vm.stars.len(), scenario.structural_grid.placements.len());
+        assert_eq!(vm.render_anchors.len(), vm.stars.len());
     }
 
     #[test]

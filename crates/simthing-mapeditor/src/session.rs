@@ -14,7 +14,7 @@ use crate::view_model::StudioGalaxyViewModel;
 pub struct StudioSession {
     pub profile: GenerationProfile,
     pub output: GenerationRunOutput,
-    pub simthing_spec_scenario: SimThingScenarioSpec,
+    pub scenario_authority: SimThingScenarioSpec,
     pub hydration: StudioHydrationBoundary,
     pub view_model: StudioGalaxyViewModel,
     pub report_path: Option<std::path::PathBuf>,
@@ -26,14 +26,13 @@ impl StudioSession {
         profile: GenerationProfile,
         output: GenerationRunOutput,
     ) -> Result<Self, StudioHydrationError> {
-        let simthing_spec_scenario = generate_simthing_spec_scenario(&output)?;
-        let hydration =
-            studio_projection_from_simthing_spec(&simthing_spec_scenario, &output.report)?;
+        let scenario_authority = generate_simthing_spec_scenario(&output)?;
+        let hydration = studio_projection_from_simthing_spec(&scenario_authority, &output.report)?;
         let view_model = StudioGalaxyViewModel::from_hydration(&hydration);
         Ok(Self {
             profile,
             output,
-            simthing_spec_scenario,
+            scenario_authority,
             hydration,
             view_model,
             report_path: None,
@@ -68,6 +67,10 @@ mod tests {
         assert_eq!(
             session.view_model.stars.len(),
             session.hydration.grid.gridcells.len()
+        );
+        assert_eq!(
+            session.scenario_authority.scenario_id,
+            session.hydration.simthing_spec_scenario_id
         );
     }
 

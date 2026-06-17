@@ -482,13 +482,15 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 - Consumes the **library path** (`run_generation`) and in-process `build_generation_report` — **never stdout**.
 - Successful Studio generation means MapGenerator output **plus** a SimThing-Spec-compliant scenario
-  authority. The editor does not adopt a generated run until that authority and its Studio projection build
-  successfully.
-- The SimThing-Spec scenario is the future save/load authority: world root, map container, one
-  `Location`/gridcell SimThing per generated system, structural `(col,row)` on every gridcell, and child
-  star payloads under each star/gridcell.
+  authority. The editor does not adopt a generated run until that authority validates and its Studio
+  projection builds successfully.
+- The SimThing-Spec scenario is the sole post-generation model authority and the future save/load target:
+  world root, map container, one `Location`/gridcell SimThing per generated system, structural `(col,row)`
+  on every gridcell, child payloads under each star/gridcell, generated links, and loaded-ID reservation.
 - `StudioHydrationBoundary`, `StudioHydratedGrid`, `StudioGalaxyViewModel`, render anchors, Bevy entities,
   and Settings values are projections/indexes/presentation metadata over that authority.
+- Model edits apply to `SimThingScenarioSpec` first; Studio projections are rebuilt/refreshed from the
+  scenario authority.
 - Settings persist as RON (`%APPDATA%/SimThing/Studio/settings.ron`).
 - Bevy world positions, galactic thickness (Y), sprites, and lane fades are **render-only**; structural
   `(col,row)` from `PlacedSystemSeed.coord` remain authoritative (STEAD).
@@ -759,5 +761,8 @@ the editor breathes is SimThing-Spec-derived SimThing.
   provenance/report, structural frame/placements, editor render settings, camera/view state, and UI
   settings. Studio DTOs, view models, Bevy entities/transforms, star radii, hyperlane opacity/thickness,
   camera-depth buckets, and screen-space positions are projections only.
+- SAVELOAD-AUTHORITY-PIN-0 pins this as a type-level contract: `StudioSession::scenario_authority` is the
+  authority, `validate_stead_mapping_consistency` guards structural placements and mirrored gridcell
+  properties, and loaded scenarios reserve existing `SimThingId`s before future spawns.
 - Save/load UI, live SimThing simulation, heatmap rendering, RF simulation, pathfinding, movement-order
   logic, route/predecessor semantics, GPU kernels, Clausewitz import, and CSS/WebView remain future work.

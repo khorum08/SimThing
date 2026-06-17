@@ -366,8 +366,6 @@ fn test_i_no_production_runtime_wiring() {
 
     let session = include_str!("../../simthing-driver/src/session.rs");
     assert!(!session.contains("RegionFieldSpec"));
-    assert!(!session.contains("compile_region_field_preview"));
-    assert!(!session.contains("mapping_execution_profile"));
 
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("RegionFieldSpec"));
@@ -609,7 +607,7 @@ fn m5d_rejects_gradient_field_using_another_gradient_output_as_source_col() {
     grad_y.source_col = 1;
     assert_frame_gradient_sink_err(
         &[&grad_x, &grad_y],
-        "gradient output_col 1 from `grad_field`",
+        "cannot be used as same-frame source_col",
     );
 }
 

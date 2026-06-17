@@ -1011,9 +1011,13 @@ simulation authority impact.
 STUDIO-HYDRATION-BOUNDARY-0 changed generation adoption so `run_generation` output was projected into a
 hydrated Studio grid before render. STUDIO-SIMTHING-SPEC-BOUNDARY-1 strengthens that boundary: successful
 Studio generation now produces a `simthing-spec::SimThingScenarioSpec` as canonical authority before any
-Studio DTO/view projection. The scenario contains the recursive SimThing hierarchy `World -> galaxy map
-Location -> Location/gridcell SimThings -> child payload SimThings`, structural grid frame/placements, and
-generated link endpoint metadata. `StudioSession` carries this SimThing-Spec scenario authority; the
+Studio DTO/view projection. SAVELOAD-AUTHORITY-PIN-0 pins the same rule for upcoming save/load work:
+`StudioSession::scenario_authority` is the sole post-generation model authority, model edits apply there
+first, and projections are rebuilt/refreshed from it. The scenario contains the recursive SimThing hierarchy
+`World -> galaxy map Location -> Location/gridcell SimThings -> child payload SimThings`, structural grid
+frame/placements, mirrored structural properties, generated link endpoint metadata, and loaded-ID
+reservation. `validate_stead_mapping_consistency` guards duplicate ids, duplicate coordinates, missing
+placements, missing child payloads, structural-property mismatch, and render-coordinate leakage. The
 `StudioHydrationBoundary`, flat `StudioHydratedGrid`, `StudioGalaxyViewModel`, render anchors, Bevy
 entities/transforms, render height, visibility, star/hyperlane settings, camera-depth fades, and ribbon
 widths are projection/presentation metadata only. RF/Accumulator readiness and heatmap/Movement-Front

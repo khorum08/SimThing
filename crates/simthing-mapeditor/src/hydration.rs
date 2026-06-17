@@ -2,11 +2,14 @@
 
 use std::collections::{BTreeSet, HashSet};
 
-use simthing_core::{SimThing, SimThingKind};
+use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_mapgenerator::{GalaxyGenerationResult, GenerationReport};
 use simthing_spec::{
-    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+    validate_stead_mapping_consistency, SimThingScenarioGrid, SimThingScenarioLink,
+    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
+    SimThingStructuralGridPlacement, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
 use thiserror::Error;
 
@@ -23,6 +26,15 @@ pub struct StudioHydrationBoundary {
     pub source_kind: StudioHydrationSourceKind,
     pub report_summary: StudioHydrationReportSummary,
     pub grid: StudioHydratedGrid,
+}
+
+impl StudioHydrationBoundary {
+    pub fn from_scenario(
+        scenario: &SimThingScenarioSpec,
+        report: &GenerationReport,
+    ) -> Result<Self, StudioHydrationError> {
+        studio_projection_from_simthing_spec(scenario, report)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,6 +145,26 @@ pub struct StudioRfAccumulatorReadiness {
     pub deferred_reason: Option<String>,
 }
 
+impl StudioRfAccumulatorReadiness {
+    pub fn from_scenario(scenario: &SimThingScenarioSpec) -> Result<Self, StudioHydrationError> {
+        validate_stead_mapping_consistency(scenario)
+            .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
+        let participant_count = scenario.gridcell_locations().count() as u64;
+        Ok(Self {
+            participant_kind: "Location".to_string(),
+            grid_width: scenario.structural_grid.frame.width,
+            grid_height: scenario.structural_grid.frame.height,
+            occupied_cells: scenario.structural_grid.frame.occupied_cells,
+            participant_count,
+            all_participants_have_structural_placements: participant_count
+                == scenario.structural_grid.placements.len() as u64,
+            ready_for_spatial_rf_over_locations: participant_count > 0
+                && participant_count == scenario.structural_grid.placements.len() as u64,
+            deferred_reason: None,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioHeatmapReadinessKind {
     BoundedTheaterEligible,
@@ -147,6 +179,14 @@ pub struct StudioHeatmapReadiness {
     pub placement_count: u64,
     pub readiness: StudioHeatmapReadinessKind,
     pub reason: String,
+}
+
+impl StudioHeatmapReadiness {
+    pub fn from_scenario(scenario: &SimThingScenarioSpec) -> Result<Self, StudioHydrationError> {
+        validate_stead_mapping_consistency(scenario)
+            .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
+        Ok(heatmap_readiness_from_valid_scenario(scenario))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -165,6 +205,8 @@ pub enum StudioHydrationError {
     MissingGridcellLocation(String),
     #[error("studio projection found gridcell `{0}` without child payloads")]
     GridcellMissingChildren(String),
+    #[error("studio scenario authority failed STEAD mapping validation: {0}")]
+    SteadMappingInconsistent(String),
 }
 
 pub fn generate_simthing_spec_scenario(
@@ -215,7 +257,28 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
         let location_id = format!("studio_gridcell_system_{}", system.id);
         let mut gridcell = SimThing::new(SimThingKind::Location, 0);
         let gridcell_raw = gridcell.id.raw();
-        gridcell.add_child(SimThing::new(SimThingKind::Cohort, 0));
+        add_u32_property(
+            &mut gridcell,
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            system.id,
+        );
+        add_u32_property(
+            &mut gridcell,
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            system.coord.col,
+        );
+        add_u32_property(
+            &mut gridcell,
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            system.coord.row,
+        );
+        let mut payload = SimThing::new(SimThingKind::Cohort, 0);
+        add_u32_property(
+            &mut payload,
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            system.id,
+        );
+        gridcell.add_child(payload);
         map_container.add_child(gridcell);
         placements.push(SimThingStructuralGridPlacement {
             location_id: location_id.clone(),
@@ -245,7 +308,7 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
     let mut root = SimThing::new(SimThingKind::World, 0);
     root.add_child(map_container);
 
-    Ok(SimThingScenarioSpec {
+    let scenario = SimThingScenarioSpec {
         scenario_id: format!(
             "studio_generated_{}_{}",
             report.request.shape, report.generator.seed
@@ -266,13 +329,18 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
             generator_seed: report.generator.seed,
             generator_shape: report.request.shape.clone(),
         },
-    })
+    };
+    validate_stead_mapping_consistency(&scenario)
+        .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
+    Ok(scenario)
 }
 
 pub fn studio_projection_from_simthing_spec(
     scenario: &SimThingScenarioSpec,
     report: &GenerationReport,
 ) -> Result<StudioHydrationBoundary, StudioHydrationError> {
+    validate_stead_mapping_consistency(scenario)
+        .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
     let map_container = scenario
         .galaxy_map_container()
         .ok_or(StudioHydrationError::MissingMapContainer)?;
@@ -398,7 +466,7 @@ pub fn future_save_authority_manifest() -> StudioSaveAuthorityManifest {
         future_save_authority:
             "future save/load must serialize the SimThing-Spec-compliant scenario authority",
         required_payloads: vec![
-            "SimThing-Spec-compliant scenario authority",
+            SIMTHING_SCENARIO_AUTHORITY_LABEL,
             "generation profile",
             "map generator report summary",
             "structural grid frame and placements",
@@ -418,41 +486,28 @@ pub fn future_save_authority_manifest() -> StudioSaveAuthorityManifest {
 pub fn rf_accumulator_readiness_from_simthing_spec(
     scenario: &SimThingScenarioSpec,
 ) -> StudioRfAccumulatorReadiness {
-    let map_container = scenario.galaxy_map_container();
-    let placed_raw: HashSet<u32> = scenario
-        .structural_grid
-        .placements
-        .iter()
-        .map(|placement| placement.simthing_id_raw)
-        .collect();
-    let all_participants_have_structural_placements = map_container
-        .map(|container| {
-            container
-                .children
-                .iter()
-                .filter(|child| child.kind == SimThingKind::Location)
-                .all(|child| placed_raw.contains(&child.id.raw()))
-        })
-        .unwrap_or(false);
-    let participant_count = scenario.structural_grid.placements.len() as u64;
-    let ready = participant_count > 0 && all_participants_have_structural_placements;
-    StudioRfAccumulatorReadiness {
-        participant_kind: "Location".to_string(),
-        grid_width: scenario.structural_grid.frame.width,
-        grid_height: scenario.structural_grid.frame.height,
-        occupied_cells: scenario.structural_grid.frame.occupied_cells,
-        participant_count,
-        all_participants_have_structural_placements,
-        ready_for_spatial_rf_over_locations: ready,
-        deferred_reason: if ready {
-            None
-        } else {
-            Some("one or more Location participants lack structural placements".to_string())
-        },
-    }
+    StudioRfAccumulatorReadiness::from_scenario(scenario).unwrap_or_else(|err| {
+        StudioRfAccumulatorReadiness {
+            participant_kind: "Location".to_string(),
+            grid_width: scenario.structural_grid.frame.width,
+            grid_height: scenario.structural_grid.frame.height,
+            occupied_cells: scenario.structural_grid.frame.occupied_cells,
+            participant_count: scenario.gridcell_locations().count() as u64,
+            all_participants_have_structural_placements: false,
+            ready_for_spatial_rf_over_locations: false,
+            deferred_reason: Some(err.to_string()),
+        }
+    })
 }
 
 pub fn heatmap_readiness_from_simthing_spec(
+    scenario: &SimThingScenarioSpec,
+) -> StudioHeatmapReadiness {
+    StudioHeatmapReadiness::from_scenario(scenario)
+        .unwrap_or_else(|_| heatmap_readiness_from_valid_scenario(scenario))
+}
+
+fn heatmap_readiness_from_valid_scenario(
     scenario: &SimThingScenarioSpec,
 ) -> StudioHeatmapReadiness {
     let width = scenario.structural_grid.frame.width;
@@ -482,6 +537,15 @@ pub fn heatmap_readiness_from_simthing_spec(
     }
 }
 
+fn add_u32_property(thing: &mut SimThing, property_id: simthing_core::SimPropertyId, value: u32) {
+    thing.add_property(
+        property_id,
+        PropertyValue {
+            data: vec![value as f32],
+        },
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -509,7 +573,12 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::World, 0);
         let mut map = SimThing::new(SimThingKind::Location, 0);
         let mut cell = SimThing::new(SimThingKind::Location, 0);
-        cell.add_child(SimThing::new(SimThingKind::Cohort, 0));
+        add_u32_property(&mut cell, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, 1);
+        add_u32_property(&mut cell, SCENARIO_STRUCTURAL_COL_PROPERTY_ID, 3);
+        add_u32_property(&mut cell, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, 2);
+        let mut payload = SimThing::new(SimThingKind::Cohort, 0);
+        add_u32_property(&mut payload, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, 1);
+        cell.add_child(payload);
         let cell_raw = cell.id.raw();
         map.add_child(cell);
         root.add_child(map);
@@ -538,6 +607,198 @@ mod tests {
                 generator_seed: 1,
                 generator_shape: "test".to_string(),
             },
+        }
+    }
+
+    fn scenario_with_missing_placement() -> SimThingScenarioSpec {
+        let mut scenario = small_simthing_spec_scenario();
+        scenario.structural_grid.placements.clear();
+        scenario.structural_grid.frame.occupied_cells = 0;
+        scenario
+    }
+
+    #[test]
+    fn simthing_spec_scenario_serializes_and_deserializes() {
+        let (_output, scenario, _hydration) = authority_output();
+        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
+        let round: SimThingScenarioSpec =
+            serde_json::from_str(&json).expect("deserialize scenario authority");
+        assert_eq!(round.scenario_id, scenario.scenario_id);
+        assert_eq!(round.root.kind, SimThingKind::World);
+        assert_eq!(round.structural_grid, scenario.structural_grid);
+        assert_eq!(round.links, scenario.links);
+    }
+
+    #[test]
+    fn simthing_spec_roundtrip_preserves_root_tree() {
+        let (_output, scenario, _hydration) = authority_output();
+        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
+        let round: SimThingScenarioSpec =
+            serde_json::from_str(&json).expect("deserialize scenario authority");
+        assert_eq!(round.root.subtree_size(), scenario.root.subtree_size());
+        assert_eq!(
+            round.root.max_id_in_subtree(),
+            scenario.root.max_id_in_subtree()
+        );
+    }
+
+    #[test]
+    fn simthing_spec_roundtrip_preserves_structural_grid() {
+        let (_output, scenario, _hydration) = authority_output();
+        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
+        let round: SimThingScenarioSpec =
+            serde_json::from_str(&json).expect("deserialize scenario authority");
+        assert_eq!(round.structural_grid, scenario.structural_grid);
+        simthing_spec::validate_stead_mapping_consistency(&round).expect("valid mapping");
+    }
+
+    #[test]
+    fn simthing_spec_roundtrip_preserves_links() {
+        let (_output, scenario, _hydration) = authority_output();
+        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
+        let round: SimThingScenarioSpec =
+            serde_json::from_str(&json).expect("deserialize scenario authority");
+        assert_eq!(round.links, scenario.links);
+    }
+
+    #[test]
+    fn simthing_spec_roundtrip_preserves_gridcell_children() {
+        let (_output, scenario, _hydration) = authority_output();
+        let json = serde_json::to_string(&scenario).expect("serialize scenario authority");
+        let round: SimThingScenarioSpec =
+            serde_json::from_str(&json).expect("deserialize scenario authority");
+        assert!(round
+            .gridcell_locations()
+            .all(|gridcell| !gridcell.children.is_empty()));
+    }
+
+    #[test]
+    fn loaded_scenario_reserves_existing_simthing_ids() {
+        let mut scenario = small_simthing_spec_scenario();
+        scenario.root.id = simthing_core::SimThingId::from_session_raw(2_000_000);
+        simthing_spec::reserve_simthing_ids_from_scenario(&scenario);
+
+        let spawned = SimThing::new(SimThingKind::Cohort, 0);
+
+        assert!(spawned.id.raw() > 2_000_000);
+    }
+
+    #[test]
+    fn new_simthing_after_loaded_scenario_does_not_collide() {
+        let scenario = small_simthing_spec_scenario();
+        let existing: BTreeSet<u32> = scenario
+            .gridcell_locations()
+            .map(|gridcell| gridcell.id.raw())
+            .collect();
+        simthing_spec::reserve_simthing_ids_from_scenario(&scenario);
+
+        let spawned = SimThing::new(SimThingKind::Location, 0);
+
+        assert!(!existing.contains(&spawned.id.raw()));
+    }
+
+    #[test]
+    fn from_session_raw_or_equivalent_rejects_duplicate_ids() {
+        let mut scenario = small_simthing_spec_scenario();
+        let duplicate_id = scenario.root.id;
+        scenario.root.children[0].id = duplicate_id;
+
+        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
+            .expect_err("duplicate ids rejected");
+
+        assert!(matches!(
+            err,
+            simthing_spec::SteadMappingError::DuplicateSimThingId(_)
+        ));
+    }
+
+    #[test]
+    fn stead_mapping_validator_accepts_valid_scenario() {
+        let (_output, scenario, _hydration) = authority_output();
+        simthing_spec::validate_stead_mapping_consistency(&scenario).expect("valid mapping");
+    }
+
+    #[test]
+    fn stead_mapping_validator_rejects_missing_placement() {
+        let scenario = scenario_with_missing_placement();
+        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
+            .expect_err("missing placement rejected");
+        assert!(matches!(
+            err,
+            simthing_spec::SteadMappingError::MissingGridcellLocation(_)
+        ));
+    }
+
+    #[test]
+    fn stead_mapping_validator_rejects_duplicate_coordinates() {
+        let mut scenario = small_simthing_spec_scenario();
+        let mut duplicate = scenario.structural_grid.placements[0].clone();
+        duplicate.system_id = 2;
+        duplicate.location_id = "duplicate".to_string();
+        duplicate.target_id = "duplicate".to_string();
+        duplicate.simthing_id_raw = 99_999;
+        scenario.structural_grid.placements.push(duplicate);
+        scenario.structural_grid.frame.occupied_cells = 2;
+
+        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
+            .expect_err("duplicate coord rejected");
+
+        assert!(matches!(
+            err,
+            simthing_spec::SteadMappingError::DuplicateCoordinate { .. }
+        ));
+    }
+
+    #[test]
+    fn stead_mapping_validator_rejects_or_ignores_render_only_coordinates_as_authority() {
+        let mut scenario = small_simthing_spec_scenario();
+        let gridcell = scenario
+            .root
+            .children
+            .get_mut(0)
+            .expect("map")
+            .children
+            .get_mut(0)
+            .expect("gridcell");
+        add_u32_property(
+            gridcell,
+            simthing_spec::SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
+            42,
+        );
+
+        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
+            .expect_err("render coordinate property rejected");
+
+        assert!(matches!(
+            err,
+            simthing_spec::SteadMappingError::RenderCoordinatePropertyPresent(_)
+        ));
+    }
+
+    #[test]
+    fn gridcell_structural_properties_match_structural_grid_if_mirrored() {
+        let (_output, scenario, _hydration) = authority_output();
+        let map = scenario.galaxy_map_container().expect("map");
+        for placement in &scenario.structural_grid.placements {
+            let gridcell = map
+                .children
+                .iter()
+                .find(|child| child.id.raw() == placement.simthing_id_raw)
+                .expect("gridcell");
+            assert_eq!(
+                gridcell
+                    .property(SCENARIO_STRUCTURAL_COL_PROPERTY_ID)
+                    .expect("col")
+                    .data[0] as u32,
+                placement.col
+            );
+            assert_eq!(
+                gridcell
+                    .property(SCENARIO_STRUCTURAL_ROW_PROPERTY_ID)
+                    .expect("row")
+                    .data[0] as u32,
+                placement.row
+            );
         }
     }
 
@@ -781,6 +1042,28 @@ mod tests {
     }
 
     #[test]
+    fn bevy_render_metadata_not_written_to_scenario_authority() {
+        let (_output, scenario, _hydration) = authority_output();
+        let debug = format!("{scenario:?}");
+        for render_key in [
+            "world_position",
+            "render_height",
+            "sprite_scale",
+            "emissive_strength",
+            "depth_bucket",
+            "camera",
+            "visibility",
+            "line_thickness",
+            "opacity",
+        ] {
+            assert!(
+                !debug.contains(render_key),
+                "scenario authority leaked render key {render_key}"
+            );
+        }
+    }
+
+    #[test]
     fn future_save_authority_manifest_mentions_studio_projection() {
         let manifest = future_save_authority_manifest();
         assert!(manifest.mentions_simthing_spec_authority());
@@ -814,6 +1097,52 @@ mod tests {
     }
 
     #[test]
+    fn rf_readiness_uses_simthing_spec_scenario() {
+        let (_output, scenario, _hydration) = authority_output();
+        let readiness =
+            StudioRfAccumulatorReadiness::from_scenario(&scenario).expect("rf readiness");
+
+        assert_eq!(
+            readiness.participant_count,
+            scenario.gridcell_locations().count() as u64
+        );
+        assert_eq!(
+            readiness.occupied_cells,
+            scenario.structural_grid.frame.occupied_cells
+        );
+    }
+
+    #[test]
+    fn rf_readiness_rejects_missing_gridcell_placement() {
+        let scenario = scenario_with_missing_placement();
+
+        let readiness = StudioRfAccumulatorReadiness::from_scenario(&scenario);
+
+        assert!(readiness.is_err());
+    }
+
+    #[test]
+    fn rf_readiness_rejects_render_anchor_only_input() {
+        let scenario = scenario_with_missing_placement();
+
+        let readiness = StudioRfAccumulatorReadiness::from_scenario(&scenario);
+
+        assert!(readiness.is_err());
+    }
+
+    #[test]
+    fn rf_readiness_participant_count_matches_location_gridcells() {
+        let (_output, scenario, _hydration) = authority_output();
+        let readiness =
+            StudioRfAccumulatorReadiness::from_scenario(&scenario).expect("rf readiness");
+
+        assert_eq!(
+            readiness.participant_count,
+            scenario.gridcell_locations().count() as u64
+        );
+    }
+
+    #[test]
     fn rf_accumulator_readiness_uses_no_render_metadata() {
         let (_output, scenario, _hydration) = authority_output();
         let readiness = rf_accumulator_readiness_from_simthing_spec(&scenario);
@@ -839,6 +1168,30 @@ mod tests {
     }
 
     #[test]
+    fn heatmap_readiness_uses_simthing_spec_scenario() {
+        let scenario = small_simthing_spec_scenario();
+        let readiness = StudioHeatmapReadiness::from_scenario(&scenario).expect("heatmap");
+
+        assert_eq!(readiness.grid_width, scenario.structural_grid.frame.width);
+        assert_eq!(
+            readiness.placement_count,
+            scenario.structural_grid.placements.len() as u64
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_uses_structural_frame_not_render_data() {
+        let scenario = small_simthing_spec_scenario();
+        let readiness = StudioHeatmapReadiness::from_scenario(&scenario).expect("heatmap");
+        let debug = format!("{readiness:?}");
+
+        assert_eq!(readiness.grid_width, 8);
+        for render_key in ["world_position", "render_height", "camera"] {
+            assert!(!debug.contains(render_key));
+        }
+    }
+
+    #[test]
     fn heatmap_readiness_reports_bounded_theater_for_small_grid() {
         let scenario = small_simthing_spec_scenario();
         let readiness = heatmap_readiness_from_simthing_spec(&scenario);
@@ -857,6 +1210,82 @@ mod tests {
             StudioHeatmapReadinessKind::AtlasRequired
         );
         assert!(readiness.reason.contains("atlas"));
+    }
+
+    #[test]
+    fn heatmap_readiness_reports_atlas_required_for_oversized_grid() {
+        let (_output, scenario, _hydration) = authority_output();
+        let readiness = StudioHeatmapReadiness::from_scenario(&scenario).expect("heatmap");
+
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::AtlasRequired
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_does_not_mark_atlas_required_as_layout_failure() {
+        let (_output, scenario, _hydration) = authority_output();
+        let readiness = StudioHeatmapReadiness::from_scenario(&scenario).expect("heatmap");
+
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::AtlasRequired
+        );
+        assert!(readiness.reason.contains("structural layout is valid"));
+        assert!(!readiness.reason.contains("layout failure"));
+    }
+
+    #[test]
+    fn studio_projection_rebuilds_from_scenario_authority() {
+        let (output, scenario, _hydration) = authority_output();
+        let rebuilt =
+            StudioHydrationBoundary::from_scenario(&scenario, &output.report).expect("projection");
+
+        assert_eq!(rebuilt.simthing_spec_scenario_id, scenario.scenario_id);
+        assert_eq!(
+            rebuilt.grid.gridcells.len(),
+            scenario.structural_grid.placements.len()
+        );
+    }
+
+    #[test]
+    fn model_change_applies_to_scenario_before_projection() {
+        let (output, mut scenario, _hydration) = authority_output();
+        let (new_col, raw, location_id) = {
+            let placement = scenario
+                .structural_grid
+                .placements
+                .get_mut(0)
+                .expect("placement");
+            placement.col = placement.col.saturating_add(1);
+            (
+                placement.col,
+                placement.simthing_id_raw,
+                placement.location_id.clone(),
+            )
+        };
+        let gridcell = scenario
+            .root
+            .children
+            .get_mut(0)
+            .expect("map")
+            .children
+            .iter_mut()
+            .find(|child| child.id.raw() == raw)
+            .expect("gridcell");
+        add_u32_property(gridcell, SCENARIO_STRUCTURAL_COL_PROPERTY_ID, new_col);
+
+        let rebuilt =
+            StudioHydrationBoundary::from_scenario(&scenario, &output.report).expect("projection");
+        let cell = rebuilt
+            .grid
+            .gridcells
+            .iter()
+            .find(|cell| cell.simthing_id == location_id)
+            .expect("rebuilt cell");
+
+        assert_eq!(cell.structural_col, new_col);
     }
 
     #[test]

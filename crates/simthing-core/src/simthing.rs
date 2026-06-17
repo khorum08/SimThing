@@ -1,4 +1,4 @@
-use crate::ids::{SimPropertyId, SimThingId};
+use crate::ids::{advance_simthing_id_allocator_past, SimPropertyId, SimThingId};
 use crate::overlay::Overlay;
 use crate::property::PropertyValue;
 use serde::{Deserialize, Serialize};
@@ -95,6 +95,17 @@ impl SimThing {
             .map(|c| c.subtree_size())
             .sum::<usize>()
     }
+
+    pub fn max_id_in_subtree(&self) -> SimThingId {
+        self.children
+            .iter()
+            .map(|child| child.max_id_in_subtree())
+            .fold(self.id, |max, candidate| max.max(candidate))
+    }
+}
+
+pub fn reserve_simthing_ids_from_tree(root: &SimThing) {
+    advance_simthing_id_allocator_past(root.max_id_in_subtree());
 }
 
 /// Compare an authored kind string (from RON / spec layer) to a runtime
@@ -130,5 +141,24 @@ mod tests {
         world.add_child(loc);
         // world + 1 location + 2 cohorts = 4
         assert_eq!(world.subtree_size(), 4);
+    }
+
+    #[test]
+    fn loaded_tree_reserves_existing_simthing_ids() {
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        let loaded = SimThing {
+            id: SimThingId::from_session_raw(1_000_000),
+            kind: SimThingKind::Location,
+            properties: HashMap::new(),
+            overlays: Vec::new(),
+            children: Vec::new(),
+            spawned_day: 0,
+        };
+        world.add_child(loaded);
+
+        reserve_simthing_ids_from_tree(&world);
+
+        let spawned = SimThing::new(SimThingKind::Cohort, 0);
+        assert!(spawned.id.raw() > 1_000_000);
     }
 }

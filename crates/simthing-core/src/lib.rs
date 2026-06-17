@@ -41,7 +41,7 @@ pub use eml_registry::{
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError, EmlTreeId, EmlTreeMeta,
     MAX_EML_TREE_NODES, WHITELISTED_FORMULA_CLASSES,
 };
-pub use ids::{OverlayId, SimPropertyId, SimThingId};
+pub use ids::{advance_simthing_id_allocator_past, OverlayId, SimPropertyId, SimThingId};
 pub use intensity_eml::{
     compile_intensity_behavior_to_eml, intensity_eml_direct_cpu, intensity_tree_id,
     INTENSITY_EML_TREE_ID_BASE,
@@ -58,4 +58,4 @@ pub use property::{
 };
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};
-pub use simthing::{kind_matches, SimThing, SimThingKind};
+pub use simthing::{kind_matches, reserve_simthing_ids_from_tree, SimThing, SimThingKind};
