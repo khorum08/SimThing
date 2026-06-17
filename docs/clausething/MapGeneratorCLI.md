@@ -611,7 +611,7 @@ better, but the largest near-camera aura was still too broad and mid/far stars n
 
 PR2R7 adds the first live Studio render-tuning dialog instead of continuing hardcoded star tuning:
 
-- A small `Gear` button in the top window controls toggles a frosted-glass in-app Settings dialog with
+- A small `⚙` gear-icon button in the top window controls toggles a frosted-glass in-app Settings dialog with
   tooltip text `Settings`.
 - The Settings dialog is movable by its title bar, hides via top-right `X` or bottom `Close`, and restores
   its values and position from existing Studio RON settings.
