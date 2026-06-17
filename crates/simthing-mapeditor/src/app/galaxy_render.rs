@@ -10,7 +10,7 @@ use crate::hyperlane_buckets::{
 };
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
-use crate::star_render::prepare_star_render_instances;
+use crate::star_render::{prepare_star_billboard_instances, StarBillboardInstance};
 use crate::starburst::{generate_star_aura_image, generate_starburst_image};
 use crate::view_model::build_hyperlane_render_segments;
 
@@ -18,7 +18,7 @@ use super::GalaxySceneRoot;
 
 #[derive(Component)]
 pub struct GalaxyStar {
-    pub system_id: u32,
+    pub instance: StarBillboardInstance,
     pub layer: StarVisualLayer,
 }
 
@@ -66,7 +66,7 @@ pub fn rebuild_galaxy_scene(
 ) {
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
-    for star in prepare_star_render_instances(&vm.stars, &vm.render_anchors) {
+    for star in prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None) {
         for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
             let texture = match layer {
                 StarVisualLayer::Core => assets.core_texture.clone(),
@@ -80,9 +80,9 @@ pub fn rebuild_galaxy_scene(
                 base_color,
                 base_color_texture: Some(texture.clone()),
                 emissive: LinearRgba::new(
-                    star.emissive_strength * 1.25 * emissive_factor,
-                    star.emissive_strength * 1.32 * emissive_factor,
-                    star.emissive_strength * 1.45 * emissive_factor,
+                    star.base_intensity_variation * 1.25 * emissive_factor,
+                    star.base_intensity_variation * 1.32 * emissive_factor,
+                    star.base_intensity_variation * 1.45 * emissive_factor,
                     1.0,
                 ),
                 emissive_texture: Some(texture),
@@ -95,10 +95,10 @@ pub fn rebuild_galaxy_scene(
                 .spawn((
                     Mesh3d(assets.quad.clone()),
                     MeshMaterial3d(material),
-                    Transform::from_xyz(star.position[0], star.position[1], star.position[2])
-                        .with_scale(Vec3::splat(star.scale)),
+                    Transform::from_translation(star.anchor_position)
+                        .with_scale(Vec3::splat(star.base_scale_variation)),
                     GalaxyStar {
-                        system_id: star.system_id,
+                        instance: star,
                         layer,
                     },
                 ))

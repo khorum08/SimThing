@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r7_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r8_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -622,6 +622,23 @@ PR2R7 adds the first live Studio render-tuning dialog instead of continuing hard
 - Dialog bounds clamp to the central viewport between the main left control panel and the right status panel.
 - The settings are Studio UI state only, not scenario authority. Star blur radius, opacity, Bevy transforms,
   render height, aura, and camera-depth attenuation remain presentation-only.
+- Structural gridcell coordinates remain authoritative. This pass changes no MapGenerator output, topology,
+  hyperlane graph, ClauseThing lowering, runtime simulation semantics, pathfinding, save/load, live SimThing
+  simulation, or Clausewitz UI/CSS/WebView substrate.
+
+### PR2R8 instanced star billboards (2026-06-16)
+
+PR2R8 replaces the last legacy star-render spawn data with stable star billboard instances:
+
+- Each generated system produces a persistent `StarBillboardInstance` derived from its
+  `StudioSystemRenderAnchor`; stars are not particles and are not regenerated for render settings changes.
+- Billboard instances carry `system_id`, structural col/row reference, anchor position, base size variation,
+  and base intensity variation. Selection and hover remain live view state applied over the instance.
+- Runtime star blur/falloff settings and camera-relative depth drive core scale, aura radius, alpha, and
+  luminosity through the existing Bevy material/transform path. Bevy material properties are the renderer's
+  uniform-backed presentation inputs; there is no new simulation GPU authority.
+- Stars, picking, base hyperlane endpoints, and selected incident-lane highlights continue to consume the
+  same render anchors, so foreground/near lanes remain attached to the visible star positions.
 - Structural gridcell coordinates remain authoritative. This pass changes no MapGenerator output, topology,
   hyperlane graph, ClauseThing lowering, runtime simulation semantics, pathfinding, save/load, live SimThing
   simulation, or Clausewitz UI/CSS/WebView substrate.
