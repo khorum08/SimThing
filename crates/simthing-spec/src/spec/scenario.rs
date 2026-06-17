@@ -140,6 +140,12 @@ pub enum SteadMappingError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum ScenarioLinkError {
+    #[error("scenario authority link references unknown endpoint from={from} to={to}")]
+    InvalidEndpoint { from: String, to: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ScenarioSerdeError {
     #[error("failed to serialize scenario authority: {0}")]
     Serialize(String),
@@ -147,6 +153,8 @@ pub enum ScenarioSerdeError {
     Deserialize(String),
     #[error("deserialized scenario authority failed STEAD validation: {0}")]
     Validation(#[from] SteadMappingError),
+    #[error("deserialized scenario authority failed link validation: {0}")]
+    LinkValidation(#[from] ScenarioLinkError),
     #[error("deserialized scenario authority failed id reservation: {0}")]
     IdReservation(#[from] SimThingIdReservationError),
 }
@@ -307,12 +315,31 @@ pub fn serialize_scenario_authority(
     serde_json::to_string(spec).map_err(|err| ScenarioSerdeError::Serialize(err.to_string()))
 }
 
+pub fn validate_scenario_links(spec: &SimThingScenarioSpec) -> Result<(), ScenarioLinkError> {
+    let known_ids: BTreeSet<String> = spec
+        .structural_grid
+        .placements
+        .iter()
+        .map(|placement| placement.system_id.to_string())
+        .collect();
+    for link in &spec.links {
+        if !known_ids.contains(&link.from_system_id) || !known_ids.contains(&link.to_system_id) {
+            return Err(ScenarioLinkError::InvalidEndpoint {
+                from: link.from_system_id.clone(),
+                to: link.to_system_id.clone(),
+            });
+        }
+    }
+    Ok(())
+}
+
 pub fn deserialize_scenario_authority(
     src: &str,
 ) -> Result<SimThingScenarioSpec, ScenarioSerdeError> {
     let spec: SimThingScenarioSpec = serde_json::from_str(src)
         .map_err(|err| ScenarioSerdeError::Deserialize(err.to_string()))?;
     validate_stead_mapping_consistency(&spec)?;
+    validate_scenario_links(&spec)?;
     reserve_simthing_ids_from_scenario(&spec)?;
     Ok(spec)
 }
@@ -793,11 +820,26 @@ mod tests {
         let mut scenario = small_scenario();
         scenario.links.push(SimThingScenarioLink {
             from_system_id: "1".to_string(),
-            to_system_id: "2".to_string(),
+            to_system_id: "1".to_string(),
         });
         let json = serialize_scenario_authority(&scenario).expect("serialize");
         let round = deserialize_scenario_authority(&json).expect("deserialize");
         assert_eq!(round.links, scenario.links);
+    }
+
+    #[test]
+    fn scenario_authority_load_rejects_invalid_links() {
+        let mut scenario = small_scenario();
+        scenario.links.push(SimThingScenarioLink {
+            from_system_id: "1".to_string(),
+            to_system_id: "999".to_string(),
+        });
+        let json = serialize_scenario_authority(&scenario).expect("serialize");
+        let err = deserialize_scenario_authority(&json).expect_err("invalid link endpoint");
+        assert!(matches!(
+            err,
+            ScenarioSerdeError::LinkValidation(ScenarioLinkError::InvalidEndpoint { .. })
+        ));
     }
 
     #[test]

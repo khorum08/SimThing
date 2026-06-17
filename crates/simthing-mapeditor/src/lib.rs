@@ -9,6 +9,7 @@ pub mod generation;
 pub mod hydration;
 pub mod hyperlane_buckets;
 pub mod panel_layout;
+pub mod scenario_io;
 pub mod selection;
 pub mod session;
 pub mod settings;
@@ -39,6 +40,11 @@ pub use hydration::{
     hydrate_generation_into_studio_grid, rf_accumulator_readiness_from_simthing_spec,
     studio_projection_from_simthing_spec, StudioHeatmapReadiness, StudioHeatmapReadinessKind,
     StudioHydrationBoundary, StudioHydrationError, StudioRfAccumulatorReadiness,
+};
+pub use scenario_io::{
+    load_scenario_authority_from_path, load_studio_session_from_scenario_path,
+    save_current_session_scenario_to_path, save_scenario_authority_to_path, ScenarioIoError,
+    SCENARIO_FILE_SUFFIX, SCENARIO_TMP_SUFFIX,
 };
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::StudioSession;
