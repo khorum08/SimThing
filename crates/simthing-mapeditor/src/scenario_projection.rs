@@ -8,6 +8,12 @@ use simthing_spec::{
     ScenarioLinkError, SimThingScenarioSpec,
 };
 
+use simthing_gpu::{
+    readback_matches_source, readback_structural_upload_blocking, upload_structural_rows_to_gpu,
+    StructuralFrameGpuRow, StructuralLinkGpuRow, StructuralLocationGpuRow,
+    StructuralUploadGpuReport, StructuralUploadReadback, StructuralUploadRows,
+};
+
 use crate::hydration::{
     heatmap_readiness_from_simthing_spec, rf_accumulator_readiness_from_simthing_spec,
     StudioHeatmapReadinessKind, StudioHydrationError,
@@ -92,7 +98,17 @@ pub struct StudioGpuResidencyReadiness {
     pub structural_upload_packet_location_rows: u64,
     pub structural_upload_packet_link_rows: u64,
     pub structural_upload_packet_deferred_reason: Option<String>,
+    pub gpu_buffer_residency_ready: bool,
+    pub gpu_buffer_residency_deferred_reason: Option<String>,
     pub deferred_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGpuBufferResidencyProof {
+    pub ready: bool,
+    pub deferred_reason: Option<String>,
+    pub report: Option<StructuralUploadGpuReport>,
+    pub readback: Option<StructuralUploadReadback>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -298,6 +314,81 @@ pub fn build_gpu_structural_upload_packet_from_scenario(
     build_gpu_structural_upload_packet_from_projection(scenario, &projection)
 }
 
+pub fn to_structural_gpu_rows(packet: &StudioGpuStructuralUploadPacket) -> StructuralUploadRows {
+    StructuralUploadRows {
+        frame: StructuralFrameGpuRow {
+            width: packet.frame.width,
+            height: packet.frame.height,
+            occupied_cells: packet.frame.occupied_cells,
+            location_count: packet.frame.location_count,
+            link_count: packet.frame.link_count,
+            reserved0: packet.frame.reserved0,
+            reserved1: packet.frame.reserved1,
+            reserved2: packet.frame.reserved2,
+        },
+        locations: packet
+            .locations
+            .iter()
+            .map(|row| StructuralLocationGpuRow {
+                dense_index: row.dense_index,
+                simthing_id_raw: row.simthing_id_raw,
+                system_id: row.system_id,
+                row: row.row,
+                col: row.col,
+                reserved0: row.reserved0,
+                reserved1: row.reserved1,
+                reserved2: row.reserved2,
+            })
+            .collect(),
+        links: packet
+            .links
+            .iter()
+            .map(|row| StructuralLinkGpuRow {
+                from_dense_index: row.from_dense_index,
+                to_dense_index: row.to_dense_index,
+                reserved0: row.reserved0,
+                reserved1: row.reserved1,
+            })
+            .collect(),
+    }
+}
+
+pub fn prove_gpu_buffer_residency_blocking(
+    device: &simthing_gpu::wgpu::Device,
+    queue: &simthing_gpu::wgpu::Queue,
+    packet: &StudioGpuStructuralUploadPacket,
+) -> StudioGpuBufferResidencyProof {
+    let rows = to_structural_gpu_rows(packet);
+    match upload_structural_rows_to_gpu(device, queue, rows.frame, &rows.locations, &rows.links) {
+        Ok((buffers, report)) => {
+            let readback = readback_structural_upload_blocking(device, queue, &buffers, &report);
+            if readback_matches_source(&readback, rows.frame, &rows.locations, &rows.links) {
+                StudioGpuBufferResidencyProof {
+                    ready: true,
+                    deferred_reason: None,
+                    report: Some(report),
+                    readback: Some(readback),
+                }
+            } else {
+                StudioGpuBufferResidencyProof {
+                    ready: false,
+                    deferred_reason: Some(
+                        "GPU readback bytes did not match source rows".to_string(),
+                    ),
+                    report: Some(report),
+                    readback: Some(readback),
+                }
+            }
+        }
+        Err(err) => StudioGpuBufferResidencyProof {
+            ready: false,
+            deferred_reason: Some(format!("GPU structural upload failed: {err}")),
+            report: None,
+            readback: None,
+        },
+    }
+}
+
 pub fn build_gpu_residency_readiness(
     scenario: &SimThingScenarioSpec,
     projection: &StudioStructuralProjection,
@@ -360,6 +451,10 @@ pub fn build_gpu_residency_readiness(
         structural_upload_packet_location_rows,
         structural_upload_packet_link_rows,
         structural_upload_packet_deferred_reason,
+        gpu_buffer_residency_ready: false,
+        gpu_buffer_residency_deferred_reason: Some(
+            "GPU buffer residency requires device upload context".to_string(),
+        ),
         deferred_reason,
     }
 }
@@ -926,6 +1021,116 @@ mod tests {
         assert!(readiness.atlas_required);
         assert!(readiness.structural_upload_packet_ready);
         assert!(readiness.structural_upload_packet_deferred_reason.is_none());
+    }
+
+    #[test]
+    fn mapeditor_packet_converts_to_gpu_rows_exactly() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let rows = to_structural_gpu_rows(&packet);
+        assert_eq!(rows.frame.width, packet.frame.width);
+        assert_eq!(rows.frame.location_count, 2);
+        assert_eq!(
+            rows.locations[0].dense_index,
+            packet.locations[0].dense_index
+        );
+        assert_eq!(
+            rows.links[0].from_dense_index,
+            packet.links[0].from_dense_index
+        );
+    }
+
+    #[test]
+    fn gpu_rows_preserve_canonical_link_order() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let rows = to_structural_gpu_rows(&packet);
+        assert_eq!(rows.links[0].from_dense_index, 0);
+        assert_eq!(rows.links[0].to_dense_index, 1);
+    }
+
+    #[test]
+    fn gpu_rows_contain_no_render_metadata() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let rows = to_structural_gpu_rows(&packet);
+        let encoded = format!("{rows:?}");
+        assert!(!encoded.contains("world_x"));
+        assert!(!encoded.contains("render_meta"));
+    }
+
+    #[test]
+    fn gpu_rows_contain_no_route_or_predecessor_fields() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let rows = to_structural_gpu_rows(&packet);
+        let encoded = format!("{rows:?}");
+        for forbidden in [
+            "route",
+            "predecessor",
+            "movement_order",
+            "pathfinding",
+            "frontline",
+        ] {
+            assert!(!encoded.contains(forbidden));
+        }
+    }
+
+    #[test]
+    fn gpu_residency_readiness_defers_buffer_residency_without_device_context() {
+        let scenario = two_cell_scenario();
+        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
+        assert!(!readiness.gpu_buffer_residency_ready);
+        assert!(readiness
+            .gpu_buffer_residency_deferred_reason
+            .as_ref()
+            .is_some_and(|reason| reason.contains("device upload context")));
+    }
+
+    #[test]
+    fn gpu_buffer_residency_proof_uploads_and_readbacks_exact_bytes() {
+        use simthing_gpu::context::GpuContext;
+
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let proof = prove_gpu_buffer_residency_blocking(&ctx.device, &ctx.queue, &packet);
+        assert!(proof.ready, "{:?}", proof.deferred_reason);
+        assert!(proof.report.is_some());
+        assert!(proof.readback.is_some());
+    }
+
+    #[test]
+    fn gpu_buffer_residency_proof_rejects_empty_location_packet() {
+        use simthing_gpu::context::GpuContext;
+
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let packet = StudioGpuStructuralUploadPacket {
+            frame: StudioGpuStructuralFrameRow {
+                width: 8,
+                height: 8,
+                occupied_cells: 0,
+                location_count: 0,
+                link_count: 0,
+                reserved0: 0,
+                reserved1: 0,
+                reserved2: 0,
+            },
+            locations: Vec::new(),
+            links: Vec::new(),
+        };
+        let proof = prove_gpu_buffer_residency_blocking(&ctx.device, &ctx.queue, &packet);
+        assert!(!proof.ready);
+        assert!(proof
+            .deferred_reason
+            .as_ref()
+            .is_some_and(|reason| reason.contains("location row")));
     }
 
     #[test]

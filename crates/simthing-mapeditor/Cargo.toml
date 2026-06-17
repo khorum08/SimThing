@@ -21,6 +21,7 @@ ron = "0.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
 simthing-core = { path = "../simthing-core" }
+simthing-gpu = { path = "../simthing-gpu" }
 simthing-mapgenerator = { path = "../simthing-mapgenerator" }
 simthing-spec = { path = "../simthing-spec" }
 thiserror = { workspace = true }

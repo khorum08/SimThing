@@ -4990,6 +4990,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simthing-core",
+ "simthing-gpu",
  "simthing-mapgenerator",
  "simthing-spec",
  "tempfile",

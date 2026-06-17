@@ -24,6 +24,7 @@ pub mod saturating_flux_choke_threshold;
 pub mod scheduled_w_palma_batch;
 pub mod slot;
 pub mod stress_compose;
+pub mod structural_upload;
 pub mod structured_field_stencil;
 pub mod transfer_accumulator;
 pub mod velocity_accumulator;
@@ -112,6 +113,13 @@ pub use stress_compose::{
     StressComposeProfile, STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES,
     STRESS_COMPOSE_WORKGROUP_SIZE, STRESS_OP_MISMATCH, STRESS_OP_OVERLAP, STRESS_OP_VELOCITY,
     STRESS_OP_WEIGHTED,
+};
+pub use structural_upload::{
+    readback_matches_source, readback_structural_upload_blocking, source_row_bytes,
+    upload_structural_rows_to_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
+    StructuralLocationGpuRow, StructuralUploadError, StructuralUploadGpuBuffers,
+    StructuralUploadGpuReport, StructuralUploadReadback, StructuralUploadRows, FRAME_ROW_BYTES,
+    LINK_ROW_BYTES, LOCATION_ROW_BYTES,
 };
 pub use structured_field_stencil::{
     cpu_compute_c_at, cpu_compute_choke_at, cpu_compute_choke_readout_at, cpu_horizon,
