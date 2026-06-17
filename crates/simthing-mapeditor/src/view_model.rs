@@ -24,6 +24,7 @@ pub struct StudioGalaxyRenderMeta {
     pub star_near_core_alpha: f32,
     pub star_far_aura_alpha: f32,
     pub star_near_aura_alpha: f32,
+    pub star_falloff_settings: crate::star_render::StarFalloffSettings,
     pub selected_star_scale_multiplier: f32,
     pub hovered_star_scale_multiplier: f32,
     pub lane_near_alpha: f32,
@@ -54,6 +55,7 @@ impl Default for StudioGalaxyRenderMeta {
             star_near_core_alpha: 1.0,
             star_far_aura_alpha: 0.008,
             star_near_aura_alpha: 0.22,
+            star_falloff_settings: crate::star_render::StarFalloffSettings::default(),
             selected_star_scale_multiplier: 1.85,
             hovered_star_scale_multiplier: 1.22,
             lane_near_alpha: 0.75,
@@ -239,6 +241,13 @@ impl StudioGalaxyViewModel {
 
     pub fn hyperlane_render_segments(&self) -> Vec<HyperlaneRenderSegment> {
         build_hyperlane_render_segments(&self.hyperlanes, &self.render_anchors)
+    }
+
+    pub fn apply_star_falloff_settings(
+        &mut self,
+        settings: crate::star_render::StarFalloffSettings,
+    ) {
+        crate::star_render::apply_star_falloff_settings_to_meta(&mut self.render_meta, settings);
     }
 }
 
@@ -448,6 +457,60 @@ mod tests {
         let midpoint =
             crate::hyperlane_buckets::hyperlane_segment_midpoint(segment.from, segment.to);
         assert_eq!(midpoint, [0.0, 6.0, 5.0]);
+    }
+
+    #[test]
+    fn settings_changes_do_not_regenerate_galaxy() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let mut vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let seed = vm.seed;
+        let star_count = vm.stars.len();
+        let hyperlane_count = vm.hyperlanes.len();
+        vm.apply_star_falloff_settings(crate::star_render::StarFalloffSettings {
+            base_blur_radius: 0.31,
+            falloff_distance_percent: 60.0,
+            falloff_blur_radius_percent: 40.0,
+            falloff_opacity_percent: 55.0,
+        });
+        assert_eq!(vm.seed, seed);
+        assert_eq!(vm.stars.len(), star_count);
+        assert_eq!(vm.hyperlanes.len(), hyperlane_count);
+        assert_eq!(output.result.placement.systems.len(), star_count);
+    }
+
+    #[test]
+    fn settings_changes_preserve_render_anchor_count() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let mut vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let anchor_count = vm.render_anchors.len();
+        vm.apply_star_falloff_settings(crate::star_render::StarFalloffSettings {
+            base_blur_radius: 0.12,
+            ..Default::default()
+        });
+        assert_eq!(vm.render_anchors.len(), anchor_count);
+        assert_eq!(vm.render_anchors.len(), vm.stars.len());
+    }
+
+    #[test]
+    fn settings_changes_preserve_hyperlane_anchor_coherence() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let mut vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        vm.apply_star_falloff_settings(crate::star_render::StarFalloffSettings {
+            falloff_blur_radius_percent: 15.0,
+            falloff_opacity_percent: 35.0,
+            ..Default::default()
+        });
+        for segment in vm.hyperlane_render_segments() {
+            let from = anchor_for_system_str(&vm.render_anchors, &segment.from_system_id)
+                .expect("from anchor");
+            let to = anchor_for_system_str(&vm.render_anchors, &segment.to_system_id)
+                .expect("to anchor");
+            assert_eq!(segment.from, from.world_position);
+            assert_eq!(segment.to, to.world_position);
+        }
     }
 
     #[test]

@@ -1,5 +1,7 @@
 //! Reusable warning dialog model for unimplemented controls.
 
+use crate::star_render::StarFalloffSettings;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WarningDialogModel {
     pub visible: bool,
@@ -78,6 +80,43 @@ pub fn new_load_save_actions() -> [StudioAction; 3] {
     [StudioAction::New, StudioAction::Load, StudioAction::Save]
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SettingsDialogModel {
+    pub visible: bool,
+    pub position: [f32; 2],
+    pub star_render: StarFalloffSettings,
+}
+
+impl SettingsDialogModel {
+    pub fn new(visible: bool, position: [f32; 2], star_render: StarFalloffSettings) -> Self {
+        Self {
+            visible,
+            position,
+            star_render: star_render.clamped(),
+        }
+    }
+
+    pub fn open(&mut self) {
+        self.visible = true;
+    }
+
+    pub fn toggle_visible(&mut self) {
+        self.visible = !self.visible;
+    }
+
+    pub fn close_icon(&mut self) {
+        self.visible = false;
+    }
+
+    pub fn close_button(&mut self) {
+        self.visible = false;
+    }
+
+    pub fn set_star_render(&mut self, star_render: StarFalloffSettings) {
+        self.star_render = star_render.clamped();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,5 +156,45 @@ mod tests {
             assert!(dialog.visible);
             assert!(dialog.message.contains("not implemented"));
         }
+    }
+
+    #[test]
+    fn settings_dialog_defaults_exist() {
+        let dialog = SettingsDialogModel::new(false, [520.0, 96.0], StarFalloffSettings::default());
+        assert!(!dialog.visible);
+        assert_eq!(dialog.position, [520.0, 96.0]);
+        assert_eq!(dialog.star_render, StarFalloffSettings::default());
+    }
+
+    #[test]
+    fn settings_dialog_open_close_preserves_values() {
+        let values = StarFalloffSettings {
+            base_blur_radius: 0.37,
+            falloff_distance_percent: 61.0,
+            falloff_blur_radius_percent: 41.0,
+            falloff_opacity_percent: 59.0,
+        };
+        let mut dialog = SettingsDialogModel::new(false, [520.0, 96.0], values);
+        dialog.open();
+        dialog.close_button();
+        dialog.open();
+        assert!(dialog.visible);
+        assert_eq!(dialog.star_render, values);
+    }
+
+    #[test]
+    fn settings_dialog_close_icon_hides_dialog() {
+        let mut dialog =
+            SettingsDialogModel::new(true, [520.0, 96.0], StarFalloffSettings::default());
+        dialog.close_icon();
+        assert!(!dialog.visible);
+    }
+
+    #[test]
+    fn settings_dialog_close_button_hides_dialog() {
+        let mut dialog =
+            SettingsDialogModel::new(true, [520.0, 96.0], StarFalloffSettings::default());
+        dialog.close_button();
+        assert!(!dialog.visible);
     }
 }
