@@ -8,18 +8,22 @@ use crate::dialog::{
 };
 use crate::generation::{run_generation, GenerationPreset, GenerationProfile};
 use crate::panel_layout::{
-    compute_collapsed_panel_tab, compute_floating_panel_layout, left_panel_title,
-    should_auto_collapse_panel,
+    clamp_dialog_rect_away_from_panels, compute_collapsed_panel_tab, compute_floating_panel_layout,
+    left_panel_title, rect_from_xywh, right_panel_rect, should_auto_collapse_panel,
+    FloatingDialogBounds,
 };
 use crate::selection::selected_system_details;
 use crate::settings::WindowModeSetting;
 use crate::shape_params::spiral_arm_params_active;
+use crate::star_render::StarFalloffSettings;
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
 use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
+
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(380.0, 310.0);
 
 pub fn panel_opacity_system(mut state: ResMut<StudioAppState>, time: Res<Time>) {
     let target = if state.left_panel_hovered || state.left_panel_target_opacity > 0.55 {
@@ -57,7 +61,7 @@ pub fn studio_ui_system(
         state.left_panel_collapsed = true;
     }
 
-    draw_window_controls(ctx, &mut settings, &mut windows, &mut exit);
+    draw_window_controls(ctx, &mut state, &mut settings, &mut windows, &mut exit);
     if !state.left_panel_collapsed {
         draw_left_panel(
             ctx,
@@ -73,6 +77,7 @@ pub fn studio_ui_system(
     if state.session.is_some() {
         draw_right_panel(ctx, &mut state, screen_w, screen_h);
     }
+    draw_settings_dialog(ctx, &mut state, &mut settings, screen_w, screen_h);
     draw_warning_dialog(ctx, &mut dialog);
 
     if state.generation_busy {
@@ -140,14 +145,20 @@ fn inactive_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
 
 fn draw_window_controls(
     ctx: &egui::Context,
+    state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
     windows: &mut Query<&mut Window, With<bevy::window::PrimaryWindow>>,
     exit: &mut EventWriter<AppExit>,
 ) {
     egui::Area::new(egui::Id::new("window_controls"))
-        .fixed_pos(egui::pos2(ctx.screen_rect().max.x - 140.0, 8.0))
+        .fixed_pos(egui::pos2(ctx.screen_rect().max.x - 190.0, 8.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
+                if ui.small_button("Gear").on_hover_text("Settings").clicked() {
+                    state.settings_dialog.toggle_visible();
+                    settings.settings_dialog_visible = state.settings_dialog.visible;
+                    let _ = settings.save();
+                }
                 if ui.button("—").clicked() {
                     minimize_window(windows);
                 }
@@ -163,6 +174,152 @@ fn draw_window_controls(
                 }
             });
         });
+}
+
+fn draw_settings_dialog(
+    ctx: &egui::Context,
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+    screen_w: f32,
+    screen_h: f32,
+) {
+    if !state.settings_dialog.visible {
+        return;
+    }
+
+    let bounds = settings_dialog_bounds(ctx, state, screen_w, screen_h);
+    let desired = egui::Rect::from_min_size(
+        egui::pos2(
+            state.settings_dialog.position[0],
+            state.settings_dialog.position[1],
+        ),
+        SETTINGS_DIALOG_SIZE,
+    );
+    let clamped = clamp_dialog_rect_away_from_panels(desired, &bounds);
+    state.settings_dialog.position = [clamped.min.x, clamped.min.y];
+    settings.settings_dialog_position = state.settings_dialog.position;
+
+    egui::Area::new(egui::Id::new("settings_dialog"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(clamped.min)
+        .show(ctx, |ui| {
+            studio_panel_frame(0.82, 10.0).show(ui, |ui| {
+                ui.set_width(SETTINGS_DIALOG_SIZE.x - 24.0);
+                ui.set_min_height(SETTINGS_DIALOG_SIZE.y - 24.0);
+                let title_response = ui
+                    .horizontal(|ui| {
+                        ui.heading("Settings");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui.button("X").clicked() {
+                                state.settings_dialog.close_icon();
+                                settings.settings_dialog_visible = false;
+                                let _ = settings.save();
+                            }
+                        });
+                    })
+                    .response;
+                let title_drag = ui.interact(
+                    title_response.rect,
+                    ui.id().with("settings_title_drag"),
+                    egui::Sense::drag(),
+                );
+                if title_drag.dragged() {
+                    let delta = ctx.input(|input| input.pointer.delta());
+                    let moved = clamped.translate(delta);
+                    let clamped_moved = clamp_dialog_rect_away_from_panels(moved, &bounds);
+                    state.settings_dialog.position = [clamped_moved.min.x, clamped_moved.min.y];
+                    settings.settings_dialog_position = state.settings_dialog.position;
+                }
+                ui.separator();
+                ui.label(egui::RichText::new("Star rendering").strong());
+                let mut values = state.settings_dialog.star_render;
+                let mut changed = false;
+                changed |= ui
+                    .add(
+                        egui::Slider::new(&mut values.base_blur_radius, 0.0..=1.0)
+                            .text("Base Star Blur Radius"),
+                    )
+                    .changed();
+                changed |= ui
+                    .add(
+                        egui::Slider::new(&mut values.falloff_distance_percent, 1.0..=100.0)
+                            .suffix("%")
+                            .text("Falloff Distance"),
+                    )
+                    .changed();
+                changed |= ui
+                    .add(
+                        egui::Slider::new(&mut values.falloff_blur_radius_percent, 0.0..=100.0)
+                            .suffix("%")
+                            .text("Falloff Star Blur Radius"),
+                    )
+                    .changed();
+                changed |= ui
+                    .add(
+                        egui::Slider::new(&mut values.falloff_opacity_percent, 0.0..=100.0)
+                            .suffix("%")
+                            .text("Falloff Star Opacity"),
+                    )
+                    .changed();
+                if changed {
+                    apply_star_render_settings(values, state, settings);
+                }
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                    if ui.button("Close").clicked() {
+                        state.settings_dialog.close_button();
+                        settings.settings_dialog_visible = false;
+                        let _ = settings.save();
+                    }
+                });
+            });
+        });
+}
+
+fn settings_dialog_bounds(
+    ctx: &egui::Context,
+    state: &StudioAppState,
+    screen_w: f32,
+    screen_h: f32,
+) -> FloatingDialogBounds {
+    let left_panel = if state.left_panel_collapsed {
+        None
+    } else {
+        let layout = compute_floating_panel_layout(screen_w, screen_h, false);
+        Some(rect_from_xywh(
+            layout.x,
+            layout.y,
+            layout.width,
+            layout.height,
+        ))
+    };
+    let right_panel = if state.session.is_some() {
+        let (x, y, width, height) = right_panel_rect(screen_w, screen_h);
+        Some(rect_from_xywh(x, y, width, height))
+    } else {
+        None
+    };
+    FloatingDialogBounds {
+        viewport: ctx.screen_rect(),
+        left_panel,
+        right_panel,
+    }
+}
+
+fn apply_star_render_settings(
+    values: StarFalloffSettings,
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+) {
+    let values = values.clamped();
+    state.star_falloff_settings = values;
+    state.settings_dialog.set_star_render(values);
+    settings.set_star_falloff_settings(values);
+    settings.settings_dialog_position = state.settings_dialog.position;
+    settings.settings_dialog_visible = state.settings_dialog.visible;
+    if let Some(session) = state.session.as_mut() {
+        session.view_model.apply_star_falloff_settings(values);
+    }
+    let _ = settings.save();
 }
 
 fn draw_collapsed_tab(

@@ -10,10 +10,12 @@ mod window;
 use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
+use crate::dialog::SettingsDialogModel;
 use crate::generation::GenerationProfile;
 use crate::selection::StudioSelectionState;
 use crate::session::StudioSession;
 use crate::settings::EditorSettings;
+use crate::star_render::{apply_star_falloff_settings_to_meta, StarFalloffSettings};
 
 use galaxy_render::{init_star_visual_assets, rebuild_galaxy_scene, StarVisualAssets};
 use resources::{StudioDialog, StudioSettings};
@@ -87,12 +89,15 @@ pub struct StudioAppState {
     pub status_message: String,
     pub show_stars: bool,
     pub show_hyperlanes: bool,
+    pub settings_dialog: SettingsDialogModel,
+    pub star_falloff_settings: StarFalloffSettings,
 }
 
 impl StudioAppState {
     fn from_settings(settings: &EditorSettings) -> Self {
         let mut selection = StudioSelectionState::default();
         selection.selected_system_id = settings.last_selected_system_id;
+        let star_falloff_settings = settings.star_falloff_settings();
         Self {
             profile: settings.last_generation_params.clone(),
             session: None,
@@ -107,6 +112,12 @@ impl StudioAppState {
             status_message: String::new(),
             show_stars: true,
             show_hyperlanes: true,
+            settings_dialog: SettingsDialogModel::new(
+                settings.settings_dialog_visible,
+                settings.settings_dialog_position,
+                star_falloff_settings,
+            ),
+            star_falloff_settings,
         }
     }
 }
@@ -145,12 +156,16 @@ fn setup_scene(
 }
 
 pub fn adopt_session(
-    session: StudioSession,
+    mut session: StudioSession,
     settings: &mut EditorSettings,
     state: &mut StudioAppState,
 ) {
     settings.last_generation_params = session.profile.clone();
     state.profile = session.profile.clone();
+    apply_star_falloff_settings_to_meta(
+        &mut session.view_model.render_meta,
+        state.star_falloff_settings,
+    );
     state.generation_error = None;
     state.selection.clear();
     state.status_message = format!(

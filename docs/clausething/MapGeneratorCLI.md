@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r6_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r7_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -606,3 +606,22 @@ better, but the largest near-camera aura was still too broad and mid/far stars n
 - Structural gridcell coordinates remain authoritative. This changes only editor presentation metadata and
   does not alter MapGenerator topology, ClauseThing lowering, simulation semantics, pathfinding, save/load,
   or live-sim behavior.
+
+### PR2R7 live star render Settings dialog (2026-06-16)
+
+PR2R7 adds the first live Studio render-tuning dialog instead of continuing hardcoded star tuning:
+
+- A small `Gear` button in the top window controls toggles a frosted-glass in-app Settings dialog with
+  tooltip text `Settings`.
+- The Settings dialog is movable by its title bar, hides via top-right `X` or bottom `Close`, and restores
+  its values and position from existing Studio RON settings.
+- The `Star rendering` group exposes `Base Star Blur Radius`, `Falloff Distance`, `Falloff Star Blur Radius`,
+  and `Falloff Star Opacity`.
+- Slider changes update Bevy star render metadata live and do not regenerate the galaxy. Existing stars,
+  selection state, and hyperlane anchors remain valid.
+- Dialog bounds clamp to the central viewport between the main left control panel and the right status panel.
+- The settings are Studio UI state only, not scenario authority. Star blur radius, opacity, Bevy transforms,
+  render height, aura, and camera-depth attenuation remain presentation-only.
+- Structural gridcell coordinates remain authoritative. This pass changes no MapGenerator output, topology,
+  hyperlane graph, ClauseThing lowering, runtime simulation semantics, pathfinding, save/load, live SimThing
+  simulation, or Clausewitz UI/CSS/WebView substrate.

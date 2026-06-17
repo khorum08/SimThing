@@ -1,5 +1,7 @@
 //! Pure floating left-panel geometry for SimThing Studio.
 
+use bevy_egui::egui::{pos2, Rect};
+
 /// Resting panel width as a fraction of screen width.
 pub const PANEL_WIDTH_FRAC: f32 = 0.20;
 /// Minimum margin from viewport edges.
@@ -10,6 +12,7 @@ pub const REQUIRED_MIN_CONTROL_WIDTH_PX: f32 = 320.0;
 pub const MIN_CORNER_RADIUS_PX: f32 = 8.0;
 /// Corner radius as a fraction of panel width.
 pub const CORNER_RADIUS_FRAC_OF_WIDTH: f32 = 0.05;
+pub const FLOATING_DIALOG_PANEL_GAP_PX: f32 = 8.0;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FloatingPanelLayout {
@@ -25,6 +28,13 @@ pub struct FloatingPanelLayout {
 pub struct CollapsedPanelTab {
     pub x: f32,
     pub y: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FloatingDialogBounds {
+    pub viewport: Rect,
+    pub left_panel: Option<Rect>,
+    pub right_panel: Option<Rect>,
 }
 
 pub fn resting_panel_width(screen_width: f32) -> f32 {
@@ -95,6 +105,33 @@ pub fn right_panel_rect(screen_width: f32, screen_height: f32) -> (f32, f32, f32
 pub fn right_panel_contains_point(screen_width: f32, screen_height: f32, x: f32, y: f32) -> bool {
     let (rx, ry, rw, rh) = right_panel_rect(screen_width, screen_height);
     x >= rx && x <= rx + rw && y >= ry && y <= ry + rh
+}
+
+pub fn rect_from_xywh(x: f32, y: f32, width: f32, height: f32) -> Rect {
+    Rect::from_min_max(pos2(x, y), pos2(x + width, y + height))
+}
+
+pub fn clamp_dialog_rect_away_from_panels(desired: Rect, bounds: &FloatingDialogBounds) -> Rect {
+    let size = desired.size();
+    let mut min_x = bounds.viewport.min.x;
+    let mut max_x = bounds.viewport.max.x - size.x;
+    let min_y = bounds.viewport.min.y;
+    let max_y = bounds.viewport.max.y - size.y;
+
+    if let Some(left) = bounds.left_panel {
+        min_x = min_x.max(left.max.x + FLOATING_DIALOG_PANEL_GAP_PX);
+    }
+    if let Some(right) = bounds.right_panel {
+        max_x = max_x.min(right.min.x - size.x - FLOATING_DIALOG_PANEL_GAP_PX);
+    }
+    if max_x < min_x {
+        min_x = bounds.viewport.min.x;
+        max_x = bounds.viewport.max.x - size.x;
+    }
+
+    let x = desired.min.x.clamp(min_x, max_x);
+    let y = desired.min.y.clamp(min_y, max_y.max(min_y));
+    Rect::from_min_size(pos2(x, y), size)
 }
 
 #[cfg(test)]
@@ -209,5 +246,42 @@ mod tests {
             dialog_center_x,
             dialog_center_y
         ));
+    }
+
+    #[test]
+    fn settings_dialog_drag_clamps_to_viewport() {
+        let bounds = FloatingDialogBounds {
+            viewport: rect_from_xywh(0.0, 0.0, 800.0, 600.0),
+            left_panel: None,
+            right_panel: None,
+        };
+        let desired = rect_from_xywh(760.0, 580.0, 120.0, 80.0);
+        let clamped = clamp_dialog_rect_away_from_panels(desired, &bounds);
+        assert_eq!(clamped.min.x, 680.0);
+        assert_eq!(clamped.min.y, 520.0);
+    }
+
+    #[test]
+    fn settings_dialog_drag_stops_at_left_panel_bounds() {
+        let bounds = FloatingDialogBounds {
+            viewport: rect_from_xywh(0.0, 0.0, 1000.0, 700.0),
+            left_panel: Some(rect_from_xywh(30.0, 30.0, 220.0, 640.0)),
+            right_panel: None,
+        };
+        let desired = rect_from_xywh(100.0, 80.0, 300.0, 240.0);
+        let clamped = clamp_dialog_rect_away_from_panels(desired, &bounds);
+        assert!(clamped.min.x >= 250.0 + FLOATING_DIALOG_PANEL_GAP_PX);
+    }
+
+    #[test]
+    fn settings_dialog_drag_stops_at_right_panel_bounds() {
+        let bounds = FloatingDialogBounds {
+            viewport: rect_from_xywh(0.0, 0.0, 1200.0, 700.0),
+            left_panel: None,
+            right_panel: Some(rect_from_xywh(880.0, 48.0, 300.0, 620.0)),
+        };
+        let desired = rect_from_xywh(820.0, 80.0, 300.0, 240.0);
+        let clamped = clamp_dialog_rect_away_from_panels(desired, &bounds);
+        assert!(clamped.max.x <= 880.0 - FLOATING_DIALOG_PANEL_GAP_PX);
     }
 }

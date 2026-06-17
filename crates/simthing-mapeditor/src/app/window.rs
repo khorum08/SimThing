@@ -77,6 +77,9 @@ pub fn persist_settings_on_exit(
     copy.last_panel_width = state.left_panel_width_frac;
     copy.last_selected_system_id = state.selection.selected_system_id;
     copy.last_camera = camera.to_persisted();
+    copy.set_star_falloff_settings(state.star_falloff_settings);
+    copy.settings_dialog_position = state.settings_dialog.position;
+    copy.settings_dialog_visible = state.settings_dialog.visible;
     if let Ok(window) = windows.single() {
         copy.last_window_size = [
             window.resolution.width() as u32,

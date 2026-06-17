@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::camera_control::OrbitCameraState;
 use crate::generation::GenerationProfile;
+use crate::star_render::StarFalloffSettings;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PersistedCameraState {
@@ -80,10 +81,23 @@ pub struct EditorSettings {
     pub camera_preset: String,
     pub last_selected_system_id: Option<u32>,
     pub last_camera: PersistedCameraState,
+    #[serde(default = "default_base_star_blur_radius")]
+    pub base_star_blur_radius: f32,
+    #[serde(default = "default_falloff_distance_percent")]
+    pub falloff_distance_percent: f32,
+    #[serde(default = "default_falloff_star_blur_radius_percent")]
+    pub falloff_star_blur_radius_percent: f32,
+    #[serde(default = "default_falloff_star_opacity_percent")]
+    pub falloff_star_opacity_percent: f32,
+    #[serde(default = "default_settings_dialog_position")]
+    pub settings_dialog_position: [f32; 2],
+    #[serde(default)]
+    pub settings_dialog_visible: bool,
 }
 
 impl Default for EditorSettings {
     fn default() -> Self {
+        let star = StarFalloffSettings::default();
         Self {
             window_mode: WindowModeSetting::default(),
             exclusive_fullscreen_enabled: false,
@@ -97,6 +111,12 @@ impl Default for EditorSettings {
             camera_preset: "three_quarter".into(),
             last_selected_system_id: None,
             last_camera: PersistedCameraState::default(),
+            base_star_blur_radius: star.base_blur_radius,
+            falloff_distance_percent: star.falloff_distance_percent,
+            falloff_star_blur_radius_percent: star.falloff_blur_radius_percent,
+            falloff_star_opacity_percent: star.falloff_opacity_percent,
+            settings_dialog_position: default_settings_dialog_position(),
+            settings_dialog_visible: false,
         }
     }
 }
@@ -146,6 +166,44 @@ impl EditorSettings {
         self.last_report_path = report.map(Path::to_path_buf);
         self.last_scenario_path = scenario.map(Path::to_path_buf);
     }
+
+    pub fn star_falloff_settings(&self) -> StarFalloffSettings {
+        StarFalloffSettings {
+            base_blur_radius: self.base_star_blur_radius,
+            falloff_distance_percent: self.falloff_distance_percent,
+            falloff_blur_radius_percent: self.falloff_star_blur_radius_percent,
+            falloff_opacity_percent: self.falloff_star_opacity_percent,
+        }
+        .clamped()
+    }
+
+    pub fn set_star_falloff_settings(&mut self, settings: StarFalloffSettings) {
+        let settings = settings.clamped();
+        self.base_star_blur_radius = settings.base_blur_radius;
+        self.falloff_distance_percent = settings.falloff_distance_percent;
+        self.falloff_star_blur_radius_percent = settings.falloff_blur_radius_percent;
+        self.falloff_star_opacity_percent = settings.falloff_opacity_percent;
+    }
+}
+
+fn default_base_star_blur_radius() -> f32 {
+    StarFalloffSettings::default().base_blur_radius
+}
+
+fn default_falloff_distance_percent() -> f32 {
+    StarFalloffSettings::default().falloff_distance_percent
+}
+
+fn default_falloff_star_blur_radius_percent() -> f32 {
+    StarFalloffSettings::default().falloff_blur_radius_percent
+}
+
+fn default_falloff_star_opacity_percent() -> f32 {
+    StarFalloffSettings::default().falloff_opacity_percent
+}
+
+fn default_settings_dialog_position() -> [f32; 2] {
+    [520.0, 96.0]
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -200,5 +258,28 @@ mod tests {
         let loaded: EditorSettings =
             ron::from_str(&std::fs::read_to_string(path).expect("read")).expect("parse");
         assert_eq!(loaded.last_report_path, settings.last_report_path);
+    }
+
+    #[test]
+    fn settings_persist_star_render_controls() {
+        let mut settings = EditorSettings::default();
+        settings.set_star_falloff_settings(StarFalloffSettings {
+            base_blur_radius: 0.44,
+            falloff_distance_percent: 62.0,
+            falloff_blur_radius_percent: 33.0,
+            falloff_opacity_percent: 47.0,
+        });
+        settings.settings_dialog_position = [640.0, 120.0];
+        settings.settings_dialog_visible = true;
+        let text = ron::ser::to_string_pretty(&settings, Default::default()).expect("serialize");
+        assert!(text.contains("base_star_blur_radius"));
+        assert!(text.contains("falloff_distance_percent"));
+        let loaded: EditorSettings = ron::from_str(&text).expect("parse");
+        assert_eq!(
+            loaded.star_falloff_settings(),
+            settings.star_falloff_settings()
+        );
+        assert_eq!(loaded.settings_dialog_position, [640.0, 120.0]);
+        assert!(loaded.settings_dialog_visible);
     }
 }

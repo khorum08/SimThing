@@ -55,7 +55,8 @@
 | **BEVY-MAPGEN-EDITOR-PR2R3** — distance-attenuated core/aura star sprites + camera-depth hyperlane shader inputs | #731 | `2daea5f2` / merge `3888e430` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r3_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R4** — shared render anchors for stars, picking, and hyperlane endpoints | #732 | `cb1cf894` / merge `d802756c` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r4_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R5** — reduced star aura extent + stronger distant-star luminosity falloff | #733 | `c6e67783` / merge `c491884d` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r5_results.md` |
-| **BEVY-MAPGEN-EDITOR-PR2R6** — tighter star aura cap + mid-to-horizon aura/luminosity taper | pending | pending | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r6_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2R6** — tighter star aura cap + mid-to-horizon aura/luminosity taper | #734 | `453acf5e` / merge `7bb4b703` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r6_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2R7** — live Settings dialog for star blur/falloff controls | pending | pending | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r7_results.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

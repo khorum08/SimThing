@@ -28,6 +28,44 @@ pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
     "star distance attenuation, core/aura scale, alpha, and bloom are editor render metadata only";
 
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct StarFalloffSettings {
+    pub base_blur_radius: f32,
+    pub falloff_distance_percent: f32,
+    pub falloff_blur_radius_percent: f32,
+    pub falloff_opacity_percent: f32,
+}
+
+impl Default for StarFalloffSettings {
+    fn default() -> Self {
+        Self {
+            base_blur_radius: PR2R6_STAR_NEAR_AURA_SCALE,
+            falloff_distance_percent: 100.0,
+            falloff_blur_radius_percent: PR2R5_STAR_FAR_AURA_SCALE * MID_TO_HORIZON_FALLOFF_FACTOR
+                / PR2R6_STAR_NEAR_AURA_SCALE
+                * 100.0,
+            falloff_opacity_percent: 2.7,
+        }
+    }
+}
+
+impl StarFalloffSettings {
+    pub fn clamped(self) -> Self {
+        Self {
+            base_blur_radius: self.base_blur_radius.clamp(0.0, 1.0),
+            falloff_distance_percent: self.falloff_distance_percent.clamp(1.0, 100.0),
+            falloff_blur_radius_percent: self.falloff_blur_radius_percent.clamp(0.0, 100.0),
+            falloff_opacity_percent: self.falloff_opacity_percent.clamp(0.0, 100.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StarFalloffVisual {
+    pub blur_radius: f32,
+    pub opacity: f32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StarRenderInstance {
     pub system_id: u32,
@@ -63,9 +101,9 @@ pub fn star_distance_visual(
     meta: &StudioGalaxyRenderMeta,
 ) -> StarDistanceVisual {
     let t = normalized_star_camera_depth(camera_distance, meta);
+    let falloff = compute_star_falloff_visual(t * 100.0, meta.star_falloff_settings);
     let eased_far = t * t * (3.0 - 2.0 * t);
     let close = 1.0 - eased_far;
-    let far_half_taper = mid_to_horizon_extra_falloff(t);
     let scale_mul = if selected {
         meta.selected_star_scale_multiplier
     } else if hovered {
@@ -82,19 +120,13 @@ pub fn star_distance_visual(
     };
     StarDistanceVisual {
         core_scale: lerp(meta.star_far_core_scale, meta.star_near_core_scale, close) * scale_mul,
-        aura_scale: lerp(meta.star_far_aura_scale, meta.star_near_aura_scale, close)
-            * scale_mul
-            * far_half_taper,
-        core_alpha: (lerp(meta.star_far_core_alpha, meta.star_near_core_alpha, close)
-            * alpha_boost)
+        aura_scale: falloff.blur_radius * scale_mul,
+        core_alpha: (meta.star_near_core_alpha * falloff.opacity * alpha_boost)
             .min(meta.star_near_core_alpha.max(meta.star_far_core_alpha))
-            .clamp(0.0, 1.0)
-            * far_half_taper,
-        aura_alpha: (lerp(meta.star_far_aura_alpha, meta.star_near_aura_alpha, close)
-            * alpha_boost)
+            .clamp(0.0, 1.0),
+        aura_alpha: (meta.star_near_aura_alpha * falloff.opacity * alpha_boost)
             .min(meta.star_near_aura_alpha)
-            .clamp(0.0, 1.0)
-            * far_half_taper,
+            .clamp(0.0, 1.0),
     }
 }
 
@@ -113,6 +145,47 @@ pub fn mid_to_horizon_extra_falloff(normalized_depth: f32) -> f32 {
         / (1.0 - MID_TO_HORIZON_FALLOFF_START_DEPTH))
         .clamp(0.0, 1.0);
     lerp(1.0, MID_TO_HORIZON_FALLOFF_FACTOR, t)
+}
+
+pub fn compute_star_falloff_visual(
+    camera_depth_percent: f32,
+    settings: StarFalloffSettings,
+) -> StarFalloffVisual {
+    let settings = settings.clamped();
+    let depth = camera_depth_percent.clamp(0.0, 100.0);
+    let falloff_at = settings.falloff_distance_percent;
+    let target_blur = settings.base_blur_radius * settings.falloff_blur_radius_percent / 100.0;
+    let target_opacity = settings.falloff_opacity_percent / 100.0;
+    if depth <= falloff_at {
+        let t = if falloff_at <= f32::EPSILON {
+            1.0
+        } else {
+            (depth / falloff_at).clamp(0.0, 1.0)
+        };
+        return StarFalloffVisual {
+            blur_radius: lerp(settings.base_blur_radius, target_blur, t),
+            opacity: lerp(1.0, target_opacity, t),
+        };
+    }
+    let horizon_t = ((depth - falloff_at) / (100.0 - falloff_at).max(f32::EPSILON)).clamp(0.0, 1.0);
+    let horizon_taper = lerp(1.0, MID_TO_HORIZON_FALLOFF_FACTOR, horizon_t);
+    StarFalloffVisual {
+        blur_radius: target_blur * horizon_taper,
+        opacity: target_opacity * horizon_taper,
+    }
+}
+
+pub fn apply_star_falloff_settings_to_meta(
+    meta: &mut StudioGalaxyRenderMeta,
+    settings: StarFalloffSettings,
+) {
+    let settings = settings.clamped();
+    meta.star_falloff_settings = settings;
+    meta.star_near_aura_scale = settings.base_blur_radius;
+    let horizon = compute_star_falloff_visual(100.0, settings);
+    meta.star_far_aura_scale = horizon.blur_radius;
+    meta.star_far_core_alpha = horizon.opacity;
+    meta.star_far_aura_alpha = meta.star_near_aura_alpha * horizon.opacity;
 }
 
 pub fn star_scale_multiplier(selected: bool, hovered: bool) -> f32 {
@@ -287,11 +360,10 @@ mod tests {
     #[test]
     fn mid_to_horizon_extra_falloff_applies_to_aura_radius() {
         let meta = star_visual_defaults();
-        let mid_distance = distance_for_depth(&meta, MID_TO_HORIZON_FALLOFF_START_DEPTH);
+        let mid_distance = distance_for_depth(&meta, 0.5);
         let horizon_distance = distance_for_depth(&meta, 1.0);
         let mid = star_distance_visual(mid_distance, false, false, &meta);
         let horizon = star_distance_visual(horizon_distance, false, false, &meta);
-        let horizon_base_aura = lerp(meta.star_far_aura_scale, meta.star_near_aura_scale, 0.0);
         assert_eq!(
             mid_to_horizon_extra_falloff(MID_TO_HORIZON_FALLOFF_START_DEPTH),
             1.0
@@ -301,24 +373,15 @@ mod tests {
             MID_TO_HORIZON_FALLOFF_FACTOR
         );
         assert!(mid.aura_scale > horizon.aura_scale);
-        assert!(
-            (horizon.aura_scale - horizon_base_aura * MID_TO_HORIZON_FALLOFF_FACTOR).abs()
-                < f32::EPSILON
-        );
     }
 
     #[test]
     fn mid_to_horizon_extra_falloff_applies_to_luminosity() {
         let meta = star_visual_defaults();
         let horizon = star_distance_visual(meta.star_far_distance, false, false, &meta);
-        assert!(
-            (horizon.core_alpha - meta.star_far_core_alpha * MID_TO_HORIZON_FALLOFF_FACTOR).abs()
-                < f32::EPSILON
-        );
-        assert!(
-            (horizon.aura_alpha - meta.star_far_aura_alpha * MID_TO_HORIZON_FALLOFF_FACTOR).abs()
-                < f32::EPSILON
-        );
+        let target = compute_star_falloff_visual(100.0, meta.star_falloff_settings);
+        assert!((horizon.core_alpha - target.opacity).abs() < f32::EPSILON);
+        assert!((horizon.aura_alpha - meta.star_near_aura_alpha * target.opacity).abs() < 0.0001);
     }
 
     #[test]
@@ -363,10 +426,7 @@ mod tests {
     fn aura_overview_scale_is_below_max_threshold() {
         let meta = star_visual_defaults();
         let visual = star_distance_visual(meta.star_far_distance, false, false, &meta);
-        assert!(
-            visual.aura_scale
-                <= PR2R5_STAR_FAR_AURA_SCALE * MID_TO_HORIZON_FALLOFF_FACTOR + f32::EPSILON
-        );
+        assert!(visual.aura_scale <= meta.star_near_aura_scale + f32::EPSILON);
     }
 
     #[test]
@@ -380,6 +440,75 @@ mod tests {
     fn star_visual_metadata_is_render_only() {
         assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("editor render metadata only"));
         assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("bloom"));
+    }
+
+    #[test]
+    fn base_star_blur_radius_updates_render_meta() {
+        let mut meta = star_visual_defaults();
+        let settings = StarFalloffSettings {
+            base_blur_radius: 0.42,
+            ..Default::default()
+        };
+        apply_star_falloff_settings_to_meta(&mut meta, settings);
+        assert_eq!(meta.star_falloff_settings.base_blur_radius, 0.42);
+        assert_eq!(meta.star_near_aura_scale, 0.42);
+    }
+
+    #[test]
+    fn falloff_distance_percent_updates_render_meta() {
+        let mut meta = star_visual_defaults();
+        let settings = StarFalloffSettings {
+            falloff_distance_percent: 64.0,
+            ..Default::default()
+        };
+        apply_star_falloff_settings_to_meta(&mut meta, settings);
+        assert_eq!(meta.star_falloff_settings.falloff_distance_percent, 64.0);
+    }
+
+    #[test]
+    fn falloff_star_blur_radius_percent_updates_render_meta() {
+        let mut meta = star_visual_defaults();
+        let settings = StarFalloffSettings {
+            falloff_blur_radius_percent: 33.0,
+            ..Default::default()
+        };
+        apply_star_falloff_settings_to_meta(&mut meta, settings);
+        assert_eq!(meta.star_falloff_settings.falloff_blur_radius_percent, 33.0);
+    }
+
+    #[test]
+    fn falloff_star_opacity_percent_updates_render_meta() {
+        let mut meta = star_visual_defaults();
+        let settings = StarFalloffSettings {
+            falloff_opacity_percent: 44.0,
+            ..Default::default()
+        };
+        apply_star_falloff_settings_to_meta(&mut meta, settings);
+        assert_eq!(meta.star_falloff_settings.falloff_opacity_percent, 44.0);
+    }
+
+    #[test]
+    fn compute_star_falloff_visual_reaches_target_radius_at_falloff_distance() {
+        let settings = StarFalloffSettings {
+            base_blur_radius: 0.8,
+            falloff_distance_percent: 40.0,
+            falloff_blur_radius_percent: 25.0,
+            falloff_opacity_percent: 70.0,
+        };
+        let visual = compute_star_falloff_visual(40.0, settings);
+        assert!((visual.blur_radius - 0.2).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn compute_star_falloff_visual_reaches_target_opacity_at_falloff_distance() {
+        let settings = StarFalloffSettings {
+            base_blur_radius: 0.8,
+            falloff_distance_percent: 40.0,
+            falloff_blur_radius_percent: 25.0,
+            falloff_opacity_percent: 70.0,
+        };
+        let visual = compute_star_falloff_visual(40.0, settings);
+        assert!((visual.opacity - 0.7).abs() < f32::EPSILON);
     }
 
     fn distance_for_depth(meta: &StudioGalaxyRenderMeta, depth: f32) -> f32 {
