@@ -961,7 +961,7 @@ currency); ClauseThing/ClauseScript L3 (no front-end); dense per-cell temporal m
 per-cell, not dense temporal); atlas sparse-residency scheduler / M-4A (static map); FrontierV2-5;
 Hybrid-Strata ECON scaling beyond the 2-faction set (Terran/Pirate ECON-SCALE is reused, not extended).
 
-**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2/PR2R/PR2R2/PR2R3/PR2R4/PR2R5/PR2R6/PR2R7/PR2R8/PR2R9, PROBATION):** Windows-only
+**SimThing Studio (Bevy editor shell — BEVY-MAPGEN-EDITOR-PR1/PR1R/PR2/PR2R/PR2R2/PR2R3/PR2R4/PR2R5/PR2R6/PR2R7/PR2R8/PR2R9/PR2R10, PROBATION):** Windows-only
 `simthing-mapeditor` studio shell: borderless black window, detached floating egui generation panel (20%
 width, 3% margin), 3D galaxy view from MapGenerator typed output + JSON report quality status.
 Presentation/authoring only — no live simulation, no save/load sessions. PR2 adds hover/click star
@@ -991,6 +991,13 @@ PR2R9 wires `Base Star Blur Radius` and falloff blur directly into the rendered 
 path, adds a persisted `Bloom / Starburst` vs `Crisp Circle` render mode, and lets crisp stars render as
 simple camera-facing circles/dots controlled by the same live settings. These changes remain presentation
 metadata only and do not regenerate or structurally mutate the galaxy.
+PR2R10 fixes the Settings dialog top-right `X` so it hides via the same state/persistence path as the
+bottom `Close` button, then adds live hyperlane rendering sliders for base line thickness, base opacity,
+falloff distance, falloff thickness, and falloff opacity. Base hyperlane thickness is a percentage of the
+rendered nearest-camera star disc width and is capped at 25%; opacity `0%` hides hyperlanes visually only.
+The lane visual mesh uses an 80% core with 10% each-side vertex-alpha falloff edges. These controls update
+render metadata live without regenerating the galaxy, recomputing topology, mutating generated hyperlane
+data, or changing runtime/simulation authority.
 PR1R repairs shell contract
 (warning-clickable greyed controls, mouse-delta orbit, hyperlane depth buckets). Bevy transforms,
 camera-space coordinates, star size, sprite scale, aura alpha, bloom, hyperlane color/materials, and

@@ -7,6 +7,9 @@ use crate::dialog::{
     inactive_control_warning, unimplemented_action_response, StudioAction, WarningDialogModel,
 };
 use crate::generation::{run_generation, GenerationPreset, GenerationProfile};
+use crate::hyperlane_buckets::{
+    hyperlane_visuals_dirty_after_settings_change, HyperlaneRenderSettings,
+};
 use crate::panel_layout::{
     clamp_dialog_rect_away_from_panels, compute_collapsed_panel_tab, compute_floating_panel_layout,
     left_panel_title, rect_from_xywh, right_panel_rect, should_auto_collapse_panel,
@@ -25,7 +28,7 @@ use super::window::{minimize_window, set_window_mode};
 use super::{adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
 
-const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(380.0, 346.0);
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 560.0);
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
 
@@ -230,9 +233,7 @@ fn draw_settings_dialog(
                         ui.heading("Settings");
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             if ui.button("X").clicked() {
-                                state.settings_dialog.close_icon();
-                                settings.settings_dialog_visible = false;
-                                let _ = settings.save();
+                                close_settings_dialog_from_icon(state, settings);
                             }
                         });
                     })
@@ -293,15 +294,104 @@ fn draw_settings_dialog(
                 if changed {
                     apply_star_render_settings(values, mode, state, settings);
                 }
+                ui.separator();
+                ui.label(egui::RichText::new("Hyperlane rendering").strong());
+                let mut hyperlane_values = state.settings_dialog.hyperlane_render;
+                let mut hyperlane_changed = false;
+                hyperlane_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut hyperlane_values.base_thickness_percent_of_star,
+                            1.0..=25.0,
+                        )
+                        .suffix("%")
+                        .text("Base Hyperlane Line Thickness"),
+                    )
+                    .changed();
+                hyperlane_changed |= ui
+                    .add(
+                        egui::Slider::new(&mut hyperlane_values.base_opacity_percent, 0.0..=100.0)
+                            .suffix("%")
+                            .text("Base Hyperlane Opacity"),
+                    )
+                    .changed();
+                hyperlane_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut hyperlane_values.falloff_distance_percent,
+                            1.0..=100.0,
+                        )
+                        .suffix("%")
+                        .text("Falloff Distance"),
+                    )
+                    .changed();
+                hyperlane_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut hyperlane_values.falloff_thickness_percent,
+                            0.0..=100.0,
+                        )
+                        .suffix("%")
+                        .text("Falloff Thickness"),
+                    )
+                    .changed();
+                hyperlane_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut hyperlane_values.falloff_opacity_percent,
+                            0.0..=100.0,
+                        )
+                        .suffix("%")
+                        .text("Falloff Opacity"),
+                    )
+                    .changed();
+                if hyperlane_changed {
+                    apply_hyperlane_render_settings(hyperlane_values, state, settings);
+                }
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
                     if ui.button("Close").clicked() {
-                        state.settings_dialog.close_button();
-                        settings.settings_dialog_visible = false;
-                        let _ = settings.save();
+                        close_settings_dialog_from_button(state, settings);
                     }
                 });
             });
         });
+}
+
+fn close_settings_dialog_from_icon(
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+) {
+    close_settings_dialog(state, settings, SettingsDialogCloseSource::Icon);
+}
+
+fn close_settings_dialog_from_button(
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+) {
+    close_settings_dialog(state, settings, SettingsDialogCloseSource::Button);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SettingsDialogCloseSource {
+    Icon,
+    Button,
+}
+
+fn close_settings_dialog(
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+    source: SettingsDialogCloseSource,
+) {
+    match source {
+        SettingsDialogCloseSource::Icon => state.settings_dialog.close_icon(),
+        SettingsDialogCloseSource::Button => state.settings_dialog.close_button(),
+    }
+    settings.settings_dialog_position = state.settings_dialog.position;
+    settings.settings_dialog_visible = state.settings_dialog.visible;
+    settings.set_star_falloff_settings(state.star_falloff_settings);
+    settings.set_star_render_mode(state.star_render_mode);
+    settings.set_hyperlane_render_settings(state.hyperlane_render_settings);
+    let _ = settings.save();
 }
 
 fn settings_dialog_bounds(
@@ -361,6 +451,28 @@ fn apply_star_render_settings(
     if let Some(session) = state.session.as_mut() {
         session.view_model.apply_star_falloff_settings(values);
         session.view_model.apply_star_render_mode(mode);
+    }
+    let _ = settings.save();
+}
+
+fn apply_hyperlane_render_settings(
+    values: HyperlaneRenderSettings,
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+) {
+    let values = values.clamped();
+    let dirty =
+        hyperlane_visuals_dirty_after_settings_change(state.hyperlane_render_settings, values);
+    state.hyperlane_render_settings = values;
+    state.settings_dialog.set_hyperlane_render(values);
+    settings.set_hyperlane_render_settings(values);
+    settings.settings_dialog_position = state.settings_dialog.position;
+    settings.settings_dialog_visible = state.settings_dialog.visible;
+    if dirty {
+        state.status_message = "Updated hyperlane render settings".into();
+    }
+    if let Some(session) = state.session.as_mut() {
+        session.view_model.apply_hyperlane_render_settings(values);
     }
     let _ = settings.save();
 }

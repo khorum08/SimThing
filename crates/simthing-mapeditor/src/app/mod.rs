@@ -12,6 +12,7 @@ use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
 use crate::dialog::SettingsDialogModel;
 use crate::generation::GenerationProfile;
+use crate::hyperlane_buckets::{apply_hyperlane_render_settings_to_meta, HyperlaneRenderSettings};
 use crate::selection::StudioSelectionState;
 use crate::session::StudioSession;
 use crate::settings::EditorSettings;
@@ -95,6 +96,7 @@ pub struct StudioAppState {
     pub settings_dialog: SettingsDialogModel,
     pub star_falloff_settings: StarFalloffSettings,
     pub star_render_mode: StarRenderMode,
+    pub hyperlane_render_settings: HyperlaneRenderSettings,
 }
 
 impl StudioAppState {
@@ -103,6 +105,7 @@ impl StudioAppState {
         selection.selected_system_id = settings.last_selected_system_id;
         let star_falloff_settings = settings.star_falloff_settings();
         let star_render_mode = settings.star_render_mode();
+        let hyperlane_render_settings = settings.hyperlane_render_settings();
         Self {
             profile: settings.last_generation_params.clone(),
             session: None,
@@ -122,9 +125,11 @@ impl StudioAppState {
                 settings.settings_dialog_position,
                 star_falloff_settings,
                 star_render_mode,
+                hyperlane_render_settings,
             ),
             star_falloff_settings,
             star_render_mode,
+            hyperlane_render_settings,
         }
     }
 }
@@ -174,6 +179,10 @@ pub fn adopt_session(
         state.star_falloff_settings,
     );
     apply_star_render_mode_to_meta(&mut session.view_model.render_meta, state.star_render_mode);
+    apply_hyperlane_render_settings_to_meta(
+        &mut session.view_model.render_meta,
+        state.hyperlane_render_settings,
+    );
     state.generation_error = None;
     state.selection.clear();
     state.status_message = format!(

@@ -2,6 +2,10 @@
 
 use crate::view_model::StudioGalaxyRenderMeta;
 
+pub const HYPERLANE_EDGE_FALLOFF_FRACTION_EACH_SIDE: f32 = 0.10;
+pub const HYPERLANE_CORE_FRACTION: f32 = 0.80;
+pub const MIN_HYPERLANE_THICKNESS_WORLD: f32 = 0.025;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HyperlaneDepthBucket {
     Near,
@@ -26,6 +30,114 @@ impl HyperlaneCameraDepthThresholds {
             mid_max_distance: meta.hyperlane_depth_mid_max,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct HyperlaneRenderSettings {
+    pub base_thickness_percent_of_star: f32,
+    pub base_opacity_percent: f32,
+    pub falloff_distance_percent: f32,
+    pub falloff_thickness_percent: f32,
+    pub falloff_opacity_percent: f32,
+}
+
+impl Default for HyperlaneRenderSettings {
+    fn default() -> Self {
+        Self {
+            base_thickness_percent_of_star: 8.0,
+            base_opacity_percent: 75.0,
+            falloff_distance_percent: 100.0,
+            falloff_thickness_percent: 24.0,
+            falloff_opacity_percent: 16.0,
+        }
+    }
+}
+
+impl HyperlaneRenderSettings {
+    pub fn clamped(self) -> Self {
+        Self {
+            base_thickness_percent_of_star: self.base_thickness_percent_of_star.clamp(1.0, 25.0),
+            base_opacity_percent: self.base_opacity_percent.clamp(0.0, 100.0),
+            falloff_distance_percent: self.falloff_distance_percent.clamp(1.0, 100.0),
+            falloff_thickness_percent: self.falloff_thickness_percent.clamp(0.0, 100.0),
+            falloff_opacity_percent: self.falloff_opacity_percent.clamp(0.0, 100.0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HyperlaneVisual {
+    pub thickness_world: f32,
+    pub core_opacity: f32,
+    pub edge_falloff_fraction_each_side: f32,
+    pub visible: bool,
+}
+
+pub fn compute_hyperlane_visual(
+    camera_depth_percent: f32,
+    nearest_star_disc_width_world: f32,
+    settings: &HyperlaneRenderSettings,
+) -> HyperlaneVisual {
+    let settings = settings.clamped();
+    if settings.base_opacity_percent <= 0.0 {
+        return HyperlaneVisual {
+            thickness_world: 0.0,
+            core_opacity: 0.0,
+            edge_falloff_fraction_each_side: HYPERLANE_EDGE_FALLOFF_FRACTION_EACH_SIDE,
+            visible: false,
+        };
+    }
+
+    let star_width = nearest_star_disc_width_world.max(f32::EPSILON);
+    let max_base = star_width * 0.25;
+    let minimum = MIN_HYPERLANE_THICKNESS_WORLD
+        .min(max_base)
+        .max(f32::EPSILON);
+    let base_thickness =
+        (star_width * settings.base_thickness_percent_of_star / 100.0).clamp(minimum, max_base);
+    let target_thickness = base_thickness * settings.falloff_thickness_percent / 100.0;
+    let base_opacity = settings.base_opacity_percent / 100.0;
+    let target_opacity = base_opacity * settings.falloff_opacity_percent / 100.0;
+    let depth = camera_depth_percent.clamp(0.0, 100.0);
+    let falloff_at = settings.falloff_distance_percent;
+    let t = (depth / falloff_at.max(f32::EPSILON)).clamp(0.0, 1.0);
+
+    let thickness = lerp(base_thickness, target_thickness, t).max(minimum);
+    let opacity = lerp(base_opacity, target_opacity, t).clamp(0.0, 1.0);
+    HyperlaneVisual {
+        thickness_world: thickness.min(max_base),
+        core_opacity: opacity,
+        edge_falloff_fraction_each_side: HYPERLANE_EDGE_FALLOFF_FRACTION_EACH_SIDE,
+        visible: opacity > 0.0,
+    }
+}
+
+pub fn hyperlane_camera_depth_percent(
+    camera_position: [f32; 3],
+    from: [f32; 3],
+    to: [f32; 3],
+    meta: &StudioGalaxyRenderMeta,
+) -> f32 {
+    let distance = camera_distance_to_hyperlane_midpoint(camera_position, from, to);
+    let near = meta.star_near_distance.max(0.0);
+    let far = meta.star_far_distance.max(near + f32::EPSILON);
+    ((distance - near) / (far - near)).clamp(0.0, 1.0) * 100.0
+}
+
+pub fn apply_hyperlane_render_settings_to_meta(
+    meta: &mut StudioGalaxyRenderMeta,
+    settings: HyperlaneRenderSettings,
+) {
+    let settings = settings.clamped();
+    meta.hyperlane_render_settings = settings;
+    meta.lane_visibility_scale = settings.base_opacity_percent / 100.0;
+}
+
+pub fn hyperlane_visuals_dirty_after_settings_change(
+    previous: HyperlaneRenderSettings,
+    next: HyperlaneRenderSettings,
+) -> bool {
+    previous.clamped() != next.clamped()
 }
 
 pub fn classify_hyperlane_depth_bucket(normalized_midpoint_dist: f32) -> HyperlaneDepthBucket {
@@ -94,6 +206,10 @@ pub fn bucket_alpha_for_meta(bucket: HyperlaneDepthBucket, meta: &StudioGalaxyRe
 
 pub fn selected_incident_lane_alpha() -> f32 {
     0.95
+}
+
+fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
 }
 
 #[cfg(test)]
@@ -218,5 +334,90 @@ mod tests {
             selected_incident_lane_alpha()
                 > bucket_alpha_for_meta(HyperlaneDepthBucket::Near, &meta)
         );
+    }
+
+    #[test]
+    fn hyperlane_settings_defaults_exist() {
+        let settings = HyperlaneRenderSettings::default().clamped();
+        assert!(settings.base_thickness_percent_of_star > 0.0);
+        assert!(settings.base_thickness_percent_of_star <= 25.0);
+        assert!(settings.base_opacity_percent > 0.0);
+    }
+
+    #[test]
+    fn base_hyperlane_opacity_zero_hides_lanes() {
+        let settings = HyperlaneRenderSettings {
+            base_opacity_percent: 0.0,
+            ..Default::default()
+        };
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        assert!(!visual.visible);
+        assert_eq!(visual.core_opacity, 0.0);
+    }
+
+    #[test]
+    fn base_hyperlane_opacity_nonzero_keeps_lanes_visible() {
+        let settings = HyperlaneRenderSettings {
+            base_opacity_percent: 1.0,
+            ..Default::default()
+        };
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        assert!(visual.visible);
+        assert!(visual.core_opacity > 0.0);
+    }
+
+    #[test]
+    fn base_hyperlane_thickness_minimum_is_legible_nonzero() {
+        let settings = HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 1.0,
+            ..Default::default()
+        };
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        assert!(visual.thickness_world >= MIN_HYPERLANE_THICKNESS_WORLD);
+    }
+
+    #[test]
+    fn base_hyperlane_thickness_max_is_at_most_25_percent_of_star_disc() {
+        let settings = HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 100.0,
+            ..Default::default()
+        };
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        assert!(visual.thickness_world <= 2.5 + f32::EPSILON);
+    }
+
+    #[test]
+    fn hyperlane_visual_reaches_falloff_thickness_at_falloff_distance() {
+        let settings = HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 20.0,
+            falloff_distance_percent: 40.0,
+            falloff_thickness_percent: 50.0,
+            ..Default::default()
+        };
+        let visual = compute_hyperlane_visual(40.0, 10.0, &settings);
+        assert!((visual.thickness_world - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hyperlane_visual_reaches_falloff_opacity_at_falloff_distance() {
+        let settings = HyperlaneRenderSettings {
+            base_opacity_percent: 80.0,
+            falloff_distance_percent: 40.0,
+            falloff_opacity_percent: 25.0,
+            ..Default::default()
+        };
+        let visual = compute_hyperlane_visual(40.0, 10.0, &settings);
+        assert!((visual.core_opacity - 0.20).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hyperlane_visual_core_fraction_is_80_percent() {
+        assert!((HYPERLANE_CORE_FRACTION - 0.80).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hyperlane_visual_edge_falloff_is_10_percent_each_side() {
+        let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
+        assert!((visual.edge_falloff_fraction_each_side - 0.10).abs() < f32::EPSILON);
     }
 }

@@ -59,6 +59,7 @@
 | **BEVY-MAPGEN-EDITOR-PR2R7** — live Settings dialog for star blur/falloff controls | #735 | `b99c1a21` / merge `6d30c825` | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r7_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R8** — stable instanced star billboard renderer with runtime size/opacity response | #737 | branch evidence | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r8_results.md` |
 | **BEVY-MAPGEN-EDITOR-PR2R9** — Base Star Blur Radius controls actual billboard/circle radius + Crisp Circle mode | #738 | branch evidence | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r9_results.md` |
+| **BEVY-MAPGEN-EDITOR-PR2R10** — Settings X-close fix + live hyperlane render controls | #739 | branch evidence | PROBATION — `docs/tests/bevy_mapgen_editor_pr2r10_results.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

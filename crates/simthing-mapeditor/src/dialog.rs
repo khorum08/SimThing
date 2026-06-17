@@ -86,6 +86,7 @@ pub struct SettingsDialogModel {
     pub position: [f32; 2],
     pub star_render: StarFalloffSettings,
     pub star_render_mode: StarRenderMode,
+    pub hyperlane_render: crate::hyperlane_buckets::HyperlaneRenderSettings,
 }
 
 impl SettingsDialogModel {
@@ -94,12 +95,14 @@ impl SettingsDialogModel {
         position: [f32; 2],
         star_render: StarFalloffSettings,
         star_render_mode: StarRenderMode,
+        hyperlane_render: crate::hyperlane_buckets::HyperlaneRenderSettings,
     ) -> Self {
         Self {
             visible,
             position,
             star_render: star_render.clamped(),
             star_render_mode,
+            hyperlane_render: hyperlane_render.clamped(),
         }
     }
 
@@ -111,12 +114,16 @@ impl SettingsDialogModel {
         self.visible = !self.visible;
     }
 
-    pub fn close_icon(&mut self) {
+    pub fn close(&mut self) {
         self.visible = false;
     }
 
+    pub fn close_icon(&mut self) {
+        self.close();
+    }
+
     pub fn close_button(&mut self) {
-        self.visible = false;
+        self.close();
     }
 
     pub fn set_star_render(&mut self, star_render: StarFalloffSettings) {
@@ -125,6 +132,13 @@ impl SettingsDialogModel {
 
     pub fn set_star_render_mode(&mut self, star_render_mode: StarRenderMode) {
         self.star_render_mode = star_render_mode;
+    }
+
+    pub fn set_hyperlane_render(
+        &mut self,
+        hyperlane_render: crate::hyperlane_buckets::HyperlaneRenderSettings,
+    ) {
+        self.hyperlane_render = hyperlane_render.clamped();
     }
 }
 
@@ -176,11 +190,16 @@ mod tests {
             [520.0, 96.0],
             StarFalloffSettings::default(),
             StarRenderMode::default(),
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
         );
         assert!(!dialog.visible);
         assert_eq!(dialog.position, [520.0, 96.0]);
         assert_eq!(dialog.star_render, StarFalloffSettings::default());
         assert_eq!(dialog.star_render_mode, StarRenderMode::default());
+        assert_eq!(
+            dialog.hyperlane_render,
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default()
+        );
     }
 
     #[test]
@@ -191,8 +210,13 @@ mod tests {
             falloff_blur_radius_percent: 41.0,
             falloff_opacity_percent: 59.0,
         };
-        let mut dialog =
-            SettingsDialogModel::new(false, [520.0, 96.0], values, StarRenderMode::CrispCircle);
+        let mut dialog = SettingsDialogModel::new(
+            false,
+            [520.0, 96.0],
+            values,
+            StarRenderMode::CrispCircle,
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
+        );
         dialog.open();
         dialog.close_button();
         dialog.open();
@@ -208,6 +232,7 @@ mod tests {
             [520.0, 96.0],
             StarFalloffSettings::default(),
             StarRenderMode::default(),
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
         );
         dialog.close_icon();
         assert!(!dialog.visible);
@@ -220,6 +245,7 @@ mod tests {
             [520.0, 96.0],
             StarFalloffSettings::default(),
             StarRenderMode::default(),
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
         );
         dialog.close_button();
         assert!(!dialog.visible);
@@ -232,11 +258,122 @@ mod tests {
             [520.0, 96.0],
             StarFalloffSettings::default(),
             StarRenderMode::BloomStarburst,
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
         );
         dialog.set_star_render_mode(StarRenderMode::CrispCircle);
         dialog.open();
         dialog.close_icon();
         dialog.open();
         assert_eq!(dialog.star_render_mode, StarRenderMode::CrispCircle);
+    }
+
+    #[test]
+    fn settings_dialog_bottom_close_hides_dialog() {
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::default(),
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
+        );
+        dialog.close_button();
+        assert!(!dialog.visible);
+    }
+
+    #[test]
+    fn settings_dialog_close_paths_preserve_star_values() {
+        let values = StarFalloffSettings {
+            base_blur_radius: 0.37,
+            falloff_distance_percent: 61.0,
+            falloff_blur_radius_percent: 41.0,
+            falloff_opacity_percent: 59.0,
+        };
+        let mut icon_dialog = SettingsDialogModel::new(
+            true,
+            [520.0, 96.0],
+            values,
+            StarRenderMode::CrispCircle,
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
+        );
+        icon_dialog.close_icon();
+        let mut button_dialog = icon_dialog;
+        button_dialog.open();
+        button_dialog.close_button();
+        assert_eq!(icon_dialog.star_render, values);
+        assert_eq!(button_dialog.star_render, values);
+        assert_eq!(button_dialog.star_render_mode, StarRenderMode::CrispCircle);
+    }
+
+    #[test]
+    fn settings_dialog_close_paths_preserve_hyperlane_values() {
+        let hyperlane = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 14.0,
+            base_opacity_percent: 38.0,
+            falloff_distance_percent: 57.0,
+            falloff_thickness_percent: 24.0,
+            falloff_opacity_percent: 19.0,
+        };
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::default(),
+            hyperlane,
+        );
+        dialog.close_icon();
+        dialog.open();
+        dialog.close_button();
+        assert_eq!(dialog.hyperlane_render, hyperlane);
+    }
+
+    #[test]
+    fn settings_dialog_close_paths_preserve_values() {
+        let star = StarFalloffSettings {
+            base_blur_radius: 0.42,
+            ..Default::default()
+        };
+        let hyperlane = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            base_opacity_percent: 0.0,
+            ..Default::default()
+        };
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [640.0, 120.0],
+            star,
+            StarRenderMode::CrispCircle,
+            hyperlane,
+        );
+        dialog.close_icon();
+        dialog.open();
+        dialog.close_button();
+        assert_eq!(dialog.position, [640.0, 120.0]);
+        assert_eq!(dialog.star_render, star);
+        assert_eq!(dialog.star_render_mode, StarRenderMode::CrispCircle);
+        assert_eq!(dialog.hyperlane_render, hyperlane);
+    }
+
+    #[test]
+    fn settings_dialog_reopen_restores_position_and_values() {
+        let star = StarFalloffSettings {
+            falloff_opacity_percent: 45.0,
+            ..Default::default()
+        };
+        let hyperlane = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            falloff_thickness_percent: 33.0,
+            ..Default::default()
+        };
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [720.0, 144.0],
+            star,
+            StarRenderMode::BloomStarburst,
+            hyperlane,
+        );
+        dialog.close_icon();
+        dialog.open();
+        assert!(dialog.visible);
+        assert_eq!(dialog.position, [720.0, 144.0]);
+        assert_eq!(dialog.star_render, star);
+        assert_eq!(dialog.hyperlane_render, hyperlane);
     }
 }
