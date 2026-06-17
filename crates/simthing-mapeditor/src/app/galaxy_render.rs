@@ -20,6 +20,7 @@ use crate::starburst::{
 };
 use crate::view_model::{build_hyperlane_render_segments, HyperlaneRenderSegment};
 
+use super::camera::{HyperlaneRibbonRenderPath, StudioCamera, StudioViewMode};
 use super::GalaxySceneRoot;
 
 #[derive(Component)]
@@ -136,7 +137,7 @@ fn spawn_hyperlane_bucket(
     let mesh = build_hyperlane_bucket_mesh(
         &vm.hyperlane_render_segments(),
         bucket,
-        [0.0, 0.0, 0.0],
+        HyperlaneRibbonCamera::default(),
         &vm.render_meta,
     );
     let mesh_handle = meshes.add(mesh);
@@ -239,7 +240,8 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
 
 pub fn sync_hyperlane_colors_system(
     session: Res<super::StudioAppState>,
-    camera: Query<&GlobalTransform, With<super::camera::MainCamera>>,
+    studio_camera: Res<StudioCamera>,
+    camera_transform: Query<&GlobalTransform, With<super::camera::MainCamera>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     hyperlanes: Query<(
@@ -254,10 +256,17 @@ pub fn sync_hyperlane_colors_system(
     if session.view_model.hyperlanes.is_empty() {
         return;
     }
-    let Ok(cam) = camera.single() else {
+    let Ok(cam) = camera_transform.single() else {
         return;
     };
     let cam_pos = cam.translation();
+    let cam_transform = cam.compute_transform();
+    let camera = HyperlaneRibbonCamera {
+        position: cam_pos.to_array(),
+        right: (cam_transform.rotation * Vec3::X).to_array(),
+        up: (cam_transform.rotation * Vec3::Y).to_array(),
+        view_mode: studio_camera.view_mode(),
+    };
     let meta = &session.view_model.render_meta;
     let segments = build_hyperlane_render_segments(
         &session.view_model.hyperlanes,
@@ -266,7 +275,7 @@ pub fn sync_hyperlane_colors_system(
 
     for (mesh_handle, mat_handle, marker) in &hyperlanes {
         if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
-            *mesh = build_hyperlane_bucket_mesh(&segments, marker.0, cam_pos.to_array(), meta);
+            *mesh = build_hyperlane_bucket_mesh(&segments, marker.0, camera, meta);
         }
         if let Some(material) = materials.get_mut(&mat_handle.0) {
             material.base_color = Color::WHITE;
@@ -277,7 +286,7 @@ pub fn sync_hyperlane_colors_system(
 fn build_hyperlane_bucket_mesh(
     segments: &[HyperlaneRenderSegment],
     bucket: HyperlaneDepthBucket,
-    camera_position: [f32; 3],
+    camera: HyperlaneRibbonCamera,
     meta: &crate::view_model::StudioGalaxyRenderMeta,
 ) -> Mesh {
     let mut positions = Vec::new();
@@ -287,12 +296,12 @@ fn build_hyperlane_bucket_mesh(
     let nearest_star_width = nearest_camera_star_disc_width_world(meta);
     for lane in segments {
         let lane_bucket =
-            classify_hyperlane_camera_depth_bucket(camera_position, lane.from, lane.to, thresholds);
+            classify_hyperlane_camera_depth_bucket(camera.position, lane.from, lane.to, thresholds);
         if lane_bucket != bucket {
             continue;
         }
         let depth_percent =
-            hyperlane_camera_depth_percent(camera_position, lane.from, lane.to, meta);
+            hyperlane_camera_depth_percent(camera.position, lane.from, lane.to, meta);
         let visual = compute_hyperlane_visual(
             depth_percent,
             nearest_star_width,
@@ -301,12 +310,14 @@ fn build_hyperlane_bucket_mesh(
         if !visual.visible {
             continue;
         }
+        let width_dir = hyperlane_ribbon_width_dir(lane.from, lane.to, camera);
         push_hyperlane_visual_strip(
             &mut positions,
             &mut colors,
             &mut indices,
             lane.from,
             lane.to,
+            width_dir.to_array(),
             bucket,
             visual.thickness_world,
             visual.core_opacity,
@@ -322,25 +333,92 @@ fn build_hyperlane_bucket_mesh(
     mesh
 }
 
+#[derive(Debug, Clone, Copy)]
+struct HyperlaneRibbonCamera {
+    position: [f32; 3],
+    right: [f32; 3],
+    up: [f32; 3],
+    view_mode: StudioViewMode,
+}
+
+impl Default for HyperlaneRibbonCamera {
+    fn default() -> Self {
+        Self {
+            position: [40.0, 35.0, 40.0],
+            right: [1.0, 0.0, 0.0],
+            up: [0.0, 1.0, 0.0],
+            view_mode: StudioViewMode::ThreeD,
+        }
+    }
+}
+
+fn hyperlane_ribbon_width_dir(from: [f32; 3], to: [f32; 3], camera: HyperlaneRibbonCamera) -> Vec3 {
+    let from = Vec3::from_array(from);
+    let to = Vec3::from_array(to);
+    let Some(lane_dir) = normalized(to - from) else {
+        return Vec3::X;
+    };
+    match camera.view_mode.hyperlane_render_path() {
+        HyperlaneRibbonRenderPath::CameraFacing3D
+        | HyperlaneRibbonRenderPath::OverheadLegibility => {
+            let midpoint = (from + to) * 0.5;
+            let view_dir =
+                normalized(Vec3::from_array(camera.position) - midpoint).unwrap_or(Vec3::Y);
+            compute_camera_facing_width_dir(
+                lane_dir,
+                view_dir,
+                Vec3::from_array(camera.right),
+                Vec3::from_array(camera.up),
+            )
+        }
+    }
+}
+
+fn compute_camera_facing_width_dir(
+    lane_dir: Vec3,
+    view_dir: Vec3,
+    camera_right: Vec3,
+    camera_up: Vec3,
+) -> Vec3 {
+    let lane_dir = normalized(lane_dir).unwrap_or(Vec3::Z);
+    if let Some(width) = normalized(lane_dir.cross(view_dir)) {
+        return width;
+    }
+    stable_perpendicular(lane_dir, camera_right, camera_up)
+}
+
+fn stable_perpendicular(axis: Vec3, primary: Vec3, secondary: Vec3) -> Vec3 {
+    for candidate in [primary, secondary, Vec3::Y, Vec3::X, Vec3::Z] {
+        let projected = candidate - axis * candidate.dot(axis);
+        if let Some(width) = normalized(projected) {
+            return width;
+        }
+    }
+    Vec3::X
+}
+
+fn normalized(value: Vec3) -> Option<Vec3> {
+    if value.length_squared() > f32::EPSILON {
+        Some(value.normalize())
+    } else {
+        None
+    }
+}
+
 fn push_hyperlane_visual_strip(
     positions: &mut Vec<[f32; 3]>,
     colors: &mut Vec<[f32; 4]>,
     indices: &mut Vec<u32>,
     from: [f32; 3],
     to: [f32; 3],
+    width_dir: [f32; 3],
     bucket: HyperlaneDepthBucket,
     thickness_world: f32,
     core_opacity: f32,
 ) {
     let from = Vec3::from_array(from);
     let to = Vec3::from_array(to);
-    let delta = to - from;
-    let flat = Vec3::new(delta.x, 0.0, delta.z);
-    let perp = if flat.length_squared() > f32::EPSILON {
-        Vec3::new(-flat.z, 0.0, flat.x).normalize()
-    } else {
-        Vec3::X
-    };
+    let perp = normalized(Vec3::from_array(width_dir)).unwrap_or(Vec3::X);
     let half = thickness_world * 0.5;
     let core_half = half * HYPERLANE_CORE_FRACTION;
     let offsets = [-half, -core_half, core_half, half];
@@ -418,6 +496,7 @@ mod tests {
             &mut indices,
             [0.0, 0.0, 0.0],
             [10.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
             HyperlaneDepthBucket::Near,
             1.0,
             0.6,
@@ -428,5 +507,89 @@ mod tests {
         assert!((colors[2][3] - 0.6).abs() < f32::EPSILON);
         assert!((colors[5][3] - 0.6).abs() < f32::EPSILON);
         assert_eq!(colors[7][3], 0.0);
+    }
+
+    #[test]
+    fn camera_facing_ribbon_width_is_nonzero_for_edge_on_lane() {
+        let width = compute_camera_facing_width_dir(Vec3::X, Vec3::Z, Vec3::X, Vec3::Y);
+        assert!(width.length() > 0.99);
+        assert!(width.dot(Vec3::X).abs() < 1e-5);
+    }
+
+    #[test]
+    fn camera_facing_ribbon_uses_render_anchor_endpoints() {
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+        let mut indices = Vec::new();
+        let from = [2.0, 4.0, 6.0];
+        let to = [12.0, 4.0, 6.0];
+        push_hyperlane_visual_strip(
+            &mut positions,
+            &mut colors,
+            &mut indices,
+            from,
+            to,
+            [0.0, 0.0, 1.0],
+            HyperlaneDepthBucket::Near,
+            2.0,
+            0.8,
+        );
+        let from_mid = (Vec3::from_array(positions[0]) + Vec3::from_array(positions[6])) * 0.5;
+        let to_mid = (Vec3::from_array(positions[1]) + Vec3::from_array(positions[7])) * 0.5;
+        assert_eq!(from_mid.to_array(), from);
+        assert_eq!(to_mid.to_array(), to);
+    }
+
+    #[test]
+    fn camera_facing_ribbon_degenerate_case_uses_stable_fallback() {
+        let width = compute_camera_facing_width_dir(Vec3::X, Vec3::X, Vec3::X, Vec3::Y);
+        assert!(width.length() > 0.99);
+        assert!(width.dot(Vec3::X).abs() < 1e-5);
+        assert!(width.dot(Vec3::Y).abs() > 0.99);
+    }
+
+    #[test]
+    fn hyperlane_ribbon_preserves_anchor_height() {
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+        let mut indices = Vec::new();
+        push_hyperlane_visual_strip(
+            &mut positions,
+            &mut colors,
+            &mut indices,
+            [0.0, 4.0, 0.0],
+            [10.0, 8.0, 0.0],
+            [0.0, 0.0, 1.0],
+            HyperlaneDepthBucket::Near,
+            1.0,
+            0.6,
+        );
+        for from_vertex in [0, 2, 4, 6] {
+            assert_eq!(positions[from_vertex][1], 4.0);
+        }
+        for to_vertex in [1, 3, 5, 7] {
+            assert_eq!(positions[to_vertex][1], 8.0);
+        }
+    }
+
+    #[test]
+    fn hyperlane_ribbon_thickness_applies_settings() {
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+        let mut indices = Vec::new();
+        push_hyperlane_visual_strip(
+            &mut positions,
+            &mut colors,
+            &mut indices,
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            HyperlaneDepthBucket::Near,
+            2.0,
+            0.6,
+        );
+        let lower_edge = Vec3::from_array(positions[0]);
+        let upper_edge = Vec3::from_array(positions[6]);
+        assert!((lower_edge.distance(upper_edge) - 2.0).abs() < f32::EPSILON);
     }
 }

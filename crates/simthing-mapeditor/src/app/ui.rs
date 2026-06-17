@@ -562,6 +562,12 @@ fn draw_left_panel(
                 render_debug_controls(ui, state);
                 ui.separator();
                 ui.label("Camera");
+                ui.horizontal(|ui| {
+                    ui.label(format!("View: {}", camera.view_mode().label()));
+                    if ui.button("Toggle (Tab)").clicked() {
+                        camera.toggle_view_mode();
+                    }
+                });
                 if ui.button("Overhead (O)").clicked() {
                     snap_overhead(camera);
                 }

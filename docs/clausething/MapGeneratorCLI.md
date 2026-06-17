@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, `docs/tests/bevy_mapgen_editor_pr2r9_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r10_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, `docs/tests/bevy_mapgen_editor_pr2r9_results.md`, `docs/tests/bevy_mapgen_editor_pr2r10_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r11_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -684,3 +684,23 @@ PR2R10 repairs the Settings dialog top-right `X` close path and adds live hyperl
 - Star radius and hyperlane thickness are presentation metadata only; structural gridcell coordinates remain
   authoritative and hyperlane endpoints remain tied to shared render anchors.
 - Save/load/new and live SimThing simulation remain future work.
+
+### PR2R11 camera-facing hyperlane ribbons + strategic overhead view (2026-06-17)
+
+PR2R11 repairs edge-on foreground lane collapse and adds a presentation-only strategic view toggle:
+
+- Default 3D hyperlanes are camera-facing render ribbons. Their width vector is computed from lane direction
+  and the active camera basis so near/foreground lanes retain visible width as the camera rotates.
+- Ribbon width vectors are render/editor metadata only. They do not alter generated hyperlane endpoints,
+  topology, pathfinding semantics, or structural grid coordinates.
+- Hyperlane endpoints remain tied to the shared `StudioSystemRenderAnchor` positions used by stars, picking,
+  and selected incident-lane highlights.
+- `Tab` toggles between normal 3D view and an overhead strategic mode. Strategic mode snaps to a flat,
+  legibility-first overhead camera path and uses the same live hyperlane settings.
+- Overhead strategic view is presentation-only. Switching modes does not regenerate the galaxy, mutate render
+  anchors, recompute topology, or change structural map authority.
+- Hyperlane thickness/opacity/falloff settings remain render-only and apply live in both 3D and overhead
+  modes.
+- Structural gridcell coordinates and generated topology remain authoritative.
+- Save/load/new and live SimThing simulation remain future work. Clausewitz UI import / CSS/WebView remains
+  deferred research.

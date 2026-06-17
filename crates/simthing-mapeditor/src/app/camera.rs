@@ -27,6 +27,9 @@ pub struct StudioCamera {
     pub overhead: bool,
     pub move_speed: f32,
     pub rmb_held: bool,
+    view_mode: StudioViewMode,
+    saved_three_d_state: Option<OrbitCameraState>,
+    saved_overhead_state: Option<OrbitCameraState>,
 }
 
 impl Default for StudioCamera {
@@ -40,7 +43,45 @@ impl Default for StudioCamera {
             overhead: orbit.overhead,
             move_speed: 40.0,
             rmb_held: false,
+            view_mode: StudioViewMode::ThreeD,
+            saved_three_d_state: None,
+            saved_overhead_state: None,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioViewMode {
+    ThreeD,
+    OverheadStrategic,
+}
+
+impl StudioViewMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::ThreeD => "3D",
+            Self::OverheadStrategic => "Strategic overhead",
+        }
+    }
+
+    pub fn hyperlane_render_path(self) -> HyperlaneRibbonRenderPath {
+        match self {
+            Self::ThreeD => HyperlaneRibbonRenderPath::CameraFacing3D,
+            Self::OverheadStrategic => HyperlaneRibbonRenderPath::OverheadLegibility,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HyperlaneRibbonRenderPath {
+    CameraFacing3D,
+    OverheadLegibility,
+}
+
+pub fn toggle_studio_view_mode(mode: StudioViewMode) -> StudioViewMode {
+    match mode {
+        StudioViewMode::ThreeD => StudioViewMode::OverheadStrategic,
+        StudioViewMode::OverheadStrategic => StudioViewMode::ThreeD,
     }
 }
 
@@ -63,12 +104,49 @@ impl StudioCamera {
         self.overhead = state.overhead;
     }
 
+    pub fn view_mode(&self) -> StudioViewMode {
+        self.view_mode
+    }
+
+    pub fn toggle_view_mode(&mut self) {
+        match self.view_mode {
+            StudioViewMode::ThreeD => {
+                self.saved_three_d_state = Some(self.to_orbit_state());
+                self.view_mode = toggle_studio_view_mode(self.view_mode);
+                let mut state = self
+                    .saved_overhead_state
+                    .unwrap_or_else(|| strategic_overhead_state(self.orbit_target.to_array()));
+                state.orbit_target = self.orbit_target.to_array();
+                self.apply_orbit_state(state);
+            }
+            StudioViewMode::OverheadStrategic => {
+                self.saved_overhead_state = Some(self.to_orbit_state());
+                self.view_mode = toggle_studio_view_mode(self.view_mode);
+                let state = self.saved_three_d_state.unwrap_or_default();
+                self.apply_orbit_state(state);
+            }
+        }
+    }
+
     pub fn apply_persisted(&mut self, persisted: &PersistedCameraState) {
         self.apply_orbit_state(OrbitCameraState::from(*persisted));
+        self.view_mode = StudioViewMode::ThreeD;
+        self.saved_three_d_state = None;
+        self.saved_overhead_state = None;
     }
 
     pub fn to_persisted(&self) -> PersistedCameraState {
         PersistedCameraState::from(&self.to_orbit_state())
+    }
+}
+
+pub fn strategic_overhead_state(target: [f32; 3]) -> OrbitCameraState {
+    OrbitCameraState {
+        orbit_yaw: 0.0,
+        orbit_pitch: std::f32::consts::FRAC_PI_2 - 0.001,
+        orbit_distance: 180.0,
+        orbit_target: target,
+        overhead: true,
     }
 }
 
@@ -87,12 +165,16 @@ pub fn reset_camera_after_generation(camera: &mut StudioCamera) {
     let mut state = camera.to_orbit_state();
     reset_orbit(&mut state);
     camera.apply_orbit_state(state);
+    camera.view_mode = StudioViewMode::ThreeD;
+    camera.saved_three_d_state = None;
+    camera.saved_overhead_state = None;
 }
 
 pub fn snap_overhead(camera: &mut StudioCamera) {
     let mut state = camera.to_orbit_state();
     snap_orbit(&mut state);
     camera.apply_orbit_state(state);
+    camera.view_mode = StudioViewMode::ThreeD;
 }
 
 pub fn camera_hotkeys_system(
@@ -104,6 +186,9 @@ pub fn camera_hotkeys_system(
     }
     if keyboard.just_pressed(KeyCode::KeyR) {
         reset_camera_after_generation(&mut camera);
+    }
+    if keyboard.just_pressed(KeyCode::Tab) {
+        camera.toggle_view_mode();
     }
 }
 
@@ -146,6 +231,10 @@ pub fn camera_control_system(
         let mut state = camera.to_orbit_state();
         apply_orbit_delta(&mut state, motion.x, motion.y, DEFAULT_ORBIT_SENSITIVITY);
         camera.apply_orbit_state(state);
+        if camera.view_mode == StudioViewMode::OverheadStrategic {
+            camera.overhead = true;
+            camera.orbit_pitch = std::f32::consts::FRAC_PI_2 - 0.001;
+        }
     } else {
         for _ in mouse_motion.read() {}
     }
@@ -170,5 +259,84 @@ pub fn camera_control_system(
     for mut transform in &mut transforms {
         transform.translation = target + offset;
         transform.look_at(target, Vec3::Y);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hyperlane_buckets::{compute_hyperlane_visual, HyperlaneRenderSettings};
+
+    #[test]
+    fn tab_toggles_view_mode_between_three_d_and_overhead() {
+        assert_eq!(
+            toggle_studio_view_mode(StudioViewMode::ThreeD),
+            StudioViewMode::OverheadStrategic
+        );
+        assert_eq!(
+            toggle_studio_view_mode(StudioViewMode::OverheadStrategic),
+            StudioViewMode::ThreeD
+        );
+        let mut camera = StudioCamera::default();
+        assert_eq!(camera.view_mode(), StudioViewMode::ThreeD);
+        camera.toggle_view_mode();
+        assert_eq!(camera.view_mode(), StudioViewMode::OverheadStrategic);
+        assert!(camera.overhead);
+        camera.toggle_view_mode();
+        assert_eq!(camera.view_mode(), StudioViewMode::ThreeD);
+    }
+
+    #[test]
+    fn overhead_mode_uses_legibility_render_path() {
+        assert_eq!(
+            StudioViewMode::OverheadStrategic.hyperlane_render_path(),
+            HyperlaneRibbonRenderPath::OverheadLegibility
+        );
+        assert_eq!(
+            StudioViewMode::ThreeD.hyperlane_render_path(),
+            HyperlaneRibbonRenderPath::CameraFacing3D
+        );
+    }
+
+    #[test]
+    fn settings_hyperlane_sliders_affect_three_d_mode() {
+        let mode = StudioViewMode::ThreeD;
+        let base = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
+        let adjusted = compute_hyperlane_visual(
+            0.0,
+            10.0,
+            &HyperlaneRenderSettings {
+                base_thickness_percent_of_star: 16.0,
+                base_opacity_percent: 40.0,
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            mode.hyperlane_render_path(),
+            HyperlaneRibbonRenderPath::CameraFacing3D
+        );
+        assert!(adjusted.thickness_world > base.thickness_world);
+        assert!(adjusted.core_opacity < base.core_opacity);
+    }
+
+    #[test]
+    fn settings_hyperlane_sliders_affect_overhead_mode() {
+        let mode = StudioViewMode::OverheadStrategic;
+        let base = compute_hyperlane_visual(25.0, 10.0, &HyperlaneRenderSettings::default());
+        let adjusted = compute_hyperlane_visual(
+            25.0,
+            10.0,
+            &HyperlaneRenderSettings {
+                falloff_thickness_percent: 5.0,
+                falloff_opacity_percent: 5.0,
+                ..Default::default()
+            },
+        );
+        assert_eq!(
+            mode.hyperlane_render_path(),
+            HyperlaneRibbonRenderPath::OverheadLegibility
+        );
+        assert!(adjusted.thickness_world < base.thickness_world);
+        assert!(adjusted.core_opacity < base.core_opacity);
     }
 }
