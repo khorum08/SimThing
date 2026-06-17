@@ -78,6 +78,7 @@ pub fn persist_settings_on_exit(
     copy.last_selected_system_id = state.selection.selected_system_id;
     copy.last_camera = camera.to_persisted();
     copy.set_star_falloff_settings(state.star_falloff_settings);
+    copy.set_star_render_mode(state.star_render_mode);
     copy.settings_dialog_position = state.settings_dialog.position;
     copy.settings_dialog_visible = state.settings_dialog.visible;
     if let Ok(window) = windows.single() {

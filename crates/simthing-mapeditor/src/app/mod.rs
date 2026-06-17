@@ -15,7 +15,10 @@ use crate::generation::GenerationProfile;
 use crate::selection::StudioSelectionState;
 use crate::session::StudioSession;
 use crate::settings::EditorSettings;
-use crate::star_render::{apply_star_falloff_settings_to_meta, StarFalloffSettings};
+use crate::star_render::{
+    apply_star_falloff_settings_to_meta, apply_star_render_mode_to_meta, StarFalloffSettings,
+    StarRenderMode,
+};
 
 use galaxy_render::{init_star_visual_assets, rebuild_galaxy_scene, StarVisualAssets};
 use resources::{StudioDialog, StudioSettings};
@@ -91,6 +94,7 @@ pub struct StudioAppState {
     pub show_hyperlanes: bool,
     pub settings_dialog: SettingsDialogModel,
     pub star_falloff_settings: StarFalloffSettings,
+    pub star_render_mode: StarRenderMode,
 }
 
 impl StudioAppState {
@@ -98,6 +102,7 @@ impl StudioAppState {
         let mut selection = StudioSelectionState::default();
         selection.selected_system_id = settings.last_selected_system_id;
         let star_falloff_settings = settings.star_falloff_settings();
+        let star_render_mode = settings.star_render_mode();
         Self {
             profile: settings.last_generation_params.clone(),
             session: None,
@@ -116,8 +121,10 @@ impl StudioAppState {
                 settings.settings_dialog_visible,
                 settings.settings_dialog_position,
                 star_falloff_settings,
+                star_render_mode,
             ),
             star_falloff_settings,
+            star_render_mode,
         }
     }
 }
@@ -166,6 +173,7 @@ pub fn adopt_session(
         &mut session.view_model.render_meta,
         state.star_falloff_settings,
     );
+    apply_star_render_mode_to_meta(&mut session.view_model.render_meta, state.star_render_mode);
     state.generation_error = None;
     state.selection.clear();
     state.status_message = format!(

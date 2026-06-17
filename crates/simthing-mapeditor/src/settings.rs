@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::camera_control::OrbitCameraState;
 use crate::generation::GenerationProfile;
-use crate::star_render::StarFalloffSettings;
+use crate::star_render::{StarFalloffSettings, StarRenderMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PersistedCameraState {
@@ -89,6 +89,8 @@ pub struct EditorSettings {
     pub falloff_star_blur_radius_percent: f32,
     #[serde(default = "default_falloff_star_opacity_percent")]
     pub falloff_star_opacity_percent: f32,
+    #[serde(default)]
+    pub star_render_mode: StarRenderMode,
     #[serde(default = "default_settings_dialog_position")]
     pub settings_dialog_position: [f32; 2],
     #[serde(default)]
@@ -115,6 +117,7 @@ impl Default for EditorSettings {
             falloff_distance_percent: star.falloff_distance_percent,
             falloff_star_blur_radius_percent: star.falloff_blur_radius_percent,
             falloff_star_opacity_percent: star.falloff_opacity_percent,
+            star_render_mode: StarRenderMode::default(),
             settings_dialog_position: default_settings_dialog_position(),
             settings_dialog_visible: false,
         }
@@ -183,6 +186,14 @@ impl EditorSettings {
         self.falloff_distance_percent = settings.falloff_distance_percent;
         self.falloff_star_blur_radius_percent = settings.falloff_blur_radius_percent;
         self.falloff_star_opacity_percent = settings.falloff_opacity_percent;
+    }
+
+    pub fn star_render_mode(&self) -> StarRenderMode {
+        self.star_render_mode
+    }
+
+    pub fn set_star_render_mode(&mut self, mode: StarRenderMode) {
+        self.star_render_mode = mode;
     }
 }
 
@@ -269,17 +280,29 @@ mod tests {
             falloff_blur_radius_percent: 33.0,
             falloff_opacity_percent: 47.0,
         });
+        settings.set_star_render_mode(StarRenderMode::CrispCircle);
         settings.settings_dialog_position = [640.0, 120.0];
         settings.settings_dialog_visible = true;
         let text = ron::ser::to_string_pretty(&settings, Default::default()).expect("serialize");
         assert!(text.contains("base_star_blur_radius"));
         assert!(text.contains("falloff_distance_percent"));
+        assert!(text.contains("star_render_mode"));
         let loaded: EditorSettings = ron::from_str(&text).expect("parse");
         assert_eq!(
             loaded.star_falloff_settings(),
             settings.star_falloff_settings()
         );
+        assert_eq!(loaded.star_render_mode(), StarRenderMode::CrispCircle);
         assert_eq!(loaded.settings_dialog_position, [640.0, 120.0]);
         assert!(loaded.settings_dialog_visible);
+    }
+
+    #[test]
+    fn star_render_mode_persists_if_settings_persistence_is_implemented() {
+        let mut settings = EditorSettings::default();
+        settings.set_star_render_mode(StarRenderMode::CrispCircle);
+        let text = ron::ser::to_string_pretty(&settings, Default::default()).expect("serialize");
+        let loaded: EditorSettings = ron::from_str(&text).expect("parse");
+        assert_eq!(loaded.star_render_mode(), StarRenderMode::CrispCircle);
     }
 }

@@ -11,7 +11,9 @@ use crate::hyperlane_buckets::{
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::{prepare_star_billboard_instances, StarBillboardInstance};
-use crate::starburst::{generate_star_aura_image, generate_starburst_image};
+use crate::starburst::{
+    generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
+};
 use crate::view_model::build_hyperlane_render_segments;
 
 use super::GalaxySceneRoot;
@@ -38,6 +40,7 @@ pub struct SelectedHyperlaneHighlight;
 pub struct StarVisualAssets {
     pub core_texture: Handle<Image>,
     pub aura_texture: Handle<Image>,
+    pub circle_texture: Handle<Image>,
     pub quad: Handle<Mesh>,
 }
 
@@ -48,10 +51,12 @@ pub fn init_star_visual_assets(
 ) {
     let core_texture = images.add(generate_starburst_image(64));
     let aura_texture = images.add(generate_star_aura_image(64));
+    let circle_texture = images.add(generate_star_circle_image(64));
     let quad = meshes.add(Rectangle::new(1.0, 1.0));
     commands.insert_resource(StarVisualAssets {
         core_texture,
         aura_texture,
+        circle_texture,
         quad,
     });
 }

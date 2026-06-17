@@ -77,6 +77,43 @@ pub fn generate_star_aura_image(size: u32) -> Image {
     )
 }
 
+pub fn generate_star_circle_image(size: u32) -> Image {
+    let mut data = vec![0u8; (size * size * 4) as usize];
+    let center = size as f32 * 0.5;
+    let inv_center = 1.0 / center.max(1.0);
+    for y in 0..size {
+        for x in 0..size {
+            let dx = x as f32 - center;
+            let dy = y as f32 - center;
+            let dist = (dx * dx + dy * dy).sqrt() * inv_center;
+            let edge = if dist <= 0.94 {
+                1.0
+            } else if dist <= 1.0 {
+                (1.0 - dist) / 0.06
+            } else {
+                0.0
+            };
+            let alpha = edge.clamp(0.0, 1.0);
+            let idx = ((y * size + x) * 4) as usize;
+            data[idx] = 245;
+            data[idx + 1] = 250;
+            data[idx + 2] = 255;
+            data[idx + 3] = (255.0 * alpha) as u8;
+        }
+    }
+    Image::new(
+        Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba8UnormSrgb,
+        default(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,5 +128,14 @@ mod tests {
     fn starburst_billboard_faces_camera_helper() {
         let forward = starburst_billboard_forward(Vec3::ZERO, Vec3::new(0.0, 0.0, 10.0));
         assert!(forward.z > 0.9);
+    }
+
+    #[test]
+    fn crisp_circle_texture_has_opaque_center_and_transparent_corner() {
+        let image = generate_star_circle_image(16);
+        let center_idx = ((8 * 16 + 8) * 4 + 3) as usize;
+        let corner_idx = 3;
+        assert!(image.data.as_ref().expect("image bytes")[center_idx] > 240);
+        assert_eq!(image.data.as_ref().expect("image bytes")[corner_idx], 0);
     }
 }

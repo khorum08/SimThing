@@ -25,6 +25,7 @@ pub struct StudioGalaxyRenderMeta {
     pub star_far_aura_alpha: f32,
     pub star_near_aura_alpha: f32,
     pub star_falloff_settings: crate::star_render::StarFalloffSettings,
+    pub star_render_mode: crate::star_render::StarRenderMode,
     pub selected_star_scale_multiplier: f32,
     pub hovered_star_scale_multiplier: f32,
     pub lane_near_alpha: f32,
@@ -56,6 +57,7 @@ impl Default for StudioGalaxyRenderMeta {
             star_far_aura_alpha: 0.008,
             star_near_aura_alpha: 0.22,
             star_falloff_settings: crate::star_render::StarFalloffSettings::default(),
+            star_render_mode: crate::star_render::StarRenderMode::default(),
             selected_star_scale_multiplier: 1.85,
             hovered_star_scale_multiplier: 1.22,
             lane_near_alpha: 0.75,
@@ -248,6 +250,10 @@ impl StudioGalaxyViewModel {
         settings: crate::star_render::StarFalloffSettings,
     ) {
         crate::star_render::apply_star_falloff_settings_to_meta(&mut self.render_meta, settings);
+    }
+
+    pub fn apply_star_render_mode(&mut self, mode: crate::star_render::StarRenderMode) {
+        crate::star_render::apply_star_render_mode_to_meta(&mut self.render_meta, mode);
     }
 }
 

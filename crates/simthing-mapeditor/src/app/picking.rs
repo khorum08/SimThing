@@ -10,11 +10,13 @@ use crate::selection::{
 };
 use crate::star_render::{
     compute_star_distance_visual, normalized_billboard_camera_depth_percent,
-    star_emissive_strength, StarBillboardRenderSettings,
+    star_emissive_strength, StarBillboardRenderSettings, StarRenderMode,
 };
 
 use super::camera::MainCamera;
-use super::galaxy_render::{rebuild_highlight_hyperlanes, GalaxyStar, StarVisualLayer};
+use super::galaxy_render::{
+    rebuild_highlight_hyperlanes, GalaxyStar, StarVisualAssets, StarVisualLayer,
+};
 use super::StudioAppState;
 
 pub fn selection_keyboard_system(
@@ -114,6 +116,7 @@ pub fn sync_star_visuals_system(
         &mut Transform,
         &MeshMaterial3d<StandardMaterial>,
     )>,
+    assets: Res<StarVisualAssets>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let Some(session) = state.session.as_ref() else {
@@ -131,20 +134,44 @@ pub fn sync_star_visuals_system(
         let distance = camera_pos.distance(instance.anchor_position);
         let depth_percent = normalized_billboard_camera_depth_percent(distance, &settings);
         let visual = compute_star_distance_visual(depth_percent, selected, hovered, &settings);
-        let (layer_scale, alpha, emissive_factor, color) = match star.layer {
-            StarVisualLayer::Core => (visual.core_scale, visual.core_alpha, 1.0, (0.88, 0.95, 1.0)),
-            StarVisualLayer::Aura => (
-                visual.aura_radius,
-                visual.aura_alpha,
-                0.20,
-                (0.34, 0.66, 1.0),
-            ),
-        };
+        let (layer_scale, alpha, emissive_factor, color, texture) =
+            match (settings.render_mode, star.layer) {
+                (StarRenderMode::BloomStarburst, StarVisualLayer::Core) => (
+                    visual.core_scale,
+                    visual.core_alpha,
+                    1.0,
+                    (0.88, 0.95, 1.0),
+                    assets.core_texture.clone(),
+                ),
+                (StarRenderMode::BloomStarburst, StarVisualLayer::Aura) => (
+                    visual.aura_radius,
+                    visual.aura_alpha,
+                    0.20,
+                    (0.34, 0.66, 1.0),
+                    assets.aura_texture.clone(),
+                ),
+                (StarRenderMode::CrispCircle, StarVisualLayer::Core) => (
+                    visual.core_scale,
+                    visual.core_alpha,
+                    1.0,
+                    (0.88, 0.95, 1.0),
+                    assets.circle_texture.clone(),
+                ),
+                (StarRenderMode::CrispCircle, StarVisualLayer::Aura) => (
+                    visual.aura_radius,
+                    0.0,
+                    0.0,
+                    (0.34, 0.66, 1.0),
+                    assets.aura_texture.clone(),
+                ),
+            };
         transform.translation = instance.anchor_position;
         transform.scale = Vec3::splat(instance.base_scale_variation * layer_scale);
         if let Some(material) = materials.get_mut(&material_handle.0) {
             let emissive =
                 star_emissive_strength(instance.base_intensity_variation, selected, hovered);
+            material.base_color_texture = Some(texture.clone());
+            material.emissive_texture = Some(texture);
             material.base_color = Color::srgba(color.0, color.1, color.2, alpha);
             material.emissive = LinearRgba::new(
                 emissive * 1.25 * alpha * emissive_factor,
