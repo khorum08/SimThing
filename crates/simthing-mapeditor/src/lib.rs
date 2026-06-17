@@ -50,11 +50,12 @@ pub use scenario_io::{
 };
 pub use scenario_projection::{
     build_gpu_residency_readiness_from_scenario, build_gpu_structural_upload_packet_from_scenario,
-    build_structural_projection, prove_gpu_buffer_residency_blocking, to_structural_gpu_rows,
+    build_structural_projection, prove_gpu_buffer_residency_blocking,
+    prove_gpu_structural_validation_blocking, to_structural_gpu_rows,
     StudioGpuBufferResidencyProof, StudioGpuLinkRow, StudioGpuLocationRow,
     StudioGpuResidencyReadiness, StudioGpuStructuralFrameRow, StudioGpuStructuralUploadError,
-    StudioGpuStructuralUploadPacket, StudioLinkIndexRow, StudioLocationIndexRow,
-    StudioStructuralProjection,
+    StudioGpuStructuralUploadPacket, StudioGpuStructuralValidationProof, StudioLinkIndexRow,
+    StudioLocationIndexRow, StudioStructuralProjection,
 };
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::{StudioScenarioSummary, StudioSession, StudioSessionSource};
