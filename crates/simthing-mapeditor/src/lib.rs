@@ -6,6 +6,7 @@
 pub mod camera_control;
 pub mod dialog;
 pub mod generation;
+pub mod hydration;
 pub mod hyperlane_buckets;
 pub mod panel_layout;
 pub mod selection;
@@ -32,6 +33,9 @@ pub fn run() {
 
 pub use dialog::{StudioAction, WarningDialogModel};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
+pub use hydration::{
+    hydrate_generation_into_studio_grid, StudioHydrationBoundary, StudioHydrationError,
+};
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::StudioSession;
 pub use settings::{EditorSettings, PersistedCameraState, WindowModeSetting};

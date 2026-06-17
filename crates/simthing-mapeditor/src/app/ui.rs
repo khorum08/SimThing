@@ -115,22 +115,26 @@ pub fn studio_ui_system(
         state.generation_busy = true;
         let profile = state.profile.clone();
         match run_generation(&profile) {
-            Ok(output) => {
-                let session = StudioSession::from_generation(profile, output);
-                adopt_session(session, &mut settings, &mut state);
-                if let Some(session) = state.session.as_ref() {
-                    rebuild_galaxy_scene(
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        &assets,
-                        &mut scene_root,
-                        session,
-                    );
+            Ok(output) => match StudioSession::from_generation(profile, output) {
+                Ok(session) => {
+                    adopt_session(session, &mut settings, &mut state);
+                    if let Some(session) = state.session.as_ref() {
+                        rebuild_galaxy_scene(
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &assets,
+                            &mut scene_root,
+                            session,
+                        );
+                    }
+                    reset_camera_after_generation(&mut camera);
+                    let _ = settings.save();
                 }
-                reset_camera_after_generation(&mut camera);
-                let _ = settings.save();
-            }
+                Err(err) => {
+                    state.generation_error = Some(err.to_string());
+                }
+            },
             Err(err) => {
                 state.generation_error = Some(err.to_string());
             }

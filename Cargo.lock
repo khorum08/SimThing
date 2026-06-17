@@ -4989,6 +4989,7 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
+ "simthing-core",
  "simthing-mapgenerator",
  "tempfile",
  "thiserror 2.0.18",

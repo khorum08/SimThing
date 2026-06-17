@@ -20,6 +20,7 @@ directories = "6"
 ron = "0.8"
 serde = { workspace = true }
 serde_json = { workspace = true }
+simthing-core = { path = "../simthing-core" }
 simthing-mapgenerator = { path = "../simthing-mapgenerator" }
 thiserror = { workspace = true }
 
