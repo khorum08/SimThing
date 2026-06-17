@@ -74,6 +74,7 @@
 | **SCENARIO-SAVELOAD-UI-0** - Studio Save Scenario / Load Scenario UI over scenario authority | branch evidence | branch evidence | PROBATION - `docs/tests/scenario_saveload_ui_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 | **SCENARIO-NATIVE-SESSION-0** - scenario-native loaded sessions; GPU-resident projection/readiness manifest; synthetic GenerationRunOutput bridge removed for loads | branch evidence | branch evidence | PROBATION - `docs/tests/scenario_native_session_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 | **STUDIO-PANEL-GAP-AND-SCENARIO-LINK-CANON-0** - left panel bottom inset equals left inset; canonical structural scenario links for GPU-ready projection | branch evidence | branch evidence | PROBATION - `docs/tests/studio_panel_gap_and_scenario_link_canon_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
+| **GPU-STRUCTURAL-UPLOAD-PACKET-0** - deterministic POD structural upload packet from SimThingScenarioSpec for GPU-resident horizon | branch evidence | branch evidence | PROBATION - `docs/tests/gpu_structural_upload_packet_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

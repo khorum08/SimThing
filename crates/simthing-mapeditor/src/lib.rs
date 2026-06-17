@@ -49,8 +49,10 @@ pub use scenario_io::{
     SCENARIO_FILE_SUFFIX, SCENARIO_TMP_SUFFIX,
 };
 pub use scenario_projection::{
-    build_gpu_residency_readiness_from_scenario, build_structural_projection,
-    StudioGpuResidencyReadiness, StudioLinkIndexRow, StudioLocationIndexRow,
+    build_gpu_residency_readiness_from_scenario, build_gpu_structural_upload_packet_from_scenario,
+    build_structural_projection, StudioGpuLinkRow, StudioGpuLocationRow,
+    StudioGpuResidencyReadiness, StudioGpuStructuralFrameRow, StudioGpuStructuralUploadError,
+    StudioGpuStructuralUploadPacket, StudioLinkIndexRow, StudioLocationIndexRow,
     StudioStructuralProjection,
 };
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
