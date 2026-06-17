@@ -1,0 +1,447 @@
+//! GPU-resident structural upload buffers.
+//!
+//! These buffers are projection/cache over scenario-derived structural rows — not model authority.
+
+use bytemuck::{Pod, Zeroable};
+use thiserror::Error;
+use wgpu::util::DeviceExt;
+use wgpu::{Buffer, BufferUsages, Device, Queue};
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Pod, Zeroable)]
+pub struct StructuralFrameGpuRow {
+    pub width: u32,
+    pub height: u32,
+    pub occupied_cells: u32,
+    pub location_count: u32,
+    pub link_count: u32,
+    pub reserved0: u32,
+    pub reserved1: u32,
+    pub reserved2: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Pod, Zeroable)]
+pub struct StructuralLocationGpuRow {
+    pub dense_index: u32,
+    pub simthing_id_raw: u32,
+    pub system_id: u32,
+    pub row: u32,
+    pub col: u32,
+    pub reserved0: u32,
+    pub reserved1: u32,
+    pub reserved2: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Pod, Zeroable)]
+pub struct StructuralLinkGpuRow {
+    pub from_dense_index: u32,
+    pub to_dense_index: u32,
+    pub reserved0: u32,
+    pub reserved1: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructuralUploadRows {
+    pub frame: StructuralFrameGpuRow,
+    pub locations: Vec<StructuralLocationGpuRow>,
+    pub links: Vec<StructuralLinkGpuRow>,
+}
+
+pub struct StructuralUploadGpuBuffers {
+    pub frame_buffer: Buffer,
+    pub location_buffer: Buffer,
+    pub link_buffer: Buffer,
+    pub location_count: u32,
+    pub link_count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructuralUploadGpuReport {
+    pub frame_bytes: u64,
+    pub location_bytes: u64,
+    pub link_bytes: u64,
+    pub location_count: u32,
+    pub link_count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructuralUploadReadback {
+    pub frame_bytes: Vec<u8>,
+    pub location_bytes: Vec<u8>,
+    pub link_bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum StructuralUploadError {
+    #[error("count overflow: {field}={value}")]
+    CountOverflow { field: &'static str, value: u64 },
+    #[error("structural upload requires at least one location row")]
+    EmptyLocationRows,
+    #[error("byte size overflow: {field}={bytes}")]
+    ByteSizeOverflow { field: &'static str, bytes: u64 },
+    #[error("frame location_count does not match location row slice")]
+    LocationCountMismatch,
+    #[error("frame link_count does not match link row slice")]
+    LinkCountMismatch,
+}
+
+pub const FRAME_ROW_BYTES: u64 = std::mem::size_of::<StructuralFrameGpuRow>() as u64;
+pub const LOCATION_ROW_BYTES: u64 = std::mem::size_of::<StructuralLocationGpuRow>() as u64;
+pub const LINK_ROW_BYTES: u64 = std::mem::size_of::<StructuralLinkGpuRow>() as u64;
+
+fn checked_row_bytes(
+    count: usize,
+    row_bytes: u64,
+    field: &'static str,
+) -> Result<u64, StructuralUploadError> {
+    let count_u64 = u64::try_from(count).map_err(|_| StructuralUploadError::CountOverflow {
+        field,
+        value: count as u64,
+    })?;
+    count_u64
+        .checked_mul(row_bytes)
+        .ok_or(StructuralUploadError::ByteSizeOverflow {
+            field,
+            bytes: count_u64.saturating_mul(row_bytes),
+        })
+}
+
+fn buffer_size_for_rows(
+    count: usize,
+    row_bytes: u64,
+    field: &'static str,
+) -> Result<u64, StructuralUploadError> {
+    if count == 0 {
+        Ok(row_bytes)
+    } else {
+        checked_row_bytes(count, row_bytes, field)
+    }
+}
+
+pub fn upload_structural_rows_to_gpu(
+    device: &Device,
+    queue: &Queue,
+    frame: StructuralFrameGpuRow,
+    locations: &[StructuralLocationGpuRow],
+    links: &[StructuralLinkGpuRow],
+) -> Result<(StructuralUploadGpuBuffers, StructuralUploadGpuReport), StructuralUploadError> {
+    if locations.is_empty() {
+        return Err(StructuralUploadError::EmptyLocationRows);
+    }
+    if locations.len() != frame.location_count as usize {
+        return Err(StructuralUploadError::LocationCountMismatch);
+    }
+    if links.len() != frame.link_count as usize {
+        return Err(StructuralUploadError::LinkCountMismatch);
+    }
+
+    let frame_bytes = FRAME_ROW_BYTES;
+    let location_bytes = checked_row_bytes(locations.len(), LOCATION_ROW_BYTES, "location_bytes")?;
+    let link_bytes = buffer_size_for_rows(links.len(), LINK_ROW_BYTES, "link_bytes")?;
+
+    let frame_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("structural_upload_frame"),
+        contents: bytemuck::bytes_of(&frame),
+        usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+    });
+
+    let location_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("structural_upload_locations"),
+        contents: bytemuck::cast_slice(locations),
+        usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+    });
+
+    let link_buffer = if links.is_empty() {
+        device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("structural_upload_links_empty"),
+            size: link_bytes,
+            usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        })
+    } else {
+        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("structural_upload_links"),
+            contents: bytemuck::cast_slice(links),
+            usage: BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
+        })
+    };
+
+    let _ = queue;
+
+    Ok((
+        StructuralUploadGpuBuffers {
+            frame_buffer,
+            location_buffer,
+            link_buffer,
+            location_count: frame.location_count,
+            link_count: frame.link_count,
+        },
+        StructuralUploadGpuReport {
+            frame_bytes,
+            location_bytes,
+            link_bytes,
+            location_count: frame.location_count,
+            link_count: frame.link_count,
+        },
+    ))
+}
+
+fn readback_buffer_bytes(device: &Device, queue: &Queue, src: &Buffer, byte_len: u64) -> Vec<u8> {
+    let staging = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("structural_upload_readback_staging"),
+        size: byte_len,
+        usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("structural_upload_readback_encoder"),
+    });
+    encoder.copy_buffer_to_buffer(src, 0, &staging, 0, byte_len);
+    queue.submit(Some(encoder.finish()));
+    let slice = staging.slice(..);
+    slice.map_async(wgpu::MapMode::Read, |_| {});
+    device.poll(wgpu::Maintain::Wait);
+    let data = slice.get_mapped_range();
+    let out = data.to_vec();
+    drop(data);
+    staging.unmap();
+    out
+}
+
+pub fn readback_structural_upload_blocking(
+    device: &Device,
+    queue: &Queue,
+    buffers: &StructuralUploadGpuBuffers,
+    report: &StructuralUploadGpuReport,
+) -> StructuralUploadReadback {
+    StructuralUploadReadback {
+        frame_bytes: readback_buffer_bytes(
+            device,
+            queue,
+            &buffers.frame_buffer,
+            report.frame_bytes,
+        ),
+        location_bytes: readback_buffer_bytes(
+            device,
+            queue,
+            &buffers.location_buffer,
+            report.location_bytes,
+        ),
+        link_bytes: readback_buffer_bytes(device, queue, &buffers.link_buffer, report.link_bytes),
+    }
+}
+
+pub fn source_row_bytes<T: Pod>(rows: &[T]) -> Vec<u8> {
+    bytemuck::cast_slice(rows).to_vec()
+}
+
+pub fn readback_matches_source(
+    readback: &StructuralUploadReadback,
+    frame: StructuralFrameGpuRow,
+    locations: &[StructuralLocationGpuRow],
+    links: &[StructuralLinkGpuRow],
+) -> bool {
+    readback.frame_bytes == bytemuck::bytes_of(&frame).to_vec()
+        && readback.location_bytes == source_row_bytes(locations)
+        && (links.is_empty() || readback.link_bytes == source_row_bytes(links))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::GpuContext;
+
+    #[test]
+    fn structural_gpu_rows_are_repr_c_stable() {
+        assert_eq!(std::mem::align_of::<StructuralFrameGpuRow>(), 4);
+        assert_eq!(std::mem::align_of::<StructuralLocationGpuRow>(), 4);
+        assert_eq!(std::mem::align_of::<StructuralLinkGpuRow>(), 4);
+    }
+
+    #[test]
+    fn structural_gpu_frame_row_size_is_32() {
+        assert_eq!(std::mem::size_of::<StructuralFrameGpuRow>(), 32);
+    }
+
+    #[test]
+    fn structural_gpu_location_row_size_is_32() {
+        assert_eq!(std::mem::size_of::<StructuralLocationGpuRow>(), 32);
+    }
+
+    #[test]
+    fn structural_gpu_link_row_size_is_16() {
+        assert_eq!(std::mem::size_of::<StructuralLinkGpuRow>(), 16);
+    }
+
+    fn sample_rows() -> (
+        StructuralFrameGpuRow,
+        Vec<StructuralLocationGpuRow>,
+        Vec<StructuralLinkGpuRow>,
+    ) {
+        let frame = StructuralFrameGpuRow {
+            width: 8,
+            height: 8,
+            occupied_cells: 2,
+            location_count: 2,
+            link_count: 1,
+            reserved0: 0,
+            reserved1: 0,
+            reserved2: 0,
+        };
+        let locations = vec![
+            StructuralLocationGpuRow {
+                dense_index: 0,
+                simthing_id_raw: 10,
+                system_id: 1,
+                row: 2,
+                col: 3,
+                reserved0: 0,
+                reserved1: 0,
+                reserved2: 0,
+            },
+            StructuralLocationGpuRow {
+                dense_index: 1,
+                simthing_id_raw: 11,
+                system_id: 2,
+                row: 2,
+                col: 4,
+                reserved0: 0,
+                reserved1: 0,
+                reserved2: 0,
+            },
+        ];
+        let links = vec![StructuralLinkGpuRow {
+            from_dense_index: 0,
+            to_dense_index: 1,
+            reserved0: 0,
+            reserved1: 0,
+        }];
+        (frame, locations, links)
+    }
+
+    #[test]
+    fn structural_upload_rejects_count_overflow() {
+        let frame = StructuralFrameGpuRow {
+            width: 1,
+            height: 1,
+            occupied_cells: 1,
+            location_count: u32::MAX,
+            link_count: 0,
+            reserved0: 0,
+            reserved1: 0,
+            reserved2: 0,
+        };
+        let err = checked_row_bytes(usize::MAX, LOCATION_ROW_BYTES, "location_bytes")
+            .expect_err("overflow");
+        assert!(matches!(
+            err,
+            StructuralUploadError::CountOverflow { .. }
+                | StructuralUploadError::ByteSizeOverflow { .. }
+        ));
+        let _ = frame;
+    }
+
+    #[test]
+    fn structural_upload_rejects_invalid_empty_location_packet() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let frame = StructuralFrameGpuRow {
+            width: 8,
+            height: 8,
+            occupied_cells: 0,
+            location_count: 0,
+            link_count: 0,
+            reserved0: 0,
+            reserved1: 0,
+            reserved2: 0,
+        };
+        let result = upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &[], &[]);
+        assert!(matches!(
+            result,
+            Err(StructuralUploadError::EmptyLocationRows)
+        ));
+    }
+
+    #[test]
+    fn structural_upload_allocates_gpu_buffers() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let (frame, locations, links) = sample_rows();
+        let (buffers, report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
+                .expect("upload");
+        assert_eq!(buffers.location_count, 2);
+        assert_eq!(buffers.link_count, 1);
+        assert_eq!(report.frame_bytes, FRAME_ROW_BYTES);
+        assert_eq!(report.location_bytes, 2 * LOCATION_ROW_BYTES);
+        assert_eq!(report.link_bytes, LINK_ROW_BYTES);
+    }
+
+    #[test]
+    fn structural_upload_reports_expected_byte_sizes() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let (frame, locations, links) = sample_rows();
+        let (_, report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
+                .expect("upload");
+        assert_eq!(report.frame_bytes, 32);
+        assert_eq!(report.location_bytes, 64);
+        assert_eq!(report.link_bytes, 16);
+    }
+
+    #[test]
+    fn structural_upload_readback_matches_frame_bytes() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let (frame, locations, links) = sample_rows();
+        let (buffers, report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
+                .expect("upload");
+        let readback =
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report);
+        assert_eq!(readback.frame_bytes, bytemuck::bytes_of(&frame).to_vec());
+    }
+
+    #[test]
+    fn structural_upload_readback_matches_location_bytes() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let (frame, locations, links) = sample_rows();
+        let (buffers, report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
+                .expect("upload");
+        let readback =
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report);
+        assert_eq!(readback.location_bytes, source_row_bytes(&locations));
+    }
+
+    #[test]
+    fn structural_upload_readback_matches_link_bytes() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let (frame, locations, links) = sample_rows();
+        let (buffers, report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, frame, &locations, &links)
+                .expect("upload");
+        let readback =
+            readback_structural_upload_blocking(&ctx.device, &ctx.queue, &buffers, &report);
+        assert!(readback_matches_source(
+            &readback, frame, &locations, &links
+        ));
+    }
+}
