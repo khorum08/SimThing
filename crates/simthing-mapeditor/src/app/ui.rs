@@ -8,7 +8,8 @@ use crate::dialog::{
 };
 use crate::generation::{run_generation, GenerationPreset, GenerationProfile};
 use crate::hyperlane_buckets::{
-    hyperlane_visuals_dirty_after_settings_change, HyperlaneRenderSettings,
+    apply_hyperlane_render_settings_to_meta, hyperlane_visuals_dirty_after_settings_change,
+    HyperlaneRenderSettings,
 };
 use crate::panel_layout::{
     clamp_dialog_rect_away_from_panels, compute_collapsed_panel_tab, compute_floating_panel_layout,
@@ -19,6 +20,7 @@ use crate::selection::selected_system_details;
 use crate::settings::WindowModeSetting;
 use crate::shape_params::spiral_arm_params_active;
 use crate::star_render::{
+    apply_star_falloff_settings_to_meta, apply_star_render_mode_to_meta,
     star_visuals_dirty_after_settings_change, StarFalloffSettings, StarRenderMode,
 };
 
@@ -399,10 +401,15 @@ fn draw_settings_dialog(
                 if hyperlane_changed {
                     apply_hyperlane_render_settings(hyperlane_values, state, settings);
                 }
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
-                    if ui.button("Close").clicked() {
-                        close_settings_dialog_from_button(state, settings);
+                ui.horizontal(|ui| {
+                    if ui.button("Reset").clicked() {
+                        reset_settings_dialog_values(state, settings);
                     }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Close").clicked() {
+                            close_settings_dialog_from_button(state, settings);
+                        }
+                    });
                 });
             });
         });
@@ -443,6 +450,32 @@ fn close_settings_dialog(
     settings.set_star_render_mode(state.star_render_mode);
     settings.set_hyperlane_render_settings(state.hyperlane_render_settings);
     let _ = settings.save();
+    if let Err(err) = super::save_current_studio_config(state, settings, None) {
+        state.status_message = format!("Studio config save failed: {err}");
+    }
+}
+
+fn reset_settings_dialog_values(
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+) {
+    let defaults = crate::studio_config::SimThingStudioConfig::default();
+    let (star, mode) = defaults.star_rendering.clone().to_star_settings();
+    let hyperlane = defaults.hyperlane_rendering.to_hyperlane_settings();
+    state.star_falloff_settings = star;
+    state.star_render_mode = mode;
+    state.hyperlane_render_settings = hyperlane;
+    state.settings_dialog.star_render = star;
+    state.settings_dialog.star_render_mode = mode;
+    state.settings_dialog.hyperlane_render = hyperlane;
+    settings.set_star_falloff_settings(star);
+    settings.set_star_render_mode(mode);
+    settings.set_hyperlane_render_settings(hyperlane);
+    if let Some(session) = state.session.as_mut() {
+        apply_star_falloff_settings_to_meta(&mut session.view_model.render_meta, star);
+        apply_star_render_mode_to_meta(&mut session.view_model.render_meta, mode);
+        apply_hyperlane_render_settings_to_meta(&mut session.view_model.render_meta, hyperlane);
+    }
 }
 
 fn settings_dialog_bounds(

@@ -89,4 +89,7 @@ pub fn persist_settings_on_exit(
         ];
     }
     let _ = copy.save();
+    if let Err(err) = super::save_current_studio_config(&state, &copy, Some(&camera)) {
+        bevy::log::warn!("failed to save studio config on exit: {err}");
+    }
 }

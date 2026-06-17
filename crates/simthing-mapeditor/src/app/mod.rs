@@ -20,6 +20,10 @@ use crate::star_render::{
     apply_star_falloff_settings_to_meta, apply_star_render_mode_to_meta, StarFalloffSettings,
     StarRenderMode,
 };
+use crate::studio_config::{
+    apply_studio_config_to_editor_settings, SimThingStudioConfig, StudioConfigLoadOutcome,
+    StudioViewModeSetting,
+};
 
 use galaxy_render::{init_star_visual_assets, rebuild_galaxy_scene, StarVisualAssets};
 use resources::{StudioDialog, StudioSettings};
@@ -27,11 +31,36 @@ use resources::{StudioDialog, StudioSettings};
 use crate::panel_layout;
 
 pub fn run_studio() {
-    let settings = EditorSettings::load();
+    let mut settings = EditorSettings::load();
+    let load_outcome = SimThingStudioConfig::load_at_startup();
+    let config_load_warning = match &load_outcome {
+        StudioConfigLoadOutcome::MissingDefaults => None,
+        StudioConfigLoadOutcome::Loaded { config, warnings } => {
+            apply_studio_config_to_editor_settings(config, &mut settings);
+            if warnings.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    "Studio config clamped values on load: {}",
+                    warnings.join("; ")
+                ))
+            }
+        }
+        StudioConfigLoadOutcome::RejectedDefaults { reason } => Some(format!(
+            "Studio config invalid; defaults loaded. ({reason})"
+        )),
+    };
+    let mut app_state = StudioAppState::from_settings(&settings);
+    if let StudioConfigLoadOutcome::Loaded { config, .. } = &load_outcome {
+        app_state.show_stars = config.view.show_stars;
+        app_state.show_hyperlanes = config.view.show_hyperlanes;
+        app_state.config_view_mode = config.view.view_mode;
+    }
+    app_state.config_load_warning = config_load_warning;
     App::new()
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(StudioSettings(settings.clone()))
-        .insert_resource(StudioAppState::from_settings(&settings))
+        .insert_resource(app_state)
         .insert_resource(StudioDialog::default())
         .insert_resource(GalaxySceneRoot::default())
         .add_plugins(
@@ -97,6 +126,8 @@ pub struct StudioAppState {
     pub star_falloff_settings: StarFalloffSettings,
     pub star_render_mode: StarRenderMode,
     pub hyperlane_render_settings: HyperlaneRenderSettings,
+    pub config_load_warning: Option<String>,
+    pub config_view_mode: StudioViewModeSetting,
 }
 
 impl StudioAppState {
@@ -130,8 +161,44 @@ impl StudioAppState {
             star_falloff_settings,
             star_render_mode,
             hyperlane_render_settings,
+            config_load_warning: None,
+            config_view_mode: StudioViewModeSetting::ThreeD,
         }
     }
+}
+
+pub(crate) fn view_mode_setting_from_camera(
+    camera: &camera::StudioCamera,
+) -> StudioViewModeSetting {
+    match camera.view_mode() {
+        camera::StudioViewMode::ThreeD => StudioViewModeSetting::ThreeD,
+        camera::StudioViewMode::OverheadStrategic => StudioViewModeSetting::OverheadStrategic,
+    }
+}
+
+pub(crate) fn save_current_studio_config(
+    state: &StudioAppState,
+    settings: &EditorSettings,
+    camera: Option<&camera::StudioCamera>,
+) -> Result<(), crate::studio_config::StudioConfigError> {
+    let view_mode = camera
+        .map(view_mode_setting_from_camera)
+        .unwrap_or(state.config_view_mode);
+    let camera_state = camera
+        .map(camera::StudioCamera::to_persisted)
+        .or_else(|| Some(settings.last_camera));
+    let config = SimThingStudioConfig::from_presentation_state(
+        state.settings_dialog.visible,
+        state.settings_dialog.position,
+        state.star_falloff_settings,
+        state.star_render_mode,
+        state.hyperlane_render_settings,
+        state.show_stars,
+        state.show_hyperlanes,
+        view_mode,
+        camera_state,
+    );
+    config.save_to_default_path()
 }
 
 impl Default for StudioAppState {
@@ -149,7 +216,11 @@ fn setup_scene(
     state.profile = settings.last_generation_params.clone();
     state.left_panel_collapsed = settings.left_panel_collapsed;
     state.left_panel_width_frac = panel_layout::PANEL_WIDTH_FRAC;
+    if let Some(warning) = state.config_load_warning.clone() {
+        state.status_message = warning;
+    }
     camera.apply_persisted(&settings.last_camera);
+    camera.apply_loaded_view_mode(state.config_view_mode);
     commands.spawn((
         DirectionalLight {
             illuminance: 800.0,
