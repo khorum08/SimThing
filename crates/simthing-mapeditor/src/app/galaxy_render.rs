@@ -1,20 +1,24 @@
 #![cfg(windows)]
 
 use bevy::prelude::*;
+use bevy::render::mesh::Indices;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_asset::RenderAssetUsages;
 
 use crate::hyperlane_buckets::{
-    bucket_alpha_for_meta, bucket_base_rgba, classify_hyperlane_camera_depth_bucket,
-    selected_incident_lane_alpha, HyperlaneCameraDepthThresholds, HyperlaneDepthBucket,
+    bucket_base_rgba, classify_hyperlane_camera_depth_bucket, compute_hyperlane_visual,
+    hyperlane_camera_depth_percent, selected_incident_lane_alpha, HyperlaneCameraDepthThresholds,
+    HyperlaneDepthBucket, HYPERLANE_CORE_FRACTION,
 };
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
-use crate::star_render::{prepare_star_billboard_instances, StarBillboardInstance};
+use crate::star_render::{
+    nearest_camera_star_disc_width_world, prepare_star_billboard_instances, StarBillboardInstance,
+};
 use crate::starburst::{
     generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
 };
-use crate::view_model::build_hyperlane_render_segments;
+use crate::view_model::{build_hyperlane_render_segments, HyperlaneRenderSegment};
 
 use super::GalaxySceneRoot;
 
@@ -129,25 +133,18 @@ fn spawn_hyperlane_bucket(
     vm: &crate::view_model::StudioGalaxyViewModel,
     bucket: HyperlaneDepthBucket,
 ) {
-    let positions: Vec<[f32; 3]> = vm
-        .hyperlane_render_segments()
-        .iter()
-        .filter(|lane| lane.depth_bucket == bucket)
-        .flat_map(|lane| {
-            [
-                [lane.from[0], lane.from[1], lane.from[2]],
-                [lane.to[0], lane.to[1], lane.to[2]],
-            ]
-        })
-        .collect();
-    let mut mesh = Mesh::new(PrimitiveTopology::LineList, RenderAssetUsages::default());
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    let mesh = build_hyperlane_bucket_mesh(
+        &vm.hyperlane_render_segments(),
+        bucket,
+        [0.0, 0.0, 0.0],
+        &vm.render_meta,
+    );
     let mesh_handle = meshes.add(mesh);
-    let (r, g, b, a) = bucket_base_rgba(bucket);
     let material = materials.add(StandardMaterial {
-        base_color: Color::srgba(r, g, b, a),
+        base_color: Color::WHITE,
         unlit: true,
         alpha_mode: AlphaMode::Blend,
+        cull_mode: None,
         ..default()
     });
     let idx = bucket_index(bucket);
@@ -262,44 +259,104 @@ pub fn sync_hyperlane_colors_system(
     };
     let cam_pos = cam.translation();
     let meta = &session.view_model.render_meta;
-    let thresholds = HyperlaneCameraDepthThresholds::from_meta(meta);
-    let mut near_positions = Vec::new();
-    let mut mid_positions = Vec::new();
-    let mut far_positions = Vec::new();
-
     let segments = build_hyperlane_render_segments(
         &session.view_model.hyperlanes,
         &session.view_model.render_anchors,
     );
-    for lane in &segments {
-        let bucket = classify_hyperlane_camera_depth_bucket(
-            cam_pos.to_array(),
-            lane.from,
-            lane.to,
-            thresholds,
-        );
-        let positions = match bucket {
-            HyperlaneDepthBucket::Near => &mut near_positions,
-            HyperlaneDepthBucket::Mid => &mut mid_positions,
-            HyperlaneDepthBucket::Far => &mut far_positions,
-        };
-        positions.push(lane.from);
-        positions.push(lane.to);
-    }
 
     for (mesh_handle, mat_handle, marker) in &hyperlanes {
-        let positions = match marker.0 {
-            HyperlaneDepthBucket::Near => &near_positions,
-            HyperlaneDepthBucket::Mid => &mid_positions,
-            HyperlaneDepthBucket::Far => &far_positions,
-        };
         if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions.clone());
+            *mesh = build_hyperlane_bucket_mesh(&segments, marker.0, cam_pos.to_array(), meta);
         }
-        let (r, g, b, _) = bucket_base_rgba(marker.0);
         if let Some(material) = materials.get_mut(&mat_handle.0) {
-            material.base_color = Color::srgba(r, g, b, bucket_alpha_for_meta(marker.0, meta));
+            material.base_color = Color::WHITE;
         }
+    }
+}
+
+fn build_hyperlane_bucket_mesh(
+    segments: &[HyperlaneRenderSegment],
+    bucket: HyperlaneDepthBucket,
+    camera_position: [f32; 3],
+    meta: &crate::view_model::StudioGalaxyRenderMeta,
+) -> Mesh {
+    let mut positions = Vec::new();
+    let mut colors = Vec::new();
+    let mut indices = Vec::new();
+    let thresholds = HyperlaneCameraDepthThresholds::from_meta(meta);
+    let nearest_star_width = nearest_camera_star_disc_width_world(meta);
+    for lane in segments {
+        let lane_bucket =
+            classify_hyperlane_camera_depth_bucket(camera_position, lane.from, lane.to, thresholds);
+        if lane_bucket != bucket {
+            continue;
+        }
+        let depth_percent =
+            hyperlane_camera_depth_percent(camera_position, lane.from, lane.to, meta);
+        let visual = compute_hyperlane_visual(
+            depth_percent,
+            nearest_star_width,
+            &meta.hyperlane_render_settings,
+        );
+        if !visual.visible {
+            continue;
+        }
+        push_hyperlane_visual_strip(
+            &mut positions,
+            &mut colors,
+            &mut indices,
+            lane.from,
+            lane.to,
+            bucket,
+            visual.thickness_world,
+            visual.core_opacity,
+        );
+    }
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh
+}
+
+fn push_hyperlane_visual_strip(
+    positions: &mut Vec<[f32; 3]>,
+    colors: &mut Vec<[f32; 4]>,
+    indices: &mut Vec<u32>,
+    from: [f32; 3],
+    to: [f32; 3],
+    bucket: HyperlaneDepthBucket,
+    thickness_world: f32,
+    core_opacity: f32,
+) {
+    let from = Vec3::from_array(from);
+    let to = Vec3::from_array(to);
+    let delta = to - from;
+    let flat = Vec3::new(delta.x, 0.0, delta.z);
+    let perp = if flat.length_squared() > f32::EPSILON {
+        Vec3::new(-flat.z, 0.0, flat.x).normalize()
+    } else {
+        Vec3::X
+    };
+    let half = thickness_world * 0.5;
+    let core_half = half * HYPERLANE_CORE_FRACTION;
+    let offsets = [-half, -core_half, core_half, half];
+    let alphas = [0.0, core_opacity, core_opacity, 0.0];
+    let (r, g, b, _) = bucket_base_rgba(bucket);
+    let base_index = positions.len() as u32;
+    for (offset, alpha) in offsets.into_iter().zip(alphas) {
+        let offset_vec = perp * offset;
+        positions.push((from + offset_vec).to_array());
+        colors.push([r, g, b, alpha]);
+        positions.push((to + offset_vec).to_array());
+        colors.push([r, g, b, alpha]);
+    }
+    for strip in 0..3 {
+        let i = base_index + strip * 2;
+        indices.extend_from_slice(&[i, i + 1, i + 2, i + 1, i + 3, i + 2]);
     }
 }
 
@@ -319,17 +376,57 @@ pub fn sync_render_debug_visibility_system(
         };
     }
     for mut visibility in &mut visibility_queries.p1() {
-        *visibility = if state.show_hyperlanes {
+        *visibility = if state.show_hyperlanes
+            && state
+                .hyperlane_render_settings
+                .clamped()
+                .base_opacity_percent
+                > 0.0
+        {
             Visibility::Visible
         } else {
             Visibility::Hidden
         };
     }
     for mut visibility in &mut visibility_queries.p2() {
-        *visibility = if state.show_hyperlanes {
+        *visibility = if state.show_hyperlanes
+            && state
+                .hyperlane_render_settings
+                .clamped()
+                .base_opacity_percent
+                > 0.0
+        {
             Visibility::Visible
         } else {
             Visibility::Hidden
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hyperlane_visual_strip_uses_transparent_edges_and_opaque_core() {
+        let mut positions = Vec::new();
+        let mut colors = Vec::new();
+        let mut indices = Vec::new();
+        push_hyperlane_visual_strip(
+            &mut positions,
+            &mut colors,
+            &mut indices,
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            HyperlaneDepthBucket::Near,
+            1.0,
+            0.6,
+        );
+        assert_eq!(positions.len(), 8);
+        assert_eq!(indices.len(), 18);
+        assert_eq!(colors[0][3], 0.0);
+        assert!((colors[2][3] - 0.6).abs() < f32::EPSILON);
+        assert!((colors[5][3] - 0.6).abs() < f32::EPSILON);
+        assert_eq!(colors[7][3], 0.0);
     }
 }

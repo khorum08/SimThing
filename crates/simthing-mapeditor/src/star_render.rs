@@ -209,6 +209,12 @@ pub fn star_distance_visual(
     compute_star_distance_visual(depth_percent, selected, hovered, &settings)
 }
 
+pub fn nearest_camera_star_disc_width_world(meta: &StudioGalaxyRenderMeta) -> f32 {
+    let settings = StarBillboardRenderSettings::from_meta(meta);
+    let visual = compute_star_distance_visual(0.0, false, false, &settings);
+    (star_world_scale(meta, 1.0) * visual.core_scale).max(f32::EPSILON)
+}
+
 pub fn compute_star_distance_visual(
     camera_depth_percent: f32,
     selected: bool,
@@ -687,6 +693,12 @@ mod tests {
     fn star_visual_metadata_is_render_only() {
         assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("editor render metadata only"));
         assert!(STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE.contains("bloom"));
+    }
+
+    #[test]
+    fn nearest_camera_star_disc_width_is_positive_render_value() {
+        let meta = star_visual_defaults();
+        assert!(nearest_camera_star_disc_width_world(&meta) > 0.0);
     }
 
     #[test]

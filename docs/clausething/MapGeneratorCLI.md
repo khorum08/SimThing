@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r9_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, `docs/tests/bevy_mapgen_editor_pr2r9_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r10_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -661,4 +661,26 @@ not visibly govern the rendered star footprint:
 - Star radius, blur, aura, opacity, luminosity, Bevy transforms, and render mode are presentation-only
   metadata. Structural gridcell coordinates remain authoritative, and hyperlane endpoints remain tied to the
   shared render anchors.
+- Save/load/new and live SimThing simulation remain future work.
+
+### PR2R10 Settings close + live hyperlane rendering (2026-06-17)
+
+PR2R10 repairs the Settings dialog top-right `X` close path and adds live hyperlane render controls:
+
+- The Settings `X` icon and bottom `Close` button now use the same hide/persist path. Closing hides the
+  dialog without destroying star or hyperlane values, and reopening restores the stored position and sliders.
+- A separator after `Star rendering` introduces `Hyperlane rendering` controls: `Base Hyperlane Line
+  Thickness`, `Base Hyperlane Opacity`, `Falloff Distance`, `Falloff Thickness`, and `Falloff Opacity`.
+- `Base Hyperlane Line Thickness` is measured as a percentage of the rendered nearest-camera star disc width
+  and clamps to the 1%-25% range; the minimum remains a nonzero legible visual line.
+- `Base Hyperlane Opacity` is a render-only master opacity scalar. Setting it to `0%` hides all hyperlanes
+  visually without deleting generated hyperlane data.
+- Hyperlane falloff controls are camera-depth presentation metadata. At the falloff distance, thickness and
+  opacity reach the configured percentages of their base values and then clamp at those targets.
+- Thick hyperlanes render as visual-only triangle strips with vertex-alpha soft edges: an 80% core and 10%
+  opacity falloff on each side.
+- Settings changes update render metadata and Bevy visual meshes/materials live. They do not regenerate the
+  galaxy, recompute topology, mutate the generated hyperlane graph, or alter runtime/simulation authority.
+- Star radius and hyperlane thickness are presentation metadata only; structural gridcell coordinates remain
+  authoritative and hyperlane endpoints remain tied to shared render anchors.
 - Save/load/new and live SimThing simulation remain future work.

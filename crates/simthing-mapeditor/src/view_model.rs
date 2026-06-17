@@ -32,6 +32,7 @@ pub struct StudioGalaxyRenderMeta {
     pub lane_mid_alpha: f32,
     pub lane_far_alpha: f32,
     pub lane_far_min_alpha: f32,
+    pub hyperlane_render_settings: crate::hyperlane_buckets::HyperlaneRenderSettings,
     pub hyperlane_depth_near_max: f32,
     pub hyperlane_depth_mid_max: f32,
 }
@@ -64,6 +65,7 @@ impl Default for StudioGalaxyRenderMeta {
             lane_mid_alpha: 0.42,
             lane_far_alpha: 0.16,
             lane_far_min_alpha: 0.045,
+            hyperlane_render_settings: crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
             hyperlane_depth_near_max: 100.0,
             hyperlane_depth_mid_max: 155.0,
         }
@@ -254,6 +256,16 @@ impl StudioGalaxyViewModel {
 
     pub fn apply_star_render_mode(&mut self, mode: crate::star_render::StarRenderMode) {
         crate::star_render::apply_star_render_mode_to_meta(&mut self.render_meta, mode);
+    }
+
+    pub fn apply_hyperlane_render_settings(
+        &mut self,
+        settings: crate::hyperlane_buckets::HyperlaneRenderSettings,
+    ) {
+        crate::hyperlane_buckets::apply_hyperlane_render_settings_to_meta(
+            &mut self.render_meta,
+            settings,
+        );
     }
 }
 
@@ -483,6 +495,116 @@ mod tests {
         assert_eq!(vm.stars.len(), star_count);
         assert_eq!(vm.hyperlanes.len(), hyperlane_count);
         assert_eq!(output.result.placement.systems.len(), star_count);
+    }
+
+    #[test]
+    fn hyperlane_settings_change_does_not_regenerate_galaxy() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let mut vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let seed = vm.seed;
+        let star_count = vm.stars.len();
+        let hyperlane_count = vm.hyperlanes.len();
+        let anchor_count = vm.render_anchors.len();
+        vm.apply_hyperlane_render_settings(crate::hyperlane_buckets::HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 12.0,
+            base_opacity_percent: 0.0,
+            falloff_distance_percent: 50.0,
+            falloff_thickness_percent: 25.0,
+            falloff_opacity_percent: 10.0,
+        });
+        assert_eq!(vm.seed, seed);
+        assert_eq!(vm.stars.len(), star_count);
+        assert_eq!(vm.hyperlanes.len(), hyperlane_count);
+        assert_eq!(vm.render_anchors.len(), anchor_count);
+        assert_eq!(output.result.base_hyperlane_edges.len(), hyperlane_count);
+    }
+
+    #[test]
+    fn hyperlane_settings_change_preserves_anchor_coherence() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let mut vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        vm.apply_hyperlane_render_settings(crate::hyperlane_buckets::HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 25.0,
+            base_opacity_percent: 100.0,
+            falloff_distance_percent: 40.0,
+            falloff_thickness_percent: 50.0,
+            falloff_opacity_percent: 25.0,
+        });
+        for segment in vm.hyperlane_render_segments() {
+            let from = anchor_for_system_str(&vm.render_anchors, &segment.from_system_id)
+                .expect("from anchor");
+            let to = anchor_for_system_str(&vm.render_anchors, &segment.to_system_id)
+                .expect("to anchor");
+            assert_eq!(segment.from, from.world_position);
+            assert_eq!(segment.to, to.world_position);
+        }
+    }
+
+    #[test]
+    fn base_hyperlane_thickness_updates_render_meta() {
+        let mut meta = StudioGalaxyRenderMeta::default();
+        let settings = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 13.0,
+            ..Default::default()
+        };
+        crate::hyperlane_buckets::apply_hyperlane_render_settings_to_meta(&mut meta, settings);
+        assert_eq!(
+            meta.hyperlane_render_settings
+                .base_thickness_percent_of_star,
+            13.0
+        );
+    }
+
+    #[test]
+    fn base_hyperlane_opacity_updates_render_meta() {
+        let mut meta = StudioGalaxyRenderMeta::default();
+        let settings = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            base_opacity_percent: 44.0,
+            ..Default::default()
+        };
+        crate::hyperlane_buckets::apply_hyperlane_render_settings_to_meta(&mut meta, settings);
+        assert_eq!(meta.hyperlane_render_settings.base_opacity_percent, 44.0);
+    }
+
+    #[test]
+    fn hyperlane_falloff_distance_updates_render_meta() {
+        let mut meta = StudioGalaxyRenderMeta::default();
+        let settings = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            falloff_distance_percent: 66.0,
+            ..Default::default()
+        };
+        crate::hyperlane_buckets::apply_hyperlane_render_settings_to_meta(&mut meta, settings);
+        assert_eq!(
+            meta.hyperlane_render_settings.falloff_distance_percent,
+            66.0
+        );
+    }
+
+    #[test]
+    fn hyperlane_falloff_thickness_updates_render_meta() {
+        let mut meta = StudioGalaxyRenderMeta::default();
+        let settings = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            falloff_thickness_percent: 22.0,
+            ..Default::default()
+        };
+        crate::hyperlane_buckets::apply_hyperlane_render_settings_to_meta(&mut meta, settings);
+        assert_eq!(
+            meta.hyperlane_render_settings.falloff_thickness_percent,
+            22.0
+        );
+    }
+
+    #[test]
+    fn hyperlane_falloff_opacity_updates_render_meta() {
+        let mut meta = StudioGalaxyRenderMeta::default();
+        let settings = crate::hyperlane_buckets::HyperlaneRenderSettings {
+            falloff_opacity_percent: 11.0,
+            ..Default::default()
+        };
+        crate::hyperlane_buckets::apply_hyperlane_render_settings_to_meta(&mut meta, settings);
+        assert_eq!(meta.hyperlane_render_settings.falloff_opacity_percent, 11.0);
     }
 
     #[test]

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::camera_control::OrbitCameraState;
 use crate::generation::GenerationProfile;
+use crate::hyperlane_buckets::HyperlaneRenderSettings;
 use crate::star_render::{StarFalloffSettings, StarRenderMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -91,6 +92,16 @@ pub struct EditorSettings {
     pub falloff_star_opacity_percent: f32,
     #[serde(default)]
     pub star_render_mode: StarRenderMode,
+    #[serde(default = "default_base_hyperlane_thickness_percent")]
+    pub base_hyperlane_thickness_percent: f32,
+    #[serde(default = "default_base_hyperlane_opacity_percent")]
+    pub base_hyperlane_opacity_percent: f32,
+    #[serde(default = "default_hyperlane_falloff_distance_percent")]
+    pub hyperlane_falloff_distance_percent: f32,
+    #[serde(default = "default_hyperlane_falloff_thickness_percent")]
+    pub hyperlane_falloff_thickness_percent: f32,
+    #[serde(default = "default_hyperlane_falloff_opacity_percent")]
+    pub hyperlane_falloff_opacity_percent: f32,
     #[serde(default = "default_settings_dialog_position")]
     pub settings_dialog_position: [f32; 2],
     #[serde(default)]
@@ -100,6 +111,7 @@ pub struct EditorSettings {
 impl Default for EditorSettings {
     fn default() -> Self {
         let star = StarFalloffSettings::default();
+        let hyperlane = HyperlaneRenderSettings::default();
         Self {
             window_mode: WindowModeSetting::default(),
             exclusive_fullscreen_enabled: false,
@@ -118,6 +130,11 @@ impl Default for EditorSettings {
             falloff_star_blur_radius_percent: star.falloff_blur_radius_percent,
             falloff_star_opacity_percent: star.falloff_opacity_percent,
             star_render_mode: StarRenderMode::default(),
+            base_hyperlane_thickness_percent: hyperlane.base_thickness_percent_of_star,
+            base_hyperlane_opacity_percent: hyperlane.base_opacity_percent,
+            hyperlane_falloff_distance_percent: hyperlane.falloff_distance_percent,
+            hyperlane_falloff_thickness_percent: hyperlane.falloff_thickness_percent,
+            hyperlane_falloff_opacity_percent: hyperlane.falloff_opacity_percent,
             settings_dialog_position: default_settings_dialog_position(),
             settings_dialog_visible: false,
         }
@@ -195,6 +212,26 @@ impl EditorSettings {
     pub fn set_star_render_mode(&mut self, mode: StarRenderMode) {
         self.star_render_mode = mode;
     }
+
+    pub fn hyperlane_render_settings(&self) -> HyperlaneRenderSettings {
+        HyperlaneRenderSettings {
+            base_thickness_percent_of_star: self.base_hyperlane_thickness_percent,
+            base_opacity_percent: self.base_hyperlane_opacity_percent,
+            falloff_distance_percent: self.hyperlane_falloff_distance_percent,
+            falloff_thickness_percent: self.hyperlane_falloff_thickness_percent,
+            falloff_opacity_percent: self.hyperlane_falloff_opacity_percent,
+        }
+        .clamped()
+    }
+
+    pub fn set_hyperlane_render_settings(&mut self, settings: HyperlaneRenderSettings) {
+        let settings = settings.clamped();
+        self.base_hyperlane_thickness_percent = settings.base_thickness_percent_of_star;
+        self.base_hyperlane_opacity_percent = settings.base_opacity_percent;
+        self.hyperlane_falloff_distance_percent = settings.falloff_distance_percent;
+        self.hyperlane_falloff_thickness_percent = settings.falloff_thickness_percent;
+        self.hyperlane_falloff_opacity_percent = settings.falloff_opacity_percent;
+    }
 }
 
 fn default_base_star_blur_radius() -> f32 {
@@ -211,6 +248,26 @@ fn default_falloff_star_blur_radius_percent() -> f32 {
 
 fn default_falloff_star_opacity_percent() -> f32 {
     StarFalloffSettings::default().falloff_opacity_percent
+}
+
+fn default_base_hyperlane_thickness_percent() -> f32 {
+    HyperlaneRenderSettings::default().base_thickness_percent_of_star
+}
+
+fn default_base_hyperlane_opacity_percent() -> f32 {
+    HyperlaneRenderSettings::default().base_opacity_percent
+}
+
+fn default_hyperlane_falloff_distance_percent() -> f32 {
+    HyperlaneRenderSettings::default().falloff_distance_percent
+}
+
+fn default_hyperlane_falloff_thickness_percent() -> f32 {
+    HyperlaneRenderSettings::default().falloff_thickness_percent
+}
+
+fn default_hyperlane_falloff_opacity_percent() -> f32 {
+    HyperlaneRenderSettings::default().falloff_opacity_percent
 }
 
 fn default_settings_dialog_position() -> [f32; 2] {
@@ -281,18 +338,31 @@ mod tests {
             falloff_opacity_percent: 47.0,
         });
         settings.set_star_render_mode(StarRenderMode::CrispCircle);
+        settings.set_hyperlane_render_settings(HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 12.0,
+            base_opacity_percent: 44.0,
+            falloff_distance_percent: 66.0,
+            falloff_thickness_percent: 22.0,
+            falloff_opacity_percent: 11.0,
+        });
         settings.settings_dialog_position = [640.0, 120.0];
         settings.settings_dialog_visible = true;
         let text = ron::ser::to_string_pretty(&settings, Default::default()).expect("serialize");
         assert!(text.contains("base_star_blur_radius"));
         assert!(text.contains("falloff_distance_percent"));
         assert!(text.contains("star_render_mode"));
+        assert!(text.contains("base_hyperlane_thickness_percent"));
+        assert!(text.contains("hyperlane_falloff_opacity_percent"));
         let loaded: EditorSettings = ron::from_str(&text).expect("parse");
         assert_eq!(
             loaded.star_falloff_settings(),
             settings.star_falloff_settings()
         );
         assert_eq!(loaded.star_render_mode(), StarRenderMode::CrispCircle);
+        assert_eq!(
+            loaded.hyperlane_render_settings(),
+            settings.hyperlane_render_settings()
+        );
         assert_eq!(loaded.settings_dialog_position, [640.0, 120.0]);
         assert!(loaded.settings_dialog_visible);
     }
@@ -304,5 +374,21 @@ mod tests {
         let text = ron::ser::to_string_pretty(&settings, Default::default()).expect("serialize");
         let loaded: EditorSettings = ron::from_str(&text).expect("parse");
         assert_eq!(loaded.star_render_mode(), StarRenderMode::CrispCircle);
+    }
+
+    #[test]
+    fn hyperlane_settings_persist_roundtrip() {
+        let mut settings = EditorSettings::default();
+        let hyperlane = HyperlaneRenderSettings {
+            base_thickness_percent_of_star: 14.0,
+            base_opacity_percent: 38.0,
+            falloff_distance_percent: 57.0,
+            falloff_thickness_percent: 24.0,
+            falloff_opacity_percent: 19.0,
+        };
+        settings.set_hyperlane_render_settings(hyperlane);
+        let text = ron::ser::to_string_pretty(&settings, Default::default()).expect("serialize");
+        let loaded: EditorSettings = ron::from_str(&text).expect("parse");
+        assert_eq!(loaded.hyperlane_render_settings(), hyperlane);
     }
 }
