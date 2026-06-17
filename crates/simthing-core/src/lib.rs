@@ -41,7 +41,10 @@ pub use eml_registry::{
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError, EmlTreeId, EmlTreeMeta,
     MAX_EML_TREE_NODES, WHITELISTED_FORMULA_CLASSES,
 };
-pub use ids::{advance_simthing_id_allocator_past, OverlayId, SimPropertyId, SimThingId};
+pub use ids::{
+    advance_simthing_id_allocator_past, OverlayId, SimPropertyId, SimThingId,
+    SimThingIdReservationError,
+};
 pub use intensity_eml::{
     compile_intensity_behavior_to_eml, intensity_eml_direct_cpu, intensity_tree_id,
     INTENSITY_EML_TREE_ID_BASE,

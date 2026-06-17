@@ -1,4 +1,8 @@
-use crate::ids::{advance_simthing_id_allocator_past, SimPropertyId, SimThingId};
+use std::collections::BTreeSet;
+
+use crate::ids::{
+    advance_simthing_id_allocator_past, SimPropertyId, SimThingId, SimThingIdReservationError,
+};
 use crate::overlay::Overlay;
 use crate::property::PropertyValue;
 use serde::{Deserialize, Serialize};
@@ -104,8 +108,23 @@ impl SimThing {
     }
 }
 
-pub fn reserve_simthing_ids_from_tree(root: &SimThing) {
-    advance_simthing_id_allocator_past(root.max_id_in_subtree());
+pub fn reserve_simthing_ids_from_tree(root: &SimThing) -> Result<(), SimThingIdReservationError> {
+    let mut seen = BTreeSet::new();
+    reserve_visit_simthings(root, &mut seen)?;
+    advance_simthing_id_allocator_past(root.max_id_in_subtree())
+}
+
+fn reserve_visit_simthings(
+    thing: &SimThing,
+    seen: &mut BTreeSet<u32>,
+) -> Result<(), SimThingIdReservationError> {
+    if !seen.insert(thing.id.raw()) {
+        return Err(SimThingIdReservationError::DuplicateId(thing.id.raw()));
+    }
+    for child in &thing.children {
+        reserve_visit_simthings(child, seen)?;
+    }
+    Ok(())
 }
 
 /// Compare an authored kind string (from RON / spec layer) to a runtime
@@ -156,7 +175,7 @@ mod tests {
         };
         world.add_child(loaded);
 
-        reserve_simthing_ids_from_tree(&world);
+        reserve_simthing_ids_from_tree(&world).expect("reserve ids");
 
         let spawned = SimThing::new(SimThingKind::Cohort, 0);
         assert!(spawned.id.raw() > 1_000_000);

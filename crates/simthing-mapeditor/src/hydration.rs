@@ -5,6 +5,7 @@ use std::collections::{BTreeSet, HashSet};
 use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_mapgenerator::{GalaxyGenerationResult, GenerationReport};
 use simthing_spec::{
+    apply_gridcell_property_edit, resolve_map_container, structural_property_value_u32,
     validate_stead_mapping_consistency, SimThingScenarioGrid, SimThingScenarioLink,
     SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
     SimThingStructuralGridPlacement, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
@@ -169,6 +170,7 @@ impl StudioRfAccumulatorReadiness {
 pub enum StudioHeatmapReadinessKind {
     BoundedTheaterEligible,
     AtlasRequired,
+    InvalidSteadMapping,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,6 +184,13 @@ pub struct StudioHeatmapReadiness {
 }
 
 impl StudioHeatmapReadiness {
+    pub fn is_ready(&self) -> bool {
+        !matches!(
+            self.readiness,
+            StudioHeatmapReadinessKind::InvalidSteadMapping
+        )
+    }
+
     pub fn from_scenario(scenario: &SimThingScenarioSpec) -> Result<Self, StudioHydrationError> {
         validate_stead_mapping_consistency(scenario)
             .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
@@ -241,6 +250,7 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
     let mut seen_system_ids = BTreeSet::new();
     let mut seen_coordinates = BTreeSet::new();
     let mut map_container = SimThing::new(SimThingKind::Location, 0);
+    let map_container_raw = map_container.id.raw();
     let mut placements = Vec::with_capacity(result.placement.systems.len());
 
     for system in &result.placement.systems {
@@ -320,7 +330,7 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
                 height: result.lattice.edge(),
                 occupied_cells: placements.len() as u64,
             },
-            map_container_id: STUDIO_MAP_CONTAINER_ID.to_string(),
+            map_container_id: map_container_raw.to_string(),
             placements,
         },
         links,
@@ -341,9 +351,8 @@ pub fn studio_projection_from_simthing_spec(
 ) -> Result<StudioHydrationBoundary, StudioHydrationError> {
     validate_stead_mapping_consistency(scenario)
         .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
-    let map_container = scenario
-        .galaxy_map_container()
-        .ok_or(StudioHydrationError::MissingMapContainer)?;
+    let map_container = resolve_map_container(scenario)
+        .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
     let mut seen_system_ids = BTreeSet::new();
     let mut seen_coordinates = BTreeSet::new();
     let mut gridcells = Vec::with_capacity(scenario.structural_grid.placements.len());
@@ -450,7 +459,7 @@ pub fn studio_projection_from_simthing_spec(
         grid: StudioHydratedGrid {
             root_id: STUDIO_WORLD_ROOT_ID.to_string(),
             root_kind: scenario.root.kind.clone(),
-            map_container_id: STUDIO_MAP_CONTAINER_ID.to_string(),
+            map_container_id: scenario.structural_grid.map_container_id.clone(),
             map_container_kind: map_container.kind.clone(),
             grid_width: scenario.structural_grid.frame.width,
             grid_height: scenario.structural_grid.frame.height,
@@ -503,8 +512,21 @@ pub fn rf_accumulator_readiness_from_simthing_spec(
 pub fn heatmap_readiness_from_simthing_spec(
     scenario: &SimThingScenarioSpec,
 ) -> StudioHeatmapReadiness {
-    StudioHeatmapReadiness::from_scenario(scenario)
-        .unwrap_or_else(|_| heatmap_readiness_from_valid_scenario(scenario))
+    match validate_stead_mapping_consistency(scenario) {
+        Ok(()) => heatmap_readiness_from_valid_scenario(scenario),
+        Err(err) => {
+            let width = scenario.structural_grid.frame.width;
+            let height = scenario.structural_grid.frame.height;
+            StudioHeatmapReadiness {
+                grid_width: width,
+                grid_height: height,
+                occupied_cells: scenario.structural_grid.frame.occupied_cells,
+                placement_count: scenario.structural_grid.placements.len() as u64,
+                readiness: StudioHeatmapReadinessKind::InvalidSteadMapping,
+                reason: err.to_string(),
+            }
+        }
+    }
 }
 
 fn heatmap_readiness_from_valid_scenario(
@@ -525,6 +547,9 @@ fn heatmap_readiness_from_valid_scenario(
         StudioHeatmapReadinessKind::AtlasRequired => {
             "structural layout is valid; dense Movement-Front execution requires atlas scheduling"
                 .to_string()
+        }
+        StudioHeatmapReadinessKind::InvalidSteadMapping => {
+            "invalid STEAD mapping must not reach valid-scenario heatmap classification".to_string()
         }
     };
     StudioHeatmapReadiness {
@@ -572,6 +597,7 @@ mod tests {
     fn small_simthing_spec_scenario() -> SimThingScenarioSpec {
         let mut root = SimThing::new(SimThingKind::World, 0);
         let mut map = SimThing::new(SimThingKind::Location, 0);
+        let map_raw = map.id.raw();
         let mut cell = SimThing::new(SimThingKind::Location, 0);
         add_u32_property(&mut cell, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, 1);
         add_u32_property(&mut cell, SCENARIO_STRUCTURAL_COL_PROPERTY_ID, 3);
@@ -591,7 +617,7 @@ mod tests {
                     height: 8,
                     occupied_cells: 1,
                 },
-                map_container_id: STUDIO_MAP_CONTAINER_ID.to_string(),
+                map_container_id: map_raw.to_string(),
                 placements: vec![SimThingStructuralGridPlacement {
                     location_id: "small_cell".to_string(),
                     target_id: "small_cell".to_string(),
@@ -676,7 +702,7 @@ mod tests {
     fn loaded_scenario_reserves_existing_simthing_ids() {
         let mut scenario = small_simthing_spec_scenario();
         scenario.root.id = simthing_core::SimThingId::from_session_raw(2_000_000);
-        simthing_spec::reserve_simthing_ids_from_scenario(&scenario);
+        simthing_spec::reserve_simthing_ids_from_scenario(&scenario).expect("reserve");
 
         let spawned = SimThing::new(SimThingKind::Cohort, 0);
 
@@ -690,7 +716,7 @@ mod tests {
             .gridcell_locations()
             .map(|gridcell| gridcell.id.raw())
             .collect();
-        simthing_spec::reserve_simthing_ids_from_scenario(&scenario);
+        simthing_spec::reserve_simthing_ids_from_scenario(&scenario).expect("reserve");
 
         let spawned = SimThing::new(SimThingKind::Location, 0);
 
@@ -910,11 +936,15 @@ mod tests {
 
     #[test]
     fn hydrated_grid_has_world_root_and_map_container() {
-        let (_output, hydration) = hydrated_output();
+        let (output, scenario, hydration) = authority_output();
         assert_eq!(hydration.grid.root_id, STUDIO_WORLD_ROOT_ID);
         assert_eq!(hydration.grid.root_kind, SimThingKind::World);
-        assert_eq!(hydration.grid.map_container_id, STUDIO_MAP_CONTAINER_ID);
+        assert_eq!(
+            hydration.grid.map_container_id,
+            scenario.structural_grid.map_container_id
+        );
         assert_eq!(hydration.grid.map_container_kind, SimThingKind::Location);
+        let _ = output;
     }
 
     #[test]
@@ -1297,5 +1327,180 @@ mod tests {
             hydrate_generation_into_studio_grid(&output),
             Err(StudioHydrationError::DuplicateGridcellCoordinate { .. })
         ));
+    }
+
+    #[test]
+    fn heatmap_readiness_invalid_stead_mapping_is_not_ready() {
+        let scenario = scenario_with_missing_placement();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert!(!readiness.is_ready());
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::InvalidSteadMapping
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_invalid_stead_mapping_does_not_classify_bounded() {
+        let scenario = scenario_with_missing_placement();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_ne!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::BoundedTheaterEligible
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_invalid_stead_mapping_does_not_classify_atlas_required() {
+        let scenario = scenario_with_missing_placement();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_ne!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::AtlasRequired
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_atlas_required_is_not_layout_failure() {
+        let (_output, scenario, _hydration) = authority_output();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::AtlasRequired
+        );
+        assert!(readiness.reason.contains("structural layout is valid"));
+    }
+
+    #[test]
+    fn heatmap_readiness_valid_small_grid_is_bounded_theater_eligible() {
+        let scenario = small_simthing_spec_scenario();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::BoundedTheaterEligible
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_valid_oversized_grid_is_atlas_required() {
+        let (_output, scenario, _hydration) = authority_output();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::AtlasRequired
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_uses_declared_structural_grid_frame() {
+        let scenario = small_simthing_spec_scenario();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_eq!(readiness.grid_width, scenario.structural_grid.frame.width);
+        assert_eq!(readiness.grid_height, scenario.structural_grid.frame.height);
+    }
+
+    #[test]
+    fn heatmap_readiness_atlas_required_is_valid_structure() {
+        let (_output, scenario, _hydration) = authority_output();
+        simthing_spec::validate_stead_mapping_consistency(&scenario).expect("valid STEAD");
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        assert_eq!(
+            readiness.readiness,
+            StudioHeatmapReadinessKind::AtlasRequired
+        );
+    }
+
+    #[test]
+    fn heatmap_readiness_does_not_use_render_metadata() {
+        let scenario = small_simthing_spec_scenario();
+        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
+        let debug = format!("{readiness:?}");
+        for render_key in ["world_position", "render_height", "camera", "opacity"] {
+            assert!(!debug.contains(render_key));
+        }
+    }
+
+    #[test]
+    fn rf_readiness_invalid_stead_mapping_is_not_ready() {
+        let scenario = scenario_with_missing_placement();
+        let readiness = rf_accumulator_readiness_from_simthing_spec(&scenario);
+        assert!(!readiness.ready_for_spatial_rf_over_locations);
+        assert!(readiness.deferred_reason.is_some());
+    }
+
+    #[test]
+    fn rf_readiness_uses_declared_map_container() {
+        let scenario = small_simthing_spec_scenario();
+        let map = simthing_spec::resolve_map_container(&scenario).expect("map");
+        let readiness =
+            StudioRfAccumulatorReadiness::from_scenario(&scenario).expect("rf readiness");
+        assert_eq!(
+            readiness.participant_count,
+            map.children
+                .iter()
+                .filter(|child| child.kind == SimThingKind::Location)
+                .count() as u64
+        );
+    }
+
+    #[test]
+    fn projection_rebuild_reflects_model_edit() {
+        let (output, mut scenario, _hydration) = authority_output();
+        let cell_raw = scenario.structural_grid.placements[0].simthing_id_raw;
+        let location_id = scenario.structural_grid.placements[0].location_id.clone();
+        let new_col = scenario.structural_grid.placements[0].col.saturating_add(1);
+        scenario.structural_grid.placements[0].col = new_col;
+        apply_gridcell_property_edit(
+            &mut scenario,
+            cell_raw,
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(new_col),
+        )
+        .expect("model edit");
+
+        let rebuilt =
+            StudioHydrationBoundary::from_scenario(&scenario, &output.report).expect("projection");
+        let cell = rebuilt
+            .grid
+            .gridcells
+            .iter()
+            .find(|cell| cell.simthing_id == location_id)
+            .expect("rebuilt cell");
+        assert_eq!(cell.structural_col, new_col);
+    }
+
+    #[test]
+    fn view_model_does_not_store_authoritative_edit_only() {
+        let (output, scenario, _hydration) = authority_output();
+        let vm = crate::view_model::StudioGalaxyViewModel::from_scenario(&scenario, &output.report);
+        let debug = format!("{vm:?}");
+        assert!(!debug.contains("scenario_authority"));
+        assert!(!debug.contains("structural_grid"));
+    }
+
+    #[test]
+    fn model_edit_applies_to_simthing_scenario_authority() {
+        let mut scenario = small_simthing_spec_scenario();
+        let cell_raw = scenario.structural_grid.placements[0].simthing_id_raw;
+        apply_gridcell_property_edit(
+            &mut scenario,
+            cell_raw,
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(9),
+        )
+        .expect("edit authority");
+        let gridcell = simthing_spec::resolve_map_container(&scenario)
+            .expect("map")
+            .children
+            .iter()
+            .find(|child| child.id.raw() == cell_raw)
+            .expect("gridcell");
+        assert_eq!(
+            gridcell
+                .property(SCENARIO_STRUCTURAL_COL_PROPERTY_ID)
+                .expect("col")
+                .data[0] as u32,
+            9
+        );
     }
 }
