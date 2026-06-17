@@ -27,6 +27,15 @@ impl StudioSession {
         output: GenerationRunOutput,
     ) -> Result<Self, StudioHydrationError> {
         let scenario_authority = generate_simthing_spec_scenario(&output)?;
+        Self::from_scenario_authority(profile, output, scenario_authority, None)
+    }
+
+    pub fn from_scenario_authority(
+        profile: GenerationProfile,
+        output: GenerationRunOutput,
+        scenario_authority: SimThingScenarioSpec,
+        scenario_path: Option<std::path::PathBuf>,
+    ) -> Result<Self, StudioHydrationError> {
         let hydration = studio_projection_from_simthing_spec(&scenario_authority, &output.report)?;
         let view_model = StudioGalaxyViewModel::from_hydration(&hydration);
         Ok(Self {
@@ -36,7 +45,7 @@ impl StudioSession {
             hydration,
             view_model,
             report_path: None,
-            scenario_path: None,
+            scenario_path,
         })
     }
 
