@@ -356,6 +356,20 @@ mod tests {
     }
 
     #[test]
+    fn hyperlane_opacity_zero_hides_all_ribbons() {
+        let settings = HyperlaneRenderSettings {
+            base_opacity_percent: 0.0,
+            ..Default::default()
+        };
+        for depth in [0.0, 50.0, 100.0] {
+            let visual = compute_hyperlane_visual(depth, 10.0, &settings);
+            assert!(!visual.visible);
+            assert_eq!(visual.thickness_world, 0.0);
+            assert_eq!(visual.core_opacity, 0.0);
+        }
+    }
+
+    #[test]
     fn base_hyperlane_opacity_nonzero_keeps_lanes_visible() {
         let settings = HyperlaneRenderSettings {
             base_opacity_percent: 1.0,
@@ -416,7 +430,18 @@ mod tests {
     }
 
     #[test]
+    fn soft_edge_core_fraction_is_80_percent() {
+        assert!((HYPERLANE_CORE_FRACTION - 0.80).abs() < f32::EPSILON);
+    }
+
+    #[test]
     fn hyperlane_visual_edge_falloff_is_10_percent_each_side() {
+        let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
+        assert!((visual.edge_falloff_fraction_each_side - 0.10).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn soft_edge_side_falloff_is_10_percent_each_side() {
         let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
         assert!((visual.edge_falloff_fraction_each_side - 0.10).abs() < f32::EPSILON);
     }

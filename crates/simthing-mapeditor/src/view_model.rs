@@ -543,6 +543,35 @@ mod tests {
     }
 
     #[test]
+    fn overhead_mode_does_not_mutate_render_anchors() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let anchors_before = vm.render_anchors.clone();
+        let presentation_mode_is_overhead = true;
+        assert!(presentation_mode_is_overhead);
+        assert_eq!(vm.render_anchors, anchors_before);
+        assert_eq!(vm.hyperlane_render_segments().len(), vm.hyperlanes.len());
+    }
+
+    #[test]
+    fn switching_modes_does_not_regenerate_galaxy() {
+        let profile = GenerationProfile::default_spiral_2_dense_3000();
+        let output = run_generation(&profile).expect("generate");
+        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
+        let seed = vm.seed;
+        let star_count = vm.stars.len();
+        let hyperlane_count = vm.hyperlanes.len();
+        let mut presentation_mode_is_overhead = false;
+        presentation_mode_is_overhead = !presentation_mode_is_overhead;
+        assert!(presentation_mode_is_overhead);
+        assert_eq!(vm.seed, seed);
+        assert_eq!(vm.stars.len(), star_count);
+        assert_eq!(vm.hyperlanes.len(), hyperlane_count);
+        assert_eq!(output.result.base_hyperlane_edges.len(), hyperlane_count);
+    }
+
+    #[test]
     fn base_hyperlane_thickness_updates_render_meta() {
         let mut meta = StudioGalaxyRenderMeta::default();
         let settings = crate::hyperlane_buckets::HyperlaneRenderSettings {

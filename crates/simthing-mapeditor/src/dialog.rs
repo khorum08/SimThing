@@ -239,6 +239,19 @@ mod tests {
     }
 
     #[test]
+    fn settings_x_close_still_hides_dialog() {
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::default(),
+            crate::hyperlane_buckets::HyperlaneRenderSettings::default(),
+        );
+        dialog.close_icon();
+        assert!(!dialog.visible);
+    }
+
+    #[test]
     fn settings_dialog_close_button_hides_dialog() {
         let mut dialog = SettingsDialogModel::new(
             true,
