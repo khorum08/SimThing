@@ -68,6 +68,7 @@
 | **STUDIO-HYDRATION-BOUNDARY-0** - generated maps hydrate into Studio SimThing grids before save/load | branch evidence | branch evidence | PROBATION - `docs/tests/studio_hydration_boundary_0_results.md` |
 | **STUDIO-SIMTHING-SPEC-BOUNDARY-1** - generated scenarios are SimThing-Spec authority before Studio projection | branch evidence | branch evidence | PROBATION - `docs/tests/studio_simthing_spec_boundary_1_results.md` |
 | **SAVELOAD-AUTHORITY-PIN-0** - SimThing-Spec pinned as Studio save/load authority | branch evidence | branch evidence | PROBATION - `docs/tests/saveload_authority_pin_0_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
+| **SAVELOAD-AUTHORITY-PIN-0R** - harden scenario authority validation (map container, STEAD readiness, serde, IDs) | branch evidence | branch evidence | PROBATION - `docs/tests/saveload_authority_pin_0r_results.md`; synthesis `docs/0.8.3 Simthing Studio Production.md` |
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

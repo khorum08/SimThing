@@ -69,11 +69,52 @@ Heatmap readiness derives from the scenario structural frame and placement count
 
 ## Save/Load Authority Plan
 
-Save/load must serialize the SimThing-Spec scenario authority: recursive root tree, structural grid frame and placements, generated links, provenance, and later any approved model properties/overlays. Loading must reserve existing `SimThingId`s before future spawns. Studio settings, camera state, and render settings may be saved beside the authority as editor metadata, but they cannot reconstruct authority by themselves.
+Save/load must serialize the whole `SimThingScenarioSpec` via `serialize_scenario_authority` / `deserialize_scenario_authority`. Naked `root: SimThing` alone is insufficient unless bundled with structural grid metadata, `map_container_id` binding, placements, links, and provenance. Loading must validate STEAD mapping, reserve existing `SimThingId`s before future spawns, and reject duplicate or exhausted id space. Studio settings, camera state, and render settings may be saved beside the authority as editor metadata, but they cannot reconstruct authority by themselves.
+
+## SAVELOAD-AUTHORITY-PIN-0R — Authority hardening
+
+**Date / PR:** 2026-06-17 — SAVELOAD-AUTHORITY-PIN-0R
+
+### What changed
+
+- Pinned whole `SimThingScenarioSpec` as the serialized save/load authority with explicit serde helpers and post-deserialize validation.
+- `structural_grid.map_container_id` now resolves to an actual `Location` SimThing raw id in the recursive tree; first-Location fallback removed.
+- Structural integer mirrors (`system_id`, `col`, `row`) are range-checked to `<= 16_777_216` exact f32 integers; primary authority remains `structural_grid.placements`.
+- Loaded scenarios reserve ids through `reserve_simthing_ids_from_scenario` with explicit `DuplicateId` / `IdSpaceExhausted` errors.
+- Invalid STEAD mapping defers RF and heatmap readiness (`InvalidSteadMapping`) instead of classifying bounded/atlas execution.
+- Added `apply_gridcell_property_edit` model-first mutation helper and projection-rebuild proof tests.
+
+### Authority / substrate implications
+
+`SimThingScenarioSpec` is the sole model substrate after generation. `StudioHydrationBoundary`, `StudioHydratedGrid`, `StudioGalaxyViewModel`, render anchors, and Bevy entities remain projections refreshed from scenario authority.
+
+### STEAD / Mapping implications
+
+`resolve_map_container` binds `map_container_id` to a direct `World` child `Location`. Gridcell `Location` SimThings must be children of that exact container. Validator rejects dangling ids, non-`Location` containers, and gridcells under the wrong parent.
+
+### RF / Accumulator implications
+
+`StudioRfAccumulatorReadiness::from_scenario` and the deferred wrapper derive participant counts from gridcells under the declared map container. Invalid STEAD mapping yields `ready_for_spatial_rf_over_locations = false` with a deferred reason.
+
+### Heatmap / Movement-Front implications
+
+`StudioHeatmapReadinessKind::InvalidSteadMapping` is distinct from `AtlasRequired`. Valid small grids classify as `BoundedTheaterEligible`; valid oversized dense layouts classify as `AtlasRequired` (execution deferral, not layout failure). Invalid STEAD never classifies as bounded or atlas-required.
+
+### Save/load implications
+
+Authority roundtrip preserves root tree, structural grid, map container binding, links, provenance, and children. `deserialize_scenario_authority` validates and reserves ids on load. Save/load UI remains deferred.
+
+### Evidence lifecycle status
+
+SAVELOAD-AUTHORITY-PIN-0R evidence is **PROBATION** pending DA approval. Prior SAVELOAD-AUTHORITY-PIN-0 evidence remains branch context; this rung hardens rather than replaces it.
+
+### Deferred work
+
+Save/load file IO and UI, ClauseThing import wiring, full editor mutation command surface, heatmap/RF visualization, atlas execution, live simulation, and exact typed `PropertyValue` enum expansion (f32 mirror range-check chosen for compatibility).
 
 ## Current Evidence And Lifecycle Status
 
-The current evidence ledger remains the compact live guardrail index. Studio PR1 through PR2R12, STUDIO-HYDRATION-BOUNDARY-0, STUDIO-SIMTHING-SPEC-BOUNDARY-1, and SAVELOAD-AUTHORITY-PIN-0 are PROBATION unless and until DA-promoted. STEAD contract rows that were DA-approved remain CURRENT_EVIDENCE.
+The current evidence ledger remains the compact live guardrail index. Studio PR1 through PR2R12, STUDIO-HYDRATION-BOUNDARY-0, STUDIO-SIMTHING-SPEC-BOUNDARY-1, SAVELOAD-AUTHORITY-PIN-0, and SAVELOAD-AUTHORITY-PIN-0R are PROBATION unless and until DA-promoted. STEAD contract rows that were DA-approved remain CURRENT_EVIDENCE.
 
 ## DA / PROBATION / CURRENT_EVIDENCE Status
 
@@ -81,20 +122,21 @@ This synthesis is PROBATION. It summarizes the active track and branch evidence 
 
 ## Known Risks
 
-- Save/load UI is not implemented yet.
+- Save/load UI is not implemented yet (serde helpers exist; file IO does not).
+- `map_container_id` is a SimThing raw-id string; logical display aliases like `studio_galaxy_map` are no longer accepted as authority bindings.
+- Structural mirrors remain defensive f32 vectors, not exact typed properties.
 - ClauseThing import into Studio authority is not wired yet.
-- The current scenario child payload is intentionally generic local content, not a new `StarSystem` kind.
 - Dense galaxy-scale Movement-Front execution still requires atlas work.
 - Live simulation adoption from Studio scenarios remains deferred.
 
 ## Deferred Work
 
-Save/load UI, new-map flow, live SimThing simulation, RF execution arenas, heatmap rendering, pathfinding, route/predecessor semantics, movement-order logic, semantic WGSL, simulation GPU kernels, Clausewitz UI importer, CSS/WebView, and new SimThing kinds remain deferred.
+Save/load UI and file IO, new-map flow, full editor mutation command surface beyond the proof helper, live SimThing simulation, RF execution arenas, heatmap rendering, pathfinding, route/predecessor semantics, movement-order logic, semantic WGSL, simulation GPU kernels, Clausewitz UI importer, CSS/WebView, exact typed property representation, and new SimThing kinds remain deferred.
 
 ## Next Production Rungs
 
-1. Implement save/load file IO around `SimThingScenarioSpec` plus editor metadata.
-2. Add load-path projection rebuild in Studio.
+1. Implement save/load file IO around `serialize_scenario_authority` / `deserialize_scenario_authority` plus editor metadata.
+2. Wire load-path projection rebuild through existing `StudioHydrationBoundary::from_scenario` / `StudioGalaxyViewModel::from_scenario`.
 3. Wire ClauseThing imports into the same scenario authority path.
-4. Add mutation/edit commands that update `SimThingScenarioSpec` first and refresh projections.
-5. Advance heatmap/RF visualization only after their canonical scenario inputs stay enforced.
+4. Expand mutation/edit commands that update `SimThingScenarioSpec` first and refresh projections.
+5. Advance heatmap/RF visualization only after canonical scenario inputs stay enforced.

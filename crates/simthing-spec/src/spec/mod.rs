@@ -51,13 +51,16 @@ pub use resource_flow::{
     WildcardAdmissionSpec,
 };
 pub use scenario::{
-    reserve_simthing_ids_from_scenario, validate_stead_mapping_consistency, SimThingScenarioGrid,
-    SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    apply_gridcell_property_edit, deserialize_scenario_authority, property_u32,
+    reserve_simthing_ids_from_scenario, resolve_map_container, resolve_map_container_mut,
+    serialize_scenario_authority, structural_property_value_u32,
+    validate_stead_mapping_consistency, ScenarioEditError, ScenarioSerdeError,
+    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
     SimThingStructuralGridFrame, SimThingStructuralGridPlacement, SteadMappingError,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
     SCENARIO_RENDER_WORLD_Y_PROPERTY_ID, SCENARIO_RENDER_WORLD_Z_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
-    SIMTHING_SCENARIO_AUTHORITY_LABEL,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
