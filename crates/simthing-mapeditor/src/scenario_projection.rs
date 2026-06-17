@@ -34,6 +34,48 @@ pub struct StudioStructuralProjection {
     pub link_indices: Vec<StudioLinkIndexRow>,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StudioGpuStructuralFrameRow {
+    pub width: u32,
+    pub height: u32,
+    pub occupied_cells: u32,
+    pub location_count: u32,
+    pub link_count: u32,
+    pub reserved0: u32,
+    pub reserved1: u32,
+    pub reserved2: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StudioGpuLocationRow {
+    pub dense_index: u32,
+    pub simthing_id_raw: u32,
+    pub system_id: u32,
+    pub row: u32,
+    pub col: u32,
+    pub reserved0: u32,
+    pub reserved1: u32,
+    pub reserved2: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StudioGpuLinkRow {
+    pub from_dense_index: u32,
+    pub to_dense_index: u32,
+    pub reserved0: u32,
+    pub reserved1: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGpuStructuralUploadPacket {
+    pub frame: StudioGpuStructuralFrameRow,
+    pub locations: Vec<StudioGpuLocationRow>,
+    pub links: Vec<StudioGpuLinkRow>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGpuResidencyReadiness {
     pub grid_width: u32,
@@ -46,7 +88,17 @@ pub struct StudioGpuResidencyReadiness {
     pub rf_accumulator_ready: bool,
     pub heatmap_ready: StudioHeatmapReadinessKind,
     pub atlas_required: bool,
+    pub structural_upload_packet_ready: bool,
+    pub structural_upload_packet_location_rows: u64,
+    pub structural_upload_packet_link_rows: u64,
+    pub structural_upload_packet_deferred_reason: Option<String>,
     pub deferred_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioGpuStructuralUploadError {
+    Projection(StudioStructuralProjectionError),
+    CountOverflow { field: &'static str, value: u64 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -178,6 +230,74 @@ pub fn build_structural_projection(
     })
 }
 
+fn u32_count_or_overflow(
+    field: &'static str,
+    value: u64,
+) -> Result<u32, StudioGpuStructuralUploadError> {
+    u32::try_from(value).map_err(|_| StudioGpuStructuralUploadError::CountOverflow { field, value })
+}
+
+pub fn build_gpu_structural_upload_packet_from_projection(
+    scenario: &SimThingScenarioSpec,
+    projection: &StudioStructuralProjection,
+) -> Result<StudioGpuStructuralUploadPacket, StudioGpuStructuralUploadError> {
+    let frame = &scenario.structural_grid.frame;
+    let location_count = projection.location_indices.len() as u64;
+    let link_count = projection.link_indices.len() as u64;
+    let occupied_cells = u32_count_or_overflow("occupied_cells", frame.occupied_cells)?;
+    let location_count_u32 = u32_count_or_overflow("location_count", location_count)?;
+    let link_count_u32 = u32_count_or_overflow("link_count", link_count)?;
+
+    let locations: Vec<StudioGpuLocationRow> = projection
+        .location_indices
+        .iter()
+        .map(|row| StudioGpuLocationRow {
+            dense_index: row.dense_index,
+            simthing_id_raw: row.simthing_id_raw,
+            system_id: row.system_id,
+            row: row.row,
+            col: row.col,
+            reserved0: 0,
+            reserved1: 0,
+            reserved2: 0,
+        })
+        .collect();
+
+    let links: Vec<StudioGpuLinkRow> = projection
+        .link_indices
+        .iter()
+        .map(|row| StudioGpuLinkRow {
+            from_dense_index: row.from_dense_index,
+            to_dense_index: row.to_dense_index,
+            reserved0: 0,
+            reserved1: 0,
+        })
+        .collect();
+
+    Ok(StudioGpuStructuralUploadPacket {
+        frame: StudioGpuStructuralFrameRow {
+            width: frame.width,
+            height: frame.height,
+            occupied_cells,
+            location_count: location_count_u32,
+            link_count: link_count_u32,
+            reserved0: 0,
+            reserved1: 0,
+            reserved2: 0,
+        },
+        locations,
+        links,
+    })
+}
+
+pub fn build_gpu_structural_upload_packet_from_scenario(
+    scenario: &SimThingScenarioSpec,
+) -> Result<StudioGpuStructuralUploadPacket, StudioGpuStructuralUploadError> {
+    let projection = build_structural_projection(scenario)
+        .map_err(StudioGpuStructuralUploadError::Projection)?;
+    build_gpu_structural_upload_packet_from_projection(scenario, &projection)
+}
+
 pub fn build_gpu_residency_readiness(
     scenario: &SimThingScenarioSpec,
     projection: &StudioStructuralProjection,
@@ -190,6 +310,31 @@ pub fn build_gpu_residency_readiness(
         && projection.location_indices.len() == scenario.structural_grid.placements.len();
     let dense_ready = placements_ready && !projection.location_indices.is_empty();
     let atlas_required = heatmap.readiness == StudioHeatmapReadinessKind::AtlasRequired;
+    let upload_packet = build_gpu_structural_upload_packet_from_projection(scenario, projection);
+    let (structural_upload_packet_ready, structural_upload_packet_deferred_reason) =
+        match &upload_packet {
+            Ok(_packet) => (true, None),
+            Err(StudioGpuStructuralUploadError::Projection(err)) => (
+                false,
+                Some(format!(
+                    "structural upload packet projection failed: {err:?}"
+                )),
+            ),
+            Err(StudioGpuStructuralUploadError::CountOverflow { field, value }) => (
+                false,
+                Some(format!(
+                    "structural upload packet count overflow: {field}={value}"
+                )),
+            ),
+        };
+    let structural_upload_packet_location_rows = upload_packet
+        .as_ref()
+        .map(|packet| packet.locations.len() as u64)
+        .unwrap_or(0);
+    let structural_upload_packet_link_rows = upload_packet
+        .as_ref()
+        .map(|packet| packet.links.len() as u64)
+        .unwrap_or(0);
     let deferred_reason = if !stead_valid {
         Some("invalid STEAD mapping".to_string())
     } else if !dense_ready {
@@ -211,6 +356,10 @@ pub fn build_gpu_residency_readiness(
         rf_accumulator_ready: rf.ready_for_spatial_rf_over_locations,
         heatmap_ready: heatmap.readiness,
         atlas_required,
+        structural_upload_packet_ready,
+        structural_upload_packet_location_rows,
+        structural_upload_packet_link_rows,
+        structural_upload_packet_deferred_reason,
         deferred_reason,
     }
 }
@@ -521,6 +670,262 @@ mod tests {
             err,
             StudioStructuralProjectionError::DuplicateLink { .. }
         ));
+    }
+
+    fn pod_row_bytes<T: Copy>(rows: &[T]) -> Vec<u8> {
+        let byte_len = rows.len() * std::mem::size_of::<T>();
+        let slice = unsafe { std::slice::from_raw_parts(rows.as_ptr() as *const u8, byte_len) };
+        slice.to_vec()
+    }
+
+    #[test]
+    fn gpu_structural_upload_row_layout_is_stable_repr_c() {
+        assert_eq!(std::mem::size_of::<StudioGpuStructuralFrameRow>(), 32);
+        assert_eq!(std::mem::size_of::<StudioGpuLocationRow>(), 32);
+        assert_eq!(std::mem::size_of::<StudioGpuLinkRow>(), 16);
+        assert_eq!(std::mem::align_of::<StudioGpuStructuralFrameRow>(), 4);
+        assert_eq!(std::mem::align_of::<StudioGpuLocationRow>(), 4);
+        assert_eq!(std::mem::align_of::<StudioGpuLinkRow>(), 4);
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_derives_from_scenario_authority() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        assert_eq!(packet.frame.location_count, 2);
+        assert_eq!(packet.frame.link_count, 1);
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_uses_structural_projection() {
+        let scenario = two_cell_scenario();
+        let projection = build_structural_projection(&scenario).expect("projection");
+        let packet = build_gpu_structural_upload_packet_from_projection(&scenario, &projection)
+            .expect("packet");
+        assert_eq!(packet.locations.len(), projection.location_indices.len());
+        assert_eq!(packet.links.len(), projection.link_indices.len());
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_preserves_frame() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        assert_eq!(packet.frame.width, 8);
+        assert_eq!(packet.frame.height, 8);
+        assert_eq!(packet.frame.occupied_cells, 2);
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_preserves_location_rows() {
+        let scenario = two_cell_scenario();
+        let projection = build_structural_projection(&scenario).expect("projection");
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        assert_eq!(
+            packet.locations[0].dense_index,
+            projection.location_indices[0].dense_index
+        );
+        assert_eq!(
+            packet.locations[0].simthing_id_raw,
+            projection.location_indices[0].simthing_id_raw
+        );
+        assert_eq!(packet.locations[0].row, projection.location_indices[0].row);
+        assert_eq!(packet.locations[0].col, projection.location_indices[0].col);
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_preserves_canonical_link_rows() {
+        let scenario = two_cell_scenario();
+        let projection = build_structural_projection(&scenario).expect("projection");
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        assert_eq!(
+            packet.links[0].from_dense_index,
+            projection.link_indices[0].from_dense_index
+        );
+        assert_eq!(
+            packet.links[0].to_dense_index,
+            projection.link_indices[0].to_dense_index
+        );
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_orders_locations_deterministically() {
+        let scenario = two_cell_scenario();
+        let first = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("first");
+        let second = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("second");
+        assert_eq!(first.locations, second.locations);
+        assert!(first.locations[0].dense_index < first.locations[1].dense_index);
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_orders_links_deterministically() {
+        let scenario = two_cell_scenario();
+        let first = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("first");
+        let second = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("second");
+        assert_eq!(first.links, second.links);
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_rejects_invalid_stead() {
+        let mut scenario = single_cell_scenario();
+        scenario.structural_grid.placements.clear();
+        scenario.structural_grid.frame.occupied_cells = 0;
+        let err = build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("stead");
+        assert!(matches!(
+            err,
+            StudioGpuStructuralUploadError::Projection(
+                StudioStructuralProjectionError::SteadMapping(_)
+            )
+        ));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_rejects_unknown_link_endpoint() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].to_system_id = "999".to_string();
+        let err = build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("unknown");
+        assert!(matches!(
+            err,
+            StudioGpuStructuralUploadError::Projection(
+                StudioStructuralProjectionError::InvalidLinkEndpoint { .. }
+            )
+        ));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_rejects_self_link() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].to_system_id = "1".to_string();
+        let err = build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("self");
+        assert!(matches!(
+            err,
+            StudioGpuStructuralUploadError::Projection(
+                StudioStructuralProjectionError::SelfLink { .. }
+            )
+        ));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_rejects_direct_duplicate_link() {
+        let mut scenario = two_cell_scenario();
+        scenario.links.push(SimThingScenarioLink {
+            from_system_id: "1".to_string(),
+            to_system_id: "2".to_string(),
+        });
+        let err =
+            build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("duplicate");
+        assert!(matches!(
+            err,
+            StudioGpuStructuralUploadError::Projection(
+                StudioStructuralProjectionError::DuplicateLink { .. }
+            )
+        ));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_rejects_reversed_duplicate_link() {
+        let mut scenario = two_cell_scenario();
+        scenario.links.push(SimThingScenarioLink {
+            from_system_id: "2".to_string(),
+            to_system_id: "1".to_string(),
+        });
+        let err = build_gpu_structural_upload_packet_from_scenario(&scenario)
+            .expect_err("reversed duplicate");
+        assert!(matches!(
+            err,
+            StudioGpuStructuralUploadError::Projection(
+                StudioStructuralProjectionError::ReversedDuplicateLink { .. }
+            )
+        ));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_contains_no_render_metadata() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let encoded = format!("{packet:?}");
+        assert!(!encoded.contains("world_x"));
+        assert!(!encoded.contains("render_meta"));
+        assert!(!encoded.contains("sprite_scale"));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_contains_no_bevy_entity_ids() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let encoded = format!("{packet:?}");
+        assert!(!encoded.contains("Entity"));
+        assert!(!encoded.contains("bevy"));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_count_overflow_is_error() {
+        let scenario = two_cell_scenario();
+        let projection = build_structural_projection(&scenario).expect("projection");
+        let mut overflow_frame = scenario.clone();
+        overflow_frame.structural_grid.frame.occupied_cells = u64::from(u32::MAX) + 1;
+        let err = build_gpu_structural_upload_packet_from_projection(&overflow_frame, &projection)
+            .expect_err("overflow");
+        assert!(matches!(
+            err,
+            StudioGpuStructuralUploadError::CountOverflow {
+                field: "occupied_cells",
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn gpu_structural_upload_packet_row_bytes_are_deterministic() {
+        let scenario = two_cell_scenario();
+        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
+        let frame_a = pod_row_bytes(std::slice::from_ref(&packet.frame));
+        let frame_b = pod_row_bytes(std::slice::from_ref(&packet.frame));
+        assert_eq!(frame_a, frame_b);
+        assert_eq!(
+            pod_row_bytes(&packet.locations),
+            pod_row_bytes(&packet.locations)
+        );
+        assert_eq!(pod_row_bytes(&packet.links), pod_row_bytes(&packet.links));
+    }
+
+    #[test]
+    fn gpu_residency_readiness_reports_upload_packet_ready_for_valid_scenario() {
+        let scenario = two_cell_scenario();
+        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
+        assert!(readiness.structural_upload_packet_ready);
+        assert_eq!(readiness.structural_upload_packet_location_rows, 2);
+        assert_eq!(readiness.structural_upload_packet_link_rows, 1);
+        assert!(readiness.structural_upload_packet_deferred_reason.is_none());
+    }
+
+    #[test]
+    fn gpu_residency_readiness_reports_upload_packet_not_ready_for_invalid_links() {
+        let mut scenario = two_cell_scenario();
+        scenario.links[0].to_system_id = "1".to_string();
+        assert!(build_gpu_residency_readiness_from_scenario(&scenario).is_err());
+        assert!(build_gpu_structural_upload_packet_from_scenario(&scenario).is_err());
+
+        let valid = two_cell_scenario();
+        let projection = build_structural_projection(&valid).expect("projection");
+        let mut overflow = valid.clone();
+        overflow.structural_grid.frame.occupied_cells = u64::from(u32::MAX) + 1;
+        let readiness = build_gpu_residency_readiness(&overflow, &projection);
+        assert!(!readiness.structural_upload_packet_ready);
+        assert!(readiness
+            .structural_upload_packet_deferred_reason
+            .as_ref()
+            .is_some_and(|reason| reason.contains("count overflow")));
+    }
+
+    #[test]
+    fn gpu_residency_readiness_keeps_atlas_required_distinct_from_packet_invalidity() {
+        let mut scenario = two_cell_scenario();
+        scenario.structural_grid.frame.width = 64;
+        scenario.structural_grid.frame.height = 64;
+        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
+        assert!(readiness.atlas_required);
+        assert!(readiness.structural_upload_packet_ready);
+        assert!(readiness.structural_upload_packet_deferred_reason.is_none());
     }
 
     #[test]
