@@ -487,7 +487,7 @@ MapGenerator producer → typed GalaxyGenerationResult + GenerationReport
 
 Launch: `cargo run -p simthing-mapeditor --bin simthing-studio` (Windows only).
 
-See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r8_results.md`.
+See `docs/tests/bevy_mapgen_editor_pr1_results.md`, `docs/tests/bevy_mapgen_editor_pr1r_results.md`, `docs/tests/bevy_mapgen_editor_pr2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r_results.md`, `docs/tests/bevy_mapgen_editor_pr2r2_results.md`, `docs/tests/bevy_mapgen_editor_pr2r3_results.md`, `docs/tests/bevy_mapgen_editor_pr2r4_results.md`, `docs/tests/bevy_mapgen_editor_pr2r5_results.md`, `docs/tests/bevy_mapgen_editor_pr2r6_results.md`, `docs/tests/bevy_mapgen_editor_pr2r7_results.md`, `docs/tests/bevy_mapgen_editor_pr2r8_results.md`, and `docs/tests/bevy_mapgen_editor_pr2r9_results.md`.
 
 ### PR1R shell contract repair (2026-06-16)
 
@@ -642,3 +642,23 @@ PR2R8 replaces the last legacy star-render spawn data with stable star billboard
 - Structural gridcell coordinates remain authoritative. This pass changes no MapGenerator output, topology,
   hyperlane graph, ClauseThing lowering, runtime simulation semantics, pathfinding, save/load, live SimThing
   simulation, or Clausewitz UI/CSS/WebView substrate.
+
+### PR2R9 star radius settings + crisp circles (2026-06-17)
+
+PR2R9 repairs the live Settings defect where `Base Star Blur Radius` changed stored render metadata but did
+not visibly govern the rendered star footprint:
+
+- `Base Star Blur Radius` now feeds the actual billboard/circle radius path used by Bevy transforms.
+- `Falloff Star Blur Radius` controls the radius at the falloff depth; `Falloff Star Opacity` still controls
+  opacity/luminosity at that depth.
+- Settings exposes `Render mode` with `Bloom / Starburst` and `Crisp Circle`.
+- `Bloom / Starburst` keeps the aura/core presentation but scales the rendered radius from the live blur
+  settings.
+- `Crisp Circle` swaps core billboards to a simple crisp circle texture and hides the aura layer; the same
+  radius/falloff controls govern the visible circle.
+- Render mode and star radius settings persist in Studio RON settings and update live without regenerating
+  the galaxy.
+- Star radius, blur, aura, opacity, luminosity, Bevy transforms, and render mode are presentation-only
+  metadata. Structural gridcell coordinates remain authoritative, and hyperlane endpoints remain tied to the
+  shared render anchors.
+- Save/load/new and live SimThing simulation remain future work.

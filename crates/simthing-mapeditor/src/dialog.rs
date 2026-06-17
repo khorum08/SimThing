@@ -1,6 +1,6 @@
 //! Reusable warning dialog model for unimplemented controls.
 
-use crate::star_render::StarFalloffSettings;
+use crate::star_render::{StarFalloffSettings, StarRenderMode};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct WarningDialogModel {
@@ -85,14 +85,21 @@ pub struct SettingsDialogModel {
     pub visible: bool,
     pub position: [f32; 2],
     pub star_render: StarFalloffSettings,
+    pub star_render_mode: StarRenderMode,
 }
 
 impl SettingsDialogModel {
-    pub fn new(visible: bool, position: [f32; 2], star_render: StarFalloffSettings) -> Self {
+    pub fn new(
+        visible: bool,
+        position: [f32; 2],
+        star_render: StarFalloffSettings,
+        star_render_mode: StarRenderMode,
+    ) -> Self {
         Self {
             visible,
             position,
             star_render: star_render.clamped(),
+            star_render_mode,
         }
     }
 
@@ -114,6 +121,10 @@ impl SettingsDialogModel {
 
     pub fn set_star_render(&mut self, star_render: StarFalloffSettings) {
         self.star_render = star_render.clamped();
+    }
+
+    pub fn set_star_render_mode(&mut self, star_render_mode: StarRenderMode) {
+        self.star_render_mode = star_render_mode;
     }
 }
 
@@ -160,10 +171,16 @@ mod tests {
 
     #[test]
     fn settings_dialog_defaults_exist() {
-        let dialog = SettingsDialogModel::new(false, [520.0, 96.0], StarFalloffSettings::default());
+        let dialog = SettingsDialogModel::new(
+            false,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::default(),
+        );
         assert!(!dialog.visible);
         assert_eq!(dialog.position, [520.0, 96.0]);
         assert_eq!(dialog.star_render, StarFalloffSettings::default());
+        assert_eq!(dialog.star_render_mode, StarRenderMode::default());
     }
 
     #[test]
@@ -174,27 +191,52 @@ mod tests {
             falloff_blur_radius_percent: 41.0,
             falloff_opacity_percent: 59.0,
         };
-        let mut dialog = SettingsDialogModel::new(false, [520.0, 96.0], values);
+        let mut dialog =
+            SettingsDialogModel::new(false, [520.0, 96.0], values, StarRenderMode::CrispCircle);
         dialog.open();
         dialog.close_button();
         dialog.open();
         assert!(dialog.visible);
         assert_eq!(dialog.star_render, values);
+        assert_eq!(dialog.star_render_mode, StarRenderMode::CrispCircle);
     }
 
     #[test]
     fn settings_dialog_close_icon_hides_dialog() {
-        let mut dialog =
-            SettingsDialogModel::new(true, [520.0, 96.0], StarFalloffSettings::default());
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::default(),
+        );
         dialog.close_icon();
         assert!(!dialog.visible);
     }
 
     #[test]
     fn settings_dialog_close_button_hides_dialog() {
-        let mut dialog =
-            SettingsDialogModel::new(true, [520.0, 96.0], StarFalloffSettings::default());
+        let mut dialog = SettingsDialogModel::new(
+            true,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::default(),
+        );
         dialog.close_button();
         assert!(!dialog.visible);
+    }
+
+    #[test]
+    fn settings_dialog_preserves_star_render_mode() {
+        let mut dialog = SettingsDialogModel::new(
+            false,
+            [520.0, 96.0],
+            StarFalloffSettings::default(),
+            StarRenderMode::BloomStarburst,
+        );
+        dialog.set_star_render_mode(StarRenderMode::CrispCircle);
+        dialog.open();
+        dialog.close_icon();
+        dialog.open();
+        assert_eq!(dialog.star_render_mode, StarRenderMode::CrispCircle);
     }
 }

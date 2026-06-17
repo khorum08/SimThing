@@ -15,7 +15,9 @@ use crate::panel_layout::{
 use crate::selection::selected_system_details;
 use crate::settings::WindowModeSetting;
 use crate::shape_params::spiral_arm_params_active;
-use crate::star_render::StarFalloffSettings;
+use crate::star_render::{
+    star_visuals_dirty_after_settings_change, StarFalloffSettings, StarRenderMode,
+};
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
 use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
@@ -23,7 +25,7 @@ use super::window::{minimize_window, set_window_mode};
 use super::{adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
 
-const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(380.0, 310.0);
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(380.0, 346.0);
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
 
@@ -250,7 +252,17 @@ fn draw_settings_dialog(
                 ui.separator();
                 ui.label(egui::RichText::new("Star rendering").strong());
                 let mut values = state.settings_dialog.star_render;
+                let mut mode = state.settings_dialog.star_render_mode;
                 let mut changed = false;
+                egui::ComboBox::from_label("Render mode")
+                    .selected_text(mode.label())
+                    .show_ui(ui, |ui| {
+                        for candidate in StarRenderMode::ALL {
+                            changed |= ui
+                                .selectable_value(&mut mode, candidate, candidate.label())
+                                .changed();
+                        }
+                    });
                 changed |= ui
                     .add(
                         egui::Slider::new(&mut values.base_blur_radius, 0.0..=1.0)
@@ -279,7 +291,7 @@ fn draw_settings_dialog(
                     )
                     .changed();
                 if changed {
-                    apply_star_render_settings(values, state, settings);
+                    apply_star_render_settings(values, mode, state, settings);
                 }
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
                     if ui.button("Close").clicked() {
@@ -324,17 +336,31 @@ fn settings_dialog_bounds(
 
 fn apply_star_render_settings(
     values: StarFalloffSettings,
+    mode: StarRenderMode,
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
 ) {
     let values = values.clamped();
+    let dirty = star_visuals_dirty_after_settings_change(
+        state.star_falloff_settings,
+        values,
+        state.star_render_mode,
+        mode,
+    );
     state.star_falloff_settings = values;
+    state.star_render_mode = mode;
     state.settings_dialog.set_star_render(values);
+    state.settings_dialog.set_star_render_mode(mode);
     settings.set_star_falloff_settings(values);
+    settings.set_star_render_mode(mode);
     settings.settings_dialog_position = state.settings_dialog.position;
     settings.settings_dialog_visible = state.settings_dialog.visible;
+    if dirty {
+        state.status_message = "Updated star render settings".into();
+    }
     if let Some(session) = state.session.as_mut() {
         session.view_model.apply_star_falloff_settings(values);
+        session.view_model.apply_star_render_mode(mode);
     }
     let _ = settings.save();
 }
