@@ -94,6 +94,10 @@ fn profile_from_scenario(
     profile
 }
 
+// This synthetic `GenerationRunOutput` is a projection/report compatibility bridge for loaded
+// scenarios. It is not authority. The authority remains `scenario_authority`.
+// TODO: make loaded sessions scenario-native and avoid synthetic MapGenerator output where no
+// generation occurred.
 fn synthetic_generation_output_for_loaded_scenario(
     scenario: &SimThingScenarioSpec,
     profile: &GenerationProfile,

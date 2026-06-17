@@ -4,6 +4,7 @@ mod camera;
 mod galaxy_render;
 mod picking;
 mod resources;
+pub mod scenario_io;
 mod ui;
 mod window;
 
@@ -128,6 +129,10 @@ pub struct StudioAppState {
     pub hyperlane_render_settings: HyperlaneRenderSettings,
     pub config_load_warning: Option<String>,
     pub config_view_mode: StudioViewModeSetting,
+    /// Editable scenario file path for Save/Load Scenario UI (presentation only).
+    pub scenario_path_text: String,
+    /// Last scenario IO status message (presentation only; not persisted in scenario authority).
+    pub last_scenario_io_status: String,
 }
 
 impl StudioAppState {
@@ -163,6 +168,8 @@ impl StudioAppState {
             hyperlane_render_settings,
             config_load_warning: None,
             config_view_mode: StudioViewModeSetting::ThreeD,
+            scenario_path_text: scenario_io::DEFAULT_SCENARIO_PATH.to_string(),
+            last_scenario_io_status: String::new(),
         }
     }
 }
@@ -243,6 +250,33 @@ pub fn adopt_session(
     settings: &mut EditorSettings,
     state: &mut StudioAppState,
 ) {
+    state.last_scenario_io_status.clear();
+    let status_message = format!(
+        "Generated {} systems — quality {}",
+        session.report().output.system_count,
+        session.report().output.map_quality_status
+    );
+    adopt_session_with_status(&mut session, settings, state, status_message);
+    state.session = Some(session);
+}
+
+pub fn adopt_loaded_scenario_session(
+    mut session: StudioSession,
+    settings: &mut EditorSettings,
+    state: &mut StudioAppState,
+    status_message: String,
+) {
+    adopt_session_with_status(&mut session, settings, state, status_message.clone());
+    state.last_scenario_io_status = status_message;
+    state.session = Some(session);
+}
+
+fn adopt_session_with_status(
+    session: &mut StudioSession,
+    settings: &mut EditorSettings,
+    state: &mut StudioAppState,
+    status_message: String,
+) {
     settings.last_generation_params = session.profile.clone();
     state.profile = session.profile.clone();
     apply_star_falloff_settings_to_meta(
@@ -256,12 +290,7 @@ pub fn adopt_session(
     );
     state.generation_error = None;
     state.selection.clear();
-    state.status_message = format!(
-        "Generated {} systems — quality {}",
-        session.report().output.system_count,
-        session.report().output.map_quality_status
-    );
-    state.session = Some(session);
+    state.status_message = status_message;
 }
 
 pub fn rebuild_session_scene(
