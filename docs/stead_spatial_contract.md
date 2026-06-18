@@ -57,4 +57,17 @@ The following are **withdrawn doctrine**; asserting any of them in active (non-a
 - "Gu-Yang is a border/frontline semantic service"
 - "Movement-Front dense theater cap limits structural layout"
 
+## 10. Structural execution convergence (Studio → GPU horizon)
+Every Studio→GPU structural execution surface (loading a runtime scenario and playing it out) MUST: route to an **existing sanctioned `simthing-gpu` operator** — never a new bespoke Studio/GPU kernel; be **compiled from `SimThingScenarioSpec` by `simthing-driver`**; be **dispatched under `simthing-sim` tick/boundary**; operate over the **correct structural adjacency**; and keep GPU output as projection/cache, never authority. "One mechanism" means one discipline with admitted operator variants — not one literal kernel, and not a parallel Studio engine.
+
+The three horizon surfaces, their adjacency, and their convergence targets:
+
+| Surface | Adjacency | Existing operator (target) | Bounded theater + atlas |
+|---|---|---|---|
+| RF / link coupling | hyperlane **link graph** (bounded fanout) | `AccumulatorOp` Sum-over-`INPUT_LIST` | no |
+| Gu-Yang falloff borders | **grid N4** of `(col,row)` | `saturating_flux_choke_threshold` + `structured_field_stencil` | **yes** (§7 P1; dense-global is rejected) |
+| PALMA reach field | **grid N4** of `(col,row)` | `min_plus_stencil` + `w_impedance_compose` | **yes** |
+
+The link gather (coupling accumulation over the hyperlane graph) is **not** the heatmap stencil; Gu-Yang/PALMA are grid stencils over N4 lattice neighbors within a bounded `ExecutionTheater`. These adjacencies must not be conflated. Borders **emerge as field expressions** (SaturatingFlux falloff fronts + PALMA min-plus reach); Gu-Yang/SaturatingFlux produces falloff fronts, never a frontline semantic service, and PALMA `D` is a field, not a route (no predecessors/paths) — see §9. A bespoke per-surface kernel in the Studio is a STEAD/convergence violation; if an existing operator structurally cannot host a needed step, STOP and escalate to design authority rather than forking a kernel.
+
 They may appear ONLY inside an explicitly-named *Withdrawn doctrine* / *Correction* section (like this one) that negates them.
