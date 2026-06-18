@@ -26,7 +26,10 @@ use crate::star_render::{
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
 use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
-use super::scenario_io::{load_scenario_action, save_scenario_action, ScenarioActionResult};
+use super::scenario_io::{
+    load_scenario_manual_path_action, open_native_scenario_load_picker, save_scenario_action,
+    ScenarioActionResult, ScenarioPickerActionResult,
+};
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::session::StudioSession;
@@ -152,12 +155,37 @@ pub fn studio_ui_system(
         save_scenario_action(&mut state, &path);
     }
 
-    if let Some(path) =
-        ctx.data(|d| d.get_temp::<std::path::PathBuf>(egui::Id::new("do_load_scenario")))
-    {
-        ctx.data_mut(|d| d.remove::<std::path::PathBuf>(egui::Id::new("do_load_scenario")));
-        match load_scenario_action(&mut state, &path) {
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_load_scenario_manual"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_load_scenario_manual")));
+        match load_scenario_manual_path_action(&mut state) {
             ScenarioActionResult::Loaded { session, message } => {
+                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                if let Some(session) = state.session.as_ref() {
+                    rebuild_galaxy_scene(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &assets,
+                        &mut scene_root,
+                        session,
+                    );
+                }
+                reset_camera_after_generation(&mut camera);
+            }
+            _ => {}
+        }
+    }
+
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_load_scenario_picker"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_load_scenario_picker")));
+        match open_native_scenario_load_picker(&mut state) {
+            ScenarioPickerActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
                 if let Some(session) = state.session.as_ref() {
                     rebuild_galaxy_scene(
@@ -740,16 +768,11 @@ fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut
             state.last_scenario_io_status = "Scenario save failed: no active session".into();
             state.status_message = state.last_scenario_io_status.clone();
         }
-        if ui.button("Load Scenario").clicked() {
-            if let Ok(path) = super::scenario_io::scenario_path_from_state(state) {
-                ctx.data_mut(|d| {
-                    d.insert_temp(egui::Id::new("do_load_scenario"), path);
-                });
-            } else {
-                state.last_scenario_io_status =
-                    "Scenario load failed: invalid scenario path".into();
-                state.status_message = state.last_scenario_io_status.clone();
-            }
+        if ui.button("Load Scenario...").clicked() {
+            ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_picker"), true));
+        }
+        if ui.button("Manual Load Path").clicked() {
+            ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_manual"), true));
         }
     });
 }

@@ -19,10 +19,17 @@ pub mod shape_params;
 pub mod star_render;
 pub mod starburst;
 pub mod studio_config;
+pub mod studio_scenario_load;
 pub mod view_model;
 
 #[cfg(windows)]
 pub mod app;
+
+#[cfg(windows)]
+pub use app::scenario_io::{
+    load_scenario_manual_path_action, load_scenario_with_picker, open_native_scenario_load_picker,
+    set_programmatic_scenario_path, ScenarioPickerActionResult,
+};
 
 #[cfg(windows)]
 pub fn run() {
