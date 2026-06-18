@@ -9,6 +9,7 @@ pub mod generation;
 pub mod hydration;
 pub mod hyperlane_buckets;
 pub mod panel_layout;
+pub mod runtime_vertical_seed;
 pub mod scenario_io;
 pub mod scenario_projection;
 pub mod selection;
@@ -42,6 +43,10 @@ pub use hydration::{
     studio_projection_from_scenario_authority, studio_projection_from_simthing_spec,
     StudioHeatmapReadiness, StudioHeatmapReadinessKind, StudioHydrationBoundary,
     StudioHydrationError, StudioRfAccumulatorReadiness,
+};
+pub use runtime_vertical_seed::{
+    runtime_vertical_seed_scenario_spec, RUNTIME_VERTICAL_SEED_PROVENANCE_SOURCE,
+    RUNTIME_VERTICAL_SEED_SCENARIO_ID,
 };
 pub use scenario_io::{
     load_scenario_authority_from_path, load_studio_session_from_scenario_path,
