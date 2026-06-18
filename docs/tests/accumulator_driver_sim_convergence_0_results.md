@@ -190,4 +190,59 @@ None.
 
 ## DA status
 
-**PARTIAL** — PROBATION smoke fenced and guarded; capability gap documented; PR #756 bit-exact tests preserved. Pending executive DA approval for promotion.
+**PARTIAL** — PROBATION smoke fenced and guarded; capability gap documented; PR #756 bit-exact tests preserved. See DA RULING below.
+
+## DA RULING (design authority, 2026-06-18)
+
+**Verdict: SPLIT.**
+
+1. **Fence (Parts A, B) — ACCEPTED as a PROBATION safety guardrail.** The `PROOF_ONLY` / `SMOKE_ONLY` /
+   `NOT_RUNTIME` markers and `no_studio_runtime_loop_uses_structural_link_accumulator` (static `src/app/*.rs`
+   scan) correctly and durably prevent the bespoke smoke from becoming the runtime. This rung stands on its
+   own merit.
+2. **"AccumulatorOp cannot express this without broad driver/sim redesign" — OVERRULED.** Verified against
+   source: `CombineFn::Sum` is wired only to contiguous `SlotRange` (`accumulator_op/cpu_oracle.rs` returns
+   `Unsupported("Sum without SlotRange")`), **but** the arbitrary-gather `INPUT_LIST` table already exists with
+   GPU residency (`AccumulatorInputListTable`, wired today to `MinAcrossInputs`). The real gap is **one
+   combine×source cell — Sum over INPUT_LIST** — a bounded *in-mechanism* AO extension, not a redesign. `f32`
+   with the established ≤2²⁴ exact-integer convention covers the vertical seed exactly. The gap *identification*
+   was accurate; the *infeasibility conclusion* is not.
+3. **Documentation-as-code — REJECTED as convergence evidence.** `accumulator_convergence.rs` constants, the
+   driver "stub" (asserts a string equals `"simthing-driver"`; compiles nothing), and 5 of 7 mapeditor guards
+   are tautological/doc-presence assertions that prove no behavior. They may remain only as a transient
+   gap-record and are **removed at CONVERGENCE-1**; they are not promotable evidence.
+
+**Convergence remains OWED.** It is governed by the contract below, generalized to the full horizon
+(RF/Accumulator link coupling **+ Gu-Yang falloff borders + PALMA reach**) so the next two surfaces are never
+built bespoke.
+
+### Structural Execution Convergence Contract (binding on the codex orchestrator)
+
+Every Studio→GPU structural execution surface must: (a) route to an **existing sanctioned `simthing-gpu`
+operator** — never a new bespoke Studio/GPU kernel; (b) be **compiled from `SimThingScenarioSpec` by
+`simthing-driver`**; (c) be **dispatched under `simthing-sim` tick/boundary**; (d) operate over the **correct
+structural adjacency**; (e) keep GPU output as projection/cache, never authority. "One mechanism" = one
+discipline with admitted operator variants, not one literal kernel.
+
+| Surface | Adjacency | Convergence target (existing op) | Bounded-theater + atlas? |
+|---|---|---|---|
+| **RF / link coupling** (CONVERGENCE-1) | hyperlane **link graph** | `AccumulatorOp` Sum-over-`INPUT_LIST` | No (bounded fanout) |
+| **Gu-Yang falloff borders** (CONVERGENCE-2) | **grid N4** of `(col,row)` | `saturating_flux_choke_threshold` + `structured_field_stencil` | **Yes** (§7 P1; dense-global rejected) |
+| **PALMA reach field** (CONVERGENCE-3) | **grid N4** of `(col,row)` | `min_plus_stencil` + `w_impedance_compose` | **Yes** |
+
+**STEAD distinction (do not conflate):** the link Sum-over-`INPUT_LIST` is a *coupling* accumulation over the
+hyperlane graph; it is **not** the heatmap stencil. Gu-Yang/PALMA are *grid* stencils over N4 lattice neighbors
+within a bounded `ExecutionTheater`. Crossing them is a STEAD violation.
+
+**Border-semantics guardrail:** borders **emerge as field expressions** (SaturatingFlux falloff fronts + PALMA
+min-plus reach), never a frontline semantic service; PALMA `D` is a **field, not a route** (no
+predecessors/paths). Reaffirms `stead_spatial_contract.md` §9 withdrawn phrases.
+
+**Sequencing & conditions:** CONVERGENCE-1 (link RF) is owed now and is the *reference instance* establishing
+the driver/sim assembly the others reuse; deliverable is a **real-adapter** proof that adjacency input-lists
+built from canonical `SimThingScenarioSpec` links, run through `AccumulatorOp` `Sum`+`AddToTarget`, reproduce
+`[10,20]→[20,10]` and match `cpu_structural_link_accumulate_i32` byte-for-byte, then driver compile, then sim
+tick, then **delete `structural_link_accumulator.{rs,wgsl}`** (and its duplicated validation). CONVERGENCE-2/-3
+(Gu-Yang/PALMA) are named, scoped, **deferred — not to be started bespoke.** No new GPU primitive; PROBATION
+until each surface's real-adapter proof lands; no tautological test counts as evidence; if an existing op
+structurally cannot host the needed step, **STOP and return to DA** with the specific constraint.

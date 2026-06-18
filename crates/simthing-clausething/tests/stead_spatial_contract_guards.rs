@@ -79,6 +79,7 @@ const ACTIVE_SOURCE: &[(&str, &str)] = &[
 ];
 const EVIDENCE_INDEX: &str = include_str!("../../../docs/tests/current_evidence_index.md");
 const ACTIVE_CONSTITUTION: &str = include_str!("../../../docs/design_0_0_8_3.md");
+const STEAD_CONTRACT: &str = include_str!("../../../docs/stead_spatial_contract.md");
 
 /// A markdown section is "exempt" (may quote forbidden phrases) iff its heading names a withdrawal.
 fn heading_is_exempt(heading: &str) -> bool {
@@ -301,6 +302,40 @@ fn transient_constitution_section_0_must_carry_stead_clause_and_contract_pointer
             .contains("propagate to every future"),
         "§0.8 must state the clause + pointer MUST propagate to every future constitution version"
     );
+}
+
+#[test]
+fn stead_contract_carries_structural_execution_convergence_section() {
+    // §10 binds the Studio→GPU horizon: each structural execution surface routes to an EXISTING sanctioned
+    // operator (no bespoke kernel), compiled by simthing-driver and dispatched by simthing-sim. This fences
+    // the convergence contract durably so the link-RF + Gu-Yang/PALMA border surfaces are never built bespoke.
+    let lower = STEAD_CONTRACT.to_ascii_lowercase();
+    assert!(
+        lower.contains("structural execution convergence"),
+        "stead_spatial_contract.md must carry the §10 structural execution convergence contract"
+    );
+    for needle in [
+        "simthing-driver",
+        "simthing-sim",
+        "accumulatorop",
+        "input_list",
+        "saturating_flux_choke_threshold",
+        "structured_field_stencil",
+        "min_plus_stencil",
+        "w_impedance_compose",
+    ] {
+        assert!(
+            lower.contains(needle),
+            "§10 convergence contract must name the existing operator/owner `{needle}` (no bespoke kernel)"
+        );
+    }
+    // The three horizon surfaces must all be named so none is silently omitted / forked.
+    for surface in ["link", "gu-yang", "palma"] {
+        assert!(
+            lower.contains(surface),
+            "§10 must name the `{surface}` execution surface"
+        );
+    }
 }
 
 #[test]
