@@ -351,7 +351,16 @@ fn gather_and_combine(
                 }
                 Ok(sum)
             }
-            _ => Err(CpuOracleError::Unsupported("Sum without SlotRange")),
+            SourceSpec::ConjunctiveCrossing { inputs } => {
+                let mut sum = 0.0f32;
+                for input in inputs {
+                    sum += values[idx(input.slot, input.col, n_dims)];
+                }
+                Ok(sum)
+            }
+            _ => Err(CpuOracleError::Unsupported(
+                "Sum without SlotRange or InputList",
+            )),
         },
         CombineFn::MinAcrossInputs => {
             let SourceSpec::ConjunctiveCrossing { inputs } = &op.source else {

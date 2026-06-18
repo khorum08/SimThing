@@ -9,13 +9,10 @@ use simthing_spec::{
 };
 
 use simthing_gpu::{
-    accumulate_structural_rows_on_gpu, cpu_structural_link_accumulate_i32,
-    output_values_match_cpu_oracle_bytes, readback_matches_source,
-    readback_structural_upload_blocking, structural_link_accumulator_output_bytes,
-    upload_structural_rows_to_gpu, validate_structural_rows_on_gpu, StructuralFrameGpuRow,
-    StructuralLinkAccumulatorReportGpu, StructuralLinkGpuRow, StructuralLocationGpuRow,
-    StructuralUploadGpuReport, StructuralUploadReadback, StructuralUploadRows,
-    StructuralValidationReportGpu,
+    readback_matches_source, readback_structural_upload_blocking, upload_structural_rows_to_gpu,
+    validate_structural_rows_on_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
+    StructuralLocationGpuRow, StructuralUploadGpuReport, StructuralUploadReadback,
+    StructuralUploadRows, StructuralValidationReportGpu,
 };
 
 use crate::hydration::{
@@ -120,18 +117,6 @@ pub struct StudioGpuStructuralValidationProof {
     pub ready: bool,
     pub deferred_reason: Option<String>,
     pub validation_report: Option<StructuralValidationReportGpu>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StudioGpuLinkAccumulatorSmokeProof {
-    pub ready: bool,
-    pub deferred_reason: Option<String>,
-    pub validation_report: Option<StructuralValidationReportGpu>,
-    pub accumulator_report: Option<StructuralLinkAccumulatorReportGpu>,
-    pub gpu_output: Option<Vec<i32>>,
-    pub cpu_oracle: Option<Vec<i32>>,
-    pub gpu_output_bytes: Option<Vec<u8>>,
-    pub cpu_oracle_bytes: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -421,107 +406,6 @@ pub fn prove_gpu_buffer_residency_blocking(
             readback: None,
         },
     }
-}
-
-/// **proof_only / smoke_only / not_runtime** — explicit test/proof surface only.
-///
-/// Must not be called from Bevy `Update` systems, scenario load paths as runtime execution, or UI
-/// that presents smoke output as simulation state. Production accumulation must route through
-/// `simthing-driver` compile/assembly and `simthing-sim` tick ownership via canonical AccumulatorOp.
-pub fn prove_gpu_link_accumulator_smoke_blocking(
-    device: &simthing_gpu::wgpu::Device,
-    queue: &simthing_gpu::wgpu::Queue,
-    packet: &StudioGpuStructuralUploadPacket,
-    input_values_fixed: &[i32],
-) -> StudioGpuLinkAccumulatorSmokeProof {
-    let rows = to_structural_gpu_rows(packet);
-    let cpu_oracle = match cpu_structural_link_accumulate_i32(
-        packet.frame.location_count,
-        &rows.links,
-        input_values_fixed,
-    ) {
-        Ok(values) => values,
-        Err(err) => {
-            return StudioGpuLinkAccumulatorSmokeProof {
-                ready: false,
-                deferred_reason: Some(format!("CPU oracle rejected input: {err}")),
-                validation_report: None,
-                accumulator_report: None,
-                gpu_output: None,
-                cpu_oracle: None,
-                gpu_output_bytes: None,
-                cpu_oracle_bytes: None,
-            };
-        }
-    };
-    let cpu_oracle_bytes = structural_link_accumulator_output_bytes(&cpu_oracle);
-    match accumulate_structural_rows_on_gpu(device, queue, &rows, input_values_fixed) {
-        Ok(readback) => {
-            let validation_ok = readback.validation_report.invalid_link_endpoint_count == 0
-                && readback.validation_report.self_link_count == 0;
-            let accumulator_ok = readback.report.invalid_link_endpoint_count == 0
-                && readback.report.self_link_count == 0;
-            let output_matches =
-                output_values_match_cpu_oracle_bytes(&readback.output_values, &cpu_oracle);
-            let gpu_output_bytes =
-                structural_link_accumulator_output_bytes(&readback.output_values);
-            let bytes_match = gpu_output_bytes == cpu_oracle_bytes;
-            let ready = validation_ok && accumulator_ok && output_matches && bytes_match;
-            StudioGpuLinkAccumulatorSmokeProof {
-                ready,
-                deferred_reason: if ready {
-                    None
-                } else {
-                    Some(format!(
-                        "GPU link accumulator smoke mismatch: validation_ok={validation_ok} accumulator_ok={accumulator_ok} output_matches={output_matches} bytes_match={bytes_match}"
-                    ))
-                },
-                validation_report: Some(readback.validation_report),
-                accumulator_report: Some(readback.report),
-                gpu_output: Some(readback.output_values),
-                cpu_oracle: Some(cpu_oracle),
-                gpu_output_bytes: Some(gpu_output_bytes),
-                cpu_oracle_bytes: Some(cpu_oracle_bytes),
-            }
-        }
-        Err(err) => StudioGpuLinkAccumulatorSmokeProof {
-            ready: false,
-            deferred_reason: Some(format!("GPU link accumulator failed: {err}")),
-            validation_report: None,
-            accumulator_report: None,
-            gpu_output: None,
-            cpu_oracle: Some(cpu_oracle),
-            gpu_output_bytes: None,
-            cpu_oracle_bytes: Some(cpu_oracle_bytes),
-        },
-    }
-}
-
-/// **proof_only / smoke_only / not_runtime** — vertical-seed fixture pulled into PROBATION smoke only.
-///
-/// Same runtime-bypass constraints as [`prove_gpu_link_accumulator_smoke_blocking`].
-pub fn prove_runtime_vertical_seed_gpu_link_accumulator_blocking(
-    device: &simthing_gpu::wgpu::Device,
-    queue: &simthing_gpu::wgpu::Queue,
-    input_values_fixed: &[i32],
-) -> StudioGpuLinkAccumulatorSmokeProof {
-    let scenario = crate::runtime_vertical_seed::runtime_vertical_seed_scenario_spec();
-    let packet = match build_gpu_structural_upload_packet_from_scenario(&scenario) {
-        Ok(packet) => packet,
-        Err(err) => {
-            return StudioGpuLinkAccumulatorSmokeProof {
-                ready: false,
-                deferred_reason: Some(format!("structural upload packet failed: {err:?}")),
-                validation_report: None,
-                accumulator_report: None,
-                gpu_output: None,
-                cpu_oracle: None,
-                gpu_output_bytes: None,
-                cpu_oracle_bytes: None,
-            };
-        }
-    };
-    prove_gpu_link_accumulator_smoke_blocking(device, queue, &packet, input_values_fixed)
 }
 
 pub fn prove_gpu_structural_validation_blocking(

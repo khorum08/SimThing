@@ -454,6 +454,15 @@ fn gather_value(op: AccumulatorOpGpu) -> f32 {
         return sum;
     }
 
+    if (op.combine_kind == COMBINE_SUM && op.source_kind == SOURCE_INPUT_LIST) {
+        var sum = 0.0;
+        for (var i: u32 = 0u; i < op.source_count; i = i + 1u) {
+            let input = input_list[op.source_slot + i];
+            sum = sum + atomic_read_f32_at(linear_idx(input.slot, input.col));
+        }
+        return sum;
+    }
+
     // C-5 intentionally uses linear-loop gather for deterministic soft aggregate
     // migration. Do not replace with shared-memory tree reduction in C-5.
     if (op.combine_kind == COMBINE_MEAN && op.source_kind == SOURCE_SLOT_RANGE) {

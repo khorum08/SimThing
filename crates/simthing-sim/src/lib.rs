@@ -42,6 +42,7 @@
 //! - `boundary` — top-level `BoundaryProtocol` struct that owns the SimThing
 //!   tree root and orchestrates the full §10 sequence in one call.
 
+pub mod accumulator_plan_tick;
 pub mod boundary;
 pub mod delta_log;
 pub mod fission;
@@ -56,6 +57,7 @@ pub mod threshold_registry;
 pub mod tree_index;
 pub mod tree_mutation;
 
+pub use accumulator_plan_tick::{execute_accumulator_plan_tick_cpu, SimTickError};
 pub use boundary::{
     BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags,
 };

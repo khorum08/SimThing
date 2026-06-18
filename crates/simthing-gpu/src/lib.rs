@@ -5,7 +5,6 @@
 //! sequencer build on top of `WorldGpuState`.
 
 pub use wgpu;
-pub mod accumulator_convergence;
 pub mod accumulator_op;
 pub mod atlas_mask;
 pub mod candidate_f_magnitude;
@@ -25,7 +24,6 @@ pub mod saturating_flux_choke_threshold;
 pub mod scheduled_w_palma_batch;
 pub mod slot;
 pub mod stress_compose;
-pub mod structural_link_accumulator;
 pub mod structural_upload;
 pub mod structural_validation;
 pub mod structured_field_stencil;
@@ -34,11 +32,6 @@ pub mod velocity_accumulator;
 pub mod w_impedance_compose;
 pub mod world_state;
 
-pub use accumulator_convergence::{
-    ACCUMULATOR_CONVERGENCE_GAP_REPORT_REL, ACCUMULATOR_OP_MISSING_GENERIC_CAPABILITIES,
-    DRIVER_STRUCTURAL_ACCUMULATOR_COMPILE_CRATE, SIM_STRUCTURAL_ACCUMULATOR_TICK_CRATE,
-    STRUCTURAL_NEIGHBOR_SUM_INVARIANT, VERTICAL_SEED_EXPECTED_OUTPUT, VERTICAL_SEED_INPUT,
-};
 pub use accumulator_op::{
     ao_wgsl0_fast_path_compatible, classify_ao_wgsl0_plan, emit_on_threshold_registrations_to_gpu,
     emit_on_threshold_registrations_to_ops, eval_eml_cpu, execute_ops_cpu,
@@ -121,16 +114,6 @@ pub use stress_compose::{
     StressComposeProfile, STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES,
     STRESS_COMPOSE_WORKGROUP_SIZE, STRESS_OP_MISMATCH, STRESS_OP_OVERLAP, STRESS_OP_VELOCITY,
     STRESS_OP_WEIGHTED,
-};
-pub use structural_link_accumulator::{
-    accumulate_structural_rows_on_gpu, accumulate_structural_rows_on_gpu_report_probe,
-    cpu_structural_link_accumulate_i32, execute_structural_link_accumulator_on_gpu,
-    initial_accumulator_report, output_values_match_cpu_oracle_bytes,
-    scan_for_forbidden_accumulator_tokens, structural_link_accumulator_output_bytes,
-    StructuralLinkAccumulatorError, StructuralLinkAccumulatorGpuReadback,
-    StructuralLinkAccumulatorReportGpu, ACCUMULATOR_REPORT_BYTES,
-    STRUCTURAL_LINK_ACCUMULATOR_NOT_RUNTIME, STRUCTURAL_LINK_ACCUMULATOR_PROOF_ONLY,
-    STRUCTURAL_LINK_ACCUMULATOR_SMOKE_ONLY,
 };
 pub use structural_upload::{
     readback_buffer_bytes_blocking, readback_matches_source, readback_pod_blocking,
