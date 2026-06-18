@@ -1,13 +1,27 @@
-//! TERRAN-PIRATE-SCENARIO-SKELETON-0 — driver compile proofs for horizon skeleton.
+//! TERRAN-PIRATE-SCENARIO-SKELETON-0R — driver compile proofs load canonical scenario authority.
 
 use simthing_core::{CombineFn, ConsumeMode, SourceSpec, StructuralScalarChannel};
 use simthing_driver::compile_structural_link_neighbor_sum_plan;
 use simthing_gpu::{classify_ao_wgsl0_plan, AccumulatorOpGpu, AoWgsl0Compatibility};
-use simthing_mapeditor::terran_pirate_skeleton_scenario_spec;
+use simthing_spec::{
+    deserialize_scenario_authority, validate_scenario_links, validate_stead_mapping_consistency,
+    SimThingScenarioSpec,
+};
+
+const TERRAN_PIRATE_SKELETON_SCENARIO_JSON: &str =
+    include_str!("../../../scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json");
+
+fn canonical_skeleton_scenario() -> SimThingScenarioSpec {
+    let scenario = deserialize_scenario_authority(TERRAN_PIRATE_SKELETON_SCENARIO_JSON)
+        .expect("deserialize canonical skeleton");
+    validate_stead_mapping_consistency(&scenario).expect("STEAD valid");
+    validate_scenario_links(&scenario).expect("links valid");
+    scenario
+}
 
 fn skeleton_plan() -> simthing_core::CompiledAccumulatorOpPlan {
     compile_structural_link_neighbor_sum_plan(
-        &terran_pirate_skeleton_scenario_spec(),
+        &canonical_skeleton_scenario(),
         StructuralScalarChannel(0),
         StructuralScalarChannel(1),
     )
