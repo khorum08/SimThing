@@ -2,7 +2,7 @@
 
 use simthing_core::{is_exact_integer_f32, CompiledAccumulatorOpPlan};
 use simthing_gpu::execute_ops_cpu;
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
+use simthing_gpu::{scoped_debug_readback_allowed, AccumulatorOpSession, GpuContext};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SimTickError {
@@ -127,11 +127,11 @@ fn extract_output_channel(plan: &CompiledAccumulatorOpPlan, values: &[f32]) -> V
         .collect()
 }
 
-/// Enables debug readback gating only for explicit proof/presentation readback paths.
+/// Scopes debug readback gating for explicit proof/presentation readback paths.
 fn run_with_proof_readback_enabled<T>(
     f: impl FnOnce() -> Result<T, SimTickError>,
 ) -> Result<T, SimTickError> {
-    set_debug_readback_allowed(true);
+    let _guard = scoped_debug_readback_allowed(true);
     f()
 }
 

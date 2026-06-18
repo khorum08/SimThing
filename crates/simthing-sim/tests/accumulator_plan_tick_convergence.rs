@@ -1,13 +1,27 @@
 //! ACCUMULATOR-DRIVER-SIM-CONVERGENCE-1 + SIM-GPU-ACCUMULATOR-BACKEND-0 +
-//! SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0 — sim tick ownership proofs.
+//! SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0 + SIM-GPU-READBACK-SCOPE-0 — sim tick ownership proofs.
+
+use std::sync::Mutex;
 
 use simthing_core::StructuralScalarChannel;
 use simthing_driver::compile_structural_link_neighbor_sum_plan;
+use simthing_gpu::{
+    debug_readback_allowed, scoped_debug_readback_allowed, set_debug_readback_allowed,
+};
 use simthing_mapeditor::runtime_vertical_seed_scenario_spec;
 use simthing_sim::{
     execute_accumulator_plan_tick_cpu, execute_accumulator_plan_tick_gpu, gpu_context_blocking,
     SimGpuAccumulatorTickState, SimGpuReadbackPolicy, SimTickError,
 };
+
+static READBACK_GATE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+fn with_isolated_readback_gate_test<F: FnOnce()>(f: F) {
+    let _lock = READBACK_GATE_TEST_LOCK.lock().expect("readback gate test lock");
+    set_debug_readback_allowed(false);
+    f();
+    set_debug_readback_allowed(false);
+}
 
 fn vertical_seed_plan() -> simthing_core::CompiledAccumulatorOpPlan {
     let scenario = runtime_vertical_seed_scenario_spec();
@@ -302,4 +316,124 @@ fn sim_gpu_tick_does_not_silently_enable_debug_readback() {
     );
     let source = include_str!("../src/accumulator_plan_tick.rs");
     assert!(source.contains("run_with_proof_readback_enabled"));
+    assert!(source.contains("scoped_debug_readback_allowed"));
+}
+
+#[test]
+fn proof_readback_restores_debug_gate_after_success() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-READBACK-SCOPE-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan.clone()).expect("init");
+        state
+            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
+            .expect("proof tick");
+        assert!(!debug_readback_allowed());
+        eprintln!("SIM-GPU-READBACK-SCOPE-0: REAL_ADAPTER_OBSERVED");
+    });
+}
+
+#[test]
+fn proof_readback_restores_debug_gate_after_readback_error_if_testable() {
+    with_isolated_readback_gate_test(|| {
+        let result: Result<(), SimTickError> = (|| {
+            let _guard = scoped_debug_readback_allowed(true);
+            assert!(debug_readback_allowed());
+            Err(SimTickError::Readback("simulated readback failure".into()))
+        })();
+        assert!(result.is_err());
+        assert!(!debug_readback_allowed());
+    });
+}
+
+#[test]
+fn proof_readback_does_not_leak_into_subsequent_none_tick() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-READBACK-SCOPE-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        state
+            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
+            .expect("proof tick");
+        assert!(!debug_readback_allowed());
+        assert!(state
+            .tick(&ctx, &[30.0, 40.0], SimGpuReadbackPolicy::None)
+            .expect("none tick")
+            .is_none());
+        assert!(!debug_readback_allowed());
+        eprintln!("SIM-GPU-READBACK-SCOPE-0: REAL_ADAPTER_OBSERVED");
+    });
+}
+
+#[test]
+fn production_none_tick_never_enables_debug_readback() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-READBACK-SCOPE-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        assert!(state
+            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::None)
+            .expect("none tick")
+            .is_none());
+        assert!(!debug_readback_allowed());
+    });
+}
+
+#[test]
+fn resident_state_ticks_twice_after_proof_readback_without_forced_readback() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-READBACK-SCOPE-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        assert_eq!(
+            state
+                .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
+                .expect("tick 1")
+                .expect("readback 1"),
+            vec![20.0, 10.0]
+        );
+        assert!(!debug_readback_allowed());
+        assert!(state
+            .tick(&ctx, &[30.0, 40.0], SimGpuReadbackPolicy::None)
+            .expect("none tick")
+            .is_none());
+        assert_eq!(
+            state
+                .tick(&ctx, &[30.0, 40.0], SimGpuReadbackPolicy::ProofReadback)
+                .expect("tick 2")
+                .expect("readback 2"),
+            vec![40.0, 30.0]
+        );
+        assert!(!debug_readback_allowed());
+        eprintln!("SIM-GPU-READBACK-SCOPE-0: REAL_ADAPTER_OBSERVED");
+    });
+}
+
+#[test]
+fn one_shot_gpu_helper_scopes_proof_readback() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-READBACK-SCOPE-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let output =
+            execute_accumulator_plan_tick_gpu(&ctx, &plan, &[10.0, 20.0]).expect("one-shot gpu");
+        assert_eq!(output, vec![20.0, 10.0]);
+        assert!(!debug_readback_allowed());
+        let source = include_str!("../src/accumulator_plan_tick.rs");
+        assert!(source.contains("scoped_debug_readback_allowed"));
+    });
 }

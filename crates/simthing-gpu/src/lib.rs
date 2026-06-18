@@ -33,14 +33,15 @@ pub mod w_impedance_compose;
 pub mod world_state;
 
 pub use accumulator_op::{
-    ao_wgsl0_fast_path_compatible, classify_ao_wgsl0_plan, emit_on_threshold_registrations_to_gpu,
-    emit_on_threshold_registrations_to_ops, eval_eml_cpu, execute_ops_cpu,
-    execute_threshold_ops_cpu, set_debug_readback_allowed, summaries_from_values,
-    threshold_registrations_to_ops, AccumulatorInputGpu, AccumulatorInputListTable,
-    AccumulatorOpGpu, AccumulatorOpSession, AccumulatorOpSessionError, AoWgsl0Compatibility,
-    AoWgsl0FallbackReason, AoWgsl0PlanShape, EmissionOpPlanSignature, EmissionRecord,
-    EmlGpuProgramTable, EmlTreeRangeGpu, EmlUploadError, EncodeError, ExactnessClass,
-    InputListRange, IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle, OperationFamily,
+    ao_wgsl0_fast_path_compatible, classify_ao_wgsl0_plan, debug_readback_allowed,
+    emit_on_threshold_registrations_to_gpu, emit_on_threshold_registrations_to_ops, eval_eml_cpu,
+    execute_ops_cpu, execute_threshold_ops_cpu, scoped_debug_readback_allowed,
+    set_debug_readback_allowed, summaries_from_values, threshold_registrations_to_ops,
+    AccumulatorInputGpu, AccumulatorInputListTable, AccumulatorOpGpu, AccumulatorOpSession,
+    AccumulatorOpSessionError, AoWgsl0Compatibility, AoWgsl0FallbackReason, AoWgsl0PlanShape,
+    DebugReadbackGuard, EmissionOpPlanSignature, EmissionRecord, EmlGpuProgramTable,
+    EmlTreeRangeGpu, EmlUploadError, EncodeError, ExactnessClass, InputListRange,
+    IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle, OperationFamily,
     OverlayCompileCache, SlotSummary, ThresholdEmission, ThresholdEmissionGpu,
     TransferOpPlanSignature, WorldAccumulatorRuntime, WorldSummaryRuntime, AO_WGSL0_ENTRY_POINT,
     DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY,

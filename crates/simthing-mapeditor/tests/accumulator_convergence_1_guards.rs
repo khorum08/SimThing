@@ -45,6 +45,8 @@ const FORBIDDEN_GPU_DISPATCH_TOKENS: &[&str] = &[
     "SimGpuAccumulatorTickState",
     "ProofReadback",
     "set_debug_readback_allowed",
+    "scoped_debug_readback_allowed",
+    "DebugReadbackGuard",
 ];
 
 #[test]
@@ -216,4 +218,12 @@ fn production_doc_names_sim_gpu_resident_accumulator_tick() {
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sim-gpu-resident-accumulator-tick-0"));
     assert!(lower.contains("simgpuaccumulatortickstate"));
+}
+
+#[test]
+fn production_doc_names_sim_gpu_readback_scope() {
+    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let lower = doc.to_ascii_lowercase();
+    assert!(lower.contains("sim-gpu-readback-scope-0"));
+    assert!(lower.contains("scoped_debug_readback_allowed"));
 }

@@ -43,9 +43,39 @@ struct ValuesFillParams {
 
 static DEBUG_READBACK_ALLOWED: AtomicBool = AtomicBool::new(false);
 
-/// Allow `readback_full()` without emitting a warning (tests only).
+/// Allow `readback_full()` without emitting a warning (tests and explicit proof readback only).
 pub fn set_debug_readback_allowed(allowed: bool) {
     DEBUG_READBACK_ALLOWED.store(allowed, Ordering::Relaxed);
+}
+
+/// Current debug readback gate state.
+pub fn debug_readback_allowed() -> bool {
+    DEBUG_READBACK_ALLOWED.load(Ordering::Relaxed)
+}
+
+/// RAII guard that restores the prior debug readback gate on drop (including panic unwind).
+pub struct DebugReadbackGuard {
+    previous: bool,
+}
+
+impl DebugReadbackGuard {
+    /// Set the debug readback gate to `enabled` until this guard is dropped.
+    pub fn new(enabled: bool) -> Self {
+        let previous = debug_readback_allowed();
+        set_debug_readback_allowed(enabled);
+        Self { previous }
+    }
+}
+
+impl Drop for DebugReadbackGuard {
+    fn drop(&mut self) {
+        set_debug_readback_allowed(self.previous);
+    }
+}
+
+/// Scope debug readback gating to the lifetime of the returned guard.
+pub fn scoped_debug_readback_allowed(enabled: bool) -> DebugReadbackGuard {
+    DebugReadbackGuard::new(enabled)
 }
 
 #[derive(Debug, thiserror::Error)]
