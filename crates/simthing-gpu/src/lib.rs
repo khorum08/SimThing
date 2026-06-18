@@ -117,11 +117,12 @@ pub use stress_compose::{
     STRESS_OP_WEIGHTED,
 };
 pub use structural_link_accumulator::{
-    accumulate_structural_rows_on_gpu, cpu_structural_link_accumulate_i32,
-    execute_structural_link_accumulator_on_gpu, initial_accumulator_report,
-    scan_for_forbidden_accumulator_tokens, StructuralLinkAccumulatorError,
-    StructuralLinkAccumulatorGpuReadback, StructuralLinkAccumulatorReportGpu,
-    ACCUMULATOR_REPORT_BYTES,
+    accumulate_structural_rows_on_gpu, accumulate_structural_rows_on_gpu_report_probe,
+    cpu_structural_link_accumulate_i32, execute_structural_link_accumulator_on_gpu,
+    initial_accumulator_report, output_values_match_cpu_oracle_bytes,
+    scan_for_forbidden_accumulator_tokens, structural_link_accumulator_output_bytes,
+    StructuralLinkAccumulatorError, StructuralLinkAccumulatorGpuReadback,
+    StructuralLinkAccumulatorReportGpu, ACCUMULATOR_REPORT_BYTES,
 };
 pub use structural_upload::{
     readback_buffer_bytes_blocking, readback_matches_source, readback_pod_blocking,

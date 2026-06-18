@@ -9,11 +9,13 @@ use simthing_spec::{
 };
 
 use simthing_gpu::{
-    accumulate_structural_rows_on_gpu, cpu_structural_link_accumulate_i32, readback_matches_source,
-    readback_structural_upload_blocking, upload_structural_rows_to_gpu,
-    validate_structural_rows_on_gpu, StructuralFrameGpuRow, StructuralLinkAccumulatorReportGpu,
-    StructuralLinkGpuRow, StructuralLocationGpuRow, StructuralUploadGpuReport,
-    StructuralUploadReadback, StructuralUploadRows, StructuralValidationReportGpu,
+    accumulate_structural_rows_on_gpu, cpu_structural_link_accumulate_i32,
+    output_values_match_cpu_oracle_bytes, readback_matches_source,
+    readback_structural_upload_blocking, structural_link_accumulator_output_bytes,
+    upload_structural_rows_to_gpu, validate_structural_rows_on_gpu, StructuralFrameGpuRow,
+    StructuralLinkAccumulatorReportGpu, StructuralLinkGpuRow, StructuralLocationGpuRow,
+    StructuralUploadGpuReport, StructuralUploadReadback, StructuralUploadRows,
+    StructuralValidationReportGpu,
 };
 
 use crate::hydration::{
@@ -128,6 +130,8 @@ pub struct StudioGpuLinkAccumulatorSmokeProof {
     pub accumulator_report: Option<StructuralLinkAccumulatorReportGpu>,
     pub gpu_output: Option<Vec<i32>>,
     pub cpu_oracle: Option<Vec<i32>>,
+    pub gpu_output_bytes: Option<Vec<u8>>,
+    pub cpu_oracle_bytes: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -440,30 +444,39 @@ pub fn prove_gpu_link_accumulator_smoke_blocking(
                 accumulator_report: None,
                 gpu_output: None,
                 cpu_oracle: None,
+                gpu_output_bytes: None,
+                cpu_oracle_bytes: None,
             };
         }
     };
+    let cpu_oracle_bytes = structural_link_accumulator_output_bytes(&cpu_oracle);
     match accumulate_structural_rows_on_gpu(device, queue, &rows, input_values_fixed) {
         Ok(readback) => {
             let validation_ok = readback.validation_report.invalid_link_endpoint_count == 0
                 && readback.validation_report.self_link_count == 0;
             let accumulator_ok = readback.report.invalid_link_endpoint_count == 0
                 && readback.report.self_link_count == 0;
-            let output_matches = readback.output_values == cpu_oracle;
-            let ready = validation_ok && accumulator_ok && output_matches;
+            let output_matches =
+                output_values_match_cpu_oracle_bytes(&readback.output_values, &cpu_oracle);
+            let gpu_output_bytes =
+                structural_link_accumulator_output_bytes(&readback.output_values);
+            let bytes_match = gpu_output_bytes == cpu_oracle_bytes;
+            let ready = validation_ok && accumulator_ok && output_matches && bytes_match;
             StudioGpuLinkAccumulatorSmokeProof {
                 ready,
                 deferred_reason: if ready {
                     None
                 } else {
                     Some(format!(
-                        "GPU link accumulator smoke mismatch: validation_ok={validation_ok} accumulator_ok={accumulator_ok} output_matches={output_matches}"
+                        "GPU link accumulator smoke mismatch: validation_ok={validation_ok} accumulator_ok={accumulator_ok} output_matches={output_matches} bytes_match={bytes_match}"
                     ))
                 },
                 validation_report: Some(readback.validation_report),
                 accumulator_report: Some(readback.report),
                 gpu_output: Some(readback.output_values),
                 cpu_oracle: Some(cpu_oracle),
+                gpu_output_bytes: Some(gpu_output_bytes),
+                cpu_oracle_bytes: Some(cpu_oracle_bytes),
             }
         }
         Err(err) => StudioGpuLinkAccumulatorSmokeProof {
@@ -473,6 +486,8 @@ pub fn prove_gpu_link_accumulator_smoke_blocking(
             accumulator_report: None,
             gpu_output: None,
             cpu_oracle: Some(cpu_oracle),
+            gpu_output_bytes: None,
+            cpu_oracle_bytes: Some(cpu_oracle_bytes),
         },
     }
 }
@@ -493,6 +508,8 @@ pub fn prove_runtime_vertical_seed_gpu_link_accumulator_blocking(
                 accumulator_report: None,
                 gpu_output: None,
                 cpu_oracle: None,
+                gpu_output_bytes: None,
+                cpu_oracle_bytes: None,
             };
         }
     };

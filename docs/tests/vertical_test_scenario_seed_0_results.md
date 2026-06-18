@@ -56,7 +56,7 @@ This pass answers a concrete horizon question: can Studio load a real SimThing-S
 - RF/Accumulator execution, Movement-Front execution
 - Heatmap rendering, pathfinding, route/predecessor semantics
 - Simulation loop, domain semantic WGSL, new SimThingKind
-- **GPU-LINK-ACCUMULATOR-SMOKE-0** — deferred until pulled by the vertical-test fixture/runtime surface
+- **GPU-LINK-ACCUMULATOR-SMOKE-0** — now pulled by this seed (see `docs/tests/gpu_link_accumulator_smoke_0_results.md`)
 
 ## Fixture path / builder helper
 
@@ -118,6 +118,17 @@ cargo test -p simthing-clausething --test mapgen_movement_front
 git diff --check
 ```
 
+## Windows resource-limit handling (PR #754 validation)
+
+| Item | Detail |
+|---|---|
+| Failed command | `cargo test -p simthing-spec` (default parallel build/link) |
+| OS/resource reason | Windows paging file too small for parallel linker jobs (linker exit code **1102**) |
+| Serial/scoped rerun | `$env:CARGO_BUILD_JOBS=1; cargo test -p simthing-spec --lib` |
+| Test binaries that ran on rerun | `simthing-spec` **lib** unit tests only (47 passed) |
+| Test binaries that did **not** run in the failed parallel attempt | `simthing-spec` integration test binaries that failed to link under parallel jobs |
+| PROBATION impact | **Unchanged** — required lib tests and all other PR #754 crate validations passed after serial rerun; evidence remains PROBATION pending DA approval, not downgraded to PARTIAL for this resource limit |
+
 ## Files changed
 
 - `crates/simthing-mapeditor/src/runtime_vertical_seed.rs`
@@ -136,7 +147,7 @@ None.
 
 ## Deferred work
 
-GPU-LINK-ACCUMULATOR-SMOKE-0, runtime vertical-test execution, RF/MF execution, heatmap rendering, pathfinding, route/predecessor semantics, live sim loop, Studio runtime GPU UI wiring.
+Runtime vertical-test execution, RF/MF execution, heatmap rendering, pathfinding, route/predecessor semantics, live sim loop, Studio runtime GPU UI wiring.
 
 ## DA status
 

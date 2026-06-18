@@ -1,7 +1,7 @@
 //! GPU structural link neighbor accumulation smoke pass.
 //!
-//! Fixed-point i32 accumulation over canonical structural links — projection/cache only,
-//! not model authority. No pathfinding or movement-order semantics.
+//! Bit-exact i32 neighbor accumulation over canonical structural links — projection/cache only,
+//! not model authority. CPU oracle uses `checked_add`; GPU dispatch runs only after oracle success.
 
 use bytemuck::{Pod, Zeroable};
 use thiserror::Error;
@@ -47,11 +47,18 @@ pub enum StructuralLinkAccumulatorError {
     #[error(transparent)]
     Validation(#[from] StructuralValidationError),
     #[error("input_values length {actual} does not match location_count {expected}")]
-    WrongInputLength { expected: u32, actual: usize },
-    #[error("structural link endpoint {endpoint} >= location_count {location_count}")]
-    InvalidEndpoint { endpoint: u32, location_count: u32 },
-    #[error("structural link is a self-link at dense index {index}")]
-    SelfLink { index: u32 },
+    InvalidInputLength { expected: usize, actual: usize },
+    #[error("structural link dense endpoint {dense_index} >= location_count {location_count}")]
+    InvalidEndpoint {
+        dense_index: u32,
+        location_count: u32,
+    },
+    #[error("structural link is a self-link at dense index {dense_index}")]
+    SelfLink { dense_index: u32 },
+    #[error("structural link accumulation overflow at dense index {dense_index}")]
+    AccumulatorOverflow { dense_index: u32 },
+    #[error("GPU output bytes do not match CPU oracle bytes")]
+    OutputBytesMismatch,
 }
 
 pub const ACCUMULATOR_REPORT_BYTES: u64 =
@@ -73,40 +80,63 @@ pub fn initial_accumulator_report(
     }
 }
 
+fn checked_accumulate_slot(
+    slot: &mut i32,
+    addend: i32,
+    dense_index: u32,
+) -> Result<(), StructuralLinkAccumulatorError> {
+    *slot = slot
+        .checked_add(addend)
+        .ok_or(StructuralLinkAccumulatorError::AccumulatorOverflow { dense_index })?;
+    Ok(())
+}
+
+/// Canonical little-endian i32 bytes for GPU readback comparison (host LE assumption documented in evidence).
+pub fn structural_link_accumulator_output_bytes(values: &[i32]) -> Vec<u8> {
+    bytemuck::cast_slice(values).to_vec()
+}
+
+pub fn output_values_match_cpu_oracle_bytes(gpu_values: &[i32], cpu_oracle: &[i32]) -> bool {
+    gpu_values == cpu_oracle
+        && structural_link_accumulator_output_bytes(gpu_values)
+            == structural_link_accumulator_output_bytes(cpu_oracle)
+}
+
 pub fn cpu_structural_link_accumulate_i32(
     location_count: u32,
     links: &[StructuralLinkGpuRow],
     input_values: &[i32],
 ) -> Result<Vec<i32>, StructuralLinkAccumulatorError> {
-    if input_values.len() != location_count as usize {
-        return Err(StructuralLinkAccumulatorError::WrongInputLength {
-            expected: location_count,
+    let expected_len = location_count as usize;
+    if input_values.len() != expected_len {
+        return Err(StructuralLinkAccumulatorError::InvalidInputLength {
+            expected: expected_len,
             actual: input_values.len(),
         });
     }
-    let mut output = vec![0i32; location_count as usize];
+    let mut output = vec![0i32; expected_len];
     for link in links {
         if link.from_dense_index == link.to_dense_index {
             return Err(StructuralLinkAccumulatorError::SelfLink {
-                index: link.from_dense_index,
+                dense_index: link.from_dense_index,
             });
         }
         if link.from_dense_index >= location_count {
             return Err(StructuralLinkAccumulatorError::InvalidEndpoint {
-                endpoint: link.from_dense_index,
+                dense_index: link.from_dense_index,
                 location_count,
             });
         }
         if link.to_dense_index >= location_count {
             return Err(StructuralLinkAccumulatorError::InvalidEndpoint {
-                endpoint: link.to_dense_index,
+                dense_index: link.to_dense_index,
                 location_count,
             });
         }
         let from = link.from_dense_index as usize;
         let to = link.to_dense_index as usize;
-        output[from] = output[from].saturating_add(input_values[to]);
-        output[to] = output[to].saturating_add(input_values[from]);
+        checked_accumulate_slot(&mut output[from], input_values[to], link.from_dense_index)?;
+        checked_accumulate_slot(&mut output[to], input_values[from], link.to_dense_index)?;
     }
     Ok(output)
 }
@@ -116,14 +146,26 @@ pub fn execute_structural_link_accumulator_on_gpu(
     queue: &Queue,
     buffers: &StructuralUploadGpuBuffers,
     upload_report: &StructuralUploadGpuReport,
+    links: &[StructuralLinkGpuRow],
     input_values_fixed: &[i32],
+    require_cpu_oracle: bool,
 ) -> Result<StructuralLinkAccumulatorGpuReadback, StructuralLinkAccumulatorError> {
     if input_values_fixed.len() != upload_report.location_count as usize {
-        return Err(StructuralLinkAccumulatorError::WrongInputLength {
-            expected: upload_report.location_count,
+        return Err(StructuralLinkAccumulatorError::InvalidInputLength {
+            expected: upload_report.location_count as usize,
             actual: input_values_fixed.len(),
         });
     }
+
+    let cpu_oracle = if require_cpu_oracle {
+        Some(cpu_structural_link_accumulate_i32(
+            upload_report.location_count,
+            links,
+            input_values_fixed,
+        )?)
+    } else {
+        None
+    };
 
     let validation_report =
         validate_structural_upload_on_gpu(device, queue, buffers, upload_report)?;
@@ -134,8 +176,9 @@ pub fn execute_structural_link_accumulator_on_gpu(
     let output_zeros = vec![0i32; location_count];
 
     if upload_report.link_count == 0 {
+        let output_values = cpu_oracle.unwrap_or(output_zeros);
         return Ok(StructuralLinkAccumulatorGpuReadback {
-            output_values: output_zeros,
+            output_values,
             report: initial_report,
             validation_report,
         });
@@ -246,6 +289,12 @@ pub fn execute_structural_link_accumulator_on_gpu(
     let output_values: Vec<i32> = bytemuck::cast_slice(&output_bytes).to_vec();
     let report = readback_pod_blocking(device, queue, &report_buffer, "accumulator_report")?;
 
+    if let Some(expected) = cpu_oracle {
+        if !output_values_match_cpu_oracle_bytes(&output_values, &expected) {
+            return Err(StructuralLinkAccumulatorError::OutputBytesMismatch);
+        }
+    }
+
     Ok(StructuralLinkAccumulatorGpuReadback {
         output_values,
         report,
@@ -261,7 +310,35 @@ pub fn accumulate_structural_rows_on_gpu(
 ) -> Result<StructuralLinkAccumulatorGpuReadback, StructuralLinkAccumulatorError> {
     let (buffers, report) =
         upload_structural_rows_to_gpu(device, queue, rows.frame, &rows.locations, &rows.links)?;
-    execute_structural_link_accumulator_on_gpu(device, queue, &buffers, &report, input_values_fixed)
+    execute_structural_link_accumulator_on_gpu(
+        device,
+        queue,
+        &buffers,
+        &report,
+        &rows.links,
+        input_values_fixed,
+        true,
+    )
+}
+
+/// Report-probe dispatch for invalid uploaded link rows (WGSL counter tests only).
+pub fn accumulate_structural_rows_on_gpu_report_probe(
+    device: &Device,
+    queue: &Queue,
+    rows: &StructuralUploadRows,
+    input_values_fixed: &[i32],
+) -> Result<StructuralLinkAccumulatorGpuReadback, StructuralLinkAccumulatorError> {
+    let (buffers, report) =
+        upload_structural_rows_to_gpu(device, queue, rows.frame, &rows.locations, &rows.links)?;
+    execute_structural_link_accumulator_on_gpu(
+        device,
+        queue,
+        &buffers,
+        &report,
+        &rows.links,
+        input_values_fixed,
+        false,
+    )
 }
 
 fn storage_read_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -564,7 +641,22 @@ mod tests {
             .expect_err("wrong len");
         assert!(matches!(
             err,
-            StructuralLinkAccumulatorError::WrongInputLength { .. }
+            StructuralLinkAccumulatorError::InvalidInputLength { .. }
+        ));
+    }
+
+    #[test]
+    fn cpu_structural_link_accumulate_rejects_overflow() {
+        let rows = chain_rows();
+        let err = cpu_structural_link_accumulate_i32(
+            rows.frame.location_count,
+            &rows.links,
+            &[i32::MAX, 0, i32::MAX],
+        )
+        .expect_err("overflow");
+        assert!(matches!(
+            err,
+            StructuralLinkAccumulatorError::AccumulatorOverflow { .. }
         ));
     }
 
@@ -677,8 +769,9 @@ mod tests {
         };
         let mut rows = vertical_seed_rows();
         rows.links[0].to_dense_index = 99;
-        let readback = accumulate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows, &[10, 20])
-            .expect("gpu");
+        let readback =
+            accumulate_structural_rows_on_gpu_report_probe(&ctx.device, &ctx.queue, &rows, &[10, 20])
+                .expect("gpu");
         assert_eq!(readback.report.invalid_link_endpoint_count, 1);
         assert_eq!(readback.report.self_link_count, 0);
     }
@@ -691,8 +784,9 @@ mod tests {
         };
         let mut rows = vertical_seed_rows();
         rows.links[0].to_dense_index = rows.links[0].from_dense_index;
-        let readback = accumulate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows, &[10, 20])
-            .expect("gpu");
+        let readback =
+            accumulate_structural_rows_on_gpu_report_probe(&ctx.device, &ctx.queue, &rows, &[10, 20])
+                .expect("gpu");
         assert_eq!(readback.report.self_link_count, 1);
         assert_eq!(readback.report.invalid_link_endpoint_count, 0);
     }
@@ -722,7 +816,89 @@ mod tests {
             .expect_err("wrong len");
         assert!(matches!(
             err,
-            StructuralLinkAccumulatorError::WrongInputLength { .. }
+            StructuralLinkAccumulatorError::InvalidInputLength { .. }
+        ));
+    }
+
+    fn assert_gpu_bytes_match_cpu_oracle(
+        readback: &StructuralLinkAccumulatorGpuReadback,
+        expected: &[i32],
+    ) {
+        assert!(output_values_match_cpu_oracle_bytes(
+            &readback.output_values,
+            expected
+        ));
+        assert_eq!(
+            structural_link_accumulator_output_bytes(&readback.output_values),
+            structural_link_accumulator_output_bytes(expected)
+        );
+    }
+
+    #[test]
+    fn gpu_link_accumulator_output_bytes_match_cpu_oracle_vertical_seed() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let rows = vertical_seed_rows();
+        let input = [10, 20];
+        let expected =
+            cpu_structural_link_accumulate_i32(rows.frame.location_count, &rows.links, &input)
+                .expect("cpu");
+        let readback =
+            accumulate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows, &input).expect("gpu");
+        assert_gpu_bytes_match_cpu_oracle(&readback, &expected);
+    }
+
+    #[test]
+    fn gpu_link_accumulator_output_bytes_match_cpu_oracle_chain() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let rows = chain_rows();
+        let input = [10, 20, 30];
+        let expected =
+            cpu_structural_link_accumulate_i32(rows.frame.location_count, &rows.links, &input)
+                .expect("cpu");
+        let readback =
+            accumulate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows, &input).expect("gpu");
+        assert_gpu_bytes_match_cpu_oracle(&readback, &expected);
+    }
+
+    #[test]
+    fn gpu_link_accumulator_output_bytes_match_cpu_oracle_triangle() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let rows = triangle_rows();
+        let input = [10, 20, 30];
+        let expected =
+            cpu_structural_link_accumulate_i32(rows.frame.location_count, &rows.links, &input)
+                .expect("cpu");
+        let readback =
+            accumulate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows, &input).expect("gpu");
+        assert_gpu_bytes_match_cpu_oracle(&readback, &expected);
+    }
+
+    #[test]
+    fn gpu_link_accumulator_rejects_overflow_before_dispatch() {
+        let Some(ctx) = GpuContext::new_blocking().ok() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let rows = chain_rows();
+        let err = accumulate_structural_rows_on_gpu(
+            &ctx.device,
+            &ctx.queue,
+            &rows,
+            &[i32::MAX, 0, i32::MAX],
+        )
+        .expect_err("overflow");
+        assert!(matches!(
+            err,
+            StructuralLinkAccumulatorError::AccumulatorOverflow { .. }
         ));
     }
 }
