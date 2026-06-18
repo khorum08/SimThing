@@ -243,3 +243,11 @@ fn production_doc_names_terran_pirate_scenario_skeleton_0r() {
     assert!(lower.contains("terran-pirate-scenario-skeleton-0r"));
     assert!(lower.contains("scenarios/horizon/terran_pirate_skeleton"));
 }
+
+#[test]
+fn production_doc_names_simthing_sim_devdep_seam() {
+    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let lower = doc.to_ascii_lowercase();
+    assert!(lower.contains("simthing-sim-devdep-seam-0"));
+    assert!(lower.contains("hand-built compiledaccumulatoropplan"));
+}

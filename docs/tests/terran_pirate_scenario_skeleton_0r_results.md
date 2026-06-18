@@ -120,7 +120,7 @@ No forbidden route/predecessor/pathfinding/border-service semantics in changed s
 |---|---|---|
 | `cargo fmt --all -- --check` | PASS | After `cargo fmt --all` |
 | `cargo check -p simthing-spec` | PASS | |
-| `cargo test -p simthing-spec` | PARTIAL | 128+ tests pass; `e10_does_not_import_arena_registry_into_simthing_sim` FAIL — **pre-existing on master** (simthing-sim dev-dep on simthing-driver from SKELETON-0); unrelated to 0R |
+| `cargo test -p simthing-spec` | PARTIAL (at 0R) | `e10_does_not_import_arena_registry_into_simthing_sim` FAIL — simthing-sim dev-dep on simthing-driver; **repaired in SIMTHING-SIM-DEVDEP-SEAM-0** |
 | `cargo check -p simthing-driver` | PASS | |
 | `cargo test -p simthing-driver terran_pirate` | PASS | 5/5 via `--test terran_pirate_skeleton_compile` (serial `CARGO_BUILD_JOBS=1`) |
 | `cargo check -p simthing-sim` | PASS | |
