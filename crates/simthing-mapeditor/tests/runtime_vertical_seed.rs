@@ -427,6 +427,8 @@ fn mapeditor_gpu_link_accumulator_smoke_matches_cpu_oracle() {
     assert!(proof.ready, "{:?}", proof.deferred_reason);
     assert_eq!(proof.cpu_oracle.as_deref(), Some([20, 10].as_slice()));
     assert_eq!(proof.gpu_output.as_deref(), Some([20, 10].as_slice()));
+    assert_eq!(proof.gpu_output_bytes, proof.cpu_oracle_bytes);
+    assert!(proof.gpu_output_bytes.is_some());
 }
 
 #[test]
