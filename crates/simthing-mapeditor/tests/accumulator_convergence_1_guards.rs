@@ -227,3 +227,11 @@ fn production_doc_names_sim_gpu_readback_scope() {
     assert!(lower.contains("sim-gpu-readback-scope-0"));
     assert!(lower.contains("scoped_debug_readback_allowed"));
 }
+
+#[test]
+fn production_doc_names_terran_pirate_scenario_skeleton() {
+    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let lower = doc.to_ascii_lowercase();
+    assert!(lower.contains("terran-pirate-scenario-skeleton-0"));
+    assert!(lower.contains("terran_pirate_skeleton"));
+}

@@ -20,6 +20,7 @@ pub mod star_render;
 pub mod starburst;
 pub mod studio_config;
 pub mod studio_scenario_load;
+pub mod terran_pirate_skeleton;
 pub mod view_model;
 
 #[cfg(windows)]
@@ -75,6 +76,10 @@ pub use settings::{EditorSettings, PersistedCameraState, WindowModeSetting};
 pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
     STUDIO_CONFIG_SCHEMA_VERSION,
+};
+pub use terran_pirate_skeleton::{
+    terran_pirate_skeleton_dense_inputs, terran_pirate_skeleton_scenario_spec,
+    TERRAN_PIRATE_SKELETON_PROVENANCE_SOURCE, TERRAN_PIRATE_SKELETON_SCENARIO_ID,
 };
 pub use view_model::{
     StudioGalaxyRenderMeta, StudioGalaxyViewModel, StudioHyperlaneView, StudioStarView,

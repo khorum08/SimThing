@@ -35,6 +35,18 @@ fn scoped_debug_readback_guard_restores_previous_true() {
 }
 
 #[test]
+fn scoped_debug_readback_guard_restores_after_panic() {
+    set_debug_readback_allowed(false);
+    let result = std::panic::catch_unwind(|| {
+        let _guard = scoped_debug_readback_allowed(true);
+        assert!(debug_readback_allowed());
+        panic!("simulated proof readback panic");
+    });
+    assert!(result.is_err());
+    assert!(!debug_readback_allowed());
+}
+
+#[test]
 fn scoped_debug_readback_guard_restores_after_error_if_testable() {
     set_debug_readback_allowed(false);
     let result: Result<(), &'static str> = (|| {

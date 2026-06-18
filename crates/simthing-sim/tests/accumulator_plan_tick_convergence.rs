@@ -17,7 +17,9 @@ use simthing_sim::{
 static READBACK_GATE_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 fn with_isolated_readback_gate_test<F: FnOnce()>(f: F) {
-    let _lock = READBACK_GATE_TEST_LOCK.lock().expect("readback gate test lock");
+    let _lock = READBACK_GATE_TEST_LOCK
+        .lock()
+        .expect("readback gate test lock");
     set_debug_readback_allowed(false);
     f();
     set_debug_readback_allowed(false);
