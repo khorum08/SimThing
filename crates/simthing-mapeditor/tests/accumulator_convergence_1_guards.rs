@@ -41,6 +41,10 @@ const FORBIDDEN_GPU_DISPATCH_TOKENS: &[&str] = &[
     "upload_ops_resolving_input_lists",
     "execute_accumulator_plan_tick_gpu",
     "execute_accumulator_plan_tick_with_backend",
+    "SimGpuAccumulatorTickState::new",
+    "SimGpuAccumulatorTickState",
+    "ProofReadback",
+    "set_debug_readback_allowed",
 ];
 
 #[test]
@@ -99,6 +103,29 @@ fn studio_load_path_does_not_execute_sim_gpu_tick() {
         assert!(!scenario_io.contains(token));
         assert!(!app_mod.contains(token));
     }
+}
+
+#[test]
+fn studio_app_sources_do_not_construct_sim_gpu_resident_state() {
+    for path in app_source_files() {
+        let source = fs::read_to_string(&path).expect("read app source");
+        assert!(!source.contains("SimGpuAccumulatorTickState"));
+    }
+}
+
+#[test]
+fn studio_load_path_does_not_enable_proof_readback() {
+    let scenario_io = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/studio_scenario_load.rs"),
+    )
+    .expect("studio_scenario_load");
+    let app_mod =
+        fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/app/mod.rs"))
+            .expect("app mod");
+    assert!(!scenario_io.contains("ProofReadback"));
+    assert!(!scenario_io.contains("SimGpuReadbackPolicy"));
+    assert!(!app_mod.contains("ProofReadback"));
+    assert!(!app_mod.contains("set_debug_readback_allowed"));
 }
 
 #[test]
@@ -181,4 +208,12 @@ fn production_doc_names_sim_gpu_accumulator_backend() {
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sim-gpu-accumulator-backend-0"));
     assert!(lower.contains("execute_accumulator_plan_tick_gpu"));
+}
+
+#[test]
+fn production_doc_names_sim_gpu_resident_accumulator_tick() {
+    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let lower = doc.to_ascii_lowercase();
+    assert!(lower.contains("sim-gpu-resident-accumulator-tick-0"));
+    assert!(lower.contains("simgpuaccumulatortickstate"));
 }

@@ -112,6 +112,10 @@ New sim execution identifiers scanned — no forbidden semantic tokens in `accum
 
 ## Commands run
 
+> **Evidence correction (SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0):** This report originally recorded a partial validation sweep. The full required command set was run and recorded in `docs/tests/sim_gpu_resident_accumulator_tick_0_results.md`.
+
+Partial sweep recorded at BACKEND-0 landing:
+
 ```text
 cargo fmt --all -- --check
 cargo check -p simthing-sim
