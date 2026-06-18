@@ -81,7 +81,7 @@ No forbidden terms in GPU/runtime identifiers. Human-readable terran/pirate in p
 
 ## Commands run
 
-Full required validation sweep recorded in PR validation.
+**Note (0R remediation):** This report did not record exact command outcomes. See `docs/tests/terran_pirate_scenario_skeleton_0r_results.md` for the repaired validation sweep.
 
 ## Windows / resource-limit notes
 

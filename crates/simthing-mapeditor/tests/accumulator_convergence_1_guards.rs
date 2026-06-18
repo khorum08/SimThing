@@ -235,3 +235,11 @@ fn production_doc_names_terran_pirate_scenario_skeleton() {
     assert!(lower.contains("terran-pirate-scenario-skeleton-0"));
     assert!(lower.contains("terran_pirate_skeleton"));
 }
+
+#[test]
+fn production_doc_names_terran_pirate_scenario_skeleton_0r() {
+    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let lower = doc.to_ascii_lowercase();
+    assert!(lower.contains("terran-pirate-scenario-skeleton-0r"));
+    assert!(lower.contains("scenarios/horizon/terran_pirate_skeleton"));
+}
