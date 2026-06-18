@@ -8,9 +8,11 @@ use simthing_core::{SimThing, SimThingKind};
 use simthing_mapeditor::{
     build_gpu_structural_upload_packet_from_scenario, build_structural_projection,
     load_scenario_authority_from_path, load_studio_session_from_scenario_path,
-    prove_gpu_buffer_residency_blocking, prove_gpu_structural_validation_blocking,
-    runtime_vertical_seed_scenario_spec, StudioSessionSource,
-    RUNTIME_VERTICAL_SEED_PROVENANCE_SOURCE, RUNTIME_VERTICAL_SEED_SCENARIO_ID,
+    prove_gpu_buffer_residency_blocking, prove_gpu_link_accumulator_smoke_blocking,
+    prove_gpu_structural_validation_blocking,
+    prove_runtime_vertical_seed_gpu_link_accumulator_blocking, runtime_vertical_seed_scenario_spec,
+    StudioSessionSource, RUNTIME_VERTICAL_SEED_PROVENANCE_SOURCE,
+    RUNTIME_VERTICAL_SEED_SCENARIO_ID,
 };
 use simthing_spec::{
     deserialize_scenario_authority, serialize_scenario_authority, validate_scenario_links,
@@ -384,4 +386,97 @@ fn runtime_vertical_seed_save_load_roundtrip_preserves_projection() {
         .collect();
     let spawned = SimThing::new(SimThingKind::Cohort, 0);
     assert!(!known.contains(&spawned.id.raw()));
+}
+
+// --- GPU-LINK-ACCUMULATOR-SMOKE-0 mapeditor bridge tests ---
+
+#[test]
+fn mapeditor_gpu_link_accumulator_smoke_derives_from_runtime_vertical_seed() {
+    use simthing_gpu::context::GpuContext;
+
+    let Some(ctx) = GpuContext::new_blocking().ok() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let bytes_before = fs::read(fixture_path()).expect("read fixture bytes");
+    let proof = prove_runtime_vertical_seed_gpu_link_accumulator_blocking(
+        &ctx.device,
+        &ctx.queue,
+        &[10, 20],
+    );
+    let bytes_after = fs::read(fixture_path()).expect("read fixture bytes after");
+    assert_eq!(bytes_before, bytes_after);
+    assert!(proof.ready, "{:?}", proof.deferred_reason);
+    assert!(proof.cpu_oracle.is_some());
+    assert!(proof.gpu_output.is_some());
+}
+
+#[test]
+fn mapeditor_gpu_link_accumulator_smoke_matches_cpu_oracle() {
+    use simthing_gpu::context::GpuContext;
+
+    let Some(ctx) = GpuContext::new_blocking().ok() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let scenario = loaded_fixture();
+    let packet =
+        build_gpu_structural_upload_packet_from_scenario(&scenario).expect("upload packet");
+    let proof =
+        prove_gpu_link_accumulator_smoke_blocking(&ctx.device, &ctx.queue, &packet, &[10, 20]);
+    assert!(proof.ready, "{:?}", proof.deferred_reason);
+    assert_eq!(proof.cpu_oracle.as_deref(), Some([20, 10].as_slice()));
+    assert_eq!(proof.gpu_output.as_deref(), Some([20, 10].as_slice()));
+}
+
+#[test]
+fn mapeditor_gpu_link_accumulator_smoke_contains_no_render_metadata() {
+    let scenario = loaded_fixture();
+    let packet =
+        build_gpu_structural_upload_packet_from_scenario(&scenario).expect("upload packet");
+    let json = serialize_scenario_authority(&scenario).expect("serialize");
+    assert!(!json.contains("render_meta"));
+    assert!(!json.contains("world_position"));
+    assert_eq!(packet.frame.location_count, 2);
+    assert_eq!(packet.frame.link_count, 1);
+}
+
+#[test]
+fn mapeditor_gpu_link_accumulator_smoke_does_not_mutate_scenario_authority() {
+    use simthing_gpu::context::GpuContext;
+
+    let Some(ctx) = GpuContext::new_blocking().ok() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
+    let scenario = builder_seed();
+    let before_json = serialize_scenario_authority(&scenario).expect("before");
+    let _proof = prove_runtime_vertical_seed_gpu_link_accumulator_blocking(
+        &ctx.device,
+        &ctx.queue,
+        &[10, 20],
+    );
+    let after_json = serialize_scenario_authority(&scenario).expect("after");
+    assert_eq!(before_json, after_json);
+    assert_no_render_authority(&scenario);
+}
+
+#[test]
+fn production_doc_mentions_gpu_link_accumulator_smoke() {
+    let text = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/0.8.3 Simthing Studio Production.md"),
+    )
+    .expect("read production doc");
+    assert!(text.contains("GPU-LINK-ACCUMULATOR-SMOKE-0"));
+}
+
+#[test]
+fn evidence_index_mentions_gpu_link_accumulator_smoke() {
+    let text = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests/current_evidence_index.md"),
+    )
+    .expect("read evidence index");
+    assert!(text.contains("GPU-LINK-ACCUMULATOR-SMOKE-0"));
 }
