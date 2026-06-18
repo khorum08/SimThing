@@ -423,6 +423,11 @@ pub fn prove_gpu_buffer_residency_blocking(
     }
 }
 
+/// **proof_only / smoke_only / not_runtime** — explicit test/proof surface only.
+///
+/// Must not be called from Bevy `Update` systems, scenario load paths as runtime execution, or UI
+/// that presents smoke output as simulation state. Production accumulation must route through
+/// `simthing-driver` compile/assembly and `simthing-sim` tick ownership via canonical AccumulatorOp.
 pub fn prove_gpu_link_accumulator_smoke_blocking(
     device: &simthing_gpu::wgpu::Device,
     queue: &simthing_gpu::wgpu::Queue,
@@ -492,6 +497,9 @@ pub fn prove_gpu_link_accumulator_smoke_blocking(
     }
 }
 
+/// **proof_only / smoke_only / not_runtime** — vertical-seed fixture pulled into PROBATION smoke only.
+///
+/// Same runtime-bypass constraints as [`prove_gpu_link_accumulator_smoke_blocking`].
 pub fn prove_runtime_vertical_seed_gpu_link_accumulator_blocking(
     device: &simthing_gpu::wgpu::Device,
     queue: &simthing_gpu::wgpu::Queue,
