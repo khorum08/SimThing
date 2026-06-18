@@ -2,6 +2,7 @@ pub mod accumulator_op;
 pub mod accumulator_op_builder;
 pub mod accumulator_spec;
 pub mod arena_layout;
+pub mod compiled_accumulator_plan;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
@@ -34,6 +35,10 @@ pub use accumulator_spec::{
 pub use arena_layout::{
     arena_internal_columns_present, expand_arena_internal_columns,
     property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES,
+};
+pub use compiled_accumulator_plan::{
+    is_exact_integer_f32, CompiledAccumulatorOpPlan, StructuralScalarChannel,
+    EXACT_INTEGER_F32_BOUND,
 };
 pub use eml_nodes::{opcode as eml_opcode, EML_STACK_MAX};
 pub use eml_registry::{
