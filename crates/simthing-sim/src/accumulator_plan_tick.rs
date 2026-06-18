@@ -20,10 +20,72 @@ pub enum SimTickError {
     Readback(String),
 }
 
+/// Explicit readback policy for sim-owned GPU accumulator ticks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SimGpuReadbackPolicy {
+    /// Production/resident tick: execute AO without readback (projection stays on GPU).
+    None,
+    /// Proof/presentation: read back output channel values after tick.
+    ProofReadback,
+}
+
 /// Backend selection for sim-owned AccumulatorOp plan tick execution.
 pub enum AccumulatorTickBackend<'a> {
     CpuOracle,
     Gpu(&'a GpuContext),
+}
+
+/// Resident sim-owned GPU tick state for a driver-compiled AccumulatorOp plan.
+///
+/// Owns an `AccumulatorOpSession`, uploads ops once at initialization, and ticks across frames
+/// without recreating session state. GPU values are projection/cache — not scenario authority.
+pub struct SimGpuAccumulatorTickState {
+    plan: CompiledAccumulatorOpPlan,
+    session: AccumulatorOpSession,
+}
+
+impl SimGpuAccumulatorTickState {
+    /// Initialize resident GPU tick state from a driver-compiled plan.
+    ///
+    /// Creates `AccumulatorOpSession` once and uploads AccumulatorOp registrations once.
+    pub fn new(ctx: &GpuContext, plan: CompiledAccumulatorOpPlan) -> Result<Self, SimTickError> {
+        let mut session = AccumulatorOpSession::new(ctx, plan.slot_count, plan.n_dims);
+        session
+            .upload_ops_resolving_input_lists(ctx, &plan.ops)
+            .map_err(|err| SimTickError::GpuAccumulator(err.to_string()))?;
+        Ok(Self { plan, session })
+    }
+
+    /// Driver-compiled plan bound to this resident state.
+    pub fn plan(&self) -> &CompiledAccumulatorOpPlan {
+        &self.plan
+    }
+
+    /// Tick the resident AO session with current input values.
+    ///
+    /// Uploads values each tick; optional readback is controlled by [`SimGpuReadbackPolicy`].
+    /// Production ticks use [`SimGpuReadbackPolicy::None`] and do not enable debug readback.
+    pub fn tick(
+        &mut self,
+        ctx: &GpuContext,
+        input_values: &[f32],
+        readback: SimGpuReadbackPolicy,
+    ) -> Result<Option<Vec<f32>>, SimTickError> {
+        validate_accumulator_plan_inputs(&self.plan, input_values)?;
+        let values = seed_value_grid(&self.plan, input_values);
+        self.session.upload_values(ctx, &values);
+        self.session
+            .tick(ctx, 0)
+            .map_err(|err| SimTickError::GpuAccumulator(err.to_string()))?;
+
+        match readback {
+            SimGpuReadbackPolicy::None => Ok(None),
+            SimGpuReadbackPolicy::ProofReadback => {
+                readback_resident_accumulator_values_for_proof(ctx, &self.session, &self.plan)
+                    .map(Some)
+            }
+        }
+    }
 }
 
 fn validate_accumulator_plan_inputs(
@@ -65,6 +127,28 @@ fn extract_output_channel(plan: &CompiledAccumulatorOpPlan, values: &[f32]) -> V
         .collect()
 }
 
+/// Enables debug readback gating only for explicit proof/presentation readback paths.
+fn run_with_proof_readback_enabled<T>(
+    f: impl FnOnce() -> Result<T, SimTickError>,
+) -> Result<T, SimTickError> {
+    set_debug_readback_allowed(true);
+    f()
+}
+
+/// Read back output-channel values from a resident session under explicit proof policy.
+pub fn readback_resident_accumulator_values_for_proof(
+    ctx: &GpuContext,
+    session: &AccumulatorOpSession,
+    plan: &CompiledAccumulatorOpPlan,
+) -> Result<Vec<f32>, SimTickError> {
+    run_with_proof_readback_enabled(|| {
+        let readback = session
+            .readback_full(ctx)
+            .map_err(|err| SimTickError::Readback(err.to_string()))?;
+        Ok(extract_output_channel(plan, &readback))
+    })
+}
+
 /// Execute a driver-compiled AccumulatorOp plan under sim tick ownership (CPU oracle path).
 ///
 /// Seeds `input_channel` from `input_values`, zeroes `output_channel`, runs the plan, and returns
@@ -82,31 +166,18 @@ pub fn execute_accumulator_plan_tick_cpu(
     Ok(extract_output_channel(plan, &values))
 }
 
-/// Execute a driver-compiled AccumulatorOp plan under sim tick ownership (GPU backend).
+/// One-shot proof/convenience helper: resident state + explicit proof readback.
 ///
-/// Reuses `AccumulatorOpSession` / AO-WGSL-0. Output is projection/cache — not scenario authority.
+/// Production horizon should use [`SimGpuAccumulatorTickState`] directly.
 pub fn execute_accumulator_plan_tick_gpu(
     ctx: &GpuContext,
     plan: &CompiledAccumulatorOpPlan,
     input_values: &[f32],
 ) -> Result<Vec<f32>, SimTickError> {
-    validate_accumulator_plan_inputs(plan, input_values)?;
-    let values = seed_value_grid(plan, input_values);
-
-    set_debug_readback_allowed(true);
-    let mut session = AccumulatorOpSession::new(ctx, plan.slot_count, plan.n_dims);
-    session.upload_values(ctx, &values);
-    session
-        .upload_ops_resolving_input_lists(ctx, &plan.ops)
-        .map_err(|err| SimTickError::GpuAccumulator(err.to_string()))?;
-    session
-        .tick(ctx, 0)
-        .map_err(|err| SimTickError::GpuAccumulator(err.to_string()))?;
-    let readback = session
-        .readback_full(ctx)
-        .map_err(|err| SimTickError::Readback(err.to_string()))?;
-
-    Ok(extract_output_channel(plan, &readback))
+    let mut state = SimGpuAccumulatorTickState::new(ctx, plan.clone())?;
+    state
+        .tick(ctx, input_values, SimGpuReadbackPolicy::ProofReadback)?
+        .ok_or_else(|| SimTickError::Readback("proof readback required".into()))
 }
 
 /// Execute a driver-compiled plan with an explicit CPU or GPU backend.
