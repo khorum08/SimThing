@@ -8,6 +8,10 @@ use crate::scenario_io::{
 };
 use crate::session::StudioSession;
 use crate::studio_config::STUDIO_CONFIG_FILE_NAME;
+use crate::studio_scenario_load::{
+    canonicalize_scenario_display_path, default_picker_start_directory, NativeScenarioFilePicker,
+    ScenarioFilePicker, ScenarioPickerOutcome,
+};
 
 use super::StudioAppState;
 
@@ -119,6 +123,98 @@ pub fn save_scenario_action(state: &mut StudioAppState, path: &Path) -> Scenario
 
 /// Loads scenario authority from disk. On success returns a new session for the caller to adopt.
 /// On failure the current `state.session` is left unchanged.
+/// Populate the scenario path text field programmatically (presentation/session state only).
+pub fn set_programmatic_scenario_path(
+    state: &mut StudioAppState,
+    path: impl AsRef<Path>,
+) -> Result<(), String> {
+    let display = canonicalize_scenario_display_path(path.as_ref());
+    validate_scenario_path_text(display.to_string_lossy().as_ref())?;
+    state.scenario_path_text = display.display().to_string();
+    Ok(())
+}
+
+#[derive(Debug, Clone)]
+pub enum ScenarioPickerActionResult {
+    Cancelled,
+    InvalidPath {
+        message: String,
+    },
+    Loaded {
+        session: StudioSession,
+        message: String,
+    },
+    Failed {
+        message: String,
+    },
+}
+
+pub fn open_native_scenario_load_picker(state: &mut StudioAppState) -> ScenarioPickerActionResult {
+    load_scenario_with_picker(state, &NativeScenarioFilePicker)
+}
+
+pub fn load_scenario_with_picker<P: ScenarioFilePicker>(
+    state: &mut StudioAppState,
+    picker: &P,
+) -> ScenarioPickerActionResult {
+    let path_before = state.scenario_path_text.clone();
+    let start_dir = default_picker_start_directory(&path_before);
+    match picker.pick_open_scenario(&start_dir) {
+        ScenarioPickerOutcome::Cancelled => ScenarioPickerActionResult::Cancelled,
+        ScenarioPickerOutcome::Selected(selected) => {
+            apply_picker_selection_and_load(state, &selected, &path_before)
+        }
+    }
+}
+
+pub fn load_scenario_manual_path_action(state: &mut StudioAppState) -> ScenarioActionResult {
+    let path = match scenario_path_from_state(state) {
+        Ok(path) => path,
+        Err(reason) => {
+            let message = format!("Scenario load failed: {reason}");
+            record_scenario_io_status(state, message.clone());
+            return ScenarioActionResult::InvalidPath { message };
+        }
+    };
+    load_scenario_action(state, &path)
+}
+
+fn apply_picker_selection_and_load(
+    state: &mut StudioAppState,
+    selected: &Path,
+    path_before: &str,
+) -> ScenarioPickerActionResult {
+    let display_path = canonicalize_scenario_display_path(selected);
+    match validate_scenario_path_text(display_path.to_string_lossy().as_ref()) {
+        Err(reason) => {
+            state.scenario_path_text = path_before.to_string();
+            let message = format!("Scenario load failed: {reason}");
+            record_scenario_io_status(state, message.clone());
+            ScenarioPickerActionResult::InvalidPath { message }
+        }
+        Ok(validated) => {
+            state.scenario_path_text = validated.display().to_string();
+            match load_scenario_action(state, &validated) {
+                ScenarioActionResult::Loaded { session, message } => {
+                    ScenarioPickerActionResult::Loaded { session, message }
+                }
+                ScenarioActionResult::Failed { message } => {
+                    ScenarioPickerActionResult::Failed { message }
+                }
+                ScenarioActionResult::InvalidPath { message } => {
+                    state.scenario_path_text = path_before.to_string();
+                    ScenarioPickerActionResult::InvalidPath { message }
+                }
+                ScenarioActionResult::NoActiveSession { message }
+                | ScenarioActionResult::Saved { message } => {
+                    state.scenario_path_text = path_before.to_string();
+                    ScenarioPickerActionResult::Failed { message }
+                }
+            }
+        }
+    }
+}
+
 pub fn load_scenario_action(state: &mut StudioAppState, path: &Path) -> ScenarioActionResult {
     let path = match validate_scenario_path_text(path.to_string_lossy().as_ref()) {
         Ok(path) => path,
@@ -447,5 +543,260 @@ mod tests {
         assert!(after.is_generated());
         assert_eq!(after.source, before_source);
         assert!(after.generated_output.is_some());
+    }
+
+    use crate::studio_scenario_load::{FakeScenarioFilePicker, ScenarioPickerOutcome};
+
+    fn seed_scenario_file(name: &str) -> (tempfile::TempDir, PathBuf) {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join(name);
+        let original = state_with_session();
+        save_scenario_authority_to_path(
+            &path,
+            &original.session.as_ref().unwrap().scenario_authority,
+        )
+        .expect("seed");
+        (dir, path)
+    }
+
+    #[test]
+    fn load_scenario_button_uses_native_picker_selection() {
+        let (_dir, path) = seed_scenario_file("picker.simthing-scenario.json");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path.clone()),
+        };
+        let mut state = StudioAppState::default();
+        let result = load_scenario_with_picker(&mut state, &picker);
+        assert!(matches!(result, ScenarioPickerActionResult::Loaded { .. }));
+    }
+
+    #[test]
+    fn native_picker_selection_populates_scenario_path_field() {
+        let (_dir, path) = seed_scenario_file("populate.simthing-scenario.json");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path),
+        };
+        let mut state = StudioAppState::default();
+        assert_eq!(state.scenario_path_text, DEFAULT_SCENARIO_PATH);
+        let _ = load_scenario_with_picker(&mut state, &picker);
+        assert!(state
+            .scenario_path_text
+            .ends_with("populate.simthing-scenario.json"));
+        assert!(PathBuf::from(&state.scenario_path_text).is_absolute());
+    }
+
+    #[test]
+    fn native_picker_selection_loads_scenario_through_existing_io() {
+        let (_dir, path) = seed_scenario_file("existing-io.simthing-scenario.json");
+        let authority = load_studio_session_from_scenario_path(&path, None)
+            .expect("direct load")
+            .scenario_authority;
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path),
+        };
+        let mut state = StudioAppState::default();
+        let ScenarioPickerActionResult::Loaded { session, .. } =
+            load_scenario_with_picker(&mut state, &picker)
+        else {
+            panic!("expected loaded session");
+        };
+        assert_eq!(
+            session.scenario_authority.scenario_id,
+            authority.scenario_id
+        );
+    }
+
+    #[test]
+    fn native_picker_cancel_preserves_current_session() {
+        let mut state = state_with_session();
+        let before_id = state
+            .session
+            .as_ref()
+            .unwrap()
+            .scenario_authority
+            .scenario_id
+            .clone();
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Cancelled,
+        };
+        let result = load_scenario_with_picker(&mut state, &picker);
+        assert!(matches!(result, ScenarioPickerActionResult::Cancelled));
+        assert_eq!(
+            state
+                .session
+                .as_ref()
+                .unwrap()
+                .scenario_authority
+                .scenario_id,
+            before_id
+        );
+    }
+
+    #[test]
+    fn native_picker_cancel_preserves_existing_path() {
+        let mut state = StudioAppState::default();
+        state.scenario_path_text = "keep-me.simthing-scenario.json".into();
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Cancelled,
+        };
+        let _ = load_scenario_with_picker(&mut state, &picker);
+        assert_eq!(state.scenario_path_text, "keep-me.simthing-scenario.json");
+    }
+
+    #[test]
+    fn native_picker_invalid_extension_preserves_current_session() {
+        let mut state = state_with_session();
+        let before_id = state
+            .session
+            .as_ref()
+            .unwrap()
+            .scenario_authority
+            .scenario_id
+            .clone();
+        let dir = TempDir::new().expect("tempdir");
+        let bad = dir.path().join("bad.json");
+        std::fs::write(&bad, "{}").expect("write");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(bad),
+        };
+        let result = load_scenario_with_picker(&mut state, &picker);
+        assert!(matches!(
+            result,
+            ScenarioPickerActionResult::InvalidPath { .. }
+        ));
+        assert_eq!(
+            state
+                .session
+                .as_ref()
+                .unwrap()
+                .scenario_authority
+                .scenario_id,
+            before_id
+        );
+    }
+
+    #[test]
+    fn native_picker_rejects_studio_config_json() {
+        let mut state = state_with_session();
+        let dir = TempDir::new().expect("tempdir");
+        let config_path = dir.path().join(STUDIO_CONFIG_FILE_NAME);
+        save_studio_config_to_path(&config_path, &SimThingStudioConfig::default()).expect("config");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(config_path),
+        };
+        let result = load_scenario_with_picker(&mut state, &picker);
+        match result {
+            ScenarioPickerActionResult::InvalidPath { message } => {
+                assert!(message.contains(STUDIO_CONFIG_FILE_NAME));
+            }
+            other => panic!("expected invalid path, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn native_picker_load_failure_preserves_current_session() {
+        let mut state = state_with_session();
+        let before_id = state
+            .session
+            .as_ref()
+            .unwrap()
+            .scenario_authority
+            .scenario_id
+            .clone();
+        let dir = TempDir::new().expect("tempdir");
+        let missing = dir.path().join("missing.simthing-scenario.json");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(missing),
+        };
+        let result = load_scenario_with_picker(&mut state, &picker);
+        assert!(matches!(result, ScenarioPickerActionResult::Failed { .. }));
+        assert_eq!(
+            state
+                .session
+                .as_ref()
+                .unwrap()
+                .scenario_authority
+                .scenario_id,
+            before_id
+        );
+    }
+
+    #[test]
+    fn native_picker_success_rebuilds_hydration_boundary() {
+        let (_dir, path) = seed_scenario_file("picker-hydrate.simthing-scenario.json");
+        let expected = load_studio_session_from_scenario_path(&path, None).expect("direct");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path),
+        };
+        let mut state = StudioAppState::default();
+        let ScenarioPickerActionResult::Loaded { session, .. } =
+            load_scenario_with_picker(&mut state, &picker)
+        else {
+            panic!("expected load");
+        };
+        assert_eq!(
+            session.hydration.grid.occupied_cells,
+            expected.hydration.grid.occupied_cells
+        );
+    }
+
+    #[test]
+    fn native_picker_success_rebuilds_view_model() {
+        let (_dir, path) = seed_scenario_file("picker-vm.simthing-scenario.json");
+        let expected = load_studio_session_from_scenario_path(&path, None).expect("direct");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path),
+        };
+        let mut state = StudioAppState::default();
+        let ScenarioPickerActionResult::Loaded { session, .. } =
+            load_scenario_with_picker(&mut state, &picker)
+        else {
+            panic!("expected load");
+        };
+        assert_eq!(
+            session.view_model.stars.len(),
+            expected.view_model.stars.len()
+        );
+    }
+
+    #[test]
+    fn native_picker_selected_path_is_absolute_or_canonicalized() {
+        let (_dir, path) = seed_scenario_file("absolute.simthing-scenario.json");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path),
+        };
+        let mut state = StudioAppState::default();
+        let _ = load_scenario_with_picker(&mut state, &picker);
+        let stored = PathBuf::from(&state.scenario_path_text);
+        assert!(stored.is_absolute());
+    }
+
+    #[test]
+    fn selected_path_is_presentation_state_not_authority() {
+        let (_dir, path) = seed_scenario_file("presentation.simthing-scenario.json");
+        let picker = FakeScenarioFilePicker {
+            outcome: ScenarioPickerOutcome::Selected(path.clone()),
+        };
+        let mut state = StudioAppState::default();
+        let ScenarioPickerActionResult::Loaded { session, .. } =
+            load_scenario_with_picker(&mut state, &picker)
+        else {
+            panic!("expected load");
+        };
+        let text = fs::read_to_string(&path).expect("read scenario");
+        assert!(!text.contains("scenario_path_text"));
+        assert!(!text.contains(&state.scenario_path_text));
+        assert!(session.is_loaded_scenario());
+    }
+
+    #[test]
+    fn set_programmatic_scenario_path_populates_text_field() {
+        let (_dir, path) = seed_scenario_file("programmatic.simthing-scenario.json");
+        let mut state = StudioAppState::default();
+        set_programmatic_scenario_path(&mut state, &path).expect("set path");
+        assert!(state
+            .scenario_path_text
+            .ends_with("programmatic.simthing-scenario.json"));
+        assert!(PathBuf::from(&state.scenario_path_text).is_absolute());
     }
 }
