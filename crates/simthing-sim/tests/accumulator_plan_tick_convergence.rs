@@ -1,38 +1,19 @@
 //! ACCUMULATOR-DRIVER-SIM-CONVERGENCE-1 + SIM-GPU-ACCUMULATOR-BACKEND-0 +
 //! SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0 + SIM-GPU-READBACK-SCOPE-0 — sim tick ownership proofs.
 
-use std::sync::Mutex;
+mod support;
 
-use simthing_core::StructuralScalarChannel;
-use simthing_driver::compile_structural_link_neighbor_sum_plan;
-use simthing_gpu::{
-    debug_readback_allowed, scoped_debug_readback_allowed, set_debug_readback_allowed,
-};
-use simthing_mapeditor::runtime_vertical_seed_scenario_spec;
+use simthing_gpu::{debug_readback_allowed, scoped_debug_readback_allowed};
 use simthing_sim::{
     execute_accumulator_plan_tick_cpu, execute_accumulator_plan_tick_gpu, gpu_context_blocking,
     SimGpuAccumulatorTickState, SimGpuReadbackPolicy, SimTickError,
 };
 
-static READBACK_GATE_TEST_LOCK: Mutex<()> = Mutex::new(());
-
-fn with_isolated_readback_gate_test<F: FnOnce()>(f: F) {
-    let _lock = READBACK_GATE_TEST_LOCK
-        .lock()
-        .expect("readback gate test lock");
-    set_debug_readback_allowed(false);
-    f();
-    set_debug_readback_allowed(false);
-}
+use support::accumulator_plan_fixtures::two_slot_vertical_input_list_plan;
+use support::readback_gate::with_isolated_readback_gate_test;
 
 fn vertical_seed_plan() -> simthing_core::CompiledAccumulatorOpPlan {
-    let scenario = runtime_vertical_seed_scenario_spec();
-    compile_structural_link_neighbor_sum_plan(
-        &scenario,
-        StructuralScalarChannel(0),
-        StructuralScalarChannel(1),
-    )
-    .expect("compile")
+    two_slot_vertical_input_list_plan()
 }
 
 fn tick_body_source() -> &'static str {
@@ -76,41 +57,49 @@ fn sim_tick_does_not_use_structural_link_accumulator() {
 
 #[test]
 fn sim_gpu_tick_executes_driver_compiled_vertical_seed_plan() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let output = execute_accumulator_plan_tick_gpu(&ctx, &plan, &[10.0, 20.0]).expect("gpu tick");
-    assert_eq!(output.len(), 2);
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let output =
+            execute_accumulator_plan_tick_gpu(&ctx, &plan, &[10.0, 20.0]).expect("gpu tick");
+        assert_eq!(output.len(), 2);
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
 fn sim_gpu_tick_vertical_seed_outputs_20_10() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let output = execute_accumulator_plan_tick_gpu(&ctx, &plan, &[10.0, 20.0]).expect("gpu tick");
-    assert_eq!(output, vec![20.0, 10.0]);
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let output =
+            execute_accumulator_plan_tick_gpu(&ctx, &plan, &[10.0, 20.0]).expect("gpu tick");
+        assert_eq!(output, vec![20.0, 10.0]);
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
 fn sim_gpu_tick_matches_cpu_tick_for_vertical_seed() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let inputs = [10.0, 20.0];
-    let cpu = execute_accumulator_plan_tick_cpu(&plan, &inputs).expect("cpu tick");
-    let gpu = execute_accumulator_plan_tick_gpu(&ctx, &plan, &inputs).expect("gpu tick");
-    assert_eq!(cpu, gpu);
-    assert_eq!(gpu, vec![20.0, 10.0]);
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let inputs = [10.0, 20.0];
+        let cpu = execute_accumulator_plan_tick_cpu(&plan, &inputs).expect("cpu tick");
+        let gpu = execute_accumulator_plan_tick_gpu(&ctx, &plan, &inputs).expect("gpu tick");
+        assert_eq!(cpu, gpu);
+        assert_eq!(gpu, vec![20.0, 10.0]);
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
@@ -137,7 +126,7 @@ fn sim_gpu_tick_rejects_non_exact_integer_input() {
 
 #[test]
 fn sim_gpu_tick_returns_error_or_partial_without_adapter() {
-    match gpu_context_blocking() {
+    with_isolated_readback_gate_test(|| match gpu_context_blocking() {
         Ok(ctx) => {
             let plan = vertical_seed_plan();
             let output =
@@ -149,7 +138,7 @@ fn sim_gpu_tick_returns_error_or_partial_without_adapter() {
             eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
         }
         Err(other) => panic!("unexpected error: {other:?}"),
-    }
+    });
 }
 
 #[test]
@@ -168,15 +157,17 @@ fn sim_gpu_tick_does_not_use_structural_link_accumulator() {
 
 #[test]
 fn sim_gpu_resident_state_initializes_from_driver_compiled_plan() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let state = SimGpuAccumulatorTickState::new(&ctx, plan.clone()).expect("init");
-    assert_eq!(state.plan().slot_count, plan.slot_count);
-    assert_eq!(state.plan().ops.len(), plan.ops.len());
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let state = SimGpuAccumulatorTickState::new(&ctx, plan.clone()).expect("init");
+        assert_eq!(state.plan().slot_count, plan.slot_count);
+        assert_eq!(state.plan().ops.len(), plan.ops.len());
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
@@ -192,113 +183,125 @@ fn sim_gpu_resident_state_uploads_ops_once_or_only_on_plan_change() {
 
 #[test]
 fn sim_gpu_resident_state_ticks_vertical_seed_20_10() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
-    let output = state
-        .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
-        .expect("tick")
-        .expect("proof readback");
-    assert_eq!(output, vec![20.0, 10.0]);
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        let output = state
+            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
+            .expect("tick")
+            .expect("proof readback");
+        assert_eq!(output, vec![20.0, 10.0]);
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
 fn sim_gpu_resident_state_ticks_twice_with_different_inputs() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
-    let first = state
-        .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
-        .expect("tick 1")
-        .expect("readback 1");
-    assert_eq!(first, vec![20.0, 10.0]);
-    let second = state
-        .tick(&ctx, &[30.0, 40.0], SimGpuReadbackPolicy::ProofReadback)
-        .expect("tick 2")
-        .expect("readback 2");
-    assert_eq!(second, vec![40.0, 30.0]);
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        let first = state
+            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
+            .expect("tick 1")
+            .expect("readback 1");
+        assert_eq!(first, vec![20.0, 10.0]);
+        let second = state
+            .tick(&ctx, &[30.0, 40.0], SimGpuReadbackPolicy::ProofReadback)
+            .expect("tick 2")
+            .expect("readback 2");
+        assert_eq!(second, vec![40.0, 30.0]);
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
 fn sim_gpu_resident_state_cpu_gpu_parity_vertical_seed() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let inputs = [10.0, 20.0];
-    let cpu = execute_accumulator_plan_tick_cpu(&plan, &inputs).expect("cpu");
-    let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
-    let gpu = state
-        .tick(&ctx, &inputs, SimGpuReadbackPolicy::ProofReadback)
-        .expect("gpu tick")
-        .expect("readback");
-    assert_eq!(cpu, gpu);
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let inputs = [10.0, 20.0];
+        let cpu = execute_accumulator_plan_tick_cpu(&plan, &inputs).expect("cpu");
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        let gpu = state
+            .tick(&ctx, &inputs, SimGpuReadbackPolicy::ProofReadback)
+            .expect("gpu tick")
+            .expect("readback");
+        assert_eq!(cpu, gpu);
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]
 fn sim_gpu_resident_state_rejects_wrong_input_len() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
-    let err = state
-        .tick(&ctx, &[10.0], SimGpuReadbackPolicy::None)
-        .expect_err("wrong len");
-    assert!(matches!(
-        err,
-        SimTickError::InvalidInputLength {
-            expected: 2,
-            actual: 1
-        }
-    ));
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        let err = state
+            .tick(&ctx, &[10.0], SimGpuReadbackPolicy::None)
+            .expect_err("wrong len");
+        assert!(matches!(
+            err,
+            SimTickError::InvalidInputLength {
+                expected: 2,
+                actual: 1
+            }
+        ));
+    });
 }
 
 #[test]
 fn sim_gpu_resident_state_rejects_non_exact_integer_input() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
-    let err = state
-        .tick(&ctx, &[10.0, 0.5], SimGpuReadbackPolicy::None)
-        .expect_err("non-exact");
-    assert!(matches!(err, SimTickError::NonExactIntegerInput { .. }));
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        let err = state
+            .tick(&ctx, &[10.0, 0.5], SimGpuReadbackPolicy::None)
+            .expect_err("non-exact");
+        assert!(matches!(err, SimTickError::NonExactIntegerInput { .. }));
+    });
 }
 
 #[test]
 fn sim_gpu_resident_state_proof_readback_is_explicit() {
-    let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-        return;
-    };
-    let plan = vertical_seed_plan();
-    let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
-    assert!(state
-        .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::None)
-        .expect("no readback tick")
-        .is_none());
-    assert_eq!(
-        state
-            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
-            .expect("proof tick")
-            .expect("values"),
-        vec![20.0, 10.0]
-    );
-    eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let plan = vertical_seed_plan();
+        let mut state = SimGpuAccumulatorTickState::new(&ctx, plan).expect("init");
+        assert!(state
+            .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::None)
+            .expect("no readback tick")
+            .is_none());
+        assert_eq!(
+            state
+                .tick(&ctx, &[10.0, 20.0], SimGpuReadbackPolicy::ProofReadback)
+                .expect("proof tick")
+                .expect("values"),
+            vec![20.0, 10.0]
+        );
+        eprintln!("SIM-GPU-RESIDENT-ACCUMULATOR-TICK-0: REAL_ADAPTER_OBSERVED");
+    });
 }
 
 #[test]

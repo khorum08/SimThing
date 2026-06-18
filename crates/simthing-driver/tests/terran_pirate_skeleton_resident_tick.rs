@@ -1,13 +1,17 @@
-//! TERRAN-PIRATE-SCENARIO-SKELETON-0R — sim resident GPU tick proofs load canonical scenario authority.
+//! SIMTHING-SIM-DEVDEP-SEAM-0 — Terran Pirate scenario→driver→sim resident GPU integration proof.
 
-use std::sync::Mutex;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::PathBuf;
+use std::thread;
+use std::time::Duration;
 
 use simthing_core::StructuralScalarChannel;
 use simthing_driver::compile_structural_link_neighbor_sum_plan;
 use simthing_gpu::{debug_readback_allowed, set_debug_readback_allowed};
 use simthing_sim::{
     execute_accumulator_plan_tick_cpu, gpu_context_blocking, SimGpuAccumulatorTickState,
-    SimGpuReadbackPolicy, SimTickError,
+    SimGpuReadbackPolicy,
 };
 use simthing_spec::{
     deserialize_scenario_authority, validate_scenario_links, validate_stead_mapping_consistency,
@@ -17,12 +21,34 @@ use simthing_spec::{
 const TERRAN_PIRATE_SKELETON_SCENARIO_JSON: &str =
     include_str!("../../../scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json");
 
-static READBACK_GATE_TEST_LOCK: Mutex<()> = Mutex::new(());
+struct ProcessReadbackTestLock {
+    path: PathBuf,
+}
+
+impl ProcessReadbackTestLock {
+    fn acquire() -> Self {
+        let path = std::env::temp_dir().join("simthing_sim_gpu_readback_test.lock");
+        loop {
+            match OpenOptions::new().write(true).create_new(true).open(&path) {
+                Ok(mut file) => {
+                    let _ = writeln!(file, "simthing-driver readback integration test lock");
+                    return Self { path };
+                }
+                Err(_) => thread::sleep(Duration::from_millis(25)),
+            }
+        }
+    }
+}
+
+impl Drop for ProcessReadbackTestLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+        set_debug_readback_allowed(false);
+    }
+}
 
 fn with_isolated_readback_gate_test<F: FnOnce()>(f: F) {
-    let _lock = READBACK_GATE_TEST_LOCK
-        .lock()
-        .expect("readback gate test lock");
+    let _lock = ProcessReadbackTestLock::acquire();
     set_debug_readback_allowed(false);
     f();
     set_debug_readback_allowed(false);
@@ -36,7 +62,6 @@ fn canonical_skeleton_scenario() -> SimThingScenarioSpec {
     scenario
 }
 
-/// Exact f32 integer inputs in dense placement order (hub, corridor, choke, branch).
 fn terran_pirate_skeleton_dense_inputs() -> Vec<f32> {
     vec![10.0, 20.0, 40.0, 30.0]
 }
@@ -51,21 +76,13 @@ fn skeleton_plan() -> simthing_core::CompiledAccumulatorOpPlan {
 }
 
 #[test]
-fn sim_cpu_tick_executes_terran_pirate_skeleton_plan() {
-    let plan = skeleton_plan();
-    let inputs = terran_pirate_skeleton_dense_inputs();
-    let output = execute_accumulator_plan_tick_cpu(&plan, &inputs).expect("cpu tick");
-    assert_eq!(output.len(), 4);
+fn integration_gpu_resident_tick_executes_terran_pirate_skeleton_plan() {
+    with_isolated_readback_gate_test(|| run_integration_gpu_resident_tick_executes_skeleton());
 }
 
-#[test]
-fn sim_gpu_resident_tick_executes_terran_pirate_skeleton_plan() {
-    with_isolated_readback_gate_test(|| run_gpu_resident_tick_executes_skeleton());
-}
-
-fn run_gpu_resident_tick_executes_skeleton() {
+fn run_integration_gpu_resident_tick_executes_skeleton() {
     let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("TERRAN-PIRATE-SCENARIO-SKELETON-0R: GPU_TESTS_SKIPPED_NO_ADAPTER");
+        eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
         return;
     };
     let plan = skeleton_plan();
@@ -79,17 +96,17 @@ fn run_gpu_resident_tick_executes_skeleton() {
         .expect("tick")
         .expect("readback");
     assert_eq!(output.len(), 4);
-    eprintln!("TERRAN-PIRATE-SCENARIO-SKELETON-0R: REAL_ADAPTER_OBSERVED");
+    eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: REAL_ADAPTER_OBSERVED");
 }
 
 #[test]
-fn sim_gpu_resident_tick_matches_cpu_tick_for_terran_pirate_skeleton() {
-    with_isolated_readback_gate_test(|| run_gpu_resident_tick_matches_cpu());
+fn integration_gpu_resident_tick_matches_cpu_for_terran_pirate_skeleton() {
+    with_isolated_readback_gate_test(|| run_integration_gpu_resident_tick_matches_cpu());
 }
 
-fn run_gpu_resident_tick_matches_cpu() {
+fn run_integration_gpu_resident_tick_matches_cpu() {
     let Some(ctx) = gpu_context_blocking().ok() else {
-        eprintln!("TERRAN-PIRATE-SCENARIO-SKELETON-0R: GPU_TESTS_SKIPPED_NO_ADAPTER");
+        eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
         return;
     };
     let plan = skeleton_plan();
@@ -102,11 +119,11 @@ fn run_gpu_resident_tick_matches_cpu() {
         .expect("readback");
     assert_eq!(cpu, gpu);
     assert_eq!(cpu, vec![20.0, 80.0, 20.0, 20.0]);
-    eprintln!("TERRAN-PIRATE-SCENARIO-SKELETON-0R: REAL_ADAPTER_OBSERVED");
+    eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: REAL_ADAPTER_OBSERVED");
 }
 
 #[test]
-fn sim_gpu_resident_tick_does_not_mutate_scenario_authority() {
+fn integration_gpu_resident_tick_does_not_mutate_scenario_authority() {
     let scenario = canonical_skeleton_scenario();
     let links_before = scenario.links.clone();
     let placements_before = scenario.structural_grid.placements.clone();
@@ -123,31 +140,10 @@ fn sim_gpu_resident_tick_does_not_mutate_scenario_authority() {
 }
 
 #[test]
-fn sim_gpu_resident_tick_rejects_wrong_input_len_for_terran_pirate_skeleton() {
-    let plan = skeleton_plan();
-    let err = execute_accumulator_plan_tick_cpu(&plan, &[10.0, 20.0]).expect_err("wrong len");
-    assert!(matches!(
-        err,
-        SimTickError::InvalidInputLength {
-            expected: 4,
-            actual: 2
-        }
-    ));
-}
-
-#[test]
-fn sim_gpu_resident_tick_rejects_non_exact_integer_input_for_terran_pirate_skeleton() {
-    let plan = skeleton_plan();
-    let err =
-        execute_accumulator_plan_tick_cpu(&plan, &[10.0, 20.0, 30.5, 40.0]).expect_err("non-exact");
-    assert!(matches!(err, SimTickError::NonExactIntegerInput { .. }));
-}
-
-#[test]
-fn terran_pirate_skeleton_proof_readback_does_not_leak_into_none_tick() {
+fn integration_terran_pirate_proof_readback_does_not_leak_into_none_tick() {
     with_isolated_readback_gate_test(|| {
         let Some(ctx) = gpu_context_blocking().ok() else {
-            eprintln!("TERRAN-PIRATE-SCENARIO-SKELETON-0R: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
             return;
         };
         let plan = skeleton_plan();
@@ -162,6 +158,6 @@ fn terran_pirate_skeleton_proof_readback_does_not_leak_into_none_tick() {
             .expect("none tick")
             .is_none());
         assert!(!debug_readback_allowed());
-        eprintln!("TERRAN-PIRATE-SCENARIO-SKELETON-0R: REAL_ADAPTER_OBSERVED");
+        eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: REAL_ADAPTER_OBSERVED");
     });
 }

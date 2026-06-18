@@ -429,9 +429,52 @@ fn e10_does_not_import_arena_registry_into_simthing_sim() {
         !sim_cargo.contains("simthing-driver"),
         "simthing-sim must not depend on simthing-driver"
     );
+    assert!(
+        !sim_cargo.contains("simthing-mapeditor"),
+        "simthing-sim must not depend on simthing-mapeditor"
+    );
+    assert!(
+        !sim_cargo.contains("simthing-spec"),
+        "simthing-sim must not depend on simthing-spec"
+    );
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("ArenaRegistry"));
     assert!(!sim_lib.contains("arena_registry"));
+
+    let forbidden_test_imports = [
+        "simthing_driver",
+        "simthing_mapeditor",
+        "simthing_spec",
+        "deserialize_scenario_authority",
+        "include_str!(\"../../../scenarios/",
+    ];
+    let sim_tests =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../simthing-sim/tests");
+    walk_sim_tests_for_forbidden_imports(&sim_tests, &forbidden_test_imports);
+}
+
+fn walk_sim_tests_for_forbidden_imports(dir: &std::path::Path, forbidden: &[&str]) {
+    for entry in std::fs::read_dir(dir)
+        .unwrap_or_else(|err| panic!("read simthing-sim tests dir {}: {err}", dir.display()))
+    {
+        let entry = entry.expect("simthing-sim tests entry");
+        let path = entry.path();
+        if path.is_dir() {
+            walk_sim_tests_for_forbidden_imports(&path, forbidden);
+            continue;
+        }
+        if path.extension().is_some_and(|ext| ext == "rs") {
+            let source = std::fs::read_to_string(&path)
+                .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+            for token in forbidden {
+                assert!(
+                    !source.contains(token),
+                    "{} must not reference upward seam token `{token}`",
+                    path.display()
+                );
+            }
+        }
+    }
 }
 
 #[test]

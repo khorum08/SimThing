@@ -15,6 +15,3 @@ serde_json       = { workspace = true }
 
 [dev-dependencies]
 tempfile         = "3"
-simthing-driver = { path = "../simthing-driver" }
-simthing-mapeditor = { path = "../simthing-mapeditor" }
-simthing-spec   = { path = "../simthing-spec" }
