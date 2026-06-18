@@ -1,4 +1,13 @@
-//! GPU structural link neighbor accumulation smoke pass.
+//! **PROBATION proof scaffolding — `proof_only` / `smoke_only` / `not_runtime`.**
+//!
+//! GPU structural link neighbor accumulation smoke pass. Exists only to prove GPU residency and
+//! bit-exact compute over canonical structural links from scenario-derived upload packets.
+//!
+//! This bespoke kernel must **not** be used as the production resource-flow accumulator. It must be
+//! retired, wrapped by, or re-expressed through canonical [`crate::accumulator_op`] / AO-WGSL-0 before
+//! runtime execution is promoted. Production play-out must route through `simthing-driver` compile/
+//! assembly and `simthing-sim` tick/boundary ownership — Studio may call these helpers only from
+//! explicit proof/test surfaces.
 //!
 //! Bit-exact i32 neighbor accumulation over canonical structural links — projection/cache only,
 //! not model authority. CPU oracle uses `checked_add`; GPU dispatch runs only after oracle success.
@@ -16,6 +25,15 @@ use crate::structural_upload::{
 use crate::structural_validation::{
     validate_structural_upload_on_gpu, StructuralValidationError, StructuralValidationReportGpu,
 };
+
+/// Marker: bespoke structural link accumulator is proof-only, not production runtime.
+pub const STRUCTURAL_LINK_ACCUMULATOR_PROOF_ONLY: bool = true;
+
+/// Marker: smoke pass only — must not mature into a second simulation engine under Studio.
+pub const STRUCTURAL_LINK_ACCUMULATOR_SMOKE_ONLY: bool = true;
+
+/// Marker: not a runtime execution owner; driver/sim must own tick and accumulation assembly.
+pub const STRUCTURAL_LINK_ACCUMULATOR_NOT_RUNTIME: bool = true;
 
 const WGSL_STRUCTURAL_LINK_ACCUMULATOR: &str =
     include_str!("shaders/structural_link_accumulator.wgsl");
@@ -141,6 +159,7 @@ pub fn cpu_structural_link_accumulate_i32(
     Ok(output)
 }
 
+/// **proof_only / smoke_only / not_runtime** — PROBATION GPU smoke dispatch; not production accumulation.
 pub fn execute_structural_link_accumulator_on_gpu(
     device: &Device,
     queue: &Queue,
@@ -302,6 +321,7 @@ pub fn execute_structural_link_accumulator_on_gpu(
     })
 }
 
+/// **proof_only / smoke_only / not_runtime** — PROBATION end-to-end smoke over uploaded structural rows.
 pub fn accumulate_structural_rows_on_gpu(
     device: &Device,
     queue: &Queue,
@@ -661,6 +681,36 @@ mod tests {
     }
 
     #[test]
+    fn structural_link_accumulator_marked_proof_only() {
+        assert!(super::STRUCTURAL_LINK_ACCUMULATOR_PROOF_ONLY);
+        assert!(super::STRUCTURAL_LINK_ACCUMULATOR_SMOKE_ONLY);
+        assert!(super::STRUCTURAL_LINK_ACCUMULATOR_NOT_RUNTIME);
+    }
+
+    #[test]
+    fn structural_link_accumulator_public_docs_say_not_runtime() {
+        let source = include_str!("structural_link_accumulator.rs");
+        let lower = source.to_ascii_lowercase();
+        for marker in ["proof_only", "smoke_only", "not_runtime", "probation"] {
+            assert!(
+                lower.contains(marker),
+                "structural_link_accumulator.rs must document {marker}"
+            );
+        }
+    }
+
+    #[test]
+    fn gpu_link_accumulator_smoke_bit_exact_tests_still_pass() {
+        let rows = vertical_seed_rows();
+        let input = [10, 20];
+        let expected =
+            cpu_structural_link_accumulate_i32(rows.frame.location_count, &rows.links, &input)
+                .expect("cpu oracle");
+        assert_eq!(expected, vec![20, 10]);
+        assert!(output_values_match_cpu_oracle_bytes(&expected, &expected));
+    }
+
+    #[test]
     fn structural_link_accumulator_report_row_size_is_32() {
         assert_eq!(
             std::mem::size_of::<StructuralLinkAccumulatorReportGpu>(),
@@ -769,9 +819,13 @@ mod tests {
         };
         let mut rows = vertical_seed_rows();
         rows.links[0].to_dense_index = 99;
-        let readback =
-            accumulate_structural_rows_on_gpu_report_probe(&ctx.device, &ctx.queue, &rows, &[10, 20])
-                .expect("gpu");
+        let readback = accumulate_structural_rows_on_gpu_report_probe(
+            &ctx.device,
+            &ctx.queue,
+            &rows,
+            &[10, 20],
+        )
+        .expect("gpu");
         assert_eq!(readback.report.invalid_link_endpoint_count, 1);
         assert_eq!(readback.report.self_link_count, 0);
     }
@@ -784,9 +838,13 @@ mod tests {
         };
         let mut rows = vertical_seed_rows();
         rows.links[0].to_dense_index = rows.links[0].from_dense_index;
-        let readback =
-            accumulate_structural_rows_on_gpu_report_probe(&ctx.device, &ctx.queue, &rows, &[10, 20])
-                .expect("gpu");
+        let readback = accumulate_structural_rows_on_gpu_report_probe(
+            &ctx.device,
+            &ctx.queue,
+            &rows,
+            &[10, 20],
+        )
+        .expect("gpu");
         assert_eq!(readback.report.self_link_count, 1);
         assert_eq!(readback.report.invalid_link_endpoint_count, 0);
     }

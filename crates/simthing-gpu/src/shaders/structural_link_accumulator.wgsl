@@ -1,3 +1,8 @@
+// PROBATION proof scaffolding — proof_only / smoke_only / not_runtime.
+// Exists only to prove GPU residency and bit-exact i32 neighbor accumulation over canonical
+// structural links. Must not mature into production resource-flow accumulation; converge on
+// accumulator_op_generic.wgsl (AO-WGSL-0) via simthing-driver compile/assembly and simthing-sim tick.
+
 struct StructuralFrameGpuRow {
     width: u32,
     height: u32,
