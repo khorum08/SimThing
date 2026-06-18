@@ -35,7 +35,8 @@ pub use runtime::{
     WorldAccumulatorRuntime,
 };
 pub use session::{
-    set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError, WORKGROUP_SIZE,
+    debug_readback_allowed, scoped_debug_readback_allowed, set_debug_readback_allowed,
+    AccumulatorOpSession, AccumulatorOpSessionError, DebugReadbackGuard, WORKGROUP_SIZE,
 };
 pub use types::AccumulatorOpGpu;
 pub use types::{
