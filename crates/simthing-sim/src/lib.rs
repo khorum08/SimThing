@@ -57,7 +57,11 @@ pub mod threshold_registry;
 pub mod tree_index;
 pub mod tree_mutation;
 
-pub use accumulator_plan_tick::{execute_accumulator_plan_tick_cpu, SimTickError};
+pub use accumulator_plan_tick::{
+    execute_accumulator_plan_tick_cpu, execute_accumulator_plan_tick_gpu,
+    execute_accumulator_plan_tick_with_backend, gpu_context_blocking, AccumulatorTickBackend,
+    SimTickError,
+};
 pub use boundary::{
     BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags,
 };

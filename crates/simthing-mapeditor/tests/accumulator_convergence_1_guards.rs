@@ -36,6 +36,13 @@ const FORBIDDEN_RUNTIME_TOKENS: &[&str] = &[
     "prove_runtime_vertical_seed_gpu_link_accumulator_blocking",
 ];
 
+const FORBIDDEN_GPU_DISPATCH_TOKENS: &[&str] = &[
+    "AccumulatorOpSession::new",
+    "upload_ops_resolving_input_lists",
+    "execute_accumulator_plan_tick_gpu",
+    "execute_accumulator_plan_tick_with_backend",
+];
+
 #[test]
 fn no_studio_runtime_loop_uses_structural_link_accumulator() {
     for path in app_source_files() {
@@ -60,6 +67,35 @@ fn studio_proof_helpers_do_not_run_as_runtime() {
         fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/app/mod.rs"))
             .expect("app mod");
     for token in FORBIDDEN_RUNTIME_TOKENS {
+        assert!(!scenario_io.contains(token));
+        assert!(!app_mod.contains(token));
+    }
+}
+
+#[test]
+fn studio_app_sources_do_not_construct_accumulator_op_session() {
+    for path in app_source_files() {
+        let source = fs::read_to_string(&path).expect("read app source");
+        for token in FORBIDDEN_GPU_DISPATCH_TOKENS {
+            assert!(
+                !source.contains(token),
+                "{} must not own GPU accumulator dispatch ({token})",
+                path.display()
+            );
+        }
+    }
+}
+
+#[test]
+fn studio_load_path_does_not_execute_sim_gpu_tick() {
+    let scenario_io = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/studio_scenario_load.rs"),
+    )
+    .expect("studio_scenario_load");
+    let app_mod =
+        fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/app/mod.rs"))
+            .expect("app mod");
+    for token in FORBIDDEN_GPU_DISPATCH_TOKENS {
         assert!(!scenario_io.contains(token));
         assert!(!app_mod.contains(token));
     }
@@ -137,4 +173,12 @@ fn production_doc_names_accumulator_op_as_convergence_target() {
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sum-over-input_list"));
     assert!(lower.contains("accumulatorop"));
+}
+
+#[test]
+fn production_doc_names_sim_gpu_accumulator_backend() {
+    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let lower = doc.to_ascii_lowercase();
+    assert!(lower.contains("sim-gpu-accumulator-backend-0"));
+    assert!(lower.contains("execute_accumulator_plan_tick_gpu"));
 }
