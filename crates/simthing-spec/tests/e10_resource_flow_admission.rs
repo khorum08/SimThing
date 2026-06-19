@@ -841,6 +841,58 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
             && !sim_src.contains("WorldEngine"),
         "simthing-sim must not introduce Owner/GalaxyMap/World engines"
     );
+
+    let ingestion_src = include_str!("../src/spec/scenario_ingestion.rs");
+    assert!(
+        ingestion_src.contains("ingest_scenario_from_str")
+            && ingestion_src.contains("ingest_scenario"),
+        "scenario ingestion API must exist in simthing-spec"
+    );
+    assert!(
+        ingestion_src.contains("ScenarioIngestionClassification")
+            && ingestion_src.contains("Admitted")
+            && ingestion_src.contains("PartiallyAdmitted")
+            && ingestion_src.contains("Rejected")
+            && ingestion_src.contains("Unsupported"),
+        "ingestion must expose Admitted / PartiallyAdmitted / Rejected / Unsupported"
+    );
+    assert!(
+        ingestion_src.contains("ScenarioDeferralKind")
+            && ingestion_src.contains("LegacyWorldRootCompatibility")
+            && ingestion_src.contains("PlanetsNotYetAdmitted"),
+        "ingestion must expose typed deferrals"
+    );
+    assert!(
+        production_doc.contains("GENERAL-SCENARIO-INGESTION-ADMISSION-0")
+            && production_doc.contains("arbitrary Scenario ingestion"),
+        "production synthesis must name GENERAL-SCENARIO-INGESTION-ADMISSION-0"
+    );
+    let gpu_lib = include_str!("../../simthing-gpu/src/lib.rs");
+    assert!(
+        !gpu_lib.contains("ingest_scenario") && !gpu_lib.contains("ScenarioIngestion"),
+        "ingestion authority must not live in simthing-gpu"
+    );
+    let mapeditor_lib = include_str!("../../simthing-mapeditor/src/lib.rs");
+    assert!(
+        !mapeditor_lib.contains("ingest_scenario_from_str")
+            && !mapeditor_lib.contains("ScenarioIngestionResult"),
+        "mapeditor/Studio must not own ingestion authority"
+    );
+    for forbidden_engine in [
+        "ScenarioEngine",
+        "IngestionEngine",
+        "OwnerEngine",
+        "FactionEngine",
+        "GalaxyMapEngine",
+        "WorldEngine",
+    ] {
+        assert!(
+            !simthing_src.contains(forbidden_engine)
+                && !scenario_src.contains(forbidden_engine)
+                && !ingestion_src.contains(forbidden_engine),
+            "core/spec ingestion must not introduce {forbidden_engine}"
+        );
+    }
 }
 
 #[test]

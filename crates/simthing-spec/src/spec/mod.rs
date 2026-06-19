@@ -12,6 +12,7 @@ pub mod region_field;
 pub mod resource_economy;
 pub mod resource_flow;
 pub mod scenario;
+pub mod scenario_ingestion;
 pub mod script;
 pub mod stress_compose;
 pub mod trigger;
@@ -82,6 +83,14 @@ pub use scenario::{
     SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
     SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
+};
+pub use scenario_ingestion::{
+    ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,
+    ingestion_error_from_serde, GalaxyMapAdmissionReport, OwnerAdmissionReport,
+    ScenarioCompileReadinessReport, ScenarioDeferral, ScenarioDeferralKind, ScenarioFingerprint,
+    ScenarioIngestionClassification, ScenarioIngestionError, ScenarioIngestionProfile,
+    ScenarioIngestionResult, ScenarioTreeAdmissionReport, ScenarioValidationReport,
+    StructuralAdmissionReport,
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,

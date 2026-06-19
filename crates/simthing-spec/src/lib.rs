@@ -433,6 +433,14 @@ pub use spec::scenario::{
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
     SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
+pub use spec::scenario_ingestion::{
+    ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,
+    ingestion_error_from_serde, GalaxyMapAdmissionReport, OwnerAdmissionReport,
+    ScenarioCompileReadinessReport, ScenarioDeferral, ScenarioDeferralKind, ScenarioFingerprint,
+    ScenarioIngestionClassification, ScenarioIngestionError, ScenarioIngestionProfile,
+    ScenarioIngestionResult, ScenarioTreeAdmissionReport, ScenarioValidationReport,
+    StructuralAdmissionReport,
+};
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
