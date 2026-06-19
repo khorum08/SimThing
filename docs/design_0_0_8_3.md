@@ -29,7 +29,7 @@ by which **conflict, opportunity, ambition, and extraction collapse into a singl
 GPU-resident SimThing.** Each is the *same* mechanism wearing a different label —
 - **conflict** → combat (`HP/Damage` arena), disruption (decaying accumulator);
 - **opportunity** → desirability fields and gradients (where to go);
-- **ambition** → faction drives, expansion, fight-or-flight (threshold-gated value decisions);
+- **ambition** → owner-entity drives, expansion, fight-or-flight (threshold-gated value decisions);
 - **extraction** → resource extraction, raiding, the production/energy economy —
 
 and all of them reduce to: **accumulation/flow, reduced up and masked down the one recursive tree,
@@ -48,9 +48,18 @@ breaks. That is why conformance is non-negotiable and carries forward across eve
 style preference, it is the **precondition** for the whole simulation being one GPU-resident FIELD_POLICY
 automaton rather than a federation of bespoke subsystems.
 
+### Terminology correction — owner, not faction
+
+“Faction” is game-language. The constitutional ontology term is **Owner** / **owner-entity**. Existing
+grand-strategy examples may describe an owner as an **owner-faction**, but the engine model is not
+faction-specific. Owner entities are sibling GameSession children; policies, bonuses, penalties,
+capability subtrees, and stockpiles may live on Owner SimThings as properties, overlays, and children.
+Assets refer to owners through owner references, properties, and columns. Ownership changes do not
+spatially reparent assets.
+
 ### 0.1 Maximal SimThing conformance (the founding premise)
 **Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
-gamesession, factions, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
+gamesession, owners, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
 all SimThings in one recursive `{properties, overlays, children}` tree. New behavior is modeled by
 adding SimThings, properties, overlays, and `AccumulatorOp` registrations — **never** by a bespoke
 subsystem sitting outside the tree. When a design seems to need special-case logic, the correct move is
@@ -60,7 +69,7 @@ almost always to express it as *more SimThing*. (This is the antidote to the mat
 ### 0.2 Allocation is always recursive (overrides the flat-star carve-out)
 Resource flow is **one** mechanism: reduction **up** the tree (each parent reduces its children's flow
 into a surplus or deficit and passes it to its parent) and disbursement **down** the tree (the
-gamesession root sends flow down; factions hold the stockpiled values, resolve deficits from the
+gamesession root sends flow down; owner entities hold the stockpiled values, resolve deficits from the
 stockpile, and the resolved values sweep back up to the root and down again). **"Flat-star" vs "nested"
 is not a structural fork:** local balance is simply where a masked flow nets to zero at a *leaf level*
 of the one recursive hierarchy — same machinery, different settling depth. This **explicitly overrides**

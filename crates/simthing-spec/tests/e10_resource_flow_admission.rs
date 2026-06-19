@@ -605,6 +605,99 @@ fn walk_sim_tests_for_forbidden_imports(dir: &std::path::Path, forbidden: &[&str
 }
 
 #[test]
+fn e10_owner_doctrine_and_evidence_reclassification_guards() {
+    let simthing_src = include_str!("../../simthing-core/src/simthing.rs");
+    for forbidden in [
+        "overlays, not nodes",
+        "non-physical groupings are overlays",
+        "Political structures, factions",
+        "factions, and all non-physical groupings are overlays",
+    ] {
+        assert!(
+            !simthing_src.contains(forbidden),
+            "simthing.rs must not treat owner/faction entities as overlays-only: found `{forbidden}`"
+        );
+    }
+    assert!(
+        simthing_src.contains("sibling children of the Session root"),
+        "simthing.rs must state owner entities are Session children"
+    );
+    assert!(
+        simthing_src.contains("not overlays and not spatial parents"),
+        "simthing.rs must state owners are not overlays and not spatial parents"
+    );
+    assert!(
+        simthing_src.contains("SimThingKind::Owner"),
+        "simthing.rs must admit canonical SimThingKind::Owner"
+    );
+
+    let constitution = include_str!("../../../docs/design_0_0_8_3.md");
+    assert!(
+        constitution.contains("Terminology correction — owner, not faction"),
+        "active constitution must carry owner-not-faction terminology correction"
+    );
+    let section_0_end = constitution
+        .find("### 0.1 Maximal SimThing conformance")
+        .expect("§0.1 heading");
+    let section_0 = &constitution[..section_0_end];
+    let lower = section_0.to_ascii_lowercase();
+    assert!(
+        !lower.contains("factions are"),
+        "§0 must not use bare factions as constitutional ontology"
+    );
+    assert!(
+        !lower.contains("faction entities"),
+        "§0 must not use faction entities as constitutional ontology"
+    );
+    assert!(
+        section_0.contains("owner-faction"),
+        "§0 may retain owner-faction as legacy example language only"
+    );
+
+    let evidence_index = include_str!("../../../docs/tests/current_evidence_index.md");
+    assert!(
+        evidence_index.contains("Lower-layer golden-fixture doctrine"),
+        "evidence index must document lower-layer golden-fixture doctrine"
+    );
+    assert!(
+        evidence_index.contains(
+            "Terran Pirate is a golden fixture for lower-layer compile/scheduler/GPU proofs"
+        ),
+        "evidence index must state Terran Pirate golden-fixture doctrine"
+    );
+    for row in [
+        "TERRAN-PIRATE-SCENARIO-SKELETON-0",
+        "TERRAN-PIRATE-MAPPING-FIRST-SLICE-0",
+        "STRUCTURAL-N4-THEATER-COMPILE-0",
+        "DRIVER-STRUCTURAL-ATLAS-HALO-0",
+    ] {
+        let marker = format!("**{row}**");
+        let row_start = evidence_index
+            .find(&marker)
+            .unwrap_or_else(|| panic!("evidence index missing row {row}"));
+        let row_line_end = evidence_index[row_start..]
+            .find('\n')
+            .map(|offset| row_start + offset)
+            .unwrap_or(evidence_index.len());
+        let row_line = &evidence_index[row_start..row_line_end];
+        assert!(
+            row_line.contains("LOWER_LAYER_GOLDEN_FIXTURE"),
+            "evidence row {row} must be tagged LOWER_LAYER_GOLDEN_FIXTURE"
+        );
+        assert!(
+            row_line.contains("not scenario ontology"),
+            "evidence row {row} must deny scenario-ontology completion"
+        );
+    }
+    assert!(
+        evidence_index.contains(
+            "Future main-track scenario PRs must introduce or generalize scenario/session/owner/map ingestion capability"
+        ),
+        "evidence index must carry hygiene-kabuki relapse guardrail"
+    );
+}
+
+#[test]
 fn e10_rejects_property_possession_without_explicit_admission() {
     let mut reg = DimensionRegistry::new();
     register_flow_property(&mut reg, "core", "food_flow");
