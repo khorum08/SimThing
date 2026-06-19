@@ -620,9 +620,10 @@ pub use structural_link_accumulator_compile::{
     compile_structural_link_neighbor_sum_plan, DriverCompileError,
 };
 pub use structural_n4_atlas_partition::{
-    compile_structural_n4_atlas, CompiledStructuralN4Atlas, DeferredCrossPartitionN4Edge,
-    PartitionedStructuralN4Theater, StructuralAtlasAdmission, StructuralAtlasPartitionProfile,
-    StructuralTheaterOrigin,
+    compile_structural_n4_atlas, CompiledStructuralN4Atlas, CrossPartitionHaloCoverage,
+    DeferredCrossPartitionN4Edge, PartitionedStructuralN4Theater, StructuralAtlasAdmission,
+    StructuralAtlasPartitionProfile, StructuralTheaterCellRole, StructuralTheaterCoordPadding,
+    StructuralTheaterHaloCell, StructuralTheaterOrigin,
 };
 pub use structural_n4_theater_compile::{
     compile_structural_n4_theater, AtlasDeferralReason, CompiledStructuralN4Theater,
