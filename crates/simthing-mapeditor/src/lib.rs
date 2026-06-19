@@ -19,6 +19,7 @@ pub mod shape_params;
 pub mod star_render;
 pub mod starburst;
 pub mod studio_config;
+pub mod studio_scenario_document;
 pub mod studio_scenario_load;
 pub mod terran_pirate_skeleton;
 pub mod view_model;
@@ -76,6 +77,13 @@ pub use settings::{EditorSettings, PersistedCameraState, WindowModeSetting};
 pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
     STUDIO_CONFIG_SCHEMA_VERSION,
+};
+pub use studio_scenario_document::{
+    build_studio_scenario_document, load_canonical_studio_document_from_path,
+    save_studio_scenario_with_document_roundtrip, studio_galaxy_map_gridcells_from_spec,
+    StudioGalaxyMapView, StudioGameSessionView, StudioGridcellRole, StudioGridcellView,
+    StudioOwnerView, StudioScenarioAuthorityKind, StudioScenarioDocument,
+    StudioScenarioDocumentError,
 };
 pub use terran_pirate_skeleton::{
     terran_pirate_skeleton_dense_inputs, terran_pirate_skeleton_scenario_spec,

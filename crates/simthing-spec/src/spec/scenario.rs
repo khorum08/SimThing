@@ -702,6 +702,89 @@ pub fn apply_gridcell_role_metadata(gridcell: &mut SimThing, role: &str) {
     );
 }
 
+pub fn owner_display_name(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, OWNER_DISPLAY_NAME_PROPERTY_ID)
+}
+
+pub fn owner_archetype(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, OWNER_ARCHETYPE_PROPERTY_ID)
+}
+
+pub fn owner_color_index(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_COLOR_INDEX_PROPERTY_ID)
+}
+
+pub fn owner_silo_marker(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_SILO_MARKER_PROPERTY_ID)
+}
+
+pub fn galaxy_map_display_name(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID)
+}
+
+pub fn galaxy_map_role(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, GALAXY_MAP_ROLE_PROPERTY_ID)
+}
+
+pub fn gridcell_role(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, GALAXY_GRIDCELL_ROLE_PROPERTY_ID)
+}
+
+pub fn gridcell_generated_system_id(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID)
+}
+
+pub fn gridcell_structural_col(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, SCENARIO_STRUCTURAL_COL_PROPERTY_ID)
+}
+
+pub fn gridcell_structural_row(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID)
+}
+
+pub fn set_owner_display_name(
+    spec: &mut SimThingScenarioSpec,
+    owner_id: &str,
+    display_name: &str,
+) -> Result<(), ScenarioRootError> {
+    let owners = game_session_owners(spec)?;
+    let owner = owners
+        .into_iter()
+        .find(|owner| owner_entity_id(owner).as_deref() == Some(owner_id))
+        .ok_or(ScenarioRootError::OwnerMissingId)?;
+    let owner_raw = owner.id.raw();
+    let game_session = game_session_child_mut(spec)?;
+    let owner_mut = game_session
+        .children
+        .iter_mut()
+        .find(|child| child.id.raw() == owner_raw)
+        .ok_or(ScenarioRootError::OwnerMissingId)?;
+    owner_mut.add_property(
+        OWNER_DISPLAY_NAME_PROPERTY_ID,
+        scenario_metadata_string_value(display_name),
+    );
+    Ok(())
+}
+
+pub fn set_galaxy_map_display_name(
+    spec: &mut SimThingScenarioSpec,
+    display_name: &str,
+) -> Result<(), ScenarioRootError> {
+    let galaxy_map = game_session_galaxy_map(spec)?;
+    let map_raw = galaxy_map.id.raw();
+    let game_session = game_session_child_mut(spec)?;
+    let map_mut = game_session
+        .children
+        .iter_mut()
+        .find(|child| child.id.raw() == map_raw)
+        .expect("galaxy map is direct GameSession child");
+    map_mut.add_property(
+        GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID,
+        scenario_metadata_string_value(display_name),
+    );
+    Ok(())
+}
+
 /// Direct canonical GalaxyMap / WorldStateMap children of the GameSession.
 pub fn game_session_galaxy_maps(
     spec: &SimThingScenarioSpec,
@@ -810,6 +893,45 @@ pub fn game_session_child(spec: &SimThingScenarioSpec) -> Result<&SimThing, Scen
         });
     }
     Ok(gamesessions[0])
+}
+
+fn game_session_child_mut<'a>(
+    spec: &'a mut SimThingScenarioSpec,
+) -> Result<&'a mut SimThing, ScenarioRootError> {
+    if spec.root.kind != SimThingKind::Scenario {
+        if spec.root.kind == SimThingKind::World {
+            return Err(ScenarioRootError::LegacyWorldRootHasNoGameSessionRequirement);
+        }
+        return Err(ScenarioRootError::RootIsNotScenario);
+    }
+    let gamesession_count = spec
+        .root
+        .children
+        .iter()
+        .filter(|child| child.kind == SimThingKind::GameSession)
+        .count();
+    if gamesession_count == 0 {
+        if spec.root.children.len() == 1 {
+            let child = &spec.root.children[0];
+            let found = match &child.kind {
+                SimThingKind::Custom(name) => name.clone(),
+                other => format!("{other:?}"),
+            };
+            return Err(ScenarioRootError::GameSessionChildWrongKind { found });
+        }
+        return Err(ScenarioRootError::MissingGameSessionChild);
+    }
+    if gamesession_count > 1 || spec.root.children.len() > 1 {
+        return Err(ScenarioRootError::MultipleGameSessionChildren {
+            count: gamesession_count,
+        });
+    }
+    Ok(spec
+        .root
+        .children
+        .iter_mut()
+        .find(|child| child.kind == SimThingKind::GameSession)
+        .expect("gamesession count validated"))
 }
 
 /// Canonical Scenario roots require exactly one direct [`SimThingKind::GameSession`] child.
@@ -1917,7 +2039,7 @@ mod tests {
     #[test]
     fn loaded_scenario_rejects_duplicate_simthing_ids() {
         let mut scenario = small_scenario();
-        spatial_world_mut(&mut scenario).children[0].id = scenario.root.id;
+        spatial_root_mut(&mut scenario).children[0].id = scenario.root.id;
         let err = reserve_simthing_ids_from_scenario(&scenario).expect_err("duplicate");
         assert!(matches!(err, SimThingIdReservationError::DuplicateId(_)));
     }

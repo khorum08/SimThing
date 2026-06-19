@@ -15,6 +15,7 @@ use thiserror::Error;
 use crate::generation::GenerationProfile;
 use crate::hydration::StudioHydrationError;
 use crate::session::StudioSession;
+use crate::studio_scenario_document::StudioScenarioDocumentError;
 
 pub const SCENARIO_FILE_SUFFIX: &str = ".simthing-scenario.json";
 pub const SCENARIO_TMP_SUFFIX: &str = "simthing-scenario.json.tmp";
@@ -27,6 +28,8 @@ pub enum ScenarioIoError {
     Serde(#[from] ScenarioSerdeError),
     #[error("scenario projection rebuild failed: {0}")]
     Hydration(#[from] StudioHydrationError),
+    #[error("studio scenario document build failed: {0}")]
+    ScenarioDocument(#[from] StudioScenarioDocumentError),
 }
 
 pub fn scenario_file_name(stem: &str) -> String {
