@@ -17,6 +17,9 @@ use crate::scenario_projection::{
     build_gpu_residency_readiness, build_structural_projection, StudioGpuResidencyReadiness,
     StudioStructuralProjection,
 };
+use crate::studio_scenario_document::{
+    build_studio_scenario_document, StudioScenarioDocument, StudioScenarioDocumentError,
+};
 use crate::view_model::StudioGalaxyViewModel;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,6 +76,7 @@ impl StudioScenarioSummary {
 #[derive(Debug, Clone)]
 pub struct StudioSession {
     pub scenario_authority: SimThingScenarioSpec,
+    pub scenario_document: StudioScenarioDocument,
     pub source: StudioSessionSource,
     pub scenario_summary: StudioScenarioSummary,
     pub structural_projection: StudioStructuralProjection,
@@ -98,9 +102,12 @@ impl StudioSession {
             build_gpu_residency_readiness(&scenario_authority, &structural_projection);
         let scenario_summary =
             StudioScenarioSummary::from_scenario(&scenario_authority, Some(&output.report));
+        let scenario_document =
+            build_studio_scenario_document(&scenario_authority).map_err(session_document_error)?;
 
         Ok(Self {
             scenario_authority,
+            scenario_document,
             source: StudioSessionSource::Generated {
                 generation_profile: profile,
             },
@@ -127,9 +134,12 @@ impl StudioSession {
         let gpu_residency_readiness =
             build_gpu_residency_readiness(&scenario_authority, &structural_projection);
         let scenario_summary = StudioScenarioSummary::from_scenario(&scenario_authority, None);
+        let scenario_document =
+            build_studio_scenario_document(&scenario_authority).map_err(session_document_error)?;
 
         Ok(Self {
             scenario_authority,
+            scenario_document,
             source: StudioSessionSource::LoadedScenario {
                 scenario_path: scenario_path.clone(),
                 profile_hint,
@@ -192,6 +202,10 @@ impl StudioSession {
             }
         }
     }
+}
+
+fn session_document_error(err: StudioScenarioDocumentError) -> StudioHydrationError {
+    StudioHydrationError::SteadMappingInconsistent(err.to_string())
 }
 
 fn profile_from_scenario_provenance(scenario: &SimThingScenarioSpec) -> GenerationProfile {
