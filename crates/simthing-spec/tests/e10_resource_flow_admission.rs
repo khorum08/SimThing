@@ -932,6 +932,25 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         silo_test_src.contains("owner_silo_does_not_require_owner_spatial_parenting"),
         "owner-silo tests must guard against spatial-parent ownership"
     );
+    assert!(
+        session_flow_src.contains("InvalidSiloAmount")
+            && session_flow_src.contains("read_owner_silo_amount"),
+        "owner-silo flow must validate silo amounts with InvalidSiloAmount"
+    );
+    assert!(
+        !session_flow_src.contains("owner_silo_current(owner).unwrap_or")
+            && !session_flow_src.contains("owner_silo_capacity(owner).unwrap_or"),
+        "owner silo current/capacity must not silently default via unwrap_or"
+    );
+    assert!(
+        silo_test_src.contains("owner_silo_invalid_current_rejected")
+            && silo_test_src.contains("owner_silo_invalid_capacity_rejected"),
+        "InvalidSiloAmount must be exercised in owner-silo tests"
+    );
+    assert!(
+        production_doc.contains("SESSION-RESOURCE-FLOW-SILOS-HARDEN-0"),
+        "production synthesis must name SESSION-RESOURCE-FLOW-SILOS-HARDEN-0"
+    );
     for forbidden_engine in [
         "OwnerEngine",
         "FactionEngine",

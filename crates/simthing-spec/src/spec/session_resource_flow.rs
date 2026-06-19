@@ -9,9 +9,9 @@ use simthing_core::{SimThing, SimThingKind};
 
 use super::scenario::{
     game_session_galaxy_map, game_session_owners, is_galaxy_map_entity, owner_entity_id,
-    owner_flow_owner_ref, owner_has_silo_metadata, owner_silo_capacity, owner_silo_current,
-    property_u32, SimThingScenarioSpec, OWNER_FLOW_DEFICIT_PROPERTY_ID,
-    OWNER_FLOW_SURPLUS_PROPERTY_ID,
+    owner_flow_owner_ref, owner_has_silo_metadata, property_u32, SimThingScenarioSpec,
+    OWNER_FLOW_DEFICIT_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID,
+    OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,6 +118,11 @@ pub fn evaluate_owner_silo_flow(spec: &SimThingScenarioSpec) -> OwnerSiloAdmissi
         }
     }
 
+    if validate_owner_silo_property_values(&owner_ids, &mut report).is_err() {
+        report.classification = OwnerSiloAdmissionClassification::Rejected;
+        return report;
+    }
+
     let participants = match collect_flow_participants(spec, &mut report) {
         Ok(participants) => participants,
         Err(()) => {
@@ -195,8 +200,11 @@ pub fn evaluate_owner_silo_flow(spec: &SimThingScenarioSpec) -> OwnerSiloAdmissi
             continue;
         }
 
-        let current = owner_silo_current(owner).unwrap_or(0);
-        let capacity = owner_silo_capacity(owner).unwrap_or(u32::MAX);
+        let (current, capacity) = match read_owner_silo_state_for_flow(owner, owner_id, &mut report)
+        {
+            Ok(state) => state,
+            Err(()) => continue,
+        };
         let absorbed_surplus = surplus.min(capacity.saturating_sub(current));
         let silo_after_surplus = current.saturating_add(absorbed_surplus);
         let resolved = deficit.min(silo_after_surplus);
@@ -343,6 +351,133 @@ fn collect_participant_from_node(
         path: path.to_string(),
     });
     Ok(())
+}
+
+/// Reject malformed silo numeric properties when the property key is present.
+fn validate_owner_silo_property_values(
+    owners: &BTreeMap<String, &SimThing>,
+    report: &mut OwnerSiloAdmissionReport,
+) -> Result<(), ()> {
+    let mut failed = false;
+    for (owner_id, owner) in owners {
+        if owner
+            .properties
+            .contains_key(&OWNER_SILO_CURRENT_PROPERTY_ID)
+        {
+            if read_owner_silo_amount(owner, OWNER_SILO_CURRENT_PROPERTY_ID, owner_id, report)
+                .is_err()
+            {
+                failed = true;
+            }
+        }
+        if owner
+            .properties
+            .contains_key(&OWNER_SILO_CAPACITY_PROPERTY_ID)
+        {
+            if read_owner_silo_amount(owner, OWNER_SILO_CAPACITY_PROPERTY_ID, owner_id, report)
+                .is_err()
+            {
+                failed = true;
+            }
+        }
+    }
+    if failed {
+        Err(())
+    } else {
+        Ok(())
+    }
+}
+
+/// Active admitted silo flow requires a valid `owner_silo_current`; absent capacity is unbounded.
+fn read_owner_silo_state_for_flow(
+    owner: &SimThing,
+    owner_id: &str,
+    report: &mut OwnerSiloAdmissionReport,
+) -> Result<(u32, u32), ()> {
+    let current = match owner.properties.get(&OWNER_SILO_CURRENT_PROPERTY_ID) {
+        None => {
+            push_error(
+                report,
+                OwnerSiloAdmissionErrorKind::InvalidSiloAmount,
+                Some(format!("owner/{owner_id}")),
+                Some(owner.id.raw()),
+                "owner_silo_current is required for active admitted silo flow when owner_silo_marker is present",
+            );
+            return Err(());
+        }
+        Some(value) => match property_u32(value) {
+            Some(amount) => amount,
+            None => {
+                push_error(
+                    report,
+                    OwnerSiloAdmissionErrorKind::InvalidSiloAmount,
+                    Some(format!("owner/{owner_id}")),
+                    Some(owner.id.raw()),
+                    "owner_silo_current must be a non-negative exact integer f32 mirror",
+                );
+                return Err(());
+            }
+        },
+    };
+
+    let capacity = match owner.properties.get(&OWNER_SILO_CAPACITY_PROPERTY_ID) {
+        None => u32::MAX,
+        Some(value) => match property_u32(value) {
+            Some(amount) => amount,
+            None => {
+                push_error(
+                    report,
+                    OwnerSiloAdmissionErrorKind::InvalidSiloAmount,
+                    Some(format!("owner/{owner_id}")),
+                    Some(owner.id.raw()),
+                    "owner_silo_capacity must be a non-negative exact integer f32 mirror",
+                );
+                return Err(());
+            }
+        },
+    };
+
+    if current > capacity {
+        push_error(
+            report,
+            OwnerSiloAdmissionErrorKind::InvalidSiloAmount,
+            Some(format!("owner/{owner_id}")),
+            Some(owner.id.raw()),
+            format!("owner_silo_current ({current}) exceeds owner_silo_capacity ({capacity})"),
+        );
+        return Err(());
+    }
+
+    Ok((current, capacity))
+}
+
+fn read_owner_silo_amount(
+    owner: &SimThing,
+    property_id: simthing_core::SimPropertyId,
+    owner_id: &str,
+    report: &mut OwnerSiloAdmissionReport,
+) -> Result<Option<u32>, ()> {
+    let Some(value) = owner.properties.get(&property_id) else {
+        return Ok(None);
+    };
+    match property_u32(value) {
+        Some(amount) => Ok(Some(amount)),
+        None => {
+            let label = if property_id == OWNER_SILO_CURRENT_PROPERTY_ID {
+                "owner_silo_current"
+            } else {
+                "owner_silo_capacity"
+            };
+            push_error(
+                report,
+                OwnerSiloAdmissionErrorKind::InvalidSiloAmount,
+                Some(format!("owner/{owner_id}")),
+                Some(owner.id.raw()),
+                format!("{label} must be a non-negative exact integer f32 mirror"),
+            );
+            Err(())
+        }
+    }
 }
 
 fn read_flow_amount(
