@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — GalaxyMap validation, Owner directness hardening, STEAD spatial authority reconnect, fixtures, and driver structural admission proof landed. Studio tree editing and resource-flow silos deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SESSION-GALAXYMAP-WORLDSTATE-0  
+**PR:** #781 — SESSION-GALAXYMAP-WORLDSTATE-0  
+**Merge SHA:** `c7ce8f55`  
 **Base:** `master` after PR #780 / SESSION-OWNER-ENTITIES-0
 
 ## Current defect summary
@@ -121,6 +122,7 @@ Generated Galaxy Authority: `Scenario → GameSession → Owner(s) → GalaxyMap
 | `cargo test -p simthing-driver --test canonical_galaxymap_mapping_compile` | PASS |
 | `cargo test -p simthing-mapeditor --test terran_pirate_skeleton` | PASS |
 | `git diff --check` | PASS |
+| `git diff --name-only master...HEAD` | PASS (14 files) |
 
 ## Files changed
 
