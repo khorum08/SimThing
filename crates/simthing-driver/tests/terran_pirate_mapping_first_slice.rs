@@ -1,16 +1,17 @@
 //! TERRAN-PIRATE-MAPPING-FIRST-SLICE-0 — structural N4 Gu-Yang/PALMA first-slice GPU proof.
 //!
-//! Loads canonical `SimThingScenarioSpec` authority, derives grid N4 adjacency from
-//! structural `(col,row)` placements (not hyperlane links), and exercises existing
-//! SaturatingFlux + W-impedance compose + min-plus operator surfaces with CPU/GPU parity.
+//! Loads canonical `SimThingScenarioSpec` authority, compiles structural N4 theater via
+//! `compile_structural_n4_theater`, and exercises existing SaturatingFlux + W-impedance
+//! compose + min-plus operator surfaces with CPU/GPU parity.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::sync::Mutex;
 
 use simthing_core::{CombineFn, SourceSpec, StructuralScalarChannel};
 use simthing_driver::{
-    compile_structural_link_neighbor_sum_plan, compiled_stencil_to_gpu_config,
-    compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config,
+    compile_structural_link_neighbor_sum_plan, compile_structural_n4_theater,
+    compiled_stencil_to_gpu_config, compiled_w_impedance_compose_to_gpu_config,
+    composed_w_min_plus_stencil_config, StructuralGridCoordinate, StructuralTheaterAdmission,
 };
 use simthing_gpu::wgpu::util::DeviceExt;
 use simthing_gpu::{
@@ -44,21 +45,6 @@ const FORBIDDEN_RUNTIME: &[&str] = &[
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-struct StructuralCell {
-    col: u32,
-    row: u32,
-}
-
-#[derive(Clone, Debug)]
-struct StructuralTheater {
-    frame_width: u32,
-    frame_height: u32,
-    occupied: BTreeSet<StructuralCell>,
-    system_at: HashMap<u32, StructuralCell>,
-    n4_edges: BTreeSet<(StructuralCell, StructuralCell)>,
-}
-
 fn canonical_skeleton_scenario() -> SimThingScenarioSpec {
     let scenario = deserialize_scenario_authority(TERRAN_PIRATE_SKELETON_SCENARIO_JSON)
         .expect("deserialize canonical skeleton");
@@ -67,57 +53,21 @@ fn canonical_skeleton_scenario() -> SimThingScenarioSpec {
     scenario
 }
 
-fn is_n4_neighbor(a: StructuralCell, b: StructuralCell) -> bool {
-    (a.col.abs_diff(b.col) == 1 && a.row == b.row) || (a.row.abs_diff(b.row) == 1 && a.col == b.col)
-}
-
-fn ordered_edge(a: StructuralCell, b: StructuralCell) -> (StructuralCell, StructuralCell) {
-    if a <= b {
-        (a, b)
-    } else {
-        (b, a)
-    }
-}
-
-fn derive_structural_theater(spec: &SimThingScenarioSpec) -> StructuralTheater {
-    let frame = &spec.structural_grid.frame;
-    let mut occupied = BTreeSet::new();
-    let mut system_at = HashMap::new();
-    for placement in &spec.structural_grid.placements {
-        let cell = StructuralCell {
-            col: placement.col,
-            row: placement.row,
-        };
-        occupied.insert(cell);
-        system_at.insert(placement.system_id, cell);
-    }
-    assert_eq!(
-        occupied.len(),
-        frame.occupied_cells as usize,
-        "occupied cell count must match frame"
-    );
-
-    let mut n4_edges = BTreeSet::new();
-    let cells: Vec<_> = occupied.iter().copied().collect();
-    for i in 0..cells.len() {
-        for j in (i + 1)..cells.len() {
-            if is_n4_neighbor(cells[i], cells[j]) {
-                n4_edges.insert(ordered_edge(cells[i], cells[j]));
-            }
+fn admit_structural_theater(
+    spec: &SimThingScenarioSpec,
+) -> simthing_driver::CompiledStructuralN4Theater {
+    match compile_structural_n4_theater(spec, MappingExecutionProfile::SparseRegionFieldV1)
+        .expect("compile structural theater")
+    {
+        StructuralTheaterAdmission::Admit(theater) => theater,
+        StructuralTheaterAdmission::AtlasDeferred { reason, .. } => {
+            panic!("expected admission, got atlas deferral: {reason:?}")
         }
     }
-
-    StructuralTheater {
-        frame_width: frame.width,
-        frame_height: frame.height,
-        occupied,
-        system_at,
-        n4_edges,
-    }
 }
 
-fn cell_slot(cell: StructuralCell, width: u32) -> u32 {
-    cell.row * width + cell.col
+fn cell_slot(coord: StructuralGridCoordinate, width: u32) -> u32 {
+    coord.row * width + coord.col
 }
 
 fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
@@ -170,15 +120,18 @@ fn terran_pirate_w_compose_spec(grid_size: u32) -> WImpedanceComposeSpec {
     }
 }
 
-fn seed_guyang_values(theater: &StructuralTheater, n_dims: u32) -> Vec<f32> {
+fn seed_guyang_values(
+    theater: &simthing_driver::CompiledStructuralN4Theater,
+    n_dims: u32,
+) -> Vec<f32> {
     let cells = theater.frame_width * theater.frame_height;
     let mut values = vec![0.0f32; (cells * n_dims) as usize];
-    let hub = *theater.system_at.get(&1).expect("hub placement");
-    let corridor = *theater.system_at.get(&2).expect("corridor placement");
-    let branch = *theater.system_at.get(&3).expect("branch placement");
-    values[idx(cell_slot(hub, theater.frame_width), 0, n_dims)] = 80.0;
-    values[idx(cell_slot(corridor, theater.frame_width), 0, n_dims)] = 20.0;
-    values[idx(cell_slot(branch, theater.frame_width), 0, n_dims)] = 10.0;
+    let hub = theater.coord_for_system(1).expect("hub placement");
+    let corridor = theater.coord_for_system(2).expect("corridor placement");
+    let branch = theater.coord_for_system(3).expect("branch placement");
+    values[idx(theater.cell_slot(hub), 0, n_dims)] = 80.0;
+    values[idx(theater.cell_slot(corridor), 0, n_dims)] = 20.0;
+    values[idx(theater.cell_slot(branch), 0, n_dims)] = 10.0;
     values
 }
 
@@ -213,46 +166,46 @@ fn hyperlane_neighbor_system_pairs(spec: &SimThingScenarioSpec) -> BTreeSet<(u32
 #[test]
 fn mapping_first_slice_derives_structural_n4_theater_from_scenario_authority() {
     let spec = canonical_skeleton_scenario();
-    let theater = derive_structural_theater(&spec);
+    let theater = admit_structural_theater(&spec);
 
     assert_eq!(theater.frame_width, 8);
     assert_eq!(theater.frame_height, 8);
-    assert_eq!(theater.occupied.len(), 4);
+    assert_eq!(theater.occupied_cells.len(), 4);
     assert_eq!(theater.n4_edges.len(), 3);
 
-    let hub = theater.system_at[&1];
-    let corridor = theater.system_at[&2];
-    let branch = theater.system_at[&3];
-    let choke = theater.system_at[&4];
+    let hub = theater.coord_for_system(1).expect("hub");
+    let corridor = theater.coord_for_system(2).expect("corridor");
+    let branch = theater.coord_for_system(3).expect("branch");
+    let choke = theater.coord_for_system(4).expect("choke");
 
-    assert_eq!(hub, StructuralCell { col: 0, row: 0 });
-    assert_eq!(corridor, StructuralCell { col: 1, row: 0 });
-    assert_eq!(choke, StructuralCell { col: 2, row: 0 });
-    assert_eq!(branch, StructuralCell { col: 1, row: 1 });
+    assert_eq!(hub, StructuralGridCoordinate { col: 0, row: 0 });
+    assert_eq!(corridor, StructuralGridCoordinate { col: 1, row: 0 });
+    assert_eq!(choke, StructuralGridCoordinate { col: 2, row: 0 });
+    assert_eq!(branch, StructuralGridCoordinate { col: 1, row: 1 });
 
-    assert!(theater.n4_edges.contains(&ordered_edge(hub, corridor)));
-    assert!(theater.n4_edges.contains(&ordered_edge(corridor, choke)));
-    assert!(theater.n4_edges.contains(&ordered_edge(corridor, branch)));
-    assert!(!theater.n4_edges.contains(&ordered_edge(hub, branch)));
+    assert!(theater.has_n4_edge(hub, corridor));
+    assert!(theater.has_n4_edge(corridor, choke));
+    assert!(theater.has_n4_edge(corridor, branch));
+    assert!(!theater.has_n4_edge(hub, branch));
 }
 
 #[test]
 fn mapping_first_slice_grid_n4_adjacency_is_separate_from_hyperlane_links() {
     let spec = canonical_skeleton_scenario();
-    let theater = derive_structural_theater(&spec);
+    let theater = admit_structural_theater(&spec);
     let hyperlane_pairs = hyperlane_neighbor_system_pairs(&spec);
 
     let n4_system_pairs: BTreeSet<_> = theater
         .n4_edges
         .iter()
         .map(|(a, b)| {
-            let system = |cell: StructuralCell| {
-                *theater
-                    .system_at
+            let system = |coord: StructuralGridCoordinate| {
+                theater
+                    .system_placements
                     .iter()
-                    .find(|(_, c)| **c == cell)
-                    .expect("system for cell")
-                    .0
+                    .find(|placement| placement.col == coord.col && placement.row == coord.row)
+                    .expect("system for coord")
+                    .system_id
             };
             let sa = system(*a);
             let sb = system(*b);
@@ -274,16 +227,16 @@ fn mapping_first_slice_grid_n4_adjacency_is_separate_from_hyperlane_links() {
         "hub-branch is not a hyperlane edge"
     );
 
-    let hub = theater.system_at[&1];
-    let branch = theater.system_at[&3];
+    let hub = theater.coord_for_system(1).expect("hub");
+    let branch = theater.coord_for_system(3).expect("branch");
     assert!(
-        !theater.n4_edges.contains(&ordered_edge(hub, branch)),
+        !theater.has_n4_edge(hub, branch),
         "grid N4 must not connect hub and branch directly"
     );
 
     let mut link_only = spec.clone();
     link_only.links.clear();
-    let theater_without_links = derive_structural_theater(&link_only);
+    let theater_without_links = admit_structural_theater(&link_only);
     assert_eq!(
         theater.n4_edges, theater_without_links.n4_edges,
         "N4 adjacency must not depend on scenario.links"
@@ -315,7 +268,7 @@ fn mapping_first_slice_grid_n4_adjacency_is_separate_from_hyperlane_links() {
 #[test]
 fn mapping_first_slice_guyang_saturating_flux_gpu_matches_cpu_oracle() {
     let spec = canonical_skeleton_scenario();
-    let theater = derive_structural_theater(&spec);
+    let theater = admit_structural_theater(&spec);
     let field_spec = terran_pirate_guyang_field_spec(theater.frame_width);
     let preview = compile_region_field_preview(&field_spec).expect("region field admission");
     let gpu_config = compiled_stencil_to_gpu_config(&preview.stencil);
@@ -323,8 +276,8 @@ fn mapping_first_slice_guyang_saturating_flux_gpu_matches_cpu_oracle() {
     let values = seed_guyang_values(&theater, gpu_config.n_dims);
     let cpu = cpu_saturating_flux_horizon(&values, &params);
 
-    for cell in &theater.occupied {
-        let slot = cell_slot(*cell, theater.frame_width);
+    for cell in &theater.occupied_cells {
+        let slot = theater.cell_slot(*cell);
         let u = cpu[idx(slot, 0, gpu_config.n_dims)];
         let choke = cpu[idx(slot, 1, gpu_config.n_dims)];
         assert!(u.is_finite(), "target field must be finite at {cell:?}");
@@ -355,8 +308,13 @@ fn mapping_first_slice_guyang_saturating_flux_gpu_matches_cpu_oracle() {
         eprintln!("TERRAN-PIRATE-MAPPING-FIRST-SLICE-0: REAL_ADAPTER_OBSERVED (SaturatingFlux)");
     });
 
+    let compile_src = include_str!("../src/structural_n4_theater_compile.rs");
     let bridge = include_str!("../src/w_impedance_compose_bridge.rs");
     for token in FORBIDDEN_RUNTIME {
+        assert!(
+            !compile_src.contains(token),
+            "compile surface must not contain `{token}`"
+        );
         assert!(!bridge.contains(token), "bridge must not contain `{token}`");
     }
     assert_eq!(
@@ -369,7 +327,7 @@ fn mapping_first_slice_guyang_saturating_flux_gpu_matches_cpu_oracle() {
 #[test]
 fn mapping_first_slice_palma_w_compose_and_min_plus_gpu_matches_cpu_oracle() {
     let spec = canonical_skeleton_scenario();
-    let theater = derive_structural_theater(&spec);
+    let theater = admit_structural_theater(&spec);
     let grid = theater.frame_width;
 
     let guyang_spec = terran_pirate_guyang_field_spec(grid);
@@ -382,7 +340,7 @@ fn mapping_first_slice_palma_w_compose_and_min_plus_gpu_matches_cpu_oracle() {
     let w_spec = terran_pirate_w_compose_spec(grid);
     let w_compiled = compile_w_impedance_compose_preview(&w_spec).expect("w compose admission");
     let w_gpu = compiled_w_impedance_compose_to_gpu_config(&w_compiled);
-    let hub = theater.system_at[&1];
+    let hub = theater.coord_for_system(1).expect("hub");
     let stencil =
         composed_w_min_plus_stencil_config(&w_gpu, 0, 4, (hub.col, hub.row), MIN_PLUS_INF);
 
@@ -405,8 +363,8 @@ fn mapping_first_slice_palma_w_compose_and_min_plus_gpu_matches_cpu_oracle() {
 
     let cpu_d =
         cpu_min_plus_d_from_w(&w_flat, &stencil, MIN_PLUS_ITERATIONS).expect("cpu min-plus oracle");
-    for cell in &theater.occupied {
-        let d = cpu_d[cell_slot(*cell, grid) as usize];
+    for cell in &theater.occupied_cells {
+        let d = cpu_d[theater.cell_slot(*cell) as usize];
         assert!(d.is_finite(), "D field must be finite at occupied {cell:?}");
     }
     assert!(

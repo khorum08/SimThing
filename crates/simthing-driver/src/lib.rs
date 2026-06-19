@@ -75,6 +75,7 @@ pub mod spec_replay;
 pub mod spec_session;
 pub mod stress_compose_bridge;
 pub mod structural_link_accumulator_compile;
+pub mod structural_n4_theater_compile;
 pub mod w_impedance_compose_bridge;
 
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
@@ -611,6 +612,11 @@ pub use spec_session::{
 pub use stress_compose_bridge::compiled_stress_compose_to_gpu_config;
 pub use structural_link_accumulator_compile::{
     compile_structural_link_neighbor_sum_plan, DriverCompileError,
+};
+pub use structural_n4_theater_compile::{
+    compile_structural_n4_theater, AtlasDeferralReason, CompiledStructuralN4Theater,
+    CompiledStructuralPlacement, StructuralGridCoordinate, StructuralTheaterAdmission,
+    StructuralTheaterCompileError,
 };
 pub use w_impedance_compose_bridge::{
     compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config,
