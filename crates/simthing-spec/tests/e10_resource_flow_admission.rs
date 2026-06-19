@@ -728,6 +728,24 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         simthing_src.contains("SimThingKind::Scenario"),
         "simthing-core must admit SimThingKind::Scenario for canonical file roots"
     );
+    assert!(
+        !scenario_src.contains("(seed & 0xFFFF_FFFF) as f32"),
+        "scenario.rs must not use lossy 32-bit-half f32 seed encoding"
+    );
+    assert!(
+        !scenario_src.contains("(seed >> 32) as f32"),
+        "scenario.rs must not use lossy 32-bit-half f32 seed encoding"
+    );
+
+    let scenario_root_test_src = include_str!("scenario_serializable_simthing_root.rs");
+    assert!(
+        scenario_root_test_src.contains("scenario_seed_roundtrips_u64_max"),
+        "scenario seed tests must cover u64::MAX"
+    );
+    assert!(
+        scenario_root_test_src.contains("scenario_seed_roundtrips_low_high_mixed_pattern"),
+        "scenario seed tests must cover mixed high/low bit pattern"
+    );
 }
 
 #[test]

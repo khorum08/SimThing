@@ -1,24 +1,34 @@
 //! SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0 — Scenario SimThing as canonical file root.
+//! SCENARIO-METADATA-LOSSLESS-0 — lossless Scenario-root generator seed metadata.
 
-use simthing_core::{SimThing, SimThingKind};
+use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_spec::{
     apply_scenario_metadata_to_root, deserialize_scenario_authority, scenario_metadata_seed,
-    scenario_metadata_string, scenario_metadata_u32, serialize_scenario_authority,
+    scenario_metadata_seed_value, scenario_metadata_string, scenario_metadata_u32,
+    serialize_scenario_authority, sync_root_metadata_from_sidecar, sync_sidecar_from_root_metadata,
     validate_legacy_world_root_compatibility, validate_scenario_root_authority, ScenarioRootError,
     ScenarioRootValidationMode, SimThingScenarioGrid, SimThingScenarioProvenance,
-    SimThingScenarioSpec, SimThingStructuralGridFrame, SCENARIO_ID_PROPERTY_ID,
-    SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+    SimThingScenarioSpec, SimThingStructuralGridFrame, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+    SCENARIO_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
     SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 
 const MINIMAL_SCENARIO_ID: &str = "minimal_scenario_root";
-const MINIMAL_FIXTURE_PATH: &str = "scenarios/corpus/minimal_scenario_root.simthing-scenario.json";
+/// JSON f64-safe non-zero seed for the on-disk corpus fixture (full `MIXED_PATTERN_SEED` tested in code).
+const FIXTURE_SEED: u64 = 0x0001_2345_6789_ABCD;
+const MIXED_PATTERN_SEED: u64 = 0x1234_5678_9ABC_DEF0;
+const HIGH_BIT_PATTERN_SEED: u64 = 0x8000_0000_0000_0001;
+
+fn minimal_fixture_path() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scenarios/corpus/minimal_scenario_root.simthing-scenario.json")
+}
 
 fn minimal_scenario_spec() -> SimThingScenarioSpec {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
     let provenance = SimThingScenarioProvenance {
         source: "SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0".into(),
-        generator_seed: 0,
+        generator_seed: MIXED_PATTERN_SEED,
         generator_shape: "minimal".into(),
     };
     apply_scenario_metadata_to_root(
@@ -46,6 +56,85 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
     spec
 }
 
+fn scenario_with_seed(seed: u64) -> SimThingScenarioSpec {
+    let mut spec = minimal_scenario_spec();
+    spec.provenance.generator_seed = seed;
+    spec.sync_root_metadata_from_sidecar();
+    spec.sync_sidecar_from_root_metadata();
+    spec
+}
+
+fn assert_seed_roundtrips(seed: u64) {
+    let spec = scenario_with_seed(seed);
+    assert_eq!(scenario_metadata_seed(&spec.root), Some(seed));
+    let json = serialize_scenario_authority(&spec).expect("serialize");
+    let round = deserialize_scenario_authority(&json).expect("deserialize");
+    assert_eq!(scenario_metadata_seed(&round.root), Some(seed));
+    assert_eq!(round.provenance.generator_seed, seed);
+}
+
+#[test]
+fn scenario_seed_roundtrips_zero() {
+    assert_seed_roundtrips(0);
+}
+
+#[test]
+fn scenario_seed_roundtrips_u64_max() {
+    assert_seed_roundtrips(u64::MAX);
+}
+
+#[test]
+fn scenario_seed_roundtrips_high_bit_pattern() {
+    assert_seed_roundtrips(HIGH_BIT_PATTERN_SEED);
+}
+
+#[test]
+fn scenario_seed_roundtrips_low_high_mixed_pattern() {
+    assert_seed_roundtrips(MIXED_PATTERN_SEED);
+}
+
+#[test]
+fn scenario_seed_rejects_malformed_length() {
+    let mut spec = minimal_scenario_spec();
+    spec.root.add_property(
+        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+        PropertyValue {
+            data: vec![0.0, 0.0],
+        },
+    );
+    assert_eq!(scenario_metadata_seed(&spec.root), None);
+    let err = validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)
+        .expect_err("malformed length");
+    assert!(matches!(
+        err,
+        ScenarioRootError::MissingScenarioMetadata("generator_seed")
+    ));
+}
+
+#[test]
+fn scenario_seed_rejects_fractional_chunks_if_chunk_encoding_is_used() {
+    let mut spec = minimal_scenario_spec();
+    spec.root.add_property(
+        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+        PropertyValue {
+            data: vec![1.5, 0.0, 0.0, 0.0],
+        },
+    );
+    assert_eq!(scenario_metadata_seed(&spec.root), None);
+}
+
+#[test]
+fn scenario_seed_rejects_out_of_range_chunks_if_chunk_encoding_is_used() {
+    let mut spec = minimal_scenario_spec();
+    spec.root.add_property(
+        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+        PropertyValue {
+            data: vec![65536.0, 0.0, 0.0, 0.0],
+        },
+    );
+    assert_eq!(scenario_metadata_seed(&spec.root), None);
+}
+
 #[test]
 fn scenario_root_roundtrips_metadata_properties() {
     let scenario = minimal_scenario_spec();
@@ -63,8 +152,41 @@ fn scenario_root_roundtrips_metadata_properties() {
         scenario_metadata_string(&round.root, SCENARIO_SOURCE_LABEL_PROPERTY_ID).as_deref(),
         Some("SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0")
     );
-    assert_eq!(scenario_metadata_seed(&round.root), Some(0));
+    assert_eq!(
+        scenario_metadata_seed(&round.root),
+        Some(MIXED_PATTERN_SEED)
+    );
     assert_eq!(round.canonical_scenario_id(), MINIMAL_SCENARIO_ID);
+    assert_eq!(round.provenance.generator_seed, MIXED_PATTERN_SEED);
+}
+
+#[test]
+fn scenario_sidecar_sync_from_root_metadata_is_exact() {
+    let spec = scenario_with_seed(u64::MAX);
+    let mut synced = spec.clone();
+    synced.provenance.generator_seed = 0;
+    synced.sync_sidecar_from_root_metadata();
+    assert_eq!(synced.provenance.generator_seed, u64::MAX);
+}
+
+#[test]
+fn scenario_root_metadata_from_sidecar_is_exact() {
+    let mut spec = minimal_scenario_spec();
+    spec.provenance.generator_seed = HIGH_BIT_PATTERN_SEED;
+    spec.sync_root_metadata_from_sidecar();
+    assert_eq!(
+        scenario_metadata_seed(&spec.root),
+        Some(HIGH_BIT_PATTERN_SEED)
+    );
+    spec.sync_sidecar_from_root_metadata();
+    assert_eq!(spec.provenance.generator_seed, HIGH_BIT_PATTERN_SEED);
+}
+
+#[test]
+fn scenario_metadata_seed_value_uses_four_u16_chunks() {
+    let value = scenario_metadata_seed_value(MIXED_PATTERN_SEED);
+    assert_eq!(value.data.len(), 4);
+    assert_eq!(value.data, vec![57072.0, 39612.0, 22136.0, 4660.0]);
 }
 
 #[test]
@@ -77,10 +199,11 @@ fn scenario_root_is_canonical_authority() {
 
 #[test]
 fn scenario_root_fixture_deserializes_from_corpus() {
-    let fixture = std::fs::read_to_string(MINIMAL_FIXTURE_PATH).expect("corpus fixture");
+    let fixture = std::fs::read_to_string(minimal_fixture_path()).expect("corpus fixture");
     let loaded = deserialize_scenario_authority(&fixture).expect("fixture load");
     assert_eq!(loaded.root.kind, SimThingKind::Scenario);
     assert_eq!(loaded.canonical_scenario_id(), MINIMAL_SCENARIO_ID);
+    assert_eq!(scenario_metadata_seed(&loaded.root), Some(FIXTURE_SEED));
 }
 
 #[test]
