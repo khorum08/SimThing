@@ -472,6 +472,7 @@ pub struct FusionThreshold {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SimThingKindTag {
     Scenario,
+    GameSession,
     World,
     Owner,
     /// Legacy alias for [`Owner`]; retained for serialized fission templates.

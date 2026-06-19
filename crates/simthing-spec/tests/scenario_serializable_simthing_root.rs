@@ -37,6 +37,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         &provenance,
         SCENARIO_SCHEMA_VERSION,
     );
+    root.add_child(SimThing::new(SimThingKind::GameSession, 0));
     let mut spec = SimThingScenarioSpec {
         scenario_id: MINIMAL_SCENARIO_ID.to_string(),
         root,

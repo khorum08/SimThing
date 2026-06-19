@@ -746,6 +746,37 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         scenario_root_test_src.contains("scenario_seed_roundtrips_low_high_mixed_pattern"),
         "scenario seed tests must cover mixed high/low bit pattern"
     );
+    assert!(
+        simthing_src.contains("SimThingKind::GameSession"),
+        "simthing-core must admit SimThingKind::GameSession for canonical session roots"
+    );
+    assert!(
+        scenario_src.contains("validate_scenario_game_session_child"),
+        "scenario.rs must expose GameSession child validation"
+    );
+    assert!(
+        scenario_src.contains("MissingGameSessionChild"),
+        "canonical Scenario validation must require GameSession child"
+    );
+
+    let production_doc = include_str!("../../../docs/0.8.3 Simthing Studio Production.md");
+    assert!(
+        production_doc.contains("root: Scenario") && production_doc.contains("GameSession"),
+        "production synthesis current authority must be Scenario -> GameSession"
+    );
+    let authority_section = production_doc
+        .split("## Generated Galaxy Authority")
+        .nth(1)
+        .and_then(|s| s.split("## ").next())
+        .unwrap_or("");
+    assert!(
+        !authority_section.contains("root: World"),
+        "production synthesis current authority must not present root: World as canonical"
+    );
+    assert!(
+        production_doc.contains("lower-layer golden fixture"),
+        "production synthesis must classify Terran Pirate as lower-layer golden fixture"
+    );
 }
 
 #[test]

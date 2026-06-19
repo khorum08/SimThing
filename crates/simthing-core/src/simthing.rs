@@ -13,6 +13,9 @@ use std::collections::HashMap;
 pub enum SimThingKind {
     /// Serializable scenario file root. Authority/serialization marker only — not a runtime engine.
     Scenario,
+    /// Running game session root — sole direct child of [`Scenario`]. Authority marker only;
+    /// not a runtime engine singleton. Owner entities and maps are future children of GameSession.
+    GameSession,
     World,
     /// Owner entity — sibling child of the GameSession root (not an overlay, not a spatial parent).
     Owner,
@@ -152,6 +155,7 @@ fn reserve_visit_simthings(
 pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
     match sim {
         SimThingKind::Scenario => authored == "Scenario",
+        SimThingKind::GameSession => authored == "GameSession",
         SimThingKind::World => authored == "World",
         SimThingKind::Owner => authored == "Owner" || authored == "Faction",
         SimThingKind::Faction => authored == "Faction" || authored == "Owner",
