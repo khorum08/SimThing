@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — ontology remediation landed. Pending owner DA approval.
 
 **Date:** 2026-06-19
-**PR:** PLANET-LOCAL-GRID-REMEDIATION-0
+**PR:** #790 — PLANET-LOCAL-GRID-REMEDIATION-0
+**Merge:** `18123e55`
 **Base:** `master` after PR #789 / PLANET-CHILD-LOCATION-ADMISSION-0 (`617a8c5d`)
 
 ## Ontology drift summary (PR #789)
