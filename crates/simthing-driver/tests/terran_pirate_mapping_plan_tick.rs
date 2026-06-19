@@ -1,4 +1,5 @@
-//! DRIVER-MAPPING-PLAN-COMPILE-0 + SIM-MAPPING-PLAN-TICK-SEAM-0 — driver→sim integration proof.
+//! DRIVER-MAPPING-PLAN-COMPILE-0 + SIM-MAPPING-PLAN-TICK-SEAM-0 +
+//! SIM-MAPPING-READBACK-POLICY-HARDEN-0 — driver→sim integration proof.
 
 use std::sync::Mutex;
 
@@ -9,7 +10,7 @@ use simthing_driver::{
     compiled_stencil_to_gpu_config, MappingPlanCompileSpec, StructuralGridCoordinate,
     StructuralTheaterAdmission,
 };
-use simthing_gpu::{max_d_field_error, GpuContext, MIN_PLUS_INF};
+use simthing_gpu::{debug_readback_allowed, max_d_field_error, GpuContext, MIN_PLUS_INF};
 use simthing_sim::{
     cpu_min_plus_d_from_composed_interleaved, cpu_structured_field_horizon, CompiledMappingStep,
     MappingTickInputs, SimGpuMappingReadbackPolicy, SimGpuMappingTickState,
@@ -313,7 +314,91 @@ fn terran_pirate_mapping_plan_tick_full_chain_d_field_matches_cpu_oracle() {
             )
             .expect("none tick");
         assert!(none.proof_values.is_none());
+        assert!(!debug_readback_allowed());
         assert_eq!(state.resident_tick_count(), 2);
         eprintln!("DRIVER-MAPPING-PLAN-COMPILE-0: REAL_ADAPTER_OBSERVED (full_chain)");
     });
+}
+
+#[test]
+fn terran_pirate_mapping_plan_tick_readback_policy_sequencing() {
+    let spec = canonical_skeleton_scenario();
+    let original_id = spec.scenario_id.clone();
+    let theater = admit_structural_theater(&spec);
+    let compile_spec = terran_pirate_mapping_plan_compile_spec(&theater);
+    let plan =
+        compile_mapping_plan_from_admitted_theater(&theater, compile_spec).expect("mapping plan");
+
+    let guyang_config = match &plan.steps[0] {
+        CompiledMappingStep::StructuredFieldStencil { config, .. } => config.clone(),
+        _ => panic!("expected structured field"),
+    };
+    let interleaved_n_dims = plan.interleaved_n_dims;
+
+    with_gpu(|ctx| {
+        let mut state = SimGpuMappingTickState::new(ctx, plan).expect("state");
+        let guyang_values = seed_guyang_values(&theater, guyang_config.n_dims);
+        let interleaved = seed_interleaved_base(&theater, interleaved_n_dims);
+
+        let none1 = state
+            .tick(
+                ctx,
+                MappingTickInputs {
+                    structured_field_values: &[guyang_values.clone()],
+                    interleaved_values: Some(&interleaved),
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick 1");
+        assert!(none1.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 1);
+
+        let proof = state
+            .tick(
+                ctx,
+                MappingTickInputs {
+                    structured_field_values: &[guyang_values.clone()],
+                    interleaved_values: Some(&interleaved),
+                },
+                SimGpuMappingReadbackPolicy::ProofReadback,
+            )
+            .expect("proof tick");
+        assert!(proof.proof_values.is_some());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 2);
+
+        let none2 = state
+            .tick(
+                ctx,
+                MappingTickInputs {
+                    structured_field_values: &[guyang_values.clone()],
+                    interleaved_values: Some(&interleaved),
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick 2");
+        assert!(none2.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 3);
+
+        let none3 = state
+            .tick(
+                ctx,
+                MappingTickInputs {
+                    structured_field_values: &[guyang_values],
+                    interleaved_values: Some(&seed_interleaved_base(&theater, interleaved_n_dims)),
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick 3");
+        assert!(none3.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 4);
+        eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: REAL_ADAPTER_OBSERVED (driver_readback_sequencing)");
+    });
+
+    let reloaded = canonical_skeleton_scenario();
+    assert_eq!(reloaded.scenario_id, original_id);
+    assert_eq!(reloaded.structural_grid.frame.width, 8);
 }

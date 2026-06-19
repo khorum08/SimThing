@@ -482,6 +482,35 @@ fn e10_does_not_import_arena_registry_into_simthing_sim() {
             "mapping_plan_tick must not reference `{token}`"
         );
     }
+    assert!(
+        mapping_tick_src.contains("SimGpuMappingReadbackPolicy::None => None"),
+        "mapping None policy must not populate proof_values"
+    );
+    assert!(
+        mapping_tick_src.contains("MinPlusTraversalExecutionMode::GpuResident"),
+        "MinPlus None must use GpuResident"
+    );
+    assert!(
+        mapping_tick_src.contains("MinPlusTraversalExecutionMode::DiagnosticReadback"),
+        "MinPlus ProofReadback must use DiagnosticReadback"
+    );
+    assert!(
+        mapping_tick_src.contains("scoped_debug_readback_allowed"),
+        "structured-field proof readback must use scoped guard"
+    );
+    let tick_start = mapping_tick_src.find("pub fn tick(").expect("mapping tick");
+    let tick_end = mapping_tick_src[tick_start..]
+        .find("\nfn structured_field_values_buffer")
+        .expect("mapping tick end");
+    let tick_body = &mapping_tick_src[tick_start..tick_start + tick_end];
+    assert!(
+        !tick_body.contains("set_debug_readback_allowed"),
+        "mapping tick must not silently enable debug readback"
+    );
+    assert!(
+        tick_body.contains("if readback == SimGpuMappingReadbackPolicy::ProofReadback"),
+        "mapping proof readback must be explicit"
+    );
 
     let forbidden_test_imports = [
         "simthing_driver",

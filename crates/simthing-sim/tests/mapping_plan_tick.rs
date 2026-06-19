@@ -1,9 +1,14 @@
-//! SIM-MAPPING-PLAN-TICK-SEAM-0 — sim-owned resident mapping tick proofs.
+//! SIM-MAPPING-PLAN-TICK-SEAM-0 + SIM-MAPPING-READBACK-POLICY-HARDEN-0 —
+//! sim-owned resident mapping tick proofs and None/ProofReadback discipline.
 
+mod support;
+
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Mutex;
 
 use simthing_gpu::{
-    cpu_w_impedance_compose_oracle, max_d_field_error, GpuContext, MinPlusStencilConfig,
+    cpu_w_impedance_compose_oracle, debug_readback_allowed, max_d_field_error,
+    scoped_debug_readback_allowed, GpuContext, MinPlusStencilConfig,
     StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOperator,
     StructuredFieldStencilSourcePolicy, WImpedanceComposeConfig, WImpedanceComposeProfile,
@@ -14,6 +19,8 @@ use simthing_sim::{
     CompiledMappingPlan, CompiledMappingStep, MappingTickInputs, SimGpuMappingReadbackPolicy,
     SimGpuMappingTickState, SimTickError,
 };
+
+use support::readback_gate::with_isolated_readback_gate_test;
 
 static GPU_MUTEX: Mutex<()> = Mutex::new(());
 
@@ -114,38 +121,6 @@ fn seed_interleaved_values(compose: &WImpedanceComposeConfig) -> Vec<f32> {
 }
 
 #[test]
-fn mapping_plan_tick_structured_field_none_returns_no_readback() {
-    with_gpu(|ctx| {
-        let config = saturating_flux_config(3, 3, 2);
-        let plan = CompiledMappingPlan {
-            steps: vec![CompiledMappingStep::StructuredFieldStencil {
-                config: config.clone(),
-                hops: 2,
-                interleaved_column_writes: Vec::new(),
-            }],
-            interleaved_width: 0,
-            interleaved_height: 0,
-            interleaved_n_dims: 0,
-        };
-        let values = seed_structured_values(&config);
-        let mut state = SimGpuMappingTickState::new(ctx, plan).expect("state");
-        let output = state
-            .tick(
-                ctx,
-                MappingTickInputs {
-                    structured_field_values: &[values],
-                    interleaved_values: None,
-                },
-                SimGpuMappingReadbackPolicy::None,
-            )
-            .expect("tick");
-        assert!(output.proof_values.is_none());
-        assert_eq!(state.resident_tick_count(), 1);
-        eprintln!("SIM-MAPPING-PLAN-TICK-SEAM-0: structured_field_none_no_readback");
-    });
-}
-
-#[test]
 fn mapping_plan_tick_structured_field_proof_matches_cpu_oracle() {
     with_gpu(|ctx| {
         let config = saturating_flux_config(3, 3, 2);
@@ -224,93 +199,6 @@ fn mapping_plan_tick_w_compose_min_plus_proof_matches_cpu_oracle() {
 }
 
 #[test]
-fn mapping_plan_tick_proof_then_none_does_not_leak_readback() {
-    with_gpu(|ctx| {
-        let config = saturating_flux_config(3, 3, 1);
-        let plan = CompiledMappingPlan {
-            steps: vec![CompiledMappingStep::StructuredFieldStencil {
-                config: config.clone(),
-                hops: 1,
-                interleaved_column_writes: Vec::new(),
-            }],
-            interleaved_width: 0,
-            interleaved_height: 0,
-            interleaved_n_dims: 0,
-        };
-        let values = seed_structured_values(&config);
-        let mut state = SimGpuMappingTickState::new(ctx, plan).expect("state");
-        let proof = state
-            .tick(
-                ctx,
-                MappingTickInputs {
-                    structured_field_values: &[values.clone()],
-                    interleaved_values: None,
-                },
-                SimGpuMappingReadbackPolicy::ProofReadback,
-            )
-            .expect("proof tick");
-        assert!(proof.proof_values.is_some());
-
-        let none = state
-            .tick(
-                ctx,
-                MappingTickInputs {
-                    structured_field_values: &[values],
-                    interleaved_values: None,
-                },
-                SimGpuMappingReadbackPolicy::None,
-            )
-            .expect("none tick");
-        assert!(none.proof_values.is_none());
-        assert_eq!(state.resident_tick_count(), 2);
-    });
-}
-
-#[test]
-fn mapping_plan_tick_reuses_resident_state_across_two_ticks() {
-    with_gpu(|ctx| {
-        let config = saturating_flux_config(3, 3, 1);
-        let plan = CompiledMappingPlan {
-            steps: vec![CompiledMappingStep::StructuredFieldStencil {
-                config,
-                hops: 1,
-                interleaved_column_writes: Vec::new(),
-            }],
-            interleaved_width: 0,
-            interleaved_height: 0,
-            interleaved_n_dims: 0,
-        };
-        let values = seed_structured_values(&saturating_flux_config(3, 3, 1));
-        let mut state = SimGpuMappingTickState::new(ctx, plan.clone()).expect("state");
-        let ptr_first = std::ptr::from_ref(&state) as usize;
-        state
-            .tick(
-                ctx,
-                MappingTickInputs {
-                    structured_field_values: &[values.clone()],
-                    interleaved_values: None,
-                },
-                SimGpuMappingReadbackPolicy::None,
-            )
-            .expect("tick 1");
-        let ptr_second = std::ptr::from_ref(&state) as usize;
-        assert_eq!(ptr_first, ptr_second, "state must not be reallocated");
-        state
-            .tick(
-                ctx,
-                MappingTickInputs {
-                    structured_field_values: &[values],
-                    interleaved_values: None,
-                },
-                SimGpuMappingReadbackPolicy::None,
-            )
-            .expect("tick 2");
-        assert_eq!(state.resident_tick_count(), 2);
-        assert_eq!(state.plan().steps.len(), plan.steps.len());
-    });
-}
-
-#[test]
 fn mapping_plan_tick_rejects_empty_plan() {
     with_gpu(|ctx| {
         let plan = CompiledMappingPlan {
@@ -325,6 +213,341 @@ fn mapping_plan_tick_rejects_empty_plan() {
         };
         assert!(matches!(err, SimTickError::Readback(_)));
     });
+}
+
+fn w_compose_min_plus_plan() -> (CompiledMappingPlan, WImpedanceComposeConfig, Vec<f32>) {
+    let compose = w_compose_config(5, 5);
+    let stencil = min_plus_config(5, 5, (0, 0));
+    let plan = CompiledMappingPlan {
+        steps: vec![
+            CompiledMappingStep::WImpedanceCompose {
+                config: compose.clone(),
+            },
+            CompiledMappingStep::MinPlusStencil {
+                config: stencil,
+                iterations: 4,
+            },
+        ],
+        interleaved_width: compose.width,
+        interleaved_height: compose.height,
+        interleaved_n_dims: compose.n_dims,
+    };
+    let interleaved = seed_interleaved_values(&compose);
+    (plan, compose, interleaved)
+}
+
+#[test]
+fn mapping_tick_none_never_returns_proof_values_for_w_compose_min_plus() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let (plan, _, interleaved) = w_compose_min_plus_plan();
+        let mut state = SimGpuMappingTickState::new(&ctx, plan).expect("state");
+        let output = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[],
+                    interleaved_values: Some(&interleaved),
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick");
+        assert!(output.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 1);
+        eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: w_compose_min_plus_none_no_readback");
+    });
+}
+
+#[test]
+fn mapping_tick_none_never_returns_proof_values_for_structured_field() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let config = saturating_flux_config(3, 3, 2);
+        let plan = CompiledMappingPlan {
+            steps: vec![CompiledMappingStep::StructuredFieldStencil {
+                config: config.clone(),
+                hops: 2,
+                interleaved_column_writes: Vec::new(),
+            }],
+            interleaved_width: 0,
+            interleaved_height: 0,
+            interleaved_n_dims: 0,
+        };
+        let values = seed_structured_values(&config);
+        let mut state = SimGpuMappingTickState::new(&ctx, plan).expect("state");
+        let output = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick");
+        assert!(output.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: structured_field_none_no_readback");
+    });
+}
+
+#[test]
+fn mapping_tick_none_then_proof_then_none_does_not_leak_readback() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let config = saturating_flux_config(3, 3, 1);
+        let plan = CompiledMappingPlan {
+            steps: vec![CompiledMappingStep::StructuredFieldStencil {
+                config: config.clone(),
+                hops: 1,
+                interleaved_column_writes: Vec::new(),
+            }],
+            interleaved_width: 0,
+            interleaved_height: 0,
+            interleaved_n_dims: 0,
+        };
+        let values = seed_structured_values(&config);
+        let mut state = SimGpuMappingTickState::new(&ctx, plan).expect("state");
+
+        let none1 = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values.clone()],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick 1");
+        assert!(none1.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+
+        let proof = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values.clone()],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::ProofReadback,
+            )
+            .expect("proof tick");
+        assert!(proof.proof_values.is_some());
+        assert!(!debug_readback_allowed());
+
+        let none2 = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick 2");
+        assert!(none2.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 3);
+        eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: REAL_ADAPTER_OBSERVED (none_proof_none)");
+    });
+}
+
+#[test]
+fn mapping_tick_proof_then_none_does_not_leak_readback() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let config = saturating_flux_config(3, 3, 1);
+        let plan = CompiledMappingPlan {
+            steps: vec![CompiledMappingStep::StructuredFieldStencil {
+                config: config.clone(),
+                hops: 1,
+                interleaved_column_writes: Vec::new(),
+            }],
+            interleaved_width: 0,
+            interleaved_height: 0,
+            interleaved_n_dims: 0,
+        };
+        let values = seed_structured_values(&config);
+        let mut state = SimGpuMappingTickState::new(&ctx, plan).expect("state");
+        let proof = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values.clone()],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::ProofReadback,
+            )
+            .expect("proof tick");
+        assert!(proof.proof_values.is_some());
+        assert!(!debug_readback_allowed());
+
+        let none = state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick");
+        assert!(none.proof_values.is_none());
+        assert!(!debug_readback_allowed());
+        assert_eq!(state.resident_tick_count(), 2);
+        eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: REAL_ADAPTER_OBSERVED (proof_then_none)");
+    });
+}
+
+#[test]
+fn mapping_tick_resident_reuse_preserves_readback_policy() {
+    with_isolated_readback_gate_test(|| {
+        let Some(ctx) = gpu_context_blocking().ok() else {
+            eprintln!("SIM-MAPPING-READBACK-POLICY-HARDEN-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
+            return;
+        };
+        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+        let config = saturating_flux_config(3, 3, 1);
+        let plan = CompiledMappingPlan {
+            steps: vec![CompiledMappingStep::StructuredFieldStencil {
+                config,
+                hops: 1,
+                interleaved_column_writes: Vec::new(),
+            }],
+            interleaved_width: 0,
+            interleaved_height: 0,
+            interleaved_n_dims: 0,
+        };
+        let values = seed_structured_values(&saturating_flux_config(3, 3, 1));
+        let mut state = SimGpuMappingTickState::new(&ctx, plan.clone()).expect("state");
+        let ptr_first = std::ptr::from_ref(&state) as usize;
+
+        assert!(state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values.clone()],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::ProofReadback,
+            )
+            .expect("proof tick")
+            .proof_values
+            .is_some());
+        assert!(!debug_readback_allowed());
+
+        assert!(state
+            .tick(
+                &ctx,
+                MappingTickInputs {
+                    structured_field_values: &[values.clone()],
+                    interleaved_values: None,
+                },
+                SimGpuMappingReadbackPolicy::None,
+            )
+            .expect("none tick")
+            .proof_values
+            .is_none());
+        assert!(!debug_readback_allowed());
+
+        let ptr_second = std::ptr::from_ref(&state) as usize;
+        assert_eq!(ptr_first, ptr_second, "state must not be reallocated");
+        assert_eq!(state.resident_tick_count(), 2);
+        assert_eq!(state.plan().steps.len(), plan.steps.len());
+    });
+}
+
+#[test]
+fn mapping_tick_error_does_not_leave_readback_enabled_if_guard_exists() {
+    with_isolated_readback_gate_test(|| {
+        let result: Result<(), SimTickError> = (|| {
+            let _guard = scoped_debug_readback_allowed(true);
+            assert!(debug_readback_allowed());
+            Err(SimTickError::Readback(
+                "simulated mapping readback failure".into(),
+            ))
+        })();
+        assert!(result.is_err());
+        assert!(!debug_readback_allowed());
+    });
+}
+
+#[test]
+fn mapping_tick_panic_restores_readback_guard_if_guard_exists() {
+    with_isolated_readback_gate_test(|| {
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            let _guard = scoped_debug_readback_allowed(true);
+            assert!(debug_readback_allowed());
+            panic!("simulated mapping readback panic");
+        }));
+        assert!(result.is_err());
+        assert!(!debug_readback_allowed());
+    });
+}
+
+fn mapping_tick_body_source() -> &'static str {
+    let source = include_str!("../src/mapping_plan_tick.rs");
+    let start = source.find("pub fn tick(").expect("tick function");
+    let end = source[start..]
+        .find("\nfn structured_field_values_buffer")
+        .expect("tick body end");
+    &source[start..start + end]
+}
+
+#[test]
+fn mapping_plan_tick_does_not_silently_enable_debug_readback() {
+    let tick_body = mapping_tick_body_source();
+    assert!(
+        !tick_body.contains("set_debug_readback_allowed"),
+        "mapping tick must not silently enable debug readback"
+    );
+    let source = include_str!("../src/mapping_plan_tick.rs");
+    assert!(source.contains("run_with_proof_readback_enabled"));
+    assert!(source.contains("scoped_debug_readback_allowed"));
+}
+
+#[test]
+fn mapping_plan_tick_none_branch_readback_policy_source_guard() {
+    let source = include_str!("../src/mapping_plan_tick.rs");
+    assert!(
+        source.contains("SimGpuMappingReadbackPolicy::None => None"),
+        "None policy must not populate proof_values"
+    );
+    assert!(
+        source.contains("MinPlusTraversalExecutionMode::GpuResident"),
+        "MinPlus None must use GpuResident"
+    );
+    assert!(
+        source.contains("MinPlusTraversalExecutionMode::DiagnosticReadback"),
+        "MinPlus ProofReadback must use DiagnosticReadback"
+    );
+    let tick_body = mapping_tick_body_source();
+    assert!(
+        !tick_body.contains("readback_after_ping_pong")
+            || tick_body.contains("run_with_proof_readback_enabled"),
+        "structured-field readback must be scoped to proof helper"
+    );
+    assert!(
+        tick_body.contains("if readback == SimGpuMappingReadbackPolicy::ProofReadback"),
+        "proof readback must be explicit"
+    );
 }
 
 #[test]
