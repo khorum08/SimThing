@@ -4,15 +4,18 @@
 
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    galaxy_map_display_name, galaxy_map_id, galaxy_map_role, game_session_child,
-    game_session_galaxy_map, game_session_owners, gridcell_generated_system_id, gridcell_role,
-    gridcell_structural_col, gridcell_structural_row, is_galaxy_map_entity, owner_archetype,
-    owner_color_index, owner_display_name, owner_entity_id, owner_silo_marker,
-    resolve_map_container, scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
+    child_location_role, evaluate_planet_child_locations, galaxy_map_display_name, galaxy_map_id,
+    galaxy_map_role, game_session_child, game_session_galaxy_map, game_session_owners,
+    gridcell_generated_system_id, gridcell_role, gridcell_structural_col, gridcell_structural_row,
+    is_galaxy_map_entity, is_planet_child_location, owner_archetype, owner_color_index,
+    owner_display_name, owner_entity_id, owner_silo_marker,
+    planet_child_location_classification_label, planet_child_location_error_kind_label,
+    planet_display_name, planet_id, planet_owner_ref, resolve_map_container,
+    scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
     validate_legacy_world_root_compatibility, validate_scenario_root_authority, ScenarioRootError,
-    ScenarioRootValidationMode, SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT,
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
-    SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+    ScenarioRootValidationMode, SimThingScenarioSpec, GALAXY_CHILD_LOCATION_ROLE_PLANET,
+    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 use thiserror::Error;
 
@@ -75,6 +78,21 @@ pub struct StudioGridcellView {
     pub structural_row: Option<u32>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioPlanetChildView {
+    pub simthing_id_raw: u32,
+    pub planet_id: String,
+    pub display_name: Option<String>,
+    pub parent_gridcell_simthing_id_raw: u32,
+    pub parent_location_id: Option<String>,
+    pub structural_col: Option<u32>,
+    pub structural_row: Option<u32>,
+    pub role: String,
+    pub owner_ref: Option<String>,
+    pub admission_status: String,
+    pub deferrals: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioScenarioDocument {
     pub authority_kind: StudioScenarioAuthorityKind,
@@ -85,6 +103,7 @@ pub struct StudioScenarioDocument {
     pub owners: Vec<StudioOwnerView>,
     pub galaxy_map: Option<StudioGalaxyMapView>,
     pub gridcells: Vec<StudioGridcellView>,
+    pub planets: Vec<StudioPlanetChildView>,
     pub admission_summary: Option<StudioScenarioAdmissionSummary>,
 }
 
@@ -139,6 +158,7 @@ fn build_canonical_document(
     let galaxy_map_thing = game_session_galaxy_map(spec)?;
     let galaxy_map = Some(galaxy_map_to_view(galaxy_map_thing, true));
     let gridcells = gridcells_under_map(galaxy_map_thing);
+    let planets = planets_under_spec(spec, galaxy_map_thing);
 
     Ok(StudioScenarioDocument {
         authority_kind: StudioScenarioAuthorityKind::CanonicalScenario,
@@ -151,6 +171,7 @@ fn build_canonical_document(
         owners,
         galaxy_map,
         gridcells,
+        planets,
         admission_summary: None,
     })
 }
@@ -171,6 +192,7 @@ fn build_legacy_world_document(
         owners: Vec::new(),
         galaxy_map: Some(galaxy_map_to_view(map_container, is_galaxy)),
         gridcells: gridcells_under_map(map_container),
+        planets: Vec::new(),
         admission_summary: None,
     })
 }
@@ -200,6 +222,63 @@ fn galaxy_map_to_view(map: &simthing_core::SimThing, is_canonical: bool) -> Stud
         role: galaxy_map_role(map),
         is_canonical_galaxy_map: is_canonical,
     }
+}
+
+fn planets_under_spec(
+    spec: &SimThingScenarioSpec,
+    map: &simthing_core::SimThing,
+) -> Vec<StudioPlanetChildView> {
+    let planet_report = evaluate_planet_child_locations(spec);
+    let admission_status =
+        planet_child_location_classification_label(planet_report.classification).to_string();
+    let mut views = Vec::new();
+    for gridcell in map
+        .children
+        .iter()
+        .filter(|c| c.kind == SimThingKind::Location && !is_galaxy_map_entity(c))
+    {
+        if gridcell_role(gridcell).as_deref() != Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM) {
+            continue;
+        }
+        let parent_location_id = spec
+            .structural_grid
+            .placements
+            .iter()
+            .find(|p| p.simthing_id_raw == gridcell.id.raw())
+            .map(|p| p.location_id.clone());
+        for child in &gridcell.children {
+            if !is_planet_child_location(child) {
+                continue;
+            }
+            let planet_deferrals: Vec<String> = planet_report
+                .deferrals
+                .iter()
+                .filter(|d| d.simthing_id_raw == Some(child.id.raw()))
+                .map(|d| {
+                    format!(
+                        "{}: {}",
+                        planet_child_location_error_kind_label(d.kind),
+                        d.reason
+                    )
+                })
+                .collect();
+            views.push(StudioPlanetChildView {
+                simthing_id_raw: child.id.raw(),
+                planet_id: planet_id(child).unwrap_or_default(),
+                display_name: planet_display_name(child),
+                parent_gridcell_simthing_id_raw: gridcell.id.raw(),
+                parent_location_id: parent_location_id.clone(),
+                structural_col: gridcell_structural_col(gridcell),
+                structural_row: gridcell_structural_row(gridcell),
+                role: child_location_role(child)
+                    .unwrap_or_else(|| GALAXY_CHILD_LOCATION_ROLE_PLANET.to_string()),
+                owner_ref: planet_owner_ref(child),
+                admission_status: admission_status.clone(),
+                deferrals: planet_deferrals,
+            });
+        }
+    }
+    views
 }
 
 fn gridcells_under_map(map: &simthing_core::SimThing) -> Vec<StudioGridcellView> {

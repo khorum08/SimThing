@@ -241,7 +241,7 @@ fn classifies_planet_child_as_unsupported_not_rejected_if_otherwise_valid() {
     assert!(result
         .deferrals
         .iter()
-        .any(|d| { d.kind == ScenarioDeferralKind::PlanetsNotYetAdmitted }));
+        .any(|d| { d.kind == ScenarioDeferralKind::UnsupportedChildLocationRole }));
 }
 
 #[test]
@@ -414,7 +414,13 @@ fn write_planet_child() {
         .iter_mut()
         .find(|c| c.kind == SimThingKind::Location)
         .expect("map");
-    let gridcell = galaxy_map.children.first_mut().expect("cell");
+    let gridcell = galaxy_map
+        .children
+        .iter_mut()
+        .find(|c| {
+            simthing_spec::gridcell_role(c).as_deref() == Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
+        })
+        .expect("star system cell");
     gridcell.add_child(SimThing::new(SimThingKind::Custom("Planet".into()), 0));
     write_json(
         &spec,

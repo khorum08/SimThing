@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — spec-owned structural placement edit commands and Studio presentation wrapper landed. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0  
+**PR:** #788 — STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0
+**Merge:** `df681533`
 **Base:** `master` after PR #787 / STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0 (`5f738f05`)
 
 ## Current defect / mutation-surface summary
