@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — Owner silo property model, deterministic admission oracle, ingestion integration, and driver ResourceFlow materialization proof landed. GPU-resident owner-silo tick execution deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SESSION-RESOURCE-FLOW-SILOS-0  
+**PR:** #784 — SESSION-RESOURCE-FLOW-SILOS-0  
+**Merge SHA:** `873692bb`  
 **Base:** `master` after PR #783 / GENERAL-SCENARIO-INGESTION-ADMISSION-0 (`397a048d`)
 
 ## Current defect summary
