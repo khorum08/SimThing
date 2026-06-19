@@ -3,14 +3,14 @@
 
 use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_spec::{
-    apply_scenario_metadata_to_root, deserialize_scenario_authority, make_owner_entity,
-    scenario_metadata_seed, scenario_metadata_seed_value, scenario_metadata_string,
-    scenario_metadata_u32, serialize_scenario_authority, sync_root_metadata_from_sidecar,
-    sync_sidecar_from_root_metadata, validate_legacy_world_root_compatibility,
-    validate_scenario_root_authority, ScenarioRootError, ScenarioRootValidationMode,
-    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame, SCENARIO_GENERATOR_SEED_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
-    SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+    apply_scenario_metadata_to_root, deserialize_scenario_authority, make_galaxy_map,
+    make_owner_entity, scenario_metadata_seed, scenario_metadata_seed_value,
+    scenario_metadata_string, scenario_metadata_u32, serialize_scenario_authority,
+    sync_root_metadata_from_sidecar, sync_sidecar_from_root_metadata,
+    validate_legacy_world_root_compatibility, validate_scenario_root_authority, ScenarioRootError,
+    ScenarioRootValidationMode, SimThingScenarioGrid, SimThingScenarioProvenance,
+    SimThingScenarioSpec, SimThingStructuralGridFrame, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+    SCENARIO_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
     SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 
@@ -44,6 +44,9 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         "Minimal Owner",
         "player",
     ));
+    let galaxy_map = make_galaxy_map("minimal_galaxy", "Minimal Galaxy");
+    let map_raw = galaxy_map.id.raw().to_string();
+    game_session.add_child(galaxy_map);
     root.add_child(game_session);
     let mut spec = SimThingScenarioSpec {
         scenario_id: MINIMAL_SCENARIO_ID.to_string(),
@@ -54,7 +57,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
                 height: 0,
                 occupied_cells: 0,
             },
-            map_container_id: String::new(),
+            map_container_id: map_raw,
             placements: Vec::new(),
         },
         links: Vec::new(),

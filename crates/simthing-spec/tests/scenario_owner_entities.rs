@@ -3,8 +3,8 @@
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_scenario_metadata_to_root, deserialize_scenario_authority, game_session_child,
-    game_session_owners, make_owner_entity, owner_entity_id, scenario_metadata_seed,
-    serialize_scenario_authority, validate_legacy_world_root_compatibility,
+    game_session_owners, is_galaxy_map_entity, make_galaxy_map, make_owner_entity, owner_entity_id,
+    scenario_metadata_seed, serialize_scenario_authority, validate_legacy_world_root_compatibility,
     validate_scenario_root_authority, validate_session_owner_entities, ScenarioRootError,
     ScenarioRootValidationMode, SimThingScenarioGrid, SimThingScenarioProvenance,
     SimThingScenarioSpec, SimThingStructuralGridFrame, SCENARIO_SCHEMA_VERSION,
@@ -14,6 +14,7 @@ const MINIMAL_SCENARIO_ID: &str = "minimal_scenario_root";
 const MIXED_PATTERN_SEED: u64 = 0x1234_5678_9ABC_DEF0;
 const FIXTURE_SEED: u64 = 0x0001_2345_6789_ABCD;
 const MINIMAL_OWNER_ID: &str = "minimal_owner";
+const MINIMAL_GALAXY_ID: &str = "minimal_galaxy";
 
 fn minimal_fixture_path() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -40,6 +41,9 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         0,
     ));
     game_session.add_child(owner);
+    let galaxy_map = make_galaxy_map(MINIMAL_GALAXY_ID, "Minimal Galaxy");
+    let map_raw = galaxy_map.id.raw().to_string();
+    game_session.add_child(galaxy_map);
     root.add_child(game_session);
     let mut spec = SimThingScenarioSpec {
         scenario_id: MINIMAL_SCENARIO_ID.to_string(),
@@ -50,7 +54,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
                 height: 0,
                 occupied_cells: 0,
             },
-            map_container_id: String::new(),
+            map_container_id: map_raw,
             placements: Vec::new(),
         },
         links: Vec::new(),
@@ -75,20 +79,26 @@ fn scenario_requires_at_least_one_owner_child() {
 #[test]
 fn scenario_owner_child_must_be_direct_gamesession_child() {
     let mut spec = minimal_scenario_spec();
-    let owner = spec
+    let game_session = spec
         .root
         .children
         .iter_mut()
         .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession")
+        .expect("gamesession");
+    let galaxy_idx = game_session
         .children
-        .pop()
-        .expect("owner");
-    spec.root.add_child(owner);
+        .iter()
+        .position(|child| is_galaxy_map_entity(child))
+        .expect("galaxymap");
+    game_session.children[galaxy_idx].add_child(make_owner_entity(
+        "nested_under_galaxy",
+        "Nested",
+        "player",
+    ));
     let err = validate_session_owner_entities(&spec).expect_err("owner not under gamesession");
     assert!(matches!(
         err,
-        ScenarioRootError::OwnerNotDirectGameSessionChild | ScenarioRootError::MissingOwnerEntities
+        ScenarioRootError::OwnerNotDirectGameSessionChild
     ));
 }
 
@@ -141,7 +151,10 @@ fn scenario_non_owner_gamesession_child_does_not_count_as_owner() {
         .iter_mut()
         .find(|child| child.kind == SimThingKind::GameSession)
         .expect("gamesession");
-    game_session.add_child(SimThing::new(SimThingKind::Custom("GalaxyMap".into()), 0));
+    game_session.add_child(SimThing::new(
+        SimThingKind::Custom("FutureSessionChild".into()),
+        0,
+    ));
     validate_session_owner_entities(&spec).expect("owner still satisfies");
     assert_eq!(game_session_owners(&spec).expect("owners").len(), 1);
 }
@@ -193,4 +206,77 @@ fn scenario_owner_preserves_lossless_metadata_roundtrip() {
     );
     validate_session_owner_entities(&round).expect("owners preserved");
     game_session_child(&round).expect("gamesession preserved");
+}
+
+#[test]
+fn owner_nested_under_galaxymap_is_rejected() {
+    let mut spec = minimal_scenario_spec();
+    let game_session = spec
+        .root
+        .children
+        .iter_mut()
+        .find(|child| child.kind == SimThingKind::GameSession)
+        .expect("gamesession");
+    let galaxy_idx = game_session
+        .children
+        .iter()
+        .position(|child| is_galaxy_map_entity(child))
+        .expect("galaxymap");
+    game_session.children[galaxy_idx].add_child(make_owner_entity(
+        "nested_owner",
+        "Nested",
+        "player",
+    ));
+    let err = validate_session_owner_entities(&spec).expect_err("nested owner");
+    assert!(matches!(
+        err,
+        ScenarioRootError::OwnerNotDirectGameSessionChild
+    ));
+}
+
+#[test]
+fn owner_nested_under_capability_tree_is_rejected() {
+    let mut spec = minimal_scenario_spec();
+    let game_session = spec
+        .root
+        .children
+        .iter_mut()
+        .find(|child| child.kind == SimThingKind::GameSession)
+        .expect("gamesession");
+    let owner_idx = game_session
+        .children
+        .iter()
+        .position(|child| child.kind == SimThingKind::Owner)
+        .expect("owner");
+    game_session.children[owner_idx].add_child(make_owner_entity(
+        "nested_capability_owner",
+        "Nested",
+        "player",
+    ));
+    let err = validate_session_owner_entities(&spec).expect_err("owner under capability tree");
+    assert!(matches!(
+        err,
+        ScenarioRootError::OwnerNotDirectGameSessionChild
+    ));
+}
+
+#[test]
+fn direct_owner_under_gamesession_remains_valid() {
+    validate_session_owner_entities(&minimal_scenario_spec()).expect("direct owner valid");
+}
+
+#[test]
+fn non_owner_gamesession_child_remains_allowed() {
+    let mut spec = minimal_scenario_spec();
+    let game_session = spec
+        .root
+        .children
+        .iter_mut()
+        .find(|child| child.kind == SimThingKind::GameSession)
+        .expect("gamesession");
+    game_session.add_child(SimThing::new(
+        SimThingKind::Custom("FutureSessionChild".into()),
+        0,
+    ));
+    validate_session_owner_entities(&spec).expect("non-owner child allowed");
 }
