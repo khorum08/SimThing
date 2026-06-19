@@ -16,6 +16,8 @@ use simthing_spec::{
 };
 use thiserror::Error;
 
+use crate::studio_admission_report::StudioScenarioAdmissionSummary;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioScenarioAuthorityKind {
     CanonicalScenario,
@@ -73,7 +75,7 @@ pub struct StudioGridcellView {
     pub structural_row: Option<u32>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioScenarioDocument {
     pub authority_kind: StudioScenarioAuthorityKind,
     pub scenario_id: String,
@@ -83,6 +85,7 @@ pub struct StudioScenarioDocument {
     pub owners: Vec<StudioOwnerView>,
     pub galaxy_map: Option<StudioGalaxyMapView>,
     pub gridcells: Vec<StudioGridcellView>,
+    pub admission_summary: Option<StudioScenarioAdmissionSummary>,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -98,20 +101,31 @@ pub enum StudioScenarioDocumentError {
 pub fn build_studio_scenario_document(
     spec: &SimThingScenarioSpec,
 ) -> Result<StudioScenarioDocument, StudioScenarioDocumentError> {
-    match &spec.root.kind {
+    build_studio_scenario_document_with_admission(spec, None)
+}
+
+pub fn build_studio_scenario_document_with_admission(
+    spec: &SimThingScenarioSpec,
+    admission_summary: Option<StudioScenarioAdmissionSummary>,
+) -> Result<StudioScenarioDocument, StudioScenarioDocumentError> {
+    let mut document = match &spec.root.kind {
         SimThingKind::Scenario => {
             validate_scenario_root_authority(spec, ScenarioRootValidationMode::Canonical)?;
-            build_canonical_document(spec)
+            build_canonical_document(spec)?
         }
         SimThingKind::World => {
             validate_legacy_world_root_compatibility(spec)
                 .map_err(|err| StudioScenarioDocumentError::LegacyWorldRoot(err.to_string()))?;
-            build_legacy_world_document(spec)
+            build_legacy_world_document(spec)?
         }
-        other => Err(StudioScenarioDocumentError::LegacyWorldRoot(format!(
-            "unsupported root kind {other:?}"
-        ))),
-    }
+        other => {
+            return Err(StudioScenarioDocumentError::LegacyWorldRoot(format!(
+                "unsupported root kind {other:?}"
+            )));
+        }
+    };
+    document.admission_summary = admission_summary;
+    Ok(document)
 }
 
 fn build_canonical_document(
@@ -137,6 +151,7 @@ fn build_canonical_document(
         owners,
         galaxy_map,
         gridcells,
+        admission_summary: None,
     })
 }
 
@@ -156,6 +171,7 @@ fn build_legacy_world_document(
         owners: Vec::new(),
         galaxy_map: Some(galaxy_map_to_view(map_container, is_galaxy)),
         gridcells: gridcells_under_map(map_container),
+        admission_summary: None,
     })
 }
 
@@ -218,7 +234,12 @@ pub fn load_canonical_studio_document_from_path(
     path: &std::path::Path,
 ) -> Result<(SimThingScenarioSpec, StudioScenarioDocument), crate::scenario_io::ScenarioIoError> {
     let spec = crate::scenario_io::load_scenario_authority_from_path(path)?;
-    let document = build_studio_scenario_document(&spec)?;
+    let admission_summary =
+        crate::studio_admission_report::build_studio_admission_summary_from_spec(
+            &spec.scenario_id,
+            &spec,
+        );
+    let document = build_studio_scenario_document_with_admission(&spec, Some(admission_summary))?;
     Ok((spec, document))
 }
 

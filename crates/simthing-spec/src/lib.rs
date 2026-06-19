@@ -439,21 +439,22 @@ pub use spec::scenario::{
 };
 pub use spec::scenario_ingestion::{
     ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,
-    ingestion_error_from_serde, GalaxyMapAdmissionReport, OwnerAdmissionReport,
-    ScenarioCompileReadinessReport, ScenarioDeferral, ScenarioDeferralKind, ScenarioFingerprint,
-    ScenarioIngestionClassification, ScenarioIngestionError, ScenarioIngestionProfile,
-    ScenarioIngestionResult, ScenarioTreeAdmissionReport, ScenarioValidationReport,
-    StructuralAdmissionReport,
+    ingestion_error_from_serde, scenario_deferral_kind_label,
+    scenario_ingestion_classification_label, studio_canonical_ingestion_profile,
+    GalaxyMapAdmissionReport, OwnerAdmissionReport, ScenarioCompileReadinessReport,
+    ScenarioDeferral, ScenarioDeferralKind, ScenarioFingerprint, ScenarioIngestionClassification,
+    ScenarioIngestionError, ScenarioIngestionProfile, ScenarioIngestionResult,
+    ScenarioTreeAdmissionReport, ScenarioValidationReport, StructuralAdmissionReport,
 };
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
 pub use spec::session_resource_flow::{
-    evaluate_owner_silo_flow, owner_silo_flow_participant_inputs,
-    owner_silo_flow_participant_roots, owner_silo_flow_suppresses_ingestion_deferral,
-    OwnerSiloAdmissionClassification, OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind,
-    OwnerSiloAdmissionReport, OwnerSiloDeferral, OwnerSiloDeferralKind,
-    OwnerSiloFlowParticipantInput,
+    evaluate_owner_silo_flow, owner_silo_admission_classification_label,
+    owner_silo_flow_participant_inputs, owner_silo_flow_participant_roots,
+    owner_silo_flow_suppresses_ingestion_deferral, OwnerSiloAdmissionClassification,
+    OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind, OwnerSiloAdmissionReport,
+    OwnerSiloDeferral, OwnerSiloDeferralKind, OwnerSiloFlowParticipantInput,
 };
 pub use spec::stress_compose::{
     StressComposeProfileSpec, StressComposeSpec, StressOperatorSpec,

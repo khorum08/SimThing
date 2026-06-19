@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — GPU participant accumulation over existing AccumulatorOp surfaces landed with scoped proof readback. Full owner-silo state mutation remains deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0  
+**PR:** #786 — SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0
+**Merge:** `3ef8fd03`
 **Base:** `master` after PR #785 / SESSION-RESOURCE-FLOW-SILOS-HARDEN-0 (`faa84a67`)
 
 ## Current defect / deferral summary

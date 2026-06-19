@@ -979,6 +979,31 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
             && !mapeditor_lib.contains("SimGpuAccumulatorTickState"),
         "Studio/mapeditor must not call owner-silo GPU tick"
     );
+    let mapeditor_admission_src =
+        include_str!("../../simthing-mapeditor/src/studio_admission_report.rs");
+    assert!(
+        mapeditor_admission_src.contains("ingest_scenario_from_str")
+            && mapeditor_admission_src.contains("build_studio_admission_summary_from_ingestion")
+            && mapeditor_admission_src.contains("owner_silo_gpu_participant_accumulation_ready")
+            && mapeditor_admission_src.contains("owner_silo_full_state_mutation_deferred"),
+        "Studio admission report must call spec ingestion APIs and expose owner-silo GPU readiness"
+    );
+    assert!(
+        production_doc.contains("STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0"),
+        "production synthesis must name STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0"
+    );
+    for forbidden_engine in [
+        "StudioEngine",
+        "ScenarioEngine",
+        "IngestionEngine",
+        "GPUDispatchEngine",
+    ] {
+        assert!(
+            !mapeditor_lib.contains(forbidden_engine)
+                && !mapeditor_admission_src.contains(forbidden_engine),
+            "mapeditor must not introduce {forbidden_engine}"
+        );
+    }
     let wgsl_dir =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/simthing-gpu/shaders");
     if wgsl_dir.exists() {

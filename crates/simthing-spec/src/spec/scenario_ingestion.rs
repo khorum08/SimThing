@@ -649,3 +649,40 @@ pub fn ingestion_error_from_serde(err: ScenarioSerdeError) -> ScenarioIngestionE
         message: err.to_string(),
     }
 }
+
+/// Presentation-safe canonical ingestion profile for Studio admission display.
+pub fn studio_canonical_ingestion_profile() -> ScenarioIngestionProfile {
+    ScenarioIngestionProfile {
+        require_canonical_tree: true,
+        admit_legacy_world_root: true,
+    }
+}
+
+/// Stable display label for ingestion classification (presentation only).
+pub fn scenario_ingestion_classification_label(
+    classification: ScenarioIngestionClassification,
+) -> &'static str {
+    match classification {
+        ScenarioIngestionClassification::Admitted => "Admitted",
+        ScenarioIngestionClassification::PartiallyAdmitted => "PartiallyAdmitted",
+        ScenarioIngestionClassification::Rejected => "Rejected",
+        ScenarioIngestionClassification::Unsupported => "Unsupported",
+    }
+}
+
+/// Stable display label for typed ingestion deferrals (presentation only).
+pub fn scenario_deferral_kind_label(kind: ScenarioDeferralKind) -> &'static str {
+    match kind {
+        ScenarioDeferralKind::LegacyWorldRootCompatibility => "LegacyWorldRootCompatibility",
+        ScenarioDeferralKind::PlanetsNotYetAdmitted => "PlanetsNotYetAdmitted",
+        ScenarioDeferralKind::OwnerResourceFlowNotYetExecuted => "OwnerResourceFlowNotYetExecuted",
+        ScenarioDeferralKind::CapabilityTreeNotYetExecuted => "CapabilityTreeNotYetExecuted",
+        ScenarioDeferralKind::StudioStructuralPlacementEditNotYetSupported => {
+            "StudioStructuralPlacementEditNotYetSupported"
+        }
+        ScenarioDeferralKind::MappingPlanCompileDeferred => "MappingPlanCompileDeferred",
+        ScenarioDeferralKind::GpuResidentExecutionDeferred => "GpuResidentExecutionDeferred",
+        ScenarioDeferralKind::UnsupportedGridcellRole => "UnsupportedGridcellRole",
+        ScenarioDeferralKind::UnsupportedChildLocationDepth => "UnsupportedChildLocationDepth",
+    }
+}

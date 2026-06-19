@@ -598,6 +598,17 @@ pub fn owner_silo_flow_participant_roots(spec: &SimThingScenarioSpec) -> Vec<u32
         .unwrap_or_default()
 }
 
+/// Stable display label for owner-silo admission classification (presentation only).
+pub fn owner_silo_admission_classification_label(
+    classification: OwnerSiloAdmissionClassification,
+) -> &'static str {
+    match classification {
+        OwnerSiloAdmissionClassification::Admitted => "Admitted",
+        OwnerSiloAdmissionClassification::PartiallyAdmitted => "PartiallyAdmitted",
+        OwnerSiloAdmissionClassification::Rejected => "Rejected",
+    }
+}
+
 /// Returns true when owner silo flow is admitted enough to suppress blanket ingestion deferral.
 pub fn owner_silo_flow_suppresses_ingestion_deferral(report: &OwnerSiloAdmissionReport) -> bool {
     report.classification != OwnerSiloAdmissionClassification::Rejected
