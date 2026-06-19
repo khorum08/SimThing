@@ -402,13 +402,15 @@ pub use spec::resource_flow::{
 };
 pub use spec::scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
-    apply_owner_entity_metadata, apply_scenario_metadata_to_root, canonical_scenario_link_key,
-    canonical_scenario_link_pair, deserialize_scenario_authority, galaxy_map_display_name,
-    galaxy_map_id, galaxy_map_role, game_session_child, game_session_galaxy_map,
-    game_session_galaxy_maps, game_session_owners, gridcell_generated_system_id, gridcell_role,
-    gridcell_structural_col, gridcell_structural_row, is_galaxy_map_entity, is_owner_entity_kind,
-    make_galaxy_map, make_owner_entity, owner_archetype, owner_color_index, owner_display_name,
-    owner_entity_id, owner_silo_marker, property_u32, reserve_simthing_ids_from_scenario,
+    apply_owner_entity_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
+    apply_scenario_metadata_to_root, canonical_scenario_link_key, canonical_scenario_link_pair,
+    deserialize_scenario_authority, galaxy_map_display_name, galaxy_map_id, galaxy_map_role,
+    game_session_child, game_session_galaxy_map, game_session_galaxy_maps, game_session_owners,
+    gridcell_generated_system_id, gridcell_role, gridcell_structural_col, gridcell_structural_row,
+    is_galaxy_map_entity, is_owner_entity_kind, make_galaxy_map, make_owner_entity,
+    owner_archetype, owner_color_index, owner_display_name, owner_entity_id, owner_flow_deficit,
+    owner_flow_owner_ref, owner_flow_surplus, owner_has_silo_metadata, owner_silo_capacity,
+    owner_silo_current, owner_silo_marker, property_u32, reserve_simthing_ids_from_scenario,
     resolve_map_container, resolve_map_container_mut, scenario_metadata_seed,
     scenario_metadata_seed_value, scenario_metadata_string, scenario_metadata_string_value,
     scenario_metadata_u32, scenario_metadata_u32_value, serialize_scenario_authority,
@@ -424,7 +426,9 @@ pub use spec::scenario::{
     GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID, GALAXY_MAP_ID_PROPERTY_ID, GALAXY_MAP_ROLE_CANONICAL,
     GALAXY_MAP_ROLE_PROPERTY_ID, OWNER_ARCHETYPE_PROPERTY_ID, OWNER_COLOR_INDEX_PROPERTY_ID,
-    OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_ID_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
+    OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_FLOW_DEFICIT_PROPERTY_ID,
+    OWNER_FLOW_OWNER_REF_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID,
+    OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
     SCENARIO_GENERATOR_SHAPE_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
     SCENARIO_RENDER_WORLD_X_PROPERTY_ID, SCENARIO_RENDER_WORLD_Y_PROPERTY_ID,
@@ -443,6 +447,12 @@ pub use spec::scenario_ingestion::{
 };
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
+};
+pub use spec::session_resource_flow::{
+    evaluate_owner_silo_flow, owner_silo_flow_participant_roots,
+    owner_silo_flow_suppresses_ingestion_deferral, OwnerSiloAdmissionClassification,
+    OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind, OwnerSiloAdmissionReport,
+    OwnerSiloDeferral, OwnerSiloDeferralKind,
 };
 pub use spec::stress_compose::{
     StressComposeProfileSpec, StressComposeSpec, StressOperatorSpec,

@@ -37,8 +37,18 @@ pub const OWNER_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_300);
 pub const OWNER_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_301);
 pub const OWNER_ARCHETYPE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_302);
 pub const OWNER_COLOR_INDEX_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_303);
-/// Inert stockpile/silo placeholder — no resource-flow execution in SESSION-OWNER-ENTITIES-0.
+/// Inert stockpile/silo placeholder — admitted by SESSION-RESOURCE-FLOW-SILOS-0.
 pub const OWNER_SILO_MARKER_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_304);
+/// Current stored silo amount on Owner SimThings (exact u32 f32 mirror).
+pub const OWNER_SILO_CURRENT_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_305);
+/// Max silo capacity on Owner SimThings (exact u32 f32 mirror).
+pub const OWNER_SILO_CAPACITY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_306);
+/// Owner id reference on spatial participants — not spatial parenting.
+pub const OWNER_FLOW_OWNER_REF_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_307);
+/// Generic produced surplus on owner-referenced spatial participants.
+pub const OWNER_FLOW_SURPLUS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_308);
+/// Generic unmet demand / deficit on owner-referenced spatial participants.
+pub const OWNER_FLOW_DEFICIT_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_309);
 
 /// Canonical GalaxyMap / WorldStateMap spatial root metadata on direct GameSession children.
 pub const GALAXY_MAP_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_400);
@@ -716,6 +726,72 @@ pub fn owner_color_index(thing: &SimThing) -> Option<u32> {
 
 pub fn owner_silo_marker(thing: &SimThing) -> Option<u32> {
     scenario_metadata_u32(thing, OWNER_SILO_MARKER_PROPERTY_ID)
+}
+
+pub fn owner_silo_current(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_SILO_CURRENT_PROPERTY_ID)
+}
+
+pub fn owner_silo_capacity(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_SILO_CAPACITY_PROPERTY_ID)
+}
+
+pub fn owner_flow_owner_ref(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, OWNER_FLOW_OWNER_REF_PROPERTY_ID)
+}
+
+pub fn owner_flow_surplus(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_FLOW_SURPLUS_PROPERTY_ID)
+}
+
+pub fn owner_flow_deficit(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_FLOW_DEFICIT_PROPERTY_ID)
+}
+
+pub fn owner_has_silo_metadata(owner: &SimThing) -> bool {
+    owner_silo_marker(owner).is_some() || owner_silo_current(owner).is_some()
+}
+
+pub fn apply_owner_silo_metadata(owner: &mut SimThing, current: u32, capacity: Option<u32>) {
+    debug_assert!(is_owner_entity_kind(&owner.kind));
+    owner.add_property(
+        OWNER_SILO_MARKER_PROPERTY_ID,
+        scenario_metadata_u32_value(1),
+    );
+    owner.add_property(
+        OWNER_SILO_CURRENT_PROPERTY_ID,
+        scenario_metadata_u32_value(current),
+    );
+    if let Some(capacity) = capacity {
+        owner.add_property(
+            OWNER_SILO_CAPACITY_PROPERTY_ID,
+            scenario_metadata_u32_value(capacity),
+        );
+    }
+}
+
+pub fn apply_participant_owner_flow_metadata(
+    participant: &mut SimThing,
+    owner_id: &str,
+    surplus: u32,
+    deficit: u32,
+) {
+    participant.add_property(
+        OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+        scenario_metadata_string_value(owner_id),
+    );
+    if surplus > 0 {
+        participant.add_property(
+            OWNER_FLOW_SURPLUS_PROPERTY_ID,
+            scenario_metadata_u32_value(surplus),
+        );
+    }
+    if deficit > 0 {
+        participant.add_property(
+            OWNER_FLOW_DEFICIT_PROPERTY_ID,
+            scenario_metadata_u32_value(deficit),
+        );
+    }
 }
 
 pub fn galaxy_map_display_name(thing: &SimThing) -> Option<String> {
