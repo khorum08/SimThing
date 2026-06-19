@@ -441,6 +441,27 @@ fn e10_does_not_import_arena_registry_into_simthing_sim() {
     assert!(!sim_lib.contains("ArenaRegistry"));
     assert!(!sim_lib.contains("arena_registry"));
 
+    let mapping_tick_src = include_str!("../../simthing-sim/src/mapping_plan_tick.rs");
+    for token in [
+        "simthing_driver",
+        "simthing_spec",
+        "simthing_mapeditor",
+        "SimThingScenarioSpec",
+        "deserialize_scenario_authority",
+        "pathfinding",
+        "predecessor",
+        "came_from",
+        "route_object",
+        "border_service",
+        "frontline_service",
+        "cpu_planner",
+    ] {
+        assert!(
+            !mapping_tick_src.contains(token),
+            "mapping_plan_tick must not reference `{token}`"
+        );
+    }
+
     let forbidden_test_imports = [
         "simthing_driver",
         "simthing_mapeditor",

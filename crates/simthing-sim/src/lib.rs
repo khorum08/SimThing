@@ -48,6 +48,7 @@ pub mod delta_log;
 pub mod fission;
 pub mod gpu_sync;
 pub mod legacy_oracle;
+pub mod mapping_plan_tick;
 pub mod observability;
 pub mod overlay_lifecycle;
 pub mod property_expiry;
@@ -71,6 +72,11 @@ pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
 pub use legacy_oracle::{
     apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
     LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
+};
+pub use mapping_plan_tick::{
+    cpu_min_plus_d_from_composed_interleaved, cpu_structured_field_horizon, CompiledMappingPlan,
+    CompiledMappingStep, MappingTickInputs, SimGpuMappingReadbackPolicy, SimGpuMappingTickOutput,
+    SimGpuMappingTickState,
 };
 pub use observability::{
     ObservabilityReport, ObserveFidelity, OverlayContribution, PropertyObservation,
