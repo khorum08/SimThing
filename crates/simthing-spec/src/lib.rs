@@ -461,6 +461,12 @@ pub use spec::stress_compose::{
     STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES, STRESS_OP_MISMATCH,
     STRESS_OP_OVERLAP, STRESS_OP_VELOCITY, STRESS_OP_WEIGHTED,
 };
+pub use spec::structural_edit::{
+    apply_structural_placement_command, validate_structural_placements_under_galaxymap,
+    GridcellRoleEdit, StructuralPlacementCommand, StructuralPlacementEditError,
+    StructuralPlacementEditErrorKind, StructuralPlacementEditReport,
+    StructuralPlacementEditWarning,
+};
 pub use spec::trigger::{TriggerDirection, TriggerSpec};
 pub use spec::w_impedance_compose::{
     WImpedanceComposeProfileSpec, WImpedanceComposeSpec, CT_4B_LOCAL_AUTOMATA_W_FEEDSTOCK,

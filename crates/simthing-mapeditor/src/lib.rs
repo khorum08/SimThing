@@ -22,6 +22,7 @@ pub mod studio_admission_report;
 pub mod studio_config;
 pub mod studio_scenario_document;
 pub mod studio_scenario_load;
+pub mod studio_structural_edit;
 pub mod terran_pirate_skeleton;
 pub mod view_model;
 
@@ -91,6 +92,10 @@ pub use studio_scenario_document::{
     studio_galaxy_map_gridcells_from_spec, StudioGalaxyMapView, StudioGameSessionView,
     StudioGridcellRole, StudioGridcellView, StudioOwnerView, StudioScenarioAuthorityKind,
     StudioScenarioDocument, StudioScenarioDocumentError,
+};
+pub use studio_structural_edit::{
+    studio_apply_structural_placement_command, StudioStructuralEditError,
+    StudioStructuralEditOutcome,
 };
 pub use terran_pirate_skeleton::{
     terran_pirate_skeleton_dense_inputs, terran_pirate_skeleton_scenario_spec,

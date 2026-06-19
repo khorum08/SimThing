@@ -16,6 +16,7 @@ pub mod scenario_ingestion;
 pub mod script;
 pub mod session_resource_flow;
 pub mod stress_compose;
+pub mod structural_edit;
 pub mod trigger;
 pub mod w_impedance_compose;
 
@@ -112,6 +113,12 @@ pub use stress_compose::{
     StressComposeProfileSpec, StressComposeSpec, StressOperatorSpec,
     STRESS_COMPOSE_MAX_INPUT_FIELDS, STRESS_COMPOSE_MAX_PROFILES, STRESS_OP_MISMATCH,
     STRESS_OP_OVERLAP, STRESS_OP_VELOCITY, STRESS_OP_WEIGHTED,
+};
+pub use structural_edit::{
+    apply_structural_placement_command, validate_structural_placements_under_galaxymap,
+    GridcellRoleEdit, StructuralPlacementCommand, StructuralPlacementEditError,
+    StructuralPlacementEditErrorKind, StructuralPlacementEditReport,
+    StructuralPlacementEditWarning,
 };
 pub use trigger::{TriggerDirection, TriggerSpec};
 pub use w_impedance_compose::{
