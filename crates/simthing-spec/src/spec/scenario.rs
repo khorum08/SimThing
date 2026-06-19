@@ -40,6 +40,17 @@ pub const OWNER_COLOR_INDEX_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_303
 /// Inert stockpile/silo placeholder — no resource-flow execution in SESSION-OWNER-ENTITIES-0.
 pub const OWNER_SILO_MARKER_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_304);
 
+/// Canonical GalaxyMap / WorldStateMap spatial root metadata on direct GameSession children.
+pub const GALAXY_MAP_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_400);
+pub const GALAXY_MAP_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_401);
+pub const GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_402);
+/// Gridcell role marker under GalaxyMap (`inert` / `star_system`).
+pub const GALAXY_GRIDCELL_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_403);
+
+pub const GALAXY_MAP_ROLE_CANONICAL: &str = "galaxy_map";
+pub const GALAXY_GRIDCELL_ROLE_INERT: &str = "inert";
+pub const GALAXY_GRIDCELL_ROLE_STAR_SYSTEM: &str = "star_system";
+
 pub const SCENARIO_SCHEMA_VERSION: u32 = 1;
 
 /// Maximum structural integer that can be mirrored exactly in an f32 property.
@@ -108,6 +119,18 @@ pub enum ScenarioRootError {
     OwnerNotDirectGameSessionChild,
     #[error("legacy World-root scenario has no Owner child requirement")]
     LegacyWorldRootHasNoOwnerRequirement,
+    #[error("canonical GameSession has no GalaxyMap / WorldStateMap child")]
+    MissingGalaxyMap,
+    #[error("canonical GameSession has {count} GalaxyMap children; exactly one required")]
+    MultipleGalaxyMaps { count: usize },
+    #[error("GameSession child is not a canonical GalaxyMap spatial root (found {found})")]
+    GalaxyMapWrongKind { found: String },
+    #[error("GalaxyMap SimThing is missing non-empty galaxy_map_id metadata")]
+    GalaxyMapMissingId,
+    #[error("GalaxyMap SimThing is not a direct GameSession child")]
+    GalaxyMapNotDirectGameSessionChild,
+    #[error("legacy World-root scenario has no GalaxyMap child requirement")]
+    LegacyWorldRootHasNoGalaxyMapRequirement,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -168,8 +191,10 @@ pub enum SteadMappingError {
         map_container_id: String,
         kind: String,
     },
-    #[error("scenario authority map container `{0}` is not a direct child of the World root")]
-    MapContainerNotWorldChild(String),
+    #[error(
+        "scenario authority map container `{0}` is not the spatial root nor a direct child of it"
+    )]
+    MapContainerNotSpatialRootChild(String),
     #[error("scenario authority is missing a galaxy map Location container")]
     MissingMapContainer,
     #[error("scenario authority map container has duplicate gridcell Location id {0}")]
@@ -514,6 +539,7 @@ pub fn validate_scenario_root_authority(
         }
         validate_scenario_game_session_child(spec)?;
         validate_session_owner_entities(spec)?;
+        validate_session_galaxy_map(spec)?;
     }
     Ok(())
 }
@@ -582,8 +608,7 @@ pub fn validate_session_owner_entities(
         return Err(ScenarioRootError::LegacyWorldRootHasNoOwnerRequirement);
     }
     let game_session = game_session_child(spec)?;
-    if let Some(owner) = find_nested_owner_not_under_game_session(&spec.root, game_session) {
-        let _ = owner;
+    if find_owner_not_direct_gamesession_child(&spec.root, game_session).is_some() {
         return Err(ScenarioRootError::OwnerNotDirectGameSessionChild);
     }
     let owners = game_session_owners(spec)?;
@@ -602,22 +627,156 @@ pub fn validate_session_owner_entities(
     Ok(())
 }
 
-fn find_nested_owner_not_under_game_session<'a>(
+fn find_owner_not_direct_gamesession_child<'a>(
     scenario_root: &'a SimThing,
     game_session: &'a SimThing,
 ) -> Option<&'a SimThing> {
+    fn walk<'a>(
+        parent: &'a SimThing,
+        thing: &'a SimThing,
+        game_session: &'a SimThing,
+    ) -> Option<&'a SimThing> {
+        if is_owner_entity_kind(&thing.kind) && parent.id != game_session.id {
+            return Some(thing);
+        }
+        for child in &thing.children {
+            if let Some(found) = walk(thing, child, game_session) {
+                return Some(found);
+            }
+        }
+        None
+    }
     if scenario_root.kind != SimThingKind::Scenario {
         return None;
     }
     for child in &scenario_root.children {
-        if child.id == game_session.id {
-            continue;
-        }
-        if is_owner_entity_kind(&child.kind) {
-            return Some(child);
+        if let Some(found) = walk(scenario_root, child, game_session) {
+            return Some(found);
         }
     }
     None
+}
+
+pub fn is_galaxy_map_entity(thing: &SimThing) -> bool {
+    thing.kind == SimThingKind::Location
+        && scenario_metadata_string(thing, GALAXY_MAP_ROLE_PROPERTY_ID).as_deref()
+            == Some(GALAXY_MAP_ROLE_CANONICAL)
+}
+
+pub fn galaxy_map_id(thing: &SimThing) -> Option<String> {
+    let id = scenario_metadata_string(thing, GALAXY_MAP_ID_PROPERTY_ID)?;
+    if id.trim().is_empty() {
+        None
+    } else {
+        Some(id)
+    }
+}
+
+pub fn apply_galaxy_map_metadata(map: &mut SimThing, map_id: &str, display_name: &str) {
+    debug_assert_eq!(map.kind, SimThingKind::Location);
+    map.add_property(
+        GALAXY_MAP_ID_PROPERTY_ID,
+        scenario_metadata_string_value(map_id),
+    );
+    map.add_property(
+        GALAXY_MAP_ROLE_PROPERTY_ID,
+        scenario_metadata_string_value(GALAXY_MAP_ROLE_CANONICAL),
+    );
+    map.add_property(
+        GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID,
+        scenario_metadata_string_value(display_name),
+    );
+}
+
+pub fn make_galaxy_map(map_id: &str, display_name: &str) -> SimThing {
+    let mut map = SimThing::new(SimThingKind::Location, 0);
+    apply_galaxy_map_metadata(&mut map, map_id, display_name);
+    map
+}
+
+pub fn apply_gridcell_role_metadata(gridcell: &mut SimThing, role: &str) {
+    debug_assert_eq!(gridcell.kind, SimThingKind::Location);
+    gridcell.add_property(
+        GALAXY_GRIDCELL_ROLE_PROPERTY_ID,
+        scenario_metadata_string_value(role),
+    );
+}
+
+/// Direct canonical GalaxyMap / WorldStateMap children of the GameSession.
+pub fn game_session_galaxy_maps(
+    spec: &SimThingScenarioSpec,
+) -> Result<Vec<&SimThing>, ScenarioRootError> {
+    let game_session = game_session_child(spec)?;
+    Ok(game_session
+        .children
+        .iter()
+        .filter(|child| is_galaxy_map_entity(child))
+        .collect())
+}
+
+/// Returns the sole direct canonical GalaxyMap child of the GameSession.
+pub fn game_session_galaxy_map(
+    spec: &SimThingScenarioSpec,
+) -> Result<&SimThing, ScenarioRootError> {
+    let maps = game_session_galaxy_maps(spec)?;
+    if maps.is_empty() {
+        return Err(ScenarioRootError::MissingGalaxyMap);
+    }
+    if maps.len() > 1 {
+        return Err(ScenarioRootError::MultipleGalaxyMaps { count: maps.len() });
+    }
+    Ok(maps[0])
+}
+
+/// Canonical GameSession must have exactly one direct GalaxyMap child with non-empty map id.
+pub fn validate_session_galaxy_map(spec: &SimThingScenarioSpec) -> Result<(), ScenarioRootError> {
+    if spec.root.kind == SimThingKind::World {
+        return Err(ScenarioRootError::LegacyWorldRootHasNoGalaxyMapRequirement);
+    }
+    let game_session = game_session_child(spec)?;
+    if let Some(nested) = find_galaxy_map_not_direct_gamesession_child(&spec.root, game_session) {
+        let _ = nested;
+        return Err(ScenarioRootError::GalaxyMapNotDirectGameSessionChild);
+    }
+    let galaxy_map = game_session_galaxy_map(spec)?;
+    if galaxy_map_id(galaxy_map).is_none() {
+        return Err(ScenarioRootError::GalaxyMapMissingId);
+    }
+    Ok(())
+}
+
+fn find_galaxy_map_not_direct_gamesession_child<'a>(
+    scenario_root: &'a SimThing,
+    game_session: &'a SimThing,
+) -> Option<&'a SimThing> {
+    fn walk<'a>(
+        parent: &'a SimThing,
+        thing: &'a SimThing,
+        game_session: &'a SimThing,
+    ) -> Option<&'a SimThing> {
+        if is_galaxy_map_entity(thing) && parent.id != game_session.id {
+            return Some(thing);
+        }
+        for child in &thing.children {
+            if let Some(found) = walk(thing, child, game_session) {
+                return Some(found);
+            }
+        }
+        None
+    }
+    if scenario_root.kind != SimThingKind::Scenario {
+        return None;
+    }
+    for child in &scenario_root.children {
+        if let Some(found) = walk(scenario_root, child, game_session) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn is_admitted_spatial_root(thing: &SimThing) -> bool {
+    thing.kind == SimThingKind::World || is_galaxy_map_entity(thing)
 }
 
 /// Returns the sole direct [`SimThingKind::GameSession`] child of a canonical Scenario root.
@@ -660,7 +819,7 @@ pub fn validate_scenario_game_session_child(
     game_session_child(spec).map(|_| ())
 }
 
-fn scenario_spatial_world_child<'a>(scenario_root: &'a SimThing) -> Option<&'a SimThing> {
+fn scenario_spatial_root_child<'a>(scenario_root: &'a SimThing) -> Option<&'a SimThing> {
     if scenario_root.kind != SimThingKind::Scenario {
         return None;
     }
@@ -669,6 +828,13 @@ fn scenario_spatial_world_child<'a>(scenario_root: &'a SimThing) -> Option<&'a S
         .iter()
         .find(|child| child.kind == SimThingKind::GameSession)
     {
+        if let Some(galaxy_map) = game_session
+            .children
+            .iter()
+            .find(|child| is_galaxy_map_entity(child))
+        {
+            return Some(galaxy_map);
+        }
         if let Some(world) = game_session
             .children
             .iter()
@@ -702,7 +868,7 @@ pub fn spatial_authority_root<'a>(
 ) -> Result<&'a SimThing, SteadMappingError> {
     match spec.root.kind {
         SimThingKind::World => Ok(&spec.root),
-        SimThingKind::Scenario => scenario_spatial_world_child(&spec.root)
+        SimThingKind::Scenario => scenario_spatial_root_child(&spec.root)
             .ok_or(SteadMappingError::MissingSpatialAuthority),
         _ => Err(SteadMappingError::RootIsNotWorld),
     }
@@ -752,12 +918,16 @@ pub fn resolve_map_container<'a>(
             kind: format!("{:?}", container.kind),
         });
     }
-    let is_spatial_root_child = spatial_root
-        .children
-        .iter()
-        .any(|child| child.id.raw() == raw);
+    let is_spatial_root_child = if spatial_root.id.raw() == raw {
+        is_galaxy_map_entity(spatial_root)
+    } else {
+        spatial_root
+            .children
+            .iter()
+            .any(|child| child.id.raw() == raw)
+    };
     if !is_spatial_root_child {
-        return Err(SteadMappingError::MapContainerNotWorldChild(
+        return Err(SteadMappingError::MapContainerNotSpatialRootChild(
             scenario.structural_grid.map_container_id.clone(),
         ));
     }
@@ -776,6 +946,13 @@ fn spatial_authority_root_mut<'a>(
                 .iter()
                 .position(|child| child.kind == SimThingKind::GameSession);
             if let Some(gs_idx) = game_session_idx {
+                let galaxy_idx = spec.root.children[gs_idx]
+                    .children
+                    .iter()
+                    .position(|child| is_galaxy_map_entity(child));
+                if let Some(g_idx) = galaxy_idx {
+                    return Ok(&mut spec.root.children[gs_idx].children[g_idx]);
+                }
                 let world_idx = spec.root.children[gs_idx]
                     .children
                     .iter()
@@ -808,13 +985,23 @@ pub fn resolve_map_container_mut<'a>(
     let raw = map_container_id
         .parse::<u32>()
         .map_err(|_| SteadMappingError::DanglingMapContainerId(map_container_id_field.clone()))?;
-    let (is_world_child, exists_in_subtree) = {
+    let (is_spatial_root_binding, exists_in_subtree) = {
         let spatial = spatial_authority_root(scenario)?;
-        let is_child = spatial.children.iter().any(|child| child.id.raw() == raw);
+        let is_binding =
+            spatial.id.raw() == raw || spatial.children.iter().any(|child| child.id.raw() == raw);
         let exists = find_simthing_by_raw_id(spatial, raw).is_some();
-        (is_child, exists)
+        (is_binding, exists)
     };
     let spatial_root = spatial_authority_root_mut(scenario)?;
+    if spatial_root.id.raw() == raw {
+        if spatial_root.kind != SimThingKind::Location {
+            return Err(SteadMappingError::MapContainerNotLocation {
+                map_container_id: map_container_id_field,
+                kind: format!("{:?}", spatial_root.kind),
+            });
+        }
+        return Ok(spatial_root);
+    }
     if let Some(child) = spatial_root
         .children
         .iter_mut()
@@ -828,8 +1015,8 @@ pub fn resolve_map_container_mut<'a>(
         }
         return Ok(child);
     }
-    if exists_in_subtree && !is_world_child {
-        return Err(SteadMappingError::MapContainerNotWorldChild(
+    if exists_in_subtree && !is_spatial_root_binding {
+        return Err(SteadMappingError::MapContainerNotSpatialRootChild(
             map_container_id_field,
         ));
     }
@@ -1002,7 +1189,7 @@ pub fn validate_stead_mapping_consistency(
         return Ok(());
     }
     let spatial_root = spatial_authority_root(spec)?;
-    if spatial_root.kind != SimThingKind::World {
+    if !is_admitted_spatial_root(spatial_root) {
         return Err(SteadMappingError::RootIsNotWorld);
     }
     reject_render_coordinate_properties(spatial_root)?;
@@ -1234,7 +1421,7 @@ mod tests {
     }
 
     fn wrap_canonical_scenario_root(
-        world: SimThing,
+        galaxy_map: SimThing,
         scenario_id: &str,
         structural_grid: SimThingScenarioGrid,
         links: Vec<SimThingScenarioLink>,
@@ -1249,7 +1436,7 @@ mod tests {
         );
         let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
         game_session.add_child(make_owner_entity("spec_owner", "Spec Owner", "player"));
-        game_session.add_child(world);
+        game_session.add_child(galaxy_map);
         scenario_root.add_child(game_session);
         let mut spec = SimThingScenarioSpec {
             scenario_id: scenario_id.to_string(),
@@ -1263,14 +1450,12 @@ mod tests {
     }
 
     fn two_cell_scenario() -> SimThingScenarioSpec {
-        let mut world = SimThing::new(SimThingKind::World, 0);
-        let mut map = SimThing::new(SimThingKind::Location, 0);
-        let map_raw = map.id.raw();
-        let (_, placement_a) = add_gridcell(&mut map, 1, 2, 3);
-        let (_, placement_b) = add_gridcell(&mut map, 2, 2, 4);
-        world.add_child(map);
+        let mut galaxy_map = make_galaxy_map("two_cell_galaxy", "Two Cell Galaxy");
+        let map_raw = galaxy_map.id.raw();
+        let (_, placement_a) = add_gridcell(&mut galaxy_map, 1, 2, 3);
+        let (_, placement_b) = add_gridcell(&mut galaxy_map, 2, 2, 4);
         wrap_canonical_scenario_root(
-            world,
+            galaxy_map,
             "two_cell_spec",
             SimThingScenarioGrid {
                 frame: SimThingStructuralGridFrame {
@@ -1290,8 +1475,7 @@ mod tests {
     }
 
     fn small_scenario() -> SimThingScenarioSpec {
-        let mut world = SimThing::new(SimThingKind::World, 0);
-        let mut map = SimThing::new(SimThingKind::Location, 0);
+        let mut galaxy_map = make_galaxy_map("small_galaxy", "Small Galaxy");
         let mut cell = SimThing::new(SimThingKind::Location, 0);
         cell.add_property(
             SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
@@ -1312,11 +1496,10 @@ mod tests {
         );
         cell.add_child(payload);
         let cell_raw = cell.id.raw();
-        let map_raw = map.id.raw();
-        map.add_child(cell);
-        world.add_child(map);
+        let map_raw = galaxy_map.id.raw();
+        galaxy_map.add_child(cell);
         wrap_canonical_scenario_root(
-            world,
+            galaxy_map,
             "small_spec",
             SimThingScenarioGrid {
                 frame: SimThingStructuralGridFrame {
@@ -1339,8 +1522,8 @@ mod tests {
         )
     }
 
-    fn spatial_world_mut(scenario: &mut SimThingScenarioSpec) -> &mut SimThing {
-        spatial_authority_root_mut(scenario).expect("spatial world child")
+    fn spatial_root_mut(scenario: &mut SimThingScenarioSpec) -> &mut SimThing {
+        spatial_authority_root_mut(scenario).expect("spatial root child")
     }
 
     fn legacy_world_scenario() -> SimThingScenarioSpec {
@@ -1409,7 +1592,7 @@ mod tests {
         let mut scenario = small_scenario();
         let cohort = SimThing::new(SimThingKind::Cohort, 0);
         let cohort_raw = cohort.id.raw();
-        spatial_world_mut(&mut scenario).add_child(cohort);
+        spatial_root_mut(&mut scenario).add_child(cohort);
         scenario.structural_grid.map_container_id = cohort_raw.to_string();
         let err = validate_stead_mapping_consistency(&scenario).expect_err("non-location");
         assert!(matches!(
@@ -1438,7 +1621,7 @@ mod tests {
         orphan.add_child(SimThing::new(SimThingKind::Cohort, 0));
         let orphan_raw = orphan.id.raw();
         other_map.add_child(orphan);
-        spatial_world_mut(&mut scenario).add_child(other_map);
+        spatial_root_mut(&mut scenario).add_child(other_map);
         scenario
             .structural_grid
             .placements
@@ -1478,7 +1661,7 @@ mod tests {
         let mut scenario = small_scenario();
         let decoy = SimThing::new(SimThingKind::Location, 0);
         let decoy_raw = decoy.id.raw();
-        spatial_world_mut(&mut scenario).children.insert(0, decoy);
+        spatial_root_mut(&mut scenario).children.insert(0, decoy);
         let resolved = resolve_map_container(&scenario).expect("resolve declared container");
         assert_ne!(resolved.id.raw(), decoy_raw);
         assert_eq!(

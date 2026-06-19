@@ -801,7 +801,33 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
                 .contains("owners as spatial parents"),
         "active authority summary must not present Owners as spatial parents"
     );
-    for forbidden_engine in ["OwnerEngine", "FactionEngine"] {
+    assert!(
+        scenario_src.contains("validate_session_galaxy_map"),
+        "scenario.rs must expose GalaxyMap / WorldStateMap validation"
+    );
+    assert!(
+        production_doc.contains("GalaxyMap")
+            && production_doc.contains("Owner(s)")
+            && production_doc.contains("GameSession"),
+        "production synthesis current authority must be Scenario -> GameSession -> Owner(s) -> GalaxyMap"
+    );
+    assert!(
+        !authority_section
+            .to_ascii_lowercase()
+            .contains("world is the canonical spatial root"),
+        "production synthesis must not present World as the canonical spatial root"
+    );
+    let owner_test_src = include_str!("scenario_owner_entities.rs");
+    assert!(
+        owner_test_src.contains("owner_nested_under_galaxymap_is_rejected"),
+        "Owner directness must reject nested Owner under GalaxyMap"
+    );
+    for forbidden_engine in [
+        "OwnerEngine",
+        "FactionEngine",
+        "GalaxyMapEngine",
+        "WorldEngine",
+    ] {
         assert!(
             !simthing_src.contains(forbidden_engine) && !scenario_src.contains(forbidden_engine),
             "core/spec must not introduce {forbidden_engine}"
@@ -809,8 +835,11 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
     }
     let sim_src = include_str!("../../simthing-sim/src/lib.rs");
     assert!(
-        !sim_src.contains("OwnerEngine") && !sim_src.contains("FactionEngine"),
-        "simthing-sim must not introduce OwnerEngine/FactionEngine"
+        !sim_src.contains("OwnerEngine")
+            && !sim_src.contains("FactionEngine")
+            && !sim_src.contains("GalaxyMapEngine")
+            && !sim_src.contains("WorldEngine"),
+        "simthing-sim must not introduce Owner/GalaxyMap/World engines"
     );
 }
 
