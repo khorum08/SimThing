@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — GameSession kind, canonical child validation, fixture update, and tests landed. Owners/GalaxyMap deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SCENARIO-GAMESESSION-CHILD-0  
+**PR:** #779 — SCENARIO-GAMESESSION-CHILD-0  
+**Merge SHA:** `b23ad1e7`  
 **Base:** `master` after PR #778 / SCENARIO-METADATA-LOSSLESS-0
 
 ## Current defect summary
