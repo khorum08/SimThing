@@ -78,7 +78,8 @@ fn owner_silo_flow_compiles_resource_flow_admission() {
     assert_eq!(admission.arenas.len(), 1);
     assert_eq!(admission.arenas[0].name, "owner_silo");
     assert_eq!(report.explicit_participant_count, 2);
-    assert!(report.gpu_execution_deferred);
+    assert!(report.gpu_participant_accumulation_ready);
+    assert!(report.gpu_full_state_mutation_deferred);
 }
 
 #[test]
@@ -131,13 +132,14 @@ fn owner_silo_flow_explicit_participants_only() {
 }
 
 #[test]
-fn owner_silo_flow_gpu_execution_deferred_without_new_primitive() {
+fn owner_silo_flow_gpu_participant_accumulation_ready_without_new_primitive() {
     let scenario = load_balanced_flow();
     let reg = setup_owner_silo_registry();
     let (_, report) =
         compile_and_materialize_owner_silo_flow(&scenario, &reg).expect("materialize");
-    assert!(report.gpu_execution_deferred);
-    assert!(report.gpu_execution_note.contains("deferred"));
+    assert!(report.gpu_participant_accumulation_ready);
+    assert!(report.gpu_full_state_mutation_deferred);
+    assert!(report.gpu_execution_note.contains("AccumulatorOp"));
 
     let flow_spec = build_owner_silo_resource_flow_spec(&scenario).expect("spec");
     assert_eq!(

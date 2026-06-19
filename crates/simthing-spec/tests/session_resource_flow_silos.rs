@@ -8,14 +8,14 @@ use simthing_spec::{
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_scenario_metadata_to_root, evaluate_owner_silo_flow, ingest_scenario,
     ingest_scenario_from_str, make_galaxy_map, make_owner_entity, owner_flow_owner_ref,
-    owner_has_silo_metadata, serialize_scenario_authority, structural_property_value_u32,
-    OwnerSiloAdmissionClassification, OwnerSiloAdmissionErrorKind, OwnerSiloDeferralKind,
-    ScenarioDeferralKind, ScenarioIngestionClassification, ScenarioIngestionProfile,
-    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_INERT,
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
-    SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    owner_has_silo_metadata, owner_silo_flow_participant_inputs, serialize_scenario_authority,
+    structural_property_value_u32, OwnerSiloAdmissionClassification, OwnerSiloAdmissionErrorKind,
+    OwnerSiloDeferralKind, ScenarioDeferralKind, ScenarioIngestionClassification,
+    ScenarioIngestionProfile, SimThingScenarioGrid, SimThingScenarioProvenance,
+    SimThingScenarioSpec, SimThingStructuralGridFrame, SimThingStructuralGridPlacement, SpecError,
+    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
 
 const CANONICAL_PROFILE: ScenarioIngestionProfile = ScenarioIngestionProfile {
@@ -480,6 +480,44 @@ fn owner_silo_invalid_silo_amount_corpus_rejected() {
         .errors
         .iter()
         .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount }));
+}
+
+#[test]
+fn owner_silo_gpu_plan_inputs_preserve_non_mutating_oracle() {
+    let spec = balanced_flow_spec();
+    let report = evaluate_owner_silo_flow(&spec);
+    let inputs = owner_silo_flow_participant_inputs(&spec).expect("inputs");
+    assert_eq!(inputs.len(), 2);
+    assert_eq!(inputs.iter().map(|p| p.surplus).sum::<u32>(), 30);
+    assert_eq!(inputs.iter().map(|p| p.deficit).sum::<u32>(), 20);
+    assert_eq!(report.reducible_surplus_total, 30.0);
+    assert_eq!(report.resolvable_deficit_total, 20.0);
+    assert_eq!(report.unresolved_deficit_total, 0.0);
+}
+
+#[test]
+fn owner_silo_invalid_silo_still_rejected_before_driver_lowering() {
+    let json = load_corpus("owner_silo_invalid_silo_amount.simthing-scenario.json");
+    let spec = simthing_spec::deserialize_scenario_authority(&json).expect("parse");
+    assert!(owner_silo_flow_participant_inputs(&spec).is_err());
+    // Driver lowering is integration-tested in simthing-driver; spec refuses rejected admission.
+    let _ = SpecError::ValidationFailed;
+}
+
+#[test]
+fn owner_silo_ingestion_reports_gpu_participant_accumulation_readiness() {
+    let json = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
+    let (result, _) = ingest_scenario_from_str("balanced", &json, CANONICAL_PROFILE);
+    assert!(
+        result
+            .compile_readiness
+            .owner_silo_gpu_participant_accumulation_ready
+    );
+    assert!(
+        result
+            .compile_readiness
+            .owner_silo_full_state_mutation_deferred
+    );
 }
 
 #[test]

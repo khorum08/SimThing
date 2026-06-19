@@ -72,6 +72,15 @@ pub struct OwnerSiloAdmissionReport {
     pub errors: Vec<OwnerSiloAdmissionError>,
 }
 
+/// Admitted owner-silo flow participant inputs for driver accumulator lowering.
+#[derive(Debug, Clone, PartialEq)]
+pub struct OwnerSiloFlowParticipantInput {
+    pub simthing_id_raw: u32,
+    pub owner_id: String,
+    pub surplus: u32,
+    pub deficit: u32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct FlowParticipant {
     simthing_id_raw: u32,
@@ -550,6 +559,29 @@ fn finalize_owner_silo_classification(report: &mut OwnerSiloAdmissionReport) {
     } else {
         report.classification = OwnerSiloAdmissionClassification::PartiallyAdmitted;
     }
+}
+
+/// Explicit admitted participant surplus/deficit inputs for generic accumulator lowering.
+///
+/// Rejected owner-silo admission returns the evaluation report as `Err`.
+pub fn owner_silo_flow_participant_inputs(
+    spec: &SimThingScenarioSpec,
+) -> Result<Vec<OwnerSiloFlowParticipantInput>, OwnerSiloAdmissionReport> {
+    let report = evaluate_owner_silo_flow(spec);
+    if report.classification == OwnerSiloAdmissionClassification::Rejected {
+        return Err(report);
+    }
+    let mut scratch = OwnerSiloAdmissionReport::default();
+    let participants = collect_flow_participants(spec, &mut scratch).map_err(|_| report)?;
+    Ok(participants
+        .into_iter()
+        .map(|participant| OwnerSiloFlowParticipantInput {
+            simthing_id_raw: participant.simthing_id_raw,
+            owner_id: participant.owner_id,
+            surplus: participant.surplus,
+            deficit: participant.deficit,
+        })
+        .collect())
 }
 
 /// Session-local SimThing raw ids for admitted owner-silo flow participants.

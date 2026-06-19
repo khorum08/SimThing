@@ -35,6 +35,7 @@ pub mod gradient_follow_0080_2;
 pub mod install;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
+pub mod owner_silo_accumulator_compile;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
 pub mod resource_economy_boundary_schedule;
@@ -356,6 +357,11 @@ pub use min_plus_traversal_field::{
     TraversalFieldShadowColumnCompatInput, TraversalFieldWInputKind,
     TRAVERSAL_FIELD_BAND_DEFAULT_ENABLED, TRAVERSAL_FIELD_ID, TRAVERSAL_FIELD_REGION_ID,
     TRAVERSAL_FIELD_UTILITY_ID,
+};
+pub use owner_silo_accumulator_compile::{
+    compile_owner_silo_gpu_tick_plan, owner_silo_aggregate_slot, owner_silo_deficit_tick_inputs,
+    owner_silo_participant_deficit_total, owner_silo_participant_surplus_total,
+    owner_silo_surplus_tick_inputs, OwnerSiloGpuTickPlan,
 };
 pub use production_path_0080_0::{
     replay_production_path_0080_0, run_production_path_0080_0, LocalPatrolEconomyCell,
