@@ -11,6 +11,8 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SimThingKind {
+    /// Serializable scenario file root. Authority/serialization marker only — not a runtime engine.
+    Scenario,
     World,
     /// Owner entity — sibling child of the GameSession root (not an overlay, not a spatial parent).
     Owner,
@@ -149,6 +151,7 @@ fn reserve_visit_simthings(
 /// [`SimThingKind::Owner`]. `Custom(name)` matches when `authored == name`.
 pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
     match sim {
+        SimThingKind::Scenario => authored == "Scenario",
         SimThingKind::World => authored == "World",
         SimThingKind::Owner => authored == "Owner" || authored == "Faction",
         SimThingKind::Faction => authored == "Faction" || authored == "Owner",
