@@ -111,7 +111,7 @@ Report fields: `local_gridcell_count`, `local_inert_gridcell_count`, `planet_gri
 | `cargo test -p simthing-spec --test e10_resource_flow_admission` | PASS (18/18) |
 | `cargo check -p simthing-driver` | PASS |
 | `cargo test -p simthing-driver --test planet_child_location_structural_readiness` | PASS (4/4) |
-| `cargo test -p simthing-driver --test structural_edit_compile_readiness` | SKIP (not re-run; no driver source changes) |
+| `cargo test -p simthing-driver --test structural_edit_compile_readiness` | PASS (2/2) |
 | `cargo check -p simthing-mapeditor` | PASS |
 | `cargo test -p simthing-mapeditor --test studio_planet_child_location_display` | PASS (9/9) |
 | `cargo test -p simthing-mapeditor --test studio_structural_placement_edit_commands` | PASS (9/9) |
