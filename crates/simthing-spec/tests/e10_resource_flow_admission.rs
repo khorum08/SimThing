@@ -1096,21 +1096,30 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         include_str!("../../simthing-mapeditor/src/studio_planet_child_location.rs");
     assert!(
         planet_child_src.contains("evaluate_planet_child_locations")
-            && planet_child_src.contains("apply_planet_child_location_command")
-            && planet_child_src.contains("GALAXY_CHILD_LOCATION_ROLE_PLANET"),
-        "planet child-location admission API must live in simthing-spec"
+            && planet_child_src.contains("apply_planet_local_grid_command")
+            && planet_child_src.contains("LOCAL_GRIDCELL_ROLE_PLANET")
+            && planet_child_src.contains("star-system-local gridcell"),
+        "planet local-grid admission API must live in simthing-spec"
     );
     assert!(
         planet_child_src.contains("GALAXY_GRIDCELL_ROLE_STAR_SYSTEM")
-            && planet_child_src.contains("PlanetUnderInertGridcell"),
-        "planets must be under star-system gridcells; inert gridcells cannot own planets"
+            && planet_child_src.contains("PlanetUnderInertGalaxyGridcell")
+            && planet_child_src.contains("STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS")
+            && planet_child_src.contains("STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS"),
+        "planets must be star-system-local gridcells; inert galactic gridcells cannot own planet local gridcells; default local frame is 10x10"
     );
     assert!(
-        planet_child_src.contains("PlanetListedInStructuralGrid"),
-        "planets must not be structural_grid placements"
+        planet_child_src.contains("LOCAL_GRIDCELL_COL_PROPERTY_ID")
+            && planet_child_src.contains("LOCAL_GRIDCELL_ROW_PROPERTY_ID")
+            && planet_child_src.contains("PlanetLocalGridMissingCoordinate"),
+        "planet local gridcells require local col/row coordinates"
     );
     assert!(
-        studio_planet_src.contains("apply_planet_child_location_command")
+        planet_child_src.contains("PlanetListedInGalaxyStructuralGrid"),
+        "planet local gridcells must not be GalaxyMap structural_grid placements"
+    );
+    assert!(
+        studio_planet_src.contains("apply_planet_local_grid_command")
             && !studio_planet_src.contains("fn evaluate_planet_child_locations"),
         "Studio planet wrapper must call spec API"
     );
@@ -1121,8 +1130,15 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         "Studio planet display must not dispatch GPU or call sim tick"
     );
     assert!(
-        production_doc.contains("PLANET-CHILD-LOCATION-ADMISSION-0"),
-        "production synthesis must name PLANET-CHILD-LOCATION-ADMISSION-0"
+        production_doc.contains("PLANET-LOCAL-GRID-REMEDIATION-0"),
+        "production synthesis must name PLANET-LOCAL-GRID-REMEDIATION-0"
+    );
+    let planet_admission_test =
+        include_str!("../../simthing-spec/tests/planet_child_location_admission.rs");
+    assert!(
+        !planet_admission_test.contains("write_planet_child_location_corpus_fixtures")
+            && planet_admission_test.contains("normal_tests_do_not_write_corpus_fixtures"),
+        "normal tests must not write scenarios/corpus fixture files"
     );
     for forbidden_engine in [
         "PlanetEngine",
