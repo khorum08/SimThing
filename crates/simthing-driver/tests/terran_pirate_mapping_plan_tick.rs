@@ -1,17 +1,18 @@
-//! SIM-MAPPING-PLAN-TICK-SEAM-0 — driver→sim resident mapping tick integration proof.
+//! DRIVER-MAPPING-PLAN-COMPILE-0 + SIM-MAPPING-PLAN-TICK-SEAM-0 — driver→sim integration proof.
 
 use std::sync::Mutex;
 
 use simthing_core::{CombineFn, SourceSpec, StructuralScalarChannel};
 use simthing_driver::{
-    compile_structural_link_neighbor_sum_plan, compile_structural_n4_theater,
-    compiled_stencil_to_gpu_config, compiled_w_impedance_compose_to_gpu_config,
-    composed_w_min_plus_stencil_config, StructuralTheaterAdmission,
+    compile_mapping_plan_from_admitted_theater, compile_structural_link_neighbor_sum_plan,
+    compile_structural_n4_theater, compile_structured_field_mapping_plan,
+    compiled_stencil_to_gpu_config, MappingPlanCompileSpec, StructuralGridCoordinate,
+    StructuralTheaterAdmission,
 };
 use simthing_gpu::{max_d_field_error, GpuContext, MIN_PLUS_INF};
 use simthing_sim::{
-    cpu_min_plus_d_from_composed_interleaved, cpu_structured_field_horizon, CompiledMappingPlan,
-    CompiledMappingStep, MappingTickInputs, SimGpuMappingReadbackPolicy, SimGpuMappingTickState,
+    cpu_min_plus_d_from_composed_interleaved, cpu_structured_field_horizon, CompiledMappingStep,
+    MappingTickInputs, SimGpuMappingReadbackPolicy, SimGpuMappingTickState,
 };
 use simthing_spec::{
     compile_region_field_preview, compile_w_impedance_compose_preview,
@@ -100,6 +101,29 @@ fn terran_pirate_w_compose_spec(grid_size: u32) -> WImpedanceComposeSpec {
     }
 }
 
+fn terran_pirate_mapping_plan_compile_spec(
+    theater: &simthing_driver::CompiledStructuralN4Theater,
+) -> MappingPlanCompileSpec {
+    let grid = theater.frame_width;
+    let hub = theater.coord_for_system(1).expect("hub");
+    MappingPlanCompileSpec {
+        structured_field: compile_region_field_preview(&terran_pirate_guyang_field_spec(grid))
+            .expect("guyang admission"),
+        structured_hops: SATURATING_FLUX_HOPS,
+        structured_to_interleaved_writes: vec![(1, 1)],
+        w_compose: compile_w_impedance_compose_preview(&terran_pirate_w_compose_spec(grid))
+            .expect("w compose admission"),
+        min_plus_profile_index: 0,
+        min_plus_dest: StructuralGridCoordinate {
+            col: hub.col,
+            row: hub.row,
+        },
+        min_plus_d_col: 4,
+        min_plus_iterations: MIN_PLUS_ITERATIONS,
+        min_plus_inf: MIN_PLUS_INF,
+    }
+}
+
 fn seed_guyang_values(
     theater: &simthing_driver::CompiledStructuralN4Theater,
     n_dims: u32,
@@ -126,40 +150,6 @@ fn seed_interleaved_base(
         values[idx(slot, 2, n_dims)] = 0.0;
     }
     values
-}
-
-fn assemble_terran_pirate_mapping_plan(
-    theater: &simthing_driver::CompiledStructuralN4Theater,
-) -> CompiledMappingPlan {
-    let grid = theater.frame_width;
-    let guyang_spec = terran_pirate_guyang_field_spec(grid);
-    let guyang_preview = compile_region_field_preview(&guyang_spec).expect("guyang admission");
-    let guyang_config = compiled_stencil_to_gpu_config(&guyang_preview.stencil);
-
-    let w_spec = terran_pirate_w_compose_spec(grid);
-    let w_compiled = compile_w_impedance_compose_preview(&w_spec).expect("w compose admission");
-    let w_gpu = compiled_w_impedance_compose_to_gpu_config(&w_compiled);
-    let hub = theater.coord_for_system(1).expect("hub");
-    let stencil =
-        composed_w_min_plus_stencil_config(&w_gpu, 0, 4, (hub.col, hub.row), MIN_PLUS_INF);
-
-    CompiledMappingPlan {
-        interleaved_width: grid,
-        interleaved_height: grid,
-        interleaved_n_dims: w_spec.n_dims,
-        steps: vec![
-            CompiledMappingStep::StructuredFieldStencil {
-                config: guyang_config,
-                hops: SATURATING_FLUX_HOPS,
-                interleaved_column_writes: vec![(1, 1)],
-            },
-            CompiledMappingStep::WImpedanceCompose { config: w_gpu },
-            CompiledMappingStep::MinPlusStencil {
-                config: stencil,
-                iterations: MIN_PLUS_ITERATIONS,
-            },
-        ],
-    }
 }
 
 fn with_gpu<F: FnOnce(&GpuContext)>(f: F) {
@@ -216,16 +206,14 @@ fn terran_pirate_mapping_plan_tick_structured_field_proof_matches_cpu_oracle() {
     let guyang_values = seed_guyang_values(&theater, guyang_config.n_dims);
     let cpu = cpu_structured_field_horizon(&guyang_values, &guyang_config, SATURATING_FLUX_HOPS);
 
-    let plan = CompiledMappingPlan {
-        interleaved_width: theater.frame_width,
-        interleaved_height: theater.frame_height,
-        interleaved_n_dims: 5,
-        steps: vec![CompiledMappingStep::StructuredFieldStencil {
-            config: guyang_config,
-            hops: SATURATING_FLUX_HOPS,
-            interleaved_column_writes: Vec::new(),
-        }],
-    };
+    let plan = compile_structured_field_mapping_plan(
+        &theater,
+        &guyang_preview,
+        SATURATING_FLUX_HOPS,
+        Vec::new(),
+        5,
+    )
+    .expect("structured field mapping plan");
 
     with_gpu(|ctx| {
         let mut state = SimGpuMappingTickState::new(ctx, plan).expect("state");
@@ -247,7 +235,7 @@ fn terran_pirate_mapping_plan_tick_structured_field_proof_matches_cpu_oracle() {
                 "gpu/cpu mismatch at {i}: gpu={g} cpu={c}"
             );
         }
-        eprintln!("SIM-MAPPING-PLAN-TICK-SEAM-0: REAL_ADAPTER_OBSERVED (structured_field)");
+        eprintln!("DRIVER-MAPPING-PLAN-COMPILE-0: REAL_ADAPTER_OBSERVED (structured_field)");
     });
 
     let reloaded = canonical_skeleton_scenario();
@@ -259,7 +247,9 @@ fn terran_pirate_mapping_plan_tick_structured_field_proof_matches_cpu_oracle() {
 fn terran_pirate_mapping_plan_tick_full_chain_d_field_matches_cpu_oracle() {
     let spec = canonical_skeleton_scenario();
     let theater = admit_structural_theater(&spec);
-    let plan = assemble_terran_pirate_mapping_plan(&theater);
+    let compile_spec = terran_pirate_mapping_plan_compile_spec(&theater);
+    let plan =
+        compile_mapping_plan_from_admitted_theater(&theater, compile_spec).expect("mapping plan");
 
     let guyang_values = seed_guyang_values(
         &theater,
@@ -310,7 +300,7 @@ fn terran_pirate_mapping_plan_tick_full_chain_d_field_matches_cpu_oracle() {
         let gpu_d = output.proof_values.expect("proof d");
         assert!(
             max_d_field_error(&cpu_d, &gpu_d) < 1e-4,
-            "D field GPU/CPU parity through sim mapping tick seam"
+            "D field GPU/CPU parity through driver compile -> sim mapping tick seam"
         );
         let none = state
             .tick(
@@ -324,6 +314,6 @@ fn terran_pirate_mapping_plan_tick_full_chain_d_field_matches_cpu_oracle() {
             .expect("none tick");
         assert!(none.proof_values.is_none());
         assert_eq!(state.resident_tick_count(), 2);
-        eprintln!("SIM-MAPPING-PLAN-TICK-SEAM-0: REAL_ADAPTER_OBSERVED (full_chain)");
+        eprintln!("DRIVER-MAPPING-PLAN-COMPILE-0: REAL_ADAPTER_OBSERVED (full_chain)");
     });
 }
