@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
+pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
@@ -340,6 +341,10 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use mapping_plan_compile::{
+    compile_mapping_plan_from_admitted_theater, compile_structured_field_mapping_plan,
+    MappingPlanCompileError, MappingPlanCompileSpec,
 };
 pub use min_plus_traversal_field::{
     TraversalFieldBandError, TraversalFieldBandSession, TraversalFieldDispatchReport,
