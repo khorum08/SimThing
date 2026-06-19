@@ -332,20 +332,36 @@ pub fn scenario_metadata_u32(thing: &SimThing, property_id: SimPropertyId) -> Op
     property_u32(thing.properties.get(&property_id)?)
 }
 
+/// Lossless u64 seed encoding: four u16 chunks stored as exact f32 integers (0..=65535).
 pub fn scenario_metadata_seed_value(seed: u64) -> PropertyValue {
     PropertyValue {
-        data: vec![(seed & 0xFFFF_FFFF) as f32, (seed >> 32) as f32],
+        data: vec![
+            (seed & 0xFFFF) as f32,
+            ((seed >> 16) & 0xFFFF) as f32,
+            ((seed >> 32) & 0xFFFF) as f32,
+            ((seed >> 48) & 0xFFFF) as f32,
+        ],
     }
 }
 
 pub fn scenario_metadata_seed(thing: &SimThing) -> Option<u64> {
     let value = thing.properties.get(&SCENARIO_GENERATOR_SEED_PROPERTY_ID)?;
-    if value.data.len() != 2 {
+    if value.data.len() != 4 {
         return None;
     }
-    let low = value.data[0] as u64;
-    let high = value.data[1] as u64;
-    Some(low | (high << 32))
+    let a = checked_u16_f32(value.data[0])? as u64;
+    let b = checked_u16_f32(value.data[1])? as u64;
+    let c = checked_u16_f32(value.data[2])? as u64;
+    let d = checked_u16_f32(value.data[3])? as u64;
+    Some(a | (b << 16) | (c << 32) | (d << 48))
+}
+
+fn checked_u16_f32(value: f32) -> Option<u16> {
+    if value.is_finite() && value >= 0.0 && value.fract() == 0.0 && value <= u16::MAX as f32 {
+        Some(value as u16)
+    } else {
+        None
+    }
 }
 
 pub fn apply_scenario_metadata_to_root(
@@ -447,6 +463,15 @@ pub fn validate_scenario_root_authority(
             field: "source_label",
             root: root_source,
             sidecar: spec.provenance.source.clone(),
+        });
+    }
+    let root_seed = scenario_metadata_seed(&spec.root)
+        .ok_or(ScenarioRootError::MissingScenarioMetadata("generator_seed"))?;
+    if spec.provenance.generator_seed != 0 && spec.provenance.generator_seed != root_seed {
+        return Err(ScenarioRootError::ScenarioMetadataMismatch {
+            field: "generator_seed",
+            root: root_seed.to_string(),
+            sidecar: spec.provenance.generator_seed.to_string(),
         });
     }
     if mode == ScenarioRootValidationMode::Canonical {
