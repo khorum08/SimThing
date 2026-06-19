@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — Strict silo numeric validation, InvalidSiloAmount reachability, ingestion propagation, and driver rejection proof landed. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SESSION-RESOURCE-FLOW-SILOS-HARDEN-0  
+**PR:** #785 — SESSION-RESOURCE-FLOW-SILOS-HARDEN-0  
+**Merge SHA:** `faa84a67`  
 **Base:** `master` after PR #784 / SESSION-RESOURCE-FLOW-SILOS-0 (`873692bb`)
 
 ## Current defect summary
