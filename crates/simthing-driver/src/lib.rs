@@ -73,6 +73,7 @@ pub mod runtime_0080_rr_4;
 pub mod scenario;
 pub mod scenario_ingestion_compile;
 pub mod session;
+pub mod session_resource_flow_silos;
 pub mod spec_replay;
 pub mod spec_session;
 pub mod stress_compose_bridge;
@@ -607,6 +608,11 @@ pub use runtime_0080_rr_4::{
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
 pub use session::{RunSummary, SessionError, SimSession};
+pub use session_resource_flow_silos::{
+    build_owner_silo_resource_flow_spec, compile_and_materialize_owner_silo_flow,
+    compile_and_materialize_owner_silo_flow_via_resource_flow, compile_owner_silo_flow_admission,
+    OwnerSiloFlowMaterializationReport,
+};
 pub use simthing_gpu::SlotAllocError;
 pub use spec_replay::{
     apply_spec_delta, apply_spec_snapshot, collect_spec_snapshot, diff_and_emit,

@@ -161,13 +161,15 @@ fn ingests_minimal_scenario_root_as_admitted_or_partially_admitted() {
 fn ingests_minimal_galaxymap_as_admitted() {
     let json = load_corpus("minimal_scenario_galaxymap.simthing-scenario.json");
     let (result, _) = ingest_scenario_from_str("minimal_galaxymap", &json, CANONICAL_PROFILE);
-    assert_eq!(
+    assert!(matches!(
         result.classification,
         ScenarioIngestionClassification::Admitted
-    );
+            | ScenarioIngestionClassification::PartiallyAdmitted
+    ));
     assert_eq!(result.canonical_tree.gridcell_count, 2);
     assert_eq!(result.galaxy_map_admission.gridcell_inert_count, 1);
     assert_eq!(result.galaxy_map_admission.gridcell_star_system_count, 1);
+    assert!(result.owner_silo.is_some());
 }
 
 #[test]

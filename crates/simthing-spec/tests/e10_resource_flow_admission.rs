@@ -885,12 +885,65 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         "FactionEngine",
         "GalaxyMapEngine",
         "WorldEngine",
+        "EconomyEngine",
+        "SiloEngine",
+        "StockpileEngine",
     ] {
         assert!(
             !simthing_src.contains(forbidden_engine)
                 && !scenario_src.contains(forbidden_engine)
                 && !ingestion_src.contains(forbidden_engine),
             "core/spec ingestion must not introduce {forbidden_engine}"
+        );
+    }
+
+    let session_flow_src = include_str!("../src/spec/session_resource_flow.rs");
+    assert!(
+        session_flow_src.contains("evaluate_owner_silo_flow"),
+        "owner-silo flow API must exist in simthing-spec"
+    );
+    assert!(
+        scenario_src.contains("OWNER_FLOW_OWNER_REF_PROPERTY_ID")
+            && scenario_src.contains("apply_participant_owner_flow_metadata"),
+        "owner references must be properties/columns, not spatial parenting"
+    );
+    assert!(
+        session_flow_src.contains("not spatial parenting"),
+        "owner-silo flow must document property-based ownership"
+    );
+    assert!(
+        production_doc.contains("SESSION-RESOURCE-FLOW-SILOS-0"),
+        "production synthesis must name SESSION-RESOURCE-FLOW-SILOS-0"
+    );
+    let driver_silo_src = include_str!("../../simthing-driver/src/session_resource_flow_silos.rs");
+    assert!(
+        driver_silo_src.contains("compile_resource_flow_admission")
+            && driver_silo_src.contains("explicit_participants"),
+        "driver owner-silo materialization must reuse explicit-participant ResourceFlow admission"
+    );
+    assert!(
+        !driver_silo_src.contains("OwnerEngine")
+            && !session_flow_src.contains("OwnerEngine")
+            && !session_flow_src.contains("FactionEngine"),
+        "owner-silo flow must not use OwnerEngine/FactionEngine"
+    );
+    let silo_test_src = include_str!("session_resource_flow_silos.rs");
+    assert!(
+        silo_test_src.contains("owner_silo_does_not_require_owner_spatial_parenting"),
+        "owner-silo tests must guard against spatial-parent ownership"
+    );
+    for forbidden_engine in [
+        "OwnerEngine",
+        "FactionEngine",
+        "EconomyEngine",
+        "SiloEngine",
+        "StockpileEngine",
+    ] {
+        assert!(
+            !sim_src.contains(forbidden_engine)
+                && !driver_silo_src.contains(forbidden_engine)
+                && !session_flow_src.contains(forbidden_engine),
+            "core/spec/driver/sim must not introduce {forbidden_engine}"
         );
     }
 }

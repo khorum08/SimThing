@@ -7,13 +7,17 @@ use simthing_core::SimThingKind;
 
 use super::scenario::{
     galaxy_map_id, game_session_child, game_session_galaxy_map, game_session_owners, gridcell_role,
-    is_galaxy_map_entity, is_owner_entity_kind, owner_entity_id, owner_silo_marker,
+    is_galaxy_map_entity, is_owner_entity_kind, owner_entity_id, owner_has_silo_metadata,
     resolve_map_container, scenario_metadata_seed, validate_legacy_world_root_compatibility,
     validate_scenario_game_session_child, validate_scenario_links,
     validate_scenario_root_authority, validate_session_galaxy_map, validate_session_owner_entities,
     validate_stead_mapping_consistency, ScenarioRootError, ScenarioRootValidationMode,
     ScenarioSerdeError, SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT,
     GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+};
+use super::session_resource_flow::{
+    evaluate_owner_silo_flow, owner_silo_flow_suppresses_ingestion_deferral,
+    OwnerSiloAdmissionClassification, OwnerSiloAdmissionReport,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -118,7 +122,7 @@ pub struct ScenarioFingerprint {
     pub subtree_size: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ScenarioIngestionResult {
     pub source_name: String,
     pub scenario_fingerprint: Option<ScenarioFingerprint>,
@@ -129,6 +133,7 @@ pub struct ScenarioIngestionResult {
     pub galaxy_map_admission: GalaxyMapAdmissionReport,
     pub structural_admission: StructuralAdmissionReport,
     pub compile_readiness: ScenarioCompileReadinessReport,
+    pub owner_silo: Option<OwnerSiloAdmissionReport>,
     pub deferrals: Vec<ScenarioDeferral>,
     pub errors: Vec<ScenarioIngestionError>,
 }
@@ -205,6 +210,7 @@ fn empty_result(source_name: &str) -> ScenarioIngestionResult {
             mapping_plan_deferred: true,
             ..Default::default()
         },
+        owner_silo: None,
         deferrals: Vec::new(),
         errors: Vec::new(),
     }
@@ -267,6 +273,7 @@ fn ingest_canonical(
 
     if result.errors.is_empty() {
         populate_canonical_reports(spec, result);
+        integrate_owner_silo_flow(spec, result);
     } else if result.validation.gamesession_ok {
         populate_partial_canonical_reports(spec, result);
     }
@@ -516,19 +523,47 @@ fn scan_owner_subtrees(spec: &SimThingScenarioSpec, result: &mut ScenarioIngesti
                 );
             }
         }
-        if matches!(owner_silo_marker(owner), Some(marker) if marker > 0) {
-            push_deferral(
+    }
+}
+
+fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
+    let silo_report = evaluate_owner_silo_flow(spec);
+    let suppress = owner_silo_flow_suppresses_ingestion_deferral(&silo_report);
+    result.owner_silo = Some(silo_report.clone());
+
+    if silo_report.classification == OwnerSiloAdmissionClassification::Rejected {
+        for err in &silo_report.errors {
+            push_error(
                 result,
-                ScenarioDeferralKind::OwnerResourceFlowNotYetExecuted,
-                Some(format!(
-                    "owner/{}",
-                    owner_entity_id(owner).unwrap_or_default()
-                )),
-                Some(owner.id.raw()),
-                "owner silo/stockpile placeholders are not yet executed (SESSION-RESOURCE-FLOW-SILOS-0 deferred)",
-                true,
-                true,
+                "owner_silo",
+                format!("{:?}: {}", err.kind, err.message),
             );
+        }
+        return;
+    }
+
+    if suppress {
+        return;
+    }
+
+    if silo_report.silo_owner_count > 0 && silo_report.participant_count == 0 {
+        if let Ok(owners) = game_session_owners(spec) {
+            for owner in owners {
+                if owner_has_silo_metadata(owner) {
+                    push_deferral(
+                        result,
+                        ScenarioDeferralKind::OwnerResourceFlowNotYetExecuted,
+                        Some(format!(
+                            "owner/{}",
+                            owner_entity_id(owner).unwrap_or_default()
+                        )),
+                        Some(owner.id.raw()),
+                        "owner silo metadata present without admitted participant flow properties",
+                        true,
+                        true,
+                    );
+                }
+            }
         }
     }
 }
