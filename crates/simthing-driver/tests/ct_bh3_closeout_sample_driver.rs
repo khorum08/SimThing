@@ -9,12 +9,14 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use simthing_clausething::{
-    hydrate_scenario, parse_raw_document, HydratedScenarioPack, HydratedScenarioPalmaFeedstock,
+    hydrate_field_operator_pack, hydrate_scenario, parse_raw_document, HydratedScenarioPack,
+    HydratedScenarioPalmaFeedstock,
 };
 use simthing_core::DimensionRegistry;
 use simthing_driver::{
-    compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config, install_atomic,
-    FirstSliceMappingSession, FirstSliceSeed, FirstSliceTickOptions, Scenario, SimSession,
+    compiled_stress_compose_to_gpu_config, compiled_w_impedance_compose_to_gpu_config,
+    composed_w_min_plus_stencil_config, install_atomic, FirstSliceMappingSession, FirstSliceSeed,
+    FirstSliceTickOptions, Scenario, SimSession,
 };
 use simthing_gpu::wgpu::{self, util::DeviceExt};
 use simthing_gpu::{
@@ -23,13 +25,16 @@ use simthing_gpu::{
     MinPlusTraversalWInputKind, WImpedanceComposeOp, MIN_PLUS_INF,
 };
 use simthing_spec::{
-    compile_region_field_preview, compile_w_impedance_compose_preview, CompiledRegionFieldOperator,
-    MappingExecutionProfile, RegionFieldOperatorSpec, WImpedanceComposeProfileSpec,
-    WImpedanceComposeSpec,
+    compile_region_field_preview, compile_stress_compose_preview,
+    compile_w_impedance_compose_preview, CompiledRegionFieldOperator, MappingExecutionProfile,
+    RegionFieldOperatorSpec, WImpedanceComposeProfileSpec, WImpedanceComposeSpec,
 };
 
 const CANONICAL_SAMPLE: &str =
     include_str!("../../simthing-clausething/tests/fixtures/ct_bh3_closeout_sample.clause");
+
+const FIELD_OPERATOR_FIXTURE: &str =
+    include_str!("../../simthing-clausething/tests/fixtures/bh3_field_operator.clause");
 
 const TRAVERSAL_ITERATIONS: u32 = 4;
 
@@ -45,6 +50,7 @@ const FORBIDDEN_HOT_PATH: &[&str] = &[
     "movement_engine",
     "predecessor",
     "cpu_planner",
+    "ClauseThing",
 ];
 
 fn try_gpu() -> bool {
@@ -152,6 +158,48 @@ fn assert_palma_feedstock_admitted(pack: &HydratedScenarioPack) {
     let w_gpu = compiled_w_impedance_compose_to_gpu_config(&compiled);
     let _stencil =
         composed_w_min_plus_stencil_config(&w_gpu, 0, palma.d_output_col, (0, 0), MIN_PLUS_INF);
+}
+
+#[test]
+fn bh3_field_operator_install_bridge_surfaces_without_runtime_action() {
+    let document = parse_raw_document(FIELD_OPERATOR_FIXTURE.as_bytes())
+        .expect("parse field-operator fixture");
+    let pack = hydrate_field_operator_pack(&document).expect("hydrate field-operator fixture");
+    assert_eq!(
+        pack.game_mode.mapping_execution_profile,
+        MappingExecutionProfile::Disabled
+    );
+    assert!(!pack.game_mode.mapping_execution_profile.enables_execution());
+
+    let field = &pack.game_mode.region_fields[0];
+    let region = compile_region_field_preview(field).expect("region field admission");
+    assert!(matches!(
+        region.stencil.operator,
+        CompiledRegionFieldOperator::SaturatingFlux { .. }
+    ));
+
+    let w_spec = pack
+        .w_impedance_compose
+        .as_ref()
+        .expect("authored w compose");
+    let w_compiled = compile_w_impedance_compose_preview(w_spec).expect("w admission");
+    let w_gpu = compiled_w_impedance_compose_to_gpu_config(&w_compiled);
+    let _palma = composed_w_min_plus_stencil_config(&w_gpu, 0, 5, (0, 0), MIN_PLUS_INF);
+
+    let stress_spec = pack
+        .stress_compose
+        .as_ref()
+        .expect("authored stress compose");
+    let stress_compiled = compile_stress_compose_preview(stress_spec).expect("stress admission");
+    let _stress_gpu = compiled_stress_compose_to_gpu_config(&stress_compiled);
+
+    let bridge_src = include_str!("../src/w_impedance_compose_bridge.rs");
+    for token in FORBIDDEN_HOT_PATH {
+        assert!(
+            !bridge_src.contains(token),
+            "bridge must not contain forbidden token `{token}`"
+        );
+    }
 }
 
 #[test]
