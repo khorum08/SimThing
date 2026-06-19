@@ -512,6 +512,40 @@ fn e10_does_not_import_arena_registry_into_simthing_sim() {
         "mapping proof readback must be explicit"
     );
 
+    let atlas_scheduler_src = include_str!("../../simthing-sim/src/mapping_atlas_scheduler.rs");
+    for token in [
+        "simthing_driver",
+        "simthing_spec",
+        "simthing_mapeditor",
+        "SimThingScenarioSpec",
+        "deserialize_scenario_authority",
+        "structural_grid",
+        "pathfinding",
+        "predecessor",
+        "came_from",
+        "route_object",
+        "border_service",
+        "frontline_service",
+        "cpu_planner",
+    ] {
+        assert!(
+            !atlas_scheduler_src.contains(token),
+            "mapping_atlas_scheduler must not reference `{token}`"
+        );
+    }
+    assert!(
+        atlas_scheduler_src.contains("state.tick(ctx, theater_input, readback)"),
+        "atlas scheduler must delegate readback policy to resident tick state"
+    );
+    assert!(
+        !atlas_scheduler_src.contains("readback_after_ping_pong"),
+        "atlas scheduler must not call proof readback helpers directly"
+    );
+    assert!(
+        !atlas_scheduler_src.contains("set_debug_readback_allowed"),
+        "atlas scheduler must not silently enable debug readback"
+    );
+
     let forbidden_test_imports = [
         "simthing_driver",
         "simthing_mapeditor",
