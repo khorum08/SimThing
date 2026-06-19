@@ -112,6 +112,16 @@ pub enum StructuralTheaterCompileError {
     },
     #[error("structural frame dimensions overflow")]
     FrameDimensionOverflow,
+    #[error(
+        "halo-augmented theater partition_index={partition_index} frame {frame_width}x{frame_height} exceeds cap {max_width}x{max_height}"
+    )]
+    HaloExceedsTheaterCap {
+        partition_index: u32,
+        frame_width: u32,
+        frame_height: u32,
+        max_width: u32,
+        max_height: u32,
+    },
 }
 
 fn is_n4_neighbor(a: StructuralGridCoordinate, b: StructuralGridCoordinate) -> bool {
