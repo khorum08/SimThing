@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — Lossless u64 seed encoding, roundtrip/rejection tests, sidecar sync proof, and corpus fixture update landed. GameSession child enforcement deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SCENARIO-METADATA-LOSSLESS-0  
+**PR:** #778 — SCENARIO-METADATA-LOSSLESS-0  
+**Merge SHA:** `a7522960`  
 **Base:** `master` after PR #777 / SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0
 
 ## Defect summary
