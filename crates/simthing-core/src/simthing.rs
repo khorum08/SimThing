@@ -12,6 +12,12 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SimThingKind {
     World,
+    /// Owner entity — sibling child of the GameSession root (not an overlay, not a spatial parent).
+    Owner,
+    /// **DEPRECATED — legacy serialized alias for [`Owner`].** Retained so existing serialized
+    /// trees and `AllOfKind { kind: "Faction" }` install targets keep working. New authoring
+    /// must use [`Owner`] / `"Owner"`.
+    #[deprecated(note = "Use Owner. Retained only for legacy serialized data compatibility.")]
     Faction,
     /// **DEPRECATED — DO NOT USE (design authority, 2026-06-03).** `StarSystem` was added
     /// without a consuming scenario and violates maximal SimThing conformance
@@ -34,9 +40,16 @@ pub enum SimThingKind {
     Custom(String),
 }
 
-/// Every entity in the simulation. The spatial tree expresses physical ownership.
-/// Political structures, factions, and all non-physical groupings are overlays,
-/// not nodes in the tree.
+/// Every entity in the simulation is a [`SimThing`].
+///
+/// The running simulation is rooted in a GameSession / Session [`SimThing`]. Owner entities are
+/// sibling children of the Session root — not overlays and not spatial parents. Policies, bonuses,
+/// penalties, capability subtrees, and stockpiles may live on Owner [`SimThing`]s as properties,
+/// overlays, and children.
+///
+/// The spatial subtree expresses physical containment only. Asset ownership is represented by owner
+/// references, properties, and columns — never by spatial reparenting. Runtime simulation code must
+/// not branch behavior on [`SimThingKind`].
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimThing {
@@ -132,11 +145,13 @@ fn reserve_visit_simthings(
 /// targets without exposing `SimThingKind` variants to the spec crate.
 ///
 /// Built-in variant names match the enum identifier exactly (`"World"`,
-/// `"Faction"`, …). `Custom(name)` matches when `authored == name`.
+/// `"Owner"`, …). Legacy `"Faction"` matches deprecated [`SimThingKind::Faction`] and canonical
+/// [`SimThingKind::Owner`]. `Custom(name)` matches when `authored == name`.
 pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
     match sim {
         SimThingKind::World => authored == "World",
-        SimThingKind::Faction => authored == "Faction",
+        SimThingKind::Owner => authored == "Owner" || authored == "Faction",
+        SimThingKind::Faction => authored == "Faction" || authored == "Owner",
         SimThingKind::StarSystem => authored == "StarSystem",
         SimThingKind::Location => authored == "Location",
         SimThingKind::Cohort => authored == "Cohort",
