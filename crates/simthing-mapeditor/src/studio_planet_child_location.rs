@@ -1,8 +1,8 @@
 //! Studio presentation wrapper for spec-owned planet child-location edit commands.
 
 use simthing_spec::{
-    apply_planet_child_location_command, PlanetChildLocationCommand, PlanetChildLocationEditError,
-    PlanetChildLocationEditReport,
+    apply_planet_local_grid_command, PlanetChildLocationEditError, PlanetChildLocationEditReport,
+    PlanetLocalGridCommand,
 };
 
 use crate::session::StudioSession;
@@ -27,13 +27,12 @@ pub struct StudioPlanetChildLocationOutcome {
     pub structural_n4_ready: bool,
 }
 
-/// Apply a planet child-location command and rebuild Studio projections from authority.
+/// Apply a star-system local-grid command and rebuild Studio projections from authority.
 pub fn studio_apply_planet_child_location_command(
     session: &mut StudioSession,
-    command: PlanetChildLocationCommand,
+    command: PlanetLocalGridCommand,
 ) -> Result<StudioPlanetChildLocationOutcome, StudioPlanetChildLocationError> {
-    let edit_report =
-        apply_planet_child_location_command(&mut session.scenario_authority, command)?;
+    let edit_report = apply_planet_local_grid_command(&mut session.scenario_authority, command)?;
     let outcome = rebuild_studio_session_after_authority_edit(session)?;
     Ok(StudioPlanetChildLocationOutcome {
         edit_report,

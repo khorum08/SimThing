@@ -4,18 +4,19 @@
 
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    child_location_role, evaluate_planet_child_locations, galaxy_map_display_name, galaxy_map_id,
-    galaxy_map_role, game_session_child, game_session_galaxy_map, game_session_owners,
-    gridcell_generated_system_id, gridcell_role, gridcell_structural_col, gridcell_structural_row,
-    is_galaxy_map_entity, is_planet_child_location, owner_archetype, owner_color_index,
-    owner_display_name, owner_entity_id, owner_silo_marker,
+    evaluate_planet_child_locations, galaxy_map_display_name, galaxy_map_id, galaxy_map_role,
+    game_session_child, game_session_galaxy_map, game_session_owners, gridcell_generated_system_id,
+    gridcell_role, gridcell_structural_col, gridcell_structural_row, is_galaxy_map_entity,
+    is_planet_gridcell, local_gridcell_col, local_gridcell_role, local_gridcell_row,
+    owner_archetype, owner_color_index, owner_display_name, owner_entity_id, owner_silo_marker,
     planet_child_location_classification_label, planet_child_location_error_kind_label,
     planet_display_name, planet_id, planet_owner_ref, resolve_map_container,
     scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
-    validate_legacy_world_root_compatibility, validate_scenario_root_authority, ScenarioRootError,
-    ScenarioRootValidationMode, SimThingScenarioSpec, GALAXY_CHILD_LOCATION_ROLE_PLANET,
-    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
-    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+    star_system_local_grid_frame, validate_legacy_world_root_compatibility,
+    validate_scenario_root_authority, ScenarioRootError, ScenarioRootValidationMode,
+    SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    LOCAL_GRIDCELL_ROLE_PLANET, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+    SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 use thiserror::Error;
 
@@ -83,11 +84,13 @@ pub struct StudioPlanetChildView {
     pub simthing_id_raw: u32,
     pub planet_id: String,
     pub display_name: Option<String>,
-    pub parent_gridcell_simthing_id_raw: u32,
-    pub parent_location_id: Option<String>,
-    pub structural_col: Option<u32>,
-    pub structural_row: Option<u32>,
-    pub role: String,
+    pub parent_star_system_gridcell_id_raw: u32,
+    pub parent_star_system_location_id: Option<String>,
+    pub local_frame_cols: u32,
+    pub local_frame_rows: u32,
+    pub local_col: Option<u32>,
+    pub local_row: Option<u32>,
+    pub local_role: String,
     pub owner_ref: Option<String>,
     pub admission_status: String,
     pub deferrals: Vec<String>,
@@ -240,14 +243,15 @@ fn planets_under_spec(
         if gridcell_role(gridcell).as_deref() != Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM) {
             continue;
         }
-        let parent_location_id = spec
+        let parent_star_system_location_id = spec
             .structural_grid
             .placements
             .iter()
             .find(|p| p.simthing_id_raw == gridcell.id.raw())
             .map(|p| p.location_id.clone());
+        let (local_frame_cols, local_frame_rows) = star_system_local_grid_frame(gridcell);
         for child in &gridcell.children {
-            if !is_planet_child_location(child) {
+            if child.kind != SimThingKind::Location || !is_planet_gridcell(child) {
                 continue;
             }
             let planet_deferrals: Vec<String> = planet_report
@@ -266,12 +270,14 @@ fn planets_under_spec(
                 simthing_id_raw: child.id.raw(),
                 planet_id: planet_id(child).unwrap_or_default(),
                 display_name: planet_display_name(child),
-                parent_gridcell_simthing_id_raw: gridcell.id.raw(),
-                parent_location_id: parent_location_id.clone(),
-                structural_col: gridcell_structural_col(gridcell),
-                structural_row: gridcell_structural_row(gridcell),
-                role: child_location_role(child)
-                    .unwrap_or_else(|| GALAXY_CHILD_LOCATION_ROLE_PLANET.to_string()),
+                parent_star_system_gridcell_id_raw: gridcell.id.raw(),
+                parent_star_system_location_id: parent_star_system_location_id.clone(),
+                local_frame_cols,
+                local_frame_rows,
+                local_col: local_gridcell_col(child),
+                local_row: local_gridcell_row(child),
+                local_role: local_gridcell_role(child)
+                    .unwrap_or_else(|| LOCAL_GRIDCELL_ROLE_PLANET.to_string()),
                 owner_ref: planet_owner_ref(child),
                 admission_status: admission_status.clone(),
                 deferrals: planet_deferrals,

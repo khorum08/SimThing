@@ -57,7 +57,7 @@ pub const GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_3
 /// Gridcell role marker under GalaxyMap (`inert` / `star_system`).
 pub const GALAXY_GRIDCELL_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_403);
 
-/// Child Location role under star-system gridcells (`planet` / `moon`).
+/// Deprecated compatibility alias for [`LOCAL_GRIDCELL_ROLE_PROPERTY_ID`].
 pub const GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_500);
 pub const PLANET_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_501);
 pub const PLANET_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_502);
@@ -65,11 +65,25 @@ pub const PLANET_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_503);
 pub const PLANET_OWNER_REF_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_504);
 pub const PLANET_ORBIT_INDEX_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_505);
 
+/// Star-system local grid frame metadata on galactic star-system gridcell Locations.
+pub const STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_510);
+pub const STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_511);
+pub const STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS: u32 = 10;
+pub const STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS: u32 = 10;
+
+/// Local gridcell role/col/row on child Location SimThings under star-system gridcells.
+pub const LOCAL_GRIDCELL_ROLE_PROPERTY_ID: SimPropertyId = GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID;
+pub const LOCAL_GRIDCELL_COL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_513);
+pub const LOCAL_GRIDCELL_ROW_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_514);
+
 pub const GALAXY_MAP_ROLE_CANONICAL: &str = "galaxy_map";
 pub const GALAXY_GRIDCELL_ROLE_INERT: &str = "inert";
 pub const GALAXY_GRIDCELL_ROLE_STAR_SYSTEM: &str = "star_system";
+/// Deprecated compatibility alias for [`LOCAL_GRIDCELL_ROLE_PLANET`].
 pub const GALAXY_CHILD_LOCATION_ROLE_PLANET: &str = "planet";
 pub const GALAXY_CHILD_LOCATION_ROLE_MOON: &str = "moon";
+pub const LOCAL_GRIDCELL_ROLE_INERT: &str = "inert";
+pub const LOCAL_GRIDCELL_ROLE_PLANET: &str = "planet";
 
 pub const SCENARIO_SCHEMA_VERSION: u32 = 1;
 

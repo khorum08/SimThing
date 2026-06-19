@@ -3,8 +3,11 @@
 > **Lifecycle: PROBATION** — planet child-location admission and Studio display landed. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** PLANET-CHILD-LOCATION-ADMISSION-0  
+**PR:** #789 — PLANET-CHILD-LOCATION-ADMISSION-0
+**Merge:** `617a8c5d`
 **Base:** `master` after PR #788 / STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0 (`df681533`)
+
+> **Ontology note:** PR #789 is retained as **PROBATION** prerequisite evidence but its planet-as-free-child-object model was remediated by **PLANET-LOCAL-GRID-REMEDIATION-0**. See `docs/tests/planet_local_grid_remediation_0_results.md`. Not DA-promoted.
 
 ## Current defect / ontology gap summary
 

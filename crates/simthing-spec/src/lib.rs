@@ -380,15 +380,21 @@ pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
 pub use spec::planet_child_location::{
-    all_planet_child_locations, apply_planet_child_location_command, apply_planet_child_metadata,
-    child_location_role, evaluate_planet_child_locations, is_planet_child_location,
-    make_planet_child_location, planet_child_location_classification_label,
-    planet_child_location_error_kind_label, planet_child_locations, planet_display_name, planet_id,
-    planet_owner_ref, star_system_gridcells, validate_planet_child_locations,
-    PlanetChildLocationAdmissionClassification, PlanetChildLocationAdmissionError,
-    PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
-    PlanetChildLocationCommand, PlanetChildLocationDeferral, PlanetChildLocationEditError,
-    PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
+    all_planet_child_locations, all_planet_gridcells, apply_local_gridcell_metadata,
+    apply_planet_child_location_command, apply_planet_child_metadata,
+    apply_planet_gridcell_metadata, apply_planet_local_grid_command,
+    apply_star_system_local_grid_frame_metadata, child_location_role,
+    evaluate_planet_child_locations, is_local_gridcell, is_planet_child_location,
+    is_planet_gridcell, local_gridcell_col, local_gridcell_role, local_gridcell_row,
+    make_local_inert_gridcell, make_planet_child_location, make_planet_gridcell,
+    planet_child_location_classification_label, planet_child_location_error_kind_label,
+    planet_child_locations, planet_display_name, planet_gridcells, planet_id, planet_owner_ref,
+    star_system_gridcells, star_system_local_grid_frame, validate_planet_child_locations,
+    LocalGridcellRoleEdit, PlanetChildLocationAdmissionClassification,
+    PlanetChildLocationAdmissionError, PlanetChildLocationAdmissionErrorKind,
+    PlanetChildLocationAdmissionReport, PlanetChildLocationCommand, PlanetChildLocationDeferral,
+    PlanetChildLocationEditError, PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
+    PlanetLocalGridCommand,
 };
 pub use spec::property::PropertySpec;
 pub use spec::region_field::{
@@ -450,6 +456,12 @@ pub use spec::scenario::{
     SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
     SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
+};
+pub use spec::scenario::{
+    LOCAL_GRIDCELL_COL_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_INERT, LOCAL_GRIDCELL_ROLE_PLANET,
+    LOCAL_GRIDCELL_ROLE_PROPERTY_ID, LOCAL_GRIDCELL_ROW_PROPERTY_ID,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
+    STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
 };
 pub use spec::scenario_ingestion::{
     ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,

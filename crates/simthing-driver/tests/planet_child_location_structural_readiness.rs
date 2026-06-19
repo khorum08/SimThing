@@ -1,4 +1,4 @@
-//! PLANET-CHILD-LOCATION-ADMISSION-0 — driver structural readiness with planet children.
+//! PLANET-LOCAL-GRID-REMEDIATION-0 — driver structural readiness with planet local gridcells.
 
 use std::fs;
 use std::path::PathBuf;
@@ -27,7 +27,7 @@ fn load_admitted() -> SimThingScenarioSpec {
 }
 
 #[test]
-fn planet_child_scenario_reaches_structural_n4_admission() {
+fn planet_local_grid_scenario_reaches_galaxy_structural_n4_admission() {
     let spec = load_admitted();
     let readiness = evaluate_scenario_compile_readiness(&spec);
     assert!(readiness.structural_n4_ready);
@@ -38,16 +38,17 @@ fn planet_child_scenario_reaches_structural_n4_admission() {
 }
 
 #[test]
-fn planet_child_not_counted_as_structural_gridcell() {
+fn planet_local_gridcell_not_counted_as_galaxy_structural_gridcell() {
     let spec = load_admitted();
     assert_eq!(spec.structural_grid.placements.len(), 2);
     let report = evaluate_planet_child_locations(&spec);
-    assert_eq!(report.planet_count, 1);
+    assert_eq!(report.planet_gridcell_count, 1);
+    assert_eq!(report.local_gridcell_count, 1);
     assert!(report.errors.is_empty());
 }
 
 #[test]
-fn invalid_planet_under_inert_gridcell_does_not_reach_driver_compile() {
+fn invalid_planet_under_inert_does_not_reach_driver_compile() {
     let json = fs::read_to_string(corpus_path(
         "planet_child_location_under_inert_rejected.simthing-scenario.json",
     ))
@@ -56,7 +57,7 @@ fn invalid_planet_under_inert_gridcell_does_not_reach_driver_compile() {
         require_canonical_tree: true,
         admit_legacy_world_root: true,
     };
-    let (result, spec) = ingest_scenario_from_str("under_inert", &json, profile);
+    let (result, _) = ingest_scenario_from_str("under_inert", &json, profile);
     assert_eq!(
         result.classification,
         ScenarioIngestionClassification::Rejected
@@ -66,7 +67,7 @@ fn invalid_planet_under_inert_gridcell_does_not_reach_driver_compile() {
 }
 
 #[test]
-fn planet_child_locations_do_not_expand_structural_grid_placements() {
+fn planet_local_gridcells_do_not_expand_structural_grid_placements() {
     let spec = load_admitted();
     let before = spec.structural_grid.placements.len();
     let _ = ingest_scenario(

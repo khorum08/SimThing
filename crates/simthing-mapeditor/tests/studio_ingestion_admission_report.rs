@@ -65,10 +65,9 @@ fn studio_displays_unsupported_planet_child_deferral() {
     let json = load_corpus_json("unsupported_planet_child_valid_schema.simthing-scenario.json");
     let report = studio_ingest_scenario_text_for_report("planet_child", &json);
     assert_ne!(report.classification, "Rejected");
-    assert!(report
-        .deferrals
-        .iter()
-        .any(|d| d.kind == "PlanetsNotYetAdmitted"));
+    assert!(report.deferrals.iter().any(|d| {
+        d.kind == "UnsupportedChildLocationRole" || d.kind == "PlanetsNotYetAdmitted"
+    }));
 }
 
 #[test]

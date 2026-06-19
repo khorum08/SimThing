@@ -525,7 +525,7 @@ fn map_planet_deferral_kind(kind: PlanetChildLocationAdmissionErrorKind) -> Scen
         PlanetChildLocationAdmissionErrorKind::UnsupportedChildLocationRole => {
             ScenarioDeferralKind::UnsupportedChildLocationRole
         }
-        PlanetChildLocationAdmissionErrorKind::DeepChildLocationDeferred => {
+        PlanetChildLocationAdmissionErrorKind::DeepPlanetChildDeferred => {
             ScenarioDeferralKind::UnsupportedChildLocationDepth
         }
         PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred => {
@@ -654,7 +654,7 @@ fn finalize_classification(result: &mut ScenarioIngestionResult) {
     let admitted_planets = result
         .planet_child_location
         .as_ref()
-        .map(|r| r.planet_count > 0)
+        .map(|r| r.planet_gridcell_count > 0)
         .unwrap_or(false);
 
     if !admitted_planets
