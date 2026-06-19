@@ -49,15 +49,15 @@ pub fn studio_apply_structural_placement_command(
     })
 }
 
-struct RebuildSnapshot {
-    admission_summary: StudioScenarioAdmissionSummary,
-    gridcell_count: usize,
-    structural_n4_ready: bool,
+pub(crate) struct StudioAuthorityRebuildSnapshot {
+    pub admission_summary: StudioScenarioAdmissionSummary,
+    pub gridcell_count: usize,
+    pub structural_n4_ready: bool,
 }
 
-fn rebuild_studio_session_after_authority_edit(
+pub(crate) fn rebuild_studio_session_after_authority_edit(
     session: &mut StudioSession,
-) -> Result<RebuildSnapshot, StudioStructuralEditError> {
+) -> Result<StudioAuthorityRebuildSnapshot, StudioStructuralEditError> {
     let scenario = &session.scenario_authority;
     let admission_summary =
         build_studio_admission_summary_from_spec(&scenario.scenario_id, scenario);
@@ -75,7 +75,7 @@ fn rebuild_studio_session_after_authority_edit(
         build_studio_scenario_document_with_admission(scenario, Some(admission_summary.clone()))?;
     session.admission_summary = admission_summary.clone();
 
-    Ok(RebuildSnapshot {
+    Ok(StudioAuthorityRebuildSnapshot {
         admission_summary,
         gridcell_count,
         structural_n4_ready,

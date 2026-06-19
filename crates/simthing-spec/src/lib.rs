@@ -379,6 +379,17 @@ pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
+pub use spec::planet_child_location::{
+    all_planet_child_locations, apply_planet_child_location_command, apply_planet_child_metadata,
+    child_location_role, evaluate_planet_child_locations, is_planet_child_location,
+    make_planet_child_location, planet_child_location_classification_label,
+    planet_child_location_error_kind_label, planet_child_locations, planet_display_name, planet_id,
+    planet_owner_ref, star_system_gridcells, validate_planet_child_locations,
+    PlanetChildLocationAdmissionClassification, PlanetChildLocationAdmissionError,
+    PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
+    PlanetChildLocationCommand, PlanetChildLocationDeferral, PlanetChildLocationEditError,
+    PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
+};
 pub use spec::property::PropertySpec;
 pub use spec::region_field::{
     ArenaPressureBindingSpec, CommitmentEffectLifecycleSpec, CommitmentEffectSpec,
@@ -422,13 +433,16 @@ pub use spec::scenario::{
     validate_stead_mapping_consistency, ScenarioEditError, ScenarioLinkError, ScenarioRootError,
     ScenarioRootValidationMode, ScenarioSerdeError, SimThingScenarioGrid, SimThingScenarioLink,
     SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, SteadMappingError, GALAXY_GRIDCELL_ROLE_INERT,
-    GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    SimThingStructuralGridPlacement, SteadMappingError, GALAXY_CHILD_LOCATION_ROLE_MOON,
+    GALAXY_CHILD_LOCATION_ROLE_PLANET, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID,
+    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID, GALAXY_MAP_ID_PROPERTY_ID, GALAXY_MAP_ROLE_CANONICAL,
     GALAXY_MAP_ROLE_PROPERTY_ID, OWNER_ARCHETYPE_PROPERTY_ID, OWNER_COLOR_INDEX_PROPERTY_ID,
     OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_FLOW_DEFICIT_PROPERTY_ID,
     OWNER_FLOW_OWNER_REF_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID,
     OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
+    PLANET_CLASS_PROPERTY_ID, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
+    PLANET_ORBIT_INDEX_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
     SCENARIO_GENERATOR_SHAPE_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
     SCENARIO_RENDER_WORLD_X_PROPERTY_ID, SCENARIO_RENDER_WORLD_Y_PROPERTY_ID,

@@ -57,9 +57,19 @@ pub const GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_3
 /// Gridcell role marker under GalaxyMap (`inert` / `star_system`).
 pub const GALAXY_GRIDCELL_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_403);
 
+/// Child Location role under star-system gridcells (`planet` / `moon`).
+pub const GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_500);
+pub const PLANET_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_501);
+pub const PLANET_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_502);
+pub const PLANET_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_503);
+pub const PLANET_OWNER_REF_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_504);
+pub const PLANET_ORBIT_INDEX_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_505);
+
 pub const GALAXY_MAP_ROLE_CANONICAL: &str = "galaxy_map";
 pub const GALAXY_GRIDCELL_ROLE_INERT: &str = "inert";
 pub const GALAXY_GRIDCELL_ROLE_STAR_SYSTEM: &str = "star_system";
+pub const GALAXY_CHILD_LOCATION_ROLE_PLANET: &str = "planet";
+pub const GALAXY_CHILD_LOCATION_ROLE_MOON: &str = "moon";
 
 pub const SCENARIO_SCHEMA_VERSION: u32 = 1;
 

@@ -1090,6 +1090,58 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
             "structural edit seam must not introduce {forbidden_engine}"
         );
     }
+
+    let planet_child_src = include_str!("../src/spec/planet_child_location.rs");
+    let studio_planet_src =
+        include_str!("../../simthing-mapeditor/src/studio_planet_child_location.rs");
+    assert!(
+        planet_child_src.contains("evaluate_planet_child_locations")
+            && planet_child_src.contains("apply_planet_child_location_command")
+            && planet_child_src.contains("GALAXY_CHILD_LOCATION_ROLE_PLANET"),
+        "planet child-location admission API must live in simthing-spec"
+    );
+    assert!(
+        planet_child_src.contains("GALAXY_GRIDCELL_ROLE_STAR_SYSTEM")
+            && planet_child_src.contains("PlanetUnderInertGridcell"),
+        "planets must be under star-system gridcells; inert gridcells cannot own planets"
+    );
+    assert!(
+        planet_child_src.contains("PlanetListedInStructuralGrid"),
+        "planets must not be structural_grid placements"
+    );
+    assert!(
+        studio_planet_src.contains("apply_planet_child_location_command")
+            && !studio_planet_src.contains("fn evaluate_planet_child_locations"),
+        "Studio planet wrapper must call spec API"
+    );
+    assert!(
+        !studio_planet_src.contains("SimGpuAccumulatorTickState")
+            && !studio_planet_src.contains("simthing_sim")
+            && !studio_planet_src.contains("execute_accumulator_plan_tick"),
+        "Studio planet display must not dispatch GPU or call sim tick"
+    );
+    assert!(
+        production_doc.contains("PLANET-CHILD-LOCATION-ADMISSION-0"),
+        "production synthesis must name PLANET-CHILD-LOCATION-ADMISSION-0"
+    );
+    for forbidden_engine in [
+        "PlanetEngine",
+        "OrbitEngine",
+        "LocationEngine",
+        "EconomyEngine",
+        "OwnerEngine",
+        "FactionEngine",
+        "ScenarioEngine",
+        "GPUDispatchEngine",
+    ] {
+        assert!(
+            !planet_child_src.contains(forbidden_engine)
+                && !studio_planet_src.contains(forbidden_engine)
+                && !scenario_src.contains(forbidden_engine)
+                && !mapeditor_lib.contains(forbidden_engine),
+            "planet child-location seam must not introduce {forbidden_engine}"
+        );
+    }
 }
 
 #[test]

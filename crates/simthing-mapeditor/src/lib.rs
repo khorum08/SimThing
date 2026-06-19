@@ -20,6 +20,7 @@ pub mod star_render;
 pub mod starburst;
 pub mod studio_admission_report;
 pub mod studio_config;
+pub mod studio_planet_child_location;
 pub mod studio_scenario_document;
 pub mod studio_scenario_load;
 pub mod studio_structural_edit;
@@ -86,12 +87,16 @@ pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
     STUDIO_CONFIG_SCHEMA_VERSION,
 };
+pub use studio_planet_child_location::{
+    studio_apply_planet_child_location_command, StudioPlanetChildLocationError,
+    StudioPlanetChildLocationOutcome,
+};
 pub use studio_scenario_document::{
     build_studio_scenario_document, build_studio_scenario_document_with_admission,
     load_canonical_studio_document_from_path, save_studio_scenario_with_document_roundtrip,
     studio_galaxy_map_gridcells_from_spec, StudioGalaxyMapView, StudioGameSessionView,
-    StudioGridcellRole, StudioGridcellView, StudioOwnerView, StudioScenarioAuthorityKind,
-    StudioScenarioDocument, StudioScenarioDocumentError,
+    StudioGridcellRole, StudioGridcellView, StudioOwnerView, StudioPlanetChildView,
+    StudioScenarioAuthorityKind, StudioScenarioDocument, StudioScenarioDocumentError,
 };
 pub use studio_structural_edit::{
     studio_apply_structural_placement_command, StudioStructuralEditError,

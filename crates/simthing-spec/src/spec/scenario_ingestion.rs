@@ -5,6 +5,10 @@
 
 use simthing_core::SimThingKind;
 
+use super::planet_child_location::{
+    evaluate_planet_child_locations, PlanetChildLocationAdmissionClassification,
+    PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
+};
 use super::scenario::{
     galaxy_map_id, game_session_child, game_session_galaxy_map, game_session_owners, gridcell_role,
     is_galaxy_map_entity, is_owner_entity_kind, owner_entity_id, owner_has_silo_metadata,
@@ -45,6 +49,9 @@ pub enum ScenarioDeferralKind {
     GpuResidentExecutionDeferred,
     UnsupportedGridcellRole,
     UnsupportedChildLocationDepth,
+    PlanetSimulationDeferred,
+    UnsupportedChildLocationRole,
+    PlanetOwnershipResolutionDeferred,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -138,6 +145,7 @@ pub struct ScenarioIngestionResult {
     pub structural_admission: StructuralAdmissionReport,
     pub compile_readiness: ScenarioCompileReadinessReport,
     pub owner_silo: Option<OwnerSiloAdmissionReport>,
+    pub planet_child_location: Option<PlanetChildLocationAdmissionReport>,
     pub deferrals: Vec<ScenarioDeferral>,
     pub errors: Vec<ScenarioIngestionError>,
 }
@@ -215,6 +223,7 @@ fn empty_result(source_name: &str) -> ScenarioIngestionResult {
             ..Default::default()
         },
         owner_silo: None,
+        planet_child_location: None,
         deferrals: Vec::new(),
         errors: Vec::new(),
     }
@@ -399,9 +408,10 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
         result.canonical_tree.gridcell_count = gridcells.len() as u32;
         for gridcell in gridcells {
             classify_gridcell_role(gridcell, result);
-            scan_gridcell_children(gridcell, result);
         }
     }
+
+    integrate_planet_child_locations(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -477,33 +487,58 @@ fn classify_gridcell_role(
     }
 }
 
-fn scan_gridcell_children(
-    gridcell: &simthing_core::SimThing,
+fn integrate_planet_child_locations(
+    spec: &SimThingScenarioSpec,
     result: &mut ScenarioIngestionResult,
 ) {
-    for child in &gridcell.children {
-        if child.kind == SimThingKind::Location {
-            push_deferral(
-                result,
-                ScenarioDeferralKind::PlanetsNotYetAdmitted,
-                Some("gridcell/child_location".into()),
-                Some(child.id.raw()),
-                "nested Location child under gridcell represents deferred planet/child-location depth",
-                true,
-                true,
-            );
-        } else if matches!(child.kind, SimThingKind::Custom(ref name) if name == "Planet") {
-            push_deferral(
-                result,
-                ScenarioDeferralKind::PlanetsNotYetAdmitted,
-                Some("gridcell/planet".into()),
-                Some(child.id.raw()),
-                "planet entities are valid schema but not yet admitted by current engine surfaces",
-                true,
-                true,
-            );
-        }
+    let planet_report = evaluate_planet_child_locations(spec);
+    for err in &planet_report.errors {
+        push_error(
+            result,
+            "planet_child_location",
+            format!(
+                "{}: {}",
+                planet_child_location_error_kind_label(err.kind),
+                err.message
+            ),
+        );
     }
+    for deferral in &planet_report.deferrals {
+        push_deferral(
+            result,
+            map_planet_deferral_kind(deferral.kind),
+            deferral.path.clone(),
+            deferral.simthing_id_raw,
+            &deferral.reason,
+            true,
+            true,
+        );
+    }
+    result.planet_child_location = Some(planet_report);
+}
+
+fn map_planet_deferral_kind(kind: PlanetChildLocationAdmissionErrorKind) -> ScenarioDeferralKind {
+    match kind {
+        PlanetChildLocationAdmissionErrorKind::PlanetSimulationDeferred => {
+            ScenarioDeferralKind::PlanetSimulationDeferred
+        }
+        PlanetChildLocationAdmissionErrorKind::UnsupportedChildLocationRole => {
+            ScenarioDeferralKind::UnsupportedChildLocationRole
+        }
+        PlanetChildLocationAdmissionErrorKind::DeepChildLocationDeferred => {
+            ScenarioDeferralKind::UnsupportedChildLocationDepth
+        }
+        PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred => {
+            ScenarioDeferralKind::PlanetOwnershipResolutionDeferred
+        }
+        _ => ScenarioDeferralKind::UnsupportedChildLocationRole,
+    }
+}
+
+fn planet_child_location_error_kind_label(
+    kind: PlanetChildLocationAdmissionErrorKind,
+) -> &'static str {
+    super::planet_child_location::planet_child_location_error_kind_label(kind)
 }
 
 fn scan_owner_subtrees(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
@@ -604,6 +639,9 @@ fn finalize_classification(result: &mut ScenarioIngestionResult) {
                     | ScenarioDeferralKind::OwnerResourceFlowNotYetExecuted
                     | ScenarioDeferralKind::UnsupportedGridcellRole
                     | ScenarioDeferralKind::UnsupportedChildLocationDepth
+                    | ScenarioDeferralKind::PlanetSimulationDeferred
+                    | ScenarioDeferralKind::UnsupportedChildLocationRole
+                    | ScenarioDeferralKind::PlanetOwnershipResolutionDeferred
             )
         })
         .collect();
@@ -613,14 +651,38 @@ fn finalize_classification(result: &mut ScenarioIngestionResult) {
         return;
     }
 
-    if !feature_deferrals.is_empty()
+    let admitted_planets = result
+        .planet_child_location
+        .as_ref()
+        .map(|r| r.planet_count > 0)
+        .unwrap_or(false);
+
+    if !admitted_planets
+        && !feature_deferrals.is_empty()
         && feature_deferrals.len() == result.deferrals.len()
-        && result
-            .deferrals
-            .iter()
-            .all(|d| matches!(d.kind, ScenarioDeferralKind::PlanetsNotYetAdmitted))
+        && result.deferrals.iter().all(|d| {
+            matches!(
+                d.kind,
+                ScenarioDeferralKind::PlanetsNotYetAdmitted
+                    | ScenarioDeferralKind::UnsupportedChildLocationRole
+            )
+        })
     {
         result.classification = ScenarioIngestionClassification::Unsupported;
+        return;
+    }
+
+    if admitted_planets
+        && feature_deferrals.iter().all(|d| {
+            matches!(
+                d.kind,
+                ScenarioDeferralKind::PlanetSimulationDeferred
+                    | ScenarioDeferralKind::PlanetOwnershipResolutionDeferred
+                    | ScenarioDeferralKind::UnsupportedChildLocationDepth
+            )
+        })
+    {
+        result.classification = ScenarioIngestionClassification::PartiallyAdmitted;
         return;
     }
 
@@ -684,5 +746,10 @@ pub fn scenario_deferral_kind_label(kind: ScenarioDeferralKind) -> &'static str 
         ScenarioDeferralKind::GpuResidentExecutionDeferred => "GpuResidentExecutionDeferred",
         ScenarioDeferralKind::UnsupportedGridcellRole => "UnsupportedGridcellRole",
         ScenarioDeferralKind::UnsupportedChildLocationDepth => "UnsupportedChildLocationDepth",
+        ScenarioDeferralKind::PlanetSimulationDeferred => "PlanetSimulationDeferred",
+        ScenarioDeferralKind::UnsupportedChildLocationRole => "UnsupportedChildLocationRole",
+        ScenarioDeferralKind::PlanetOwnershipResolutionDeferred => {
+            "PlanetOwnershipResolutionDeferred"
+        }
     }
 }
