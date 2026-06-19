@@ -71,6 +71,7 @@ pub mod runtime_0080_rr_2;
 pub mod runtime_0080_rr_3;
 pub mod runtime_0080_rr_4;
 pub mod scenario;
+pub mod scenario_ingestion_compile;
 pub mod session;
 pub mod spec_replay;
 pub mod spec_session;
@@ -604,6 +605,7 @@ pub use runtime_0080_rr_4::{
     RUNTIME_0080_RR_4_STATUS_PASS, RUNTIME_RR_4_EXPECTED_REPORT_CHECKSUM,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
+pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
 pub use session::{RunSummary, SessionError, SimSession};
 pub use simthing_gpu::SlotAllocError;
 pub use spec_replay::{
