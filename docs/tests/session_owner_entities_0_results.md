@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — Owner child validation, property model, fixture update, and tests landed. GalaxyMap and resource-flow silos deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** SESSION-OWNER-ENTITIES-0  
+**PR:** #780 — SESSION-OWNER-ENTITIES-0  
+**Merge SHA:** `cbe5e87d`  
 **Base:** `master` after PR #779 / SCENARIO-GAMESESSION-CHILD-0
 
 ## Current defect summary
@@ -114,6 +115,7 @@ Terran Pirate / World-root fixtures load via `validate_legacy_world_root_compati
 | `cargo test -p simthing-spec --test e10_resource_flow_admission` | PASS |
 | `cargo test -p simthing-mapeditor --test terran_pirate_skeleton` | PASS |
 | `git diff --check` | PASS |
+| `git diff --name-only master...HEAD` | PASS (11 files) |
 
 ## Files changed
 
