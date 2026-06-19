@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — Studio admission report presentation over spec-owned ingestion authority landed. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0  
+**PR:** #787 — STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0
+**Merge:** `5f738f05`
 **Base:** `master` after PR #786 / SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0 (`3ef8fd03`)
 
 ## Current defect / UI visibility summary

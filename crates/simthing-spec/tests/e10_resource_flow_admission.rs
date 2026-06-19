@@ -1043,6 +1043,53 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
             "core/spec/driver/sim must not introduce {forbidden_engine}"
         );
     }
+
+    let structural_edit_src = include_str!("../src/spec/structural_edit.rs");
+    let studio_structural_edit_src =
+        include_str!("../../simthing-mapeditor/src/studio_structural_edit.rs");
+    assert!(
+        structural_edit_src.contains("apply_structural_placement_command")
+            && structural_edit_src.contains("StructuralPlacementCommand")
+            && structural_edit_src.contains("validate_stead_mapping_consistency"),
+        "structural placement edit command API must live in simthing-spec"
+    );
+    assert!(
+        studio_structural_edit_src.contains("apply_structural_placement_command")
+            && !studio_structural_edit_src.contains("fn apply_structural_placement_command"),
+        "Studio structural edit wrapper must call spec API, not duplicate authority logic"
+    );
+    assert!(
+        !studio_structural_edit_src.contains("SimGpuAccumulatorTickState")
+            && !studio_structural_edit_src.contains("compile_owner_silo_gpu_tick_plan")
+            && !studio_structural_edit_src.contains("simthing_sim")
+            && !studio_structural_edit_src.contains("execute_accumulator_plan_tick"),
+        "Studio structural edit must not dispatch GPU or call sim tick"
+    );
+    assert!(
+        structural_edit_src.contains("map_container_id"),
+        "structural edits must preserve structural_grid.map_container_id binding"
+    );
+    assert!(
+        production_doc.contains("STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0"),
+        "production synthesis must name STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0"
+    );
+    for forbidden_engine in [
+        "StructuralEditEngine",
+        "PlacementEngine",
+        "GalaxyMapEngine",
+        "WorldEngine",
+        "ScenarioEngine",
+        "StudioEngine",
+        "GPUDispatchEngine",
+    ] {
+        assert!(
+            !structural_edit_src.contains(forbidden_engine)
+                && !studio_structural_edit_src.contains(forbidden_engine)
+                && !scenario_src.contains(forbidden_engine)
+                && !mapeditor_lib.contains(forbidden_engine),
+            "structural edit seam must not introduce {forbidden_engine}"
+        );
+    }
 }
 
 #[test]

@@ -971,7 +971,7 @@ pub fn game_session_child(spec: &SimThingScenarioSpec) -> Result<&SimThing, Scen
     Ok(gamesessions[0])
 }
 
-fn game_session_child_mut<'a>(
+pub(crate) fn game_session_child_mut<'a>(
     spec: &'a mut SimThingScenarioSpec,
 ) -> Result<&'a mut SimThing, ScenarioRootError> {
     if spec.root.kind != SimThingKind::Scenario {
