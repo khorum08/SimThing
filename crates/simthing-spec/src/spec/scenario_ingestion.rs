@@ -112,6 +112,10 @@ pub struct ScenarioCompileReadinessReport {
     pub structural_n4_deferred: bool,
     pub mapping_plan_ready: bool,
     pub mapping_plan_deferred: bool,
+    /// Admitted owner-silo participants can lower to existing AccumulatorOp/GPU surfaces.
+    pub owner_silo_gpu_participant_accumulation_ready: bool,
+    /// Full owner-silo state mutation (reduce-up/disburse-down writes) remains deferred.
+    pub owner_silo_full_state_mutation_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -542,7 +546,13 @@ fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioI
         return;
     }
 
+    result
+        .compile_readiness
+        .owner_silo_full_state_mutation_deferred = true;
     if suppress {
+        result
+            .compile_readiness
+            .owner_silo_gpu_participant_accumulation_ready = true;
         return;
     }
 

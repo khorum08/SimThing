@@ -17,8 +17,10 @@ use crate::resource_flow_compile::{
 pub struct OwnerSiloFlowMaterializationReport {
     pub silo_admission: OwnerSiloAdmissionReport,
     pub explicit_participant_count: u32,
-    /// GPU-resident tick execution over owner-silo semantics remains deferred in first slice.
-    pub gpu_execution_deferred: bool,
+    /// Admitted participants can lower to existing AccumulatorOp/GPU surfaces.
+    pub gpu_participant_accumulation_ready: bool,
+    /// Full owner-silo state mutation (reduce-up/disburse-down writes) remains deferred.
+    pub gpu_full_state_mutation_deferred: bool,
     pub gpu_execution_note: &'static str,
 }
 
@@ -83,14 +85,26 @@ pub fn compile_owner_silo_flow_admission(
     let admission = compile_resource_flow_admission(&flow_spec, registry)?;
     Ok((
         admission,
-        OwnerSiloFlowMaterializationReport {
-            explicit_participant_count: silo_admission.participant_count,
-            silo_admission,
-            gpu_execution_deferred: true,
-            gpu_execution_note:
-                "owner-silo reduce-up/disburse-down oracle is CPU-only; GPU tick execution deferred",
-        },
+        owner_silo_materialization_report(&silo_admission),
     ))
+}
+
+fn owner_silo_materialization_report(
+    silo_admission: &OwnerSiloAdmissionReport,
+) -> OwnerSiloFlowMaterializationReport {
+    let gpu_participant_accumulation_ready = silo_admission.participant_count > 0
+        && silo_admission.classification != OwnerSiloAdmissionClassification::Rejected;
+    OwnerSiloFlowMaterializationReport {
+        explicit_participant_count: silo_admission.participant_count,
+        silo_admission: silo_admission.clone(),
+        gpu_participant_accumulation_ready,
+        gpu_full_state_mutation_deferred: true,
+        gpu_execution_note: if gpu_participant_accumulation_ready {
+            "GPU participant accumulation via existing AccumulatorOp; full owner-silo state mutation deferred"
+        } else {
+            "owner-silo flow not admitted for GPU participant accumulation"
+        },
+    }
 }
 
 /// Compile and materialize owner-silo flow through existing arena registry surfaces.
@@ -112,16 +126,7 @@ pub fn compile_and_materialize_owner_silo_flow_via_resource_flow(
     let flow_spec =
         build_owner_silo_resource_flow_spec(scenario).ok_or(SpecError::ValidationFailed)?;
     let (registry, _) = compile_and_materialize_resource_flow(&flow_spec, registry)?;
-    Ok((
-        registry,
-        OwnerSiloFlowMaterializationReport {
-            explicit_participant_count: silo_admission.participant_count,
-            silo_admission,
-            gpu_execution_deferred: true,
-            gpu_execution_note:
-                "owner-silo reduce-up/disburse-down oracle is CPU-only; GPU tick execution deferred",
-        },
-    ))
+    Ok((registry, owner_silo_materialization_report(&silo_admission)))
 }
 
 fn map_registry_error(err: crate::arena_registry::ArenaRegistryError) -> SpecError {

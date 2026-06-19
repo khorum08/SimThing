@@ -449,10 +449,11 @@ pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
 pub use spec::session_resource_flow::{
-    evaluate_owner_silo_flow, owner_silo_flow_participant_roots,
-    owner_silo_flow_suppresses_ingestion_deferral, OwnerSiloAdmissionClassification,
-    OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind, OwnerSiloAdmissionReport,
-    OwnerSiloDeferral, OwnerSiloDeferralKind,
+    evaluate_owner_silo_flow, owner_silo_flow_participant_inputs,
+    owner_silo_flow_participant_roots, owner_silo_flow_suppresses_ingestion_deferral,
+    OwnerSiloAdmissionClassification, OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind,
+    OwnerSiloAdmissionReport, OwnerSiloDeferral, OwnerSiloDeferralKind,
+    OwnerSiloFlowParticipantInput,
 };
 pub use spec::stress_compose::{
     StressComposeProfileSpec, StressComposeSpec, StressOperatorSpec,

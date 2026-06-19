@@ -951,6 +951,58 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         production_doc.contains("SESSION-RESOURCE-FLOW-SILOS-HARDEN-0"),
         "production synthesis must name SESSION-RESOURCE-FLOW-SILOS-HARDEN-0"
     );
+    let driver_owner_silo_gpu_src =
+        include_str!("../../simthing-driver/src/owner_silo_accumulator_compile.rs");
+    assert!(
+        driver_owner_silo_gpu_src.contains("compile_owner_silo_gpu_tick_plan")
+            && driver_owner_silo_gpu_src.contains("CompiledAccumulatorOpPlan")
+            && driver_owner_silo_gpu_src.contains("evaluate_owner_silo_flow"),
+        "owner-silo GPU proof must lower through existing AccumulatorOp surfaces"
+    );
+    assert!(
+        session_flow_src.contains("owner_silo_flow_participant_inputs"),
+        "spec must export explicit participant inputs for driver lowering"
+    );
+    assert!(
+        production_doc.contains("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0"),
+        "production synthesis must name SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0"
+    );
+    let sim_cargo = include_str!("../../simthing-sim/Cargo.toml");
+    assert!(
+        !sim_cargo.contains("simthing-spec")
+            && !sim_cargo.contains("simthing-driver")
+            && !sim_cargo.contains("simthing-mapeditor"),
+        "simthing-sim must not acquire upward dev-dependencies"
+    );
+    assert!(
+        !mapeditor_lib.contains("compile_owner_silo_gpu_tick_plan")
+            && !mapeditor_lib.contains("SimGpuAccumulatorTickState"),
+        "Studio/mapeditor must not call owner-silo GPU tick"
+    );
+    let wgsl_dir =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/simthing-gpu/shaders");
+    if wgsl_dir.exists() {
+        let mut owner_silo_wgsl = false;
+        for entry in std::fs::read_dir(&wgsl_dir).expect("read shaders") {
+            let path = entry.expect("dir entry").path();
+            if path.extension().and_then(|e| e.to_str()) == Some("wgsl") {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                if name.contains("owner_silo") || name.contains("owner-silo") {
+                    owner_silo_wgsl = true;
+                }
+            }
+        }
+        assert!(
+            !owner_silo_wgsl,
+            "owner-silo flow must not add new WGSL shader files"
+        );
+    }
+    let sim_accumulator_tick_src = include_str!("../../simthing-sim/src/accumulator_plan_tick.rs");
+    assert!(
+        sim_accumulator_tick_src.contains("SimGpuReadbackPolicy::None")
+            && sim_accumulator_tick_src.contains("SimGpuReadbackPolicy::ProofReadback"),
+        "proof readback must remain scoped via explicit readback policy"
+    );
     for forbidden_engine in [
         "OwnerEngine",
         "FactionEngine",
@@ -961,6 +1013,7 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         assert!(
             !sim_src.contains(forbidden_engine)
                 && !driver_silo_src.contains(forbidden_engine)
+                && !driver_owner_silo_gpu_src.contains(forbidden_engine)
                 && !session_flow_src.contains(forbidden_engine),
             "core/spec/driver/sim must not introduce {forbidden_engine}"
         );
