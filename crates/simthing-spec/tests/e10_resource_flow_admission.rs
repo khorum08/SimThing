@@ -777,6 +777,41 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         production_doc.contains("lower-layer golden fixture"),
         "production synthesis must classify Terran Pirate as lower-layer golden fixture"
     );
+    assert!(
+        scenario_src.contains("validate_session_owner_entities"),
+        "scenario.rs must expose Owner entity validation"
+    );
+    assert!(
+        production_doc.contains("-> Owner(s)")
+            || (production_doc.contains("GameSession") && production_doc.contains("Owner(s)")),
+        "production synthesis current authority must be Scenario -> GameSession -> Owner"
+    );
+    assert!(
+        !authority_section
+            .to_ascii_lowercase()
+            .contains("owners are overlays"),
+        "active doctrine must not say Owners are overlays"
+    );
+    assert!(
+        !authority_section
+            .to_ascii_lowercase()
+            .contains("owners are spatial parents")
+            && !authority_section
+                .to_ascii_lowercase()
+                .contains("owners as spatial parents"),
+        "active authority summary must not present Owners as spatial parents"
+    );
+    for forbidden_engine in ["OwnerEngine", "FactionEngine"] {
+        assert!(
+            !simthing_src.contains(forbidden_engine) && !scenario_src.contains(forbidden_engine),
+            "core/spec must not introduce {forbidden_engine}"
+        );
+    }
+    let sim_src = include_str!("../../simthing-sim/src/lib.rs");
+    assert!(
+        !sim_src.contains("OwnerEngine") && !sim_src.contains("FactionEngine"),
+        "simthing-sim must not introduce OwnerEngine/FactionEngine"
+    );
 }
 
 #[test]
