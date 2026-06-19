@@ -129,7 +129,7 @@ fn ordered_n4_edge(
     }
 }
 
-fn derive_n4_edges(
+pub(crate) fn derive_n4_edges(
     occupied: &[StructuralGridCoordinate],
 ) -> Vec<(StructuralGridCoordinate, StructuralGridCoordinate)> {
     let mut edges = Vec::new();
@@ -145,7 +145,7 @@ fn derive_n4_edges(
     edges
 }
 
-fn build_theater_geometry(
+pub(crate) fn build_theater_geometry(
     scenario: &SimThingScenarioSpec,
     profile: MappingExecutionProfile,
 ) -> Result<CompiledStructuralN4Theater, StructuralTheaterCompileError> {

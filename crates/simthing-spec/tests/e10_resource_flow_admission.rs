@@ -512,6 +512,28 @@ fn e10_does_not_import_arena_registry_into_simthing_sim() {
         "mapping proof readback must be explicit"
     );
 
+    let atlas_partition_src =
+        include_str!("../../simthing-driver/src/structural_n4_atlas_partition.rs");
+    for token in [
+        "simthing_sim",
+        "SimGpuMappingAtlasScheduler",
+        "SimGpuMappingTickState",
+        "StructuredFieldStencilOp",
+        "simthing_mapeditor",
+        "pathfinding",
+        "predecessor",
+        "came_from",
+        "route_object",
+        "border_service",
+        "frontline_service",
+        "cpu_planner",
+    ] {
+        assert!(
+            !atlas_partition_src.contains(token),
+            "structural_n4_atlas_partition must not reference `{token}`"
+        );
+    }
+
     let atlas_scheduler_src = include_str!("../../simthing-sim/src/mapping_atlas_scheduler.rs");
     for token in [
         "simthing_driver",
