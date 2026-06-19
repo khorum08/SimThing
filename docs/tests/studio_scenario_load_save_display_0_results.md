@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — Studio document/view model, canonical fixture load/save/display, safe metadata roundtrip, and Terran Pirate legacy routing landed. No runtime tick ownership, no GPU dispatch. Pending owner DA approval.
 
 **Date:** 2026-06-19  
-**PR:** STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0  
+**PR:** #782 — STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0  
+**Merge SHA:** `b4037fc9`  
 **Base:** `master` after PR #781 / SESSION-GALAXYMAP-WORLDSTATE-0 (`c7ce8f55`)
 
 ## Current defect summary
@@ -101,23 +102,23 @@ Added § STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0 to `docs/0.8.3 Simthing Studio Prod
 
 | Command | Status |
 |---|---|
-| `cargo fmt --all -- --check` | (recorded at commit) |
-| `cargo check -p simthing-core` | (recorded at commit) |
-| `cargo test -p simthing-core` | (recorded at commit) |
-| `cargo check -p simthing-spec` | (recorded at commit) |
-| `cargo test -p simthing-spec` | (recorded at commit) |
-| `cargo test -p simthing-spec --test scenario_serializable_simthing_root` | (recorded at commit) |
-| `cargo test -p simthing-spec --test scenario_gamesession_child` | (recorded at commit) |
-| `cargo test -p simthing-spec --test scenario_owner_entities` | (recorded at commit) |
-| `cargo test -p simthing-spec --test scenario_galaxymap_worldstate` | (recorded at commit) |
-| `cargo test -p simthing-spec --test e10_resource_flow_admission` | (recorded at commit) |
-| `cargo check -p simthing-mapeditor` | (recorded at commit) |
+| `cargo fmt --all -- --check` | PASS |
+| `cargo check -p simthing-core` | PASS |
+| `cargo test -p simthing-core` | PASS |
+| `cargo check -p simthing-spec` | PASS |
+| `cargo test -p simthing-spec` | PASS |
+| `cargo test -p simthing-spec --test scenario_serializable_simthing_root` | PASS |
+| `cargo test -p simthing-spec --test scenario_gamesession_child` | PASS |
+| `cargo test -p simthing-spec --test scenario_owner_entities` | PASS |
+| `cargo test -p simthing-spec --test scenario_galaxymap_worldstate` | PASS |
+| `cargo test -p simthing-spec --test e10_resource_flow_admission` | PASS |
+| `cargo check -p simthing-mapeditor` | PASS |
 | `cargo test -p simthing-mapeditor --test canonical_scenario_load_save_display` | PASS (10/10) |
-| `cargo test -p simthing-mapeditor --test terran_pirate_skeleton` | (recorded at commit) |
-| `cargo check -p simthing-driver` | (recorded at commit) |
-| `cargo test -p simthing-driver --test canonical_galaxymap_mapping_compile` | (recorded at commit) |
-| `git diff --check` | (recorded at commit) |
-| `git diff --name-only master...HEAD` | (recorded at commit) |
+| `cargo test -p simthing-mapeditor --test terran_pirate_skeleton` | PASS (10/10, 1 ignored) |
+| `cargo check -p simthing-driver` | PASS |
+| `cargo test -p simthing-driver --test canonical_galaxymap_mapping_compile` | PASS (2/2) |
+| `git diff --check` | PASS |
+| `git diff --name-only master...HEAD` | PASS (11 files) |
 
 ## Files changed
 
