@@ -644,6 +644,7 @@ fn remove_child_from_tree(node: &mut SimThing, child_id: SimThingId) -> bool {
 fn kind_tag_to_kind(tag: &SimThingKindTag) -> SimThingKind {
     match tag {
         SimThingKindTag::Scenario => SimThingKind::Scenario,
+        SimThingKindTag::GameSession => SimThingKind::GameSession,
         SimThingKindTag::World => SimThingKind::World,
         SimThingKindTag::Owner => SimThingKind::Owner,
         SimThingKindTag::Faction => SimThingKind::Faction,

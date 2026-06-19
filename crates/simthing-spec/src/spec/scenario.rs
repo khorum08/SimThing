@@ -82,6 +82,14 @@ pub enum ScenarioRootError {
         root: String,
         sidecar: String,
     },
+    #[error("canonical Scenario root is missing required GameSession child")]
+    MissingGameSessionChild,
+    #[error("canonical Scenario root has {count} GameSession children; exactly one required")]
+    MultipleGameSessionChildren { count: usize },
+    #[error("canonical Scenario root child is not GameSession (found {found})")]
+    GameSessionChildWrongKind { found: String },
+    #[error("legacy World-root scenario has no GameSession child requirement")]
+    LegacyWorldRootHasNoGameSessionRequirement,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -486,8 +494,72 @@ pub fn validate_scenario_root_authority(
                 sidecar: SCENARIO_SCHEMA_VERSION.to_string(),
             });
         }
+        validate_scenario_game_session_child(spec)?;
     }
     Ok(())
+}
+
+/// Returns the sole direct [`SimThingKind::GameSession`] child of a canonical Scenario root.
+pub fn game_session_child(spec: &SimThingScenarioSpec) -> Result<&SimThing, ScenarioRootError> {
+    if spec.root.kind != SimThingKind::Scenario {
+        if spec.root.kind == SimThingKind::World {
+            return Err(ScenarioRootError::LegacyWorldRootHasNoGameSessionRequirement);
+        }
+        return Err(ScenarioRootError::RootIsNotScenario);
+    }
+    let gamesessions: Vec<_> = spec
+        .root
+        .children
+        .iter()
+        .filter(|child| child.kind == SimThingKind::GameSession)
+        .collect();
+    if gamesessions.is_empty() {
+        if spec.root.children.len() == 1 {
+            let child = &spec.root.children[0];
+            let found = match &child.kind {
+                SimThingKind::Custom(name) => name.clone(),
+                other => format!("{other:?}"),
+            };
+            return Err(ScenarioRootError::GameSessionChildWrongKind { found });
+        }
+        return Err(ScenarioRootError::MissingGameSessionChild);
+    }
+    if gamesessions.len() > 1 || spec.root.children.len() > 1 {
+        return Err(ScenarioRootError::MultipleGameSessionChildren {
+            count: gamesessions.len(),
+        });
+    }
+    Ok(gamesessions[0])
+}
+
+/// Canonical Scenario roots require exactly one direct [`SimThingKind::GameSession`] child.
+pub fn validate_scenario_game_session_child(
+    spec: &SimThingScenarioSpec,
+) -> Result<(), ScenarioRootError> {
+    game_session_child(spec).map(|_| ())
+}
+
+fn scenario_spatial_world_child<'a>(scenario_root: &'a SimThing) -> Option<&'a SimThing> {
+    if scenario_root.kind != SimThingKind::Scenario {
+        return None;
+    }
+    if let Some(game_session) = scenario_root
+        .children
+        .iter()
+        .find(|child| child.kind == SimThingKind::GameSession)
+    {
+        if let Some(world) = game_session
+            .children
+            .iter()
+            .find(|child| child.kind == SimThingKind::World)
+        {
+            return Some(world);
+        }
+    }
+    scenario_root
+        .children
+        .iter()
+        .find(|child| child.kind == SimThingKind::World)
 }
 
 pub fn validate_legacy_world_root_compatibility(
@@ -509,11 +581,7 @@ pub fn spatial_authority_root<'a>(
 ) -> Result<&'a SimThing, SteadMappingError> {
     match spec.root.kind {
         SimThingKind::World => Ok(&spec.root),
-        SimThingKind::Scenario => spec
-            .root
-            .children
-            .iter()
-            .find(|child| child.kind == SimThingKind::World)
+        SimThingKind::Scenario => scenario_spatial_world_child(&spec.root)
             .ok_or(SteadMappingError::MissingSpatialAuthority),
         _ => Err(SteadMappingError::RootIsNotWorld),
     }
@@ -580,12 +648,30 @@ fn spatial_authority_root_mut<'a>(
 ) -> Result<&'a mut SimThing, SteadMappingError> {
     match spec.root.kind {
         SimThingKind::World => Ok(&mut spec.root),
-        SimThingKind::Scenario => spec
-            .root
-            .children
-            .iter_mut()
-            .find(|child| child.kind == SimThingKind::World)
-            .ok_or(SteadMappingError::MissingSpatialAuthority),
+        SimThingKind::Scenario => {
+            let game_session_idx = spec
+                .root
+                .children
+                .iter()
+                .position(|child| child.kind == SimThingKind::GameSession);
+            if let Some(gs_idx) = game_session_idx {
+                let world_idx = spec.root.children[gs_idx]
+                    .children
+                    .iter()
+                    .position(|child| child.kind == SimThingKind::World);
+                if let Some(w_idx) = world_idx {
+                    return Ok(&mut spec.root.children[gs_idx].children[w_idx]);
+                }
+            }
+            let world_idx = spec
+                .root
+                .children
+                .iter()
+                .position(|child| child.kind == SimThingKind::World);
+            world_idx
+                .map(|idx| &mut spec.root.children[idx])
+                .ok_or(SteadMappingError::MissingSpatialAuthority)
+        }
         _ => Err(SteadMappingError::RootIsNotWorld),
     }
 }
@@ -1040,7 +1126,9 @@ mod tests {
             &provenance,
             SCENARIO_SCHEMA_VERSION,
         );
-        scenario_root.add_child(world);
+        let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
+        game_session.add_child(world);
+        scenario_root.add_child(game_session);
         let mut spec = SimThingScenarioSpec {
             scenario_id: scenario_id.to_string(),
             root: scenario_root,
@@ -1130,12 +1218,7 @@ mod tests {
     }
 
     fn spatial_world_mut(scenario: &mut SimThingScenarioSpec) -> &mut SimThing {
-        scenario
-            .root
-            .children
-            .iter_mut()
-            .find(|child| child.kind == SimThingKind::World)
-            .expect("spatial world child")
+        spatial_authority_root_mut(scenario).expect("spatial world child")
     }
 
     fn legacy_world_scenario() -> SimThingScenarioSpec {
