@@ -13,9 +13,10 @@ use simthing_driver::{
 };
 use simthing_spec::{
     compile_property, compile_resource_flow_admission, deserialize_scenario_authority,
-    ingest_scenario_from_str, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, PropertyKey,
+    evaluate_owner_silo_flow, ingest_scenario_from_str, ArenaSpec, ExplicitParticipantSpec,
+    FissionPolicySpec, OwnerSiloAdmissionClassification, OwnerSiloAdmissionErrorKind, PropertyKey,
     PropertySpec, ResourceFlowSpec, ScenarioIngestionClassification, ScenarioIngestionProfile,
-    SpecError,
+    SimThingScenarioSpec, SpecError,
 };
 
 fn corpus_path(name: &str) -> PathBuf {
@@ -158,4 +159,43 @@ fn owner_silo_flow_gpu_execution_deferred_without_new_primitive() {
             ..
         }
     ));
+}
+
+fn invalid_silo_amount_spec() -> SimThingScenarioSpec {
+    let json = fs::read_to_string(corpus_path(
+        "owner_silo_invalid_silo_amount.simthing-scenario.json",
+    ))
+    .expect("corpus");
+    deserialize_scenario_authority(&json).expect("parse")
+}
+
+#[test]
+fn owner_silo_driver_rejects_invalid_silo_amount() {
+    let scenario = invalid_silo_amount_spec();
+    let report = evaluate_owner_silo_flow(&scenario);
+    assert_eq!(
+        report.classification,
+        OwnerSiloAdmissionClassification::Rejected
+    );
+    assert!(report
+        .errors
+        .iter()
+        .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount }));
+
+    let reg = setup_owner_silo_registry();
+    let err = compile_owner_silo_flow_admission(&scenario, &reg).unwrap_err();
+    assert!(matches!(err, SpecError::ValidationFailed));
+}
+
+#[test]
+fn owner_silo_driver_does_not_materialize_rejected_silo_flow() {
+    let scenario = invalid_silo_amount_spec();
+    assert!(build_owner_silo_resource_flow_spec(&scenario).is_none());
+
+    let reg = setup_owner_silo_registry();
+    let err = compile_and_materialize_owner_silo_flow(&scenario, &reg).unwrap_err();
+    assert!(matches!(err, SpecError::ValidationFailed));
+    let err =
+        compile_and_materialize_owner_silo_flow_via_resource_flow(&scenario, &reg).unwrap_err();
+    assert!(matches!(err, SpecError::ValidationFailed));
 }
