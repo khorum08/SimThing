@@ -3,10 +3,11 @@
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_scenario_metadata_to_root, deserialize_scenario_authority, game_session_child,
-    scenario_metadata_seed, serialize_scenario_authority, validate_legacy_world_root_compatibility,
-    validate_scenario_game_session_child, validate_scenario_root_authority, ScenarioRootError,
-    ScenarioRootValidationMode, SimThingScenarioGrid, SimThingScenarioProvenance,
-    SimThingScenarioSpec, SimThingStructuralGridFrame, SCENARIO_SCHEMA_VERSION,
+    make_owner_entity, scenario_metadata_seed, serialize_scenario_authority,
+    validate_legacy_world_root_compatibility, validate_scenario_game_session_child,
+    validate_scenario_root_authority, ScenarioRootError, ScenarioRootValidationMode,
+    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SCENARIO_SCHEMA_VERSION,
 };
 
 const MINIMAL_SCENARIO_ID: &str = "minimal_scenario_root";
@@ -31,7 +32,13 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         &provenance,
         SCENARIO_SCHEMA_VERSION,
     );
-    root.add_child(SimThing::new(SimThingKind::GameSession, 0));
+    let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
+    game_session.add_child(make_owner_entity(
+        "minimal_owner",
+        "Minimal Owner",
+        "player",
+    ));
+    root.add_child(game_session);
     let mut spec = SimThingScenarioSpec {
         scenario_id: MINIMAL_SCENARIO_ID.to_string(),
         root,

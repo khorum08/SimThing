@@ -32,6 +32,14 @@ pub const SCENARIO_SOURCE_LABEL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300
 pub const SCENARIO_GENERATOR_SHAPE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_203);
 pub const SCENARIO_GENERATOR_SEED_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_204);
 
+/// Canonical Owner entity metadata on direct GameSession children (string: length + UTF-8 bytes as f32).
+pub const OWNER_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_300);
+pub const OWNER_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_301);
+pub const OWNER_ARCHETYPE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_302);
+pub const OWNER_COLOR_INDEX_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_303);
+/// Inert stockpile/silo placeholder — no resource-flow execution in SESSION-OWNER-ENTITIES-0.
+pub const OWNER_SILO_MARKER_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_304);
+
 pub const SCENARIO_SCHEMA_VERSION: u32 = 1;
 
 /// Maximum structural integer that can be mirrored exactly in an f32 property.
@@ -90,6 +98,16 @@ pub enum ScenarioRootError {
     GameSessionChildWrongKind { found: String },
     #[error("legacy World-root scenario has no GameSession child requirement")]
     LegacyWorldRootHasNoGameSessionRequirement,
+    #[error("canonical GameSession has no Owner child entities")]
+    MissingOwnerEntities,
+    #[error("Owner SimThing is missing non-empty owner_id metadata")]
+    OwnerMissingId,
+    #[error("duplicate owner_id `{owner_id}` among GameSession Owner children")]
+    DuplicateOwnerId { owner_id: String },
+    #[error("Owner SimThing is not a direct GameSession child")]
+    OwnerNotDirectGameSessionChild,
+    #[error("legacy World-root scenario has no Owner child requirement")]
+    LegacyWorldRootHasNoOwnerRequirement,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -495,8 +513,111 @@ pub fn validate_scenario_root_authority(
             });
         }
         validate_scenario_game_session_child(spec)?;
+        validate_session_owner_entities(spec)?;
     }
     Ok(())
+}
+
+pub fn is_owner_entity_kind(kind: &SimThingKind) -> bool {
+    matches!(kind, SimThingKind::Owner | SimThingKind::Faction)
+}
+
+pub fn owner_entity_id(thing: &SimThing) -> Option<String> {
+    let id = scenario_metadata_string(thing, OWNER_ID_PROPERTY_ID)?;
+    if id.trim().is_empty() {
+        None
+    } else {
+        Some(id)
+    }
+}
+
+pub fn apply_owner_entity_metadata(
+    owner: &mut SimThing,
+    owner_id: &str,
+    display_name: &str,
+    archetype: &str,
+) {
+    debug_assert!(is_owner_entity_kind(&owner.kind));
+    owner.add_property(
+        OWNER_ID_PROPERTY_ID,
+        scenario_metadata_string_value(owner_id),
+    );
+    owner.add_property(
+        OWNER_DISPLAY_NAME_PROPERTY_ID,
+        scenario_metadata_string_value(display_name),
+    );
+    owner.add_property(
+        OWNER_ARCHETYPE_PROPERTY_ID,
+        scenario_metadata_string_value(archetype),
+    );
+    owner.add_property(
+        OWNER_SILO_MARKER_PROPERTY_ID,
+        scenario_metadata_u32_value(0),
+    );
+}
+
+pub fn make_owner_entity(owner_id: &str, display_name: &str, archetype: &str) -> SimThing {
+    let mut owner = SimThing::new(SimThingKind::Owner, 0);
+    apply_owner_entity_metadata(&mut owner, owner_id, display_name, archetype);
+    owner
+}
+
+/// Direct [`SimThingKind::Owner`] (or legacy [`SimThingKind::Faction`]) children of the GameSession.
+pub fn game_session_owners(
+    spec: &SimThingScenarioSpec,
+) -> Result<Vec<&SimThing>, ScenarioRootError> {
+    let game_session = game_session_child(spec)?;
+    Ok(game_session
+        .children
+        .iter()
+        .filter(|child| is_owner_entity_kind(&child.kind))
+        .collect())
+}
+
+/// Canonical GameSession must have at least one direct Owner child with unique non-empty owner ids.
+pub fn validate_session_owner_entities(
+    spec: &SimThingScenarioSpec,
+) -> Result<(), ScenarioRootError> {
+    if spec.root.kind == SimThingKind::World {
+        return Err(ScenarioRootError::LegacyWorldRootHasNoOwnerRequirement);
+    }
+    let game_session = game_session_child(spec)?;
+    if let Some(owner) = find_nested_owner_not_under_game_session(&spec.root, game_session) {
+        let _ = owner;
+        return Err(ScenarioRootError::OwnerNotDirectGameSessionChild);
+    }
+    let owners = game_session_owners(spec)?;
+    if owners.is_empty() {
+        return Err(ScenarioRootError::MissingOwnerEntities);
+    }
+    let mut seen = BTreeSet::new();
+    for owner in owners {
+        let Some(owner_id) = owner_entity_id(owner) else {
+            return Err(ScenarioRootError::OwnerMissingId);
+        };
+        if !seen.insert(owner_id.clone()) {
+            return Err(ScenarioRootError::DuplicateOwnerId { owner_id });
+        }
+    }
+    Ok(())
+}
+
+fn find_nested_owner_not_under_game_session<'a>(
+    scenario_root: &'a SimThing,
+    game_session: &'a SimThing,
+) -> Option<&'a SimThing> {
+    if scenario_root.kind != SimThingKind::Scenario {
+        return None;
+    }
+    for child in &scenario_root.children {
+        if child.id == game_session.id {
+            continue;
+        }
+        if is_owner_entity_kind(&child.kind) {
+            return Some(child);
+        }
+    }
+    None
 }
 
 /// Returns the sole direct [`SimThingKind::GameSession`] child of a canonical Scenario root.
@@ -1127,6 +1248,7 @@ mod tests {
             SCENARIO_SCHEMA_VERSION,
         );
         let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
+        game_session.add_child(make_owner_entity("spec_owner", "Spec Owner", "player"));
         game_session.add_child(world);
         scenario_root.add_child(game_session);
         let mut spec = SimThingScenarioSpec {

@@ -3,13 +3,14 @@
 
 use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_spec::{
-    apply_scenario_metadata_to_root, deserialize_scenario_authority, scenario_metadata_seed,
-    scenario_metadata_seed_value, scenario_metadata_string, scenario_metadata_u32,
-    serialize_scenario_authority, sync_root_metadata_from_sidecar, sync_sidecar_from_root_metadata,
-    validate_legacy_world_root_compatibility, validate_scenario_root_authority, ScenarioRootError,
-    ScenarioRootValidationMode, SimThingScenarioGrid, SimThingScenarioProvenance,
-    SimThingScenarioSpec, SimThingStructuralGridFrame, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
-    SCENARIO_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+    apply_scenario_metadata_to_root, deserialize_scenario_authority, make_owner_entity,
+    scenario_metadata_seed, scenario_metadata_seed_value, scenario_metadata_string,
+    scenario_metadata_u32, serialize_scenario_authority, sync_root_metadata_from_sidecar,
+    sync_sidecar_from_root_metadata, validate_legacy_world_root_compatibility,
+    validate_scenario_root_authority, ScenarioRootError, ScenarioRootValidationMode,
+    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SCENARIO_GENERATOR_SEED_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
+    SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
     SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 
@@ -37,7 +38,13 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         &provenance,
         SCENARIO_SCHEMA_VERSION,
     );
-    root.add_child(SimThing::new(SimThingKind::GameSession, 0));
+    let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
+    game_session.add_child(make_owner_entity(
+        "minimal_owner",
+        "Minimal Owner",
+        "player",
+    ));
+    root.add_child(game_session);
     let mut spec = SimThingScenarioSpec {
         scenario_id: MINIMAL_SCENARIO_ID.to_string(),
         root,
