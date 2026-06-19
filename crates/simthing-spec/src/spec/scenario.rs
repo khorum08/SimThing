@@ -1,12 +1,12 @@
 //! Recursive SimThing scenario authority.
 //!
-//! This is the save/load-facing scenario authority shape: a real recursive
-//! `simthing_core::SimThing` tree plus structural STEAD grid placements. Render
-//! views, Studio indexes, and Bevy entities are projections over this object.
+//! Canonical save/load authority: a **`Scenario`** [`SimThing`] file root plus
+//! structural STEAD grid placements and links. Scenario id, schema version,
+//! provenance, and source metadata live on the Scenario root as properties —
+//! sidecar `scenario_id` / `provenance` fields are transitional serde mirrors only.
 //!
-//! Save/load must serialize and deserialize the whole `SimThingScenarioSpec`.
-//! Naked `root: SimThing` alone is insufficient unless bundled with structural
-//! grid metadata, links, and provenance.
+//! Legacy **World**-root fixtures (e.g. Terran Pirate golden fixture) deserialize
+//! through an explicit compatibility path; World root is not the future ontology.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -25,19 +25,63 @@ pub const SCENARIO_RENDER_WORLD_X_PROPERTY_ID: SimPropertyId = SimPropertyId(8_3
 pub const SCENARIO_RENDER_WORLD_Y_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_101);
 pub const SCENARIO_RENDER_WORLD_Z_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_102);
 
+/// Canonical scenario metadata on the Scenario root SimThing (string: length + UTF-8 bytes as f32).
+pub const SCENARIO_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_200);
+pub const SCENARIO_SCHEMA_VERSION_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_201);
+pub const SCENARIO_SOURCE_LABEL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_202);
+pub const SCENARIO_GENERATOR_SHAPE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_203);
+pub const SCENARIO_GENERATOR_SEED_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_204);
+
+pub const SCENARIO_SCHEMA_VERSION: u32 = 1;
+
 /// Maximum structural integer that can be mirrored exactly in an f32 property.
 /// Values above this are rejected; primary authority remains `structural_grid.placements`.
 pub const SCENARIO_STRUCTURAL_INTEGER_MAX: u32 = 16_777_216;
 
+/// Save/load-facing scenario authority. **`root`** must be [`SimThingKind::Scenario`] for
+/// canonical files; [`SimThingKind::World`] is legacy-only (explicit compatibility path).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimThingScenarioSpec {
+    /// Transitional serde mirror — canonical authority is [`SCENARIO_ID_PROPERTY_ID`] on root.
+    #[serde(default)]
     pub scenario_id: String,
     pub root: SimThing,
     pub structural_grid: SimThingScenarioGrid,
     #[serde(default)]
     pub links: Vec<SimThingScenarioLink>,
+    /// Transitional serde mirror — canonical authority is Scenario-root metadata properties.
     #[serde(default)]
     pub provenance: SimThingScenarioProvenance,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScenarioRootValidationMode {
+    Canonical,
+    LegacyCompat,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum ScenarioRootError {
+    #[error("scenario authority root must be a Scenario SimThing")]
+    RootIsNotScenario,
+    #[error("legacy World-root scenario admitted through explicit compatibility path")]
+    LegacyWorldRootAdmitted,
+    #[error("legacy World-root scenario rejected: {0}")]
+    LegacyWorldRootRejected(String),
+    #[error("scenario authority root is not a legacy World SimThing")]
+    RootIsNotWorld,
+    #[error("scenario authority root kind {kind} is not Scenario or legacy World")]
+    ArbitraryRootKind { kind: String },
+    #[error("canonical Scenario root is missing metadata property `{0}`")]
+    MissingScenarioMetadata(&'static str),
+    #[error(
+        "canonical Scenario metadata `{field}` on root ({root}) does not match transitional sidecar ({sidecar})"
+    )]
+    ScenarioMetadataMismatch {
+        field: &'static str,
+        root: String,
+        sidecar: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,7 +123,9 @@ pub struct SimThingScenarioProvenance {
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum SteadMappingError {
-    #[error("scenario authority root must be a World SimThing")]
+    #[error("scenario authority has no spatial World subtree for STEAD validation")]
+    MissingSpatialAuthority,
+    #[error("scenario authority spatial root must be a World SimThing")]
     RootIsNotWorld,
     #[error("scenario authority has duplicate SimThing id {0}")]
     DuplicateSimThingId(u32),
@@ -163,6 +209,8 @@ pub enum ScenarioSerdeError {
     LinkValidation(#[from] ScenarioLinkError),
     #[error("deserialized scenario authority failed id reservation: {0}")]
     IdReservation(#[from] SimThingIdReservationError),
+    #[error("deserialized scenario authority failed root validation: {0}")]
+    RootValidation(#[from] ScenarioRootError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -184,8 +232,29 @@ impl SimThingScenarioSpec {
         SIMTHING_SCENARIO_AUTHORITY_LABEL
     }
 
+    /// Canonical scenario id: Scenario-root property first, transitional sidecar second.
+    pub fn canonical_scenario_id(&self) -> String {
+        if self.root.kind == SimThingKind::Scenario {
+            if let Some(id) = scenario_metadata_string(&self.root, SCENARIO_ID_PROPERTY_ID) {
+                return id;
+            }
+        }
+        self.scenario_id.clone()
+    }
+
     pub fn world_root(&self) -> &SimThing {
         &self.root
+    }
+
+    pub fn validate_scenario_root_authority(
+        &self,
+        mode: ScenarioRootValidationMode,
+    ) -> Result<(), ScenarioRootError> {
+        validate_scenario_root_authority(self, mode)
+    }
+
+    pub fn validate_legacy_world_root_compatibility(&self) -> Result<(), ScenarioRootError> {
+        validate_legacy_world_root_compatibility(self)
     }
 
     pub fn galaxy_map_container(&self) -> Option<&SimThing> {
@@ -222,6 +291,211 @@ impl SimThingScenarioSpec {
     pub fn validate_stead_mapping_consistency(&self) -> Result<(), SteadMappingError> {
         validate_stead_mapping_consistency(self)
     }
+
+    /// Write transitional sidecar fields from canonical Scenario-root metadata.
+    pub fn sync_sidecar_from_root_metadata(&mut self) {
+        sync_sidecar_from_root_metadata(self);
+    }
+
+    /// Populate Scenario-root metadata from transitional sidecar fields (legacy load path).
+    pub fn sync_root_metadata_from_sidecar(&mut self) {
+        sync_root_metadata_from_sidecar(self);
+    }
+}
+
+pub fn scenario_metadata_string_value(text: &str) -> PropertyValue {
+    let mut data = Vec::with_capacity(1 + text.len());
+    data.push(text.len() as f32);
+    for byte in text.bytes() {
+        data.push(byte as f32);
+    }
+    PropertyValue { data }
+}
+
+pub fn scenario_metadata_string(thing: &SimThing, property_id: SimPropertyId) -> Option<String> {
+    let value = thing.properties.get(&property_id)?;
+    let len = *value.data.first()? as usize;
+    if value.data.len() != 1 + len {
+        return None;
+    }
+    let bytes: Vec<u8> = value.data[1..].iter().map(|f| *f as u8).collect();
+    String::from_utf8(bytes).ok()
+}
+
+pub fn scenario_metadata_u32_value(value: u32) -> PropertyValue {
+    PropertyValue {
+        data: vec![value as f32],
+    }
+}
+
+pub fn scenario_metadata_u32(thing: &SimThing, property_id: SimPropertyId) -> Option<u32> {
+    property_u32(thing.properties.get(&property_id)?)
+}
+
+pub fn scenario_metadata_seed_value(seed: u64) -> PropertyValue {
+    PropertyValue {
+        data: vec![(seed & 0xFFFF_FFFF) as f32, (seed >> 32) as f32],
+    }
+}
+
+pub fn scenario_metadata_seed(thing: &SimThing) -> Option<u64> {
+    let value = thing.properties.get(&SCENARIO_GENERATOR_SEED_PROPERTY_ID)?;
+    if value.data.len() != 2 {
+        return None;
+    }
+    let low = value.data[0] as u64;
+    let high = value.data[1] as u64;
+    Some(low | (high << 32))
+}
+
+pub fn apply_scenario_metadata_to_root(
+    root: &mut SimThing,
+    scenario_id: &str,
+    provenance: &SimThingScenarioProvenance,
+    schema_version: u32,
+) {
+    debug_assert_eq!(root.kind, SimThingKind::Scenario);
+    root.add_property(
+        SCENARIO_ID_PROPERTY_ID,
+        scenario_metadata_string_value(scenario_id),
+    );
+    root.add_property(
+        SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+        scenario_metadata_u32_value(schema_version),
+    );
+    root.add_property(
+        SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+        scenario_metadata_string_value(&provenance.source),
+    );
+    root.add_property(
+        SCENARIO_GENERATOR_SHAPE_PROPERTY_ID,
+        scenario_metadata_string_value(&provenance.generator_shape),
+    );
+    root.add_property(
+        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
+        scenario_metadata_seed_value(provenance.generator_seed),
+    );
+}
+
+pub fn sync_sidecar_from_root_metadata(spec: &mut SimThingScenarioSpec) {
+    if spec.root.kind != SimThingKind::Scenario {
+        return;
+    }
+    if let Some(id) = scenario_metadata_string(&spec.root, SCENARIO_ID_PROPERTY_ID) {
+        spec.scenario_id = id;
+    }
+    spec.provenance.source =
+        scenario_metadata_string(&spec.root, SCENARIO_SOURCE_LABEL_PROPERTY_ID).unwrap_or_default();
+    spec.provenance.generator_shape =
+        scenario_metadata_string(&spec.root, SCENARIO_GENERATOR_SHAPE_PROPERTY_ID)
+            .unwrap_or_default();
+    if let Some(seed) = scenario_metadata_seed(&spec.root) {
+        spec.provenance.generator_seed = seed;
+    }
+}
+
+pub fn sync_root_metadata_from_sidecar(spec: &mut SimThingScenarioSpec) {
+    if spec.root.kind != SimThingKind::Scenario {
+        return;
+    }
+    apply_scenario_metadata_to_root(
+        &mut spec.root,
+        &spec.scenario_id,
+        &spec.provenance,
+        SCENARIO_SCHEMA_VERSION,
+    );
+}
+
+pub fn validate_scenario_root_authority(
+    spec: &SimThingScenarioSpec,
+    mode: ScenarioRootValidationMode,
+) -> Result<(), ScenarioRootError> {
+    if spec.root.kind != SimThingKind::Scenario {
+        return Err(ScenarioRootError::RootIsNotScenario);
+    }
+    let required: &[(&'static str, SimPropertyId)] = &[
+        ("scenario_id", SCENARIO_ID_PROPERTY_ID),
+        (
+            "scenario_schema_version",
+            SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+        ),
+        ("source_label", SCENARIO_SOURCE_LABEL_PROPERTY_ID),
+        ("generator_shape", SCENARIO_GENERATOR_SHAPE_PROPERTY_ID),
+        ("generator_seed", SCENARIO_GENERATOR_SEED_PROPERTY_ID),
+    ];
+    for (name, property_id) in required {
+        if !spec.root.properties.contains_key(property_id) {
+            return Err(ScenarioRootError::MissingScenarioMetadata(name));
+        }
+    }
+    let root_id = scenario_metadata_string(&spec.root, SCENARIO_ID_PROPERTY_ID)
+        .ok_or(ScenarioRootError::MissingScenarioMetadata("scenario_id"))?;
+    if root_id.trim().is_empty() {
+        return Err(ScenarioRootError::MissingScenarioMetadata("scenario_id"));
+    }
+    if !spec.scenario_id.is_empty() && spec.scenario_id != root_id {
+        return Err(ScenarioRootError::ScenarioMetadataMismatch {
+            field: "scenario_id",
+            root: root_id,
+            sidecar: spec.scenario_id.clone(),
+        });
+    }
+    let root_source =
+        scenario_metadata_string(&spec.root, SCENARIO_SOURCE_LABEL_PROPERTY_ID).unwrap_or_default();
+    if !spec.provenance.source.is_empty() && spec.provenance.source != root_source {
+        return Err(ScenarioRootError::ScenarioMetadataMismatch {
+            field: "source_label",
+            root: root_source,
+            sidecar: spec.provenance.source.clone(),
+        });
+    }
+    if mode == ScenarioRootValidationMode::Canonical {
+        let version = scenario_metadata_u32(&spec.root, SCENARIO_SCHEMA_VERSION_PROPERTY_ID)
+            .ok_or(ScenarioRootError::MissingScenarioMetadata(
+                "scenario_schema_version",
+            ))?;
+        if version != SCENARIO_SCHEMA_VERSION {
+            return Err(ScenarioRootError::ScenarioMetadataMismatch {
+                field: "scenario_schema_version",
+                root: version.to_string(),
+                sidecar: SCENARIO_SCHEMA_VERSION.to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_legacy_world_root_compatibility(
+    spec: &SimThingScenarioSpec,
+) -> Result<(), ScenarioRootError> {
+    if spec.root.kind != SimThingKind::World {
+        return Err(ScenarioRootError::RootIsNotWorld);
+    }
+    if spec.scenario_id.trim().is_empty() {
+        return Err(ScenarioRootError::LegacyWorldRootRejected(
+            "legacy World-root fixture requires transitional scenario_id sidecar".into(),
+        ));
+    }
+    Ok(())
+}
+
+pub fn spatial_authority_root<'a>(
+    spec: &'a SimThingScenarioSpec,
+) -> Result<&'a SimThing, SteadMappingError> {
+    match spec.root.kind {
+        SimThingKind::World => Ok(&spec.root),
+        SimThingKind::Scenario => spec
+            .root
+            .children
+            .iter()
+            .find(|child| child.kind == SimThingKind::World)
+            .ok_or(SteadMappingError::MissingSpatialAuthority),
+        _ => Err(SteadMappingError::RootIsNotWorld),
+    }
+}
+
+fn is_empty_structural_grid(grid: &SimThingScenarioGrid) -> bool {
+    grid.placements.is_empty() && grid.map_container_id.trim().is_empty()
 }
 
 enum Either<L, R> {
@@ -247,6 +521,7 @@ where
 pub fn resolve_map_container<'a>(
     scenario: &'a SimThingScenarioSpec,
 ) -> Result<&'a SimThing, SteadMappingError> {
+    let spatial_root = spatial_authority_root(scenario)?;
     let map_container_id = scenario.structural_grid.map_container_id.trim();
     if map_container_id.is_empty() {
         return Err(SteadMappingError::MissingMapContainerId);
@@ -254,7 +529,7 @@ pub fn resolve_map_container<'a>(
     let raw = map_container_id
         .parse::<u32>()
         .map_err(|_| SteadMappingError::DanglingMapContainerId(map_container_id.to_string()))?;
-    let container = find_simthing_by_raw_id(&scenario.root, raw).ok_or_else(|| {
+    let container = find_simthing_by_raw_id(spatial_root, raw).ok_or_else(|| {
         SteadMappingError::DanglingMapContainerId(scenario.structural_grid.map_container_id.clone())
     })?;
     if container.kind != SimThingKind::Location {
@@ -263,12 +538,11 @@ pub fn resolve_map_container<'a>(
             kind: format!("{:?}", container.kind),
         });
     }
-    let is_world_child = scenario
-        .root
+    let is_spatial_root_child = spatial_root
         .children
         .iter()
         .any(|child| child.id.raw() == raw);
-    if !is_world_child {
+    if !is_spatial_root_child {
         return Err(SteadMappingError::MapContainerNotWorldChild(
             scenario.structural_grid.map_container_id.clone(),
         ));
@@ -276,36 +550,59 @@ pub fn resolve_map_container<'a>(
     Ok(container)
 }
 
+fn spatial_authority_root_mut<'a>(
+    spec: &'a mut SimThingScenarioSpec,
+) -> Result<&'a mut SimThing, SteadMappingError> {
+    match spec.root.kind {
+        SimThingKind::World => Ok(&mut spec.root),
+        SimThingKind::Scenario => spec
+            .root
+            .children
+            .iter_mut()
+            .find(|child| child.kind == SimThingKind::World)
+            .ok_or(SteadMappingError::MissingSpatialAuthority),
+        _ => Err(SteadMappingError::RootIsNotWorld),
+    }
+}
+
 pub fn resolve_map_container_mut<'a>(
     scenario: &'a mut SimThingScenarioSpec,
 ) -> Result<&'a mut SimThing, SteadMappingError> {
-    let map_container_id = scenario.structural_grid.map_container_id.trim().to_string();
+    let map_container_id_field = scenario.structural_grid.map_container_id.clone();
+    let map_container_id = map_container_id_field.trim();
     if map_container_id.is_empty() {
         return Err(SteadMappingError::MissingMapContainerId);
     }
     let raw = map_container_id
         .parse::<u32>()
-        .map_err(|_| SteadMappingError::DanglingMapContainerId(map_container_id.clone()))?;
-    let root_children_len = scenario.root.children.len();
-    for index in 0..root_children_len {
-        if scenario.root.children[index].id.raw() == raw {
-            let kind = scenario.root.children[index].kind.clone();
-            if kind != SimThingKind::Location {
-                return Err(SteadMappingError::MapContainerNotLocation {
-                    map_container_id: scenario.structural_grid.map_container_id.clone(),
-                    kind: format!("{kind:?}"),
-                });
-            }
-            return Ok(&mut scenario.root.children[index]);
+        .map_err(|_| SteadMappingError::DanglingMapContainerId(map_container_id_field.clone()))?;
+    let (is_world_child, exists_in_subtree) = {
+        let spatial = spatial_authority_root(scenario)?;
+        let is_child = spatial.children.iter().any(|child| child.id.raw() == raw);
+        let exists = find_simthing_by_raw_id(spatial, raw).is_some();
+        (is_child, exists)
+    };
+    let spatial_root = spatial_authority_root_mut(scenario)?;
+    if let Some(child) = spatial_root
+        .children
+        .iter_mut()
+        .find(|child| child.id.raw() == raw)
+    {
+        if child.kind != SimThingKind::Location {
+            return Err(SteadMappingError::MapContainerNotLocation {
+                map_container_id: map_container_id_field,
+                kind: format!("{:?}", child.kind),
+            });
         }
+        return Ok(child);
     }
-    if find_simthing_by_raw_id(&scenario.root, raw).is_some() {
+    if exists_in_subtree && !is_world_child {
         return Err(SteadMappingError::MapContainerNotWorldChild(
-            scenario.structural_grid.map_container_id.clone(),
+            map_container_id_field,
         ));
     }
     Err(SteadMappingError::DanglingMapContainerId(
-        scenario.structural_grid.map_container_id.clone(),
+        map_container_id_field,
     ))
 }
 
@@ -318,7 +615,9 @@ pub fn reserve_simthing_ids_from_scenario(
 pub fn serialize_scenario_authority(
     spec: &SimThingScenarioSpec,
 ) -> Result<String, ScenarioSerdeError> {
-    serde_json::to_string(spec).map_err(|err| ScenarioSerdeError::Serialize(err.to_string()))
+    let mut to_write = spec.clone();
+    to_write.sync_sidecar_from_root_metadata();
+    serde_json::to_string(&to_write).map_err(|err| ScenarioSerdeError::Serialize(err.to_string()))
 }
 
 pub fn canonical_scenario_link_pair(
@@ -405,6 +704,20 @@ pub fn deserialize_scenario_authority(
 ) -> Result<SimThingScenarioSpec, ScenarioSerdeError> {
     let spec: SimThingScenarioSpec = serde_json::from_str(src)
         .map_err(|err| ScenarioSerdeError::Deserialize(err.to_string()))?;
+    match spec.root.kind {
+        SimThingKind::Scenario => {
+            validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)?;
+        }
+        SimThingKind::World => {
+            validate_legacy_world_root_compatibility(&spec)?;
+        }
+        other => {
+            return Err(ScenarioRootError::ArbitraryRootKind {
+                kind: format!("{other:?}"),
+            }
+            .into());
+        }
+    }
     validate_stead_mapping_consistency(&spec)?;
     validate_scenario_links(&spec)?;
     reserve_simthing_ids_from_scenario(&spec)?;
@@ -451,11 +764,16 @@ pub fn apply_gridcell_property_edit(
 pub fn validate_stead_mapping_consistency(
     spec: &SimThingScenarioSpec,
 ) -> Result<(), SteadMappingError> {
-    if spec.root.kind != SimThingKind::World {
-        return Err(SteadMappingError::RootIsNotWorld);
-    }
     spec.validate_unique_simthing_ids()?;
     reject_render_coordinate_properties(&spec.root)?;
+    if spec.root.kind == SimThingKind::Scenario && is_empty_structural_grid(&spec.structural_grid) {
+        return Ok(());
+    }
+    let spatial_root = spatial_authority_root(spec)?;
+    if spatial_root.kind != SimThingKind::World {
+        return Err(SteadMappingError::RootIsNotWorld);
+    }
+    reject_render_coordinate_properties(spatial_root)?;
 
     let map_container = resolve_map_container(spec)?;
 
@@ -683,17 +1001,43 @@ mod tests {
         (cell_raw, placement)
     }
 
+    fn wrap_canonical_scenario_root(
+        world: SimThing,
+        scenario_id: &str,
+        structural_grid: SimThingScenarioGrid,
+        links: Vec<SimThingScenarioLink>,
+        provenance: SimThingScenarioProvenance,
+    ) -> SimThingScenarioSpec {
+        let mut scenario_root = SimThing::new(SimThingKind::Scenario, 0);
+        apply_scenario_metadata_to_root(
+            &mut scenario_root,
+            scenario_id,
+            &provenance,
+            SCENARIO_SCHEMA_VERSION,
+        );
+        scenario_root.add_child(world);
+        let mut spec = SimThingScenarioSpec {
+            scenario_id: scenario_id.to_string(),
+            root: scenario_root,
+            structural_grid,
+            links,
+            provenance,
+        };
+        spec.sync_sidecar_from_root_metadata();
+        spec
+    }
+
     fn two_cell_scenario() -> SimThingScenarioSpec {
-        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut world = SimThing::new(SimThingKind::World, 0);
         let mut map = SimThing::new(SimThingKind::Location, 0);
         let map_raw = map.id.raw();
         let (_, placement_a) = add_gridcell(&mut map, 1, 2, 3);
         let (_, placement_b) = add_gridcell(&mut map, 2, 2, 4);
-        root.add_child(map);
-        SimThingScenarioSpec {
-            scenario_id: "two_cell_spec".to_string(),
-            root,
-            structural_grid: SimThingScenarioGrid {
+        world.add_child(map);
+        wrap_canonical_scenario_root(
+            world,
+            "two_cell_spec",
+            SimThingScenarioGrid {
                 frame: SimThingStructuralGridFrame {
                     width: 8,
                     height: 8,
@@ -702,16 +1046,16 @@ mod tests {
                 map_container_id: map_raw.to_string(),
                 placements: vec![placement_a, placement_b],
             },
-            links: vec![SimThingScenarioLink {
+            vec![SimThingScenarioLink {
                 from_system_id: "1".to_string(),
                 to_system_id: "2".to_string(),
             }],
-            provenance: SimThingScenarioProvenance::default(),
-        }
+            SimThingScenarioProvenance::default(),
+        )
     }
 
     fn small_scenario() -> SimThingScenarioSpec {
-        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut world = SimThing::new(SimThingKind::World, 0);
         let mut map = SimThing::new(SimThingKind::Location, 0);
         let mut cell = SimThing::new(SimThingKind::Location, 0);
         cell.add_property(
@@ -735,11 +1079,11 @@ mod tests {
         let cell_raw = cell.id.raw();
         let map_raw = map.id.raw();
         map.add_child(cell);
-        root.add_child(map);
-        SimThingScenarioSpec {
-            scenario_id: "small_spec".to_string(),
-            root,
-            structural_grid: SimThingScenarioGrid {
+        world.add_child(map);
+        wrap_canonical_scenario_root(
+            world,
+            "small_spec",
+            SimThingScenarioGrid {
                 frame: SimThingStructuralGridFrame {
                     width: 8,
                     height: 8,
@@ -749,6 +1093,60 @@ mod tests {
                 placements: vec![SimThingStructuralGridPlacement {
                     location_id: "small_cell".to_string(),
                     target_id: "small_cell".to_string(),
+                    system_id: 1,
+                    row: 2,
+                    col: 3,
+                    simthing_id_raw: cell_raw,
+                }],
+            },
+            Vec::new(),
+            SimThingScenarioProvenance::default(),
+        )
+    }
+
+    fn spatial_world_mut(scenario: &mut SimThingScenarioSpec) -> &mut SimThing {
+        scenario
+            .root
+            .children
+            .iter_mut()
+            .find(|child| child.kind == SimThingKind::World)
+            .expect("spatial world child")
+    }
+
+    fn legacy_world_scenario() -> SimThingScenarioSpec {
+        let mut world = SimThing::new(SimThingKind::World, 0);
+        let mut map = SimThing::new(SimThingKind::Location, 0);
+        let mut cell = SimThing::new(SimThingKind::Location, 0);
+        cell.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(1),
+        );
+        cell.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(3),
+        );
+        cell.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(2),
+        );
+        cell.add_child(SimThing::new(SimThingKind::Cohort, 0));
+        let cell_raw = cell.id.raw();
+        let map_raw = map.id.raw();
+        map.add_child(cell);
+        world.add_child(map);
+        SimThingScenarioSpec {
+            scenario_id: "legacy_world_spec".to_string(),
+            root: world,
+            structural_grid: SimThingScenarioGrid {
+                frame: SimThingStructuralGridFrame {
+                    width: 8,
+                    height: 8,
+                    occupied_cells: 1,
+                },
+                map_container_id: map_raw.to_string(),
+                placements: vec![SimThingStructuralGridPlacement {
+                    location_id: "legacy_cell".to_string(),
+                    target_id: "legacy_cell".to_string(),
                     system_id: 1,
                     row: 2,
                     col: 3,
@@ -781,7 +1179,7 @@ mod tests {
         let mut scenario = small_scenario();
         let cohort = SimThing::new(SimThingKind::Cohort, 0);
         let cohort_raw = cohort.id.raw();
-        scenario.root.add_child(cohort);
+        spatial_world_mut(&mut scenario).add_child(cohort);
         scenario.structural_grid.map_container_id = cohort_raw.to_string();
         let err = validate_stead_mapping_consistency(&scenario).expect_err("non-location");
         assert!(matches!(
@@ -810,7 +1208,7 @@ mod tests {
         orphan.add_child(SimThing::new(SimThingKind::Cohort, 0));
         let orphan_raw = orphan.id.raw();
         other_map.add_child(orphan);
-        scenario.root.add_child(other_map);
+        spatial_world_mut(&mut scenario).add_child(other_map);
         scenario
             .structural_grid
             .placements
@@ -850,7 +1248,7 @@ mod tests {
         let mut scenario = small_scenario();
         let decoy = SimThing::new(SimThingKind::Location, 0);
         let decoy_raw = decoy.id.raw();
-        scenario.root.children.insert(0, decoy);
+        spatial_world_mut(&mut scenario).children.insert(0, decoy);
         let resolved = resolve_map_container(&scenario).expect("resolve declared container");
         assert_ne!(resolved.id.raw(), decoy_raw);
         assert_eq!(
@@ -1076,6 +1474,7 @@ mod tests {
     fn simthing_scenario_spec_roundtrip_preserves_provenance() {
         let mut scenario = small_scenario();
         scenario.provenance.source = "test-source".to_string();
+        scenario.sync_root_metadata_from_sidecar();
         let json = serialize_scenario_authority(&scenario).expect("serialize");
         let round = deserialize_scenario_authority(&json).expect("deserialize");
         assert_eq!(round.provenance, scenario.provenance);
@@ -1105,7 +1504,7 @@ mod tests {
     #[test]
     fn loaded_scenario_rejects_duplicate_simthing_ids() {
         let mut scenario = small_scenario();
-        scenario.root.children[0].id = scenario.root.id;
+        spatial_world_mut(&mut scenario).children[0].id = scenario.root.id;
         let err = reserve_simthing_ids_from_scenario(&scenario).expect_err("duplicate");
         assert!(matches!(err, SimThingIdReservationError::DuplicateId(_)));
     }

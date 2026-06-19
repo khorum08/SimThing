@@ -695,6 +695,39 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         ),
         "evidence index must carry hygiene-kabuki relapse guardrail"
     );
+
+    let scenario_src = include_str!("../src/spec/scenario.rs");
+    assert!(
+        scenario_src.contains("Canonical save/load authority")
+            && scenario_src.contains("Scenario")
+            && scenario_src.contains("file root"),
+        "scenario.rs must document Scenario SimThing as canonical file root"
+    );
+    assert!(
+        scenario_src.contains("Transitional serde mirror"),
+        "scenario.rs must mark sidecar fields as transitional"
+    );
+    assert!(
+        scenario_src.contains("validate_scenario_root_authority"),
+        "scenario.rs must expose canonical Scenario-root validation"
+    );
+    assert!(
+        scenario_src.contains("validate_legacy_world_root_compatibility"),
+        "scenario.rs must expose explicit legacy World-root compatibility"
+    );
+    assert!(
+        scenario_src.contains("LegacyWorldRootAdmitted"),
+        "legacy World admission must be a named compatibility outcome"
+    );
+    assert!(
+        !scenario_src.contains("root.kind != SimThingKind::World")
+            || scenario_src.contains("spatial_authority_root"),
+        "STEAD validation must not treat bare World root as the only canonical path"
+    );
+    assert!(
+        simthing_src.contains("SimThingKind::Scenario"),
+        "simthing-core must admit SimThingKind::Scenario for canonical file roots"
+    );
 }
 
 #[test]
