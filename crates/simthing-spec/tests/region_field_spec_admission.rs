@@ -432,7 +432,10 @@ fn test_j_first_slice_compile_preview_only() {
 
     let sim_lib = include_str!("../../simthing-sim/src/lib.rs");
     assert!(!sim_lib.contains("RegionField"));
-    assert!(!sim_lib.contains("Mapping"));
+    let mapping_tick = include_str!("../../simthing-sim/src/mapping_plan_tick.rs");
+    assert!(!mapping_tick.contains("RegionFieldSpec"));
+    assert!(!mapping_tick.contains("SimThingScenarioSpec"));
+    assert!(!mapping_tick.contains("simthing_spec"));
 }
 
 #[test]
