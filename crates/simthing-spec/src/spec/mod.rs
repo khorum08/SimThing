@@ -15,6 +15,7 @@ pub mod property;
 pub mod region_field;
 pub mod resource_economy;
 pub mod resource_flow;
+pub mod runtime_local_allocation;
 pub mod scenario;
 pub mod scenario_ingestion;
 pub mod script;
@@ -90,6 +91,11 @@ pub use resource_flow::{
     GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp, RateFormulaOpSpec, RateFormulaOperandSpec,
     RateFormulaSpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode, ResourceFlowSpec,
     WildcardAdmissionSpec,
+};
+pub use runtime_local_allocation::{
+    apply_runtime_local_allocations_from_disburse_down, runtime_local_allocation_aggregate_totals,
+    RuntimeLocalAllocationApplicationError, RuntimeLocalAllocationApplicationErrorKind,
+    RuntimeLocalAllocationApplicationReport, RuntimeLocalAllocationState,
 };
 pub use scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
