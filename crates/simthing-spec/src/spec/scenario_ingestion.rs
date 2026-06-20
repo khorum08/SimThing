@@ -20,6 +20,7 @@ use super::planet_child_rf::{
     PlanetChildRfReduceUpReport,
 };
 use super::runtime_local_allocation::apply_runtime_local_allocations_from_disburse_down;
+use super::runtime_rf_tick::evaluate_runtime_rf_tick;
 use super::scenario::{
     galaxy_map_id, game_session_child, game_session_galaxy_map, game_session_owners, gridcell_role,
     is_galaxy_map_entity, is_owner_entity_kind, owner_entity_id, owner_has_silo_metadata,
@@ -152,6 +153,10 @@ pub struct ScenarioCompileReadinessReport {
     pub runtime_local_allocation_ready: bool,
     /// Full economy execution and participant property mutation remain deferred.
     pub runtime_local_allocation_deferred: bool,
+    /// Composed runtime RF tick report is ready (scenario authority unchanged).
+    pub runtime_rf_tick_ready: bool,
+    /// Economy/local effects and Scenario authority mutation remain deferred at tick boundary.
+    pub runtime_rf_tick_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -450,6 +455,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_owner_silo_runtime_writeback(spec, result);
     integrate_owner_silo_disburse_down(spec, result);
     integrate_runtime_local_allocation(spec, result);
+    integrate_runtime_rf_tick(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -752,6 +758,20 @@ fn integrate_runtime_local_allocation(
 
     result.compile_readiness.runtime_local_allocation_ready = true;
     result.compile_readiness.runtime_local_allocation_deferred = true;
+}
+
+fn integrate_runtime_rf_tick(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
+    result.compile_readiness.runtime_rf_tick_deferred = true;
+
+    if !result.compile_readiness.runtime_local_allocation_ready {
+        return;
+    }
+    if evaluate_runtime_rf_tick(spec).is_err() {
+        return;
+    }
+
+    result.compile_readiness.runtime_rf_tick_ready = true;
+    result.compile_readiness.runtime_rf_tick_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {

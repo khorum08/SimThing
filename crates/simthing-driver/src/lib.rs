@@ -76,6 +76,7 @@ pub mod runtime_0080_rr_2;
 pub mod runtime_0080_rr_3;
 pub mod runtime_0080_rr_4;
 pub mod runtime_local_allocation_compile;
+pub mod runtime_rf_tick_compile;
 pub mod scenario;
 pub mod scenario_ingestion_compile;
 pub mod session;
@@ -646,6 +647,9 @@ pub use runtime_local_allocation_compile::{
     compile_runtime_local_allocation_application_plan, runtime_local_allocation_aggregate_slot,
     runtime_local_allocation_aggregate_tick_inputs, runtime_local_allocation_cpu_aggregate_total,
     RuntimeLocalAllocationAggregateProofPlan, RuntimeLocalAllocationApplicationPlan,
+};
+pub use runtime_rf_tick_compile::{
+    compile_runtime_rf_tick_plan, RuntimeRfTickGpuProofSummary, RuntimeRfTickPlan,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
