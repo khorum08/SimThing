@@ -4,6 +4,12 @@
 
 PASS
 
+## PR / branch / merge
+
+- Branch: `studio-production-ladder-closure-0s`
+- PR: #832
+- Merge SHA: `2d07369ce0e89b243625118cbb7fed34554fabd5`
+
 ## Mission
 
 Correct Studio production ladder placement: install the authoritative Scenario Runtime + Save/Load Closing Track with completion-status column in `docs/design_0_0_8_3_studio_production.md`.
