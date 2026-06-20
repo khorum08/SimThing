@@ -28,6 +28,7 @@ simthing-core = { path = "../simthing-core" }
 simthing-gpu = { path = "../simthing-gpu" }
 simthing-mapgenerator = { path = "../simthing-mapgenerator" }
 simthing-spec = { path = "../simthing-spec" }
+simthing-driver = { path = "../simthing-driver" }
 rfd = "0.15"
 thiserror = { workspace = true }
 
