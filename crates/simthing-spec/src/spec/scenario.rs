@@ -65,6 +65,12 @@ pub const PLANET_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_503);
 pub const PLANET_OWNER_REF_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_504);
 pub const PLANET_ORBIT_INDEX_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_505);
 
+/// Universal interior local-grid frame metadata on spatial gridcell Location SimThings.
+pub const LOCAL_GRID_FRAME_COLS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_515);
+pub const LOCAL_GRID_FRAME_ROWS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_516);
+pub const LOCAL_GRID_DEFAULT_COLS: u32 = 1;
+pub const LOCAL_GRID_DEFAULT_ROWS: u32 = 1;
+
 /// Star-system local grid frame metadata on galactic star-system gridcell Locations.
 pub const STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_510);
 pub const STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_511);
@@ -84,6 +90,7 @@ pub const GALAXY_CHILD_LOCATION_ROLE_PLANET: &str = "planet";
 pub const GALAXY_CHILD_LOCATION_ROLE_MOON: &str = "moon";
 pub const LOCAL_GRIDCELL_ROLE_INERT: &str = "inert";
 pub const LOCAL_GRIDCELL_ROLE_PLANET: &str = "planet";
+pub const LOCAL_GRIDCELL_ROLE_RECEIVER: &str = "receiver";
 
 pub const SCENARIO_SCHEMA_VERSION: u32 = 1;
 

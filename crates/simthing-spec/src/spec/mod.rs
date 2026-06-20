@@ -16,6 +16,7 @@ pub mod scenario;
 pub mod scenario_ingestion;
 pub mod script;
 pub mod session_resource_flow;
+pub mod spatial_local_grid;
 pub mod stress_compose;
 pub mod structural_edit;
 pub mod trigger;

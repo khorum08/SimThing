@@ -1092,21 +1092,34 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
     }
 
     let planet_child_src = include_str!("../src/spec/planet_child_location.rs");
+    let spatial_local_grid_src = include_str!("../src/spec/spatial_local_grid.rs");
     let studio_planet_src =
         include_str!("../../simthing-mapeditor/src/studio_planet_child_location.rs");
+    let studio_document_src =
+        include_str!("../../simthing-mapeditor/src/studio_scenario_document.rs");
     assert!(
-        planet_child_src.contains("evaluate_planet_child_locations")
+        spatial_local_grid_src.contains("RECURSIVE-SPATIAL-GRID-DEFAULTS-0")
+            && spatial_local_grid_src.contains("LOCAL_GRID_DEFAULT_COLS")
+            && spatial_local_grid_src.contains("LOCAL_GRID_DEFAULT_ROWS"),
+        "spatial local-grid defaults must live in spatial_local_grid.rs with 1x1 interior doctrine"
+    );
+    assert!(
+        planet_child_src.contains("RECURSIVE-SPATIAL-GRID-DEFAULTS-0")
+            && planet_child_src.contains("evaluate_planet_child_locations")
             && planet_child_src.contains("apply_planet_local_grid_command")
             && planet_child_src.contains("LOCAL_GRIDCELL_ROLE_PLANET")
-            && planet_child_src.contains("star-system-local gridcell"),
-        "planet local-grid admission API must live in simthing-spec"
+            && planet_child_src.contains("collect_local_receiver_cells")
+            && planet_child_src.contains("planet_gridcell_interior_frame"),
+        "recursive spatial grid admission API must live in simthing-spec"
     );
     assert!(
         planet_child_src.contains("GALAXY_GRIDCELL_ROLE_STAR_SYSTEM")
-            && planet_child_src.contains("PlanetUnderInertGalaxyGridcell")
+            && planet_child_src.contains("InertGridcellNonReceiverChild")
+            && planet_child_src.contains("InertGridcellReceiverCoordinateOutOfFrame")
+            && planet_child_src.contains("LOCAL_GRIDCELL_ROLE_RECEIVER")
             && planet_child_src.contains("STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS")
             && planet_child_src.contains("STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS"),
-        "planets must be star-system-local gridcells; inert galactic gridcells cannot own planet local gridcells; default local frame is 10x10"
+        "star-system default frame is 10x10; inert cells admit only 1x1 receiver/inert local gridcells"
     );
     assert!(
         planet_child_src.contains("LOCAL_GRIDCELL_COL_PROPERTY_ID")
@@ -1119,9 +1132,21 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         "planet local gridcells must not be GalaxyMap structural_grid placements"
     );
     assert!(
+        planet_child_src.contains("PLANET_OWNER_REF_PROPERTY_ID")
+            && planet_child_src.contains("not spatial parents")
+            && planet_child_src.contains("not spatial parentage"),
+        "owner channel metadata must not require spatial reparenting"
+    );
+    assert!(
         studio_planet_src.contains("apply_planet_local_grid_command")
             && !studio_planet_src.contains("fn evaluate_planet_child_locations"),
         "Studio planet wrapper must call spec API"
+    );
+    assert!(
+        studio_document_src.contains("interior_frame_cols")
+            && studio_document_src.contains("receiver_cells")
+            && studio_document_src.contains("collect_local_receiver_cells"),
+        "Studio scenario document must project interior frames and receiver cells"
     );
     assert!(
         !studio_planet_src.contains("SimGpuAccumulatorTickState")
@@ -1130,15 +1155,21 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         "Studio planet display must not dispatch GPU or call sim tick"
     );
     assert!(
-        production_doc.contains("PLANET-LOCAL-GRID-REMEDIATION-0"),
-        "production synthesis must name PLANET-LOCAL-GRID-REMEDIATION-0"
+        production_doc.contains("PLANET-LOCAL-GRID-REMEDIATION-0")
+            && production_doc.contains("star-system local grid GPU operator deferred"),
+        "production synthesis must record prerequisite remediation and deferred star-system local-grid operator"
     );
     let planet_admission_test =
         include_str!("../../simthing-spec/tests/planet_child_location_admission.rs");
     assert!(
         !planet_admission_test.contains("write_planet_child_location_corpus_fixtures")
-            && planet_admission_test.contains("normal_tests_do_not_write_corpus_fixtures"),
-        "normal tests must not write scenarios/corpus fixture files"
+            && planet_admission_test.contains("normal_tests_do_not_write_corpus_fixtures")
+            && planet_admission_test
+                .contains("generic_spatial_gridcell_defaults_to_1x1_local_frame")
+            && planet_admission_test.contains("inert_galactic_gridcell_admits_1x1_receiver_cell")
+            && planet_admission_test
+                .contains("owner_channel_metadata_does_not_require_spatial_reparenting"),
+        "recursive spatial grid admission tests must exist without corpus fixture writers"
     );
     for forbidden_engine in [
         "PlanetEngine",

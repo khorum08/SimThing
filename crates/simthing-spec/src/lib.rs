@@ -383,18 +383,18 @@ pub use spec::planet_child_location::{
     all_planet_child_locations, all_planet_gridcells, apply_local_gridcell_metadata,
     apply_planet_child_location_command, apply_planet_child_metadata,
     apply_planet_gridcell_metadata, apply_planet_local_grid_command,
-    apply_star_system_local_grid_frame_metadata, child_location_role,
+    apply_star_system_local_grid_frame_metadata, child_location_role, collect_local_receiver_cells,
     evaluate_planet_child_locations, is_local_gridcell, is_planet_child_location,
     is_planet_gridcell, local_gridcell_col, local_gridcell_role, local_gridcell_row,
     make_local_inert_gridcell, make_planet_child_location, make_planet_gridcell,
     planet_child_location_classification_label, planet_child_location_error_kind_label,
-    planet_child_locations, planet_display_name, planet_gridcells, planet_id, planet_owner_ref,
-    star_system_gridcells, star_system_local_grid_frame, validate_planet_child_locations,
-    LocalGridcellRoleEdit, PlanetChildLocationAdmissionClassification,
-    PlanetChildLocationAdmissionError, PlanetChildLocationAdmissionErrorKind,
-    PlanetChildLocationAdmissionReport, PlanetChildLocationCommand, PlanetChildLocationDeferral,
-    PlanetChildLocationEditError, PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
-    PlanetLocalGridCommand,
+    planet_child_locations, planet_display_name, planet_gridcell_interior_frame, planet_gridcells,
+    planet_id, planet_owner_ref, star_system_gridcells, star_system_local_grid_frame,
+    validate_planet_child_locations, LocalGridcellRoleEdit,
+    PlanetChildLocationAdmissionClassification, PlanetChildLocationAdmissionError,
+    PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
+    PlanetChildLocationCommand, PlanetChildLocationDeferral, PlanetChildLocationEditError,
+    PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport, PlanetLocalGridCommand,
 };
 pub use spec::property::PropertySpec;
 pub use spec::region_field::{
@@ -459,9 +459,11 @@ pub use spec::scenario::{
 };
 pub use spec::scenario::{
     LOCAL_GRIDCELL_COL_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_INERT, LOCAL_GRIDCELL_ROLE_PLANET,
-    LOCAL_GRIDCELL_ROLE_PROPERTY_ID, LOCAL_GRIDCELL_ROW_PROPERTY_ID,
-    STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
-    STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
+    LOCAL_GRIDCELL_ROLE_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_RECEIVER, LOCAL_GRIDCELL_ROW_PROPERTY_ID,
+    LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS, LOCAL_GRID_FRAME_COLS_PROPERTY_ID,
+    LOCAL_GRID_FRAME_ROWS_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID,
+    STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
 };
 pub use spec::scenario_ingestion::{
     ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,
@@ -481,6 +483,13 @@ pub use spec::session_resource_flow::{
     owner_silo_flow_suppresses_ingestion_deferral, OwnerSiloAdmissionClassification,
     OwnerSiloAdmissionError, OwnerSiloAdmissionErrorKind, OwnerSiloAdmissionReport,
     OwnerSiloDeferral, OwnerSiloDeferralKind, OwnerSiloFlowParticipantInput,
+};
+pub use spec::spatial_local_grid::{
+    default_local_grid_frame_for_spatial_gridcell, explicit_local_grid_frame_for_spatial_gridcell,
+    implicit_receiver_cell_for_gridcell, interior_local_grid_frame_for_gridcell,
+    is_local_coordinate_in_frame, is_receiver_local_gridcell,
+    local_grid_frame_for_spatial_gridcell, LocalGridFrame, LocalGridFrameError,
+    LocalGridFrameErrorKind, LocalReceiverCell, LocalReceiverCellRole,
 };
 pub use spec::stress_compose::{
     StressComposeProfileSpec, StressComposeSpec, StressOperatorSpec,

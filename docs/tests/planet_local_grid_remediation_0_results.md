@@ -149,6 +149,10 @@ Report fields: `local_gridcell_count`, `local_inert_gridcell_count`, `planet_gri
 - Planet simulation/economy/population/cohort execution under planet local gridcells
 - Planet ownership resolution and deeper Location nesting admission
 
+## Relationship to RECURSIVE-SPATIAL-GRID-DEFAULTS-0
+
+PR #790 ontology is partially completed and finalized by **RECURSIVE-SPATIAL-GRID-DEFAULTS-0** (universal 1×1 interior-grid defaults, inert receiver cells, owner/RF channel doctrine).
+
 ## DA status
 
 **PROBATION** — not DA-promoted; owner approval required for promotion.

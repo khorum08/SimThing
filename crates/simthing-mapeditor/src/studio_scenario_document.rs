@@ -4,19 +4,21 @@
 
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    evaluate_planet_child_locations, galaxy_map_display_name, galaxy_map_id, galaxy_map_role,
-    game_session_child, game_session_galaxy_map, game_session_owners, gridcell_generated_system_id,
-    gridcell_role, gridcell_structural_col, gridcell_structural_row, is_galaxy_map_entity,
-    is_planet_gridcell, local_gridcell_col, local_gridcell_role, local_gridcell_row,
-    owner_archetype, owner_color_index, owner_display_name, owner_entity_id, owner_silo_marker,
+    collect_local_receiver_cells, evaluate_planet_child_locations, galaxy_map_display_name,
+    galaxy_map_id, galaxy_map_role, game_session_child, game_session_galaxy_map,
+    game_session_owners, gridcell_generated_system_id, gridcell_role, gridcell_structural_col,
+    gridcell_structural_row, is_galaxy_map_entity, is_planet_gridcell, local_gridcell_col,
+    local_gridcell_role, local_gridcell_row, owner_archetype, owner_color_index,
+    owner_display_name, owner_entity_id, owner_silo_marker,
     planet_child_location_classification_label, planet_child_location_error_kind_label,
-    planet_display_name, planet_id, planet_owner_ref, resolve_map_container,
-    scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
+    planet_display_name, planet_gridcell_interior_frame, planet_id, planet_owner_ref,
+    resolve_map_container, scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
     star_system_local_grid_frame, validate_legacy_world_root_compatibility,
-    validate_scenario_root_authority, ScenarioRootError, ScenarioRootValidationMode,
-    SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
-    LOCAL_GRIDCELL_ROLE_PLANET, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
-    SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+    validate_scenario_root_authority, LocalReceiverCellRole, ScenarioRootError,
+    ScenarioRootValidationMode, SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_ROLE_INERT, LOCAL_GRIDCELL_ROLE_PLANET,
+    LOCAL_GRIDCELL_ROLE_RECEIVER, LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS,
+    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 use thiserror::Error;
 
@@ -88,12 +90,29 @@ pub struct StudioPlanetChildView {
     pub parent_star_system_location_id: Option<String>,
     pub local_frame_cols: u32,
     pub local_frame_rows: u32,
+    pub interior_frame_cols: u32,
+    pub interior_frame_rows: u32,
     pub local_col: Option<u32>,
     pub local_row: Option<u32>,
     pub local_role: String,
+    pub is_implicit_receiver: bool,
     pub owner_ref: Option<String>,
     pub admission_status: String,
     pub deferrals: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioReceiverCellView {
+    pub parent_gridcell_simthing_id_raw: u32,
+    pub parent_location_id: Option<String>,
+    pub parent_local_frame_cols: u32,
+    pub parent_local_frame_rows: u32,
+    pub local_col: u32,
+    pub local_row: u32,
+    pub local_role: String,
+    pub is_implicit_receiver: bool,
+    pub materialized_simthing_id_raw: Option<u32>,
+    pub admission_status: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,6 +126,7 @@ pub struct StudioScenarioDocument {
     pub galaxy_map: Option<StudioGalaxyMapView>,
     pub gridcells: Vec<StudioGridcellView>,
     pub planets: Vec<StudioPlanetChildView>,
+    pub receiver_cells: Vec<StudioReceiverCellView>,
     pub admission_summary: Option<StudioScenarioAdmissionSummary>,
 }
 
@@ -162,6 +182,7 @@ fn build_canonical_document(
     let galaxy_map = Some(galaxy_map_to_view(galaxy_map_thing, true));
     let gridcells = gridcells_under_map(galaxy_map_thing);
     let planets = planets_under_spec(spec, galaxy_map_thing);
+    let receiver_cells = receiver_cells_under_spec(spec, galaxy_map_thing);
 
     Ok(StudioScenarioDocument {
         authority_kind: StudioScenarioAuthorityKind::CanonicalScenario,
@@ -175,6 +196,7 @@ fn build_canonical_document(
         galaxy_map,
         gridcells,
         planets,
+        receiver_cells,
         admission_summary: None,
     })
 }
@@ -196,6 +218,7 @@ fn build_legacy_world_document(
         galaxy_map: Some(galaxy_map_to_view(map_container, is_galaxy)),
         gridcells: gridcells_under_map(map_container),
         planets: Vec::new(),
+        receiver_cells: Vec::new(),
         admission_summary: None,
     })
 }
@@ -266,6 +289,7 @@ fn planets_under_spec(
                     )
                 })
                 .collect();
+            let interior = planet_gridcell_interior_frame(child);
             views.push(StudioPlanetChildView {
                 simthing_id_raw: child.id.raw(),
                 planet_id: planet_id(child).unwrap_or_default(),
@@ -274,10 +298,13 @@ fn planets_under_spec(
                 parent_star_system_location_id: parent_star_system_location_id.clone(),
                 local_frame_cols,
                 local_frame_rows,
+                interior_frame_cols: interior.cols,
+                interior_frame_rows: interior.rows,
                 local_col: local_gridcell_col(child),
                 local_row: local_gridcell_row(child),
                 local_role: local_gridcell_role(child)
                     .unwrap_or_else(|| LOCAL_GRIDCELL_ROLE_PLANET.to_string()),
+                is_implicit_receiver: false,
                 owner_ref: planet_owner_ref(child),
                 admission_status: admission_status.clone(),
                 deferrals: planet_deferrals,
@@ -285,6 +312,51 @@ fn planets_under_spec(
         }
     }
     views
+}
+
+fn receiver_cells_under_spec(
+    spec: &SimThingScenarioSpec,
+    map: &simthing_core::SimThing,
+) -> Vec<StudioReceiverCellView> {
+    let planet_report = evaluate_planet_child_locations(spec);
+    let admission_status =
+        planet_child_location_classification_label(planet_report.classification).to_string();
+    let placement_lookup: std::collections::BTreeMap<u32, String> = spec
+        .structural_grid
+        .placements
+        .iter()
+        .map(|p| (p.simthing_id_raw, p.location_id.clone()))
+        .collect();
+
+    collect_local_receiver_cells(spec)
+        .into_iter()
+        .map(|cell| {
+            let (parent_local_frame_cols, parent_local_frame_rows) = map
+                .children
+                .iter()
+                .find(|c| c.id.raw() == cell.parent_gridcell_simthing_id_raw)
+                .map(|g| star_system_local_grid_frame(g))
+                .unwrap_or((LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS));
+            let local_role = match cell.role {
+                LocalReceiverCellRole::Inert => LOCAL_GRIDCELL_ROLE_INERT.to_string(),
+                LocalReceiverCellRole::Receiver => LOCAL_GRIDCELL_ROLE_RECEIVER.to_string(),
+            };
+            StudioReceiverCellView {
+                parent_gridcell_simthing_id_raw: cell.parent_gridcell_simthing_id_raw,
+                parent_location_id: placement_lookup
+                    .get(&cell.parent_gridcell_simthing_id_raw)
+                    .cloned(),
+                parent_local_frame_cols: parent_local_frame_cols,
+                parent_local_frame_rows: parent_local_frame_rows,
+                local_col: cell.col,
+                local_row: cell.row,
+                local_role,
+                is_implicit_receiver: cell.is_implicit,
+                materialized_simthing_id_raw: cell.materialized_simthing_id_raw,
+                admission_status: admission_status.clone(),
+            }
+        })
+        .collect()
 }
 
 fn gridcells_under_map(map: &simthing_core::SimThing) -> Vec<StudioGridcellView> {
