@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; PR/merge metadata finalized after merge.
+PASS — focused validation complete; PR #803 merged.
 
 ## PR / branch / merge
 
 - Branch: `local-participant-effects-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #803
+- Merge SHA: `0b5b1791b00525ab07e2158af5c888e193d18b25`
 
 ## Mission
 
