@@ -2,13 +2,13 @@
 
 ## Status
 
-PENDING — validation in progress
+PASS
 
 ## PR / branch / merge
 
 - Branch: `studio-scenario-runtime-saveload-ui-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #846
+- Merge SHA: `83bc5810276724fc044bd0361d6cf817f8f513c8`
 
 ## Mission
 
@@ -80,7 +80,16 @@ This rung is not another hygiene-only wrapper. It completes the Studio-visible S
 
 | Command | Status |
 |---------|--------|
-| `cargo test -p simthing-mapeditor --test studio_scenario_runtime_saveload_ui` | pending |
+| `cargo fmt -p simthing-mapeditor -p simthing-spec -p simthing-driver -- --check` | PASS |
+| `cargo check -p simthing-mapeditor` | PASS |
+| `cargo test -p simthing-mapeditor --test studio_scenario_runtime_saveload_ui` | PASS (13) |
+| `cargo test -p simthing-spec --test scenario_candidate_save_reopen` | PASS |
+| `cargo test -p simthing-spec --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-spec --test scenario_canonical_io` | PASS (7) |
+| `cargo test -p simthing-driver --test scenario_candidate_save_reopen` | PASS |
+| `cargo test -p simthing-driver --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-driver --test scenario_canonical_io` | PASS (4) |
+| `git diff --check` | PASS |
 
 ## Files changed
 
