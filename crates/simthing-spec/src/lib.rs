@@ -486,9 +486,11 @@ pub use spec::runtime_rf_tick::{
 };
 pub use spec::runtime_rf_tick_source::{
     evaluate_runtime_rf_tick_source_comparison, evaluate_runtime_rf_tick_source_preview,
-    prove_runtime_rf_tick_source_preserves_authority, RuntimeRfTickSourceComparisonReport,
-    RuntimeRfTickSourceDelta, RuntimeRfTickSourceDeltaKind, RuntimeRfTickSourceError,
-    RuntimeRfTickSourceErrorKind, RuntimeRfTickSourceKind, RuntimeRfTickSourceMode,
+    evaluate_runtime_rf_tick_source_selection, prove_runtime_rf_tick_source_preserves_authority,
+    prove_runtime_rf_tick_source_selection_preserves_authority, RuntimeRfTickSelectedSourceReport,
+    RuntimeRfTickSourceComparisonReport, RuntimeRfTickSourceDelta, RuntimeRfTickSourceDeltaKind,
+    RuntimeRfTickSourceError, RuntimeRfTickSourceErrorKind, RuntimeRfTickSourceKind,
+    RuntimeRfTickSourceMode, RuntimeRfTickSourceSelectionGate, RuntimeRfTickSourceSelectionMode,
     RuntimeRfTickSourceSummary,
 };
 pub use spec::runtime_tick_history::{
