@@ -2,13 +2,13 @@
 
 ## Status
 
-PENDING — validation in progress
+PASS
 
 ## PR / branch / merge
 
 - Branch: `scenario-candidate-save-reopen-harden-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #845
+- Merge SHA: `8aa72e6c5e395420a91df843d6b24a5bd2e39334`
 
 ## Mission
 
@@ -68,9 +68,17 @@ This PR is not a hygiene loop. It is a pre-UI safety hardening pass for the cand
 
 | Command | Status |
 |---------|--------|
-| `cargo fmt -p simthing-spec -p simthing-driver -- --check` | pending |
-| `cargo test -p simthing-spec --test scenario_candidate_save_reopen` | pending |
-| `cargo test -p simthing-driver --test scenario_candidate_save_reopen` | pending |
+| `cargo fmt -p simthing-spec -p simthing-driver -- --check` | PASS |
+| `cargo check -p simthing-spec` | PASS |
+| `cargo test -p simthing-spec --test scenario_candidate_save_reopen` | PASS (23) |
+| `cargo test -p simthing-spec --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-spec --test scenario_canonical_io` | PASS (7) |
+| `cargo check -p simthing-driver` | PASS |
+| `cargo test -p simthing-driver --test scenario_candidate_save_reopen` | PASS (8) |
+| `cargo test -p simthing-driver --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-driver --test scenario_canonical_io` | PASS (4) |
+| `git diff --check` | PASS |
+| alias guard | PASS |
 
 ## Files changed
 
