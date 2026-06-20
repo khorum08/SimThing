@@ -537,6 +537,13 @@ pub use spec::scenario_ingestion::{
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
+pub use spec::semantic_local_effects::{
+    evaluate_semantic_local_effects, prove_semantic_local_effects_preserve_authority,
+    semantic_local_effects_aggregate_totals, semantic_local_effects_from_application,
+    SemanticLocalEffectAuthorityProof, SemanticLocalEffectDeferral,
+    SemanticLocalEffectDeferralKind, SemanticLocalEffectError, SemanticLocalEffectErrorKind,
+    SemanticLocalEffectKind, SemanticLocalEffectOutput, SemanticLocalEffectReport,
+};
 pub use spec::session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_admission_classification_label,
     owner_silo_flow_participant_inputs, owner_silo_flow_participant_roots,

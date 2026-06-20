@@ -83,6 +83,7 @@ pub mod runtime_tick_history_compile;
 pub mod runtime_tick_shell_compile;
 pub mod scenario;
 pub mod scenario_ingestion_compile;
+pub mod semantic_local_effects_compile;
 pub mod session;
 pub mod session_resource_flow_silos;
 pub mod spec_replay;
@@ -674,6 +675,15 @@ pub use runtime_tick_shell_compile::{
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
+pub use semantic_local_effects_compile::{
+    compile_semantic_local_effects_plan, semantic_local_effects_applied_output_indices,
+    semantic_local_effects_cpu_runtime_applied_total, semantic_local_effects_cpu_shortfall_total,
+    semantic_local_effects_runtime_applied_aggregate_slot,
+    semantic_local_effects_runtime_applied_tick_inputs,
+    semantic_local_effects_shortfall_aggregate_slot,
+    semantic_local_effects_shortfall_output_indices, semantic_local_effects_shortfall_tick_inputs,
+    SemanticLocalEffectAggregateProofPlan, SemanticLocalEffectsPlan,
+};
 pub use session::{RunSummary, SessionError, SimSession};
 pub use session_resource_flow_silos::{
     build_owner_silo_resource_flow_spec, compile_and_materialize_owner_silo_flow,

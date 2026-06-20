@@ -24,6 +24,7 @@ pub mod runtime_tick_shell;
 pub mod scenario;
 pub mod scenario_ingestion;
 pub mod script;
+pub mod semantic_local_effects;
 pub mod session_resource_flow;
 pub mod spatial_local_grid;
 pub mod stress_compose;
@@ -179,6 +180,13 @@ pub use scenario_ingestion::{
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
+};
+pub use semantic_local_effects::{
+    evaluate_semantic_local_effects, prove_semantic_local_effects_preserve_authority,
+    semantic_local_effects_aggregate_totals, semantic_local_effects_from_application,
+    SemanticLocalEffectAuthorityProof, SemanticLocalEffectDeferral,
+    SemanticLocalEffectDeferralKind, SemanticLocalEffectError, SemanticLocalEffectErrorKind,
+    SemanticLocalEffectKind, SemanticLocalEffectOutput, SemanticLocalEffectReport,
 };
 pub use session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_admission_classification_label,
