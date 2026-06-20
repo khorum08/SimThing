@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `runtime-participant-property-mutation-boundary-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #824
+- Merge SHA: `633fb0c06a6b4ed877d4dbb4b030c6ce9c17ade7`
 
 ## Mission
 
