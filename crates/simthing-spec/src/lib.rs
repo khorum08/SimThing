@@ -446,6 +446,10 @@ pub use spec::runtime_local_allocation::{
     RuntimeLocalAllocationApplicationError, RuntimeLocalAllocationApplicationErrorKind,
     RuntimeLocalAllocationApplicationReport, RuntimeLocalAllocationState,
 };
+pub use spec::runtime_rf_tick::{
+    evaluate_runtime_rf_tick, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError,
+    RuntimeRfTickErrorKind, RuntimeRfTickReport,
+};
 pub use spec::scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
     apply_owner_entity_metadata, apply_owner_silo_metadata,
