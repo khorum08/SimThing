@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `local-effect-application-recursive-rf-source-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #814
+- Merge SHA: `51fb53f6fe01bb3ecff187708b881f5aedc8423e`
 
 ## Mission
 
