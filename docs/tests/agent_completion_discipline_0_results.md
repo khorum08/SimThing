@@ -11,8 +11,8 @@ LANDED — operational discipline documented and wired into `docs/agents.md`.
 | Item | Value |
 |------|-------|
 | Branch | `agent-completion-discipline-0` |
-| PR | PENDING (pre-merge) |
-| Merge | PENDING (pre-merge) |
+| PR | #793 — AGENT-COMPLETION-DISCIPLINE-0 |
+| Merge | `dbf33b64` |
 
 ## Current defect or mission
 
