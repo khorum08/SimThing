@@ -398,6 +398,12 @@ pub use spec::planet_child_location::{
     PlanetChildLocationEditError, PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
     PlanetLocalGridCommand, PlanetNonGridChildEntry,
 };
+pub use spec::planet_child_rf::{
+    evaluate_planet_child_rf_admission, planet_child_rf_admission_classification_label,
+    planet_child_rf_participant_inputs, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionError, PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport,
+    PlanetChildRfDeferral, PlanetChildRfDeferralKind, PlanetChildRfParticipantInput,
+};
 pub use spec::property::PropertySpec;
 pub use spec::region_field::{
     ArenaPressureBindingSpec, CommitmentEffectLifecycleSpec, CommitmentEffectSpec,

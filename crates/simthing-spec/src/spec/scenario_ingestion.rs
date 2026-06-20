@@ -9,6 +9,10 @@ use super::planet_child_location::{
     evaluate_planet_child_locations, PlanetChildLocationAdmissionClassification,
     PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
 };
+use super::planet_child_rf::{
+    evaluate_planet_child_rf_admission, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionReport,
+};
 use super::scenario::{
     galaxy_map_id, game_session_child, game_session_galaxy_map, game_session_owners, gridcell_role,
     is_galaxy_map_entity, is_owner_entity_kind, owner_entity_id, owner_has_silo_metadata,
@@ -125,6 +129,8 @@ pub struct ScenarioCompileReadinessReport {
     pub owner_silo_gpu_participant_accumulation_ready: bool,
     /// Full owner-silo state mutation (reduce-up/disburse-down writes) remains deferred.
     pub owner_silo_full_state_mutation_deferred: bool,
+    /// Admitted planet/non-grid child RF participants can lower to existing AccumulatorOp/GPU surfaces.
+    pub planet_child_rf_gpu_participant_accumulation_ready: bool,
     pub note: Option<String>,
 }
 
@@ -148,6 +154,7 @@ pub struct ScenarioIngestionResult {
     pub compile_readiness: ScenarioCompileReadinessReport,
     pub owner_silo: Option<OwnerSiloAdmissionReport>,
     pub planet_child_location: Option<PlanetChildLocationAdmissionReport>,
+    pub planet_child_rf: Option<PlanetChildRfAdmissionReport>,
     pub deferrals: Vec<ScenarioDeferral>,
     pub errors: Vec<ScenarioIngestionError>,
 }
@@ -226,6 +233,7 @@ fn empty_result(source_name: &str) -> ScenarioIngestionResult {
         },
         owner_silo: None,
         planet_child_location: None,
+        planet_child_rf: None,
         deferrals: Vec::new(),
         errors: Vec::new(),
     }
@@ -414,6 +422,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     }
 
     integrate_planet_child_locations(spec, result);
+    integrate_planet_child_rf(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -571,6 +580,27 @@ fn scan_owner_subtrees(spec: &SimThingScenarioSpec, result: &mut ScenarioIngesti
             }
         }
     }
+}
+
+fn integrate_planet_child_rf(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
+    let rf_report = evaluate_planet_child_rf_admission(spec);
+    result.planet_child_rf = Some(rf_report.clone());
+
+    if rf_report.classification == PlanetChildRfAdmissionClassification::Rejected {
+        for err in &rf_report.errors {
+            push_error(
+                result,
+                "planet_child_rf",
+                format!("{:?}: {}", err.kind, err.message),
+            );
+        }
+        return;
+    }
+
+    result
+        .compile_readiness
+        .planet_child_rf_gpu_participant_accumulation_ready = rf_report.total_participant_count > 0
+        && rf_report.classification != PlanetChildRfAdmissionClassification::Unsupported;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
