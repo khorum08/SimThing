@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `owner-silo-recursive-rf-source-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #812
+- Merge SHA: `807965d8f94e5a54085c9373f5802d9154850448`
 
 ## Mission
 
