@@ -207,6 +207,10 @@ pub struct ScenarioCompileReadinessReport {
     pub local_allocation_recursive_source_ready: bool,
     /// Local effects, semantic execution, and participant property mutation remain deferred.
     pub local_allocation_recursive_source_deferred: bool,
+    /// Recursive-source local effect application report can be evaluated.
+    pub local_effect_recursive_source_ready: bool,
+    /// Semantic local effects and semantic execution remain deferred.
+    pub local_effect_recursive_source_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -517,6 +521,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_runtime_rf_tick_source_selection(spec, result);
     integrate_owner_silo_recursive_source(spec, result);
     integrate_local_allocation_recursive_source(spec, result);
+    integrate_local_effect_recursive_source(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -1003,10 +1008,46 @@ fn integrate_local_allocation_recursive_source(
         return;
     }
 
-    result.compile_readiness.local_allocation_recursive_source_ready = true;
+    result
+        .compile_readiness
+        .local_allocation_recursive_source_ready = true;
     result
         .compile_readiness
         .local_allocation_recursive_source_deferred = true;
+}
+
+fn integrate_local_effect_recursive_source(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .local_effect_recursive_source_deferred = true;
+
+    if !result
+        .compile_readiness
+        .local_allocation_recursive_source_ready
+    {
+        return;
+    }
+    use super::local_effect_recursive_rf_source::{
+        evaluate_local_effect_application_with_rf_source, LocalEffectRfSourceMode,
+    };
+    use super::runtime_tick_shell::RuntimeTickId;
+    if evaluate_local_effect_application_with_rf_source(
+        spec,
+        RuntimeTickId(1),
+        LocalEffectRfSourceMode::LegacyPlanetChildOwnerSilo,
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    result.compile_readiness.local_effect_recursive_source_ready = true;
+    result
+        .compile_readiness
+        .local_effect_recursive_source_deferred = true;
 }
 
 fn integrate_owner_silo_recursive_source(
