@@ -5,6 +5,10 @@
 
 use simthing_core::SimThingKind;
 
+use super::owner_silo_runtime_writeback::{
+    owner_silo_writeback_inputs_from_planet_child_reduce_up,
+    runtime_owner_silo_states_from_scenario,
+};
 use super::planet_child_location::{
     evaluate_planet_child_locations, PlanetChildLocationAdmissionClassification,
     PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
@@ -134,6 +138,10 @@ pub struct ScenarioCompileReadinessReport {
     pub planet_child_rf_gpu_participant_accumulation_ready: bool,
     /// Scoped planet child RF reduce-up oracle is available for admitted participants.
     pub planet_child_rf_reduce_up_ready: bool,
+    /// Runtime owner-silo writeback from scoped reduce-up is ready (scenario authority unchanged).
+    pub owner_silo_runtime_writeback_ready: bool,
+    /// Runtime writeback defers scenario authority mutation and disburse-down.
+    pub owner_silo_runtime_writeback_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -429,6 +437,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_planet_child_locations(spec, result);
     integrate_planet_child_rf(spec, result);
     integrate_planet_child_rf_reduce_up(spec, result);
+    integrate_owner_silo_runtime_writeback(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -632,6 +641,31 @@ fn integrate_planet_child_rf_reduce_up(
     result
         .compile_readiness
         .owner_silo_full_state_mutation_deferred = true;
+}
+
+fn integrate_owner_silo_runtime_writeback(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .owner_silo_runtime_writeback_deferred = true;
+
+    let reduce_up = evaluate_planet_child_rf_reduce_up(spec);
+    if reduce_up.classification == PlanetChildRfAdmissionClassification::Rejected {
+        return;
+    }
+    if runtime_owner_silo_states_from_scenario(spec).is_err() {
+        return;
+    }
+    if owner_silo_writeback_inputs_from_planet_child_reduce_up(&reduce_up).is_err() {
+        return;
+    }
+
+    result.compile_readiness.owner_silo_runtime_writeback_ready = true;
+    result
+        .compile_readiness
+        .owner_silo_runtime_writeback_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {

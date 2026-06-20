@@ -7,6 +7,7 @@ pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
 pub mod overlay;
+pub mod owner_silo_runtime_writeback;
 pub mod planet_child_location;
 pub mod planet_child_rf;
 pub mod property;
@@ -35,6 +36,13 @@ pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
+pub use owner_silo_runtime_writeback::{
+    apply_owner_silo_runtime_writeback_cpu,
+    owner_silo_writeback_inputs_from_planet_child_reduce_up, read_owner_silo_capacity_from_owner,
+    read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
+    RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
+    RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
+};
 pub use planet_child_location::{
     all_planet_child_locations, apply_planet_child_location_command, apply_planet_child_metadata,
     child_location_role, evaluate_planet_child_locations, is_planet_child_location,

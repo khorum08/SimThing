@@ -379,6 +379,13 @@ pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
 pub use spec::overlay::OverlaySpec;
+pub use spec::owner_silo_runtime_writeback::{
+    apply_owner_silo_runtime_writeback_cpu,
+    owner_silo_writeback_inputs_from_planet_child_reduce_up, read_owner_silo_capacity_from_owner,
+    read_owner_silo_current_from_owner, runtime_owner_silo_states_from_scenario,
+    RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackError, RuntimeOwnerSiloWritebackErrorKind,
+    RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult,
+};
 pub use spec::planet_child_location::{
     all_planet_child_locations, all_planet_gridcells, apply_local_gridcell_metadata,
     apply_planet_child_location_command, apply_planet_child_metadata,
