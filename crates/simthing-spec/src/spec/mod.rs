@@ -10,6 +10,7 @@ pub mod local_effect_application;
 pub mod local_participant_effects;
 pub mod overlay;
 pub mod owner_silo_disburse_down;
+pub mod owner_silo_recursive_rf_source;
 pub mod owner_silo_runtime_writeback;
 pub mod planet_child_location;
 pub mod planet_child_rf;
@@ -67,6 +68,13 @@ pub use owner_silo_disburse_down::{
     RuntimeOwnerSiloDisburseDownAllocation, RuntimeOwnerSiloDisburseDownError,
     RuntimeOwnerSiloDisburseDownErrorKind, RuntimeOwnerSiloDisburseDownInput,
     RuntimeOwnerSiloDisburseDownResult,
+};
+pub use owner_silo_recursive_rf_source::{
+    evaluate_owner_silo_disburse_down_with_rf_source,
+    owner_silo_demand_buckets_from_recursive_local_rf,
+    prove_owner_silo_recursive_source_preserves_authority, OwnerSiloDisburseDownReport,
+    OwnerSiloRecursiveSourceError, OwnerSiloRecursiveSourceErrorKind, OwnerSiloRfSourceDisburseReport,
+    OwnerSiloRfSourceMode, OwnerSiloRfSourceSelection,
 };
 pub use owner_silo_runtime_writeback::{
     apply_owner_silo_runtime_writeback_cpu,

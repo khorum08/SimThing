@@ -39,6 +39,7 @@ pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod owner_silo_accumulator_compile;
 pub mod owner_silo_disburse_down_compile;
+pub mod owner_silo_recursive_source_compile;
 pub mod owner_silo_runtime_writeback_compile;
 pub mod planet_child_rf_accumulator_compile;
 pub mod planet_child_rf_reduce_up_compile;
@@ -687,6 +688,9 @@ pub use runtime_rf_tick_source_compile::{
     compile_runtime_rf_tick_source_comparison_plan,
     compile_runtime_tick_shell_with_rf_source_comparison_plan, RuntimeRfTickSourceComparisonPlan,
     RuntimeTickShellRfSourceComparisonPlan,
+};
+pub use owner_silo_recursive_source_compile::{
+    compile_owner_silo_recursive_source_plan, OwnerSiloRecursiveSourcePlan,
 };
 pub use runtime_rf_tick_source_select_compile::{
     compile_runtime_rf_tick_source_selection_plan,

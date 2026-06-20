@@ -400,6 +400,13 @@ pub use spec::owner_silo_disburse_down::{
     RuntimeOwnerSiloDisburseDownErrorKind, RuntimeOwnerSiloDisburseDownInput,
     RuntimeOwnerSiloDisburseDownResult,
 };
+pub use spec::owner_silo_recursive_rf_source::{
+    evaluate_owner_silo_disburse_down_with_rf_source,
+    owner_silo_demand_buckets_from_recursive_local_rf,
+    prove_owner_silo_recursive_source_preserves_authority, OwnerSiloDisburseDownReport,
+    OwnerSiloRecursiveSourceError, OwnerSiloRecursiveSourceErrorKind, OwnerSiloRfSourceDisburseReport,
+    OwnerSiloRfSourceMode, OwnerSiloRfSourceSelection,
+};
 pub use spec::owner_silo_runtime_writeback::{
     apply_owner_silo_runtime_writeback_cpu,
     owner_silo_writeback_inputs_from_planet_child_reduce_up, read_owner_silo_capacity_from_owner,
