@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; merge pending
+PASS
 
 ## PR / branch / merge
 
 - Branch: `runtime-local-allocation-application-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #799
+- Merge SHA: `1c01df47`
 
 ## Mission
 
