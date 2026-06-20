@@ -456,6 +456,11 @@ pub use spec::runtime_rf_tick::{
     evaluate_runtime_rf_tick, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError,
     RuntimeRfTickErrorKind, RuntimeRfTickReport,
 };
+pub use spec::runtime_tick_history::{
+    evaluate_runtime_tick_history_entry, replay_runtime_tick_history, scenario_authority_digest,
+    RuntimeTickHistoryEntry, RuntimeTickHistoryError, RuntimeTickHistoryErrorKind,
+    RuntimeTickReplayMismatch, RuntimeTickReplayReport, MAX_RUNTIME_TICK_REPLAY_COUNT,
+};
 pub use spec::runtime_tick_shell::{
     evaluate_runtime_tick_shell, runtime_tick_shell_stage_order, RuntimeTickExecutionReport,
     RuntimeTickId, RuntimeTickShellDeferral, RuntimeTickShellDeferralKind, RuntimeTickShellError,
