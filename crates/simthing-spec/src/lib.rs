@@ -613,6 +613,14 @@ pub use spec::semantic_local_effects_recursive_rf_source::{
     SemanticLocalEffectRfSourceMode, SemanticLocalEffectRfSourceReport,
     SemanticLocalEffectRfSourceSelection,
 };
+pub use spec::semantic_participant_delta_preview::{
+    evaluate_semantic_participant_delta_preview,
+    prove_semantic_participant_delta_preview_preserves_authority, ParticipantDeltaPreviewKind,
+    ParticipantDeltaPreviewSourceMode, ParticipantPropertyDeltaPreviewRecord,
+    SemanticParticipantDeltaPreviewError, SemanticParticipantDeltaPreviewErrorKind,
+    SemanticParticipantDeltaPreviewReport, RUNTIME_PREVIEW_APPLIED_PROPERTY_ID,
+    RUNTIME_PREVIEW_SATISFIED_PROPERTY_ID, RUNTIME_PREVIEW_SHORTFALL_PROPERTY_ID,
+};
 pub use spec::session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_admission_classification_label,
     owner_silo_flow_participant_inputs, owner_silo_flow_participant_roots,

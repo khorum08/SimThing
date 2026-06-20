@@ -219,6 +219,10 @@ pub struct ScenarioCompileReadinessReport {
     pub semantic_effect_execution_boundary_ready: bool,
     /// Participant property mutation, Scenario authority mutation, savefile, and history remain deferred.
     pub semantic_effect_execution_boundary_deferred: bool,
+    /// Runtime participant property delta previews can be evaluated.
+    pub semantic_participant_delta_preview_ready: bool,
+    /// Participant property mutation, Scenario authority mutation, savefile, and history remain deferred.
+    pub semantic_participant_delta_preview_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -532,6 +536,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_local_effect_recursive_source(spec, result);
     integrate_semantic_local_effects_recursive_source(spec, result);
     integrate_semantic_effect_execution_boundary(spec, result);
+    integrate_semantic_participant_delta_preview(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -1129,6 +1134,43 @@ fn integrate_semantic_effect_execution_boundary(
     result
         .compile_readiness
         .semantic_effect_execution_boundary_deferred = true;
+}
+
+fn integrate_semantic_participant_delta_preview(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .semantic_participant_delta_preview_deferred = true;
+
+    if !result
+        .compile_readiness
+        .semantic_effect_execution_boundary_ready
+    {
+        return;
+    }
+    use super::runtime_tick_shell::RuntimeTickId;
+    use super::semantic_participant_delta_preview::{
+        evaluate_semantic_participant_delta_preview, ParticipantDeltaPreviewSourceMode,
+    };
+    if evaluate_semantic_participant_delta_preview(
+        spec,
+        RuntimeTickId(1),
+        ParticipantDeltaPreviewSourceMode::LegacyPlanetChildOwnerSilo,
+        1,
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    result
+        .compile_readiness
+        .semantic_participant_delta_preview_ready = true;
+    result
+        .compile_readiness
+        .semantic_participant_delta_preview_deferred = true;
 }
 
 fn integrate_owner_silo_recursive_source(

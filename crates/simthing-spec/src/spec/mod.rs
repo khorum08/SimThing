@@ -33,6 +33,7 @@ pub mod script;
 pub mod semantic_effect_execution_boundary;
 pub mod semantic_local_effects;
 pub mod semantic_local_effects_recursive_rf_source;
+pub mod semantic_participant_delta_preview;
 pub mod session_resource_flow;
 pub mod spatial_local_grid;
 pub mod stress_compose;
@@ -243,6 +244,14 @@ pub use semantic_local_effects_recursive_rf_source::{
     SemanticLocalEffectRecursiveSourceError, SemanticLocalEffectRecursiveSourceErrorKind,
     SemanticLocalEffectRfSourceMode, SemanticLocalEffectRfSourceReport,
     SemanticLocalEffectRfSourceSelection,
+};
+pub use semantic_participant_delta_preview::{
+    evaluate_semantic_participant_delta_preview,
+    prove_semantic_participant_delta_preview_preserves_authority, ParticipantDeltaPreviewKind,
+    ParticipantDeltaPreviewSourceMode, ParticipantPropertyDeltaPreviewRecord,
+    SemanticParticipantDeltaPreviewError, SemanticParticipantDeltaPreviewErrorKind,
+    SemanticParticipantDeltaPreviewReport, RUNTIME_PREVIEW_APPLIED_PROPERTY_ID,
+    RUNTIME_PREVIEW_SATISFIED_PROPERTY_ID, RUNTIME_PREVIEW_SHORTFALL_PROPERTY_ID,
 };
 pub use session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_admission_classification_label,
