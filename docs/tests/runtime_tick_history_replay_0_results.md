@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; PR/merge metadata finalized after merge.
+PASS — focused validation complete; PR #804 merged.
 
 ## PR / branch / merge
 
 - Branch: `runtime-tick-history-replay-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #804
+- Merge SHA: `d787a1c5782b47332f9c020c23b77fbb6982d047`
 
 ## Mission
 
