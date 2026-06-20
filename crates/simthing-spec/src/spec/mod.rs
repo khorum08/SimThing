@@ -6,6 +6,7 @@ pub mod event;
 pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
+pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
 pub mod local_participant_effects;
 pub mod overlay;
@@ -47,6 +48,14 @@ pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
+pub use local_allocation_recursive_rf_source::{
+    evaluate_runtime_local_allocation_with_rf_source,
+    prove_local_allocation_recursive_source_preserves_authority,
+    runtime_local_allocation_from_owner_silo_disburse_report, LocalAllocationRecursiveSourceError,
+    LocalAllocationRecursiveSourceErrorKind, LocalAllocationRfSourceMode,
+    LocalAllocationRfSourceSelection, RuntimeLocalAllocationReport,
+    RuntimeLocalAllocationRfSourceReport,
+};
 pub use local_effect_application::{
     apply_runtime_local_effect_records, evaluate_runtime_local_effect_application,
     local_effect_application_aggregate_totals, prove_local_effect_application_preserves_authority,
