@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — non-grid child admission landed. Simulation behavior remains deferred. Pending owner DA approval.
 
 **Date:** 2026-06-19
-**PR:** PLANET-NON-GRID-CHILD-ADMISSION-0
+**PR:** #792 — PLANET-NON-GRID-CHILD-ADMISSION-0
+**Merge:** `6790907b`
 **Base:** `master` after PR #791 / RECURSIVE-SPATIAL-GRID-DEFAULTS-0 (`1807faa9`)
 
 ## What changed
