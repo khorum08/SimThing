@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `scenario-canonical-load-save-roundtrip-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #828
+- Merge SHA: `ee651acdf4b4a0e94b707300974d285ea2664754`
 
 ## Mission
 
@@ -87,4 +87,4 @@ PROBATION — pending merge and DA review.
 
 ## DA status
 
-Not submitted — evidence PROBATION pending validation and merge.
+Not submitted — evidence PROBATION pending DA review.
