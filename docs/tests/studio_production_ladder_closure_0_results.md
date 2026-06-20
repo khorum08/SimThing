@@ -4,6 +4,12 @@
 
 PASS
 
+## PR / branch / merge
+
+- Branch: `studio-production-ladder-closure-0r`
+- PR: #830
+- Merge SHA: `8ccea7d2534fec4fd1b0010f63c6c96b88f8f2f9`
+
 ## Mission
 
 Trim the Studio production doc into a readable production ladder, move verbose worklog material to a workshop log, mark SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0 (#828) as landed, and install the finite post-canonical Scenario Runtime + Save/Load Closing Track.
