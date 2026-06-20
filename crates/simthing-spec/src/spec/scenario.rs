@@ -49,6 +49,13 @@ pub const OWNER_FLOW_OWNER_REF_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_
 pub const OWNER_FLOW_SURPLUS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_308);
 /// Generic unmet demand / deficit on owner-referenced spatial participants.
 pub const OWNER_FLOW_DEFICIT_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_309);
+/// Local disburse-down demand amount on owner-referenced spatial participants (exact u32 f32 mirror).
+pub const OWNER_FLOW_DEMAND_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_310);
+/// Disburse-down priority on owner-referenced spatial participants (lower wins; exact u32 f32 mirror).
+pub const OWNER_FLOW_PRIORITY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_311);
+
+/// Default disburse-down priority when metadata is absent.
+pub const OWNER_FLOW_DEFAULT_PRIORITY: u32 = 100;
 
 /// Canonical GalaxyMap / WorldStateMap spatial root metadata on direct GameSession children.
 pub const GALAXY_MAP_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_400);
@@ -779,6 +786,14 @@ pub fn owner_flow_deficit(thing: &SimThing) -> Option<u32> {
     scenario_metadata_u32(thing, OWNER_FLOW_DEFICIT_PROPERTY_ID)
 }
 
+pub fn owner_flow_demand(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_FLOW_DEMAND_PROPERTY_ID)
+}
+
+pub fn owner_flow_priority(thing: &SimThing) -> Option<u32> {
+    scenario_metadata_u32(thing, OWNER_FLOW_PRIORITY_PROPERTY_ID)
+}
+
 pub fn owner_has_silo_metadata(owner: &SimThing) -> bool {
     owner_silo_marker(owner).is_some() || owner_silo_current(owner).is_some()
 }
@@ -821,6 +836,30 @@ pub fn apply_participant_owner_flow_metadata(
         participant.add_property(
             OWNER_FLOW_DEFICIT_PROPERTY_ID,
             scenario_metadata_u32_value(deficit),
+        );
+    }
+}
+
+pub fn apply_participant_owner_flow_demand_metadata(
+    participant: &mut SimThing,
+    owner_id: &str,
+    demand: u32,
+    priority: Option<u32>,
+) {
+    participant.add_property(
+        OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+        scenario_metadata_string_value(owner_id),
+    );
+    if demand > 0 {
+        participant.add_property(
+            OWNER_FLOW_DEMAND_PROPERTY_ID,
+            scenario_metadata_u32_value(demand),
+        );
+    }
+    if let Some(priority) = priority {
+        participant.add_property(
+            OWNER_FLOW_PRIORITY_PROPERTY_ID,
+            scenario_metadata_u32_value(priority),
         );
     }
 }

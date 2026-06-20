@@ -5,6 +5,7 @@
 
 use simthing_core::SimThingKind;
 
+use super::owner_silo_disburse_down::owner_silo_demand_buckets_from_planet_child_rf;
 use super::owner_silo_runtime_writeback::{
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
     runtime_owner_silo_states_from_scenario,
@@ -142,6 +143,10 @@ pub struct ScenarioCompileReadinessReport {
     pub owner_silo_runtime_writeback_ready: bool,
     /// Runtime writeback defers scenario authority mutation and disburse-down.
     pub owner_silo_runtime_writeback_deferred: bool,
+    /// Runtime owner-silo disburse-down allocation oracle is ready (scenario authority unchanged).
+    pub owner_silo_disburse_down_ready: bool,
+    /// Disburse-down defers allocation application and scenario authority mutation.
+    pub owner_silo_disburse_down_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -438,6 +443,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_planet_child_rf(spec, result);
     integrate_planet_child_rf_reduce_up(spec, result);
     integrate_owner_silo_runtime_writeback(spec, result);
+    integrate_owner_silo_disburse_down(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -666,6 +672,23 @@ fn integrate_owner_silo_runtime_writeback(
     result
         .compile_readiness
         .owner_silo_runtime_writeback_deferred = true;
+}
+
+fn integrate_owner_silo_disburse_down(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result.compile_readiness.owner_silo_disburse_down_deferred = true;
+
+    if !result.compile_readiness.owner_silo_runtime_writeback_ready {
+        return;
+    }
+    if owner_silo_demand_buckets_from_planet_child_rf(spec).is_err() {
+        return;
+    }
+
+    result.compile_readiness.owner_silo_disburse_down_ready = true;
+    result.compile_readiness.owner_silo_disburse_down_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
