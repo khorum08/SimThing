@@ -1,167 +1,164 @@
 # 0.8.3 SimThing Studio Production
 
-> **Stable raw URL alias.** This file is the space-free twin of
-> [`0.8.3 Simthing Studio Production.md`](0.8.3%20Simthing%20Studio%20Production.md), kept so web
-> clients can fetch a reliable `raw.githubusercontent.com` path without `%20` encoding issues.
+> Lifecycle: **PROBATION** production synthesis until DA approval. This document is the authoritative Studio production design track and closing PR ladder — not a per-PR worklog.
 >
-> Lifecycle: PROBATION production synthesis until DA approval. This document consolidates the current Studio production track; it does not promote any unapproved evidence row to CURRENT_EVIDENCE.
+> Detailed PR/worklog history: [`docs/workshop/studio_production_log.md`](workshop/studio_production_log.md)
+>
+> Per-rung validation evidence: `docs/tests/*_results.md` and [`docs/tests/current_evidence_index.md`](tests/current_evidence_index.md)
 
-## Executive Summary
+## Executive Production Status
 
-SimThing Studio is now an editor and presentation shell over SimThing-Spec scenario authority. MapGenerator and future ClauseThing imports produce or hydrate a SimThing-Spec-compliant scenario. Studio projects that authority into flat indexes, view models, render anchors, Bevy entities, dialogs, and camera state. Save/load work must serialize the scenario authority and rebuild the galaxy view from it.
+SimThing Studio is an editor and presentation shell over **SimThing-Spec scenario authority**. MapGenerator and future ClauseThing imports produce or hydrate a `SimThingScenarioSpec`. Studio projects that authority into flat indexes, view models, render anchors, Bevy entities, dialogs, and camera state.
 
-## Constitutional Spine
+**Current baseline (2026-06-20):** headless canonical ScenarioSpec load/save roundtrip is **landed** (PR #828, PROBATION). Prior doc-cleanup **STUDIO-PRODUCTION-LADDER-CLOSURE-0R** (PR #830) trimmed verbose worklog material from the legacy synthesis doc. The active product track is the finite **Scenario Runtime + Save/Load Closing Track** below — not another hygiene or comparison loop.
 
-The controlling doctrine remains the permanent SimThing paradigm plus the 0.0.8.3 transient constitution. Everything is a SimThing; behavior is expressed as SimThings, properties, overlays, and admitted accumulator/resource-flow surfaces. Exact native magnitude gates remain Candidate-F governed when such a gate exists, while grid topology itself is structural integer STEAD/Mapping, not float render distance.
+**Anti-hygiene rule:** Reject docs-only or comparison-only rungs unless they directly enable one of: Scenario load, validation, STEAD mapping, Studio projection rebuild, recursive spatial-tree RF runtime, candidate ScenarioSpec mutation, candidate save/reopen, Studio UI closure, or DA precheck readiness.
 
-## Everything After Generation Is SimThing
+## SimThing Doctrine
 
-After generation or import, the sole authoritative substrate is `SimThingScenarioSpec`: a recursive `SimThing` root tree plus structural grid metadata, placements, links, and provenance. Studio may keep projections, but projections do not own model truth. Model edits apply to the scenario authority first, then Studio rebuilds or refreshes projection layers.
+- Everything is a **SimThing**; behavior is expressed as SimThings, properties, overlays, and admitted accumulator/resource-flow surfaces.
+- After generation or import, the sole authoritative substrate is **`SimThingScenarioSpec`**: recursive `SimThing` root tree plus structural grid metadata, placements, links, and provenance.
+- Studio projections, Bevy entities, GPU buffers, runtime reports, and editor config are **not** model authority.
+- Model edits apply to scenario authority first; Studio rebuilds projection layers from authority.
+- Terran Pirate is a **lower-layer golden fixture** only — not the canonical save-game tree shape.
 
-## MapGeneratorCLI Lineage
+## RF / Spatial-Tree Runtime Doctrine
 
-The MapGeneratorCLI lineage closed the producer-side obligations: deterministic typed generation, fail-closed params, structural placement, connected galaxy topology, quality reports, and visual artifacts. Studio consumes the typed MapGenerator library path and report, not stdout scraping. Generated topology remains authored structural data; render tuning never regenerates or mutates it.
+```text
+ScenarioSpec is the serializable authority.
 
-## ClauseThing To SimThing-Spec Boundary
+ScenarioSpec
+  -> Scenario root
+     -> GameSession
+        -> Owner SimThings
+        -> GalaxyMap / WorldStateMap Location
+           -> galactic gridcell Location SimThings
+              -> interior local grid
+                 -> star-system local gridcell Location SimThings
+                    -> planet/starbase/orbital Location gridcell SimThings
+                       -> cohorts / fleets / infrastructure / leaders as child SimThings
+```
 
-ClauseThing and MapGen lowering established scenario-container hydration over existing generic SimThing surfaces: `Location` gridcells, bounded links, RegionField/Movement-Front feedstock, RF enrollment, PALMA feedstock, and commitments. Studio's generated galaxy path now follows the same principle by producing a SimThing-Spec scenario before any editor projection.
+**Spatial invariants:**
+
+- Everything is a SimThing.
+- ScenarioSpec is the save/load authority.
+- GameSession contains Owner SimThings and the root spatial Location.
+- Owners are GameSession children, not spatial parents.
+- Owner/RF identity is metadata/channel scope, not containment.
+- Ownership changes update metadata/properties/columns, never spatial parentage.
+- GalaxyMap / WorldStateMap is the root spatial Location.
+- Every spatial gridcell is a Location SimThing.
+- Every spatial gridcell has an interior local grid.
+- Default interior grid is 1×1 unless expanded.
+- Star-system galactic gridcells use 10×10 local grids.
+- Inert gridcells still use receiver grids for falloff, emanation, and heatmap values.
+- Planet/starbase/orbital bodies are local-grid Location cells inside star-system local grids.
+- Cohorts, fleets, infrastructure, and leaders are child SimThings under spatial Location cells unless later promoted to spatial containers.
+
+**RF / Accumulator doctrine:**
+
+- RF is generic flow accumulation over SimThings.
+- RF resolves locally at each parent Location gridcell node.
+- sibling surplus/deficit settles within the parent Location arena before net surplus/deficit bubbles upward.
+- Upward RF reduction is by owner/resource/scope.
+- Owner/RF channels are metadata arenas/scopes, not spatial containment.
+- AccumulatorOp / GPU rows are execution/proof/cache surfaces.
+- ScenarioSpec remains the authority.
+- CPU may perform oracle/reference/shadow/bookkeeping/report formatting.
+- CPU must not become production simulation authority.
 
 ## STEAD Mapping Doctrine
 
-A `Location` SimThing is a structural gridcell. Its `(col,row)` coordinate is the STEAD/Mapping authority. Render coordinates, camera distance, starlane mesh width, sprite radius, and screen-space picking state are not authority. Structural layout admission is separate from dense execution-profile admission: a vast layout may be valid while bounded dense Movement-Front execution defers to the atlas rung.
+- Scenario load must validate stable IDs and links.
+- ID reservation must prevent collisions.
+- Studio projection rows must derive from ScenarioSpec authority.
+- Studio view models and Bevy state are not authority.
+- Save/load must preserve stable Scenario identity, SimThing identity, link integrity, ownership metadata, RF metadata, and spatial tree shape.
 
-## Generated Galaxy Authority
+## Current Landed Capability Summary
 
-The generated galaxy authority is:
+| Capability | Status | Notes |
+|---|---|---|
+| Whole `SimThingScenarioSpec` save/load authority model | Landed / PROBATION | SAVELOAD-AUTHORITY-PIN-0R |
+| Backend `.simthing-scenario.json` file IO | Landed / PROBATION | SCENARIO-SAVELOAD-IO-0 |
+| Studio Save Scenario / Load Scenario controls | Landed / PROBATION | SCENARIO-SAVELOAD-UI-0 |
+| Scenario-native loaded `StudioSession` source | Landed / PROBATION | SCENARIO-NATIVE-SESSION-0 |
+| Studio projections derived from ScenarioSpec authority | Landed / PROBATION | STUDIO-SIMTHING-SPEC-BOUNDARY-1 |
+| General scenario ingestion / admission | Landed / PROBATION | GENERAL-SCENARIO-INGESTION-ADMISSION-0 |
+| Owner silo reduce-up / disburse-down first slice | Landed / PROBATION | SESSION-RESOURCE-FLOW-SILOS-0 |
+| Recursive spatial-tree RF proof ladder through runtime property-view boundary | Landed / PROBATION | #795–#826 ladder |
+| **SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0** | **Landed / PROBATION (#828)** | Headless canonical JSON load → serialize → reload → stable authority digest |
 
-```text
-SimThingScenarioSpec
-  root: World
-    -> galaxy map Location
-       -> Location/gridcell per generated system
-          -> child payload SimThing
-  structural_grid: frame + one placement per gridcell
-  links: generated base hyperlane endpoints
-  provenance: generator source, seed, shape
-```
+## Scenario Runtime + Save/Load Closing Track
 
-Each gridcell has mirrored structural properties for generated system id, structural col, and structural row. `validate_stead_mapping_consistency` guards duplicate ids, duplicate coordinates, missing placements, missing child payloads, mirrored-property mismatch, and render-coordinate leakage.
+This closing track completes Studio Scenario import/load/save/runtime closure. It is not a shutdown track and it is not a hygiene loop. Each rung must move one of the following forward: Scenario load, Scenario validation, STEAD mapping, Studio projection rebuild, recursive spatial-tree RF runtime, candidate ScenarioSpec mutation, candidate save/reopen, or Studio-visible save/load workflow.
 
-## Studio Projection Layers
+| Rung | PR / Track ID | Purpose | Completed? | Evidence / Notes | Next dependency |
+|---:|---|---|---|---|---|
+| 0 | SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0 | Headless canonical ScenarioSpec load/save/reload with stable authority digest. | DONE | Landed in PR #828. Canonical JSON, load, save, reload, digest proof. | STEAD map roundtrip |
+| 1 | SCENARIO-STEAD-MAP-ROUNDTRIP-0 | Prove STEAD IDs, links, ownership metadata, RF metadata, and spatial tree shape survive load/save/reload. | NEXT | Must reuse #828 canonical IO. Must prove Owner metadata is not spatial parentage. | Studio session envelope |
+| 2 | LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0 | Define loaded ScenarioSpec authority envelope for Studio: digest, validation, projection readiness, RF readiness, save/export eligibility. | PENDING | Studio config, Bevy state, GPU buffers, and runtime reports are not authority. | Recursive RF runtime |
+| 3 | LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0 | Attach recursive Accumulator RF runtime to loaded ScenarioSpec spatial trees. | PENDING | RF resolves locally at each parent Location node; sibling settlement before upward bubbling. | Runtime report chain |
+| 4 | LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0 | Attach recursive RF → owner-silo → allocation → effects → semantic → execution → delta → runtime state → property view chain to loaded scenarios. | PENDING | Explicit runtime/report mode only. No hidden mutation on load. | Candidate ScenarioSpec |
+| 5 | SCENARIO-CANDIDATE-FROM-RUNTIME-0 | Generate mutated candidate ScenarioSpec from runtime property-view rows while original loaded ScenarioSpec remains unchanged. | PENDING | Candidate digest changes; original digest stable. No save write yet. | Candidate save/reopen |
+| 6 | SCENARIO-CANDIDATE-SAVE-REOPEN-0 | Save candidate ScenarioSpec, reopen it, validate STEAD/tree/projection, and prove digest stability. | PENDING | Atomic write path. Runtime reports rebuild from reopened ScenarioSpec, not persisted as authority. | Studio UI |
+| 7 | STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | Expose load, validation, recursive runtime readiness, candidate mutation, save candidate, and reopen candidate in Studio UI. | PENDING | UI state is not authority. Failed load/save preserves current session. | DA precheck |
+| 8 | SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | Consolidate evidence for DA review of the full Scenario Runtime + Save/Load feature. | DEFERRED | Review-only consolidation after rungs 1–7. Not another implementation rung. | Human DA decision |
 
-`StudioHydrationBoundary` and `StudioHydratedGrid` are projection/index layers over the scenario. `StudioGalaxyViewModel` rebuilds from the scenario via that projection. `StudioSystemRenderAnchor` exists only for presentation and picking. Settings dialog state and camera state are editor state and may be serialized as editor metadata, but never as model authority.
+### Rung 1 — SCENARIO-STEAD-MAP-ROUNDTRIP-0
 
-## Bevy Studio Rendering State
+Loaded and re-saved ScenarioSpec must preserve stable SimThing IDs, link integrity, ID reservation, parent/child tree shape, spatial parentage, ownership metadata, RF metadata, and Studio projection inputs. Owner metadata must remain distinct from spatial parentage. This rung must expose recursive RF prerequisites: parent Location arenas, spatial gridcell interior grids, and owner/resource/scope channel metadata.
 
-Bevy owns visible entities, materials, meshes, transform components, and frame-local camera-facing ribbon geometry. Those objects are disposable presentation state. They can be despawned and rebuilt from `StudioGalaxyViewModel`, which itself is rebuilt from `SimThingScenarioSpec`.
+### Rung 2 — LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0
 
-## Star And Hyperlane Rendering Findings
+Studio needs a loaded Scenario session envelope around ScenarioSpec authority: authority digest, validation status, projection readiness, recursive RF readiness, save/export eligibility, and runtime sidecars. The envelope must not make Studio config, Bevy entities, GPU buffers, or runtime reports authoritative.
 
-The PR2R line repaired star visibility, star aura falloff, shared render anchors, billboard/circle radius controls, Settings X behavior, hyperlane live controls, and camera-facing ribbon geometry. All of those findings are presentation-only. Star sizes, aura opacity, lane width, lane opacity, depth buckets, and overhead/3D view mode never mutate structural placement or generated topology.
+### Rung 3 — LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0
 
-## RF / Accumulator Readiness
+Loaded scenarios must compile recursive spatial-tree RF reports from the actual Location hierarchy. RF resolves locally at each parent Location gridcell node. Sibling surplus/deficit settles within that parent arena before unresolved net surplus/deficit bubbles upward by owner/resource/scope.
 
-RF/Accumulator readiness derives from `SimThingScenarioSpec`. Spatially-bound RF over `Location` participants requires structural placements and records the structural frame. Studio readiness checks count gridcell Locations from the scenario tree and placements from canonical structural metadata; render anchors are not accepted as input.
+### Rung 4 — LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0
 
-## Heatmap / Movement-Front Readiness
+Loaded ScenarioSpec must feed the recursive runtime report chain: recursive RF, owner-silo, local allocation, local effects, semantic projection, execution records, delta previews, runtime state rows, and runtime property view. This remains explicit report/runtime mode only, not hidden mutation on load.
 
-Heatmap readiness derives from the scenario structural frame and placement count. Small bounded theaters are eligible for dense first-slice execution. Oversized dense execution reports atlas-required, which is an execution-profile deferral, not a layout failure.
+### Rung 5 — SCENARIO-CANDIDATE-FROM-RUNTIME-0
 
-## Save/Load Authority Plan
+Runtime property-view rows must produce a mutated candidate ScenarioSpec. The loaded original ScenarioSpec must remain unchanged. Candidate mutation records must preserve participant id, owner_ref, resource_key, scope, property id, and before/runtime/after values.
 
-Save/load must serialize the whole `SimThingScenarioSpec` via `serialize_scenario_authority` / `deserialize_scenario_authority`. Naked `root: SimThing` alone is insufficient unless bundled with structural grid metadata, `map_container_id` binding, placements, links, and provenance. Loading must validate STEAD mapping, reserve existing `SimThingId`s before future spawns, and reject duplicate or exhausted id space. Studio settings, camera state, and render settings may be saved beside the authority as editor metadata, but they cannot reconstruct authority by themselves.
+### Rung 6 — SCENARIO-CANDIDATE-SAVE-REOPEN-0
 
-## SAVELOAD-AUTHORITY-PIN-0R — Authority hardening
+The candidate ScenarioSpec must save through canonical serialization and atomic temp-to-rename write, reopen, validate STEAD IDs/links/tree shape, rebuild Studio projections, and prove candidate digest stability. Runtime reports must rebuild from reopened ScenarioSpec rather than being persisted as authority.
 
-**Date / PR:** 2026-06-17 — SAVELOAD-AUTHORITY-PIN-0R
+### Rung 7 — STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0
 
-### What changed
+Studio must visibly expose loaded ScenarioSpec digest, STEAD/link/tree validation status, recursive RF runtime readiness, candidate mutation availability, Save Candidate, and Reopen Candidate. UI state, Bevy entities, and runtime caches remain non-authoritative.
 
-- Pinned whole `SimThingScenarioSpec` as the serialized save/load authority with explicit serde helpers and post-deserialize validation.
-- `structural_grid.map_container_id` now resolves to an actual `Location` SimThing raw id in the recursive tree; first-Location fallback removed.
-- Structural integer mirrors (`system_id`, `col`, `row`) are range-checked to `<= 16_777_216` exact f32 integers; primary authority remains `structural_grid.placements`.
-- Loaded scenarios reserve ids through `reserve_simthing_ids_from_scenario` with explicit `DuplicateId` / `IdSpaceExhausted` errors.
-- Invalid STEAD mapping defers RF and heatmap readiness (`InvalidSteadMapping`) instead of classifying bounded/atlas execution.
-- Added `apply_gridcell_property_edit` model-first mutation helper and projection-rebuild proof tests.
+## Deferred Post-Closure Tracks
 
-### Authority / substrate implications
+Deferred until after Scenario Runtime + Save/Load closure:
 
-`SimThingScenarioSpec` is the sole model substrate after generation. `StudioHydrationBoundary`, `StudioHydratedGrid`, `StudioGalaxyViewModel`, render anchors, and Bevy entities remain projections refreshed from scenario authority.
+- typed semantic mutation channels
+- persistent timeline/history model beyond candidate save/reopen
+- combat
+- movement/pathfinding/route predecessor state
+- full economy execution
+- fleet supply
+- Studio GPU dispatch
+- DA promotion itself
 
-### STEAD / Mapping implications
+## DA Promotion Criteria
 
-`resolve_map_container` binds `map_container_id` to a direct `World` child `Location`. Gridcell `Location` SimThings must be children of that exact container. Validator rejects dangling ids, non-`Location` containers, and gridcells under the wrong parent.
+Promotion from PROBATION to CURRENT_EVIDENCE requires:
 
-### RF / Accumulator implications
+1. Closing track Rungs 1–7 complete (or explicit waiver with owner sign-off).
+2. DA precheck consolidation submitted if requested.
+3. No open authority-boundary regressions on ScenarioSpec load/save, STEAD mapping, or spatial-tree RF doctrine.
+4. Owner sign-off on evidence index rows and synthesis doc.
 
-`StudioRfAccumulatorReadiness::from_scenario` and the deferred wrapper derive participant counts from gridcells under the declared map container. Invalid STEAD mapping yields `ready_for_spatial_rf_over_locations = false` with a deferred reason.
+## Known Risks (Concise)
 
-### Heatmap / Movement-Front implications
-
-`StudioHeatmapReadinessKind::InvalidSteadMapping` is distinct from `AtlasRequired`. Valid small grids classify as `BoundedTheaterEligible`; valid oversized dense layouts classify as `AtlasRequired` (execution deferral, not layout failure). Invalid STEAD never classifies as bounded or atlas-required.
-
-### Save/load implications
-
-Authority roundtrip preserves root tree, structural grid, map container binding, links, provenance, and children. `deserialize_scenario_authority` validates and reserves ids on load. Save/load UI remains deferred.
-
-### Evidence lifecycle status
-
-SAVELOAD-AUTHORITY-PIN-0R evidence is **PROBATION** pending DA approval. Prior SAVELOAD-AUTHORITY-PIN-0 evidence remains branch context; this rung hardens rather than replaces it.
-
-### Deferred work
-
-Save/load file IO and UI, ClauseThing import wiring, full editor mutation command surface, heatmap/RF visualization, atlas execution, live simulation, and exact typed `PropertyValue` enum expansion (f32 mirror range-check chosen for compatibility).
-
-## Current Evidence And Lifecycle Status
-
-The current evidence ledger remains the compact live guardrail index. Studio PR1 through PR2R12, STUDIO-HYDRATION-BOUNDARY-0, STUDIO-SIMTHING-SPEC-BOUNDARY-1, SAVELOAD-AUTHORITY-PIN-0, SAVELOAD-AUTHORITY-PIN-0R, and SIMTHING-STUDIO-CONFIG-0 are PROBATION unless and until DA-promoted. STEAD contract rows that were DA-approved remain CURRENT_EVIDENCE.
-
-## SIMTHING-STUDIO-CONFIG-0 — Studio config persistence
-
-**Date / PR:** 2026-06-17 — SIMTHING-STUDIO-CONFIG-0
-
-### What changed
-
-- Added presentation-only `simthing-studio-config.json` in the working directory (`schema_version = 1`).
-- Studio loads and validates config at startup; missing file uses defaults; invalid file fails open to defaults with a status warning.
-- Config saves atomically on Settings window close (X or Close) and on app exit.
-- Settings window gained a Reset button that restores star/hyperlane render settings and dialog-controlled values to defaults without touching scenario authority.
-
-### Presentation vs authority
-
-`simthing-studio-config.json` stores editor UI/render preferences only: settings dialog state, star/hyperlane render controls, view toggles, and optional camera snapshot. It does **not** serialize `SimThingScenarioSpec`, root `SimThing`, structural grid, generated galaxy data, RF/Accumulator state, or runtime vertical-test state.
-
-### Future runtime vertical-test compatibility
-
-Future runtime vertical-test loading inside Studio must load or synthesize `SimThingScenarioSpec` (or equivalent scenario authority) separately. Studio config may control view/render preferences around that authority but cannot become the runtime/scenario source of truth.
-
-### Evidence lifecycle status
-
-SIMTHING-STUDIO-CONFIG-0 evidence is **PROBATION** pending DA approval.
-
-## DA / PROBATION / CURRENT_EVIDENCE Status
-
-This synthesis is PROBATION. It summarizes the active track and branch evidence but does not claim DA approval. Promotion requires owner sign-off.
-
-## Known Risks
-
-- Scenario/model save/load UI is not implemented yet (`serialize_scenario_authority` helpers exist; scenario file IO does not).
-- Studio config path is CWD-only (`simthing-studio-config.json`); platform app-data dirs are deferred.
-- Legacy RON `settings.ron` under AppData still persists window/generation path metadata separately from JSON presentation config.
-- `map_container_id` is a SimThing raw-id string; logical display aliases like `studio_galaxy_map` are no longer accepted as authority bindings.
-- Structural mirrors remain defensive f32 vectors, not exact typed properties.
-- ClauseThing import into Studio authority is not wired yet.
+- Scenario path defaults to CWD-relative file; native Save Scenario dialog and platform app-data dirs remain deferred.
+- `map_container_id` is a SimThing raw-id string binding.
+- Structural mirrors remain defensive f32 vectors.
 - Dense galaxy-scale Movement-Front execution still requires atlas work.
-- Live simulation adoption from Studio scenarios remains deferred.
-
-## Deferred Work
-
-Scenario/model save/load UI and file IO, runtime vertical-test loading, platform-specific config directories, new-map flow, full editor mutation command surface beyond the proof helper, live SimThing simulation, RF execution arenas, heatmap rendering, pathfinding, route/predecessor semantics, movement-order logic, semantic WGSL, simulation GPU kernels, Clausewitz UI importer, CSS/WebView, exact typed property representation, and new SimThing kinds remain deferred.
-
-## Next Production Rungs
-
-1. Implement scenario/model save/load file IO around `serialize_scenario_authority` / `deserialize_scenario_authority` (separate from `simthing-studio-config.json`).
-2. Wire load-path projection rebuild through existing `StudioHydrationBoundary::from_scenario` / `StudioGalaxyViewModel::from_scenario`.
-3. Wire ClauseThing imports and future runtime vertical-test loading into the scenario authority path.
-4. Expand mutation/edit commands that update `SimThingScenarioSpec` first and refresh projections.
-5. Advance heatmap/RF visualization only after canonical scenario inputs stay enforced.
