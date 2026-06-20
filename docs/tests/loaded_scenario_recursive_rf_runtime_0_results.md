@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `loaded-scenario-recursive-rf-runtime-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #838
+- Merge SHA: `a09a40f86f01c7fe14c9eab7789cd4db7fbf7c15`
 
 ## Mission
 
