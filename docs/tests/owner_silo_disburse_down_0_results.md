@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; merge pending
+PASS
 
 ## PR / branch / merge
 
 - Branch: `owner-silo-disburse-down-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #798
+- Merge SHA: `98395fbe`
 
 ## Mission
 
