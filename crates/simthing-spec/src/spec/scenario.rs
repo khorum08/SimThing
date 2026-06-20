@@ -53,9 +53,14 @@ pub const OWNER_FLOW_DEFICIT_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_30
 pub const OWNER_FLOW_DEMAND_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_310);
 /// Disburse-down priority on owner-referenced spatial participants (lower wins; exact u32 f32 mirror).
 pub const OWNER_FLOW_PRIORITY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_311);
+/// Explicit resource channel key on owner-referenced spatial participants.
+pub const OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_312);
 
 /// Default disburse-down priority when metadata is absent.
 pub const OWNER_FLOW_DEFAULT_PRIORITY: u32 = 100;
+
+/// Default resource key when participant metadata carries surplus/demand only.
+pub const OWNER_FLOW_DEFAULT_RESOURCE_KEY: &str = "generic";
 
 /// Canonical GalaxyMap / WorldStateMap spatial root metadata on direct GameSession children.
 pub const GALAXY_MAP_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_400);
@@ -794,6 +799,12 @@ pub fn owner_flow_priority(thing: &SimThing) -> Option<u32> {
     scenario_metadata_u32(thing, OWNER_FLOW_PRIORITY_PROPERTY_ID)
 }
 
+pub fn owner_flow_resource_key(thing: &SimThing) -> String {
+    scenario_metadata_string(thing, OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID)
+        .filter(|key| !key.trim().is_empty())
+        .unwrap_or_else(|| OWNER_FLOW_DEFAULT_RESOURCE_KEY.to_string())
+}
+
 pub fn owner_has_silo_metadata(owner: &SimThing) -> bool {
     owner_silo_marker(owner).is_some() || owner_silo_current(owner).is_some()
 }
@@ -836,6 +847,18 @@ pub fn apply_participant_owner_flow_metadata(
         participant.add_property(
             OWNER_FLOW_DEFICIT_PROPERTY_ID,
             scenario_metadata_u32_value(deficit),
+        );
+    }
+}
+
+pub fn apply_participant_owner_flow_resource_key_metadata(
+    participant: &mut SimThing,
+    resource_key: &str,
+) {
+    if !resource_key.trim().is_empty() {
+        participant.add_property(
+            OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID,
+            scenario_metadata_string_value(resource_key),
         );
     }
 }
