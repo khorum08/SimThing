@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `loaded-scenario-runtime-report-chain-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #840
+- Merge SHA: `f9d838400bcd4073f2f1d74fea85c4dae94a51cd`
 
 ## Mission
 
