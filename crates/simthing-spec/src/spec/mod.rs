@@ -6,6 +6,7 @@ pub mod event;
 pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
+pub mod loaded_scenario_studio_session_envelope;
 pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
 pub mod local_effect_recursive_rf_source;
@@ -57,6 +58,12 @@ pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
+pub use loaded_scenario_studio_session_envelope::{
+    evaluate_loaded_scenario_studio_session_envelope_from_json_str,
+    prove_loaded_scenario_session_envelope_preserves_authority_boundaries,
+    LoadedScenarioAuthorityEnvelope, LoadedScenarioRuntimeSidecarEnvelope,
+    LoadedScenarioSessionSource, LoadedScenarioStudioSessionEnvelope,
+};
 pub use local_allocation_recursive_rf_source::{
     evaluate_runtime_local_allocation_with_rf_source,
     prove_local_allocation_recursive_source_preserves_authority,
