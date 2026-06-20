@@ -1,26 +1,29 @@
-//! PLANET-LOCAL-GRID-REMEDIATION-0 — star-system local gridcell admission proofs.
+//! RECURSIVE-SPATIAL-GRID-DEFAULTS-0 — recursive spatial local-grid admission proofs.
 
 use std::fs;
 use std::path::PathBuf;
 
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
-    apply_gridcell_role_metadata, apply_planet_gridcell_metadata, apply_planet_local_grid_command,
-    apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata,
-    evaluate_planet_child_locations, ingest_scenario, ingest_scenario_from_str, make_galaxy_map,
-    make_owner_entity, make_planet_gridcell, star_system_local_grid_frame,
-    structural_property_value_u32, validate_planet_child_locations,
-    validate_scenario_root_authority, validate_stead_mapping_consistency,
-    PlanetChildLocationAdmissionErrorKind, PlanetLocalGridCommand, ScenarioDeferralKind,
-    ScenarioIngestionClassification, ScenarioIngestionProfile, ScenarioRootValidationMode,
-    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, GALAXY_CHILD_LOCATION_ROLE_MOON,
-    GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_INERT,
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_COL_PROPERTY_ID,
-    LOCAL_GRIDCELL_ROW_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
-    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
-    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
-    STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
+    apply_gridcell_role_metadata, apply_local_gridcell_metadata, apply_planet_gridcell_metadata,
+    apply_planet_local_grid_command, apply_scenario_metadata_to_root,
+    apply_star_system_local_grid_frame_metadata, collect_local_receiver_cells,
+    default_local_grid_frame_for_spatial_gridcell, evaluate_planet_child_locations,
+    ingest_scenario, ingest_scenario_from_str, is_planet_gridcell, make_galaxy_map,
+    make_owner_entity, make_planet_gridcell, planet_gridcell_interior_frame, planet_owner_ref,
+    scenario_metadata_string_value, star_system_local_grid_frame, structural_property_value_u32,
+    validate_planet_child_locations, validate_scenario_root_authority,
+    validate_stead_mapping_consistency, LocalGridFrame, PlanetChildLocationAdmissionErrorKind,
+    PlanetLocalGridCommand, ScenarioDeferralKind, ScenarioIngestionClassification,
+    ScenarioIngestionProfile, ScenarioRootValidationMode, SimThingScenarioGrid,
+    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
+    SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    LOCAL_GRIDCELL_COL_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_RECEIVER, LOCAL_GRIDCELL_ROW_PROPERTY_ID,
+    LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS, PLANET_ID_PROPERTY_ID,
+    PLANET_OWNER_REF_PROPERTY_ID, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+    SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
 };
 
 const CANONICAL_PROFILE: ScenarioIngestionProfile = ScenarioIngestionProfile {
@@ -92,9 +95,9 @@ fn base_galaxymap_spec(scenario_id: &str) -> SimThingScenarioSpec {
 fn base_canonical_spec(scenario_id: &str) -> SimThingScenarioSpec {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
     let provenance = SimThingScenarioProvenance {
-        source: "PLANET-LOCAL-GRID-REMEDIATION-0".into(),
+        source: "RECURSIVE-SPATIAL-GRID-DEFAULTS-0".into(),
         generator_seed: 0x0001_2345_6789_ABCD,
-        generator_shape: "planet_local_grid".into(),
+        generator_shape: "recursive_spatial_grid".into(),
     };
     apply_scenario_metadata_to_root(&mut root, scenario_id, &provenance, SCENARIO_SCHEMA_VERSION);
     let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
@@ -137,6 +140,12 @@ fn make_gridcell(role: &str, system_id: u32, col: u32, row: u32) -> SimThing {
         structural_property_value_u32(row),
     );
     cell.add_child(SimThing::new(SimThingKind::Cohort, 0));
+    cell
+}
+
+fn make_receiver_local_gridcell(col: u32, row: u32) -> SimThing {
+    let mut cell = SimThing::new(SimThingKind::Location, 0);
+    apply_local_gridcell_metadata(&mut cell, LOCAL_GRIDCELL_ROLE_RECEIVER, col, row);
     cell
 }
 
@@ -199,12 +208,82 @@ fn planet_gridcell_under_star_system_admitted() {
 }
 
 #[test]
-fn planet_gridcell_has_local_10x10_default_frame() {
+fn generic_spatial_gridcell_defaults_to_1x1_local_frame() {
+    let mut spec = base_galaxymap_spec("generic_default");
+    let inert = inert_gridcell_mut(&mut spec);
+    let frame = default_local_grid_frame_for_spatial_gridcell(inert);
+    assert_eq!(
+        frame,
+        LocalGridFrame {
+            cols: LOCAL_GRID_DEFAULT_COLS,
+            rows: LOCAL_GRID_DEFAULT_ROWS,
+        }
+    );
+}
+
+#[test]
+fn star_system_gridcell_defaults_to_10x10_local_frame() {
     let mut spec = base_galaxymap_spec("default_frame");
     let star = star_system_gridcell_mut(&mut spec);
     let (cols, rows) = star_system_local_grid_frame(star);
     assert_eq!(cols, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS);
     assert_eq!(rows, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS);
+}
+
+#[test]
+fn planet_gridcell_defaults_to_1x1_interior_frame() {
+    let planet = make_planet_gridcell("interior", 0, 0, None);
+    let interior = planet_gridcell_interior_frame(&planet);
+    assert_eq!(interior.cols, LOCAL_GRID_DEFAULT_COLS);
+    assert_eq!(interior.rows, LOCAL_GRID_DEFAULT_ROWS);
+}
+
+#[test]
+fn inert_galactic_gridcell_admits_1x1_receiver_cell() {
+    let mut spec = base_galaxymap_spec("inert_receiver");
+    inert_gridcell_mut(&mut spec).add_child(make_receiver_local_gridcell(0, 0));
+    let report = evaluate_planet_child_locations(&spec);
+    assert!(report.errors.is_empty());
+    assert_eq!(report.receiver_cell_count, 1);
+    assert_eq!(report.implicit_receiver_cell_count, 0);
+    let receivers = collect_local_receiver_cells(&spec);
+    assert_eq!(receivers.len(), 1);
+    assert!(!receivers[0].is_implicit);
+    assert_eq!(receivers[0].col, 0);
+    assert_eq!(receivers[0].row, 0);
+}
+
+#[test]
+fn inert_galactic_gridcell_rejects_planet_local_gridcell() {
+    let json = fs::read_to_string(corpus_path(
+        "planet_child_location_under_inert_rejected.simthing-scenario.json",
+    ))
+    .expect("under inert corpus");
+    let (result, _) = ingest_scenario_from_str("under_inert", &json, CANONICAL_PROFILE);
+    assert_eq!(
+        result.classification,
+        ScenarioIngestionClassification::Rejected
+    );
+    let report = result.planet_child_location.expect("planet report");
+    assert!(report.errors.iter().any(|e| {
+        matches!(
+            e.kind,
+            PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild
+        )
+    }));
+}
+
+#[test]
+fn inert_galactic_gridcell_rejects_receiver_coordinate_outside_1x1() {
+    let mut spec = base_galaxymap_spec("receiver_oob");
+    inert_gridcell_mut(&mut spec).add_child(make_receiver_local_gridcell(1, 0));
+    let report = evaluate_planet_child_locations(&spec);
+    assert!(report.errors.iter().any(|e| {
+        matches!(
+            e.kind,
+            PlanetChildLocationAdmissionErrorKind::InertGridcellReceiverCoordinateOutOfFrame
+        )
+    }));
 }
 
 #[test]
@@ -251,23 +330,6 @@ fn planet_gridcell_duplicate_local_coordinate_rejected() {
             PlanetChildLocationAdmissionErrorKind::PlanetLocalGridDuplicateCoordinate
         )
     }));
-}
-
-#[test]
-fn planet_gridcell_under_inert_galactic_gridcell_rejected() {
-    let json = fs::read_to_string(corpus_path(
-        "planet_child_location_under_inert_rejected.simthing-scenario.json",
-    ))
-    .expect("under inert corpus");
-    let (result, _) = ingest_scenario_from_str("under_inert", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(result
-        .errors
-        .iter()
-        .any(|e| e.message.contains("PlanetUnderInertGalaxyGridcell")));
 }
 
 #[test]
@@ -324,6 +386,65 @@ fn planet_gridcell_not_added_to_galaxy_structural_grid_placements() {
 }
 
 #[test]
+fn planet_gridcell_allows_non_grid_children_such_as_cohort_fleet_infrastructure() {
+    let mut spec = base_galaxymap_spec("planet_non_grid_children");
+    let mut planet = make_planet_gridcell("fleet_world", 1, 0, None);
+    planet.add_child(SimThing::new(SimThingKind::Cohort, 0));
+    planet.add_child(SimThing::new(SimThingKind::Custom("Fleet".into()), 0));
+    planet.add_child(SimThing::new(
+        SimThingKind::Custom("Infrastructure".into()),
+        0,
+    ));
+    star_system_gridcell_mut(&mut spec).add_child(planet);
+    let report = evaluate_planet_child_locations(&spec);
+    assert!(report.errors.is_empty());
+    assert_eq!(report.planet_gridcell_count, 1);
+}
+
+#[test]
+fn owner_channel_metadata_does_not_require_spatial_reparenting() {
+    let mut spec = base_galaxymap_spec("owner_channel");
+    let mut planet = make_planet_gridcell("owned", 0, 0, None);
+    planet.add_property(
+        PLANET_OWNER_REF_PROPERTY_ID,
+        scenario_metadata_string_value("owner_a"),
+    );
+    star_system_gridcell_mut(&mut spec).add_child(planet);
+    let report = evaluate_planet_child_locations(&spec);
+    assert!(report.errors.is_empty());
+    assert!(report.deferrals.iter().any(|d| {
+        matches!(
+            d.kind,
+            PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred
+        )
+    }));
+
+    let game_session = spec
+        .root
+        .children
+        .iter()
+        .find(|c| c.kind == SimThingKind::GameSession)
+        .expect("gs");
+    let owner = game_session
+        .children
+        .iter()
+        .find(|c| c.kind == SimThingKind::Owner)
+        .expect("owner");
+    assert!(
+        owner.children.is_empty(),
+        "owner channel metadata must not reparent planet under Owner"
+    );
+
+    let star = star_system_gridcell_mut(&mut spec);
+    let planet_child = star
+        .children
+        .iter()
+        .find(|c| is_planet_gridcell(c))
+        .expect("planet remains under star system");
+    assert_eq!(planet_owner_ref(planet_child).as_deref(), Some("owner_a"));
+}
+
+#[test]
 fn unsupported_local_child_role_typed_deferred() {
     let json = fs::read_to_string(corpus_path(
         "planet_child_location_unsupported_child_deferred.simthing-scenario.json",
@@ -358,7 +479,7 @@ fn validate_planet_child_locations_rejects_rejected_reports() {
     let err = validate_planet_child_locations(&spec).expect_err("must reject");
     assert!(matches!(
         err.kind,
-        PlanetChildLocationAdmissionErrorKind::PlanetUnderInertGalaxyGridcell
+        PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild
     ));
 }
 
@@ -369,6 +490,7 @@ fn normal_tests_do_not_write_corpus_fixtures() {
         "planet_child_location_under_inert_rejected.simthing-scenario.json",
         "planet_child_location_duplicate_id_rejected.simthing-scenario.json",
         "planet_child_location_unsupported_child_deferred.simthing-scenario.json",
+        "inert_gridcell_receiver_1x1_admitted.simthing-scenario.json",
     ] {
         assert!(
             corpus_path(name).is_file(),
@@ -409,4 +531,43 @@ fn planet_child_location_preserves_canonical_validation() {
     validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical).expect("root");
     validate_stead_mapping_consistency(&spec).expect("stead");
     validate_planet_child_locations(&spec).expect("planet");
+}
+
+fn inert_receiver_only_spec() -> SimThingScenarioSpec {
+    let mut spec = base_canonical_spec("inert_gridcell_receiver_1x1_admitted");
+    spec.provenance.source = "RECURSIVE-SPATIAL-GRID-DEFAULTS-0".into();
+    spec.provenance.generator_shape = "inert_receiver".into();
+    let game_session = spec
+        .root
+        .children
+        .iter_mut()
+        .find(|c| c.kind == SimThingKind::GameSession)
+        .expect("gs");
+    let galaxy_map = game_session
+        .children
+        .iter_mut()
+        .find(|c| c.kind == SimThingKind::Location)
+        .expect("map");
+    let cell_a = make_gridcell(GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0);
+    let cell_a_raw = cell_a.id.raw();
+    galaxy_map.add_child(cell_a);
+    let map_raw = galaxy_map.id.raw();
+    spec.structural_grid = SimThingScenarioGrid {
+        frame: SimThingStructuralGridFrame {
+            width: 8,
+            height: 8,
+            occupied_cells: 1,
+        },
+        map_container_id: map_raw.to_string(),
+        placements: vec![SimThingStructuralGridPlacement {
+            location_id: "cell_a".into(),
+            target_id: "cell_a".into(),
+            system_id: 1,
+            row: 0,
+            col: 0,
+            simthing_id_raw: cell_a_raw,
+        }],
+    };
+    spec.sync_sidecar_from_root_metadata();
+    spec
 }

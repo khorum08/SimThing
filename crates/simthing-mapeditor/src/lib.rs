@@ -96,7 +96,8 @@ pub use studio_scenario_document::{
     load_canonical_studio_document_from_path, save_studio_scenario_with_document_roundtrip,
     studio_galaxy_map_gridcells_from_spec, StudioGalaxyMapView, StudioGameSessionView,
     StudioGridcellRole, StudioGridcellView, StudioOwnerView, StudioPlanetChildView,
-    StudioScenarioAuthorityKind, StudioScenarioDocument, StudioScenarioDocumentError,
+    StudioReceiverCellView, StudioScenarioAuthorityKind, StudioScenarioDocument,
+    StudioScenarioDocumentError,
 };
 pub use studio_structural_edit::{
     studio_apply_structural_placement_command, StudioStructuralEditError,

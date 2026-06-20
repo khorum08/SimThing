@@ -1,5 +1,6 @@
-//! PLANET-LOCAL-GRID-REMEDIATION-0 — driver structural readiness with planet local gridcells.
+//! RECURSIVE-SPATIAL-GRID-DEFAULTS-0 — driver structural readiness with recursive spatial grids.
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
@@ -7,8 +8,9 @@ use simthing_driver::{
     compile_structural_n4_theater, evaluate_scenario_compile_readiness, StructuralTheaterAdmission,
 };
 use simthing_spec::{
-    deserialize_scenario_authority, evaluate_planet_child_locations, ingest_scenario,
-    ingest_scenario_from_str, MappingExecutionProfile, ScenarioIngestionClassification,
+    collect_local_receiver_cells, deserialize_scenario_authority, evaluate_planet_child_locations,
+    ingest_scenario, ingest_scenario_from_str, MappingExecutionProfile,
+    PlanetChildLocationAdmissionErrorKind, ScenarioIngestionClassification,
     ScenarioIngestionProfile, SimThingScenarioSpec,
 };
 
@@ -48,6 +50,74 @@ fn planet_local_gridcell_not_counted_as_galaxy_structural_gridcell() {
 }
 
 #[test]
+fn inert_receiver_cell_not_counted_as_galaxy_structural_gridcell() {
+    let spec = load_admitted();
+    let placement_ids: BTreeSet<u32> = spec
+        .structural_grid
+        .placements
+        .iter()
+        .map(|p| p.simthing_id_raw)
+        .collect();
+    assert_eq!(placement_ids.len(), 2);
+
+    let receivers = collect_local_receiver_cells(&spec);
+    assert_eq!(receivers.len(), 1);
+    assert!(receivers[0].is_implicit);
+    if let Some(raw) = receivers[0].materialized_simthing_id_raw {
+        assert!(
+            !placement_ids.contains(&raw),
+            "materialized receiver cells must not pollute GalaxyMap structural_grid"
+        );
+    }
+
+    let report = evaluate_planet_child_locations(&spec);
+    assert_eq!(report.receiver_cell_count, 1);
+    assert_eq!(report.implicit_receiver_cell_count, 1);
+    assert!(report.errors.is_empty());
+}
+
+#[test]
+fn star_system_local_grid_operator_deferred_without_new_gpu_primitive() {
+    let ingestion_compile = include_str!("../src/scenario_ingestion_compile.rs");
+    let theater_compile = include_str!("../src/structural_n4_theater_compile.rs");
+    let mapping_compile = include_str!("../src/mapping_plan_compile.rs");
+    let gpu_lib = include_str!("../../simthing-gpu/src/lib.rs");
+
+    assert!(
+        ingestion_compile.contains("no new GPU primitives"),
+        "driver compile readiness must document deferred GPU primitives"
+    );
+    assert!(
+        ingestion_compile.contains("structural N4 theater compile surfaces only"),
+        "driver must remain on structural N4 theater surfaces only"
+    );
+
+    for forbidden in [
+        "star_system_local_grid_operator",
+        "compile_star_system_local_grid",
+        "LocalGridOperator",
+        "receiver_cell_operator",
+        "collect_local_receiver_cells",
+    ] {
+        assert!(
+            !theater_compile.contains(forbidden) && !mapping_compile.contains(forbidden),
+            "driver compile surface must not implement `{forbidden}` yet"
+        );
+    }
+
+    for forbidden in [
+        "star_system_local_grid",
+        "receiver_cell_shader",
+        "local_grid_operator",
+    ] {
+        assert!(
+            !gpu_lib.contains(forbidden),
+            "simthing-gpu must not add `{forbidden}` primitive for deferred local-grid operator"
+        );
+    }
+}
+
+#[test]
 fn invalid_planet_under_inert_does_not_reach_driver_compile() {
     let json = fs::read_to_string(corpus_path(
         "planet_child_location_under_inert_rejected.simthing-scenario.json",
@@ -63,7 +133,12 @@ fn invalid_planet_under_inert_does_not_reach_driver_compile() {
         ScenarioIngestionClassification::Rejected
     );
     let report = result.planet_child_location.expect("planet report");
-    assert!(report.errors.iter().any(|e| e.message.contains("inert")));
+    assert!(report.errors.iter().any(|e| {
+        matches!(
+            e.kind,
+            PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild
+        )
+    }));
 }
 
 #[test]

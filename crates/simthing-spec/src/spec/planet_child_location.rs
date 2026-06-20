@@ -1,4 +1,7 @@
-//! PLANET-LOCAL-GRID-REMEDIATION-0 — planets as star-system-local gridcell Location SimThings.
+//! RECURSIVE-SPATIAL-GRID-DEFAULTS-0 — recursive spatial local-grid admission.
+//!
+//! Owner SimThings are GameSession children and RF channel scopes, not spatial parents.
+//! Ownership changes update metadata/properties, not spatial parentage.
 
 use std::collections::BTreeSet;
 
@@ -6,14 +9,20 @@ use simthing_core::{SimThing, SimThingKind};
 
 use super::scenario::{
     game_session_child_mut, game_session_galaxy_map, gridcell_role, is_galaxy_map_entity,
-    scenario_metadata_string, scenario_metadata_string_value, scenario_metadata_u32,
-    structural_property_value_u32, SimThingScenarioSpec, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID,
-    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_COL_PROPERTY_ID,
-    LOCAL_GRIDCELL_ROLE_INERT, LOCAL_GRIDCELL_ROLE_PLANET, LOCAL_GRIDCELL_ROLE_PROPERTY_ID,
-    LOCAL_GRIDCELL_ROW_PROPERTY_ID, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
-    PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
-    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID,
-    STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
+    scenario_metadata_string, scenario_metadata_string_value, structural_property_value_u32,
+    SimThingScenarioSpec, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_INERT,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_COL_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_INERT,
+    LOCAL_GRIDCELL_ROLE_PLANET, LOCAL_GRIDCELL_ROLE_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_RECEIVER,
+    LOCAL_GRIDCELL_ROW_PROPERTY_ID, LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS,
+    PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
+    STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
+};
+use super::spatial_local_grid::{
+    default_local_grid_frame_for_spatial_gridcell, implicit_receiver_cell_for_gridcell,
+    interior_local_grid_frame_for_gridcell, is_receiver_local_gridcell,
+    local_grid_frame_for_spatial_gridcell, materialized_receiver_cell, LocalGridFrame,
+    LocalGridFrameErrorKind, LocalReceiverCell,
 };
 
 // ---------------------------------------------------------------------------
@@ -32,6 +41,9 @@ pub enum PlanetChildLocationAdmissionClassification {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanetChildLocationAdmissionErrorKind {
     PlanetUnderInertGalaxyGridcell,
+    InertGridcellNonReceiverChild,
+    InertGridcellReceiverCoordinateOutOfFrame,
+    InertGridcellExpandedFrameUnsupported,
     PlanetGridcellMissingId,
     DuplicatePlanetIdWithinScenario,
     PlanetListedInGalaxyStructuralGrid,
@@ -64,9 +76,12 @@ pub struct PlanetChildLocationDeferral {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PlanetChildLocationAdmissionReport {
     pub star_system_gridcell_count: u32,
+    pub inert_galactic_gridcell_count: u32,
     pub local_gridcell_count: u32,
     pub local_inert_gridcell_count: u32,
     pub planet_gridcell_count: u32,
+    pub receiver_cell_count: u32,
+    pub implicit_receiver_cell_count: u32,
     pub unsupported_child_location_count: u32,
     pub classification: PlanetChildLocationAdmissionClassification,
     pub deferrals: Vec<PlanetChildLocationDeferral>,
@@ -78,8 +93,7 @@ pub struct PlanetChildLocationAdmissionReport {
 // ---------------------------------------------------------------------------
 
 pub fn local_gridcell_role(thing: &SimThing) -> Option<String> {
-    scenario_metadata_string(thing, LOCAL_GRIDCELL_ROLE_PROPERTY_ID)
-        .or_else(|| scenario_metadata_string(thing, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID))
+    super::spatial_local_grid::local_gridcell_role(thing)
 }
 
 /// Deprecated alias for [`local_gridcell_role`].
@@ -88,19 +102,51 @@ pub fn child_location_role(thing: &SimThing) -> Option<String> {
 }
 
 pub fn local_gridcell_col(thing: &SimThing) -> Option<u32> {
-    scenario_metadata_u32(thing, LOCAL_GRIDCELL_COL_PROPERTY_ID)
+    super::spatial_local_grid::local_gridcell_col(thing)
 }
 
 pub fn local_gridcell_row(thing: &SimThing) -> Option<u32> {
-    scenario_metadata_u32(thing, LOCAL_GRIDCELL_ROW_PROPERTY_ID)
+    super::spatial_local_grid::local_gridcell_row(thing)
 }
 
 pub fn star_system_local_grid_frame(gridcell: &SimThing) -> (u32, u32) {
-    let cols = scenario_metadata_u32(gridcell, STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID)
-        .unwrap_or(STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS);
-    let rows = scenario_metadata_u32(gridcell, STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID)
-        .unwrap_or(STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS);
-    (cols, rows)
+    let frame = local_grid_frame_for_spatial_gridcell(gridcell)
+        .unwrap_or_else(|_| default_local_grid_frame_for_spatial_gridcell(gridcell));
+    (frame.cols, frame.rows)
+}
+
+pub fn planet_gridcell_interior_frame(planet: &SimThing) -> LocalGridFrame {
+    interior_local_grid_frame_for_gridcell(planet).unwrap_or(LocalGridFrame {
+        cols: LOCAL_GRID_DEFAULT_COLS,
+        rows: LOCAL_GRID_DEFAULT_ROWS,
+    })
+}
+
+pub fn collect_local_receiver_cells(spec: &SimThingScenarioSpec) -> Vec<LocalReceiverCell> {
+    let Ok(galaxy_map) = game_session_galaxy_map(spec) else {
+        return Vec::new();
+    };
+    let mut cells = Vec::new();
+    for gridcell in galaxy_map
+        .children
+        .iter()
+        .filter(|c| c.kind == SimThingKind::Location && !is_galaxy_map_entity(c))
+    {
+        if gridcell_role(gridcell).as_deref() != Some(GALAXY_GRIDCELL_ROLE_INERT) {
+            continue;
+        }
+        let mut materialized = false;
+        for child in &gridcell.children {
+            if child.kind == SimThingKind::Location && is_receiver_local_gridcell(child) {
+                cells.push(materialized_receiver_cell(child, gridcell.id.raw()));
+                materialized = true;
+            }
+        }
+        if !materialized {
+            cells.push(implicit_receiver_cell_for_gridcell(gridcell));
+        }
+    }
+    cells
 }
 
 pub fn apply_star_system_local_grid_frame_metadata(gridcell: &mut SimThing, cols: u32, rows: u32) {
@@ -300,29 +346,7 @@ pub fn evaluate_planet_child_locations(
     {
         match gridcell_role(gridcell).as_deref() {
             Some(GALAXY_GRIDCELL_ROLE_INERT) => {
-                for child in &gridcell.children {
-                    if child.kind == SimThingKind::Location
-                        && local_gridcell_role(child).as_deref() == Some(LOCAL_GRIDCELL_ROLE_PLANET)
-                    {
-                        push_error(
-                            &mut report,
-                            PlanetChildLocationAdmissionErrorKind::PlanetUnderInertGalaxyGridcell,
-                            Some(format!("gridcell/inert/local:{}", child.id.raw())),
-                            Some(child.id.raw()),
-                            "planet local gridcell cannot live under inert galactic gridcell",
-                        );
-                    } else if child.kind == SimThingKind::Location
-                        || matches!(child.kind, SimThingKind::Custom(ref name) if name == "Planet")
-                    {
-                        push_error(
-                            &mut report,
-                            PlanetChildLocationAdmissionErrorKind::PlanetUnderInertGalaxyGridcell,
-                            Some(format!("gridcell/inert/child:{}", child.id.raw())),
-                            Some(child.id.raw()),
-                            "local gridcell cannot live under inert galactic gridcell",
-                        );
-                    }
-                }
+                evaluate_inert_galactic_gridcell(gridcell, &placement_ids, &mut report);
             }
             Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM) => {
                 report.star_system_gridcell_count += 1;
@@ -412,6 +436,134 @@ fn location_children(gridcell: &SimThing) -> Vec<&SimThing> {
         .iter()
         .filter(|c| c.kind == SimThingKind::Location)
         .collect()
+}
+
+fn evaluate_inert_galactic_gridcell(
+    gridcell: &SimThing,
+    placement_ids: &BTreeSet<u32>,
+    report: &mut PlanetChildLocationAdmissionReport,
+) {
+    report.inert_galactic_gridcell_count += 1;
+    let path_prefix = format!("gridcell/inert/{}", gridcell.id.raw());
+
+    match local_grid_frame_for_spatial_gridcell(gridcell) {
+        Err(err) => {
+            let kind = match err.kind {
+                LocalGridFrameErrorKind::FrameTooLarge => {
+                    PlanetChildLocationAdmissionErrorKind::InertGridcellExpandedFrameUnsupported
+                }
+                LocalGridFrameErrorKind::FrameZeroDimension => {
+                    PlanetChildLocationAdmissionErrorKind::LocalGridFrameInvalid
+                }
+            };
+            push_error(
+                report,
+                kind,
+                Some(path_prefix),
+                Some(gridcell.id.raw()),
+                err.message,
+            );
+            return;
+        }
+        Ok(frame) => {
+            if frame.cols > LOCAL_GRID_DEFAULT_COLS || frame.rows > LOCAL_GRID_DEFAULT_ROWS {
+                push_error(
+                    report,
+                    PlanetChildLocationAdmissionErrorKind::InertGridcellExpandedFrameUnsupported,
+                    Some(path_prefix.clone()),
+                    Some(gridcell.id.raw()),
+                    "inert galactic gridcell cannot expand local frame beyond 1x1 yet",
+                );
+                return;
+            }
+        }
+    }
+
+    let mut materialized_receiver = false;
+    for child in &gridcell.children {
+        if child.kind != SimThingKind::Location {
+            continue;
+        }
+        let child_path = format!("{path_prefix}/local:{}", child.id.raw());
+        if placement_ids.contains(&child.id.raw()) {
+            push_error(
+                report,
+                PlanetChildLocationAdmissionErrorKind::PlanetListedInGalaxyStructuralGrid,
+                Some(child_path.clone()),
+                Some(child.id.raw()),
+                "local receiver cell must not appear in GalaxyMap structural_grid placements",
+            );
+            continue;
+        }
+
+        match local_gridcell_role(child).as_deref() {
+            Some(LOCAL_GRIDCELL_ROLE_PLANET) => {
+                push_error(
+                    report,
+                    PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild,
+                    Some(child_path),
+                    Some(child.id.raw()),
+                    "planet local gridcell cannot live under inert galactic gridcell",
+                );
+            }
+            Some(LOCAL_GRIDCELL_ROLE_RECEIVER) | Some(LOCAL_GRIDCELL_ROLE_INERT) => {
+                let col = local_gridcell_col(child).unwrap_or(0);
+                let row = local_gridcell_row(child).unwrap_or(0);
+                if col != 0 || row != 0 {
+                    push_error(
+                        report,
+                        PlanetChildLocationAdmissionErrorKind::InertGridcellReceiverCoordinateOutOfFrame,
+                        Some(child_path),
+                        Some(child.id.raw()),
+                        "inert receiver local gridcell must occupy (0,0) in 1x1 frame",
+                    );
+                    continue;
+                }
+                materialized_receiver = true;
+                report.receiver_cell_count += 1;
+                report.local_gridcell_count += 1;
+                report.local_inert_gridcell_count += 1;
+            }
+            Some(_) => {
+                push_error(
+                    report,
+                    PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild,
+                    Some(child_path),
+                    Some(child.id.raw()),
+                    "inert galactic gridcell admits only 1x1 receiver/inert local gridcells",
+                );
+                report.unsupported_child_location_count += 1;
+            }
+            None => {
+                push_error(
+                    report,
+                    PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild,
+                    Some(child_path),
+                    Some(child.id.raw()),
+                    "Location child under inert gridcell lacks receiver/inert local role",
+                );
+                report.unsupported_child_location_count += 1;
+            }
+        }
+    }
+
+    if !materialized_receiver {
+        report.implicit_receiver_cell_count += 1;
+        report.receiver_cell_count += 1;
+    }
+
+    for child in &gridcell.children {
+        if matches!(child.kind, SimThingKind::Custom(ref name) if name == "Planet") {
+            report.unsupported_child_location_count += 1;
+            push_deferral(
+                report,
+                PlanetChildLocationAdmissionErrorKind::UnsupportedChildLocationRole,
+                Some(format!("{path_prefix}/legacy_planet:{}", child.id.raw())),
+                Some(child.id.raw()),
+                "legacy Custom Planet child is not admitted; use local gridcell Location + planet role",
+            );
+        }
+    }
 }
 
 fn evaluate_star_system_local_child(
@@ -710,6 +862,15 @@ pub fn planet_child_location_error_kind_label(
     match kind {
         PlanetChildLocationAdmissionErrorKind::PlanetUnderInertGalaxyGridcell => {
             "PlanetUnderInertGalaxyGridcell"
+        }
+        PlanetChildLocationAdmissionErrorKind::InertGridcellNonReceiverChild => {
+            "InertGridcellNonReceiverChild"
+        }
+        PlanetChildLocationAdmissionErrorKind::InertGridcellReceiverCoordinateOutOfFrame => {
+            "InertGridcellReceiverCoordinateOutOfFrame"
+        }
+        PlanetChildLocationAdmissionErrorKind::InertGridcellExpandedFrameUnsupported => {
+            "InertGridcellExpandedFrameUnsupported"
         }
         PlanetChildLocationAdmissionErrorKind::PlanetGridcellMissingId => "PlanetGridcellMissingId",
         PlanetChildLocationAdmissionErrorKind::DuplicatePlanetIdWithinScenario => {

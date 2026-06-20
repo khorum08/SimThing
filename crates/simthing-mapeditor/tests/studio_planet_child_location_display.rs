@@ -1,4 +1,4 @@
-//! PLANET-LOCAL-GRID-REMEDIATION-0 — Studio planet local-gridcell display proofs.
+//! RECURSIVE-SPATIAL-GRID-DEFAULTS-0 — Studio recursive spatial local-grid display proofs.
 
 use std::fs;
 use std::path::PathBuf;
@@ -10,6 +10,7 @@ use simthing_mapeditor::{
 use simthing_spec::{
     ingest_scenario_from_str, serialize_scenario_authority, studio_canonical_ingestion_profile,
     PlanetChildLocationEditErrorKind, PlanetLocalGridCommand, ScenarioIngestionClassification,
+    LOCAL_GRIDCELL_ROLE_RECEIVER, LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
 };
 
@@ -45,12 +46,46 @@ fn studio_displays_planet_as_star_system_local_gridcell() {
 }
 
 #[test]
-fn studio_displays_local_10x10_frame() {
+fn studio_displays_star_system_local_10x10_frame() {
     let session =
         load_studio_session_from_scenario_path(&admitted_fixture_path(), None).expect("load");
     let planet: &StudioPlanetChildView = &session.scenario_document.planets[0];
     assert_eq!(planet.local_frame_cols, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS);
     assert_eq!(planet.local_frame_rows, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS);
+}
+
+#[test]
+fn studio_displays_planet_default_1x1_interior_grid() {
+    let session =
+        load_studio_session_from_scenario_path(&admitted_fixture_path(), None).expect("load");
+    let planet = &session.scenario_document.planets[0];
+    assert_eq!(planet.interior_frame_cols, LOCAL_GRID_DEFAULT_COLS);
+    assert_eq!(planet.interior_frame_rows, LOCAL_GRID_DEFAULT_ROWS);
+}
+
+#[test]
+fn studio_displays_inert_gridcell_1x1_receiver_cell() {
+    let session =
+        load_studio_session_from_scenario_path(&admitted_fixture_path(), None).expect("load");
+    let receivers = &session.scenario_document.receiver_cells;
+    assert_eq!(receivers.len(), 1);
+    let inert_receiver = receivers
+        .iter()
+        .find(|r| r.parent_location_id.as_deref() == Some("cell_a"))
+        .expect("implicit receiver for admitted fixture inert cell_a");
+    assert_eq!(
+        inert_receiver.parent_local_frame_cols,
+        LOCAL_GRID_DEFAULT_COLS
+    );
+    assert_eq!(
+        inert_receiver.parent_local_frame_rows,
+        LOCAL_GRID_DEFAULT_ROWS
+    );
+    assert_eq!(inert_receiver.local_col, 0);
+    assert_eq!(inert_receiver.local_row, 0);
+    assert_eq!(inert_receiver.local_role, LOCAL_GRIDCELL_ROLE_RECEIVER);
+    assert!(inert_receiver.is_implicit_receiver);
+    assert!(inert_receiver.materialized_simthing_id_raw.is_none());
 }
 
 #[test]
