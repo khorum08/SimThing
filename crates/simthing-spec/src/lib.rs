@@ -503,6 +503,16 @@ pub use spec::runtime_local_allocation::{
     RuntimeLocalAllocationApplicationError, RuntimeLocalAllocationApplicationErrorKind,
     RuntimeLocalAllocationApplicationReport, RuntimeLocalAllocationState,
 };
+pub use spec::runtime_participant_state_mutation::{
+    evaluate_runtime_participant_state_mutation,
+    prove_runtime_participant_state_mutation_preserves_authority,
+    replay_runtime_participant_state_mutation, RuntimeParticipantStateMutationError,
+    RuntimeParticipantStateMutationErrorKind, RuntimeParticipantStateMutationKind,
+    RuntimeParticipantStateMutationRecord, RuntimeParticipantStateMutationReplayReport,
+    RuntimeParticipantStateMutationReport, RuntimeParticipantStateMutationSourceMode,
+    RuntimeParticipantStateRow, MAX_RUNTIME_PARTICIPANT_STATE_REPLAY_COUNT,
+    MIN_RUNTIME_PARTICIPANT_STATE_REPLAY_COUNT,
+};
 pub use spec::runtime_rf_tick::{
     evaluate_runtime_rf_tick, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError,
     RuntimeRfTickErrorKind, RuntimeRfTickReport,
