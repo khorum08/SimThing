@@ -223,6 +223,10 @@ pub struct ScenarioCompileReadinessReport {
     pub semantic_participant_delta_preview_ready: bool,
     /// Participant property mutation, Scenario authority mutation, savefile, and history remain deferred.
     pub semantic_participant_delta_preview_deferred: bool,
+    /// Runtime participant state mutation rows can be evaluated.
+    pub runtime_participant_state_mutation_ready: bool,
+    /// Participant SimThing property mutation, Scenario authority mutation, savefile, and history remain deferred.
+    pub runtime_participant_state_mutation_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -537,6 +541,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_semantic_local_effects_recursive_source(spec, result);
     integrate_semantic_effect_execution_boundary(spec, result);
     integrate_semantic_participant_delta_preview(spec, result);
+    integrate_runtime_participant_state_mutation(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -1171,6 +1176,43 @@ fn integrate_semantic_participant_delta_preview(
     result
         .compile_readiness
         .semantic_participant_delta_preview_deferred = true;
+}
+
+fn integrate_runtime_participant_state_mutation(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .runtime_participant_state_mutation_deferred = true;
+
+    if !result
+        .compile_readiness
+        .semantic_participant_delta_preview_ready
+    {
+        return;
+    }
+    use super::runtime_participant_state_mutation::{
+        evaluate_runtime_participant_state_mutation, RuntimeParticipantStateMutationSourceMode,
+    };
+    use super::runtime_tick_shell::RuntimeTickId;
+    if evaluate_runtime_participant_state_mutation(
+        spec,
+        RuntimeTickId(1),
+        RuntimeParticipantStateMutationSourceMode::LegacyPlanetChildOwnerSilo,
+        1,
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    result
+        .compile_readiness
+        .runtime_participant_state_mutation_ready = true;
+    result
+        .compile_readiness
+        .runtime_participant_state_mutation_deferred = true;
 }
 
 fn integrate_owner_silo_recursive_source(
