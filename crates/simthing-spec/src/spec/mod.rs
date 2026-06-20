@@ -30,6 +30,7 @@ pub mod runtime_tick_shell;
 pub mod scenario;
 pub mod scenario_ingestion;
 pub mod script;
+pub mod semantic_effect_execution_boundary;
 pub mod semantic_local_effects;
 pub mod semantic_local_effects_recursive_rf_source;
 pub mod session_resource_flow;
@@ -220,6 +221,13 @@ pub use scenario_ingestion::{
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
+};
+pub use semantic_effect_execution_boundary::{
+    evaluate_semantic_effect_execution_boundary,
+    prove_semantic_effect_execution_boundary_preserves_authority,
+    SemanticEffectExecutionBoundaryError, SemanticEffectExecutionBoundaryErrorKind,
+    SemanticEffectExecutionBoundaryReport, SemanticEffectExecutionKind,
+    SemanticEffectExecutionRecord, SemanticEffectExecutionSourceMode,
 };
 pub use semantic_local_effects::{
     evaluate_semantic_local_effects, prove_semantic_local_effects_preserve_authority,

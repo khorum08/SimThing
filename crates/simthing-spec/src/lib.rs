@@ -591,6 +591,13 @@ pub use spec::scenario_ingestion::{
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };
+pub use spec::semantic_effect_execution_boundary::{
+    evaluate_semantic_effect_execution_boundary,
+    prove_semantic_effect_execution_boundary_preserves_authority,
+    SemanticEffectExecutionBoundaryError, SemanticEffectExecutionBoundaryErrorKind,
+    SemanticEffectExecutionBoundaryReport, SemanticEffectExecutionKind,
+    SemanticEffectExecutionRecord, SemanticEffectExecutionSourceMode,
+};
 pub use spec::semantic_local_effects::{
     evaluate_semantic_local_effects, prove_semantic_local_effects_preserve_authority,
     semantic_local_effects_aggregate_totals, semantic_local_effects_from_application,
