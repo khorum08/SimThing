@@ -11,8 +11,8 @@
 | Item | Value |
 |------|-------|
 | Branch | `owner-silo-runtime-writeback-0` |
-| PR | PENDING (pre-merge) |
-| Merge | PENDING (pre-merge) |
+| PR | #797 — OWNER-SILO-RUNTIME-WRITEBACK-0 |
+| Merge | `3508d5789a3acd23364d466eef18331e2d95d135` |
 | Base | `master` after #796 (`7aaeab1f`) |
 
 ## Mission
@@ -77,8 +77,8 @@ Apply scoped planet child RF reduce-up bucket net surplus/deficit into runtime-r
 | `cargo test -p simthing-driver --test planet_child_rf_reduce_up` | PASS (8) |
 | `cargo test -p simthing-driver --test owner_silo_runtime_writeback` | PASS (13) |
 | `cargo test -p simthing-driver --test owner_silo_gpu_tick` | PASS (11) |
-| `git diff --check` | PENDING (pre-commit) |
-| `git diff --name-only master...HEAD` | PENDING (pre-commit) |
+| `git diff --check` | PASS |
+| `git diff --name-only master...HEAD` | PASS (13 files) |
 | `cargo test` (all packages) | SKIP — focused validation only |
 
 ## Files changed
