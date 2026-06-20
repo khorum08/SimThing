@@ -1105,7 +1105,10 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
     );
     assert!(
         planet_child_src.contains("RECURSIVE-SPATIAL-GRID-DEFAULTS-0")
+            && planet_child_src.contains("PLANET-NON-GRID-CHILD-ADMISSION-0")
             && planet_child_src.contains("evaluate_planet_child_locations")
+            && planet_child_src.contains("is_admitted_planet_non_grid_child")
+            && planet_child_src.contains("collect_planet_non_grid_children")
             && planet_child_src.contains("apply_planet_local_grid_command")
             && planet_child_src.contains("LOCAL_GRIDCELL_ROLE_PLANET")
             && planet_child_src.contains("collect_local_receiver_cells")
@@ -1145,8 +1148,10 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
     assert!(
         studio_document_src.contains("interior_frame_cols")
             && studio_document_src.contains("receiver_cells")
-            && studio_document_src.contains("collect_local_receiver_cells"),
-        "Studio scenario document must project interior frames and receiver cells"
+            && studio_document_src.contains("planet_non_grid_children")
+            && studio_document_src.contains("collect_local_receiver_cells")
+            && studio_document_src.contains("collect_planet_non_grid_children"),
+        "Studio scenario document must project interior frames, receiver cells, and planet non-grid children"
     );
     assert!(
         !studio_planet_src.contains("SimGpuAccumulatorTickState")
@@ -1168,8 +1173,9 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
                 .contains("generic_spatial_gridcell_defaults_to_1x1_local_frame")
             && planet_admission_test.contains("inert_galactic_gridcell_admits_1x1_receiver_cell")
             && planet_admission_test
-                .contains("owner_channel_metadata_does_not_require_spatial_reparenting"),
-        "recursive spatial grid admission tests must exist without corpus fixture writers"
+                .contains("owner_channel_metadata_does_not_require_spatial_reparenting")
+            && planet_admission_test.contains("planet_non_grid_child_rejects_local_coordinate_metadata"),
+        "recursive spatial grid and planet non-grid child admission tests must exist without corpus fixture writers"
     );
     for forbidden_engine in [
         "PlanetEngine",

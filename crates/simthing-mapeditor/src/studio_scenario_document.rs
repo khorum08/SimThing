@@ -4,15 +4,16 @@
 
 use simthing_core::SimThingKind;
 use simthing_spec::{
-    collect_local_receiver_cells, evaluate_planet_child_locations, galaxy_map_display_name,
-    galaxy_map_id, galaxy_map_role, game_session_child, game_session_galaxy_map,
-    game_session_owners, gridcell_generated_system_id, gridcell_role, gridcell_structural_col,
-    gridcell_structural_row, is_galaxy_map_entity, is_planet_gridcell, local_gridcell_col,
-    local_gridcell_role, local_gridcell_row, owner_archetype, owner_color_index,
-    owner_display_name, owner_entity_id, owner_silo_marker,
+    collect_local_receiver_cells, collect_planet_non_grid_children,
+    evaluate_planet_child_locations, galaxy_map_display_name, galaxy_map_id, galaxy_map_role,
+    game_session_child, game_session_galaxy_map, game_session_owners, gridcell_generated_system_id,
+    gridcell_role, gridcell_structural_col, gridcell_structural_row, is_galaxy_map_entity,
+    is_planet_gridcell, local_gridcell_col, local_gridcell_role, local_gridcell_row,
+    owner_archetype, owner_color_index, owner_display_name, owner_entity_id, owner_silo_marker,
     planet_child_location_classification_label, planet_child_location_error_kind_label,
-    planet_display_name, planet_gridcell_interior_frame, planet_id, planet_owner_ref,
-    resolve_map_container, scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
+    planet_display_name, planet_gridcell_interior_frame, planet_id,
+    planet_non_grid_child_owner_ref, planet_owner_ref, resolve_map_container,
+    scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
     star_system_local_grid_frame, validate_legacy_world_root_compatibility,
     validate_scenario_root_authority, LocalReceiverCellRole, ScenarioRootError,
     ScenarioRootValidationMode, SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT,
@@ -102,6 +103,17 @@ pub struct StudioPlanetChildView {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioPlanetNonGridChildView {
+    pub simthing_id_raw: u32,
+    pub child_kind_label: String,
+    pub planet_id: String,
+    pub parent_planet_gridcell_id_raw: u32,
+    pub owner_ref: Option<String>,
+    pub admission_status: String,
+    pub deferrals: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioReceiverCellView {
     pub parent_gridcell_simthing_id_raw: u32,
     pub parent_location_id: Option<String>,
@@ -126,6 +138,7 @@ pub struct StudioScenarioDocument {
     pub galaxy_map: Option<StudioGalaxyMapView>,
     pub gridcells: Vec<StudioGridcellView>,
     pub planets: Vec<StudioPlanetChildView>,
+    pub planet_non_grid_children: Vec<StudioPlanetNonGridChildView>,
     pub receiver_cells: Vec<StudioReceiverCellView>,
     pub admission_summary: Option<StudioScenarioAdmissionSummary>,
 }
@@ -182,6 +195,7 @@ fn build_canonical_document(
     let galaxy_map = Some(galaxy_map_to_view(galaxy_map_thing, true));
     let gridcells = gridcells_under_map(galaxy_map_thing);
     let planets = planets_under_spec(spec, galaxy_map_thing);
+    let planet_non_grid_children = planet_non_grid_children_under_spec(spec);
     let receiver_cells = receiver_cells_under_spec(spec, galaxy_map_thing);
 
     Ok(StudioScenarioDocument {
@@ -196,6 +210,7 @@ fn build_canonical_document(
         galaxy_map,
         gridcells,
         planets,
+        planet_non_grid_children,
         receiver_cells,
         admission_summary: None,
     })
@@ -218,6 +233,7 @@ fn build_legacy_world_document(
         galaxy_map: Some(galaxy_map_to_view(map_container, is_galaxy)),
         gridcells: gridcells_under_map(map_container),
         planets: Vec::new(),
+        planet_non_grid_children: Vec::new(),
         receiver_cells: Vec::new(),
         admission_summary: None,
     })
@@ -312,6 +328,40 @@ fn planets_under_spec(
         }
     }
     views
+}
+
+fn planet_non_grid_children_under_spec(
+    spec: &SimThingScenarioSpec,
+) -> Vec<StudioPlanetNonGridChildView> {
+    let planet_report = evaluate_planet_child_locations(spec);
+    let admission_status =
+        planet_child_location_classification_label(planet_report.classification).to_string();
+    collect_planet_non_grid_children(spec)
+        .into_iter()
+        .map(|entry| {
+            let deferrals: Vec<String> = planet_report
+                .deferrals
+                .iter()
+                .filter(|d| d.simthing_id_raw == Some(entry.child_simthing_id_raw))
+                .map(|d| {
+                    format!(
+                        "{}: {}",
+                        planet_child_location_error_kind_label(d.kind),
+                        d.reason
+                    )
+                })
+                .collect();
+            StudioPlanetNonGridChildView {
+                simthing_id_raw: entry.child_simthing_id_raw,
+                child_kind_label: entry.child_kind_label,
+                planet_id: entry.planet_id,
+                parent_planet_gridcell_id_raw: entry.planet_gridcell_id_raw,
+                owner_ref: entry.owner_ref,
+                admission_status: admission_status.clone(),
+                deferrals,
+            }
+        })
+        .collect()
 }
 
 fn receiver_cells_under_spec(
