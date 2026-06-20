@@ -44,6 +44,7 @@ pub mod planet_child_rf_accumulator_compile;
 pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
+pub mod recursive_local_rf_compile;
 pub mod resource_economy_boundary_schedule;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -427,6 +428,13 @@ pub use production_path_0080_1::{
     ProductionPath0081OwnershipAggregationSummary, ProductionPath0081Report,
     ProductionPath0081Scenario, ProductionPath0081Surface, PRODUCTION_PATH_0080_1_ID,
     PRODUCTION_PATH_0080_1_SCENARIO, PRODUCTION_PATH_0080_1_STATUS_PASS, SCENARIO_0080_1_GATE_ID,
+};
+pub use recursive_local_rf_compile::{
+    compile_recursive_local_rf_plan, recursive_local_rf_cpu_demand_total,
+    recursive_local_rf_cpu_surplus_total, recursive_local_rf_demand_aggregate_slot,
+    recursive_local_rf_demand_tick_inputs, recursive_local_rf_surplus_aggregate_slot,
+    recursive_local_rf_surplus_tick_inputs, RecursiveLocalRfAggregateProofPlan,
+    RecursiveLocalRfPlan,
 };
 pub use resource_economy_boundary_schedule::{
     BoundaryScheduleEntry, BoundaryScheduleKey, ResourceEconomyBoundaryScheduleReport,

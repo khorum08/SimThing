@@ -14,6 +14,7 @@ pub mod owner_silo_runtime_writeback;
 pub mod planet_child_location;
 pub mod planet_child_rf;
 pub mod property;
+pub mod recursive_local_rf;
 pub mod region_field;
 pub mod resource_economy;
 pub mod resource_flow;
@@ -92,6 +93,16 @@ pub use planet_child_rf::{
     PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 pub use property::PropertySpec;
+pub use recursive_local_rf::{
+    evaluate_recursive_local_rf, prove_recursive_local_rf_preserves_authority,
+    recursive_local_rf_arena_aggregate_totals,
+    recursive_local_rf_participant_rows_from_planet_child_inputs,
+    recursive_local_rf_report_matches_planet_child_compatibility_slice, LocalRfArenaKey,
+    LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow, LocationRfArenaReport,
+    RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport, RecursiveLocalRfDeferral,
+    RecursiveLocalRfDeferralKind, RecursiveLocalRfError, RecursiveLocalRfErrorKind,
+    RecursiveLocalRfEvaluationReport,
+};
 pub use region_field::{
     ArenaPressureBindingSpec, CommitmentEffectLifecycleSpec, CommitmentEffectSpec,
     CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,
