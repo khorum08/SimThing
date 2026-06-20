@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `recursive-local-rf-gpu-residency-remediation-0r`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #808
+- Merge SHA: `b68bd43456df16d6ba64993ad71f94c05e821103`
 
 ## Mission
 
