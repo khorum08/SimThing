@@ -627,6 +627,13 @@ pub use spec::scenario_candidate_from_runtime::{
     ScenarioCandidateFromRuntimeReport, ScenarioCandidateFromRuntimeSource,
     ScenarioCandidatePropertyMutationRecord,
 };
+pub use spec::scenario_candidate_save_reopen::{
+    evaluate_scenario_candidate_save_reopen_from_json_str,
+    prove_scenario_candidate_save_reopen_digest_stability,
+    write_candidate_scenario_canonical_json_atomic, ScenarioCandidateReopenReport,
+    ScenarioCandidateSaveReopenReport, ScenarioCandidateSaveReopenSource,
+    ScenarioCandidateSaveReport,
+};
 pub use spec::scenario_canonical_io::{
     load_scenario_spec_from_json_str, prove_scenario_canonical_load_save_roundtrip,
     save_scenario_spec_to_canonical_json, ScenarioCanonicalLoadReport,
