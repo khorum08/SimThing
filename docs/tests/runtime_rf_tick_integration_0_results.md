@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `runtime-rf-tick-integration-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #800
+- Merge SHA: `b497497b`
 
 ## Mission
 
