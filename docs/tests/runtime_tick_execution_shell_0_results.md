@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; PR/merge metadata finalized after merge.
+PASS — focused validation complete; PR #802 merged.
 
 ## PR / branch / merge
 
 - Branch: `runtime-tick-execution-shell-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #802
+- Merge SHA: `02550f2991b1fe9f1bf5082fd0802f99face5e9e`
 
 ## Mission
 
