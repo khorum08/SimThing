@@ -36,6 +36,7 @@ pub mod install;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod owner_silo_accumulator_compile;
+pub mod owner_silo_runtime_writeback_compile;
 pub mod planet_child_rf_accumulator_compile;
 pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
@@ -364,6 +365,11 @@ pub use owner_silo_accumulator_compile::{
     compile_owner_silo_gpu_tick_plan, owner_silo_aggregate_slot, owner_silo_deficit_tick_inputs,
     owner_silo_participant_deficit_total, owner_silo_participant_surplus_total,
     owner_silo_surplus_tick_inputs, OwnerSiloGpuTickPlan,
+};
+pub use owner_silo_runtime_writeback_compile::{
+    compile_owner_silo_runtime_writeback_plan, owner_silo_writeback_aggregate_deficit_tick_inputs,
+    owner_silo_writeback_aggregate_slot, owner_silo_writeback_aggregate_surplus_tick_inputs,
+    OwnerSiloRuntimeWritebackPlan, OwnerSiloWritebackAggregateProofPlan,
 };
 pub use planet_child_rf_accumulator_compile::{
     compile_planet_child_rf_gpu_tick_plan, planet_child_rf_aggregate_slot,
