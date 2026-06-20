@@ -1,4 +1,8 @@
 //! RECURSIVE-LOCAL-RF-EVALUATOR-0 — recursive Location gridcell RF evaluator nexus.
+//!
+//! GPU-residency doctrine: runtime RF aggregation lowers to flat GPU-compatible rows/tables.
+//! CPU space is limited to deterministic oracle/reference validation, semantic-side bookkeeping,
+//! compile-plan construction, and owner/user-facing reports — not production simulation authority.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -32,6 +36,25 @@ pub struct LocalRfParticipantRow {
     pub surplus: u32,
     pub demand: u32,
     pub participant_kind_label: String,
+}
+
+/// Kind of row in the GPU-compatible recursive RF aggregate source table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RecursiveLocalRfAggregateSourceKind {
+    DirectParticipant,
+    ChildLocationOutput,
+}
+
+/// Flat GPU-compatible aggregate source row for AccumulatorOp proof lowering.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecursiveLocalRfAggregateSourceRow {
+    pub source_kind: RecursiveLocalRfAggregateSourceKind,
+    pub source_simthing_or_location_id_raw: u32,
+    pub arena_location_id_raw: u32,
+    pub owner_ref: String,
+    pub resource_key: String,
+    pub surplus: u32,
+    pub demand: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -318,6 +341,58 @@ fn compatibility_from_report(
         owner_silo_fixture_compatible: previous_rf_ladder_preserved,
         previous_rf_ladder_preserved,
     })
+}
+
+/// Flatten recursive evaluation report into GPU-compatible aggregate source rows.
+///
+/// Direct participants contribute surplus/demand; child Location outputs contribute
+/// net_surplus/net_deficit. This table shape is the target for GPU-resident lowering —
+/// not a CPU-owned runtime evaluator.
+pub fn recursive_local_rf_aggregate_source_rows(
+    report: &RecursiveLocalRfEvaluationReport,
+) -> Vec<RecursiveLocalRfAggregateSourceRow> {
+    let mut rows = Vec::new();
+    for arena in &report.arena_reports {
+        for row in &arena.participant_rows {
+            rows.push(RecursiveLocalRfAggregateSourceRow {
+                source_kind: RecursiveLocalRfAggregateSourceKind::DirectParticipant,
+                source_simthing_or_location_id_raw: row.source_simthing_id_raw,
+                arena_location_id_raw: arena.location_id_raw,
+                owner_ref: row.owner_ref.clone(),
+                resource_key: row.resource_key.clone(),
+                surplus: row.surplus,
+                demand: row.demand,
+            });
+        }
+        for child in &arena.child_outputs {
+            rows.push(RecursiveLocalRfAggregateSourceRow {
+                source_kind: RecursiveLocalRfAggregateSourceKind::ChildLocationOutput,
+                source_simthing_or_location_id_raw: child.child_location_id_raw,
+                arena_location_id_raw: arena.location_id_raw,
+                owner_ref: child.owner_ref.clone(),
+                resource_key: child.resource_key.clone(),
+                surplus: child.net_surplus,
+                demand: child.net_deficit,
+            });
+        }
+    }
+    rows.sort_by(|a, b| {
+        (
+            a.arena_location_id_raw,
+            &a.owner_ref,
+            &a.resource_key,
+            a.source_kind,
+            a.source_simthing_or_location_id_raw,
+        )
+            .cmp(&(
+                b.arena_location_id_raw,
+                &b.owner_ref,
+                &b.resource_key,
+                b.source_kind,
+                b.source_simthing_or_location_id_raw,
+            ))
+    });
+    rows
 }
 
 /// Aggregate surplus/demand totals per arena/owner/resource for GPU proof comparison.

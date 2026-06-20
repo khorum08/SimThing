@@ -7,10 +7,10 @@ use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_participant_owner_flow_metadata, apply_participant_owner_flow_resource_key_metadata,
     evaluate_planet_child_rf_admission, evaluate_recursive_local_rf, owner_flow_resource_key,
-    prove_recursive_local_rf_preserves_authority,
+    prove_recursive_local_rf_preserves_authority, recursive_local_rf_aggregate_source_rows,
     recursive_local_rf_report_matches_planet_child_compatibility_slice,
-    scenario_metadata_u32_value, serialize_scenario_authority, RecursiveLocalRfErrorKind,
-    OWNER_FLOW_DEFAULT_RESOURCE_KEY, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+    scenario_metadata_u32_value, serialize_scenario_authority, RecursiveLocalRfAggregateSourceKind,
+    RecursiveLocalRfErrorKind, OWNER_FLOW_DEFAULT_RESOURCE_KEY, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
     OWNER_FLOW_SURPLUS_PROPERTY_ID,
 };
 
@@ -303,4 +303,112 @@ fn recursive_local_rf_explicit_resource_key_helper_falls_back_to_generic() {
 fn normal_tests_do_not_write_recursive_local_rf_fixture() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let _report = evaluate_recursive_local_rf(&spec).expect("recursive");
+}
+
+#[test]
+fn recursive_local_rf_aggregate_sources_include_direct_participants() {
+    let spec = build_owner_silo_disburse_down_scoped_spec();
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let sources = recursive_local_rf_aggregate_source_rows(&report);
+
+    assert!(sources.iter().any(|row| {
+        row.source_kind == RecursiveLocalRfAggregateSourceKind::DirectParticipant && row.surplus > 0
+    }));
+}
+
+#[test]
+fn recursive_local_rf_aggregate_sources_include_child_location_outputs() {
+    let spec = build_sibling_redistribution_spec();
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let sources = recursive_local_rf_aggregate_source_rows(&report);
+
+    assert!(sources.iter().any(|row| {
+        row.source_kind == RecursiveLocalRfAggregateSourceKind::ChildLocationOutput
+    }));
+}
+
+#[test]
+fn recursive_local_rf_aggregate_source_totals_match_settlement_totals() {
+    let spec = build_sibling_redistribution_spec();
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let sources = recursive_local_rf_aggregate_source_rows(&report);
+
+    for arena in &report.arena_reports {
+        for settlement in &arena.settlements {
+            let surplus_sum = sources
+                .iter()
+                .filter(|row| {
+                    row.arena_location_id_raw == settlement.arena_location_id_raw
+                        && row.owner_ref == settlement.owner_ref
+                        && row.resource_key == settlement.resource_key
+                })
+                .try_fold(0u32, |acc, row| acc.checked_add(row.surplus))
+                .expect("surplus overflow");
+            let demand_sum = sources
+                .iter()
+                .filter(|row| {
+                    row.arena_location_id_raw == settlement.arena_location_id_raw
+                        && row.owner_ref == settlement.owner_ref
+                        && row.resource_key == settlement.resource_key
+                })
+                .try_fold(0u32, |acc, row| acc.checked_add(row.demand))
+                .expect("demand overflow");
+
+            assert_eq!(surplus_sum, settlement.total_surplus);
+            assert_eq!(demand_sum, settlement.total_demand);
+        }
+    }
+}
+
+#[test]
+fn recursive_local_rf_aggregate_sources_are_gpu_table_compatible() {
+    let spec = build_sibling_redistribution_spec();
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let sources = recursive_local_rf_aggregate_source_rows(&report);
+
+    assert!(!sources.is_empty());
+    for row in &sources {
+        assert!(row.arena_location_id_raw > 0);
+        assert!(!row.owner_ref.is_empty());
+        assert!(!row.resource_key.is_empty());
+    }
+    for window in sources.windows(2) {
+        let a = &window[0];
+        let b = &window[1];
+        assert!(
+            (
+                a.arena_location_id_raw,
+                &a.owner_ref,
+                &a.resource_key,
+                a.source_kind,
+                a.source_simthing_or_location_id_raw,
+            ) <= (
+                b.arena_location_id_raw,
+                &b.owner_ref,
+                &b.resource_key,
+                b.source_kind,
+                b.source_simthing_or_location_id_raw,
+            )
+        );
+    }
+}
+
+#[test]
+fn recursive_local_rf_aggregate_sources_preserve_resource_key() {
+    let spec = build_sibling_redistribution_spec();
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let sources = recursive_local_rf_aggregate_source_rows(&report);
+
+    assert!(sources.iter().any(|row| row.resource_key == "food"));
+}
+
+#[test]
+fn recursive_local_rf_aggregate_sources_preserve_generic_fallback() {
+    let spec = build_owner_silo_disburse_down_scoped_spec();
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let sources = recursive_local_rf_aggregate_source_rows(&report);
+
+    assert!(sources
+        .iter()
+        .any(|row| row.resource_key == OWNER_FLOW_DEFAULT_RESOURCE_KEY));
 }
