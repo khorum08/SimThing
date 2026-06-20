@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `local-allocation-recursive-rf-source-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #813
+- Merge SHA: `2a32494f747dd50becfea586eb7ba4d5f2335fbc`
 
 ## Mission
 
