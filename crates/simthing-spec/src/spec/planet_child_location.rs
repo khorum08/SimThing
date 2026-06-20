@@ -1,4 +1,5 @@
 //! RECURSIVE-SPATIAL-GRID-DEFAULTS-0 — recursive spatial local-grid admission.
+//! PLANET-NON-GRID-CHILD-ADMISSION-0 — cohort/fleet/infrastructure/leader under planet gridcells.
 //!
 //! Owner SimThings are GameSession children and RF channel scopes, not spatial parents.
 //! Ownership changes update metadata/properties, not spatial parentage.
@@ -55,6 +56,9 @@ pub enum PlanetChildLocationAdmissionErrorKind {
     PlanetLocalGridDuplicateCoordinate,
     PlanetLocalGridCoordinateOutOfFrame,
     LocalGridFrameInvalid,
+    PlanetNonGridChildHasLocalCoordinate,
+    PlanetNonGridChildUnsupportedKind,
+    PlanetNonGridChildSimulationDeferred,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -80,6 +84,7 @@ pub struct PlanetChildLocationAdmissionReport {
     pub local_gridcell_count: u32,
     pub local_inert_gridcell_count: u32,
     pub planet_gridcell_count: u32,
+    pub planet_non_grid_child_count: u32,
     pub receiver_cell_count: u32,
     pub implicit_receiver_cell_count: u32,
     pub unsupported_child_location_count: u32,
@@ -113,6 +118,68 @@ pub fn star_system_local_grid_frame(gridcell: &SimThing) -> (u32, u32) {
     let frame = local_grid_frame_for_spatial_gridcell(gridcell)
         .unwrap_or_else(|_| default_local_grid_frame_for_spatial_gridcell(gridcell));
     (frame.cols, frame.rows)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanetNonGridChildEntry {
+    pub planet_gridcell_id_raw: u32,
+    pub planet_id: String,
+    pub child_simthing_id_raw: u32,
+    pub child_kind_label: String,
+    pub owner_ref: Option<String>,
+}
+
+pub fn planet_non_grid_child_kind_label(kind: &SimThingKind) -> String {
+    match kind {
+        SimThingKind::Cohort => "cohort".into(),
+        SimThingKind::Fleet => "fleet".into(),
+        SimThingKind::Station => "station".into(),
+        SimThingKind::Custom(name) => name.clone(),
+        other => format!("{other:?}"),
+    }
+}
+
+pub fn is_admitted_planet_non_grid_child(kind: &SimThingKind) -> bool {
+    match kind {
+        SimThingKind::Cohort | SimThingKind::Fleet | SimThingKind::Station => true,
+        SimThingKind::Custom(name) => matches!(
+            name.as_str(),
+            "Infrastructure" | "Leader" | "infrastructure" | "leader"
+        ),
+        _ => false,
+    }
+}
+
+pub fn planet_non_grid_child_owner_ref(child: &SimThing) -> Option<String> {
+    scenario_metadata_string(child, PLANET_OWNER_REF_PROPERTY_ID).or_else(|| {
+        scenario_metadata_string(child, super::scenario::OWNER_FLOW_OWNER_REF_PROPERTY_ID)
+    })
+}
+
+pub fn collect_planet_non_grid_children(
+    spec: &SimThingScenarioSpec,
+) -> Vec<PlanetNonGridChildEntry> {
+    let mut entries = Vec::new();
+    for planet in all_planet_gridcells(spec) {
+        let Some(planet_id) = planet_id(planet) else {
+            continue;
+        };
+        for child in &planet.children {
+            if child.kind == SimThingKind::Location {
+                continue;
+            }
+            if is_admitted_planet_non_grid_child(&child.kind) {
+                entries.push(PlanetNonGridChildEntry {
+                    planet_gridcell_id_raw: planet.id.raw(),
+                    planet_id: planet_id.clone(),
+                    child_simthing_id_raw: child.id.raw(),
+                    child_kind_label: planet_non_grid_child_kind_label(&child.kind),
+                    owner_ref: planet_non_grid_child_owner_ref(child),
+                });
+            }
+        }
+    }
+    entries
 }
 
 pub fn planet_gridcell_interior_frame(planet: &SimThing) -> LocalGridFrame {
@@ -596,6 +663,7 @@ fn evaluate_star_system_local_child(
             frame_cols,
             frame_rows,
             &path_prefix,
+            placement_ids,
             seen_planet_ids,
             seen_local_coords,
             report,
@@ -661,6 +729,7 @@ fn evaluate_planet_local_gridcell(
     frame_cols: u32,
     frame_rows: u32,
     path_prefix: &str,
+    placement_ids: &BTreeSet<u32>,
     seen_planet_ids: &mut BTreeSet<String>,
     seen_local_coords: &mut BTreeSet<(u32, u32)>,
     report: &mut PlanetChildLocationAdmissionReport,
@@ -741,6 +810,82 @@ fn evaluate_planet_local_gridcell(
         Some(child.id.raw()),
         "planet simulation/economy/population behavior remains deferred",
     );
+
+    for grandchild in &child.children {
+        if grandchild.kind == SimThingKind::Location {
+            continue;
+        }
+        evaluate_planet_non_grid_child(
+            grandchild,
+            &format!("{path_prefix}/non_grid:{}", grandchild.id.raw()),
+            placement_ids,
+            report,
+        );
+    }
+}
+
+fn evaluate_planet_non_grid_child(
+    child: &SimThing,
+    path_prefix: &str,
+    placement_ids: &BTreeSet<u32>,
+    report: &mut PlanetChildLocationAdmissionReport,
+) {
+    if placement_ids.contains(&child.id.raw()) {
+        push_error(
+            report,
+            PlanetChildLocationAdmissionErrorKind::PlanetListedInGalaxyStructuralGrid,
+            Some(path_prefix.to_string()),
+            Some(child.id.raw()),
+            "planet non-grid child must not appear in GalaxyMap structural_grid placements",
+        );
+        return;
+    }
+
+    if local_gridcell_col(child).is_some() || local_gridcell_row(child).is_some() {
+        push_error(
+            report,
+            PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildHasLocalCoordinate,
+            Some(path_prefix.to_string()),
+            Some(child.id.raw()),
+            "planet non-grid child must not carry local gridcell col/row metadata",
+        );
+        return;
+    }
+
+    if is_admitted_planet_non_grid_child(&child.kind) {
+        report.planet_non_grid_child_count += 1;
+        if planet_non_grid_child_owner_ref(child).is_some() {
+            push_deferral(
+                report,
+                PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred,
+                Some(path_prefix.to_string()),
+                Some(child.id.raw()),
+                "planet non-grid child owner/channel metadata present; resolution deferred",
+            );
+        }
+        push_deferral(
+            report,
+            PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildSimulationDeferred,
+            Some(path_prefix.to_string()),
+            Some(child.id.raw()),
+            format!(
+                "planet non-grid child `{}` admitted; simulation behavior remains deferred",
+                planet_non_grid_child_kind_label(&child.kind)
+            ),
+        );
+        return;
+    }
+
+    push_deferral(
+        report,
+        PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildUnsupportedKind,
+        Some(path_prefix.to_string()),
+        Some(child.id.raw()),
+        format!(
+            "planet non-grid child kind `{}` is not yet admitted",
+            planet_non_grid_child_kind_label(&child.kind)
+        ),
+    );
 }
 
 fn validate_local_coordinates(
@@ -806,6 +951,7 @@ fn finalize_planet_classification(report: &mut PlanetChildLocationAdmissionRepor
             PlanetChildLocationAdmissionErrorKind::PlanetSimulationDeferred
                 | PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred
                 | PlanetChildLocationAdmissionErrorKind::DeepPlanetChildDeferred
+                | PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildSimulationDeferred
         )
     });
     if hard_deferrals.count() > 0 {
@@ -899,6 +1045,15 @@ pub fn planet_child_location_error_kind_label(
             "PlanetLocalGridCoordinateOutOfFrame"
         }
         PlanetChildLocationAdmissionErrorKind::LocalGridFrameInvalid => "LocalGridFrameInvalid",
+        PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildHasLocalCoordinate => {
+            "PlanetNonGridChildHasLocalCoordinate"
+        }
+        PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildUnsupportedKind => {
+            "PlanetNonGridChildUnsupportedKind"
+        }
+        PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildSimulationDeferred => {
+            "PlanetNonGridChildSimulationDeferred"
+        }
     }
 }
 

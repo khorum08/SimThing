@@ -52,6 +52,8 @@ pub enum ScenarioDeferralKind {
     PlanetSimulationDeferred,
     UnsupportedChildLocationRole,
     PlanetOwnershipResolutionDeferred,
+    PlanetNonGridChildSimulationDeferred,
+    PlanetNonGridChildUnsupportedKind,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -531,6 +533,12 @@ fn map_planet_deferral_kind(kind: PlanetChildLocationAdmissionErrorKind) -> Scen
         PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred => {
             ScenarioDeferralKind::PlanetOwnershipResolutionDeferred
         }
+        PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildSimulationDeferred => {
+            ScenarioDeferralKind::PlanetNonGridChildSimulationDeferred
+        }
+        PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildUnsupportedKind => {
+            ScenarioDeferralKind::PlanetNonGridChildUnsupportedKind
+        }
         _ => ScenarioDeferralKind::UnsupportedChildLocationRole,
     }
 }
@@ -642,6 +650,8 @@ fn finalize_classification(result: &mut ScenarioIngestionResult) {
                     | ScenarioDeferralKind::PlanetSimulationDeferred
                     | ScenarioDeferralKind::UnsupportedChildLocationRole
                     | ScenarioDeferralKind::PlanetOwnershipResolutionDeferred
+                    | ScenarioDeferralKind::PlanetNonGridChildSimulationDeferred
+                    | ScenarioDeferralKind::PlanetNonGridChildUnsupportedKind
             )
         })
         .collect();
@@ -679,6 +689,7 @@ fn finalize_classification(result: &mut ScenarioIngestionResult) {
                 ScenarioDeferralKind::PlanetSimulationDeferred
                     | ScenarioDeferralKind::PlanetOwnershipResolutionDeferred
                     | ScenarioDeferralKind::UnsupportedChildLocationDepth
+                    | ScenarioDeferralKind::PlanetNonGridChildSimulationDeferred
             )
         })
     {
@@ -750,6 +761,12 @@ pub fn scenario_deferral_kind_label(kind: ScenarioDeferralKind) -> &'static str 
         ScenarioDeferralKind::UnsupportedChildLocationRole => "UnsupportedChildLocationRole",
         ScenarioDeferralKind::PlanetOwnershipResolutionDeferred => {
             "PlanetOwnershipResolutionDeferred"
+        }
+        ScenarioDeferralKind::PlanetNonGridChildSimulationDeferred => {
+            "PlanetNonGridChildSimulationDeferred"
+        }
+        ScenarioDeferralKind::PlanetNonGridChildUnsupportedKind => {
+            "PlanetNonGridChildUnsupportedKind"
         }
     }
 }

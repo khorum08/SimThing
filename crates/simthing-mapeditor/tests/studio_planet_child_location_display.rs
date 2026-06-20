@@ -55,6 +55,27 @@ fn studio_displays_star_system_local_10x10_frame() {
 }
 
 #[test]
+fn studio_displays_planet_non_grid_children() {
+    let session = load_studio_session_from_scenario_path(&admitted_fixture_path(), None)
+        .expect("load admitted");
+    assert_eq!(session.scenario_document.planet_non_grid_children.len(), 3);
+    let kinds: Vec<&str> = session
+        .scenario_document
+        .planet_non_grid_children
+        .iter()
+        .map(|c| c.child_kind_label.as_str())
+        .collect();
+    assert!(kinds.contains(&"cohort"));
+    assert!(kinds.contains(&"fleet"));
+    assert!(kinds.contains(&"Infrastructure"));
+    assert!(session
+        .scenario_document
+        .planet_non_grid_children
+        .iter()
+        .all(|c| c.planet_id == "terra_prime"));
+}
+
+#[test]
 fn studio_displays_planet_default_1x1_interior_grid() {
     let session =
         load_studio_session_from_scenario_path(&admitted_fixture_path(), None).expect("load");
