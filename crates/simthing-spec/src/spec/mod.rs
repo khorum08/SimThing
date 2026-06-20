@@ -6,6 +6,7 @@ pub mod event;
 pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
+pub mod local_participant_effects;
 pub mod overlay;
 pub mod owner_silo_disburse_down;
 pub mod owner_silo_runtime_writeback;
@@ -39,6 +40,12 @@ pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
+pub use local_participant_effects::{
+    evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
+    local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,
+    LocalParticipantEffectsDeferralKind, LocalParticipantEffectsError,
+    LocalParticipantEffectsErrorKind, LocalParticipantEffectsReport, RuntimeLocalParticipantEffect,
+};
 pub use overlay::OverlaySpec;
 pub use owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
