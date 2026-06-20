@@ -503,6 +503,18 @@ pub use spec::runtime_local_allocation::{
     RuntimeLocalAllocationApplicationError, RuntimeLocalAllocationApplicationErrorKind,
     RuntimeLocalAllocationApplicationReport, RuntimeLocalAllocationState,
 };
+pub use spec::runtime_participant_property_mutation_boundary::{
+    evaluate_runtime_participant_property_mutation_boundary,
+    prove_runtime_participant_property_mutation_boundary_preserves_authority,
+    replay_runtime_participant_property_mutation_boundary,
+    RuntimeParticipantPropertyMutationBoundaryError,
+    RuntimeParticipantPropertyMutationBoundaryErrorKind,
+    RuntimeParticipantPropertyMutationBoundaryRecord,
+    RuntimeParticipantPropertyMutationBoundaryReplayReport,
+    RuntimeParticipantPropertyMutationBoundaryReport, RuntimeParticipantPropertyMutationSourceMode,
+    RuntimeParticipantPropertyViewRow, MAX_RUNTIME_PARTICIPANT_PROPERTY_MUTATION_REPLAY_COUNT,
+    MIN_RUNTIME_PARTICIPANT_PROPERTY_MUTATION_REPLAY_COUNT,
+};
 pub use spec::runtime_participant_state_mutation::{
     evaluate_runtime_participant_state_mutation,
     prove_runtime_participant_state_mutation_preserves_authority,
