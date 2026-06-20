@@ -35,6 +35,7 @@ use super::scenario::{
     ScenarioSerdeError, SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT,
     GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
 };
+use super::semantic_local_effects::prove_semantic_local_effects_preserve_authority;
 use super::session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_flow_suppresses_ingestion_deferral,
     OwnerSiloAdmissionClassification, OwnerSiloAdmissionReport,
@@ -177,6 +178,10 @@ pub struct ScenarioCompileReadinessReport {
     pub local_effect_application_ready: bool,
     /// Semantic effect execution, participant property mutation, Scenario authority mutation, and savefile mutation remain deferred.
     pub local_effect_application_deferred: bool,
+    /// Typed semantic local effect report and authority proof can be evaluated.
+    pub semantic_local_effects_ready: bool,
+    /// Semantic execution, participant property mutation, Scenario authority mutation, and savefile mutation remain deferred.
+    pub semantic_local_effects_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -480,6 +485,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_local_participant_effects(spec, result);
     integrate_runtime_tick_history(spec, result);
     integrate_local_effect_application(spec, result);
+    integrate_semantic_local_effects(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -861,6 +867,23 @@ fn integrate_local_effect_application(
 
     result.compile_readiness.local_effect_application_ready = true;
     result.compile_readiness.local_effect_application_deferred = true;
+}
+
+fn integrate_semantic_local_effects(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result.compile_readiness.semantic_local_effects_deferred = true;
+
+    if !result.compile_readiness.local_effect_application_ready {
+        return;
+    }
+    if prove_semantic_local_effects_preserve_authority(spec, RuntimeTickId(1), 1).is_err() {
+        return;
+    }
+
+    result.compile_readiness.semantic_local_effects_ready = true;
+    result.compile_readiness.semantic_local_effects_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
