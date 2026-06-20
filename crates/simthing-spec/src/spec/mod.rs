@@ -34,6 +34,7 @@ pub mod runtime_tick_history;
 pub mod runtime_tick_shell;
 pub mod scenario;
 pub mod scenario_candidate_from_runtime;
+pub mod scenario_candidate_save_reopen;
 pub mod scenario_canonical_io;
 pub mod scenario_ingestion;
 pub mod scenario_property_mutation_authority_boundary;
@@ -245,6 +246,13 @@ pub use scenario_candidate_from_runtime::{
     prove_scenario_candidate_from_runtime_preserves_original_authority,
     ScenarioCandidateFromRuntimeReport, ScenarioCandidateFromRuntimeSource,
     ScenarioCandidatePropertyMutationRecord,
+};
+pub use scenario_candidate_save_reopen::{
+    evaluate_scenario_candidate_save_reopen_from_json_str,
+    prove_scenario_candidate_save_reopen_digest_stability,
+    write_candidate_scenario_canonical_json_atomic, ScenarioCandidateReopenReport,
+    ScenarioCandidateSaveReopenReport, ScenarioCandidateSaveReopenSource,
+    ScenarioCandidateSaveReport,
 };
 pub use scenario_canonical_io::{
     load_scenario_spec_from_json_str, prove_scenario_canonical_load_save_roundtrip,
