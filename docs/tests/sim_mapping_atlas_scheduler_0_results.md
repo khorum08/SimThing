@@ -15,7 +15,7 @@
 | `docs/tests/driver_mapping_plan_compile_0_results.md` | PROBATION (PR #771) | Retained — compile surface |
 | `docs/tests/sim_mapping_plan_tick_seam_0_results.md` | PROBATION (PR #770) | Retained — single-plan tick seam |
 | `docs/tests/sim_mapping_atlas_scheduler_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § ATLAS-SCHEDULER-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § ATLAS-SCHEDULER-0 |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority | Untouched |
 
 ## Why this is the next rung
@@ -143,7 +143,7 @@ Windows: no paging-file/linker limit failures observed.
 - `crates/simthing-spec/tests/e10_resource_flow_admission.rs`
 - `docs/tests/sim_mapping_atlas_scheduler_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deferred work
 

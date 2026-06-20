@@ -42,9 +42,7 @@ pub fn compile_owner_silo_recursive_source_plan(
     }
 
     let selection_mode = match source_mode {
-        OwnerSiloRfSourceMode::LegacyPlanetChildOwnerSilo => {
-            RuntimeRfTickSourceMode::LegacyDefault
-        }
+        OwnerSiloRfSourceMode::LegacyPlanetChildOwnerSilo => RuntimeRfTickSourceMode::LegacyDefault,
         OwnerSiloRfSourceMode::RecursiveLocalRfSelectable => {
             RuntimeRfTickSourceMode::RecursiveSelectable
         }
@@ -65,8 +63,7 @@ pub fn compile_owner_silo_recursive_source_plan(
         local_allocation_integration_deferred: disburse_report
             .local_allocation_integration_deferred,
         local_effect_integration_deferred: disburse_report.local_effect_integration_deferred,
-        semantic_effect_integration_deferred: disburse_report
-            .semantic_effect_integration_deferred,
+        semantic_effect_integration_deferred: disburse_report.semantic_effect_integration_deferred,
         gpu_residency_doctrine_preserved: true,
         no_new_gpu_primitive_required: true,
         fused_recursive_rf_kernel_present: false,

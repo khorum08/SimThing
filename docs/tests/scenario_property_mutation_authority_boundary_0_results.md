@@ -104,7 +104,7 @@ This rung intentionally crosses the Scenario property mutation boundary only on 
 - `crates/simthing-driver/src/scenario_property_mutation_authority_boundary_compile.rs`
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/scenario_property_mutation_authority_boundary.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/scenario_property_mutation_authority_boundary_0_results.md`
 

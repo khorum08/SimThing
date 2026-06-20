@@ -628,6 +628,12 @@ pub use spec::scenario_property_mutation_authority_boundary::{
     ScenarioPropertyMutationSourceMode, MAX_SCENARIO_PROPERTY_MUTATION_REPLAY_COUNT,
     MIN_SCENARIO_PROPERTY_MUTATION_REPLAY_COUNT,
 };
+pub use spec::scenario_stead_map_roundtrip::{
+    evaluate_scenario_stead_map_roundtrip_from_json_str, extract_scenario_rf_metadata_rows,
+    extract_scenario_spatial_tree_rows, extract_scenario_stead_id_rows,
+    extract_scenario_stead_link_rows, ScenarioRfMetadataRow, ScenarioSpatialTreeRow,
+    ScenarioSteadIdRow, ScenarioSteadLinkRow, ScenarioSteadMapRoundtripReport,
+};
 pub use spec::script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
 };

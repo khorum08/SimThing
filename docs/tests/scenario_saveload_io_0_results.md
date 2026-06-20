@@ -9,7 +9,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added SCENARIO-SAVELOAD-IO-0 PROBATION row |
 | `docs/tests/scenario_saveload_io_0_results.md` | PROBATION | This report |
 | `docs/tests/simthing_studio_config_0_results.md` | PROBATION | Unchanged; config remains separate |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Scenario authority IO summary
 
@@ -51,7 +51,7 @@
 
 ## Runtime vertical-test horizon compatibility note
 
-Future runtime vertical-test loading must enter through SimThing-Spec scenario/runtime authority, then Studio projection, then GPU-resident execution/readiness surfaces — not view state, Bevy entities, or `simthing-studio-config.json`. Documented in `docs/0.8.3 Simthing Studio Production.md` § SCENARIO-SAVELOAD-IO-0.
+Future runtime vertical-test loading must enter through SimThing-Spec scenario/runtime authority, then Studio projection, then GPU-resident execution/readiness surfaces — not view state, Bevy entities, or `simthing-studio-config.json`. Documented in `docs/design_0_0_8_3_studio_production.md` § SCENARIO-SAVELOAD-IO-0.
 
 ## Tests added
 
@@ -102,7 +102,7 @@ git diff --check
 - `crates/simthing-mapeditor/src/scenario_io.rs` — new file IO layer + tests
 - `crates/simthing-mapeditor/src/session.rs` — `from_scenario_authority`
 - `crates/simthing-mapeditor/src/lib.rs` — module + re-exports
-- `docs/0.8.3 Simthing Studio Production.md` — SCENARIO-SAVELOAD-IO-0 section
+- `docs/design_0_0_8_3_studio_production.md` — SCENARIO-SAVELOAD-IO-0 section
 - `docs/tests/current_evidence_index.md` — PROBATION row
 - `docs/tests/scenario_saveload_io_0_results.md` — this report
 

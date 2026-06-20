@@ -91,7 +91,7 @@ Fixture expectations (`owner_silo_disburse_down_scoped`):
 - `crates/simthing-driver/tests/owner_silo_disburse_down.rs` (new)
 - `crates/simthing-driver/tests/disburse_down_fixture.rs` (new)
 - `scenarios/corpus/owner_silo_disburse_down_scoped.simthing-scenario.json` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/owner_silo_disburse_down_0_results.md`
 
@@ -101,7 +101,7 @@ Fixture expectations (`owner_silo_disburse_down_scoped`):
 |----------|----------------|
 | `docs/tests/owner_silo_disburse_down_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 | `scenarios/corpus/owner_silo_disburse_down_scoped.simthing-scenario.json` | durable corpus fixture |
 
 ## Known gaps

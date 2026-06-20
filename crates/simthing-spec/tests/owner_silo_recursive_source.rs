@@ -6,9 +6,9 @@ mod sibling_redistribution_fixture;
 use simthing_core::{PropertyValue, SimThingKind};
 use simthing_spec::{
     evaluate_owner_silo_disburse_down_with_rf_source,
-    owner_silo_demand_buckets_from_recursive_local_rf, prove_owner_silo_recursive_source_preserves_authority,
-    serialize_scenario_authority, OwnerSiloRfSourceMode, OWNER_FLOW_DEMAND_PROPERTY_ID,
-    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    owner_silo_demand_buckets_from_recursive_local_rf,
+    prove_owner_silo_recursive_source_preserves_authority, serialize_scenario_authority,
+    OwnerSiloRfSourceMode, OWNER_FLOW_DEMAND_PROPERTY_ID, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -43,7 +43,8 @@ fn owner_silo_recursive_source_projects_recursive_demand_buckets() {
     assert!(buckets.iter().all(|b| !b.owner_ref.is_empty()));
     assert!(buckets
         .iter()
-        .all(|b| !b.resource_key.is_empty() || b.resource_key == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
+        .all(|b| !b.resource_key.is_empty()
+            || b.resource_key == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
 }
 
 #[test]
@@ -61,7 +62,10 @@ fn owner_silo_recursive_source_runs_disburse_down_for_recursive_source() {
         OwnerSiloRfSourceMode::RecursiveLocalRfSelectable
     );
     assert!(report.owner_silo_disburse_down_executed_for_selected_source);
-    let recursive = report.recursive_disburse_report.as_ref().expect("recursive report");
+    let recursive = report
+        .recursive_disburse_report
+        .as_ref()
+        .expect("recursive report");
     assert!(recursive.owner_silo_disburse_down_executed);
     assert!(!recursive.disburse_down_results.is_empty());
     assert!(recursive.allocated_total > 0);
@@ -77,13 +81,11 @@ fn owner_silo_recursive_source_is_not_comparison_only_hygiene_layer() {
     .expect("recursive");
 
     assert!(report.owner_silo_disburse_down_executed_for_selected_source);
-    assert!(
-        report
-            .selected_disburse_report
-            .disburse_down_results
-            .iter()
-            .any(|r| r.allocated_total > 0)
-    );
+    assert!(report
+        .selected_disburse_report
+        .disburse_down_results
+        .iter()
+        .any(|r| r.allocated_total > 0));
     assert!(report.local_allocation_integration_deferred);
 }
 
@@ -94,9 +96,7 @@ fn owner_silo_recursive_source_preserves_owner_resource_scope() {
 
     assert!(buckets.iter().any(|b| b.owner_ref == "owner_a"));
     assert!(buckets.iter().any(|b| b.owner_ref == "owner_b"));
-    assert!(buckets
-        .iter()
-        .all(|b| b.scope_id.starts_with("location/")));
+    assert!(buckets.iter().all(|b| b.scope_id.starts_with("location/")));
 }
 
 #[test]
@@ -104,9 +104,7 @@ fn owner_silo_recursive_source_preserves_generic_resource_fallback() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let buckets = owner_silo_demand_buckets_from_recursive_local_rf(&spec).expect("buckets");
 
-    assert!(buckets
-        .iter()
-        .all(|b| !b.resource_key.trim().is_empty()));
+    assert!(buckets.iter().all(|b| !b.resource_key.trim().is_empty()));
 }
 
 #[test]
@@ -133,7 +131,10 @@ fn owner_silo_recursive_source_documents_redistribution_delta_for_sibling_fixtur
 
     assert!(report.source_selection.redistribution_deltas_documented);
     assert!(report.source_selection.selection_allowed);
-    let recursive = report.recursive_disburse_report.as_ref().expect("recursive");
+    let recursive = report
+        .recursive_disburse_report
+        .as_ref()
+        .expect("recursive");
     assert!(!recursive.demand_buckets.is_empty());
 }
 

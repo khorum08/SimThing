@@ -13,7 +13,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated with BACKEND-0 row |
 | `docs/tests/accumulator_driver_sim_convergence_1_results.md` | PROBATION | Preserved — CPU/GPU AO source evidence |
 | `docs/tests/sim_gpu_accumulator_backend_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § SIM-GPU-ACCUMULATOR-BACKEND-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § SIM-GPU-ACCUMULATOR-BACKEND-0 |
 
 No scratch logs or contradictory evidence introduced.
 
@@ -137,7 +137,7 @@ No paging-file or linker failures observed.
 - `crates/simthing-sim/src/lib.rs` — exports
 - `crates/simthing-sim/tests/accumulator_plan_tick_convergence.rs` — GPU proofs
 - `crates/simthing-mapeditor/tests/accumulator_convergence_1_guards.rs` — Studio GPU dispatch guards
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/sim_gpu_accumulator_backend_0_results.md`
 

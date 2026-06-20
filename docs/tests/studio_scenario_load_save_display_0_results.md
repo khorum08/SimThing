@@ -73,7 +73,7 @@ Edit helpers:
 
 ## Production synthesis update summary
 
-Added § STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0 to `docs/0.8.3 Simthing Studio Production.md`. Reprioritized Next Production Rungs (ingestion, resource-flow silos, GPU execution after authority).
+Added § STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0 to `docs/design_0_0_8_3_studio_production.md`. Reprioritized Next Production Rungs (ingestion, resource-flow silos, GPU execution after authority).
 
 ## Evidence lifecycle cleanup summary
 
@@ -134,7 +134,7 @@ Added § STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0 to `docs/0.8.3 Simthing Studio Prod
 | `crates/simthing-mapeditor/tests/canonical_scenario_load_save_display.rs` | 10 integration tests |
 | `docs/tests/studio_scenario_load_save_display_0_results.md` | This report |
 | `docs/tests/current_evidence_index.md` | PROBATION row |
-| `docs/0.8.3 Simthing Studio Production.md` | § STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0 |
+| `docs/design_0_0_8_3_studio_production.md` | § STUDIO-SCENARIO-LOAD-SAVE-DISPLAY-0 |
 
 ## Deleted/archived artifacts
 

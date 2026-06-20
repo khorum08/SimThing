@@ -12,7 +12,7 @@
 |---|---|---|
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated |
 | `docs/tests/terran_pirate_scenario_skeleton_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § TERRAN-PIRATE-SCENARIO-SKELETON-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § TERRAN-PIRATE-SCENARIO-SKELETON-0 |
 | `crates/simthing-mapeditor/tests/fixtures/terran_pirate_skeleton.simthing-scenario.json` | Fixture | Created from builder |
 
 ## Why this is not hygiene

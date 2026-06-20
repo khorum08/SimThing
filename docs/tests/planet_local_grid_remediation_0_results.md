@@ -72,7 +72,7 @@ Report fields: `local_gridcell_count`, `local_inert_gridcell_count`, `planet_gri
 
 ## Production synthesis update summary
 
-- Added § PLANET-LOCAL-GRID-REMEDIATION-0 to `docs/0.8.3 Simthing Studio Production.md`
+- Added § PLANET-LOCAL-GRID-REMEDIATION-0 to `docs/design_0_0_8_3_studio_production.md`
 - Marked PR #789 ontology as remediated (retained PROBATION prerequisite)
 
 ## Evidence lifecycle cleanup summary
@@ -133,7 +133,7 @@ Report fields: `local_gridcell_count`, `local_inert_gridcell_count`, `planet_gri
 - `crates/simthing-mapeditor/tests/studio_ingestion_admission_report.rs` (deferral kind alignment)
 - `crates/simthing-driver/tests/planet_child_location_structural_readiness.rs`
 - `scenarios/corpus/planet_child_location_*.simthing-scenario.json` (4 fixtures)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/planet_child_location_admission_0_results.md`
 - `docs/tests/planet_local_grid_remediation_0_results.md` (this file)

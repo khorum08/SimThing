@@ -13,7 +13,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added GPU-STRUCTURAL-VALIDATION-WGSL-0 PROBATION row |
 | `docs/tests/gpu_structural_validation_wgsl_0_results.md` | PROBATION | This report |
 | `docs/tests/gpu_structural_residency_0_results.md` | PROBATION | Upload/readback prerequisite |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -90,7 +90,7 @@ git diff --check
 - `crates/simthing-gpu/src/lib.rs`
 - `crates/simthing-mapeditor/src/scenario_projection.rs`
 - `crates/simthing-mapeditor/src/lib.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/gpu_structural_validation_wgsl_0_results.md`
 

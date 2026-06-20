@@ -15,7 +15,7 @@
 | `docs/tests/sim_mapping_plan_tick_seam_0_results.md` | PROBATION (PR #770) | Retained — tick-seam evidence |
 | `docs/tests/sim_gpu_readback_scope_0_results.md` | PROBATION (PR #762) | Retained — scoped guard precedent |
 | `docs/tests/sim_mapping_readback_policy_harden_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § READBACK-POLICY-HARDEN-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § READBACK-POLICY-HARDEN-0 |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority | Untouched |
 
 ## Why this is not hygiene
@@ -178,7 +178,7 @@ Windows: no paging-file/linker limit failures observed.
 - `crates/simthing-spec/tests/e10_resource_flow_admission.rs`
 - `docs/tests/sim_mapping_readback_policy_harden_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 No changes to `mapping_plan_tick.rs` source — existing API discipline sufficient; tests prove invariant.
 

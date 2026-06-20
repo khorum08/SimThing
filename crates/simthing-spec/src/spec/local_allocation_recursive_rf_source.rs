@@ -149,7 +149,8 @@ pub fn evaluate_runtime_local_allocation_with_rf_source(
         }
         LocalAllocationRfSourceMode::RecursiveOwnerSiloSelectable => {
             if !owner_silo_recursive_source_ready {
-                "recursive local allocation denied: owner-silo recursive source not ready".to_string()
+                "recursive local allocation denied: owner-silo recursive source not ready"
+                    .to_string()
             } else if !owner_silo_disburse_report_available {
                 "recursive local allocation denied: recursive owner-silo disburse report unavailable"
                     .to_string()
@@ -182,7 +183,8 @@ pub fn evaluate_runtime_local_allocation_with_rf_source(
         == LocalAllocationRfSourceMode::RecursiveOwnerSiloSelectable
         && selection_allowed;
 
-    let local_allocation_executed_for_selected_source = selected_allocation_report.allocation_count > 0
+    let local_allocation_executed_for_selected_source = selected_allocation_report.allocation_count
+        > 0
         || selected_allocation_report.allocated_total > 0;
 
     Ok(RuntimeLocalAllocationRfSourceReport {
@@ -219,19 +221,17 @@ pub fn prove_local_allocation_recursive_source_preserves_authority(
     scenario: &SimThingScenarioSpec,
     source_mode: LocalAllocationRfSourceMode,
 ) -> Result<bool, LocalAllocationRecursiveSourceError> {
-    let before = scenario_authority_digest(scenario).map_err(|e| {
-        LocalAllocationRecursiveSourceError {
+    let before =
+        scenario_authority_digest(scenario).map_err(|e| LocalAllocationRecursiveSourceError {
             kind: LocalAllocationRecursiveSourceErrorKind::ScenarioAuthorityRejected,
             message: e.message,
-        }
-    })?;
+        })?;
     let _report = evaluate_runtime_local_allocation_with_rf_source(scenario, source_mode)?;
-    let after = scenario_authority_digest(scenario).map_err(|e| {
-        LocalAllocationRecursiveSourceError {
+    let after =
+        scenario_authority_digest(scenario).map_err(|e| LocalAllocationRecursiveSourceError {
             kind: LocalAllocationRecursiveSourceErrorKind::ScenarioAuthorityRejected,
             message: e.message,
-        }
-    })?;
+        })?;
     Ok(before == after)
 }
 

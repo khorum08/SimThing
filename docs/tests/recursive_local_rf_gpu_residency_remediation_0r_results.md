@@ -117,7 +117,7 @@ This remediation does not grant CPU production simulation authority. The recursi
 - `crates/simthing-spec/tests/recursive_local_rf.rs`
 - `crates/simthing-driver/src/recursive_local_rf_compile.rs`
 - `crates/simthing-driver/tests/recursive_local_rf.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/recursive_local_rf_gpu_residency_remediation_0r_results.md`
 

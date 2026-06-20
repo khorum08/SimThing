@@ -112,7 +112,7 @@ Decoding uses `checked_u16_f32`: rejects non-finite, fractional, or out-of-range
 | `scenarios/corpus/minimal_scenario_root.simthing-scenario.json` | Four-chunk seed encoding |
 | `docs/tests/scenario_metadata_lossless_0_results.md` | This report |
 | `docs/tests/current_evidence_index.md` | New row + qualify SCENARIO-SERIALIZABLE row |
-| `docs/0.8.3 Simthing Studio Production.md` | SCENARIO-METADATA-LOSSLESS-0 section |
+| `docs/design_0_0_8_3_studio_production.md` | SCENARIO-METADATA-LOSSLESS-0 section |
 
 ## Deleted/archived artifacts
 

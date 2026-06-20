@@ -83,7 +83,7 @@ Fixture expectations:
 - `crates/simthing-driver/src/runtime_local_allocation_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/runtime_local_allocation.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/runtime_local_allocation_application_0_results.md`
 
@@ -93,7 +93,7 @@ Fixture expectations:
 |----------|----------------|
 | `docs/tests/runtime_local_allocation_application_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

@@ -5,11 +5,10 @@ mod disburse_down_fixture;
 
 use simthing_driver::{
     compile_local_allocation_recursive_source_plan, compile_local_effect_application_plan,
-    compile_runtime_rf_tick_plan, compile_runtime_tick_shell_plan, compile_semantic_local_effects_plan,
+    compile_runtime_rf_tick_plan, compile_runtime_tick_shell_plan,
+    compile_semantic_local_effects_plan,
 };
-use simthing_spec::{
-    serialize_scenario_authority, LocalAllocationRfSourceMode, RuntimeTickId,
-};
+use simthing_spec::{serialize_scenario_authority, LocalAllocationRfSourceMode, RuntimeTickId};
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
 
@@ -25,10 +24,11 @@ fn local_allocation_recursive_source_compile_composes_owner_silo_recursive_sourc
     )
     .expect("compile");
 
-    assert!(plan
-        .owner_silo_recursive_source_plan
-        .disburse_report
-        .owner_silo_disburse_down_executed_for_selected_source);
+    assert!(
+        plan.owner_silo_recursive_source_plan
+            .disburse_report
+            .owner_silo_disburse_down_executed_for_selected_source
+    );
     assert!(!plan
         .owner_silo_recursive_source_plan
         .recursive_local_rf_plan
@@ -64,13 +64,14 @@ fn local_allocation_recursive_source_compile_recursive_mode_runs_local_allocatio
     .expect("compile");
 
     assert!(plan.local_allocation_executed_for_selected_source);
-    assert!(plan
-        .allocation_report
-        .recursive_allocation_report
-        .as_ref()
-        .expect("recursive")
-        .allocated_total
-        > 0);
+    assert!(
+        plan.allocation_report
+            .recursive_allocation_report
+            .as_ref()
+            .expect("recursive")
+            .allocated_total
+            > 0
+    );
 }
 
 #[test]
@@ -108,10 +109,7 @@ fn local_allocation_recursive_source_compile_does_not_change_default_tick_shell_
             .runtime_rf_tick_plan
             .tick_report
             .local_allocated_total,
-        after
-            .runtime_rf_tick_plan
-            .tick_report
-            .local_allocated_total
+        after.runtime_rf_tick_plan.tick_report.local_allocated_total
     );
 }
 

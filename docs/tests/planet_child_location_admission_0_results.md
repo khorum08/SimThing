@@ -119,7 +119,7 @@ Added § PLANET-CHILD-LOCATION-ADMISSION-0; reprioritized Next Production Rungs.
 - `crates/simthing-mapeditor/tests/studio_planet_child_location_display.rs` (new)
 - `crates/simthing-driver/tests/planet_child_location_structural_readiness.rs` (new)
 - `scenarios/corpus/planet_child_location_*.simthing-scenario.json` (4 files)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/structural_placement_edit_commands_0_results.md`
 - `docs/tests/planet_child_location_admission_0_results.md` (new)

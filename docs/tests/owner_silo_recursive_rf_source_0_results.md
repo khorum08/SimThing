@@ -93,7 +93,7 @@ This rung is not another hygiene-only comparison layer. It produces an owner-sil
 - `crates/simthing-driver/src/owner_silo_recursive_source_compile.rs`
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/owner_silo_recursive_source.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/owner_silo_recursive_rf_source_0_results.md`
 

@@ -1,7 +1,7 @@
 # SimThing Studio Production Log
 
 > Workshop worklog for PR-by-PR history, validation tables, changelog blocks, and verbose PROBATION notes.
-> The readable production ladder lives in docs/0.8.3 Simthing Studio Production.md.
+> The authoritative production ladder lives in [`docs/design_0_0_8_3_studio_production.md`](../design_0_0_8_3_studio_production.md).
 > Per-rung validation evidence remains in docs/tests/*_results.md.
 
 Moved from production doc by **STUDIO-PRODUCTION-LADDER-CLOSURE-0R** on 2026-06-20.

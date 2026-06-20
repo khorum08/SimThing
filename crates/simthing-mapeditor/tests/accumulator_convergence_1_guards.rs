@@ -189,7 +189,7 @@ fn structural_link_accumulator_removed_or_marked_deprecated_proof_only() {
 
 #[test]
 fn production_doc_names_driver_sim_as_execution_owner() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("simthing-driver"));
     assert!(lower.contains("simthing-sim"));
@@ -198,7 +198,7 @@ fn production_doc_names_driver_sim_as_execution_owner() {
 
 #[test]
 fn production_doc_names_accumulator_op_as_convergence_target() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sum-over-input_list"));
     assert!(lower.contains("accumulatorop"));
@@ -206,7 +206,7 @@ fn production_doc_names_accumulator_op_as_convergence_target() {
 
 #[test]
 fn production_doc_names_sim_gpu_accumulator_backend() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sim-gpu-accumulator-backend-0"));
     assert!(lower.contains("execute_accumulator_plan_tick_gpu"));
@@ -214,7 +214,7 @@ fn production_doc_names_sim_gpu_accumulator_backend() {
 
 #[test]
 fn production_doc_names_sim_gpu_resident_accumulator_tick() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sim-gpu-resident-accumulator-tick-0"));
     assert!(lower.contains("simgpuaccumulatortickstate"));
@@ -222,7 +222,7 @@ fn production_doc_names_sim_gpu_resident_accumulator_tick() {
 
 #[test]
 fn production_doc_names_sim_gpu_readback_scope() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("sim-gpu-readback-scope-0"));
     assert!(lower.contains("scoped_debug_readback_allowed"));
@@ -230,7 +230,7 @@ fn production_doc_names_sim_gpu_readback_scope() {
 
 #[test]
 fn production_doc_names_terran_pirate_scenario_skeleton() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("terran-pirate-scenario-skeleton-0"));
     assert!(lower.contains("terran_pirate_skeleton"));
@@ -238,7 +238,7 @@ fn production_doc_names_terran_pirate_scenario_skeleton() {
 
 #[test]
 fn production_doc_names_terran_pirate_scenario_skeleton_0r() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("terran-pirate-scenario-skeleton-0r"));
     assert!(lower.contains("scenarios/horizon/terran_pirate_skeleton"));
@@ -246,7 +246,7 @@ fn production_doc_names_terran_pirate_scenario_skeleton_0r() {
 
 #[test]
 fn production_doc_names_simthing_sim_devdep_seam() {
-    let doc = read_repo_file("docs/0.8.3 Simthing Studio Production.md");
+    let doc = read_repo_file("docs/design_0_0_8_3_studio_production.md");
     let lower = doc.to_ascii_lowercase();
     assert!(lower.contains("simthing-sim-devdep-seam-0"));
     assert!(lower.contains("hand-built compiledaccumulatoropplan"));

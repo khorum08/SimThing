@@ -14,7 +14,7 @@
 | `crates/simthing-mapeditor/tests/fixtures/terran_pirate_skeleton.simthing-scenario.json` | LEGACY_EDITOR_FIXTURE | Retained for regeneration convenience; not authority |
 | `docs/tests/terran_pirate_scenario_skeleton_0r_results.md` | PROBATION | Created (this file) |
 | `docs/tests/terran_pirate_scenario_skeleton_0_results.md` | PROBATION | Superseded for authority boundary; validation gap noted |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § TERRAN-PIRATE-SCENARIO-SKELETON-0R |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § TERRAN-PIRATE-SCENARIO-SKELETON-0R |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated |
 
 ## Why this is not hygiene
@@ -149,7 +149,7 @@ Initial parallel `cargo test -p simthing-spec` hit linker `LNK1102: out of memor
 - `crates/simthing-mapeditor/tests/terran_pirate_skeleton.rs`
 - `crates/simthing-mapeditor/tests/accumulator_convergence_1_guards.rs`
 - `docs/tests/terran_pirate_scenario_skeleton_0r_results.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `Cargo.lock`
 

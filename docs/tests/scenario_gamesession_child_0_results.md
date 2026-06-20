@@ -140,7 +140,7 @@ No live ledger deletion. No DA promotion.
 | `scenarios/corpus/minimal_scenario_root.simthing-scenario.json` | GameSession child |
 | `docs/tests/scenario_gamesession_child_0_results.md` | This report |
 | `docs/tests/current_evidence_index.md` | New row |
-| `docs/0.8.3 Simthing Studio Production.md` | Authority cleanup + section |
+| `docs/design_0_0_8_3_studio_production.md` | Authority cleanup + section |
 
 ## Deleted/archived artifacts
 

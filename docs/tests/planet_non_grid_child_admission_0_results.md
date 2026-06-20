@@ -60,7 +60,7 @@ Owners are GameSession children and RF channel scopes, not spatial parents. Non-
 - `crates/simthing-mapeditor/src/lib.rs`
 - `crates/simthing-mapeditor/tests/studio_planet_child_location_display.rs`
 - `scenarios/corpus/planet_child_location_admitted.simthing-scenario.json`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/planet_non_grid_child_admission_0_results.md`
 

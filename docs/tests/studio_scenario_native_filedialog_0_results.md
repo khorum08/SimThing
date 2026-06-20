@@ -8,7 +8,7 @@
 |---|---|---|
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added STUDIO-SCENARIO-NATIVE-FILEDIALOG-0 PROBATION row |
 | `docs/tests/studio_scenario_native_filedialog_0_results.md` | PROBATION | This report |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -84,7 +84,7 @@ None observed for this PR's validation commands.
 - `crates/simthing-mapeditor/src/lib.rs`
 - `crates/simthing-mapeditor/src/app/scenario_io.rs`
 - `crates/simthing-mapeditor/src/app/ui.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/studio_scenario_native_filedialog_0_results.md`
 - `Cargo.lock`

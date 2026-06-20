@@ -89,7 +89,7 @@ Fixture expectations (`owner_silo_disburse_down_scoped`):
 - `crates/simthing-driver/src/runtime_rf_tick_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/runtime_rf_tick.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/runtime_rf_tick_integration_0_results.md`
 
@@ -99,7 +99,7 @@ Fixture expectations (`owner_silo_disburse_down_scoped`):
 |----------|----------------|
 | `docs/tests/runtime_rf_tick_integration_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

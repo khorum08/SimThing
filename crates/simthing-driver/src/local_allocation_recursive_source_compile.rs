@@ -46,9 +46,8 @@ pub fn compile_local_allocation_recursive_source_plan(
 
     let owner_silo_recursive_source_plan =
         compile_owner_silo_recursive_source_plan(scenario, tick_id, owner_silo_mode)?;
-    let allocation_report =
-        evaluate_runtime_local_allocation_with_rf_source(scenario, source_mode)
-            .map_err(|_| SpecError::ValidationFailed)?;
+    let allocation_report = evaluate_runtime_local_allocation_with_rf_source(scenario, source_mode)
+        .map_err(|_| SpecError::ValidationFailed)?;
 
     Ok(LocalAllocationRecursiveSourcePlan {
         selected_source_mode: allocation_report.selected_source_mode,

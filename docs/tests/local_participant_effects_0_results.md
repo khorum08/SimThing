@@ -18,7 +18,7 @@ Add runtime/proof-only local participant effect previews under the runtime tick 
 
 PASS — #802 (`RUNTIME-TICK-EXECUTION-SHELL-0`) post-merge metadata verified on current `master`:
 
-- No `TBD` placeholders in `docs/tests/runtime_tick_execution_shell_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/0.8.3 Simthing Studio Production.md` for #802.
+- No `TBD` placeholders in `docs/tests/runtime_tick_execution_shell_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/design_0_0_8_3_studio_production.md` for #802.
 - RUNTIME-TICK-EXECUTION-SHELL-0 section present in production doc with PR #802 and merge SHA.
 
 ## Doctrine preservation
@@ -82,7 +82,7 @@ No economy execution, consumption, supply effects, combat, movement, route/pathf
 - `crates/simthing-driver/src/local_participant_effects_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/local_participant_effects.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/local_participant_effects_0_results.md` (new)
 
@@ -92,7 +92,7 @@ No economy execution, consumption, supply effects, combat, movement, route/pathf
 |----------|----------------|
 | `docs/tests/local_participant_effects_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

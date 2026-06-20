@@ -31,7 +31,7 @@ PR #768 proved mapping first-slice GPU parity with test-local N4 derivation. Wit
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated |
 | `docs/tests/terran_pirate_mapping_first_slice_0_results.md` | PROBATION (PR #768) | Retained |
 | `docs/tests/structural_n4_theater_compile_0_results.md` | PROBATION (this file) | Created |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority | Untouched |
 
 ## New driver compile/admission API
@@ -105,7 +105,7 @@ Preserved from PR #768 via refactored `terran_pirate_mapping_first_slice` tests.
 - `crates/simthing-driver/tests/structural_n4_theater_compile.rs` (new)
 - `docs/tests/structural_n4_theater_compile_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deferred work
 

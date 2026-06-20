@@ -131,7 +131,7 @@ Added § GENERAL-SCENARIO-INGESTION-ADMISSION-0; reprioritized Next Production R
 | `scenarios/corpus/legacy_world_root_terran_pirate_reference.txt` | Legacy reference |
 | `docs/tests/general_scenario_ingestion_admission_0_results.md` | This report |
 | `docs/tests/current_evidence_index.md` | PROBATION row |
-| `docs/0.8.3 Simthing Studio Production.md` | § GENERAL-SCENARIO-INGESTION-ADMISSION-0 |
+| `docs/design_0_0_8_3_studio_production.md` | § GENERAL-SCENARIO-INGESTION-ADMISSION-0 |
 
 ## Deleted/archived artifacts
 

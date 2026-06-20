@@ -94,6 +94,7 @@ pub mod scenario;
 pub mod scenario_canonical_io_compile;
 pub mod scenario_ingestion_compile;
 pub mod scenario_property_mutation_authority_boundary_compile;
+pub mod scenario_stead_map_roundtrip_compile;
 pub mod semantic_effect_execution_boundary_compile;
 pub mod semantic_local_effects_compile;
 pub mod semantic_local_effects_recursive_source_compile;
@@ -731,6 +732,9 @@ pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
 pub use scenario_property_mutation_authority_boundary_compile::{
     compile_scenario_property_mutation_authority_boundary_plan,
     ScenarioPropertyMutationAuthorityBoundaryPlan,
+};
+pub use scenario_stead_map_roundtrip_compile::{
+    compile_scenario_stead_map_roundtrip_plan_from_json_str, ScenarioSteadMapRoundtripPlan,
 };
 pub use semantic_effect_execution_boundary_compile::{
     compile_semantic_effect_execution_boundary_plan, SemanticEffectExecutionBoundaryPlan,

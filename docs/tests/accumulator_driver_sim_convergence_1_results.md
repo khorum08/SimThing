@@ -14,7 +14,7 @@
 | `docs/tests/accumulator_driver_sim_convergence_0_results.md` | DA RULING | Preserved — SPLIT source; referenced, not overwritten |
 | `docs/tests/accumulator_driver_sim_convergence_1_results.md` | PROBATION | Created (this file) |
 | `docs/tests/gpu_link_accumulator_smoke_0_results.md` | PROBATION | Preserved — historical baseline for deleted bespoke kernel |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § ACCUMULATOR-DRIVER-SIM-CONVERGENCE-1 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § ACCUMULATOR-DRIVER-SIM-CONVERGENCE-1 |
 | `crates/simthing-gpu/src/accumulator_convergence.rs` | REJECTED | Deleted |
 | `crates/simthing-driver/tests/accumulator_driver_sim_convergence_stub.rs` | REJECTED | Deleted |
 | `crates/simthing-gpu/src/structural_link_accumulator.rs` | SUPERSEDED | Deleted after canonical proof |

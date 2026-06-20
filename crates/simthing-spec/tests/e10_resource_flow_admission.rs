@@ -759,7 +759,7 @@ fn e10_owner_doctrine_and_evidence_reclassification_guards() {
         "canonical Scenario validation must require GameSession child"
     );
 
-    let production_doc = include_str!("../../../docs/0.8.3 Simthing Studio Production.md");
+    let production_doc = include_str!("../../../docs/design_0_0_8_3_studio_production.md");
     assert!(
         production_doc.contains("root: Scenario") && production_doc.contains("GameSession"),
         "production synthesis current authority must be Scenario -> GameSession"

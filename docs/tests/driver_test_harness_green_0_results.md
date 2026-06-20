@@ -29,7 +29,7 @@ Gu-Yang/SaturatingFlux falloff borders and PALMA reach fields are driver/sim/gpu
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated — DRIVER-TEST-HARNESS-GREEN-0 row added |
 | `docs/tests/simthing_sim_devdep_seam_0_results.md` | PROBATION source (PR #766) | Retained unchanged |
 | `docs/tests/driver_test_harness_green_0_results.md` | PROBATION (this file) | Created |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § DRIVER-TEST-HARNESS-GREEN-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § DRIVER-TEST-HARNESS-GREEN-0 |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority fixture | Untouched |
 | `bh3_authoring_installs_existing_operator.rs` | ACTIVE_GUARD binary (UAC-blocked name) | Deleted; guard merged into `ct_bh3_closeout_sample_driver.rs` |
 | `palma_path_5_install_session_property.rs` | ACTIVE_GUARD binary (UAC-blocked name) | Renamed to `palma_path_5_session_property.rs` |
@@ -141,7 +141,7 @@ Run with `CARGO_BUILD_JOBS=1` on Windows to avoid linker PDB contention when bui
 - `crates/simthing-driver/tests/palma_path_5_session_property.rs` (renamed from `palma_path_5_install_session_property.rs`)
 - `docs/tests/driver_test_harness_green_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deleted / archived artifacts
 

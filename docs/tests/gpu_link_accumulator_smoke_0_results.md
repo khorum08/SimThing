@@ -14,7 +14,7 @@
 | `docs/tests/gpu_link_accumulator_smoke_0_results.md` | PROBATION | This report |
 | `docs/tests/vertical_test_scenario_seed_0_results.md` | PROBATION | Vertical seed prerequisite; PR #754 Windows resource-limit note amended |
 | `docs/tests/gpu_structural_validation_wgsl_0_results.md` | PROBATION | Validation prerequisite |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -126,7 +126,7 @@ git diff --check
 - `crates/simthing-mapeditor/src/scenario_projection.rs`
 - `crates/simthing-mapeditor/src/lib.rs`
 - `crates/simthing-mapeditor/tests/runtime_vertical_seed.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/vertical_test_scenario_seed_0_results.md`
 - `docs/tests/gpu_link_accumulator_smoke_0_results.md`

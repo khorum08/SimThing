@@ -75,7 +75,7 @@ compile_structured_field_mapping_plan(theater, preview, hops, writes, interleave
 - `crates/simthing-spec/tests/e10_resource_flow_admission.rs`
 - `docs/tests/driver_mapping_plan_compile_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deferred work
 

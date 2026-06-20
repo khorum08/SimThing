@@ -34,7 +34,7 @@ This is the first step where the canonical Terran Pirate scenario’s structural
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated |
 | `docs/tests/driver_test_harness_green_0_results.md` | PROBATION (PR #767) | Retained |
 | `docs/tests/terran_pirate_mapping_first_slice_0_results.md` | PROBATION (this file) | Created |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § TERRAN-PIRATE-MAPPING-FIRST-SLICE-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § TERRAN-PIRATE-MAPPING-FIRST-SLICE-0 |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority | Untouched |
 
 ## Structural theater derivation
@@ -134,7 +134,7 @@ Run with `CARGO_BUILD_JOBS=1` on Windows.
 - `crates/simthing-driver/tests/terran_pirate_mapping_first_slice.rs`
 - `docs/tests/terran_pirate_mapping_first_slice_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deferred work
 

@@ -8,7 +8,7 @@
 |---|---|---|
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added SAVELOAD-AUTHORITY-PIN-0R PROBATION row |
 | `docs/tests/saveload_authority_pin_0r_results.md` | PROBATION | This report |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 | `docs/design_0_0_8_3_studio_production.md` | PROBATION | Space-free alias synced |
 | `docs/tests/saveload_authority_pin_0_results.md` | PROBATION | Prior pin remains branch context |
 
@@ -96,14 +96,14 @@ Consolidated across `simthing-spec` (`scenario.rs` tests) and `simthing-mapedito
 - `crates/simthing-spec/src/spec/mod.rs`
 - `crates/simthing-spec/src/spec/scenario.rs`
 - `crates/simthing-mapeditor/src/hydration.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/saveload_authority_pin_0r_results.md`
 
 ## Production synthesis doc update
 
-Both `docs/0.8.3 Simthing Studio Production.md` and the space-free alias received the `## SAVELOAD-AUTHORITY-PIN-0R — Authority hardening` section plus updated Known Risks, Deferred Work, Next Production Rungs, and Evidence lifecycle rows.
+Both `docs/design_0_0_8_3_studio_production.md` and the space-free alias received the `## SAVELOAD-AUTHORITY-PIN-0R — Authority hardening` section plus updated Known Risks, Deferred Work, Next Production Rungs, and Evidence lifecycle rows.
 
 ## Deferred work
 

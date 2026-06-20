@@ -8,7 +8,7 @@
 |---|---|---|
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added SAVELOAD-AUTHORITY-PIN-0 PROBATION row |
 | `docs/tests/saveload_authority_pin_0_results.md` | PROBATION | This report |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Production synthesis, not DA approval |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Production synthesis, not DA approval |
 | `docs/tests/studio_hydration_boundary_0_results.md` | PROBATION | Prior report remains superseded by scenario-authority wording |
 | `docs/tests/studio_simthing_spec_boundary_1_results.md` | PROBATION | Prior scenario-authority report remains branch evidence |
 | `docs/clausething/MapGeneratorCLI.md` | ACTIVE_DOC | Updated to name sole scenario authority and loaded-ID reservation |
@@ -101,7 +101,7 @@ Loaded scenarios can reserve existing ids through `reserve_simthing_ids_from_sce
 - `crates/simthing-spec/src/spec/mod.rs`
 - `crates/simthing-spec/src/spec/scenario.rs`
 - `crates/simthing-spec/tests/region_field_spec_admission.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/clausething/MapGeneratorCLI.md`
 - `docs/design_0_0_8_0_consumer_pulled_production_track.md`
 - `docs/tests/current_evidence_index.md`
@@ -109,7 +109,7 @@ Loaded scenarios can reserve existing ids through `reserve_simthing_ids_from_sce
 
 ## Production synthesis doc summary
 
-`docs/0.8.3 Simthing Studio Production.md` consolidates the constitutional spine, MapGeneratorCLI lineage, ClauseThing boundary, STEAD doctrine, generated galaxy authority, Studio projection layers, Bevy render state, RF readiness, heatmap readiness, save/load authority plan, evidence lifecycle, risks, deferred work, and next rungs.
+`docs/design_0_0_8_3_studio_production.md` consolidates the constitutional spine, MapGeneratorCLI lineage, ClauseThing boundary, STEAD doctrine, generated galaxy authority, Studio projection layers, Bevy render state, RF readiness, heatmap readiness, save/load authority plan, evidence lifecycle, risks, deferred work, and next rungs.
 
 ## Deferred features
 

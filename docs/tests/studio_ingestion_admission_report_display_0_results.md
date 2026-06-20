@@ -117,7 +117,7 @@ Added § STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0; reprioritized Next Product
 - `crates/simthing-spec/src/lib.rs`
 - `crates/simthing-spec/src/spec/mod.rs`
 - `crates/simthing-spec/tests/e10_resource_flow_admission.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/sim_gpu_owner_silo_resource_flow_tick_0_results.md`
 - `docs/tests/studio_ingestion_admission_report_display_0_results.md` (new)

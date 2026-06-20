@@ -18,7 +18,7 @@ Implement proof-only recursive local RF evaluator over Location gridcell SimThin
 
 PASS — #806 (`SEMANTIC-LOCAL-EFFECT-TYPES-0`) post-merge metadata verified on current `master`:
 
-- No `TBD` placeholders in `docs/tests/semantic_local_effect_types_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/0.8.3 Simthing Studio Production.md` for #806.
+- No `TBD` placeholders in `docs/tests/semantic_local_effect_types_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/design_0_0_8_3_studio_production.md` for #806.
 - SEMANTIC-LOCAL-EFFECT-TYPES-0 section present in production doc with PR #806 and merge SHA.
 
 ## Current implementation gap closed
@@ -112,7 +112,7 @@ No ScenarioSpec mutation, participant property mutation, savefile/persistent tim
 - `crates/simthing-driver/src/recursive_local_rf_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/recursive_local_rf.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/recursive_local_rf_evaluator_0_results.md` (new)
 
@@ -122,7 +122,7 @@ No ScenarioSpec mutation, participant property mutation, savefile/persistent tim
 |----------|----------------|
 | `docs/tests/recursive_local_rf_evaluator_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

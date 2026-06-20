@@ -65,7 +65,7 @@ Owners are GameSession children and RF channel scopes, not spatial parents. Owne
 - `crates/simthing-mapeditor/tests/studio_planet_child_location_display.rs`
 - `crates/simthing-driver/tests/planet_child_location_structural_readiness.rs`
 - `scenarios/corpus/inert_gridcell_receiver_1x1_admitted.simthing-scenario.json` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/planet_local_grid_remediation_0_results.md`
 - `docs/tests/recursive_spatial_grid_defaults_0_results.md`

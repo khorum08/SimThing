@@ -12,7 +12,7 @@ PASS
 
 ## Mission
 
-Repair production-synthesis drift for RF ladder #795–#800 by ensuring discoverable `docs/0.8.3 Simthing Studio Production.md` coverage, reaffirming RF/location/owner-channel doctrine, and aligning evidence-index claims with actual production doc content.
+Repair production-synthesis drift for RF ladder #795–#800 by ensuring discoverable `docs/design_0_0_8_3_studio_production.md` coverage, reaffirming RF/location/owner-channel doctrine, and aligning evidence-index claims with actual production doc content.
 
 ## Drift found
 
@@ -47,18 +47,18 @@ Expanded constitutional spine **Owner / RF channel doctrine (reaffirmed)** with 
 |---------|--------|
 | `git diff --check` | PASS |
 | `git diff --name-only master...HEAD` | PASS (docs only) |
-| `grep PLANET-CHILD-RF-GPU-PARTICIPANT-0 docs/0.8.3 Simthing Studio Production.md` | PASS |
-| `grep PLANET-CHILD-RF-REDUCE-UP-0 docs/0.8.3 Simthing Studio Production.md` | PASS |
-| `grep OWNER-SILO-RUNTIME-WRITEBACK-0 docs/0.8.3 Simthing Studio Production.md` | PASS |
-| `grep OWNER-SILO-DISBURSE-DOWN-0 docs/0.8.3 Simthing Studio Production.md` | PASS |
-| `grep RUNTIME-LOCAL-ALLOCATION-APPLICATION-0 docs/0.8.3 Simthing Studio Production.md` | PASS |
-| `grep RUNTIME-RF-TICK-INTEGRATION-0 docs/0.8.3 Simthing Studio Production.md` | PASS |
+| `grep PLANET-CHILD-RF-GPU-PARTICIPANT-0 docs/design_0_0_8_3_studio_production.md` | PASS |
+| `grep PLANET-CHILD-RF-REDUCE-UP-0 docs/design_0_0_8_3_studio_production.md` | PASS |
+| `grep OWNER-SILO-RUNTIME-WRITEBACK-0 docs/design_0_0_8_3_studio_production.md` | PASS |
+| `grep OWNER-SILO-DISBURSE-DOWN-0 docs/design_0_0_8_3_studio_production.md` | PASS |
+| `grep RUNTIME-LOCAL-ALLOCATION-APPLICATION-0 docs/design_0_0_8_3_studio_production.md` | PASS |
+| `grep RUNTIME-RF-TICK-INTEGRATION-0 docs/design_0_0_8_3_studio_production.md` | PASS |
 | `grep PRODUCTION-SYNTHESIS-RF-LADDER-0R` (evidence index + result report) | PASS (after row added) |
 | `cargo test` | SKIP — documentation/evidence synthesis repair only, no Rust code touched |
 
 ## Files changed
 
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/production_synthesis_rf_ladder_0r_results.md`
 
@@ -68,7 +68,7 @@ Expanded constitutional spine **Owner / RF channel doctrine (reaffirmed)** with 
 |----------|----------------|
 | `docs/tests/production_synthesis_rf_ladder_0r_results.md` | PROBATION-DOC-REPAIR |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 
