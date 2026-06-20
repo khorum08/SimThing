@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `semantic-effect-execution-boundary-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #818
+- Merge SHA: `4ddb7b4a918c9e4502de4d12b5fe50784cb19bc3`
 
 ## Mission
 
