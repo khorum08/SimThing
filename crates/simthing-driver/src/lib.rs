@@ -35,6 +35,7 @@ pub mod gradient_follow_0080_2;
 pub mod install;
 pub mod local_allocation_recursive_source_compile;
 pub mod local_effect_application_compile;
+pub mod local_effect_recursive_source_compile;
 pub mod local_participant_effects_compile;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
@@ -373,6 +374,9 @@ pub use local_effect_application_compile::{
     local_effect_application_unmet_tick_inputs, LocalEffectApplicationAggregateProofPlan,
     LocalEffectApplicationPlan,
 };
+pub use local_effect_recursive_source_compile::{
+    compile_local_effect_recursive_source_plan, LocalEffectRecursiveSourcePlan,
+};
 pub use local_participant_effects_compile::{
     compile_local_participant_effects_plan, local_participant_effects_aggregate_slot,
     local_participant_effects_allocated_tick_inputs, local_participant_effects_cpu_allocated_total,
@@ -401,6 +405,9 @@ pub use owner_silo_disburse_down_compile::{
     owner_silo_disburse_down_demand_aggregate_slot,
     owner_silo_disburse_down_demand_aggregate_tick_inputs, OwnerSiloDemandAggregateProofPlan,
     OwnerSiloDisburseDownPlan,
+};
+pub use owner_silo_recursive_source_compile::{
+    compile_owner_silo_recursive_source_plan, OwnerSiloRecursiveSourcePlan,
 };
 pub use owner_silo_runtime_writeback_compile::{
     compile_owner_silo_runtime_writeback_plan, owner_silo_writeback_aggregate_deficit_tick_inputs,
@@ -692,9 +699,6 @@ pub use runtime_rf_tick_source_compile::{
     compile_runtime_rf_tick_source_comparison_plan,
     compile_runtime_tick_shell_with_rf_source_comparison_plan, RuntimeRfTickSourceComparisonPlan,
     RuntimeTickShellRfSourceComparisonPlan,
-};
-pub use owner_silo_recursive_source_compile::{
-    compile_owner_silo_recursive_source_plan, OwnerSiloRecursiveSourcePlan,
 };
 pub use runtime_rf_tick_source_select_compile::{
     compile_runtime_rf_tick_source_selection_plan,

@@ -8,6 +8,7 @@ pub mod game_mode;
 pub mod install_target;
 pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
+pub mod local_effect_recursive_rf_source;
 pub mod local_participant_effects;
 pub mod overlay;
 pub mod owner_silo_disburse_down;
@@ -64,6 +65,14 @@ pub use local_effect_application::{
     LocalEffectApplicationErrorKind, RuntimeLocalEffectApplicationRecord,
     RuntimeLocalEffectApplicationReport,
 };
+pub use local_effect_recursive_rf_source::{
+    evaluate_local_effect_application_with_rf_source,
+    local_effect_application_from_participant_effects_report,
+    local_participant_effects_from_runtime_local_allocation_report,
+    prove_local_effect_recursive_source_preserves_authority, LocalEffectApplicationRfSourceReport,
+    LocalEffectRecursiveSourceError, LocalEffectRecursiveSourceErrorKind, LocalEffectRfSourceMode,
+    LocalEffectRfSourceSelection,
+};
 pub use local_participant_effects::{
     evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
     local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,
@@ -82,8 +91,8 @@ pub use owner_silo_recursive_rf_source::{
     evaluate_owner_silo_disburse_down_with_rf_source,
     owner_silo_demand_buckets_from_recursive_local_rf,
     prove_owner_silo_recursive_source_preserves_authority, OwnerSiloDisburseDownReport,
-    OwnerSiloRecursiveSourceError, OwnerSiloRecursiveSourceErrorKind, OwnerSiloRfSourceDisburseReport,
-    OwnerSiloRfSourceMode, OwnerSiloRfSourceSelection,
+    OwnerSiloRecursiveSourceError, OwnerSiloRecursiveSourceErrorKind,
+    OwnerSiloRfSourceDisburseReport, OwnerSiloRfSourceMode, OwnerSiloRfSourceSelection,
 };
 pub use owner_silo_runtime_writeback::{
     apply_owner_silo_runtime_writeback_cpu,
