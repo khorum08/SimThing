@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `scenario-stead-map-roundtrip-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #834
+- Merge SHA: `50c310a0fc26cf5be39145e9438fc9e661cf3fa4`
 
 ## Mission
 
