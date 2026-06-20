@@ -6,6 +6,7 @@ pub mod event;
 pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
+pub mod loaded_scenario_recursive_rf_runtime;
 pub mod loaded_scenario_studio_session_envelope;
 pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
@@ -58,6 +59,12 @@ pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
+pub use loaded_scenario_recursive_rf_runtime::{
+    evaluate_loaded_scenario_recursive_rf_runtime_from_json_str,
+    prove_loaded_scenario_recursive_rf_runtime_preserves_authority,
+    LoadedScenarioRecursiveRfRuntimeReport, LoadedScenarioRecursiveRfRuntimeSource,
+    LoadedScenarioRfChannelRow, LoadedScenarioRfParentArenaRow, LoadedScenarioRfParticipantRow,
+};
 pub use loaded_scenario_studio_session_envelope::{
     evaluate_loaded_scenario_studio_session_envelope_from_json_str,
     prove_loaded_scenario_session_envelope_preserves_authority_boundaries,
