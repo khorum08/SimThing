@@ -2,13 +2,13 @@
 
 ## Status
 
-IN PROGRESS — validation pending
+PASS
 
 ## PR / branch / merge
 
 - Branch: `scenario-property-mutation-authority-boundary-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #826
+- Merge SHA: `90de96070376cb86a12d78c80bb3c5857b2bae8f`
 
 ## Mission
 
@@ -45,16 +45,16 @@ This rung intentionally crosses the Scenario property mutation boundary only on 
 
 ## Original authority preservation proof
 
-- `prove_scenario_property_mutation_boundary_preserves_original_authority` — pending validation.
+- `prove_scenario_property_mutation_boundary_preserves_original_authority` — PASS.
 - Input ScenarioSpec authority digest before == after.
 
 ## Candidate authority digest proof
 
-- `candidate_after_authority_digest` differs from `original_before_authority_digest` when mutation records exist — pending validation.
+- `candidate_after_authority_digest` differs from `original_before_authority_digest` when mutation records exist — PASS.
 
 ## Replay determinism proof
 
-- `replay_scenario_property_mutation_authority_boundary` with bounded replay_count (1..=64) — pending validation.
+- `replay_scenario_property_mutation_authority_boundary` with bounded replay_count (1..=64) — PASS.
 
 ## Savefile / persistent history deferral
 
@@ -67,7 +67,7 @@ This rung intentionally crosses the Scenario property mutation boundary only on 
 
 ## Prior ladder preservation proof
 
-- Default runtime RF tick, tick shell, local effect application, and semantic local effects compile paths unchanged — pending validation.
+- Default runtime RF tick, tick shell, local effect application, and semantic local effects compile paths unchanged — PASS.
 - Legacy default semantic path remains preserved.
 
 ## Boundary / non-goals
@@ -82,16 +82,16 @@ This rung intentionally crosses the Scenario property mutation boundary only on 
 
 | Command | Status |
 |---------|--------|
-| `cargo fmt --all -- --check` | PENDING |
-| `cargo check -p simthing-spec` | PENDING |
-| `cargo test -p simthing-spec --test scenario_property_mutation_authority_boundary` | PENDING |
-| `cargo test -p simthing-spec --test runtime_participant_property_mutation_boundary` | PENDING |
-| `cargo test -p simthing-spec --test runtime_participant_state_mutation` | PENDING |
-| `cargo check -p simthing-driver` | PENDING |
-| `cargo test -p simthing-driver --test scenario_property_mutation_authority_boundary` | PENDING |
-| `cargo test -p simthing-driver --test runtime_participant_property_mutation_boundary` | PENDING |
-| `cargo test -p simthing-driver --test runtime_participant_state_mutation` | PENDING |
-| `git diff --check` | PENDING |
+| `cargo fmt -p simthing-spec -p simthing-driver` | PASS |
+| `cargo check -p simthing-spec` | PASS |
+| `cargo test -p simthing-spec --test scenario_property_mutation_authority_boundary` | PASS (12/12) |
+| `cargo test -p simthing-spec --test runtime_participant_property_mutation_boundary` | PASS (14/14) |
+| `cargo test -p simthing-spec --test runtime_participant_state_mutation` | PASS (14/14) |
+| `cargo check -p simthing-driver` | PASS |
+| `cargo test -p simthing-driver --test scenario_property_mutation_authority_boundary` | PASS (10/10) |
+| `cargo test -p simthing-driver --test runtime_participant_property_mutation_boundary` | PASS (10/10) |
+| `cargo test -p simthing-driver --test runtime_participant_state_mutation` | PASS (10/10) |
+| `git diff --check` | PASS |
 
 ## Files changed
 
@@ -127,4 +127,4 @@ PROBATION — pending merge and DA review.
 
 ## DA status
 
-Not submitted — evidence PROBATION pending validation and merge.
+Not submitted — evidence PROBATION pending DA review.
