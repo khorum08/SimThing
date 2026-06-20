@@ -437,10 +437,11 @@ pub use spec::planet_child_rf::{
 pub use spec::property::PropertySpec;
 pub use spec::recursive_local_rf::{
     evaluate_recursive_local_rf, prove_recursive_local_rf_preserves_authority,
-    recursive_local_rf_arena_aggregate_totals,
+    recursive_local_rf_aggregate_source_rows, recursive_local_rf_arena_aggregate_totals,
     recursive_local_rf_participant_rows_from_planet_child_inputs,
     recursive_local_rf_report_matches_planet_child_compatibility_slice, LocalRfArenaKey,
     LocalRfArenaSettlement, LocalRfChildOutputRow, LocalRfParticipantRow, LocationRfArenaReport,
+    RecursiveLocalRfAggregateSourceKind, RecursiveLocalRfAggregateSourceRow,
     RecursiveLocalRfAuthorityProof, RecursiveLocalRfCompatibilityReport, RecursiveLocalRfDeferral,
     RecursiveLocalRfDeferralKind, RecursiveLocalRfError, RecursiveLocalRfErrorKind,
     RecursiveLocalRfEvaluationReport,
