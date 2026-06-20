@@ -384,6 +384,12 @@ pub use spec::loaded_scenario_recursive_rf_runtime::{
     LoadedScenarioRecursiveRfRuntimeReport, LoadedScenarioRecursiveRfRuntimeSource,
     LoadedScenarioRfChannelRow, LoadedScenarioRfParentArenaRow, LoadedScenarioRfParticipantRow,
 };
+pub use spec::loaded_scenario_runtime_report_chain::{
+    evaluate_loaded_scenario_runtime_report_chain_from_json_str,
+    prove_loaded_scenario_runtime_report_chain_preserves_authority,
+    LoadedScenarioRuntimeReportChainReport, LoadedScenarioRuntimeReportChainSource,
+    LoadedScenarioRuntimeReportChainStage,
+};
 pub use spec::loaded_scenario_studio_session_envelope::{
     evaluate_loaded_scenario_studio_session_envelope_from_json_str,
     prove_loaded_scenario_session_envelope_preserves_authority_boundaries,

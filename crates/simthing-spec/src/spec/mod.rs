@@ -7,6 +7,7 @@ pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
 pub mod loaded_scenario_recursive_rf_runtime;
+pub mod loaded_scenario_runtime_report_chain;
 pub mod loaded_scenario_studio_session_envelope;
 pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
@@ -64,6 +65,12 @@ pub use loaded_scenario_recursive_rf_runtime::{
     prove_loaded_scenario_recursive_rf_runtime_preserves_authority,
     LoadedScenarioRecursiveRfRuntimeReport, LoadedScenarioRecursiveRfRuntimeSource,
     LoadedScenarioRfChannelRow, LoadedScenarioRfParentArenaRow, LoadedScenarioRfParticipantRow,
+};
+pub use loaded_scenario_runtime_report_chain::{
+    evaluate_loaded_scenario_runtime_report_chain_from_json_str,
+    prove_loaded_scenario_runtime_report_chain_preserves_authority,
+    LoadedScenarioRuntimeReportChainReport, LoadedScenarioRuntimeReportChainSource,
+    LoadedScenarioRuntimeReportChainStage,
 };
 pub use loaded_scenario_studio_session_envelope::{
     evaluate_loaded_scenario_studio_session_envelope_from_json_str,
