@@ -10,8 +10,9 @@ use super::planet_child_location::{
     PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
 };
 use super::planet_child_rf::{
-    evaluate_planet_child_rf_admission, PlanetChildRfAdmissionClassification,
-    PlanetChildRfAdmissionReport,
+    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_reduce_up,
+    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionReport,
+    PlanetChildRfReduceUpReport,
 };
 use super::scenario::{
     galaxy_map_id, game_session_child, game_session_galaxy_map, game_session_owners, gridcell_role,
@@ -131,6 +132,8 @@ pub struct ScenarioCompileReadinessReport {
     pub owner_silo_full_state_mutation_deferred: bool,
     /// Admitted planet/non-grid child RF participants can lower to existing AccumulatorOp/GPU surfaces.
     pub planet_child_rf_gpu_participant_accumulation_ready: bool,
+    /// Scoped planet child RF reduce-up oracle is available for admitted participants.
+    pub planet_child_rf_reduce_up_ready: bool,
     pub note: Option<String>,
 }
 
@@ -155,6 +158,7 @@ pub struct ScenarioIngestionResult {
     pub owner_silo: Option<OwnerSiloAdmissionReport>,
     pub planet_child_location: Option<PlanetChildLocationAdmissionReport>,
     pub planet_child_rf: Option<PlanetChildRfAdmissionReport>,
+    pub planet_child_rf_reduce_up: Option<PlanetChildRfReduceUpReport>,
     pub deferrals: Vec<ScenarioDeferral>,
     pub errors: Vec<ScenarioIngestionError>,
 }
@@ -234,6 +238,7 @@ fn empty_result(source_name: &str) -> ScenarioIngestionResult {
         owner_silo: None,
         planet_child_location: None,
         planet_child_rf: None,
+        planet_child_rf_reduce_up: None,
         deferrals: Vec::new(),
         errors: Vec::new(),
     }
@@ -423,6 +428,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
 
     integrate_planet_child_locations(spec, result);
     integrate_planet_child_rf(spec, result);
+    integrate_planet_child_rf_reduce_up(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -601,6 +607,31 @@ fn integrate_planet_child_rf(spec: &SimThingScenarioSpec, result: &mut ScenarioI
         .compile_readiness
         .planet_child_rf_gpu_participant_accumulation_ready = rf_report.total_participant_count > 0
         && rf_report.classification != PlanetChildRfAdmissionClassification::Unsupported;
+}
+
+fn integrate_planet_child_rf_reduce_up(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    let reduce_up_report = evaluate_planet_child_rf_reduce_up(spec);
+    result.planet_child_rf_reduce_up = Some(reduce_up_report.clone());
+
+    if reduce_up_report.classification == PlanetChildRfAdmissionClassification::Rejected {
+        for err in &reduce_up_report.errors {
+            push_error(
+                result,
+                "planet_child_rf_reduce_up",
+                format!("{:?}: {}", err.kind, err.message),
+            );
+        }
+        return;
+    }
+
+    result.compile_readiness.planet_child_rf_reduce_up_ready = reduce_up_report.bucket_count > 0
+        && reduce_up_report.classification != PlanetChildRfAdmissionClassification::Unsupported;
+    result
+        .compile_readiness
+        .owner_silo_full_state_mutation_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {

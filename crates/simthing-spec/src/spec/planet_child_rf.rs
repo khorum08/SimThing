@@ -1,7 +1,9 @@
 //! PLANET-CHILD-RF-GPU-PARTICIPANT-0 — owner/channel RF participants from planet gridcells and
 //! admitted non-grid children. Ownership is metadata-driven; spatial parentage is unchanged.
+//!
+//! PLANET-CHILD-RF-REDUCE-UP-0 — scoped owner/resource/planet reduce-up over admitted participants.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::SimThing;
 
@@ -65,6 +67,45 @@ pub struct PlanetChildRfAdmissionReport {
     pub owner_channel_count: u32,
     pub surplus_total: u32,
     pub deficit_total: u32,
+    pub classification: PlanetChildRfAdmissionClassification,
+    pub deferrals: Vec<PlanetChildRfDeferral>,
+    pub errors: Vec<PlanetChildRfAdmissionError>,
+}
+
+/// Default resource key when participant metadata carries surplus/deficit only.
+pub const PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY: &str = "generic";
+
+/// Scoped owner/resource/planet RF channel key. Owner ref is metadata, not spatial parentage.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PlanetChildRfScopeKey {
+    pub owner_ref: String,
+    pub resource_key: String,
+    pub local_scope_id: Option<String>,
+    pub planet_id: Option<String>,
+    pub star_system_gridcell_id_raw: Option<u32>,
+}
+
+/// Per-scope reduce-up bucket after grouping admitted participants.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanetChildRfReduceUpBucket {
+    pub scope: PlanetChildRfScopeKey,
+    pub participant_count: u32,
+    pub surplus_total: u32,
+    pub deficit_total: u32,
+    pub net_surplus: i64,
+    pub net_deficit: i64,
+}
+
+/// Scoped reduce-up summary over admitted planet child RF participants.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PlanetChildRfReduceUpReport {
+    pub participant_count: u32,
+    pub bucket_count: u32,
+    pub planet_scope_count: u32,
+    pub star_system_scope_count: u32,
+    pub surplus_total: u32,
+    pub deficit_total: u32,
+    pub buckets: Vec<PlanetChildRfReduceUpBucket>,
     pub classification: PlanetChildRfAdmissionClassification,
     pub deferrals: Vec<PlanetChildRfDeferral>,
     pub errors: Vec<PlanetChildRfAdmissionError>,
@@ -207,6 +248,194 @@ pub fn planet_child_rf_participant_inputs(
         return Err(report);
     }
     Ok(participants)
+}
+
+/// Group admitted planet child RF participants into scoped owner/resource/planet reduce-up buckets.
+pub fn evaluate_planet_child_rf_reduce_up(
+    spec: &SimThingScenarioSpec,
+) -> PlanetChildRfReduceUpReport {
+    let admission = evaluate_planet_child_rf_admission(spec);
+    let mut report = PlanetChildRfReduceUpReport {
+        classification: admission.classification,
+        deferrals: admission.deferrals.clone(),
+        errors: admission.errors.clone(),
+        ..Default::default()
+    };
+
+    if admission.classification == PlanetChildRfAdmissionClassification::Rejected {
+        return report;
+    }
+    if admission.classification == PlanetChildRfAdmissionClassification::Unsupported {
+        return report;
+    }
+
+    let participants = match planet_child_rf_participant_inputs(spec) {
+        Ok(participants) => participants,
+        Err(no_participants) => {
+            report.classification = no_participants.classification;
+            report.deferrals = no_participants.deferrals;
+            report.errors = no_participants.errors;
+            return report;
+        }
+    };
+
+    let mut bucket_map: BTreeMap<PlanetChildRfScopeKey, PlanetChildRfReduceUpBucket> =
+        BTreeMap::new();
+    let mut participant_count: u32 = 0;
+    let mut surplus_total: u32 = 0;
+    let mut deficit_total: u32 = 0;
+
+    for participant in participants {
+        participant_count = match participant_count.checked_add(1) {
+            Some(v) => v,
+            None => {
+                push_reduce_up_overflow_error(&mut report);
+                report.classification = PlanetChildRfAdmissionClassification::Rejected;
+                return report;
+            }
+        };
+        surplus_total = match surplus_total.checked_add(participant.surplus) {
+            Some(v) => v,
+            None => {
+                push_reduce_up_overflow_error(&mut report);
+                report.classification = PlanetChildRfAdmissionClassification::Rejected;
+                return report;
+            }
+        };
+        deficit_total = match deficit_total.checked_add(participant.deficit) {
+            Some(v) => v,
+            None => {
+                push_reduce_up_overflow_error(&mut report);
+                report.classification = PlanetChildRfAdmissionClassification::Rejected;
+                return report;
+            }
+        };
+
+        let scope = scope_key_from_participant(&participant);
+        let entry =
+            bucket_map
+                .entry(scope.clone())
+                .or_insert_with(|| PlanetChildRfReduceUpBucket {
+                    scope,
+                    participant_count: 0,
+                    surplus_total: 0,
+                    deficit_total: 0,
+                    net_surplus: 0,
+                    net_deficit: 0,
+                });
+        entry.participant_count = match entry.participant_count.checked_add(1) {
+            Some(v) => v,
+            None => {
+                push_reduce_up_overflow_error(&mut report);
+                report.classification = PlanetChildRfAdmissionClassification::Rejected;
+                return report;
+            }
+        };
+        entry.surplus_total = match entry.surplus_total.checked_add(participant.surplus) {
+            Some(v) => v,
+            None => {
+                push_reduce_up_overflow_error(&mut report);
+                report.classification = PlanetChildRfAdmissionClassification::Rejected;
+                return report;
+            }
+        };
+        entry.deficit_total = match entry.deficit_total.checked_add(participant.deficit) {
+            Some(v) => v,
+            None => {
+                push_reduce_up_overflow_error(&mut report);
+                report.classification = PlanetChildRfAdmissionClassification::Rejected;
+                return report;
+            }
+        };
+    }
+
+    let mut buckets: Vec<PlanetChildRfReduceUpBucket> = bucket_map.into_values().collect();
+    for bucket in &mut buckets {
+        let surplus = bucket.surplus_total as i64;
+        let deficit = bucket.deficit_total as i64;
+        bucket.net_surplus = (surplus - deficit).max(0);
+        bucket.net_deficit = (deficit - surplus).max(0);
+    }
+
+    let planet_scope_count = buckets
+        .iter()
+        .filter_map(|b| b.scope.planet_id.as_ref())
+        .collect::<BTreeSet<_>>()
+        .len() as u32;
+    let star_system_scope_count = buckets
+        .iter()
+        .filter_map(|b| b.scope.star_system_gridcell_id_raw)
+        .collect::<BTreeSet<_>>()
+        .len() as u32;
+
+    report.participant_count = participant_count;
+    report.bucket_count = buckets.len() as u32;
+    report.planet_scope_count = planet_scope_count;
+    report.star_system_scope_count = star_system_scope_count;
+    report.surplus_total = surplus_total;
+    report.deficit_total = deficit_total;
+    report.buckets = buckets;
+
+    push_deferral_reduce_up(
+        &mut report,
+        PlanetChildRfDeferralKind::PlanetChildRfSimulationDeferred,
+        None,
+        None,
+        "scoped reduce-up is oracle/proof only; full owner-silo state mutation and disburse-down remain deferred",
+    );
+
+    if report.participant_count > 0 {
+        report.classification = PlanetChildRfAdmissionClassification::PartiallyAdmitted;
+    } else {
+        report.classification = PlanetChildRfAdmissionClassification::PartiallyAdmitted;
+    }
+
+    report
+}
+
+/// Derive the scoped reduce-up key for a participant row.
+pub fn scope_key_from_participant(
+    participant: &PlanetChildRfParticipantInput,
+) -> PlanetChildRfScopeKey {
+    PlanetChildRfScopeKey {
+        owner_ref: participant.owner_ref.clone(),
+        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
+        local_scope_id: Some(participant.planet_id.clone()),
+        planet_id: Some(participant.planet_id.clone()),
+        star_system_gridcell_id_raw: star_system_gridcell_id_from_path(
+            &participant.spatial_parent_path,
+        ),
+    }
+}
+
+fn star_system_gridcell_id_from_path(path: &str) -> Option<u32> {
+    path.strip_prefix("galaxymap/star_system/")
+        .and_then(|rest| rest.split('/').next())
+        .and_then(|raw| raw.parse().ok())
+}
+
+fn push_reduce_up_overflow_error(report: &mut PlanetChildRfReduceUpReport) {
+    report.errors.push(PlanetChildRfAdmissionError {
+        kind: PlanetChildRfAdmissionErrorKind::InvalidPlanetChildRfAmount,
+        path: None,
+        simthing_id_raw: None,
+        message: "scoped reduce-up arithmetic overflow".to_string(),
+    });
+}
+
+fn push_deferral_reduce_up(
+    report: &mut PlanetChildRfReduceUpReport,
+    kind: PlanetChildRfDeferralKind,
+    path: Option<String>,
+    simthing_id_raw: Option<u32>,
+    reason: &str,
+) {
+    report.deferrals.push(PlanetChildRfDeferral {
+        kind,
+        path,
+        simthing_id_raw,
+        reason: reason.to_string(),
+    });
 }
 
 fn collect_planet_child_rf_participants(
@@ -451,6 +680,23 @@ fn finalize_planet_child_rf_classification(report: &mut PlanetChildRfAdmissionRe
         report.classification = PlanetChildRfAdmissionClassification::PartiallyAdmitted;
     } else {
         report.classification = PlanetChildRfAdmissionClassification::PartiallyAdmitted;
+    }
+}
+
+impl Default for PlanetChildRfReduceUpReport {
+    fn default() -> Self {
+        Self {
+            participant_count: 0,
+            bucket_count: 0,
+            planet_scope_count: 0,
+            star_system_scope_count: 0,
+            surplus_total: 0,
+            deficit_total: 0,
+            buckets: Vec::new(),
+            classification: PlanetChildRfAdmissionClassification::Admitted,
+            deferrals: Vec::new(),
+            errors: Vec::new(),
+        }
     }
 }
 

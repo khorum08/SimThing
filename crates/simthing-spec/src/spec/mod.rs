@@ -47,10 +47,12 @@ pub use planet_child_location::{
     PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
 };
 pub use planet_child_rf::{
-    evaluate_planet_child_rf_admission, planet_child_rf_admission_classification_label,
-    planet_child_rf_participant_inputs, PlanetChildRfAdmissionClassification,
-    PlanetChildRfAdmissionError, PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport,
-    PlanetChildRfDeferral, PlanetChildRfDeferralKind, PlanetChildRfParticipantInput,
+    evaluate_planet_child_rf_admission, evaluate_planet_child_rf_reduce_up,
+    planet_child_rf_admission_classification_label, planet_child_rf_participant_inputs,
+    scope_key_from_participant, PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionError,
+    PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport, PlanetChildRfDeferral,
+    PlanetChildRfDeferralKind, PlanetChildRfParticipantInput, PlanetChildRfReduceUpBucket,
+    PlanetChildRfReduceUpReport, PlanetChildRfScopeKey, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 pub use property::PropertySpec;
 pub use region_field::{

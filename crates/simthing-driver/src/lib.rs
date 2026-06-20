@@ -37,6 +37,7 @@ pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod owner_silo_accumulator_compile;
 pub mod planet_child_rf_accumulator_compile;
+pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
 pub mod resource_economy_boundary_schedule;
@@ -369,6 +370,15 @@ pub use planet_child_rf_accumulator_compile::{
     planet_child_rf_deficit_tick_inputs, planet_child_rf_participant_deficit_total,
     planet_child_rf_participant_surplus_total, planet_child_rf_surplus_tick_inputs,
     PlanetChildRfGpuTickPlan,
+};
+pub use planet_child_rf_reduce_up_compile::{
+    compile_planet_child_rf_reduce_up_gpu_proof_plan,
+    planet_child_rf_reduce_up_bucket_aggregate_slot,
+    planet_child_rf_reduce_up_bucket_cpu_deficit_total,
+    planet_child_rf_reduce_up_bucket_cpu_surplus_total,
+    planet_child_rf_reduce_up_bucket_deficit_tick_inputs,
+    planet_child_rf_reduce_up_bucket_surplus_tick_inputs, PlanetChildRfBucketAccumulatorPlan,
+    PlanetChildRfReduceUpGpuProofPlan,
 };
 pub use production_path_0080_0::{
     replay_production_path_0080_0, run_production_path_0080_0, LocalPatrolEconomyCell,
