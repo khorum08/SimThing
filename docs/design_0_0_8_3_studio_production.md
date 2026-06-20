@@ -89,7 +89,12 @@ ScenarioSpec
 | Owner silo reduce-up / disburse-down first slice | Landed / PROBATION | SESSION-RESOURCE-FLOW-SILOS-0 |
 | Recursive spatial-tree RF proof ladder through runtime property-view boundary | Landed / PROBATION | #795–#826 ladder |
 | **SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0** | **Landed / PROBATION (#828)** | Headless canonical JSON load → serialize → reload → stable authority digest |
-| **SCENARIO-STEAD-MAP-ROUNDTRIP-0** | **Landed / PROBATION** | STEAD IDs, links, RF metadata, spatial tree survive canonical roundtrip; owner metadata distinct from spatial parentage |
+| **SCENARIO-STEAD-MAP-ROUNDTRIP-0** | **Landed / PROBATION (#834)** | STEAD IDs, links, RF metadata, spatial tree survive canonical roundtrip; owner metadata distinct from spatial parentage |
+| **LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0** | **Landed / PROBATION** | Loaded ScenarioSpec authority envelope for Studio; composes #828 + #834 readiness |
+
+## LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0 — loaded ScenarioSpec authority envelope for Studio
+
+This rung defines the loaded Scenario Studio session envelope around ScenarioSpec authority. It composes canonical IO and STEAD map roundtrip readiness, reports scenario import/export eligibility, Studio projection rebuild readiness, recursive RF prerequisites, and runtime sidecar availability. Studio config, Bevy ECS state, GPU buffers, and runtime reports are explicitly non-authoritative. Runtime tick execution, runtime mutation, semantic execution, savefile persistence, persistent history, Studio UI wiring, and GPU dispatch remain deferred.
 
 ## SCENARIO-STEAD-MAP-ROUNDTRIP-0 — STEAD IDs, links, RF metadata, and spatial tree survive ScenarioSpec roundtrip
 
@@ -103,8 +108,8 @@ This closing track completes Studio Scenario import/load/save/runtime closure. I
 |---:|---|---|---|---|---|
 | 0 | SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0 | Headless canonical ScenarioSpec load/save/reload with stable authority digest. | DONE | Landed in PR #828. Canonical JSON, load, save, reload, digest proof. | STEAD map roundtrip |
 | 1 | SCENARIO-STEAD-MAP-ROUNDTRIP-0 | Prove STEAD IDs, links, ownership metadata, RF metadata, and spatial tree shape survive load/save/reload. | DONE | Reuses #828 canonical IO. STEAD/tree/RF metadata roundtrip report; obsolete `docs/0.8.3 Simthing Studio Production.md` alias retired. | Studio session envelope |
-| 2 | LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0 | Define loaded ScenarioSpec authority envelope for Studio: digest, validation, projection readiness, RF readiness, save/export eligibility. | NEXT | Studio config, Bevy state, GPU buffers, and runtime reports are not authority. | Recursive RF runtime |
-| 3 | LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0 | Attach recursive Accumulator RF runtime to loaded ScenarioSpec spatial trees. | PENDING | RF resolves locally at each parent Location node; sibling settlement before upward bubbling. | Runtime report chain |
+| 2 | LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0 | Define loaded ScenarioSpec authority envelope for Studio: digest, validation, projection readiness, RF readiness, save/export eligibility. | DONE | Composes #828 canonical IO + #834 STEAD roundtrip; authority/runtime sidecar envelopes; non-authority surfaces explicit. | Recursive RF runtime |
+| 3 | LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0 | Attach recursive Accumulator RF runtime to loaded ScenarioSpec spatial trees. | NEXT | RF resolves locally at each parent Location node; sibling settlement before upward bubbling. | Runtime report chain |
 | 4 | LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0 | Attach recursive RF → owner-silo → allocation → effects → semantic → execution → delta → runtime state → property view chain to loaded scenarios. | PENDING | Explicit runtime/report mode only. No hidden mutation on load. | Candidate ScenarioSpec |
 | 5 | SCENARIO-CANDIDATE-FROM-RUNTIME-0 | Generate mutated candidate ScenarioSpec from runtime property-view rows while original loaded ScenarioSpec remains unchanged. | PENDING | Candidate digest changes; original digest stable. No save write yet. | Candidate save/reopen |
 | 6 | SCENARIO-CANDIDATE-SAVE-REOPEN-0 | Save candidate ScenarioSpec, reopen it, validate STEAD/tree/projection, and prove digest stability. | PENDING | Atomic write path. Runtime reports rebuild from reopened ScenarioSpec, not persisted as authority. | Studio UI |

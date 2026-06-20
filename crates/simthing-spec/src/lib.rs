@@ -378,6 +378,12 @@ pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
+pub use spec::loaded_scenario_studio_session_envelope::{
+    evaluate_loaded_scenario_studio_session_envelope_from_json_str,
+    prove_loaded_scenario_session_envelope_preserves_authority_boundaries,
+    LoadedScenarioAuthorityEnvelope, LoadedScenarioRuntimeSidecarEnvelope,
+    LoadedScenarioSessionSource, LoadedScenarioStudioSessionEnvelope,
+};
 pub use spec::local_allocation_recursive_rf_source::{
     evaluate_runtime_local_allocation_with_rf_source,
     prove_local_allocation_recursive_source_preserves_authority,
