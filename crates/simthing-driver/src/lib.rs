@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
+pub mod local_effect_application_compile;
 pub mod local_participant_effects_compile;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
@@ -354,6 +355,13 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use local_effect_application_compile::{
+    compile_local_effect_application_plan, local_effect_application_aggregate_slot,
+    local_effect_application_cpu_runtime_applied_total, local_effect_application_cpu_unmet_total,
+    local_effect_application_runtime_applied_tick_inputs,
+    local_effect_application_unmet_tick_inputs, LocalEffectApplicationAggregateProofPlan,
+    LocalEffectApplicationPlan,
 };
 pub use local_participant_effects_compile::{
     compile_local_participant_effects_plan, local_participant_effects_aggregate_slot,

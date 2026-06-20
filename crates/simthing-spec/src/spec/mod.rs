@@ -6,6 +6,7 @@ pub mod event;
 pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
+pub mod local_effect_application;
 pub mod local_participant_effects;
 pub mod overlay;
 pub mod owner_silo_disburse_down;
@@ -41,6 +42,14 @@ pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
+pub use local_effect_application::{
+    apply_runtime_local_effect_records, evaluate_runtime_local_effect_application,
+    local_effect_application_aggregate_totals, prove_local_effect_application_preserves_authority,
+    LocalEffectApplicationAuthorityProof, LocalEffectApplicationDeferral,
+    LocalEffectApplicationDeferralKind, LocalEffectApplicationError,
+    LocalEffectApplicationErrorKind, RuntimeLocalEffectApplicationRecord,
+    RuntimeLocalEffectApplicationReport,
+};
 pub use local_participant_effects::{
     evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
     local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,
