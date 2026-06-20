@@ -83,6 +83,7 @@ pub mod runtime_0080_rr_2;
 pub mod runtime_0080_rr_3;
 pub mod runtime_0080_rr_4;
 pub mod runtime_local_allocation_compile;
+pub mod runtime_participant_property_mutation_boundary_compile;
 pub mod runtime_participant_state_mutation_compile;
 pub mod runtime_rf_tick_compile;
 pub mod runtime_rf_tick_source_compile;
@@ -695,6 +696,10 @@ pub use runtime_local_allocation_compile::{
     compile_runtime_local_allocation_application_plan, runtime_local_allocation_aggregate_slot,
     runtime_local_allocation_aggregate_tick_inputs, runtime_local_allocation_cpu_aggregate_total,
     RuntimeLocalAllocationAggregateProofPlan, RuntimeLocalAllocationApplicationPlan,
+};
+pub use runtime_participant_property_mutation_boundary_compile::{
+    compile_runtime_participant_property_mutation_boundary_plan,
+    RuntimeParticipantPropertyMutationBoundaryPlan,
 };
 pub use runtime_participant_state_mutation_compile::{
     compile_runtime_participant_state_mutation_plan, RuntimeParticipantStateMutationPlan,

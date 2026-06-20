@@ -23,6 +23,7 @@ pub mod region_field;
 pub mod resource_economy;
 pub mod resource_flow;
 pub mod runtime_local_allocation;
+pub mod runtime_participant_property_mutation_boundary;
 pub mod runtime_participant_state_mutation;
 pub mod runtime_rf_tick;
 pub mod runtime_rf_tick_source;
