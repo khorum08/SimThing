@@ -7,6 +7,7 @@ pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
 pub mod overlay;
+pub mod owner_silo_disburse_down;
 pub mod owner_silo_runtime_writeback;
 pub mod planet_child_location;
 pub mod planet_child_rf;
@@ -36,6 +37,13 @@ pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
 pub use overlay::OverlaySpec;
+pub use owner_silo_disburse_down::{
+    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
+    owner_silo_demand_buckets_from_planet_child_rf, RuntimeOwnerSiloDemandBucket,
+    RuntimeOwnerSiloDisburseDownAllocation, RuntimeOwnerSiloDisburseDownError,
+    RuntimeOwnerSiloDisburseDownErrorKind, RuntimeOwnerSiloDisburseDownInput,
+    RuntimeOwnerSiloDisburseDownResult,
+};
 pub use owner_silo_runtime_writeback::{
     apply_owner_silo_runtime_writeback_cpu,
     owner_silo_writeback_inputs_from_planet_child_reduce_up, read_owner_silo_capacity_from_owner,
@@ -85,33 +93,36 @@ pub use resource_flow::{
 };
 pub use scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
-    apply_owner_entity_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
+    apply_owner_entity_metadata, apply_owner_silo_metadata,
+    apply_participant_owner_flow_demand_metadata, apply_participant_owner_flow_metadata,
     apply_scenario_metadata_to_root, canonical_scenario_link_key, canonical_scenario_link_pair,
     deserialize_scenario_authority, galaxy_map_display_name, galaxy_map_id, galaxy_map_role,
     game_session_child, game_session_galaxy_map, game_session_galaxy_maps, game_session_owners,
     gridcell_generated_system_id, gridcell_role, gridcell_structural_col, gridcell_structural_row,
     is_galaxy_map_entity, is_owner_entity_kind, make_galaxy_map, make_owner_entity,
     owner_archetype, owner_color_index, owner_display_name, owner_entity_id, owner_flow_deficit,
-    owner_flow_owner_ref, owner_flow_surplus, owner_has_silo_metadata, owner_silo_capacity,
-    owner_silo_current, owner_silo_marker, property_u32, reserve_simthing_ids_from_scenario,
-    resolve_map_container, resolve_map_container_mut, scenario_metadata_seed,
-    scenario_metadata_seed_value, scenario_metadata_string, scenario_metadata_string_value,
-    scenario_metadata_u32, scenario_metadata_u32_value, serialize_scenario_authority,
-    set_galaxy_map_display_name, set_owner_display_name, spatial_authority_root,
-    structural_property_value_u32, sync_root_metadata_from_sidecar,
-    sync_sidecar_from_root_metadata, validate_legacy_world_root_compatibility,
-    validate_scenario_game_session_child, validate_scenario_links,
-    validate_scenario_root_authority, validate_session_galaxy_map, validate_session_owner_entities,
-    validate_stead_mapping_consistency, ScenarioEditError, ScenarioLinkError, ScenarioRootError,
-    ScenarioRootValidationMode, ScenarioSerdeError, SimThingScenarioGrid, SimThingScenarioLink,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, SteadMappingError, GALAXY_CHILD_LOCATION_ROLE_MOON,
-    GALAXY_CHILD_LOCATION_ROLE_PLANET, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID,
-    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    owner_flow_demand, owner_flow_owner_ref, owner_flow_priority, owner_flow_surplus,
+    owner_has_silo_metadata, owner_silo_capacity, owner_silo_current, owner_silo_marker,
+    property_u32, reserve_simthing_ids_from_scenario, resolve_map_container,
+    resolve_map_container_mut, scenario_metadata_seed, scenario_metadata_seed_value,
+    scenario_metadata_string, scenario_metadata_string_value, scenario_metadata_u32,
+    scenario_metadata_u32_value, serialize_scenario_authority, set_galaxy_map_display_name,
+    set_owner_display_name, spatial_authority_root, structural_property_value_u32,
+    sync_root_metadata_from_sidecar, sync_sidecar_from_root_metadata,
+    validate_legacy_world_root_compatibility, validate_scenario_game_session_child,
+    validate_scenario_links, validate_scenario_root_authority, validate_session_galaxy_map,
+    validate_session_owner_entities, validate_stead_mapping_consistency, ScenarioEditError,
+    ScenarioLinkError, ScenarioRootError, ScenarioRootValidationMode, ScenarioSerdeError,
+    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement, SteadMappingError,
+    GALAXY_CHILD_LOCATION_ROLE_MOON, GALAXY_CHILD_LOCATION_ROLE_PLANET,
+    GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_INERT,
+    GALAXY_GRIDCELL_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID, GALAXY_MAP_ID_PROPERTY_ID, GALAXY_MAP_ROLE_CANONICAL,
     GALAXY_MAP_ROLE_PROPERTY_ID, OWNER_ARCHETYPE_PROPERTY_ID, OWNER_COLOR_INDEX_PROPERTY_ID,
-    OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_FLOW_DEFICIT_PROPERTY_ID,
-    OWNER_FLOW_OWNER_REF_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID,
+    OWNER_DISPLAY_NAME_PROPERTY_ID, OWNER_FLOW_DEFAULT_PRIORITY, OWNER_FLOW_DEFICIT_PROPERTY_ID,
+    OWNER_FLOW_DEMAND_PROPERTY_ID, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+    OWNER_FLOW_PRIORITY_PROPERTY_ID, OWNER_FLOW_SURPLUS_PROPERTY_ID, OWNER_ID_PROPERTY_ID,
     OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
     PLANET_CLASS_PROPERTY_ID, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
     PLANET_ORBIT_INDEX_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
