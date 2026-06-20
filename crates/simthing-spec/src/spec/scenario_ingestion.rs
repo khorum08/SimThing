@@ -22,6 +22,7 @@ use super::planet_child_rf::{
 };
 use super::runtime_local_allocation::apply_runtime_local_allocations_from_disburse_down;
 use super::runtime_rf_tick::evaluate_runtime_rf_tick;
+use super::runtime_tick_history::replay_runtime_tick_history;
 use super::runtime_tick_shell::{evaluate_runtime_tick_shell, RuntimeTickId};
 use super::scenario::{
     galaxy_map_id, game_session_child, game_session_galaxy_map, game_session_owners, gridcell_role,
@@ -167,6 +168,10 @@ pub struct ScenarioCompileReadinessReport {
     pub local_participant_effects_ready: bool,
     /// Economy execution, participant property mutation, and Scenario authority mutation remain deferred.
     pub local_participant_effects_deferred: bool,
+    /// Runtime tick history entry and replay report can be evaluated.
+    pub runtime_tick_history_ready: bool,
+    /// Persistent history, economy/local effects, and Scenario authority mutation remain deferred.
+    pub runtime_tick_history_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -468,6 +473,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_runtime_rf_tick(spec, result);
     integrate_runtime_tick_shell(spec, result);
     integrate_local_participant_effects(spec, result);
+    integrate_runtime_tick_history(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -815,6 +821,23 @@ fn integrate_local_participant_effects(
 
     result.compile_readiness.local_participant_effects_ready = true;
     result.compile_readiness.local_participant_effects_deferred = true;
+}
+
+fn integrate_runtime_tick_history(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result.compile_readiness.runtime_tick_history_deferred = true;
+
+    if !result.compile_readiness.local_participant_effects_ready {
+        return;
+    }
+    if replay_runtime_tick_history(spec, RuntimeTickId(1), 1).is_err() {
+        return;
+    }
+
+    result.compile_readiness.runtime_tick_history_ready = true;
+    result.compile_readiness.runtime_tick_history_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
