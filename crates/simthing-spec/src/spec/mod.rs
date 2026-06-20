@@ -31,6 +31,7 @@ pub mod runtime_tick_history;
 pub mod runtime_tick_shell;
 pub mod scenario;
 pub mod scenario_ingestion;
+pub mod scenario_property_mutation_authority_boundary;
 pub mod script;
 pub mod semantic_effect_execution_boundary;
 pub mod semantic_local_effects;
@@ -205,13 +206,15 @@ pub use scenario::{
     OWNER_SILO_CAPACITY_PROPERTY_ID, OWNER_SILO_CURRENT_PROPERTY_ID, OWNER_SILO_MARKER_PROPERTY_ID,
     PLANET_CLASS_PROPERTY_ID, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
     PLANET_ORBIT_INDEX_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
-    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_GENERATOR_SEED_PROPERTY_ID,
-    SCENARIO_GENERATOR_SHAPE_PROPERTY_ID, SCENARIO_ID_PROPERTY_ID,
-    SCENARIO_RENDER_WORLD_X_PROPERTY_ID, SCENARIO_RENDER_WORLD_Y_PROPERTY_ID,
-    SCENARIO_RENDER_WORLD_Z_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
-    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_INTEGER_MAX,
-    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
+    RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID, RUNTIME_PREVIEW_SATISFIED_SIM_PROPERTY_ID,
+    RUNTIME_PREVIEW_SHORTFALL_SIM_PROPERTY_ID, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+    SCENARIO_GENERATOR_SEED_PROPERTY_ID, SCENARIO_GENERATOR_SHAPE_PROPERTY_ID,
+    SCENARIO_ID_PROPERTY_ID, SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
+    SCENARIO_RENDER_WORLD_Y_PROPERTY_ID, SCENARIO_RENDER_WORLD_Z_PROPERTY_ID,
+    SCENARIO_SCHEMA_VERSION, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+    SCENARIO_SOURCE_LABEL_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_INTEGER_MAX, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
 pub use scenario_ingestion::{
     ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,
@@ -221,6 +224,17 @@ pub use scenario_ingestion::{
     ScenarioDeferral, ScenarioDeferralKind, ScenarioFingerprint, ScenarioIngestionClassification,
     ScenarioIngestionError, ScenarioIngestionProfile, ScenarioIngestionResult,
     ScenarioTreeAdmissionReport, ScenarioValidationReport, StructuralAdmissionReport,
+};
+pub use scenario_property_mutation_authority_boundary::{
+    evaluate_scenario_property_mutation_authority_boundary,
+    prove_scenario_property_mutation_boundary_preserves_original_authority,
+    replay_scenario_property_mutation_authority_boundary,
+    ScenarioPropertyMutationAuthorityBoundaryError,
+    ScenarioPropertyMutationAuthorityBoundaryErrorKind,
+    ScenarioPropertyMutationAuthorityBoundaryReplayReport,
+    ScenarioPropertyMutationAuthorityBoundaryReport, ScenarioPropertyMutationRecord,
+    ScenarioPropertyMutationSourceMode, MAX_SCENARIO_PROPERTY_MUTATION_REPLAY_COUNT,
+    MIN_SCENARIO_PROPERTY_MUTATION_REPLAY_COUNT,
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,
