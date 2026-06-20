@@ -450,6 +450,11 @@ pub use spec::runtime_rf_tick::{
     evaluate_runtime_rf_tick, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError,
     RuntimeRfTickErrorKind, RuntimeRfTickReport,
 };
+pub use spec::runtime_tick_shell::{
+    evaluate_runtime_tick_shell, runtime_tick_shell_stage_order, RuntimeTickExecutionReport,
+    RuntimeTickId, RuntimeTickShellDeferral, RuntimeTickShellDeferralKind, RuntimeTickShellError,
+    RuntimeTickShellErrorKind, RuntimeTickStage,
+};
 pub use spec::scenario::{
     apply_galaxy_map_metadata, apply_gridcell_property_edit, apply_gridcell_role_metadata,
     apply_owner_entity_metadata, apply_owner_silo_metadata,
