@@ -17,6 +17,7 @@ pub mod resource_economy;
 pub mod resource_flow;
 pub mod runtime_local_allocation;
 pub mod runtime_rf_tick;
+pub mod runtime_tick_shell;
 pub mod scenario;
 pub mod scenario_ingestion;
 pub mod script;
