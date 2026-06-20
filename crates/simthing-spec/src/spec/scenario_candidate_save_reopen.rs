@@ -3,7 +3,8 @@
 //! GPU-residency doctrine: runtime property-view rows are GPU-compatible source data.
 //! CPU space is limited to candidate canonical serialization/bookkeeping — not production simulation authority.
 
-use std::path::Path;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use crate::error::SpecError;
 
@@ -25,11 +26,25 @@ use super::scenario_stead_map_roundtrip::{
 
 const TICK_ONE: RuntimeTickId = RuntimeTickId(1);
 const REPLAY_ONE: u32 = 1;
-const CANDIDATE_TMP_SUFFIX: &str = "simthing-scenario.json.tmp";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScenarioCandidateSaveReopenSource {
     ScenarioCandidateFromRuntime,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CandidateScenarioWritePolicy {
+    CreateNew,
+    ReplaceExisting,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScenarioCandidateWritePolicyReport {
+    pub policy: CandidateScenarioWritePolicy,
+    pub same_directory_temp_file: bool,
+    pub existing_target_preserved_on_error: bool,
+    pub removes_existing_target_before_successful_write: bool,
+    pub temp_cleanup_attempted_on_error: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,6 +55,10 @@ pub struct ScenarioCandidateSaveReport {
     pub deterministic: bool,
     pub atomic_write_ready: bool,
     pub wrote_to_temp_path_only: bool,
+    pub write_policy: ScenarioCandidateWritePolicyReport,
+    pub existing_target_preserved_on_error: bool,
+    pub same_directory_temp_file: bool,
+    pub removes_existing_target_before_successful_write: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,6 +117,7 @@ pub fn evaluate_scenario_candidate_save_reopen_from_json_str(
     .map_err(|_| SpecError::ValidationFailed)?;
 
     let canonical_save = save_scenario_spec_to_canonical_json(&candidate)?;
+    let write_policy = candidate_scenario_write_policy_report();
     let save_report = ScenarioCandidateSaveReport {
         canonical_json: canonical_save.canonical_json.clone(),
         candidate_authority_digest: canonical_save.authority_digest,
@@ -105,6 +125,11 @@ pub fn evaluate_scenario_candidate_save_reopen_from_json_str(
         deterministic: canonical_save.deterministic,
         atomic_write_ready: true,
         wrote_to_temp_path_only: false,
+        existing_target_preserved_on_error: write_policy.existing_target_preserved_on_error,
+        same_directory_temp_file: write_policy.same_directory_temp_file,
+        removes_existing_target_before_successful_write: write_policy
+            .removes_existing_target_before_successful_write,
+        write_policy,
     };
 
     let candidate_authority_digest_before_save = save_report.candidate_authority_digest;
@@ -191,18 +216,68 @@ pub fn evaluate_scenario_candidate_save_reopen_from_json_str(
     })
 }
 
-/// Atomically write candidate canonical ScenarioSpec JSON via temp-to-rename.
+/// Create-new policy report for hardened candidate canonical JSON writes.
+pub fn candidate_scenario_write_policy_report() -> ScenarioCandidateWritePolicyReport {
+    ScenarioCandidateWritePolicyReport {
+        policy: CandidateScenarioWritePolicy::CreateNew,
+        same_directory_temp_file: true,
+        existing_target_preserved_on_error: true,
+        removes_existing_target_before_successful_write: false,
+        temp_cleanup_attempted_on_error: true,
+    }
+}
+
+/// Derive a same-directory temp path from the output filename with a unique suffix.
+pub fn candidate_scenario_write_temp_path(output_path: &Path) -> PathBuf {
+    let parent = output_path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = output_path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "candidate.simthing-scenario.json".to_string());
+    let unique = format!(
+        "{file_name}.write.{}.{}.tmp",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0)
+    );
+    parent.join(unique)
+}
+
+/// Atomically create candidate canonical ScenarioSpec JSON via same-directory temp-to-rename.
+///
+/// Create-new only: returns an error when `output_path` already exists and leaves the existing
+/// target unchanged. Overwrite/replace semantics are deferred to a future explicit helper.
 pub fn write_candidate_scenario_canonical_json_atomic(
     canonical_json: &str,
     output_path: &Path,
 ) -> Result<(), SpecError> {
-    let tmp = output_path.with_extension(CANDIDATE_TMP_SUFFIX);
-    std::fs::write(&tmp, canonical_json).map_err(|_| SpecError::ValidationFailed)?;
     if output_path.exists() {
-        std::fs::remove_file(output_path).map_err(|_| SpecError::ValidationFailed)?;
+        return Err(SpecError::ValidationFailed);
     }
-    std::fs::rename(&tmp, output_path).map_err(|_| SpecError::ValidationFailed)?;
+
+    let tmp = candidate_scenario_write_temp_path(output_path);
+    let mut file = std::fs::File::create(&tmp).map_err(|_| SpecError::ValidationFailed)?;
+    if file
+        .write_all(canonical_json.as_bytes())
+        .and_then(|_| file.sync_all())
+        .is_err()
+    {
+        cleanup_candidate_write_temp(&tmp);
+        return Err(SpecError::ValidationFailed);
+    }
+
+    if std::fs::rename(&tmp, output_path).is_err() {
+        cleanup_candidate_write_temp(&tmp);
+        return Err(SpecError::ValidationFailed);
+    }
+
     Ok(())
+}
+
+fn cleanup_candidate_write_temp(temp_path: &Path) {
+    let _ = std::fs::remove_file(temp_path);
 }
 
 /// Prove candidate ScenarioSpec authority digest is stable after canonical save/reopen.

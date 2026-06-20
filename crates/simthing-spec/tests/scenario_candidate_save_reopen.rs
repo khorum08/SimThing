@@ -5,10 +5,12 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 use simthing_spec::{
+    candidate_scenario_write_policy_report, candidate_scenario_write_temp_path,
     evaluate_scenario_candidate_from_runtime_from_json_str,
     evaluate_scenario_candidate_save_reopen_from_json_str, load_scenario_spec_from_json_str,
     prove_scenario_candidate_save_reopen_digest_stability,
-    write_candidate_scenario_canonical_json_atomic, ScenarioCandidateSaveReopenSource, SpecError,
+    write_candidate_scenario_canonical_json_atomic, CandidateScenarioWritePolicy,
+    ScenarioCandidateSaveReopenSource, SpecError,
 };
 
 const OWNER_SILO_FIXTURE: &str = "owner_silo_disburse_down_scoped.simthing-scenario.json";
@@ -28,6 +30,28 @@ fn evaluate_fixture() -> simthing_spec::ScenarioCandidateSaveReopenReport {
     let json = load_owner_silo_fixture_json();
     evaluate_scenario_candidate_save_reopen_from_json_str("owner_silo_corpus", &json)
         .expect("evaluate")
+}
+
+fn temp_work_dir(label: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!(
+        "simthing_candidate_save_reopen_{label}_{}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&dir).expect("temp dir");
+    dir
+}
+
+fn temp_files_in_dir(dir: &PathBuf) -> Vec<PathBuf> {
+    fs::read_dir(dir)
+        .expect("read dir")
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| ext == "tmp")
+        })
+        .collect()
 }
 
 #[test]
@@ -57,11 +81,7 @@ fn scenario_candidate_save_reopen_serializes_candidate_canonical_json() {
 #[test]
 fn scenario_candidate_save_reopen_writes_temp_file_atomically() {
     let report = evaluate_fixture();
-    let temp_dir = std::env::temp_dir().join(format!(
-        "simthing_candidate_save_reopen_{}",
-        std::process::id()
-    ));
-    fs::create_dir_all(&temp_dir).expect("temp dir");
+    let temp_dir = temp_work_dir("create_new");
     let output_path = temp_dir.join("candidate.simthing-scenario.json");
     write_candidate_scenario_canonical_json_atomic(
         &report.save_report.canonical_json,
@@ -70,6 +90,100 @@ fn scenario_candidate_save_reopen_writes_temp_file_atomically() {
     .expect("atomic write");
     let written = fs::read_to_string(&output_path).expect("read");
     assert_eq!(written, report.save_report.canonical_json);
+    assert!(temp_files_in_dir(&temp_dir).is_empty());
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn scenario_candidate_save_reopen_atomic_write_uses_same_directory_temp() {
+    let temp_dir = temp_work_dir("same_dir");
+    let output_path = temp_dir.join("candidate.simthing-scenario.json");
+    let temp_path = candidate_scenario_write_temp_path(&output_path);
+    assert_eq!(temp_path.parent(), output_path.parent());
+    assert!(temp_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.contains(".write.")));
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn scenario_candidate_save_reopen_atomic_write_does_not_remove_existing_target_before_success() {
+    let policy = candidate_scenario_write_policy_report();
+    assert_eq!(policy.policy, CandidateScenarioWritePolicy::CreateNew);
+    assert!(!policy.removes_existing_target_before_successful_write);
+    let report = evaluate_fixture();
+    assert!(
+        !report
+            .save_report
+            .removes_existing_target_before_successful_write
+    );
+}
+
+#[test]
+fn scenario_candidate_save_reopen_atomic_write_preserves_existing_target_on_existing_path_error() {
+    let report = evaluate_fixture();
+    let temp_dir = temp_work_dir("preserve_existing");
+    let output_path = temp_dir.join("candidate.simthing-scenario.json");
+    fs::write(&output_path, "existing candidate contents").expect("seed");
+    let before = fs::read_to_string(&output_path).expect("read before");
+    let err = write_candidate_scenario_canonical_json_atomic(
+        &report.save_report.canonical_json,
+        &output_path,
+    )
+    .expect_err("reject existing target");
+    assert_eq!(err, SpecError::ValidationFailed);
+    assert_eq!(
+        fs::read_to_string(&output_path).expect("read after"),
+        before
+    );
+    assert!(temp_files_in_dir(&temp_dir).is_empty());
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn scenario_candidate_save_reopen_atomic_write_cleans_temp_file_on_error_where_practical() {
+    let report = evaluate_fixture();
+    let temp_dir = temp_work_dir("cleanup");
+    let output_path = temp_dir.join("nested/candidate.simthing-scenario.json");
+    let err = write_candidate_scenario_canonical_json_atomic(
+        &report.save_report.canonical_json,
+        &output_path,
+    )
+    .expect_err("missing parent should fail before rename");
+    assert_eq!(err, SpecError::ValidationFailed);
+    assert!(temp_files_in_dir(&temp_dir).is_empty());
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn scenario_candidate_save_reopen_atomic_write_temp_file_has_unique_name() {
+    let temp_dir = temp_work_dir("unique");
+    let output_path = temp_dir.join("candidate.simthing-scenario.json");
+    let first = candidate_scenario_write_temp_path(&output_path);
+    let second = candidate_scenario_write_temp_path(&output_path);
+    assert_ne!(first, second);
+    let _ = fs::remove_dir_all(&temp_dir);
+}
+
+#[test]
+fn scenario_candidate_save_reopen_still_reopens_candidate_after_hardened_write() {
+    let report = evaluate_fixture();
+    let temp_dir = temp_work_dir("reopen_after_write");
+    let output_path = temp_dir.join("candidate.simthing-scenario.json");
+    write_candidate_scenario_canonical_json_atomic(
+        &report.save_report.canonical_json,
+        &output_path,
+    )
+    .expect("atomic write");
+    let written = fs::read_to_string(&output_path).expect("read");
+    let (_, load_report) =
+        load_scenario_spec_from_json_str("owner_silo_corpus", &written).expect("reopen");
+    assert!(load_report.loaded);
+    assert_eq!(
+        load_report.authority_digest,
+        report.candidate_authority_digest_before_save
+    );
     let _ = fs::remove_dir_all(&temp_dir);
 }
 
@@ -148,6 +262,8 @@ fn scenario_candidate_save_reopen_uses_canonical_scenario_json_only() {
     let report = evaluate_fixture();
     assert!(report.canonical_scenario_json_only);
     assert!(report.save_report.atomic_write_ready);
+    assert!(report.save_report.same_directory_temp_file);
+    assert!(report.save_report.existing_target_preserved_on_error);
 }
 
 #[test]
