@@ -484,6 +484,13 @@ pub use spec::runtime_rf_tick::{
     evaluate_runtime_rf_tick, RuntimeRfTickDeferral, RuntimeRfTickDeferralKind, RuntimeRfTickError,
     RuntimeRfTickErrorKind, RuntimeRfTickReport,
 };
+pub use spec::runtime_rf_tick_source::{
+    evaluate_runtime_rf_tick_source_comparison, evaluate_runtime_rf_tick_source_preview,
+    prove_runtime_rf_tick_source_preserves_authority, RuntimeRfTickSourceComparisonReport,
+    RuntimeRfTickSourceDelta, RuntimeRfTickSourceDeltaKind, RuntimeRfTickSourceError,
+    RuntimeRfTickSourceErrorKind, RuntimeRfTickSourceKind, RuntimeRfTickSourceMode,
+    RuntimeRfTickSourceSummary,
+};
 pub use spec::runtime_tick_history::{
     evaluate_runtime_tick_history_entry, replay_runtime_tick_history, scenario_authority_digest,
     RuntimeTickHistoryEntry, RuntimeTickHistoryError, RuntimeTickHistoryErrorKind,

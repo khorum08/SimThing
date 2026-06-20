@@ -191,6 +191,10 @@ pub struct ScenarioCompileReadinessReport {
     pub recursive_rf_reconciliation_ready: bool,
     /// Tick-shell RF source replacement, semantic execution, and Scenario authority mutation remain deferred.
     pub recursive_rf_reconciliation_deferred: bool,
+    /// Legacy and recursive RF tick source comparison report can be evaluated.
+    pub runtime_rf_tick_source_comparison_ready: bool,
+    /// Default tick-shell RF source replacement remains deferred.
+    pub runtime_rf_tick_source_comparison_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -497,6 +501,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_semantic_local_effects(spec, result);
     integrate_recursive_local_rf(spec, result);
     integrate_recursive_rf_reconciliation(spec, result);
+    integrate_runtime_rf_tick_source_comparison(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -931,6 +936,33 @@ fn integrate_recursive_rf_reconciliation(
     result
         .compile_readiness
         .recursive_rf_reconciliation_deferred = true;
+}
+
+fn integrate_runtime_rf_tick_source_comparison(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .runtime_rf_tick_source_comparison_deferred = true;
+
+    if !result.compile_readiness.recursive_rf_reconciliation_ready {
+        return;
+    }
+    if !result.compile_readiness.runtime_rf_tick_ready {
+        return;
+    }
+    use super::runtime_rf_tick_source::evaluate_runtime_rf_tick_source_comparison;
+    if evaluate_runtime_rf_tick_source_comparison(spec).is_err() {
+        return;
+    }
+
+    result
+        .compile_readiness
+        .runtime_rf_tick_source_comparison_ready = true;
+    result
+        .compile_readiness
+        .runtime_rf_tick_source_comparison_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {
