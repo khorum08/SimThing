@@ -31,6 +31,7 @@ pub mod scenario;
 pub mod scenario_ingestion;
 pub mod script;
 pub mod semantic_local_effects;
+pub mod semantic_local_effects_recursive_rf_source;
 pub mod session_resource_flow;
 pub mod spatial_local_grid;
 pub mod stress_compose;
@@ -226,6 +227,14 @@ pub use semantic_local_effects::{
     SemanticLocalEffectAuthorityProof, SemanticLocalEffectDeferral,
     SemanticLocalEffectDeferralKind, SemanticLocalEffectError, SemanticLocalEffectErrorKind,
     SemanticLocalEffectKind, SemanticLocalEffectOutput, SemanticLocalEffectReport,
+};
+pub use semantic_local_effects_recursive_rf_source::{
+    evaluate_semantic_local_effects_with_rf_source,
+    prove_semantic_local_effects_recursive_source_preserves_authority,
+    semantic_local_effects_from_local_effect_application_report,
+    SemanticLocalEffectRecursiveSourceError, SemanticLocalEffectRecursiveSourceErrorKind,
+    SemanticLocalEffectRfSourceMode, SemanticLocalEffectRfSourceReport,
+    SemanticLocalEffectRfSourceSelection,
 };
 pub use session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_admission_classification_label,
