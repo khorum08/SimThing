@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `runtime-tick-recursive-rf-selectable-source-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #811
+- Merge SHA: `7deabc9daaa07db1abf728d21b0b6d42f9ef521e`
 
 ## Mission
 
