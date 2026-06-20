@@ -378,6 +378,12 @@ pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
+pub use spec::local_participant_effects::{
+    evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
+    local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,
+    LocalParticipantEffectsDeferralKind, LocalParticipantEffectsError,
+    LocalParticipantEffectsErrorKind, LocalParticipantEffectsReport, RuntimeLocalParticipantEffect,
+};
 pub use spec::overlay::OverlaySpec;
 pub use spec::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,

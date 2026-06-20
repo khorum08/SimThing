@@ -5,6 +5,7 @@
 
 use simthing_core::SimThingKind;
 
+use super::local_participant_effects::evaluate_local_participant_effects;
 use super::owner_silo_disburse_down::owner_silo_demand_buckets_from_planet_child_rf;
 use super::owner_silo_runtime_writeback::{
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
@@ -162,6 +163,10 @@ pub struct ScenarioCompileReadinessReport {
     pub runtime_tick_shell_ready: bool,
     /// Economy/local effects and Scenario authority mutation remain deferred at tick shell.
     pub runtime_tick_shell_deferred: bool,
+    /// Local participant effect previews can be evaluated under the tick shell.
+    pub local_participant_effects_ready: bool,
+    /// Economy execution, participant property mutation, and Scenario authority mutation remain deferred.
+    pub local_participant_effects_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -462,6 +467,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_runtime_local_allocation(spec, result);
     integrate_runtime_rf_tick(spec, result);
     integrate_runtime_tick_shell(spec, result);
+    integrate_local_participant_effects(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -792,6 +798,23 @@ fn integrate_runtime_tick_shell(spec: &SimThingScenarioSpec, result: &mut Scenar
 
     result.compile_readiness.runtime_tick_shell_ready = true;
     result.compile_readiness.runtime_tick_shell_deferred = true;
+}
+
+fn integrate_local_participant_effects(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result.compile_readiness.local_participant_effects_deferred = true;
+
+    if !result.compile_readiness.runtime_tick_shell_ready {
+        return;
+    }
+    if evaluate_local_participant_effects(spec, RuntimeTickId(1)).is_err() {
+        return;
+    }
+
+    result.compile_readiness.local_participant_effects_ready = true;
+    result.compile_readiness.local_participant_effects_deferred = true;
 }
 
 fn integrate_owner_silo_flow(spec: &SimThingScenarioSpec, result: &mut ScenarioIngestionResult) {

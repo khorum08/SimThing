@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
+pub mod local_participant_effects_compile;
 pub mod mapping_plan_compile;
 pub mod min_plus_traversal_field;
 pub mod owner_silo_accumulator_compile;
@@ -352,6 +353,12 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use local_participant_effects_compile::{
+    compile_local_participant_effects_plan, local_participant_effects_aggregate_slot,
+    local_participant_effects_allocated_tick_inputs, local_participant_effects_cpu_allocated_total,
+    local_participant_effects_cpu_unmet_total, local_participant_effects_unmet_tick_inputs,
+    LocalParticipantEffectAggregateProofPlan, LocalParticipantEffectsPlan,
 };
 pub use mapping_plan_compile::{
     compile_mapping_plan_from_admitted_theater, compile_structured_field_mapping_plan,
