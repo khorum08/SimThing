@@ -56,6 +56,13 @@ pub const OWNER_FLOW_PRIORITY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_3
 /// Explicit resource channel key on owner-referenced spatial participants.
 pub const OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_312);
 
+/// Reserved candidate ScenarioSpec property slots for runtime preview applied amount.
+pub const RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_302_010);
+/// Reserved candidate ScenarioSpec property slots for runtime preview satisfied delta.
+pub const RUNTIME_PREVIEW_SATISFIED_SIM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_302_011);
+/// Reserved candidate ScenarioSpec property slots for runtime preview shortfall delta.
+pub const RUNTIME_PREVIEW_SHORTFALL_SIM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_302_012);
+
 /// Default disburse-down priority when metadata is absent.
 pub const OWNER_FLOW_DEFAULT_PRIORITY: u32 = 100;
 

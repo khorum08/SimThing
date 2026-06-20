@@ -231,6 +231,10 @@ pub struct ScenarioCompileReadinessReport {
     pub runtime_participant_property_mutation_boundary_ready: bool,
     /// ScenarioSpec SimThing property mutation, Scenario authority mutation, savefile, and history remain deferred.
     pub runtime_participant_property_mutation_boundary_deferred: bool,
+    /// Cloned-candidate Scenario property mutation authority boundary can be evaluated.
+    pub scenario_property_mutation_boundary_ready: bool,
+    /// Input ScenarioSpec mutation, savefile mutation, and persistent history remain deferred.
+    pub scenario_property_mutation_boundary_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -547,6 +551,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_semantic_participant_delta_preview(spec, result);
     integrate_runtime_participant_state_mutation(spec, result);
     integrate_runtime_participant_property_mutation_boundary(spec, result);
+    integrate_scenario_property_mutation_boundary(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -1256,6 +1261,43 @@ fn integrate_runtime_participant_property_mutation_boundary(
     result
         .compile_readiness
         .runtime_participant_property_mutation_boundary_deferred = true;
+}
+
+fn integrate_scenario_property_mutation_boundary(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .scenario_property_mutation_boundary_deferred = true;
+
+    if !result
+        .compile_readiness
+        .runtime_participant_property_mutation_boundary_ready
+    {
+        return;
+    }
+    use super::runtime_tick_shell::RuntimeTickId;
+    use super::scenario_property_mutation_authority_boundary::{
+        evaluate_scenario_property_mutation_authority_boundary, ScenarioPropertyMutationSourceMode,
+    };
+    if evaluate_scenario_property_mutation_authority_boundary(
+        spec,
+        RuntimeTickId(1),
+        ScenarioPropertyMutationSourceMode::LegacyPlanetChildOwnerSilo,
+        1,
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    result
+        .compile_readiness
+        .scenario_property_mutation_boundary_ready = true;
+    result
+        .compile_readiness
+        .scenario_property_mutation_boundary_deferred = true;
 }
 
 fn integrate_owner_silo_recursive_source(
