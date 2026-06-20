@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; merge pending.
+PASS — focused validation complete; PR #806 merged.
 
 ## PR / branch / merge
 
 - Branch: `semantic-local-effect-types-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #806
+- Merge SHA: `51c9080de837553649915643be29807808e27b4c`
 
 ## Mission
 
