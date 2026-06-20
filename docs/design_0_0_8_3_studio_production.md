@@ -95,10 +95,15 @@ ScenarioSpec
 | **LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0** | **Landed / PROBATION** | Full recursive runtime report chain for loaded ScenarioSpec sessions |
 | **SCENARIO-CANDIDATE-FROM-RUNTIME-0** | **Landed / PROBATION** | Candidate ScenarioSpec from loaded runtime property-view rows |
 | **SCENARIO-CANDIDATE-SAVE-REOPEN-0** | **Landed / PROBATION** | Candidate ScenarioSpec canonical JSON save/reopen with stable authority digest |
+| **SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0** | **Landed / PROBATION** | Pre-UI hardening of candidate ScenarioSpec canonical JSON writer |
 
 ## SCENARIO-CANDIDATE-SAVE-REOPEN-0 — save and reopen candidate ScenarioSpec
 
 This rung saves the cloned candidate ScenarioSpec as canonical ScenarioSpec JSON, reopens it, validates STEAD IDs, links, RF metadata, and spatial tree shape, rebuilds projection readiness, and proves the candidate authority digest is stable after reopen. It does not introduce a distinct savefile format or persistent history. Studio UI wiring and GPU dispatch remain deferred.
+
+### SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0 — pre-UI write hardening
+
+This remedial hardening pass preserves Rung 6 while making the candidate ScenarioSpec canonical JSON writer safe for the upcoming Studio UI rung. The helper writes to a same-directory temp file and no longer removes an existing target before a successful write strategy is guaranteed. Candidate artifacts remain canonical ScenarioSpec JSON only; no distinct savefile format or persistent history is introduced.
 
 ## SCENARIO-CANDIDATE-FROM-RUNTIME-0 — candidate ScenarioSpec from loaded runtime property-view rows
 

@@ -628,11 +628,13 @@ pub use spec::scenario_candidate_from_runtime::{
     ScenarioCandidatePropertyMutationRecord,
 };
 pub use spec::scenario_candidate_save_reopen::{
+    candidate_scenario_write_policy_report, candidate_scenario_write_temp_path,
     evaluate_scenario_candidate_save_reopen_from_json_str,
     prove_scenario_candidate_save_reopen_digest_stability,
-    write_candidate_scenario_canonical_json_atomic, ScenarioCandidateReopenReport,
-    ScenarioCandidateSaveReopenReport, ScenarioCandidateSaveReopenSource,
-    ScenarioCandidateSaveReport,
+    write_candidate_scenario_canonical_json_atomic, CandidateScenarioWritePolicy,
+    ScenarioCandidateReopenReport, ScenarioCandidateSaveReopenReport,
+    ScenarioCandidateSaveReopenSource, ScenarioCandidateSaveReport,
+    ScenarioCandidateWritePolicyReport,
 };
 pub use spec::scenario_canonical_io::{
     load_scenario_spec_from_json_str, prove_scenario_canonical_load_save_roundtrip,
