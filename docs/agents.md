@@ -123,6 +123,7 @@ Operational requirements:
 - Run **focused** validation first; do not end the turn in raw cargo output.
 - If cargo hangs or times out, terminate honestly and record PARTIAL/FAIL — never treat timeout as PASS.
 - Update PR body, evidence index, and production synthesis before merge when doctrine/status changes.
+- Post-merge evidence placeholders must be replaced by PR number and merge SHA before the next implementation rung.
 - End every turn with the structured final summary (`Status`, `PR`, `Merge`, `Implemented`, `Validation`, `Evidence/docs`, `Known gaps`, `Next recommended action`).
 
 ## Working rules (the short version — binding text is in the read order above)

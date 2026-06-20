@@ -12,7 +12,9 @@ LANDED — operational discipline documented and wired into `docs/agents.md`.
 |------|-------|
 | Branch | `agent-completion-discipline-0` |
 | PR | #793 — AGENT-COMPLETION-DISCIPLINE-0 |
-| Merge | `dbf33b64` |
+| Merge | `dbf33b640091052f377c95db1a2b5392459b5c1a` |
+
+Post-merge metadata finalized by AGENT-COMPLETION-DISCIPLINE-0R.
 
 ## Current defect or mission
 
@@ -39,7 +41,8 @@ Recent agent turns completed and merged PRs but ended inside cargo/test terminal
 | Command | Status |
 |---------|--------|
 | `git diff --check` | PASS |
-| `git diff --name-only master...HEAD` | PASS (4 doc files) |
+| `git diff --name-only master...HEAD` | PASS (2 doc files) |
+| `cargo test` (all packages) | SKIP — documentation/evidence metadata only; no Rust code touched |
 
 ## Files changed
 
