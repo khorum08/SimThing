@@ -11,8 +11,8 @@
 | Item | Value |
 |------|-------|
 | Branch | `planet-child-rf-gpu-participant-0` |
-| PR | PENDING (pre-merge) |
-| Merge | PENDING (pre-merge) |
+| PR | #795 — PLANET-CHILD-RF-GPU-PARTICIPANT-0 |
+| Merge | `6e00ca897290310b6618649dbd54e83e91ceb810` |
 | Base | `master` after #794 (`8773cdcb`) |
 
 ## Mission
@@ -72,8 +72,8 @@ Connect admitted planet gridcells and planet non-grid children to existing owner
 | `cargo test -p simthing-driver --test planet_child_location_structural_readiness` | PASS (6) |
 | `cargo test -p simthing-driver --test owner_silo_gpu_tick` | PASS (11) |
 | `cargo test -p simthing-driver --test planet_child_rf_gpu_tick` | PASS (10; 1 ignored) |
-| `git diff --check` | PENDING (pre-commit) |
-| `git diff --name-only master...HEAD` | PENDING (pre-commit) |
+| `git diff --check` | PASS |
+| `git diff --name-only master...HEAD` | PASS (12 files) |
 | `cargo test` (all packages) | SKIP — focused validation only |
 
 ## Files changed
