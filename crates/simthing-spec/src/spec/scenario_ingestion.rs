@@ -211,6 +211,10 @@ pub struct ScenarioCompileReadinessReport {
     pub local_effect_recursive_source_ready: bool,
     /// Semantic local effects and semantic execution remain deferred.
     pub local_effect_recursive_source_deferred: bool,
+    /// Recursive-source semantic local effects report can be evaluated.
+    pub semantic_local_effects_recursive_source_ready: bool,
+    /// Semantic execution, participant property mutation, and savefile mutation remain deferred.
+    pub semantic_local_effects_recursive_source_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -522,6 +526,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_owner_silo_recursive_source(spec, result);
     integrate_local_allocation_recursive_source(spec, result);
     integrate_local_effect_recursive_source(spec, result);
+    integrate_semantic_local_effects_recursive_source(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -1048,6 +1053,40 @@ fn integrate_local_effect_recursive_source(
     result
         .compile_readiness
         .local_effect_recursive_source_deferred = true;
+}
+
+fn integrate_semantic_local_effects_recursive_source(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .semantic_local_effects_recursive_source_deferred = true;
+
+    if !result.compile_readiness.local_effect_recursive_source_ready {
+        return;
+    }
+    use super::runtime_tick_shell::RuntimeTickId;
+    use super::semantic_local_effects_recursive_rf_source::{
+        evaluate_semantic_local_effects_with_rf_source, SemanticLocalEffectRfSourceMode,
+    };
+    if evaluate_semantic_local_effects_with_rf_source(
+        spec,
+        RuntimeTickId(1),
+        SemanticLocalEffectRfSourceMode::LegacyPlanetChildOwnerSilo,
+        1,
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    result
+        .compile_readiness
+        .semantic_local_effects_recursive_source_ready = true;
+    result
+        .compile_readiness
+        .semantic_local_effects_recursive_source_deferred = true;
 }
 
 fn integrate_owner_silo_recursive_source(

@@ -598,6 +598,14 @@ pub use spec::semantic_local_effects::{
     SemanticLocalEffectDeferralKind, SemanticLocalEffectError, SemanticLocalEffectErrorKind,
     SemanticLocalEffectKind, SemanticLocalEffectOutput, SemanticLocalEffectReport,
 };
+pub use spec::semantic_local_effects_recursive_rf_source::{
+    evaluate_semantic_local_effects_with_rf_source,
+    prove_semantic_local_effects_recursive_source_preserves_authority,
+    semantic_local_effects_from_local_effect_application_report,
+    SemanticLocalEffectRecursiveSourceError, SemanticLocalEffectRecursiveSourceErrorKind,
+    SemanticLocalEffectRfSourceMode, SemanticLocalEffectRfSourceReport,
+    SemanticLocalEffectRfSourceSelection,
+};
 pub use spec::session_resource_flow::{
     evaluate_owner_silo_flow, owner_silo_admission_classification_label,
     owner_silo_flow_participant_inputs, owner_silo_flow_participant_roots,

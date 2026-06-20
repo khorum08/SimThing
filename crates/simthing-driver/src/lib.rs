@@ -91,6 +91,7 @@ pub mod runtime_tick_shell_compile;
 pub mod scenario;
 pub mod scenario_ingestion_compile;
 pub mod semantic_local_effects_compile;
+pub mod semantic_local_effects_recursive_source_compile;
 pub mod session;
 pub mod session_resource_flow_silos;
 pub mod spec_replay;
@@ -719,6 +720,9 @@ pub use semantic_local_effects_compile::{
     semantic_local_effects_shortfall_aggregate_slot,
     semantic_local_effects_shortfall_output_indices, semantic_local_effects_shortfall_tick_inputs,
     SemanticLocalEffectAggregateProofPlan, SemanticLocalEffectsPlan,
+};
+pub use semantic_local_effects_recursive_source_compile::{
+    compile_semantic_local_effects_recursive_source_plan, SemanticLocalEffectsRecursiveSourcePlan,
 };
 pub use session::{RunSummary, SessionError, SimSession};
 pub use session_resource_flow_silos::{
