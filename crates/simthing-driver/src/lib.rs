@@ -81,6 +81,7 @@ pub mod runtime_0080_rr_3;
 pub mod runtime_0080_rr_4;
 pub mod runtime_local_allocation_compile;
 pub mod runtime_rf_tick_compile;
+pub mod runtime_rf_tick_source_compile;
 pub mod runtime_tick_history_compile;
 pub mod runtime_tick_shell_compile;
 pub mod scenario;
@@ -680,6 +681,11 @@ pub use runtime_local_allocation_compile::{
 };
 pub use runtime_rf_tick_compile::{
     compile_runtime_rf_tick_plan, RuntimeRfTickGpuProofSummary, RuntimeRfTickPlan,
+};
+pub use runtime_rf_tick_source_compile::{
+    compile_runtime_rf_tick_source_comparison_plan,
+    compile_runtime_tick_shell_with_rf_source_comparison_plan, RuntimeRfTickSourceComparisonPlan,
+    RuntimeTickShellRfSourceComparisonPlan,
 };
 pub use runtime_tick_history_compile::{compile_runtime_tick_history_plan, RuntimeTickHistoryPlan};
 pub use runtime_tick_shell_compile::{
