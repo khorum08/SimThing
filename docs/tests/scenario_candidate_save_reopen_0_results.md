@@ -2,13 +2,13 @@
 
 ## Status
 
-PENDING — validation in progress
+PASS
 
 ## PR / branch / merge
 
 - Branch: `scenario-candidate-save-reopen-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #844
+- Merge SHA: `aecb4421975f301af34437987ff87ffdee55f89a`
 
 ## Mission
 
@@ -76,9 +76,25 @@ This rung is not another hygiene-only wrapper. It moves the Scenario Runtime + S
 
 | Command | Status |
 |---------|--------|
-| `cargo fmt -p simthing-spec -p simthing-driver -- --check` | pending |
-| `cargo test -p simthing-spec --test scenario_candidate_save_reopen` | pending |
-| `cargo test -p simthing-driver --test scenario_candidate_save_reopen` | pending |
+| `cargo fmt -p simthing-spec -p simthing-driver -- --check` | PASS |
+| `cargo check -p simthing-spec` | PASS |
+| `cargo test -p simthing-spec --test scenario_candidate_save_reopen` | PASS (17) |
+| `cargo test -p simthing-spec --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-spec --test loaded_scenario_runtime_report_chain` | PASS |
+| `cargo test -p simthing-spec --test loaded_scenario_recursive_rf_runtime` | PASS |
+| `cargo test -p simthing-spec --test loaded_scenario_studio_session_envelope` | PASS |
+| `cargo test -p simthing-spec --test scenario_stead_map_roundtrip` | PASS (10) |
+| `cargo test -p simthing-spec --test scenario_canonical_io` | PASS |
+| `cargo check -p simthing-driver` | PASS |
+| `cargo test -p simthing-driver --test scenario_candidate_save_reopen` | PASS (8) |
+| `cargo test -p simthing-driver --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-driver --test loaded_scenario_runtime_report_chain` | PASS |
+| `cargo test -p simthing-driver --test loaded_scenario_recursive_rf_runtime` | PASS |
+| `cargo test -p simthing-driver --test loaded_scenario_studio_session_envelope` | PASS |
+| `cargo test -p simthing-driver --test scenario_stead_map_roundtrip` | PASS (8) |
+| `cargo test -p simthing-driver --test scenario_canonical_io` | PASS |
+| `git diff --check` | PASS |
+| alias guard | PASS |
 
 ## Files changed
 
