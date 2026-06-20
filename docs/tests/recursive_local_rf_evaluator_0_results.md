@@ -2,13 +2,13 @@
 
 ## Status
 
-PASS — focused validation complete; merge pending.
+PASS — focused validation complete; PR #807 merged.
 
 ## PR / branch / merge
 
 - Branch: `recursive-local-rf-evaluator-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #807
+- Merge SHA: `b5e0b611487016f89400f091eb8a56af1eced4d2`
 
 ## Mission
 
