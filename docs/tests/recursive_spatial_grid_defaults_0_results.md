@@ -48,6 +48,8 @@ Owners are GameSession children and RF channel scopes, not spatial parents. Owne
 | `cargo test -p simthing-mapeditor --test studio_planet_child_location_display` | PASS (11/11) |
 | `cargo test -p simthing-driver --test planet_child_location_structural_readiness` | PASS (6/6) |
 | `git diff --check` | PASS |
+| `cargo test -p simthing-spec --test scenario_ingestion_admission` | PASS (12/12) |
+| Post-merge validation on `master` (`a270fe366`) | PASS |
 
 ## Files changed
 

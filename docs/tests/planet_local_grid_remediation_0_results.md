@@ -151,7 +151,7 @@ Report fields: `local_gridcell_count`, `local_inert_gridcell_count`, `planet_gri
 
 ## Relationship to RECURSIVE-SPATIAL-GRID-DEFAULTS-0
 
-PR #790 ontology is partially completed and finalized by **RECURSIVE-SPATIAL-GRID-DEFAULTS-0** (universal 1×1 interior-grid defaults, inert receiver cells, owner/RF channel doctrine).
+PR #790 ontology is partially completed and finalized by **RECURSIVE-SPATIAL-GRID-DEFAULTS-0** (PR #791 / merge `1807faa9`: universal 1×1 interior-grid defaults, inert receiver cells, owner/RF channel doctrine).
 
 ## DA status
 
