@@ -33,6 +33,7 @@ pub mod runtime_rf_tick_source;
 pub mod runtime_tick_history;
 pub mod runtime_tick_shell;
 pub mod scenario;
+pub mod scenario_candidate_from_runtime;
 pub mod scenario_canonical_io;
 pub mod scenario_ingestion;
 pub mod scenario_property_mutation_authority_boundary;
@@ -239,6 +240,12 @@ pub use scenario::{
     SCENARIO_STRUCTURAL_INTEGER_MAX, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
     SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
+pub use scenario_candidate_from_runtime::{
+    evaluate_scenario_candidate_from_runtime_from_json_str,
+    prove_scenario_candidate_from_runtime_preserves_original_authority,
+    ScenarioCandidateFromRuntimeReport, ScenarioCandidateFromRuntimeSource,
+    ScenarioCandidatePropertyMutationRecord,
+};
 pub use scenario_canonical_io::{
     load_scenario_spec_from_json_str, prove_scenario_canonical_load_save_roundtrip,
     save_scenario_spec_to_canonical_json, ScenarioCanonicalLoadReport,
@@ -254,6 +261,7 @@ pub use scenario_ingestion::{
     ScenarioTreeAdmissionReport, ScenarioValidationReport, StructuralAdmissionReport,
 };
 pub use scenario_property_mutation_authority_boundary::{
+    clone_scenario_candidate_with_runtime_property_view,
     evaluate_scenario_property_mutation_authority_boundary,
     prove_scenario_property_mutation_boundary_preserves_original_authority,
     replay_scenario_property_mutation_authority_boundary,

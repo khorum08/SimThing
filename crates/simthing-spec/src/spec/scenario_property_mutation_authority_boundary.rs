@@ -174,6 +174,32 @@ pub fn evaluate_scenario_property_mutation_authority_boundary(
     })
 }
 
+/// Clone loaded ScenarioSpec and apply recursive runtime property-view rows to the candidate only.
+pub fn clone_scenario_candidate_with_runtime_property_view(
+    scenario: &SimThingScenarioSpec,
+    tick_id: RuntimeTickId,
+    replay_count: u32,
+) -> Result<SimThingScenarioSpec, ScenarioPropertyMutationAuthorityBoundaryError> {
+    let property_view_report = evaluate_runtime_participant_property_mutation_boundary(
+        scenario,
+        tick_id,
+        RuntimeParticipantPropertyMutationSourceMode::RecursiveRuntimeStateSelectable,
+        replay_count,
+    )
+    .map_err(|e| ScenarioPropertyMutationAuthorityBoundaryError {
+        kind: ScenarioPropertyMutationAuthorityBoundaryErrorKind::PropertyViewRejected,
+        message: e.message,
+    })?;
+
+    let mut candidate = scenario.clone();
+    let _ = apply_property_view_rows_to_candidate(
+        &property_view_report,
+        &mut candidate,
+        ScenarioPropertyMutationSourceMode::RecursiveRuntimePropertyViewSelectable,
+    )?;
+    Ok(candidate)
+}
+
 /// Prove input ScenarioSpec authority is unchanged after candidate-only mutation evaluation.
 pub fn prove_scenario_property_mutation_boundary_preserves_original_authority(
     scenario: &SimThingScenarioSpec,
