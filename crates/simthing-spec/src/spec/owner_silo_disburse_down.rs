@@ -290,7 +290,7 @@ fn read_priority_amount(
     }
 }
 
-fn demand_bucket_sort_key(
+pub(crate) fn demand_bucket_sort_key(
     a: &RuntimeOwnerSiloDemandBucket,
     b: &RuntimeOwnerSiloDemandBucket,
 ) -> std::cmp::Ordering {
