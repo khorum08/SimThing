@@ -11,8 +11,8 @@
 | Item | Value |
 |------|-------|
 | Branch | `planet-child-rf-reduce-up-0` |
-| PR | PENDING (pre-merge) |
-| Merge | PENDING (pre-merge) |
+| PR | #796 — PLANET-CHILD-RF-REDUCE-UP-0 |
+| Merge | `c1eb325c9462e0d1f1ed54e0fb2fca7e1fb29adc` |
 | Base | `master` after #795 (`17a1ee8b`) |
 
 ## Mission
@@ -79,8 +79,8 @@ Group admitted planet gridcell and non-grid child RF participants into scoped ow
 | `cargo test -p simthing-driver --test planet_child_rf_gpu_tick` | PASS (10; 1 ignored) |
 | `cargo test -p simthing-driver --test planet_child_rf_reduce_up` | PASS (8) |
 | `cargo test -p simthing-driver --test owner_silo_gpu_tick` | PASS (11) |
-| `git diff --check` | PENDING (pre-commit) |
-| `git diff --name-only master...HEAD` | PENDING (pre-commit) |
+| `git diff --check` | PASS |
+| `git diff --name-only master...HEAD` | PASS (12 files) |
 | `cargo test` (all packages) | SKIP — focused validation only |
 
 ## Files changed
