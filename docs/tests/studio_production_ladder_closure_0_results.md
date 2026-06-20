@@ -16,7 +16,7 @@ Trim the Studio production doc into a readable production ladder, move verbose w
 
 ## Production doc trim
 
-- `docs/0.8.3 Simthing Studio Production.md` reduced from ~1826 lines to a concise ladder (~220 lines).
+- `docs/design_0_0_8_3_studio_production.md` reduced from ~1826 lines to a concise ladder (~220 lines).
 - Retained: executive status, doctrine, landed capability summary, PROBATION summary, closing track, deferred tracks, DA criteria.
 - Removed from production doc: per-PR validation tables, long implementation bullet lists, superseded next-rung prose.
 
@@ -49,7 +49,7 @@ Trim the Studio production doc into a readable production ladder, move verbose w
 
 ## Files changed
 
-- `docs/0.8.3 Simthing Studio Production.md` (trimmed)
+- `docs/design_0_0_8_3_studio_production.md` (trimmed)
 - `docs/workshop/studio_production_log.md` (created — moved history)
 - `docs/tests/studio_production_ladder_closure_0_results.md` (this report)
 

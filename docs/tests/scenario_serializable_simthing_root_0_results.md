@@ -112,7 +112,7 @@ Terran Pirate (`scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json`
 - `scenarios/corpus/minimal_scenario_root.simthing-scenario.json`
 - `docs/tests/scenario_serializable_simthing_root_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deferred next rung
 

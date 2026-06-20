@@ -5,10 +5,12 @@ mod sibling_redistribution_fixture;
 
 use simthing_core::{PropertyValue, SimThingKind};
 use simthing_spec::{
-    evaluate_runtime_local_allocation_with_rf_source,
-    owner_silo_demand_buckets_from_recursive_local_rf, prove_local_allocation_recursive_source_preserves_authority,
-    recursive_local_rf_aggregate_source_rows, evaluate_recursive_local_rf, serialize_scenario_authority,
-    LocalAllocationRfSourceMode, OWNER_FLOW_DEMAND_PROPERTY_ID, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    evaluate_recursive_local_rf, evaluate_runtime_local_allocation_with_rf_source,
+    owner_silo_demand_buckets_from_recursive_local_rf,
+    prove_local_allocation_recursive_source_preserves_authority,
+    recursive_local_rf_aggregate_source_rows, serialize_scenario_authority,
+    LocalAllocationRfSourceMode, OWNER_FLOW_DEMAND_PROPERTY_ID,
+    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -47,11 +49,13 @@ fn local_allocation_recursive_source_consumes_recursive_owner_silo_disburse_repo
         .recursive_owner_silo_disburse_report
         .as_ref()
         .expect("owner silo report");
-    assert!(owner_silo
-        .recursive_disburse_report
-        .as_ref()
-        .expect("recursive disburse")
-        .owner_silo_disburse_down_executed);
+    assert!(
+        owner_silo
+            .recursive_disburse_report
+            .as_ref()
+            .expect("recursive disburse")
+            .owner_silo_disburse_down_executed
+    );
 }
 
 #[test]
@@ -64,7 +68,10 @@ fn local_allocation_recursive_source_produces_recursive_allocation_report() {
     .expect("recursive");
 
     assert!(report.source_selection.selection_allowed);
-    let recursive = report.recursive_allocation_report.as_ref().expect("recursive alloc");
+    let recursive = report
+        .recursive_allocation_report
+        .as_ref()
+        .expect("recursive alloc");
     assert!(recursive.allocation_count > 0);
     assert!(recursive.allocated_total > 0);
     assert!(report.local_allocation_executed_for_selected_source);
@@ -119,7 +126,10 @@ fn local_allocation_recursive_source_preserves_owner_resource_scope() {
     )
     .expect("recursive");
 
-    let recursive = report.recursive_allocation_report.as_ref().expect("recursive");
+    let recursive = report
+        .recursive_allocation_report
+        .as_ref()
+        .expect("recursive");
     assert!(recursive.states.iter().any(|s| s.owner_ref == "owner_a"));
     assert!(recursive.states.iter().any(|s| s.owner_ref == "owner_b"));
 }
@@ -165,9 +175,7 @@ fn local_allocation_recursive_source_documents_redistribution_delta_for_sibling_
         .recursive_owner_silo_disburse_report
         .as_ref()
         .expect("owner silo");
-    assert!(owner_silo
-        .source_selection
-        .redistribution_deltas_documented);
+    assert!(owner_silo.source_selection.redistribution_deltas_documented);
     assert!(report.recursive_allocation_report.is_some());
 }
 

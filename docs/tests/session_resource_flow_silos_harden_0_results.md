@@ -62,7 +62,7 @@ Helpers: `read_owner_silo_amount`, `validate_owner_silo_property_values`, `read_
 
 ## Production synthesis update summary
 
-Added § SESSION-RESOURCE-FLOW-SILOS-HARDEN-0 under SESSION-RESOURCE-FLOW-SILOS-0 in `docs/0.8.3 Simthing Studio Production.md`.
+Added § SESSION-RESOURCE-FLOW-SILOS-HARDEN-0 under SESSION-RESOURCE-FLOW-SILOS-0 in `docs/design_0_0_8_3_studio_production.md`.
 
 ## Evidence lifecycle cleanup summary
 
@@ -91,7 +91,7 @@ Added § SESSION-RESOURCE-FLOW-SILOS-HARDEN-0 under SESSION-RESOURCE-FLOW-SILOS-
 - `scenarios/corpus/owner_silo_invalid_silo_amount.simthing-scenario.json`
 - `docs/tests/session_resource_flow_silos_harden_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deleted/archived artifacts
 

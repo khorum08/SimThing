@@ -13,7 +13,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated with RESIDENT-TICK-0 row |
 | `docs/tests/sim_gpu_accumulator_backend_0_results.md` | PROBATION | Amended — validation sweep correction |
 | `docs/tests/sim_gpu_resident_accumulator_tick_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § RESIDENT-TICK-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § RESIDENT-TICK-0 |
 
 ## Why this is not hygiene
 
@@ -130,7 +130,7 @@ No paging-file or linker failures observed. Full `cargo test -p simthing-sim` (~
 - `crates/simthing-sim/src/lib.rs`
 - `crates/simthing-sim/tests/accumulator_plan_tick_convergence.rs`
 - `crates/simthing-mapeditor/tests/accumulator_convergence_1_guards.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/sim_gpu_accumulator_backend_0_results.md`
 - `docs/tests/sim_gpu_resident_accumulator_tick_0_results.md`

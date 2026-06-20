@@ -107,7 +107,7 @@ This rung is not another hygiene-only comparison layer. It applies recursive-sou
 - `crates/simthing-driver/src/runtime_participant_state_mutation_compile.rs`
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/runtime_participant_state_mutation.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/runtime_participant_state_mutation_0_results.md`
 

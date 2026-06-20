@@ -352,7 +352,7 @@ fn runtime_vertical_seed_gpu_validation_reports_zero_self_links() {
 fn production_doc_mentions_vertical_test_seed() {
     let text = fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/0.8.3 Simthing Studio Production.md"),
+            .join("../../docs/design_0_0_8_3_studio_production.md"),
     )
     .expect("read production doc");
     assert!(text.contains("VERTICAL-TEST-SCENARIO-SEED-0"));
@@ -390,7 +390,7 @@ fn runtime_vertical_seed_save_load_roundtrip_preserves_projection() {
 fn production_doc_mentions_accumulator_driver_sim_convergence_1() {
     let text = fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/0.8.3 Simthing Studio Production.md"),
+            .join("../../docs/design_0_0_8_3_studio_production.md"),
     )
     .expect("read production doc");
     assert!(text.contains("ACCUMULATOR-DRIVER-SIM-CONVERGENCE-1"));

@@ -7,11 +7,13 @@
 use std::collections::BTreeSet;
 
 use super::owner_silo_disburse_down::{
-    apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_buckets_from_planet_child_rf,
-    demand_bucket_sort_key, RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownResult,
+    apply_owner_silo_runtime_disburse_down_cpu, demand_bucket_sort_key,
+    owner_silo_demand_buckets_from_planet_child_rf, RuntimeOwnerSiloDemandBucket,
+    RuntimeOwnerSiloDisburseDownResult,
 };
 use super::owner_silo_runtime_writeback::{
-    apply_owner_silo_runtime_writeback_cpu, owner_silo_writeback_inputs_from_planet_child_reduce_up,
+    apply_owner_silo_runtime_writeback_cpu,
+    owner_silo_writeback_inputs_from_planet_child_reduce_up,
     runtime_owner_silo_states_from_scenario,
 };
 use super::planet_child_rf::{
@@ -194,10 +196,7 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
             });
         }
         let resource_key = PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string();
-        let scope_id = format!(
-            "location/{}/root_deficit",
-            output.parent_location_id_raw
-        );
+        let scope_id = format!("location/{}/root_deficit", output.parent_location_id_raw);
         buckets.push(RuntimeOwnerSiloDemandBucket {
             owner_ref: output.owner_ref.clone(),
             resource_key,
@@ -225,8 +224,7 @@ pub fn evaluate_owner_silo_disburse_down_with_rf_source(
             message: e.message,
         }
     })?;
-    let legacy_disburse_report =
-        run_owner_silo_disburse_down_report(scenario, legacy_buckets)?;
+    let legacy_disburse_report = run_owner_silo_disburse_down_report(scenario, legacy_buckets)?;
 
     let reconciliation =
         reconcile_planet_child_rf_with_recursive_local_rf(scenario).map_err(|e| {
@@ -236,17 +234,20 @@ pub fn evaluate_owner_silo_disburse_down_with_rf_source(
             }
         })?;
 
-    let recursive_report = evaluate_recursive_local_rf(scenario).map_err(|e| {
-        OwnerSiloRecursiveSourceError {
+    let recursive_report =
+        evaluate_recursive_local_rf(scenario).map_err(|e| OwnerSiloRecursiveSourceError {
             kind: OwnerSiloRecursiveSourceErrorKind::RecursiveEvaluationRejected,
             message: e.message,
-        }
-    })?;
+        })?;
     let aggregate_rows = recursive_local_rf_aggregate_source_rows(&recursive_report);
     let recursive_source_available = !aggregate_rows.is_empty();
 
-    let redistribution_deltas_documented = reconciliation.sibling_redistribution_scope_delta_observed
-        || reconciliation.buckets.iter().any(|bucket| !bucket.compatible);
+    let redistribution_deltas_documented = reconciliation
+        .sibling_redistribution_scope_delta_observed
+        || reconciliation
+            .buckets
+            .iter()
+            .any(|bucket| !bucket.compatible);
 
     let participant_projection_compatible = reconciliation.participant_row_compatible;
     let reconciliation_ready = true;
@@ -361,10 +362,11 @@ pub fn prove_owner_silo_recursive_source_preserves_authority(
     scenario: &SimThingScenarioSpec,
     source_mode: OwnerSiloRfSourceMode,
 ) -> Result<bool, OwnerSiloRecursiveSourceError> {
-    let before = scenario_authority_digest(scenario).map_err(|e| OwnerSiloRecursiveSourceError {
-        kind: OwnerSiloRecursiveSourceErrorKind::ScenarioAuthorityRejected,
-        message: e.message,
-    })?;
+    let before =
+        scenario_authority_digest(scenario).map_err(|e| OwnerSiloRecursiveSourceError {
+            kind: OwnerSiloRecursiveSourceErrorKind::ScenarioAuthorityRejected,
+            message: e.message,
+        })?;
     let _report = evaluate_owner_silo_disburse_down_with_rf_source(scenario, source_mode)?;
     let after = scenario_authority_digest(scenario).map_err(|e| OwnerSiloRecursiveSourceError {
         kind: OwnerSiloRecursiveSourceErrorKind::ScenarioAuthorityRejected,
@@ -391,12 +393,13 @@ fn run_owner_silo_disburse_down_report(
             message: e.message,
         }
     })?;
-    let inputs = owner_silo_writeback_inputs_from_planet_child_reduce_up(&reduce_up).map_err(
-        |e| OwnerSiloRecursiveSourceError {
-            kind: OwnerSiloRecursiveSourceErrorKind::WritebackRejected,
-            message: e.message,
-        },
-    )?;
+    let inputs =
+        owner_silo_writeback_inputs_from_planet_child_reduce_up(&reduce_up).map_err(|e| {
+            OwnerSiloRecursiveSourceError {
+                kind: OwnerSiloRecursiveSourceErrorKind::WritebackRejected,
+                message: e.message,
+            }
+        })?;
     let writeback_results =
         apply_owner_silo_runtime_writeback_cpu(&initial, &inputs).map_err(|e| {
             OwnerSiloRecursiveSourceError {
@@ -431,7 +434,8 @@ fn run_owner_silo_disburse_down_report(
             message: "unmet_total overflow".to_string(),
         })?;
 
-    let owner_silo_disburse_down_executed = !demand_buckets.is_empty() && !writeback_results.is_empty();
+    let owner_silo_disburse_down_executed =
+        !demand_buckets.is_empty() && !writeback_results.is_empty();
 
     Ok(OwnerSiloDisburseDownReport {
         demand_bucket_count: demand_buckets.len() as u32,

@@ -18,7 +18,7 @@ Add deterministic runtime tick history/replay evidence over tick shell and local
 
 PASS — #803 (`LOCAL-PARTICIPANT-EFFECTS-0`) post-merge metadata verified on current `master`:
 
-- No `TBD` placeholders in `docs/tests/local_participant_effects_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/0.8.3 Simthing Studio Production.md` for #803.
+- No `TBD` placeholders in `docs/tests/local_participant_effects_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/design_0_0_8_3_studio_production.md` for #803.
 - LOCAL-PARTICIPANT-EFFECTS-0 section present in production doc with PR #803 and merge SHA.
 
 ## Doctrine preservation
@@ -83,7 +83,7 @@ No savefile mutation, persistent timeline storage, full runtime sim loop, econom
 - `crates/simthing-driver/src/runtime_tick_history_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/runtime_tick_history.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/runtime_tick_history_replay_0_results.md` (new)
 
@@ -93,7 +93,7 @@ No savefile mutation, persistent timeline storage, full runtime sim loop, econom
 |----------|----------------|
 | `docs/tests/runtime_tick_history_replay_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

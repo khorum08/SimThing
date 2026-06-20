@@ -16,7 +16,7 @@
 | `crates/simthing-driver/tests/terran_pirate_skeleton_resident_tick.rs` | INTEGRATION_PROOF | Created |
 | `crates/simthing-sim/tests/terran_pirate_skeleton_tick.rs` | OBSOLETE | Deleted |
 | `docs/tests/simthing_sim_devdep_seam_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated |
 
 ## Why this is not hygiene
@@ -154,7 +154,7 @@ No route/predecessor/pathfinding/border-service semantics in changed sources.
 - `crates/simthing-spec/tests/e10_resource_flow_admission.rs`
 - `crates/simthing-mapeditor/tests/accumulator_convergence_1_guards.rs`
 - `docs/tests/simthing_sim_devdep_seam_0_results.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `Cargo.lock`
 

@@ -111,7 +111,7 @@ Added § STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0; reprioritized Next Production Run
 - `crates/simthing-mapeditor/src/lib.rs`
 - `crates/simthing-mapeditor/tests/studio_structural_placement_edit_commands.rs` (new)
 - `crates/simthing-driver/tests/structural_edit_compile_readiness.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/studio_ingestion_admission_report_display_0_results.md`
 - `docs/tests/structural_placement_edit_commands_0_results.md` (new)

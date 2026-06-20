@@ -5,8 +5,8 @@ mod disburse_down_fixture;
 
 use simthing_driver::{
     compile_local_effect_application_plan, compile_owner_silo_recursive_source_plan,
-    compile_recursive_local_rf_plan, compile_runtime_rf_tick_plan,
-    compile_runtime_tick_shell_plan, compile_semantic_local_effects_plan,
+    compile_recursive_local_rf_plan, compile_runtime_rf_tick_plan, compile_runtime_tick_shell_plan,
+    compile_semantic_local_effects_plan,
 };
 use simthing_spec::{serialize_scenario_authority, OwnerSiloRfSourceMode, RuntimeTickId};
 
@@ -25,12 +25,16 @@ fn owner_silo_recursive_source_compile_composes_selection_reconciliation_and_rec
     .expect("compile");
 
     assert!(plan.reconciliation_plan.previous_ladder_preserved);
-    assert!(!plan.recursive_local_rf_plan.aggregate_source_rows.is_empty());
-    assert!(plan
-        .source_selection_plan
-        .selected_source_report
-        .selection_gate
-        .reconciliation_ready);
+    assert!(!plan
+        .recursive_local_rf_plan
+        .aggregate_source_rows
+        .is_empty());
+    assert!(
+        plan.source_selection_plan
+            .selected_source_report
+            .selection_gate
+            .reconciliation_ready
+    );
 }
 
 #[test]
@@ -61,17 +65,19 @@ fn owner_silo_recursive_source_compile_recursive_mode_runs_owner_silo_disburse_r
     .expect("compile");
 
     assert!(plan.owner_silo_disburse_down_executed_for_selected_source);
-    assert!(plan
-        .disburse_report
-        .recursive_disburse_report
-        .as_ref()
-        .expect("recursive")
-        .owner_silo_disburse_down_executed);
-    assert!(plan
-        .disburse_report
-        .selected_disburse_report
-        .allocated_total
-        > 0);
+    assert!(
+        plan.disburse_report
+            .recursive_disburse_report
+            .as_ref()
+            .expect("recursive")
+            .owner_silo_disburse_down_executed
+    );
+    assert!(
+        plan.disburse_report
+            .selected_disburse_report
+            .allocated_total
+            > 0
+    );
 }
 
 #[test]

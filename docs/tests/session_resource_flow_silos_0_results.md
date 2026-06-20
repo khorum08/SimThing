@@ -139,7 +139,7 @@ Added § SESSION-RESOURCE-FLOW-SILOS-0; reprioritized Next Production Rungs (Stu
 - `scenarios/corpus/owner_silo_*.simthing-scenario.json` (4 fixtures)
 - `docs/tests/session_resource_flow_silos_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deleted/archived artifacts
 

@@ -13,7 +13,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated with READBACK-SCOPE-0 row |
 | `docs/tests/sim_gpu_resident_accumulator_tick_0_results.md` | PROBATION | Preserved |
 | `docs/tests/sim_gpu_readback_scope_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § READBACK-SCOPE-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § READBACK-SCOPE-0 |
 
 ## Why this is not mere hygiene
 

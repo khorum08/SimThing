@@ -33,6 +33,7 @@ pub mod scenario;
 pub mod scenario_canonical_io;
 pub mod scenario_ingestion;
 pub mod scenario_property_mutation_authority_boundary;
+pub mod scenario_stead_map_roundtrip;
 pub mod script;
 pub mod semantic_effect_execution_boundary;
 pub mod semantic_local_effects;
@@ -241,6 +242,12 @@ pub use scenario_property_mutation_authority_boundary::{
     ScenarioPropertyMutationAuthorityBoundaryReport, ScenarioPropertyMutationRecord,
     ScenarioPropertyMutationSourceMode, MAX_SCENARIO_PROPERTY_MUTATION_REPLAY_COUNT,
     MIN_SCENARIO_PROPERTY_MUTATION_REPLAY_COUNT,
+};
+pub use scenario_stead_map_roundtrip::{
+    evaluate_scenario_stead_map_roundtrip_from_json_str, extract_scenario_rf_metadata_rows,
+    extract_scenario_spatial_tree_rows, extract_scenario_stead_id_rows,
+    extract_scenario_stead_link_rows, ScenarioRfMetadataRow, ScenarioSpatialTreeRow,
+    ScenarioSteadIdRow, ScenarioSteadLinkRow, ScenarioSteadMapRoundtripReport,
 };
 pub use script::{
     PropertyKey, ScopeRef, ScriptEvalContext, ScriptEvalError, ScriptExpr, ScriptPredicate,

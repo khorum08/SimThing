@@ -9,7 +9,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added STUDIO-PANEL-GAP-AND-SCENARIO-LINK-CANON-0 PROBATION row |
 | `docs/tests/studio_panel_gap_and_scenario_link_canon_0_results.md` | PROBATION | This report |
 | `docs/tests/scenario_native_session_0_results.md` | PROBATION | Prior session work unchanged |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -87,7 +87,7 @@ git diff --check
 - `crates/simthing-spec/src/lib.rs`
 - `crates/simthing-spec/src/spec/mod.rs`
 - `crates/simthing-mapeditor/src/scenario_projection.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/studio_panel_gap_and_scenario_link_canon_0_results.md`
 

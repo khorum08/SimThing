@@ -64,7 +64,7 @@ PR #769 established driver structural N4 compile/admission, but mapping GPU exec
 | `docs/tests/structural_n4_theater_compile_0_results.md` | PROBATION (PR #769) | Retained |
 | `docs/tests/terran_pirate_mapping_first_slice_0_results.md` | PROBATION (PR #768) | Retained |
 | `docs/tests/sim_mapping_plan_tick_seam_0_results.md` | PROBATION (this file) | Created |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority | Untouched |
 
 ## Validation commands
@@ -109,7 +109,7 @@ PR #769 established driver structural N4 compile/admission, but mapping GPU exec
 - `crates/simthing-spec/tests/region_field_spec_admission.rs` (guard updated for mapping tick seam)
 - `docs/tests/sim_mapping_plan_tick_seam_0_results.md`
 - `docs/tests/current_evidence_index.md`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 
 ## Deferred work
 

@@ -14,7 +14,7 @@
 | `docs/tests/sim_mapping_atlas_scheduler_0_results.md` | PROBATION (PR #773) | Retained |
 | `docs/tests/structural_n4_theater_compile_0_results.md` | PROBATION (PR #769) | Retained |
 | `docs/tests/driver_structural_atlas_partition_0_results.md` | PROBATION | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated |
 | `scenarios/horizon/terran_pirate_skeleton.simthing-scenario.json` | Canonical authority | Untouched |
 
 ## Why this is the next rung

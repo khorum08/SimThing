@@ -141,7 +141,7 @@ Generated Galaxy Authority: `Scenario → GameSession → Owner(s) → GalaxyMap
 | `scenarios/corpus/minimal_scenario_galaxymap.simthing-scenario.json` | New spatial fixture |
 | `docs/tests/session_galaxymap_worldstate_0_results.md` | This report |
 | `docs/tests/current_evidence_index.md` | New row |
-| `docs/0.8.3 Simthing Studio Production.md` | Authority update |
+| `docs/design_0_0_8_3_studio_production.md` | Authority update |
 
 ## Deleted/archived artifacts
 

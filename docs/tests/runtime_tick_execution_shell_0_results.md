@@ -18,7 +18,7 @@ Add a deterministic runtime tick execution shell that drives composed `RuntimeRf
 
 PASS — #801 (`PRODUCTION-SYNTHESIS-RF-LADDER-0R`) post-merge metadata verified on current `master`:
 
-- No `TBD` placeholders in `docs/tests/production_synthesis_rf_ladder_0r_results.md`, `docs/tests/current_evidence_index.md`, or `docs/0.8.3 Simthing Studio Production.md` for #801.
+- No `TBD` placeholders in `docs/tests/production_synthesis_rf_ladder_0r_results.md`, `docs/tests/current_evidence_index.md`, or `docs/design_0_0_8_3_studio_production.md` for #801.
 - RF Proof Ladder — Production Synthesis Index present in production doc.
 - Owner / RF channel doctrine (reaffirmed) present in production doc.
 
@@ -107,7 +107,7 @@ No economy execution, consumption, supply effects, combat, movement, route/pathf
 - `crates/simthing-driver/src/runtime_tick_shell_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/runtime_tick_shell.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/runtime_tick_execution_shell_0_results.md` (new)
 
@@ -117,7 +117,7 @@ No economy execution, consumption, supply effects, combat, movement, route/pathf
 |----------|----------------|
 | `docs/tests/runtime_tick_execution_shell_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

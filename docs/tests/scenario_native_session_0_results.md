@@ -10,7 +10,7 @@
 | `docs/tests/scenario_native_session_0_results.md` | PROBATION | This report |
 | `docs/tests/scenario_saveload_ui_0_results.md` | PROBATION | UI behavior preserved; synthetic bridge note superseded here |
 | `docs/tests/scenario_saveload_io_0_results.md` | PROBATION | Backend IO unchanged |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -86,7 +86,7 @@ git diff --check
 - `crates/simthing-mapeditor/src/app/mod.rs` — status/profile from session helpers
 - `crates/simthing-mapeditor/src/app/ui.rs` — loaded vs generated right-panel reporting
 - `crates/simthing-mapeditor/src/app/scenario_io.rs` — source-preservation tests
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/scenario_native_session_0_results.md`
 

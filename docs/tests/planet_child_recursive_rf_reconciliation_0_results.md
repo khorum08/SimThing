@@ -102,7 +102,7 @@ Add reconciliation/projection report between legacy planet-child RF ladder and r
 - `crates/simthing-driver/src/recursive_rf_reconciliation_compile.rs`
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/recursive_rf_reconciliation.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/planet_child_recursive_rf_reconciliation_0_results.md`
 

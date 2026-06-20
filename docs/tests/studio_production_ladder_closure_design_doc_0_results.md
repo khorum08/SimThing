@@ -17,7 +17,7 @@ Correct Studio production ladder placement: install the authoritative Scenario R
 ## Target document corrected
 
 - `docs/design_0_0_8_3_studio_production.md` rewritten as the authoritative Studio production design track.
-- Legacy synthesis doc `docs/0.8.3 Simthing Studio Production.md` retains raw-URL alias role and cross-references the design doc for the closing ladder.
+- Legacy synthesis doc `docs/design_0_0_8_3_studio_production.md` retains raw-URL alias role and cross-references the design doc for the closing ladder.
 
 ## Ladder table installed
 
@@ -50,7 +50,7 @@ Correct Studio production ladder placement: install the authoritative Scenario R
 ## Files changed
 
 - `docs/design_0_0_8_3_studio_production.md` (authoritative ladder installed)
-- `docs/0.8.3 Simthing Studio Production.md` (cross-reference to design doc)
+- `docs/design_0_0_8_3_studio_production.md` (cross-reference to design doc)
 - `docs/tests/studio_production_ladder_closure_design_doc_0_results.md` (this report)
 - `docs/tests/current_evidence_index.md` (evidence row added)
 

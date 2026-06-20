@@ -10,7 +10,7 @@
 | `docs/tests/gpu_structural_upload_packet_0_results.md` | PROBATION | This report |
 | `docs/tests/studio_panel_gap_and_scenario_link_canon_0_results.md` | PROBATION | Link canonicalization prerequisite |
 | `docs/tests/scenario_native_session_0_results.md` | PROBATION | Session/projection baseline |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -79,7 +79,7 @@ git diff --check
 
 - `crates/simthing-mapeditor/src/scenario_projection.rs`
 - `crates/simthing-mapeditor/src/lib.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/gpu_structural_upload_packet_0_results.md`
 

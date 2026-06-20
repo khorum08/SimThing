@@ -156,7 +156,7 @@ Before opening or merging a PR, classify touched evidence:
 |------|------|
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
 | `docs/tests/<new_results>.md` | PROBATION or PARTIAL |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 | `scenarios/corpus/*.simthing-scenario.json` | durable corpus fixtures |
 | scratch logs/temp files | delete unless intentionally promoted |
 

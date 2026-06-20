@@ -10,7 +10,7 @@
 | `docs/tests/scenario_saveload_ui_0_results.md` | PROBATION | This report |
 | `docs/tests/scenario_saveload_io_0_results.md` | PROBATION | Backend IO unchanged |
 | `docs/tests/simthing_studio_config_0_results.md` | PROBATION | Config remains separate |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Scenario UI summary
 
@@ -105,7 +105,7 @@ git diff --check
 - `crates/simthing-mapeditor/src/app/mod.rs` — `StudioAppState` fields, `adopt_loaded_scenario_session`
 - `crates/simthing-mapeditor/src/app/ui.rs` — Scenario section + save/load wiring
 - `crates/simthing-mapeditor/src/scenario_io.rs` — compatibility-bridge comments
-- `docs/0.8.3 Simthing Studio Production.md` — SCENARIO-SAVELOAD-UI-0 section
+- `docs/design_0_0_8_3_studio_production.md` — SCENARIO-SAVELOAD-UI-0 section
 - `docs/tests/current_evidence_index.md` — PROBATION row
 - `docs/tests/scenario_saveload_ui_0_results.md` — this report
 

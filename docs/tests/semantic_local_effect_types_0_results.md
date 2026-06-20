@@ -18,7 +18,7 @@ Define runtime/proof-only typed semantic local effect outputs derived from local
 
 PASS — #805 (`LOCAL-EFFECT-APPLICATION-AUTHORITY-0`) post-merge metadata verified on current `master`:
 
-- No `TBD` placeholders in `docs/tests/local_effect_application_authority_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/0.8.3 Simthing Studio Production.md` for #805.
+- No `TBD` placeholders in `docs/tests/local_effect_application_authority_0_results.md`, `docs/tests/current_evidence_index.md`, or `docs/design_0_0_8_3_studio_production.md` for #805.
 - LOCAL-EFFECT-APPLICATION-AUTHORITY-0 section present in production doc with PR #805 and merge SHA.
 
 ## Doctrine preservation
@@ -87,7 +87,7 @@ No ScenarioSpec mutation, participant property mutation, savefile/persistent tim
 - `crates/simthing-driver/src/semantic_local_effects_compile.rs` (new)
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/semantic_local_effects.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/semantic_local_effect_types_0_results.md` (new)
 
@@ -97,7 +97,7 @@ No ScenarioSpec mutation, participant property mutation, savefile/persistent tim
 |----------|----------------|
 | `docs/tests/semantic_local_effect_types_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 
 ## Known gaps
 

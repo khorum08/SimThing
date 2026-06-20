@@ -66,7 +66,7 @@ This rung proves ScenarioSpec file I/O correctness for Studio import/export. It 
 - `crates/simthing-driver/src/scenario_canonical_io_compile.rs`
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/scenario_canonical_io.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/scenario_canonical_load_save_roundtrip_0_results.md`
 

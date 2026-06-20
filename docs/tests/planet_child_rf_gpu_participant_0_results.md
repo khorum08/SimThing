@@ -87,7 +87,7 @@ Connect admitted planet gridcells and planet non-grid children to existing owner
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/planet_child_rf_gpu_tick.rs` (new)
 - `scenarios/corpus/planet_child_rf_participants_admitted.simthing-scenario.json` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/planet_child_rf_gpu_participant_0_results.md`
 
@@ -97,7 +97,7 @@ Connect admitted planet gridcells and planet non-grid children to existing owner
 |----------|----------------|
 | `docs/tests/planet_child_rf_gpu_participant_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER update |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 | `scenarios/corpus/planet_child_rf_participants_admitted.simthing-scenario.json` | durable corpus fixture |
 
 ## Known gaps

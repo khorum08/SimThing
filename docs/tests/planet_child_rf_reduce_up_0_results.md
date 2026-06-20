@@ -94,7 +94,7 @@ Group admitted planet gridcell and non-grid child RF participants into scoped ow
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/planet_child_rf_reduce_up.rs` (new)
 - `scenarios/corpus/planet_child_rf_reduce_up_scoped.simthing-scenario.json` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/planet_child_rf_reduce_up_0_results.md`
 
@@ -104,7 +104,7 @@ Group admitted planet gridcell and non-grid child RF participants into scoped ow
 |----------|----------------|
 | `docs/tests/planet_child_rf_reduce_up_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER update |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 | `scenarios/corpus/planet_child_rf_reduce_up_scoped.simthing-scenario.json` | durable corpus fixture |
 
 ## Known gaps

@@ -13,7 +13,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Updated with convergence row |
 | `docs/tests/gpu_link_accumulator_smoke_0_results.md` | PROBATION | Preserved — baseline bit-exact smoke evidence |
 | `docs/tests/accumulator_driver_sim_convergence_0_results.md` | PARTIAL | Created (this file) |
-| `docs/0.8.3 Simthing Studio Production.md` | Living synthesis | Updated § ACCUMULATOR-DRIVER-SIM-CONVERGENCE-0 |
+| `docs/design_0_0_8_3_studio_production.md` | Living synthesis | Updated § ACCUMULATOR-DRIVER-SIM-CONVERGENCE-0 |
 
 No scratch logs, temp GPU dumps, or superseded reports deleted. Live ledger preserved.
 
@@ -172,7 +172,7 @@ If paging-file/linker limits occur: rerun serially with `CARGO_BUILD_JOBS=1` and
 - `crates/simthing-mapeditor/src/scenario_projection.rs`
 - `crates/simthing-mapeditor/tests/accumulator_convergence_guards.rs` (new)
 - `crates/simthing-driver/tests/accumulator_driver_sim_convergence_stub.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/accumulator_driver_sim_convergence_0_results.md` (new)
 

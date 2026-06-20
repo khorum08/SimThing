@@ -131,7 +131,7 @@ Terran Pirate / World-root fixtures load via `validate_legacy_world_root_compati
 | `scenarios/corpus/minimal_scenario_root.simthing-scenario.json` | Owner child |
 | `docs/tests/session_owner_entities_0_results.md` | This report |
 | `docs/tests/current_evidence_index.md` | New row |
-| `docs/0.8.3 Simthing Studio Production.md` | Authority + section |
+| `docs/design_0_0_8_3_studio_production.md` | Authority + section |
 
 ## Deleted/archived artifacts
 

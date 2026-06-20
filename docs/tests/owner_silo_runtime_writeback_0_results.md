@@ -93,7 +93,7 @@ Apply scoped planet child RF reduce-up bucket net surplus/deficit into runtime-r
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/owner_silo_runtime_writeback.rs` (new)
 - `crates/simthing-driver/tests/reduce_up_fixture.rs` (new)
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/owner_silo_runtime_writeback_0_results.md`
 
@@ -103,7 +103,7 @@ Apply scoped planet child RF reduce-up bucket net surplus/deficit into runtime-r
 |----------|----------------|
 | `docs/tests/owner_silo_runtime_writeback_0_results.md` | PROBATION |
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER update |
-| `docs/0.8.3 Simthing Studio Production.md` | living production synthesis |
+| `docs/design_0_0_8_3_studio_production.md` | living production synthesis |
 | `scenarios/corpus/planet_child_rf_reduce_up_scoped.simthing-scenario.json` | reused corpus fixture |
 
 ## Known gaps

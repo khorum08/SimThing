@@ -13,7 +13,7 @@
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added VERTICAL-TEST-SCENARIO-SEED-0 PROBATION row |
 | `docs/tests/vertical_test_scenario_seed_0_results.md` | PROBATION | This report |
 | `docs/tests/gpu_structural_validation_wgsl_0_results.md` | PROBATION | WGSL validation prerequisite |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 
 ## Why this is not hygiene
 
@@ -137,7 +137,7 @@ git diff --check
 - `crates/simthing-mapeditor/tests/fixtures/runtime_vertical_seed.simthing-scenario.json`
 - `crates/simthing-mapeditor/examples/write_vertical_seed_fixture.rs`
 - `crates/simthing-mapeditor/Cargo.toml`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/vertical_test_scenario_seed_0_results.md`
 

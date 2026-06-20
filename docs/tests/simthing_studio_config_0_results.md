@@ -8,7 +8,7 @@
 |---|---|---|
 | `docs/tests/current_evidence_index.md` | LIVE_LEDGER | Added SIMTHING-STUDIO-CONFIG-0 PROBATION row |
 | `docs/tests/simthing_studio_config_0_results.md` | PROBATION | This report |
-| `docs/0.8.3 Simthing Studio Production.md` | PROBATION | Standing Studio production synthesis updated |
+| `docs/design_0_0_8_3_studio_production.md` | PROBATION | Standing Studio production synthesis updated |
 | `docs/design_0_0_8_3_studio_production.md` | PROBATION | Space-free alias synced |
 
 ## Config schema
@@ -100,7 +100,7 @@ All in `crates/simthing-mapeditor/src/studio_config.rs`:
 - `crates/simthing-mapeditor/src/app/ui.rs`
 - `crates/simthing-mapeditor/src/app/window.rs`
 - `crates/simthing-mapeditor/src/app/camera.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/simthing_studio_config_0_results.md`

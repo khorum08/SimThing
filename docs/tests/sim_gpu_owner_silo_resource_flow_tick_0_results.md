@@ -129,7 +129,7 @@ GPU/CPU aggregate-slot outputs match participant sums on balanced flow corpus.
 - `crates/simthing-driver/src/lib.rs`
 - `crates/simthing-driver/tests/owner_silo_gpu_tick.rs` (new)
 - `crates/simthing-driver/tests/session_resource_flow_silos.rs`
-- `docs/0.8.3 Simthing Studio Production.md`
+- `docs/design_0_0_8_3_studio_production.md`
 - `docs/tests/current_evidence_index.md`
 - `docs/tests/sim_gpu_owner_silo_resource_flow_tick_0_results.md` (new)
 
