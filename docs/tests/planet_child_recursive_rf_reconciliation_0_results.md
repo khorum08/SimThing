@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `planet-child-recursive-rf-reconciliation-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #809
+- Merge SHA: `7ccd571f1dbab9f507037f55ad955420cddc1020`
 
 ## Mission
 
