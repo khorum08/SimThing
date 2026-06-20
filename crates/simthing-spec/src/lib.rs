@@ -603,6 +603,11 @@ pub use spec::scenario::{
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID,
     STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
 };
+pub use spec::scenario_canonical_io::{
+    load_scenario_spec_from_json_str, prove_scenario_canonical_load_save_roundtrip,
+    save_scenario_spec_to_canonical_json, ScenarioCanonicalLoadReport,
+    ScenarioCanonicalRoundtripReport, ScenarioCanonicalSaveReport,
+};
 pub use spec::scenario_ingestion::{
     ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,
     ingestion_error_from_serde, scenario_deferral_kind_label,

@@ -30,6 +30,7 @@ pub mod runtime_rf_tick_source;
 pub mod runtime_tick_history;
 pub mod runtime_tick_shell;
 pub mod scenario;
+pub mod scenario_canonical_io;
 pub mod scenario_ingestion;
 pub mod scenario_property_mutation_authority_boundary;
 pub mod script;
@@ -215,6 +216,11 @@ pub use scenario::{
     SCENARIO_SOURCE_LABEL_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
     SCENARIO_STRUCTURAL_INTEGER_MAX, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
     SIMTHING_SCENARIO_AUTHORITY_LABEL,
+};
+pub use scenario_canonical_io::{
+    load_scenario_spec_from_json_str, prove_scenario_canonical_load_save_roundtrip,
+    save_scenario_spec_to_canonical_json, ScenarioCanonicalLoadReport,
+    ScenarioCanonicalRoundtripReport, ScenarioCanonicalSaveReport,
 };
 pub use scenario_ingestion::{
     ingest_scenario, ingest_scenario_from_str, ingestion_error_from_root,

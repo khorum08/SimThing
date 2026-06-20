@@ -91,6 +91,7 @@ pub mod runtime_rf_tick_source_select_compile;
 pub mod runtime_tick_history_compile;
 pub mod runtime_tick_shell_compile;
 pub mod scenario;
+pub mod scenario_canonical_io_compile;
 pub mod scenario_ingestion_compile;
 pub mod scenario_property_mutation_authority_boundary_compile;
 pub mod semantic_effect_execution_boundary_compile;
@@ -723,6 +724,9 @@ pub use runtime_tick_shell_compile::{
     compile_runtime_tick_shell_plan, RuntimeTickShellGpuProofSummary, RuntimeTickShellPlan,
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
+pub use scenario_canonical_io_compile::{
+    compile_scenario_canonical_io_plan_from_json_str, ScenarioCanonicalIoPlan,
+};
 pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
 pub use scenario_property_mutation_authority_boundary_compile::{
     compile_scenario_property_mutation_authority_boundary_plan,
