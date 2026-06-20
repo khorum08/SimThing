@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `semantic-participant-delta-preview-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #820
+- Merge SHA: `d55775e19bec5a9b783b3469b39d36708098ae77`
 
 ## Mission
 
