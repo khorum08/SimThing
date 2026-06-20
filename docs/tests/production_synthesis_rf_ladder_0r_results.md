@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `production-synthesis-rf-ladder-0r`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #801
+- Merge SHA: `9a070aa6`
 
 ## Mission
 
