@@ -58,7 +58,7 @@ pub fn compile_owner_silo_gpu_tick_plan(
     })
 }
 
-fn compile_participant_channel_sum_plan(
+pub(crate) fn compile_participant_channel_sum_plan(
     participant_count: u32,
     input_channel: StructuralScalarChannel,
     output_channel: StructuralScalarChannel,

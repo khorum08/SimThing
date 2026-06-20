@@ -8,6 +8,7 @@ pub mod game_mode;
 pub mod install_target;
 pub mod overlay;
 pub mod planet_child_location;
+pub mod planet_child_rf;
 pub mod property;
 pub mod region_field;
 pub mod resource_economy;
@@ -44,6 +45,12 @@ pub use planet_child_location::{
     PlanetChildLocationAdmissionErrorKind, PlanetChildLocationAdmissionReport,
     PlanetChildLocationCommand, PlanetChildLocationDeferral, PlanetChildLocationEditError,
     PlanetChildLocationEditErrorKind, PlanetChildLocationEditReport,
+};
+pub use planet_child_rf::{
+    evaluate_planet_child_rf_admission, planet_child_rf_admission_classification_label,
+    planet_child_rf_participant_inputs, PlanetChildRfAdmissionClassification,
+    PlanetChildRfAdmissionError, PlanetChildRfAdmissionErrorKind, PlanetChildRfAdmissionReport,
+    PlanetChildRfDeferral, PlanetChildRfDeferralKind, PlanetChildRfParticipantInput,
 };
 pub use property::PropertySpec;
 pub use region_field::{
