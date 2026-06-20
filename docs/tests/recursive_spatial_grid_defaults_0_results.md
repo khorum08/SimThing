@@ -3,7 +3,8 @@
 > **Lifecycle: PROBATION** — recursive spatial doctrine finalized. Pending owner DA approval.
 
 **Date:** 2026-06-19
-**PR:** RECURSIVE-SPATIAL-GRID-DEFAULTS-0
+**PR:** #791 — RECURSIVE-SPATIAL-GRID-DEFAULTS-0
+**Merge:** `1807faa9`
 **Base:** `master` after PR #790 / PLANET-LOCAL-GRID-REMEDIATION-0 (`18123e55`)
 
 ## Defects remediated
