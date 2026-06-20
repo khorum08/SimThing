@@ -378,6 +378,14 @@ pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
+pub use spec::local_effect_application::{
+    apply_runtime_local_effect_records, evaluate_runtime_local_effect_application,
+    local_effect_application_aggregate_totals, prove_local_effect_application_preserves_authority,
+    LocalEffectApplicationAuthorityProof, LocalEffectApplicationDeferral,
+    LocalEffectApplicationDeferralKind, LocalEffectApplicationError,
+    LocalEffectApplicationErrorKind, RuntimeLocalEffectApplicationRecord,
+    RuntimeLocalEffectApplicationReport,
+};
 pub use spec::local_participant_effects::{
     evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
     local_participant_effects_from_allocations, LocalParticipantEffectsDeferral,
