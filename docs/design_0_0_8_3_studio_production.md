@@ -93,6 +93,11 @@ ScenarioSpec
 | **LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0** | **Landed / PROBATION** | Loaded ScenarioSpec authority envelope for Studio; composes #828 + #834 readiness |
 | **LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0** | **Landed / PROBATION** | Recursive Accumulator RF runtime surface for loaded ScenarioSpec spatial trees |
 | **LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0** | **Landed / PROBATION** | Full recursive runtime report chain for loaded ScenarioSpec sessions |
+| **SCENARIO-CANDIDATE-FROM-RUNTIME-0** | **Landed / PROBATION** | Candidate ScenarioSpec from loaded runtime property-view rows |
+
+## SCENARIO-CANDIDATE-FROM-RUNTIME-0 — candidate ScenarioSpec from loaded runtime property-view rows
+
+This rung generates a cloned candidate ScenarioSpec from loaded-scenario runtime property-view rows. The loaded original ScenarioSpec remains unchanged and its authority digest is preserved. Runtime property-view rows provide GPU-compatible source data; candidate materialization is an authority-boundary serialization step, not a CPU production simulation engine. Candidate save, savefile persistence, persistent history, Studio UI wiring, and GPU dispatch remain deferred.
 
 ## LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0 — full recursive runtime report chain for loaded ScenarioSpec sessions
 
@@ -121,8 +126,8 @@ This closing track completes Studio Scenario import/load/save/runtime closure. I
 | 2 | LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0 | Define loaded ScenarioSpec authority envelope for Studio: digest, validation, projection readiness, RF readiness, save/export eligibility. | DONE | Composes #828 canonical IO + #834 STEAD roundtrip; authority/runtime sidecar envelopes; non-authority surfaces explicit. | Recursive RF runtime |
 | 3 | LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0 | Attach recursive Accumulator RF runtime to loaded ScenarioSpec spatial trees. | DONE | Composes #836 session envelope; parent-arena/participant/channel GPU-compatible rows; local settlement before upward bubbling. | Runtime report chain |
 | 4 | LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0 | Attach recursive RF → owner-silo → allocation → effects → semantic → execution → delta → runtime state → property view chain to loaded scenarios. | DONE | Composes #838 recursive RF runtime + prior landed runtime ladder into loaded-scenario chain report. | Candidate ScenarioSpec |
-| 5 | SCENARIO-CANDIDATE-FROM-RUNTIME-0 | Generate mutated candidate ScenarioSpec from runtime property-view rows while original loaded ScenarioSpec remains unchanged. | NEXT | Candidate digest changes; original digest stable. No save write yet. | Candidate save/reopen |
-| 6 | SCENARIO-CANDIDATE-SAVE-REOPEN-0 | Save candidate ScenarioSpec, reopen it, validate STEAD/tree/projection, and prove digest stability. | PENDING | Atomic write path. Runtime reports rebuild from reopened ScenarioSpec, not persisted as authority. | Studio UI |
+| 5 | SCENARIO-CANDIDATE-FROM-RUNTIME-0 | Generate mutated candidate ScenarioSpec from runtime property-view rows while original loaded ScenarioSpec remains unchanged. | DONE | Composes #840 report chain + landed property-mutation boundary; clone applies preview rows to candidate only. | Candidate save/reopen |
+| 6 | SCENARIO-CANDIDATE-SAVE-REOPEN-0 | Save candidate ScenarioSpec, reopen it, validate STEAD/tree/projection, and prove digest stability. | NEXT | Atomic write path. Runtime reports rebuild from reopened ScenarioSpec, not persisted as authority. | Studio UI |
 | 7 | STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | Expose load, validation, recursive runtime readiness, candidate mutation, save candidate, and reopen candidate in Studio UI. | PENDING | UI state is not authority. Failed load/save preserves current session. | DA precheck |
 | 8 | SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | Consolidate evidence for DA review of the full Scenario Runtime + Save/Load feature. | DEFERRED | Review-only consolidation after rungs 1–7. Not another implementation rung. | Human DA decision |
 
