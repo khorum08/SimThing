@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `scenario-candidate-from-runtime-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #842
+- Merge SHA: `d66fbd856c32cfc88a85953e10455e20824d74b2`
 
 ## Mission
 
