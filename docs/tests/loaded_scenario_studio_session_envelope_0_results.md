@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `loaded-scenario-studio-session-envelope-0`
-- PR: TBD
-- Merge SHA: TBD
+- PR: #836
+- Merge SHA: `52ded5b5f02bcb3489a7904e1b7ee315a608213c`
 
 ## Mission
 
