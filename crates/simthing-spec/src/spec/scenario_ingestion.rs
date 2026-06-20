@@ -215,6 +215,10 @@ pub struct ScenarioCompileReadinessReport {
     pub semantic_local_effects_recursive_source_ready: bool,
     /// Semantic execution, participant property mutation, and savefile mutation remain deferred.
     pub semantic_local_effects_recursive_source_deferred: bool,
+    /// Runtime semantic execution boundary records can be evaluated.
+    pub semantic_effect_execution_boundary_ready: bool,
+    /// Participant property mutation, Scenario authority mutation, savefile, and history remain deferred.
+    pub semantic_effect_execution_boundary_deferred: bool,
     pub note: Option<String>,
 }
 
@@ -527,6 +531,7 @@ fn populate_canonical_reports(spec: &SimThingScenarioSpec, result: &mut Scenario
     integrate_local_allocation_recursive_source(spec, result);
     integrate_local_effect_recursive_source(spec, result);
     integrate_semantic_local_effects_recursive_source(spec, result);
+    integrate_semantic_effect_execution_boundary(spec, result);
 
     result.structural_admission.placement_count = spec.structural_grid.placements.len() as u32;
     result.structural_admission.map_container_resolved = resolve_map_container(spec).is_ok();
@@ -1087,6 +1092,43 @@ fn integrate_semantic_local_effects_recursive_source(
     result
         .compile_readiness
         .semantic_local_effects_recursive_source_deferred = true;
+}
+
+fn integrate_semantic_effect_execution_boundary(
+    spec: &SimThingScenarioSpec,
+    result: &mut ScenarioIngestionResult,
+) {
+    result
+        .compile_readiness
+        .semantic_effect_execution_boundary_deferred = true;
+
+    if !result
+        .compile_readiness
+        .semantic_local_effects_recursive_source_ready
+    {
+        return;
+    }
+    use super::runtime_tick_shell::RuntimeTickId;
+    use super::semantic_effect_execution_boundary::{
+        evaluate_semantic_effect_execution_boundary, SemanticEffectExecutionSourceMode,
+    };
+    if evaluate_semantic_effect_execution_boundary(
+        spec,
+        RuntimeTickId(1),
+        SemanticEffectExecutionSourceMode::LegacyPlanetChildOwnerSilo,
+        1,
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    result
+        .compile_readiness
+        .semantic_effect_execution_boundary_ready = true;
+    result
+        .compile_readiness
+        .semantic_effect_execution_boundary_deferred = true;
 }
 
 fn integrate_owner_silo_recursive_source(

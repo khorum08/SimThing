@@ -90,6 +90,7 @@ pub mod runtime_tick_history_compile;
 pub mod runtime_tick_shell_compile;
 pub mod scenario;
 pub mod scenario_ingestion_compile;
+pub mod semantic_effect_execution_boundary_compile;
 pub mod semantic_local_effects_compile;
 pub mod semantic_local_effects_recursive_source_compile;
 pub mod session;
@@ -712,6 +713,9 @@ pub use runtime_tick_shell_compile::{
 };
 pub use scenario::{Scenario, ScenarioError, ShadowSeed};
 pub use scenario_ingestion_compile::evaluate_scenario_compile_readiness;
+pub use semantic_effect_execution_boundary_compile::{
+    compile_semantic_effect_execution_boundary_plan, SemanticEffectExecutionBoundaryPlan,
+};
 pub use semantic_local_effects_compile::{
     compile_semantic_local_effects_plan, semantic_local_effects_applied_output_indices,
     semantic_local_effects_cpu_runtime_applied_total, semantic_local_effects_cpu_shortfall_total,
