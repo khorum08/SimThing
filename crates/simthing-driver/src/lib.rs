@@ -33,6 +33,7 @@ pub mod gated_rates;
 pub mod gpu_measure_0080_0;
 pub mod gradient_follow_0080_2;
 pub mod install;
+pub mod loaded_scenario_recursive_rf_runtime_compile;
 pub mod loaded_scenario_studio_session_envelope_compile;
 pub mod local_allocation_recursive_source_compile;
 pub mod local_effect_application_compile;
@@ -372,6 +373,10 @@ pub use gradient_follow_0080_2::{
 };
 pub use install::{
     compile_and_install, install_atomic, preview_install, InstallError, InstallPreview,
+};
+pub use loaded_scenario_recursive_rf_runtime_compile::{
+    compile_loaded_scenario_recursive_rf_runtime_plan_from_json_str,
+    LoadedScenarioRecursiveRfRuntimePlan,
 };
 pub use loaded_scenario_studio_session_envelope_compile::{
     compile_loaded_scenario_studio_session_envelope_plan_from_json_str,

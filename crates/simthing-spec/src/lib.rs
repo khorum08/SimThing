@@ -378,6 +378,12 @@ pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;
 pub use spec::install_target::InstallTargetSpec;
+pub use spec::loaded_scenario_recursive_rf_runtime::{
+    evaluate_loaded_scenario_recursive_rf_runtime_from_json_str,
+    prove_loaded_scenario_recursive_rf_runtime_preserves_authority,
+    LoadedScenarioRecursiveRfRuntimeReport, LoadedScenarioRecursiveRfRuntimeSource,
+    LoadedScenarioRfChannelRow, LoadedScenarioRfParentArenaRow, LoadedScenarioRfParticipantRow,
+};
 pub use spec::loaded_scenario_studio_session_envelope::{
     evaluate_loaded_scenario_studio_session_envelope_from_json_str,
     prove_loaded_scenario_session_envelope_preserves_authority_boundaries,
