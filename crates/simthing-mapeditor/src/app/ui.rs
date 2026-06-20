@@ -32,6 +32,10 @@ use super::scenario_io::{
 };
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
+use crate::scenario_runtime_saveload_ui::{
+    refresh_runtime_saveload_status_from_session, reopen_candidate_scenario_for_studio,
+    save_candidate_scenario_for_studio_create_new,
+};
 use crate::session::StudioSession;
 
 const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 560.0);
@@ -153,6 +157,22 @@ pub fn studio_ui_system(
     {
         ctx.data_mut(|d| d.remove::<std::path::PathBuf>(egui::Id::new("do_save_scenario")));
         save_scenario_action(&mut state, &path);
+    }
+
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_save_candidate"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_save_candidate")));
+        execute_save_candidate_action(&mut state);
+    }
+
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_reopen_candidate"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_reopen_candidate")));
+        execute_reopen_candidate_action(&mut state);
     }
 
     if ctx.data(|d| {
@@ -775,6 +795,167 @@ fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_manual"), true));
         }
     });
+    ui.separator();
+    draw_runtime_candidate_saveload_controls(ctx, ui, state);
+}
+
+fn execute_save_candidate_action(state: &mut StudioAppState) {
+    let session_before = state.session.clone();
+    let status_before = state.runtime_saveload_status.clone();
+    let path = match super::scenario_io::validate_scenario_path_text(&state.candidate_path_text) {
+        Ok(path) => path,
+        Err(reason) => {
+            state.last_runtime_saveload_status =
+                format!("Save Candidate failed: invalid candidate path ({reason})");
+            return;
+        }
+    };
+    let Some(session) = session_before.as_ref() else {
+        state.last_runtime_saveload_status =
+            "Save Candidate failed: no active loaded session".into();
+        return;
+    };
+    let json =
+        match crate::canonical_json_from_loaded_scenario_authority(&session.scenario_authority) {
+            Ok(json) => json,
+            Err(_) => {
+                state.last_runtime_saveload_status =
+                    "Save Candidate failed: could not serialize loaded scenario authority".into();
+                state.session = session_before;
+                state.runtime_saveload_status = status_before;
+                return;
+            }
+        };
+    match save_candidate_scenario_for_studio_create_new("studio_save_candidate", &json, &path) {
+        Ok(result) => {
+            state.last_runtime_saveload_status = result.message.clone();
+        }
+        Err(_) => {
+            state.last_runtime_saveload_status =
+                "Save Candidate failed: candidate save/reopen plan unavailable".into();
+        }
+    }
+    state.session = session_before;
+    state.runtime_saveload_status = status_before;
+}
+
+fn execute_reopen_candidate_action(state: &mut StudioAppState) {
+    let session_before = state.session.clone();
+    let status_before = state.runtime_saveload_status.clone();
+    let path = match super::scenario_io::validate_scenario_path_text(&state.candidate_path_text) {
+        Ok(path) => path,
+        Err(reason) => {
+            state.last_runtime_saveload_status =
+                format!("Reopen Candidate failed: invalid candidate path ({reason})");
+            return;
+        }
+    };
+    match reopen_candidate_scenario_for_studio(&path) {
+        Ok(result) => {
+            state.last_runtime_saveload_status = result.message.clone();
+        }
+        Err(_) => {
+            state.last_runtime_saveload_status =
+                "Reopen Candidate failed: could not load canonical candidate JSON".into();
+        }
+    }
+    state.session = session_before;
+    state.runtime_saveload_status = status_before;
+}
+
+fn draw_runtime_candidate_saveload_controls(
+    ctx: &egui::Context,
+    ui: &mut egui::Ui,
+    state: &mut StudioAppState,
+) {
+    ui.label(egui::RichText::new("Runtime / Candidate Save-Reopen (presentation only)").strong());
+    ui.label(
+        egui::RichText::new(
+            "UI state, Bevy ECS, runtime reports, and GPU buffers are not authority",
+        )
+        .small()
+        .weak(),
+    );
+
+    if let Some(session) = state.session.as_ref() {
+        if let Ok(status) = refresh_runtime_saveload_status_from_session(
+            "studio_loaded_session",
+            &session.scenario_authority,
+        ) {
+            state.runtime_saveload_status = Some(status);
+        }
+    } else {
+        state.runtime_saveload_status = None;
+    }
+
+    if let Some(status) = &state.runtime_saveload_status {
+        ui.label(format!(
+            "Loaded digest: {}",
+            status
+                .loaded_scenario_digest
+                .map(|digest| digest.to_string())
+                .unwrap_or_else(|| "n/a".into())
+        ));
+        ui.label(format!(
+            "STEAD/link/tree validation: {}",
+            if status.stead_validation_ready {
+                "ready"
+            } else {
+                "not ready"
+            }
+        ));
+        ui.label(format!(
+            "Recursive RF runtime: {}",
+            if status.recursive_rf_runtime_ready {
+                "ready"
+            } else {
+                "not ready"
+            }
+        ));
+        ui.label(format!(
+            "Runtime report chain: {}",
+            if status.runtime_report_chain_ready {
+                "ready"
+            } else {
+                "not ready"
+            }
+        ));
+        ui.label(format!(
+            "Candidate ready: {} (digest: {})",
+            if status.candidate_ready { "yes" } else { "no" },
+            status
+                .candidate_digest
+                .map(|digest| digest.to_string())
+                .unwrap_or_else(|| "n/a".into())
+        ));
+    } else {
+        ui.label("Load a scenario to evaluate runtime/candidate readiness.");
+    }
+
+    ui.horizontal(|ui| {
+        ui.label("Candidate path:");
+        ui.text_edit_singleline(&mut state.candidate_path_text);
+    });
+    ui.horizontal(|ui| {
+        let save_enabled = state
+            .runtime_saveload_status
+            .as_ref()
+            .is_some_and(|status| status.candidate_save_ready);
+        if save_enabled {
+            if ui.button("Save Candidate").clicked() {
+                ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_save_candidate"), true));
+            }
+        } else if inactive_button(ui, "Save Candidate").clicked() {
+            state.last_runtime_saveload_status =
+                "Save Candidate unavailable: load scenario and wait for candidate readiness".into();
+        }
+        if ui.button("Reopen Candidate").clicked() {
+            ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_reopen_candidate"), true));
+        }
+    });
+    if !state.last_runtime_saveload_status.is_empty() {
+        ui.label(&state.last_runtime_saveload_status);
+    }
 }
 
 fn render_debug_controls(ui: &mut egui::Ui, state: &mut StudioAppState) {

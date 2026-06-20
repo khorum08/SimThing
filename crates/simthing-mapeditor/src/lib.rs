@@ -12,6 +12,7 @@ pub mod panel_layout;
 pub mod runtime_vertical_seed;
 pub mod scenario_io;
 pub mod scenario_projection;
+pub mod scenario_runtime_saveload_ui;
 pub mod selection;
 pub mod session;
 pub mod settings;
@@ -73,6 +74,14 @@ pub use scenario_projection::{
     StudioGpuResidencyReadiness, StudioGpuStructuralFrameRow, StudioGpuStructuralUploadError,
     StudioGpuStructuralUploadPacket, StudioGpuStructuralValidationProof, StudioLinkIndexRow,
     StudioLocationIndexRow, StudioStructuralProjection,
+};
+pub use scenario_runtime_saveload_ui::{
+    build_studio_scenario_runtime_saveload_status_from_json_str,
+    canonical_json_from_loaded_scenario_authority, refresh_runtime_saveload_status_from_session,
+    reopen_candidate_scenario_for_studio, save_candidate_scenario_for_studio_create_new,
+    studio_scenario_runtime_saveload_non_authority_boundary, StudioReopenCandidateResult,
+    StudioSaveCandidateResult, StudioScenarioRuntimeSaveLoadNonAuthorityBoundary,
+    StudioScenarioRuntimeSaveLoadStatus,
 };
 pub use selection::{SelectedSystemDetails, StudioSelectionState};
 pub use session::{StudioScenarioSummary, StudioSession, StudioSessionSource};
