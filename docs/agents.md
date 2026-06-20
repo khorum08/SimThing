@@ -111,6 +111,20 @@ Named guard tests you must never weaken:
   the CPU `Evaluator` across all `TransformOp` variants. New transform variant ⇒ extend it
   with a parity assertion.
 
+## Agent completion discipline (mandatory for implementation rungs)
+
+Before any SimThing **implementation or remediation** handoff, read and follow
+[`tests/agent_completion_discipline_0.md`](tests/agent_completion_discipline_0.md).
+
+Operational requirements:
+
+- Create the `docs/tests/<rung>_results.md` skeleton **before** long validation.
+- Draft the PR summary with boundary commitments and `PENDING` validation rows **before** merge.
+- Run **focused** validation first; do not end the turn in raw cargo output.
+- If cargo hangs or times out, terminate honestly and record PARTIAL/FAIL — never treat timeout as PASS.
+- Update PR body, evidence index, and production synthesis before merge when doctrine/status changes.
+- End every turn with the structured final summary (`Status`, `PR`, `Merge`, `Implemented`, `Validation`, `Evidence/docs`, `Known gaps`, `Next recommended action`).
+
 ## Working rules (the short version — binding text is in the read order above)
 
 - Classify your change first: Tier-1 fast lane ships as one PR + one test report + one
