@@ -45,6 +45,7 @@ pub mod planet_child_rf_reduce_up_compile;
 pub mod production_path_0080_0;
 pub mod production_path_0080_1;
 pub mod recursive_local_rf_compile;
+pub mod recursive_rf_reconciliation_compile;
 pub mod resource_economy_boundary_schedule;
 pub mod resource_economy_burn_in;
 pub mod resource_economy_compile;
@@ -435,6 +436,9 @@ pub use recursive_local_rf_compile::{
     recursive_local_rf_demand_tick_inputs, recursive_local_rf_surplus_aggregate_slot,
     recursive_local_rf_surplus_tick_inputs, RecursiveLocalRfAggregateProofPlan,
     RecursiveLocalRfPlan,
+};
+pub use recursive_rf_reconciliation_compile::{
+    compile_recursive_rf_reconciliation_plan, RecursiveRfReconciliationPlan,
 };
 pub use resource_economy_boundary_schedule::{
     BoundaryScheduleEntry, BoundaryScheduleKey, ResourceEconomyBoundaryScheduleReport,

@@ -446,6 +446,15 @@ pub use spec::recursive_local_rf::{
     RecursiveLocalRfDeferralKind, RecursiveLocalRfError, RecursiveLocalRfErrorKind,
     RecursiveLocalRfEvaluationReport,
 };
+pub use spec::recursive_rf_reconciliation::{
+    project_planet_child_rf_ladder_rows, project_recursive_local_rf_rows,
+    prove_recursive_rf_reconciliation_preserves_authority,
+    reconcile_planet_child_rf_with_recursive_local_rf, PlanetChildRfProjectionRow,
+    RecursiveRfProjectionRow, RecursiveRfReconciliationBucket, RecursiveRfReconciliationDeferral,
+    RecursiveRfReconciliationDeferralKind, RecursiveRfReconciliationError,
+    RecursiveRfReconciliationErrorKind, RecursiveRfReconciliationMismatch,
+    RecursiveRfReconciliationMismatchKind, RecursiveRfReconciliationReport,
+};
 pub use spec::region_field::{
     ArenaPressureBindingSpec, CommitmentEffectLifecycleSpec, CommitmentEffectSpec,
     CompiledRegionFieldSummaryPolicy, FirstSliceCommitmentDirectionSpec, FirstSliceCommitmentSpec,

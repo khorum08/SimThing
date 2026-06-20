@@ -15,6 +15,7 @@ pub mod planet_child_location;
 pub mod planet_child_rf;
 pub mod property;
 pub mod recursive_local_rf;
+pub mod recursive_rf_reconciliation;
 pub mod region_field;
 pub mod resource_economy;
 pub mod resource_flow;
