@@ -246,4 +246,28 @@ promotion.
 
 **Remedial track landed:** `SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0` restores the surface gridcell tier in
 code, tests, fixture, and this doc. **HOLD remains** until `SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0` is
-re-run and evaluates the remediated hierarchy.
+re-run and evaluates the remediated hierarchy. *(Superseded — see the rerun below; HOLD is now lifted.)*
+
+## SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-RERUN-0 — final DA review rerun after surface gridcell remediation
+
+**Decision: DA-APPROVED.** This final rerun reviewed the Scenario Runtime + Save/Load Closing Track after
+SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0 (PR #851) restored the required planet 1×1 surface gridcell tier.
+Code, tests, fixtures, evidence, Studio workflow, STEAD preservation, the corrected spatial gridcell
+hierarchy, Accumulator Flow / GPU-residency doctrine, and authority boundaries were reviewed. The track is
+DA-approved. ScenarioSpec remains authority; Studio UI, Bevy state, runtime reports, property-view rows, and
+GPU buffers remain non-authoritative. Candidate save/reopen uses canonical ScenarioSpec JSON only.
+Replace-existing candidate save, persistent history, GPU dispatch, pathfinding, combat, economy execution, and
+fleet movement remain deferred.
+
+**Blocker resolution:** the planet 1×1 surface gridcell tier is restored and **required** — planets admit
+exactly one surface gridcell at (0,0); gameplay SimThings are children of the surface gridcell; direct
+gameplay under a planet is rejected (`PlanetDirectGameplayChildRequiresSurfaceGridcell`); missing/duplicate/
+off-(0,0) surface is rejected; Accumulator Flow settles at the surface arena and bubbles surface→planet→star→
+galaxy (proven non-vacuously); STEAD roundtrip, candidate-from-runtime, candidate-save-reopen, Studio UI
+status, and reopen-adopt each preserve the surface tier under test. No silent tier collapse remains.
+
+**Ladder:** Rungs 0–8 remain DONE. SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0 remains DONE.
+SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-RERUN-0 is DONE after merge. **The Scenario Runtime + Save/Load
+Closing Track lifecycle is DA-APPROVED (closed).** Next track is selected by the project owner.
+
+Full review: `docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_results.md`.
