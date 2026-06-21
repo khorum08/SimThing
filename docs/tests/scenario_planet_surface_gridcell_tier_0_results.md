@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `scenario-planet-surface-gridcell-tier-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #851
+- Merge SHA: `8c651e0eb5e082f5bc743590247219fee491978d`
 
 ## Mission
 
