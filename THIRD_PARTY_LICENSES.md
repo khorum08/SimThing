@@ -15,3 +15,14 @@ This file records vendored third-party code included in the SimThing workspace.
 | **Vendored path** | `crates/simthing-clausething/src/jomini/` |
 | **License file** | `crates/simthing-clausething/src/jomini/LICENSE` |
 | **Scope note (CT-0a)** | Only the Clausewitz/ClauseScript **text parsing path** is vendored and used: `TextTape` lexer/parser, DOM readers, scalar/encoding helpers, and text writer. Binary save format, envelope handling, melting, serde derive integration, and incremental `TokenReader` are **excluded**.
+
+## Noto Sans Regular (TYPEFACE-LR0 test fixture only)
+
+| Field | Value |
+|---|---|
+| **Font** | Noto Sans Regular |
+| **Upstream origin** | https://github.com/googlefonts/noto-fonts |
+| **Fixture path** | `crates/simthing-workshop/assets/typeface/test_font.ttf` |
+| **License** | SIL Open Font License 1.1 (OFL) |
+| **Copyright holder** | Google LLC and contributors (see upstream OFL header) |
+| **Scope note (TYPEFACE-LR0)** | Hermetic workshop test fixture for font load + glyph metrics only. **Not** the bundled default game font decision. Full upstream file committed for deterministic cmap/metrics tests.

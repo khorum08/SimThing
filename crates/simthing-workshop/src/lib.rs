@@ -8,6 +8,7 @@ mod persistent_bench_report;
 mod report;
 pub mod transfer_contention;
 mod transfer_contention_report;
+pub mod typeface;
 pub mod weighted_mean;
 pub mod weighted_mean_perf;
 mod weighted_mean_perf_report;

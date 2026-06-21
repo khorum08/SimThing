@@ -7,9 +7,12 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 bytemuck = { workspace = true }
+fontdb = "0.16.2"
 pollster = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+skrifa = "0.42.1"
+thiserror = { workspace = true }
 wgpu = { workspace = true }
 
 [dev-dependencies]

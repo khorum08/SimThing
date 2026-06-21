@@ -5298,9 +5298,12 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytemuck",
+ "fontdb",
  "pollster 0.3.0",
  "serde",
  "serde_json",
+ "skrifa",
+ "thiserror 2.0.18",
  "wgpu 22.1.0",
 ]
 
