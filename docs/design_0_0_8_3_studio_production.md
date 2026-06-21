@@ -130,6 +130,10 @@ Runtime/candidate save-load status is a cached presentation surface. The DA-appr
 
 The Settings window now includes a Performance section with live FPS and an allocated VRAM estimate in MB. The VRAM value is an in-app estimate of Studio-created GPU allocations rather than a driver-wide total unless otherwise stated. The telemetry is a presentation diagnostic surface only and does not affect ScenarioSpec authority, runtime RF semantics, save/load behavior, GPU dispatch, or DA-approved evidence lifecycle.
 
+### STUDIO-RENDER-LOOP-DIRTY-GATE-0 — render-loop performance telemetry and dirty gating
+
+The Studio render loop no longer rebuilds hyperlane meshes every frame when the camera/view/settings/session key is unchanged. Star visual material/depth updates are dirty-gated where safe. The Settings Performance section now exposes render-loop diagnostics for hyperlane rebuilds, star visual sync, billboard sync, picking projection, and VRAM scan timing. These are presentation diagnostics and render-cache behavior only; ScenarioSpec authority, save/load behavior, RF/Accumulator semantics, DA-approved evidence lifecycle, and GPU dispatch boundaries are unchanged.
+
 ## SCENARIO-CANDIDATE-SAVE-REOPEN-0 — save and reopen candidate ScenarioSpec
 
 This rung saves the cloned candidate ScenarioSpec as canonical ScenarioSpec JSON, reopens it, validates STEAD IDs, links, RF metadata, and spatial tree shape, rebuilds projection readiness, and proves the candidate authority digest is stable after reopen. It does not introduce a distinct savefile format or persistent history. Studio UI wiring and GPU dispatch remain deferred.

@@ -30,7 +30,7 @@ pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
     "star distance attenuation, core/aura scale, alpha, and bloom are editor render metadata only";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum StarRenderMode {
     BloomStarburst,
     CrispCircle,

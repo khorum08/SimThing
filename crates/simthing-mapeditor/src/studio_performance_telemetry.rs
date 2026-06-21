@@ -1,4 +1,5 @@
 //! STUDIO-SETTINGS-PERFORMANCE-TELEMETRY-0 — live FPS and allocated VRAM estimate helpers.
+//! STUDIO-RENDER-LOOP-DIRTY-GATE-0 — render-loop per-system counters and timings.
 
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::{Assets, Image, Mesh};
@@ -16,6 +17,33 @@ pub struct StudioPerformanceTelemetry {
     pub last_update_frame: u64,
     pub gpu_name: Option<String>,
     pub gpu_backend: Option<String>,
+
+    pub render_frame_index: u64,
+
+    pub hyperlane_sync_calls: u64,
+    pub hyperlane_mesh_rebuilds: u64,
+    pub hyperlane_mesh_rebuild_last_ms: Option<f64>,
+    pub hyperlane_mesh_rebuild_avg_ms: Option<f64>,
+    pub hyperlane_segments_last_count: usize,
+    pub hyperlane_vertices_last_count: usize,
+    pub hyperlane_indices_last_count: usize,
+
+    pub star_visual_sync_calls: u64,
+    pub star_visual_entities_last_count: usize,
+    pub star_visual_sync_last_ms: Option<f64>,
+    pub star_visual_sync_avg_ms: Option<f64>,
+
+    pub billboard_sync_calls: u64,
+    pub billboard_entities_last_count: usize,
+    pub billboard_sync_last_ms: Option<f64>,
+    pub billboard_sync_avg_ms: Option<f64>,
+
+    pub picking_projection_calls: u64,
+    pub picking_projected_anchor_count: usize,
+    pub picking_projection_last_ms: Option<f64>,
+    pub picking_projection_avg_ms: Option<f64>,
+
+    pub vram_scan_last_ms: Option<f64>,
 }
 
 impl Default for StudioPerformanceTelemetry {
@@ -30,6 +58,27 @@ impl Default for StudioPerformanceTelemetry {
             last_update_frame: 0,
             gpu_name: None,
             gpu_backend: None,
+            render_frame_index: 0,
+            hyperlane_sync_calls: 0,
+            hyperlane_mesh_rebuilds: 0,
+            hyperlane_mesh_rebuild_last_ms: None,
+            hyperlane_mesh_rebuild_avg_ms: None,
+            hyperlane_segments_last_count: 0,
+            hyperlane_vertices_last_count: 0,
+            hyperlane_indices_last_count: 0,
+            star_visual_sync_calls: 0,
+            star_visual_entities_last_count: 0,
+            star_visual_sync_last_ms: None,
+            star_visual_sync_avg_ms: None,
+            billboard_sync_calls: 0,
+            billboard_entities_last_count: 0,
+            billboard_sync_last_ms: None,
+            billboard_sync_avg_ms: None,
+            picking_projection_calls: 0,
+            picking_projected_anchor_count: 0,
+            picking_projection_last_ms: None,
+            picking_projection_avg_ms: None,
+            vram_scan_last_ms: None,
         }
     }
 }
@@ -119,6 +168,13 @@ pub fn estimate_studio_allocated_vram_bytes(
     (total, texture_bytes, mesh_bytes, buffer_bytes)
 }
 
+fn format_timing_ms(value: Option<f64>) -> String {
+    match value {
+        Some(ms) if ms.is_finite() => format!("{ms:.2}"),
+        _ => "—".into(),
+    }
+}
+
 /// Build Settings-window performance section labels.
 pub fn performance_settings_section_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
     let mut lines = vec![
@@ -132,5 +188,47 @@ pub fn performance_settings_section_lines(telemetry: &StudioPerformanceTelemetry
     if let (Some(name), Some(backend)) = (&telemetry.gpu_name, &telemetry.gpu_backend) {
         lines.push(format!("GPU: {name} ({backend})"));
     }
+    lines.extend(render_loop_diagnostics_lines(telemetry));
     lines
+}
+
+/// Render-loop diagnostics subsection for Settings Performance area.
+pub fn render_loop_diagnostics_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    vec![
+        "Render loop diagnostics".into(),
+        format!(
+            "Hyperlane rebuild: {} ms / {} ms, rebuilds: {}",
+            format_timing_ms(telemetry.hyperlane_mesh_rebuild_last_ms),
+            format_timing_ms(telemetry.hyperlane_mesh_rebuild_avg_ms),
+            telemetry.hyperlane_mesh_rebuilds,
+        ),
+        format!(
+            "Hyperlane geometry: {} lanes, {} verts, {} indices",
+            telemetry.hyperlane_segments_last_count,
+            telemetry.hyperlane_vertices_last_count,
+            telemetry.hyperlane_indices_last_count,
+        ),
+        format!(
+            "Star visual sync: {} ms / {} ms, entities: {}",
+            format_timing_ms(telemetry.star_visual_sync_last_ms),
+            format_timing_ms(telemetry.star_visual_sync_avg_ms),
+            telemetry.star_visual_entities_last_count,
+        ),
+        format!(
+            "Billboard sync: {} ms / {} ms, entities: {}",
+            format_timing_ms(telemetry.billboard_sync_last_ms),
+            format_timing_ms(telemetry.billboard_sync_avg_ms),
+            telemetry.billboard_entities_last_count,
+        ),
+        format!(
+            "Picking projection: {} ms / {} ms, anchors: {}",
+            format_timing_ms(telemetry.picking_projection_last_ms),
+            format_timing_ms(telemetry.picking_projection_avg_ms),
+            telemetry.picking_projected_anchor_count,
+        ),
+        format!(
+            "VRAM scan: {} ms",
+            format_timing_ms(telemetry.vram_scan_last_ms),
+        ),
+    ]
 }

@@ -47,6 +47,7 @@ pub fn update_studio_vram_telemetry(
         return;
     }
 
+    let started = std::time::Instant::now();
     let (total, texture_bytes, mesh_bytes, buffer_bytes) =
         estimate_studio_allocated_vram_bytes(&images, &meshes);
     state.telemetry.allocated_vram_bytes_estimate = total;
@@ -56,6 +57,7 @@ pub fn update_studio_vram_telemetry(
     state.telemetry.buffer_bytes_estimate = buffer_bytes;
     state.last_vram_scan_elapsed_secs = elapsed;
     state.vram_dirty = false;
+    state.telemetry.vram_scan_last_ms = Some(started.elapsed().as_secs_f64() * 1000.0);
 }
 
 /// Copies render-subapp adapter identity into main-world telemetry after renderer init.

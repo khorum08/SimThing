@@ -25,7 +25,9 @@ use crate::star_render::{
 };
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
-use super::galaxy_render::{rebuild_galaxy_scene, StarVisualAssets};
+use super::galaxy_render::{
+    mark_hyperlane_render_dirty, mark_star_visual_render_dirty, StarVisualAssets,
+};
 use super::scenario_io::{
     load_scenario_manual_path_action, open_native_scenario_load_picker, save_scenario_action,
     ScenarioActionResult, ScenarioPickerActionResult,
@@ -37,6 +39,7 @@ use crate::scenario_runtime_saveload_ui::{
 };
 use crate::session::StudioSession;
 use crate::studio_performance_telemetry::performance_settings_section_lines;
+use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 
 use super::performance_telemetry::StudioPerformanceTelemetryState;
 
@@ -85,6 +88,7 @@ pub fn studio_ui_system(
     mut scene_root: ResMut<GalaxySceneRoot>,
     assets: Res<StarVisualAssets>,
     mut perf_telemetry: ResMut<StudioPerformanceTelemetryState>,
+    mut render_caches: ResMut<StudioRenderLoopCaches>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -118,6 +122,7 @@ pub fn studio_ui_system(
         &mut state,
         &mut settings,
         &perf_telemetry.telemetry,
+        &mut render_caches,
         screen_w,
         screen_h,
     );
@@ -138,16 +143,15 @@ pub fn studio_ui_system(
             Ok(output) => match StudioSession::from_generation(profile, output) {
                 Ok(session) => {
                     adopt_session(session, &mut settings, &mut state);
-                    if let Some(session) = state.session.as_ref() {
-                        rebuild_galaxy_scene(
-                            &mut commands,
-                            &mut meshes,
-                            &mut materials,
-                            &assets,
-                            &mut scene_root,
-                            session,
-                        );
-                    }
+                    super::rebuild_session_scene(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &assets,
+                        &mut scene_root,
+                        &mut state,
+                        &mut render_caches,
+                    );
                     reset_camera_after_generation(&mut camera);
                     perf_telemetry.vram_dirty = true;
                     let _ = settings.save();
@@ -193,16 +197,15 @@ pub fn studio_ui_system(
                 );
                 state.apply_refreshed_runtime_saveload_status(status, None);
                 state.last_runtime_saveload_status = adoption.message;
-                if let Some(session) = state.session.as_ref() {
-                    rebuild_galaxy_scene(
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        &assets,
-                        &mut scene_root,
-                        session,
-                    );
-                }
+                super::rebuild_session_scene(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &assets,
+                    &mut scene_root,
+                    &mut state,
+                    &mut render_caches,
+                );
                 reset_camera_after_generation(&mut camera);
                 perf_telemetry.vram_dirty = true;
             }
@@ -218,16 +221,15 @@ pub fn studio_ui_system(
             ScenarioActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
                 state.refresh_runtime_saveload_status_if_needed(false);
-                if let Some(session) = state.session.as_ref() {
-                    rebuild_galaxy_scene(
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        &assets,
-                        &mut scene_root,
-                        session,
-                    );
-                }
+                super::rebuild_session_scene(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &assets,
+                    &mut scene_root,
+                    &mut state,
+                    &mut render_caches,
+                );
                 reset_camera_after_generation(&mut camera);
                 perf_telemetry.vram_dirty = true;
             }
@@ -244,16 +246,15 @@ pub fn studio_ui_system(
             ScenarioPickerActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
                 state.refresh_runtime_saveload_status_if_needed(false);
-                if let Some(session) = state.session.as_ref() {
-                    rebuild_galaxy_scene(
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        &assets,
-                        &mut scene_root,
-                        session,
-                    );
-                }
+                super::rebuild_session_scene(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &assets,
+                    &mut scene_root,
+                    &mut state,
+                    &mut render_caches,
+                );
                 reset_camera_after_generation(&mut camera);
                 perf_telemetry.vram_dirty = true;
             }
@@ -361,6 +362,7 @@ fn draw_settings_dialog(
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
     telemetry: &crate::studio_performance_telemetry::StudioPerformanceTelemetry,
+    render_caches: &mut StudioRenderLoopCaches,
     screen_w: f32,
     screen_h: f32,
 ) {
@@ -463,7 +465,13 @@ fn draw_settings_dialog(
                     )
                     .changed();
                 if changed {
-                    apply_star_render_settings(values, mode, state, settings);
+                    apply_star_render_settings(
+                        values,
+                        mode,
+                        state,
+                        settings,
+                        &mut render_caches.star_visual,
+                    );
                 }
                 ui.separator();
                 ui.label(egui::RichText::new("Hyperlane rendering").strong());
@@ -517,7 +525,12 @@ fn draw_settings_dialog(
                     )
                     .changed();
                 if hyperlane_changed {
-                    apply_hyperlane_render_settings(hyperlane_values, state, settings);
+                    apply_hyperlane_render_settings(
+                        hyperlane_values,
+                        state,
+                        settings,
+                        &mut render_caches.hyperlane,
+                    );
                 }
                 ui.separator();
                 let performance_lines = performance_settings_section_lines(telemetry);
@@ -529,7 +542,7 @@ fn draw_settings_dialog(
                 }
                 ui.horizontal(|ui| {
                     if ui.button("Reset").clicked() {
-                        reset_settings_dialog_values(state, settings);
+                        reset_settings_dialog_values(state, settings, render_caches);
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Close").clicked() {
@@ -584,6 +597,7 @@ fn close_settings_dialog(
 fn reset_settings_dialog_values(
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
+    render_caches: &mut StudioRenderLoopCaches,
 ) {
     let defaults = crate::studio_config::SimThingStudioConfig::default();
     let (star, mode) = defaults.star_rendering.clone().to_star_settings();
@@ -602,6 +616,8 @@ fn reset_settings_dialog_values(
         apply_star_render_mode_to_meta(&mut session.view_model.render_meta, mode);
         apply_hyperlane_render_settings_to_meta(&mut session.view_model.render_meta, hyperlane);
     }
+    mark_hyperlane_render_dirty(&mut render_caches.hyperlane);
+    mark_star_visual_render_dirty(&mut render_caches.star_visual);
 }
 
 fn settings_dialog_bounds(
@@ -639,6 +655,7 @@ fn apply_star_render_settings(
     mode: StarRenderMode,
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
+    star_cache: &mut crate::studio_render_loop_dirty_gate::StarVisualSyncCacheState,
 ) {
     let values = values.clamped();
     let dirty = star_visuals_dirty_after_settings_change(
@@ -657,6 +674,7 @@ fn apply_star_render_settings(
     settings.settings_dialog_visible = state.settings_dialog.visible;
     if dirty {
         state.status_message = "Updated star render settings".into();
+        mark_star_visual_render_dirty(star_cache);
     }
     if let Some(session) = state.session.as_mut() {
         session.view_model.apply_star_falloff_settings(values);
@@ -669,6 +687,7 @@ fn apply_hyperlane_render_settings(
     values: HyperlaneRenderSettings,
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
+    hyperlane_cache: &mut crate::studio_render_loop_dirty_gate::HyperlaneRenderCacheState,
 ) {
     let values = values.clamped();
     let dirty =
@@ -680,6 +699,7 @@ fn apply_hyperlane_render_settings(
     settings.settings_dialog_visible = state.settings_dialog.visible;
     if dirty {
         state.status_message = "Updated hyperlane render settings".into();
+        mark_hyperlane_render_dirty(hyperlane_cache);
     }
     if let Some(session) = state.session.as_mut() {
         session.view_model.apply_hyperlane_render_settings(values);

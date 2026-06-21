@@ -6,7 +6,8 @@ use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use simthing_mapeditor::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes, format_fps_label,
-    format_vram_mb_label, performance_settings_section_lines, StudioPerformanceTelemetry,
+    format_vram_mb_label, performance_settings_section_lines, render_loop_diagnostics_lines,
+    StudioPerformanceTelemetry,
 };
 
 #[test]
@@ -71,6 +72,28 @@ fn studio_settings_window_renders_performance_section() {
     assert!(lines
         .iter()
         .any(|line| line.starts_with("Allocated VRAM estimate: 48.5 MB")));
+    assert!(lines.iter().any(|line| line == "Render loop diagnostics"));
+}
+
+#[test]
+fn studio_settings_window_includes_render_loop_diagnostics() {
+    let telemetry = StudioPerformanceTelemetry::default();
+    let diagnostics = render_loop_diagnostics_lines(&telemetry);
+    assert!(diagnostics
+        .iter()
+        .any(|line| line.starts_with("Hyperlane rebuild:")));
+    assert!(diagnostics
+        .iter()
+        .any(|line| line.starts_with("Star visual sync:")));
+    assert!(diagnostics
+        .iter()
+        .any(|line| line.starts_with("Billboard sync:")));
+    assert!(diagnostics
+        .iter()
+        .any(|line| line.starts_with("Picking projection:")));
+    assert!(diagnostics
+        .iter()
+        .any(|line| line.starts_with("VRAM scan:")));
 }
 
 #[test]
