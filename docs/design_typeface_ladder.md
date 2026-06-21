@@ -35,7 +35,7 @@
 ---
 
 ## LR0 — workshop prototype: font load + metrics + measurement harness  *(mechanical)* — **DONE / PROBATION**
-**Status:** landed on branch `typeface-lr0-font-metrics-0`; result report `docs/tests/typeface_lr0_results.md`. Track remains OPEN — LR0 is not DA-approval of the whole typeface track.
+**Status:** landed PR #872 (`c24de50cc`); result report `docs/tests/typeface_lr0_results.md`. Track remains OPEN — LR0 is not DA-approval of the whole typeface track.
 **Crate/files:** `crates/simthing-workshop/src/typeface/mod.rs` (+ `font.rs`, `harness.rs`); test fixture above.
 **Deps (workshop `Cargo.toml`):** add **direct** `skrifa`, `fontdb`, `thiserror` (already transitive — pin to
 the versions Bevy 0.16 resolves in `Cargo.lock`; do not bump).

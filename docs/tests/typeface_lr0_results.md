@@ -7,8 +7,8 @@ PASS — workshop `typeface` module loads OFL fixture bytes, exposes units-per-e
 ## PR / branch / merge
 
 - Branch: `typeface-lr0-font-metrics-0`
-- PR: branch evidence (filled after merge)
-- Merge SHA: branch evidence (filled after merge)
+- PR: #872
+- Merge SHA: `c24de50cca82f9d3c5df9f27b072eb7d75a65cb1`
 
 ## Mission
 
