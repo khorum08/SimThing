@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `studio-settings-performance-telemetry-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #857
+- Merge SHA: `da78284a930139643465c92ab6b04e376d389ed0`
 
 ## Mission
 
