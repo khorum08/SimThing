@@ -146,3 +146,38 @@ state only.
 **Screenshot capture** is an explicit user action (Screenshot button in the Performance Telemetry window). It
 writes `screenshot_{index:05}.png` to the current working directory via Bevy's `Screenshot::primary_window()` +
 `save_to_disk`. Do not add per-frame or background screenshot timers.
+
+## Render notes: headless pixel capture (LR3R / typeface smoke tests)
+
+**Test-only.** These paths exist to prove shader-backed instanced text draws in CI; they do not affect shipped
+runtime performance. The in-game render path is identical regardless of which smoke route the test uses.
+
+### Route B (preferred): raw wgpu harness
+
+For deterministic, fast pixel proof in headless CI:
+
+1. Shape glyphs and build atlas pixels on the CPU (same data the Bevy plugin produces).
+2. Spin a minimal wgpu device → pipeline → instanced draw → `copy_texture_to_buffer` readback.
+3. Assert non-zero text pixels (`alpha > 0` and at least one RGB channel `> 0`) before writing the PNG artifact.
+
+Route B is leaner than spinning a full Bevy `App` and does not depend on Bevy's image-output node.
+
+### Route A (deferred fidelity nicety): in-Bevy image readback
+
+When you need pixels through Bevy's real Core2d graph (not for perf — only for fidelity of evidence):
+
+- Use a standard **`Camera2d`** with **`Tonemapping::None`**, **`RenderTarget::Image`**, and
+  **`gpu_readback::Readback`** on that image handle.
+- Let Bevy's built-in Core2d graph run end-to-end, including the node that resolves `ViewTarget.main_texture`
+  back into the `Image`'s `GpuImage` texture.
+
+**Never hand-roll the Core2d render graph** for offscreen capture. A custom offscreen camera that bypasses
+`Camera2d` can queue draws correctly (Transparent2d phase, bind groups, instances) but **omit the
+ViewTarget→Image write node**. The render pass executes; the `Image` stays `(0,0,0,0)`; readback copies the
+cleared target. This is a self-inflicted fork bug, not a Bevy headless limitation.
+
+### CI hygiene
+
+- Do **not** pay multi-second `Readback` polling loops in CI when Route B is the authorized proof.
+- Keep Bevy integration evidence to short queue-wiring probes (draw count, instance count, view count).
+- Mark in-Bevy PNG capture as **DEFERRED** until a `Camera2d` + `Tonemapping::None` readback path is wired.

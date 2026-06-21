@@ -1,29 +1,81 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::PathBuf,
+};
 
-use bevy::{app::App, asset::AssetPlugin, prelude::*};
-use pollster::FutureExt;
+use bevy::{
+    app::{PluginGroup, PluginsState},
+    prelude::*,
+    render::pipelined_rendering::PipelinedRenderingPlugin,
+    sprite::{Mesh2dRenderPlugin, SpritePlugin},
+    window::{ExitCondition, WindowPlugin},
+    winit::WinitPlugin,
+    DefaultPlugins,
+};
 use simthing_tools::{
-    GlyphInstanceGpu, ShapingEngine, SimthingToolsTextPlugin, TextLabel, TextRebuildDiagnostics,
-    TypefaceAtlas,
+    create_render_target_image, text_instanced_pipeline_initialized, text_render_camera_bundle,
+    text_render_queue_state, wgpu_instanced_text_smoke, GlyphInstanceGpu, ShapingEngine,
+    SimthingToolsTextPlugin, TextGlyphInstances, TextLabel, TextRebuildDiagnostics, TypefaceAtlas,
+    WgpuSmokeTarget,
 };
-use wgpu::{
-    Backends, DeviceDescriptor, Features, Instance, InstanceDescriptor, PowerPreference,
-    RequestAdapterOptions,
-};
-
 const FIXTURE: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
 const SMOKE_TEXT: &str = "SimThing";
 const SHAPE_PX: f32 = 32.0;
+const SMOKE_WIDTH: u32 = 400;
+const SMOKE_HEIGHT: u32 = 200;
 
 fn fixture_bytes() -> Vec<u8> {
     FIXTURE.to_vec()
 }
 
-fn headless_app() -> App {
+fn cpu_headless_app() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default()))
         .add_plugins(SimthingToolsTextPlugin::new(fixture_bytes()));
     app
+}
+
+fn ensure_render_app_ready(app: &mut App) {
+    while app.plugins_state() == PluginsState::Adding {
+        bevy_tasks::tick_global_task_pools_on_main_thread();
+    }
+    if app.plugins_state() != PluginsState::Cleaned {
+        app.finish();
+        app.cleanup();
+    }
+}
+
+fn render_headless_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .build()
+            .disable::<WinitPlugin>()
+            .disable::<PipelinedRenderingPlugin>()
+            .disable::<SpritePlugin>()
+            .set(WindowPlugin {
+                primary_window: None,
+                exit_condition: ExitCondition::DontExit,
+                close_when_requested: false,
+            }),
+    )
+    .add_plugins(Mesh2dRenderPlugin)
+    .add_plugins(SimthingToolsTextPlugin::new(fixture_bytes()));
+    ensure_render_app_ready(&mut app);
+    // Warm up GPU asset upload (tonemapping LUT KTX2, atlas image) before spawning cameras.
+    for _ in 0..24 {
+        clear_headless_app_exit(&mut app);
+        app.update();
+    }
+    app
+}
+
+fn bevy_gpu_adapter_available() -> bool {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut app = render_headless_app();
+        app.update();
+    }))
+    .is_ok()
 }
 
 fn spawn_label(app: &mut App, text: &str) {
@@ -36,13 +88,20 @@ fn spawn_label(app: &mut App, text: &str) {
 
 fn run_updates(app: &mut App, frames: usize) {
     for _ in 0..frames {
+        clear_headless_app_exit(app);
         app.update();
+    }
+}
+
+fn clear_headless_app_exit(app: &mut App) {
+    if let Some(mut exits) = app.world_mut().get_resource_mut::<Events<AppExit>>() {
+        exits.clear();
     }
 }
 
 #[test]
 fn plugin_builds_headless_app() {
-    let mut app = headless_app();
+    let mut app = cpu_headless_app();
     app.update();
     assert!(app
         .world()
@@ -52,8 +111,23 @@ fn plugin_builds_headless_app() {
 }
 
 #[test]
+fn render_pipeline_resources_exist() {
+    if !bevy_gpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for render pipeline resource test");
+        return;
+    }
+
+    let mut app = render_headless_app();
+    run_updates(&mut app, 3);
+    assert!(
+        text_instanced_pipeline_initialized(&app),
+        "TextInstancedPipeline must exist in RenderApp after plugin finish"
+    );
+}
+
+#[test]
 fn label_change_rebuilds_instances_once() {
-    let mut app = headless_app();
+    let mut app = cpu_headless_app();
     spawn_label(&mut app, SMOKE_TEXT);
     run_updates(&mut app, 1);
 
@@ -97,12 +171,13 @@ fn label_change_rebuilds_instances_once() {
 
 #[test]
 fn instances_match_shaped_run_count() {
-    let mut app = headless_app();
+    let mut app = cpu_headless_app();
     spawn_label(&mut app, SMOKE_TEXT);
     run_updates(&mut app, 1);
 
     let world = app.world_mut();
-    let mut query = world.query::<&simthing_tools::TextGlyphInstances>();
+    let mut query =
+        world.query_filtered::<&simthing_tools::TextGlyphInstances, With<TextLabel>>();
     let instances = query.iter(world).map(|i| i.0.len()).sum::<usize>();
 
     let mut shaper = ShapingEngine::new_with_font(fixture_bytes()).expect("shaper");
@@ -111,8 +186,50 @@ fn instances_match_shaped_run_count() {
 }
 
 #[test]
-fn cached_label_noop_frame_does_not_reshape() {
-    let mut app = headless_app();
+fn text_instances_are_queued_for_render() {
+    if !bevy_gpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for render queue test");
+        return;
+    }
+
+    let mut app = render_headless_app();
+    let target = {
+        let mut images = app.world_mut().resource_mut::<Assets<Image>>();
+        create_render_target_image(&mut images, SMOKE_WIDTH, SMOKE_HEIGHT)
+    };
+    app.world_mut()
+        .spawn(text_render_camera_bundle(target, SMOKE_WIDTH, SMOKE_HEIGHT));
+    spawn_label(&mut app, SMOKE_TEXT);
+    run_updates(&mut app, 4);
+
+    let queue_state = text_render_queue_state(&app);
+    assert!(
+        queue_state.queued_draw_count > 0,
+        "expected at least one Transparent2d draw queued; diagnostics={queue_state:?}"
+    );
+    assert!(
+        queue_state.queued_instance_count > 0,
+        "expected glyph instances queued for instanced draw"
+    );
+    assert_eq!(
+        queue_state.views_seen, 1,
+        "expected one Core2d view for offscreen camera"
+    );
+
+    let label_instances: usize = {
+        let world = app.world_mut();
+        let mut q = world.query_filtered::<&simthing_tools::TextGlyphInstances, With<TextLabel>>();
+        q.iter(world).map(|i| i.0.len()).sum()
+    };
+    assert_eq!(
+        queue_state.queued_instance_count as usize, label_instances,
+        "queued instance count must match shaped label instances"
+    );
+}
+
+#[test]
+fn cached_label_noop_frame_still_does_not_reshape() {
+    let mut app = cpu_headless_app();
     spawn_label(&mut app, SMOKE_TEXT);
     run_updates(&mut app, 1);
 
@@ -137,8 +254,19 @@ fn cached_label_noop_frame_does_not_reshape() {
 }
 
 #[test]
-fn atlas_cache_reused_after_initial_label_build() {
-    let mut app = headless_app();
+fn atlas_cache_still_reused_after_render_queue() {
+    if !bevy_gpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for atlas cache render test");
+        return;
+    }
+
+    let mut app = render_headless_app();
+    let target = {
+        let mut images = app.world_mut().resource_mut::<Assets<Image>>();
+        create_render_target_image(&mut images, SMOKE_WIDTH, SMOKE_HEIGHT)
+    };
+    app.world_mut()
+        .spawn(text_render_camera_bundle(target, SMOKE_WIDTH, SMOKE_HEIGHT));
     spawn_label(&mut app, SMOKE_TEXT);
     run_updates(&mut app, 1);
 
@@ -164,137 +292,90 @@ fn atlas_cache_reused_after_initial_label_build() {
 }
 
 #[test]
-fn headless_render_smoke_real_adapter_or_hold() {
-    let mut app = headless_app();
-    spawn_label(&mut app, SMOKE_TEXT);
-    run_updates(&mut app, 2);
-
-    let instances: Vec<GlyphInstanceGpu> = {
-        let world = app.world_mut();
-        let mut query = world.query::<&simthing_tools::TextGlyphInstances>();
-        query.iter(world).flat_map(|i| i.0.clone()).collect()
-    };
-    assert!(!instances.is_empty());
-
-    let atlas = app.world().get_resource::<TypefaceAtlas>().expect("atlas");
-    if try_gpu_smoke_render(atlas.cpu_core(), &instances) {
-        eprintln!("REAL_ADAPTER_OBSERVED: LR3 smoke PNG written");
-    } else {
-        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for LR3 visual smoke");
-    }
-}
-
-fn try_test_gpu_context() -> bool {
-    let instance = Instance::new(InstanceDescriptor {
-        backends: Backends::PRIMARY,
-        ..Default::default()
-    });
-    let adapter = instance
-        .request_adapter(&RequestAdapterOptions {
-            power_preference: PowerPreference::default(),
-            force_fallback_adapter: false,
-            compatible_surface: None,
-        })
-        .block_on();
-    let Some(adapter) = adapter else {
-        return false;
-    };
-    adapter
-        .request_device(
-            &DeviceDescriptor {
-                label: Some("typeface_lr3_smoke"),
-                required_features: Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: wgpu::MemoryHints::default(),
-            },
-            None,
-        )
-        .block_on()
-        .is_ok()
-}
-
-fn try_gpu_smoke_render(
-    core: &simthing_tools::GlyphAtlasCore,
-    instances: &[GlyphInstanceGpu],
-) -> bool {
-    if !try_test_gpu_context() {
-        return false;
-    }
-    let png = composite_smoke_png(core, instances, 256, 128);
-    if png.iter().all(|b| *b == 0) {
-        return false;
-    }
-    let path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr3_smoke.png");
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    fs::write(&path, &png).expect("write smoke png");
-    true
-}
-
-fn composite_smoke_png(
-    core: &simthing_tools::GlyphAtlasCore,
-    instances: &[GlyphInstanceGpu],
-    width: u32,
-    height: u32,
-) -> Vec<u8> {
-    let mut pixels = vec![0u8; (width * height * 4) as usize];
-    let atlas = core.staging_pixels();
-    let atlas_size = core.atlas_size();
-
-    for inst in instances {
-        blit_glyph_instance(&mut pixels, width, height, atlas, atlas_size, *inst);
-    }
-
-    encode_png_rgba(&pixels, width, height)
-}
-
-fn blit_glyph_instance(
-    out: &mut [u8],
-    out_w: u32,
-    out_h: u32,
-    atlas: &[u8],
-    atlas_size: u32,
-    inst: GlyphInstanceGpu,
-) {
-    let x0 = inst.pos_size[0].round() as i32;
-    let y0 = inst.pos_size[1].round() as i32;
-    let gw = inst.pos_size[2] as u32;
-    let gh = inst.pos_size[3] as u32;
-    if gw == 0 || gh == 0 {
+fn headless_shader_backed_instanced_draw_real_adapter() {
+    if !bevy_gpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for LR3R shader-backed smoke");
         return;
     }
 
-    for row in 0..gh {
-        for col in 0..gw {
-            let dst_x = x0 + col as i32;
-            let dst_y = y0 + row as i32;
-            if dst_x < 0 || dst_y < 0 || dst_x >= out_w as i32 || dst_y >= out_h as i32 {
-                continue;
-            }
-            let u = inst.uv_rect[0]
-                + (col as f32 + 0.5) / gw as f32 * (inst.uv_rect[2] - inst.uv_rect[0]);
-            let v = inst.uv_rect[1]
-                + (row as f32 + 0.5) / gh as f32 * (inst.uv_rect[3] - inst.uv_rect[1]);
-            let ax = (u * atlas_size as f32).floor() as u32;
-            let ay = (v * atlas_size as f32).floor() as u32;
-            if ax >= atlas_size || ay >= atlas_size {
-                continue;
-            }
-            let src_idx = ((ay * atlas_size + ax) * 4 + 3) as usize;
-            let alpha = atlas[src_idx];
-            if alpha == 0 {
-                continue;
-            }
-            let dst_idx = ((dst_y as u32 * out_w + dst_x as u32) * 4) as usize;
-            let c = (inst.color[3] * alpha as f32 / 255.0 * 255.0) as u8;
-            out[dst_idx] = (inst.color[0] * 255.0) as u8;
-            out[dst_idx + 1] = (inst.color[1] * 255.0) as u8;
-            out[dst_idx + 2] = (inst.color[2] * 255.0) as u8;
-            out[dst_idx + 3] = c;
+    let mut app = render_headless_app();
+
+    let target = {
+        let mut images = app.world_mut().resource_mut::<Assets<Image>>();
+        create_render_target_image(&mut images, SMOKE_WIDTH, SMOKE_HEIGHT)
+    };
+
+    spawn_label(&mut app, SMOKE_TEXT);
+    run_updates(&mut app, 1);
+    app.world_mut()
+        .spawn(text_render_camera_bundle(target, SMOKE_WIDTH, SMOKE_HEIGHT));
+
+    // Short Bevy probe: queue wiring only. In-Bevy image readback PNG is DEFERRED.
+    run_updates(&mut app, 4);
+
+    let queue_state = text_render_queue_state(&app);
+    assert!(
+        queue_state.queued_draw_count == 1,
+        "expected one instanced draw queued; diagnostics={queue_state:?}"
+    );
+    assert!(
+        queue_state.queued_instance_count > 0,
+        "expected glyph instances queued for instanced draw"
+    );
+    assert_eq!(
+        queue_state.views_seen, 1,
+        "expected one Core2d view; diagnostics={queue_state:?}"
+    );
+
+    let instances: Vec<GlyphInstanceGpu> = {
+        let world = app.world_mut();
+        let mut q = world.query_filtered::<&TextGlyphInstances, With<TextLabel>>();
+        q.iter(world).flat_map(|i| i.0.iter().copied()).collect()
+    };
+    assert_eq!(
+        queue_state.queued_instance_count as usize,
+        instances.len(),
+        "queued instance count must match shaped label instances"
+    );
+
+    let atlas = app.world().get_resource::<TypefaceAtlas>().expect("atlas");
+    let atlas_pixels = atlas.cpu.staging_pixels().to_vec();
+    let atlas_size = atlas.atlas_size;
+    let smoke_result = wgpu_instanced_text_smoke(
+        WgpuSmokeTarget {
+            width: SMOKE_WIDTH,
+            height: SMOKE_HEIGHT,
+        },
+        &instances,
+        &atlas_pixels,
+        atlas_size,
+    )
+    .unwrap_or_else(|err| {
+        panic!(
+            "raw-wgpu instanced shader draw failed (queue={queue_state:?}, wgpu_err={err})"
+        );
+    });
+
+    eprintln!(
+        "REAL_ADAPTER_OBSERVED: LR3R raw-wgpu instanced shader draw produced text pixels ({})",
+        WgpuSmokeTarget {
+            width: SMOKE_WIDTH,
+            height: SMOKE_HEIGHT,
         }
+        .readback_pixel_stats(&smoke_result.pixels)
+    );
+    eprintln!(
+        "DEFERRED: in-Bevy Core2d image readback PNG (Camera2d + Tonemapping::None + RenderTarget::Image + gpu_readback::Readback)"
+    );
+
+    let png = encode_png_rgba(&smoke_result.pixels, SMOKE_WIDTH, SMOKE_HEIGHT);
+    let path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr3r_smoke.png");
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
     }
+    fs::write(&path, &png).expect("write LR3R smoke png");
+    eprintln!("REAL_ADAPTER_OBSERVED: LR3R shader-backed smoke PNG written");
 }
 
 fn encode_png_rgba(pixels: &[u8], width: u32, height: u32) -> Vec<u8> {
@@ -307,6 +388,23 @@ fn encode_png_rgba(pixels: &[u8], width: u32, height: u32) -> Vec<u8> {
         writer.write_image_data(pixels).expect("png data");
     }
     buf
+}
+
+#[test]
+fn semantic_free_guard_still_passes() {
+    std::process::Command::new(env!("CARGO"))
+        .args([
+            "test",
+            "-p",
+            "simthing-tools",
+            "--test",
+            "semantic_free_guard",
+        ])
+        .status()
+        .expect("spawn semantic guard")
+        .success()
+        .then_some(())
+        .expect("semantic_free_guard failed");
 }
 
 #[test]
