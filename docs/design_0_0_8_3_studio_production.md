@@ -212,3 +212,28 @@ Promotion from PROBATION to CURRENT_EVIDENCE requires:
 - `map_container_id` is a SimThing raw-id string binding.
 - Structural mirrors remain defensive f32 vectors.
 - Dense galaxy-scale Movement-Front execution still requires atlas work.
+
+## SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0 — final DA review and lifecycle graduation
+
+**Decision: HOLD / NOT READY FOR DA PROMOTION.** The final maximum-reasoning DA review pass
+(`docs/tests/scenario_runtime_saveload_final_da_review_0_results.md`) reviewed the Scenario Runtime +
+Save/Load Closing Track across code, tests, evidence, Studio workflow, STEAD preservation, the corrected
+spatial gridcell hierarchy, Accumulator Flow / GPU-residency doctrine, and authority boundaries. ScenarioSpec
+authority, owner-as-metadata (non-spatial), the RF settle-then-bubble shape, canonical-JSON candidate
+save/reopen, and non-authority surfaces are all sound. **One track-wide constitutional blocker prevents
+promotion.**
+
+**Blocking issue — spatial gridcell hierarchy collapse.** The mandated `Planet gridcell → child grid → 1×1
+surface gridcell → {cohort / fleet / infrastructure / leader}` is not implemented: gameplay SimThings are
+homed **directly on the planet gridcell**, and the planet's Location child (the surface gridcell) is actively
+deferred (`DeepPlanetChildDeferred`). The 1×1 surface gridcell tier is absent from code
+(`planet_child_location.rs`), this production doc's hierarchy block (above), the closing-track tests, and the
+corpus fixture. No DA-approved Deviation Record exists; `invariants.md` §"No silent tier collapse" forbids
+promotion.
+
+**Lifecycle:** All closing-track rows remain **PROBATION**. No row advances to `CURRENT_EVIDENCE` /
+`DA-APPROVED`. Rungs 0–8 prior status is unchanged; SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0 is recorded as
+**HELD**.
+
+**Required remedial track:** `SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0` (scope in the final-review results
+doc). After it lands, re-run this final DA review.
