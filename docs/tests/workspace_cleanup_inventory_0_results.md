@@ -7,8 +7,8 @@ PASS — local disk inventory recorded; **133.1 GB** reclaimed from safe delete-
 ## PR / branch / merge
 
 - Branch: `workspace-cleanup-inventory-0`
-- PR: (filled at merge)
-- Merge SHA: (filled at merge)
+- PR: #870
+- Merge SHA: `33200060e3fdab94997ffde94bcc1bca8ee3e2b3`
 
 ## Mission
 
