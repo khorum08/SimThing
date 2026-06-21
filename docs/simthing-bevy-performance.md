@@ -88,3 +88,16 @@ section is opened. Keep only the always-needed controls (e.g. Generate, Camera) 
   laid out — plain `.show()` lays out all children.
 - The **collapse test** (toggle a panel and watch FPS) is the fastest way to attribute cost to a panel; it is
   a more reliable isolation than per-panel closure timers.
+
+## Hard rule: never serialize/evaluate model state in the draw path
+
+The save-load section regression (124 FPS collapsing to 1.9 FPS when the section was *displayed*) came from an
+`else { refresh_status_if_needed(false) }` call left in the per-frame draw. Even a "cache-gated" refresh is a
+trap: if the dirty flag is set (e.g. after Generate) and the gate decides to `Refresh`, you pay the **full**
+canonical-serialize + STEAD/RF/report/candidate evaluation **every frame** the widget is visible.
+
+**Rule:** expensive model evaluation (canonical serialization, proof/report chains, file IO) must be triggered
+**only** by an explicit user action — a Refresh button, or the Load/Save/Reopen dialog handlers — never from a
+widget's draw closure, and never on a timer for display. When state is dirty, the draw path shows a cached
+value or a "click Refresh" hint; it does not compute. Drawing a panel must cost only egui layout, never a
+serialize.

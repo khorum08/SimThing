@@ -1126,14 +1126,17 @@ fn draw_runtime_candidate_saveload_controls(
         .weak(),
     );
 
+    // PERF + authority: scenario status is expensive (canonical serialize + STEAD/RF/report/candidate
+    // evaluation). It is computed ONLY on an explicit Refresh Runtime Status click (or on load/save/reopen
+    // events that mark it dirty). The draw path must NEVER serialize/evaluate scenario state — doing so per
+    // frame caused ~550 ms frames. When dirty, the UI shows "click Refresh Runtime Status" (cached display
+    // only). See docs/simthing-bevy-performance.md.
     if ctx.data(|d| {
         d.get_temp::<bool>(egui::Id::new("do_refresh_runtime_status"))
             .unwrap_or(false)
     }) {
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_refresh_runtime_status")));
         state.refresh_runtime_saveload_status_if_needed(true);
-    } else {
-        state.refresh_runtime_saveload_status_if_needed(false);
     }
 
     if state.runtime_saveload_status_dirty {
