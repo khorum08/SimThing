@@ -67,3 +67,24 @@ happen.
 Performance work is **presentation-only**. Do not move Scenario authority, save/load, RF/Accumulator, the
 spatial gridcell hierarchy, or proof chains to "make it faster." Cache *when* you compute, never *what* the
 proof computes.
+
+## Case study: the left-panel ScrollArea FPS collapse (STUDIO-EGUI-PAINT-ISOLATION-0)
+
+**Symptom:** left panel collapsed → 116 FPS; left panel expanded → 3.9 FPS, "Left panel: 240 ms".
+
+**Cause:** the panel rendered its entire content tree (presets, generation fields, scenario/save-load,
+camera) inside a single `egui::ScrollArea::vertical().show(...)`. An egui `ScrollArea` (and any
+always-expanded panel) **lays out every child widget every frame** to compute content size — it only clips
+*paint*, not *layout*. In a debug build that full layout pass dominates the frame.
+
+**Fix (presentation-only):** wrap the heavy sections in `egui::CollapsingHeader::new(..).default_open(false)`.
+A collapsed header does **not** lay out its children, so the per-frame layout cost drops to near-zero until a
+section is opened. Keep only the always-needed controls (e.g. Generate, Camera) outside collapsing headers.
+
+**Rules this established:**
+- Never put a large, always-expanded widget tree in a per-frame panel/`ScrollArea`. Default heavy sections to
+  collapsed; the user expands what they need.
+- For genuinely long scrollable lists, use `ScrollArea::show_rows`/viewport culling so off-screen rows are not
+  laid out — plain `.show()` lays out all children.
+- The **collapse test** (toggle a panel and watch FPS) is the fastest way to attribute cost to a panel; it is
+  a more reliable isolation than per-panel closure timers.

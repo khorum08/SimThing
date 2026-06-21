@@ -928,27 +928,46 @@ fn draw_left_panel(
                             }
                         });
                         ui.separator();
-                        ui.label("Presets");
-                        for preset in GenerationPreset::all() {
-                            let active = preset.is_active();
-                            let label = preset.label();
-                            if active {
-                                if ui
-                                    .selectable_label(state.profile.preset_id == preset.id(), label)
-                                    .clicked()
-                                {
-                                    state.profile = preset.to_profile();
+                        // PERF: collapse heavy sections by default. A collapsed egui CollapsingHeader
+                        // does not lay out its children, so the per-frame egui layout/tessellation cost
+                        // of the left panel drops dramatically (the cause of the FPS collapse). See
+                        // docs/simthing-bevy-performance.md.
+                        egui::CollapsingHeader::new("Presets")
+                            .id_salt("left_panel_presets")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                for preset in GenerationPreset::all() {
+                                    let active = preset.is_active();
+                                    let label = preset.label();
+                                    if active {
+                                        if ui
+                                            .selectable_label(
+                                                state.profile.preset_id == preset.id(),
+                                                label,
+                                            )
+                                            .clicked()
+                                        {
+                                            state.profile = preset.to_profile();
+                                        }
+                                    } else if inactive_button(ui, label).clicked() {
+                                        *dialog = unimplemented_action_response(
+                                            StudioAction::InactivePreset(preset.id().into()),
+                                        );
+                                    }
                                 }
-                            } else if inactive_button(ui, label).clicked() {
-                                *dialog = unimplemented_action_response(
-                                    StudioAction::InactivePreset(preset.id().into()),
-                                );
-                            }
-                        }
-                        ui.separator();
-                        generation_fields(ui, &mut state.profile, dialog);
-                        ui.separator();
-                        draw_scenario_io_controls(ctx, ui, state);
+                            });
+                        egui::CollapsingHeader::new("Active generation controls")
+                            .id_salt("left_panel_generation")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                generation_fields(ui, &mut state.profile, dialog);
+                            });
+                        egui::CollapsingHeader::new("Scenario / runtime save-load")
+                            .id_salt("left_panel_scenario")
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                draw_scenario_io_controls(ctx, ui, state);
+                            });
                         ui.separator();
                         render_debug_controls(ui, state);
                         ui.separator();
