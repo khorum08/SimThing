@@ -1,4 +1,4 @@
-use super::font::{GlyphMetrics, ProbeFont};
+use crate::font::{GlyphMetrics, ProbeFont};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeasuredGlyph {

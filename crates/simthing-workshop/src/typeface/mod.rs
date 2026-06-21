@@ -1,12 +1,8 @@
-mod atlas;
-mod font;
-mod harness;
-mod shaping;
+//! Thin workshop shim over production `simthing-tools` typeface core.
 
-pub use atlas::{
-    format_atlas_report, quantize_px, rasterize_glyph_cpu, AtlasTile, GlyphAtlas, GlyphAtlasCore,
-    GlyphAtlasKey, GlyphAtlasStats, RasterizedGlyph, ATLAS_TEXTURE_FORMAT,
+pub use simthing_tools::{
+    ascii_sample_chars, format_atlas_report, format_measurement_report, format_shaping_report,
+    load_font, measure_chars, quantize_px, rasterize_glyph_cpu, AtlasTile, GlyphAtlas,
+    GlyphAtlasCore, GlyphAtlasKey, GlyphAtlasStats, GlyphMetrics, MeasuredGlyph, ProbeFont,
+    RasterizedGlyph, ShapedGlyph, ShapedRun, ShapingEngine, TypefaceError, ATLAS_TEXTURE_FORMAT,
 };
-pub use font::{load_font, GlyphMetrics, ProbeFont, TypefaceError};
-pub use harness::{ascii_sample_chars, format_measurement_report, measure_chars, MeasuredGlyph};
-pub use shaping::{format_shaping_report, ShapedGlyph, ShapedRun, ShapingEngine};

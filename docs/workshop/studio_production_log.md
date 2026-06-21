@@ -1805,6 +1805,15 @@ gate dropped the update).
 - **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
   visual resync (#868).
 
+## 2026-06-21 — TYPEFACE-LR2 DA closeout + TYPEFACE-LR3-SIMTHING-TOOLS-INSTANCED-TEXT-0
+
+- Codex DA approved LR2 raster atlas foundation after LR2R adapter-optional remediation (#875). LR2 evidence promoted to DA APPROVED; typeface track remains OPEN.
+- LR3: created production crate `simthing-tools`; moved LR0–LR2 font/shaping/atlas/harness from workshop; workshop `typeface` module is thin re-export shim.
+- Added `SimthingToolsTextPlugin`, `TextLabel`, `TypefaceAtlas`, changed-detection shape/raster/instance rebuild with diagnostics counters; `text_instanced.wgsl` semantic-free shader; ExtractComponent render handoff.
+- Tests: LR3 changed-detection/cache/smoke + semantic guard; workshop LR0/LR1/LR2 regression green.
+- Smoke artifact: `docs/tests/typeface_lr3_smoke.png` (REAL_ADAPTER_OBSERVED on validation host).
+- Result report: `docs/tests/typeface_lr3_results.md`; ladder § LR3 DONE/PROBATION.
+
 ## 2026-06-21 — TYPEFACE-LR2-RASTER-ATLAS-0R (workshop typeface ladder remediation)
 
 - DA remediation for LR2 adapter-optional test coverage: split `GlyphAtlasCore` (CPU raster/cache/pack/dirty) from GPU-backed `GlyphAtlas`.
