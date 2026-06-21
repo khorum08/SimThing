@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `scenario-runtime-saveload-da-precheck-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #848
+- Merge SHA: `46c2c4b21fe06f1a923956a0a9ce8e0ae14f5f28`
 
 ## Mission
 
@@ -32,7 +32,7 @@ Evaluated against 0.0.8.1+ constitution carried into 0.0.8.3+, SimThing core des
 | — | SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0 | #845 | DONE (pre-UI) |
 | 7 | STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | #846 | DONE |
 | — | STUDIO-CANDIDATE-REOPEN-ADOPT-0 | #847 | DONE (pre-DA) |
-| 8 | SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | pending | THIS PR |
+| 8 | SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | #848 | DONE |
 
 ## Evidence completeness matrix
 
@@ -48,7 +48,7 @@ Evaluated against 0.0.8.1+ constitution carried into 0.0.8.3+, SimThing core des
 | SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0 | #845 | `8aa72e6c5e395420a91df843d6b24a5bd2e39334` | PROBATION | `scenario_candidate_save_reopen_harden_0_results.md` | § SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0 | PASS (spec 23 tests) | Create-new writer; existing target preserved | Not promoted |
 | STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | #846 | `83bc5810276724fc044bd0361d6cf817f8f513c8` | PROBATION | `studio_scenario_runtime_saveload_ui_0_results.md` | § STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | PASS (mapeditor 13) | UI/Bevy/runtime/GPU non-authoritative | Not promoted |
 | STUDIO-CANDIDATE-REOPEN-ADOPT-0 | #847 | `8cefd9c8da067a4a10fe9b4f87cc712c27aaf890` | PROBATION | `studio_candidate_reopen_adopt_0_results.md` | § STUDIO-CANDIDATE-REOPEN-ADOPT-0 | PASS (mapeditor 10) | Successful reopen adopts session; failed preserves | Not promoted |
-| SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | pending | pending | PROBATION | this report | § SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | PASS (regression) | Consolidation only; no new authority surfaces | Awaiting human DA |
+| SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | #848 | `46c2c4b21fe06f1a923956a0a9ce8e0ae14f5f28` | PROBATION | this report | § SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | PASS (regression) | Consolidation only; no new authority surfaces | Awaiting human DA |
 
 ## ScenarioSpec authority preservation
 
