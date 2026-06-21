@@ -1805,6 +1805,14 @@ gate dropped the update).
 - **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
   visual resync (#868).
 
+## 2026-06-21 — TYPEFACE-LR0-FONT-METRICS-0 (workshop typeface ladder)
+
+- First implementation rung of the owner-approved TYPEFACE-LADDER: workshop-only font loading and glyph metrics in `simthing-workshop/src/typeface/`.
+- Loads OFL Noto Sans fixture bytes via `skrifa`/`fontdb`; exposes `units_per_em`, `glyph_count`, and cmap-backed `glyph_metrics` with deterministic tests.
+- Adds a small measurement harness (`measure_chars`, `format_measurement_report`) for workshop probes.
+- **Non-goals preserved:** no rendering, no Bevy text plugin, no atlas, no shaping (`cosmic-text`), no GPU/wgpu usage in typeface code, no `simthing-tools` crate, no ScenarioSpec/RF/STEAD/Studio save-load edits.
+- Result report: `docs/tests/typeface_lr0_results.md`; ladder § LR0 marked DONE/PROBATION.
+
 ## 2026-06-21 — WORKSPACE-CLEANUP-INVENTORY-0 (local hygiene)
 
 - Inventoried `C:\Users\mvorm\SimThing`; dominant use was **`target/` at 133.1 GB** (Rust PDBs + build artifacts).
