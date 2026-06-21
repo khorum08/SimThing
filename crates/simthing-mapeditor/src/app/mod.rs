@@ -139,6 +139,14 @@ pub struct StudioAppState {
     pub runtime_saveload_status: Option<crate::StudioScenarioRuntimeSaveLoadStatus>,
     /// Last runtime/candidate save-reopen status message (presentation only).
     pub last_runtime_saveload_status: String,
+    /// Runtime save/load status must refresh before next draw (presentation only).
+    pub runtime_saveload_status_dirty: bool,
+    /// Cached authority digest from the last successful status refresh.
+    pub runtime_saveload_status_source_digest: Option<u64>,
+    /// True while the expensive proof/report refresh is running.
+    pub runtime_saveload_status_refresh_in_progress: bool,
+    /// Elapsed milliseconds for the last successful status refresh.
+    pub runtime_saveload_status_last_refresh_ms: Option<u128>,
 }
 
 impl StudioAppState {
@@ -179,7 +187,91 @@ impl StudioAppState {
             candidate_path_text: "candidate.simthing-scenario.json".to_string(),
             runtime_saveload_status: None,
             last_runtime_saveload_status: String::new(),
+            runtime_saveload_status_dirty: false,
+            runtime_saveload_status_source_digest: None,
+            runtime_saveload_status_refresh_in_progress: false,
+            runtime_saveload_status_last_refresh_ms: None,
         }
+    }
+
+    pub(crate) fn runtime_saveload_status_cache_mut(
+        &mut self,
+    ) -> crate::RuntimeSaveloadStatusCacheMut<'_> {
+        crate::RuntimeSaveloadStatusCacheMut {
+            status: &mut self.runtime_saveload_status,
+            dirty: &mut self.runtime_saveload_status_dirty,
+            source_digest: &mut self.runtime_saveload_status_source_digest,
+            refresh_in_progress: &mut self.runtime_saveload_status_refresh_in_progress,
+            last_refresh_ms: &mut self.runtime_saveload_status_last_refresh_ms,
+        }
+    }
+
+    pub(crate) fn mark_runtime_saveload_status_dirty(&mut self) {
+        self.runtime_saveload_status_dirty = true;
+    }
+
+    pub(crate) fn refresh_runtime_saveload_status_if_needed(&mut self, force: bool) -> bool {
+        let decision = crate::runtime_saveload_refresh_decision(
+            self.session.is_some(),
+            self.runtime_saveload_status_dirty,
+            force,
+            self.runtime_saveload_status_source_digest,
+            None,
+        );
+        match decision {
+            crate::RuntimeSaveloadRefreshDecision::Clear => {
+                self.runtime_saveload_status = None;
+                self.runtime_saveload_status_dirty = false;
+                self.runtime_saveload_status_source_digest = None;
+                self.runtime_saveload_status_refresh_in_progress = false;
+                false
+            }
+            crate::RuntimeSaveloadRefreshDecision::UseCache => false,
+            crate::RuntimeSaveloadRefreshDecision::Refresh => {
+                self.runtime_saveload_status_refresh_in_progress = true;
+                let started = std::time::Instant::now();
+                let refresh_result = match self.session.as_ref() {
+                    Some(session) => crate::refresh_runtime_saveload_status_from_session(
+                        "studio_loaded_session",
+                        &session.scenario_authority,
+                    ),
+                    None => {
+                        self.runtime_saveload_status_refresh_in_progress = false;
+                        self.runtime_saveload_status = None;
+                        self.runtime_saveload_status_dirty = false;
+                        self.runtime_saveload_status_source_digest = None;
+                        return false;
+                    }
+                };
+                let elapsed_ms = started.elapsed().as_millis();
+                self.runtime_saveload_status_refresh_in_progress = false;
+                self.runtime_saveload_status_last_refresh_ms = Some(elapsed_ms);
+                match refresh_result {
+                    Ok(status) => {
+                        self.runtime_saveload_status_source_digest = status.loaded_scenario_digest;
+                        self.runtime_saveload_status = Some(status);
+                        self.runtime_saveload_status_dirty = false;
+                        true
+                    }
+                    Err(_) => {
+                        self.runtime_saveload_status_dirty = true;
+                        false
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn apply_refreshed_runtime_saveload_status(
+        &mut self,
+        status: crate::StudioScenarioRuntimeSaveLoadStatus,
+        elapsed_ms: Option<u128>,
+    ) {
+        crate::apply_runtime_saveload_status_to_cache(
+            self.runtime_saveload_status_cache_mut(),
+            status,
+            elapsed_ms,
+        );
     }
 }
 
@@ -297,6 +389,7 @@ fn adopt_session_with_status(
     state.generation_error = None;
     state.selection.clear();
     state.status_message = status_message;
+    state.mark_runtime_saveload_status_dirty();
 }
 
 pub fn rebuild_session_scene(

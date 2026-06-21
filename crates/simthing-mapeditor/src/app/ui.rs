@@ -33,8 +33,7 @@ use super::scenario_io::{
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::scenario_runtime_saveload_ui::{
-    refresh_runtime_saveload_status_from_session, reopen_candidate_scenario_for_studio_session,
-    save_candidate_scenario_for_studio_create_new,
+    reopen_candidate_scenario_for_studio_session, save_candidate_scenario_for_studio_create_new,
 };
 use crate::session::StudioSession;
 
@@ -180,7 +179,7 @@ pub fn studio_ui_system(
                     &mut state,
                     adoption.message.clone(),
                 );
-                state.runtime_saveload_status = Some(status);
+                state.apply_refreshed_runtime_saveload_status(status, None);
                 state.last_runtime_saveload_status = adoption.message;
                 if let Some(session) = state.session.as_ref() {
                     rebuild_galaxy_scene(
@@ -205,6 +204,7 @@ pub fn studio_ui_system(
         match load_scenario_manual_path_action(&mut state) {
             ScenarioActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                state.refresh_runtime_saveload_status_if_needed(false);
                 if let Some(session) = state.session.as_ref() {
                     rebuild_galaxy_scene(
                         &mut commands,
@@ -229,6 +229,7 @@ pub fn studio_ui_system(
         match open_native_scenario_load_picker(&mut state) {
             ScenarioPickerActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                state.refresh_runtime_saveload_status_if_needed(false);
                 if let Some(session) = state.session.as_ref() {
                     rebuild_galaxy_scene(
                         &mut commands,
@@ -851,6 +852,14 @@ fn execute_save_candidate_action(state: &mut StudioAppState) {
     match save_candidate_scenario_for_studio_create_new("studio_save_candidate", &json, &path) {
         Ok(result) => {
             state.last_runtime_saveload_status = result.message.clone();
+            state.session = session_before;
+            if result.saved {
+                state.mark_runtime_saveload_status_dirty();
+                state.refresh_runtime_saveload_status_if_needed(false);
+            } else {
+                state.runtime_saveload_status = status_before;
+            }
+            return;
         }
         Err(_) => {
             state.last_runtime_saveload_status =
@@ -900,15 +909,34 @@ fn draw_runtime_candidate_saveload_controls(
         .weak(),
     );
 
-    if let Some(session) = state.session.as_ref() {
-        if let Ok(status) = refresh_runtime_saveload_status_from_session(
-            "studio_loaded_session",
-            &session.scenario_authority,
-        ) {
-            state.runtime_saveload_status = Some(status);
-        }
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_refresh_runtime_status"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_refresh_runtime_status")));
+        state.refresh_runtime_saveload_status_if_needed(true);
     } else {
-        state.runtime_saveload_status = None;
+        state.refresh_runtime_saveload_status_if_needed(false);
+    }
+
+    if state.runtime_saveload_status_dirty {
+        ui.label(
+            egui::RichText::new("Status refresh pending — click Refresh Runtime Status")
+                .weak()
+                .italics(),
+        );
+    } else if state.runtime_saveload_status_refresh_in_progress {
+        ui.label(
+            egui::RichText::new("Refreshing runtime status…")
+                .weak()
+                .italics(),
+        );
+    }
+    if let Some(ms) = state.runtime_saveload_status_last_refresh_ms {
+        ui.label(format!("Last status refresh: {ms} ms"));
+    }
+    if let Some(digest) = state.runtime_saveload_status_source_digest {
+        ui.label(format!("Cached digest: {digest}"));
     }
 
     if let Some(status) = &state.runtime_saveload_status {
@@ -974,6 +1002,9 @@ fn draw_runtime_candidate_saveload_controls(
         }
         if ui.button("Reopen Candidate").clicked() {
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_reopen_candidate"), true));
+        }
+        if ui.button("Refresh Runtime Status").clicked() {
+            ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_refresh_runtime_status"), true));
         }
     });
     if !state.last_runtime_saveload_status.is_empty() {

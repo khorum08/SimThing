@@ -1,10 +1,12 @@
 //! STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 — Studio UI adapter for loaded scenario runtime candidate save/reopen.
+//! STUDIO-RUNTIME-SAVELOAD-STATUS-CACHE-0 — cached presentation refresh for runtime save/load status.
 //!
 //! Presentation/command surface only. ScenarioSpec remains authority; UI state, Bevy ECS, runtime
 //! reports, and GPU buffers are explicitly non-authoritative.
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use simthing_driver::{
     compile_loaded_scenario_runtime_report_chain_plan_from_json_str,
@@ -335,4 +337,114 @@ pub fn refresh_runtime_saveload_status_from_session(
 ) -> Result<StudioScenarioRuntimeSaveLoadStatus, SpecError> {
     let json = canonical_json_from_loaded_scenario_authority(scenario)?;
     build_studio_scenario_runtime_saveload_status_from_json_str(source_label, &json)
+}
+
+/// Whether cached runtime save/load status should refresh, clear, or reuse cache.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeSaveloadRefreshDecision {
+    Clear,
+    UseCache,
+    Refresh,
+}
+
+/// Pure refresh decision for tests and UI draw paths (no per-frame proof recomputation).
+pub fn runtime_saveload_refresh_decision(
+    has_session: bool,
+    dirty: bool,
+    force: bool,
+    source_digest: Option<u64>,
+    authority_digest: Option<u64>,
+) -> RuntimeSaveloadRefreshDecision {
+    if !has_session {
+        return RuntimeSaveloadRefreshDecision::Clear;
+    }
+    if force || dirty {
+        return RuntimeSaveloadRefreshDecision::Refresh;
+    }
+    if let (Some(source), Some(authority)) = (source_digest, authority_digest) {
+        if source != authority {
+            return RuntimeSaveloadRefreshDecision::Refresh;
+        }
+    }
+    RuntimeSaveloadRefreshDecision::UseCache
+}
+
+/// Mutable presentation-only cache fields for runtime save/load status.
+pub struct RuntimeSaveloadStatusCacheMut<'a> {
+    pub status: &'a mut Option<StudioScenarioRuntimeSaveLoadStatus>,
+    pub dirty: &'a mut bool,
+    pub source_digest: &'a mut Option<u64>,
+    pub refresh_in_progress: &'a mut bool,
+    pub last_refresh_ms: &'a mut Option<u128>,
+}
+
+pub fn clear_runtime_saveload_status_cache(cache: RuntimeSaveloadStatusCacheMut<'_>) {
+    *cache.status = None;
+    *cache.dirty = false;
+    *cache.source_digest = None;
+    *cache.refresh_in_progress = false;
+}
+
+/// Apply a freshly computed status into the cache without rerunning the proof chain.
+pub fn apply_runtime_saveload_status_to_cache(
+    cache: RuntimeSaveloadStatusCacheMut<'_>,
+    status: StudioScenarioRuntimeSaveLoadStatus,
+    elapsed_ms: Option<u128>,
+) {
+    *cache.source_digest = status.loaded_scenario_digest;
+    *cache.status = Some(status);
+    *cache.dirty = false;
+    *cache.refresh_in_progress = false;
+    if let Some(ms) = elapsed_ms {
+        *cache.last_refresh_ms = Some(ms);
+    }
+}
+
+/// Refresh cached runtime save/load status only when dirty, forced, or authority digest changes.
+pub fn refresh_runtime_saveload_status_if_needed(
+    cache: RuntimeSaveloadStatusCacheMut<'_>,
+    scenario: Option<&simthing_spec::SimThingScenarioSpec>,
+    source_label: &str,
+    force: bool,
+    authority_digest: Option<u64>,
+) -> bool {
+    let has_session = scenario.is_some();
+    let decision = runtime_saveload_refresh_decision(
+        has_session,
+        *cache.dirty,
+        force,
+        *cache.source_digest,
+        authority_digest,
+    );
+
+    match decision {
+        RuntimeSaveloadRefreshDecision::Clear => {
+            clear_runtime_saveload_status_cache(cache);
+            false
+        }
+        RuntimeSaveloadRefreshDecision::UseCache => false,
+        RuntimeSaveloadRefreshDecision::Refresh => {
+            let Some(scenario) = scenario else {
+                clear_runtime_saveload_status_cache(cache);
+                return false;
+            };
+            *cache.refresh_in_progress = true;
+            let started = Instant::now();
+            let refresh_result =
+                refresh_runtime_saveload_status_from_session(source_label, scenario);
+            let elapsed_ms = started.elapsed().as_millis();
+            *cache.refresh_in_progress = false;
+            *cache.last_refresh_ms = Some(elapsed_ms);
+            match refresh_result {
+                Ok(status) => {
+                    apply_runtime_saveload_status_to_cache(cache, status, Some(elapsed_ms));
+                    true
+                }
+                Err(_) => {
+                    *cache.dirty = true;
+                    false
+                }
+            }
+        }
+    }
 }
