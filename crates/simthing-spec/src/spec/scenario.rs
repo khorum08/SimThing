@@ -109,6 +109,7 @@ pub const GALAXY_CHILD_LOCATION_ROLE_PLANET: &str = "planet";
 pub const GALAXY_CHILD_LOCATION_ROLE_MOON: &str = "moon";
 pub const LOCAL_GRIDCELL_ROLE_INERT: &str = "inert";
 pub const LOCAL_GRIDCELL_ROLE_PLANET: &str = "planet";
+pub const LOCAL_GRIDCELL_ROLE_SURFACE: &str = "surface";
 pub const LOCAL_GRIDCELL_ROLE_RECEIVER: &str = "receiver";
 
 pub const SCENARIO_SCHEMA_VERSION: u32 = 1;

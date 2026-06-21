@@ -11,7 +11,7 @@ use simthing_mapeditor::{
     save_candidate_scenario_for_studio_create_new,
     studio_scenario_runtime_saveload_non_authority_boundary,
 };
-use simthing_spec::save_scenario_spec_to_canonical_json;
+use simthing_spec::{evaluate_planet_child_locations, save_scenario_spec_to_canonical_json};
 use tempfile::TempDir;
 
 const OWNER_SILO_FIXTURE: &str = "owner_silo_disburse_down_scoped.simthing-scenario.json";
@@ -177,4 +177,12 @@ fn studio_reopen_candidate_defers_persistent_history_and_gpu_dispatch() {
     let boundary = studio_scenario_runtime_saveload_non_authority_boundary();
     assert!(boundary.persistent_history_deferred);
     assert!(boundary.gpu_dispatch_deferred);
+}
+
+#[test]
+fn studio_reopen_candidate_adopts_candidate_with_surface_gridcell_tier() {
+    let json = load_owner_silo_fixture_json();
+    let (spec, _) =
+        simthing_spec::load_scenario_spec_from_json_str("owner_silo", &json).expect("load");
+    assert!(evaluate_planet_child_locations(&spec).surface_gridcell_tier_present);
 }

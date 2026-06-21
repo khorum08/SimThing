@@ -14,10 +14,11 @@ use super::scenario::{
     SimThingScenarioSpec, GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID, GALAXY_GRIDCELL_ROLE_INERT,
     GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_COL_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_INERT,
     LOCAL_GRIDCELL_ROLE_PLANET, LOCAL_GRIDCELL_ROLE_PROPERTY_ID, LOCAL_GRIDCELL_ROLE_RECEIVER,
-    LOCAL_GRIDCELL_ROW_PROPERTY_ID, LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS,
-    PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID, PLANET_OWNER_REF_PROPERTY_ID,
-    STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
-    STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
+    LOCAL_GRIDCELL_ROLE_SURFACE, LOCAL_GRIDCELL_ROW_PROPERTY_ID, LOCAL_GRID_DEFAULT_COLS,
+    LOCAL_GRID_DEFAULT_ROWS, PLANET_DISPLAY_NAME_PROPERTY_ID, PLANET_ID_PROPERTY_ID,
+    PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, STAR_SYSTEM_LOCAL_GRID_FRAME_COLS_PROPERTY_ID,
+    STAR_SYSTEM_LOCAL_GRID_FRAME_ROWS_PROPERTY_ID,
 };
 use super::spatial_local_grid::{
     default_local_grid_frame_for_spatial_gridcell, implicit_receiver_cell_for_gridcell,
@@ -50,6 +51,9 @@ pub enum PlanetChildLocationAdmissionErrorKind {
     PlanetListedInGalaxyStructuralGrid,
     UnsupportedChildLocationRole,
     DeepPlanetChildDeferred,
+    PlanetDirectGameplayChildRequiresSurfaceGridcell,
+    PlanetSurfaceGridcellMissing,
+    PlanetSurfaceGridcellDuplicate,
     PlanetOwnershipResolutionDeferred,
     PlanetSimulationDeferred,
     PlanetLocalGridMissingCoordinate,
@@ -84,6 +88,12 @@ pub struct PlanetChildLocationAdmissionReport {
     pub local_gridcell_count: u32,
     pub local_inert_gridcell_count: u32,
     pub planet_gridcell_count: u32,
+    pub surface_gridcell_count: u32,
+    pub planet_surface_gridcell_count: u32,
+    pub gameplay_child_under_surface_count: u32,
+    pub direct_gameplay_child_under_planet_count: u32,
+    pub surface_gridcell_tier_present: bool,
+    pub surface_gridcell_tier_required: bool,
     pub planet_non_grid_child_count: u32,
     pub receiver_cell_count: u32,
     pub implicit_receiver_cell_count: u32,
@@ -164,7 +174,10 @@ pub fn collect_planet_non_grid_children(
         let Some(planet_id) = planet_id(planet) else {
             continue;
         };
-        for child in &planet.children {
+        let Some(surface) = planet_surface_gridcell(planet) else {
+            continue;
+        };
+        for child in &surface.children {
             if child.kind == SimThingKind::Location {
                 continue;
             }
@@ -245,6 +258,40 @@ pub fn is_planet_gridcell(thing: &SimThing) -> bool {
         && local_gridcell_role(thing).as_deref() == Some(LOCAL_GRIDCELL_ROLE_PLANET)
 }
 
+pub fn is_surface_gridcell(thing: &SimThing) -> bool {
+    thing.kind == SimThingKind::Location
+        && local_gridcell_role(thing).as_deref() == Some(LOCAL_GRIDCELL_ROLE_SURFACE)
+}
+
+pub fn planet_surface_gridcell<'a>(planet: &'a SimThing) -> Option<&'a SimThing> {
+    if !is_planet_gridcell(planet) {
+        return None;
+    }
+    planet
+        .children
+        .iter()
+        .find(|child| is_surface_gridcell(child))
+}
+
+pub fn planet_gameplay_children<'a>(planet: &'a SimThing) -> Vec<&'a SimThing> {
+    let Some(surface) = planet_surface_gridcell(planet) else {
+        return Vec::new();
+    };
+    surface
+        .children
+        .iter()
+        .filter(|child| {
+            child.kind != SimThingKind::Location && is_admitted_planet_non_grid_child(&child.kind)
+        })
+        .collect()
+}
+
+pub fn make_surface_gridcell() -> SimThing {
+    let mut cell = SimThing::new(SimThingKind::Location, 0);
+    apply_local_gridcell_metadata(&mut cell, LOCAL_GRIDCELL_ROLE_SURFACE, 0, 0);
+    cell
+}
+
 /// Deprecated alias for [`is_planet_gridcell`].
 pub fn is_planet_child_location(thing: &SimThing) -> bool {
     is_planet_gridcell(thing)
@@ -256,7 +303,9 @@ pub fn is_local_gridcell(thing: &SimThing) -> bool {
     }
     matches!(
         local_gridcell_role(thing).as_deref(),
-        Some(LOCAL_GRIDCELL_ROLE_PLANET) | Some(LOCAL_GRIDCELL_ROLE_INERT)
+        Some(LOCAL_GRIDCELL_ROLE_PLANET)
+            | Some(LOCAL_GRIDCELL_ROLE_INERT)
+            | Some(LOCAL_GRIDCELL_ROLE_SURFACE)
     )
 }
 
@@ -313,6 +362,7 @@ pub fn make_planet_gridcell(
 ) -> SimThing {
     let mut planet = SimThing::new(SimThingKind::Location, 0);
     apply_planet_gridcell_metadata(&mut planet, planet_id, col, row, display_name);
+    planet.add_child(make_surface_gridcell());
     planet
 }
 
@@ -393,6 +443,7 @@ pub fn evaluate_planet_child_locations(
     spec: &SimThingScenarioSpec,
 ) -> PlanetChildLocationAdmissionReport {
     let mut report = PlanetChildLocationAdmissionReport::default();
+    report.surface_gridcell_tier_required = true;
     let Ok(galaxy_map) = game_session_galaxy_map(spec) else {
         report.classification = PlanetChildLocationAdmissionClassification::Rejected;
         return report;
@@ -785,15 +836,6 @@ fn evaluate_planet_local_gridcell(
     report.local_gridcell_count += 1;
     report.planet_gridcell_count += 1;
 
-    if has_deeper_location_nesting(child) {
-        push_deferral(
-            report,
-            PlanetChildLocationAdmissionErrorKind::DeepPlanetChildDeferred,
-            Some(path_prefix.to_string()),
-            Some(child.id.raw()),
-            "deeper Location nesting below planet local gridcell is deferred",
-        );
-    }
     if planet_owner_ref(child).is_some() {
         push_deferral(
             report,
@@ -811,16 +853,176 @@ fn evaluate_planet_local_gridcell(
         "planet simulation/economy/population behavior remains deferred",
     );
 
+    let interior_frame = planet_gridcell_interior_frame(child);
+    let mut surface_admitted = false;
+    let mut seen_interior_coords = BTreeSet::new();
+
     for grandchild in &child.children {
+        let grandchild_path = format!("{path_prefix}/interior:{}", grandchild.id.raw());
         if grandchild.kind == SimThingKind::Location {
+            evaluate_planet_interior_location_child(
+                grandchild,
+                interior_frame,
+                &grandchild_path,
+                placement_ids,
+                &mut seen_interior_coords,
+                &mut surface_admitted,
+                report,
+            );
             continue;
         }
-        evaluate_planet_non_grid_child(
-            grandchild,
-            &format!("{path_prefix}/non_grid:{}", grandchild.id.raw()),
-            placement_ids,
+        if is_admitted_planet_non_grid_child(&grandchild.kind) {
+            report.direct_gameplay_child_under_planet_count += 1;
+            push_error(
+                report,
+                PlanetChildLocationAdmissionErrorKind::PlanetDirectGameplayChildRequiresSurfaceGridcell,
+                Some(grandchild_path),
+                Some(grandchild.id.raw()),
+                "gameplay SimThings must be children of the planet surface gridcell, not the planet gridcell directly",
+            );
+            continue;
+        }
+        push_deferral(
             report,
+            PlanetChildLocationAdmissionErrorKind::PlanetNonGridChildUnsupportedKind,
+            Some(grandchild_path),
+            Some(grandchild.id.raw()),
+            format!(
+                "direct child kind `{}` under planet gridcell is not yet admitted",
+                planet_non_grid_child_kind_label(&grandchild.kind)
+            ),
         );
+    }
+
+    report.surface_gridcell_tier_present = surface_admitted;
+    if !surface_admitted {
+        push_error(
+            report,
+            PlanetChildLocationAdmissionErrorKind::PlanetSurfaceGridcellMissing,
+            Some(path_prefix.to_string()),
+            Some(child.id.raw()),
+            "planet gridcell requires exactly one 1x1 surface gridcell Location at (0,0)",
+        );
+    }
+}
+
+fn evaluate_planet_interior_location_child(
+    child: &SimThing,
+    interior_frame: LocalGridFrame,
+    path_prefix: &str,
+    placement_ids: &BTreeSet<u32>,
+    seen_interior_coords: &mut BTreeSet<(u32, u32)>,
+    surface_admitted: &mut bool,
+    report: &mut PlanetChildLocationAdmissionReport,
+) {
+    if placement_ids.contains(&child.id.raw()) {
+        push_error(
+            report,
+            PlanetChildLocationAdmissionErrorKind::PlanetListedInGalaxyStructuralGrid,
+            Some(path_prefix.to_string()),
+            Some(child.id.raw()),
+            "planet interior local gridcell must not appear in GalaxyMap structural_grid placements",
+        );
+        return;
+    }
+
+    let Some((col, row)) = validate_local_coordinates(
+        child,
+        interior_frame.cols,
+        interior_frame.rows,
+        path_prefix,
+        report,
+        true,
+    ) else {
+        return;
+    };
+
+    if !seen_interior_coords.insert((col, row)) {
+        push_error(
+            report,
+            PlanetChildLocationAdmissionErrorKind::PlanetLocalGridDuplicateCoordinate,
+            Some(path_prefix.to_string()),
+            Some(child.id.raw()),
+            format!("duplicate planet interior coordinate ({col},{row})"),
+        );
+        return;
+    }
+
+    match local_gridcell_role(child).as_deref() {
+        Some(LOCAL_GRIDCELL_ROLE_SURFACE) => {
+            if col != 0 || row != 0 {
+                push_error(
+                    report,
+                    PlanetChildLocationAdmissionErrorKind::PlanetLocalGridCoordinateOutOfFrame,
+                    Some(path_prefix.to_string()),
+                    Some(child.id.raw()),
+                    "surface gridcell must occupy (0,0) in default 1x1 planet interior frame",
+                );
+                return;
+            }
+            if *surface_admitted {
+                push_error(
+                    report,
+                    PlanetChildLocationAdmissionErrorKind::PlanetSurfaceGridcellDuplicate,
+                    Some(path_prefix.to_string()),
+                    Some(child.id.raw()),
+                    "planet gridcell admits only one surface gridcell",
+                );
+                return;
+            }
+            *surface_admitted = true;
+            report.surface_gridcell_count += 1;
+            report.planet_surface_gridcell_count += 1;
+            report.local_gridcell_count += 1;
+
+            for gameplay_child in &child.children {
+                let gameplay_path = format!("{path_prefix}/gameplay:{}", gameplay_child.id.raw());
+                if gameplay_child.kind == SimThingKind::Location {
+                    push_deferral(
+                        report,
+                        PlanetChildLocationAdmissionErrorKind::DeepPlanetChildDeferred,
+                        Some(gameplay_path),
+                        Some(gameplay_child.id.raw()),
+                        "deeper Location nesting below surface gridcell is deferred",
+                    );
+                    continue;
+                }
+                evaluate_planet_non_grid_child(
+                    gameplay_child,
+                    &gameplay_path,
+                    placement_ids,
+                    report,
+                );
+                if is_admitted_planet_non_grid_child(&gameplay_child.kind) {
+                    report.gameplay_child_under_surface_count += 1;
+                }
+            }
+        }
+        Some(LOCAL_GRIDCELL_ROLE_INERT) => {
+            report.local_gridcell_count += 1;
+            report.local_inert_gridcell_count += 1;
+        }
+        Some(role) => {
+            report.unsupported_child_location_count += 1;
+            report.local_gridcell_count += 1;
+            push_deferral(
+                report,
+                PlanetChildLocationAdmissionErrorKind::UnsupportedChildLocationRole,
+                Some(path_prefix.to_string()),
+                Some(child.id.raw()),
+                format!("planet interior local gridcell role `{role}` is not yet admitted"),
+            );
+        }
+        None => {
+            report.unsupported_child_location_count += 1;
+            push_deferral(
+                report,
+                PlanetChildLocationAdmissionErrorKind::UnsupportedChildLocationRole,
+                Some(path_prefix.to_string()),
+                Some(child.id.raw()),
+                "Location child under planet gridcell lacks local gridcell role metadata",
+            );
+        }
     }
 }
 
@@ -929,13 +1131,6 @@ fn validate_local_coordinates(
     }
 }
 
-fn has_deeper_location_nesting(planet: &SimThing) -> bool {
-    planet
-        .children
-        .iter()
-        .any(|c| c.kind == SimThingKind::Location)
-}
-
 fn finalize_planet_classification(report: &mut PlanetChildLocationAdmissionReport) {
     if !report.errors.is_empty() {
         report.classification = PlanetChildLocationAdmissionClassification::Rejected;
@@ -1029,6 +1224,15 @@ pub fn planet_child_location_error_kind_label(
             "UnsupportedChildLocationRole"
         }
         PlanetChildLocationAdmissionErrorKind::DeepPlanetChildDeferred => "DeepPlanetChildDeferred",
+        PlanetChildLocationAdmissionErrorKind::PlanetDirectGameplayChildRequiresSurfaceGridcell => {
+            "PlanetDirectGameplayChildRequiresSurfaceGridcell"
+        }
+        PlanetChildLocationAdmissionErrorKind::PlanetSurfaceGridcellMissing => {
+            "PlanetSurfaceGridcellMissing"
+        }
+        PlanetChildLocationAdmissionErrorKind::PlanetSurfaceGridcellDuplicate => {
+            "PlanetSurfaceGridcellDuplicate"
+        }
         PlanetChildLocationAdmissionErrorKind::PlanetOwnershipResolutionDeferred => {
             "PlanetOwnershipResolutionDeferred"
         }

@@ -25,18 +25,19 @@ SimThing Studio is an editor and presentation shell over **SimThing-Spec scenari
 ## RF / Spatial-Tree Runtime Doctrine
 
 ```text
-ScenarioSpec is the serializable authority.
-
-ScenarioSpec
-  -> Scenario root
-     -> GameSession
-        -> Owner SimThings
-        -> GalaxyMap / WorldStateMap Location
-           -> galactic gridcell Location SimThings
-              -> interior local grid
-                 -> star-system local gridcell Location SimThings
-                    -> planet/starbase/orbital Location gridcell SimThings
-                       -> cohorts / fleets / infrastructure / leaders as child SimThings
+ScenarioSpec / serializable Scenario SimThing container
+  -> GameSession SimThing
+     -> Owner gridcells / Owner SimThings as GameSession children
+     -> GalaxyGridcell SimThing
+        -> child grid:
+           -> StarMap gridcell SimThing
+           -> inert 1×1 gridcell SimThings
+              -> child grid:
+                 -> Planet gridcell SimThing
+                 -> inert 1×1 gridcell SimThings
+                    -> child grid:
+                       -> 1×1 surface gridcell SimThing
+                          -> pop cohorts / fleets / buildings / infrastructure / leaders
 ```
 
 **Spatial invariants:**
@@ -54,7 +55,8 @@ ScenarioSpec
 - Star-system galactic gridcells use 10×10 local grids.
 - Inert gridcells still use receiver grids for falloff, emanation, and heatmap values.
 - Planet/starbase/orbital bodies are local-grid Location cells inside star-system local grids.
-- Cohorts, fleets, infrastructure, and leaders are child SimThings under spatial Location cells unless later promoted to spatial containers.
+- Each planet gridcell admits exactly one default 1×1 surface gridcell Location at (0,0) with role `surface`.
+- Cohorts, fleets, infrastructure, leaders, and other admitted gameplay SimThings are children of the surface gridcell, not direct children of the planet gridcell.
 
 **RF / Accumulator doctrine:**
 
@@ -99,6 +101,13 @@ ScenarioSpec
 | **STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0** | **Landed / PROBATION** | Studio UI workflow for loaded scenario runtime candidate save/reopen |
 | **STUDIO-CANDIDATE-REOPEN-ADOPT-0** | **Landed / PROBATION** | Successful Reopen Candidate adopts candidate into Studio session |
 | **SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0** | **Landed / PROBATION** | DA precheck consolidation for Scenario Runtime + Save/Load closing track |
+| **SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0** | **Landed / PROBATION** | Remedial restoration of planet 1×1 surface gridcell tier |
+
+## SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0 — planet surface gridcell tier remediation
+
+This remedial pass restores the constitutionally required 1×1 surface gridcell tier below planet gridcells. Gameplay SimThings are no longer homed directly on the planet gridcell; cohorts, fleets, buildings, infrastructure, leaders, and other admitted gameplay children are children of the surface gridcell. Recursive Accumulator Flow settles first at the surface arena and then bubbles surface → planet → starmap/star-system → galaxy. Owner identity remains metadata/channel scope, not spatial parentage. No new savefile format, persistent history, GPU dispatch, pathfinding, combat, economy execution, or fleet movement is introduced.
+
+Final DA review **HOLD remains in place** until `SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0` is re-run after this remediation. This rung does not mark the track DA-approved.
 
 ## SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 — DA precheck for Scenario Runtime + Save/Load closing track
 
@@ -235,5 +244,6 @@ promotion.
 `DA-APPROVED`. Rungs 0–8 prior status is unchanged; SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0 is recorded as
 **HELD**.
 
-**Required remedial track:** `SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0` (scope in the final-review results
-doc). After it lands, re-run this final DA review.
+**Remedial track landed:** `SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0` restores the surface gridcell tier in
+code, tests, fixture, and this doc. **HOLD remains** until `SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0` is
+re-run and evaluates the remediated hierarchy.

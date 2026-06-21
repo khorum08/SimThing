@@ -6,8 +6,8 @@ use std::time::{Duration, SystemTime};
 
 use simthing_spec::{
     clone_scenario_candidate_with_runtime_property_view,
-    evaluate_loaded_scenario_runtime_report_chain_from_json_str,
-    evaluate_scenario_candidate_from_runtime_from_json_str,
+    evaluate_loaded_scenario_runtime_report_chain_from_json_str, evaluate_planet_child_locations,
+    evaluate_scenario_candidate_from_runtime_from_json_str, load_scenario_spec_from_json_str,
     prove_scenario_candidate_from_runtime_preserves_original_authority,
     serialize_scenario_authority, ScenarioCandidateFromRuntimeSource, SpecError,
     RUNTIME_PREVIEW_APPLIED_PROPERTY_ID, RUNTIME_PREVIEW_SATISFIED_PROPERTY_ID,
@@ -207,4 +207,14 @@ fn normal_tests_do_not_write_scenario_candidate_fixtures() {
         age.as_secs() > 5,
         "corpus fixture must not be rewritten during normal tests"
     );
+}
+
+#[test]
+fn scenario_candidate_from_runtime_preserves_surface_gridcell_tier() {
+    let json = load_owner_silo_fixture_json();
+    let (spec, _) = load_scenario_spec_from_json_str("orig", &json).expect("load");
+    assert!(evaluate_planet_child_locations(&spec).surface_gridcell_tier_present);
+    let report = evaluate_fixture();
+    assert!(report.candidate_spatial_tree_preserved);
+    assert!(report.candidate_stead_ids_preserved);
 }

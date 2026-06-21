@@ -4,7 +4,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-use simthing_spec::{evaluate_scenario_stead_map_roundtrip_from_json_str, SpecError};
+use simthing_spec::{
+    evaluate_planet_child_locations, evaluate_scenario_stead_map_roundtrip_from_json_str,
+    load_scenario_spec_from_json_str, SpecError,
+};
 
 const OWNER_SILO_FIXTURE: &str = "owner_silo_disburse_down_scoped.simthing-scenario.json";
 
@@ -122,4 +125,13 @@ fn normal_tests_do_not_write_scenario_stead_map_fixtures() {
         age.as_secs() > 5,
         "corpus fixture must not be rewritten during normal tests"
     );
+}
+
+#[test]
+fn scenario_stead_map_roundtrip_preserves_surface_gridcell_tier() {
+    let json = load_owner_silo_fixture_json();
+    let (spec, _) = load_scenario_spec_from_json_str("owner_silo", &json).expect("load");
+    let planet = evaluate_planet_child_locations(&spec);
+    assert!(planet.surface_gridcell_tier_present);
+    assert!(planet.gameplay_child_under_surface_count >= 1);
 }

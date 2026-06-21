@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 
 use simthing_spec::{
     candidate_scenario_write_policy_report, candidate_scenario_write_temp_path,
-    evaluate_scenario_candidate_from_runtime_from_json_str,
+    evaluate_planet_child_locations, evaluate_scenario_candidate_from_runtime_from_json_str,
     evaluate_scenario_candidate_save_reopen_from_json_str, load_scenario_spec_from_json_str,
     prove_scenario_candidate_save_reopen_digest_stability,
     write_candidate_scenario_canonical_json_atomic, CandidateScenarioWritePolicy,
@@ -304,4 +304,14 @@ fn normal_tests_do_not_write_candidate_save_reopen_fixtures() {
         age.as_secs() > 5,
         "corpus fixture must not be rewritten during normal tests"
     );
+}
+
+#[test]
+fn scenario_candidate_save_reopen_preserves_surface_gridcell_tier() {
+    let json = load_owner_silo_fixture_json();
+    let (spec, _) = load_scenario_spec_from_json_str("orig", &json).expect("load");
+    assert!(evaluate_planet_child_locations(&spec).surface_gridcell_tier_present);
+    let report = evaluate_fixture();
+    assert!(report.reopen_report.spatial_tree_preserved);
+    assert!(report.candidate_digest_stable_after_reopen);
 }

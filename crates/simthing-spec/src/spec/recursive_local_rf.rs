@@ -689,7 +689,9 @@ fn collect_participant_row(
 }
 
 fn location_participant_kind_label(location: &SimThing) -> String {
-    if super::planet_child_location::is_planet_gridcell(location) {
+    if super::planet_child_location::is_surface_gridcell(location) {
+        "surface_gridcell".to_string()
+    } else if super::planet_child_location::is_planet_gridcell(location) {
         "planet_gridcell".to_string()
     } else if super::scenario::is_galaxy_map_entity(location) {
         "galaxy_map".to_string()
