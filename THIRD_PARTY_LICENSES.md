@@ -26,6 +26,26 @@ This file records vendored third-party code included in the SimThing workspace.
 | **License** | MIT OR Apache-2.0 |
 | **Scope note (TYPEFACE-LR1)** | Workshop-only text shaping (`ShapingEngine`); no rendering/atlas integration in LR1 |
 
+## swash (TYPEFACE-LR2 workshop rasterization dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | swash |
+| **Upstream origin** | https://github.com/dfrg/swash |
+| **Version in workspace** | 0.2.9 (direct `simthing-workshop` dep; also `cosmic-text` transitive) |
+| **License** | MIT |
+| **Scope note (TYPEFACE-LR2)** | Workshop-only glyph outline rasterization (`rasterize_glyph_cpu`); no Bevy/`simthing-tools` integration in LR2 |
+
+## guillotiere (TYPEFACE-LR2 workshop atlas packing dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | guillotiere |
+| **Upstream origin** | https://github.com/nical/guillotiere |
+| **Version in workspace** | 0.6.2 (direct `simthing-workshop` dep) |
+| **License** | Apache-2.0 OR MIT |
+| **Scope note (TYPEFACE-LR2)** | Workshop-only atlas rectangle packing for `GlyphAtlas`; no production render path in LR2 |
+
 ## Noto Sans Regular (TYPEFACE-LR0 test fixture only)
 
 | Field | Value |

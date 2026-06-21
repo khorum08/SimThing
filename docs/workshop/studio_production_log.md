@@ -1805,6 +1805,14 @@ gate dropped the update).
 - **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
   visual resync (#868).
 
+## 2026-06-21 — TYPEFACE-LR2-RASTER-ATLAS-0 (workshop typeface ladder)
+
+- Third implementation rung (DA-sensitive): workshop-only raster glyph atlas in `simthing-workshop/src/typeface/atlas.rs`.
+- `swash` outline rasterization → RGBA8 CPU staging; `guillotiere` tile packing; cache by `(glyph_id, px_bucket)`; dirty-region `wgpu` upload; headless readback validation when adapter available (`REAL_ADAPTER_OBSERVED` on validation host).
+- `ProbeFont::bytes()` accessor added for safe swash font-byte access without exposing parser internals.
+- **Non-goals preserved:** no Bevy rendering, no `simthing-tools`, no SVG icons, no MSDF, no style/deformation/export, no ScenarioSpec/RF/STEAD edits.
+- Result report: `docs/tests/typeface_lr2_results.md`; ladder § LR2 marked DONE/PROBATION.
+
 ## 2026-06-21 — TYPEFACE-LR1-SHAPING-ENGINE-0 (workshop typeface ladder)
 
 - Second implementation rung: workshop-only `cosmic-text` shaping in `simthing-workshop/src/typeface/shaping.rs`.

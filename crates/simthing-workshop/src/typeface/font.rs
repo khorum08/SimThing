@@ -64,6 +64,10 @@ pub fn load_font(bytes: &[u8]) -> Result<ProbeFont, TypefaceError> {
 }
 
 impl ProbeFont {
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
     pub fn units_per_em(&self) -> u16 {
         self.units_per_em
     }

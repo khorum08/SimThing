@@ -5300,10 +5300,12 @@ dependencies = [
  "bytemuck",
  "cosmic-text",
  "fontdb",
+ "guillotiere",
  "pollster 0.3.0",
  "serde",
  "serde_json",
  "skrifa",
+ "swash",
  "thiserror 2.0.18",
  "wgpu 22.1.0",
 ]

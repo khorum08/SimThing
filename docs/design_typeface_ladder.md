@@ -73,7 +73,8 @@ emit positioned glyph runs (kerning/ligatures applied by cosmic-text).
 `shaping_is_deterministic` (shape twice → equal).
 **Boundary:** no atlas, no GPU.
 
-## LR2 — raster glyph atlas v1 (swash + guillotiere, headless wgpu)  *(DA-sensitive)*
+## LR2 — raster glyph atlas v1 (swash + guillotiere, headless wgpu)  *(DA-sensitive)* — **DONE / PROBATION**
+**Status:** branch `typeface-lr2-raster-atlas-0`; result report `docs/tests/typeface_lr2_results.md`. Track remains OPEN — LR2 is not DA-approval of the whole typeface track.
 **Files:** `crates/simthing-workshop/src/typeface/atlas.rs`.
 **Deps:** add `swash`, `guillotiere`, `wgpu`/`bytemuck`/`pollster` (workshop already has wgpu stack).
 **Public API:**
@@ -201,9 +202,9 @@ labels render; perf within the LR5 budget.
 ## Ladder status
 | Rung | Title | DA-sensitive | Status |
 |---|---|---|---|
-| LR0 | workshop font load + metrics | no | TODO |
-| LR1 | shaping engine | no | TODO |
-| LR2 | raster glyph atlas v1 | **yes** | TODO |
+| LR0 | workshop font load + metrics | no | **DONE / PROBATION** (#872) |
+| LR1 | shaping engine | no | **DONE / PROBATION** (#873) |
+| LR2 | raster glyph atlas v1 | **yes** | **DONE / PROBATION** |
 | LR3 | simthing-tools crate + Bevy instanced draw | **yes** | TODO |
 | LR4 | SVG icons at PUA codepoints | no | TODO |
 | LR5 | high-volume bench + budget | **yes** | TODO |
