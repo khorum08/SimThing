@@ -7,6 +7,8 @@ PASS — LR2 DA HOLD remediated. CPU oracle/cache/packing/full-atlas/report test
 ## PR / branch / merge
 
 - Branch: `typeface-lr2-raster-atlas-0r`
+- PR: #875
+- Merge SHA: `d547e8cf7987e6e219441f646b13fad8c37d1e4b`
 
 ## DA HOLD being remediated
 
