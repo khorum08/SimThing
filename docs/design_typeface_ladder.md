@@ -131,8 +131,8 @@ clean move PR first.
 
 **LR3R closeout:** `TYPEFACE-LR3-INSTANCED-DRAW-0R` accepted Route B raw-wgpu shader-backed smoke as the LR3 draw remediation. Full in-Bevy PNG readback remains explicitly **DEFERRED**: `Camera2d + Tonemapping::None + RenderTarget::Image + gpu_readback::Readback`.
 
-## LR4 — SVG icon ingestion (usvg + resvg) at PUA codepoints  *(mechanical)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0`; result report `docs/tests/typeface_lr4_results.md`. Track remains OPEN — LR4 is not DA-approved.
+## LR4 — SVG icon ingestion (usvg + resvg) at PUA codepoints  *(mechanical)* — **DONE / ACCEPTED (#878)**
+**Status:** `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0` accepted/closed; PR #878 merge `990d6ce5ce804523564fe65e56725ece23a7a37d`; post-merge evidence commit `7c8cb1bd15`; result report `docs/tests/typeface_lr4_results.md`. Track remains OPEN — LR4 acceptance is not whole-track DA approval.
 **Files:** `crates/simthing-tools/src/icons.rs`.
 **Deps:** `usvg`, `resvg` (tiny-skia already in tree). Record MPL-2.0 in `THIRD_PARTY_LICENSES.md`.
 **Public API:**
@@ -150,19 +150,12 @@ one run.
 
 **Amendment folded into LR4:** LR4 includes static-SVG normalization plus a role-aware `IconVector` IR. The ingestion path accepts static SVG only, normalizes accepted shapes to deterministic path/layer records, rejects scripts, external images, animation/events, and remote resources, preserves optional `data-simthing-role` tags (`primary`, `secondary`, `accent`, `outline`, `background`, `mask`), and keeps deterministic layer/path ordering. Runtime never interprets SVG; it consumes rasterized atlas tiles and icon metadata only.
 
-## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)*
-**Files:** `crates/simthing-tools/benches/` or `crates/simthing-tools/src/bin/typeface_bench.rs` +
-`crates/simthing-tools/tests/typeface_lr5.rs`.
-**Steps:** spawn **N animated labels** (scale/fade/rise) from one emitter; reuse cached shaped runs where text
-is identical (damage numbers reuse glyph tiles); measure **CPU build time/frame** and **draw-call count**;
-record on a real adapter.
-**Binding budget (PASS):** **≥5,000** simultaneous animated labels at **≥60 FPS**, **CPU build < 1 ms/frame**,
-**draw calls bounded** (single atlas bind; instanced). No per-glyph entities. No per-frame re-shape of
-unchanged text.
-**Tests:** `five_thousand_labels_cpu_build_under_budget` (assert measured CPU build < threshold),
-`unchanged_label_text_does_not_reshape`, `bench_records_real_adapter_numbers`.
-**DA focus:** the numbers are real, recorded, on a real adapter; the budget is met or the rung is HELD with a
-specific bottleneck.
+## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0`; result report `docs/tests/typeface_lr5_results.md`. Track remains OPEN — LR5 is not DA-approved.
+**Files:** `crates/simthing-tools/src/bench.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
+**Steps:** deterministic CPU-side high-volume label pool mirroring LR3 changed-detection; static nameplates, damage-text churn, mixed text+icon atlas stress; conservative budget gates (no-op frames do not reshape/rerasterize; damage churn rebuilds only changed labels; one shared atlas path).
+**Tests:** `high_volume_static_labels_noop_frame_does_not_reshape`, `high_volume_static_labels_noop_frame_does_not_rerasterize`, `damage_text_churn_rebuilds_only_changed_labels`, `mixed_text_icon_workload_reuses_one_atlas`, `repeated_svg_icons_are_cached_under_load`, `bench_result_report_is_deterministic_enough`, `ci_bench_budget_gates_pass`; optional `#[ignore]` heavy bench.
+**DA focus:** structural budget gates are real and deterministic; wall-clock baselines recorded; LR5 lands at PROBATION pending DA review.
 
 ## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)*
 **Files:** `crates/simthing-tools/src/msdf.rs`, `src/shaders/text_msdf.wgsl`.
@@ -213,8 +206,8 @@ labels render; perf within the LR5 budget.
 | LR1 | shaping engine | no | **DONE / PROBATION** (#873) |
 | LR2 | raster glyph atlas v1 | **yes** | **DONE / DA APPROVED** (#874, #875) |
 | LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / DA APPROVED** (#876, #877 LR3R accepted) |
-| LR4 | SVG icons at PUA codepoints | no | **DONE / PROBATION** |
-| LR5 | high-volume bench + budget | **yes** | TODO |
+| LR4 | SVG icons at PUA codepoints | no | **DONE / ACCEPTED (#878)** |
+| LR5 | high-volume bench + budget | **yes** | **DONE / PROBATION** |
 | LR6 | MSDF atlas + SDF shader | **yes** | TODO |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |

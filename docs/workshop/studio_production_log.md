@@ -18,6 +18,13 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR4 closeout and LR5 high-volume bench (2026-06-21)
+
+- `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0` — **ACCEPTED / closed**. PR #878, merge `990d6ce5ce804523564fe65e56725ece23a7a37d`. Post-merge evidence commit `7c8cb1bd15`. Static SVG icon ingestion at PUA codepoints accepted. Role-aware `IconVector` IR accepted. Shared atlas insertion and mixed text+icon instance proof accepted.
+- `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` establishes high-volume text/icon benchmark and conservative budget gates for static nameplates, damage-text churn, and mixed text+icon atlas stress.
+- LR5 does not add MSDF, style tables, gradients, deformation, text-on-path, TTF/OTF export, COLRv1, or Studio/game integration.
+- Typeface track remains OPEN.
+
 ## Typeface ladder — LR3R closeout and LR4 icon ingestion (2026-06-21)
 
 - `TYPEFACE-LR3-SIMTHING-TOOLS-INSTANCED-TEXT-0` is **DA APPROVED / closed after LR3R**.

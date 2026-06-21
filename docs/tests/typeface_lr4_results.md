@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — LR3/LR3R documentation lifecycle closed; static SVG icon ingestion at PUA codepoints implemented in `simthing-tools`; LR4 lands at **PROBATION**.
+PASS — LR4 accepted/closed; high-volume typeface benchmark and conservative budget gates implemented in `simthing-tools`; LR4 lands at **ACCEPTED / closed**.
 
 ## PR / branch / merge
 

@@ -168,6 +168,11 @@ impl IconSet {
         };
         self.entries.get(&key).map(|entry| entry.tile)
     }
+
+    /// Number of cached icon entries (codepoint + px bucket).
+    pub fn cache_entry_count(&self) -> usize {
+        self.entries.len()
+    }
 }
 
 impl IconVector {
