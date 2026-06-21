@@ -82,14 +82,14 @@ ScenarioSpec / serializable Scenario SimThing container
 
 | Capability | Status | Notes |
 |---|---|---|
-| Whole `SimThingScenarioSpec` save/load authority model | Landed / PROBATION | SAVELOAD-AUTHORITY-PIN-0R |
-| Backend `.simthing-scenario.json` file IO | Landed / PROBATION | SCENARIO-SAVELOAD-IO-0 |
-| Studio Save Scenario / Load Scenario controls | Landed / PROBATION | SCENARIO-SAVELOAD-UI-0 |
-| Scenario-native loaded `StudioSession` source | Landed / PROBATION | SCENARIO-NATIVE-SESSION-0 |
-| Studio projections derived from ScenarioSpec authority | Landed / PROBATION | STUDIO-SIMTHING-SPEC-BOUNDARY-1 |
-| General scenario ingestion / admission | Landed / PROBATION | GENERAL-SCENARIO-INGESTION-ADMISSION-0 |
-| Owner silo reduce-up / disburse-down first slice | Landed / PROBATION | SESSION-RESOURCE-FLOW-SILOS-0 |
-| Recursive spatial-tree RF proof ladder through runtime property-view boundary | Landed / PROBATION | #795–#826 ladder |
+| Whole `SimThingScenarioSpec` save/load authority model | **DA-APPROVED / closed** | SAVELOAD-AUTHORITY-PIN-0R (CAPABILITY-TREE-CLOSEOUT-0) |
+| Backend `.simthing-scenario.json` file IO | **DA-APPROVED / closed** | SCENARIO-SAVELOAD-IO-0 (CAPABILITY-TREE-CLOSEOUT-0) |
+| Studio Save Scenario / Load Scenario controls | **DA-APPROVED / closed** | SCENARIO-SAVELOAD-UI-0 (CAPABILITY-TREE-CLOSEOUT-0) |
+| Scenario-native loaded `StudioSession` source | **DA-APPROVED / closed** | SCENARIO-NATIVE-SESSION-0 (CAPABILITY-TREE-CLOSEOUT-0) |
+| Studio projections derived from ScenarioSpec authority | **DA-APPROVED / closed** | STUDIO-SIMTHING-SPEC-BOUNDARY-1 (CAPABILITY-TREE-CLOSEOUT-0) |
+| General scenario ingestion / admission | **DA-APPROVED / closed** | GENERAL-SCENARIO-INGESTION-ADMISSION-0 (CAPABILITY-TREE-CLOSEOUT-0) |
+| Owner silo reduce-up / disburse-down first slice | **DA-APPROVED / closed** | SESSION-RESOURCE-FLOW-SILOS-0 (CAPABILITY-TREE-CLOSEOUT-0) |
+| Recursive spatial-tree RF proof ladder through runtime property-view boundary | **DA-APPROVED / closed** | #795–#826 ladder (CAPABILITY-TREE-CLOSEOUT-0) |
 | **SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0** | **DA-APPROVED / closed (#828)** | Headless canonical JSON load → serialize → reload → stable authority digest |
 | **SCENARIO-STEAD-MAP-ROUNDTRIP-0** | **DA-APPROVED / closed (#834)** | STEAD IDs, links, RF metadata, spatial tree survive canonical roundtrip; owner metadata distinct from spatial parentage |
 | **LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0** | **DA-APPROVED / closed (#836)** | Loaded ScenarioSpec authority envelope for Studio; composes #828 + #834 readiness |
@@ -173,6 +173,12 @@ The Studio can:
 **Constitutional baseline:** ScenarioSpec remains the only serialized scenario authority. Studio UI state, Bevy ECS state, runtime reports, property-view rows, and GPU buffers remain non-authoritative. Accumulator Flow remains GPU-resident in shape through row/table surfaces. CPU work remains oracle/reference/serialization/file-IO/validation/proof/report formatting only.
 
 **Approved deferrals:** replace-existing candidate save / overwrite confirmation; persistent history / timeline; GPU dispatch / WGSL implementation; pathfinding; combat; economy execution; fleet movement / supply; non-canonical savefile format.
+
+## STUDIO-CAPABILITY-TREE-PROBATION-CLOSEOUT-0 — parent capability rows closed after DA-approved save/load track
+
+This closeout closes the parent capability-tree rows that are now covered by the DA-approved Scenario Runtime + Save/Load closing track. The closeout does not implement new runtime behavior. It records that ScenarioSpec save/load authority, backend scenario file IO, Studio save/load controls, scenario-native loaded sessions, Studio projections from ScenarioSpec authority, general scenario ingestion/admission, owner-silo RF, and the recursive spatial-tree RF/property-view ladder are current evidence under the DA-approved child ladder. ScenarioSpec remains authority; Studio UI, Bevy state, runtime reports, property-view rows, and GPU buffers remain non-authoritative. The corrected planet surface gridcell tier and Accumulator Flow GPU-residency shape remain the baseline. Replace-existing save, persistent history, GPU dispatch, pathfinding, combat, economy execution, and fleet movement remain deferred.
+
+The recursive RF / property-view ladder is closed as evidence for GPU-compatible Accumulator Flow row/table shape and authority boundaries, not as evidence of final GPU dispatch.
 
 ## Scenario Runtime + Save/Load Closing Track
 
