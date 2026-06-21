@@ -1804,3 +1804,14 @@ gate dropped the update).
 - **Camera minimum zoom** reduced from ~25.0 to **12.5** (`CAMERA_MIN_ORBIT_DISTANCE`) — 200% closer orbit.
 - **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
   visual resync (#868).
+
+## 2026-06-21 — WORKSPACE-CLEANUP-INVENTORY-0 (local hygiene)
+
+- Inventoried `C:\Users\mvorm\SimThing`; dominant use was **`target/` at 133.1 GB** (Rust PDBs + build artifacts).
+- **Reclaimed 133.1 GB** via `cargo clean`; removed gitignored `diagnostics/` (~0.14 MB).
+- Did **not** delete tracked docs, evidence reports, scenario fixtures, or mapgen sample PNGs/JSON referenced by
+  `current_evidence_index.md`.
+- Added `.gitignore` coverage for logs, tmp/bak, caches, `tmp/`/`temp/`; script
+  `scripts/windows/workspace_cleanup_inventory.ps1` for repeat safe reclaim.
+- Maybe-archive manifest: ~7.6 MB tracked mapgen PNGs under `docs/tests/`. Potentially-synthesize manifest:
+  `bevy_mapgen_editor_pr2r*` report cluster (context reduction, not urgent disk).
