@@ -1,7 +1,9 @@
 # SimThing Typeface / Glyph-Atlas Service — production track proposal
 
-> **Status: PROPOSAL (PROBATION until owner approves the track).** Design-authority proposal for a native
-> SimThing scalable-text + vector-icon service. Not yet a committed ladder.
+> **Status: APPROVED TO OPEN (owner-confirmed 2026-06-21).** Owner decisions: **renderer = MSDF target with
+> a glyphon raster milestone**; **home = prototype in `simthing-workshop`, graduate to a new production crate
+> `simthing-tools`**. The `TYPEFACE-LADDER` may open at LR0. Each rung remains PROBATION + perf-gated until DA
+> review.
 
 ## Goal
 
@@ -56,28 +58,28 @@ Same atlas/codepoint API both ways — the renderer swaps underneath.
 ## Architecture
 
 ```
-simthing-typeface  (new crate; semantic-free presentation utility)
+simthing-tools  (new crate; semantic-free presentation utility)
   TypefaceDb        : load TTF/OTF (skrifa/fontdb) + register SVG icons at PUA codepoints (usvg)
   ShapingEngine     : str -> shaped glyph runs (cosmic-text)
   GlyphAtlas        : codepoint+size(or MSDF) -> atlas tile; guillotiere packing; wgpu texture (GPU-resident)
   TextMesh/Instances: shaped run -> instanced quads (pos, uv, color, scale) for Bevy
-  bevy_typeface     : Bevy plugin — atlas as a GPU resource, an instanced text material/draw, label components
+  simthing_tools_bevy     : Bevy plugin — atlas as a GPU resource, an instanced text material/draw, label components
 ```
 
 - **GPU-resident by shape** (constitution): the atlas is a wgpu texture; labels are instanced quad buffers.
   CPU does shaping/packing only (oracle/build path), not per-frame per-glyph work.
 - **Workshop-first**: prototype + measure in `simthing-workshop` (its mandate); the production service lives in
-  its own `simthing-typeface` crate (workshop is never a production dependency).
+  its own `simthing-tools` crate (workshop is never a production dependency).
 - **Studio reuse**: Studio entity labels and (optionally) egui font registration consume the same `TypefaceDb`.
 
 ## Proposed ladder — `TYPEFACE-LADDER` (LR0–LR8)
 
 | Rung | Deliverable | Proof |
 |---|---|---|
-| **LR0** | New `simthing-typeface` crate scaffold; `TypefaceDb` loads a TTF/OTF via `skrifa`/`fontdb`; enumerates glyphs/metrics. Workshop measurement harness. | unit: load font, query glyph metrics; determinism |
+| **LR0** | New `simthing-tools` crate scaffold; `TypefaceDb` loads a TTF/OTF via `skrifa`/`fontdb`; enumerates glyphs/metrics. Workshop measurement harness. | unit: load font, query glyph metrics; determinism |
 | **LR1** | `ShapingEngine`: `&str` → shaped glyph runs (cosmic-text), with kerning/ligatures; deterministic layout report. | unit: known string → expected advances/positions |
 | **LR2** | `GlyphAtlas` v1 (raster): rasterize glyphs (swash) into a `guillotiere`-packed wgpu atlas; CPU-readback proof of tile placement; eviction policy. | unit + headless wgpu: atlas tile bytes match oracle |
-| **LR3** | `bevy_typeface` plugin: instanced-quad text draw in Bevy from a shaped run; one Bevy UI + one Text2d label on screen via the atlas. | Bevy headless: entity counts; visual smoke (PNG) |
+| **LR3** | `simthing_tools_bevy` plugin: instanced-quad text draw in Bevy from a shaped run; one Bevy UI + one Text2d label on screen via the atlas. | Bevy headless: entity counts; visual smoke (PNG) |
 | **LR4** | **SVG icon ingestion**: `usvg` parse + `resvg` raster of SVG → atlas tile; register icons at PUA codepoints; render `"text ⟨icon⟩ text"` in one run. | unit: SVG → tile; mixed run shapes/draws |
 | **LR5** | **High-volume bench**: spawn N animated labels (scale/fade/rise); measure CPU shaping/build + draw-call count; establish the damage-text budget (target: 5–10k labels, sub-ms CPU, ≤ few draw calls). | bench harness + recorded numbers (real adapter) |
 | **LR6** | **MSDF atlas** (vector target): generate MSDF for glyph + SVG outlines (pure-Rust MSDF over `skrifa`/`usvg` outlines); single instanced SDF shader; crisp at arbitrary scale; swap renderer behind the LR3 API. | unit: MSDF determinism; visual scale sweep PNG; re-bench vs LR5 |
@@ -107,15 +109,20 @@ graduation for true scalability; LR7–LR8 productionize the icon-font + game la
 - **Workshop-prototyped, measured before promotion.** Each rung is PROBATION with a real-adapter perf number;
   no DA promotion until the LR5 budget is met.
 
-## Open questions for the owner (decisions that change the ladder)
-1. **Renderer target:** confirm **MSDF-target with a glyphon raster milestone** (DA recommendation), or
-   raster-only (simpler, less scalable), or straight-to-MSDF (more upfront risk)?
-2. **Crate home:** new `simthing-typeface` production crate (recommended) vs folding into an existing crate.
-3. **License posture:** `resvg`/`usvg`/`cosmic-text` are MPL-2.0/Apache/MIT — confirm acceptable (add to
-   `THIRD_PARTY_LICENSES.md`). Bundled default font + icon set licensing (e.g. an OFL font) to be chosen.
-4. **Icon authoring:** how icons are authored/sourced (hand SVGs vs an existing icon set) and the PUA codepoint
-   range to reserve.
+## Decisions (owner-confirmed 2026-06-21)
+1. **Renderer target — RESOLVED:** MSDF atlas target, with a **glyphon raster milestone** shipped first
+   (LR2–LR5 raster, LR6 MSDF graduation behind the same LR3 API).
+2. **Crate home — RESOLVED:** prototype + measure in `simthing-workshop`; graduate the production service to a
+   **new `simthing-tools` crate**. (Workshop stays a non-production dependency; LR0 lands the prototype, the
+   `simthing-tools` crate is created when the prototype is proven — by ~LR3.)
+
+## Still-open (owner input before the relevant rung; do not block LR0)
+3. **License posture (before LR4 SVG + any bundled font):** `resvg`/`usvg`/`cosmic-text` are MPL-2.0/Apache/MIT
+   — confirm acceptable and add to `THIRD_PARTY_LICENSES.md`. Choose a bundled default font (e.g. an OFL font).
+4. **Icon authoring (before LR7):** how icons are authored/sourced (hand SVGs vs an existing set) and the PUA
+   codepoint range to reserve.
 
 ## Next action
-On owner approval of the renderer target + crate home, open **TYPEFACE-LADDER** starting at LR0 (workshop
-scaffold + `simthing-typeface` crate), and add the track row to the evidence index at PROBATION.
+**Open `TYPEFACE-LADDER` at LR0** — `simthing-workshop` prototype scaffold: load a TTF/OTF via `skrifa`/`fontdb`
+and a measurement harness; add the track row to `docs/tests/current_evidence_index.md` at PROBATION. The
+`simthing-tools` crate is created at the rung where the prototype graduates (target LR3).
