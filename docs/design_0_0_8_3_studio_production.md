@@ -1,6 +1,6 @@
 # 0.8.3 SimThing Studio Production
 
-> Lifecycle: **PROBATION** production synthesis until DA approval. This document is the authoritative Studio production design track and closing PR ladder — not a per-PR worklog.
+> Lifecycle: production synthesis. The **Scenario Runtime + Save/Load Closing Track is DA-APPROVED and closed** (PR #852/#853). This document is the authoritative Studio production design track and closing PR ladder — not a per-PR worklog.
 >
 > Detailed PR/worklog history: [`docs/workshop/studio_production_log.md`](workshop/studio_production_log.md)
 >
@@ -10,7 +10,7 @@
 
 SimThing Studio is an editor and presentation shell over **SimThing-Spec scenario authority**. MapGenerator and future ClauseThing imports produce or hydrate a `SimThingScenarioSpec`. Studio projects that authority into flat indexes, view models, render anchors, Bevy entities, dialogs, and camera state.
 
-**Current baseline (2026-06-20):** headless canonical ScenarioSpec load/save roundtrip is **landed** (PR #828, PROBATION). Prior doc-cleanup **STUDIO-PRODUCTION-LADDER-CLOSURE-0R** (PR #830) trimmed verbose worklog material from the legacy synthesis doc. The active product track is the finite **Scenario Runtime + Save/Load Closing Track** below — not another hygiene or comparison loop.
+**Current baseline (2026-06-20):** the **Scenario Runtime + Save/Load Closing Track is DA-APPROVED and closed** (PR #852, provenance PR #853). The surface-gridcell HOLD from final DA review was resolved by **SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0** (PR #851). **The next production track is selected by the project owner** — future agents must not reopen the closed ladder unless the owner explicitly requests regression review or a new defect is found.
 
 **Anti-hygiene rule:** Reject docs-only or comparison-only rungs unless they directly enable one of: Scenario load, validation, STEAD mapping, Studio projection rebuild, recursive spatial-tree RF runtime, candidate ScenarioSpec mutation, candidate save/reopen, Studio UI closure, or DA precheck readiness.
 
@@ -90,24 +90,25 @@ ScenarioSpec / serializable Scenario SimThing container
 | General scenario ingestion / admission | Landed / PROBATION | GENERAL-SCENARIO-INGESTION-ADMISSION-0 |
 | Owner silo reduce-up / disburse-down first slice | Landed / PROBATION | SESSION-RESOURCE-FLOW-SILOS-0 |
 | Recursive spatial-tree RF proof ladder through runtime property-view boundary | Landed / PROBATION | #795–#826 ladder |
-| **SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0** | **Landed / PROBATION (#828)** | Headless canonical JSON load → serialize → reload → stable authority digest |
-| **SCENARIO-STEAD-MAP-ROUNDTRIP-0** | **Landed / PROBATION (#834)** | STEAD IDs, links, RF metadata, spatial tree survive canonical roundtrip; owner metadata distinct from spatial parentage |
-| **LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0** | **Landed / PROBATION** | Loaded ScenarioSpec authority envelope for Studio; composes #828 + #834 readiness |
-| **LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0** | **Landed / PROBATION** | Recursive Accumulator RF runtime surface for loaded ScenarioSpec spatial trees |
-| **LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0** | **Landed / PROBATION** | Full recursive runtime report chain for loaded ScenarioSpec sessions |
-| **SCENARIO-CANDIDATE-FROM-RUNTIME-0** | **Landed / PROBATION** | Candidate ScenarioSpec from loaded runtime property-view rows |
-| **SCENARIO-CANDIDATE-SAVE-REOPEN-0** | **Landed / PROBATION** | Candidate ScenarioSpec canonical JSON save/reopen with stable authority digest |
-| **SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0** | **Landed / PROBATION** | Pre-UI hardening of candidate ScenarioSpec canonical JSON writer |
-| **STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0** | **Landed / PROBATION** | Studio UI workflow for loaded scenario runtime candidate save/reopen |
-| **STUDIO-CANDIDATE-REOPEN-ADOPT-0** | **Landed / PROBATION** | Successful Reopen Candidate adopts candidate into Studio session |
-| **SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0** | **Landed / PROBATION** | DA precheck consolidation for Scenario Runtime + Save/Load closing track |
-| **SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0** | **Landed / PROBATION** | Remedial restoration of planet 1×1 surface gridcell tier |
+| **SCENARIO-CANONICAL-LOAD-SAVE-ROUNDTRIP-0** | **DA-APPROVED / closed (#828)** | Headless canonical JSON load → serialize → reload → stable authority digest |
+| **SCENARIO-STEAD-MAP-ROUNDTRIP-0** | **DA-APPROVED / closed (#834)** | STEAD IDs, links, RF metadata, spatial tree survive canonical roundtrip; owner metadata distinct from spatial parentage |
+| **LOADED-SCENARIO-STUDIO-SESSION-ENVELOPE-0** | **DA-APPROVED / closed (#836)** | Loaded ScenarioSpec authority envelope for Studio; composes #828 + #834 readiness |
+| **LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0** | **DA-APPROVED / closed (#838)** | Recursive Accumulator RF runtime surface for loaded ScenarioSpec spatial trees |
+| **LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0** | **DA-APPROVED / closed (#840)** | Full recursive runtime report chain for loaded ScenarioSpec sessions |
+| **SCENARIO-CANDIDATE-FROM-RUNTIME-0** | **DA-APPROVED / closed (#842)** | Candidate ScenarioSpec from loaded runtime property-view rows |
+| **SCENARIO-CANDIDATE-SAVE-REOPEN-0** | **DA-APPROVED / closed (#844)** | Candidate ScenarioSpec canonical JSON save/reopen with stable authority digest |
+| **SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0** | **DA-APPROVED / closed (#845)** | Pre-UI hardening of candidate ScenarioSpec canonical JSON writer |
+| **STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0** | **DA-APPROVED / closed (#846)** | Studio UI workflow for loaded scenario runtime candidate save/reopen |
+| **STUDIO-CANDIDATE-REOPEN-ADOPT-0** | **DA-APPROVED / closed (#847)** | Successful Reopen Candidate adopts candidate into Studio session |
+| **SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0** | **DA-APPROVED / closed (#848)** | DA precheck consolidation for Scenario Runtime + Save/Load closing track |
+| **SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0** | **DA-APPROVED / closed** | Remedial restoration of planet 1×1 surface gridcell tier (PR #851) |
+| **SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-RERUN-0** | **DA-APPROVED / closed** | Final DA rerun; closing track graduated (PR #852/#853) |
 
 ## SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0 — planet surface gridcell tier remediation
 
 This remedial pass restores the constitutionally required 1×1 surface gridcell tier below planet gridcells. Gameplay SimThings are no longer homed directly on the planet gridcell; cohorts, fleets, buildings, infrastructure, leaders, and other admitted gameplay children are children of the surface gridcell. Recursive Accumulator Flow settles first at the surface arena and then bubbles surface → planet → starmap/star-system → galaxy. Owner identity remains metadata/channel scope, not spatial parentage. No new savefile format, persistent history, GPU dispatch, pathfinding, combat, economy execution, or fleet movement is introduced.
 
-Final DA review **HOLD remains in place** until `SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-0` is re-run after this remediation. This rung does not mark the track DA-approved.
+This rung resolved the FINAL-DA-REVIEW-0 HOLD. The closing track graduated to DA-APPROVED via `SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-RERUN-0` (PR #852).
 
 ## SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 — DA precheck for Scenario Runtime + Save/Load closing track
 
@@ -149,9 +150,33 @@ This rung defines the loaded Scenario Studio session envelope around ScenarioSpe
 
 This rung proves that ScenarioSpec canonical load/save/reload preserves stable SimThing IDs, link integrity, ownership metadata, RF metadata, and spatial tree shape. Owner metadata remains distinct from spatial parentage. Recursive RF prerequisites are preserved: parent Location arenas are discoverable, spatial gridcell Locations retain interior grids, and RF channel metadata remains available for owner/resource/scope keyed resolution. Runtime mutation, savefile persistence, semantic execution, Studio UI wiring, and GPU dispatch remain deferred.
 
+## Post-DA status — Scenario Runtime + Save/Load closed
+
+The Scenario Runtime + Save/Load Closing Track is **DA-APPROVED and closed** by `SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-RERUN-0` / PR #852, with provenance fill in PR #853. The prior final-review HOLD was resolved by `SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0` / PR #851, which restored the required planet 1×1 surface gridcell tier. Future agents must not reopen this ladder unless the project owner explicitly requests regression review or a new defect is found. **The next production track is selected by the project owner.**
+
+### Current Studio capability baseline
+
+The Studio can:
+
+- load canonical ScenarioSpec JSON
+- validate STEAD IDs, links, RF metadata, and spatial tree shape
+- preserve the corrected spatial gridcell hierarchy through load/save/reopen
+- expose loaded ScenarioSpec digest and readiness status
+- build a loaded scenario session envelope
+- report recursive Accumulator/RF runtime readiness
+- produce runtime report-chain rows
+- clone a candidate ScenarioSpec from runtime property-view rows
+- save candidate ScenarioSpec as canonical ScenarioSpec JSON using hardened create-new writer
+- reopen candidate ScenarioSpec
+- adopt reopened candidate ScenarioSpec into active Studio session
+
+**Constitutional baseline:** ScenarioSpec remains the only serialized scenario authority. Studio UI state, Bevy ECS state, runtime reports, property-view rows, and GPU buffers remain non-authoritative. Accumulator Flow remains GPU-resident in shape through row/table surfaces. CPU work remains oracle/reference/serialization/file-IO/validation/proof/report formatting only.
+
+**Approved deferrals:** replace-existing candidate save / overwrite confirmation; persistent history / timeline; GPU dispatch / WGSL implementation; pathfinding; combat; economy execution; fleet movement / supply; non-canonical savefile format.
+
 ## Scenario Runtime + Save/Load Closing Track
 
-This closing track completes Studio Scenario import/load/save/runtime closure. It is not a shutdown track and it is not a hygiene loop. Each rung must move one of the following forward: Scenario load, Scenario validation, STEAD mapping, Studio projection rebuild, recursive spatial-tree RF runtime, candidate ScenarioSpec mutation, candidate save/reopen, or Studio-visible save/load workflow.
+**Status: DA-APPROVED and closed.** This closing track completed Studio Scenario import/load/save/runtime closure. It is not a shutdown track and it is not a hygiene loop. All rungs 0–8 plus remediation and final DA rerun are DONE. Do not reopen unless the project owner requests regression review.
 
 | Rung | PR / Track ID | Purpose | Completed? | Evidence / Notes | Next dependency |
 |---:|---|---|---|---|---|
@@ -195,7 +220,7 @@ Studio must visibly expose loaded ScenarioSpec digest, STEAD/link/tree validatio
 
 ## Deferred Post-Closure Tracks
 
-Deferred until after Scenario Runtime + Save/Load closure:
+Scenario Runtime + Save/Load closure is complete. The following remain deferred for future tracks:
 
 - typed semantic mutation channels
 - persistent timeline/history model beyond candidate save/reopen

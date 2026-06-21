@@ -6,6 +6,16 @@
 
 Moved from production doc by **STUDIO-PRODUCTION-LADDER-CLOSURE-0R** on 2026-06-20.
 
+## Scenario Runtime + Save/Load — DA closure (2026-06-20)
+
+- Scenario Runtime + Save/Load ladder closed **DA-APPROVED**.
+- Surface-gridcell HOLD was resolved by PR #851 (`SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0`).
+- Final rerun PR #852 (`SCENARIO-RUNTIME-SAVELOAD-FINAL-DA-REVIEW-RERUN-0`) graduated the closing-track rows.
+- PR #853 filled provenance.
+- Next production track is **pending project-owner selection**.
+
+Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_results.md`](../tests/scenario_runtime_saveload_final_da_review_rerun_0_results.md).
+
 ---
 
 ## SAVELOAD-AUTHORITY-PIN-0R — Authority hardening
