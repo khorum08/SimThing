@@ -211,3 +211,73 @@ labels render; perf within the LR5 budget.
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,
 pathfinding/combat/economy/fleet movement, new savefile format, DA promotion of any non-typeface row.
+
+---
+
+# TYPEFACE-LADDER-AMEND-DYNAMIC-STYLE-0 (DA amendment, owner-confirmed 2026-06-21)
+
+Amends the ladder for realtime GPU styling, gradient nameplates, and glyph **deformation** (squash/stretch/
+fold + EU4/Stellaris-style border-conforming curved/twisted labels). LR0–LR3 are unchanged in intent; this
+amendment locks the LR3 buffer layout and inserts styling/deformation rungs after LR6.
+
+## Owner decisions (locked)
+- **Gradient scope:** **whole-label** gradient is primary (the diplomacy nameplate fades across the whole
+  name); **per-glyph** gradient is a style flag. → LR3 instance buffer must carry label-local UV + label-rect.
+- **Icon source:** **hand-authored SimThing SVGs first**; imported packs later behind a license review.
+- **Font export:** **deferred** — runtime treats icons as PUA glyphs; a real `.ttf`/`.otf` exporter
+  (`write-fonts`) is an optional later rung (LR7A), not on the critical path.
+- **Morphing:** **IN**, but as **mesh deformation, never outline regeneration** (see doctrine below). Heavily
+  used; must be performant.
+
+## First handoff = the amend, then LR0
+Per Codex Q6: this amendment lands first (docs only), then implementation starts at LR0 exactly as written.
+
+## DEFORMATION DOCTRINE (binding — this is how morphing stays static-safe and fast)
+Morphing **never** regenerates glyph outlines at runtime. The glyph identity + MSDF tile stay **static**; what
+deforms is the **mesh the MSDF tile is painted onto**, evaluated in the **vertex shader**. This keeps
+cosmic-text/skrifa/MSDF static (the owner's "must not undermine the underlying static-geometric packages") and
+keeps crispness (each fragment still samples the static MSDF; AA uses derivative-based screen px-range so edges
+stay sharp under stretch/curve).
+
+- **Adaptive tessellation (budget knob):** a glyph defaults to **1 quad** (flat text, damage numbers → 2 tris,
+  max throughput). A label that requests warp/curve tessellates its glyphs into an N×M grid so deformation has
+  vertices to move. **You pay vertices only where warp is used.**
+- **Tier 1 — parametric deform** (squash/stretch/skew/fold/pulse/scale): per-instance params (scale_x/y, shear,
+  fold_axis, fold_amount, time_phase) applied in the vertex shader. Animatable from a global time uniform; no
+  CPU per frame.
+- **Tier 2 — path/region warp** (border-conforming names): label laid out along a **spline/path** (text-on-
+  path) and/or a coarse **2D/3D warp field** (control-point lattice / Bézier patch defining the region the
+  text fills). The spline/field mapping is computed on the **CPU once on text/path change and cached**; the
+  per-vertex warp (position + tangent rotation + cross-curve bend, 3D-displaced if needed) runs in the vertex
+  shader. EU4/Stellaris empire-name behavior = Tier-2 over tessellated glyph meshes.
+- **Shader stays semantic-free:** style/deform inputs are `style_slot`, `deform_id`, `warp_id`, `effect_flags`,
+  `time`, `local_uv`, `label_rect`, gradient stops, control points — never "diplomacy/owner/faction/border".
+- **Perf rule:** flat labels stay 1-quad instanced; warped labels are fewer/persistent and cached; per-frame is
+  GPU vertex transform only. Tessellation level + warp params are part of the LR9 budget.
+
+## LR3 amendment (lock the instance/vertex layout now)
+The LR3 instance/vertex format **must reserve**, even though styling lands later: `style_slot: u32`,
+label-local UV + `label_rect`, a per-glyph affine + `deform_id`/`warp_id`, and an adaptive-tessellation hook
+(default level 0 = 1 quad). This prevents an LR6x refactor of the draw path.
+
+## Inserted / amended rungs
+| Rung | Title | DA-sensitive | Notes |
+|---|---|---|---|
+| LR4 (expanded) | SVG icons at PUA codepoints **+ normalization/style-role IR** | **yes** | folds Codex "LR4A": static-SVG-only, normalize to paths, reject scripts/anim, optional role tags (fill/outline/accent), deterministic order |
+| **LR6B** (new) | GPU style table + gradient/effect shader | **yes** | `GlyphStyle`{fill_mode, palette_a/b, gradient_id, effect_flags, alpha, outline_px, glow_px, time_phase} + `GradientStop`; whole-label gradient primary; layered icons = multiple style slots |
+| **LR6C** (new) | adaptive-tessellation glyph mesh + parametric deform | **yes** | Tier-1 squash/stretch/skew/fold/pulse over static MSDF; derivative AA; flat default = 1 quad |
+| **LR6D** (new) | text-on-path + 2D/3D warp field | **yes** | Tier-2 border-conforming curved/twisted nameplates; CPU path-layout cached on change; vertex-shader warp |
+| LR8 (expanded) | Studio + game label seam **+ map-view style binding** | no | folds Codex "LR8A": nameplates read Studio projection (name/icons/overlay value/map-view mode) → write `LabelStyleRef`/style-buffer update; diplomacy red→blue gradient example; authority-boundary safe |
+| **LR9** (new) | dynamic style + animated + **warped** perf gate | **yes** | 5k flat animated labels (damage text) AND a warped/curved nameplate set with tessellation, dynamic gradients, glow/pulse; bounded draw calls; CPU build/update < 1 ms/frame; adaptive-tessellation budget |
+| LR7A (deferred) | SVG/manifest → `.ttf`/`.otf` exporter (`write-fonts`) | n/a | optional interchange asset; spec only if an external-font need appears |
+| LR10 (deferred) | COLRv1 / variable-color export feasibility | n/a | export/interchange only; never the runtime path |
+
+## Amended sequence
+`LR0 → LR1 → LR2 → LR3(+layout lock) → LR4(+IR) → LR5 → LR6 → LR6B → LR6C → LR6D → LR7 → LR8(+style binding)
+→ LR9`. Deferred/optional: LR7A, LR10. DA-sensitive: LR2, LR3, LR4, LR5, LR6, LR6B, LR6C, LR6D, LR9.
+
+## Why this is not scope-bloat vs Codex's 15-rung proposal
+Codex's concepts are accepted but compressed: LR4A→folded into LR4; LR6A→folded into LR6B (layers = style
+slots); LR8A→folded into LR8; LR7A/LR10→deferred (not committed). The genuinely new committed work is the
+styling rung (LR6B), the two deformation rungs (LR6C/LR6D — the owner's morphing requirement), and the perf
+gate (LR9). Net committed rungs: 11; deferred optional: 2.
