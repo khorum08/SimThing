@@ -11,7 +11,9 @@ use simthing_core::{SimThing, SimThingKind};
 use crate::error::SpecError;
 
 use super::loaded_scenario_studio_session_envelope::evaluate_loaded_scenario_studio_session_envelope_from_json_str;
-use super::planet_child_location::{is_planet_gridcell, local_gridcell_role, planet_id};
+use super::planet_child_location::{
+    is_planet_gridcell, is_surface_gridcell, local_gridcell_role, planet_id,
+};
 use super::recursive_local_rf::{
     evaluate_recursive_local_rf, prove_recursive_local_rf_preserves_authority,
     LocationRfArenaReport, RecursiveLocalRfError,
@@ -83,6 +85,9 @@ pub struct LoadedScenarioRecursiveRfRuntimeReport {
     pub local_parent_node_resolution_first: bool,
     pub sibling_settlement_before_upward_bubbling: bool,
     pub owner_scope_not_spatial_parentage: bool,
+    pub surface_arena_count: u32,
+    pub gameplay_rows_parented_to_surface: bool,
+    pub surface_to_planet_bubbling_present: bool,
     pub gpu_compatible_row_table_surface: bool,
     pub cpu_oracle_only: bool,
     pub scenario_authority_mutation_deferred: bool,
@@ -159,6 +164,11 @@ pub fn evaluate_loaded_scenario_recursive_rf_runtime_from_json_str(
         prove_local_parent_node_resolution_first(&rf_report.arena_reports);
     let sibling_settlement_before_upward_bubbling =
         prove_sibling_settlement_before_upward_bubbling(&rf_report.arena_reports);
+    let surface_arena_count = count_surface_arenas(&scenario.root);
+    let gameplay_rows_parented_to_surface =
+        prove_gameplay_rows_parented_to_surface(&scenario.root, &participant_rows);
+    let surface_to_planet_bubbling_present =
+        prove_surface_to_planet_bubbling(&rf_report.arena_reports, &scenario.root);
 
     let loaded_session_envelope_ready = envelope.authority.scenario_import_ready
         && envelope.authority.recursive_rf_prerequisites_ready;
@@ -180,6 +190,9 @@ pub fn evaluate_loaded_scenario_recursive_rf_runtime_from_json_str(
         local_parent_node_resolution_first,
         sibling_settlement_before_upward_bubbling,
         owner_scope_not_spatial_parentage: envelope.authority.owner_metadata_not_spatial_parentage,
+        surface_arena_count,
+        gameplay_rows_parented_to_surface,
+        surface_to_planet_bubbling_present,
         gpu_compatible_row_table_surface: true,
         cpu_oracle_only: true,
         scenario_authority_mutation_deferred: true,
@@ -336,6 +349,7 @@ fn collect_simthing_location_flags_recursive(
     let is_location = thing.kind == SimThingKind::Location;
     let is_spatial_gridcell = is_location
         && (is_planet_gridcell(thing)
+            || is_surface_gridcell(thing)
             || is_galaxy_map_entity(thing)
             || local_gridcell_role(thing).is_some());
     rows.insert(thing.id.raw(), (is_location, is_spatial_gridcell));
@@ -430,6 +444,114 @@ fn validate_finite_f64_channels(rows: &[LoadedScenarioRfChannelRow]) -> Result<(
         }
     }
     Ok(())
+}
+
+fn count_surface_arenas(root: &SimThing) -> u32 {
+    let mut count = 0u32;
+    count_surface_arenas_recursive(root, &mut count);
+    count
+}
+
+fn count_surface_arenas_recursive(thing: &SimThing, count: &mut u32) {
+    if is_surface_gridcell(thing) {
+        *count = count.saturating_add(1);
+    }
+    for child in &thing.children {
+        count_surface_arenas_recursive(child, count);
+    }
+}
+
+fn prove_gameplay_rows_parented_to_surface(
+    root: &SimThing,
+    participant_rows: &[LoadedScenarioRfParticipantRow],
+) -> bool {
+    let surface_ids = collect_surface_gridcell_ids(root);
+    if surface_ids.is_empty() {
+        return false;
+    }
+    let planet_surface_gameplay = collect_planet_surface_gameplay_parent_ids(root);
+    if planet_surface_gameplay.is_empty() {
+        return true;
+    }
+    planet_surface_gameplay
+        .values()
+        .all(|parent_id| surface_ids.contains_key(parent_id))
+        && participant_rows
+            .iter()
+            .filter(|row| planet_surface_gameplay.contains_key(&row.simthing_id_raw))
+            .all(|row| surface_ids.contains_key(&row.parent_location_id_raw))
+}
+
+fn collect_surface_gridcell_ids(root: &SimThing) -> BTreeMap<u32, ()> {
+    let mut ids = BTreeMap::new();
+    collect_surface_gridcell_ids_recursive(root, &mut ids);
+    ids
+}
+
+fn collect_surface_gridcell_ids_recursive(thing: &SimThing, ids: &mut BTreeMap<u32, ()>) {
+    if is_surface_gridcell(thing) {
+        ids.insert(thing.id.raw(), ());
+    }
+    for child in &thing.children {
+        collect_surface_gridcell_ids_recursive(child, ids);
+    }
+}
+
+fn collect_planet_surface_gameplay_parent_ids(root: &SimThing) -> BTreeMap<u32, u32> {
+    let mut rows = BTreeMap::new();
+    collect_planet_surface_gameplay_parent_ids_recursive(root, &mut rows);
+    rows
+}
+
+fn collect_planet_surface_gameplay_parent_ids_recursive(
+    thing: &SimThing,
+    rows: &mut BTreeMap<u32, u32>,
+) {
+    if super::planet_child_location::is_surface_gridcell(thing) {
+        for child in &thing.children {
+            if child.kind != SimThingKind::Location
+                && super::planet_child_location::is_admitted_planet_non_grid_child(&child.kind)
+            {
+                rows.insert(child.id.raw(), thing.id.raw());
+            }
+        }
+    }
+    for child in &thing.children {
+        collect_planet_surface_gameplay_parent_ids_recursive(child, rows);
+    }
+}
+
+fn prove_surface_to_planet_bubbling(arenas: &[LocationRfArenaReport], root: &SimThing) -> bool {
+    let surface_to_planet: BTreeMap<u32, u32> = collect_surface_to_planet_links(root);
+    if surface_to_planet.is_empty() {
+        return true;
+    }
+    surface_to_planet.iter().all(|(surface_id, planet_id)| {
+        let surface_has_arena = arenas
+            .iter()
+            .any(|arena| arena.location_id_raw == *surface_id);
+        let planet_has_arena = arenas
+            .iter()
+            .any(|arena| arena.location_id_raw == *planet_id);
+        surface_has_arena && planet_has_arena
+    })
+}
+
+fn collect_surface_to_planet_links(root: &SimThing) -> BTreeMap<u32, u32> {
+    let mut links = BTreeMap::new();
+    collect_surface_to_planet_links_recursive(root, &mut links);
+    links
+}
+
+fn collect_surface_to_planet_links_recursive(thing: &SimThing, links: &mut BTreeMap<u32, u32>) {
+    if is_planet_gridcell(thing) {
+        if let Some(surface) = super::planet_child_location::planet_surface_gridcell(thing) {
+            links.insert(surface.id.raw(), thing.id.raw());
+        }
+    }
+    for child in &thing.children {
+        collect_surface_to_planet_links_recursive(child, links);
+    }
 }
 
 fn map_recursive_rf_error(_error: RecursiveLocalRfError) -> SpecError {

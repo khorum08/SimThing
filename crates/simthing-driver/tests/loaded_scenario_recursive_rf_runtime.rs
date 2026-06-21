@@ -90,3 +90,16 @@ fn loaded_scenario_recursive_rf_runtime_compile_defers_savefile_history_ui_and_g
     assert!(plan.studio_ui_wiring_deferred);
     assert!(plan.gpu_dispatch_deferred);
 }
+
+#[test]
+fn loaded_scenario_recursive_rf_runtime_compile_reports_surface_gridcell_arena() {
+    let json = fs::read_to_string(corpus_path(OWNER_SILO_FIXTURE)).expect("corpus");
+    let report = simthing_spec::evaluate_loaded_scenario_recursive_rf_runtime_from_json_str(
+        "owner_silo_compile",
+        &json,
+    )
+    .expect("rf");
+    assert!(report.surface_arena_count >= 2);
+    assert!(report.gameplay_rows_parented_to_surface);
+    assert!(report.surface_to_planet_bubbling_present);
+}

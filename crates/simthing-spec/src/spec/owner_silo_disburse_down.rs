@@ -134,10 +134,7 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
                 &mut buckets,
             )?;
 
-            for child in &planet.children {
-                if child.kind == simthing_core::SimThingKind::Location {
-                    continue;
-                }
+            for child in super::planet_child_location::planet_gameplay_children(planet) {
                 if !is_admitted_planet_non_grid_child(&child.kind) {
                     if has_active_demand_metadata(child) {
                         return Err(RuntimeOwnerSiloDisburseDownError {

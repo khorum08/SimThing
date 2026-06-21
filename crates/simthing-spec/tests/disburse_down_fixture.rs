@@ -1,17 +1,31 @@
 //! Shared disburse-down scoped fixture for spec/driver tests.
 
+use std::fs;
+use std::path::PathBuf;
+
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_gridcell_role_metadata, apply_owner_silo_metadata,
     apply_participant_owner_flow_demand_metadata, apply_participant_owner_flow_metadata,
-    apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata, make_galaxy_map,
-    make_owner_entity, make_planet_gridcell, structural_property_value_u32, SimThingScenarioGrid,
+    apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata,
+    is_surface_gridcell, make_galaxy_map, make_owner_entity, make_planet_gridcell,
+    save_scenario_spec_to_canonical_json, structural_property_value_u32, SimThingScenarioGrid,
     SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
     SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
 };
+
+#[test]
+#[ignore = "manual corpus regeneration only"]
+fn regen_owner_silo_disburse_down_scoped_corpus_fixture() {
+    let spec = build_owner_silo_disburse_down_scoped_spec();
+    let save = save_scenario_spec_to_canonical_json(&spec).expect("save");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scenarios/corpus/owner_silo_disburse_down_scoped.simthing-scenario.json");
+    fs::write(path, save.canonical_json).expect("write corpus");
+}
 
 pub fn build_owner_silo_disburse_down_scoped_spec() -> SimThingScenarioSpec {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
@@ -58,15 +72,27 @@ pub fn build_owner_silo_disburse_down_scoped_spec() -> SimThingScenarioSpec {
     apply_participant_owner_flow_demand_metadata(&mut terra_fleet, "owner_a", 50, Some(20));
     let mut terra_infra = SimThing::new(SimThingKind::Custom("Infrastructure".into()), 0);
     apply_participant_owner_flow_metadata(&mut terra_infra, "owner_a", 5, 0);
-    terra_prime.add_child(terra_cohort);
-    terra_prime.add_child(terra_fleet);
-    terra_prime.add_child(terra_infra);
+    {
+        let terra_surface = terra_prime
+            .children
+            .iter_mut()
+            .find(|child| is_surface_gridcell(child))
+            .expect("terra surface");
+        terra_surface.add_child(terra_cohort);
+        terra_surface.add_child(terra_fleet);
+        terra_surface.add_child(terra_infra);
+    }
 
     let mut border_moon = make_planet_gridcell("border_moon", 1, 0, Some("Border Moon"));
     let mut moon_cohort = SimThing::new(SimThingKind::Cohort, 0);
     apply_participant_owner_flow_metadata(&mut moon_cohort, "owner_b", 7, 2);
     apply_participant_owner_flow_demand_metadata(&mut moon_cohort, "owner_b", 10, Some(10));
-    border_moon.add_child(moon_cohort);
+    border_moon
+        .children
+        .iter_mut()
+        .find(|child| is_surface_gridcell(child))
+        .expect("moon surface")
+        .add_child(moon_cohort);
 
     star_system.add_child(terra_prime);
     star_system.add_child(border_moon);
