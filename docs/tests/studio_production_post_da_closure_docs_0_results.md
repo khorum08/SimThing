@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `studio-production-post-da-closure-docs-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #854
+- Merge SHA: `7a049827b943071fc1abc22113415608478ed5b8`
 
 ## Mission
 
