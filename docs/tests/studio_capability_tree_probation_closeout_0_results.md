@@ -7,8 +7,8 @@ PASS — complete closeout (23/23 rows promoted)
 ## PR / branch / merge
 
 - Branch: `studio-capability-tree-probation-closeout-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #855
+- Merge SHA: `fcf39b93846aacde1cfb9e52e0caf0fa50067f2a`
 
 ## Mission
 
