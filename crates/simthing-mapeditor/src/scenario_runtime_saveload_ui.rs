@@ -17,6 +17,9 @@ use simthing_spec::{
     SpecError,
 };
 
+use crate::scenario_io::load_studio_session_from_scenario_path;
+use crate::session::StudioSession;
+
 /// UI-visible loaded scenario runtime/candidate save-reopen status (presentation only).
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioScenarioRuntimeSaveLoadStatus {
@@ -79,6 +82,19 @@ pub struct StudioReopenCandidateResult {
     pub reopened_digest: Option<u64>,
     pub stead_validation_ready: bool,
     pub projection_rebuild_ready: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct StudioReopenCandidateAdoptionResult {
+    pub attempted: bool,
+    pub adopted: bool,
+    pub input_path: Option<PathBuf>,
+    pub reopened_digest: Option<u64>,
+    pub stead_validation_ready: bool,
+    pub projection_rebuild_ready: bool,
+    pub session: Option<StudioSession>,
+    pub status: Option<StudioScenarioRuntimeSaveLoadStatus>,
     pub message: String,
 }
 
@@ -253,6 +269,49 @@ pub fn reopen_candidate_scenario_for_studio(
         stead_validation_ready,
         projection_rebuild_ready,
         message,
+    })
+}
+
+/// Reopen candidate ScenarioSpec and adopt into a Studio session when validation passes.
+pub fn reopen_candidate_scenario_for_studio_session(
+    input_path: &Path,
+) -> Result<StudioReopenCandidateAdoptionResult, SpecError> {
+    let reopen = reopen_candidate_scenario_for_studio(input_path)?;
+    if !reopen.reopened {
+        return Ok(StudioReopenCandidateAdoptionResult {
+            attempted: true,
+            adopted: false,
+            input_path: reopen.input_path,
+            reopened_digest: reopen.reopened_digest,
+            stead_validation_ready: reopen.stead_validation_ready,
+            projection_rebuild_ready: reopen.projection_rebuild_ready,
+            session: None,
+            status: None,
+            message: reopen.message,
+        });
+    }
+
+    let session = load_studio_session_from_scenario_path(input_path, None)
+        .map_err(|_| SpecError::ValidationFailed)?;
+    let status = refresh_runtime_saveload_status_from_session(
+        "studio_reopened_candidate",
+        &session.scenario_authority,
+    )?;
+    let reopened_digest = reopen.reopened_digest;
+
+    Ok(StudioReopenCandidateAdoptionResult {
+        attempted: true,
+        adopted: true,
+        input_path: reopen.input_path,
+        reopened_digest,
+        stead_validation_ready: reopen.stead_validation_ready,
+        projection_rebuild_ready: reopen.projection_rebuild_ready,
+        session: Some(session),
+        status: Some(status),
+        message: format!(
+            "Reopen Candidate adopted: digest {} into Studio session",
+            reopened_digest.unwrap_or(0)
+        ),
     })
 }
 

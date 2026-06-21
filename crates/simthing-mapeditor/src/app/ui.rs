@@ -33,7 +33,7 @@ use super::scenario_io::{
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::scenario_runtime_saveload_ui::{
-    refresh_runtime_saveload_status_from_session, reopen_candidate_scenario_for_studio,
+    refresh_runtime_saveload_status_from_session, reopen_candidate_scenario_for_studio_session,
     save_candidate_scenario_for_studio_create_new,
 };
 use crate::session::StudioSession;
@@ -172,7 +172,29 @@ pub fn studio_ui_system(
             .unwrap_or(false)
     }) {
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_reopen_candidate")));
-        execute_reopen_candidate_action(&mut state);
+        if let Some(adoption) = execute_reopen_candidate_action(&mut state) {
+            if let (Some(session), Some(status)) = (adoption.session, adoption.status) {
+                adopt_loaded_scenario_session(
+                    session,
+                    &mut settings,
+                    &mut state,
+                    adoption.message.clone(),
+                );
+                state.runtime_saveload_status = Some(status);
+                state.last_runtime_saveload_status = adoption.message;
+                if let Some(session) = state.session.as_ref() {
+                    rebuild_galaxy_scene(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &assets,
+                        &mut scene_root,
+                        session,
+                    );
+                }
+                reset_camera_after_generation(&mut camera);
+            }
+        }
     }
 
     if ctx.data(|d| {
@@ -839,28 +861,29 @@ fn execute_save_candidate_action(state: &mut StudioAppState) {
     state.runtime_saveload_status = status_before;
 }
 
-fn execute_reopen_candidate_action(state: &mut StudioAppState) {
-    let session_before = state.session.clone();
-    let status_before = state.runtime_saveload_status.clone();
+fn execute_reopen_candidate_action(
+    state: &mut StudioAppState,
+) -> Option<crate::StudioReopenCandidateAdoptionResult> {
     let path = match super::scenario_io::validate_scenario_path_text(&state.candidate_path_text) {
         Ok(path) => path,
         Err(reason) => {
             state.last_runtime_saveload_status =
                 format!("Reopen Candidate failed: invalid candidate path ({reason})");
-            return;
+            return None;
         }
     };
-    match reopen_candidate_scenario_for_studio(&path) {
-        Ok(result) => {
-            state.last_runtime_saveload_status = result.message.clone();
+    match reopen_candidate_scenario_for_studio_session(&path) {
+        Ok(adoption) if adoption.adopted => Some(adoption),
+        Ok(adoption) => {
+            state.last_runtime_saveload_status = adoption.message;
+            None
         }
         Err(_) => {
             state.last_runtime_saveload_status =
                 "Reopen Candidate failed: could not load canonical candidate JSON".into();
+            None
         }
     }
-    state.session = session_before;
-    state.runtime_saveload_status = status_before;
 }
 
 fn draw_runtime_candidate_saveload_controls(
