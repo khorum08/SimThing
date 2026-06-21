@@ -56,7 +56,7 @@ STOP, report the version, do not bump Bevy's transitive pins.
 **Boundary:** no wgpu, no Bevy, no rendering.
 
 ## LR1 — shaping engine (cosmic-text)  *(mechanical)* — **DONE / PROBATION**
-**Status:** landed on branch `typeface-lr1-shaping-engine-0`; result report `docs/tests/typeface_lr1_results.md`. Track remains OPEN — LR1 is not DA-approval of the whole typeface track.
+**Status:** landed PR #873 (`b913e51ac`); result report `docs/tests/typeface_lr1_results.md`. Track remains OPEN — LR1 is not DA-approval of the whole typeface track.
 **Files:** `crates/simthing-workshop/src/typeface/shaping.rs`.
 **Deps:** add `cosmic-text` (lock-pinned).
 **Public API:**

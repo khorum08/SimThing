@@ -7,8 +7,8 @@ PASS — workshop `ShapingEngine` shapes single-line UTF-8 via `cosmic-text` wit
 ## PR / branch / merge
 
 - Branch: `typeface-lr1-shaping-engine-0`
-- PR: branch evidence (filled after merge)
-- Merge SHA: branch evidence (filled after merge)
+- PR: #873
+- Merge SHA: `b913e51acdffad5f1caa234a46303e03c1878a06`
 
 ## Mission
 
