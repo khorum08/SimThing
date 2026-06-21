@@ -36,8 +36,11 @@ use crate::scenario_runtime_saveload_ui::{
     reopen_candidate_scenario_for_studio_session, save_candidate_scenario_for_studio_create_new,
 };
 use crate::session::StudioSession;
+use crate::studio_performance_telemetry::performance_settings_section_lines;
 
-const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 560.0);
+use super::performance_telemetry::StudioPerformanceTelemetryState;
+
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 620.0);
 const SETTINGS_TITLE_CLOSE_DRAG_GAP: f32 = 6.0;
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
@@ -81,6 +84,7 @@ pub fn studio_ui_system(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut scene_root: ResMut<GalaxySceneRoot>,
     assets: Res<StarVisualAssets>,
+    mut perf_telemetry: ResMut<StudioPerformanceTelemetryState>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -109,7 +113,14 @@ pub fn studio_ui_system(
     if state.session.is_some() {
         draw_right_panel(ctx, &mut state, screen_w, screen_h);
     }
-    draw_settings_dialog(ctx, &mut state, &mut settings, screen_w, screen_h);
+    draw_settings_dialog(
+        ctx,
+        &mut state,
+        &mut settings,
+        &perf_telemetry.telemetry,
+        screen_w,
+        screen_h,
+    );
     draw_warning_dialog(ctx, &mut dialog);
 
     if state.generation_busy {
@@ -138,6 +149,7 @@ pub fn studio_ui_system(
                         );
                     }
                     reset_camera_after_generation(&mut camera);
+                    perf_telemetry.vram_dirty = true;
                     let _ = settings.save();
                 }
                 Err(err) => {
@@ -192,6 +204,7 @@ pub fn studio_ui_system(
                     );
                 }
                 reset_camera_after_generation(&mut camera);
+                perf_telemetry.vram_dirty = true;
             }
         }
     }
@@ -216,6 +229,7 @@ pub fn studio_ui_system(
                     );
                 }
                 reset_camera_after_generation(&mut camera);
+                perf_telemetry.vram_dirty = true;
             }
             _ => {}
         }
@@ -241,6 +255,7 @@ pub fn studio_ui_system(
                     );
                 }
                 reset_camera_after_generation(&mut camera);
+                perf_telemetry.vram_dirty = true;
             }
             _ => {}
         }
@@ -345,6 +360,7 @@ fn draw_settings_dialog(
     ctx: &egui::Context,
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
+    telemetry: &crate::studio_performance_telemetry::StudioPerformanceTelemetry,
     screen_w: f32,
     screen_h: f32,
 ) {
@@ -502,6 +518,14 @@ fn draw_settings_dialog(
                     .changed();
                 if hyperlane_changed {
                     apply_hyperlane_render_settings(hyperlane_values, state, settings);
+                }
+                ui.separator();
+                let performance_lines = performance_settings_section_lines(telemetry);
+                if let Some(title) = performance_lines.first() {
+                    ui.label(egui::RichText::new(title).strong());
+                }
+                for line in performance_lines.iter().skip(1) {
+                    ui.label(line);
                 }
                 ui.horizontal(|ui| {
                     if ui.button("Reset").clicked() {
