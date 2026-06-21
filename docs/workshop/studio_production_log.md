@@ -1746,3 +1746,28 @@ Other deferred work: native Save Scenario dialog, full runtime vertical-test exe
 6. Broader scenario corpus ingestion UX / batch reports.
 7. UI affordances for planet/structural editing if command layers remain headless.
 8. Cohort/population/resource overlays under admitted planets.
+
+---
+
+## 2026-06-21 — STUDIO-EGUI-PAINT-ISOLATION-0 (Opus, DA): left-panel FPS collapse FIXED
+
+**For orchestration + Grok/Codex.** The single-digit FPS regression is fixed.
+
+- **STUDIO-FRAMERATE-REGRESSION-OPUS-AUDIT-0 (#860):** root cause = egui layout/tessellation of the
+  ladder-enlarged, always-expanded **left panel** every frame (it rendered its whole tree inside a
+  `ScrollArea`, which lays out all children every frame; debug amplifies ~10–40×). The scenario proof/status
+  path is NOT the cause — it is correctly gated (`refresh_runtime_saveload_status_if_needed(false)` passes
+  `authority_digest=None` → `UseCache`, no serialize/proof). STATUS-CACHE-0 already handled per-frame proof.
+- **STUDIO-EGUI-PAINT-ISOLATION-0 (#862, merge `a4d6b446db`):** wrapped Presets, Active generation controls,
+  and Scenario/runtime save-load in `CollapsingHeader::default_open(false)` so collapsed sections don't lay out
+  children. Confirmed by the owner's collapse test (collapsed = 116 FPS; expanded = 4 FPS). Generate + Camera
+  stay visible. Presentation-only — no ScenarioSpec authority / save-load / RF / spatial-hierarchy / DA row
+  changed. `cargo check` + UI tests (14) pass.
+
+**Debug exe for capture/testing:** `cargo build -p simthing-mapeditor --bin simthing-studio` →
+`target/debug/simthing-studio.exe`.
+
+**Do NOT** re-diagnose the scenario proof path as the FPS cause (exonerated) or add more docs/telemetry rungs.
+**Next if a residual cost remains when a section is expanded:** add an `egui_paint_ms` timer around the egui run
+(per-panel closure timers misattribute paint cost) and compare a `--release` build. Guidance:
+`docs/simthing-bevy-performance.md` (left-panel ScrollArea case study + collapse-by-default rule).
