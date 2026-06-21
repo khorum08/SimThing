@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `studio-runtime-saveload-status-cache-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #856
+- Merge SHA: `4d653a927071dd06dbc81c72007f9002cf6bcda1`
 
 ## Mission
 
