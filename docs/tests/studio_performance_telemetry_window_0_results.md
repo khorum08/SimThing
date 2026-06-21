@@ -7,8 +7,8 @@ PASS — presentation/UI feature + regression test. Performance telemetry split 
 ## PR / branch / merge
 
 - Branch: `studio-performance-telemetry-window-0`
-- PR: (filled at merge)
-- Merge SHA: (filled at merge)
+- PR: #869
+- Merge SHA: `e857b0c621c8b8b5cc7c981d5b601a2978abcf16`
 
 ## Mission
 
