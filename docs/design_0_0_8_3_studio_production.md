@@ -122,6 +122,10 @@ This rung exposes the loaded Scenario Runtime + Save/Load workflow in Studio UI.
 
 This remedial pre-DA pass completes the Reopen Candidate UI workflow by adopting the reopened candidate ScenarioSpec into the active Studio session after canonical load, STEAD validation, and projection-readiness checks pass. Failed reopen preserves the current session. UI state, Bevy state, runtime reports, and GPU buffers remain non-authoritative. Persistent history and GPU dispatch remain deferred.
 
+### STUDIO-RUNTIME-SAVELOAD-STATUS-CACHE-0 — cached status refresh performance remediation
+
+Runtime/candidate save-load status is a cached presentation surface. The DA-approved proof/report chain remains valid but must not be recomputed every Studio frame. Studio refreshes status on scenario load, candidate save, candidate reopen/adoption, explicit manual refresh, or authority change. ScenarioSpec remains authority; cached UI status remains non-authoritative.
+
 ## SCENARIO-CANDIDATE-SAVE-REOPEN-0 — save and reopen candidate ScenarioSpec
 
 This rung saves the cloned candidate ScenarioSpec as canonical ScenarioSpec JSON, reopens it, validates STEAD IDs, links, RF metadata, and spatial tree shape, rebuilds projection readiness, and proves the candidate authority digest is stable after reopen. It does not introduce a distinct savefile format or persistent history. Studio UI wiring and GPU dispatch remain deferred.

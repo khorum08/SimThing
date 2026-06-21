@@ -76,11 +76,14 @@ pub use scenario_projection::{
     StudioLocationIndexRow, StudioStructuralProjection,
 };
 pub use scenario_runtime_saveload_ui::{
+    apply_runtime_saveload_status_to_cache,
     build_studio_scenario_runtime_saveload_status_from_json_str,
-    canonical_json_from_loaded_scenario_authority, refresh_runtime_saveload_status_from_session,
+    canonical_json_from_loaded_scenario_authority, clear_runtime_saveload_status_cache,
+    refresh_runtime_saveload_status_from_session, refresh_runtime_saveload_status_if_needed,
     reopen_candidate_scenario_for_studio, reopen_candidate_scenario_for_studio_session,
-    save_candidate_scenario_for_studio_create_new,
-    studio_scenario_runtime_saveload_non_authority_boundary, StudioReopenCandidateAdoptionResult,
+    runtime_saveload_refresh_decision, save_candidate_scenario_for_studio_create_new,
+    studio_scenario_runtime_saveload_non_authority_boundary, RuntimeSaveloadRefreshDecision,
+    RuntimeSaveloadStatusCacheMut, StudioReopenCandidateAdoptionResult,
     StudioReopenCandidateResult, StudioSaveCandidateResult,
     StudioScenarioRuntimeSaveLoadNonAuthorityBoundary, StudioScenarioRuntimeSaveLoadStatus,
 };
