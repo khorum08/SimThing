@@ -7,8 +7,8 @@ PASS — debug and release Studio executables built locally on Windows from mast
 ## PR / branch / merge
 
 - Branch: `studio-windows-diagnostic-debug-exe-0`
-- PR: (filled at merge)
-- Merge SHA: (filled at merge)
+- PR: #861
+- Merge SHA: `088d170675681e8a2bf277e7dc9a2fd2a0d6ff8a`
 
 ## Mission
 
