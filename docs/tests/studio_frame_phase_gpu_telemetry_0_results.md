@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `studio-frame-phase-gpu-telemetry-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #859
+- Merge SHA: `072f45fb031276913ee69082569e717f93747792`
 
 ## Mission
 
