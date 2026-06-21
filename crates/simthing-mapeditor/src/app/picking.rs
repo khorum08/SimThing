@@ -15,7 +15,8 @@ use crate::star_render::{
 use crate::studio_render_loop_dirty_gate::{
     billboard_should_sync, picking_projection_should_rebuild, quantize_billboard_camera_key,
     quantize_picking_projection_key, quantize_star_depth_percent, star_falloff_settings_key,
-    star_visuals_should_sync, StarVisualAppliedKey, StarVisualSyncKey, StudioRenderLoopCaches,
+    star_visual_per_star_should_write, star_visuals_should_sync, StarVisualAppliedKey,
+    StarVisualSyncKey, StudioRenderLoopCaches,
 };
 
 use super::camera::MainCamera;
@@ -222,7 +223,7 @@ pub fn sync_star_visuals_system(
             depth_bucket_or_quantized_percent: quantize_star_depth_percent(depth_percent),
             layer: layer_code,
         };
-        if !force_resync && *applied_key == visual_key {
+        if !star_visual_per_star_should_write(force_resync, *applied_key, visual_key) {
             continue;
         }
 

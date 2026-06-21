@@ -27,6 +27,7 @@ pub mod studio_planet_child_location;
 pub mod studio_render_loop_dirty_gate;
 pub mod studio_scenario_document;
 pub mod studio_scenario_load;
+pub mod studio_screenshot;
 pub mod studio_structural_edit;
 pub mod terran_pirate_skeleton;
 pub mod view_model;
@@ -51,7 +52,7 @@ pub fn run() {
     std::process::exit(1);
 }
 
-pub use dialog::{StudioAction, WarningDialogModel};
+pub use dialog::{SettingsDialogModel, StudioAction, TelemetryDialogModel, WarningDialogModel};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
 pub use hydration::{
     generate_simthing_spec_scenario, heatmap_readiness_from_simthing_spec,
@@ -125,8 +126,9 @@ pub use studio_render_loop_dirty_gate::{
     billboard_should_sync, hyperlane_render_settings_key, hyperlane_render_should_rebuild,
     picking_projection_should_rebuild, quantize_billboard_camera_key,
     quantize_hyperlane_camera_key, quantize_picking_projection_key, quantize_star_depth_percent,
-    render_loop_telemetry_record_timing, star_falloff_settings_key, star_visuals_should_sync,
-    BillboardCameraKey, BillboardSyncCacheState, HyperlaneCameraKey, HyperlaneRenderCacheState,
+    render_loop_telemetry_record_timing, star_falloff_settings_key,
+    star_visual_per_star_should_write, star_visuals_should_sync, BillboardCameraKey,
+    BillboardSyncCacheState, HyperlaneCameraKey, HyperlaneRenderCacheState,
     HyperlaneRenderSettingsKey, PickingProjectionCacheState, PickingProjectionKey,
     StarFalloffSettingsKey, StarVisualAppliedKey, StarVisualSyncCacheState, StarVisualSyncKey,
     StudioRenderLoopCaches,
@@ -139,6 +141,7 @@ pub use studio_scenario_document::{
     StudioPlanetNonGridChildView, StudioReceiverCellView, StudioScenarioAuthorityKind,
     StudioScenarioDocument, StudioScenarioDocumentError,
 };
+pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
 pub use studio_structural_edit::{
     studio_apply_structural_placement_command, StudioStructuralEditError,
     StudioStructuralEditOutcome,

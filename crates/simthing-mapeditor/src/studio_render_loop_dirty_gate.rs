@@ -200,6 +200,15 @@ pub fn hyperlane_render_should_rebuild(
     false
 }
 
+/// Per-star write decision for `sync_star_visuals_system` (#868 force_resync path).
+pub fn star_visual_per_star_should_write(
+    force_resync: bool,
+    applied_key: StarVisualAppliedKey,
+    visual_key: StarVisualAppliedKey,
+) -> bool {
+    force_resync || applied_key != visual_key
+}
+
 pub fn star_visuals_should_sync(
     previous_key: Option<StarVisualSyncKey>,
     current_key: StarVisualSyncKey,

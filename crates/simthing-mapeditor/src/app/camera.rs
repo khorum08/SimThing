@@ -4,8 +4,8 @@ use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 
 use crate::camera_control::{
-    apply_orbit_delta, reset_camera_after_generation as reset_orbit, snap_overhead as snap_orbit,
-    OrbitCameraState, DEFAULT_ORBIT_SENSITIVITY,
+    apply_orbit_delta, apply_scroll_zoom, reset_camera_after_generation as reset_orbit,
+    snap_overhead as snap_orbit, OrbitCameraState, DEFAULT_ORBIT_SENSITIVITY,
 };
 use crate::settings::PersistedCameraState;
 use crate::studio_config::StudioViewModeSetting;
@@ -257,7 +257,7 @@ pub fn camera_control_system(
     }
 
     for ev in scroll.read() {
-        camera.orbit_distance = (camera.orbit_distance - ev.y * 4.0).clamp(25.0, 220.0);
+        camera.orbit_distance = apply_scroll_zoom(camera.orbit_distance, ev.y);
     }
 
     let pitch = if camera.overhead {

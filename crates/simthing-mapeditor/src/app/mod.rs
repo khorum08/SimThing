@@ -13,7 +13,7 @@ use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
-use crate::dialog::SettingsDialogModel;
+use crate::dialog::{SettingsDialogModel, TelemetryDialogModel};
 use crate::generation::GenerationProfile;
 use crate::hyperlane_buckets::{apply_hyperlane_render_settings_to_meta, HyperlaneRenderSettings};
 use crate::selection::StudioSelectionState;
@@ -147,6 +147,7 @@ pub struct StudioAppState {
     pub show_stars: bool,
     pub show_hyperlanes: bool,
     pub settings_dialog: SettingsDialogModel,
+    pub telemetry_dialog: TelemetryDialogModel,
     pub star_falloff_settings: StarFalloffSettings,
     pub star_render_mode: StarRenderMode,
     pub hyperlane_render_settings: HyperlaneRenderSettings,
@@ -172,7 +173,7 @@ pub struct StudioAppState {
     pub runtime_saveload_status_last_refresh_ms: Option<u128>,
     /// Bumps on session adopt/scene rebuild; drives render-loop dirty gates (presentation only).
     pub scene_render_revision: u64,
-    /// Performance diagnostic: hide egui panels except Settings (presentation only).
+    /// Performance diagnostic: hide main egui panels (presentation only).
     pub performance_diagnostic_hide_panels: bool,
     /// Performance diagnostic: skip camera input updates (presentation only).
     pub performance_diagnostic_freeze_camera: bool,
@@ -211,6 +212,7 @@ impl StudioAppState {
                 star_render_mode,
                 hyperlane_render_settings,
             ),
+            telemetry_dialog: TelemetryDialogModel::new(false, [480.0, 96.0]),
             star_falloff_settings,
             star_render_mode,
             hyperlane_render_settings,

@@ -1,4 +1,5 @@
 /target
 /diagnostics
+screenshot_*.png
 .claude/settings.local.json
 .cursor/r1a_old_full.rs

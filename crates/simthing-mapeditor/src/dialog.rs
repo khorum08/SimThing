@@ -142,6 +142,35 @@ impl SettingsDialogModel {
     }
 }
 
+/// Movable Performance Telemetry window state (presentation only).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TelemetryDialogModel {
+    pub visible: bool,
+    pub position: [f32; 2],
+}
+
+impl TelemetryDialogModel {
+    pub fn new(visible: bool, position: [f32; 2]) -> Self {
+        Self { visible, position }
+    }
+
+    pub fn toggle_visible(&mut self) {
+        self.visible = !self.visible;
+    }
+
+    pub fn close(&mut self) {
+        self.visible = false;
+    }
+
+    pub fn close_icon(&mut self) {
+        self.close();
+    }
+
+    pub fn close_button(&mut self) {
+        self.close();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -460,5 +489,16 @@ mod tests {
         assert_eq!(dialog.position, [720.0, 144.0]);
         assert_eq!(dialog.star_render, star);
         assert_eq!(dialog.hyperlane_render, hyperlane);
+    }
+
+    #[test]
+    fn telemetry_dialog_close_icon_and_button_hide_window() {
+        let mut dialog = TelemetryDialogModel::new(true, [480.0, 96.0]);
+        dialog.close_icon();
+        assert!(!dialog.visible);
+        dialog.visible = true;
+        dialog.close_button();
+        assert!(!dialog.visible);
+        assert_eq!(dialog.position, [480.0, 96.0]);
     }
 }
