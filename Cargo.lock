@@ -5297,6 +5297,7 @@ name = "simthing-tools"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_tasks",
  "bytemuck",
  "cosmic-text",
  "fontdb",

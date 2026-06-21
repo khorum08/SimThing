@@ -15,6 +15,7 @@ bevy = { version = "0.16", default-features = false, features = [
     "bevy_core_pipeline",
     "bevy_sprite",
     "bevy_image",
+    "tonemapping_luts",
     "png",
     "std",
     "multi_threaded",
@@ -33,7 +34,7 @@ wgpu = { workspace = true }
 [dev-dependencies]
 png = "0.18"
 pollster = { workspace = true }
-wgpu = { workspace = true }
+bevy_tasks = "0.16"
 bevy = { version = "0.16", default-features = false, features = [
     "bevy_asset",
     "bevy_render",
@@ -42,6 +43,7 @@ bevy = { version = "0.16", default-features = false, features = [
     "bevy_image",
     "bevy_window",
     "bevy_winit",
+    "tonemapping_luts",
     "png",
     "std",
     "multi_threaded",

@@ -1,10 +1,16 @@
 use bevy::{
     asset::{load_internal_asset, Assets, Handle},
+    math::primitives::Rectangle,
     prelude::*,
     render::{
         extract_component::ExtractComponentPlugin,
         render_asset::RenderAssetUsages,
-        render_resource::{Extent3d, Shader, TextureDimension, TextureFormat, TextureUsages},
+        sync_world::SyncToRenderWorld,
+        render_resource::{
+            Extent3d, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
+            TextureViewDimension,
+        },
+        view::NoFrustumCulling,
     },
 };
 
@@ -12,9 +18,10 @@ use crate::{
     atlas::{AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
     font::{load_font, ProbeFont},
     shaping::{ShapedGlyph, ShapedRun, ShapingEngine},
+    text_render::TextInstancedRenderPlugin,
 };
 
-const TEXT_SHADER_HANDLE: Handle<Shader> =
+pub(crate) const TEXT_SHADER_HANDLE: Handle<Shader> =
     Handle::weak_from_u128(0x5459_5045_4c52_3300_0000_0000_0000_0001);
 
 /// Bevy plugin for instanced atlas text labels.
@@ -39,16 +46,32 @@ impl Plugin for SimthingToolsTextPlugin {
             Shader::from_wgsl
         );
 
-        app.init_resource::<TextRebuildDiagnostics>()
+        app.init_asset::<Mesh>()
+            .init_asset::<Image>()
+            .init_resource::<TextRebuildDiagnostics>()
             .init_resource::<TextInstanceAggregate>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
-            .add_systems(Startup, init_typeface_state)
+            .add_systems(
+                Startup,
+                (fix_volume_image_view_descriptors, init_typeface_state).chain(),
+            )
+            .add_systems(PostStartup, fix_volume_image_view_descriptors)
             .add_systems(Update, rebuild_changed_labels)
             .add_systems(
                 Update,
-                aggregate_label_instances.after(rebuild_changed_labels),
+                (
+                    aggregate_label_instances.after(rebuild_changed_labels),
+                    sync_draw_entity_instances.after(aggregate_label_instances),
+                    sync_atlas_image_to_gpu.after(rebuild_changed_labels),
+                    force_text_draw_visible,
+                ),
             )
-            .add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default());
+            .add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default())
+            .add_plugins(TextInstancedRenderPlugin);
+    }
+
+    fn finish(&self, app: &mut App) {
+        let _ = app;
     }
 }
 
@@ -100,6 +123,12 @@ struct TypefaceFont(pub ProbeFont);
 #[derive(Resource)]
 struct TypefaceShaper(pub ShapingEngine);
 
+#[derive(Resource)]
+struct TextQuadMesh(pub Handle<Mesh>);
+
+#[derive(Resource)]
+pub struct TextDrawEntity(pub Entity);
+
 #[derive(Component, Clone)]
 struct TextLabelCache {
     text: String,
@@ -123,8 +152,8 @@ pub struct TextGlyphInstances(pub Vec<GlyphInstanceGpu>);
 pub struct TextInstanceAggregate(pub Vec<GlyphInstanceGpu>);
 
 #[derive(Component, Clone)]
-struct TextDrawExtract {
-    instances: Vec<GlyphInstanceGpu>,
+pub struct TextDrawExtract {
+    pub(crate) instances: Vec<GlyphInstanceGpu>,
 }
 
 impl bevy::render::extract_component::ExtractComponent for TextDrawExtract {
@@ -142,12 +171,65 @@ impl bevy::render::extract_component::ExtractComponent for TextDrawExtract {
     }
 }
 
-fn init_typeface_state(mut commands: Commands, bytes: Res<TypefaceFontBytes>) {
+/// Ensure volume/LUT images expose D3 texture views for mesh2d tonemapping bind groups.
+fn fix_volume_image_view_descriptors(mut images: ResMut<Assets<Image>>) {
+    for (_, image) in images.iter_mut() {
+        if image.texture_descriptor.dimension == TextureDimension::D2
+            && image.texture_descriptor.size.depth_or_array_layers > 1
+        {
+            image.texture_descriptor.dimension = TextureDimension::D3;
+        }
+        if image.texture_descriptor.dimension != TextureDimension::D3 {
+            continue;
+        }
+        let needs_fix = image
+            .texture_view_descriptor
+            .as_ref()
+            .and_then(|desc| desc.dimension)
+            != Some(TextureViewDimension::D3);
+        if needs_fix {
+            image.texture_view_descriptor = Some(TextureViewDescriptor {
+                dimension: Some(TextureViewDimension::D3),
+                ..default()
+            });
+        }
+    }
+}
+
+fn init_typeface_state(
+    mut commands: Commands,
+    bytes: Res<TypefaceFontBytes>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut images: ResMut<Assets<Image>>,
+) {
     let font = load_font(&bytes.0).expect("typeface font must parse");
     let shaper = ShapingEngine::new_with_font(bytes.0.clone()).expect("typeface shaper must init");
     commands.insert_resource(TypefaceFont(font));
     commands.insert_resource(TypefaceShaper(shaper));
-    commands.insert_resource(TypefaceAtlas::new_cpu(512));
+
+    let atlas = TypefaceAtlas::new_cpu(512);
+    let atlas_image = create_atlas_image_from_cpu(&mut images, &atlas.cpu);
+    commands.insert_resource(crate::text_render::TextAtlasImageHandle(atlas_image));
+    commands.insert_resource(atlas);
+
+    let quad = meshes.add(Mesh::from(Rectangle::new(1.0, 1.0)));
+    commands.insert_resource(TextQuadMesh(quad.clone()));
+
+    let draw_entity = commands
+        .spawn((
+            Mesh2d(quad),
+            GlobalTransform::default(),
+            Visibility::default(),
+            InheritedVisibility::default(),
+            ViewVisibility::default(),
+            TextGlyphInstances::default(),
+            crate::text_render::TextInstancedDraw,
+            bevy::render::batching::NoAutomaticBatching,
+            SyncToRenderWorld,
+            NoFrustumCulling,
+        ))
+        .id();
+    commands.insert_resource(TextDrawEntity(draw_entity));
 }
 
 fn rebuild_changed_labels(
@@ -194,8 +276,52 @@ fn rebuild_changed_labels(
     }
 }
 
+fn sync_atlas_image_to_gpu(
+    atlas: Res<TypefaceAtlas>,
+    atlas_handle: Res<crate::text_render::TextAtlasImageHandle>,
+    mut images: ResMut<Assets<Image>>,
+    rebuild: Res<TextRebuildDiagnostics>,
+    mut last_sync: Local<u64>,
+) {
+    if *last_sync == rebuild.shape_rebuild_count {
+        return;
+    }
+    *last_sync = rebuild.shape_rebuild_count;
+    if let Some(image) = images.get_mut(&atlas_handle.0) {
+        let size = atlas.atlas_size;
+        let pixels = atlas.cpu.staging_pixels();
+        image.resize(Extent3d {
+            width: size,
+            height: size,
+            depth_or_array_layers: 1,
+        });
+        if let Some(data) = image.data.as_mut() {
+            data.copy_from_slice(pixels);
+        }
+    }
+}
+
+fn force_text_draw_visible(
+    draw_entity: Res<TextDrawEntity>,
+    mut q: Query<&mut ViewVisibility>,
+) {
+    if let Ok(mut visibility) = q.get_mut(draw_entity.0) {
+        visibility.set();
+    }
+}
+
+fn sync_draw_entity_instances(
+    aggregate: Res<TextInstanceAggregate>,
+    draw_entity: Res<TextDrawEntity>,
+    mut q: Query<&mut TextGlyphInstances>,
+) {
+    if let Ok(mut instances) = q.get_mut(draw_entity.0) {
+        instances.0.clone_from(&aggregate.0);
+    }
+}
+
 fn aggregate_label_instances(
-    q: Query<&TextGlyphInstances>,
+    q: Query<&TextGlyphInstances, With<TextLabel>>,
     mut aggregate: ResMut<TextInstanceAggregate>,
 ) {
     aggregate.0.clear();
@@ -247,5 +373,25 @@ pub fn create_atlas_image_from_cpu(
     );
     image.texture_descriptor.usage |=
         TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_SRC | TextureUsages::COPY_DST;
+    images.add(image)
+}
+
+/// Build an offscreen RGBA8 render target for shader smoke readback.
+pub fn create_render_target_image(images: &mut Assets<Image>, width: u32, height: u32) -> Handle<Image> {
+    let mut image = Image::new_fill(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        &vec![0u8; (width * height * 4) as usize],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    );
+    image.texture_descriptor.usage |= TextureUsages::RENDER_ATTACHMENT
+        | TextureUsages::TEXTURE_BINDING
+        | TextureUsages::COPY_SRC
+        | TextureUsages::COPY_DST;
     images.add(image)
 }
