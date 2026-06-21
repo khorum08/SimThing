@@ -1792,3 +1792,15 @@ everything the outer gate keys on" (force-flag pattern + test-the-realtime-path 
 the key that short-circuits the *write*, or honor a one-frame force flag; add a test that a settings change
 mutates the rendered material with the camera held still (the existing outer-gate tests passed while the inner
 gate dropped the update).
+
+## 2026-06-21 — STUDIO-PERFORMANCE-TELEMETRY-WINDOW-0 (presentation/UI)
+
+- **#868 follow-up closed:** `settings_star_render_change_mutates_visual_with_camera_fixed` proves `force_resync`
+  bypasses the per-star skip and settings changes alter computed star visuals at fixed camera depth.
+- **Performance telemetry moved** out of Settings into a dedicated movable **Performance Telemetry** window
+  (top-right **Telemetry** button, left of Settings gear).
+- **Screenshot button** saves next `screenshot_{index:05}.png` to the current working directory (explicit user
+  action only; `screenshot_*.png` gitignored).
+- **Camera minimum zoom** reduced from ~25.0 to **12.5** (`CAMERA_MIN_ORBIT_DISTANCE`) — 200% closer orbit.
+- **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
+  visual resync (#868).

@@ -218,7 +218,7 @@ pub fn frame_phase_settings_lines(telemetry: &StudioPerformanceTelemetry) -> Vec
             format_timing_ms(telemetry.egui_pass_ms_avg),
         ),
         format!(
-            "Settings window: {} ms / {} ms",
+            "Settings/Telemetry dialogs: {} ms / {} ms",
             format_timing_ms(telemetry.egui_settings_ms_last),
             format_timing_ms(telemetry.egui_settings_ms_avg),
         ),

@@ -135,3 +135,14 @@ Default redraw mode matters too: Studio runs Bevy's default `WinitSettings` (Con
 update appears within one frame. If you ever switch to `Reactive`/`desktop_app()` power-saving, the same class
 of "updates only on input" bug appears for a *different* reason (no frame is produced until an event) — request
 a redraw on the state change, or stay Continuous for an editor.
+
+## Performance Telemetry window (STUDIO-PERFORMANCE-TELEMETRY-WINDOW-0)
+
+Live FPS, frame-phase timings, VRAM estimates, diagnostic isolation toggles, and capture steps belong in the
+on-demand **Performance Telemetry** window (top-right **Telemetry** button), not in the Settings dialog.
+Settings retains only star/hyperlane preferences. Hiding telemetry does not stop collection — it is presentation
+state only.
+
+**Screenshot capture** is an explicit user action (Screenshot button in the Performance Telemetry window). It
+writes `screenshot_{index:05}.png` to the current working directory via Bevy's `Screenshot::primary_window()` +
+`save_to_disk`. Do not add per-frame or background screenshot timers.

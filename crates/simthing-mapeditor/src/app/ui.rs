@@ -1,6 +1,7 @@
 #![cfg(windows)]
 
 use bevy::prelude::*;
+use bevy::render::view::window::screenshot::{save_to_disk, Screenshot};
 use bevy_egui::{egui, EguiContexts};
 
 use crate::dialog::{
@@ -45,13 +46,27 @@ use crate::studio_frame_phase_gpu_telemetry::{
 };
 use crate::studio_performance_telemetry::performance_settings_section_lines;
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
+use crate::studio_screenshot::next_screenshot_filename;
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 
-const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 760.0);
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 520.0);
+const TELEMETRY_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 760.0);
 const SETTINGS_TITLE_CLOSE_DRAG_GAP: f32 = 6.0;
+const TELEMETRY_BUTTON_LABEL: &str = "Telemetry";
+const TELEMETRY_TOOLTIP: &str = "Performance Telemetry";
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
+/// Top-right window controls, left-to-right (Telemetry immediately before Settings gear).
+#[cfg_attr(not(test), allow(dead_code))]
+pub const WINDOW_CONTROLS_LEFT_TO_RIGHT: &[&str] = &[
+    TELEMETRY_BUTTON_LABEL,
+    SETTINGS_BUTTON_LABEL,
+    "—",
+    "▢",
+    "⛶",
+    "✕",
+];
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SettingsTitleBarRects {
     pub title_rect: egui::Rect,
@@ -139,19 +154,30 @@ pub fn studio_ui_system(
         ctx,
         &mut state,
         &mut settings,
-        &perf_telemetry.telemetry,
         &mut render_caches,
         screen_w,
         screen_h,
     );
     let settings_ms = settings_started.elapsed().as_secs_f64() * 1000.0;
+    let telemetry_started = std::time::Instant::now();
+    draw_telemetry_dialog(
+        ctx,
+        &mut state,
+        &mut settings,
+        &mut commands,
+        &perf_telemetry.telemetry,
+        &mut render_caches,
+        screen_w,
+        screen_h,
+    );
+    let telemetry_ms = telemetry_started.elapsed().as_secs_f64() * 1000.0;
     if !state.performance_diagnostic_hide_panels {
         draw_warning_dialog(ctx, &mut dialog);
     }
     record_egui_pass_timing(
         &mut perf_telemetry,
         egui_started.elapsed().as_secs_f64() * 1000.0,
-        settings_ms,
+        settings_ms + telemetry_ms,
         left_panel_ms,
         right_panel_ms,
     );
@@ -326,9 +352,16 @@ fn draw_window_controls(
     exit: &mut EventWriter<AppExit>,
 ) {
     egui::Area::new(egui::Id::new("window_controls"))
-        .fixed_pos(egui::pos2(ctx.screen_rect().max.x - 190.0, 8.0))
+        .fixed_pos(egui::pos2(ctx.screen_rect().max.x - 280.0, 8.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
+                if ui
+                    .button(TELEMETRY_BUTTON_LABEL)
+                    .on_hover_text(TELEMETRY_TOOLTIP)
+                    .clicked()
+                {
+                    state.telemetry_dialog.toggle_visible();
+                }
                 if ui
                     .small_button(SETTINGS_BUTTON_LABEL)
                     .on_hover_text(SETTINGS_TOOLTIP)
@@ -364,6 +397,22 @@ mod tests {
         assert_eq!(SETTINGS_BUTTON_LABEL, "⚙");
         assert_eq!(SETTINGS_TOOLTIP, "Settings");
     }
+
+    #[test]
+    fn telemetry_button_is_left_of_settings_button_with_tooltip() {
+        assert_eq!(TELEMETRY_BUTTON_LABEL, "Telemetry");
+        assert_eq!(TELEMETRY_TOOLTIP, "Performance Telemetry");
+        let controls = WINDOW_CONTROLS_LEFT_TO_RIGHT;
+        let telemetry_idx = controls
+            .iter()
+            .position(|label| *label == TELEMETRY_BUTTON_LABEL)
+            .expect("telemetry control");
+        let settings_idx = controls
+            .iter()
+            .position(|label| *label == SETTINGS_BUTTON_LABEL)
+            .expect("settings control");
+        assert_eq!(settings_idx, telemetry_idx + 1);
+    }
     #[test]
     fn settings_title_drag_rect_does_not_overlap_close_rect() {
         let title_rect = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(380.0, 32.0));
@@ -389,7 +438,6 @@ fn draw_settings_dialog(
     ctx: &egui::Context,
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
-    telemetry: &crate::studio_performance_telemetry::StudioPerformanceTelemetry,
     render_caches: &mut StudioRenderLoopCaches,
     screen_w: f32,
     screen_h: f32,
@@ -560,6 +608,85 @@ fn draw_settings_dialog(
                         &mut render_caches.hyperlane,
                     );
                 }
+                ui.horizontal(|ui| {
+                    if ui.button("Reset").clicked() {
+                        reset_settings_dialog_values(state, settings, render_caches);
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("Close").clicked() {
+                            close_settings_dialog_from_button(state, settings);
+                        }
+                    });
+                });
+            });
+        });
+}
+
+fn draw_telemetry_dialog(
+    ctx: &egui::Context,
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+    commands: &mut Commands,
+    telemetry: &crate::studio_performance_telemetry::StudioPerformanceTelemetry,
+    render_caches: &mut StudioRenderLoopCaches,
+    screen_w: f32,
+    screen_h: f32,
+) {
+    if !state.telemetry_dialog.visible {
+        return;
+    }
+
+    let bounds = settings_dialog_bounds(ctx, state, screen_w, screen_h);
+    let desired = egui::Rect::from_min_size(
+        egui::pos2(
+            state.telemetry_dialog.position[0],
+            state.telemetry_dialog.position[1],
+        ),
+        TELEMETRY_DIALOG_SIZE,
+    );
+    let clamped = clamp_dialog_rect_away_from_panels(desired, &bounds);
+    state.telemetry_dialog.position = [clamped.min.x, clamped.min.y];
+
+    egui::Area::new(egui::Id::new("telemetry_dialog"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(clamped.min)
+        .show(ctx, |ui| {
+            studio_panel_frame(0.82, 10.0).show(ui, |ui| {
+                ui.set_width(TELEMETRY_DIALOG_SIZE.x - 24.0);
+                ui.set_min_height(TELEMETRY_DIALOG_SIZE.y - 24.0);
+                let mut close_rect = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::ZERO);
+                let title_response = ui
+                    .horizontal(|ui| {
+                        ui.heading("Performance Telemetry");
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let close_response = ui.button("X");
+                            close_rect = close_response.rect;
+                            if close_response.clicked() {
+                                state.telemetry_dialog.close_icon();
+                            }
+                        });
+                    })
+                    .response;
+                let title_rects = SettingsTitleBarRects {
+                    title_rect: title_response.rect,
+                    close_rect,
+                    drag_rect: settings_title_bar_drag_rect(
+                        title_response.rect,
+                        close_rect,
+                        SETTINGS_TITLE_CLOSE_DRAG_GAP,
+                    ),
+                };
+                let title_drag = ui.interact(
+                    title_rects.drag_rect,
+                    ui.id().with("telemetry_title_drag"),
+                    egui::Sense::drag(),
+                );
+                if title_drag.dragged() {
+                    let delta = ctx.input(|input| input.pointer.delta());
+                    let moved = clamped.translate(delta);
+                    let clamped_moved = clamp_dialog_rect_away_from_panels(moved, &bounds);
+                    state.telemetry_dialog.position = [clamped_moved.min.x, clamped_moved.min.y];
+                }
                 ui.separator();
                 let performance_lines = performance_settings_section_lines(telemetry);
                 if let Some(title) = performance_lines.first() {
@@ -604,7 +731,7 @@ fn draw_settings_dialog(
                 }
                 ui.checkbox(
                     &mut state.performance_diagnostic_hide_panels,
-                    "Hide egui panels except Settings",
+                    "Hide main egui panels",
                 );
                 ui.checkbox(
                     &mut state.performance_diagnostic_freeze_camera,
@@ -619,12 +746,21 @@ fn draw_settings_dialog(
                     }
                 });
                 ui.horizontal(|ui| {
-                    if ui.button("Reset").clicked() {
-                        reset_settings_dialog_values(state, settings, render_caches);
+                    if ui.button("Screenshot").clicked() {
+                        let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
+                        if let Some(filename) = next_screenshot_filename(&cwd) {
+                            commands
+                                .spawn(Screenshot::primary_window())
+                                .observe(save_to_disk(filename.clone()));
+                            state.status_message = format!("Screenshot requested: {filename}");
+                        } else {
+                            state.status_message =
+                                "Screenshot failed: could not allocate filename".into();
+                        }
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Close").clicked() {
-                            close_settings_dialog_from_button(state, settings);
+                            state.telemetry_dialog.close_button();
                         }
                     });
                 });

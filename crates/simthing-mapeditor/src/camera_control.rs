@@ -4,6 +4,18 @@ pub const ORBIT_PITCH_MIN: f32 = 0.15;
 pub const ORBIT_PITCH_MAX: f32 = 1.2;
 pub const DEFAULT_ORBIT_SENSITIVITY: f32 = 0.003;
 
+/// Minimum orbit distance after STUDIO-PERFORMANCE-TELEMETRY-WINDOW-0 (200% closer than prior 25.0).
+pub const CAMERA_MIN_ORBIT_DISTANCE: f32 = 12.5;
+pub const CAMERA_MAX_ORBIT_DISTANCE: f32 = 220.0;
+pub const CAMERA_SCROLL_ZOOM_STEP: f32 = 4.0;
+/// Prior minimum bound before zoom-in change (regression reference only).
+pub const CAMERA_PREVIOUS_MIN_ORBIT_DISTANCE: f32 = 25.0;
+
+pub fn apply_scroll_zoom(current_distance: f32, scroll_delta_y: f32) -> f32 {
+    (current_distance - scroll_delta_y * CAMERA_SCROLL_ZOOM_STEP)
+        .clamp(CAMERA_MIN_ORBIT_DISTANCE, CAMERA_MAX_ORBIT_DISTANCE)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OrbitCameraState {
     pub orbit_yaw: f32,
@@ -101,6 +113,23 @@ mod tests {
         assert_ne!(camera.orbit_yaw, 0.6);
         assert_ne!(camera.orbit_pitch, 0.55);
         assert!(!camera.overhead);
+    }
+
+    #[test]
+    fn camera_scroll_zoom_allows_half_previous_minimum() {
+        assert!(
+            CAMERA_MIN_ORBIT_DISTANCE < CAMERA_PREVIOUS_MIN_ORBIT_DISTANCE,
+            "minimum orbit distance must be 200% closer than the prior 25.0 bound"
+        );
+        let at_old_minimum = apply_scroll_zoom(CAMERA_PREVIOUS_MIN_ORBIT_DISTANCE, 1.0);
+        assert!(
+            at_old_minimum > CAMERA_MIN_ORBIT_DISTANCE,
+            "zoom in from prior minimum should move closer than 25.0"
+        );
+        let clamped = apply_scroll_zoom(CAMERA_MIN_ORBIT_DISTANCE, 10.0);
+        assert_eq!(clamped, CAMERA_MIN_ORBIT_DISTANCE);
+        let expanded = apply_scroll_zoom(CAMERA_MIN_ORBIT_DISTANCE, -1.0);
+        assert!(expanded > CAMERA_MIN_ORBIT_DISTANCE);
     }
 
     #[test]
