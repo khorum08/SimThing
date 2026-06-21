@@ -7,6 +7,8 @@ PASS — workshop `GlyphAtlas` rasterizes LR0 fixture glyphs via `swash`, packs 
 ## PR / branch / merge
 
 - Branch: `typeface-lr2-raster-atlas-0`
+- PR: #874
+- Merge SHA: `12dd9202336a8a631beff13cbd857488ab1f9e8e`
 
 ## Mission
 
