@@ -7,8 +7,8 @@ PASS
 ## PR / branch / merge
 
 - Branch: `studio-render-loop-dirty-gate-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #858
+- Merge SHA: `431f922a63e4d52c5a52991eb8d601825305678b`
 
 ## Mission
 
