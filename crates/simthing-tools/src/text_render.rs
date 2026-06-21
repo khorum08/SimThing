@@ -10,11 +10,11 @@ use bevy::{
         camera::{
             Camera, CameraRenderGraph, OrthographicProjection, RenderTarget, ScalingMode, Viewport,
         },
+        extract_component::{ExtractComponent, ExtractComponentPlugin},
         extract_resource::{ExtractResource, ExtractResourcePlugin},
         mesh::{
             allocator::MeshAllocator, MeshVertexBufferLayoutRef, RenderMesh, RenderMeshBufferInfo,
         },
-        extract_component::{ExtractComponent, ExtractComponentPlugin},
         render_asset::RenderAssets,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
@@ -98,7 +98,10 @@ impl Plugin for TextInstancedRenderPlugin {
         use bevy::render::batching::gpu_preprocessing::{
             GpuPreprocessingMode, GpuPreprocessingSupport,
         };
-        if !render_app.world().contains_resource::<GpuPreprocessingSupport>() {
+        if !render_app
+            .world()
+            .contains_resource::<GpuPreprocessingSupport>()
+        {
             render_app.insert_resource(GpuPreprocessingSupport {
                 max_supported_mode: GpuPreprocessingMode::PreprocessingOnly,
             });
@@ -237,7 +240,13 @@ fn prepare_text_offscreen_mesh2d_view_bind_groups(
     render_device: Res<RenderDevice>,
     mesh2d_pipeline: Res<Mesh2dPipeline>,
     view_uniforms: Res<ViewUniforms>,
-    views: Query<Entity, (With<bevy::render::view::ExtractedView>, With<TextOffscreenCamera>)>,
+    views: Query<
+        Entity,
+        (
+            With<bevy::render::view::ExtractedView>,
+            With<TextOffscreenCamera>,
+        ),
+    >,
     globals_buffer: Res<bevy::render::globals::GlobalsBuffer>,
     fallback_image: Res<FallbackImage>,
 ) {
@@ -264,7 +273,9 @@ fn prepare_text_offscreen_mesh2d_view_bind_groups(
         );
         commands
             .entity(entity)
-            .insert(bevy::sprite::Mesh2dViewBindGroup { value: view_bind_group });
+            .insert(bevy::sprite::Mesh2dViewBindGroup {
+                value: view_bind_group,
+            });
     }
 }
 
@@ -319,19 +330,16 @@ fn queue_text_instanced(
                 continue;
             };
 
-            let key = view_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology());
-            let pipeline_id = match pipelines.specialize(
-                &pipeline_cache,
-                &pipeline,
-                key,
-                &mesh.layout,
-            ) {
-                Ok(id) => id,
-                Err(_) => {
-                    queue_state.skipped_pipeline_error += 1;
-                    continue;
-                }
-            };
+            let key =
+                view_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology());
+            let pipeline_id =
+                match pipelines.specialize(&pipeline_cache, &pipeline, key, &mesh.layout) {
+                    Ok(id) => id,
+                    Err(_) => {
+                        queue_state.skipped_pipeline_error += 1;
+                        continue;
+                    }
+                };
 
             let instance_count = extract.instances.len() as u32;
             transparent_phase.add(Transparent2d {
@@ -501,8 +509,11 @@ pub fn text_render_queue_state(app: &App) -> TextRenderQueueState {
 }
 
 pub fn text_instanced_pipeline_initialized(app: &App) -> bool {
-    app.get_sub_app(RenderApp)
-        .is_some_and(|render_app| render_app.world().contains_resource::<TextInstancedPipeline>())
+    app.get_sub_app(RenderApp).is_some_and(|render_app| {
+        render_app
+            .world()
+            .contains_resource::<TextInstancedPipeline>()
+    })
 }
 
 /// Camera bundle for offscreen instanced text draws in pixel-space coordinates.

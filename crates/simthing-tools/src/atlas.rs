@@ -178,6 +178,38 @@ impl GlyphAtlasCore {
         Some(tile)
     }
 
+    pub fn insert_rgba8_tile(
+        &mut self,
+        pixels: &[u8],
+        w: u32,
+        h: u32,
+        left: i32,
+        top: i32,
+    ) -> Option<AtlasTile> {
+        if w == 0 || h == 0 || pixels.len() != (w * h * 4) as usize {
+            return None;
+        }
+
+        let allocation = self.allocator.allocate(size2(w as i32, h as i32))?;
+        let rect = self.allocator[allocation.id];
+        let x = rect.min.x as u32;
+        let y = rect.min.y as u32;
+
+        blit_rgba8(&mut self.cpu_pixels, self.size, x, y, w, h, pixels);
+
+        let tile = AtlasTile {
+            x,
+            y,
+            w,
+            h,
+            left,
+            top,
+        };
+        self.rasterize_count += 1;
+        self.dirty_regions.push(DirtyRect { x, y, w, h });
+        Some(tile)
+    }
+
     pub fn stats(&self) -> GlyphAtlasStats {
         GlyphAtlasStats {
             rasterize_count: self.rasterize_count,

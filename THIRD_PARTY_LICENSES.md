@@ -56,3 +56,33 @@ This file records vendored third-party code included in the SimThing workspace.
 | **License** | SIL Open Font License 1.1 (OFL) |
 | **Copyright holder** | Google LLC and contributors (see upstream OFL header) |
 | **Scope note (TYPEFACE-LR0)** | Hermetic workshop test fixture for font load + glyph metrics only. **Not** the bundled default game font decision. Full upstream file committed for deterministic cmap/metrics tests.
+
+## usvg (TYPEFACE-LR4 static SVG normalization dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | usvg |
+| **Upstream origin** | https://github.com/linebender/resvg |
+| **Version in workspace** | 0.47.0 (direct `simthing-tools` dep, default features disabled) |
+| **License** | Apache-2.0 OR MIT |
+| **Scope note (TYPEFACE-LR4)** | Static SVG parse/normalization for hand-authored icon assets only. Dynamic/external SVG behavior is rejected before runtime atlas insertion. |
+
+## resvg (TYPEFACE-LR4 static SVG rasterization dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | resvg |
+| **Upstream origin** | https://github.com/linebender/resvg |
+| **Version in workspace** | 0.47.0 (direct `simthing-tools` dep, default features disabled) |
+| **License** | Apache-2.0 OR MIT |
+| **Scope note (TYPEFACE-LR4)** | Rasterizes already-validated static SVG icon vectors into the shared typeface atlas. No runtime SVG interpretation or external image loading. |
+
+## tiny-skia (TYPEFACE-LR4 static SVG pixmap dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | tiny-skia |
+| **Upstream origin** | https://github.com/linebender/tiny-skia |
+| **Version in workspace** | 0.12.0 (direct `simthing-tools` dep with `std` only; Bevy also uses older transitive versions) |
+| **License** | BSD-3-Clause |
+| **Scope note (TYPEFACE-LR4)** | Provides the pixmap target for `resvg` icon rasterization before atlas insertion. |
