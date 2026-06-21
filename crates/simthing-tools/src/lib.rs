@@ -1,4 +1,5 @@
 pub mod atlas;
+pub mod bench;
 pub mod bevy;
 pub mod font;
 pub mod harness;
@@ -21,6 +22,11 @@ pub use text_render::{
     TextAtlasImageHandle, TextInstancedDraw, TextInstancedPipeline, TextRenderQueueState,
 };
 
+pub use bench::{
+    icon_tile_in_atlas, run_typeface_bench, TypefaceBenchConfig, TypefaceBenchDiagnostics,
+    TypefaceBenchError, TypefaceBenchHarness, TypefaceBenchResult, CI_BENCH_CONFIG,
+    HEAVY_BENCH_CONFIG,
+};
 pub use font::{load_font, GlyphMetrics, ProbeFont, TypefaceError};
 pub use harness::{ascii_sample_chars, format_measurement_report, measure_chars, MeasuredGlyph};
 pub use icons::{
