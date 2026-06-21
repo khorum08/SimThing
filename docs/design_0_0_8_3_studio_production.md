@@ -126,6 +126,10 @@ This remedial pre-DA pass completes the Reopen Candidate UI workflow by adopting
 
 Runtime/candidate save-load status is a cached presentation surface. The DA-approved proof/report chain remains valid but must not be recomputed every Studio frame. Studio refreshes status on scenario load, candidate save, candidate reopen/adoption, explicit manual refresh, or authority change. ScenarioSpec remains authority; cached UI status remains non-authoritative.
 
+### STUDIO-SETTINGS-PERFORMANCE-TELEMETRY-0 — live FPS and allocated VRAM estimate
+
+The Settings window now includes a Performance section with live FPS and an allocated VRAM estimate in MB. The VRAM value is an in-app estimate of Studio-created GPU allocations rather than a driver-wide total unless otherwise stated. The telemetry is a presentation diagnostic surface only and does not affect ScenarioSpec authority, runtime RF semantics, save/load behavior, GPU dispatch, or DA-approved evidence lifecycle.
+
 ## SCENARIO-CANDIDATE-SAVE-REOPEN-0 — save and reopen candidate ScenarioSpec
 
 This rung saves the cloned candidate ScenarioSpec as canonical ScenarioSpec JSON, reopens it, validates STEAD IDs, links, RF metadata, and spatial tree shape, rebuilds projection readiness, and proves the candidate authority digest is stable after reopen. It does not introduce a distinct savefile format or persistent history. Studio UI wiring and GPU dispatch remain deferred.

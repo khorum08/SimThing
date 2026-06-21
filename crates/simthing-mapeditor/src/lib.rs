@@ -21,6 +21,7 @@ pub mod star_render;
 pub mod starburst;
 pub mod studio_admission_report;
 pub mod studio_config;
+pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
 pub mod studio_scenario_document;
 pub mod studio_scenario_load;
@@ -99,6 +100,11 @@ pub use studio_admission_report::{
 pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
     STUDIO_CONFIG_SCHEMA_VERSION,
+};
+pub use studio_performance_telemetry::{
+    bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,
+    estimate_studio_allocated_vram_bytes, format_fps_label, format_vram_mb_label,
+    performance_settings_section_lines, read_fps_from_diagnostics, StudioPerformanceTelemetry,
 };
 pub use studio_planet_child_location::{
     studio_apply_planet_child_location_command, StudioPlanetChildLocationError,

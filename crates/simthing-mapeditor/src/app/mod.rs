@@ -2,12 +2,14 @@
 
 mod camera;
 mod galaxy_render;
+mod performance_telemetry;
 mod picking;
 mod resources;
 pub mod scenario_io;
 mod ui;
 mod window;
 
+use bevy::diagnostic::{FrameCountPlugin, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
@@ -77,9 +79,15 @@ pub fn run_studio() {
                 }),
         )
         .add_plugins(EguiPlugin::default())
+        .add_plugins((FrameCountPlugin, FrameTimeDiagnosticsPlugin::default()))
+        .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin)
         .add_systems(Startup, (window::apply_initial_window_mode, setup_scene))
         .add_systems(Startup, init_star_visual_assets)
+        .add_systems(
+            Startup,
+            performance_telemetry::init_studio_performance_telemetry,
+        )
         .add_systems(EguiPrimaryContextPass, ui::studio_ui_system)
         .add_systems(
             Update,
@@ -94,6 +102,8 @@ pub fn run_studio() {
                 picking::billboard_stars_system,
                 galaxy_render::sync_hyperlane_colors_system,
                 galaxy_render::sync_render_debug_visibility_system,
+                performance_telemetry::update_studio_fps_telemetry,
+                performance_telemetry::update_studio_vram_telemetry,
                 window::persist_settings_on_exit,
             ),
         )
