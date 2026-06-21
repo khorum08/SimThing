@@ -53,16 +53,22 @@ struct DirtyRegion {
     h: u32,
 }
 
-pub struct GlyphAtlas {
+/// CPU-side atlas: rasterization, guillotiere packing, cache, and dirty-region tracking.
+pub struct GlyphAtlasCore {
     size: u32,
     cpu_pixels: Vec<u8>,
     allocator: AtlasAllocator,
     cache: HashMap<GlyphAtlasKey, AtlasTile>,
     dirty_regions: Vec<DirtyRegion>,
-    texture: Texture,
-    texture_view: TextureView,
     rasterize_count: u64,
     cache_hit_count: u64,
+}
+
+/// GPU-backed atlas wrapping a [`GlyphAtlasCore`] with wgpu texture upload.
+pub struct GlyphAtlas {
+    core: GlyphAtlasCore,
+    texture: Texture,
+    texture_view: TextureView,
 }
 
 /// Quantize a pixel size to a stable cache bucket (quarter-pixel resolution).
@@ -107,35 +113,14 @@ pub fn rasterize_glyph_cpu(font: &ProbeFont, glyph_id: u16, px: f32) -> Option<R
     })
 }
 
-impl GlyphAtlas {
-    pub fn new(device: &wgpu::Device, size: u32) -> Self {
-        let cpu_pixels = vec![0u8; (size * size * 4) as usize];
-        let texture = device.create_texture(&TextureDescriptor {
-            label: Some("typeface_glyph_atlas"),
-            size: Extent3d {
-                width: size,
-                height: size,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: ATLAS_TEXTURE_FORMAT,
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_DST
-                | TextureUsages::COPY_SRC,
-            view_formats: &[],
-        });
-        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-
+impl GlyphAtlasCore {
+    pub fn new(size: u32) -> Self {
         Self {
             size,
-            cpu_pixels,
+            cpu_pixels: vec![0u8; (size * size * 4) as usize],
             allocator: AtlasAllocator::new(size2(size as i32, size as i32)),
             cache: HashMap::new(),
             dirty_regions: Vec::new(),
-            texture,
-            texture_view,
             rasterize_count: 0,
             cache_hit_count: 0,
         }
@@ -193,57 +178,6 @@ impl GlyphAtlas {
         Some(tile)
     }
 
-    pub fn upload(&mut self, queue: &Queue) {
-        if self.dirty_regions.is_empty() {
-            return;
-        }
-
-        for region in &self.dirty_regions {
-            let bytes_per_row = align_bytes_per_row(region.w);
-            let mut staging = vec![0u8; (bytes_per_row * region.h) as usize];
-            copy_region_to_staging(
-                &self.cpu_pixels,
-                self.size,
-                region.x,
-                region.y,
-                region.w,
-                region.h,
-                bytes_per_row,
-                &mut staging,
-            );
-
-            queue.write_texture(
-                ImageCopyTexture {
-                    texture: &self.texture,
-                    mip_level: 0,
-                    origin: Origin3d {
-                        x: region.x,
-                        y: region.y,
-                        z: 0,
-                    },
-                    aspect: TextureAspect::All,
-                },
-                &staging,
-                ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(bytes_per_row),
-                    rows_per_image: Some(region.h),
-                },
-                Extent3d {
-                    width: region.w,
-                    height: region.h,
-                    depth_or_array_layers: 1,
-                },
-            );
-        }
-
-        self.dirty_regions.clear();
-    }
-
-    pub fn texture_view(&self) -> &TextureView {
-        &self.texture_view
-    }
-
     pub fn stats(&self) -> GlyphAtlasStats {
         GlyphAtlasStats {
             rasterize_count: self.rasterize_count,
@@ -277,21 +211,146 @@ impl GlyphAtlas {
         out
     }
 
+    /// Clears dirty-region tracking after a successful GPU upload (or CPU-only test validation).
+    pub fn clear_dirty_regions(&mut self) {
+        self.dirty_regions.clear();
+    }
+
+    fn dirty_regions(&self) -> &[DirtyRegion] {
+        &self.dirty_regions
+    }
+
+    fn cpu_pixels(&self) -> &[u8] {
+        &self.cpu_pixels
+    }
+
+    fn atlas_size_internal(&self) -> u32 {
+        self.size
+    }
+}
+
+impl GlyphAtlas {
+    pub fn new(device: &wgpu::Device, size: u32) -> Self {
+        let texture = device.create_texture(&TextureDescriptor {
+            label: Some("typeface_glyph_atlas"),
+            size: Extent3d {
+                width: size,
+                height: size,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: ATLAS_TEXTURE_FORMAT,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_DST
+                | TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        Self {
+            core: GlyphAtlasCore::new(size),
+            texture,
+            texture_view,
+        }
+    }
+
+    pub fn get_or_rasterize(
+        &mut self,
+        font: &ProbeFont,
+        glyph_id: u16,
+        px: f32,
+    ) -> Option<AtlasTile> {
+        self.core.get_or_rasterize(font, glyph_id, px)
+    }
+
+    pub fn upload(&mut self, queue: &Queue) {
+        if self.core.dirty_regions().is_empty() {
+            return;
+        }
+
+        for region in self.core.dirty_regions() {
+            let bytes_per_row = align_bytes_per_row(region.w);
+            let mut staging = vec![0u8; (bytes_per_row * region.h) as usize];
+            copy_region_to_staging(
+                self.core.cpu_pixels(),
+                self.core.atlas_size_internal(),
+                region.x,
+                region.y,
+                region.w,
+                region.h,
+                bytes_per_row,
+                &mut staging,
+            );
+
+            queue.write_texture(
+                ImageCopyTexture {
+                    texture: &self.texture,
+                    mip_level: 0,
+                    origin: Origin3d {
+                        x: region.x,
+                        y: region.y,
+                        z: 0,
+                    },
+                    aspect: TextureAspect::All,
+                },
+                &staging,
+                ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(bytes_per_row),
+                    rows_per_image: Some(region.h),
+                },
+                Extent3d {
+                    width: region.w,
+                    height: region.h,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+
+        self.core.clear_dirty_regions();
+    }
+
+    pub fn texture_view(&self) -> &TextureView {
+        &self.texture_view
+    }
+
+    pub fn stats(&self) -> GlyphAtlasStats {
+        self.core.stats()
+    }
+
+    pub fn atlas_size(&self) -> u32 {
+        self.core.atlas_size()
+    }
+
+    pub fn tile_count(&self) -> usize {
+        self.core.tile_count()
+    }
+
+    pub fn texture_format(&self) -> TextureFormat {
+        self.core.texture_format()
+    }
+
+    pub fn tile_pixels(&self, tile: AtlasTile) -> Vec<u8> {
+        self.core.tile_pixels(tile)
+    }
+
     pub fn gpu_texture(&self) -> &Texture {
         &self.texture
     }
 }
 
-pub fn format_atlas_report(atlas: &GlyphAtlas) -> String {
-    let stats = atlas.stats();
+pub fn format_atlas_report(core: &GlyphAtlasCore) -> String {
+    let stats = core.stats();
     format!(
         "atlas_size={}\ntile_count={}\nrasterize_count={}\ncache_hit_count={}\ndirty_region_count={}\ntexture_format={:?}",
-        atlas.atlas_size(),
-        atlas.tile_count(),
+        core.atlas_size(),
+        core.tile_count(),
         stats.rasterize_count,
         stats.cache_hit_count,
         stats.dirty_region_count,
-        atlas.texture_format()
+        core.texture_format()
     )
 }
 

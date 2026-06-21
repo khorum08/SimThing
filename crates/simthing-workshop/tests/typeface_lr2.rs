@@ -1,6 +1,6 @@
 use pollster::FutureExt;
 use simthing_workshop::typeface::{
-    format_atlas_report, load_font, rasterize_glyph_cpu, GlyphAtlas, ProbeFont,
+    format_atlas_report, load_font, rasterize_glyph_cpu, GlyphAtlas, GlyphAtlasCore, ProbeFont,
 };
 use wgpu::{
     Backends, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, DeviceDescriptor, Extent3d,
@@ -60,8 +60,8 @@ fn tiles_overlap(
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 }
 
-fn make_atlas(ctx: &TestGpuContext, size: u32) -> GlyphAtlas {
-    GlyphAtlas::new(&ctx.device, size)
+fn make_cpu_atlas(size: u32) -> GlyphAtlasCore {
+    GlyphAtlasCore::new(size)
 }
 
 #[test]
@@ -71,8 +71,7 @@ fn rasterized_tile_bytes_match_cpu_oracle() {
     let oracle =
         rasterize_glyph_cpu(&font, glyph_id, SHAPE_PX).expect("oracle raster must succeed");
 
-    let ctx = try_test_gpu_context().expect("GPU adapter required for atlas path test");
-    let mut atlas = make_atlas(&ctx, 256);
+    let mut atlas = make_cpu_atlas(256);
     let tile = atlas
         .get_or_rasterize(&font, glyph_id, SHAPE_PX)
         .expect("atlas raster must succeed");
@@ -88,8 +87,7 @@ fn rasterized_tile_bytes_match_cpu_oracle() {
 fn same_glyph_same_px_is_cached_not_re_rasterized() {
     let font = load_fixture();
     let glyph_id = glyph_id_for(&font, 'A');
-    let ctx = try_test_gpu_context().expect("GPU adapter required for atlas cache test");
-    let mut atlas = make_atlas(&ctx, 256);
+    let mut atlas = make_cpu_atlas(256);
 
     let first = atlas
         .get_or_rasterize(&font, glyph_id, SHAPE_PX)
@@ -109,8 +107,7 @@ fn distinct_glyphs_get_distinct_tiles() {
     let font = load_fixture();
     let glyph_a = glyph_id_for(&font, 'A');
     let glyph_b = glyph_id_for(&font, 'B');
-    let ctx = try_test_gpu_context().expect("GPU adapter required for distinct tile test");
-    let mut atlas = make_atlas(&ctx, 256);
+    let mut atlas = make_cpu_atlas(256);
 
     let tile_a = atlas
         .get_or_rasterize(&font, glyph_a, SHAPE_PX)
@@ -126,8 +123,7 @@ fn distinct_glyphs_get_distinct_tiles() {
 #[test]
 fn atlas_full_returns_none_no_panic() {
     let font = load_fixture();
-    let ctx = try_test_gpu_context().expect("GPU adapter required for atlas-full test");
-    let mut atlas = make_atlas(&ctx, 64);
+    let mut atlas = make_cpu_atlas(64);
 
     let mut saw_some = false;
     let mut saw_none = false;
@@ -156,27 +152,34 @@ fn atlas_full_returns_none_no_panic() {
 fn upload_dirty_regions_clears_dirty_tracking() {
     let font = load_fixture();
     let glyph_id = glyph_id_for(&font, 'A');
-    let ctx = try_test_gpu_context().expect("GPU adapter required for dirty upload test");
-    let mut atlas = make_atlas(&ctx, 256);
 
-    assert!(atlas.get_or_rasterize(&font, glyph_id, SHAPE_PX).is_some());
-    assert!(atlas.stats().dirty_region_count > 0);
+    let mut core = make_cpu_atlas(256);
+    assert!(core.get_or_rasterize(&font, glyph_id, SHAPE_PX).is_some());
+    assert!(core.stats().dirty_region_count > 0);
 
-    atlas.upload(&ctx.queue);
-    assert_eq!(atlas.stats().dirty_region_count, 0);
+    if let Some(ctx) = try_test_gpu_context() {
+        let mut atlas = GlyphAtlas::new(&ctx.device, 256);
+        assert!(atlas.get_or_rasterize(&font, glyph_id, SHAPE_PX).is_some());
+        assert!(atlas.stats().dirty_region_count > 0);
+        atlas.upload(&ctx.queue);
+        assert_eq!(atlas.stats().dirty_region_count, 0);
+    } else {
+        core.clear_dirty_regions();
+        assert_eq!(core.stats().dirty_region_count, 0);
+        eprintln!("ADAPTER_SKIPPED: GPU upload path; CPU dirty tracking cleared via core");
+    }
 }
 
 #[test]
 fn cached_tile_does_not_mark_dirty() {
     let font = load_fixture();
     let glyph_id = glyph_id_for(&font, 'A');
-    let ctx = try_test_gpu_context().expect("GPU adapter required for cached dirty test");
-    let mut atlas = make_atlas(&ctx, 256);
+    let mut atlas = make_cpu_atlas(256);
 
     let first = atlas
         .get_or_rasterize(&font, glyph_id, SHAPE_PX)
         .expect("first raster must succeed");
-    atlas.upload(&ctx.queue);
+    atlas.clear_dirty_regions();
     assert_eq!(atlas.stats().dirty_region_count, 0);
 
     let second = atlas
@@ -196,7 +199,7 @@ fn headless_real_adapter_upload_readback_or_skip() {
         return;
     };
 
-    let mut atlas = make_atlas(&ctx, 256);
+    let mut atlas = GlyphAtlas::new(&ctx.device, 256);
     let tile = atlas
         .get_or_rasterize(&font, glyph_id, SHAPE_PX)
         .expect("atlas raster must succeed");
@@ -273,8 +276,7 @@ fn headless_real_adapter_upload_readback_or_skip() {
 fn atlas_report_contains_expected_fields() {
     let font = load_fixture();
     let glyph_id = glyph_id_for(&font, 'A');
-    let ctx = try_test_gpu_context().expect("GPU adapter required for atlas report test");
-    let mut atlas = make_atlas(&ctx, 256);
+    let mut atlas = make_cpu_atlas(256);
     let _ = atlas.get_or_rasterize(&font, glyph_id, SHAPE_PX);
     let report = format_atlas_report(&atlas);
     assert!(report.contains("atlas_size="));

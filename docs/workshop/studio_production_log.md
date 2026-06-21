@@ -1805,6 +1805,14 @@ gate dropped the update).
 - **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
   visual resync (#868).
 
+## 2026-06-21 — TYPEFACE-LR2-RASTER-ATLAS-0R (workshop typeface ladder remediation)
+
+- DA remediation for LR2 adapter-optional test coverage: split `GlyphAtlasCore` (CPU raster/cache/pack/dirty) from GPU-backed `GlyphAtlas`.
+- CPU tests (`oracle`, cache, distinct tiles, atlas-full, cached-no-dirty, report) use `GlyphAtlasCore::new` — no adapter required.
+- `upload_dirty_regions_clears_dirty_tracking` asserts CPU dirty tracking always; GPU upload when adapter present.
+- `headless_real_adapter_upload_readback_or_skip` remains sole adapter-dependent proof (`ADAPTER_SKIPPED` when absent).
+- Result report: `docs/tests/typeface_lr2r_results.md`; LR2 remains PROBATION / DA-SENSITIVE — not DA-approved.
+
 ## 2026-06-21 — TYPEFACE-LR2-RASTER-ATLAS-0 (workshop typeface ladder)
 
 - Third implementation rung (DA-sensitive): workshop-only raster glyph atlas in `simthing-workshop/src/typeface/atlas.rs`.

@@ -96,6 +96,7 @@ direct), `same_glyph_same_px_is_cached_not_re_rasterized` (alloc count unchanged
 `distinct_glyphs_get_distinct_tiles`, `atlas_full_returns_none_no_panic`, headless real-adapter upload+readback.
 **DA focus:** byte-exact oracle; cache key correctness; **no per-call full-atlas upload** (dirty-region only).
 **Stop conditions:** no GPU adapter in env → keep CPU-oracle tests, mark GPU tests `ADAPTER_SKIPPED`, do not fake.
+**Remediation:** `TYPEFACE-LR2-RASTER-ATLAS-0R` remediates DA HOLD on adapter-optional CPU test coverage — splits `GlyphAtlasCore` (CPU-only) from GPU-backed `GlyphAtlas`; result report `docs/tests/typeface_lr2r_results.md`. LR2 remains PROBATION until DA closes 0R review; not DA-approved.
 
 ## LR3 — `simthing-tools` crate + Bevy instanced text draw  *(DA-sensitive — graduation rung)*
 **New crate:** `crates/simthing-tools/` (`Cargo.toml`, `src/lib.rs`); move the proven LR0–LR2 modules
