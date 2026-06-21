@@ -9,7 +9,7 @@ pub mod scenario_io;
 mod ui;
 mod window;
 
-use bevy::diagnostic::{FrameCountPlugin, FrameTimeDiagnosticsPlugin};
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 
@@ -79,7 +79,7 @@ pub fn run_studio() {
                 }),
         )
         .add_plugins(EguiPlugin::default())
-        .add_plugins((FrameCountPlugin, FrameTimeDiagnosticsPlugin::default()))
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin)
         .add_systems(Startup, (window::apply_initial_window_mode, setup_scene))
