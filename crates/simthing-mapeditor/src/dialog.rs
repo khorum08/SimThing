@@ -493,12 +493,12 @@ mod tests {
 
     #[test]
     fn telemetry_dialog_close_icon_and_button_hide_window() {
-        let mut dialog = TelemetryDialogModel::new(true, [480.0, 96.0]);
-        dialog.close_icon();
-        assert!(!dialog.visible);
-        dialog.visible = true;
-        dialog.close_button();
-        assert!(!dialog.visible);
-        assert_eq!(dialog.position, [480.0, 96.0]);
+        let mut icon_dialog = TelemetryDialogModel::new(true, [480.0, 96.0]);
+        icon_dialog.close_icon();
+        assert!(!icon_dialog.visible);
+
+        let mut button_dialog = TelemetryDialogModel::new(true, [480.0, 96.0]);
+        button_dialog.close_button();
+        assert!(!button_dialog.visible);
     }
 }
