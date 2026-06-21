@@ -99,7 +99,7 @@ direct), `same_glyph_same_px_is_cached_not_re_rasterized` (alloc count unchanged
 **Remediation:** `TYPEFACE-LR2-RASTER-ATLAS-0R` (PR #875) remediated DA HOLD on adapter-optional CPU test coverage — splits `GlyphAtlasCore` (CPU-only) from GPU-backed `GlyphAtlas`; **DA remediation accepted**; result report `docs/tests/typeface_lr2r_results.md`.
 
 ## LR3 — `simthing-tools` crate + Bevy instanced text draw  *(DA-sensitive — graduation rung)* — **DONE / PROBATION**
-**Status:** branch `typeface-lr3-simthing-tools-instanced-text-0`; result report `docs/tests/typeface_lr3_results.md`. Track remains OPEN — LR3 is not DA-approved.
+**Status:** landed PR #876 (`a4f8c7dfa`); result report `docs/tests/typeface_lr3_results.md`. Track remains OPEN — LR3 is not DA-approved.
 **New crate:** `crates/simthing-tools/` (`Cargo.toml`, `src/lib.rs`); move the proven LR0–LR2 modules
 (`font`, `shaping`, `atlas`) **out of workshop into `simthing-tools`** (workshop keeps only a thin
 prototype/bench shim re-using the crate; workshop stays a non-production dep). Add `simthing-tools` to the
@@ -207,7 +207,7 @@ labels render; perf within the LR5 budget.
 | LR0 | workshop font load + metrics | no | **DONE / PROBATION** (#872) |
 | LR1 | shaping engine | no | **DONE / PROBATION** (#873) |
 | LR2 | raster glyph atlas v1 | **yes** | **DONE / DA APPROVED** (#874, #875) |
-| LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / PROBATION** |
+| LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / PROBATION** (#876) |
 | LR4 | SVG icons at PUA codepoints | no | TODO |
 | LR5 | high-volume bench + budget | **yes** | TODO |
 | LR6 | MSDF atlas + SDF shader | **yes** | TODO |

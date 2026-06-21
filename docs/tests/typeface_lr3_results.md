@@ -7,6 +7,8 @@ PASS — `simthing-tools` production crate graduated from workshop LR0–LR2 cor
 ## PR / branch / merge
 
 - Branch: `typeface-lr3-simthing-tools-instanced-text-0`
+- PR: #876
+- Merge SHA: `a4f8c7dfa6ba84c45c67f2032bada3ce464ce4ae`
 
 ## Mission
 
