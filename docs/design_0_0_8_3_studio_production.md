@@ -98,6 +98,11 @@ ScenarioSpec
 | **SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0** | **Landed / PROBATION** | Pre-UI hardening of candidate ScenarioSpec canonical JSON writer |
 | **STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0** | **Landed / PROBATION** | Studio UI workflow for loaded scenario runtime candidate save/reopen |
 | **STUDIO-CANDIDATE-REOPEN-ADOPT-0** | **Landed / PROBATION** | Successful Reopen Candidate adopts candidate into Studio session |
+| **SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0** | **Landed / PROBATION** | DA precheck consolidation for Scenario Runtime + Save/Load closing track |
+
+## SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 — DA precheck for Scenario Runtime + Save/Load closing track
+
+This rung consolidates the Scenario Runtime + Save/Load Closing Track for human DA review. It verifies that canonical ScenarioSpec load/save/reopen, STEAD preservation, loaded session envelope, recursive RF runtime, full runtime report chain, candidate ScenarioSpec mutation, candidate save/reopen, hardened create-new candidate writing, Studio UI exposure, and reopened-candidate adoption are all present and validated. It does not promote the feature to DA by itself. Persistent history, replace-existing overwrite flow, GPU dispatch, combat, pathfinding, economy execution, and fleet movement remain deferred.
 
 ## STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 — Studio UI workflow for loaded scenario runtime candidate save/reopen
 
@@ -148,8 +153,8 @@ This closing track completes Studio Scenario import/load/save/runtime closure. I
 | 4 | LOADED-SCENARIO-RUNTIME-REPORT-CHAIN-0 | Attach recursive RF → owner-silo → allocation → effects → semantic → execution → delta → runtime state → property view chain to loaded scenarios. | DONE | Composes #838 recursive RF runtime + prior landed runtime ladder into loaded-scenario chain report. | Candidate ScenarioSpec |
 | 5 | SCENARIO-CANDIDATE-FROM-RUNTIME-0 | Generate mutated candidate ScenarioSpec from runtime property-view rows while original loaded ScenarioSpec remains unchanged. | DONE | Composes #840 report chain + landed property-mutation boundary; clone applies preview rows to candidate only. | Candidate save/reopen |
 | 6 | SCENARIO-CANDIDATE-SAVE-REOPEN-0 | Save candidate ScenarioSpec, reopen it, validate STEAD/tree/projection, and prove digest stability. | DONE | Composes #842 candidate path + #828 canonical IO; #845 pre-UI write hardening. | Studio UI |
-| 7 | STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | Expose load, validation, recursive runtime readiness, candidate mutation, save candidate, and reopen candidate in Studio UI. | DONE | Studio UI adapter + status surface; create-new Save Candidate; Reopen Candidate validation/projection readiness; non-authority surfaces explicit. | DA precheck |
-| 8 | SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | Consolidate evidence for DA review of the full Scenario Runtime + Save/Load feature. | NEXT | Review-only consolidation after rungs 1–7. Not another implementation rung. | Human DA decision |
+| 7 | STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 | Expose load, validation, recursive runtime readiness, candidate mutation, save candidate, and reopen candidate in Studio UI. | DONE | Studio UI adapter + #847 adoption fix; create-new Save Candidate; reopened-candidate adoption. | DA precheck |
+| 8 | SCENARIO-RUNTIME-SAVELOAD-DA-PRECHECK-0 | Consolidate evidence for DA review of the full Scenario Runtime + Save/Load feature. | DONE | Evidence matrix; regression validation; READY FOR HUMAN DA REVIEW recommendation. | Human DA review |
 
 ### Rung 1 — SCENARIO-STEAD-MAP-ROUNDTRIP-0
 
