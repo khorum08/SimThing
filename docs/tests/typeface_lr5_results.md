@@ -7,8 +7,8 @@ PASS — LR4 accepted/closed; deterministic high-volume typeface benchmark and c
 ## PR / branch / merge
 
 - Branch: `typeface-lr5-high-volume-bench-budget-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #879
+- Merge SHA: `5c912b2cf848a46cf3e07764a88d94ce3c75d82c`
 
 ## Mission
 
