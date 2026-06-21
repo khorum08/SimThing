@@ -18,9 +18,15 @@ use crate::star_render::{
 use crate::starburst::{
     generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
 };
+use crate::studio_render_loop_dirty_gate::{
+    hyperlane_render_settings_key, hyperlane_render_should_rebuild, quantize_hyperlane_camera_key,
+    HyperlaneRenderCacheState, StarVisualAppliedKey, StarVisualSyncCacheState,
+    StudioRenderLoopCaches,
+};
 use crate::view_model::{build_hyperlane_render_segments, HyperlaneRenderSegment};
 
 use super::camera::{HyperlaneRibbonRenderPath, StudioCamera, StudioViewMode};
+use super::performance_telemetry::StudioPerformanceTelemetryState;
 use super::GalaxySceneRoot;
 
 #[derive(Component)]
@@ -111,6 +117,7 @@ pub fn rebuild_galaxy_scene(
                         instance: star,
                         layer,
                     },
+                    StarVisualAppliedKey::default(),
                 ))
                 .id();
             root.stars.push((star.system_id, entity));
@@ -213,6 +220,12 @@ pub fn rebuild_highlight_hyperlanes(
     );
 }
 
+fn mesh_vertex_count(mesh: &Mesh) -> usize {
+    mesh.attribute(Mesh::ATTRIBUTE_POSITION)
+        .map(|attr| attr.len())
+        .unwrap_or(0)
+}
+
 fn bucket_index(bucket: HyperlaneDepthBucket) -> usize {
     match bucket {
         HyperlaneDepthBucket::Near => 0,
@@ -238,8 +251,15 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
     }
 }
 
+fn view_mode_key(view_mode: StudioViewMode) -> u8 {
+    match view_mode {
+        StudioViewMode::ThreeD => 0,
+        StudioViewMode::OverheadStrategic => 1,
+    }
+}
+
 pub fn sync_hyperlane_colors_system(
-    session: Res<super::StudioAppState>,
+    app_state: Res<super::StudioAppState>,
     studio_camera: Res<StudioCamera>,
     camera_transform: Query<&GlobalTransform, With<super::camera::MainCamera>>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -249,8 +269,13 @@ pub fn sync_hyperlane_colors_system(
         &MeshMaterial3d<StandardMaterial>,
         &GalaxyHyperlanes,
     )>,
+    mut caches: ResMut<StudioRenderLoopCaches>,
+    mut perf: ResMut<StudioPerformanceTelemetryState>,
 ) {
-    let Some(session) = session.session.as_ref() else {
+    perf.telemetry.hyperlane_sync_calls = perf.telemetry.hyperlane_sync_calls.saturating_add(1);
+    perf.telemetry.render_frame_index = perf.telemetry.render_frame_index.saturating_add(1);
+
+    let Some(session) = app_state.session.as_ref() else {
         return;
     };
     if session.view_model.hyperlanes.is_empty() {
@@ -261,11 +286,35 @@ pub fn sync_hyperlane_colors_system(
     };
     let cam_pos = cam.translation();
     let cam_transform = cam.compute_transform();
+    let view_mode = studio_camera.view_mode();
+    let camera_key = quantize_hyperlane_camera_key(
+        cam_pos.to_array(),
+        (cam_transform.rotation * Vec3::X).to_array(),
+        (cam_transform.rotation * Vec3::Y).to_array(),
+        view_mode_key(view_mode),
+    );
+    let settings_key = hyperlane_render_settings_key(app_state.hyperlane_render_settings);
+    let generation = app_state.scene_render_revision;
+    let cache = &mut caches.hyperlane;
+    let should_rebuild = hyperlane_render_should_rebuild(
+        cache.last_camera_key,
+        camera_key,
+        cache.last_render_settings_key,
+        settings_key,
+        cache.last_view_model_generation,
+        generation,
+        cache.dirty,
+    );
+    if !should_rebuild {
+        return;
+    }
+
+    let started = std::time::Instant::now();
     let camera = HyperlaneRibbonCamera {
         position: cam_pos.to_array(),
         right: (cam_transform.rotation * Vec3::X).to_array(),
         up: (cam_transform.rotation * Vec3::Y).to_array(),
-        view_mode: studio_camera.view_mode(),
+        view_mode,
     };
     let meta = &session.view_model.render_meta;
     let segments = build_hyperlane_render_segments(
@@ -273,14 +322,61 @@ pub fn sync_hyperlane_colors_system(
         &session.view_model.render_anchors,
     );
 
+    let mut total_vertices = 0usize;
+    let mut total_indices = 0usize;
     for (mesh_handle, mat_handle, marker) in &hyperlanes {
+        let built = build_hyperlane_bucket_mesh(&segments, marker.0, camera, meta);
+        total_vertices = total_vertices.saturating_add(mesh_vertex_count(&built));
+        if let Some(indices) = built.indices() {
+            total_indices = total_indices.saturating_add(match indices {
+                Indices::U16(values) => values.len(),
+                Indices::U32(values) => values.len(),
+            });
+        }
         if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
-            *mesh = build_hyperlane_bucket_mesh(&segments, marker.0, camera, meta);
+            *mesh = built;
         }
         if let Some(material) = materials.get_mut(&mat_handle.0) {
-            material.base_color = Color::WHITE;
+            if material.base_color != Color::WHITE {
+                material.base_color = Color::WHITE;
+            }
         }
     }
+
+    let elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+    perf.telemetry.hyperlane_mesh_rebuilds =
+        perf.telemetry.hyperlane_mesh_rebuilds.saturating_add(1);
+    let rebuild_count = perf.telemetry.hyperlane_mesh_rebuilds;
+    {
+        let telemetry = &mut perf.telemetry;
+        crate::studio_render_loop_dirty_gate::render_loop_telemetry_record_timing(
+            &mut telemetry.hyperlane_mesh_rebuild_last_ms,
+            &mut telemetry.hyperlane_mesh_rebuild_avg_ms,
+            elapsed_ms,
+            rebuild_count,
+        );
+        telemetry.hyperlane_segments_last_count = segments.len();
+        telemetry.hyperlane_vertices_last_count = total_vertices;
+        telemetry.hyperlane_indices_last_count = total_indices;
+    }
+
+    cache.dirty = false;
+    cache.last_camera_key = Some(camera_key);
+    cache.last_render_settings_key = Some(settings_key);
+    cache.last_view_model_generation = generation;
+}
+
+/// Mark hyperlane meshes dirty after scene rebuild or render-settings change.
+pub fn mark_hyperlane_render_dirty(cache: &mut HyperlaneRenderCacheState) {
+    cache.dirty = true;
+    cache.last_camera_key = None;
+    cache.last_render_settings_key = None;
+}
+
+/// Mark star visual material/scale sync dirty after scene rebuild or render-settings change.
+pub fn mark_star_visual_render_dirty(cache: &mut StarVisualSyncCacheState) {
+    cache.dirty = true;
+    cache.last_sync_key = None;
 }
 
 fn build_hyperlane_bucket_mesh(

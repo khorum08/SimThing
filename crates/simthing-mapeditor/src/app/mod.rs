@@ -28,7 +28,11 @@ use crate::studio_config::{
     StudioViewModeSetting,
 };
 
-use galaxy_render::{init_star_visual_assets, rebuild_galaxy_scene, StarVisualAssets};
+use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
+use galaxy_render::{
+    init_star_visual_assets, mark_hyperlane_render_dirty, mark_star_visual_render_dirty,
+    rebuild_galaxy_scene, StarVisualAssets,
+};
 use resources::{StudioDialog, StudioSettings};
 
 use crate::panel_layout;
@@ -86,7 +90,10 @@ pub fn run_studio() {
         .add_systems(Startup, init_star_visual_assets)
         .add_systems(
             Startup,
-            performance_telemetry::init_studio_performance_telemetry,
+            (
+                performance_telemetry::init_studio_performance_telemetry,
+                init_render_loop_cache_state,
+            ),
         )
         .add_systems(EguiPrimaryContextPass, ui::studio_ui_system)
         .add_systems(
@@ -157,6 +164,8 @@ pub struct StudioAppState {
     pub runtime_saveload_status_refresh_in_progress: bool,
     /// Elapsed milliseconds for the last successful status refresh.
     pub runtime_saveload_status_last_refresh_ms: Option<u128>,
+    /// Bumps on session adopt/scene rebuild; drives render-loop dirty gates (presentation only).
+    pub scene_render_revision: u64,
 }
 
 impl StudioAppState {
@@ -201,7 +210,12 @@ impl StudioAppState {
             runtime_saveload_status_source_digest: None,
             runtime_saveload_status_refresh_in_progress: false,
             runtime_saveload_status_last_refresh_ms: None,
+            scene_render_revision: 0,
         }
+    }
+
+    pub(crate) fn bump_scene_render_revision(&mut self) {
+        self.scene_render_revision = self.scene_render_revision.saturating_add(1);
     }
 
     pub(crate) fn runtime_saveload_status_cache_mut(
@@ -325,6 +339,10 @@ impl Default for StudioAppState {
     }
 }
 
+fn init_render_loop_cache_state(mut commands: Commands) {
+    commands.init_resource::<StudioRenderLoopCaches>();
+}
+
 fn setup_scene(
     mut commands: Commands,
     settings: Res<StudioSettings>,
@@ -400,6 +418,7 @@ fn adopt_session_with_status(
     state.selection.clear();
     state.status_message = status_message;
     state.mark_runtime_saveload_status_dirty();
+    state.bump_scene_render_revision();
 }
 
 pub fn rebuild_session_scene(
@@ -409,6 +428,7 @@ pub fn rebuild_session_scene(
     assets: &StarVisualAssets,
     root: &mut GalaxySceneRoot,
     state: &mut StudioAppState,
+    caches: &mut StudioRenderLoopCaches,
 ) {
     if let Some(session) = state.session.as_ref() {
         rebuild_galaxy_scene(commands, meshes, materials, assets, root, session);
@@ -420,5 +440,10 @@ pub fn rebuild_session_scene(
             session,
             state.selection.selected_system_id,
         );
+        mark_hyperlane_render_dirty(&mut caches.hyperlane);
+        mark_star_visual_render_dirty(&mut caches.star_visual);
+        caches.picking.last_key = None;
+        caches.picking.cached_projections.clear();
+        caches.billboard.last_camera_key = None;
     }
 }

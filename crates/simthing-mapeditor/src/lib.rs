@@ -23,6 +23,7 @@ pub mod studio_admission_report;
 pub mod studio_config;
 pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
+pub mod studio_render_loop_dirty_gate;
 pub mod studio_scenario_document;
 pub mod studio_scenario_load;
 pub mod studio_structural_edit;
@@ -104,11 +105,22 @@ pub use studio_config::{
 pub use studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,
     estimate_studio_allocated_vram_bytes, format_fps_label, format_vram_mb_label,
-    performance_settings_section_lines, read_fps_from_diagnostics, StudioPerformanceTelemetry,
+    performance_settings_section_lines, read_fps_from_diagnostics, render_loop_diagnostics_lines,
+    StudioPerformanceTelemetry,
 };
 pub use studio_planet_child_location::{
     studio_apply_planet_child_location_command, StudioPlanetChildLocationError,
     StudioPlanetChildLocationOutcome,
+};
+pub use studio_render_loop_dirty_gate::{
+    billboard_should_sync, hyperlane_render_settings_key, hyperlane_render_should_rebuild,
+    picking_projection_should_rebuild, quantize_billboard_camera_key,
+    quantize_hyperlane_camera_key, quantize_picking_projection_key, quantize_star_depth_percent,
+    render_loop_telemetry_record_timing, star_falloff_settings_key, star_visuals_should_sync,
+    BillboardCameraKey, BillboardSyncCacheState, HyperlaneCameraKey, HyperlaneRenderCacheState,
+    HyperlaneRenderSettingsKey, PickingProjectionCacheState, PickingProjectionKey,
+    StarFalloffSettingsKey, StarVisualAppliedKey, StarVisualSyncCacheState, StarVisualSyncKey,
+    StudioRenderLoopCaches,
 };
 pub use studio_scenario_document::{
     build_studio_scenario_document, build_studio_scenario_document_with_admission,
