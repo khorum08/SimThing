@@ -8,7 +8,7 @@ use wgpu::{
     TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView,
 };
 
-use super::font::ProbeFont;
+use crate::font::ProbeFont;
 
 /// Workshop atlas texture format: RGBA8 with glyph coverage in the alpha channel.
 pub const ATLAS_TEXTURE_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
@@ -46,7 +46,7 @@ pub struct RasterizedGlyph {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DirtyRegion {
+struct DirtyRect {
     x: u32,
     y: u32,
     w: u32,
@@ -59,7 +59,7 @@ pub struct GlyphAtlasCore {
     cpu_pixels: Vec<u8>,
     allocator: AtlasAllocator,
     cache: HashMap<GlyphAtlasKey, AtlasTile>,
-    dirty_regions: Vec<DirtyRegion>,
+    dirty_regions: Vec<DirtyRect>,
     rasterize_count: u64,
     cache_hit_count: u64,
 }
@@ -169,7 +169,7 @@ impl GlyphAtlasCore {
         };
         self.cache.insert(key, tile);
         self.rasterize_count += 1;
-        self.dirty_regions.push(DirtyRegion {
+        self.dirty_regions.push(DirtyRect {
             x,
             y,
             w: raster.w,
@@ -211,12 +211,16 @@ impl GlyphAtlasCore {
         out
     }
 
-    /// Clears dirty-region tracking after a successful GPU upload (or CPU-only test validation).
+    /// Clears dirty-rect tracking after a successful GPU upload (or CPU-only test validation).
     pub fn clear_dirty_regions(&mut self) {
         self.dirty_regions.clear();
     }
 
-    fn dirty_regions(&self) -> &[DirtyRegion] {
+    pub fn staging_pixels(&self) -> &[u8] {
+        &self.cpu_pixels
+    }
+
+    fn dirty_rects(&self) -> &[DirtyRect] {
         &self.dirty_regions
     }
 
@@ -266,20 +270,20 @@ impl GlyphAtlas {
     }
 
     pub fn upload(&mut self, queue: &Queue) {
-        if self.core.dirty_regions().is_empty() {
+        if self.core.dirty_rects().is_empty() {
             return;
         }
 
-        for region in self.core.dirty_regions() {
-            let bytes_per_row = align_bytes_per_row(region.w);
-            let mut staging = vec![0u8; (bytes_per_row * region.h) as usize];
-            copy_region_to_staging(
+        for dirty_rect in self.core.dirty_rects() {
+            let bytes_per_row = align_bytes_per_row(dirty_rect.w);
+            let mut staging = vec![0u8; (bytes_per_row * dirty_rect.h) as usize];
+            copy_rect_to_staging(
                 self.core.cpu_pixels(),
                 self.core.atlas_size_internal(),
-                region.x,
-                region.y,
-                region.w,
-                region.h,
+                dirty_rect.x,
+                dirty_rect.y,
+                dirty_rect.w,
+                dirty_rect.h,
                 bytes_per_row,
                 &mut staging,
             );
@@ -289,8 +293,8 @@ impl GlyphAtlas {
                     texture: &self.texture,
                     mip_level: 0,
                     origin: Origin3d {
-                        x: region.x,
-                        y: region.y,
+                        x: dirty_rect.x,
+                        y: dirty_rect.y,
                         z: 0,
                     },
                     aspect: TextureAspect::All,
@@ -299,11 +303,11 @@ impl GlyphAtlas {
                 ImageDataLayout {
                     offset: 0,
                     bytes_per_row: Some(bytes_per_row),
-                    rows_per_image: Some(region.h),
+                    rows_per_image: Some(dirty_rect.h),
                 },
                 Extent3d {
-                    width: region.w,
-                    height: region.h,
+                    width: dirty_rect.w,
+                    height: dirty_rect.h,
                     depth_or_array_layers: 1,
                 },
             );
@@ -369,7 +373,7 @@ fn align_bytes_per_row(width: u32) -> u32 {
     (unpadded + 255) & !255
 }
 
-fn copy_region_to_staging(
+fn copy_rect_to_staging(
     cpu_pixels: &[u8],
     atlas_size: u32,
     x: u32,

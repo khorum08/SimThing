@@ -5293,19 +5293,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "simthing-tools"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bytemuck",
+ "cosmic-text",
+ "fontdb",
+ "guillotiere",
+ "png 0.18.1",
+ "pollster 0.3.0",
+ "skrifa",
+ "swash",
+ "thiserror 2.0.18",
+ "wgpu 22.1.0",
+]
+
+[[package]]
 name = "simthing-workshop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytemuck",
- "cosmic-text",
- "fontdb",
- "guillotiere",
  "pollster 0.3.0",
  "serde",
  "serde_json",
- "skrifa",
- "swash",
+ "simthing-tools",
  "thiserror 2.0.18",
  "wgpu 22.1.0",
 ]

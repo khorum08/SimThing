@@ -1,6 +1,6 @@
 use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Wrap};
 
-use super::font::{load_font, TypefaceError};
+use crate::font::{load_font, TypefaceError};
 
 const LINE_HEIGHT_RATIO: f32 = 1.2;
 

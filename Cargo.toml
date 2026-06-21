@@ -11,6 +11,7 @@ members = [
     "crates/simthing-clausething",
     "crates/simthing-mapgenerator",
     "crates/simthing-mapeditor",
+    "crates/simthing-tools",
 ]
 
 [workspace.package]

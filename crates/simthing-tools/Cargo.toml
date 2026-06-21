@@ -1,0 +1,49 @@
+[package]
+name = "simthing-tools"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+bevy = { version = "0.16", default-features = false, features = [
+    "bevy_asset",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_sprite",
+    "bevy_image",
+    "png",
+    "std",
+    "multi_threaded",
+    "async_executor",
+] }
+bytemuck = { workspace = true, features = ["derive"] }
+cosmic-text = "0.13.2"
+fontdb = "0.16.2"
+guillotiere = "0.6.2"
+pollster = { workspace = true }
+skrifa = "0.42.1"
+swash = "0.2.9"
+thiserror = { workspace = true }
+wgpu = { workspace = true }
+
+[dev-dependencies]
+png = "0.18"
+pollster = { workspace = true }
+wgpu = { workspace = true }
+bevy = { version = "0.16", default-features = false, features = [
+    "bevy_asset",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_sprite",
+    "bevy_image",
+    "bevy_window",
+    "bevy_winit",
+    "png",
+    "std",
+    "multi_threaded",
+    "async_executor",
+] }
