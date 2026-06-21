@@ -7,7 +7,7 @@ PASS — LR3/LR3R documentation lifecycle closed; static SVG icon ingestion at P
 ## PR / branch / merge
 
 - Branch: `typeface-lr4-svg-pua-icon-ingestion-0`
-- PR: assigned after opening
+- PR: #878
 - Merge SHA: assigned after merge
 
 ## Mission
