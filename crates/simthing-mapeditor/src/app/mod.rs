@@ -99,20 +99,26 @@ pub fn run_studio() {
         .add_systems(
             Update,
             (
-                ui::panel_opacity_system,
-                camera::camera_control_system,
-                camera::camera_hotkeys_system,
-                picking::selection_keyboard_system,
-                picking::star_pick_system,
-                picking::sync_selection_highlight_system,
-                picking::sync_star_visuals_system,
-                picking::billboard_stars_system,
-                galaxy_render::sync_hyperlane_colors_system,
-                galaxy_render::sync_render_debug_visibility_system,
-                performance_telemetry::update_studio_fps_telemetry,
-                performance_telemetry::update_studio_vram_telemetry,
-                window::persist_settings_on_exit,
-            ),
+                performance_telemetry::begin_main_update_timing,
+                (
+                    ui::panel_opacity_system,
+                    camera::camera_control_system,
+                    camera::camera_hotkeys_system,
+                    picking::selection_keyboard_system,
+                    picking::star_pick_system,
+                    picking::sync_selection_highlight_system,
+                    picking::sync_star_visuals_system,
+                    picking::billboard_stars_system,
+                    galaxy_render::sync_hyperlane_colors_system,
+                    galaxy_render::sync_render_debug_visibility_system,
+                    performance_telemetry::update_studio_fps_telemetry,
+                    performance_telemetry::update_studio_vram_telemetry,
+                    performance_telemetry::update_studio_window_gpu_context,
+                    window::persist_settings_on_exit,
+                ),
+                performance_telemetry::finalize_main_update_timing,
+            )
+                .chain(),
         )
         .run();
 }
@@ -166,6 +172,15 @@ pub struct StudioAppState {
     pub runtime_saveload_status_last_refresh_ms: Option<u128>,
     /// Bumps on session adopt/scene rebuild; drives render-loop dirty gates (presentation only).
     pub scene_render_revision: u64,
+    /// Performance diagnostic: hide egui panels except Settings (presentation only).
+    pub performance_diagnostic_hide_panels: bool,
+    /// Performance diagnostic: skip camera input updates (presentation only).
+    pub performance_diagnostic_freeze_camera: bool,
+    /// Performance diagnostic: hide star aura layer entities (presentation only).
+    pub performance_diagnostic_hide_star_aura: bool,
+    /// Snapshot for Restore Normal Render (presentation only).
+    pub performance_normal_render_snapshot:
+        Option<crate::studio_frame_phase_gpu_telemetry::PerformanceNormalRenderSnapshot>,
 }
 
 impl StudioAppState {
@@ -211,6 +226,10 @@ impl StudioAppState {
             runtime_saveload_status_refresh_in_progress: false,
             runtime_saveload_status_last_refresh_ms: None,
             scene_render_revision: 0,
+            performance_diagnostic_hide_panels: false,
+            performance_diagnostic_freeze_camera: false,
+            performance_diagnostic_hide_star_aura: false,
+            performance_normal_render_snapshot: None,
         }
     }
 

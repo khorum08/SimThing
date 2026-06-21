@@ -1,5 +1,6 @@
 //! STUDIO-SETTINGS-PERFORMANCE-TELEMETRY-0 — live FPS and allocated VRAM estimate helpers.
 //! STUDIO-RENDER-LOOP-DIRTY-GATE-0 — render-loop per-system counters and timings.
+//! STUDIO-FRAME-PHASE-GPU-TELEMETRY-0 — frame-phase, GPU context, and egui timing display.
 
 use bevy::diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin};
 use bevy::prelude::{Assets, Image, Mesh};
@@ -17,6 +18,33 @@ pub struct StudioPerformanceTelemetry {
     pub last_update_frame: u64,
     pub gpu_name: Option<String>,
     pub gpu_backend: Option<String>,
+    pub gpu_vendor_id: Option<u32>,
+    pub gpu_device_id: Option<u32>,
+    pub gpu_device_type: Option<String>,
+    pub present_mode: Option<String>,
+    pub window_width: Option<u32>,
+    pub window_height: Option<u32>,
+    pub render_scale: Option<f32>,
+
+    pub frame_total_ms_last: Option<f64>,
+    pub frame_total_ms_avg: Option<f64>,
+    pub main_update_ms_last: Option<f64>,
+    pub main_update_ms_avg: Option<f64>,
+    pub egui_pass_ms_last: Option<f64>,
+    pub egui_pass_ms_avg: Option<f64>,
+    pub egui_settings_ms_last: Option<f64>,
+    pub egui_settings_ms_avg: Option<f64>,
+    pub egui_left_panel_ms_last: Option<f64>,
+    pub egui_left_panel_ms_avg: Option<f64>,
+    pub egui_right_panel_ms_last: Option<f64>,
+    pub egui_right_panel_ms_avg: Option<f64>,
+
+    pub render_subapp_phases_unavailable: bool,
+    pub render_extract_ms_last: Option<f64>,
+    pub render_prepare_ms_last: Option<f64>,
+    pub render_queue_ms_last: Option<f64>,
+    pub render_render_ms_last: Option<f64>,
+    pub render_present_or_wait_ms_last: Option<f64>,
 
     pub render_frame_index: u64,
 
@@ -58,6 +86,31 @@ impl Default for StudioPerformanceTelemetry {
             last_update_frame: 0,
             gpu_name: None,
             gpu_backend: None,
+            gpu_vendor_id: None,
+            gpu_device_id: None,
+            gpu_device_type: None,
+            present_mode: None,
+            window_width: None,
+            window_height: None,
+            render_scale: None,
+            frame_total_ms_last: None,
+            frame_total_ms_avg: None,
+            main_update_ms_last: None,
+            main_update_ms_avg: None,
+            egui_pass_ms_last: None,
+            egui_pass_ms_avg: None,
+            egui_settings_ms_last: None,
+            egui_settings_ms_avg: None,
+            egui_left_panel_ms_last: None,
+            egui_left_panel_ms_avg: None,
+            egui_right_panel_ms_last: None,
+            egui_right_panel_ms_avg: None,
+            render_subapp_phases_unavailable: true,
+            render_extract_ms_last: None,
+            render_prepare_ms_last: None,
+            render_queue_ms_last: None,
+            render_render_ms_last: None,
+            render_present_or_wait_ms_last: None,
             render_frame_index: 0,
             hyperlane_sync_calls: 0,
             hyperlane_mesh_rebuilds: 0,
@@ -177,18 +230,24 @@ fn format_timing_ms(value: Option<f64>) -> String {
 
 /// Build Settings-window performance section labels.
 pub fn performance_settings_section_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    use crate::studio_frame_phase_gpu_telemetry::{
+        frame_phase_settings_lines, gpu_context_settings_lines, performance_capture_steps_lines,
+        studio_build_profile_label, studio_build_profile_warning, vram_tracked_asset_lines,
+    };
+
     let mut lines = vec![
         "Performance".into(),
         format!("FPS: {}", format_fps_label(telemetry.fps)),
-        format!(
-            "Allocated VRAM estimate: {} MB",
-            format_vram_mb_label(telemetry.allocated_vram_mb_estimate)
-        ),
+        format!("Build: {}", studio_build_profile_label()),
     ];
-    if let (Some(name), Some(backend)) = (&telemetry.gpu_name, &telemetry.gpu_backend) {
-        lines.push(format!("GPU: {name} ({backend})"));
+    if let Some(warning) = studio_build_profile_warning() {
+        lines.push(warning.into());
     }
+    lines.extend(vram_tracked_asset_lines(telemetry));
+    lines.extend(gpu_context_settings_lines(telemetry));
+    lines.extend(frame_phase_settings_lines(telemetry));
     lines.extend(render_loop_diagnostics_lines(telemetry));
+    lines.extend(performance_capture_steps_lines());
     lines
 }
 

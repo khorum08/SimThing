@@ -134,6 +134,10 @@ The Settings window now includes a Performance section with live FPS and an allo
 
 The Studio render loop no longer rebuilds hyperlane meshes every frame when the camera/view/settings/session key is unchanged. Star visual material/depth updates are dirty-gated where safe. The Settings Performance section now exposes render-loop diagnostics for hyperlane rebuilds, star visual sync, billboard sync, picking projection, and VRAM scan timing. These are presentation diagnostics and render-cache behavior only; ScenarioSpec authority, save/load behavior, RF/Accumulator semantics, DA-approved evidence lifecycle, and GPU dispatch boundaries are unchanged.
 
+### STUDIO-FRAME-PHASE-GPU-TELEMETRY-0 — frame-phase and GPU-context telemetry
+
+The Settings Performance section now distinguishes FPS, tracked-asset VRAM estimate, build profile, GPU adapter/backend/present information, egui/UI timing, frame-phase timing, and render-loop diagnostics. The existing FPS collapse is not explained by currently instrumented hyperlane/star/picking systems alone; those account for less than 1 ms while the total frame time remains over 200 ms. This telemetry is diagnostic only and does not change ScenarioSpec authority, save/load behavior, RF/Accumulator semantics, GPU dispatch boundaries, or DA-approved lifecycle state.
+
 ## SCENARIO-CANDIDATE-SAVE-REOPEN-0 — save and reopen candidate ScenarioSpec
 
 This rung saves the cloned candidate ScenarioSpec as canonical ScenarioSpec JSON, reopens it, validates STEAD IDs, links, RF metadata, and spatial tree shape, rebuilds projection readiness, and proves the candidate authority digest is stable after reopen. It does not introduce a distinct savefile format or persistent history. Studio UI wiring and GPU dispatch remain deferred.

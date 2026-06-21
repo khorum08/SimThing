@@ -206,6 +206,7 @@ pub fn camera_hotkeys_system(
 }
 
 pub fn camera_control_system(
+    app_state: Res<super::StudioAppState>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut mouse_motion: EventReader<MouseMotion>,
@@ -214,6 +215,9 @@ pub fn camera_control_system(
     mut transforms: Query<&mut Transform, With<MainCamera>>,
     time: Res<Time>,
 ) {
+    if app_state.performance_diagnostic_freeze_camera {
+        return;
+    }
     camera.rmb_held = mouse.pressed(MouseButton::Right);
     let dt = time.delta_secs();
     let forward = Vec3::new(-camera.orbit_yaw.sin(), 0.0, -camera.orbit_yaw.cos());
