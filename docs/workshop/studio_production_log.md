@@ -1805,6 +1805,14 @@ gate dropped the update).
 - **Scenario save/load draw-path protections preserved** (#864); Settings sliders still force one-frame star
   visual resync (#868).
 
+## 2026-06-21 — TYPEFACE-LR1-SHAPING-ENGINE-0 (workshop typeface ladder)
+
+- Second implementation rung: workshop-only `cosmic-text` shaping in `simthing-workshop/src/typeface/shaping.rs`.
+- `ShapingEngine::new_with_font` loads the LR0 OFL fixture; `shape(text, px)` returns deterministic `ShapedRun` glyph positions/advances/clusters plus run width/height.
+- Kerning test proves `"AV"` at 32px is strictly tighter than naive LR0 metric sum; `fi` ligature path documented (two-glyph outcome on fixture).
+- **Non-goals preserved:** no atlas, no swash/guillotiere workshop usage, no wgpu upload, no Bevy rendering, no `simthing-tools`, no ScenarioSpec/RF/STEAD edits.
+- Result report: `docs/tests/typeface_lr1_results.md`; ladder § LR1 marked DONE/PROBATION.
+
 ## 2026-06-21 — TYPEFACE-LR0-FONT-METRICS-0 (workshop typeface ladder)
 
 - First implementation rung of the owner-approved TYPEFACE-LADDER: workshop-only font loading and glyph metrics in `simthing-workshop/src/typeface/`.
