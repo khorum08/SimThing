@@ -38,12 +38,17 @@ use crate::scenario_runtime_saveload_ui::{
     reopen_candidate_scenario_for_studio_session, save_candidate_scenario_for_studio_create_new,
 };
 use crate::session::StudioSession;
+use crate::studio_frame_phase_gpu_telemetry::{
+    apply_diagnostic_minimal_render, capture_normal_render_snapshot,
+    restore_normal_render_from_snapshot, PerformanceDiagnosticFlags,
+    DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
+};
 use crate::studio_performance_telemetry::performance_settings_section_lines;
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 
-use super::performance_telemetry::StudioPerformanceTelemetryState;
+use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 
-const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 620.0);
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 760.0);
 const SETTINGS_TITLE_CLOSE_DRAG_GAP: f32 = 6.0;
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
@@ -90,6 +95,10 @@ pub fn studio_ui_system(
     mut perf_telemetry: ResMut<StudioPerformanceTelemetryState>,
     mut render_caches: ResMut<StudioRenderLoopCaches>,
 ) {
+    let egui_started = std::time::Instant::now();
+    let mut left_panel_ms = 0.0f64;
+    let mut right_panel_ms = 0.0f64;
+
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
@@ -101,22 +110,31 @@ pub fn studio_ui_system(
         state.left_panel_collapsed = true;
     }
 
-    draw_window_controls(ctx, &mut state, &mut settings, &mut windows, &mut exit);
-    if !state.left_panel_collapsed {
-        draw_left_panel(
-            ctx,
-            &mut state,
-            &mut dialog,
-            &mut camera,
-            screen_w,
-            screen_h,
-        );
-    } else {
-        draw_collapsed_tab(ctx, &mut state, screen_w, screen_h);
+    if !state.performance_diagnostic_hide_panels {
+        draw_window_controls(ctx, &mut state, &mut settings, &mut windows, &mut exit);
+        if !state.left_panel_collapsed {
+            let panel_started = std::time::Instant::now();
+            draw_left_panel(
+                ctx,
+                &mut state,
+                &mut dialog,
+                &mut camera,
+                screen_w,
+                screen_h,
+            );
+            left_panel_ms = panel_started.elapsed().as_secs_f64() * 1000.0;
+        } else {
+            let panel_started = std::time::Instant::now();
+            draw_collapsed_tab(ctx, &mut state, screen_w, screen_h);
+            left_panel_ms = panel_started.elapsed().as_secs_f64() * 1000.0;
+        }
+        if state.session.is_some() {
+            let panel_started = std::time::Instant::now();
+            draw_right_panel(ctx, &mut state, screen_w, screen_h);
+            right_panel_ms = panel_started.elapsed().as_secs_f64() * 1000.0;
+        }
     }
-    if state.session.is_some() {
-        draw_right_panel(ctx, &mut state, screen_w, screen_h);
-    }
+    let settings_started = std::time::Instant::now();
     draw_settings_dialog(
         ctx,
         &mut state,
@@ -126,7 +144,17 @@ pub fn studio_ui_system(
         screen_w,
         screen_h,
     );
-    draw_warning_dialog(ctx, &mut dialog);
+    let settings_ms = settings_started.elapsed().as_secs_f64() * 1000.0;
+    if !state.performance_diagnostic_hide_panels {
+        draw_warning_dialog(ctx, &mut dialog);
+    }
+    record_egui_pass_timing(
+        &mut perf_telemetry,
+        egui_started.elapsed().as_secs_f64() * 1000.0,
+        settings_ms,
+        left_panel_ms,
+        right_panel_ms,
+    );
 
     if state.generation_busy {
         return;
@@ -540,6 +568,56 @@ fn draw_settings_dialog(
                 for line in performance_lines.iter().skip(1) {
                     ui.label(line);
                 }
+                ui.separator();
+                ui.label(egui::RichText::new("Performance isolation").strong());
+                let mut hide_stars = !state.show_stars;
+                if ui.checkbox(&mut hide_stars, "Hide stars").changed() {
+                    state.show_stars = !hide_stars;
+                }
+                let mut hide_hyperlanes = !state.show_hyperlanes;
+                if ui
+                    .checkbox(&mut hide_hyperlanes, "Hide hyperlanes")
+                    .changed()
+                {
+                    state.show_hyperlanes = !hide_hyperlanes;
+                }
+                ui.checkbox(
+                    &mut state.performance_diagnostic_hide_star_aura,
+                    "Disable star aura layer",
+                );
+                let mut force_crisp = state.star_render_mode == StarRenderMode::CrispCircle;
+                if ui
+                    .checkbox(&mut force_crisp, "Force crisp/no-bloom star render")
+                    .changed()
+                {
+                    state.star_render_mode = if force_crisp {
+                        StarRenderMode::CrispCircle
+                    } else {
+                        StarRenderMode::BloomStarburst
+                    };
+                    if let Some(session) = state.session.as_mut() {
+                        session
+                            .view_model
+                            .apply_star_render_mode(state.star_render_mode);
+                    }
+                    mark_star_visual_render_dirty(&mut render_caches.star_visual);
+                }
+                ui.checkbox(
+                    &mut state.performance_diagnostic_hide_panels,
+                    "Hide egui panels except Settings",
+                );
+                ui.checkbox(
+                    &mut state.performance_diagnostic_freeze_camera,
+                    "Freeze camera update",
+                );
+                ui.horizontal(|ui| {
+                    if ui.button(DIAGNOSTIC_MINIMAL_RENDER_BUTTON).clicked() {
+                        apply_performance_diagnostic_minimal_render(state, settings, render_caches);
+                    }
+                    if ui.button(RESTORE_NORMAL_RENDER_BUTTON).clicked() {
+                        restore_performance_normal_render(state, settings, render_caches);
+                    }
+                });
                 ui.horizontal(|ui| {
                     if ui.button("Reset").clicked() {
                         reset_settings_dialog_values(state, settings, render_caches);
@@ -681,6 +759,82 @@ fn apply_star_render_settings(
         session.view_model.apply_star_render_mode(mode);
     }
     let _ = settings.save();
+}
+
+fn performance_diagnostic_flags(state: &StudioAppState) -> PerformanceDiagnosticFlags {
+    PerformanceDiagnosticFlags {
+        hide_panels: state.performance_diagnostic_hide_panels,
+        freeze_camera: state.performance_diagnostic_freeze_camera,
+        hide_star_aura: state.performance_diagnostic_hide_star_aura,
+    }
+}
+
+fn apply_performance_diagnostic_minimal_render(
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+    render_caches: &mut StudioRenderLoopCaches,
+) {
+    if state.performance_normal_render_snapshot.is_none() {
+        state.performance_normal_render_snapshot = Some(capture_normal_render_snapshot(
+            state.show_stars,
+            state.show_hyperlanes,
+            state.star_render_mode,
+            performance_diagnostic_flags(state),
+        ));
+    }
+    let mut flags = performance_diagnostic_flags(state);
+    apply_diagnostic_minimal_render(
+        &mut state.show_stars,
+        &mut state.show_hyperlanes,
+        &mut state.star_render_mode,
+        &mut flags,
+    );
+    state.performance_diagnostic_hide_star_aura = flags.hide_star_aura;
+    state
+        .settings_dialog
+        .set_star_render_mode(state.star_render_mode);
+    settings.set_star_render_mode(state.star_render_mode);
+    if let Some(session) = state.session.as_mut() {
+        session
+            .view_model
+            .apply_star_render_mode(state.star_render_mode);
+    }
+    mark_hyperlane_render_dirty(&mut render_caches.hyperlane);
+    mark_star_visual_render_dirty(&mut render_caches.star_visual);
+    state.status_message = "Applied diagnostic minimal render preset".into();
+}
+
+fn restore_performance_normal_render(
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+    render_caches: &mut StudioRenderLoopCaches,
+) {
+    let Some(snapshot) = state.performance_normal_render_snapshot.take() else {
+        return;
+    };
+    let mut flags = performance_diagnostic_flags(state);
+    restore_normal_render_from_snapshot(
+        snapshot,
+        &mut state.show_stars,
+        &mut state.show_hyperlanes,
+        &mut state.star_render_mode,
+        &mut flags,
+    );
+    state.performance_diagnostic_hide_panels = flags.hide_panels;
+    state.performance_diagnostic_freeze_camera = flags.freeze_camera;
+    state.performance_diagnostic_hide_star_aura = flags.hide_star_aura;
+    state
+        .settings_dialog
+        .set_star_render_mode(state.star_render_mode);
+    settings.set_star_render_mode(state.star_render_mode);
+    if let Some(session) = state.session.as_mut() {
+        session
+            .view_model
+            .apply_star_render_mode(state.star_render_mode);
+    }
+    mark_hyperlane_render_dirty(&mut render_caches.hyperlane);
+    mark_star_visual_render_dirty(&mut render_caches.star_visual);
+    state.status_message = "Restored normal render preset".into();
 }
 
 fn apply_hyperlane_render_settings(

@@ -537,13 +537,16 @@ fn push_hyperlane_visual_strip(
 pub fn sync_render_debug_visibility_system(
     state: Res<super::StudioAppState>,
     mut visibility_queries: ParamSet<(
-        Query<&mut Visibility, With<GalaxyStar>>,
+        Query<(&GalaxyStar, &mut Visibility)>,
         Query<&mut Visibility, With<GalaxyHyperlanes>>,
         Query<&mut Visibility, With<SelectedHyperlaneHighlight>>,
     )>,
 ) {
-    for mut visibility in &mut visibility_queries.p0() {
-        *visibility = if state.show_stars {
+    for (star, mut visibility) in &mut visibility_queries.p0() {
+        let star_visible = state.show_stars
+            && !(state.performance_diagnostic_hide_star_aura
+                && star.layer == StarVisualLayer::Aura);
+        *visibility = if star_visible {
             Visibility::Visible
         } else {
             Visibility::Hidden

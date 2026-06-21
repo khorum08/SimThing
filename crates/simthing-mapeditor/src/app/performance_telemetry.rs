@@ -4,7 +4,11 @@ use bevy::app::{App, Plugin};
 use bevy::diagnostic::{DiagnosticsStore, FrameCount};
 use bevy::prelude::*;
 use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
+use bevy::window::{PresentMode, PrimaryWindow};
 
+use crate::studio_frame_phase_gpu_telemetry::{
+    read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
+};
 use crate::studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_studio_allocated_vram_bytes, read_fps_from_diagnostics,
     StudioPerformanceTelemetry,
@@ -18,10 +22,103 @@ pub struct StudioPerformanceTelemetryState {
     pub telemetry: StudioPerformanceTelemetry,
     pub vram_dirty: bool,
     last_vram_scan_elapsed_secs: f32,
+    pub main_update_sample_count: u64,
+    pub frame_total_sample_count: u64,
+    pub egui_pass_sample_count: u64,
+    update_pass_started: Option<std::time::Instant>,
 }
 
 pub fn init_studio_performance_telemetry(mut commands: Commands) {
     commands.init_resource::<StudioPerformanceTelemetryState>();
+}
+
+pub fn begin_main_update_timing(mut state: ResMut<StudioPerformanceTelemetryState>) {
+    state.update_pass_started = Some(std::time::Instant::now());
+}
+
+pub fn finalize_main_update_timing(
+    diagnostics: Res<DiagnosticsStore>,
+    mut state: ResMut<StudioPerformanceTelemetryState>,
+) {
+    if let Some(started) = state.update_pass_started.take() {
+        state.main_update_sample_count = state.main_update_sample_count.saturating_add(1);
+        let sample_ms = started.elapsed().as_secs_f64() * 1000.0;
+        let count = state.main_update_sample_count;
+        {
+            let telemetry = &mut state.telemetry;
+            record_frame_phase_timing(
+                &mut telemetry.main_update_ms_last,
+                &mut telemetry.main_update_ms_avg,
+                sample_ms,
+                count,
+            );
+        }
+    }
+
+    if let Some(frame_ms) = read_frame_time_ms_from_diagnostics(&diagnostics) {
+        state.frame_total_sample_count = state.frame_total_sample_count.saturating_add(1);
+        let count = state.frame_total_sample_count;
+        let telemetry = &mut state.telemetry;
+        record_frame_phase_timing(
+            &mut telemetry.frame_total_ms_last,
+            &mut telemetry.frame_total_ms_avg,
+            frame_ms,
+            count,
+        );
+    }
+}
+
+pub fn update_studio_window_gpu_context(
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut state: ResMut<StudioPerformanceTelemetryState>,
+) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    state.telemetry.window_width = Some(window.resolution.width() as u32);
+    state.telemetry.window_height = Some(window.resolution.height() as u32);
+    state.telemetry.render_scale = Some(window.resolution.scale_factor() as f32);
+    state.telemetry.present_mode = Some(format_present_mode(window.present_mode));
+}
+
+fn format_present_mode(mode: PresentMode) -> String {
+    format!("{mode:?}")
+}
+
+pub fn record_egui_pass_timing(
+    state: &mut StudioPerformanceTelemetryState,
+    total_ms: f64,
+    settings_ms: f64,
+    left_panel_ms: f64,
+    right_panel_ms: f64,
+) {
+    state.egui_pass_sample_count = state.egui_pass_sample_count.saturating_add(1);
+    let count = state.egui_pass_sample_count;
+    let telemetry = &mut state.telemetry;
+    record_frame_phase_timing(
+        &mut telemetry.egui_pass_ms_last,
+        &mut telemetry.egui_pass_ms_avg,
+        total_ms,
+        count,
+    );
+    record_frame_phase_timing(
+        &mut telemetry.egui_settings_ms_last,
+        &mut telemetry.egui_settings_ms_avg,
+        settings_ms,
+        count,
+    );
+    record_frame_phase_timing(
+        &mut telemetry.egui_left_panel_ms_last,
+        &mut telemetry.egui_left_panel_ms_avg,
+        left_panel_ms,
+        count,
+    );
+    record_frame_phase_timing(
+        &mut telemetry.egui_right_panel_ms_last,
+        &mut telemetry.egui_right_panel_ms_avg,
+        right_panel_ms,
+        count,
+    );
 }
 
 pub fn update_studio_fps_telemetry(
@@ -67,18 +164,13 @@ impl Plugin for StudioGpuIdentityInitPlugin {
     fn build(&self, _app: &mut App) {}
 
     fn finish(&self, app: &mut App) {
-        let gpu_identity = app.get_sub_app(RenderApp).and_then(|render_sub_app| {
+        let adapter_info = app.get_sub_app(RenderApp).and_then(|render_sub_app| {
             render_sub_app
                 .world()
                 .get_resource::<RenderAdapterInfo>()
-                .map(|adapter_info| {
-                    (
-                        adapter_info.name.clone(),
-                        format!("{:?}", adapter_info.backend),
-                    )
-                })
+                .cloned()
         });
-        let Some((name, backend)) = gpu_identity else {
+        let Some(adapter_info) = adapter_info else {
             return;
         };
         let Some(mut state) = app
@@ -87,7 +179,11 @@ impl Plugin for StudioGpuIdentityInitPlugin {
         else {
             return;
         };
-        state.telemetry.gpu_name = Some(name);
-        state.telemetry.gpu_backend = Some(backend);
+        let info = &adapter_info.0;
+        state.telemetry.gpu_name = Some(info.name.clone());
+        state.telemetry.gpu_backend = Some(format!("{:?}", info.backend));
+        state.telemetry.gpu_vendor_id = Some(info.vendor);
+        state.telemetry.gpu_device_id = Some(info.device);
+        state.telemetry.gpu_device_type = Some(format!("{:?}", info.device_type));
     }
 }

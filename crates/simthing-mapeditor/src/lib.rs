@@ -21,6 +21,7 @@ pub mod star_render;
 pub mod starburst;
 pub mod studio_admission_report;
 pub mod studio_config;
+pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
 pub mod studio_render_loop_dirty_gate;
@@ -101,6 +102,14 @@ pub use studio_admission_report::{
 pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
     STUDIO_CONFIG_SCHEMA_VERSION,
+};
+pub use studio_frame_phase_gpu_telemetry::{
+    apply_diagnostic_minimal_render, capture_normal_render_snapshot, format_present_mode_label,
+    frame_phase_settings_lines, gpu_context_settings_lines, instrumented_render_loop_ms,
+    performance_capture_steps_lines, read_frame_time_ms_from_diagnostics,
+    restore_normal_render_from_snapshot, studio_build_profile_label, unexplained_frame_ms,
+    vram_tracked_asset_lines, PerformanceDiagnosticFlags, PerformanceNormalRenderSnapshot,
+    DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
 pub use studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,

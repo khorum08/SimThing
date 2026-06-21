@@ -69,9 +69,9 @@ fn studio_settings_window_renders_performance_section() {
     let lines = performance_settings_section_lines(&telemetry);
     assert!(lines.iter().any(|line| line == "Performance"));
     assert!(lines.iter().any(|line| line.starts_with("FPS: 12.3")));
-    assert!(lines
-        .iter()
-        .any(|line| line.starts_with("Allocated VRAM estimate: 48.5 MB")));
+    assert!(lines.iter().any(|line| {
+        line.starts_with("Allocated VRAM estimate: 48.5 MB (tracked assets only)")
+    }));
     assert!(lines.iter().any(|line| line == "Render loop diagnostics"));
 }
 
