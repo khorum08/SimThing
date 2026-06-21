@@ -1771,3 +1771,24 @@ Other deferred work: native Save Scenario dialog, full runtime vertical-test exe
 **Next if a residual cost remains when a section is expanded:** add an `egui_paint_ms` timer around the egui run
 (per-panel closure timers misattribute paint cost) and compare a `--release` build. Guidance:
 `docs/simthing-bevy-performance.md` (left-panel ScrollArea case study + collapse-by-default rule).
+
+## 2026-06-21 — STUDIO-STAR-SETTINGS-REALTIME-0 (Opus, presentation-only fix)
+
+**Symptom:** after the dirty-gate perf work, Settings sliders (Base Star Blur Radius, Falloff Star Opacity,
+etc.) did not update the galaxy until the mouse moved.
+**Root cause:** `app/picking.rs::sync_star_visuals_system` has a two-level gate. The OUTER `StarVisualSyncKey`
+includes the falloff settings (so the system runs on a settings change), but the INNER per-star
+`StarVisualAppliedKey` tracks only selection/hover/render-mode/depth-bucket/layer — NOT the settings. So every
+star hit `if *applied_key == visual_key { continue; }` and the new settings only applied when a camera move
+changed each star's depth bucket. Not a reactive-winit issue (Studio is Continuous).
+**Fix (minimal, perf-preserving):** capture `let force_resync = caches.star_visual.dirty;` before the loop and
+use `if !force_resync && *applied_key == visual_key { continue; }`. `apply_star_render_settings` already marks
+the star-visual cache dirty on any star-setting change, so the change frame force-re-applies all stars (covers
+every setting incl. ones the per-star key omits), then dirty resets → steady-state frames keep the cheap
+per-star gate. No perf regression; no scenario/serialization path touched.
+**Guidance added:** `docs/simthing-bevy-performance.md` → "a dirty-gate's INNER per-element key must include
+everything the outer gate keys on" (force-flag pattern + test-the-realtime-path rule).
+**For Grok/orchestration:** when adding any future dirty-gate, every input that changes the output must be in
+the key that short-circuits the *write*, or honor a one-frame force flag; add a test that a settings change
+mutates the rendered material with the camera held still (the existing outer-gate tests passed while the inner
+gate dropped the update).
