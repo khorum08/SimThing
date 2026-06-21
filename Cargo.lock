@@ -5298,6 +5298,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytemuck",
+ "cosmic-text",
  "fontdb",
  "pollster 0.3.0",
  "serde",

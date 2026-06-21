@@ -16,6 +16,16 @@ This file records vendored third-party code included in the SimThing workspace.
 | **License file** | `crates/simthing-clausething/src/jomini/LICENSE` |
 | **Scope note (CT-0a)** | Only the Clausewitz/ClauseScript **text parsing path** is vendored and used: `TextTape` lexer/parser, DOM readers, scalar/encoding helpers, and text writer. Binary save format, envelope handling, melting, serde derive integration, and incremental `TokenReader` are **excluded**.
 
+## cosmic-text (TYPEFACE-LR1 workshop shaping dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | cosmic-text |
+| **Upstream origin** | https://github.com/pop-os/cosmic-text |
+| **Version in workspace** | 0.13.2 (direct `simthing-workshop` dep; also Bevy transitive) |
+| **License** | MIT OR Apache-2.0 |
+| **Scope note (TYPEFACE-LR1)** | Workshop-only text shaping (`ShapingEngine`); no rendering/atlas integration in LR1 |
+
 ## Noto Sans Regular (TYPEFACE-LR0 test fixture only)
 
 | Field | Value |
