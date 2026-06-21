@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::PathBuf,
-};
+use std::{fs, path::PathBuf};
 
 use bevy::{
     app::{PluginGroup, PluginsState},
@@ -176,8 +173,7 @@ fn instances_match_shaped_run_count() {
     run_updates(&mut app, 1);
 
     let world = app.world_mut();
-    let mut query =
-        world.query_filtered::<&simthing_tools::TextGlyphInstances, With<TextLabel>>();
+    let mut query = world.query_filtered::<&simthing_tools::TextGlyphInstances, With<TextLabel>>();
     let instances = query.iter(world).map(|i| i.0.len()).sum::<usize>();
 
     let mut shaper = ShapingEngine::new_with_font(fixture_bytes()).expect("shaper");
@@ -351,9 +347,7 @@ fn headless_shader_backed_instanced_draw_real_adapter() {
         atlas_size,
     )
     .unwrap_or_else(|err| {
-        panic!(
-            "raw-wgpu instanced shader draw failed (queue={queue_state:?}, wgpu_err={err})"
-        );
+        panic!("raw-wgpu instanced shader draw failed (queue={queue_state:?}, wgpu_err={err})");
     });
 
     eprintln!(

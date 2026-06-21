@@ -98,8 +98,8 @@ direct), `same_glyph_same_px_is_cached_not_re_rasterized` (alloc count unchanged
 **Stop conditions:** no GPU adapter in env → keep CPU-oracle tests, mark GPU tests `ADAPTER_SKIPPED`, do not fake.
 **Remediation:** `TYPEFACE-LR2-RASTER-ATLAS-0R` (PR #875) remediated DA HOLD on adapter-optional CPU test coverage — splits `GlyphAtlasCore` (CPU-only) from GPU-backed `GlyphAtlas`; **DA remediation accepted**; result report `docs/tests/typeface_lr2r_results.md`.
 
-## LR3 — `simthing-tools` crate + Bevy instanced text draw  *(DA-sensitive — graduation rung)* — **DONE / PROBATION**
-**Status:** landed PR #876 (`a4f8c7dfa`); result report `docs/tests/typeface_lr3_results.md`. Track remains OPEN — LR3 is not DA-approved.
+## LR3 — `simthing-tools` crate + Bevy instanced text draw  *(DA-sensitive — graduation rung)* — **DONE / DA APPROVED**
+**Status:** landed PR #876 (`a4f8c7dfa`); DA remediation accepted via **TYPEFACE-LR3-INSTANCED-DRAW-0R** PR #877 (`0ec42e5175`). Route B raw-wgpu shader-backed smoke is accepted. Track remains OPEN — LR3 approval is not whole-track DA approval.
 **New crate:** `crates/simthing-tools/` (`Cargo.toml`, `src/lib.rs`); move the proven LR0–LR2 modules
 (`font`, `shaping`, `atlas`) **out of workshop into `simthing-tools`** (workshop keeps only a thin
 prototype/bench shim re-using the crate; workshop stays a non-production dep). Add `simthing-tools` to the
@@ -129,7 +129,10 @@ workshop→tools move leaves no production dep on workshop.
 **Stop conditions:** if the workshop→tools move would touch any non-typeface workshop code → STOP, scope to a
 clean move PR first.
 
-## LR4 — SVG icon ingestion (usvg + resvg) at PUA codepoints  *(mechanical)*
+**LR3R closeout:** `TYPEFACE-LR3-INSTANCED-DRAW-0R` accepted Route B raw-wgpu shader-backed smoke as the LR3 draw remediation. Full in-Bevy PNG readback remains explicitly **DEFERRED**: `Camera2d + Tonemapping::None + RenderTarget::Image + gpu_readback::Readback`.
+
+## LR4 — SVG icon ingestion (usvg + resvg) at PUA codepoints  *(mechanical)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0`; result report `docs/tests/typeface_lr4_results.md`. Track remains OPEN — LR4 is not DA-approved.
 **Files:** `crates/simthing-tools/src/icons.rs`.
 **Deps:** `usvg`, `resvg` (tiny-skia already in tree). Record MPL-2.0 in `THIRD_PARTY_LICENSES.md`.
 **Public API:**
@@ -144,6 +147,8 @@ one run.
 **Tests** (`typeface_lr4.rs`): `registers_svg_icon_tile`, `pua_codepoint_renders_in_mixed_run`,
 `icon_tile_bytes_deterministic`, `invalid_svg_errors_no_panic`, `icon_and_glyph_share_one_atlas` (one bind).
 **Boundary:** raster only (MSDF icons arrive with LR6).
+
+**Amendment folded into LR4:** LR4 includes static-SVG normalization plus a role-aware `IconVector` IR. The ingestion path accepts static SVG only, normalizes accepted shapes to deterministic path/layer records, rejects scripts, external images, animation/events, and remote resources, preserves optional `data-simthing-role` tags (`primary`, `secondary`, `accent`, `outline`, `background`, `mask`), and keeps deterministic layer/path ordering. Runtime never interprets SVG; it consumes rasterized atlas tiles and icon metadata only.
 
 ## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)*
 **Files:** `crates/simthing-tools/benches/` or `crates/simthing-tools/src/bin/typeface_bench.rs` +
@@ -207,8 +212,8 @@ labels render; perf within the LR5 budget.
 | LR0 | workshop font load + metrics | no | **DONE / PROBATION** (#872) |
 | LR1 | shaping engine | no | **DONE / PROBATION** (#873) |
 | LR2 | raster glyph atlas v1 | **yes** | **DONE / DA APPROVED** (#874, #875) |
-| LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / PROBATION** (#876) |
-| LR4 | SVG icons at PUA codepoints | no | TODO |
+| LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / DA APPROVED** (#876, #877 LR3R accepted) |
+| LR4 | SVG icons at PUA codepoints | no | **DONE / PROBATION** |
 | LR5 | high-volume bench + budget | **yes** | TODO |
 | LR6 | MSDF atlas + SDF shader | **yes** | TODO |
 | LR7 | icon-font manifest | no | TODO |

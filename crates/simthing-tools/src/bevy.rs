@@ -5,11 +5,11 @@ use bevy::{
     render::{
         extract_component::ExtractComponentPlugin,
         render_asset::RenderAssetUsages,
-        sync_world::SyncToRenderWorld,
         render_resource::{
             Extent3d, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
             TextureViewDimension,
         },
+        sync_world::SyncToRenderWorld,
         view::NoFrustumCulling,
     },
 };
@@ -301,10 +301,7 @@ fn sync_atlas_image_to_gpu(
     }
 }
 
-fn force_text_draw_visible(
-    draw_entity: Res<TextDrawEntity>,
-    mut q: Query<&mut ViewVisibility>,
-) {
+fn force_text_draw_visible(draw_entity: Res<TextDrawEntity>, mut q: Query<&mut ViewVisibility>) {
     if let Ok(mut visibility) = q.get_mut(draw_entity.0) {
         visibility.set();
     }
@@ -377,7 +374,11 @@ pub fn create_atlas_image_from_cpu(
 }
 
 /// Build an offscreen RGBA8 render target for shader smoke readback.
-pub fn create_render_target_image(images: &mut Assets<Image>, width: u32, height: u32) -> Handle<Image> {
+pub fn create_render_target_image(
+    images: &mut Assets<Image>,
+    width: u32,
+    height: u32,
+) -> Handle<Image> {
     let mut image = Image::new_fill(
         Extent3d {
             width,

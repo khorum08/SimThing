@@ -18,6 +18,15 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR3R closeout and LR4 icon ingestion (2026-06-21)
+
+- `TYPEFACE-LR3-SIMTHING-TOOLS-INSTANCED-TEXT-0` is **DA APPROVED / closed after LR3R**.
+- `TYPEFACE-LR3-INSTANCED-DRAW-0R` accepted Route B raw-wgpu shader-backed smoke via PR #877 / commit `0ec42e5175`. Full in-Bevy PNG readback remains explicitly deferred to `Camera2d + Tonemapping::None + RenderTarget::Image + gpu_readback::Readback`.
+- `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0` adds static SVG icon ingestion at PUA codepoints, static-only SVG normalization, and role-aware `IconVector` IR.
+- LR4 keeps icons and text in one raster atlas path. It does not add MSDF, style tables, gradients, deformation, text-on-path, TTF/OTF export, COLRv1, or Studio/game integration.
+
+---
+
 ## SAVELOAD-AUTHORITY-PIN-0R — Authority hardening
 
 **Date / PR:** 2026-06-17 — SAVELOAD-AUTHORITY-PIN-0R
