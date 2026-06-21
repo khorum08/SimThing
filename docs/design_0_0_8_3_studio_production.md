@@ -97,10 +97,15 @@ ScenarioSpec
 | **SCENARIO-CANDIDATE-SAVE-REOPEN-0** | **Landed / PROBATION** | Candidate ScenarioSpec canonical JSON save/reopen with stable authority digest |
 | **SCENARIO-CANDIDATE-SAVE-REOPEN-HARDEN-0** | **Landed / PROBATION** | Pre-UI hardening of candidate ScenarioSpec canonical JSON writer |
 | **STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0** | **Landed / PROBATION** | Studio UI workflow for loaded scenario runtime candidate save/reopen |
+| **STUDIO-CANDIDATE-REOPEN-ADOPT-0** | **Landed / PROBATION** | Successful Reopen Candidate adopts candidate into Studio session |
 
 ## STUDIO-SCENARIO-RUNTIME-SAVELOAD-UI-0 — Studio UI workflow for loaded scenario runtime candidate save/reopen
 
 This rung exposes the loaded Scenario Runtime + Save/Load workflow in Studio UI. The UI shows loaded ScenarioSpec digest, STEAD/link/tree validation, recursive RF runtime readiness, report-chain readiness, candidate mutation availability, candidate digest, Save Candidate, and Reopen Candidate. Save Candidate uses the hardened create-new candidate writer and refuses to overwrite existing targets without a future explicit replace flow. Reopen Candidate loads canonical ScenarioSpec JSON and rebuilds validation/projection readiness. UI state, Bevy state, runtime reports, and GPU buffers remain non-authoritative. Persistent history and GPU dispatch remain deferred.
+
+### STUDIO-CANDIDATE-REOPEN-ADOPT-0 — successful Reopen Candidate adopts candidate session
+
+This remedial pre-DA pass completes the Reopen Candidate UI workflow by adopting the reopened candidate ScenarioSpec into the active Studio session after canonical load, STEAD validation, and projection-readiness checks pass. Failed reopen preserves the current session. UI state, Bevy state, runtime reports, and GPU buffers remain non-authoritative. Persistent history and GPU dispatch remain deferred.
 
 ## SCENARIO-CANDIDATE-SAVE-REOPEN-0 — save and reopen candidate ScenarioSpec
 
