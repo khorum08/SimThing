@@ -2,13 +2,13 @@
 
 ## Status
 
-PENDING — validation in progress
+PASS
 
 ## PR / branch / merge
 
 - Branch: `studio-candidate-reopen-adopt-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #847
+- Merge SHA: `8cefd9c8da067a4a10fe9b4f87cc712c27aaf890`
 
 ## Mission
 
@@ -60,8 +60,17 @@ This PR is not a hygiene loop. It fixes the pre-DA Reopen Candidate workflow by 
 
 | Command | Status |
 |---------|--------|
-| `cargo test -p simthing-mapeditor --test studio_candidate_reopen_adopt` | pending |
-| `cargo test -p simthing-mapeditor --test studio_scenario_runtime_saveload_ui` | pending |
+| `cargo fmt -p simthing-mapeditor -- --check` | PASS |
+| `cargo check -p simthing-mapeditor` | PASS |
+| `cargo test -p simthing-mapeditor --test studio_candidate_reopen_adopt` | PASS (10) |
+| `cargo test -p simthing-mapeditor --test studio_scenario_runtime_saveload_ui` | PASS (13) |
+| `cargo test -p simthing-spec --test scenario_candidate_save_reopen` | PASS |
+| `cargo test -p simthing-spec --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-spec --test scenario_canonical_io` | PASS |
+| `cargo test -p simthing-driver --test scenario_candidate_save_reopen` | PASS |
+| `cargo test -p simthing-driver --test scenario_candidate_from_runtime` | PASS |
+| `cargo test -p simthing-driver --test scenario_canonical_io` | PASS |
+| `git diff --check` | PASS |
 
 ## Files changed
 
