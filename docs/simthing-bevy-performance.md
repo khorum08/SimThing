@@ -101,3 +101,37 @@ canonical-serialize + STEAD/RF/report/candidate evaluation **every frame** the w
 widget's draw closure, and never on a timer for display. When state is dirty, the draw path shows a cached
 value or a "click Refresh" hint; it does not compute. Drawing a panel must cost only egui layout, never a
 serialize.
+
+## Hard rule: a dirty-gate's INNER per-element key must include everything the outer gate keys on
+
+The opposite failure of the save-load trap: a dirty-gate so aggressive it drops *legitimate* updates. Symptom:
+a Settings slider (star radius / opacity / falloff) changed nothing on screen **until the mouse moved**
+(`STUDIO-STAR-SETTINGS-REALTIME-0`, `app/picking.rs::sync_star_visuals_system`).
+
+Two-level gating was the cause. The **outer** gate (`StarVisualSyncKey`) *included* the falloff settings, so the
+system correctly *ran* on a settings change. But the **inner** per-entity gate (`StarVisualAppliedKey`) tracked
+only `selected/hover/render_mode/depth_bucket/layer` — **not** the settings — so every star hit
+`if *applied_key == visual_key { continue; }` and was skipped. The new settings only "took" when a camera move
+changed each star's `depth_bucket`, breaking the per-star key. Moving the mouse = camera move = the only thing
+that invalidated the inner key.
+
+**Rules for multi-level dirty gates:**
+1. **Every input that can change the output must appear in the key that actually short-circuits the write.** If
+   the outer gate keys on setting `X` but the inner per-element key does not, an `X`-only change runs the
+   system to no effect. Either add `X` (or a settings revision/hash) to the per-element key, or…
+2. **…honor a one-frame `force` flag.** Capture the dirty flag before the loop (`let force = cache.dirty;`) and
+   write `if !force && *applied_key == key { continue; }`. On the change frame every element re-applies; the
+   flag resets at the end of the system, so steady-state frames keep the cheap per-element gate. This is the
+   minimal, settings-complete fix (covers fields the per-element key omits) and preserves the perf gain.
+3. **A "mark dirty" must reach the gate that does the work.** `apply_*_settings` here marked the star-visual
+   cache dirty, but the gate that mattered for the *visible* change (the per-star material write) ignored it.
+   Trace the dirty flag all the way to the write, not just to the system's entry guard.
+4. **Test the realtime path, not just the skip path.** The dirty-gate tests proved "skips when unchanged" and
+   "rebuilds when settings change" at the *outer* gate — and still passed while the *inner* gate silently
+   dropped the update. Add a test that a settings change actually mutates the rendered material/transform with
+   the camera held still.
+
+Default redraw mode matters too: Studio runs Bevy's default `WinitSettings` (Continuous), so a correctly-gated
+update appears within one frame. If you ever switch to `Reactive`/`desktop_app()` power-saving, the same class
+of "updates only on input" bug appears for a *different* reason (no frame is produced until an event) — request
+a redraw on the state change, or stay Continuous for an editor.

@@ -195,6 +195,13 @@ pub fn sync_star_visuals_system(
         return;
     }
 
+    // A render-settings change marks the cache dirty but does NOT alter the per-star applied key
+    // (which tracks only selection/hover/render-mode/depth/layer). Force a one-frame full re-apply so
+    // Settings sliders (star radius/opacity/falloff/render-mode) take effect immediately instead of
+    // waiting for a camera move to break the per-star key. Steady-state frames keep the cheap per-star
+    // gate, so the dirty-gate performance gain is preserved.
+    let force_resync = caches.star_visual.dirty;
+
     let started = std::time::Instant::now();
     let mut entity_count = 0usize;
     for (star, mut transform, material_handle, mut applied_key) in &mut stars {
@@ -215,7 +222,7 @@ pub fn sync_star_visuals_system(
             depth_bucket_or_quantized_percent: quantize_star_depth_percent(depth_percent),
             layer: layer_code,
         };
-        if *applied_key == visual_key {
+        if !force_resync && *applied_key == visual_key {
             continue;
         }
 
