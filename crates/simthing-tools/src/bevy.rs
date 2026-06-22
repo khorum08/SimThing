@@ -98,6 +98,7 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<TextInstanceAggregate>()
             .init_resource::<TextAggregateLayout>()
             .init_resource::<TextAggregateVersion>()
+            .init_resource::<crate::studio_labels::StudioTypefaceLabelDiagnostics>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
             .insert_resource(PluginAtlasSize(self.atlas_size))
             .add_plugins(ExtractResourcePlugin::<TextAggregateVersion>::default())
@@ -118,6 +119,8 @@ impl Plugin for SimthingToolsTextPlugin {
                     sync_deform_table_rows_if_changed,
                     sync_path_table_rows_if_changed,
                     sync_warp_table_rows_if_changed,
+                    emit_studio_damage_text_labels,
+                    sync_studio_typeface_labels,
                     update_numeric_damage_labels,
                     rebuild_changed_labels,
                     ApplyDeferred,
@@ -618,6 +621,110 @@ fn update_numeric_damage_labels(
     }
 }
 
+fn sync_studio_typeface_labels(
+    mut q: Query<
+        (
+            Entity,
+            &crate::studio_labels::StudioTypefaceLabel,
+            Option<&TextLabel>,
+            Option<&NumericDamageLabel>,
+        ),
+        Or<(
+            Added<crate::studio_labels::StudioTypefaceLabel>,
+            Changed<crate::studio_labels::StudioTypefaceLabel>,
+        )>,
+    >,
+    icons: Option<Res<crate::studio_labels::TypefaceIconSet>>,
+    mut studio_diag: ResMut<crate::studio_labels::StudioTypefaceLabelDiagnostics>,
+    mut commands: Commands,
+) {
+    for (entity, studio, existing_text, existing_numeric) in &mut q {
+        if existing_text.is_some() || existing_numeric.is_some() {
+            studio_diag.labels_updated += 1;
+        } else {
+            studio_diag.labels_spawned += 1;
+        }
+
+        let bake = icons.as_deref().map(|set| &set.bake);
+        let display = crate::studio_labels::resolve_studio_display_text(
+            &studio.text,
+            &studio.icon_name,
+            bake,
+            &mut studio_diag,
+        );
+
+        if studio.kind == crate::studio_labels::StudioLabelKind::DamageText
+            && crate::studio_labels::try_parse_damage_value(&studio.text).is_some()
+        {
+            let value = crate::studio_labels::try_parse_damage_value(&studio.text).unwrap_or(0);
+            commands.entity(entity).insert(NumericDamageLabel {
+                value,
+                width: NUMERIC_DAMAGE_DEFAULT_WIDTH,
+                px: studio.px,
+                color: studio.color,
+            });
+            commands.entity(entity).remove::<TextLabel>();
+            continue;
+        }
+
+        let text_label = studio_typeface_to_text_label(studio, &display);
+        commands.entity(entity).insert(text_label);
+        commands.entity(entity).remove::<NumericDamageLabel>();
+    }
+}
+
+fn studio_typeface_to_text_label(
+    studio: &crate::studio_labels::StudioTypefaceLabel,
+    display: &str,
+) -> TextLabel {
+    let mut label = match studio.render_mode {
+        TextLabelRenderMode::Msdf => TextLabel::msdf(display, studio.px, studio.color),
+        TextLabelRenderMode::Sdf => TextLabel {
+            text: display.to_string(),
+            px: studio.px,
+            color: studio.color,
+            render_mode: TextLabelRenderMode::Sdf,
+            style_slot: studio.style_slot,
+            deform_slot: studio.deform_slot,
+            path_slot: studio.path_slot,
+            warp_slot: studio.warp_slot,
+        },
+        TextLabelRenderMode::Raster => TextLabel::raster(display, studio.px, studio.color),
+    };
+    label.style_slot = studio.style_slot;
+    label.deform_slot = studio.deform_slot;
+    label.path_slot = studio.path_slot;
+    label.warp_slot = studio.warp_slot;
+    label.render_mode = studio.render_mode;
+    label
+}
+
+fn emit_studio_damage_text_labels(
+    mut emitters: Query<&mut crate::studio_labels::StudioDamageTextEmitter>,
+    mut commands: Commands,
+) {
+    for mut emitter in &mut emitters {
+        if emitter.pending_values.is_empty() {
+            continue;
+        }
+        for value in emitter.pending_values.drain(..) {
+            commands.spawn(crate::studio_labels::StudioTypefaceLabel::damage_value(
+                value,
+                24.0,
+                [1.0, 0.35, 0.25, 1.0],
+            ));
+        }
+    }
+}
+
+fn label_text_uses_manifest_icons(
+    text: &str,
+    icons: &crate::studio_labels::TypefaceIconSet,
+) -> bool {
+    text.chars()
+        .any(|ch| icons.bake.codepoint_to_name.contains_key(&(ch as u32)))
+}
+
 fn rebuild_changed_labels(
     mut diagnostics: ResMut<TextPerfDiagnostics>,
     mut phase: ResMut<TextDamagePhaseProfile>,
@@ -625,6 +732,7 @@ fn rebuild_changed_labels(
     font: Res<TypefaceFont>,
     mut shaper: ResMut<TypefaceShaper>,
     mut atlas: ResMut<TypefaceAtlas>,
+    icons: Option<Res<crate::studio_labels::TypefaceIconSet>>,
     mut q: Query<
         (
             Entity,
@@ -654,13 +762,46 @@ fn rebuild_changed_labels(
         let instance_start = std::time::Instant::now();
         let raster_start = std::time::Instant::now();
         let is_distance_field = label.render_mode != TextLabelRenderMode::Raster;
+        let icon_instances = icons.as_deref().and_then(|set| {
+            if !label_text_uses_manifest_icons(&label.text, set) {
+                return None;
+            }
+            set.icons
+                .build_mixed_instances(
+                    &font.0,
+                    &mut shaper.0,
+                    &mut atlas.cpu,
+                    &label.text,
+                    label.px,
+                    label.color,
+                )
+                .ok()
+        });
         let run_width = shaped
             .glyphs
             .last()
             .map(|g| g.x + g.advance)
             .unwrap_or(1.0)
             .max(1.0);
-        if let Some(mut existing) = existing_instances {
+        if let Some(mut instances) = icon_instances {
+            for instance in &mut instances {
+                instance.style_params = style_params_for_slot(label.style_slot, 0);
+                instance.deform_params = deform_params_for_slot(
+                    label.deform_slot,
+                    tess_level_for_deform_slot(label.deform_slot),
+                );
+                instance.path_params = path_params_for_slot(label.path_slot, 0.0, 1.0);
+                instance.warp_params = warp_params_for_slot(label.warp_slot, 1.0);
+            }
+            if let Some(mut existing) = existing_instances {
+                existing.0.clear();
+                existing.0.extend_from_slice(&instances);
+            } else {
+                commands
+                    .entity(entity)
+                    .insert(TextGlyphInstances(instances));
+            }
+        } else if let Some(mut existing) = existing_instances {
             existing.0.clear();
             existing.0.reserve(shaped.glyphs.len());
             for glyph in &shaped.glyphs {

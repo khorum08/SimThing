@@ -2,13 +2,14 @@
 
 ## Status
 
-PASS — declarative RON icon manifest loads, validates, and bakes fixture icons into `IconSet` + shared raster atlas with stable name ↔ PUA codepoint tables. **PROBATION / mechanical** — not DA-approved. LR7 manifest machinery complete with fixture icon set; production icon set remains input debt.
+PASS — declarative RON icon manifest loads, validates, and bakes fixture icons into `IconSet` + shared raster atlas with stable name ↔ PUA codepoint tables. **DA APPROVED for manifest machinery** after #892 (merge `ac320204eb`, post-merge evidence `be8dde2388`). Production icon source set remains input debt.
 
 ## PR / branch / merge
 
 - Branch: `typeface-lr7-icon-font-manifest-0`
 - PR: #892
 - Merge SHA: `ac320204eb`
+- Post-merge evidence: `be8dde2388`
 
 ## LR6D closeout
 
@@ -165,8 +166,8 @@ git diff --check
 
 ## DA recommendation
 
-Recommend **PROBATION** retention for mechanical manifest rung. Do **not** self-approve LR7 or the whole typeface track.
+Recommend **DA APPROVED for manifest machinery** retention. LR8 Studio label seam active next.
 
 ## Next recommended action
 
-Codex review of LR7 manifest stability and fixture bake proofs; supply production PUA icon source set when ready; LR8 Studio label seam when typeface track owner selects it.
+LR8 Studio/game label seam (`TYPEFACE-LR8-STUDIO-LABEL-SEAM-0`); supply production PUA icon SVG set when ready.

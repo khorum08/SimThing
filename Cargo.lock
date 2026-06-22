@@ -5366,6 +5366,7 @@ dependencies = [
  "simthing-mapgenerator",
  "simthing-sim",
  "simthing-spec",
+ "simthing-tools",
  "tempfile",
  "thiserror 2.0.18",
  "windows-sys 0.59.0",

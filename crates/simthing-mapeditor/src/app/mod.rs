@@ -2,6 +2,7 @@
 
 mod camera;
 mod galaxy_render;
+mod labels;
 mod performance_telemetry;
 mod picking;
 mod resources;

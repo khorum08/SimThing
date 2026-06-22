@@ -10,6 +10,7 @@ pub mod msdf;
 mod numeric_damage;
 pub mod path;
 pub mod shaping;
+pub mod studio_labels;
 pub mod style;
 mod text_render;
 pub mod warp;
@@ -76,6 +77,12 @@ pub use path::{
     TextPathTableResource, TextPathWarpDiagnostics,
 };
 pub use shaping::{format_shaping_report, ShapedGlyph, ShapedRun, ShapingEngine};
+pub use studio_labels::{
+    icon_name_to_codepoint, resolve_studio_display_text, spawn_studio_typeface_label,
+    studio_typeface_label_diagnostics, try_parse_damage_value, StudioDamageTextEmitter,
+    StudioLabelKind, StudioTypefaceLabel, StudioTypefaceLabelConfig,
+    StudioTypefaceLabelDiagnostics, StudioTypefaceLabelPlugin, TypefaceIconSet,
+};
 pub use style::{
     role_slot_for_icon_layer, style_params_for_slot, test_style_table_gradient,
     test_style_table_solid_red, ExtractedTextStyleTable, StyleError, TextStyleDiagnostics,
