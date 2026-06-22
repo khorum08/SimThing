@@ -190,7 +190,7 @@
 | **TYPEFACE-LR7-ICON-FONT-MANIFEST-0** - declarative RON icon manifest; stable name ↔ PUA codepoint table; fixture bake through IconSet static-SVG path | #892 | `ac320204eb` | **DA APPROVED for manifest machinery** — post-merge evidence `be8dde2388`; `docs/tests/typeface_lr7_results.md`; ladder § LR7 |
 | **TYPEFACE-LR8-STUDIO-LABEL-SEAM-0** - StudioTypefaceLabel adapter; damage emitter; fixture manifest icon resolve; typeface component sync | #893 | `ec01da43c9` | **DA APPROVED after #894** — post-merge evidence `22e7bfb9a4`; `docs/tests/typeface_lr8_results.md`; ladder § LR8 |
 | **TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R** - mount StudioTypefaceShellPlugin in run_studio; fixture manifest bake; probe label + damage emitter staging | #894 | `850a216a7a` | **ACCEPTED / closed** — post-merge evidence `29d50465ba`; index finalize `da1f1687fd`; `docs/tests/typeface_lr8_studio_plugin_mount_results.md`; ladder § LR8 |
-| **TYPEFACE-LR9-FINAL-PERF-GATE-0** - final typeface perf gate: flat 5k-class, numeric damage lane, dynamic style, warped nameplates, Studio seam profiles | (pending) | (pending) | **PROBATION / DA-sensitive final perf gate** — `docs/tests/typeface_lr9_results.md`; ladder § LR9 |
+| **TYPEFACE-LR9-FINAL-PERF-GATE-0** - final typeface perf gate: flat 5k-class, numeric damage lane, dynamic style, warped nameplates, Studio seam profiles | #895 | `c5b5faeab2` | **PROBATION / DA-sensitive final perf gate** — `docs/tests/typeface_lr9_results.md`; ladder § LR9 |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

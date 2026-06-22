@@ -7,8 +7,8 @@ PASS — final typeface performance gate profiles flat 5k-class labels, fixed-wi
 ## PR / branch / merge
 
 - Branch: `typeface-lr9-final-perf-gate-0`
-- PR: (pending)
-- Merge SHA: (pending)
+- PR: #895
+- Merge SHA: `c5b5faeab2`
 
 ## LR8 closeout
 
