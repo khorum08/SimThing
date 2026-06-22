@@ -13,6 +13,7 @@ use crate::{
     bevy::GlyphInstanceGpu,
     font::ProbeFont,
     shaping::{ShapedGlyph, ShapingEngine},
+    style::{role_slot_for_icon_layer, style_params_for_slot, TextStyleSlot},
 };
 
 pub const ICON_PUA_START: u32 = 0xF0000;
@@ -243,6 +244,44 @@ impl IconSet {
     /// Number of cached icon entries (codepoint + px bucket).
     pub fn cache_entry_count(&self) -> usize {
         self.entries.len()
+    }
+
+    /// Build per-role icon layer instances with distinct style slots (LR6B).
+    pub fn build_layered_icon_style_instances(
+        &self,
+        codepoint: u32,
+        px: f32,
+        x: f32,
+        y: f32,
+        color: [f32; 4],
+        role_style_slots: &[(IconLayerRole, TextStyleSlot)],
+        atlas_size: u32,
+    ) -> Result<Vec<GlyphInstanceGpu>, IconError> {
+        let layers = self
+            .style_layers_for(codepoint, px)
+            .ok_or(IconError::EmptyVector)?;
+        let inv = 1.0 / atlas_size as f32;
+        let mut instances = Vec::with_capacity(role_style_slots.len());
+        for (role, style_slot) in role_style_slots {
+            let layer = layers
+                .iter()
+                .find(|layer| layer.role == *role)
+                .ok_or(IconError::EmptyVector)?;
+            let tile = layer.raster_tile;
+            instances.push(GlyphInstanceGpu {
+                pos_size: [x, y, tile.w as f32, tile.h as f32],
+                uv_rect: [
+                    tile.x as f32 * inv,
+                    tile.y as f32 * inv,
+                    (tile.x + tile.w) as f32 * inv,
+                    (tile.y + tile.h) as f32 * inv,
+                ],
+                color,
+                sdf_params: [0.0; 4],
+                style_params: style_params_for_slot(*style_slot, role_slot_for_icon_layer(*role)),
+            });
+        }
+        Ok(instances)
     }
 }
 
@@ -871,5 +910,6 @@ fn build_instance(
         ],
         color,
         sdf_params: [0.0; 4],
+        style_params: [0.0; 4],
     }
 }

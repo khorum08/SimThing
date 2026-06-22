@@ -166,11 +166,11 @@ one run.
 ## LR6A — production MSDF wiring  *(DA remediation)* — **DONE / PROBATION / ACCEPTED for glyph MSDF production opt-in**
 **Status:** `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) — `TextLabelRenderMode` opt-in, shared-atlas MSDF packing, patched `build_glyph_id`. See `docs/tests/typeface_lr6a_results.md`.
 
-## LR6A-ICON — icon vector geometry bridge  *(DA remediation before LR6B)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` — normalized `IconVector` geometry IR, icon MSDF from bezpath, per-role raster style-slot refs. See `docs/tests/typeface_lr6a_icon_geometry_results.md`. **LR6B remains BLOCKED until icon geometry disposition accepted.**
+## LR6A-ICON — icon vector geometry bridge  *(DA remediation before LR6B)* — **DONE / ACCEPTED**
+**Status:** `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` (#885, `a3f7dcd30d`) — normalized `IconVector` geometry IR, icon MSDF from bezpath, per-role raster style-slot refs. See `docs/tests/typeface_lr6a_icon_geometry_results.md`.
 
-## LR6B — GPU style table + gradient/effect shader  *(DA-sensitive)* — **TODO / BLOCKED**
-**Status:** blocked pending LR6A-ICON-VECTOR-GEOMETRY-0R DA acceptance. Do not activate until icon geometry bridge reviewed.
+## LR6B — GPU style table + gradient/effect shader  *(DA-sensitive)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` — GPU style table buffer, shader-side gradient/pulse/outline/glow (SDF/MSDF), layered icon style slots. See `docs/tests/typeface_lr6b_results.md`. **Not DA-approved until Codex review.**
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)*
 **Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
@@ -208,8 +208,8 @@ labels render; perf within the LR5 budget.
 | LR5 | high-volume bench + budget | **yes** | **DONE / DA APPROVED (#879, #880, #881, #882)** |
 | LR6 | MSDF atlas + SDF shader | **yes** | **DONE / DA APPROVED for production glyph MSDF after LR6A** |
 | LR6A | production MSDF wiring | **yes** | **DONE / PROBATION / ACCEPTED for glyph MSDF production opt-in** |
-| LR6A-ICON | icon vector geometry bridge | **yes** | **DONE / PROBATION** |
-| LR6B | GPU style table + gradient/effect shader | **yes** | **TODO / BLOCKED** |
+| LR6A-ICON | icon vector geometry bridge | **yes** | **DONE / ACCEPTED (#885)** |
+| LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / PROBATION** |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
 

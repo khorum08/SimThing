@@ -49,6 +49,7 @@ impl GlyphSlotTemplate {
             uv_rect: self.uv_rect,
             color,
             sdf_params: [0.0; 4],
+            style_params: [0.0; 4],
         }
     }
 }
@@ -233,5 +234,6 @@ fn instance_from_tile(
         ],
         color,
         sdf_params: [0.0; 4],
+        style_params: [0.0; 4],
     }
 }

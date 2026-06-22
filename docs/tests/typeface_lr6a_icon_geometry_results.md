@@ -2,13 +2,14 @@
 
 ## Status
 
-PASS — `IconVector` promoted to normalized role-layer geometry IR; icon MSDF implemented from geometry via `PathGlyphBuilder`; per-role raster fallback ready for LR6B style slots; LR4 raster path preserved; static-SVG security intact. **PROBATION / DA remediation before LR6B.**
+PASS — normalized role-layer geometry IR; icon MSDF implemented; per-role raster ready for LR6B. **ACCEPTED / closed** (PR #885, merge `a3f7dcd30d`, post-merge evidence `35e2c3a6cc`).
 
 ## PR / branch / merge
 
 - Branch: `typeface-lr6a-icon-vector-geometry-0r`
 - PR: #885
 - Merge SHA: `a3f7dcd30d`
+- Post-merge evidence: `35e2c3a6cc`
 
 ## DA blocker being remediated
 

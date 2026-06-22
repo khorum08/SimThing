@@ -18,6 +18,14 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR6B GPU style table + effects (2026-06-21)
+
+- `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` adds GPU-resident `TextStyleTable`, `style_params` on `GlyphInstanceGpu`, shader-side fill/gradient/pulse and SDF/MSDF outline/glow.
+- Layered icon style slots via `IconSet::build_layered_icon_style_instances`; LR4 composite raster fallback preserved.
+- LR6A-ICON promoted to **ACCEPTED / closed** (#885).
+
+---
+
 ## Typeface ladder — LR6A icon vector geometry bridge (2026-06-21)
 
 - `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` promotes `IconVector` from path signatures to normalized role-layer geometry IR (`IconPathCommand`, `IconVectorPath`, `IconFillRule`).
