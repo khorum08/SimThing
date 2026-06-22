@@ -18,11 +18,16 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR6B style buffer residency remediation (2026-06-21)
+
+- `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (**ACTIVE**) remediates render-world style GPU buffer churn from LR6B (#886).
+- Target: persistent globals/rows buffers, bind-group reuse, rows upload on `rows_generation` only.
+
 ## Typeface ladder — LR6B GPU style table + effects (2026-06-21)
 
 - `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` (#886, merge `54e226471c`) adds GPU-resident `TextStyleTable`, `style_params` on `GlyphInstanceGpu`, shader-side fill/gradient/pulse and SDF/MSDF outline/glow.
 - Layered icon style slots via `IconSet::build_layered_icon_style_instances`; LR4 composite raster fallback preserved.
-- LR6A-ICON promoted to **ACCEPTED / closed** (#885). LR6B lands at **PROBATION / DA-sensitive** — not DA-approved until Codex review.
+- LR6A-ICON promoted to **ACCEPTED / closed** (#885). LR6B lands at **PROBATION / DA HOLD** pending buffer residency remediation.
 
 ---
 

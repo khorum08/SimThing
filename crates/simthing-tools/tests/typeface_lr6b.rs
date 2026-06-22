@@ -1,9 +1,18 @@
 use std::{fs, path::PathBuf};
 
-use bevy::prelude::*;
+use bevy::{
+    app::{PluginGroup, PluginsState},
+    prelude::*,
+    render::pipelined_rendering::PipelinedRenderingPlugin,
+    sprite::{Mesh2dRenderPlugin, SpritePlugin},
+    window::{ExitCondition, WindowPlugin},
+    winit::WinitPlugin,
+    DefaultPlugins,
+};
 use simthing_tools::{
-    build_distance_field_instance, load_font, spawn_static_and_numeric_damage_labels,
-    test_style_table_gradient, test_style_table_solid_red, wgpu_styled_instanced_text_smoke,
+    build_distance_field_instance, create_render_target_image, load_font,
+    spawn_static_and_numeric_damage_labels, test_style_table_gradient, test_style_table_solid_red,
+    text_render_camera_bundle, text_style_render_diagnostics, wgpu_styled_instanced_text_smoke,
     DistanceFieldAtlasCore, GlyphAtlasCore, GlyphInstanceGpu, IconLayerRole, IconSet,
     SimthingToolsTextPlugin, TextGlyphInstances, TextLabel, TextStyleRow, TextStyleTable,
     TextStyleTableResource, WgpuSmokeTarget, DISTANCE_FIELD_RENDER_MSDF, ICON_PUA_START,
@@ -50,6 +59,78 @@ fn cpu_bevy_app() -> App {
             4096,
         ));
     app
+}
+
+fn ensure_render_app_ready(app: &mut App) {
+    while app.plugins_state() == PluginsState::Adding {
+        bevy_tasks::tick_global_task_pools_on_main_thread();
+    }
+    if app.plugins_state() != PluginsState::Cleaned {
+        app.finish();
+        app.cleanup();
+    }
+}
+
+fn render_bevy_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .build()
+            .disable::<WinitPlugin>()
+            .disable::<PipelinedRenderingPlugin>()
+            .disable::<SpritePlugin>()
+            .set(WindowPlugin {
+                primary_window: None,
+                exit_condition: ExitCondition::DontExit,
+                close_when_requested: false,
+            }),
+    )
+    .add_plugins(Mesh2dRenderPlugin)
+    .add_plugins(SimthingToolsTextPlugin::with_atlas_size(
+        FIXTURE.to_vec(),
+        4096,
+    ));
+    ensure_render_app_ready(&mut app);
+    for _ in 0..24 {
+        if let Some(mut exits) = app.world_mut().get_resource_mut::<Events<AppExit>>() {
+            exits.clear();
+        }
+        app.update();
+    }
+    app
+}
+
+fn bevy_gpu_available() -> bool {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let mut app = render_bevy_app();
+        app.update();
+    }))
+    .is_ok()
+}
+
+fn clear_exit(app: &mut App) {
+    if let Some(mut exits) = app.world_mut().get_resource_mut::<Events<AppExit>>() {
+        exits.clear();
+    }
+}
+
+fn run_bevy_updates(app: &mut App, frames: usize) {
+    for _ in 0..frames {
+        clear_exit(app);
+        app.update();
+    }
+}
+
+fn warmup_render_style_app(app: &mut App) {
+    let target = {
+        let mut images = app.world_mut().resource_mut::<Assets<Image>>();
+        create_render_target_image(&mut images, 800, 600)
+    };
+    app.world_mut()
+        .spawn(text_render_camera_bundle(target, 800, 600));
+    app.world_mut()
+        .spawn(TextLabel::raster("Style", TEST_PX, [1.0, 1.0, 1.0, 1.0]).with_style_slot(1));
+    run_bevy_updates(app, 8);
 }
 
 fn raster_glyph_instance(atlas: &mut GlyphAtlasCore, atlas_size: u32) -> GlyphInstanceGpu {
@@ -377,4 +458,183 @@ fn msdf_smoke_with_style_slot_still_draws() {
         colored > 0,
         "msdf styled smoke should produce colored pixels"
     );
+}
+
+#[test]
+fn style_gpu_buffers_created_once_then_reused() {
+    if !bevy_gpu_available() {
+        eprintln!("ADAPTER_SKIPPED: style_gpu_buffers_created_once_then_reused");
+        return;
+    }
+    let mut app = render_bevy_app();
+    warmup_render_style_app(&mut app);
+    let after_warmup = text_style_render_diagnostics(&app);
+    assert_eq!(after_warmup.globals_buffer_create_count, 1);
+    assert_eq!(after_warmup.rows_buffer_create_count, 1);
+    assert_eq!(after_warmup.style_bind_group_create_count, 1);
+
+    run_bevy_updates(&mut app, 6);
+    let after_noop = text_style_render_diagnostics(&app);
+    assert_eq!(after_noop.globals_buffer_create_count, 1);
+    assert_eq!(after_noop.rows_buffer_create_count, 1);
+    assert_eq!(after_noop.style_bind_group_create_count, 1);
+    assert!(
+        after_noop.style_bind_group_reuse_count > after_warmup.style_bind_group_reuse_count,
+        "bind group should be reused across render prepares"
+    );
+}
+
+#[test]
+fn style_rows_buffer_uploads_only_when_rows_generation_changes() {
+    if !bevy_gpu_available() {
+        eprintln!("ADAPTER_SKIPPED: style_rows_buffer_uploads_only_when_rows_generation_changes");
+        return;
+    }
+    let mut app = render_bevy_app();
+    warmup_render_style_app(&mut app);
+    let before = text_style_render_diagnostics(&app);
+
+    app.world_mut()
+        .resource_mut::<TextStyleTableResource>()
+        .set_row(2, TextStyleRow::solid_fill(0.0, 1.0, 0.0, 1.0))
+        .expect("set row");
+    run_bevy_updates(&mut app, 4);
+
+    let after = text_style_render_diagnostics(&app);
+    assert_eq!(
+        after.rows_buffer_write_count,
+        before.rows_buffer_write_count + 1,
+        "rows buffer should upload once per generation change"
+    );
+    assert_eq!(after.rows_buffer_create_count, 1);
+}
+
+#[test]
+fn style_globals_buffer_updates_without_rows_reupload() {
+    if !bevy_gpu_available() {
+        eprintln!("ADAPTER_SKIPPED: style_globals_buffer_updates_without_rows_reupload");
+        return;
+    }
+    let mut app = render_bevy_app();
+    warmup_render_style_app(&mut app);
+    let before = text_style_render_diagnostics(&app);
+
+    run_bevy_updates(&mut app, 6);
+    let after = text_style_render_diagnostics(&app);
+
+    assert!(
+        after.globals_buffer_write_count > before.globals_buffer_write_count,
+        "globals/time should update each render prepare"
+    );
+    assert_eq!(
+        after.rows_buffer_write_count, before.rows_buffer_write_count,
+        "stable rows must not reupload on noop frames"
+    );
+}
+
+#[test]
+fn style_bind_group_reused_when_layout_and_buffers_unchanged() {
+    if !bevy_gpu_available() {
+        eprintln!("ADAPTER_SKIPPED: style_bind_group_reused_when_layout_and_buffers_unchanged");
+        return;
+    }
+    let mut app = render_bevy_app();
+    warmup_render_style_app(&mut app);
+    run_bevy_updates(&mut app, 10);
+    let diag = text_style_render_diagnostics(&app);
+    assert_eq!(diag.style_bind_group_create_count, 1);
+    assert!(diag.style_bind_group_reuse_count >= 10);
+}
+
+#[test]
+fn stable_style_table_noop_frames_do_not_recreate_buffers() {
+    if !bevy_gpu_available() {
+        eprintln!("ADAPTER_SKIPPED: stable_style_table_noop_frames_do_not_recreate_buffers");
+        return;
+    }
+    let mut app = render_bevy_app();
+    warmup_render_style_app(&mut app);
+    let before = text_style_render_diagnostics(&app);
+    run_bevy_updates(&mut app, 8);
+    let after = text_style_render_diagnostics(&app);
+    assert_eq!(
+        after.globals_buffer_create_count, before.globals_buffer_create_count,
+        "noop frames must not recreate globals buffer"
+    );
+    assert_eq!(
+        after.rows_buffer_create_count, before.rows_buffer_create_count,
+        "noop frames must not recreate rows buffer"
+    );
+}
+
+#[test]
+fn style_table_change_uploads_rows_once() {
+    if !bevy_gpu_available() {
+        eprintln!("ADAPTER_SKIPPED: style_table_change_uploads_rows_once");
+        return;
+    }
+    let mut app = render_bevy_app();
+    warmup_render_style_app(&mut app);
+    let before = text_style_render_diagnostics(&app);
+
+    {
+        let mut style = app.world_mut().resource_mut::<TextStyleTableResource>();
+        style
+            .set_row(3, TextStyleRow::solid_fill(0.0, 0.0, 1.0, 1.0))
+            .expect("slot 3");
+    }
+    run_bevy_updates(&mut app, 6);
+    let mid = text_style_render_diagnostics(&app);
+    assert_eq!(
+        mid.rows_buffer_write_count,
+        before.rows_buffer_write_count + 1
+    );
+
+    run_bevy_updates(&mut app, 6);
+    let after = text_style_render_diagnostics(&app);
+    assert_eq!(
+        after.rows_buffer_write_count, mid.rows_buffer_write_count,
+        "second noop stretch must not upload rows again"
+    );
+}
+
+#[test]
+fn shader_smoke_style_color_still_draws_nonzero_pixels() {
+    shader_smoke_style_color_draws_nonzero_pixels();
+}
+
+#[test]
+fn shader_smoke_gradient_still_changes_pixels_across_glyph() {
+    shader_smoke_gradient_changes_pixels_across_glyph();
+}
+
+#[test]
+fn layered_icon_style_slots_still_work() {
+    layered_icon_roles_map_to_distinct_style_slots();
+}
+
+#[test]
+fn semantic_free_guard_still_passes() {
+    assert!(std::process::Command::new(env!("CARGO"))
+        .args([
+            "test",
+            "-p",
+            "simthing-tools",
+            "--test",
+            "semantic_free_guard",
+        ])
+        .status()
+        .expect("spawn semantic guard")
+        .success());
+}
+
+#[test]
+fn gpu_residency_audit_updated_for_style_buffer_residency() {
+    let doc = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests/typeface_lr6b_style_buffer_residency_results.md"),
+    )
+    .expect("lr6b style buffer residency results");
+    assert!(doc.contains("## GPU residency / CPU surfacing audit"));
+    assert!(doc.contains("bind group"));
 }

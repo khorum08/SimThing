@@ -31,8 +31,9 @@ pub use numeric_damage::{
 };
 pub use text_render::{
     text_instanced_pipeline_initialized, text_render_camera_bundle, text_render_queue_state,
-    TextAtlasImageHandle, TextInstancedDraw, TextInstancedPipeline, TextRenderPerfDiagnostics,
-    TextRenderQueueState,
+    text_style_render_diagnostics, TextAtlasImageHandle, TextInstancedDraw, TextInstancedPipeline,
+    TextRenderPerfDiagnostics, TextRenderQueueState, TextStyleGpuResource,
+    TextStyleRenderDiagnostics,
 };
 
 pub use bench::{
