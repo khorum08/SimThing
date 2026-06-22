@@ -828,13 +828,41 @@ fn apply_style_fill(style: StyleRow, base_color: vec4<f32>, local_uv: vec2<f32>)
     return vec4(base_color.rgb * fill_rgb, base_color.a * opacity);
 }
 
+fn median3(v: vec3<f32>) -> f32 {
+    return max(min(v.r, v.g), min(max(v.r, v.g), v.b));
+}
+
+fn screen_px_range(px_range: f32, uv: vec2<f32>, atlas_size: f32) -> f32 {
+    let unit_range = px_range / atlas_size;
+    let dx = length(vec2<f32>(dpdx(uv.x), dpdy(uv.x)));
+    let dy = length(vec2<f32>(dpdx(uv.y), dpdy(uv.y)));
+    return max(0.5 * dot(vec2(unit_range), vec2(dx, dy)) * atlas_size, 1.0);
+}
+
+fn sdf_coverage(sample: vec4<f32>, mode: f32, px_range: f32, uv: vec2<f32>, atlas_size: f32) -> vec2<f32> {
+    if mode < 0.5 {
+        return vec2(sample.a, sample.a);
+    }
+    let screen_range = screen_px_range(px_range, uv, atlas_size);
+    if mode < 1.5 {
+        let sd = sample.a;
+        let alpha = clamp((sd - 0.5) * screen_range + 0.5, 0.0, 1.0);
+        return vec2(alpha, sd);
+    }
+    let sd = median3(sample.rgb);
+    let fw = max(fwidth(sd), 0.001);
+    let alpha = clamp((sd - 0.5) / fw + 0.5, 0.0, 1.0);
+    return vec2(alpha, sd);
+}
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sample = textureSample(atlas_tex, atlas_smp, in.uv);
     let slot = u32(clamp(in.style_params.x, 0.0, 31.0));
     let style = style_row_at(slot);
     let styled_color = apply_style_fill(style, in.color, in.local_uv);
-    var alpha = styled_color.a * sample.a;
+    let coverage = sdf_coverage(sample, in.sdf_params.x, in.sdf_params.y, in.uv, in.sdf_params.z);
+    var alpha = styled_color.a * coverage.x;
     return vec4(styled_color.rgb, alpha);
 }
 "#;

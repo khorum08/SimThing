@@ -18,10 +18,15 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR6D combined MSDF/deform proof remediation (2026-06-21)
+
+- `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` closes DA HOLD on combined smoke: MSDF tile + style + skew deform + arc path + lattice warp in raw-wgpu path/warp smoke; distribution differs from flat MSDF control.
+- LR6D (#890) **PROBATION / DA HOLD pending combined proof review** — recommend DA approval after remediation lands; not self-approved.
+
 ## Typeface ladder — LR6D text-on-path + warp field (2026-06-21)
 
 - `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) adds GPU-resident path/warp tables, vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling preserved; composes with LR6C deformation and LR6B style slots.
-- LR6C promoted to **DA APPROVED** after #889 (`913b148323`). LR6D **DONE / PROBATION / DA-sensitive** — not DA-approved.
+- LR6C promoted to **DA APPROVED** after #889 (`913b148323`). LR6D **PROBATION / DA HOLD** pending combined MSDF/deform proof.
 
 ## Typeface ladder — LR6C deform UV sampling remediation (2026-06-21)
 
