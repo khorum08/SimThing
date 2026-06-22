@@ -19,6 +19,11 @@ use bevy::{
 use crate::{
     atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
     font::{load_font, ProbeFont},
+    numeric_damage::{
+        build_numeric_glyph_run_table, numeric_damage_diagnostics, patch_numeric_instances,
+        NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
+        NUMERIC_DAMAGE_DEFAULT_WIDTH,
+    },
     shaping::{ShapedGlyph, ShapedRun, ShapingEngine},
     text_render::TextInstancedRenderPlugin,
 };
@@ -62,6 +67,7 @@ impl Plugin for SimthingToolsTextPlugin {
         app.init_asset::<Mesh>()
             .init_asset::<Image>()
             .init_resource::<TextPerfDiagnostics>()
+            .init_resource::<NumericDamageDiagnostics>()
             .init_resource::<TextDamagePhaseProfile>()
             .init_resource::<TextInstanceAggregate>()
             .init_resource::<TextAggregateLayout>()
@@ -77,6 +83,7 @@ impl Plugin for SimthingToolsTextPlugin {
             .add_systems(
                 Update,
                 (
+                    update_numeric_damage_labels,
                     rebuild_changed_labels,
                     ApplyDeferred,
                     mark_aggregate_dirty_on_label_lifecycle,
@@ -221,7 +228,7 @@ struct TextLabelCache {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct GlyphInstanceGpu {
     pub pos_size: [f32; 4],
     pub uv_rect: [f32; 4],
@@ -332,8 +339,19 @@ fn init_typeface_state(
         ShapingEngine::new_with_font(bytes.0.clone()).expect("typeface shaper must init");
     let mut atlas = TypefaceAtlas::new_cpu(atlas_size.0);
     prewarm_digit_glyphs(&font, &mut shaper, &mut atlas, PREWARM_PX);
+    let mut numeric_diag = NumericDamageDiagnostics::default();
+    let numeric_table = build_numeric_glyph_run_table(
+        &font,
+        &mut shaper,
+        &mut atlas,
+        PREWARM_PX,
+        NUMERIC_DAMAGE_DEFAULT_WIDTH,
+        &mut numeric_diag,
+    );
     commands.insert_resource(TypefaceFont(font));
     commands.insert_resource(TypefaceShaper(shaper));
+    commands.insert_resource(numeric_diag);
+    commands.insert_resource(numeric_table);
 
     let atlas_image = create_atlas_image_from_cpu(&mut images, &atlas.cpu);
     commands.insert_resource(crate::text_render::TextAtlasImageHandle(atlas_image));
@@ -382,6 +400,51 @@ fn is_numeric_damage_label(text: &str) -> bool {
         return false;
     };
     !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn update_numeric_damage_labels(
+    table: Res<NumericGlyphRunTable>,
+    mut num_diag: ResMut<NumericDamageDiagnostics>,
+    mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut phase: ResMut<TextDamagePhaseProfile>,
+    mut aggregate_version: ResMut<TextAggregateVersion>,
+    mut q: Query<
+        (Entity, &NumericDamageLabel, Option<&mut TextGlyphInstances>),
+        Or<(Added<NumericDamageLabel>, Changed<NumericDamageLabel>)>,
+    >,
+    mut commands: Commands,
+) {
+    for (entity, label, existing_instances) in &mut q {
+        num_diag.numeric_label_update_count += 1;
+        num_diag.numeric_shape_bypass_count += 1;
+        let instance_start = std::time::Instant::now();
+        if let Some(mut existing) = existing_instances {
+            if existing.0.len() == table.glyph_count {
+                patch_numeric_instances(
+                    &table,
+                    label.value,
+                    label.color,
+                    &mut existing.0,
+                    &mut num_diag,
+                );
+            } else {
+                existing.0.clear();
+                existing
+                    .0
+                    .resize(table.glyph_count, GlyphInstanceGpu::default());
+                table.write_run(label.value, label.color, &mut existing.0);
+                num_diag.numeric_glyph_instance_patch_count += table.glyph_count as u64;
+            }
+        } else {
+            commands.entity(entity).insert(TextGlyphInstances(
+                table.compose_run(label.value, label.color),
+            ));
+        }
+        phase.instance_rebuild_ns += instance_start.elapsed().as_nanos() as u64;
+        diagnostics.instance_rebuild_count += 1;
+        aggregate_version.dirty = true;
+        commands.entity(entity).insert(SegmentDirty);
+    }
 }
 
 fn rebuild_changed_labels(
@@ -471,10 +534,16 @@ fn rebuild_changed_labels(
 fn mark_aggregate_dirty_on_label_lifecycle(
     mut aggregate_version: ResMut<TextAggregateVersion>,
     mut layout: ResMut<TextAggregateLayout>,
-    added: Query<(), Added<TextLabel>>,
-    mut removed: RemovedComponents<TextLabel>,
+    added_text: Query<(), Added<TextLabel>>,
+    added_numeric: Query<(), Added<NumericDamageLabel>>,
+    mut removed_text: RemovedComponents<TextLabel>,
+    mut removed_numeric: RemovedComponents<NumericDamageLabel>,
 ) {
-    if added.iter().next().is_some() || removed.read().next().is_some() {
+    if added_text.iter().next().is_some()
+        || added_numeric.iter().next().is_some()
+        || removed_text.read().next().is_some()
+        || removed_numeric.read().next().is_some()
+    {
         aggregate_version.dirty = true;
         layout.needs_full_rebuild = true;
     }
@@ -550,10 +619,16 @@ fn sync_draw_entity_instances(
 }
 
 fn aggregate_label_instances(
-    all_labels: Query<(Entity, &TextGlyphInstances), With<TextLabel>>,
+    all_labels: Query<
+        (Entity, &TextGlyphInstances),
+        Or<(With<TextLabel>, With<NumericDamageLabel>)>,
+    >,
     dirty_labels: Query<
         (Entity, &TextGlyphInstances, &LabelAggregateSegment),
-        (With<TextLabel>, With<SegmentDirty>),
+        (
+            Or<(With<TextLabel>, With<NumericDamageLabel>)>,
+            With<SegmentDirty>,
+        ),
     >,
     mut aggregate: ResMut<TextInstanceAggregate>,
     mut aggregate_version: ResMut<TextAggregateVersion>,
@@ -722,14 +797,19 @@ pub fn spawn_static_text_labels(app: &mut App, count: usize, px: f32) {
     }
 }
 
-/// Count label entities and the single aggregate draw entity.
+/// Count text/numeric label entities and the single aggregate draw entity.
 pub fn text_label_entity_counts(app: &mut App) -> (usize, usize) {
     let world = app.world_mut();
-    let mut labels = world.query_filtered::<(), With<TextLabel>>();
+    let mut text = world.query_filtered::<(), With<TextLabel>>();
+    let mut numeric = world.query_filtered::<(), With<NumericDamageLabel>>();
     let mut draws = world.query_filtered::<(), With<crate::text_render::TextInstancedDraw>>();
-    let label_count = labels.iter(world).count();
+    let label_count = text.iter(world).count() + numeric.iter(world).count();
     let draw_entities = draws.iter(world).count();
     (label_count, draw_entities)
+}
+
+pub fn numeric_damage_lane_diagnostics(app: &App) -> NumericDamageDiagnostics {
+    numeric_damage_diagnostics(app)
 }
 
 /// Measured Bevy Update-path profile for LR5R/LR5S binding proof.
@@ -769,6 +849,36 @@ pub fn spawn_static_and_damage_labels(
         damage_entities.push(entity);
     }
     damage_entities
+}
+
+/// Spawn static text labels + fixed-width [`NumericDamageLabel`] entities for binding proof.
+pub fn spawn_static_and_numeric_damage_labels(
+    app: &mut App,
+    static_count: usize,
+    damage_count: usize,
+    px: f32,
+) -> Vec<Entity> {
+    spawn_static_text_labels(app, static_count, px);
+    let mut damage_entities = Vec::with_capacity(damage_count);
+    let world = app.world_mut();
+    for index in 0..damage_count {
+        let entity = world
+            .spawn(NumericDamageLabel::new(
+                -(index as i32),
+                px,
+                [1.0, 0.35, 0.2, 1.0],
+            ))
+            .id();
+        damage_entities.push(entity);
+    }
+    damage_entities
+}
+
+fn variable_width_damage_text(value: u32) -> String {
+    let mut text = String::with_capacity(6);
+    text.push('-');
+    text.push_str(&value.to_string());
+    text
 }
 
 fn clear_app_exit(app: &mut App) {
@@ -813,9 +923,10 @@ pub fn profile_bevy_text_bench(
     let mut max_damage_update_ms = 0.0_f64;
     for frame in 0..damage_frames {
         for (index, entity) in damage_entities.iter().enumerate() {
-            let value = (index.wrapping_mul(17).wrapping_add(frame.wrapping_mul(13))) % 9999;
+            let value =
+                ((index.wrapping_mul(17).wrapping_add(frame.wrapping_mul(13))) % 9999) as u32;
             if let Some(mut label) = app.world_mut().get_mut::<TextLabel>(*entity) {
-                label.text = format!("-{value}");
+                label.text = variable_width_damage_text(value);
             }
         }
         clear_app_exit(app);
@@ -842,6 +953,70 @@ pub fn profile_bevy_text_bench(
         max_damage_update_ms,
         diagnostics_after_noop,
         diagnostics_after_damage: text_perf_diagnostics(app),
+        phase_after_damage: text_damage_phase_profile(app),
+    }
+}
+
+/// Fixed-width numeric damage binding profile — no cosmic-text or string formatting per frame.
+pub fn profile_bevy_fixed_width_numeric_damage_bench(
+    app: &mut App,
+    damage_entities: &[Entity],
+    noop_frames: usize,
+    damage_frames: usize,
+) -> BevyTextBenchProfile {
+    let (labels, _) = text_label_entity_counts(app);
+    clear_app_exit(app);
+    app.update();
+
+    let (avg_noop_update_ms, max_noop_update_ms) = timed_updates(app, noop_frames);
+    let diagnostics_after_noop = text_perf_diagnostics(app);
+    let shape_miss_before = diagnostics_after_noop.shape_cache_miss_count;
+    let repack_before = diagnostics_after_noop.aggregate_repack_count;
+
+    reset_text_damage_phase_profile(app);
+    let mut total_damage_ms = 0.0_f64;
+    let mut max_damage_update_ms = 0.0_f64;
+    for frame in 0..damage_frames {
+        for (index, entity) in damage_entities.iter().enumerate() {
+            let raw = ((index.wrapping_mul(17).wrapping_add(frame.wrapping_mul(13))) % 9999) as i32;
+            if let Some(mut label) = app.world_mut().get_mut::<NumericDamageLabel>(*entity) {
+                label.value = -raw;
+            }
+        }
+        clear_app_exit(app);
+        let start = std::time::Instant::now();
+        app.update();
+        let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+        total_damage_ms += elapsed;
+        max_damage_update_ms = max_damage_update_ms.max(elapsed);
+    }
+    let avg_damage_update_ms = if damage_frames > 0 {
+        total_damage_ms / damage_frames as f64
+    } else {
+        0.0
+    };
+
+    let diagnostics_after_damage = text_perf_diagnostics(app);
+    debug_assert_eq!(
+        diagnostics_after_damage.shape_cache_miss_count, shape_miss_before,
+        "fixed-width numeric lane must not miss shape cache during timed damage frames"
+    );
+    debug_assert_eq!(
+        diagnostics_after_damage.aggregate_repack_count, repack_before,
+        "fixed-width numeric lane must not repack aggregate during timed damage frames"
+    );
+
+    BevyTextBenchProfile {
+        labels,
+        damage_labels: damage_entities.len(),
+        noop_frames,
+        damage_frames,
+        avg_noop_update_ms,
+        max_noop_update_ms,
+        avg_damage_update_ms,
+        max_damage_update_ms,
+        diagnostics_after_noop,
+        diagnostics_after_damage,
         phase_after_damage: text_damage_phase_profile(app),
     }
 }
