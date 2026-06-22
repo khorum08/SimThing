@@ -20,7 +20,7 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — LR6C atlas residency + parametric deformation (2026-06-21)
 
-- `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` closes atlas bind-group churn; adds Tier-1 vertex-shader deformation + adaptive tessellation on opt-in.
+- `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` (#888, merge `2f029bdb97`) closes atlas bind-group churn; adds Tier-1 vertex-shader deformation + adaptive tessellation on opt-in.
 - LR6B promoted to **DA APPROVED** (#886 + #887). LR6C **PROBATION / DA-sensitive** — not DA-approved.
 
 ## Typeface ladder — LR6B style buffer residency remediation (2026-06-21)
