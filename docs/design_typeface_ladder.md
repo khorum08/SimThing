@@ -160,14 +160,13 @@ one run.
 **Tests:** LR5 direct harness + Bevy structural tests in `typeface_lr5.rs`; optional `#[ignore]` 5k binding profile.
 **DA focus:** no-op and fixed-width numeric damage bindings met; LR5 closed for MSDF foundation work.
 
-## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` — MSDF/SDF atlas core, GPU SDF shader path, raw-wgpu smoke; icon MSDF deferred (LR6A). See `docs/tests/typeface_lr6_results.md`. **Not DA-approved.**
-**Files:** `crates/simthing-tools/src/msdf.rs`, `src/shaders/text_instanced.wgsl`, `src/wgpu_smoke.rs`, `src/text_render.rs`; `crates/simthing-tools/tests/typeface_lr6.rs`.
-**Deps:** `msdf-font` 0.3.1 (pure-Rust MSDF/SDF from TTF outlines; no C++ `msdfgen`).
-**Public API:** `DistanceFieldAtlasCore`, `DistanceFieldKey`/`Tile`, `build_distance_field_instance`; `GlyphInstanceGpu.sdf_params` render mode.
-**Steps:** import-time MSDF/SDF generation + cache; extended instanced shader (raster/SDF/MSDF modes); raw-wgpu smoke proof; raster default preserved; LR5 numeric lane unchanged.
-**Tests** (`typeface_lr6.rs`): MSDF determinism/cache, SDF shader smoke, raster regression, numeric lane structural guard, GPU residency audit doc.
-**DA focus:** GPU-owned edge reconstruction/AA; no per-frame CPU distance work; icon MSDF debt documented; LR5 budget preserved.
+## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)* — **DONE / PROBATION / DA HOLD pending LR6A review**
+**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` (#883) — foundation landed; **DA HOLD** until `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` production opt-in + glyph-source correction reviewed. See `docs/tests/typeface_lr6_results.md`, `docs/tests/typeface_lr6a_results.md`. **Not DA-approved until LR6A disposition.**
+
+## LR6A — production MSDF wiring  *(DA remediation)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` — `TextLabelRenderMode` opt-in, shared-atlas MSDF packing, patched `build_glyph_id`, icon MSDF formally deferred. See `docs/tests/typeface_lr6a_results.md`. Recommend LR6 DA approval pending Codex review.
+**Files:** `crates/simthing-tools/src/msdf.rs`, `bevy.rs`, `vendor/msdf_font/`, `tests/typeface_lr6.rs`.
+**Tests:** production MSDF Bevy path, glyph-ID correction, noop cache, mixed raster+MSDF, icon deferral doc.
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)*
 **Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
@@ -203,7 +202,8 @@ labels render; perf within the LR5 budget.
 | LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / DA APPROVED** (#876, #877 LR3R accepted) |
 | LR4 | SVG icons at PUA codepoints | no | **DONE / ACCEPTED (#878)** |
 | LR5 | high-volume bench + budget | **yes** | **DONE / DA APPROVED (#879, #880, #881, #882)** |
-| LR6 | MSDF atlas + SDF shader | **yes** | **DONE / PROBATION** |
+| LR6 | MSDF atlas + SDF shader | **yes** | **DONE / PROBATION / DA HOLD pending LR6A review** |
+| LR6A | production MSDF wiring | **yes** | **DONE / PROBATION** |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
 

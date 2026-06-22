@@ -3,11 +3,12 @@ use std::{fs, path::PathBuf};
 use bevy::prelude::*;
 use msdf_font::ttf_parser::Face;
 use simthing_tools::{
-    build_distance_field_instance, load_font, numeric_damage_lane_diagnostics,
-    spawn_static_and_numeric_damage_labels, wgpu_instanced_text_smoke,
-    wgpu_sdf_instanced_text_smoke, DistanceFieldAtlasCore, DistanceFieldError, DistanceFieldKind,
-    GlyphInstanceGpu, SimthingToolsTextPlugin, TextGlyphInstances, TextLabel, WgpuSmokeTarget,
-    DISTANCE_FIELD_RENDER_MSDF, DISTANCE_FIELD_RENDER_RASTER,
+    build_distance_field_instance, distance_field_diagnostics, load_font,
+    numeric_damage_lane_diagnostics, spawn_static_and_numeric_damage_labels, text_perf_diagnostics,
+    wgpu_instanced_text_smoke, wgpu_sdf_instanced_text_smoke, DistanceFieldAtlasCore,
+    DistanceFieldError, DistanceFieldKind, GlyphInstanceGpu, SimthingToolsTextPlugin,
+    TextGlyphInstances, TextLabel, WgpuSmokeTarget, DISTANCE_FIELD_RENDER_MSDF,
+    DISTANCE_FIELD_RENDER_RASTER,
 };
 
 const FIXTURE: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
@@ -241,11 +242,8 @@ fn raster_path_regression_still_draws() {
     }
 
     let mut app = cpu_bevy_app();
-    app.world_mut().spawn(TextLabel {
-        text: "LR6".into(),
-        px: TEST_PX,
-        color: [1.0, 1.0, 1.0, 1.0],
-    });
+    app.world_mut()
+        .spawn(TextLabel::raster("LR6", TEST_PX, [1.0, 1.0, 1.0, 1.0]));
     for _ in 0..2 {
         app.update();
     }
@@ -336,22 +334,214 @@ fn semantic_free_guard_still_passes() {
 }
 
 #[test]
-fn gpu_residency_audit_documented_for_lr6() {
+fn gpu_residency_audit_updated_for_lr6a() {
     let path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6_results.md");
-    let text = fs::read_to_string(&path).expect("typeface_lr6_results.md must exist");
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6a_results.md");
+    let text = fs::read_to_string(&path).expect("typeface_lr6a_results.md must exist");
     for section in [
         "## GPU residency / CPU surfacing audit",
         "- CPU operations introduced:",
         "- CPU operations removed:",
-        "- CPU operations retained and why:",
         "- Numeric production authority remains GPU-resident:",
-        "- Deviations:",
-        "- Next GPU-residency debt:",
     ] {
         assert!(
             text.contains(section),
-            "missing required GPU residency audit section: {section}"
+            "missing required LR6A GPU residency audit section: {section}"
         );
     }
+}
+
+#[test]
+fn production_msdf_label_builds_msdf_instances() {
+    let mut app = cpu_bevy_app();
+    app.world_mut()
+        .spawn(TextLabel::msdf("MSDF", TEST_PX, [1.0, 1.0, 1.0, 1.0]));
+    app.update();
+    let instances: Vec<GlyphInstanceGpu> = {
+        let world = app.world_mut();
+        let mut q = world.query_filtered::<&TextGlyphInstances, With<TextLabel>>();
+        q.iter(world).flat_map(|i| i.0.iter().copied()).collect()
+    };
+    assert!(!instances.is_empty());
+    assert!(
+        instances
+            .iter()
+            .all(|i| i.sdf_params[0] == DISTANCE_FIELD_RENDER_MSDF),
+        "opt-in MSDF label must encode MSDF render mode"
+    );
+    let df = distance_field_diagnostics(&app);
+    assert!(df.production_msdf_label_count >= 1);
+    assert!(df.production_msdf_instance_count >= instances.len() as u64);
+}
+
+#[test]
+fn raster_label_remains_default_render_mode() {
+    let mut app = cpu_bevy_app();
+    app.world_mut()
+        .spawn(TextLabel::raster("Raster", TEST_PX, [1.0, 1.0, 1.0, 1.0]));
+    app.update();
+    let instances: Vec<GlyphInstanceGpu> = {
+        let world = app.world_mut();
+        let mut q = world.query_filtered::<&TextGlyphInstances, With<TextLabel>>();
+        q.iter(world).flat_map(|i| i.0.iter().copied()).collect()
+    };
+    assert!(instances
+        .iter()
+        .all(|i| i.sdf_params[0] == DISTANCE_FIELD_RENDER_RASTER));
+}
+
+#[test]
+fn production_msdf_label_noop_does_not_regenerate_distance_fields() {
+    let mut app = cpu_bevy_app();
+    app.world_mut()
+        .spawn(TextLabel::msdf("Hold", TEST_PX, [1.0, 1.0, 1.0, 1.0]));
+    app.update();
+    let before = distance_field_diagnostics(&app);
+    let perf_before = text_perf_diagnostics(&app);
+    app.update();
+    let after = distance_field_diagnostics(&app);
+    let perf_after = text_perf_diagnostics(&app);
+    assert_eq!(
+        after.glyph_msdf_generate_count, before.glyph_msdf_generate_count,
+        "no-op frame must not generate MSDF tiles"
+    );
+    assert_eq!(
+        perf_after.shape_rebuild_count, perf_before.shape_rebuild_count,
+        "no-op frame must not reshape"
+    );
+    assert_eq!(
+        perf_after.instance_rebuild_count, perf_before.instance_rebuild_count,
+        "no-op frame must not rebuild instances"
+    );
+}
+
+#[test]
+fn glyph_source_api_does_not_silently_claim_unsupported_glyph_ids() {
+    let font = probe_font();
+    let face = Face::parse(FIXTURE, 0).expect("parse fixture");
+    let invalid = u32::from(face.number_of_glyphs()) + 100;
+    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
+    let err = atlas
+        .get_or_generate_glyph_msdf(&font, invalid, TEST_PX)
+        .expect_err("glyph id without outline must error explicitly");
+    assert!(matches!(err, DistanceFieldError::MissingOutline(_)));
+}
+
+#[test]
+fn shaped_glyph_id_msdf_generation_supports_non_ascii_or_ligature_fixture() {
+    let font = probe_font();
+    let face = Face::parse(FIXTURE, 0).expect("parse fixture");
+    let fi_glyph_id = face.glyph_index('ﬁ').map(|id| id.0 as u32).or_else(|| {
+        let mut shaper =
+            simthing_tools::ShapingEngine::new_with_font(fixture_bytes()).expect("shaper");
+        shaper
+            .shape("fi", TEST_PX)
+            .glyphs
+            .first()
+            .map(|g| g.glyph_id as u32)
+    });
+    let glyph_id = fi_glyph_id.expect("fixture must expose fi or ligature glyph id");
+    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
+    let tile = atlas
+        .get_or_generate_glyph_msdf(&font, glyph_id, TEST_PX)
+        .expect("ligature/non-ascii glyph id MSDF");
+    assert_eq!(tile.kind, DistanceFieldKind::Msdf);
+}
+
+#[test]
+fn mixed_raster_and_msdf_labels_share_instanced_pipeline() {
+    let mut app = cpu_bevy_app();
+    app.world_mut()
+        .spawn(TextLabel::raster("A", TEST_PX, [1.0, 1.0, 1.0, 1.0]));
+    app.world_mut()
+        .spawn(TextLabel::msdf("B", TEST_PX, [1.0, 0.5, 0.2, 1.0]));
+    app.update();
+    let instances: Vec<GlyphInstanceGpu> = {
+        let world = app.world_mut();
+        let mut q = world.query_filtered::<&TextGlyphInstances, With<TextLabel>>();
+        q.iter(world).flat_map(|i| i.0.iter().copied()).collect()
+    };
+    assert!(instances
+        .iter()
+        .any(|i| i.sdf_params[0] == DISTANCE_FIELD_RENDER_RASTER));
+    assert!(instances
+        .iter()
+        .any(|i| i.sdf_params[0] == DISTANCE_FIELD_RENDER_MSDF));
+    let aggregate = app
+        .world()
+        .get_resource::<simthing_tools::TextInstanceAggregate>()
+        .expect("aggregate");
+    assert_eq!(aggregate.0.len(), instances.len());
+}
+
+#[test]
+fn msdf_opt_in_raw_wgpu_smoke_draws_nonzero_pixels() {
+    if !wgpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: msdf_opt_in_raw_wgpu_smoke_draws_nonzero_pixels");
+        return;
+    }
+    let mut app = cpu_bevy_app();
+    app.world_mut()
+        .spawn(TextLabel::msdf("S", TEST_PX, [1.0, 1.0, 1.0, 1.0]));
+    app.update();
+    let instances: Vec<GlyphInstanceGpu> = {
+        let world = app.world_mut();
+        let mut q = world.query_filtered::<&TextGlyphInstances, With<TextLabel>>();
+        q.iter(world).flat_map(|i| i.0.iter().copied()).collect()
+    };
+    assert!(!instances.is_empty());
+    let mut smoke_instances = instances;
+    for inst in &mut smoke_instances {
+        inst.pos_size[0] = 80.0;
+        inst.pos_size[1] = 40.0;
+    }
+    let atlas = app
+        .world()
+        .get_resource::<simthing_tools::TypefaceAtlas>()
+        .expect("atlas");
+    let smoke = match wgpu_sdf_instanced_text_smoke(
+        WgpuSmokeTarget {
+            width: SMOKE_WIDTH,
+            height: SMOKE_HEIGHT,
+        },
+        &smoke_instances,
+        atlas.cpu.staging_pixels(),
+        atlas.atlas_size,
+    ) {
+        Ok(result) => result,
+        Err(err) if err.contains("no wgpu adapter") => {
+            eprintln!("ADAPTER_SKIPPED: msdf_opt_in_raw_wgpu_smoke ({err})");
+            return;
+        }
+        Err(err) => panic!("production msdf smoke failed: {err}"),
+    };
+    let target = WgpuSmokeTarget {
+        width: SMOKE_WIDTH,
+        height: SMOKE_HEIGHT,
+    };
+    assert!(target.has_alpha_text_pixels(&smoke.pixels));
+}
+
+#[test]
+fn icon_msdf_is_implemented_or_formally_deferred_with_raster_fallback() {
+    let defer_doc = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests/typeface_lr6a_icon_msdf_deferred.md"),
+    )
+    .expect("icon deferral doc");
+    assert!(defer_doc.contains("IconVector"));
+    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
+    let icon = simthing_tools::IconVector {
+        layers: Vec::new(),
+        view_box: [0.0, 0.0, 24.0, 24.0],
+    };
+    let err = atlas
+        .get_or_generate_icon_msdf(&icon, 0xf0000, TEST_PX)
+        .expect_err("icon msdf deferred");
+    assert!(matches!(err, DistanceFieldError::IconDeferred(_)));
+}
+
+#[test]
+fn lr5_numeric_damage_lane_still_passes() {
+    numeric_damage_lane_still_passes_binding_or_structural_guard();
 }

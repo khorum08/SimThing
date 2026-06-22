@@ -76,11 +76,11 @@ fn bevy_gpu_adapter_available() -> bool {
 }
 
 fn spawn_label(app: &mut App, text: &str) {
-    app.world_mut().spawn(TextLabel {
-        text: text.to_string(),
-        px: SHAPE_PX,
-        color: [1.0, 1.0, 1.0, 1.0],
-    });
+    app.world_mut().spawn(TextLabel::raster(
+        text.to_string(),
+        SHAPE_PX,
+        [1.0, 1.0, 1.0, 1.0],
+    ));
 }
 
 fn run_updates(app: &mut App, frames: usize) {

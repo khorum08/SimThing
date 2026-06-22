@@ -3779,8 +3779,6 @@ dependencies = [
 [[package]]
 name = "msdf_font"
 version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63283288bbd649f530978120c3e02f866b1cfae47c5a305b1ec2384d4f78d4ec"
 dependencies = [
  "glam 0.32.1",
  "kurbo",

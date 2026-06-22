@@ -18,6 +18,13 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR6A production MSDF wiring (2026-06-21)
+
+- `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` wires `TextLabelRenderMode` MSDF/SDF opt-in through Bevy plugin; packs distance-field tiles into shared atlas on label change/cache miss only.
+- Patched vendored `msdf-font` adds `GlyphBuilder::build_glyph_id` — removes ASCII codepoint reverse lookup from production path.
+- Icon MSDF formally deferred (`docs/tests/typeface_lr6a_icon_msdf_deferred.md`); LR4 raster icons preserved.
+- LR6 remains **PROBATION / DA HOLD** until LR6A reviewed; LR6A lands at **PROBATION**.
+
 ## Typeface ladder — LR6 MSDF atlas + SDF shader (2026-06-21)
 
 - `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` adds import-time `DistanceFieldAtlasCore` (TTF glyph MSDF/SDF), GPU SDF/MSDF shader path via `GlyphInstanceGpu.sdf_params`, and raw-wgpu smoke proof.
