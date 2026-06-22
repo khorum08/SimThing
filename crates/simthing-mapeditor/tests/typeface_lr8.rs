@@ -61,7 +61,7 @@ fn lr7_closeout_records_da_approval() {
     assert!(index.contains("#892"));
     assert!(index.contains("ac320204eb"));
 
-    let lr7 = read_doc("docs/tests/typeface_lr7_results.md");
+    let lr7 = read_doc("docs/archive/typeface_track_2026_06/typeface_lr7_results.md");
     assert!(lr7.contains("#892"));
     assert!(lr7.contains("ac320204eb"));
     assert!(lr7.contains("be8dde2388"));
@@ -342,7 +342,7 @@ fn semantic_free_guard_still_passes() {
 
 #[test]
 fn gpu_residency_audit_documented_for_lr8() {
-    let results = read_doc("docs/tests/typeface_lr8_results.md");
+    let results = read_doc("docs/archive/typeface_track_2026_06/typeface_lr8_results.md");
     assert!(results.contains("GPU residency"));
     assert!(results.contains("CPU surfacing"));
     assert!(results.contains("import/staging"));
@@ -532,7 +532,8 @@ fn lr8_headless_tests_still_pass() {
 
 #[test]
 fn gpu_residency_audit_documented_for_lr8_plugin_mount() {
-    let results = read_doc("docs/tests/typeface_lr8_studio_plugin_mount_results.md");
+    let results =
+        read_doc("docs/archive/typeface_track_2026_06/typeface_lr8_studio_plugin_mount_results.md");
     assert!(results.contains("GPU residency"));
     assert!(results.contains("CPU surfacing"));
     assert!(results.contains("import/staging"));

@@ -297,15 +297,15 @@ fn lr6c_closeout_records_da_approval() {
     assert!(ladder.contains("#889") || ladder.contains("913b148323"));
 
     let lr6c = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6c_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6c_results.md"),
     )
     .expect("lr6c results");
     assert!(lr6c.contains("DA APPROVED"));
 
-    let uv = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests/typeface_lr6c_deform_uv_sampling_results.md"),
-    )
+    let uv = fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        "../../docs/archive/typeface_track_2026_06/typeface_lr6c_deform_uv_sampling_results.md",
+    ))
     .expect("uv results");
     assert!(uv.contains("ACCEPTED") || uv.contains("closed"));
 }
@@ -640,10 +640,9 @@ fn combined_path_warp_preserves_source_atlas_uv() {
 
 #[test]
 fn combined_gradient_uses_source_uv_under_path_warp() {
-    let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests/typeface_lr6d_combined_msdf_deform_results.md"),
-    )
+    let doc = fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        "../../docs/archive/typeface_track_2026_06/typeface_lr6d_combined_msdf_deform_results.md",
+    ))
     .expect("combined msdf deform results");
     assert!(doc.contains("## Gradient coordinate policy"));
     assert!(doc.contains("source_uv"));
@@ -691,7 +690,8 @@ fn msdf_style_deform_path_warp_combined_smoke_draws_nonzero_pixels() {
 #[test]
 fn gradient_policy_under_path_warp_documented_and_tested() {
     let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6d_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6d_results.md"),
     )
     .expect("lr6d results");
     assert!(doc.contains("## Gradient coordinate policy"));
@@ -816,7 +816,8 @@ fn semantic_free_guard_still_passes() {
 #[test]
 fn gpu_residency_audit_documented_for_lr6d() {
     let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6d_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6d_results.md"),
     )
     .expect("lr6d results");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));

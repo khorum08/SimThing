@@ -43,7 +43,8 @@ fn lr8_closeout_records_da_approval() {
     assert!(index.contains("TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R"));
     assert!(index.contains("ACCEPTED / closed"));
 
-    let mount = read_doc("docs/tests/typeface_lr8_studio_plugin_mount_results.md");
+    let mount =
+        read_doc("docs/archive/typeface_track_2026_06/typeface_lr8_studio_plugin_mount_results.md");
     assert!(mount.contains("ACCEPTED / closed"));
     assert!(mount.contains("#894"));
 }
@@ -338,7 +339,7 @@ fn semantic_free_guard_still_passes() {
 
 #[test]
 fn gpu_residency_audit_documented_for_lr9() {
-    let results = read_doc("docs/tests/typeface_lr9_results.md");
+    let results = read_doc("docs/archive/typeface_track_2026_06/typeface_lr9_results.md");
     assert!(results.contains("GPU residency"));
     assert!(results.contains("CPU surfacing"));
     assert!(results.contains("import/staging"));
@@ -346,7 +347,8 @@ fn gpu_residency_audit_documented_for_lr9() {
 
 #[test]
 fn binding_perf_evidence_documented_for_lr9() {
-    let results = read_doc("docs/tests/typeface_lr9_binding_perf_results.md");
+    let results =
+        read_doc("docs/archive/typeface_track_2026_06/typeface_lr9_binding_perf_results.md");
     assert!(results.contains("0.5037"));
     assert!(results.contains("0.3260"));
     assert!(results.contains("0.0683"));

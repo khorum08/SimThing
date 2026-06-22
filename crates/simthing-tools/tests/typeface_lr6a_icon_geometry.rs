@@ -170,11 +170,11 @@ fn lr4_raster_icon_path_still_passes() {
 
 #[test]
 fn gpu_residency_audit_documented_for_icon_geometry() {
-    let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests/typeface_lr6a_icon_geometry_results.md"),
-    )
-    .expect("geometry results doc");
+    let doc =
+        fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+            "../../docs/archive/typeface_track_2026_06/typeface_lr6a_icon_geometry_results.md",
+        ))
+        .expect("geometry results doc");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));
     assert!(doc.contains("import-time static SVG parsing"));
 }

@@ -411,10 +411,9 @@ fn msdf_deformed_label_preserves_static_tile_identity() {
 
 #[test]
 fn gradient_coordinate_policy_documented_and_tested() {
-    let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests/typeface_lr6c_deform_uv_sampling_results.md"),
-    )
+    let doc = fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        "../../docs/archive/typeface_track_2026_06/typeface_lr6c_deform_uv_sampling_results.md",
+    ))
     .expect("uv sampling results");
     assert!(doc.contains("## Gradient coordinate policy"));
     assert!(doc.contains("source_uv") || doc.contains("source_local_uv"));
@@ -813,7 +812,8 @@ fn semantic_free_guard_still_passes() {
 #[test]
 fn gpu_residency_audit_documented_for_lr6c() {
     let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6c_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6c_results.md"),
     )
     .expect("lr6c results");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));

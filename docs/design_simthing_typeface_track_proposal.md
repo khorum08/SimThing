@@ -1,9 +1,9 @@
 # SimThing Typeface / Glyph-Atlas Service — production track proposal
 
-> **Status: APPROVED TO OPEN (owner-confirmed 2026-06-21).** Owner decisions: **renderer = MSDF target with
-> a glyphon raster milestone**; **home = prototype in `simthing-workshop`, graduate to a new production crate
-> `simthing-tools`**. The `TYPEFACE-LADDER` may open at LR0. Each rung remains PROBATION + perf-gated until DA
-> review.
+> **Status: CLOSED / DA-APPROVED (Opus track closure 2026-06-22; closeout PR #898 `82416b9d27`).** Mechanical
+> ladder + consolidated runtime reference. Rationale/ecosystem background:
+> `docs/design_simthing_typeface_track_proposal.md`. Process reports archived under
+> `docs/archive/typeface_track_2026_06/`. Live ledger: `docs/tests/current_evidence_index.md`.
 
 ## Goal
 
@@ -72,7 +72,22 @@ simthing-tools  (new crate; semantic-free presentation utility)
   its own `simthing-tools` crate (workshop is never a production dependency).
 - **Studio reuse**: Studio entity labels and (optionally) egui font registration consume the same `TypefaceDb`.
 
-## Proposed ladder — `TYPEFACE-LADDER` (LR0–LR8)
+## Proposed ladder — `TYPEFACE-LADDER` (LR0–LR9) — **CLOSED**
+
+The mechanical ladder, rung status, API seams, module map, validation matrix, and DA closure are consolidated in
+**`docs/design_typeface_ladder.md`**. This proposal retains rationale, ecosystem survey, and owner decisions
+only; do not treat the table below as the live ladder.
+
+| Rung | Deliverable (historical summary) |
+|---|---|
+| **LR0–LR3** | Workshop prototype → `simthing-tools` + Bevy instanced draw |
+| **LR4–LR5** | SVG PUA icons + high-volume bench |
+| **LR6–LR6D** | MSDF + style + deform + path/warp |
+| **LR7–LR8** | Icon manifest + Studio label seam |
+| **LR9** | Final perf gate + binding evidence |
+
+<details>
+<summary>Original LR0–LR8 table (superseded — see ladder doc)</summary>
 
 | Rung | Deliverable | Proof |
 |---|---|---|
@@ -86,8 +101,7 @@ simthing-tools  (new crate; semantic-free presentation utility)
 | **LR7** | **Custom character set / icon font**: declarative manifest mapping PUA codepoints → SVG assets; build-time atlas bake; stable codepoint contract. | unit: manifest → atlas; codepoint stability guard |
 | **LR8** | **Studio + game integration seam**: world-space entity-name labels (camera-distance scaled) and a damage-text emitter component driven by the service; egui font registration optional. | Studio smoke: planet labels render; perf within LR5 budget |
 
-LR0–LR3 deliver working scalable Bevy text; LR4–LR5 add icons + the high-volume proof; LR6 is the MSDF
-graduation for true scalability; LR7–LR8 productionize the icon-font + game labels.
+</details>
 
 ## Performance requirements (binding on LR5/LR6)
 - **Damage-text class:** ≥ 5,000 simultaneous animated labels at 60 FPS with **sub-millisecond** CPU build
@@ -123,6 +137,6 @@ graduation for true scalability; LR7–LR8 productionize the icon-font + game la
    codepoint range to reserve.
 
 ## Next action
-**Open `TYPEFACE-LADDER` at LR0** — `simthing-workshop` prototype scaffold: load a TTF/OTF via `skrifa`/`fontdb`
-and a measurement harness; add the track row to `docs/tests/current_evidence_index.md` at PROBATION. The
-`simthing-tools` crate is created at the rung where the prototype graduates (target LR3).
+
+**Track closed** — see `docs/design_typeface_ladder.md` § TYPEFACE TRACK — DA CLOSURE (PR #898). Next
+production track is selected by the project owner.
