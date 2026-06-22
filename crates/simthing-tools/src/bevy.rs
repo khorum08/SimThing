@@ -233,6 +233,8 @@ pub struct GlyphInstanceGpu {
     pub pos_size: [f32; 4],
     pub uv_rect: [f32; 4],
     pub color: [f32; 4],
+    /// x = render mode (0 raster, 1 SDF, 2 MSDF), y = px_range, z/w reserved.
+    pub sdf_params: [f32; 4],
 }
 
 #[derive(Component, Clone, Default, Debug)]
@@ -719,6 +721,7 @@ fn build_instance(
             (tile.y + tile.h) as f32 * inv,
         ],
         color,
+        sdf_params: [0.0; 4],
     }
 }
 

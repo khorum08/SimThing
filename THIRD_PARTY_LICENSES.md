@@ -86,3 +86,33 @@ This file records vendored third-party code included in the SimThing workspace.
 | **Version in workspace** | 0.12.0 (direct `simthing-tools` dep with `std` only; Bevy also uses older transitive versions) |
 | **License** | BSD-3-Clause |
 | **Scope note (TYPEFACE-LR4)** | Provides the pixmap target for `resvg` icon rasterization before atlas insertion. |
+
+## msdf-font (TYPEFACE-LR6 MSDF/SDF generation dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | msdf-font |
+| **Upstream origin** | https://github.com/alexheretic/msdf-font |
+| **Version in workspace** | 0.3.1 (direct `simthing-tools` dep, default features disabled) |
+| **License** | MIT OR Apache-2.0 |
+| **Scope note (TYPEFACE-LR6)** | Import-time TTF glyph MSDF/SDF generation for `DistanceFieldAtlasCore`. CPU oracle only; GPU owns sampling and edge reconstruction. |
+
+## glam (TYPEFACE-LR6 msdf-font transitive dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | glam |
+| **Upstream origin** | https://github.com/bitshifter/glam-rs |
+| **Version in workspace** | 0.30.x (transitive via `msdf-font`) |
+| **License** | MIT OR Apache-2.0 |
+| **Scope note (TYPEFACE-LR6)** | Math types used internally by `msdf-font` outline processing. |
+
+## linesweeper (TYPEFACE-LR6 msdf-font transitive dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | linesweeper |
+| **Upstream origin** | https://github.com/alexheretic/linesweeper |
+| **Version in workspace** | 0.3.0 (transitive via `msdf-font`) |
+| **License** | MIT OR Apache-2.0 |
+| **Scope note (TYPEFACE-LR6)** | Line-sweep geometry helper used internally by `msdf-font` MSDF generation. |

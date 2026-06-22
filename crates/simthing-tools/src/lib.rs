@@ -4,6 +4,7 @@ pub mod bevy;
 pub mod font;
 pub mod harness;
 pub mod icons;
+pub mod msdf;
 mod numeric_damage;
 pub mod shaping;
 mod text_render;
@@ -44,5 +45,12 @@ pub use icons::{
     IconCodepoint, IconError, IconLayerRole, IconRegistration, IconSet, IconVector,
     IconVectorLayer, ICON_PUA_START,
 };
+pub use msdf::{
+    build_distance_field_instance, DistanceFieldAtlasCore, DistanceFieldDiagnostics,
+    DistanceFieldError, DistanceFieldKey, DistanceFieldKind, DistanceFieldTile,
+    DISTANCE_FIELD_RENDER_MSDF, DISTANCE_FIELD_RENDER_RASTER, DISTANCE_FIELD_RENDER_SDF,
+};
 pub use shaping::{format_shaping_report, ShapedGlyph, ShapedRun, ShapingEngine};
-pub use wgpu_smoke::{wgpu_instanced_text_smoke, WgpuSmokeTarget, WgpuTextSmokeResult};
+pub use wgpu_smoke::{
+    wgpu_instanced_text_smoke, wgpu_sdf_instanced_text_smoke, WgpuSmokeTarget, WgpuTextSmokeResult,
+};

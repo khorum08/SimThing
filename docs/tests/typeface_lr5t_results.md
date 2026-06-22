@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — fixed-width numeric damage glyph lane meets 5k/500 binding budget; shaping bypass and aggregate stability proven; **recommend LR5 DA approval** pending Design Authority review.
+PASS — fixed-width numeric damage glyph lane meets 5k/500 binding budget; shaping bypass and aggregate stability proven; **LR5 DA APPROVED** after LR5T acceptance (PR #882).
 
 ## PR / branch / merge
 

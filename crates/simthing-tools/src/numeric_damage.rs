@@ -48,6 +48,7 @@ impl GlyphSlotTemplate {
             pos_size: [slot_x + 0.0, self.pos_y, self.size_w, self.size_h],
             uv_rect: self.uv_rect,
             color,
+            sdf_params: [0.0; 4],
         }
     }
 }
@@ -231,5 +232,6 @@ fn instance_from_tile(
             (tile.y + tile.h) as f32 * inv,
         ],
         color,
+        sdf_params: [0.0; 4],
     }
 }
