@@ -1,6 +1,11 @@
+use std::collections::HashMap;
+
 use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Wrap};
 
-use crate::font::{load_font, TypefaceError};
+use crate::{
+    atlas::quantize_px,
+    font::{load_font, TypefaceError},
+};
 
 const LINE_HEIGHT_RATIO: f32 = 1.2;
 
@@ -28,6 +33,7 @@ pub struct ShapingEngine {
     family_name: String,
     font_system: FontSystem,
     line_height_ratio: f32,
+    shape_cache: HashMap<(String, u16), ShapedRun>,
 }
 
 impl ShapingEngine {
@@ -54,7 +60,25 @@ impl ShapingEngine {
             family_name,
             font_system: FontSystem::new_with_locale_and_db("en-US".to_string(), db),
             line_height_ratio: LINE_HEIGHT_RATIO,
+            shape_cache: HashMap::new(),
         })
+    }
+
+    /// Cached shaping for repeated numeric damage strings (`-` + digits).
+    /// Returns `(run, cache_hit)`.
+    pub fn shape_cached(&mut self, text: &str, px: f32) -> (ShapedRun, bool) {
+        let px_key = quantize_px(px);
+        let key = (text.to_owned(), px_key);
+        if let Some(run) = self.shape_cache.get(&key) {
+            return (run.clone(), true);
+        }
+        let run = self.shape(text, px);
+        self.shape_cache.insert(key, run.clone());
+        (run, false)
+    }
+
+    pub fn shape_cache_len(&self) -> usize {
+        self.shape_cache.len()
     }
 
     pub fn shape(&mut self, text: &str, px: f32) -> ShapedRun {

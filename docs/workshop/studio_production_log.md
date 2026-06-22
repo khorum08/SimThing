@@ -18,6 +18,14 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR5S damage-churn GPU audit (2026-06-21)
+
+- `TYPEFACE-LR5-DAMAGE-CHURN-GPU-AUDIT-0R` remediates LR5R damage-frame CPU surfacing after #880 no-op wins.
+- Changed-label rebuild no longer clones instance Vecs; aggregate patches stable-width segments; numeric damage strings use shape cache; digit glyphs prewarmed at init.
+- `TextDamagePhaseProfile` records per-phase nanoseconds; GPU-residency audit in `docs/tests/typeface_lr5s_results.md`.
+- 5k binding: avg no-op ~0.063 ms/frame preserved; avg damage ~2.26 ms/frame (down from ~3.69 ms) — still DA HOLD above 1 ms target.
+- No LR6 MSDF, style, deformation, export, or Studio integration.
+
 ## Typeface ladder — LR5R Bevy perf path remediation (2026-06-21)
 
 - `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` held at DA review for missing Bevy-path proof; remediated by `TYPEFACE-LR5-PERF-PATH-0R`.

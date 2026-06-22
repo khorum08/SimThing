@@ -14,10 +14,11 @@ pub use atlas::{
 };
 pub use bevy::{
     create_atlas_image_from_cpu, create_render_target_image, profile_bevy_text_bench,
-    spawn_static_and_damage_labels, spawn_static_text_labels, text_label_entity_counts,
-    text_perf_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu, SimthingToolsTextPlugin,
-    TextAggregateVersion, TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel,
-    TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
+    reset_text_damage_phase_profile, spawn_static_and_damage_labels, spawn_static_text_labels,
+    text_damage_phase_profile, text_label_entity_counts, text_perf_diagnostics,
+    BevyTextBenchProfile, GlyphInstanceGpu, LabelAggregateSegment, SimthingToolsTextPlugin,
+    TextAggregateVersion, TextDamagePhaseProfile, TextDrawExtract, TextGlyphInstances,
+    TextInstanceAggregate, TextLabel, TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
 };
 pub use text_render::{
     text_instanced_pipeline_initialized, text_render_camera_bundle, text_render_queue_state,
