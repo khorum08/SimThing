@@ -26,7 +26,7 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — closeout perf invariant (2026-06-21)
 
-- `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` greens `changed_label_rebuild_does_not_clone_old_instance_vec` — icon mixed-label rebuild uses move-assign instead of `extend_from_slice(&instances)`.
+- `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` (#897, merge `974ffcc7fc`) greens `changed_label_rebuild_does_not_clone_old_instance_vec` — icon mixed-label rebuild uses move-assign instead of `extend_from_slice(&instances)`.
 - Full `cargo test -p simthing-tools` green; typeface track remains **OPEN** pending Codex closeout review.
 
 ## Typeface ladder — LR9 binding perf evidence (2026-06-21)

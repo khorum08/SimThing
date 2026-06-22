@@ -7,8 +7,8 @@ PASS — `cargo test -p simthing-tools` green on validation host after fixing ch
 ## PR / branch / merge
 
 - Branch: `typeface-closeout-perf-invariant-0`
-- PR: (pending)
-- Merge SHA: (pending)
+- PR: #897
+- Merge SHA: `974ffcc7fc`
 
 ## Blocking issue
 
