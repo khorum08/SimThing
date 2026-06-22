@@ -9,6 +9,8 @@ PASS — atlas bind group persistence remediated; Tier-1 parametric deformation 
 - Branch: `typeface-lr6c-atlas-residency-deform-0`
 - PR: #888
 - Merge SHA: `2f029bdb97`
+- Post-merge evidence: `b21e8ad34e`
+- Index finalize: `cc9e365fd1`
 
 ## LR6B closeout
 
