@@ -172,6 +172,8 @@ fn raster_glyph_instance(atlas: &mut GlyphAtlasCore, atlas_size: u32) -> GlyphIn
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],
         deform_params: [0.0; 4],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
     }
 }
 
@@ -209,6 +211,8 @@ fn diagnostic_border_atlas(deform_slot: f32) -> (Vec<u8>, u32, GlyphInstanceGpu)
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],
         deform_params: [deform_slot, DEFORM_TESS_LEVEL_DEFORM as f32, 0.0, 0.0],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
     };
     (pixels, atlas_size, instance)
 }
@@ -362,6 +366,8 @@ fn msdf_deformed_label_preserves_static_tile_identity() {
         ],
         style_params: [0.0; 4],
         deform_params: [0.0; 4],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
     };
     let mut deformed = flat;
     deformed.deform_params = [2.0, DEFORM_TESS_LEVEL_DEFORM as f32, 0.0, 0.0];
@@ -709,6 +715,8 @@ fn msdf_deformed_label_still_draws_with_style_slot() {
         ],
         style_params: [1.0, 0.0, 0.0, 0.0],
         deform_params: [1.0, DEFORM_TESS_LEVEL_DEFORM as f32, 0.0, 0.0],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
     };
     let style_table = test_style_table_solid_red();
     let deform_table = test_deform_table_stretch();

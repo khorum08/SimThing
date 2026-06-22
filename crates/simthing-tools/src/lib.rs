@@ -7,9 +7,11 @@ pub mod harness;
 pub mod icons;
 pub mod msdf;
 mod numeric_damage;
+pub mod path;
 pub mod shaping;
 pub mod style;
 mod text_render;
+pub mod warp;
 mod wgpu_smoke;
 
 pub use atlas::{
@@ -21,11 +23,11 @@ pub use bevy::{
     numeric_damage_lane_diagnostics, profile_bevy_fixed_width_numeric_damage_bench,
     profile_bevy_text_bench, reset_text_damage_phase_profile, spawn_static_and_damage_labels,
     spawn_static_and_numeric_damage_labels, spawn_static_text_labels, text_damage_phase_profile,
-    text_deform_diagnostics, text_label_entity_counts, text_perf_diagnostics,
-    text_style_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu, LabelAggregateSegment,
-    SimthingToolsTextPlugin, TextAggregateVersion, TextDamagePhaseProfile, TextDrawExtract,
-    TextGlyphInstances, TextInstanceAggregate, TextLabel, TextLabelRenderMode, TextPerfDiagnostics,
-    TextRebuildDiagnostics, TypefaceAtlas,
+    text_deform_diagnostics, text_label_entity_counts, text_path_warp_diagnostics,
+    text_perf_diagnostics, text_style_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu,
+    LabelAggregateSegment, SimthingToolsTextPlugin, TextAggregateVersion, TextDamagePhaseProfile,
+    TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel, TextLabelRenderMode,
+    TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
 };
 pub use numeric_damage::{
     NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
@@ -33,10 +35,10 @@ pub use numeric_damage::{
 };
 pub use text_render::{
     text_atlas_render_diagnostics, text_deform_render_diagnostics,
-    text_instanced_pipeline_initialized, text_render_camera_bundle, text_render_queue_state,
-    text_style_render_diagnostics, TextAtlasImageHandle, TextInstancedDraw, TextInstancedPipeline,
-    TextRenderPerfDiagnostics, TextRenderQueueState, TextStyleGpuResource,
-    TextStyleRenderDiagnostics,
+    text_instanced_pipeline_initialized, text_path_warp_render_diagnostics,
+    text_render_camera_bundle, text_render_queue_state, text_style_render_diagnostics,
+    TextAtlasImageHandle, TextInstancedDraw, TextInstancedPipeline, TextRenderPerfDiagnostics,
+    TextRenderQueueState, TextStyleGpuResource, TextStyleRenderDiagnostics,
 };
 
 pub use bench::{
@@ -63,6 +65,11 @@ pub use msdf::{
     DistanceFieldTile, DISTANCE_FIELD_RENDER_MSDF, DISTANCE_FIELD_RENDER_RASTER,
     DISTANCE_FIELD_RENDER_SDF,
 };
+pub use path::{
+    path_params_for_slot, test_path_table_arc, test_path_table_quadratic_bezier,
+    ExtractedTextPathTable, TextPathKind, TextPathParams, TextPathRowGpu, TextPathTable,
+    TextPathTableResource, TextPathWarpDiagnostics,
+};
 pub use shaping::{format_shaping_report, ShapedGlyph, ShapedRun, ShapingEngine};
 pub use style::{
     role_slot_for_icon_layer, style_params_for_slot, test_style_table_gradient,
@@ -71,7 +78,12 @@ pub use style::{
     TextStyleTable, TextStyleTableResource, TextStyleTableUniform, GRADIENT_MODE_LINEAR_U,
     GRADIENT_MODE_LINEAR_V, GRADIENT_MODE_NONE, MAX_STYLE_SLOTS,
 };
+pub use warp::{
+    test_warp_table_lattice2x2, warp_params_for_slot, ExtractedTextWarpTable, TextWarpKind,
+    TextWarpParams, TextWarpRowGpu, TextWarpTable, TextWarpTableResource,
+};
 pub use wgpu_smoke::{
-    wgpu_deformed_instanced_text_smoke, wgpu_instanced_text_smoke, wgpu_sdf_instanced_text_smoke,
+    wgpu_deformed_instanced_text_smoke, wgpu_instanced_text_smoke,
+    wgpu_path_warp_instanced_text_smoke, wgpu_sdf_instanced_text_smoke,
     wgpu_styled_instanced_text_smoke, WgpuSmokeTarget, WgpuTextSmokeResult,
 };

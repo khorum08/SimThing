@@ -30,12 +30,17 @@ use crate::{
         NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
         NUMERIC_DAMAGE_DEFAULT_WIDTH,
     },
+    path::{
+        path_params_for_slot, ExtractedTextPathTable, TextPathTableResource,
+        TextPathWarpDiagnostics,
+    },
     shaping::{ShapedGlyph, ShapedRun, ShapingEngine},
     style::{
         style_params_for_slot, ExtractedTextStyleTable, TextStyleDiagnostics, TextStyleSlot,
         TextStyleTableResource,
     },
     text_render::TextInstancedRenderPlugin,
+    warp::{warp_params_for_slot, ExtractedTextWarpTable, TextWarpTableResource},
 };
 
 pub(crate) const TEXT_SHADER_HANDLE: Handle<Shader> =
@@ -85,6 +90,11 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<TextDeformDiagnostics>()
             .init_resource::<TextDeformTableResource>()
             .init_resource::<ExtractedTextDeformTable>()
+            .init_resource::<TextPathWarpDiagnostics>()
+            .init_resource::<TextPathTableResource>()
+            .init_resource::<ExtractedTextPathTable>()
+            .init_resource::<TextWarpTableResource>()
+            .init_resource::<ExtractedTextWarpTable>()
             .init_resource::<TextInstanceAggregate>()
             .init_resource::<TextAggregateLayout>()
             .init_resource::<TextAggregateVersion>()
@@ -93,6 +103,8 @@ impl Plugin for SimthingToolsTextPlugin {
             .add_plugins(ExtractResourcePlugin::<TextAggregateVersion>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextStyleTable>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextDeformTable>::default())
+            .add_plugins(ExtractResourcePlugin::<ExtractedTextPathTable>::default())
+            .add_plugins(ExtractResourcePlugin::<ExtractedTextWarpTable>::default())
             .add_systems(
                 Startup,
                 (fix_volume_image_view_descriptors, init_typeface_state).chain(),
@@ -104,6 +116,8 @@ impl Plugin for SimthingToolsTextPlugin {
                     advance_style_table_time,
                     sync_style_table_rows_if_changed,
                     sync_deform_table_rows_if_changed,
+                    sync_path_table_rows_if_changed,
+                    sync_warp_table_rows_if_changed,
                     update_numeric_damage_labels,
                     rebuild_changed_labels,
                     ApplyDeferred,
@@ -111,6 +125,7 @@ impl Plugin for SimthingToolsTextPlugin {
                     aggregate_label_instances,
                     sync_draw_entity_instances,
                     sync_draw_entity_mesh_for_deformation,
+                    sync_path_warp_instance_diagnostics,
                     sync_atlas_image_to_gpu,
                     force_text_draw_visible,
                 )
@@ -153,6 +168,8 @@ pub struct TextLabel {
     pub render_mode: TextLabelRenderMode,
     pub style_slot: TextStyleSlot,
     pub deform_slot: crate::deform::TextDeformSlot,
+    pub path_slot: crate::path::TextPathSlot,
+    pub warp_slot: crate::warp::TextWarpSlot,
 }
 
 impl TextLabel {
@@ -164,6 +181,8 @@ impl TextLabel {
             render_mode: TextLabelRenderMode::Raster,
             style_slot: 0,
             deform_slot: 0,
+            path_slot: 0,
+            warp_slot: 0,
         }
     }
 
@@ -175,6 +194,8 @@ impl TextLabel {
             render_mode: TextLabelRenderMode::Msdf,
             style_slot: 0,
             deform_slot: 0,
+            path_slot: 0,
+            warp_slot: 0,
         }
     }
 
@@ -185,6 +206,16 @@ impl TextLabel {
 
     pub fn with_deform_slot(mut self, slot: crate::deform::TextDeformSlot) -> Self {
         self.deform_slot = slot;
+        self
+    }
+
+    pub fn with_path_slot(mut self, slot: crate::path::TextPathSlot) -> Self {
+        self.path_slot = slot;
+        self
+    }
+
+    pub fn with_warp_slot(mut self, slot: crate::warp::TextWarpSlot) -> Self {
+        self.warp_slot = slot;
         self
     }
 }
@@ -311,6 +342,8 @@ struct TextLabelCache {
     render_mode: TextLabelRenderMode,
     style_slot: TextStyleSlot,
     deform_slot: crate::deform::TextDeformSlot,
+    path_slot: crate::path::TextPathSlot,
+    warp_slot: crate::warp::TextWarpSlot,
     shaped: ShapedRun,
 }
 
@@ -326,6 +359,10 @@ pub struct GlyphInstanceGpu {
     pub style_params: [f32; 4],
     /// x = deform_slot, y = tess_level, z/w reserved.
     pub deform_params: [f32; 4],
+    /// x = path_slot, y = path_u_offset, z = path_u_scale, w reserved.
+    pub path_params: [f32; 4],
+    /// x = warp_slot, y = strength_mul, z/w reserved.
+    pub warp_params: [f32; 4],
 }
 
 #[derive(Component, Clone, Default, Debug)]
@@ -617,11 +654,19 @@ fn rebuild_changed_labels(
         let instance_start = std::time::Instant::now();
         let raster_start = std::time::Instant::now();
         let is_distance_field = label.render_mode != TextLabelRenderMode::Raster;
+        let run_width = shaped
+            .glyphs
+            .last()
+            .map(|g| g.x + g.advance)
+            .unwrap_or(1.0)
+            .max(1.0);
         if let Some(mut existing) = existing_instances {
             existing.0.clear();
             existing.0.reserve(shaped.glyphs.len());
             for glyph in &shaped.glyphs {
-                if let Some(instance) = build_glyph_instance(glyph, label, &font.0, &mut atlas) {
+                if let Some(instance) =
+                    build_glyph_instance(glyph, label, &font.0, &mut atlas, run_width)
+                {
                     existing.0.push(instance);
                 }
             }
@@ -633,7 +678,9 @@ fn rebuild_changed_labels(
         } else {
             let mut instances = Vec::with_capacity(shaped.glyphs.len());
             for glyph in &shaped.glyphs {
-                if let Some(instance) = build_glyph_instance(glyph, label, &font.0, &mut atlas) {
+                if let Some(instance) =
+                    build_glyph_instance(glyph, label, &font.0, &mut atlas, run_width)
+                {
                     instances.push(instance);
                 }
             }
@@ -659,6 +706,8 @@ fn rebuild_changed_labels(
             cache.render_mode = label.render_mode;
             cache.style_slot = label.style_slot;
             cache.deform_slot = label.deform_slot;
+            cache.path_slot = label.path_slot;
+            cache.warp_slot = label.warp_slot;
             cache.shaped = shaped;
         } else {
             commands.entity(entity).insert(TextLabelCache {
@@ -668,6 +717,8 @@ fn rebuild_changed_labels(
                 render_mode: label.render_mode,
                 style_slot: label.style_slot,
                 deform_slot: label.deform_slot,
+                path_slot: label.path_slot,
+                warp_slot: label.warp_slot,
                 shaped,
             });
         }
@@ -679,7 +730,13 @@ fn build_glyph_instance(
     label: &TextLabel,
     font: &ProbeFont,
     atlas: &mut TypefaceAtlas,
+    run_width: f32,
 ) -> Option<GlyphInstanceGpu> {
+    let path_u = if run_width > 0.0 {
+        glyph.x / run_width
+    } else {
+        0.0
+    };
     match label.render_mode {
         TextLabelRenderMode::Raster => {
             let tile = atlas.cpu.get_or_rasterize(font, glyph.glyph_id, label.px)?;
@@ -691,6 +748,9 @@ fn build_glyph_instance(
                 None,
                 label.style_slot,
                 label.deform_slot,
+                label.path_slot,
+                label.warp_slot,
+                path_u,
             ))
         }
         TextLabelRenderMode::Sdf | TextLabelRenderMode::Msdf => {
@@ -713,6 +773,9 @@ fn build_glyph_instance(
                 Some(&df_tile),
                 label.style_slot,
                 label.deform_slot,
+                label.path_slot,
+                label.warp_slot,
+                path_u,
             ))
         }
     }
@@ -893,6 +956,9 @@ fn build_instance(
     distance_field: Option<&DistanceFieldTile>,
     style_slot: TextStyleSlot,
     deform_slot: crate::deform::TextDeformSlot,
+    path_slot: crate::path::TextPathSlot,
+    warp_slot: crate::warp::TextWarpSlot,
+    path_u: f32,
 ) -> GlyphInstanceGpu {
     let inv = 1.0 / atlas_size as f32;
     let sdf_params = distance_field
@@ -916,6 +982,8 @@ fn build_instance(
         sdf_params,
         style_params: style_params_for_slot(style_slot, 0),
         deform_params: deform_params_for_slot(deform_slot, tess),
+        path_params: path_params_for_slot(path_slot, path_u, 1.0),
+        warp_params: warp_params_for_slot(warp_slot, 1.0),
     }
 }
 
@@ -968,6 +1036,70 @@ pub fn text_deform_diagnostics(app: &App) -> TextDeformDiagnostics {
         .get_resource::<TextDeformDiagnostics>()
         .copied()
         .unwrap_or_default()
+}
+
+fn sync_path_table_rows_if_changed(
+    mut path_table: ResMut<TextPathTableResource>,
+    mut extracted: ResMut<ExtractedTextPathTable>,
+    mut diagnostics: ResMut<TextPathWarpDiagnostics>,
+) {
+    if !path_table.rows_dirty {
+        diagnostics.path_table_cache_hit_count += 1;
+        return;
+    }
+    extracted.rows = path_table.table.to_rows_uniform();
+    path_table.rows_generation += 1;
+    extracted.rows_generation = path_table.rows_generation;
+    path_table.mark_rows_clean();
+    diagnostics.path_table_upload_count += 1;
+}
+
+fn sync_warp_table_rows_if_changed(
+    mut warp_table: ResMut<TextWarpTableResource>,
+    mut extracted: ResMut<ExtractedTextWarpTable>,
+    mut diagnostics: ResMut<TextPathWarpDiagnostics>,
+) {
+    if !warp_table.rows_dirty {
+        diagnostics.warp_table_cache_hit_count += 1;
+        return;
+    }
+    extracted.rows = warp_table.table.to_rows_uniform();
+    warp_table.rows_generation += 1;
+    extracted.rows_generation = warp_table.rows_generation;
+    warp_table.mark_rows_clean();
+    diagnostics.warp_table_upload_count += 1;
+}
+
+pub fn text_path_warp_diagnostics(app: &App) -> TextPathWarpDiagnostics {
+    app.world()
+        .get_resource::<TextPathWarpDiagnostics>()
+        .copied()
+        .unwrap_or_default()
+}
+
+fn sync_path_warp_instance_diagnostics(
+    aggregate: Res<TextInstanceAggregate>,
+    mut diagnostics: ResMut<TextPathWarpDiagnostics>,
+    mut last_counts: Local<(u64, u64)>,
+) {
+    let path_count = aggregate
+        .0
+        .iter()
+        .filter(|i| i.path_params[0] > 0.0)
+        .count() as u64;
+    let warp_count = aggregate
+        .0
+        .iter()
+        .filter(|i| i.warp_params[0] > 0.0)
+        .count() as u64;
+    diagnostics.path_instance_count = path_count;
+    diagnostics.warp_instance_count = warp_count;
+    if *last_counts == (path_count, warp_count) {
+        diagnostics.path_warp_noop_reuse_count += 1;
+    } else {
+        diagnostics.path_warp_rebuild_count += 1;
+        *last_counts = (path_count, warp_count);
+    }
 }
 
 fn sync_draw_entity_mesh_for_deformation(

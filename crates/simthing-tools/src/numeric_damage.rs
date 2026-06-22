@@ -51,6 +51,8 @@ impl GlyphSlotTemplate {
             sdf_params: [0.0; 4],
             style_params: [0.0; 4],
             deform_params: [0.0; 4],
+            path_params: [0.0; 4],
+            warp_params: [0.0; 4],
         }
     }
 }
@@ -237,5 +239,7 @@ fn instance_from_tile(
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],
         deform_params: [0.0; 4],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
     }
 }

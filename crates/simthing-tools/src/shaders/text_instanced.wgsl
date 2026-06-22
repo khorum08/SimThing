@@ -8,6 +8,8 @@ struct GlyphInstance {
     @location(8) sdf_params: vec4<f32>,
     @location(9) style_params: vec4<f32>,
     @location(10) deform_params: vec4<f32>,
+    @location(11) path_params: vec4<f32>,
+    @location(12) warp_params: vec4<f32>,
 }
 
 struct Vertex {
@@ -43,11 +45,29 @@ struct DeformRow {
     params2: vec4<f32>,
 }
 
+struct PathRow {
+    params0: vec4<f32>,
+    start: vec4<f32>,
+    control0: vec4<f32>,
+    control1: vec4<f32>,
+    end: vec4<f32>,
+}
+
+struct WarpRow {
+    params0: vec4<f32>,
+    points0: vec4<f32>,
+    points1: vec4<f32>,
+    points2: vec4<f32>,
+    points3: vec4<f32>,
+}
+
 @group(2) @binding(0) var atlas_tex: texture_2d<f32>;
 @group(2) @binding(1) var atlas_smp: sampler;
 @group(3) @binding(0) var<uniform> style_globals: vec4<f32>;
 @group(3) @binding(1) var<uniform> style_rows: array<StyleRow, 32>;
 @group(4) @binding(0) var<uniform> deform_rows: array<DeformRow, 32>;
+@group(5) @binding(0) var<uniform> path_rows: array<PathRow, 16>;
+@group(6) @binding(0) var<uniform> warp_rows: array<WarpRow, 16>;
 
 fn deform_row_at(slot: u32) -> DeformRow {
     if slot >= 32u {
@@ -93,17 +113,90 @@ fn apply_parametric_deform(local_uv: vec2<f32>, slot: u32) -> vec2<f32> {
     return uv;
 }
 
+fn path_row_at(slot: u32) -> PathRow {
+    if slot >= 16u {
+        return path_rows[0];
+    }
+    return path_rows[slot];
+}
+
+fn warp_row_at(slot: u32) -> WarpRow {
+    if slot >= 16u {
+        return warp_rows[0];
+    }
+    return warp_rows[slot];
+}
+
+fn eval_quadratic_bezier(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>, t: f32) -> vec2<f32> {
+    let ab = mix(a, b, t);
+    let bc = mix(b, c, t);
+    return mix(ab, bc, t);
+}
+
+fn apply_text_path(local_xy: vec2<f32>, path_slot: u32, path_u: f32) -> vec2<f32> {
+    let row = path_row_at(path_slot);
+    let kind = row.params0.x;
+    if kind < 0.5 {
+        return local_xy;
+    }
+    let t = clamp(path_u, 0.0, 1.0);
+    let baseline = mix(row.start.xy, row.end.xy, t);
+    var on_path = baseline;
+    if kind < 1.5 {
+        let radius = row.params0.y;
+        let center = row.control0.xy;
+        let angle = t * 3.14159265;
+        on_path = center + vec2(cos(angle), sin(angle)) * radius;
+    } else if kind < 2.5 {
+        on_path = eval_quadratic_bezier(row.start.xy, row.control0.xy, row.end.xy, t);
+    } else if kind < 3.5 {
+        let ab = mix(row.start.xy, row.control0.xy, t);
+        let bc = mix(row.control0.xy, row.control1.xy, t);
+        let cd = mix(row.control1.xy, row.end.xy, t);
+        let abc = mix(ab, bc, t);
+        let bcd = mix(bc, cd, t);
+        on_path = mix(abc, bcd, t);
+    }
+    let local_offset = local_xy - mix(row.start.xy, row.end.xy, t);
+    return on_path + local_offset;
+}
+
+fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> vec2<f32> {
+    let row = warp_row_at(warp_slot);
+    let kind = row.params0.x;
+    if kind < 0.5 {
+        return pos;
+    }
+    let strength = row.params0.y;
+    if kind < 2.5 {
+        let top = mix(row.points0.xy, row.points1.xy, local_norm.x);
+        let bot = mix(row.points2.xy, row.points3.xy, local_norm.x);
+        let offset = mix(top, bot, local_norm.y) * strength;
+        return pos + offset;
+    }
+    if kind < 4.5 {
+        let c = vec2(0.5, 0.5);
+        let d = local_norm - c;
+        let r = length(d);
+        let bend = sin(r * 3.14159265 + row.params0.z) * strength;
+        return pos + normalize(d + vec2(0.001, 0.0)) * bend;
+    }
+    return pos;
+}
+
 @vertex
 fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     var out: VertexOutput;
     let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
+    let path_slot = u32(clamp(instance.path_params.x, 0.0, 15.0));
+    let warp_slot = u32(clamp(instance.warp_params.x, 0.0, 15.0));
     let source_uv = vertex.uv;
     let deformed_uv = apply_parametric_deform(source_uv, deform_slot);
-    let local = vec4(
-        deformed_uv * instance.pos_size.zw + instance.pos_size.xy,
-        0.0,
-        1.0,
-    );
+    let path_u = instance.path_params.y + source_uv.x * instance.path_params.z;
+    var local_xy = deformed_uv * instance.pos_size.zw + instance.pos_size.xy;
+    local_xy = apply_text_path(local_xy, path_slot, path_u);
+    local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
+    let local = vec4(local_xy, 0.0, 1.0);
     out.clip_position = mesh2d_position_local_to_clip(identity_mat4(), local);
     out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv);
     out.color = instance.color;

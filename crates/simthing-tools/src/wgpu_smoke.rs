@@ -3,7 +3,16 @@ use wgpu::{
     MapMode, Origin3d, TextureAspect,
 };
 
-use crate::{bevy::GlyphInstanceGpu, deform::TextDeformTable, style::TextStyleTable};
+use crate::{
+    bevy::GlyphInstanceGpu, deform::TextDeformTable, path::TextPathTable, style::TextStyleTable,
+    warp::TextWarpTable,
+};
+
+fn smoke_device_limits() -> wgpu::Limits {
+    let mut limits = wgpu::Limits::default();
+    limits.max_bind_groups = 8;
+    limits
+}
 
 /// Offscreen target dimensions for LR3R wgpu smoke draws.
 #[derive(Debug, Clone, Copy)]
@@ -622,6 +631,8 @@ struct GlyphInstance {
     @location(4) sdf_params: vec4<f32>,
     @location(5) style_params: vec4<f32>,
     @location(6) deform_params: vec4<f32>,
+    @location(7) path_params: vec4<f32>,
+    @location(8) warp_params: vec4<f32>,
 }
 
 struct VertexInput {
@@ -653,11 +664,29 @@ struct DeformRow {
     params2: vec4<f32>,
 }
 
+struct PathRow {
+    params0: vec4<f32>,
+    start: vec4<f32>,
+    control0: vec4<f32>,
+    control1: vec4<f32>,
+    end: vec4<f32>,
+}
+
+struct WarpRow {
+    params0: vec4<f32>,
+    points0: vec4<f32>,
+    points1: vec4<f32>,
+    points2: vec4<f32>,
+    points3: vec4<f32>,
+}
+
 @group(1) @binding(0) var atlas_tex: texture_2d<f32>;
 @group(1) @binding(1) var atlas_smp: sampler;
 @group(2) @binding(0) var<uniform> style_globals: vec4<f32>;
 @group(2) @binding(1) var<uniform> style_rows: array<StyleRow, 32>;
 @group(3) @binding(0) var<uniform> deform_rows: array<DeformRow, 32>;
+@group(4) @binding(0) var<uniform> path_rows: array<PathRow, 16>;
+@group(5) @binding(0) var<uniform> warp_rows: array<WarpRow, 16>;
 
 fn deform_row_at(slot: u32) -> DeformRow {
     if slot >= 32u { return deform_rows[0]; }
@@ -698,15 +727,83 @@ fn apply_parametric_deform(local_uv: vec2<f32>, slot: u32) -> vec2<f32> {
     return uv;
 }
 
+fn path_row_at(slot: u32) -> PathRow {
+    if slot >= 16u { return path_rows[0]; }
+    return path_rows[slot];
+}
+
+fn warp_row_at(slot: u32) -> WarpRow {
+    if slot >= 16u { return warp_rows[0]; }
+    return warp_rows[slot];
+}
+
+fn eval_quadratic_bezier(a: vec2<f32>, b: vec2<f32>, c: vec2<f32>, t: f32) -> vec2<f32> {
+    let ab = mix(a, b, t);
+    let bc = mix(b, c, t);
+    return mix(ab, bc, t);
+}
+
+fn apply_text_path(local_xy: vec2<f32>, path_slot: u32, path_u: f32) -> vec2<f32> {
+    let row = path_row_at(path_slot);
+    let kind = row.params0.x;
+    if kind < 0.5 { return local_xy; }
+    let t = clamp(path_u, 0.0, 1.0);
+    let baseline = mix(row.start.xy, row.end.xy, t);
+    var on_path = baseline;
+    if kind < 1.5 {
+        let radius = row.params0.y;
+        let center = row.control0.xy;
+        let angle = t * 3.14159265;
+        on_path = center + vec2(cos(angle), sin(angle)) * radius;
+    } else if kind < 2.5 {
+        on_path = eval_quadratic_bezier(row.start.xy, row.control0.xy, row.end.xy, t);
+    } else if kind < 3.5 {
+        let ab = mix(row.start.xy, row.control0.xy, t);
+        let bc = mix(row.control0.xy, row.control1.xy, t);
+        let cd = mix(row.control1.xy, row.end.xy, t);
+        let abc = mix(ab, bc, t);
+        let bcd = mix(bc, cd, t);
+        on_path = mix(abc, bcd, t);
+    }
+    let local_offset = local_xy - mix(row.start.xy, row.end.xy, t);
+    return on_path + local_offset;
+}
+
+fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> vec2<f32> {
+    let row = warp_row_at(warp_slot);
+    let kind = row.params0.x;
+    if kind < 0.5 { return pos; }
+    let strength = row.params0.y;
+    if kind < 2.5 {
+        let top = mix(row.points0.xy, row.points1.xy, local_norm.x);
+        let bot = mix(row.points2.xy, row.points3.xy, local_norm.x);
+        let offset = mix(top, bot, local_norm.y) * strength;
+        return pos + offset;
+    }
+    if kind < 4.5 {
+        let c = vec2(0.5, 0.5);
+        let d = local_norm - c;
+        let r = length(d);
+        let bend = sin(r * 3.14159265 + row.params0.z) * strength;
+        return pos + normalize(d + vec2(0.001, 0.0)) * bend;
+    }
+    return pos;
+}
+
 @vertex
 fn vs_main(mesh: VertexInput, instance: GlyphInstance) -> VertexOutput {
     var out: VertexOutput;
     let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
+    let path_slot = u32(clamp(instance.path_params.x, 0.0, 15.0));
+    let warp_slot = u32(clamp(instance.warp_params.x, 0.0, 15.0));
     let source_uv = mesh.corner;
     let deformed_uv = apply_parametric_deform(source_uv, deform_slot);
-    let pos = instance.pos_size.xy + deformed_uv * instance.pos_size.zw;
-    let ndc_x = (pos.x / frame_size.size.x) * 2.0 - 1.0;
-    let ndc_y = 1.0 - (pos.y / frame_size.size.y) * 2.0;
+    let path_u = instance.path_params.y + source_uv.x * instance.path_params.z;
+    var local_xy = deformed_uv * instance.pos_size.zw + instance.pos_size.xy;
+    local_xy = apply_text_path(local_xy, path_slot, path_u);
+    local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
+    let ndc_x = (local_xy.x / frame_size.size.x) * 2.0 - 1.0;
+    let ndc_y = 1.0 - (local_xy.y / frame_size.size.y) * 2.0;
     out.clip_position = vec4(ndc_x, ndc_y, 0.0, 1.0);
     out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv);
     out.color = instance.color;
@@ -742,7 +839,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 }
 "#;
 
-/// Raw-wgpu smoke with style + deformation tables (LR6C).
+/// Raw-wgpu smoke with style + deformation tables (LR6C); path/warp default to slot 0 no-op.
 pub fn wgpu_deformed_instanced_text_smoke(
     target: WgpuSmokeTarget,
     instances: &[GlyphInstanceGpu],
@@ -750,6 +847,31 @@ pub fn wgpu_deformed_instanced_text_smoke(
     atlas_size: u32,
     style_table: &TextStyleTable,
     deform_table: &TextDeformTable,
+    time: f32,
+) -> Result<WgpuTextSmokeResult, String> {
+    wgpu_path_warp_instanced_text_smoke(
+        target,
+        instances,
+        atlas_pixels,
+        atlas_size,
+        style_table,
+        deform_table,
+        &TextPathTable::with_defaults(),
+        &TextWarpTable::with_defaults(),
+        time,
+    )
+}
+
+/// Raw-wgpu smoke with style + deformation + path/warp tables (LR6D).
+pub fn wgpu_path_warp_instanced_text_smoke(
+    target: WgpuSmokeTarget,
+    instances: &[GlyphInstanceGpu],
+    atlas_pixels: &[u8],
+    atlas_size: u32,
+    style_table: &TextStyleTable,
+    deform_table: &TextDeformTable,
+    path_table: &TextPathTable,
+    warp_table: &TextWarpTable,
     time: f32,
 ) -> Result<WgpuTextSmokeResult, String> {
     if instances.is_empty() {
@@ -767,9 +889,9 @@ pub fn wgpu_deformed_instanced_text_smoke(
     .ok_or("no wgpu adapter")?;
     let (device, queue) = pollster::block_on(adapter.request_device(
         &wgpu::DeviceDescriptor {
-            label: Some("lr6c_deform_smoke_device"),
+            label: Some("lr6d_path_warp_smoke_device"),
             required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::default(),
+            required_limits: smoke_device_limits(),
             memory_hints: Default::default(),
         },
         None,
@@ -951,6 +1073,64 @@ pub fn wgpu_deformed_instanced_text_smoke(
         }],
     });
 
+    let path_rows = path_table.to_rows_uniform();
+    let path_rows_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6d_path_rows"),
+        contents: bytemuck::bytes_of(&path_rows),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let path_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr6d_path_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+    let path_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr6d_path_bg"),
+        layout: &path_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: path_rows_buffer.as_entire_binding(),
+        }],
+    });
+
+    let warp_rows = warp_table.to_rows_uniform();
+    let warp_rows_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6d_warp_rows"),
+        contents: bytemuck::bytes_of(&warp_rows),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let warp_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr6d_warp_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+    let warp_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr6d_warp_bg"),
+        layout: &warp_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: warp_rows_buffer.as_entire_binding(),
+        }],
+    });
+
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("lr6c_pipeline_layout"),
         bind_group_layouts: &[
@@ -958,6 +1138,8 @@ pub fn wgpu_deformed_instanced_text_smoke(
             &atlas_bind_group_layout,
             &style_bind_group_layout,
             &deform_bind_group_layout,
+            &path_bind_group_layout,
+            &warp_bind_group_layout,
         ],
         push_constant_ranges: &[],
     });
@@ -1028,6 +1210,16 @@ pub fn wgpu_deformed_instanced_text_smoke(
                             offset: 80,
                             shader_location: 6,
                         },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 96,
+                            shader_location: 7,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 112,
+                            shader_location: 8,
+                        },
                     ],
                 },
             ],
@@ -1078,6 +1270,8 @@ pub fn wgpu_deformed_instanced_text_smoke(
         pass.set_bind_group(1, &atlas_bind_group, &[]);
         pass.set_bind_group(2, &style_bind_group, &[]);
         pass.set_bind_group(3, &deform_bind_group, &[]);
+        pass.set_bind_group(4, &path_bind_group, &[]);
+        pass.set_bind_group(5, &warp_bind_group, &[]);
         pass.set_vertex_buffer(0, corner_buffer.slice(..));
         pass.set_vertex_buffer(1, instance_buffer.slice(..));
         pass.draw(0..6, 0..instances.len() as u32);

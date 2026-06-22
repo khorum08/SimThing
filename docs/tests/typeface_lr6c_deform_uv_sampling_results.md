@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — vertex shader splits source glyph-local UV from deformed position coordinates; atlas/MSDF sampling uses stable `source_uv`; gradients use `source_local_uv`. **PROBATION / DA remediation** — recommend DA approval of LR6C after review; not self-approved.
+PASS — vertex shader splits source glyph-local UV from deformed position coordinates; atlas/MSDF sampling uses stable `source_uv`; gradients use `source_local_uv`. **ACCEPTED / closed** — LR6C promoted to **DA APPROVED** after this remediation (#889).
 
 ## PR / branch / merge
 
