@@ -207,6 +207,7 @@ impl Plugin for TextInstancedRenderPlugin {
         }
 
         render_app
+            .init_resource::<TextAggregateVersion>()
             .init_resource::<TextRenderQueueState>()
             .init_resource::<TextRenderPerfDiagnostics>()
             .init_resource::<TextStyleRenderDiagnostics>()
@@ -662,6 +663,9 @@ fn prepare_text_atlas_bind_group(
     let Some(gpu_image) = gpu_images.get(&atlas_handle.0) else {
         return;
     };
+    if gpu_image.size.width < 128 {
+        return;
+    }
     let atlas_id = atlas_handle.0.id();
     if let Some(existing) = existing {
         if existing.atlas_id == atlas_id {

@@ -83,12 +83,16 @@ pub fn run_studio() {
                     ..default()
                 }),
         )
+        // No TonemappingLutFixPlugin: the LUT mismatch is removed at the source by `Tonemapping::None`
+        // on the camera (see app/camera.rs). The old GpuImage/FallbackImage-mutating "fix" broke egui
+        // compositing (black screen) and is no longer mounted.
         .add_plugins(EguiPlugin::default())
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin);
     crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
-    app.add_systems(Startup, (window::apply_initial_window_mode, setup_scene))
+    app.add_systems(Startup, setup_scene)
+        .add_systems(PostStartup, window::apply_initial_window_mode)
         .add_systems(Startup, init_star_visual_assets)
         .add_systems(
             Startup,
@@ -101,6 +105,7 @@ pub fn run_studio() {
         .add_systems(
             Update,
             (
+                window::warn_missing_egui_viewport,
                 performance_telemetry::begin_main_update_timing,
                 (
                     ui::panel_opacity_system,

@@ -12,8 +12,8 @@ use bevy::{
 use simthing_tools::{
     create_render_target_image, text_instanced_pipeline_initialized, text_render_camera_bundle,
     text_render_queue_state, wgpu_instanced_text_smoke, GlyphInstanceGpu, ShapingEngine,
-    SimthingToolsTextPlugin, TextGlyphInstances, TextLabel, TextRebuildDiagnostics, TypefaceAtlas,
-    WgpuSmokeTarget,
+    SimthingToolsTextPlugin, TextGlyphInstances, TextLabel, TextRebuildDiagnostics,
+    TonemappingLutFixPlugin, TypefaceAtlas, WgpuSmokeTarget,
 };
 const FIXTURE: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
 const SMOKE_TEXT: &str = "SimThing";
@@ -285,6 +285,50 @@ fn atlas_cache_still_reused_after_render_queue() {
         .rasterize_count;
     assert_eq!(raster_after_first, raster_after_noop);
     assert!(raster_after_noop > 0);
+}
+
+fn studio_like_render_app(pipelined: bool) -> App {
+    let mut plugins = DefaultPlugins
+        .build()
+        .disable::<WinitPlugin>()
+        .set(WindowPlugin {
+            primary_window: None,
+            exit_condition: ExitCondition::DontExit,
+            close_when_requested: false,
+        });
+    if !pipelined {
+        plugins = plugins.disable::<PipelinedRenderingPlugin>();
+    }
+    let mut app = App::new();
+    app.add_plugins(plugins)
+        .add_plugins(TonemappingLutFixPlugin)
+        .add_plugins(SimthingToolsTextPlugin::new(fixture_bytes()));
+    ensure_render_app_ready(&mut app);
+    app
+}
+
+#[test]
+fn camera3d_sprite_view_lut_survives_first_frames() {
+    if !bevy_gpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for Camera3d LUT bind group test");
+        return;
+    }
+
+    let mut app = studio_like_render_app(false);
+    app.world_mut().spawn(Camera3d::default());
+    run_updates(&mut app, 4);
+}
+
+#[test]
+fn camera3d_sprite_view_lut_survives_pipelined_first_frames() {
+    if !bevy_gpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: no real GPU adapter for pipelined LUT bind group test");
+        return;
+    }
+
+    let mut app = studio_like_render_app(true);
+    app.world_mut().spawn(Camera3d::default());
+    run_updates(&mut app, 4);
 }
 
 #[test]

@@ -1,20 +1,26 @@
 use bevy::{
-    asset::{load_internal_asset, Assets, Handle},
+    asset::{load_internal_asset, AssetEvent, Assets, Handle},
+    image::ImageSampler,
     math::primitives::Rectangle,
     prelude::*,
     render::{
         extract_component::ExtractComponentPlugin,
         extract_resource::ExtractResource,
         extract_resource::ExtractResourcePlugin,
-        render_asset::RenderAssetUsages,
+        render_asset::{ExtractAssetsSet, ExtractedAssets, RenderAssetUsages, RenderAssets, prepare_assets},
         render_resource::{
             Extent3d, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
             TextureViewDimension,
         },
         sync_world::SyncToRenderWorld,
+        texture::GpuImage,
         view::NoFrustumCulling,
+        Render, RenderApp, RenderSet,
+        ExtractSchedule,
     },
 };
+use bevy::asset::AssetId;
+use bevy::render::texture::FallbackImage;
 
 use crate::{
     atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
@@ -45,6 +51,66 @@ use crate::{
 
 pub(crate) const TEXT_SHADER_HANDLE: Handle<Shader> =
     Handle::weak_from_u128(0x5459_5045_4c52_3300_0000_0000_0000_0001);
+
+/// Corrects Bevy tonemapping LUT KTX2 images for D3 view bind groups.
+///
+/// Mount immediately after `DefaultPlugins` when using full Bevy rendering (e.g. Studio).
+pub struct TonemappingLutFixPlugin;
+
+#[derive(Resource, Clone, ExtractResource, Default)]
+struct TonemappingLutGpuFixTargets {
+    image_ids: Vec<AssetId<Image>>,
+}
+
+#[derive(Resource, Default)]
+struct TonemappingLutFallbackD3Prepared(bool);
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+struct FixTonemappingLutGpuViewsSet;
+
+impl Plugin for TonemappingLutFixPlugin {
+    fn build(&self, app: &mut App) {
+        let mut targets = TonemappingLutGpuFixTargets::default();
+        if let Some(images) = app.world_mut().get_resource_mut::<Assets<Image>>() {
+            targets.image_ids = collect_tonemapping_lut_image_ids(&images);
+        }
+        app.insert_resource(targets)
+            .add_plugins(ExtractResourcePlugin::<TonemappingLutGpuFixTargets>::default())
+            .add_systems(Startup, refresh_tonemapping_lut_gpu_fix_targets)
+            .add_systems(PostStartup, refresh_tonemapping_lut_gpu_fix_targets)
+            .add_systems(Startup, fix_volume_image_view_descriptors)
+            .add_systems(PostStartup, fix_volume_image_view_descriptors);
+        if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
+            register_tonemapping_lut_render_fixes_on_render_app(render_app);
+        }
+    }
+}
+
+fn register_tonemapping_lut_render_fixes_on_render_app(render_app: &mut bevy::app::SubApp) {
+    render_app
+        .init_resource::<TonemappingLutGpuFixTargets>()
+        .init_resource::<TonemappingLutFallbackD3Prepared>()
+        .configure_sets(
+            Render,
+            FixTonemappingLutGpuViewsSet
+                .after(RenderSet::PrepareAssets)
+                .before(RenderSet::PrepareBindGroups),
+        )
+        .add_systems(
+            ExtractSchedule,
+            fix_extracted_tonemapping_lut_images.in_set(ExtractAssetsSet),
+        )
+        .add_systems(
+            Render,
+            fix_extracted_tonemapping_lut_images
+                .in_set(RenderSet::PrepareAssets)
+                .before(prepare_assets::<GpuImage>),
+        )
+        .add_systems(
+            Render,
+            fix_tonemapping_lut_gpu_views.in_set(FixTonemappingLutGpuViewsSet),
+        );
+}
 
 /// Bevy plugin for instanced atlas text labels.
 #[derive(Clone)]
@@ -79,9 +145,7 @@ impl Plugin for SimthingToolsTextPlugin {
             Shader::from_wgsl
         );
 
-        app.init_asset::<Mesh>()
-            .init_asset::<Image>()
-            .init_resource::<TextPerfDiagnostics>()
+        app.init_resource::<TextPerfDiagnostics>()
             .init_resource::<NumericDamageDiagnostics>()
             .init_resource::<TextDamagePhaseProfile>()
             .init_resource::<TextStyleDiagnostics>()
@@ -136,10 +200,6 @@ impl Plugin for SimthingToolsTextPlugin {
             )
             .add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default())
             .add_plugins(TextInstancedRenderPlugin);
-    }
-
-    fn finish(&self, app: &mut App) {
-        let _ = app;
     }
 }
 
@@ -435,28 +495,130 @@ pub fn reset_text_damage_phase_profile(app: &mut App) {
     }
 }
 
-/// Ensure volume/LUT images expose D3 texture views for mesh2d tonemapping bind groups.
-fn fix_volume_image_view_descriptors(mut images: ResMut<Assets<Image>>) {
-    for (_, image) in images.iter_mut() {
-        if image.texture_descriptor.dimension == TextureDimension::D2
-            && image.texture_descriptor.size.depth_or_array_layers > 1
-        {
-            image.texture_descriptor.dimension = TextureDimension::D3;
+/// KTX2 tonemapping LUTs must be sampled as 3D textures for Bevy view bind groups.
+fn is_tonemapping_lut_image(image: &Image) -> bool {
+    if matches!(
+        &image.sampler,
+        ImageSampler::Descriptor(desc)
+            if desc.label.as_deref() == Some("Tonemapping LUT sampler")
+    ) {
+        return true;
+    }
+    let size = image.texture_descriptor.size;
+    let depth = size.depth_or_array_layers;
+    if depth <= 1 {
+        return false;
+    }
+    let side = size.width;
+    // AgX / TonyMcMapface / Blender filmic LUTs ship as cubic volumes (typically 32^3).
+    size.width == size.height && side == depth && (16..=64).contains(&side)
+}
+
+fn apply_tonemapping_lut_d3_view_fix(image: &mut Image) -> bool {
+    if !is_tonemapping_lut_image(image) {
+        return false;
+    }
+    // KTX2 LUTs can decode as D2 arrays on some Vulkan stacks; Bevy view bind groups
+    // require a D3 sampler. CPU-side placeholder replacement breaks unrelated Image assets
+    // and egui compositing — GPU fallback views are applied in fix_tonemapping_lut_gpu_views.
+    let mut changed = false;
+    if image.texture_descriptor.dimension == TextureDimension::D2
+        && image.texture_descriptor.size.depth_or_array_layers > 1
+    {
+        image.texture_descriptor.dimension = TextureDimension::D3;
+        changed = true;
+    }
+    if image.texture_descriptor.dimension != TextureDimension::D3 {
+        return changed;
+    }
+    let needs_fix = image
+        .texture_view_descriptor
+        .as_ref()
+        .and_then(|desc| desc.dimension)
+        .map(|dimension| dimension != TextureViewDimension::D3)
+        .unwrap_or(true);
+    if needs_fix {
+        image.texture_view_descriptor = Some(TextureViewDescriptor {
+            dimension: Some(TextureViewDimension::D3),
+            ..default()
+        });
+        changed = true;
+    }
+    changed
+}
+
+fn fix_volume_image_view_descriptors(
+    mut images: ResMut<Assets<Image>>,
+    mut asset_events: EventWriter<AssetEvent<Image>>,
+) {
+    let mut modified = Vec::new();
+    for (id, image) in images.iter_mut() {
+        if apply_tonemapping_lut_d3_view_fix(image) {
+            modified.push(id);
         }
-        if image.texture_descriptor.dimension != TextureDimension::D3 {
-            continue;
-        }
-        let needs_fix = image
-            .texture_view_descriptor
-            .as_ref()
-            .and_then(|desc| desc.dimension)
-            != Some(TextureViewDimension::D3);
-        if needs_fix {
-            image.texture_view_descriptor = Some(TextureViewDescriptor {
+    }
+    for id in modified {
+        asset_events.write(AssetEvent::Modified { id });
+    }
+}
+
+fn collect_tonemapping_lut_image_ids(images: &Assets<Image>) -> Vec<AssetId<Image>> {
+    images
+        .iter()
+        .filter_map(|(id, image)| is_tonemapping_lut_image(image).then_some(id))
+        .collect()
+}
+
+fn refresh_tonemapping_lut_gpu_fix_targets(
+    images: Res<Assets<Image>>,
+    atlas_handle: Option<Res<crate::text_render::TextAtlasImageHandle>>,
+    mut targets: ResMut<TonemappingLutGpuFixTargets>,
+) {
+    let atlas_id = atlas_handle.map(|handle| handle.0.id());
+    targets.image_ids = collect_tonemapping_lut_image_ids(&images)
+        .into_iter()
+        .filter(|id| Some(*id) != atlas_id)
+        .collect();
+}
+
+fn fix_tonemapping_lut_gpu_views(
+    mut gpu_images: ResMut<RenderAssets<GpuImage>>,
+    targets: Res<TonemappingLutGpuFixTargets>,
+    mut fallback_image: ResMut<FallbackImage>,
+    mut fallback_prepared: ResMut<TonemappingLutFallbackD3Prepared>,
+    atlas_handle: Option<Res<crate::text_render::TextAtlasImageHandle>>,
+) {
+    if !fallback_prepared.0 {
+        fallback_image.d3.texture_view =
+            fallback_image.d3.texture.create_view(&TextureViewDescriptor {
                 dimension: Some(TextureViewDimension::D3),
                 ..default()
             });
+        fallback_prepared.0 = true;
+    }
+    let atlas_id = atlas_handle.map(|handle| handle.0.id());
+    for id in &targets.image_ids {
+        if Some(*id) == atlas_id {
+            continue;
         }
+        let Some(gpu) = gpu_images.get_mut(*id) else {
+            continue;
+        };
+        let size = gpu.size;
+        let side = size.width;
+        let is_lut_sized = size.width == size.height
+            && side <= 64
+            && (size.depth_or_array_layers == 1 || side == size.depth_or_array_layers);
+        if !is_lut_sized {
+            continue;
+        }
+        *gpu = fallback_image.d3.clone();
+    }
+}
+
+fn fix_extracted_tonemapping_lut_images(mut extracted: ResMut<ExtractedAssets<GpuImage>>) {
+    for (_, image) in extracted.extracted.iter_mut() {
+        apply_tonemapping_lut_d3_view_fix(image);
     }
 }
 
