@@ -180,7 +180,7 @@
 | **TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R** - `NumericDamageLabel` fixed-width glyph lane; shaping bypass; aggregate repack zero; fixed-width 5k damage ~0.58 ms/frame | #882 | `c05baef87b` | **ACCEPTED / closed — final LR5 remediation** — post-merge evidence `daaeb1795a`; `docs/tests/typeface_lr5t_results.md` |
 | **TYPEFACE-LR6-MSDF-ATLAS-SHADER-0** - import-time MSDF/SDF atlas core; GPU SDF/MSDF shader path; raw-wgpu smoke; raster default preserved; icon MSDF deferred | #883 | `c08ac5ce06` | **DONE / DA APPROVED for production glyph MSDF after LR6A** — `docs/tests/typeface_lr6_results.md`; ladder `docs/design_typeface_ladder.md` § LR6 |
 | **TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R** - `TextLabelRenderMode` production MSDF opt-in; patched `build_glyph_id`; shared-atlas DF packing; icon MSDF formally deferred | #884 | `3fda0eeaf0` | **ACCEPTED / glyph MSDF production opt-in** — `docs/tests/typeface_lr6a_results.md`; ladder `docs/design_typeface_ladder.md` § LR6A |
-| **TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R** - normalized IconVector geometry IR; icon MSDF from bezpath; per-role raster style-slot refs; LR4 raster preserved | branch `typeface-lr6a-icon-vector-geometry-0r` | — | **PROBATION / DA remediation before LR6B** — `docs/tests/typeface_lr6a_icon_geometry_results.md`; ladder `docs/design_typeface_ladder.md` § LR6A-ICON |
+| **TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R** - normalized IconVector geometry IR; icon MSDF from bezpath; per-role raster style-slot refs; LR4 raster preserved | #885 | `a3f7dcd30d` | **PROBATION / DA remediation before LR6B** — `docs/tests/typeface_lr6a_icon_geometry_results.md`; ladder `docs/design_typeface_ladder.md` § LR6A-ICON |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

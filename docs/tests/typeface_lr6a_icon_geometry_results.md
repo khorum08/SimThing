@@ -7,8 +7,8 @@ PASS — `IconVector` promoted to normalized role-layer geometry IR; icon MSDF i
 ## PR / branch / merge
 
 - Branch: `typeface-lr6a-icon-vector-geometry-0r`
-- PR: opened after push
-- Merge SHA: recorded in post-merge evidence commit
+- PR: #885
+- Merge SHA: `a3f7dcd30d`
 
 ## DA blocker being remediated
 
