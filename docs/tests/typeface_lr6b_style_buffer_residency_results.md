@@ -7,8 +7,9 @@ PASS — render-world style globals/rows buffers and bind group are persistent; 
 ## PR / branch / merge
 
 - Branch: `typeface-lr6b-style-buffer-residency-0r`
-- PR: opened after push
-- Merge SHA: recorded in post-merge evidence commit
+- PR: #887
+- Merge SHA: `6117dd5fd5`
+- Post-merge evidence: recorded in post-merge evidence commit
 
 ## DA HOLD being remediated
 

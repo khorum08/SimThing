@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outline/glow, layered icon style slots; LR0–LR6A regressions preserved. **PROBATION / DA HOLD** — render-world style buffers recreated every prepare (remediated by `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R`). PR #886, merge `54e226471c`, post-merge evidence `78456f666d`.
+PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outline/glow, layered icon style slots; LR0–LR6A regressions preserved. **PROBATION / DA HOLD remediated** by `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887). PR #886, merge `54e226471c`, post-merge evidence `78456f666d`.
 
 ## PR / branch / merge
 
