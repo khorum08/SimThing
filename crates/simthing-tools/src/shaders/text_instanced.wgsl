@@ -7,6 +7,7 @@ struct GlyphInstance {
     @location(7) color: vec4<f32>,
     @location(8) sdf_params: vec4<f32>,
     @location(9) style_params: vec4<f32>,
+    @location(10) deform_params: vec4<f32>,
 }
 
 struct Vertex {
@@ -36,30 +37,78 @@ struct StyleRow {
     params1: vec4<f32>,
 }
 
-struct StyleTableUniform {
-    globals: vec4<f32>,
-    rows: array<StyleRow, 32>,
+struct DeformRow {
+    params0: vec4<f32>,
+    params1: vec4<f32>,
+    params2: vec4<f32>,
 }
 
 @group(2) @binding(0) var atlas_tex: texture_2d<f32>;
 @group(2) @binding(1) var atlas_smp: sampler;
 @group(3) @binding(0) var<uniform> style_globals: vec4<f32>;
 @group(3) @binding(1) var<uniform> style_rows: array<StyleRow, 32>;
+@group(4) @binding(0) var<uniform> deform_rows: array<DeformRow, 32>;
+
+fn deform_row_at(slot: u32) -> DeformRow {
+    if slot >= 32u {
+        return deform_rows[0];
+    }
+    return deform_rows[slot];
+}
+
+fn apply_parametric_deform(local_uv: vec2<f32>, slot: u32) -> vec2<f32> {
+    let row = deform_row_at(slot);
+    let kind = row.params0.x;
+    if kind < 0.5 {
+        return local_uv;
+    }
+    var uv = local_uv;
+    let amount_x = row.params0.y;
+    let amount_y = row.params0.z;
+    let phase = row.params0.w;
+    let shear_x = row.params1.x;
+    let shear_y = row.params1.y;
+    let fold_axis = row.params1.zw;
+    let fold_amount = row.params2.x;
+
+    if kind < 1.5 {
+        let c = uv - vec2(0.5);
+        uv = c * vec2(1.0 + amount_x, 1.0 + amount_y) + vec2(0.5);
+    } else if kind < 2.5 {
+        uv.x = uv.x + amount_x * (uv.y - 0.5);
+        uv.y = uv.y + amount_y * (uv.x - 0.5);
+    } else if kind < 3.5 {
+        uv.x = uv.x + shear_x * (uv.y - 0.5);
+        uv.y = uv.y + shear_y * (uv.x - 0.5);
+    } else if kind < 4.5 {
+        let axis_len = max(length(fold_axis), 0.001);
+        let axis = fold_axis / axis_len;
+        let d = dot(uv - vec2(0.5), axis);
+        uv = uv + axis * fold_amount * sin(d * 3.14159265);
+    } else {
+        let pulse = sin(style_globals.x + phase) * amount_x;
+        let c = uv - vec2(0.5);
+        uv = c * (1.0 + pulse) + vec2(0.5);
+    }
+    return uv;
+}
 
 @vertex
 fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     var out: VertexOutput;
+    let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
+    let local_uv = apply_parametric_deform(vertex.uv, deform_slot);
     let local = vec4(
-        vertex.position.xy * instance.pos_size.zw + instance.pos_size.xy,
+        local_uv * instance.pos_size.zw + instance.pos_size.xy,
         0.0,
         1.0,
     );
     out.clip_position = mesh2d_position_local_to_clip(identity_mat4(), local);
-    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, vertex.uv);
+    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, local_uv);
     out.color = instance.color;
     out.sdf_params = instance.sdf_params;
     out.style_params = instance.style_params;
-    out.local_uv = vertex.uv;
+    out.local_uv = local_uv;
     return out;
 }
 

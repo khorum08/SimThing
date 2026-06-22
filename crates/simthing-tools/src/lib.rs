@@ -1,6 +1,7 @@
 pub mod atlas;
 pub mod bench;
 pub mod bevy;
+pub mod deform;
 pub mod font;
 pub mod harness;
 pub mod icons;
@@ -20,16 +21,18 @@ pub use bevy::{
     numeric_damage_lane_diagnostics, profile_bevy_fixed_width_numeric_damage_bench,
     profile_bevy_text_bench, reset_text_damage_phase_profile, spawn_static_and_damage_labels,
     spawn_static_and_numeric_damage_labels, spawn_static_text_labels, text_damage_phase_profile,
-    text_label_entity_counts, text_perf_diagnostics, text_style_diagnostics, BevyTextBenchProfile,
-    GlyphInstanceGpu, LabelAggregateSegment, SimthingToolsTextPlugin, TextAggregateVersion,
-    TextDamagePhaseProfile, TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel,
-    TextLabelRenderMode, TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
+    text_deform_diagnostics, text_label_entity_counts, text_perf_diagnostics,
+    text_style_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu, LabelAggregateSegment,
+    SimthingToolsTextPlugin, TextAggregateVersion, TextDamagePhaseProfile, TextDrawExtract,
+    TextGlyphInstances, TextInstanceAggregate, TextLabel, TextLabelRenderMode, TextPerfDiagnostics,
+    TextRebuildDiagnostics, TypefaceAtlas,
 };
 pub use numeric_damage::{
     NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
     NUMERIC_DAMAGE_DEFAULT_WIDTH,
 };
 pub use text_render::{
+    text_atlas_render_diagnostics, text_deform_render_diagnostics,
     text_instanced_pipeline_initialized, text_render_camera_bundle, text_render_queue_state,
     text_style_render_diagnostics, TextAtlasImageHandle, TextInstancedDraw, TextInstancedPipeline,
     TextRenderPerfDiagnostics, TextRenderQueueState, TextStyleGpuResource,
@@ -40,6 +43,13 @@ pub use bench::{
     icon_tile_in_atlas, run_typeface_bench, TypefaceBenchConfig, TypefaceBenchDiagnostics,
     TypefaceBenchError, TypefaceBenchHarness, TypefaceBenchResult, CI_BENCH_CONFIG,
     HEAVY_BENCH_CONFIG,
+};
+pub use deform::{
+    deform_params_for_slot, tess_level_for_deform_slot, tessellated_vertex_count,
+    test_deform_table_fold, test_deform_table_skew, test_deform_table_stretch,
+    ExtractedTextDeformTable, TextDeformDiagnostics, TextDeformKind, TextDeformParams,
+    TextDeformRowGpu, TextDeformTable, TextDeformTableResource, DEFORM_TESS_LEVEL_DEFORM,
+    DEFORM_TESS_LEVEL_FLAT,
 };
 pub use font::{load_font, GlyphMetrics, ProbeFont, TypefaceError};
 pub use harness::{ascii_sample_chars, format_measurement_report, measure_chars, MeasuredGlyph};
@@ -62,6 +72,6 @@ pub use style::{
     GRADIENT_MODE_LINEAR_V, GRADIENT_MODE_NONE, MAX_STYLE_SLOTS,
 };
 pub use wgpu_smoke::{
-    wgpu_instanced_text_smoke, wgpu_sdf_instanced_text_smoke, wgpu_styled_instanced_text_smoke,
-    WgpuSmokeTarget, WgpuTextSmokeResult,
+    wgpu_deformed_instanced_text_smoke, wgpu_instanced_text_smoke, wgpu_sdf_instanced_text_smoke,
+    wgpu_styled_instanced_text_smoke, WgpuSmokeTarget, WgpuTextSmokeResult,
 };

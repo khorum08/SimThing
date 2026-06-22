@@ -44,6 +44,7 @@ use bevy::{
 
 use crate::{
     bevy::{GlyphInstanceGpu, TextAggregateVersion, TextDrawExtract, TEXT_SHADER_HANDLE},
+    deform::{ExtractedTextDeformTable, TextDeformRowsUniform},
     style::{ExtractedTextStyleTable, TextStyleGlobalsGpu, TextStyleRowsUniform},
 };
 
@@ -71,6 +72,21 @@ pub struct TextRenderPerfDiagnostics {
     pub instance_buffer_upload_count: u64,
     pub queued_draw_count: u64,
     pub queued_instance_count: u64,
+}
+
+/// Render-world atlas bind group reuse counters (LR6C).
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextAtlasRenderDiagnostics {
+    pub atlas_bind_group_create_count: u64,
+    pub atlas_bind_group_reuse_count: u64,
+    pub atlas_bind_group_remove_count: u64,
+}
+
+/// Persistent render-world atlas bind group.
+#[derive(Resource, Clone)]
+pub struct TextAtlasGpuResource {
+    pub bind_group: BindGroup,
+    pub atlas_id: bevy::asset::AssetId<bevy::prelude::Image>,
 }
 
 /// Render-world style GPU buffer reuse counters (LR6B-STYLE-BUFFER-RESIDENCY-0R).
@@ -115,6 +131,23 @@ pub struct TextInstanceBuffer {
     pub data_version: u64,
 }
 
+/// Persistent render-world deformation rows buffer and bind group.
+#[derive(Resource, Clone)]
+pub struct TextDeformGpuResource {
+    pub rows_buffer: Buffer,
+    pub bind_group: BindGroup,
+    pub rows_generation: u64,
+}
+
+/// Render-world deformation buffer reuse counters (LR6C).
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextDeformRenderDiagnostics {
+    pub rows_buffer_create_count: u64,
+    pub rows_buffer_write_count: u64,
+    pub deform_bind_group_create_count: u64,
+    pub deform_bind_group_reuse_count: u64,
+}
+
 /// Shared atlas bind group for the text shader (@group(2)).
 #[derive(Resource, Clone)]
 pub struct TextAtlasBindGroupResource {
@@ -148,6 +181,8 @@ impl Plugin for TextInstancedRenderPlugin {
             .init_resource::<TextRenderQueueState>()
             .init_resource::<TextRenderPerfDiagnostics>()
             .init_resource::<TextStyleRenderDiagnostics>()
+            .init_resource::<TextAtlasRenderDiagnostics>()
+            .init_resource::<TextDeformRenderDiagnostics>()
             .init_resource::<SpecializedMeshPipelines<TextInstancedPipeline>>()
             .add_render_command::<Transparent2d, DrawTextInstanced>()
             .add_systems(ExtractSchedule, stamp_text_draw_extract_version)
@@ -160,6 +195,7 @@ impl Plugin for TextInstancedRenderPlugin {
                     (
                         prepare_text_atlas_bind_group,
                         prepare_text_style_bind_group,
+                        prepare_text_deform_bind_group,
                         prepare_text_offscreen_mesh2d_view_bind_groups,
                     )
                         .in_set(RenderSet::PrepareBindGroups),
@@ -181,6 +217,7 @@ pub struct TextInstancedPipeline {
     pub mesh2d_pipeline: Mesh2dPipeline,
     pub atlas_layout: BindGroupLayout,
     pub style_layout: BindGroupLayout,
+    pub deform_layout: BindGroupLayout,
 }
 
 impl FromWorld for TextInstancedPipeline {
@@ -201,7 +238,7 @@ impl FromWorld for TextInstancedPipeline {
             &[
                 BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: ShaderStages::FRAGMENT,
+                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                     ty: BindingType::Buffer {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -221,12 +258,26 @@ impl FromWorld for TextInstancedPipeline {
                 },
             ],
         );
+        let deform_layout = render_device.create_bind_group_layout(
+            "text_deform_layout",
+            &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        );
 
         Self {
             shader: TEXT_SHADER_HANDLE.clone(),
             mesh2d_pipeline: world.resource::<Mesh2dPipeline>().clone(),
             atlas_layout,
             style_layout,
+            deform_layout,
         }
     }
 }
@@ -247,6 +298,7 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
         }
         descriptor.layout.push(self.atlas_layout.clone());
         descriptor.layout.push(self.style_layout.clone());
+        descriptor.layout.push(self.deform_layout.clone());
         descriptor.vertex.buffers.push(VertexBufferLayout {
             array_stride: size_of::<GlyphInstanceGpu>() as u64,
             step_mode: VertexStepMode::Instance,
@@ -275,6 +327,11 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
                     format: VertexFormat::Float32x4,
                     offset: VertexFormat::Float32x4.size() * 4,
                     shader_location: 9,
+                },
+                VertexAttribute {
+                    format: VertexFormat::Float32x4,
+                    offset: VertexFormat::Float32x4.size() * 5,
+                    shader_location: 10,
                 },
             ],
         });
@@ -517,19 +574,37 @@ fn prepare_text_atlas_bind_group(
     atlas_handle: Option<Res<TextAtlasImageHandle>>,
     gpu_images: Res<RenderAssets<GpuImage>>,
     render_device: Res<RenderDevice>,
+    existing: Option<ResMut<TextAtlasGpuResource>>,
+    mut diag: ResMut<TextAtlasRenderDiagnostics>,
 ) {
     let Some(atlas_handle) = atlas_handle else {
+        if existing.is_some() {
+            diag.atlas_bind_group_remove_count += 1;
+        }
+        commands.remove_resource::<TextAtlasGpuResource>();
         commands.remove_resource::<TextAtlasBindGroupResource>();
         return;
     };
     let Some(gpu_image) = gpu_images.get(&atlas_handle.0) else {
         return;
     };
+    let atlas_id = atlas_handle.0.id();
+    if let Some(existing) = existing {
+        if existing.atlas_id == atlas_id {
+            diag.atlas_bind_group_reuse_count += 1;
+            return;
+        }
+    }
     let bind_group = render_device.create_bind_group(
         "text_atlas_bind_group",
         &pipeline.atlas_layout,
         &BindGroupEntries::sequential((&gpu_image.texture_view, &gpu_image.sampler)),
     );
+    diag.atlas_bind_group_create_count += 1;
+    commands.insert_resource(TextAtlasGpuResource {
+        bind_group: bind_group.clone(),
+        atlas_id,
+    });
     commands.insert_resource(TextAtlasBindGroupResource { bind_group });
 }
 
@@ -619,12 +694,73 @@ fn prepare_text_style_bind_group(
     }
 }
 
+#[derive(Resource, Clone)]
+pub struct TextDeformBindGroupResource {
+    pub bind_group: BindGroup,
+}
+
+fn prepare_text_deform_bind_group(
+    mut commands: Commands,
+    pipeline: Res<TextInstancedPipeline>,
+    deform_table: Option<Res<ExtractedTextDeformTable>>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<bevy::render::renderer::RenderQueue>,
+    existing: Option<ResMut<TextDeformGpuResource>>,
+    mut diag: ResMut<TextDeformRenderDiagnostics>,
+) {
+    let Some(deform_table) = deform_table else {
+        commands.remove_resource::<TextDeformGpuResource>();
+        commands.remove_resource::<TextDeformBindGroupResource>();
+        return;
+    };
+
+    let rows_size = size_of::<TextDeformRowsUniform>() as u64;
+    match existing {
+        None => {
+            let rows_buffer = render_device.create_buffer(&BufferDescriptor {
+                label: Some("text_deform_rows_buffer"),
+                size: rows_size,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            diag.rows_buffer_create_count += 1;
+            render_queue.write_buffer(&rows_buffer, 0, bytemuck::bytes_of(&deform_table.rows));
+            diag.rows_buffer_write_count += 1;
+            let bind_group = render_device.create_bind_group(
+                "text_deform_bind_group",
+                &pipeline.deform_layout,
+                &BindGroupEntries::single(rows_buffer.as_entire_binding()),
+            );
+            diag.deform_bind_group_create_count += 1;
+            commands.insert_resource(TextDeformGpuResource {
+                rows_buffer,
+                bind_group: bind_group.clone(),
+                rows_generation: deform_table.rows_generation,
+            });
+            commands.insert_resource(TextDeformBindGroupResource { bind_group });
+        }
+        Some(mut gpu) => {
+            if gpu.rows_generation != deform_table.rows_generation {
+                render_queue.write_buffer(
+                    &gpu.rows_buffer,
+                    0,
+                    bytemuck::bytes_of(&deform_table.rows),
+                );
+                gpu.rows_generation = deform_table.rows_generation;
+                diag.rows_buffer_write_count += 1;
+            }
+            diag.deform_bind_group_reuse_count += 1;
+        }
+    }
+}
+
 pub type DrawTextInstanced = (
     SetItemPipeline,
     SetMesh2dViewBindGroup<0>,
     SetMesh2dBindGroup<1>,
     SetTextAtlasBindGroup<2>,
     SetTextStyleBindGroup<3>,
+    SetTextDeformBindGroup<4>,
     DrawTextInstancedMesh,
 );
 
@@ -664,6 +800,26 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextStyleBindGroup<I>
     ) -> RenderCommandResult {
         let style_bind_group = style_bind_group.into_inner();
         pass.set_bind_group(I, &style_bind_group.bind_group, &[]);
+        RenderCommandResult::Success
+    }
+}
+
+pub struct SetTextDeformBindGroup<const I: usize>;
+
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextDeformBindGroup<I> {
+    type Param = SRes<TextDeformBindGroupResource>;
+    type ViewQuery = ();
+    type ItemQuery = ();
+
+    fn render<'w>(
+        _item: &P,
+        _view: (),
+        _item_query: Option<()>,
+        deform_bind_group: SystemParamItem<'w, '_, Self::Param>,
+        pass: &mut TrackedRenderPass<'w>,
+    ) -> RenderCommandResult {
+        let deform_bind_group = deform_bind_group.into_inner();
+        pass.set_bind_group(I, &deform_bind_group.bind_group, &[]);
         RenderCommandResult::Success
     }
 }
@@ -751,6 +907,28 @@ pub fn text_style_render_diagnostics(app: &App) -> TextStyleRenderDiagnostics {
             render_app
                 .world()
                 .get_resource::<TextStyleRenderDiagnostics>()
+                .copied()
+        })
+        .unwrap_or_default()
+}
+
+pub fn text_atlas_render_diagnostics(app: &App) -> TextAtlasRenderDiagnostics {
+    app.get_sub_app(RenderApp)
+        .and_then(|render_app| {
+            render_app
+                .world()
+                .get_resource::<TextAtlasRenderDiagnostics>()
+                .copied()
+        })
+        .unwrap_or_default()
+}
+
+pub fn text_deform_render_diagnostics(app: &App) -> TextDeformRenderDiagnostics {
+    app.get_sub_app(RenderApp)
+        .and_then(|render_app| {
+            render_app
+                .world()
+                .get_resource::<TextDeformRenderDiagnostics>()
                 .copied()
         })
         .unwrap_or_default()

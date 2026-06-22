@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outline/glow, layered icon style slots; LR0–LR6A regressions preserved. **PROBATION / DA HOLD remediated** by `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887). PR #886, merge `54e226471c`, post-merge evidence `78456f666d`.
+PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outline/glow, layered icon style slots; LR0–LR6A regressions preserved. **DA APPROVED** after buffer residency remediation `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887). PR #886, merge `54e226471c`, post-merge evidence `78456f666d`.
 
 ## PR / branch / merge
 
@@ -141,12 +141,12 @@ No LR6C deformation, text-on-path, warp, TTF export, COLRv1, icon-font manifest,
 
 - Production mixed text+icon draw still uses composite raster tile (not per-role styled layers)
 - Per-role icon MSDF + style in Bevy production path deferred
-- Style table row buffer recreated in render prepare each frame (acceptable PROBATION debt)
+- Style table row buffer residency — **remediated by #887** (LR6B DA APPROVED)
 
 ## DA recommendation
 
-Accept LR6B at PROBATION pending Codex DA-sensitive review. Do not mark DA-approved until sign-off.
+**DA APPROVED** after #887 buffer residency remediation and Codex review.
 
 ## Next recommended action
 
-Codex review → LR6C adaptive-tessellation / parametric deform or LR7 icon-font manifest per ladder priority.
+LR6C atlas residency + parametric deformation; LR6D text-on-path per ladder priority.

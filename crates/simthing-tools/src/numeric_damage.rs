@@ -50,6 +50,7 @@ impl GlyphSlotTemplate {
             color,
             sdf_params: [0.0; 4],
             style_params: [0.0; 4],
+            deform_params: [0.0; 4],
         }
     }
 }
@@ -235,5 +236,6 @@ fn instance_from_tile(
         color,
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],
+        deform_params: [0.0; 4],
     }
 }

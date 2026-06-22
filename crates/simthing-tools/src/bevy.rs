@@ -18,6 +18,11 @@ use bevy::{
 
 use crate::{
     atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
+    deform::{
+        deform_params_for_slot, tess_level_for_deform_slot, ExtractedTextDeformTable,
+        TextDeformDiagnostics, TextDeformTableResource, TextDeformTessMesh,
+        DEFORM_TESS_LEVEL_DEFORM,
+    },
     font::{load_font, ProbeFont},
     msdf::{DistanceFieldDiagnostics, DistanceFieldKind, DistanceFieldTile},
     numeric_damage::{
@@ -77,6 +82,9 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<TextStyleDiagnostics>()
             .init_resource::<TextStyleTableResource>()
             .init_resource::<ExtractedTextStyleTable>()
+            .init_resource::<TextDeformDiagnostics>()
+            .init_resource::<TextDeformTableResource>()
+            .init_resource::<ExtractedTextDeformTable>()
             .init_resource::<TextInstanceAggregate>()
             .init_resource::<TextAggregateLayout>()
             .init_resource::<TextAggregateVersion>()
@@ -84,6 +92,7 @@ impl Plugin for SimthingToolsTextPlugin {
             .insert_resource(PluginAtlasSize(self.atlas_size))
             .add_plugins(ExtractResourcePlugin::<TextAggregateVersion>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextStyleTable>::default())
+            .add_plugins(ExtractResourcePlugin::<ExtractedTextDeformTable>::default())
             .add_systems(
                 Startup,
                 (fix_volume_image_view_descriptors, init_typeface_state).chain(),
@@ -94,12 +103,14 @@ impl Plugin for SimthingToolsTextPlugin {
                 (
                     advance_style_table_time,
                     sync_style_table_rows_if_changed,
+                    sync_deform_table_rows_if_changed,
                     update_numeric_damage_labels,
                     rebuild_changed_labels,
                     ApplyDeferred,
                     mark_aggregate_dirty_on_label_lifecycle,
                     aggregate_label_instances,
                     sync_draw_entity_instances,
+                    sync_draw_entity_mesh_for_deformation,
                     sync_atlas_image_to_gpu,
                     force_text_draw_visible,
                 )
@@ -141,6 +152,7 @@ pub struct TextLabel {
     pub color: [f32; 4],
     pub render_mode: TextLabelRenderMode,
     pub style_slot: TextStyleSlot,
+    pub deform_slot: crate::deform::TextDeformSlot,
 }
 
 impl TextLabel {
@@ -151,6 +163,7 @@ impl TextLabel {
             color,
             render_mode: TextLabelRenderMode::Raster,
             style_slot: 0,
+            deform_slot: 0,
         }
     }
 
@@ -161,11 +174,17 @@ impl TextLabel {
             color,
             render_mode: TextLabelRenderMode::Msdf,
             style_slot: 0,
+            deform_slot: 0,
         }
     }
 
     pub fn with_style_slot(mut self, slot: TextStyleSlot) -> Self {
         self.style_slot = slot;
+        self
+    }
+
+    pub fn with_deform_slot(mut self, slot: crate::deform::TextDeformSlot) -> Self {
+        self.deform_slot = slot;
         self
     }
 }
@@ -291,6 +310,7 @@ struct TextLabelCache {
     color: [f32; 4],
     render_mode: TextLabelRenderMode,
     style_slot: TextStyleSlot,
+    deform_slot: crate::deform::TextDeformSlot,
     shaped: ShapedRun,
 }
 
@@ -304,6 +324,8 @@ pub struct GlyphInstanceGpu {
     pub sdf_params: [f32; 4],
     /// x = style_slot, y = role_slot, z/w reserved.
     pub style_params: [f32; 4],
+    /// x = deform_slot, y = tess_level, z/w reserved.
+    pub deform_params: [f32; 4],
 }
 
 #[derive(Component, Clone, Default, Debug)]
@@ -398,6 +420,43 @@ fn fix_volume_image_view_descriptors(mut images: ResMut<Assets<Image>>) {
     }
 }
 
+fn build_tessellated_glyph_mesh(subdivisions: u32) -> Mesh {
+    use bevy::render::mesh::{Indices, PrimitiveTopology};
+
+    let n = subdivisions + 1;
+    let mut positions = Vec::with_capacity((n * n) as usize);
+    let mut uvs = Vec::with_capacity((n * n) as usize);
+    let mut normals = Vec::with_capacity((n * n) as usize);
+    for y in 0..n {
+        for x in 0..n {
+            let u = x as f32 / subdivisions as f32;
+            let v = y as f32 / subdivisions as f32;
+            positions.push([u, v, 0.0]);
+            uvs.push([u, v]);
+            normals.push([0.0, 0.0, 1.0]);
+        }
+    }
+    let mut indices = Vec::with_capacity((subdivisions * subdivisions * 6) as usize);
+    for y in 0..subdivisions {
+        for x in 0..subdivisions {
+            let i0 = y * n + x;
+            let i1 = i0 + 1;
+            let i2 = i0 + n;
+            let i3 = i2 + 1;
+            indices.extend_from_slice(&[i0, i2, i1, i1, i2, i3]);
+        }
+    }
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh
+}
+
 fn init_typeface_state(
     mut commands: Commands,
     bytes: Res<TypefaceFontBytes>,
@@ -429,7 +488,11 @@ fn init_typeface_state(
     commands.insert_resource(atlas);
 
     let quad = meshes.add(Mesh::from(Rectangle::new(1.0, 1.0)));
+    let tess = meshes.add(build_tessellated_glyph_mesh(u32::from(
+        DEFORM_TESS_LEVEL_DEFORM,
+    )));
     commands.insert_resource(TextQuadMesh(quad.clone()));
+    commands.insert_resource(TextDeformTessMesh(tess));
 
     let draw_entity = commands
         .spawn((
@@ -595,6 +658,7 @@ fn rebuild_changed_labels(
             cache.color = label.color;
             cache.render_mode = label.render_mode;
             cache.style_slot = label.style_slot;
+            cache.deform_slot = label.deform_slot;
             cache.shaped = shaped;
         } else {
             commands.entity(entity).insert(TextLabelCache {
@@ -603,6 +667,7 @@ fn rebuild_changed_labels(
                 color: label.color,
                 render_mode: label.render_mode,
                 style_slot: label.style_slot,
+                deform_slot: label.deform_slot,
                 shaped,
             });
         }
@@ -625,6 +690,7 @@ fn build_glyph_instance(
                 atlas.atlas_size,
                 None,
                 label.style_slot,
+                label.deform_slot,
             ))
         }
         TextLabelRenderMode::Sdf | TextLabelRenderMode::Msdf => {
@@ -646,6 +712,7 @@ fn build_glyph_instance(
                 atlas.atlas_size,
                 Some(&df_tile),
                 label.style_slot,
+                label.deform_slot,
             ))
         }
     }
@@ -825,11 +892,13 @@ fn build_instance(
     atlas_size: u32,
     distance_field: Option<&DistanceFieldTile>,
     style_slot: TextStyleSlot,
+    deform_slot: crate::deform::TextDeformSlot,
 ) -> GlyphInstanceGpu {
     let inv = 1.0 / atlas_size as f32;
     let sdf_params = distance_field
         .map(|df| crate::msdf::sdf_params_for_distance_field_tile(df, atlas_size))
         .unwrap_or([0.0; 4]);
+    let tess = tess_level_for_deform_slot(deform_slot);
     GlyphInstanceGpu {
         pos_size: [
             glyph.x + tile.left as f32,
@@ -846,6 +915,7 @@ fn build_instance(
         color,
         sdf_params,
         style_params: style_params_for_slot(style_slot, 0),
+        deform_params: deform_params_for_slot(deform_slot, tess),
     }
 }
 
@@ -875,6 +945,72 @@ pub fn text_style_diagnostics(app: &App) -> TextStyleDiagnostics {
         .get_resource::<TextStyleDiagnostics>()
         .copied()
         .unwrap_or_default()
+}
+
+fn sync_deform_table_rows_if_changed(
+    mut deform_table: ResMut<TextDeformTableResource>,
+    mut extracted: ResMut<ExtractedTextDeformTable>,
+    mut diagnostics: ResMut<TextDeformDiagnostics>,
+) {
+    if !deform_table.rows_dirty {
+        diagnostics.deform_table_cache_hit_count += 1;
+        return;
+    }
+    extracted.rows = deform_table.table.to_rows_uniform();
+    deform_table.rows_generation += 1;
+    extracted.rows_generation = deform_table.rows_generation;
+    deform_table.mark_rows_clean();
+    diagnostics.deform_table_upload_count += 1;
+}
+
+pub fn text_deform_diagnostics(app: &App) -> TextDeformDiagnostics {
+    app.world()
+        .get_resource::<TextDeformDiagnostics>()
+        .copied()
+        .unwrap_or_default()
+}
+
+fn sync_draw_entity_mesh_for_deformation(
+    aggregate: Res<TextInstanceAggregate>,
+    draw_entity: Res<TextDrawEntity>,
+    quad: Res<TextQuadMesh>,
+    tess: Res<TextDeformTessMesh>,
+    mut q: Query<&mut Mesh2d>,
+    mut deform_diag: ResMut<TextDeformDiagnostics>,
+    mut last_tess: Local<bool>,
+) {
+    let needs_tess = aggregate
+        .0
+        .iter()
+        .any(|instance| instance.deform_params[0] > 0.0);
+    deform_diag.deform_instance_count = aggregate
+        .0
+        .iter()
+        .filter(|instance| instance.deform_params[0] > 0.0)
+        .count() as u64;
+    deform_diag.tessellated_label_count = aggregate
+        .0
+        .iter()
+        .filter(|instance| instance.deform_params[1] > 0.0)
+        .count() as u64;
+    if needs_tess {
+        deform_diag.tessellated_vertex_count =
+            crate::deform::tessellated_vertex_count(u32::from(DEFORM_TESS_LEVEL_DEFORM)) as u64;
+    } else {
+        deform_diag.tessellated_vertex_count = 0;
+    }
+
+    let Ok(mut mesh2d) = q.get_mut(draw_entity.0) else {
+        return;
+    };
+    let target = if needs_tess { &tess.0 } else { &quad.0 };
+    if mesh2d.0 != *target {
+        mesh2d.0 = target.clone();
+        deform_diag.deformation_rebuild_count += 1;
+        *last_tess = needs_tess;
+    } else if *last_tess == needs_tess {
+        deform_diag.deformation_noop_reuse_count += 1;
+    }
 }
 
 fn blit_dirty_rect_to_image(

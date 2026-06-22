@@ -169,8 +169,11 @@ one run.
 ## LR6A-ICON — icon vector geometry bridge  *(DA remediation before LR6B)* — **DONE / ACCEPTED**
 **Status:** `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` (#885, `a3f7dcd30d`) — normalized `IconVector` geometry IR, icon MSDF from bezpath, per-role raster style-slot refs. See `docs/tests/typeface_lr6a_icon_geometry_results.md`.
 
-## LR6B — GPU style table + gradient/effect shader  *(DA-sensitive)* — **DONE / PROBATION / remediation complete**
-**Status:** `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` (#886) + buffer residency remediation `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887, `6117dd5fd5`). See `docs/tests/typeface_lr6b_results.md` and `docs/tests/typeface_lr6b_style_buffer_residency_results.md`. **Pending DA approval** — recommend review for LR6B closeout before LR6C.
+## LR6B — GPU style table + gradient/effect shader  *(DA-sensitive)* — **DONE / DA APPROVED**
+**Status:** `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` (#886) + buffer residency remediation `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887, `6117dd5fd5`). See `docs/tests/typeface_lr6b_results.md` and `docs/tests/typeface_lr6b_style_buffer_residency_results.md`. **DA APPROVED** after #887 (post-merge evidence `19ca9f8420`, index finalize `79ee674026`).
+
+## LR6C — adaptive-tessellation glyph mesh + parametric deform  *(DA-sensitive)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` — persistent atlas bind group; Tier-1 vertex-shader deformation; adaptive tessellation on opt-in. See `docs/tests/typeface_lr6c_results.md`. **Not DA-approved.**
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)*
 **Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
@@ -209,7 +212,8 @@ labels render; perf within the LR5 budget.
 | LR6 | MSDF atlas + SDF shader | **yes** | **DONE / DA APPROVED for production glyph MSDF after LR6A** |
 | LR6A | production MSDF wiring | **yes** | **DONE / PROBATION / ACCEPTED for glyph MSDF production opt-in** |
 | LR6A-ICON | icon vector geometry bridge | **yes** | **DONE / ACCEPTED (#885)** |
-| LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / PROBATION / remediation complete** |
+| LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / DA APPROVED (#886, #887)** |
+| LR6C | adaptive-tessellation glyph mesh + parametric deform | **yes** | **DONE / PROBATION** |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
 
