@@ -7,8 +7,9 @@ PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outlin
 ## PR / branch / merge
 
 - Branch: `typeface-lr6b-gpu-style-table-effects-0`
-- PR: opened after push
-- Merge SHA: recorded in post-merge evidence commit
+- PR: #886
+- Merge SHA: `54e226471c`
+- Post-merge evidence: recorded in post-merge evidence commit
 
 ## LR6A-ICON closeout
 
