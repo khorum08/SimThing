@@ -179,7 +179,7 @@ one run.
 **Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`). See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **DA APPROVED** after combined MSDF/deform proof.
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/tests/typeface_lr7_results.md`. **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. TTF/OTF export deferred optional LR7A.
+**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`) — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/tests/typeface_lr7_results.md`. **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. TTF/OTF export deferred optional LR7A.
 **Files:** `crates/simthing-tools/src/manifest.rs`; fixture manifest `crates/simthing-tools/assets/typeface/icons/manifest.ron`.
 **Public API:** `load_icon_manifest`, `bake_icon_manifest`, `IconManifest`, `IconManifestBake`.
 **Tests** (`typeface_lr7.rs`): manifest load/bake, golden codepoint table, duplicate/range/path validation, role-layer preservation, mixed text+icon run, no runtime SVG dependency.
@@ -216,7 +216,7 @@ labels render; perf within the LR5 budget.
 | LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / DA APPROVED (#886, #887)** |
 | LR6C | adaptive-tessellation glyph mesh + parametric deform | **yes** | **DONE / DA APPROVED (#888, #889)** |
 | LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / DA APPROVED** (#890, #891 combined proof) |
-| LR7 | icon-font manifest | no | **DONE / PROBATION** |
+| LR7 | icon-font manifest | no | **DONE / PROBATION** (#892) |
 | LR8 | Studio + game label seam | no | TODO |
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,

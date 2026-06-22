@@ -7,6 +7,8 @@ PASS — declarative RON icon manifest loads, validates, and bakes fixture icons
 ## PR / branch / merge
 
 - Branch: `typeface-lr7-icon-font-manifest-0`
+- PR: #892
+- Merge SHA: `ac320204eb`
 
 ## LR6D closeout
 

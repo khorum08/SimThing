@@ -22,7 +22,7 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — LR7 icon-font manifest (2026-06-21)
 
-- `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` adds declarative RON manifest (`manifest.ron`), stable name ↔ PUA codepoint table, and fixture icon bake through existing `IconSet` static-SVG path.
+- `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`) adds declarative RON manifest (`manifest.ron`), stable name ↔ PUA codepoint table, and fixture icon bake through existing `IconSet` static-SVG path.
 - LR6D promoted to **DA APPROVED** after #891 (`ffc4bb6891`, closeout evidence `6a32763bdd`). `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` **ACCEPTED / closed**.
 - LR7 **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. Not DA-approved.
 
