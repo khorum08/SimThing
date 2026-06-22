@@ -431,5 +431,6 @@ fn build_instance(
             (tile.y + tile.h) as f32 * inv,
         ],
         color,
+        sdf_params: [0.0; 4],
     }
 }

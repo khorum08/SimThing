@@ -150,32 +150,24 @@ one run.
 
 **Amendment folded into LR4:** LR4 includes static-SVG normalization plus a role-aware `IconVector` IR. The ingestion path accepts static SVG only, normalizes accepted shapes to deterministic path/layer records, rejects scripts, external images, animation/events, and remote resources, preserves optional `data-simthing-role` tags (`primary`, `secondary`, `accent`, `outline`, `background`, `mask`), and keeps deterministic layer/path ordering. Runtime never interprets SVG; it consumes rasterized atlas tiles and icon metadata only.
 
-## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)* — **DONE / PROBATION / DA HOLD pending LR5R review**
-**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` landed at PROBATION; DA HOLD on Bevy-path perf proof remediated by `TYPEFACE-LR5-PERF-PATH-0R`. Result reports `docs/tests/typeface_lr5_results.md`, `docs/tests/typeface_lr5r_results.md`. Track remains OPEN — LR5 is not DA-approved.
-**Files:** `crates/simthing-tools/src/bench.rs`, `bevy.rs`, `text_render.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
-**Steps:** CPU harness plus Bevy-path aggregate versioning, dirty atlas sync, draw-entity sync gating, instance-buffer reuse; 5k no-op binding profile recorded.
-**LR5R remediation:** dirty aggregate rebuild; no-op draw sync/atlas sync/buffer recreate avoided; damage churn aggregates once per frame; 5k labels @ avg no-op &lt;1 ms CPU update on validation host.
-**LR5S remediation (`TYPEFACE-LR5-DAMAGE-CHURN-GPU-AUDIT-0R`):** no-clone changed-label rebuild; segmented aggregate patching; numeric shape cache + digit prewarm; damage phase profile; variable-width damage ~2.26 ms/frame — still HOLD.
-**LR5T remediation (`TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R`):** `NumericDamageLabel` + import-time glyph table; fixed-width `-####` lane bypasses cosmic-text per frame; 5k binding avg damage **~0.58 ms/frame** — see `docs/tests/typeface_lr5t_results.md`; **recommend DA approval pending review**.
+## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)* — **DONE / DA APPROVED**
+**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` **DA APPROVED** after LR5R/LR5S/LR5T (#879–#882). Final remediation: `TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R` (PR #882, merge `c05baef87bc`). Result reports `docs/tests/typeface_lr5_results.md` through `docs/tests/typeface_lr5t_results.md`. Track remains OPEN — LR6 is active.
+**Files:** `crates/simthing-tools/src/bench.rs`, `bevy.rs`, `numeric_damage.rs`, `text_render.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
+**Steps:** CPU harness plus Bevy-path aggregate versioning, dirty atlas sync, draw-entity sync gating, instance-buffer reuse; 5k no-op + fixed-width numeric damage binding profile recorded.
+**LR5R remediation:** dirty aggregate rebuild; no-op draw sync/atlas sync/buffer recreate avoided; 5k labels @ avg no-op &lt;1 ms CPU update on validation host.
+**LR5S remediation:** no-clone changed-label rebuild; segmented aggregate patching; numeric shape cache + digit prewarm; variable-width damage ~2.26 ms/frame (historical).
+**LR5T remediation:** `NumericDamageLabel` + import-time glyph table; fixed-width `-####` lane bypasses cosmic-text per frame; 5k binding avg damage **~0.58 ms/frame** — accepted as final LR5 remediation.
 **Tests:** LR5 direct harness + Bevy structural tests in `typeface_lr5.rs`; optional `#[ignore]` 5k binding profile.
-**DA focus:** no-op binding met; damage churn CPU update measured above 1 ms/frame at 500-label churn — recorded honestly; LR5 remains PROBATION pending DA review.
+**DA focus:** no-op and fixed-width numeric damage bindings met; LR5 closed for MSDF foundation work.
 
-## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)*
-**Files:** `crates/simthing-tools/src/msdf.rs`, `src/shaders/text_msdf.wgsl`.
-**Deps:** add a **pure-Rust MSDF generator** — `fdsm` (generates MSDF from `ttf-parser`/outline data). If
-`fdsm` cannot consume `skrifa`/`usvg` outlines directly, adapt outlines to its input; if that adaptation is
-non-trivial → STOP and bring options to DA (do **not** add a C++ `msdfgen` build dependency without DA sign-off).
-**Public API:** mirror `GlyphAtlas` as `MsdfAtlas` with the **same** `get_or_rasterize`-shaped API so the LR3
-draw path swaps renderer behind one trait:
-```rust
-pub trait GlyphSource { fn tile(&mut self, key: GlyphKey) -> Option<AtlasTile>; fn texture_view(&self)->&wgpu::TextureView; }
-```
-**Steps:** generate one MSDF tile per glyph **and** per SVG-icon outline (icons share the MSDF atlas); a single
-instanced SDF shader renders crisp at arbitrary scale (median-of-3 channels, screen-px-range AA). Swap the LR3
-plugin to `GlyphSource = MsdfAtlas` behind a feature/flag; re-run the LR5 bench.
-**Tests** (`typeface_lr6.rs`): `msdf_tile_deterministic`, `msdf_renders_crisp_across_scale_sweep` (visual PNG
-at 8/32/128 px from ONE tile), `icons_and_glyphs_in_one_msdf_atlas`, `lr5_budget_still_met_or_better_with_msdf`.
-**DA focus:** no C++ dep without sign-off; one atlas/one shader for glyphs+icons; LR5 budget preserved.
+## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` — MSDF/SDF atlas core, GPU SDF shader path, raw-wgpu smoke; icon MSDF deferred (LR6A). See `docs/tests/typeface_lr6_results.md`. **Not DA-approved.**
+**Files:** `crates/simthing-tools/src/msdf.rs`, `src/shaders/text_instanced.wgsl`, `src/wgpu_smoke.rs`, `src/text_render.rs`; `crates/simthing-tools/tests/typeface_lr6.rs`.
+**Deps:** `msdf-font` 0.3.1 (pure-Rust MSDF/SDF from TTF outlines; no C++ `msdfgen`).
+**Public API:** `DistanceFieldAtlasCore`, `DistanceFieldKey`/`Tile`, `build_distance_field_instance`; `GlyphInstanceGpu.sdf_params` render mode.
+**Steps:** import-time MSDF/SDF generation + cache; extended instanced shader (raster/SDF/MSDF modes); raw-wgpu smoke proof; raster default preserved; LR5 numeric lane unchanged.
+**Tests** (`typeface_lr6.rs`): MSDF determinism/cache, SDF shader smoke, raster regression, numeric lane structural guard, GPU residency audit doc.
+**DA focus:** GPU-owned edge reconstruction/AA; no per-frame CPU distance work; icon MSDF debt documented; LR5 budget preserved.
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)*
 **Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
@@ -210,8 +202,8 @@ labels render; perf within the LR5 budget.
 | LR2 | raster glyph atlas v1 | **yes** | **DONE / DA APPROVED** (#874, #875) |
 | LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / DA APPROVED** (#876, #877 LR3R accepted) |
 | LR4 | SVG icons at PUA codepoints | no | **DONE / ACCEPTED (#878)** |
-| LR5 | high-volume bench + budget | **yes** | **DONE / PROBATION / DA HOLD pending LR5R review** |
-| LR6 | MSDF atlas + SDF shader | **yes** | TODO |
+| LR5 | high-volume bench + budget | **yes** | **DONE / DA APPROVED (#879, #880, #881, #882)** |
+| LR6 | MSDF atlas + SDF shader | **yes** | **DONE / PROBATION** |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
 

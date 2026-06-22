@@ -18,11 +18,23 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR6 MSDF atlas + SDF shader (2026-06-21)
+
+- `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` adds import-time `DistanceFieldAtlasCore` (TTF glyph MSDF/SDF), GPU SDF/MSDF shader path via `GlyphInstanceGpu.sdf_params`, and raw-wgpu smoke proof.
+- Icon MSDF deferred (LR6A); LR4 raster icon path preserved. Production Bevy draw remains raster-by-default.
+- LR5 promoted to **DA APPROVED** (#879–#882); LR6 lands at **PROBATION / DA-sensitive**.
+
+## Typeface ladder — LR5 DA closeout (2026-06-21)
+
+- `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` **DA APPROVED** after LR5R/LR5S/LR5T remediation chain (#879–#882).
+- Final remediation: `TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R` (PR #882, merge `c05baef87bc`); post-merge evidence `daaeb1795a`.
+- Fixed-width numeric damage binding: avg ~0.577 ms/frame at 5k/500; shape/repack/atlas sync deltas zero during timed damage frames.
+
 ## Typeface ladder — LR5T numeric damage lane (2026-06-21)
 
 - `TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R` adds `NumericDamageLabel` + import-time `NumericGlyphRunTable` for fixed-width `-####` damage presentation.
 - Per-frame numeric updates bypass cosmic-text; aggregate segments stay fixed width; repack count zero during binding profile.
-- 5k binding: avg no-op ~0.059 ms/frame; avg fixed-width damage ~0.577 ms/frame — binding met; recommend LR5 DA approval pending review.
+- 5k binding: avg no-op ~0.059 ms/frame; avg fixed-width damage ~0.577 ms/frame — binding met; **LR5 DA APPROVED**.
 - Variable-width TextLabel damage path retained as historical/regression only.
 
 ## Typeface ladder — LR5S damage-churn GPU audit (2026-06-21)
