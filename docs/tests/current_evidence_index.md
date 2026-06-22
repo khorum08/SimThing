@@ -189,7 +189,7 @@
 | **TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R** - MSDF+style+deform+path+warp raw-wgpu smoke; distribution vs flat MSDF control | #891 | `ffc4bb6891` | **ACCEPTED / closed** — post-merge evidence `6a32763bdd`; `docs/tests/typeface_lr6d_combined_msdf_deform_results.md` |
 | **TYPEFACE-LR7-ICON-FONT-MANIFEST-0** - declarative RON icon manifest; stable name ↔ PUA codepoint table; fixture bake through IconSet static-SVG path | #892 | `ac320204eb` | **DA APPROVED for manifest machinery** — post-merge evidence `be8dde2388`; `docs/tests/typeface_lr7_results.md`; ladder § LR7 |
 | **TYPEFACE-LR8-STUDIO-LABEL-SEAM-0** - StudioTypefaceLabel adapter; damage emitter; fixture manifest icon resolve; typeface component sync | #893 | `ec01da43c9` | **PROBATION / integration seam** — post-merge evidence `22e7bfb9a4`; shell mount gap remediated by mount 0R; `docs/tests/typeface_lr8_results.md`; ladder § LR8 |
-| **TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R** - mount StudioTypefaceShellPlugin in run_studio; fixture manifest bake; probe label + damage emitter staging | #894 | `850a216a7a` | **PROBATION / DA remediation** — `docs/tests/typeface_lr8_studio_plugin_mount_results.md`; ladder § LR8 |
+| **TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R** - mount StudioTypefaceShellPlugin in run_studio; fixture manifest bake; probe label + damage emitter staging | #894 | `850a216a7a` | **PROBATION / DA remediation** — post-merge evidence `29d50465ba`; `docs/tests/typeface_lr8_studio_plugin_mount_results.md`; ladder § LR8 |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 
