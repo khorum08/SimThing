@@ -8,10 +8,12 @@ use bevy::{
     DefaultPlugins,
 };
 use simthing_tools::{
-    create_render_target_image, icon_tile_in_atlas, profile_bevy_text_bench,
+    create_render_target_image, icon_tile_in_atlas, numeric_damage_lane_diagnostics,
+    profile_bevy_fixed_width_numeric_damage_bench, profile_bevy_text_bench,
     reset_text_damage_phase_profile, run_typeface_bench, spawn_static_and_damage_labels,
-    text_damage_phase_profile, text_label_entity_counts, text_perf_diagnostics,
-    text_render_camera_bundle, text_render_queue_state, SimthingToolsTextPlugin, TextLabel,
+    spawn_static_and_numeric_damage_labels, text_damage_phase_profile, text_label_entity_counts,
+    text_perf_diagnostics, text_render_camera_bundle, text_render_queue_state, NumericDamageLabel,
+    NumericGlyphRunTable, SimthingToolsTextPlugin, TextGlyphInstances, TextLabel,
     TypefaceBenchConfig, TypefaceBenchHarness, CI_BENCH_CONFIG, HEAVY_BENCH_CONFIG, ICON_PUA_START,
 };
 
@@ -101,6 +103,23 @@ fn warmup_bevy_labels(app: &mut App, static_count: usize, damage_count: usize) -
     let damage = spawn_static_and_damage_labels(app, static_count, damage_count, LABEL_PX);
     run_bevy_updates(app, 1);
     damage
+}
+
+fn warmup_bevy_numeric_labels(
+    app: &mut App,
+    static_count: usize,
+    damage_count: usize,
+) -> Vec<Entity> {
+    let damage = spawn_static_and_numeric_damage_labels(app, static_count, damage_count, LABEL_PX);
+    run_bevy_updates(app, 2);
+    damage
+}
+
+fn variable_width_damage_text(value: u32) -> String {
+    let mut text = String::with_capacity(6);
+    text.push('-');
+    text.push_str(&value.to_string());
+    text
 }
 
 const SMALL_CONFIG: TypefaceBenchConfig = TypefaceBenchConfig {
@@ -293,12 +312,13 @@ fn bevy_damage_churn_rebuilds_changed_labels_only() {
 
     for frame in 0..3_usize {
         for (index, entity) in damage.iter().enumerate() {
-            let value = (index.wrapping_mul(17).wrapping_add(frame.wrapping_mul(13))) % 9999;
+            let value =
+                ((index.wrapping_mul(17).wrapping_add(frame.wrapping_mul(13))) % 9999) as u32;
             app.world_mut()
                 .entity_mut(*entity)
                 .get_mut::<TextLabel>()
                 .expect("label")
-                .text = format!("-{value}");
+                .text = variable_width_damage_text(value);
         }
         run_bevy_updates(&mut app, 1);
     }
@@ -658,9 +678,193 @@ fn binding_5k_damage_profile_remeasured() {
 
 #[test]
 fn gpu_residency_audit_documented() {
-    let doc = include_str!("../../../docs/tests/typeface_lr5s_results.md");
+    let doc = include_str!("../../../docs/tests/typeface_lr5t_results.md");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));
     assert!(doc.contains("Numeric production authority remains GPU-resident"));
+}
+
+#[test]
+fn numeric_damage_lane_bypasses_cosmic_text_after_init() {
+    let mut app = cpu_bevy_app();
+    let damage = warmup_bevy_numeric_labels(&mut app, CI_BEVY_STATIC, CI_BEVY_DAMAGE);
+    let before = text_perf_diagnostics(&app);
+    let num_before = numeric_damage_lane_diagnostics(&app);
+
+    for (index, entity) in damage.iter().enumerate() {
+        app.world_mut()
+            .entity_mut(*entity)
+            .get_mut::<NumericDamageLabel>()
+            .expect("numeric label")
+            .value = -((index + 42) as i32);
+    }
+    run_bevy_updates(&mut app, 1);
+
+    let after = text_perf_diagnostics(&app);
+    let num_after = numeric_damage_lane_diagnostics(&app);
+    assert_eq!(
+        after.shape_rebuild_count, before.shape_rebuild_count,
+        "numeric lane must not invoke cosmic-text shaping after init"
+    );
+    assert_eq!(
+        num_after.numeric_shape_bypass_count - num_before.numeric_shape_bypass_count,
+        CI_BEVY_DAMAGE as u64
+    );
+}
+
+#[test]
+fn numeric_damage_lane_keeps_segment_width_stable() {
+    let mut app = cpu_bevy_app();
+    let damage = warmup_bevy_numeric_labels(&mut app, 64, 16);
+    run_bevy_updates(&mut app, 1);
+
+    let table = app
+        .world()
+        .get_resource::<NumericGlyphRunTable>()
+        .expect("numeric table");
+    let expected = table.glyph_count();
+
+    for entity in &damage {
+        let len = app
+            .world()
+            .entity(*entity)
+            .get::<TextGlyphInstances>()
+            .map(|i| i.0.len())
+            .unwrap_or(0);
+        assert_eq!(len, expected);
+        app.world_mut()
+            .entity_mut(*entity)
+            .get_mut::<NumericDamageLabel>()
+            .expect("numeric")
+            .value = -1234;
+    }
+    run_bevy_updates(&mut app, 1);
+
+    for entity in &damage {
+        let len = app
+            .world()
+            .entity(*entity)
+            .get::<TextGlyphInstances>()
+            .expect("instances")
+            .0
+            .len();
+        assert_eq!(len, expected);
+    }
+}
+
+#[test]
+fn numeric_damage_lane_patches_aggregate_without_repack() {
+    let mut app = cpu_bevy_app();
+    let damage = warmup_bevy_numeric_labels(&mut app, CI_BEVY_STATIC, CI_BEVY_DAMAGE);
+    run_bevy_updates(&mut app, 1);
+    let before = text_perf_diagnostics(&app);
+
+    for (index, entity) in damage.iter().enumerate() {
+        app.world_mut()
+            .entity_mut(*entity)
+            .get_mut::<NumericDamageLabel>()
+            .expect("numeric")
+            .value = -((index + 500) as i32);
+    }
+    run_bevy_updates(&mut app, 1);
+
+    let after = text_perf_diagnostics(&app);
+    assert!(
+        after.aggregate_patch_count > before.aggregate_patch_count,
+        "numeric lane must patch aggregate segments"
+    );
+    assert_eq!(
+        after.aggregate_repack_count, before.aggregate_repack_count,
+        "numeric lane must not repack aggregate"
+    );
+}
+
+#[test]
+fn numeric_damage_lane_uses_prewarmed_digit_tiles() {
+    let mut app = cpu_bevy_app();
+    let damage = warmup_bevy_numeric_labels(&mut app, 0, 1);
+    let before = text_perf_diagnostics(&app);
+
+    app.world_mut()
+        .entity_mut(damage[0])
+        .get_mut::<NumericDamageLabel>()
+        .expect("numeric")
+        .value = -4321;
+    run_bevy_updates(&mut app, 1);
+
+    let after = text_perf_diagnostics(&app);
+    assert_eq!(
+        after.atlas_sync_bytes, before.atlas_sync_bytes,
+        "numeric lane must use prewarmed digit tiles without new atlas sync"
+    );
+}
+
+#[test]
+fn numeric_damage_lane_does_not_allocate_or_format_strings_per_frame_where_measurable() {
+    let update_src = include_str!("../src/bevy.rs");
+    assert!(
+        !update_src.contains("label.text = format!"),
+        "fixed-width numeric profile must not assign formatted strings in bevy.rs"
+    );
+    let numeric_src = include_str!("../src/numeric_damage.rs");
+    assert!(
+        !numeric_src.contains("format!("),
+        "numeric lane runtime path must not format strings per frame"
+    );
+    let num = numeric_damage_lane_diagnostics(&cpu_bevy_app());
+    assert_eq!(num.numeric_string_format_count, 0);
+}
+
+#[test]
+fn binding_5k_fixed_width_numeric_damage_profile_under_1ms_or_honest_hold() {
+    binding_5k_fixed_width_numeric_damage_profile();
+}
+
+#[test]
+#[ignore = "manual binding proof: 5000 static + 500 fixed-width numeric damage labels"]
+fn binding_5k_fixed_width_numeric_damage_profile() {
+    let mut app = cpu_bevy_app();
+    let damage = warmup_bevy_numeric_labels(&mut app, BINDING_BEVY_STATIC, BINDING_BEVY_DAMAGE);
+    let before_damage = text_perf_diagnostics(&app);
+    let profile = profile_bevy_fixed_width_numeric_damage_bench(&mut app, &damage, 60, 60);
+
+    eprintln!("=== BINDING 5K FIXED-WIDTH NUMERIC PROFILE ===");
+    eprintln!("labels={}", profile.labels);
+    eprintln!("damage_labels={}", profile.damage_labels);
+    eprintln!("avg_noop_update_ms={:.4}", profile.avg_noop_update_ms);
+    eprintln!("max_noop_update_ms={:.4}", profile.max_noop_update_ms);
+    eprintln!("avg_damage_update_ms={:.4}", profile.avg_damage_update_ms);
+    eprintln!("max_damage_update_ms={:.4}", profile.max_damage_update_ms);
+    eprintln!(
+        "diagnostics_after_damage={:?}",
+        profile.diagnostics_after_damage
+    );
+    eprintln!("phase_after_damage={:?}", profile.phase_after_damage);
+    eprintln!(
+        "numeric_diagnostics={:?}",
+        numeric_damage_lane_diagnostics(&app)
+    );
+
+    assert_eq!(profile.labels, BINDING_BEVY_STATIC + BINDING_BEVY_DAMAGE);
+    assert!(
+        profile.avg_noop_update_ms < 1.0,
+        "5k avg no-op must be <1 ms (got {:.4}ms)",
+        profile.avg_noop_update_ms
+    );
+    assert_eq!(
+        profile.diagnostics_after_damage.shape_cache_miss_count,
+        before_damage.shape_cache_miss_count,
+        "shape cache misses must not grow during timed numeric damage frames"
+    );
+    assert_eq!(
+        profile.diagnostics_after_damage.aggregate_repack_count,
+        before_damage.aggregate_repack_count,
+        "aggregate repack must stay zero during timed numeric damage frames"
+    );
+}
+
+#[test]
+fn gpu_residency_audit_updated_for_numeric_lane() {
+    gpu_residency_audit_documented();
 }
 
 #[test]

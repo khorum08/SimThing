@@ -18,6 +18,13 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR5T numeric damage lane (2026-06-21)
+
+- `TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R` adds `NumericDamageLabel` + import-time `NumericGlyphRunTable` for fixed-width `-####` damage presentation.
+- Per-frame numeric updates bypass cosmic-text; aggregate segments stay fixed width; repack count zero during binding profile.
+- 5k binding: avg no-op ~0.059 ms/frame; avg fixed-width damage ~0.577 ms/frame — binding met; recommend LR5 DA approval pending review.
+- Variable-width TextLabel damage path retained as historical/regression only.
+
 ## Typeface ladder — LR5S damage-churn GPU audit (2026-06-21)
 
 - `TYPEFACE-LR5-DAMAGE-CHURN-GPU-AUDIT-0R` remediates LR5R damage-frame CPU surfacing after #880 no-op wins.
