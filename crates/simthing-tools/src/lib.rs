@@ -15,14 +15,14 @@ pub use atlas::{
     GlyphAtlasKey, GlyphAtlasStats, RasterizedGlyph, ATLAS_TEXTURE_FORMAT,
 };
 pub use bevy::{
-    create_atlas_image_from_cpu, create_render_target_image, numeric_damage_lane_diagnostics,
-    profile_bevy_fixed_width_numeric_damage_bench, profile_bevy_text_bench,
-    reset_text_damage_phase_profile, spawn_static_and_damage_labels,
+    create_atlas_image_from_cpu, create_render_target_image, distance_field_diagnostics,
+    numeric_damage_lane_diagnostics, profile_bevy_fixed_width_numeric_damage_bench,
+    profile_bevy_text_bench, reset_text_damage_phase_profile, spawn_static_and_damage_labels,
     spawn_static_and_numeric_damage_labels, spawn_static_text_labels, text_damage_phase_profile,
     text_label_entity_counts, text_perf_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu,
     LabelAggregateSegment, SimthingToolsTextPlugin, TextAggregateVersion, TextDamagePhaseProfile,
-    TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel, TextPerfDiagnostics,
-    TextRebuildDiagnostics, TypefaceAtlas,
+    TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel, TextLabelRenderMode,
+    TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
 };
 pub use numeric_damage::{
     NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
@@ -46,9 +46,10 @@ pub use icons::{
     IconVectorLayer, ICON_PUA_START,
 };
 pub use msdf::{
-    build_distance_field_instance, DistanceFieldAtlasCore, DistanceFieldDiagnostics,
-    DistanceFieldError, DistanceFieldKey, DistanceFieldKind, DistanceFieldTile,
-    DISTANCE_FIELD_RENDER_MSDF, DISTANCE_FIELD_RENDER_RASTER, DISTANCE_FIELD_RENDER_SDF,
+    build_distance_field_instance, sdf_params_for_distance_field_tile, DistanceFieldAtlasCore,
+    DistanceFieldDiagnostics, DistanceFieldError, DistanceFieldKey, DistanceFieldKind,
+    DistanceFieldTile, DISTANCE_FIELD_RENDER_MSDF, DISTANCE_FIELD_RENDER_RASTER,
+    DISTANCE_FIELD_RENDER_SDF,
 };
 pub use shaping::{format_shaping_report, ShapedGlyph, ShapedRun, ShapingEngine};
 pub use wgpu_smoke::{

@@ -5,7 +5,7 @@ use msdf_font::ttf_parser::{Face, GlyphId};
 use msdf_font::{Glyph, GlyphBitmapData, GlyphBuilder};
 
 use crate::{
-    atlas::{quantize_px, AtlasDirtyRect, AtlasTile},
+    atlas::{quantize_px, AtlasDirtyRect, AtlasTile, GlyphAtlasCore},
     bevy::GlyphInstanceGpu,
     font::ProbeFont,
     icons::IconVector,
@@ -50,7 +50,7 @@ pub enum DistanceFieldError {
     #[error("atlas full")]
     AtlasFull,
 
-    #[error("icon MSDF deferred to LR6A: {0}")]
+    #[error("icon MSDF deferred: {0}")]
     IconDeferred(&'static str),
 }
 
@@ -62,6 +62,8 @@ pub struct DistanceFieldDiagnostics {
     pub msdf_cache_hit_count: u64,
     pub msdf_cache_miss_count: u64,
     pub shader_smoke_draw_count: u64,
+    pub production_msdf_label_count: u64,
+    pub production_msdf_instance_count: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -124,6 +126,11 @@ impl DistanceFieldAtlasCore {
         self.diagnostics
     }
 
+    pub fn record_production_msdf_label(&mut self, instance_count: usize) {
+        self.diagnostics.production_msdf_label_count += 1;
+        self.diagnostics.production_msdf_instance_count += instance_count as u64;
+    }
+
     pub fn staging_pixels(&self) -> &[u8] {
         &self.cpu_pixels
     }
@@ -163,6 +170,52 @@ impl DistanceFieldAtlasCore {
         px: f32,
     ) -> Result<DistanceFieldTile, DistanceFieldError> {
         self.get_or_generate_glyph(font, glyph_id, px, DistanceFieldKind::Sdf)
+    }
+
+    /// Production path: pack distance-field tiles into the shared raster atlas texture.
+    pub fn get_or_generate_glyph_into_shared_atlas(
+        &mut self,
+        atlas: &mut GlyphAtlasCore,
+        font: &ProbeFont,
+        glyph_id: u32,
+        px: f32,
+        kind: DistanceFieldKind,
+    ) -> Result<DistanceFieldTile, DistanceFieldError> {
+        let px_bucket = quantize_px(px);
+        let key = DistanceFieldKey {
+            source_id: Self::font_source_id(font),
+            glyph_or_icon_id: glyph_id,
+            px_bucket,
+            kind,
+        };
+        if let Some(tile) = self.cache.get(&key).copied() {
+            self.diagnostics.msdf_cache_hit_count += 1;
+            return Ok(tile);
+        }
+        self.diagnostics.msdf_cache_miss_count += 1;
+
+        let generated = generate_glyph_distance_field(font, glyph_id, px, kind)?;
+        match kind {
+            DistanceFieldKind::Msdf => self.diagnostics.glyph_msdf_generate_count += 1,
+            DistanceFieldKind::Sdf => self.diagnostics.glyph_sdf_generate_count += 1,
+        }
+
+        let atlas_tile = atlas
+            .insert_rgba8_tile(
+                &generated.pixels,
+                generated.w,
+                generated.h,
+                generated.left,
+                generated.top,
+            )
+            .ok_or(DistanceFieldError::AtlasFull)?;
+        let tile = DistanceFieldTile {
+            atlas_tile,
+            px_range: generated.px_range,
+            kind,
+        };
+        self.cache.insert(key, tile);
+        Ok(tile)
     }
 
     fn get_or_generate_glyph(
@@ -210,10 +263,12 @@ impl DistanceFieldAtlasCore {
         _px: f32,
     ) -> Result<DistanceFieldTile, DistanceFieldError> {
         Err(DistanceFieldError::IconDeferred(
-            "SVG icon vector MSDF generation deferred; LR4 raster icon path preserved",
+            "IconVector IR stores path signatures only, not normalized curve geometry consumable by msdf-font; LR4 raster icon path preserved",
         ))
     }
+}
 
+impl DistanceFieldAtlasCore {
     fn insert_generated(&mut self, generated: &GeneratedDistanceField) -> Option<AtlasTile> {
         let allocation = self
             .allocator
@@ -294,25 +349,10 @@ fn build_glyph_from_id(
     px: f32,
     px_range: u32,
 ) -> Option<Glyph> {
-    let ch = char_for_glyph_id(face, glyph_id)?;
     GlyphBuilder::new(face)
         .px_size(px.round() as u32)
         .px_range(px_range)
-        .build(ch)
-}
-
-fn char_for_glyph_id(face: &Face<'_>, glyph_id: GlyphId) -> Option<char> {
-    for cp in ' '..='~' {
-        if face.glyph_index(cp) == Some(glyph_id) {
-            return Some(cp);
-        }
-    }
-    for cp in 'À'..='ÿ' {
-        if face.glyph_index(cp) == Some(glyph_id) {
-            return Some(cp);
-        }
-    }
-    None
+        .build_glyph_id(glyph_id)
 }
 
 fn sdf_l8_to_rgba(bytes: &[u8], width: usize, height: usize) -> Vec<u8> {
@@ -398,6 +438,14 @@ pub fn build_distance_field_instance(
         color,
         sdf_params: [mode, tile.px_range, atlas_size as f32, 0.0],
     }
+}
+
+pub fn sdf_params_for_distance_field_tile(tile: &DistanceFieldTile, atlas_size: u32) -> [f32; 4] {
+    let mode = match tile.kind {
+        DistanceFieldKind::Sdf => DISTANCE_FIELD_RENDER_SDF,
+        DistanceFieldKind::Msdf => DISTANCE_FIELD_RENDER_MSDF,
+    };
+    [mode, tile.px_range, atlas_size as f32, 0.0]
 }
 
 #[cfg(test)]

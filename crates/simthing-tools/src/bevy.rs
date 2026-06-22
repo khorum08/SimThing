@@ -19,6 +19,7 @@ use bevy::{
 use crate::{
     atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
     font::{load_font, ProbeFont},
+    msdf::{DistanceFieldDiagnostics, DistanceFieldKind, DistanceFieldTile},
     numeric_damage::{
         build_numeric_glyph_run_table, numeric_damage_diagnostics, patch_numeric_instances,
         NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
@@ -103,12 +104,52 @@ impl Plugin for SimthingToolsTextPlugin {
     }
 }
 
+/// Render mode for a text label instance path.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum TextLabelRenderMode {
+    #[default]
+    Raster,
+    Sdf,
+    Msdf,
+}
+
+impl TextLabelRenderMode {
+    fn distance_field_kind(self) -> Option<DistanceFieldKind> {
+        match self {
+            Self::Raster => None,
+            Self::Sdf => Some(DistanceFieldKind::Sdf),
+            Self::Msdf => Some(DistanceFieldKind::Msdf),
+        }
+    }
+}
+
 /// Workshop/production text label component.
 #[derive(Component, Debug, Clone, PartialEq)]
 pub struct TextLabel {
     pub text: String,
     pub px: f32,
     pub color: [f32; 4],
+    pub render_mode: TextLabelRenderMode,
+}
+
+impl TextLabel {
+    pub fn raster(text: impl Into<String>, px: f32, color: [f32; 4]) -> Self {
+        Self {
+            text: text.into(),
+            px,
+            color,
+            render_mode: TextLabelRenderMode::Raster,
+        }
+    }
+
+    pub fn msdf(text: impl Into<String>, px: f32, color: [f32; 4]) -> Self {
+        Self {
+            text: text.into(),
+            px,
+            color,
+            render_mode: TextLabelRenderMode::Msdf,
+        }
+    }
 }
 
 /// Consolidated main-world perf diagnostics for LR5/LR5R/LR5S tests.
@@ -181,6 +222,7 @@ pub struct TextAggregateVersion {
 #[derive(Resource)]
 pub struct TypefaceAtlas {
     pub cpu: GlyphAtlasCore,
+    pub distance_field: crate::msdf::DistanceFieldAtlasCore,
     pub atlas_size: u32,
 }
 
@@ -188,8 +230,13 @@ impl TypefaceAtlas {
     pub fn new_cpu(size: u32) -> Self {
         Self {
             cpu: GlyphAtlasCore::new(size),
+            distance_field: crate::msdf::DistanceFieldAtlasCore::new(size),
             atlas_size: size,
         }
+    }
+
+    pub fn distance_field_diagnostics(&self) -> DistanceFieldDiagnostics {
+        self.distance_field.diagnostics()
     }
 
     pub fn cpu_stats(&self) -> GlyphAtlasStats {
@@ -224,6 +271,7 @@ struct TextLabelCache {
     text: String,
     px: f32,
     color: [f32; 4],
+    render_mode: TextLabelRenderMode,
     shaped: ShapedRun,
 }
 
@@ -484,28 +532,31 @@ fn rebuild_changed_labels(
 
         let instance_start = std::time::Instant::now();
         let raster_start = std::time::Instant::now();
+        let is_distance_field = label.render_mode != TextLabelRenderMode::Raster;
         if let Some(mut existing) = existing_instances {
             existing.0.clear();
             existing.0.reserve(shaped.glyphs.len());
             for glyph in &shaped.glyphs {
-                if let Some(tile) = atlas
-                    .cpu
-                    .get_or_rasterize(&font.0, glyph.glyph_id, label.px)
-                {
-                    existing
-                        .0
-                        .push(build_instance(glyph, tile, label.color, atlas.atlas_size));
+                if let Some(instance) = build_glyph_instance(glyph, label, &font.0, &mut atlas) {
+                    existing.0.push(instance);
                 }
+            }
+            if is_distance_field {
+                atlas
+                    .distance_field
+                    .record_production_msdf_label(existing.0.len());
             }
         } else {
             let mut instances = Vec::with_capacity(shaped.glyphs.len());
             for glyph in &shaped.glyphs {
-                if let Some(tile) = atlas
-                    .cpu
-                    .get_or_rasterize(&font.0, glyph.glyph_id, label.px)
-                {
-                    instances.push(build_instance(glyph, tile, label.color, atlas.atlas_size));
+                if let Some(instance) = build_glyph_instance(glyph, label, &font.0, &mut atlas) {
+                    instances.push(instance);
                 }
+            }
+            if is_distance_field {
+                atlas
+                    .distance_field
+                    .record_production_msdf_label(instances.len());
             }
             commands
                 .entity(entity)
@@ -521,14 +572,56 @@ fn rebuild_changed_labels(
             cache.text = label.text.clone();
             cache.px = label.px;
             cache.color = label.color;
+            cache.render_mode = label.render_mode;
             cache.shaped = shaped;
         } else {
             commands.entity(entity).insert(TextLabelCache {
                 text: label.text.clone(),
                 px: label.px,
                 color: label.color,
+                render_mode: label.render_mode,
                 shaped,
             });
+        }
+    }
+}
+
+fn build_glyph_instance(
+    glyph: &ShapedGlyph,
+    label: &TextLabel,
+    font: &ProbeFont,
+    atlas: &mut TypefaceAtlas,
+) -> Option<GlyphInstanceGpu> {
+    match label.render_mode {
+        TextLabelRenderMode::Raster => {
+            let tile = atlas.cpu.get_or_rasterize(font, glyph.glyph_id, label.px)?;
+            Some(build_instance(
+                glyph,
+                tile,
+                label.color,
+                atlas.atlas_size,
+                None,
+            ))
+        }
+        TextLabelRenderMode::Sdf | TextLabelRenderMode::Msdf => {
+            let kind = label.render_mode.distance_field_kind()?;
+            let df_tile = atlas
+                .distance_field
+                .get_or_generate_glyph_into_shared_atlas(
+                    &mut atlas.cpu,
+                    font,
+                    glyph.glyph_id as u32,
+                    label.px,
+                    kind,
+                )
+                .ok()?;
+            Some(build_instance(
+                glyph,
+                df_tile.atlas_tile,
+                label.color,
+                atlas.atlas_size,
+                Some(&df_tile),
+            ))
         }
     }
 }
@@ -705,8 +798,12 @@ fn build_instance(
     tile: AtlasTile,
     color: [f32; 4],
     atlas_size: u32,
+    distance_field: Option<&DistanceFieldTile>,
 ) -> GlyphInstanceGpu {
     let inv = 1.0 / atlas_size as f32;
+    let sdf_params = distance_field
+        .map(|df| crate::msdf::sdf_params_for_distance_field_tile(df, atlas_size))
+        .unwrap_or([0.0; 4]);
     GlyphInstanceGpu {
         pos_size: [
             glyph.x + tile.left as f32,
@@ -721,7 +818,7 @@ fn build_instance(
             (tile.y + tile.h) as f32 * inv,
         ],
         color,
-        sdf_params: [0.0; 4],
+        sdf_params,
     }
 }
 
@@ -792,11 +889,7 @@ pub fn spawn_static_text_labels(app: &mut App, count: usize, px: f32) {
     let world = app.world_mut();
     for index in 0..count {
         let text = format!("Label {index}");
-        world.spawn(TextLabel {
-            text,
-            px,
-            color: [1.0, 1.0, 1.0, 1.0],
-        });
+        world.spawn(TextLabel::raster(text, px, [1.0, 1.0, 1.0, 1.0]));
     }
 }
 
@@ -809,6 +902,13 @@ pub fn text_label_entity_counts(app: &mut App) -> (usize, usize) {
     let label_count = text.iter(world).count() + numeric.iter(world).count();
     let draw_entities = draws.iter(world).count();
     (label_count, draw_entities)
+}
+
+pub fn distance_field_diagnostics(app: &App) -> DistanceFieldDiagnostics {
+    app.world()
+        .get_resource::<TypefaceAtlas>()
+        .map(|atlas| atlas.distance_field_diagnostics())
+        .unwrap_or_default()
 }
 
 pub fn numeric_damage_lane_diagnostics(app: &App) -> NumericDamageDiagnostics {
@@ -843,11 +943,11 @@ pub fn spawn_static_and_damage_labels(
     let world = app.world_mut();
     for index in 0..damage_count {
         let entity = world
-            .spawn(TextLabel {
-                text: format!("-{index}"),
+            .spawn(TextLabel::raster(
+                format!("-{index}"),
                 px,
-                color: [1.0, 0.35, 0.2, 1.0],
-            })
+                [1.0, 0.35, 0.2, 1.0],
+            ))
             .id();
         damage_entities.push(entity);
     }

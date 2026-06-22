@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — MSDF/SDF atlas core, deterministic cache, WGSL SDF/MSDF sampling path, and raw-wgpu smoke proof landed; raster + LR5 numeric lane preserved. **PROBATION / DA-sensitive** — not DA-approved.
+PASS — MSDF/SDF atlas core, deterministic cache, WGSL SDF/MSDF sampling path, and raw-wgpu smoke proof landed; raster + LR5 numeric lane preserved. **PROBATION / DA HOLD pending LR6A production wiring review.**
 
 ## PR / branch / merge
 

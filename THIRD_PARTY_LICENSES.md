@@ -97,6 +97,17 @@ This file records vendored third-party code included in the SimThing workspace.
 | **License** | MIT OR Apache-2.0 |
 | **Scope note (TYPEFACE-LR6)** | Import-time TTF glyph MSDF/SDF generation for `DistanceFieldAtlasCore`. CPU oracle only; GPU owns sampling and edge reconstruction. |
 
+## msdf-font (TYPEFACE-LR6A patched vendored copy)
+
+| Field | Value |
+|---|---|
+| **Package** | msdf-font |
+| **Upstream origin** | https://github.com/alexheretic/msdf-font |
+| **Version in workspace** | 0.3.1 vendored at `vendor/msdf_font/` via `[patch.crates-io]` |
+| **License** | MIT OR Apache-2.0 |
+| **Patch** | Adds `GlyphBuilder::build_glyph_id(GlyphId)` for shaped-glyph MSDF without codepoint reverse lookup |
+| **Scope note (TYPEFACE-LR6A)** | Minimal upstream-compatible patch; full crate vendored for deterministic builds |
+
 ## glam (TYPEFACE-LR6 msdf-font transitive dependency)
 
 | Field | Value |

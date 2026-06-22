@@ -36,3 +36,6 @@ opt-level = 1
 
 [profile.release]
 lto       = "thin"
+
+[patch.crates-io]
+msdf_font = { path = "vendor/msdf_font" }
