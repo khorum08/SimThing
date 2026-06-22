@@ -192,6 +192,7 @@
 | **TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R** - mount StudioTypefaceShellPlugin in run_studio; fixture manifest bake; probe label + damage emitter staging | #894 | `850a216a7a` | **ACCEPTED / closed** — post-merge evidence `29d50465ba`; index finalize `da1f1687fd`; `docs/tests/typeface_lr8_studio_plugin_mount_results.md`; ladder § LR8 |
 | **TYPEFACE-LR9-FINAL-PERF-GATE-0** - final typeface perf gate: flat 5k-class, numeric damage lane, dynamic style, warped nameplates, Studio seam profiles | #895 | `c5b5faeab2` | **PROBATION / DA-sensitive final perf gate** — post-merge evidence `7fa3a4dc91`; binding evidence remediated by 0R; `docs/tests/typeface_lr9_results.md`; ladder § LR9 |
 | **TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R** - run and record 5k flat/numeric + 256 warped binding perf profiles | #896 | `bda6147c95` | **PROBATION / DA evidence remediation** — post-merge evidence `62c62a6b69`; `docs/tests/typeface_lr9_binding_perf_results.md`; ladder § LR9 |
+| **TYPEFACE-CLOSEOUT-PERF-INVARIANT-0** - green changed-label rebuild perf invariant (`changed_label_rebuild_does_not_clone_old_instance_vec`) | (pending) | (pending) | **PROBATION / closure blocker remediation** — `docs/tests/typeface_closeout_perf_invariant_results.md`; typeface track OPEN |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

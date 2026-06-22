@@ -794,8 +794,7 @@ fn rebuild_changed_labels(
                 instance.warp_params = warp_params_for_slot(label.warp_slot, 1.0);
             }
             if let Some(mut existing) = existing_instances {
-                existing.0.clear();
-                existing.0.extend_from_slice(&instances);
+                existing.0 = instances;
             } else {
                 commands
                     .entity(entity)
