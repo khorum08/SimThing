@@ -7,6 +7,8 @@ PASS — LR5S damage-churn remediation landed; 5k no-op binding preserved; damag
 ## PR / branch / merge
 
 - Branch: `typeface-lr5-damage-churn-gpu-audit-0r`
+- PR: #881
+- Merge SHA: `9a2f8d7351cd78a7dc8cc64b902a9459f99e03a4`
 
 ## DA HOLD being remediated
 
