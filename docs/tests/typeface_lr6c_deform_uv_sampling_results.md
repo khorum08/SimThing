@@ -10,6 +10,7 @@ PASS — vertex shader splits source glyph-local UV from deformed position coord
 - PR: #889
 - Merge SHA: `913b148323`
 - Post-merge evidence: `2e83ff80c8`
+- Index finalize: `581fe06f84`
 
 ## DA HOLD being remediated
 
