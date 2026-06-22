@@ -7,8 +7,8 @@ PASS — Bevy-path perf remediation landed; 5k no-op binding met; damage churn C
 ## PR / branch / merge
 
 - Branch: `typeface-lr5-perf-path-0r`
-- PR: pending
-- Merge SHA: pending
+- PR: #880
+- Merge SHA: `9a17bc64f03ae6c2468c15fd16f42ebcb45906db`
 
 ## DA HOLD being remediated
 
