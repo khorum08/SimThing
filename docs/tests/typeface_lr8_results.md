@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — Studio/game label seam wires `StudioTypefaceLabel` into existing typeface runtime components (`TextLabel`, `NumericDamageLabel`) with fixture manifest icon resolution at import/staging time. **PROBATION / integration seam** — not DA-approved.
+PASS — Studio/game label seam wires `StudioTypefaceLabel` into existing typeface runtime components (`TextLabel`, `NumericDamageLabel`) with fixture manifest icon resolution at import/staging time. **DA APPROVED after #894 shell mount remediation.**
 
 ## PR / branch / merge
 
@@ -118,8 +118,4 @@ git diff --check
 
 ## DA recommendation
 
-Recommend **PROBATION** retention for integration seam. Shell mount remediated by `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R`. Do **not** self-approve LR8 or the whole typeface track.
-
-## Next recommended action
-
-Codex review of shell mount proofs; LR9 perf gate when track owner selects it.
+Recommend **DA APPROVED** retention for integration seam after shell mount (#894). LR9 perf gate active next.

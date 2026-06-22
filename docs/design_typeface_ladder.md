@@ -184,11 +184,16 @@ one run.
 **Public API:** `load_icon_manifest`, `bake_icon_manifest`, `IconManifest`, `IconManifestBake`.
 **Tests** (`typeface_lr7.rs`): manifest load/bake, golden codepoint table, duplicate/range/path validation, role-layer preservation, mixed text+icon run, no runtime SVG dependency.
 
-## LR8 — Studio + game label seam  *(mechanical + DA docs)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) — `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, typeface component sync. **Shell mount remediation:** `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R` — `StudioTypefaceShellPlugin` in `run_studio()`. See `docs/tests/typeface_lr8_results.md` and `docs/tests/typeface_lr8_studio_plugin_mount_results.md`. **PROBATION** — integration seam + shell mount proved headless; not DA-approved. LR9 blocked.
-**Files:** `crates/simthing-tools/src/studio_labels.rs`, `crates/simthing-mapeditor/src/app/labels.rs`.
-**Tests** (`typeface_lr8.rs`): spawn/sync, style/render mode, noop/update, damage path, manifest icon mixed label, GPU residency doc check.
-**Boundary:** labels read presentation data only; never mutate ScenarioSpec or any authority.
+## LR8 — Studio + game label seam  *(mechanical + DA docs)* — **DONE / DA APPROVED**
+**Status:** `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) — `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, typeface component sync. **Shell mount remediation:** `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R` (#894, merge `850a216a7a`) — `StudioTypefaceShellPlugin` in `run_studio()`. **DA APPROVED after #894.** See `docs/tests/typeface_lr8_results.md` and `docs/tests/typeface_lr8_studio_plugin_mount_results.md`.
+**Files:** `crates/simthing-tools/src/studio_labels.rs`, `crates/simthing-mapeditor/src/studio_typeface_shell.rs`.
+**Tests** (`typeface_lr8.rs`): spawn/sync, shell mount, manifest icon, damage path, GPU residency doc check.
+
+## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` — structured scenario profiles (flat 5k-class, numeric damage lane, dynamic style, warped nameplates, Studio seam, combined MSDF retention). See `docs/tests/typeface_lr9_results.md`. **PROBATION** — final perf gate candidate; not DA-approved; track remains OPEN.
+**Files:** `crates/simthing-tools/src/lr9.rs`, `crates/simthing-tools/tests/typeface_lr9.rs`.
+**Tests:** CI smoke at 1k/100 scale + `#[ignore]` 5k binding profiles; LR0–LR8 regressions retained.
+**Boundary:** perf gate only — no track closure, no font export, no sim scope.
 
 ---
 
@@ -213,7 +218,8 @@ one run.
 | LR6C | adaptive-tessellation glyph mesh + parametric deform | **yes** | **DONE / DA APPROVED (#888, #889)** |
 | LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / DA APPROVED** (#890, #891 combined proof) |
 | LR7 | icon-font manifest | no | **DONE / DA APPROVED for manifest machinery** (#892) |
-| LR8 | Studio + game label seam + shell mount | no | **DONE / PROBATION** (#893 + mount 0R) |
+| LR8 | Studio + game label seam + shell mount | no | **DONE / DA APPROVED** (#893 + #894) |
+| LR9 | dynamic style + animated + warped perf gate | **yes** | **DONE / PROBATION** |
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,
 pathfinding/combat/economy/fleet movement, new savefile format, DA promotion of any non-typeface row.

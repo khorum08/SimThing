@@ -5,6 +5,7 @@ pub mod deform;
 pub mod font;
 pub mod harness;
 pub mod icons;
+pub mod lr9;
 pub mod manifest;
 pub mod msdf;
 mod numeric_damage;
@@ -60,6 +61,15 @@ pub use harness::{ascii_sample_chars, format_measurement_report, measure_chars, 
 pub use icons::{
     IconCodepoint, IconError, IconFillRule, IconLayerRole, IconPathCommand, IconRegistration,
     IconSet, IconStyleLayerRef, IconVector, IconVectorLayer, IconVectorPath, ICON_PUA_START,
+};
+pub use lr9::{
+    adapter_label, collect_lr9_metrics, fixture_font_bytes, format_lr9_scenario_report,
+    install_dynamic_style_rows, install_warp_tables, lr9_cpu_bevy_app, lr9_studio_shell_app,
+    lr9_timed_updates, profile_dynamic_style_labels, profile_flat_animated_labels,
+    profile_numeric_damage_lane, profile_studio_seam_labels, profile_warped_nameplates,
+    spawn_studio_seam_labels, spawn_styled_labels, spawn_warped_nameplate_labels,
+    validation_host_label, Lr9Config, Lr9MetricsSnapshot, Lr9ScenarioProfile, LR9_ATLAS_SIZE,
+    LR9_BINDING_CONFIG, LR9_CI_CONFIG, LR9_LABEL_PX,
 };
 pub use manifest::{
     bake_icon_manifest, fixture_manifest_path, load_icon_manifest, IconManifest, IconManifestBake,

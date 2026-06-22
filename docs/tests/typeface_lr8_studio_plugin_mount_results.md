@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — Studio/mapeditor app shell mounts `StudioTypefaceShellPlugin` (fixture font + `StudioTypefaceLabelPlugin` + probe staging) via the same path as `run_studio()`. **PROBATION / DA remediation** — closes LR8 shell-mount gap; not DA-approved.
+PASS — Studio/mapeditor app shell mounts `StudioTypefaceShellPlugin` (fixture font + `StudioTypefaceLabelPlugin` + probe staging) via the same path as `run_studio()`. **ACCEPTED / closed** — LR8 shell-mount remediation complete.
 
 ## PR / branch / merge
 
@@ -13,7 +13,7 @@ PASS — Studio/mapeditor app shell mounts `StudioTypefaceShellPlugin` (fixture 
 
 ## Remediation target
 
-- `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) — **PROBATION / DA HOLD** on Studio shell mount gap; remediated by this rung.
+- `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) — **DA APPROVED after shell mount remediation (#894)**
 
 ## Studio shell mount
 
@@ -107,7 +107,7 @@ git diff --check
 
 ## DA recommendation
 
-Recommend **PROBATION** retention for shell mount remediation. LR8 seam + shell mount proved headless; **do not** self-approve LR8 or close the typeface track. LR9 remains blocked.
+Recommend **ACCEPTED / closed** for shell mount remediation. LR8 promoted to **DA APPROVED** after #894.
 
 ## Next recommended action
 
