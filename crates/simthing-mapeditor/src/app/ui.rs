@@ -109,12 +109,17 @@ pub fn studio_ui_system(
     assets: Res<StarVisualAssets>,
     mut perf_telemetry: ResMut<StudioPerformanceTelemetryState>,
     mut render_caches: ResMut<StudioRenderLoopCaches>,
+    mut ctx_unavailable_logged: Local<bool>,
 ) {
     let egui_started = std::time::Instant::now();
     let mut left_panel_ms = 0.0f64;
     let mut right_panel_ms = 0.0f64;
 
     let Ok(ctx) = contexts.ctx_mut() else {
+        if !*ctx_unavailable_logged {
+            bevy::log::warn!("studio egui primary context unavailable; UI pass skipped");
+            *ctx_unavailable_logged = true;
+        }
         return;
     };
     let screen = ctx.screen_rect();

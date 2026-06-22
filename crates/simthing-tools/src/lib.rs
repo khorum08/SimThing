@@ -29,6 +29,7 @@ pub use bevy::{
     text_deform_diagnostics, text_label_entity_counts, text_path_warp_diagnostics,
     text_perf_diagnostics, text_style_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu,
     LabelAggregateSegment, SimthingToolsTextPlugin, TextAggregateVersion, TextDamagePhaseProfile,
+    TonemappingLutFixPlugin,
     TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel, TextLabelRenderMode,
     TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
 };

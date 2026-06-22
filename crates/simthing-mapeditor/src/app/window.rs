@@ -8,8 +8,12 @@ use super::resources::StudioSettings;
 use super::StudioAppState;
 use crate::settings::WindowModeSetting;
 
+const MIN_WINDOW_WIDTH: u32 = 640;
+const MIN_WINDOW_HEIGHT: u32 = 480;
+
 pub fn primary_window_from_settings(settings: &crate::settings::EditorSettings) -> Window {
-    let (w, h) = (settings.last_window_size[0], settings.last_window_size[1]);
+    let w = settings.last_window_size[0].max(MIN_WINDOW_WIDTH);
+    let h = settings.last_window_size[1].max(MIN_WINDOW_HEIGHT);
     Window {
         title: "SimThing Studio".into(),
         resolution: WindowResolution::new(w as f32, h as f32),
@@ -27,6 +31,25 @@ pub fn apply_initial_window_mode(
         return;
     };
     apply_mode(&mut window, settings.window_mode);
+}
+
+/// bevy_egui skips UI rendering when the main camera has no physical viewport rect.
+pub fn warn_missing_egui_viewport(
+    camera: Query<&Camera, With<super::camera::MainCamera>>,
+    mut logged: Local<bool>,
+) {
+    if *logged {
+        return;
+    }
+    let Ok(camera) = camera.single() else {
+        return;
+    };
+    if camera.physical_viewport_rect().is_none() {
+        bevy::log::warn!(
+            "main camera has no physical viewport rect; egui UI will not render until the window is sized"
+        );
+        *logged = true;
+    }
 }
 
 pub fn apply_mode(window: &mut Window, mode: WindowModeSetting) {
