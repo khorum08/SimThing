@@ -7,8 +7,8 @@ PASS — MSDF/SDF atlas core, deterministic cache, WGSL SDF/MSDF sampling path, 
 ## PR / branch / merge
 
 - Branch: `typeface-lr6-msdf-atlas-shader-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #883
+- Merge SHA: `c08ac5ce06`
 
 ## LR5 DA closeout
 

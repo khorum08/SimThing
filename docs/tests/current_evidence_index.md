@@ -178,7 +178,7 @@
 | **TYPEFACE-LR5-PERF-PATH-0R** - Bevy-path aggregate versioning, dirty atlas sync, draw sync gating, instance-buffer reuse; 5k no-op binding profile; CPU harness retained | #880 | `9a17bc64f0` | **DA remediation accepted** — `docs/tests/typeface_lr5r_results.md`; ladder `docs/design_typeface_ladder.md` § LR5R |
 | **TYPEFACE-LR5-DAMAGE-CHURN-GPU-AUDIT-0R** - no-clone changed-label rebuild; segmented aggregate patching; numeric shape cache; damage phase profile; GPU-residency audit; variable-width 5k damage ~2.26 ms | #881 | `9a2f8d7351` | **DA remediation accepted** — `docs/tests/typeface_lr5s_results.md` |
 | **TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R** - `NumericDamageLabel` fixed-width glyph lane; shaping bypass; aggregate repack zero; fixed-width 5k damage ~0.58 ms/frame | #882 | `c05baef87b` | **ACCEPTED / closed — final LR5 remediation** — post-merge evidence `daaeb1795a`; `docs/tests/typeface_lr5t_results.md` |
-| **TYPEFACE-LR6-MSDF-ATLAS-SHADER-0** - import-time MSDF/SDF atlas core; GPU SDF/MSDF shader path; raw-wgpu smoke; raster default preserved; icon MSDF deferred | pending | pending | **PROBATION / DA-sensitive** — `docs/tests/typeface_lr6_results.md`; ladder `docs/design_typeface_ladder.md` § LR6 |
+| **TYPEFACE-LR6-MSDF-ATLAS-SHADER-0** - import-time MSDF/SDF atlas core; GPU SDF/MSDF shader path; raw-wgpu smoke; raster default preserved; icon MSDF deferred | #883 | `c08ac5ce06` | **PROBATION / DA-sensitive** — `docs/tests/typeface_lr6_results.md`; smoke `docs/tests/typeface_lr6_sdf_smoke.png`; ladder `docs/design_typeface_ladder.md` § LR6 |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 
