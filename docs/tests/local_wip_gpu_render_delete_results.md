@@ -4,6 +4,12 @@
 
 PASS — orphaned untracked local spike removed; no committed code references; no runtime Studio behavior change.
 
+## PR / branch / merge
+
+- Branch: `local-wip-gpu-render-delete-0`
+- PR: #902
+- Merge SHA: `6d1edf8257`
+
 ## Deleted file
 
 | Path | Git status before | Action |
