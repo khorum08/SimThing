@@ -178,21 +178,17 @@ one run.
 ## LR6D — text-on-path + warp field / control lattice  *(DA-sensitive)* — **DONE / DA APPROVED**
 **Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`). See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **DA APPROVED** after combined MSDF/deform proof.
 
-## LR7 — custom character set / icon-font manifest  *(mechanical)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`) — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/tests/typeface_lr7_results.md`. **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. TTF/OTF export deferred optional LR7A.
+## LR7 — custom character set / icon-font manifest  *(mechanical)* — **DONE / DA APPROVED for manifest machinery**
+**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`, post-merge evidence `be8dde2388`) — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/tests/typeface_lr7_results.md`. **DA APPROVED for manifest machinery** — production icon source set remains input debt. TTF/OTF export deferred optional LR7A.
 **Files:** `crates/simthing-tools/src/manifest.rs`; fixture manifest `crates/simthing-tools/assets/typeface/icons/manifest.ron`.
 **Public API:** `load_icon_manifest`, `bake_icon_manifest`, `IconManifest`, `IconManifestBake`.
 **Tests** (`typeface_lr7.rs`): manifest load/bake, golden codepoint table, duplicate/range/path validation, role-layer preservation, mixed text+icon run, no runtime SVG dependency.
 
-## LR8 — Studio + game label seam  *(mechanical + DA docs)*
-**Files:** `crates/simthing-mapeditor/src/app/labels.rs` (Studio consumer); a `DamageText`-style emitter
-component in `simthing-tools`.
-**Steps:** world-space entity-name labels (planet/system names) scaled by camera distance, fed from the
-existing Studio view model (presentation-only, no authority); a damage-text emitter component. Studio smoke:
-labels render; perf within the LR5 budget.
-**Tests:** `studio_entity_labels_render_headless`, `labels_are_presentation_only_no_authority_touch`,
-`damage_text_emitter_respects_lr5_budget`.
-**Boundary:** labels read the Studio projection only; never mutate ScenarioSpec or any authority.
+## LR8 — Studio + game label seam  *(mechanical + DA docs)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` — `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, typeface component sync. See `docs/tests/typeface_lr8_results.md`. **PROBATION** — integration seam proved headless; Studio shell mount deferred.
+**Files:** `crates/simthing-tools/src/studio_labels.rs`, `crates/simthing-mapeditor/src/app/labels.rs`.
+**Tests** (`typeface_lr8.rs`): spawn/sync, style/render mode, noop/update, damage path, manifest icon mixed label, GPU residency doc check.
+**Boundary:** labels read presentation data only; never mutate ScenarioSpec or any authority.
 
 ---
 
@@ -216,8 +212,8 @@ labels render; perf within the LR5 budget.
 | LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / DA APPROVED (#886, #887)** |
 | LR6C | adaptive-tessellation glyph mesh + parametric deform | **yes** | **DONE / DA APPROVED (#888, #889)** |
 | LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / DA APPROVED** (#890, #891 combined proof) |
-| LR7 | icon-font manifest | no | **DONE / PROBATION** (#892) |
-| LR8 | Studio + game label seam | no | TODO |
+| LR7 | icon-font manifest | no | **DONE / DA APPROVED for manifest machinery** (#892) |
+| LR8 | Studio + game label seam | no | **DONE / PROBATION** |
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,
 pathfinding/combat/economy/fleet movement, new savefile format, DA promotion of any non-typeface row.

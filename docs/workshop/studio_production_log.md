@@ -20,11 +20,19 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+---
+
+## Typeface ladder — LR8 Studio label seam (2026-06-21)
+
+- `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` adds `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, and typeface component sync (`studio_labels.rs`, `app/labels.rs`).
+- LR7 promoted to **DA APPROVED for manifest machinery** (#892, `ac320204eb`, evidence `be8dde2388`).
+- LR8 **PROBATION** — headless integration seam proved; Studio shell plugin mount deferred. Not DA-approved.
+
 ## Typeface ladder — LR7 icon-font manifest (2026-06-21)
 
 - `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`) adds declarative RON manifest (`manifest.ron`), stable name ↔ PUA codepoint table, and fixture icon bake through existing `IconSet` static-SVG path.
 - LR6D promoted to **DA APPROVED** after #891 (`ffc4bb6891`, closeout evidence `6a32763bdd`). `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` **ACCEPTED / closed**.
-- LR7 **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. Not DA-approved.
+- LR7 (#892) **DA APPROVED for manifest machinery** after post-merge evidence `be8dde2388`. Production icon source set remains input debt.
 
 ## Typeface ladder — LR6D combined MSDF/deform proof remediation (2026-06-21)
 
