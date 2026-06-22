@@ -183,7 +183,7 @@
 | **TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R** - normalized IconVector geometry IR; icon MSDF from bezpath; per-role raster style-slot refs; LR4 raster preserved | #885 | `a3f7dcd30d` | **ACCEPTED / closed** — post-merge evidence `35e2c3a6cc`; `docs/tests/typeface_lr6a_icon_geometry_results.md`; ladder § LR6A-ICON |
 | **TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0** - GPU style table; shader gradient/pulse/outline/glow; layered icon style slots; style_params on instances | #886 | `54e226471c` | **DA APPROVED after #887** — post-merge evidence `78456f666d`; `docs/tests/typeface_lr6b_results.md`; ladder § LR6B |
 | **TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R** - persistent render-world style globals/rows buffers; bind-group reuse; rows write on rows_generation only | #887 | `6117dd5fd5` | **ACCEPTED / closed** — post-merge evidence `19ca9f8420`; index finalize `79ee674026`; `docs/tests/typeface_lr6b_style_buffer_residency_results.md` |
-| **TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0** - persistent atlas bind group; Tier-1 vertex-shader parametric deformation; adaptive tessellation on opt-in | PR in branch | branch HEAD | **PROBATION / DA-sensitive** — `docs/tests/typeface_lr6c_results.md`; ladder § LR6C |
+| **TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0** - persistent atlas bind group; Tier-1 vertex-shader parametric deformation; adaptive tessellation on opt-in | #888 | `2f029bdb97` | **PROBATION / DA-sensitive** — `docs/tests/typeface_lr6c_results.md`; ladder § LR6C |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 
