@@ -22,17 +22,27 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR9 final perf gate (2026-06-21)
+
+- `TYPEFACE-LR9-FINAL-PERF-GATE-0` adds `lr9.rs` scenario profile harness and `typeface_lr9.rs` tests — flat 5k-class labels, numeric damage lane, dynamic style, warped nameplates, Studio seam, combined MSDF retention.
+- LR9 **PROBATION** — final perf gate candidate; not DA-approved; typeface track remains OPEN.
+
+## Typeface ladder — LR8 DA closeout (2026-06-21)
+
+- LR8 promoted to **DA APPROVED after #894** (`850a216a7a`, evidence `29d50465ba`, index finalize `da1f1687fd`).
+- `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R` **ACCEPTED / closed**.
+
 ## Typeface ladder — LR8 Studio shell plugin mount (2026-06-21)
 
 - `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R` mounts `StudioTypefaceShellPlugin` in `run_studio()` — fixture font, `StudioTypefaceLabelPlugin`, probe label + damage emitter staging (`studio_typeface_shell.rs`).
-- Remediates LR8 **DA HOLD** on shell mount gap from #893 (`ec01da43c9`, evidence `22e7bfb9a4`).
-- LR8 remains **PROBATION** — not DA-approved; LR9 blocked.
+- Remediates LR8 shell mount gap from #893 (`ec01da43c9`, evidence `22e7bfb9a4`).
+- **ACCEPTED / closed** — LR8 **DA APPROVED after #894**.
 
 ## Typeface ladder — LR8 Studio label seam (2026-06-21)
 
 - `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) adds `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, and typeface component sync (`studio_labels.rs`, `app/labels.rs`).
 - LR7 promoted to **DA APPROVED for manifest machinery** (#892, `ac320204eb`, evidence `be8dde2388`).
-- LR8 **PROBATION** — integration seam proved headless; shell mount remediated by mount 0R. Not DA-approved.
+- LR8 **DA APPROVED after #894** shell mount remediation.
 
 ## Typeface ladder — LR7 icon-font manifest (2026-06-21)
 
