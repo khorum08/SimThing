@@ -1,6 +1,6 @@
 # TYPEFACE-LADDER — granular implementation ladder (TTF/OTF + SVG glyph-atlas service)
 
-> **Status: OPEN (owner-approved 2026-06-21).** Companion to `docs/design_simthing_typeface_track_proposal.md`
+> **Status: CLOSED / DA-APPROVED (Opus track closure 2026-06-22; closeout PR #897 `974ffcc7fc`).** Companion to `docs/design_simthing_typeface_track_proposal.md`
 > (rationale + ecosystem survey). This doc is the **mechanical** ladder: one rung = one PR.
 >
 > **Owner decisions (locked):** renderer = **MSDF target with a glyphon raster milestone**; home = **prototype
@@ -293,3 +293,35 @@ Codex's concepts are accepted but compressed: LR4A→folded into LR4; LR6A→fol
 slots); LR8A→folded into LR8; LR7A/LR10→deferred (not committed). The genuinely new committed work is the
 styling rung (LR6B), the two deformation rungs (LR6C/LR6D — the owner's morphing requirement), and the perf
 gate (LR9). Net committed rungs: 11; deferred optional: 2.
+
+---
+
+# TYPEFACE TRACK — DA CLOSURE (Opus, executive design authority, 2026-06-22)
+
+**Decision: CLOSED / DA-APPROVED.** The full `cargo test -p simthing-tools` suite is green on a clean master
+(`f6e0fb24fc`); the final closure blocker (`changed_label_rebuild_does_not_clone_old_instance_vec`) was
+remediated in **PR #897 `974ffcc7fc`** (TYPEFACE-CLOSEOUT-PERF-INVARIANT-0 — replaced an icon-path
+`extend_from_slice` memcpy with a move assignment; numeric/aggregate lanes unchanged; source-grep guard
+retained). LR9 binding evidence (#896) stands: flat 5k noop avg 0.5037 ms, numeric noop avg 0.3260 ms,
+warped 0.0683 ms.
+
+**Rungs promoted PROBATION → CLOSED / DA-APPROVED:** LR0, LR1, LR2, LR3, LR4, LR5, LR6, LR6A, LR6A-ICON, LR6B,
+LR6C, LR6D, LR7, LR8, LR9, plus the LR6B style-buffer-residency-0R and LR2R remediations.
+
+**Doctrines verified preserved:** GPU-residency (style table, atlas bind group, MSDF, deform/path buffers all
+persistent; numeric production authority GPU-resident); semantic-free shader (guard passes); no runtime SVG/
+manifest reload; no bespoke *runtime* renderer (Route B was a headless test harness only). The architecture
+delivers the owner's targets: EU4/EU5-style warp/bend/twist nameplates as vertex-shader deformation over static
+MSDF (no CPU reshape), and double-use nameplates (progress/status bars) by animating GPU style slots
+(fill_mode/outline_px/glow_px/gradient/effect_flags/time_phase) — both fully GPU-resident.
+
+**Documented non-blocking debts (carried, not gating):**
+1. Flat 5k max no-op spike 1.0086 ms — single-frame O(N) label-scan spike (noop rebuild delta = 0). Make the
+   per-frame scan incremental/event-driven (dirty list) before scaling well beyond 5k.
+2. 5k damage churn ~2.5 ms/frame — inherent changed-VALUE reshape cost, not the settled no-op budget.
+3. Interactive Studio **window** smoke (live windowed FPS) — presentation debt; headless cannot cover it.
+4. Production icon **source set** (art + licensing) — owner-content debt; LR7 manifest machinery + fixtures are
+   complete and proven.
+
+**Non-goals reaffirmed:** no ScenarioSpec/RF/spatial change, no GPU-dispatch-into-sim, presentation-only.
+The typeface ladder is **closed**. Next track is selected by the project owner.
