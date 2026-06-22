@@ -22,6 +22,12 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR9 binding perf evidence (2026-06-21)
+
+- `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` runs and records binding-scale profiles: flat 5k (avg noop **0.5037 ms**), numeric 5k (avg noop **0.3260 ms**), warped 256 (avg noop **0.0683 ms**).
+- Remediates LR9 **DA HOLD** on unexecuted `#[ignore]` profiles from #895.
+- LR9 remains **PROBATION** — not DA-approved; typeface track OPEN.
+
 ## Typeface ladder — LR9 final perf gate (2026-06-21)
 
 - `TYPEFACE-LR9-FINAL-PERF-GATE-0` adds `lr9.rs` scenario profile harness and `typeface_lr9.rs` tests — flat 5k-class labels, numeric damage lane, dynamic style, warped nameplates, Studio seam, combined MSDF retention.

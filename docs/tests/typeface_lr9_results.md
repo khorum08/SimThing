@@ -2,13 +2,14 @@
 
 ## Status
 
-PASS — final typeface performance gate profiles flat 5k-class labels, fixed-width numeric damage lane, dynamic style rows, warped nameplates, and Studio seam labels over the Bevy typeface runtime. **PROBATION / DA-sensitive final perf gate** — not DA-approved; typeface track remains OPEN.
+PASS — final typeface performance gate profiles flat 5k-class labels, fixed-width numeric damage lane, dynamic style rows, warped nameplates, and Studio seam labels over the Bevy typeface runtime. **PROBATION / DA-sensitive final perf gate** — binding-scale evidence recorded in `typeface_lr9_binding_perf_results.md`; not DA-approved; typeface track remains OPEN.
 
 ## PR / branch / merge
 
 - Branch: `typeface-lr9-final-perf-gate-0`
 - PR: #895
-- Merge SHA: `c5b5faeab2`
+- Post-merge evidence: `7fa3a4dc91`
+- Binding evidence: `docs/tests/typeface_lr9_binding_perf_results.md` (0R remediation)
 
 ## LR8 closeout
 
@@ -40,7 +41,14 @@ CI (`LR9_CI_CONFIG`, 1,000 labels, 20 noop frames):
 - instance_rebuild_count delta across noop frames: **0**
 - default tessellation level: **0** (flat one-quad glyphs)
 
-Manual binding (`#[ignore] flat_5k_binding_noop_perf_profile`):
+Manual binding (`#[ignore] flat_5k_binding_noop_perf_profile`) — **recorded in `typeface_lr9_binding_perf_results.md`**:
+
+| Metric | Value |
+|---|---|
+| avg_noop_update_ms | **0.5037** |
+| max_noop_update_ms | **1.0086** |
+| aggregate_repack_count | **0** |
+| noop shape/instance rebuild delta | **0** |
 
 ```bash
 cargo test -p simthing-tools --test typeface_lr9 -- --ignored --nocapture flat_5k_binding_noop_perf_profile
@@ -53,7 +61,15 @@ CI (100 numeric labels + 10 damage frames):
 - avg_noop_update_ms: **< 1.0**
 - uses `NumericDamageLabel` / LR5 fixed-width lane (not generic shaping)
 
-Manual binding (`#[ignore] numeric_damage_5k_binding_perf_profile`):
+Manual binding (`#[ignore] numeric_damage_5k_binding_perf_profile`) — **recorded in `typeface_lr9_binding_perf_results.md`**:
+
+| Metric | Value |
+|---|---|
+| avg_noop_update_ms | **0.3260** |
+| max_noop_update_ms | **0.6960** |
+| avg_damage_update_ms | **2.5149** |
+| shape_rebuild_count (noop phase) | **0** |
+| aggregate_repack_count | **0** |
 
 ```bash
 cargo test -p simthing-tools --test typeface_lr9 -- --ignored --nocapture numeric_damage_5k_binding_perf_profile
@@ -72,6 +88,15 @@ cargo test -p simthing-tools --test typeface_lr9 -- --ignored --nocapture numeri
 - `tessellated_vertex_count` stable across noop frames after settle
 - `path_warp_noop_reuse_count` increments on idle frames
 - Path table change triggers bounded single-frame rebuild
+
+Binding (`#[ignore] warped_nameplate_binding_perf_profile`, 256 warped) — **recorded in `typeface_lr9_binding_perf_results.md`**:
+
+| Metric | Value |
+|---|---|
+| avg_noop_update_ms | **0.0683** |
+| max_noop_update_ms | **0.2443** |
+| avg_changed_update_ms | **1.1781** |
+| aggregate_repack_count | **0** |
 
 ## Studio seam profile
 

@@ -75,6 +75,7 @@ fn flat_5k_binding_noop_perf_profile() {
     let profile = profile_flat_animated_labels(LR9_BINDING_CONFIG);
     eprintln!("=== LR9 FLAT 5K BINDING ===");
     eprintln!("{}", format_lr9_scenario_report(&profile));
+    eprintln!("perf_after_noop={:?}", profile.perf);
     assert_eq!(profile.config.flat_labels, 5_000);
     assert!(
         profile.avg_noop_update_ms < 1.0,
@@ -104,12 +105,29 @@ fn numeric_damage_5k_binding_perf_profile() {
     let profile = profile_numeric_damage_lane(LR9_BINDING_CONFIG);
     eprintln!("=== LR9 NUMERIC 5K BINDING ===");
     eprintln!("{}", format_lr9_scenario_report(&profile));
+    eprintln!("perf_after_noop={:?}", profile.perf);
     assert_eq!(profile.config.numeric_damage_labels, 5_000);
     assert!(
         profile.avg_noop_update_ms < 1.0,
         "5k numeric avg no-op must be <1 ms (got {:.4}ms)",
         profile.avg_noop_update_ms
     );
+}
+
+#[test]
+#[ignore = "manual binding proof: 256 warped nameplate labels"]
+fn warped_nameplate_binding_perf_profile() {
+    let profile = profile_warped_nameplates(LR9_BINDING_CONFIG);
+    eprintln!("=== LR9 WARPED BINDING ===");
+    eprintln!("{}", format_lr9_scenario_report(&profile));
+    eprintln!("perf_after_noop={:?}", profile.perf);
+    assert_eq!(profile.config.warped_labels, 256);
+    assert!(
+        profile.avg_noop_update_ms < 1.0,
+        "256 warped avg no-op must be <1 ms (got {:.4}ms)",
+        profile.avg_noop_update_ms
+    );
+    assert!(profile.metrics.tessellated_vertex_count > 0);
 }
 
 #[test]
@@ -324,6 +342,16 @@ fn gpu_residency_audit_documented_for_lr9() {
     assert!(results.contains("GPU residency"));
     assert!(results.contains("CPU surfacing"));
     assert!(results.contains("import/staging"));
+}
+
+#[test]
+fn binding_perf_evidence_documented_for_lr9() {
+    let results = read_doc("docs/tests/typeface_lr9_binding_perf_results.md");
+    assert!(results.contains("0.5037"));
+    assert!(results.contains("0.3260"));
+    assert!(results.contains("0.0683"));
+    assert!(results.contains("GPU residency"));
+    assert!(results.contains("Import/staging"));
 }
 
 #[test]
