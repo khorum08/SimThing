@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — binding-scale LR9 profiles executed on validation host with captured measurements. **PROBATION / DA evidence remediation** — closes #895 binding-profile DA HOLD; LR9 not self-approved; typeface track remains OPEN.
+PASS — binding-scale LR9 profiles executed on validation host with captured measurements. **PROBATION / DA evidence remediation** — closes #895 binding-profile DA HOLD; LR9 architecturally DA-approved; typeface track remains OPEN pending closeout review.
 
 ## PR / branch / merge
 
@@ -119,7 +119,7 @@ git diff --check
 - Flat 5k max noop frame slightly exceeds 1 ms guidance on validation host (1.0086 ms); avg meets budget.
 - Damage churn avg ~2.5 ms/frame at 5k scale — separate from settled noop budget; consistent with LR5T-class fixed-width lane.
 - Full render-subapp draw-call binding at 5k not re-measured here (CPU harness `queued_draw_count=0`).
-- Typeface track closure deferred to Codex DA review.
+- Typeface track closure deferred to Codex DA review; closeout perf invariant (`changed_label_rebuild_does_not_clone_old_instance_vec`) remediated separately — see `typeface_closeout_perf_invariant_results.md`.
 
 ## DA recommendation
 

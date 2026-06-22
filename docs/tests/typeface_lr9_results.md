@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — final typeface performance gate profiles flat 5k-class labels, fixed-width numeric damage lane, dynamic style rows, warped nameplates, and Studio seam labels over the Bevy typeface runtime. **PROBATION / DA-sensitive final perf gate** — binding-scale evidence recorded in `typeface_lr9_binding_perf_results.md`; not DA-approved; typeface track remains OPEN.
+PASS — final typeface performance gate profiles flat 5k-class labels, fixed-width numeric damage lane, dynamic style rows, warped nameplates, and Studio seam labels over the Bevy typeface runtime. **Architecturally DA-approved after #896 binding evidence** — closeout perf invariant remediated in `typeface_closeout_perf_invariant_results.md`; typeface track remains OPEN.
 
 ## PR / branch / merge
 
@@ -10,6 +10,7 @@ PASS — final typeface performance gate profiles flat 5k-class labels, fixed-wi
 - PR: #895
 - Post-merge evidence: `7fa3a4dc91`
 - Binding evidence: `docs/tests/typeface_lr9_binding_perf_results.md` (#896, merge `bda6147c95`)
+- Closeout invariant: `docs/tests/typeface_closeout_perf_invariant_results.md` (TYPEFACE-CLOSEOUT-PERF-INVARIANT-0)
 
 ## LR8 closeout
 

@@ -22,6 +22,13 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+---
+
+## Typeface ladder — closeout perf invariant (2026-06-21)
+
+- `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` greens `changed_label_rebuild_does_not_clone_old_instance_vec` — icon mixed-label rebuild uses move-assign instead of `extend_from_slice(&instances)`.
+- Full `cargo test -p simthing-tools` green; typeface track remains **OPEN** pending Codex closeout review.
+
 ## Typeface ladder — LR9 binding perf evidence (2026-06-21)
 
 - `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) runs and records binding-scale profiles: flat 5k (avg noop **0.5037 ms**), numeric 5k (avg noop **0.3260 ms**), warped 256 (avg noop **0.0683 ms**).

@@ -189,8 +189,8 @@ one run.
 **Files:** `crates/simthing-tools/src/studio_labels.rs`, `crates/simthing-mapeditor/src/studio_typeface_shell.rs`.
 **Tests** (`typeface_lr8.rs`): spawn/sync, shell mount, manifest icon, damage path, GPU residency doc check.
 
-## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. See `docs/tests/typeface_lr9_results.md` and `docs/tests/typeface_lr9_binding_perf_results.md`. **PROBATION** — binding evidence recorded; not DA-approved; track remains OPEN.
+## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / architecturally DA-approved (#896)**
+**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. **Closeout blocker:** `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` — changed-label rebuild allocation invariant green. See `docs/tests/typeface_lr9_results.md`, `docs/tests/typeface_lr9_binding_perf_results.md`, `docs/tests/typeface_closeout_perf_invariant_results.md`. **Architecturally DA-approved after #896** — track remains OPEN pending closeout review.
 **Files:** `crates/simthing-tools/src/lr9.rs`, `crates/simthing-tools/tests/typeface_lr9.rs`.
 **Tests:** CI smoke at 1k/100 scale + `#[ignore]` 5k binding profiles; LR0–LR8 regressions retained.
 **Boundary:** perf gate only — no track closure, no font export, no sim scope.
@@ -219,7 +219,7 @@ one run.
 | LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / DA APPROVED** (#890, #891 combined proof) |
 | LR7 | icon-font manifest | no | **DONE / DA APPROVED for manifest machinery** (#892) |
 | LR8 | Studio + game label seam + shell mount | no | **DONE / DA APPROVED** (#893 + #894) |
-| LR9 | dynamic style + animated + warped perf gate | **yes** | **DONE / PROBATION** |
+| LR9 | dynamic style + animated + warped perf gate | **yes** | **DONE / architecturally DA-approved (#896)** — closeout invariant remediated |
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,
 pathfinding/combat/economy/fleet movement, new savefile format, DA promotion of any non-typeface row.
