@@ -154,6 +154,7 @@ fn raster_glyph_instance(atlas: &mut GlyphAtlasCore, atlas_size: u32) -> GlyphIn
         color: [1.0, 1.0, 1.0, 1.0],
         sdf_params: [0.0; 4],
         style_params: [0.0, 0.0, 0.0, 0.0],
+        deform_params: [0.0; 4],
     }
 }
 
@@ -435,6 +436,7 @@ fn msdf_smoke_with_style_slot_still_draws() {
             0.0,
         ],
         style_params: [1.0, 0.0, 0.0, 0.0],
+        deform_params: [0.0; 4],
     };
     let table = test_style_table_solid_red();
     let smoke = wgpu_styled_instanced_text_smoke(

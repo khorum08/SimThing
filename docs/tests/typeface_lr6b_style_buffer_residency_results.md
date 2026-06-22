@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — render-world style globals/rows buffers and bind group are persistent; rows upload on `rows_generation` only; globals/time written as small buffer writes each prepare. **PROBATION / DA remediation complete** — pending DA review for LR6B approval (PR #887, merge `6117dd5fd5`, post-merge evidence `19ca9f8420`).
+PASS — render-world style globals/rows buffers and bind group are persistent; rows upload on `rows_generation` only; globals/time written as small buffer writes each prepare. **ACCEPTED / closed** — LR6B promoted to **DA APPROVED** after #887 (PR #887, merge `6117dd5fd5`, post-merge evidence `19ca9f8420`, index finalize `79ee674026`).
 
 ## PR / branch / merge
 
@@ -69,7 +69,7 @@ Accessible via `text_style_render_diagnostics(&app)` from integration tests.
 - CPU operations retained and why: main-world row authoring; `rows_dirty` sync; small globals orchestration; diagnostics/smoke readback
 - Numeric production authority remains GPU-resident: **yes**
 - Deviations: none
-- Next GPU-residency debt: atlas bind group still recreated each prepare (pre-existing; out of scope)
+- Next GPU-residency debt: atlas bind group persistence — **closed by LR6C** (#888+)
 
 ## Tests
 
@@ -102,8 +102,8 @@ Accessible via `text_style_render_diagnostics(&app)` from integration tests.
 
 ## DA recommendation
 
-Recommend **DA approval of LR6B** after review of buffer residency diagnostics and test evidence. LR6C remains blocked until LR6B approved.
+Recommend **DA approval of LR6B** — **granted** after #887 review. LR6C activated.
 
 ## Next recommended action
 
-DA/Codex review of #886 + this remediation; if approved, activate LR6C deformation rung.
+LR6C atlas residency + parametric deformation (#888+); LR6D text-on-path per ladder.

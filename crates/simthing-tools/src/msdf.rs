@@ -515,6 +515,7 @@ pub fn build_distance_field_instance(
         color,
         sdf_params: [mode, tile.px_range, atlas_size as f32, 0.0],
         style_params: crate::style::style_params_for_slot(0, 0),
+        deform_params: crate::deform::deform_params_for_slot(0, 0),
     }
 }
 

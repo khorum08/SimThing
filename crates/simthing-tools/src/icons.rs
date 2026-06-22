@@ -279,6 +279,7 @@ impl IconSet {
                 color,
                 sdf_params: [0.0; 4],
                 style_params: style_params_for_slot(*style_slot, role_slot_for_icon_layer(*role)),
+                deform_params: [0.0; 4],
             });
         }
         Ok(instances)
@@ -911,5 +912,6 @@ fn build_instance(
         color,
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],
+        deform_params: [0.0; 4],
     }
 }

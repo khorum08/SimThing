@@ -3,7 +3,7 @@ use wgpu::{
     MapMode, Origin3d, TextureAspect,
 };
 
-use crate::{bevy::GlyphInstanceGpu, style::TextStyleTable};
+use crate::{bevy::GlyphInstanceGpu, deform::TextDeformTable, style::TextStyleTable};
 
 /// Offscreen target dimensions for LR3R wgpu smoke draws.
 #[derive(Debug, Clone, Copy)]
@@ -609,4 +609,592 @@ pub fn wgpu_sdf_instanced_text_smoke(
         return Err("sdf smoke requires at least one SDF/MSDF instance".into());
     }
     wgpu_instanced_text_smoke(target, instances, atlas_pixels, atlas_size)
+}
+
+const WGPU_DEFORM_SMOKE_SHADER: &str = r#"
+struct TargetSize { size: vec2<f32>, }
+@group(0) @binding(0) var<uniform> frame_size: TargetSize;
+
+struct GlyphInstance {
+    @location(1) pos_size: vec4<f32>,
+    @location(2) uv_rect: vec4<f32>,
+    @location(3) color: vec4<f32>,
+    @location(4) sdf_params: vec4<f32>,
+    @location(5) style_params: vec4<f32>,
+    @location(6) deform_params: vec4<f32>,
+}
+
+struct VertexInput {
+    @builtin(instance_index) instance_index: u32,
+    @location(0) corner: vec2<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) color: vec4<f32>,
+    @location(2) sdf_params: vec4<f32>,
+    @location(3) style_params: vec4<f32>,
+    @location(4) local_uv: vec2<f32>,
+}
+
+struct StyleRow {
+    fill_rgba: vec4<f32>,
+    accent_rgba: vec4<f32>,
+    outline_rgba: vec4<f32>,
+    glow_rgba: vec4<f32>,
+    params0: vec4<f32>,
+    params1: vec4<f32>,
+}
+
+struct DeformRow {
+    params0: vec4<f32>,
+    params1: vec4<f32>,
+    params2: vec4<f32>,
+}
+
+@group(1) @binding(0) var atlas_tex: texture_2d<f32>;
+@group(1) @binding(1) var atlas_smp: sampler;
+@group(2) @binding(0) var<uniform> style_globals: vec4<f32>;
+@group(2) @binding(1) var<uniform> style_rows: array<StyleRow, 32>;
+@group(3) @binding(0) var<uniform> deform_rows: array<DeformRow, 32>;
+
+fn deform_row_at(slot: u32) -> DeformRow {
+    if slot >= 32u { return deform_rows[0]; }
+    return deform_rows[slot];
+}
+
+fn apply_parametric_deform(local_uv: vec2<f32>, slot: u32) -> vec2<f32> {
+    let row = deform_row_at(slot);
+    let kind = row.params0.x;
+    if kind < 0.5 { return local_uv; }
+    var uv = local_uv;
+    let amount_x = row.params0.y;
+    let amount_y = row.params0.z;
+    let phase = row.params0.w;
+    let shear_x = row.params1.x;
+    let shear_y = row.params1.y;
+    let fold_axis = row.params1.zw;
+    let fold_amount = row.params2.x;
+    if kind < 1.5 {
+        let c = uv - vec2(0.5);
+        uv = c * vec2(1.0 + amount_x, 1.0 + amount_y) + vec2(0.5);
+    } else if kind < 2.5 {
+        uv.x = uv.x + amount_x * (uv.y - 0.5);
+        uv.y = uv.y + amount_y * (uv.x - 0.5);
+    } else if kind < 3.5 {
+        uv.x = uv.x + shear_x * (uv.y - 0.5);
+        uv.y = uv.y + shear_y * (uv.x - 0.5);
+    } else if kind < 4.5 {
+        let axis_len = max(length(fold_axis), 0.001);
+        let axis = fold_axis / axis_len;
+        let d = dot(uv - vec2(0.5), axis);
+        uv = uv + axis * fold_amount * sin(d * 3.14159265);
+    } else {
+        let pulse = sin(style_globals.x + phase) * amount_x;
+        let c = uv - vec2(0.5);
+        uv = c * (1.0 + pulse) + vec2(0.5);
+    }
+    return uv;
+}
+
+@vertex
+fn vs_main(mesh: VertexInput, instance: GlyphInstance) -> VertexOutput {
+    var out: VertexOutput;
+    let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
+    let local_uv = apply_parametric_deform(mesh.corner, deform_slot);
+    let pos = instance.pos_size.xy + local_uv * instance.pos_size.zw;
+    let ndc_x = (pos.x / frame_size.size.x) * 2.0 - 1.0;
+    let ndc_y = 1.0 - (pos.y / frame_size.size.y) * 2.0;
+    out.clip_position = vec4(ndc_x, ndc_y, 0.0, 1.0);
+    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, local_uv);
+    out.color = instance.color;
+    out.sdf_params = instance.sdf_params;
+    out.style_params = instance.style_params;
+    out.local_uv = local_uv;
+    return out;
+}
+
+fn style_row_at(slot: u32) -> StyleRow {
+    if slot >= 32u { return style_rows[0]; }
+    return style_rows[slot];
+}
+
+fn apply_style_fill(style: StyleRow, base_color: vec4<f32>, local_uv: vec2<f32>) -> vec4<f32> {
+    var opacity = style.params0.x;
+    let gradient_mode = style.params0.y;
+    var t = 0.0;
+    if gradient_mode > 0.5 && gradient_mode < 1.5 { t = local_uv.x; }
+    else if gradient_mode >= 1.5 { t = local_uv.y; }
+    let fill_rgb = mix(style.fill_rgba.rgb, style.accent_rgba.rgb, t);
+    return vec4(base_color.rgb * fill_rgb, base_color.a * opacity);
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let sample = textureSample(atlas_tex, atlas_smp, in.uv);
+    let slot = u32(clamp(in.style_params.x, 0.0, 31.0));
+    let style = style_row_at(slot);
+    let styled_color = apply_style_fill(style, in.color, in.local_uv);
+    var alpha = styled_color.a * sample.a;
+    return vec4(styled_color.rgb, alpha);
+}
+"#;
+
+/// Raw-wgpu smoke with style + deformation tables (LR6C).
+pub fn wgpu_deformed_instanced_text_smoke(
+    target: WgpuSmokeTarget,
+    instances: &[GlyphInstanceGpu],
+    atlas_pixels: &[u8],
+    atlas_size: u32,
+    style_table: &TextStyleTable,
+    deform_table: &TextDeformTable,
+    time: f32,
+) -> Result<WgpuTextSmokeResult, String> {
+    if instances.is_empty() {
+        return Err("no glyph instances for deformed wgpu smoke".into());
+    }
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::PRIMARY,
+        ..Default::default()
+    });
+    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::default(),
+        force_fallback_adapter: false,
+        compatible_surface: None,
+    }))
+    .ok_or("no wgpu adapter")?;
+    let (device, queue) = pollster::block_on(adapter.request_device(
+        &wgpu::DeviceDescriptor {
+            label: Some("lr6c_deform_smoke_device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            memory_hints: Default::default(),
+        },
+        None,
+    ))
+    .map_err(|e| e.to_string())?;
+
+    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("lr6c_deform_smoke_shader"),
+        source: wgpu::ShaderSource::Wgsl(WGPU_DEFORM_SMOKE_SHADER.into()),
+    });
+
+    let target_uniform = WgpuTargetSize {
+        size: [target.width as f32, target.height as f32],
+    };
+    let target_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6c_target"),
+        contents: bytemuck::bytes_of(&target_uniform),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let target_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr6c_target_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+    let target_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr6c_target_bg"),
+        layout: &target_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: target_buffer.as_entire_binding(),
+        }],
+    });
+
+    let corners = [
+        WgpuCornerVertex { corner: [0.0, 0.0] },
+        WgpuCornerVertex { corner: [1.0, 0.0] },
+        WgpuCornerVertex { corner: [0.0, 1.0] },
+        WgpuCornerVertex { corner: [0.0, 1.0] },
+        WgpuCornerVertex { corner: [1.0, 0.0] },
+        WgpuCornerVertex { corner: [1.0, 1.0] },
+    ];
+    let corner_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6c_corners"),
+        contents: bytemuck::cast_slice(&corners),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6c_instances"),
+        contents: bytemuck::cast_slice(instances),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+
+    let (atlas_view, atlas_sampler) = create_smoke_atlas(&device, &queue, atlas_pixels, atlas_size);
+    let atlas_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr6c_atlas_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+    let atlas_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr6c_atlas_bg"),
+        layout: &atlas_bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&atlas_view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(&atlas_sampler),
+            },
+        ],
+    });
+
+    let style_globals = style_table.to_globals(time);
+    let style_rows = style_table.to_rows_uniform();
+    let style_globals_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6c_style_globals"),
+        contents: bytemuck::bytes_of(&style_globals),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let style_rows_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6c_style_rows"),
+        contents: bytemuck::bytes_of(&style_rows),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let style_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr6c_style_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+    let style_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr6c_style_bg"),
+        layout: &style_bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: style_globals_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: style_rows_buffer.as_entire_binding(),
+            },
+        ],
+    });
+
+    let deform_rows = deform_table.to_rows_uniform();
+    let deform_rows_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr6c_deform_rows"),
+        contents: bytemuck::bytes_of(&deform_rows),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let deform_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr6c_deform_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+    let deform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr6c_deform_bg"),
+        layout: &deform_bind_group_layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: deform_rows_buffer.as_entire_binding(),
+        }],
+    });
+
+    let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("lr6c_pipeline_layout"),
+        bind_group_layouts: &[
+            &target_bind_group_layout,
+            &atlas_bind_group_layout,
+            &style_bind_group_layout,
+            &deform_bind_group_layout,
+        ],
+        push_constant_ranges: &[],
+    });
+
+    let render_texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("lr6c_render_tex"),
+        size: wgpu::Extent3d {
+            width: target.width,
+            height: target.height,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+        view_formats: &[],
+    });
+    let render_view = render_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("lr6c_pipeline"),
+        layout: Some(&pipeline_layout),
+        vertex: wgpu::VertexState {
+            module: &shader,
+            entry_point: "vs_main",
+            buffers: &[
+                wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<WgpuCornerVertex>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Float32x2,
+                        offset: 0,
+                        shader_location: 0,
+                    }],
+                },
+                wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<GlyphInstanceGpu>() as u64,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 0,
+                            shader_location: 1,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 16,
+                            shader_location: 2,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 32,
+                            shader_location: 3,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 48,
+                            shader_location: 4,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 64,
+                            shader_location: 5,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 80,
+                            shader_location: 6,
+                        },
+                    ],
+                },
+            ],
+            compilation_options: Default::default(),
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &shader,
+            entry_point: "fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+            compilation_options: Default::default(),
+        }),
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        multiview: None,
+        cache: None,
+    });
+
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("lr6c_encoder"),
+    });
+    {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("lr6c_pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &render_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&pipeline);
+        pass.set_bind_group(0, &target_bind_group, &[]);
+        pass.set_bind_group(1, &atlas_bind_group, &[]);
+        pass.set_bind_group(2, &style_bind_group, &[]);
+        pass.set_bind_group(3, &deform_bind_group, &[]);
+        pass.set_vertex_buffer(0, corner_buffer.slice(..));
+        pass.set_vertex_buffer(1, instance_buffer.slice(..));
+        pass.draw(0..6, 0..instances.len() as u32);
+    }
+
+    readback_smoke_pixels(&device, &queue, encoder, &render_texture, target)
+}
+
+fn create_smoke_atlas(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    atlas_pixels: &[u8],
+    atlas_size: u32,
+) -> (wgpu::TextureView, wgpu::Sampler) {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("smoke_atlas"),
+        size: wgpu::Extent3d {
+            width: atlas_size,
+            height: atlas_size,
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        ImageCopyTexture {
+            texture: &texture,
+            mip_level: 0,
+            origin: Origin3d::ZERO,
+            aspect: TextureAspect::All,
+        },
+        atlas_pixels,
+        ImageDataLayout {
+            offset: 0,
+            bytes_per_row: Some(atlas_size * 4),
+            rows_per_image: Some(atlas_size),
+        },
+        Extent3d {
+            width: atlas_size,
+            height: atlas_size,
+            depth_or_array_layers: 1,
+        },
+    );
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+        label: Some("smoke_atlas_sampler"),
+        ..Default::default()
+    });
+    (view, sampler)
+}
+
+fn readback_smoke_pixels(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    mut encoder: wgpu::CommandEncoder,
+    render_texture: &wgpu::Texture,
+    target: WgpuSmokeTarget,
+) -> Result<WgpuTextSmokeResult, String> {
+    let bytes_per_row = ((target.width * 4) + 255) & !255;
+    let staging = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("smoke_readback"),
+        size: bytes_per_row as u64 * target.height as u64,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    encoder.copy_texture_to_buffer(
+        ImageCopyTexture {
+            texture: render_texture,
+            mip_level: 0,
+            origin: Origin3d::ZERO,
+            aspect: TextureAspect::All,
+        },
+        ImageCopyBuffer {
+            buffer: &staging,
+            layout: ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(bytes_per_row),
+                rows_per_image: Some(target.height),
+            },
+        },
+        Extent3d {
+            width: target.width,
+            height: target.height,
+            depth_or_array_layers: 1,
+        },
+    );
+    queue.submit(Some(encoder.finish()));
+    let slice = staging.slice(..);
+    let (tx, rx) = std::sync::mpsc::channel();
+    slice.map_async(MapMode::Read, move |result| {
+        let _ = tx.send(result);
+    });
+    device.poll(Maintain::Wait);
+    rx.recv()
+        .expect("map_async callback")
+        .map_err(|e| e.to_string())?;
+    let mapped = slice.get_mapped_range();
+    let row_bytes = target.width as usize * 4;
+    let mut out = Vec::with_capacity(row_bytes * target.height as usize);
+    for row in 0..target.height as usize {
+        let start = row * bytes_per_row as usize;
+        out.extend_from_slice(&mapped[start..start + row_bytes]);
+    }
+    drop(mapped);
+    staging.unmap();
+    if !target.has_alpha_text_pixels(&out) {
+        return Err(format!(
+            "wgpu instanced draw produced no text pixels ({})",
+            target.readback_pixel_stats(&out)
+        ));
+    }
+    Ok(WgpuTextSmokeResult {
+        pixels: out,
+        width: target.width,
+        height: target.height,
+    })
 }
