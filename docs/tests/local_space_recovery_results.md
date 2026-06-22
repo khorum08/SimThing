@@ -5,6 +5,12 @@
 PASS — local disk usage measured; `target/` and confirmed scratch directories removed; no source, tests,
 fixtures, or evidence deleted.
 
+## PR / branch / merge
+
+- Branch: `local-worktree-space-recovery-0`
+- PR: #901
+- Merge SHA: `a9e6563af6`
+
 ## Starting disk usage
 
 | Metric | Value |
