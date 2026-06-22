@@ -7,8 +7,8 @@ PASS — production MSDF opt-in wired through Bevy plugin; glyph-ID MSDF generat
 ## PR / branch / merge
 
 - Branch: `typeface-lr6a-production-msdf-wiring-0r`
-- PR: pending
-- Merge SHA: pending
+- PR: #884
+- Merge SHA: `3fda0eeaf0`
 
 ## DA HOLD being remediated
 
