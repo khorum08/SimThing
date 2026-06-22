@@ -214,6 +214,8 @@ fn sdf_shader_smoke_draws_nonzero_pixels() {
         ],
         style_params: [0.0; 4],
         deform_params: [0.0; 4],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
     };
     assert_eq!(instance.sdf_params[0], DISTANCE_FIELD_RENDER_MSDF);
 

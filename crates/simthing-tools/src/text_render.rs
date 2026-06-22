@@ -45,7 +45,9 @@ use bevy::{
 use crate::{
     bevy::{GlyphInstanceGpu, TextAggregateVersion, TextDrawExtract, TEXT_SHADER_HANDLE},
     deform::{ExtractedTextDeformTable, TextDeformRowsUniform},
+    path::{ExtractedTextPathTable, TextPathRowsUniform},
     style::{ExtractedTextStyleTable, TextStyleGlobalsGpu, TextStyleRowsUniform},
+    warp::{ExtractedTextWarpTable, TextWarpRowsUniform},
 };
 
 /// Marker for entities drawn by the text instanced pipeline.
@@ -148,6 +150,33 @@ pub struct TextDeformRenderDiagnostics {
     pub deform_bind_group_reuse_count: u64,
 }
 
+/// Render-world path/warp buffer reuse counters (LR6D).
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextPathWarpRenderDiagnostics {
+    pub path_buffer_create_count: u64,
+    pub path_buffer_write_count: u64,
+    pub warp_buffer_create_count: u64,
+    pub warp_buffer_write_count: u64,
+    pub bind_group_create_count: u64,
+    pub bind_group_reuse_count: u64,
+}
+
+/// Persistent render-world path rows buffer and bind group.
+#[derive(Resource, Clone)]
+pub struct TextPathGpuResource {
+    pub rows_buffer: Buffer,
+    pub bind_group: BindGroup,
+    pub rows_generation: u64,
+}
+
+/// Persistent render-world warp rows buffer and bind group.
+#[derive(Resource, Clone)]
+pub struct TextWarpGpuResource {
+    pub rows_buffer: Buffer,
+    pub bind_group: BindGroup,
+    pub rows_generation: u64,
+}
+
 /// Shared atlas bind group for the text shader (@group(2)).
 #[derive(Resource, Clone)]
 pub struct TextAtlasBindGroupResource {
@@ -183,6 +212,7 @@ impl Plugin for TextInstancedRenderPlugin {
             .init_resource::<TextStyleRenderDiagnostics>()
             .init_resource::<TextAtlasRenderDiagnostics>()
             .init_resource::<TextDeformRenderDiagnostics>()
+            .init_resource::<TextPathWarpRenderDiagnostics>()
             .init_resource::<SpecializedMeshPipelines<TextInstancedPipeline>>()
             .add_render_command::<Transparent2d, DrawTextInstanced>()
             .add_systems(ExtractSchedule, stamp_text_draw_extract_version)
@@ -196,6 +226,8 @@ impl Plugin for TextInstancedRenderPlugin {
                         prepare_text_atlas_bind_group,
                         prepare_text_style_bind_group,
                         prepare_text_deform_bind_group,
+                        prepare_text_path_bind_group,
+                        prepare_text_warp_bind_group,
                         prepare_text_offscreen_mesh2d_view_bind_groups,
                     )
                         .in_set(RenderSet::PrepareBindGroups),
@@ -218,6 +250,8 @@ pub struct TextInstancedPipeline {
     pub atlas_layout: BindGroupLayout,
     pub style_layout: BindGroupLayout,
     pub deform_layout: BindGroupLayout,
+    pub path_layout: BindGroupLayout,
+    pub warp_layout: BindGroupLayout,
 }
 
 impl FromWorld for TextInstancedPipeline {
@@ -271,6 +305,32 @@ impl FromWorld for TextInstancedPipeline {
                 count: None,
             }],
         );
+        let path_layout = render_device.create_bind_group_layout(
+            "text_path_layout",
+            &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        );
+        let warp_layout = render_device.create_bind_group_layout(
+            "text_warp_layout",
+            &[BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        );
 
         Self {
             shader: TEXT_SHADER_HANDLE.clone(),
@@ -278,6 +338,8 @@ impl FromWorld for TextInstancedPipeline {
             atlas_layout,
             style_layout,
             deform_layout,
+            path_layout,
+            warp_layout,
         }
     }
 }
@@ -299,6 +361,8 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
         descriptor.layout.push(self.atlas_layout.clone());
         descriptor.layout.push(self.style_layout.clone());
         descriptor.layout.push(self.deform_layout.clone());
+        descriptor.layout.push(self.path_layout.clone());
+        descriptor.layout.push(self.warp_layout.clone());
         descriptor.vertex.buffers.push(VertexBufferLayout {
             array_stride: size_of::<GlyphInstanceGpu>() as u64,
             step_mode: VertexStepMode::Instance,
@@ -332,6 +396,16 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
                     format: VertexFormat::Float32x4,
                     offset: VertexFormat::Float32x4.size() * 5,
                     shader_location: 10,
+                },
+                VertexAttribute {
+                    format: VertexFormat::Float32x4,
+                    offset: VertexFormat::Float32x4.size() * 6,
+                    shader_location: 11,
+                },
+                VertexAttribute {
+                    format: VertexFormat::Float32x4,
+                    offset: VertexFormat::Float32x4.size() * 7,
+                    shader_location: 12,
                 },
             ],
         });
@@ -754,6 +828,124 @@ fn prepare_text_deform_bind_group(
     }
 }
 
+#[derive(Resource, Clone)]
+pub struct TextPathBindGroupResource {
+    pub bind_group: BindGroup,
+}
+
+fn prepare_text_path_bind_group(
+    mut commands: Commands,
+    pipeline: Res<TextInstancedPipeline>,
+    path_table: Option<Res<ExtractedTextPathTable>>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<bevy::render::renderer::RenderQueue>,
+    existing: Option<ResMut<TextPathGpuResource>>,
+    mut diag: ResMut<TextPathWarpRenderDiagnostics>,
+) {
+    let Some(path_table) = path_table else {
+        commands.remove_resource::<TextPathGpuResource>();
+        commands.remove_resource::<TextPathBindGroupResource>();
+        return;
+    };
+    let rows_size = size_of::<TextPathRowsUniform>() as u64;
+    match existing {
+        None => {
+            let rows_buffer = render_device.create_buffer(&BufferDescriptor {
+                label: Some("text_path_rows_buffer"),
+                size: rows_size,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            diag.path_buffer_create_count += 1;
+            render_queue.write_buffer(&rows_buffer, 0, bytemuck::bytes_of(&path_table.rows));
+            diag.path_buffer_write_count += 1;
+            let bind_group = render_device.create_bind_group(
+                "text_path_bind_group",
+                &pipeline.path_layout,
+                &BindGroupEntries::single(rows_buffer.as_entire_binding()),
+            );
+            diag.bind_group_create_count += 1;
+            commands.insert_resource(TextPathGpuResource {
+                rows_buffer,
+                bind_group: bind_group.clone(),
+                rows_generation: path_table.rows_generation,
+            });
+            commands.insert_resource(TextPathBindGroupResource { bind_group });
+        }
+        Some(mut gpu) => {
+            if gpu.rows_generation != path_table.rows_generation {
+                render_queue.write_buffer(
+                    &gpu.rows_buffer,
+                    0,
+                    bytemuck::bytes_of(&path_table.rows),
+                );
+                gpu.rows_generation = path_table.rows_generation;
+                diag.path_buffer_write_count += 1;
+            }
+            diag.bind_group_reuse_count += 1;
+        }
+    }
+}
+
+#[derive(Resource, Clone)]
+pub struct TextWarpBindGroupResource {
+    pub bind_group: BindGroup,
+}
+
+fn prepare_text_warp_bind_group(
+    mut commands: Commands,
+    pipeline: Res<TextInstancedPipeline>,
+    warp_table: Option<Res<ExtractedTextWarpTable>>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<bevy::render::renderer::RenderQueue>,
+    existing: Option<ResMut<TextWarpGpuResource>>,
+    mut diag: ResMut<TextPathWarpRenderDiagnostics>,
+) {
+    let Some(warp_table) = warp_table else {
+        commands.remove_resource::<TextWarpGpuResource>();
+        commands.remove_resource::<TextWarpBindGroupResource>();
+        return;
+    };
+    let rows_size = size_of::<TextWarpRowsUniform>() as u64;
+    match existing {
+        None => {
+            let rows_buffer = render_device.create_buffer(&BufferDescriptor {
+                label: Some("text_warp_rows_buffer"),
+                size: rows_size,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            diag.warp_buffer_create_count += 1;
+            render_queue.write_buffer(&rows_buffer, 0, bytemuck::bytes_of(&warp_table.rows));
+            diag.warp_buffer_write_count += 1;
+            let bind_group = render_device.create_bind_group(
+                "text_warp_bind_group",
+                &pipeline.warp_layout,
+                &BindGroupEntries::single(rows_buffer.as_entire_binding()),
+            );
+            diag.bind_group_create_count += 1;
+            commands.insert_resource(TextWarpGpuResource {
+                rows_buffer,
+                bind_group: bind_group.clone(),
+                rows_generation: warp_table.rows_generation,
+            });
+            commands.insert_resource(TextWarpBindGroupResource { bind_group });
+        }
+        Some(mut gpu) => {
+            if gpu.rows_generation != warp_table.rows_generation {
+                render_queue.write_buffer(
+                    &gpu.rows_buffer,
+                    0,
+                    bytemuck::bytes_of(&warp_table.rows),
+                );
+                gpu.rows_generation = warp_table.rows_generation;
+                diag.warp_buffer_write_count += 1;
+            }
+            diag.bind_group_reuse_count += 1;
+        }
+    }
+}
+
 pub type DrawTextInstanced = (
     SetItemPipeline,
     SetMesh2dViewBindGroup<0>,
@@ -761,6 +953,8 @@ pub type DrawTextInstanced = (
     SetTextAtlasBindGroup<2>,
     SetTextStyleBindGroup<3>,
     SetTextDeformBindGroup<4>,
+    SetTextPathBindGroup<5>,
+    SetTextWarpBindGroup<6>,
     DrawTextInstancedMesh,
 );
 
@@ -820,6 +1014,46 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextDeformBindGroup<I
     ) -> RenderCommandResult {
         let deform_bind_group = deform_bind_group.into_inner();
         pass.set_bind_group(I, &deform_bind_group.bind_group, &[]);
+        RenderCommandResult::Success
+    }
+}
+
+pub struct SetTextPathBindGroup<const I: usize>;
+
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextPathBindGroup<I> {
+    type Param = SRes<TextPathBindGroupResource>;
+    type ViewQuery = ();
+    type ItemQuery = ();
+
+    fn render<'w>(
+        _item: &P,
+        _view: (),
+        _item_query: Option<()>,
+        path_bind_group: SystemParamItem<'w, '_, Self::Param>,
+        pass: &mut TrackedRenderPass<'w>,
+    ) -> RenderCommandResult {
+        let path_bind_group = path_bind_group.into_inner();
+        pass.set_bind_group(I, &path_bind_group.bind_group, &[]);
+        RenderCommandResult::Success
+    }
+}
+
+pub struct SetTextWarpBindGroup<const I: usize>;
+
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextWarpBindGroup<I> {
+    type Param = SRes<TextWarpBindGroupResource>;
+    type ViewQuery = ();
+    type ItemQuery = ();
+
+    fn render<'w>(
+        _item: &P,
+        _view: (),
+        _item_query: Option<()>,
+        warp_bind_group: SystemParamItem<'w, '_, Self::Param>,
+        pass: &mut TrackedRenderPass<'w>,
+    ) -> RenderCommandResult {
+        let warp_bind_group = warp_bind_group.into_inner();
+        pass.set_bind_group(I, &warp_bind_group.bind_group, &[]);
         RenderCommandResult::Success
     }
 }
@@ -929,6 +1163,17 @@ pub fn text_deform_render_diagnostics(app: &App) -> TextDeformRenderDiagnostics 
             render_app
                 .world()
                 .get_resource::<TextDeformRenderDiagnostics>()
+                .copied()
+        })
+        .unwrap_or_default()
+}
+
+pub fn text_path_warp_render_diagnostics(app: &App) -> TextPathWarpRenderDiagnostics {
+    app.get_sub_app(RenderApp)
+        .and_then(|render_app| {
+            render_app
+                .world()
+                .get_resource::<TextPathWarpRenderDiagnostics>()
                 .copied()
         })
         .unwrap_or_default()

@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — atlas bind group persistence remediated; Tier-1 parametric deformation in vertex shader; adaptive tessellation on opt-in; flat labels remain one quad. **PROBATION / DA HOLD remediated** by `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889).
+PASS — atlas bind group persistence remediated; Tier-1 parametric deformation in vertex shader; adaptive tessellation on opt-in; flat labels remain one quad. **DA APPROVED** after UV remediation `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889).
 
 ## PR / branch / merge
 
@@ -11,6 +11,7 @@ PASS — atlas bind group persistence remediated; Tier-1 parametric deformation 
 - Merge SHA: `2f029bdb97`
 - Post-merge evidence: `b21e8ad34e`
 - Index finalize: `06346ed794`
+- UV remediation: PR #889, merge `913b148323`, post-merge evidence `2e83ff80c8`, index finalize `581fe06f84` — **LR6C DA APPROVED**
 
 ## LR6B closeout
 
@@ -72,12 +73,9 @@ PASS — atlas bind group persistence remediated; Tier-1 parametric deformation 
 ## GPU residency / CPU surfacing audit
 
 - **Allowed CPU:** deform profile/slot assignment on label change; static tessellation mesh build on deform enable; deform/style table upload on dirty/generation change; diagnostics and wgpu smoke readback
-- **Forbidden (not introduced):** per-frame CPU deformation/warp/tessellation; runtime outline/MSDF regeneration; text-on-path / warp field
+- **Forbidden (not introduced):** per-frame CPU deformation/warp/tessellation; runtime outline/MSDF regeneration
 - **GPU owns:** parametric deformation evaluation (vertex shader), MSDF/SDF sampling, instanced draw, persistent atlas/style/deform bind groups and buffers
-- Atlas bind group: persistent like style buffers (#887); create once, reuse on stable atlas id
-- Deform rows buffer: persistent `TextDeformGpuResource`; upload on `rows_generation` only
-- Deviations: none
-- Next debt: LR6D text-on-path / warp field (out of scope)
+- **LR6D+:** text-on-path and warp field added in LR6D (see `typeface_lr6d_results.md`); LR6C scope did not include path/warp
 
 ## Tests
 
