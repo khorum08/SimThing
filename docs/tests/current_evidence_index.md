@@ -191,7 +191,7 @@
 | **TYPEFACE-LR8-STUDIO-LABEL-SEAM-0** - StudioTypefaceLabel adapter; damage emitter; fixture manifest icon resolve; typeface component sync | #893 | `ec01da43c9` | **DA APPROVED after #894** — post-merge evidence `22e7bfb9a4`; `docs/tests/typeface_lr8_results.md`; ladder § LR8 |
 | **TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R** - mount StudioTypefaceShellPlugin in run_studio; fixture manifest bake; probe label + damage emitter staging | #894 | `850a216a7a` | **ACCEPTED / closed** — post-merge evidence `29d50465ba`; index finalize `da1f1687fd`; `docs/tests/typeface_lr8_studio_plugin_mount_results.md`; ladder § LR8 |
 | **TYPEFACE-LR9-FINAL-PERF-GATE-0** - final typeface perf gate: flat 5k-class, numeric damage lane, dynamic style, warped nameplates, Studio seam profiles | #895 | `c5b5faeab2` | **PROBATION / DA-sensitive final perf gate** — post-merge evidence `7fa3a4dc91`; binding evidence remediated by 0R; `docs/tests/typeface_lr9_results.md`; ladder § LR9 |
-| **TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R** - run and record 5k flat/numeric + 256 warped binding perf profiles | (pending) | (pending) | **PROBATION / DA evidence remediation** — `docs/tests/typeface_lr9_binding_perf_results.md`; ladder § LR9 |
+| **TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R** - run and record 5k flat/numeric + 256 warped binding perf profiles | #896 | `bda6147c95` | **PROBATION / DA evidence remediation** — post-merge evidence pending; `docs/tests/typeface_lr9_binding_perf_results.md`; ladder § LR9 |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

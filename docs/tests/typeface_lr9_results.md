@@ -9,7 +9,7 @@ PASS — final typeface performance gate profiles flat 5k-class labels, fixed-wi
 - Branch: `typeface-lr9-final-perf-gate-0`
 - PR: #895
 - Post-merge evidence: `7fa3a4dc91`
-- Binding evidence: `docs/tests/typeface_lr9_binding_perf_results.md` (0R remediation)
+- Binding evidence: `docs/tests/typeface_lr9_binding_perf_results.md` (#896, merge `bda6147c95`)
 
 ## LR8 closeout
 

@@ -190,7 +190,7 @@ one run.
 **Tests** (`typeface_lr8.rs`): spawn/sync, shell mount, manifest icon, damage path, GPU residency doc check.
 
 ## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` — 5k flat/numeric + 256 warped binding profiles recorded. See `docs/tests/typeface_lr9_results.md` and `docs/tests/typeface_lr9_binding_perf_results.md`. **PROBATION** — binding evidence recorded; not DA-approved; track remains OPEN.
+**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. See `docs/tests/typeface_lr9_results.md` and `docs/tests/typeface_lr9_binding_perf_results.md`. **PROBATION** — binding evidence recorded; not DA-approved; track remains OPEN.
 **Files:** `crates/simthing-tools/src/lr9.rs`, `crates/simthing-tools/tests/typeface_lr9.rs`.
 **Tests:** CI smoke at 1k/100 scale + `#[ignore]` 5k binding profiles; LR0–LR8 regressions retained.
 **Boundary:** perf gate only — no track closure, no font export, no sim scope.

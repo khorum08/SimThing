@@ -7,8 +7,8 @@ PASS — binding-scale LR9 profiles executed on validation host with captured me
 ## PR / branch / merge
 
 - Branch: `typeface-lr9-binding-perf-evidence-0r`
-- PR: (pending)
-- Merge SHA: (pending)
+- PR: #896
+- Merge SHA: `bda6147c95`
 
 ## Baseline from #895
 

@@ -24,7 +24,7 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — LR9 binding perf evidence (2026-06-21)
 
-- `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` runs and records binding-scale profiles: flat 5k (avg noop **0.5037 ms**), numeric 5k (avg noop **0.3260 ms**), warped 256 (avg noop **0.0683 ms**).
+- `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) runs and records binding-scale profiles: flat 5k (avg noop **0.5037 ms**), numeric 5k (avg noop **0.3260 ms**), warped 256 (avg noop **0.0683 ms**).
 - Remediates LR9 **DA HOLD** on unexecuted `#[ignore]` profiles from #895.
 - LR9 remains **PROBATION** — not DA-approved; typeface track OPEN.
 
