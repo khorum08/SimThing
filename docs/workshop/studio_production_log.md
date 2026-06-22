@@ -20,7 +20,7 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — LR6C deform UV sampling remediation (2026-06-21)
 
-- `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` corrects LR6C shader to preserve atlas UV identity under deformation (`source_uv` for sampling, `deformed_uv` for position).
+- `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889, merge `913b148323`) corrects LR6C shader to preserve atlas UV identity under deformation (`source_uv` for sampling, `deformed_uv` for position).
 - LR6C (#888) remains **PROBATION / DA HOLD pending UV-sampling review** until this remediation merges.
 
 ## Typeface ladder — LR6C atlas residency + parametric deformation (2026-06-21)

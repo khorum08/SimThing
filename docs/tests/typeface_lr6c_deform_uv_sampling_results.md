@@ -7,7 +7,8 @@ PASS — vertex shader splits source glyph-local UV from deformed position coord
 ## PR / branch / merge
 
 - Branch: `typeface-lr6c-deform-uv-sampling-0r`
-- PR and merge SHA: updated after merge
+- PR: #889
+- Merge SHA: `913b148323`
 
 ## DA HOLD being remediated
 

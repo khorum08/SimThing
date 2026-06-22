@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — atlas bind group persistence remediated; Tier-1 parametric deformation (stretch/skew/fold/pulse-scale) evaluated in vertex shader; adaptive tessellation on deform opt-in; flat labels remain one quad. **PROBATION / DA HOLD pending UV-sampling correction** — remediated by `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R`.
+PASS — atlas bind group persistence remediated; Tier-1 parametric deformation in vertex shader; adaptive tessellation on opt-in; flat labels remain one quad. **PROBATION / DA HOLD remediated** by `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889).
 
 ## PR / branch / merge
 
