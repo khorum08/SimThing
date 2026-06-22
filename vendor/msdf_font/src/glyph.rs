@@ -202,3 +202,87 @@ pub(crate) struct BuildConfig {
 fn scale_value(val: f64, face: &Face) -> f64 {
     val / f64::from(face.units_per_em())
 }
+
+/// Build distance-field glyphs from arbitrary bezpaths (icon geometry), without a font face.
+pub struct PathGlyphBuilder {
+    build_config: BuildConfig,
+}
+
+impl PathGlyphBuilder {
+    const DEFAULT_PX_RANGE: f64 = 2.0;
+
+    pub fn new() -> Self {
+        Self {
+            build_config: BuildConfig {
+                px_range: Self::DEFAULT_PX_RANGE,
+                scale: 1.0,
+                ..Default::default()
+            },
+        }
+    }
+
+    /// Default is 2.
+    #[inline]
+    pub fn px_range(mut self, px_range: u32) -> Self {
+        self.build_config.px_range = f64::from(px_range);
+        self
+    }
+
+    pub fn build_from_bezpath(self, path: &kurbo::BezPath) -> Option<Glyph> {
+        let shape = Shape::from_bezpath(path)?;
+
+        let mut bitmap_bounds = shape.bounds();
+        let bitmap_size = bitmap_bounds.size();
+        if bitmap_size.x.ceil() as usize == 0 || bitmap_size.y.ceil() as usize == 0 {
+            return None;
+        }
+
+        let mut bounds_em = bitmap_bounds;
+        bounds_em.min /= self.build_config.scale;
+        bounds_em.max /= self.build_config.scale;
+
+        bitmap_bounds.min -= DVec2::splat(self.build_config.px_range);
+        bitmap_bounds.max += DVec2::splat(self.build_config.px_range);
+        let bitmap_size = bitmap_bounds.size();
+
+        let mut plane_bounds = bitmap_bounds;
+        plane_bounds.min /= self.build_config.scale;
+        plane_bounds.max /= self.build_config.scale;
+
+        let hor_advance = (plane_bounds.max.x - plane_bounds.min.x).round() as i32;
+        let ver_advance = hor_advance;
+
+        let bounds_min = [
+            bounds_em.min.x.round() as i32,
+            bounds_em.min.y.round() as i32,
+        ];
+        let bounds_max = [
+            bounds_em.max.x.round() as i32,
+            bounds_em.max.y.round() as i32,
+        ];
+
+        let plane_bounds_min = [plane_bounds.min.x as f32, plane_bounds.min.y as f32];
+        let plane_bounds_max = [plane_bounds.max.x as f32, plane_bounds.max.y as f32];
+
+        let mut build_config = self.build_config;
+        build_config.bitmap_size = [bitmap_size.x.ceil() as usize, bitmap_size.y.ceil() as usize];
+        build_config.offset = bitmap_bounds.min;
+
+        Some(Glyph {
+            shape,
+            build_config,
+            data: GlyphData {
+                plane_bounds: GlyphBounds {
+                    min: plane_bounds_min,
+                    max: plane_bounds_max,
+                },
+                em_bounds: GlyphBounds {
+                    min: bounds_min,
+                    max: bounds_max,
+                },
+                advance: [hor_advance, ver_advance],
+                bearing: [0, bounds_max[1]],
+            },
+        })
+    }
+}

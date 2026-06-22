@@ -18,6 +18,16 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Typeface ladder — LR6A icon vector geometry bridge (2026-06-21)
+
+- `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` promotes `IconVector` from path signatures to normalized role-layer geometry IR (`IconPathCommand`, `IconVectorPath`, `IconFillRule`).
+- Import-time static SVG normalization via `usvg` with absolute transforms; LR4 static-SVG security preserved.
+- Icon MSDF implemented via vendored `PathGlyphBuilder::build_from_bezpath`; cache keyed by geometry hash.
+- Per-role `IconStyleLayerRef` raster tiles ready for LR6B layered icon style slots.
+- LR6B remains **TODO / BLOCKED** until DA accepts this bridge rung.
+
+---
+
 ## Typeface ladder — LR6A production MSDF wiring (2026-06-21)
 
 - `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` wires `TextLabelRenderMode` MSDF/SDF opt-in through Bevy plugin; packs distance-field tiles into shared atlas on label change/cache miss only.

@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use kurbo::BezPath;
 use thiserror::Error;
-use tiny_skia::Pixmap;
+use tiny_skia::{FillRule as SkiaFillRule, Pixmap, Transform};
 use usvg::{
     roxmltree::{Document, Node as XmlNode},
-    tiny_skia_path::PathSegment,
+    tiny_skia_path::{Path as SkiaPath, PathBuilder, PathSegment},
 };
 
 use crate::{
@@ -30,9 +31,49 @@ pub enum IconLayerRole {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum IconPathCommand {
+    MoveTo {
+        x: f32,
+        y: f32,
+    },
+    LineTo {
+        x: f32,
+        y: f32,
+    },
+    QuadTo {
+        x1: f32,
+        y1: f32,
+        x: f32,
+        y: f32,
+    },
+    CubicTo {
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        x: f32,
+        y: f32,
+    },
+    Close,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IconFillRule {
+    NonZero,
+    EvenOdd,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct IconVectorPath {
+    pub commands: Vec<IconPathCommand>,
+    pub fill_rule: IconFillRule,
+    pub bounds: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct IconVectorLayer {
     pub role: IconLayerRole,
-    pub path_signature: String,
+    pub paths: Vec<IconVectorPath>,
     pub bounds: [f32; 4],
 }
 
@@ -40,6 +81,14 @@ pub struct IconVectorLayer {
 pub struct IconVector {
     pub layers: Vec<IconVectorLayer>,
     pub view_box: [f32; 4],
+}
+
+/// Per-role style-slot reference for LR6B (geometry + role-layer raster).
+#[derive(Debug, Clone, PartialEq)]
+pub struct IconStyleLayerRef {
+    pub role: IconLayerRole,
+    pub geometry_hash: u64,
+    pub raster_tile: AtlasTile,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,6 +109,8 @@ pub enum IconError {
     Parse(String),
     #[error("SVG has no renderable path layers")]
     EmptyVector,
+    #[error("unsupported icon path geometry: {0}")]
+    UnsupportedGeometry(String),
     #[error("invalid icon pixel size {0}")]
     InvalidPixelSize(f32),
     #[error("SVG rasterization failed")]
@@ -78,6 +129,7 @@ struct IconCacheKey {
 struct IconEntry {
     tile: AtlasTile,
     vector: IconVector,
+    style_layers: Vec<IconStyleLayerRef>,
 }
 
 #[derive(Default)]
@@ -117,7 +169,16 @@ impl IconSet {
             .insert_rgba8_tile(&raster.pixels, raster.w, raster.h, 0, 0)
             .ok_or(IconError::AtlasFull)?;
 
-        self.entries.insert(key, IconEntry { tile, vector });
+        let style_layers = build_role_layer_rasters(&vector, px, atlas)?;
+
+        self.entries.insert(
+            key,
+            IconEntry {
+                tile,
+                vector,
+                style_layers,
+            },
+        );
         self.latest_by_codepoint.insert(codepoint, key);
         Ok(IconRegistration { codepoint, tile })
     }
@@ -132,6 +193,16 @@ impl IconSet {
         let codepoint = IconCodepoint(codepoint);
         let key = self.latest_by_codepoint.get(&codepoint)?;
         self.entries.get(key).map(|entry| &entry.vector)
+    }
+
+    pub fn style_layers_for(&self, codepoint: u32, px: f32) -> Option<Vec<IconStyleLayerRef>> {
+        let key = IconCacheKey {
+            codepoint: IconCodepoint(codepoint),
+            px_bucket: quantize_px(px),
+        };
+        self.entries
+            .get(&key)
+            .map(|entry| entry.style_layers.clone())
     }
 
     pub fn build_mixed_instances(
@@ -192,12 +263,141 @@ impl IconVector {
 
         Ok(Self { layers, view_box })
     }
+
+    pub fn geometry_hash(&self) -> u64 {
+        stable_hash_icon_vector(self)
+    }
+
+    pub fn layer_roles(&self) -> impl Iterator<Item = IconLayerRole> + '_ {
+        self.layers.iter().map(|layer| layer.role)
+    }
+
+    pub fn paths_for_role(&self, role: IconLayerRole) -> Vec<&IconVectorPath> {
+        self.layers
+            .iter()
+            .filter(|layer| layer.role == role)
+            .flat_map(|layer| layer.paths.iter())
+            .collect()
+    }
+
+    pub fn has_renderable_geometry(&self) -> bool {
+        self.layers
+            .iter()
+            .any(|layer| layer.paths.iter().any(|path| !path.commands.is_empty()))
+    }
+
+    /// Build a kurbo bezpath in pixel space (Y-up) for MSDF generation.
+    pub fn to_msdf_bezpath(&self, px: f32) -> Option<BezPath> {
+        if !self.has_renderable_geometry() {
+            return None;
+        }
+        let scale = icon_scale(self.view_box, px);
+        let view_h = self.view_box[3];
+        let mut path = BezPath::new();
+        for layer in &self.layers {
+            for icon_path in &layer.paths {
+                append_path_to_bezpath(&mut path, icon_path, scale, view_h);
+            }
+        }
+        if path.elements().is_empty() {
+            None
+        } else {
+            Some(path)
+        }
+    }
+}
+
+impl IconVectorPath {
+    pub fn geometry_hash(&self) -> u64 {
+        stable_hash_path(self)
+    }
+
+    pub fn debug_signature(&self) -> String {
+        let mut signature = String::new();
+        for command in &self.commands {
+            match command {
+                IconPathCommand::MoveTo { x, y } => {
+                    signature.push_str(&format!("M{x:.3},{y:.3};"));
+                }
+                IconPathCommand::LineTo { x, y } => {
+                    signature.push_str(&format!("L{x:.3},{y:.3};"));
+                }
+                IconPathCommand::QuadTo { x1, y1, x, y } => {
+                    signature.push_str(&format!("Q{x1:.3},{y1:.3},{x:.3},{y:.3};"));
+                }
+                IconPathCommand::CubicTo {
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    x,
+                    y,
+                } => {
+                    signature.push_str(&format!("C{x1:.3},{y1:.3},{x2:.3},{y2:.3},{x:.3},{y:.3};"));
+                }
+                IconPathCommand::Close => signature.push('Z'),
+            }
+        }
+        signature
+    }
 }
 
 struct RasterizedIcon {
     pixels: Vec<u8>,
     w: u32,
     h: u32,
+}
+
+fn build_role_layer_rasters(
+    vector: &IconVector,
+    px: f32,
+    atlas: &mut GlyphAtlasCore,
+) -> Result<Vec<IconStyleLayerRef>, IconError> {
+    let mut style_layers = Vec::with_capacity(vector.layers.len());
+    for layer in &vector.layers {
+        let raster = rasterize_layer_paths(&layer.paths, vector.view_box, px)?;
+        let raster_tile = atlas
+            .insert_rgba8_tile(&raster.pixels, raster.w, raster.h, 0, 0)
+            .ok_or(IconError::AtlasFull)?;
+        let geometry_hash = stable_hash_layer_paths(&layer.paths);
+        style_layers.push(IconStyleLayerRef {
+            role: layer.role,
+            geometry_hash,
+            raster_tile,
+        });
+    }
+    Ok(style_layers)
+}
+
+fn rasterize_layer_paths(
+    paths: &[IconVectorPath],
+    view_box: [f32; 4],
+    px: f32,
+) -> Result<RasterizedIcon, IconError> {
+    validate_px(px)?;
+    let side = px.round().max(1.0) as u32;
+    let mut pixmap = Pixmap::new(side, side).ok_or(IconError::RasterizeFailed)?;
+    let scale = icon_scale(view_box, px);
+    let transform = Transform::from_scale(scale, scale);
+    let paint = tiny_skia::Paint {
+        anti_alias: true,
+        ..Default::default()
+    };
+
+    for path in paths {
+        let sk_path = icon_path_to_skia(path)?;
+        let fill_rule = match path.fill_rule {
+            IconFillRule::NonZero => SkiaFillRule::Winding,
+            IconFillRule::EvenOdd => SkiaFillRule::EvenOdd,
+        };
+        pixmap.fill_path(&sk_path, &paint, fill_rule, transform, None);
+    }
+
+    Ok(RasterizedIcon {
+        pixels: pixmap.take_demultiplied(),
+        w: side,
+        h: side,
+    })
 }
 
 fn rasterize_svg_icon(svg: &str, px: f32) -> Result<RasterizedIcon, IconError> {
@@ -215,17 +415,83 @@ fn rasterize_svg_icon(svg: &str, px: f32) -> Result<RasterizedIcon, IconError> {
     let scale = side as f32 / longest_edge;
     let mut pixmap = Pixmap::new(side, side).ok_or(IconError::RasterizeFailed)?;
     let mut pixmap_mut = pixmap.as_mut();
-    resvg::render(
-        &tree,
-        tiny_skia::Transform::from_scale(scale, scale),
-        &mut pixmap_mut,
-    );
+    resvg::render(&tree, Transform::from_scale(scale, scale), &mut pixmap_mut);
 
     Ok(RasterizedIcon {
         pixels: pixmap.take_demultiplied(),
         w: side,
         h: side,
     })
+}
+
+fn icon_scale(view_box: [f32; 4], px: f32) -> f32 {
+    let longest = view_box[2].max(view_box[3]).max(1.0);
+    px / longest
+}
+
+fn append_path_to_bezpath(bezpath: &mut BezPath, path: &IconVectorPath, scale: f32, view_h: f32) {
+    for command in &path.commands {
+        match command {
+            IconPathCommand::MoveTo { x, y } => {
+                let (x, y) = msdf_point(*x, *y, scale, view_h);
+                bezpath.move_to((x as f64, y as f64));
+            }
+            IconPathCommand::LineTo { x, y } => {
+                let (x, y) = msdf_point(*x, *y, scale, view_h);
+                bezpath.line_to((x as f64, y as f64));
+            }
+            IconPathCommand::QuadTo { x1, y1, x, y } => {
+                let (x1, y1) = msdf_point(*x1, *y1, scale, view_h);
+                let (x, y) = msdf_point(*x, *y, scale, view_h);
+                bezpath.quad_to((x1 as f64, y1 as f64), (x as f64, y as f64));
+            }
+            IconPathCommand::CubicTo {
+                x1,
+                y1,
+                x2,
+                y2,
+                x,
+                y,
+            } => {
+                let (x1, y1) = msdf_point(*x1, *y1, scale, view_h);
+                let (x2, y2) = msdf_point(*x2, *y2, scale, view_h);
+                let (x, y) = msdf_point(*x, *y, scale, view_h);
+                bezpath.curve_to(
+                    (x1 as f64, y1 as f64),
+                    (x2 as f64, y2 as f64),
+                    (x as f64, y as f64),
+                );
+            }
+            IconPathCommand::Close => bezpath.close_path(),
+        }
+    }
+}
+
+fn msdf_point(x: f32, y: f32, scale: f32, view_h: f32) -> (f32, f32) {
+    (x * scale, (view_h - y) * scale)
+}
+
+fn icon_path_to_skia(path: &IconVectorPath) -> Result<SkiaPath, IconError> {
+    let mut builder = PathBuilder::default();
+    for command in &path.commands {
+        match command {
+            IconPathCommand::MoveTo { x, y } => builder.move_to(*x, *y),
+            IconPathCommand::LineTo { x, y } => builder.line_to(*x, *y),
+            IconPathCommand::QuadTo { x1, y1, x, y } => builder.quad_to(*x1, *y1, *x, *y),
+            IconPathCommand::CubicTo {
+                x1,
+                y1,
+                x2,
+                y2,
+                x,
+                y,
+            } => builder.cubic_to(*x1, *y1, *x2, *y2, *x, *y),
+            IconPathCommand::Close => builder.close(),
+        }
+    }
+    builder
+        .finish()
+        .ok_or_else(|| IconError::UnsupportedGeometry("empty path".into()))
 }
 
 fn validate_codepoint(codepoint: u32) -> Result<IconCodepoint, IconError> {
@@ -353,11 +619,15 @@ fn collect_layers(
                     .get(layers.len())
                     .copied()
                     .unwrap_or(IconLayerRole::Primary);
-                let bounds = path.abs_bounding_box();
+                let vector_path = match extract_vector_path(path) {
+                    Ok(path) => path,
+                    Err(_) => continue,
+                };
+                let bounds = layer_bounds(std::slice::from_ref(&vector_path));
                 layers.push(IconVectorLayer {
                     role,
-                    path_signature: path_signature(path.data()),
-                    bounds: [bounds.x(), bounds.y(), bounds.width(), bounds.height()],
+                    paths: vec![vector_path],
+                    bounds,
                 });
             }
             usvg::Node::Image(_) | usvg::Node::Text(_) => {}
@@ -365,25 +635,194 @@ fn collect_layers(
     }
 }
 
-fn path_signature(path: &usvg::tiny_skia_path::Path) -> String {
-    let mut signature = String::new();
-    for segment in path.segments() {
-        match segment {
-            PathSegment::MoveTo(p) => push_point(&mut signature, "M", &[p]),
-            PathSegment::LineTo(p) => push_point(&mut signature, "L", &[p]),
-            PathSegment::QuadTo(p0, p1) => push_point(&mut signature, "Q", &[p0, p1]),
-            PathSegment::CubicTo(p0, p1, p2) => push_point(&mut signature, "C", &[p0, p1, p2]),
-            PathSegment::Close => signature.push_str("Z;"),
-        }
-    }
-    signature
+fn transform_point(
+    ts: &usvg::tiny_skia_path::Transform,
+    mut point: usvg::tiny_skia_path::Point,
+) -> usvg::tiny_skia_path::Point {
+    ts.map_point(&mut point);
+    point
 }
 
-fn push_point(signature: &mut String, op: &str, points: &[usvg::tiny_skia_path::Point]) {
-    signature.push_str(op);
-    for point in points {
-        signature.push_str(&format!("{:.3},{:.3};", point.x, point.y));
+fn extract_vector_path(path: &usvg::Path) -> Result<IconVectorPath, IconError> {
+    let ts = path.abs_transform();
+    let fill_rule = match path.fill().map(|fill| fill.rule()) {
+        Some(usvg::FillRule::NonZero) | None => IconFillRule::NonZero,
+        Some(usvg::FillRule::EvenOdd) => IconFillRule::EvenOdd,
+    };
+    let mut commands = Vec::new();
+    for segment in path.data().segments() {
+        match segment {
+            PathSegment::MoveTo(p) => {
+                let p = transform_point(&ts, p);
+                commands.push(IconPathCommand::MoveTo { x: p.x, y: p.y });
+            }
+            PathSegment::LineTo(p) => {
+                let p = transform_point(&ts, p);
+                commands.push(IconPathCommand::LineTo { x: p.x, y: p.y });
+            }
+            PathSegment::QuadTo(p0, p1) => {
+                let p0 = transform_point(&ts, p0);
+                let p1 = transform_point(&ts, p1);
+                commands.push(IconPathCommand::QuadTo {
+                    x1: p0.x,
+                    y1: p0.y,
+                    x: p1.x,
+                    y: p1.y,
+                });
+            }
+            PathSegment::CubicTo(p0, p1, p2) => {
+                let p0 = transform_point(&ts, p0);
+                let p1 = transform_point(&ts, p1);
+                let p2 = transform_point(&ts, p2);
+                commands.push(IconPathCommand::CubicTo {
+                    x1: p0.x,
+                    y1: p0.y,
+                    x2: p1.x,
+                    y2: p1.y,
+                    x: p2.x,
+                    y: p2.y,
+                });
+            }
+            PathSegment::Close => commands.push(IconPathCommand::Close),
+        }
     }
+    if commands.is_empty() {
+        return Err(IconError::UnsupportedGeometry(
+            "path has no segments".into(),
+        ));
+    }
+    let bounds = bounds_from_commands(&commands);
+    Ok(IconVectorPath {
+        commands,
+        fill_rule,
+        bounds,
+    })
+}
+
+fn bounds_from_commands(commands: &[IconPathCommand]) -> [f32; 4] {
+    let mut min_x = f32::INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+    for command in commands {
+        for (x, y) in command_points(command) {
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+        }
+    }
+    if !min_x.is_finite() {
+        return [0.0, 0.0, 0.0, 0.0];
+    }
+    [min_x, min_y, max_x - min_x, max_y - min_y]
+}
+
+fn layer_bounds(paths: &[IconVectorPath]) -> [f32; 4] {
+    let mut min_x = f32::INFINITY;
+    let mut min_y = f32::INFINITY;
+    let mut max_x = f32::NEG_INFINITY;
+    let mut max_y = f32::NEG_INFINITY;
+    for path in paths {
+        let [x, y, w, h] = path.bounds;
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x + w);
+        max_y = max_y.max(y + h);
+    }
+    if !min_x.is_finite() {
+        return [0.0, 0.0, 0.0, 0.0];
+    }
+    [min_x, min_y, max_x - min_x, max_y - min_y]
+}
+
+fn command_points(command: &IconPathCommand) -> Vec<(f32, f32)> {
+    match command {
+        IconPathCommand::MoveTo { x, y } | IconPathCommand::LineTo { x, y } => {
+            vec![(*x, *y)]
+        }
+        IconPathCommand::QuadTo { x1, y1, x, y } => vec![(*x1, *y1), (*x, *y)],
+        IconPathCommand::CubicTo {
+            x1,
+            y1,
+            x2,
+            y2,
+            x,
+            y,
+        } => vec![(*x1, *y1), (*x2, *y2), (*x, *y)],
+        IconPathCommand::Close => Vec::new(),
+    }
+}
+
+fn stable_hash_icon_vector(icon: &IconVector) -> u64 {
+    let mut hash = 0xcbf29ce484222325_u64;
+    for component in icon.view_box {
+        hash = fnv_update_f32(hash, component);
+    }
+    for layer in &icon.layers {
+        hash = fnv_update_u8(hash, role_discriminant(layer.role));
+        hash = stable_hash_layer_paths_inner(hash, &layer.paths);
+    }
+    hash
+}
+
+fn stable_hash_path(path: &IconVectorPath) -> u64 {
+    stable_hash_layer_paths_inner(0xcbf29ce484222325_u64, std::slice::from_ref(path))
+}
+
+fn stable_hash_layer_paths(paths: &[IconVectorPath]) -> u64 {
+    stable_hash_layer_paths_inner(0xcbf29ce484222325_u64, paths)
+}
+
+fn stable_hash_layer_paths_inner(mut hash: u64, paths: &[IconVectorPath]) -> u64 {
+    for path in paths {
+        hash = fnv_update_u8(hash, path.fill_rule as u8);
+        for command in &path.commands {
+            hash = fnv_update_u8(hash, command_discriminant(command));
+            for (x, y) in command_points(command) {
+                hash = fnv_update_f32(hash, x);
+                hash = fnv_update_f32(hash, y);
+            }
+        }
+    }
+    hash
+}
+
+fn command_discriminant(command: &IconPathCommand) -> u8 {
+    match command {
+        IconPathCommand::MoveTo { .. } => 0,
+        IconPathCommand::LineTo { .. } => 1,
+        IconPathCommand::QuadTo { .. } => 2,
+        IconPathCommand::CubicTo { .. } => 3,
+        IconPathCommand::Close => 4,
+    }
+}
+
+fn fnv_update_f32(hash: u64, value: f32) -> u64 {
+    fnv_update_u64(hash, u64::from(value.to_bits()))
+}
+
+fn fnv_update_u64(mut hash: u64, value: u64) -> u64 {
+    for shift in (0..64).step_by(8) {
+        hash = fnv_update_u8(hash, ((value >> shift) & 0xff) as u8);
+    }
+    hash
+}
+
+fn role_discriminant(role: IconLayerRole) -> u8 {
+    match role {
+        IconLayerRole::Primary => 0,
+        IconLayerRole::Secondary => 1,
+        IconLayerRole::Accent => 2,
+        IconLayerRole::Outline => 3,
+        IconLayerRole::Background => 4,
+        IconLayerRole::Mask => 5,
+    }
+}
+
+fn fnv_update_u8(mut hash: u64, byte: u8) -> u64 {
+    hash ^= u64::from(byte);
+    hash.wrapping_mul(0x100000001b3)
 }
 
 fn codepoint_at_cluster(text: &str, cluster: usize) -> Option<u32> {

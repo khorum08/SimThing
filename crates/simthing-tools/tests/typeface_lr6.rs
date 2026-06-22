@@ -6,7 +6,7 @@ use simthing_tools::{
     build_distance_field_instance, distance_field_diagnostics, load_font,
     numeric_damage_lane_diagnostics, spawn_static_and_numeric_damage_labels, text_perf_diagnostics,
     wgpu_instanced_text_smoke, wgpu_sdf_instanced_text_smoke, DistanceFieldAtlasCore,
-    DistanceFieldError, DistanceFieldKind, GlyphInstanceGpu, SimthingToolsTextPlugin,
+    DistanceFieldError, DistanceFieldKind, GlyphInstanceGpu, IconVector, SimthingToolsTextPlugin,
     TextGlyphInstances, TextLabel, WgpuSmokeTarget, DISTANCE_FIELD_RENDER_MSDF,
     DISTANCE_FIELD_RENDER_RASTER,
 };
@@ -152,17 +152,35 @@ fn msdf_tile_has_distance_field_metadata() {
 }
 
 #[test]
-fn icon_msdf_deferred_raster_icon_path_preserved() {
-    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
-    let icon = simthing_tools::IconVector {
-        layers: Vec::new(),
-        view_box: [0.0, 0.0, 24.0, 24.0],
-    };
-    let err = atlas
-        .get_or_generate_icon_msdf(&icon, 0xe000, TEST_PX)
-        .expect_err("icon msdf deferred");
-    assert!(matches!(err, DistanceFieldError::IconDeferred(_)));
-    assert_eq!(atlas.diagnostics().icon_msdf_generate_count, 0);
+fn icon_msdf_from_geometry_preserves_raster_icon_path() {
+    let vector = IconVector::from_svg(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path d="M 8 1 L 15 15 L 1 15 Z" fill="#ffffff"/>
+</svg>"##,
+    )
+    .expect("vector");
+    let mut df_atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
+    let tile = df_atlas
+        .get_or_generate_icon_msdf(&vector, 0xf0001, TEST_PX)
+        .expect("icon msdf");
+    assert_eq!(tile.kind, DistanceFieldKind::Msdf);
+
+    let mut raster_atlas = simthing_tools::GlyphAtlasCore::new(ATLAS_SIZE);
+    let mut icons = simthing_tools::IconSet::new();
+    let reg = icons
+        .register_svg(
+            0xf0001,
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path d="M 8 1 L 15 15 L 1 15 Z" fill="#ffffff"/>
+</svg>"##,
+            TEST_PX,
+            &mut raster_atlas,
+        )
+        .expect("raster icon");
+    assert!(raster_atlas
+        .tile_pixels(reg.tile)
+        .chunks(4)
+        .any(|px| px[3] > 0));
 }
 
 #[test]
@@ -523,22 +541,24 @@ fn msdf_opt_in_raw_wgpu_smoke_draws_nonzero_pixels() {
 }
 
 #[test]
-fn icon_msdf_is_implemented_or_formally_deferred_with_raster_fallback() {
+fn icon_msdf_is_implemented_from_icon_vector_geometry() {
     let defer_doc = fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/tests/typeface_lr6a_icon_msdf_deferred.md"),
     )
     .expect("icon deferral doc");
-    assert!(defer_doc.contains("IconVector"));
+    assert!(defer_doc.contains("IMPLEMENTED"));
+    let vector = IconVector::from_svg(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <path d="M 8 1 L 15 15 L 1 15 Z" fill="#ffffff"/>
+</svg>"##,
+    )
+    .expect("vector");
     let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
-    let icon = simthing_tools::IconVector {
-        layers: Vec::new(),
-        view_box: [0.0, 0.0, 24.0, 24.0],
-    };
-    let err = atlas
-        .get_or_generate_icon_msdf(&icon, 0xf0000, TEST_PX)
-        .expect_err("icon msdf deferred");
-    assert!(matches!(err, DistanceFieldError::IconDeferred(_)));
+    let tile = atlas
+        .get_or_generate_icon_msdf(&vector, 0xf0000, TEST_PX)
+        .expect("icon msdf implemented");
+    assert_eq!(tile.kind, DistanceFieldKind::Msdf);
 }
 
 #[test]

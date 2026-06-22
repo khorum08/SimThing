@@ -160,13 +160,17 @@ one run.
 **Tests:** LR5 direct harness + Bevy structural tests in `typeface_lr5.rs`; optional `#[ignore]` 5k binding profile.
 **DA focus:** no-op and fixed-width numeric damage bindings met; LR5 closed for MSDF foundation work.
 
-## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)* — **DONE / PROBATION / DA HOLD pending LR6A review**
-**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` (#883) — foundation landed; **DA HOLD** until `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` production opt-in + glyph-source correction reviewed. See `docs/tests/typeface_lr6_results.md`, `docs/tests/typeface_lr6a_results.md`. **Not DA-approved until LR6A disposition.**
+## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)* — **DONE / DA APPROVED for production glyph MSDF after LR6A**
+**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` (#883) foundation + `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) production glyph MSDF opt-in accepted. See `docs/tests/typeface_lr6_results.md`, `docs/tests/typeface_lr6a_results.md`.
 
-## LR6A — production MSDF wiring  *(DA remediation)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` — `TextLabelRenderMode` opt-in, shared-atlas MSDF packing, patched `build_glyph_id`, icon MSDF formally deferred. See `docs/tests/typeface_lr6a_results.md`. Recommend LR6 DA approval pending Codex review.
-**Files:** `crates/simthing-tools/src/msdf.rs`, `bevy.rs`, `vendor/msdf_font/`, `tests/typeface_lr6.rs`.
-**Tests:** production MSDF Bevy path, glyph-ID correction, noop cache, mixed raster+MSDF, icon deferral doc.
+## LR6A — production MSDF wiring  *(DA remediation)* — **DONE / PROBATION / ACCEPTED for glyph MSDF production opt-in**
+**Status:** `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) — `TextLabelRenderMode` opt-in, shared-atlas MSDF packing, patched `build_glyph_id`. See `docs/tests/typeface_lr6a_results.md`.
+
+## LR6A-ICON — icon vector geometry bridge  *(DA remediation before LR6B)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` — normalized `IconVector` geometry IR, icon MSDF from bezpath, per-role raster style-slot refs. See `docs/tests/typeface_lr6a_icon_geometry_results.md`. **LR6B remains BLOCKED until icon geometry disposition accepted.**
+
+## LR6B — GPU style table + gradient/effect shader  *(DA-sensitive)* — **TODO / BLOCKED**
+**Status:** blocked pending LR6A-ICON-VECTOR-GEOMETRY-0R DA acceptance. Do not activate until icon geometry bridge reviewed.
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)*
 **Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
@@ -202,8 +206,10 @@ labels render; perf within the LR5 budget.
 | LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / DA APPROVED** (#876, #877 LR3R accepted) |
 | LR4 | SVG icons at PUA codepoints | no | **DONE / ACCEPTED (#878)** |
 | LR5 | high-volume bench + budget | **yes** | **DONE / DA APPROVED (#879, #880, #881, #882)** |
-| LR6 | MSDF atlas + SDF shader | **yes** | **DONE / PROBATION / DA HOLD pending LR6A review** |
-| LR6A | production MSDF wiring | **yes** | **DONE / PROBATION** |
+| LR6 | MSDF atlas + SDF shader | **yes** | **DONE / DA APPROVED for production glyph MSDF after LR6A** |
+| LR6A | production MSDF wiring | **yes** | **DONE / PROBATION / ACCEPTED for glyph MSDF production opt-in** |
+| LR6A-ICON | icon vector geometry bridge | **yes** | **DONE / PROBATION** |
+| LR6B | GPU style table + gradient/effect shader | **yes** | **TODO / BLOCKED** |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
 

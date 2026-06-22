@@ -38,7 +38,11 @@ fn normalizes_static_svg_to_icon_vector() {
     assert_eq!(vector.view_box, [0.0, 0.0, 16.0, 16.0]);
     assert_eq!(vector.layers.len(), 1);
     assert_eq!(vector.layers[0].role, IconLayerRole::Primary);
-    assert!(vector.layers[0].path_signature.starts_with('M'));
+    assert!(!vector.layers[0].paths.is_empty());
+    assert!(matches!(
+        vector.layers[0].paths[0].commands.first(),
+        Some(simthing_tools::IconPathCommand::MoveTo { .. })
+    ));
 }
 
 #[test]

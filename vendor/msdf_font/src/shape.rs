@@ -248,59 +248,72 @@ impl ShapeOutliner {
     }
 
     fn into_contours(self) -> Option<Vec<Contour>> {
-        use kurbo::PathEl;
-
-        let topo = Topology::from_path(&self.path, 1e-6).ok()?;
-        let _contours = topo.contours(|w| *w != 0);
-
-        let mut _quad_buffer = Vec::new();
-        let contours = _contours
-            .contours()
-            .map(|c| {
-                let mut edges = Vec::new();
-                let mut position = DVec2::ZERO;
-
-                for path in c.path.iter() {
-                    match path {
-                        PathEl::MoveTo(p) => position = DVec2::new(p.x, p.y),
-                        PathEl::LineTo(p) => {
-                            let p = DVec2::new(p.x, p.y);
-                            edges.push(Edge::new_line(position, p));
-                            position = p;
-                        }
-                        PathEl::QuadTo(p, p1) => {
-                            let p = DVec2::new(p.x, p.y);
-                            let p1 = DVec2::new(p1.x, p1.y);
-
-                            edges.push(Edge::new_quad(position, p, p1));
-                            position = p1;
-                        }
-                        PathEl::CurveTo(p, p1, p2) => {
-                            let p = DVec2::new(p.x, p.y);
-                            let p1 = DVec2::new(p1.x, p1.y);
-                            let p2 = DVec2::new(p2.x, p2.y);
-
-                            _quad_buffer.clear();
-                            cubic_to_quads(position, p, p1, p2, 0.03, &mut _quad_buffer);
-
-                            edges.extend(
-                                _quad_buffer
-                                    .iter()
-                                    .map(|q| Edge::new_quad(q[0], q[1], q[2])),
-                            );
-
-                            position = p2;
-                        }
-                        _ => {}
-                    }
-                }
-
-                Contour { edges }
-            })
-            .collect::<Vec<_>>();
-
-        Some(contours)
+        contours_from_bezpath(&self.path)
     }
+}
+
+impl Shape {
+    /// Build a shape from an arbitrary bezpath (icon geometry, not font outlines).
+    pub(crate) fn from_bezpath(path: &BezPath) -> Option<Self> {
+        Some(Self {
+            contours: contours_from_bezpath(path)?,
+        })
+    }
+}
+
+fn contours_from_bezpath(path: &BezPath) -> Option<Vec<Contour>> {
+    use kurbo::PathEl;
+
+    let topo = Topology::from_path(path, 1e-6).ok()?;
+    let _contours = topo.contours(|w| *w != 0);
+
+    let mut _quad_buffer = Vec::new();
+    let contours = _contours
+        .contours()
+        .map(|c| {
+            let mut edges = Vec::new();
+            let mut position = DVec2::ZERO;
+
+            for path in c.path.iter() {
+                match path {
+                    PathEl::MoveTo(p) => position = DVec2::new(p.x, p.y),
+                    PathEl::LineTo(p) => {
+                        let p = DVec2::new(p.x, p.y);
+                        edges.push(Edge::new_line(position, p));
+                        position = p;
+                    }
+                    PathEl::QuadTo(p, p1) => {
+                        let p = DVec2::new(p.x, p.y);
+                        let p1 = DVec2::new(p1.x, p1.y);
+
+                        edges.push(Edge::new_quad(position, p, p1));
+                        position = p1;
+                    }
+                    PathEl::CurveTo(p, p1, p2) => {
+                        let p = DVec2::new(p.x, p.y);
+                        let p1 = DVec2::new(p1.x, p1.y);
+                        let p2 = DVec2::new(p2.x, p2.y);
+
+                        _quad_buffer.clear();
+                        cubic_to_quads(position, p, p1, p2, 0.03, &mut _quad_buffer);
+
+                        edges.extend(
+                            _quad_buffer
+                                .iter()
+                                .map(|q| Edge::new_quad(q[0], q[1], q[2])),
+                        );
+
+                        position = p2;
+                    }
+                    _ => {}
+                }
+            }
+
+            Contour { edges }
+        })
+        .collect::<Vec<_>>();
+
+    Some(contours)
 }
 impl OutlineBuilder for ShapeOutliner {
     #[inline]

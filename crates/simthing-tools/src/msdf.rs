@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use guillotiere::{size2, AtlasAllocator};
 use msdf_font::ttf_parser::{Face, GlyphId};
-use msdf_font::{Glyph, GlyphBitmapData, GlyphBuilder};
+use msdf_font::{Glyph, GlyphBitmapData, GlyphBuilder, PathGlyphBuilder};
 
 use crate::{
     atlas::{quantize_px, AtlasDirtyRect, AtlasTile, GlyphAtlasCore},
@@ -258,13 +258,42 @@ impl DistanceFieldAtlasCore {
 
     pub fn get_or_generate_icon_msdf(
         &mut self,
-        _icon: &IconVector,
-        _codepoint: u32,
-        _px: f32,
+        icon: &IconVector,
+        codepoint: u32,
+        px: f32,
     ) -> Result<DistanceFieldTile, DistanceFieldError> {
-        Err(DistanceFieldError::IconDeferred(
-            "IconVector IR stores path signatures only, not normalized curve geometry consumable by msdf-font; LR4 raster icon path preserved",
-        ))
+        if !icon.has_renderable_geometry() {
+            return Err(DistanceFieldError::IconDeferred(
+                "icon has no renderable normalized geometry",
+            ));
+        }
+
+        let key = DistanceFieldKey {
+            source_id: icon.geometry_hash(),
+            glyph_or_icon_id: codepoint,
+            px_bucket: quantize_px(px),
+            kind: DistanceFieldKind::Msdf,
+        };
+
+        if let Some(cached) = self.cache.get(&key).copied() {
+            self.diagnostics.msdf_cache_hit_count += 1;
+            return Ok(cached);
+        }
+        self.diagnostics.msdf_cache_miss_count += 1;
+
+        let generated = generate_icon_distance_field(icon, px, DistanceFieldKind::Msdf)?;
+        self.diagnostics.icon_msdf_generate_count += 1;
+
+        let atlas_tile = self
+            .insert_generated(&generated)
+            .ok_or(DistanceFieldError::AtlasFull)?;
+        let tile = DistanceFieldTile {
+            atlas_tile,
+            px_range: generated.px_range,
+            kind: DistanceFieldKind::Msdf,
+        };
+        self.cache.insert(key, tile);
+        Ok(tile)
     }
 }
 
@@ -298,6 +327,54 @@ impl DistanceFieldAtlasCore {
         });
         Some(tile)
     }
+}
+
+fn generate_icon_distance_field(
+    icon: &IconVector,
+    px: f32,
+    kind: DistanceFieldKind,
+) -> Result<GeneratedDistanceField, DistanceFieldError> {
+    let bezpath = icon
+        .to_msdf_bezpath(px)
+        .ok_or(DistanceFieldError::IconDeferred(
+            "icon geometry could not be converted to bezpath for MSDF",
+        ))?;
+    let mut glyph = PathGlyphBuilder::new()
+        .px_range(DEFAULT_PX_RANGE as u32)
+        .build_from_bezpath(&bezpath)
+        .ok_or(DistanceFieldError::IconDeferred(
+            "msdf-font could not build shape from icon bezpath",
+        ))?;
+
+    let (pixels, w, h) = match kind {
+        DistanceFieldKind::Sdf => {
+            let bitmap: GlyphBitmapData<u8, 1> = glyph.sdf();
+            (
+                sdf_l8_to_rgba(bitmap.bytes(), bitmap.width, bitmap.height),
+                bitmap.width as u32,
+                bitmap.height as u32,
+            )
+        }
+        DistanceFieldKind::Msdf => {
+            let bitmap: GlyphBitmapData<u8, 3> = glyph.msdf(3.0, true);
+            (
+                msdf_rgb_to_rgba(bitmap.bytes(), bitmap.width, bitmap.height),
+                bitmap.width as u32,
+                bitmap.height as u32,
+            )
+        }
+    };
+
+    let plane = glyph.data.plane_bounds;
+    Ok(GeneratedDistanceField {
+        pixels,
+        w,
+        h,
+        left: plane.min[0].round() as i32,
+        top: plane.min[1].round() as i32,
+        px_range: DEFAULT_PX_RANGE,
+        kind,
+    })
 }
 
 fn generate_glyph_distance_field(
