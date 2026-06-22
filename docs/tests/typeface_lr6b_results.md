@@ -2,14 +2,14 @@
 
 ## Status
 
-PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outline/glow, layered icon style slots; LR0–LR6A regressions preserved. **PROBATION / DA-sensitive** — not DA-approved until Codex review.
+PASS — GPU style table buffer, shader-side style lookup, gradient/pulse/outline/glow, layered icon style slots; LR0–LR6A regressions preserved. **PROBATION / DA-sensitive** — not DA-approved until Codex review (PR #886, merge `54e226471c`, post-merge evidence `78456f666d`).
 
 ## PR / branch / merge
 
 - Branch: `typeface-lr6b-gpu-style-table-effects-0`
 - PR: #886
 - Merge SHA: `54e226471c`
-- Post-merge evidence: recorded in post-merge evidence commit
+- Post-merge evidence: `78456f666d`
 
 ## LR6A-ICON closeout
 
