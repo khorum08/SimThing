@@ -9,6 +9,7 @@ PASS — Studio/game label seam wires `StudioTypefaceLabel` into existing typefa
 - Branch: `typeface-lr8-studio-label-seam-0`
 - PR: #893
 - Merge SHA: `ec01da43c9`
+- Post-merge evidence: `22e7bfb9a4`
 
 ## LR7 closeout
 
@@ -106,18 +107,19 @@ git diff --check
 - No TTF/OTF export, COLRv1, variable fonts
 - No production icon source set invention
 - No ScenarioSpec/RF/STEAD/sim changes
-- Studio full UI wiring deferred — seam API + headless proofs only
+- Full interactive Studio window smoke not in CI — shell mount proved via shared plugin registration + headless updates; see `docs/tests/typeface_lr8_studio_plugin_mount_results.md`
 
 ## Known gaps
 
-- Studio `run_studio()` does not yet mount `StudioTypefaceLabelPlugin` in production shell (compile-time seam ready)
+- Interactive Studio window smoke not automated in CI
 - Production icon source set still input debt
 - World-space camera-distance scaling for entity labels deferred
+- LR9 perf gate blocked until DA review
 
 ## DA recommendation
 
-Recommend **PROBATION** retention for integration seam. Do **not** self-approve LR8 or the whole typeface track.
+Recommend **PROBATION** retention for integration seam. Shell mount remediated by `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R`. Do **not** self-approve LR8 or the whole typeface track.
 
 ## Next recommended action
 
-Codex review of Studio seam proofs; mount plugin in Studio when presentation wiring is scheduled; LR9 perf gate when track owner selects it.
+Codex review of shell mount proofs; LR9 perf gate when track owner selects it.

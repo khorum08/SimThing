@@ -65,8 +65,8 @@ pub fn run_studio() {
         app_state.config_view_mode = config.view.view_mode;
     }
     app_state.config_load_warning = config_load_warning;
-    App::new()
-        .insert_resource(ClearColor(Color::BLACK))
+    let mut app = App::new();
+    app.insert_resource(ClearColor(Color::BLACK))
         .insert_resource(StudioSettings(settings.clone()))
         .insert_resource(app_state)
         .insert_resource(StudioDialog::default())
@@ -86,8 +86,9 @@ pub fn run_studio() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
-        .add_plugins(camera::StudioCameraPlugin)
-        .add_systems(Startup, (window::apply_initial_window_mode, setup_scene))
+        .add_plugins(camera::StudioCameraPlugin);
+    crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
+    app.add_systems(Startup, (window::apply_initial_window_mode, setup_scene))
         .add_systems(Startup, init_star_visual_assets)
         .add_systems(
             Startup,
