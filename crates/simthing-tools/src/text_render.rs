@@ -23,11 +23,12 @@ use bevy::{
         },
         render_resource::{
             binding_types::{sampler, texture_2d},
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, Buffer,
-            BufferInitDescriptor, BufferUsages, PipelineCache, RenderPipelineDescriptor,
-            SamplerBindingType, ShaderStages, SpecializedMeshPipeline,
-            SpecializedMeshPipelineError, SpecializedMeshPipelines, TextureSampleType,
-            VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries,
+            BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferInitDescriptor,
+            BufferUsages, PipelineCache, RenderPipelineDescriptor, SamplerBindingType,
+            ShaderStages, SpecializedMeshPipeline, SpecializedMeshPipelineError,
+            SpecializedMeshPipelines, TextureSampleType, VertexAttribute, VertexBufferLayout,
+            VertexFormat, VertexStepMode,
         },
         renderer::RenderDevice,
         sync_world::MainEntity,
@@ -41,7 +42,10 @@ use bevy::{
     },
 };
 
-use crate::bevy::{GlyphInstanceGpu, TextAggregateVersion, TextDrawExtract, TEXT_SHADER_HANDLE};
+use crate::{
+    bevy::{GlyphInstanceGpu, TextAggregateVersion, TextDrawExtract, TEXT_SHADER_HANDLE},
+    style::ExtractedTextStyleTable,
+};
 
 /// Marker for entities drawn by the text instanced pipeline.
 #[derive(Component, Clone, Copy, Debug, Default)]
@@ -134,6 +138,7 @@ impl Plugin for TextInstancedRenderPlugin {
                     prepare_text_instance_buffers.in_set(RenderSet::PrepareResources),
                     (
                         prepare_text_atlas_bind_group,
+                        prepare_text_style_bind_group,
                         prepare_text_offscreen_mesh2d_view_bind_groups,
                     )
                         .in_set(RenderSet::PrepareBindGroups),
@@ -154,6 +159,7 @@ pub struct TextInstancedPipeline {
     pub shader: Handle<Shader>,
     pub mesh2d_pipeline: Mesh2dPipeline,
     pub atlas_layout: BindGroupLayout,
+    pub style_layout: BindGroupLayout,
 }
 
 impl FromWorld for TextInstancedPipeline {
@@ -169,11 +175,37 @@ impl FromWorld for TextInstancedPipeline {
                 ),
             ),
         );
+        let style_layout = render_device.create_bind_group_layout(
+            "text_style_layout",
+            &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        );
 
         Self {
             shader: TEXT_SHADER_HANDLE.clone(),
             mesh2d_pipeline: world.resource::<Mesh2dPipeline>().clone(),
             atlas_layout,
+            style_layout,
         }
     }
 }
@@ -193,6 +225,7 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
             fragment.shader = self.shader.clone();
         }
         descriptor.layout.push(self.atlas_layout.clone());
+        descriptor.layout.push(self.style_layout.clone());
         descriptor.vertex.buffers.push(VertexBufferLayout {
             array_stride: size_of::<GlyphInstanceGpu>() as u64,
             step_mode: VertexStepMode::Instance,
@@ -216,6 +249,11 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
                     format: VertexFormat::Float32x4,
                     offset: VertexFormat::Float32x4.size() * 3,
                     shader_location: 8,
+                },
+                VertexAttribute {
+                    format: VertexFormat::Float32x4,
+                    offset: VertexFormat::Float32x4.size() * 4,
+                    shader_location: 9,
                 },
             ],
         });
@@ -474,11 +512,50 @@ fn prepare_text_atlas_bind_group(
     commands.insert_resource(TextAtlasBindGroupResource { bind_group });
 }
 
+#[derive(Resource, Clone)]
+pub struct TextStyleBindGroupResource {
+    pub bind_group: BindGroup,
+}
+
+fn prepare_text_style_bind_group(
+    mut commands: Commands,
+    pipeline: Res<TextInstancedPipeline>,
+    style_table: Option<Res<ExtractedTextStyleTable>>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<bevy::render::renderer::RenderQueue>,
+) {
+    let Some(style_table) = style_table else {
+        commands.remove_resource::<TextStyleBindGroupResource>();
+        return;
+    };
+    let globals_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+        label: Some("text_style_globals_buffer"),
+        contents: bytemuck::bytes_of(&style_table.globals),
+        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+    });
+    let rows_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
+        label: Some("text_style_rows_buffer"),
+        contents: bytemuck::bytes_of(&style_table.rows),
+        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+    });
+    let bind_group = render_device.create_bind_group(
+        "text_style_bind_group",
+        &pipeline.style_layout,
+        &BindGroupEntries::sequential((
+            globals_buffer.as_entire_binding(),
+            rows_buffer.as_entire_binding(),
+        )),
+    );
+    commands.insert_resource(TextStyleBindGroupResource { bind_group });
+    let _ = render_queue;
+}
+
 pub type DrawTextInstanced = (
     SetItemPipeline,
     SetMesh2dViewBindGroup<0>,
     SetMesh2dBindGroup<1>,
     SetTextAtlasBindGroup<2>,
+    SetTextStyleBindGroup<3>,
     DrawTextInstancedMesh,
 );
 
@@ -498,6 +575,26 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextAtlasBindGroup<I>
     ) -> RenderCommandResult {
         let atlas_bind_group = atlas_bind_group.into_inner();
         pass.set_bind_group(I, &atlas_bind_group.bind_group, &[]);
+        RenderCommandResult::Success
+    }
+}
+
+pub struct SetTextStyleBindGroup<const I: usize>;
+
+impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetTextStyleBindGroup<I> {
+    type Param = SRes<TextStyleBindGroupResource>;
+    type ViewQuery = ();
+    type ItemQuery = ();
+
+    fn render<'w>(
+        _item: &P,
+        _view: (),
+        _item_query: Option<()>,
+        style_bind_group: SystemParamItem<'w, '_, Self::Param>,
+        pass: &mut TrackedRenderPass<'w>,
+    ) -> RenderCommandResult {
+        let style_bind_group = style_bind_group.into_inner();
+        pass.set_bind_group(I, &style_bind_group.bind_group, &[]);
         RenderCommandResult::Success
     }
 }

@@ -26,6 +26,10 @@ use crate::{
         NUMERIC_DAMAGE_DEFAULT_WIDTH,
     },
     shaping::{ShapedGlyph, ShapedRun, ShapingEngine},
+    style::{
+        style_params_for_slot, ExtractedTextStyleTable, TextStyleDiagnostics, TextStyleSlot,
+        TextStyleTableResource,
+    },
     text_render::TextInstancedRenderPlugin,
 };
 
@@ -70,12 +74,16 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<TextPerfDiagnostics>()
             .init_resource::<NumericDamageDiagnostics>()
             .init_resource::<TextDamagePhaseProfile>()
+            .init_resource::<TextStyleDiagnostics>()
+            .init_resource::<TextStyleTableResource>()
+            .init_resource::<ExtractedTextStyleTable>()
             .init_resource::<TextInstanceAggregate>()
             .init_resource::<TextAggregateLayout>()
             .init_resource::<TextAggregateVersion>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
             .insert_resource(PluginAtlasSize(self.atlas_size))
             .add_plugins(ExtractResourcePlugin::<TextAggregateVersion>::default())
+            .add_plugins(ExtractResourcePlugin::<ExtractedTextStyleTable>::default())
             .add_systems(
                 Startup,
                 (fix_volume_image_view_descriptors, init_typeface_state).chain(),
@@ -84,6 +92,8 @@ impl Plugin for SimthingToolsTextPlugin {
             .add_systems(
                 Update,
                 (
+                    advance_style_table_time,
+                    sync_style_table_rows_if_changed,
                     update_numeric_damage_labels,
                     rebuild_changed_labels,
                     ApplyDeferred,
@@ -130,6 +140,7 @@ pub struct TextLabel {
     pub px: f32,
     pub color: [f32; 4],
     pub render_mode: TextLabelRenderMode,
+    pub style_slot: TextStyleSlot,
 }
 
 impl TextLabel {
@@ -139,6 +150,7 @@ impl TextLabel {
             px,
             color,
             render_mode: TextLabelRenderMode::Raster,
+            style_slot: 0,
         }
     }
 
@@ -148,7 +160,13 @@ impl TextLabel {
             px,
             color,
             render_mode: TextLabelRenderMode::Msdf,
+            style_slot: 0,
         }
+    }
+
+    pub fn with_style_slot(mut self, slot: TextStyleSlot) -> Self {
+        self.style_slot = slot;
+        self
     }
 }
 
@@ -272,6 +290,7 @@ struct TextLabelCache {
     px: f32,
     color: [f32; 4],
     render_mode: TextLabelRenderMode,
+    style_slot: TextStyleSlot,
     shaped: ShapedRun,
 }
 
@@ -283,6 +302,8 @@ pub struct GlyphInstanceGpu {
     pub color: [f32; 4],
     /// x = render mode (0 raster, 1 SDF, 2 MSDF), y = px_range, z/w reserved.
     pub sdf_params: [f32; 4],
+    /// x = style_slot, y = role_slot, z/w reserved.
+    pub style_params: [f32; 4],
 }
 
 #[derive(Component, Clone, Default, Debug)]
@@ -573,6 +594,7 @@ fn rebuild_changed_labels(
             cache.px = label.px;
             cache.color = label.color;
             cache.render_mode = label.render_mode;
+            cache.style_slot = label.style_slot;
             cache.shaped = shaped;
         } else {
             commands.entity(entity).insert(TextLabelCache {
@@ -580,6 +602,7 @@ fn rebuild_changed_labels(
                 px: label.px,
                 color: label.color,
                 render_mode: label.render_mode,
+                style_slot: label.style_slot,
                 shaped,
             });
         }
@@ -601,6 +624,7 @@ fn build_glyph_instance(
                 label.color,
                 atlas.atlas_size,
                 None,
+                label.style_slot,
             ))
         }
         TextLabelRenderMode::Sdf | TextLabelRenderMode::Msdf => {
@@ -621,6 +645,7 @@ fn build_glyph_instance(
                 label.color,
                 atlas.atlas_size,
                 Some(&df_tile),
+                label.style_slot,
             ))
         }
     }
@@ -799,6 +824,7 @@ fn build_instance(
     color: [f32; 4],
     atlas_size: u32,
     distance_field: Option<&DistanceFieldTile>,
+    style_slot: TextStyleSlot,
 ) -> GlyphInstanceGpu {
     let inv = 1.0 / atlas_size as f32;
     let sdf_params = distance_field
@@ -819,7 +845,36 @@ fn build_instance(
         ],
         color,
         sdf_params,
+        style_params: style_params_for_slot(style_slot, 0),
     }
+}
+
+fn advance_style_table_time(mut style_table: ResMut<TextStyleTableResource>, time: Res<Time>) {
+    style_table.time = time.elapsed_secs();
+}
+
+fn sync_style_table_rows_if_changed(
+    mut style_table: ResMut<TextStyleTableResource>,
+    mut extracted: ResMut<ExtractedTextStyleTable>,
+    mut diagnostics: ResMut<TextStyleDiagnostics>,
+) {
+    extracted.globals = style_table.table.to_globals(style_table.time);
+    if !style_table.rows_dirty {
+        diagnostics.style_table_cache_hit_count += 1;
+        return;
+    }
+    extracted.rows = style_table.table.to_rows_uniform();
+    style_table.rows_generation += 1;
+    extracted.rows_generation = style_table.rows_generation;
+    style_table.mark_rows_clean();
+    diagnostics.style_table_upload_count += 1;
+}
+
+pub fn text_style_diagnostics(app: &App) -> TextStyleDiagnostics {
+    app.world()
+        .get_resource::<TextStyleDiagnostics>()
+        .copied()
+        .unwrap_or_default()
 }
 
 fn blit_dirty_rect_to_image(

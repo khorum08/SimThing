@@ -3,7 +3,7 @@ use wgpu::{
     MapMode, Origin3d, TextureAspect,
 };
 
-use crate::bevy::GlyphInstanceGpu;
+use crate::{bevy::GlyphInstanceGpu, style::TextStyleTable};
 
 /// Offscreen target dimensions for LR3R wgpu smoke draws.
 #[derive(Debug, Clone, Copy)]
@@ -58,6 +58,7 @@ struct GlyphInstance {
     @location(2) uv_rect: vec4<f32>,
     @location(3) color: vec4<f32>,
     @location(4) sdf_params: vec4<f32>,
+    @location(5) style_params: vec4<f32>,
 };
 
 struct VertexInput {
@@ -70,10 +71,23 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
     @location(2) sdf_params: vec4<f32>,
+    @location(3) style_params: vec4<f32>,
+    @location(4) local_uv: vec2<f32>,
 };
+
+struct StyleRow {
+    fill_rgba: vec4<f32>,
+    accent_rgba: vec4<f32>,
+    outline_rgba: vec4<f32>,
+    glow_rgba: vec4<f32>,
+    params0: vec4<f32>,
+    params1: vec4<f32>,
+}
 
 @group(1) @binding(0) var atlas_tex: texture_2d<f32>;
 @group(1) @binding(1) var atlas_smp: sampler;
+@group(2) @binding(0) var<uniform> style_globals: vec4<f32>;
+@group(2) @binding(1) var<uniform> style_rows: array<StyleRow, 32>;
 
 @vertex
 fn vs_main(mesh: VertexInput, instance: GlyphInstance) -> VertexOutput {
@@ -85,6 +99,8 @@ fn vs_main(mesh: VertexInput, instance: GlyphInstance) -> VertexOutput {
     out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, mesh.corner);
     out.color = instance.color;
     out.sdf_params = instance.sdf_params;
+    out.style_params = instance.style_params;
+    out.local_uv = mesh.corner;
     return out;
 }
 
@@ -99,25 +115,56 @@ fn screen_px_range(px_range: f32, uv: vec2<f32>, atlas_size: f32) -> f32 {
     return max(0.5 * dot(vec2(unit_range), vec2(dx, dy)) * atlas_size, 1.0);
 }
 
-fn sdf_alpha(sample: vec4<f32>, mode: f32, px_range: f32, uv: vec2<f32>, atlas_size: f32) -> f32 {
+fn sdf_coverage(sample: vec4<f32>, mode: f32, px_range: f32, uv: vec2<f32>, atlas_size: f32) -> vec2<f32> {
     if mode < 0.5 {
-        return sample.a;
+        return vec2(sample.a, sample.a);
     }
     let screen_range = screen_px_range(px_range, uv, atlas_size);
     if mode < 1.5 {
         let sd = sample.a;
-        return clamp((sd - 0.5) * screen_range + 0.5, 0.0, 1.0);
+        let alpha = clamp((sd - 0.5) * screen_range + 0.5, 0.0, 1.0);
+        return vec2(alpha, sd);
     }
     let sd = median3(sample.rgb);
     let fw = max(fwidth(sd), 0.001);
-    return clamp((sd - 0.5) / fw + 0.5, 0.0, 1.0);
+    let alpha = clamp((sd - 0.5) / fw + 0.5, 0.0, 1.0);
+    return vec2(alpha, sd);
+}
+
+fn style_row_at(slot: u32) -> StyleRow {
+    if slot >= 32u {
+        return style_rows[0];
+    }
+    return style_rows[slot];
+}
+
+fn apply_style_fill(style: StyleRow, base_color: vec4<f32>, local_uv: vec2<f32>) -> vec4<f32> {
+    var opacity = style.params0.x;
+    let gradient_mode = style.params0.y;
+    var t = 0.0;
+    if gradient_mode > 0.5 && gradient_mode < 1.5 {
+        t = local_uv.x;
+    } else if gradient_mode >= 1.5 {
+        t = local_uv.y;
+    }
+    let fill_rgb = mix(style.fill_rgba.rgb, style.accent_rgba.rgb, t);
+    let pulse_amp = style.params1.x;
+    if pulse_amp > 0.0 {
+        let pulse = sin(style_globals.x * style.params1.y + style.params1.z) * pulse_amp;
+        opacity = clamp(opacity + pulse, 0.0, 1.0);
+    }
+    return vec4(base_color.rgb * fill_rgb, base_color.a * opacity);
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sample = textureSample(atlas_tex, atlas_smp, in.uv);
-    let alpha = sdf_alpha(sample, in.sdf_params.x, in.sdf_params.y, in.uv, in.sdf_params.z);
-    return vec4(in.color.rgb, in.color.a * alpha);
+    let slot = u32(clamp(in.style_params.x, 0.0, 31.0));
+    let style = style_row_at(slot);
+    let styled_color = apply_style_fill(style, in.color, in.local_uv);
+    let coverage = sdf_coverage(sample, in.sdf_params.x, in.sdf_params.y, in.uv, in.sdf_params.z);
+    var alpha = styled_color.a * coverage.x;
+    return vec4(styled_color.rgb, alpha);
 }
 "#;
 
@@ -138,6 +185,24 @@ pub fn wgpu_instanced_text_smoke(
     instances: &[GlyphInstanceGpu],
     atlas_pixels: &[u8],
     atlas_size: u32,
+) -> Result<WgpuTextSmokeResult, String> {
+    wgpu_styled_instanced_text_smoke(
+        target,
+        instances,
+        atlas_pixels,
+        atlas_size,
+        &TextStyleTable::with_defaults(),
+        0.0,
+    )
+}
+
+pub fn wgpu_styled_instanced_text_smoke(
+    target: WgpuSmokeTarget,
+    instances: &[GlyphInstanceGpu],
+    atlas_pixels: &[u8],
+    atlas_size: u32,
+    style_table: &TextStyleTable,
+    time: f32,
 ) -> Result<WgpuTextSmokeResult, String> {
     if instances.is_empty() {
         return Err("no glyph instances for wgpu smoke".into());
@@ -205,9 +270,39 @@ pub fn wgpu_instanced_text_smoke(
                 },
             ],
         });
+    let style_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("lr3r_style_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("lr3r_smoke_pipeline_layout"),
-        bind_group_layouts: &[&target_bind_group_layout, &atlas_bind_group_layout],
+        bind_group_layouts: &[
+            &target_bind_group_layout,
+            &atlas_bind_group_layout,
+            &style_bind_group_layout,
+        ],
         push_constant_ranges: &[],
     });
 
@@ -312,6 +407,33 @@ pub fn wgpu_instanced_text_smoke(
         ],
     });
 
+    let style_globals = style_table.to_globals(time);
+    let style_rows = style_table.to_rows_uniform();
+    let style_globals_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr3r_style_globals"),
+        contents: bytemuck::bytes_of(&style_globals),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let style_rows_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("lr3r_style_rows"),
+        contents: bytemuck::bytes_of(&style_rows),
+        usage: wgpu::BufferUsages::UNIFORM,
+    });
+    let style_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("lr3r_style_bind_group"),
+        layout: &style_bind_group_layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: style_globals_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: style_rows_buffer.as_entire_binding(),
+            },
+        ],
+    });
+
     let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("lr3r_smoke_pipeline"),
         layout: Some(&pipeline_layout),
@@ -351,6 +473,11 @@ pub fn wgpu_instanced_text_smoke(
                             format: wgpu::VertexFormat::Float32x4,
                             offset: 48,
                             shader_location: 4,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 64,
+                            shader_location: 5,
                         },
                     ],
                 },
@@ -400,6 +527,7 @@ pub fn wgpu_instanced_text_smoke(
         pass.set_pipeline(&pipeline);
         pass.set_bind_group(0, &target_bind_group, &[]);
         pass.set_bind_group(1, &atlas_bind_group, &[]);
+        pass.set_bind_group(2, &style_bind_group, &[]);
         pass.set_vertex_buffer(0, corner_buffer.slice(..));
         pass.set_vertex_buffer(1, instance_buffer.slice(..));
         pass.draw(0..6, 0..instances.len() as u32);
