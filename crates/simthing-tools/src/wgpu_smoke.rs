@@ -702,16 +702,17 @@ fn apply_parametric_deform(local_uv: vec2<f32>, slot: u32) -> vec2<f32> {
 fn vs_main(mesh: VertexInput, instance: GlyphInstance) -> VertexOutput {
     var out: VertexOutput;
     let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
-    let local_uv = apply_parametric_deform(mesh.corner, deform_slot);
-    let pos = instance.pos_size.xy + local_uv * instance.pos_size.zw;
+    let source_uv = mesh.corner;
+    let deformed_uv = apply_parametric_deform(source_uv, deform_slot);
+    let pos = instance.pos_size.xy + deformed_uv * instance.pos_size.zw;
     let ndc_x = (pos.x / frame_size.size.x) * 2.0 - 1.0;
     let ndc_y = 1.0 - (pos.y / frame_size.size.y) * 2.0;
     out.clip_position = vec4(ndc_x, ndc_y, 0.0, 1.0);
-    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, local_uv);
+    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv);
     out.color = instance.color;
     out.sdf_params = instance.sdf_params;
     out.style_params = instance.style_params;
-    out.local_uv = local_uv;
+    out.local_uv = source_uv;
     return out;
 }
 

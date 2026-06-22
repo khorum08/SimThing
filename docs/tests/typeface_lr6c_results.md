@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — atlas bind group persistence remediated; Tier-1 parametric deformation (stretch/skew/fold/pulse-scale) evaluated in vertex shader; adaptive tessellation on deform opt-in; flat labels remain one quad. **PROBATION / DA-sensitive** — not DA-approved.
+PASS — atlas bind group persistence remediated; Tier-1 parametric deformation (stretch/skew/fold/pulse-scale) evaluated in vertex shader; adaptive tessellation on deform opt-in; flat labels remain one quad. **PROBATION / DA HOLD pending UV-sampling correction** — remediated by `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R`.
 
 ## PR / branch / merge
 
@@ -46,7 +46,8 @@ PASS — atlas bind group persistence remediated; Tier-1 parametric deformation 
 ## Shader deformation path
 
 - `text_instanced.wgsl`: bind group 4 `deform_rows`; `apply_parametric_deform()` in vertex shader before clip transform
-- MSDF/SDF/raster fragment sampling unchanged; static atlas tiles
+- **DA HOLD (remediated by LR6C-DEFORM-UV-SAMPLING-0R):** initial merge used deformed UV for atlas sampling; corrected to split `source_uv` (atlas/style) vs `deformed_uv` (position)
+- MSDF/SDF/raster fragment sampling uses stable atlas tile UVs
 - Pulse-scale reads `style_globals.x` time in vertex shader only
 
 ## Bevy/plugin path
