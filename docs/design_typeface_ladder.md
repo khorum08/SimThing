@@ -155,6 +155,7 @@ one run.
 **Files:** `crates/simthing-tools/src/bench.rs`, `bevy.rs`, `text_render.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
 **Steps:** CPU harness plus Bevy-path aggregate versioning, dirty atlas sync, draw-entity sync gating, instance-buffer reuse; 5k no-op binding profile recorded.
 **LR5R remediation:** dirty aggregate rebuild; no-op draw sync/atlas sync/buffer recreate avoided; damage churn aggregates once per frame; 5k labels @ avg no-op &lt;1 ms CPU update on validation host.
+**LR5S remediation (`TYPEFACE-LR5-DAMAGE-CHURN-GPU-AUDIT-0R`):** no-clone changed-label rebuild; segmented aggregate patching; numeric shape cache + digit prewarm; damage phase profile; GPU-residency audit. Damage CPU improved but remains &gt;1 ms/frame at 500-label churn on validation host — see `docs/tests/typeface_lr5s_results.md`.
 **Tests:** LR5 direct harness + Bevy structural tests in `typeface_lr5.rs`; optional `#[ignore]` 5k binding profile.
 **DA focus:** no-op binding met; damage churn CPU update measured above 1 ms/frame at 500-label churn — recorded honestly; LR5 remains PROBATION pending DA review.
 

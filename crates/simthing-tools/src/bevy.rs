@@ -62,7 +62,9 @@ impl Plugin for SimthingToolsTextPlugin {
         app.init_asset::<Mesh>()
             .init_asset::<Image>()
             .init_resource::<TextPerfDiagnostics>()
+            .init_resource::<TextDamagePhaseProfile>()
             .init_resource::<TextInstanceAggregate>()
+            .init_resource::<TextAggregateLayout>()
             .init_resource::<TextAggregateVersion>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
             .insert_resource(PluginAtlasSize(self.atlas_size))
@@ -102,12 +104,19 @@ pub struct TextLabel {
     pub color: [f32; 4],
 }
 
-/// Consolidated main-world perf diagnostics for LR5/LR5R tests.
+/// Consolidated main-world perf diagnostics for LR5/LR5R/LR5S tests.
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TextPerfDiagnostics {
     pub shape_rebuild_count: u64,
+    pub shape_cache_hit_count: u64,
+    pub shape_cache_miss_count: u64,
     pub instance_rebuild_count: u64,
     pub aggregate_rebuild_count: u64,
+    pub aggregate_patch_count: u64,
+    pub aggregate_full_rebuild_count: u64,
+    pub aggregate_repack_count: u64,
+    pub aggregate_patched_instance_count: u64,
+    pub aggregate_full_rebuild_instance_count: u64,
     pub draw_entity_sync_count: u64,
     pub extract_clone_count: u64,
     pub extracted_instance_count: u64,
@@ -123,6 +132,36 @@ pub struct TextPerfDiagnostics {
 
 /// Back-compat alias used by LR3 tests.
 pub type TextRebuildDiagnostics = TextPerfDiagnostics;
+
+/// Per-frame damage-path phase timings (nanoseconds, cumulative).
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TextDamagePhaseProfile {
+    pub mutation_ns: u64,
+    pub shaping_ns: u64,
+    pub rasterize_ns: u64,
+    pub instance_rebuild_ns: u64,
+    pub aggregate_patch_ns: u64,
+    pub aggregate_full_rebuild_ns: u64,
+    pub draw_sync_ns: u64,
+    pub atlas_sync_ns: u64,
+    pub sample_frames: u64,
+}
+
+/// Stable segment metadata for aggregate patching.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LabelAggregateSegment {
+    pub offset: usize,
+    pub len: usize,
+}
+
+#[derive(Component, Default)]
+struct SegmentDirty;
+
+#[derive(Resource, Default, Debug)]
+struct TextAggregateLayout {
+    label_order: Vec<Entity>,
+    needs_full_rebuild: bool,
+}
 
 /// Aggregate versioning: rebuild/sync only when `dirty`.
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq, ExtractResource)]
@@ -241,6 +280,21 @@ pub fn text_perf_diagnostics(app: &App) -> TextPerfDiagnostics {
     diag
 }
 
+/// Read cumulative damage-frame phase timings from the main world.
+pub fn text_damage_phase_profile(app: &App) -> TextDamagePhaseProfile {
+    app.world()
+        .get_resource::<TextDamagePhaseProfile>()
+        .copied()
+        .unwrap_or_default()
+}
+
+/// Reset damage phase timings before a profiled damage run.
+pub fn reset_text_damage_phase_profile(app: &mut App) {
+    if let Some(mut phase) = app.world_mut().get_resource_mut::<TextDamagePhaseProfile>() {
+        *phase = TextDamagePhaseProfile::default();
+    }
+}
+
 /// Ensure volume/LUT images expose D3 texture views for mesh2d tonemapping bind groups.
 fn fix_volume_image_view_descriptors(mut images: ResMut<Assets<Image>>) {
     for (_, image) in images.iter_mut() {
@@ -274,11 +328,13 @@ fn init_typeface_state(
     mut images: ResMut<Assets<Image>>,
 ) {
     let font = load_font(&bytes.0).expect("typeface font must parse");
-    let shaper = ShapingEngine::new_with_font(bytes.0.clone()).expect("typeface shaper must init");
+    let mut shaper =
+        ShapingEngine::new_with_font(bytes.0.clone()).expect("typeface shaper must init");
+    let mut atlas = TypefaceAtlas::new_cpu(atlas_size.0);
+    prewarm_digit_glyphs(&font, &mut shaper, &mut atlas, PREWARM_PX);
     commands.insert_resource(TypefaceFont(font));
     commands.insert_resource(TypefaceShaper(shaper));
 
-    let atlas = TypefaceAtlas::new_cpu(atlas_size.0);
     let atlas_image = create_atlas_image_from_cpu(&mut images, &atlas.cpu);
     commands.insert_resource(crate::text_render::TextAtlasImageHandle(atlas_image));
     commands.insert_resource(atlas);
@@ -303,8 +359,34 @@ fn init_typeface_state(
     commands.insert_resource(TextDrawEntity(draw_entity));
 }
 
+const PREWARM_PX: f32 = 24.0;
+
+fn prewarm_digit_glyphs(
+    font: &ProbeFont,
+    shaper: &mut ShapingEngine,
+    atlas: &mut TypefaceAtlas,
+    px: f32,
+) {
+    for ch in "0123456789-".chars() {
+        let text = ch.to_string();
+        let shaped = shaper.shape(&text, px);
+        for glyph in &shaped.glyphs {
+            let _ = atlas.cpu.get_or_rasterize(font, glyph.glyph_id, px);
+        }
+    }
+    atlas.cpu.clear_dirty_regions();
+}
+
+fn is_numeric_damage_label(text: &str) -> bool {
+    let Some(rest) = text.strip_prefix('-') else {
+        return false;
+    };
+    !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit())
+}
+
 fn rebuild_changed_labels(
     mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut phase: ResMut<TextDamagePhaseProfile>,
     mut aggregate_version: ResMut<TextAggregateVersion>,
     font: Res<TypefaceFont>,
     mut shaper: ResMut<TypefaceShaper>,
@@ -322,23 +404,53 @@ fn rebuild_changed_labels(
 ) {
     for (entity, label, existing_instances, cache) in &mut q {
         diagnostics.shape_rebuild_count += 1;
-        let shaped = shaper.0.shape(&label.text, label.px);
-        let mut instances = existing_instances
-            .as_ref()
-            .map(|existing| existing.0.clone())
-            .unwrap_or_default();
-        instances.clear();
-        instances.reserve(shaped.glyphs.len());
-        for glyph in &shaped.glyphs {
-            if let Some(tile) = atlas
-                .cpu
-                .get_or_rasterize(&font.0, glyph.glyph_id, label.px)
-            {
-                instances.push(build_instance(glyph, tile, label.color, atlas.atlas_size));
-            }
+        let shape_start = std::time::Instant::now();
+        let (shaped, cache_hit) = if is_numeric_damage_label(&label.text) {
+            shaper.0.shape_cached(&label.text, label.px)
+        } else {
+            (shaper.0.shape(&label.text, label.px), false)
+        };
+        phase.shaping_ns += shape_start.elapsed().as_nanos() as u64;
+        if cache_hit {
+            diagnostics.shape_cache_hit_count += 1;
+        } else {
+            diagnostics.shape_cache_miss_count += 1;
         }
+
+        let instance_start = std::time::Instant::now();
+        let raster_start = std::time::Instant::now();
+        if let Some(mut existing) = existing_instances {
+            existing.0.clear();
+            existing.0.reserve(shaped.glyphs.len());
+            for glyph in &shaped.glyphs {
+                if let Some(tile) = atlas
+                    .cpu
+                    .get_or_rasterize(&font.0, glyph.glyph_id, label.px)
+                {
+                    existing
+                        .0
+                        .push(build_instance(glyph, tile, label.color, atlas.atlas_size));
+                }
+            }
+        } else {
+            let mut instances = Vec::with_capacity(shaped.glyphs.len());
+            for glyph in &shaped.glyphs {
+                if let Some(tile) = atlas
+                    .cpu
+                    .get_or_rasterize(&font.0, glyph.glyph_id, label.px)
+                {
+                    instances.push(build_instance(glyph, tile, label.color, atlas.atlas_size));
+                }
+            }
+            commands
+                .entity(entity)
+                .insert(TextGlyphInstances(instances));
+        }
+        phase.rasterize_ns += raster_start.elapsed().as_nanos() as u64;
+        phase.instance_rebuild_ns += instance_start.elapsed().as_nanos() as u64;
         diagnostics.instance_rebuild_count += 1;
         aggregate_version.dirty = true;
+        commands.entity(entity).insert(SegmentDirty);
 
         if let Some(mut cache) = cache {
             cache.text = label.text.clone();
@@ -353,25 +465,18 @@ fn rebuild_changed_labels(
                 shaped,
             });
         }
-        if let Some(mut existing) = existing_instances {
-            existing.0.clear();
-            existing.0.reserve(instances.len());
-            existing.0.extend_from_slice(&instances);
-        } else {
-            commands
-                .entity(entity)
-                .insert(TextGlyphInstances(instances));
-        }
     }
 }
 
 fn mark_aggregate_dirty_on_label_lifecycle(
     mut aggregate_version: ResMut<TextAggregateVersion>,
+    mut layout: ResMut<TextAggregateLayout>,
     added: Query<(), Added<TextLabel>>,
     mut removed: RemovedComponents<TextLabel>,
 ) {
     if added.iter().next().is_some() || removed.read().next().is_some() {
         aggregate_version.dirty = true;
+        layout.needs_full_rebuild = true;
     }
 }
 
@@ -380,12 +485,14 @@ fn sync_atlas_image_to_gpu(
     atlas_handle: Res<crate::text_render::TextAtlasImageHandle>,
     mut images: ResMut<Assets<Image>>,
     mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut phase: ResMut<TextDamagePhaseProfile>,
 ) {
     let dirty_bytes = atlas.cpu.dirty_region_byte_count();
     if dirty_bytes == 0 {
         return;
     }
 
+    let sync_start = std::time::Instant::now();
     let dirty_regions: Vec<AtlasDirtyRect> = atlas.cpu.dirty_regions().collect();
     let dirty_count = dirty_regions.len() as u64;
     diagnostics.atlas_sync_count += 1;
@@ -407,6 +514,7 @@ fn sync_atlas_image_to_gpu(
         }
     }
     atlas.cpu.clear_dirty_regions();
+    phase.atlas_sync_ns += sync_start.elapsed().as_nanos() as u64;
 }
 
 fn force_text_draw_visible(draw_entity: Res<TextDrawEntity>, mut q: Query<&mut ViewVisibility>) {
@@ -421,11 +529,13 @@ fn sync_draw_entity_instances(
     draw_entity: Res<TextDrawEntity>,
     mut q: Query<&mut TextGlyphInstances>,
     mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut phase: ResMut<TextDamagePhaseProfile>,
     mut last_synced_version: Local<u64>,
 ) {
     if *last_synced_version == aggregate_version.current {
         return;
     }
+    let sync_start = std::time::Instant::now();
     *last_synced_version = aggregate_version.current;
     diagnostics.draw_entity_sync_count += 1;
     if let Ok(mut instances) = q.get_mut(draw_entity.0) {
@@ -433,30 +543,84 @@ fn sync_draw_entity_instances(
             instances.0.clear();
             instances.0.extend_from_slice(&aggregate.0);
         } else if instances.0 != aggregate.0 {
-            instances.0.clone_from(&aggregate.0);
+            instances.0.copy_from_slice(&aggregate.0);
         }
     }
+    phase.draw_sync_ns += sync_start.elapsed().as_nanos() as u64;
 }
 
 fn aggregate_label_instances(
-    q: Query<&TextGlyphInstances, With<TextLabel>>,
+    all_labels: Query<(Entity, &TextGlyphInstances), With<TextLabel>>,
+    dirty_labels: Query<
+        (Entity, &TextGlyphInstances, &LabelAggregateSegment),
+        (With<TextLabel>, With<SegmentDirty>),
+    >,
     mut aggregate: ResMut<TextInstanceAggregate>,
     mut aggregate_version: ResMut<TextAggregateVersion>,
+    mut layout: ResMut<TextAggregateLayout>,
     mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut phase: ResMut<TextDamagePhaseProfile>,
+    mut commands: Commands,
 ) {
     if !aggregate_version.dirty {
         return;
     }
     aggregate_version.dirty = false;
     aggregate_version.current += 1;
-    diagnostics.aggregate_rebuild_count += 1;
+    phase.sample_frames += 1;
 
-    let required: usize = q.iter().map(|instances| instances.0.len()).sum();
+    let dirty: Vec<_> = dirty_labels.iter().collect();
+    let total_labels = all_labels.iter().count();
+    let width_stable = dirty
+        .iter()
+        .all(|(_, instances, segment)| instances.0.len() == segment.len);
+    let can_patch = !layout.needs_full_rebuild
+        && !dirty.is_empty()
+        && width_stable
+        && dirty.len() < total_labels;
+
+    if can_patch {
+        let patch_start = std::time::Instant::now();
+        for (entity, instances, segment) in &dirty {
+            aggregate.0[segment.offset..segment.offset + segment.len].copy_from_slice(&instances.0);
+            diagnostics.aggregate_patch_count += 1;
+            diagnostics.aggregate_patched_instance_count += instances.0.len() as u64;
+            commands.entity(*entity).remove::<SegmentDirty>();
+        }
+        phase.aggregate_patch_ns += patch_start.elapsed().as_nanos() as u64;
+        return;
+    }
+
+    let full_start = std::time::Instant::now();
+    if !layout.needs_full_rebuild && !dirty.is_empty() && !width_stable {
+        diagnostics.aggregate_repack_count += 1;
+    }
+
+    let mut ordered: Vec<(Entity, &TextGlyphInstances)> = all_labels.iter().collect();
+    ordered.sort_by_key(|(entity, _)| entity.index());
+
+    let required: usize = ordered.iter().map(|(_, instances)| instances.0.len()).sum();
     aggregate.0.clear();
     aggregate.0.reserve(required);
-    for instances in &q {
+
+    let mut offset = 0usize;
+    for (entity, instances) in &ordered {
+        let len = instances.0.len();
+        commands
+            .entity(*entity)
+            .insert(LabelAggregateSegment { offset, len });
+        commands.entity(*entity).remove::<SegmentDirty>();
         aggregate.0.extend_from_slice(&instances.0);
+        offset += len;
     }
+
+    layout.label_order = ordered.into_iter().map(|(entity, _)| entity).collect();
+    layout.needs_full_rebuild = false;
+
+    diagnostics.aggregate_rebuild_count += 1;
+    diagnostics.aggregate_full_rebuild_count += 1;
+    diagnostics.aggregate_full_rebuild_instance_count += aggregate.0.len() as u64;
+    phase.aggregate_full_rebuild_ns += full_start.elapsed().as_nanos() as u64;
 }
 
 fn build_instance(
@@ -568,7 +732,7 @@ pub fn text_label_entity_counts(app: &mut App) -> (usize, usize) {
     (label_count, draw_entities)
 }
 
-/// Measured Bevy Update-path profile for LR5R binding proof.
+/// Measured Bevy Update-path profile for LR5R/LR5S binding proof.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BevyTextBenchProfile {
     pub labels: usize,
@@ -581,6 +745,7 @@ pub struct BevyTextBenchProfile {
     pub max_damage_update_ms: f64,
     pub diagnostics_after_noop: TextPerfDiagnostics,
     pub diagnostics_after_damage: TextPerfDiagnostics,
+    pub phase_after_damage: TextDamagePhaseProfile,
 }
 
 /// Spawn static + damage labels; returns damage label entities for churn mutation.
@@ -643,6 +808,7 @@ pub fn profile_bevy_text_bench(
     let (avg_noop_update_ms, max_noop_update_ms) = timed_updates(app, noop_frames);
     let diagnostics_after_noop = text_perf_diagnostics(app);
 
+    reset_text_damage_phase_profile(app);
     let mut total_damage_ms = 0.0_f64;
     let mut max_damage_update_ms = 0.0_f64;
     for frame in 0..damage_frames {
@@ -676,5 +842,6 @@ pub fn profile_bevy_text_bench(
         max_damage_update_ms,
         diagnostics_after_noop,
         diagnostics_after_damage: text_perf_diagnostics(app),
+        phase_after_damage: text_damage_phase_profile(app),
     }
 }
