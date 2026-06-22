@@ -185,7 +185,7 @@
 | **TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R** - persistent render-world style globals/rows buffers; bind-group reuse; rows write on rows_generation only | #887 | `6117dd5fd5` | **ACCEPTED / closed** — post-merge evidence `19ca9f8420`; index finalize `79ee674026`; `docs/tests/typeface_lr6b_style_buffer_residency_results.md` |
 | **TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0** - persistent atlas bind group; Tier-1 vertex-shader parametric deformation; adaptive tessellation on opt-in | #888 | `2f029bdb97` | **DA APPROVED after #889** — post-merge evidence `b21e8ad34e`; `docs/tests/typeface_lr6c_results.md` |
 | **TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R** - split source_uv vs deformed_uv; preserve atlas/MSDF tile sampling; gradient uses source_local_uv | #889 | `913b148323` | **ACCEPTED / closed** — post-merge evidence `2e83ff80c8`; index finalize `581fe06f84`; `docs/tests/typeface_lr6c_deform_uv_sampling_results.md` |
-| **TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0** - GPU path/warp tables; vertex-shader text-on-path + lattice warp; stable source_uv atlas sampling | PR pending | merge pending | **PROBATION / DA-sensitive** — `docs/tests/typeface_lr6d_results.md`; ladder § LR6D |
+| **TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0** - GPU path/warp tables; vertex-shader text-on-path + lattice warp; stable source_uv atlas sampling | #890 | `c0fb11c3cb` | **PROBATION / DA-sensitive** — `docs/tests/typeface_lr6d_results.md`; ladder § LR6D |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

@@ -7,8 +7,8 @@ PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice war
 ## PR / branch / merge
 
 - Branch: `typeface-lr6d-text-on-path-warp-field-0`
-- PR: recorded in post-merge evidence commit on `master`
-- Merge SHA: recorded in post-merge evidence commit on `master`
+- PR: #890
+- Merge SHA: `c0fb11c3cb`
 
 ## LR6C closeout
 

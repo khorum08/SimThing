@@ -20,8 +20,8 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — LR6D text-on-path + warp field (2026-06-21)
 
-- `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` adds GPU-resident path/warp tables, vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling preserved; composes with LR6C deformation and LR6B style slots.
-- LR6C promoted to **DA APPROVED** after #889 (`913b148323`). LR6D **PROBATION / DA-sensitive** — not DA-approved.
+- `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) adds GPU-resident path/warp tables, vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling preserved; composes with LR6C deformation and LR6B style slots.
+- LR6C promoted to **DA APPROVED** after #889 (`913b148323`). LR6D **DONE / PROBATION / DA-sensitive** — not DA-approved.
 
 ## Typeface ladder — LR6C deform UV sampling remediation (2026-06-21)
 
