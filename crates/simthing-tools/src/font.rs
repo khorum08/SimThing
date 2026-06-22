@@ -22,6 +22,9 @@ pub enum TypefaceError {
 
     #[error("font collection index out of range: {0}")]
     CollectionIndex(usize),
+
+    #[error("icon manifest: {0}")]
+    Manifest(String),
 }
 
 #[derive(Debug)]

@@ -5,6 +5,7 @@ pub mod deform;
 pub mod font;
 pub mod harness;
 pub mod icons;
+pub mod manifest;
 pub mod msdf;
 mod numeric_damage;
 pub mod path;
@@ -58,6 +59,10 @@ pub use harness::{ascii_sample_chars, format_measurement_report, measure_chars, 
 pub use icons::{
     IconCodepoint, IconError, IconFillRule, IconLayerRole, IconPathCommand, IconRegistration,
     IconSet, IconStyleLayerRef, IconVector, IconVectorLayer, IconVectorPath, ICON_PUA_START,
+};
+pub use manifest::{
+    bake_icon_manifest, fixture_manifest_path, load_icon_manifest, IconManifest, IconManifestBake,
+    IconManifestEntry,
 };
 pub use msdf::{
     build_distance_field_instance, sdf_params_for_distance_field_tile, DistanceFieldAtlasCore,

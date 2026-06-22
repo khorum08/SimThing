@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — raw-wgpu smoke now proves MSDF + style + deform + path + warp composition with visible output and centroid shift vs flat MSDF control. **PROBATION / DA remediation** — recommend DA approval of LR6D after review; not self-approved.
+PASS — raw-wgpu smoke now proves MSDF + style + deform + path + warp composition with visible output and centroid shift vs flat MSDF control. **ACCEPTED / closed** — LR6D promoted to **DA APPROVED** after review (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`).
 
 ## PR / branch / merge
 
@@ -107,8 +107,8 @@ git diff --check
 
 ## DA recommendation
 
-Recommend **DA APPROVED** for LR6D after Codex review of combined MSDF/deform/path/warp smoke evidence. Do not self-approve.
+**ACCEPTED / closed** — combined proof satisfies DA HOLD on LR6D. LR6D **DA APPROVED**.
 
 ## Next recommended action
 
-Codex DA sign-off on LR6D; then LR7 icon-font manifest when owner supplies PUA/icon source set.
+LR7 icon-font manifest (`TYPEFACE-LR7-ICON-FONT-MANIFEST-0`).

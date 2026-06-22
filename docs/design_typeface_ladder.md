@@ -175,16 +175,14 @@ one run.
 ## LR6C — adaptive-tessellation glyph mesh + parametric deform  *(DA-sensitive)* — **DONE / DA APPROVED**
 **Status:** `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` (#888) + UV-sampling remediation `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889, merge `913b148323`). See `docs/tests/typeface_lr6c_results.md` and `docs/tests/typeface_lr6c_deform_uv_sampling_results.md`. **DA APPROVED** after #889 (post-merge evidence `2e83ff80c8`, index finalize `581fe06f84`).
 
-## LR6D — text-on-path + warp field / control lattice  *(DA-sensitive)* — **DONE / PROBATION / DA HOLD pending combined MSDF/deform review**
-**Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891). See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **PROBATION** — combined MSDF proof landed; recommend DA approval after review.
+## LR6D — text-on-path + warp field / control lattice  *(DA-sensitive)* — **DONE / DA APPROVED**
+**Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`). See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **DA APPROVED** after combined MSDF/deform proof.
 
-## LR7 — custom character set / icon-font manifest  *(mechanical)*
-**Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
-**Public API:** declarative manifest `{ codepoint: u32, svg_path: String, name: String }[]` → build-time bake
-into the (MSDF) atlas; a stable `codepoint ↔ name` table.
-**Tests** (`typeface_lr7.rs`): `manifest_bakes_all_icons`, `codepoint_table_is_stable` (golden),
-`duplicate_codepoint_rejected`, `missing_svg_path_errors`.
-**Owner input needed before this rung:** icon source set + reserved PUA range (still-open item #4).
+## LR7 — custom character set / icon-font manifest  *(mechanical)* — **DONE / PROBATION**
+**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/tests/typeface_lr7_results.md`. **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. TTF/OTF export deferred optional LR7A.
+**Files:** `crates/simthing-tools/src/manifest.rs`; fixture manifest `crates/simthing-tools/assets/typeface/icons/manifest.ron`.
+**Public API:** `load_icon_manifest`, `bake_icon_manifest`, `IconManifest`, `IconManifestBake`.
+**Tests** (`typeface_lr7.rs`): manifest load/bake, golden codepoint table, duplicate/range/path validation, role-layer preservation, mixed text+icon run, no runtime SVG dependency.
 
 ## LR8 — Studio + game label seam  *(mechanical + DA docs)*
 **Files:** `crates/simthing-mapeditor/src/app/labels.rs` (Studio consumer); a `DamageText`-style emitter
@@ -217,8 +215,8 @@ labels render; perf within the LR5 budget.
 | LR6A-ICON | icon vector geometry bridge | **yes** | **DONE / ACCEPTED (#885)** |
 | LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / DA APPROVED (#886, #887)** |
 | LR6C | adaptive-tessellation glyph mesh + parametric deform | **yes** | **DONE / DA APPROVED (#888, #889)** |
-| LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / PROBATION** (#890, #891 combined proof) |
-| LR7 | icon-font manifest | no | TODO |
+| LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / DA APPROVED** (#890, #891 combined proof) |
+| LR7 | icon-font manifest | no | **DONE / PROBATION** |
 | LR8 | Studio + game label seam | no | TODO |
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,

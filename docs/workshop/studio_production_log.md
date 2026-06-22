@@ -18,10 +18,18 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+---
+
+## Typeface ladder — LR7 icon-font manifest (2026-06-21)
+
+- `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` adds declarative RON manifest (`manifest.ron`), stable name ↔ PUA codepoint table, and fixture icon bake through existing `IconSet` static-SVG path.
+- LR6D promoted to **DA APPROVED** after #891 (`ffc4bb6891`, closeout evidence `6a32763bdd`). `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` **ACCEPTED / closed**.
+- LR7 **PROBATION** — manifest machinery complete with fixture icon set; production icon set remains input debt. Not DA-approved.
+
 ## Typeface ladder — LR6D combined MSDF/deform proof remediation (2026-06-21)
 
-- `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`) closes DA HOLD on combined MSDF+style+deform+path+warp smoke.
-- LR6D (#890) **PROBATION / DA HOLD pending combined proof review** — recommend DA approval after remediation lands; not self-approved.
+- `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`) closes DA HOLD on combined MSDF+style+deform+path+warp smoke.
+- LR6D (#890) **DA APPROVED** after combined proof remediation.
 
 ## Typeface ladder — LR6D text-on-path + warp field (2026-06-21)
 
