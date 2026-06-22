@@ -5421,6 +5421,7 @@ dependencies = [
  "cosmic-text",
  "fontdb",
  "guillotiere",
+ "kurbo",
  "msdf_font",
  "png 0.18.1",
  "pollster 0.3.0",

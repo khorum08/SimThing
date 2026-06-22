@@ -42,8 +42,8 @@ pub use bench::{
 pub use font::{load_font, GlyphMetrics, ProbeFont, TypefaceError};
 pub use harness::{ascii_sample_chars, format_measurement_report, measure_chars, MeasuredGlyph};
 pub use icons::{
-    IconCodepoint, IconError, IconLayerRole, IconRegistration, IconSet, IconVector,
-    IconVectorLayer, ICON_PUA_START,
+    IconCodepoint, IconError, IconFillRule, IconLayerRole, IconPathCommand, IconRegistration,
+    IconSet, IconStyleLayerRef, IconVector, IconVectorLayer, IconVectorPath, ICON_PUA_START,
 };
 pub use msdf::{
     build_distance_field_instance, sdf_params_for_distance_field_tile, DistanceFieldAtlasCore,
