@@ -83,19 +83,23 @@ pub fn run_studio() {
                     ..default()
                 }),
         )
-        // No TonemappingLutFixPlugin: the LUT mismatch is removed at the source by `Tonemapping::None`
-        // on the camera (see app/camera.rs). The old GpuImage/FallbackImage-mutating "fix" broke egui
-        // compositing (black screen) and is no longer mounted.
+        // No TonemappingLutFixPlugin: its GpuImage/FallbackImage-mutating "fix" broke egui compositing
+        // (black screen, STUDIO-TYPEFACE-STARTUP-FIX-0R). The LUT D2/D3 mismatch only arises when text
+        // renders through a tonemapping camera (the offscreen path), which the Studio does not mount;
+        // the camera stays at the known-good default. The plugin-internal variant of that fix is now
+        // gated off for live windows via SimthingToolsTextPlugin::without_lut_d3_view_fix().
         .add_plugins(EguiPlugin::default())
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin);
-    // Typeface in-Studio render mount DEFERRED (STUDIO-TYPEFACE-STARTUP-FIX-0R): mounting
-    // SimthingToolsTextPlugin's render graph on the live Studio window suppresses egui compositing
-    // (black screen) — it was only ever headless-tested (LR8). The simthing-tools crate, the label
-    // seam (studio_typeface_shell / app::labels), and all typeface capability remain present and
-    // unchanged; only this unverified probe mount is held until the render integration is reworked to
-    // coexist with egui. To re-enable for testing: uncomment the line below.
+    // Typeface in-Studio render mount DEFERRED (STUDIO-TYPEFACE-STARTUP-FIX-0R): LR8 only ever
+    // headless-tested this. The egui-suppressing root cause (the global LUT-image mutation in
+    // SimthingToolsTextPlugin) is now FIXED — studio_typeface_shell mounts it with
+    // without_lut_d3_view_fix(), so re-enabling no longer black-screens. The mount stays off only
+    // because the offscreen-camera-gated render path draws NO visible galaxy text yet; the next
+    // ladder (entity-name generation + names-below-stars) builds the main/overlay-camera text path
+    // and verifies it on a real window, then re-enables the line below. The simthing-tools crate,
+    // the label seam (studio_typeface_shell / app::labels), and all typeface capability are intact.
     // crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
     app.add_systems(Startup, setup_scene)
         .add_systems(PostStartup, window::apply_initial_window_mode)

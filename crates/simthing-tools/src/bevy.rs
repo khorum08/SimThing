@@ -117,6 +117,13 @@ fn register_tonemapping_lut_render_fixes_on_render_app(render_app: &mut bevy::ap
 pub struct SimthingToolsTextPlugin {
     font_bytes: Vec<u8>,
     atlas_size: u32,
+    /// When true (default), runs `fix_volume_image_view_descriptors` at Startup/PostStartup to
+    /// rewrite the tonemapping LUT image to a D3 view — required only by the **offscreen** headless
+    /// render path (text drawn through a tonemapping camera). It mutates a shared `Image` asset at
+    /// app scope, which suppresses egui compositing on a **live window** (Studio black-screen,
+    /// STUDIO-TYPEFACE-STARTUP-FIX-0R). Mount with [`without_lut_d3_view_fix`] when adding this
+    /// plugin to a live egui app; the offscreen tests keep it on.
+    apply_lut_d3_view_fix: bool,
 }
 
 impl SimthingToolsTextPlugin {
@@ -124,6 +131,7 @@ impl SimthingToolsTextPlugin {
         Self {
             font_bytes,
             atlas_size: 512,
+            apply_lut_d3_view_fix: true,
         }
     }
 
@@ -131,13 +139,29 @@ impl SimthingToolsTextPlugin {
         Self {
             font_bytes,
             atlas_size,
+            apply_lut_d3_view_fix: true,
         }
+    }
+
+    /// Disable the offscreen-only tonemapping LUT D3 view fix. Use this when mounting the plugin on
+    /// a **live egui window** (e.g. the Studio): the global LUT-image mutation breaks egui
+    /// compositing, and the live path renders text through the main/overlay camera, not the
+    /// offscreen tonemapping path that needs the D3 fix.
+    pub fn without_lut_d3_view_fix(mut self) -> Self {
+        self.apply_lut_d3_view_fix = false;
+        self
     }
 }
 
 impl Plugin for SimthingToolsTextPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<Shader>();
+        // This plugin's CPU-path systems (init_typeface_state, mesh/atlas building) create `Mesh`
+        // and `Image` assets, so register those stores here. `init_asset` is idempotent, so this is a
+        // no-op under DefaultPlugins, but it lets the plugin run under `MinimalPlugins + AssetPlugin`
+        // (CPU headless tests) without panicking on missing-resource param validation in Bevy 0.16.
+        app.init_asset::<Mesh>();
+        app.init_asset::<Image>();
         load_internal_asset!(
             app,
             TEXT_SHADER_HANDLE,
@@ -170,11 +194,7 @@ impl Plugin for SimthingToolsTextPlugin {
             .add_plugins(ExtractResourcePlugin::<ExtractedTextDeformTable>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextPathTable>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextWarpTable>::default())
-            .add_systems(
-                Startup,
-                (fix_volume_image_view_descriptors, init_typeface_state).chain(),
-            )
-            .add_systems(PostStartup, fix_volume_image_view_descriptors)
+            .add_systems(Startup, init_typeface_state)
             .add_systems(
                 Update,
                 (
@@ -200,6 +220,18 @@ impl Plugin for SimthingToolsTextPlugin {
             )
             .add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default())
             .add_plugins(TextInstancedRenderPlugin);
+
+        // Offscreen-only tonemapping LUT D3 view fix. Mutates a shared `Image` asset at app scope,
+        // which suppresses egui on a live window — only mounted when the offscreen render path needs
+        // it (default). Live egui apps mount via `without_lut_d3_view_fix()`. See the field doc and
+        // STUDIO-TYPEFACE-STARTUP-FIX-0R.
+        if self.apply_lut_d3_view_fix {
+            app.add_systems(
+                Startup,
+                fix_volume_image_view_descriptors.before(init_typeface_state),
+            )
+            .add_systems(PostStartup, fix_volume_image_view_descriptors);
+        }
     }
 }
 
@@ -548,17 +580,25 @@ fn apply_tonemapping_lut_d3_view_fix(image: &mut Image) -> bool {
 }
 
 fn fix_volume_image_view_descriptors(
-    mut images: ResMut<Assets<Image>>,
-    mut asset_events: EventWriter<AssetEvent<Image>>,
+    images: Option<ResMut<Assets<Image>>>,
+    asset_events: Option<ResMut<Events<AssetEvent<Image>>>>,
 ) {
+    // Minimal headless apps may not register the image `Assets`/`Events` resources; with no image
+    // assets there is nothing to fix, so no-op instead of failing param validation (which escalates
+    // to a panic in Bevy 0.16).
+    let Some(mut images) = images else {
+        return;
+    };
     let mut modified = Vec::new();
     for (id, image) in images.iter_mut() {
         if apply_tonemapping_lut_d3_view_fix(image) {
             modified.push(id);
         }
     }
-    for id in modified {
-        asset_events.write(AssetEvent::Modified { id });
+    if let Some(mut asset_events) = asset_events {
+        for id in modified {
+            asset_events.send(AssetEvent::Modified { id });
+        }
     }
 }
 
