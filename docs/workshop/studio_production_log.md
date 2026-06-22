@@ -26,8 +26,13 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — closeout perf invariant (2026-06-21)
 
-- `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` (#897, merge `974ffcc7fc`) greens `changed_label_rebuild_does_not_clone_old_instance_vec` — icon mixed-label rebuild uses move-assign instead of `extend_from_slice(&instances)`.
-- Full `cargo test -p simthing-tools` green; typeface track remains **OPEN** pending Codex closeout review.
+- `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` (#897, merge `974ffcc7fc`, post-merge evidence `d2d8bb438e`, index finalize `f6e0fb24fc`) greens `changed_label_rebuild_does_not_clone_old_instance_vec` — icon mixed-label rebuild uses move-assign instead of `extend_from_slice(&instances)`.
+- Full `cargo test -p simthing-tools` green; **ACCEPTED / closed** — cleared the final closure blocker for track closeout.
+
+## Typeface ladder — track closeout (2026-06-22)
+
+- `TYPEFACE-TRACK-CLOSEOUT-0` (#898, merge `82416b9d27`) — executive-DA closure of the typeface ladder (LR0–LR9).
+- Typeface track **CLOSED / DA-APPROVED**; non-blocking debts documented in ladder § TYPEFACE TRACK — DA CLOSURE.
 
 ## Typeface ladder — LR9 binding perf evidence (2026-06-21)
 
