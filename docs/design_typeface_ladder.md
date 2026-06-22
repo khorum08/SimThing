@@ -176,7 +176,7 @@ one run.
 **Status:** `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` (#888) + UV-sampling remediation `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889, merge `913b148323`). See `docs/tests/typeface_lr6c_results.md` and `docs/tests/typeface_lr6c_deform_uv_sampling_results.md`. **DA APPROVED** after #889 (post-merge evidence `2e83ff80c8`, index finalize `581fe06f84`).
 
 ## LR6D — text-on-path + warp field / control lattice  *(DA-sensitive)* — **DONE / PROBATION / DA HOLD pending combined MSDF/deform review**
-**Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R`. See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **PROBATION / DA HOLD** until combined MSDF+style+deform+path/warp smoke reviewed — not DA-approved.
+**Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891). See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **PROBATION** — combined MSDF proof landed; recommend DA approval after review.
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)*
 **Files:** `crates/simthing-tools/src/manifest.rs`; example manifest `assets/typeface/icons.ron`.
@@ -217,7 +217,7 @@ labels render; perf within the LR5 budget.
 | LR6A-ICON | icon vector geometry bridge | **yes** | **DONE / ACCEPTED (#885)** |
 | LR6B | GPU style table + gradient/effect shader | **yes** | **DONE / DA APPROVED (#886, #887)** |
 | LR6C | adaptive-tessellation glyph mesh + parametric deform | **yes** | **DONE / DA APPROVED (#888, #889)** |
-| LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / PROBATION / DA HOLD pending combined MSDF/deform review** |
+| LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / PROBATION** (#890, #891 combined proof) |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
 

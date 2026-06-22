@@ -7,8 +7,8 @@ PASS — raw-wgpu smoke now proves MSDF + style + deform + path + warp compositi
 ## PR / branch / merge
 
 - Branch: `typeface-lr6d-combined-msdf-deform-proof-0r`
-- PR: recorded in post-merge evidence commit on `master`
-- Merge SHA: recorded in post-merge evidence commit on `master`
+- PR: #891
+- Merge SHA: `ffc4bb6891`
 
 ## DA HOLD being remediated
 
