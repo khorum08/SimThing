@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling; composes with LR6C deformation and LR6B style slots. **PROBATION / DA-sensitive** — not DA-approved.
+PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling; composes with LR6C deformation and LR6B style slots. **PROBATION / DA HOLD** — combined MSDF+style+deform+path+warp proof remediated by `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R`; not DA-approved.
 
 ## PR / branch / merge
 
@@ -138,8 +138,8 @@ git diff --check
 ## Known gaps
 
 - SampledPolyline path kind table upload stub (arc/bezier/lattice proven)
-- Affine warp kind encoded but lattice/radial are Tier-1 proofs
-- Bevy path/warp bind-group diagnostics share `bind_group_create_count` counter
+- Affine/Lattice3x3 variants remain foundation-only
+- Combined MSDF proof: see `typeface_lr6d_combined_msdf_deform_results.md` (remediated in 0R)
 
 ## DA recommendation
 

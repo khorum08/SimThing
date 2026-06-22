@@ -10,15 +10,16 @@ use bevy::{
     DefaultPlugins,
 };
 use simthing_tools::{
-    create_render_target_image, load_font, path_params_for_slot,
-    spawn_static_and_numeric_damage_labels, test_path_table_arc, test_path_table_quadratic_bezier,
-    test_style_table_gradient, test_style_table_solid_red, test_warp_table_lattice2x2,
-    text_atlas_render_diagnostics, text_path_warp_diagnostics, text_path_warp_render_diagnostics,
-    text_render_camera_bundle, text_style_render_diagnostics, warp_params_for_slot,
-    wgpu_path_warp_instanced_text_smoke, GlyphAtlasCore, GlyphInstanceGpu, IconLayerRole, IconSet,
+    build_distance_field_instance, create_render_target_image, load_font, path_params_for_slot,
+    spawn_static_and_numeric_damage_labels, test_deform_table_skew, test_path_table_arc,
+    test_path_table_quadratic_bezier, test_style_table_gradient, test_style_table_solid_red,
+    test_warp_table_lattice2x2, text_atlas_render_diagnostics, text_path_warp_diagnostics,
+    text_path_warp_render_diagnostics, text_render_camera_bundle, text_style_render_diagnostics,
+    warp_params_for_slot, wgpu_path_warp_instanced_text_smoke, DistanceFieldAtlasCore,
+    DistanceFieldTile, GlyphAtlasCore, GlyphInstanceGpu, IconLayerRole, IconSet,
     SimthingToolsTextPlugin, TextDeformTableResource, TextGlyphInstances, TextLabel,
     TextPathParams, TextPathTableResource, TextStyleTable, TextWarpParams, TextWarpTableResource,
-    WgpuSmokeTarget, ICON_PUA_START,
+    WgpuSmokeTarget, DEFORM_TESS_LEVEL_DEFORM, DISTANCE_FIELD_RENDER_MSDF, ICON_PUA_START,
 };
 
 const FIXTURE: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
@@ -206,6 +207,84 @@ fn colored_pixel_count(pixels: &[u8]) -> usize {
         .chunks(4)
         .filter(|px| px[3] > 32 && (px[0] > 0 || px[1] > 0 || px[2] > 0))
         .count()
+}
+
+fn msdf_smoke_atlas() -> (DistanceFieldAtlasCore, DistanceFieldTile) {
+    let font = load_font(FIXTURE).expect("font");
+    let glyph_id = font.glyph_metrics('D').expect("glyph").glyph_id;
+    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
+    let tile = atlas
+        .get_or_generate_glyph_msdf(&font, u32::from(glyph_id), TEST_PX)
+        .expect("msdf tile");
+    (atlas, tile)
+}
+
+fn flat_msdf_styled_instance(tile: &DistanceFieldTile, atlas_size: u32) -> GlyphInstanceGpu {
+    let base = build_distance_field_instance(80.0, 40.0, tile, atlas_size, [1.0; 4]);
+    GlyphInstanceGpu {
+        pos_size: [
+            80.0,
+            40.0,
+            tile.atlas_tile.w as f32,
+            tile.atlas_tile.h as f32,
+        ],
+        uv_rect: base.uv_rect,
+        color: [1.0, 1.0, 1.0, 1.0],
+        sdf_params: [
+            DISTANCE_FIELD_RENDER_MSDF,
+            tile.px_range,
+            atlas_size as f32,
+            0.0,
+        ],
+        style_params: [1.0, 0.0, 0.0, 0.0],
+        deform_params: [0.0; 4],
+        path_params: [0.0; 4],
+        warp_params: [0.0; 4],
+    }
+}
+
+fn combined_msdf_style_deform_path_warp_instance(
+    tile: &DistanceFieldTile,
+    atlas_size: u32,
+) -> GlyphInstanceGpu {
+    let mut instance = flat_msdf_styled_instance(tile, atlas_size);
+    instance.deform_params = [1.0, DEFORM_TESS_LEVEL_DEFORM as f32, 0.0, 0.0];
+    instance.path_params = path_params_for_slot(1, 0.0, 1.0);
+    instance.warp_params = warp_params_for_slot(1, 1.0);
+    instance
+}
+
+fn assert_combined_msdf_modes(instance: &GlyphInstanceGpu) {
+    assert!(
+        instance.sdf_params[0] >= 1.0,
+        "combined proof requires SDF/MSDF mode (sdf_params.x={})",
+        instance.sdf_params[0]
+    );
+    assert!(instance.style_params[0] > 0.0, "style slot required");
+    assert!(instance.deform_params[0] > 0.0, "deform slot required");
+    assert!(instance.path_params[0] > 0.0, "path slot required");
+    assert!(instance.warp_params[0] > 0.0, "warp slot required");
+}
+
+fn draw_combined_path_warp_smoke(
+    instances: &[GlyphInstanceGpu],
+    atlas: &DistanceFieldAtlasCore,
+) -> simthing_tools::WgpuTextSmokeResult {
+    wgpu_path_warp_instanced_text_smoke(
+        WgpuSmokeTarget {
+            width: SMOKE_WIDTH,
+            height: SMOKE_HEIGHT,
+        },
+        instances,
+        atlas.staging_pixels(),
+        atlas.atlas_size(),
+        &test_style_table_solid_red(),
+        &test_deform_table_skew(),
+        &test_path_table_arc(),
+        &test_warp_table_lattice2x2(),
+        0.0,
+    )
+    .expect("combined path/warp smoke")
 }
 
 #[test]
@@ -487,18 +566,95 @@ fn path_warp_preserves_source_atlas_uv() {
 }
 
 #[test]
-fn msdf_style_deform_path_warp_combined_smoke_draws_nonzero_pixels() {
+fn combined_msdf_style_deform_path_warp_instance_sets_all_modes() {
+    let (atlas, tile) = msdf_smoke_atlas();
+    let instance = combined_msdf_style_deform_path_warp_instance(&tile, atlas.atlas_size());
+    assert_eq!(instance.sdf_params[0], DISTANCE_FIELD_RENDER_MSDF);
+    assert_combined_msdf_modes(&instance);
+}
+
+#[test]
+fn combined_msdf_style_deform_path_warp_smoke_draws_nonzero_pixels() {
     if !wgpu_adapter_available() {
         eprintln!(
-            "ADAPTER_SKIPPED: msdf_style_deform_path_warp_combined_smoke_draws_nonzero_pixels"
+            "ADAPTER_SKIPPED: combined_msdf_style_deform_path_warp_smoke_draws_nonzero_pixels"
         );
         return;
     }
-    let mut atlas = GlyphAtlasCore::new(ATLAS_SIZE);
-    let mut instance = raster_glyph_instance(&mut atlas, ATLAS_SIZE);
-    instance.style_params = [1.0, 0.0, 0.0, 0.0];
-    instance.path_params = path_params_for_slot(1, 0.0, 1.0);
-    instance.warp_params = warp_params_for_slot(1, 1.0);
+    let (atlas, tile) = msdf_smoke_atlas();
+    let instance = combined_msdf_style_deform_path_warp_instance(&tile, atlas.atlas_size());
+    assert_combined_msdf_modes(&instance);
+    let smoke = draw_combined_path_warp_smoke(&[instance], &atlas);
+    assert!(
+        colored_pixel_count(&smoke.pixels) > 0,
+        "combined MSDF+style+deform+path+warp smoke should draw colored pixels"
+    );
+}
+
+#[test]
+fn combined_msdf_style_deform_path_warp_changes_distribution_vs_flat_msdf() {
+    if !wgpu_adapter_available() {
+        eprintln!(
+            "ADAPTER_SKIPPED: combined_msdf_style_deform_path_warp_changes_distribution_vs_flat_msdf"
+        );
+        return;
+    }
+    let (atlas, tile) = msdf_smoke_atlas();
+    let flat = flat_msdf_styled_instance(&tile, atlas.atlas_size());
+    let combined = combined_msdf_style_deform_path_warp_instance(&tile, atlas.atlas_size());
+    assert_combined_msdf_modes(&combined);
+
+    let target = WgpuSmokeTarget {
+        width: SMOKE_WIDTH,
+        height: SMOKE_HEIGHT,
+    };
+    let flat_smoke = draw_combined_path_warp_smoke(&[flat], &atlas);
+    let combined_smoke = draw_combined_path_warp_smoke(&[combined], &atlas);
+    assert!(colored_pixel_count(&flat_smoke.pixels) > 0);
+    assert!(colored_pixel_count(&combined_smoke.pixels) > 0);
+
+    let flat_cy = text_pixel_centroid_y(&flat_smoke.pixels, target.width, target.height);
+    let combined_cy = text_pixel_centroid_y(&combined_smoke.pixels, target.width, target.height);
+    assert!(
+        (flat_cy - combined_cy).abs() > 4.0,
+        "combined MSDF stack should shift centroid vs flat control (flat_cy={flat_cy} combined_cy={combined_cy})"
+    );
+}
+
+#[test]
+fn combined_path_warp_preserves_source_atlas_uv() {
+    let shader = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/shaders/text_instanced.wgsl"),
+    )
+    .expect("production shader");
+    assert!(shader.contains("out.local_uv = source_uv"));
+    assert!(shader.contains("mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv)"));
+
+    let smoke_shader =
+        fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/wgpu_smoke.rs"))
+            .expect("wgpu smoke");
+    assert!(smoke_shader.contains("out.local_uv = source_uv"));
+    assert!(smoke_shader.contains("mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv)"));
+    assert!(smoke_shader.contains("sdf_coverage"));
+}
+
+#[test]
+fn combined_gradient_uses_source_uv_under_path_warp() {
+    let doc = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests/typeface_lr6d_combined_msdf_deform_results.md"),
+    )
+    .expect("combined msdf deform results");
+    assert!(doc.contains("## Gradient coordinate policy"));
+    assert!(doc.contains("source_uv"));
+
+    if !wgpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: combined_gradient_uses_source_uv_under_path_warp smoke");
+        return;
+    }
+    let (atlas, tile) = msdf_smoke_atlas();
+    let mut instance = combined_msdf_style_deform_path_warp_instance(&tile, atlas.atlas_size());
+    instance.style_params = [2.0, 0.0, 0.0, 0.0];
     let smoke = wgpu_path_warp_instanced_text_smoke(
         WgpuSmokeTarget {
             width: SMOKE_WIDTH,
@@ -507,17 +663,29 @@ fn msdf_style_deform_path_warp_combined_smoke_draws_nonzero_pixels() {
         &[instance],
         atlas.staging_pixels(),
         atlas.atlas_size(),
-        &test_style_table_solid_red(),
-        &TextDeformTableResource::default().table,
-        &test_path_table_arc(),
+        &test_style_table_gradient(),
+        &test_deform_table_skew(),
+        &test_path_table_quadratic_bezier(),
         &test_warp_table_lattice2x2(),
         0.0,
     )
-    .expect("combined smoke");
-    assert!(
-        colored_pixel_count(&smoke.pixels) > 0,
-        "combined style+deform+path+warp smoke should draw colored pixels"
-    );
+    .expect("combined gradient smoke");
+    assert!(colored_pixel_count(&smoke.pixels) > 0);
+}
+
+#[test]
+fn msdf_style_deform_path_warp_combined_smoke_draws_nonzero_pixels() {
+    if !wgpu_adapter_available() {
+        eprintln!(
+            "ADAPTER_SKIPPED: msdf_style_deform_path_warp_combined_smoke_draws_nonzero_pixels"
+        );
+        return;
+    }
+    let (atlas, tile) = msdf_smoke_atlas();
+    let instance = combined_msdf_style_deform_path_warp_instance(&tile, atlas.atlas_size());
+    assert_combined_msdf_modes(&instance);
+    let smoke = draw_combined_path_warp_smoke(&[instance], &atlas);
+    assert!(colored_pixel_count(&smoke.pixels) > 0);
 }
 
 #[test]
