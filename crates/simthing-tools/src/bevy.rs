@@ -4,6 +4,8 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::ExtractComponentPlugin,
+        extract_resource::ExtractResource,
+        extract_resource::ExtractResourcePlugin,
         render_asset::RenderAssetUsages,
         render_resource::{
             Extent3d, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
@@ -15,7 +17,7 @@ use bevy::{
 };
 
 use crate::{
-    atlas::{AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
+    atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
     font::{load_font, ProbeFont},
     shaping::{ShapedGlyph, ShapedRun, ShapingEngine},
     text_render::TextInstancedRenderPlugin,
@@ -28,11 +30,22 @@ pub(crate) const TEXT_SHADER_HANDLE: Handle<Shader> =
 #[derive(Clone)]
 pub struct SimthingToolsTextPlugin {
     font_bytes: Vec<u8>,
+    atlas_size: u32,
 }
 
 impl SimthingToolsTextPlugin {
     pub fn new(font_bytes: Vec<u8>) -> Self {
-        Self { font_bytes }
+        Self {
+            font_bytes,
+            atlas_size: 512,
+        }
+    }
+
+    pub fn with_atlas_size(font_bytes: Vec<u8>, atlas_size: u32) -> Self {
+        Self {
+            font_bytes,
+            atlas_size,
+        }
     }
 }
 
@@ -48,23 +61,29 @@ impl Plugin for SimthingToolsTextPlugin {
 
         app.init_asset::<Mesh>()
             .init_asset::<Image>()
-            .init_resource::<TextRebuildDiagnostics>()
+            .init_resource::<TextPerfDiagnostics>()
             .init_resource::<TextInstanceAggregate>()
+            .init_resource::<TextAggregateVersion>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
+            .insert_resource(PluginAtlasSize(self.atlas_size))
+            .add_plugins(ExtractResourcePlugin::<TextAggregateVersion>::default())
             .add_systems(
                 Startup,
                 (fix_volume_image_view_descriptors, init_typeface_state).chain(),
             )
             .add_systems(PostStartup, fix_volume_image_view_descriptors)
-            .add_systems(Update, rebuild_changed_labels)
             .add_systems(
                 Update,
                 (
-                    aggregate_label_instances.after(rebuild_changed_labels),
-                    sync_draw_entity_instances.after(aggregate_label_instances),
-                    sync_atlas_image_to_gpu.after(rebuild_changed_labels),
+                    rebuild_changed_labels,
+                    ApplyDeferred,
+                    mark_aggregate_dirty_on_label_lifecycle,
+                    aggregate_label_instances,
+                    sync_draw_entity_instances,
+                    sync_atlas_image_to_gpu,
                     force_text_draw_visible,
-                ),
+                )
+                    .chain(),
             )
             .add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default())
             .add_plugins(TextInstancedRenderPlugin);
@@ -83,11 +102,33 @@ pub struct TextLabel {
     pub color: [f32; 4],
 }
 
-/// Diagnostics counters for LR3 changed-detection tests.
+/// Consolidated main-world perf diagnostics for LR5/LR5R tests.
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TextRebuildDiagnostics {
+pub struct TextPerfDiagnostics {
     pub shape_rebuild_count: u64,
     pub instance_rebuild_count: u64,
+    pub aggregate_rebuild_count: u64,
+    pub draw_entity_sync_count: u64,
+    pub extract_clone_count: u64,
+    pub extracted_instance_count: u64,
+    pub instance_buffer_create_count: u64,
+    pub instance_buffer_reuse_count: u64,
+    pub instance_buffer_upload_count: u64,
+    pub atlas_sync_count: u64,
+    pub atlas_sync_bytes: u64,
+    pub atlas_dirty_region_count: u64,
+    pub queued_draw_count: u64,
+    pub queued_instance_count: u64,
+}
+
+/// Back-compat alias used by LR3 tests.
+pub type TextRebuildDiagnostics = TextPerfDiagnostics;
+
+/// Aggregate versioning: rebuild/sync only when `dirty`.
+#[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq, ExtractResource)]
+pub struct TextAggregateVersion {
+    pub current: u64,
+    pub dirty: bool,
 }
 
 /// CPU atlas used by the text plugin.
@@ -116,6 +157,9 @@ impl TypefaceAtlas {
 
 #[derive(Resource)]
 struct TypefaceFontBytes(pub Vec<u8>);
+
+#[derive(Resource)]
+struct PluginAtlasSize(u32);
 
 #[derive(Resource)]
 struct TypefaceFont(pub ProbeFont);
@@ -154,11 +198,12 @@ pub struct TextInstanceAggregate(pub Vec<GlyphInstanceGpu>);
 #[derive(Component, Clone)]
 pub struct TextDrawExtract {
     pub(crate) instances: Vec<GlyphInstanceGpu>,
+    pub(crate) data_version: u64,
 }
 
 impl bevy::render::extract_component::ExtractComponent for TextDrawExtract {
     type QueryData = &'static TextGlyphInstances;
-    type QueryFilter = ();
+    type QueryFilter = With<crate::text_render::TextInstancedDraw>;
     type Out = Self;
 
     fn extract_component(item: bevy::ecs::query::QueryItem<Self::QueryData>) -> Option<Self> {
@@ -167,8 +212,33 @@ impl bevy::render::extract_component::ExtractComponent for TextDrawExtract {
         }
         Some(Self {
             instances: item.0.clone(),
+            data_version: 0,
         })
     }
+}
+
+/// Merge main-world and render-world perf counters for tests.
+pub fn text_perf_diagnostics(app: &App) -> TextPerfDiagnostics {
+    let mut diag = app
+        .world()
+        .get_resource::<TextPerfDiagnostics>()
+        .copied()
+        .unwrap_or_default();
+    if let Some(render_app) = app.get_sub_app(bevy::render::RenderApp) {
+        if let Some(render_diag) = render_app
+            .world()
+            .get_resource::<crate::text_render::TextRenderPerfDiagnostics>()
+        {
+            diag.extract_clone_count += render_diag.extract_clone_count;
+            diag.extracted_instance_count = render_diag.extracted_instance_count;
+            diag.instance_buffer_create_count += render_diag.instance_buffer_create_count;
+            diag.instance_buffer_reuse_count += render_diag.instance_buffer_reuse_count;
+            diag.instance_buffer_upload_count += render_diag.instance_buffer_upload_count;
+            diag.queued_draw_count = render_diag.queued_draw_count;
+            diag.queued_instance_count = render_diag.queued_instance_count;
+        }
+    }
+    diag
 }
 
 /// Ensure volume/LUT images expose D3 texture views for mesh2d tonemapping bind groups.
@@ -199,6 +269,7 @@ fn fix_volume_image_view_descriptors(mut images: ResMut<Assets<Image>>) {
 fn init_typeface_state(
     mut commands: Commands,
     bytes: Res<TypefaceFontBytes>,
+    atlas_size: Res<PluginAtlasSize>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
 ) {
@@ -207,7 +278,7 @@ fn init_typeface_state(
     commands.insert_resource(TypefaceFont(font));
     commands.insert_resource(TypefaceShaper(shaper));
 
-    let atlas = TypefaceAtlas::new_cpu(512);
+    let atlas = TypefaceAtlas::new_cpu(atlas_size.0);
     let atlas_image = create_atlas_image_from_cpu(&mut images, &atlas.cpu);
     commands.insert_resource(crate::text_render::TextAtlasImageHandle(atlas_image));
     commands.insert_resource(atlas);
@@ -233,20 +304,31 @@ fn init_typeface_state(
 }
 
 fn rebuild_changed_labels(
-    mut diagnostics: ResMut<TextRebuildDiagnostics>,
+    mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut aggregate_version: ResMut<TextAggregateVersion>,
     font: Res<TypefaceFont>,
     mut shaper: ResMut<TypefaceShaper>,
     mut atlas: ResMut<TypefaceAtlas>,
     mut q: Query<
-        (Entity, &TextLabel, Option<&mut TextLabelCache>),
+        (
+            Entity,
+            &TextLabel,
+            Option<&mut TextGlyphInstances>,
+            Option<&mut TextLabelCache>,
+        ),
         Or<(Added<TextLabel>, Changed<TextLabel>)>,
     >,
     mut commands: Commands,
 ) {
-    for (entity, label, cache) in &mut q {
+    for (entity, label, existing_instances, cache) in &mut q {
         diagnostics.shape_rebuild_count += 1;
         let shaped = shaper.0.shape(&label.text, label.px);
-        let mut instances = Vec::new();
+        let mut instances = existing_instances
+            .as_ref()
+            .map(|existing| existing.0.clone())
+            .unwrap_or_default();
+        instances.clear();
+        instances.reserve(shaped.glyphs.len());
         for glyph in &shaped.glyphs {
             if let Some(tile) = atlas
                 .cpu
@@ -256,6 +338,7 @@ fn rebuild_changed_labels(
             }
         }
         diagnostics.instance_rebuild_count += 1;
+        aggregate_version.dirty = true;
 
         if let Some(mut cache) = cache {
             cache.text = label.text.clone();
@@ -270,35 +353,60 @@ fn rebuild_changed_labels(
                 shaped,
             });
         }
-        commands
-            .entity(entity)
-            .insert(TextGlyphInstances(instances));
+        if let Some(mut existing) = existing_instances {
+            existing.0.clear();
+            existing.0.reserve(instances.len());
+            existing.0.extend_from_slice(&instances);
+        } else {
+            commands
+                .entity(entity)
+                .insert(TextGlyphInstances(instances));
+        }
+    }
+}
+
+fn mark_aggregate_dirty_on_label_lifecycle(
+    mut aggregate_version: ResMut<TextAggregateVersion>,
+    added: Query<(), Added<TextLabel>>,
+    mut removed: RemovedComponents<TextLabel>,
+) {
+    if added.iter().next().is_some() || removed.read().next().is_some() {
+        aggregate_version.dirty = true;
     }
 }
 
 fn sync_atlas_image_to_gpu(
-    atlas: Res<TypefaceAtlas>,
+    mut atlas: ResMut<TypefaceAtlas>,
     atlas_handle: Res<crate::text_render::TextAtlasImageHandle>,
     mut images: ResMut<Assets<Image>>,
-    rebuild: Res<TextRebuildDiagnostics>,
-    mut last_sync: Local<u64>,
+    mut diagnostics: ResMut<TextPerfDiagnostics>,
 ) {
-    if *last_sync == rebuild.shape_rebuild_count {
+    let dirty_bytes = atlas.cpu.dirty_region_byte_count();
+    if dirty_bytes == 0 {
         return;
     }
-    *last_sync = rebuild.shape_rebuild_count;
+
+    let dirty_regions: Vec<AtlasDirtyRect> = atlas.cpu.dirty_regions().collect();
+    let dirty_count = dirty_regions.len() as u64;
+    diagnostics.atlas_sync_count += 1;
+    diagnostics.atlas_sync_bytes += dirty_bytes;
+    diagnostics.atlas_dirty_region_count += dirty_count;
+
     if let Some(image) = images.get_mut(&atlas_handle.0) {
         let size = atlas.atlas_size;
-        let pixels = atlas.cpu.staging_pixels();
         image.resize(Extent3d {
             width: size,
             height: size,
             depth_or_array_layers: 1,
         });
         if let Some(data) = image.data.as_mut() {
-            data.copy_from_slice(pixels);
+            let staging = atlas.cpu.staging_pixels();
+            for rect in dirty_regions {
+                blit_dirty_rect_to_image(data, size, staging, rect);
+            }
         }
     }
+    atlas.cpu.clear_dirty_regions();
 }
 
 fn force_text_draw_visible(draw_entity: Res<TextDrawEntity>, mut q: Query<&mut ViewVisibility>) {
@@ -309,19 +417,43 @@ fn force_text_draw_visible(draw_entity: Res<TextDrawEntity>, mut q: Query<&mut V
 
 fn sync_draw_entity_instances(
     aggregate: Res<TextInstanceAggregate>,
+    aggregate_version: Res<TextAggregateVersion>,
     draw_entity: Res<TextDrawEntity>,
     mut q: Query<&mut TextGlyphInstances>,
+    mut diagnostics: ResMut<TextPerfDiagnostics>,
+    mut last_synced_version: Local<u64>,
 ) {
+    if *last_synced_version == aggregate_version.current {
+        return;
+    }
+    *last_synced_version = aggregate_version.current;
+    diagnostics.draw_entity_sync_count += 1;
     if let Ok(mut instances) = q.get_mut(draw_entity.0) {
-        instances.0.clone_from(&aggregate.0);
+        if instances.0.len() != aggregate.0.len() {
+            instances.0.clear();
+            instances.0.extend_from_slice(&aggregate.0);
+        } else if instances.0 != aggregate.0 {
+            instances.0.clone_from(&aggregate.0);
+        }
     }
 }
 
 fn aggregate_label_instances(
     q: Query<&TextGlyphInstances, With<TextLabel>>,
     mut aggregate: ResMut<TextInstanceAggregate>,
+    mut aggregate_version: ResMut<TextAggregateVersion>,
+    mut diagnostics: ResMut<TextPerfDiagnostics>,
 ) {
+    if !aggregate_version.dirty {
+        return;
+    }
+    aggregate_version.dirty = false;
+    aggregate_version.current += 1;
+    diagnostics.aggregate_rebuild_count += 1;
+
+    let required: usize = q.iter().map(|instances| instances.0.len()).sum();
     aggregate.0.clear();
+    aggregate.0.reserve(required);
     for instances in &q {
         aggregate.0.extend_from_slice(&instances.0);
     }
@@ -348,6 +480,22 @@ fn build_instance(
             (tile.y + tile.h) as f32 * inv,
         ],
         color,
+    }
+}
+
+fn blit_dirty_rect_to_image(
+    image: &mut [u8],
+    atlas_size: u32,
+    staging: &[u8],
+    rect: AtlasDirtyRect,
+) {
+    for row in 0..rect.h {
+        let src_row = (rect.y + row) * atlas_size;
+        let src_start = (src_row * 4 + rect.x * 4) as usize;
+        let dst_row = (rect.y + row) * atlas_size;
+        let dst_start = (dst_row * 4 + rect.x * 4) as usize;
+        let len = rect.w as usize * 4;
+        image[dst_start..dst_start + len].copy_from_slice(&staging[src_start..src_start + len]);
     }
 }
 
@@ -395,4 +543,138 @@ pub fn create_render_target_image(
         | TextureUsages::COPY_SRC
         | TextureUsages::COPY_DST;
     images.add(image)
+}
+
+/// Spawn many deterministic static labels for Bevy-path perf tests.
+pub fn spawn_static_text_labels(app: &mut App, count: usize, px: f32) {
+    let world = app.world_mut();
+    for index in 0..count {
+        let text = format!("Label {index}");
+        world.spawn(TextLabel {
+            text,
+            px,
+            color: [1.0, 1.0, 1.0, 1.0],
+        });
+    }
+}
+
+/// Count label entities and the single aggregate draw entity.
+pub fn text_label_entity_counts(app: &mut App) -> (usize, usize) {
+    let world = app.world_mut();
+    let mut labels = world.query_filtered::<(), With<TextLabel>>();
+    let mut draws = world.query_filtered::<(), With<crate::text_render::TextInstancedDraw>>();
+    let label_count = labels.iter(world).count();
+    let draw_entities = draws.iter(world).count();
+    (label_count, draw_entities)
+}
+
+/// Measured Bevy Update-path profile for LR5R binding proof.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BevyTextBenchProfile {
+    pub labels: usize,
+    pub damage_labels: usize,
+    pub noop_frames: usize,
+    pub damage_frames: usize,
+    pub avg_noop_update_ms: f64,
+    pub max_noop_update_ms: f64,
+    pub avg_damage_update_ms: f64,
+    pub max_damage_update_ms: f64,
+    pub diagnostics_after_noop: TextPerfDiagnostics,
+    pub diagnostics_after_damage: TextPerfDiagnostics,
+}
+
+/// Spawn static + damage labels; returns damage label entities for churn mutation.
+pub fn spawn_static_and_damage_labels(
+    app: &mut App,
+    static_count: usize,
+    damage_count: usize,
+    px: f32,
+) -> Vec<Entity> {
+    spawn_static_text_labels(app, static_count, px);
+    let mut damage_entities = Vec::with_capacity(damage_count);
+    let world = app.world_mut();
+    for index in 0..damage_count {
+        let entity = world
+            .spawn(TextLabel {
+                text: format!("-{index}"),
+                px,
+                color: [1.0, 0.35, 0.2, 1.0],
+            })
+            .id();
+        damage_entities.push(entity);
+    }
+    damage_entities
+}
+
+fn clear_app_exit(app: &mut App) {
+    if let Some(mut exits) = app.world_mut().get_resource_mut::<Events<AppExit>>() {
+        exits.clear();
+    }
+}
+
+fn timed_updates(app: &mut App, frames: usize) -> (f64, f64) {
+    if frames == 0 {
+        return (0.0, 0.0);
+    }
+    let mut total_ms = 0.0_f64;
+    let mut max_ms = 0.0_f64;
+    for _ in 0..frames {
+        clear_app_exit(app);
+        let start = std::time::Instant::now();
+        app.update();
+        let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+        total_ms += elapsed;
+        max_ms = max_ms.max(elapsed);
+    }
+    (total_ms / frames as f64, max_ms)
+}
+
+/// Warm up labels, run noop frames, then damage churn; returns timing profile.
+pub fn profile_bevy_text_bench(
+    app: &mut App,
+    damage_entities: &[Entity],
+    noop_frames: usize,
+    damage_frames: usize,
+) -> BevyTextBenchProfile {
+    let (labels, _) = text_label_entity_counts(app);
+    clear_app_exit(app);
+    app.update();
+
+    let (avg_noop_update_ms, max_noop_update_ms) = timed_updates(app, noop_frames);
+    let diagnostics_after_noop = text_perf_diagnostics(app);
+
+    let mut total_damage_ms = 0.0_f64;
+    let mut max_damage_update_ms = 0.0_f64;
+    for frame in 0..damage_frames {
+        for (index, entity) in damage_entities.iter().enumerate() {
+            let value = (index.wrapping_mul(17).wrapping_add(frame.wrapping_mul(13))) % 9999;
+            if let Some(mut label) = app.world_mut().get_mut::<TextLabel>(*entity) {
+                label.text = format!("-{value}");
+            }
+        }
+        clear_app_exit(app);
+        let start = std::time::Instant::now();
+        app.update();
+        let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+        total_damage_ms += elapsed;
+        max_damage_update_ms = max_damage_update_ms.max(elapsed);
+    }
+    let avg_damage_update_ms = if damage_frames > 0 {
+        total_damage_ms / damage_frames as f64
+    } else {
+        0.0
+    };
+
+    BevyTextBenchProfile {
+        labels,
+        damage_labels: damage_entities.len(),
+        noop_frames,
+        damage_frames,
+        avg_noop_update_ms,
+        max_noop_update_ms,
+        avg_damage_update_ms,
+        max_damage_update_ms,
+        diagnostics_after_noop,
+        diagnostics_after_damage: text_perf_diagnostics(app),
+    }
 }
