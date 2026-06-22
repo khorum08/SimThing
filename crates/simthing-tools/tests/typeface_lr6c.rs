@@ -12,12 +12,13 @@ use bevy::{
 use simthing_tools::{
     build_distance_field_instance, create_render_target_image, load_font,
     spawn_static_and_numeric_damage_labels, test_deform_table_skew, test_deform_table_stretch,
-    test_style_table_solid_red, text_atlas_render_diagnostics, text_deform_diagnostics,
-    text_deform_render_diagnostics, text_render_camera_bundle, text_style_render_diagnostics,
-    wgpu_deformed_instanced_text_smoke, DistanceFieldAtlasCore, GlyphAtlasCore, GlyphInstanceGpu,
-    IconLayerRole, IconSet, SimthingToolsTextPlugin, TextDeformParams, TextDeformTableResource,
-    TextGlyphInstances, TextLabel, TextStyleTable, WgpuSmokeTarget, DEFORM_TESS_LEVEL_DEFORM,
-    DEFORM_TESS_LEVEL_FLAT, DISTANCE_FIELD_RENDER_MSDF, ICON_PUA_START,
+    test_style_table_gradient, test_style_table_solid_red, text_atlas_render_diagnostics,
+    text_deform_diagnostics, text_deform_render_diagnostics, text_render_camera_bundle,
+    text_style_render_diagnostics, wgpu_deformed_instanced_text_smoke, DistanceFieldAtlasCore,
+    GlyphAtlasCore, GlyphInstanceGpu, IconLayerRole, IconSet, SimthingToolsTextPlugin,
+    TextDeformParams, TextDeformTableResource, TextGlyphInstances, TextLabel, TextStyleTable,
+    WgpuSmokeTarget, DEFORM_TESS_LEVEL_DEFORM, DEFORM_TESS_LEVEL_FLAT, DISTANCE_FIELD_RENDER_MSDF,
+    ICON_PUA_START,
 };
 
 const FIXTURE: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
@@ -25,6 +26,8 @@ const TEST_PX: f32 = 32.0;
 const ATLAS_SIZE: u32 = 512;
 const SMOKE_WIDTH: u32 = 256;
 const SMOKE_HEIGHT: u32 = 128;
+const DIAG_ATLAS_SIZE: u32 = 64;
+const NEIGHBOR_RGBA: [u8; 4] = [255, 0, 255, 255];
 
 const ROLE_SVG: &str = r##"
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
@@ -170,6 +173,272 @@ fn raster_glyph_instance(atlas: &mut GlyphAtlasCore, atlas_size: u32) -> GlyphIn
         style_params: [0.0; 4],
         deform_params: [0.0; 4],
     }
+}
+
+fn diagnostic_border_atlas(deform_slot: f32) -> (Vec<u8>, u32, GlyphInstanceGpu) {
+    let atlas_size = DIAG_ATLAS_SIZE;
+    let tile_x = 8u32;
+    let tile_y = 8u32;
+    let tile_w = 24u32;
+    let tile_h = 24u32;
+    let mut pixels = vec![0u8; (atlas_size * atlas_size * 4) as usize];
+    for px in pixels.chunks_mut(4) {
+        px.copy_from_slice(&NEIGHBOR_RGBA);
+    }
+    for y in (tile_y + 4)..(tile_y + tile_h - 4) {
+        for x in (tile_x + 4)..(tile_x + tile_w - 4) {
+            let i = ((y * atlas_size + x) * 4) as usize;
+            let mid = tile_x + tile_w / 2;
+            if x < mid {
+                pixels[i..i + 4].copy_from_slice(&[160, 160, 160, 255]);
+            } else {
+                pixels[i..i + 4].copy_from_slice(&[255, 255, 255, 255]);
+            }
+        }
+    }
+    let inv = 1.0 / atlas_size as f32;
+    let instance = GlyphInstanceGpu {
+        pos_size: [80.0, 40.0, tile_w as f32, tile_h as f32],
+        uv_rect: [
+            tile_x as f32 * inv,
+            tile_y as f32 * inv,
+            (tile_x + tile_w) as f32 * inv,
+            (tile_y + tile_h) as f32 * inv,
+        ],
+        color: [1.0, 1.0, 1.0, 1.0],
+        sdf_params: [0.0; 4],
+        style_params: [0.0; 4],
+        deform_params: [deform_slot, DEFORM_TESS_LEVEL_DEFORM as f32, 0.0, 0.0],
+    };
+    (pixels, atlas_size, instance)
+}
+
+fn count_neighbor_magenta_pixels(pixels: &[u8]) -> usize {
+    pixels
+        .chunks(4)
+        .filter(|px| px[3] > 32 && px[0] > 200 && px[1] < 64 && px[2] > 200)
+        .count()
+}
+
+fn count_whiteish_pixels(pixels: &[u8]) -> usize {
+    pixels
+        .chunks(4)
+        .filter(|px| px[3] > 32 && px[0] > 200 && px[1] > 200 && px[2] > 200)
+        .count()
+}
+
+fn sample_region_avg(pixels: &[u8], width: u32, x0: u32, x1: u32, y0: u32, y1: u32) -> (u32, u32) {
+    let mut r = 0u64;
+    let mut g = 0u64;
+    let mut n = 0u64;
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let i = ((y * width + x) * 4) as usize;
+            if pixels[i + 3] > 0 {
+                r += u64::from(pixels[i]);
+                g += u64::from(pixels[i + 1]);
+                n += 1;
+            }
+        }
+    }
+    if n == 0 {
+        return (0, 0);
+    }
+    ((r / n) as u32, (g / n) as u32)
+}
+
+#[test]
+fn deform_shader_preserves_source_atlas_uv() {
+    let shader = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/shaders/text_instanced.wgsl"),
+    )
+    .expect("shader");
+    assert!(shader.contains("let source_uv = vertex.uv"));
+    assert!(shader.contains("let deformed_uv = apply_parametric_deform(source_uv, deform_slot)"));
+    assert!(shader.contains("mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv)"));
+    assert!(
+        !shader.contains("mix(instance.uv_rect.xy, instance.uv_rect.zw, local_uv)"),
+        "atlas UV must not use deformed local_uv"
+    );
+    assert!(
+        !shader.contains("mix(instance.uv_rect.xy, instance.uv_rect.zw, deformed_uv)"),
+        "atlas UV must not use deformed_uv"
+    );
+}
+
+#[test]
+fn stretch_deform_does_not_sample_outside_tile() {
+    if !wgpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: stretch_deform_does_not_sample_outside_tile");
+        return;
+    }
+    let (pixels, atlas_size, mut instance) = diagnostic_border_atlas(1.0);
+    let smoke = wgpu_deformed_instanced_text_smoke(
+        WgpuSmokeTarget {
+            width: SMOKE_WIDTH,
+            height: SMOKE_HEIGHT,
+        },
+        &[instance],
+        &pixels,
+        atlas_size,
+        &TextStyleTable::with_defaults(),
+        &test_deform_table_stretch(),
+        0.0,
+    )
+    .expect("stretch diagnostic smoke");
+    assert_eq!(
+        count_neighbor_magenta_pixels(&smoke.pixels),
+        0,
+        "stretch deform must not sample magenta neighbor atlas padding"
+    );
+    assert!(
+        count_whiteish_pixels(&smoke.pixels) > 16,
+        "stretch deform should still draw tile interior"
+    );
+    let _ = &mut instance;
+}
+
+#[test]
+fn skew_deform_preserves_glyph_tile_coverage() {
+    if !wgpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: skew_deform_preserves_glyph_tile_coverage");
+        return;
+    }
+    let (pixels, atlas_size, instance) = diagnostic_border_atlas(2.0);
+    let target = WgpuSmokeTarget {
+        width: SMOKE_WIDTH,
+        height: SMOKE_HEIGHT,
+    };
+    let skew_smoke = wgpu_deformed_instanced_text_smoke(
+        target,
+        &[instance],
+        &pixels,
+        atlas_size,
+        &TextStyleTable::with_defaults(),
+        &test_deform_table_skew(),
+        0.0,
+    )
+    .expect("skew diagnostic smoke");
+    assert_eq!(
+        count_neighbor_magenta_pixels(&skew_smoke.pixels),
+        0,
+        "skew deform must not bleed neighbor atlas color"
+    );
+    let left = sample_region_avg(&skew_smoke.pixels, target.width, 70, 110, 45, 75);
+    let right = sample_region_avg(&skew_smoke.pixels, target.width, 120, 160, 45, 75);
+    assert!(
+        left.0.abs_diff(right.0) > 4,
+        "skew should remap split tile interior across screen (left={left:?} right={right:?})"
+    );
+}
+
+#[test]
+fn msdf_deformed_label_preserves_static_tile_identity() {
+    if !wgpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: msdf_deformed_label_preserves_static_tile_identity");
+        return;
+    }
+    let font = load_font(FIXTURE).expect("font");
+    let glyph_id = font.glyph_metrics('D').expect("glyph").glyph_id;
+    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
+    let tile = atlas
+        .get_or_generate_glyph_msdf(&font, u32::from(glyph_id), TEST_PX)
+        .expect("msdf");
+    let base = build_distance_field_instance(0.0, 0.0, &tile, atlas.atlas_size(), [1.0; 4]);
+    let flat = GlyphInstanceGpu {
+        pos_size: [
+            80.0,
+            40.0,
+            tile.atlas_tile.w as f32,
+            tile.atlas_tile.h as f32,
+        ],
+        uv_rect: base.uv_rect,
+        color: [1.0, 1.0, 1.0, 1.0],
+        sdf_params: [
+            DISTANCE_FIELD_RENDER_MSDF,
+            tile.px_range,
+            atlas.atlas_size() as f32,
+            0.0,
+        ],
+        style_params: [0.0; 4],
+        deform_params: [0.0; 4],
+    };
+    let mut deformed = flat;
+    deformed.deform_params = [2.0, DEFORM_TESS_LEVEL_DEFORM as f32, 0.0, 0.0];
+    let target = WgpuSmokeTarget {
+        width: SMOKE_WIDTH,
+        height: SMOKE_HEIGHT,
+    };
+    let flat_smoke = wgpu_deformed_instanced_text_smoke(
+        target,
+        &[flat],
+        atlas.staging_pixels(),
+        atlas.atlas_size(),
+        &TextStyleTable::with_defaults(),
+        &TextDeformTableResource::default().table,
+        0.0,
+    )
+    .expect("flat msdf smoke");
+    let deformed_smoke = wgpu_deformed_instanced_text_smoke(
+        target,
+        &[deformed],
+        atlas.staging_pixels(),
+        atlas.atlas_size(),
+        &TextStyleTable::with_defaults(),
+        &test_deform_table_skew(),
+        0.0,
+    )
+    .expect("deformed msdf smoke");
+    let flat_alpha = flat_smoke.pixels.chunks(4).filter(|px| px[3] > 32).count();
+    let deformed_alpha = deformed_smoke
+        .pixels
+        .chunks(4)
+        .filter(|px| px[3] > 32)
+        .count();
+    assert!(flat_alpha > 0 && deformed_alpha > 0);
+    let ratio = deformed_alpha as f32 / flat_alpha as f32;
+    assert!(
+        ratio > 0.25 && ratio < 4.0,
+        "MSDF deformed coverage should stay bounded (flat={flat_alpha} deformed={deformed_alpha})"
+    );
+}
+
+#[test]
+fn gradient_coordinate_policy_documented_and_tested() {
+    let doc = fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/tests/typeface_lr6c_deform_uv_sampling_results.md"),
+    )
+    .expect("uv sampling results");
+    assert!(doc.contains("## Gradient coordinate policy"));
+    assert!(doc.contains("source_uv") || doc.contains("source_local_uv"));
+
+    if !wgpu_adapter_available() {
+        eprintln!("ADAPTER_SKIPPED: gradient_coordinate_policy_documented_and_tested smoke");
+        return;
+    }
+    let (pixels, atlas_size, mut instance) = diagnostic_border_atlas(2.0);
+    instance.style_params = [2.0, 0.0, 0.0, 0.0];
+    let target = WgpuSmokeTarget {
+        width: SMOKE_WIDTH,
+        height: SMOKE_HEIGHT,
+    };
+    let smoke = wgpu_deformed_instanced_text_smoke(
+        target,
+        &[instance],
+        &pixels,
+        atlas_size,
+        &test_style_table_gradient(),
+        &test_deform_table_skew(),
+        0.0,
+    )
+    .expect("gradient skew smoke");
+    let left = sample_region_avg(&smoke.pixels, target.width, 70, 95, 45, 75);
+    let right = sample_region_avg(&smoke.pixels, target.width, 120, 145, 45, 75);
+    assert!(
+        left.0.abs_diff(right.0) > 2 || left.1.abs_diff(right.1) > 2,
+        "gradient should vary across source-local U under deformation (left={left:?} right={right:?})"
+    );
 }
 
 #[test]
