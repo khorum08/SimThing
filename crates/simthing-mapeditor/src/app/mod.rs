@@ -90,7 +90,13 @@ pub fn run_studio() {
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin);
-    crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
+    // Typeface in-Studio render mount DEFERRED (STUDIO-TYPEFACE-STARTUP-FIX-0R): mounting
+    // SimthingToolsTextPlugin's render graph on the live Studio window suppresses egui compositing
+    // (black screen) — it was only ever headless-tested (LR8). The simthing-tools crate, the label
+    // seam (studio_typeface_shell / app::labels), and all typeface capability remain present and
+    // unchanged; only this unverified probe mount is held until the render integration is reworked to
+    // coexist with egui. To re-enable for testing: uncomment the line below.
+    // crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
     app.add_systems(Startup, setup_scene)
         .add_systems(PostStartup, window::apply_initial_window_mode)
         .add_systems(Startup, init_star_visual_assets)

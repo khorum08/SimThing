@@ -1,6 +1,5 @@
 #![cfg(windows)]
 
-use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 
@@ -170,13 +169,6 @@ pub(crate) struct MainCamera;
 fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
-        // Disable LUT-based tonemapping (and deband dither) on the Studio camera. The default
-        // (TonyMcMapface) binds a 3D color LUT; once the simthing-tools text render plugin mounts its
-        // mesh2d view bind groups on Vulkan, that LUT triggers a D2/D3 bind-group mismatch and breaks
-        // compositing (black screen). `Tonemapping::None` removes the LUT requirement at the source, so
-        // the typeface stack and egui both composite normally — no GpuImage-mutating LUT "fix" needed.
-        Tonemapping::None,
-        DebandDither::Disabled,
         Transform::from_xyz(40.0, 35.0, 40.0).looking_at(Vec3::ZERO, Vec3::Y),
         MainCamera,
     ));
