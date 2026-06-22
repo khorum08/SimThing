@@ -659,6 +659,66 @@ masking, crossing thresholds, and propagating Movement-Fronts. Build toward that
 
 ---
 
+## SimThing tools crate — presentation/support services
+
+`crates/simthing-tools` is a **support/presentation crate**, not simulation authority. It houses the
+DA-approved typeface runtime graduated from the closed TYPEFACE-LADDER: TTF font loading/shaping, raster
+atlas, MSDF/SDF atlas, SVG icon ingestion, declarative icon manifest, GPU style rows, deformation/path/warp
+tables, Studio label seam, and LR9 perf harnesses.
+
+The crate may **import, normalize, stage, cache, and render** presentation artifacts. It must **not** become
+a simulation subsystem or introduce gameplay semantics into GPU shaders. CPU work is import/staging/change-time
+only; GPU owns sampling, style effects, deformation, path/warp, and instanced draw composition.
+
+Durable references: `docs/design_typeface_ladder.md`, `docs/design_simthing_typeface_track_proposal.md`,
+`docs/tests/current_evidence_index.md` (TYPEFACE rows). Process reports archived under
+`docs/archive/typeface_track_2026_06/`.
+
+```rust
+// TTF / font / shaping
+pub fn load_font(bytes: &[u8]) -> Result<ProbeFont, TypefaceError>;
+pub struct ProbeFont;
+pub struct GlyphMetrics;
+pub struct ShapingEngine;
+pub struct ShapedRun;
+pub struct ShapedGlyph;
+
+// SVG icons / manifest
+pub struct IconSet;
+pub struct IconVector;
+pub struct IconVectorLayer;
+pub struct IconManifest;
+pub struct IconManifestEntry;
+pub struct IconManifestBake;
+pub fn load_icon_manifest(...);
+pub fn bake_icon_manifest(...);
+pub fn fixture_manifest_path() -> PathBuf;
+
+// Runtime text / atlas / MSDF
+pub struct TextLabel;
+pub enum TextLabelRenderMode;
+pub struct GlyphAtlasCore;
+pub struct DistanceFieldAtlasCore;
+pub struct GlyphInstanceGpu;
+pub struct SimthingToolsTextPlugin;
+
+// Style / deformation / path / warp
+pub struct TextStyleTable;
+pub struct TextDeformTable;
+pub struct TextPathTable;
+pub struct TextWarpTable;
+
+// Studio seam
+pub struct StudioTypefaceLabel;
+pub struct StudioDamageTextEmitter;
+pub struct StudioTypefaceLabelPlugin;
+```
+
+See `crates/simthing-tools/src/lib.rs` for the full export surface; the block above is a high-signal seam
+summary only.
+
+---
+
 ## References
 
 - Zichao Wei, *On the Spatiotemporal Dynamics of Generalization in Neural Networks*

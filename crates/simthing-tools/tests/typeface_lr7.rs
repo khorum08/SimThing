@@ -81,12 +81,14 @@ fn lr6d_closeout_records_da_approval() {
     assert!(index.contains("TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R"));
     assert!(index.contains("ACCEPTED / closed"));
 
-    let lr6d = read_doc("docs/tests/typeface_lr6d_results.md");
+    let lr6d = read_doc("docs/archive/typeface_track_2026_06/typeface_lr6d_results.md");
     assert!(lr6d.contains("DA APPROVED"));
     assert!(lr6d.contains("#891"));
     assert!(lr6d.contains("6a32763bdd"));
 
-    let combined = read_doc("docs/tests/typeface_lr6d_combined_msdf_deform_results.md");
+    let combined = read_doc(
+        "docs/archive/typeface_track_2026_06/typeface_lr6d_combined_msdf_deform_results.md",
+    );
     assert!(combined.contains("ACCEPTED / closed") || combined.contains("DA APPROVED"));
 }
 
@@ -323,7 +325,7 @@ fn semantic_free_guard_still_passes() {
 
 #[test]
 fn gpu_residency_audit_documented_for_lr7() {
-    let results = read_doc("docs/tests/typeface_lr7_results.md");
+    let results = read_doc("docs/archive/typeface_track_2026_06/typeface_lr7_results.md");
     assert!(results.contains("GPU residency"));
     assert!(results.contains("CPU surfacing"));
     assert!(results.contains("import/staging"));

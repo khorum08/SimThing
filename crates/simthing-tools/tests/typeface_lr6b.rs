@@ -313,7 +313,8 @@ fn sample_region_avg(pixels: &[u8], width: u32, x0: u32, x1: u32, y0: u32, y1: u
 #[test]
 fn sdf_outline_or_glow_is_gpu_side_or_formally_deferred() {
     let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6b_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6b_results.md"),
     )
     .expect("lr6b results");
     assert!(doc.contains("GPU-side") || doc.contains("shader-side"));
@@ -323,7 +324,8 @@ fn sdf_outline_or_glow_is_gpu_side_or_formally_deferred() {
 #[test]
 fn pulse_is_shader_side_or_formally_deferred() {
     let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6b_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6b_results.md"),
     )
     .expect("lr6b results");
     assert!(doc.contains("Pulse disposition"));
@@ -403,7 +405,8 @@ fn numeric_damage_lane_still_passes_binding_or_structural_guard() {
 #[test]
 fn gpu_residency_audit_documented_for_lr6b() {
     let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6b_results.md"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6b_results.md"),
     )
     .expect("lr6b results");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));
@@ -636,10 +639,9 @@ fn semantic_free_guard_still_passes() {
 
 #[test]
 fn gpu_residency_audit_updated_for_style_buffer_residency() {
-    let doc = fs::read_to_string(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests/typeface_lr6b_style_buffer_residency_results.md"),
-    )
+    let doc = fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        "../../docs/archive/typeface_track_2026_06/typeface_lr6b_style_buffer_residency_results.md",
+    ))
     .expect("lr6b style buffer residency results");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));
     assert!(doc.contains("bind group"));

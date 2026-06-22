@@ -23,7 +23,7 @@
   frame. Static labels cache their instance buffer; per-frame work is GPU draw only. (See
   `docs/simthing-bevy-performance.md` — the "never compute in the draw/update path" rule that fixed Studio FPS.)
 - **Determinism.** Same input font + string → same shaped run + same atlas tile bytes. Tests assert this.
-- **Each rung adds:** `docs/tests/typeface_lr<N>_results.md` (PROBATION) + one row in
+- **Each rung adds:** `docs/archive/typeface_track_2026_06/typeface_lr<N>_results.md` (PROBATION) + one row in
   `docs/tests/current_evidence_index.md`; updates `docs/design_typeface_ladder.md` rung status to DONE.
 - **Per-rung validation (minimum):** `cargo fmt -p <crate> -- --check`, `cargo check -p <crate>`,
   `cargo test -p <crate> --test <rung tests>`, `git diff --check`. GPU rungs add a real-adapter run and record
@@ -35,7 +35,7 @@
 ---
 
 ## LR0 — workshop prototype: font load + metrics + measurement harness  *(mechanical)* — **DONE / PROBATION**
-**Status:** landed PR #872 (`c24de50cc`); result report `docs/tests/typeface_lr0_results.md`. Track remains OPEN — LR0 is not DA-approval of the whole typeface track.
+**Status:** landed PR #872 (`c24de50cc`); result report `docs/archive/typeface_track_2026_06/typeface_lr0_results.md`. Track remains OPEN — LR0 is not DA-approval of the whole typeface track.
 **Crate/files:** `crates/simthing-workshop/src/typeface/mod.rs` (+ `font.rs`, `harness.rs`); test fixture above.
 **Deps (workshop `Cargo.toml`):** add **direct** `skrifa`, `fontdb`, `thiserror` (already transitive — pin to
 the versions Bevy 0.16 resolves in `Cargo.lock`; do not bump).
@@ -56,7 +56,7 @@ STOP, report the version, do not bump Bevy's transitive pins.
 **Boundary:** no wgpu, no Bevy, no rendering.
 
 ## LR1 — shaping engine (cosmic-text)  *(mechanical)* — **DONE / PROBATION**
-**Status:** landed PR #873 (`b913e51ac`); result report `docs/tests/typeface_lr1_results.md`. Track remains OPEN — LR1 is not DA-approval of the whole typeface track.
+**Status:** landed PR #873 (`b913e51ac`); result report `docs/archive/typeface_track_2026_06/typeface_lr1_results.md`. Track remains OPEN — LR1 is not DA-approval of the whole typeface track.
 **Files:** `crates/simthing-workshop/src/typeface/shaping.rs`.
 **Deps:** add `cosmic-text` (lock-pinned).
 **Public API:**
@@ -74,7 +74,7 @@ emit positioned glyph runs (kerning/ligatures applied by cosmic-text).
 **Boundary:** no atlas, no GPU.
 
 ## LR2 — raster glyph atlas v1 (swash + guillotiere, headless wgpu)  *(DA-sensitive)* — **DONE / DA APPROVED**
-**Status:** landed PR #874 (`12dd92023`); remediation PR #875 (`d547e8cf7`); result reports `docs/tests/typeface_lr2_results.md`, `docs/tests/typeface_lr2r_results.md`. **Codex DA approved LR2 after LR2R adapter-optional remediation.** Track remains OPEN — LR2 approval is raster-atlas foundation only, not whole-track DA approval.
+**Status:** landed PR #874 (`12dd92023`); remediation PR #875 (`d547e8cf7`); result reports `docs/archive/typeface_track_2026_06/typeface_lr2_results.md`, `docs/archive/typeface_track_2026_06/typeface_lr2r_results.md`. **Codex DA approved LR2 after LR2R adapter-optional remediation.** Track remains OPEN — LR2 approval is raster-atlas foundation only, not whole-track DA approval.
 **Files:** `crates/simthing-workshop/src/typeface/atlas.rs`.
 **Deps:** add `swash`, `guillotiere`, `wgpu`/`bytemuck`/`pollster` (workshop already has wgpu stack).
 **Public API:**
@@ -96,7 +96,7 @@ direct), `same_glyph_same_px_is_cached_not_re_rasterized` (alloc count unchanged
 `distinct_glyphs_get_distinct_tiles`, `atlas_full_returns_none_no_panic`, headless real-adapter upload+readback.
 **DA focus:** byte-exact oracle; cache key correctness; **no per-call full-atlas upload** (dirty-region only).
 **Stop conditions:** no GPU adapter in env → keep CPU-oracle tests, mark GPU tests `ADAPTER_SKIPPED`, do not fake.
-**Remediation:** `TYPEFACE-LR2-RASTER-ATLAS-0R` (PR #875) remediated DA HOLD on adapter-optional CPU test coverage — splits `GlyphAtlasCore` (CPU-only) from GPU-backed `GlyphAtlas`; **DA remediation accepted**; result report `docs/tests/typeface_lr2r_results.md`.
+**Remediation:** `TYPEFACE-LR2-RASTER-ATLAS-0R` (PR #875) remediated DA HOLD on adapter-optional CPU test coverage — splits `GlyphAtlasCore` (CPU-only) from GPU-backed `GlyphAtlas`; **DA remediation accepted**; result report `docs/archive/typeface_track_2026_06/typeface_lr2r_results.md`.
 
 ## LR3 — `simthing-tools` crate + Bevy instanced text draw  *(DA-sensitive — graduation rung)* — **DONE / DA APPROVED**
 **Status:** landed PR #876 (`a4f8c7dfa`); DA remediation accepted via **TYPEFACE-LR3-INSTANCED-DRAW-0R** PR #877 (`0ec42e5175`). Route B raw-wgpu shader-backed smoke is accepted. Track remains OPEN — LR3 approval is not whole-track DA approval.
@@ -132,7 +132,7 @@ clean move PR first.
 **LR3R closeout:** `TYPEFACE-LR3-INSTANCED-DRAW-0R` accepted Route B raw-wgpu shader-backed smoke as the LR3 draw remediation. Full in-Bevy PNG readback remains explicitly **DEFERRED**: `Camera2d + Tonemapping::None + RenderTarget::Image + gpu_readback::Readback`.
 
 ## LR4 — SVG icon ingestion (usvg + resvg) at PUA codepoints  *(mechanical)* — **DONE / ACCEPTED (#878)**
-**Status:** `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0` accepted/closed; PR #878 merge `990d6ce5ce804523564fe65e56725ece23a7a37d`; post-merge evidence commit `7c8cb1bd15`; result report `docs/tests/typeface_lr4_results.md`. Track remains OPEN — LR4 acceptance is not whole-track DA approval.
+**Status:** `TYPEFACE-LR4-SVG-PUA-ICON-INGESTION-0` accepted/closed; PR #878 merge `990d6ce5ce804523564fe65e56725ece23a7a37d`; post-merge evidence commit `7c8cb1bd15`; result report `docs/archive/typeface_track_2026_06/typeface_lr4_results.md`. Track remains OPEN — LR4 acceptance is not whole-track DA approval.
 **Files:** `crates/simthing-tools/src/icons.rs`.
 **Deps:** `usvg`, `resvg` (tiny-skia already in tree). Record MPL-2.0 in `THIRD_PARTY_LICENSES.md`.
 **Public API:**
@@ -151,7 +151,7 @@ one run.
 **Amendment folded into LR4:** LR4 includes static-SVG normalization plus a role-aware `IconVector` IR. The ingestion path accepts static SVG only, normalizes accepted shapes to deterministic path/layer records, rejects scripts, external images, animation/events, and remote resources, preserves optional `data-simthing-role` tags (`primary`, `secondary`, `accent`, `outline`, `background`, `mask`), and keeps deterministic layer/path ordering. Runtime never interprets SVG; it consumes rasterized atlas tiles and icon metadata only.
 
 ## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)* — **DONE / DA APPROVED**
-**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` **DA APPROVED** after LR5R/LR5S/LR5T (#879–#882). Final remediation: `TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R` (PR #882, merge `c05baef87bc`). Result reports `docs/tests/typeface_lr5_results.md` through `docs/tests/typeface_lr5t_results.md`. Track remains OPEN — LR6 is active.
+**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` **DA APPROVED** after LR5R/LR5S/LR5T (#879–#882). Final remediation: `TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R` (PR #882, merge `c05baef87bc`). Result reports `docs/archive/typeface_track_2026_06/typeface_lr5_results.md` through `docs/archive/typeface_track_2026_06/typeface_lr5t_results.md`. Track remains OPEN — LR6 is active.
 **Files:** `crates/simthing-tools/src/bench.rs`, `bevy.rs`, `numeric_damage.rs`, `text_render.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
 **Steps:** CPU harness plus Bevy-path aggregate versioning, dirty atlas sync, draw-entity sync gating, instance-buffer reuse; 5k no-op + fixed-width numeric damage binding profile recorded.
 **LR5R remediation:** dirty aggregate rebuild; no-op draw sync/atlas sync/buffer recreate avoided; 5k labels @ avg no-op &lt;1 ms CPU update on validation host.
@@ -161,36 +161,36 @@ one run.
 **DA focus:** no-op and fixed-width numeric damage bindings met; LR5 closed for MSDF foundation work.
 
 ## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)* — **DONE / DA APPROVED for production glyph MSDF after LR6A**
-**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` (#883) foundation + `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) production glyph MSDF opt-in accepted. See `docs/tests/typeface_lr6_results.md`, `docs/tests/typeface_lr6a_results.md`.
+**Status:** `TYPEFACE-LR6-MSDF-ATLAS-SHADER-0` (#883) foundation + `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) production glyph MSDF opt-in accepted. See `docs/archive/typeface_track_2026_06/typeface_lr6_results.md`, `docs/archive/typeface_track_2026_06/typeface_lr6a_results.md`.
 
 ## LR6A — production MSDF wiring  *(DA remediation)* — **DONE / PROBATION / ACCEPTED for glyph MSDF production opt-in**
-**Status:** `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) — `TextLabelRenderMode` opt-in, shared-atlas MSDF packing, patched `build_glyph_id`. See `docs/tests/typeface_lr6a_results.md`.
+**Status:** `TYPEFACE-LR6A-PRODUCTION-MSDF-WIRING-0R` (#884) — `TextLabelRenderMode` opt-in, shared-atlas MSDF packing, patched `build_glyph_id`. See `docs/archive/typeface_track_2026_06/typeface_lr6a_results.md`.
 
 ## LR6A-ICON — icon vector geometry bridge  *(DA remediation before LR6B)* — **DONE / ACCEPTED**
-**Status:** `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` (#885, `a3f7dcd30d`) — normalized `IconVector` geometry IR, icon MSDF from bezpath, per-role raster style-slot refs. See `docs/tests/typeface_lr6a_icon_geometry_results.md`.
+**Status:** `TYPEFACE-LR6A-ICON-VECTOR-GEOMETRY-0R` (#885, `a3f7dcd30d`) — normalized `IconVector` geometry IR, icon MSDF from bezpath, per-role raster style-slot refs. See `docs/archive/typeface_track_2026_06/typeface_lr6a_icon_geometry_results.md`.
 
 ## LR6B — GPU style table + gradient/effect shader  *(DA-sensitive)* — **DONE / DA APPROVED**
-**Status:** `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` (#886) + buffer residency remediation `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887, `6117dd5fd5`). See `docs/tests/typeface_lr6b_results.md` and `docs/tests/typeface_lr6b_style_buffer_residency_results.md`. **DA APPROVED** after #887 (post-merge evidence `19ca9f8420`, index finalize `79ee674026`).
+**Status:** `TYPEFACE-LR6B-GPU-STYLE-TABLE-EFFECTS-0` (#886) + buffer residency remediation `TYPEFACE-LR6B-STYLE-BUFFER-RESIDENCY-0R` (#887, `6117dd5fd5`). See `docs/archive/typeface_track_2026_06/typeface_lr6b_results.md` and `docs/archive/typeface_track_2026_06/typeface_lr6b_style_buffer_residency_results.md`. **DA APPROVED** after #887 (post-merge evidence `19ca9f8420`, index finalize `79ee674026`).
 
 ## LR6C — adaptive-tessellation glyph mesh + parametric deform  *(DA-sensitive)* — **DONE / DA APPROVED**
-**Status:** `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` (#888) + UV-sampling remediation `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889, merge `913b148323`). See `docs/tests/typeface_lr6c_results.md` and `docs/tests/typeface_lr6c_deform_uv_sampling_results.md`. **DA APPROVED** after #889 (post-merge evidence `2e83ff80c8`, index finalize `581fe06f84`).
+**Status:** `TYPEFACE-LR6C-ATLAS-RESIDENCY-DEFORM-0` (#888) + UV-sampling remediation `TYPEFACE-LR6C-DEFORM-UV-SAMPLING-0R` (#889, merge `913b148323`). See `docs/archive/typeface_track_2026_06/typeface_lr6c_results.md` and `docs/archive/typeface_track_2026_06/typeface_lr6c_deform_uv_sampling_results.md`. **DA APPROVED** after #889 (post-merge evidence `2e83ff80c8`, index finalize `581fe06f84`).
 
 ## LR6D — text-on-path + warp field / control lattice  *(DA-sensitive)* — **DONE / DA APPROVED**
-**Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`). See `docs/tests/typeface_lr6d_results.md` and `docs/tests/typeface_lr6d_combined_msdf_deform_results.md`. **DA APPROVED** after combined MSDF/deform proof.
+**Status:** `TYPEFACE-LR6D-TEXT-ON-PATH-WARP-FIELD-0` (#890, merge `c0fb11c3cb`) + combined proof remediation `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R` (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`). See `docs/archive/typeface_track_2026_06/typeface_lr6d_results.md` and `docs/archive/typeface_track_2026_06/typeface_lr6d_combined_msdf_deform_results.md`. **DA APPROVED** after combined MSDF/deform proof.
 
 ## LR7 — custom character set / icon-font manifest  *(mechanical)* — **DONE / DA APPROVED for manifest machinery**
-**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`, post-merge evidence `be8dde2388`) — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/tests/typeface_lr7_results.md`. **DA APPROVED for manifest machinery** — production icon source set remains input debt. TTF/OTF export deferred optional LR7A.
+**Status:** `TYPEFACE-LR7-ICON-FONT-MANIFEST-0` (#892, merge `ac320204eb`, post-merge evidence `be8dde2388`) — declarative RON manifest, stable name ↔ PUA codepoint table, fixture icon set baked through existing `IconSet` static-SVG path. See `docs/archive/typeface_track_2026_06/typeface_lr7_results.md`. **DA APPROVED for manifest machinery** — production icon source set remains input debt. TTF/OTF export deferred optional LR7A.
 **Files:** `crates/simthing-tools/src/manifest.rs`; fixture manifest `crates/simthing-tools/assets/typeface/icons/manifest.ron`.
 **Public API:** `load_icon_manifest`, `bake_icon_manifest`, `IconManifest`, `IconManifestBake`.
 **Tests** (`typeface_lr7.rs`): manifest load/bake, golden codepoint table, duplicate/range/path validation, role-layer preservation, mixed text+icon run, no runtime SVG dependency.
 
 ## LR8 — Studio + game label seam  *(mechanical + DA docs)* — **DONE / DA APPROVED**
-**Status:** `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) — `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, typeface component sync. **Shell mount remediation:** `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R` (#894, merge `850a216a7a`) — `StudioTypefaceShellPlugin` in `run_studio()`. **DA APPROVED after #894.** See `docs/tests/typeface_lr8_results.md` and `docs/tests/typeface_lr8_studio_plugin_mount_results.md`.
+**Status:** `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`, post-merge evidence `22e7bfb9a4`) — `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, typeface component sync. **Shell mount remediation:** `TYPEFACE-LR8-STUDIO-PLUGIN-MOUNT-0R` (#894, merge `850a216a7a`) — `StudioTypefaceShellPlugin` in `run_studio()`. **DA APPROVED after #894.** See `docs/archive/typeface_track_2026_06/typeface_lr8_results.md` and `docs/archive/typeface_track_2026_06/typeface_lr8_studio_plugin_mount_results.md`.
 **Files:** `crates/simthing-tools/src/studio_labels.rs`, `crates/simthing-mapeditor/src/studio_typeface_shell.rs`.
 **Tests** (`typeface_lr8.rs`): spawn/sync, shell mount, manifest icon, damage path, GPU residency doc check.
 
 ## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / DA APPROVED**
-**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. **Closeout blocker:** `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` (#897, merge `974ffcc7fc`) — changed-label rebuild allocation invariant green. **Track closure:** `TYPEFACE-TRACK-CLOSEOUT-0` (#898, merge `82416b9d27`). See `docs/tests/typeface_lr9_results.md`, `docs/tests/typeface_lr9_binding_perf_results.md`, `docs/tests/typeface_closeout_perf_invariant_results.md`.
+**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. **Closeout blocker:** `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` (#897, merge `974ffcc7fc`) — changed-label rebuild allocation invariant green. **Track closure:** `TYPEFACE-TRACK-CLOSEOUT-0` (#898, merge `82416b9d27`). See `docs/archive/typeface_track_2026_06/typeface_lr9_results.md`, `docs/archive/typeface_track_2026_06/typeface_lr9_binding_perf_results.md`, `docs/archive/typeface_track_2026_06/typeface_closeout_perf_invariant_results.md`.
 **Files:** `crates/simthing-tools/src/lr9.rs`, `crates/simthing-tools/tests/typeface_lr9.rs`.
 **Tests:** CI smoke at 1k/100 scale + `#[ignore]` 5k binding profiles; LR0–LR8 regressions retained.
 **Boundary:** perf gate — track closed in #898; no font export; no sim scope.
@@ -293,6 +293,94 @@ Codex's concepts are accepted but compressed: LR4A→folded into LR4; LR6A→fol
 slots); LR8A→folded into LR8; LR7A/LR10→deferred (not committed). The genuinely new committed work is the
 styling rung (LR6B), the two deformation rungs (LR6C/LR6D — the owner's morphing requirement), and the perf
 gate (LR9). Net committed rungs: 11; deferred optional: 2.
+
+---
+
+## Final architecture summary
+
+One GPU-resident glyph service in `crates/simthing-tools`: TTF/OTF shaping + raster/MSDF atlas + SVG icon
+ingestion at PUA codepoints + GPU style/deform/path/warp tables + Bevy instanced draw + Studio label seam.
+Icons are glyphs — mixed text+icon strings share one shaping → atlas → instanced draw path. High-volume labels
+use fixed-width numeric damage lane (LR5T) or aggregate patch/reuse (LR5R). Warped EU4-style nameplates use
+adaptive tessellation + vertex-shader deformation over static MSDF tiles (no CPU outline regeneration).
+
+## Public API seams
+
+High-signal exports from `crates/simthing-tools/src/lib.rs` (see also `docs/simthing_core_design.md`):
+
+| Seam | Key types / functions |
+|---|---|
+| TTF / shaping | `load_font`, `ProbeFont`, `GlyphMetrics`, `ShapingEngine`, `ShapedRun`, `ShapedGlyph` |
+| SVG icons | `IconSet`, `IconVector`, `IconVectorLayer`, `IconRegistration` |
+| Manifest | `IconManifest`, `IconManifestEntry`, `IconManifestBake`, `load_icon_manifest`, `bake_icon_manifest`, `fixture_manifest_path` |
+| Atlas / MSDF | `GlyphAtlasCore`, `DistanceFieldAtlasCore`, `GlyphInstanceGpu`, `TextLabel`, `TextLabelRenderMode`, `SimthingToolsTextPlugin` |
+| Style | `TextStyleTable`, `TextStyleRow`, `style_params_for_slot`, `TextStyleTableResource` |
+| Deform | `TextDeformTable`, `TextDeformParams`, `deform_params_for_slot`, `tess_level_for_deform_slot` |
+| Path / warp | `TextPathTable`, `TextWarpTable`, `path_params_for_slot`, `warp_params_for_slot` |
+| Studio | `StudioTypefaceLabel`, `StudioDamageTextEmitter`, `StudioTypefaceLabelPlugin`, `TypefaceIconSet` |
+| LR9 harness | `Lr9Config`, `profile_flat_animated_labels`, `profile_numeric_damage_lane`, `profile_warped_nameplates`, `LR9_CI_CONFIG`, `LR9_BINDING_CONFIG` |
+| Diagnostics | `text_perf_diagnostics`, `TextPerfDiagnostics`, `text_damage_phase_profile` |
+
+## Module map
+
+| Module | Responsibility |
+|---|---|
+| `font`, `shaping` | TTF load, cosmic-text shaping, shape cache |
+| `atlas`, `msdf` | Raster + MSDF/SDF atlas cores, tile packing |
+| `icons`, `manifest` | SVG ingest, PUA registration, RON manifest bake |
+| `style`, `deform`, `path`, `warp` | GPU table resources + instance param helpers |
+| `bevy`, `text_render` | Bevy plugin, changed-detection rebuild, render-world buffers |
+| `studio_labels` | StudioTypefaceLabel adapter + damage emitter |
+| `lr9`, `bench`, `harness` | Scenario profiles, volume bench, measurement harness |
+| `wgpu_smoke` | Headless Route B shader smoke (test-only) |
+
+## Runtime authority boundaries
+
+- **Presentation-only** — no `simthing-spec` / `simthing-driver` / RF / spatial mutation.
+- **Not simulation authority** — labels and icons are render artifacts; no gameplay semantics in shaders.
+- **Import/staging CPU** — shaping, atlas pack, manifest bake, table row upload on change/generation only.
+- **GPU draw path** — instanced quads, style lookup, deformation, path/warp, MSDF sampling.
+
+## GPU-residency guarantees
+
+Persistent render-world resources: atlas bind group, style globals/rows buffers, deform/path/warp tables,
+instance aggregate buffers. Numeric damage lane patches instances in place (no per-frame shaping). No-op frames
+do not repack atlas or recreate bind groups (LR6B/LR6C/LR6D retention tests). `semantic_free_guard` passes.
+
+## SVG / TTF asset policy
+
+- **TTF/OTF:** loaded once via `load_font` / plugin init; shaped on text change; cached runs.
+- **SVG icons:** static ingest at import/bake (`IconSet`, manifest bake); **no runtime SVG parse per frame**.
+- **Manifest:** RON declarative map name → PUA codepoint; fixture at `fixture_manifest_path()`.
+- **Production icon art set** remains owner input debt; LR7 machinery + fixtures are proven.
+
+## Studio label seam
+
+`StudioTypefaceLabel` + `StudioTypefaceLabelPlugin` in `simthing-mapeditor` shell (`StudioTypefaceShellPlugin`).
+Syncs to `TextLabel` or `NumericDamageLabel`; resolves manifest icons for display strings; damage emitter
+staging for combat text. Headless plugin-mount proof; interactive window smoke is non-blocking debt.
+
+## Final validation and closure
+
+| Gate | Command / proof |
+|---|---|
+| Full tools suite | `cargo test -p simthing-tools` |
+| Semantic-free shader | `cargo test -p simthing-tools --test semantic_free_guard` |
+| LR9 CI smoke | `cargo test -p simthing-tools --test typeface_lr9` |
+| LR9 binding (manual) | `cargo test -p simthing-tools --test typeface_lr9 -- --ignored --nocapture` |
+| Studio seam | `cargo test -p simthing-mapeditor --test typeface_lr8` |
+| Closeout blocker | `changed_label_rebuild_does_not_clone_old_instance_vec` (#897) |
+| Track closure | TYPEFACE-TRACK-CLOSEOUT-0 (#898 `82416b9d27`) |
+
+Archived rung reports: `docs/archive/typeface_track_2026_06/`.
+
+## Carried non-blocking debts
+
+1. Flat 5k max no-op spike **1.0086 ms** — O(N) label scan; future dirty-list / event-driven scan.
+2. 5k damage churn **~2.5 ms/frame** — changed-value cost, not settled noop budget.
+3. Interactive Studio **window** smoke — presentation debt.
+4. Production icon **source set** (art + licensing).
+5. Future dirty-list / event-driven scan optimization before scaling well beyond 5k labels.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > Workshop worklog for PR-by-PR history, validation tables, changelog blocks, and verbose PROBATION notes.
 > The authoritative production ladder lives in [`docs/design_0_0_8_3_studio_production.md`](../design_0_0_8_3_studio_production.md).
-> Per-rung validation evidence remains in docs/tests/*_results.md.
+> Per-rung validation evidence: live ledger in `docs/tests/current_evidence_index.md`; TYPEFACE process reports archived under `docs/archive/typeface_track_2026_06/`.
 
 Moved from production doc by **STUDIO-PRODUCTION-LADDER-CLOSURE-0R** on 2026-06-20.
 
@@ -23,6 +23,11 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 ---
 
 ---
+
+## Typeface ladder — docs archive cleanup (2026-06-22)
+
+- `TYPEFACE-CLEANUP-DOCS-ARCHIVE-0` consolidates durable typeface reference into ladder + core design; archives
+  per-rung process reports under `docs/archive/typeface_track_2026_06/`; updates live test doc paths.
 
 ## Typeface ladder — closeout perf invariant (2026-06-21)
 

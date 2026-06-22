@@ -678,7 +678,7 @@ fn binding_5k_damage_profile_remeasured() {
 
 #[test]
 fn gpu_residency_audit_documented() {
-    let doc = include_str!("../../../docs/tests/typeface_lr5t_results.md");
+    let doc = include_str!("../../../docs/archive/typeface_track_2026_06/typeface_lr5t_results.md");
     assert!(doc.contains("## GPU residency / CPU surfacing audit"));
     assert!(doc.contains("Numeric production authority remains GPU-resident"));
 }

@@ -15,6 +15,22 @@
 
 ---
 
+## Typeface / simthing-tools reference
+
+The closed typeface track is recorded in:
+
+- `docs/design_typeface_ladder.md`
+- `docs/design_simthing_typeface_track_proposal.md`
+- `docs/tests/current_evidence_index.md`
+
+The resulting runtime lives in `crates/simthing-tools` as a presentation/support crate. It is not simulation
+authority and must remain subordinate to the permanent core design, §0 GPU-residency doctrine, and
+semantic-free shader rules.
+
+Process reports from the TYPEFACE-LADDER are archived under `docs/archive/typeface_track_2026_06/`.
+
+---
+
 ## 0. Transient constitution — carry-forward doctrine (MUST propagate to every future version)
 
 > **This section is transient by design and is the cross-version spine.** It holds doctrine that

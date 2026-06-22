@@ -357,8 +357,8 @@ fn semantic_free_guard_still_passes() {
 
 #[test]
 fn gpu_residency_audit_updated_for_lr6a() {
-    let path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/tests/typeface_lr6a_results.md");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/archive/typeface_track_2026_06/typeface_lr6a_results.md");
     let text = fs::read_to_string(&path).expect("typeface_lr6a_results.md must exist");
     for section in [
         "## GPU residency / CPU surfacing audit",
@@ -548,7 +548,7 @@ fn msdf_opt_in_raw_wgpu_smoke_draws_nonzero_pixels() {
 fn icon_msdf_is_implemented_from_icon_vector_geometry() {
     let defer_doc = fs::read_to_string(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/tests/typeface_lr6a_icon_msdf_deferred.md"),
+            .join("../../docs/archive/typeface_track_2026_06/typeface_lr6a_icon_msdf_deferred.md"),
     )
     .expect("icon deferral doc");
     assert!(defer_doc.contains("IMPLEMENTED"));
