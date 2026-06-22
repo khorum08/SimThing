@@ -41,7 +41,7 @@ use bevy::{
     },
 };
 
-use crate::bevy::{GlyphInstanceGpu, TextDrawExtract, TEXT_SHADER_HANDLE};
+use crate::bevy::{GlyphInstanceGpu, TextAggregateVersion, TextDrawExtract, TEXT_SHADER_HANDLE};
 
 /// Marker for entities drawn by the text instanced pipeline.
 #[derive(Component, Clone, Copy, Debug, Default)]
@@ -56,6 +56,18 @@ pub struct TextOffscreenCamera;
 /// GPU atlas image handle mirrored into the render world.
 #[derive(Resource, Clone, ExtractResource, Debug)]
 pub struct TextAtlasImageHandle(pub Handle<Image>);
+
+/// Render-world perf counters merged into [`crate::bevy::TextPerfDiagnostics`].
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextRenderPerfDiagnostics {
+    pub extract_clone_count: u64,
+    pub extracted_instance_count: u64,
+    pub instance_buffer_create_count: u64,
+    pub instance_buffer_reuse_count: u64,
+    pub instance_buffer_upload_count: u64,
+    pub queued_draw_count: u64,
+    pub queued_instance_count: u64,
+}
 
 /// Diagnostics for render-queue tests (render world).
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -75,7 +87,8 @@ pub struct TextRenderQueueState {
 #[derive(Component, Clone)]
 pub struct TextInstanceBuffer {
     pub buffer: Buffer,
-    pub length: usize,
+    pub capacity_instances: usize,
+    pub data_version: u64,
 }
 
 /// Shared atlas bind group for the text shader (@group(2)).
@@ -109,8 +122,10 @@ impl Plugin for TextInstancedRenderPlugin {
 
         render_app
             .init_resource::<TextRenderQueueState>()
+            .init_resource::<TextRenderPerfDiagnostics>()
             .init_resource::<SpecializedMeshPipelines<TextInstancedPipeline>>()
             .add_render_command::<Transparent2d, DrawTextInstanced>()
+            .add_systems(ExtractSchedule, stamp_text_draw_extract_version)
             .add_systems(ExtractSchedule, extract_text_offscreen_phases)
             .add_systems(
                 Render,
@@ -203,6 +218,29 @@ impl SpecializedMeshPipeline for TextInstancedPipeline {
     }
 }
 
+fn stamp_text_draw_extract_version(
+    version: Res<TextAggregateVersion>,
+    mut draw_extracts: Query<&mut TextDrawExtract>,
+    mut last_version: Local<Option<u64>>,
+    mut render_diag: ResMut<TextRenderPerfDiagnostics>,
+) {
+    if draw_extracts.is_empty() {
+        return;
+    }
+    if *last_version != Some(version.current) {
+        render_diag.extract_clone_count += 1;
+        *last_version = Some(version.current);
+    }
+    render_diag.extracted_instance_count = draw_extracts
+        .iter()
+        .next()
+        .map(|extract| extract.instances.len() as u64)
+        .unwrap_or(0);
+    for mut extract in &mut draw_extracts {
+        extract.data_version = version.current;
+    }
+}
+
 fn extract_text_offscreen_phases(
     mut transparent_2d_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     mut opaque_2d_phases: ResMut<ViewBinnedRenderPhases<Opaque2d>>,
@@ -289,6 +327,7 @@ fn queue_text_instanced(
     draw_entities: Query<(Entity, &MainEntity, &TextDrawExtract)>,
     mut transparent_render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     mut queue_state: ResMut<TextRenderQueueState>,
+    mut render_diag: ResMut<TextRenderPerfDiagnostics>,
     views: Query<(&bevy::render::view::ExtractedView, &Msaa)>,
 ) {
     queue_state.queued_draw_count = 0;
@@ -357,18 +396,44 @@ fn queue_text_instanced(
             queue_state.queued_instance_count += instance_count;
         }
     }
+
+    render_diag.queued_draw_count = queue_state.queued_draw_count as u64;
+    render_diag.queued_instance_count = queue_state.queued_instance_count as u64;
 }
 
 fn prepare_text_instance_buffers(
     mut commands: Commands,
     query: Query<(Entity, &TextDrawExtract)>,
+    mut buffers: Query<&mut TextInstanceBuffer>,
     render_device: Res<RenderDevice>,
+    render_queue: Res<bevy::render::renderer::RenderQueue>,
+    mut render_diag: ResMut<TextRenderPerfDiagnostics>,
 ) {
     for (entity, extract) in &query {
         if extract.instances.is_empty() {
             commands.entity(entity).remove::<TextInstanceBuffer>();
             continue;
         }
+
+        let needed = extract.instances.len();
+        if let Ok(mut existing) = buffers.get_mut(entity) {
+            if existing.data_version == extract.data_version {
+                render_diag.instance_buffer_reuse_count += 1;
+                continue;
+            }
+            if existing.capacity_instances >= needed {
+                render_queue.write_buffer(
+                    &existing.buffer,
+                    0,
+                    bytemuck::cast_slice(&extract.instances),
+                );
+                existing.data_version = extract.data_version;
+                render_diag.instance_buffer_upload_count += 1;
+                continue;
+            }
+        }
+
+        render_diag.instance_buffer_create_count += 1;
         let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
             label: Some("text_glyph_instance_buffer"),
             contents: bytemuck::cast_slice(&extract.instances),
@@ -376,7 +441,8 @@ fn prepare_text_instance_buffers(
         });
         commands.entity(entity).insert(TextInstanceBuffer {
             buffer,
-            length: extract.instances.len(),
+            capacity_instances: needed,
+            data_version: extract.data_version,
         });
     }
 }

@@ -46,11 +46,30 @@ pub struct RasterizedGlyph {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AtlasDirtyRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DirtyRect {
     x: u32,
     y: u32,
     w: u32,
     h: u32,
+}
+
+impl From<DirtyRect> for AtlasDirtyRect {
+    fn from(value: DirtyRect) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+            w: value.w,
+            h: value.h,
+        }
+    }
 }
 
 /// CPU-side atlas: rasterization, guillotiere packing, cache, and dirty-region tracking.
@@ -241,6 +260,17 @@ impl GlyphAtlasCore {
                 .copy_from_slice(&self.cpu_pixels[src_start..src_start + len]);
         }
         out
+    }
+
+    pub fn dirty_regions(&self) -> impl Iterator<Item = AtlasDirtyRect> + '_ {
+        self.dirty_regions.iter().copied().map(AtlasDirtyRect::from)
+    }
+
+    pub fn dirty_region_byte_count(&self) -> u64 {
+        self.dirty_regions
+            .iter()
+            .map(|rect| rect.w as u64 * rect.h as u64 * 4)
+            .sum()
     }
 
     /// Clears dirty-rect tracking after a successful GPU upload (or CPU-only test validation).

@@ -150,12 +150,13 @@ one run.
 
 **Amendment folded into LR4:** LR4 includes static-SVG normalization plus a role-aware `IconVector` IR. The ingestion path accepts static SVG only, normalizes accepted shapes to deterministic path/layer records, rejects scripts, external images, animation/events, and remote resources, preserves optional `data-simthing-role` tags (`primary`, `secondary`, `accent`, `outline`, `background`, `mask`), and keeps deterministic layer/path ordering. Runtime never interprets SVG; it consumes rasterized atlas tiles and icon metadata only.
 
-## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)* — **DONE / PROBATION**
-**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0`; result report `docs/tests/typeface_lr5_results.md`. Track remains OPEN — LR5 is not DA-approved.
-**Files:** `crates/simthing-tools/src/bench.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
-**Steps:** deterministic CPU-side high-volume label pool mirroring LR3 changed-detection; static nameplates, damage-text churn, mixed text+icon atlas stress; conservative budget gates (no-op frames do not reshape/rerasterize; damage churn rebuilds only changed labels; one shared atlas path).
-**Tests:** `high_volume_static_labels_noop_frame_does_not_reshape`, `high_volume_static_labels_noop_frame_does_not_rerasterize`, `damage_text_churn_rebuilds_only_changed_labels`, `mixed_text_icon_workload_reuses_one_atlas`, `repeated_svg_icons_are_cached_under_load`, `bench_result_report_is_deterministic_enough`, `ci_bench_budget_gates_pass`; optional `#[ignore]` heavy bench.
-**DA focus:** structural budget gates are real and deterministic; wall-clock baselines recorded; LR5 lands at PROBATION pending DA review.
+## LR5 — high-volume bench + damage-text budget  *(DA-sensitive — perf gate)* — **DONE / PROBATION / DA HOLD pending LR5R review**
+**Status:** `TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0` landed at PROBATION; DA HOLD on Bevy-path perf proof remediated by `TYPEFACE-LR5-PERF-PATH-0R`. Result reports `docs/tests/typeface_lr5_results.md`, `docs/tests/typeface_lr5r_results.md`. Track remains OPEN — LR5 is not DA-approved.
+**Files:** `crates/simthing-tools/src/bench.rs`, `bevy.rs`, `text_render.rs`; `crates/simthing-tools/tests/typeface_lr5.rs`.
+**Steps:** CPU harness plus Bevy-path aggregate versioning, dirty atlas sync, draw-entity sync gating, instance-buffer reuse; 5k no-op binding profile recorded.
+**LR5R remediation:** dirty aggregate rebuild; no-op draw sync/atlas sync/buffer recreate avoided; damage churn aggregates once per frame; 5k labels @ avg no-op &lt;1 ms CPU update on validation host.
+**Tests:** LR5 direct harness + Bevy structural tests in `typeface_lr5.rs`; optional `#[ignore]` 5k binding profile.
+**DA focus:** no-op binding met; damage churn CPU update measured above 1 ms/frame at 500-label churn — recorded honestly; LR5 remains PROBATION pending DA review.
 
 ## LR6 — MSDF atlas (vector target) + SDF shader  *(DA-sensitive — graduation of scalability)*
 **Files:** `crates/simthing-tools/src/msdf.rs`, `src/shaders/text_msdf.wgsl`.
@@ -207,7 +208,7 @@ labels render; perf within the LR5 budget.
 | LR2 | raster glyph atlas v1 | **yes** | **DONE / DA APPROVED** (#874, #875) |
 | LR3 | simthing-tools crate + Bevy instanced draw | **yes** | **DONE / DA APPROVED** (#876, #877 LR3R accepted) |
 | LR4 | SVG icons at PUA codepoints | no | **DONE / ACCEPTED (#878)** |
-| LR5 | high-volume bench + budget | **yes** | **DONE / PROBATION** |
+| LR5 | high-volume bench + budget | **yes** | **DONE / PROBATION / DA HOLD pending LR5R review** |
 | LR6 | MSDF atlas + SDF shader | **yes** | TODO |
 | LR7 | icon-font manifest | no | TODO |
 | LR8 | Studio + game label seam | no | TODO |
