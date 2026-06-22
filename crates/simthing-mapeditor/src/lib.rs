@@ -29,6 +29,7 @@ pub mod studio_scenario_document;
 pub mod studio_scenario_load;
 pub mod studio_screenshot;
 pub mod studio_structural_edit;
+pub mod studio_typeface_shell;
 pub mod terran_pirate_skeleton;
 pub mod view_model;
 
@@ -145,6 +146,10 @@ pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
 pub use studio_structural_edit::{
     studio_apply_structural_placement_command, StudioStructuralEditError,
     StudioStructuralEditOutcome,
+};
+pub use studio_typeface_shell::{
+    mount_studio_typeface_plugins, typeface_fixture_font_bytes, StudioTypefaceShellMounted,
+    StudioTypefaceShellPlugin,
 };
 pub use terran_pirate_skeleton::{
     terran_pirate_skeleton_dense_inputs, terran_pirate_skeleton_scenario_spec,
