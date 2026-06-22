@@ -1,6 +1,6 @@
 # TYPEFACE-LADDER — granular implementation ladder (TTF/OTF + SVG glyph-atlas service)
 
-> **Status: CLOSED / DA-APPROVED (Opus track closure 2026-06-22; closeout PR #897 `974ffcc7fc`).** Companion to `docs/design_simthing_typeface_track_proposal.md`
+> **Status: CLOSED / DA-APPROVED (Opus track closure 2026-06-22; closeout PR #898 `82416b9d27`).** Companion to `docs/design_simthing_typeface_track_proposal.md`
 > (rationale + ecosystem survey). This doc is the **mechanical** ladder: one rung = one PR.
 >
 > **Owner decisions (locked):** renderer = **MSDF target with a glyphon raster milestone**; home = **prototype
@@ -189,11 +189,11 @@ one run.
 **Files:** `crates/simthing-tools/src/studio_labels.rs`, `crates/simthing-mapeditor/src/studio_typeface_shell.rs`.
 **Tests** (`typeface_lr8.rs`): spawn/sync, shell mount, manifest icon, damage path, GPU residency doc check.
 
-## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / architecturally DA-approved (#896)**
-**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. **Closeout blocker:** `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` — changed-label rebuild allocation invariant green. See `docs/tests/typeface_lr9_results.md`, `docs/tests/typeface_lr9_binding_perf_results.md`, `docs/tests/typeface_closeout_perf_invariant_results.md`. **Architecturally DA-approved after #896** — track remains OPEN pending closeout review.
+## LR9 — dynamic style + animated + warped perf gate  *(DA-sensitive)* — **DONE / DA APPROVED**
+**Status:** `TYPEFACE-LR9-FINAL-PERF-GATE-0` (#895, merge `c5b5faeab2`, post-merge evidence `7fa3a4dc91`) — structured scenario profiles. **Binding remediation:** `TYPEFACE-LR9-BINDING-PERF-EVIDENCE-0R` (#896, merge `bda6147c95`) — 5k flat/numeric + 256 warped binding profiles recorded. **Closeout blocker:** `TYPEFACE-CLOSEOUT-PERF-INVARIANT-0` (#897, merge `974ffcc7fc`) — changed-label rebuild allocation invariant green. **Track closure:** `TYPEFACE-TRACK-CLOSEOUT-0` (#898, merge `82416b9d27`). See `docs/tests/typeface_lr9_results.md`, `docs/tests/typeface_lr9_binding_perf_results.md`, `docs/tests/typeface_closeout_perf_invariant_results.md`.
 **Files:** `crates/simthing-tools/src/lr9.rs`, `crates/simthing-tools/tests/typeface_lr9.rs`.
 **Tests:** CI smoke at 1k/100 scale + `#[ignore]` 5k binding profiles; LR0–LR8 regressions retained.
-**Boundary:** perf gate only — no track closure, no font export, no sim scope.
+**Boundary:** perf gate — track closed in #898; no font export; no sim scope.
 
 ---
 
@@ -219,7 +219,7 @@ one run.
 | LR6D | text-on-path + warp field / control lattice | **yes** | **DONE / DA APPROVED** (#890, #891 combined proof) |
 | LR7 | icon-font manifest | no | **DONE / DA APPROVED for manifest machinery** (#892) |
 | LR8 | Studio + game label seam + shell mount | no | **DONE / DA APPROVED** (#893 + #894) |
-| LR9 | dynamic style + animated + warped perf gate | **yes** | **DONE / architecturally DA-approved (#896)** — closeout invariant remediated |
+| LR9 | dynamic style + animated + warped perf gate | **yes** | **DONE / DA APPROVED** (#895–#898) |
 
 **Non-goals (whole track):** ScenarioSpec/RF/spatial changes, GPU dispatch into sim, persistent history,
 pathfinding/combat/economy/fleet movement, new savefile format, DA promotion of any non-typeface row.
@@ -302,8 +302,8 @@ gate (LR9). Net committed rungs: 11; deferred optional: 2.
 (`f6e0fb24fc`); the final closure blocker (`changed_label_rebuild_does_not_clone_old_instance_vec`) was
 remediated in **PR #897 `974ffcc7fc`** (TYPEFACE-CLOSEOUT-PERF-INVARIANT-0 — replaced an icon-path
 `extend_from_slice` memcpy with a move assignment; numeric/aggregate lanes unchanged; source-grep guard
-retained). LR9 binding evidence (#896) stands: flat 5k noop avg 0.5037 ms, numeric noop avg 0.3260 ms,
-warped 0.0683 ms.
+retained). Executive track closure recorded in **PR #898 `82416b9d27`** (TYPEFACE-TRACK-CLOSEOUT-0). LR9
+binding evidence (#896) stands: flat 5k noop avg 0.5037 ms, numeric noop avg 0.3260 ms, warped 0.0683 ms.
 
 **Rungs promoted PROBATION → CLOSED / DA-APPROVED:** LR0, LR1, LR2, LR3, LR4, LR5, LR6, LR6A, LR6A-ICON, LR6B,
 LR6C, LR6D, LR7, LR8, LR9, plus the LR6B style-buffer-residency-0R and LR2R remediations.
