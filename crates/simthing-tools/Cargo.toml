@@ -29,6 +29,8 @@ kurbo = "0.13"
 msdf_font = { version = "0.3.1", default-features = false }
 pollster = { workspace = true }
 resvg = { version = "0.47.0", default-features = false }
+ron = "0.8"
+serde = { workspace = true, features = ["derive"] }
 skrifa = "0.42.1"
 swash = "0.2.9"
 thiserror = { workspace = true }

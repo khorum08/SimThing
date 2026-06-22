@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling; composes with LR6C deformation and LR6B style slots. **PROBATION / DA HOLD** — combined MSDF+style+deform+path+warp proof remediated by `TYPEFACE-LR6D-COMBINED-MSDF-DEFORM-PROOF-0R`; not DA-approved.
+PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice warp; stable `source_uv` atlas sampling; composes with LR6C deformation and LR6B style slots. **DA APPROVED** after combined MSDF+style+deform+path+warp proof (#891, merge `ffc4bb6891`, post-merge evidence `6a32763bdd`).
 
 ## PR / branch / merge
 
@@ -11,6 +11,7 @@ PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice war
 - Merge SHA: `c0fb11c3cb`
 - Post-merge evidence: `fca5c8b555`
 - Index finalize: `75da170c49`
+- Combined proof PR: #891, merge `ffc4bb6891`, closeout evidence `6a32763bdd`
 
 ## LR6C closeout
 
@@ -143,8 +144,8 @@ git diff --check
 
 ## DA recommendation
 
-Recommend **PROBATION** retention pending Codex review of path/warp GPU residency, smoke proofs, and LR6C regression matrix. Do **not** self-approve LR6D.
+**DA APPROVED** after combined MSDF/deform/path/warp proof (#891). LR7 manifest rung active next.
 
 ## Next recommended action
 
-Codex DA review of LR6D; then LR7 icon-font manifest rung when owner supplies PUA/icon source set.
+LR7 icon-font manifest (`TYPEFACE-LR7-ICON-FONT-MANIFEST-0`); production icon source set remains input debt.

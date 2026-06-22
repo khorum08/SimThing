@@ -127,3 +127,23 @@ This file records vendored third-party code included in the SimThing workspace.
 | **Version in workspace** | 0.3.0 (transitive via `msdf-font`) |
 | **License** | MIT OR Apache-2.0 |
 | **Scope note (TYPEFACE-LR6)** | Line-sweep geometry helper used internally by `msdf-font` MSDF generation. |
+
+## serde (TYPEFACE-LR7 manifest deserialization dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | serde |
+| **Upstream origin** | https://github.com/serde-rs/serde |
+| **Version in workspace** | 1.x (workspace dependency) |
+| **License** | MIT OR Apache-2.0 |
+| **Scope note (TYPEFACE-LR7)** | Deserialize declarative icon manifest RON at import/staging only. |
+
+## ron (TYPEFACE-LR7 manifest format dependency)
+
+| Field | Value |
+|---|---|
+| **Package** | ron |
+| **Upstream origin** | https://github.com/ron-rs/ron |
+| **Version in workspace** | 0.8 (direct `simthing-tools` dep) |
+| **License** | MIT OR Apache-2.0 |
+| **Scope note (TYPEFACE-LR7)** | Parse hand-authored icon manifest files; no runtime game-data parsing in draw path. |

@@ -1,0 +1,16 @@
+(
+    reserved_range_start: 0xF0000,
+    reserved_range_end: 0xF00FF,
+    icons: [
+        (
+            name: "test.background-accent",
+            codepoint: 0xF0001,
+            svg_path: "background_accent.svg",
+        ),
+        (
+            name: "test.outline-accent",
+            codepoint: 0xF0002,
+            svg_path: "outline_accent.svg",
+        ),
+    ],
+)
