@@ -8,8 +8,8 @@ runtime behavior changes.
 ## PR / branch / merge
 
 - Branch: `typeface-cleanup-docs-archive-0`
-- PR: (pending)
-- Merge SHA: (pending)
+- PR: #900
+- Merge SHA: `eafa522856`
 
 ## Core design update
 
