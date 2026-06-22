@@ -24,7 +24,7 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ## Typeface ladder — LR8 Studio label seam (2026-06-21)
 
-- `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` adds `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, and typeface component sync (`studio_labels.rs`, `app/labels.rs`).
+- `TYPEFACE-LR8-STUDIO-LABEL-SEAM-0` (#893, merge `ec01da43c9`) adds `StudioTypefaceLabel` adapter, damage emitter, fixture manifest icon resolve, and typeface component sync (`studio_labels.rs`, `app/labels.rs`).
 - LR7 promoted to **DA APPROVED for manifest machinery** (#892, `ac320204eb`, evidence `be8dde2388`).
 - LR8 **PROBATION** — headless integration seam proved; Studio shell plugin mount deferred. Not DA-approved.
 

@@ -7,6 +7,8 @@ PASS — Studio/game label seam wires `StudioTypefaceLabel` into existing typefa
 ## PR / branch / merge
 
 - Branch: `typeface-lr8-studio-label-seam-0`
+- PR: #893
+- Merge SHA: `ec01da43c9`
 
 ## LR7 closeout
 
