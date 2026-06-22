@@ -2,14 +2,14 @@
 
 ## Status
 
-PASS — render-world style globals/rows buffers and bind group are persistent; rows upload on `rows_generation` only; globals/time written as small buffer writes each prepare. **PROBATION / DA remediation complete** — pending DA review for LR6B approval; not self-approved.
+PASS — render-world style globals/rows buffers and bind group are persistent; rows upload on `rows_generation` only; globals/time written as small buffer writes each prepare. **PROBATION / DA remediation complete** — pending DA review for LR6B approval (PR #887, merge `6117dd5fd5`, post-merge evidence `19ca9f8420`).
 
 ## PR / branch / merge
 
 - Branch: `typeface-lr6b-style-buffer-residency-0r`
 - PR: #887
 - Merge SHA: `6117dd5fd5`
-- Post-merge evidence: recorded in post-merge evidence commit
+- Post-merge evidence: `19ca9f8420`
 
 ## DA HOLD being remediated
 
