@@ -7,8 +7,8 @@ PASS — Studio/mapeditor app shell mounts `StudioTypefaceShellPlugin` (fixture 
 ## PR / branch / merge
 
 - Branch: `typeface-lr8-studio-plugin-mount-0r`
-- PR: (pending)
-- Merge SHA: (pending)
+- PR: #894
+- Merge SHA: `850a216a7a`
 
 ## Remediation target
 
