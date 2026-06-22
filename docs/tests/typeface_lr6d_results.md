@@ -9,6 +9,7 @@ PASS — GPU-resident path/warp tables; vertex-shader text-on-path + lattice war
 - Branch: `typeface-lr6d-text-on-path-warp-field-0`
 - PR: #890
 - Merge SHA: `c0fb11c3cb`
+- Post-merge evidence: `fca5c8b555`
 
 ## LR6C closeout
 
