@@ -24,11 +24,11 @@ use bevy::{
         render_resource::{
             binding_types::{sampler, texture_2d},
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries,
-            BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferInitDescriptor,
-            BufferUsages, PipelineCache, RenderPipelineDescriptor, SamplerBindingType,
-            ShaderStages, SpecializedMeshPipeline, SpecializedMeshPipelineError,
-            SpecializedMeshPipelines, TextureSampleType, VertexAttribute, VertexBufferLayout,
-            VertexFormat, VertexStepMode,
+            BindGroupLayoutEntry, BindingType, Buffer, BufferBindingType, BufferDescriptor,
+            BufferInitDescriptor, BufferUsages, PipelineCache, RenderPipelineDescriptor,
+            SamplerBindingType, ShaderStages, SpecializedMeshPipeline,
+            SpecializedMeshPipelineError, SpecializedMeshPipelines, TextureSampleType,
+            VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
         },
         renderer::RenderDevice,
         sync_world::MainEntity,
@@ -44,7 +44,7 @@ use bevy::{
 
 use crate::{
     bevy::{GlyphInstanceGpu, TextAggregateVersion, TextDrawExtract, TEXT_SHADER_HANDLE},
-    style::ExtractedTextStyleTable,
+    style::{ExtractedTextStyleTable, TextStyleGlobalsGpu, TextStyleRowsUniform},
 };
 
 /// Marker for entities drawn by the text instanced pipeline.
@@ -71,6 +71,26 @@ pub struct TextRenderPerfDiagnostics {
     pub instance_buffer_upload_count: u64,
     pub queued_draw_count: u64,
     pub queued_instance_count: u64,
+}
+
+/// Render-world style GPU buffer reuse counters (LR6B-STYLE-BUFFER-RESIDENCY-0R).
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TextStyleRenderDiagnostics {
+    pub globals_buffer_create_count: u64,
+    pub globals_buffer_write_count: u64,
+    pub rows_buffer_create_count: u64,
+    pub rows_buffer_write_count: u64,
+    pub style_bind_group_create_count: u64,
+    pub style_bind_group_reuse_count: u64,
+}
+
+/// Persistent render-world style buffers and bind group.
+#[derive(Resource, Clone)]
+pub struct TextStyleGpuResource {
+    pub globals_buffer: Buffer,
+    pub rows_buffer: Buffer,
+    pub bind_group: BindGroup,
+    pub rows_generation: u64,
 }
 
 /// Diagnostics for render-queue tests (render world).
@@ -127,6 +147,7 @@ impl Plugin for TextInstancedRenderPlugin {
         render_app
             .init_resource::<TextRenderQueueState>()
             .init_resource::<TextRenderPerfDiagnostics>()
+            .init_resource::<TextStyleRenderDiagnostics>()
             .init_resource::<SpecializedMeshPipelines<TextInstancedPipeline>>()
             .add_render_command::<Transparent2d, DrawTextInstanced>()
             .add_systems(ExtractSchedule, stamp_text_draw_extract_version)
@@ -523,31 +544,79 @@ fn prepare_text_style_bind_group(
     style_table: Option<Res<ExtractedTextStyleTable>>,
     render_device: Res<RenderDevice>,
     render_queue: Res<bevy::render::renderer::RenderQueue>,
+    existing: Option<ResMut<TextStyleGpuResource>>,
+    mut diag: ResMut<TextStyleRenderDiagnostics>,
 ) {
     let Some(style_table) = style_table else {
+        commands.remove_resource::<TextStyleGpuResource>();
         commands.remove_resource::<TextStyleBindGroupResource>();
         return;
     };
-    let globals_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-        label: Some("text_style_globals_buffer"),
-        contents: bytemuck::bytes_of(&style_table.globals),
-        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-    });
-    let rows_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-        label: Some("text_style_rows_buffer"),
-        contents: bytemuck::bytes_of(&style_table.rows),
-        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-    });
-    let bind_group = render_device.create_bind_group(
-        "text_style_bind_group",
-        &pipeline.style_layout,
-        &BindGroupEntries::sequential((
-            globals_buffer.as_entire_binding(),
-            rows_buffer.as_entire_binding(),
-        )),
-    );
-    commands.insert_resource(TextStyleBindGroupResource { bind_group });
-    let _ = render_queue;
+
+    let globals_size = size_of::<TextStyleGlobalsGpu>() as u64;
+    let rows_size = size_of::<TextStyleRowsUniform>() as u64;
+
+    match existing {
+        None => {
+            let globals_buffer = render_device.create_buffer(&BufferDescriptor {
+                label: Some("text_style_globals_buffer"),
+                size: globals_size,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            let rows_buffer = render_device.create_buffer(&BufferDescriptor {
+                label: Some("text_style_rows_buffer"),
+                size: rows_size,
+                usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            diag.globals_buffer_create_count += 1;
+            diag.rows_buffer_create_count += 1;
+
+            render_queue.write_buffer(&globals_buffer, 0, bytemuck::bytes_of(&style_table.globals));
+            render_queue.write_buffer(&rows_buffer, 0, bytemuck::bytes_of(&style_table.rows));
+            diag.globals_buffer_write_count += 1;
+            diag.rows_buffer_write_count += 1;
+
+            let bind_group = render_device.create_bind_group(
+                "text_style_bind_group",
+                &pipeline.style_layout,
+                &BindGroupEntries::sequential((
+                    globals_buffer.as_entire_binding(),
+                    rows_buffer.as_entire_binding(),
+                )),
+            );
+            diag.style_bind_group_create_count += 1;
+
+            commands.insert_resource(TextStyleGpuResource {
+                globals_buffer,
+                rows_buffer,
+                bind_group: bind_group.clone(),
+                rows_generation: style_table.rows_generation,
+            });
+            commands.insert_resource(TextStyleBindGroupResource { bind_group });
+        }
+        Some(mut gpu) => {
+            render_queue.write_buffer(
+                &gpu.globals_buffer,
+                0,
+                bytemuck::bytes_of(&style_table.globals),
+            );
+            diag.globals_buffer_write_count += 1;
+
+            if gpu.rows_generation != style_table.rows_generation {
+                render_queue.write_buffer(
+                    &gpu.rows_buffer,
+                    0,
+                    bytemuck::bytes_of(&style_table.rows),
+                );
+                gpu.rows_generation = style_table.rows_generation;
+                diag.rows_buffer_write_count += 1;
+            }
+
+            diag.style_bind_group_reuse_count += 1;
+        }
+    }
 }
 
 pub type DrawTextInstanced = (
@@ -671,6 +740,17 @@ pub fn text_render_queue_state(app: &App) -> TextRenderQueueState {
             render_app
                 .world()
                 .get_resource::<TextRenderQueueState>()
+                .copied()
+        })
+        .unwrap_or_default()
+}
+
+pub fn text_style_render_diagnostics(app: &App) -> TextStyleRenderDiagnostics {
+    app.get_sub_app(RenderApp)
+        .and_then(|render_app| {
+            render_app
+                .world()
+                .get_resource::<TextStyleRenderDiagnostics>()
                 .copied()
         })
         .unwrap_or_default()
