@@ -181,3 +181,41 @@ cleared target. This is a self-inflicted fork bug, not a Bevy headless limitatio
 - Do **not** pay multi-second `Readback` polling loops in CI when Route B is the authorized proof.
 - Keep Bevy integration evidence to short queue-wiring probes (draw count, instance count, view count).
 - Mark in-Bevy PNG capture as **DEFERRED** until a `Camera2d` + `Tonemapping::None` readback path is wired.
+
+## Case study: the typeface mount black-screen (STUDIO-TYPEFACE-STARTUP-FIX-0R)
+
+**Symptom:** after Cursor integrated the typeface (`simthing-tools`) render plugin into the live Studio
+(LR8), the window started without panicking but rendered **pure black** — no egui at all (no left panel,
+Generate button, gear, or close X). Disabling the typeface mount restored the full UI.
+
+**Cause — a render plugin that mutates a shared GPU asset at app scope suppresses egui.**
+`SimthingToolsTextPlugin::build` ran `fix_volume_image_view_descriptors` at `Startup`/`PostStartup`: it
+walked **every** `Assets<Image>` entry and rewrote the tonemapping-LUT image to a **D3** texture view, then
+fired `AssetEvent::Modified`. That fix exists only for the **offscreen** headless render path (text drawn
+through a tonemapping camera, which needs the LUT bound as D3). On a **live window** there is no offscreen
+camera — the mutation is pure collateral: it disturbs the prepared GPU views egui depends on, and `bevy_egui`
+silently skips its pass (no panic, just black). A separate `TonemappingLutFixPlugin` did the same thing in
+the render world (`RenderAssets<GpuImage>` / `FallbackImage.d3`) with the same effect.
+
+**Why the first fix failed.** Putting `Tonemapping::None` on the Studio camera removed the LUT *bind-group
+crash* but **not** the black screen — because the black screen was never the LUT mismatch; it was the
+app-scope image mutation. Lesson: a plausible mechanism that "could" explain the symptom is not a diagnosis.
+The deterministic signal was the bisect ("UI returns with the plugin OFF") — chase that, not a theory.
+
+**Fix.** Gate the offscreen-only LUT fix behind `SimthingToolsTextPlugin::without_lut_d3_view_fix()`; the
+Studio shell mounts with it OFF, the headless tests keep it ON (default). The camera returns to the known-good
+default. All `simthing-tools` capability stays in the crate; only the not-yet-visible in-Studio mount is held
+until the main/overlay-camera text path is built and verified on a real window.
+
+**Rules to avoid a repeat:**
+1. **A render/asset plugin is not "integrated" until it has run on a real window with egui mounted.** Headless
+   queue-wiring probes (draw/instance/view counts) prove the GPU path, **not** egui coexistence. Smoke-test the
+   actual window before calling an in-Studio mount done.
+2. **Never mutate a shared `Image` / `GpuImage` / `FallbackImage` view descriptor at app scope on a live egui
+   window.** If a render workaround is needed only for an offscreen/test path, **gate it to that path** (a
+   plugin flag or an offscreen-camera filter) so it never touches the live presentation surface.
+3. **A black screen with no panic is almost always egui's pass being skipped**, not the 3D scene failing.
+   Suspect anything that touches camera views, `RenderAssets<GpuImage>`, `FallbackImage`, viewport rects, or
+   the egui camera-view extraction — before suspecting the scene or the camera transform.
+4. **Trust the bisect over the theory.** When "feature OFF ⇒ symptom gone" is reproducible, the cause is inside
+   that feature's wiring; localize *which* system, don't merge a fix for an unproven mechanism.

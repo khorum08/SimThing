@@ -19,7 +19,14 @@ pub struct StudioTypefaceShellPlugin;
 impl Plugin for StudioTypefaceShellPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StudioTypefaceShellMounted>()
-            .add_plugins(SimthingToolsTextPlugin::new(typeface_fixture_font_bytes()))
+            // Live egui window: disable the offscreen-only LUT D3 view fix, which otherwise mutates
+            // the tonemapping LUT image at app scope and black-screens the Studio (egui suppressed,
+            // STUDIO-TYPEFACE-STARTUP-FIX-0R). Galaxy-map text renders via the main/overlay camera,
+            // not the offscreen tonemapping path that needs that fix.
+            .add_plugins(
+                SimthingToolsTextPlugin::new(typeface_fixture_font_bytes())
+                    .without_lut_d3_view_fix(),
+            )
             .add_plugins(StudioTypefaceLabelPlugin)
             .add_systems(Startup, stage_studio_typeface_presentation_probe)
             .add_systems(Update, mark_studio_typeface_shell_mounted);
