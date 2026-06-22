@@ -177,7 +177,7 @@
 | **TYPEFACE-LR5-HIGH-VOLUME-BENCH-BUDGET-0** - deterministic high-volume typeface benchmark and conservative CPU budget gates for static nameplates, damage-text churn, and mixed text+icon atlas stress; no MSDF/style/deformation/export/Studio integration | #879 | `5c912b2cf8` | **DA HOLD / remediated by LR5R pending review** — `docs/tests/typeface_lr5_results.md`; ladder `docs/design_typeface_ladder.md` § LR5 |
 | **TYPEFACE-LR5-PERF-PATH-0R** - Bevy-path aggregate versioning, dirty atlas sync, draw sync gating, instance-buffer reuse; 5k no-op binding profile; CPU harness retained | #880 | `9a17bc64f0` | **PROBATION / DA remediation** — no-op 5k binding passed; damage churn open — `docs/tests/typeface_lr5r_results.md`; ladder `docs/design_typeface_ladder.md` § LR5R |
 | **TYPEFACE-LR5-DAMAGE-CHURN-GPU-AUDIT-0R** - no-clone changed-label rebuild; segmented aggregate patching; numeric shape cache; damage phase profile; GPU-residency audit; variable-width 5k damage ~2.26 ms | #881 | `9a2f8d7351` | **PROBATION / DA remediation** — damage reduced but variable-width HOLD — `docs/tests/typeface_lr5s_results.md` |
-| **TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R** - `NumericDamageLabel` fixed-width glyph lane; shaping bypass; aggregate repack zero; fixed-width 5k damage ~0.58 ms/frame | — | — | **PROBATION / DA remediation — recommend approval** — `docs/tests/typeface_lr5t_results.md` |
+| **TYPEFACE-LR5-NUMERIC-DAMAGE-LANE-0R** - `NumericDamageLabel` fixed-width glyph lane; shaping bypass; aggregate repack zero; fixed-width 5k damage ~0.58 ms/frame | #882 | `c05baef87b` | **PROBATION — recommend DA approval** — `docs/tests/typeface_lr5t_results.md` |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

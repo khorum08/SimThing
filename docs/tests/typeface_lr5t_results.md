@@ -7,6 +7,8 @@ PASS — fixed-width numeric damage glyph lane meets 5k/500 binding budget; shap
 ## PR / branch / merge
 
 - Branch: `typeface-lr5-numeric-damage-lane-0r`
+- PR: #882
+- Merge SHA: `c05baef87bc2b5c24f2c77f706d3aef32665a2ea`
 
 ## DA HOLD being remediated
 
