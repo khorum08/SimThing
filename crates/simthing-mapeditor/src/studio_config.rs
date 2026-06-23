@@ -242,8 +242,31 @@ impl StudioCameraConfig {
 }
 
 impl SimThingStudioConfig {
+    /// Stable presentation-config directory (matches `EditorSettings` under `%APPDATA%/SimThing/Studio`).
+    pub fn studio_config_dir() -> PathBuf {
+        if let Some(base) = std::env::var_os("APPDATA") {
+            PathBuf::from(base).join("SimThing").join("Studio")
+        } else {
+            PathBuf::from(".")
+        }
+    }
+
+    /// Primary presentation config path (not cwd-relative).
     pub fn config_path() -> PathBuf {
+        Self::studio_config_dir().join(STUDIO_CONFIG_FILE_NAME)
+    }
+
+    /// Legacy cwd-relative path kept for one-time migration from older Studio builds.
+    pub fn legacy_cwd_config_path() -> PathBuf {
         PathBuf::from(STUDIO_CONFIG_FILE_NAME)
+    }
+
+    fn ensure_studio_config_dir() -> Result<(), StudioConfigError> {
+        let dir = Self::studio_config_dir();
+        if dir.as_os_str().is_empty() {
+            return Ok(());
+        }
+        std::fs::create_dir_all(dir).map_err(StudioConfigError::Io)
     }
 
     pub fn settings_dialog_defaults() -> SettingsDialogConfig {
@@ -296,18 +319,41 @@ impl SimThingStudioConfig {
 
     pub fn load_at_startup() -> StudioConfigLoadOutcome {
         let path = Self::config_path();
-        if !path.exists() {
-            return StudioConfigLoadOutcome::MissingDefaults;
+        if path.exists() {
+            return match load_studio_config_from_path(&path) {
+                Ok(outcome) => outcome,
+                Err(err) => StudioConfigLoadOutcome::RejectedDefaults {
+                    reason: err.to_string(),
+                },
+            };
         }
-        match load_studio_config_from_path(&path) {
-            Ok(outcome) => outcome,
-            Err(err) => StudioConfigLoadOutcome::RejectedDefaults {
-                reason: err.to_string(),
-            },
+
+        let legacy = Self::legacy_cwd_config_path();
+        if legacy.exists() && legacy != path {
+            match load_studio_config_from_path(&legacy) {
+                Ok(StudioConfigLoadOutcome::Loaded { config, warnings }) => {
+                    let mut warnings = warnings;
+                    if let Err(_err) = save_studio_config_to_path(&path, &config) {
+                        warnings.push(
+                            "failed to persist migrated studio config to stable path".to_string(),
+                        );
+                    }
+                    return StudioConfigLoadOutcome::Loaded { config, warnings };
+                }
+                Ok(other) => return other,
+                Err(err) => {
+                    return StudioConfigLoadOutcome::RejectedDefaults {
+                        reason: err.to_string(),
+                    };
+                }
+            }
         }
+
+        StudioConfigLoadOutcome::MissingDefaults
     }
 
     pub fn save_to_default_path(&self) -> Result<(), StudioConfigError> {
+        Self::ensure_studio_config_dir()?;
         save_studio_config_to_path(&Self::config_path(), self)
     }
 }
@@ -891,5 +937,47 @@ mod tests {
         config.antialiasing_mode = StudioAntialiasingMode::Fxaa;
         apply_studio_config_to_editor_settings(&config, &mut settings);
         assert_eq!(settings.antialiasing_mode(), StudioAntialiasingMode::Fxaa);
+    }
+
+    #[test]
+    fn stable_config_path_lives_under_studio_settings_dir_when_appdata_set() {
+        let dir = SimThingStudioConfig::studio_config_dir();
+        let path = SimThingStudioConfig::config_path();
+        assert_eq!(path.parent(), Some(dir.as_path()));
+        assert_eq!(
+            path.file_name().and_then(|name| name.to_str()),
+            Some(STUDIO_CONFIG_FILE_NAME)
+        );
+    }
+
+    #[test]
+    fn legacy_cwd_config_migrates_to_stable_path() {
+        let dir = TempDir::new().expect("tempdir");
+        let legacy = dir.path().join(STUDIO_CONFIG_FILE_NAME);
+        let mut config = SimThingStudioConfig::default();
+        config.antialiasing_mode = StudioAntialiasingMode::SmaaMedium;
+        config.star_rendering.base_blur_radius = 0.33;
+        save_studio_config_to_path(&legacy, &config).expect("save legacy");
+
+        let stable_dir = TempDir::new().expect("stable tempdir");
+        let stable = stable_dir.path().join(STUDIO_CONFIG_FILE_NAME);
+
+        // Simulate migration helper behavior without relying on process APPDATA.
+        let loaded = load_studio_config_from_path(&legacy).expect("load legacy");
+        match loaded {
+            StudioConfigLoadOutcome::Loaded { config: round, .. } => {
+                save_studio_config_to_path(&stable, &round).expect("migrate save");
+            }
+            other => panic!("expected loaded legacy config, got {other:?}"),
+        }
+
+        let migrated = load_studio_config_from_path(&stable).expect("load stable");
+        match migrated {
+            StudioConfigLoadOutcome::Loaded { config: round, .. } => {
+                assert_eq!(round.antialiasing_mode, StudioAntialiasingMode::SmaaMedium);
+                assert_eq!(round.star_rendering.base_blur_radius, 0.33);
+            }
+            other => panic!("expected loaded migrated config, got {other:?}"),
+        }
     }
 }
