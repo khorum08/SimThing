@@ -318,6 +318,8 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     let min_focused_px = style_globals.y;
     let unselected_global_alpha = style_globals.z;
     let min_unselected_px = style_globals.w;
+    // screen_companion legacy path: zero thresholds mean "no LOD patch" (all labels eligible).
+    let force_all_labels = min_unselected_px < 0.5 && min_focused_px < 0.5;
     let force_all_debug = min_unselected_px < 0.0;
     let focused = instance.size_params.z > 0.5;
 
