@@ -7,6 +7,7 @@ use bevy_egui::{egui, EguiContexts};
 use crate::dialog::{
     inactive_control_warning, unimplemented_action_response, StudioAction, WarningDialogModel,
 };
+use crate::falloff_ruler_overlay::{draw_falloff_ruler_overlay, FalloffRulerOverlayParams};
 use crate::generation::{run_generation, GenerationPreset, GenerationProfile};
 use crate::hyperlane_buckets::{
     apply_hyperlane_render_settings_to_meta, hyperlane_visuals_dirty_after_settings_change,
@@ -180,6 +181,19 @@ pub fn studio_ui_system(
         screen_h,
     );
     let telemetry_ms = telemetry_started.elapsed().as_secs_f64() * 1000.0;
+    if state.show_falloff_ruler {
+        let nameplate_settings = settings.star_nameplate_settings().clamped();
+        draw_falloff_ruler_overlay(
+            ctx,
+            FalloffRulerOverlayParams {
+                viewport_width: screen_w,
+                viewport_height: screen_h,
+                star_falloff_percent: state.star_falloff_settings.falloff_distance_percent,
+                nameplate_relative_falloff_percent: nameplate_settings
+                    .relative_falloff_distance_percent,
+            },
+        );
+    }
     if !state.performance_diagnostic_hide_panels {
         draw_warning_dialog(ctx, &mut dialog);
     }
@@ -821,6 +835,7 @@ fn draw_telemetry_dialog(
                 egui::CollapsingHeader::new("Performance isolation")
                     .default_open(false)
                     .show(ui, |ui| {
+                        ui.checkbox(&mut state.show_falloff_ruler, "Show falloff ruler");
                         let mut hide_stars = !state.show_stars;
                         if ui.checkbox(&mut hide_stars, "Hide stars").changed() {
                             state.show_stars = !hide_stars;
@@ -1524,6 +1539,7 @@ fn render_debug_controls(ui: &mut egui::Ui, state: &mut StudioAppState) {
         .show(ui, |ui| {
             ui.checkbox(&mut state.show_stars, "Show stars");
             ui.checkbox(&mut state.show_hyperlanes, "Show hyperlanes");
+            ui.checkbox(&mut state.show_falloff_ruler, "Show falloff ruler");
             ui.horizontal(|ui| {
                 if ui.button("Stars only").clicked() {
                     state.show_stars = true;

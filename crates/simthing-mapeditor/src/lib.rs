@@ -5,6 +5,7 @@
 
 pub mod camera_control;
 pub mod dialog;
+pub mod falloff_ruler_overlay;
 pub mod generation;
 pub mod hydration;
 pub mod hyperlane_buckets;
@@ -55,6 +56,7 @@ pub fn run() {
 }
 
 pub use dialog::{SettingsDialogModel, StudioAction, TelemetryDialogModel, WarningDialogModel};
+pub use falloff_ruler_overlay::{draw_falloff_ruler_overlay, FalloffRulerOverlayParams};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
 pub use hydration::{
     generate_simthing_spec_scenario, heatmap_readiness_from_simthing_spec,

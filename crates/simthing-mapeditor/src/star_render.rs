@@ -751,6 +751,25 @@ pub fn visual_horizon_falloff_progress_percent(
     (progress.clamp(0.0, 1.0)) * 100.0
 }
 
+/// Screen pixel on the visual high-horizon ruler at the given progress percent.
+pub fn visual_horizon_ruler_point_at_progress_percent(
+    ruler: &VisualHorizonFalloffRuler,
+    progress_percent: f32,
+) -> [f32; 2] {
+    let t = (progress_percent / 100.0).clamp(0.0, 1.0);
+    [
+        ruler.base_px[0] + (ruler.vanishing_px[0] - ruler.base_px[0]) * t,
+        ruler.base_px[1] + (ruler.vanishing_px[1] - ruler.base_px[1]) * t,
+    ]
+}
+
+/// Screen Y as a fraction from the top (0 = top edge, 1 = bottom edge).
+pub fn visual_horizon_ruler_screen_y_fraction_from_top(progress_percent: f32) -> f32 {
+    let t = (progress_percent / 100.0).clamp(0.0, 1.0);
+    STAR_FALLOFF_BASE_Y_FRACTION
+        + (STAR_FALLOFF_VANISHING_Y_FRACTION - STAR_FALLOFF_BASE_Y_FRACTION) * t
+}
+
 /// Shared star/nameplate falloff progress (default: visual horizon).
 pub fn star_falloff_progress_percent(
     metric: StarFalloffMetric,
@@ -1134,6 +1153,15 @@ mod tests {
         ];
         let progress = visual_horizon_falloff_progress_percent(mid, &ruler);
         assert!((progress - 50.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn visual_horizon_ruler_sixty_five_percent_is_fifty_one_point_two_five_from_top() {
+        let y_frac = visual_horizon_ruler_screen_y_fraction_from_top(65.0);
+        assert!((y_frac - 0.5125).abs() < f32::EPSILON);
+        let ruler = VisualHorizonFalloffRuler::from_viewport(1920.0, 1080.0);
+        let point = visual_horizon_ruler_point_at_progress_percent(&ruler, 65.0);
+        assert!((point[1] - 1080.0 * 0.5125).abs() < 0.01);
     }
 
     #[test]

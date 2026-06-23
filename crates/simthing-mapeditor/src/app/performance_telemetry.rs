@@ -15,9 +15,9 @@ use crate::star_render::{
     nameplate_gpu_screen_label_falloff_alpha, nameplate_label_passes_density_gate,
     nameplate_label_passes_readability_gate, nameplate_scaled_label_height_px,
     nameplate_unselected_global_lod_alpha, star_falloff_alpha_at_progress,
-    star_falloff_progress_percent, star_nameplate_envelope_height_ratio, world_anchor_screen_px,
-    StarBillboardInstance, StarBillboardRenderSettings, StarNameplateDebugMode,
-    VisualHorizonFalloffRuler,
+    star_falloff_progress_percent, star_nameplate_envelope_height_ratio,
+    visual_horizon_ruler_screen_y_fraction_from_top, world_anchor_screen_px, StarBillboardInstance,
+    StarBillboardRenderSettings, StarNameplateDebugMode, VisualHorizonFalloffRuler,
 };
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -436,13 +436,17 @@ pub fn update_nameplate_diagnostics_system(
     telemetry_state
         .telemetry
         .nameplate_star_falloff_distance_pct = Some(star_falloff_settings.falloff_distance_percent);
+    let effective_falloff = nameplate_effective_falloff_distance_percent(
+        star_falloff_settings.falloff_distance_percent,
+        nameplate_settings.relative_falloff_distance_percent,
+    );
     telemetry_state
         .telemetry
-        .nameplate_effective_falloff_distance_pct =
-        Some(nameplate_effective_falloff_distance_percent(
-            star_falloff_settings.falloff_distance_percent,
-            nameplate_settings.relative_falloff_distance_percent,
-        ));
+        .nameplate_effective_falloff_distance_pct = Some(effective_falloff);
+    telemetry_state
+        .telemetry
+        .nameplate_effective_falloff_screen_y_pct =
+        Some(visual_horizon_ruler_screen_y_fraction_from_top(effective_falloff) * 100.0);
     let auto_density_alpha = nameplate_unselected_global_lod_alpha(
         gpu_screen_label_count,
         sample_label_height_px,
