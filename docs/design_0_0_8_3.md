@@ -17,17 +17,19 @@
 
 ## Typeface / simthing-tools reference
 
-The closed typeface track is recorded in:
+The closed typeface track is now consolidated in:
 
-- `docs/design_typeface_ladder.md`
-- `docs/design_simthing_typeface_track_proposal.md`
+- `docs/simthing_tools_typeface_adr.md` â€” root ADR (ACCEPTED / CLOSED / DA-APPROVED)
 - `docs/tests/current_evidence_index.md`
 
-The resulting runtime lives in `crates/simthing-tools` as a presentation/support crate. It is not simulation
-authority and must remain subordinate to the permanent core design, Â§0 GPU-residency doctrine, and
-semantic-free shader rules.
+Archived production-track mechanics and rationale live under:
 
-Process reports from the TYPEFACE-LADDER are archived under `docs/archive/typeface_track_2026_06/`.
+- `docs/archive/typeface_track_2026_06/design_typeface_ladder.md`
+- `docs/archive/typeface_track_2026_06/design_simthing_typeface_track_proposal.md`
+
+The resulting runtime lives in `crates/simthing-tools` as a presentation/support crate. It is not
+simulation authority and must remain subordinate to `simthing_core_design.md`, Â§0 GPU-residency doctrine,
+and semantic-free shader rules.
 
 ---
 
@@ -73,7 +75,18 @@ capability subtrees, and stockpiles may live on Owner SimThings as properties, o
 Assets refer to owners through owner references, properties, and columns. Ownership changes do not
 spatially reparent assets.
 
-### 0.1 Maximal SimThing conformance (the founding premise)
+
+### Terminology correction — Scenario wrapper and GameSession root
+
+A canonical saved scenario is rooted at `Scenario`, which is the save/load authority wrapper. The
+`Scenario` root has exactly one direct `GameSession` child. `GameSession` is the runtime session root
+beneath that wrapper; its direct children include Owner SimThings and the root spatial GalaxyMap /
+WorldStateMap Location. Future tracks must not conflate the save/load wrapper with the runtime root.
+
+RF membership is channel identity, not ownership containment. A spatial participant joins owner/resource/
+scope lanes through RF metadata on properties/overlays; the Owner SimThing remains a GameSession sibling.
+Local owner/resource/scope channels settle inside each parent Location before net surplus/deficit bubbles
+upward. This is permanent doctrine: `simthing_core_design.md` §5 is the canonical home, not only RF ADRs.### 0.1 Maximal SimThing conformance (the founding premise)
 **Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
 gamesession, owners, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
 all SimThings in one recursive `{properties, overlays, children}` tree. New behavior is modeled by

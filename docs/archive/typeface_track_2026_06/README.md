@@ -3,7 +3,9 @@
 Per-rung PROBATION/validation reports from the closed TYPEFACE-LADDER (LR0–LR9). Durable facts are
 consolidated in:
 
-- `docs/design_typeface_ladder.md` — mechanical ladder + runtime reference
+- `docs/simthing_tools_typeface_adr.md` — **root ADR** (ACCEPTED / CLOSED / DA-APPROVED; canonical authority)
+- `docs/archive/typeface_track_2026_06/design_typeface_ladder.md` — archived mechanical ladder
+- `docs/archive/typeface_track_2026_06/design_simthing_typeface_track_proposal.md` — archived proposal/rationale
 - `docs/tests/current_evidence_index.md` — compact live ledger (TYPEFACE rows)
 - `docs/simthing_core_design.md` — presentation/support crate summary
 

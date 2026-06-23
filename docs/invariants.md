@@ -30,6 +30,21 @@ rules lives in [`simthing_core_design.md`](simthing_core_design.md); this file i
 
 ---
 
+## Scenario / GameSession / Spatial Tree
+
+| Rule | Enforced by |
+|---|---|
+| Scenario is the save/load authority wrapper | Canonical `SimThingScenarioSpec` files use a `Scenario` root; save/load systems prove the Scenario wrapper |
+| Scenario has exactly one direct GameSession child | Scenario validation rejects zero or multiple GameSession children (`SCENARIO-GAMESESSION-CHILD-0`, PR #779) |
+| GameSession is the runtime session root beneath Scenario | Runtime/Studio/session tests load and reason from the GameSession subtree; save/load wraps the Scenario around it |
+| Owner SimThings are direct GameSession children | Scenario fixtures and structural guards place owner entities as GameSession siblings (`SESSION-OWNER-ENTITIES-0`, PR #780) |
+| Owners are never spatial parents | Ownership changes update owner refs/properties/columns/overlays; no spatial reparenting; the D=3 ownership-node is the canonical rejected design |
+| GalaxyMap / WorldStateMap is a direct GameSession child and the spatial root | Scenario fixtures and Save/Load validation assert the spatial root under GameSession (`SESSION-GALAXYMAP-WORLDSTATE-0`, PR #781) |
+| Planet gridcells contain a 1×1 surface gridcell before gameplay children | Scenario Runtime / Save-Load final review; admission errors on missing/duplicate/off-(0,0)/direct-gameplay (`SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0`, PR #851) |
+| Movement is the only spatial reparenting | BoundaryProtocol structural movement is separate from owner/channel/overlay updates |
+
+---
+
 ## Property Layout
 
 | Rule | Enforced by |
@@ -97,6 +112,18 @@ rules lives in [`simthing_core_design.md`](simthing_core_design.md); this file i
 Added by `docs/adr/resource_flow_substrate.md`. These rules govern the
 continuous-flow arena substrate that builds on AccumulatorOp v2.
 
+### RF channel identity and settlement
+
+| Rule | Enforced by |
+|---|---|
+| RF channel identity is owner/resource/scope metadata, not containment | RF rows carry `owner_ref`/`resource_key`/`scope_id`; owner SimThings remain GameSession siblings; no spatial reparenting for channel membership |
+| Local settlement precedes upward bubbling | Recursive RF arena tests settle per parent Location before net output moves to parent (`LOADED-SCENARIO-RECURSIVE-RF-RUNTIME-0`, PR #838) |
+| RF channels do not cross owners by default | Grouping key includes `owner_ref`; any cross-owner transfer must be explicit source-debit / overlay policy |
+| RF overlay/property maps are the authoritative channel tags | Lowering resolves RF metadata to dense row/table surfaces; runtime groups by resolved channel columns |
+| Scope IDs distinguish local/system/strategic arenas without new engines | Scope participates in row/table keys; no bespoke combat/economy/logistics subsystems |
+
+### RF arena and allocation
+
 | Rule | Enforced by |
 |---|---|
 | Arena participation is explicit | `simthing-spec` rejects implicit/wildcard admission without declared upper bound at session build; property possession alone never admits to an arena |
@@ -118,6 +145,16 @@ continuous-flow arena substrate that builds on AccumulatorOp v2.
 Added by `docs/adr/mapping_sparse_regioncell.md`. These rules govern dense local spatial fields;
 they are designer-facing guardrails first, runtime-enforced last. Design notes and evidence:
 the ADR and `docs/workshop/m5_gradient_extraction_design_note.md`.
+
+### Front propagation operators
+
+| Rule | Enforced by |
+|---|---|
+| Gu-Yang/SaturatingFlux is the production front-propagation operator | Borders/chokepoints emerge from bounded conservative front fields, not authored border services; choke readout is one resident scalar column in the same dispatch |
+| PALMA is the production reach/impedance utility | Pathfinding consumes gradient fields (`D = W + min(N4 D)` field over the front); no CPU route planner, no predecessor, no simulation-authority path object |
+| A rendered path/border is presentation only | UI polylines/labels derive from fields and never become simulation authority; writing a perceived/field-derived path into a true spatial-authority column is rejected at spec admission |
+
+### Spatial field guardrails
 
 | Rule | Enforced by |
 |---|---|

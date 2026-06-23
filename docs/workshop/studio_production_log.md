@@ -24,6 +24,19 @@ Full review: [`docs/tests/scenario_runtime_saveload_final_da_review_rerun_0_resu
 
 ---
 
+## Core constitution canonicalization (2026-06-22)
+
+- `CORE-CONSTITUTION-CANONICALIZATION-0` — canonicalized Scenario/GameSession spatial tree, RF channel doctrine,
+  Gu-Yang/PALMA production front summary, and simthing-tools typeface ADR into permanent core docs.
+- `docs/simthing_tools_typeface_adr.md` created as the root ADR (ACCEPTED / CLOSED / DA-APPROVED).
+- `docs/design_typeface_ladder.md` and `docs/design_simthing_typeface_track_proposal.md` archived to
+  `docs/archive/typeface_track_2026_06/`.
+- `simthing_core_design.md` §2 rewritten with canonical Scenario→GameSession→Owners+GalaxyMap tree.
+- `simthing_core_design.md` §5 expanded with RF channel doctrine (owner/resource/scope, local settlement).
+- `simthing_core_design.md` §7 gets §7.2.1 low-context summary for Gu-Yang/PALMA border/pathfinding.
+- `invariants.md` gains Scenario/GameSession/spatial tree rules, RF channel rules, and Gu-Yang/PALMA rules.
+- `design_0_0_8_3.md` updated with Scenario wrapper/GameSession doctrine and new ADR pointer.
+
 ## Typeface ladder — docs archive cleanup (2026-06-22)
 
 - `TYPEFACE-CLEANUP-DOCS-ARCHIVE-0` consolidates durable typeface reference into ladder + core design; archives
