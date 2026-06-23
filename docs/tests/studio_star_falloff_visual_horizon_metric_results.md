@@ -6,9 +6,9 @@ PROBATION / presentation math fix — star and nameplate falloff use visual fore
 
 ## PR / branch / merge
 
-- Branch: `codex/studio-star-falloff-visual-horizon-metric-0`
-- PR: (pending)
-- Merge: (pending)
+- Branch: `codex/studio-star-falloff-visual-horizon-metric-0` (deleted after merge)
+- PR: #923 — https://github.com/khorum08/SimThing/pull/923
+- Merge: `a7a5582ea982891fba886081bf1d38b5d1d19f0c` on `master`
 
 ## Root cause
 
