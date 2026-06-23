@@ -7,8 +7,8 @@ PROBATION / presentation math fix — production Studio star/nameplate/hyperlane
 ## PR / branch / merge
 
 - Branch: `codex/studio-falloff-map-radius-plateau-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #928
+- Merge: `8a973e840b59740311bd33c5a851f0a999183034`
 
 ## Root cause
 
