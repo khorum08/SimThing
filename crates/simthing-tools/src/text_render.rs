@@ -28,7 +28,7 @@ use bevy::{
             BufferInitDescriptor, BufferUsages, PipelineCache, RenderPipelineDescriptor,
             SamplerBindingType, ShaderStages, SpecializedMeshPipeline,
             SpecializedMeshPipelineError, SpecializedMeshPipelines, TextureSampleType,
-            VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
+            TextureViewId, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode,
         },
         renderer::RenderDevice,
         sync_world::MainEntity,
@@ -89,6 +89,11 @@ pub struct TextAtlasRenderDiagnostics {
 pub struct TextAtlasGpuResource {
     pub bind_group: BindGroup,
     pub atlas_id: bevy::asset::AssetId<bevy::prelude::Image>,
+    /// Identity of the GPU texture view the bind group was built from. The atlas `GpuImage` is
+    /// recreated (new texture/view) whenever glyphs are rasterized after init (e.g. on-demand
+    /// nameplate glyphs in the live Studio). Recreate the bind group when this changes so it never
+    /// samples a stale, glyph-empty atlas texture.
+    pub texture_view_id: TextureViewId,
 }
 
 /// Render-world style GPU buffer reuse counters (LR6B-STYLE-BUFFER-RESIDENCY-0R).
@@ -686,8 +691,12 @@ fn prepare_text_atlas_bind_group(
         return;
     }
     let atlas_id = atlas_handle.0.id();
+    let texture_view_id = gpu_image.texture_view.id();
     if let Some(existing) = existing {
-        if existing.atlas_id == atlas_id {
+        // Reuse only while the bind group still points at the current atlas texture view. A new
+        // texture view id means the atlas `GpuImage` was re-prepared (glyphs added after init), so
+        // the cached bind group would sample a stale, glyph-empty texture.
+        if existing.atlas_id == atlas_id && existing.texture_view_id == texture_view_id {
             diag.atlas_bind_group_reuse_count += 1;
             return;
         }
@@ -701,6 +710,7 @@ fn prepare_text_atlas_bind_group(
     commands.insert_resource(TextAtlasGpuResource {
         bind_group: bind_group.clone(),
         atlas_id,
+        texture_view_id,
     });
     commands.insert_resource(TextAtlasBindGroupResource { bind_group });
 }

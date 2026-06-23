@@ -747,10 +747,16 @@ fn atlas_bind_group_residency_still_passes() {
     let mut app = render_bevy_app();
     warmup_render_path_warp_app(&mut app);
     let after_warmup = text_atlas_render_diagnostics(&app);
-    assert_eq!(after_warmup.atlas_bind_group_create_count, 1);
+    // The bind group follows the GPU atlas texture view, which is re-prepared as glyphs rasterize
+    // after init, so it may be (re)created more than once while the atlas settles.
+    assert!(after_warmup.atlas_bind_group_create_count >= 1);
     run_bevy_updates(&mut app, 6);
     let after_noop = text_atlas_render_diagnostics(&app);
-    assert_eq!(after_noop.atlas_bind_group_create_count, 1);
+    // Once the atlas texture is stable, no-op frames must reuse the bind group, not recreate it.
+    assert_eq!(
+        after_noop.atlas_bind_group_create_count,
+        after_warmup.atlas_bind_group_create_count
+    );
     assert!(after_noop.atlas_bind_group_reuse_count > after_warmup.atlas_bind_group_reuse_count);
 }
 
