@@ -327,3 +327,19 @@ After the Scenario Runtime + Save/Load ladder, Studio framerate regressed from t
 ## STUDIO-WINDOWS-DIAGNOSTIC-DEBUG-EXE-0 — Windows debug Studio executable for FPS regression capture
 
 Local Windows builds use package `simthing-mapeditor`, binary `simthing-studio` (`target\debug\simthing-studio.exe` / `target\release\simthing-studio.exe`). Rebuild: `scripts\windows\build_studio_debug_diagnostic.ps1`. Checksums and launch matrix live under local `diagnostics\` (gitignored). Full report: `docs/tests/studio_windows_diagnostic_debug_exe_0_results.md`. Prepares reproducible artifacts for owner FPS/isolation capture; not a renderer fix.
+
+## STUDIO-TYPEFACE-STAR-NAMEPLATES-0 - live toolkit dress rehearsal
+
+Studio now exercises the `simthing-tools` typeface toolkit in its existing Camera3d view by drawing one
+camera-facing, world-anchored nameplate below each generated star. Label text is the authoritative raw
+SimThing ID from ScenarioSpec structural placement, formatted as `SIM-{raw_id:06}`; it is presentation only
+and does not become scenario authority. Nameplate width, base transparency, relative falloff distance, and
+falloff transparency are live persisted Settings values. Scale and distance attenuation track the existing
+star render envelope.
+
+The renderer aggregates all world glyphs into one draw entity and one persistent GPU instance buffer.
+Shaping, atlas rebuilds, and aggregate uploads are dirty-gated. Studio mounts the toolkit with
+`world_text_only()` and without the offscreen LUT D3 workaround: no second Camera2d and no global
+Image/GpuImage/FallbackImage mutation are permitted. Plugin setup must also preserve pre-existing Bevy asset
+stores; calling Bevy 0.16 `init_asset::<Image>()` after DefaultPlugins replaces the loaded image store and can
+invalidate tonemapping LUT handles. Full report: `docs/tests/studio_typeface_star_nameplates_0_results.md`.

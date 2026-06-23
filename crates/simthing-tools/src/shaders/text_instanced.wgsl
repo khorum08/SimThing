@@ -1,5 +1,10 @@
+#ifdef WORLD_TEXT
+#import bevy_pbr::mesh_view_bindings::view
+#import bevy_pbr::view_transformations::position_world_to_clip
+#else
 #import bevy_sprite::mesh2d_view_bindings::view
 #import bevy_sprite::mesh2d_functions::mesh2d_position_local_to_clip
+#endif
 
 struct GlyphInstance {
     @location(5) pos_size: vec4<f32>,
@@ -10,15 +15,17 @@ struct GlyphInstance {
     @location(10) deform_params: vec4<f32>,
     @location(11) path_params: vec4<f32>,
     @location(12) warp_params: vec4<f32>,
+#ifdef WORLD_TEXT
+    @location(13) anchor_height: vec4<f32>,
+    @location(14) size_params: vec4<f32>,
+    @location(15) distance_params: vec4<f32>,
+#endif
 }
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
     @location(0) position: vec3<f32>,
-    @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
-    @location(3) tangent: vec4<f32>,
-    @location(4) color: vec4<f32>,
 }
 
 struct VertexOutput {
@@ -26,8 +33,7 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
     @location(1) color: vec4<f32>,
     @location(2) sdf_params: vec4<f32>,
-    @location(3) style_params: vec4<f32>,
-    @location(4) local_uv: vec2<f32>,
+    @location(3) local_uv: vec2<f32>,
 }
 
 struct StyleRow {
@@ -196,14 +202,67 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     var local_xy = deformed_uv * instance.pos_size.zw + instance.pos_size.xy;
     local_xy = apply_text_path(local_xy, path_slot, path_u);
     local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
+#ifdef WORLD_TEXT
+    let anchor = instance.anchor_height.xyz;
+    let camera_distance = length(view.world_position.xyz - anchor);
+    let depth_percent = clamp(
+        (camera_distance - instance.distance_params.x)
+            / max(instance.distance_params.y - instance.distance_params.x, 0.0001),
+        0.0,
+        1.0,
+    ) * 100.0;
+    let height_ratio = distance_falloff(
+        depth_percent,
+        instance.distance_params.z,
+        instance.size_params.z,
+        instance.size_params.w,
+    );
+    let label_height = instance.anchor_height.w * height_ratio;
+    let label_width = label_height * instance.size_params.x;
+    let right = normalize(view.world_from_view[0].xyz);
+    let up = normalize(view.world_from_view[1].xyz);
+    let vertical_offset = -label_height * (1.0 + instance.size_params.y);
+    let world_position = anchor
+        + right * (local_xy.x * label_width)
+        + up * (local_xy.y * label_height + vertical_offset);
+    out.clip_position = position_world_to_clip(world_position);
+    let ceiling_alpha = distance_falloff(
+        depth_percent,
+        instance.distance_params.z,
+        instance.distance_params.w,
+        instance.size_params.w,
+    );
+    let relative_alpha = distance_falloff(
+        depth_percent,
+        instance.style_params.z,
+        instance.style_params.w,
+        instance.size_params.w,
+    );
+    out.color = vec4(instance.color.rgb, instance.color.a * ceiling_alpha * relative_alpha);
+#else
     let local = vec4(local_xy, 0.0, 1.0);
     out.clip_position = mesh2d_position_local_to_clip(identity_mat4(), local);
-    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv);
     out.color = instance.color;
-    out.sdf_params = instance.sdf_params;
-    out.style_params = instance.style_params;
+#endif
+    out.uv = mix(instance.uv_rect.xy, instance.uv_rect.zw, source_uv);
+    out.sdf_params = vec4(instance.sdf_params.xyz, instance.style_params.x);
     out.local_uv = source_uv;
     return out;
+}
+
+fn distance_falloff(
+    depth_percent: f32,
+    falloff_percent: f32,
+    target_value: f32,
+    horizon_taper: f32,
+) -> f32 {
+    let depth = clamp(depth_percent, 0.0, 100.0);
+    let falloff_at = clamp(falloff_percent, 0.0001, 100.0);
+    if depth <= falloff_at {
+        return mix(1.0, target_value, clamp(depth / falloff_at, 0.0, 1.0));
+    }
+    let horizon_t = clamp((depth - falloff_at) / max(100.0 - falloff_at, 0.0001), 0.0, 1.0);
+    return target_value * mix(1.0, horizon_taper, horizon_t);
 }
 
 fn identity_mat4() -> mat4x4<f32> {
@@ -309,7 +368,7 @@ fn apply_sdf_effects(
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     let sample = textureSample(atlas_tex, atlas_smp, in.uv);
-    let slot = u32(clamp(in.style_params.x, 0.0, 31.0));
+    let slot = u32(clamp(in.sdf_params.w, 0.0, 31.0));
     let style = style_row_at(slot);
     let styled_color = apply_style_fill(style, in.color, in.local_uv);
     let coverage = sdf_coverage(

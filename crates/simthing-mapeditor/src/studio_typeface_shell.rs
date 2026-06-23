@@ -25,7 +25,8 @@ impl Plugin for StudioTypefaceShellPlugin {
             // not the offscreen tonemapping path that needs that fix.
             .add_plugins(
                 SimthingToolsTextPlugin::new(typeface_fixture_font_bytes())
-                    .without_lut_d3_view_fix(),
+                    .without_lut_d3_view_fix()
+                    .world_text_only(),
             )
             .add_plugins(StudioTypefaceLabelPlugin)
             .add_systems(Startup, stage_studio_typeface_presentation_probe)

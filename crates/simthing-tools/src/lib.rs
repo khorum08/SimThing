@@ -16,6 +16,7 @@ pub mod style;
 mod text_render;
 pub mod warp;
 mod wgpu_smoke;
+pub mod world_text;
 
 pub use atlas::{
     format_atlas_report, quantize_px, rasterize_glyph_cpu, AtlasTile, GlyphAtlas, GlyphAtlasCore,
@@ -29,9 +30,8 @@ pub use bevy::{
     text_deform_diagnostics, text_label_entity_counts, text_path_warp_diagnostics,
     text_perf_diagnostics, text_style_diagnostics, BevyTextBenchProfile, GlyphInstanceGpu,
     LabelAggregateSegment, SimthingToolsTextPlugin, TextAggregateVersion, TextDamagePhaseProfile,
-    TonemappingLutFixPlugin,
     TextDrawExtract, TextGlyphInstances, TextInstanceAggregate, TextLabel, TextLabelRenderMode,
-    TextPerfDiagnostics, TextRebuildDiagnostics, TypefaceAtlas,
+    TextPerfDiagnostics, TextRebuildDiagnostics, TonemappingLutFixPlugin, TypefaceAtlas,
 };
 pub use numeric_damage::{
     NumericDamageDiagnostics, NumericDamageLabel, NumericGlyphRunTable,
@@ -109,4 +109,8 @@ pub use wgpu_smoke::{
     wgpu_deformed_instanced_text_smoke, wgpu_instanced_text_smoke,
     wgpu_path_warp_instanced_text_smoke, wgpu_sdf_instanced_text_smoke,
     wgpu_styled_instanced_text_smoke, WgpuSmokeTarget, WgpuTextSmokeResult,
+};
+pub use world_text::{
+    world_text_diagnostics, WorldGlyphInstanceGpu, WorldTextBillboard, WorldTextDiagnostics,
+    WorldTextGlyphInstances,
 };

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::camera_control::OrbitCameraState;
 use crate::generation::GenerationProfile;
 use crate::hyperlane_buckets::HyperlaneRenderSettings;
-use crate::star_render::{StarFalloffSettings, StarRenderMode};
+use crate::star_render::{StarFalloffSettings, StarNameplateSettings, StarRenderMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PersistedCameraState {
@@ -95,6 +95,14 @@ pub struct EditorSettings {
     pub falloff_star_opacity_percent: f32,
     #[serde(default)]
     pub star_render_mode: StarRenderMode,
+    #[serde(default = "default_nameplate_relative_width_percent")]
+    pub nameplate_relative_width_percent: f32,
+    #[serde(default = "default_nameplate_base_transparency_percent")]
+    pub nameplate_base_transparency_percent: f32,
+    #[serde(default = "default_nameplate_relative_falloff_distance_percent")]
+    pub nameplate_relative_falloff_distance_percent: f32,
+    #[serde(default = "default_nameplate_relative_falloff_transparency_percent")]
+    pub nameplate_relative_falloff_transparency_percent: f32,
     #[serde(default = "default_base_hyperlane_thickness_percent")]
     pub base_hyperlane_thickness_percent: f32,
     #[serde(default = "default_base_hyperlane_opacity_percent")]
@@ -114,6 +122,7 @@ pub struct EditorSettings {
 impl Default for EditorSettings {
     fn default() -> Self {
         let star = StarFalloffSettings::default();
+        let nameplate = StarNameplateSettings::default();
         let hyperlane = HyperlaneRenderSettings::default();
         Self {
             window_mode: WindowModeSetting::default(),
@@ -133,6 +142,12 @@ impl Default for EditorSettings {
             falloff_star_blur_radius_percent: star.falloff_blur_radius_percent,
             falloff_star_opacity_percent: star.falloff_opacity_percent,
             star_render_mode: StarRenderMode::default(),
+            nameplate_relative_width_percent: nameplate.relative_width_percent,
+            nameplate_base_transparency_percent: nameplate.base_transparency_percent,
+            nameplate_relative_falloff_distance_percent: nameplate
+                .relative_falloff_distance_percent,
+            nameplate_relative_falloff_transparency_percent: nameplate
+                .relative_falloff_transparency_percent,
             base_hyperlane_thickness_percent: hyperlane.base_thickness_percent_of_star,
             base_hyperlane_opacity_percent: hyperlane.base_opacity_percent,
             hyperlane_falloff_distance_percent: hyperlane.falloff_distance_percent,
@@ -216,6 +231,27 @@ impl EditorSettings {
         self.star_render_mode = mode;
     }
 
+    pub fn star_nameplate_settings(&self) -> StarNameplateSettings {
+        StarNameplateSettings {
+            relative_width_percent: self.nameplate_relative_width_percent,
+            base_transparency_percent: self.nameplate_base_transparency_percent,
+            relative_falloff_distance_percent: self.nameplate_relative_falloff_distance_percent,
+            relative_falloff_transparency_percent: self
+                .nameplate_relative_falloff_transparency_percent,
+        }
+        .clamped()
+    }
+
+    pub fn set_star_nameplate_settings(&mut self, settings: StarNameplateSettings) {
+        let settings = settings.clamped();
+        self.nameplate_relative_width_percent = settings.relative_width_percent;
+        self.nameplate_base_transparency_percent = settings.base_transparency_percent;
+        self.nameplate_relative_falloff_distance_percent =
+            settings.relative_falloff_distance_percent;
+        self.nameplate_relative_falloff_transparency_percent =
+            settings.relative_falloff_transparency_percent;
+    }
+
     pub fn hyperlane_render_settings(&self) -> HyperlaneRenderSettings {
         HyperlaneRenderSettings {
             base_thickness_percent_of_star: self.base_hyperlane_thickness_percent,
@@ -251,6 +287,22 @@ fn default_falloff_star_blur_radius_percent() -> f32 {
 
 fn default_falloff_star_opacity_percent() -> f32 {
     StarFalloffSettings::default().falloff_opacity_percent
+}
+
+fn default_nameplate_relative_width_percent() -> f32 {
+    StarNameplateSettings::default().relative_width_percent
+}
+
+fn default_nameplate_base_transparency_percent() -> f32 {
+    StarNameplateSettings::default().base_transparency_percent
+}
+
+fn default_nameplate_relative_falloff_distance_percent() -> f32 {
+    StarNameplateSettings::default().relative_falloff_distance_percent
+}
+
+fn default_nameplate_relative_falloff_transparency_percent() -> f32 {
+    StarNameplateSettings::default().relative_falloff_transparency_percent
 }
 
 fn default_base_hyperlane_thickness_percent() -> f32 {

@@ -1,3 +1,5 @@
+use bevy::asset::AssetId;
+use bevy::render::texture::FallbackImage;
 use bevy::{
     asset::{load_internal_asset, AssetEvent, Assets, Handle},
     image::ImageSampler,
@@ -7,7 +9,9 @@ use bevy::{
         extract_component::ExtractComponentPlugin,
         extract_resource::ExtractResource,
         extract_resource::ExtractResourcePlugin,
-        render_asset::{ExtractAssetsSet, ExtractedAssets, RenderAssetUsages, RenderAssets, prepare_assets},
+        render_asset::{
+            prepare_assets, ExtractAssetsSet, ExtractedAssets, RenderAssetUsages, RenderAssets,
+        },
         render_resource::{
             Extent3d, TextureDimension, TextureFormat, TextureUsages, TextureViewDescriptor,
             TextureViewDimension,
@@ -15,12 +19,9 @@ use bevy::{
         sync_world::SyncToRenderWorld,
         texture::GpuImage,
         view::NoFrustumCulling,
-        Render, RenderApp, RenderSet,
-        ExtractSchedule,
+        ExtractSchedule, Render, RenderApp, RenderSet,
     },
 };
-use bevy::asset::AssetId;
-use bevy::render::texture::FallbackImage;
 
 use crate::{
     atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
@@ -124,7 +125,15 @@ pub struct SimthingToolsTextPlugin {
     /// STUDIO-TYPEFACE-STARTUP-FIX-0R). Mount with [`without_lut_d3_view_fix`] when adding this
     /// plugin to a live egui app; the offscreen tests keep it on.
     apply_lut_d3_view_fix: bool,
+    enable_screen_2d_path: bool,
+    enable_world_3d_path: bool,
 }
+
+#[derive(Resource, Clone, Copy)]
+struct ScreenText2dEnabled(bool);
+
+#[derive(Resource, Clone, Copy)]
+struct WorldText3dEnabled(bool);
 
 impl SimthingToolsTextPlugin {
     pub fn new(font_bytes: Vec<u8>) -> Self {
@@ -132,6 +141,8 @@ impl SimthingToolsTextPlugin {
             font_bytes,
             atlas_size: 512,
             apply_lut_d3_view_fix: true,
+            enable_screen_2d_path: true,
+            enable_world_3d_path: false,
         }
     }
 
@@ -140,6 +151,8 @@ impl SimthingToolsTextPlugin {
             font_bytes,
             atlas_size,
             apply_lut_d3_view_fix: true,
+            enable_screen_2d_path: true,
+            enable_world_3d_path: false,
         }
     }
 
@@ -151,17 +164,30 @@ impl SimthingToolsTextPlugin {
         self.apply_lut_d3_view_fix = false;
         self
     }
+
+    /// Mount only the Camera3d world-text path. This avoids registering the toolkit's test-oriented
+    /// Core2d phase and draw entity in a live application that does not render screen-space labels.
+    pub fn world_text_only(mut self) -> Self {
+        self.enable_screen_2d_path = false;
+        self.enable_world_3d_path = true;
+        self
+    }
 }
 
 impl Plugin for SimthingToolsTextPlugin {
     fn build(&self, app: &mut App) {
-        app.init_asset::<Shader>();
-        // This plugin's CPU-path systems (init_typeface_state, mesh/atlas building) create `Mesh`
-        // and `Image` assets, so register those stores here. `init_asset` is idempotent, so this is a
-        // no-op under DefaultPlugins, but it lets the plugin run under `MinimalPlugins + AssetPlugin`
-        // (CPU headless tests) without panicking on missing-resource param validation in Bevy 0.16.
-        app.init_asset::<Mesh>();
-        app.init_asset::<Image>();
+        // Bevy 0.16 `init_asset` replaces the existing `Assets<T>` resource. Preserve stores already
+        // populated by DefaultPlugins (especially tonemapping LUT images) while still supporting
+        // MinimalPlugins + AssetPlugin CPU tests.
+        if !app.world().contains_resource::<Assets<Shader>>() {
+            app.init_asset::<Shader>();
+        }
+        if !app.world().contains_resource::<Assets<Mesh>>() {
+            app.init_asset::<Mesh>();
+        }
+        if !app.world().contains_resource::<Assets<Image>>() {
+            app.init_asset::<Image>();
+        }
         load_internal_asset!(
             app,
             TEXT_SHADER_HANDLE,
@@ -186,9 +212,13 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<TextInstanceAggregate>()
             .init_resource::<TextAggregateLayout>()
             .init_resource::<TextAggregateVersion>()
+            .init_resource::<crate::world_text::WorldTextAggregate>()
+            .init_resource::<crate::world_text::WorldTextDiagnostics>()
             .init_resource::<crate::studio_labels::StudioTypefaceLabelDiagnostics>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
             .insert_resource(PluginAtlasSize(self.atlas_size))
+            .insert_resource(ScreenText2dEnabled(self.enable_screen_2d_path))
+            .insert_resource(WorldText3dEnabled(self.enable_world_3d_path))
             .add_plugins(ExtractResourcePlugin::<TextAggregateVersion>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextStyleTable>::default())
             .add_plugins(ExtractResourcePlugin::<ExtractedTextDeformTable>::default())
@@ -198,28 +228,49 @@ impl Plugin for SimthingToolsTextPlugin {
             .add_systems(
                 Update,
                 (
-                    advance_style_table_time,
-                    sync_style_table_rows_if_changed,
-                    sync_deform_table_rows_if_changed,
-                    sync_path_table_rows_if_changed,
-                    sync_warp_table_rows_if_changed,
-                    emit_studio_damage_text_labels,
-                    sync_studio_typeface_labels,
-                    update_numeric_damage_labels,
-                    rebuild_changed_labels,
-                    ApplyDeferred,
-                    mark_aggregate_dirty_on_label_lifecycle,
-                    aggregate_label_instances,
-                    sync_draw_entity_instances,
-                    sync_draw_entity_mesh_for_deformation,
-                    sync_path_warp_instance_diagnostics,
-                    sync_atlas_image_to_gpu,
-                    force_text_draw_visible,
+                    (
+                        advance_style_table_time,
+                        sync_style_table_rows_if_changed,
+                        sync_deform_table_rows_if_changed,
+                        sync_path_table_rows_if_changed,
+                        sync_warp_table_rows_if_changed,
+                        emit_studio_damage_text_labels,
+                        sync_studio_typeface_labels,
+                        update_numeric_damage_labels,
+                        rebuild_changed_labels,
+                        ApplyDeferred,
+                    )
+                        .chain(),
+                    (
+                        crate::world_text::rebuild_world_text_instances,
+                        ApplyDeferred,
+                        mark_aggregate_dirty_on_label_lifecycle,
+                        crate::world_text::mark_world_text_aggregate_dirty,
+                        crate::world_text::aggregate_world_text_instances,
+                        aggregate_label_instances,
+                        crate::world_text::sync_world_text_draw_instances,
+                        sync_draw_entity_instances,
+                        sync_draw_entity_mesh_for_deformation,
+                        sync_path_warp_instance_diagnostics,
+                        sync_atlas_image_to_gpu,
+                        force_text_draw_visible,
+                        crate::world_text::force_world_text_draw_visible,
+                    )
+                        .chain(),
                 )
                     .chain(),
             )
-            .add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default())
-            .add_plugins(TextInstancedRenderPlugin);
+            .add_plugins(crate::text_render::TextRenderResourcesPlugin);
+
+        if self.enable_screen_2d_path {
+            app.add_plugins(ExtractComponentPlugin::<TextDrawExtract>::default())
+                .add_plugins(TextInstancedRenderPlugin);
+        }
+
+        #[cfg(feature = "world-text-3d")]
+        if self.enable_world_3d_path {
+            app.add_plugins(crate::world_text::WorldTextRenderPlugin);
+        }
 
         // Offscreen-only tonemapping LUT D3 view fix. Mutates a shared `Image` asset at app scope,
         // which suppresses egui on a live window — only mounted when the offscreen render path needs
@@ -630,10 +681,13 @@ fn fix_tonemapping_lut_gpu_views(
 ) {
     if !fallback_prepared.0 {
         fallback_image.d3.texture_view =
-            fallback_image.d3.texture.create_view(&TextureViewDescriptor {
-                dimension: Some(TextureViewDimension::D3),
-                ..default()
-            });
+            fallback_image
+                .d3
+                .texture
+                .create_view(&TextureViewDescriptor {
+                    dimension: Some(TextureViewDimension::D3),
+                    ..default()
+                });
         fallback_prepared.0 = true;
     }
     let atlas_id = atlas_handle.map(|handle| handle.0.id());
@@ -705,6 +759,8 @@ fn init_typeface_state(
     atlas_size: Res<PluginAtlasSize>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
+    screen_text: Res<ScreenText2dEnabled>,
+    _world_text: Res<WorldText3dEnabled>,
 ) {
     let font = load_font(&bytes.0).expect("typeface font must parse");
     let mut shaper =
@@ -736,21 +792,29 @@ fn init_typeface_state(
     commands.insert_resource(TextQuadMesh(quad.clone()));
     commands.insert_resource(TextDeformTessMesh(tess));
 
-    let draw_entity = commands
-        .spawn((
-            Mesh2d(quad),
-            GlobalTransform::default(),
-            Visibility::default(),
-            InheritedVisibility::default(),
-            ViewVisibility::default(),
-            TextGlyphInstances::default(),
-            crate::text_render::TextInstancedDraw,
-            bevy::render::batching::NoAutomaticBatching,
-            SyncToRenderWorld,
-            NoFrustumCulling,
-        ))
-        .id();
+    let draw_entity = if screen_text.0 {
+        commands
+            .spawn((
+                Mesh2d(quad.clone()),
+                GlobalTransform::default(),
+                Visibility::default(),
+                InheritedVisibility::default(),
+                ViewVisibility::default(),
+                TextGlyphInstances::default(),
+                crate::text_render::TextInstancedDraw,
+                bevy::render::batching::NoAutomaticBatching,
+                SyncToRenderWorld,
+                NoFrustumCulling,
+            ))
+            .id()
+    } else {
+        commands.spawn(TextGlyphInstances::default()).id()
+    };
     commands.insert_resource(TextDrawEntity(draw_entity));
+    #[cfg(feature = "world-text-3d")]
+    if _world_text.0 {
+        crate::world_text::spawn_world_text_draw_entity(&mut commands, quad);
+    }
 }
 
 const PREWARM_PX: f32 = 24.0;
@@ -1130,11 +1194,15 @@ fn mark_aggregate_dirty_on_label_lifecycle(
     added_numeric: Query<(), Added<NumericDamageLabel>>,
     mut removed_text: RemovedComponents<TextLabel>,
     mut removed_numeric: RemovedComponents<NumericDamageLabel>,
+    added_world: Query<(), Added<crate::world_text::WorldTextBillboard>>,
+    mut removed_world: RemovedComponents<crate::world_text::WorldTextBillboard>,
 ) {
     if added_text.iter().next().is_some()
         || added_numeric.iter().next().is_some()
         || removed_text.read().next().is_some()
         || removed_numeric.read().next().is_some()
+        || added_world.iter().next().is_some()
+        || removed_world.read().next().is_some()
     {
         aggregate_version.dirty = true;
         layout.needs_full_rebuild = true;
@@ -1213,13 +1281,17 @@ fn sync_draw_entity_instances(
 fn aggregate_label_instances(
     all_labels: Query<
         (Entity, &TextGlyphInstances),
-        Or<(With<TextLabel>, With<NumericDamageLabel>)>,
+        (
+            Or<(With<TextLabel>, With<NumericDamageLabel>)>,
+            Without<crate::world_text::WorldTextBillboard>,
+        ),
     >,
     dirty_labels: Query<
         (Entity, &TextGlyphInstances, &LabelAggregateSegment),
         (
             Or<(With<TextLabel>, With<NumericDamageLabel>)>,
             With<SegmentDirty>,
+            Without<crate::world_text::WorldTextBillboard>,
         ),
     >,
     mut aggregate: ResMut<TextInstanceAggregate>,
@@ -1786,5 +1858,35 @@ pub fn profile_bevy_fixed_width_numeric_damage_bench(
         diagnostics_after_noop,
         diagnostics_after_damage,
         phase_after_damage: text_damage_phase_profile(app),
+    }
+}
+
+#[cfg(test)]
+mod asset_store_tests {
+    use super::*;
+    use bevy::asset::AssetPlugin;
+
+    #[test]
+    fn plugin_mount_preserves_existing_image_assets() {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+        app.init_asset::<Shader>();
+        app.init_asset::<Mesh>();
+        app.init_asset::<Image>();
+        let sentinel = app
+            .world_mut()
+            .resource_mut::<Assets<Image>>()
+            .add(Image::default());
+
+        app.add_plugins(
+            SimthingToolsTextPlugin::new(Vec::new())
+                .without_lut_d3_view_fix()
+                .world_text_only(),
+        );
+
+        assert!(app
+            .world()
+            .resource::<Assets<Image>>()
+            .contains(sentinel.id()));
     }
 }

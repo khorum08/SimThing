@@ -2010,3 +2010,15 @@ gate dropped the update).
   `scripts/windows/workspace_cleanup_inventory.ps1` for repeat safe reclaim.
 - Maybe-archive manifest: ~7.6 MB tracked mapgen PNGs under `docs/tests/`. Potentially-synthesize manifest:
   `bevy_mapgen_editor_pr2r*` report cluster (context reduction, not urgent disk).
+
+## 2026-06-22 - STUDIO-TYPEFACE-STAR-NAMEPLATES-0
+
+- Added a feature-gated Camera3d `Transparent3d` billboard path to `simthing-tools`; Studio uses the world-only
+  mount and keeps the live Core2d/LUT path absent.
+- Generated stars now carry raster-atlas nameplates using authoritative ScenarioSpec raw IDs formatted as
+  `SIM-{raw_id:06}`; labels share star anchors and distance attenuation.
+- Added persisted Settings controls for nameplate width, transparency, and falloff.
+- Diagnosed the prior live LUT failure: Bevy 0.16 `init_asset` replaces existing `Assets<T>` resources. The
+  toolkit now initializes Shader/Mesh/Image stores only when absent, preserving loaded tonemapping assets.
+- Real-adapter dress rehearsal generated 2,400 stars and aggregated 24,000 glyph instances without the prior
+  LUT, shader, pipeline, or ECS failures. Evidence remains PROBATION pending owner visual sign-off.
