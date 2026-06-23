@@ -252,7 +252,8 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
 #ifdef WORLD_TEXT
     const HORIZON_TAPER: f32 = 0.75;
-    const MIN_LEGIBLE_LABEL_PX: f32 = 12.0;
+    const MIN_LEGIBLE_LABEL_PX: f32 = 18.0;
+    const NAMEPLATE_HEIGHT_RATIO: f32 = 1.0;
 
     let anchor = instance.anchor_height.xyz;
     let camera_distance = length(view.world_position.xyz - anchor);
@@ -272,8 +273,10 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         horizon_taper,
     );
     let up = normalize(view.world_from_view[1].xyz);
-    let envelope_world = instance.anchor_height.w * height_ratio;
-    let envelope_px = world_axis_span_screen_px(anchor, up, envelope_world);
+    // anchor_height.w = near rendered star visual envelope (world units).
+    let star_visual_world = instance.anchor_height.w * height_ratio;
+    let star_visual_height_px = world_axis_span_screen_px(anchor, up, star_visual_world);
+    let label_height_px = star_visual_height_px * NAMEPLATE_HEIGHT_RATIO;
     let falloff_alpha = world_text_falloff_alpha(
         depth_percent,
         instance.distance_params,
@@ -282,23 +285,23 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     );
 
     if screen_companion {
-        let label_height_px = envelope_px;
         if label_height_px < MIN_LEGIBLE_LABEL_PX {
             out.clip_position = vec4(0.0, 0.0, -1.0, 1.0);
             out.color = vec4(instance.color.rgb, 0.0);
         } else {
             let gap_px = instance.size_params.y * label_height_px;
             let anchor_clip = position_world_to_clip(anchor);
+            // Contract A: local_xy.x already spans natural run aspect; width_ratio is x-scale only.
             let offset_px = vec2(
                 local_xy.x * label_height_px * instance.size_params.x,
-                -envelope_px * 0.5 - gap_px - (0.5 - local_xy.y) * label_height_px,
+                -star_visual_height_px * 0.5 - gap_px - (0.5 - local_xy.y) * label_height_px,
             );
             out.clip_position = clip_from_screen_px_offset(anchor_clip, offset_px);
             out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);
         }
     } else {
         let right = normalize(view.world_from_view[0].xyz);
-        let label_height = envelope_world;
+        let label_height = star_visual_world;
         let label_width = label_height * instance.size_params.x;
         let vertical_offset = -label_height * (1.0 + instance.size_params.y);
         let world_position = anchor

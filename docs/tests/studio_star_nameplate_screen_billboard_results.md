@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION / visual remediation — screen-companion placement merged; owner visual sign-off pending.
+CLOSED / superseded by STUDIO-STAR-NAMEPLATE-VISUAL-CONTRACT-0 — screen-companion mode landed but height source was still a base-blur proxy; owner screenshot showed dash/stroke artifacts.
 
 ## PR / branch / merge
 

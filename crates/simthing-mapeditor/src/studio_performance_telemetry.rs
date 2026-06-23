@@ -73,12 +73,14 @@ pub struct StudioPerformanceTelemetry {
 
     pub nameplate_count: usize,
     pub nameplate_glyph_instances: u64,
-    pub nameplate_effective_near_height: Option<f32>,
-    pub nameplate_base_alpha_ratio: Option<f32>,
-    pub nameplate_ceiling_target_alpha: Option<f32>,
-    pub nameplate_relative_target_alpha: Option<f32>,
-    pub nameplate_natural_run_aspect: Option<f32>,
     pub nameplate_screen_companion_count: usize,
+    pub nameplate_natural_run_aspect: Option<f32>,
+    pub nameplate_star_visual_envelope_world: Option<f32>,
+    pub nameplate_projected_star_visual_height_px: Option<f32>,
+    pub nameplate_label_height_px: Option<f32>,
+    pub nameplate_label_width_px: Option<f32>,
+    pub nameplate_sample_alpha: Option<f32>,
+    pub nameplate_culled_too_small_count: usize,
 
     pub vram_scan_last_ms: Option<f64>,
 }
@@ -142,12 +144,14 @@ impl Default for StudioPerformanceTelemetry {
             picking_projection_avg_ms: None,
             nameplate_count: 0,
             nameplate_glyph_instances: 0,
-            nameplate_effective_near_height: None,
-            nameplate_base_alpha_ratio: None,
-            nameplate_ceiling_target_alpha: None,
-            nameplate_relative_target_alpha: None,
-            nameplate_natural_run_aspect: None,
             nameplate_screen_companion_count: 0,
+            nameplate_natural_run_aspect: None,
+            nameplate_star_visual_envelope_world: None,
+            nameplate_projected_star_visual_height_px: None,
+            nameplate_label_height_px: None,
+            nameplate_label_width_px: None,
+            nameplate_sample_alpha: None,
+            nameplate_culled_too_small_count: 0,
             vram_scan_last_ms: None,
         }
     }
@@ -245,26 +249,100 @@ fn format_timing_ms(value: Option<f64>) -> String {
     }
 }
 
-/// Build Settings-window performance section labels.
-pub fn performance_settings_section_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+/// Nameplate debug subsection for the Telemetry dialog.
+pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    vec![
+        format!(
+            "Labels: {} | glyph instances: {} | screen companion: {}",
+            telemetry.nameplate_count,
+            telemetry.nameplate_glyph_instances,
+            telemetry.nameplate_screen_companion_count,
+        ),
+        format!(
+            "Sample natural run aspect: {}",
+            telemetry
+                .nameplate_natural_run_aspect
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample star visual envelope (world): {}",
+            telemetry
+                .nameplate_star_visual_envelope_world
+                .map(|v| format!("{v:.3}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample projected star visual height (px): {}",
+            telemetry
+                .nameplate_projected_star_visual_height_px
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample label height (px): {}",
+            telemetry
+                .nameplate_label_height_px
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample label width (px): {}",
+            telemetry
+                .nameplate_label_width_px
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample final alpha: {}",
+            telemetry
+                .nameplate_sample_alpha
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Culled too small (< legible px): {}",
+            telemetry.nameplate_culled_too_small_count,
+        ),
+    ]
+}
+
+/// Compact performance summary for collapsed Telemetry section.
+pub fn performance_summary_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
     use crate::studio_frame_phase_gpu_telemetry::{
-        frame_phase_settings_lines, gpu_context_settings_lines, performance_capture_steps_lines,
-        studio_build_profile_label, studio_build_profile_warning, vram_tracked_asset_lines,
+        frame_phase_settings_lines, studio_build_profile_label, studio_build_profile_warning,
     };
 
     let mut lines = vec![
-        "Performance".into(),
         format!("FPS: {}", format_fps_label(telemetry.fps)),
         format!("Build: {}", studio_build_profile_label()),
     ];
     if let Some(warning) = studio_build_profile_warning() {
         lines.push(warning.into());
     }
+    lines.extend(frame_phase_settings_lines(telemetry));
+    lines
+}
+
+/// Render loop, GPU context, and VRAM lines for collapsed Telemetry section.
+pub fn render_loop_gpu_vram_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    use crate::studio_frame_phase_gpu_telemetry::{
+        gpu_context_settings_lines, performance_capture_steps_lines, vram_tracked_asset_lines,
+    };
+
+    let mut lines = Vec::new();
     lines.extend(vram_tracked_asset_lines(telemetry));
     lines.extend(gpu_context_settings_lines(telemetry));
-    lines.extend(frame_phase_settings_lines(telemetry));
     lines.extend(render_loop_diagnostics_lines(telemetry));
     lines.extend(performance_capture_steps_lines());
+    lines
+}
+
+/// Build Settings-window performance section labels.
+pub fn performance_settings_section_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    let mut lines = vec!["Performance".into()];
+    lines.extend(performance_summary_lines(telemetry));
+    lines.extend(render_loop_gpu_vram_lines(telemetry));
     lines
 }
 
@@ -301,37 +379,6 @@ pub fn render_loop_diagnostics_lines(telemetry: &StudioPerformanceTelemetry) -> 
             format_timing_ms(telemetry.picking_projection_last_ms),
             format_timing_ms(telemetry.picking_projection_avg_ms),
             telemetry.picking_projected_anchor_count,
-        ),
-        format!(
-            "Nameplates: {} labels, {} glyph instances",
-            telemetry.nameplate_count, telemetry.nameplate_glyph_instances,
-        ),
-        format!(
-            "Nameplate sample: height {:.3}, base alpha {:.2}, ceiling {:.2}, falloff {:.2}",
-            telemetry
-                .nameplate_effective_near_height
-                .map(|v| format!("{v:.3}"))
-                .unwrap_or_else(|| "—".into()),
-            telemetry
-                .nameplate_base_alpha_ratio
-                .map(|v| format!("{v:.2}"))
-                .unwrap_or_else(|| "—".into()),
-            telemetry
-                .nameplate_ceiling_target_alpha
-                .map(|v| format!("{v:.2}"))
-                .unwrap_or_else(|| "—".into()),
-            telemetry
-                .nameplate_relative_target_alpha
-                .map(|v| format!("{v:.2}"))
-                .unwrap_or_else(|| "—".into()),
-        ),
-        format!(
-            "Nameplate screen companion: {} active, run aspect {}",
-            telemetry.nameplate_screen_companion_count,
-            telemetry
-                .nameplate_natural_run_aspect
-                .map(|v| format!("{v:.2}"))
-                .unwrap_or_else(|| "—".into()),
         ),
         format!(
             "VRAM scan: {} ms",

@@ -45,7 +45,9 @@ use crate::studio_frame_phase_gpu_telemetry::{
     restore_normal_render_from_snapshot, PerformanceDiagnosticFlags,
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
-use crate::studio_performance_telemetry::performance_settings_section_lines;
+use crate::studio_performance_telemetry::{
+    nameplate_debug_lines, performance_summary_lines, render_loop_gpu_vram_lines,
+};
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
 
@@ -741,63 +743,83 @@ fn draw_telemetry_dialog(
                     state.telemetry_dialog.position = [clamped_moved.min.x, clamped_moved.min.y];
                 }
                 ui.separator();
-                let performance_lines = performance_settings_section_lines(telemetry);
-                if let Some(title) = performance_lines.first() {
-                    ui.label(egui::RichText::new(title).strong());
-                }
-                for line in performance_lines.iter().skip(1) {
-                    ui.label(line);
-                }
-                ui.separator();
-                ui.label(egui::RichText::new("Performance isolation").strong());
-                let mut hide_stars = !state.show_stars;
-                if ui.checkbox(&mut hide_stars, "Hide stars").changed() {
-                    state.show_stars = !hide_stars;
-                }
-                let mut hide_hyperlanes = !state.show_hyperlanes;
-                if ui
-                    .checkbox(&mut hide_hyperlanes, "Hide hyperlanes")
-                    .changed()
-                {
-                    state.show_hyperlanes = !hide_hyperlanes;
-                }
-                ui.checkbox(
-                    &mut state.performance_diagnostic_hide_star_aura,
-                    "Disable star aura layer",
-                );
-                let mut force_crisp = state.star_render_mode == StarRenderMode::CrispCircle;
-                if ui
-                    .checkbox(&mut force_crisp, "Force crisp/no-bloom star render")
-                    .changed()
-                {
-                    state.star_render_mode = if force_crisp {
-                        StarRenderMode::CrispCircle
-                    } else {
-                        StarRenderMode::BloomStarburst
-                    };
-                    if let Some(session) = state.session.as_mut() {
-                        session
-                            .view_model
-                            .apply_star_render_mode(state.star_render_mode);
-                    }
-                    mark_star_visual_render_dirty(&mut render_caches.star_visual);
-                }
-                ui.checkbox(
-                    &mut state.performance_diagnostic_hide_panels,
-                    "Hide main egui panels",
-                );
-                ui.checkbox(
-                    &mut state.performance_diagnostic_freeze_camera,
-                    "Freeze camera update",
-                );
-                ui.horizontal(|ui| {
-                    if ui.button(DIAGNOSTIC_MINIMAL_RENDER_BUTTON).clicked() {
-                        apply_performance_diagnostic_minimal_render(state, settings, render_caches);
-                    }
-                    if ui.button(RESTORE_NORMAL_RENDER_BUTTON).clicked() {
-                        restore_performance_normal_render(state, settings, render_caches);
-                    }
-                });
+                egui::CollapsingHeader::new("Nameplate debug")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        for line in nameplate_debug_lines(telemetry) {
+                            ui.label(line);
+                        }
+                    });
+                egui::CollapsingHeader::new("Performance summary")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for line in performance_summary_lines(telemetry) {
+                            ui.label(line);
+                        }
+                    });
+                egui::CollapsingHeader::new("Performance isolation")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        let mut hide_stars = !state.show_stars;
+                        if ui.checkbox(&mut hide_stars, "Hide stars").changed() {
+                            state.show_stars = !hide_stars;
+                        }
+                        let mut hide_hyperlanes = !state.show_hyperlanes;
+                        if ui
+                            .checkbox(&mut hide_hyperlanes, "Hide hyperlanes")
+                            .changed()
+                        {
+                            state.show_hyperlanes = !hide_hyperlanes;
+                        }
+                        ui.checkbox(
+                            &mut state.performance_diagnostic_hide_star_aura,
+                            "Disable star aura layer",
+                        );
+                        let mut force_crisp = state.star_render_mode == StarRenderMode::CrispCircle;
+                        if ui
+                            .checkbox(&mut force_crisp, "Force crisp/no-bloom star render")
+                            .changed()
+                        {
+                            state.star_render_mode = if force_crisp {
+                                StarRenderMode::CrispCircle
+                            } else {
+                                StarRenderMode::BloomStarburst
+                            };
+                            if let Some(session) = state.session.as_mut() {
+                                session
+                                    .view_model
+                                    .apply_star_render_mode(state.star_render_mode);
+                            }
+                            mark_star_visual_render_dirty(&mut render_caches.star_visual);
+                        }
+                        ui.checkbox(
+                            &mut state.performance_diagnostic_hide_panels,
+                            "Hide main egui panels",
+                        );
+                        ui.checkbox(
+                            &mut state.performance_diagnostic_freeze_camera,
+                            "Freeze camera update",
+                        );
+                        ui.horizontal(|ui| {
+                            if ui.button(DIAGNOSTIC_MINIMAL_RENDER_BUTTON).clicked() {
+                                apply_performance_diagnostic_minimal_render(
+                                    state,
+                                    settings,
+                                    render_caches,
+                                );
+                            }
+                            if ui.button(RESTORE_NORMAL_RENDER_BUTTON).clicked() {
+                                restore_performance_normal_render(state, settings, render_caches);
+                            }
+                        });
+                    });
+                egui::CollapsingHeader::new("Render loop / GPU / VRAM")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for line in render_loop_gpu_vram_lines(telemetry) {
+                            ui.label(line);
+                        }
+                    });
                 ui.horizontal(|ui| {
                     if ui.button("Screenshot").clicked() {
                         let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
