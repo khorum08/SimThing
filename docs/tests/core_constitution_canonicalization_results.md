@@ -2,16 +2,17 @@
 
 ## Status
 
-PROBATION / design-doc consolidation — canonicalized Scenario/GameSession spatial tree, RF channel doctrine,
-Gu-Yang/PALMA core summary, and simthing-tools typeface ADR; archived old typeface ladder/proposal.
+ACCEPTED / closed — docs-only design consolidation. Canonicalized Scenario/GameSession spatial tree,
+RF channel doctrine, Gu-Yang/PALMA core summary, and simthing-tools typeface ADR; archived old typeface
+ladder/proposal.
 
 No runtime code changes. All `.rs` files unchanged. Docs only.
 
 ## PR / branch / merge
 
 - Branch: `core-constitution-canonicalization-0`
-- PR: pending
-- Merge SHA: pending
+- PR: #907
+- Merge SHA: `4bdb5e72a0ae938a6a8ba616590954199cc4bb37`
 
 ---
 
@@ -143,11 +144,11 @@ Remaining references to old paths:
 
 | Check | Result |
 |---|---|
-| `cargo check -p simthing-spec` | pending |
-| `cargo check -p simthing-driver` | pending |
-| `cargo check -p simthing-tools` | pending |
-| `cargo check -p simthing-mapeditor` | pending |
-| `cargo test -p simthing-tools --test semantic_free_guard` | pending |
+| `cargo check -p simthing-spec` | PASS |
+| `cargo check -p simthing-tools` | PASS |
+| `cargo test -p simthing-tools --test semantic_free_guard` | PASS |
+| `cargo check -p simthing-driver` | not run — not required for docs-only |
+| `cargo check -p simthing-mapeditor` | not run — not required for docs-only |
 | No `.rs` files changed | PASS — `git diff --name-only` shows docs only |
 | Reference guard: no active-doc pointer to old ladder path | PASS (updated) |
 | `docs/simthing_tools_typeface_adr.md` created | PASS |
@@ -157,7 +158,6 @@ Remaining references to old paths:
 
 ## Remaining debts
 
-- `cargo check` / `semantic_free_guard` results (run after this doc is written)
 - `STUDIO-TYPEFACE-STARTUP-FIX-0` (separate local WIP for Studio blank screen; uncommitted)
 - Production icon art / default font choice (non-blocking, documented in ADR)
 - Windowed Studio smoke (non-blocking)

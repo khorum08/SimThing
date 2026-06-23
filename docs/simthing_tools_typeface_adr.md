@@ -86,8 +86,8 @@ Export surface from `crates/simthing-tools/src/lib.rs`. See the source for the c
 
 | Rung | Description | PR | Status |
 |---|---|---|---|
-| LR0 | Font loading/metrics | #872 | PROBATION |
-| LR1 | Shaping engine | #873 | PROBATION |
+| LR0 | Font loading/metrics | #872 | ACCEPTED as part of TYPEFACE-TRACK-CLOSEOUT-0 |
+| LR1 | Shaping engine | #873 | ACCEPTED as part of TYPEFACE-TRACK-CLOSEOUT-0 |
 | LR2 | Raster atlas | #874 | DA APPROVED after LR2R |
 | LR2R | GlyphAtlasCore CPU-only path | #875 | DA remediation accepted |
 | LR3 | `simthing-tools` crate + instanced draw | #876 | DA APPROVED after LR3R |

@@ -86,7 +86,9 @@ WorldStateMap Location. Future tracks must not conflate the save/load wrapper wi
 RF membership is channel identity, not ownership containment. A spatial participant joins owner/resource/
 scope lanes through RF metadata on properties/overlays; the Owner SimThing remains a GameSession sibling.
 Local owner/resource/scope channels settle inside each parent Location before net surplus/deficit bubbles
-upward. This is permanent doctrine: `simthing_core_design.md` §5 is the canonical home, not only RF ADRs.### 0.1 Maximal SimThing conformance (the founding premise)
+upward. This is permanent doctrine: `simthing_core_design.md` §5 is the canonical home, not only RF ADRs.
+
+### 0.1 Maximal SimThing conformance (the founding premise)
 **Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
 gamesession, owners, worldstate, starmap, star systems, planets, grid cells, fleets, and cohorts are
 all SimThings in one recursive `{properties, overlays, children}` tree. New behavior is modeled by
