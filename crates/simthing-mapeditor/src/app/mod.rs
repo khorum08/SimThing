@@ -112,10 +112,10 @@ pub fn run_studio() {
             (
                 window::warn_missing_egui_viewport,
                 performance_telemetry::begin_main_update_timing,
-                performance_telemetry::update_map_radius_falloff_context_system,
                 (
                     ui::panel_opacity_system,
                     camera::camera_control_system,
+                    performance_telemetry::update_map_radius_falloff_context_system,
                     camera::camera_hotkeys_system,
                     picking::selection_keyboard_system,
                     picking::star_pick_system,
@@ -156,6 +156,8 @@ pub struct StudioMapRadiusFalloffState {
     pub context: crate::falloff_metric::StudioMapRadiusFalloffContext,
     pub bounds: crate::falloff_metric::MapPlaneBounds,
     pub valid: bool,
+    pub diagnostics: crate::falloff_metric::MapRadiusFalloffDiagnostics,
+    pub context_frame: u64,
 }
 
 #[derive(Resource)]
