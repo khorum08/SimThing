@@ -7,8 +7,8 @@ PROBATION / presentation math fix — visual falloff vanishing point moved to hi
 ## PR / branch / merge
 
 - Branch: `codex/studio-star-falloff-high-horizon-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #924
+- Merge: `3adef3b9c0e9048c5b18ad2cd789068210d97fc1`
 
 ## Root cause
 
