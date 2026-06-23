@@ -3,6 +3,15 @@ use bevy::prelude::*;
 use crate::bevy::{GlyphInstanceGpu, TextGlyphInstances};
 
 pub const DEFAULT_WORLD_TEXT_HORIZON_TAPER: f32 = 0.75;
+/// GPU sentinel written to `size_params.w` for [`WorldTextPlacementMode::ScreenCompanion`].
+pub const WORLD_TEXT_SCREEN_COMPANION_MODE: f32 = -1.0;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum WorldTextPlacementMode {
+    #[default]
+    WorldPerspective,
+    ScreenCompanion,
+}
 
 /// Generic world-space placement for an instanced, camera-facing text label.
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
@@ -20,6 +29,7 @@ pub struct WorldTextBillboard {
     pub relative_falloff_percent: f32,
     pub relative_target_alpha: f32,
     pub horizon_taper: f32,
+    pub placement_mode: WorldTextPlacementMode,
 }
 
 impl WorldTextBillboard {
@@ -39,6 +49,7 @@ impl WorldTextBillboard {
             relative_falloff_percent: self.relative_falloff_percent.clamp(0.01, 100.0),
             relative_target_alpha: self.relative_target_alpha.clamp(0.0, 1.0),
             horizon_taper: self.horizon_taper.clamp(0.0, 1.0),
+            placement_mode: self.placement_mode,
         }
     }
 }
@@ -59,6 +70,7 @@ impl Default for WorldTextBillboard {
             relative_falloff_percent: 50.0,
             relative_target_alpha: 0.5,
             horizon_taper: DEFAULT_WORLD_TEXT_HORIZON_TAPER,
+            placement_mode: WorldTextPlacementMode::WorldPerspective,
         }
     }
 }
@@ -69,7 +81,9 @@ pub struct WorldGlyphInstanceGpu {
     pub glyph: GlyphInstanceGpu,
     /// xyz = world anchor, w = near label height.
     pub anchor_height: [f32; 4],
-    /// x = width ratio, y = vertical gap ratio, z = target height ratio, w = horizon taper.
+    /// x = width ratio, y = vertical gap ratio,
+    /// z = target height ratio (world) or natural run aspect (screen companion),
+    /// w = horizon taper (world) or screen-companion mode sentinel.
     pub size_params: [f32; 4],
     /// x/y = near/far distance, z = ceiling falloff percent, w = ceiling target alpha.
     pub distance_params: [f32; 4],
@@ -113,6 +127,30 @@ pub fn world_text_diagnostics(app: &App) -> WorldTextDiagnostics {
     diagnostics
 }
 
+pub fn natural_run_aspect_from_glyphs(glyphs: &[GlyphInstanceGpu]) -> f32 {
+    if glyphs.is_empty() {
+        return 1.0;
+    }
+    let min_x = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[0])
+        .fold(f32::INFINITY, f32::min);
+    let min_y = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[1])
+        .fold(f32::INFINITY, f32::min);
+    let max_x = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[0] + glyph.pos_size[2])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let max_y = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[1] + glyph.pos_size[3])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let run_height = (max_y - min_y).max(1.0);
+    ((max_x - min_x) / run_height).clamp(0.01, 32.0)
+}
+
 pub fn build_world_glyph_instances(
     glyphs: &[GlyphInstanceGpu],
     placement: WorldTextBillboard,
@@ -121,6 +159,7 @@ pub fn build_world_glyph_instances(
         return Vec::new();
     }
     let placement = placement.clamped();
+    let natural_run_aspect = natural_run_aspect_from_glyphs(glyphs);
     let min_x = glyphs
         .iter()
         .map(|glyph| glyph.pos_size[0])
@@ -139,6 +178,14 @@ pub fn build_world_glyph_instances(
         .fold(f32::NEG_INFINITY, f32::max);
     let run_height = (max_y - min_y).max(1.0);
     let run_center_x = (min_x + max_x) * 0.5;
+    let (size_z, size_w) = match placement.placement_mode {
+        WorldTextPlacementMode::ScreenCompanion => {
+            (natural_run_aspect, WORLD_TEXT_SCREEN_COMPANION_MODE)
+        }
+        WorldTextPlacementMode::WorldPerspective => {
+            (placement.target_height_ratio, placement.horizon_taper)
+        }
+    };
 
     glyphs
         .iter()
@@ -151,6 +198,7 @@ pub fn build_world_glyph_instances(
                 -source.pos_size[3] / run_height,
             ];
             glyph.color[3] *= placement.base_alpha_ratio;
+            glyph.style_params[1] = placement.target_height_ratio;
             glyph.style_params[2] = placement.relative_falloff_percent;
             glyph.style_params[3] = placement.relative_target_alpha;
             WorldGlyphInstanceGpu {
@@ -164,8 +212,8 @@ pub fn build_world_glyph_instances(
                 size_params: [
                     placement.width_ratio,
                     placement.vertical_gap_ratio,
-                    placement.target_height_ratio,
-                    placement.horizon_taper,
+                    size_z,
+                    size_w,
                 ],
                 distance_params: [
                     placement.near_distance,
@@ -777,5 +825,35 @@ mod tests {
         assert!((world[0].glyph.pos_size[0] + 10.0 / 12.0).abs() < f32::EPSILON);
         assert!((world[1].glyph.pos_size[0] - 0.0).abs() < f32::EPSILON);
         assert!((world[0].glyph.color[3] - 0.8).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn natural_run_aspect_matches_shaped_run_width_over_height() {
+        let glyphs = vec![
+            GlyphInstanceGpu {
+                pos_size: [0.0, 0.0, 10.0, 20.0],
+                ..Default::default()
+            },
+            GlyphInstanceGpu {
+                pos_size: [30.0, 0.0, 10.0, 20.0],
+                ..Default::default()
+            },
+        ];
+        assert!((natural_run_aspect_from_glyphs(&glyphs) - 2.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn screen_companion_mode_packs_run_aspect_and_mode_sentinel() {
+        let glyphs = vec![GlyphInstanceGpu {
+            pos_size: [0.0, 0.0, 10.0, 20.0],
+            ..Default::default()
+        }];
+        let placement = WorldTextBillboard {
+            placement_mode: WorldTextPlacementMode::ScreenCompanion,
+            ..Default::default()
+        };
+        let world = build_world_glyph_instances(&glyphs, placement);
+        assert_eq!(world[0].size_params[3], WORLD_TEXT_SCREEN_COMPANION_MODE);
+        assert!((world[0].size_params[2] - 0.5).abs() < f32::EPSILON);
     }
 }

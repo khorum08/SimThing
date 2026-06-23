@@ -177,8 +177,42 @@ fn world_axis_span_screen_px(world_pos: vec3<f32>, axis: vec3<f32>, span: f32) -
     return ndc_span * view.viewport.w * 0.5;
 }
 
-fn screen_legibility_fade(screen_px: f32) -> f32 {
-    return smoothstep(4.0, 12.0, screen_px);
+fn is_screen_companion_mode(mode_or_taper: f32) -> bool {
+    return mode_or_taper < -0.5;
+}
+
+fn clip_from_screen_px_offset(anchor_clip: vec4<f32>, offset_px: vec2<f32>) -> vec4<f32> {
+    let px_to_clip = vec2(
+        2.0 / max(view.viewport.z, 1.0),
+        -2.0 / max(view.viewport.w, 1.0),
+    );
+    return vec4(
+        anchor_clip.x + offset_px.x * px_to_clip.x * anchor_clip.w,
+        anchor_clip.y + offset_px.y * px_to_clip.y * anchor_clip.w,
+        anchor_clip.z,
+        anchor_clip.w,
+    );
+}
+
+fn world_text_falloff_alpha(
+    depth_percent: f32,
+    distance_params: vec4<f32>,
+    style_params: vec4<f32>,
+    horizon_taper: f32,
+) -> f32 {
+    let ceiling_alpha = distance_falloff(
+        depth_percent,
+        distance_params.z,
+        distance_params.w,
+        horizon_taper,
+    );
+    let relative_alpha = distance_falloff(
+        depth_percent,
+        style_params.z,
+        style_params.w,
+        horizon_taper,
+    );
+    return ceiling_alpha * relative_alpha;
 }
 
 fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> vec2<f32> {
@@ -217,6 +251,9 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     local_xy = apply_text_path(local_xy, path_slot, path_u);
     local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
 #ifdef WORLD_TEXT
+    const HORIZON_TAPER: f32 = 0.75;
+    const MIN_LEGIBLE_LABEL_PX: f32 = 12.0;
+
     let anchor = instance.anchor_height.xyz;
     let camera_distance = length(view.world_position.xyz - anchor);
     let depth_percent = clamp(
@@ -225,40 +262,51 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         0.0,
         1.0,
     ) * 100.0;
+    let screen_companion = is_screen_companion_mode(instance.size_params.w);
+    let horizon_taper = select(instance.size_params.w, HORIZON_TAPER, screen_companion);
+    let target_height_ratio = instance.style_params.y;
     let height_ratio = distance_falloff(
         depth_percent,
         instance.distance_params.z,
-        instance.size_params.z,
-        instance.size_params.w,
+        target_height_ratio,
+        horizon_taper,
     );
-    // Label height tracks the star blur envelope at the current camera depth (100% of blur radius).
-    let label_height = instance.anchor_height.w * height_ratio;
-    let label_width = label_height * instance.size_params.x;
-    let right = normalize(view.world_from_view[0].xyz);
     let up = normalize(view.world_from_view[1].xyz);
-    let vertical_offset = -label_height * (1.0 + instance.size_params.y);
-    let world_position = anchor
-        + right * (local_xy.x * label_width)
-        + up * (local_xy.y * label_height + vertical_offset);
-    out.clip_position = position_world_to_clip(world_position);
-    let ceiling_alpha = distance_falloff(
+    let envelope_world = instance.anchor_height.w * height_ratio;
+    let envelope_px = world_axis_span_screen_px(anchor, up, envelope_world);
+    let falloff_alpha = world_text_falloff_alpha(
         depth_percent,
-        instance.distance_params.z,
-        instance.distance_params.w,
-        instance.size_params.w,
+        instance.distance_params,
+        instance.style_params,
+        horizon_taper,
     );
-    let relative_alpha = distance_falloff(
-        depth_percent,
-        instance.style_params.z,
-        instance.style_params.w,
-        instance.size_params.w,
-    );
-    let screen_label_px = world_axis_span_screen_px(anchor, up, label_height);
-    let legibility = screen_legibility_fade(screen_label_px);
-    out.color = vec4(
-        instance.color.rgb,
-        instance.color.a * ceiling_alpha * relative_alpha * legibility,
-    );
+
+    if screen_companion {
+        let label_height_px = envelope_px;
+        if label_height_px < MIN_LEGIBLE_LABEL_PX {
+            out.clip_position = vec4(0.0, 0.0, -1.0, 1.0);
+            out.color = vec4(instance.color.rgb, 0.0);
+        } else {
+            let gap_px = instance.size_params.y * label_height_px;
+            let anchor_clip = position_world_to_clip(anchor);
+            let offset_px = vec2(
+                local_xy.x * label_height_px * instance.size_params.x,
+                -envelope_px * 0.5 - gap_px - (0.5 - local_xy.y) * label_height_px,
+            );
+            out.clip_position = clip_from_screen_px_offset(anchor_clip, offset_px);
+            out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);
+        }
+    } else {
+        let right = normalize(view.world_from_view[0].xyz);
+        let label_height = envelope_world;
+        let label_width = label_height * instance.size_params.x;
+        let vertical_offset = -label_height * (1.0 + instance.size_params.y);
+        let world_position = anchor
+            + right * (local_xy.x * label_width)
+            + up * (local_xy.y * label_height + vertical_offset);
+        out.clip_position = position_world_to_clip(world_position);
+        out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);
+    }
 #else
     let local = vec4(local_xy, 0.0, 1.0);
     out.clip_position = mesh2d_position_local_to_clip(identity_mat4(), local);

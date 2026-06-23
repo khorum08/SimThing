@@ -5,7 +5,9 @@ use bevy::diagnostic::{DiagnosticsStore, FrameCount};
 use bevy::prelude::*;
 use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
 use bevy::window::{PresentMode, PrimaryWindow};
-use simthing_tools::{TextGlyphInstances, WorldTextBillboard};
+use simthing_tools::{
+    natural_run_aspect_from_glyphs, TextGlyphInstances, WorldTextBillboard, WorldTextPlacementMode,
+};
 
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -168,10 +170,18 @@ pub fn update_nameplate_diagnostics_system(
     mut state: ResMut<StudioPerformanceTelemetryState>,
 ) {
     let mut glyph_instances = 0u64;
+    let mut screen_companion_count = 0usize;
     let mut sample_billboard = None;
+    let mut sample_run_aspect = None;
     for (billboard, glyphs) in &nameplates {
+        if billboard.placement_mode == WorldTextPlacementMode::ScreenCompanion {
+            screen_companion_count += 1;
+        }
         if let Some(glyphs) = glyphs {
             glyph_instances = glyph_instances.saturating_add(glyphs.0.len() as u64);
+            if sample_run_aspect.is_none() {
+                sample_run_aspect = Some(natural_run_aspect_from_glyphs(&glyphs.0));
+            }
         }
         if sample_billboard.is_none() {
             sample_billboard = Some(*billboard);
@@ -179,6 +189,8 @@ pub fn update_nameplate_diagnostics_system(
     }
     state.telemetry.nameplate_count = nameplates.iter().count();
     state.telemetry.nameplate_glyph_instances = glyph_instances;
+    state.telemetry.nameplate_screen_companion_count = screen_companion_count;
+    state.telemetry.nameplate_natural_run_aspect = sample_run_aspect;
     if let Some(sample) = sample_billboard {
         state.telemetry.nameplate_effective_near_height = Some(sample.near_height);
         state.telemetry.nameplate_base_alpha_ratio = Some(sample.base_alpha_ratio);
@@ -189,6 +201,8 @@ pub fn update_nameplate_diagnostics_system(
         state.telemetry.nameplate_base_alpha_ratio = None;
         state.telemetry.nameplate_ceiling_target_alpha = None;
         state.telemetry.nameplate_relative_target_alpha = None;
+        state.telemetry.nameplate_natural_run_aspect = None;
+        state.telemetry.nameplate_screen_companion_count = 0;
     }
 }
 

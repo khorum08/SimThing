@@ -6,7 +6,7 @@ use crate::hyperlane_buckets::{bucket_alpha_for_meta, HyperlaneDepthBucket};
 use crate::view_model::{
     anchor_for_system, StudioGalaxyRenderMeta, StudioStarView, StudioSystemRenderAnchor,
 };
-use simthing_tools::WorldTextBillboard;
+use simthing_tools::{WorldTextBillboard, WorldTextPlacementMode};
 
 pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 4.5;
 pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
@@ -229,6 +229,7 @@ pub fn star_nameplate_world_billboard(
             / 100.0,
         relative_target_alpha: nameplate.relative_falloff_transparency_percent / 100.0,
         horizon_taper: MID_TO_HORIZON_FALLOFF_FACTOR,
+        placement_mode: WorldTextPlacementMode::ScreenCompanion,
     }
     .clamped()
 }
@@ -584,6 +585,10 @@ mod tests {
         assert_eq!(billboard.base_alpha_ratio, 0.75);
         assert_eq!(billboard.relative_falloff_percent, 40.0);
         assert_eq!(billboard.relative_target_alpha, 0.2);
+        assert_eq!(
+            billboard.placement_mode,
+            WorldTextPlacementMode::ScreenCompanion
+        );
     }
 
     #[test]
