@@ -28,6 +28,7 @@ use crate::studio_performance_telemetry::{
 
 use super::camera::MainCamera;
 use super::galaxy_render::GalaxyStarNameplate;
+use super::resources::StudioSettings;
 use super::StudioAppState;
 
 const VRAM_ESTIMATE_INTERVAL_SECS: f32 = 0.5;
@@ -183,7 +184,7 @@ fn nameplate_cull_reason(
     debug_mode: StarNameplateDebugMode,
     unselected_global_alpha: f32,
 ) -> Option<String> {
-    if debug_mode == StarNameplateDebugMode::ForceAll {
+    if debug_mode == StarNameplateDebugMode::ForceAllDebug {
         return None;
     }
     if offscreen {
@@ -217,6 +218,7 @@ fn world_anchor_to_screen_px(
 
 pub fn update_nameplate_diagnostics_system(
     state: Res<StudioAppState>,
+    settings: Res<StudioSettings>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     nameplates: Query<
@@ -231,6 +233,24 @@ pub fn update_nameplate_diagnostics_system(
     mut lod_patch: ResMut<WorldTextNameplateLodPatch>,
 ) {
     let debug_mode = state.star_nameplate_debug_mode;
+    let nameplate_settings = settings.star_nameplate_settings().clamped();
+    telemetry_state.telemetry.nameplate_visibility_mode = debug_mode.label().into();
+    telemetry_state.telemetry.nameplate_debug_override_active = debug_mode.is_debug_override();
+    telemetry_state
+        .telemetry
+        .nameplate_settings_relative_width_pct = Some(nameplate_settings.relative_width_percent);
+    telemetry_state
+        .telemetry
+        .nameplate_settings_base_transparency_pct =
+        Some(nameplate_settings.base_transparency_percent);
+    telemetry_state
+        .telemetry
+        .nameplate_settings_relative_falloff_distance_pct =
+        Some(nameplate_settings.relative_falloff_distance_percent);
+    telemetry_state
+        .telemetry
+        .nameplate_settings_relative_falloff_transparency_pct =
+        Some(nameplate_settings.relative_falloff_transparency_percent);
     let mut glyph_instances = 0u64;
     let mut gpu_screen_label_count = 0usize;
     let mut culled_too_small_count = 0usize;
@@ -443,7 +463,7 @@ pub fn update_nameplate_diagnostics_system(
             .is_none_or(|ndc| ndc.x.abs() > 1.0 || ndc.y.abs() > 1.0 || ndc.z > 1.0);
 
         let mut culled = false;
-        if debug_mode != StarNameplateDebugMode::ForceAll {
+        if debug_mode != StarNameplateDebugMode::ForceAllDebug {
             if !nameplate_label_passes_readability_gate(projected_height, focused, debug_mode) {
                 culled_too_small_count += 1;
                 culled = true;
