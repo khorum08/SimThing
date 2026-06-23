@@ -6,9 +6,9 @@ PROBATION / presentation math fix — Nameplate Relative Width reinterpreted as 
 
 ## PR / branch / merge
 
-- Branch: `codex/studio-star-nameplate-relative-size-0`
-- PR: (pending)
-- Merge: (pending)
+- Branch: `codex/studio-star-nameplate-relative-size-0` (deleted after merge)
+- PR: #922 — https://github.com/khorum08/SimThing/pull/922
+- Merge: `6d7e2f7e886ab15c417756a38b3d3381c3d81d97` on `master`
 
 ## Root cause
 
