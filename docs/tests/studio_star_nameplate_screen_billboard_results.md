@@ -6,9 +6,9 @@ PROBATION / visual remediation — screen-companion placement merged; owner visu
 
 ## PR / branch / merge
 
-- Branch: `codex/studio-star-nameplate-screen-billboard-0`
-- PR: pending
-- Merge: pending
+- Branch: `codex/studio-star-nameplate-screen-billboard-0` (deleted after merge)
+- PR: #910
+- Merge: `05920a6d40`
 
 ## Root cause
 
