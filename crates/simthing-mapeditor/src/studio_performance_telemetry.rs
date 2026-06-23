@@ -188,8 +188,8 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_visible_glyph_estimate: 0,
             nameplate_unselected_visible_after_lod: 0,
             nameplate_focused_visible_after_lod: 0,
-            nameplate_min_unselected_label_px: 24.0,
-            nameplate_min_focused_label_px: 16.0,
+            nameplate_min_unselected_label_px: 0.0,
+            nameplate_min_focused_label_px: 0.0,
             nameplate_label_coverage_estimate: 0.0,
             nameplate_global_lod_alpha: 1.0,
             nameplate_culled_over_density_count: 0,
@@ -204,7 +204,7 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_selected_computed_width_px: None,
             nameplate_selected_final_alpha: None,
             nameplate_selected_cull_reason: None,
-            nameplate_visibility_mode: "Settings driven".into(),
+            nameplate_visibility_mode: "All labels — settings driven".into(),
             nameplate_settings_relative_width_pct: None,
             nameplate_settings_base_transparency_pct: None,
             nameplate_settings_relative_falloff_distance_pct: None,
@@ -338,6 +338,16 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             .map(|v| format!("{v:.0}"))
             .unwrap_or_else(|| "—".into()),
     ));
+    lines.push(format!(
+        "LOD patch: min unselected px {:.0} | unselected global alpha {:.2} | debug override: {}",
+        telemetry.nameplate_min_unselected_label_px,
+        telemetry.nameplate_global_lod_alpha,
+        if telemetry.nameplate_debug_override_active {
+            "yes"
+        } else {
+            "no"
+        },
+    ));
     lines.extend([
         format!(
             "Candidate labels: {} | drawn labels: {} | focused drawn: {}",
@@ -352,11 +362,11 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             telemetry.nameplate_gpu_screen_label_count,
         ),
         format!(
-            "Culled unreadable: {} | culled falloff/alpha: {} | offscreen: {} | density (debug only): {}",
-            telemetry.nameplate_culled_too_small_count,
+            "Culled LOD/readability: {} | culled falloff/alpha: {} | offscreen: {}",
+            telemetry.nameplate_culled_too_small_count
+                + telemetry.nameplate_culled_over_density_count,
             telemetry.nameplate_culled_alpha_zero_count,
             telemetry.nameplate_culled_offscreen_count,
-            telemetry.nameplate_culled_over_density_count,
         ),
         format!(
             "Sample projected visual diameter px: {}",
@@ -391,7 +401,7 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
-            "Readability floor (unselected/focused px): {:.0} / {:.0}",
+            "Readability floor active (unselected/focused px): {:.0} / {:.0}",
             telemetry.nameplate_min_unselected_label_px, telemetry.nameplate_min_focused_label_px,
         ),
     ]);

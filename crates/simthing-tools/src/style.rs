@@ -201,7 +201,7 @@ impl TextStyleTable {
             time,
             nameplate_min_focused_px: 16.0,
             nameplate_unselected_global_alpha: 1.0,
-            nameplate_min_unselected_px: 24.0,
+            nameplate_min_unselected_px: 0.0,
         }
     }
 }

@@ -210,30 +210,37 @@ impl StarBillboardInstance {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StarNameplateDebugMode {
-    /// Production default: Settings-window sliders control per-label alpha/falloff; readability floor only.
+    /// Production default: every on-screen label eligible; Settings sliders govern alpha/falloff/scale.
     #[default]
-    SettingsDriven,
+    AllLabelsSettingsDriven,
+    /// Debug: apply readability floor and overview density caps.
+    AutoLodDebug,
     /// Debug: hide all unselected labels.
     FocusedOnlyDebug,
-    /// Debug: bypass readability, density, and falloff gates.
+    /// Debug: bypass LOD/readability/offscreen culls; still respects Settings falloff/alpha.
     ForceAllDebug,
 }
 
 impl StarNameplateDebugMode {
     pub fn label(self) -> &'static str {
         match self {
-            Self::SettingsDriven => "Settings driven",
-            Self::FocusedOnlyDebug => "Focused only (debug)",
-            Self::ForceAllDebug => "Force all (debug)",
+            Self::AllLabelsSettingsDriven => "All labels — settings driven",
+            Self::AutoLodDebug => "Auto LOD debug",
+            Self::FocusedOnlyDebug => "Focused only debug",
+            Self::ForceAllDebug => "Force all debug",
         }
     }
 
     pub fn is_debug_override(self) -> bool {
-        !matches!(self, Self::SettingsDriven)
+        !matches!(self, Self::AllLabelsSettingsDriven)
     }
 
     pub fn is_force_all_debug(self) -> bool {
         matches!(self, Self::ForceAllDebug)
+    }
+
+    pub fn applies_lod_readability_gates(self) -> bool {
+        matches!(self, Self::AutoLodDebug | Self::FocusedOnlyDebug)
     }
 }
 
@@ -248,29 +255,36 @@ pub struct StarNameplateLodGlobals {
 impl Default for StarNameplateLodGlobals {
     fn default() -> Self {
         Self {
-            min_focused_px: MIN_FOCUSED_LABEL_HEIGHT_PX,
+            min_focused_px: 0.0,
             unselected_global_alpha: 1.0,
-            min_unselected_px: MIN_UNSELECTED_LABEL_HEIGHT_PX,
+            min_unselected_px: 0.0,
         }
     }
 }
 
 impl StarNameplateDebugMode {
-    pub fn lod_globals(self, _auto_density_alpha: f32) -> StarNameplateLodGlobals {
+    pub fn lod_globals(self, auto_density_alpha: f32) -> StarNameplateLodGlobals {
         match self {
-            Self::SettingsDriven => StarNameplateLodGlobals {
-                // Settings sliders drive per-label falloff/alpha; no global density hide.
+            Self::AllLabelsSettingsDriven => StarNameplateLodGlobals {
+                min_unselected_px: 0.0,
+                min_focused_px: 0.0,
                 unselected_global_alpha: 1.0,
-                ..Default::default()
+            },
+            Self::AutoLodDebug => StarNameplateLodGlobals {
+                min_unselected_px: MIN_UNSELECTED_LABEL_HEIGHT_PX,
+                min_focused_px: MIN_FOCUSED_LABEL_HEIGHT_PX,
+                unselected_global_alpha: auto_density_alpha.clamp(0.0, 1.0),
             },
             Self::FocusedOnlyDebug => StarNameplateLodGlobals {
                 unselected_global_alpha: 0.0,
-                ..Default::default()
+                min_unselected_px: MIN_UNSELECTED_LABEL_HEIGHT_PX,
+                min_focused_px: MIN_FOCUSED_LABEL_HEIGHT_PX,
             },
             Self::ForceAllDebug => StarNameplateLodGlobals {
-                min_unselected_px: 0.0,
+                // Sentinel: negative min px bypasses offscreen/alpha-epsilon culls in shader; falloff still applies.
+                min_unselected_px: -1.0,
+                min_focused_px: -1.0,
                 unselected_global_alpha: 1.0,
-                min_focused_px: 0.0,
             },
         }
     }
@@ -301,7 +315,10 @@ pub fn nameplate_label_passes_readability_gate(
     focused: bool,
     debug_mode: StarNameplateDebugMode,
 ) -> bool {
-    if debug_mode == StarNameplateDebugMode::ForceAllDebug {
+    if matches!(
+        debug_mode,
+        StarNameplateDebugMode::AllLabelsSettingsDriven | StarNameplateDebugMode::ForceAllDebug
+    ) {
         return true;
     }
     let effective = nameplate_effective_label_height_px(label_height_px, focused);
@@ -318,12 +335,14 @@ pub fn nameplate_label_passes_density_gate(
     unselected_global_alpha: f32,
     debug_mode: StarNameplateDebugMode,
 ) -> bool {
-    if debug_mode == StarNameplateDebugMode::ForceAllDebug {
+    if matches!(
+        debug_mode,
+        StarNameplateDebugMode::AllLabelsSettingsDriven | StarNameplateDebugMode::ForceAllDebug
+    ) {
         return true;
     }
-    if debug_mode == StarNameplateDebugMode::SettingsDriven {
-        // Per-label falloff from Settings sliders; no global overview density cap.
-        return true;
+    if debug_mode == StarNameplateDebugMode::AutoLodDebug {
+        return focused || unselected_global_alpha > 0.5;
     }
     focused || unselected_global_alpha > 0.5
 }
@@ -757,23 +776,49 @@ mod tests {
     }
 
     #[test]
-    fn nameplate_readability_gate_uses_higher_unselected_threshold() {
+    fn nameplate_readability_gate_uses_higher_unselected_threshold_in_auto_lod_debug() {
         assert!(!nameplate_label_passes_readability_gate(
             20.0,
             false,
-            StarNameplateDebugMode::SettingsDriven
+            StarNameplateDebugMode::AutoLodDebug
         ));
         assert!(nameplate_label_passes_readability_gate(
             24.0,
             false,
-            StarNameplateDebugMode::SettingsDriven
+            StarNameplateDebugMode::AutoLodDebug
         ));
         assert!(nameplate_label_passes_readability_gate(
             14.0,
             true,
-            StarNameplateDebugMode::SettingsDriven
+            StarNameplateDebugMode::AutoLodDebug
         ));
         assert_eq!(nameplate_effective_label_height_px(14.0, true), 16.0);
+    }
+
+    #[test]
+    fn nameplate_all_labels_mode_has_no_hidden_readability_or_density_gates() {
+        assert!(nameplate_label_passes_readability_gate(
+            8.0,
+            false,
+            StarNameplateDebugMode::AllLabelsSettingsDriven,
+        ));
+        assert!(nameplate_label_passes_density_gate(
+            false,
+            0.0,
+            StarNameplateDebugMode::AllLabelsSettingsDriven,
+        ));
+        let lod = StarNameplateDebugMode::AllLabelsSettingsDriven.lod_globals(0.0);
+        assert_eq!(lod.min_unselected_px, 0.0);
+        assert_eq!(lod.unselected_global_alpha, 1.0);
+    }
+
+    #[test]
+    fn nameplate_auto_lod_debug_applies_density_gate() {
+        assert!(!nameplate_label_passes_density_gate(
+            false,
+            0.0,
+            StarNameplateDebugMode::AutoLodDebug,
+        ));
     }
 
     #[test]
@@ -781,7 +826,7 @@ mod tests {
         assert!(nameplate_label_passes_density_gate(
             false,
             0.0,
-            StarNameplateDebugMode::SettingsDriven,
+            StarNameplateDebugMode::AllLabelsSettingsDriven,
         ));
     }
 

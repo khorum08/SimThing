@@ -746,43 +746,39 @@ fn draw_telemetry_dialog(
                 egui::CollapsingHeader::new("Nameplate debug")
                     .default_open(true)
                     .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Nameplate mode:");
+                            egui::ComboBox::from_id_salt("nameplate_debug_mode")
+                                .selected_text(state.star_nameplate_debug_mode.label())
+                                .show_ui(ui, |ui| {
+                                    for mode in [
+                                        crate::star_render::StarNameplateDebugMode::AllLabelsSettingsDriven,
+                                        crate::star_render::StarNameplateDebugMode::AutoLodDebug,
+                                        crate::star_render::StarNameplateDebugMode::FocusedOnlyDebug,
+                                        crate::star_render::StarNameplateDebugMode::ForceAllDebug,
+                                    ] {
+                                        ui.selectable_value(
+                                            &mut state.star_nameplate_debug_mode,
+                                            mode,
+                                            mode.label(),
+                                        );
+                                    }
+                                });
+                        });
+                        if state.star_nameplate_debug_mode.is_debug_override() {
+                            ui.label(
+                                "Debug mode — optional LOD/readability assist; Settings sliders remain authoritative in All labels mode.",
+                            );
+                        }
+                        if state.star_nameplate_debug_mode.is_force_all_debug() {
+                            ui.colored_label(
+                                egui::Color32::YELLOW,
+                                "DEBUG: Force all bypasses offscreen/LOD culls; Settings falloff/alpha still apply.",
+                            );
+                        }
                         for line in nameplate_debug_lines(telemetry) {
                             ui.label(line);
                         }
-                        egui::CollapsingHeader::new("Debug overrides")
-                            .default_open(false)
-                            .show(ui, |ui| {
-                                ui.label(
-                                    "Debug override — bypasses normal nameplate visibility from Settings.",
-                                );
-                                if state
-                                    .star_nameplate_debug_mode
-                                    .is_force_all_debug()
-                                {
-                                    ui.colored_label(
-                                        egui::Color32::YELLOW,
-                                        "DEBUG OVERRIDE ACTIVE: Force all nameplates bypasses normal settings-driven visibility.",
-                                    );
-                                }
-                                ui.horizontal(|ui| {
-                                    ui.label("Override mode:");
-                                    egui::ComboBox::from_id_salt("nameplate_debug_mode")
-                                        .selected_text(state.star_nameplate_debug_mode.label())
-                                        .show_ui(ui, |ui| {
-                                            for mode in [
-                                                crate::star_render::StarNameplateDebugMode::SettingsDriven,
-                                                crate::star_render::StarNameplateDebugMode::FocusedOnlyDebug,
-                                                crate::star_render::StarNameplateDebugMode::ForceAllDebug,
-                                            ] {
-                                                ui.selectable_value(
-                                                    &mut state.star_nameplate_debug_mode,
-                                                    mode,
-                                                    mode.label(),
-                                                );
-                                            }
-                                        });
-                                });
-                            });
                     });
                 egui::CollapsingHeader::new("Performance summary")
                     .default_open(false)
