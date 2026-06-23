@@ -7,8 +7,8 @@ PROBATION / diagnostic overlay — visual high-horizon falloff ruler and guide l
 ## PR / branch / merge
 
 - Branch: `codex/studio-falloff-ruler-debug-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #926
+- Merge: `e8b0009ee480c4a34092f29fc203a43e47741fe9`
 
 ## Purpose
 
