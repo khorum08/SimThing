@@ -201,6 +201,8 @@ pub struct StudioAppState {
     pub star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode,
     /// Star/nameplate falloff progress metric (presentation only).
     pub star_falloff_metric: crate::star_render::StarFalloffMetric,
+    /// Diagnostic overlay: visual high-horizon falloff ruler (presentation only; default off).
+    pub show_falloff_ruler: bool,
 }
 
 impl StudioAppState {
@@ -253,6 +255,7 @@ impl StudioAppState {
             performance_normal_render_snapshot: None,
             star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode::default(),
             star_falloff_metric: crate::star_render::StarFalloffMetric::default(),
+            show_falloff_ruler: false,
         }
     }
 

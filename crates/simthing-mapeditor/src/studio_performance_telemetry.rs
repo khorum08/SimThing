@@ -127,6 +127,7 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_debug_override_active: bool,
     pub nameplate_star_falloff_distance_pct: Option<f32>,
     pub nameplate_effective_falloff_distance_pct: Option<f32>,
+    pub nameplate_effective_falloff_screen_y_pct: Option<f32>,
     pub nameplate_sample_depth_percent: Option<f32>,
     pub nameplate_sample_falloff_alpha: Option<f32>,
     pub nameplate_culled_past_effective_falloff_count: usize,
@@ -253,6 +254,7 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_debug_override_active: false,
             nameplate_star_falloff_distance_pct: None,
             nameplate_effective_falloff_distance_pct: None,
+            nameplate_effective_falloff_screen_y_pct: None,
             nameplate_sample_depth_percent: None,
             nameplate_sample_falloff_alpha: None,
             nameplate_culled_past_effective_falloff_count: 0,
@@ -391,13 +393,11 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             .unwrap_or_else(|| "—".into()),
     ));
     lines.push(format!(
-        "Falloff metric: {} | sample screen px: {} | ruler base px: {} | ruler vanishing px: {}",
+        "Falloff metric: {}",
         telemetry.nameplate_falloff_metric,
-        telemetry
-            .nameplate_sample_screen_px
-            .or(telemetry.nameplate_selected_anchor_px)
-            .map(|p| format!("[{:.0}, {:.0}]", p[0], p[1]))
-            .unwrap_or_else(|| "—".into()),
+    ));
+    lines.push(format!(
+        "Ruler base px: {} | ruler vanishing px: {}",
         telemetry
             .nameplate_falloff_ruler_base_px
             .map(|p| format!("[{:.0}, {:.0}]", p[0], p[1]))
@@ -408,7 +408,7 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             .unwrap_or_else(|| "—".into()),
     ));
     lines.push(format!(
-        "Star falloff distance: {}% | nameplate relative falloff distance: {}% | effective label falloff: {}%",
+        "Star falloff %: {} | nameplate relative falloff %: {} | effective nameplate falloff %: {}",
         telemetry
             .nameplate_star_falloff_distance_pct
             .map(|v| format!("{v:.0}"))
@@ -423,11 +423,28 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             .unwrap_or_else(|| "—".into()),
     ));
     lines.push(format!(
-        "Sample visual progress %: {} | relative falloff transparency: {}% | sample star alpha: {} | sample falloff alpha: {} | sample final alpha: {}",
+        "Effective nameplate falloff screen y %: {} | sample visual progress %: {} | sample final alpha: {}",
+        telemetry
+            .nameplate_effective_falloff_screen_y_pct
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "—".into()),
         telemetry
             .nameplate_sample_visual_progress_pct
             .or(telemetry.nameplate_sample_depth_percent)
             .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_selected_final_alpha
+            .or(telemetry.nameplate_sample_alpha)
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "—".into()),
+    ));
+    lines.push(format!(
+        "Sample screen px: {} | relative falloff transparency: {}% | sample star alpha: {} | sample falloff alpha: {}",
+        telemetry
+            .nameplate_sample_screen_px
+            .or(telemetry.nameplate_selected_anchor_px)
+            .map(|p| format!("[{:.0}, {:.0}]", p[0], p[1]))
             .unwrap_or_else(|| "—".into()),
         telemetry
             .nameplate_settings_relative_falloff_transparency_pct
@@ -439,11 +456,6 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             .unwrap_or_else(|| "—".into()),
         telemetry
             .nameplate_sample_falloff_alpha
-            .map(|v| format!("{v:.2}"))
-            .unwrap_or_else(|| "—".into()),
-        telemetry
-            .nameplate_selected_final_alpha
-            .or(telemetry.nameplate_sample_alpha)
             .map(|v| format!("{v:.2}"))
             .unwrap_or_else(|| "—".into()),
     ));
