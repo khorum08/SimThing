@@ -358,13 +358,16 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
             out.clip_position = vec4(0.0, 0.0, -1.0, 1.0);
             out.color = vec4(instance.color.rgb, 0.0);
         } else {
-            let gap_px = instance.size_params.y * effective_label_height_px;
-            // Contract A: local_xy.x spans natural run aspect; width_ratio scales horizontal extent
-            // only. Screen y grows downward, so a positive y offset places the label below the star
+            // Contract A: size_params.x is uniform relative size (historical field name width_ratio).
+            // local_xy.x spans natural run aspect; both axes scale with label height.
+            let relative_size = instance.size_params.x;
+            let scaled_label_height_px = effective_label_height_px * relative_size;
+            let gap_px = instance.size_params.y * scaled_label_height_px;
+            // Screen y grows downward, so a positive y offset places the label below the star
             // with glyph-top up (a negated offset put it above the star and upside-down).
             let offset_px = vec2(
-                local_xy.x * effective_label_height_px * instance.size_params.x,
-                star_visual_height_px * 0.5 + gap_px + (0.5 - local_xy.y) * effective_label_height_px,
+                local_xy.x * scaled_label_height_px,
+                star_visual_height_px * 0.5 + gap_px + (0.5 - local_xy.y) * scaled_label_height_px,
             );
             out.clip_position = clip_from_screen_px_offset(anchor_clip, offset_px);
             out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);

@@ -76,6 +76,7 @@ pub struct StarFalloffSettings {
 
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct StarNameplateSettings {
+    /// Historical serialized name; interpreted as uniform relative size (not horizontal-only width).
     pub relative_width_percent: f32,
     pub base_transparency_percent: f32,
     pub relative_falloff_distance_percent: f32,
@@ -480,7 +481,7 @@ pub fn star_nameplate_gpu_screen_label(
         nameplate.relative_falloff_distance_percent,
     );
     // Settings semantics (production visibility):
-    // - relative_width_percent -> width_ratio scales natural text width (not a fixed plate).
+    // - relative_width_percent (historical name) -> uniform label size vs star blur; width preserves natural aspect.
     // - base_transparency_percent -> alpha ceiling vs star opacity (base_alpha_ratio).
     // - relative_falloff_distance_percent × star falloff distance -> effective label falloff distance.
     // - relative_falloff_transparency_percent -> label alpha target at effective falloff vs star alpha.
@@ -512,6 +513,16 @@ pub fn nameplate_effective_label_height_px(projected_height_px: f32, focused: bo
     } else {
         projected_height_px
     }
+}
+
+/// Uniform label height after relative-size scale (mirrors GPU screen-label shader).
+pub fn nameplate_scaled_label_height_px(
+    projected_star_visual_diameter_px: f32,
+    relative_size_ratio: f32,
+    focused: bool,
+) -> f32 {
+    nameplate_effective_label_height_px(projected_star_visual_diameter_px, focused)
+        * relative_size_ratio
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -978,10 +989,29 @@ mod tests {
         let short_aspect = 2.0_f32;
         let long_aspect = 6.0_f32;
         let label_height_px = 24.0;
-        let width_ratio = 1.0;
-        let short_width = label_height_px * short_aspect * width_ratio;
-        let long_width = label_height_px * long_aspect * width_ratio;
+        let relative_size = 1.0;
+        let short_width = label_height_px * short_aspect * relative_size;
+        let long_width = label_height_px * long_aspect * relative_size;
         assert!(long_width > short_width * 2.0);
+    }
+
+    #[test]
+    fn nameplate_relative_size_scales_height_and_width_uniformly() {
+        let projected_diameter_px = 40.0;
+        let aspect = 5.0;
+        let height_100 = nameplate_scaled_label_height_px(projected_diameter_px, 1.0, false);
+        let height_50 = nameplate_scaled_label_height_px(projected_diameter_px, 0.5, false);
+        let height_200 = nameplate_scaled_label_height_px(projected_diameter_px, 2.0, false);
+        assert!((height_100 - 40.0).abs() < f32::EPSILON);
+        assert!((height_50 - 20.0).abs() < f32::EPSILON);
+        assert!((height_200 - 80.0).abs() < f32::EPSILON);
+        let width_50 = aspect * height_50;
+        let width_200 = aspect * height_200;
+        assert!((width_50 - 100.0).abs() < f32::EPSILON);
+        assert!((width_200 - 400.0).abs() < f32::EPSILON);
+        // Horizontal-only scaling would keep height at projected diameter while shrinking width.
+        assert!(height_50 < projected_diameter_px);
+        assert!(height_200 > projected_diameter_px);
     }
 
     #[test]

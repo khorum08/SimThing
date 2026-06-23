@@ -105,7 +105,7 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_selected_final_alpha: Option<f32>,
     pub nameplate_selected_cull_reason: Option<String>,
     pub nameplate_visibility_mode: String,
-    pub nameplate_settings_relative_width_pct: Option<f32>,
+    pub nameplate_settings_relative_size_pct: Option<f32>,
     pub nameplate_settings_base_transparency_pct: Option<f32>,
     pub nameplate_settings_relative_falloff_distance_pct: Option<f32>,
     pub nameplate_settings_relative_falloff_transparency_pct: Option<f32>,
@@ -210,7 +210,7 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_selected_final_alpha: None,
             nameplate_selected_cull_reason: None,
             nameplate_visibility_mode: "All labels — settings driven".into(),
-            nameplate_settings_relative_width_pct: None,
+            nameplate_settings_relative_size_pct: None,
             nameplate_settings_base_transparency_pct: None,
             nameplate_settings_relative_falloff_distance_pct: None,
             nameplate_settings_relative_falloff_transparency_pct: None,
@@ -330,9 +330,9 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
         );
     }
     lines.push(format!(
-        "Settings: width {}% | base transparency {}% | label falloff distance {}% | label falloff transparency {}%",
+        "Settings: relative size {}% | base transparency {}% | label falloff distance {}% | label falloff transparency {}%",
         telemetry
-            .nameplate_settings_relative_width_pct
+            .nameplate_settings_relative_size_pct
             .map(|v| format!("{v:.0}"))
             .unwrap_or_else(|| "—".into()),
         telemetry
@@ -415,11 +415,10 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             telemetry.nameplate_culled_past_effective_falloff_count,
         ),
         format!(
-            "Sample projected visual diameter px: {}",
+            "Nameplate relative size %: {}",
             telemetry
-                .nameplate_selected_projected_diameter_px
-                .or(telemetry.nameplate_projected_star_visual_height_px)
-                .map(|v| format!("{v:.1}"))
+                .nameplate_settings_relative_size_pct
+                .map(|v| format!("{v:.0}"))
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
@@ -431,10 +430,25 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
-            "Sample label width px: {}",
+            "Sample natural run aspect: {}",
+            telemetry
+                .nameplate_natural_run_aspect
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample computed width px: {}",
             telemetry
                 .nameplate_selected_computed_width_px
                 .or(telemetry.nameplate_label_width_px)
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample projected visual diameter px: {}",
+            telemetry
+                .nameplate_selected_projected_diameter_px
+                .or(telemetry.nameplate_projected_star_visual_height_px)
                 .map(|v| format!("{v:.1}"))
                 .unwrap_or_else(|| "—".into()),
         ),
