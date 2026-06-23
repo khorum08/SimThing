@@ -7,8 +7,9 @@ DONE / PROBATION - implemented and exercised on a real Windows Vulkan adapter; o
 ## PR / branch / merge
 
 - Branch: `codex/studio-typeface-star-nameplates`
-- PR: PENDING
-- Merge: PENDING
+- PR: #906
+- Feature commit: `2add552732`
+- Merge: ready PR #906; canonical merge recorded by Git history
 
 ## Mission
 
