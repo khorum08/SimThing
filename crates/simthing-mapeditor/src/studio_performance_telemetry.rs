@@ -226,7 +226,7 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_sample_depth_percent: None,
             nameplate_sample_falloff_alpha: None,
             nameplate_culled_past_effective_falloff_count: 0,
-            nameplate_falloff_metric: "Visual horizon".into(),
+            nameplate_falloff_metric: "Visual high horizon".into(),
             nameplate_falloff_ruler_base_px: None,
             nameplate_falloff_ruler_vanishing_px: None,
             nameplate_sample_screen_px: None,
