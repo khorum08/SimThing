@@ -7,8 +7,8 @@ PROBATION / presentation robustness fix — hyperlane ribbon basis hardened agai
 ## PR / branch / merge
 
 - Branch: `codex/studio-hyperlane-ribbon-rotation-dropout-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #925
+- Merge: `c44ee77c082e2e89e3ef9c1b08ae10da707b8982`
 
 ## Reproduction
 
