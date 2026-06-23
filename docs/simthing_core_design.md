@@ -126,42 +126,64 @@ production surfaces of this anchor.
 
 ---
 
-## 2. The one tree, and the Session root
+## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment
 
-Every SimThing in a running simulation is a descendant of one root **Session SimThing** (the
-`GameSession` root). Its immediate children are siblings, not a hierarchy of engines:
+SimThing has one recursive authority tree, but two root words appear at different layers:
+
+- **`Scenario`** is the save/load authority wrapper. A canonical scenario file has a `Scenario`
+  root and exactly one direct `GameSession` child.
+- **`GameSession`** is the running session root beneath that wrapper. Runtime systems reason from
+  the GameSession subtree; save/load proves the Scenario wrapper around it.
+
+The canonical production tree is:
 
 ```
-Session (root)
-├── Faction SimThings          (owner-entities: stockpiles, personality, policy overlays)
-├── Species / registry SimThings
-└── WorldStateMap SimThing     (the spatial spine)
-    └── Galaxy grid → star systems → planets → planet surfaces → gridcells
-        └── cohorts, fleets, buildings, pops … (leaf participants)
+Scenario                         (save/load authority wrapper)
+└── GameSession                  (runtime session root)
+    ├── Owner SimThings          (stockpiles, policy, personality, capability, RF ownership state)
+    ├── Species / registries     (identity/metadata siblings, not spatial parents)
+    └── GalaxyMap / WorldStateMap Location
+        └── galaxy gridcell Location children
+            ├── inert / ambient gridcells
+            └── star-system gridcell / local-grid Location
+                └── local spatial gridcell children
+                    ├── inert / receiver local gridcells
+                    └── planet gridcell Location
+                        └── 1×1 surface gridcell Location
+                            └── gameplay children:
+                                cohorts, fleets, buildings, infrastructure, leaders, overlays...
 ```
 
-Two laws govern the tree's shape:
+Three laws govern this shape:
 
-1. **The spatial tree expresses physical containment only.** A planet's spatial parent is its star
-   system; a cohort's spatial parent is its location. Movement is the only thing that reparents.
-2. **Owner-entities are never spatial parents.** Factions, species, and every other identity live as
-   *sibling* children of the Session root. A planet changing hands is an **owner-column flip on the
-   planet — never a reparenting, never a slot move.** The once-proposed "D=3 ownership node" (a
-   structural faction tier inside the spatial tree) is the canonical rejected design; do not
-   re-derive it. One spatial parent + N owner-columns, always.
+1. **The spatial tree expresses physical containment only.** A star-system gridcell is a child of
+   its galaxy grid. A planet gridcell is a child of its local star-system grid. A planet surface
+   gridcell is the child arena beneath the planet gridcell. Gameplay children attach at the
+   Location where they physically participate.
+2. **Owner-entities are never spatial parents.** Owners are GameSession children. Capture,
+   succession, policy capture, ownership change, and RF channel membership are metadata/column/
+   overlay changes, not spatial reparenting. The once-proposed "D=3 ownership node" (a structural
+   faction tier inside the spatial tree) is the canonical rejected design; do not re-derive it.
+   One spatial parent + N owner-columns, always.
+3. **Movement is the only spatial reparenting.** Moving a fleet, cohort, probe, or other mobile
+   SimThing changes its spatial parent. Changing owner, allegiance, supply channel, or policy does
+   not.
 
-`SimThingKind` is a topology label for spec/driver convenience. **Behavior never branches on kind at
-runtime** — no `match kind` in any simulation path. New entity types are `Location` / `Cohort` /
+`SimThingKind` remains a topology/spec/driver convenience label. **Behavior never branches on kind
+at runtime** — no `match kind` in any simulation path. New entity types are `Location` / `Cohort` /
 `Custom(String)` carrying the right properties and overlays; new `SimThingKind` variants are not the
-answer (the deprecated `StarSystem` / `Station` variants are the cautionary record).
+answer (the deprecated `StarSystem` / `Station` variants are the cautionary record). When a feature
+appears to require `match kind`, a new subsystem, or a special spatial tier, the correct answer is
+almost always more properties, overlays, children, and accumulator registrations.
 
 ### 2.1 Owner-entity fission — policy capture, succession, and civil war
 
-Law 2 covers the capture of *assets*; this section covers the capture of the **owner itself**. When
-the contested object is a polity's policy, cohesion, or existence — under **stress** (unrest,
-defeat, fiscal exhaustion) or **inducement** (foreign sponsorship, ideological conversion, bribery)
-— the generic mechanism is **owner-entity fission**, and it is how the engine models civil war,
-secession, coups, and policy capture with zero special cases:
+Law 2 covers the capture of *assets*; this section covers the capture of the **owner itself**. The
+owner-entity is a GameSession child (beneath the Scenario wrapper). When the contested object is a
+polity's policy, cohesion, or existence — under **stress** (unrest, defeat, fiscal exhaustion) or
+**inducement** (foreign sponsorship, ideological conversion, bribery) — the generic mechanism is
+**owner-entity fission**, and it is how the engine models civil war, secession, coups, and policy
+capture with zero special cases:
 
 1. **Influence is an ordinary flowing quantity.** Any participant granted the property — domestic
    cohorts, foreign agents, anything — emits alignment/influence into the assets it touches. It
@@ -320,17 +342,27 @@ live there — never as special cases inside the kernel.
 
 ---
 
-## 5. Resource flow arenas — one mechanism for everything
+## 5. Resource flow arenas and channels — one mechanism for everything
 
-All simulation effects resolve through **resource flow**: per-tick vector values **reduced up** the
-tree, then resources **disbursed back down**, inside *resource flow arenas*.
+All simulation effects resolve through **resource flow**: per-tick values accumulate on participants,
+reduce upward through the tree, settle in parent arenas, disburse downward, and fire threshold
+events only after fields resolve.
+
+```
+accumulate → reduce up the tree → local channel settlement → mask/disburse down → threshold events
+```
+
+A **resource-flow arena** is the parent `Location` / SimThing context in which participants are
+settled. An arena is spatial when its parent is a Location gridcell, but it is not a bespoke
+combat/economy/trade subsystem. It is one recursive accumulator mechanism with different authored
+columns.
 
 - **Reduce up:** each parent Sum-reduces its children's flow columns into its own (surplus/deficit),
   leaf → root, via ordinary reduction OrderBands.
-- **Disburse down:** the root/faction stockpile partitions budget downward in a reverse-direction
-  OrderBand sweep. Each intermediate SimThing is dual-role — contributes intrinsic flow upward,
-  allocates received budget to its children downward. Writes land on independent per-participant
-  columns: **no shared-slot contention, no GPU hot-pool allocator.**
+- **Disburse down:** the GameSession root / owner-silo stockpile partitions budget downward in a
+  reverse-direction OrderBand sweep. Each intermediate SimThing is dual-role — contributes intrinsic
+  flow upward, allocates received budget to its children downward. Writes land on independent
+  per-participant columns: **no shared-slot contention, no GPU hot-pool allocator.**
 - **An arena is the subtree where a masked flow nets to zero.** "Flat" vs "nested" is not a structural
   fork — a cell-local combat arena is simply the leaf-most settling depth of the one recursive
   hierarchy. Allocation is *always* recursive; settling depth is emergent.
@@ -343,6 +375,54 @@ tree, then resources **disbursed back down**, inside *resource flow arenas*.
 - **Conservation:** discrete transfers are exact (`SubtractFromSource`; recipes via
   `MinAcrossInputs + SubtractFromAllInputs`); continuous allocation is approximate-deterministic.
   Hard currency never routes through continuous flow.
+
+### 5.1 Channel identity
+
+RF does not use owner containment. RF participation is grouped into channels. The minimal channel key is:
+
+```
+(parent_location_id, owner_ref, resource_key, scope_id)
+```
+
+- `parent_location_id` — the current arena / spatial parent where local settlement occurs.
+- `owner_ref` — identifies the owner channel; points to an Owner SimThing but does not make that
+  owner a spatial parent. The Owner SimThing remains a GameSession sibling.
+- `resource_key` — the resource/pressure lane: food, energy, damage, suppression, disruption,
+  influence, supply, etc.
+- `scope_id` — distinguishes scoped variants: local, surface, system, strategic, theater, etc.
+
+RF overlay/property maps stamp channel identity and weights onto spatial participants; the lowerer
+resolves those tags to dense owner/resource/scope columns and row/table surfaces. Runtime code groups
+by resolved channel columns — it never branches on owner containment or faction structure.
+
+### 5.2 Local settlement before bubbling
+
+Within a parent arena, sibling participants settle against each other by channel **before** anything
+bubbles upward:
+
+```
+for each parent_location:
+  for each (owner_ref, resource_key, scope_id):
+    total_surplus = sum(channel surplus from siblings)
+    total_demand  = sum(channel demand from siblings)
+    locally_matched = min(total_surplus, total_demand)
+    net_surplus_or_deficit bubbles to parent in the same channel
+```
+
+This is the critical rule:
+
+- A planet surface arena settles local owner/resource demand before the planet reports net state.
+- A planet settles before the star-system local grid reports net state.
+- A star-system/local grid settles before the galaxy grid reports net state.
+- Owner stockpiles/policy participate as GameSession sibling state; the spatial tree is not
+  reshaped to express ownership.
+
+### 5.3 What counts as RF
+
+Combat, economy, logistics, supply, raiding, disruption, suppression, diplomacy pressure, policy
+capture, civil-war influence, AI ambition, and opportunity gradients are all RF lanes. Names exist
+at the spec/driver layer and compile away to generic `AccumulatorOp` registrations. `simthing-sim`
+never learns the words.
 
 **All conflict is resource flow — and its spatial face is a Movement-Front.** Combat is an HP/Damage
 arena (damage = `SubtractFromSource` transfer; HP recovery = `governed_by`; death = a zero-crossing
@@ -532,6 +612,20 @@ back into true columns; only explicit gameplay events through the `BoundaryReque
 ground truth. Mapping is opt-in, bounded, default-off, and `simthing-sim` remains map-free: it sees
 flat columns and opaque registrations.
 
+### 7.2.1 Production front operators: borders and pathfinding
+
+Gu-Yang/SaturatingFlux and PALMA are not optional background references. They are the production
+Movement-Front vocabulary for borders, chokepoints, reach, and pathfinding:
+
+- **Gu-Yang / SaturatingFlux** evolves owner/supply/threat/suppression/disruption pressure over the
+  grid as a conservative bounded front. Stable borders are contours where opposing fronts settle.
+  Chokepoints are saturation/choke readouts from the same field, not authored border polygons.
+- **PALMA** produces reach/impedance fields over those fronts. Pathfinding consumes local gradients
+  of reach/impedance/desirability/threat. It does not create a route object as simulation authority.
+
+The front is the route. A path polyline, if later rendered for UI, is a presentation artifact derived
+from the field, never a simulation subsystem.
+
 **Production operators — the realized rule (Gu-Yang flux) and the reach utility (PALMA).** Two seated,
 semantic-free GPU operators give the automaton its production form, each a generic
 `StructuredFieldStencilOp`-family utility, not a new primitive or a semantic engine:
@@ -670,9 +764,9 @@ The crate may **import, normalize, stage, cache, and render** presentation artif
 a simulation subsystem or introduce gameplay semantics into GPU shaders. CPU work is import/staging/change-time
 only; GPU owns sampling, style effects, deformation, path/warp, and instanced draw composition.
 
-Durable references: `docs/design_typeface_ladder.md`, `docs/design_simthing_typeface_track_proposal.md`,
-`docs/tests/current_evidence_index.md` (TYPEFACE rows). Process reports archived under
-`docs/archive/typeface_track_2026_06/`.
+Durable references: **`docs/simthing_tools_typeface_adr.md`** (root ADR, ACCEPTED/CLOSED/DA-APPROVED),
+`docs/tests/current_evidence_index.md` (TYPEFACE rows). Process reports and the original ladder/proposal
+archived under `docs/archive/typeface_track_2026_06/`.
 
 ```rust
 // TTF / font / shaping
