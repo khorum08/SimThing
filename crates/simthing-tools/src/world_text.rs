@@ -170,9 +170,13 @@ pub fn natural_run_aspect_from_glyphs(glyphs: &[GlyphInstanceGpu]) -> f32 {
         .iter()
         .map(|glyph| glyph.pos_size[0])
         .fold(f32::INFINITY, f32::min);
+    // Glyph vertical metrics are baseline-relative and grow upward: `pos_size[1]` is the glyph top
+    // and the glyph extends DOWN to `pos_size[1] - pos_size[3]` (e.g. a hyphen has a small top, so it
+    // sits low in the run — not at the top). The run's vertical extent is therefore
+    // [bottom = min(top - height), top = max(top)].
     let min_y = glyphs
         .iter()
-        .map(|glyph| glyph.pos_size[1])
+        .map(|glyph| glyph.pos_size[1] - glyph.pos_size[3])
         .fold(f32::INFINITY, f32::min);
     let max_x = glyphs
         .iter()
@@ -180,7 +184,7 @@ pub fn natural_run_aspect_from_glyphs(glyphs: &[GlyphInstanceGpu]) -> f32 {
         .fold(f32::NEG_INFINITY, f32::max);
     let max_y = glyphs
         .iter()
-        .map(|glyph| glyph.pos_size[1] + glyph.pos_size[3])
+        .map(|glyph| glyph.pos_size[1])
         .fold(f32::NEG_INFINITY, f32::max);
     let run_height = (max_y - min_y).max(1.0);
     ((max_x - min_x) / run_height).clamp(0.01, 32.0)
@@ -193,11 +197,11 @@ pub fn normalized_label_local_x_range_from_glyphs(glyphs: &[GlyphInstanceGpu]) -
     }
     let min_y = glyphs
         .iter()
-        .map(|glyph| glyph.pos_size[1])
+        .map(|glyph| glyph.pos_size[1] - glyph.pos_size[3])
         .fold(f32::INFINITY, f32::min);
     let max_y = glyphs
         .iter()
-        .map(|glyph| glyph.pos_size[1] + glyph.pos_size[3])
+        .map(|glyph| glyph.pos_size[1])
         .fold(f32::NEG_INFINITY, f32::max);
     let min_x = glyphs
         .iter()
@@ -231,9 +235,13 @@ pub fn build_world_glyph_instances(
         .iter()
         .map(|glyph| glyph.pos_size[0])
         .fold(f32::INFINITY, f32::min);
+    // Glyph vertical metrics are baseline-relative and grow upward: `pos_size[1]` is the glyph top
+    // and the glyph extends DOWN to `pos_size[1] - pos_size[3]` (e.g. a hyphen has a small top, so it
+    // sits low in the run — not at the top). The run's vertical extent is therefore
+    // [bottom = min(top - height), top = max(top)].
     let min_y = glyphs
         .iter()
-        .map(|glyph| glyph.pos_size[1])
+        .map(|glyph| glyph.pos_size[1] - glyph.pos_size[3])
         .fold(f32::INFINITY, f32::min);
     let max_x = glyphs
         .iter()
@@ -241,7 +249,7 @@ pub fn build_world_glyph_instances(
         .fold(f32::NEG_INFINITY, f32::max);
     let max_y = glyphs
         .iter()
-        .map(|glyph| glyph.pos_size[1] + glyph.pos_size[3])
+        .map(|glyph| glyph.pos_size[1])
         .fold(f32::NEG_INFINITY, f32::max);
     let run_height = (max_y - min_y).max(1.0);
     let run_center_x = (min_x + max_x) * 0.5;
@@ -276,9 +284,11 @@ pub fn build_world_glyph_instances(
         .map(|source| {
             let mut glyph = *source;
             // Contract A: x normalized by run height so local_xy.x already spans natural run aspect.
+            // y: larger source top (higher glyph) maps to a larger local y (rendered higher on
+            // screen); height stays negated so source_uv.y advances from glyph top to bottom.
             glyph.pos_size = [
                 (source.pos_size[0] - run_center_x) / run_height,
-                0.5 - (source.pos_size[1] - min_y) / run_height,
+                (source.pos_size[1] - min_y) / run_height - 0.5,
                 source.pos_size[2] / run_height,
                 -source.pos_size[3] / run_height,
             ];
