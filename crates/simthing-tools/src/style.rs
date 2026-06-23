@@ -175,8 +175,9 @@ impl TextStyleTable {
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct TextStyleGlobalsGpu {
     pub time: f32,
-    pub slot_count: f32,
-    pub _pad: [f32; 2],
+    pub nameplate_min_focused_px: f32,
+    pub nameplate_unselected_global_alpha: f32,
+    pub nameplate_min_unselected_px: f32,
 }
 
 /// GPU row array uploaded only when style rows change.
@@ -198,8 +199,9 @@ impl TextStyleTable {
     pub fn to_globals(&self, time: f32) -> TextStyleGlobalsGpu {
         TextStyleGlobalsGpu {
             time,
-            slot_count: self.slot_count as f32,
-            _pad: [0.0; 2],
+            nameplate_min_focused_px: 12.0,
+            nameplate_unselected_global_alpha: 1.0,
+            nameplate_min_unselected_px: 24.0,
         }
     }
 }

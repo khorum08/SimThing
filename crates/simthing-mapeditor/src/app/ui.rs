@@ -746,6 +746,24 @@ fn draw_telemetry_dialog(
                 egui::CollapsingHeader::new("Nameplate debug")
                     .default_open(true)
                     .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Nameplate debug mode:");
+                            egui::ComboBox::from_id_salt("nameplate_debug_mode")
+                                .selected_text(state.star_nameplate_debug_mode.label())
+                                .show_ui(ui, |ui| {
+                                    for mode in [
+                                        crate::star_render::StarNameplateDebugMode::AutoLod,
+                                        crate::star_render::StarNameplateDebugMode::FocusedOnly,
+                                        crate::star_render::StarNameplateDebugMode::ForceAll,
+                                    ] {
+                                        ui.selectable_value(
+                                            &mut state.star_nameplate_debug_mode,
+                                            mode,
+                                            mode.label(),
+                                        );
+                                    }
+                                });
+                        });
                         for line in nameplate_debug_lines(telemetry) {
                             ui.label(line);
                         }

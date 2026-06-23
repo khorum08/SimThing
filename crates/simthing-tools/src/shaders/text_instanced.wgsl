@@ -252,7 +252,6 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
 #ifdef WORLD_TEXT
     const HORIZON_TAPER: f32 = 0.75;
-    const MIN_LEGIBLE_LABEL_PX: f32 = 18.0;
     const NAMEPLATE_HEIGHT_RATIO: f32 = 1.0;
 
     let anchor = instance.anchor_height.xyz;
@@ -283,14 +282,37 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         instance.style_params,
         horizon_taper,
     );
+    // style_globals: x=time, y=min_focused_px, z=unselected_global_alpha, w=min_unselected_px
+    let min_focused_px = style_globals.y;
+    let unselected_global_alpha = style_globals.z;
+    let min_unselected_px = style_globals.w;
+    let force_all_labels = min_unselected_px < 0.5 && min_focused_px < 0.5;
+    let focused = instance.size_params.z > 0.5;
 
     if screen_companion {
-        if label_height_px < MIN_LEGIBLE_LABEL_PX {
+        let anchor_clip = position_world_to_clip(anchor);
+        var culled = false;
+        if !force_all_labels {
+            let min_height_px = select(min_unselected_px, min_focused_px, focused);
+            if label_height_px < min_height_px {
+                culled = true;
+            }
+            if !focused && unselected_global_alpha < 0.5 {
+                culled = true;
+            }
+            let clip_w = max(abs(anchor_clip.w), 0.0001);
+            if abs(anchor_clip.x) > clip_w || abs(anchor_clip.y) > clip_w {
+                culled = true;
+            }
+            if falloff_alpha < 0.01 {
+                culled = true;
+            }
+        }
+        if culled {
             out.clip_position = vec4(0.0, 0.0, -1.0, 1.0);
             out.color = vec4(instance.color.rgb, 0.0);
         } else {
             let gap_px = instance.size_params.y * label_height_px;
-            let anchor_clip = position_world_to_clip(anchor);
             // Contract A: local_xy.x already spans natural run aspect; width_ratio is x-scale only.
             let offset_px = vec2(
                 local_xy.x * label_height_px * instance.size_params.x,
