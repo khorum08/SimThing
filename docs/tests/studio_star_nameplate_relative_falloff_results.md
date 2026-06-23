@@ -6,9 +6,9 @@ PROBATION / presentation math fix — nameplate falloff distance is a strict mul
 
 ## PR / branch / merge
 
-- Branch: `codex/studio-star-nameplate-relative-falloff-0`
-- PR: (pending)
-- Merge: (pending)
+- Branch: `codex/studio-star-nameplate-relative-falloff-0` (deleted after merge)
+- PR: #921 — https://github.com/khorum08/SimThing/pull/921
+- Merge: `0c9c3f6f5ec83ce1d60c9927d03f4a1487232a69` on `master`
 
 ## Root cause
 
