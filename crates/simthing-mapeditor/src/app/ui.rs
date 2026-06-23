@@ -181,7 +181,9 @@ pub fn studio_ui_system(
         screen_h,
     );
     let telemetry_ms = telemetry_started.elapsed().as_secs_f64() * 1000.0;
-    if state.show_falloff_ruler {
+    if state.show_falloff_ruler
+        && state.star_falloff_metric == crate::star_render::StarFalloffMetric::VisualHorizon
+    {
         let nameplate_settings = settings.star_nameplate_settings().clamped();
         draw_falloff_ruler_overlay(
             ctx,
@@ -548,6 +550,9 @@ fn draw_settings_dialog(
                             .suffix("%")
                             .text("Falloff Distance"),
                     )
+                    .on_hover_text(
+                        "Percent of current map-radius view range that remains at base star visibility.",
+                    )
                     .changed();
                 changed |= ui
                     .add(
@@ -609,7 +614,7 @@ fn draw_settings_dialog(
                         .text("Relative Falloff Distance"),
                     )
                     .on_hover_text(
-                        "Percent of Star Falloff Distance. 100% = same falloff as stars. 50% = half the star falloff distance.",
+                        "Percent of Star Falloff Distance for which nameplates remain at base label visibility.",
                     )
                     .changed();
                 nameplate_changed |= ui
@@ -792,6 +797,7 @@ fn draw_telemetry_dialog(
                                 .selected_text(state.star_falloff_metric.label())
                                 .show_ui(ui, |ui| {
                                     for metric in [
+                                        crate::star_render::StarFalloffMetric::MapRadiusPlateau,
                                         crate::star_render::StarFalloffMetric::VisualHorizon,
                                         crate::star_render::StarFalloffMetric::CameraDistanceDebug,
                                     ] {

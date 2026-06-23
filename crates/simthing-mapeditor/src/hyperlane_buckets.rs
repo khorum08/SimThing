@@ -74,9 +74,10 @@ pub struct HyperlaneVisual {
 }
 
 pub fn compute_hyperlane_visual(
-    camera_depth_percent: f32,
+    range_progress_percent: f32,
     nearest_star_disc_width_world: f32,
     settings: &HyperlaneRenderSettings,
+    use_plateau: bool,
 ) -> HyperlaneVisual {
     let settings = settings.clamped();
     if settings.base_opacity_percent <= 0.0 {
@@ -98,18 +99,41 @@ pub fn compute_hyperlane_visual(
     let target_thickness = base_thickness * settings.falloff_thickness_percent / 100.0;
     let base_opacity = settings.base_opacity_percent / 100.0;
     let target_opacity = base_opacity * settings.falloff_opacity_percent / 100.0;
-    let depth = camera_depth_percent.clamp(0.0, 100.0);
     let falloff_at = settings.falloff_distance_percent;
-    let t = (depth / falloff_at.max(f32::EPSILON)).clamp(0.0, 1.0);
+    let (thickness, opacity) = if use_plateau {
+        let t =
+            crate::falloff_metric::plateau_falloff_t_percent(range_progress_percent, falloff_at);
+        (
+            crate::falloff_metric::lerp_f32(base_thickness, target_thickness, t),
+            crate::falloff_metric::lerp_f32(base_opacity, target_opacity, t),
+        )
+    } else {
+        let depth = range_progress_percent.clamp(0.0, 100.0);
+        let t = (depth / falloff_at.max(f32::EPSILON)).clamp(0.0, 1.0);
+        (
+            crate::falloff_metric::lerp_f32(base_thickness, target_thickness, t),
+            crate::falloff_metric::lerp_f32(base_opacity, target_opacity, t),
+        )
+    };
 
-    let thickness = lerp(base_thickness, target_thickness, t).max(minimum);
-    let opacity = lerp(base_opacity, target_opacity, t).clamp(0.0, 1.0);
     HyperlaneVisual {
-        thickness_world: thickness.min(max_base),
-        core_opacity: opacity,
+        thickness_world: thickness.max(minimum).min(max_base),
+        core_opacity: opacity.clamp(0.0, 1.0),
         edge_falloff_fraction_each_side: HYPERLANE_EDGE_FALLOFF_FRACTION_EACH_SIDE,
         visible: opacity > 0.0,
     }
+}
+
+pub fn hyperlane_map_radius_progress_percent(
+    context: &crate::falloff_metric::StudioMapRadiusFalloffContext,
+    from: [f32; 3],
+    to: [f32; 3],
+) -> f32 {
+    let mid = [(from[0] + to[0]) * 0.5, (from[2] + to[2]) * 0.5];
+    crate::falloff_metric::map_radius_progress_percent(
+        context,
+        bevy::prelude::Vec2::new(mid[0], mid[1]),
+    )
 }
 
 pub fn hyperlane_camera_depth_percent(
@@ -350,7 +374,7 @@ mod tests {
             base_opacity_percent: 0.0,
             ..Default::default()
         };
-        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings, true);
         assert!(!visual.visible);
         assert_eq!(visual.core_opacity, 0.0);
     }
@@ -362,7 +386,7 @@ mod tests {
             ..Default::default()
         };
         for depth in [0.0, 50.0, 100.0] {
-            let visual = compute_hyperlane_visual(depth, 10.0, &settings);
+            let visual = compute_hyperlane_visual(depth, 10.0, &settings, false);
             assert!(!visual.visible);
             assert_eq!(visual.thickness_world, 0.0);
             assert_eq!(visual.core_opacity, 0.0);
@@ -375,7 +399,7 @@ mod tests {
             base_opacity_percent: 1.0,
             ..Default::default()
         };
-        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings, true);
         assert!(visual.visible);
         assert!(visual.core_opacity > 0.0);
     }
@@ -386,7 +410,7 @@ mod tests {
             base_thickness_percent_of_star: 1.0,
             ..Default::default()
         };
-        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings, true);
         assert!(visual.thickness_world >= MIN_HYPERLANE_THICKNESS_WORLD);
     }
 
@@ -396,7 +420,7 @@ mod tests {
             base_thickness_percent_of_star: 100.0,
             ..Default::default()
         };
-        let visual = compute_hyperlane_visual(0.0, 10.0, &settings);
+        let visual = compute_hyperlane_visual(0.0, 10.0, &settings, true);
         assert!(visual.thickness_world <= 2.5 + f32::EPSILON);
     }
 
@@ -408,7 +432,7 @@ mod tests {
             falloff_thickness_percent: 50.0,
             ..Default::default()
         };
-        let visual = compute_hyperlane_visual(40.0, 10.0, &settings);
+        let visual = compute_hyperlane_visual(100.0, 10.0, &settings, true);
         assert!((visual.thickness_world - 1.0).abs() < f32::EPSILON);
     }
 
@@ -420,7 +444,7 @@ mod tests {
             falloff_opacity_percent: 25.0,
             ..Default::default()
         };
-        let visual = compute_hyperlane_visual(40.0, 10.0, &settings);
+        let visual = compute_hyperlane_visual(100.0, 10.0, &settings, true);
         assert!((visual.core_opacity - 0.20).abs() < f32::EPSILON);
     }
 
@@ -436,13 +460,13 @@ mod tests {
 
     #[test]
     fn hyperlane_visual_edge_falloff_is_10_percent_each_side() {
-        let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
+        let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default(), true);
         assert!((visual.edge_falloff_fraction_each_side - 0.10).abs() < f32::EPSILON);
     }
 
     #[test]
     fn soft_edge_side_falloff_is_10_percent_each_side() {
-        let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
+        let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default(), true);
         assert!((visual.edge_falloff_fraction_each_side - 0.10).abs() < f32::EPSILON);
     }
 }

@@ -5,6 +5,7 @@
 
 pub mod camera_control;
 pub mod dialog;
+pub mod falloff_metric;
 pub mod falloff_ruler_overlay;
 pub mod generation;
 pub mod hydration;
@@ -56,6 +57,13 @@ pub fn run() {
 }
 
 pub use dialog::{SettingsDialogModel, StudioAction, TelemetryDialogModel, WarningDialogModel};
+pub use falloff_metric::{
+    compute_map_radius_falloff_context, map_radius_progress, map_radius_progress_percent,
+    origin_source_label, plateau_falloff_t, plateau_falloff_t_percent, plateau_interpolate,
+    world_position_map_progress_percent, MapPlaneBounds, MapViewOriginSource,
+    StudioMapRadiusFalloffContext, FALLOFF_MODE_CAMERA_DISTANCE, FALLOFF_MODE_MAP_RADIUS,
+    FALLOFF_MODE_VISUAL_HORIZON,
+};
 pub use falloff_ruler_overlay::{draw_falloff_ruler_overlay, FalloffRulerOverlayParams};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
 pub use hydration::{

@@ -7,9 +7,13 @@ use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
 use bevy::window::{PresentMode, PrimaryWindow, Window};
 use simthing_tools::{
     natural_run_aspect_from_glyphs, normalized_label_local_x_range_from_glyphs, GlyphInstanceGpu,
-    TextGlyphInstances, WorldTextBillboard, WorldTextNameplateLodPatch, WorldTextPlacementMode,
+    TextGlyphInstances, WorldTextBillboard, WorldTextFalloffRulerPatch, WorldTextNameplateLodPatch,
+    WorldTextPlacementMode,
 };
 
+use crate::falloff_metric::{
+    compute_map_radius_falloff_context, origin_source_label, MapPlaneBounds,
+};
 use crate::star_render::{
     estimate_world_vertical_span_screen_px, nameplate_effective_falloff_distance_percent,
     nameplate_gpu_screen_label_falloff_alpha, nameplate_label_passes_density_gate,
@@ -52,6 +56,51 @@ pub fn init_studio_performance_telemetry(mut commands: Commands) {
 
 pub fn begin_main_update_timing(mut state: ResMut<StudioPerformanceTelemetryState>) {
     state.update_pass_started = Some(std::time::Instant::now());
+}
+
+pub fn update_map_radius_falloff_context_system(
+    state: Res<super::StudioAppState>,
+    studio_camera: Res<super::camera::StudioCamera>,
+    camera: Query<(&Camera, &GlobalTransform), With<super::camera::MainCamera>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    mut falloff_state: ResMut<super::StudioMapRadiusFalloffState>,
+    mut falloff_patch: ResMut<WorldTextFalloffRulerPatch>,
+) {
+    falloff_patch.falloff_mode = state.star_falloff_metric.gpu_falloff_mode();
+    let Some(session) = state.session.as_ref() else {
+        falloff_state.valid = false;
+        return;
+    };
+    let Ok((camera, camera_transform)) = camera.single() else {
+        falloff_state.valid = false;
+        return;
+    };
+    let Ok(window) = windows.single() else {
+        falloff_state.valid = false;
+        return;
+    };
+    let positions: Vec<[f32; 3]> = session
+        .view_model
+        .render_anchors
+        .iter()
+        .map(|a| a.world_position)
+        .collect();
+    let bounds = MapPlaneBounds::from_world_positions(&positions);
+    let context = compute_map_radius_falloff_context(
+        camera,
+        camera_transform,
+        window.resolution.width(),
+        window.resolution.height(),
+        bounds,
+        Some(studio_camera.orbit_target),
+        0.0,
+    );
+    falloff_state.bounds = bounds;
+    falloff_state.context = context;
+    falloff_state.valid = true;
+    falloff_patch.map_view_origin_x = context.view_origin.x;
+    falloff_patch.map_view_origin_z = context.view_origin.y;
+    falloff_patch.map_max_view_distance = context.map_max_view_distance();
 }
 
 pub fn finalize_main_update_timing(
@@ -221,6 +270,7 @@ pub fn update_nameplate_diagnostics_system(
     >,
     mut telemetry_state: ResMut<StudioPerformanceTelemetryState>,
     mut lod_patch: ResMut<WorldTextNameplateLodPatch>,
+    falloff_state: Res<super::StudioMapRadiusFalloffState>,
 ) {
     let debug_mode = state.star_nameplate_debug_mode;
     let nameplate_settings = settings.star_nameplate_settings().clamped();
@@ -359,6 +409,20 @@ pub fn update_nameplate_diagnostics_system(
     let viewport_width = window.resolution.width();
     let viewport_area_px = viewport_width * viewport_height;
     let falloff_metric = state.star_falloff_metric;
+    let use_plateau = falloff_metric.uses_plateau_curve();
+    let map_context = falloff_state.valid.then_some(&falloff_state.context);
+    if falloff_state.valid {
+        let ctx = falloff_state.context;
+        telemetry_state.telemetry.map_falloff_view_origin =
+            Some([ctx.view_origin.x, ctx.view_origin.y]);
+        telemetry_state.telemetry.map_falloff_max_view_distance = Some(ctx.map_max_view_distance());
+        telemetry_state.telemetry.map_falloff_origin_source =
+            origin_source_label(ctx.origin_source).into();
+    } else {
+        telemetry_state.telemetry.map_falloff_view_origin = None;
+        telemetry_state.telemetry.map_falloff_max_view_distance = None;
+        telemetry_state.telemetry.map_falloff_origin_source = "—".into();
+    }
     let horizon_ruler = VisualHorizonFalloffRuler::from_viewport(viewport_width, viewport_height);
     telemetry_state.telemetry.nameplate_falloff_ruler_base_px = Some(horizon_ruler.base_px);
     telemetry_state
@@ -376,6 +440,7 @@ pub fn update_nameplate_diagnostics_system(
             &star_settings,
             viewport_width,
             viewport_height,
+            map_context,
         );
         let height_ratio =
             star_nameplate_envelope_height_ratio(instance, &star_settings, progress_percent);
@@ -393,8 +458,9 @@ pub fn update_nameplate_diagnostics_system(
         );
         sample_label_width_px = sample_run_aspect.unwrap_or(1.0) * sample_label_height_px;
 
-        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(progress_percent, &sample);
-        let star_alpha = star_falloff_alpha_at_progress(progress_percent, &sample);
+        let falloff_alpha =
+            nameplate_gpu_screen_label_falloff_alpha(progress_percent, &sample, use_plateau);
+        let star_alpha = star_falloff_alpha_at_progress(progress_percent, &sample, use_plateau);
         let sample_alpha = sample.base_alpha_ratio * falloff_alpha;
         telemetry_state.telemetry.nameplate_sample_depth_percent = Some(progress_percent);
         telemetry_state
@@ -483,6 +549,7 @@ pub fn update_nameplate_diagnostics_system(
             &star_settings,
             viewport_width,
             viewport_height,
+            map_context,
         );
         let height_ratio =
             star_nameplate_envelope_height_ratio(instance, &star_settings, progress_percent);
@@ -498,7 +565,8 @@ pub fn update_nameplate_diagnostics_system(
             .unwrap_or(sample_run_aspect.unwrap_or(1.0));
         let _label_width_px = run_aspect * projected_height * billboard.width_ratio;
 
-        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(progress_percent, billboard);
+        let falloff_alpha =
+            nameplate_gpu_screen_label_falloff_alpha(progress_percent, billboard, use_plateau);
         let final_alpha = billboard.base_alpha_ratio * falloff_alpha;
 
         let effective_falloff_at = billboard
@@ -585,6 +653,7 @@ pub fn update_nameplate_diagnostics_system(
             &star_settings,
             viewport_width,
             viewport_height,
+            map_context,
         );
         let height_ratio =
             star_nameplate_envelope_height_ratio(instance, &star_settings, progress_percent);
@@ -602,8 +671,9 @@ pub fn update_nameplate_diagnostics_system(
             .map(|g| normalized_label_local_x_range_from_glyphs(g))
             .unwrap_or((0.0, 0.0));
         let computed_width = (local_x_max - local_x_min).max(0.0) * effective_height;
-        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(progress_percent, &billboard);
-        let star_alpha = star_falloff_alpha_at_progress(progress_percent, &billboard);
+        let falloff_alpha =
+            nameplate_gpu_screen_label_falloff_alpha(progress_percent, &billboard, use_plateau);
+        let star_alpha = star_falloff_alpha_at_progress(progress_percent, &billboard, use_plateau);
         let final_alpha = billboard.base_alpha_ratio * falloff_alpha;
         telemetry_state.telemetry.nameplate_sample_depth_percent = Some(progress_percent);
         telemetry_state

@@ -318,7 +318,7 @@ mod tests {
     #[test]
     fn settings_hyperlane_sliders_affect_three_d_mode() {
         let mode = StudioViewMode::ThreeD;
-        let base = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default());
+        let base = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default(), true);
         let adjusted = compute_hyperlane_visual(
             0.0,
             10.0,
@@ -327,6 +327,7 @@ mod tests {
                 base_opacity_percent: 40.0,
                 ..Default::default()
             },
+            true,
         );
         assert_eq!(
             mode.hyperlane_render_path(),
@@ -339,15 +340,21 @@ mod tests {
     #[test]
     fn settings_hyperlane_sliders_affect_overhead_mode() {
         let mode = StudioViewMode::OverheadStrategic;
-        let base = compute_hyperlane_visual(25.0, 10.0, &HyperlaneRenderSettings::default());
+        let settings = HyperlaneRenderSettings {
+            falloff_distance_percent: 50.0,
+            ..Default::default()
+        };
+        let base = compute_hyperlane_visual(100.0, 10.0, &settings, true);
         let adjusted = compute_hyperlane_visual(
-            25.0,
+            100.0,
             10.0,
             &HyperlaneRenderSettings {
+                falloff_distance_percent: 50.0,
                 falloff_thickness_percent: 5.0,
                 falloff_opacity_percent: 5.0,
                 ..Default::default()
             },
+            true,
         );
         assert_eq!(
             mode.hyperlane_render_path(),

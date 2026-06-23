@@ -170,6 +170,7 @@ pub fn sync_star_visuals_system(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut caches: ResMut<StudioRenderLoopCaches>,
     mut perf: ResMut<StudioPerformanceTelemetryState>,
+    falloff_state: Res<super::StudioMapRadiusFalloffState>,
 ) {
     perf.telemetry.star_visual_sync_calls = perf.telemetry.star_visual_sync_calls.saturating_add(1);
 
@@ -209,6 +210,8 @@ pub fn sync_star_visuals_system(
     // waiting for a camera move to break the per-star key. Steady-state frames keep the cheap per-star
     // gate, so the dirty-gate performance gain is preserved.
     let force_resync = caches.star_visual.dirty;
+    let use_plateau = falloff_metric.uses_plateau_curve();
+    let map_context = falloff_state.valid.then_some(&falloff_state.context);
 
     let started = std::time::Instant::now();
     let mut entity_count = 0usize;
@@ -227,6 +230,7 @@ pub fn sync_star_visuals_system(
             &settings,
             viewport_width,
             viewport_height,
+            map_context,
         );
         let layer_code = match star.layer {
             StarVisualLayer::Core => 0,
@@ -243,7 +247,8 @@ pub fn sync_star_visuals_system(
             continue;
         }
 
-        let visual = compute_star_distance_visual(depth_percent, selected, hovered, &settings);
+        let visual =
+            compute_star_distance_visual(depth_percent, selected, hovered, &settings, use_plateau);
         let (layer_scale, alpha, emissive_factor, color, texture) =
             match (settings.render_mode, star.layer) {
                 (StarRenderMode::BloomStarburst, StarVisualLayer::Core) => (

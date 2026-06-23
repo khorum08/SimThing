@@ -113,7 +113,7 @@ pub use wgpu_smoke::{
 pub use world_text::{
     natural_run_aspect_from_glyphs, normalized_label_local_x_range_from_glyphs,
     world_text_diagnostics, WorldGlyphInstanceGpu, WorldTextBillboard, WorldTextDiagnostics,
-    WorldTextGlyphInstances, WorldTextNameplateLodPatch, WorldTextPlacementMode,
-    GPU_SCREEN_LABEL_MIN_SELECTED_HEIGHT_PX, WORLD_TEXT_GPU_SCREEN_LABEL_MODE,
-    WORLD_TEXT_SCREEN_COMPANION_MODE,
+    WorldTextFalloffRulerPatch, WorldTextGlyphInstances, WorldTextNameplateLodPatch,
+    WorldTextPlacementMode, GPU_SCREEN_LABEL_MIN_SELECTED_HEIGHT_PX,
+    WORLD_TEXT_GPU_SCREEN_LABEL_MODE, WORLD_TEXT_SCREEN_COMPANION_MODE,
 };
