@@ -209,12 +209,17 @@ fn anchor_screen_px_from_clip(anchor_clip: vec4<f32>) -> vec2<f32> {
     );
 }
 
-// Visual falloff ruler: 0% at viewport bottom center, 100% at central vanishing point.
+// Visual falloff ruler: 0% at viewport bottom center, 100% at high horizon (25% from top).
+const STAR_FALLOFF_BASE_X_FRAC: f32 = 0.5;
+const STAR_FALLOFF_BASE_Y_FRAC: f32 = 1.0;
+const STAR_FALLOFF_VANISHING_X_FRAC: f32 = 0.5;
+const STAR_FALLOFF_VANISHING_Y_FRAC: f32 = 0.25;
+
 fn visual_horizon_falloff_progress_percent(screen_px: vec2<f32>) -> f32 {
     let vw = view.viewport.z;
     let vh = view.viewport.w;
-    let base = vec2(vw * 0.5, vh);
-    let vanishing = vec2(vw * 0.5, vh * 0.5);
+    let base = vec2(vw * STAR_FALLOFF_BASE_X_FRAC, vh * STAR_FALLOFF_BASE_Y_FRAC);
+    let vanishing = vec2(vw * STAR_FALLOFF_VANISHING_X_FRAC, vh * STAR_FALLOFF_VANISHING_Y_FRAC);
     let ruler = vanishing - base;
     let len_sq = dot(ruler, ruler);
     if len_sq <= 0.0001 {

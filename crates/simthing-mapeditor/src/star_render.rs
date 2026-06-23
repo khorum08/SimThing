@@ -670,7 +670,15 @@ pub fn normalized_billboard_camera_depth_percent(
     (((camera_distance - near) / (far - near)).clamp(0.0, 1.0)) * 100.0
 }
 
-/// Foreground-to-horizon ruler for Studio star/nameplate falloff (screen pixels).
+/// Presentation-space high horizon for Studio star/nameplate visual falloff (screen pixels).
+/// The falloff metric uses a high horizon at 25% from the top, centered horizontally.
+/// This is not the 3D camera projection center; it is the artist/Studio visual falloff ruler.
+pub const STAR_FALLOFF_BASE_X_FRACTION: f32 = 0.5;
+pub const STAR_FALLOFF_BASE_Y_FRACTION: f32 = 1.0;
+pub const STAR_FALLOFF_VANISHING_X_FRACTION: f32 = 0.5;
+pub const STAR_FALLOFF_VANISHING_Y_FRACTION: f32 = 0.25;
+
+/// Foreground-to-high-horizon ruler for Studio star/nameplate falloff (screen pixels).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VisualHorizonFalloffRuler {
     pub base_px: [f32; 2],
@@ -680,8 +688,14 @@ pub struct VisualHorizonFalloffRuler {
 impl VisualHorizonFalloffRuler {
     pub fn from_viewport(viewport_width: f32, viewport_height: f32) -> Self {
         Self {
-            base_px: [viewport_width * 0.5, viewport_height],
-            vanishing_px: [viewport_width * 0.5, viewport_height * 0.5],
+            base_px: [
+                viewport_width * STAR_FALLOFF_BASE_X_FRACTION,
+                viewport_height * STAR_FALLOFF_BASE_Y_FRACTION,
+            ],
+            vanishing_px: [
+                viewport_width * STAR_FALLOFF_VANISHING_X_FRACTION,
+                viewport_height * STAR_FALLOFF_VANISHING_Y_FRACTION,
+            ],
         }
     }
 }
@@ -689,7 +703,7 @@ impl VisualHorizonFalloffRuler {
 /// Falloff progress metric for stars and GPU nameplates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StarFalloffMetric {
-    /// Default: 0% at viewport bottom center, 100% at central vanishing point.
+    /// Default: 0% at viewport bottom center, 100% at high horizon (25% from top).
     #[default]
     VisualHorizon,
     /// Telemetry/debug: legacy camera-distance normalization.
@@ -699,7 +713,7 @@ pub enum StarFalloffMetric {
 impl StarFalloffMetric {
     pub fn label(self) -> &'static str {
         match self {
-            Self::VisualHorizon => "Visual horizon",
+            Self::VisualHorizon => "Visual high horizon",
             Self::CameraDistanceDebug => "Camera distance debug",
         }
     }
@@ -720,7 +734,7 @@ pub fn world_anchor_screen_px(
     ])
 }
 
-/// Visual progress along the foreground (bottom center) → vanishing point (center) ruler.
+/// Visual progress along the foreground (bottom center) → high horizon ruler.
 pub fn visual_horizon_falloff_progress_percent(
     screen_px: [f32; 2],
     ruler: &VisualHorizonFalloffRuler,
@@ -1104,8 +1118,9 @@ mod tests {
     }
 
     #[test]
-    fn visual_horizon_progress_center_is_one_hundred() {
+    fn visual_horizon_progress_vanishing_is_one_hundred() {
         let ruler = VisualHorizonFalloffRuler::from_viewport(800.0, 600.0);
+        assert!((ruler.vanishing_px[1] - 150.0).abs() < f32::EPSILON);
         let progress = visual_horizon_falloff_progress_percent(ruler.vanishing_px, &ruler);
         assert!((progress - 100.0).abs() < f32::EPSILON);
     }
