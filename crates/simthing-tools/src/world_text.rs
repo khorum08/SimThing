@@ -17,7 +17,10 @@ pub enum WorldTextPlacementMode {
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
 pub struct WorldTextBillboard {
     pub anchor: Vec3,
+    /// World-perspective mode: near-camera label height in world units.
     pub near_height: f32,
+    /// Screen-companion mode: rendered star visual diameter in world units at near camera.
+    pub visual_envelope_world_height: f32,
     pub width_ratio: f32,
     pub vertical_gap_ratio: f32,
     pub near_distance: f32,
@@ -38,6 +41,7 @@ impl WorldTextBillboard {
         Self {
             anchor: self.anchor,
             near_height: self.near_height.max(0.0),
+            visual_envelope_world_height: self.visual_envelope_world_height.max(0.0),
             width_ratio: self.width_ratio.clamp(0.01, 8.0),
             vertical_gap_ratio: self.vertical_gap_ratio.clamp(0.0, 4.0),
             near_distance,
@@ -59,6 +63,7 @@ impl Default for WorldTextBillboard {
         Self {
             anchor: Vec3::ZERO,
             near_height: 1.0,
+            visual_envelope_world_height: 1.0,
             width_ratio: 1.0,
             vertical_gap_ratio: 0.1,
             near_distance: 0.0,
@@ -79,10 +84,10 @@ impl Default for WorldTextBillboard {
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, PartialEq)]
 pub struct WorldGlyphInstanceGpu {
     pub glyph: GlyphInstanceGpu,
-    /// xyz = world anchor, w = near label height.
+    /// xyz = world anchor, w = near label height (world) or visual envelope height (screen).
     pub anchor_height: [f32; 4],
     /// x = width ratio, y = vertical gap ratio,
-    /// z = target height ratio (world) or natural run aspect (screen companion),
+    /// z = target height ratio (world) or unused (screen companion; glyph x already spans run aspect),
     /// w = horizon taper (world) or screen-companion mode sentinel.
     pub size_params: [f32; 4],
     /// x/y = near/far distance, z = ceiling falloff percent, w = ceiling target alpha.
@@ -159,7 +164,6 @@ pub fn build_world_glyph_instances(
         return Vec::new();
     }
     let placement = placement.clamped();
-    let natural_run_aspect = natural_run_aspect_from_glyphs(glyphs);
     let min_x = glyphs
         .iter()
         .map(|glyph| glyph.pos_size[0])
@@ -178,19 +182,24 @@ pub fn build_world_glyph_instances(
         .fold(f32::NEG_INFINITY, f32::max);
     let run_height = (max_y - min_y).max(1.0);
     let run_center_x = (min_x + max_x) * 0.5;
-    let (size_z, size_w) = match placement.placement_mode {
-        WorldTextPlacementMode::ScreenCompanion => {
-            (natural_run_aspect, WORLD_TEXT_SCREEN_COMPANION_MODE)
-        }
-        WorldTextPlacementMode::WorldPerspective => {
-            (placement.target_height_ratio, placement.horizon_taper)
-        }
+    let (anchor_height_w, size_z, size_w) = match placement.placement_mode {
+        WorldTextPlacementMode::ScreenCompanion => (
+            placement.visual_envelope_world_height,
+            0.0,
+            WORLD_TEXT_SCREEN_COMPANION_MODE,
+        ),
+        WorldTextPlacementMode::WorldPerspective => (
+            placement.near_height,
+            placement.target_height_ratio,
+            placement.horizon_taper,
+        ),
     };
 
     glyphs
         .iter()
         .map(|source| {
             let mut glyph = *source;
+            // Contract A: x normalized by run height so local_xy.x already spans natural run aspect.
             glyph.pos_size = [
                 (source.pos_size[0] - run_center_x) / run_height,
                 0.5 - (source.pos_size[1] - min_y) / run_height,
@@ -207,7 +216,7 @@ pub fn build_world_glyph_instances(
                     placement.anchor.x,
                     placement.anchor.y,
                     placement.anchor.z,
-                    placement.near_height,
+                    anchor_height_w,
                 ],
                 size_params: [
                     placement.width_ratio,
@@ -843,17 +852,19 @@ mod tests {
     }
 
     #[test]
-    fn screen_companion_mode_packs_run_aspect_and_mode_sentinel() {
+    fn screen_companion_mode_packs_visual_envelope_and_mode_sentinel() {
         let glyphs = vec![GlyphInstanceGpu {
             pos_size: [0.0, 0.0, 10.0, 20.0],
             ..Default::default()
         }];
         let placement = WorldTextBillboard {
             placement_mode: WorldTextPlacementMode::ScreenCompanion,
+            visual_envelope_world_height: 3.5,
             ..Default::default()
         };
         let world = build_world_glyph_instances(&glyphs, placement);
         assert_eq!(world[0].size_params[3], WORLD_TEXT_SCREEN_COMPANION_MODE);
-        assert!((world[0].size_params[2] - 0.5).abs() < f32::EPSILON);
+        assert_eq!(world[0].size_params[2], 0.0);
+        assert!((world[0].anchor_height[3] - 3.5).abs() < f32::EPSILON);
     }
 }

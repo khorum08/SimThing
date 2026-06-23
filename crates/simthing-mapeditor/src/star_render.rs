@@ -26,7 +26,9 @@ pub const PR2R5_STAR_FAR_CORE_ALPHA: f32 =
 pub const PR2R6_AURA_CAP_REDUCTION_FACTOR: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_START_DEPTH: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_FACTOR: f32 = 0.75;
-/// Nameplate label height tracks 100% of the rendered star blur radius at the current depth.
+/// Minimum projected label height (px) before screen-companion nameplates hard-cull.
+pub const MIN_LEGIBLE_NAMEPLATE_PX: f32 = 18.0;
+/// Nameplate label height tracks 100% of the rendered star visual envelope at the current depth.
 pub const STAR_NAMEPLATE_HEIGHT_FACTOR: f32 = 1.0;
 pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
     PR2R5_STAR_NEAR_AURA_SCALE * PR2R6_AURA_CAP_REDUCTION_FACTOR;
@@ -198,12 +200,75 @@ impl StarBillboardInstance {
     }
 }
 
+pub fn star_max_layer_scale(visual: StarDistanceVisual, mode: StarRenderMode) -> f32 {
+    match mode {
+        StarRenderMode::BloomStarburst => visual.core_scale.max(visual.aura_radius),
+        StarRenderMode::CrispCircle => visual.core_scale,
+    }
+}
+
+/// Rendered star visual diameter in world units using the same math as `sync_star_visuals_system`.
+pub fn star_rendered_visual_envelope_world_diameter(
+    instance: StarBillboardInstance,
+    star_settings: &StarBillboardRenderSettings,
+    camera_depth_percent: f32,
+) -> f32 {
+    let visual = compute_star_distance_visual(
+        camera_depth_percent,
+        instance.selected,
+        instance.hovered,
+        star_settings,
+    );
+    instance.base_scale_variation
+        * star_max_layer_scale(visual, star_settings.render_mode)
+        * STAR_NAMEPLATE_HEIGHT_FACTOR
+}
+
+pub fn star_nameplate_visual_envelope_near_world(
+    instance: StarBillboardInstance,
+    star_settings: &StarBillboardRenderSettings,
+) -> f32 {
+    star_rendered_visual_envelope_world_diameter(instance, star_settings, 0.0)
+}
+
+pub fn star_nameplate_envelope_height_ratio(
+    instance: StarBillboardInstance,
+    star_settings: &StarBillboardRenderSettings,
+    camera_depth_percent: f32,
+) -> f32 {
+    let near = star_nameplate_visual_envelope_near_world(instance, star_settings);
+    let at_depth =
+        star_rendered_visual_envelope_world_diameter(instance, star_settings, camera_depth_percent);
+    if near <= f32::EPSILON {
+        1.0
+    } else {
+        (at_depth / near).clamp(0.0, 8.0)
+    }
+}
+
+/// Approximate vertical screen span for a world-space height at the given anchor (telemetry only).
+pub fn estimate_world_vertical_span_screen_px(
+    anchor: Vec3,
+    camera_pos: Vec3,
+    world_span: f32,
+    viewport_height: f32,
+) -> f32 {
+    if world_span <= 0.0 || viewport_height <= 0.0 {
+        return 0.0;
+    }
+    // Camera3d default vertical FOV is PI/4 radians.
+    const DEFAULT_VERTICAL_FOV_RAD: f32 = std::f32::consts::FRAC_PI_4;
+    let distance = camera_pos.distance(anchor).max(0.001);
+    let px_per_world = viewport_height / (2.0 * (DEFAULT_VERTICAL_FOV_RAD * 0.5).tan() * distance);
+    world_span * px_per_world
+}
+
+#[deprecated(note = "use star_nameplate_visual_envelope_near_world")]
 pub fn nameplate_near_label_height_world(
     instance: StarBillboardInstance,
     star_settings: &StarBillboardRenderSettings,
 ) -> f32 {
-    let falloff = star_settings.falloff_settings();
-    instance.base_scale_variation * falloff.base_blur_radius * STAR_NAMEPLATE_HEIGHT_FACTOR
+    star_nameplate_visual_envelope_near_world(instance, star_settings)
 }
 
 pub fn star_nameplate_world_billboard(
@@ -213,9 +278,11 @@ pub fn star_nameplate_world_billboard(
 ) -> WorldTextBillboard {
     let nameplate = nameplate_settings.clamped();
     let star_falloff = star_settings.falloff_settings();
+    let visual_envelope_near = star_nameplate_visual_envelope_near_world(instance, star_settings);
     WorldTextBillboard {
         anchor: instance.anchor_position,
-        near_height: nameplate_near_label_height_world(instance, star_settings),
+        near_height: visual_envelope_near,
+        visual_envelope_world_height: visual_envelope_near,
         width_ratio: nameplate.relative_width_percent / 100.0,
         vertical_gap_ratio: 0.10,
         near_distance: star_settings.near_distance,
@@ -539,7 +606,7 @@ mod tests {
     }
 
     #[test]
-    fn nameplate_near_height_tracks_star_blur_radius_without_arbitrary_multiplier() {
+    fn nameplate_near_height_tracks_rendered_star_visual_envelope_at_near_camera() {
         let star = test_billboard_settings(0.5, 80.0, 25.0, 40.0, StarRenderMode::BloomStarburst);
         let instance = StarBillboardInstance {
             system_id: 7,
@@ -551,7 +618,44 @@ mod tests {
             selected: false,
             hovered: false,
         };
-        assert_eq!(nameplate_near_label_height_world(instance, &star), 2.0);
+        let near_visual = compute_star_distance_visual(0.0, false, false, &star);
+        let expected = instance.base_scale_variation
+            * star_max_layer_scale(near_visual, StarRenderMode::BloomStarburst);
+        assert!(
+            (star_nameplate_visual_envelope_near_world(instance, &star) - expected).abs()
+                < f32::EPSILON
+        );
+    }
+
+    #[test]
+    fn crisp_circle_nameplate_envelope_includes_near_core_scale() {
+        let star = test_billboard_settings(0.5, 80.0, 25.0, 40.0, StarRenderMode::CrispCircle);
+        let instance = StarBillboardInstance {
+            system_id: 1,
+            structural_col: 0,
+            structural_row: 0,
+            anchor_position: Vec3::ZERO,
+            base_scale_variation: 2.0,
+            base_intensity_variation: 1.0,
+            selected: false,
+            hovered: false,
+        };
+        let bloom = test_billboard_settings(0.5, 80.0, 25.0, 40.0, StarRenderMode::BloomStarburst);
+        assert!(
+            star_nameplate_visual_envelope_near_world(instance, &star)
+                < star_nameplate_visual_envelope_near_world(instance, &bloom)
+        );
+    }
+
+    #[test]
+    fn long_nameplate_string_has_wider_projected_span_than_short_string() {
+        let short_aspect = 2.0_f32;
+        let long_aspect = 6.0_f32;
+        let label_height_px = 24.0;
+        let width_ratio = 1.0;
+        let short_width = label_height_px * short_aspect * width_ratio;
+        let long_width = label_height_px * long_aspect * width_ratio;
+        assert!(long_width > short_width * 2.0);
     }
 
     #[test]
@@ -577,7 +681,10 @@ mod tests {
         let billboard = star_nameplate_world_billboard(instance, &star, nameplate);
 
         assert_eq!(billboard.anchor, instance.anchor_position);
-        assert_eq!(billboard.near_height, 2.0);
+        assert_eq!(
+            billboard.visual_envelope_world_height,
+            star_nameplate_visual_envelope_near_world(instance, &star)
+        );
         assert_eq!(billboard.width_ratio, 1.25);
         assert_eq!(billboard.near_distance, 10.0);
         assert_eq!(billboard.far_distance, 110.0);
