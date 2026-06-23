@@ -7,8 +7,8 @@ PROBATION / visual remediation — focused presentation fix merged; owner visual
 ## PR / branch / merge
 
 - Branch: `codex/studio-star-nameplate-visual-fix-0r`
-- PR: pending merge record
-- Merge: pending
+- PR: #909
+- Merge: `81dfb583012788acc3540fe958452f0759bfb5af`
 
 ## Root cause
 
