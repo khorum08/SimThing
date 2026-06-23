@@ -111,6 +111,7 @@ pub use wgpu_smoke::{
     wgpu_styled_instanced_text_smoke, WgpuSmokeTarget, WgpuTextSmokeResult,
 };
 pub use world_text::{
-    world_text_diagnostics, WorldGlyphInstanceGpu, WorldTextBillboard, WorldTextDiagnostics,
-    WorldTextGlyphInstances,
+    natural_run_aspect_from_glyphs, world_text_diagnostics, WorldGlyphInstanceGpu,
+    WorldTextBillboard, WorldTextDiagnostics, WorldTextGlyphInstances, WorldTextPlacementMode,
+    WORLD_TEXT_SCREEN_COMPANION_MODE,
 };

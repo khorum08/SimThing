@@ -77,6 +77,8 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_base_alpha_ratio: Option<f32>,
     pub nameplate_ceiling_target_alpha: Option<f32>,
     pub nameplate_relative_target_alpha: Option<f32>,
+    pub nameplate_natural_run_aspect: Option<f32>,
+    pub nameplate_screen_companion_count: usize,
 
     pub vram_scan_last_ms: Option<f64>,
 }
@@ -144,6 +146,8 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_base_alpha_ratio: None,
             nameplate_ceiling_target_alpha: None,
             nameplate_relative_target_alpha: None,
+            nameplate_natural_run_aspect: None,
+            nameplate_screen_companion_count: 0,
             vram_scan_last_ms: None,
         }
     }
@@ -318,6 +322,14 @@ pub fn render_loop_diagnostics_lines(telemetry: &StudioPerformanceTelemetry) -> 
                 .unwrap_or_else(|| "—".into()),
             telemetry
                 .nameplate_relative_target_alpha
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Nameplate screen companion: {} active, run aspect {}",
+            telemetry.nameplate_screen_companion_count,
+            telemetry
+                .nameplate_natural_run_aspect
                 .map(|v| format!("{v:.2}"))
                 .unwrap_or_else(|| "—".into()),
         ),

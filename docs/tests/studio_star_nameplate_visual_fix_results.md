@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION / visual remediation — focused presentation fix merged; owner visual sign-off on live slider sweeps remains pending.
+CLOSED / superseded by STUDIO-STAR-NAMEPLATE-SCREEN-BILLBOARD-0 — owner visual sign-off transferred to screen-companion track.
 
 ## PR / branch / merge
 
