@@ -199,6 +199,7 @@
 | **LOCAL-WORKTREE-SPACE-RECOVERY-0** - measure and prune local build/scratch artifacts (`target/`, agent scratch dirs) | #901 | `a9e6563af6` | **ACCEPTED / closed — local cleanup** — `docs/tests/local_space_recovery_results.md`; ~66.06 GB recovered on validation host |
 | **LOCAL-WIP-GPU-RENDER-DELETE-0** - remove orphaned untracked `gpu_render.rs` local spike | #902 | `6d1edf8257` | **ACCEPTED / local WIP deletion** — `docs/tests/local_wip_gpu_render_delete_results.md`; no committed references; no runtime effect |
 | **CORE-CONSTITUTION-CANONICALIZATION-0** - canonicalize Scenario/GameSession spatial tree, RF channel doctrine, Gu-Yang/PALMA core summary, and simthing-tools typeface ADR; archive old typeface ladder/proposal | #907 | `4bdb5e72a0ae938a6a8ba616590954199cc4bb37` | **ACCEPTED / closed — docs-only design consolidation** — `docs/tests/core_constitution_canonicalization_results.md`; `docs/simthing_tools_typeface_adr.md` created; docs only; no runtime code changes |
+| **STUDIO-STAR-NAMEPLATE-VISUAL-FIX-0R** — PROBATION / visual remediation — repairs #906 Studio star-nameplate visual scale/placement while preserving Studio boot fixes and avoiding broad test batteries | pending | pending | **PROBATION / visual remediation** — `docs/tests/studio_star_nameplate_visual_fix_results.md`; presentation-only; aggregate world-text renderer preserved |
 
 ## Lower-layer golden-fixture doctrine (SCENARIO-SESSION-OWNER-ROOT-REVISED-0)
 

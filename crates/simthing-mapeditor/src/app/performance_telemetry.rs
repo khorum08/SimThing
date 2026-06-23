@@ -5,6 +5,7 @@ use bevy::diagnostic::{DiagnosticsStore, FrameCount};
 use bevy::prelude::*;
 use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
 use bevy::window::{PresentMode, PrimaryWindow};
+use simthing_tools::{TextGlyphInstances, WorldTextBillboard};
 
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -13,6 +14,8 @@ use crate::studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_studio_allocated_vram_bytes, read_fps_from_diagnostics,
     StudioPerformanceTelemetry,
 };
+
+use super::galaxy_render::GalaxyStarNameplate;
 
 const VRAM_ESTIMATE_INTERVAL_SECS: f32 = 0.5;
 
@@ -155,6 +158,38 @@ pub fn update_studio_vram_telemetry(
     state.last_vram_scan_elapsed_secs = elapsed;
     state.vram_dirty = false;
     state.telemetry.vram_scan_last_ms = Some(started.elapsed().as_secs_f64() * 1000.0);
+}
+
+pub fn update_nameplate_diagnostics_system(
+    nameplates: Query<
+        (&WorldTextBillboard, Option<&TextGlyphInstances>),
+        With<GalaxyStarNameplate>,
+    >,
+    mut state: ResMut<StudioPerformanceTelemetryState>,
+) {
+    let mut glyph_instances = 0u64;
+    let mut sample_billboard = None;
+    for (billboard, glyphs) in &nameplates {
+        if let Some(glyphs) = glyphs {
+            glyph_instances = glyph_instances.saturating_add(glyphs.0.len() as u64);
+        }
+        if sample_billboard.is_none() {
+            sample_billboard = Some(*billboard);
+        }
+    }
+    state.telemetry.nameplate_count = nameplates.iter().count();
+    state.telemetry.nameplate_glyph_instances = glyph_instances;
+    if let Some(sample) = sample_billboard {
+        state.telemetry.nameplate_effective_near_height = Some(sample.near_height);
+        state.telemetry.nameplate_base_alpha_ratio = Some(sample.base_alpha_ratio);
+        state.telemetry.nameplate_ceiling_target_alpha = Some(sample.ceiling_target_alpha);
+        state.telemetry.nameplate_relative_target_alpha = Some(sample.relative_target_alpha);
+    } else {
+        state.telemetry.nameplate_effective_near_height = None;
+        state.telemetry.nameplate_base_alpha_ratio = None;
+        state.telemetry.nameplate_ceiling_target_alpha = None;
+        state.telemetry.nameplate_relative_target_alpha = None;
+    }
 }
 
 /// Copies render-subapp adapter identity into main-world telemetry after renderer init.

@@ -124,6 +124,7 @@ pub fn run_studio() {
                     galaxy_render::sync_hyperlane_colors_system,
                     galaxy_render::sync_render_debug_visibility_system,
                     performance_telemetry::update_studio_fps_telemetry,
+                    performance_telemetry::update_nameplate_diagnostics_system,
                     performance_telemetry::update_studio_vram_telemetry,
                     performance_telemetry::update_studio_window_gpu_context,
                     window::persist_settings_on_exit,
