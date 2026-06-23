@@ -8,8 +8,9 @@ use simthing_tools::{StudioTypefaceLabel, TextLabelRenderMode, WorldTextBillboar
 
 use crate::hyperlane_buckets::{
     bucket_base_rgba, classify_hyperlane_camera_depth_bucket, compute_hyperlane_visual,
-    hyperlane_camera_depth_percent, selected_incident_lane_alpha, HyperlaneCameraDepthThresholds,
-    HyperlaneDepthBucket, HYPERLANE_CORE_FRACTION,
+    hyperlane_camera_depth_percent, hyperlane_map_radius_progress_percent,
+    selected_incident_lane_alpha, HyperlaneCameraDepthThresholds, HyperlaneDepthBucket,
+    HYPERLANE_CORE_FRACTION,
 };
 use crate::hyperlane_ribbon::{
     count_non_finite_vertex_positions, hyperlane_rebuild_is_valid, hyperlane_ribbon_width_dir,
@@ -189,6 +190,8 @@ fn spawn_hyperlane_bucket(
         bucket,
         HyperlaneRibbonCamera::default(),
         &vm.render_meta,
+        true,
+        None,
     );
     let mesh_handle = meshes.add(mesh);
     let material = materials.add(StandardMaterial {
@@ -403,6 +406,7 @@ pub fn sync_hyperlane_colors_system(
     )>,
     mut caches: ResMut<StudioRenderLoopCaches>,
     mut perf: ResMut<StudioPerformanceTelemetryState>,
+    falloff_state: Res<super::StudioMapRadiusFalloffState>,
 ) {
     perf.telemetry.hyperlane_sync_calls = perf.telemetry.hyperlane_sync_calls.saturating_add(1);
     perf.telemetry.render_frame_index = perf.telemetry.render_frame_index.saturating_add(1);
@@ -434,6 +438,8 @@ pub fn sync_hyperlane_colors_system(
     let rotation_active = studio_camera.rmb_held;
     let rotation_just_ended = cache.last_rmb_held && !rotation_active;
     cache.last_rmb_held = rotation_active;
+    let use_plateau = app_state.star_falloff_metric.uses_plateau_curve();
+    let map_context = falloff_state.valid.then_some(&falloff_state.context);
 
     let mesh_build_basis = cache.last_mesh_build_basis;
     let basis_mismatch = hyperlane_basis_mismatch_exceeds_epsilon(
@@ -526,7 +532,14 @@ pub fn sync_hyperlane_colors_system(
 
     let mut built_buckets = Vec::new();
     for (mesh_handle, mat_handle, marker) in &hyperlanes {
-        let (built, stats) = build_hyperlane_bucket_mesh(&segments, marker.0, camera, meta);
+        let (built, stats) = build_hyperlane_bucket_mesh(
+            &segments,
+            marker.0,
+            camera,
+            meta,
+            use_plateau,
+            map_context,
+        );
         built_buckets.push((mesh_handle.clone(), mat_handle.clone(), built, stats));
     }
 
@@ -640,6 +653,8 @@ fn build_hyperlane_bucket_mesh(
     bucket: HyperlaneDepthBucket,
     camera: HyperlaneRibbonCamera,
     meta: &crate::view_model::StudioGalaxyRenderMeta,
+    use_plateau: bool,
+    map_context: Option<&crate::falloff_metric::StudioMapRadiusFalloffContext>,
 ) -> (Mesh, HyperlaneMeshStats) {
     let mut positions = Vec::new();
     let mut colors = Vec::new();
@@ -656,12 +671,18 @@ fn build_hyperlane_bucket_mesh(
         if lane_bucket != bucket {
             continue;
         }
-        let depth_percent =
-            hyperlane_camera_depth_percent(camera.position, lane.from, lane.to, meta);
+        let depth_percent = if use_plateau {
+            map_context
+                .map(|ctx| hyperlane_map_radius_progress_percent(ctx, lane.from, lane.to))
+                .unwrap_or(100.0)
+        } else {
+            hyperlane_camera_depth_percent(camera.position, lane.from, lane.to, meta)
+        };
         let visual = compute_hyperlane_visual(
             depth_percent,
             nearest_star_width,
             &meta.hyperlane_render_settings,
+            use_plateau,
         );
         if !visual.visible {
             continue;

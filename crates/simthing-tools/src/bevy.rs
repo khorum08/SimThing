@@ -215,6 +215,7 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<crate::world_text::WorldTextAggregate>()
             .init_resource::<crate::world_text::WorldTextDiagnostics>()
             .init_resource::<crate::world_text::WorldTextNameplateLodPatch>()
+            .init_resource::<crate::world_text::WorldTextFalloffRulerPatch>()
             .init_resource::<crate::studio_labels::StudioTypefaceLabelDiagnostics>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
             .insert_resource(PluginAtlasSize(self.atlas_size))
@@ -1411,11 +1412,16 @@ fn sync_style_table_rows_if_changed(
     mut extracted: ResMut<ExtractedTextStyleTable>,
     mut diagnostics: ResMut<TextStyleDiagnostics>,
     lod_patch: Res<crate::world_text::WorldTextNameplateLodPatch>,
+    falloff_patch: Res<crate::world_text::WorldTextFalloffRulerPatch>,
 ) {
     extracted.globals = style_table.table.to_globals(style_table.time);
     extracted.globals.nameplate_min_focused_px = lod_patch.min_focused_px;
     extracted.globals.nameplate_unselected_global_alpha = lod_patch.unselected_global_alpha;
     extracted.globals.nameplate_min_unselected_px = lod_patch.min_unselected_px;
+    extracted.globals.falloff_mode = falloff_patch.falloff_mode;
+    extracted.globals.map_view_origin_x = falloff_patch.map_view_origin_x;
+    extracted.globals.map_view_origin_z = falloff_patch.map_view_origin_z;
+    extracted.globals.map_max_view_distance = falloff_patch.map_max_view_distance;
     if !style_table.rows_dirty {
         diagnostics.style_table_cache_hit_count += 1;
         return;

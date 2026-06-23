@@ -12,6 +12,26 @@ pub struct WorldTextNameplateLodPatch {
     pub min_unselected_px: f32,
 }
 
+/// Per-frame falloff ruler patch for GPU nameplate progress (no glyph rebuild).
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+pub struct WorldTextFalloffRulerPatch {
+    pub falloff_mode: f32,
+    pub map_view_origin_x: f32,
+    pub map_view_origin_z: f32,
+    pub map_max_view_distance: f32,
+}
+
+impl Default for WorldTextFalloffRulerPatch {
+    fn default() -> Self {
+        Self {
+            falloff_mode: 2.0,
+            map_view_origin_x: 0.0,
+            map_view_origin_z: 0.0,
+            map_max_view_distance: 1.0,
+        }
+    }
+}
+
 impl Default for WorldTextNameplateLodPatch {
     fn default() -> Self {
         Self {

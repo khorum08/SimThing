@@ -98,6 +98,7 @@ pub fn run_studio() {
     app.add_systems(Startup, setup_scene)
         .add_systems(PostStartup, window::apply_initial_window_mode)
         .add_systems(Startup, init_star_visual_assets)
+        .add_systems(Startup, init_studio_map_radius_falloff_state)
         .add_systems(
             Startup,
             (
@@ -111,6 +112,7 @@ pub fn run_studio() {
             (
                 window::warn_missing_egui_viewport,
                 performance_telemetry::begin_main_update_timing,
+                performance_telemetry::update_map_radius_falloff_context_system,
                 (
                     ui::panel_opacity_system,
                     camera::camera_control_system,
@@ -147,6 +149,13 @@ pub struct GalaxySceneRoot {
     pub hyperlane_buckets: [Option<Entity>; 3],
     pub highlight_hyperlanes: Option<Entity>,
     pub core_glow: Option<Entity>,
+}
+
+#[derive(Resource, Clone, Copy, Default)]
+pub struct StudioMapRadiusFalloffState {
+    pub context: crate::falloff_metric::StudioMapRadiusFalloffContext,
+    pub bounds: crate::falloff_metric::MapPlaneBounds,
+    pub valid: bool,
 }
 
 #[derive(Resource)]
@@ -390,6 +399,10 @@ impl Default for StudioAppState {
 
 fn init_render_loop_cache_state(mut commands: Commands) {
     commands.init_resource::<StudioRenderLoopCaches>();
+}
+
+fn init_studio_map_radius_falloff_state(mut commands: Commands) {
+    commands.init_resource::<StudioMapRadiusFalloffState>();
 }
 
 fn setup_scene(

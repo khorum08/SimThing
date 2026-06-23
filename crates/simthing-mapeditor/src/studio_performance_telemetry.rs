@@ -144,6 +144,9 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_sample_falloff_alpha: Option<f32>,
     pub nameplate_culled_past_effective_falloff_count: usize,
     pub nameplate_falloff_metric: String,
+    pub map_falloff_view_origin: Option<[f32; 2]>,
+    pub map_falloff_max_view_distance: Option<f32>,
+    pub map_falloff_origin_source: String,
     pub nameplate_falloff_ruler_base_px: Option<[f32; 2]>,
     pub nameplate_falloff_ruler_vanishing_px: Option<[f32; 2]>,
     pub nameplate_sample_screen_px: Option<[f32; 2]>,
@@ -282,7 +285,10 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_sample_depth_percent: None,
             nameplate_sample_falloff_alpha: None,
             nameplate_culled_past_effective_falloff_count: 0,
-            nameplate_falloff_metric: "Visual high horizon".into(),
+            nameplate_falloff_metric: "Map radius plateau".into(),
+            map_falloff_view_origin: None,
+            map_falloff_max_view_distance: None,
+            map_falloff_origin_source: "—".into(),
             nameplate_falloff_ruler_base_px: None,
             nameplate_falloff_ruler_vanishing_px: None,
             nameplate_sample_screen_px: None,
@@ -419,6 +425,29 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
     lines.push(format!(
         "Falloff metric: {}",
         telemetry.nameplate_falloff_metric,
+    ));
+    lines.push(format!(
+        "View origin: {} | map max view distance: {} | origin source: {}",
+        telemetry
+            .map_falloff_view_origin
+            .map(|[x, y]| format!("({x:.1}, {y:.1})"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .map_falloff_max_view_distance
+            .map(|d| format!("{d:.1}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry.map_falloff_origin_source,
+    ));
+    lines.push(format!(
+        "Star falloff plateau %: {} | effective nameplate plateau %: {}",
+        telemetry
+            .nameplate_star_falloff_distance_pct
+            .map(|v| format!("{v:.0}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_effective_falloff_distance_pct
+            .map(|v| format!("{v:.0}"))
+            .unwrap_or_else(|| "—".into()),
     ));
     lines.push(format!(
         "Ruler base px: {} | ruler vanishing px: {}",

@@ -8,6 +8,11 @@ use crate::view_model::{
 };
 use simthing_tools::{WorldTextBillboard, WorldTextPlacementMode};
 
+use crate::falloff_metric::{
+    plateau_falloff_t_percent, plateau_interpolate, world_position_map_progress_percent,
+    StudioMapRadiusFalloffContext,
+};
+
 pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 4.5;
 pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
 pub const MIN_STAR_WORLD_SCALE: f32 = 1.35;
@@ -366,6 +371,7 @@ pub fn star_rendered_visual_envelope_world_diameter(
         instance.selected,
         instance.hovered,
         star_settings,
+        true,
     );
     instance.base_scale_variation
         * star_max_layer_scale(visual, star_settings.render_mode)
@@ -428,7 +434,7 @@ pub fn nameplate_effective_falloff_distance_percent(
     (star * relative / 100.0).min(star)
 }
 
-/// Mirrors `distance_falloff` in `text_instanced.wgsl` for CPU telemetry parity.
+/// Mirrors legacy ramp falloff in `text_instanced.wgsl` for debug metrics only.
 pub fn world_text_distance_falloff(
     depth_percent: f32,
     falloff_percent: f32,
@@ -445,13 +451,38 @@ pub fn world_text_distance_falloff(
     target_value.clamp(0.0, 1.0) * lerp(1.0, horizon_taper.clamp(0.0, 1.0), horizon_t)
 }
 
+/// Map-radius plateau falloff alpha (production default).
+pub fn world_text_plateau_falloff(
+    progress_percent: f32,
+    plateau_end_percent: f32,
+    target_value: f32,
+) -> f32 {
+    plateau_interpolate(
+        1.0,
+        target_value.clamp(0.0, 1.0),
+        progress_percent,
+        plateau_end_percent,
+    )
+}
+
 /// GPU screen-label falloff alpha (star ceiling × label ramp at effective distance).
 pub fn nameplate_gpu_screen_label_falloff_alpha(
     depth_percent: f32,
     billboard: &WorldTextBillboard,
+    use_plateau: bool,
 ) -> f32 {
     let star_at = billboard.ceiling_falloff_percent;
     let effective_at = billboard.relative_falloff_percent.min(star_at).max(0.0);
+    if use_plateau {
+        let star_alpha =
+            world_text_plateau_falloff(depth_percent, star_at, billboard.ceiling_target_alpha);
+        let label_ramp = world_text_plateau_falloff(
+            depth_percent,
+            effective_at,
+            billboard.relative_target_alpha,
+        );
+        return star_alpha * label_ramp;
+    }
     let star_alpha = world_text_distance_falloff(
         depth_percent,
         star_at,
@@ -570,30 +601,33 @@ pub fn star_distance_visual(
 ) -> StarDistanceVisual {
     let settings = StarBillboardRenderSettings::from_meta(meta);
     let depth_percent = normalized_billboard_camera_depth_percent(camera_distance, &settings);
-    compute_star_distance_visual(depth_percent, selected, hovered, &settings)
+    compute_star_distance_visual(depth_percent, selected, hovered, &settings, true)
 }
 
 pub fn nearest_camera_star_disc_width_world(meta: &StudioGalaxyRenderMeta) -> f32 {
     let settings = StarBillboardRenderSettings::from_meta(meta);
-    let visual = compute_star_distance_visual(0.0, false, false, &settings);
+    let visual = compute_star_distance_visual(0.0, false, false, &settings, true);
     (star_world_scale(meta, 1.0) * visual.core_scale).max(f32::EPSILON)
 }
 
 pub fn compute_star_distance_visual(
-    camera_depth_percent: f32,
+    progress_percent: f32,
     selected: bool,
     hovered: bool,
     settings: &StarBillboardRenderSettings,
+    use_plateau: bool,
 ) -> StarDistanceVisual {
-    let t = (camera_depth_percent / 100.0).clamp(0.0, 1.0);
+    let t = (progress_percent / 100.0).clamp(0.0, 1.0);
     let radius = compute_star_radius_visual(
-        camera_depth_percent,
+        progress_percent,
         settings,
         settings.render_mode,
         selected,
         hovered,
+        use_plateau,
     );
-    let falloff = compute_star_falloff_visual(camera_depth_percent, settings.falloff_settings());
+    let falloff =
+        compute_star_falloff_visual(progress_percent, settings.falloff_settings(), use_plateau);
     let eased_far = t * t * (3.0 - 2.0 * t);
     let close = 1.0 - eased_far;
     let alpha_boost = if selected {
@@ -626,13 +660,15 @@ pub fn compute_star_distance_visual(
 }
 
 pub fn compute_star_radius_visual(
-    camera_depth_percent: f32,
+    progress_percent: f32,
     settings: &StarBillboardRenderSettings,
     mode: StarRenderMode,
     selected: bool,
     hovered: bool,
+    use_plateau: bool,
 ) -> StarRadiusVisual {
-    let falloff = compute_star_falloff_visual(camera_depth_percent, settings.falloff_settings());
+    let falloff =
+        compute_star_falloff_visual(progress_percent, settings.falloff_settings(), use_plateau);
     let scale_mul = if selected {
         settings.selected_star_scale_multiplier
     } else if hovered {
@@ -703,8 +739,10 @@ impl VisualHorizonFalloffRuler {
 /// Falloff progress metric for stars and GPU nameplates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StarFalloffMetric {
-    /// Default: 0% at viewport bottom center, 100% at high horizon (25% from top).
+    /// Default: 0% at view origin on map plane, 100% at farthest map corner.
     #[default]
+    MapRadiusPlateau,
+    /// Debug: 0% at viewport bottom center, 100% at high horizon (25% from top).
     VisualHorizon,
     /// Telemetry/debug: legacy camera-distance normalization.
     CameraDistanceDebug,
@@ -713,8 +751,21 @@ pub enum StarFalloffMetric {
 impl StarFalloffMetric {
     pub fn label(self) -> &'static str {
         match self {
-            Self::VisualHorizon => "Visual high horizon",
+            Self::MapRadiusPlateau => "Map radius plateau",
+            Self::VisualHorizon => "Visual high horizon debug",
             Self::CameraDistanceDebug => "Camera distance debug",
+        }
+    }
+
+    pub fn uses_plateau_curve(self) -> bool {
+        matches!(self, Self::MapRadiusPlateau)
+    }
+
+    pub fn gpu_falloff_mode(self) -> f32 {
+        match self {
+            Self::MapRadiusPlateau => crate::falloff_metric::FALLOFF_MODE_MAP_RADIUS,
+            Self::VisualHorizon => crate::falloff_metric::FALLOFF_MODE_VISUAL_HORIZON,
+            Self::CameraDistanceDebug => crate::falloff_metric::FALLOFF_MODE_CAMERA_DISTANCE,
         }
     }
 }
@@ -770,7 +821,7 @@ pub fn visual_horizon_ruler_screen_y_fraction_from_top(progress_percent: f32) ->
         + (STAR_FALLOFF_VANISHING_Y_FRACTION - STAR_FALLOFF_BASE_Y_FRACTION) * t
 }
 
-/// Shared star/nameplate falloff progress (default: visual horizon).
+/// Shared star/nameplate falloff progress.
 pub fn star_falloff_progress_percent(
     metric: StarFalloffMetric,
     camera: &Camera,
@@ -780,8 +831,12 @@ pub fn star_falloff_progress_percent(
     star_settings: &StarBillboardRenderSettings,
     viewport_width: f32,
     viewport_height: f32,
+    map_context: Option<&StudioMapRadiusFalloffContext>,
 ) -> f32 {
     match metric {
+        StarFalloffMetric::MapRadiusPlateau => map_context
+            .map(|ctx| world_position_map_progress_percent(ctx, anchor.to_array()))
+            .unwrap_or(100.0),
         StarFalloffMetric::VisualHorizon => world_anchor_screen_px(
             camera,
             camera_transform,
@@ -806,7 +861,15 @@ pub fn star_falloff_progress_percent(
 pub fn star_falloff_alpha_at_progress(
     progress_percent: f32,
     billboard: &WorldTextBillboard,
+    use_plateau: bool,
 ) -> f32 {
+    if use_plateau {
+        return world_text_plateau_falloff(
+            progress_percent,
+            billboard.ceiling_falloff_percent,
+            billboard.ceiling_target_alpha,
+        );
+    }
     world_text_distance_falloff(
         progress_percent,
         billboard.ceiling_falloff_percent,
@@ -827,14 +890,22 @@ pub fn mid_to_horizon_extra_falloff(normalized_depth: f32) -> f32 {
 }
 
 pub fn compute_star_falloff_visual(
-    camera_depth_percent: f32,
+    progress_percent: f32,
     settings: StarFalloffSettings,
+    use_plateau: bool,
 ) -> StarFalloffVisual {
     let settings = settings.clamped();
-    let depth = camera_depth_percent.clamp(0.0, 100.0);
-    let falloff_at = settings.falloff_distance_percent;
     let target_blur = settings.base_blur_radius * settings.falloff_blur_radius_percent / 100.0;
     let target_opacity = settings.falloff_opacity_percent / 100.0;
+    if use_plateau {
+        let t = plateau_falloff_t_percent(progress_percent, settings.falloff_distance_percent);
+        return StarFalloffVisual {
+            blur_radius: lerp(settings.base_blur_radius, target_blur, t),
+            opacity: lerp(1.0, target_opacity, t),
+        };
+    }
+    let depth = progress_percent.clamp(0.0, 100.0);
+    let falloff_at = settings.falloff_distance_percent;
     if depth <= falloff_at {
         let t = if falloff_at <= f32::EPSILON {
             1.0
@@ -861,7 +932,7 @@ pub fn apply_star_falloff_settings_to_meta(
     let settings = settings.clamped();
     meta.star_falloff_settings = settings;
     meta.star_near_aura_scale = settings.base_blur_radius;
-    let horizon = compute_star_falloff_visual(100.0, settings);
+    let horizon = compute_star_falloff_visual(100.0, settings, true);
     meta.star_far_aura_scale = horizon.blur_radius;
     meta.star_far_core_alpha = horizon.opacity;
     meta.star_far_aura_alpha = meta.star_near_aura_alpha * horizon.opacity;
@@ -1080,10 +1151,11 @@ mod tests {
             },
         );
         assert_eq!(billboard.relative_falloff_percent, 28.0);
-        let falloff_at_effective = nameplate_gpu_screen_label_falloff_alpha(28.0, &billboard);
+        let falloff_at_effective =
+            nameplate_gpu_screen_label_falloff_alpha(100.0, &billboard, true);
         assert!(
             falloff_at_effective < 0.02,
-            "expected invisible at effective falloff, got {falloff_at_effective}"
+            "expected invisible at map edge past effective plateau, got {falloff_at_effective}"
         );
     }
 
@@ -1100,7 +1172,7 @@ mod tests {
             selected: false,
             hovered: false,
         };
-        let near_visual = compute_star_distance_visual(0.0, false, false, &star);
+        let near_visual = compute_star_distance_visual(0.0, false, false, &star, true);
         let expected = instance.base_scale_variation
             * star_max_layer_scale(near_visual, StarRenderMode::BloomStarburst);
         assert!(
@@ -1196,7 +1268,7 @@ mod tests {
             },
         );
         assert!((billboard.relative_falloff_percent - effective).abs() < f32::EPSILON);
-        let alpha_past = nameplate_gpu_screen_label_falloff_alpha(1.0, &billboard);
+        let alpha_past = nameplate_gpu_screen_label_falloff_alpha(100.0, &billboard, true);
         assert!(alpha_past < 0.02);
     }
 
@@ -1439,12 +1511,12 @@ mod tests {
     }
 
     #[test]
-    fn mid_to_horizon_extra_falloff_applies_to_aura_radius() {
-        let meta = star_visual_defaults();
-        let mid_distance = distance_for_depth(&meta, 0.5);
-        let horizon_distance = distance_for_depth(&meta, 1.0);
-        let mid = star_distance_visual(mid_distance, false, false, &meta);
-        let horizon = star_distance_visual(horizon_distance, false, false, &meta);
+    fn plateau_falloff_reduces_aura_from_mid_progress_to_map_edge() {
+        let mut meta = star_visual_defaults();
+        meta.star_falloff_settings.falloff_distance_percent = 50.0;
+        let settings = StarBillboardRenderSettings::from_meta(&meta);
+        let mid = compute_star_distance_visual(50.0, false, false, &settings, true);
+        let edge = compute_star_distance_visual(100.0, false, false, &settings, true);
         assert_eq!(
             mid_to_horizon_extra_falloff(MID_TO_HORIZON_FALLOFF_START_DEPTH),
             1.0
@@ -1453,14 +1525,14 @@ mod tests {
             mid_to_horizon_extra_falloff(1.0),
             MID_TO_HORIZON_FALLOFF_FACTOR
         );
-        assert!(mid.aura_scale > horizon.aura_scale);
+        assert!(mid.aura_scale > edge.aura_scale);
     }
 
     #[test]
     fn mid_to_horizon_extra_falloff_applies_to_luminosity() {
         let meta = star_visual_defaults();
         let horizon = star_distance_visual(meta.star_far_distance, false, false, &meta);
-        let target = compute_star_falloff_visual(100.0, meta.star_falloff_settings);
+        let target = compute_star_falloff_visual(100.0, meta.star_falloff_settings, true);
         assert!((horizon.core_alpha - target.opacity).abs() < f32::EPSILON);
         assert!((horizon.aura_alpha - meta.star_near_aura_alpha * target.opacity).abs() < 0.0001);
     }
@@ -1596,52 +1668,44 @@ mod tests {
     }
 
     #[test]
-    fn compute_star_falloff_visual_reaches_target_radius_at_falloff_distance() {
+    fn compute_star_falloff_plateau_keeps_base_inside_plateau_range() {
         let settings = StarFalloffSettings {
             base_blur_radius: 0.8,
             falloff_distance_percent: 40.0,
             falloff_blur_radius_percent: 25.0,
             falloff_opacity_percent: 70.0,
         };
-        let visual = compute_star_falloff_visual(40.0, settings);
-        assert!((visual.blur_radius - 0.2).abs() < f32::EPSILON);
+        let visual = compute_star_falloff_visual(40.0, settings, true);
+        assert!((visual.blur_radius - 0.8).abs() < f32::EPSILON);
+        assert!((visual.opacity - 1.0).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn compute_star_falloff_visual_reaches_target_opacity_at_falloff_distance() {
+    fn compute_star_falloff_plateau_reaches_target_at_map_edge() {
         let settings = StarFalloffSettings {
             base_blur_radius: 0.8,
             falloff_distance_percent: 40.0,
             falloff_blur_radius_percent: 25.0,
             falloff_opacity_percent: 70.0,
         };
-        let visual = compute_star_falloff_visual(40.0, settings);
+        let visual = compute_star_falloff_visual(100.0, settings, true);
+        assert!((visual.blur_radius - 0.2).abs() < f32::EPSILON);
         assert!((visual.opacity - 0.7).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn star_distance_visual_reaches_settings_falloff_radius_at_falloff_distance() {
+    fn star_distance_visual_reaches_settings_falloff_radius_at_map_edge() {
         let settings =
             test_billboard_settings(0.8, 40.0, 25.0, 70.0, StarRenderMode::BloomStarburst);
-        let visual = compute_star_distance_visual(
-            settings.falloff_distance_percent,
-            false,
-            false,
-            &settings,
-        );
+        let visual = compute_star_distance_visual(100.0, false, false, &settings, true);
         assert!((visual.aura_radius - 0.2).abs() < f32::EPSILON);
     }
 
     #[test]
-    fn star_distance_visual_reaches_settings_falloff_opacity_at_falloff_distance() {
+    fn star_distance_visual_reaches_settings_falloff_opacity_at_map_edge() {
         let settings =
             test_billboard_settings(0.8, 40.0, 25.0, 70.0, StarRenderMode::BloomStarburst);
-        let visual = compute_star_distance_visual(
-            settings.falloff_distance_percent,
-            false,
-            false,
-            &settings,
-        );
+        let visual = compute_star_distance_visual(100.0, false, false, &settings, true);
         assert!((visual.luminosity - 0.7).abs() < f32::EPSILON);
     }
 
@@ -1649,10 +1713,22 @@ mod tests {
     fn base_star_blur_radius_changes_computed_billboard_radius() {
         let low = test_billboard_settings(0.11, 100.0, 20.0, 70.0, StarRenderMode::BloomStarburst);
         let high = test_billboard_settings(0.80, 100.0, 20.0, 70.0, StarRenderMode::BloomStarburst);
-        let low_visual =
-            compute_star_radius_visual(0.0, &low, StarRenderMode::BloomStarburst, false, false);
-        let high_visual =
-            compute_star_radius_visual(0.0, &high, StarRenderMode::BloomStarburst, false, false);
+        let low_visual = compute_star_radius_visual(
+            0.0,
+            &low,
+            StarRenderMode::BloomStarburst,
+            false,
+            false,
+            true,
+        );
+        let high_visual = compute_star_radius_visual(
+            0.0,
+            &high,
+            StarRenderMode::BloomStarburst,
+            false,
+            false,
+            true,
+        );
         assert!(high_visual.aura_radius > low_visual.aura_radius * 6.0);
         assert!(high_visual.core_radius > low_visual.core_radius * 6.0);
     }
@@ -1662,38 +1738,40 @@ mod tests {
         let low = test_billboard_settings(0.11, 100.0, 20.0, 70.0, StarRenderMode::CrispCircle);
         let high = test_billboard_settings(0.80, 100.0, 20.0, 70.0, StarRenderMode::CrispCircle);
         let low_visual =
-            compute_star_radius_visual(0.0, &low, StarRenderMode::CrispCircle, false, false);
+            compute_star_radius_visual(0.0, &low, StarRenderMode::CrispCircle, false, false, true);
         let high_visual =
-            compute_star_radius_visual(0.0, &high, StarRenderMode::CrispCircle, false, false);
+            compute_star_radius_visual(0.0, &high, StarRenderMode::CrispCircle, false, false, true);
         assert!(high_visual.core_radius > low_visual.core_radius * 6.0);
         assert_eq!(low_visual.aura_radius, 0.0);
         assert_eq!(high_visual.aura_radius, 0.0);
     }
 
     #[test]
-    fn falloff_star_blur_radius_reaches_expected_radius_at_falloff_distance() {
+    fn falloff_star_blur_radius_reaches_expected_radius_at_map_edge() {
         let settings =
             test_billboard_settings(0.8, 40.0, 13.0, 70.0, StarRenderMode::BloomStarburst);
         let visual = compute_star_radius_visual(
-            settings.falloff_distance_percent,
+            100.0,
             &settings,
             StarRenderMode::BloomStarburst,
             false,
             false,
+            true,
         );
         assert!((visual.aura_radius - 0.104).abs() < 0.0001);
     }
 
     #[test]
-    fn falloff_star_opacity_reaches_expected_opacity_at_falloff_distance() {
+    fn falloff_star_opacity_reaches_expected_opacity_at_map_edge() {
         let settings =
             test_billboard_settings(0.8, 40.0, 13.0, 70.0, StarRenderMode::BloomStarburst);
         let visual = compute_star_radius_visual(
-            settings.falloff_distance_percent,
+            100.0,
             &settings,
             StarRenderMode::BloomStarburst,
             false,
             false,
+            true,
         );
         assert!((visual.opacity - 0.70).abs() < f32::EPSILON);
     }
@@ -1776,14 +1854,21 @@ mod tests {
     fn selected_star_radius_or_emphasis_exceeds_unselected() {
         let settings =
             test_billboard_settings(0.5, 100.0, 20.0, 70.0, StarRenderMode::BloomStarburst);
-        let selected =
-            compute_star_radius_visual(0.0, &settings, StarRenderMode::BloomStarburst, true, false);
+        let selected = compute_star_radius_visual(
+            0.0,
+            &settings,
+            StarRenderMode::BloomStarburst,
+            true,
+            false,
+            true,
+        );
         let unselected = compute_star_radius_visual(
             0.0,
             &settings,
             StarRenderMode::BloomStarburst,
             false,
             false,
+            true,
         );
         assert!(selected.core_radius > unselected.core_radius);
         assert!(selected.aura_radius > unselected.aura_radius);
@@ -1792,10 +1877,22 @@ mod tests {
     #[test]
     fn hovered_star_radius_or_emphasis_exceeds_unhovered() {
         let settings = test_billboard_settings(0.5, 100.0, 20.0, 70.0, StarRenderMode::CrispCircle);
-        let hovered =
-            compute_star_radius_visual(0.0, &settings, StarRenderMode::CrispCircle, false, true);
-        let unhovered =
-            compute_star_radius_visual(0.0, &settings, StarRenderMode::CrispCircle, false, false);
+        let hovered = compute_star_radius_visual(
+            0.0,
+            &settings,
+            StarRenderMode::CrispCircle,
+            false,
+            true,
+            true,
+        );
+        let unhovered = compute_star_radius_visual(
+            0.0,
+            &settings,
+            StarRenderMode::CrispCircle,
+            false,
+            false,
+            true,
+        );
         assert!(hovered.core_radius > unhovered.core_radius);
         assert_eq!(hovered.aura_radius, 0.0);
     }

@@ -178,6 +178,11 @@ pub struct TextStyleGlobalsGpu {
     pub nameplate_min_focused_px: f32,
     pub nameplate_unselected_global_alpha: f32,
     pub nameplate_min_unselected_px: f32,
+    /// 0 = camera distance, 1 = visual horizon, 2 = map-radius plateau.
+    pub falloff_mode: f32,
+    pub map_view_origin_x: f32,
+    pub map_view_origin_z: f32,
+    pub map_max_view_distance: f32,
 }
 
 /// GPU row array uploaded only when style rows change.
@@ -202,6 +207,10 @@ impl TextStyleTable {
             nameplate_min_focused_px: 16.0,
             nameplate_unselected_global_alpha: 1.0,
             nameplate_min_unselected_px: 0.0,
+            falloff_mode: 2.0,
+            map_view_origin_x: 0.0,
+            map_view_origin_z: 0.0,
+            map_max_view_distance: 1.0,
         }
     }
 }

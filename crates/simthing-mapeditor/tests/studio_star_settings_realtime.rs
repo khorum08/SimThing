@@ -59,9 +59,9 @@ fn settings_star_render_change_mutates_visual_with_camera_fixed() {
 
     let camera_depth_percent = 42.0;
     let visual_before =
-        compute_star_distance_visual(camera_depth_percent, false, false, &base_settings);
+        compute_star_distance_visual(camera_depth_percent, false, false, &base_settings, true);
     let visual_after =
-        compute_star_distance_visual(camera_depth_percent, false, false, &changed_settings);
+        compute_star_distance_visual(camera_depth_percent, false, false, &changed_settings, true);
 
     assert_ne!(
         visual_before.core_scale, visual_after.core_scale,

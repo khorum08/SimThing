@@ -70,7 +70,7 @@ struct WarpRow {
 
 @group(2) @binding(0) var atlas_tex: texture_2d<f32>;
 @group(2) @binding(1) var atlas_smp: sampler;
-@group(3) @binding(0) var<uniform> style_globals: vec4<f32>;
+@group(3) @binding(0) var<uniform> style_globals: array<vec4<f32>, 2>;
 @group(3) @binding(1) var<uniform> style_rows: array<StyleRow, 32>;
 @group(4) @binding(0) var<uniform> deform_rows: array<DeformRow, 32>;
 @group(5) @binding(0) var<uniform> path_rows: array<PathRow, 16>;
@@ -113,7 +113,7 @@ fn apply_parametric_deform(local_uv: vec2<f32>, slot: u32) -> vec2<f32> {
         let d = dot(uv - vec2(0.5), axis);
         uv = uv + axis * fold_amount * sin(d * 3.14159265);
     } else {
-        let pulse = sin(style_globals.x + phase) * amount_x;
+        let pulse = sin(style_globals[0].x + phase) * amount_x;
         let c = uv - vec2(0.5);
         uv = c * (1.0 + pulse) + vec2(0.5);
     }
@@ -239,15 +239,72 @@ fn camera_distance_depth_percent(anchor: vec3<f32>, distance_params: vec4<f32>) 
     ) * 100.0;
 }
 
-fn falloff_depth_percent_for_anchor(anchor: vec3<f32>, distance_params: vec4<f32>, use_visual_horizon: bool) -> f32 {
-    if !use_visual_horizon {
+fn map_radius_falloff_progress_percent(anchor: vec3<f32>) -> f32 {
+    let origin = vec2(style_globals[1].y, style_globals[1].z);
+    let map_max = max(style_globals[1].w, 0.0001);
+    let point = vec2(anchor.x, anchor.z);
+    return clamp(length(point - origin) / map_max, 0.0, 1.0) * 100.0;
+}
+
+fn falloff_depth_percent_for_anchor(anchor: vec3<f32>, distance_params: vec4<f32>, gpu_screen_label: bool) -> f32 {
+    let mode = style_globals[1].x;
+    if gpu_screen_label {
+        if mode > 1.5 {
+            return map_radius_falloff_progress_percent(anchor);
+        }
+        if mode > 0.5 {
+            let anchor_clip = position_world_to_clip(anchor);
+            if anchor_clip.w <= 0.0001 {
+                return 100.0;
+            }
+            return visual_horizon_falloff_progress_percent(anchor_screen_px_from_clip(anchor_clip));
+        }
         return camera_distance_depth_percent(anchor, distance_params);
     }
-    let anchor_clip = position_world_to_clip(anchor);
-    if anchor_clip.w <= 0.0001 {
-        return 100.0;
+    if mode > 0.5 {
+        let anchor_clip = position_world_to_clip(anchor);
+        if anchor_clip.w <= 0.0001 {
+            return 100.0;
+        }
+        return visual_horizon_falloff_progress_percent(anchor_screen_px_from_clip(anchor_clip));
     }
-    return visual_horizon_falloff_progress_percent(anchor_screen_px_from_clip(anchor_clip));
+    return camera_distance_depth_percent(anchor, distance_params);
+}
+
+fn plateau_falloff_value(
+    depth_percent: f32,
+    plateau_end_percent: f32,
+    target_value: f32,
+) -> f32 {
+    let progress = clamp(depth_percent, 0.0, 100.0) / 100.0;
+    let plateau_end = clamp(plateau_end_percent, 0.0, 100.0) / 100.0;
+    if plateau_end >= 1.0 {
+        return 1.0;
+    }
+    if progress <= plateau_end {
+        return 1.0;
+    }
+    let t = clamp((progress - plateau_end) / max(1.0 - plateau_end, 0.0001), 0.0, 1.0);
+    return mix(1.0, clamp(target_value, 0.0, 1.0), t);
+}
+
+fn distance_falloff(
+    depth_percent: f32,
+    falloff_percent: f32,
+    target_value: f32,
+    horizon_taper: f32,
+    use_plateau: bool,
+) -> f32 {
+    if use_plateau {
+        return plateau_falloff_value(depth_percent, falloff_percent, target_value);
+    }
+    let depth = clamp(depth_percent, 0.0, 100.0);
+    let falloff_at = clamp(falloff_percent, 0.0001, 100.0);
+    if depth <= falloff_at {
+        return mix(1.0, target_value, clamp(depth / falloff_at, 0.0, 1.0));
+    }
+    let horizon_t = clamp((depth - falloff_at) / max(100.0 - falloff_at, 0.0001), 0.0, 1.0);
+    return target_value * mix(1.0, horizon_taper, horizon_t);
 }
 
 fn world_text_falloff_alpha(
@@ -255,10 +312,10 @@ fn world_text_falloff_alpha(
     distance_params: vec4<f32>,
     style_params: vec4<f32>,
     horizon_taper: f32,
+    use_plateau: bool,
 ) -> f32 {
     let star_falloff_at = distance_params.z;
     let star_opacity_at = distance_params.w;
-    // style_params.z = effective nameplate falloff distance (star × relative), never above star.
     let effective_falloff_at = min(style_params.z, star_falloff_at);
     let label_target = style_params.w;
     let star_alpha = distance_falloff(
@@ -266,12 +323,14 @@ fn world_text_falloff_alpha(
         star_falloff_at,
         star_opacity_at,
         horizon_taper,
+        use_plateau,
     );
     let label_ramp = distance_falloff(
         depth_percent,
         effective_falloff_at,
         label_target,
         horizon_taper,
+        use_plateau,
     );
     return star_alpha * label_ramp;
 }
@@ -340,8 +399,10 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     const MIN_SELECTED_READABLE_PX: f32 = 16.0;
 
     let anchor = instance.anchor_height.xyz;
-    let use_visual_horizon = gpu_screen_label || screen_companion;
-    let depth_percent = falloff_depth_percent_for_anchor(anchor, instance.distance_params, use_visual_horizon);
+    let falloff_mode = style_globals[1].x;
+    let use_plateau = gpu_screen_label && falloff_mode > 1.5;
+    let depth_percent =
+        falloff_depth_percent_for_anchor(anchor, instance.distance_params, gpu_screen_label);
     let horizon_taper = select(
         instance.size_params.w,
         HORIZON_TAPER,
@@ -353,6 +414,7 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         instance.distance_params.z,
         target_height_ratio,
         horizon_taper,
+        use_plateau,
     );
     let up = normalize(view.world_from_view[1].xyz);
     // anchor_height.w = near rendered star visual envelope (world units).
@@ -364,11 +426,12 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         instance.distance_params,
         instance.style_params,
         horizon_taper,
+        use_plateau,
     );
-    // style_globals: x=time, y=min_focused_px, z=unselected_global_alpha, w=min_unselected_px
-    let min_focused_px = style_globals.y;
-    let unselected_global_alpha = style_globals.z;
-    let min_unselected_px = style_globals.w;
+    // style_globals[0]: x=time, y=min_focused_px, z=unselected_global_alpha, w=min_unselected_px
+    let min_focused_px = style_globals[0].y;
+    let unselected_global_alpha = style_globals[0].z;
+    let min_unselected_px = style_globals[0].w;
     // screen_companion legacy path: zero thresholds mean "no LOD patch" (all labels eligible).
     let force_all_labels = min_unselected_px < 0.5 && min_focused_px < 0.5;
     let force_all_debug = min_unselected_px < 0.0;
@@ -481,21 +544,6 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     return out;
 }
 
-fn distance_falloff(
-    depth_percent: f32,
-    falloff_percent: f32,
-    target_value: f32,
-    horizon_taper: f32,
-) -> f32 {
-    let depth = clamp(depth_percent, 0.0, 100.0);
-    let falloff_at = clamp(falloff_percent, 0.0001, 100.0);
-    if depth <= falloff_at {
-        return mix(1.0, target_value, clamp(depth / falloff_at, 0.0, 1.0));
-    }
-    let horizon_t = clamp((depth - falloff_at) / max(100.0 - falloff_at, 0.0001), 0.0, 1.0);
-    return target_value * mix(1.0, horizon_taper, horizon_t);
-}
-
 fn identity_mat4() -> mat4x4<f32> {
     return mat4x4<f32>(
         vec4(1.0, 0.0, 0.0, 0.0),
@@ -559,7 +607,7 @@ fn apply_style_fill(style: StyleRow, base_color: vec4<f32>, local_uv: vec2<f32>)
     if pulse_amp > 0.0 {
         let pulse_freq = style.params1.y;
         let pulse_phase = style.params1.z;
-        let pulse = sin(style_globals.x * pulse_freq + pulse_phase) * pulse_amp;
+        let pulse = sin(style_globals[0].x * pulse_freq + pulse_phase) * pulse_amp;
         opacity = clamp(opacity + pulse, 0.0, 1.0);
     }
     return vec4(base_color.rgb * fill_rgb, base_color.a * opacity);
