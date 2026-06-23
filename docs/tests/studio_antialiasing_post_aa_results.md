@@ -7,8 +7,8 @@ PROBATION / presentation settings feature — adds mutually exclusive Bevy FXAA/
 ## PR / branch / merge
 
 - Branch: `codex/studio-antialiasing-post-aa-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #930
+- Merge: `4a5ec61d2f`
 
 ## Purpose
 
