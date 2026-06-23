@@ -1,6 +1,6 @@
 //! STUDIO-RENDER-LOOP-DIRTY-GATE-0 — render-loop dirty gates and telemetry helpers.
 
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Transform, Vec3};
 
 use crate::hyperlane_buckets::HyperlaneRenderSettings;
 use crate::star_render::{StarFalloffSettings, StarRenderMode};
@@ -34,6 +34,18 @@ pub struct StudioRenderLoopCaches {
     pub picking: PickingProjectionCacheState,
 }
 
+/// Raw camera basis captured when a hyperlane mesh was last rebuilt (presentation only).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HyperlaneCameraBasis {
+    pub position: [f32; 3],
+    pub right: [f32; 3],
+    pub up: [f32; 3],
+    pub forward: [f32; 3],
+}
+
+/// Rebuild when any axis differs by more than this many degrees from the last mesh-build basis.
+pub const HYPERLANE_BASIS_MISMATCH_REBUILD_EPSILON_DEG: f32 = 0.35;
+
 /// Cache state for hyperlane mesh rebuild dirty gating.
 #[derive(Debug, Clone, Default)]
 pub struct HyperlaneRenderCacheState {
@@ -43,6 +55,9 @@ pub struct HyperlaneRenderCacheState {
     pub last_view_model_generation: u64,
     pub last_rmb_held: bool,
     pub invalid_rebuild_warning_logged: bool,
+    pub last_mesh_build_basis: Option<HyperlaneCameraBasis>,
+    pub frames_since_rebuild: u64,
+    pub stale_basis_rebuild_count: u64,
 }
 
 /// Global star-visual sync key (camera + selection + settings + session generation).
@@ -172,6 +187,48 @@ pub fn quantize_hyperlane_camera_key(
     }
 }
 
+/// Build a hyperlane ribbon camera basis from the main camera's local transform.
+pub fn hyperlane_camera_basis_from_transform(transform: &Transform) -> HyperlaneCameraBasis {
+    HyperlaneCameraBasis {
+        position: transform.translation.to_array(),
+        right: (transform.rotation * Vec3::X).to_array(),
+        up: (transform.rotation * Vec3::Y).to_array(),
+        forward: (transform.rotation * Vec3::NEG_Z).to_array(),
+    }
+}
+
+/// Angle in degrees between two unit-ish direction vectors (non-finite → 180°).
+pub fn hyperlane_basis_mismatch_angle_deg(a: [f32; 3], b: [f32; 3]) -> f32 {
+    let a = Vec3::from_array(a);
+    let b = Vec3::from_array(b);
+    if !a.is_finite()
+        || !b.is_finite()
+        || a.length_squared() <= f32::EPSILON
+        || b.length_squared() <= f32::EPSILON
+    {
+        return 180.0;
+    }
+    a.normalize()
+        .dot(b.normalize())
+        .clamp(-1.0, 1.0)
+        .acos()
+        .to_degrees()
+}
+
+/// Whether the current camera basis differs from the last mesh-build basis beyond epsilon.
+pub fn hyperlane_basis_mismatch_exceeds_epsilon(
+    current: HyperlaneCameraBasis,
+    last_mesh: Option<HyperlaneCameraBasis>,
+    epsilon_deg: f32,
+) -> bool {
+    let Some(last) = last_mesh else {
+        return false;
+    };
+    hyperlane_basis_mismatch_angle_deg(current.right, last.right) > epsilon_deg
+        || hyperlane_basis_mismatch_angle_deg(current.up, last.up) > epsilon_deg
+        || hyperlane_basis_mismatch_angle_deg(current.forward, last.forward) > epsilon_deg
+}
+
 pub fn quantize_billboard_camera_key(position: [f32; 3]) -> BillboardCameraKey {
     BillboardCameraKey {
         position: quantize_position(position),
@@ -192,8 +249,9 @@ pub fn hyperlane_render_should_rebuild(
     dirty: bool,
     rotation_active: bool,
     rotation_just_ended: bool,
+    basis_mismatch: bool,
 ) -> bool {
-    if dirty || rotation_active || rotation_just_ended {
+    if dirty || rotation_active || rotation_just_ended || basis_mismatch {
         return true;
     }
     if current_generation != previous_generation {
@@ -321,6 +379,79 @@ mod tests {
         }
     }
 
+    fn sample_camera_basis() -> HyperlaneCameraBasis {
+        HyperlaneCameraBasis {
+            position: [80.0, 70.0, 80.0],
+            right: [1.0, 0.0, 0.0],
+            up: [0.0, 1.0, 0.0],
+            forward: [0.0, 0.0, -1.0],
+        }
+    }
+
+    #[test]
+    fn basis_mismatch_angle_detects_changed_right_up_forward() {
+        let base = sample_camera_basis();
+        let mut right = base;
+        right.right = [0.0, 1.0, 0.0];
+        assert!(hyperlane_basis_mismatch_angle_deg(base.right, right.right) > 45.0);
+        let mut up = base;
+        up.up = [1.0, 0.0, 0.0];
+        assert!(hyperlane_basis_mismatch_angle_deg(base.up, up.up) > 45.0);
+        let mut forward = base;
+        forward.forward = [0.0, 1.0, 0.0];
+        assert!(hyperlane_basis_mismatch_angle_deg(base.forward, forward.forward) > 45.0);
+    }
+
+    #[test]
+    fn hyperlane_dirty_gate_rebuilds_when_basis_mismatch_exceeds_epsilon() {
+        let camera = sample_camera_key();
+        let settings = sample_settings_key();
+        let current = sample_camera_basis();
+        let mut stale = current;
+        stale.forward = [0.01, 0.0, -0.9999];
+        assert!(hyperlane_basis_mismatch_exceeds_epsilon(
+            current,
+            Some(stale),
+            0.35,
+        ));
+        assert!(hyperlane_render_should_rebuild(
+            Some(camera),
+            camera,
+            Some(settings),
+            settings,
+            1,
+            1,
+            false,
+            false,
+            false,
+            true,
+        ));
+    }
+
+    #[test]
+    fn hyperlane_dirty_gate_does_not_rebuild_when_basis_matches() {
+        let camera = sample_camera_key();
+        let settings = sample_settings_key();
+        let basis = sample_camera_basis();
+        assert!(!hyperlane_basis_mismatch_exceeds_epsilon(
+            basis,
+            Some(basis),
+            0.35,
+        ));
+        assert!(!hyperlane_render_should_rebuild(
+            Some(camera),
+            camera,
+            Some(settings),
+            settings,
+            1,
+            1,
+            false,
+            false,
+            false,
+            false,
+        ));
+    }
+
     #[test]
     fn hyperlane_dirty_gate_skips_when_camera_and_settings_unchanged() {
         let camera = sample_camera_key();
@@ -332,6 +463,7 @@ mod tests {
             settings,
             1,
             1,
+            false,
             false,
             false,
             false,
@@ -354,6 +486,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         ));
     }
 
@@ -370,6 +503,7 @@ mod tests {
             settings,
             1,
             1,
+            false,
             false,
             false,
             false,
@@ -390,6 +524,7 @@ mod tests {
             false,
             false,
             false,
+            false,
         ));
     }
 
@@ -407,6 +542,7 @@ mod tests {
             false,
             true,
             false,
+            false,
         ));
         assert!(hyperlane_render_should_rebuild(
             Some(camera),
@@ -418,6 +554,7 @@ mod tests {
             false,
             false,
             true,
+            false,
         ));
     }
 

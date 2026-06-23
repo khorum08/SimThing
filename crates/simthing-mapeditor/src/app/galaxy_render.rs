@@ -27,9 +27,11 @@ use crate::starburst::{
     generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
 };
 use crate::studio_render_loop_dirty_gate::{
-    hyperlane_render_settings_key, hyperlane_render_should_rebuild, quantize_hyperlane_camera_key,
-    HyperlaneRenderCacheState, StarVisualAppliedKey, StarVisualSyncCacheState,
-    StudioRenderLoopCaches,
+    hyperlane_basis_mismatch_angle_deg, hyperlane_basis_mismatch_exceeds_epsilon,
+    hyperlane_camera_basis_from_transform, hyperlane_render_settings_key,
+    hyperlane_render_should_rebuild, quantize_hyperlane_camera_key, HyperlaneRenderCacheState,
+    StarVisualAppliedKey, StarVisualSyncCacheState, StudioRenderLoopCaches,
+    HYPERLANE_BASIS_MISMATCH_REBUILD_EPSILON_DEG,
 };
 use crate::view_model::{build_hyperlane_render_segments, HyperlaneRenderSegment};
 
@@ -391,7 +393,7 @@ fn format_camera_key(key: crate::studio_render_loop_dirty_gate::HyperlaneCameraK
 pub fn sync_hyperlane_colors_system(
     app_state: Res<super::StudioAppState>,
     studio_camera: Res<StudioCamera>,
-    camera_transform: Query<&GlobalTransform, With<super::camera::MainCamera>>,
+    camera_transform: Query<&Transform, With<super::camera::MainCamera>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     hyperlanes: Query<(
@@ -411,17 +413,16 @@ pub fn sync_hyperlane_colors_system(
     if session.view_model.hyperlanes.is_empty() {
         return;
     };
-    let Ok(cam) = camera_transform.single() else {
+    let Ok(cam_transform) = camera_transform.single() else {
         return;
     };
-    let cam_pos = cam.translation();
-    let cam_transform = cam.compute_transform();
-    let cam_right = (cam_transform.rotation * Vec3::X).to_array();
-    let cam_up = (cam_transform.rotation * Vec3::Y).to_array();
-    let cam_forward = (cam_transform.rotation * Vec3::NEG_Z).to_array();
+    let current_basis = hyperlane_camera_basis_from_transform(cam_transform);
+    let cam_right = current_basis.right;
+    let cam_up = current_basis.up;
+    let cam_forward = current_basis.forward;
     let view_mode = studio_camera.view_mode();
     let camera_key = quantize_hyperlane_camera_key(
-        cam_pos.to_array(),
+        current_basis.position,
         cam_right,
         cam_up,
         cam_forward,
@@ -434,6 +435,25 @@ pub fn sync_hyperlane_colors_system(
     let rotation_just_ended = cache.last_rmb_held && !rotation_active;
     cache.last_rmb_held = rotation_active;
 
+    let mesh_build_basis = cache.last_mesh_build_basis;
+    let basis_mismatch = hyperlane_basis_mismatch_exceeds_epsilon(
+        current_basis,
+        mesh_build_basis,
+        HYPERLANE_BASIS_MISMATCH_REBUILD_EPSILON_DEG,
+    );
+    let basis_mismatch_right_deg = mesh_build_basis.map_or(0.0, |last| {
+        hyperlane_basis_mismatch_angle_deg(current_basis.right, last.right)
+    });
+    let basis_mismatch_up_deg = mesh_build_basis.map_or(0.0, |last| {
+        hyperlane_basis_mismatch_angle_deg(current_basis.up, last.up)
+    });
+    let basis_mismatch_forward_deg = mesh_build_basis.map_or(0.0, |last| {
+        hyperlane_basis_mismatch_angle_deg(current_basis.forward, last.forward)
+    });
+    let rotation_delta_since_rebuild_deg = mesh_build_basis.map_or(0.0, |last| {
+        hyperlane_basis_mismatch_angle_deg(current_basis.forward, last.forward)
+    });
+
     {
         let telemetry = &mut perf.telemetry;
         telemetry.hyperlane_last_camera_key = cache
@@ -445,6 +465,24 @@ pub fn sync_hyperlane_colors_system(
         telemetry.hyperlane_camera_up = cam_up;
         telemetry.hyperlane_camera_forward = cam_forward;
         telemetry.hyperlane_view_mode = view_mode_key(view_mode);
+        telemetry.hyperlane_mesh_build_camera_right =
+            mesh_build_basis.map(|b| b.right).unwrap_or([f32::NAN; 3]);
+        telemetry.hyperlane_mesh_build_camera_up =
+            mesh_build_basis.map(|b| b.up).unwrap_or([f32::NAN; 3]);
+        telemetry.hyperlane_mesh_build_camera_forward =
+            mesh_build_basis.map(|b| b.forward).unwrap_or([f32::NAN; 3]);
+        telemetry.hyperlane_mesh_build_camera_key = cache
+            .last_camera_key
+            .map(format_camera_key)
+            .unwrap_or_else(|| "—".into());
+        telemetry.hyperlane_basis_mismatch_right_deg = basis_mismatch_right_deg;
+        telemetry.hyperlane_basis_mismatch_up_deg = basis_mismatch_up_deg;
+        telemetry.hyperlane_basis_mismatch_forward_deg = basis_mismatch_forward_deg;
+        telemetry.hyperlane_frames_since_rebuild = cache.frames_since_rebuild;
+        telemetry.hyperlane_rmb_orbit_active = rotation_active;
+        telemetry.hyperlane_rotation_delta_since_rebuild_deg = rotation_delta_since_rebuild_deg;
+        telemetry.hyperlane_stale_basis_rebuild_count = cache.stale_basis_rebuild_count;
+        telemetry.hyperlane_basis_mismatch_active = basis_mismatch;
     }
 
     let should_rebuild = hyperlane_render_should_rebuild(
@@ -457,14 +495,20 @@ pub fn sync_hyperlane_colors_system(
         cache.dirty,
         rotation_active,
         rotation_just_ended,
+        basis_mismatch,
     );
     if !should_rebuild {
+        cache.frames_since_rebuild = cache.frames_since_rebuild.saturating_add(1);
         return;
+    }
+
+    if basis_mismatch && mesh_build_basis.is_some() {
+        cache.stale_basis_rebuild_count = cache.stale_basis_rebuild_count.saturating_add(1);
     }
 
     let started = std::time::Instant::now();
     let camera = HyperlaneRibbonCamera {
-        position: cam_pos.to_array(),
+        position: current_basis.position,
         right: cam_right,
         up: cam_up,
         forward: cam_forward,
@@ -549,6 +593,8 @@ pub fn sync_hyperlane_colors_system(
     cache.last_camera_key = Some(camera_key);
     cache.last_render_settings_key = Some(settings_key);
     cache.last_view_model_generation = generation;
+    cache.last_mesh_build_basis = Some(current_basis);
+    cache.frames_since_rebuild = 0;
 }
 
 fn record_hyperlane_bucket_telemetry(
@@ -579,6 +625,8 @@ pub fn mark_hyperlane_render_dirty(cache: &mut HyperlaneRenderCacheState) {
     cache.dirty = true;
     cache.last_camera_key = None;
     cache.last_render_settings_key = None;
+    cache.last_mesh_build_basis = None;
+    cache.frames_since_rebuild = 0;
 }
 
 /// Mark star visual material/scale sync dirty after scene rebuild or render-settings change.

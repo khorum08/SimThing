@@ -122,7 +122,6 @@ pub fn run_studio() {
                     picking::billboard_stars_system,
                     galaxy_render::sync_star_nameplate_settings_system,
                     galaxy_render::sync_star_nameplate_focus_system,
-                    galaxy_render::sync_hyperlane_colors_system,
                     galaxy_render::sync_render_debug_visibility_system,
                     performance_telemetry::update_studio_fps_telemetry,
                     performance_telemetry::update_nameplate_diagnostics_system,
@@ -133,6 +132,10 @@ pub fn run_studio() {
                 performance_telemetry::finalize_main_update_timing,
             )
                 .chain(),
+        )
+        .add_systems(
+            PostUpdate,
+            galaxy_render::sync_hyperlane_colors_system.after(camera::camera_control_system),
         )
         .run();
 }

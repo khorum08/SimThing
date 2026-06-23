@@ -132,15 +132,17 @@ pub use studio_planet_child_location::{
     StudioPlanetChildLocationOutcome,
 };
 pub use studio_render_loop_dirty_gate::{
-    billboard_should_sync, hyperlane_render_settings_key, hyperlane_render_should_rebuild,
+    billboard_should_sync, hyperlane_basis_mismatch_angle_deg,
+    hyperlane_basis_mismatch_exceeds_epsilon, hyperlane_camera_basis_from_transform,
+    hyperlane_render_settings_key, hyperlane_render_should_rebuild,
     picking_projection_should_rebuild, quantize_billboard_camera_key,
     quantize_hyperlane_camera_key, quantize_picking_projection_key, quantize_star_depth_percent,
     render_loop_telemetry_record_timing, star_falloff_settings_key,
     star_visual_per_star_should_write, star_visuals_should_sync, BillboardCameraKey,
-    BillboardSyncCacheState, HyperlaneCameraKey, HyperlaneRenderCacheState,
+    BillboardSyncCacheState, HyperlaneCameraBasis, HyperlaneCameraKey, HyperlaneRenderCacheState,
     HyperlaneRenderSettingsKey, PickingProjectionCacheState, PickingProjectionKey,
     StarFalloffSettingsKey, StarVisualAppliedKey, StarVisualSyncCacheState, StarVisualSyncKey,
-    StudioRenderLoopCaches,
+    StudioRenderLoopCaches, HYPERLANE_BASIS_MISMATCH_REBUILD_EPSILON_DEG,
 };
 pub use studio_scenario_document::{
     build_studio_scenario_document, build_studio_scenario_document_with_admission,
