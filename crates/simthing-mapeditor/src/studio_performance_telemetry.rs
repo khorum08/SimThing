@@ -25,6 +25,7 @@ pub struct StudioPerformanceTelemetry {
     pub window_width: Option<u32>,
     pub window_height: Option<u32>,
     pub render_scale: Option<f32>,
+    pub antialiasing_mode: String,
 
     pub frame_total_ms_last: Option<f64>,
     pub frame_total_ms_avg: Option<f64>,
@@ -188,6 +189,7 @@ impl Default for StudioPerformanceTelemetry {
             window_width: None,
             window_height: None,
             render_scale: None,
+            antialiasing_mode: "Off".into(),
             frame_total_ms_last: None,
             frame_total_ms_avg: None,
             main_update_ms_last: None,

@@ -23,6 +23,7 @@ pub mod shape_params;
 pub mod star_render;
 pub mod starburst;
 pub mod studio_admission_report;
+pub mod studio_antialiasing;
 pub mod studio_config;
 pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_performance_telemetry;

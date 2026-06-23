@@ -188,6 +188,7 @@ pub fn gpu_context_settings_lines(telemetry: &StudioPerformanceTelemetry) -> Vec
         format_present_mode_label(telemetry.present_mode.as_deref()),
         format_window_resolution(telemetry.window_width, telemetry.window_height),
         format_render_scale(telemetry.render_scale),
+        format!("Antialiasing: {}", telemetry.antialiasing_mode),
     ]
 }
 
