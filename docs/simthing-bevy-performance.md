@@ -230,3 +230,27 @@ until the main/overlay-camera text path is built and verified on a real window.
   changes.
 - Dirty-gate shaping and atlas work on label/style/placement lifecycle changes. Camera motion belongs in the
   vertex shader for camera-facing billboards and distance attenuation; it must not trigger CPU instance rebuilds.
+
+## World-text (3D screen-label) caveats — from the Studio star-nameplate saga
+
+These bit hard during STUDIO-STAR-NAMEPLATE (#914–#917); record so they aren't rediscovered.
+
+- **Atlas bind group goes stale when glyphs rasterize after init.** The atlas `GpuImage` (texture +
+  view) is re-prepared whenever new glyphs are rasterized. A bind group cached only by image asset id
+  keeps sampling the old, glyph-empty texture → text renders as faint dash/stroke debris. Cache the
+  atlas `TextureView` id and recreate the bind group when it changes (reuse on stable frames). Prewarm
+  only covers prewarmed glyph/px; on-demand glyphs (e.g. 48px nameplate letters) appear after init.
+- **Glyph `tile.top` is baseline-relative and grows UP.** `GlyphInstanceGpu.pos_size[1] = glyph.y +
+  tile.top` is a glyph TOP that increases with height above baseline; the glyph extends DOWN to
+  `pos_size[1] - pos_size[3]`. For a y-down screen path the run extent is `[min(top-height), max(top)]`,
+  and local y must be inverted. Treating it as a y-down top puts short glyphs (hyphen) at the wrong end.
+- **Mesh vertex attributes aren't reliably delivered to a `MeshPipeline`-specialized custom text
+  pipeline.** The world-text quad reconstructs its corner from `@builtin(vertex_index)` over a
+  non-indexed `draw(0..6)` (no base-vertex offset) instead of mesh `position`/`uv`.
+- **CPU "drawn labels / glyph instances drawn" telemetry are estimates, not GPU-confirmed draws.**
+  Don't trust them to prove the GPU rendered anything; cross-check `pipeline_cache: failed to process
+  shader` in the log, and remember a `return` with trailing dead code makes naga reject the whole
+  fragment entry point (pipeline never builds → nothing draws).
+- **Diagnose render bugs by visualizing, not guessing:** force the fragment to output `source_uv` as
+  color (geometry check) and to sample the raw atlas (rgb AND alpha) across full `local_uv` (content
+  check) before touching coordinate math.
