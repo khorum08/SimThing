@@ -8,6 +8,7 @@ pub mod dialog;
 pub mod generation;
 pub mod hydration;
 pub mod hyperlane_buckets;
+pub mod hyperlane_ribbon;
 pub mod panel_layout;
 pub mod runtime_vertical_seed;
 pub mod scenario_io;
@@ -61,6 +62,11 @@ pub use hydration::{
     studio_projection_from_scenario_authority, studio_projection_from_simthing_spec,
     StudioHeatmapReadiness, StudioHeatmapReadinessKind, StudioHydrationBoundary,
     StudioHydrationError, StudioRfAccumulatorReadiness,
+};
+pub use hyperlane_ribbon::{
+    compute_camera_facing_width_dir, count_non_finite_vertex_positions, hyperlane_mesh_is_valid,
+    hyperlane_rebuild_is_valid, hyperlane_ribbon_width_dir, is_valid_width_dir, HyperlaneMeshStats,
+    HyperlaneRibbonBasis, HyperlaneRibbonCamera, HyperlaneWidthDirOutcome,
 };
 pub use runtime_vertical_seed::{
     runtime_vertical_seed_scenario_spec, RUNTIME_VERTICAL_SEED_PROVENANCE_SOURCE,
@@ -116,8 +122,8 @@ pub use studio_frame_phase_gpu_telemetry::{
 pub use studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_image_vram_bytes, estimate_mesh_vram_bytes,
     estimate_studio_allocated_vram_bytes, format_fps_label, format_vram_mb_label,
-    performance_settings_section_lines, read_fps_from_diagnostics, render_loop_diagnostics_lines,
-    StudioPerformanceTelemetry,
+    hyperlane_debug_lines, performance_settings_section_lines, read_fps_from_diagnostics,
+    render_loop_diagnostics_lines, StudioPerformanceTelemetry,
 };
 pub use studio_planet_child_location::{
     studio_apply_planet_child_location_command, StudioPlanetChildLocationError,

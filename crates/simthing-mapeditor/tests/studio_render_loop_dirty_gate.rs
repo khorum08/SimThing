@@ -11,7 +11,13 @@ use simthing_mapeditor::{
 };
 
 fn sample_hyperlane_camera() -> HyperlaneCameraKey {
-    quantize_hyperlane_camera_key([40.0, 35.0, 40.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], 0)
+    quantize_hyperlane_camera_key(
+        [40.0, 35.0, 40.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, -1.0],
+        0,
+    )
 }
 
 fn sample_hyperlane_settings() -> HyperlaneRenderSettingsKey {
@@ -51,6 +57,8 @@ fn hyperlane_dirty_gate_skips_when_camera_and_settings_unchanged() {
         1,
         1,
         false,
+        false,
+        false,
     ));
 }
 
@@ -67,6 +75,8 @@ fn hyperlane_dirty_gate_rebuilds_when_settings_change() {
         next,
         1,
         1,
+        false,
+        false,
         false,
     ));
 }
@@ -85,6 +95,8 @@ fn hyperlane_dirty_gate_rebuilds_when_camera_key_changes() {
         1,
         1,
         false,
+        false,
+        false,
     ));
 }
 
@@ -99,6 +111,8 @@ fn hyperlane_dirty_gate_rebuilds_when_session_changes() {
         settings,
         1,
         2,
+        false,
+        false,
         false,
     ));
 }

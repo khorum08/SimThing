@@ -46,7 +46,8 @@ use crate::studio_frame_phase_gpu_telemetry::{
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
 use crate::studio_performance_telemetry::{
-    nameplate_debug_lines, performance_summary_lines, render_loop_gpu_vram_lines,
+    hyperlane_debug_lines, nameplate_debug_lines, performance_summary_lines,
+    render_loop_gpu_vram_lines,
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
@@ -800,6 +801,13 @@ fn draw_telemetry_dialog(
                             );
                         }
                         for line in nameplate_debug_lines(telemetry) {
+                            ui.label(line);
+                        }
+                    });
+                egui::CollapsingHeader::new("Hyperlane debug")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for line in hyperlane_debug_lines(telemetry) {
                             ui.label(line);
                         }
                     });
