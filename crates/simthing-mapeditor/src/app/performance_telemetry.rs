@@ -14,9 +14,10 @@ use crate::star_render::{
     estimate_world_vertical_span_screen_px, nameplate_effective_falloff_distance_percent,
     nameplate_gpu_screen_label_falloff_alpha, nameplate_label_passes_density_gate,
     nameplate_label_passes_readability_gate, nameplate_scaled_label_height_px,
-    nameplate_unselected_global_lod_alpha, normalized_billboard_camera_depth_percent,
-    star_nameplate_envelope_height_ratio, StarBillboardInstance, StarBillboardRenderSettings,
-    StarNameplateDebugMode,
+    nameplate_unselected_global_lod_alpha, star_falloff_alpha_at_progress,
+    star_falloff_progress_percent, star_nameplate_envelope_height_ratio, world_anchor_screen_px,
+    StarBillboardInstance, StarBillboardRenderSettings, StarNameplateDebugMode,
+    VisualHorizonFalloffRuler,
 };
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -205,20 +206,6 @@ fn nameplate_cull_reason(
     None
 }
 
-fn world_anchor_to_screen_px(
-    camera: &Camera,
-    camera_transform: &GlobalTransform,
-    anchor: Vec3,
-    viewport_width: f32,
-    viewport_height: f32,
-) -> Option<[f32; 2]> {
-    let ndc = camera.world_to_ndc(camera_transform, anchor)?;
-    Some([
-        (ndc.x * 0.5 + 0.5) * viewport_width,
-        (1.0 - ndc.y) * 0.5 * viewport_height,
-    ])
-}
-
 pub fn update_nameplate_diagnostics_system(
     state: Res<StudioAppState>,
     settings: Res<StudioSettings>,
@@ -254,6 +241,7 @@ pub fn update_nameplate_diagnostics_system(
         .telemetry
         .nameplate_settings_relative_falloff_transparency_pct =
         Some(nameplate_settings.relative_falloff_transparency_percent);
+    telemetry_state.telemetry.nameplate_falloff_metric = state.star_falloff_metric.label().into();
     let mut glyph_instances = 0u64;
     let mut gpu_screen_label_count = 0usize;
     let mut culled_too_small_count = 0usize;
@@ -370,12 +358,27 @@ pub fn update_nameplate_diagnostics_system(
     let viewport_height = window.resolution.height();
     let viewport_width = window.resolution.width();
     let viewport_area_px = viewport_width * viewport_height;
+    let falloff_metric = state.star_falloff_metric;
+    let horizon_ruler = VisualHorizonFalloffRuler::from_viewport(viewport_width, viewport_height);
+    telemetry_state.telemetry.nameplate_falloff_ruler_base_px = Some(horizon_ruler.base_px);
+    telemetry_state
+        .telemetry
+        .nameplate_falloff_ruler_vanishing_px = Some(horizon_ruler.vanishing_px);
 
     if let (Some(sample), Some(instance)) = (sample_billboard, sample_instance) {
         let distance = camera_pos.distance(instance.anchor_position);
-        let depth_percent = normalized_billboard_camera_depth_percent(distance, &star_settings);
+        let progress_percent = star_falloff_progress_percent(
+            falloff_metric,
+            camera,
+            camera_transform,
+            instance.anchor_position,
+            distance,
+            &star_settings,
+            viewport_width,
+            viewport_height,
+        );
         let height_ratio =
-            star_nameplate_envelope_height_ratio(instance, &star_settings, depth_percent);
+            star_nameplate_envelope_height_ratio(instance, &star_settings, progress_percent);
         let envelope_world = sample.visual_envelope_world_height * height_ratio;
         let projected_star_visual_height_px = estimate_world_vertical_span_screen_px(
             instance.anchor_position,
@@ -390,10 +393,24 @@ pub fn update_nameplate_diagnostics_system(
         );
         sample_label_width_px = sample_run_aspect.unwrap_or(1.0) * sample_label_height_px;
 
-        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(depth_percent, &sample);
+        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(progress_percent, &sample);
+        let star_alpha = star_falloff_alpha_at_progress(progress_percent, &sample);
         let sample_alpha = sample.base_alpha_ratio * falloff_alpha;
-        telemetry_state.telemetry.nameplate_sample_depth_percent = Some(depth_percent);
+        telemetry_state.telemetry.nameplate_sample_depth_percent = Some(progress_percent);
+        telemetry_state
+            .telemetry
+            .nameplate_sample_visual_progress_pct = Some(progress_percent);
+        telemetry_state
+            .telemetry
+            .nameplate_sample_star_falloff_alpha = Some(star_alpha);
         telemetry_state.telemetry.nameplate_sample_falloff_alpha = Some(falloff_alpha);
+        telemetry_state.telemetry.nameplate_sample_screen_px = world_anchor_screen_px(
+            camera,
+            camera_transform,
+            instance.anchor_position,
+            viewport_width,
+            viewport_height,
+        );
         telemetry_state
             .telemetry
             .nameplate_star_visual_envelope_world = Some(envelope_world);
@@ -453,9 +470,18 @@ pub fn update_nameplate_diagnostics_system(
         let instance = nameplate.instance;
         let focused = billboard.gpu_screen_label_focused;
         let distance = camera_pos.distance(instance.anchor_position);
-        let depth_percent = normalized_billboard_camera_depth_percent(distance, &star_settings);
+        let progress_percent = star_falloff_progress_percent(
+            falloff_metric,
+            camera,
+            camera_transform,
+            instance.anchor_position,
+            distance,
+            &star_settings,
+            viewport_width,
+            viewport_height,
+        );
         let height_ratio =
-            star_nameplate_envelope_height_ratio(instance, &star_settings, depth_percent);
+            star_nameplate_envelope_height_ratio(instance, &star_settings, progress_percent);
         let envelope_world = billboard.visual_envelope_world_height * height_ratio;
         let projected_height = estimate_world_vertical_span_screen_px(
             instance.anchor_position,
@@ -468,13 +494,13 @@ pub fn update_nameplate_diagnostics_system(
             .unwrap_or(sample_run_aspect.unwrap_or(1.0));
         let _label_width_px = run_aspect * projected_height * billboard.width_ratio;
 
-        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(depth_percent, billboard);
+        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(progress_percent, billboard);
         let final_alpha = billboard.base_alpha_ratio * falloff_alpha;
 
         let effective_falloff_at = billboard
             .relative_falloff_percent
             .min(billboard.ceiling_falloff_percent);
-        if depth_percent > effective_falloff_at + f32::EPSILON
+        if progress_percent > effective_falloff_at + f32::EPSILON
             && falloff_alpha < NAMEPLATE_ALPHA_ZERO_THRESHOLD
         {
             culled_past_effective_falloff_count += 1;
@@ -546,9 +572,18 @@ pub fn update_nameplate_diagnostics_system(
 
     if let Some((instance, billboard, glyph_list)) = selected_sample {
         let distance = camera_pos.distance(instance.anchor_position);
-        let depth_percent = normalized_billboard_camera_depth_percent(distance, &star_settings);
+        let progress_percent = star_falloff_progress_percent(
+            falloff_metric,
+            camera,
+            camera_transform,
+            instance.anchor_position,
+            distance,
+            &star_settings,
+            viewport_width,
+            viewport_height,
+        );
         let height_ratio =
-            star_nameplate_envelope_height_ratio(instance, &star_settings, depth_percent);
+            star_nameplate_envelope_height_ratio(instance, &star_settings, progress_percent);
         let envelope_world = billboard.visual_envelope_world_height * height_ratio;
         let projected_diameter = estimate_world_vertical_span_screen_px(
             instance.anchor_position,
@@ -563,15 +598,22 @@ pub fn update_nameplate_diagnostics_system(
             .map(|g| normalized_label_local_x_range_from_glyphs(g))
             .unwrap_or((0.0, 0.0));
         let computed_width = (local_x_max - local_x_min).max(0.0) * effective_height;
-        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(depth_percent, &billboard);
+        let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(progress_percent, &billboard);
+        let star_alpha = star_falloff_alpha_at_progress(progress_percent, &billboard);
         let final_alpha = billboard.base_alpha_ratio * falloff_alpha;
-        telemetry_state.telemetry.nameplate_sample_depth_percent = Some(depth_percent);
+        telemetry_state.telemetry.nameplate_sample_depth_percent = Some(progress_percent);
+        telemetry_state
+            .telemetry
+            .nameplate_sample_visual_progress_pct = Some(progress_percent);
+        telemetry_state
+            .telemetry
+            .nameplate_sample_star_falloff_alpha = Some(star_alpha);
         telemetry_state.telemetry.nameplate_sample_falloff_alpha = Some(falloff_alpha);
         let offscreen = camera
             .world_to_ndc(camera_transform, instance.anchor_position)
             .is_none_or(|ndc| ndc.x.abs() > 1.0 || ndc.y.abs() > 1.0 || ndc.z > 1.0);
         telemetry_state.telemetry.nameplate_selected_star_id = Some(instance.system_id);
-        telemetry_state.telemetry.nameplate_selected_anchor_px = world_anchor_to_screen_px(
+        telemetry_state.telemetry.nameplate_selected_anchor_px = world_anchor_screen_px(
             camera,
             camera_transform,
             instance.anchor_position,

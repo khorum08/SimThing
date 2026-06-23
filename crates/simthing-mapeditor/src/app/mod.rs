@@ -199,6 +199,8 @@ pub struct StudioAppState {
         Option<crate::studio_frame_phase_gpu_telemetry::PerformanceNormalRenderSnapshot>,
     /// Nameplate LOD debug mode (presentation only).
     pub star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode,
+    /// Star/nameplate falloff progress metric (presentation only).
+    pub star_falloff_metric: crate::star_render::StarFalloffMetric,
 }
 
 impl StudioAppState {
@@ -250,6 +252,7 @@ impl StudioAppState {
             performance_diagnostic_hide_star_aura: false,
             performance_normal_render_snapshot: None,
             star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode::default(),
+            star_falloff_metric: crate::star_render::StarFalloffMetric::default(),
         }
     }
 

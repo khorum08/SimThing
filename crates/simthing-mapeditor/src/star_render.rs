@@ -670,6 +670,118 @@ pub fn normalized_billboard_camera_depth_percent(
     (((camera_distance - near) / (far - near)).clamp(0.0, 1.0)) * 100.0
 }
 
+/// Foreground-to-horizon ruler for Studio star/nameplate falloff (screen pixels).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VisualHorizonFalloffRuler {
+    pub base_px: [f32; 2],
+    pub vanishing_px: [f32; 2],
+}
+
+impl VisualHorizonFalloffRuler {
+    pub fn from_viewport(viewport_width: f32, viewport_height: f32) -> Self {
+        Self {
+            base_px: [viewport_width * 0.5, viewport_height],
+            vanishing_px: [viewport_width * 0.5, viewport_height * 0.5],
+        }
+    }
+}
+
+/// Falloff progress metric for stars and GPU nameplates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StarFalloffMetric {
+    /// Default: 0% at viewport bottom center, 100% at central vanishing point.
+    #[default]
+    VisualHorizon,
+    /// Telemetry/debug: legacy camera-distance normalization.
+    CameraDistanceDebug,
+}
+
+impl StarFalloffMetric {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::VisualHorizon => "Visual horizon",
+            Self::CameraDistanceDebug => "Camera distance debug",
+        }
+    }
+}
+
+/// Project a world anchor to viewport pixel coordinates (y down).
+pub fn world_anchor_screen_px(
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+    anchor: Vec3,
+    viewport_width: f32,
+    viewport_height: f32,
+) -> Option<[f32; 2]> {
+    let ndc = camera.world_to_ndc(camera_transform, anchor)?;
+    Some([
+        (ndc.x * 0.5 + 0.5) * viewport_width,
+        (1.0 - ndc.y) * 0.5 * viewport_height,
+    ])
+}
+
+/// Visual progress along the foreground (bottom center) → vanishing point (center) ruler.
+pub fn visual_horizon_falloff_progress_percent(
+    screen_px: [f32; 2],
+    ruler: &VisualHorizonFalloffRuler,
+) -> f32 {
+    let dx = ruler.vanishing_px[0] - ruler.base_px[0];
+    let dy = ruler.vanishing_px[1] - ruler.base_px[1];
+    let len_sq = dx * dx + dy * dy;
+    if len_sq <= f32::EPSILON {
+        return 100.0;
+    }
+    let sx = screen_px[0] - ruler.base_px[0];
+    let sy = screen_px[1] - ruler.base_px[1];
+    let progress = (sx * dx + sy * dy) / len_sq;
+    (progress.clamp(0.0, 1.0)) * 100.0
+}
+
+/// Shared star/nameplate falloff progress (default: visual horizon).
+pub fn star_falloff_progress_percent(
+    metric: StarFalloffMetric,
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+    anchor: Vec3,
+    camera_distance: f32,
+    star_settings: &StarBillboardRenderSettings,
+    viewport_width: f32,
+    viewport_height: f32,
+) -> f32 {
+    match metric {
+        StarFalloffMetric::VisualHorizon => world_anchor_screen_px(
+            camera,
+            camera_transform,
+            anchor,
+            viewport_width,
+            viewport_height,
+        )
+        .map(|px| {
+            visual_horizon_falloff_progress_percent(
+                px,
+                &VisualHorizonFalloffRuler::from_viewport(viewport_width, viewport_height),
+            )
+        })
+        .unwrap_or(100.0),
+        StarFalloffMetric::CameraDistanceDebug => {
+            normalized_billboard_camera_depth_percent(camera_distance, star_settings)
+        }
+    }
+}
+
+/// Star opacity falloff alpha at the given progress (mirrors GPU star ceiling).
+pub fn star_falloff_alpha_at_progress(
+    progress_percent: f32,
+    billboard: &WorldTextBillboard,
+) -> f32 {
+    world_text_distance_falloff(
+        progress_percent,
+        billboard.ceiling_falloff_percent,
+        billboard.ceiling_target_alpha,
+        billboard.horizon_taper,
+    )
+}
+
 pub fn mid_to_horizon_extra_falloff(normalized_depth: f32) -> f32 {
     let depth = normalized_depth.clamp(0.0, 1.0);
     if depth <= MID_TO_HORIZON_FALLOFF_START_DEPTH {
@@ -982,6 +1094,95 @@ mod tests {
             star_nameplate_visual_envelope_near_world(instance, &star)
                 < star_nameplate_visual_envelope_near_world(instance, &bloom)
         );
+    }
+
+    #[test]
+    fn visual_horizon_progress_bottom_center_is_zero() {
+        let ruler = VisualHorizonFalloffRuler::from_viewport(800.0, 600.0);
+        let progress = visual_horizon_falloff_progress_percent(ruler.base_px, &ruler);
+        assert!(progress.abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn visual_horizon_progress_center_is_one_hundred() {
+        let ruler = VisualHorizonFalloffRuler::from_viewport(800.0, 600.0);
+        let progress = visual_horizon_falloff_progress_percent(ruler.vanishing_px, &ruler);
+        assert!((progress - 100.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn visual_horizon_progress_midpoint_is_fifty() {
+        let ruler = VisualHorizonFalloffRuler::from_viewport(800.0, 600.0);
+        let mid = [
+            (ruler.base_px[0] + ruler.vanishing_px[0]) * 0.5,
+            (ruler.base_px[1] + ruler.vanishing_px[1]) * 0.5,
+        ];
+        let progress = visual_horizon_falloff_progress_percent(mid, &ruler);
+        assert!((progress - 50.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn nameplate_effective_falloff_uses_visual_progress() {
+        let star_falloff = 8.0;
+        let relative = 10.0;
+        let effective = nameplate_effective_falloff_distance_percent(star_falloff, relative);
+        assert!((effective - 0.8).abs() < f32::EPSILON);
+        let billboard = star_nameplate_gpu_screen_label(
+            StarBillboardInstance {
+                system_id: 1,
+                structural_col: 0,
+                structural_row: 0,
+                anchor_position: Vec3::ZERO,
+                base_scale_variation: 1.0,
+                base_intensity_variation: 1.0,
+                selected: false,
+                hovered: false,
+            },
+            &test_billboard_settings(
+                0.5,
+                star_falloff,
+                25.0,
+                40.0,
+                StarRenderMode::BloomStarburst,
+            ),
+            StarNameplateSettings {
+                relative_width_percent: 100.0,
+                base_transparency_percent: 100.0,
+                relative_falloff_distance_percent: relative,
+                relative_falloff_transparency_percent: 0.0,
+            },
+        );
+        assert!((billboard.relative_falloff_percent - effective).abs() < f32::EPSILON);
+        let alpha_past = nameplate_gpu_screen_label_falloff_alpha(1.0, &billboard);
+        assert!(alpha_past < 0.02);
+    }
+
+    #[test]
+    fn nameplate_never_exceeds_star_falloff() {
+        assert_eq!(
+            nameplate_effective_falloff_distance_percent(40.0, 200.0),
+            40.0
+        );
+        let billboard = star_nameplate_gpu_screen_label(
+            StarBillboardInstance {
+                system_id: 2,
+                structural_col: 0,
+                structural_row: 0,
+                anchor_position: Vec3::ZERO,
+                base_scale_variation: 1.0,
+                base_intensity_variation: 1.0,
+                selected: false,
+                hovered: false,
+            },
+            &test_billboard_settings(0.5, 40.0, 25.0, 40.0, StarRenderMode::BloomStarburst),
+            StarNameplateSettings {
+                relative_width_percent: 100.0,
+                base_transparency_percent: 100.0,
+                relative_falloff_distance_percent: 200.0,
+                relative_falloff_transparency_percent: 50.0,
+            },
+        );
+        assert!(billboard.relative_falloff_percent <= billboard.ceiling_falloff_percent);
     }
 
     #[test]

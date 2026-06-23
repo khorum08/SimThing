@@ -199,6 +199,52 @@ fn clip_from_screen_px_offset(anchor_clip: vec4<f32>, offset_px: vec2<f32>) -> v
     );
 }
 
+fn anchor_screen_px_from_clip(anchor_clip: vec4<f32>) -> vec2<f32> {
+    let ndc = anchor_clip.xy / max(anchor_clip.w, 0.0001);
+    let vw = view.viewport.z;
+    let vh = view.viewport.w;
+    return vec2(
+        (ndc.x * 0.5 + 0.5) * vw,
+        (1.0 - ndc.y) * 0.5 * vh,
+    );
+}
+
+// Visual falloff ruler: 0% at viewport bottom center, 100% at central vanishing point.
+fn visual_horizon_falloff_progress_percent(screen_px: vec2<f32>) -> f32 {
+    let vw = view.viewport.z;
+    let vh = view.viewport.w;
+    let base = vec2(vw * 0.5, vh);
+    let vanishing = vec2(vw * 0.5, vh * 0.5);
+    let ruler = vanishing - base;
+    let len_sq = dot(ruler, ruler);
+    if len_sq <= 0.0001 {
+        return 100.0;
+    }
+    let progress = dot(screen_px - base, ruler) / len_sq;
+    return clamp(progress, 0.0, 1.0) * 100.0;
+}
+
+fn camera_distance_depth_percent(anchor: vec3<f32>, distance_params: vec4<f32>) -> f32 {
+    let camera_distance = length(view.world_position.xyz - anchor);
+    return clamp(
+        (camera_distance - distance_params.x)
+            / max(distance_params.y - distance_params.x, 0.0001),
+        0.0,
+        1.0,
+    ) * 100.0;
+}
+
+fn falloff_depth_percent_for_anchor(anchor: vec3<f32>, distance_params: vec4<f32>, use_visual_horizon: bool) -> f32 {
+    if !use_visual_horizon {
+        return camera_distance_depth_percent(anchor, distance_params);
+    }
+    let anchor_clip = position_world_to_clip(anchor);
+    if anchor_clip.w <= 0.0001 {
+        return 100.0;
+    }
+    return visual_horizon_falloff_progress_percent(anchor_screen_px_from_clip(anchor_clip));
+}
+
 fn world_text_falloff_alpha(
     depth_percent: f32,
     distance_params: vec4<f32>,
@@ -289,13 +335,8 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     const MIN_SELECTED_READABLE_PX: f32 = 16.0;
 
     let anchor = instance.anchor_height.xyz;
-    let camera_distance = length(view.world_position.xyz - anchor);
-    let depth_percent = clamp(
-        (camera_distance - instance.distance_params.x)
-            / max(instance.distance_params.y - instance.distance_params.x, 0.0001),
-        0.0,
-        1.0,
-    ) * 100.0;
+    let use_visual_horizon = gpu_screen_label || screen_companion;
+    let depth_percent = falloff_depth_percent_for_anchor(anchor, instance.distance_params, use_visual_horizon);
     let horizon_taper = select(
         instance.size_params.w,
         HORIZON_TAPER,

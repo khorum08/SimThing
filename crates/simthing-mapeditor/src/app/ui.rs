@@ -771,6 +771,23 @@ fn draw_telemetry_dialog(
                                     }
                                 });
                         });
+                        ui.horizontal(|ui| {
+                            ui.label("Falloff metric:");
+                            egui::ComboBox::from_id_salt("star_falloff_metric")
+                                .selected_text(state.star_falloff_metric.label())
+                                .show_ui(ui, |ui| {
+                                    for metric in [
+                                        crate::star_render::StarFalloffMetric::VisualHorizon,
+                                        crate::star_render::StarFalloffMetric::CameraDistanceDebug,
+                                    ] {
+                                        ui.selectable_value(
+                                            &mut state.star_falloff_metric,
+                                            metric,
+                                            metric.label(),
+                                        );
+                                    }
+                                });
+                        });
                         if state.star_nameplate_debug_mode.is_debug_override() {
                             ui.label(
                                 "Debug mode — optional LOD/readability assist; Settings sliders remain authoritative in All labels mode.",
