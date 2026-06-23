@@ -448,10 +448,7 @@ mod render_3d {
         prelude::*,
         render::{
             extract_component::{ExtractComponent, ExtractComponentPlugin},
-            mesh::{
-                allocator::MeshAllocator, MeshVertexBufferLayoutRef, RenderMesh,
-                RenderMeshBufferInfo,
-            },
+            mesh::{allocator::MeshAllocator, MeshVertexBufferLayoutRef, RenderMesh},
             render_asset::RenderAssets,
             render_phase::{
                 AddRenderCommand, DrawFunctions, PhaseItem, PhaseItemExtraIndex, RenderCommand,
@@ -811,9 +808,11 @@ mod render_3d {
             else {
                 return RenderCommandResult::Skip;
             };
-            let Some(mesh) = meshes.into_inner().get(mesh_instance.mesh_asset_id) else {
-                return RenderCommandResult::Skip;
-            };
+            // The mesh asset only carries the pipeline's vertex layout / draw entity; the glyph quad
+            // itself is generated procedurally in the shader from the vertex index (see
+            // `text_instanced.wgsl`). We still bind the mesh vertex buffer to satisfy the pipeline's
+            // slot-0 layout, but draw a fixed 6-vertex (two-triangle) quad per instance.
+            let _ = meshes;
             let Some(instance_buffer) = instance_buffer else {
                 return RenderCommandResult::Skip;
             };
@@ -824,27 +823,9 @@ mod render_3d {
             pass.set_vertex_buffer(0, vertex_slice.buffer.slice(..));
             pass.set_vertex_buffer(1, instance_buffer.buffer.slice(..));
             let instance_range = 0..instance_buffer.count as u32;
-            match &mesh.buffer_info {
-                RenderMeshBufferInfo::Indexed {
-                    index_format,
-                    count,
-                } => {
-                    let Some(index_slice) =
-                        mesh_allocator.mesh_index_slice(&mesh_instance.mesh_asset_id)
-                    else {
-                        return RenderCommandResult::Skip;
-                    };
-                    pass.set_index_buffer(index_slice.buffer.slice(..), 0, *index_format);
-                    pass.draw_indexed(
-                        index_slice.range.start..(index_slice.range.start + count),
-                        vertex_slice.range.start as i32,
-                        instance_range,
-                    );
-                }
-                RenderMeshBufferInfo::NonIndexed => {
-                    pass.draw(vertex_slice.range, instance_range);
-                }
-            }
+            // Non-indexed, first_vertex = 0 so `@builtin(vertex_index)` is 0..5 (no base-vertex
+            // offset from the shared mesh slab corrupting the procedural quad reconstruction).
+            pass.draw(0..6, instance_range);
             RenderCommandResult::Success
         }
     }

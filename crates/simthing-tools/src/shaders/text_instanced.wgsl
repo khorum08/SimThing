@@ -24,6 +24,7 @@ struct GlyphInstance {
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
+    @builtin(vertex_index) vertex_index: u32,
     @location(0) position: vec3<f32>,
     @location(2) uv: vec2<f32>,
 }
@@ -245,8 +246,20 @@ fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> ve
 @vertex
 fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     var out: VertexOutput;
-    let source_uv = vertex.uv;
 #ifdef WORLD_TEXT
+    // World-text draws a procedural non-indexed 6-vertex quad per glyph. The unit-quad corner is
+    // reconstructed from the vertex index rather than the mesh vertex buffer: the
+    // MeshPipeline-specialized world-text pipeline does not deliver the quad mesh's per-vertex
+    // attributes (position/uv) to this shader, which collapsed every glyph quad into a dash/dot.
+    var wt_corners = array<vec2<f32>, 6>(
+        vec2<f32>(0.0, 0.0),
+        vec2<f32>(0.0, 1.0),
+        vec2<f32>(1.0, 0.0),
+        vec2<f32>(1.0, 0.0),
+        vec2<f32>(0.0, 1.0),
+        vec2<f32>(1.0, 1.0),
+    );
+    let source_uv = wt_corners[vertex.vertex_index % 6u];
     let placement_mode = instance.size_params.w;
     let gpu_screen_label = is_gpu_screen_label_mode(placement_mode);
     let screen_companion = is_screen_companion_mode(placement_mode);
@@ -390,6 +403,8 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);
     }
 #else
+    // Screen-space 2D path keeps the mesh's per-vertex UV (Mesh2dPipeline delivers it correctly).
+    let source_uv = vertex.uv;
     let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
     let path_slot = u32(clamp(instance.path_params.x, 0.0, 15.0));
     let warp_slot = u32(clamp(instance.warp_params.x, 0.0, 15.0));
