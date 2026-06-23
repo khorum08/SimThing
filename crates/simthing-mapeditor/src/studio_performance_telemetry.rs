@@ -81,6 +81,17 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_label_width_px: Option<f32>,
     pub nameplate_sample_alpha: Option<f32>,
     pub nameplate_culled_too_small_count: usize,
+    pub nameplate_visible_label_estimate: usize,
+    pub nameplate_visible_glyph_estimate: u64,
+    pub nameplate_unselected_visible_after_lod: usize,
+    pub nameplate_focused_visible_after_lod: usize,
+    pub nameplate_min_unselected_label_px: f32,
+    pub nameplate_min_focused_label_px: f32,
+    pub nameplate_label_coverage_estimate: f32,
+    pub nameplate_global_lod_alpha: f32,
+    pub nameplate_culled_over_density_count: usize,
+    pub nameplate_culled_alpha_zero_count: usize,
+    pub nameplate_culled_offscreen_count: usize,
 
     pub vram_scan_last_ms: Option<f64>,
 }
@@ -152,6 +163,17 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_label_width_px: None,
             nameplate_sample_alpha: None,
             nameplate_culled_too_small_count: 0,
+            nameplate_visible_label_estimate: 0,
+            nameplate_visible_glyph_estimate: 0,
+            nameplate_unselected_visible_after_lod: 0,
+            nameplate_focused_visible_after_lod: 0,
+            nameplate_min_unselected_label_px: 24.0,
+            nameplate_min_focused_label_px: 12.0,
+            nameplate_label_coverage_estimate: 0.0,
+            nameplate_global_lod_alpha: 1.0,
+            nameplate_culled_over_density_count: 0,
+            nameplate_culled_alpha_zero_count: 0,
+            nameplate_culled_offscreen_count: 0,
             vram_scan_last_ms: None,
         }
     }
@@ -301,8 +323,28 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
-            "Culled too small (< legible px): {}",
+            "Culled too small: {} | over density: {} | alpha zero: {} | offscreen: {}",
             telemetry.nameplate_culled_too_small_count,
+            telemetry.nameplate_culled_over_density_count,
+            telemetry.nameplate_culled_alpha_zero_count,
+            telemetry.nameplate_culled_offscreen_count,
+        ),
+        format!(
+            "Visible label estimate: {} | visible glyph estimate: {}",
+            telemetry.nameplate_visible_label_estimate, telemetry.nameplate_visible_glyph_estimate,
+        ),
+        format!(
+            "Unselected visible after LOD: {} | focused visible after LOD: {}",
+            telemetry.nameplate_unselected_visible_after_lod,
+            telemetry.nameplate_focused_visible_after_lod,
+        ),
+        format!(
+            "Min unselected label px: {:.0} | min focused label px: {:.0}",
+            telemetry.nameplate_min_unselected_label_px, telemetry.nameplate_min_focused_label_px,
+        ),
+        format!(
+            "Label coverage estimate: {:.3} | global LOD alpha: {:.2}",
+            telemetry.nameplate_label_coverage_estimate, telemetry.nameplate_global_lod_alpha,
         ),
     ]
 }

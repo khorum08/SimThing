@@ -329,6 +329,34 @@ pub(super) fn sync_star_nameplate_settings_system(
     *last_key = Some(key);
 }
 
+pub(super) fn sync_star_nameplate_focus_system(
+    state: Res<super::StudioAppState>,
+    mut nameplates: Query<(&mut GalaxyStarNameplate, &mut WorldTextBillboard)>,
+    mut last_selection: Local<(Option<u32>, Option<u32>)>,
+) {
+    let current = (
+        state.selection.selected_system_id,
+        state.selection.hovered_system_id,
+    );
+    if *last_selection == current {
+        return;
+    }
+    *last_selection = current;
+    for (mut nameplate, mut placement) in &mut nameplates {
+        let selected = state.selection.selected_system_id == Some(nameplate.instance.system_id);
+        let hovered = state.selection.hovered_system_id == Some(nameplate.instance.system_id);
+        let next_focused = selected || hovered;
+        if nameplate.instance.selected != selected
+            || nameplate.instance.hovered != hovered
+            || placement.screen_companion_focused != next_focused
+        {
+            nameplate.instance.selected = selected;
+            nameplate.instance.hovered = hovered;
+            placement.screen_companion_focused = next_focused;
+        }
+    }
+}
+
 fn view_mode_key(view_mode: StudioViewMode) -> u8 {
     match view_mode {
         StudioViewMode::ThreeD => 0,

@@ -3,6 +3,25 @@ use bevy::prelude::*;
 use crate::bevy::{GlyphInstanceGpu, TextGlyphInstances};
 
 pub const DEFAULT_WORLD_TEXT_HORIZON_TAPER: f32 = 0.75;
+
+/// Per-frame GPU globals patch for screen-companion nameplate LOD (no glyph rebuild).
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+pub struct WorldTextNameplateLodPatch {
+    pub min_focused_px: f32,
+    pub unselected_global_alpha: f32,
+    pub min_unselected_px: f32,
+}
+
+impl Default for WorldTextNameplateLodPatch {
+    fn default() -> Self {
+        Self {
+            min_focused_px: 12.0,
+            unselected_global_alpha: 1.0,
+            min_unselected_px: 24.0,
+        }
+    }
+}
+
 /// GPU sentinel written to `size_params.w` for [`WorldTextPlacementMode::ScreenCompanion`].
 pub const WORLD_TEXT_SCREEN_COMPANION_MODE: f32 = -1.0;
 
@@ -33,6 +52,8 @@ pub struct WorldTextBillboard {
     pub relative_target_alpha: f32,
     pub horizon_taper: f32,
     pub placement_mode: WorldTextPlacementMode,
+    /// Screen-companion only: selected or hovered labels use the focused readability threshold.
+    pub screen_companion_focused: bool,
 }
 
 impl WorldTextBillboard {
@@ -54,6 +75,7 @@ impl WorldTextBillboard {
             relative_target_alpha: self.relative_target_alpha.clamp(0.0, 1.0),
             horizon_taper: self.horizon_taper.clamp(0.0, 1.0),
             placement_mode: self.placement_mode,
+            screen_companion_focused: self.screen_companion_focused,
         }
     }
 }
@@ -76,6 +98,7 @@ impl Default for WorldTextBillboard {
             relative_target_alpha: 0.5,
             horizon_taper: DEFAULT_WORLD_TEXT_HORIZON_TAPER,
             placement_mode: WorldTextPlacementMode::WorldPerspective,
+            screen_companion_focused: false,
         }
     }
 }
@@ -185,7 +208,11 @@ pub fn build_world_glyph_instances(
     let (anchor_height_w, size_z, size_w) = match placement.placement_mode {
         WorldTextPlacementMode::ScreenCompanion => (
             placement.visual_envelope_world_height,
-            0.0,
+            if placement.screen_companion_focused {
+                1.0
+            } else {
+                0.0
+            },
             WORLD_TEXT_SCREEN_COMPANION_MODE,
         ),
         WorldTextPlacementMode::WorldPerspective => (
@@ -866,5 +893,12 @@ mod tests {
         assert_eq!(world[0].size_params[3], WORLD_TEXT_SCREEN_COMPANION_MODE);
         assert_eq!(world[0].size_params[2], 0.0);
         assert!((world[0].anchor_height[3] - 3.5).abs() < f32::EPSILON);
+
+        let focused = WorldTextBillboard {
+            screen_companion_focused: true,
+            ..placement
+        };
+        let world_focused = build_world_glyph_instances(&glyphs, focused);
+        assert_eq!(world_focused[0].size_params[2], 1.0);
     }
 }

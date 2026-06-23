@@ -121,6 +121,7 @@ pub fn run_studio() {
                     picking::sync_star_visuals_system,
                     picking::billboard_stars_system,
                     galaxy_render::sync_star_nameplate_settings_system,
+                    galaxy_render::sync_star_nameplate_focus_system,
                     galaxy_render::sync_hyperlane_colors_system,
                     galaxy_render::sync_render_debug_visibility_system,
                     performance_telemetry::update_studio_fps_telemetry,
@@ -196,6 +197,8 @@ pub struct StudioAppState {
     /// Snapshot for Restore Normal Render (presentation only).
     pub performance_normal_render_snapshot:
         Option<crate::studio_frame_phase_gpu_telemetry::PerformanceNormalRenderSnapshot>,
+    /// Nameplate LOD debug mode (presentation only).
+    pub star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode,
 }
 
 impl StudioAppState {
@@ -246,6 +249,7 @@ impl StudioAppState {
             performance_diagnostic_freeze_camera: false,
             performance_diagnostic_hide_star_aura: false,
             performance_normal_render_snapshot: None,
+            star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode::default(),
         }
     }
 

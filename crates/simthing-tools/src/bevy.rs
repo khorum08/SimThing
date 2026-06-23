@@ -214,6 +214,7 @@ impl Plugin for SimthingToolsTextPlugin {
             .init_resource::<TextAggregateVersion>()
             .init_resource::<crate::world_text::WorldTextAggregate>()
             .init_resource::<crate::world_text::WorldTextDiagnostics>()
+            .init_resource::<crate::world_text::WorldTextNameplateLodPatch>()
             .init_resource::<crate::studio_labels::StudioTypefaceLabelDiagnostics>()
             .insert_resource(TypefaceFontBytes(self.font_bytes.clone()))
             .insert_resource(PluginAtlasSize(self.atlas_size))
@@ -1409,8 +1410,12 @@ fn sync_style_table_rows_if_changed(
     mut style_table: ResMut<TextStyleTableResource>,
     mut extracted: ResMut<ExtractedTextStyleTable>,
     mut diagnostics: ResMut<TextStyleDiagnostics>,
+    lod_patch: Res<crate::world_text::WorldTextNameplateLodPatch>,
 ) {
     extracted.globals = style_table.table.to_globals(style_table.time);
+    extracted.globals.nameplate_min_focused_px = lod_patch.min_focused_px;
+    extracted.globals.nameplate_unselected_global_alpha = lod_patch.unselected_global_alpha;
+    extracted.globals.nameplate_min_unselected_px = lod_patch.min_unselected_px;
     if !style_table.rows_dirty {
         diagnostics.style_table_cache_hit_count += 1;
         return;

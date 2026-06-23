@@ -112,6 +112,6 @@ pub use wgpu_smoke::{
 };
 pub use world_text::{
     natural_run_aspect_from_glyphs, world_text_diagnostics, WorldGlyphInstanceGpu,
-    WorldTextBillboard, WorldTextDiagnostics, WorldTextGlyphInstances, WorldTextPlacementMode,
-    WORLD_TEXT_SCREEN_COMPANION_MODE,
+    WorldTextBillboard, WorldTextDiagnostics, WorldTextGlyphInstances, WorldTextNameplateLodPatch,
+    WorldTextPlacementMode, WORLD_TEXT_SCREEN_COMPANION_MODE,
 };

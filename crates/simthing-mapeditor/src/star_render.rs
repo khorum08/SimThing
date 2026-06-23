@@ -26,8 +26,16 @@ pub const PR2R5_STAR_FAR_CORE_ALPHA: f32 =
 pub const PR2R6_AURA_CAP_REDUCTION_FACTOR: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_START_DEPTH: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_FACTOR: f32 = 0.75;
-/// Minimum projected label height (px) before screen-companion nameplates hard-cull.
+/// Minimum projected label height (px) before screen-companion nameplates hard-cull (legacy telemetry).
 pub const MIN_LEGIBLE_NAMEPLATE_PX: f32 = 18.0;
+/// Hard readability cutoff for unselected star nameplates.
+pub const MIN_UNSELECTED_LABEL_HEIGHT_PX: f32 = 24.0;
+/// Lower readability cutoff for selected or hovered star nameplates.
+pub const MIN_FOCUSED_LABEL_HEIGHT_PX: f32 = 12.0;
+/// Maximum unselected labels before global density gate hides them.
+pub const MAX_OVERVIEW_LABELS: usize = 250;
+/// Maximum estimated label coverage fraction before global density gate.
+pub const MAX_LABEL_COVERAGE: f32 = 0.15;
 /// Nameplate label height tracks 100% of the rendered star visual envelope at the current depth.
 pub const STAR_NAMEPLATE_HEIGHT_FACTOR: f32 = 1.0;
 pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
@@ -200,6 +208,109 @@ impl StarBillboardInstance {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StarNameplateDebugMode {
+    #[default]
+    AutoLod,
+    FocusedOnly,
+    ForceAll,
+}
+
+impl StarNameplateDebugMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::AutoLod => "Auto LOD",
+            Self::FocusedOnly => "Focused only",
+            Self::ForceAll => "Force all labels",
+        }
+    }
+}
+
+/// GPU globals patch for screen-companion nameplate LOD (written each frame; no glyph rebuild).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StarNameplateLodGlobals {
+    pub min_focused_px: f32,
+    pub unselected_global_alpha: f32,
+    pub min_unselected_px: f32,
+}
+
+impl Default for StarNameplateLodGlobals {
+    fn default() -> Self {
+        Self {
+            min_focused_px: MIN_FOCUSED_LABEL_HEIGHT_PX,
+            unselected_global_alpha: 1.0,
+            min_unselected_px: MIN_UNSELECTED_LABEL_HEIGHT_PX,
+        }
+    }
+}
+
+impl StarNameplateDebugMode {
+    pub fn lod_globals(self, auto_density_alpha: f32) -> StarNameplateLodGlobals {
+        match self {
+            Self::AutoLod => StarNameplateLodGlobals {
+                unselected_global_alpha: auto_density_alpha.clamp(0.0, 1.0),
+                ..Default::default()
+            },
+            Self::FocusedOnly => StarNameplateLodGlobals {
+                unselected_global_alpha: 0.0,
+                ..Default::default()
+            },
+            Self::ForceAll => StarNameplateLodGlobals {
+                min_unselected_px: 0.0,
+                unselected_global_alpha: 1.0,
+                min_focused_px: 0.0,
+            },
+        }
+    }
+}
+
+/// Estimate whether unselected nameplates should render at all given density.
+pub fn nameplate_unselected_global_lod_alpha(
+    label_count: usize,
+    label_height_px: f32,
+    label_width_px: f32,
+    viewport_area_px: f32,
+) -> f32 {
+    if label_count == 0 {
+        return 1.0;
+    }
+    let coverage = label_count as f32 * label_height_px.max(0.0) * label_width_px.max(0.0)
+        / viewport_area_px.max(1.0);
+    if label_count > MAX_OVERVIEW_LABELS || coverage > MAX_LABEL_COVERAGE {
+        0.0
+    } else {
+        1.0
+    }
+}
+
+/// Per-label CPU-side LOD gate for telemetry (mirrors shader hard cuts).
+pub fn nameplate_label_passes_readability_gate(
+    label_height_px: f32,
+    focused: bool,
+    debug_mode: StarNameplateDebugMode,
+) -> bool {
+    if debug_mode == StarNameplateDebugMode::ForceAll {
+        return true;
+    }
+    let min_height = if focused {
+        MIN_FOCUSED_LABEL_HEIGHT_PX
+    } else {
+        MIN_UNSELECTED_LABEL_HEIGHT_PX
+    };
+    label_height_px >= min_height
+}
+
+pub fn nameplate_label_passes_density_gate(
+    focused: bool,
+    unselected_global_alpha: f32,
+    debug_mode: StarNameplateDebugMode,
+) -> bool {
+    if debug_mode == StarNameplateDebugMode::ForceAll {
+        return true;
+    }
+    focused || unselected_global_alpha > 0.5
+}
+
 pub fn star_max_layer_scale(visual: StarDistanceVisual, mode: StarRenderMode) -> f32 {
     match mode {
         StarRenderMode::BloomStarburst => visual.core_scale.max(visual.aura_radius),
@@ -297,6 +408,7 @@ pub fn star_nameplate_world_billboard(
         relative_target_alpha: nameplate.relative_falloff_transparency_percent / 100.0,
         horizon_taper: MID_TO_HORIZON_FALLOFF_FACTOR,
         placement_mode: WorldTextPlacementMode::ScreenCompanion,
+        screen_companion_focused: instance.selected || instance.hovered,
     }
     .clamped()
 }
@@ -603,6 +715,33 @@ mod tests {
         assert_eq!(clamped.base_transparency_percent, 0.0);
         assert_eq!(clamped.relative_falloff_distance_percent, 5.0);
         assert_eq!(clamped.relative_falloff_transparency_percent, 100.0);
+    }
+
+    #[test]
+    fn nameplate_density_gate_culls_dense_overview_labels() {
+        let alpha = nameplate_unselected_global_lod_alpha(2400, 17.6, 83.7, 1920.0 * 1080.0);
+        assert_eq!(alpha, 0.0);
+        let sparse = nameplate_unselected_global_lod_alpha(50, 24.0, 80.0, 1920.0 * 1080.0);
+        assert_eq!(sparse, 1.0);
+    }
+
+    #[test]
+    fn nameplate_readability_gate_uses_higher_unselected_threshold() {
+        assert!(!nameplate_label_passes_readability_gate(
+            20.0,
+            false,
+            StarNameplateDebugMode::AutoLod
+        ));
+        assert!(nameplate_label_passes_readability_gate(
+            24.0,
+            false,
+            StarNameplateDebugMode::AutoLod
+        ));
+        assert!(nameplate_label_passes_readability_gate(
+            14.0,
+            true,
+            StarNameplateDebugMode::AutoLod
+        ));
     }
 
     #[test]
