@@ -210,19 +210,30 @@ impl StarBillboardInstance {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StarNameplateDebugMode {
+    /// Production default: Settings-window sliders control per-label alpha/falloff; readability floor only.
     #[default]
-    AutoLod,
-    FocusedOnly,
-    ForceAll,
+    SettingsDriven,
+    /// Debug: hide all unselected labels.
+    FocusedOnlyDebug,
+    /// Debug: bypass readability, density, and falloff gates.
+    ForceAllDebug,
 }
 
 impl StarNameplateDebugMode {
     pub fn label(self) -> &'static str {
         match self {
-            Self::AutoLod => "Auto LOD",
-            Self::FocusedOnly => "Focused only",
-            Self::ForceAll => "Force all labels",
+            Self::SettingsDriven => "Settings driven",
+            Self::FocusedOnlyDebug => "Focused only (debug)",
+            Self::ForceAllDebug => "Force all (debug)",
         }
+    }
+
+    pub fn is_debug_override(self) -> bool {
+        !matches!(self, Self::SettingsDriven)
+    }
+
+    pub fn is_force_all_debug(self) -> bool {
+        matches!(self, Self::ForceAllDebug)
     }
 }
 
@@ -245,17 +256,18 @@ impl Default for StarNameplateLodGlobals {
 }
 
 impl StarNameplateDebugMode {
-    pub fn lod_globals(self, auto_density_alpha: f32) -> StarNameplateLodGlobals {
+    pub fn lod_globals(self, _auto_density_alpha: f32) -> StarNameplateLodGlobals {
         match self {
-            Self::AutoLod => StarNameplateLodGlobals {
-                unselected_global_alpha: auto_density_alpha.clamp(0.0, 1.0),
+            Self::SettingsDriven => StarNameplateLodGlobals {
+                // Settings sliders drive per-label falloff/alpha; no global density hide.
+                unselected_global_alpha: 1.0,
                 ..Default::default()
             },
-            Self::FocusedOnly => StarNameplateLodGlobals {
+            Self::FocusedOnlyDebug => StarNameplateLodGlobals {
                 unselected_global_alpha: 0.0,
                 ..Default::default()
             },
-            Self::ForceAll => StarNameplateLodGlobals {
+            Self::ForceAllDebug => StarNameplateLodGlobals {
                 min_unselected_px: 0.0,
                 unselected_global_alpha: 1.0,
                 min_focused_px: 0.0,
@@ -289,7 +301,7 @@ pub fn nameplate_label_passes_readability_gate(
     focused: bool,
     debug_mode: StarNameplateDebugMode,
 ) -> bool {
-    if debug_mode == StarNameplateDebugMode::ForceAll {
+    if debug_mode == StarNameplateDebugMode::ForceAllDebug {
         return true;
     }
     let effective = nameplate_effective_label_height_px(label_height_px, focused);
@@ -306,7 +318,11 @@ pub fn nameplate_label_passes_density_gate(
     unselected_global_alpha: f32,
     debug_mode: StarNameplateDebugMode,
 ) -> bool {
-    if debug_mode == StarNameplateDebugMode::ForceAll {
+    if debug_mode == StarNameplateDebugMode::ForceAllDebug {
+        return true;
+    }
+    if debug_mode == StarNameplateDebugMode::SettingsDriven {
+        // Per-label falloff from Settings sliders; no global overview density cap.
         return true;
     }
     focused || unselected_global_alpha > 0.5
@@ -391,6 +407,11 @@ pub fn star_nameplate_gpu_screen_label(
     let nameplate = nameplate_settings.clamped();
     let star_falloff = star_settings.falloff_settings();
     let visual_envelope_near = star_nameplate_visual_envelope_near_world(instance, star_settings);
+    // Settings semantics (production visibility):
+    // - relative_width_percent -> width_ratio scales natural text width (not a fixed plate).
+    // - base_transparency_percent -> alpha ceiling vs star opacity (base_alpha_ratio).
+    // - relative_falloff_distance_percent -> label falloff distance vs star falloff distance.
+    // - relative_falloff_transparency_percent -> label alpha target at label falloff vs star alpha.
     WorldTextBillboard {
         anchor: instance.anchor_position,
         near_height: visual_envelope_near,
@@ -740,19 +761,28 @@ mod tests {
         assert!(!nameplate_label_passes_readability_gate(
             20.0,
             false,
-            StarNameplateDebugMode::AutoLod
+            StarNameplateDebugMode::SettingsDriven
         ));
         assert!(nameplate_label_passes_readability_gate(
             24.0,
             false,
-            StarNameplateDebugMode::AutoLod
+            StarNameplateDebugMode::SettingsDriven
         ));
         assert!(nameplate_label_passes_readability_gate(
             14.0,
             true,
-            StarNameplateDebugMode::AutoLod
+            StarNameplateDebugMode::SettingsDriven
         ));
         assert_eq!(nameplate_effective_label_height_px(14.0, true), 16.0);
+    }
+
+    #[test]
+    fn nameplate_settings_driven_mode_ignores_global_density_gate() {
+        assert!(nameplate_label_passes_density_gate(
+            false,
+            0.0,
+            StarNameplateDebugMode::SettingsDriven,
+        ));
     }
 
     #[test]

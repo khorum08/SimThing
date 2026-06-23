@@ -254,3 +254,8 @@ These bit hard during STUDIO-STAR-NAMEPLATE (#914–#917); record so they aren't
 - **Diagnose render bugs by visualizing, not guessing:** force the fragment to output `source_uv` as
   color (geometry check) and to sample the raw atlas (rgb AND alpha) across full `local_uv` (content
   check) before touching coordinate math.
+- **Production visibility is Settings-driven, not Force-all debug.** Default Studio nameplate mode uses
+  Settings-window sliders (base transparency, relative falloff distance/transparency, relative width)
+  for per-label alpha/falloff. A global overview density gate must not hide all unselected labels in
+  production; only a raster readability floor (≈24 px unselected) remains. Force-all / focused-only
+  modes live under Telemetry → Nameplate debug → Debug overrides (collapsed by default).
