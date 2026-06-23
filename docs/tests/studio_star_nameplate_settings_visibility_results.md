@@ -7,8 +7,8 @@ PROBATION / presentation cleanup — settings-driven nameplate visibility is the
 ## PR / branch / merge
 
 - Branch: `codex/studio-star-nameplate-settings-visibility-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #919
+- Merge: `dbc9539351` on master
 
 ## Context
 
