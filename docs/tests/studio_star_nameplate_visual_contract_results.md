@@ -6,9 +6,9 @@ PROBATION / visual remediation — visual envelope contract merged; owner visual
 
 ## PR / branch / merge
 
-- Branch: `codex/studio-star-nameplate-visual-contract-0`
-- PR: pending
-- Merge: pending
+- Branch: `codex/studio-star-nameplate-visual-contract-0` (deleted after merge)
+- PR: #911
+- Merge: `8856224c29`
 
 ## Root cause
 
