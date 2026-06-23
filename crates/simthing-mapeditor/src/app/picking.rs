@@ -9,8 +9,8 @@ use crate::selection::{
     DEFAULT_PICK_RADIUS_PX,
 };
 use crate::star_render::{
-    compute_star_distance_visual, normalized_billboard_camera_depth_percent,
-    star_emissive_strength, StarBillboardRenderSettings, StarRenderMode,
+    compute_star_distance_visual, star_emissive_strength, star_falloff_progress_percent,
+    StarBillboardRenderSettings, StarRenderMode,
 };
 use crate::studio_render_loop_dirty_gate::{
     billboard_should_sync, picking_projection_should_rebuild, quantize_billboard_camera_key,
@@ -158,7 +158,8 @@ pub fn sync_selection_highlight_system(
 
 pub fn sync_star_visuals_system(
     state: Res<StudioAppState>,
-    camera: Query<&GlobalTransform, With<MainCamera>>,
+    camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     mut stars: Query<(
         &GalaxyStar,
         &mut Transform,
@@ -175,10 +176,16 @@ pub fn sync_star_visuals_system(
     let Some(session) = state.session.as_ref() else {
         return;
     };
-    let Ok(camera_transform) = camera.single() else {
+    let Ok((camera, camera_transform)) = camera.single() else {
+        return;
+    };
+    let Ok(window) = windows.single() else {
         return;
     };
     let camera_pos = camera_transform.translation();
+    let viewport_width = window.resolution.width();
+    let viewport_height = window.resolution.height();
+    let falloff_metric = state.star_falloff_metric;
     let settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
     let sync_key = StarVisualSyncKey {
         camera_position: quantize_billboard_camera_key(camera_pos.to_array()).position,
@@ -211,7 +218,16 @@ pub fn sync_star_visuals_system(
         let hovered = state.selection.hovered_system_id == Some(star.instance.system_id);
         let instance = star.instance.with_view_state(selected, hovered);
         let distance = camera_pos.distance(instance.anchor_position);
-        let depth_percent = normalized_billboard_camera_depth_percent(distance, &settings);
+        let depth_percent = star_falloff_progress_percent(
+            falloff_metric,
+            camera,
+            camera_transform,
+            instance.anchor_position,
+            distance,
+            &settings,
+            viewport_width,
+            viewport_height,
+        );
         let layer_code = match star.layer {
             StarVisualLayer::Core => 0,
             StarVisualLayer::Aura => 1,
