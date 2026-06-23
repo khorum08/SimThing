@@ -59,6 +59,7 @@ fn hyperlane_dirty_gate_skips_when_camera_and_settings_unchanged() {
         false,
         false,
         false,
+        false,
     ));
 }
 
@@ -75,6 +76,7 @@ fn hyperlane_dirty_gate_rebuilds_when_settings_change() {
         next,
         1,
         1,
+        false,
         false,
         false,
         false,
@@ -97,6 +99,7 @@ fn hyperlane_dirty_gate_rebuilds_when_camera_key_changes() {
         false,
         false,
         false,
+        false,
     ));
 }
 
@@ -111,6 +114,7 @@ fn hyperlane_dirty_gate_rebuilds_when_session_changes() {
         settings,
         1,
         2,
+        false,
         false,
         false,
         false,
