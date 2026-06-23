@@ -7,8 +7,8 @@ PROBATION / visual remediation — clean GPU screen-label placement mode landed;
 ## PR / branch / merge
 
 - Branch: `codex/studio-star-nameplate-gpu-screen-label-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #913
+- Merge: `26e267c3debe407609772b65eb6bd4633624ba17`
 
 ## Why previous attempts failed
 
