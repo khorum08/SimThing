@@ -147,6 +147,19 @@ pub struct StudioPerformanceTelemetry {
     pub map_falloff_view_origin: Option<[f32; 2]>,
     pub map_falloff_max_view_distance: Option<f32>,
     pub map_falloff_origin_source: String,
+    pub map_falloff_viewport_convention: String,
+    pub map_falloff_bottom_center_viewport_px: Option<[f32; 2]>,
+    pub map_falloff_raw_ray_origin: Option<[f32; 3]>,
+    pub map_falloff_raw_ray_direction: Option<[f32; 3]>,
+    pub map_falloff_raw_map_plane_hit: Option<[f32; 2]>,
+    pub map_falloff_origin_clamped: bool,
+    pub map_falloff_bounds_min: Option<[f32; 2]>,
+    pub map_falloff_bounds_max: Option<[f32; 2]>,
+    pub map_falloff_sample_star_map_distance: Option<f32>,
+    pub map_falloff_sample_star_progress_pct: Option<f32>,
+    pub map_falloff_context_frame: Option<u64>,
+    pub map_falloff_updated_after_camera: bool,
+    pub map_falloff_retained_previous_context: bool,
     pub nameplate_falloff_ruler_base_px: Option<[f32; 2]>,
     pub nameplate_falloff_ruler_vanishing_px: Option<[f32; 2]>,
     pub nameplate_sample_screen_px: Option<[f32; 2]>,
@@ -289,6 +302,19 @@ impl Default for StudioPerformanceTelemetry {
             map_falloff_view_origin: None,
             map_falloff_max_view_distance: None,
             map_falloff_origin_source: "—".into(),
+            map_falloff_viewport_convention: "—".into(),
+            map_falloff_bottom_center_viewport_px: None,
+            map_falloff_raw_ray_origin: None,
+            map_falloff_raw_ray_direction: None,
+            map_falloff_raw_map_plane_hit: None,
+            map_falloff_origin_clamped: false,
+            map_falloff_bounds_min: None,
+            map_falloff_bounds_max: None,
+            map_falloff_sample_star_map_distance: None,
+            map_falloff_sample_star_progress_pct: None,
+            map_falloff_context_frame: None,
+            map_falloff_updated_after_camera: false,
+            map_falloff_retained_previous_context: false,
             nameplate_falloff_ruler_base_px: None,
             nameplate_falloff_ruler_vanishing_px: None,
             nameplate_sample_screen_px: None,
@@ -611,6 +637,116 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
         ));
     }
     lines
+}
+
+/// Map-radius falloff origin debug subsection for the Telemetry dialog.
+pub fn falloff_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    vec![
+        format!("Falloff metric: {}", telemetry.nameplate_falloff_metric),
+        format!(
+            "Viewport coordinate convention: {}",
+            telemetry.map_falloff_viewport_convention
+        ),
+        format!(
+            "Bottom-center viewport px: {}",
+            telemetry
+                .map_falloff_bottom_center_viewport_px
+                .map(|[x, y]| format!("({x:.1}, {y:.1})"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Raw bottom-center ray origin: {}",
+            telemetry
+                .map_falloff_raw_ray_origin
+                .map(|[x, y, z]| format!("({x:.2}, {y:.2}, {z:.2})"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Raw bottom-center ray direction: {}",
+            telemetry
+                .map_falloff_raw_ray_direction
+                .map(|[x, y, z]| format!("({x:.3}, {y:.3}, {z:.3})"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Raw map-plane hit x/z: {}",
+            telemetry
+                .map_falloff_raw_map_plane_hit
+                .map(|[x, z]| format!("({x:.1}, {z:.1})"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!("Origin source: {}", telemetry.map_falloff_origin_source),
+        format!(
+            "Origin clamped: {}",
+            if telemetry.map_falloff_origin_clamped {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "Final view origin x/z: {}",
+            telemetry
+                .map_falloff_view_origin
+                .map(|[x, z]| format!("({x:.1}, {z:.1})"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Map bounds min/max x/z: {} / {}",
+            telemetry
+                .map_falloff_bounds_min
+                .map(|[x, z]| format!("({x:.1}, {z:.1})"))
+                .unwrap_or_else(|| "—".into()),
+            telemetry
+                .map_falloff_bounds_max
+                .map(|[x, z]| format!("({x:.1}, {z:.1})"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Map max view distance: {}",
+            telemetry
+                .map_falloff_max_view_distance
+                .map(|d| format!("{d:.1}"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Sample star map distance: {}",
+            telemetry
+                .map_falloff_sample_star_map_distance
+                .map(|d| format!("{d:.1}"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Sample star progress %: {}",
+            telemetry
+                .map_falloff_sample_star_progress_pct
+                .map(|p| format!("{p:.1}"))
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Context frame: {}",
+            telemetry
+                .map_falloff_context_frame
+                .map(|f| f.to_string())
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "Context updated after camera: {}",
+            if telemetry.map_falloff_updated_after_camera {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "Retained previous valid context: {}",
+            if telemetry.map_falloff_retained_previous_context {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+    ]
 }
 
 /// Hyperlane ribbon debug subsection for the Telemetry dialog.

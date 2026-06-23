@@ -47,7 +47,7 @@ use crate::studio_frame_phase_gpu_telemetry::{
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
 };
 use crate::studio_performance_telemetry::{
-    hyperlane_debug_lines, nameplate_debug_lines, performance_summary_lines,
+    falloff_debug_lines, hyperlane_debug_lines, nameplate_debug_lines, performance_summary_lines,
     render_loop_gpu_vram_lines,
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
@@ -821,6 +821,13 @@ fn draw_telemetry_dialog(
                             );
                         }
                         for line in nameplate_debug_lines(telemetry) {
+                            ui.label(line);
+                        }
+                    });
+                egui::CollapsingHeader::new("Falloff debug")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for line in falloff_debug_lines(telemetry) {
                             ui.label(line);
                         }
                     });

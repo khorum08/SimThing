@@ -12,7 +12,8 @@ use simthing_tools::{
 };
 
 use crate::falloff_metric::{
-    compute_map_radius_falloff_context, origin_source_label, MapPlaneBounds,
+    compute_map_radius_falloff_context, map_radius_progress_percent, origin_source_label,
+    stabilize_map_radius_falloff_output, MapPlaneBounds,
 };
 use crate::star_render::{
     estimate_world_vertical_span_screen_px, nameplate_effective_falloff_distance_percent,
@@ -61,12 +62,13 @@ pub fn begin_main_update_timing(mut state: ResMut<StudioPerformanceTelemetryStat
 pub fn update_map_radius_falloff_context_system(
     state: Res<super::StudioAppState>,
     studio_camera: Res<super::camera::StudioCamera>,
-    camera: Query<(&Camera, &GlobalTransform), With<super::camera::MainCamera>>,
+    camera: Query<(&Camera, &Transform), With<super::camera::MainCamera>>,
     windows: Query<&Window, With<PrimaryWindow>>,
     mut falloff_state: ResMut<super::StudioMapRadiusFalloffState>,
     mut falloff_patch: ResMut<WorldTextFalloffRulerPatch>,
 ) {
     falloff_patch.falloff_mode = state.star_falloff_metric.gpu_falloff_mode();
+    falloff_state.diagnostics.updated_after_camera = true;
     let Some(session) = state.session.as_ref() else {
         falloff_state.valid = false;
         return;
@@ -86,18 +88,31 @@ pub fn update_map_radius_falloff_context_system(
         .map(|a| a.world_position)
         .collect();
     let bounds = MapPlaneBounds::from_world_positions(&positions);
-    let context = compute_map_radius_falloff_context(
+    let camera_global = GlobalTransform::from(*camera_transform);
+    falloff_state.context_frame = falloff_state.context_frame.saturating_add(1);
+    let computed = compute_map_radius_falloff_context(
         camera,
-        camera_transform,
+        &camera_global,
         window.resolution.width(),
         window.resolution.height(),
         bounds,
         Some(studio_camera.orbit_target),
         0.0,
+        falloff_state.context_frame,
+        true,
     );
+    let previous = falloff_state
+        .valid
+        .then_some((falloff_state.context, falloff_state.diagnostics));
+    let stabilized = stabilize_map_radius_falloff_output(computed, previous);
+    let context = stabilized.context;
     falloff_state.bounds = bounds;
     falloff_state.context = context;
-    falloff_state.valid = true;
+    falloff_state.diagnostics = stabilized.diagnostics;
+    falloff_state.valid = stabilized.valid;
+    if !stabilized.valid {
+        return;
+    }
     falloff_patch.map_view_origin_x = context.view_origin.x;
     falloff_patch.map_view_origin_z = context.view_origin.y;
     falloff_patch.map_max_view_distance = context.map_max_view_distance();
@@ -413,15 +428,49 @@ pub fn update_nameplate_diagnostics_system(
     let map_context = falloff_state.valid.then_some(&falloff_state.context);
     if falloff_state.valid {
         let ctx = falloff_state.context;
+        let diag = falloff_state.diagnostics;
         telemetry_state.telemetry.map_falloff_view_origin =
             Some([ctx.view_origin.x, ctx.view_origin.y]);
         telemetry_state.telemetry.map_falloff_max_view_distance = Some(ctx.map_max_view_distance());
-        telemetry_state.telemetry.map_falloff_origin_source =
-            origin_source_label(ctx.origin_source).into();
+        telemetry_state.telemetry.map_falloff_origin_source = if diag.retained_previous_context {
+            "retained previous valid context".into()
+        } else {
+            origin_source_label(ctx.origin_source).into()
+        };
+        telemetry_state.telemetry.map_falloff_viewport_convention = diag.viewport_convention.into();
+        telemetry_state
+            .telemetry
+            .map_falloff_bottom_center_viewport_px = Some(diag.bottom_center_viewport_px);
+        telemetry_state.telemetry.map_falloff_raw_ray_origin = Some(diag.raw_ray_origin);
+        telemetry_state.telemetry.map_falloff_raw_ray_direction = Some(diag.raw_ray_direction);
+        telemetry_state.telemetry.map_falloff_raw_map_plane_hit = diag.raw_map_plane_hit;
+        telemetry_state.telemetry.map_falloff_origin_clamped = diag.origin_clamped;
+        telemetry_state.telemetry.map_falloff_bounds_min = Some(diag.bounds_min);
+        telemetry_state.telemetry.map_falloff_bounds_max = Some(diag.bounds_max);
+        telemetry_state.telemetry.map_falloff_context_frame = Some(falloff_state.context_frame);
+        telemetry_state.telemetry.map_falloff_updated_after_camera = diag.updated_after_camera;
+        telemetry_state
+            .telemetry
+            .map_falloff_retained_previous_context = diag.retained_previous_context;
     } else {
         telemetry_state.telemetry.map_falloff_view_origin = None;
         telemetry_state.telemetry.map_falloff_max_view_distance = None;
         telemetry_state.telemetry.map_falloff_origin_source = "—".into();
+        telemetry_state.telemetry.map_falloff_viewport_convention = "—".into();
+        telemetry_state
+            .telemetry
+            .map_falloff_bottom_center_viewport_px = None;
+        telemetry_state.telemetry.map_falloff_raw_ray_origin = None;
+        telemetry_state.telemetry.map_falloff_raw_ray_direction = None;
+        telemetry_state.telemetry.map_falloff_raw_map_plane_hit = None;
+        telemetry_state.telemetry.map_falloff_origin_clamped = false;
+        telemetry_state.telemetry.map_falloff_bounds_min = None;
+        telemetry_state.telemetry.map_falloff_bounds_max = None;
+        telemetry_state.telemetry.map_falloff_context_frame = None;
+        telemetry_state.telemetry.map_falloff_updated_after_camera = false;
+        telemetry_state
+            .telemetry
+            .map_falloff_retained_previous_context = false;
     }
     let horizon_ruler = VisualHorizonFalloffRuler::from_viewport(viewport_width, viewport_height);
     telemetry_state.telemetry.nameplate_falloff_ruler_base_px = Some(horizon_ruler.base_px);
@@ -466,6 +515,17 @@ pub fn update_nameplate_diagnostics_system(
         telemetry_state
             .telemetry
             .nameplate_sample_visual_progress_pct = Some(progress_percent);
+        if let Some(ctx) = map_context {
+            let star_xz = Vec2::new(instance.anchor_position.x, instance.anchor_position.z);
+            let map_distance = ctx.view_origin.distance(star_xz);
+            telemetry_state
+                .telemetry
+                .map_falloff_sample_star_map_distance = Some(map_distance);
+            telemetry_state
+                .telemetry
+                .map_falloff_sample_star_progress_pct =
+                Some(map_radius_progress_percent(ctx, star_xz));
+        }
         telemetry_state
             .telemetry
             .nameplate_sample_star_falloff_alpha = Some(star_alpha);
