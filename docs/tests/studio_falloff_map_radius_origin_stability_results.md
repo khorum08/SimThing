@@ -7,8 +7,8 @@ PROBATION / presentation math fix — stabilizes map-radius plateau falloff orig
 ## PR / branch / merge
 
 - Branch: `codex/studio-falloff-map-radius-origin-stability-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #929
+- Merge: `bcc4ba519b`
 
 ## Reproduction
 
