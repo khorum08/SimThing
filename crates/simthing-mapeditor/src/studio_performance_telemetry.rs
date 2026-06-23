@@ -110,6 +110,11 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_settings_relative_falloff_distance_pct: Option<f32>,
     pub nameplate_settings_relative_falloff_transparency_pct: Option<f32>,
     pub nameplate_debug_override_active: bool,
+    pub nameplate_star_falloff_distance_pct: Option<f32>,
+    pub nameplate_effective_falloff_distance_pct: Option<f32>,
+    pub nameplate_sample_depth_percent: Option<f32>,
+    pub nameplate_sample_falloff_alpha: Option<f32>,
+    pub nameplate_culled_past_effective_falloff_count: usize,
 
     pub vram_scan_last_ms: Option<f64>,
 }
@@ -210,6 +215,11 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_settings_relative_falloff_distance_pct: None,
             nameplate_settings_relative_falloff_transparency_pct: None,
             nameplate_debug_override_active: false,
+            nameplate_star_falloff_distance_pct: None,
+            nameplate_effective_falloff_distance_pct: None,
+            nameplate_sample_depth_percent: None,
+            nameplate_sample_falloff_alpha: None,
+            nameplate_culled_past_effective_falloff_count: 0,
             vram_scan_last_ms: None,
         }
     }
@@ -339,6 +349,41 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             .unwrap_or_else(|| "—".into()),
     ));
     lines.push(format!(
+        "Star falloff distance: {}% | nameplate relative falloff distance: {}% | effective label falloff: {}%",
+        telemetry
+            .nameplate_star_falloff_distance_pct
+            .map(|v| format!("{v:.0}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_settings_relative_falloff_distance_pct
+            .map(|v| format!("{v:.0}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_effective_falloff_distance_pct
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "—".into()),
+    ));
+    lines.push(format!(
+        "Sample camera depth %: {} | relative falloff transparency: {}% | sample falloff alpha: {} | sample final alpha: {}",
+        telemetry
+            .nameplate_sample_depth_percent
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_settings_relative_falloff_transparency_pct
+            .map(|v| format!("{v:.0}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_sample_falloff_alpha
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "—".into()),
+        telemetry
+            .nameplate_selected_final_alpha
+            .or(telemetry.nameplate_sample_alpha)
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "—".into()),
+    ));
+    lines.push(format!(
         "LOD patch: min unselected px {:.0} | unselected global alpha {:.2} | debug override: {}",
         telemetry.nameplate_min_unselected_label_px,
         telemetry.nameplate_global_lod_alpha,
@@ -362,11 +407,12 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             telemetry.nameplate_gpu_screen_label_count,
         ),
         format!(
-            "Culled LOD/readability: {} | culled falloff/alpha: {} | offscreen: {}",
+            "Culled LOD/readability: {} | culled falloff/alpha: {} | offscreen: {} | past effective falloff: {}",
             telemetry.nameplate_culled_too_small_count
                 + telemetry.nameplate_culled_over_density_count,
             telemetry.nameplate_culled_alpha_zero_count,
             telemetry.nameplate_culled_offscreen_count,
+            telemetry.nameplate_culled_past_effective_falloff_count,
         ),
         format!(
             "Sample projected visual diameter px: {}",
@@ -393,11 +439,10 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
-            "Sample final alpha: {}",
+            "Sample base transparency: {}%",
             telemetry
-                .nameplate_selected_final_alpha
-                .or(telemetry.nameplate_sample_alpha)
-                .map(|v| format!("{v:.2}"))
+                .nameplate_settings_base_transparency_pct
+                .map(|v| format!("{v:.0}"))
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
