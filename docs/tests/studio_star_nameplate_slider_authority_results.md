@@ -7,8 +7,8 @@ PROBATION / presentation policy fix — sliders govern default nameplate visibil
 ## PR / branch / merge
 
 - Branch: `codex/studio-star-nameplate-slider-authority-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #920
+- Merge: `33d88594fe` on master
 
 ## Root cause
 
