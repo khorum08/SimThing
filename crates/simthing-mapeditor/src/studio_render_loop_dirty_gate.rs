@@ -11,6 +11,7 @@ pub struct HyperlaneCameraKey {
     pub position: [i32; 3],
     pub right: [i32; 3],
     pub up: [i32; 3],
+    pub forward: [i32; 3],
     pub view_mode: u8,
 }
 
@@ -40,6 +41,8 @@ pub struct HyperlaneRenderCacheState {
     pub last_camera_key: Option<HyperlaneCameraKey>,
     pub last_render_settings_key: Option<HyperlaneRenderSettingsKey>,
     pub last_view_model_generation: u64,
+    pub last_rmb_held: bool,
+    pub invalid_rebuild_warning_logged: bool,
 }
 
 /// Global star-visual sync key (camera + selection + settings + session generation).
@@ -106,7 +109,8 @@ pub struct PickingProjectionCacheState {
 }
 
 const POSITION_QUANTUM: f32 = 0.5;
-const DIRECTION_QUANTUM: f32 = 0.01;
+/// Finer direction quantization for hyperlane ribbon rebuild keys only.
+const HYPERLANE_DIRECTION_QUANTUM: f32 = 0.0025;
 const ROTATION_QUANTUM: f32 = 0.01;
 
 fn quantize_axis(value: f32, quantum: f32) -> i32 {
@@ -118,14 +122,6 @@ fn quantize_position(position: [f32; 3]) -> [i32; 3] {
         quantize_axis(position[0], POSITION_QUANTUM),
         quantize_axis(position[1], POSITION_QUANTUM),
         quantize_axis(position[2], POSITION_QUANTUM),
-    ]
-}
-
-fn quantize_direction(direction: [f32; 3]) -> [i32; 3] {
-    [
-        quantize_axis(direction[0], DIRECTION_QUANTUM),
-        quantize_axis(direction[1], DIRECTION_QUANTUM),
-        quantize_axis(direction[2], DIRECTION_QUANTUM),
     ]
 }
 
@@ -151,17 +147,27 @@ pub fn star_falloff_settings_key(settings: StarFalloffSettings) -> StarFalloffSe
     }
 }
 
+fn quantize_hyperlane_direction(direction: [f32; 3]) -> [i32; 3] {
+    [
+        quantize_axis(direction[0], HYPERLANE_DIRECTION_QUANTUM),
+        quantize_axis(direction[1], HYPERLANE_DIRECTION_QUANTUM),
+        quantize_axis(direction[2], HYPERLANE_DIRECTION_QUANTUM),
+    ]
+}
+
 /// Build a quantized hyperlane camera key from world-space camera state.
 pub fn quantize_hyperlane_camera_key(
     position: [f32; 3],
     right: [f32; 3],
     up: [f32; 3],
+    forward: [f32; 3],
     view_mode: u8,
 ) -> HyperlaneCameraKey {
     HyperlaneCameraKey {
         position: quantize_position(position),
-        right: quantize_direction(right),
-        up: quantize_direction(up),
+        right: quantize_hyperlane_direction(right),
+        up: quantize_hyperlane_direction(up),
+        forward: quantize_hyperlane_direction(forward),
         view_mode,
     }
 }
@@ -184,8 +190,10 @@ pub fn hyperlane_render_should_rebuild(
     previous_generation: u64,
     current_generation: u64,
     dirty: bool,
+    rotation_active: bool,
+    rotation_just_ended: bool,
 ) -> bool {
-    if dirty {
+    if dirty || rotation_active || rotation_just_ended {
         return true;
     }
     if current_generation != previous_generation {
@@ -281,8 +289,9 @@ mod tests {
     fn sample_camera_key() -> HyperlaneCameraKey {
         HyperlaneCameraKey {
             position: [80, 70, 80],
-            right: [100, 0, 0],
-            up: [0, 100, 0],
+            right: [400, 0, 0],
+            up: [0, 400, 0],
+            forward: [0, 0, -400],
             view_mode: 0,
         }
     }
@@ -324,6 +333,8 @@ mod tests {
             1,
             1,
             false,
+            false,
+            false,
         ));
     }
 
@@ -340,6 +351,8 @@ mod tests {
             next,
             1,
             1,
+            false,
+            false,
             false,
         ));
     }
@@ -358,6 +371,8 @@ mod tests {
             1,
             1,
             false,
+            false,
+            false,
         ));
     }
 
@@ -373,6 +388,36 @@ mod tests {
             1,
             2,
             false,
+            false,
+            false,
+        ));
+    }
+
+    #[test]
+    fn hyperlane_dirty_gate_rebuilds_when_rotation_crosses_problem_orientation() {
+        let camera = sample_camera_key();
+        let settings = sample_settings_key();
+        assert!(hyperlane_render_should_rebuild(
+            Some(camera),
+            camera,
+            Some(settings),
+            settings,
+            1,
+            1,
+            false,
+            true,
+            false,
+        ));
+        assert!(hyperlane_render_should_rebuild(
+            Some(camera),
+            camera,
+            Some(settings),
+            settings,
+            1,
+            1,
+            false,
+            false,
+            true,
         ));
     }
 
@@ -408,10 +453,20 @@ mod tests {
 
     #[test]
     fn quantize_hyperlane_camera_key_rounds_small_jitter() {
-        let a =
-            quantize_hyperlane_camera_key([40.1, 35.2, 40.3], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], 0);
-        let b =
-            quantize_hyperlane_camera_key([40.2, 35.1, 40.4], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], 0);
+        let a = quantize_hyperlane_camera_key(
+            [40.1, 35.2, 40.3],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, -1.0],
+            0,
+        );
+        let b = quantize_hyperlane_camera_key(
+            [40.2, 35.1, 40.4],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, -1.0],
+            0,
+        );
         assert_eq!(a, b);
     }
 

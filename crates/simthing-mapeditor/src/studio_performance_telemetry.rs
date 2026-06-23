@@ -49,12 +49,27 @@ pub struct StudioPerformanceTelemetry {
     pub render_frame_index: u64,
 
     pub hyperlane_sync_calls: u64,
+    pub hyperlane_rebuild_count: u64,
     pub hyperlane_mesh_rebuilds: u64,
     pub hyperlane_mesh_rebuild_last_ms: Option<f64>,
     pub hyperlane_mesh_rebuild_avg_ms: Option<f64>,
     pub hyperlane_segments_last_count: usize,
     pub hyperlane_vertices_last_count: usize,
     pub hyperlane_indices_last_count: usize,
+    pub hyperlane_last_camera_key: String,
+    pub hyperlane_current_camera_key: String,
+    pub hyperlane_camera_right: [f32; 3],
+    pub hyperlane_camera_up: [f32; 3],
+    pub hyperlane_camera_forward: [f32; 3],
+    pub hyperlane_view_mode: u8,
+    pub hyperlane_source_segment_count: usize,
+    pub hyperlane_bucket_segment_count: [usize; 3],
+    pub hyperlane_bucket_vertex_count: [usize; 3],
+    pub hyperlane_bucket_index_count: [usize; 3],
+    pub hyperlane_degenerate_width_dir_count: u32,
+    pub hyperlane_nan_inf_vertex_count: u32,
+    pub hyperlane_zero_length_segment_count: u32,
+    pub hyperlane_invalid_rebuild_rejected: u64,
 
     pub star_visual_sync_calls: u64,
     pub star_visual_entities_last_count: usize,
@@ -164,12 +179,27 @@ impl Default for StudioPerformanceTelemetry {
             render_present_or_wait_ms_last: None,
             render_frame_index: 0,
             hyperlane_sync_calls: 0,
+            hyperlane_rebuild_count: 0,
             hyperlane_mesh_rebuilds: 0,
             hyperlane_mesh_rebuild_last_ms: None,
             hyperlane_mesh_rebuild_avg_ms: None,
             hyperlane_segments_last_count: 0,
             hyperlane_vertices_last_count: 0,
             hyperlane_indices_last_count: 0,
+            hyperlane_last_camera_key: "—".into(),
+            hyperlane_current_camera_key: "—".into(),
+            hyperlane_camera_right: [0.0; 3],
+            hyperlane_camera_up: [0.0; 3],
+            hyperlane_camera_forward: [0.0, 0.0, -1.0],
+            hyperlane_view_mode: 0,
+            hyperlane_source_segment_count: 0,
+            hyperlane_bucket_segment_count: [0; 3],
+            hyperlane_bucket_vertex_count: [0; 3],
+            hyperlane_bucket_index_count: [0; 3],
+            hyperlane_degenerate_width_dir_count: 0,
+            hyperlane_nan_inf_vertex_count: 0,
+            hyperlane_zero_length_segment_count: 0,
+            hyperlane_invalid_rebuild_rejected: 0,
             star_visual_sync_calls: 0,
             star_visual_entities_last_count: 0,
             star_visual_sync_last_ms: None,
@@ -513,6 +543,60 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
                 .nameplate_selected_cull_reason
                 .clone()
                 .unwrap_or_else(|| "—".into()),
+        ));
+    }
+    lines
+}
+
+/// Hyperlane ribbon debug subsection for the Telemetry dialog.
+pub fn hyperlane_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    let bucket_names = ["Near", "Mid", "Far"];
+    let mut lines = vec![
+        format!("Hyperlane sync calls: {}", telemetry.hyperlane_sync_calls),
+        format!(
+            "Hyperlane rebuild count: {} (rejected invalid: {})",
+            telemetry.hyperlane_rebuild_count, telemetry.hyperlane_invalid_rebuild_rejected
+        ),
+        format!("Last camera key: {}", telemetry.hyperlane_last_camera_key),
+        format!("Current camera key: {}", telemetry.hyperlane_current_camera_key),
+        format!(
+            "Camera right: [{:.3}, {:.3}, {:.3}]",
+            telemetry.hyperlane_camera_right[0],
+            telemetry.hyperlane_camera_right[1],
+            telemetry.hyperlane_camera_right[2],
+        ),
+        format!(
+            "Camera up: [{:.3}, {:.3}, {:.3}]",
+            telemetry.hyperlane_camera_up[0],
+            telemetry.hyperlane_camera_up[1],
+            telemetry.hyperlane_camera_up[2],
+        ),
+        format!(
+            "Camera forward: [{:.3}, {:.3}, {:.3}]",
+            telemetry.hyperlane_camera_forward[0],
+            telemetry.hyperlane_camera_forward[1],
+            telemetry.hyperlane_camera_forward[2],
+        ),
+        format!("View mode key: {}", telemetry.hyperlane_view_mode),
+        format!(
+            "Source segments: {} | aggregate verts/indices: {} / {}",
+            telemetry.hyperlane_source_segment_count,
+            telemetry.hyperlane_vertices_last_count,
+            telemetry.hyperlane_indices_last_count,
+        ),
+        format!(
+            "Degenerate width-dir (fallback-handled): {} | NaN/Inf verts: {} | zero-length segments: {}",
+            telemetry.hyperlane_degenerate_width_dir_count,
+            telemetry.hyperlane_nan_inf_vertex_count,
+            telemetry.hyperlane_zero_length_segment_count,
+        ),
+    ];
+    for (idx, name) in bucket_names.iter().enumerate() {
+        lines.push(format!(
+            "Bucket {name}: {} segments, {} verts, {} indices",
+            telemetry.hyperlane_bucket_segment_count[idx],
+            telemetry.hyperlane_bucket_vertex_count[idx],
+            telemetry.hyperlane_bucket_index_count[idx],
         ));
     }
     lines

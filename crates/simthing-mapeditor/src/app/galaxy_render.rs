@@ -11,6 +11,11 @@ use crate::hyperlane_buckets::{
     hyperlane_camera_depth_percent, selected_incident_lane_alpha, HyperlaneCameraDepthThresholds,
     HyperlaneDepthBucket, HYPERLANE_CORE_FRACTION,
 };
+use crate::hyperlane_ribbon::{
+    count_non_finite_vertex_positions, hyperlane_rebuild_is_valid, hyperlane_ribbon_width_dir,
+    is_valid_width_dir, HyperlaneMeshStats, HyperlaneRibbonBasis, HyperlaneRibbonCamera,
+    HyperlaneWidthDirOutcome,
+};
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::{
@@ -177,7 +182,7 @@ fn spawn_hyperlane_bucket(
     vm: &crate::view_model::StudioGalaxyViewModel,
     bucket: HyperlaneDepthBucket,
 ) {
-    let mesh = build_hyperlane_bucket_mesh(
+    let (mesh, _) = build_hyperlane_bucket_mesh(
         &vm.hyperlane_render_segments(),
         bucket,
         HyperlaneRibbonCamera::default(),
@@ -254,12 +259,6 @@ pub fn rebuild_highlight_hyperlanes(
             ))
             .id(),
     );
-}
-
-fn mesh_vertex_count(mesh: &Mesh) -> usize {
-    mesh.attribute(Mesh::ATTRIBUTE_POSITION)
-        .map(|attr| attr.len())
-        .unwrap_or(0)
 }
 
 fn bucket_index(bucket: HyperlaneDepthBucket) -> usize {
@@ -357,6 +356,13 @@ pub(super) fn sync_star_nameplate_focus_system(
     }
 }
 
+fn ribbon_basis_for_view_mode(view_mode: StudioViewMode) -> HyperlaneRibbonBasis {
+    match view_mode.hyperlane_render_path() {
+        HyperlaneRibbonRenderPath::CameraFacing3D => HyperlaneRibbonBasis::CameraFacing3D,
+        HyperlaneRibbonRenderPath::OverheadLegibility => HyperlaneRibbonBasis::OverheadLegibility,
+    }
+}
+
 fn view_mode_key(view_mode: StudioViewMode) -> u8 {
     match view_mode {
         StudioViewMode::ThreeD => 0,
@@ -364,6 +370,24 @@ fn view_mode_key(view_mode: StudioViewMode) -> u8 {
     }
 }
 
+fn format_camera_key(key: crate::studio_render_loop_dirty_gate::HyperlaneCameraKey) -> String {
+    format!(
+        "pos [{}, {}, {}] right [{}, {}, {}] up [{}, {}, {}] forward [{}, {}, {}] mode {}",
+        key.position[0],
+        key.position[1],
+        key.position[2],
+        key.right[0],
+        key.right[1],
+        key.right[2],
+        key.up[0],
+        key.up[1],
+        key.up[2],
+        key.forward[0],
+        key.forward[1],
+        key.forward[2],
+        key.view_mode,
+    )
+}
 pub fn sync_hyperlane_colors_system(
     app_state: Res<super::StudioAppState>,
     studio_camera: Res<StudioCamera>,
@@ -386,22 +410,43 @@ pub fn sync_hyperlane_colors_system(
     };
     if session.view_model.hyperlanes.is_empty() {
         return;
-    }
+    };
     let Ok(cam) = camera_transform.single() else {
         return;
     };
     let cam_pos = cam.translation();
     let cam_transform = cam.compute_transform();
+    let cam_right = (cam_transform.rotation * Vec3::X).to_array();
+    let cam_up = (cam_transform.rotation * Vec3::Y).to_array();
+    let cam_forward = (cam_transform.rotation * Vec3::NEG_Z).to_array();
     let view_mode = studio_camera.view_mode();
     let camera_key = quantize_hyperlane_camera_key(
         cam_pos.to_array(),
-        (cam_transform.rotation * Vec3::X).to_array(),
-        (cam_transform.rotation * Vec3::Y).to_array(),
+        cam_right,
+        cam_up,
+        cam_forward,
         view_mode_key(view_mode),
     );
     let settings_key = hyperlane_render_settings_key(app_state.hyperlane_render_settings);
     let generation = app_state.scene_render_revision;
     let cache = &mut caches.hyperlane;
+    let rotation_active = studio_camera.rmb_held;
+    let rotation_just_ended = cache.last_rmb_held && !rotation_active;
+    cache.last_rmb_held = rotation_active;
+
+    {
+        let telemetry = &mut perf.telemetry;
+        telemetry.hyperlane_last_camera_key = cache
+            .last_camera_key
+            .map(format_camera_key)
+            .unwrap_or_else(|| "—".into());
+        telemetry.hyperlane_current_camera_key = format_camera_key(camera_key);
+        telemetry.hyperlane_camera_right = cam_right;
+        telemetry.hyperlane_camera_up = cam_up;
+        telemetry.hyperlane_camera_forward = cam_forward;
+        telemetry.hyperlane_view_mode = view_mode_key(view_mode);
+    }
+
     let should_rebuild = hyperlane_render_should_rebuild(
         cache.last_camera_key,
         camera_key,
@@ -410,6 +455,8 @@ pub fn sync_hyperlane_colors_system(
         cache.last_view_model_generation,
         generation,
         cache.dirty,
+        rotation_active,
+        rotation_just_ended,
     );
     if !should_rebuild {
         return;
@@ -418,27 +465,57 @@ pub fn sync_hyperlane_colors_system(
     let started = std::time::Instant::now();
     let camera = HyperlaneRibbonCamera {
         position: cam_pos.to_array(),
-        right: (cam_transform.rotation * Vec3::X).to_array(),
-        up: (cam_transform.rotation * Vec3::Y).to_array(),
-        view_mode,
+        right: cam_right,
+        up: cam_up,
+        forward: cam_forward,
+        basis: ribbon_basis_for_view_mode(view_mode),
     };
     let meta = &session.view_model.render_meta;
     let segments = build_hyperlane_render_segments(
         &session.view_model.hyperlanes,
         &session.view_model.render_anchors,
     );
+    let base_opacity = app_state
+        .hyperlane_render_settings
+        .clamped()
+        .base_opacity_percent;
+
+    let mut built_buckets = Vec::new();
+    for (mesh_handle, mat_handle, marker) in &hyperlanes {
+        let (built, stats) = build_hyperlane_bucket_mesh(&segments, marker.0, camera, meta);
+        built_buckets.push((mesh_handle.clone(), mat_handle.clone(), built, stats));
+    }
+
+    let bucket_stats: Vec<HyperlaneMeshStats> = built_buckets
+        .iter()
+        .map(|(_, _, _, stats)| *stats)
+        .collect();
+    let rebuild_valid = hyperlane_rebuild_is_valid(&bucket_stats, segments.len(), base_opacity);
+
+    if !rebuild_valid {
+        cache.dirty = true;
+        perf.telemetry.hyperlane_invalid_rebuild_rejected = perf
+            .telemetry
+            .hyperlane_invalid_rebuild_rejected
+            .saturating_add(1);
+        if !cache.invalid_rebuild_warning_logged {
+            bevy::log::warn!(
+                "hyperlane mesh rebuild rejected: invalid ribbon geometry at camera key {}",
+                format_camera_key(camera_key)
+            );
+            cache.invalid_rebuild_warning_logged = true;
+        }
+        record_hyperlane_bucket_telemetry(&mut perf.telemetry, &bucket_stats, segments.len());
+        return;
+    }
+
+    cache.invalid_rebuild_warning_logged = false;
 
     let mut total_vertices = 0usize;
     let mut total_indices = 0usize;
-    for (mesh_handle, mat_handle, marker) in &hyperlanes {
-        let built = build_hyperlane_bucket_mesh(&segments, marker.0, camera, meta);
-        total_vertices = total_vertices.saturating_add(mesh_vertex_count(&built));
-        if let Some(indices) = built.indices() {
-            total_indices = total_indices.saturating_add(match indices {
-                Indices::U16(values) => values.len(),
-                Indices::U32(values) => values.len(),
-            });
-        }
+    for (mesh_handle, mat_handle, built, stats) in built_buckets {
+        total_vertices = total_vertices.saturating_add(stats.vertex_count);
+        total_indices = total_indices.saturating_add(stats.index_count);
         if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
             *mesh = built;
         }
@@ -452,6 +529,7 @@ pub fn sync_hyperlane_colors_system(
     let elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
     perf.telemetry.hyperlane_mesh_rebuilds =
         perf.telemetry.hyperlane_mesh_rebuilds.saturating_add(1);
+    perf.telemetry.hyperlane_rebuild_count = perf.telemetry.hyperlane_mesh_rebuilds;
     let rebuild_count = perf.telemetry.hyperlane_mesh_rebuilds;
     {
         let telemetry = &mut perf.telemetry;
@@ -464,12 +542,36 @@ pub fn sync_hyperlane_colors_system(
         telemetry.hyperlane_segments_last_count = segments.len();
         telemetry.hyperlane_vertices_last_count = total_vertices;
         telemetry.hyperlane_indices_last_count = total_indices;
+        record_hyperlane_bucket_telemetry(telemetry, &bucket_stats, segments.len());
     }
 
     cache.dirty = false;
     cache.last_camera_key = Some(camera_key);
     cache.last_render_settings_key = Some(settings_key);
     cache.last_view_model_generation = generation;
+}
+
+fn record_hyperlane_bucket_telemetry(
+    telemetry: &mut crate::studio_performance_telemetry::StudioPerformanceTelemetry,
+    bucket_stats: &[HyperlaneMeshStats],
+    source_segments: usize,
+) {
+    telemetry.hyperlane_source_segment_count = source_segments;
+    telemetry.hyperlane_degenerate_width_dir_count = bucket_stats
+        .iter()
+        .map(|s| s.degenerate_width_dir_count)
+        .sum();
+    telemetry.hyperlane_nan_inf_vertex_count =
+        bucket_stats.iter().map(|s| s.nan_inf_vertex_count).sum();
+    telemetry.hyperlane_zero_length_segment_count = bucket_stats
+        .iter()
+        .map(|s| s.zero_length_segment_count)
+        .sum();
+    for (idx, stats) in bucket_stats.iter().enumerate().take(3) {
+        telemetry.hyperlane_bucket_segment_count[idx] = stats.bucket_segment_count;
+        telemetry.hyperlane_bucket_vertex_count[idx] = stats.vertex_count;
+        telemetry.hyperlane_bucket_index_count[idx] = stats.index_count;
+    }
 }
 
 /// Mark hyperlane meshes dirty after scene rebuild or render-settings change.
@@ -490,10 +592,14 @@ fn build_hyperlane_bucket_mesh(
     bucket: HyperlaneDepthBucket,
     camera: HyperlaneRibbonCamera,
     meta: &crate::view_model::StudioGalaxyRenderMeta,
-) -> Mesh {
+) -> (Mesh, HyperlaneMeshStats) {
     let mut positions = Vec::new();
     let mut colors = Vec::new();
     let mut indices = Vec::new();
+    let mut stats = HyperlaneMeshStats {
+        source_segment_count: segments.len(),
+        ..Default::default()
+    };
     let thresholds = HyperlaneCameraDepthThresholds::from_meta(meta);
     let nearest_star_width = nearest_camera_star_disc_width_world(meta);
     for lane in segments {
@@ -512,7 +618,20 @@ fn build_hyperlane_bucket_mesh(
         if !visual.visible {
             continue;
         }
-        let width_dir = hyperlane_ribbon_width_dir(lane.from, lane.to, camera);
+        stats.bucket_segment_count = stats.bucket_segment_count.saturating_add(1);
+        let delta = Vec3::from_array(lane.to) - Vec3::from_array(lane.from);
+        if delta.length_squared() <= f32::EPSILON {
+            stats.zero_length_segment_count = stats.zero_length_segment_count.saturating_add(1);
+            continue;
+        }
+        let (width_dir, outcome) = hyperlane_ribbon_width_dir(lane.from, lane.to, camera);
+        if !is_valid_width_dir(width_dir) {
+            stats.degenerate_width_dir_count = stats.degenerate_width_dir_count.saturating_add(1);
+            continue;
+        }
+        if outcome != HyperlaneWidthDirOutcome::CameraFacingCross {
+            stats.degenerate_width_dir_count = stats.degenerate_width_dir_count.saturating_add(1);
+        }
         push_hyperlane_visual_strip(
             &mut positions,
             &mut colors,
@@ -525,6 +644,9 @@ fn build_hyperlane_bucket_mesh(
             visual.core_opacity,
         );
     }
+    stats.nan_inf_vertex_count = count_non_finite_vertex_positions(&positions);
+    stats.vertex_count = positions.len();
+    stats.index_count = indices.len();
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::default(),
@@ -532,79 +654,7 @@ fn build_hyperlane_bucket_mesh(
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     mesh.insert_indices(Indices::U32(indices));
-    mesh
-}
-
-#[derive(Debug, Clone, Copy)]
-struct HyperlaneRibbonCamera {
-    position: [f32; 3],
-    right: [f32; 3],
-    up: [f32; 3],
-    view_mode: StudioViewMode,
-}
-
-impl Default for HyperlaneRibbonCamera {
-    fn default() -> Self {
-        Self {
-            position: [40.0, 35.0, 40.0],
-            right: [1.0, 0.0, 0.0],
-            up: [0.0, 1.0, 0.0],
-            view_mode: StudioViewMode::ThreeD,
-        }
-    }
-}
-
-fn hyperlane_ribbon_width_dir(from: [f32; 3], to: [f32; 3], camera: HyperlaneRibbonCamera) -> Vec3 {
-    let from = Vec3::from_array(from);
-    let to = Vec3::from_array(to);
-    let Some(lane_dir) = normalized(to - from) else {
-        return Vec3::X;
-    };
-    match camera.view_mode.hyperlane_render_path() {
-        HyperlaneRibbonRenderPath::CameraFacing3D
-        | HyperlaneRibbonRenderPath::OverheadLegibility => {
-            let midpoint = (from + to) * 0.5;
-            let view_dir =
-                normalized(Vec3::from_array(camera.position) - midpoint).unwrap_or(Vec3::Y);
-            compute_camera_facing_width_dir(
-                lane_dir,
-                view_dir,
-                Vec3::from_array(camera.right),
-                Vec3::from_array(camera.up),
-            )
-        }
-    }
-}
-
-fn compute_camera_facing_width_dir(
-    lane_dir: Vec3,
-    view_dir: Vec3,
-    camera_right: Vec3,
-    camera_up: Vec3,
-) -> Vec3 {
-    let lane_dir = normalized(lane_dir).unwrap_or(Vec3::Z);
-    if let Some(width) = normalized(lane_dir.cross(view_dir)) {
-        return width;
-    }
-    stable_perpendicular(lane_dir, camera_right, camera_up)
-}
-
-fn stable_perpendicular(axis: Vec3, primary: Vec3, secondary: Vec3) -> Vec3 {
-    for candidate in [primary, secondary, Vec3::Y, Vec3::X, Vec3::Z] {
-        let projected = candidate - axis * candidate.dot(axis);
-        if let Some(width) = normalized(projected) {
-            return width;
-        }
-    }
-    Vec3::X
-}
-
-fn normalized(value: Vec3) -> Option<Vec3> {
-    if value.length_squared() > f32::EPSILON {
-        Some(value.normalize())
-    } else {
-        None
-    }
+    (mesh, stats)
 }
 
 fn push_hyperlane_visual_strip(
@@ -620,7 +670,12 @@ fn push_hyperlane_visual_strip(
 ) {
     let from = Vec3::from_array(from);
     let to = Vec3::from_array(to);
-    let perp = normalized(Vec3::from_array(width_dir)).unwrap_or(Vec3::X);
+    let perp = Vec3::from_array(width_dir);
+    let perp = if is_valid_width_dir(perp) {
+        perp.normalize()
+    } else {
+        Vec3::X
+    };
     let half = thickness_world * 0.5;
     let core_half = half * HYPERLANE_CORE_FRACTION;
     let offsets = [-half, -core_half, core_half, half];
@@ -697,6 +752,7 @@ pub fn sync_render_debug_visibility_system(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compute_camera_facing_width_dir;
 
     #[test]
     fn nameplate_formats_the_authoritative_raw_simthing_id() {
@@ -729,7 +785,7 @@ mod tests {
 
     #[test]
     fn camera_facing_ribbon_width_is_nonzero_for_edge_on_lane() {
-        let width = compute_camera_facing_width_dir(Vec3::X, Vec3::Z, Vec3::X, Vec3::Y);
+        let (width, _) = compute_camera_facing_width_dir(Vec3::X, Vec3::Z, Vec3::X, Vec3::Y);
         assert!(width.length() > 0.99);
         assert!(width.dot(Vec3::X).abs() < 1e-5);
     }
@@ -760,10 +816,11 @@ mod tests {
 
     #[test]
     fn camera_facing_ribbon_degenerate_case_uses_stable_fallback() {
-        let width = compute_camera_facing_width_dir(Vec3::X, Vec3::X, Vec3::X, Vec3::Y);
+        let (width, outcome) = compute_camera_facing_width_dir(Vec3::X, Vec3::X, Vec3::X, Vec3::Y);
         assert!(width.length() > 0.99);
         assert!(width.dot(Vec3::X).abs() < 1e-5);
         assert!(width.dot(Vec3::Y).abs() > 0.99);
+        assert_eq!(outcome, HyperlaneWidthDirOutcome::ProjectedCameraUp);
     }
 
     #[test]
