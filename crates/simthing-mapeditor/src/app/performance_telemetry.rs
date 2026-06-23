@@ -152,6 +152,7 @@ pub fn finalize_main_update_timing(
 
 pub fn update_studio_window_gpu_context(
     windows: Query<&Window, With<PrimaryWindow>>,
+    app_state: Res<super::StudioAppState>,
     mut state: ResMut<StudioPerformanceTelemetryState>,
 ) {
     let Ok(window) = windows.single() else {
@@ -161,6 +162,7 @@ pub fn update_studio_window_gpu_context(
     state.telemetry.window_height = Some(window.resolution.height() as u32);
     state.telemetry.render_scale = Some(window.resolution.scale_factor() as f32);
     state.telemetry.present_mode = Some(format_present_mode(window.present_mode));
+    state.telemetry.antialiasing_mode = app_state.antialiasing_mode.label().to_string();
 }
 
 fn format_present_mode(mode: PresentMode) -> String {

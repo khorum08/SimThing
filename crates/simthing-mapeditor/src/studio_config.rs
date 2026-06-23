@@ -11,6 +11,7 @@ use thiserror::Error;
 use crate::hyperlane_buckets::HyperlaneRenderSettings;
 use crate::settings::PersistedCameraState;
 use crate::star_render::{StarFalloffSettings, StarNameplateSettings, StarRenderMode};
+use crate::studio_antialiasing::StudioAntialiasingMode;
 
 pub const STUDIO_CONFIG_FILE_NAME: &str = "simthing-studio-config.json";
 pub const STUDIO_CONFIG_TMP_SUFFIX: &str = "json.tmp";
@@ -25,6 +26,8 @@ pub struct SimThingStudioConfig {
     #[serde(default = "default_nameplate_render_config")]
     pub nameplate_rendering: NameplateRenderConfig,
     pub hyperlane_rendering: HyperlaneRenderConfig,
+    #[serde(default)]
+    pub antialiasing_mode: StudioAntialiasingMode,
     pub view: StudioViewConfig,
     pub camera: Option<StudioCameraConfig>,
 }
@@ -121,6 +124,7 @@ impl Default for SimThingStudioConfig {
             star_rendering: StarRenderConfig::from_star_settings(star, StarRenderMode::default()),
             nameplate_rendering: NameplateRenderConfig::from_nameplate_settings(nameplate),
             hyperlane_rendering: HyperlaneRenderConfig::from_hyperlane_settings(hyperlane),
+            antialiasing_mode: StudioAntialiasingMode::Off,
             view: StudioViewConfig::default(),
             camera: Some(StudioCameraConfig::from_persisted(
                 PersistedCameraState::default(),
@@ -268,6 +272,7 @@ impl SimThingStudioConfig {
         show_stars: bool,
         show_hyperlanes: bool,
         view_mode: StudioViewModeSetting,
+        antialiasing_mode: StudioAntialiasingMode,
         camera: Option<PersistedCameraState>,
     ) -> Self {
         Self {
@@ -279,6 +284,7 @@ impl SimThingStudioConfig {
             star_rendering: StarRenderConfig::from_star_settings(star_falloff, star_render_mode),
             nameplate_rendering: NameplateRenderConfig::from_nameplate_settings(nameplate),
             hyperlane_rendering: HyperlaneRenderConfig::from_hyperlane_settings(hyperlane),
+            antialiasing_mode: antialiasing_mode.normalize(),
             view: StudioViewConfig {
                 show_stars,
                 show_hyperlanes,
@@ -389,6 +395,12 @@ pub fn validate_and_normalize_studio_config(
         config.nameplate_rendering = clamped_nameplate;
     }
 
+    let normalized_aa = config.antialiasing_mode.normalize();
+    if normalized_aa != config.antialiasing_mode {
+        warnings.push("normalized antialiasing mode to Off".to_string());
+        config.antialiasing_mode = normalized_aa;
+    }
+
     if !config.settings_dialog.position[0].is_finite()
         || !config.settings_dialog.position[1].is_finite()
     {
@@ -493,6 +505,7 @@ pub fn apply_studio_config_to_editor_settings(
         .set_star_nameplate_settings(config.nameplate_rendering.clone().to_nameplate_settings());
     settings
         .set_hyperlane_render_settings(config.hyperlane_rendering.clone().to_hyperlane_settings());
+    settings.set_antialiasing_mode(config.antialiasing_mode);
     if let Some(camera) = &config.camera {
         settings.last_camera = camera.clone().to_persisted();
     }
@@ -698,6 +711,7 @@ mod tests {
             true,
             false,
             StudioViewModeSetting::OverheadStrategic,
+            StudioAntialiasingMode::Off,
             Some(PersistedCameraState::default()),
         );
         apply_studio_config_to_editor_settings(&config, &mut settings);
@@ -730,6 +744,7 @@ mod tests {
             true,
             true,
             StudioViewModeSetting::ThreeD,
+            StudioAntialiasingMode::Fxaa,
             None,
         );
         save_studio_config_to_path(&path, &config).expect("save");
@@ -767,6 +782,7 @@ mod tests {
             false,
             true,
             StudioViewModeSetting::ThreeD,
+            StudioAntialiasingMode::SmaaMedium,
             Some(PersistedCameraState::default()),
         );
         save_studio_config_to_path(&path, &config).expect("save");
@@ -839,5 +855,41 @@ mod tests {
             save_studio_config_to_string(&SimThingStudioConfig::default()).expect("serialize");
         assert!(!json.contains("structural_grid"));
         assert!(!json.contains("map_container_id"));
+    }
+
+    #[test]
+    fn studio_config_roundtrip_preserves_antialiasing_mode() {
+        let mut config = SimThingStudioConfig::default();
+        config.antialiasing_mode = StudioAntialiasingMode::SmaaHigh;
+        let json = save_studio_config_to_string(&config).expect("serialize");
+        let loaded = match load_studio_config_from_str(&json).expect("load") {
+            StudioConfigLoadOutcome::Loaded { config, .. } => config,
+            other => panic!("expected loaded config, got {other:?}"),
+        };
+        assert_eq!(loaded.antialiasing_mode, StudioAntialiasingMode::SmaaHigh);
+    }
+
+    #[test]
+    fn legacy_config_without_antialiasing_defaults_to_off() {
+        let mut value = serde_json::to_value(SimThingStudioConfig::default()).expect("serialize");
+        value
+            .as_object_mut()
+            .expect("config object")
+            .remove("antialiasing_mode");
+        let json = serde_json::to_string(&value).expect("json");
+        let loaded = match load_studio_config_from_str(&json).expect("load") {
+            StudioConfigLoadOutcome::Loaded { config, .. } => config,
+            other => panic!("expected loaded config, got {other:?}"),
+        };
+        assert_eq!(loaded.antialiasing_mode, StudioAntialiasingMode::Off);
+    }
+
+    #[test]
+    fn apply_studio_config_sets_antialiasing_mode() {
+        let mut settings = EditorSettings::default();
+        let mut config = SimThingStudioConfig::default();
+        config.antialiasing_mode = StudioAntialiasingMode::Fxaa;
+        apply_studio_config_to_editor_settings(&config, &mut settings);
+        assert_eq!(settings.antialiasing_mode(), StudioAntialiasingMode::Fxaa);
     }
 }

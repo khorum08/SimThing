@@ -279,6 +279,26 @@ pub fn camera_control_system(
     }
 }
 
+pub fn sync_studio_antialiasing_system(
+    app_state: Res<super::StudioAppState>,
+    mut last_applied: Local<Option<crate::studio_antialiasing::StudioAntialiasingMode>>,
+    camera: Query<Entity, With<MainCamera>>,
+    mut commands: Commands,
+) {
+    let mode = app_state.antialiasing_mode;
+    if last_applied
+        .map(|previous| previous == mode)
+        .unwrap_or(false)
+    {
+        return;
+    }
+    let Ok(entity) = camera.single() else {
+        return;
+    };
+    crate::studio_antialiasing::apply_studio_antialiasing_mode(&mut commands.entity(entity), mode);
+    *last_applied = Some(mode);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

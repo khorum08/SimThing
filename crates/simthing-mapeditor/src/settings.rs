@@ -117,6 +117,8 @@ pub struct EditorSettings {
     pub settings_dialog_position: [f32; 2],
     #[serde(default)]
     pub settings_dialog_visible: bool,
+    #[serde(default)]
+    pub antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode,
 }
 
 impl Default for EditorSettings {
@@ -155,6 +157,7 @@ impl Default for EditorSettings {
             hyperlane_falloff_opacity_percent: hyperlane.falloff_opacity_percent,
             settings_dialog_position: default_settings_dialog_position(),
             settings_dialog_visible: false,
+            antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode::Off,
         }
     }
 }
@@ -270,6 +273,17 @@ impl EditorSettings {
         self.hyperlane_falloff_distance_percent = settings.falloff_distance_percent;
         self.hyperlane_falloff_thickness_percent = settings.falloff_thickness_percent;
         self.hyperlane_falloff_opacity_percent = settings.falloff_opacity_percent;
+    }
+
+    pub fn antialiasing_mode(&self) -> crate::studio_antialiasing::StudioAntialiasingMode {
+        self.antialiasing_mode
+    }
+
+    pub fn set_antialiasing_mode(
+        &mut self,
+        mode: crate::studio_antialiasing::StudioAntialiasingMode,
+    ) {
+        self.antialiasing_mode = mode.normalize();
     }
 }
 

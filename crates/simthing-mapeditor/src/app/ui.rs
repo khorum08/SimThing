@@ -26,8 +26,9 @@ use crate::star_render::{
     star_visuals_dirty_after_settings_change, StarFalloffSettings, StarNameplateSettings,
     StarRenderMode,
 };
+use crate::studio_antialiasing::{apply_studio_antialiasing_mode, StudioAntialiasingMode};
 
-use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
+use super::camera::{reset_camera_after_generation, snap_overhead, MainCamera, StudioCamera};
 use super::galaxy_render::{
     mark_hyperlane_render_dirty, mark_star_visual_render_dirty, StarVisualAssets,
 };
@@ -115,6 +116,7 @@ pub fn studio_ui_system(
     mut perf_telemetry: ResMut<StudioPerformanceTelemetryState>,
     mut render_caches: ResMut<StudioRenderLoopCaches>,
     mut ctx_unavailable_logged: Local<bool>,
+    main_camera: Query<Entity, With<MainCamera>>,
 ) {
     let egui_started = std::time::Instant::now();
     let mut left_panel_ms = 0.0f64;
@@ -165,6 +167,8 @@ pub fn studio_ui_system(
         &mut state,
         &mut settings,
         &mut render_caches,
+        &mut commands,
+        &main_camera,
         screen_w,
         screen_h,
     );
@@ -464,6 +468,8 @@ fn draw_settings_dialog(
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
     render_caches: &mut StudioRenderLoopCaches,
+    commands: &mut Commands,
+    main_camera: &Query<Entity, With<MainCamera>>,
     screen_w: f32,
     screen_h: f32,
 ) {
@@ -689,9 +695,27 @@ fn draw_settings_dialog(
                         &mut render_caches.hyperlane,
                     );
                 }
+                ui.separator();
+                ui.label(egui::RichText::new("Antialiasing").strong());
+                let mut aa_mode = state.antialiasing_mode;
+                let mut aa_changed = false;
+                for candidate in StudioAntialiasingMode::ALL {
+                    aa_changed |= ui
+                        .radio_value(&mut aa_mode, candidate, candidate.label())
+                        .changed();
+                }
+                if aa_changed {
+                    apply_antialiasing_settings(aa_mode, state, settings, commands, main_camera);
+                }
                 ui.horizontal(|ui| {
                     if ui.button("Reset").clicked() {
-                        reset_settings_dialog_values(state, settings, render_caches);
+                        reset_settings_dialog_values(
+                            state,
+                            settings,
+                            render_caches,
+                            commands,
+                            main_camera,
+                        );
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button("Close").clicked() {
@@ -966,6 +990,7 @@ fn close_settings_dialog(
     settings.set_star_falloff_settings(state.star_falloff_settings);
     settings.set_star_render_mode(state.star_render_mode);
     settings.set_hyperlane_render_settings(state.hyperlane_render_settings);
+    settings.set_antialiasing_mode(state.antialiasing_mode);
     let _ = settings.save();
     if let Err(err) = super::save_current_studio_config(state, settings, None) {
         state.status_message = format!("Studio config save failed: {err}");
@@ -976,6 +1001,8 @@ fn reset_settings_dialog_values(
     state: &mut StudioAppState,
     settings: &mut crate::settings::EditorSettings,
     render_caches: &mut StudioRenderLoopCaches,
+    commands: &mut Commands,
+    main_camera: &Query<Entity, With<MainCamera>>,
 ) {
     let defaults = crate::studio_config::SimThingStudioConfig::default();
     let (star, mode) = defaults.star_rendering.clone().to_star_settings();
@@ -987,10 +1014,12 @@ fn reset_settings_dialog_values(
     state.settings_dialog.star_render = star;
     state.settings_dialog.star_render_mode = mode;
     state.settings_dialog.hyperlane_render = hyperlane;
+    state.antialiasing_mode = defaults.antialiasing_mode;
     settings.set_star_falloff_settings(star);
     settings.set_star_render_mode(mode);
     settings.set_star_nameplate_settings(nameplate);
     settings.set_hyperlane_render_settings(hyperlane);
+    settings.set_antialiasing_mode(defaults.antialiasing_mode);
     if let Some(session) = state.session.as_mut() {
         apply_star_falloff_settings_to_meta(&mut session.view_model.render_meta, star);
         apply_star_render_mode_to_meta(&mut session.view_model.render_meta, mode);
@@ -998,6 +1027,9 @@ fn reset_settings_dialog_values(
     }
     mark_hyperlane_render_dirty(&mut render_caches.hyperlane);
     mark_star_visual_render_dirty(&mut render_caches.star_visual);
+    if let Ok(entity) = main_camera.single() {
+        apply_studio_antialiasing_mode(&mut commands.entity(entity), state.antialiasing_mode);
+    }
 }
 
 fn settings_dialog_bounds(
@@ -1060,6 +1092,25 @@ fn apply_star_render_settings(
         session.view_model.apply_star_falloff_settings(values);
         session.view_model.apply_star_render_mode(mode);
     }
+    let _ = settings.save();
+}
+
+fn apply_antialiasing_settings(
+    mode: StudioAntialiasingMode,
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+    commands: &mut Commands,
+    main_camera: &Query<Entity, With<MainCamera>>,
+) {
+    let mode = mode.normalize();
+    state.antialiasing_mode = mode;
+    settings.set_antialiasing_mode(mode);
+    settings.settings_dialog_position = state.settings_dialog.position;
+    settings.settings_dialog_visible = state.settings_dialog.visible;
+    if let Ok(entity) = main_camera.single() {
+        apply_studio_antialiasing_mode(&mut commands.entity(entity), mode);
+    }
+    state.status_message = format!("Antialiasing: {}", mode.label());
     let _ = settings.save();
 }
 

@@ -115,6 +115,7 @@ pub fn run_studio() {
                 (
                     ui::panel_opacity_system,
                     camera::camera_control_system,
+                    camera::sync_studio_antialiasing_system,
                     performance_telemetry::update_map_radius_falloff_context_system,
                     camera::camera_hotkeys_system,
                     picking::selection_keyboard_system,
@@ -217,6 +218,8 @@ pub struct StudioAppState {
     pub star_falloff_metric: crate::star_render::StarFalloffMetric,
     /// Diagnostic overlay: visual high-horizon falloff ruler (presentation only; default off).
     pub show_falloff_ruler: bool,
+    /// Mutually exclusive post-process antialiasing mode (presentation only).
+    pub antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode,
 }
 
 impl StudioAppState {
@@ -270,6 +273,7 @@ impl StudioAppState {
             star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode::default(),
             star_falloff_metric: crate::star_render::StarFalloffMetric::default(),
             show_falloff_ruler: false,
+            antialiasing_mode: settings.antialiasing_mode(),
         }
     }
 
@@ -388,6 +392,7 @@ pub(crate) fn save_current_studio_config(
         state.show_stars,
         state.show_hyperlanes,
         view_mode,
+        state.antialiasing_mode,
         camera_state,
     );
     config.save_to_default_path()
