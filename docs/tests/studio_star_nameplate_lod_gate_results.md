@@ -7,8 +7,8 @@ PROBATION / visual remediation — readability and density LOD gates land in sha
 ## PR / branch / merge
 
 - Branch: `codex/studio-star-nameplate-lod-gate-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #912
+- Merge: `0d8bf7fbce8a1fdc8bd3310b9e35ff591e052c27`
 
 ## Root cause
 
