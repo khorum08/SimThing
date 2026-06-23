@@ -183,12 +183,45 @@ pub struct TextAtlasBindGroupResource {
     pub bind_group: BindGroup,
 }
 
+pub(crate) struct TextRenderResourcesPlugin;
+
+impl Plugin for TextRenderResourcesPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(ExtractResourcePlugin::<TextAtlasImageHandle>::default());
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+        render_app
+            .init_resource::<TextStyleRenderDiagnostics>()
+            .init_resource::<TextAtlasRenderDiagnostics>()
+            .init_resource::<TextDeformRenderDiagnostics>()
+            .init_resource::<TextPathWarpRenderDiagnostics>()
+            .add_systems(
+                Render,
+                (
+                    prepare_text_atlas_bind_group,
+                    prepare_text_style_bind_group,
+                    prepare_text_deform_bind_group,
+                    prepare_text_path_bind_group,
+                    prepare_text_warp_bind_group,
+                )
+                    .in_set(RenderSet::PrepareBindGroups),
+            );
+    }
+
+    fn finish(&self, app: &mut App) {
+        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
+            return;
+        };
+        render_app.init_resource::<TextInstancedPipeline>();
+    }
+}
+
 pub(crate) struct TextInstancedRenderPlugin;
 
 impl Plugin for TextInstancedRenderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ExtractResourcePlugin::<TextAtlasImageHandle>::default())
-            .add_plugins(ExtractComponentPlugin::<TextOffscreenCamera>::default());
+        app.add_plugins(ExtractComponentPlugin::<TextOffscreenCamera>::default());
 
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
@@ -223,24 +256,10 @@ impl Plugin for TextInstancedRenderPlugin {
                 (
                     queue_text_instanced.in_set(RenderSet::QueueMeshes),
                     prepare_text_instance_buffers.in_set(RenderSet::PrepareResources),
-                    (
-                        prepare_text_atlas_bind_group,
-                        prepare_text_style_bind_group,
-                        prepare_text_deform_bind_group,
-                        prepare_text_path_bind_group,
-                        prepare_text_warp_bind_group,
-                        prepare_text_offscreen_mesh2d_view_bind_groups,
-                    )
+                    prepare_text_offscreen_mesh2d_view_bind_groups
                         .in_set(RenderSet::PrepareBindGroups),
                 ),
             );
-    }
-
-    fn finish(&self, app: &mut App) {
-        let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
-            return;
-        };
-        render_app.init_resource::<TextInstancedPipeline>();
     }
 }
 

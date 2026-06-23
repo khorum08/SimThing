@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_asset::RenderAssetUsages;
+use simthing_tools::{StudioTypefaceLabel, TextLabelRenderMode, WorldTextBillboard};
 
 use crate::hyperlane_buckets::{
     bucket_base_rgba, classify_hyperlane_camera_depth_bucket, compute_hyperlane_visual,
@@ -13,7 +14,9 @@ use crate::hyperlane_buckets::{
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::{
-    nearest_camera_star_disc_width_world, prepare_star_billboard_instances, StarBillboardInstance,
+    nearest_camera_star_disc_width_world, prepare_star_billboard_instances,
+    star_nameplate_world_billboard, StarBillboardInstance, StarBillboardRenderSettings,
+    StarNameplateSettings,
 };
 use crate::starburst::{
     generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
@@ -33,6 +36,11 @@ use super::GalaxySceneRoot;
 pub struct GalaxyStar {
     pub instance: StarBillboardInstance,
     pub layer: StarVisualLayer,
+}
+
+#[derive(Component, Debug, Clone, Copy)]
+pub struct GalaxyStarNameplate {
+    pub instance: StarBillboardInstance,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,6 +90,14 @@ pub fn rebuild_galaxy_scene(
 ) {
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
+    let simthing_ids: std::collections::HashMap<u32, u32> = session
+        .scenario_authority
+        .structural_grid
+        .placements
+        .iter()
+        .map(|placement| (placement.system_id, placement.simthing_id_raw))
+        .collect();
+    let billboard_settings = StarBillboardRenderSettings::from_meta(&vm.render_meta);
     for star in prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None) {
         for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
             let texture = match layer {
@@ -121,6 +137,26 @@ pub fn rebuild_galaxy_scene(
                 ))
                 .id();
             root.stars.push((star.system_id, entity));
+        }
+        if let Some(simthing_id) = simthing_ids.get(&star.system_id).copied() {
+            let entity = commands
+                .spawn((
+                    StudioTypefaceLabel::entity_name(
+                        format_simthing_nameplate_id(simthing_id),
+                        48.0,
+                        [0.92, 0.96, 1.0, 1.0],
+                    )
+                    .with_render_mode(TextLabelRenderMode::Raster),
+                    star_nameplate_world_billboard(
+                        star,
+                        &billboard_settings,
+                        StarNameplateSettings::default(),
+                    ),
+                    GalaxyStarNameplate { instance: star },
+                    Visibility::Visible,
+                ))
+                .id();
+            root.nameplates.push(entity);
         }
     }
 
@@ -238,6 +274,9 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
     for (_, entity) in root.stars.drain(..) {
         commands.entity(entity).despawn();
     }
+    for entity in root.nameplates.drain(..) {
+        commands.entity(entity).despawn();
+    }
     for slot in root.hyperlane_buckets.iter_mut() {
         if let Some(entity) = slot.take() {
             commands.entity(entity).despawn();
@@ -249,6 +288,45 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
     if let Some(entity) = root.core_glow.take() {
         commands.entity(entity).despawn();
     }
+}
+
+pub fn format_simthing_nameplate_id(raw_id: u32) -> String {
+    format!("SIM-{raw_id:06}")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct NameplateSyncKey {
+    star: crate::star_render::StarFalloffSettings,
+    nameplate: StarNameplateSettings,
+    scene_revision: u64,
+}
+
+pub(super) fn sync_star_nameplate_settings_system(
+    state: Res<super::StudioAppState>,
+    settings: Res<super::resources::StudioSettings>,
+    mut nameplates: Query<(&GalaxyStarNameplate, &mut WorldTextBillboard)>,
+    mut last_key: Local<Option<NameplateSyncKey>>,
+) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let key = NameplateSyncKey {
+        star: state.star_falloff_settings.clamped(),
+        nameplate: settings.star_nameplate_settings(),
+        scene_revision: state.scene_render_revision,
+    };
+    if *last_key == Some(key) {
+        return;
+    }
+    let star_settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
+    for (nameplate, mut placement) in &mut nameplates {
+        let next =
+            star_nameplate_world_billboard(nameplate.instance, &star_settings, key.nameplate);
+        if *placement != next {
+            *placement = next;
+        }
+    }
+    *last_key = Some(key);
 }
 
 fn view_mode_key(view_mode: StudioViewMode) -> u8 {
@@ -540,6 +618,7 @@ pub fn sync_render_debug_visibility_system(
         Query<(&GalaxyStar, &mut Visibility)>,
         Query<&mut Visibility, With<GalaxyHyperlanes>>,
         Query<&mut Visibility, With<SelectedHyperlaneHighlight>>,
+        Query<&mut Visibility, With<GalaxyStarNameplate>>,
     )>,
 ) {
     for (star, mut visibility) in &mut visibility_queries.p0() {
@@ -578,11 +657,23 @@ pub fn sync_render_debug_visibility_system(
             Visibility::Hidden
         };
     }
+    for mut visibility in &mut visibility_queries.p3() {
+        *visibility = if state.show_stars {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nameplate_formats_the_authoritative_raw_simthing_id() {
+        assert_eq!(format_simthing_nameplate_id(42), "SIM-000042");
+    }
 
     #[test]
     fn hyperlane_visual_strip_uses_transparent_edges_and_opaque_core() {

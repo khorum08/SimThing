@@ -92,15 +92,9 @@ pub fn run_studio() {
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin);
-    // Typeface in-Studio render mount DEFERRED (STUDIO-TYPEFACE-STARTUP-FIX-0R): LR8 only ever
-    // headless-tested this. The egui-suppressing root cause (the global LUT-image mutation in
-    // SimthingToolsTextPlugin) is now FIXED — studio_typeface_shell mounts it with
-    // without_lut_d3_view_fix(), so re-enabling no longer black-screens. The mount stays off only
-    // because the offscreen-camera-gated render path draws NO visible galaxy text yet; the next
-    // ladder (entity-name generation + names-below-stars) builds the main/overlay-camera text path
-    // and verifies it on a real window, then re-enables the line below. The simthing-tools crate,
-    // the label seam (studio_typeface_shell / app::labels), and all typeface capability are intact.
-    // crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
+    // Live Studio text shares the primary Camera3d view through the transparent world-text phase.
+    // The toolkit must not add a Camera2d or mutate tonemapping LUT resources in this process.
+    crate::studio_typeface_shell::mount_studio_typeface_plugins(&mut app);
     app.add_systems(Startup, setup_scene)
         .add_systems(PostStartup, window::apply_initial_window_mode)
         .add_systems(Startup, init_star_visual_assets)
@@ -126,6 +120,7 @@ pub fn run_studio() {
                     picking::sync_selection_highlight_system,
                     picking::sync_star_visuals_system,
                     picking::billboard_stars_system,
+                    galaxy_render::sync_star_nameplate_settings_system,
                     galaxy_render::sync_hyperlane_colors_system,
                     galaxy_render::sync_render_debug_visibility_system,
                     performance_telemetry::update_studio_fps_telemetry,
@@ -143,6 +138,7 @@ pub fn run_studio() {
 #[derive(Resource, Default)]
 pub struct GalaxySceneRoot {
     pub stars: Vec<(u32, Entity)>,
+    pub nameplates: Vec<Entity>,
     pub hyperlane_buckets: [Option<Entity>; 3],
     pub highlight_hyperlanes: Option<Entity>,
     pub core_glow: Option<Entity>,
@@ -362,6 +358,7 @@ pub(crate) fn save_current_studio_config(
         state.settings_dialog.position,
         state.star_falloff_settings,
         state.star_render_mode,
+        settings.star_nameplate_settings(),
         state.hyperlane_render_settings,
         state.show_stars,
         state.show_hyperlanes,

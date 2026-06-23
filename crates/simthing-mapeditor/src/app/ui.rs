@@ -22,7 +22,8 @@ use crate::settings::WindowModeSetting;
 use crate::shape_params::spiral_arm_params_active;
 use crate::star_render::{
     apply_star_falloff_settings_to_meta, apply_star_render_mode_to_meta,
-    star_visuals_dirty_after_settings_change, StarFalloffSettings, StarRenderMode,
+    star_visuals_dirty_after_settings_change, StarFalloffSettings, StarNameplateSettings,
+    StarRenderMode,
 };
 
 use super::camera::{reset_camera_after_generation, snap_overhead, StudioCamera};
@@ -50,7 +51,7 @@ use crate::studio_screenshot::next_screenshot_filename;
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 
-const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 520.0);
+const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 720.0);
 const TELEMETRY_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 760.0);
 const SETTINGS_TITLE_CLOSE_DRAG_GAP: f32 = 6.0;
 const TELEMETRY_BUTTON_LABEL: &str = "Telemetry";
@@ -555,6 +556,53 @@ fn draw_settings_dialog(
                     );
                 }
                 ui.separator();
+                ui.label(egui::RichText::new("Star nameplates").strong());
+                let mut nameplate_values = settings.star_nameplate_settings();
+                let mut nameplate_changed = false;
+                nameplate_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut nameplate_values.relative_width_percent,
+                            20.0..=200.0,
+                        )
+                        .suffix("%")
+                        .text("Nameplate Relative Width"),
+                    )
+                    .changed();
+                nameplate_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut nameplate_values.base_transparency_percent,
+                            0.0..=100.0,
+                        )
+                        .suffix("%")
+                        .text("Base Transparency"),
+                    )
+                    .changed();
+                nameplate_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut nameplate_values.relative_falloff_distance_percent,
+                            5.0..=100.0,
+                        )
+                        .suffix("%")
+                        .text("Relative Falloff Distance"),
+                    )
+                    .changed();
+                nameplate_changed |= ui
+                    .add(
+                        egui::Slider::new(
+                            &mut nameplate_values.relative_falloff_transparency_percent,
+                            0.0..=100.0,
+                        )
+                        .suffix("%")
+                        .text("Relative Falloff Transparency"),
+                    )
+                    .changed();
+                if nameplate_changed {
+                    apply_nameplate_render_settings(nameplate_values, state, settings);
+                }
+                ui.separator();
                 ui.label(egui::RichText::new("Hyperlane rendering").strong());
                 let mut hyperlane_values = state.settings_dialog.hyperlane_render;
                 let mut hyperlane_changed = false;
@@ -820,6 +868,7 @@ fn reset_settings_dialog_values(
 ) {
     let defaults = crate::studio_config::SimThingStudioConfig::default();
     let (star, mode) = defaults.star_rendering.clone().to_star_settings();
+    let nameplate = defaults.nameplate_rendering.to_nameplate_settings();
     let hyperlane = defaults.hyperlane_rendering.to_hyperlane_settings();
     state.star_falloff_settings = star;
     state.star_render_mode = mode;
@@ -829,6 +878,7 @@ fn reset_settings_dialog_values(
     state.settings_dialog.hyperlane_render = hyperlane;
     settings.set_star_falloff_settings(star);
     settings.set_star_render_mode(mode);
+    settings.set_star_nameplate_settings(nameplate);
     settings.set_hyperlane_render_settings(hyperlane);
     if let Some(session) = state.session.as_mut() {
         apply_star_falloff_settings_to_meta(&mut session.view_model.render_meta, star);
@@ -899,6 +949,18 @@ fn apply_star_render_settings(
         session.view_model.apply_star_falloff_settings(values);
         session.view_model.apply_star_render_mode(mode);
     }
+    let _ = settings.save();
+}
+
+fn apply_nameplate_render_settings(
+    values: StarNameplateSettings,
+    state: &mut StudioAppState,
+    settings: &mut crate::settings::EditorSettings,
+) {
+    settings.set_star_nameplate_settings(values);
+    settings.settings_dialog_position = state.settings_dialog.position;
+    settings.settings_dialog_visible = state.settings_dialog.visible;
+    state.status_message = "Updated star nameplate settings".into();
     let _ = settings.save();
 }
 

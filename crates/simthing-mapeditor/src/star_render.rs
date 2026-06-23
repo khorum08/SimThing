@@ -6,6 +6,7 @@ use crate::hyperlane_buckets::{bucket_alpha_for_meta, HyperlaneDepthBucket};
 use crate::view_model::{
     anchor_for_system, StudioGalaxyRenderMeta, StudioStarView, StudioSystemRenderAnchor,
 };
+use simthing_tools::WorldTextBillboard;
 
 pub const DEFAULT_STAR_VISIBILITY_SCALE: f32 = 4.5;
 pub const DEFAULT_LANE_VISIBILITY_SCALE: f32 = 0.75;
@@ -25,6 +26,7 @@ pub const PR2R5_STAR_FAR_CORE_ALPHA: f32 =
 pub const PR2R6_AURA_CAP_REDUCTION_FACTOR: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_START_DEPTH: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_FACTOR: f32 = 0.75;
+pub const STAR_NAMEPLATE_HEIGHT_FACTOR: f32 = 3.0;
 pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
     PR2R5_STAR_NEAR_AURA_SCALE * PR2R6_AURA_CAP_REDUCTION_FACTOR;
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
@@ -59,6 +61,40 @@ pub struct StarFalloffSettings {
     pub falloff_distance_percent: f32,
     pub falloff_blur_radius_percent: f32,
     pub falloff_opacity_percent: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct StarNameplateSettings {
+    pub relative_width_percent: f32,
+    pub base_transparency_percent: f32,
+    pub relative_falloff_distance_percent: f32,
+    pub relative_falloff_transparency_percent: f32,
+}
+
+impl Default for StarNameplateSettings {
+    fn default() -> Self {
+        Self {
+            relative_width_percent: 100.0,
+            base_transparency_percent: 100.0,
+            relative_falloff_distance_percent: 50.0,
+            relative_falloff_transparency_percent: 50.0,
+        }
+    }
+}
+
+impl StarNameplateSettings {
+    pub fn clamped(self) -> Self {
+        Self {
+            relative_width_percent: self.relative_width_percent.clamp(20.0, 200.0),
+            base_transparency_percent: self.base_transparency_percent.clamp(0.0, 100.0),
+            relative_falloff_distance_percent: self
+                .relative_falloff_distance_percent
+                .clamp(5.0, 100.0),
+            relative_falloff_transparency_percent: self
+                .relative_falloff_transparency_percent
+                .clamp(0.0, 100.0),
+        }
+    }
 }
 
 impl Default for StarFalloffSettings {
@@ -159,6 +195,35 @@ impl StarBillboardInstance {
         self.hovered = hovered;
         self
     }
+}
+
+pub fn star_nameplate_world_billboard(
+    instance: StarBillboardInstance,
+    star_settings: &StarBillboardRenderSettings,
+    nameplate_settings: StarNameplateSettings,
+) -> WorldTextBillboard {
+    let nameplate = nameplate_settings.clamped();
+    let star_falloff = star_settings.falloff_settings();
+    WorldTextBillboard {
+        anchor: instance.anchor_position,
+        near_height: instance.base_scale_variation
+            * star_falloff.base_blur_radius
+            * STAR_NAMEPLATE_HEIGHT_FACTOR,
+        width_ratio: nameplate.relative_width_percent / 100.0,
+        vertical_gap_ratio: 0.10,
+        near_distance: star_settings.near_distance,
+        far_distance: star_settings.far_horizon_distance,
+        target_height_ratio: star_falloff.falloff_blur_radius_percent / 100.0,
+        ceiling_falloff_percent: star_falloff.falloff_distance_percent,
+        ceiling_target_alpha: star_falloff.falloff_opacity_percent / 100.0,
+        base_alpha_ratio: nameplate.base_transparency_percent / 100.0,
+        relative_falloff_percent: star_falloff.falloff_distance_percent
+            * nameplate.relative_falloff_distance_percent
+            / 100.0,
+        relative_target_alpha: nameplate.relative_falloff_transparency_percent / 100.0,
+        horizon_taper: MID_TO_HORIZON_FALLOFF_FACTOR,
+    }
+    .clamped()
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -448,6 +513,55 @@ mod tests {
     use super::*;
     use crate::generation::{run_generation, GenerationProfile};
     use crate::view_model::StudioGalaxyViewModel;
+
+    #[test]
+    fn nameplate_settings_clamp_to_the_supported_live_ranges() {
+        let clamped = StarNameplateSettings {
+            relative_width_percent: 250.0,
+            base_transparency_percent: -1.0,
+            relative_falloff_distance_percent: 2.0,
+            relative_falloff_transparency_percent: 101.0,
+        }
+        .clamped();
+
+        assert_eq!(clamped.relative_width_percent, 200.0);
+        assert_eq!(clamped.base_transparency_percent, 0.0);
+        assert_eq!(clamped.relative_falloff_distance_percent, 5.0);
+        assert_eq!(clamped.relative_falloff_transparency_percent, 100.0);
+    }
+
+    #[test]
+    fn nameplate_billboard_tracks_star_size_and_distance_settings() {
+        let star = test_billboard_settings(0.5, 80.0, 25.0, 40.0, StarRenderMode::BloomStarburst);
+        let nameplate = StarNameplateSettings {
+            relative_width_percent: 125.0,
+            base_transparency_percent: 75.0,
+            relative_falloff_distance_percent: 50.0,
+            relative_falloff_transparency_percent: 20.0,
+        };
+        let instance = StarBillboardInstance {
+            system_id: 7,
+            structural_col: 8,
+            structural_row: 9,
+            anchor_position: Vec3::new(1.0, 2.0, 3.0),
+            base_scale_variation: 4.0,
+            base_intensity_variation: 1.0,
+            selected: false,
+            hovered: false,
+        };
+
+        let billboard = star_nameplate_world_billboard(instance, &star, nameplate);
+
+        assert_eq!(billboard.anchor, instance.anchor_position);
+        assert_eq!(billboard.near_height, 6.0);
+        assert_eq!(billboard.width_ratio, 1.25);
+        assert_eq!(billboard.near_distance, 10.0);
+        assert_eq!(billboard.far_distance, 110.0);
+        assert_eq!(billboard.target_height_ratio, 0.25);
+        assert_eq!(billboard.base_alpha_ratio, 0.75);
+        assert_eq!(billboard.relative_falloff_percent, 40.0);
+        assert_eq!(billboard.relative_target_alpha, 0.2);
+    }
 
     #[test]
     fn star_render_meta_default_size_is_visible_at_overview() {

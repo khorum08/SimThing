@@ -8,6 +8,10 @@ publish = false
 [lib]
 doctest = false
 
+[features]
+default = []
+world-text-3d = ["bevy/bevy_pbr"]
+
 [dependencies]
 bevy = { version = "0.16", default-features = false, features = [
     "bevy_asset",

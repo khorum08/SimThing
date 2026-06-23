@@ -219,3 +219,14 @@ until the main/overlay-camera text path is built and verified on a real window.
    the egui camera-view extraction — before suspecting the scene or the camera transform.
 4. **Trust the bisect over the theory.** When "feature OFF ⇒ symptom gone" is reproducible, the cause is inside
    that feature's wiring; localize *which* system, don't merge a fix for an unproven mechanism.
+
+## Asset-store and world-text residency rules
+
+- In Bevy 0.16, do not call `app.init_asset::<T>()` merely to make plugin mounting idempotent. It replaces an
+  existing `Assets<T>` resource. Check `app.world().contains_resource::<Assets<T>>()` first, especially for
+  `Image`, because replacing the store drops loaded tonemapping LUTs and leaves stale handles downstream.
+- A galaxy-scale label field is one aggregate draw surface, not one render draw per label. Keep one persistent
+  GPU instance buffer, grow it only when capacity is insufficient, and upload only when the aggregate version
+  changes.
+- Dirty-gate shaping and atlas work on label/style/placement lifecycle changes. Camera motion belongs in the
+  vertex shader for camera-facing billboards and distance attenuation; it must not trigger CPU instance rebuilds.

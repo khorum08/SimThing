@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::hyperlane_buckets::HyperlaneRenderSettings;
 use crate::settings::PersistedCameraState;
-use crate::star_render::{StarFalloffSettings, StarRenderMode};
+use crate::star_render::{StarFalloffSettings, StarNameplateSettings, StarRenderMode};
 
 pub const STUDIO_CONFIG_FILE_NAME: &str = "simthing-studio-config.json";
 pub const STUDIO_CONFIG_TMP_SUFFIX: &str = "json.tmp";
@@ -22,6 +22,8 @@ pub struct SimThingStudioConfig {
     pub schema_version: u32,
     pub settings_dialog: SettingsDialogConfig,
     pub star_rendering: StarRenderConfig,
+    #[serde(default = "default_nameplate_render_config")]
+    pub nameplate_rendering: NameplateRenderConfig,
     pub hyperlane_rendering: HyperlaneRenderConfig,
     pub view: StudioViewConfig,
     pub camera: Option<StudioCameraConfig>,
@@ -40,6 +42,14 @@ pub struct StarRenderConfig {
     pub falloff_blur_radius_percent: f32,
     pub falloff_opacity_percent: f32,
     pub render_mode: StarRenderMode,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct NameplateRenderConfig {
+    pub relative_width_percent: f32,
+    pub base_transparency_percent: f32,
+    pub relative_falloff_distance_percent: f32,
+    pub relative_falloff_transparency_percent: f32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -99,6 +109,7 @@ pub enum StudioConfigError {
 impl Default for SimThingStudioConfig {
     fn default() -> Self {
         let star = StarFalloffSettings::default();
+        let nameplate = StarNameplateSettings::default();
         let hyperlane = HyperlaneRenderSettings::default();
         Self {
             schema_version: STUDIO_CONFIG_SCHEMA_VERSION,
@@ -107,6 +118,7 @@ impl Default for SimThingStudioConfig {
                 position: [520.0, 96.0],
             },
             star_rendering: StarRenderConfig::from_star_settings(star, StarRenderMode::default()),
+            nameplate_rendering: NameplateRenderConfig::from_nameplate_settings(nameplate),
             hyperlane_rendering: HyperlaneRenderConfig::from_hyperlane_settings(hyperlane),
             view: StudioViewConfig::default(),
             camera: Some(StudioCameraConfig::from_persisted(
@@ -150,6 +162,32 @@ impl StarRenderConfig {
             self.render_mode,
         )
     }
+}
+
+impl NameplateRenderConfig {
+    pub fn from_nameplate_settings(settings: StarNameplateSettings) -> Self {
+        let settings = settings.clamped();
+        Self {
+            relative_width_percent: settings.relative_width_percent,
+            base_transparency_percent: settings.base_transparency_percent,
+            relative_falloff_distance_percent: settings.relative_falloff_distance_percent,
+            relative_falloff_transparency_percent: settings.relative_falloff_transparency_percent,
+        }
+    }
+
+    pub fn to_nameplate_settings(self) -> StarNameplateSettings {
+        StarNameplateSettings {
+            relative_width_percent: self.relative_width_percent,
+            base_transparency_percent: self.base_transparency_percent,
+            relative_falloff_distance_percent: self.relative_falloff_distance_percent,
+            relative_falloff_transparency_percent: self.relative_falloff_transparency_percent,
+        }
+        .clamped()
+    }
+}
+
+fn default_nameplate_render_config() -> NameplateRenderConfig {
+    NameplateRenderConfig::from_nameplate_settings(StarNameplateSettings::default())
 }
 
 impl HyperlaneRenderConfig {
@@ -215,11 +253,16 @@ impl SimThingStudioConfig {
         SimThingStudioConfig::default().hyperlane_rendering
     }
 
+    pub fn nameplate_rendering_defaults() -> NameplateRenderConfig {
+        default_nameplate_render_config()
+    }
+
     pub fn from_presentation_state(
         settings_dialog_visible: bool,
         settings_dialog_position: [f32; 2],
         star_falloff: StarFalloffSettings,
         star_render_mode: StarRenderMode,
+        nameplate: StarNameplateSettings,
         hyperlane: HyperlaneRenderSettings,
         show_stars: bool,
         show_hyperlanes: bool,
@@ -233,6 +276,7 @@ impl SimThingStudioConfig {
                 position: settings_dialog_position,
             },
             star_rendering: StarRenderConfig::from_star_settings(star_falloff, star_render_mode),
+            nameplate_rendering: NameplateRenderConfig::from_nameplate_settings(nameplate),
             hyperlane_rendering: HyperlaneRenderConfig::from_hyperlane_settings(hyperlane),
             view: StudioViewConfig {
                 show_stars,
@@ -336,6 +380,14 @@ pub fn validate_and_normalize_studio_config(
         config.hyperlane_rendering = clamped_hyperlane;
     }
 
+    let clamped_nameplate = NameplateRenderConfig::from_nameplate_settings(
+        config.nameplate_rendering.clone().to_nameplate_settings(),
+    );
+    if clamped_nameplate != config.nameplate_rendering {
+        warnings.push("clamped nameplate rendering values to accepted bounds".to_string());
+        config.nameplate_rendering = clamped_nameplate;
+    }
+
     if !config.settings_dialog.position[0].is_finite()
         || !config.settings_dialog.position[1].is_finite()
     {
@@ -386,6 +438,14 @@ fn reject_non_finite_config(config: &SimThingStudioConfig) -> bool {
     {
         return true;
     }
+    let nameplate = &config.nameplate_rendering;
+    if !is_finite_f32(nameplate.relative_width_percent)
+        || !is_finite_f32(nameplate.base_transparency_percent)
+        || !is_finite_f32(nameplate.relative_falloff_distance_percent)
+        || !is_finite_f32(nameplate.relative_falloff_transparency_percent)
+    {
+        return true;
+    }
     if !is_finite_f32(config.settings_dialog.position[0])
         || !is_finite_f32(config.settings_dialog.position[1])
     {
@@ -428,6 +488,8 @@ pub fn apply_studio_config_to_editor_settings(
     let (star, mode) = config.star_rendering.clone().to_star_settings();
     settings.set_star_falloff_settings(star);
     settings.set_star_render_mode(mode);
+    settings
+        .set_star_nameplate_settings(config.nameplate_rendering.clone().to_nameplate_settings());
     settings
         .set_hyperlane_render_settings(config.hyperlane_rendering.clone().to_hyperlane_settings());
     if let Some(camera) = &config.camera {
@@ -489,6 +551,42 @@ mod tests {
             other => panic!("expected loaded config, got {other:?}"),
         };
         assert_eq!(loaded.star_rendering, config.star_rendering);
+    }
+
+    #[test]
+    fn studio_config_roundtrip_preserves_nameplate_settings() {
+        let mut config = SimThingStudioConfig::default();
+        config.nameplate_rendering =
+            NameplateRenderConfig::from_nameplate_settings(StarNameplateSettings {
+                relative_width_percent: 135.0,
+                base_transparency_percent: 72.0,
+                relative_falloff_distance_percent: 43.0,
+                relative_falloff_transparency_percent: 18.0,
+            });
+        let json = save_studio_config_to_string(&config).expect("serialize");
+        let loaded = match load_studio_config_from_str(&json).expect("load") {
+            StudioConfigLoadOutcome::Loaded { config, .. } => config,
+            other => panic!("expected loaded config, got {other:?}"),
+        };
+        assert_eq!(loaded.nameplate_rendering, config.nameplate_rendering);
+    }
+
+    #[test]
+    fn legacy_config_without_nameplates_uses_nameplate_defaults() {
+        let mut value = serde_json::to_value(SimThingStudioConfig::default()).expect("serialize");
+        value
+            .as_object_mut()
+            .expect("config object")
+            .remove("nameplate_rendering");
+        let json = serde_json::to_string(&value).expect("json");
+        let loaded = match load_studio_config_from_str(&json).expect("load") {
+            StudioConfigLoadOutcome::Loaded { config, .. } => config,
+            other => panic!("expected loaded config, got {other:?}"),
+        };
+        assert_eq!(
+            loaded.nameplate_rendering,
+            NameplateRenderConfig::from_nameplate_settings(StarNameplateSettings::default())
+        );
     }
 
     #[test]
@@ -594,6 +692,7 @@ mod tests {
                 falloff_opacity_percent: 30.0,
             },
             StarRenderMode::CrispCircle,
+            StarNameplateSettings::default(),
             HyperlaneRenderSettings::default(),
             true,
             false,
@@ -625,6 +724,7 @@ mod tests {
             [500.0, 80.0],
             StarFalloffSettings::default(),
             StarRenderMode::default(),
+            StarNameplateSettings::default(),
             HyperlaneRenderSettings::default(),
             true,
             true,
@@ -661,6 +761,7 @@ mod tests {
             [300.0, 200.0],
             StarFalloffSettings::default(),
             StarRenderMode::CrispCircle,
+            StarNameplateSettings::default(),
             HyperlaneRenderSettings::default(),
             false,
             true,
