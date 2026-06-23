@@ -7,8 +7,8 @@ PROBATION / presentation robustness fix — hyperlane ribbon meshes now rebuild 
 ## PR / branch / merge
 
 - Branch: `codex/studio-hyperlane-ribbon-camera-basis-sync-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #927
+- Merge: `07d6ce51db3fbdf3d695698ad61700f52281ca3b`
 
 ## Reproduction
 
