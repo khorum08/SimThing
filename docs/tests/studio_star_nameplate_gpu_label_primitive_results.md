@@ -2,9 +2,18 @@
 
 ## Status
 
-FIXED (pending owner visual smoke) — the GPU screen-label primitive now renders coherent text.
-Root cause was a vertex-attribute delivery defect in the 3D world-text pipeline, not LOD, star
-sizing, or the screen-affine math that #906–#913 kept tuning.
+CORRECTION (2026-06-23): this PR (#914, procedural glyph quad) fixed glyph-quad **geometry** but
+did **not** make the nameplates readable — they still rendered as dash debris. The true root cause
+was a **stale glyph-atlas bind group** sampling an empty texture, fixed in
+STUDIO-STAR-NAMEPLATE-ATLAS-RESIDENCY-0 (PR #915, merge `5a308161ea`). See
+`docs/tests/studio_star_nameplate_atlas_residency_results.md`. The #915 fix is what makes labels
+render as readable "SIM-00NNNN" text below each star; that PR also corrected a latent
+upside-down/above-the-star placement (`offset_px.y` sign). The text below describes the #914
+geometry change only.
+
+FIXED (geometry, superseded as the user-visible fix by #915) — the GPU screen-label primitive uses
+a procedural quad. The earlier claim that this alone produced "coherent text" was a
+misread of small/empty marks at overview zoom.
 
 ## PR / merge
 
