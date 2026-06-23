@@ -15,7 +15,7 @@ use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::{
     nearest_camera_star_disc_width_world, prepare_star_billboard_instances,
-    star_nameplate_world_billboard, StarBillboardInstance, StarBillboardRenderSettings,
+    star_nameplate_gpu_screen_label, StarBillboardInstance, StarBillboardRenderSettings,
     StarNameplateSettings,
 };
 use crate::starburst::{
@@ -147,7 +147,7 @@ pub fn rebuild_galaxy_scene(
                         [0.92, 0.96, 1.0, 1.0],
                     )
                     .with_render_mode(TextLabelRenderMode::Raster),
-                    star_nameplate_world_billboard(
+                    star_nameplate_gpu_screen_label(
                         star,
                         &billboard_settings,
                         StarNameplateSettings::default(),
@@ -321,7 +321,7 @@ pub(super) fn sync_star_nameplate_settings_system(
     let star_settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
     for (nameplate, mut placement) in &mut nameplates {
         let next =
-            star_nameplate_world_billboard(nameplate.instance, &star_settings, key.nameplate);
+            star_nameplate_gpu_screen_label(nameplate.instance, &star_settings, key.nameplate);
         if *placement != next {
             *placement = next;
         }
@@ -348,11 +348,11 @@ pub(super) fn sync_star_nameplate_focus_system(
         let next_focused = selected || hovered;
         if nameplate.instance.selected != selected
             || nameplate.instance.hovered != hovered
-            || placement.screen_companion_focused != next_focused
+            || placement.gpu_screen_label_focused != next_focused
         {
             nameplate.instance.selected = selected;
             nameplate.instance.hovered = hovered;
-            placement.screen_companion_focused = next_focused;
+            placement.gpu_screen_label_focused = next_focused;
         }
     }
 }

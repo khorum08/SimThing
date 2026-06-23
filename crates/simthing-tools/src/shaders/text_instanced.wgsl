@@ -178,7 +178,11 @@ fn world_axis_span_screen_px(world_pos: vec3<f32>, axis: vec3<f32>, span: f32) -
 }
 
 fn is_screen_companion_mode(mode_or_taper: f32) -> bool {
-    return mode_or_taper < -0.5;
+    return mode_or_taper < -0.5 && mode_or_taper >= -1.5;
+}
+
+fn is_gpu_screen_label_mode(mode_or_taper: f32) -> bool {
+    return mode_or_taper < -1.5;
 }
 
 fn clip_from_screen_px_offset(anchor_clip: vec4<f32>, offset_px: vec2<f32>) -> vec4<f32> {
@@ -241,18 +245,30 @@ fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> ve
 @vertex
 fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     var out: VertexOutput;
-    let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
-    let path_slot = u32(clamp(instance.path_params.x, 0.0, 15.0));
-    let warp_slot = u32(clamp(instance.warp_params.x, 0.0, 15.0));
     let source_uv = vertex.uv;
-    let deformed_uv = apply_parametric_deform(source_uv, deform_slot);
-    let path_u = instance.path_params.y + source_uv.x * instance.path_params.z;
-    var local_xy = deformed_uv * instance.pos_size.zw + instance.pos_size.xy;
-    local_xy = apply_text_path(local_xy, path_slot, path_u);
-    local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
 #ifdef WORLD_TEXT
+    let placement_mode = instance.size_params.w;
+    let gpu_screen_label = is_gpu_screen_label_mode(placement_mode);
+    let screen_companion = is_screen_companion_mode(placement_mode);
+
+    var local_xy: vec2<f32>;
+    if gpu_screen_label {
+        // GPU screen-label: raw label-local glyph quad coords — no deform/path/warp on position.
+        local_xy = source_uv * instance.pos_size.zw + instance.pos_size.xy;
+    } else {
+        let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
+        let path_slot = u32(clamp(instance.path_params.x, 0.0, 15.0));
+        let warp_slot = u32(clamp(instance.warp_params.x, 0.0, 15.0));
+        let deformed_uv = apply_parametric_deform(source_uv, deform_slot);
+        let path_u = instance.path_params.y + source_uv.x * instance.path_params.z;
+        local_xy = deformed_uv * instance.pos_size.zw + instance.pos_size.xy;
+        local_xy = apply_text_path(local_xy, path_slot, path_u);
+        local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
+    }
+
     const HORIZON_TAPER: f32 = 0.75;
     const NAMEPLATE_HEIGHT_RATIO: f32 = 1.0;
+    const MIN_SELECTED_READABLE_PX: f32 = 16.0;
 
     let anchor = instance.anchor_height.xyz;
     let camera_distance = length(view.world_position.xyz - anchor);
@@ -262,8 +278,11 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         0.0,
         1.0,
     ) * 100.0;
-    let screen_companion = is_screen_companion_mode(instance.size_params.w);
-    let horizon_taper = select(instance.size_params.w, HORIZON_TAPER, screen_companion);
+    let horizon_taper = select(
+        instance.size_params.w,
+        HORIZON_TAPER,
+        gpu_screen_label || screen_companion,
+    );
     let target_height_ratio = instance.style_params.y;
     let height_ratio = distance_falloff(
         depth_percent,
@@ -275,7 +294,7 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     // anchor_height.w = near rendered star visual envelope (world units).
     let star_visual_world = instance.anchor_height.w * height_ratio;
     let star_visual_height_px = world_axis_span_screen_px(anchor, up, star_visual_world);
-    let label_height_px = star_visual_height_px * NAMEPLATE_HEIGHT_RATIO;
+    var label_height_px = star_visual_height_px * NAMEPLATE_HEIGHT_RATIO;
     let falloff_alpha = world_text_falloff_alpha(
         depth_percent,
         instance.distance_params,
@@ -289,7 +308,46 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     let force_all_labels = min_unselected_px < 0.5 && min_focused_px < 0.5;
     let focused = instance.size_params.z > 0.5;
 
-    if screen_companion {
+    if gpu_screen_label {
+        let anchor_clip = position_world_to_clip(anchor);
+        var culled = false;
+        var effective_label_height_px = label_height_px;
+        if focused && effective_label_height_px < MIN_SELECTED_READABLE_PX {
+            effective_label_height_px = MIN_SELECTED_READABLE_PX;
+        }
+        if !force_all_labels {
+            if !focused {
+                if effective_label_height_px < min_unselected_px {
+                    culled = true;
+                }
+                if unselected_global_alpha < 0.5 {
+                    culled = true;
+                }
+            } else if effective_label_height_px < min_focused_px {
+                culled = true;
+            }
+            let clip_w = max(abs(anchor_clip.w), 0.0001);
+            if abs(anchor_clip.x) > clip_w || abs(anchor_clip.y) > clip_w {
+                culled = true;
+            }
+            if falloff_alpha < 0.02 {
+                culled = true;
+            }
+        }
+        if culled {
+            out.clip_position = vec4(0.0, 0.0, -1.0, 1.0);
+            out.color = vec4(instance.color.rgb, 0.0);
+        } else {
+            let gap_px = instance.size_params.y * effective_label_height_px;
+            // Contract A: local_xy.x spans natural run aspect; width_ratio scales horizontal extent only.
+            let offset_px = vec2(
+                local_xy.x * effective_label_height_px * instance.size_params.x,
+                -star_visual_height_px * 0.5 - gap_px - (0.5 - local_xy.y) * effective_label_height_px,
+            );
+            out.clip_position = clip_from_screen_px_offset(anchor_clip, offset_px);
+            out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);
+        }
+    } else if screen_companion {
         let anchor_clip = position_world_to_clip(anchor);
         var culled = false;
         if !force_all_labels {
@@ -304,7 +362,7 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
             if abs(anchor_clip.x) > clip_w || abs(anchor_clip.y) > clip_w {
                 culled = true;
             }
-            if falloff_alpha < 0.01 {
+            if falloff_alpha < 0.02 {
                 culled = true;
             }
         }
@@ -313,7 +371,6 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
             out.color = vec4(instance.color.rgb, 0.0);
         } else {
             let gap_px = instance.size_params.y * label_height_px;
-            // Contract A: local_xy.x already spans natural run aspect; width_ratio is x-scale only.
             let offset_px = vec2(
                 local_xy.x * label_height_px * instance.size_params.x,
                 -star_visual_height_px * 0.5 - gap_px - (0.5 - local_xy.y) * label_height_px,
@@ -333,6 +390,14 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         out.color = vec4(instance.color.rgb, instance.color.a * falloff_alpha);
     }
 #else
+    let deform_slot = u32(clamp(instance.deform_params.x, 0.0, 31.0));
+    let path_slot = u32(clamp(instance.path_params.x, 0.0, 15.0));
+    let warp_slot = u32(clamp(instance.warp_params.x, 0.0, 15.0));
+    let deformed_uv = apply_parametric_deform(source_uv, deform_slot);
+    let path_u = instance.path_params.y + source_uv.x * instance.path_params.z;
+    var local_xy = deformed_uv * instance.pos_size.zw + instance.pos_size.xy;
+    local_xy = apply_text_path(local_xy, path_slot, path_u);
+    local_xy = apply_warp_field(local_xy, warp_slot, source_uv);
     let local = vec4(local_xy, 0.0, 1.0);
     out.clip_position = mesh2d_position_local_to_clip(identity_mat4(), local);
     out.color = instance.color;

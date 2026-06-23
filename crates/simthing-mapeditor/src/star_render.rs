@@ -30,8 +30,8 @@ pub const MID_TO_HORIZON_FALLOFF_FACTOR: f32 = 0.75;
 pub const MIN_LEGIBLE_NAMEPLATE_PX: f32 = 18.0;
 /// Hard readability cutoff for unselected star nameplates.
 pub const MIN_UNSELECTED_LABEL_HEIGHT_PX: f32 = 24.0;
-/// Lower readability cutoff for selected or hovered star nameplates.
-pub const MIN_FOCUSED_LABEL_HEIGHT_PX: f32 = 12.0;
+/// Lower readability cutoff for selected or hovered star nameplates (shader may bump to this minimum).
+pub const MIN_FOCUSED_LABEL_HEIGHT_PX: f32 = 16.0;
 /// Maximum unselected labels before global density gate hides them.
 pub const MAX_OVERVIEW_LABELS: usize = 250;
 /// Maximum estimated label coverage fraction before global density gate.
@@ -292,12 +292,13 @@ pub fn nameplate_label_passes_readability_gate(
     if debug_mode == StarNameplateDebugMode::ForceAll {
         return true;
     }
+    let effective = nameplate_effective_label_height_px(label_height_px, focused);
     let min_height = if focused {
         MIN_FOCUSED_LABEL_HEIGHT_PX
     } else {
         MIN_UNSELECTED_LABEL_HEIGHT_PX
     };
-    label_height_px >= min_height
+    effective >= min_height
 }
 
 pub fn nameplate_label_passes_density_gate(
@@ -382,7 +383,7 @@ pub fn nameplate_near_label_height_world(
     star_nameplate_visual_envelope_near_world(instance, star_settings)
 }
 
-pub fn star_nameplate_world_billboard(
+pub fn star_nameplate_gpu_screen_label(
     instance: StarBillboardInstance,
     star_settings: &StarBillboardRenderSettings,
     nameplate_settings: StarNameplateSettings,
@@ -407,10 +408,19 @@ pub fn star_nameplate_world_billboard(
             / 100.0,
         relative_target_alpha: nameplate.relative_falloff_transparency_percent / 100.0,
         horizon_taper: MID_TO_HORIZON_FALLOFF_FACTOR,
-        placement_mode: WorldTextPlacementMode::ScreenCompanion,
-        screen_companion_focused: instance.selected || instance.hovered,
+        placement_mode: WorldTextPlacementMode::GpuScreenLabel,
+        gpu_screen_label_focused: instance.selected || instance.hovered,
     }
     .clamped()
+}
+
+/// Effective label height after focused minimum-readable bump (mirrors GPU screen-label shader).
+pub fn nameplate_effective_label_height_px(projected_height_px: f32, focused: bool) -> f32 {
+    if focused {
+        projected_height_px.max(MIN_FOCUSED_LABEL_HEIGHT_PX)
+    } else {
+        projected_height_px
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -742,6 +752,7 @@ mod tests {
             true,
             StarNameplateDebugMode::AutoLod
         ));
+        assert_eq!(nameplate_effective_label_height_px(14.0, true), 16.0);
     }
 
     #[test]
@@ -817,7 +828,7 @@ mod tests {
             hovered: false,
         };
 
-        let billboard = star_nameplate_world_billboard(instance, &star, nameplate);
+        let billboard = star_nameplate_gpu_screen_label(instance, &star, nameplate);
 
         assert_eq!(billboard.anchor, instance.anchor_position);
         assert_eq!(
@@ -833,7 +844,7 @@ mod tests {
         assert_eq!(billboard.relative_target_alpha, 0.2);
         assert_eq!(
             billboard.placement_mode,
-            WorldTextPlacementMode::ScreenCompanion
+            WorldTextPlacementMode::GpuScreenLabel
         );
     }
 

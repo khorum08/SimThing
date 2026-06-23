@@ -6,15 +6,16 @@ use bevy::prelude::*;
 use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
 use bevy::window::{PresentMode, PrimaryWindow, Window};
 use simthing_tools::{
-    natural_run_aspect_from_glyphs, TextGlyphInstances, WorldTextBillboard,
-    WorldTextNameplateLodPatch, WorldTextPlacementMode,
+    natural_run_aspect_from_glyphs, normalized_label_local_x_range_from_glyphs, GlyphInstanceGpu,
+    TextGlyphInstances, WorldTextBillboard, WorldTextNameplateLodPatch, WorldTextPlacementMode,
 };
 
 use crate::star_render::{
     compute_star_falloff_visual, estimate_world_vertical_span_screen_px,
-    nameplate_label_passes_density_gate, nameplate_label_passes_readability_gate,
-    nameplate_unselected_global_lod_alpha, normalized_billboard_camera_depth_percent,
-    star_nameplate_envelope_height_ratio, StarBillboardRenderSettings, StarNameplateDebugMode,
+    nameplate_effective_label_height_px, nameplate_label_passes_density_gate,
+    nameplate_label_passes_readability_gate, nameplate_unselected_global_lod_alpha,
+    normalized_billboard_camera_depth_percent, star_nameplate_envelope_height_ratio,
+    StarBillboardInstance, StarBillboardRenderSettings, StarNameplateDebugMode,
     MIN_FOCUSED_LABEL_HEIGHT_PX, MIN_UNSELECTED_LABEL_HEIGHT_PX,
 };
 use crate::studio_frame_phase_gpu_telemetry::{
@@ -172,6 +173,48 @@ pub fn update_studio_vram_telemetry(
     state.telemetry.vram_scan_last_ms = Some(started.elapsed().as_secs_f64() * 1000.0);
 }
 
+const NAMEPLATE_ALPHA_ZERO_THRESHOLD: f32 = 0.02;
+
+fn nameplate_cull_reason(
+    projected_height: f32,
+    focused: bool,
+    final_alpha: f32,
+    offscreen: bool,
+    debug_mode: StarNameplateDebugMode,
+    unselected_global_alpha: f32,
+) -> Option<String> {
+    if debug_mode == StarNameplateDebugMode::ForceAll {
+        return None;
+    }
+    if offscreen {
+        return Some("offscreen".into());
+    }
+    if final_alpha < NAMEPLATE_ALPHA_ZERO_THRESHOLD {
+        return Some("alpha_zero".into());
+    }
+    if !nameplate_label_passes_readability_gate(projected_height, focused, debug_mode) {
+        return Some("too_small".into());
+    }
+    if !nameplate_label_passes_density_gate(focused, unselected_global_alpha, debug_mode) {
+        return Some("over_density".into());
+    }
+    None
+}
+
+fn world_anchor_to_screen_px(
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+    anchor: Vec3,
+    viewport_width: f32,
+    viewport_height: f32,
+) -> Option<[f32; 2]> {
+    let ndc = camera.world_to_ndc(camera_transform, anchor)?;
+    Some([
+        (ndc.x * 0.5 + 0.5) * viewport_width,
+        (1.0 - ndc.y) * 0.5 * viewport_height,
+    ])
+}
+
 pub fn update_nameplate_diagnostics_system(
     state: Res<StudioAppState>,
     camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
@@ -189,7 +232,7 @@ pub fn update_nameplate_diagnostics_system(
 ) {
     let debug_mode = state.star_nameplate_debug_mode;
     let mut glyph_instances = 0u64;
-    let mut screen_companion_count = 0usize;
+    let mut gpu_screen_label_count = 0usize;
     let mut culled_too_small_count = 0usize;
     let mut culled_over_density_count = 0usize;
     let mut culled_alpha_zero_count = 0usize;
@@ -204,15 +247,28 @@ pub fn update_nameplate_diagnostics_system(
     let mut sample_label_height_px = 24.0_f32;
     let mut sample_label_width_px = 96.0_f32;
 
+    let mut selected_sample: Option<(
+        StarBillboardInstance,
+        WorldTextBillboard,
+        Option<Vec<GlyphInstanceGpu>>,
+    )> = None;
+
     for (nameplate, billboard, glyphs) in &nameplates {
-        if billboard.placement_mode == WorldTextPlacementMode::ScreenCompanion {
-            screen_companion_count += 1;
+        if billboard.placement_mode == WorldTextPlacementMode::GpuScreenLabel {
+            gpu_screen_label_count += 1;
         }
         if let Some(glyphs) = glyphs {
             glyph_instances = glyph_instances.saturating_add(glyphs.0.len() as u64);
             if sample_run_aspect.is_none() {
                 sample_run_aspect = Some(natural_run_aspect_from_glyphs(&glyphs.0));
             }
+        }
+        if state.selection.selected_system_id == Some(nameplate.instance.system_id) {
+            selected_sample = Some((nameplate.instance, *billboard, glyphs.map(|g| g.0.clone())));
+        } else if selected_sample.is_none()
+            && state.selection.hovered_system_id == Some(nameplate.instance.system_id)
+        {
+            selected_sample = Some((nameplate.instance, *billboard, glyphs.map(|g| g.0.clone())));
         }
         if sample_billboard.is_none() {
             sample_billboard = Some(*billboard);
@@ -222,7 +278,7 @@ pub fn update_nameplate_diagnostics_system(
 
     telemetry_state.telemetry.nameplate_count = nameplates.iter().count();
     telemetry_state.telemetry.nameplate_glyph_instances = glyph_instances;
-    telemetry_state.telemetry.nameplate_screen_companion_count = screen_companion_count;
+    telemetry_state.telemetry.nameplate_gpu_screen_label_count = gpu_screen_label_count;
     telemetry_state.telemetry.nameplate_natural_run_aspect = sample_run_aspect;
     telemetry_state.telemetry.nameplate_min_unselected_label_px = MIN_UNSELECTED_LABEL_HEIGHT_PX;
     telemetry_state.telemetry.nameplate_min_focused_label_px = MIN_FOCUSED_LABEL_HEIGHT_PX;
@@ -252,6 +308,22 @@ pub fn update_nameplate_diagnostics_system(
             .telemetry
             .nameplate_focused_visible_after_lod = 0;
         telemetry_state.telemetry.nameplate_label_coverage_estimate = 0.0;
+        telemetry_state.telemetry.nameplate_selected_star_id = None;
+        telemetry_state.telemetry.nameplate_selected_anchor_px = None;
+        telemetry_state
+            .telemetry
+            .nameplate_selected_projected_diameter_px = None;
+        telemetry_state.telemetry.nameplate_selected_label_height_px = None;
+        telemetry_state.telemetry.nameplate_selected_local_x_min = None;
+        telemetry_state.telemetry.nameplate_selected_local_x_max = None;
+        telemetry_state
+            .telemetry
+            .nameplate_selected_computed_width_px = None;
+        telemetry_state.telemetry.nameplate_selected_final_alpha = None;
+        telemetry_state.telemetry.nameplate_selected_cull_reason = None;
+        telemetry_state.telemetry.nameplate_drawn_labels = 0;
+        telemetry_state.telemetry.nameplate_focused_labels_drawn = 0;
+        telemetry_state.telemetry.nameplate_glyph_instances_drawn = 0;
         telemetry_state.telemetry.nameplate_global_lod_alpha = 1.0;
         *lod_patch = {
             let lg = debug_mode.lod_globals(1.0);
@@ -321,14 +393,14 @@ pub fn update_nameplate_diagnostics_system(
     }
 
     let auto_density_alpha = nameplate_unselected_global_lod_alpha(
-        screen_companion_count,
+        gpu_screen_label_count,
         sample_label_height_px,
         sample_label_width_px,
         viewport_area_px,
     );
     let lod_globals = debug_mode.lod_globals(auto_density_alpha);
     telemetry_state.telemetry.nameplate_global_lod_alpha = lod_globals.unselected_global_alpha;
-    telemetry_state.telemetry.nameplate_label_coverage_estimate = screen_companion_count as f32
+    telemetry_state.telemetry.nameplate_label_coverage_estimate = gpu_screen_label_count as f32
         * sample_label_height_px.max(0.0)
         * sample_label_width_px.max(0.0)
         / viewport_area_px.max(1.0);
@@ -339,11 +411,11 @@ pub fn update_nameplate_diagnostics_system(
     };
 
     for (nameplate, billboard, glyphs) in &nameplates {
-        if billboard.placement_mode != WorldTextPlacementMode::ScreenCompanion {
+        if billboard.placement_mode != WorldTextPlacementMode::GpuScreenLabel {
             continue;
         }
         let instance = nameplate.instance;
-        let focused = billboard.screen_companion_focused;
+        let focused = billboard.gpu_screen_label_focused;
         let distance = camera_pos.distance(instance.anchor_position);
         let depth_percent = normalized_billboard_camera_depth_percent(distance, &star_settings);
         let height_ratio =
@@ -384,7 +456,7 @@ pub fn update_nameplate_diagnostics_system(
                 culled_over_density_count += 1;
                 culled = true;
             }
-            if final_alpha < 0.01 {
+            if final_alpha < NAMEPLATE_ALPHA_ZERO_THRESHOLD {
                 culled_alpha_zero_count += 1;
                 culled = true;
             }
@@ -423,6 +495,78 @@ pub fn update_nameplate_diagnostics_system(
     telemetry_state
         .telemetry
         .nameplate_focused_visible_after_lod = focused_visible_after_lod;
+    telemetry_state.telemetry.nameplate_drawn_labels = visible_label_estimate;
+    telemetry_state.telemetry.nameplate_focused_labels_drawn = focused_visible_after_lod;
+    telemetry_state.telemetry.nameplate_glyph_instances_drawn = visible_glyph_estimate;
+
+    if let Some((instance, billboard, glyph_list)) = selected_sample {
+        let distance = camera_pos.distance(instance.anchor_position);
+        let depth_percent = normalized_billboard_camera_depth_percent(distance, &star_settings);
+        let height_ratio =
+            star_nameplate_envelope_height_ratio(instance, &star_settings, depth_percent);
+        let envelope_world = billboard.visual_envelope_world_height * height_ratio;
+        let projected_diameter = estimate_world_vertical_span_screen_px(
+            instance.anchor_position,
+            camera_pos,
+            envelope_world,
+            viewport_height,
+        );
+        let effective_height = nameplate_effective_label_height_px(projected_diameter, true);
+        let (local_x_min, local_x_max) = glyph_list
+            .as_ref()
+            .map(|g| normalized_label_local_x_range_from_glyphs(g))
+            .unwrap_or((0.0, 0.0));
+        let computed_width =
+            (local_x_max - local_x_min).max(0.0) * effective_height * billboard.width_ratio;
+        let star_falloff =
+            compute_star_falloff_visual(depth_percent, star_settings.falloff_settings());
+        let final_alpha = billboard.base_alpha_ratio
+            * star_falloff.opacity.clamp(0.0, 1.0)
+            * billboard.relative_target_alpha.max(0.0).min(1.0);
+        let offscreen = camera
+            .world_to_ndc(camera_transform, instance.anchor_position)
+            .is_none_or(|ndc| ndc.x.abs() > 1.0 || ndc.y.abs() > 1.0 || ndc.z > 1.0);
+        telemetry_state.telemetry.nameplate_selected_star_id = Some(instance.system_id);
+        telemetry_state.telemetry.nameplate_selected_anchor_px = world_anchor_to_screen_px(
+            camera,
+            camera_transform,
+            instance.anchor_position,
+            viewport_width,
+            viewport_height,
+        );
+        telemetry_state
+            .telemetry
+            .nameplate_selected_projected_diameter_px = Some(projected_diameter);
+        telemetry_state.telemetry.nameplate_selected_label_height_px = Some(effective_height);
+        telemetry_state.telemetry.nameplate_selected_local_x_min = Some(local_x_min);
+        telemetry_state.telemetry.nameplate_selected_local_x_max = Some(local_x_max);
+        telemetry_state
+            .telemetry
+            .nameplate_selected_computed_width_px = Some(computed_width);
+        telemetry_state.telemetry.nameplate_selected_final_alpha = Some(final_alpha);
+        telemetry_state.telemetry.nameplate_selected_cull_reason = nameplate_cull_reason(
+            projected_diameter,
+            true,
+            final_alpha,
+            offscreen,
+            debug_mode,
+            lod_globals.unselected_global_alpha,
+        );
+    } else {
+        telemetry_state.telemetry.nameplate_selected_star_id = None;
+        telemetry_state.telemetry.nameplate_selected_anchor_px = None;
+        telemetry_state
+            .telemetry
+            .nameplate_selected_projected_diameter_px = None;
+        telemetry_state.telemetry.nameplate_selected_label_height_px = None;
+        telemetry_state.telemetry.nameplate_selected_local_x_min = None;
+        telemetry_state.telemetry.nameplate_selected_local_x_max = None;
+        telemetry_state
+            .telemetry
+            .nameplate_selected_computed_width_px = None;
+        telemetry_state.telemetry.nameplate_selected_final_alpha = None;
+        telemetry_state.telemetry.nameplate_selected_cull_reason = None;
+    }
 }
 
 /// Copies render-subapp adapter identity into main-world telemetry after renderer init.

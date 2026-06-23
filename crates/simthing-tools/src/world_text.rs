@@ -15,7 +15,7 @@ pub struct WorldTextNameplateLodPatch {
 impl Default for WorldTextNameplateLodPatch {
     fn default() -> Self {
         Self {
-            min_focused_px: 12.0,
+            min_focused_px: GPU_SCREEN_LABEL_MIN_SELECTED_HEIGHT_PX,
             unselected_global_alpha: 1.0,
             min_unselected_px: 24.0,
         }
@@ -24,12 +24,19 @@ impl Default for WorldTextNameplateLodPatch {
 
 /// GPU sentinel written to `size_params.w` for [`WorldTextPlacementMode::ScreenCompanion`].
 pub const WORLD_TEXT_SCREEN_COMPANION_MODE: f32 = -1.0;
+/// GPU sentinel for [`WorldTextPlacementMode::GpuScreenLabel`] — clean 2D screen affine, no deform.
+pub const WORLD_TEXT_GPU_SCREEN_LABEL_MODE: f32 = -2.0;
+/// Minimum readable height (px) for selected/hovered GPU screen labels in the shader.
+pub const GPU_SCREEN_LABEL_MIN_SELECTED_HEIGHT_PX: f32 = 16.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum WorldTextPlacementMode {
     #[default]
     WorldPerspective,
+    /// Legacy screen-companion path (deform-capable); prefer [`Self::GpuScreenLabel`] for UI-like labels.
     ScreenCompanion,
+    /// Clean GPU screen-label: one affine screen transform, no deform/path/warp on glyph positions.
+    GpuScreenLabel,
 }
 
 /// Generic world-space placement for an instanced, camera-facing text label.
@@ -52,8 +59,8 @@ pub struct WorldTextBillboard {
     pub relative_target_alpha: f32,
     pub horizon_taper: f32,
     pub placement_mode: WorldTextPlacementMode,
-    /// Screen-companion only: selected or hovered labels use the focused readability threshold.
-    pub screen_companion_focused: bool,
+    /// GPU screen-label mode: selected or hovered labels use the focused readability threshold.
+    pub gpu_screen_label_focused: bool,
 }
 
 impl WorldTextBillboard {
@@ -75,7 +82,7 @@ impl WorldTextBillboard {
             relative_target_alpha: self.relative_target_alpha.clamp(0.0, 1.0),
             horizon_taper: self.horizon_taper.clamp(0.0, 1.0),
             placement_mode: self.placement_mode,
-            screen_companion_focused: self.screen_companion_focused,
+            gpu_screen_label_focused: self.gpu_screen_label_focused,
         }
     }
 }
@@ -98,7 +105,7 @@ impl Default for WorldTextBillboard {
             relative_target_alpha: 0.5,
             horizon_taper: DEFAULT_WORLD_TEXT_HORIZON_TAPER,
             placement_mode: WorldTextPlacementMode::WorldPerspective,
-            screen_companion_focused: false,
+            gpu_screen_label_focused: false,
         }
     }
 }
@@ -179,6 +186,39 @@ pub fn natural_run_aspect_from_glyphs(glyphs: &[GlyphInstanceGpu]) -> f32 {
     ((max_x - min_x) / run_height).clamp(0.01, 32.0)
 }
 
+/// Normalized label-local x range after run-height centering (matches GPU screen-label shader contract).
+pub fn normalized_label_local_x_range_from_glyphs(glyphs: &[GlyphInstanceGpu]) -> (f32, f32) {
+    if glyphs.is_empty() {
+        return (0.0, 0.0);
+    }
+    let min_y = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[1])
+        .fold(f32::INFINITY, f32::min);
+    let max_y = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[1] + glyph.pos_size[3])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let min_x = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[0])
+        .fold(f32::INFINITY, f32::min);
+    let max_x = glyphs
+        .iter()
+        .map(|glyph| glyph.pos_size[0] + glyph.pos_size[2])
+        .fold(f32::NEG_INFINITY, f32::max);
+    let run_height = (max_y - min_y).max(1.0);
+    let run_center_x = (min_x + max_x) * 0.5;
+    let mut local_min = f32::INFINITY;
+    let mut local_max = f32::NEG_INFINITY;
+    for glyph in glyphs {
+        local_min = local_min.min((glyph.pos_size[0] - run_center_x) / run_height);
+        local_max =
+            local_max.max((glyph.pos_size[0] + glyph.pos_size[2] - run_center_x) / run_height);
+    }
+    (local_min, local_max)
+}
+
 pub fn build_world_glyph_instances(
     glyphs: &[GlyphInstanceGpu],
     placement: WorldTextBillboard,
@@ -206,9 +246,18 @@ pub fn build_world_glyph_instances(
     let run_height = (max_y - min_y).max(1.0);
     let run_center_x = (min_x + max_x) * 0.5;
     let (anchor_height_w, size_z, size_w) = match placement.placement_mode {
+        WorldTextPlacementMode::GpuScreenLabel => (
+            placement.visual_envelope_world_height,
+            if placement.gpu_screen_label_focused {
+                1.0
+            } else {
+                0.0
+            },
+            WORLD_TEXT_GPU_SCREEN_LABEL_MODE,
+        ),
         WorldTextPlacementMode::ScreenCompanion => (
             placement.visual_envelope_world_height,
-            if placement.screen_companion_focused {
+            if placement.gpu_screen_label_focused {
                 1.0
             } else {
                 0.0
@@ -895,10 +944,26 @@ mod tests {
         assert!((world[0].anchor_height[3] - 3.5).abs() < f32::EPSILON);
 
         let focused = WorldTextBillboard {
-            screen_companion_focused: true,
+            gpu_screen_label_focused: true,
             ..placement
         };
         let world_focused = build_world_glyph_instances(&glyphs, focused);
         assert_eq!(world_focused[0].size_params[2], 1.0);
+    }
+
+    #[test]
+    fn gpu_screen_label_mode_packs_visual_envelope_and_mode_sentinel() {
+        let glyphs = vec![GlyphInstanceGpu {
+            pos_size: [0.0, 0.0, 10.0, 20.0],
+            ..Default::default()
+        }];
+        let placement = WorldTextBillboard {
+            placement_mode: WorldTextPlacementMode::GpuScreenLabel,
+            visual_envelope_world_height: 3.5,
+            ..Default::default()
+        };
+        let world = build_world_glyph_instances(&glyphs, placement);
+        assert_eq!(world[0].size_params[3], WORLD_TEXT_GPU_SCREEN_LABEL_MODE);
+        assert!((world[0].anchor_height[3] - 3.5).abs() < f32::EPSILON);
     }
 }

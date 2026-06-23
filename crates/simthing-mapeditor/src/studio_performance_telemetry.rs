@@ -73,7 +73,10 @@ pub struct StudioPerformanceTelemetry {
 
     pub nameplate_count: usize,
     pub nameplate_glyph_instances: u64,
-    pub nameplate_screen_companion_count: usize,
+    pub nameplate_gpu_screen_label_count: usize,
+    pub nameplate_drawn_labels: usize,
+    pub nameplate_focused_labels_drawn: usize,
+    pub nameplate_glyph_instances_drawn: u64,
     pub nameplate_natural_run_aspect: Option<f32>,
     pub nameplate_star_visual_envelope_world: Option<f32>,
     pub nameplate_projected_star_visual_height_px: Option<f32>,
@@ -92,6 +95,15 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_culled_over_density_count: usize,
     pub nameplate_culled_alpha_zero_count: usize,
     pub nameplate_culled_offscreen_count: usize,
+    pub nameplate_selected_star_id: Option<u32>,
+    pub nameplate_selected_anchor_px: Option<[f32; 2]>,
+    pub nameplate_selected_projected_diameter_px: Option<f32>,
+    pub nameplate_selected_label_height_px: Option<f32>,
+    pub nameplate_selected_local_x_min: Option<f32>,
+    pub nameplate_selected_local_x_max: Option<f32>,
+    pub nameplate_selected_computed_width_px: Option<f32>,
+    pub nameplate_selected_final_alpha: Option<f32>,
+    pub nameplate_selected_cull_reason: Option<String>,
 
     pub vram_scan_last_ms: Option<f64>,
 }
@@ -155,7 +167,10 @@ impl Default for StudioPerformanceTelemetry {
             picking_projection_avg_ms: None,
             nameplate_count: 0,
             nameplate_glyph_instances: 0,
-            nameplate_screen_companion_count: 0,
+            nameplate_gpu_screen_label_count: 0,
+            nameplate_drawn_labels: 0,
+            nameplate_focused_labels_drawn: 0,
+            nameplate_glyph_instances_drawn: 0,
             nameplate_natural_run_aspect: None,
             nameplate_star_visual_envelope_world: None,
             nameplate_projected_star_visual_height_px: None,
@@ -168,12 +183,21 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_unselected_visible_after_lod: 0,
             nameplate_focused_visible_after_lod: 0,
             nameplate_min_unselected_label_px: 24.0,
-            nameplate_min_focused_label_px: 12.0,
+            nameplate_min_focused_label_px: 16.0,
             nameplate_label_coverage_estimate: 0.0,
             nameplate_global_lod_alpha: 1.0,
             nameplate_culled_over_density_count: 0,
             nameplate_culled_alpha_zero_count: 0,
             nameplate_culled_offscreen_count: 0,
+            nameplate_selected_star_id: None,
+            nameplate_selected_anchor_px: None,
+            nameplate_selected_projected_diameter_px: None,
+            nameplate_selected_label_height_px: None,
+            nameplate_selected_local_x_min: None,
+            nameplate_selected_local_x_max: None,
+            nameplate_selected_computed_width_px: None,
+            nameplate_selected_final_alpha: None,
+            nameplate_selected_cull_reason: None,
             vram_scan_last_ms: None,
         }
     }
@@ -274,11 +298,78 @@ fn format_timing_ms(value: Option<f64>) -> String {
 /// Nameplate debug subsection for the Telemetry dialog.
 pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
     vec![
+        "Renderer: simthing-tools GPU screen-label".into(),
         format!(
-            "Labels: {} | glyph instances: {} | screen companion: {}",
+            "Candidate labels: {} | drawn labels: {} | focused drawn: {}",
             telemetry.nameplate_count,
+            telemetry.nameplate_drawn_labels,
+            telemetry.nameplate_focused_labels_drawn,
+        ),
+        format!(
+            "Glyph instances: {} | glyph instances drawn: {} | GPU_SCREEN_LABEL: {}",
             telemetry.nameplate_glyph_instances,
-            telemetry.nameplate_screen_companion_count,
+            telemetry.nameplate_glyph_instances_drawn,
+            telemetry.nameplate_gpu_screen_label_count,
+        ),
+        format!(
+            "Sample selected star id: {}",
+            telemetry
+                .nameplate_selected_star_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected projected anchor px: {}",
+            telemetry
+                .nameplate_selected_anchor_px
+                .map(|[x, y]| format!("({x:.1}, {y:.1})"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected projected star visual diameter px: {}",
+            telemetry
+                .nameplate_selected_projected_diameter_px
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected label height px: {}",
+            telemetry
+                .nameplate_selected_label_height_px
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected label local x min/max: {} / {}",
+            telemetry
+                .nameplate_selected_local_x_min
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+            telemetry
+                .nameplate_selected_local_x_max
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected computed width px: {}",
+            telemetry
+                .nameplate_selected_computed_width_px
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected final alpha: {}",
+            telemetry
+                .nameplate_selected_final_alpha
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Sample selected cull reason: {}",
+            telemetry
+                .nameplate_selected_cull_reason
+                .clone()
+                .unwrap_or_else(|| "—".into()),
         ),
         format!(
             "Sample natural run aspect: {}",
@@ -288,50 +379,11 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
                 .unwrap_or_else(|| "—".into()),
         ),
         format!(
-            "Sample star visual envelope (world): {}",
-            telemetry
-                .nameplate_star_visual_envelope_world
-                .map(|v| format!("{v:.3}"))
-                .unwrap_or_else(|| "—".into()),
-        ),
-        format!(
-            "Sample projected star visual height (px): {}",
-            telemetry
-                .nameplate_projected_star_visual_height_px
-                .map(|v| format!("{v:.1}"))
-                .unwrap_or_else(|| "—".into()),
-        ),
-        format!(
-            "Sample label height (px): {}",
-            telemetry
-                .nameplate_label_height_px
-                .map(|v| format!("{v:.1}"))
-                .unwrap_or_else(|| "—".into()),
-        ),
-        format!(
-            "Sample label width (px): {}",
-            telemetry
-                .nameplate_label_width_px
-                .map(|v| format!("{v:.1}"))
-                .unwrap_or_else(|| "—".into()),
-        ),
-        format!(
-            "Sample final alpha: {}",
-            telemetry
-                .nameplate_sample_alpha
-                .map(|v| format!("{v:.2}"))
-                .unwrap_or_else(|| "—".into()),
-        ),
-        format!(
-            "Culled too small: {} | over density: {} | alpha zero: {} | offscreen: {}",
+            "Unselected culled too small: {} | over density: {} | alpha zero: {} | offscreen: {}",
             telemetry.nameplate_culled_too_small_count,
             telemetry.nameplate_culled_over_density_count,
             telemetry.nameplate_culled_alpha_zero_count,
             telemetry.nameplate_culled_offscreen_count,
-        ),
-        format!(
-            "Visible label estimate: {} | visible glyph estimate: {}",
-            telemetry.nameplate_visible_label_estimate, telemetry.nameplate_visible_glyph_estimate,
         ),
         format!(
             "Unselected visible after LOD: {} | focused visible after LOD: {}",
