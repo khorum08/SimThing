@@ -78,7 +78,7 @@ impl WorldTextBillboard {
             ceiling_falloff_percent: self.ceiling_falloff_percent.clamp(0.01, 100.0),
             ceiling_target_alpha: self.ceiling_target_alpha.clamp(0.0, 1.0),
             base_alpha_ratio: self.base_alpha_ratio.clamp(0.0, 1.0),
-            relative_falloff_percent: self.relative_falloff_percent.clamp(0.01, 100.0),
+            relative_falloff_percent: self.relative_falloff_percent.clamp(0.0, 100.0),
             relative_target_alpha: self.relative_target_alpha.clamp(0.0, 1.0),
             horizon_taper: self.horizon_taper.clamp(0.0, 1.0),
             placement_mode: self.placement_mode,

@@ -418,6 +418,54 @@ pub fn nameplate_near_label_height_world(
     star_nameplate_visual_envelope_near_world(instance, star_settings)
 }
 
+pub fn nameplate_effective_falloff_distance_percent(
+    star_falloff_distance_percent: f32,
+    nameplate_relative_falloff_distance_percent: f32,
+) -> f32 {
+    let star = star_falloff_distance_percent.clamp(0.0, 100.0);
+    let relative = nameplate_relative_falloff_distance_percent.clamp(0.0, 100.0);
+    (star * relative / 100.0).min(star)
+}
+
+/// Mirrors `distance_falloff` in `text_instanced.wgsl` for CPU telemetry parity.
+pub fn world_text_distance_falloff(
+    depth_percent: f32,
+    falloff_percent: f32,
+    target_value: f32,
+    horizon_taper: f32,
+) -> f32 {
+    let depth = depth_percent.clamp(0.0, 100.0);
+    let falloff_at = falloff_percent.clamp(0.0, 100.0).max(0.0001);
+    if depth <= falloff_at {
+        let t = (depth / falloff_at).clamp(0.0, 1.0);
+        return lerp(1.0, target_value.clamp(0.0, 1.0), t);
+    }
+    let horizon_t = ((depth - falloff_at) / (100.0 - falloff_at).max(0.0001)).clamp(0.0, 1.0);
+    target_value.clamp(0.0, 1.0) * lerp(1.0, horizon_taper.clamp(0.0, 1.0), horizon_t)
+}
+
+/// GPU screen-label falloff alpha (star ceiling × label ramp at effective distance).
+pub fn nameplate_gpu_screen_label_falloff_alpha(
+    depth_percent: f32,
+    billboard: &WorldTextBillboard,
+) -> f32 {
+    let star_at = billboard.ceiling_falloff_percent;
+    let effective_at = billboard.relative_falloff_percent.min(star_at).max(0.0);
+    let star_alpha = world_text_distance_falloff(
+        depth_percent,
+        star_at,
+        billboard.ceiling_target_alpha,
+        billboard.horizon_taper,
+    );
+    let label_ramp = world_text_distance_falloff(
+        depth_percent,
+        effective_at,
+        billboard.relative_target_alpha,
+        billboard.horizon_taper,
+    );
+    star_alpha * label_ramp
+}
+
 pub fn star_nameplate_gpu_screen_label(
     instance: StarBillboardInstance,
     star_settings: &StarBillboardRenderSettings,
@@ -426,11 +474,16 @@ pub fn star_nameplate_gpu_screen_label(
     let nameplate = nameplate_settings.clamped();
     let star_falloff = star_settings.falloff_settings();
     let visual_envelope_near = star_nameplate_visual_envelope_near_world(instance, star_settings);
+    let star_falloff_distance = star_falloff.falloff_distance_percent;
+    let effective_falloff_distance = nameplate_effective_falloff_distance_percent(
+        star_falloff_distance,
+        nameplate.relative_falloff_distance_percent,
+    );
     // Settings semantics (production visibility):
     // - relative_width_percent -> width_ratio scales natural text width (not a fixed plate).
     // - base_transparency_percent -> alpha ceiling vs star opacity (base_alpha_ratio).
-    // - relative_falloff_distance_percent -> label falloff distance vs star falloff distance.
-    // - relative_falloff_transparency_percent -> label alpha target at label falloff vs star alpha.
+    // - relative_falloff_distance_percent × star falloff distance -> effective label falloff distance.
+    // - relative_falloff_transparency_percent -> label alpha target at effective falloff vs star alpha.
     WorldTextBillboard {
         anchor: instance.anchor_position,
         near_height: visual_envelope_near,
@@ -443,9 +496,7 @@ pub fn star_nameplate_gpu_screen_label(
         ceiling_falloff_percent: star_falloff.falloff_distance_percent,
         ceiling_target_alpha: star_falloff.falloff_opacity_percent / 100.0,
         base_alpha_ratio: nameplate.base_transparency_percent / 100.0,
-        relative_falloff_percent: star_falloff.falloff_distance_percent
-            * nameplate.relative_falloff_distance_percent
-            / 100.0,
+        relative_falloff_percent: effective_falloff_distance,
         relative_target_alpha: nameplate.relative_falloff_transparency_percent / 100.0,
         horizon_taper: MID_TO_HORIZON_FALLOFF_FACTOR,
         placement_mode: WorldTextPlacementMode::GpuScreenLabel,
@@ -828,6 +879,56 @@ mod tests {
             0.0,
             StarNameplateDebugMode::AllLabelsSettingsDriven,
         ));
+    }
+
+    #[test]
+    fn nameplate_effective_falloff_is_star_times_relative_capped_at_star() {
+        assert_eq!(
+            nameplate_effective_falloff_distance_percent(40.0, 70.0),
+            28.0
+        );
+        assert_eq!(
+            nameplate_effective_falloff_distance_percent(50.0, 100.0),
+            50.0
+        );
+        assert_eq!(
+            nameplate_effective_falloff_distance_percent(50.0, 50.0),
+            25.0
+        );
+        assert_eq!(nameplate_effective_falloff_distance_percent(20.0, 5.0), 1.0);
+        assert_eq!(
+            nameplate_effective_falloff_distance_percent(100.0, 150.0),
+            100.0
+        );
+    }
+
+    #[test]
+    fn nameplate_falloff_zero_transparency_past_effective_distance() {
+        let billboard = star_nameplate_gpu_screen_label(
+            StarBillboardInstance {
+                system_id: 1,
+                structural_col: 0,
+                structural_row: 0,
+                anchor_position: Vec3::ZERO,
+                base_scale_variation: 1.0,
+                base_intensity_variation: 1.0,
+                selected: false,
+                hovered: false,
+            },
+            &test_billboard_settings(0.5, 40.0, 25.0, 40.0, StarRenderMode::BloomStarburst),
+            StarNameplateSettings {
+                relative_width_percent: 100.0,
+                base_transparency_percent: 100.0,
+                relative_falloff_distance_percent: 70.0,
+                relative_falloff_transparency_percent: 0.0,
+            },
+        );
+        assert_eq!(billboard.relative_falloff_percent, 28.0);
+        let falloff_at_effective = nameplate_gpu_screen_label_falloff_alpha(28.0, &billboard);
+        assert!(
+            falloff_at_effective < 0.02,
+            "expected invisible at effective falloff, got {falloff_at_effective}"
+        );
     }
 
     #[test]

@@ -205,19 +205,24 @@ fn world_text_falloff_alpha(
     style_params: vec4<f32>,
     horizon_taper: f32,
 ) -> f32 {
-    let ceiling_alpha = distance_falloff(
+    let star_falloff_at = distance_params.z;
+    let star_opacity_at = distance_params.w;
+    // style_params.z = effective nameplate falloff distance (star × relative), never above star.
+    let effective_falloff_at = min(style_params.z, star_falloff_at);
+    let label_target = style_params.w;
+    let star_alpha = distance_falloff(
         depth_percent,
-        distance_params.z,
-        distance_params.w,
+        star_falloff_at,
+        star_opacity_at,
         horizon_taper,
     );
-    let relative_alpha = distance_falloff(
+    let label_ramp = distance_falloff(
         depth_percent,
-        style_params.z,
-        style_params.w,
+        effective_falloff_at,
+        label_target,
         horizon_taper,
     );
-    return ceiling_alpha * relative_alpha;
+    return star_alpha * label_ramp;
 }
 
 fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> vec2<f32> {

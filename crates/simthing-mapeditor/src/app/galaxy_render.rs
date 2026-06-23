@@ -310,15 +310,15 @@ pub(super) fn sync_star_nameplate_settings_system(
     let Some(session) = state.session.as_ref() else {
         return;
     };
+    let star_settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
     let key = NameplateSyncKey {
-        star: state.star_falloff_settings.clamped(),
+        star: star_settings.falloff_settings(),
         nameplate: settings.star_nameplate_settings(),
         scene_revision: state.scene_render_revision,
     };
     if *last_key == Some(key) {
         return;
     }
-    let star_settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
     for (nameplate, mut placement) in &mut nameplates {
         let next =
             star_nameplate_gpu_screen_label(nameplate.instance, &star_settings, key.nameplate);

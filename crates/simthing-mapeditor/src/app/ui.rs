@@ -590,6 +590,9 @@ fn draw_settings_dialog(
                         .suffix("%")
                         .text("Relative Falloff Distance"),
                     )
+                    .on_hover_text(
+                        "Percent of Star Falloff Distance. 100% = same falloff as stars. 50% = half the star falloff distance.",
+                    )
                     .changed();
                 nameplate_changed |= ui
                     .add(
