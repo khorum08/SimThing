@@ -17,7 +17,7 @@ impl Default for WorldTextNameplateLodPatch {
         Self {
             min_focused_px: GPU_SCREEN_LABEL_MIN_SELECTED_HEIGHT_PX,
             unselected_global_alpha: 1.0,
-            min_unselected_px: 24.0,
+            min_unselected_px: 0.0,
         }
     }
 }

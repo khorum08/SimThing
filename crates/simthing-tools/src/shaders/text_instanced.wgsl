@@ -318,7 +318,7 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
     let min_focused_px = style_globals.y;
     let unselected_global_alpha = style_globals.z;
     let min_unselected_px = style_globals.w;
-    let force_all_labels = min_unselected_px < 0.5 && min_focused_px < 0.5;
+    let force_all_debug = min_unselected_px < 0.0;
     let focused = instance.size_params.z > 0.5;
 
     if gpu_screen_label {
@@ -328,24 +328,24 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         if focused && effective_label_height_px < MIN_SELECTED_READABLE_PX {
             effective_label_height_px = MIN_SELECTED_READABLE_PX;
         }
-        if !force_all_labels {
-            if !focused {
-                if effective_label_height_px < min_unselected_px {
-                    culled = true;
-                }
-                if unselected_global_alpha < 0.5 {
-                    culled = true;
-                }
-            } else if effective_label_height_px < min_focused_px {
+        if !focused {
+            if min_unselected_px > 0.5 && effective_label_height_px < min_unselected_px {
                 culled = true;
             }
+            if unselected_global_alpha < 0.5 {
+                culled = true;
+            }
+        } else if min_focused_px > 0.5 && effective_label_height_px < min_focused_px {
+            culled = true;
+        }
+        if !force_all_debug {
             let clip_w = max(abs(anchor_clip.w), 0.0001);
             if abs(anchor_clip.x) > clip_w || abs(anchor_clip.y) > clip_w {
                 culled = true;
             }
-            if falloff_alpha < 0.02 {
-                culled = true;
-            }
+        }
+        if falloff_alpha < 0.02 {
+            culled = true;
         }
         if culled {
             out.clip_position = vec4(0.0, 0.0, -1.0, 1.0);

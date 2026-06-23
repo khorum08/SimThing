@@ -16,7 +16,6 @@ use crate::star_render::{
     nameplate_label_passes_readability_gate, nameplate_unselected_global_lod_alpha,
     normalized_billboard_camera_depth_percent, star_nameplate_envelope_height_ratio,
     StarBillboardInstance, StarBillboardRenderSettings, StarNameplateDebugMode,
-    MIN_FOCUSED_LABEL_HEIGHT_PX, MIN_UNSELECTED_LABEL_HEIGHT_PX,
 };
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -185,6 +184,9 @@ fn nameplate_cull_reason(
     unselected_global_alpha: f32,
 ) -> Option<String> {
     if debug_mode == StarNameplateDebugMode::ForceAllDebug {
+        if final_alpha < NAMEPLATE_ALPHA_ZERO_THRESHOLD {
+            return Some("alpha_zero".into());
+        }
         return None;
     }
     if offscreen {
@@ -300,8 +302,6 @@ pub fn update_nameplate_diagnostics_system(
     telemetry_state.telemetry.nameplate_glyph_instances = glyph_instances;
     telemetry_state.telemetry.nameplate_gpu_screen_label_count = gpu_screen_label_count;
     telemetry_state.telemetry.nameplate_natural_run_aspect = sample_run_aspect;
-    telemetry_state.telemetry.nameplate_min_unselected_label_px = MIN_UNSELECTED_LABEL_HEIGHT_PX;
-    telemetry_state.telemetry.nameplate_min_focused_label_px = MIN_FOCUSED_LABEL_HEIGHT_PX;
 
     let Some(session) = state.session.as_ref() else {
         telemetry_state
@@ -420,6 +420,8 @@ pub fn update_nameplate_diagnostics_system(
     );
     let lod_globals = debug_mode.lod_globals(auto_density_alpha);
     telemetry_state.telemetry.nameplate_global_lod_alpha = lod_globals.unselected_global_alpha;
+    telemetry_state.telemetry.nameplate_min_unselected_label_px = lod_globals.min_unselected_px;
+    telemetry_state.telemetry.nameplate_min_focused_label_px = lod_globals.min_focused_px;
     telemetry_state.telemetry.nameplate_label_coverage_estimate = gpu_screen_label_count as f32
         * sample_label_height_px.max(0.0)
         * sample_label_width_px.max(0.0)
@@ -476,14 +478,14 @@ pub fn update_nameplate_diagnostics_system(
                 culled_over_density_count += 1;
                 culled = true;
             }
-            if final_alpha < NAMEPLATE_ALPHA_ZERO_THRESHOLD {
-                culled_alpha_zero_count += 1;
-                culled = true;
-            }
             if offscreen {
                 culled_offscreen_count += 1;
                 culled = true;
             }
+        }
+        if final_alpha < NAMEPLATE_ALPHA_ZERO_THRESHOLD {
+            culled_alpha_zero_count += 1;
+            culled = true;
         }
 
         if culled {
