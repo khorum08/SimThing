@@ -167,6 +167,20 @@ fn apply_text_path(local_xy: vec2<f32>, path_slot: u32, path_u: f32) -> vec2<f32
     return on_path + local_offset;
 }
 
+fn world_axis_span_screen_px(world_pos: vec3<f32>, axis: vec3<f32>, span: f32) -> f32 {
+    let p0 = position_world_to_clip(world_pos);
+    let p1 = position_world_to_clip(world_pos + axis * span);
+    if p0.w <= 0.0001 || p1.w <= 0.0001 {
+        return 0.0;
+    }
+    let ndc_span = length((p1.xy / p1.w) - (p0.xy / p0.w));
+    return ndc_span * view.viewport.w * 0.5;
+}
+
+fn screen_legibility_fade(screen_px: f32) -> f32 {
+    return smoothstep(4.0, 12.0, screen_px);
+}
+
 fn apply_warp_field(pos: vec2<f32>, warp_slot: u32, local_norm: vec2<f32>) -> vec2<f32> {
     let row = warp_row_at(warp_slot);
     let kind = row.params0.x;
@@ -217,6 +231,7 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         instance.size_params.z,
         instance.size_params.w,
     );
+    // Label height tracks the star blur envelope at the current camera depth (100% of blur radius).
     let label_height = instance.anchor_height.w * height_ratio;
     let label_width = label_height * instance.size_params.x;
     let right = normalize(view.world_from_view[0].xyz);
@@ -238,7 +253,12 @@ fn vertex(vertex: Vertex, instance: GlyphInstance) -> VertexOutput {
         instance.style_params.w,
         instance.size_params.w,
     );
-    out.color = vec4(instance.color.rgb, instance.color.a * ceiling_alpha * relative_alpha);
+    let screen_label_px = world_axis_span_screen_px(anchor, up, label_height);
+    let legibility = screen_legibility_fade(screen_label_px);
+    out.color = vec4(
+        instance.color.rgb,
+        instance.color.a * ceiling_alpha * relative_alpha * legibility,
+    );
 #else
     let local = vec4(local_xy, 0.0, 1.0);
     out.clip_position = mesh2d_position_local_to_clip(identity_mat4(), local);

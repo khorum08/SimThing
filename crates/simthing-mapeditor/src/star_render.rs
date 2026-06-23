@@ -26,7 +26,8 @@ pub const PR2R5_STAR_FAR_CORE_ALPHA: f32 =
 pub const PR2R6_AURA_CAP_REDUCTION_FACTOR: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_START_DEPTH: f32 = 0.50;
 pub const MID_TO_HORIZON_FALLOFF_FACTOR: f32 = 0.75;
-pub const STAR_NAMEPLATE_HEIGHT_FACTOR: f32 = 3.0;
+/// Nameplate label height tracks 100% of the rendered star blur radius at the current depth.
+pub const STAR_NAMEPLATE_HEIGHT_FACTOR: f32 = 1.0;
 pub const PR2R6_STAR_NEAR_AURA_SCALE: f32 =
     PR2R5_STAR_NEAR_AURA_SCALE * PR2R6_AURA_CAP_REDUCTION_FACTOR;
 pub const STAR_DISTANCE_VISUAL_RENDER_ONLY_NOTE: &str =
@@ -197,6 +198,14 @@ impl StarBillboardInstance {
     }
 }
 
+pub fn nameplate_near_label_height_world(
+    instance: StarBillboardInstance,
+    star_settings: &StarBillboardRenderSettings,
+) -> f32 {
+    let falloff = star_settings.falloff_settings();
+    instance.base_scale_variation * falloff.base_blur_radius * STAR_NAMEPLATE_HEIGHT_FACTOR
+}
+
 pub fn star_nameplate_world_billboard(
     instance: StarBillboardInstance,
     star_settings: &StarBillboardRenderSettings,
@@ -206,9 +215,7 @@ pub fn star_nameplate_world_billboard(
     let star_falloff = star_settings.falloff_settings();
     WorldTextBillboard {
         anchor: instance.anchor_position,
-        near_height: instance.base_scale_variation
-            * star_falloff.base_blur_radius
-            * STAR_NAMEPLATE_HEIGHT_FACTOR,
+        near_height: nameplate_near_label_height_world(instance, star_settings),
         width_ratio: nameplate.relative_width_percent / 100.0,
         vertical_gap_ratio: 0.10,
         near_distance: star_settings.near_distance,
@@ -531,6 +538,22 @@ mod tests {
     }
 
     #[test]
+    fn nameplate_near_height_tracks_star_blur_radius_without_arbitrary_multiplier() {
+        let star = test_billboard_settings(0.5, 80.0, 25.0, 40.0, StarRenderMode::BloomStarburst);
+        let instance = StarBillboardInstance {
+            system_id: 7,
+            structural_col: 8,
+            structural_row: 9,
+            anchor_position: Vec3::new(1.0, 2.0, 3.0),
+            base_scale_variation: 4.0,
+            base_intensity_variation: 1.0,
+            selected: false,
+            hovered: false,
+        };
+        assert_eq!(nameplate_near_label_height_world(instance, &star), 2.0);
+    }
+
+    #[test]
     fn nameplate_billboard_tracks_star_size_and_distance_settings() {
         let star = test_billboard_settings(0.5, 80.0, 25.0, 40.0, StarRenderMode::BloomStarburst);
         let nameplate = StarNameplateSettings {
@@ -553,7 +576,7 @@ mod tests {
         let billboard = star_nameplate_world_billboard(instance, &star, nameplate);
 
         assert_eq!(billboard.anchor, instance.anchor_position);
-        assert_eq!(billboard.near_height, 6.0);
+        assert_eq!(billboard.near_height, 2.0);
         assert_eq!(billboard.width_ratio, 1.25);
         assert_eq!(billboard.near_distance, 10.0);
         assert_eq!(billboard.far_distance, 110.0);

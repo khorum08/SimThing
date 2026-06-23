@@ -71,6 +71,13 @@ pub struct StudioPerformanceTelemetry {
     pub picking_projection_last_ms: Option<f64>,
     pub picking_projection_avg_ms: Option<f64>,
 
+    pub nameplate_count: usize,
+    pub nameplate_glyph_instances: u64,
+    pub nameplate_effective_near_height: Option<f32>,
+    pub nameplate_base_alpha_ratio: Option<f32>,
+    pub nameplate_ceiling_target_alpha: Option<f32>,
+    pub nameplate_relative_target_alpha: Option<f32>,
+
     pub vram_scan_last_ms: Option<f64>,
 }
 
@@ -131,6 +138,12 @@ impl Default for StudioPerformanceTelemetry {
             picking_projected_anchor_count: 0,
             picking_projection_last_ms: None,
             picking_projection_avg_ms: None,
+            nameplate_count: 0,
+            nameplate_glyph_instances: 0,
+            nameplate_effective_near_height: None,
+            nameplate_base_alpha_ratio: None,
+            nameplate_ceiling_target_alpha: None,
+            nameplate_relative_target_alpha: None,
             vram_scan_last_ms: None,
         }
     }
@@ -284,6 +297,29 @@ pub fn render_loop_diagnostics_lines(telemetry: &StudioPerformanceTelemetry) -> 
             format_timing_ms(telemetry.picking_projection_last_ms),
             format_timing_ms(telemetry.picking_projection_avg_ms),
             telemetry.picking_projected_anchor_count,
+        ),
+        format!(
+            "Nameplates: {} labels, {} glyph instances",
+            telemetry.nameplate_count, telemetry.nameplate_glyph_instances,
+        ),
+        format!(
+            "Nameplate sample: height {:.3}, base alpha {:.2}, ceiling {:.2}, falloff {:.2}",
+            telemetry
+                .nameplate_effective_near_height
+                .map(|v| format!("{v:.3}"))
+                .unwrap_or_else(|| "—".into()),
+            telemetry
+                .nameplate_base_alpha_ratio
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+            telemetry
+                .nameplate_ceiling_target_alpha
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
+            telemetry
+                .nameplate_relative_target_alpha
+                .map(|v| format!("{v:.2}"))
+                .unwrap_or_else(|| "—".into()),
         ),
         format!(
             "VRAM scan: {} ms",
