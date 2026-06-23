@@ -46,6 +46,7 @@ pub struct StarRenderConfig {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NameplateRenderConfig {
+    /// Historical serialized name; interpreted as uniform relative size (not horizontal-only width).
     pub relative_width_percent: f32,
     pub base_transparency_percent: f32,
     pub relative_falloff_distance_percent: f32,

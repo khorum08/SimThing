@@ -568,7 +568,10 @@ fn draw_settings_dialog(
                             20.0..=200.0,
                         )
                         .suffix("%")
-                        .text("Nameplate Relative Width"),
+                        .text("Nameplate Relative Size"),
+                    )
+                    .on_hover_text(
+                        "Uniform scale relative to rendered star blur/visual width. 100% = label height equals star blur width; text width preserves natural aspect.",
                     )
                     .changed();
                 nameplate_changed |= ui

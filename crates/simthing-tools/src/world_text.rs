@@ -47,6 +47,8 @@ pub struct WorldTextBillboard {
     pub near_height: f32,
     /// Screen-companion mode: rendered star visual diameter in world units at near camera.
     pub visual_envelope_world_height: f32,
+    /// Historical field name `width_ratio`. GpuScreenLabel: uniform label scale vs star blur;
+    /// natural text aspect determines width. ScreenCompanion/WorldPerspective: horizontal scale.
     pub width_ratio: f32,
     pub vertical_gap_ratio: f32,
     pub near_distance: f32,
@@ -116,7 +118,8 @@ pub struct WorldGlyphInstanceGpu {
     pub glyph: GlyphInstanceGpu,
     /// xyz = world anchor, w = near label height (world) or visual envelope height (screen).
     pub anchor_height: [f32; 4],
-    /// x = width ratio, y = vertical gap ratio,
+    /// x = uniform relative size (GpuScreenLabel) or width ratio (legacy paths),
+    /// y = vertical gap ratio,
     /// z = target height ratio (world) or unused (screen companion; glyph x already spans run aspect),
     /// w = horizon taper (world) or screen-companion mode sentinel.
     pub size_params: [f32; 4],

@@ -12,8 +12,8 @@ use simthing_tools::{
 
 use crate::star_render::{
     estimate_world_vertical_span_screen_px, nameplate_effective_falloff_distance_percent,
-    nameplate_effective_label_height_px, nameplate_gpu_screen_label_falloff_alpha,
-    nameplate_label_passes_density_gate, nameplate_label_passes_readability_gate,
+    nameplate_gpu_screen_label_falloff_alpha, nameplate_label_passes_density_gate,
+    nameplate_label_passes_readability_gate, nameplate_scaled_label_height_px,
     nameplate_unselected_global_lod_alpha, normalized_billboard_camera_depth_percent,
     star_nameplate_envelope_height_ratio, StarBillboardInstance, StarBillboardRenderSettings,
     StarNameplateDebugMode,
@@ -241,7 +241,7 @@ pub fn update_nameplate_diagnostics_system(
     telemetry_state.telemetry.nameplate_debug_override_active = debug_mode.is_debug_override();
     telemetry_state
         .telemetry
-        .nameplate_settings_relative_width_pct = Some(nameplate_settings.relative_width_percent);
+        .nameplate_settings_relative_size_pct = Some(nameplate_settings.relative_width_percent);
     telemetry_state
         .telemetry
         .nameplate_settings_base_transparency_pct =
@@ -383,9 +383,12 @@ pub fn update_nameplate_diagnostics_system(
             envelope_world,
             viewport_height,
         );
-        sample_label_height_px = projected_star_visual_height_px;
-        sample_label_width_px =
-            sample_run_aspect.unwrap_or(1.0) * sample_label_height_px * sample.width_ratio;
+        sample_label_height_px = nameplate_scaled_label_height_px(
+            projected_star_visual_height_px,
+            sample.width_ratio,
+            false,
+        );
+        sample_label_width_px = sample_run_aspect.unwrap_or(1.0) * sample_label_height_px;
 
         let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(depth_percent, &sample);
         let sample_alpha = sample.base_alpha_ratio * falloff_alpha;
@@ -553,13 +556,13 @@ pub fn update_nameplate_diagnostics_system(
             envelope_world,
             viewport_height,
         );
-        let effective_height = nameplate_effective_label_height_px(projected_diameter, true);
+        let effective_height =
+            nameplate_scaled_label_height_px(projected_diameter, billboard.width_ratio, true);
         let (local_x_min, local_x_max) = glyph_list
             .as_ref()
             .map(|g| normalized_label_local_x_range_from_glyphs(g))
             .unwrap_or((0.0, 0.0));
-        let computed_width =
-            (local_x_max - local_x_min).max(0.0) * effective_height * billboard.width_ratio;
+        let computed_width = (local_x_max - local_x_min).max(0.0) * effective_height;
         let falloff_alpha = nameplate_gpu_screen_label_falloff_alpha(depth_percent, &billboard);
         let final_alpha = billboard.base_alpha_ratio * falloff_alpha;
         telemetry_state.telemetry.nameplate_sample_depth_percent = Some(depth_percent);
