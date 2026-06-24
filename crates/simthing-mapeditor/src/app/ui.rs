@@ -867,7 +867,7 @@ fn draw_telemetry_dialog(
                     .default_open(false)
                     .show(ui, |ui| {
                         ui.label(
-                            "Confirms selected AA mode and active Bevy camera components. Visual quality still requires owner screenshot comparison.",
+                            "Confirms selected AA mode and active Bevy camera components (FXAA/SMAA/MSAA). Visual quality still requires owner screenshot comparison.",
                         );
                         for line in video_options_debug_lines(telemetry) {
                             if line == "AA STATE MISMATCH" {

@@ -1,16 +1,17 @@
-//! STUDIO-ANTIALIASING-POST-AA-0 — mutually exclusive Bevy FXAA/SMAA post-process modes.
+//! STUDIO-ANTIALIASING-POST-AA-0 / STUDIO-ANTIALIASING-MSAA-0 — mutually exclusive Bevy
+//! FXAA/SMAA post-process and MSAA geometry-edge modes.
 //!
 //! Temporal antialiasing is deferred due to ghosting/blur risk for moving camera and GPU TypeFace
-//! labels. Multi-sample antialiasing is deferred to a future track because it has a different
-//! geometry-edge cost profile and higher render-target cost.
+//! labels.
 
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::smaa::{Smaa, SmaaPreset};
 use bevy::ecs::system::EntityCommands;
 use bevy::prelude::Resource;
+use bevy::render::view::Msaa;
 use serde::{Deserialize, Serialize};
 
-/// Mutually exclusive Studio post-process antialiasing mode.
+/// Mutually exclusive Studio antialiasing mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum StudioAntialiasingMode {
@@ -21,16 +22,22 @@ pub enum StudioAntialiasingMode {
     SmaaMedium,
     SmaaHigh,
     SmaaUltra,
+    Msaa2x,
+    Msaa4x,
+    Msaa8x,
 }
 
 impl StudioAntialiasingMode {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 9] = [
         Self::Off,
         Self::Fxaa,
         Self::SmaaLow,
         Self::SmaaMedium,
         Self::SmaaHigh,
         Self::SmaaUltra,
+        Self::Msaa2x,
+        Self::Msaa4x,
+        Self::Msaa8x,
     ];
 
     pub fn label(self) -> &'static str {
@@ -41,6 +48,9 @@ impl StudioAntialiasingMode {
             Self::SmaaMedium => "SMAA Medium",
             Self::SmaaHigh => "SMAA High",
             Self::SmaaUltra => "SMAA Ultra",
+            Self::Msaa2x => "MSAA 2x",
+            Self::Msaa4x => "MSAA 4x",
+            Self::Msaa8x => "MSAA 8x",
         }
     }
 
@@ -50,7 +60,33 @@ impl StudioAntialiasingMode {
             Self::SmaaMedium => Some(SmaaPreset::Medium),
             Self::SmaaHigh => Some(SmaaPreset::High),
             Self::SmaaUltra => Some(SmaaPreset::Ultra),
-            Self::Off | Self::Fxaa => None,
+            _ => None,
+        }
+    }
+
+    pub fn is_smaa(self) -> bool {
+        self.smaa_preset().is_some()
+    }
+
+    pub fn is_msaa(self) -> bool {
+        matches!(self, Self::Msaa2x | Self::Msaa4x | Self::Msaa8x)
+    }
+
+    pub fn expected_msaa_samples(self) -> u32 {
+        match self {
+            Self::Msaa2x => 2,
+            Self::Msaa4x => 4,
+            Self::Msaa8x => 8,
+            _ => 1,
+        }
+    }
+
+    pub fn msaa_component(self) -> Msaa {
+        match self {
+            Self::Msaa2x => Msaa::Sample2,
+            Self::Msaa4x => Msaa::Sample4,
+            Self::Msaa8x => Msaa::Sample8,
+            _ => Msaa::Off,
         }
     }
 
@@ -83,7 +119,7 @@ impl StudioAntialiasingModeSource {
     }
 }
 
-/// Tracks post-process AA apply events for Video Options Debug telemetry.
+/// Tracks AA apply events for Video Options Debug telemetry.
 #[derive(Resource, Clone, Debug, PartialEq, Eq, Default)]
 pub struct StudioAntialiasingApplyState {
     pub apply_generation: u64,
@@ -99,7 +135,7 @@ impl StudioAntialiasingApplyState {
     }
 }
 
-/// Snapshot of post-process AA components on the primary Camera3d.
+/// Snapshot of AA components on the primary Camera3d.
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct AntialiasingComponentSnapshot {
     pub primary_camera_found: bool,
@@ -107,6 +143,8 @@ pub struct AntialiasingComponentSnapshot {
     pub fxaa_present: bool,
     pub smaa_present: bool,
     pub smaa_preset: Option<SmaaPreset>,
+    pub msaa_samples: u32,
+    pub msaa_component_present: bool,
 }
 
 pub fn smaa_preset_label(preset: SmaaPreset) -> &'static str {
@@ -124,12 +162,40 @@ pub fn expected_antialiasing_components(
     match selected {
         StudioAntialiasingMode::Off => (false, false, None),
         StudioAntialiasingMode::Fxaa => (true, false, None),
-        mode => (false, true, mode.smaa_preset()),
+        StudioAntialiasingMode::SmaaLow
+        | StudioAntialiasingMode::SmaaMedium
+        | StudioAntialiasingMode::SmaaHigh
+        | StudioAntialiasingMode::SmaaUltra => (false, true, selected.smaa_preset()),
+        StudioAntialiasingMode::Msaa2x
+        | StudioAntialiasingMode::Msaa4x
+        | StudioAntialiasingMode::Msaa8x => (false, false, None),
     }
+}
+
+pub fn msaa_active(samples: u32) -> bool {
+    samples > 1
+}
+
+pub fn msaa_sample_count_label(samples: u32) -> &'static str {
+    match samples {
+        1 => "1/off",
+        2 => "2",
+        4 => "4",
+        8 => "8",
+        _ => "unknown",
+    }
+}
+
+pub fn post_aa_component_active(snapshot: AntialiasingComponentSnapshot) -> bool {
+    snapshot.fxaa_present || snapshot.smaa_present
 }
 
 pub fn dual_post_aa_components_active(snapshot: AntialiasingComponentSnapshot) -> bool {
     snapshot.fxaa_present && snapshot.smaa_present
+}
+
+pub fn smaa_expected_active(selected: StudioAntialiasingMode) -> bool {
+    selected.is_smaa()
 }
 
 pub fn antialiasing_component_state_mismatch(
@@ -143,18 +209,39 @@ pub fn antialiasing_component_state_mismatch(
     snapshot.fxaa_present != expect_fxaa
         || snapshot.smaa_present != expect_smaa
         || snapshot.smaa_preset != expect_preset
+        || snapshot.msaa_samples != selected.expected_msaa_samples()
+}
+
+pub fn snapshot_from_camera_components(
+    entity: bevy::prelude::Entity,
+    fxaa: Option<&Fxaa>,
+    smaa: Option<&Smaa>,
+    msaa: Option<&Msaa>,
+) -> AntialiasingComponentSnapshot {
+    AntialiasingComponentSnapshot {
+        primary_camera_found: true,
+        camera_entity_index: Some(entity.index()),
+        fxaa_present: fxaa.is_some(),
+        smaa_present: smaa.is_some(),
+        smaa_preset: smaa.map(|component| component.preset),
+        msaa_samples: msaa.map(|component| component.samples()).unwrap_or(1),
+        msaa_component_present: msaa.is_some(),
+    }
 }
 
 /// Apply a mutually exclusive antialiasing mode to the Studio camera entity.
 pub fn apply_studio_antialiasing_mode(entity: &mut EntityCommands, mode: StudioAntialiasingMode) {
+    let msaa = mode.msaa_component();
     match mode {
         StudioAntialiasingMode::Off => {
             entity.remove::<Fxaa>();
             entity.remove::<Smaa>();
+            entity.insert(msaa);
         }
         StudioAntialiasingMode::Fxaa => {
             entity.insert(Fxaa::default());
             entity.remove::<Smaa>();
+            entity.insert(msaa);
         }
         StudioAntialiasingMode::SmaaLow
         | StudioAntialiasingMode::SmaaMedium
@@ -164,6 +251,14 @@ pub fn apply_studio_antialiasing_mode(entity: &mut EntityCommands, mode: StudioA
             entity.insert(Smaa {
                 preset: mode.smaa_preset().expect("SMAA mode has preset"),
             });
+            entity.insert(msaa);
+        }
+        StudioAntialiasingMode::Msaa2x
+        | StudioAntialiasingMode::Msaa4x
+        | StudioAntialiasingMode::Msaa8x => {
+            entity.remove::<Fxaa>();
+            entity.remove::<Smaa>();
+            entity.insert(msaa);
         }
     }
 }
@@ -214,6 +309,20 @@ mod tests {
         ));
         assert!(StudioAntialiasingMode::Fxaa.smaa_preset().is_none());
         assert!(StudioAntialiasingMode::Off.smaa_preset().is_none());
+        assert!(StudioAntialiasingMode::Msaa4x.smaa_preset().is_none());
+    }
+
+    #[test]
+    fn antialiasing_msaa_modes_map_to_sample_counts() {
+        assert_eq!(StudioAntialiasingMode::Msaa2x.expected_msaa_samples(), 2);
+        assert_eq!(StudioAntialiasingMode::Msaa4x.expected_msaa_samples(), 4);
+        assert_eq!(StudioAntialiasingMode::Msaa8x.expected_msaa_samples(), 8);
+        assert_eq!(StudioAntialiasingMode::Off.expected_msaa_samples(), 1);
+        assert_eq!(StudioAntialiasingMode::Fxaa.msaa_component(), Msaa::Off);
+        assert_eq!(
+            StudioAntialiasingMode::Msaa4x.msaa_component(),
+            Msaa::Sample4
+        );
     }
 
     #[test]
@@ -224,9 +333,28 @@ mod tests {
             fxaa_present: false,
             smaa_present: true,
             smaa_preset: Some(SmaaPreset::Low),
+            msaa_samples: 1,
+            msaa_component_present: true,
         };
         assert!(antialiasing_component_state_mismatch(
             StudioAntialiasingMode::Fxaa,
+            snapshot
+        ));
+    }
+
+    #[test]
+    fn antialiasing_mismatch_when_msaa4x_selected_but_samples_two() {
+        let snapshot = AntialiasingComponentSnapshot {
+            primary_camera_found: true,
+            camera_entity_index: Some(1),
+            fxaa_present: false,
+            smaa_present: false,
+            smaa_preset: None,
+            msaa_samples: 2,
+            msaa_component_present: true,
+        };
+        assert!(antialiasing_component_state_mismatch(
+            StudioAntialiasingMode::Msaa4x,
             snapshot
         ));
     }
@@ -239,6 +367,8 @@ mod tests {
             fxaa_present: false,
             smaa_present: true,
             smaa_preset: Some(SmaaPreset::Low),
+            msaa_samples: 1,
+            msaa_component_present: true,
         };
         assert!(!antialiasing_component_state_mismatch(
             StudioAntialiasingMode::SmaaLow,
@@ -247,11 +377,31 @@ mod tests {
     }
 
     #[test]
+    fn antialiasing_no_mismatch_when_msaa8x_matches_components() {
+        let snapshot = AntialiasingComponentSnapshot {
+            primary_camera_found: true,
+            camera_entity_index: Some(1),
+            fxaa_present: false,
+            smaa_present: false,
+            smaa_preset: None,
+            msaa_samples: 8,
+            msaa_component_present: true,
+        };
+        assert!(!antialiasing_component_state_mismatch(
+            StudioAntialiasingMode::Msaa8x,
+            snapshot
+        ));
+    }
+
+    #[test]
     fn antialiasing_apply_state_records_generation() {
         let mut state = StudioAntialiasingApplyState::default();
-        state.record_apply(StudioAntialiasingMode::Fxaa, 42);
+        state.record_apply(StudioAntialiasingMode::Msaa4x, 42);
         assert_eq!(state.apply_generation, 1);
-        assert_eq!(state.last_applied_mode, Some(StudioAntialiasingMode::Fxaa));
+        assert_eq!(
+            state.last_applied_mode,
+            Some(StudioAntialiasingMode::Msaa4x)
+        );
         assert_eq!(state.last_applied_frame, 42);
     }
 

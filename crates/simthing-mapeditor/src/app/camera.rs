@@ -3,6 +3,7 @@
 use bevy::diagnostic::FrameCount;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
+use bevy::render::view::Msaa;
 
 use crate::camera_control::{
     apply_orbit_delta, apply_scroll_zoom, reset_camera_after_generation as reset_orbit,
@@ -171,6 +172,7 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(40.0, 35.0, 40.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Msaa::Off,
         MainCamera,
     ));
 }

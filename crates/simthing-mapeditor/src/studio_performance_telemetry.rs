@@ -32,6 +32,12 @@ pub struct StudioPerformanceTelemetry {
     pub aa_fxaa_present: bool,
     pub aa_smaa_present: bool,
     pub aa_smaa_preset: String,
+    pub aa_smaa_selected: bool,
+    pub aa_smaa_expected_active: bool,
+    pub aa_msaa_active: bool,
+    pub aa_msaa_sample_count: String,
+    pub aa_msaa_scope: String,
+    pub aa_post_aa_component_active: bool,
     pub aa_dual_post_aa_active: bool,
     pub aa_state_mismatch: bool,
     pub aa_apply_generation: u64,
@@ -207,6 +213,12 @@ impl Default for StudioPerformanceTelemetry {
             aa_fxaa_present: false,
             aa_smaa_present: false,
             aa_smaa_preset: "none".into(),
+            aa_smaa_selected: false,
+            aa_smaa_expected_active: false,
+            aa_msaa_active: false,
+            aa_msaa_sample_count: "1/off".into(),
+            aa_msaa_scope: "primary Camera3d component".into(),
+            aa_post_aa_component_active: false,
             aa_dual_post_aa_active: false,
             aa_state_mismatch: false,
             aa_apply_generation: 0,
@@ -811,6 +823,50 @@ pub fn video_options_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<
         ),
         format!("SMAA preset: {}", telemetry.aa_smaa_preset),
         format!(
+            "SMAA selected: {}",
+            if telemetry.aa_smaa_selected {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "SMAA camera component present: {}",
+            if telemetry.aa_smaa_present {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "SMAA expected active this frame: {}",
+            if telemetry.aa_smaa_expected_active {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!("SMAA postprocess application: inferred active from Camera3d Smaa component"),
+        format!("SMAA pass timing: unavailable from current Bevy diagnostics"),
+        format!(
+            "MSAA active: {}",
+            if telemetry.aa_msaa_active {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!("MSAA sample count: {}", telemetry.aa_msaa_sample_count),
+        format!("MSAA scope: {}", telemetry.aa_msaa_scope),
+        format!(
+            "Post-AA component active: {}",
+            if telemetry.aa_post_aa_component_active {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
             "Dual post-AA components active: {}",
             if telemetry.aa_dual_post_aa_active {
                 "yes"
@@ -822,7 +878,6 @@ pub fn video_options_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<
     if telemetry.aa_state_mismatch {
         lines.push("AA STATE MISMATCH".into());
     }
-    lines.push("MSAA: deferred / not implemented in Studio AA mode".into());
     lines.push("TAA: deferred / not implemented in Studio AA mode".into());
     lines.push(format!(
         "AA settings generation: {}",
@@ -836,14 +891,23 @@ pub fn video_options_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<
         "Last applied frame: {}",
         telemetry.aa_last_applied_frame
     ));
+    if let Some(ms) = telemetry.frame_total_ms_last {
+        lines.push(format!(
+            "Frame total ms (coarse render/post timing signal): {ms:.2}"
+        ));
+    } else if let Some(ms) = telemetry.frame_total_ms_avg {
+        lines.push(format!(
+            "Frame total ms avg (coarse render/post timing signal): {ms:.2}"
+        ));
+    }
+    if let Some(scale) = telemetry.render_scale {
+        lines.push(format!("Window scale factor: {scale:.2}"));
+    }
     if let Some(name) = telemetry.gpu_name.as_deref() {
         lines.push(format!("GPU adapter: {name}"));
     }
     if let Some(backend) = telemetry.gpu_backend.as_deref() {
         lines.push(format!("Backend: {backend}"));
-    }
-    if let Some(scale) = telemetry.render_scale {
-        lines.push(format!("Window scale factor: {scale:.2}"));
     }
     lines
 }

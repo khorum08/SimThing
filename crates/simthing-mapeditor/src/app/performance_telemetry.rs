@@ -5,6 +5,7 @@ use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::smaa::Smaa;
 use bevy::diagnostic::{DiagnosticsStore, FrameCount};
 use bevy::prelude::*;
+use bevy::render::view::Msaa;
 use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
 use bevy::window::{PresentMode, PrimaryWindow, Window};
 use simthing_tools::{
@@ -27,8 +28,9 @@ use crate::star_render::{
     StarBillboardRenderSettings, StarNameplateDebugMode, VisualHorizonFalloffRuler,
 };
 use crate::studio_antialiasing::{
-    antialiasing_component_state_mismatch, dual_post_aa_components_active, smaa_preset_label,
-    AntialiasingComponentSnapshot, StudioAntialiasingApplyState,
+    antialiasing_component_state_mismatch, dual_post_aa_components_active, msaa_active,
+    msaa_sample_count_label, post_aa_component_active, smaa_expected_active, smaa_preset_label,
+    snapshot_from_camera_components, AntialiasingComponentSnapshot, StudioAntialiasingApplyState,
 };
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -175,21 +177,18 @@ pub fn update_studio_window_gpu_context(
 pub fn update_studio_antialiasing_video_debug_system(
     app_state: Res<super::StudioAppState>,
     apply_state: Res<StudioAntialiasingApplyState>,
-    camera: Query<(Entity, Option<&Fxaa>, Option<&Smaa>), With<super::camera::MainCamera>>,
+    camera: Query<(Entity, Option<&Fxaa>, Option<&Smaa>, &Msaa), With<super::camera::MainCamera>>,
     mut state: ResMut<StudioPerformanceTelemetryState>,
 ) {
     let telemetry = &mut state.telemetry;
-    telemetry.antialiasing_mode = app_state.antialiasing_mode.label().to_string();
+    let selected = app_state.antialiasing_mode;
+    telemetry.antialiasing_mode = selected.label().to_string();
     telemetry.antialiasing_mode_source = app_state.antialiasing_mode_source.label().to_string();
 
     let snapshot = match camera.single() {
-        Ok((entity, fxaa, smaa)) => AntialiasingComponentSnapshot {
-            primary_camera_found: true,
-            camera_entity_index: Some(entity.index()),
-            fxaa_present: fxaa.is_some(),
-            smaa_present: smaa.is_some(),
-            smaa_preset: smaa.map(|component| component.preset),
-        },
+        Ok((entity, fxaa, smaa, msaa)) => {
+            snapshot_from_camera_components(entity, fxaa, smaa, Some(msaa))
+        }
         Err(_) => AntialiasingComponentSnapshot::default(),
     };
 
@@ -202,9 +201,18 @@ pub fn update_studio_antialiasing_video_debug_system(
         .map(smaa_preset_label)
         .unwrap_or("none")
         .to_string();
+    telemetry.aa_smaa_selected = selected.is_smaa();
+    telemetry.aa_smaa_expected_active = smaa_expected_active(selected);
+    telemetry.aa_msaa_active = msaa_active(snapshot.msaa_samples);
+    telemetry.aa_msaa_sample_count = msaa_sample_count_label(snapshot.msaa_samples).to_string();
+    telemetry.aa_msaa_scope = if snapshot.msaa_component_present {
+        "primary Camera3d component".into()
+    } else {
+        "MSAA state unknown: Msaa component missing on primary Camera3d".into()
+    };
+    telemetry.aa_post_aa_component_active = post_aa_component_active(snapshot);
     telemetry.aa_dual_post_aa_active = dual_post_aa_components_active(snapshot);
-    telemetry.aa_state_mismatch =
-        antialiasing_component_state_mismatch(app_state.antialiasing_mode, snapshot);
+    telemetry.aa_state_mismatch = antialiasing_component_state_mismatch(selected, snapshot);
     telemetry.aa_apply_generation = apply_state.apply_generation;
     telemetry.aa_last_applied_mode = apply_state
         .last_applied_mode
