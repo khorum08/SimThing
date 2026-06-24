@@ -7,8 +7,8 @@ PROBATION / visual artifact fix — adds raster glyph atlas gutter and half-texe
 ## PR / branch / merge
 
 - Branch: `codex/typeface-atlas-raster-bleed-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #934
+- Merge: `f28638a3b1`
 
 ## Root cause
 
