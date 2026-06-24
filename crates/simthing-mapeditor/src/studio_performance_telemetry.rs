@@ -43,6 +43,9 @@ pub struct StudioPerformanceTelemetry {
     pub aa_apply_generation: u64,
     pub aa_last_applied_mode: String,
     pub aa_last_applied_frame: u64,
+    pub aa_test_pattern_visible: bool,
+    pub aa_test_pattern_geometry_instances: usize,
+    pub aa_test_pattern_material: String,
 
     pub frame_total_ms_last: Option<f64>,
     pub frame_total_ms_avg: Option<f64>,
@@ -224,6 +227,9 @@ impl Default for StudioPerformanceTelemetry {
             aa_apply_generation: 0,
             aa_last_applied_mode: "—".into(),
             aa_last_applied_frame: 0,
+            aa_test_pattern_visible: false,
+            aa_test_pattern_geometry_instances: 0,
+            aa_test_pattern_material: "—".into(),
             frame_total_ms_last: None,
             frame_total_ms_avg: None,
             main_update_ms_last: None,
@@ -788,6 +794,22 @@ pub fn falloff_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String
 /// Video Options Debug subsection — selected AA mode vs active Camera3d components.
 pub fn video_options_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
     let mut lines = vec![
+        format!(
+            "AA test pattern visible: {}",
+            if telemetry.aa_test_pattern_visible {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "AA test pattern geometry instances: {}",
+            telemetry.aa_test_pattern_geometry_instances
+        ),
+        format!(
+            "AA test pattern material: {}",
+            telemetry.aa_test_pattern_material
+        ),
         format!("Selected AA mode: {}", telemetry.antialiasing_mode),
         format!("Mode source: {}", telemetry.antialiasing_mode_source),
         format!(
@@ -877,6 +899,23 @@ pub fn video_options_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<
     ];
     if telemetry.aa_state_mismatch {
         lines.push("AA STATE MISMATCH".into());
+    }
+    lines.push(format!(
+        "AA state mismatch: {}",
+        if telemetry.aa_state_mismatch {
+            "yes"
+        } else {
+            "no"
+        }
+    ));
+    if telemetry.aa_test_pattern_visible {
+        lines.push(
+            "Compare Off vs MSAA 4x/8x on the diagonal test pattern, not on text labels.".into(),
+        );
+        lines.push("Expected visible effect:".into());
+        lines.push("  MSAA should smooth test-pattern geometry edges.".into());
+        lines.push("  FXAA/SMAA may also smooth as post-process.".into());
+        lines.push("  Label/star sprite artifacts may remain mostly unchanged.".into());
     }
     lines.push("TAA: deferred / not implemented in Studio AA mode".into());
     lines.push(format!(

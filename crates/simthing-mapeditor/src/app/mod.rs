@@ -1,5 +1,6 @@
 #![cfg(windows)]
 
+mod aa_test_pattern;
 mod camera;
 mod galaxy_render;
 mod labels;
@@ -116,6 +117,7 @@ pub fn run_studio() {
             (
                 performance_telemetry::init_studio_performance_telemetry,
                 init_render_loop_cache_state,
+                init_aa_test_pattern_runtime,
             ),
         )
         .add_systems(EguiPrimaryContextPass, ui::studio_ui_system)
@@ -128,6 +130,7 @@ pub fn run_studio() {
                     ui::panel_opacity_system,
                     camera::camera_control_system,
                     camera::sync_studio_antialiasing_system,
+                    aa_test_pattern::sync_aa_test_pattern_system,
                     performance_telemetry::update_map_radius_falloff_context_system,
                     camera::camera_hotkeys_system,
                     picking::selection_keyboard_system,
@@ -231,6 +234,8 @@ pub struct StudioAppState {
     pub star_falloff_metric: crate::star_render::StarFalloffMetric,
     /// Diagnostic overlay: visual high-horizon falloff ruler (presentation only; default off).
     pub show_falloff_ruler: bool,
+    /// Diagnostic overlay: 3D geometry-edge AA test pattern (presentation only; default off).
+    pub show_aa_test_pattern: bool,
     /// Mutually exclusive post-process antialiasing mode (presentation only).
     pub antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode,
     /// Where [`Self::antialiasing_mode`] was last set (telemetry/debug).
@@ -288,6 +293,7 @@ impl StudioAppState {
             star_nameplate_debug_mode: crate::star_render::StarNameplateDebugMode::default(),
             star_falloff_metric: crate::star_render::StarFalloffMetric::default(),
             show_falloff_ruler: false,
+            show_aa_test_pattern: false,
             antialiasing_mode: settings.antialiasing_mode(),
             antialiasing_mode_source:
                 crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
@@ -443,6 +449,10 @@ impl Default for StudioAppState {
 
 fn init_render_loop_cache_state(mut commands: Commands) {
     commands.init_resource::<StudioRenderLoopCaches>();
+}
+
+fn init_aa_test_pattern_runtime(mut commands: Commands) {
+    commands.init_resource::<crate::studio_aa_test_pattern::AaTestPatternRuntime>();
 }
 
 fn init_studio_map_radius_falloff_state(mut commands: Commands) {

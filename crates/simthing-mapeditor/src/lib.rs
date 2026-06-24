@@ -22,6 +22,7 @@ pub mod settings;
 pub mod shape_params;
 pub mod star_render;
 pub mod starburst;
+pub mod studio_aa_test_pattern;
 pub mod studio_admission_report;
 pub mod studio_antialiasing;
 pub mod studio_config;
