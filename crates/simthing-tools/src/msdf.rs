@@ -5,7 +5,7 @@ use msdf_font::ttf_parser::{Face, GlyphId};
 use msdf_font::{Glyph, GlyphBitmapData, GlyphBuilder, PathGlyphBuilder};
 
 use crate::{
-    atlas::{quantize_px, AtlasDirtyRect, AtlasTile, GlyphAtlasCore},
+    atlas::{quantize_px, tile_uv_rect, AtlasDirtyRect, AtlasTile, GlyphAtlasCore},
     bevy::GlyphInstanceGpu,
     font::ProbeFont,
     icons::IconVector,
@@ -494,7 +494,6 @@ pub fn build_distance_field_instance(
     atlas_size: u32,
     color: [f32; 4],
 ) -> GlyphInstanceGpu {
-    let inv = 1.0 / atlas_size as f32;
     let mode = match tile.kind {
         DistanceFieldKind::Sdf => DISTANCE_FIELD_RENDER_SDF,
         DistanceFieldKind::Msdf => DISTANCE_FIELD_RENDER_MSDF,
@@ -506,12 +505,7 @@ pub fn build_distance_field_instance(
             tile.atlas_tile.w as f32,
             tile.atlas_tile.h as f32,
         ],
-        uv_rect: [
-            tile.atlas_tile.x as f32 * inv,
-            tile.atlas_tile.y as f32 * inv,
-            (tile.atlas_tile.x + tile.atlas_tile.w) as f32 * inv,
-            (tile.atlas_tile.y + tile.atlas_tile.h) as f32 * inv,
-        ],
+        uv_rect: tile_uv_rect(tile.atlas_tile, atlas_size),
         color,
         sdf_params: [mode, tile.px_range, atlas_size as f32, 0.0],
         style_params: crate::style::style_params_for_slot(0, 0),

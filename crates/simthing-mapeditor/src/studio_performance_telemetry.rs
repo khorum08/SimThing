@@ -187,6 +187,11 @@ pub struct StudioPerformanceTelemetry {
     pub nameplate_sample_visual_progress_pct: Option<f32>,
     pub nameplate_sample_star_falloff_alpha: Option<f32>,
 
+    pub raster_atlas_gutter_px: u32,
+    pub raster_atlas_uv_inset: bool,
+    pub atlas_tile_count: usize,
+    pub atlas_dirty_region_count: usize,
+
     pub vram_scan_last_ms: Option<f64>,
 }
 
@@ -362,6 +367,10 @@ impl Default for StudioPerformanceTelemetry {
             nameplate_sample_screen_px: None,
             nameplate_sample_visual_progress_pct: None,
             nameplate_sample_star_falloff_alpha: None,
+            raster_atlas_gutter_px: 0,
+            raster_atlas_uv_inset: false,
+            atlas_tile_count: 0,
+            atlas_dirty_region_count: 0,
             vram_scan_last_ms: None,
         }
     }
@@ -659,6 +668,23 @@ pub fn nameplate_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
         format!(
             "Readability floor active (unselected/focused px): {:.0} / {:.0}",
             telemetry.nameplate_min_unselected_label_px, telemetry.nameplate_min_focused_label_px,
+        ),
+        format!(
+            "Raster atlas gutter px: {}",
+            telemetry.raster_atlas_gutter_px
+        ),
+        format!(
+            "Raster atlas UV inset: {}",
+            if telemetry.raster_atlas_uv_inset {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!("Atlas tile count: {}", telemetry.atlas_tile_count),
+        format!(
+            "Atlas dirty regions: {}",
+            telemetry.atlas_dirty_region_count
         ),
     ]);
     if telemetry.nameplate_selected_star_id.is_some() {

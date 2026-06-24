@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    atlas::{quantize_px, AtlasTile},
+    atlas::{quantize_px, tile_uv_rect, AtlasTile},
     bevy::GlyphInstanceGpu,
     font::ProbeFont,
     shaping::{ShapedGlyph, ShapingEngine},
@@ -221,7 +221,6 @@ fn instance_from_tile(
     color: [f32; 4],
     atlas_size: u32,
 ) -> GlyphInstanceGpu {
-    let inv = 1.0 / atlas_size as f32;
     GlyphInstanceGpu {
         pos_size: [
             glyph.x + tile.left as f32,
@@ -229,12 +228,7 @@ fn instance_from_tile(
             tile.w as f32,
             tile.h as f32,
         ],
-        uv_rect: [
-            tile.x as f32 * inv,
-            tile.y as f32 * inv,
-            (tile.x + tile.w) as f32 * inv,
-            (tile.y + tile.h) as f32 * inv,
-        ],
+        uv_rect: tile_uv_rect(tile, atlas_size),
         color,
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],

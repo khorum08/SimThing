@@ -10,8 +10,9 @@ use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
 use bevy::window::{PresentMode, PrimaryWindow, Window};
 use simthing_tools::{
     natural_run_aspect_from_glyphs, normalized_label_local_x_range_from_glyphs, GlyphInstanceGpu,
-    TextGlyphInstances, WorldTextBillboard, WorldTextFalloffRulerPatch, WorldTextNameplateLodPatch,
-    WorldTextPlacementMode,
+    TextGlyphInstances, TextPerfDiagnostics, TypefaceAtlas, WorldTextBillboard,
+    WorldTextFalloffRulerPatch, WorldTextNameplateLodPatch, WorldTextPlacementMode,
+    RASTER_GLYPH_ATLAS_GUTTER_PX, RASTER_GLYPH_ATLAS_UV_INSET,
 };
 
 use crate::falloff_metric::{
@@ -349,12 +350,26 @@ pub fn update_nameplate_diagnostics_system(
         ),
         With<GalaxyStarNameplate>,
     >,
+    atlas: Option<Res<TypefaceAtlas>>,
+    text_perf: Option<Res<TextPerfDiagnostics>>,
     mut telemetry_state: ResMut<StudioPerformanceTelemetryState>,
     mut lod_patch: ResMut<WorldTextNameplateLodPatch>,
     falloff_state: Res<super::StudioMapRadiusFalloffState>,
 ) {
     let debug_mode = state.star_nameplate_debug_mode;
     let nameplate_settings = settings.star_nameplate_settings().clamped();
+    telemetry_state.telemetry.raster_atlas_gutter_px = RASTER_GLYPH_ATLAS_GUTTER_PX;
+    telemetry_state.telemetry.raster_atlas_uv_inset = RASTER_GLYPH_ATLAS_UV_INSET;
+    if let Some(atlas) = atlas.as_ref() {
+        telemetry_state.telemetry.atlas_tile_count = atlas.cpu.tile_count();
+        telemetry_state.telemetry.atlas_dirty_region_count = atlas.cpu_stats().dirty_region_count;
+    }
+    if let Some(perf) = text_perf.as_ref() {
+        telemetry_state.telemetry.atlas_dirty_region_count = telemetry_state
+            .telemetry
+            .atlas_dirty_region_count
+            .max(perf.atlas_dirty_region_count as usize);
+    }
     telemetry_state.telemetry.nameplate_visibility_mode = debug_mode.label().into();
     telemetry_state.telemetry.nameplate_debug_override_active = debug_mode.is_debug_override();
     telemetry_state
