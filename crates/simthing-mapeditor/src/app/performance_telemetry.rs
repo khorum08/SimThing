@@ -1,6 +1,8 @@
 //! Bevy systems for Studio Settings performance telemetry.
 
 use bevy::app::{App, Plugin};
+use bevy::core_pipeline::fxaa::Fxaa;
+use bevy::core_pipeline::smaa::Smaa;
 use bevy::diagnostic::{DiagnosticsStore, FrameCount};
 use bevy::prelude::*;
 use bevy::render::{renderer::RenderAdapterInfo, RenderApp};
@@ -23,6 +25,10 @@ use crate::star_render::{
     star_falloff_progress_percent, star_nameplate_envelope_height_ratio,
     visual_horizon_ruler_screen_y_fraction_from_top, world_anchor_screen_px, StarBillboardInstance,
     StarBillboardRenderSettings, StarNameplateDebugMode, VisualHorizonFalloffRuler,
+};
+use crate::studio_antialiasing::{
+    antialiasing_component_state_mismatch, dual_post_aa_components_active, smaa_preset_label,
+    AntialiasingComponentSnapshot, StudioAntialiasingApplyState,
 };
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
@@ -53,6 +59,7 @@ pub struct StudioPerformanceTelemetryState {
 
 pub fn init_studio_performance_telemetry(mut commands: Commands) {
     commands.init_resource::<StudioPerformanceTelemetryState>();
+    commands.init_resource::<StudioAntialiasingApplyState>();
 }
 
 pub fn begin_main_update_timing(mut state: ResMut<StudioPerformanceTelemetryState>) {
@@ -163,6 +170,47 @@ pub fn update_studio_window_gpu_context(
     state.telemetry.render_scale = Some(window.resolution.scale_factor() as f32);
     state.telemetry.present_mode = Some(format_present_mode(window.present_mode));
     state.telemetry.antialiasing_mode = app_state.antialiasing_mode.label().to_string();
+}
+
+pub fn update_studio_antialiasing_video_debug_system(
+    app_state: Res<super::StudioAppState>,
+    apply_state: Res<StudioAntialiasingApplyState>,
+    camera: Query<(Entity, Option<&Fxaa>, Option<&Smaa>), With<super::camera::MainCamera>>,
+    mut state: ResMut<StudioPerformanceTelemetryState>,
+) {
+    let telemetry = &mut state.telemetry;
+    telemetry.antialiasing_mode = app_state.antialiasing_mode.label().to_string();
+    telemetry.antialiasing_mode_source = app_state.antialiasing_mode_source.label().to_string();
+
+    let snapshot = match camera.single() {
+        Ok((entity, fxaa, smaa)) => AntialiasingComponentSnapshot {
+            primary_camera_found: true,
+            camera_entity_index: Some(entity.index()),
+            fxaa_present: fxaa.is_some(),
+            smaa_present: smaa.is_some(),
+            smaa_preset: smaa.map(|component| component.preset),
+        },
+        Err(_) => AntialiasingComponentSnapshot::default(),
+    };
+
+    telemetry.aa_primary_camera_found = snapshot.primary_camera_found;
+    telemetry.aa_camera_entity_index = snapshot.camera_entity_index;
+    telemetry.aa_fxaa_present = snapshot.fxaa_present;
+    telemetry.aa_smaa_present = snapshot.smaa_present;
+    telemetry.aa_smaa_preset = snapshot
+        .smaa_preset
+        .map(smaa_preset_label)
+        .unwrap_or("none")
+        .to_string();
+    telemetry.aa_dual_post_aa_active = dual_post_aa_components_active(snapshot);
+    telemetry.aa_state_mismatch =
+        antialiasing_component_state_mismatch(app_state.antialiasing_mode, snapshot);
+    telemetry.aa_apply_generation = apply_state.apply_generation;
+    telemetry.aa_last_applied_mode = apply_state
+        .last_applied_mode
+        .map(|mode| mode.label().to_string())
+        .unwrap_or_else(|| "—".into());
+    telemetry.aa_last_applied_frame = apply_state.last_applied_frame;
 }
 
 fn format_present_mode(mode: PresentMode) -> String {

@@ -1,5 +1,6 @@
 #![cfg(windows)]
 
+use bevy::diagnostic::FrameCount;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 
@@ -284,6 +285,8 @@ pub fn sync_studio_antialiasing_system(
     mut last_applied: Local<Option<crate::studio_antialiasing::StudioAntialiasingMode>>,
     camera: Query<Entity, With<MainCamera>>,
     mut commands: Commands,
+    mut apply_state: ResMut<crate::studio_antialiasing::StudioAntialiasingApplyState>,
+    frame: Res<FrameCount>,
 ) {
     let mode = app_state.antialiasing_mode;
     if last_applied
@@ -295,7 +298,12 @@ pub fn sync_studio_antialiasing_system(
     let Ok(entity) = camera.single() else {
         return;
     };
-    crate::studio_antialiasing::apply_studio_antialiasing_mode(&mut commands.entity(entity), mode);
+    crate::studio_antialiasing::apply_and_record_studio_antialiasing_mode(
+        &mut commands.entity(entity),
+        mode,
+        &mut apply_state,
+        frame.0.into(),
+    );
     *last_applied = Some(mode);
 }
 

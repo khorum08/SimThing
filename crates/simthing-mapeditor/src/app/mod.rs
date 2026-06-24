@@ -68,6 +68,15 @@ pub fn run_studio() {
         let _ = save_current_studio_config(&app_state, &settings, None);
     }
     app_state.config_load_warning = config_load_warning;
+    app_state.antialiasing_mode_source = match &load_outcome {
+        StudioConfigLoadOutcome::Loaded { .. } => {
+            crate::studio_antialiasing::StudioAntialiasingModeSource::LoadedStudioConfig
+        }
+        StudioConfigLoadOutcome::MissingDefaults
+        | StudioConfigLoadOutcome::RejectedDefaults { .. } => {
+            crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback
+        }
+    };
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::BLACK))
         .insert_resource(StudioSettings(settings.clone()))
@@ -133,6 +142,7 @@ pub fn run_studio() {
                     performance_telemetry::update_nameplate_diagnostics_system,
                     performance_telemetry::update_studio_vram_telemetry,
                     performance_telemetry::update_studio_window_gpu_context,
+                    performance_telemetry::update_studio_antialiasing_video_debug_system,
                     window::persist_settings_on_exit,
                 ),
                 performance_telemetry::finalize_main_update_timing,
@@ -223,6 +233,8 @@ pub struct StudioAppState {
     pub show_falloff_ruler: bool,
     /// Mutually exclusive post-process antialiasing mode (presentation only).
     pub antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode,
+    /// Where [`Self::antialiasing_mode`] was last set (telemetry/debug).
+    pub antialiasing_mode_source: crate::studio_antialiasing::StudioAntialiasingModeSource,
 }
 
 impl StudioAppState {
@@ -277,6 +289,8 @@ impl StudioAppState {
             star_falloff_metric: crate::star_render::StarFalloffMetric::default(),
             show_falloff_ruler: false,
             antialiasing_mode: settings.antialiasing_mode(),
+            antialiasing_mode_source:
+                crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
         }
     }
 
