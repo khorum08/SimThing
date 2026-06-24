@@ -19,8 +19,9 @@ mod wgpu_smoke;
 pub mod world_text;
 
 pub use atlas::{
-    format_atlas_report, quantize_px, rasterize_glyph_cpu, AtlasTile, GlyphAtlas, GlyphAtlasCore,
-    GlyphAtlasKey, GlyphAtlasStats, RasterizedGlyph, ATLAS_TEXTURE_FORMAT,
+    format_atlas_report, quantize_px, rasterize_glyph_cpu, tile_uv_rect, AtlasTile, GlyphAtlas,
+    GlyphAtlasCore, GlyphAtlasKey, GlyphAtlasStats, RasterizedGlyph, ATLAS_TEXTURE_FORMAT,
+    RASTER_GLYPH_ATLAS_GUTTER_PX, RASTER_GLYPH_ATLAS_UV_INSET,
 };
 pub use bevy::{
     create_atlas_image_from_cpu, create_render_target_image, distance_field_diagnostics,

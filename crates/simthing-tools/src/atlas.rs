@@ -10,6 +10,12 @@ use wgpu::{
 
 use crate::font::ProbeFont;
 
+/// Transparent gutter around raster glyph tiles to prevent bilinear atlas bleed.
+pub const RASTER_GLYPH_ATLAS_GUTTER_PX: u32 = 1;
+
+/// Half-texel UV inset on inner glyph bounds (requires gutter for stable edge sampling).
+pub const RASTER_GLYPH_ATLAS_UV_INSET: bool = true;
+
 /// Workshop atlas texture format: RGBA8 with glyph coverage in the alpha channel.
 pub const ATLAS_TEXTURE_FORMAT: TextureFormat = TextureFormat::Rgba8Unorm;
 
@@ -161,39 +167,9 @@ impl GlyphAtlasCore {
         }
 
         let raster = rasterize_glyph_cpu(font, glyph_id, px)?;
-        let allocation = self
-            .allocator
-            .allocate(size2(raster.w as i32, raster.h as i32))?;
-        let rect = self.allocator[allocation.id];
-        let x = rect.min.x as u32;
-        let y = rect.min.y as u32;
-
-        blit_rgba8(
-            &mut self.cpu_pixels,
-            self.size,
-            x,
-            y,
-            raster.w,
-            raster.h,
-            &raster.pixels,
-        );
-
-        let tile = AtlasTile {
-            x,
-            y,
-            w: raster.w,
-            h: raster.h,
-            left: raster.left,
-            top: raster.top,
-        };
+        let tile =
+            self.insert_rgba8_tile(&raster.pixels, raster.w, raster.h, raster.left, raster.top)?;
         self.cache.insert(key, tile);
-        self.rasterize_count += 1;
-        self.dirty_regions.push(DirtyRect {
-            x,
-            y,
-            w: raster.w,
-            h: raster.h,
-        });
         Some(tile)
     }
 
@@ -209,23 +185,46 @@ impl GlyphAtlasCore {
             return None;
         }
 
-        let allocation = self.allocator.allocate(size2(w as i32, h as i32))?;
+        let gutter = RASTER_GLYPH_ATLAS_GUTTER_PX;
+        let alloc_w = w + 2 * gutter;
+        let alloc_h = h + 2 * gutter;
+        let allocation = self
+            .allocator
+            .allocate(size2(alloc_w as i32, alloc_h as i32))?;
         let rect = self.allocator[allocation.id];
-        let x = rect.min.x as u32;
-        let y = rect.min.y as u32;
+        let alloc_x = rect.min.x as u32;
+        let alloc_y = rect.min.y as u32;
+        let content_x = alloc_x + gutter;
+        let content_y = alloc_y + gutter;
 
-        blit_rgba8(&mut self.cpu_pixels, self.size, x, y, w, h, pixels);
+        blit_rgba8_with_gutter(
+            &mut self.cpu_pixels,
+            self.size,
+            alloc_x,
+            alloc_y,
+            content_x,
+            content_y,
+            w,
+            h,
+            gutter,
+            pixels,
+        );
 
         let tile = AtlasTile {
-            x,
-            y,
+            x: content_x,
+            y: content_y,
             w,
             h,
             left,
             top,
         };
         self.rasterize_count += 1;
-        self.dirty_regions.push(DirtyRect { x, y, w, h });
+        self.dirty_regions.push(DirtyRect {
+            x: alloc_x,
+            y: alloc_y,
+            w: alloc_w,
+            h: alloc_h,
+        });
         Some(tile)
     }
 
@@ -410,14 +409,119 @@ impl GlyphAtlas {
 pub fn format_atlas_report(core: &GlyphAtlasCore) -> String {
     let stats = core.stats();
     format!(
-        "atlas_size={}\ntile_count={}\nrasterize_count={}\ncache_hit_count={}\ndirty_region_count={}\ntexture_format={:?}",
+        "atlas_size={}\ntile_count={}\nrasterize_count={}\ncache_hit_count={}\ndirty_region_count={}\nraster_gutter_px={}\nraster_uv_inset={}\ntexture_format={:?}",
         core.atlas_size(),
         core.tile_count(),
         stats.rasterize_count,
         stats.cache_hit_count,
         stats.dirty_region_count,
+        RASTER_GLYPH_ATLAS_GUTTER_PX,
+        RASTER_GLYPH_ATLAS_UV_INSET,
         core.texture_format()
     )
+}
+
+/// Full padded allocation rect for a tile (includes gutter bands).
+pub fn tile_alloc_rect(tile: AtlasTile) -> AtlasDirtyRect {
+    let gutter = RASTER_GLYPH_ATLAS_GUTTER_PX;
+    AtlasDirtyRect {
+        x: tile.x.saturating_sub(gutter),
+        y: tile.y.saturating_sub(gutter),
+        w: tile.w + 2 * gutter,
+        h: tile.h + 2 * gutter,
+    }
+}
+
+/// UV rect for the inner glyph content with optional half-texel inset.
+pub fn tile_uv_rect(tile: AtlasTile, atlas_size: u32) -> [f32; 4] {
+    let inv = 1.0 / atlas_size as f32;
+    if !RASTER_GLYPH_ATLAS_UV_INSET || tile.w == 0 || tile.h == 0 {
+        return [
+            tile.x as f32 * inv,
+            tile.y as f32 * inv,
+            (tile.x + tile.w) as f32 * inv,
+            (tile.y + tile.h) as f32 * inv,
+        ];
+    }
+    let (u0, u1) = inset_axis_uv(tile.x, tile.w, atlas_size);
+    let (v0, v1) = inset_axis_uv(tile.y, tile.h, atlas_size);
+    [u0, v0, u1, v1]
+}
+
+fn inset_axis_uv(origin: u32, size: u32, atlas_size: u32) -> (f32, f32) {
+    let atlas = atlas_size as f32;
+    if size <= 1 {
+        let center = (origin as f32 + 0.5) / atlas;
+        return (center, center);
+    }
+    let min = (origin as f32 + 0.5) / atlas;
+    let max = (origin as f32 + size as f32 - 0.5) / atlas;
+    (min, max)
+}
+
+fn blit_rgba8_with_gutter(
+    atlas: &mut [u8],
+    atlas_size: u32,
+    alloc_x: u32,
+    _alloc_y: u32,
+    content_x: u32,
+    content_y: u32,
+    w: u32,
+    h: u32,
+    gutter: u32,
+    src: &[u8],
+) {
+    blit_rgba8(atlas, atlas_size, content_x, content_y, w, h, src);
+    if gutter == 0 {
+        return;
+    }
+    duplicate_gutter_edges(
+        atlas, atlas_size, alloc_x, content_x, content_y, w, h, gutter,
+    );
+}
+
+fn duplicate_gutter_edges(
+    atlas: &mut [u8],
+    atlas_size: u32,
+    alloc_x: u32,
+    content_x: u32,
+    content_y: u32,
+    w: u32,
+    h: u32,
+    gutter: u32,
+) {
+    let mut pixel = [0u8; 4];
+    let alloc_w = w + 2 * gutter;
+    for row in 0..h {
+        let y = content_y + row;
+        let left_off = pixel_offset(atlas_size, content_x, y);
+        let right_off = pixel_offset(atlas_size, content_x + w - 1, y);
+        for g in 1..=gutter {
+            pixel.copy_from_slice(&atlas[left_off..left_off + 4]);
+            let dst_left = pixel_offset(atlas_size, content_x - g, y);
+            atlas[dst_left..dst_left + 4].copy_from_slice(&pixel);
+            pixel.copy_from_slice(&atlas[right_off..right_off + 4]);
+            let dst_right = pixel_offset(atlas_size, content_x + w - 1 + g, y);
+            atlas[dst_right..dst_right + 4].copy_from_slice(&pixel);
+        }
+    }
+    for col in 0..alloc_w {
+        let x = alloc_x + col;
+        let top_off = pixel_offset(atlas_size, x, content_y);
+        let bottom_off = pixel_offset(atlas_size, x, content_y + h - 1);
+        for g in 1..=gutter {
+            pixel.copy_from_slice(&atlas[top_off..top_off + 4]);
+            let dst_top = pixel_offset(atlas_size, x, content_y - g);
+            atlas[dst_top..dst_top + 4].copy_from_slice(&pixel);
+            pixel.copy_from_slice(&atlas[bottom_off..bottom_off + 4]);
+            let dst_bottom = pixel_offset(atlas_size, x, content_y + h - 1 + g);
+            atlas[dst_bottom..dst_bottom + 4].copy_from_slice(&pixel);
+        }
+    }
+}
+
+fn pixel_offset(atlas_size: u32, x: u32, y: u32) -> usize {
+    ((y * atlas_size + x) * 4) as usize
 }
 
 fn blit_rgba8(atlas: &mut [u8], atlas_size: u32, x: u32, y: u32, w: u32, h: u32, src: &[u8]) {
@@ -452,5 +556,89 @@ fn copy_rect_to_staging(
         let len = w as usize * 4;
         staging[dst_start..dst_start + len]
             .copy_from_slice(&cpu_pixels[src_start..src_start + len]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn solid_tile_pixels(w: u32, h: u32, alpha: u8) -> Vec<u8> {
+        let mut pixels = vec![0u8; (w * h * 4) as usize];
+        for px in pixels.chunks_mut(4) {
+            px[0] = 255;
+            px[1] = 255;
+            px[2] = 255;
+            px[3] = alpha;
+        }
+        pixels
+    }
+
+    #[test]
+    fn atlas_tile_alloc_rect_includes_gutter() {
+        let tile = AtlasTile {
+            x: 10,
+            y: 20,
+            w: 8,
+            h: 12,
+            left: 0,
+            top: 0,
+        };
+        let alloc = tile_alloc_rect(tile);
+        assert_eq!(alloc.x, 9);
+        assert_eq!(alloc.y, 19);
+        assert_eq!(alloc.w, 10);
+        assert_eq!(alloc.h, 14);
+    }
+
+    #[test]
+    fn atlas_tile_uv_rect_insets_half_texel() {
+        let tile = AtlasTile {
+            x: 10,
+            y: 20,
+            w: 8,
+            h: 12,
+            left: 0,
+            top: 0,
+        };
+        let uv = tile_uv_rect(tile, 256);
+        assert!(uv[0] > 10.0 / 256.0);
+        assert!(uv[1] > 20.0 / 256.0);
+        assert!(uv[2] < (10.0 + 8.0) / 256.0);
+        assert!(uv[3] < (20.0 + 12.0) / 256.0);
+    }
+
+    #[test]
+    fn atlas_raster_gutter_separates_adjacent_tiles() {
+        let mut atlas = GlyphAtlasCore::new(64);
+        let left = atlas
+            .insert_rgba8_tile(&solid_tile_pixels(4, 4, 255), 4, 4, 0, 0)
+            .expect("left tile");
+        let right = atlas
+            .insert_rgba8_tile(&solid_tile_pixels(4, 4, 128), 4, 4, 0, 0)
+            .expect("right tile");
+
+        let left_alloc = tile_alloc_rect(left);
+        let right_alloc = tile_alloc_rect(right);
+        assert!(
+            left_alloc.x + left_alloc.w <= right_alloc.x
+                || right_alloc.x + right_alloc.w <= left_alloc.x
+                || left_alloc.y + left_alloc.h <= right_alloc.y
+                || right_alloc.y + right_alloc.h <= left_alloc.y,
+            "padded allocations must not overlap"
+        );
+
+        let gutter_alpha = atlas.staging_pixels()[pixel_offset(64, left.x + left.w, left.y) + 3];
+        assert_eq!(gutter_alpha, 255, "gutter should duplicate opaque edge");
+    }
+
+    #[test]
+    fn atlas_tile_pixels_reads_inner_glyph_only() {
+        let mut atlas = GlyphAtlasCore::new(32);
+        let src = solid_tile_pixels(3, 2, 200);
+        let tile = atlas.insert_rgba8_tile(&src, 3, 2, 1, -2).expect("tile");
+        assert_eq!(atlas.tile_pixels(tile), src);
+        assert_eq!(tile.w, 3);
+        assert_eq!(tile.h, 2);
     }
 }

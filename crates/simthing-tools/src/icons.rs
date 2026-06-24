@@ -9,7 +9,7 @@ use usvg::{
 };
 
 use crate::{
-    atlas::{quantize_px, AtlasTile, GlyphAtlasCore},
+    atlas::{quantize_px, tile_uv_rect, AtlasTile, GlyphAtlasCore},
     bevy::GlyphInstanceGpu,
     font::ProbeFont,
     shaping::{ShapedGlyph, ShapingEngine},
@@ -260,7 +260,6 @@ impl IconSet {
         let layers = self
             .style_layers_for(codepoint, px)
             .ok_or(IconError::EmptyVector)?;
-        let inv = 1.0 / atlas_size as f32;
         let mut instances = Vec::with_capacity(role_style_slots.len());
         for (role, style_slot) in role_style_slots {
             let layer = layers
@@ -270,12 +269,7 @@ impl IconSet {
             let tile = layer.raster_tile;
             instances.push(GlyphInstanceGpu {
                 pos_size: [x, y, tile.w as f32, tile.h as f32],
-                uv_rect: [
-                    tile.x as f32 * inv,
-                    tile.y as f32 * inv,
-                    (tile.x + tile.w) as f32 * inv,
-                    (tile.y + tile.h) as f32 * inv,
-                ],
+                uv_rect: tile_uv_rect(tile, atlas_size),
                 color,
                 sdf_params: [0.0; 4],
                 style_params: style_params_for_slot(*style_slot, role_slot_for_icon_layer(*role)),
@@ -902,15 +896,9 @@ fn build_instance(
     color: [f32; 4],
     atlas_size: u32,
 ) -> GlyphInstanceGpu {
-    let inv = 1.0 / atlas_size as f32;
     GlyphInstanceGpu {
         pos_size: [x, y, tile.w as f32, tile.h as f32],
-        uv_rect: [
-            tile.x as f32 * inv,
-            tile.y as f32 * inv,
-            (tile.x + tile.w) as f32 * inv,
-            (tile.y + tile.h) as f32 * inv,
-        ],
+        uv_rect: tile_uv_rect(tile, atlas_size),
         color,
         sdf_params: [0.0; 4],
         style_params: [0.0; 4],

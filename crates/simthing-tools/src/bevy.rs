@@ -24,7 +24,7 @@ use bevy::{
 };
 
 use crate::{
-    atlas::{AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
+    atlas::{tile_uv_rect, AtlasDirtyRect, AtlasTile, GlyphAtlasCore, GlyphAtlasStats},
     deform::{
         deform_params_for_slot, tess_level_for_deform_slot, ExtractedTextDeformTable,
         TextDeformDiagnostics, TextDeformTableResource, TextDeformTessMesh,
@@ -1376,7 +1376,6 @@ fn build_instance(
     warp_slot: crate::warp::TextWarpSlot,
     path_u: f32,
 ) -> GlyphInstanceGpu {
-    let inv = 1.0 / atlas_size as f32;
     let sdf_params = distance_field
         .map(|df| crate::msdf::sdf_params_for_distance_field_tile(df, atlas_size))
         .unwrap_or([0.0; 4]);
@@ -1388,12 +1387,7 @@ fn build_instance(
             tile.w as f32,
             tile.h as f32,
         ],
-        uv_rect: [
-            tile.x as f32 * inv,
-            tile.y as f32 * inv,
-            (tile.x + tile.w) as f32 * inv,
-            (tile.y + tile.h) as f32 * inv,
-        ],
+        uv_rect: tile_uv_rect(tile, atlas_size),
         color,
         sdf_params,
         style_params: style_params_for_slot(style_slot, 0),
