@@ -7,8 +7,8 @@ PROBATION / presentation settings feature — adds mutually exclusive MSAA 2x/4x
 ## PR / branch / merge
 
 - Branch: `codex/studio-antialiasing-msaa-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #932
+- Merge: `db280adb9a`
 
 ## Purpose
 
