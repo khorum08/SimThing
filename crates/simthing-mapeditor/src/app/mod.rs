@@ -63,8 +63,20 @@ pub fn run_studio() {
         app_state.show_stars = config.view.show_stars;
         app_state.show_hyperlanes = config.view.show_hyperlanes;
         app_state.config_view_mode = config.view.view_mode;
+    } else if matches!(load_outcome, StudioConfigLoadOutcome::MissingDefaults) {
+        // Seed stable JSON from validated RON/editor defaults so the next launch is consistent.
+        let _ = save_current_studio_config(&app_state, &settings, None);
     }
     app_state.config_load_warning = config_load_warning;
+    app_state.antialiasing_mode_source = match &load_outcome {
+        StudioConfigLoadOutcome::Loaded { .. } => {
+            crate::studio_antialiasing::StudioAntialiasingModeSource::LoadedStudioConfig
+        }
+        StudioConfigLoadOutcome::MissingDefaults
+        | StudioConfigLoadOutcome::RejectedDefaults { .. } => {
+            crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback
+        }
+    };
     let mut app = App::new();
     app.insert_resource(ClearColor(Color::BLACK))
         .insert_resource(StudioSettings(settings.clone()))
@@ -130,6 +142,7 @@ pub fn run_studio() {
                     performance_telemetry::update_nameplate_diagnostics_system,
                     performance_telemetry::update_studio_vram_telemetry,
                     performance_telemetry::update_studio_window_gpu_context,
+                    performance_telemetry::update_studio_antialiasing_video_debug_system,
                     window::persist_settings_on_exit,
                 ),
                 performance_telemetry::finalize_main_update_timing,
@@ -220,6 +233,8 @@ pub struct StudioAppState {
     pub show_falloff_ruler: bool,
     /// Mutually exclusive post-process antialiasing mode (presentation only).
     pub antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode,
+    /// Where [`Self::antialiasing_mode`] was last set (telemetry/debug).
+    pub antialiasing_mode_source: crate::studio_antialiasing::StudioAntialiasingModeSource,
 }
 
 impl StudioAppState {
@@ -274,6 +289,8 @@ impl StudioAppState {
             star_falloff_metric: crate::star_render::StarFalloffMetric::default(),
             show_falloff_ruler: false,
             antialiasing_mode: settings.antialiasing_mode(),
+            antialiasing_mode_source:
+                crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
         }
     }
 
@@ -396,6 +413,26 @@ pub(crate) fn save_current_studio_config(
         camera_state,
     );
     config.save_to_default_path()
+}
+
+/// Persist presentation sliders/dialog state to both RON and JSON stores.
+pub(crate) fn persist_presentation_settings(
+    state: &StudioAppState,
+    settings: &mut EditorSettings,
+    camera: Option<&camera::StudioCamera>,
+) {
+    settings.set_star_falloff_settings(state.star_falloff_settings);
+    settings.set_star_render_mode(state.star_render_mode);
+    settings.set_hyperlane_render_settings(state.hyperlane_render_settings);
+    settings.set_antialiasing_mode(state.antialiasing_mode);
+    settings.settings_dialog_position = state.settings_dialog.position;
+    settings.settings_dialog_visible = state.settings_dialog.visible;
+    if let Err(err) = settings.save() {
+        bevy::log::warn!("failed to save editor settings: {err}");
+    }
+    if let Err(err) = save_current_studio_config(state, settings, camera) {
+        bevy::log::warn!("failed to save studio config: {err}");
+    }
 }
 
 impl Default for StudioAppState {

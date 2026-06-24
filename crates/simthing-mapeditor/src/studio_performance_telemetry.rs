@@ -26,6 +26,17 @@ pub struct StudioPerformanceTelemetry {
     pub window_height: Option<u32>,
     pub render_scale: Option<f32>,
     pub antialiasing_mode: String,
+    pub antialiasing_mode_source: String,
+    pub aa_primary_camera_found: bool,
+    pub aa_camera_entity_index: Option<u32>,
+    pub aa_fxaa_present: bool,
+    pub aa_smaa_present: bool,
+    pub aa_smaa_preset: String,
+    pub aa_dual_post_aa_active: bool,
+    pub aa_state_mismatch: bool,
+    pub aa_apply_generation: u64,
+    pub aa_last_applied_mode: String,
+    pub aa_last_applied_frame: u64,
 
     pub frame_total_ms_last: Option<f64>,
     pub frame_total_ms_avg: Option<f64>,
@@ -190,6 +201,17 @@ impl Default for StudioPerformanceTelemetry {
             window_height: None,
             render_scale: None,
             antialiasing_mode: "Off".into(),
+            antialiasing_mode_source: "default fallback".into(),
+            aa_primary_camera_found: false,
+            aa_camera_entity_index: None,
+            aa_fxaa_present: false,
+            aa_smaa_present: false,
+            aa_smaa_preset: "none".into(),
+            aa_dual_post_aa_active: false,
+            aa_state_mismatch: false,
+            aa_apply_generation: 0,
+            aa_last_applied_mode: "—".into(),
+            aa_last_applied_frame: 0,
             frame_total_ms_last: None,
             frame_total_ms_avg: None,
             main_update_ms_last: None,
@@ -749,6 +771,81 @@ pub fn falloff_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String
             }
         ),
     ]
+}
+
+/// Video Options Debug subsection — selected AA mode vs active Camera3d components.
+pub fn video_options_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<String> {
+    let mut lines = vec![
+        format!("Selected AA mode: {}", telemetry.antialiasing_mode),
+        format!("Mode source: {}", telemetry.antialiasing_mode_source),
+        format!(
+            "Primary Camera3d found: {}",
+            if telemetry.aa_primary_camera_found {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "Camera entity: {}",
+            telemetry
+                .aa_camera_entity_index
+                .map(|index| index.to_string())
+                .unwrap_or_else(|| "—".into())
+        ),
+        format!(
+            "FXAA component present: {}",
+            if telemetry.aa_fxaa_present {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!(
+            "SMAA component present: {}",
+            if telemetry.aa_smaa_present {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+        format!("SMAA preset: {}", telemetry.aa_smaa_preset),
+        format!(
+            "Dual post-AA components active: {}",
+            if telemetry.aa_dual_post_aa_active {
+                "yes"
+            } else {
+                "no"
+            }
+        ),
+    ];
+    if telemetry.aa_state_mismatch {
+        lines.push("AA STATE MISMATCH".into());
+    }
+    lines.push("MSAA: deferred / not implemented in Studio AA mode".into());
+    lines.push("TAA: deferred / not implemented in Studio AA mode".into());
+    lines.push(format!(
+        "AA settings generation: {}",
+        telemetry.aa_apply_generation
+    ));
+    lines.push(format!(
+        "Last applied AA mode: {}",
+        telemetry.aa_last_applied_mode
+    ));
+    lines.push(format!(
+        "Last applied frame: {}",
+        telemetry.aa_last_applied_frame
+    ));
+    if let Some(name) = telemetry.gpu_name.as_deref() {
+        lines.push(format!("GPU adapter: {name}"));
+    }
+    if let Some(backend) = telemetry.gpu_backend.as_deref() {
+        lines.push(format!("Backend: {backend}"));
+    }
+    if let Some(scale) = telemetry.render_scale {
+        lines.push(format!("Window scale factor: {scale:.2}"));
+    }
+    lines
 }
 
 /// Hyperlane ribbon debug subsection for the Telemetry dialog.

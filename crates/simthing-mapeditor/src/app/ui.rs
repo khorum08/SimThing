@@ -26,6 +26,7 @@ use crate::star_render::{
     star_visuals_dirty_after_settings_change, StarFalloffSettings, StarNameplateSettings,
     StarRenderMode,
 };
+use crate::studio_antialiasing::StudioAntialiasingModeSource;
 use crate::studio_antialiasing::{apply_studio_antialiasing_mode, StudioAntialiasingMode};
 
 use super::camera::{reset_camera_after_generation, snap_overhead, MainCamera, StudioCamera};
@@ -49,7 +50,7 @@ use crate::studio_frame_phase_gpu_telemetry::{
 };
 use crate::studio_performance_telemetry::{
     falloff_debug_lines, hyperlane_debug_lines, nameplate_debug_lines, performance_summary_lines,
-    render_loop_gpu_vram_lines,
+    render_loop_gpu_vram_lines, video_options_debug_lines,
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
@@ -862,6 +863,20 @@ fn draw_telemetry_dialog(
                             ui.label(line);
                         }
                     });
+                egui::CollapsingHeader::new("Video Options Debug")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        ui.label(
+                            "Confirms selected AA mode and active Bevy camera components. Visual quality still requires owner screenshot comparison.",
+                        );
+                        for line in video_options_debug_lines(telemetry) {
+                            if line == "AA STATE MISMATCH" {
+                                ui.colored_label(egui::Color32::YELLOW, &line);
+                            } else {
+                                ui.label(line);
+                            }
+                        }
+                    });
                 egui::CollapsingHeader::new("Performance summary")
                     .default_open(false)
                     .show(ui, |ui| {
@@ -985,15 +1000,9 @@ fn close_settings_dialog(
         SettingsDialogCloseSource::Icon => state.settings_dialog.close_icon(),
         SettingsDialogCloseSource::Button => state.settings_dialog.close_button(),
     }
-    settings.settings_dialog_position = state.settings_dialog.position;
-    settings.settings_dialog_visible = state.settings_dialog.visible;
-    settings.set_star_falloff_settings(state.star_falloff_settings);
-    settings.set_star_render_mode(state.star_render_mode);
-    settings.set_hyperlane_render_settings(state.hyperlane_render_settings);
-    settings.set_antialiasing_mode(state.antialiasing_mode);
-    let _ = settings.save();
-    if let Err(err) = super::save_current_studio_config(state, settings, None) {
-        state.status_message = format!("Studio config save failed: {err}");
+    super::persist_presentation_settings(state, settings, None);
+    if state.status_message.is_empty() {
+        state.status_message = "Settings saved".into();
     }
 }
 
@@ -1015,6 +1024,7 @@ fn reset_settings_dialog_values(
     state.settings_dialog.star_render_mode = mode;
     state.settings_dialog.hyperlane_render = hyperlane;
     state.antialiasing_mode = defaults.antialiasing_mode;
+    state.antialiasing_mode_source = StudioAntialiasingModeSource::DefaultFallback;
     settings.set_star_falloff_settings(star);
     settings.set_star_render_mode(mode);
     settings.set_star_nameplate_settings(nameplate);
@@ -1030,6 +1040,7 @@ fn reset_settings_dialog_values(
     if let Ok(entity) = main_camera.single() {
         apply_studio_antialiasing_mode(&mut commands.entity(entity), state.antialiasing_mode);
     }
+    super::persist_presentation_settings(state, settings, None);
 }
 
 fn settings_dialog_bounds(
@@ -1092,7 +1103,7 @@ fn apply_star_render_settings(
         session.view_model.apply_star_falloff_settings(values);
         session.view_model.apply_star_render_mode(mode);
     }
-    let _ = settings.save();
+    super::persist_presentation_settings(state, settings, None);
 }
 
 fn apply_antialiasing_settings(
@@ -1104,6 +1115,7 @@ fn apply_antialiasing_settings(
 ) {
     let mode = mode.normalize();
     state.antialiasing_mode = mode;
+    state.antialiasing_mode_source = StudioAntialiasingModeSource::CurrentUiState;
     settings.set_antialiasing_mode(mode);
     settings.settings_dialog_position = state.settings_dialog.position;
     settings.settings_dialog_visible = state.settings_dialog.visible;
@@ -1111,7 +1123,7 @@ fn apply_antialiasing_settings(
         apply_studio_antialiasing_mode(&mut commands.entity(entity), mode);
     }
     state.status_message = format!("Antialiasing: {}", mode.label());
-    let _ = settings.save();
+    super::persist_presentation_settings(state, settings, None);
 }
 
 fn apply_nameplate_render_settings(
@@ -1123,7 +1135,7 @@ fn apply_nameplate_render_settings(
     settings.settings_dialog_position = state.settings_dialog.position;
     settings.settings_dialog_visible = state.settings_dialog.visible;
     state.status_message = "Updated star nameplate settings".into();
-    let _ = settings.save();
+    super::persist_presentation_settings(state, settings, None);
 }
 
 fn performance_diagnostic_flags(state: &StudioAppState) -> PerformanceDiagnosticFlags {
@@ -1223,7 +1235,7 @@ fn apply_hyperlane_render_settings(
     if let Some(session) = state.session.as_mut() {
         session.view_model.apply_hyperlane_render_settings(values);
     }
-    let _ = settings.save();
+    super::persist_presentation_settings(state, settings, None);
 }
 
 fn draw_collapsed_tab(
