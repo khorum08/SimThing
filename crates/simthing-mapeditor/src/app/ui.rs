@@ -64,6 +64,49 @@ const TELEMETRY_BUTTON_LABEL: &str = "Telemetry";
 const TELEMETRY_TOOLTIP: &str = "Performance Telemetry";
 const SETTINGS_BUTTON_LABEL: &str = "⚙";
 const SETTINGS_TOOLTIP: &str = "Settings";
+pub const DEFAULT_STELLARIS_STAR_NAMES_CORPUS_PATH: &str =
+    r"C:\Users\mvorm\Clauser\Paradox\vanilla\common\random_names\base\00_random_names.txt";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum GenerationNameCorpusChoice {
+    Corpus(String),
+    None,
+    Cancel,
+}
+
+fn apply_generation_name_corpus_choice(
+    profile: &mut GenerationProfile,
+    dialog_visible: &mut bool,
+    choice: GenerationNameCorpusChoice,
+) -> bool {
+    *dialog_visible = false;
+    match choice {
+        GenerationNameCorpusChoice::Corpus(path) => {
+            profile.star_name_corpus_path = path.trim().to_string();
+            true
+        }
+        GenerationNameCorpusChoice::None => {
+            profile.star_name_corpus_path.clear();
+            true
+        }
+        GenerationNameCorpusChoice::Cancel => false,
+    }
+}
+
+/// Whether `path` is a Stellaris star-name corpus that can actually be read and
+/// parsed. The OK button must check this itself: generation runs after the
+/// dialog has already closed, so a bad path discovered there can no longer be
+/// resolved by user interaction.
+fn star_name_corpus_path_is_importable(path: &str) -> bool {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    match std::fs::read(trimmed) {
+        Ok(bytes) => simthing_clausething::parse_stellaris_star_name_catalog(&bytes).is_ok(),
+        Err(_) => false,
+    }
+}
 /// Top-right window controls, left-to-right (Telemetry immediately before Settings gear).
 #[cfg_attr(not(test), allow(dead_code))]
 pub const WINDOW_CONTROLS_LEFT_TO_RIGHT: &[&str] = &[
@@ -204,6 +247,7 @@ pub fn studio_ui_system(
     if !state.performance_diagnostic_hide_panels {
         draw_warning_dialog(ctx, &mut dialog);
     }
+    draw_generation_name_corpus_dialog(ctx, &mut state);
     record_egui_pass_timing(
         &mut perf_telemetry,
         egui_started.elapsed().as_secs_f64() * 1000.0,
@@ -461,6 +505,91 @@ mod tests {
         assert_eq!(drag_rect.max.y, title_rect.max.y);
         assert!(drag_rect.contains(egui::pos2(24.0, 16.0)));
         assert!(drag_rect.max.x < title_rect.max.x);
+    }
+
+    #[test]
+    fn generation_name_dialog_choices_gate_generation_and_corpus() {
+        assert_eq!(
+            DEFAULT_STELLARIS_STAR_NAMES_CORPUS_PATH,
+            r"C:\Users\mvorm\Clauser\Paradox\vanilla\common\random_names\base\00_random_names.txt"
+        );
+        let mut profile = GenerationProfile::default();
+        let mut visible = true;
+        assert!(apply_generation_name_corpus_choice(
+            &mut profile,
+            &mut visible,
+            GenerationNameCorpusChoice::Corpus(format!(
+                "  {DEFAULT_STELLARIS_STAR_NAMES_CORPUS_PATH}  "
+            )),
+        ));
+        assert!(!visible);
+        assert_eq!(
+            profile.star_name_corpus_path,
+            DEFAULT_STELLARIS_STAR_NAMES_CORPUS_PATH
+        );
+
+        visible = true;
+        assert!(apply_generation_name_corpus_choice(
+            &mut profile,
+            &mut visible,
+            GenerationNameCorpusChoice::None,
+        ));
+        assert!(!visible);
+        assert!(profile.star_name_corpus_path.is_empty());
+
+        profile.star_name_corpus_path = "preserved".into();
+        visible = true;
+        assert!(!apply_generation_name_corpus_choice(
+            &mut profile,
+            &mut visible,
+            GenerationNameCorpusChoice::Cancel,
+        ));
+        assert!(!visible);
+        assert_eq!(profile.star_name_corpus_path, "preserved");
+    }
+
+    #[test]
+    fn star_name_corpus_path_is_importable_rejects_missing_and_unparsable_files() {
+        assert!(!star_name_corpus_path_is_importable(""));
+        assert!(!star_name_corpus_path_is_importable("   "));
+        assert!(!star_name_corpus_path_is_importable(
+            r"C:\does\not\exist\00_random_names.txt"
+        ));
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let bad_path = dir.path().join("not_a_star_names_corpus.txt");
+        std::fs::write(&bad_path, b"star_count = { 1 2 3 }").expect("write unparsable corpus");
+        assert!(!star_name_corpus_path_is_importable(
+            bad_path.to_str().expect("utf8 path")
+        ));
+
+        let good_path = dir.path().join("00_random_names.txt");
+        std::fs::write(&good_path, b"star_names = { Sol Alpha Beta }").expect("write valid corpus");
+        assert!(star_name_corpus_path_is_importable(
+            good_path.to_str().expect("utf8 path")
+        ));
+    }
+
+    #[test]
+    fn generation_name_dialog_ok_with_unimportable_path_matches_cancel_effect() {
+        let mut profile = GenerationProfile::default();
+        profile.star_name_corpus_path = "preserved".into();
+        let mut visible = true;
+
+        let path = r"C:\does\not\exist\00_random_names.txt".to_string();
+        let choice = if star_name_corpus_path_is_importable(&path) {
+            GenerationNameCorpusChoice::Corpus(path)
+        } else {
+            GenerationNameCorpusChoice::Cancel
+        };
+        assert_eq!(choice, GenerationNameCorpusChoice::Cancel);
+        assert!(!apply_generation_name_corpus_choice(
+            &mut profile,
+            &mut visible,
+            choice,
+        ));
+        assert!(!visible);
+        assert_eq!(profile.star_name_corpus_path, "preserved");
     }
 }
 
@@ -1307,7 +1436,9 @@ fn draw_left_panel(
                                 *dialog = unimplemented_action_response(StudioAction::Save);
                             }
                             if ui.button("Generate").clicked() {
-                                ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_generate"), true));
+                                state.generation_name_corpus_path =
+                                    DEFAULT_STELLARIS_STAR_NAMES_CORPUS_PATH.to_string();
+                                state.generation_name_dialog_visible = true;
                             }
                         });
                         ui.separator();
@@ -1873,5 +2004,59 @@ fn draw_warning_dialog(ctx: &egui::Context, dialog: &mut WarningDialogModel) {
             if ui.button("OK").clicked() {
                 dialog.dismiss();
             }
+        });
+}
+
+fn draw_generation_name_corpus_dialog(ctx: &egui::Context, state: &mut StudioAppState) {
+    if !state.generation_name_dialog_visible {
+        return;
+    }
+
+    egui::Window::new("Generate Galaxy — Star Names")
+        .collapsible(false)
+        .resizable(false)
+        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .show(ctx, |ui| {
+            ui.label("Stellaris Star Names corpus:");
+            ui.add(
+                egui::TextEdit::singleline(&mut state.generation_name_corpus_path)
+                    .desired_width(620.0),
+            );
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.button("OK").clicked() {
+                    let path = state.generation_name_corpus_path.clone();
+                    let choice = if star_name_corpus_path_is_importable(&path) {
+                        GenerationNameCorpusChoice::Corpus(path)
+                    } else {
+                        // Import failed: fall back to exactly the Cancel effect rather
+                        // than letting a bad path reach generation as a hard error.
+                        GenerationNameCorpusChoice::Cancel
+                    };
+                    if apply_generation_name_corpus_choice(
+                        &mut state.profile,
+                        &mut state.generation_name_dialog_visible,
+                        choice,
+                    ) {
+                        ctx.data_mut(|data| data.insert_temp(egui::Id::new("do_generate"), true));
+                    }
+                }
+                if ui.button("None").clicked() {
+                    if apply_generation_name_corpus_choice(
+                        &mut state.profile,
+                        &mut state.generation_name_dialog_visible,
+                        GenerationNameCorpusChoice::None,
+                    ) {
+                        ctx.data_mut(|data| data.insert_temp(egui::Id::new("do_generate"), true));
+                    }
+                }
+                if ui.button("Cancel").clicked() {
+                    apply_generation_name_corpus_choice(
+                        &mut state.profile,
+                        &mut state.generation_name_dialog_visible,
+                        GenerationNameCorpusChoice::Cancel,
+                    );
+                }
+            });
         });
 }

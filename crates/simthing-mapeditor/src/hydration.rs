@@ -1,16 +1,16 @@
 //! Studio projection boundary over generated SimThing-Spec scenario authority.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_mapgenerator::{GalaxyGenerationResult, GenerationReport};
 use simthing_spec::{
-    apply_gridcell_property_edit, resolve_map_container, structural_property_value_u32,
-    validate_stead_mapping_consistency, SimThingScenarioGrid, SimThingScenarioLink,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
-    SIMTHING_SCENARIO_AUTHORITY_LABEL,
+    apply_gridcell_property_edit, apply_star_system_display_name_metadata, resolve_map_container,
+    star_system_display_name, structural_property_value_u32, validate_stead_mapping_consistency,
+    SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
+    SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SIMTHING_SCENARIO_AUTHORITY_LABEL,
 };
 use thiserror::Error;
 
@@ -219,12 +219,27 @@ pub enum StudioHydrationError {
     GridcellMissingChildren(String),
     #[error("studio scenario authority failed STEAD mapping validation: {0}")]
     SteadMappingInconsistent(String),
+    #[error("failed to read Stellaris star-name corpus `{path}`: {message}")]
+    StarNameCorpusRead { path: String, message: String },
+    #[error("failed to parse Stellaris star-name corpus `{path}`: {message}")]
+    StarNameCorpusParse { path: String, message: String },
 }
 
 pub fn generate_simthing_spec_scenario(
     output: &GenerationRunOutput,
 ) -> Result<SimThingScenarioSpec, StudioHydrationError> {
     hydrate_mapgen_result_into_simthing_spec(&output.result, &output.report)
+}
+
+pub fn generate_simthing_spec_scenario_with_star_names(
+    output: &GenerationRunOutput,
+    star_names: &BTreeMap<u32, String>,
+) -> Result<SimThingScenarioSpec, StudioHydrationError> {
+    hydrate_mapgen_result_into_simthing_spec_with_star_names(
+        &output.result,
+        &output.report,
+        Some(star_names),
+    )
 }
 
 pub fn hydrate_generation_into_studio_grid(
@@ -245,6 +260,14 @@ pub fn hydrate_generation_result_into_studio_grid(
 pub fn hydrate_mapgen_result_into_simthing_spec(
     result: &GalaxyGenerationResult,
     report: &GenerationReport,
+) -> Result<SimThingScenarioSpec, StudioHydrationError> {
+    hydrate_mapgen_result_into_simthing_spec_with_star_names(result, report, None)
+}
+
+pub fn hydrate_mapgen_result_into_simthing_spec_with_star_names(
+    result: &GalaxyGenerationResult,
+    report: &GenerationReport,
+    star_names: Option<&BTreeMap<u32, String>>,
 ) -> Result<SimThingScenarioSpec, StudioHydrationError> {
     if result.placement.systems.is_empty() {
         return Err(StudioHydrationError::EmptyGeneration);
@@ -285,6 +308,12 @@ pub fn hydrate_mapgen_result_into_simthing_spec(
             SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
             system.coord.row,
         );
+        if let Some(display_name) = star_names
+            .and_then(|names| names.get(&system.id))
+            .filter(|name| !name.trim().is_empty())
+        {
+            apply_star_system_display_name_metadata(&mut gridcell, display_name);
+        }
         let mut payload = SimThing::new(SimThingKind::Cohort, 0);
         add_u32_property(
             &mut payload,
@@ -428,7 +457,8 @@ fn studio_projection_with_summary(
         gridcells.push(StudioHydratedGridcell {
             simthing_id: placement.location_id.clone(),
             kind: gridcell.kind.clone(),
-            display_name: format!("System {} Gridcell", placement.system_id),
+            display_name: star_system_display_name(gridcell)
+                .unwrap_or_else(|| format!("System {} Gridcell", placement.system_id)),
             system_id: placement.system_id,
             structural_col: placement.col,
             structural_row: placement.row,

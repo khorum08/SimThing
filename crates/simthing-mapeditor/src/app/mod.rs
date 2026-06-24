@@ -189,6 +189,10 @@ pub struct StudioAppState {
     pub left_panel_hovered: bool,
     pub generation_busy: bool,
     pub generation_error: Option<String>,
+    /// Presentation-only modal gate shown before a generated galaxy is adopted.
+    pub generation_name_dialog_visible: bool,
+    /// Editable corpus path in the pre-generation naming dialog.
+    pub generation_name_corpus_path: String,
     pub status_message: String,
     pub show_stars: bool,
     pub show_hyperlanes: bool,
@@ -260,6 +264,8 @@ impl StudioAppState {
             left_panel_hovered: false,
             generation_busy: false,
             generation_error: None,
+            generation_name_dialog_visible: false,
+            generation_name_corpus_path: ui::DEFAULT_STELLARIS_STAR_NAMES_CORPUS_PATH.to_string(),
             status_message: String::new(),
             show_stars: true,
             show_hyperlanes: true,

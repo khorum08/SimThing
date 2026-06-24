@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use simthing_clausething::parse_stellaris_star_name_catalog;
 use simthing_mapgenerator::GenerationReport;
 use simthing_spec::{
     validate_scenario_links, validate_stead_mapping_consistency, SimThingScenarioSpec,
@@ -9,9 +10,9 @@ use simthing_spec::{
 
 use crate::generation::{GenerationProfile, GenerationRunOutput};
 use crate::hydration::{
-    generate_simthing_spec_scenario, studio_projection_from_scenario_authority,
-    studio_projection_from_simthing_spec, StudioHeatmapReadinessKind, StudioHydrationBoundary,
-    StudioHydrationError,
+    generate_simthing_spec_scenario, generate_simthing_spec_scenario_with_star_names,
+    studio_projection_from_scenario_authority, studio_projection_from_simthing_spec,
+    StudioHeatmapReadinessKind, StudioHydrationBoundary, StudioHydrationError,
 };
 use crate::scenario_projection::{
     build_gpu_residency_readiness, build_structural_projection, StudioGpuResidencyReadiness,
@@ -98,7 +99,31 @@ impl StudioSession {
         profile: GenerationProfile,
         output: GenerationRunOutput,
     ) -> Result<Self, StudioHydrationError> {
-        let scenario_authority = generate_simthing_spec_scenario(&output)?;
+        let scenario_authority = if let Some(path) = profile.effective_star_name_corpus_path() {
+            let source =
+                std::fs::read(&path).map_err(|error| StudioHydrationError::StarNameCorpusRead {
+                    path: path.display().to_string(),
+                    message: error.to_string(),
+                })?;
+            let catalog = parse_stellaris_star_name_catalog(&source).map_err(|error| {
+                StudioHydrationError::StarNameCorpusParse {
+                    path: path.display().to_string(),
+                    message: error.to_string(),
+                }
+            })?;
+            let assignments = catalog.assign_to_systems(
+                profile.seed,
+                output
+                    .result
+                    .placement
+                    .systems
+                    .iter()
+                    .map(|system| system.id),
+            );
+            generate_simthing_spec_scenario_with_star_names(&output, &assignments)?
+        } else {
+            generate_simthing_spec_scenario(&output)?
+        };
         let hydration = studio_projection_from_simthing_spec(&scenario_authority, &output.report)?;
         let view_model = StudioGalaxyViewModel::from_hydration(&hydration);
         let structural_projection =
@@ -302,6 +327,60 @@ mod tests {
             }
             _ => panic!("expected generated source"),
         }
+    }
+
+    #[test]
+    fn configured_stellaris_pool_names_authority_view_and_save_load() {
+        let dir = TempDir::new().expect("tempdir");
+        let corpus_path = dir.path().join("00_random_names.txt");
+        std::fs::write(
+            &corpus_path,
+            "other = { ignored }\nstar_names = { Sol \"Alpha Centauri\" Sirius }\n",
+        )
+        .expect("write corpus");
+
+        let mut profile = GenerationProfile::default_spiral_2_dense_3000();
+        profile.star_count = 8;
+        profile.lattice_edge = 32;
+        profile.target_hyperlanes = 12;
+        profile.max_hyperlane_distance = 8.0;
+        profile.star_name_corpus_path = corpus_path.display().to_string();
+        let output = run_generation(&profile).expect("generate");
+        let session = StudioSession::from_generation(profile, output).expect("session");
+
+        let allowed = ["Sol", "Alpha Centauri", "Sirius"];
+        assert_eq!(session.view_model.stars.len(), 8);
+        assert!(session
+            .view_model
+            .stars
+            .iter()
+            .all(|star| allowed.contains(&star.display_name.as_str())));
+        let map = simthing_spec::resolve_map_container(&session.scenario_authority)
+            .expect("map container");
+        assert_eq!(
+            map.children
+                .iter()
+                .filter_map(simthing_spec::star_system_display_name)
+                .count(),
+            8
+        );
+
+        let scenario_path = dir.path().join("named.simthing-scenario.json");
+        save_scenario_authority_to_path(&scenario_path, &session.scenario_authority).expect("save");
+        let loaded = load_studio_session_from_scenario_path(&scenario_path, None).expect("load");
+        let original_names: Vec<_> = session
+            .view_model
+            .stars
+            .iter()
+            .map(|star| star.display_name.as_str())
+            .collect();
+        let loaded_names: Vec<_> = loaded
+            .view_model
+            .stars
+            .iter()
+            .map(|star| star.display_name.as_str())
+            .collect();
+        assert_eq!(loaded_names, original_names);
     }
 
     #[test]

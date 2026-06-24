@@ -343,3 +343,32 @@ Shaping, atlas rebuilds, and aggregate uploads are dirty-gated. Studio mounts th
 Image/GpuImage/FallbackImage mutation are permitted. Plugin setup must also preserve pre-existing Bevy asset
 stores; calling Bevy 0.16 `init_asset::<Image>()` after DefaultPlugins replaces the loaded image store and can
 invalidate tonemapping LUT handles. Full report: `docs/tests/studio_typeface_star_nameplates_0_results.md`.
+## 2026-06-24 — STELLARIS-STAR-NAMESPACE-INGESTION-0 (PROBATION)
+
+Studio can now consume the literal `star_names` pool from a Stellaris
+`00_random_names.txt`-style ClauseScript source without moving semantic naming into
+MapGenerator or GPU structure. `simthing-clausething` owns the narrow lossless-pool
+consumer and a documented SimThing compatibility assignment policy: sort generated
+system ids, deterministically shuffle authored pool entries by galaxy seed, assign
+without replacement within a pool cycle, and reshuffle on exhaustion. Authored
+duplicates remain authored weighting. This is not claimed to reproduce the closed
+Stellaris PRNG, collision retry, or exhaustion implementation.
+
+`GenerationProfile.star_name_corpus_path` is optional and default-off; the
+`SIMTHING_STELLARIS_RANDOM_NAMES_PATH` environment variable is a fallback. During
+Studio adoption, chosen names are written to star-system gridcell `Location`
+SimThings under `STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID`. ScenarioSpec remains
+save/load authority; hydration, the Studio scenario document, and Bevy nameplates
+derive the name from that property. No-corpus generation retains the existing
+`SIM-######` nameplate fallback. GPU structural projections, map topology, and the
+standalone MapGenerator remain name-blind.
+
+The Studio Generate action is gated by a presentation-only corpus dialog. Its
+editable default is the local copied Stellaris `00_random_names.txt`; OK generates
+with that source, None explicitly clears the source and preserves `SIM-######`
+nameplates, and Cancel does not generate or replace the active session.
+
+The current Studio generation path still produces a legacy `World` root while the
+canonical load path expects `Scenario -> GameSession -> GalaxyMap`. This rung bridges
+semantic naming across both roots but does not promote or conceal that migration gap.
+Evidence: `docs/tests/stellaris_star_namespace_ingestion_0_results.md`.
