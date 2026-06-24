@@ -7,8 +7,8 @@ PROBATION / diagnostic feature — adds a 3D geometry AA test pattern and Video 
 ## PR / branch / merge
 
 - Branch: `codex/studio-antialiasing-test-pattern-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #933
+- Merge: `25622ed74f`
 
 ## Purpose
 
