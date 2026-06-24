@@ -869,6 +869,12 @@ fn draw_telemetry_dialog(
                         ui.label(
                             "Confirms selected AA mode and active Bevy camera components (FXAA/SMAA/MSAA). Visual quality still requires owner screenshot comparison.",
                         );
+                        ui.checkbox(&mut state.show_aa_test_pattern, "Show AA test pattern");
+                        if state.show_aa_test_pattern {
+                            ui.label(
+                                "Compare Off vs MSAA 4x/8x on the diagonal test pattern, not on text labels.",
+                            );
+                        }
                         for line in video_options_debug_lines(telemetry) {
                             if line == "AA STATE MISMATCH" {
                                 ui.colored_label(egui::Color32::YELLOW, &line);
@@ -1616,6 +1622,7 @@ fn render_debug_controls(ui: &mut egui::Ui, state: &mut StudioAppState) {
             ui.checkbox(&mut state.show_stars, "Show stars");
             ui.checkbox(&mut state.show_hyperlanes, "Show hyperlanes");
             ui.checkbox(&mut state.show_falloff_ruler, "Show falloff ruler");
+            ui.checkbox(&mut state.show_aa_test_pattern, "Show AA test pattern");
             ui.horizontal(|ui| {
                 if ui.button("Stars only").clicked() {
                     state.show_stars = true;

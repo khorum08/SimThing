@@ -177,6 +177,7 @@ pub fn update_studio_window_gpu_context(
 pub fn update_studio_antialiasing_video_debug_system(
     app_state: Res<super::StudioAppState>,
     apply_state: Res<StudioAntialiasingApplyState>,
+    pattern_runtime: Res<crate::studio_aa_test_pattern::AaTestPatternRuntime>,
     camera: Query<(Entity, Option<&Fxaa>, Option<&Smaa>, &Msaa), With<super::camera::MainCamera>>,
     mut state: ResMut<StudioPerformanceTelemetryState>,
 ) {
@@ -219,6 +220,13 @@ pub fn update_studio_antialiasing_video_debug_system(
         .map(|mode| mode.label().to_string())
         .unwrap_or_else(|| "—".into());
     telemetry.aa_last_applied_frame = apply_state.last_applied_frame;
+    telemetry.aa_test_pattern_visible = pattern_runtime.visible;
+    telemetry.aa_test_pattern_geometry_instances = pattern_runtime.geometry_instances;
+    telemetry.aa_test_pattern_material = if pattern_runtime.visible {
+        pattern_runtime.material_label().to_string()
+    } else {
+        "—".into()
+    };
 }
 
 fn format_present_mode(mode: PresentMode) -> String {
