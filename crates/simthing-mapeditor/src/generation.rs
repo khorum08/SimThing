@@ -33,6 +33,11 @@ pub struct GenerationProfile {
     pub cluster_count: u32,
     pub cluster_radius: f64,
     pub no_partitions: bool,
+    /// Optional Stellaris `00_random_names.txt`-style ClauseScript source.
+    /// Empty keeps semantic star naming disabled. The environment variable
+    /// `SIMTHING_STELLARIS_RANDOM_NAMES_PATH` is used as a fallback.
+    #[serde(default)]
+    pub star_name_corpus_path: String,
     #[serde(default)]
     pub shape_params_by_shape: BTreeMap<String, BTreeMap<String, f64>>,
 }
@@ -183,8 +188,19 @@ impl GenerationProfile {
             cluster_count: 4,
             cluster_radius: 500.0,
             no_partitions: true,
+            star_name_corpus_path: String::new(),
             shape_params_by_shape: BTreeMap::new(),
         }
+    }
+
+    pub fn effective_star_name_corpus_path(&self) -> Option<std::path::PathBuf> {
+        let configured = self.star_name_corpus_path.trim();
+        if !configured.is_empty() {
+            return Some(configured.into());
+        }
+        std::env::var_os("SIMTHING_STELLARIS_RANDOM_NAMES_PATH")
+            .filter(|path| !path.is_empty())
+            .map(std::path::PathBuf::from)
     }
 
     pub fn init_shape_param_storage(&mut self) {

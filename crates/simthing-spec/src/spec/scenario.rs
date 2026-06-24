@@ -75,6 +75,8 @@ pub const GALAXY_MAP_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_401);
 pub const GALAXY_MAP_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_402);
 /// Gridcell role marker under GalaxyMap (`inert` / `star_system`).
 pub const GALAXY_GRIDCELL_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_403);
+/// Semantic display name on a star-system GalaxyMap gridcell Location.
+pub const STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_404);
 
 /// Deprecated compatibility alias for [`LOCAL_GRIDCELL_ROLE_PROPERTY_ID`].
 pub const GALAXY_CHILD_LOCATION_ROLE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_500);
@@ -763,6 +765,14 @@ pub fn apply_gridcell_role_metadata(gridcell: &mut SimThing, role: &str) {
     );
 }
 
+pub fn apply_star_system_display_name_metadata(gridcell: &mut SimThing, display_name: &str) {
+    debug_assert_eq!(gridcell.kind, SimThingKind::Location);
+    gridcell.add_property(
+        STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID,
+        scenario_metadata_string_value(display_name),
+    );
+}
+
 pub fn owner_display_name(thing: &SimThing) -> Option<String> {
     scenario_metadata_string(thing, OWNER_DISPLAY_NAME_PROPERTY_ID)
 }
@@ -905,6 +915,11 @@ pub fn galaxy_map_role(thing: &SimThing) -> Option<String> {
 
 pub fn gridcell_role(thing: &SimThing) -> Option<String> {
     scenario_metadata_string(thing, GALAXY_GRIDCELL_ROLE_PROPERTY_ID)
+}
+
+pub fn star_system_display_name(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, STAR_SYSTEM_DISPLAY_NAME_PROPERTY_ID)
+        .filter(|name| !name.trim().is_empty())
 }
 
 pub fn gridcell_generated_system_id(thing: &SimThing) -> Option<u32> {

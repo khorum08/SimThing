@@ -13,6 +13,7 @@ serde           = { workspace = true }
 serde_json      = { workspace = true }
 simthing-core   = { path = "../simthing-core" }
 simthing-spec   = { path = "../simthing-spec" }
+thiserror       = { workspace = true }
 
 [dev-dependencies]
 ron              = "0.8"

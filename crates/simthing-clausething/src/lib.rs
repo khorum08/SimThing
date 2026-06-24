@@ -44,6 +44,7 @@ mod mapgen_resource_flow;
 mod parse;
 mod scope_json;
 mod scope_lab;
+mod stellaris_names;
 
 pub use emit::emit_text;
 pub use error::{EmitError, ExpandError, HydrateError, ParseError};
@@ -130,3 +131,6 @@ pub use scope::{
 };
 pub use scope_json::scope_report_to_json;
 pub use scope_lab::{LabFrequencyReport, scan_lab_scopes};
+pub use stellaris_names::{
+    StellarisStarNameCatalog, StellarisStarNameError, parse_stellaris_star_name_catalog,
+};

@@ -90,6 +90,7 @@ pub struct StudioSystemRenderAnchor {
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioStarView {
     pub system_id: u32,
+    pub display_name: String,
     pub structural_col: u32,
     pub structural_row: u32,
     pub render_height: f32,
@@ -188,6 +189,7 @@ impl StudioGalaxyViewModel {
             let emissive_strength = 0.6 + radius_unit * 0.8;
             stars.push(StudioStarView {
                 system_id: cell.system_id,
+                display_name: cell.display_name.clone(),
                 structural_col: cell.structural_col,
                 structural_row: cell.structural_row,
                 render_height,

@@ -14,12 +14,13 @@ use simthing_spec::{
     planet_display_name, planet_gridcell_interior_frame, planet_id,
     planet_non_grid_child_owner_ref, planet_owner_ref, resolve_map_container,
     scenario_metadata_string, scenario_metadata_u32, spatial_authority_root,
-    star_system_local_grid_frame, validate_legacy_world_root_compatibility,
-    validate_scenario_root_authority, LocalReceiverCellRole, ScenarioRootError,
-    ScenarioRootValidationMode, SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_INERT,
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_ROLE_INERT, LOCAL_GRIDCELL_ROLE_PLANET,
-    LOCAL_GRIDCELL_ROLE_RECEIVER, LOCAL_GRID_DEFAULT_COLS, LOCAL_GRID_DEFAULT_ROWS,
-    SCENARIO_SCHEMA_VERSION_PROPERTY_ID, SCENARIO_SOURCE_LABEL_PROPERTY_ID,
+    star_system_display_name, star_system_local_grid_frame,
+    validate_legacy_world_root_compatibility, validate_scenario_root_authority,
+    LocalReceiverCellRole, ScenarioRootError, ScenarioRootValidationMode, SimThingScenarioSpec,
+    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, LOCAL_GRIDCELL_ROLE_INERT,
+    LOCAL_GRIDCELL_ROLE_PLANET, LOCAL_GRIDCELL_ROLE_RECEIVER, LOCAL_GRID_DEFAULT_COLS,
+    LOCAL_GRID_DEFAULT_ROWS, SCENARIO_SCHEMA_VERSION_PROPERTY_ID,
+    SCENARIO_SOURCE_LABEL_PROPERTY_ID,
 };
 use thiserror::Error;
 
@@ -76,6 +77,7 @@ pub struct StudioGalaxyMapView {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGridcellView {
     pub simthing_id_raw: u32,
+    pub display_name: Option<String>,
     pub role: StudioGridcellRole,
     pub generated_system_id: Option<u32>,
     pub structural_col: Option<u32>,
@@ -415,6 +417,7 @@ fn gridcells_under_map(map: &simthing_core::SimThing) -> Vec<StudioGridcellView>
         .filter(|child| child.kind == SimThingKind::Location && !is_galaxy_map_entity(child))
         .map(|gridcell| StudioGridcellView {
             simthing_id_raw: gridcell.id.raw(),
+            display_name: star_system_display_name(gridcell),
             role: StudioGridcellRole::from_role_str(gridcell_role(gridcell).as_deref()),
             generated_system_id: gridcell_generated_system_id(gridcell),
             structural_col: gridcell_structural_col(gridcell),

@@ -98,12 +98,26 @@ pub fn rebuild_galaxy_scene(
 ) {
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
-    let simthing_ids: std::collections::HashMap<u32, u32> = session
+    let map_container = simthing_spec::resolve_map_container(&session.scenario_authority).ok();
+    let nameplates: std::collections::HashMap<u32, String> = session
         .scenario_authority
         .structural_grid
         .placements
         .iter()
-        .map(|placement| (placement.system_id, placement.simthing_id_raw))
+        .map(|placement| {
+            let semantic_name = map_container
+                .and_then(|map| {
+                    map.children
+                        .iter()
+                        .find(|child| child.id.raw() == placement.simthing_id_raw)
+                })
+                .and_then(simthing_spec::star_system_display_name);
+            (
+                placement.system_id,
+                semantic_name
+                    .unwrap_or_else(|| format_simthing_nameplate_id(placement.simthing_id_raw)),
+            )
+        })
         .collect();
     let billboard_settings = StarBillboardRenderSettings::from_meta(&vm.render_meta);
     for star in prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None) {
@@ -146,11 +160,11 @@ pub fn rebuild_galaxy_scene(
                 .id();
             root.stars.push((star.system_id, entity));
         }
-        if let Some(simthing_id) = simthing_ids.get(&star.system_id).copied() {
+        if let Some(display_name) = nameplates.get(&star.system_id) {
             let entity = commands
                 .spawn((
                     StudioTypefaceLabel::entity_name(
-                        format_simthing_nameplate_id(simthing_id),
+                        display_name.clone(),
                         48.0,
                         [0.92, 0.96, 1.0, 1.0],
                     )
@@ -824,7 +838,7 @@ mod tests {
     use crate::compute_camera_facing_width_dir;
 
     #[test]
-    fn nameplate_formats_the_authoritative_raw_simthing_id() {
+    fn nameplate_fallback_formats_the_authoritative_raw_simthing_id() {
         assert_eq!(format_simthing_nameplate_id(42), "SIM-000042");
     }
 
