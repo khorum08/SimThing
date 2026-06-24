@@ -149,6 +149,7 @@ pub fn spawn_aa_test_pattern_root(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::render::mesh::VertexAttributeValues;
 
     #[test]
     fn antialiasing_test_pattern_geometry_instance_count_is_stable() {
