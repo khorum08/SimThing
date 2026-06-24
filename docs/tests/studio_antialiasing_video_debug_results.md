@@ -7,8 +7,8 @@ PROBATION / telemetry follow-up — adds collapsed Video Options Debug telemetry
 ## PR / branch / merge
 
 - Branch: `codex/studio-antialiasing-video-debug-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #931
+- Merge: `0d4b740085`
 
 ## Purpose
 
