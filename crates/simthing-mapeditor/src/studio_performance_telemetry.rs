@@ -90,6 +90,10 @@ pub struct StudioPerformanceTelemetry {
     pub hyperlane_degenerate_width_dir_count: u32,
     pub hyperlane_nan_inf_vertex_count: u32,
     pub hyperlane_zero_length_segment_count: u32,
+    pub hyperlane_falloff_culled_segment_count: usize,
+    pub hyperlane_falloff_sample_mode: String,
+    pub hyperlane_falloff_sample_midpoint_progress_pct: Option<f32>,
+    pub hyperlane_falloff_sample_closest_progress_pct: Option<f32>,
     pub hyperlane_invalid_rebuild_rejected: u64,
     pub hyperlane_mesh_build_camera_right: [f32; 3],
     pub hyperlane_mesh_build_camera_up: [f32; 3],
@@ -275,6 +279,10 @@ impl Default for StudioPerformanceTelemetry {
             hyperlane_degenerate_width_dir_count: 0,
             hyperlane_nan_inf_vertex_count: 0,
             hyperlane_zero_length_segment_count: 0,
+            hyperlane_falloff_culled_segment_count: 0,
+            hyperlane_falloff_sample_mode: "closest segment point".into(),
+            hyperlane_falloff_sample_midpoint_progress_pct: None,
+            hyperlane_falloff_sample_closest_progress_pct: None,
             hyperlane_invalid_rebuild_rejected: 0,
             hyperlane_mesh_build_camera_right: [f32::NAN; 3],
             hyperlane_mesh_build_camera_up: [f32::NAN; 3],
@@ -1018,6 +1026,22 @@ pub fn hyperlane_debug_lines(telemetry: &StudioPerformanceTelemetry) -> Vec<Stri
             telemetry.hyperlane_degenerate_width_dir_count,
             telemetry.hyperlane_nan_inf_vertex_count,
             telemetry.hyperlane_zero_length_segment_count,
+        ),
+        format!(
+            "Hyperlane falloff sample: {} | midpoint progress %: {} | closest progress %: {}",
+            telemetry.hyperlane_falloff_sample_mode,
+            telemetry
+                .hyperlane_falloff_sample_midpoint_progress_pct
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+            telemetry
+                .hyperlane_falloff_sample_closest_progress_pct
+                .map(|v| format!("{v:.1}"))
+                .unwrap_or_else(|| "—".into()),
+        ),
+        format!(
+            "Falloff-culled segments: {}",
+            telemetry.hyperlane_falloff_culled_segment_count
         ),
         format!(
             "Mesh-build camera key: {}",

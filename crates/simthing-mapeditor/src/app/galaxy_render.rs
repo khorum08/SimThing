@@ -9,8 +9,8 @@ use simthing_tools::{StudioTypefaceLabel, TextLabelRenderMode, WorldTextBillboar
 use crate::hyperlane_buckets::{
     bucket_base_rgba, classify_hyperlane_camera_depth_bucket, compute_hyperlane_visual,
     hyperlane_camera_depth_percent, hyperlane_map_radius_progress_percent,
-    selected_incident_lane_alpha, HyperlaneCameraDepthThresholds, HyperlaneDepthBucket,
-    HYPERLANE_CORE_FRACTION,
+    hyperlane_midpoint_map_radius_progress_percent, selected_incident_lane_alpha,
+    HyperlaneCameraDepthThresholds, HyperlaneDepthBucket, HYPERLANE_CORE_FRACTION,
 };
 use crate::hyperlane_ribbon::{
     count_non_finite_vertex_positions, hyperlane_rebuild_is_valid, hyperlane_ribbon_width_dir,
@@ -577,6 +577,14 @@ pub fn sync_hyperlane_colors_system(
             cache.invalid_rebuild_warning_logged = true;
         }
         record_hyperlane_bucket_telemetry(&mut perf.telemetry, &bucket_stats, segments.len());
+        if let (Some(ctx), Some(first)) = (map_context, segments.first()) {
+            record_hyperlane_falloff_sample_telemetry(
+                &mut perf.telemetry,
+                ctx,
+                first.from,
+                first.to,
+            );
+        }
         return;
     }
 
@@ -614,6 +622,9 @@ pub fn sync_hyperlane_colors_system(
         telemetry.hyperlane_vertices_last_count = total_vertices;
         telemetry.hyperlane_indices_last_count = total_indices;
         record_hyperlane_bucket_telemetry(telemetry, &bucket_stats, segments.len());
+        if let (Some(ctx), Some(first)) = (map_context, segments.first()) {
+            record_hyperlane_falloff_sample_telemetry(telemetry, ctx, first.from, first.to);
+        }
     }
 
     cache.dirty = false;
@@ -622,6 +633,20 @@ pub fn sync_hyperlane_colors_system(
     cache.last_view_model_generation = generation;
     cache.last_mesh_build_basis = Some(current_basis);
     cache.frames_since_rebuild = 0;
+}
+
+fn record_hyperlane_falloff_sample_telemetry(
+    telemetry: &mut crate::studio_performance_telemetry::StudioPerformanceTelemetry,
+    ctx: &crate::falloff_metric::StudioMapRadiusFalloffContext,
+    from: [f32; 3],
+    to: [f32; 3],
+) {
+    telemetry.hyperlane_falloff_sample_mode = "closest segment point".into();
+    telemetry.hyperlane_falloff_sample_midpoint_progress_pct = Some(
+        hyperlane_midpoint_map_radius_progress_percent(ctx, from, to),
+    );
+    telemetry.hyperlane_falloff_sample_closest_progress_pct =
+        Some(hyperlane_map_radius_progress_percent(ctx, from, to));
 }
 
 fn record_hyperlane_bucket_telemetry(
@@ -639,6 +664,10 @@ fn record_hyperlane_bucket_telemetry(
     telemetry.hyperlane_zero_length_segment_count = bucket_stats
         .iter()
         .map(|s| s.zero_length_segment_count)
+        .sum();
+    telemetry.hyperlane_falloff_culled_segment_count = bucket_stats
+        .iter()
+        .map(|s| s.falloff_culled_segment_count)
         .sum();
     for (idx, stats) in bucket_stats.iter().enumerate().take(3) {
         telemetry.hyperlane_bucket_segment_count[idx] = stats.bucket_segment_count;
@@ -699,6 +728,8 @@ fn build_hyperlane_bucket_mesh(
             use_plateau,
         );
         if !visual.visible {
+            stats.falloff_culled_segment_count =
+                stats.falloff_culled_segment_count.saturating_add(1);
             continue;
         }
         stats.bucket_segment_count = stats.bucket_segment_count.saturating_add(1);
