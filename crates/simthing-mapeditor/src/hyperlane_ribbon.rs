@@ -55,6 +55,7 @@ impl HyperlaneRibbonCamera {
 pub struct HyperlaneMeshStats {
     pub source_segment_count: usize,
     pub bucket_segment_count: usize,
+    pub falloff_culled_segment_count: usize,
     pub vertex_count: usize,
     pub index_count: usize,
     pub degenerate_width_dir_count: u32,

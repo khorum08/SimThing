@@ -1,5 +1,7 @@
 //! Hyperlane depth-bucket classification and alpha ordering (render-only).
 
+use bevy::prelude::Vec2;
+
 use crate::view_model::StudioGalaxyRenderMeta;
 
 pub const HYPERLANE_EDGE_FALLOFF_FRACTION_EACH_SIDE: f32 = 0.10;
@@ -124,16 +126,34 @@ pub fn compute_hyperlane_visual(
     }
 }
 
+pub fn closest_point_on_segment_2d(point: Vec2, from: Vec2, to: Vec2) -> Vec2 {
+    let segment = to - from;
+    let len_sq = segment.length_squared();
+    if len_sq <= f32::EPSILON || !len_sq.is_finite() {
+        return from;
+    }
+    let t = ((point - from).dot(segment) / len_sq).clamp(0.0, 1.0);
+    from + segment * t
+}
+
+pub fn hyperlane_midpoint_map_radius_progress_percent(
+    context: &crate::falloff_metric::StudioMapRadiusFalloffContext,
+    from: [f32; 3],
+    to: [f32; 3],
+) -> f32 {
+    let mid = Vec2::new((from[0] + to[0]) * 0.5, (from[2] + to[2]) * 0.5);
+    crate::falloff_metric::map_radius_progress_percent(context, mid)
+}
+
 pub fn hyperlane_map_radius_progress_percent(
     context: &crate::falloff_metric::StudioMapRadiusFalloffContext,
     from: [f32; 3],
     to: [f32; 3],
 ) -> f32 {
-    let mid = [(from[0] + to[0]) * 0.5, (from[2] + to[2]) * 0.5];
-    crate::falloff_metric::map_radius_progress_percent(
-        context,
-        bevy::prelude::Vec2::new(mid[0], mid[1]),
-    )
+    let from2 = Vec2::new(from[0], from[2]);
+    let to2 = Vec2::new(to[0], to[2]);
+    let sample = closest_point_on_segment_2d(context.view_origin, from2, to2);
+    crate::falloff_metric::map_radius_progress_percent(context, sample)
 }
 
 pub fn hyperlane_camera_depth_percent(
@@ -468,5 +488,42 @@ mod tests {
     fn soft_edge_side_falloff_is_10_percent_each_side() {
         let visual = compute_hyperlane_visual(0.0, 10.0, &HyperlaneRenderSettings::default(), true);
         assert!((visual.edge_falloff_fraction_each_side - 0.10).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn closest_point_on_segment_2d_clamps_to_endpoints() {
+        let from = Vec2::new(10.0, 0.0);
+        let to = Vec2::new(20.0, 0.0);
+        let closest = closest_point_on_segment_2d(Vec2::ZERO, from, to);
+        assert!((closest - from).length_squared() < f32::EPSILON);
+        let closest = closest_point_on_segment_2d(Vec2::new(100.0, 0.0), from, to);
+        assert!((closest - to).length_squared() < f32::EPSILON);
+    }
+
+    #[test]
+    fn hyperlane_closest_point_falloff_keeps_foreground_crossing_lane_visible() {
+        use crate::falloff_metric::{MapViewOriginSource, StudioMapRadiusFalloffContext};
+
+        let ctx = StudioMapRadiusFalloffContext {
+            view_origin: Vec2::ZERO,
+            map_max_view_distance: 100.0,
+            origin_source: MapViewOriginSource::GalaxyCenter,
+        };
+        let from = [0.0, 0.0, 0.0];
+        let to = [200.0, 0.0, 0.0];
+        let midpoint_progress = hyperlane_midpoint_map_radius_progress_percent(&ctx, from, to);
+        let closest_progress = hyperlane_map_radius_progress_percent(&ctx, from, to);
+        assert!((midpoint_progress - 100.0).abs() < 0.1);
+        assert!((closest_progress - 0.0).abs() < 0.1);
+
+        let settings = HyperlaneRenderSettings {
+            falloff_distance_percent: 10.0,
+            falloff_opacity_percent: 0.0,
+            ..Default::default()
+        };
+        let midpoint_visual = compute_hyperlane_visual(midpoint_progress, 10.0, &settings, true);
+        let closest_visual = compute_hyperlane_visual(closest_progress, 10.0, &settings, true);
+        assert!(!midpoint_visual.visible);
+        assert!(closest_visual.visible);
     }
 }
