@@ -76,6 +76,98 @@ Two normally-gated expansions are **owner-authorized as in-scope for this track*
 
 ---
 
+## 1A. DA adjudication of the orchestrator review + orchestration discipline (binding, 2026-06-28)
+
+Codex 5.5 Max (orchestration agent) reviewed this track against the repo and filed a caveat list. As
+executive Design Authority I adjudicate it below, then issue binding orchestration directives. **The
+through-line: Codex's engineering-precision points are largely sound and are folded in; Codex's
+*instincts* — treating RF-arena semantics as subsystem-sized work, accreting proof chains, inventing
+resolution mechanisms — are the exact drift the constitution forbids, and are fenced off here.**
+
+### 1A.1 Rulings on the eight caveats
+
+1. **Combined-document grammar — UPHELD, with a simplicity sledgehammer.** The base
+   (`static_galaxy_scenario` neutral-AST) and overlay (`scenario`-container) are two parse paths today.
+   The resolution is **one grammar, never a third path**: the scenario-container front-end accepts the
+   MapGenerator base via the **existing neutral-AST parser** as an embedded/`include` base block; base
+   system ids are namespaced and become the overlay's location-targets; duplicate ids hard-error; the
+   producer owns base provenance, the overlay owns runtime. Absorbed into `TP-BASE-EMBED-0` (sharpened).
+2. **1500 vs 1000-star evidence confidence — REDUCED (already handled).** 1500-star *placement/topology*
+   is guarded (`topology_stead.rs`); *admit/install/GPU* at 1500 is **unproven** and is exactly what
+   `TP-SCALE-ENVELOPE-0` exists to establish. No rung overclaims; the summary's confidence is corrected
+   here, the ladder already had the right rung.
+3. **RF capacity amendment underspecified — UPHELD, but bounded.** `TP-RF-CAPACITY-AMENDMENT-0` must emit
+   **one concise capacity-budget ledger** (SimThing count, property columns, RF arenas + per-arena
+   participants/coupling-fanout/orderband-depth, emissions, GPU slots, field buffers, atlas theater size,
+   readback policy, explicit "no per-tick allocation" assertion). **One table — not a proof battery**
+   (directive D4). Raising `max_participants` alone is insufficient; all three `GpuArenaDescriptor` caps
+   plus slot/emission capacity scale together, budget-driven.
+4. **Atlas/theater execution — UPHELD as a scope *tightening* (smaller, not bigger).** The live run is
+   **one deterministically-selected bounded theater = the contested Terran/Pirate border sub-volume**, not
+   the whole galaxy. Theater field state is **runtime cache**, never ScenarioSpec writeback, unless a
+   structural commitment fires through `BoundaryRequest`. Halo/gutter/stitching and full-galaxy atlas
+   tiling are recorded Deviations/future — **do not build an atlas scheduler for this track.** Absorbed
+   into Phase 6 + `TP-LIVE-RUN-0`.
+5. **Fleet homing — RULED (DA decision; no new tier).** Studio doctrine: star-system gridcells carry
+   **10×10 local grids**; **orbital bodies/starbases are local-grid cells**; inert local-grid cells
+   **already carry receiver grids**; gameplay children attach at a **1×1 surface gridcell**. Therefore a
+   fleet berths at the **1×1 surface gridcell of a star-system local-grid cell** — a planet's surface when
+   garrisoning, or an orbital/space local-grid cell's surface when patrolling — and **movement = reparent
+   to an adjacent system's local-grid cell surface**. This honors "fleets are children of the surface
+   gridcell" verbatim while keeping mobility = reparenting. **No "fleet berth" new structure is minted.**
+   Absorbed into §3 (ruling) + `TP-FLEET-MOVEMENT-0`.
+6. **Trigger-to-column vocabulary — REDUCED (already resolved doctrine; Owner was correct).**
+   ClauseThing_Spec §8: `complex_trigger_modifier` / bool→number forms **only compile when the trigger
+   reads a column; otherwise rejected at admission.** The "explicit trigger-to-column table with hard
+   errors" Codex requests **is the existing admission behavior** — minting a separate ceremony table is
+   exactly the hygiene the Owner forbids. The scenario uses only column-backed triggers (`is_at_war` → a
+   war-state flag column; `has_border_threat` → the reduced threat-front pressure column), declared
+   **inline at point of use**; `from`/`root` dynamic chains are out (authored same-owner/same-scope,
+   already deferred). No new artifact.
+7. **Semantic-free scan — UPHELD (narrow it).** The scan targets **runtime / GPU / `simthing-sim`
+   artifacts**, not ScenarioSpec authoring strings. Stable ids, provenance, display names, and Stellaris
+   star names (PR #936) legitimately persist on `Location` SimThings. Rule = **"no semantic tokens below
+   the spec boundary,"** not "no name strings in ScenarioSpec JSON." Absorbed into `TP-FULL-TRANSPILE-0`.
+8. **Corpus hygiene — UPHELD (one line).** The authored `.clause` is **original SimThing-authored
+   ClauseScript**; no Paradox content is committed; any `modifiers.log` round-trip uses the **ignored,
+   lab-only `CLAUSER_LAB_DIR` posture with provenance hashes** (CT-2c §3). Standing discipline restated.
+
+### 1A.2 Orchestration directives (binding on the orchestrator and every implementation handoff)
+
+These exist because the orchestrator *admitted* it would have built combat/diplomacy as subsystems and
+underweighted the anti-flattening and ClauseScript→ScenarioSpec boundaries. They are the §0 drift
+detectors aimed at the demonstrated failure modes. A handoff that violates one is **rejected at review,
+not implemented.**
+
+- **D1 — More SimThing, never a subsystem.** Combat, diplomacy, economy, raiding, fleet movement,
+  suppression are RF arenas + overlays + EML + thresholds. If a handoff proposes a combat engine, a
+  diplomacy module, a pathfinding/route service, a CPU planner/urgency loop, or any "system beside the
+  tree," it is rejected (core §9 detectors 1–4). The deferred labels in Studio are *consumer-pulled RF
+  rungs*, not conceptual blockers.
+- **D2 — Reach for the existing substrate, in this order, before inventing anything:** (1) an RF
+  allocator arena; (2) an overlay on a weight / HP / Damage / flow column; (3) an **EML gadget tree over
+  the fixed `EvalEML` interpreter**; (4) a **JIT EML→WGSL** straight-line shader (default-off, pinned,
+  CPU-oracle parity). A new opcode / kernel / `AccumulatorRole` is **Tier-2, last resort, bit-exact
+  parity required.** Inventing a new resolution mechanism while (1)–(4) suffice is the canonical drift
+  this track exists to prevent (core §4.1 ladder).
+- **D3 — No hygiene looping.** Reject docs-only, comparison-only, report-aggregation, or status-row rungs
+  unless they directly enable a §2 acceptance element. No "project-management cosplay" (constitution
+  §0.6.5). The diagnostic stream is the backlog — not a deliverable to be polished.
+- **D4 — Proof is minimal and load-bearing.** **One** targeted test (or one tiny sibling test) per rung;
+  GPU leg skips without a GPU; CPU-oracle parity to the bit. **No long proof chains, no sprawling test
+  batteries, no accreting evidence artifacts.** `cargo test --workspace` is never run. A rung's evidence
+  is one `*_results.md` with a Scope Ledger — token- and disk-cheap by mandate.
+- **D5 — Anti-flattening *and* anti-ceremony.** Specified recursive structure (the surface tier, the
+  recursive RF settle) must be **real** (no silent collapse, constitution §0.6) **and** proven by the
+  **smallest non-vacuous reduction** — never a proof factory. Both halves bind simultaneously.
+- **D6 — The ClauseScript→ScenarioSpec boundary is one-way and total.** After hydration,
+  `simthing-sim` / WGSL / runtime never see ClauseScript, categories, modifiers, or scenario semantics
+  (ClauseThing_Spec §7). Authoring-side ids / provenance / display names persist legitimately (ruling 7).
+- **D7 — Handoffs are short and cite the harness.** Detail lives in code + this canonical design file;
+  the header points, it never restates (constitution §0.5 Rule 3). Long handoffs are themselves a drift.
+
+---
+
 ## 2. Objective & acceptance
 
 **Deliverable:** a single native ClauseScript file —
@@ -143,14 +235,15 @@ Live STEAD simulation:  fronts propagate, borders settle/shift, fleets follow gr
                         combat resolves as HP/Damage, faction commitments fire from thresholds.
 ```
 
-**Fleet homing decision (recorded design decision, grounded in core §2 law 1 + §7).** Immobile gameplay
-children (factories, cohorts, buildings) home under the **planet 1×1 surface gridcell** (the mandated tier,
-constitution-enforced). **Fleets are mobile spatial occupants of the star-system local grid** — they home
-as children of the **star-system gridcell's local-grid Location** ("the Location where they physically
-participate"), not a planet surface, and **movement is reparenting** to an adjacent star-system gridcell
-down the desirability/threat gradient (core §7.2 "the front is the route"). This is a design decision, not
-a re-derivation; it is flagged for DA confirmation at the Phase-6 rung and may be revised to a dedicated
-"fleet berth" surface cell if review prefers.
+**Fleet homing — DA ruling (§1A.1 #5, binding; no new tier).** Immobile gameplay children (factories,
+cohorts, buildings) home under the **planet 1×1 surface gridcell** (the mandated tier). **A fleet berths
+at the 1×1 surface gridcell of a star-system local-grid cell** — a planet's surface when garrisoning, or
+an **existing orbital/space local-grid cell's receiver-grid surface** when patrolling (star-system gridcells
+already carry 10×10 local grids; orbital bodies are local-grid cells; inert cells already carry receiver
+grids — Studio doctrine). **Movement = reparent the fleet to an adjacent system's local-grid cell surface**
+down the desirability/threat/reach gradient (core §7.2, "the front is the route"). This honors "fleets are
+children of the surface gridcell" verbatim while keeping mobility = reparenting; **no new structure is
+minted.**
 
 ---
 
@@ -166,7 +259,7 @@ run**; each rung names its exact targeted tests.
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
 | 0.0 | `TP-TRACK-OPEN-0` | This document + evidence-index row + harness. Docs only. | Doc lands; ledger row honest (impl not started). | — |
-| 0.1 | `TP-RF-CAPACITY-AMENDMENT-0` | **§1.1 amendment.** Make RF arena `max_participants`, GPU slot capacity, and emission capacity **scalable to galaxy scale** (budget-driven, not a magic constant — mirror `MapgenStructuralGridBudget` checked-`u128` discipline). No new `AccumulatorRole`, no semantic WGSL, no per-tick allocation. Pool growth at boundaries only (constitution §0.4). | Existing RF/admission tests stay green at small caps; a new galaxy-scale admission test installs an arena with participant counts ≥ the 250-owned + fleet load; `e10_resource_flow_admission` extended; CPU-oracle parity preserved. | **Tier-2** (touches closed lowerer + a binding cap) |
+| 0.1 | `TP-RF-CAPACITY-AMENDMENT-0` | **§1.1 amendment.** Scale **all three `GpuArenaDescriptor` caps** (`max_participants`, coupling-fanout, orderband-depth) **plus GPU slot & emission capacity** to galaxy scale (budget-driven, not magic constants — mirror `MapgenStructuralGridBudget` checked-`u128`). No new `AccumulatorRole`, no semantic WGSL, no per-tick allocation; pool growth at boundaries only (constitution §0.4). **Output: one concise capacity-budget ledger** (§1A.1 #3) — a single table, **not a proof battery** (D4). | Existing RF/admission tests stay green; one galaxy-scale admission test installs at the 250-owned + fleet load; `e10_resource_flow_admission` extended; CPU-oracle parity preserved; budget ledger lands. | **Tier-2** (closed lowerer + binding caps) |
 | 0.2 | `TP-SCALE-ENVELOPE-0` | Prove the **base 1500-star disc** lattice + topology admit/install at scale through the widened caps (placement/topology already tested at 1500 in `topology_stead.rs`; this proves *install*, not just placement). | Headless: generate 1500-star disc → lattice hierarchy → admit/install → compact GPU readback `is_none()` on a real adapter. | Tier-1 over 0.1 |
 
 ### Phase 1 — Base galaxy production (mostly reuse; Studio-consistency proof)
@@ -174,7 +267,7 @@ run**; each rung names its exact targeted tests.
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
 | 1.0 | `TP-BASE-DISC-GEN-0` | Drive `simthing-mapgenerator` to emit the canonical **disc, 1500-star** base `static_galaxy_scenario` (seed-pinned) with Stellaris star-name corpus assignment. Capture the seed + params in the scenario metadata. | Byte-identical regeneration from recorded seed/params; `map_quality_status = PASS`; names assigned deterministically; the output is what Studio's Generate path produces for the same levers. | Tier-1 |
-| 1.1 | `TP-BASE-EMBED-0` | Define how the base is carried in the single `.clause`: an embedded/`include`-style `static_galaxy_scenario { ... }` block consumed by the existing neutral-AST parser, with the Terran-Pirate overlay layered in the same file. | The combined `.clause` parses; base lattice round-trips identical to rung 1.0. | Tier-2 (combined-document grammar) |
+| 1.1 | `TP-BASE-EMBED-0` | **One grammar, no third path** (§1A.1 #1): the scenario-container front-end accepts the MapGenerator base as an embedded/`include` `static_galaxy_scenario { ... }` block parsed by the **existing neutral-AST parser**; base system ids are **namespaced → become the overlay's location-targets**; **duplicate ids hard-error**; producer owns base provenance, overlay owns runtime. | The combined `.clause` parses; base lattice round-trips identical to rung 1.0; id-collision rejected with a span. | Tier-2 (combined-document grammar) |
 
 ### Phase 2 — Ownership: owners, planets, factories, cohorts (the scenario-container widening)
 
@@ -221,8 +314,8 @@ run**; each rung names its exact targeted tests.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 8.0 | `TP-FULL-TRANSPILE-0` | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSON. Prove **only SimThing-Spec/ClauseThing scaffolding remains** (no ClauseScript/semantic token in the runtime authority or GPU artifacts). Canonical save/load roundtrip stable digest. | Full file transpiles; semantic-free scan passes; STEAD/link/tree/RF metadata survive roundtrip (reuse the closed save/load battery). | Tier-1 |
-| 8.1 | `TP-LIVE-RUN-0` | **Indefinite-tick live run in Studio** (or headless driver at galaxy scale, with Studio load proven). Run the contested border for N ticks; the front evolves; combat resolves; a commitment fires. Capture the field-movie evidence. | Non-vacuous multi-tick run on a real adapter; border front measurably shifts; ≥1 STEAD commitment fires; no per-tick device/buffer creation; no CPU planner. | Tier-1 |
+| 8.0 | `TP-FULL-TRANSPILE-0` | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSON. **Semantic-free scan targets runtime/GPU/`simthing-sim` artifacts only** (§1A.1 #7) — authoring ids, provenance, display names, and star names legitimately persist on `Location` SimThings. Canonical save/load roundtrip stable digest. | Full file transpiles; semantic-free scan (below the spec boundary) passes; STEAD/link/tree/RF metadata survive roundtrip (reuse the closed save/load battery). | Tier-1 |
+| 8.1 | `TP-LIVE-RUN-0` | **Indefinite-tick live run** over **one deterministically-selected bounded theater = the contested Terran/Pirate border sub-volume** (§1A.1 #4), in Studio or headless driver with Studio load proven. Theater field state is **runtime cache, not ScenarioSpec writeback** unless a structural commitment fires via `BoundaryRequest`. **No atlas scheduler is built here**; full-galaxy tiling is a recorded Deviation. | Non-vacuous multi-tick run on a real adapter; border front measurably shifts; combat resolves; ≥1 STEAD commitment fires from a crossing; no per-tick device/buffer creation; no CPU planner. | Tier-1 |
 | 8.2 | `TP-DA-CLOSEOUT-0` | Scope Ledger over every §2 acceptance element; Deviation Records for anything proxied/deferred (e.g. galaxy-scale dense Movement-Front execution deferring to atlas scheduling is a bounded-theater Deviation, not a failure); DA review. | Complete Scope Ledger; DA sign-off (owner-channeled). | — |
 
 ---
