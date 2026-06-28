@@ -56,6 +56,12 @@ PROBATION — promoted §3 "no hardcoded `data[N]`" from prose to a Rust type bo
 
 ## 0R repair (AS-COLUMN-ACCESS-0R)
 
+### PR / branch / merge (0R)
+
+- Branch: `codex/as-column-access-0r`
+- PR: https://github.com/khorum08/SimThing/pull/950
+- Merge: `34c33205d6` (master)
+
 ### What changed
 
 - Replaced `pub type RoleOffset = usize` with `pub struct RoleOffset(/* private */ usize)`; only `PropertyLayout::offset_of` constructs it.
