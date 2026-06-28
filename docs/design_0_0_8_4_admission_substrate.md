@@ -64,6 +64,7 @@ shows the migration surface is larger than one focused PR.
 | 3 | `AS-KIND-OUT-OF-TICK-0` | §2 "behavior never branches on kind at runtime" | Introduce the tick/runtime view type that carries **no `kind`** (resolved columns/slots only); drive the production kind-reads (audit `simthing-sim`, e.g. `is_capability_container(&child.kind, …)` at `boundary.rs:1293`) from a resolved column instead of a `kind` match (static → resolve-away; dynamic predicate → **EML gadget**, §2.1). | Core §9 "no `match kind`" detector → promoted to type. `compile_fail`: a tick-path fn cannot access `.kind`. **May split** (audit production vs test kind-reads first). |
 | 4 | `AS-SIM-SEMANTIC-FREE-0` | §4 "`simthing-sim` never learns the words" | Seal the `simthing-sim` public surface so it cannot **name** a game concept — no semantic `SimThingKind` variant (`Faction`/`Cohort`) or semantic `String` category/faction crosses the crate boundary; the sim sees columns, indices, and opaque registration handles. Composes on AS-3. | The scattered semantic-free source scans → narrowed to true residue (e.g. WGSL text, which Rust can't see — stays a scan). `compile_fail`: a faction/category type at the `simthing-sim` boundary. |
 | 5 | `AS-INDEX-NEWTYPES-0` *(horizon)* | §3/§4 stable indices | `SlotIndex`, `ColumnIndex`, and audit `OrderBand` (already `OrderBand(u32)`) as distinct newtypes so a slot index can't be used as a column index; owner-vs-spatial-parent distinction so "reparent to an owner" (core §2 law 2) is uncompilable. | Mixing-index bugs; the "owner is never a spatial parent" prose detector (partial). |
+| 6 | `AS-STRUCTURAL-COORD-0` | STEAD: render coords cannot leak into structural logic (core §0/§7; `stead_spatial_contract.md`) | `StructuralCoord { col, row }` integer newtype that **cannot be constructed from render `f32`** except via an explicit, named conversion; the lowerer / Movement-Front / RF-binding structural paths accept only `StructuralCoord`, never a bare float pair. | A slice of the `stead_spatial_contract_guards` render-vs-structural scan + the prose "positions are structural, never render." `compile_fail`: building a structural coord from render floats. **Now-rung (independent of AS-5).** |
 | F | `AS-CLOSEOUT-0` | — | Scope Ledger across rungs: invariants promoted, **guards/prose retired (the success metric)**, parity intact. DA review. | — |
 
 ### 2.1 Exit states for a violation — where the behavior goes
@@ -146,6 +147,30 @@ judgment on the true residue (core §1.2):
   semantic-free *shader* scan remain the only admission the shader has (§4). AS-4 narrows the scan to
   exactly this residue and no wider.
 - **Live ontological conformance** — "is this still one accumulate→reduce→threshold loop?" remains DA work.
+
+## 5A. Horizon addenda — tabled type moves (explored later, not opened)
+
+Candidates surfaced (Grok review, 2026-06-28) that are elegant but not yet sharp enough to open as rungs;
+recorded so they are not re-derived. Each opens only when a rung names it.
+
+- **Phantom resolution state** — `ColumnIndex<Resolved>` vs `<Unresolved>` to make the CPU-prep → GPU-upload
+  boundary (§2.1) type-enforced (composes with AS-1/AS-5). Strong, but adds generic plumbing — open once
+  AS-1 lands and the upload seam is the next pressure point.
+- **Overlay-lifecycle typestate** — active vs `Suspended` as typestate so a suspended overlay cannot be
+  mutated/reduced. Medium value; risks heaviness against the band-applied kernel.
+- **Arena settlement-phase typestate** — local-settled vs not, in recursive RF. Likely too heavy for the
+  current design; revisit only if a settlement-order bug recurs.
+- **OrderBand dependency ordering at the type level** — encode band-before-band as types. Ambitious and
+  elegant, but high risk of killing the data-driven flexibility OrderBands exist for. Research only.
+- **Const-generic bounded capacities** — only where a cap is *truly* static; most caps are admission-checked
+  data and must stay data (genericity). Narrow applicability.
+
+**Eliminated (leave as data / already done) — do not open:** `ReductionRule` / `ClampBehavior` /
+`FissionPolicy` stay **data** (typing them costs genericity for no safety; already resolved at prep, never
+branched in hot paths); `CompiledMappingPlan` / `CompiledAccumulatorOpPlan` are already construction-gated
+opaque handles; `Event` / `BoundaryRequest` are CPU-boundary **residue** by design (§5). The
+sealed-trait / private-module technique for `simthing-sim`'s surface is **not a separate rung — it is the
+mechanism of AS-4.**
 
 ## 6. References
 
