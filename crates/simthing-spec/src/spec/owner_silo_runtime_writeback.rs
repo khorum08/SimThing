@@ -162,14 +162,14 @@ pub fn owner_silo_writeback_inputs_from_planet_child_reduce_up(
         if bucket.net_surplus < 0 || bucket.net_deficit < 0 {
             return Err(RuntimeOwnerSiloWritebackError {
                 kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-                owner_ref: Some(bucket.scope.owner_ref.clone()),
-                resource_key: Some(bucket.scope.resource_key.clone()),
+                owner_ref: Some(bucket.scope.owner_ref.as_str().to_string()),
+                resource_key: Some(bucket.scope.resource_key.as_str().to_string()),
                 message: "bucket net values must be non-negative".to_string(),
             });
         }
         let key = (
-            bucket.scope.owner_ref.clone(),
-            bucket.scope.resource_key.clone(),
+            bucket.scope.owner_ref.as_str().to_string(),
+            bucket.scope.resource_key.as_str().to_string(),
         );
         let entry = grouped.entry(key).or_insert((0, 0, 0));
         entry.0 = entry
@@ -177,8 +177,8 @@ pub fn owner_silo_writeback_inputs_from_planet_child_reduce_up(
             .checked_add(bucket.net_surplus as u64)
             .ok_or_else(|| RuntimeOwnerSiloWritebackError {
                 kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-                owner_ref: Some(bucket.scope.owner_ref.clone()),
-                resource_key: Some(bucket.scope.resource_key.clone()),
+                owner_ref: Some(bucket.scope.owner_ref.as_str().to_string()),
+                resource_key: Some(bucket.scope.resource_key.as_str().to_string()),
                 message: "net_surplus aggregate overflow".to_string(),
             })?;
         entry.1 = entry
@@ -186,8 +186,8 @@ pub fn owner_silo_writeback_inputs_from_planet_child_reduce_up(
             .checked_add(bucket.net_deficit as u64)
             .ok_or_else(|| RuntimeOwnerSiloWritebackError {
                 kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-                owner_ref: Some(bucket.scope.owner_ref.clone()),
-                resource_key: Some(bucket.scope.resource_key.clone()),
+                owner_ref: Some(bucket.scope.owner_ref.as_str().to_string()),
+                resource_key: Some(bucket.scope.resource_key.as_str().to_string()),
                 message: "net_deficit aggregate overflow".to_string(),
             })?;
         entry.2 += 1;

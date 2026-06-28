@@ -149,7 +149,7 @@ pub fn project_planet_child_rf_ladder_rows(
             source_simthing_id_raw: participant.simthing_id_raw,
             planet_gridcell_id_raw: participant.planet_gridcell_id_raw,
             star_system_gridcell_id_raw: scope.star_system_gridcell_id_raw.unwrap_or(0),
-            owner_ref: participant.owner_ref,
+            owner_ref: participant.owner_ref.into_inner(),
             resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
             surplus: participant.surplus,
             demand: participant.deficit,

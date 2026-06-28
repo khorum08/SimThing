@@ -8,8 +8,8 @@ use simthing_spec::{
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata,
     deserialize_scenario_authority, evaluate_planet_child_locations,
-    evaluate_planet_child_rf_reduce_up, make_galaxy_map, make_owner_entity, make_planet_gridcell,
-    serialize_scenario_authority, structural_property_value_u32,
+    evaluate_planet_child_rf_reduce_up, is_surface_gridcell, make_galaxy_map, make_owner_entity,
+    make_planet_gridcell, serialize_scenario_authority, structural_property_value_u32,
     PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionErrorKind, SimThingScenarioGrid,
     SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
     SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
@@ -87,14 +87,34 @@ fn build_planet_child_rf_reduce_up_scoped_spec() -> SimThingScenarioSpec {
     apply_participant_owner_flow_metadata(&mut terra_fleet, "owner_a", 0, 8);
     let mut terra_infra = SimThing::new(SimThingKind::Custom("Infrastructure".into()), 0);
     apply_participant_owner_flow_metadata(&mut terra_infra, "owner_a", 5, 0);
-    terra_prime.add_child(terra_cohort);
-    terra_prime.add_child(terra_fleet);
-    terra_prime.add_child(terra_infra);
+    terra_prime
+        .children
+        .iter_mut()
+        .find(|c| is_surface_gridcell(c))
+        .expect("surface gridcell")
+        .add_child(terra_cohort);
+    terra_prime
+        .children
+        .iter_mut()
+        .find(|c| is_surface_gridcell(c))
+        .expect("surface gridcell")
+        .add_child(terra_fleet);
+    terra_prime
+        .children
+        .iter_mut()
+        .find(|c| is_surface_gridcell(c))
+        .expect("surface gridcell")
+        .add_child(terra_infra);
 
     let mut border_moon = make_planet_gridcell("border_moon", 1, 0, Some("Border Moon"));
     let mut moon_cohort = SimThing::new(SimThingKind::Cohort, 0);
     apply_participant_owner_flow_metadata(&mut moon_cohort, "owner_b", 7, 2);
-    border_moon.add_child(moon_cohort);
+    border_moon
+        .children
+        .iter_mut()
+        .find(|c| is_surface_gridcell(c))
+        .expect("surface gridcell")
+        .add_child(moon_cohort);
 
     star_system.add_child(terra_prime);
     star_system.add_child(border_moon);
@@ -202,7 +222,7 @@ fn planet_child_rf_reduce_up_groups_by_owner_channel() {
     assert!(report
         .buckets
         .iter()
-        .all(|b| b.scope.resource_key == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
+        .all(|b| b.scope.resource_key.as_str() == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
 }
 
 #[test]
@@ -226,8 +246,14 @@ fn planet_child_rf_reduce_up_groups_by_planet_scope() {
     assert_eq!(report.planet_scope_count, 2);
     let terra = terra_prime_bucket(&report);
     let moon = border_moon_bucket(&report);
-    assert_eq!(terra.scope.local_scope_id.as_deref(), Some("terra_prime"));
-    assert_eq!(moon.scope.local_scope_id.as_deref(), Some("border_moon"));
+    assert_eq!(
+        terra.scope.local_scope_id.as_ref().map(|s| s.as_str()),
+        Some("terra_prime")
+    );
+    assert_eq!(
+        moon.scope.local_scope_id.as_ref().map(|s| s.as_str()),
+        Some("border_moon")
+    );
 }
 
 #[test]

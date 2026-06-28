@@ -274,7 +274,7 @@ pub fn recursive_local_rf_participant_rows_from_planet_child_inputs(
         .map(|input| LocalRfParticipantRow {
             source_simthing_id_raw: input.simthing_id_raw,
             parent_location_id_raw: input.planet_gridcell_id_raw,
-            owner_ref: input.owner_ref.clone(),
+            owner_ref: input.owner_ref.as_str().to_string(),
             resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
             surplus: input.surplus,
             demand: input.deficit,

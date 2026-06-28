@@ -86,8 +86,8 @@ fn compile_writeback_aggregate_proof_plans(
             .iter()
             .enumerate()
             .filter(|(_, bucket)| {
-                bucket.scope.owner_ref == input.owner_ref
-                    && bucket.scope.resource_key == input.resource_key
+                bucket.scope.owner_ref.as_str() == input.owner_ref
+                    && bucket.scope.resource_key.as_str() == input.resource_key
             })
             .map(|(index, _)| index)
             .collect::<Vec<_>>();
