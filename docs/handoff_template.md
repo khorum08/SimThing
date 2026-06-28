@@ -49,10 +49,22 @@ If the change cannot be expressed within these lines, **stop and escalate to the
 ## 1. Identity
 
 - **Rung ID / title:** `<RUNG-ID>` — `<one-line title>`
-- **Type:** `<mechanical impl | design+impl | docs closeout (only if riding with an impl PR)>`
-- **Target implementer:** `<agent>`
+- **Type:** `<mechanical impl | design+impl | docs | DA review>`
+- **Recipient agent:** `<agent>` — chosen by **Type**, per the routing table below.
 - **Expected PR title:** `<RUNG-ID>: <imperative summary>`
 - **Canonical design file (the one ladder this rung serves):** `<path>` — read it first; it controls scope/order/lifecycle.
+
+**Recipient routing (Type → agent tier).** Name the agent explicitly; do not default to the most capable
+model for a mechanical task or the cheapest for a judgment task.
+
+| Type | Recipient | Why |
+|---|---|---|
+| **Coding** — mechanical impl, design+impl, refactor, test | **Cursor / Grok** | high-throughput code execution against a fixed contract; the type system + admission layer + this template are the guardrails, so a coding agent needs latitude inside the fence, not DA judgment. |
+| **Docs** — results ledger, design-doc edit, evidence-index update, closeout prose | **Haiku / Sonnet** | bounded, well-specified writing; no architectural authority needed. (Docs closeout still rides *with* its impl PR — §H — it is not its own rung.) |
+| **DA review** — acceptance, sign-off, Scope-Ledger adjudication, Deviation approval, ontology conformance | **Opus / Owner** | the residue types and admission cannot reach (core §1.2 §5): no-CPU-planner, no-flattening, semantic conformance. Only the DA writes a sign-off, never pre-filed. |
+
+A handoff that routes a DA-judgment rung to a coding agent, or burns a DA/Opus turn on mechanical edits, is
+mis-routed — fix the Type or split the rung.
 
 ## 2. Harness — required reading (tight; not the repo)
 
