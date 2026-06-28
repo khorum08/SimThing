@@ -1,7 +1,7 @@
 # SimThing Implementation Handoff — Base Template
 
 > **Purpose.** The single skeleton every rung handoff fills in. It operationalizes the orchestration
-> directives D1–D8 ([`design_0_0_8_4_clausescript_terran_pirate_galaxy.md`](design_0_0_8_4_clausescript_terran_pirate_galaxy.md) §1A.2)
+> directives D1–D8 ([`design_0_0_8_5_clausescript_terran_pirate_galaxy.md`](design_0_0_8_5_clausescript_terran_pirate_galaxy.md) §1A.2)
 > and the constitution's harness discipline ([`design_0_0_8_3.md`](design_0_0_8_3.md) §0.5).
 >
 > **It exists to kill a specific, observed reflex:** handoffs that grow a 30-file reading list, a test
@@ -36,6 +36,11 @@
   gadget tree → (4) JIT EML→WGSL shader → (only then, Tier-2, with parity) a new opcode/kernel/role.
 - **Enforcement is admission *behavior*, not a governance *artifact* (D8).** "Validate X" means a spanful
   hard error in the decoder/admission layer — never a new registry/preflight/validation doc that restates it.
+- **Doctrine as type, not prose (core §1.2 — the admission ladder).** Encode an invariant at the highest
+  rung that can express it: **type boundary** (illegal state uncompilable) > **admission hard-error** >
+  **guard scan** > **prose**. Do not narrate in prose or a guard test what a type should make
+  unrepresentable; a guard scan that exists only because a type didn't is a promotion target. Spend the
+  budget Rust frees on type/admission boundaries + semantic conformance — never on process ceremony.
 
 If the change cannot be expressed within these lines, **stop and escalate to the DA** — do not special-case.
 

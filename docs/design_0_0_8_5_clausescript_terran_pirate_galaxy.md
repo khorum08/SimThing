@@ -1,9 +1,13 @@
-# 0.0.8.4 — ClauseScript Terran-Pirate Galaxy Production Track
+# 0.0.8.5 — ClauseScript Terran-Pirate Galaxy Production Track
 
-> **Status: OPEN (production track, opened 2026-06-28, owner-authorized maximal scope).** Sits
-> *beneath* [`simthing_core_design.md`](simthing_core_design.md) (permanent paradigm) and *beneath*
-> the active constitution [`design_0_0_8_3.md`](design_0_0_8_3.md). This document is the authoritative
-> 0.0.8.4 production design track and PR ladder. It opens the **first full-scenario native ClauseScript
+> **Status: OPEN, DEFERRED — resequenced 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed).** Promoted
+> ahead of it is the [`0.0.8.4 Admission Substrate track`](design_0_0_8_4_admission_substrate.md)
+> (doctrine-as-type), which is smaller, compounding, and de-risks this track — every invariant it
+> promotes to a type boundary, this track inherits for free. Begin 0.0.8.5 execution after the 0.0.8.4
+> ladder lands (or earlier by explicit owner re-sequence). Opened 2026-06-28, owner-authorized maximal scope. Sits
+> *beneath* [`simthing_core_design.md`](simthing_core_design.md) (permanent paradigm, incl. **§1.2 the
+> admission substrate**) and *beneath* the active constitution [`design_0_0_8_3.md`](design_0_0_8_3.md).
+> This document is the authoritative 0.0.8.5 production design track and PR ladder. It opens the **first full-scenario native ClauseScript
 > ingestion vertical**: a single authored `.clause` file that transpiles entirely to canonical
 > `SimThingScenarioSpec` and runs live, STEAD-driven, through indefinite ticks in SimThing Studio.
 >
@@ -18,7 +22,7 @@
 
 1. [`design_0_0_8_3.md`](design_0_0_8_3.md) **§0** — the transient constitution (carry-forward doctrine, anti-flattening §0.6, exact-magnitude §0.7, STEAD §0.8, closed-lowering-layer gates §A).
 2. [`simthing_core_design.md`](simthing_core_design.md) — the permanent paradigm (the one tree §2, RF arenas §5, overlays §6, the Movement-Front automaton §7, decisions-as-thresholds §8, drift detectors §9).
-3. **This file** — the 0.0.8.4 canonical design file.
+3. **This file** — the 0.0.8.5 canonical design file.
 4. [`clausething/ClauseThing_Spec.md`](clausething/ClauseThing_Spec.md) §4 (the deep correspondence table) + §8 (sequencing hard problems) — the ClauseScript→SimThing isomorphism and its known gaps.
 5. [`clausething/ct_2c_economic_category_memo.md`](clausething/ct_2c_economic_category_memo.md) — the modifier-key decoder, the `_mult`/`_add` inheritance asymmetry, and the movables doctrine (fleets/cohorts/leaders are ordinary SimThings).
 6. [`stead_spatial_contract.md`](stead_spatial_contract.md) — the 8 STEAD invariants (mandatory for any MapGen / Location-grid / Movement-Front / Gu-Yang / PALMA / RF-over-gridcell work).
@@ -46,7 +50,7 @@ A rung handoff may add ≤3 rung-local links it directly consumes; rung-local li
 The project Owner opened this track (2026-06-28) with **maximal authorization to expand the
 ingest/authoring capability of SimThing Studio** toward the horizon goal of *full ClauseScript ↔
 SimThing runtime fluency*, and ultimately ingesting and transpiling Paradox's full Stellaris base
-configuration. The 0.0.8.4 scenario is **Objective A**: prove the capability of ingesting a complete,
+configuration. The 0.0.8.5 scenario is **Objective A**: prove the capability of ingesting a complete,
 native ClauseScript file (authored in-repo) and running it as a live SimThing simulation.
 
 Two normally-gated expansions are **owner-authorized as in-scope for this track**:
