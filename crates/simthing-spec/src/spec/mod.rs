@@ -1,4 +1,5 @@
 pub mod capability;
+pub mod channel_key;
 pub mod domain_pack;
 pub mod effect;
 pub mod eml_gadget;
@@ -55,6 +56,7 @@ pub use capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
     CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy,
 };
+pub use channel_key::{OwnerRef, ResourceKey, ScopeId};
 pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};

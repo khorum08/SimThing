@@ -220,7 +220,7 @@ fn planet_child_rf_reduce_up_compile_preserves_bucket_scopes() {
     assert_eq!(plan.bucket_plans.len(), 2);
     for bucket_plan in &plan.bucket_plans {
         assert_eq!(
-            bucket_plan.scope.resource_key,
+            bucket_plan.scope.resource_key.as_str(),
             PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
         );
         assert!(bucket_plan.scope.planet_id.is_some());
