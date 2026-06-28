@@ -243,6 +243,31 @@ PRs **#768–#775** (Terran Pirate skeleton through structural atlas halo admiss
 
 Rows tagged **LOWER_LAYER_GOLDEN_FIXTURE** in the amendment table above (from **TERRAN-PIRATE-SCENARIO-SKELETON-0** through **DRIVER-STRUCTURAL-ATLAS-HALO-0**, PRs #768–#775) retain their PROBATION reports but are **not** scenario-ontology evidence.
 
+## Expunged presentation/process reports (2026-06-28 batch)
+
+Per the standing doctrine below (*superseded per-rung process reports are intentionally not in the
+working tree*), the following **presentation/visual-tuning** report files were removed from `docs/tests/`
+to cut bloat. **Each row above retains its PR # + merge SHA as durable provenance**; the report text is
+recoverable via `git show <SHA>` / `git log`. **No substrate evidence was touched** — the RF, owner-silo,
+runtime-tick, recursive-RF, mapping-atlas, planet-grid, scenario save/load, Terran-Pirate golden-fixture,
+Candidate-F, and STEAD ladders remain in full. Expunged categories (all presentation-only; behavior lives
+in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tests):
+
+- **Studio star-nameplate visual-remediation chain** (#909–#913, #919–#922) — scale/placement, screen
+  billboard, visual contract, LOD gate, GPU screen-label, settings/slider visibility. Each superseded by
+  the next; final behavior = live Settings-slider-driven GPU TypeFace nameplates.
+- **Star / map-radius falloff math + ruler diagnostic** (#923, #924, #926, #928, #929) — visual-horizon,
+  high-horizon, plateau, origin-stability, ruler overlay.
+- **Antialiasing FXAA/SMAA/MSAA + test pattern** (#930–#933) — landed Settings presentation features.
+- **Hyperlane-ribbon robustness + raster-atlas gutter** (#925, #927, #934, #937) — camera-basis/segment
+  sampling render fixes; landed.
+- **Bevy editor render-tuning tail PR2R2–PR2R12** (#730–#741) — star/hyperlane visibility + camera-depth
+  fades; superseded iterations; foundational PR1/PR1R/PR2/PR2R reports retained.
+- **Superseded smoke/visual artifacts** — `typeface_lr3_smoke.png`, `typeface_lr3r_smoke.png`,
+  `typeface_lr6_sdf_smoke.png` (regenerable test output; archive copies retained), and the superseded
+  `mapgenerator_cli_visual_spiral_1500` render (later starlane/connected renders retained as CURRENT_EVIDENCE).
+- **Meta-cleanup stragglers** — `typeface_cleanup_docs_archive`, `local_wip_gpu_render_delete`.
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."
