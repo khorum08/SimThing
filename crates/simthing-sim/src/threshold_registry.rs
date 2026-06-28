@@ -878,7 +878,7 @@ impl ThresholdBuilder {
                     let event_kind = cpu_reg.push(semantic);
                     gpu_regs.push(ThresholdRegistration {
                         slot,
-                        col: (prop_col_start + col) as u32,
+                        col: (prop_col_start + col.lane()) as u32,
                         threshold: *threshold,
                         direction: direction_to_u32(direction),
                         event_kind,
@@ -902,7 +902,7 @@ impl ThresholdBuilder {
                     let event_kind = cpu_reg.push(semantic);
                     gpu_regs.push(ThresholdRegistration {
                         slot,
-                        col: (prop_col_start + col) as u32,
+                        col: (prop_col_start + col.lane()) as u32,
                         threshold: *intensity_floor,
                         direction: DIR_DOWNWARD,
                         event_kind,

@@ -405,8 +405,8 @@ impl Scenario {
             let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
             let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
             let base = slot * n_dims;
-            shadow[base + amount_off] = seed.amount;
-            shadow[base + vel_off] = seed.velocity;
+            shadow[base + amount_off.lane()] = seed.amount;
+            shadow[base + vel_off.lane()] = seed.velocity;
         }
         Ok(())
     }

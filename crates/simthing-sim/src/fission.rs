@@ -819,9 +819,9 @@ mod tests {
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 4 * n_dims];
         let parent_base = parent_slot * n_dims;
-        shadow[parent_base + amount_off] = 0.24;
-        shadow[parent_base + velocity_off] = -0.12;
-        shadow[parent_base + intensity_off] = 0.66;
+        shadow[parent_base + amount_off.lane()] = 0.24;
+        shadow[parent_base + velocity_off.lane()] = -0.12;
+        shadow[parent_base + intensity_off.lane()] = 0.66;
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
@@ -831,7 +831,7 @@ mod tests {
         });
         let events = vec![simthing_gpu::ThresholdEvent {
             slot: parent_slot as u32,
-            col: amount_off as u32,
+            col: amount_off.lane() as u32,
             value: 0.24,
             event_kind: ek,
         }];
@@ -854,19 +854,19 @@ mod tests {
         let seeded = child
             .property(pid)
             .expect("child inherits activating property");
-        assert_eq!(seeded.data[amount_off], 0.0);
-        assert_eq!(seeded.data[velocity_off].to_bits(), (-0.12f32).to_bits());
-        assert_eq!(seeded.data[intensity_off].to_bits(), (0.66f32).to_bits());
+        assert_eq!(seeded.lane_at_offset(amount_off), 0.0);
+        assert_eq!(seeded.lane_at_offset(velocity_off).to_bits(), (-0.12f32).to_bits());
+        assert_eq!(seeded.lane_at_offset(intensity_off).to_bits(), (0.66f32).to_bits());
 
         let child_slot = alloc.slot_of(child.id).unwrap() as usize;
         let child_base = child_slot * n_dims;
-        assert_eq!(shadow[child_base + amount_off], 0.0);
+        assert_eq!(shadow[child_base + amount_off.lane()], 0.0);
         assert_eq!(
-            shadow[child_base + velocity_off].to_bits(),
+            shadow[child_base + velocity_off.lane()].to_bits(),
             (-0.12f32).to_bits()
         );
         assert_eq!(
-            shadow[child_base + intensity_off].to_bits(),
+            shadow[child_base + intensity_off.lane()].to_bits(),
             (0.66f32).to_bits()
         );
     }
@@ -985,8 +985,8 @@ mod tests {
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 16 * n_dims];
-        shadow[faction_slot * n_dims + amount_off] = 0.25;
-        shadow[tech_slot * n_dims + amount_off] = 0.42;
+        shadow[faction_slot * n_dims + amount_off.lane()] = 0.25;
+        shadow[tech_slot * n_dims + amount_off.lane()] = 0.42;
 
         let mut cpu_reg = ThresholdRegistry::new();
         let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
@@ -996,7 +996,7 @@ mod tests {
         });
         let events = vec![simthing_gpu::ThresholdEvent {
             slot: faction_slot as u32,
-            col: amount_off as u32,
+            col: amount_off.lane() as u32,
             value: 0.25,
             event_kind,
         }];
@@ -1033,7 +1033,7 @@ mod tests {
 
         let cloned_slot = alloc.slot_of(cloned_tree.id).unwrap() as usize;
         assert_eq!(
-            shadow[cloned_slot * n_dims + amount_off].to_bits(),
+            shadow[cloned_slot * n_dims + amount_off.lane()].to_bits(),
             0.42f32.to_bits()
         );
     }
@@ -1062,7 +1062,7 @@ mod tests {
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 8 * n_dims];
-        shadow[faction_slot * n_dims + amount_off] = 0.25;
+        shadow[faction_slot * n_dims + amount_off.lane()] = 0.25;
 
         let mut cpu_reg = ThresholdRegistry::new();
         let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
@@ -1072,7 +1072,7 @@ mod tests {
         });
         let events = vec![simthing_gpu::ThresholdEvent {
             slot: faction_slot as u32,
-            col: amount_off as u32,
+            col: amount_off.lane() as u32,
             value: 0.25,
             event_kind,
         }];
@@ -1183,7 +1183,7 @@ mod tests {
         let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
 
         let mut shadow = vec![0.0f32; 4 * n_dims];
-        shadow[parent_slot as usize * n_dims + amount_off] = 1.0;
+        shadow[parent_slot as usize * n_dims + amount_off.lane()] = 1.0;
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FusionTrigger {
@@ -1217,7 +1217,7 @@ mod tests {
         assert_eq!(out.lineage_removed.len(), 1);
 
         // Scar applied: 1.0 * (1 - 0.05) = 0.95.
-        let scarred = shadow[parent_slot as usize * n_dims + amount_off];
+        let scarred = shadow[parent_slot as usize * n_dims + amount_off.lane()];
         assert!(
             (scarred - 0.95).abs() < 1e-6,
             "expected scarred amount ≈ 0.95, got {scarred}",

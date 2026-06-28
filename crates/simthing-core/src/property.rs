@@ -11,6 +11,22 @@
 //! let value = PropertyValue::from_layout(&layout);
 //! let _ = value.data[0];
 //! ```
+//!
+//! Bare integer lane indices are forbidden:
+//!
+//! ```compile_fail
+//! use simthing_core::{PropertyLayout, PropertyValue};
+//! let layout = PropertyLayout::standard(0);
+//! let mut value = PropertyValue::from_layout(&layout);
+//! value.set_lane_at_offset(0, 1.0);
+//! ```
+//!
+//! `RoleOffset` cannot be forged from a bare integer:
+//!
+//! ```compile_fail
+//! use simthing_core::RoleOffset;
+//! let _off: RoleOffset = 0usize;
+//! ```
 
 use crate::accumulator_op::SoftAggregateGuard;
 use crate::ids::SimPropertyId;
@@ -180,11 +196,11 @@ impl PropertyLayout {
 
     /// Local byte offset (index into data vec) of the first float in a
     /// sub-field with the given role. Returns None if role not present.
-    pub fn offset_of(&self, role: &SubFieldRole) -> Option<usize> {
+    pub fn offset_of(&self, role: &SubFieldRole) -> Option<RoleOffset> {
         let mut offset = 0;
         for sf in &self.sub_fields {
             if &sf.role == role {
-                return Some(offset);
+                return Some(RoleOffset(offset));
             }
             offset += sf.width;
         }
@@ -280,11 +296,22 @@ impl PropertyLayout {
 
 // ── Column access indices (layout-resolved) ───────────────────────────────────
 
-/// Byte-lane index resolved from [`PropertyLayout::offset_of`]. Not constructible
-/// except via layout resolution — ordinary code must not hardcode column indices.
-pub type RoleOffset = usize;
+/// Local data-lane index resolved from [`PropertyLayout::offset_of`]. Not
+/// constructible from a bare integer — ordinary code must resolve roles through
+/// the layout API.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RoleOffset(usize);
 
-/// GPU column index within a property's stride (same units as `RoleOffset` today).
+impl RoleOffset {
+    /// Numeric lane index after layout resolution. For narrow post-resolution
+    /// uses (e.g. logging); not for constructing offsets outside `offset_of`.
+    pub fn lane(self) -> usize {
+        self.0
+    }
+}
+
+/// GPU column index within a property stride. **AS-5 horizon:** still a plain
+/// alias — do not confuse with [`RoleOffset`].
 pub type ColumnIndex = usize;
 
 // ── PropertyValue ─────────────────────────────────────────────────────────────
@@ -331,27 +358,29 @@ impl PropertyValue {
 
     /// Scalar read at a layout-resolved offset (`PropertyLayout::offset_of`).
     pub fn lane_at_offset(&self, offset: RoleOffset) -> f32 {
-        self.data[offset]
+        self.data[offset.0]
     }
 
     /// Scalar write at a layout-resolved offset.
     pub fn set_lane_at_offset(&mut self, offset: RoleOffset, value: f32) {
-        self.data[offset] = value;
+        self.data[offset.0] = value;
     }
 
     /// In-place add at a layout-resolved offset.
     pub fn add_lane_at_offset(&mut self, offset: RoleOffset, delta: f32) {
-        self.data[offset] += delta;
+        self.data[offset.0] += delta;
     }
 
     /// Read a contiguous lane slice at a layout-resolved offset and width.
     pub fn lanes_at_offset(&self, offset: RoleOffset, width: usize) -> &[f32] {
-        &self.data[offset..offset + width]
+        let lane = offset.0;
+        &self.data[lane..lane + width]
     }
 
     /// Write a contiguous lane slice at a layout-resolved offset.
     pub fn set_lanes_at_offset(&mut self, offset: RoleOffset, values: &[f32]) {
-        self.data[offset..offset + values.len()].copy_from_slice(values);
+        let lane = offset.0;
+        self.data[lane..lane + values.len()].copy_from_slice(values);
     }
 
     /// Read a scalar sub-field value by role. Panics if role not found.
@@ -408,7 +437,7 @@ impl PropertyValue {
     pub fn integrate(&mut self, layout: &PropertyLayout, delta_time: f32) {
         // Collect (governed_offset, governing_offset, spec) before mutating data.
         // Both offsets go through layout.offset_of — no raw index arithmetic here. (I1)
-        let pairs: Vec<(usize, usize, SubFieldSpec)> = layout
+        let pairs: Vec<(RoleOffset, RoleOffset, SubFieldSpec)> = layout
             .sub_fields
             .iter()
             .filter_map(|sf| {
@@ -420,19 +449,21 @@ impl PropertyValue {
             .collect();
 
         for (governed_off, governing_off, spec) in pairs {
-            let raw_vel = self.data[governing_off];
+            let governed_lane = governed_off.lane();
+            let governing_lane = governing_off.lane();
+            let raw_vel = self.data[governing_lane];
             let effective_vel = match spec.velocity_max {
                 Some(max) => raw_vel.clamp(-max, max),
                 None => raw_vel,
             };
-            let new_val = self.data[governed_off] + effective_vel * delta_time;
+            let new_val = self.data[governed_lane] + effective_vel * delta_time;
             let clamped = spec.clamp.apply(new_val);
-            self.data[governed_off] = clamped;
+            self.data[governed_lane] = clamped;
 
             if spec.clamp.at_floor(clamped) {
-                self.data[governing_off] = self.data[governing_off].max(0.0);
+                self.data[governing_lane] = self.data[governing_lane].max(0.0);
             } else if spec.clamp.at_ceiling(clamped) {
-                self.data[governing_off] = self.data[governing_off].min(0.0);
+                self.data[governing_lane] = self.data[governing_lane].min(0.0);
             }
         }
     }
@@ -446,11 +477,11 @@ impl PropertyValue {
         delta_time: f32,
     ) {
         let vel_offset = match layout.offset_of(&SubFieldRole::Velocity) {
-            Some(o) => o,
+            Some(o) => o.lane(),
             None => return,
         };
         let int_offset = match layout.offset_of(&SubFieldRole::Intensity) {
-            Some(o) => o,
+            Some(o) => o.lane(),
             None => return,
         };
         let vel_abs = self.data[vel_offset].abs();
@@ -469,7 +500,7 @@ impl PropertyValue {
         for sf in &layout.sub_fields {
             if matches!(&sf.role, SubFieldRole::Named(_)) {
                 // offset_of is the one place local index arithmetic lives. (I1)
-                let offset = layout.offset_of(&sf.role).unwrap();
+                let offset = layout.offset_of(&sf.role).unwrap().lane();
                 let slice = &self.data[offset..offset + sf.width];
                 return slice.iter().map(|x| x * x).sum::<f32>().sqrt();
             }
@@ -832,15 +863,21 @@ mod tests {
 
         assert_eq!(layout.stride(), 5);
         assert_eq!(
-            layout.offset_of(&SubFieldRole::Named("axis_position".into())),
+            layout
+                .offset_of(&SubFieldRole::Named("axis_position".into()))
+                .map(|o| o.lane()),
             Some(0)
         );
         assert_eq!(
-            layout.offset_of(&SubFieldRole::Named("axis_drift".into())),
+            layout
+                .offset_of(&SubFieldRole::Named("axis_drift".into()))
+                .map(|o| o.lane()),
             Some(1)
         );
         assert_eq!(
-            layout.offset_of(&SubFieldRole::Named("ethics_bonus".into())),
+            layout
+                .offset_of(&SubFieldRole::Named("ethics_bonus".into()))
+                .map(|o| o.lane()),
             Some(2)
         );
         assert_eq!(

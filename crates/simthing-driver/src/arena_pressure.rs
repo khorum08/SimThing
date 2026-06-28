@@ -74,7 +74,8 @@ pub fn project_arena_pressure_seeds(
             .ok_or_else(|| ArenaPressureError::ColumnResolution {
                 arena: binding.arena.clone(),
                 reason: format!("named sub-field `{sub_field}` not in flow layout"),
-            })? as u32,
+            })?
+            .lane() as u32,
     };
     let global_col = registry.column_range(descriptor.flow_property_id).start as u32 + local_col;
 
@@ -158,7 +159,8 @@ pub fn compile_arena_pressure_scatter(
             .ok_or_else(|| ArenaPressureError::ColumnResolution {
                 arena: binding.arena.clone(),
                 reason: format!("named sub-field `{sub_field}` not in flow layout"),
-            })? as u32,
+            })?
+            .lane() as u32,
     };
     let global_col = registry.column_range(descriptor.flow_property_id).start as u32 + local_col;
 

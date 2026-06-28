@@ -736,21 +736,21 @@ mod tests {
         let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
 
         let mut slots = vec![vec![0.0f32; stride], vec![0.0f32; stride]];
-        slots[0][a_off] = 0.4;
-        slots[0][v_off] = 0.07;
-        slots[0][i_off] = 0.2;
-        slots[1][a_off] = 0.0;
-        slots[1][v_off] = -0.05;
-        slots[1][i_off] = 0.3;
+        slots[0][a_off.lane()] = 0.4;
+        slots[0][v_off.lane()] = 0.07;
+        slots[0][i_off.lane()] = 0.2;
+        slots[1][a_off.lane()] = 0.0;
+        slots[1][v_off.lane()] = -0.05;
+        slots[1][i_off.lane()] = 0.3;
 
         let dt = 1.0;
 
         // CPU oracle.
         let mut cpu: Vec<Vec<f32>> = slots.iter().cloned().collect();
         for d in &mut cpu {
-            let mut pv = PropertyValue { data: d.clone() };
+            let mut pv = PropertyValue::from_raw_lanes(d.clone());
             pv.integrate(&layout, dt);
-            *d = pv.data;
+            *d = pv.raw_lanes().to_vec();
         }
 
         // GPU.
@@ -791,11 +791,11 @@ mod tests {
         let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut d = vec![0.0f32; stride];
-        d[a_off] = 0.4_f32 + 1e-7; // not a clean fraction
-        d[v_off] = 0.07_f32 - 3e-8; // not a clean fraction
+        d[a_off.lane()] = 0.4_f32 + 1e-7; // not a clean fraction
+        d[v_off.lane()] = 0.07_f32 - 3e-8; // not a clean fraction
 
         let dt = 0.5;
-        let mut pv = PropertyValue { data: d.clone() };
+        let mut pv = PropertyValue::from_raw_lanes(d.clone());
         pv.integrate(&layout, dt);
 
         let state = WorldGpuState::new(ctx, &reg, 1);
@@ -807,7 +807,7 @@ mod tests {
         run_velocity_integration_test_helper(&pipelines, &state, dt);
 
         let gpu_flat = state.read_values();
-        assert_bits_eq("fractional-dt", &pv.data, &gpu_flat[..stride]);
+        assert_bits_eq("fractional-dt", pv.raw_lanes(), &gpu_flat[..stride]);
     }
 
     /// C-8b EvalEML intensity alone. Uses raw initial velocity (no Pass 1 first).
@@ -828,18 +828,18 @@ mod tests {
 
         // Slot 0: high velocity → build branch. Slot 1: low velocity → decay branch.
         let mut slots = vec![vec![0.0f32; stride], vec![0.0f32; stride]];
-        slots[0][v_off] = 0.09;
-        slots[0][i_off] = 0.2;
-        slots[1][v_off] = 0.001;
-        slots[1][i_off] = 0.7;
+        slots[0][v_off.lane()] = 0.09;
+        slots[0][i_off.lane()] = 0.2;
+        slots[1][v_off.lane()] = 0.001;
+        slots[1][i_off.lane()] = 0.7;
 
         let dt = 0.5;
 
         let mut cpu: Vec<Vec<f32>> = slots.iter().cloned().collect();
         for d in &mut cpu {
-            let mut pv = PropertyValue { data: d.clone() };
+            let mut pv = PropertyValue::from_raw_lanes(d.clone());
             pv.update_intensity(&behavior, &layout, dt);
-            *d = pv.data;
+            *d = pv.raw_lanes().to_vec();
         }
 
         let mut state = WorldGpuState::new(ctx, &reg, 2);
@@ -909,15 +909,15 @@ mod tests {
                 let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
 
                 let mut pv_l = PropertyValue::from_layout(&l_layout);
-                pv_l.data[la] = la_v;
-                pv_l.data[lv] = lv_v;
-                pv_l.data[li] = li_v;
+                pv_l.set_lane_at_offset(la, la_v);
+                pv_l.set_lane_at_offset(lv, lv_v);
+                pv_l.set_lane_at_offset(li, li_v);
                 cohort.add_property(loyalty_id, pv_l);
 
                 if cj == 0 {
                     let mut pv_f = PropertyValue::from_layout(&f_layout);
-                    pv_f.data[fa] = 0.7 + 0.05 * (loc_i as f32);
-                    pv_f.data[fv] = 0.02;
+                    pv_f.set_lane_at_offset(fa, 0.7 + 0.05 * (loc_i as f32));
+                    pv_f.set_lane_at_offset(fv, 0.02);
                     cohort.add_property(food_id, pv_f);
                     loc_food_owners.push(cohort.id);
                 }
@@ -960,10 +960,10 @@ mod tests {
             for (prop_id, cpu_pv) in &entity.properties {
                 let range = reg.column_range(*prop_id);
                 let start = slot_base + range.start;
-                let end = start + cpu_pv.data.len();
+                let end = start + cpu_pv.lane_count();
                 let gpu_data = &gpu_flat[start..end];
                 let label = format!("entity {:?} slot {} prop {:?}", entity.id, slot, prop_id,);
-                assert_bits_eq(&label, &cpu_pv.data, gpu_data);
+                assert_bits_eq(&label, cpu_pv.raw_lanes(), gpu_data);
             }
         }
 
@@ -994,18 +994,18 @@ mod tests {
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         let mut pv = PropertyValue::from_layout(&layout);
-        pv.data[a_off] = 0.4;
-        pv.data[v_off] = 0.07;
-        pv.data[i_off] = 0.2;
+        pv.set_lane_at_offset(a_off, 0.4);
+        pv.set_lane_at_offset(v_off, 0.07);
+        pv.set_lane_at_offset(i_off, 0.2);
         cohort.add_property(id, pv);
         let cohort_id = cohort.id;
-        let initial_data = cohort.properties[&id].data.clone();
+        let initial_data = cohort.properties[&id].raw_lanes().to_vec();
 
         let dt = 0.5;
 
         let evaluator = Evaluator::new(&reg, dt);
         let snap = evaluator.evaluate(&cohort, 1);
-        let cpu_data = &snap.get(cohort_id).unwrap().properties[&id].data;
+        let cpu_data = snap.get(cohort_id).unwrap().properties[&id].raw_lanes();
 
         let mut state = WorldGpuState::new(ctx, &reg, 1);
         let range = reg.column_range(id).clone();
@@ -1040,9 +1040,9 @@ mod tests {
         let mut reg = DimensionRegistry::new();
         let id = reg.register(loyalty_property());
         let layout = reg.property(id).layout.clone();
-        let amount_col = layout.offset_of(&SubFieldRole::Amount).unwrap() as u32;
-        let velocity_col = layout.offset_of(&SubFieldRole::Velocity).unwrap() as usize;
-        let intensity_col = layout.offset_of(&SubFieldRole::Intensity).unwrap() as usize;
+        let amount_col = layout.offset_of(&SubFieldRole::Amount).unwrap().lane() as u32;
+        let velocity_col = layout.offset_of(&SubFieldRole::Velocity).unwrap().lane() as usize;
+        let intensity_col = layout.offset_of(&SubFieldRole::Intensity).unwrap().lane() as usize;
 
         let mut initial = vec![0.0_f32; reg.total_columns];
         initial[amount_col as usize] = 0.35;
@@ -1438,14 +1438,14 @@ mod tests {
 
         let mut state = WorldGpuState::new(ctx, &reg, 1);
         let mut flat = vec![0.0_f32; state.values_len()];
-        flat[a_off] = 0.35; // starts above threshold 0.30
-        flat[v_off] = -0.10; // dt = 1.0 → ends at 0.25, crossing 0.30 downward
+        flat[a_off.lane()] = 0.35; // starts above threshold 0.30
+        flat[v_off.lane()] = -0.10; // dt = 1.0 → ends at 0.25, crossing 0.30 downward
         state.write_values(&flat);
         let _ = stride;
 
         let regs = vec![ThresholdRegistration {
             slot: 0,
-            col: a_off as u32,
+            col: a_off.lane() as u32,
             threshold: 0.30,
             direction: DIR_DOWNWARD,
             event_kind: 7,
@@ -1460,7 +1460,7 @@ mod tests {
         let events = run_accumulator_threshold_scan(&state, &regs);
         assert_eq!(events.len(), 1, "expected exactly one downward crossing");
         assert_eq!(events[0].slot, 0);
-        assert_eq!(events[0].col, a_off as u32);
+        assert_eq!(events[0].col, a_off.lane() as u32);
         assert_eq!(events[0].event_kind, 7);
         // Post-integration value should be 0.25 bit-exact.
         assert_eq!(events[0].value.to_bits(), 0.25_f32.to_bits());
@@ -1503,9 +1503,9 @@ mod tests {
         for k in 0..1000u32 {
             let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
             let mut pv = PropertyValue::from_layout(&layout);
-            pv.data[a_off] = 0.5 + (k as f32) * 1e-4;
-            pv.data[v_off] = 0.05;
-            pv.data[i_off] = 0.3;
+            pv.set_lane_at_offset(a_off, 0.5 + (k as f32) * 1e-4);
+            pv.set_lane_at_offset(v_off, 0.05);
+            pv.set_lane_at_offset(i_off, 0.3);
             cohort.add_property(lid, pv);
             cohort.add_overlay(Overlay {
                 id: OverlayId::new(),
@@ -1632,9 +1632,9 @@ mod tests {
         // Cohort A: loyalty mid-range, building; local Set(0.5) on intensity.
         let mut cohort_a = SimThing::new(SimThingKind::Cohort, 0);
         let mut pv_a = PropertyValue::from_layout(&layout);
-        pv_a.data[a_off] = 0.60;
-        pv_a.data[v_off] = 0.08;
-        pv_a.data[i_off] = 0.20;
+        pv_a.set_lane_at_offset(a_off, 0.60);
+        pv_a.set_lane_at_offset(v_off, 0.08);
+        pv_a.set_lane_at_offset(i_off, 0.20);
         cohort_a.add_property(lid, pv_a);
         cohort_a.add_overlay(make_overlay(vec![(
             SubFieldRole::Intensity,
@@ -1645,9 +1645,9 @@ mod tests {
         // Cohort B: loyalty near floor, negative velocity (exercises pinning + overlays).
         let mut cohort_b = SimThing::new(SimThingKind::Cohort, 0);
         let mut pv_b = PropertyValue::from_layout(&layout);
-        pv_b.data[a_off] = 0.05;
-        pv_b.data[v_off] = -0.03;
-        pv_b.data[i_off] = 0.40;
+        pv_b.set_lane_at_offset(a_off, 0.05);
+        pv_b.set_lane_at_offset(v_off, -0.03);
+        pv_b.set_lane_at_offset(i_off, 0.40);
         cohort_b.add_property(lid, pv_b);
         let cohort_b_id = cohort_b.id;
 
@@ -1687,8 +1687,8 @@ mod tests {
             let slot_base = slot as usize * n_dims;
             let range = reg.column_range(lid);
             let start = slot_base + range.start;
-            let end = start + entity.properties[&lid].data.len();
-            assert_bits_eq(label, &entity.properties[&lid].data, &gpu_flat[start..end]);
+            let end = start + entity.properties[&lid].lane_count();
+            assert_bits_eq(label, entity.properties[&lid].raw_lanes(), &gpu_flat[start..end]);
         }
     }
 
@@ -1731,9 +1731,9 @@ mod tests {
         for &(a, v, i) in &cohort_data {
             let mut c = SimThing::new(SimThingKind::Cohort, 0);
             let mut pv = PropertyValue::from_layout(&layout);
-            pv.data[a_off] = a;
-            pv.data[v_off] = v;
-            pv.data[i_off] = i;
+            pv.set_lane_at_offset(a_off, a);
+            pv.set_lane_at_offset(v_off, v);
+            pv.set_lane_at_offset(i_off, i);
             c.add_property(lid, pv);
             loc.add_child(c);
         }
@@ -1824,10 +1824,10 @@ mod tests {
         for (loyalty_amt, pop_amt) in [(0.40f32, 100.0), (0.80, 300.0)] {
             let mut c = SimThing::new(SimThingKind::Cohort, 0);
             let mut lpv = PropertyValue::from_layout(&loyalty_layout);
-            lpv.data[loyalty_a_off] = loyalty_amt;
+            lpv.set_lane_at_offset(loyalty_a_off, loyalty_amt);
             c.add_property(lid, lpv);
             let mut ppv = PropertyValue::from_layout(&pop_layout);
-            ppv.data[pop_a_off] = pop_amt;
+            ppv.set_lane_at_offset(pop_a_off, pop_amt);
             c.add_property(pop_id, ppv);
             loc.add_child(c);
         }

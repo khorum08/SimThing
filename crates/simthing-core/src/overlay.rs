@@ -20,8 +20,9 @@ impl PropertyTransformDelta {
     pub fn apply_to_data(&self, data: &mut [f32], layout: &PropertyLayout) {
         for (role, op) in &self.sub_field_deltas {
             if let Some(idx) = layout.offset_of(role) {
-                if idx < data.len() {
-                    data[idx] = op.apply(data[idx]);
+                let lane = idx.lane();
+                if lane < data.len() {
+                    data[lane] = op.apply(data[lane]);
                 }
             }
         }

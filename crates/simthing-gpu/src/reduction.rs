@@ -96,7 +96,7 @@ fn weight_col_for_property(registry: &DimensionRegistry, prop_id: SimPropertyId)
     let prop = registry.property(prop_id);
     let local = prop.layout.offset_of(&SubFieldRole::Amount)?;
     let range = registry.column_range(prop_id);
-    Some((range.start + local) as u32)
+    Some((range.start + local.lane()) as u32)
 }
 
 // ── Topology ──────────────────────────────────────────────────────────────────
@@ -444,13 +444,13 @@ mod tests {
         let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
 
         let mut pv1 = PropertyValue::from_layout(&layout);
-        pv1.data[a_off] = 0.40;
-        pv1.data[i_off] = 0.10;
+        pv1.set_lane_at_offset(a_off, 0.40);
+        pv1.set_lane_at_offset(i_off, 0.10);
         c1.add_property(lid, pv1);
 
         let mut pv2 = PropertyValue::from_layout(&layout);
-        pv2.data[a_off] = 0.60;
-        pv2.data[i_off] = 0.80;
+        pv2.set_lane_at_offset(a_off, 0.60);
+        pv2.set_lane_at_offset(i_off, 0.80);
         c2.add_property(lid, pv2);
 
         loc.add_child(c1);
@@ -588,11 +588,11 @@ mod tests {
         let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
         let range = reg.column_range(lid);
         assert_eq!(
-            output[loc_slot * n_dims + range.start + a_off].to_bits(),
+            output[loc_slot * n_dims + range.start + a_off.lane()].to_bits(),
             0.50_f32.to_bits()
         );
         assert_eq!(
-            output[loc_slot * n_dims + range.start + i_off].to_bits(),
+            output[loc_slot * n_dims + range.start + i_off.lane()].to_bits(),
             0.80_f32.to_bits()
         );
 
@@ -675,7 +675,8 @@ mod tests {
         for v in [1.0f32, 2.5, 3.25] {
             let mut child = SimThing::new(SimThingKind::Cohort, 0);
             let mut pv = PropertyValue::from_layout(&layout);
-            pv.data[0] = v;
+            let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+            pv.set_lane_at_offset(amount_off, v);
             child.add_property(pid, pv);
             world.add_child(child);
         }
@@ -721,11 +722,11 @@ mod tests {
         for (loyalty_amt, pop_amt) in [(0.40f32, 100.0), (0.80, 300.0)] {
             let mut c = SimThing::new(SimThingKind::Cohort, 0);
             let mut lpv = PropertyValue::from_layout(&loyalty_layout);
-            lpv.data[loyalty_a_off] = loyalty_amt;
+            lpv.set_lane_at_offset(loyalty_a_off, loyalty_amt);
             c.add_property(lid, lpv);
 
             let mut ppv = PropertyValue::from_layout(&pop_layout);
-            ppv.data[pop_a_off] = pop_amt;
+            ppv.set_lane_at_offset(pop_a_off, pop_amt);
             c.add_property(pop_id, ppv);
 
             loc.add_child(c);
@@ -741,12 +742,12 @@ mod tests {
 
         let loyalty_range = reg.column_range(lid);
         assert_eq!(
-            descriptors[loyalty_range.start + loyalty_a_off].rule,
+            descriptors[loyalty_range.start + loyalty_a_off.lane()].rule,
             ReductionRule::WeightedMean { by: pop_id },
         );
         assert_eq!(
-            descriptors[loyalty_range.start + loyalty_a_off].weight_col as usize,
-            reg.column_range(pop_id).start + pop_a_off,
+            descriptors[loyalty_range.start + loyalty_a_off.lane()].weight_col as usize,
+            reg.column_range(pop_id).start + pop_a_off.lane(),
         );
 
         let mut values = vec![0.0_f32; alloc.capacity() * n_dims];
@@ -758,7 +759,7 @@ mod tests {
         // (0.40*100 + 0.80*300) / 400 = 0.70
         let loc_id = world.children[0].id;
         let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
-        let col = loyalty_range.start + loyalty_a_off;
+        let col = loyalty_range.start + loyalty_a_off.lane();
         assert_eq!(
             output[loc_slot * n_dims + col].to_bits(),
             0.70_f32.to_bits(),

@@ -23,7 +23,9 @@ impl PropertyColumnRange {
     /// Global GPU column index for a given sub-field role.
     /// Delegates to PropertyLayout for offset arithmetic.
     pub fn col_for_role(&self, role: &SubFieldRole, layout: &PropertyLayout) -> Option<usize> {
-        layout.offset_of(role).map(|local| self.start + local)
+        layout
+            .offset_of(role)
+            .map(|local| self.start + local.lane())
     }
 
     /// Global GPU column range (start, len) for a multi-width sub-field.
@@ -34,7 +36,7 @@ impl PropertyColumnRange {
     ) -> Option<(usize, usize)> {
         let local = layout.offset_of(role)?;
         let width = layout.width_of(role)?;
-        Some((self.start + local, width))
+        Some((self.start + local.lane(), width))
     }
 }
 
