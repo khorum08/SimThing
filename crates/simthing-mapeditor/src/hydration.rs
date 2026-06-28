@@ -635,9 +635,7 @@ fn heatmap_readiness_from_valid_scenario(
 fn add_u32_property(thing: &mut SimThing, property_id: simthing_core::SimPropertyId, value: u32) {
     thing.add_property(
         property_id,
-        PropertyValue {
-            data: vec![value as f32],
-        },
+        PropertyValue::from_raw_lanes(vec![value as f32]),
     );
 }
 
@@ -885,14 +883,14 @@ mod tests {
                 gridcell
                     .property(SCENARIO_STRUCTURAL_COL_PROPERTY_ID)
                     .expect("col")
-                    .data[0] as u32,
+                    .raw_lanes()[0] as u32,
                 placement.col
             );
             assert_eq!(
                 gridcell
                     .property(SCENARIO_STRUCTURAL_ROW_PROPERTY_ID)
                     .expect("row")
-                    .data[0] as u32,
+                    .raw_lanes()[0] as u32,
                 placement.row
             );
         }
@@ -1569,7 +1567,7 @@ mod tests {
             gridcell
                 .property(SCENARIO_STRUCTURAL_COL_PROPERTY_ID)
                 .expect("col")
-                .data[0] as u32,
+                .raw_lanes()[0] as u32,
             9
         );
     }

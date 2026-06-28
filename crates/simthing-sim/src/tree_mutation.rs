@@ -231,10 +231,11 @@ fn project_subtree_to_shadow(
                 }
                 let prop = registry.property(pid);
                 let range = registry.column_range(pid);
-                let src_len = prop.layout.stride().min(pval.data.len());
+                let src_len = prop.layout.stride().min(pval.lane_count());
                 let dst = base + range.start;
                 if dst + src_len <= values_shadow.len() {
-                    values_shadow[dst..dst + src_len].copy_from_slice(&pval.data[..src_len]);
+                    values_shadow[dst..dst + src_len]
+                        .copy_from_slice(&pval.raw_lanes_for_serialization()[..src_len]);
                 }
             }
         }

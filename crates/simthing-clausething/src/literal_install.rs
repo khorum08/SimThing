@@ -64,13 +64,8 @@ pub fn admit_and_apply_domain_pack(
         .id_of(&property.namespace, &property.name)
         .ok_or_else(|| HydrateError::new("compiled property missing from registry"))?;
     let layout = &registry.property(prop_id).layout;
-    let mut data = registry.property(prop_id).default_value().data;
-
-    if let Some(idx) = layout.offset_of(&SubFieldRole::Amount) {
-        if idx < data.len() {
-            data[idx] = seed_amount;
-        }
-    }
+    let mut value = registry.property(prop_id).default_value();
+    value.set_role(&SubFieldRole::Amount, layout, seed_amount);
 
     let mut final_amount = seed_amount;
     for overlay_spec in &pack.overlays {
@@ -82,12 +77,8 @@ pub fn admit_and_apply_domain_pack(
                 diag.diagnostics
             )));
         }
-        overlay.transform.apply_to_data(&mut data, layout);
-        if let Some(idx) = layout.offset_of(&SubFieldRole::Amount) {
-            if idx < data.len() {
-                final_amount = data[idx];
-            }
-        }
+        overlay.transform.apply_to_data(value.raw_lanes_mut(), layout);
+        final_amount = value.get_role(&SubFieldRole::Amount, layout);
     }
 
     let overlay_specs = pack

@@ -149,13 +149,11 @@ impl Scenario {
         let pid = reg.register(loyalty);
 
         let layout = reg.property(pid).layout.clone();
-        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         let mut pv = PropertyValue::from_layout(&layout);
-        pv.data[amount_off] = 0.5;
-        pv.data[vel_off] = -0.21;
+        pv.set_role(&SubFieldRole::Amount, &layout, 0.5);
+        pv.set_role(&SubFieldRole::Velocity, &layout, -0.21);
         cohort.add_property(pid, pv);
         let cohort_id = cohort.id;
 
@@ -194,15 +192,21 @@ impl Scenario {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(SimProperty::simple("map", "stability", 0));
         let layout = reg.property(pid).layout.clone();
-        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut world = SimThing::new(SimThingKind::World, 0);
         for i in 0..n_slots.saturating_sub(1) {
             let mut cell = SimThing::new(SimThingKind::Location, 0);
             let mut pv = PropertyValue::from_layout(&layout);
-            pv.data[amount] = 0.5 + ((i % 100) as f32) * 0.001;
-            pv.data[velocity] = if i % 2 == 0 { 0.0001 } else { -0.0001 };
+            pv.set_role(
+                &SubFieldRole::Amount,
+                &layout,
+                0.5 + ((i % 100) as f32) * 0.001,
+            );
+            pv.set_role(
+                &SubFieldRole::Velocity,
+                &layout,
+                if i % 2 == 0 { 0.0001 } else { -0.0001 },
+            );
             cell.add_property(pid, pv);
             world.add_child(cell);
         }
@@ -233,9 +237,6 @@ impl Scenario {
         population.intensity_behavior = Some(IntensityBehavior::default());
         let pid = reg.register(population);
         let layout = reg.property(pid).layout.clone();
-        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-        let intensity = layout.offset_of(&SubFieldRole::Intensity).unwrap();
 
         let locations = ((n_slots / 100).max(1)).min(n_slots.saturating_sub(1).max(1));
         let cohorts_per_location = ((n_slots.saturating_sub(1)) / locations).max(1);
@@ -253,9 +254,21 @@ impl Scenario {
                 }
                 let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
                 let mut pv = PropertyValue::from_layout(&layout);
-                pv.data[amount] = 0.4 + ((cohort_i % 50) as f32) * 0.002;
-                pv.data[velocity] = 0.001 * ((loc_i % 3) as f32 - 1.0);
-                pv.data[intensity] = 0.2 + ((cohort_i % 10) as f32) * 0.03;
+                pv.set_role(
+                    &SubFieldRole::Amount,
+                    &layout,
+                    0.4 + ((cohort_i % 50) as f32) * 0.002,
+                );
+                pv.set_role(
+                    &SubFieldRole::Velocity,
+                    &layout,
+                    0.001 * ((loc_i % 3) as f32 - 1.0),
+                );
+                pv.set_role(
+                    &SubFieldRole::Intensity,
+                    &layout,
+                    0.2 + ((cohort_i % 10) as f32) * 0.03,
+                );
                 cohort.add_property(pid, pv);
                 loc.add_child(cohort);
                 made += 1;
@@ -329,17 +342,18 @@ impl Scenario {
         }];
         let pid = reg.register(pressure);
         let layout = reg.property(pid).layout.clone();
-        let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-        let intensity = layout.offset_of(&SubFieldRole::Intensity).unwrap();
 
         let mut world = SimThing::new(SimThingKind::World, 0);
         for i in 0..n_slots.saturating_sub(1) {
             let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
             let mut pv = PropertyValue::from_layout(&layout);
-            pv.data[amount] = 0.31 + ((i % 5) as f32) * 0.001;
-            pv.data[velocity] = -0.02;
-            pv.data[intensity] = 0.1;
+            pv.set_role(
+                &SubFieldRole::Amount,
+                &layout,
+                0.31 + ((i % 5) as f32) * 0.001,
+            );
+            pv.set_role(&SubFieldRole::Velocity, &layout, -0.02);
+            pv.set_role(&SubFieldRole::Intensity, &layout, 0.1);
             cohort.add_property(pid, pv);
             world.add_child(cohort);
         }
@@ -401,6 +415,25 @@ impl Scenario {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scenario_builtin_seed_values_survive_column_access_refactor() {
+        let scenario = Scenario::rebellion_demo("rebellion_demo".into(), 1, 1, 0.5, 32);
+        let pid = scenario.registry.id_of("core", "loyalty").unwrap();
+        let layout = scenario.registry.property(pid).layout.clone();
+        let cohort = scenario
+            .root
+            .children
+            .first()
+            .and_then(|loc| loc.children.first())
+            .expect("cohort");
+        let pv = cohort.properties.get(&pid).expect("loyalty property");
+        assert!((pv.get_role(&SubFieldRole::Amount, &layout) - 0.5).abs() < f32::EPSILON);
+        assert!((pv.get_role(&SubFieldRole::Velocity, &layout) - (-0.21)).abs() < f32::EPSILON);
+        assert_eq!(scenario.shadow_seeds.len(), 1);
+        assert!((scenario.shadow_seeds[0].amount - 0.5).abs() < f32::EPSILON);
+        assert!((scenario.shadow_seeds[0].velocity - (-0.21)).abs() < f32::EPSILON);
+    }
 
     #[test]
     fn rebellion_demo_ron_round_trips() {

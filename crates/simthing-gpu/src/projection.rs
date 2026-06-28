@@ -44,8 +44,8 @@ fn project_node(
         for (&prop_id, pv) in &node.properties {
             let range = registry.column_range(prop_id);
             let start = slot_base + range.start;
-            let end = start + pv.data.len();
-            values[start..end].copy_from_slice(&pv.data);
+            let end = start + pv.lane_count();
+            values[start..end].copy_from_slice(pv.raw_lanes_for_serialization());
         }
     }
     for child in &node.children {

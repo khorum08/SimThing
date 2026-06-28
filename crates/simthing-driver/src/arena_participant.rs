@@ -793,7 +793,7 @@ fn seed_participant_property(
 fn set_hosted_simthing_id(value: &mut PropertyValue, layout: &PropertyLayout, hosted: SimThingId) {
     let role = SubFieldRole::Named("hosted_simthing_id".into());
     if let Some(offset) = layout.offset_of(&role) {
-        value.data[offset] = hosted.raw() as f32;
+        value.set_role(&role, layout, hosted.raw() as f32);
     }
 }
 

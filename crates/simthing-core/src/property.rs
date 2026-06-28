@@ -1,3 +1,17 @@
+//! Property layouts, sub-field roles, and column-backed values.
+//!
+//! Ordinary code must not index `PropertyValue` lanes by raw integer — use
+//! [`PropertyLayout::offset_of`] and role/column accessors instead.
+//!
+//! Direct field indexing is forbidden:
+//!
+//! ```compile_fail
+//! use simthing_core::{PropertyLayout, PropertyValue};
+//! let layout = PropertyLayout::standard(0);
+//! let value = PropertyValue::from_layout(&layout);
+//! let _ = value.data[0];
+//! ```
+
 use crate::accumulator_op::SoftAggregateGuard;
 use crate::ids::SimPropertyId;
 use crate::reduction::ReductionRule;
@@ -264,6 +278,15 @@ impl PropertyLayout {
     }
 }
 
+// ── Column access indices (layout-resolved) ───────────────────────────────────
+
+/// Byte-lane index resolved from [`PropertyLayout::offset_of`]. Not constructible
+/// except via layout resolution — ordinary code must not hardcode column indices.
+pub type RoleOffset = usize;
+
+/// GPU column index within a property's stride (same units as `RoleOffset` today).
+pub type ColumnIndex = usize;
+
 // ── PropertyValue ─────────────────────────────────────────────────────────────
 
 /// Flat float vector for a single property instance on a single SimThing.
@@ -271,7 +294,7 @@ impl PropertyLayout {
 /// Indices are never hardcoded outside of `PropertyLayout`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PropertyValue {
-    pub data: Vec<f32>,
+    data: Vec<f32>,
 }
 
 impl PropertyValue {
@@ -281,21 +304,94 @@ impl PropertyValue {
         }
     }
 
+    /// Explicit escape hatch for serialization byte-lanes and lossless metadata
+    /// encoding. Not for simulation logic — use role/layout accessors instead.
+    pub fn from_raw_lanes(data: Vec<f32>) -> Self {
+        Self { data }
+    }
+
+    /// Read-only view of raw float lanes (serialization / GPU projection only).
+    pub fn raw_lanes(&self) -> &[f32] {
+        &self.data
+    }
+
+    /// Mutable view of raw float lanes (serialization byte-lanes only).
+    pub fn raw_lanes_mut(&mut self) -> &mut [f32] {
+        &mut self.data
+    }
+
+    /// Alias for callers that copy property bytes into GPU or RON buffers.
+    pub fn raw_lanes_for_serialization(&self) -> &[f32] {
+        self.raw_lanes()
+    }
+
+    pub fn lane_count(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Scalar read at a layout-resolved offset (`PropertyLayout::offset_of`).
+    pub fn lane_at_offset(&self, offset: RoleOffset) -> f32 {
+        self.data[offset]
+    }
+
+    /// Scalar write at a layout-resolved offset.
+    pub fn set_lane_at_offset(&mut self, offset: RoleOffset, value: f32) {
+        self.data[offset] = value;
+    }
+
+    /// In-place add at a layout-resolved offset.
+    pub fn add_lane_at_offset(&mut self, offset: RoleOffset, delta: f32) {
+        self.data[offset] += delta;
+    }
+
+    /// Read a contiguous lane slice at a layout-resolved offset and width.
+    pub fn lanes_at_offset(&self, offset: RoleOffset, width: usize) -> &[f32] {
+        &self.data[offset..offset + width]
+    }
+
+    /// Write a contiguous lane slice at a layout-resolved offset.
+    pub fn set_lanes_at_offset(&mut self, offset: RoleOffset, values: &[f32]) {
+        self.data[offset..offset + values.len()].copy_from_slice(values);
+    }
+
     /// Read a scalar sub-field value by role. Panics if role not found.
     pub fn get_role(&self, role: &SubFieldRole, layout: &PropertyLayout) -> f32 {
         let offset = layout
             .offset_of(role)
             .unwrap_or_else(|| panic!("role {role:?} not in layout"));
-        self.data[offset]
+        self.lane_at_offset(offset)
+    }
+
+    /// Write a scalar sub-field value by role. Panics if role not found.
+    pub fn set_role(&mut self, role: &SubFieldRole, layout: &PropertyLayout, value: f32) {
+        let offset = layout
+            .offset_of(role)
+            .unwrap_or_else(|| panic!("role {role:?} not in layout"));
+        self.set_lane_at_offset(offset, value);
     }
 
     /// Read a multi-float sub-field as a slice.
-    pub fn get_role_slice<'a>(&'a self, role: &SubFieldRole, layout: &PropertyLayout) -> &'a [f32] {
+    pub fn get_role_slice(&self, role: &SubFieldRole, layout: &PropertyLayout) -> &[f32] {
         let offset = layout
             .offset_of(role)
             .unwrap_or_else(|| panic!("role {role:?} not in layout"));
         let width = layout.width_of(role).unwrap();
-        &self.data[offset..offset + width]
+        self.lanes_at_offset(offset, width)
+    }
+
+    /// Write a multi-float sub-field from a slice.
+    pub fn set_role_slice(&mut self, role: &SubFieldRole, layout: &PropertyLayout, values: &[f32]) {
+        let offset = layout
+            .offset_of(role)
+            .unwrap_or_else(|| panic!("role {role:?} not in layout"));
+        let width = layout.width_of(role).unwrap();
+        assert_eq!(
+            values.len(),
+            width,
+            "role {role:?} expects width {width}, got {}",
+            values.len()
+        );
+        self.set_lanes_at_offset(offset, values);
     }
 
     /// Integrate all sub-fields that have a `governed_by` relationship.
@@ -605,11 +701,25 @@ mod tests {
 
     fn loyalty(layout: &PropertyLayout, amount: f32, velocity: f32) -> PropertyValue {
         let mut pv = PropertyValue::from_layout(layout);
-        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-        pv.data[a_off] = amount;
-        pv.data[v_off] = velocity;
+        pv.set_role(&SubFieldRole::Amount, layout, amount);
+        pv.set_role(&SubFieldRole::Velocity, layout, velocity);
         pv
+    }
+
+    #[test]
+    fn property_value_role_access_preserves_existing_layout_values() {
+        let layout = standard_layout();
+        let mut pv = PropertyValue::from_layout(&layout);
+        pv.set_role(&SubFieldRole::Amount, &layout, 0.42);
+        pv.set_role(&SubFieldRole::Velocity, &layout, -0.07);
+        pv.set_role(&SubFieldRole::Intensity, &layout, 0.15);
+        assert!((pv.get_role(&SubFieldRole::Amount, &layout) - 0.42).abs() < f32::EPSILON);
+        assert!((pv.get_role(&SubFieldRole::Velocity, &layout) - (-0.07)).abs() < f32::EPSILON);
+        assert!((pv.get_role(&SubFieldRole::Intensity, &layout) - 0.15).abs() < f32::EPSILON);
+        assert_eq!(
+            pv.get_role_slice(&SubFieldRole::Named("vec_0".into()), &layout),
+            &[0.0]
+        );
     }
 
     #[test]
@@ -620,17 +730,17 @@ mod tests {
 
         let mut suppressed = loyalty(&layout, 0.0, -0.03);
         suppressed.integrate(&layout, 1.0);
-        assert_eq!(suppressed.data[a_off], 0.0);
+        assert_eq!(suppressed.get_role(&SubFieldRole::Amount, &layout), 0.0);
         assert!(
-            suppressed.data[v_off] >= 0.0,
+            suppressed.get_role(&SubFieldRole::Velocity, &layout) >= 0.0,
             "velocity was {}",
-            suppressed.data[v_off]
+            suppressed.get_role(&SubFieldRole::Velocity, &layout)
         );
 
         let mut recovering = loyalty(&layout, 0.0, 0.05);
         recovering.integrate(&layout, 1.0);
-        assert!((recovering.data[a_off] - 0.05).abs() < 1e-5);
-        assert!(recovering.data[v_off] > 0.0);
+        assert!((recovering.get_role(&SubFieldRole::Amount, &layout) - 0.05).abs() < 1e-5);
+        assert!(recovering.get_role(&SubFieldRole::Velocity, &layout) > 0.0);
     }
 
     #[test]
@@ -641,17 +751,17 @@ mod tests {
 
         let mut maxed = loyalty(&layout, 1.0, 0.05);
         maxed.integrate(&layout, 1.0);
-        assert_eq!(maxed.data[a_off], 1.0);
+        assert_eq!(maxed.get_role(&SubFieldRole::Amount, &layout), 1.0);
         assert!(
-            maxed.data[v_off] <= 0.0,
+            maxed.get_role(&SubFieldRole::Velocity, &layout) <= 0.0,
             "velocity was {}",
-            maxed.data[v_off]
+            maxed.get_role(&SubFieldRole::Velocity, &layout)
         );
 
         let mut declining = loyalty(&layout, 1.0, -0.02);
         declining.integrate(&layout, 1.0);
-        assert!((declining.data[a_off] - 0.98).abs() < 1e-5);
-        assert!(declining.data[v_off] < 0.0);
+        assert!((declining.get_role(&SubFieldRole::Amount, &layout) - 0.98).abs() < 1e-5);
+        assert!(declining.get_role(&SubFieldRole::Velocity, &layout) < 0.0);
     }
 
     #[test]
@@ -662,8 +772,8 @@ mod tests {
 
         let mut pv = loyalty(&layout, 0.5, -0.03);
         pv.integrate(&layout, 1.0);
-        assert!((pv.data[a_off] - 0.47).abs() < 1e-5);
-        assert!((pv.data[v_off] - (-0.03)).abs() < 1e-5);
+        assert!((pv.get_role(&SubFieldRole::Amount, &layout) - 0.47).abs() < 1e-5);
+        assert!((pv.get_role(&SubFieldRole::Velocity, &layout) - (-0.03)).abs() < 1e-5);
     }
 
     /// Custom layout: ethics axis with signed position, drift governor, and
@@ -756,16 +866,19 @@ mod tests {
             .unwrap();
 
         let mut pv = PropertyValue::from_layout(&layout);
-        pv.data[drift_off] = 0.2; // axis_drift = +0.2/day (drifting materialist)
+        pv.set_role(&SubFieldRole::Named("axis_drift".into()), &layout, 0.2);
         pv.integrate(&layout, 1.0);
         assert!(
-            (pv.data[pos_off] - 0.2).abs() < 1e-5,
+            (pv.get_role(&SubFieldRole::Named("axis_position".into()), &layout) - 0.2).abs() < 1e-5,
             "position was {}",
-            pv.data[pos_off]
+            pv.get_role(&SubFieldRole::Named("axis_position".into()), &layout)
         );
-        assert!((pv.data[drift_off] - 0.2).abs() < 1e-5, "drift unchanged");
+        assert!(
+            (pv.get_role(&SubFieldRole::Named("axis_drift".into()), &layout) - 0.2).abs() < 1e-5,
+            "drift unchanged"
+        );
         assert_eq!(
-            &pv.data[bonus_off..bonus_off + bonus_w],
+            pv.get_role_slice(&SubFieldRole::Named("ethics_bonus".into()), &layout),
             &[1.0, 1.0, 1.0],
             "bonus vector unchanged"
         );

@@ -412,9 +412,7 @@ fn apply_property_view_row_to_candidate(
     let candidate_after_value = runtime_property_view_value;
     participant.properties.insert(
         property_id,
-        PropertyValue {
-            data: vec![candidate_after_value as f32],
-        },
+        PropertyValue::from_raw_lanes(vec![candidate_after_value as f32]),
     );
 
     let source_property_view_index =
@@ -455,7 +453,11 @@ fn map_preview_property_id(
 }
 
 fn property_value_to_f64(value: &PropertyValue) -> Option<f64> {
-    value.data.first().copied().map(f64::from)
+    value
+        .raw_lanes_for_serialization()
+        .first()
+        .copied()
+        .map(f64::from)
 }
 
 fn find_simthing_by_raw_id_mut<'a>(thing: &'a mut SimThing, raw: u32) -> Option<&'a mut SimThing> {
