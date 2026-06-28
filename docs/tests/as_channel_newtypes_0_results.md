@@ -7,8 +7,8 @@ PROBATION — promoted §5.1 RF channel identity from interchangeable `String` f
 ## PR / branch / merge
 
 - Branch: `codex/as-channel-newtypes-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/951
+- Merge: `3a6df374f8` (master)
 
 ## What changed
 
