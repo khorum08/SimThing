@@ -7,8 +7,8 @@ PROBATION — promoted §3 "no hardcoded `data[N]`" from prose to a Rust type bo
 ## PR / branch / merge
 
 - Branch: `codex/as-column-access-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/949
+- Merge: `ea31b2e1ab` (master)
 
 ## What changed
 
