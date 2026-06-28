@@ -165,6 +165,17 @@ not implemented.**
   (ClauseThing_Spec §7). Authoring-side ids / provenance / display names persist legitimately (ruling 7).
 - **D7 — Handoffs are short and cite the harness.** Detail lives in code + this canonical design file;
   the header points, it never restates (constitution §0.5 Rule 3). Long handoffs are themselves a drift.
+- **D8 — Enforcement is admission *behavior*, not a governance *artifact* (the noun-for-verb fence).**
+  When a rung must "ensure / validate / govern" that authored input is well-formed — triggers resolve to
+  columns, modifier keys resolve by longest-match, ids don't collide, caps aren't exceeded — the
+  deliverable is a **spanful hard error in the decoder / admission layer with a suggested path**, never a
+  new registry, preflight table, trigger-to-column governance doc, validation ledger, or ceremony rung
+  that *restates* admission doctrine already in force. The binding review question is **"does this authored
+  form lower to a concrete column / overlay / arena, with a spanned hard error if not?"** — **never "where
+  is the table?"** (Carve-out: a bounded *one-table design output* like the `TP-RF-CAPACITY-AMENDMENT-0`
+  budget ledger is an amendment's artifact, not governance ceremony; the test is whether the document
+  *duplicates behavior the admission layer already performs* — if so, it is the drift this fence kills.)
+  This is the specific reflex the orchestrator demonstrated and admitted; it recurs unless named.
 
 ---
 
@@ -343,6 +354,16 @@ run**; each rung names its exact targeted tests.
 The authored `.clause` must exercise these forms liberally (the Owner's explicit stress-test instruction).
 Each lowers through the extended decoder to existing substrate only (overlays + `EvalEML` ≤32-node trees +
 RF arenas), CPU-oracle bit-exact. Listing is the decoder's priority queue, not decoration.
+
+**"Liberally" = coverage, not volume (binding bound on the mandate).** The stress-test is satisfied by
+forcing the decoder's **real edges** — at least one instance of each admitted form below — **not** by a
+giant artificial corpus whose size is itself the claimed achievement (that is its own hygiene, rejected by
+D3/D4). The required coverage set: longest-match category/resource parsing (e.g.
+`pop_category_bio_trophy_unity_upkeep_add`); **ambiguous-key rejection**; `_add` leaf-only **vs** `_mult`
+subtree sweep; `cost`-context restriction; shipsize/`ship_*` combat & upkeep overlays; `triggered_modifier`
+activation/dissolution; `complex_trigger_modifier` bool→number over a **column-backed** trigger;
+`value:` formula → bounded `EvalEML`; `ai_will_do`/`ai_weight` urgency over a resolved pressure column.
+Every form lowers through existing substrate or is a spanned hard error — there is no third outcome.
 
 - **Underscore modifier-key chains** `(category)_(resource)_(produces|upkeep|cost)_(add|mult)`, longest-match
   against registered sets: e.g. `pop_category_worker_minerals_produces_mult = 0.10`,
