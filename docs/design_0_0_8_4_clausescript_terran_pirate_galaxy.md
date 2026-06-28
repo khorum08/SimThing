@@ -177,6 +177,12 @@ not implemented.**
   *duplicates behavior the admission layer already performs* — if so, it is the drift this fence kills.)
   This is the specific reflex the orchestrator demonstrated and admitted; it recurs unless named.
 
+**Every rung handoff under this track MUST use the base template
+[`handoff_template.md`](handoff_template.md),** which operationalizes D1–D8 and carries the §H
+anti-kabuki rules + the context spine. A handoff that omits the spine, pads the reading list, batteries
+type-/admission-guaranteed conditions, restates the scope diff as bespoke guards, triple-updates docs, or
+hand-authors the implementation inline is **rejected at review** (template §H).
+
 ---
 
 ## 2. Objective & acceptance
