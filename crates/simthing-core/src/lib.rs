@@ -59,10 +59,10 @@ pub use overlay::{
     PropertyTransformDelta,
 };
 pub use property::{
-    ClampBehavior, DecayBehavior, Direction, ExpireEffect, ExpireHandler, FissionTemplate,
-    FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout,
-    PropertyValue, SecondaryCondition, SimProperty, SimThingKindTag, SubFieldRole, SubFieldSpec,
-    TransformOp,
+    ClampBehavior, ColumnIndex, DecayBehavior, Direction, ExpireEffect, ExpireHandler,
+    FissionTemplate, FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange,
+    PropertyLayout, PropertyValue, RoleOffset, SecondaryCondition, SimProperty, SimThingKindTag,
+    SubFieldRole, SubFieldSpec, TransformOp,
 };
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};

@@ -56,8 +56,8 @@ impl ReducedField {
         if end > row.len() {
             return None;
         }
-        Some(PropertyValue {
-            data: row[range.start..end].to_vec(),
-        })
+        Some(PropertyValue::from_raw_lanes(
+            row[range.start..end].to_vec(),
+        ))
     }
 }

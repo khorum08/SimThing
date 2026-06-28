@@ -351,18 +351,17 @@ fn seed_fission_child(
             continue;
         }
 
-        let mut seeded = PropertyValue {
-            data: values_shadow[start..end].to_vec(),
-        };
+        let mut seeded = PropertyValue::from_raw_lanes(values_shadow[start..end].to_vec());
         if prop_id == activating_pid {
             if let Some(amount_off) = prop.layout.offset_of(&SubFieldRole::Amount) {
-                seeded.data[amount_off] = 0.0;
+                seeded.set_lane_at_offset(amount_off, 0.0);
             }
         }
 
-        if child_base + range.start + seeded.data.len() <= values_shadow.len() {
+        if child_base + range.start + seeded.lane_count() <= values_shadow.len() {
             let dst = child_base + range.start;
-            values_shadow[dst..dst + seeded.data.len()].copy_from_slice(&seeded.data);
+            values_shadow[dst..dst + seeded.lane_count()]
+                .copy_from_slice(seeded.raw_lanes_for_serialization());
         }
         child.add_property(prop_id, seeded);
     }

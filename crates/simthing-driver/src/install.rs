@@ -512,7 +512,7 @@ fn seed_base_flow_obligations(
             let Some(value) = participant_node.properties.get_mut(&flow_property_id) else {
                 return Err(InstallError::Spec(SpecError::ValidationFailed));
             };
-            value.data[intrinsic_offset] += obligation.signed_rate;
+            value.add_lane_at_offset(intrinsic_offset, obligation.signed_rate);
         }
     }
     Ok(())

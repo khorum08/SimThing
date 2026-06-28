@@ -1411,9 +1411,9 @@ fn seed_dimension_values(
                 continue;
             }
             let start = base + range.start;
-            let end = start + value.data.len();
+            let end = start + value.lane_count();
             if end <= shadow.len() {
-                shadow[start..end].copy_from_slice(&value.data);
+                shadow[start..end].copy_from_slice(value.raw_lanes_for_serialization());
             }
         }
     }

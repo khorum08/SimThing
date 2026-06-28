@@ -231,7 +231,8 @@ pub fn seed_gated_rate_base_columns(
         let Some(value) = node.properties.get_mut(&flow_property_id) else {
             return Err(InstallError::Spec(SpecError::ValidationFailed));
         };
-        value.data[gated.base_offset] = value.data[gated.intrinsic_offset];
+        let intrinsic = value.lane_at_offset(gated.intrinsic_offset);
+        value.set_lane_at_offset(gated.base_offset, intrinsic);
     }
     Ok(())
 }

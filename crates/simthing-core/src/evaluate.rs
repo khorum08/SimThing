@@ -41,7 +41,7 @@ impl TransformStack {
     ) {
         for delta in &self.deltas {
             if delta.property_id == prop_id {
-                delta.apply_to_data(&mut value.data, layout);
+                delta.apply_to_data(value.raw_lanes_mut(), layout);
             }
         }
     }
@@ -168,8 +168,7 @@ mod tests {
         let prop = reg.property(lid);
         let layout = &prop.layout;
         let mut pv = prop.default_value();
-        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        pv.data[a_off] = amount;
+        pv.set_role(&SubFieldRole::Amount, layout, amount);
         cohort.add_property(lid, pv);
         cohort
     }
@@ -179,21 +178,18 @@ mod tests {
     fn velocity_integration() {
         let (reg, lid) = bootstrap();
         let layout = &reg.property(lid).layout;
-        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
 
         let mut cohort = make_cohort(&reg, lid, 0.5);
-        cohort.property_mut(lid).unwrap().data[v_off] = 0.1;
+        cohort
+            .property_mut(lid)
+            .unwrap()
+            .set_role(&SubFieldRole::Velocity, layout, 0.1);
 
         let eval = Evaluator::new(&reg, 1.0);
         let snap = eval.evaluate(&cohort, 1);
 
         let e = snap.get(cohort.id).unwrap();
-        let a_off = reg
-            .property(lid)
-            .layout
-            .offset_of(&SubFieldRole::Amount)
-            .unwrap();
-        let amount = e.properties[&lid].data[a_off];
+        let amount = e.properties[&lid].get_role(&SubFieldRole::Amount, layout);
         // 0.5 + 0.1 * 1.0 = 0.6
         assert!((amount - 0.6).abs() < 1e-5, "amount was {amount}");
     }
@@ -229,12 +225,8 @@ mod tests {
         let snap = eval.evaluate(&world, 1);
 
         let e = snap.get(cohort_id).unwrap();
-        let a_off = reg
-            .property(lid)
-            .layout
-            .offset_of(&SubFieldRole::Amount)
-            .unwrap();
-        let amount = e.properties[&lid].data[a_off];
+        let layout = &reg.property(lid).layout;
+        let amount = e.properties[&lid].get_role(&SubFieldRole::Amount, layout);
         // 1.0 * 0.9 = 0.9  (velocity=0, no integration change)
         assert!((amount - 0.9).abs() < 1e-5, "amount was {amount}");
     }
@@ -243,16 +235,14 @@ mod tests {
     #[test]
     fn deterministic() {
         let (reg, lid) = bootstrap();
-        let v_off = reg
-            .property(lid)
-            .layout
-            .offset_of(&SubFieldRole::Velocity)
-            .unwrap();
+        let layout = &reg.property(lid).layout;
 
         let mut loc = SimThing::new(SimThingKind::Location, 0);
         for _ in 0..4 {
             let mut c = make_cohort(&reg, lid, 0.7);
-            c.property_mut(lid).unwrap().data[v_off] = -0.02;
+            c.property_mut(lid)
+                .unwrap()
+                .set_role(&SubFieldRole::Velocity, layout, -0.02);
             loc.add_child(c);
         }
 
@@ -263,7 +253,7 @@ mod tests {
         for (a, b) in snap_a.entities.iter().zip(snap_b.entities.iter()) {
             for (pid, pv_a) in &a.properties {
                 let pv_b = &b.properties[pid];
-                for (x, y) in pv_a.data.iter().zip(pv_b.data.iter()) {
+                for (x, y) in pv_a.raw_lanes().iter().zip(pv_b.raw_lanes().iter()) {
                     assert_eq!(x.to_bits(), y.to_bits(), "non-deterministic float");
                 }
             }
@@ -274,11 +264,7 @@ mod tests {
     #[test]
     fn snapshot_round_trip() {
         let (reg, lid) = bootstrap();
-        let a_off = reg
-            .property(lid)
-            .layout
-            .offset_of(&SubFieldRole::Amount)
-            .unwrap();
+        let layout = &reg.property(lid).layout;
         let cohort = make_cohort(&reg, lid, 0.42);
         let eval = Evaluator::new(&reg, 1.0);
         let snap = eval.evaluate(&cohort, 5);
@@ -289,8 +275,8 @@ mod tests {
         let original = snap.get(cohort.id).unwrap();
         let restored = back.get(cohort.id).unwrap();
         assert_eq!(
-            original.properties[&lid].data[a_off],
-            restored.properties[&lid].data[a_off]
+            original.properties[&lid].get_role(&SubFieldRole::Amount, layout),
+            restored.properties[&lid].get_role(&SubFieldRole::Amount, layout)
         );
     }
 }

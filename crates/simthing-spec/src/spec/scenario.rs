@@ -423,23 +423,22 @@ pub fn scenario_metadata_string_value(text: &str) -> PropertyValue {
     for byte in text.bytes() {
         data.push(byte as f32);
     }
-    PropertyValue { data }
+    PropertyValue::from_raw_lanes(data)
 }
 
 pub fn scenario_metadata_string(thing: &SimThing, property_id: SimPropertyId) -> Option<String> {
     let value = thing.properties.get(&property_id)?;
-    let len = *value.data.first()? as usize;
-    if value.data.len() != 1 + len {
+    let lanes = value.raw_lanes_for_serialization();
+    let len = *lanes.first()? as usize;
+    if lanes.len() != 1 + len {
         return None;
     }
-    let bytes: Vec<u8> = value.data[1..].iter().map(|f| *f as u8).collect();
+    let bytes: Vec<u8> = lanes[1..].iter().map(|f| *f as u8).collect();
     String::from_utf8(bytes).ok()
 }
 
 pub fn scenario_metadata_u32_value(value: u32) -> PropertyValue {
-    PropertyValue {
-        data: vec![value as f32],
-    }
+    PropertyValue::from_raw_lanes(vec![value as f32])
 }
 
 pub fn scenario_metadata_u32(thing: &SimThing, property_id: SimPropertyId) -> Option<u32> {
@@ -448,25 +447,24 @@ pub fn scenario_metadata_u32(thing: &SimThing, property_id: SimPropertyId) -> Op
 
 /// Lossless u64 seed encoding: four u16 chunks stored as exact f32 integers (0..=65535).
 pub fn scenario_metadata_seed_value(seed: u64) -> PropertyValue {
-    PropertyValue {
-        data: vec![
-            (seed & 0xFFFF) as f32,
-            ((seed >> 16) & 0xFFFF) as f32,
-            ((seed >> 32) & 0xFFFF) as f32,
-            ((seed >> 48) & 0xFFFF) as f32,
-        ],
-    }
+    PropertyValue::from_raw_lanes(vec![
+        (seed & 0xFFFF) as f32,
+        ((seed >> 16) & 0xFFFF) as f32,
+        ((seed >> 32) & 0xFFFF) as f32,
+        ((seed >> 48) & 0xFFFF) as f32,
+    ])
 }
 
 pub fn scenario_metadata_seed(thing: &SimThing) -> Option<u64> {
     let value = thing.properties.get(&SCENARIO_GENERATOR_SEED_PROPERTY_ID)?;
-    if value.data.len() != 4 {
+    let lanes = value.raw_lanes_for_serialization();
+    if lanes.len() != 4 {
         return None;
     }
-    let a = checked_u16_f32(value.data[0])? as u64;
-    let b = checked_u16_f32(value.data[1])? as u64;
-    let c = checked_u16_f32(value.data[2])? as u64;
-    let d = checked_u16_f32(value.data[3])? as u64;
+    let a = checked_u16_f32(lanes[0])? as u64;
+    let b = checked_u16_f32(lanes[1])? as u64;
+    let c = checked_u16_f32(lanes[2])? as u64;
+    let d = checked_u16_f32(lanes[3])? as u64;
     Some(a | (b << 16) | (c << 32) | (d << 48))
 }
 
@@ -1673,7 +1671,7 @@ fn require_u32_property(
 }
 
 pub fn property_u32(value: &PropertyValue) -> Option<u32> {
-    let value = *value.data.first()?;
+    let value = *value.raw_lanes_for_serialization().first()?;
     if value.is_finite()
         && value >= 0.0
         && value.fract() == 0.0
@@ -1686,9 +1684,7 @@ pub fn property_u32(value: &PropertyValue) -> Option<u32> {
 }
 
 pub fn structural_property_value_u32(value: u32) -> PropertyValue {
-    PropertyValue {
-        data: vec![value as f32],
-    }
+    PropertyValue::from_raw_lanes(vec![value as f32])
 }
 
 #[cfg(test)]
@@ -1996,9 +1992,7 @@ mod tests {
 
     #[test]
     fn structural_integer_property_rejects_or_avoids_non_exact_f32_range() {
-        let above_max = PropertyValue {
-            data: vec![20_000_000.0],
-        };
+        let above_max = PropertyValue::from_raw_lanes(vec![20_000_000.0]);
         assert_eq!(property_u32(&above_max), None);
         assert_eq!(
             property_u32(&structural_property_value_u32(
@@ -2006,7 +2000,7 @@ mod tests {
             )),
             Some(SCENARIO_STRUCTURAL_INTEGER_MAX)
         );
-        let fractional = PropertyValue { data: vec![1.5] };
+        let fractional = PropertyValue::from_raw_lanes(vec![1.5]);
         assert_eq!(property_u32(&fractional), None);
     }
 
