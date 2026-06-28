@@ -61,10 +61,51 @@ shows the migration surface is larger than one focused PR.
 | 0 | `AS-TRACK-OPEN-0` | — | This doc + evidence-index row. Docs only. | — |
 | 1 | `AS-COLUMN-ACCESS-0` | §3 "no hardcoded `data[N]`" | Encapsulate `PropertyValue.data`; access only via a `RoleOffset`/`ColumnIndex` resolved from `PropertyLayout` (`offset_of`/`col_for_role` already exist in `simthing-core`). Raw access becomes an explicit `raw_lane()` for serialization byte-lanes only (the `scenario.rs` metadata seed). | The "no hardcoded `data[N]`" prose detector; any `data[` source scan. `compile_fail`: `value.data[0]` does not build. |
 | 2 | `AS-CHANNEL-NEWTYPES-0` | §5.1 channel identity | `OwnerRef`, `ResourceKey`, `ScopeId`, `ParentLocationId` as distinct newtypes (over the current `String`/id). Transposition and bare-string passing become uncompilable. | Arg-order / mis-binding validation + any "owner vs resource" runtime check. `compile_fail`: passing a `ResourceKey` where `OwnerRef` is expected. |
-| 3 | `AS-KIND-OUT-OF-TICK-0` | §2 "behavior never branches on kind at runtime" | Introduce the tick/runtime view type that carries **no `kind`** (resolved columns/slots only); drive the production kind-reads (audit `simthing-sim`, e.g. `is_capability_container(&child.kind, …)` at `boundary.rs:1293`) from a resolved flag/column instead of a `kind` match. | Core §9 "no `match kind`" detector → promoted to type. `compile_fail`: a tick-path fn cannot access `.kind`. **May split** (audit production vs test kind-reads first). |
+| 3 | `AS-KIND-OUT-OF-TICK-0` | §2 "behavior never branches on kind at runtime" | Introduce the tick/runtime view type that carries **no `kind`** (resolved columns/slots only); drive the production kind-reads (audit `simthing-sim`, e.g. `is_capability_container(&child.kind, …)` at `boundary.rs:1293`) from a resolved column instead of a `kind` match (static → resolve-away; dynamic predicate → **EML gadget**, §2.1). | Core §9 "no `match kind`" detector → promoted to type. `compile_fail`: a tick-path fn cannot access `.kind`. **May split** (audit production vs test kind-reads first). |
 | 4 | `AS-SIM-SEMANTIC-FREE-0` | §4 "`simthing-sim` never learns the words" | Seal the `simthing-sim` public surface so it cannot **name** a game concept — no semantic `SimThingKind` variant (`Faction`/`Cohort`) or semantic `String` category/faction crosses the crate boundary; the sim sees columns, indices, and opaque registration handles. Composes on AS-3. | The scattered semantic-free source scans → narrowed to true residue (e.g. WGSL text, which Rust can't see — stays a scan). `compile_fail`: a faction/category type at the `simthing-sim` boundary. |
 | 5 | `AS-INDEX-NEWTYPES-0` *(horizon)* | §3/§4 stable indices | `SlotIndex`, `ColumnIndex`, and audit `OrderBand` (already `OrderBand(u32)`) as distinct newtypes so a slot index can't be used as a column index; owner-vs-spatial-parent distinction so "reparent to an owner" (core §2 law 2) is uncompilable. | Mixing-index bugs; the "owner is never a spatial parent" prose detector (partial). |
 | F | `AS-CLOSEOUT-0` | — | Scope Ledger across rungs: invariants promoted, **guards/prose retired (the success metric)**, parity intact. DA review. | — |
+
+### 2.1 Exit states for a violation — where the behavior goes
+
+The type boundary makes a violating *form* uncompilable; the **behavior that form encoded still needs a
+conformant home.** A rung therefore has more than one response, chosen by what the behavior **is**, not by
+convenience. **Deletion and EML reduction are siblings, not a choice between bloat and loss:** deletion is
+for *redundant* code; EML reduction is for *useful computation currently expressed as host control flow.*
+
+| The violating code is… | Exit state | Destination |
+|---|---|---|
+| dead / redundant / already computed elsewhere | **Delete** | — (the default for redundancy) |
+| a branch over **static authoring metadata** | **Resolve-away** | a flag/column resolved at the CPU prep pass; the runtime sees the resolved value (§4 "compile away before upload") |
+| a **dynamic computation** — predicate, formula, weight, urgency, threshold over runtime column values | **Reduce to EML** | an EML gadget tree / opcode stack over the one `EvalEML` interpreter (Anchor B, core §4.1); the host branch dies, the behavior becomes GPU-resident data |
+| **flow / reduction / allocation** | **Refactor to RF** | an AccumulatorOp arena (reduce-up / disburse-down) — *not* EML (EML is expression eval; reduction is the sweep) |
+| a **modifier** | **Refactor to overlay** | a `PropertyTransformDelta` on a weight/column |
+| genuine CPU-boundary work types cannot reach | **Escalate to residue** | stays prose + admission + DA judgment (§5) |
+
+The canonical violation — a `match kind` in the tick path — is almost never *delete*: its intent is a
+predicate, so it reduces to a `SELECT`/`CMP` EML gadget over a resolved column, which is **both**
+uncompilable-as-a-host-branch (this track's goal) **and** GPU-resident data (Anchor B's goal). This track
+and the EML path are the **same move from opposite ends**: AS removes the host-side semantic branch by
+making it unrepresentable; EML supplies the destination for what that branch meant.
+
+**The fence — EML reduction may not launder a subsystem.** A "reduction" does **not** keep a violating
+system alive; it re-expresses the behavior as conformant data so it *stops* violating. It is a valid exit
+**only** if the result is (a) **generic / semantic-free** — the opcode stack names no game concept, only
+floats and resolved indices; (b) **bounded** — the bounded-feedback contract (finite decay < 1, explicit
+clamp; `ExactDeterministic` ≤32 nodes); and (c) **CPU-oracle bit-exact** — the rung stays a *refactor*
+(same resolved value, new substrate), never a behavior change. If a "reduction" needs a new **semantic**
+opcode, or cannot meet the admission contract, it is the violation wearing EML clothing — the exit reverts
+to delete or escalate (core §9 detector 9).
+
+**GPU lowering & JIT are downstream of this, not part of it.** AS-1/AS-2 harden the CPU→GPU **resolution
+boundary**: the `ColumnIndex` / channel newtypes are exactly the resolved descriptors the GPU upload
+consumes, so "wrong column binding" — a WGSL-trust-domain bug Rust otherwise cannot see (§5) — becomes
+partly catchable on the host (a `ColumnIndex` is unconstructable except via layout resolution). The EML
+exit (AS-3/AS-4) is the **behavior** lowering: a reduced gadget runs in the unified kernel. **JIT
+EML→WGSL compilation of a hot reduced gadget is a separate, later optimization tier** (pinned artifact +
+CPU-oracle parity — the Candidate-F precedent), never bundled into an AS refactor rung, which must stay
+behavior-preserving and small. **AS reduces to the interpreter; the JIT, if a gadget proves hot, is a
+perf track's job.**
 
 ---
 
