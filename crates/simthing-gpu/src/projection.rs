@@ -83,7 +83,7 @@ mod tests {
 
         for (node, amount_val) in [(&mut a, 0.3f32), (&mut b, 0.7f32)] {
             let mut pv_l = PropertyValue::from_layout(&layout_l);
-            pv_l.data[a_off] = amount_val;
+            pv_l.set_lane_at_offset(a_off, amount_val);
             node.add_property(loyalty_id, pv_l);
 
             let pv_f = PropertyValue::from_layout(&reg.property(food_id).layout);
@@ -109,8 +109,8 @@ mod tests {
         let loyalty_range = reg.column_range(loyalty_id);
         for child in &world.children {
             let slot = alloc.slot_of(child.id).unwrap() as usize;
-            let cpu_amount = child.properties[&loyalty_id].data[a_off];
-            let gpu_amount = flat[slot * n_dims + loyalty_range.start + a_off];
+            let cpu_amount = child.properties[&loyalty_id].lane_at_offset(a_off);
+            let gpu_amount = flat[slot * n_dims + loyalty_range.start + a_off.lane()];
             assert_eq!(cpu_amount.to_bits(), gpu_amount.to_bits());
         }
     }
@@ -127,7 +127,7 @@ mod tests {
             .layout
             .offset_of(&SubFieldRole::Amount)
             .unwrap();
-        pv.data[a_off] = 0.42;
+        pv.set_lane_at_offset(a_off, 0.42);
         world.add_property(id, pv);
 
         // Allocator that does NOT include `world.id`.

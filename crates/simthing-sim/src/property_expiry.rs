@@ -344,7 +344,7 @@ mod tests {
 
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         let mut pval = PropertyValue::from_layout(&layout);
-        pval.data[amount] = 0.5;
+        pval.set_lane_at_offset(amount, 0.5);
         cohort.add_property(pid, pval);
         let cohort_id = cohort.id;
 
@@ -355,7 +355,7 @@ mod tests {
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0; alloc.capacity() * n_dims];
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
-        shadow[slot * n_dims + amount] = 0.0;
+        shadow[slot * n_dims + amount.lane()] = 0.0;
 
         let out = resolve_property_expiry(
             &mut root,
@@ -404,8 +404,8 @@ mod tests {
         let mut shadow = vec![0.0; alloc.capacity() * n_dims];
         let a_slot = alloc.slot_of(a_id).unwrap() as usize;
         let b_slot = alloc.slot_of(b_id).unwrap() as usize;
-        shadow[a_slot * n_dims + amount] = 0.0;
-        shadow[b_slot * n_dims + amount] = 0.5;
+        shadow[a_slot * n_dims + amount.lane()] = 0.0;
+        shadow[b_slot * n_dims + amount.lane()] = 0.5;
 
         let out = resolve_property_expiry(
             &mut root,

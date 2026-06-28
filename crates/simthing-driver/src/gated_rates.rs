@@ -17,7 +17,7 @@
 use simthing_core::{
     eml_nodes, AccumulatorOp, CombineFn, ConsumeMode, DimensionRegistry, EmlConsumerMask,
     EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SimThing, SourceSpec, SubFieldRole,
+    RoleOffset, ScaleSpec, SimThing, SourceSpec, SubFieldRole,
 };
 use simthing_spec::{
     GatedRateOpSpec, RateFormulaOp, RateFormulaOperandSpec, ResourceFlowSpec, SpecError,
@@ -42,8 +42,8 @@ pub struct ResolvedGatedRate {
     pub id: String,
     pub participant_slot: u32,
     /// Local data offsets within the flow property (node seeding).
-    pub base_offset: usize,
-    pub intrinsic_offset: usize,
+    pub base_offset: RoleOffset,
+    pub intrinsic_offset: RoleOffset,
     /// Global columns (EML SLOT_VALUE / op targets).
     pub base_col: u32,
     pub intrinsic_col: u32,
@@ -105,7 +105,7 @@ pub fn resolve_gated_rates(
                 })
             })?;
         let layout = &registry.property(flow_property_id).layout;
-        let cols = resolve_node_columns(layout, &arena.name).map_err(|_| {
+        let _cols = resolve_node_columns(layout, &arena.name).map_err(|_| {
             InstallError::Spec(SpecError::UnknownResourceFlowProperty {
                 property: format!("{} flow columns", arena.name),
             })
@@ -184,13 +184,20 @@ pub fn resolve_gated_rates(
                     arena: gated.arena.clone(),
                     subtree_root_id: hosted_id.raw(),
                 })?;
+            let intrinsic_offset =
+                crate::install::intrinsic_flow_offset(registry, flow_property_id).ok_or_else(
+                    || InstallError::GatedRateMissingBaseColumn {
+                        gated: gated.id.clone(),
+                        arena: gated.arena.clone(),
+                    },
+                )?;
             out.push(ResolvedGatedRate {
                 id: gated.id.clone(),
                 participant_slot,
                 base_offset,
-                intrinsic_offset: cols.intrinsic_flow_col as usize,
-                base_col: flow_start + base_offset as u32,
-                intrinsic_col: flow_start + cols.intrinsic_flow_col,
+                intrinsic_offset,
+                base_col: flow_start + base_offset.lane() as u32,
+                intrinsic_col: flow_start + intrinsic_offset.lane() as u32,
                 trigger,
                 magnitude: magnitude.clone(),
                 is_mult,

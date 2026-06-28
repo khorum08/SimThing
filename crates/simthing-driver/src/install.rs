@@ -9,8 +9,8 @@
 
 use simthing_core::DimensionRegistry;
 use simthing_core::{
-    kind_matches, AccumulatorRole, Overlay, OverlayId, PropertyValue, SimPropertyId, SimThing,
-    SimThingId, SimThingKind,
+    kind_matches, AccumulatorRole, Overlay, OverlayId, PropertyValue, RoleOffset, SimPropertyId,
+    SimThing, SimThingId, SimThingKind,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
@@ -529,10 +529,10 @@ fn resolve_base_flow_property(
     })
 }
 
-fn intrinsic_flow_offset(
+pub(crate) fn intrinsic_flow_offset(
     registry: &DimensionRegistry,
     property_id: SimPropertyId,
-) -> Option<usize> {
+) -> Option<RoleOffset> {
     // invariant: local index arithmetic has one home — resolve the role,
     // then go through `PropertyLayout::offset_of` (enumeration position is
     // only coincidentally correct while every sub-field has width 1).

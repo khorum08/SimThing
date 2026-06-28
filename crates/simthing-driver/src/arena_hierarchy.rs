@@ -237,7 +237,11 @@ pub fn resolve_node_columns(
     })?;
     let balance_col = find_role_col(&expanded, |r| matches!(r, AccumulatorRole::Balance(_)));
 
-    let named = |s: &str| expanded.offset_of(&SubFieldRole::Named(s.into()));
+    let named = |s: &str| {
+        expanded
+            .offset_of(&SubFieldRole::Named(s.into()))
+            .map(|o| o.lane() as u32)
+    };
     Ok(NodeColumnRefs {
         intrinsic_flow_col,
         intrinsic_flow_sum_col: named("intrinsic_flow_sum").expect("E-8R column") as u32,

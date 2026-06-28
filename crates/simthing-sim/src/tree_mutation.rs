@@ -608,8 +608,8 @@ mod tests {
         let mut child = SimThing::new(SimThingKind::Cohort, 1);
         let child_id = child.id;
         let mut pval = PropertyValue::from_layout(&layout);
-        pval.data[amount] = 0.7;
-        pval.data[velocity] = -0.2;
+        pval.set_lane_at_offset(amount, 0.7);
+        pval.set_lane_at_offset(velocity, -0.2);
         child.add_property(pid, pval);
 
         let mut shadow = vec![9.0f32; (alloc.capacity() + 2) * n_dims];
@@ -629,8 +629,8 @@ mod tests {
         assert_eq!(out.adds, 1);
         let slot = alloc.slot_of(child_id).unwrap() as usize;
         let base = slot * n_dims;
-        assert_eq!(shadow[base + amount], 0.7);
-        assert_eq!(shadow[base + velocity], -0.2);
+        assert_eq!(shadow[base + amount.lane()], 0.7);
+        assert_eq!(shadow[base + velocity.lane()], -0.2);
     }
 
     #[test]
