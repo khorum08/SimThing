@@ -124,6 +124,71 @@ so behavior is always *data* — postfix programs, gadget trees, column paramete
 kernel, opcode, or subsystem. The EML gadget library and the JIT shader compiler (§4) are the two
 production surfaces of this anchor.
 
+### 1.2 The admission substrate — doctrine as type, not prose
+
+The two anchors above say what the dynamics *must be*. This pillar says how that is **enforced** at the
+scale SimThing is actually built — by low-context agents, where the dangerous failure is not a crash but
+**an agent satisfying the compiler while violating the ontology.** The answer, implicit in SimThing from
+the first design and now made explicit doctrine, is: **encode the paradigm in the type system, not in
+prose an agent must re-read.** Rust is chosen for exactly this. Its compile-time admission — ownership,
+exhaustive `match`, `Send`/`Sync`, `Result`/`Option`, newtypes — is a *total, pre-execution, local*
+verdict that prunes whole classes of invalid program before any tick runs, at zero runtime cost. SimThing's
+spec/hydration admission layer is the same idea for *content*. These two gates — the compiler (admits code)
+and hydration (admits content) — are the substrate's immune system, and **doctrine should live inside them,
+not beside them.** Doctrine encoded as a type is the only doctrine that costs nothing to enforce at scale:
+no agent ever re-reads it, re-cites it, or can quietly drift past it.
+
+**The admission ladder — every invariant climbs as high as it can:**
+
+1. **Type boundary** — the illegal state is *unrepresentable*; the violation does not compile. Zero
+   per-rung cost, total, never re-read. *The runtime tree sees resolved numeric columns and indices — no
+   kind, no semantic name, no game concept — so a `match kind` in a tick path, a hardcoded `data[N]`, or a
+   faction word inside `simthing-sim` should be **uncompilable**, not merely forbidden.*
+2. **Admission hard-error** — illegal *content* is rejected at import / session-build with a spanned
+   diagnostic; the runtime never sees it (unbounded fanout, unmapped category, all-algebraic coupling
+   cycle, perceived→true write, cap overflow).
+3. **Guard test / source scan** — a test or `grep` catches a violation after the fact (the semantic-free
+   scan; the STEAD withdrawn-phrase scan).
+4. **Prose** — the constitution states it and trusts the agent to hold and obey it.
+
+Each rung down is more expensive, more circumventable, and **spends context budget on every rung,
+forever.** A prose invariant that *could* be a type is a latent defect; **a guard test or source scan that
+exists only because a type didn't is a promotion target, not a fixture.** The tell is exact: the rule
+"after hydration, `grep` for the category / faction name in any runtime artifact must come up empty" (§4;
+[`adr/resource_flow_substrate.md`](adr/resource_flow_substrate.md); CT-2c) is a *scan standing in for a
+type boundary* — it exists only because `simthing-sim`'s public types can still **name** a category. Move
+the boundary into the type and the scan is unnecessary.
+
+**This is already the corpus's deep grain, not a new direction.** Roles resolve to columns at the CPU prep
+pass so the GPU receives only indices (§3 — admission resolution); `simthing-sim` is semantic-free because
+all semantics *compile away before upload* (§4 — the compile-away boundary); `SimThingKind` is a
+spec/driver convenience that behavior never branches on at runtime (§2 — the canonical promotion target);
+admission is the firewall and the runtime is the unconditional last line (the two-layer guardrail). What
+was implicit is now directive.
+
+**The directive.** When you add or defend an invariant, encode it at the **highest admission rung that can
+express it**, and record why it could not climb higher. When you meet a guard test or a recurring prose
+drift-detector (§9), treat it as backlog: **promote it into a type or an admission hard-error.** Reserve
+prose and DA judgment for the residue types genuinely cannot reach — no-CPU-planner, no-flattening (the
+constitution's Specification-Fidelity law), the GPU/WGSL **trust domain Rust's checker cannot see into**
+(§4 — hence CPU-oracle parity is the *only* admission the shader has), and live ontological conformance.
+That residue is small by design; everything else should fail to compile or fail to admit.
+
+**A corollary on hygiene.** Because the compiler discharges the mechanical-correctness layer, the budget
+it frees must go **entirely** to the two rungs that still pay rent — type/admission boundaries and the
+semantic conformance the compiler cannot check — and **never** to process ceremony (status docs,
+comparison memos, proof batteries, governance artifacts). Ceremony is not a language tax that Rust removes;
+it is non-load-bearing everywhere, and it is the failure mode of an agent discharging uncertainty it could
+not resolve. Executable verification (CPU-oracle parity, admission hard-errors, minimal targeted tests)
+*transfers and remains load-bearing*; ceremony does not.
+
+**Horizon.** The standing goal is to express ever more SimThing core objects as **type signatures that
+carry this rigor intrinsically** — runtime node types that cannot name a kind or a game concept; channel
+identity, owner reference, scope, and order-band as distinct newtypes (not bare integers); role-indexed
+column access that makes a hardcoded `data[N]` unrepresentable; a semantic-free marker on `simthing-sim`'s
+public surface. Each such move **deletes a guard test, shortens the prose constitution, and makes a class
+of drift impossible rather than merely against the rules.**
+
 ---
 
 ## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment
@@ -734,6 +799,11 @@ do not rationalize.
 12. Am I adding a **rebellion / civil-war / coup system, flag, or special entity type** — instead of
     an influence flow + aggregate threshold + owner-entity fission with an intensity-vector column
     partition (§2.1)?
+
+**Promotion over repetition.** When a detector above keeps firing across rungs, the remedy is **not louder
+prose** — it is to lift the invariant to a higher admission rung: a type boundary that makes the drift
+*uncompilable*, or an admission hard-error that rejects it at import (§1.2). A drift that can be made
+unrepresentable should be; a detector that can be retired into a type has earned its retirement.
 
 **The six-line harness** (cite on every track, hold in context on every rung):
 
