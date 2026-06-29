@@ -120,9 +120,10 @@ pub use stress_compose::{
 pub use structural_upload::{
     readback_buffer_bytes_blocking, readback_matches_source, readback_pod_blocking,
     readback_structural_upload_blocking, source_row_bytes, upload_structural_rows_to_gpu,
-    StructuralFrameGpuRow, StructuralLinkGpuRow, StructuralLocationGpuRow, StructuralUploadError,
-    StructuralUploadGpuBuffers, StructuralUploadGpuReport, StructuralUploadReadback,
-    StructuralUploadRows, FRAME_ROW_BYTES, LINK_ROW_BYTES, LOCATION_ROW_BYTES,
+    PackedUpload, StructuralFrameGpuRow, StructuralLinkGpuRow, StructuralLocationGpuRow,
+    StructuralUploadError, StructuralUploadGpuBuffers, StructuralUploadGpuReport,
+    StructuralUploadReadback, StructuralUploadRows, FRAME_ROW_BYTES, LINK_ROW_BYTES,
+    LOCATION_ROW_BYTES,
 };
 pub use structural_validation::{
     initial_validation_report, scan_for_forbidden_validation_tokens,
