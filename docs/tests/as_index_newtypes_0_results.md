@@ -7,8 +7,8 @@ PROBATION — `SlotIndex` adopted on the load-bearing `SlotAllocator` public bou
 ## PR / branch / merge
 
 - Branch: `codex/as-index-newtypes-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/969
+- Merge: `e39b85ba59` (master)
 
 ## What changed
 
