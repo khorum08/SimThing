@@ -7,8 +7,8 @@ PROBATION — public `AccumulatorOpSession` upload methods sealed behind private
 ## PR / branch / merge
 
 - Branch: `codex/as-8b-session-upload-packed-packets`
-- PR: (pending push)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/975
+- Merge: `734f84d9d7` (master)
 
 ## What changed
 
