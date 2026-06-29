@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `codex/kernel-dep-budget-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: #983
+- Merge: `4641715665` (master)
 
 ## What changed
 
