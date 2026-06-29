@@ -2,13 +2,13 @@
 
 ## Status
 
-IN PROGRESS — moved fission clone-source marker stamping out of boundary slot projection and fission execution into earlier admission seams.
+PASS — moved fission clone-source marker stamping out of boundary slot projection and fission execution into earlier admission seams.
 
 ## PR / branch / merge
 
 - Branch: `codex/as-kind-out-of-tick-0b`
-- PR: (pending)
-- Merge: (pending)
+- PR: #953
+- Merge: `fd47c75280`
 
 ## What changed
 
