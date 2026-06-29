@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `codex/kernel-emission-seal-0`
-- PR: (pending merge)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/990
+- Merge: `cb3a509077` (master)
 
 ## What changed
 
