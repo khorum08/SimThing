@@ -61,7 +61,10 @@
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
 use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
-use simthing_core::{DimensionRegistry, OverlayId, OverlayLifecycle, SimThing, SimThingId};
+use simthing_core::{
+    prepare_fission_clone_sources_subtree, DimensionRegistry, OverlayId, OverlayLifecycle,
+    SimThing, SimThingId,
+};
 use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
 use std::collections::HashMap;
@@ -166,10 +169,12 @@ fn apply_add_child(
     values_shadow: &mut [f32],
     n_dims: usize,
     parent_id: SimThingId,
-    child: SimThing,
+    mut child: SimThing,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
     out: &mut MaintainerOutcome,
 ) {
+    prepare_fission_clone_sources_subtree(&mut child, registry);
+
     // Collect every id in the subtree being added (typically just the
     // child itself, but supports importing pre-built subtrees).
     let mut new_ids = Vec::new();
@@ -516,9 +521,10 @@ fn find_node_mut<'a>(node: &'a mut SimThing, id: SimThingId) -> Option<&'a mut S
 mod tests {
     use super::*;
     use simthing_core::{
-        DimensionRegistry, DissolveCondition, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+        prepare_fission_clone_sources_subtree, DimensionRegistry, Direction, DissolveCondition,
+        FissionTemplate, FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
         OverlaySource, PropertyTransformDelta, PropertyValue, SimProperty, SimPropertyId, SimThing,
-        SimThingKind, SubFieldRole, TransformOp,
+        SimThingKind, SimThingKindTag, SubFieldRole, TransformOp, FISSION_CLONE_SOURCE_PROPERTY_ID,
     };
     use simthing_feeder::BoundaryRequest;
     use simthing_gpu::SlotAllocator;
@@ -924,5 +930,69 @@ mod tests {
         assert_eq!(out.deferred, 0);
         assert_eq!(out.dimensions_added, vec![pid]);
         assert!(reg.is_active(pid));
+    }
+
+    #[test]
+    fn structural_add_child_prepares_clone_source_markers_once() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.fission_templates = vec![FissionThreshold {
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Direction::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Faction,
+                fusion_intensity_threshold: 0.8,
+                fusion_scar_coefficient: 0.05,
+                resolution_label: "resolved".into(),
+                clone_capability_children: true,
+                capability_container_kinds: vec!["tech_tree".into()],
+            },
+            secondary: None,
+        }];
+        reg.register(prop);
+
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut alloc = SlotAllocator::new();
+        alloc.alloc(root.id);
+        let loc = SimThing::new(SimThingKind::Location, 0);
+        let parent_id = loc.id;
+        alloc.alloc(parent_id);
+        root.add_child(loc);
+
+        let n_dims = reg.total_columns;
+        let tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        assert!(tech_tree
+            .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
+            .is_none());
+
+        let mut shadow = vec![0.0f32; (alloc.capacity() + 4) * n_dims];
+        let out = apply_structural_mutations(
+            vec![BoundaryRequest::AddChild {
+                parent: parent_id,
+                child: tech_tree,
+            }],
+            &mut root,
+            &mut alloc,
+            &mut reg,
+            &mut shadow,
+            n_dims,
+            None,
+        );
+
+        assert_eq!(out.adds, 1);
+        let first = root.children[0].children[0]
+            .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
+            .expect("AddChild prepared marker")
+            .raw_lanes_for_serialization()
+            .to_vec();
+
+        prepare_fission_clone_sources_subtree(&mut root.children[0].children[0], &reg);
+        let second = root.children[0].children[0]
+            .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
+            .expect("marker remains")
+            .raw_lanes_for_serialization()
+            .to_vec();
+        assert_eq!(first, second, "repeated prep must not restamp");
     }
 }
