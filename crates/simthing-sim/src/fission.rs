@@ -50,8 +50,8 @@ use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path, node_at_path_mut};
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    prep_fission_parent_clone_source_labels, DimensionRegistry, PropertyValue, SecondaryCondition,
-    SimPropertyId, SimThing, SimThingId, SimThingKind, SimThingKindTag, SubFieldRole,
+    DimensionRegistry, PropertyValue, SecondaryCondition, SimPropertyId, SimThing, SimThingId,
+    SimThingKind, SimThingKindTag, SubFieldRole,
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use std::collections::{HashMap, HashSet};
@@ -269,17 +269,6 @@ fn execute_fission(
     let mut new_child = SimThing::new(child_kind, current_day);
     let new_id = new_child.id;
     let new_slot = allocator.alloc(new_id);
-
-    if ft.template.clone_capability_children {
-        if let Some(path) = node_paths.get(&stid) {
-            if let Some(parent_mut) = node_at_path_mut(root, path) {
-                prep_fission_parent_clone_source_labels(
-                    parent_mut,
-                    &ft.template.capability_container_kinds,
-                );
-            }
-        }
-    }
 
     if let Some(parent) = node_paths
         .get(&stid)
@@ -663,10 +652,11 @@ mod tests {
     use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
     use crate::tree_index::build_node_paths;
     use simthing_core::{
-        is_fission_clone_source, stamp_fission_clone_source_label, DimensionRegistry, Direction,
-        FissionTemplate, FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
-        OverlaySource, PropertyTransformDelta, SecondaryCondition, SimProperty, SimThing,
-        SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
+        is_fission_clone_source, prepare_fission_clone_sources_for_registry,
+        stamp_fission_clone_source_label, DimensionRegistry, Direction, FissionTemplate,
+        FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
+        PropertyTransformDelta, SecondaryCondition, SimProperty, SimThing, SimThingKind,
+        SimThingKindTag, SubFieldRole, TransformOp, FISSION_CLONE_SOURCE_PROPERTY_ID,
     };
     use simthing_gpu::SlotAllocator;
 
@@ -986,6 +976,8 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::Location, 0);
         root.add_child(faction);
 
+        prepare_fission_clone_sources_for_registry(&mut root, &reg);
+
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
         let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
@@ -1063,6 +1055,8 @@ mod tests {
 
         let mut root = SimThing::new(SimThingKind::Location, 0);
         root.add_child(faction);
+
+        prepare_fission_clone_sources_for_registry(&mut root, &reg);
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
@@ -1284,6 +1278,8 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::Location, 0);
         root.add_child(faction);
 
+        prepare_fission_clone_sources_for_registry(&mut root, &reg);
+
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
         let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
@@ -1337,5 +1333,77 @@ mod tests {
         assert_ne!(cloned_tree.id, tech_tree_id);
         assert_eq!(cloned_tree.children.len(), 1);
         assert_ne!(cloned_tree.children[0].id, leaf_id);
+    }
+
+    fn marker_lanes(node: &SimThing) -> Option<Vec<f32>> {
+        node.property(FISSION_CLONE_SOURCE_PROPERTY_ID)
+            .map(|value| value.raw_lanes_for_serialization().to_vec())
+    }
+
+    #[test]
+    fn execute_fission_does_not_stamp_or_mutate_source_markers() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = make_fission_property();
+        prop.fission_templates[0].template.child_kind = SimThingKindTag::Faction;
+        prop.fission_templates[0].template.clone_capability_children = true;
+        prop.fission_templates[0]
+            .template
+            .capability_container_kinds
+            .push("tech_tree".into());
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut faction = SimThing::new(SimThingKind::Faction, 0);
+        faction.add_property(pid, reg.property(pid).default_value());
+        let faction_id = faction.id;
+
+        let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tech_tree.add_property(pid, reg.property(pid).default_value());
+        faction.add_child(tech_tree);
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(faction);
+        prepare_fission_clone_sources_for_registry(&mut root, &reg);
+
+        let before = marker_lanes(&root.children[0].children[0]).expect("prepared marker");
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 16 * n_dims];
+        shadow[faction_slot * n_dims + amount_off.lane()] = 0.25;
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: faction_id,
+            property_id: pid,
+            template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: faction_slot as u32,
+            col: amount_off.lane() as u32,
+            value: 0.25,
+            event_kind,
+        }];
+
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
+
+        assert_eq!(out.fissions_executed, 1);
+        let after = marker_lanes(&root.children[0].children[0]).expect("source marker preserved");
+        assert_eq!(before, after);
     }
 }

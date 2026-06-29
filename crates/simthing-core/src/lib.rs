@@ -48,9 +48,10 @@ pub use eml_registry::{
     MAX_EML_TREE_NODES, WHITELISTED_FORMULA_CLASSES,
 };
 pub use fission_clone_source::{
-    fission_clone_source_label, is_fission_clone_source, prep_fission_clone_source_labels,
-    prep_fission_parent_clone_source_labels, stamp_fission_clone_source_label,
-    FissionCloneSourceLabel, FISSION_CLONE_SOURCE_PROPERTY_ID,
+    fission_clone_source_container_kinds_for_registry, fission_clone_source_label,
+    is_fission_clone_source, prep_fission_clone_source_labels,
+    prepare_fission_clone_sources_for_registry, prepare_fission_clone_sources_subtree,
+    stamp_fission_clone_source_label, FissionCloneSourceLabel, FISSION_CLONE_SOURCE_PROPERTY_ID,
 };
 pub use ids::{
     advance_simthing_id_allocator_past, OverlayId, SimPropertyId, SimThingId,
