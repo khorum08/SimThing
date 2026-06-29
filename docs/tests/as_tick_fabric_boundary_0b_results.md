@@ -7,8 +7,8 @@ PASS — RF band dispatch and mapping hot-path dispatch migrated behind `Simulat
 ## PR / branch / merge
 
 - Branch: `codex/as-tick-fabric-boundary-0b`
-- PR: (pending push)
-- Merge: (pending)
+- PR: #963
+- Merge: `e4f7e26902`
 
 ## What changed
 
