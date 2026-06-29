@@ -33,6 +33,8 @@
 - **Seals before extraction.** The write/emission/participation seals land *within existing crates first* (the write-seal is a 0.0.8.5 precondition — below); the `simthing-kernel` crate extraction is the **keystone last**, making the seals dependency-enforced rather than convention.
 - **Ship every seal with its sanctioned channel (§2.1).** A seal that blocks the direct path without a visible conformant path (EML gadget / RF arena / `BoundaryProtocol`) *pushes capable models toward sidecars*. Each seal rung names the sanctioned alternative; the goal is *channeling*, not just denial.
 - **Deny escape *primitives* at the highest admission rung** — `#![forbid(unsafe_code)]` (compiler) + minimal `Cargo.toml` deps (dependency graph), **never** a grep token-firewall (that is the D8 noun-for-verb regression).
+- **The kernel crate IS the authoritative-runtime admission surface.** It is the sole owner of authoritative state and the sole minter of authoritative effects (mutations + emissions). Every other crate either depends on its **read-only view** (to observe) or produces **registrations/EML data** (which it executes). It is the *runtime-authority* layer; it **composes with, does not replace,** the content-admission layer (hydration/spec), which compiles *down* to kernel registrations. Document them as two composed layers, never conflated.
+- **Performance is paramount — the seals MUST be zero-cost.** This crate is the per-tick hot path for the 2000-star / billion-pop benchmark. Every seal is a *compile-time* construct: capability tokens are **ZSTs** (zero-sized, compile to nothing), newtypes are `#[repr(transparent)]`, views are borrows — **no runtime check, no indirection, no dynamic dispatch, no allocation** on the hot path. The crate boundary must **preserve hot-path inlining** (`#[inline]`/`#[inline(always)]` where measured, LTO verified). A seal that adds runtime cost is wrong even if it compiles. (This is *additional to* value parity — see §2 DoD.)
 - **Consumer/corpus streamlining is consumer-pulled, NOT bundled here.** This track *enables* ClauseThing-admission and consumer simplification; it does not perform them (constitution consumer-pulled discipline).
 
 ---
@@ -66,8 +68,15 @@ enforced by the dependency graph.
 ## 2. The ladder
 
 Each rung: one `compile_fail` (or a `cargo`-deny / dependency check) proving the illegal state no longer
-builds; retire the prose/guard it replaces; pure refactor with parity; one results ledger. Recipient per the
-handoff routing (coding → Cursor/Grok; closeout → Opus/Owner).
+builds; retire the prose/guard it replaces; pure refactor; one results ledger. Recipient per the handoff
+routing (coding → Cursor/Grok; closeout → Opus/Owner).
+
+**Per-rung definition of done — two parities, both gated:** (1) **value parity** — CPU-oracle bit-exact, no
+resolved value changes; (2) **performance parity** — the seal is a zero-cost construct (token is a ZST /
+newtype is `#[repr(transparent)]` / view is a borrow) **and** a microbenchmark (or the existing resident
+tick over a representative slot count) shows **no regression** vs the pre-seal baseline. The crate-extraction
+rung additionally proves hot-path **inlining is preserved across the boundary** (LTO on; `#[inline]` where
+measured). A rung that adds runtime cost fails DoD even if it compiles and parity holds.
 
 | Rung | ID | Promote | Type/dependency move | Retires | Recipient |
 |---|---|---|---|---|---|
@@ -78,7 +87,18 @@ handoff routing (coding → Cursor/Grok; closeout → Opus/Owner).
 | 4 | `KERNEL-EMISSION-SEAL-0` | §8 — decisions are threshold crossings | `EmissionRecord` / decision types get **private constructors**; only the threshold-crossing logic (kernel or its CPU-oracle twin) can mint one. **Sanctioned channel: `Threshold`→`EmitEvent`→`BoundaryRequest`.** | "decisions are GPU-resident threshold crossings" prose → type. `compile_fail`: forging an `EmissionRecord`. | Cursor/Grok |
 | 5 | `KERNEL-PARTICIPATION-SEAL-0` | §5.2/§7 — spatial arenas need placed participants | Arena registration accepts only typed participants; a **spatial** arena requires a `StructuralCoord` placement proof (`validate_spatial_binding` as a type, not a runtime check). | The "property possession never admits" / spatial-binding runtime guards → type. `compile_fail`: an unplaced participant entering a spatial arena. | Cursor/Grok |
 | 6 | `KERNEL-CRATE-EXTRACT-0` | §4 — semantic-free core as a dependency-graph fact | **The keystone.** Carve the already-identified semantic-free core (the `AccumulatorOp` passes behind `SimulationFabric` + the sealed column buffer) into **`simthing-kernel`**: minimal deps (ideally only `simthing-eml` + the fabric/index types), `#![forbid(unsafe_code)]`, owns the only mutable column buffer; every other crate depends on its **read-only view**. The seals (3–5) become dependency-enforced, not convention. **May split.** | The semantic-free *source scans* → narrowed to shader-text only; the kernel's dep graph is now the firewall. `compile_fail`/dep-check: a consumer crate reaching kernel-internal mutation. | Cursor/Grok |
-| F | `KERNEL-CLOSEOUT-0` | — | Scope Ledger; **upgrade the handoff-spine "one authoritative path" line directive → type-fact**; record the STEAD-completeness statement (write-seal + projection bindings → complete front by construction); consolidate sub-rung docs (one ledger each). | — | Opus/Owner (DA) |
+| F | `KERNEL-CLOSEOUT-0` | — | Scope Ledger + perf-parity ledger; consolidate sub-rung docs (one ledger each); **the four mandatory documentation landings below (§2A)**. | — | Opus/Owner (DA) |
+
+### 2A. Closeout documentation guarantees (binding — the track does not close without all four)
+
+`KERNEL-CLOSEOUT-0` is **not** done until each of these lands; they are gating, not optional:
+
+1. **SimThing Core Design Doc** — a new section documenting `simthing-kernel` as the authoritative-runtime admission surface: its role (sole owner of authoritative state + sole minter of effects), the two-layer relationship with content-admission, the read-only-view contract for consumers, and the **zero-cost / hot-path performance mandate** (so future agents never reach for a runtime-checked seal). This is the permanent paradigm record.
+2. **Constitution §0 (transient carry-forward)** — a short clause naming the kernel crate as the runtime authoritative path, added **by addition** to §0 so it **propagates verbatim to every future constitution version** (the prominent, cross-version home). It states: authoritative state/effects exist only behind the kernel surface; bypass is a constitutional violation *and* a compile error.
+3. **Handoff template** — the context spine's "one authoritative path" line **upgrades from directive to type-fact**, AND the template gains a short **"the kernel door"** pointer: *to affect authoritative state, observe via the kernel read-only view and produce a registration / EML / `BoundaryProtocol` effect — here is the entry point; do not grope for sealed paths.* This converts the seal from a wall agents discover by compile-error into a signpost they read first — the token-economy point, applied to the seal itself.
+4. **STEAD-completeness statement** — recorded in the closeout ledger: write-seal (no bypass) + projection bindings (visibility) ⇒ the Movement-Front is complete by construction, so 0.0.8.5's STEAD-only decisions are sound.
+
+Guarantee (1)+(2)+(3) means the kernel's role is documented at all three altitudes — permanent paradigm, cross-version constitution, and the agent-facing handoff — so no agent burns tokens blindly feeling through sealed paths.
 
 ---
 
