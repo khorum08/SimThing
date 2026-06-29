@@ -7,8 +7,8 @@ PROBATION — 0.0.8.4 Admission Substrate build ladder closed; final DA closeout
 ## PR / branch / merge
 
 - Branch: `codex/as-closeout-0`
-- PR: (pending push)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/977
+- Merge: `89b3b54ccb` (master)
 
 ## Track summary
 
