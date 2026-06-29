@@ -7,8 +7,8 @@ PASS — public owned-`SimThing` escape seams sealed; driver production paths no
 ## PR / branch / merge
 
 - Branch: `codex/as-sim-semantic-free-0c`
-- PR: (pending push)
-- Merge: (pending)
+- PR: #960
+- Merge: `2fb4cf6f39`
 
 ## What changed
 
