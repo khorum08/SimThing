@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** — decision/emission record types (`EmissionRecord`, `ThresholdEmission`, `ThresholdEvent`) are constructor-sealed; external crates cannot struct-literal forge authoritative decision output. DA re-review required before DONE.
+**PROBATION** — decision/emission record types are constructor-sealed; external crates cannot struct-literal or named-constructor forge authoritative decision output. DA re-review required before DONE.
 
 ## PR / branch / merge
 
@@ -16,8 +16,29 @@
 - Split `ThresholdEvent` from GPU transport: `ThresholdEventGpu` (`#[repr(C)]` Pod for Pass 7 buffer) vs sealed `ThresholdEvent` (authoritative decision record with accessors).
 - Kernel session readback, CPU oracle, and emission accumulator paths mint records only through named constructors.
 - Added `cpu_oracle_emission_records()` for driver parity burn-in (oracle twin inside `simthing-gpu`).
-- Public `ThresholdEvent::from_boundary_delivery` retained for boundary/test replay (not live emission forgery).
 - Migrated call sites in `simthing-sim`, `simthing-driver`, and `simthing-spec` to accessors and sanctioned constructors.
+
+## 0R remediation — public named-constructor forge vector
+
+**DA hold source:** public `ThresholdEvent::from_boundary_delivery(slot, col, value, event_kind)` minted arbitrary authoritative events from raw primitives.
+
+**Exact fix:**
+- Removed public `from_boundary_delivery` entirely (dead after migration).
+- Added public `cpu_oracle_threshold_events(...)` — CPU-oracle twin that mints events only when buffer state crosses registered thresholds (not arbitrary tuples).
+- Added named-constructor `compile_fail` doctests on `ThresholdEvent`, `EmissionRecord`, and `ThresholdEmission`.
+- Migrated unit/integration test fixtures to CPU-oracle crossings via `threshold_event_test_fixtures` (`#[cfg(test)]` in `simthing-sim`) or inline oracle helpers.
+
+**Constructor audit (post-0R):**
+
+| Type | Public minters returning sealed type | Verdict |
+|---|---|---|
+| `EmissionRecord` | None (only accessors public); `cpu_oracle_emission_records` computes from flat + registrations | OK — not raw forge |
+| `ThresholdEmission` | None | OK |
+| `ThresholdEvent` | None; `cpu_oracle_threshold_events` requires threshold crossings | OK — not raw forge |
+
+**0R proofs rerun:** `cargo test -p simthing-gpu --doc` (17 compile_fail incl. named constructors), `cargo test -p simthing-gpu threshold --lib`, `cargo test -p simthing-sim --test s6_threshold_sunset --test c1_threshold_perf --test c8d_emission_accumulator_parity`, fission/boundary/pr10 tests green.
+
+**0R scope:** `world_state.rs`, `types.rs`, `passes.rs`, `lib.rs`, `threshold_event_test_fixtures.rs`, test call sites in `simthing-sim` / `simthing-driver` / `simthing-spec`.
 
 ## Sealed emission surfaces
 
@@ -25,7 +46,7 @@
 |---|---|---|---|
 | `EmissionRecord` | None (accessors only) | `compile_fail` | `from_kernel_emit_event`, `from_gpu_readback`, `from_cpu_oracle` (`pub(crate)`); `cpu_oracle_emission_records()` for driver oracle |
 | `ThresholdEmission` | None (accessors only) | `compile_fail` | `from_kernel_emit_event`, `from_gpu_readback`, `from_cpu_oracle` (`pub(crate)`) |
-| `ThresholdEvent` | None (accessors only) | `compile_fail` | `from_kernel_pass7_readback`, `from_gpu_readback` (`pub(crate)`); `from_boundary_delivery` (boundary replay) |
+| `ThresholdEvent` | None (accessors only) | `compile_fail` (struct + named) | `from_kernel_pass7_readback`, `from_gpu_readback` (`pub(crate)`); production via kernel readback; tests via `cpu_oracle_threshold_events` |
 | `EmissionRecordGpu`, `ThresholdEmissionGpu`, `ThresholdEventGpu`, `ThresholdRegistration`, `AccumulatorOpGpu` | Public POD layout | N/A — transport only, not authoritative decision records |
 
 ## Sanctioned channels preserved
@@ -40,7 +61,8 @@ CPU-oracle twin: `from_cpu_oracle` / `cpu_oracle_emission_records` inside `simth
 |---|---|
 | `EmissionRecord` `compile_fail` rustdoc (`types.rs`) | External CPU-side `EmissionRecord { … }` forgery |
 | `ThresholdEmission` `compile_fail` rustdoc (`types.rs`) | External CPU-side threshold emission forgery |
-| `ThresholdEvent` `compile_fail` rustdoc (`world_state.rs`) | External CPU-side threshold event forgery |
+| `ThresholdEvent` `compile_fail` rustdoc (struct literal + `from_boundary_delivery`) | External struct-literal and named-constructor forgery |
+| `EmissionRecord` / `ThresholdEmission` named-constructor `compile_fail` | External pub(crate) minter reach via public API |
 | `cargo test -p simthing-gpu --lib threshold` (18 tests) | Kernel threshold scan + CPU-oracle parity unchanged |
 | `cargo test -p simthing-sim --test s6_threshold_sunset --test c1_threshold_perf --test c8d_emission_accumulator_parity` | End-to-end threshold/emission readback + perf smoke |
 | `cargo test -p simthing-sim as_sim_semantic_free_public_surface_audit --lib` | Semantic-free surface audit still green |

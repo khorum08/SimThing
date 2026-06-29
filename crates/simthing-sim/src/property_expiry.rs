@@ -317,9 +317,9 @@ mod tests {
         let n_dims = reg.total_columns;
         let shadow = vec![0.0; alloc.capacity() * n_dims];
 
-        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
-            0, 0, 0.0, ek,
-        )];
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(0, 0, 0.0, ek, n_dims),
+        ];
         let out = resolve_property_expiry(
             &mut root, &mut reg, &alloc, &shadow, n_dims, &events, &cpu_reg, None,
         );
@@ -439,9 +439,9 @@ mod tests {
         alloc.populate_from_tree(&root);
         let n_dims = reg.total_columns;
         let shadow = vec![0.0; alloc.capacity() * n_dims];
-        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
-            0, 0, 0.0, ek,
-        )];
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(0, 0, 0.0, ek, n_dims),
+        ];
 
         let mut recursive_root = root.clone();
         let mut recursive_reg = reg.clone();

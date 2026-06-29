@@ -1412,12 +1412,15 @@ mod tests {
             sub_field: SubFieldRole::Velocity,
         });
 
-        let events = vec![
-            ThresholdEvent::from_boundary_delivery(0, 0, 1.0, ek_unlock),
-            ThresholdEvent::from_boundary_delivery(1, 1, 2.0, ek_velocity),
-            // Out-of-range event_kind: should be filtered.
-            ThresholdEvent::from_boundary_delivery(2, 2, 3.0, 99),
-        ];
+        let events = crate::threshold_event_test_fixtures::fixtures::upward_crossings(
+            &[
+                (0, 0, 1.0, ek_unlock),
+                (1, 1, 2.0, ek_velocity),
+                // Out-of-range event_kind: should be filtered.
+                (2, 2, 3.0, 99),
+            ],
+            3,
+        );
 
         let unlocks = cpu.extract_capability_unlocks(&events);
 

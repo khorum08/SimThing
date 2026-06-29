@@ -1207,32 +1207,14 @@ mod tests {
         n_dims: u32,
         regs: &[crate::world_state::ThresholdRegistration],
     ) -> Vec<crate::world_state::ThresholdEvent> {
-        use crate::world_state::{ThresholdEvent, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_OUTPUT};
-        let mut events = Vec::new();
-        for r in regs {
-            let addr = (r.slot * n_dims + r.col) as usize;
-            let (prev, curr) = if r.buffer == THRESH_BUF_OUTPUT {
-                (previous_output[addr], output[addr])
-            } else {
-                (previous_values[addr], values[addr])
-            };
-            let up = prev <= r.threshold && curr > r.threshold;
-            let down = prev >= r.threshold && curr < r.threshold;
-            let crossed = match r.direction {
-                DIR_UPWARD => up,
-                DIR_DOWNWARD => down,
-                _ => up || down,
-            };
-            if crossed {
-                events.push(ThresholdEvent::from_kernel_pass7_readback(
-                    r.slot,
-                    r.col,
-                    curr,
-                    r.event_kind,
-                ));
-            }
-        }
-        events
+        crate::world_state::cpu_oracle_threshold_events(
+            previous_values,
+            values,
+            previous_output,
+            output,
+            n_dims,
+            regs,
+        )
     }
 
     fn run_accumulator_threshold_scan(
