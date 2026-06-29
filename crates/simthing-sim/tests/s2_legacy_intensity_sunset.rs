@@ -81,7 +81,7 @@ fn s2_accumulator_intensity_is_default_path() {
 
     let cohort_slot = proto
         .allocator
-        .slot_of(proto.root.access(|root| root.children[0].id))
+        .slot_of(proto.root.direct_child_id(0).expect("world has cohort"))
         .unwrap();
     let idx = cohort_slot as usize * n_dims as usize + icol;
     let before = state.read_values()[idx];

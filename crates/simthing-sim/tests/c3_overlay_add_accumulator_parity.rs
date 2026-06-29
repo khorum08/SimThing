@@ -463,7 +463,7 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         proto.flags.use_accumulator_overlay_add = true;
         proto.initial_gpu_sync(&coord, &mut state);
 
-        let cohort_id = proto.root.access(|root| root.children[0].id);
+        let cohort_id = proto.root.direct_child_id(0).expect("world has cohort");
         tx.send(FeederWork::Patch(PatchTransform {
             target: cohort_id,
             delta: PropertyTransformDelta {

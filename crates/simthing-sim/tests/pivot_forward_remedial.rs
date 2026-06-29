@@ -73,7 +73,7 @@ fn c2_flag_off_clears_stale_intent_accumulator() {
         .as_ref()
         .is_none_or(|r| !r.intent_active()));
 
-    let cohort_id = proto.root.access(|root| root.children[0].id);
+    let cohort_id = proto.root.direct_child_id(0).expect("world has cohort");
     tx.send(FeederWork::Patch(PatchTransform {
         target: cohort_id,
         delta: PropertyTransformDelta {

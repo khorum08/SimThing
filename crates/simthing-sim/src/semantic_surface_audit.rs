@@ -1,4 +1,5 @@
-//! AS-SIM-SEMANTIC-FREE-0A closure evidence — public crate surface must not name semantic kinds.
+//! AS-SIM-SEMANTIC-FREE-0A/0B closure evidence — public crate surface must not
+//! name semantic kinds or expose raw `SimThing` borrows.
 
 #[cfg(test)]
 mod tests {
@@ -25,7 +26,9 @@ mod tests {
         "lib.rs",
     ];
 
-    const FORBIDDEN: &[&str] = &["SimThingKind", "SimThingKindTag", "kind_tag_to_kind"];
+    const KIND_FORBIDDEN: &[&str] = &["SimThingKind", "SimThingKindTag", "kind_tag_to_kind"];
+
+    const RAW_BORROW_FORBIDDEN: &[&str] = &["&SimThing", "&mut SimThing"];
 
     fn sim_src_dir() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
@@ -70,6 +73,16 @@ mod tests {
         strip_comments(&strip_cfg_test_modules(source))
     }
 
+    fn is_public_fn_line(line: &str) -> bool {
+        let trimmed = line.trim();
+        trimmed.starts_with("pub fn ") && !trimmed.starts_with("pub(crate) fn")
+    }
+
+    fn is_public_field_line(line: &str) -> bool {
+        let trimmed = line.trim();
+        trimmed.starts_with("pub ") && trimmed.contains(':') && !trimmed.contains("pub fn")
+    }
+
     #[test]
     fn as_sim_semantic_free_public_surface_audit() {
         let src_dir = sim_src_dir();
@@ -84,10 +97,39 @@ mod tests {
             let production = production_text(&source);
             for (line_no, line) in production.lines().enumerate() {
                 let line_no = line_no + 1;
-                for token in FORBIDDEN {
+                for token in KIND_FORBIDDEN {
                     if line.contains(token) {
                         violations.push(format!(
                             "{rel}:{line_no}: public surface contains `{token}`"
+                        ));
+                    }
+                }
+                if is_public_fn_line(line) {
+                    for token in RAW_BORROW_FORBIDDEN {
+                        if line.contains(token) {
+                            violations
+                                .push(format!("{rel}:{line_no}: public fn borrows raw `{token}`"));
+                        }
+                    }
+                    if (line.contains("pub fn admit(")
+                        || line.contains("pub fn into_admitted(")
+                        || line.contains("pub fn replace("))
+                        && line.contains("SimThing")
+                    {
+                        violations.retain(|v| !v.starts_with(&format!("{rel}:{line_no}:")));
+                    }
+                }
+                if is_public_field_line(line) {
+                    for token in RAW_BORROW_FORBIDDEN {
+                        if line.contains(token) {
+                            violations.push(format!(
+                                "{rel}:{line_no}: public field borrows raw `{token}`"
+                            ));
+                        }
+                    }
+                    if line.contains(": SimThing,") || line.contains(": SimThing}") {
+                        violations.push(format!(
+                            "{rel}:{line_no}: public field carries owned `SimThing`"
                         ));
                     }
                 }
@@ -96,8 +138,13 @@ mod tests {
 
         assert!(
             violations.is_empty(),
-            "simthing-sim public surface must not name SimThing kinds:\n{}",
+            "simthing-sim public surface must not name kinds or expose raw SimThing:\n{}",
             violations.join("\n")
         );
+    }
+
+    #[test]
+    fn sim_public_surface_rejects_raw_simthing_borrows() {
+        as_sim_semantic_free_public_surface_audit();
     }
 }

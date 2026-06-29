@@ -61,6 +61,7 @@ use simthing_gpu::{
 };
 
 use crate::fission::FissionLineageRecord;
+use crate::sim_runtime_tree::SimRuntimeTree;
 
 // ── Semantic action ───────────────────────────────────────────────────────────
 
@@ -447,7 +448,7 @@ impl ThresholdBuilder {
     /// CPU registry. The two vecs are index-aligned: `gpu_regs[i]` fires with
     /// `event_kind = i`, which the boundary resolves via `cpu_registry.get(i)`.
     pub fn build(
-        root: &SimThing,
+        root: &SimRuntimeTree,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
@@ -455,7 +456,7 @@ impl ThresholdBuilder {
     }
 
     pub fn build_with_velocity_alerts(
-        root: &SimThing,
+        root: &SimRuntimeTree,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
         velocity_alerts: &[VelocityAlertRegistration],
@@ -464,7 +465,7 @@ impl ThresholdBuilder {
     }
 
     pub fn build_with_alerts(
-        root: &SimThing,
+        root: &SimRuntimeTree,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
         velocity_alerts: &[VelocityAlertRegistration],
@@ -489,7 +490,7 @@ impl ThresholdBuilder {
     /// index is out of range, whose child slot can't be resolved, or whose
     /// property has no Intensity sub-field are silently skipped.
     pub fn build_with_lineage(
-        root: &SimThing,
+        root: &SimRuntimeTree,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
         velocity_alerts: &[VelocityAlertRegistration],
@@ -498,7 +499,13 @@ impl ThresholdBuilder {
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
-        Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
+        Self::walk(
+            root.inner(),
+            dim_reg,
+            allocator,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
         Self::push_fusion_lineage(dim_reg, allocator, lineage, &mut gpu_regs, &mut cpu_reg);
         Self::push_velocity_alerts(
             dim_reg,
@@ -532,7 +539,7 @@ impl ThresholdBuilder {
     /// the first fission boundary after a capability tree is initialized
     /// takes the full-rebuild path regardless.
     pub fn build_with_capability_unlocks(
-        root: &SimThing,
+        root: &SimRuntimeTree,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
         velocity_alerts: &[VelocityAlertRegistration],
@@ -540,7 +547,13 @@ impl ThresholdBuilder {
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
-        Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
+        Self::walk(
+            root.inner(),
+            dim_reg,
+            allocator,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
         Self::push_velocity_alerts(
             dim_reg,
             allocator,
@@ -571,7 +584,7 @@ impl ThresholdBuilder {
     ///
     /// Full-rebuild path only; B2 append-only integration is a future PR.
     pub fn build_with_scripted_event_triggers(
-        root: &SimThing,
+        root: &SimRuntimeTree,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
         velocity_alerts: &[VelocityAlertRegistration],
@@ -579,7 +592,13 @@ impl ThresholdBuilder {
     ) -> (Vec<ThresholdRegistration>, ThresholdRegistry) {
         let mut gpu_regs = Vec::new();
         let mut cpu_reg = ThresholdRegistry::new();
-        Self::walk(root, dim_reg, allocator, &mut gpu_regs, &mut cpu_reg);
+        Self::walk(
+            root.inner(),
+            dim_reg,
+            allocator,
+            &mut gpu_regs,
+            &mut cpu_reg,
+        );
         Self::push_velocity_alerts(
             dim_reg,
             allocator,
@@ -667,7 +686,7 @@ impl ThresholdBuilder {
     /// the boundary already holds the existing threshold registry, so we only
     /// need to derive registrations for the newly-spawned SimThings. The
     /// event_kinds assigned to the new entries are `cpu_reg.len()` and onwards.
-    pub fn append_subtree(
+    pub(crate) fn append_subtree(
         node: &SimThing,
         dim_reg: &DimensionRegistry,
         allocator: &SlotAllocator,
@@ -1030,6 +1049,7 @@ fn direction_to_u32(dir: &Direction) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sim_runtime_tree::SimRuntimeTree;
     use simthing_core::{DimensionRegistry, SimProperty, SimThing, SimThingKind};
     use simthing_gpu::SlotAllocator;
 
@@ -1037,7 +1057,7 @@ mod tests {
     fn empty_tree_produces_no_registrations() {
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
-        let root = SimThing::new(SimThingKind::World, 0);
+        let root = SimRuntimeTree::admit(SimThing::new(SimThingKind::World, 0));
         let allocator = SlotAllocator::new();
         let (gpu, cpu) = ThresholdBuilder::build(&root, &reg, &allocator);
         assert!(gpu.is_empty());
@@ -1105,8 +1125,14 @@ mod tests {
             template_idx: 0,
         }];
 
-        let (gpu, cpu) =
-            ThresholdBuilder::build_with_lineage(&parent, &reg, &alloc, &[], &[], &lineage);
+        let (gpu, cpu) = ThresholdBuilder::build_with_lineage(
+            &SimRuntimeTree::admit(parent),
+            &reg,
+            &alloc,
+            &[],
+            &[],
+            &lineage,
+        );
 
         // Parent + child each contribute one FissionTrigger registration
         // (from `walk`) plus the one FusionTrigger registration we asked for.
@@ -1170,8 +1196,14 @@ mod tests {
             template_idx: 0,
         }];
 
-        let (gpu, cpu) =
-            ThresholdBuilder::build_with_lineage(&root, &reg, &alloc, &[], &[], &lineage);
+        let (gpu, cpu) = ThresholdBuilder::build_with_lineage(
+            &SimRuntimeTree::admit(root),
+            &reg,
+            &alloc,
+            &[],
+            &[],
+            &lineage,
+        );
 
         assert!(gpu.iter().all(|r| !matches!(
             cpu.get(r.event_kind),
@@ -1232,8 +1264,13 @@ mod tests {
             threshold: 5000.0,
         }];
 
-        let (gpu, cpu) =
-            ThresholdBuilder::build_with_capability_unlocks(&tree, &reg, &alloc, &[], &unlocks);
+        let (gpu, cpu) = ThresholdBuilder::build_with_capability_unlocks(
+            &SimRuntimeTree::admit(tree),
+            &reg,
+            &alloc,
+            &[],
+            &unlocks,
+        );
 
         // One registration, one parallel semantic entry at the same event_kind.
         assert_eq!(gpu.len(), 1);
@@ -1280,8 +1317,13 @@ mod tests {
             threshold: 5000.0,
         }];
 
-        let (gpu, _cpu) =
-            ThresholdBuilder::build_with_capability_unlocks(&tree, &reg, &alloc, &[], &unlocks);
+        let (gpu, _cpu) = ThresholdBuilder::build_with_capability_unlocks(
+            &SimRuntimeTree::admit(tree),
+            &reg,
+            &alloc,
+            &[],
+            &unlocks,
+        );
 
         // Expected col = start of propulsion (after 3-column loyalty) + 0 (first sub-field).
         let propulsion_range = reg.column_range(pid);
@@ -1309,7 +1351,7 @@ mod tests {
         }];
 
         let (gpu, cpu) = ThresholdBuilder::build_with_capability_unlocks(
-            &tree,
+            &SimRuntimeTree::admit(tree),
             &reg,
             &SlotAllocator::new(),
             &[],
@@ -1425,8 +1467,12 @@ mod tests {
             direction: Direction::Falling,
         }];
 
-        let (gpu, cpu) =
-            ThresholdBuilder::build_with_velocity_alerts(&cohort, &reg, &alloc, &alerts);
+        let (gpu, cpu) = ThresholdBuilder::build_with_velocity_alerts(
+            &SimRuntimeTree::admit(cohort),
+            &reg,
+            &alloc,
+            &alerts,
+        );
 
         assert_eq!(gpu.len(), 1);
         assert_eq!(gpu[0].slot, 0);

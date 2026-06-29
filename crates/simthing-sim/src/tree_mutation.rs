@@ -60,6 +60,7 @@
 //! - Records the property id so the boundary protocol can widen the CPU
 //!   shadow and rebuild `WorldGpuState` before step 9 sync.
 
+use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
 use simthing_core::{
     prepare_fission_clone_sources_subtree, DimensionRegistry, OverlayId, OverlayLifecycle,
@@ -78,7 +79,7 @@ use std::collections::HashMap;
 /// before flushing. For Week 3 testing the fixture pre-allocates headroom.
 pub fn apply_structural_mutations(
     requests: Vec<BoundaryRequest>,
-    root: &mut SimThing,
+    root: &mut SimRuntimeTree,
     allocator: &mut SlotAllocator,
     registry: &mut DimensionRegistry,
     values_shadow: &mut [f32],
@@ -86,6 +87,7 @@ pub fn apply_structural_mutations(
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> MaintainerOutcome {
     let mut out = MaintainerOutcome::default();
+    let root = root.inner_mut();
 
     for req in requests {
         match req {
@@ -520,6 +522,7 @@ fn find_node_mut<'a>(node: &'a mut SimThing, id: SimThingId) -> Option<&'a mut S
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sim_runtime_tree::SimRuntimeTree;
     use simthing_core::{
         prepare_fission_clone_sources_subtree, DimensionRegistry, Direction, DissolveCondition,
         FissionTemplate, FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
@@ -529,7 +532,7 @@ mod tests {
     use simthing_feeder::BoundaryRequest;
     use simthing_gpu::SlotAllocator;
 
-    fn fixture() -> (DimensionRegistry, SlotAllocator, SimThing) {
+    fn fixture() -> (DimensionRegistry, SlotAllocator, SimRuntimeTree) {
         let mut reg = DimensionRegistry::new();
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let mut root = SimThing::new(SimThingKind::World, 0);
@@ -538,14 +541,14 @@ mod tests {
         let loc = SimThing::new(SimThingKind::Location, 0);
         alloc.alloc(loc.id);
         root.add_child(loc);
-        (reg, alloc, root)
+        (reg, alloc, SimRuntimeTree::admit(root))
     }
 
     #[test]
     fn add_child_allocates_slot_and_attaches() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let parent_id = root.children[0].id;
+        let parent_id = tree.direct_child_id(0).unwrap();
         let cohort = SimThing::new(SimThingKind::Cohort, 1);
         let cohort_id = cohort.id;
 
@@ -557,7 +560,7 @@ mod tests {
                 parent: parent_id,
                 child: cohort,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -567,8 +570,9 @@ mod tests {
 
         assert_eq!(out.adds, 1);
         assert_eq!(out.allocated, vec![cohort_id]);
-        assert_eq!(root.children[0].children.len(), 1);
-        assert_eq!(root.children[0].children[0].id, cohort_id);
+        let loc_id = tree.direct_child_id(0).unwrap();
+        assert_eq!(tree.child_count(loc_id).unwrap(), 1);
+        assert_eq!(tree.child_id(loc_id, 0).unwrap(), cohort_id);
         // New slot's row was zeroed.
         let new_slot = alloc.slot_of(cohort_id).unwrap();
         let base = (new_slot as usize) * n_dims;
@@ -577,7 +581,7 @@ mod tests {
 
     #[test]
     fn add_child_to_unknown_parent_is_rejected() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
         let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
         let child = SimThing::new(SimThingKind::Cohort, 1);
@@ -588,7 +592,7 @@ mod tests {
                 parent: ghost,
                 child,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -603,13 +607,13 @@ mod tests {
 
     #[test]
     fn add_child_projects_initialized_properties_into_shadow() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let pid = SimPropertyId(0);
         let layout = reg.property(pid).layout.clone();
         let amount = layout.offset_of(&SubFieldRole::Amount).unwrap();
         let velocity = layout.offset_of(&SubFieldRole::Velocity).unwrap();
         let n_dims = reg.total_columns;
-        let parent_id = root.children[0].id;
+        let parent_id = tree.direct_child_id(0).unwrap();
 
         let mut child = SimThing::new(SimThingKind::Cohort, 1);
         let child_id = child.id;
@@ -624,7 +628,7 @@ mod tests {
                 parent: parent_id,
                 child,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -641,9 +645,9 @@ mod tests {
 
     #[test]
     fn remove_tombstones_target_and_all_descendants() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let loc_id = root.children[0].id;
+        let loc_id = tree.direct_child_id(0).unwrap();
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         let cohort_id = cohort.id;
         let leaf = SimThing::new(SimThingKind::Cohort, 0);
@@ -651,7 +655,7 @@ mod tests {
         cohort.add_child(leaf);
         alloc.alloc(cohort_id);
         alloc.alloc(leaf_id);
-        root.children[0].add_child(cohort);
+        tree.access_mut(|root| root.children[0].add_child(cohort));
 
         let mut shadow = vec![1.0f32; alloc.capacity() * n_dims];
         let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
@@ -660,7 +664,7 @@ mod tests {
 
         let out = apply_structural_mutations(
             vec![BoundaryRequest::Remove { target: loc_id }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -673,7 +677,7 @@ mod tests {
         assert!(out.tombstoned.contains(&loc_id));
         assert!(out.tombstoned.contains(&cohort_id));
         assert!(out.tombstoned.contains(&leaf_id));
-        assert!(root.children.is_empty());
+        assert!(tree.access(|root| root.children.is_empty()));
         assert!(!alloc.is_live(alloc.capacity() as u32 - 1));
         assert!(shadow[loc_slot * n_dims..loc_slot * n_dims + n_dims]
             .iter()
@@ -688,14 +692,14 @@ mod tests {
 
     #[test]
     fn remove_root_is_rejected() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let root_id = root.id;
+        let root_id = tree.id();
         let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
 
         let out = apply_structural_mutations(
             vec![BoundaryRequest::Remove { target: root_id }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -709,19 +713,19 @@ mod tests {
 
     #[test]
     fn reparent_moves_subtree_without_slot_churn() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let loc_id = root.children[0].id;
+        let loc_id = tree.direct_child_id(0).unwrap();
         let new_loc = SimThing::new(SimThingKind::Location, 0);
         let new_loc_id = new_loc.id;
         alloc.alloc(new_loc_id);
-        root.add_child(new_loc);
+        tree.access_mut(|root| root.add_child(new_loc));
 
         // Add a cohort under the original location.
         let cohort = SimThing::new(SimThingKind::Cohort, 0);
         let cohort_id = cohort.id;
         alloc.alloc(cohort_id);
-        root.children[0].add_child(cohort);
+        tree.access_mut(|root| root.children[0].add_child(cohort));
 
         let original_cohort_slot = alloc.slot_of(cohort_id).unwrap();
         let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
@@ -731,7 +735,7 @@ mod tests {
                 child: cohort_id,
                 new_parent: new_loc_id,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -742,10 +746,12 @@ mod tests {
         assert_eq!(out.reparents, 1);
         assert_eq!(out.rejected_unknown_target, 0);
         // Cohort moved.
-        assert!(root.children[0].children.is_empty());
-        let new_loc_node = root.children.iter().find(|c| c.id == new_loc_id).unwrap();
-        assert_eq!(new_loc_node.children.len(), 1);
-        assert_eq!(new_loc_node.children[0].id, cohort_id);
+        assert!(tree.access(|root| root.children[0].children.is_empty()));
+        tree.access(|root| {
+            let new_loc_node = root.children.iter().find(|c| c.id == new_loc_id).unwrap();
+            assert_eq!(new_loc_node.children.len(), 1);
+            assert_eq!(new_loc_node.children[0].id, cohort_id);
+        });
         // Slot is preserved.
         assert_eq!(alloc.slot_of(cohort_id), Some(original_cohort_slot));
         // Suppress unused warning.
@@ -754,10 +760,10 @@ mod tests {
 
     #[test]
     fn reparent_cycle_is_rejected() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let loc_id = root.children[0].id;
-        let root_id = root.id;
+        let loc_id = tree.direct_child_id(0).unwrap();
+        let root_id = tree.id();
         let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
 
         // Trying to reparent root under its own child would create a cycle.
@@ -766,7 +772,7 @@ mod tests {
                 child: root_id,
                 new_parent: loc_id,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -780,9 +786,9 @@ mod tests {
 
     #[test]
     fn attach_overlay_appends_to_target() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let loc_id = root.children[0].id;
+        let loc_id = tree.direct_child_id(0).unwrap();
         let pid = SimPropertyId(0);
         let overlay = Overlay {
             id: OverlayId::new(),
@@ -803,7 +809,7 @@ mod tests {
                 target: loc_id,
                 overlay,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -813,30 +819,34 @@ mod tests {
 
         assert_eq!(out.overlays, 1);
         assert_eq!(out.overlays_attached, vec![(loc_id, oid)]);
-        assert_eq!(root.children[0].overlays.len(), 1);
+        assert_eq!(tree.overlay_count(loc_id).unwrap(), 1);
     }
 
     #[test]
     fn activate_overlay_restores_parked_lifecycle() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let loc_id = root.children[0].id;
+        let loc_id = tree.direct_child_id(0).unwrap();
         let pid = SimPropertyId(0);
         let overlay_id = OverlayId::new();
-        root.children[0].add_overlay(Overlay {
-            id: overlay_id,
-            kind: OverlayKind::Policy,
-            source: OverlaySource::Player,
-            affects: vec![],
-            transform: PropertyTransformDelta {
-                property_id: pid,
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
-            },
-            lifecycle: OverlayLifecycle::Suspended {
-                when_activated: Box::new(OverlayLifecycle::Transient {
-                    dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 3 }],
-                }),
-            },
+        tree.access_mut(|root| {
+            root.children[0].add_overlay(Overlay {
+                id: overlay_id,
+                kind: OverlayKind::Policy,
+                source: OverlaySource::Player,
+                affects: vec![],
+                transform: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.1))],
+                },
+                lifecycle: OverlayLifecycle::Suspended {
+                    when_activated: Box::new(OverlayLifecycle::Transient {
+                        dissolution_conditions: vec![DissolveCondition::AfterTicks {
+                            remaining: 3,
+                        }],
+                    }),
+                },
+            });
         });
         let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
 
@@ -845,7 +855,7 @@ mod tests {
                 target: loc_id,
                 overlay_id,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -855,33 +865,37 @@ mod tests {
 
         assert_eq!(out.overlay_activations, 1);
         assert_eq!(out.overlays_activated, vec![(loc_id, overlay_id)]);
-        assert!(matches!(
-            root.children[0].overlays[0].lifecycle,
-            OverlayLifecycle::Transient { ref dissolution_conditions }
-                if matches!(
-                    dissolution_conditions.as_slice(),
-                    [DissolveCondition::AfterTicks { remaining: 3 }]
-                )
-        ));
+        tree.access(|root| {
+            assert!(matches!(
+                root.children[0].overlays[0].lifecycle,
+                OverlayLifecycle::Transient { ref dissolution_conditions }
+                    if matches!(
+                        dissolution_conditions.as_slice(),
+                        [DissolveCondition::AfterTicks { remaining: 3 }]
+                    )
+            ));
+        });
     }
 
     #[test]
     fn suspend_overlay_parks_current_lifecycle() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
-        let loc_id = root.children[0].id;
+        let loc_id = tree.direct_child_id(0).unwrap();
         let pid = SimPropertyId(0);
         let overlay_id = OverlayId::new();
-        root.children[0].add_overlay(Overlay {
-            id: overlay_id,
-            kind: OverlayKind::Policy,
-            source: OverlaySource::Player,
-            affects: vec![],
-            transform: PropertyTransformDelta {
-                property_id: pid,
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.9))],
-            },
-            lifecycle: OverlayLifecycle::Permanent,
+        tree.access_mut(|root| {
+            root.children[0].add_overlay(Overlay {
+                id: overlay_id,
+                kind: OverlayKind::Policy,
+                source: OverlaySource::Player,
+                affects: vec![],
+                transform: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.9))],
+                },
+                lifecycle: OverlayLifecycle::Permanent,
+            });
         });
         let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
 
@@ -890,7 +904,7 @@ mod tests {
                 target: loc_id,
                 overlay_id,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -901,16 +915,16 @@ mod tests {
         assert_eq!(out.overlay_suspensions, 1);
         assert_eq!(out.overlays_suspended, vec![(loc_id, overlay_id)]);
         let OverlayLifecycle::Suspended { when_activated } =
-            &root.children[0].overlays[0].lifecycle
+            tree.access(|root| root.children[0].overlays[0].lifecycle.clone())
         else {
             panic!("overlay should be suspended");
         };
-        assert!(matches!(**when_activated, OverlayLifecycle::Permanent));
+        assert!(matches!(*when_activated, OverlayLifecycle::Permanent));
     }
 
     #[test]
     fn add_dimension_restores_property() {
-        let (mut reg, mut alloc, mut root) = fixture();
+        let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;
         let pid = SimPropertyId(0);
         reg.tombstone(pid);
@@ -918,7 +932,7 @@ mod tests {
 
         let out = apply_structural_mutations(
             vec![BoundaryRequest::AddDimension { property: pid }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -959,6 +973,7 @@ mod tests {
         let parent_id = loc.id;
         alloc.alloc(parent_id);
         root.add_child(loc);
+        let mut tree = SimRuntimeTree::admit(root);
 
         let n_dims = reg.total_columns;
         let tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
@@ -972,7 +987,7 @@ mod tests {
                 parent: parent_id,
                 child: tech_tree,
             }],
-            &mut root,
+            &mut tree,
             &mut alloc,
             &mut reg,
             &mut shadow,
@@ -981,18 +996,24 @@ mod tests {
         );
 
         assert_eq!(out.adds, 1);
-        let first = root.children[0].children[0]
-            .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
-            .expect("AddChild prepared marker")
-            .raw_lanes_for_serialization()
-            .to_vec();
+        let first = tree.access(|root| {
+            root.children[0].children[0]
+                .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
+                .expect("AddChild prepared marker")
+                .raw_lanes_for_serialization()
+                .to_vec()
+        });
 
-        prepare_fission_clone_sources_subtree(&mut root.children[0].children[0], &reg);
-        let second = root.children[0].children[0]
-            .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
-            .expect("marker remains")
-            .raw_lanes_for_serialization()
-            .to_vec();
+        tree.access_mut(|root| {
+            prepare_fission_clone_sources_subtree(&mut root.children[0].children[0], &reg);
+        });
+        let second = tree.access(|root| {
+            root.children[0].children[0]
+                .property(FISSION_CLONE_SOURCE_PROPERTY_ID)
+                .expect("marker remains")
+                .raw_lanes_for_serialization()
+                .to_vec()
+        });
         assert_eq!(first, second, "repeated prep must not restamp");
     }
 }

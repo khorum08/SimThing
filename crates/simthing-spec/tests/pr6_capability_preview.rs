@@ -3,7 +3,7 @@ use simthing_core::{
 };
 use simthing_feeder::BoundaryRequest;
 use simthing_gpu::SlotAllocator;
-use simthing_sim::apply_structural_mutations;
+use simthing_sim::{apply_structural_mutations, SimRuntimeTree};
 use simthing_spec::{
     compile_property, preview_capability_effect, ActivationMode, CapabilityBoundaryContext,
     CapabilityCategorySpec, CapabilityEffectSpec, CapabilityEntryKey, CapabilityPrereqSpec,
@@ -344,15 +344,17 @@ fn national_ideas_full_path_activate_switch_verify() {
 
     let mut allocator = SlotAllocator::new();
     allocator.alloc(fixture.tree.id);
+    let mut runtime = SimRuntimeTree::admit(fixture.tree.clone());
     apply_structural_mutations(
         requests,
-        &mut fixture.tree,
+        &mut runtime,
         &mut allocator,
         &mut fixture.registry,
         &mut shadow,
         fixture.n_dims,
         None,
     );
+    fixture.tree = runtime.into_admitted();
 
     let naval_lifecycle = &fixture
         .tree

@@ -660,7 +660,7 @@ impl BoundaryProtocol {
         let structural_started = Instant::now();
         out.maintainer = apply_structural_mutations(
             requests,
-            self.root.inner_mut(),
+            &mut self.root,
             &mut self.allocator,
             &mut self.registry,
             &mut coord.shadow,
@@ -887,7 +887,7 @@ impl BoundaryProtocol {
             Some(dedup_slots(dirty_value_slots))
         };
         let gpu_out = sync_gpu_buffers(
-            self.root.inner(),
+            &self.root,
             &self.registry,
             &self.allocator,
             coord,
@@ -1091,24 +1091,12 @@ impl BoundaryProtocol {
             ObserveFidelity::Shadow => {
                 let base = slot as usize * n_dims;
                 let row = &coord.shadow[base..base + n_dims];
-                observe(
-                    self.root.inner(),
-                    &self.registry,
-                    &self.allocator,
-                    row,
-                    target,
-                )
+                observe(&self.root, &self.registry, &self.allocator, row, target)
             }
             ObserveFidelity::GpuRow => {
                 let state = state?;
                 let row = state.read_values_row(slot);
-                observe(
-                    self.root.inner(),
-                    &self.registry,
-                    &self.allocator,
-                    &row,
-                    target,
-                )
+                observe(&self.root, &self.registry, &self.allocator, &row, target)
             }
         }
     }
@@ -1137,7 +1125,7 @@ impl BoundaryProtocol {
     pub fn snapshot(&self, day: u32) -> crate::replay::ReplaySnapshot {
         crate::replay::ReplaySnapshot {
             day,
-            root: self.root.inner().clone(),
+            root: self.root.clone(),
             registry: self.registry.clone(),
             fission_lineage: self.fission_lineage.clone(),
         }
@@ -1148,7 +1136,7 @@ impl BoundaryProtocol {
     /// Pass 7 has registrations from tick 1 onward.
     pub fn initial_gpu_sync(&mut self, coord: &DispatchCoordinator, state: &mut WorldGpuState) {
         let out = sync_gpu_buffers(
-            self.root.inner(),
+            &self.root,
             &self.registry,
             &self.allocator,
             coord,
@@ -1523,7 +1511,7 @@ mod tests {
     #[test]
     fn boundary_with_pending_request_cannot_skip() {
         let (proto, mut patcher, _) = simple_proto();
-        let target = proto.root.access(|root| root.children[0].id);
+        let target = proto.root.direct_child_id(0).unwrap();
         patcher.apply_collected_as_intents(
             vec![FeederWork::Boundary(BoundaryRequest::Remove { target })],
             Vec::new(),
@@ -1536,7 +1524,7 @@ mod tests {
     #[test]
     fn boundary_with_unsynced_alert_config_cannot_skip() {
         let (mut proto, patcher, pid) = simple_proto();
-        let target = proto.root.access(|root| root.children[0].id);
+        let target = proto.root.direct_child_id(0).unwrap();
         proto.register_velocity_alert(VelocityAlertRegistration {
             sim_thing_id: target,
             property_id: pid,

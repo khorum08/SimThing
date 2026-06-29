@@ -162,10 +162,11 @@ fn rf_pressure_feeds_heatmap_urgency_threshold_and_boundary_commitment() {
     //    the arena bands resolve flows on GPU.
     let (mut session, farmer_id) = open_rf_session(&hydrated);
     assert!(session.proto.flags.use_accumulator_resource_flow);
+    let root = session.proto.root.clone().into_admitted();
     let plan = build_execution_plan(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
+        &root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -306,15 +307,14 @@ fn rf_pressure_feeds_heatmap_urgency_threshold_and_boundary_commitment() {
         None,
     );
     assert_eq!(outcome.overlays, 1, "commitment overlay attached");
-    let farmer = {
-        fn find(node: &SimThing, id: SimThingId) -> Option<&SimThing> {
-            if node.id == id {
-                return Some(node);
-            }
-            node.children.iter().find_map(|c| find(c, id))
+    fn find<'a>(node: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
+        if node.id == id {
+            return Some(node);
         }
-        find(&session.proto.root, farmer_id).expect("farmer in tree")
-    };
+        node.children.iter().find_map(|c| find(c, id))
+    }
+    let admitted = session.proto.root.clone().into_admitted();
+    let farmer = find(&admitted, farmer_id).expect("farmer in tree");
     assert!(
         farmer
             .overlays

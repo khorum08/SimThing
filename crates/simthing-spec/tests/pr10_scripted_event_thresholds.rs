@@ -13,7 +13,7 @@ use simthing_feeder::{
     BoundaryRequest, ScriptedEventTriggerEvent, ScriptedEventTriggerRegistration,
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES};
-use simthing_sim::{ThresholdBuilder, ThresholdRegistry, ThresholdSemantic};
+use simthing_sim::{SimRuntimeTree, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic};
 use simthing_spec::{
     compile_property, CompiledEffect, CompiledThresholdTrigger, CompiledTrigger, CooldownSpec,
     EventKey, EventPriority, PropertySpec, ScopeRef, ScriptPredicate, ScriptedEventBoundaryContext,
@@ -123,7 +123,7 @@ fn to_trigger_registration_returns_none_for_predicate_triggers() {
 fn threshold_builder_emits_parallel_scripted_event_trigger_entry() {
     let registry = registry_with_loyalty();
     let allocator = SlotAllocator::new();
-    let root = SimThing::new(SimThingKind::World, 0);
+    let root = SimRuntimeTree::admit(SimThing::new(SimThingKind::World, 0));
 
     let triggers = vec![ScriptedEventTriggerRegistration {
         event_id: "rebellion_warning".into(),
@@ -162,7 +162,7 @@ fn threshold_builder_emits_parallel_scripted_event_trigger_entry() {
 fn threshold_builder_handles_rising_direction() {
     let registry = registry_with_loyalty();
     let allocator = SlotAllocator::new();
-    let root = SimThing::new(SimThingKind::World, 0);
+    let root = SimRuntimeTree::admit(SimThing::new(SimThingKind::World, 0));
 
     let triggers = vec![ScriptedEventTriggerRegistration {
         event_id: "loyalty_climb".into(),
