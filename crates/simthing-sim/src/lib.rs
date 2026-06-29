@@ -111,6 +111,8 @@ pub use threshold_registry::{
 pub use tree_mutation::apply_structural_mutations;
 
 #[cfg(test)]
+mod dependency_budget;
+#[cfg(test)]
 mod kind_production_audit;
 #[cfg(test)]
 mod semantic_surface_audit;
