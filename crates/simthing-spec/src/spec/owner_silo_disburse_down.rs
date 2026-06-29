@@ -6,12 +6,15 @@ use std::collections::BTreeMap;
 
 use simthing_core::SimThing;
 
+use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
 use super::owner_silo_runtime_writeback::RuntimeOwnerSiloWritebackResult;
 use super::planet_child_location::{
     is_admitted_planet_non_grid_child, planet_id, planet_non_grid_child_kind_label,
     planet_non_grid_child_owner_ref, planet_owner_ref, star_system_gridcells,
 };
-use super::planet_child_rf::PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY;
+use super::planet_child_rf::{
+    planet_child_rf_default_resource_key, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+};
 use super::scenario::{
     game_session_galaxy_map, game_session_owners, owner_entity_id, owner_flow_owner_ref,
     property_u32, SimThingScenarioSpec, OWNER_FLOW_DEFAULT_PRIORITY, OWNER_FLOW_DEMAND_PROPERTY_ID,
@@ -32,17 +35,17 @@ pub enum RuntimeOwnerSiloDisburseDownErrorKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloDisburseDownError {
     pub kind: RuntimeOwnerSiloDisburseDownErrorKind,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
-    pub scope_id: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
+    pub scope_id: Option<ScopeId>,
     pub message: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloDemandBucket {
-    pub owner_ref: String,
-    pub resource_key: String,
-    pub scope_id: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
+    pub scope_id: ScopeId,
     pub planet_id: Option<String>,
     pub star_system_gridcell_id_raw: Option<u32>,
     pub requested: u32,
@@ -52,17 +55,17 @@ pub struct RuntimeOwnerSiloDemandBucket {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloDisburseDownInput {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub available: u32,
     pub demands: Vec<RuntimeOwnerSiloDemandBucket>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloDisburseDownAllocation {
-    pub owner_ref: String,
-    pub resource_key: String,
-    pub scope_id: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
+    pub scope_id: ScopeId,
     pub planet_id: Option<String>,
     pub star_system_gridcell_id_raw: Option<u32>,
     pub requested: u32,
@@ -74,8 +77,8 @@ pub struct RuntimeOwnerSiloDisburseDownAllocation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloDisburseDownResult {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub available_before: u32,
     pub allocated_total: u32,
     pub remaining_after: u32,
@@ -87,7 +90,7 @@ pub struct RuntimeOwnerSiloDisburseDownResult {
 pub fn owner_silo_demand_buckets_from_planet_child_rf(
     scenario: &SimThingScenarioSpec,
 ) -> Result<Vec<RuntimeOwnerSiloDemandBucket>, RuntimeOwnerSiloDisburseDownError> {
-    let owner_refs: std::collections::BTreeSet<String> = game_session_owners(scenario)
+    let owner_refs: std::collections::BTreeSet<OwnerRef> = game_session_owners(scenario)
         .map_err(|_| RuntimeOwnerSiloDisburseDownError {
             kind: RuntimeOwnerSiloDisburseDownErrorKind::MissingOwnerChannelForActiveDemand,
             owner_ref: None,
@@ -97,6 +100,7 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
         })?
         .into_iter()
         .filter_map(owner_entity_id)
+        .map(OwnerRef::new)
         .collect();
 
     let _galaxy_map =
@@ -139,9 +143,9 @@ pub fn owner_silo_demand_buckets_from_planet_child_rf(
                     if has_active_demand_metadata(child) {
                         return Err(RuntimeOwnerSiloDisburseDownError {
                             kind: RuntimeOwnerSiloDisburseDownErrorKind::InvalidDemandAmount,
-                            owner_ref: owner_flow_owner_ref(child),
-                            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
-                            scope_id: Some(planet_scope.clone()),
+                            owner_ref: owner_flow_owner_ref(child).map(OwnerRef::new),
+                            resource_key: Some(planet_child_rf_default_resource_key()),
+                            scope_id: Some(ScopeId::new(&planet_scope)),
                             message: format!(
                                 "unsupported non-grid child kind {:?} cannot express disburse-down demand",
                                 child.kind
@@ -180,7 +184,7 @@ fn collect_demand_from_node(
     planet_id: Option<String>,
     star_system_gridcell_id_raw: Option<u32>,
     path: &str,
-    owner_refs: &std::collections::BTreeSet<String>,
+    owner_refs: &std::collections::BTreeSet<OwnerRef>,
     is_planet_gridcell: bool,
     buckets: &mut Vec<RuntimeOwnerSiloDemandBucket>,
 ) -> Result<(), RuntimeOwnerSiloDisburseDownError> {
@@ -194,8 +198,8 @@ fn collect_demand_from_node(
         return Err(RuntimeOwnerSiloDisburseDownError {
             kind: RuntimeOwnerSiloDisburseDownErrorKind::MissingOwnerChannelForActiveDemand,
             owner_ref: None,
-            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
-            scope_id: Some(scope_id.to_string()),
+            resource_key: Some(planet_child_rf_default_resource_key()),
+            scope_id: Some(ScopeId::new(scope_id)),
             message: format!("active demand at {path} requires owner/channel reference"),
         });
     };
@@ -203,17 +207,18 @@ fn collect_demand_from_node(
         return Err(RuntimeOwnerSiloDisburseDownError {
             kind: RuntimeOwnerSiloDisburseDownErrorKind::MissingOwnerChannelForActiveDemand,
             owner_ref: None,
-            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
-            scope_id: Some(scope_id.to_string()),
+            resource_key: Some(planet_child_rf_default_resource_key()),
+            scope_id: Some(ScopeId::new(scope_id)),
             message: format!("active demand at {path} has empty owner/channel reference"),
         });
     }
+    let owner_ref = OwnerRef::new(&owner_ref);
     if !owner_refs.contains(&owner_ref) {
         return Err(RuntimeOwnerSiloDisburseDownError {
             kind: RuntimeOwnerSiloDisburseDownErrorKind::UnknownOwnerReference,
             owner_ref: Some(owner_ref),
-            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
-            scope_id: Some(scope_id.to_string()),
+            resource_key: Some(planet_child_rf_default_resource_key()),
+            scope_id: Some(ScopeId::new(scope_id)),
             message: format!("unknown owner/channel reference at {path}"),
         });
     }
@@ -222,8 +227,8 @@ fn collect_demand_from_node(
 
     buckets.push(RuntimeOwnerSiloDemandBucket {
         owner_ref,
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
-        scope_id: scope_id.to_string(),
+        resource_key: planet_child_rf_default_resource_key(),
+        scope_id: ScopeId::new(scope_id),
         planet_id,
         star_system_gridcell_id_raw,
         requested,
@@ -256,8 +261,8 @@ fn read_demand_amount(
         Some(amount) => Ok(amount),
         None => Err(RuntimeOwnerSiloDisburseDownError {
             kind: RuntimeOwnerSiloDisburseDownErrorKind::InvalidDemandAmount,
-            owner_ref: owner_flow_owner_ref(node),
-            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
+            owner_ref: owner_flow_owner_ref(node).map(OwnerRef::new),
+            resource_key: Some(planet_child_rf_default_resource_key()),
             scope_id: None,
             message: format!(
                 "owner_flow_demand at {path} must be a non-negative exact integer f32 mirror"
@@ -276,8 +281,8 @@ fn read_priority_amount(
             Some(amount) => Ok(amount),
             None => Err(RuntimeOwnerSiloDisburseDownError {
                 kind: RuntimeOwnerSiloDisburseDownErrorKind::InvalidPriorityAmount,
-                owner_ref: owner_flow_owner_ref(node),
-                resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
+                owner_ref: owner_flow_owner_ref(node).map(OwnerRef::new),
+                resource_key: Some(planet_child_rf_default_resource_key()),
                 scope_id: None,
                 message: format!(
                     "owner_flow_priority at {path} must be a non-negative exact integer f32 mirror"
@@ -322,7 +327,7 @@ pub fn apply_owner_silo_runtime_disburse_down_cpu(
         });
     }
 
-    let mut availability: BTreeMap<(String, String), u32> = BTreeMap::new();
+    let mut availability: BTreeMap<(OwnerRef, ResourceKey), u32> = BTreeMap::new();
     for result in writeback_results {
         availability.insert(
             (result.owner_ref.clone(), result.resource_key.clone()),
@@ -330,7 +335,7 @@ pub fn apply_owner_silo_runtime_disburse_down_cpu(
         );
     }
 
-    let mut grouped: BTreeMap<(String, String), Vec<RuntimeOwnerSiloDemandBucket>> =
+    let mut grouped: BTreeMap<(OwnerRef, ResourceKey), Vec<RuntimeOwnerSiloDemandBucket>> =
         BTreeMap::new();
     for bucket in demand_buckets {
         grouped
@@ -415,8 +420,8 @@ pub fn apply_owner_silo_runtime_disburse_down_cpu(
 /// Aggregate requested demand per owner/resource for GPU proof comparison.
 pub fn owner_silo_demand_aggregate_totals(
     demand_buckets: &[RuntimeOwnerSiloDemandBucket],
-) -> BTreeMap<(String, String), u32> {
-    let mut totals: BTreeMap<(String, String), u32> = BTreeMap::new();
+) -> BTreeMap<(OwnerRef, ResourceKey), u32> {
+    let mut totals: BTreeMap<(OwnerRef, ResourceKey), u32> = BTreeMap::new();
     for bucket in demand_buckets {
         let entry = totals
             .entry((bucket.owner_ref.clone(), bucket.resource_key.clone()))

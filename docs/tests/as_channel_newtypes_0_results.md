@@ -50,6 +50,7 @@ PROBATION — promoted §5.1 RF channel identity from interchangeable `String` f
 
 ## Known gaps / next
 
-- Broader runtime/report rows (`RuntimeOwnerSiloWritebackInput`, recursive RF rows, etc.) still use `String` at downstream boundaries — intentional; AS-2 scoped to planet-child RF channel path only.
-- `ParentLocationId` not introduced; `planet_id` on scope key remains `Option<String>` (display/spatial label, not channel transposition target).
-- AS-3 kind-out-of-tick is next queued rung on the 0.0.8.4 ladder.
+- ~~Broader runtime/report rows still use `String` at downstream boundaries~~ — **addressed by AS-CHANNEL-NEWTYPES-0R** (`docs/tests/as_channel_newtypes_0r_results.md`).
+- ~~`ParentLocationId` not introduced~~ — **0R:** `ParentLocationId(u32)` added; see 0R results for String-vs-u32 justification.
+- `planet_id` on scope key remains `Option<String>` (display/spatial label, not channel transposition target).
+- DA re-review for AS-2 graduation after 0R.

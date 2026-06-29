@@ -80,7 +80,7 @@ fn loaded_scenario_recursive_rf_runtime_extracts_parent_location_arenas() {
         report
             .parent_arena_rows
             .iter()
-            .any(|arena| arena.parent_location_id_raw == row.parent_location_id_raw)
+            .any(|arena| arena.parent_location_id == row.parent_location_id)
     }));
 }
 
@@ -132,7 +132,7 @@ fn loaded_scenario_recursive_rf_runtime_preserves_owner_scope_not_spatial_parent
     assert!(report.owner_scope_not_spatial_parentage);
     for row in &report.participant_rows {
         let owner = row.owner_ref.as_deref().unwrap_or("");
-        assert_ne!(owner, row.parent_location_id_raw.to_string());
+        assert_ne!(owner, row.parent_location_id.raw().to_string());
         assert_ne!(owner, row.simthing_id_raw.to_string());
     }
 }

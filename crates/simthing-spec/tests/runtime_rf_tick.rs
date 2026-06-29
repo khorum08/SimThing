@@ -37,7 +37,7 @@ fn runtime_rf_tick_fixture_totals_match_expected() {
     let owner_a = report
         .writeback_results
         .iter()
-        .find(|r| r.owner_ref == "owner_a")
+        .find(|r| r.owner_ref.as_str() == "owner_a")
         .expect("owner_a");
     assert_eq!(owner_a.previous_current, 50);
     assert_eq!(owner_a.next_current, 62);
@@ -122,7 +122,7 @@ fn runtime_rf_tick_rejects_invalid_writeback_metadata() {
         .unwrap();
     owner.properties.insert(
         OWNER_SILO_CURRENT_PROPERTY_ID,
-        PropertyValue { data: vec![1.5] },
+        PropertyValue::from_raw_lanes(vec![1.5]),
     );
 
     let err = evaluate_runtime_rf_tick(&spec).unwrap_err();

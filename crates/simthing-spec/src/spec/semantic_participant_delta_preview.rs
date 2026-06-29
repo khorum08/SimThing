@@ -5,6 +5,7 @@
 //! projection, semantic-side bookkeeping, compile-plan construction, and owner/user-facing report
 //! formatting.
 
+use super::channel_key::{OwnerRef, ResourceKey};
 use super::runtime_tick_history::scenario_authority_digest;
 use super::runtime_tick_shell::RuntimeTickId;
 use super::scenario::SimThingScenarioSpec;
@@ -34,8 +35,8 @@ pub enum ParticipantDeltaPreviewKind {
 pub struct ParticipantPropertyDeltaPreviewRecord {
     pub source_execution_record_id: u32,
     pub source_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub scope_id: Option<u32>,
     pub delta_kind: ParticipantDeltaPreviewKind,
     pub amount: u32,

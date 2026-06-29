@@ -6,6 +6,7 @@
 
 use simthing_core::{PropertyValue, SimPropertyId, SimThing};
 
+use super::channel_key::{OwnerRef, ResourceKey};
 use super::runtime_participant_property_mutation_boundary::{
     evaluate_runtime_participant_property_mutation_boundary,
     RuntimeParticipantPropertyMutationBoundaryReport, RuntimeParticipantPropertyMutationSourceMode,
@@ -34,8 +35,8 @@ pub enum ScenarioPropertyMutationSourceMode {
 pub struct ScenarioPropertyMutationRecord {
     pub source_property_view_index: u32,
     pub participant_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub scope_id: Option<u32>,
     pub property_id: String,
     pub before_value: Option<f64>,

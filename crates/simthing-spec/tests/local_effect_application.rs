@@ -6,8 +6,8 @@ use simthing_core::SimThingKind;
 use simthing_spec::{
     apply_runtime_local_effect_records, evaluate_runtime_local_effect_application,
     prove_local_effect_application_preserves_authority, serialize_scenario_authority,
-    LocalEffectApplicationErrorKind, RuntimeLocalParticipantEffect, RuntimeTickId,
-    PLANET_ID_PROPERTY_ID,
+    LocalEffectApplicationErrorKind, OwnerRef, ResourceKey, RuntimeLocalParticipantEffect,
+    RuntimeTickId, ScopeId, PLANET_ID_PROPERTY_ID,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -58,7 +58,7 @@ fn local_effect_application_marks_satisfied_and_unsatisfied() {
     let owner_a: Vec<_> = report
         .records
         .iter()
-        .filter(|r| r.owner_ref == "owner_a")
+        .filter(|r| r.owner_ref.as_str() == "owner_a")
         .collect();
     let cohort = owner_a.iter().find(|r| r.requested == 20).expect("cohort");
     assert_eq!(cohort.runtime_applied_amount, 20);
@@ -73,7 +73,7 @@ fn local_effect_application_marks_satisfied_and_unsatisfied() {
     let owner_b = report
         .records
         .iter()
-        .find(|r| r.owner_ref == "owner_b")
+        .find(|r| r.owner_ref.as_str() == "owner_b")
         .expect("owner_b");
     assert_eq!(owner_b.runtime_applied_amount, 10);
     assert!(owner_b.satisfied);
@@ -85,9 +85,9 @@ fn local_effect_application_preserves_owner_resource_scope() {
     let report = evaluate_runtime_local_effect_application(&spec, TICK_ONE).expect("application");
 
     for record in &report.records {
-        assert!(!record.owner_ref.is_empty());
-        assert!(!record.resource_key.is_empty());
-        assert!(!record.scope_id.is_empty());
+        assert!(!record.owner_ref.as_str().is_empty());
+        assert!(!record.resource_key.as_str().is_empty());
+        assert!(!record.scope_id.as_str().is_empty());
     }
 }
 
@@ -109,9 +109,9 @@ fn local_effect_application_preserves_source_simthing_ids() {
 fn local_effect_application_rejects_missing_source_id() {
     let effect = RuntimeLocalParticipantEffect {
         source_simthing_id_raw: 0,
-        owner_ref: "owner_a".to_string(),
-        resource_key: "food".to_string(),
-        scope_id: "scope".to_string(),
+        owner_ref: OwnerRef::new("owner_a"),
+        resource_key: ResourceKey::new("food"),
+        scope_id: ScopeId::new("scope"),
         requested: 10,
         allocated: 5,
         unmet: 5,
@@ -129,9 +129,9 @@ fn local_effect_application_rejects_missing_source_id() {
 fn local_effect_application_rejects_duplicate_source_application() {
     let make = |id: u32| RuntimeLocalParticipantEffect {
         source_simthing_id_raw: id,
-        owner_ref: "owner_a".to_string(),
-        resource_key: "food".to_string(),
-        scope_id: "scope".to_string(),
+        owner_ref: OwnerRef::new("owner_a"),
+        resource_key: ResourceKey::new("food"),
+        scope_id: ScopeId::new("scope"),
         requested: 10,
         allocated: 5,
         unmet: 5,

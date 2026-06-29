@@ -8,10 +8,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{SimThing, SimThingKind};
 
+use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey};
 use super::planet_child_rf::{
-    evaluate_planet_child_rf_admission, planet_child_rf_participant_inputs,
-    PlanetChildRfAdmissionClassification, PlanetChildRfParticipantInput,
-    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    evaluate_planet_child_rf_admission, planet_child_rf_default_resource_key,
+    planet_child_rf_participant_inputs, PlanetChildRfAdmissionClassification,
+    PlanetChildRfParticipantInput,
 };
 use super::runtime_tick_history::scenario_authority_digest;
 use super::scenario::{
@@ -22,17 +23,17 @@ use super::scenario::{
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LocalRfArenaKey {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub arena_location_id_raw: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalRfParticipantRow {
     pub source_simthing_id_raw: u32,
-    pub parent_location_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub parent_location_id: ParentLocationId,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub surplus: u32,
     pub demand: u32,
     pub participant_kind_label: String,
@@ -51,8 +52,8 @@ pub struct RecursiveLocalRfAggregateSourceRow {
     pub source_kind: RecursiveLocalRfAggregateSourceKind,
     pub source_simthing_or_location_id_raw: u32,
     pub arena_location_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub surplus: u32,
     pub demand: u32,
 }
@@ -60,9 +61,9 @@ pub struct RecursiveLocalRfAggregateSourceRow {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalRfChildOutputRow {
     pub child_location_id_raw: u32,
-    pub parent_location_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub parent_location_id: ParentLocationId,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub net_surplus: u32,
     pub net_deficit: u32,
 }
@@ -70,8 +71,8 @@ pub struct LocalRfChildOutputRow {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalRfArenaSettlement {
     pub arena_location_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub direct_surplus_total: u32,
     pub direct_demand_total: u32,
     pub child_surplus_total: u32,
@@ -86,7 +87,7 @@ pub struct LocalRfArenaSettlement {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocationRfArenaReport {
     pub location_id_raw: u32,
-    pub parent_location_id_raw: Option<u32>,
+    pub parent_location_id: Option<ParentLocationId>,
     pub depth: u32,
     pub participant_count: u32,
     pub child_location_count: u32,
@@ -171,13 +172,14 @@ pub fn evaluate_recursive_local_rf(
         message: format!("{:?}", e),
     })?;
 
-    let owner_refs: BTreeSet<String> = game_session_owners(scenario)
+    let owner_refs: BTreeSet<OwnerRef> = game_session_owners(scenario)
         .map_err(|e| RecursiveLocalRfError {
             kind: RecursiveLocalRfErrorKind::MissingSpatialRoot,
             message: format!("{:?}", e),
         })?
         .into_iter()
         .filter_map(owner_entity_id)
+        .map(OwnerRef::new)
         .collect();
 
     let mut arena_reports = Vec::new();
@@ -273,9 +275,9 @@ pub fn recursive_local_rf_participant_rows_from_planet_child_inputs(
         .iter()
         .map(|input| LocalRfParticipantRow {
             source_simthing_id_raw: input.simthing_id_raw,
-            parent_location_id_raw: input.planet_gridcell_id_raw,
-            owner_ref: input.owner_ref.as_str().to_string(),
-            resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
+            parent_location_id: ParentLocationId::new(input.planet_gridcell_id_raw),
+            owner_ref: input.owner_ref.clone(),
+            resource_key: planet_child_rf_default_resource_key(),
             surplus: input.surplus,
             demand: input.deficit,
             participant_kind_label: input.participant_kind_label.clone(),
@@ -318,7 +320,7 @@ fn compatibility_from_report(
         let present = report.arena_reports.iter().any(|arena| {
             arena.participant_rows.iter().any(|row| {
                 row.source_simthing_id_raw == expected.source_simthing_id_raw
-                    && row.parent_location_id_raw == expected.parent_location_id_raw
+                    && row.parent_location_id == expected.parent_location_id
                     && row.owner_ref == expected.owner_ref
                     && row.resource_key == expected.resource_key
                     && row.surplus == expected.surplus
@@ -398,13 +400,14 @@ pub fn recursive_local_rf_aggregate_source_rows(
 /// Aggregate surplus/demand totals per arena/owner/resource for GPU proof comparison.
 pub fn recursive_local_rf_arena_aggregate_totals(
     report: &RecursiveLocalRfEvaluationReport,
-) -> BTreeMap<(u32, String, String), (u32, u32)> {
-    let mut totals: BTreeMap<(u32, String, String), (u32, u32)> = BTreeMap::new();
+) -> BTreeMap<(ParentLocationId, OwnerRef, ResourceKey), (u32, u32)> {
+    let mut totals: BTreeMap<(ParentLocationId, OwnerRef, ResourceKey), (u32, u32)> =
+        BTreeMap::new();
     for arena in &report.arena_reports {
         for settlement in &arena.settlements {
             totals.insert(
                 (
-                    settlement.arena_location_id_raw,
+                    ParentLocationId::new(settlement.arena_location_id_raw),
                     settlement.owner_ref.clone(),
                     settlement.resource_key.clone(),
                 ),
@@ -417,9 +420,9 @@ pub fn recursive_local_rf_arena_aggregate_totals(
 
 fn evaluate_location_arena(
     location: &SimThing,
-    parent_location_id_raw: Option<u32>,
+    parent_location_id: Option<ParentLocationId>,
     depth: u32,
-    owner_refs: &BTreeSet<String>,
+    owner_refs: &BTreeSet<OwnerRef>,
     arena_reports: &mut Vec<LocationRfArenaReport>,
 ) -> Result<Vec<LocalRfChildOutputRow>, RecursiveLocalRfError> {
     let location_id = location.id.raw();
@@ -437,7 +440,7 @@ fn evaluate_location_arena(
                     })?;
             let child_outputs = evaluate_location_arena(
                 child,
-                Some(location_id),
+                Some(ParentLocationId::new(location_id)),
                 depth.checked_add(1).ok_or_else(|| RecursiveLocalRfError {
                     kind: RecursiveLocalRfErrorKind::ArithmeticOverflow,
                     message: "depth overflow".to_string(),
@@ -454,7 +457,7 @@ fn evaluate_location_arena(
 
     collect_participant_row(
         location,
-        location_id,
+        ParentLocationId::new(location_id),
         location_participant_kind_label(location),
         owner_refs,
         &mut seen_participants,
@@ -467,7 +470,7 @@ fn evaluate_location_arena(
         }
         collect_participant_row(
             child,
-            location_id,
+            ParentLocationId::new(location_id),
             non_location_participant_kind_label(child),
             owner_refs,
             &mut seen_participants,
@@ -490,7 +493,7 @@ fn evaluate_location_arena(
             ))
     });
 
-    let mut groups: BTreeMap<(String, String), ArenaAccumulator> = BTreeMap::new();
+    let mut groups: BTreeMap<(OwnerRef, ResourceKey), ArenaAccumulator> = BTreeMap::new();
     for row in &participant_rows {
         let entry = groups
             .entry((row.owner_ref.clone(), row.resource_key.clone()))
@@ -507,7 +510,7 @@ fn evaluate_location_arena(
 
     let mut child_outputs_for_report = Vec::new();
     for child_output in &incoming_child_outputs {
-        if child_output.parent_location_id_raw != location_id {
+        if child_output.parent_location_id.raw() != location_id {
             continue;
         }
         child_outputs_for_report.push(child_output.clone());
@@ -578,7 +581,7 @@ fn evaluate_location_arena(
         if net_surplus_to_parent > 0 || net_deficit_to_parent > 0 {
             parent_outputs.push(LocalRfChildOutputRow {
                 child_location_id_raw: location_id,
-                parent_location_id_raw: parent_location_id_raw.unwrap_or(0),
+                parent_location_id: parent_location_id.unwrap_or(ParentLocationId::new(0)),
                 owner_ref,
                 resource_key,
                 net_surplus: net_surplus_to_parent,
@@ -613,7 +616,7 @@ fn evaluate_location_arena(
 
     arena_reports.push(LocationRfArenaReport {
         location_id_raw: location_id,
-        parent_location_id_raw,
+        parent_location_id,
         depth,
         participant_count: participant_rows.len() as u32,
         child_location_count,
@@ -629,9 +632,9 @@ fn evaluate_location_arena(
 
 fn collect_participant_row(
     node: &SimThing,
-    parent_location_id_raw: u32,
+    parent_location_id: ParentLocationId,
     kind_label: String,
-    owner_refs: &BTreeSet<String>,
+    owner_refs: &BTreeSet<OwnerRef>,
     seen_participants: &mut BTreeSet<u32>,
     participant_rows: &mut Vec<LocalRfParticipantRow>,
 ) -> Result<(), RecursiveLocalRfError> {
@@ -660,12 +663,14 @@ fn collect_participant_row(
             ),
         });
     }
+    let owner_ref = OwnerRef::new(&owner_ref);
     if !owner_refs.contains(&owner_ref) {
         return Err(RecursiveLocalRfError {
             kind: RecursiveLocalRfErrorKind::MissingOwnerChannelForActiveParticipant,
             message: format!(
-                "active RF participant {} references unknown owner `{owner_ref}`",
-                node.id.raw()
+                "active RF participant {} references unknown owner `{}`",
+                node.id.raw(),
+                owner_ref.as_str()
             ),
         });
     }
@@ -678,9 +683,9 @@ fn collect_participant_row(
 
     participant_rows.push(LocalRfParticipantRow {
         source_simthing_id_raw: node.id.raw(),
-        parent_location_id_raw,
+        parent_location_id,
         owner_ref,
-        resource_key: owner_flow_resource_key(node),
+        resource_key: ResourceKey::new(owner_flow_resource_key(node)),
         surplus,
         demand,
         participant_kind_label: kind_label,

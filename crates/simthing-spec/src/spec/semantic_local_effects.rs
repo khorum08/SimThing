@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 
+use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
 use super::local_effect_application::{
     evaluate_runtime_local_effect_application, RuntimeLocalEffectApplicationReport,
 };
@@ -49,9 +50,9 @@ pub struct SemanticLocalEffectDeferral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SemanticLocalEffectOutput {
     pub source_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
-    pub scope_id: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
+    pub scope_id: ScopeId,
     pub effect_kind: SemanticLocalEffectKind,
     pub amount: u32,
     pub semantic_execution_deferred: bool,
@@ -263,7 +264,7 @@ pub fn prove_semantic_local_effects_preserve_authority(
 
 fn push_output(
     outputs: &mut Vec<SemanticLocalEffectOutput>,
-    seen_outputs: &mut BTreeSet<(String, String, String, u32, u8)>,
+    seen_outputs: &mut BTreeSet<(OwnerRef, ResourceKey, ScopeId, u32, u8)>,
     record: &super::local_effect_application::RuntimeLocalEffectApplicationRecord,
     effect_kind: SemanticLocalEffectKind,
     amount: u32,
@@ -357,9 +358,9 @@ fn default_deferrals() -> Vec<SemanticLocalEffectDeferral> {
 /// Aggregate runtime_applied and shortfall totals per owner/resource for GPU proof comparison.
 pub fn semantic_local_effects_aggregate_totals(
     report: &SemanticLocalEffectReport,
-) -> std::collections::BTreeMap<(String, String), (u32, u32)> {
+) -> std::collections::BTreeMap<(OwnerRef, ResourceKey), (u32, u32)> {
     use std::collections::BTreeMap;
-    let mut totals: BTreeMap<(String, String), (u32, u32)> = BTreeMap::new();
+    let mut totals: BTreeMap<(OwnerRef, ResourceKey), (u32, u32)> = BTreeMap::new();
     for output in &report.outputs {
         let entry = totals
             .entry((output.owner_ref.clone(), output.resource_key.clone()))

@@ -3,7 +3,8 @@
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     apply_runtime_local_allocations_from_disburse_down, runtime_local_allocation_aggregate_totals,
-    RuntimeLocalAllocationApplicationReport, SimThingScenarioSpec, SpecError,
+    OwnerRef, ResourceKey, RuntimeLocalAllocationApplicationReport, SimThingScenarioSpec,
+    SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -12,8 +13,8 @@ use crate::owner_silo_disburse_down_compile::compile_owner_silo_disburse_down_pl
 /// GPU aggregate proof plan for total allocated amount per owner/resource channel.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeLocalAllocationAggregateProofPlan {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub allocation_plan: CompiledAccumulatorOpPlan,
     pub source_allocation_indices: Vec<usize>,
 }

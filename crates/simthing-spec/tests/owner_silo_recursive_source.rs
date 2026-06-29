@@ -40,11 +40,9 @@ fn owner_silo_recursive_source_projects_recursive_demand_buckets() {
     let buckets = owner_silo_demand_buckets_from_recursive_local_rf(&spec).expect("buckets");
 
     assert!(!buckets.is_empty());
-    assert!(buckets.iter().all(|b| !b.owner_ref.is_empty()));
-    assert!(buckets
-        .iter()
-        .all(|b| !b.resource_key.is_empty()
-            || b.resource_key == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
+    assert!(buckets.iter().all(|b| !b.owner_ref.as_str().is_empty()));
+    assert!(buckets.iter().all(|b| !b.resource_key.as_str().is_empty()
+        || b.resource_key.as_str() == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
 }
 
 #[test]
@@ -94,9 +92,11 @@ fn owner_silo_recursive_source_preserves_owner_resource_scope() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let buckets = owner_silo_demand_buckets_from_recursive_local_rf(&spec).expect("buckets");
 
-    assert!(buckets.iter().any(|b| b.owner_ref == "owner_a"));
-    assert!(buckets.iter().any(|b| b.owner_ref == "owner_b"));
-    assert!(buckets.iter().all(|b| b.scope_id.starts_with("location/")));
+    assert!(buckets.iter().any(|b| b.owner_ref.as_str() == "owner_a"));
+    assert!(buckets.iter().any(|b| b.owner_ref.as_str() == "owner_b"));
+    assert!(buckets
+        .iter()
+        .all(|b| b.scope_id.as_str().starts_with("location/")));
 }
 
 #[test]
@@ -104,7 +104,9 @@ fn owner_silo_recursive_source_preserves_generic_resource_fallback() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let buckets = owner_silo_demand_buckets_from_recursive_local_rf(&spec).expect("buckets");
 
-    assert!(buckets.iter().all(|b| !b.resource_key.trim().is_empty()));
+    assert!(buckets
+        .iter()
+        .all(|b| !b.resource_key.as_str().trim().is_empty()));
 }
 
 #[test]
@@ -228,7 +230,7 @@ fn normal_tests_do_not_write_owner_silo_recursive_source_fixture() {
         .unwrap();
     cohort.properties.insert(
         OWNER_FLOW_DEMAND_PROPERTY_ID,
-        PropertyValue { data: vec![1.5] },
+        PropertyValue::from_raw_lanes(vec![1.5]),
     );
 
     let err = evaluate_owner_silo_disburse_down_with_rf_source(

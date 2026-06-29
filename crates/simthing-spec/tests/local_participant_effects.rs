@@ -5,8 +5,8 @@ mod disburse_down_fixture;
 use simthing_core::SimThingKind;
 use simthing_spec::{
     evaluate_local_participant_effects, local_participant_effects_from_allocations,
-    serialize_scenario_authority, LocalParticipantEffectsErrorKind, RuntimeLocalAllocationState,
-    RuntimeTickId, PLANET_ID_PROPERTY_ID,
+    serialize_scenario_authority, LocalParticipantEffectsErrorKind, OwnerRef, ResourceKey,
+    RuntimeLocalAllocationState, RuntimeTickId, ScopeId, PLANET_ID_PROPERTY_ID,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -43,7 +43,7 @@ fn local_participant_effects_marks_satisfied_and_unsatisfied() {
     let owner_a: Vec<_> = report
         .effects
         .iter()
-        .filter(|e| e.owner_ref == "owner_a")
+        .filter(|e| e.owner_ref.as_str() == "owner_a")
         .collect();
     let cohort = owner_a.iter().find(|e| e.requested == 20).expect("cohort");
     assert_eq!(cohort.allocated, 20);
@@ -58,7 +58,7 @@ fn local_participant_effects_marks_satisfied_and_unsatisfied() {
     let owner_b = report
         .effects
         .iter()
-        .find(|e| e.owner_ref == "owner_b")
+        .find(|e| e.owner_ref.as_str() == "owner_b")
         .expect("owner_b");
     assert_eq!(owner_b.allocated, 10);
     assert_eq!(owner_b.unmet, 0);
@@ -71,9 +71,9 @@ fn local_participant_effects_preserves_owner_resource_scope() {
     let report = evaluate_local_participant_effects(&spec, TICK_ONE).expect("effects");
 
     for effect in &report.effects {
-        assert!(!effect.owner_ref.is_empty());
-        assert!(!effect.resource_key.is_empty());
-        assert!(!effect.scope_id.is_empty());
+        assert!(!effect.owner_ref.as_str().is_empty());
+        assert!(!effect.resource_key.as_str().is_empty());
+        assert!(!effect.scope_id.as_str().is_empty());
     }
 }
 
@@ -95,9 +95,9 @@ fn local_participant_effects_preserves_source_simthing_ids() {
 fn local_participant_effects_rejects_missing_source_id() {
     let allocation = RuntimeLocalAllocationState {
         source_simthing_id_raw: 0,
-        owner_ref: "owner_a".to_string(),
-        resource_key: "food".to_string(),
-        scope_id: "scope".to_string(),
+        owner_ref: OwnerRef::new("owner_a"),
+        resource_key: ResourceKey::new("food"),
+        scope_id: ScopeId::new("scope"),
         planet_id: None,
         star_system_gridcell_id_raw: None,
         requested: 10,
@@ -116,9 +116,9 @@ fn local_participant_effects_rejects_missing_source_id() {
 fn local_participant_effects_rejects_duplicate_source_effect() {
     let make = |id: u32| RuntimeLocalAllocationState {
         source_simthing_id_raw: id,
-        owner_ref: "owner_a".to_string(),
-        resource_key: "food".to_string(),
-        scope_id: "scope".to_string(),
+        owner_ref: OwnerRef::new("owner_a"),
+        resource_key: ResourceKey::new("food"),
+        scope_id: ScopeId::new("scope"),
         planet_id: None,
         star_system_gridcell_id_raw: None,
         requested: 10,

@@ -4,9 +4,10 @@ use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     apply_owner_silo_runtime_writeback_cpu, evaluate_planet_child_rf_reduce_up,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
-    runtime_owner_silo_states_from_scenario, PlanetChildRfAdmissionClassification,
-    PlanetChildRfReduceUpReport, RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackInput,
-    RuntimeOwnerSiloWritebackResult, SimThingScenarioSpec, SpecError,
+    runtime_owner_silo_states_from_scenario, OwnerRef, PlanetChildRfAdmissionClassification,
+    PlanetChildRfReduceUpReport, ResourceKey, RuntimeOwnerSiloState,
+    RuntimeOwnerSiloWritebackInput, RuntimeOwnerSiloWritebackResult, SimThingScenarioSpec,
+    SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -14,8 +15,8 @@ use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
 /// GPU aggregate proof plan for owner/resource channel net totals before CPU writeback.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OwnerSiloWritebackAggregateProofPlan {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub surplus_plan: CompiledAccumulatorOpPlan,
     pub deficit_plan: CompiledAccumulatorOpPlan,
     pub source_bucket_indices: Vec<usize>,
@@ -86,8 +87,8 @@ fn compile_writeback_aggregate_proof_plans(
             .iter()
             .enumerate()
             .filter(|(_, bucket)| {
-                bucket.scope.owner_ref.as_str() == input.owner_ref
-                    && bucket.scope.resource_key.as_str() == input.resource_key
+                bucket.scope.owner_ref == input.owner_ref
+                    && bucket.scope.resource_key == input.resource_key
             })
             .map(|(index, _)| index)
             .collect::<Vec<_>>();

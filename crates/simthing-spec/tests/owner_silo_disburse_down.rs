@@ -8,10 +8,11 @@ use simthing_spec::{
     apply_owner_silo_runtime_disburse_down_cpu, apply_owner_silo_runtime_writeback_cpu,
     evaluate_planet_child_rf_reduce_up, owner_silo_demand_buckets_from_planet_child_rf,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
-    runtime_owner_silo_states_from_scenario, serialize_scenario_authority,
+    runtime_owner_silo_states_from_scenario, serialize_scenario_authority, OwnerRef, ResourceKey,
     RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownErrorKind,
-    RuntimeOwnerSiloWritebackResult, OWNER_FLOW_DEFAULT_PRIORITY, OWNER_FLOW_DEMAND_PROPERTY_ID,
-    OWNER_FLOW_PRIORITY_PROPERTY_ID, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    RuntimeOwnerSiloWritebackResult, ScopeId, OWNER_FLOW_DEFAULT_PRIORITY,
+    OWNER_FLOW_DEMAND_PROPERTY_ID, OWNER_FLOW_PRIORITY_PROPERTY_ID,
+    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -35,10 +36,10 @@ fn owner_silo_disburse_down_derives_demand_buckets_from_planet_children() {
 
     let owner_a: Vec<_> = buckets
         .iter()
-        .filter(|b| b.owner_ref == "owner_a")
+        .filter(|b| b.owner_ref.as_str() == "owner_a")
         .collect();
     assert_eq!(owner_a.len(), 2);
-    assert!(owner_a.iter().all(|b| b.scope_id == "terra_prime"));
+    assert!(owner_a.iter().all(|b| b.scope_id.as_str() == "terra_prime"));
     assert!(owner_a
         .iter()
         .any(|b| b.requested == 20 && b.priority == 10));
@@ -48,10 +49,10 @@ fn owner_silo_disburse_down_derives_demand_buckets_from_planet_children() {
 
     let owner_b: Vec<_> = buckets
         .iter()
-        .filter(|b| b.owner_ref == "owner_b")
+        .filter(|b| b.owner_ref.as_str() == "owner_b")
         .collect();
     assert_eq!(owner_b.len(), 1);
-    assert_eq!(owner_b[0].scope_id, "border_moon");
+    assert_eq!(owner_b[0].scope_id.as_str(), "border_moon");
     assert_eq!(owner_b[0].requested, 10);
 }
 
@@ -92,7 +93,7 @@ fn owner_silo_disburse_down_rejects_malformed_demand() {
         .unwrap();
     cohort.properties.insert(
         OWNER_FLOW_DEMAND_PROPERTY_ID,
-        PropertyValue { data: vec![1.5] },
+        PropertyValue::from_raw_lanes(vec![1.5]),
     );
 
     let err = owner_silo_demand_buckets_from_planet_child_rf(&spec).unwrap_err();
@@ -151,7 +152,7 @@ fn owner_silo_disburse_down_allocates_by_priority() {
 
     let owner_a = results
         .iter()
-        .find(|r| r.owner_ref == "owner_a")
+        .find(|r| r.owner_ref.as_str() == "owner_a")
         .expect("owner_a");
     assert_eq!(owner_a.available_before, 62);
     let cohort = owner_a
@@ -172,8 +173,8 @@ fn owner_silo_disburse_down_allocates_by_priority() {
 #[test]
 fn owner_silo_disburse_down_tie_breaks_deterministically() {
     let writeback = vec![RuntimeOwnerSiloWritebackResult {
-        owner_ref: "owner_x".into(),
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
+        owner_ref: OwnerRef::new("owner_x"),
+        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
         previous_current: 30,
         next_current: 30,
         capacity: Some(100),
@@ -184,9 +185,9 @@ fn owner_silo_disburse_down_tie_breaks_deterministically() {
     }];
     let demands = vec![
         RuntimeOwnerSiloDemandBucket {
-            owner_ref: "owner_x".into(),
-            resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
-            scope_id: "scope_b".into(),
+            owner_ref: OwnerRef::new("owner_x"),
+            resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
+            scope_id: ScopeId::new("scope_b"),
             planet_id: Some("scope_b".into()),
             star_system_gridcell_id_raw: Some(8),
             requested: 20,
@@ -194,9 +195,9 @@ fn owner_silo_disburse_down_tie_breaks_deterministically() {
             source_simthing_id_raw: Some(102),
         },
         RuntimeOwnerSiloDemandBucket {
-            owner_ref: "owner_x".into(),
-            resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
-            scope_id: "scope_a".into(),
+            owner_ref: OwnerRef::new("owner_x"),
+            resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
+            scope_id: ScopeId::new("scope_a"),
             planet_id: Some("scope_a".into()),
             star_system_gridcell_id_raw: Some(8),
             requested: 20,
@@ -206,8 +207,8 @@ fn owner_silo_disburse_down_tie_breaks_deterministically() {
     ];
     let results =
         apply_owner_silo_runtime_disburse_down_cpu(&writeback, &demands).expect("allocate");
-    assert_eq!(results[0].allocations[0].scope_id, "scope_a");
-    assert_eq!(results[0].allocations[1].scope_id, "scope_b");
+    assert_eq!(results[0].allocations[0].scope_id.as_str(), "scope_a");
+    assert_eq!(results[0].allocations[1].scope_id.as_str(), "scope_b");
 }
 
 #[test]
@@ -220,7 +221,7 @@ fn owner_silo_disburse_down_records_unmet_demand() {
 
     let owner_a = results
         .iter()
-        .find(|r| r.owner_ref == "owner_a")
+        .find(|r| r.owner_ref.as_str() == "owner_a")
         .expect("owner_a");
     assert_eq!(owner_a.unmet_total, 8);
     let fleet = owner_a
@@ -309,7 +310,7 @@ fn owner_silo_disburse_down_defaults_missing_priority() {
     let buckets = owner_silo_demand_buckets_from_planet_child_rf(&spec).expect("buckets");
     let moon = buckets
         .iter()
-        .find(|b| b.owner_ref == "owner_b")
+        .find(|b| b.owner_ref.as_str() == "owner_b")
         .expect("moon");
     assert_eq!(moon.priority, OWNER_FLOW_DEFAULT_PRIORITY);
 }

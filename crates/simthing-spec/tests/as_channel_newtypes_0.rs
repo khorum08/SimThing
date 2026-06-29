@@ -6,8 +6,8 @@ use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_participant_owner_flow_metadata, evaluate_planet_child_rf_admission,
     evaluate_planet_child_rf_reduce_up, gridcell_role, is_planet_gridcell,
-    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionErrorKind,
-    SimThingScenarioSpec, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    PlanetChildRfAdmissionClassification, PlanetChildRfAdmissionErrorKind, SimThingScenarioSpec,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 fn terra_prime_cohort(spec: &mut SimThingScenarioSpec) -> &mut SimThing {

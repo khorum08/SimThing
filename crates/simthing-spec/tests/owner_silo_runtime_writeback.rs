@@ -5,9 +5,9 @@ mod reduce_up_fixture;
 use simthing_spec::{
     apply_owner_silo_runtime_writeback_cpu, evaluate_planet_child_rf_reduce_up,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
-    runtime_owner_silo_states_from_scenario, serialize_scenario_authority, RuntimeOwnerSiloState,
-    RuntimeOwnerSiloWritebackErrorKind, RuntimeOwnerSiloWritebackInput,
-    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    runtime_owner_silo_states_from_scenario, serialize_scenario_authority, OwnerRef, ResourceKey,
+    RuntimeOwnerSiloState, RuntimeOwnerSiloWritebackErrorKind, RuntimeOwnerSiloWritebackInput,
+    ScopeId, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 use reduce_up_fixture::build_planet_child_rf_reduce_up_scoped_spec;
@@ -22,16 +22,19 @@ fn owner_silo_writeback_inputs_group_by_owner_resource() {
 
     let owner_a = inputs
         .iter()
-        .find(|i| i.owner_ref == "owner_a")
+        .find(|i| i.owner_ref.as_str() == "owner_a")
         .expect("owner_a");
-    assert_eq!(owner_a.resource_key, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY);
+    assert_eq!(
+        owner_a.resource_key.as_str(),
+        PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
+    );
     assert_eq!(owner_a.net_surplus, 12);
     assert_eq!(owner_a.net_deficit, 0);
     assert_eq!(owner_a.source_bucket_count, 1);
 
     let owner_b = inputs
         .iter()
-        .find(|i| i.owner_ref == "owner_b")
+        .find(|i| i.owner_ref.as_str() == "owner_b")
         .expect("owner_b");
     assert_eq!(owner_b.net_surplus, 5);
     assert_eq!(owner_b.net_deficit, 0);
@@ -51,14 +54,14 @@ fn owner_silo_writeback_inputs_keep_planet_scopes_as_sources_not_channels() {
 #[test]
 fn owner_silo_writeback_inputs_reject_unknown_owner_ref() {
     let initial = vec![RuntimeOwnerSiloState {
-        owner_ref: "owner_a".into(),
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
+        owner_ref: OwnerRef::new("owner_a"),
+        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
         current: 50,
         capacity: Some(100),
     }];
     let inputs = vec![RuntimeOwnerSiloWritebackInput {
-        owner_ref: "owner_missing".into(),
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
+        owner_ref: OwnerRef::new("owner_missing"),
+        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
         net_surplus: 1,
         net_deficit: 0,
         source_bucket_count: 1,

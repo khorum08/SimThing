@@ -371,7 +371,7 @@ pub use spec::capability::{
     ActivationMode, CapabilityCategorySpec, CapabilityEffectSpec, CapabilityPrereqSpec,
     CapabilitySpec, CapabilityTreeSpec, EffectTarget, MaxActivePolicy, ReplacementPolicy,
 };
-pub use spec::channel_key::{OwnerRef, ResourceKey, ScopeId};
+pub use spec::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
 pub use spec::domain_pack::DomainPackSpec;
 pub use spec::effect::EffectSpec;
 pub use spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};

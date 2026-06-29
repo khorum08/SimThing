@@ -4,6 +4,7 @@ use simthing_core::SimThingKind;
 
 use crate::error::SpecError;
 
+use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
 use super::planet_child_location::planet_id;
 use super::scenario::{
     galaxy_map_id, gridcell_role, is_galaxy_map_entity, is_owner_entity_kind, owner_entity_id,
@@ -28,7 +29,7 @@ pub struct ScenarioSteadIdRow {
     pub stable_id: String,
     pub kind: String,
     pub parent_id_raw: Option<u32>,
-    pub owner_ref: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
     pub is_location: bool,
     pub is_spatial_gridcell: bool,
 }
@@ -54,9 +55,9 @@ pub struct ScenarioSpatialTreeRow {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ScenarioRfMetadataRow {
     pub simthing_id_raw: u32,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
-    pub scope_id: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
+    pub scope_id: Option<ScopeId>,
     pub parent_id_raw: Option<u32>,
 }
 
@@ -194,7 +195,7 @@ fn collect_stead_id_rows(
     rows: &mut Vec<ScenarioSteadIdRow>,
 ) -> Result<(), SpecError> {
     let stable_id = stable_id_for_simthing(thing)?;
-    let owner_ref = owner_flow_owner_ref(thing);
+    let owner_ref = owner_flow_owner_ref(thing).map(OwnerRef::new);
     let is_location = thing.kind == SimThingKind::Location;
     let is_spatial_gridcell = is_location && is_spatial_gridcell_location(thing);
 
@@ -256,13 +257,13 @@ fn collect_rf_metadata_rows(
         let resource_key = if resource_key.trim().is_empty() {
             None
         } else {
-            Some(resource_key)
+            Some(ResourceKey::new(resource_key))
         };
         rows.push(ScenarioRfMetadataRow {
             simthing_id_raw: thing.id.raw(),
-            owner_ref: owner_flow_owner_ref(thing),
+            owner_ref: owner_flow_owner_ref(thing).map(OwnerRef::new),
             resource_key,
-            scope_id: rf_scope_id_for_simthing(thing, parent_id_raw),
+            scope_id: rf_scope_id_for_simthing(thing, parent_id_raw).map(ScopeId::new),
             parent_id_raw,
         });
     }

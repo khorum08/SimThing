@@ -109,7 +109,7 @@ fn recursive_local_rf_matches_sibling_surplus_to_sibling_deficit_before_bubbling
     let settlement = arena_for_location(&report, star_id)
         .settlements
         .iter()
-        .find(|s| s.owner_ref == "owner_a" && s.resource_key == "food")
+        .find(|s| s.owner_ref.as_str() == "owner_a" && s.resource_key.as_str() == "food")
         .expect("food settlement");
 
     assert_eq!(settlement.locally_matched_total, 20);
@@ -125,7 +125,7 @@ fn recursive_local_rf_bubbles_only_net_surplus_or_deficit_to_parent() {
     let settlement = arena_for_location(&report, star_id)
         .settlements
         .iter()
-        .find(|s| s.owner_ref == "owner_a" && s.resource_key == "food")
+        .find(|s| s.owner_ref.as_str() == "owner_a" && s.resource_key.as_str() == "food")
         .expect("food settlement");
 
     assert_eq!(settlement.net_surplus_to_parent, 10);
@@ -141,7 +141,7 @@ fn recursive_local_rf_supports_explicit_resource_key_metadata() {
         arena
             .participant_rows
             .iter()
-            .any(|row| row.resource_key == "food")
+            .any(|row| row.resource_key.as_str() == "food")
     }));
 }
 
@@ -154,7 +154,7 @@ fn recursive_local_rf_preserves_generic_resource_key_fallback() {
         arena
             .participant_rows
             .iter()
-            .any(|row| row.resource_key == OWNER_FLOW_DEFAULT_RESOURCE_KEY)
+            .any(|row| row.resource_key.as_str() == OWNER_FLOW_DEFAULT_RESOURCE_KEY)
     }));
 }
 
@@ -165,8 +165,11 @@ fn recursive_local_rf_preserves_owner_channel_metadata_not_spatial_parentage() {
 
     for arena in &report.arena_reports {
         for row in &arena.participant_rows {
-            assert!(!row.owner_ref.is_empty());
-            assert_ne!(row.owner_ref, row.parent_location_id_raw.to_string());
+            assert!(!row.owner_ref.as_str().is_empty());
+            assert_ne!(
+                row.owner_ref.as_str(),
+                row.parent_location_id.raw().to_string()
+            );
         }
     }
 }
@@ -282,7 +285,7 @@ fn recursive_local_rf_sibling_fixture_matches_expected_food_totals() {
     let settlement = arena_for_location(&report, star_id)
         .settlements
         .iter()
-        .find(|s| s.owner_ref == "owner_a" && s.resource_key == "food")
+        .find(|s| s.owner_ref.as_str() == "owner_a" && s.resource_key.as_str() == "food")
         .expect("food settlement");
 
     assert_eq!(settlement.locally_matched_total, 20);
@@ -369,8 +372,8 @@ fn recursive_local_rf_aggregate_sources_are_gpu_table_compatible() {
     assert!(!sources.is_empty());
     for row in &sources {
         assert!(row.arena_location_id_raw > 0);
-        assert!(!row.owner_ref.is_empty());
-        assert!(!row.resource_key.is_empty());
+        assert!(!row.owner_ref.as_str().is_empty());
+        assert!(!row.resource_key.as_str().is_empty());
     }
     for window in sources.windows(2) {
         let a = &window[0];
@@ -399,7 +402,9 @@ fn recursive_local_rf_aggregate_sources_preserve_resource_key() {
     let report = evaluate_recursive_local_rf(&spec).expect("recursive");
     let sources = recursive_local_rf_aggregate_source_rows(&report);
 
-    assert!(sources.iter().any(|row| row.resource_key == "food"));
+    assert!(sources
+        .iter()
+        .any(|row| row.resource_key.as_str() == "food"));
 }
 
 #[test]
@@ -410,5 +415,5 @@ fn recursive_local_rf_aggregate_sources_preserve_generic_fallback() {
 
     assert!(sources
         .iter()
-        .any(|row| row.resource_key == OWNER_FLOW_DEFAULT_RESOURCE_KEY));
+        .any(|row| row.resource_key.as_str() == OWNER_FLOW_DEFAULT_RESOURCE_KEY));
 }

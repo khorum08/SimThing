@@ -5,6 +5,7 @@
 
 use crate::error::SpecError;
 
+use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
 use super::loaded_scenario_runtime_report_chain::evaluate_loaded_scenario_runtime_report_chain_from_json_str;
 use super::runtime_tick_shell::RuntimeTickId;
 use super::scenario_canonical_io::load_scenario_spec_from_json_str;
@@ -31,9 +32,9 @@ pub enum ScenarioCandidateFromRuntimeSource {
 pub struct ScenarioCandidatePropertyMutationRecord {
     pub participant_simthing_id_raw: u32,
     pub property_id: String,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
-    pub scope_id: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
+    pub scope_id: Option<ScopeId>,
     pub before_value: Option<f64>,
     pub runtime_value: f64,
     pub after_value: f64,
@@ -185,7 +186,7 @@ fn map_mutation_record(
         property_id: record.property_id.clone(),
         owner_ref: Some(record.owner_ref.clone()),
         resource_key: Some(record.resource_key.clone()),
-        scope_id: record.scope_id.map(|scope| scope.to_string()),
+        scope_id: record.scope_id.map(|scope| ScopeId::new(scope.to_string())),
         before_value: record.before_value,
         runtime_value: record.runtime_property_view_value,
         after_value: record.candidate_after_value,

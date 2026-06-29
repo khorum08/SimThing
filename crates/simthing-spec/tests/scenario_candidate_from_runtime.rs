@@ -121,10 +121,11 @@ fn scenario_candidate_from_runtime_records_owner_resource_scope_metadata() {
         .mutation_records
         .iter()
         .all(|record| record.owner_ref.is_some() && record.resource_key.is_some()));
-    assert!(report
-        .mutation_records
-        .iter()
-        .any(|record| record.owner_ref.as_deref() == Some("owner_a")));
+    assert!(report.mutation_records.iter().any(|record| record
+        .owner_ref
+        .as_ref()
+        .map(|o| o.as_str())
+        == Some("owner_a")));
     assert!(report.mutation_records.iter().any(|record| {
         record.property_id == RUNTIME_PREVIEW_APPLIED_PROPERTY_ID
             || record.property_id == RUNTIME_PREVIEW_SATISFIED_PROPERTY_ID
