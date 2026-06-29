@@ -288,7 +288,7 @@ fn run_gpu_allocation(
     let ctx = GpuContext::new_blocking().expect("gpu");
     let n_slots = f.alloc.capacity() as u32;
     let mut state = WorldGpuState::new(ctx, &f.reg, n_slots);
-    state.write_values(values);
+    state.install_resolved_values_at_boundary(values);
 
     let plan = plan_arena_allocation(layout, &[], n_slots).unwrap();
     let mut eml = EmlExpressionRegistry::new();

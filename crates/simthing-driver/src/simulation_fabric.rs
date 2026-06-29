@@ -237,10 +237,9 @@ pub fn run_mapping_hot_dispatch(
     hot: &mut MappingHotPathState,
 ) -> Result<FabricMappingHotReport, MappingHotDispatchError> {
     let ctx = &state.ctx;
-    hot.scatter
-        .dispatch(
-            ctx,
-            &state.values,
+    state
+        .dispatch_indexed_scatter_from_resolved_values(
+            &hot.scatter,
             hot.mapping.stencil_input_buffer(),
             &hot.entries,
         )

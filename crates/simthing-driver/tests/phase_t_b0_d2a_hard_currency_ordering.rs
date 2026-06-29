@@ -251,7 +251,7 @@ fn b0_gpu_cpu_oracle_parity_exact() {
         .clone();
 
     let mut state = session.state;
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     let gpu_out = {
         use simthing_gpu::{AccumulatorPipelineSessions, Pipelines};
         let pipelines = Pipelines::new(&state.ctx);

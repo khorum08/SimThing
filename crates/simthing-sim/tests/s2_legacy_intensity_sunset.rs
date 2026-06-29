@@ -145,7 +145,7 @@ fn s2_no_cpu_mediated_production_intensity() {
     let mut reg = DimensionRegistry::new();
     reg.register(intensity_property());
     let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &reg, 1);
-    state.write_values(&[0.0, 0.1, 0.5]);
+    state.install_resolved_values_at_boundary(&[0.0, 0.1, 0.5]);
     state.sync_intensity_eml_accumulator(&reg);
     assert!(state.accumulator_intensity_eml_active);
 

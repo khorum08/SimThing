@@ -81,7 +81,7 @@ fn e11_resource_flow_flag_uploads_and_dispatches_flat_star_ops() {
     for (&(slot, col), &v) in &inputs {
         flat[idx(slot, col)] = v;
     }
-    fx.session.state.write_values(&flat);
+    fx.session.state.install_resolved_values_at_boundary(&flat);
 
     let mut oracle = inputs.clone();
     run_arena_allocation_oracle(&fx.layout, &mut oracle, 1.0);

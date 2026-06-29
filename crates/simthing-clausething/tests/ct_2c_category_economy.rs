@@ -502,7 +502,7 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     for (slot, &weight) in leaves.iter().zip(leaf_weights.iter()) {
         values[idx(*slot, weight_global, n_dims)] = weight;
     }
-    session.state.write_values(&values);
+    session.state.install_resolved_values_at_boundary(&values);
 
     let mut oracle = HashMap::new();
     for node in layout.iter_all() {

@@ -88,7 +88,7 @@ fn setup_reduction_state(
     let mut state = WorldGpuState::new(ctx, reg, alloc.capacity() as u32);
     let mut flat = vec![0.0_f32; state.values_len()];
     project_tree_to_values(world, reg, alloc, n_dims, &mut flat);
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     upload_topology(&mut state, &topo, reg);
 
     state.ensure_reduction_soft_accumulator();

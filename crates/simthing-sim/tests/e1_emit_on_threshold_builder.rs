@@ -181,8 +181,8 @@ fn e1_no_legacy_threshold_shader_and_routes_through_accumulator_op() {
     let mut curr = vec![0.0_f32; row_len];
     prev[0] = 0.25;
     curr[0] = 0.75;
-    state.write_previous_values(&prev);
-    state.write_values(&curr);
+    state.install_resolved_previous_values_at_boundary(&prev);
+    state.install_resolved_values_at_boundary(&curr);
 
     let gpu_regs = vec![ThresholdRegistration {
         slot: 0,
@@ -212,8 +212,8 @@ fn e1_no_legacy_threshold_shader_and_routes_through_accumulator_op() {
             &PackedThresholdUpload::from_registrations(&gpu_regs).unwrap(),
         )
         .expect("upload via AccumulatorOp session");
-    session
-        .dispatch_threshold_scan(&state.ctx, &state.values, &state.previous_values)
+    state
+        .dispatch_accumulator_threshold_scan(&mut session)
         .expect("dispatch threshold scan");
     let events = session
         .readback_threshold_events(&state.ctx)

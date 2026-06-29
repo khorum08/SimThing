@@ -142,7 +142,7 @@ pub fn run_flat_star_burn_in(
         for (&(slot, col), &v) in cell_inputs {
             flat[idx(slot.raw(), col)] = v;
         }
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let mut oracle = cell_inputs.clone();
         run_arena_allocation_oracle(layout, &mut oracle, dt);

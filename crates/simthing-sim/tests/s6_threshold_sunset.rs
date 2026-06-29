@@ -78,8 +78,8 @@ fn s6_threshold_events_match_cpu_golden() {
     let mut reg = DimensionRegistry::new();
     reg.register(SimProperty::simple("core", "amount", 0));
     let state = WorldGpuState::new(ctx, &reg, 1);
-    state.write_previous_values(&[0.25, 0.0, 0.0]);
-    state.write_values(&[0.75, 0.0, 0.0]);
+    state.install_resolved_previous_values_at_boundary(&[0.25, 0.0, 0.0]);
+    state.install_resolved_values_at_boundary(&[0.75, 0.0, 0.0]);
     let regs = [ThresholdRegistration {
         slot: 0,
         col: 0,
@@ -95,8 +95,8 @@ fn s6_threshold_events_match_cpu_golden() {
             &PackedThresholdUpload::from_registrations(&regs).unwrap(),
         )
         .unwrap();
-    session
-        .dispatch_threshold_scan(&state.ctx, &state.values, &state.previous_values)
+    state
+        .dispatch_accumulator_threshold_scan(&mut session)
         .unwrap();
     let events = session.readback_threshold_events(&state.ctx).unwrap();
     assert_eq!(events.len(), 1);

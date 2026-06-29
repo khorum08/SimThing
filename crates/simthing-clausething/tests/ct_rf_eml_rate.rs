@@ -209,7 +209,7 @@ fn gated_rate_band_tracks_trigger_edges_exactly_on_gpu() {
         let mut values = session.state.read_values();
         values[(slot * n_dims + trigger_col) as usize] = morale;
         values[(slot * n_dims + fertility_col) as usize] = fertility;
-        session.state.write_values(&values);
+        session.state.install_resolved_values_at_boundary(&values);
     };
 
     // Tick 1 — gate off, fertility 0: base + value formula floor state.

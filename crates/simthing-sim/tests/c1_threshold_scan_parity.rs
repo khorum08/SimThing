@@ -183,8 +183,8 @@ fn c1_threshold_accumulator_readback_succeeds_in_tick_outcome() {
         flat[base + velocity_col as usize] = 0.2;
         prev[base + amount_col as usize] = 0.4;
     }
-    state.write_values(&flat);
-    state.write_previous_values(&prev);
+    state.install_resolved_values_at_boundary(&flat);
+    state.install_resolved_previous_values_at_boundary(&prev);
 
     let mut runtime = WorldAccumulatorRuntime::new();
     runtime.ensure_threshold_session(&state.ctx, n_slots, n_dims, 1);

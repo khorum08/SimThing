@@ -144,7 +144,7 @@ fn e3_n8_recipe_validate_and_executes() {
     let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &dim, 1);
     let mut initial = [8.0_f32; 9];
     initial[8] = 0.0;
-    state.write_values(&initial);
+    state.install_resolved_values_at_boundary(&initial);
     state
         .sync_transfer_accumulator(&transfer_regs)
         .expect("C-8c upload");
@@ -279,7 +279,7 @@ fn e3_max_per_tick_is_metadata_not_gpu_cap() {
     });
 
     let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &dim, 1);
-    state.write_values(&[8.0, 8.0, 0.0]);
+    state.install_resolved_values_at_boundary(&[8.0, 8.0, 0.0]);
     state
         .sync_transfer_accumulator(&transfer_regs)
         .expect("C-8c upload");

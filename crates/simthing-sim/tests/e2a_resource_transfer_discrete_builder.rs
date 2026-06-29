@@ -148,7 +148,7 @@ fn e2a_transfer_executes_through_accumulator_op() {
         },
         1,
     );
-    state.write_values(&[100.0, 10.0, 0.0]);
+    state.install_resolved_values_at_boundary(&[100.0, 10.0, 0.0]);
     state
         .sync_transfer_accumulator(std::slice::from_ref(&transfer_reg))
         .expect("C-8c transfer upload");

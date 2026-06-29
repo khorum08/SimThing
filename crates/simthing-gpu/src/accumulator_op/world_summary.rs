@@ -226,7 +226,7 @@ mod tests {
         for (i, v) in cols.iter().enumerate() {
             values[base + i] = *v;
         }
-        state.write_values(&values);
+        state.install_resolved_values_at_boundary(&values);
     }
 
     #[test]
@@ -242,7 +242,7 @@ mod tests {
         write_slot_values(&mut state, 1, &[0.5, 0.25, 0.125]);
 
         let summary = WorldSummaryRuntime::new(&state.ctx, n_slots, n_dims);
-        summary.dispatch(&state.ctx, &state.values);
+        summary.dispatch(&state.ctx, &state.resolved.values);
         let gpu = summary.readback(&state.ctx).unwrap();
         let cpu = summaries_from_values(&state.read_values(), n_slots, n_dims);
         assert_eq!(gpu, cpu);
@@ -260,7 +260,7 @@ mod tests {
         write_slot_values(&mut state, 0, &[10.0, 20.0]);
 
         let summary = WorldSummaryRuntime::new(&state.ctx, n_slots, n_dims);
-        summary.dispatch(&state.ctx, &state.values);
+        summary.dispatch(&state.ctx, &state.resolved.values);
         assert_eq!(
             summary.readback(&state.ctx).unwrap(),
             summaries_from_values(&state.read_values(), n_slots, n_dims)
@@ -284,7 +284,7 @@ mod tests {
         write_slot_values(&mut state, 0, &cols);
 
         let summary = WorldSummaryRuntime::new(&state.ctx, n_slots, n_dims);
-        summary.dispatch(&state.ctx, &state.values);
+        summary.dispatch(&state.ctx, &state.resolved.values);
         assert_eq!(
             summary.readback(&state.ctx).unwrap(),
             summaries_from_values(&state.read_values(), n_slots, n_dims)
@@ -303,9 +303,9 @@ mod tests {
         write_slot_values(&mut state, 0, &[1.0, 2.0, 3.0]);
 
         let summary = WorldSummaryRuntime::new(&state.ctx, n_slots, n_dims);
-        summary.dispatch(&state.ctx, &state.values);
+        summary.dispatch(&state.ctx, &state.resolved.values);
         let first = summary.readback(&state.ctx).unwrap();
-        summary.dispatch(&state.ctx, &state.values);
+        summary.dispatch(&state.ctx, &state.resolved.values);
         let second = summary.readback(&state.ctx).unwrap();
         assert_eq!(first, second);
     }

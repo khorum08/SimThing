@@ -27,7 +27,7 @@ fn setup_intensity_state(reg: &DimensionRegistry, n_slots: u32, initial: &[f32])
     for (slot, row) in initial.chunks(n_dims).enumerate() {
         flat[slot * n_dims..slot * n_dims + n_dims].copy_from_slice(row);
     }
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     state.sync_intensity_eml_accumulator(reg);
     state
 }
@@ -365,7 +365,7 @@ fn c8b_slot_growth_reuploads_intensity_ops_even_when_formula_unchanged() {
     let mut flat = vec![0.0_f32; state.values_len()];
     flat[0..n_dims].copy_from_slice(&[0.0, 0.1, 0.5]);
     flat[n_dims..2 * n_dims].copy_from_slice(&[0.0, 0.2, 0.3]);
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     state.sync_intensity_eml_accumulator(&reg);
 
     let runtime = state.accumulator_runtime.as_ref().unwrap();
@@ -449,7 +449,7 @@ fn c8b_unchanged_intensity_formula_does_not_reupload_eml_table_each_boundary() {
     let mut reg = DimensionRegistry::new();
     reg.register(intensity_property(IntensityBehavior::default()));
     let mut state = WorldGpuState::new(GpuContext::new_blocking().expect("gpu"), &reg, 1);
-    state.write_values(&[0.0, 0.1, 0.5]);
+    state.install_resolved_values_at_boundary(&[0.0, 0.1, 0.5]);
     state.sync_intensity_eml_accumulator(&reg);
 
     let table = state

@@ -192,7 +192,7 @@ fn run_gpu_allocation(
     let ctx = GpuContext::new_blocking().expect("gpu");
     let n_slots = f.alloc.capacity() as u32;
     let mut state = WorldGpuState::new(ctx, &f.reg, n_slots);
-    state.write_values(values);
+    state.install_resolved_values_at_boundary(values);
     state.accumulator_runtime = Some(WorldAccumulatorRuntime::new());
     {
         let runtime = state.accumulator_runtime.as_mut().unwrap();

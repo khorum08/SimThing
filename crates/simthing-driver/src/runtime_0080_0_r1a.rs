@@ -1019,7 +1019,7 @@ impl TierAGpuHarness {
         self.counters.note_seed_upload();
 
         let world_flat = pack_world_values(&session_values, layout.total_slots);
-        self.world.write_values(&world_flat);
+        self.world.install_resolved_values_at_boundary(&world_flat);
         self.counters.note_seed_upload();
         Ok(())
     }
@@ -1028,7 +1028,7 @@ impl TierAGpuHarness {
         let ctx = &self.world.ctx;
         let gpu = self.tier_a.readback_full(ctx).expect("tier_a readback");
         let world_flat = pack_world_values(&gpu, layout.total_slots);
-        self.world.write_values(&world_flat);
+        self.world.install_resolved_values_at_boundary(&world_flat);
     }
 
     pub(crate) fn run_resident_loop(
