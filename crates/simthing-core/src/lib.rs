@@ -6,6 +6,7 @@ pub mod compiled_accumulator_plan;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
+pub mod fission_child_spawn;
 pub mod fission_clone_source;
 pub mod ids;
 pub mod intensity_eml;
@@ -47,6 +48,7 @@ pub use eml_registry::{
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError, EmlTreeId, EmlTreeMeta,
     MAX_EML_TREE_NODES, WHITELISTED_FORMULA_CLASSES,
 };
+pub use fission_child_spawn::ResolvedFissionChildBlueprint;
 pub use fission_clone_source::{
     fission_clone_source_container_kinds_for_registry, fission_clone_source_label,
     is_fission_clone_source, prep_fission_clone_source_labels,
