@@ -7,8 +7,8 @@ PASS — structural grid coordinates promoted to `StructuralCoord` with private 
 ## PR / branch / merge
 
 - Branch: `codex/as-structural-coord-0`
-- PR: (pending push)
-- Merge: (pending)
+- PR: #961
+- Merge: `f6e82ea023`
 
 ## What changed
 
