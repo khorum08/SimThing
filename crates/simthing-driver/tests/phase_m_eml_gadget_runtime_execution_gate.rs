@@ -7,6 +7,7 @@ use simthing_core::{
 };
 use simthing_gpu::{
     eval_eml_cpu, set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable, GpuContext,
+    PackedAccumulatorUpload,
 };
 use simthing_sim::PipelineFlags;
 use simthing_spec::{
@@ -116,7 +117,11 @@ fn run_gadget_runtime(
     session.upload_values(ctx, values);
     let op = eval_eml_op(GADGET_TREE_ID, EVAL_SLOT, EVAL_SLOT, target_col);
     session
-        .upload_ops_with_eml(ctx, std::slice::from_ref(&op), Some(&registry))
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(&registry))
+                .unwrap(),
+        )
         .expect("upload EvalEML op");
     let eml = Some((&table.node_buffer, &table.range_buffer));
     session.tick_with_eml(ctx, 0, eml).expect("EvalEML tick");

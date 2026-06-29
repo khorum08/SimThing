@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
+use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, PackedAccumulatorUpload};
 
 use crate::runtime_0080_0_r0::{RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE};
 use crate::runtime_0080_0_r1a::{
@@ -971,7 +971,7 @@ pub(crate) fn run_apply_session(
         for row in 0..planned_remap.len() as u32 {
             let ops = remap_copy_ops(&layout, row);
             session
-                .upload_ops(ctx, &ops)
+                .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
                 .map_err(|_| "r1c_e_remap_copy_upload_failed")?;
             remap_ops_uploaded += ops.len() as u32;
             session
@@ -984,7 +984,7 @@ pub(crate) fn run_apply_session(
         for row in 0..planned_compacted.len() as u32 {
             let ops = compacted_copy_ops(&layout, row);
             session
-                .upload_ops(ctx, &ops)
+                .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
                 .map_err(|_| "r1c_e_compacted_copy_upload_failed")?;
             compacted_ops_uploaded += ops.len() as u32;
             session
@@ -997,7 +997,7 @@ pub(crate) fn run_apply_session(
         for row in 0..planned_membership.len() as u32 {
             let ops = membership_copy_ops(&layout, row);
             session
-                .upload_ops(ctx, &ops)
+                .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
                 .map_err(|_| "r1c_e_membership_copy_upload_failed")?;
             membership_ops_uploaded += ops.len() as u32;
             session

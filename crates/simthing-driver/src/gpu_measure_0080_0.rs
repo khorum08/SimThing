@@ -12,7 +12,7 @@ use simthing_core::{
 };
 use simthing_gpu::{
     cpu_horizon, params_from_config, set_debug_readback_allowed, AccumulatorOpSession,
-    EmlGpuProgramTable, GpuContext, StructuredFieldStencilBoundaryMode,
+    EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload, StructuredFieldStencilBoundaryMode,
     StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
     StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
 };
@@ -372,7 +372,10 @@ fn measure_r1_disruption(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
     let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
     session.upload_values(ctx, &values);
     session
-        .upload_ops_with_eml(ctx, &ops, Some(&registry))
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(&ops, Some(&registry)).unwrap(),
+        )
         .expect("R1 GPU measure ops");
     let eml = Some((&table.node_buffer, &table.range_buffer));
     session.tick_with_eml(ctx, 0, eml).expect("R1 sum tick");
@@ -746,7 +749,9 @@ fn run_sum_groups(ctx: &GpuContext, groups: &[Vec<f32>]) -> Vec<f32> {
     }
     let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
     session.upload_values(ctx, &values);
-    session.upload_ops(ctx, &ops).expect("sum groups upload");
+    session
+        .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+        .expect("sum groups upload");
     session.tick(ctx, 0).expect("sum groups tick");
     let gpu_values = session.readback_full(ctx).expect("sum groups readback");
     (0..groups.len())
@@ -779,7 +784,11 @@ fn run_single_eval_emission(
     let mut session = AccumulatorOpSession::with_emission_capacity(ctx, 1, n_dims, 1);
     session.upload_values(ctx, slot_values);
     session
-        .upload_ops_with_eml(ctx, std::slice::from_ref(&op), Some(&registry))
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(&registry))
+                .unwrap(),
+        )
         .expect("single EvalEML emission upload");
     let eml = Some((&table.node_buffer, &table.range_buffer));
     session

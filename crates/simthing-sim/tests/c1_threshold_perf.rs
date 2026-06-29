@@ -46,8 +46,8 @@
 
 use simthing_core::{DimensionRegistry, SimProperty};
 use simthing_gpu::{
-    AccumulatorOpSession, GpuContext, ThresholdRegistration, WorldGpuState, DIR_UPWARD,
-    THRESH_BUF_VALUES,
+    AccumulatorOpSession, GpuContext, PackedThresholdUpload, ThresholdRegistration, WorldGpuState,
+    DIR_UPWARD, THRESH_BUF_VALUES,
 };
 use std::time::Instant;
 
@@ -94,7 +94,12 @@ fn c1_accumulator_threshold_readback_smoke() {
     // AccumulatorOp dispatch (excluded from timing), then
     // readback_threshold_events is the *readback path* we're benchmarking.
     let mut session = AccumulatorOpSession::new_attached(&state.ctx, N_SLOTS, N_DIMS, N_REGS);
-    session.upload_threshold_ops(&state.ctx, &regs).unwrap();
+    session
+        .upload_packed_threshold_ops(
+            &state.ctx,
+            &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+        )
+        .unwrap();
     let mut measure_new = || {
         session
             .dispatch_threshold_scan(&state.ctx, &state.values, &state.previous_values)

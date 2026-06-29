@@ -5,7 +5,9 @@ use std::time::Instant;
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, ThresholdEvent};
+use simthing_gpu::{
+    set_debug_readback_allowed, AccumulatorOpSession, PackedAccumulatorUpload, ThresholdEvent,
+};
 
 use crate::dress_rehearsal_r6c_integrated_run::{
     r1b_apply_boundary_events, r1b_oracle_events_by_tick, run_dress_rehearsal_r6c_integrated_run,
@@ -662,7 +664,7 @@ fn stage_dispatch_decode_events(
         }
     }
     journal_session
-        .upload_ops(ctx, copy_ops)
+        .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(copy_ops).unwrap())
         .map_err(|_| "journal_upload_copy_ops_failed")?;
     journal_session
         .tick(ctx, EVENT_JOURNAL_COPY_BAND)

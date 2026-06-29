@@ -13,8 +13,9 @@ use simthing_core::{
 };
 use simthing_gpu::{
     set_debug_readback_allowed, write_max_candidate_f_magnitude_bits, AccumulatorOpSession,
-    AccumulatorPipelineSessions, EmlGpuProgramTable, GpuContext, GradientPairGpu, Pipelines,
-    ThresholdEvent, ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, THRESH_BUF_VALUES,
+    AccumulatorPipelineSessions, EmlGpuProgramTable, GpuContext, GradientPairGpu,
+    PackedAccumulatorUpload, PackedThresholdUpload, Pipelines, ThresholdEvent,
+    ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, THRESH_BUF_VALUES,
 };
 
 use crate::dress_rehearsal_r1_disruption_heatmap::{
@@ -965,7 +966,10 @@ impl TierAGpuHarness {
         let mut tier_a = AccumulatorOpSession::new(&gpu_world.ctx, n_session_slots, N_DIMS);
         let swap_ops = tier_a_buffer_swap_ops(layout.total_slots);
         tier_a
-            .upload_ops(&gpu_world.ctx, &swap_ops)
+            .upload_packed_ops(
+                &gpu_world.ctx,
+                &PackedAccumulatorUpload::from_ops(&swap_ops).unwrap(),
+            )
             .map_err(|_| "tier_a_swap_ops_upload_failed")?;
 
         let mut harness = Self {
@@ -1343,7 +1347,11 @@ impl TierAGpuHarness {
             let ctx = &self.world.ctx;
             let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
             self.tier_a
-                .upload_ops_with_eml(ctx, &ops, Some(&self.eml_registry))
+                .upload_packed_ops(
+                    ctx,
+                    &PackedAccumulatorUpload::from_ops_with_eml(&ops, Some(&self.eml_registry))
+                        .unwrap(),
+                )
                 .expect("transform ops upload");
             self.counters.note_dispatch();
 
@@ -1373,7 +1381,10 @@ impl TierAGpuHarness {
         {
             let ctx = &self.world.ctx;
             self.tier_a
-                .upload_ops(ctx, &self.swap_ops)
+                .upload_packed_ops(
+                    ctx,
+                    &PackedAccumulatorUpload::from_ops(&self.swap_ops).unwrap(),
+                )
                 .expect("restore swap ops");
         }
     }
@@ -1401,7 +1412,11 @@ impl TierAGpuHarness {
         ));
         probe.upload_values(ctx, tick_input_values);
         probe
-            .upload_ops_with_eml(ctx, &ops, Some(&self.eml_registry))
+            .upload_packed_ops(
+                ctx,
+                &PackedAccumulatorUpload::from_ops_with_eml(&ops, Some(&self.eml_registry))
+                    .unwrap(),
+            )
             .map_err(|_| "probe_upload_ops_failed")?;
         let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
         for band in 0..TIER_A_BAND_COUNT {
@@ -1410,7 +1425,10 @@ impl TierAGpuHarness {
                 .map_err(|_| "probe_band_tick_failed")?;
         }
         probe
-            .upload_ops(ctx, &self.swap_ops)
+            .upload_packed_ops(
+                ctx,
+                &PackedAccumulatorUpload::from_ops(&self.swap_ops).unwrap(),
+            )
             .map_err(|_| "probe_swap_upload_failed")?;
         probe.tick(ctx, 0).map_err(|_| "probe_swap_tick_failed")?;
         probe.upload_previous_values(ctx, pre_combat_values);
@@ -1427,7 +1445,10 @@ impl TierAGpuHarness {
             .collect::<Vec<_>>();
         probe.ensure_threshold_emission_capacity(ctx, fleet_count);
         probe
-            .upload_threshold_ops(ctx, &regs)
+            .upload_packed_threshold_ops(
+                ctx,
+                &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+            )
             .map_err(|_| "probe_threshold_upload_failed")?;
         probe
             .tick(ctx, 0)

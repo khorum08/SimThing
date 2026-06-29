@@ -9,7 +9,9 @@ use simthing_core::{
     ColumnIndex, CombineFn, ConsumeMode, DiscreteTransferRegistration, GateSpec, ScaleSpec,
     SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
+use simthing_gpu::{
+    set_debug_readback_allowed, AccumulatorOpSession, GpuContext, PackedAccumulatorUpload,
+};
 
 use crate::dress_rehearsal_r2_recursive_allocation::{
     FACTORY_UNIT_COST_LABOR, POP_LABOR_PER_TICK, PRODUCTION_PER_RECIPE, STARPORT_PRODUCTION_NEED,
@@ -1543,7 +1545,10 @@ pub(crate) fn rr_3_engine_init_session(
     let mut session = AccumulatorOpSession::new(ctx, layout.n_slots, n_dims);
     session.upload_values(ctx, &values);
     session
-        .upload_ops_resolving_input_lists(ctx, &ops)
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_resolving_input_lists(&ops).unwrap(),
+        )
         .map_err(|_| "rr_3_gpu_upload_ops_failed")?;
     Ok(session)
 }

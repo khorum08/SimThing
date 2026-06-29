@@ -3,7 +3,7 @@ use std::path::Path;
 use simthing_core::{DimensionRegistry, SimProperty};
 use simthing_gpu::{
     accumulator_op::execute_intent_deltas_cpu, AccumulatorOpSession, GpuContext, IntentDelta,
-    Pipelines, WorldGpuState,
+    PackedIntentUpload, Pipelines, WorldGpuState,
 };
 use simthing_sim::PipelineFlags;
 
@@ -79,7 +79,12 @@ fn s1_intent_accumulator_matches_cpu_golden() {
     execute_intent_deltas_cpu(&mut expected, &deltas, state.n_dims);
 
     let mut session = AccumulatorOpSession::new_attached(&state.ctx, 1, state.n_dims, 1);
-    session.upload_intent_ops(&state.ctx, &deltas).unwrap();
+    session
+        .upload_packed_intent_ops(
+            &state.ctx,
+            &PackedIntentUpload::from_deltas(&deltas).unwrap(),
+        )
+        .unwrap();
     let pipelines = Pipelines::new(&state.ctx);
     session.prepare_intent(&state.ctx);
     pipelines.run_tick_pipeline_with_accumulators(

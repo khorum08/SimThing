@@ -14,7 +14,9 @@
 use std::sync::Mutex;
 
 use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
+use simthing_gpu::{
+    set_debug_readback_allowed, AccumulatorOpSession, GpuContext, PackedAccumulatorUpload,
+};
 use simthing_sim::PipelineFlags;
 use simthing_spec::MappingExecutionProfile;
 
@@ -97,7 +99,9 @@ fn run_bands(
 ) -> Vec<f32> {
     set_debug_readback_allowed(true);
     session.upload_values(ctx, values);
-    session.upload_ops(ctx, ops).expect("upload ops");
+    session
+        .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(ops).unwrap())
+        .expect("upload ops");
     for band in [0u32, 1] {
         let has_band = ops.iter().any(|op| {
             if let GateSpec::OrderBand(bb) = op.gate {

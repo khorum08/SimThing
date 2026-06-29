@@ -7,9 +7,9 @@ use simthing_core::{
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
-    GpuContext, StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
-    StructuredFieldStencilSourcePolicy,
+    GpuContext, PackedAccumulatorUpload, StructuredFieldStencilBoundaryMode,
+    StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
+    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
 };
 use simthing_sim::PipelineFlags;
 use std::sync::Mutex;
@@ -165,7 +165,10 @@ fn run_bands(
     set_debug_readback_allowed(true);
     session.upload_values(ctx, values);
     session
-        .upload_ops_with_eml(ctx, ops, Some(&setup.registry))
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(ops, Some(&setup.registry)).unwrap(),
+        )
         .unwrap();
     let eml = Some((&setup.table.node_buffer, &setup.table.range_buffer));
     for band in [0u32, 1] {

@@ -12,7 +12,7 @@ use simthing_core::{
 };
 use simthing_gpu::{
     cpu_horizon, params_from_config, set_debug_readback_allowed, AccumulatorOpSession,
-    EmlGpuProgramTable, GpuContext, StructuredFieldStencilBoundaryMode,
+    EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload, StructuredFieldStencilBoundaryMode,
     StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
     StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
 };
@@ -367,7 +367,14 @@ impl GpuResidentScheduler {
             &[world.disruption[0], fleet_disruption_input(world, 0)],
         );
         session
-            .upload_ops_with_eml(ctx, std::slice::from_ref(&op), Some(&self.eml_registry))
+            .upload_packed_ops(
+                ctx,
+                &PackedAccumulatorUpload::from_ops_with_eml(
+                    std::slice::from_ref(&op),
+                    Some(&self.eml_registry),
+                )
+                .unwrap(),
+            )
             .expect("R1 runtime ops");
         session.tick_with_eml(ctx, 0, eml).expect("R1 runtime tick");
         self.tick_boundary_readbacks += 1;
@@ -563,7 +570,9 @@ fn run_sum_groups_ephemeral(ctx: &GpuContext, groups: &[Vec<f32>]) -> Vec<f32> {
     }
     let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
     session.upload_values(ctx, &values);
-    session.upload_ops(ctx, &ops).expect("runtime sum groups");
+    session
+        .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+        .expect("runtime sum groups");
     session.tick(ctx, 0).expect("runtime sum groups tick");
     session
         .readback_full(ctx)
@@ -599,7 +608,11 @@ fn run_single_attrition_emission(
     session.upload_values(ctx, &[hostile_damage, hp_per_ship, num_ships_before]);
     let eml = Some((&table.node_buffer, &table.range_buffer));
     session
-        .upload_ops_with_eml(ctx, std::slice::from_ref(&op), Some(registry))
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(registry))
+                .unwrap(),
+        )
         .expect("attrition op");
     session.tick_with_eml(ctx, 0, eml).expect("attrition tick");
     session

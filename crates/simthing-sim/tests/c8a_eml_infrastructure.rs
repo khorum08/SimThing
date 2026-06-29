@@ -7,7 +7,7 @@ use simthing_core::{
 };
 use simthing_gpu::{
     eval_eml_cpu, set_debug_readback_allowed, AccumulatorOpGpu, AccumulatorOpSession,
-    EmlGpuProgramTable, GpuContext,
+    EmlGpuProgramTable, GpuContext, PackedAccumulatorUpload,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -93,7 +93,11 @@ fn run_eval_eml_gpu(
     set_debug_readback_allowed(true);
     session.upload_values(ctx, values);
     session
-        .upload_ops_with_eml(ctx, std::slice::from_ref(op), Some(registry))
+        .upload_packed_ops(
+            ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(op), Some(registry))
+                .unwrap(),
+        )
         .unwrap();
     let eml = Some((&table.node_buffer, &table.range_buffer));
     session.tick_with_eml(ctx, 0, eml).unwrap();
@@ -348,7 +352,12 @@ fn c8a_eval_eml_clamp_min_max_select_bit_exact() {
 
     let ops = vec![eval_eml_op(1, 0, 1), eval_eml_op(2, 0, 2)];
     let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set_with_eml(&ops, Some(&registry)).unwrap();
-    session.upload_gpu_ops(&ctx, &gpu_ops).unwrap();
+    session
+        .upload_packed_ops(
+            &ctx,
+            &PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec()).unwrap(),
+        )
+        .unwrap();
     session.tick_with_eml(&ctx, 0, eml).unwrap();
     let gpu = session.readback_full(&ctx).unwrap();
 
@@ -410,7 +419,12 @@ fn c8a_multiple_eml_trees_one_dispatch() {
     assert_eq!(gpu_ops[0].combine_a, 0);
     assert_eq!(gpu_ops[1].combine_a, 1);
     session.upload_values(&ctx, &[0.0; 4]);
-    session.upload_gpu_ops(&ctx, &gpu_ops).unwrap();
+    session
+        .upload_packed_ops(
+            &ctx,
+            &PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec()).unwrap(),
+        )
+        .unwrap();
     session.tick_with_eml(&ctx, 0, eml).unwrap();
     let gpu = session.readback_full(&ctx).unwrap();
     assert_eq!(gpu[1].to_bits(), 5.0f32.to_bits());
@@ -548,7 +562,11 @@ fn c8a_persistent_node_buffer_no_per_dispatch_upload() {
     let op = eval_eml_op(1, 0, 1);
     session.upload_values(&ctx, &[0.0; 4]);
     session
-        .upload_ops_with_eml(&ctx, std::slice::from_ref(&op), Some(&registry))
+        .upload_packed_ops(
+            &ctx,
+            &PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(&registry))
+                .unwrap(),
+        )
         .unwrap();
 
     for _ in 0..3 {
