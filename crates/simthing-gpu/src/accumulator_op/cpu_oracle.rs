@@ -218,12 +218,12 @@ pub fn execute_threshold_ops_cpu(
                 let prev = previous_values[idx(slot.raw(), col.raw_u32(), n_dims)];
                 let curr = values[idx(slot.raw(), col.raw_u32(), n_dims)];
                 if threshold_crossed_cpu(prev, curr, threshold, direction) {
-                    records.push(ThresholdEmission {
-                        reg_idx: op_idx as u32,
-                        slot: slot.raw(),
-                        col: col.raw_u32(),
-                        value: curr,
-                    });
+                    records.push(ThresholdEmission::from_cpu_oracle(
+                        op_idx as u32,
+                        slot.raw(),
+                        col.raw_u32(),
+                        curr,
+                    ));
                 }
             }
             ConsumeMode::None => match &op.source {
@@ -474,10 +474,7 @@ fn maybe_emit_event(
     }
     let emit_count = write_value.max(0.0).floor() as u32;
     if emit_count > 0 {
-        records.push(EmissionRecord {
-            reg_idx: op_idx as u32,
-            emit_count,
-        });
+        records.push(EmissionRecord::from_cpu_oracle(op_idx as u32, emit_count));
     }
 }
 
@@ -587,13 +584,7 @@ mod tests {
         };
         let records =
             execute_ops_cpu_with_emissions(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(
-            records,
-            vec![EmissionRecord {
-                reg_idx: 0,
-                emit_count: 3
-            }]
-        );
+        assert_eq!(records, vec![EmissionRecord::from_cpu_oracle(0, 3)]);
         assert_eq!(values[0], 3.7);
     }
 

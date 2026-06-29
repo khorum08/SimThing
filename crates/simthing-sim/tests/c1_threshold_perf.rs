@@ -101,9 +101,9 @@ fn c1_accumulator_threshold_readback_smoke() {
         )
         .unwrap();
     let mut measure_new = || {
-    state
-        .dispatch_accumulator_threshold_scan(&mut session)
-        .unwrap();
+        state
+            .dispatch_accumulator_threshold_scan(&mut session)
+            .unwrap();
         let started = Instant::now();
         let _ = session.readback_threshold_events(&state.ctx).unwrap();
         started.elapsed().as_secs_f64() * 1000.0

@@ -70,15 +70,8 @@ pub fn run_emission_cpu_oracle(
     n_dims: u32,
     emissions: &[EmissionRegistration],
 ) -> Result<Vec<EmissionRecord>, ResourceEconomyOracleError> {
-    emissions
-        .iter()
-        .map(|emission| {
-            Ok(EmissionRecord {
-                reg_idx: emission.reg_idx,
-                emit_count: expected_emission_emit_count(flat, n_dims, emission)?,
-            })
-        })
-        .collect()
+    simthing_gpu::cpu_oracle_emission_records(flat, n_dims, emissions)
+        .map_err(ResourceEconomyOracleError::EmissionPlan)
 }
 
 /// Sum selected flat-buffer cells for conservation checks.

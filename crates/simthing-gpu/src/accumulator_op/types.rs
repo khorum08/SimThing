@@ -22,12 +22,65 @@ pub const DEFAULT_EMISSION_CAPACITY: u32 = 1024;
 pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 4096;
 
 /// Compact threshold crossing record (C-1 parallel emission stream).
+///
+/// External crates cannot forge threshold emissions directly:
+///
+/// ```compile_fail
+/// fn external_threshold_emission_forge() {
+///     let _ = simthing_gpu::ThresholdEmission {
+///         reg_idx: 0,
+///         slot: 0,
+///         col: 0,
+///         value: 0.0,
+///     };
+/// }
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ThresholdEmission {
-    pub reg_idx: u32,
-    pub slot: u32,
-    pub col: u32,
-    pub value: f32,
+    reg_idx: u32,
+    slot: u32,
+    col: u32,
+    value: f32,
+}
+
+impl ThresholdEmission {
+    pub fn reg_idx(&self) -> u32 {
+        self.reg_idx
+    }
+
+    pub fn slot(&self) -> u32 {
+        self.slot
+    }
+
+    pub fn col(&self) -> u32 {
+        self.col
+    }
+
+    pub fn value(&self) -> f32 {
+        self.value
+    }
+
+    pub(crate) fn from_kernel_threshold_crossing(
+        reg_idx: u32,
+        slot: u32,
+        col: u32,
+        value: f32,
+    ) -> Self {
+        Self {
+            reg_idx,
+            slot,
+            col,
+            value,
+        }
+    }
+
+    pub(crate) fn from_cpu_oracle(reg_idx: u32, slot: u32, col: u32, value: f32) -> Self {
+        Self::from_kernel_threshold_crossing(reg_idx, slot, col, value)
+    }
+
+    pub(crate) fn from_gpu_readback(gpu: &ThresholdEmissionGpu) -> Self {
+        Self::from_kernel_threshold_crossing(gpu.reg_idx, gpu.slot, gpu.col, gpu.value)
+    }
 }
 
 #[repr(C)]
@@ -48,15 +101,47 @@ pub struct SlotSummary {
     pub group_checksums: [u32; 4],
 }
 
-/// Compact GPU-resolved emission record (Pass C readback tier).
+/// Compact emission record written by B-2 `EmitEvent` ops.
 ///
-/// Compact emission record written by B-2 `EmitEvent` ops. B-2 owns capacity
-/// checks and atomic `emission_count` increments; threshold-gated emission
-/// migration lands in C-1/C-8.
+/// External crates cannot forge emission records directly:
+///
+/// ```compile_fail
+/// fn external_emission_record_forge() {
+///     let _ = simthing_gpu::EmissionRecord {
+///         reg_idx: 0,
+///         emit_count: 1,
+///     };
+/// }
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EmissionRecord {
-    pub reg_idx: u32,
-    pub emit_count: u32,
+    reg_idx: u32,
+    emit_count: u32,
+}
+
+impl EmissionRecord {
+    pub fn reg_idx(&self) -> u32 {
+        self.reg_idx
+    }
+
+    pub fn emit_count(&self) -> u32 {
+        self.emit_count
+    }
+
+    pub(crate) fn from_kernel_emit_event(reg_idx: u32, emit_count: u32) -> Self {
+        Self {
+            reg_idx,
+            emit_count,
+        }
+    }
+
+    pub(crate) fn from_cpu_oracle(reg_idx: u32, emit_count: u32) -> Self {
+        Self::from_kernel_emit_event(reg_idx, emit_count)
+    }
+
+    pub(crate) fn from_gpu_readback(gpu: &EmissionRecordGpu) -> Self {
+        Self::from_kernel_emit_event(gpu.reg_idx, gpu.emit_count)
+    }
 }
 
 #[repr(C)]

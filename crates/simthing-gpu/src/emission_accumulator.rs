@@ -230,6 +230,36 @@ pub fn emission_plan_signature_fields(
     )
 }
 
+fn emission_cell_index(slot: u32, col: u32, n_dims: u32) -> usize {
+    (slot * n_dims + col) as usize
+}
+
+/// CPU-oracle twin of kernel EmitEvent readback for driver parity burn-in.
+pub fn cpu_oracle_emission_records(
+    flat: &[f32],
+    n_dims: u32,
+    emissions: &[EmissionRegistration],
+) -> Result<Vec<crate::EmissionRecord>, EmissionPlanError> {
+    emissions
+        .iter()
+        .map(|emission| {
+            let idx = emission_cell_index(emission.source_slot, emission.source_col, n_dims);
+            let source = flat[idx];
+            let emit_count = match &emission.formula {
+                EmissionFormula::IdentityFloor => source.floor().max(0.0) as u32,
+                EmissionFormula::Constant { value } => u32::from(source >= *value),
+                EmissionFormula::EvalEml { .. } => {
+                    return Err(EmissionPlanError::MissingEmlRegistry);
+                }
+            };
+            Ok(crate::EmissionRecord::from_cpu_oracle(
+                emission.reg_idx,
+                emit_count,
+            ))
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

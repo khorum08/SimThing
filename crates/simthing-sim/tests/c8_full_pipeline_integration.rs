@@ -341,8 +341,8 @@ fn c8_full_gpu_resident_pipeline_all_flags_on() {
         .readback_emissions(&state.ctx)
         .expect("emission readback");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 99);
-    assert_eq!(emissions[0].emit_count, pool_after.floor() as u32);
+    assert_eq!(emissions[0].reg_idx(), 99);
+    assert_eq!(emissions[0].emit_count(), pool_after.floor() as u32);
 
     let gpu_summary = state.readback_accumulator_summary().unwrap();
     let cpu_summary = simthing_gpu::summaries_from_values(&values, n_slots, n_dims);

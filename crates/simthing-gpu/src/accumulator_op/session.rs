@@ -1960,12 +1960,7 @@ impl AccumulatorOpSession {
         let gpu: &[ThresholdEmissionGpu] = bytemuck::cast_slice(&bytes);
         Ok(gpu
             .iter()
-            .map(|r| ThresholdEmission {
-                reg_idx: r.reg_idx,
-                slot: r.slot,
-                col: r.col,
-                value: r.value,
-            })
+            .map(ThresholdEmission::from_gpu_readback)
             .collect())
     }
 
@@ -1977,11 +1972,13 @@ impl AccumulatorOpSession {
         let emissions = self.readback_threshold_emissions(ctx)?;
         Ok(emissions
             .into_iter()
-            .map(|e| ThresholdEvent {
-                slot: e.slot,
-                col: e.col,
-                value: e.value,
-                event_kind: self.threshold_event_kinds[e.reg_idx as usize],
+            .map(|e| {
+                ThresholdEvent::from_kernel_pass7_readback(
+                    e.slot(),
+                    e.col(),
+                    e.value(),
+                    self.threshold_event_kinds[e.reg_idx() as usize],
+                )
             })
             .collect())
     }
@@ -2006,12 +2003,7 @@ impl AccumulatorOpSession {
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
         Ok((
             count,
-            gpu.iter()
-                .map(|r| EmissionRecord {
-                    reg_idx: r.reg_idx,
-                    emit_count: r.emit_count,
-                })
-                .collect(),
+            gpu.iter().map(EmissionRecord::from_gpu_readback).collect(),
         ))
     }
 
@@ -2033,13 +2025,7 @@ impl AccumulatorOpSession {
         let used = (count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok(gpu
-            .iter()
-            .map(|r| EmissionRecord {
-                reg_idx: r.reg_idx,
-                emit_count: r.emit_count,
-            })
-            .collect())
+        Ok(gpu.iter().map(EmissionRecord::from_gpu_readback).collect())
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
@@ -2946,10 +2932,7 @@ mod tests {
         let emissions = session.readback_emissions(&ctx).unwrap();
         assert_eq!(
             emissions,
-            vec![EmissionRecord {
-                reg_idx: 0,
-                emit_count: 3,
-            }]
+            vec![EmissionRecord::from_kernel_emit_event(0, 3)]
         );
         let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.7);
@@ -3322,7 +3305,7 @@ mod tests {
         let mut expected_values = current.clone();
         let mut expected =
             execute_threshold_ops_cpu(&previous, &mut expected_values, &ops, n_dims).unwrap();
-        expected.sort_by_key(|e| (e.slot, e.col, e.reg_idx));
+        expected.sort_by_key(|e| (e.slot(), e.col(), e.reg_idx()));
 
         let mut session = AccumulatorOpSession::new_attached(&ctx, 3, n_dims, 16);
         session.upload_values(&ctx, &current);
@@ -3336,15 +3319,15 @@ mod tests {
         session.tick(&ctx, 0).unwrap();
 
         let mut gpu = session.readback_threshold_emissions(&ctx).unwrap();
-        gpu.sort_by_key(|e| (e.slot, e.col, e.reg_idx));
+        gpu.sort_by_key(|e| (e.slot(), e.col(), e.reg_idx()));
         assert_eq!(gpu.len(), 2);
-        assert_eq!(gpu[0].slot, 0);
-        assert_eq!(gpu[1].slot, 1);
+        assert_eq!(gpu[0].slot(), 0);
+        assert_eq!(gpu[1].slot(), 1);
 
         let events = session.readback_threshold_events(&ctx).unwrap();
         assert_eq!(events.len(), 2);
-        assert_eq!(events[0].event_kind, kinds[0]);
-        assert_eq!(events[1].event_kind, kinds[1]);
+        assert_eq!(events[0].event_kind(), kinds[0]);
+        assert_eq!(events[1].event_kind(), kinds[1]);
     }
 
     #[test]
@@ -3374,9 +3357,9 @@ mod tests {
         for ev in events {
             let idx = regs
                 .iter()
-                .position(|r| r.slot == ev.slot && r.col == ev.col)
+                .position(|r| r.slot == ev.slot() && r.col == ev.col())
                 .expect("slot/col");
-            assert_eq!(ev.event_kind, kinds[idx]);
+            assert_eq!(ev.event_kind(), kinds[idx]);
         }
     }
 

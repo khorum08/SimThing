@@ -1272,7 +1272,7 @@ fn projected_fission_slots(
     let mut seen = HashSet::new();
     events
         .iter()
-        .filter_map(|event| match registry.get(event.event_kind)? {
+        .filter_map(|event| match registry.get(event.event_kind())? {
             ThresholdSemantic::FissionTrigger {
                 sim_thing_id,
                 property_id,
@@ -1350,7 +1350,7 @@ fn collect_velocity_alerts(
                 sim_thing_id,
                 property_id,
                 sub_field,
-            } = registry.get(event.event_kind)?
+            } = registry.get(event.event_kind())?
             else {
                 return None;
             };
@@ -1358,7 +1358,7 @@ fn collect_velocity_alerts(
                 sim_thing_id: *sim_thing_id,
                 property_id: *property_id,
                 sub_field: sub_field.clone(),
-                value: event.value,
+                value: event.value(),
             })
         })
         .collect()
@@ -1375,7 +1375,7 @@ fn collect_aggregate_alerts(
                 sim_thing_id,
                 property_id,
                 sub_field,
-            } = registry.get(event.event_kind)?
+            } = registry.get(event.event_kind())?
             else {
                 return None;
             };
@@ -1383,7 +1383,7 @@ fn collect_aggregate_alerts(
                 sim_thing_id: *sim_thing_id,
                 property_id: *property_id,
                 sub_field: sub_field.clone(),
-                value: event.value,
+                value: event.value(),
             })
         })
         .collect()
@@ -1499,12 +1499,7 @@ mod tests {
     #[test]
     fn boundary_with_events_cannot_skip() {
         let (proto, patcher, _) = simple_proto();
-        let events = vec![ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.5,
-            event_kind: 0,
-        }];
+        let events = vec![ThresholdEvent::from_boundary_delivery(0, 0, 0.5, 0)];
         assert!(!proto.can_skip_empty_boundary(&events, &patcher));
     }
 
@@ -1623,12 +1618,9 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.2,
-            event_kind,
-        }];
+        let events = vec![ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.2, event_kind,
+        )];
 
         assert_eq!(
             projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg),
@@ -1679,12 +1671,9 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.2,
-            event_kind,
-        }];
+        let events = vec![ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.2, event_kind,
+        )];
 
         let container_kinds = vec!["tech_tree".into()];
         let projected = projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg);
@@ -1757,12 +1746,9 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.2,
-            event_kind,
-        }];
+        let events = vec![ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.2, event_kind,
+        )];
 
         assert_eq!(
             projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg),
@@ -1784,12 +1770,9 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.2,
-            event_kind,
-        }];
+        let events = vec![ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.2, event_kind,
+        )];
 
         let _ = projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg);
 

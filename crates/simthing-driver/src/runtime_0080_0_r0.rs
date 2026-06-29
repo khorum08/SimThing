@@ -618,7 +618,7 @@ fn run_single_attrition_emission(
     session
         .readback_emissions(ctx)
         .ok()
-        .and_then(|e| e.first().map(|r| r.emit_count))
+        .and_then(|e| e.first().map(|r| r.emit_count()))
         .unwrap_or(0)
 }
 

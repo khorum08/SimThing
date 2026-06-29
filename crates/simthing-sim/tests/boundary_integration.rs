@@ -611,7 +611,7 @@ fn velocity_alert_registration_surfaces_at_boundary() {
     assert!(
         out.events
             .iter()
-            .any(|event| event.value.to_bits() == (-0.21f32).to_bits()),
+            .any(|event| event.value().to_bits() == (-0.21f32).to_bits()),
         "velocity alert threshold never fired"
     );
 
@@ -1751,7 +1751,7 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
         // parent may still have FissionTrigger registrations live, though we
         // don't expect them to fire (amount has bottomed out).
         for ev in out.events {
-            let resolved = proto.threshold_registry().get(ev.event_kind);
+            let resolved = proto.threshold_registry().get(ev.event_kind());
             if matches!(
                 resolved,
                 Some(simthing_sim::ThresholdSemantic::FusionTrigger { .. })
@@ -2855,7 +2855,7 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     // semantic with the right (sim_thing_id, property_id, sub_field).
     let mut saw_unlock = false;
     for event in &tick.events {
-        match cpu_reg.get(event.event_kind) {
+        match cpu_reg.get(event.event_kind()) {
             Some(ThresholdSemantic::CapabilityUnlock {
                 sim_thing_id,
                 property_id,
@@ -2868,7 +2868,8 @@ fn capability_unlock_fires_in_boundary_integration_test() {
             }
             other => panic!(
                 "unexpected semantic at event_kind {}: {:?}",
-                event.event_kind, other
+                event.event_kind(),
+                other
             ),
         }
     }

@@ -61,10 +61,10 @@ pub use candidate_f_magnitude::{
 };
 pub use context::{GpuContext, GpuInitError};
 pub use emission_accumulator::{
-    emission_plan_signature_fields, encode_emission_plan, plan_emission_ops, EmissionFormula,
-    EmissionPlan, EmissionPlanError, EmissionRegistration, EmissionSyncError,
-    FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR, NO_CONSTANT,
-    NO_MAX_EMIT, NO_TREE_ID,
+    cpu_oracle_emission_records, emission_plan_signature_fields, encode_emission_plan,
+    plan_emission_ops, EmissionFormula, EmissionPlan, EmissionPlanError, EmissionRegistration,
+    EmissionSyncError, FORMULA_KIND_CONSTANT, FORMULA_KIND_EVAL_EML, FORMULA_KIND_IDENTITY_FLOOR,
+    NO_CONSTANT, NO_MAX_EMIT, NO_TREE_ID,
 };
 pub use indexed_scatter::{
     cpu_scatter_indexed, validate_scatter_entries, IndexedScatterError, IndexedScatterOp,
@@ -156,9 +156,9 @@ pub use w_impedance_compose::{
 };
 pub use world_state::{
     build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta,
-    OverlayDelta, ResolvedWriteAuthority, SlotDeltaRange, ThresholdEvent, ThresholdRegistration,
-    WorldGpuState,
-    CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, OP_ADD,
-    OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN,
-    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES, WEIGHT_COL_NONE,
+    OverlayDelta, ResolvedWriteAuthority, SlotDeltaRange, ThresholdEvent, ThresholdEventGpu,
+    ThresholdRegistration, WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
+    DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX,
+    RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
+    WEIGHT_COL_NONE,
 };

@@ -182,8 +182,8 @@ fn c8d_identity_floor_emission_records_count() {
         .expect("sync emission");
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("readback");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 11);
-    assert_eq!(emissions[0].emit_count, 3);
+    assert_eq!(emissions[0].reg_idx(), 11);
+    assert_eq!(emissions[0].emit_count(), 3);
 }
 
 #[test]
@@ -226,8 +226,8 @@ fn c8d_constant_emission_records_count() {
     state.sync_emission_accumulator(&regs).expect("sync");
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("readback");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 3);
-    assert_eq!(emissions[0].emit_count, 5);
+    assert_eq!(emissions[0].reg_idx(), 3);
+    assert_eq!(emissions[0].emit_count(), 5);
 }
 
 #[test]
@@ -252,8 +252,8 @@ fn c8d_eval_eml_exact_emission_matches_cpu_oracle() {
     state.sync_emission_accumulator(&regs).expect("sync");
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("readback");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 5);
-    assert_eq!(emissions[0].emit_count, 4);
+    assert_eq!(emissions[0].reg_idx(), 5);
+    assert_eq!(emissions[0].emit_count(), 4);
 }
 
 #[test]
@@ -291,12 +291,12 @@ fn c8d_multiple_emissions_compact_records() {
     ];
     state.sync_emission_accumulator(&regs).expect("sync");
     let mut emissions = run_accumulator_emission(&mut state, 1.0).expect("readback");
-    emissions.sort_by_key(|r| r.reg_idx);
+    emissions.sort_by_key(|r| r.reg_idx());
     assert_eq!(emissions.len(), 2);
-    assert_eq!(emissions[0].reg_idx, 1);
-    assert_eq!(emissions[0].emit_count, 3);
-    assert_eq!(emissions[1].reg_idx, 3);
-    assert_eq!(emissions[1].emit_count, 7);
+    assert_eq!(emissions[0].reg_idx(), 1);
+    assert_eq!(emissions[0].emit_count(), 3);
+    assert_eq!(emissions[1].reg_idx(), 3);
+    assert_eq!(emissions[1].emit_count(), 7);
 }
 
 #[test]
@@ -447,7 +447,7 @@ fn c8d_emission_path_no_cpu_mediated_evaluation() {
     }];
     state.sync_emission_accumulator(&regs).expect("sync");
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("gpu path");
-    assert_eq!(emissions[0].emit_count, 4);
+    assert_eq!(emissions[0].emit_count(), 4);
 }
 
 #[test]
@@ -523,8 +523,8 @@ fn c8d_constant_value_change_reuploads_emission_ops() {
     assert!(uploads_after_second > uploads_after_first);
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("dispatch");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 7);
-    assert_eq!(emissions[0].emit_count, 5);
+    assert_eq!(emissions[0].reg_idx(), 7);
+    assert_eq!(emissions[0].emit_count(), 5);
 }
 
 #[test]
@@ -567,8 +567,8 @@ fn c8d_reg_idx_change_reuploads_emission_ops() {
     assert!(uploads_after_second > uploads_after_first);
     let emissions = run_accumulator_emission(&mut state, 1.0).expect("dispatch");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 42);
-    assert_eq!(emissions[0].emit_count, 3);
+    assert_eq!(emissions[0].reg_idx(), 42);
+    assert_eq!(emissions[0].emit_count(), 3);
 }
 
 #[test]
@@ -713,6 +713,6 @@ fn c8d_combined_c1_c2_c4_s4_c7_c8b_c8c_c8d_all_flags_on() {
         .readback_emissions(&state.ctx)
         .expect("emission records");
     assert_eq!(emissions.len(), 1);
-    assert_eq!(emissions[0].reg_idx, 99);
-    assert_eq!(emissions[0].emit_count, 3);
+    assert_eq!(emissions[0].reg_idx(), 99);
+    assert_eq!(emissions[0].emit_count(), 3);
 }

@@ -201,30 +201,10 @@ fn extract_scripted_event_triggers_filters_to_scripted_arms() {
     });
 
     let events = vec![
-        ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 1.0,
-            event_kind: ek_scripted,
-        },
-        ThresholdEvent {
-            slot: 1,
-            col: 1,
-            value: 2.0,
-            event_kind: ek_capability,
-        },
-        ThresholdEvent {
-            slot: 2,
-            col: 2,
-            value: 3.0,
-            event_kind: ek_scripted2,
-        },
-        ThresholdEvent {
-            slot: 3,
-            col: 3,
-            value: 4.0,
-            event_kind: 99,
-        }, // out of range
+        ThresholdEvent::from_boundary_delivery(0, 0, 1.0, ek_scripted),
+        ThresholdEvent::from_boundary_delivery(1, 1, 2.0, ek_capability),
+        ThresholdEvent::from_boundary_delivery(2, 2, 3.0, ek_scripted2),
+        ThresholdEvent::from_boundary_delivery(3, 3, 4.0, 99), // out of range
     ];
 
     let resolved = cpu.extract_scripted_event_triggers(&events);

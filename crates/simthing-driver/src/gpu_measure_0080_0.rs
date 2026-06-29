@@ -799,7 +799,7 @@ fn run_single_eval_emission(
         .expect("single EvalEML emission readback");
     emissions
         .first()
-        .map(|record| record.emit_count)
+        .map(|record| record.emit_count())
         .unwrap_or(0)
 }
 

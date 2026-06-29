@@ -93,21 +93,21 @@ impl LegacyOracleRun {
         }
         let mut legacy = self.legacy_events.clone();
         let mut acc = self.accumulator_events.clone();
-        legacy.sort_by_key(|e| (e.slot, e.col, e.event_kind));
-        acc.sort_by_key(|e| (e.slot, e.col, e.event_kind));
+        legacy.sort_by_key(|e| (e.slot(), e.col(), e.event_kind()));
+        acc.sort_by_key(|e| (e.slot(), e.col(), e.event_kind()));
         match self.exactness {
             OracleExactness::BitExact => legacy.iter().zip(acc.iter()).all(|(a, b)| {
-                a.slot == b.slot
-                    && a.col == b.col
-                    && a.event_kind == b.event_kind
-                    && a.value.to_bits() == b.value.to_bits()
+                a.slot() == b.slot()
+                    && a.col() == b.col()
+                    && a.event_kind() == b.event_kind()
+                    && a.value().to_bits() == b.value().to_bits()
             }),
             OracleExactness::ToleranceAbsEpsilon { multiplier } => {
                 legacy.iter().zip(acc.iter()).all(|(a, b)| {
-                    a.slot == b.slot
-                        && a.col == b.col
-                        && a.event_kind == b.event_kind
-                        && (a.value - b.value).abs() <= f32::EPSILON * multiplier as f32
+                    a.slot() == b.slot()
+                        && a.col() == b.col()
+                        && a.event_kind() == b.event_kind()
+                        && (a.value() - b.value()).abs() <= f32::EPSILON * multiplier as f32
                 })
             }
         }
