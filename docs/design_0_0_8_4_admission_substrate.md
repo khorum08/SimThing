@@ -63,8 +63,10 @@ shows the migration surface is larger than one focused PR.
 | 2 | `AS-CHANNEL-NEWTYPES-0` | §5.1 channel identity | `OwnerRef`, `ResourceKey`, `ScopeId`, `ParentLocationId` as distinct newtypes (over the current `String`/id). Transposition and bare-string passing become uncompilable. | Arg-order / mis-binding validation + any "owner vs resource" runtime check. `compile_fail`: passing a `ResourceKey` where `OwnerRef` is expected. | Cursor/Grok | PROBATION |
 | 3 | `AS-KIND-OUT-OF-TICK-0` | §2 "behavior never branches on kind at runtime" | Introduce the tick/runtime view type that carries **no `kind`** (resolved columns/slots only); drive the production kind-reads (audit `simthing-sim`, e.g. `is_capability_container(&child.kind, …)` at `boundary.rs:1293`) from a resolved column instead of a `kind` match (static → resolve-away; dynamic predicate → **EML gadget**, §2.1). | Core §9 "no `match kind`" detector → promoted to type. `compile_fail`: a tick-path fn cannot access `.kind`. **May split** (audit production vs test kind-reads first). | Cursor/Grok | IN PROGRESS |
 | 4 | `AS-SIM-SEMANTIC-FREE-0` | §4 "`simthing-sim` never learns the words" | Seal the `simthing-sim` public surface so it cannot **name** a game concept — no semantic `SimThingKind` variant (`Faction`/`Cohort`) or semantic `String` category/faction crosses the crate boundary; the sim sees columns, indices, and opaque registration handles. Composes on AS-3. | The scattered semantic-free source scans → narrowed to true residue (e.g. WGSL text, which Rust can't see — stays a scan). `compile_fail`: a faction/category type at the `simthing-sim` boundary. | Cursor/Grok | OPEN |
-| 5 | `AS-INDEX-NEWTYPES-0` *(horizon)* | §3/§4 stable indices | `SlotIndex`, `ColumnIndex`, and audit `OrderBand` (already `OrderBand(u32)`) as distinct newtypes so a slot index can't be used as a column index; owner-vs-spatial-parent distinction so "reparent to an owner" (core §2 law 2) is uncompilable. | Mixing-index bugs; the "owner is never a spatial parent" prose detector (partial). | Cursor/Grok | OPEN (horizon) |
+| 5 | `AS-INDEX-NEWTYPES-0` *(horizon)* | §3/§4 stable indices | `SlotIndex`, `ColumnIndex`, and audit `OrderBand` (already `OrderBand(u32)`) as distinct newtypes so a slot index can't be used as a column index; owner-vs-spatial-parent distinction so "reparent to an owner" (core §2 law 2) is uncompilable. Entity ids are copyable integer-wrapped newtypes (`SystemId(u32)`, `OwnerId`, `LocationId`) — this subsumes the only load-bearing part of the "flat-arena / no reference cycles" idea (Gemini review); owned `Vec` children already preclude cycles, so no separate cycle-prevention rung is warranted. | Mixing-index bugs; the "owner is never a spatial parent" prose detector (partial). | Cursor/Grok | OPEN (horizon) |
 | 6 | `AS-STRUCTURAL-COORD-0` | STEAD: render coords cannot leak into structural logic (core §0/§7; `stead_spatial_contract.md`) | `StructuralCoord { col, row }` integer newtype that **cannot be constructed from render `f32`** except via an explicit, named conversion; the lowerer / Movement-Front / RF-binding structural paths accept only `StructuralCoord`, never a bare float pair. | A slice of the `stead_spatial_contract_guards` render-vs-structural scan + the prose "positions are structural, never render." `compile_fail`: building a structural coord from render floats. **Now-rung (independent of AS-5).** | Cursor/Grok | OPEN |
+| 7 | `AS-TICK-FABRIC-BOUNDARY-0` | the **hot-path slice** of no-CPU-planner (core §8) | The per-tick fn accepts only `&mut SimulationFabric` — resolved numeric columns/slots, **no** semantic / strategic / `kind` / overlay-authoring state. Planning inputs are structurally inaccessible *inside* the tick. Capstones AS-3 + AS-4 (they remove `kind` and semantic names; this removes *all* non-resolved state from the tick view). | Hot-path slice of the no-CPU-planner prose detector → §5 residue shrinks to *boundary-time* planning. `compile_fail`: a tick-path fn reaching strategic/overlay/kind state. **Depends on AS-3 + AS-4.** |
+| 8 | `AS-PACKED-UPLOAD-BOUNDARY-0` | the **upload slice** of semantic-free-GPU (§4; promotes the §5A phantom-resolution addendum) | The GPU upload utility consumes only a `PackedUpload` (`[f32; N]` columns + primitive indices); no rich/semantic struct crosses the upload seam (optionally `ColumnIndex<Resolved>` phantom state). | Semantic-free *upload* scan → §5 GPU residue shrinks to *shader-text only*. `compile_fail`: a semantic struct at the upload boundary. **Depends on AS-1.** |
 | F | `AS-CLOSEOUT-0` | — | Scope Ledger across rungs: invariants promoted, **guards/prose retired (the success metric)**, parity intact. DA review. | — | Opus/Owner (DA) | OPEN |
 
 *Recipient* follows the handoff-template routing (Type → agent). *State:* `DONE` · `OPEN` (queued) · set to `IN PROGRESS` / `PROBATION` / `DA-APPROVED` as a rung lands.
@@ -143,11 +145,17 @@ This track is uniquely resistant to ceremony because **its output is deletion.**
 Types cannot reach everything; this track deliberately stops where they stop, concentrating prose/DA
 judgment on the true residue (core §1.2):
 
-- **no-CPU-planner** and **no-flattening** (§0.6) — properties of *behavior over time*, not of a value's
-  type; stay constitutional + reviewed.
-- **The GPU/WGSL trust domain** — Rust's checker cannot see into shader text; CPU-oracle parity and the
-  semantic-free *shader* scan remain the only admission the shader has (§4). AS-4 narrows the scan to
-  exactly this residue and no wider.
+> **The residue is smaller than first written (revised 2026-06-28).** AS-7 and AS-8 reclassified two items
+> originally called unreachable: a *slice* of each turned out to be type-reachable — the hot-path slice of
+> no-CPU-planner via the tick-input type (AS-7), and the upload slice of the GPU boundary via the
+> packed-payload type (AS-8). §1.2 applied to this section's own residue (Gemini review). What remains:
+
+- **no-CPU-planner — *boundary-time only*** (the hot-path slice is now AS-7). Planning *across* ticks at a
+  boundary is behavior-over-time; types can't reach it — stays constitutional + reviewed.
+- **no-flattening** (§0.6) — specified-vs-implemented recursive structure; types cannot prove a tier was
+  not silently collapsed. Stays constitutional + reviewed.
+- **The GPU trust domain — *inside-shader only*** (the upload seam is now AS-8). Rust cannot see into WGSL
+  text; CPU-oracle parity + the semantic-free *shader* scan remain the only admission the shader has (§4).
 - **Live ontological conformance** — "is this still one accumulate→reduce→threshold loop?" remains DA work.
 
 ## 5A. Horizon addenda — tabled type moves (explored later, not opened)
@@ -155,9 +163,8 @@ judgment on the true residue (core §1.2):
 Candidates surfaced (Grok review, 2026-06-28) that are elegant but not yet sharp enough to open as rungs;
 recorded so they are not re-derived. Each opens only when a rung names it.
 
-- **Phantom resolution state** — `ColumnIndex<Resolved>` vs `<Unresolved>` to make the CPU-prep → GPU-upload
-  boundary (§2.1) type-enforced (composes with AS-1/AS-5). Strong, but adds generic plumbing — open once
-  AS-1 lands and the upload seam is the next pressure point.
+- **Phantom resolution state** — **PROMOTED to rung AS-8** (`AS-PACKED-UPLOAD-BOUNDARY-0`, 2026-06-28):
+  the CPU-prep → GPU-upload seam type-enforcement is now a ladder rung, not a tabled idea.
 - **Overlay-lifecycle typestate** — active vs `Suspended` as typestate so a suspended overlay cannot be
   mutated/reduced. Medium value; risks heaviness against the band-applied kernel.
 - **Arena settlement-phase typestate** — local-settled vs not, in recursive RF. Likely too heavy for the
