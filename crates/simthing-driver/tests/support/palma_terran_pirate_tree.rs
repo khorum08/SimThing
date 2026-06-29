@@ -6,7 +6,7 @@
 use simthing_core::{DimensionRegistry, SimThing, SimThingId, SimThingKind};
 use simthing_feeder::{BoundaryRequest, MaintainerOutcome};
 use simthing_gpu::SlotAllocator;
-use simthing_sim::apply_structural_mutations;
+use simthing_sim::{apply_structural_mutations, SimRuntimeTree};
 
 use super::palma_terran_pirate_fixture::{
     convoy_simthing_id, gridcell_simthing_id, CONVOY_START, FIXTURE_HEIGHT, FIXTURE_WIDTH,
@@ -133,15 +133,18 @@ impl PalmaAdmittedTree {
     }
 
     pub fn apply_reparent(&mut self, request: BoundaryRequest) -> MaintainerOutcome {
-        apply_structural_mutations(
+        let mut runtime = SimRuntimeTree::admit(self.root.clone());
+        let outcome = apply_structural_mutations(
             vec![request],
-            &mut self.root,
+            &mut runtime,
             &mut self.alloc,
             &mut self.reg,
             &mut self.shadow,
             self.n_dims,
             None,
-        )
+        );
+        self.root = runtime.into_admitted();
+        outcome
     }
 }
 

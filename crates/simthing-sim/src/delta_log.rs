@@ -11,10 +11,23 @@
 //! and velocity alerts emit one entry per affected entity (or entity pair).
 //!
 //! Replay v2 additions:
-//! - `SimThingAdded` embeds the full `SimThing` payload + parent id.
-//! - `FissionOccurred` embeds the spawned child as a full `SimThing`.
+//! - `SimThingAdded` embeds the admitted subtree + parent id.
+//! - `FissionOccurred` embeds the spawned child as an admitted subtree.
 //! - `FissionLineageAdded` / `FissionLineageRemoved` persist lineage records so
 //!   `ReplayDriver` can reconstruct `FusionTrigger` thresholds across sessions.
+//!
+//! Delta payloads do not expose raw `SimThing` or `.kind`
+//! (`boundary_delta_entry_hides_raw_simthing_kind_compile_fail`):
+//!
+//! ```compile_fail
+//! use simthing_sim::BoundaryDeltaEntry;
+//!
+//! fn peek_delta_node_kind(entry: BoundaryDeltaEntry) {
+//!     if let BoundaryDeltaEntry::SimThingAdded { node, .. } = entry {
+//!         let _ = node.access(|n| n.kind.clone());
+//!     }
+//! }
+//! ```
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{Overlay, OverlayId, SimPropertyId, SimThing, SimThingId, SubFieldRole};
@@ -22,6 +35,7 @@ use std::collections::HashMap;
 
 use crate::boundary::BoundaryOutcome;
 use crate::fission::FissionLineageRecord;
+use crate::sim_runtime_tree::SimRuntimeTree;
 
 // ── Entry type ────────────────────────────────────────────────────────────────
 
@@ -63,7 +77,10 @@ pub enum BoundaryDeltaEntry {
     /// replay can re-attach the subtree verbatim. Silently omitted when the
     /// node cannot be located in the post-boundary tree (e.g. added and
     /// removed in the same boundary).
-    SimThingAdded { parent: SimThingId, node: SimThing },
+    SimThingAdded {
+        parent: SimThingId,
+        node: SimRuntimeTree,
+    },
 
     /// A SimThing was removed from the tree (slot tombstoned).
     SimThingRemoved { id: SimThingId },
@@ -76,7 +93,10 @@ pub enum BoundaryDeltaEntry {
     /// `SimThing` payload so replay can structurally re-spawn the child.
     /// Silently omitted when the child is not found in the post-boundary tree
     /// (should not occur in normal operation).
-    FissionOccurred { parent: SimThingId, node: SimThing },
+    FissionOccurred {
+        parent: SimThingId,
+        node: SimRuntimeTree,
+    },
 
     /// A fusion event merged `child` back into `parent`'s subtree.
     FusionOccurred {
@@ -167,7 +187,7 @@ pub(crate) fn entries_from_outcome(
         if let Some(node) = index.node(child) {
             entries.push(BoundaryDeltaEntry::FissionOccurred {
                 parent,
-                node: node.clone(),
+                node: SimRuntimeTree::admit(node.clone()),
             });
         }
         // If child not found in the post-boundary tree (shouldn't happen in
@@ -190,7 +210,7 @@ pub(crate) fn entries_from_outcome(
         if let Some((parent_id, node)) = index.node_with_parent(id) {
             entries.push(BoundaryDeltaEntry::SimThingAdded {
                 parent: parent_id,
-                node: node.clone(),
+                node: SimRuntimeTree::admit(node.clone()),
             });
         }
         // If not found (node was added and removed in same boundary): skip.
@@ -381,13 +401,13 @@ mod tests {
         assert_eq!(
             count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FissionOccurred { parent: p, node }
-                if *p == parent && node.id == child_a)),
+                if *p == parent && node.id() == child_a)),
             1
         );
         assert_eq!(
             count_matching(&entries, |e| matches!(e,
             BoundaryDeltaEntry::FissionOccurred { parent: p, node }
-                if *p == parent && node.id == child_b)),
+                if *p == parent && node.id() == child_b)),
             1
         );
         assert_eq!(
@@ -473,7 +493,7 @@ mod tests {
             count_matching(
                 &entries,
                 |e| matches!(e, BoundaryDeltaEntry::SimThingAdded { parent, node }
-                if *parent == root_id && node.id == id_a)
+                if *parent == root_id && node.id() == id_a)
             ),
             1
         );

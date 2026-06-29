@@ -955,16 +955,15 @@ fn execution_layout(session: &SimSession) -> (ArenaTreeLayout, NodeColumnRefs) {
         .expect("food_flow");
     let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
         .expect("cols");
-    let layout = session.proto.root.access(|root| {
-        build_execution_plan(
-            &session.proto.registry,
-            &session.spec_state.arena_registry.arenas,
-            root,
-            &session.proto.allocator,
-            &session.spec_state.arena_participant_scaffold,
-            session.spec_state.arena_registry.generation,
-        )
-    })
+    let root = session.proto.root.clone().into_admitted();
+    let layout = build_execution_plan(
+        &session.proto.registry,
+        &session.spec_state.arena_registry.arenas,
+        &root,
+        &session.proto.allocator,
+        &session.spec_state.arena_participant_scaffold,
+        session.spec_state.arena_registry.generation,
+    )
     .expect("plan")
     .arenas
     .into_iter()

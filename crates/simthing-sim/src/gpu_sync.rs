@@ -21,10 +21,11 @@
 //!    Rebuilt only when tree shape, slot assignment, or registry layout changed.
 
 use crate::fission::FissionLineageRecord;
+use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::threshold_registry::{
     AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry, VelocityAlertRegistration,
 };
-use simthing_core::{DimensionRegistry, SimThing};
+use simthing_core::DimensionRegistry;
 use simthing_feeder::{
     CapabilityUnlockRegistration, DispatchCoordinator, ScriptedEventTriggerRegistration,
 };
@@ -85,7 +86,7 @@ pub struct GpuSyncOutcome {
 /// topology-stable boundaries, such as player/AI overlay attachment, to retain
 /// expensive GPU buffers while still refreshing overlays and value rows.
 pub fn sync_gpu_buffers(
-    root: &SimThing,
+    root: &SimRuntimeTree,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     coord: &DispatchCoordinator,
@@ -145,7 +146,7 @@ pub fn sync_gpu_buffers(
             }
         } else {
             let (deltas, mut ranges) =
-                simthing_gpu::build_overlay_deltas(root, registry, allocator);
+                simthing_gpu::build_overlay_deltas(root.inner(), registry, allocator);
             if (ranges.len() as u32) < state.n_slots {
                 ranges.resize(
                     state.n_slots as usize,
@@ -204,7 +205,8 @@ pub fn sync_gpu_buffers(
             }
         }
     } else {
-        let (deltas, mut ranges) = simthing_gpu::build_overlay_deltas(root, registry, allocator);
+        let (deltas, mut ranges) =
+            simthing_gpu::build_overlay_deltas(root.inner(), registry, allocator);
         if (ranges.len() as u32) < state.n_slots {
             ranges.resize(
                 state.n_slots as usize,
@@ -292,7 +294,7 @@ pub fn sync_gpu_buffers(
         // 4. Reduction topology + per-column rule table.
         // Refresh the boundary's canonical TopologyState from the tree
         // and re-flatten. The cache stays in lockstep with the GPU buffer.
-        *topology_state = TopologyState::build(root, allocator);
+        *topology_state = TopologyState::build(root.inner(), allocator);
         let topo = topology_state.flatten();
         let descriptors = build_column_rule_descriptors(registry, state.n_dims as usize);
         let rules_u32 = encode_column_rules(&descriptors);

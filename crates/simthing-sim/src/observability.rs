@@ -17,6 +17,7 @@
 //! mid-tick values on intent-patched entities must be exact. See
 //! `docs/state-authority.md` §Observability mid-tick.
 
+use crate::sim_runtime_tree::SimRuntimeTree;
 use simthing_core::{
     DimensionRegistry, OverlayId, OverlaySource, SimPropertyId, SimThing, SimThingId, SubFieldRole,
     TransformOp,
@@ -83,13 +84,13 @@ pub struct ObservabilityReport {
 ///
 /// Returns `None` when `target` is not in the tree or has no allocated slot.
 pub fn observe(
-    root: &SimThing,
+    root: &SimRuntimeTree,
     registry: &DimensionRegistry,
     allocator: &SlotAllocator,
     target_row: &[f32],
     target: SimThingId,
 ) -> Option<ObservabilityReport> {
-    let path = find_path(root, target)?;
+    let path = find_path(root.inner(), target)?;
     let node = *path.last()?;
 
     let _slot = allocator.slot_of(node.id)?;
@@ -169,6 +170,7 @@ fn find_path<'a>(root: &'a SimThing, target: SimThingId) -> Option<Vec<&'a SimTh
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sim_runtime_tree::SimRuntimeTree;
     use simthing_core::{
         DimensionRegistry, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
         PropertyTransformDelta, PropertyValue, SimProperty, SimThing, SimThingKind, SubFieldRole,
@@ -207,9 +209,10 @@ mod tests {
     fn observe_returns_none_for_unknown_target() {
         let (reg, _) = fixture();
         let root = SimThing::new(SimThingKind::World, 0);
+        let tree = SimRuntimeTree::admit(root);
         let alloc = SlotAllocator::new();
         let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
-        assert!(observe(&root, &reg, &alloc, &[], ghost).is_none());
+        assert!(observe(&tree, &reg, &alloc, &[], ghost).is_none());
     }
 
     fn cohort_row(shadow: &[f32], slot: usize, n_dims: usize) -> &[f32] {
@@ -228,9 +231,10 @@ mod tests {
 
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_child(cohort);
+        let tree = SimRuntimeTree::admit(root);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.populate_from_tree(tree.inner());
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let mut shadow = vec![0.0f32; 2 * n_dims];
 
@@ -240,7 +244,7 @@ mod tests {
         shadow[slot * n_dims + amount_col] = 0.5;
 
         let report = observe(
-            &root,
+            &tree,
             &reg,
             &alloc,
             cohort_row(&shadow, slot, n_dims),
@@ -280,14 +284,15 @@ mod tests {
 
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_child(cohort);
+        let tree = SimRuntimeTree::admit(root);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.populate_from_tree(tree.inner());
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
-            &root,
+            &tree,
             &reg,
             &alloc,
             cohort_row(&shadow, slot, n_dims),
@@ -322,14 +327,15 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_overlay(ancestor_overlay);
         root.add_child(cohort);
+        let tree = SimRuntimeTree::admit(root);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.populate_from_tree(tree.inner());
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
-            &root,
+            &tree,
             &reg,
             &alloc,
             cohort_row(&shadow, slot, n_dims),
@@ -375,14 +381,15 @@ mod tests {
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_overlay(ancestor_overlay);
         root.add_child(cohort);
+        let tree = SimRuntimeTree::admit(root);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.populate_from_tree(tree.inner());
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
-            &root,
+            &tree,
             &reg,
             &alloc,
             cohort_row(&shadow, slot, n_dims),
@@ -423,14 +430,15 @@ mod tests {
 
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_child(cohort);
+        let tree = SimRuntimeTree::admit(root);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.populate_from_tree(tree.inner());
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
-            &root,
+            &tree,
             &reg,
             &alloc,
             cohort_row(&shadow, slot, n_dims),
@@ -466,14 +474,15 @@ mod tests {
 
         let mut root = SimThing::new(SimThingKind::World, 0);
         root.add_child(cohort);
+        let tree = SimRuntimeTree::admit(root);
 
         let mut alloc = SlotAllocator::new();
-        alloc.populate_from_tree(&root);
+        alloc.populate_from_tree(tree.inner());
         let slot = alloc.slot_of(cohort_id).unwrap() as usize;
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
-            &root,
+            &tree,
             &reg,
             &alloc,
             cohort_row(&shadow, slot, n_dims),
