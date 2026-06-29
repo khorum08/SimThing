@@ -345,7 +345,7 @@ impl TransformPatcher {
         }
         let range = registry.column_range(pid);
         let layout = &registry.property(pid).layout;
-        let base = (slot as usize) * n_dims;
+        let base = slot.as_usize() * n_dims;
 
         let mut wrote_to_row = false;
         for (role, op) in &patch.delta.sub_field_deltas {
@@ -377,10 +377,10 @@ impl TransformPatcher {
         }
 
         if wrote_to_row {
-            if let Some(flag) = self.dirty.get_mut(slot as usize) {
+            if let Some(flag) = self.dirty.get_mut(slot.as_usize()) {
                 if !*flag {
                     *flag = true;
-                    self.dirty_slots.push(slot);
+                    self.dirty_slots.push(slot.raw());
                 }
             }
         }
@@ -461,7 +461,7 @@ fn collect_rmw_slot(
 ) {
     if delta_has_rmw(delta) {
         if let Some(slot) = allocator.slot_of(target) {
-            slots.insert(slot);
+            slots.insert(slot.raw());
         }
     }
 }
@@ -493,7 +493,7 @@ fn fold_patch_as_intents(
             stats.unresolved_roles += 1;
             continue;
         };
-        let key = (slot, col as u32);
+        let key = (slot.raw(), col as u32);
         let entry = folded.entry(key).or_insert_with(|| {
             order.push(key);
             (1.0, 0.0)

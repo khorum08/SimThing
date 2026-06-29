@@ -879,7 +879,7 @@ pub fn slots_are_contiguous(slots: &[SlotId]) -> bool {
     slots
         .iter()
         .enumerate()
-        .all(|(i, &slot)| slot == first + i as u32)
+        .all(|(i, &slot)| slot == first.saturating_add(i as u32))
 }
 
 fn resolve_flow_property(

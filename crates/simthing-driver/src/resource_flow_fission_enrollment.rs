@@ -123,7 +123,7 @@ pub fn react_to_fission_resource_flow_enrollment(
                                 parent_id,
                                 child_id,
                                 arena_idx,
-                                participant_slot,
+                                participant_slot: participant_slot.raw(),
                             });
                         }
                         Err(err) => {

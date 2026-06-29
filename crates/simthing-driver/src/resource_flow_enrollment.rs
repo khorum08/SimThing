@@ -71,7 +71,7 @@ fn resolve_install_target_to_explicit(
                 arena: arena.name.clone(),
                 subtree_root_id: raw,
             })?;
-        explicit.push(ExplicitParticipantSpec::flat(slot, raw));
+        explicit.push(ExplicitParticipantSpec::flat(slot.raw(), raw));
     }
     Ok(explicit)
 }

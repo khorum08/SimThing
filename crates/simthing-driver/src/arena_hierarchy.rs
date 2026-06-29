@@ -2,7 +2,7 @@
 
 use simthing_core::{
     expand_arena_internal_columns, AccumulatorRole, DimensionRegistry, PropertyLayout,
-    SimPropertyId, SimThing, SimThingId, SubFieldRole,
+    SimPropertyId, SimThing, SimThingId, SlotIndex, SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_sim::SimRuntimeTree;
@@ -534,12 +534,17 @@ fn build_nested_node(
     index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
     depth: u32,
 ) -> Result<HierarchyNode, HierarchyError> {
-    let participant_slot = allocator
-        .slot_of(node_id)
-        .ok_or(HierarchyError::NonContiguousChildren { parent_slot: 0 })?;
+    let participant_slot =
+        allocator
+            .slot_of(node_id)
+            .ok_or(HierarchyError::NonContiguousChildren {
+                parent_slot: SlotIndex::new(0),
+            })?;
     let snapshot = tree
         .snapshot_node(node_id)
-        .ok_or(HierarchyError::NonContiguousChildren { parent_slot: 0 })?;
+        .ok_or(HierarchyError::NonContiguousChildren {
+            parent_slot: SlotIndex::new(0),
+        })?;
     let children = snapshot
         .children
         .iter()

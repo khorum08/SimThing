@@ -8,20 +8,35 @@
 //! Slot indices are stable for the lifetime of a SimThing — once allocated,
 //! a SimThing's slot does not change. This is what lets transform-matrix
 //! patches be delta uploads rather than full rewrites.
+//!
+//! Public slot parameters use [`SlotIndex`] — bare `u32` slot identity is
+//! uncompilable at this boundary:
+//!
+//! ```compile_fail
+//! use simthing_core::SimThingId;
+//! use simthing_gpu::SlotAllocator;
+//!
+//! fn slot_allocator_rejects_raw_integer_slot_compile_fail(
+//!     alloc: &SlotAllocator,
+//!     slot: u32,
+//! ) {
+//!     let _ = alloc.owner_of(slot);
+//! }
+//! ```
 
-use simthing_core::SimThingId;
+use simthing_core::{SimThingId, SlotIndex};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum SlotAllocError {
-    #[error("slot {slot} is not exclusively reserved for gap consumption")]
-    NotExclusiveReserved { slot: u32 },
-    #[error("slot {slot} is live")]
-    SlotLive { slot: u32 },
-    #[error("cannot reserve adjacent gap at slot {slot}: occupied by live SimThing")]
-    AdjacentOccupied { slot: u32 },
-    #[error("contiguous slot extension at {slot} blocked by exclusive reserved gap slot")]
-    ContiguityBlockedByGap { slot: u32 },
+    #[error("slot {slot:?} is not exclusively reserved for gap consumption")]
+    NotExclusiveReserved { slot: SlotIndex },
+    #[error("slot {slot:?} is live")]
+    SlotLive { slot: SlotIndex },
+    #[error("cannot reserve adjacent gap at slot {slot:?}: occupied by live SimThing")]
+    AdjacentOccupied { slot: SlotIndex },
+    #[error("contiguous slot extension at {slot:?} blocked by exclusive reserved gap slot")]
+    ContiguityBlockedByGap { slot: SlotIndex },
 }
 
 #[derive(Clone, Debug, Default)]
@@ -43,9 +58,9 @@ impl SlotAllocator {
 
     /// Allocate (or return existing) slot for the given SimThing.
     /// Idempotent — repeated calls with the same id return the same slot.
-    pub fn alloc(&mut self, id: SimThingId) -> u32 {
+    pub fn alloc(&mut self, id: SimThingId) -> SlotIndex {
         if let Some(&existing) = self.by_id.get(&id) {
-            return existing;
+            return SlotIndex::new(existing);
         }
         let slot = match self.free.pop() {
             Some(s) => s,
@@ -57,26 +72,27 @@ impl SlotAllocator {
         };
         self.slot_owners[slot as usize] = Some(id);
         self.by_id.insert(id, slot);
-        slot
+        SlotIndex::new(slot)
     }
 
     /// Tombstone the slot held by `id`. Returns the freed slot index, or
     /// `None` if the id was not allocated. The slot remains indexed in the
     /// GPU buffer but is marked available; its row's float values are not
     /// auto-cleared — callers that care about residue should zero it.
-    pub fn tombstone(&mut self, id: SimThingId) -> Option<u32> {
+    pub fn tombstone(&mut self, id: SimThingId) -> Option<SlotIndex> {
         let slot = self.by_id.remove(&id)?;
         self.slot_owners[slot as usize] = None;
         self.free.push(slot);
-        Some(slot)
+        Some(SlotIndex::new(slot))
     }
 
-    pub fn slot_of(&self, id: SimThingId) -> Option<u32> {
-        self.by_id.get(&id).copied()
+    pub fn slot_of(&self, id: SimThingId) -> Option<SlotIndex> {
+        self.by_id.get(&id).copied().map(SlotIndex::new)
     }
 
-    pub fn owner_of(&self, slot: u32) -> Option<SimThingId> {
-        self.slot_owners.get(slot as usize).copied().flatten()
+    pub fn owner_of(&self, slot: SlotIndex) -> Option<SimThingId> {
+        let raw = slot.raw();
+        self.slot_owners.get(raw as usize).copied().flatten()
     }
 
     /// High-water mark — number of slots ever allocated. This is the value
@@ -90,9 +106,10 @@ impl SlotAllocator {
         self.by_id.len()
     }
 
-    pub fn is_live(&self, slot: u32) -> bool {
+    pub fn is_live(&self, slot: SlotIndex) -> bool {
+        let raw = slot.raw();
         self.slot_owners
-            .get(slot as usize)
+            .get(raw as usize)
             .map(|o| o.is_some())
             .unwrap_or(false)
     }
@@ -108,14 +125,14 @@ impl SlotAllocator {
     }
 
     /// True when `slot` is tombstoned and held for a parent's reserved gap pool.
-    pub fn is_exclusive_reserved(&self, slot: u32) -> bool {
-        self.exclusive_reserved.contains(&slot)
+    pub fn is_exclusive_reserved(&self, slot: SlotIndex) -> bool {
+        self.exclusive_reserved.contains(&slot.raw())
     }
 
     /// Extend the high-water mark with `count` exclusively reserved tombstoned
     /// slots (arena-local gap block). Returns ascending slot ids. Not placed on
     /// the global LIFO `free` stack until claimed via [`Self::claim_exclusive_slot`].
-    pub fn reserve_exclusive_gap_block(&mut self, count: u32) -> Vec<u32> {
+    pub fn reserve_exclusive_gap_block(&mut self, count: u32) -> Vec<SlotIndex> {
         if count == 0 {
             return Vec::new();
         }
@@ -124,7 +141,7 @@ impl SlotAllocator {
             let slot = self.capacity() as u32;
             self.slot_owners.push(None);
             self.exclusive_reserved.insert(slot);
-            slots.push(slot);
+            slots.push(SlotIndex::new(slot));
         }
         slots
     }
@@ -134,44 +151,54 @@ impl SlotAllocator {
     /// sibling participants occupy the slots after `parent_slot`.
     pub fn reserve_adjacent_gaps_after(
         &mut self,
-        parent_slot: u32,
+        parent_slot: SlotIndex,
         count: u32,
-    ) -> Result<Vec<u32>, SlotAllocError> {
+    ) -> Result<Vec<SlotIndex>, SlotAllocError> {
         if count == 0 {
             return Ok(Vec::new());
         }
+        let parent_raw = parent_slot.raw();
         let mut slots = Vec::with_capacity(count as usize);
         for i in 1..=count {
-            let slot = parent_slot.saturating_add(i);
+            let slot = parent_raw.saturating_add(i);
             while self.capacity() as u32 <= slot {
                 self.slot_owners.push(None);
             }
-            if self.is_live(slot) {
-                return Err(SlotAllocError::AdjacentOccupied { slot });
+            if self.is_live(SlotIndex::new(slot)) {
+                return Err(SlotAllocError::AdjacentOccupied {
+                    slot: SlotIndex::new(slot),
+                });
             }
             if let Some(pos) = self.free.iter().position(|&s| s == slot) {
                 self.free.remove(pos);
             }
             self.slot_owners[slot as usize] = None;
             self.exclusive_reserved.insert(slot);
-            slots.push(slot);
+            slots.push(SlotIndex::new(slot));
         }
         Ok(slots)
     }
 
     /// Read-only preflight for [`Self::try_alloc_contiguous_after`].
-    pub fn can_alloc_contiguous_after(&self, after_slot: u32) -> Result<u32, SlotAllocError> {
-        let target = after_slot.saturating_add(1);
+    pub fn can_alloc_contiguous_after(
+        &self,
+        after_slot: SlotIndex,
+    ) -> Result<SlotIndex, SlotAllocError> {
+        let target = after_slot.raw().saturating_add(1);
         if self.capacity() as u32 <= target {
-            return Ok(target);
+            return Ok(SlotIndex::new(target));
         }
-        if self.is_live(target) {
-            return Err(SlotAllocError::AdjacentOccupied { slot: target });
+        if self.is_live(SlotIndex::new(target)) {
+            return Err(SlotAllocError::AdjacentOccupied {
+                slot: SlotIndex::new(target),
+            });
         }
         if self.exclusive_reserved.contains(&target) {
-            return Err(SlotAllocError::ContiguityBlockedByGap { slot: target });
+            return Err(SlotAllocError::ContiguityBlockedByGap {
+                slot: SlotIndex::new(target),
+            });
         }
-        Ok(target)
+        Ok(SlotIndex::new(target))
     }
 
     /// Allocate `id` at exactly `after_slot + 1` for arena-root sibling append.
@@ -180,48 +207,53 @@ impl SlotAllocator {
     /// or otherwise unavailable — never falls back to non-contiguous `alloc()`.
     pub fn try_alloc_contiguous_after(
         &mut self,
-        after_slot: u32,
+        after_slot: SlotIndex,
         id: SimThingId,
-    ) -> Result<u32, SlotAllocError> {
+    ) -> Result<SlotIndex, SlotAllocError> {
         if let Some(&existing) = self.by_id.get(&id) {
-            return Ok(existing);
+            return Ok(SlotIndex::new(existing));
         }
-        let target = after_slot.saturating_add(1);
+        let target = after_slot.raw().saturating_add(1);
         while self.capacity() as u32 <= target {
             self.slot_owners.push(None);
         }
-        if self.is_live(target) {
-            return Err(SlotAllocError::AdjacentOccupied { slot: target });
+        if self.is_live(SlotIndex::new(target)) {
+            return Err(SlotAllocError::AdjacentOccupied {
+                slot: SlotIndex::new(target),
+            });
         }
         if self.exclusive_reserved.contains(&target) {
-            return Err(SlotAllocError::ContiguityBlockedByGap { slot: target });
+            return Err(SlotAllocError::ContiguityBlockedByGap {
+                slot: SlotIndex::new(target),
+            });
         }
         if let Some(pos) = self.free.iter().position(|&s| s == target) {
             self.free.remove(pos);
         }
         self.slot_owners[target as usize] = Some(id);
         self.by_id.insert(id, target);
-        Ok(target)
+        Ok(SlotIndex::new(target))
     }
 
     /// Assign `id` to an exclusively reserved tombstoned slot.
     pub fn claim_exclusive_slot(
         &mut self,
-        slot: u32,
+        slot: SlotIndex,
         id: SimThingId,
     ) -> Result<(), SlotAllocError> {
         if self.by_id.contains_key(&id) {
             return Ok(());
         }
-        if !self.exclusive_reserved.contains(&slot) {
+        let raw = slot.raw();
+        if !self.exclusive_reserved.contains(&raw) {
             return Err(SlotAllocError::NotExclusiveReserved { slot });
         }
         if self.is_live(slot) {
             return Err(SlotAllocError::SlotLive { slot });
         }
-        self.exclusive_reserved.remove(&slot);
-        self.slot_owners[slot as usize] = Some(id);
-        self.by_id.insert(id, slot);
+        self.exclusive_reserved.remove(&raw);
+        self.slot_owners[raw as usize] = Some(id);
+        self.by_id.insert(id, raw);
         Ok(())
     }
 }
@@ -261,18 +293,18 @@ mod tests {
         let c = SimThing::new(SimThingKind::Cohort, 0).id;
         let d = SimThing::new(SimThingKind::Cohort, 0).id;
 
-        let sa = alloc.alloc(a); // 0
-        let sb = alloc.alloc(b); // 1
-        let sc = alloc.alloc(c); // 2
-        assert_eq!((sa, sb, sc), (0, 1, 2));
+        let sa = alloc.alloc(a);
+        let sb = alloc.alloc(b);
+        let sc = alloc.alloc(c);
+        assert_eq!((sa.raw(), sb.raw(), sc.raw()), (0, 1, 2));
 
-        assert_eq!(alloc.tombstone(b), Some(1));
-        assert!(!alloc.is_live(1));
+        assert_eq!(alloc.tombstone(b), Some(SlotIndex::new(1)));
+        assert!(!alloc.is_live(SlotIndex::new(1)));
         assert_eq!(alloc.live_count(), 2);
-        assert_eq!(alloc.capacity(), 3); // tombstoning doesn't shrink capacity
+        assert_eq!(alloc.capacity(), 3);
 
         let sd = alloc.alloc(d);
-        assert_eq!(sd, 1); // reused freed slot
+        assert_eq!(sd, SlotIndex::new(1));
         assert_eq!(alloc.capacity(), 3);
     }
 
@@ -296,7 +328,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&world);
-        assert_eq!(alloc.capacity(), 6); // world + 2 loc + 3 cohort
+        assert_eq!(alloc.capacity(), 6);
         assert_eq!(alloc.live_count(), 6);
     }
 
@@ -325,7 +357,7 @@ mod tests {
         let b = SimThing::new(SimThingKind::Cohort, 0).id;
         let sa = alloc.alloc(a);
         let sb = alloc.try_alloc_contiguous_after(sa, b).unwrap();
-        assert_eq!(sb, sa + 1);
+        assert_eq!(sb, sa.saturating_add(1));
         assert_eq!(alloc.slot_of(b), Some(sb));
     }
 
@@ -336,11 +368,24 @@ mod tests {
         let b = SimThing::new(SimThingKind::Cohort, 0).id;
         let sa = alloc.alloc(a);
         let gap = alloc.reserve_exclusive_gap_block(1);
-        assert_eq!(gap[0], sa + 1);
+        assert_eq!(gap[0], sa.saturating_add(1));
         let err = alloc.try_alloc_contiguous_after(sa, b).unwrap_err();
         assert!(matches!(
             err,
-            SlotAllocError::ContiguityBlockedByGap { slot } if slot == sa + 1
+            SlotAllocError::ContiguityBlockedByGap { slot } if slot == sa.saturating_add(1)
         ));
+    }
+
+    #[test]
+    fn slot_index_newtype_preserved_through_allocator_api() {
+        // Core `slot_index` behavior tests cover pure SlotIndex invariants; here
+        // we assert contiguous allocation exposes the same saturating_add path.
+        let mut alloc = SlotAllocator::new();
+        let ids: Vec<_> = (0..3)
+            .map(|_| SimThing::new(SimThingKind::Cohort, 0).id)
+            .collect();
+        let slots: Vec<_> = ids.iter().map(|id| alloc.alloc(*id)).collect();
+        assert_eq!(slots[0].saturating_add(1), slots[1]);
+        assert_eq!(slots[1].saturating_add(1), slots[2]);
     }
 }

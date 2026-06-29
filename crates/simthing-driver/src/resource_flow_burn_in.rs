@@ -7,8 +7,9 @@ use simthing_gpu::WorldGpuState;
 use crate::arena_allocation_oracle::run_arena_allocation_oracle;
 use crate::arena_allocation_sync::ResourceFlowSyncReport;
 use crate::arena_hierarchy::{ArenaTreeLayout, NodeColumnRefs};
+use crate::arena_registry::SlotId;
 
-type CellKey = (u32, u32);
+type CellKey = (SlotId, u32);
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ResourceFlowBurnInReport {
@@ -130,7 +131,7 @@ pub fn run_flat_star_burn_in(
     ticks: u32,
     dt: f32,
 ) -> ResourceFlowBurnInReport {
-    let idx = |slot: u32, col: u32| (slot * n_dims + col) as usize;
+    let idx = |slot: u32, col: u32| (SlotId::new(slot).raw() * n_dims + col) as usize;
     let mut report = ResourceFlowBurnInReport {
         n_bands,
         ..Default::default()
@@ -139,7 +140,7 @@ pub fn run_flat_star_burn_in(
     for _ in 0..ticks {
         let mut flat = vec![0.0_f32; (state.n_slots * n_dims) as usize];
         for (&(slot, col), &v) in cell_inputs {
-            flat[idx(slot, col)] = v;
+            flat[idx(slot.raw(), col)] = v;
         }
         state.write_values(&flat);
 
@@ -150,8 +151,9 @@ pub fn run_flat_star_burn_in(
         let gpu_out = state.read_values();
 
         for &leaf in leaf_slots {
+            let slot = SlotId::new(leaf);
             let cpu = oracle
-                .get(&(leaf, cols.allocated_flow_col))
+                .get(&(slot, cols.allocated_flow_col))
                 .copied()
                 .unwrap_or(0.0);
             let gpu = gpu_out[idx(leaf, cols.allocated_flow_col)];

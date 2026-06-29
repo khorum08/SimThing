@@ -10,7 +10,7 @@ use simthing_core::{
     rebuild_discrete_transfer_ops, rebuild_emit_on_threshold_ops, AccumulatorOpBuilderError,
     ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DimensionRegistry,
     DiscreteTransferRegistration, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
-    EmlExpressionRegistry, SimPropertyId, SimThing,
+    EmlExpressionRegistry, SimPropertyId, SimThing, SlotIndex,
 };
 use simthing_gpu::{
     plan_emission_ops, EmissionFormula, EmissionPlanError, EmissionRegistration, SlotAllocator,
@@ -336,6 +336,7 @@ pub fn resolve_live_property_slot(
         .ok_or(ResourceEconomyCompileError::UnknownPropertySlot {
             property_id: property_id.0,
         })
+        .map(SlotIndex::raw)
 }
 
 pub fn find_property_owner(

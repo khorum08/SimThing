@@ -93,7 +93,7 @@ fn build_node(
         }
 
         let length = deltas.len() as u32 - offset;
-        ranges[slot as usize] = SlotDeltaRange { offset, length };
+        ranges[slot.as_usize()] = SlotDeltaRange { offset, length };
     }
 
     // Recurse children with the full local_transforms (this node's overlays included).
@@ -159,7 +159,7 @@ mod tests {
         let (deltas, ranges) = build_overlay_deltas(&node, &reg, &alloc);
         assert!(deltas.is_empty());
         let slot = alloc.slot_of(node.id).unwrap();
-        assert_eq!(ranges[slot as usize].length, 0);
+        assert_eq!(ranges[slot.as_usize()].length, 0);
     }
 
     /// A single local overlay emits the expected OverlayDelta.
@@ -180,7 +180,7 @@ mod tests {
 
         let (deltas, ranges) = build_overlay_deltas(&node, &reg, &alloc);
         let slot = alloc.slot_of(node.id).unwrap();
-        let r = ranges[slot as usize];
+        let r = ranges[slot.as_usize()];
         assert_eq!(r.length, 1);
 
         let d = deltas[r.offset as usize];
@@ -224,7 +224,7 @@ mod tests {
         let (deltas, ranges) = build_overlay_deltas(&parent, &reg, &alloc);
 
         let slot = alloc.slot_of(child_id).unwrap();
-        let r = ranges[slot as usize];
+        let r = ranges[slot.as_usize()];
         assert_eq!(r.length, 2, "ancestor + local = 2 deltas");
 
         let first = deltas[r.offset as usize];
@@ -265,7 +265,7 @@ mod tests {
 
         let (deltas, ranges) = build_overlay_deltas(&parent, &reg, &alloc);
         let slot = alloc.slot_of(child_id).unwrap();
-        let r = ranges[slot as usize];
+        let r = ranges[slot.as_usize()];
         assert_eq!(r.length, 0, "child without property gets zero deltas");
         let _ = deltas;
     }
@@ -292,7 +292,7 @@ mod tests {
 
         let (deltas, ranges) = build_overlay_deltas(&node, &reg, &alloc);
         let slot = alloc.slot_of(node.id).unwrap();
-        let r = ranges[slot as usize];
+        let r = ranges[slot.as_usize()];
         assert_eq!(r.length, 3);
 
         assert_eq!(deltas[r.offset as usize].op_kind, OP_MULTIPLY);
@@ -319,6 +319,6 @@ mod tests {
         let (deltas, ranges) = build_overlay_deltas(&node, &reg, &alloc);
         let slot = alloc.slot_of(node.id).unwrap();
         assert!(deltas.is_empty());
-        assert_eq!(ranges[slot as usize].length, 0);
+        assert_eq!(ranges[slot.as_usize()].length, 0);
     }
 }

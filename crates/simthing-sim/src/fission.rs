@@ -249,7 +249,7 @@ fn execute_fission(
                     pid,
                     registry,
                     values_shadow,
-                    s,
+                    s.raw(),
                     n_dims,
                 )
             }
@@ -280,8 +280,8 @@ fn execute_fission(
                 &mut new_child,
                 registry,
                 pid,
-                parent_slot,
-                new_slot,
+                parent_slot.raw(),
+                new_slot.raw(),
                 values_shadow,
                 n_dims,
             );
@@ -394,7 +394,7 @@ fn clone_capability_children(
                 continue;
             };
             let cloned_slot = allocator.alloc(cloned_id);
-            copy_shadow_row(source_slot, cloned_slot, values_shadow, n_dims);
+            copy_shadow_row(source_slot.raw(), cloned_slot.raw(), values_shadow, n_dims);
             allocated_any = true;
         }
         child.add_child(cloned);
@@ -567,7 +567,7 @@ fn apply_fusion_scar(
     let Some(amount_col) = range.col_for_role(&SubFieldRole::Amount, layout) else {
         return false;
     };
-    let idx = parent_slot as usize * n_dims + amount_col;
+    let idx = parent_slot.as_usize() * n_dims + amount_col;
     if idx >= values_shadow.len() {
         return false;
     }
@@ -883,7 +883,7 @@ mod tests {
         let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
         cohort.add_property(pid, reg.property(pid).default_value());
         let cid = cohort.id;
-        let parent_slot = alloc.alloc(cid) as usize;
+        let parent_slot = alloc.alloc(cid).as_usize();
 
         let mut root = SimThing::new(SimThingKind::Location, 0);
         alloc.alloc(root.id);
@@ -941,7 +941,7 @@ mod tests {
             (0.66f32).to_bits()
         );
 
-        let child_slot = alloc.slot_of(child.id).unwrap() as usize;
+        let child_slot = alloc.slot_of(child.id).unwrap().as_usize();
         let child_base = child_slot * n_dims;
         assert_eq!(shadow[child_base + amount_off.lane()], 0.0);
         assert_eq!(
@@ -972,7 +972,7 @@ mod tests {
         cohort.add_property(first_pid, reg.property(first_pid).default_value());
         cohort.add_property(second_pid, reg.property(second_pid).default_value());
         let cid = cohort.id;
-        let slot = alloc.alloc(cid) as usize;
+        let slot = alloc.alloc(cid).as_usize();
 
         let mut root = SimThing::new(SimThingKind::Location, 0);
         alloc.alloc(root.id);
@@ -1065,8 +1065,8 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
-        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
-        let tech_slot = alloc.slot_of(tech_tree_id).unwrap() as usize;
+        let faction_slot = alloc.slot_of(faction_id).unwrap().as_usize();
+        let tech_slot = alloc.slot_of(tech_tree_id).unwrap().as_usize();
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 16 * n_dims];
@@ -1116,7 +1116,7 @@ mod tests {
         assert_ne!(cloned_tree.id, tech_tree_id);
         assert_eq!(cloned_tree.overlays[0].affects, vec![spawned.id]);
 
-        let cloned_slot = alloc.slot_of(cloned_tree.id).unwrap() as usize;
+        let cloned_slot = alloc.slot_of(cloned_tree.id).unwrap().as_usize();
         assert_eq!(
             shadow[cloned_slot * n_dims + amount_off.lane()].to_bits(),
             0.42f32.to_bits()
@@ -1145,7 +1145,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
-        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+        let faction_slot = alloc.slot_of(faction_id).unwrap().as_usize();
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 8 * n_dims];
@@ -1270,7 +1270,7 @@ mod tests {
         let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
 
         let mut shadow = vec![0.0f32; 4 * n_dims];
-        shadow[parent_slot as usize * n_dims + amount_off.lane()] = 1.0;
+        shadow[parent_slot.as_usize() * n_dims + amount_off.lane()] = 1.0;
 
         let mut cpu_reg = ThresholdRegistry::new();
         let ek = cpu_reg.push(ThresholdSemantic::FusionTrigger {
@@ -1304,7 +1304,7 @@ mod tests {
         assert_eq!(out.lineage_removed.len(), 1);
 
         // Scar applied: 1.0 * (1 - 0.05) = 0.95.
-        let scarred = shadow[parent_slot as usize * n_dims + amount_off.lane()];
+        let scarred = shadow[parent_slot.as_usize() * n_dims + amount_off.lane()];
         assert!(
             (scarred - 0.95).abs() < 1e-6,
             "expected scarred amount ≈ 0.95, got {scarred}",
@@ -1367,7 +1367,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
-        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+        let faction_slot = alloc.slot_of(faction_id).unwrap().as_usize();
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 16 * n_dims];
@@ -1455,7 +1455,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
-        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+        let faction_slot = alloc.slot_of(faction_id).unwrap().as_usize();
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 16 * n_dims];

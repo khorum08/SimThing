@@ -338,7 +338,8 @@ impl TraversalFieldBandSession {
                 .ok_or(TraversalFieldBandError::ShadowTooShort {
                     required,
                     actual: shadow.len(),
-                })? as usize;
+                })?
+                .as_usize();
             w.push(shadow[slot * n_dims + binding.w_global_col]);
         }
         Ok(w)
@@ -372,7 +373,8 @@ impl TraversalFieldBandSession {
                 .ok_or(TraversalFieldBandError::ShadowTooShort {
                     required,
                     actual: shadow.len(),
-                })? as usize;
+                })?
+                .as_usize();
             shadow[slot * n_dims + binding.d_global_col] = d[idx];
         }
         Ok(())

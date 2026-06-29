@@ -1,6 +1,6 @@
 //! E-10 — Materialize compiled Resource Flow admission into `ArenaRegistry`.
 
-use simthing_core::{DimensionRegistry, SimThingId};
+use simthing_core::{DimensionRegistry, SimThingId, SlotIndex};
 use simthing_spec::{
     compile_resource_flow_admission, CompiledCouplingDelay, CompiledResourceFlowAdmission,
     FissionPolicySpec, ResourceFlowExpansionReport, ResourceFlowSpec, SpecError,
@@ -53,7 +53,7 @@ pub fn materialize_arena_registry(
         for (slot, subtree_root_raw) in &arena.explicit_participants {
             builder.admit_participant(
                 idx,
-                *slot,
+                SlotIndex::new(*slot),
                 SimThingId::from_session_raw(*subtree_root_raw),
             )?;
         }

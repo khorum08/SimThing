@@ -248,7 +248,7 @@ fn cpu_decay_collect_node(
                     if let Some(col) =
                         range.col_for_role(&simthing_core::SubFieldRole::Amount, layout)
                     {
-                        let addr = slot as usize * n_dims + col;
+                        let addr = slot.as_usize() * n_dims + col;
                         if values_shadow
                             .get(addr)
                             .map(|v| v.abs() < 1e-4)
@@ -354,7 +354,7 @@ mod tests {
         alloc.populate_from_tree(&root);
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0; alloc.capacity() * n_dims];
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         shadow[slot * n_dims + amount.lane()] = 0.0;
 
         let out = resolve_property_expiry(
@@ -402,8 +402,8 @@ mod tests {
         alloc.populate_from_tree(&root);
         let n_dims = reg.total_columns;
         let mut shadow = vec![0.0; alloc.capacity() * n_dims];
-        let a_slot = alloc.slot_of(a_id).unwrap() as usize;
-        let b_slot = alloc.slot_of(b_id).unwrap() as usize;
+        let a_slot = alloc.slot_of(a_id).unwrap().as_usize();
+        let b_slot = alloc.slot_of(b_id).unwrap().as_usize();
         shadow[a_slot * n_dims + amount.lane()] = 0.0;
         shadow[b_slot * n_dims + amount.lane()] = 0.5;
 

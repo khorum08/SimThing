@@ -253,7 +253,7 @@ pub fn compile_and_install(
         .slot_of(root.id)
         .ok_or(InstallError::RootHasNoSlot)?;
     state.set_session_root_owner(root.id);
-    state.set_scripted_current_slot(root_slot);
+    state.set_scripted_current_slot(root_slot.raw());
     for event_spec in &game_mode.events {
         compile_and_install_event(
             event_spec,
@@ -499,14 +499,14 @@ fn seed_base_flow_obligations(
                 InstallError::BaseFlowObligationParticipantSlotMissing {
                     obligation: obligation.obligation.clone(),
                     arena: obligation.arena.clone(),
-                    slot: participant_slot,
+                    slot: participant_slot.raw(),
                 }
             })?;
             let Some(participant_node) = find_simthing_mut(root, participant_id) else {
                 return Err(InstallError::BaseFlowObligationParticipantSlotMissing {
                     obligation: obligation.obligation.clone(),
                     arena: obligation.arena.clone(),
-                    slot: participant_slot,
+                    slot: participant_slot.raw(),
                 });
             };
             let Some(value) = participant_node.properties.get_mut(&flow_property_id) else {
@@ -580,8 +580,12 @@ fn compile_and_install_event(
         let slot = allocator
             .slot_of(owner_id)
             .ok_or(InstallError::RootHasNoSlot)?;
-        let _ =
-            state.attach_scripted_event_instance(definition_id, event_id.clone(), owner_id, slot);
+        let _ = state.attach_scripted_event_instance(
+            definition_id,
+            event_id.clone(),
+            owner_id,
+            slot.raw(),
+        );
     }
     Ok(())
 }
@@ -834,7 +838,7 @@ fn install_tree_for_owner(
         owner_id,
         definition_id: definition.id,
         tree_thing_id: cloned_tree_id,
-        tree_slot,
+        tree_slot: tree_slot.raw(),
         by_overlay,
         overlay_hosts,
     };

@@ -109,6 +109,7 @@ pub use scheduled_w_palma_batch::{
     dispatch_scheduled_w_palma_chain, dispatch_serial_w_palma_chain, ScheduledWPalmaChainError,
     ScheduledWPalmaChainEvidence,
 };
+pub use simthing_core::SlotIndex;
 pub use slot::{SlotAllocError, SlotAllocator};
 pub use stress_compose::{
     cpu_stress_compose_oracle, StressComposeConfig, StressComposeError, StressComposeOp,

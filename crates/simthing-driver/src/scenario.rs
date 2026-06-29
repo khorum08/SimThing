@@ -393,7 +393,8 @@ impl Scenario {
         for seed in &self.shadow_seeds {
             let slot = allocator
                 .slot_of(seed.thing_id)
-                .ok_or(ScenarioError::NoSlot(seed.thing_id))? as usize;
+                .ok_or(ScenarioError::NoSlot(seed.thing_id))?
+                .as_usize();
             let pid = self
                 .registry
                 .id_of(&seed.namespace, &seed.name)

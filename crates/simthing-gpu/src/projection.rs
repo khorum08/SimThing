@@ -40,7 +40,7 @@ fn project_node(
     values: &mut [f32],
 ) {
     if let Some(slot) = allocator.slot_of(node.id) {
-        let slot_base = slot as usize * n_dims;
+        let slot_base = slot.as_usize() * n_dims;
         for (&prop_id, pv) in &node.properties {
             let range = registry.column_range(prop_id);
             let start = slot_base + range.start;
@@ -100,7 +100,7 @@ mod tests {
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
 
         // World has no properties → its row is all zeros.
-        let world_slot = alloc.slot_of(world.id).unwrap() as usize;
+        let world_slot = alloc.slot_of(world.id).unwrap().as_usize();
         assert!(flat[world_slot * n_dims..(world_slot + 1) * n_dims]
             .iter()
             .all(|&x| x == 0.0));
@@ -108,7 +108,7 @@ mod tests {
         // Check the two location rows: loyalty amount appears at its column.
         let loyalty_range = reg.column_range(loyalty_id);
         for child in &world.children {
-            let slot = alloc.slot_of(child.id).unwrap() as usize;
+            let slot = alloc.slot_of(child.id).unwrap().as_usize();
             let cpu_amount = child.properties[&loyalty_id].lane_at_offset(a_off);
             let gpu_amount = flat[slot * n_dims + loyalty_range.start + a_off.lane()];
             assert_eq!(cpu_amount.to_bits(), gpu_amount.to_bits());

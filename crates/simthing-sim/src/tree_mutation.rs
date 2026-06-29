@@ -228,7 +228,7 @@ fn project_subtree_to_shadow(
     out: &mut MaintainerOutcome,
 ) {
     if let Some(slot) = allocator.slot_of(node.id) {
-        let base = (slot as usize) * n_dims;
+        let base = slot.as_usize() * n_dims;
         let end = base + n_dims;
         if end <= values_shadow.len() {
             values_shadow[base..end].fill(0.0);
@@ -289,7 +289,7 @@ fn apply_remove(
 
     for sid in subtree_ids {
         if let Some(slot) = allocator.slot_of(sid) {
-            zero_shadow_row(values_shadow, n_dims, slot);
+            zero_shadow_row(values_shadow, n_dims, slot.raw());
         }
         if allocator.tombstone(sid).is_some() {
             out.tombstoned.push(sid);
@@ -527,7 +527,8 @@ mod tests {
         prepare_fission_clone_sources_subtree, DimensionRegistry, Direction, DissolveCondition,
         FissionTemplate, FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
         OverlaySource, PropertyTransformDelta, PropertyValue, SimProperty, SimPropertyId, SimThing,
-        SimThingKind, SimThingKindTag, SubFieldRole, TransformOp, FISSION_CLONE_SOURCE_PROPERTY_ID,
+        SimThingKind, SimThingKindTag, SlotIndex, SubFieldRole, TransformOp,
+        FISSION_CLONE_SOURCE_PROPERTY_ID,
     };
     use simthing_feeder::BoundaryRequest;
     use simthing_gpu::SlotAllocator;
@@ -575,7 +576,7 @@ mod tests {
         assert_eq!(tree.child_id(loc_id, 0).unwrap(), cohort_id);
         // New slot's row was zeroed.
         let new_slot = alloc.slot_of(cohort_id).unwrap();
-        let base = (new_slot as usize) * n_dims;
+        let base = new_slot.as_usize() * n_dims;
         assert!(shadow[base..base + n_dims].iter().all(|v| *v == 0.0));
     }
 
@@ -637,7 +638,7 @@ mod tests {
         );
 
         assert_eq!(out.adds, 1);
-        let slot = alloc.slot_of(child_id).unwrap() as usize;
+        let slot = alloc.slot_of(child_id).unwrap().as_usize();
         let base = slot * n_dims;
         assert_eq!(shadow[base + amount.lane()], 0.7);
         assert_eq!(shadow[base + velocity.lane()], -0.2);
@@ -658,9 +659,9 @@ mod tests {
         tree.access_mut(|root| root.children[0].add_child(cohort));
 
         let mut shadow = vec![1.0f32; alloc.capacity() * n_dims];
-        let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
-        let cohort_slot = alloc.slot_of(cohort_id).unwrap() as usize;
-        let leaf_slot = alloc.slot_of(leaf_id).unwrap() as usize;
+        let loc_slot = alloc.slot_of(loc_id).unwrap().as_usize();
+        let cohort_slot = alloc.slot_of(cohort_id).unwrap().as_usize();
+        let leaf_slot = alloc.slot_of(leaf_id).unwrap().as_usize();
 
         let out = apply_structural_mutations(
             vec![BoundaryRequest::Remove { target: loc_id }],
@@ -678,7 +679,7 @@ mod tests {
         assert!(out.tombstoned.contains(&cohort_id));
         assert!(out.tombstoned.contains(&leaf_id));
         assert!(tree.access(|root| root.children.is_empty()));
-        assert!(!alloc.is_live(alloc.capacity() as u32 - 1));
+        assert!(!alloc.is_live(SlotIndex::new(alloc.capacity() as u32 - 1)));
         assert!(shadow[loc_slot * n_dims..loc_slot * n_dims + n_dims]
             .iter()
             .all(|v| *v == 0.0));

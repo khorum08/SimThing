@@ -18,7 +18,9 @@
 //! depth, deepest first. The CPU oracle uses the same bucket ordering so
 //! intermediate `output_vectors` rows are produced in the same sequence.
 
-use simthing_core::{DimensionRegistry, ReductionRule, SimPropertyId, SimThing, SubFieldRole};
+use simthing_core::{
+    DimensionRegistry, ReductionRule, SimPropertyId, SimThing, SlotIndex, SubFieldRole,
+};
 
 use crate::slot::SlotAllocator;
 use crate::world_state::{encode_rule, WEIGHT_COL_NONE};
@@ -204,19 +206,21 @@ impl TopologyState {
     /// the (currently impossible) case where slot reuse breaks that.
     ///
     /// Caller must ensure `ensure_capacity` covers both slots first.
-    pub fn add_child(&mut self, parent_slot: u32, child_slot: u32) {
-        let parent_idx = parent_slot as usize;
+    pub fn add_child(&mut self, parent_slot: SlotIndex, child_slot: SlotIndex) {
+        let parent_idx = parent_slot.as_usize();
         let kids = &mut self.per_slot_children[parent_idx];
         if let Some(&last) = kids.last() {
             debug_assert!(
-                child_slot > last,
-                "TopologyState::add_child: child_slot {child_slot} <= existing last child {last} \
-                 (parent_slot {parent_slot}); ascending-slot invariant violated",
+                child_slot.raw() > last,
+                "TopologyState::add_child: child_slot {} <= existing last child {last} \
+                 (parent_slot {}); ascending-slot invariant violated",
+                child_slot.raw(),
+                parent_slot.raw(),
             );
         }
-        kids.push(child_slot);
+        kids.push(child_slot.raw());
         if let Some(Some(parent_depth)) = self.depths.get(parent_idx).copied() {
-            self.depths[child_slot as usize] = Some(parent_depth + 1);
+            self.depths[child_slot.as_usize()] = Some(parent_depth + 1);
         }
     }
 
@@ -261,10 +265,10 @@ fn walk(
     let Some(slot) = allocator.slot_of(node.id) else {
         return;
     };
-    depths[slot as usize] = Some(depth);
+    depths[slot.as_usize()] = Some(depth);
     for child in &node.children {
         if let Some(child_slot) = allocator.slot_of(child.id) {
-            per_slot_children[slot as usize].push(child_slot);
+            per_slot_children[slot.as_usize()].push(child_slot.raw());
         }
         walk(child, depth + 1, allocator, per_slot_children, depths);
     }
@@ -560,8 +564,8 @@ mod tests {
         assert_eq!(topo.depth_buckets[2].len(), 2); // 2 cohorts
 
         let world_slot = alloc.slot_of(world.id).unwrap();
-        let world_kids_start = topo.child_starts[world_slot as usize] as usize;
-        let world_kids_end = topo.child_starts[world_slot as usize + 1] as usize;
+        let world_kids_start = topo.child_starts[world_slot.as_usize()] as usize;
+        let world_kids_end = topo.child_starts[world_slot.as_usize() + 1] as usize;
         assert_eq!(world_kids_end - world_kids_start, 1, "world has 1 child");
     }
 
@@ -585,7 +589,7 @@ mod tests {
 
         // Location's reduced row: amount = mean(0.40, 0.60) = 0.50, intensity = max(0.10, 0.80) = 0.80.
         let loc_id = world.children[0].id;
-        let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
+        let loc_slot = alloc.slot_of(loc_id).unwrap().as_usize();
         let range = reg.column_range(lid);
         assert_eq!(
             output[loc_slot * n_dims + range.start + a_off.lane()].to_bits(),
@@ -597,7 +601,7 @@ mod tests {
         );
 
         // World's reduced row equals location's (single child, mean of one = identity, max of one = identity).
-        let world_slot = alloc.slot_of(world.id).unwrap() as usize;
+        let world_slot = alloc.slot_of(world.id).unwrap().as_usize();
         for col in 0..n_dims {
             assert_eq!(
                 output[world_slot * n_dims + col].to_bits(),
@@ -608,7 +612,7 @@ mod tests {
 
         // Leaves: output rows match input values bit-exactly.
         for cohort in &world.children[0].children {
-            let s = alloc.slot_of(cohort.id).unwrap() as usize;
+            let s = alloc.slot_of(cohort.id).unwrap().as_usize();
             for col in 0..n_dims {
                 assert_eq!(
                     output[s * n_dims + col].to_bits(),
@@ -693,7 +697,7 @@ mod tests {
         let mut output = vec![0.0_f32; values.len()];
         cpu_reduce_oracle(&topo, &descriptors, n_dims, &values, &mut output);
 
-        let world_slot = alloc.slot_of(world.id).unwrap() as usize;
+        let world_slot = alloc.slot_of(world.id).unwrap().as_usize();
         // 1.0 + 2.5 + 3.25 = 6.75
         assert_eq!(output[world_slot * n_dims].to_bits(), 6.75_f32.to_bits());
     }
@@ -758,7 +762,7 @@ mod tests {
 
         // (0.40*100 + 0.80*300) / 400 = 0.70
         let loc_id = world.children[0].id;
-        let loc_slot = alloc.slot_of(loc_id).unwrap() as usize;
+        let loc_slot = alloc.slot_of(loc_id).unwrap().as_usize();
         let col = loyalty_range.start + loyalty_a_off.lane();
         assert_eq!(
             output[loc_slot * n_dims + col].to_bits(),
