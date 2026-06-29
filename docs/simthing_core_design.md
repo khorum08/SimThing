@@ -774,6 +774,8 @@ A change is drifting from the paradigm the moment any answer below is "yes." Sto
 do not rationalize.
 
 1. Am I adding a **runtime `match` on `SimThingKind`**, or a new kind variant, to get behavior?
+   *(The simulation tick path now enforces this structurally — the runtime view carries no `kind`;
+   `AS-KIND-OUT-OF-TICK-0`, §1.2 promotion. The detector remains as the litmus for all other paths.)*
 2. Am I building a **subsystem beside the tree** (a combat/economy/AI/pathfinding service) instead of
    properties + overlays + registrations *on* the tree?
 3. Am I making an owner/faction a **spatial parent**, or implementing capture as **reparenting**
