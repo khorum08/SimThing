@@ -12,7 +12,7 @@ use simthing_gpu::{
     set_debug_readback_allowed, summaries_from_values, GpuContext, Pipelines, SlotAllocator,
     WorldGpuState,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -67,7 +67,7 @@ fn b4_world_summary_matches_full_values_after_integrated_intent() {
     cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
     world.add_child(cohort);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_intent = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
@@ -139,7 +139,7 @@ fn b4_world_summary_matches_after_overlay_add_orderbands() {
     coord.shadow[..projected_len].copy_from_slice(&projected);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
 

@@ -13,7 +13,7 @@ use simthing_gpu::{
     build_overlay_deltas, set_debug_readback_allowed, summaries_from_values, GpuContext, Pipelines,
     SlotAllocator, ThresholdEvent, WorldGpuState, OP_ADD, OP_MULTIPLY, OP_SET,
 };
-use simthing_sim::{BoundaryProtocol, VelocityAlertRegistration};
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree, VelocityAlertRegistration};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -178,7 +178,7 @@ where
     let (_tx, rx) = feeder_channel();
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
@@ -292,7 +292,7 @@ fn c4_suspended_overlay_absent_then_activated() {
     let (_tx, rx) = feeder_channel();
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     assert_eq!(overlay_cache_stats(&state), (1, 1, 0));
@@ -356,7 +356,7 @@ fn c4_overlay_dissolve_bumps_revision_and_removes_ops() {
     let (_tx, rx) = feeder_channel();
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     assert_eq!(overlay_cache_stats(&state), (1, 1, 1));
@@ -444,7 +444,7 @@ fn c4_fission_clone_inherits_overlays_correctly() {
         simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
         coord.shadow[..projected.len()].copy_from_slice(&projected);
 
-        let mut proto = BoundaryProtocol::new(world, reg, alloc);
+        let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
         proto.flags.use_accumulator_overlay_add = true;
         proto.initial_gpu_sync(&coord, &mut state);
         let revision = proto.overlay_compile_revision();
@@ -502,7 +502,7 @@ fn c4_no_change_tick_does_not_recompile() {
     let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     proto.initial_gpu_sync(&coord, &mut state);
@@ -537,7 +537,7 @@ fn c4_equality_check_skips_upload_when_deltas_unchanged() {
     let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     proto.bump_overlay_compile_revision_for_test();
@@ -592,7 +592,7 @@ fn c4_high_density_unchanged_no_recompile_no_upload() {
     simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
     coord.shadow.copy_from_slice(&projected);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_overlay_add = true;
     for _ in 0..50 {
         proto.initial_gpu_sync(&coord, &mut state);
@@ -652,7 +652,7 @@ fn c4_high_density_single_attach_recompiles_once() {
     simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
     coord.shadow.copy_from_slice(&projected);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_overlay_add = true;
     for _ in 0..25 {
         proto.initial_gpu_sync(&coord, &mut state);
@@ -698,7 +698,7 @@ fn c4_after_ticks_decrement_alone_does_not_recompile() {
     let mut patcher = TransformPatcher::new(n_slots as usize);
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     let revision = proto.overlay_compile_revision();
@@ -732,7 +732,7 @@ fn c4_overlay_attach_bumps_revision() {
     let mut patcher = TransformPatcher::new(n_slots as usize);
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     let revision = proto.overlay_compile_revision();
@@ -781,7 +781,7 @@ fn c4_combined_threshold_intent_overlay_path_replay_stable() {
         let (tx, rx) = feeder_channel();
         project_to_coord(&fx, &mut coord);
 
-        let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+        let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
         proto.flags.use_accumulator_threshold_scan = true;
         proto.flags.use_accumulator_intent = true;
         proto.flags.use_accumulator_overlay_add = true;
@@ -859,7 +859,7 @@ fn c4_world_summary_matches_full_values_after_mixed_overlay() {
     let (_tx, rx) = feeder_channel();
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
     let _ = coord.tick(

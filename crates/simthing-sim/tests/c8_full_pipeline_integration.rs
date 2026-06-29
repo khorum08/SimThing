@@ -9,7 +9,7 @@ use simthing_gpu::{
     project_tree_to_values, set_debug_readback_allowed, EmissionFormula, EmissionRegistration,
     GpuContext, Pipelines, SlotAllocator, TransferInputRef, TransferRegistration, WorldGpuState,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -280,7 +280,7 @@ fn c8_full_gpu_resident_pipeline_all_flags_on() {
     coord.shadow[..projected_len].copy_from_slice(&projected);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     all_c8_flags(&mut proto);
     proto.initial_gpu_sync(&coord, &mut state);
     sync_c8_substrates(
@@ -380,7 +380,7 @@ fn c8_full_pipeline_reuses_persistent_tables_and_ops_across_ticks() {
     coord.shadow[..projected_len].copy_from_slice(&projected);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     all_c8_flags(&mut proto);
     proto.initial_gpu_sync(&coord, &mut state);
     sync_c8_substrates(
@@ -461,7 +461,7 @@ fn c8_accumulator_intensity_uses_eval_eml_only() {
     coord.shadow[..projected_len].copy_from_slice(&projected);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     all_c8_flags(&mut proto);
     proto.initial_gpu_sync(&coord, &mut state);
     sync_c8_substrates(

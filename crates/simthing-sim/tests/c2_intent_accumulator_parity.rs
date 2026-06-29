@@ -9,7 +9,7 @@ use simthing_feeder::{
     feeder_channel, DispatchCoordinator, FeederSender, FeederWork, PatchTransform, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -95,7 +95,7 @@ where
         );
         world.add_child(cohort);
     }
-    let mut proto = BoundaryProtocol::new(world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_intent = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
@@ -392,7 +392,7 @@ fn c1_c2_combined_accumulator_intent_then_threshold_parity() {
         simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
         coord.shadow[..projected_len].copy_from_slice(&projected);
 
-        let mut proto = BoundaryProtocol::new(world, reg, alloc);
+        let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
         proto.flags.use_accumulator_intent = true;
         proto.flags.use_accumulator_threshold_scan = true;
         proto.initial_gpu_sync(&coord, &mut state);

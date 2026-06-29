@@ -41,6 +41,13 @@
 //!
 //! - `boundary` — top-level `BoundaryProtocol` struct that owns the SimThing
 //!   tree root and orchestrates the full §10 sequence in one call.
+//!
+//! Semantic kind names must not be imported from this crate
+//! (`sim_public_surface_rejects_kind_import_compile_fail`):
+//!
+//! ```compile_fail
+//! use simthing_sim::SimThingKind;
+//! ```
 
 pub mod accumulator_plan_tick;
 pub mod boundary;
@@ -56,8 +63,9 @@ pub mod overlay_lifecycle;
 pub mod property_expiry;
 pub mod reduced_field;
 pub mod replay;
+pub mod sim_runtime_tree;
 pub mod threshold_registry;
-pub mod tree_index;
+pub(crate) mod tree_index;
 pub mod tree_mutation;
 
 pub use accumulator_plan_tick::{
@@ -69,7 +77,7 @@ pub use accumulator_plan_tick::{
 pub use boundary::{
     BoundaryHookContext, BoundaryOutcome, BoundaryProtocol, BoundaryTiming, PipelineFlags,
 };
-pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
+pub use delta_log::BoundaryDeltaEntry;
 pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
 pub use fission_clone_source_view::FissionCloneSourceView;
 pub use legacy_oracle::{
@@ -94,6 +102,7 @@ pub use replay::{
     ReplayDriver, ReplayError, ReplayFrame, ReplayReader, ReplayRecord, ReplaySnapshot,
     ReplayWriter,
 };
+pub use sim_runtime_tree::SimRuntimeTree;
 pub use threshold_registry::{
     assert_no_hard_trigger_on_soft_aggregate, AggregateAlertEvent, AggregateAlertRegistration,
     SoftAggregateViolation, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic,
@@ -103,3 +112,5 @@ pub use tree_mutation::apply_structural_mutations;
 
 #[cfg(test)]
 mod kind_production_audit;
+#[cfg(test)]
+mod semantic_surface_audit;

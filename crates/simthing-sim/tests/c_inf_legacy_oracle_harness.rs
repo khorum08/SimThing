@@ -10,7 +10,7 @@ use simthing_feeder::{
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::{
     apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
-    BoundaryProtocol, OracleCapture, OracleExactness, OracleFamily, OracleScenario,
+    BoundaryProtocol, OracleCapture, OracleExactness, OracleFamily, OracleScenario, SimRuntimeTree,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -55,7 +55,7 @@ fn c_inf2_intent_oracle_harness_single_add() {
             cohort.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
             world.add_child(cohort);
 
-            let mut proto = BoundaryProtocol::new(world, reg, alloc);
+            let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
             apply_oracle_flags(&mut proto.flags, OracleFamily::Intent, use_accumulator);
             proto.initial_gpu_sync(&coord, &mut state);
 
@@ -156,7 +156,7 @@ fn c_inf2_threshold_oracle_harness_fission_stress_smoke() {
             );
             coord.shadow[..projected_len].copy_from_slice(&projected);
 
-            let mut proto = BoundaryProtocol::new(world, reg, alloc);
+            let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
             apply_oracle_flags(&mut proto.flags, OracleFamily::Threshold, use_accumulator);
             proto.initial_gpu_sync(&coord, &mut state);
 

@@ -9,7 +9,7 @@ use simthing_gpu::{
     AccumulatorOpSession, GpuContext, SlotAllocator, ThresholdRegistration, WorldGpuState,
     DIR_UPWARD, THRESH_BUF_VALUES,
 };
-use simthing_sim::{BoundaryProtocol, PipelineFlags};
+use simthing_sim::{BoundaryProtocol, PipelineFlags, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -61,7 +61,7 @@ fn s6_threshold_disabled_rejects_threshold_workload() {
     alloc.populate_from_tree(&world);
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
     let coord = DispatchCoordinator::new(alloc.capacity() as u32, reg.total_columns as u32, 1);
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_threshold_scan = false;
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         proto.initial_gpu_sync(&coord, &mut state);

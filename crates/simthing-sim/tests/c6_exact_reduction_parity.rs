@@ -13,7 +13,7 @@ use simthing_gpu::{
     reset_cpu_reduce_oracle_call_count, GpuContext, Pipelines, SlotAllocator, Topology,
     TopologyState, WorldGpuState,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 const TOL: f32 = 1e-5;
 
@@ -412,7 +412,7 @@ fn c6_combined_c1_c2_c4_c5_c6_all_flags_on() {
     coord.shadow.fill(0.5);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_threshold_scan = true;
     proto.flags.use_accumulator_intent = true;
     proto.flags.use_accumulator_overlay_add = true;

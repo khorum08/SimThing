@@ -299,7 +299,7 @@ fn c7_combined_c1_c2_c4_reduction_velocity_all_flags_on() {
     use simthing_core::{SimThing, SimThingKind};
     use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
     use simthing_gpu::SlotAllocator;
-    use simthing_sim::BoundaryProtocol;
+    use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
     let mut reg = DimensionRegistry::new();
     let mut prop = SimProperty::simple("core", "loyalty", 0);
@@ -333,7 +333,7 @@ fn c7_combined_c1_c2_c4_reduction_velocity_all_flags_on() {
     coord.shadow.fill(0.5);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_threshold_scan = true;
     proto.flags.use_accumulator_intent = true;
     proto.flags.use_accumulator_overlay_add = true;

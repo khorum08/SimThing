@@ -62,6 +62,7 @@ use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
 use crate::property_expiry::{resolve_property_expiry, ExpiryOutcome};
 use crate::reduced_field::ReducedField;
+use crate::sim_runtime_tree::SimRuntimeTree;
 use crate::threshold_registry::{
     AggregateAlertEvent, AggregateAlertRegistration, ThresholdBuilder, ThresholdRegistry,
     ThresholdSemantic, VelocityAlertEvent, VelocityAlertRegistration,
@@ -217,7 +218,7 @@ impl PipelineFlags {
 /// Does NOT own the GPU state or the feeder layer — those are passed in
 /// by the top-level driver (the eventual `simthing-sim` binary / thread).
 pub struct BoundaryProtocol {
-    pub root: SimThing,
+    pub root: SimRuntimeTree,
     pub registry: DimensionRegistry,
     pub allocator: SlotAllocator,
     pub flags: PipelineFlags,
@@ -250,8 +251,12 @@ pub struct BoundaryProtocol {
 }
 
 impl BoundaryProtocol {
-    pub fn new(mut root: SimThing, registry: DimensionRegistry, allocator: SlotAllocator) -> Self {
-        prepare_fission_clone_sources_for_registry(&mut root, &registry);
+    pub fn new(
+        mut root: SimRuntimeTree,
+        registry: DimensionRegistry,
+        allocator: SlotAllocator,
+    ) -> Self {
+        prepare_fission_clone_sources_for_registry(root.inner_mut(), &registry);
         Self {
             root,
             registry,
@@ -475,13 +480,13 @@ impl BoundaryProtocol {
             hook(&mut hook_ctx);
         }
 
-        let boundary_paths = build_node_paths(&self.root);
+        let boundary_paths = build_node_paths(self.root.inner());
 
         // Step 4: Overlay lifecycle — dissolve + expire effects.
         // Mutates coord.shadow directly (apply_expire_effects writes into it).
         let lifecycle_started = Instant::now();
         out.lifecycle = resolve_overlay_lifecycle(
-            &mut self.root,
+            self.root.inner_mut(),
             &self.registry,
             &self.allocator,
             &mut coord.shadow,
@@ -500,7 +505,7 @@ impl BoundaryProtocol {
         // Step 5: Property expiry (threshold-driven + CPU-side TowardZero/AfterTicks).
         let expiry_started = Instant::now();
         out.expiry = resolve_property_expiry(
-            &mut self.root,
+            self.root.inner_mut(),
             &mut self.registry,
             &self.allocator,
             &coord.shadow,
@@ -524,7 +529,7 @@ impl BoundaryProtocol {
         let fission_headroom = projected_fission_slots(
             &events,
             &self.cpu_threshold_registry,
-            &self.root,
+            self.root.inner(),
             &boundary_paths,
             &self.registry,
         );
@@ -552,7 +557,7 @@ impl BoundaryProtocol {
         // Lifecycle/expiry do not change tree shape — reuse the same index.
         let fission_started = Instant::now();
         out.fission = resolve_fission_fusion(
-            &mut self.root,
+            self.root.inner_mut(),
             &boundary_paths,
             &self.registry,
             &mut self.allocator,
@@ -651,11 +656,11 @@ impl BoundaryProtocol {
             coord.shadow.resize(needed, 0.0);
         }
 
-        let structural_paths = build_node_paths(&self.root);
+        let structural_paths = build_node_paths(self.root.inner());
         let structural_started = Instant::now();
         out.maintainer = apply_structural_mutations(
             requests,
-            &mut self.root,
+            self.root.inner_mut(),
             &mut self.allocator,
             &mut self.registry,
             &mut coord.shadow,
@@ -697,7 +702,7 @@ impl BoundaryProtocol {
             coord.resize_dimensions(self.registry.total_columns as u32);
             let new_n_dims = coord.n_dims() as usize;
             seed_dimension_values(
-                &self.root,
+                self.root.inner(),
                 &self.registry,
                 &self.allocator,
                 &out.maintainer.dimensions_added,
@@ -763,7 +768,7 @@ impl BoundaryProtocol {
             let mut new_regs = Vec::new();
             for &(_, child_id) in &out.fission.fission_pairs {
                 if let Some(path) = structural_paths.get(&child_id) {
-                    if let Some(child_node) = node_at_path(&self.root, path) {
+                    if let Some(child_node) = node_at_path(self.root.inner(), path) {
                         ThresholdBuilder::append_subtree(
                             child_node,
                             &self.registry,
@@ -882,7 +887,7 @@ impl BoundaryProtocol {
             Some(dedup_slots(dirty_value_slots))
         };
         let gpu_out = sync_gpu_buffers(
-            &self.root,
+            self.root.inner(),
             &self.registry,
             &self.allocator,
             coord,
@@ -906,7 +911,7 @@ impl BoundaryProtocol {
         #[cfg(debug_assertions)]
         if topology_full_rebuild_pending {
             debug_assert_topology_cache_matches_tree(
-                &self.root,
+                self.root.inner(),
                 &self.allocator,
                 &self.cached_topology_state,
             );
@@ -966,7 +971,7 @@ impl BoundaryProtocol {
 
         let delta_log_started = Instant::now();
         self.delta_log
-            .extend(entries_from_outcome(&out, &self.root));
+            .extend(entries_from_outcome(&out, self.root.inner()));
         out.timing.delta_log_ms = delta_log_started.elapsed().as_secs_f64() * 1000.0;
 
         out
@@ -983,7 +988,7 @@ impl BoundaryProtocol {
         events.is_empty()
             && patcher.pending_boundary_work_count() == 0
             && self.threshold_config_revision == self.synced_threshold_config_revision
-            && !tree_has_boundary_lifecycle_work(&self.root, &self.registry)
+            && !tree_has_boundary_lifecycle_work(self.root.inner(), &self.registry)
     }
 
     /// Read-only access to the current threshold registry (for diagnostics).
@@ -1086,12 +1091,24 @@ impl BoundaryProtocol {
             ObserveFidelity::Shadow => {
                 let base = slot as usize * n_dims;
                 let row = &coord.shadow[base..base + n_dims];
-                observe(&self.root, &self.registry, &self.allocator, row, target)
+                observe(
+                    self.root.inner(),
+                    &self.registry,
+                    &self.allocator,
+                    row,
+                    target,
+                )
             }
             ObserveFidelity::GpuRow => {
                 let state = state?;
                 let row = state.read_values_row(slot);
-                observe(&self.root, &self.registry, &self.allocator, &row, target)
+                observe(
+                    self.root.inner(),
+                    &self.registry,
+                    &self.allocator,
+                    &row,
+                    target,
+                )
             }
         }
     }
@@ -1120,7 +1137,7 @@ impl BoundaryProtocol {
     pub fn snapshot(&self, day: u32) -> crate::replay::ReplaySnapshot {
         crate::replay::ReplaySnapshot {
             day,
-            root: self.root.clone(),
+            root: self.root.inner().clone(),
             registry: self.registry.clone(),
             fission_lineage: self.fission_lineage.clone(),
         }
@@ -1131,7 +1148,7 @@ impl BoundaryProtocol {
     /// Pass 7 has registrations from tick 1 onward.
     pub fn initial_gpu_sync(&mut self, coord: &DispatchCoordinator, state: &mut WorldGpuState) {
         let out = sync_gpu_buffers(
-            &self.root,
+            self.root.inner(),
             &self.registry,
             &self.allocator,
             coord,
@@ -1195,7 +1212,7 @@ impl BoundaryProtocol {
     /// with `TopologyState::build` when append is used.
     #[doc(hidden)]
     pub fn reduction_topology_matches_tree(&self) -> bool {
-        let direct = TopologyState::build(&self.root, &self.allocator).flatten();
+        let direct = TopologyState::build(self.root.inner(), &self.allocator).flatten();
         let via_cache = self.cached_topology_state.flatten();
         direct.child_starts == via_cache.child_starts
             && direct.child_indices == via_cache.child_indices
@@ -1464,7 +1481,7 @@ mod tests {
         reg.register(SimProperty::simple("core", "loyalty", 0));
         let root = SimThing::new(SimThingKind::World, 0);
         let alloc = SlotAllocator::new();
-        let proto = BoundaryProtocol::new(root, reg, alloc);
+        let proto = BoundaryProtocol::new(SimRuntimeTree::admit(root), reg, alloc);
         assert!(proto.threshold_registry().is_empty());
     }
 
@@ -1478,7 +1495,11 @@ mod tests {
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(&root);
         let patcher = TransformPatcher::new(alloc.capacity());
-        (BoundaryProtocol::new(root, reg, alloc), patcher, pid)
+        (
+            BoundaryProtocol::new(SimRuntimeTree::admit(root), reg, alloc),
+            patcher,
+            pid,
+        )
     }
 
     #[test]
@@ -1502,7 +1523,7 @@ mod tests {
     #[test]
     fn boundary_with_pending_request_cannot_skip() {
         let (proto, mut patcher, _) = simple_proto();
-        let target = proto.root.children[0].id;
+        let target = proto.root.access(|root| root.children[0].id);
         patcher.apply_collected_as_intents(
             vec![FeederWork::Boundary(BoundaryRequest::Remove { target })],
             Vec::new(),
@@ -1515,7 +1536,7 @@ mod tests {
     #[test]
     fn boundary_with_unsynced_alert_config_cannot_skip() {
         let (mut proto, patcher, pid) = simple_proto();
-        let target = proto.root.children[0].id;
+        let target = proto.root.access(|root| root.children[0].id);
         proto.register_velocity_alert(VelocityAlertRegistration {
             sim_thing_id: target,
             property_id: pid,
@@ -1529,18 +1550,20 @@ mod tests {
     #[test]
     fn boundary_with_transient_overlay_cannot_skip() {
         let (mut proto, patcher, pid) = simple_proto();
-        proto.root.children[0].add_overlay(Overlay {
-            id: OverlayId::new(),
-            kind: OverlayKind::Transient,
-            source: OverlaySource::System,
-            affects: Vec::new(),
-            transform: PropertyTransformDelta {
-                property_id: pid,
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.4))],
-            },
-            lifecycle: OverlayLifecycle::Transient {
-                dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
-            },
+        proto.root.access_mut(|root| {
+            root.children[0].add_overlay(Overlay {
+                id: OverlayId::new(),
+                kind: OverlayKind::Transient,
+                source: OverlaySource::System,
+                affects: Vec::new(),
+                transform: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.4))],
+                },
+                lifecycle: OverlayLifecycle::Transient {
+                    dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
+                },
+            });
         });
         assert!(!proto.can_skip_empty_boundary(&[], &patcher));
     }
@@ -1548,20 +1571,24 @@ mod tests {
     #[test]
     fn boundary_with_only_suspended_overlay_can_skip() {
         let (mut proto, patcher, pid) = simple_proto();
-        proto.root.children[0].add_overlay(Overlay {
-            id: OverlayId::new(),
-            kind: OverlayKind::Transient,
-            source: OverlaySource::System,
-            affects: Vec::new(),
-            transform: PropertyTransformDelta {
-                property_id: pid,
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.4))],
-            },
-            lifecycle: OverlayLifecycle::Suspended {
-                when_activated: Box::new(OverlayLifecycle::Transient {
-                    dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 1 }],
-                }),
-            },
+        proto.root.access_mut(|root| {
+            root.children[0].add_overlay(Overlay {
+                id: OverlayId::new(),
+                kind: OverlayKind::Transient,
+                source: OverlaySource::System,
+                affects: Vec::new(),
+                transform: PropertyTransformDelta {
+                    property_id: pid,
+                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(0.4))],
+                },
+                lifecycle: OverlayLifecycle::Suspended {
+                    when_activated: Box::new(OverlayLifecycle::Transient {
+                        dissolution_conditions: vec![DissolveCondition::AfterTicks {
+                            remaining: 1,
+                        }],
+                    }),
+                },
+            });
         });
         assert!(proto.can_skip_empty_boundary(&[], &patcher));
     }

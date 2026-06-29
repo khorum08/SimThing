@@ -6,7 +6,9 @@ use std::time::Instant;
 use simthing_feeder::FeederWork;
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
-use simthing_sim::{BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter};
+use simthing_sim::{
+    BoundaryOutcome, BoundaryProtocol, BoundaryTiming, ReplayFrame, ReplayWriter, SimRuntimeTree,
+};
 use simthing_spec::{
     CapabilityTreeInstance, CapabilityTreeState, CapabilityUnlockRegistration, GameModeSpec,
     ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
@@ -245,7 +247,11 @@ impl SimSession {
 
         let (tx, rx) = feeder_channel();
         let mut proto =
-            BoundaryProtocol::new(scenario.root.clone(), scenario.registry.clone(), allocator);
+            BoundaryProtocol::new(
+                SimRuntimeTree::admit(scenario.root.clone()),
+                scenario.registry.clone(),
+                allocator,
+            );
         proto.initial_gpu_sync(&coord, &mut state);
 
         Ok(Self {
@@ -287,16 +293,18 @@ impl SimSession {
     /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
     pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
         let enabled = self.proto.flags.use_accumulator_resource_flow;
-        crate::arena_allocation_sync::sync_resource_flow_accumulator(
-            &mut self.state,
-            &self.proto.registry,
-            &self.spec_state.arena_registry,
-            &self.spec_state.arena_participant_scaffold,
-            &self.proto.root,
-            &self.proto.allocator,
-            &self.spec_state.resolved_gated_rates,
-            enabled,
-        )?;
+        self.proto.root.access(|root| {
+            crate::arena_allocation_sync::sync_resource_flow_accumulator(
+                &mut self.state,
+                &self.proto.registry,
+                &self.spec_state.arena_registry,
+                &self.spec_state.arena_participant_scaffold,
+                root,
+                &self.proto.allocator,
+                &self.spec_state.resolved_gated_rates,
+                enabled,
+            )
+        })?;
         Ok(())
     }
 
@@ -360,13 +368,15 @@ impl SimSession {
         self.coord.shadow.fill(0.0);
         let projected_len = self.proto.allocator.capacity() * required_dims as usize;
         let mut projected = vec![0.0; projected_len];
-        simthing_gpu::project_tree_to_values(
-            &self.proto.root,
-            &self.proto.registry,
-            &self.proto.allocator,
-            required_dims as usize,
-            &mut projected,
-        );
+        self.proto.root.access(|root| {
+            simthing_gpu::project_tree_to_values(
+                root,
+                &self.proto.registry,
+                &self.proto.allocator,
+                required_dims as usize,
+                &mut projected,
+            );
+        });
         self.coord.shadow[..projected_len].copy_from_slice(&projected);
     }
 
@@ -388,13 +398,15 @@ impl SimSession {
         // running the install, so a failed install leaves the
         // just-built `BoundaryProtocol` untouched. See
         // `docs/adr/install_clone_then_commit.md`.
-        let spec_state = install_atomic(
-            game_mode,
-            &session.scenario,
-            &mut session.proto.registry,
-            &mut session.proto.root,
-            &mut session.proto.allocator,
-        )?;
+        let spec_state = session.proto.root.access_mut(|root| {
+            install_atomic(
+                game_mode,
+                &session.scenario,
+                &mut session.proto.registry,
+                root,
+                &mut session.proto.allocator,
+            )
+        })?;
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
         session.resource_flow_flag_source =
@@ -426,7 +438,7 @@ impl SimSession {
     /// `docs/adr/install_clone_then_commit.md`.
     pub fn apply_install_preview(&mut self, preview: InstallPreview) -> Result<(), SessionError> {
         self.proto.registry = preview.registry;
-        self.proto.root = preview.root;
+        self.proto.root = SimRuntimeTree::admit(preview.root);
         self.proto.allocator = preview.allocator;
         self.install_spec_state(preview.state)
     }
@@ -510,12 +522,14 @@ impl SimSession {
                 // effect property; seed it now and re-sync GPU shape.
                 let mut props = std::collections::HashSet::new();
                 props.insert(property_id);
-                crate::install::seed_effect_props_on(
-                    &mut self.proto.root,
-                    target,
-                    &props,
-                    &self.proto.registry,
-                );
+                self.proto.root.access_mut(|root| {
+                    crate::install::seed_effect_props_on(
+                        root,
+                        target,
+                        &props,
+                        &self.proto.registry,
+                    )
+                });
                 self.proto.initial_gpu_sync(&self.coord, &mut self.state);
                 Some(ResolvedCommitmentEffect {
                     target,
@@ -1013,15 +1027,16 @@ impl SimSession {
             self.last_resource_flow_dynamic_enrollment_report = None;
             return Ok(());
         }
-        let report =
+        let report = self.proto.root.access_mut(|root| {
             crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
                 &outcome.fission,
                 &mut self.spec_state.arena_registry,
                 &mut self.spec_state.arena_participant_scaffold,
-                &mut self.proto.root,
+                root,
                 &self.proto.registry,
                 &mut self.proto.allocator,
-            );
+            )
+        });
         let should_sync = report.any_admissions() && self.proto.flags.use_accumulator_resource_flow;
         if !report.admissions.is_empty() || !report.rejections.is_empty() {
             self.last_resource_flow_dynamic_enrollment_report = Some(report);
