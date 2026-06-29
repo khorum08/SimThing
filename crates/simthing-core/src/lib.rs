@@ -15,6 +15,7 @@ pub mod property;
 pub mod reduction;
 pub mod registry;
 pub mod simthing;
+pub mod structural_coord;
 
 pub use accumulator_op::{
     AccumulatorOp, AccumulatorOpError, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec,
@@ -78,3 +79,4 @@ pub use registry::{DimensionRegistry, PropertyColumnRange};
 pub use simthing::{
     is_arena_participant_node, kind_matches, reserve_simthing_ids_from_tree, SimThing, SimThingKind,
 };
+pub use structural_coord::{RenderCoord, StructuralCoord};

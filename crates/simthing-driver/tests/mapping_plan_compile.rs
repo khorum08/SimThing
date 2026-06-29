@@ -1,9 +1,9 @@
 //! DRIVER-MAPPING-PLAN-COMPILE-0 — driver mapping plan compile guards.
 
+use simthing_core::StructuralCoord;
 use simthing_driver::{
     compile_mapping_plan_from_admitted_theater, compile_structured_field_mapping_plan,
     CompiledStructuralN4Theater, MappingPlanCompileError, MappingPlanCompileSpec,
-    StructuralGridCoordinate,
 };
 use simthing_gpu::MIN_PLUS_INF;
 use simthing_sim::CompiledMappingStep;
@@ -30,7 +30,7 @@ fn theater_8x8() -> CompiledStructuralN4Theater {
     CompiledStructuralN4Theater {
         frame_width: 8,
         frame_height: 8,
-        occupied_cells: vec![StructuralGridCoordinate { col: 0, row: 0 }],
+        occupied_cells: vec![StructuralCoord::new(0, 0)],
         n4_edges: Vec::new(),
         system_placements: Vec::new(),
         execution_profile: MappingExecutionProfile::SparseRegionFieldV1,
@@ -94,7 +94,7 @@ fn full_compile_spec(grid: u32) -> MappingPlanCompileSpec {
         structured_to_interleaved_writes: vec![(1, 1)],
         w_compose,
         min_plus_profile_index: 0,
-        min_plus_dest: StructuralGridCoordinate { col: 0, row: 0 },
+        min_plus_dest: StructuralCoord::new(0, 0),
         min_plus_d_col: 4,
         min_plus_iterations: 16,
         min_plus_inf: MIN_PLUS_INF,

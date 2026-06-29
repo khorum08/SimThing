@@ -3,19 +3,24 @@
 //! Grid N4 adjacency is derived from authoritative `(col,row)` placements only.
 //! Hyperlane `scenario.links` are not consulted. Execution-profile admission may
 //! defer oversize frames to atlas scheduling without shrinking structural layout.
+//!
+//! Structural paths accept [`StructuralCoord`] only — render floats cannot enter:
+//!
+//! ```compile_fail
+//! use simthing_core::RenderCoord;
+//! use simthing_driver::CompiledStructuralN4Theater;
+//! fn demo(theater: &CompiledStructuralN4Theater) {
+//!     let render = RenderCoord::new(1.0, 2.0);
+//!     let _ = theater.cell_slot(render);
+//! }
+//! ```
 
+use simthing_core::StructuralCoord;
 use simthing_spec::{
     validate_stead_mapping_consistency, MappingExecutionProfile, SimThingScenarioSpec,
     SteadMappingError, REGION_FIELD_MAX_CELL_COUNT, REGION_FIELD_STANDARD_MAX_GRID,
 };
 use thiserror::Error;
-
-/// Semantic-free structural grid coordinate (col, row).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct StructuralGridCoordinate {
-    pub col: u32,
-    pub row: u32,
-}
 
 /// One occupied structural placement admitted into the theater compile surface.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,15 +37,15 @@ pub struct CompiledStructuralPlacement {
 pub struct CompiledStructuralN4Theater {
     pub frame_width: u32,
     pub frame_height: u32,
-    pub occupied_cells: Vec<StructuralGridCoordinate>,
-    pub n4_edges: Vec<(StructuralGridCoordinate, StructuralGridCoordinate)>,
+    pub occupied_cells: Vec<StructuralCoord>,
+    pub n4_edges: Vec<(StructuralCoord, StructuralCoord)>,
     pub system_placements: Vec<CompiledStructuralPlacement>,
     pub execution_profile: MappingExecutionProfile,
 }
 
 impl CompiledStructuralN4Theater {
-    pub fn cell_slot(&self, coord: StructuralGridCoordinate) -> u32 {
-        coord.row * self.frame_width + coord.col
+    pub fn cell_slot(&self, coord: StructuralCoord) -> u32 {
+        coord.row() * self.frame_width + coord.col()
     }
 
     pub fn placement_for_system(&self, system_id: u32) -> Option<&CompiledStructuralPlacement> {
@@ -49,20 +54,17 @@ impl CompiledStructuralN4Theater {
             .find(|placement| placement.system_id == system_id)
     }
 
-    pub fn coord_for_system(&self, system_id: u32) -> Option<StructuralGridCoordinate> {
+    pub fn coord_for_system(&self, system_id: u32) -> Option<StructuralCoord> {
         self.placement_for_system(system_id)
-            .map(|placement| StructuralGridCoordinate {
-                col: placement.col,
-                row: placement.row,
-            })
+            .map(|placement| StructuralCoord::new(placement.col, placement.row))
     }
 
-    pub fn has_n4_edge(&self, a: StructuralGridCoordinate, b: StructuralGridCoordinate) -> bool {
+    pub fn has_n4_edge(&self, a: StructuralCoord, b: StructuralCoord) -> bool {
         let edge = ordered_n4_edge(a, b);
         self.n4_edges.iter().any(|existing| *existing == edge)
     }
 
-    pub fn occupied_set(&self) -> std::collections::BTreeSet<StructuralGridCoordinate> {
+    pub fn occupied_set(&self) -> std::collections::BTreeSet<StructuralCoord> {
         self.occupied_cells.iter().copied().collect()
     }
 }
@@ -124,14 +126,12 @@ pub enum StructuralTheaterCompileError {
     },
 }
 
-fn is_n4_neighbor(a: StructuralGridCoordinate, b: StructuralGridCoordinate) -> bool {
-    (a.col.abs_diff(b.col) == 1 && a.row == b.row) || (a.row.abs_diff(b.row) == 1 && a.col == b.col)
+fn is_n4_neighbor(a: StructuralCoord, b: StructuralCoord) -> bool {
+    (a.col().abs_diff(b.col()) == 1 && a.row() == b.row())
+        || (a.row().abs_diff(b.row()) == 1 && a.col() == b.col())
 }
 
-fn ordered_n4_edge(
-    a: StructuralGridCoordinate,
-    b: StructuralGridCoordinate,
-) -> (StructuralGridCoordinate, StructuralGridCoordinate) {
+fn ordered_n4_edge(a: StructuralCoord, b: StructuralCoord) -> (StructuralCoord, StructuralCoord) {
     if a <= b {
         (a, b)
     } else {
@@ -140,8 +140,8 @@ fn ordered_n4_edge(
 }
 
 pub(crate) fn derive_n4_edges(
-    occupied: &[StructuralGridCoordinate],
-) -> Vec<(StructuralGridCoordinate, StructuralGridCoordinate)> {
+    occupied: &[StructuralCoord],
+) -> Vec<(StructuralCoord, StructuralCoord)> {
     let mut edges = Vec::new();
     for i in 0..occupied.len() {
         for j in (i + 1)..occupied.len() {
@@ -175,10 +175,7 @@ pub(crate) fn build_theater_geometry(
                 height: frame.height,
             });
         }
-        let coord = StructuralGridCoordinate {
-            col: placement.col,
-            row: placement.row,
-        };
+        let coord = StructuralCoord::new(placement.col, placement.row);
         occupied_cells.push(coord);
         system_placements.push(CompiledStructuralPlacement {
             system_id: placement.system_id,
@@ -257,4 +254,117 @@ pub fn compile_structural_n4_theater(
 ) -> Result<StructuralTheaterAdmission, StructuralTheaterCompileError> {
     let theater = build_theater_geometry(scenario, profile)?;
     evaluate_execution_admission(theater)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use simthing_core::{SimThing, SimThingKind};
+    use simthing_spec::{
+        structural_property_value_u32, SimThingScenarioGrid, SimThingStructuralGridFrame,
+        SimThingStructuralGridPlacement, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+        SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    };
+
+    fn synthetic_two_cell_scenario() -> SimThingScenarioSpec {
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut map = SimThing::new(SimThingKind::Location, 0);
+        let mut hub = SimThing::new(SimThingKind::Location, 0);
+        hub.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(1),
+        );
+        hub.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(0),
+        );
+        hub.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(0),
+        );
+        let mut hub_payload = SimThing::new(SimThingKind::Cohort, 0);
+        hub_payload.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(1),
+        );
+        hub.add_child(hub_payload);
+        let mut branch = SimThing::new(SimThingKind::Location, 0);
+        branch.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(2),
+        );
+        branch.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(1),
+        );
+        branch.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(0),
+        );
+        let mut branch_payload = SimThing::new(SimThingKind::Cohort, 0);
+        branch_payload.add_property(
+            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+            structural_property_value_u32(2),
+        );
+        branch.add_child(branch_payload);
+        let hub_raw = hub.id.raw();
+        let branch_raw = branch.id.raw();
+        let map_raw = map.id.raw();
+        map.add_child(hub);
+        map.add_child(branch);
+        root.add_child(map);
+        SimThingScenarioSpec {
+            scenario_id: "structural_coord_migration".to_string(),
+            root,
+            structural_grid: SimThingScenarioGrid {
+                frame: SimThingStructuralGridFrame {
+                    width: 4,
+                    height: 4,
+                    occupied_cells: 2,
+                },
+                map_container_id: map_raw.to_string(),
+                placements: vec![
+                    SimThingStructuralGridPlacement {
+                        location_id: "hub".to_string(),
+                        target_id: "hub".to_string(),
+                        system_id: 1,
+                        row: 0,
+                        col: 0,
+                        simthing_id_raw: hub_raw,
+                    },
+                    SimThingStructuralGridPlacement {
+                        location_id: "branch".to_string(),
+                        target_id: "branch".to_string(),
+                        system_id: 2,
+                        row: 0,
+                        col: 1,
+                        simthing_id_raw: branch_raw,
+                    },
+                ],
+            },
+            links: Vec::new(),
+            provenance: Default::default(),
+        }
+    }
+
+    #[test]
+    fn migrated_structural_path_behavior_preserved() {
+        let scenario = synthetic_two_cell_scenario();
+        let admission =
+            compile_structural_n4_theater(&scenario, MappingExecutionProfile::SparseRegionFieldV1)
+                .expect("compile theater");
+
+        let StructuralTheaterAdmission::Admit(theater) = admission else {
+            panic!("4x4 two-cell theater must admit");
+        };
+
+        let hub = theater.coord_for_system(1).expect("hub");
+        let branch = theater.coord_for_system(2).expect("branch");
+        assert_eq!(hub, StructuralCoord::new(0, 0));
+        assert_eq!(branch, StructuralCoord::new(1, 0));
+        assert_eq!(theater.cell_slot(hub), 0);
+        assert_eq!(theater.cell_slot(branch), 1);
+        assert!(theater.has_n4_edge(hub, branch));
+        assert_eq!(theater.n4_edges.len(), 1);
+    }
 }

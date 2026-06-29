@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use simthing_core::{SimThing, SimThingKind};
 use simthing_driver::{
     compile_structural_n4_atlas, compile_structured_field_mapping_plan, StructuralAtlasAdmission,
-    StructuralAtlasPartitionProfile, StructuralGridCoordinate,
+    StructuralAtlasPartitionProfile, StructuralCoord,
 };
 use simthing_gpu::{debug_readback_allowed, GpuContext};
 use simthing_sim::{
@@ -128,16 +128,13 @@ fn seed_values_for_theater(
     theater: &simthing_driver::CompiledStructuralN4Theater,
     n_dims: u32,
     owned_seeds: &[(u32, f32)],
-    halo_seeds: &[(StructuralGridCoordinate, f32)],
+    halo_seeds: &[(StructuralCoord, f32)],
 ) -> Vec<f32> {
     let cells = theater.frame_width * theater.frame_height;
     let mut values = vec![0.0f32; (cells * n_dims) as usize];
     for &(system_id, seed) in owned_seeds {
         if let Some(placement) = theater.placement_for_system(system_id) {
-            let slot = theater.cell_slot(StructuralGridCoordinate {
-                col: placement.col,
-                row: placement.row,
-            });
+            let slot = theater.cell_slot(StructuralCoord::new(placement.col, placement.row));
             values[idx(slot, 0, n_dims)] = seed;
         }
     }

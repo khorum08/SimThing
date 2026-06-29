@@ -8,10 +8,11 @@ use simthing_spec::{CompiledRegionFieldPreview, CompiledWImpedanceCompose};
 use thiserror::Error;
 
 use crate::first_slice_mapping_runtime::compiled_stencil_to_gpu_config;
-use crate::structural_n4_theater_compile::{CompiledStructuralN4Theater, StructuralGridCoordinate};
+use crate::structural_n4_theater_compile::CompiledStructuralN4Theater;
 use crate::w_impedance_compose_bridge::{
     compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config,
 };
+use simthing_core::StructuralCoord;
 
 /// Admitted mapping operator inputs for generic sim plan assembly.
 #[derive(Clone, Debug)]
@@ -21,7 +22,7 @@ pub struct MappingPlanCompileSpec {
     pub structured_to_interleaved_writes: Vec<(u32, u32)>,
     pub w_compose: CompiledWImpedanceCompose,
     pub min_plus_profile_index: usize,
-    pub min_plus_dest: StructuralGridCoordinate,
+    pub min_plus_dest: StructuralCoord,
     pub min_plus_d_col: u32,
     pub min_plus_iterations: u32,
     pub min_plus_inf: f32,
@@ -72,7 +73,7 @@ pub fn compile_mapping_plan_from_admitted_theater(
         &w_gpu,
         spec.min_plus_profile_index,
         spec.min_plus_d_col,
-        (spec.min_plus_dest.col, spec.min_plus_dest.row),
+        (spec.min_plus_dest.col(), spec.min_plus_dest.row()),
         spec.min_plus_inf,
     );
 
@@ -157,12 +158,12 @@ fn validate_mapping_plan_compile_spec(
             profiles: spec.w_compose.profiles.len(),
         });
     }
-    if spec.min_plus_dest.col >= theater.frame_width
-        || spec.min_plus_dest.row >= theater.frame_height
+    if spec.min_plus_dest.col() >= theater.frame_width
+        || spec.min_plus_dest.row() >= theater.frame_height
     {
         return Err(MappingPlanCompileError::MinPlusDestOutOfFrame {
-            col: spec.min_plus_dest.col,
-            row: spec.min_plus_dest.row,
+            col: spec.min_plus_dest.col(),
+            row: spec.min_plus_dest.row(),
             width: theater.frame_width,
             height: theater.frame_height,
         });

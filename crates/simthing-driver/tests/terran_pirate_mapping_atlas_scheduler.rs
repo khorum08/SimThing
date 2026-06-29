@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use simthing_driver::{
     compile_mapping_plan_from_admitted_theater, compile_structural_n4_theater,
-    MappingPlanCompileSpec, StructuralGridCoordinate, StructuralTheaterAdmission,
+    MappingPlanCompileSpec, StructuralCoord, StructuralTheaterAdmission,
 };
 use simthing_gpu::{debug_readback_allowed, max_d_field_error, GpuContext, MIN_PLUS_INF};
 use simthing_sim::{
@@ -112,10 +112,7 @@ fn terran_pirate_mapping_plan_compile_spec(
         w_compose: compile_w_impedance_compose_preview(&terran_pirate_w_compose_spec(grid))
             .expect("w compose admission"),
         min_plus_profile_index: 0,
-        min_plus_dest: StructuralGridCoordinate {
-            col: hub.col,
-            row: hub.row,
-        },
+        min_plus_dest: StructuralCoord::new(hub.col(), hub.row()),
         min_plus_d_col: 4,
         min_plus_iterations: MIN_PLUS_ITERATIONS,
         min_plus_inf: MIN_PLUS_INF,

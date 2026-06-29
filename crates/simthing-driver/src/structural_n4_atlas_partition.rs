@@ -9,9 +9,11 @@ use simthing_spec::{
     REGION_FIELD_STANDARD_MAX_GRID,
 };
 
+use simthing_core::StructuralCoord;
+
 use crate::structural_n4_theater_compile::{
     build_theater_geometry, derive_n4_edges, AtlasDeferralReason, CompiledStructuralN4Theater,
-    CompiledStructuralPlacement, StructuralGridCoordinate, StructuralTheaterCompileError,
+    CompiledStructuralPlacement, StructuralTheaterCompileError,
 };
 
 /// Origin of a partition theater within the original structural frame.
@@ -38,8 +40,8 @@ pub enum StructuralTheaterCellRole {
 /// One admitted halo cell with global provenance and GPU-local coordinates.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StructuralTheaterHaloCell {
-    pub global_coord: StructuralGridCoordinate,
-    pub local_coord: StructuralGridCoordinate,
+    pub global_coord: StructuralCoord,
+    pub local_coord: StructuralCoord,
     pub source_partition_index: u32,
 }
 
@@ -63,23 +65,21 @@ pub struct PartitionedStructuralN4Theater {
 
 impl PartitionedStructuralN4Theater {
     /// Recover global coordinates for a theater-local cell (after coord padding).
-    pub fn global_from_local(&self, local: StructuralGridCoordinate) -> StructuralGridCoordinate {
-        StructuralGridCoordinate {
-            col: self
-                .origin
+    pub fn global_from_local(&self, local: StructuralCoord) -> StructuralCoord {
+        StructuralCoord::new(
+            self.origin
                 .col
-                .saturating_add(local.col)
+                .saturating_add(local.col())
                 .saturating_sub(self.coord_padding.west),
-            row: self
-                .origin
+            self.origin
                 .row
-                .saturating_add(local.row)
+                .saturating_add(local.row())
                 .saturating_sub(self.coord_padding.north),
-        }
+        )
     }
 
     /// Whether a theater-local coordinate is an admitted halo cell.
-    pub fn cell_role(&self, local: StructuralGridCoordinate) -> StructuralTheaterCellRole {
+    pub fn cell_role(&self, local: StructuralCoord) -> StructuralTheaterCellRole {
         if self.halo_cells.iter().any(|halo| halo.local_coord == local) {
             StructuralTheaterCellRole::Halo
         } else {
@@ -91,8 +91,8 @@ impl PartitionedStructuralN4Theater {
 /// Cross-partition N4 adjacency deferred from first-slice bounded execution.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeferredCrossPartitionN4Edge {
-    pub global_a: StructuralGridCoordinate,
-    pub global_b: StructuralGridCoordinate,
+    pub global_a: StructuralCoord,
+    pub global_b: StructuralCoord,
     pub partition_index_a: u32,
     pub partition_index_b: u32,
 }
@@ -164,14 +164,14 @@ fn owned_tile_span(max_tile: u32, include_overlap_halo: bool) -> u32 {
 }
 
 fn partition_tile_index(
-    coord: StructuralGridCoordinate,
+    coord: StructuralCoord,
     frame_width: u32,
     profile: &StructuralAtlasPartitionProfile,
 ) -> u32 {
     let tile_width = owned_tile_span(profile.max_theater_width, profile.include_overlap_halo);
     let tile_height = owned_tile_span(profile.max_theater_height, profile.include_overlap_halo);
-    let tile_col = coord.col / tile_width;
-    let tile_row = coord.row / tile_height;
+    let tile_col = coord.col() / tile_width;
+    let tile_row = coord.row() / tile_height;
     let tiles_per_row = tiles_per_axis(frame_width, tile_width);
     tile_row * tiles_per_row + tile_col
 }
@@ -206,15 +206,15 @@ fn tile_span_for_origin(
 }
 
 fn cell_in_tile(
-    global: StructuralGridCoordinate,
+    global: StructuralCoord,
     origin: StructuralTheaterOrigin,
     tile_width: u32,
     tile_height: u32,
 ) -> bool {
-    global.col >= origin.col
-        && global.col < origin.col.saturating_add(tile_width)
-        && global.row >= origin.row
-        && global.row < origin.row.saturating_add(tile_height)
+    global.col() >= origin.col
+        && global.col() < origin.col.saturating_add(tile_width)
+        && global.row() >= origin.row
+        && global.row() < origin.row.saturating_add(tile_height)
 }
 
 fn collect_owned_partition_cells(
@@ -222,27 +222,18 @@ fn collect_owned_partition_cells(
     origin: StructuralTheaterOrigin,
     tile_width: u32,
     tile_height: u32,
-) -> (
-    Vec<StructuralGridCoordinate>,
-    Vec<CompiledStructuralPlacement>,
-) {
+) -> (Vec<StructuralCoord>, Vec<CompiledStructuralPlacement>) {
     let mut occupied_cells = Vec::new();
     let mut system_placements = Vec::new();
 
     for placement in &full.system_placements {
-        let global = StructuralGridCoordinate {
-            col: placement.col,
-            row: placement.row,
-        };
+        let global = StructuralCoord::new(placement.col, placement.row);
         if !cell_in_tile(global, origin, tile_width, tile_height) {
             continue;
         }
         let local_col = placement.col - origin.col;
         let local_row = placement.row - origin.row;
-        occupied_cells.push(StructuralGridCoordinate {
-            col: local_col,
-            row: local_row,
-        });
+        occupied_cells.push(StructuralCoord::new(local_col, local_row));
         system_placements.push(CompiledStructuralPlacement {
             system_id: placement.system_id,
             col: local_col,
@@ -257,20 +248,17 @@ fn collect_owned_partition_cells(
     (occupied_cells, system_placements)
 }
 
-fn tentative_local(
-    global: StructuralGridCoordinate,
-    origin: StructuralTheaterOrigin,
-) -> (i64, i64) {
+fn tentative_local(global: StructuralCoord, origin: StructuralTheaterOrigin) -> (i64, i64) {
     (
-        i64::from(global.col) - i64::from(origin.col),
-        i64::from(global.row) - i64::from(origin.row),
+        i64::from(global.col()) - i64::from(origin.col),
+        i64::from(global.row()) - i64::from(origin.row),
     )
 }
 
 fn normalize_theater_geometry(
     origin: StructuralTheaterOrigin,
-    owned_locals: &[StructuralGridCoordinate],
-    halo_globals: &[(StructuralGridCoordinate, u32)],
+    owned_locals: &[StructuralCoord],
+    halo_globals: &[(StructuralCoord, u32)],
     execution_profile: MappingExecutionProfile,
     system_placements: Vec<CompiledStructuralPlacement>,
 ) -> (
@@ -280,7 +268,7 @@ fn normalize_theater_geometry(
 ) {
     let mut tentative_coords: Vec<(i64, i64)> = owned_locals
         .iter()
-        .map(|coord| (i64::from(coord.col), i64::from(coord.row)))
+        .map(|coord| (i64::from(coord.col()), i64::from(coord.row())))
         .collect();
     for (global, _) in halo_globals {
         tentative_coords.push(tentative_local(*global, origin));
@@ -301,14 +289,16 @@ fn normalize_theater_geometry(
         north: min_row.min(0).unsigned_abs() as u32,
     };
 
-    let shift_tentative = |(col, row): (i64, i64)| StructuralGridCoordinate {
-        col: (col + i64::from(padding.west)) as u32,
-        row: (row + i64::from(padding.north)) as u32,
+    let shift_tentative = |(col, row): (i64, i64)| {
+        StructuralCoord::new(
+            (col + i64::from(padding.west)) as u32,
+            (row + i64::from(padding.north)) as u32,
+        )
     };
 
-    let mut occupied_cells: Vec<StructuralGridCoordinate> = owned_locals
+    let mut occupied_cells: Vec<StructuralCoord> = owned_locals
         .iter()
-        .map(|coord| shift_tentative((i64::from(coord.col), i64::from(coord.row))))
+        .map(|coord| shift_tentative((i64::from(coord.col()), i64::from(coord.row()))))
         .collect();
     for (global, _) in halo_globals {
         let shifted = shift_tentative(tentative_local(*global, origin));
@@ -320,12 +310,12 @@ fn normalize_theater_geometry(
 
     let max_col = occupied_cells
         .iter()
-        .map(|coord| coord.col)
+        .map(|coord| coord.col())
         .max()
         .unwrap_or(0);
     let max_row = occupied_cells
         .iter()
-        .map(|coord| coord.row)
+        .map(|coord| coord.row())
         .max()
         .unwrap_or(0);
     let frame_width = max_col.saturating_add(1);
@@ -346,8 +336,8 @@ fn normalize_theater_geometry(
         .into_iter()
         .map(|mut placement| {
             let shifted = shift_tentative((i64::from(placement.col), i64::from(placement.row)));
-            placement.col = shifted.col;
-            placement.row = shifted.row;
+            placement.col = shifted.col();
+            placement.row = shifted.row();
             placement
         })
         .collect();
@@ -427,7 +417,7 @@ fn apply_halo_admission(
     frame_height: u32,
     profile: &StructuralAtlasPartitionProfile,
 ) -> Result<Vec<CrossPartitionHaloCoverage>, StructuralTheaterCompileError> {
-    let mut halo_globals_by_partition: Vec<Vec<(StructuralGridCoordinate, u32)>> =
+    let mut halo_globals_by_partition: Vec<Vec<(StructuralCoord, u32)>> =
         vec![Vec::new(); theaters.len()];
 
     let mut halo_coverage = Vec::with_capacity(deferred_edges.len());
@@ -490,8 +480,8 @@ fn apply_halo_admission(
 }
 
 fn push_unique_halo(
-    halos: &mut Vec<(StructuralGridCoordinate, u32)>,
-    global: StructuralGridCoordinate,
+    halos: &mut Vec<(StructuralCoord, u32)>,
+    global: StructuralCoord,
     source_partition_index: u32,
 ) {
     if halos.iter().any(|(existing, _)| *existing == global) {
