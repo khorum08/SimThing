@@ -7,8 +7,8 @@ PASS — production kind-read audit over `crates/simthing-sim/src` is clean; AS-
 ## PR / branch / merge
 
 - Branch: `codex/as-kind-out-of-tick-0e`
-- PR: (pending)
-- Merge: (pending)
+- PR: #957
+- Merge: `5e539ab007`
 
 ## What changed
 
