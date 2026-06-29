@@ -8,7 +8,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{BufferUsages, Device, Queue};
 
 use crate::structural_upload::{
-    readback_pod_blocking, StructuralUploadError, StructuralUploadGpuBuffers,
+    readback_pod_blocking, PackedUpload, StructuralUploadError, StructuralUploadGpuBuffers,
     StructuralUploadGpuReport, StructuralUploadRows,
 };
 
@@ -183,13 +183,9 @@ pub fn validate_structural_rows_on_gpu(
     queue: &Queue,
     rows: &StructuralUploadRows,
 ) -> Result<StructuralValidationReportGpu, StructuralValidationError> {
-    let (buffers, report) = crate::structural_upload::upload_structural_rows_to_gpu(
-        device,
-        queue,
-        rows.frame,
-        &rows.locations,
-        &rows.links,
-    )?;
+    let packed = PackedUpload::try_from(rows)?;
+    let (buffers, report) =
+        crate::structural_upload::upload_structural_rows_to_gpu(device, queue, &packed)?;
     validate_structural_upload_on_gpu(device, queue, &buffers, &report)
 }
 
@@ -222,7 +218,7 @@ mod tests {
     use super::*;
     use crate::context::GpuContext;
     use crate::structural_upload::{
-        upload_structural_rows_to_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
+        upload_structural_rows_to_gpu, PackedUpload, StructuralFrameGpuRow, StructuralLinkGpuRow,
         StructuralLocationGpuRow, FRAME_ROW_BYTES, LINK_ROW_BYTES,
     };
 
@@ -384,14 +380,9 @@ mod tests {
             return;
         };
         let rows = single_location_zero_link_rows();
-        let (buffers, upload_report) = upload_structural_rows_to_gpu(
-            &ctx.device,
-            &ctx.queue,
-            rows.frame,
-            &rows.locations,
-            &rows.links,
-        )
-        .expect("upload");
+        let upload = PackedUpload::try_from(&rows).expect("pack");
+        let (buffers, upload_report) =
+            upload_structural_rows_to_gpu(&ctx.device, &ctx.queue, &upload).expect("upload");
         assert_eq!(upload_report.link_bytes, LINK_ROW_BYTES);
         assert_eq!(upload_report.frame_bytes, FRAME_ROW_BYTES);
         let report =

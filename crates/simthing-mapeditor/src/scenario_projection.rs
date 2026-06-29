@@ -10,7 +10,7 @@ use simthing_spec::{
 
 use simthing_gpu::{
     readback_matches_source, readback_structural_upload_blocking, upload_structural_rows_to_gpu,
-    validate_structural_rows_on_gpu, StructuralFrameGpuRow, StructuralLinkGpuRow,
+    validate_structural_rows_on_gpu, PackedUpload, StructuralFrameGpuRow, StructuralLinkGpuRow,
     StructuralLocationGpuRow, StructuralUploadGpuReport, StructuralUploadReadback,
     StructuralUploadRows, StructuralValidationReportGpu,
 };
@@ -367,7 +367,18 @@ pub fn prove_gpu_buffer_residency_blocking(
     packet: &StudioGpuStructuralUploadPacket,
 ) -> StudioGpuBufferResidencyProof {
     let rows = to_structural_gpu_rows(packet);
-    match upload_structural_rows_to_gpu(device, queue, rows.frame, &rows.locations, &rows.links) {
+    let upload = match PackedUpload::try_from(rows) {
+        Ok(upload) => upload,
+        Err(err) => {
+            return StudioGpuBufferResidencyProof {
+                ready: false,
+                deferred_reason: Some(format!("GPU structural upload failed: {err}")),
+                report: None,
+                readback: None,
+            };
+        }
+    };
+    match upload_structural_rows_to_gpu(device, queue, &upload) {
         Ok((buffers, report)) => {
             let readback =
                 match readback_structural_upload_blocking(device, queue, &buffers, &report) {
@@ -381,7 +392,7 @@ pub fn prove_gpu_buffer_residency_blocking(
                         };
                     }
                 };
-            if readback_matches_source(&readback, rows.frame, &rows.locations, &rows.links) {
+            if readback_matches_source(&readback, &upload) {
                 StudioGpuBufferResidencyProof {
                     ready: true,
                     deferred_reason: None,
