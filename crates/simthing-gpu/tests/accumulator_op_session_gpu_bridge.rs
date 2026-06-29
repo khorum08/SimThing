@@ -3,7 +3,7 @@
 use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, AccumulatorOpSessionError,
-    GpuContext,
+    GpuContext, PackedAccumulatorUpload,
 };
 use std::sync::Mutex;
 use wgpu::util::DeviceExt;
@@ -59,7 +59,9 @@ fn test_r2_bridge_copy_and_slot_writes() {
             consume: ConsumeMode::ResetTarget,
             targets: vec![(3, 0)],
         };
-        session.upload_ops(ctx, &[sum_op]).unwrap();
+        session
+            .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&[sum_op]).unwrap())
+            .unwrap();
         session.tick(ctx, 0).unwrap();
         let out = session.readback_full(ctx).unwrap();
         assert!((out[idx(3, 0, n_dims)] - 9.0).abs() < 1e-5);

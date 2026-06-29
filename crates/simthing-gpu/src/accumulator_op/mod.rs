@@ -9,6 +9,7 @@ mod cpu_oracle;
 mod eml_program_table;
 mod encode;
 mod input_list_table;
+mod packed_session_upload;
 mod runtime;
 mod session;
 mod types;
@@ -28,6 +29,9 @@ pub use encode::{
 };
 pub use input_list_table::{
     AccumulatorInputListTable, InputListRange, InputListUploadError, DEFAULT_INPUT_LIST_CAPACITY,
+};
+pub use packed_session_upload::{
+    PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
 };
 pub use runtime::{
     EmissionOpPlanSignature, ExactnessClass, IntensityEmlOpPlanSignature, LegacyOracleFamily,

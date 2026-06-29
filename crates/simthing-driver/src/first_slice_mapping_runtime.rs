@@ -11,11 +11,11 @@ use simthing_core::{
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
-    GpuContext, StructuredFieldExecutionOptions, StructuredFieldExecutionReport,
-    StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
-    StructuredFieldStencilMaskMode, StructuredFieldStencilOp, StructuredFieldStencilOperator,
-    StructuredFieldStencilSourcePolicy, ThresholdEvent, ThresholdRegistration, DIR_UPWARD,
-    THRESH_BUF_VALUES,
+    GpuContext, PackedAccumulatorUpload, PackedThresholdUpload, StructuredFieldExecutionOptions,
+    StructuredFieldExecutionReport, StructuredFieldStencilBoundaryMode,
+    StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
+    StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy, ThresholdEvent,
+    ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
 };
 use simthing_spec::{
     compile_region_field_preview, estimate_region_field_budget, CompiledFieldCadence,
@@ -990,12 +990,13 @@ impl FirstSliceMappingSession {
         if readback_report {
             set_debug_readback_allowed(true);
         }
+        let upload = PackedAccumulatorUpload::from_ops_with_eml(
+            &[reduction_op, sum_resource_op, eml_op],
+            Some(&self.eml_registry),
+        )
+        .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
-            .upload_ops_with_eml(
-                ctx,
-                &[reduction_op, sum_resource_op, eml_op],
-                Some(&self.eml_registry),
-            )
+            .upload_packed_ops(ctx, &upload)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
         self.acc_session
@@ -1038,18 +1039,18 @@ impl FirstSliceMappingSession {
             self.commitment_scan_initialized = true;
         }
         self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
+        let threshold_upload =
+            PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
+                slot: parent_slot.raw(),
+                col: self.eml_output_col,
+                threshold,
+                direction: DIR_UPWARD,
+                event_kind,
+                buffer: THRESH_BUF_VALUES,
+            }])
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
-            .upload_threshold_ops(
-                ctx,
-                &[ThresholdRegistration {
-                    slot: parent_slot.raw(),
-                    col: self.eml_output_col,
-                    threshold,
-                    direction: DIR_UPWARD,
-                    event_kind,
-                    buffer: THRESH_BUF_VALUES,
-                }],
-            )
+            .upload_packed_threshold_ops(ctx, &threshold_upload)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
             .tick(ctx, 0)
@@ -1105,18 +1106,18 @@ impl FirstSliceMappingSession {
         let previous = vec![0.0f32; self.acc_session.values_len()];
         self.acc_session.upload_previous_values(ctx, &previous);
         self.acc_session.ensure_threshold_emission_capacity(ctx, 1);
+        let threshold_upload =
+            PackedThresholdUpload::from_registrations(&[ThresholdRegistration {
+                slot: parent_slot.raw(),
+                col: self.eml_output_col,
+                threshold,
+                direction: DIR_UPWARD,
+                event_kind,
+                buffer: THRESH_BUF_VALUES,
+            }])
+            .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
-            .upload_threshold_ops(
-                ctx,
-                &[ThresholdRegistration {
-                    slot: parent_slot.raw(),
-                    col: self.eml_output_col,
-                    threshold,
-                    direction: DIR_UPWARD,
-                    event_kind,
-                    buffer: THRESH_BUF_VALUES,
-                }],
-            )
+            .upload_packed_threshold_ops(ctx, &threshold_upload)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
         self.acc_session
             .tick(ctx, 0)

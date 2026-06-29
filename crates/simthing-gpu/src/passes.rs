@@ -582,6 +582,7 @@ fn storage_entry(binding: u32, read_only: bool) -> BindGroupLayoutEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload};
     use simthing_core::evaluate::Evaluator;
     use simthing_core::{
         DimensionRegistry, IntensityBehavior, PropertyValue, SimProperty, SimThing, SimThingKind,
@@ -643,7 +644,10 @@ mod tests {
             plan.ops.len() as u32,
         );
         session
-            .upload_gpu_ops(ctx, &plan.ops)
+            .upload_packed_ops(
+                ctx,
+                &PackedAccumulatorUpload::from_gpu_ops(plan.ops.to_vec()).unwrap(),
+            )
             .expect("AccumulatorOp velocity op upload failed");
         let mut encoder = ctx
             .device
@@ -1077,7 +1081,10 @@ mod tests {
             intent.len() as u32,
         );
         intent_session
-            .upload_intent_ops(&manual.ctx, &intent)
+            .upload_packed_intent_ops(
+                &manual.ctx,
+                &PackedIntentUpload::from_deltas(&intent).unwrap(),
+            )
             .unwrap();
         let mut intent_encoder =
             manual
@@ -1112,7 +1119,10 @@ mod tests {
             intent.len() as u32,
         );
         piped_intent_session
-            .upload_intent_ops(&piped.ctx, &intent)
+            .upload_packed_intent_ops(
+                &piped.ctx,
+                &PackedIntentUpload::from_deltas(&intent).unwrap(),
+            )
             .unwrap();
         let vplan = crate::plan_velocity_integration(&piped.read_governed_pairs(), piped.n_slots);
         let mut piped_velocity_session = if vplan.n_bands > 0 {
@@ -1216,7 +1226,12 @@ mod tests {
             state.n_dims,
             regs.len() as u32,
         );
-        session.upload_threshold_ops(&state.ctx, regs).unwrap();
+        session
+            .upload_packed_threshold_ops(
+                &state.ctx,
+                &PackedThresholdUpload::from_registrations(regs).unwrap(),
+            )
+            .unwrap();
         let mut encoder = state
             .ctx
             .device

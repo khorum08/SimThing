@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
+use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, PackedAccumulatorUpload};
 
 use crate::dress_rehearsal_r6c_integrated_run::{
     run_dress_rehearsal_r6c_integrated_run, DressRehearsalR6cInput,
@@ -430,7 +430,7 @@ pub(crate) fn run_mark_session(
     }
     let ops = build_mark_copy_ops(&layout);
     session
-        .upload_ops(ctx, &ops)
+        .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
         .map_err(|_| "mark_bitmap_upload_ops_failed")?;
     session
         .tick(ctx, FREELIST_MARK_COPY_BAND)

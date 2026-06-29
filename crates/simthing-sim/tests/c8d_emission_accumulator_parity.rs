@@ -8,8 +8,8 @@ use simthing_core::{
 use simthing_gpu::{
     encode_emission_plan, plan_emission_ops, plan_transfer_ops, set_debug_readback_allowed,
     AccumulatorOpSession, AccumulatorOpSessionError, AccumulatorPipelineSessions, EmissionFormula,
-    EmissionPlanError, EmissionRegistration, GpuContext, Pipelines, TransferInputRef,
-    TransferRegistration, WorldGpuState,
+    EmissionPlanError, EmissionRegistration, GpuContext, PackedAccumulatorUpload, Pipelines,
+    TransferInputRef, TransferRegistration, WorldGpuState,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -327,7 +327,12 @@ fn c8d_emission_overflow_count_exceeds_capacity() {
     ];
     let plan = plan_emission_ops(&regs, None).unwrap();
     let gpu_ops = encode_emission_plan(&plan, None).unwrap();
-    session.upload_gpu_ops(&ctx, &gpu_ops).unwrap();
+    session
+        .upload_packed_ops(
+            &ctx,
+            &PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec()).unwrap(),
+        )
+        .unwrap();
     session.tick(&ctx, 0).unwrap();
     let (count, records) = session.readback_emissions_capped(&ctx).unwrap();
     assert_eq!(count, 2);

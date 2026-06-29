@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
+use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, PackedAccumulatorUpload};
 
 use crate::runtime_0080_0_r0::{RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE};
 use crate::runtime_0080_0_r1a::{
@@ -528,7 +528,10 @@ pub(crate) fn run_allocation_session(
     for (idx, request) in requests.iter().enumerate() {
         fill_candidates(ctx, &mut session, &layout, &current_marks)?;
         session
-            .upload_ops(ctx, std::slice::from_ref(&select_op))
+            .upload_packed_ops(
+                ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&select_op)).unwrap(),
+            )
             .map_err(|_| "allocation_select_upload_failed")?;
         ops_uploaded += 1;
         session
@@ -547,7 +550,10 @@ pub(crate) fn run_allocation_session(
         if allocation_writers_enabled {
             let row_copy_ops = row_copy_ops(&layout, idx as u32);
             session
-                .upload_ops(ctx, &row_copy_ops)
+                .upload_packed_ops(
+                    ctx,
+                    &PackedAccumulatorUpload::from_ops(&row_copy_ops).unwrap(),
+                )
                 .map_err(|_| "allocation_row_copy_upload_failed")?;
             ops_uploaded += row_copy_ops.len() as u32;
             session

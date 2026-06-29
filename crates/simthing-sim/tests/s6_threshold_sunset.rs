@@ -6,8 +6,8 @@ use simthing_core::{
 };
 use simthing_feeder::DispatchCoordinator;
 use simthing_gpu::{
-    AccumulatorOpSession, GpuContext, SlotAllocator, ThresholdRegistration, WorldGpuState,
-    DIR_UPWARD, THRESH_BUF_VALUES,
+    AccumulatorOpSession, GpuContext, PackedThresholdUpload, SlotAllocator, ThresholdRegistration,
+    WorldGpuState, DIR_UPWARD, THRESH_BUF_VALUES,
 };
 use simthing_sim::{BoundaryProtocol, PipelineFlags, SimRuntimeTree};
 
@@ -89,7 +89,12 @@ fn s6_threshold_events_match_cpu_golden() {
         buffer: THRESH_BUF_VALUES,
     }];
     let mut session = AccumulatorOpSession::new_attached(&state.ctx, 1, state.n_dims, 1);
-    session.upload_threshold_ops(&state.ctx, &regs).unwrap();
+    session
+        .upload_packed_threshold_ops(
+            &state.ctx,
+            &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+        )
+        .unwrap();
     session
         .dispatch_threshold_scan(&state.ctx, &state.values, &state.previous_values)
         .unwrap();

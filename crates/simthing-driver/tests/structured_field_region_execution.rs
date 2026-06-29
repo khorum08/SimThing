@@ -7,7 +7,7 @@ use simthing_core::{
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, GpuContext,
-    StructuredFieldExecutionOptions, StructuredFieldStencilBoundaryMode,
+    PackedAccumulatorUpload, StructuredFieldExecutionOptions, StructuredFieldStencilBoundaryMode,
     StructuredFieldStencilConfig, StructuredFieldStencilMaskMode, StructuredFieldStencilOp,
     StructuredFieldStencilOperator, StructuredFieldStencilSourcePolicy,
 };
@@ -38,7 +38,9 @@ fn run_sum_ops(ctx: &GpuContext, ops: &[AccumulatorOp], values: &[f32], n_slots:
     set_debug_readback_allowed(true);
     let mut session = AccumulatorOpSession::new(ctx, n_slots, N_DIMS);
     session.upload_values(ctx, values);
-    session.upload_ops(ctx, ops).unwrap();
+    session
+        .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(ops).unwrap())
+        .unwrap();
     session.tick(ctx, 0).unwrap();
     session.readback_full(ctx).unwrap()
 }

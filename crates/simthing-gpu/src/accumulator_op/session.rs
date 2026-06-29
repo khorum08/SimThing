@@ -3,7 +3,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bytemuck;
-use simthing_core::{AccumulatorOp, InputSpec, SourceSpec};
 use wgpu::util::DeviceExt;
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
@@ -14,11 +13,12 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
-use crate::world_state::{IntentDelta, ThresholdEvent, ThresholdRegistration};
+use crate::world_state::ThresholdEvent;
 
-use super::bootstrap_validate::validate_no_contention;
-use super::encode::{threshold_registrations_to_ops, EncodeError};
-use super::input_list_table::InputListRange;
+use super::encode::EncodeError;
+use super::packed_session_upload::{
+    PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
+};
 use super::types::{AccumulatorInputGpu, AccumulatorOpGpu};
 use super::types::{
     AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu, EmlNodeGpu,
@@ -790,149 +790,103 @@ impl AccumulatorOpSession {
         eml.unwrap_or((&self.eml_node_buffer, &self.eml_range_buffer))
     }
 
-    /// Upload AccumulatorOp registrations after bootstrap subset + contention validation.
-    pub fn upload_ops(
+    /// Upload a packed bootstrap / pre-encoded accumulator op packet.
+    pub fn upload_packed_ops(
         &mut self,
         ctx: &GpuContext,
-        ops: &[AccumulatorOp],
-    ) -> Result<(), AccumulatorOpSessionError> {
-        self.upload_ops_with_eml(ctx, ops, None)
-    }
-
-    /// Upload ops, resolving `EvalEML` via an uploaded [`EmlExpressionRegistry`].
-    pub fn upload_ops_with_eml(
-        &mut self,
-        ctx: &GpuContext,
-        ops: &[AccumulatorOp],
-        eml: Option<&simthing_core::EmlExpressionRegistry>,
+        upload: &PackedAccumulatorUpload,
     ) -> Result<(), AccumulatorOpSessionError> {
         self.threshold_event_kinds.clear();
-        let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set_with_eml(ops, eml)?;
-
-        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
-        if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("accumulator_op_buffer"),
-                size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-
-        ctx.queue
-            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
-        self.n_ops = gpu_ops.len() as u32;
+        self.write_input_list_buffer(ctx, upload.input_list())?;
+        self.write_op_bytes(ctx, upload.ops())?;
+        self.n_ops = upload.ops().len() as u32;
         Ok(())
     }
 
-    /// Upload bootstrap ops, materializing conjunctive input lists into the session buffer.
-    pub fn upload_ops_resolving_input_lists(
+    /// Write packed ops without clearing threshold event-kind sidecar metadata.
+    pub fn write_packed_op_buffer(
         &mut self,
         ctx: &GpuContext,
-        ops: &[AccumulatorOp],
+        upload: &PackedAccumulatorUpload,
     ) -> Result<(), AccumulatorOpSessionError> {
-        self.threshold_event_kinds.clear();
-        let mut flat_inputs = Vec::new();
-        let mut gpu_ops = Vec::with_capacity(ops.len());
-        for op in ops {
-            if let SourceSpec::ConjunctiveCrossing { inputs } = &op.source {
-                let offset = flat_inputs.len() as u32;
-                for InputSpec {
-                    slot,
-                    col,
-                    unit_cost,
-                } in inputs
-                {
-                    flat_inputs.push(AccumulatorInputGpu {
-                        slot: slot.raw(),
-                        col: col.raw_u32(),
-                        unit_cost_bits: unit_cost.to_bits(),
-                        flags: 0,
-                    });
-                }
-                let range = InputListRange {
-                    offset,
-                    count: inputs.len() as u32,
-                };
-                gpu_ops.push(AccumulatorOpGpu::from_op_with_input_list(op, range)?);
-            } else {
-                gpu_ops.push(AccumulatorOpGpu::from_op(op)?);
-            }
-        }
-        validate_no_contention(&gpu_ops).map_err(EncodeError::from)?;
-        if !flat_inputs.is_empty() {
-            let byte_len = flat_inputs.len() * std::mem::size_of::<AccumulatorInputGpu>();
-            if self.input_list_buffer.size() < byte_len as u64 {
-                self.input_list_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                    label: Some("accumulator_input_list_buffer"),
-                    size: byte_len.max(std::mem::size_of::<AccumulatorInputGpu>()) as u64,
-                    usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                });
-            }
-            ctx.queue.write_buffer(
-                &self.input_list_buffer,
-                0,
-                bytemuck::cast_slice(&flat_inputs),
-            );
-        }
-        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
-        if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("accumulator_op_buffer"),
-                size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-        ctx.queue
-            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
-        self.n_ops = gpu_ops.len() as u32;
-        Ok(())
-    }
-
-    /// Upload threshold-gated EmitEvent ops from Pass 7 registrations (C-1).
-    pub fn upload_threshold_ops(
-        &mut self,
-        ctx: &GpuContext,
-        regs: &[ThresholdRegistration],
-    ) -> Result<(), AccumulatorOpSessionError> {
-        let (ops, event_kinds) = threshold_registrations_to_ops(regs)?;
-        let mut gpu_ops = AccumulatorOpGpu::encode_threshold_set(&ops)?;
-        for (op, reg) in gpu_ops.iter_mut().zip(regs) {
-            op.source_count = reg.buffer;
-        }
-
-        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
-        if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("accumulator_op_buffer"),
-                size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-
-        ctx.queue
-            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
-        self.n_ops = gpu_ops.len() as u32;
-        self.threshold_event_kinds = event_kinds;
-        Ok(())
-    }
-
-    pub fn append_threshold_ops(
-        &mut self,
-        ctx: &GpuContext,
-        regs: &[ThresholdRegistration],
-    ) -> Result<(), AccumulatorOpSessionError> {
-        if regs.is_empty() {
+        if upload.ops().is_empty() {
+            self.n_ops = 0;
             return Ok(());
         }
-        let (ops, event_kinds) = threshold_registrations_to_ops(regs)?;
-        let mut gpu_ops = AccumulatorOpGpu::encode_threshold_set(&ops)?;
-        for (op, reg) in gpu_ops.iter_mut().zip(regs) {
-            op.source_count = reg.buffer;
+        self.write_op_bytes(ctx, upload.ops())?;
+        self.n_ops = upload.ops().len() as u32;
+        Ok(())
+    }
+
+    fn write_input_list_buffer(
+        &mut self,
+        ctx: &GpuContext,
+        flat_inputs: &[AccumulatorInputGpu],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if flat_inputs.is_empty() {
+            return Ok(());
         }
+        let byte_len = flat_inputs.len() * std::mem::size_of::<AccumulatorInputGpu>();
+        if self.input_list_buffer.size() < byte_len as u64 {
+            self.input_list_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_input_list_buffer"),
+                size: byte_len.max(std::mem::size_of::<AccumulatorInputGpu>()) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        ctx.queue.write_buffer(
+            &self.input_list_buffer,
+            0,
+            bytemuck::cast_slice(flat_inputs),
+        );
+        Ok(())
+    }
+
+    fn write_op_bytes(
+        &mut self,
+        ctx: &GpuContext,
+        gpu_ops: &[AccumulatorOpGpu],
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if gpu_ops.is_empty() {
+            self.n_ops = 0;
+            return Ok(());
+        }
+        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        if self.op_buffer.size() < byte_len as u64 {
+            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
+                label: Some("accumulator_op_buffer"),
+                size: byte_len.max(4096) as u64,
+                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+        ctx.queue
+            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(gpu_ops));
+        Ok(())
+    }
+
+    /// Upload threshold-gated EmitEvent ops from a packed threshold packet (C-1).
+    pub fn upload_packed_threshold_ops(
+        &mut self,
+        ctx: &GpuContext,
+        upload: &PackedThresholdUpload,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        self.write_op_bytes(ctx, upload.ops())?;
+        self.n_ops = upload.ops().len() as u32;
+        self.threshold_event_kinds = upload.threshold_event_kinds().to_vec();
+        Ok(())
+    }
+
+    pub fn append_packed_threshold_ops(
+        &mut self,
+        ctx: &GpuContext,
+        upload: &PackedThresholdUpload,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        if upload.ops().is_empty() {
+            return Ok(());
+        }
+        let gpu_ops = upload.ops();
         let op_size = std::mem::size_of::<AccumulatorOpGpu>();
         let old_count = self.n_ops as u64;
         let new_count = old_count + gpu_ops.len() as u64;
@@ -966,10 +920,11 @@ impl AccumulatorOpSession {
         ctx.queue.write_buffer(
             &self.op_buffer,
             old_count * op_size as u64,
-            bytemuck::cast_slice(&gpu_ops),
+            bytemuck::cast_slice(gpu_ops),
         );
         self.n_ops = new_count as u32;
-        self.threshold_event_kinds.extend(event_kinds);
+        self.threshold_event_kinds
+            .extend_from_slice(upload.threshold_event_kinds());
         Ok(())
     }
 
@@ -987,60 +942,19 @@ impl AccumulatorOpSession {
         self.threshold_emission_capacity = capacity;
     }
 
-    /// Upload folded intent deltas as affine AccumulatorOp registrations (C-2).
-    pub fn upload_intent_ops(
+    /// Upload folded intent deltas as a packed intent packet (C-2).
+    pub fn upload_packed_intent_ops(
         &mut self,
         ctx: &GpuContext,
-        deltas: &[IntentDelta],
+        upload: &PackedIntentUpload,
     ) -> Result<(), AccumulatorOpSessionError> {
         self.threshold_event_kinds.clear();
-        if deltas.is_empty() {
+        if upload.ops().is_empty() {
             self.n_ops = 0;
             return Ok(());
         }
-        let gpu_ops = AccumulatorOpGpu::encode_intent_deltas(deltas)?;
-
-        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
-        if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("accumulator_op_buffer"),
-                size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-
-        ctx.queue
-            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(&gpu_ops));
-        self.n_ops = gpu_ops.len() as u32;
-        Ok(())
-    }
-
-    /// Upload pre-encoded GPU ops (e.g. C-3 overlay Add registrations).
-    pub fn upload_gpu_ops(
-        &mut self,
-        ctx: &GpuContext,
-        ops: &[AccumulatorOpGpu],
-    ) -> Result<(), AccumulatorOpSessionError> {
-        self.threshold_event_kinds.clear();
-        if ops.is_empty() {
-            self.n_ops = 0;
-            return Ok(());
-        }
-
-        let byte_len = ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
-        if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("accumulator_op_buffer"),
-                size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-
-        ctx.queue
-            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(ops));
-        self.n_ops = ops.len() as u32;
+        self.write_op_bytes(ctx, upload.ops())?;
+        self.n_ops = upload.ops().len() as u32;
         Ok(())
     }
 
@@ -1052,33 +966,6 @@ impl AccumulatorOpSession {
     /// Clear the op buffer without touching threshold event-kind sidecar metadata.
     pub fn clear_op_buffer(&mut self) {
         self.n_ops = 0;
-    }
-
-    /// Write GPU ops into the session buffer without clearing threshold event kinds.
-    pub fn write_op_buffer(
-        &mut self,
-        ctx: &GpuContext,
-        ops: &[AccumulatorOpGpu],
-    ) -> Result<(), AccumulatorOpSessionError> {
-        if ops.is_empty() {
-            self.n_ops = 0;
-            return Ok(());
-        }
-
-        let byte_len = ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
-        if self.op_buffer.size() < byte_len as u64 {
-            self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
-                label: Some("accumulator_op_buffer"),
-                size: byte_len.max(4096) as u64,
-                usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-
-        ctx.queue
-            .write_buffer(&self.op_buffer, 0, bytemuck::cast_slice(ops));
-        self.n_ops = ops.len() as u32;
-        Ok(())
     }
 
     /// Restore threshold event kinds after a non-threshold op upload.
@@ -2435,9 +2322,11 @@ mod tests {
     use crate::accumulator_op::{
         combine_kind, consume_kind, execute_ops_cpu, execute_threshold_ops_cpu, gate_kind,
         scale_kind, set_debug_readback_allowed, source_kind, summaries_from_values,
-        threshold_registrations_to_ops, AccumulatorOpGpu,
+        threshold_registrations_to_ops, AccumulatorOpGpu, PackedAccumulatorUpload,
+        PackedIntentUpload, PackedThresholdUpload,
     };
     use crate::context::GpuContext;
+    use crate::{IntentDelta, ThresholdRegistration};
 
     use super::*;
 
@@ -2507,7 +2396,9 @@ mod tests {
 
         let mut session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
         session.upload_values(&ctx, &initial);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         session.tick(&ctx, 1).unwrap();
 
@@ -2537,7 +2428,12 @@ mod tests {
 
         let (ctx, mut session) = gpu_session(2, n_dims);
         session.upload_values(&ctx, &values);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[1], 0.0);
@@ -2558,7 +2454,12 @@ mod tests {
         };
 
         session.upload_values(&ctx, &[10.0]);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let values = session.readback_full(&ctx).unwrap();
@@ -2580,7 +2481,12 @@ mod tests {
         };
 
         session.upload_values(&ctx, &[10.0]);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let values = session.readback_full(&ctx).unwrap();
@@ -2606,7 +2512,12 @@ mod tests {
             targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &values);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         values = session.readback_full(&ctx).unwrap();
         assert_eq!(values, vec![0.0, 5.0]);
@@ -2625,7 +2536,10 @@ mod tests {
         };
         session.upload_values(&ctx, &values);
         session
-            .upload_ops(&ctx, std::slice::from_ref(&op_small))
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op_small)).unwrap(),
+            )
             .unwrap();
         session.tick(&ctx, 0).unwrap();
         values = session.readback_full(&ctx).unwrap();
@@ -2650,7 +2564,12 @@ mod tests {
             targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &values);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         values = session.readback_full(&ctx).unwrap();
         assert_eq!(values, vec![5.0, 0.0]);
@@ -2677,7 +2596,9 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -2706,15 +2627,14 @@ mod tests {
                 targets: vec![(SlotIndex::new(2), ColumnIndex::new(0))],
             },
         ];
-        let (ctx, mut session) = gpu_session(4, 1);
-        let err = session.upload_ops(&ctx, &ops).unwrap_err();
+        let err = PackedAccumulatorUpload::from_ops(&ops).unwrap_err();
         assert!(matches!(
             err,
-            AccumulatorOpSessionError::Encode(EncodeError::BootstrapContention {
+            EncodeError::BootstrapContention {
                 band: 0,
                 slot: 0,
                 col: 0
-            })
+            }
         ));
     }
 
@@ -2739,7 +2659,9 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -2763,7 +2685,9 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -2790,7 +2714,9 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 2);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -2817,7 +2743,9 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 2);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -2841,7 +2769,9 @@ mod tests {
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -2875,7 +2805,9 @@ mod tests {
         ];
         let (ctx, mut session) = gpu_session(1, 1);
         session.upload_values(&ctx, &[0.0]);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.0);
@@ -2895,7 +2827,10 @@ mod tests {
         let (ctx, mut session) = gpu_session(2, 1);
         session.upload_values(&ctx, &[10.0, 20.0]);
         session
-            .upload_ops(&ctx, std::slice::from_ref(&noop))
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&noop)).unwrap(),
+            )
             .unwrap();
         session.tick(&ctx, 0).unwrap();
         let first = session.readback_summary(&ctx).unwrap();
@@ -2918,7 +2853,10 @@ mod tests {
         let (ctx, mut session) = gpu_session(1, 1);
         session.upload_values(&ctx, &[10.0]);
         session
-            .upload_ops(&ctx, std::slice::from_ref(&noop))
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&noop)).unwrap(),
+            )
             .unwrap();
         session.tick(&ctx, 0).unwrap();
         let pre = session.readback_summary(&ctx).unwrap()[0].checksum_all;
@@ -2932,7 +2870,10 @@ mod tests {
             targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         session
-            .upload_ops(&ctx, std::slice::from_ref(&add_op))
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&add_op)).unwrap(),
+            )
             .unwrap();
         session.tick(&ctx, 0).unwrap();
         let post = session.readback_summary(&ctx).unwrap()[0].checksum_all;
@@ -2962,7 +2903,12 @@ mod tests {
             consume: ConsumeMode::None,
             targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let values = session.readback_full(&ctx).unwrap();
@@ -2989,7 +2935,12 @@ mod tests {
             targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &[0.0, 0.0]);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let emissions = session.readback_emissions(&ctx).unwrap();
@@ -3017,7 +2968,12 @@ mod tests {
             targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &[0.0, 0.0]);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         assert!(session.readback_emissions(&ctx).unwrap().is_empty());
     }
@@ -3046,7 +3002,9 @@ mod tests {
             },
         ];
         session.upload_values(&ctx, &[0.0; 4]);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         assert!(matches!(
             session.readback_emissions(&ctx),
@@ -3074,7 +3032,12 @@ mod tests {
             targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 2);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
     }
 
     #[test]
@@ -3097,13 +3060,8 @@ mod tests {
         };
         let (ctx, mut session) = gpu_session(4, 1);
 
-        let err = session
-            .upload_ops(&ctx, std::slice::from_ref(&op))
-            .unwrap_err();
-        assert!(matches!(
-            err,
-            AccumulatorOpSessionError::Encode(EncodeError::EmlTreeNotUploaded { .. })
-        ));
+        let err = PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap_err();
+        assert!(matches!(err, EncodeError::EmlTreeNotUploaded { .. }));
 
         let mut registry = EmlExpressionRegistry::new();
         let tree_id = EmlTreeId(1);
@@ -3160,7 +3118,14 @@ mod tests {
             .collect::<Vec<_>>();
         table.upload_trees(&ctx, &trees).unwrap();
         session
-            .upload_ops_with_eml(&ctx, std::slice::from_ref(&op), Some(&registry))
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops_with_eml(
+                    std::slice::from_ref(&op),
+                    Some(&registry),
+                )
+                .unwrap(),
+            )
             .unwrap();
     }
 
@@ -3182,7 +3147,12 @@ mod tests {
             targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
     }
 
     #[test]
@@ -3203,7 +3173,12 @@ mod tests {
             targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 1);
-        session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
+        session
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap(),
+            )
+            .unwrap();
     }
 
     fn trivial_1000_ops() -> Vec<AccumulatorOp> {
@@ -3226,7 +3201,9 @@ mod tests {
         let mut session = AccumulatorOpSession::new(&ctx, 1000, 1);
         let ops = trivial_1000_ops();
         session.upload_values(&ctx, &vec![0.0; 1000]);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         if session.timestamp_supported() {
@@ -3243,7 +3220,9 @@ mod tests {
         let mut session = AccumulatorOpSession::new(&ctx, 1000, 1);
         let ops = trivial_1000_ops();
         session.upload_values(&ctx, &vec![0.0; 1000]);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         if let Some(us) = session.last_pass_time_us() {
@@ -3268,7 +3247,9 @@ mod tests {
 
         let mut session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
         session.upload_values(&ctx, &initial);
-        session.upload_ops(&ctx, &ops).unwrap();
+        session
+            .upload_packed_ops(&ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
         session.tick(&ctx, 1).unwrap();
 
@@ -3346,7 +3327,12 @@ mod tests {
         let mut session = AccumulatorOpSession::new_attached(&ctx, 3, n_dims, 16);
         session.upload_values(&ctx, &current);
         session.upload_previous_values(&ctx, &previous);
-        session.upload_threshold_ops(&ctx, &regs).unwrap();
+        session
+            .upload_packed_threshold_ops(
+                &ctx,
+                &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let mut gpu = session.readback_threshold_emissions(&ctx).unwrap();
@@ -3376,7 +3362,12 @@ mod tests {
         let mut session = AccumulatorOpSession::new_attached(&ctx, 3, n_dims, 16);
         session.upload_values(&ctx, &current);
         session.upload_previous_values(&ctx, &previous);
-        session.upload_threshold_ops(&ctx, &regs).unwrap();
+        session
+            .upload_packed_threshold_ops(
+                &ctx,
+                &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         let events = session.readback_threshold_events(&ctx).unwrap();
@@ -3425,7 +3416,12 @@ mod tests {
         let mut session = AccumulatorOpSession::new_attached(&ctx, 2, n_dims, 1);
         session.upload_values(&ctx, &current);
         session.upload_previous_values(&ctx, &previous);
-        session.upload_threshold_ops(&ctx, &regs).unwrap();
+        session
+            .upload_packed_threshold_ops(
+                &ctx,
+                &PackedThresholdUpload::from_registrations(&regs).unwrap(),
+            )
+            .unwrap();
         session.tick(&ctx, 0).unwrap();
 
         assert!(matches!(
@@ -3462,7 +3458,9 @@ mod tests {
 
             let mut session = AccumulatorOpSession::new_attached(&ctx, 1, n_dims, 16);
             session.upload_values(&ctx, &values);
-            session.upload_intent_ops(&ctx, &deltas).unwrap();
+            session
+                .upload_packed_intent_ops(&ctx, &PackedIntentUpload::from_deltas(&deltas).unwrap())
+                .unwrap();
             session.tick(&ctx, 0).unwrap();
             assert_eq!(session.readback_full(&ctx).unwrap(), expected);
         };
@@ -3480,7 +3478,9 @@ mod tests {
         };
         let ctx = GpuContext::new_blocking().expect("gpu");
         let mut session = AccumulatorOpSession::new_attached(&ctx, 1, 1, 16);
-        session.upload_intent_ops(&ctx, &[]).unwrap();
+        session
+            .upload_packed_intent_ops(&ctx, &PackedIntentUpload::from_deltas(&[]).unwrap())
+            .unwrap();
         session.prepare_intent(&ctx);
     }
 
@@ -3523,7 +3523,10 @@ mod tests {
             _pad: 0,
         };
         session
-            .upload_gpu_ops(&ctx, std::slice::from_ref(&op))
+            .upload_packed_ops(
+                &ctx,
+                &PackedAccumulatorUpload::from_gpu_ops(vec![op]).unwrap(),
+            )
             .unwrap();
         session.tick(&ctx, 0).unwrap();
 
@@ -3533,5 +3536,58 @@ mod tests {
             "expected 13.5, got {}",
             result[0]
         );
+    }
+
+    #[test]
+    fn session_upload_packed_ops_preserves_n_ops() {
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 1, 1, 16);
+        let empty = PackedAccumulatorUpload::from_ops(&[]).unwrap();
+        session.upload_packed_ops(&ctx, &empty).unwrap();
+        assert_eq!(session.n_ops(), 0);
+
+        let op = AccumulatorOp {
+            source: SourceSpec::Constant(1.0),
+            combine: CombineFn::Identity,
+            gate: GateSpec::Always,
+            scale: ScaleSpec::Identity,
+            consume: ConsumeMode::AddToTarget,
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
+        };
+        let upload = PackedAccumulatorUpload::from_ops(std::slice::from_ref(&op)).unwrap();
+        session.upload_packed_ops(&ctx, &upload).unwrap();
+        assert_eq!(session.n_ops(), 1);
+    }
+
+    #[test]
+    fn packed_threshold_append_preserves_existing_ops() {
+        use crate::world_state::{ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES};
+
+        let ctx = GpuContext::new_blocking().expect("gpu");
+        let mut session = AccumulatorOpSession::new_attached(&ctx, 2, 1, 16);
+        let reg0 = ThresholdRegistration {
+            slot: 0,
+            col: 0,
+            threshold: 0.5,
+            direction: DIR_UPWARD,
+            event_kind: 1,
+            buffer: THRESH_BUF_VALUES,
+        };
+        let first = PackedThresholdUpload::from_registrations(std::slice::from_ref(&reg0)).unwrap();
+        session.upload_packed_threshold_ops(&ctx, &first).unwrap();
+        assert_eq!(session.n_ops(), 1);
+
+        let reg1 = ThresholdRegistration {
+            slot: 1,
+            col: 0,
+            threshold: 0.5,
+            direction: DIR_UPWARD,
+            event_kind: 2,
+            buffer: THRESH_BUF_VALUES,
+        };
+        let second =
+            PackedThresholdUpload::from_registrations(std::slice::from_ref(&reg1)).unwrap();
+        session.append_packed_threshold_ops(&ctx, &second).unwrap();
+        assert_eq!(session.n_ops(), 2);
     }
 }

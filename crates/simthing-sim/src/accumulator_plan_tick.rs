@@ -2,7 +2,9 @@
 
 use simthing_core::{is_exact_integer_f32, CompiledAccumulatorOpPlan};
 use simthing_gpu::execute_ops_cpu;
-use simthing_gpu::{scoped_debug_readback_allowed, AccumulatorOpSession, GpuContext};
+use simthing_gpu::{
+    scoped_debug_readback_allowed, AccumulatorOpSession, GpuContext, PackedAccumulatorUpload,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SimTickError {
@@ -50,8 +52,10 @@ impl SimGpuAccumulatorTickState {
     /// Creates `AccumulatorOpSession` once and uploads AccumulatorOp registrations once.
     pub fn new(ctx: &GpuContext, plan: CompiledAccumulatorOpPlan) -> Result<Self, SimTickError> {
         let mut session = AccumulatorOpSession::new(ctx, plan.slot_count, plan.n_dims);
+        let upload = PackedAccumulatorUpload::from_ops_resolving_input_lists(&plan.ops)
+            .map_err(|err| SimTickError::GpuAccumulator(err.to_string()))?;
         session
-            .upload_ops_resolving_input_lists(ctx, &plan.ops)
+            .upload_packed_ops(ctx, &upload)
             .map_err(|err| SimTickError::GpuAccumulator(err.to_string()))?;
         Ok(Self { plan, session })
     }

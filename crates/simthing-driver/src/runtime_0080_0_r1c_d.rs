@@ -8,7 +8,7 @@
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
+use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, PackedAccumulatorUpload};
 
 use crate::dress_rehearsal_r6c_integrated_run::{R1bStructuralEvent, R1bStructuralEventKind};
 use crate::runtime_0080_0_r0::{RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE};
@@ -882,7 +882,7 @@ pub(crate) fn run_staging_session(
         for row in 0..planned_compaction.len() as u32 {
             let ops = compaction_copy_ops(&layout, row);
             session
-                .upload_ops(ctx, &ops)
+                .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
                 .map_err(|_| "r1c_d_compaction_copy_upload_failed")?;
             compaction_ops_uploaded += ops.len() as u32;
             session
@@ -896,7 +896,7 @@ pub(crate) fn run_staging_session(
         for row in 0..planned_lineage.len() as u32 {
             let ops = lineage_copy_ops(&layout, row);
             session
-                .upload_ops(ctx, &ops)
+                .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&ops).unwrap())
                 .map_err(|_| "r1c_d_lineage_copy_upload_failed")?;
             lineage_ops_uploaded += ops.len() as u32;
             session

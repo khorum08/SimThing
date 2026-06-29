@@ -7,7 +7,7 @@
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
+use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, PackedAccumulatorUpload};
 
 use crate::dress_rehearsal_r6c_integrated_run::{
     run_dress_rehearsal_r6c_integrated_run, DressRehearsalR6cInput, R1bStructuralEvent,
@@ -846,7 +846,7 @@ pub(crate) fn run_membership_session(
         if membership_writers_enabled {
             let copy_ops = delta_copy_ops(&layout, row_idx as u32);
             session
-                .upload_ops(ctx, &copy_ops)
+                .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops(&copy_ops).unwrap())
                 .map_err(|_| "membership_delta_copy_upload_failed")?;
             ops_uploaded += copy_ops.len() as u32;
             session

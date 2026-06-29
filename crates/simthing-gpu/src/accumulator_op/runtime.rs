@@ -13,6 +13,9 @@ use simthing_core::{AccumulatorOp, EmlTreeId};
 use super::eml_program_table::{
     EmlGpuProgramTable, EmlUploadError, DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY,
 };
+use super::packed_session_upload::{
+    PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
+};
 use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
 use super::types::AccumulatorOpGpu;
 use super::types::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -691,7 +694,8 @@ impl WorldAccumulatorRuntime {
         }
 
         if let Some(session) = self.intensity_eml_session.as_mut() {
-            session.upload_ops_with_eml(ctx, ops, Some(&self.eml_registry))?;
+            let upload = PackedAccumulatorUpload::from_ops_with_eml(ops, Some(&self.eml_registry))?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.intensity_eml_ops = OpSetHandle {
                 family: OperationFamily::EvalEml,
                 offset: 0,
@@ -810,7 +814,8 @@ impl WorldAccumulatorRuntime {
         }
 
         if let Some(session) = self.transfer_session.as_mut() {
-            session.upload_gpu_ops(ctx, gpu_ops)?;
+            let upload = PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec())?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.transfer_ops = OpSetHandle {
                 family: OperationFamily::EconomicTransfer,
                 offset: 0,
@@ -915,7 +920,8 @@ impl WorldAccumulatorRuntime {
         }
 
         if let Some(session) = self.emission_session.as_mut() {
-            session.upload_gpu_ops(ctx, gpu_ops)?;
+            let upload = PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec())?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.emission_ops = OpSetHandle {
                 family: OperationFamily::EconomicEmission,
                 offset: 0,
@@ -949,7 +955,8 @@ impl WorldAccumulatorRuntime {
         n_bands: u32,
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.velocity_session.as_mut() {
-            session.upload_gpu_ops(ctx, ops)?;
+            let upload = PackedAccumulatorUpload::from_gpu_ops(ops.to_vec())?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.velocity_ops = OpSetHandle {
                 family: OperationFamily::Velocity,
                 offset: 0,
@@ -994,7 +1001,8 @@ impl WorldAccumulatorRuntime {
         n_bands: u32,
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.resource_flow_session.as_mut() {
-            session.upload_gpu_ops(ctx, ops)?;
+            let upload = PackedAccumulatorUpload::from_gpu_ops(ops.to_vec())?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.resource_flow_gpu_ops = ops.to_vec();
             self.resource_flow_ops = OpSetHandle {
                 family: OperationFamily::ResourceFlow,
@@ -1032,7 +1040,8 @@ impl WorldAccumulatorRuntime {
         exact_active: bool,
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.reduction_soft_session.as_mut() {
-            session.upload_gpu_ops(ctx, ops)?;
+            let upload = PackedAccumulatorUpload::from_gpu_ops(ops.to_vec())?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.reduction_soft_ops = OpSetHandle {
                 family: OperationFamily::ReductionSoft,
                 offset: 0,
@@ -1059,7 +1068,8 @@ impl WorldAccumulatorRuntime {
         deltas: &[IntentDelta],
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.intent_session.as_mut() {
-            session.upload_intent_ops(ctx, deltas)?;
+            let upload = PackedIntentUpload::from_deltas(deltas)?;
+            session.upload_packed_intent_ops(ctx, &upload)?;
             self.intent_ops.count = session.n_ops();
         }
         Ok(())
@@ -1071,7 +1081,8 @@ impl WorldAccumulatorRuntime {
         regs: &[ThresholdRegistration],
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.threshold_session.as_mut() {
-            session.upload_threshold_ops(ctx, regs)?;
+            let upload = PackedThresholdUpload::from_registrations(regs)?;
+            session.upload_packed_threshold_ops(ctx, &upload)?;
             self.threshold_ops.count = session.n_ops();
         }
         Ok(())
@@ -1083,7 +1094,8 @@ impl WorldAccumulatorRuntime {
         regs: &[ThresholdRegistration],
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.threshold_session.as_mut() {
-            session.append_threshold_ops(ctx, regs)?;
+            let upload = PackedThresholdUpload::from_registrations(regs)?;
+            session.append_packed_threshold_ops(ctx, &upload)?;
             self.threshold_ops.count = session.n_ops();
             self.threshold_ops.active = session.n_ops() > 0;
         }
@@ -1106,7 +1118,8 @@ impl WorldAccumulatorRuntime {
         n_bands: u32,
     ) -> Result<(), AccumulatorOpSessionError> {
         if let Some(session) = self.overlay_session.as_mut() {
-            session.upload_gpu_ops(ctx, ops)?;
+            let upload = PackedAccumulatorUpload::from_gpu_ops(ops.to_vec())?;
+            session.upload_packed_ops(ctx, &upload)?;
             self.overlay_order_ops = OpSetHandle {
                 family: OperationFamily::OverlayOrderBand,
                 offset: 0,

@@ -5,7 +5,9 @@ use simthing_core::{
     SourceSpec, EXACT_INTEGER_F32_BOUND,
 };
 use simthing_gpu::execute_ops_cpu;
-use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
+use simthing_gpu::{
+    set_debug_readback_allowed, AccumulatorOpSession, GpuContext, PackedAccumulatorUpload,
+};
 
 fn neighbor_sum_ops_vertical_seed() -> Vec<AccumulatorOp> {
     vec![
@@ -182,7 +184,10 @@ fn run_gpu_neighbor_sum(ops: &[AccumulatorOp], slot_count: u32, inputs: &[f32]) 
     }
     session.upload_values(&ctx, &values);
     session
-        .upload_ops_resolving_input_lists(&ctx, ops)
+        .upload_packed_ops(
+            &ctx,
+            &PackedAccumulatorUpload::from_ops_resolving_input_lists(ops).unwrap(),
+        )
         .expect("upload ops");
     session.tick(&ctx, 0).expect("tick");
     let readback = session.readback_full(&ctx).expect("readback");

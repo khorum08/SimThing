@@ -42,10 +42,10 @@ pub use accumulator_op::{
     DebugReadbackGuard, EmissionOpPlanSignature, EmissionRecord, EmlGpuProgramTable,
     EmlTreeRangeGpu, EmlUploadError, EncodeError, ExactnessClass, InputListRange,
     IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle, OperationFamily,
-    OverlayCompileCache, SlotSummary, ThresholdEmission, ThresholdEmissionGpu,
-    TransferOpPlanSignature, WorldAccumulatorRuntime, WorldSummaryRuntime, AO_WGSL0_ENTRY_POINT,
-    DEFAULT_EML_NODE_CAPACITY, DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY,
-    DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    OverlayCompileCache, PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
+    SlotSummary, ThresholdEmission, ThresholdEmissionGpu, TransferOpPlanSignature,
+    WorldAccumulatorRuntime, WorldSummaryRuntime, AO_WGSL0_ENTRY_POINT, DEFAULT_EML_NODE_CAPACITY,
+    DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 pub use atlas_mask::{
     atlas_cell_index, atlas_config, atlas_dims, atlas_side, atlas_slot_xy, build_flush_atlas,

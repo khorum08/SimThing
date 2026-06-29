@@ -11,8 +11,8 @@ use simthing_core::{
 use simthing_gpu::{
     emit_on_threshold_registrations_to_gpu, emit_on_threshold_registrations_to_ops,
     execute_threshold_ops_cpu, threshold_registrations_to_ops, AccumulatorOpSession, EncodeError,
-    GpuContext, ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
-    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
+    GpuContext, PackedThresholdUpload, ThresholdRegistration, WorldGpuState, DIR_DOWNWARD,
+    DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -207,7 +207,10 @@ fn e1_no_legacy_threshold_shader_and_routes_through_accumulator_op() {
 
     let mut session = AccumulatorOpSession::new_attached(&state.ctx, 1, 1, 1);
     session
-        .upload_threshold_ops(&state.ctx, &gpu_regs)
+        .upload_packed_threshold_ops(
+            &state.ctx,
+            &PackedThresholdUpload::from_registrations(&gpu_regs).unwrap(),
+        )
         .expect("upload via AccumulatorOp session");
     session
         .dispatch_threshold_scan(&state.ctx, &state.values, &state.previous_values)
