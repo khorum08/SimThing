@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION — public `AccumulatorOpSession` upload methods sealed behind private-field packed packets; encode/input-list/threshold sidecar behavior preserved. DA re-review required before AS-8B → DONE — DA-APPROVED.
+DONE -- DA-APPROVED -- session upload paths sealed behind packed packets; GPU residue is shader-text only. DA-approved per graduation log (2026-06-29, PR #975).
 
 ## PR / branch / merge
 

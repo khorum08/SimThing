@@ -4,7 +4,7 @@ Consolidated closeout evidence for rung **AS-SIM-SEMANTIC-FREE-0** (slices 0A–
 
 ## Status
 
-**PROBATION** — public `simthing-sim` surface cannot name semantic kinds or expose raw `SimThing` tick paths; audit narrowed to true residue. Pending DA net-negative confirmation (not DA-APPROVED in this remediation).
+**DONE -- DA-APPROVED** — public `simthing-sim` surface cannot name semantic kinds or expose raw `SimThing` tick paths; audit narrowed to true residue.  DA-approved per graduation log in docs/design_0_0_8_4_admission_substrate.md (2026-06-29).
 
 ## Sub-slice summary
 
