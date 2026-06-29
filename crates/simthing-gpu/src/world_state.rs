@@ -186,6 +186,13 @@ pub struct ThresholdRegistration {
 ///     };
 /// }
 /// ```
+/// External crates cannot forge decision events via a public named constructor:
+///
+/// ```compile_fail
+/// fn external_threshold_event_named_forge() {
+///     let _ = simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 999.0, 7);
+/// }
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ThresholdEvent {
     slot: u32,
@@ -238,11 +245,45 @@ impl ThresholdEvent {
     pub(crate) fn from_gpu_readback(gpu: &ThresholdEventGpu) -> Self {
         Self::from_kernel_pass7_readback(gpu.slot, gpu.col, gpu.value, gpu.event_kind)
     }
+}
 
-    /// Boundary/admission replay of a kernel-readback threshold event (not live emission minting).
-    pub fn from_boundary_delivery(slot: u32, col: u32, value: f32, event_kind: u32) -> Self {
-        Self::from_kernel_pass7_readback(slot, col, value, event_kind)
+/// CPU-oracle twin of Pass 7 threshold scan for parity and test fixtures.
+///
+/// External callers cannot mint arbitrary `(slot, col, value, event_kind)` tuples;
+/// events are produced only when buffer state crosses a registered threshold.
+pub fn cpu_oracle_threshold_events(
+    previous_values: &[f32],
+    values: &[f32],
+    previous_output: &[f32],
+    output: &[f32],
+    n_dims: u32,
+    regs: &[ThresholdRegistration],
+) -> Vec<ThresholdEvent> {
+    let mut events = Vec::new();
+    for r in regs {
+        let addr = (r.slot * n_dims + r.col) as usize;
+        let (prev, curr) = if r.buffer == THRESH_BUF_OUTPUT {
+            (previous_output[addr], output[addr])
+        } else {
+            (previous_values[addr], values[addr])
+        };
+        let up = prev <= r.threshold && curr > r.threshold;
+        let down = prev >= r.threshold && curr < r.threshold;
+        let crossed = match r.direction {
+            DIR_UPWARD => up,
+            DIR_DOWNWARD => down,
+            _ => up || down,
+        };
+        if crossed {
+            events.push(ThresholdEvent::from_kernel_pass7_readback(
+                r.slot,
+                r.col,
+                curr,
+                r.event_kind,
+            ));
+        }
     }
+    events
 }
 
 // ── Reduction (Passes 4–6) ────────────────────────────────────────────────────

@@ -654,6 +654,37 @@ mod tests {
         CompiledTrigger, EventKey, EventPriority, ScriptPredicate, ScriptedEventDefinition,
     };
 
+    fn oracle_threshold_event(
+        slot: u32,
+        col: u32,
+        curr_value: f32,
+        event_kind: u32,
+    ) -> simthing_gpu::ThresholdEvent {
+        use simthing_gpu::{
+            cpu_oracle_threshold_events, ThresholdRegistration, DIR_UPWARD, THRESH_BUF_VALUES,
+        };
+        let n_dims = col + 1;
+        let len = ((slot + 1) * n_dims) as usize;
+        let idx = (slot * n_dims + col) as usize;
+        let mut prev = vec![0.0f32; len];
+        let mut curr = vec![0.0f32; len];
+        let threshold = curr_value - 0.01;
+        prev[idx] = threshold;
+        curr[idx] = curr_value;
+        let reg = ThresholdRegistration {
+            slot,
+            col,
+            threshold,
+            direction: DIR_UPWARD,
+            event_kind,
+            buffer: THRESH_BUF_VALUES,
+        };
+        cpu_oracle_threshold_events(&prev, &curr, &[], &[], n_dims, &[reg])
+            .into_iter()
+            .next()
+            .expect("crossing event")
+    }
+
     #[test]
     fn queue_player_selection_by_key_resolves_logical_ids() {
         let mut registry = DimensionRegistry::new();
@@ -1096,7 +1127,7 @@ mod tests {
             property_id: simthing_core::SimPropertyId(0),
             sub_field: SubFieldRole::Amount,
         });
-        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 5.0, event_kind)];
+        let events = vec![oracle_threshold_event(0, 0, 5.0, event_kind)];
         assert!(state.requires_boundary_tick(&events, &registry));
     }
 
@@ -1109,7 +1140,7 @@ mod tests {
         let event_kind = registry.push(simthing_sim::ThresholdSemantic::ScriptedEventTrigger {
             event_id: "spawn_thing".into(),
         });
-        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 5.0, event_kind)];
+        let events = vec![oracle_threshold_event(0, 0, 5.0, event_kind)];
         assert!(state.requires_boundary_tick(&events, &registry));
     }
 
@@ -1125,7 +1156,7 @@ mod tests {
             property_id: simthing_core::SimPropertyId(0),
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 0.1, event_kind)];
+        let events = vec![oracle_threshold_event(0, 0, 0.1, event_kind)];
         assert!(!state.requires_boundary_tick(&events, &registry));
     }
 }

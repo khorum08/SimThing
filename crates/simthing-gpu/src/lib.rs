@@ -155,10 +155,10 @@ pub use w_impedance_compose::{
     W_IMPEDANCE_COMPOSE_WORKGROUP_SIZE,
 };
 pub use world_state::{
-    build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta,
-    OverlayDelta, ResolvedWriteAuthority, SlotDeltaRange, ThresholdEvent, ThresholdEventGpu,
-    ThresholdRegistration, WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
-    DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX,
-    RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN, THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
-    WEIGHT_COL_NONE,
+    build_governed_pairs, cpu_oracle_threshold_events, encode_rule, governed_pairs_for_property,
+    GovernedPair, IntentDelta, OverlayDelta, ResolvedWriteAuthority, SlotDeltaRange,
+    ThresholdEvent, ThresholdEventGpu, ThresholdRegistration, WorldGpuState, CLAMP_BOUNDED,
+    CLAMP_FLOORED, CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, OP_ADD, OP_MULTIPLY,
+    OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN,
+    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES, WEIGHT_COL_NONE,
 };

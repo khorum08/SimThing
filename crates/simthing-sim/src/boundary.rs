@@ -1499,7 +1499,8 @@ mod tests {
     #[test]
     fn boundary_with_events_cannot_skip() {
         let (proto, patcher, _) = simple_proto();
-        let events = vec![ThresholdEvent::from_boundary_delivery(0, 0, 0.5, 0)];
+        let events =
+            vec![crate::threshold_event_test_fixtures::fixtures::upward_crossing(0, 0, 0.5, 0, 1)];
         assert!(!proto.can_skip_empty_boundary(&events, &patcher));
     }
 
@@ -1618,9 +1619,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent::from_boundary_delivery(
-            0, 0, 0.2, event_kind,
-        )];
+        let n_dims = reg.total_columns.max(1);
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(
+                0, 0, 0.2, event_kind, n_dims,
+            ),
+        ];
 
         assert_eq!(
             projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg),
@@ -1671,9 +1675,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent::from_boundary_delivery(
-            0, 0, 0.2, event_kind,
-        )];
+        let n_dims = reg.total_columns.max(1);
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(
+                0, 0, 0.2, event_kind, n_dims,
+            ),
+        ];
 
         let container_kinds = vec!["tech_tree".into()];
         let projected = projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg);
@@ -1746,9 +1753,11 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent::from_boundary_delivery(
-            0, 0, 0.2, event_kind,
-        )];
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(
+                0, 0, 0.2, event_kind, 1,
+            ),
+        ];
 
         assert_eq!(
             projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg),
@@ -1770,9 +1779,11 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![ThresholdEvent::from_boundary_delivery(
-            0, 0, 0.2, event_kind,
-        )];
+        let events = vec![
+            crate::threshold_event_test_fixtures::fixtures::upward_crossing(
+                0, 0, 0.2, event_kind, 1,
+            ),
+        ];
 
         let _ = projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg);
 

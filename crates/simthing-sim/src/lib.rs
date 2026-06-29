@@ -118,6 +118,8 @@ mod dependency_budget;
 mod kind_production_audit;
 #[cfg(test)]
 mod semantic_surface_audit;
+#[cfg(test)]
+mod threshold_event_test_fixtures;
 
 #[cfg(test)]
 mod as_sim_semantic_free_public_surface_closure {

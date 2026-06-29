@@ -35,6 +35,13 @@ pub const DEFAULT_THRESHOLD_EMISSION_CAPACITY: u32 = 4096;
 ///     };
 /// }
 /// ```
+/// External crates cannot forge threshold emissions via a public named constructor:
+///
+/// ```compile_fail
+/// fn external_threshold_emission_named_forge() {
+///     let _ = simthing_gpu::ThresholdEmission::from_kernel_threshold_crossing(0, 0, 0, 0.0);
+/// }
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ThresholdEmission {
     reg_idx: u32,
@@ -111,6 +118,13 @@ pub struct SlotSummary {
 ///         reg_idx: 0,
 ///         emit_count: 1,
 ///     };
+/// }
+/// ```
+/// External crates cannot forge emission records via a public named constructor:
+///
+/// ```compile_fail
+/// fn external_emission_record_named_forge() {
+///     let _ = simthing_gpu::EmissionRecord::from_kernel_emit_event(0, 1);
 /// }
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

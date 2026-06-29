@@ -12,7 +12,10 @@ use simthing_core::{
 use simthing_feeder::{
     BoundaryRequest, ScriptedEventTriggerEvent, ScriptedEventTriggerRegistration,
 };
-use simthing_gpu::{SlotAllocator, ThresholdEvent, DIR_DOWNWARD, DIR_UPWARD, THRESH_BUF_VALUES};
+use simthing_gpu::{
+    cpu_oracle_threshold_events, SlotAllocator, ThresholdEvent, ThresholdRegistration, DIR_DOWNWARD,
+    DIR_UPWARD, THRESH_BUF_VALUES,
+};
 use simthing_sim::{SimRuntimeTree, ThresholdBuilder, ThresholdRegistry, ThresholdSemantic};
 use simthing_spec::{
     compile_property, CompiledEffect, CompiledThresholdTrigger, CompiledTrigger, CooldownSpec,
@@ -200,12 +203,61 @@ fn extract_scripted_event_triggers_filters_to_scripted_arms() {
         event_id: "beta".into(),
     });
 
-    let events = vec![
-        ThresholdEvent::from_boundary_delivery(0, 0, 1.0, ek_scripted),
-        ThresholdEvent::from_boundary_delivery(1, 1, 2.0, ek_capability),
-        ThresholdEvent::from_boundary_delivery(2, 2, 3.0, ek_scripted2),
-        ThresholdEvent::from_boundary_delivery(3, 3, 4.0, 99), // out of range
-    ];
+    let events = cpu_oracle_threshold_events(
+        &{
+            let mut prev = vec![0.0f32; 16];
+            prev[0] = 0.99;
+            prev[5] = 1.99;
+            prev[10] = 2.99;
+            prev[15] = 3.99;
+            prev
+        },
+        &{
+            let mut curr = vec![0.0f32; 16];
+            curr[0] = 1.0;
+            curr[5] = 2.0;
+            curr[10] = 3.0;
+            curr[15] = 4.0;
+            curr
+        },
+        &[],
+        &[],
+        4,
+        &[
+            ThresholdRegistration {
+                slot: 0,
+                col: 0,
+                threshold: 0.99,
+                direction: DIR_UPWARD,
+                event_kind: ek_scripted,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 1,
+                col: 1,
+                threshold: 1.99,
+                direction: DIR_UPWARD,
+                event_kind: ek_capability,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 2,
+                col: 2,
+                threshold: 2.99,
+                direction: DIR_UPWARD,
+                event_kind: ek_scripted2,
+                buffer: THRESH_BUF_VALUES,
+            },
+            ThresholdRegistration {
+                slot: 3,
+                col: 3,
+                threshold: 3.99,
+                direction: DIR_UPWARD,
+                event_kind: 99,
+                buffer: THRESH_BUF_VALUES,
+            },
+        ],
+    );
 
     let resolved = cpu.extract_scripted_event_triggers(&events);
 
