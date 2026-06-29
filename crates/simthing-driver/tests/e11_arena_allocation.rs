@@ -171,7 +171,7 @@ fn d2_layout_from_fixture(f: &E11Fixture) -> simthing_driver::ArenaTreeLayout {
         arenas: vec![arena],
         ..Default::default()
     };
-    build_execution_plan(&f.reg, &registry.arenas, &f.root, &f.alloc, &f.scaffold, 0)
+    build_execution_plan_from_authoring(&f.reg, &registry.arenas, &f.root, &f.alloc, &f.scaffold, 0)
         .unwrap()
         .arenas
         .into_iter()
@@ -391,7 +391,8 @@ fn e11_orderband_depth_budget_enforced() {
     let needed = total_bands_for_depth(2);
     assert_eq!(needed, 5);
     let err =
-        build_execution_plan(&f.reg, &[arena], &f.root, &f.alloc, &f.scaffold, 0).unwrap_err();
+        build_execution_plan_from_authoring(&f.reg, &[arena], &f.root, &f.alloc, &f.scaffold, 0)
+            .unwrap_err();
     assert!(matches!(
         err,
         HierarchyError::OrderBandDepthExceeded {

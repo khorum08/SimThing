@@ -164,7 +164,7 @@ fn resource_flow_opt_in_flat_star_session_open_uploads_ops() {
     assert!(session.state.accumulator_resource_flow_active);
     assert!(session.state.accumulator_resource_flow_bands >= 5);
 
-    let plan = build_execution_plan(
+    let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
@@ -250,7 +250,7 @@ fn resource_flow_opt_in_no_nested_gpu_claims() {
         "food",
     )
     .expect("cols");
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

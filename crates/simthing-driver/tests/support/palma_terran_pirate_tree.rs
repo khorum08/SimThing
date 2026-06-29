@@ -143,7 +143,9 @@ impl PalmaAdmittedTree {
             self.n_dims,
             None,
         );
-        self.root = runtime.into_admitted();
+        self.root =
+            serde_json::from_str(&serde_json::to_string(&runtime).expect("serialize runtime root"))
+                .expect("authoring tree roundtrip");
         outcome
     }
 }

@@ -177,7 +177,7 @@ fn gated_rate_band_tracks_trigger_edges_exactly_on_gpu() {
     let intrinsic_col = flow_start + cols.intrinsic_flow_col;
     assert_eq!(resolved.intrinsic_col, intrinsic_col);
 
-    let plan = build_execution_plan(
+    let plan = build_execution_plan_from_authoring(
         registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

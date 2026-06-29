@@ -2,6 +2,7 @@
 
 use simthing_core::{DimensionRegistry, EmlExpressionRegistry};
 use simthing_gpu::{build_governed_pairs, WorldGpuState};
+use simthing_sim::SimRuntimeTree;
 
 use crate::arena_allocation_plan::{plan_arena_allocation, ArenaAllocationPlan};
 use crate::arena_hierarchy::{
@@ -38,7 +39,7 @@ pub fn sync_resource_flow_accumulator(
     registry: &DimensionRegistry,
     arena_registry: &ArenaRegistry,
     scaffold: &ArenaParticipantScaffold,
-    root: &simthing_core::SimThing,
+    root: &SimRuntimeTree,
     allocator: &simthing_gpu::SlotAllocator,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     enabled: bool,

@@ -5,11 +5,12 @@ use simthing_core::{
     SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
 use simthing_gpu::SlotAllocator;
+use simthing_sim::SimRuntimeTree;
 use std::collections::HashMap;
 use thiserror::Error;
 
 use crate::arena_participant::{
-    arena_participant_sibling_slots, slots_are_contiguous, ArenaParticipantScaffold,
+    arena_participant_sibling_slots_runtime, slots_are_contiguous, ArenaParticipantScaffold,
 };
 use crate::arena_registry::{ArenaIdx, GpuArenaDescriptor, SlotId};
 
@@ -272,7 +273,7 @@ pub fn build_flat_star_layout(
     arena_idx: ArenaIdx,
     arena: &GpuArenaDescriptor,
     cols: NodeColumnRefs,
-    root: &SimThing,
+    root: &SimRuntimeTree,
     allocator: &SlotAllocator,
     scaffold: &ArenaParticipantScaffold,
     index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
@@ -286,7 +287,7 @@ pub fn build_flat_star_layout(
         .slot_of(arena_root_id)
         .expect("arena root allocated");
 
-    let sibling_slots = arena_participant_sibling_slots(root, arena_root_id, allocator);
+    let sibling_slots = arena_participant_sibling_slots_runtime(root, arena_root_id, allocator);
     if sibling_slots.is_empty() {
         return Err(HierarchyError::EmptyParticipants {
             arena: arena.name.clone(),
@@ -355,7 +356,7 @@ pub fn build_nested_layout(
     arena_idx: ArenaIdx,
     arena: &GpuArenaDescriptor,
     cols: NodeColumnRefs,
-    root: &SimThing,
+    root: &SimRuntimeTree,
     allocator: &SlotAllocator,
     scaffold: &ArenaParticipantScaffold,
     index: &HashMap<(SimThingId, ArenaIdx), SlotId>,
@@ -369,15 +370,16 @@ pub fn build_nested_layout(
         .slot_of(arena_root_id)
         .expect("arena root allocated");
     let arena_root =
-        find_child(root, arena_root_id).ok_or_else(|| HierarchyError::EmptyParticipants {
-            arena: arena.name.clone(),
-        })?;
+        root.snapshot_node(arena_root_id)
+            .ok_or_else(|| HierarchyError::EmptyParticipants {
+                arena: arena.name.clone(),
+            })?;
 
     let participant_roots: Vec<HierarchyNode> = arena_root
         .children
         .iter()
-        .filter(|child| child.kind == simthing_core::SimThingKind::ArenaParticipant)
-        .map(|child| build_nested_node(child, arena_idx, cols, allocator, index, 0))
+        .filter(|&&child_id| root.node_is_arena_participant(child_id))
+        .map(|&child_id| build_nested_node(root, child_id, arena_idx, cols, allocator, index, 0))
         .collect::<Result<Vec<_>, _>>()?;
     if participant_roots.is_empty() {
         return Err(HierarchyError::EmptyParticipants {
@@ -470,7 +472,7 @@ pub fn build_custom_layout(
 pub fn build_execution_plan(
     registry: &DimensionRegistry,
     arena_registry: &[GpuArenaDescriptor],
-    root: &SimThing,
+    root: &SimRuntimeTree,
     allocator: &SlotAllocator,
     scaffold: &ArenaParticipantScaffold,
     generation: u64,
@@ -504,8 +506,28 @@ pub fn build_execution_plan(
     })
 }
 
+/// Authoring/test path: plan from a core tree without sim public extraction APIs.
+pub fn build_execution_plan_from_authoring(
+    registry: &DimensionRegistry,
+    arena_registry: &[GpuArenaDescriptor],
+    root: &SimThing,
+    allocator: &SlotAllocator,
+    scaffold: &ArenaParticipantScaffold,
+    generation: u64,
+) -> Result<ArenaExecutionPlan, HierarchyError> {
+    build_execution_plan(
+        registry,
+        arena_registry,
+        &SimRuntimeTree::admit(root.clone()),
+        allocator,
+        scaffold,
+        generation,
+    )
+}
+
 fn build_nested_node(
-    node: &SimThing,
+    tree: &SimRuntimeTree,
+    node_id: SimThingId,
     arena_idx: ArenaIdx,
     cols: NodeColumnRefs,
     allocator: &SlotAllocator,
@@ -513,13 +535,18 @@ fn build_nested_node(
     depth: u32,
 ) -> Result<HierarchyNode, HierarchyError> {
     let participant_slot = allocator
-        .slot_of(node.id)
+        .slot_of(node_id)
         .ok_or(HierarchyError::NonContiguousChildren { parent_slot: 0 })?;
-    let children = node
+    let snapshot = tree
+        .snapshot_node(node_id)
+        .ok_or(HierarchyError::NonContiguousChildren { parent_slot: 0 })?;
+    let children = snapshot
         .children
         .iter()
-        .filter(|child| child.kind == simthing_core::SimThingKind::ArenaParticipant)
-        .map(|child| build_nested_node(child, arena_idx, cols, allocator, index, depth + 1))
+        .filter(|&&child_id| tree.node_is_arena_participant(child_id))
+        .map(|&child_id| {
+            build_nested_node(tree, child_id, arena_idx, cols, allocator, index, depth + 1)
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(HierarchyNode {
@@ -551,40 +578,30 @@ fn count_interiors(root: &HierarchyNode) -> u32 {
 }
 
 fn has_nested_participants(
-    root: &SimThing,
+    root: &SimRuntimeTree,
     scaffold: &ArenaParticipantScaffold,
     arena_idx: ArenaIdx,
 ) -> bool {
     let Some(arena_root_id) = scaffold.arena_root_ids.get(&arena_idx).copied() else {
         return false;
     };
-    find_child(root, arena_root_id)
+    root.snapshot_node(arena_root_id)
         .map(|arena_root| {
-            arena_root.children.iter().any(|child| {
-                child.kind == simthing_core::SimThingKind::ArenaParticipant
-                    && contains_participant_child(child)
+            arena_root.children.iter().any(|&child_id| {
+                root.node_is_arena_participant(child_id)
+                    && contains_participant_child(root, child_id)
             })
         })
         .unwrap_or(false)
 }
 
-fn contains_participant_child(node: &SimThing) -> bool {
-    node.children.iter().any(|child| {
-        child.kind == simthing_core::SimThingKind::ArenaParticipant
-            || contains_participant_child(child)
+fn contains_participant_child(tree: &SimRuntimeTree, node_id: SimThingId) -> bool {
+    let Some(snapshot) = tree.snapshot_node(node_id) else {
+        return false;
+    };
+    snapshot.children.iter().any(|&child_id| {
+        tree.node_is_arena_participant(child_id) || contains_participant_child(tree, child_id)
     })
-}
-
-fn find_child<'a>(root: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
-    if root.id == id {
-        return Some(root);
-    }
-    for child in &root.children {
-        if let Some(found) = find_child(child, id) {
-            return Some(found);
-        }
-    }
-    None
 }
 
 fn hosted_for_slot(

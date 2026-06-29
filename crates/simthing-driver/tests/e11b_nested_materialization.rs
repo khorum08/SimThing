@@ -140,7 +140,7 @@ fn layout_for(f: &MaterializedFixture) -> simthing_driver::ArenaTreeLayout {
         wildcard_max_expansion: None,
         reserved_orderband_depth: 0,
     };
-    build_execution_plan(
+    build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&arena),
         &f.root,
@@ -241,7 +241,7 @@ fn e11b_explicit_nested_materialization_flat_star_regression() {
     validate_resource_flow_preflight(&spec, &alloc).unwrap();
     let scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
 
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &reg,
         &[GpuArenaDescriptor {
             name: "food".into(),

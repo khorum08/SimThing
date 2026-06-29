@@ -9,7 +9,7 @@ use simthing_core::{
 use simthing_driver::{
     all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan,
     initial_dynamic_enrollment_sync, materialize_arena_participants,
-    react_to_fission_resource_flow_enrollment, resolve_node_columns,
+    react_to_fission_resource_flow_enrollment_on_authoring, resolve_node_columns,
     run_dynamic_enrollment_gpu_burn_in, run_dynamic_enrollment_resync_cycles, slots_are_contiguous,
     validate_resource_flow_preflight, DynamicEnrollmentBoundaryMetrics,
     DynamicEnrollmentSoakReport, DynamicFissionEnrollmentReport, SimSession,
@@ -434,7 +434,7 @@ pub fn open_enrolled_soak_session(
         initial_dynamic_enrollment_sync(&mut session).expect("initial sync");
     }
 
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
@@ -495,7 +495,7 @@ pub fn run_enrollment_only_soak(
             .into_iter()
             .collect();
 
-    let enrollment_report = react_to_fission_resource_flow_enrollment(
+    let enrollment_report = react_to_fission_resource_flow_enrollment_on_authoring(
         &setup.fission,
         &mut setup.spec_state.arena_registry,
         &mut setup.spec_state.arena_participant_scaffold,

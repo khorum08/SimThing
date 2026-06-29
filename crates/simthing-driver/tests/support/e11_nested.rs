@@ -195,7 +195,7 @@ pub fn layout_for(f: &MaterializedNestedFixture) -> ArenaTreeLayout {
         wildcard_max_expansion: None,
         reserved_orderband_depth: 0,
     };
-    build_execution_plan(
+    build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&arena),
         &f.root,
@@ -390,7 +390,7 @@ pub fn open_nested_session(
         .expect("food_flow");
     let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
         .expect("cols");
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

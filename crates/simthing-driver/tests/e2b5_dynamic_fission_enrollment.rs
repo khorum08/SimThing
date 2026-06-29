@@ -7,11 +7,12 @@ use simthing_core::{
     SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan,
-    commit_dynamic_arena_root_append, materialize_arena_participants, plan_arena_allocation,
-    prepare_dynamic_arena_root_append, react_to_fission_resource_flow_enrollment,
-    run_flat_star_burn_in, slots_are_contiguous, validate_resource_flow_preflight,
-    ArenaRegistryBuilder, FissionPolicy, GpuArenaDescriptor, SimSession,
+    all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan_from_authoring,
+    commit_dynamic_arena_root_append_to_authoring, materialize_arena_participants,
+    plan_arena_allocation, prepare_dynamic_arena_root_append_from_authoring,
+    react_to_fission_resource_flow_enrollment_on_authoring, run_flat_star_burn_in,
+    slots_are_contiguous, validate_resource_flow_preflight, ArenaRegistryBuilder, FissionPolicy,
+    GpuArenaDescriptor, SimSession,
 };
 use simthing_gpu::SlotAllocator;
 use simthing_sim::BoundaryOutcome;
@@ -187,7 +188,7 @@ fn fission_outcome(
 fn apply_dynamic_enrollment(
     fx: &mut EnrollmentFixture,
 ) -> simthing_driver::DynamicFissionEnrollmentReport {
-    react_to_fission_resource_flow_enrollment(
+    react_to_fission_resource_flow_enrollment_on_authoring(
         &fission_outcome(fx.parent_id, fx.child_id),
         &mut fx.spec_state.arena_registry,
         &mut fx.spec_state.arena_participant_scaffold,
@@ -329,7 +330,7 @@ fn e2b5_parent_enrolled_in_two_arenas_child_inherits_both() {
     spec_state.arena_registry = arena_registry;
     spec_state.arena_participant_scaffold = scaffold;
 
-    let report = react_to_fission_resource_flow_enrollment(
+    let report = react_to_fission_resource_flow_enrollment_on_authoring(
         &fission_outcome(parent_id, child_id),
         &mut spec_state.arena_registry,
         &mut spec_state.arena_participant_scaffold,
@@ -408,7 +409,7 @@ fn e2b5_registry_rejection_does_not_mutate_scaffold_or_tree() {
     let live_before = fx.alloc.live_count();
     let flow_id = fx.reg.id_of("core", "food_flow").unwrap();
 
-    let pending = prepare_dynamic_arena_root_append(
+    let pending = prepare_dynamic_arena_root_append_from_authoring(
         &fx.spec_state.arena_participant_scaffold,
         &fx.root,
         0,
@@ -423,7 +424,7 @@ fn e2b5_registry_rejection_does_not_mutate_scaffold_or_tree() {
 
     fx.spec_state.arena_registry.arenas[0].max_participants = 1;
 
-    let err = commit_dynamic_arena_root_append(
+    let err = commit_dynamic_arena_root_append_to_authoring(
         pending,
         &mut fx.spec_state.arena_participant_scaffold,
         &mut fx.root,
@@ -552,7 +553,7 @@ fn e2b5_successful_admission_still_resyncs_when_flag_enabled() {
     session.spec_state = fx.spec_state;
     session.proto.flags.use_accumulator_resource_flow = true;
 
-    let plan = build_execution_plan(
+    let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
@@ -683,7 +684,7 @@ fn e2b5_flag_enabled_resync_uploads_ops_including_new_leaf() {
     session.spec_state = fx.spec_state;
     session.proto.flags.use_accumulator_resource_flow = true;
 
-    let plan_before = build_execution_plan(
+    let plan_before = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
@@ -802,7 +803,7 @@ fn e2b5_100_tick_flat_star_burn_in_after_dynamic_enrollment() {
     session.proto.flags.use_accumulator_resource_flow = true;
     session.sync_resource_flow_if_enabled().expect("sync");
 
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

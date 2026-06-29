@@ -47,6 +47,29 @@
 //!     v.access_mut(|root| root.kind.clone());
 //! }
 //! ```
+//!
+//! Owned-tree extraction is not public (`sim_runtime_tree_rejects_into_admitted_kind_escape_compile_fail`):
+//!
+//! ```compile_fail
+//! use simthing_core::SimThingKind;
+//! use simthing_sim::SimRuntimeTree;
+//!
+//! fn peek_kind_via_into_admitted(v: SimRuntimeTree) {
+//!     let _ = v.into_admitted().kind;
+//!     let _ = SimThingKind::World;
+//! }
+//! ```
+//!
+//! Raw-tree replacement is not public (`sim_runtime_tree_rejects_replace_kind_escape_compile_fail`):
+//!
+//! ```compile_fail
+//! use simthing_core::{SimThing, SimThingKind};
+//! use simthing_sim::SimRuntimeTree;
+//!
+//! fn peek_kind_via_replace(mut v: SimRuntimeTree) {
+//!     let _ = v.replace(SimThing::new(SimThingKind::World, 0)).kind;
+//! }
+//! ```
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
@@ -86,14 +109,34 @@ impl SimRuntimeTree {
         self.inner.subtree_size()
     }
 
-    /// CPU-boundary admission inverse — returns the admitted tree by value.
-    pub fn into_admitted(self) -> SimThing {
+    /// CPU-boundary admission inverse — crate-internal only.
+    pub(crate) fn into_admitted(self) -> SimThing {
         self.inner
     }
 
-    /// Replace the admitted tree; returns the previous tree by value.
-    pub fn replace(&mut self, tree: SimThing) -> SimThing {
+    /// Replace the admitted tree; returns the previous tree by value — crate-internal only.
+    pub(crate) fn replace(&mut self, tree: SimThing) -> SimThing {
         std::mem::replace(&mut self.inner, tree)
+    }
+
+    /// Swap admitted runtime roots without exposing raw `SimThing` on the public surface.
+    pub fn swap(&mut self, other: SimRuntimeTree) -> SimRuntimeTree {
+        std::mem::replace(self, other)
+    }
+
+    /// Kind-free topology predicate for driver arena planning (no public `.kind`).
+    pub fn node_is_arena_participant(&self, id: SimThingId) -> bool {
+        find_node(&self.inner, id).is_some_and(simthing_core::is_arena_participant_node)
+    }
+
+    /// Append an admitted child under `parent_id`.
+    pub fn append_child(&mut self, parent_id: SimThingId, child: SimRuntimeTree) -> bool {
+        if let Some(parent) = find_node_mut(&mut self.inner, parent_id) {
+            parent.add_child(child.into_admitted());
+            true
+        } else {
+            false
+        }
     }
 
     pub fn direct_child_id(&self, index: usize) -> Option<SimThingId> {

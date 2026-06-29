@@ -1,8 +1,8 @@
 //! E-2B-5 — Policy A inherit-only dynamic fission enrollment for Resource Flow.
 
-use simthing_core::{DimensionRegistry, SimThing, SimThingId};
+use simthing_core::{DimensionRegistry, SimThingId};
 use simthing_gpu::SlotAllocator;
-use simthing_sim::FissionOutcome;
+use simthing_sim::{FissionOutcome, SimRuntimeTree};
 
 use crate::arena_participant::{
     commit_dynamic_arena_root_append, prepare_dynamic_arena_root_append, ArenaParticipantScaffold,
@@ -45,7 +45,7 @@ pub fn react_to_fission_resource_flow_enrollment(
     fission: &FissionOutcome,
     arena_registry: &mut ArenaRegistry,
     scaffold: &mut ArenaParticipantScaffold,
-    root: &mut SimThing,
+    root: &mut SimRuntimeTree,
     dimension_registry: &DimensionRegistry,
     allocator: &mut SlotAllocator,
 ) -> DynamicFissionEnrollmentReport {
@@ -152,6 +152,33 @@ pub fn react_to_fission_resource_flow_enrollment(
         arena_registry.bump_generation_after_runtime_admit();
     }
     report.generation_after = arena_registry.generation;
+    report
+}
+
+fn runtime_to_authoring(runtime: simthing_sim::SimRuntimeTree) -> simthing_core::SimThing {
+    let json = serde_json::to_string(&runtime).expect("serialize runtime tree");
+    serde_json::from_str(&json).expect("deserialize authoring tree")
+}
+
+/// Authoring/test path for Policy A dynamic fission enrollment.
+pub fn react_to_fission_resource_flow_enrollment_on_authoring(
+    fission: &FissionOutcome,
+    arena_registry: &mut ArenaRegistry,
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut simthing_core::SimThing,
+    dimension_registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+) -> DynamicFissionEnrollmentReport {
+    let mut runtime = simthing_sim::SimRuntimeTree::admit(root.clone());
+    let report = react_to_fission_resource_flow_enrollment(
+        fission,
+        arena_registry,
+        scaffold,
+        &mut runtime,
+        dimension_registry,
+        allocator,
+    );
+    *root = runtime_to_authoring(runtime);
     report
 }
 

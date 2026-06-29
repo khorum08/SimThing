@@ -137,7 +137,7 @@ fn resource_flow_enrollment_session_open_uploads_e11_flat_star_ops_when_flag_ena
         .expect("food_flow");
     let _cols =
         resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food").unwrap();
-    let plan = build_execution_plan(
+    let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
