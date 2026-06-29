@@ -7,8 +7,8 @@ PASS — pre-tick feeder enqueue sealed in `run_simulation_fabric_hot_cycle`; al
 ## PR / branch / merge
 
 - Branch: `codex/as-tick-fabric-boundary-0c`
-- PR: (pending push)
-- Merge: (pending)
+- PR: #964
+- Merge: `1f2b141aa4`
 
 ## What changed
 
