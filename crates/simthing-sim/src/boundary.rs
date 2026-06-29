@@ -1089,13 +1089,13 @@ impl BoundaryProtocol {
         let n_dims = coord.n_dims() as usize;
         match fidelity {
             ObserveFidelity::Shadow => {
-                let base = slot as usize * n_dims;
+                let base = slot.as_usize() * n_dims;
                 let row = &coord.shadow[base..base + n_dims];
                 observe(&self.root, &self.registry, &self.allocator, row, target)
             }
             ObserveFidelity::GpuRow => {
                 let state = state?;
-                let row = state.read_values_row(slot);
+                let row = state.read_values_row(slot.raw());
                 observe(&self.root, &self.registry, &self.allocator, &row, target)
             }
         }
@@ -1242,7 +1242,7 @@ impl BoundaryProtocol {
 
 fn push_slot_for_id(allocator: &SlotAllocator, id: SimThingId, slots: &mut Vec<u32>) {
     if let Some(slot) = allocator.slot_of(id) {
-        slots.push(slot);
+        slots.push(slot.raw());
     }
 }
 
@@ -1399,7 +1399,7 @@ fn seed_dimension_values(
     new_n_dims: usize,
 ) {
     if let Some(slot) = allocator.slot_of(node.id) {
-        let base = slot as usize * new_n_dims;
+        let base = slot.as_usize() * new_n_dims;
         for &pid in properties {
             if pid.index() >= registry.properties.len() {
                 continue;

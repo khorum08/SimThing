@@ -235,7 +235,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(tree.inner());
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         let mut shadow = vec![0.0f32; 2 * n_dims];
 
         // Set Amount (col 0 relative to property start) = 0.5.
@@ -288,7 +288,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(tree.inner());
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
@@ -331,7 +331,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(tree.inner());
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
@@ -385,7 +385,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(tree.inner());
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
@@ -434,7 +434,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(tree.inner());
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(
@@ -478,7 +478,7 @@ mod tests {
 
         let mut alloc = SlotAllocator::new();
         alloc.populate_from_tree(tree.inner());
-        let slot = alloc.slot_of(cohort_id).unwrap() as usize;
+        let slot = alloc.slot_of(cohort_id).unwrap().as_usize();
         let shadow = vec![0.0f32; 2 * n_dims];
 
         let report = observe(

@@ -952,7 +952,7 @@ impl SimSession {
                 owner_id: root.spawned_owner_id,
                 definition_id: source.definition_id,
                 tree_thing_id: root.cloned_root_id,
-                tree_slot,
+                tree_slot: tree_slot.raw(),
                 by_overlay,
                 overlay_hosts,
             };

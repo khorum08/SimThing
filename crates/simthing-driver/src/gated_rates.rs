@@ -17,7 +17,7 @@
 use simthing_core::{
     eml_nodes, AccumulatorOp, CombineFn, ConsumeMode, DimensionRegistry, EmlConsumerMask,
     EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    RoleOffset, ScaleSpec, SimThing, SourceSpec, SubFieldRole,
+    RoleOffset, ScaleSpec, SimThing, SlotIndex, SourceSpec, SubFieldRole,
 };
 use simthing_spec::{
     GatedRateOpSpec, RateFormulaOp, RateFormulaOperandSpec, ResourceFlowSpec, SpecError,
@@ -193,7 +193,7 @@ pub fn resolve_gated_rates(
                 )?;
             out.push(ResolvedGatedRate {
                 id: gated.id.clone(),
-                participant_slot,
+                participant_slot: participant_slot.raw(),
                 base_offset,
                 intrinsic_offset,
                 base_col: flow_start + base_offset.lane() as u32,
@@ -216,13 +216,13 @@ pub fn seed_gated_rate_base_columns(
     allocator: &simthing_gpu::SlotAllocator,
 ) -> Result<(), InstallError> {
     for gated in resolved {
-        let participant_id = allocator.owner_of(gated.participant_slot).ok_or_else(|| {
-            InstallError::BaseFlowObligationParticipantSlotMissing {
+        let participant_id = allocator
+            .owner_of(SlotIndex::new(gated.participant_slot))
+            .ok_or_else(|| InstallError::BaseFlowObligationParticipantSlotMissing {
                 obligation: gated.id.clone(),
                 arena: String::new(),
                 slot: gated.participant_slot,
-            }
-        })?;
+            })?;
         let Some(node) = find_simthing_mut(root, participant_id) else {
             return Err(InstallError::BaseFlowObligationParticipantSlotMissing {
                 obligation: gated.id.clone(),

@@ -104,7 +104,7 @@ fn process_node(
     out: &mut LifecycleOutcome,
 ) {
     let slot = allocator.slot_of(node.id);
-    let base = slot.map(|s| (s as usize) * n_dims);
+    let base = slot.map(|s| s.as_usize() * n_dims);
 
     // First pass (immutable): check which overlays should dissolve.
     // We separate condition evaluation (needs immutable `node`) from

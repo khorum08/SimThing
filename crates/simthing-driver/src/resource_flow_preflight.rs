@@ -4,6 +4,7 @@
 //! making `simthing-spec` depend on `simthing-driver`.
 
 use simthing_core::SimThingId;
+use simthing_core::SlotIndex;
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{ResourceFlowSpec, SpecError};
 
@@ -27,12 +28,12 @@ pub fn validate_resource_flow_preflight(
             let id = SimThingId::from_session_raw(participant.subtree_root_id);
             match allocator.slot_of(id) {
                 Some(actual_slot) => {
-                    if actual_slot != participant.slot {
+                    if actual_slot.raw() != participant.slot {
                         return Err(SpecError::ExplicitParticipantSlotMismatch {
                             arena: arena.name.clone(),
                             subtree_root_id: participant.subtree_root_id,
                             declared_slot: participant.slot,
-                            actual_slot,
+                            actual_slot: actual_slot.raw(),
                         });
                     }
                     if !allocator.is_live(actual_slot) {
@@ -45,7 +46,7 @@ pub fn validate_resource_flow_preflight(
                 }
                 None => {
                     if participant.slot < allocator.capacity() as u32
-                        && !allocator.is_live(participant.slot)
+                        && !allocator.is_live(SlotIndex::new(participant.slot))
                     {
                         return Err(SpecError::ExplicitParticipantTombstoned {
                             arena: arena.name.clone(),

@@ -14,6 +14,17 @@
 //! ```
 //!
 //! ```compile_fail
+//! use simthing_core::SimThingId;
+//! use simthing_spec::OwnerRef;
+//!
+//! fn takes_spatial_parent(_: SimThingId) {}
+//!
+//! fn owner_ref_rejects_spatial_parent_compile_fail(owner: OwnerRef) {
+//!     takes_spatial_parent(owner);
+//! }
+//! ```
+//!
+//! ```compile_fail
 //! use simthing_spec::{OwnerRef, ResourceKey};
 //!
 //! fn takes_resource(_: ResourceKey) {}

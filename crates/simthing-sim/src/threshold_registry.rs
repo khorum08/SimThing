@@ -670,7 +670,7 @@ impl ThresholdBuilder {
 
             let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
-                slot,
+                slot: slot.raw(),
                 col: col as u32,
                 threshold: unlock.threshold,
                 direction: DIR_UPWARD,
@@ -779,7 +779,7 @@ impl ThresholdBuilder {
 
             let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
-                slot: child_slot,
+                slot: child_slot.raw(),
                 col: col as u32,
                 threshold: ft.template.fusion_intensity_threshold,
                 direction: DIR_UPWARD,
@@ -826,7 +826,7 @@ impl ThresholdBuilder {
 
                         let event_kind = cpu_reg.push(semantic);
                         gpu_regs.push(ThresholdRegistration {
-                            slot: slot,
+                            slot: slot.raw(),
                             col: col as u32,
                             threshold: ft.threshold,
                             direction: direction_to_u32(&ft.direction),
@@ -841,7 +841,7 @@ impl ThresholdBuilder {
                 Self::push_decay_thresholds(
                     node.id,
                     *pid,
-                    slot,
+                    slot.raw(),
                     prop.decay.as_ref(),
                     range.start,
                     layout,
@@ -992,7 +992,7 @@ impl ThresholdBuilder {
                 sub_field: alert.sub_field.clone(),
             });
             gpu_regs.push(ThresholdRegistration {
-                slot,
+                slot: slot.raw(),
                 col: col as u32,
                 threshold: alert.threshold,
                 direction: direction_to_u32(&alert.direction),
@@ -1028,7 +1028,7 @@ impl ThresholdBuilder {
                 sub_field: alert.sub_field.clone(),
             });
             gpu_regs.push(ThresholdRegistration {
-                slot,
+                slot: slot.raw(),
                 col: col as u32,
                 threshold: alert.threshold,
                 direction: direction_to_u32(&alert.direction),
@@ -1148,13 +1148,13 @@ mod tests {
         assert_eq!(fusion_regs.len(), 1);
 
         // The fusion registration watches the child's Intensity (col 2), rising.
-        assert_eq!(fusion_regs[0].slot, child_slot);
+        assert_eq!(fusion_regs[0].slot, child_slot.raw());
         assert_eq!(fusion_regs[0].col, 2);
         assert_eq!(fusion_regs[0].threshold, 0.85);
         assert_eq!(fusion_regs[0].direction, DIR_UPWARD);
 
         // Sanity: parent slot didn't get a fusion registration.
-        assert!(fusion_regs.iter().all(|r| r.slot != parent_slot));
+        assert!(fusion_regs.iter().all(|r| r.slot != parent_slot.raw()));
     }
 
     #[test]
@@ -1308,7 +1308,7 @@ mod tests {
             alloc.alloc(simthing_core::SimThingId::new());
         }
         let slot = alloc.alloc(tree_id);
-        assert_eq!(slot, 7);
+        assert_eq!(slot, simthing_core::SlotIndex::new(7));
 
         let unlocks = vec![CapabilityUnlockRegistration {
             sim_thing_id: tree_id,

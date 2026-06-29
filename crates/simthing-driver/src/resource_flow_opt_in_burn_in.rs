@@ -28,7 +28,7 @@ use crate::resource_flow_dynamic_enrollment_soak::{
 use crate::scenario::Scenario;
 use crate::session::{SessionError, SimSession};
 
-type CellKey = (u32, u32);
+type CellKey = (crate::arena_registry::SlotId, u32);
 
 pub const RF_T2_STATIC_FLAT_STAR_10: &str = "rf_t2_static_flat_star_10_participants";
 pub const RF_T2_STATIC_FLAT_STAR_64: &str = "rf_t2_static_flat_star_64_participants";
@@ -303,7 +303,7 @@ fn fill_explicit_roots(game_mode: &mut GameModeSpec, scenario: &Scenario) {
         .root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw()))
         .collect();
     game_mode.resource_flow.as_mut().unwrap().arenas[0].explicit_participants = participants;
 }
@@ -386,7 +386,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 .iter()
                 .map(|hosted| {
                     ExplicitParticipantSpec::flat(
-                        alloc.slot_of(hosted.id).unwrap(),
+                        alloc.slot_of(hosted.id).unwrap().raw(),
                         hosted.id.raw(),
                     )
                 })
@@ -438,7 +438,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                     .iter()
                     .map(|hosted| {
                         ExplicitParticipantSpec::flat(
-                            alloc.slot_of(hosted.id).unwrap(),
+                            alloc.slot_of(hosted.id).unwrap().raw(),
                             hosted.id.raw(),
                         )
                     })
@@ -919,7 +919,7 @@ fn scenario_for_fixture(fixture: &RfT2BurnInFixture) -> (Scenario, Option<Fissio
     }
 }
 
-fn leaf_slots_for_layout(layout: &ArenaTreeLayout) -> Vec<u32> {
+fn leaf_slots_for_layout(layout: &ArenaTreeLayout) -> Vec<crate::arena_registry::SlotId> {
     layout.participant_roots[0]
         .children
         .iter()
@@ -1025,7 +1025,10 @@ pub fn open_fixture_session_with_execution_profile(
     }
 
     let (layout, cols) = execution_layout(&session);
-    let leaf_slots = leaf_slots_for_layout(&layout);
+    let leaf_slots: Vec<u32> = leaf_slots_for_layout(&layout)
+        .into_iter()
+        .map(|s| s.raw())
+        .collect();
     let inputs = cell_inputs(
         &layout,
         cols,
@@ -1176,7 +1179,10 @@ pub fn clone_for_replay(fx: &RfT2OptInSession, fixture: &RfT2BurnInFixture) -> R
         .expect("replay sync");
 
     let (layout, cols) = execution_layout(&session);
-    let leaf_slots = leaf_slots_for_layout(&layout);
+    let leaf_slots: Vec<u32> = leaf_slots_for_layout(&layout)
+        .into_iter()
+        .map(|s| s.raw())
+        .collect();
     let inputs = cell_inputs(
         &layout,
         cols,

@@ -4,7 +4,7 @@
 //! both crates, while the sim boundary protocol remains spec-agnostic.
 
 use crate::arena_registry::ArenaRegistry;
-use simthing_core::SimThingId;
+use simthing_core::{SimThingId, SlotIndex};
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, ScriptedEventTriggerRegistration,
 };
@@ -316,7 +316,7 @@ impl SpecSessionState {
         let mut stale = Vec::new();
         for inst in self.scripted_event_instances.values_mut() {
             match allocator.slot_of(inst.key.owner_id) {
-                Some(slot) => inst.current_slot = slot,
+                Some(slot) => inst.current_slot = slot.raw(),
                 None => stale.push(inst.key.clone()),
             }
         }
@@ -634,7 +634,7 @@ impl SpecSessionState {
 fn build_slot_to_thing(allocator: &simthing_gpu::SlotAllocator) -> HashMap<u32, SimThingId> {
     let mut out = HashMap::new();
     for slot in 0..allocator.capacity() as u32 {
-        if let Some(id) = allocator.owner_of(slot) {
+        if let Some(id) = allocator.owner_of(SlotIndex::new(slot)) {
             out.insert(slot, id);
         }
     }
@@ -717,7 +717,7 @@ mod tests {
             owner_id: tree_id,
             definition_id,
             tree_thing_id: tree_id,
-            tree_slot: allocator.slot_of(tree_id).unwrap(),
+            tree_slot: allocator.slot_of(tree_id).unwrap().raw(),
             by_overlay: HashMap::from([(overlay_id, entry.clone())]),
             overlay_hosts: HashMap::new(),
         };
@@ -865,7 +865,7 @@ mod tests {
             owner_id: tree_id,
             definition_id,
             tree_thing_id: tree_id,
-            tree_slot: allocator.slot_of(tree_id).unwrap(),
+            tree_slot: allocator.slot_of(tree_id).unwrap().raw(),
             by_overlay: HashMap::from([(overlay_id, entry.clone())]),
             overlay_hosts: HashMap::new(),
         };

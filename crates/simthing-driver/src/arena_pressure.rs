@@ -98,7 +98,7 @@ pub fn project_arena_pressure_seeds(
             else {
                 continue;
             };
-            pressure += values[(slot * n_dims + global_col) as usize];
+            pressure += values[slot.as_usize() * n_dims as usize + global_col as usize];
             resolved_any = true;
         }
         if !resolved_any {
@@ -194,7 +194,7 @@ pub fn compile_arena_pressure_scatter(
         }
         let cell = placement.row * field.grid_size + placement.col;
         entries.push(simthing_gpu::ScatterEntry {
-            src_index: slot * session_n_dims + global_col,
+            src_index: slot.raw() * session_n_dims + global_col,
             dst_index: cell * field.n_dims + field.source_col,
         });
         cells.push((placement.row, placement.col));

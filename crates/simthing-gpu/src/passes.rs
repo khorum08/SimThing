@@ -955,7 +955,7 @@ mod tests {
             let slot = alloc
                 .slot_of(entity.id)
                 .unwrap_or_else(|| panic!("entity {:?} not allocated", entity.id));
-            let slot_base = slot as usize * n_dims;
+            let slot_base = slot.as_usize() * n_dims;
 
             for (prop_id, cpu_pv) in &entity.properties {
                 let range = reg.column_range(*prop_id);
@@ -1684,11 +1684,15 @@ mod tests {
         for &(entity_id, label) in &[(cohort_a_id, "cohort_a"), (cohort_b_id, "cohort_b")] {
             let entity = cpu_snap.get(entity_id).unwrap();
             let slot = alloc.slot_of(entity_id).unwrap();
-            let slot_base = slot as usize * n_dims;
+            let slot_base = slot.as_usize() * n_dims;
             let range = reg.column_range(lid);
             let start = slot_base + range.start;
             let end = start + entity.properties[&lid].lane_count();
-            assert_bits_eq(label, entity.properties[&lid].raw_lanes(), &gpu_flat[start..end]);
+            assert_bits_eq(
+                label,
+                entity.properties[&lid].raw_lanes(),
+                &gpu_flat[start..end],
+            );
         }
     }
 

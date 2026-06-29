@@ -5,12 +5,12 @@
 //! registrations at boundary sync (E-10/E-11).
 
 use serde::{Deserialize, Serialize};
-use simthing_core::{ArenaName, SimPropertyId, SimThingId};
+use simthing_core::{ArenaName, SimPropertyId, SimThingId, SlotIndex};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
 pub type ArenaIdx = u32;
-pub type SlotId = u32;
+pub type SlotId = SlotIndex;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum FissionPolicy {

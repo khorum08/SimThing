@@ -46,7 +46,7 @@ pub fn plan_arena_allocation(
     if d > 1 {
         for node in layout.iter_all() {
             for col in reset_columns(node.cols) {
-                ops_cpu.push(reset_op(node.participant_slot, col, bands.reset_band));
+                ops_cpu.push(reset_op(node.participant_slot.raw(), col, bands.reset_band));
             }
         }
 
@@ -60,7 +60,7 @@ pub fn plan_arena_allocation(
                 ops_cpu.push(sum_reduction_op(
                     start,
                     count,
-                    parent.participant_slot,
+                    parent.participant_slot.raw(),
                     parent.cols.intrinsic_flow_col,
                     parent.cols.intrinsic_flow_sum_col,
                     band,
@@ -68,7 +68,7 @@ pub fn plan_arena_allocation(
                 ops_cpu.push(sum_reduction_op(
                     start,
                     count,
-                    parent.participant_slot,
+                    parent.participant_slot.raw(),
                     parent.cols.weight_col,
                     parent.cols.weight_sum_col,
                     band,
@@ -91,32 +91,32 @@ pub fn plan_arena_allocation(
                 let p_ws = parent.cols.weight_sum_col;
                 for child in &parent.children {
                     ops_cpu.push(broadcast_op(
-                        parent.participant_slot,
+                        parent.participant_slot.raw(),
                         p_if,
-                        child.participant_slot,
+                        child.participant_slot.raw(),
                         child.cols.propagated_intrinsic_flow_col,
                         broadcast_band,
                     ));
                     if depth == 0 {
                         ops_cpu.push(const_broadcast_op(
                             0.0,
-                            child.participant_slot,
+                            child.participant_slot.raw(),
                             child.cols.propagated_allocated_flow_col,
                             broadcast_band,
                         ));
                     } else {
                         ops_cpu.push(broadcast_op(
-                            parent.participant_slot,
+                            parent.participant_slot.raw(),
                             parent.cols.allocated_flow_col,
-                            child.participant_slot,
+                            child.participant_slot.raw(),
                             child.cols.propagated_allocated_flow_col,
                             broadcast_band,
                         ));
                     }
                     ops_cpu.push(broadcast_op(
-                        parent.participant_slot,
+                        parent.participant_slot.raw(),
                         p_ws,
-                        child.participant_slot,
+                        child.participant_slot.raw(),
                         child.cols.propagated_weight_sum_col,
                         broadcast_band,
                     ));
@@ -125,7 +125,7 @@ pub fn plan_arena_allocation(
             for parent in layout.iter_at_depth(depth) {
                 for child in &parent.children {
                     ops_cpu.push(disburse_op(
-                        child.participant_slot,
+                        child.participant_slot.raw(),
                         child.cols.allocated_flow_col,
                         disburse_band,
                     ));
@@ -134,7 +134,11 @@ pub fn plan_arena_allocation(
         }
     }
 
-    let participant_slots: Vec<u32> = layout.participant_slots();
+    let participant_slots: Vec<u32> = layout
+        .participant_slots()
+        .into_iter()
+        .map(SlotId::raw)
+        .collect();
     let integration = plan_governed_integration_at_band(
         governed_pairs,
         n_slots,
@@ -188,7 +192,7 @@ fn reset_columns(cols: NodeColumnRefs) -> Vec<u32> {
 }
 
 fn child_range(parent: &HierarchyNode) -> (u32, u32) {
-    let start = parent.children[0].participant_slot;
+    let start = parent.children[0].participant_slot.raw();
     let count = parent.children.len() as u32;
     (start, count)
 }
