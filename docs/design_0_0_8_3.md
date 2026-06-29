@@ -76,7 +76,7 @@ Assets refer to owners through owner references, properties, and columns. Owners
 spatially reparent assets.
 
 
-### Terminology correction � Scenario wrapper and GameSession root
+### Terminology correction � Scenario wrapper and GameSession root
 
 A canonical saved scenario is rooted at `Scenario`, which is the save/load authority wrapper. The
 `Scenario` root has exactly one direct `GameSession` child. `GameSession` is the runtime session root
@@ -86,7 +86,7 @@ WorldStateMap Location. Future tracks must not conflate the save/load wrapper wi
 RF membership is channel identity, not ownership containment. A spatial participant joins owner/resource/
 scope lanes through RF metadata on properties/overlays; the Owner SimThing remains a GameSession sibling.
 Local owner/resource/scope channels settle inside each parent Location before net surplus/deficit bubbles
-upward. This is permanent doctrine: `simthing_core_design.md` �5 is the canonical home, not only RF ADRs.
+upward. This is permanent doctrine: `simthing_core_design.md` �5 is the canonical home, not only RF ADRs.
 
 ### 0.1 Maximal SimThing conformance (the founding premise)
 **Everything is a SimThing.** There are no privileged engine-side special cases for game concepts:
@@ -205,6 +205,24 @@ specified recursive/structured design and then claim it IMPLEMENTED / PASS / CLO
    void (sibling of `invariants.md` "Scenario Proof" and the gating policy §6 stop rule, now binding for
    closure). "Project-management cosplay" — activity that produces governance artifacts instead of the
    specified feature — is the failure mode this law exists to kill.
+6. **No inert scaffolding (appearance-of-completeness is void).** *(Added 2026-06-29 by design authority on
+   owner direction, after an unwired `deny.toml` stub provided the *appearance* of dependency compliance
+   while enforcing nothing.)* An artifact that **looks like** a capability, gate, check, or completed
+   structure but **does nothing** — an unwired config, an empty/placeholder module, an uncalled stub, a
+   dead allowlist, a scaffold for a feature that never landed — is **not neutral; it is a liability.**
+   Each looks benign alone; **in aggregate they fake completeness and compliance**, and any one can be
+   cited — by a low-context agent or a reviewer — as evidence of a capability that does not exist (the
+   **handwave vector**). This is the inverse face of binding 1: that forbids flattening a real spec into a
+   proxy; this forbids accumulating empty shells that aggregate into a false "done." Bindings: **(a) do not
+   produce inert scaffolding** — the real thing is created when it is actually wired; until then it does
+   not exist; **(b) an artifact that looks like a gate but isn't one is removed, not annotated** (so the
+   real enforcement is unambiguous — an honest comment inside a *working* file is fine; a whole artifact
+   whose only content is "I am a stub" is not); **(c) delete it when encountered** — any track may remove
+   verified-inert scaffolding it crosses (net-negative, no approval needed). Enforcement is a **fact, not
+   an appearance**: a compliance/admission artifact must occupy a real admission rung (type / hard-error /
+   running guard); one that implies a rung it does not occupy is worse than no artifact
+   ([`simthing_core_design.md`](simthing_core_design.md) §1.2). SimThing already carries accumulated inert
+   scaffolding; at minimum no track adds more, and tracks should delete it as they cross it.
 
 Binding enforcement lives in `invariants.md` → "Specification Fidelity & Anti-Ceremony". This §0.6 is the
 doctrine; the invariant table is the gate.

@@ -225,6 +225,12 @@ real, observed failure mode, not a hypothetical.
 9. **Invents a new resolution mechanism** while an RF arena / overlay / EML gadget / JIT-EML shader
    suffices (D1, D2).
 10. **Pads the evidence doc with empty or mission-restating sections.** Sections carry signal or are cut.
+11. **Produces inert scaffolding** — a file/module/config that *looks like* a gate/capability/completed
+    structure but enforces or does nothing (unwired config, empty placeholder, uncalled stub, dead
+    allowlist, a scaffold for a feature that never landed). These aggregate into a false appearance of
+    completeness and become **handwave vectors** (a later agent cites the file's existence as compliance
+    that isn't there). The real thing is created when *wired*; an artifact that looks like a gate but isn't
+    one is **removed, not annotated** (constitution §0.6 binding 6). Delete inert scaffolding you encounter.
 
 > The litmus, every time: **does this line prove or build the feature, or does it produce a governance
 > artifact about the feature?** If the latter, cut it.
