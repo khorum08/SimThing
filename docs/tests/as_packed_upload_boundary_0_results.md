@@ -7,8 +7,8 @@ PROBATION — public structural GPU upload sealed behind private-field `PackedUp
 ## PR / branch / merge
 
 - Branch: `codex/as-packed-upload-boundary-0`
-- PR: (pending push)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/973
+- Merge: `35afe6e5e7` (master)
 
 ## What changed
 
