@@ -3,7 +3,6 @@
 use std::path::Path;
 use std::time::Instant;
 
-use simthing_feeder::FeederWork;
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, WorldGpuState};
 use simthing_sim::{
@@ -19,8 +18,8 @@ use thiserror::Error;
 use crate::install::{install_atomic, InstallError, InstallPreview};
 use crate::scenario::Scenario;
 use crate::simulation_fabric::{
-    run_simulation_fabric_hot_step, FabricHotStepOutcome, FabricHotStepParams, HotFabricParts,
-    MappingHotPathState, SimulationFabric,
+    run_simulation_fabric_hot_cycle, FabricHotCycleOutcome, FabricHotCycleParams,
+    FabricHotStepOutcome, HotFabricParts, MappingHotPathState, SimulationFabric,
 };
 use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
@@ -264,13 +263,15 @@ fn journal_mapping_commitments(
 }
 
 impl SimSession {
-    /// Hot-path step — ordinary tick + RF bands + mapping dispatch; no scenario/boundary/spec state.
-    fn run_hot_step(&mut self) -> Result<FabricHotStepOutcome, SessionError> {
+    /// Hot-path cycle — pre-tick enqueue + ordinary tick + RF bands + mapping dispatch.
+    fn run_hot_cycle(&mut self) -> Result<FabricHotCycleOutcome, SessionError> {
         let resource_flow_pipeline_enabled = self.proto.flags.use_accumulator_resource_flow;
         let mapping_hot = self.mapping.as_mut().map(|m| &mut m.hot);
+        let tick_patches = &self.scenario.tick_patches;
         let mut fabric = SimulationFabric::from_hot_parts(HotFabricParts {
             coord: &mut self.coord,
             patcher: &mut self.patcher,
+            tx: &self.tx,
             rx: &self.rx,
             registry: &self.proto.registry,
             allocator: &self.proto.allocator,
@@ -278,9 +279,10 @@ impl SimSession {
             state: &mut self.state,
             dt: self.scenario.dt,
         });
-        run_simulation_fabric_hot_step(
+        run_simulation_fabric_hot_cycle(
             &mut fabric,
-            FabricHotStepParams {
+            FabricHotCycleParams {
+                tick_patches,
                 resource_flow_pipeline_enabled,
                 mapping: mapping_hot,
             },
@@ -671,17 +673,10 @@ impl SimSession {
         let mut summary = RunSummary::new();
 
         while summary.boundaries_run < cap as u64 {
-            let submit_started = Instant::now();
-            self.submit_tick_patches()?;
-            summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
-            let tick_started = Instant::now();
-            let hot = self.run_hot_step()?;
-            accumulate_tick_outcome(
-                &mut summary,
-                &hot,
-                tick_started.elapsed().as_secs_f64() * 1000.0,
-            );
-            if let Some(mapping) = &hot.mapping {
+            let cycle = self.run_hot_cycle()?;
+            summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
+            accumulate_tick_outcome(&mut summary, &cycle.hot, cycle.hot_step_ms);
+            if let Some(mapping) = &cycle.hot.mapping {
                 journal_mapping_commitments(
                     &mut self.mapping_commitments,
                     summary.ticks_run,
@@ -689,7 +684,7 @@ impl SimSession {
                 );
             }
 
-            let tick = hot.tick;
+            let tick = cycle.hot.tick;
             if tick.boundary_reached {
                 let day = tick.day_index;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
@@ -767,17 +762,10 @@ impl SimSession {
         }
 
         while summary.boundaries_run < cap as u64 {
-            let submit_started = Instant::now();
-            self.submit_tick_patches()?;
-            summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
-            let tick_started = Instant::now();
-            let hot = self.run_hot_step()?;
-            accumulate_tick_outcome(
-                &mut summary,
-                &hot,
-                tick_started.elapsed().as_secs_f64() * 1000.0,
-            );
-            if let Some(mapping) = &hot.mapping {
+            let cycle = self.run_hot_cycle()?;
+            summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
+            accumulate_tick_outcome(&mut summary, &cycle.hot, cycle.hot_step_ms);
+            if let Some(mapping) = &cycle.hot.mapping {
                 journal_mapping_commitments(
                     &mut self.mapping_commitments,
                     summary.ticks_run,
@@ -785,7 +773,7 @@ impl SimSession {
                 );
             }
 
-            let tick = hot.tick;
+            let tick = cycle.hot.tick;
             if tick.boundary_reached {
                 let day = tick.day_index;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
@@ -865,15 +853,6 @@ impl SimSession {
         }
 
         Ok(summary)
-    }
-
-    fn submit_tick_patches(&self) -> Result<(), SessionError> {
-        for patch in &self.scenario.tick_patches {
-            self.tx
-                .send(FeederWork::Patch(patch.clone()))
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::BrokenPipe, e))?;
-        }
-        Ok(())
     }
 
     fn sync_spec_threshold_registrations(&mut self) {

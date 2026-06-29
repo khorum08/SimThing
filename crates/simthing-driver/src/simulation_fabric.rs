@@ -3,7 +3,8 @@
 //! The ordinary GPU tick must not reach scenario authority, boundary protocol,
 //! spec session state, or runtime tree planning. Callers assemble a
 //! [`SimulationFabric`] at the session loop edge and invoke
-//! [`run_simulation_fabric_tick`] or [`run_simulation_fabric_hot_step`].
+//! [`run_simulation_fabric_tick`], [`run_simulation_fabric_hot_step`], or
+//! [`run_simulation_fabric_hot_cycle`].
 //!
 //! Boundary protocol, scenario, and runtime tree access are forbidden:
 //!
@@ -33,8 +34,13 @@
 //! }
 //! ```
 
+use std::time::Instant;
+
 use simthing_core::DimensionRegistry;
-use simthing_feeder::{DispatchCoordinator, FeederReceiver, TickOutcome, TransformPatcher};
+use simthing_feeder::{
+    DispatchCoordinator, FeederReceiver, FeederSender, FeederWork, PatchTransform, TickOutcome,
+    TransformPatcher,
+};
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
 use simthing_spec::CompiledFirstSliceCommitmentThreshold;
 
@@ -57,8 +63,24 @@ pub struct FabricHotStepOutcome {
     pub mapping: Option<FabricMappingHotReport>,
 }
 
+/// Outcome of one hot cycle: pre-tick feeder enqueue + hot step.
+#[derive(Debug)]
+pub struct FabricHotCycleOutcome {
+    pub pre_tick_enqueue_ms: f64,
+    pub hot_step_ms: f64,
+    pub patches_enqueued: u32,
+    pub hot: FabricHotStepOutcome,
+}
+
 /// Parameters for the combined hot step (resolved at the session loop edge).
 pub struct FabricHotStepParams<'a> {
+    pub resource_flow_pipeline_enabled: bool,
+    pub mapping: Option<&'a mut MappingHotPathState>,
+}
+
+/// Parameters for a full hot cycle (pre-tick enqueue + hot step).
+pub struct FabricHotCycleParams<'a> {
+    pub tick_patches: &'a [PatchTransform],
     pub resource_flow_pipeline_enabled: bool,
     pub mapping: Option<&'a mut MappingHotPathState>,
 }
@@ -97,6 +119,10 @@ impl MappingHotPathState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MappingHotDispatchError(pub String);
 
+/// Pre-tick feeder enqueue failure.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FabricPreTickEnqueueError(pub String);
+
 /// Combined hot-step failure.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FabricHotStepError {
@@ -109,6 +135,25 @@ impl From<MappingHotDispatchError> for FabricHotStepError {
     }
 }
 
+/// Full hot-cycle failure.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FabricHotCycleError {
+    PreTickEnqueue(FabricPreTickEnqueueError),
+    HotStep(FabricHotStepError),
+}
+
+impl From<FabricPreTickEnqueueError> for FabricHotCycleError {
+    fn from(value: FabricPreTickEnqueueError) -> Self {
+        Self::PreTickEnqueue(value)
+    }
+}
+
+impl From<FabricHotStepError> for FabricHotCycleError {
+    fn from(value: FabricHotStepError) -> Self {
+        Self::HotStep(value)
+    }
+}
+
 /// Resolved hot-path runtime parts borrowed from an open session.
 ///
 /// Session code uses this at the loop edge; the fabric itself holds no
@@ -116,6 +161,7 @@ impl From<MappingHotDispatchError> for FabricHotStepError {
 pub struct HotFabricParts<'a> {
     pub coord: &'a mut DispatchCoordinator,
     pub patcher: &'a mut TransformPatcher,
+    pub tx: &'a FeederSender,
     pub rx: &'a FeederReceiver,
     pub registry: &'a DimensionRegistry,
     pub allocator: &'a SlotAllocator,
@@ -128,6 +174,7 @@ pub struct HotFabricParts<'a> {
 pub struct SimulationFabric<'a> {
     coord: &'a mut DispatchCoordinator,
     patcher: &'a mut TransformPatcher,
+    tx: &'a FeederSender,
     rx: &'a FeederReceiver,
     registry: &'a DimensionRegistry,
     allocator: &'a SlotAllocator,
@@ -141,6 +188,7 @@ impl<'a> SimulationFabric<'a> {
         Self {
             coord: parts.coord,
             patcher: parts.patcher,
+            tx: parts.tx,
             rx: parts.rx,
             registry: parts.registry,
             allocator: parts.allocator,
@@ -230,6 +278,45 @@ pub fn run_simulation_fabric_hot_step(
         tick,
         resource_flow_band_dispatched,
         mapping,
+    })
+}
+
+/// Enqueue resolved within-day patch transforms on the feeder channel (pre-tick).
+pub fn run_simulation_fabric_pre_tick_enqueue(
+    tx: &FeederSender,
+    tick_patches: &[PatchTransform],
+) -> Result<u32, FabricPreTickEnqueueError> {
+    for patch in tick_patches {
+        tx.send(FeederWork::Patch(patch.clone()))
+            .map_err(|e| FabricPreTickEnqueueError(format!("{e:?}")))?;
+    }
+    Ok(tick_patches.len() as u32)
+}
+
+/// Full hot cycle: pre-tick enqueue, then ordinary tick + RF bands + mapping dispatch.
+pub fn run_simulation_fabric_hot_cycle(
+    fabric: &mut SimulationFabric<'_>,
+    params: FabricHotCycleParams<'_>,
+) -> Result<FabricHotCycleOutcome, FabricHotCycleError> {
+    let pre_started = Instant::now();
+    let patches_enqueued = run_simulation_fabric_pre_tick_enqueue(fabric.tx, params.tick_patches)?;
+    let pre_tick_enqueue_ms = pre_started.elapsed().as_secs_f64() * 1000.0;
+
+    let hot_started = Instant::now();
+    let hot = run_simulation_fabric_hot_step(
+        fabric,
+        FabricHotStepParams {
+            resource_flow_pipeline_enabled: params.resource_flow_pipeline_enabled,
+            mapping: params.mapping,
+        },
+    )?;
+    let hot_step_ms = hot_started.elapsed().as_secs_f64() * 1000.0;
+
+    Ok(FabricHotCycleOutcome {
+        pre_tick_enqueue_ms,
+        hot_step_ms,
+        patches_enqueued,
+        hot,
     })
 }
 
@@ -356,6 +443,49 @@ mod tests {
     }
 
     #[test]
+    fn simulation_fabric_hot_cycle_signature_accepts_only_fabric() {
+        fn assert_hot_cycle(
+            f: fn(
+                &mut SimulationFabric<'_>,
+                FabricHotCycleParams<'_>,
+            ) -> Result<FabricHotCycleOutcome, FabricHotCycleError>,
+        ) {
+            let _ = f;
+        }
+        assert_hot_cycle(run_simulation_fabric_hot_cycle);
+    }
+
+    #[test]
+    fn simulation_fabric_pre_tick_enqueue_behavior_preserved() {
+        use simthing_core::{PropertyTransformDelta, SubFieldRole, TransformOp};
+
+        let (tx_direct, _rx_direct) = feeder_channel();
+        let (tx_fabric, _rx_fabric) = feeder_channel();
+
+        let mut reg = DimensionRegistry::new();
+        let pid = reg.register(SimProperty::simple("core", "loyalty", 0));
+        let target = SimThing::new(SimThingKind::Cohort, 0).id;
+        let patches = vec![PatchTransform {
+            target,
+            delta: PropertyTransformDelta {
+                property_id: pid,
+                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(1.0))],
+            },
+        }];
+
+        for patch in &patches {
+            tx_direct
+                .send(FeederWork::Patch(patch.clone()))
+                .expect("direct enqueue");
+        }
+        let direct_count = patches.len() as u32;
+
+        let via_fabric =
+            run_simulation_fabric_pre_tick_enqueue(&tx_fabric, &patches).expect("fabric enqueue");
+        assert_eq!(via_fabric, direct_count);
+    }
+
+    #[test]
     fn simulation_fabric_tick_behavior_preserved() {
         let Some(ctx) = try_gpu() else {
             eprintln!("skipping: no GPU");
@@ -388,11 +518,12 @@ mod tests {
         let pipelines_fabric = Pipelines::new(&state_fabric.ctx);
         let mut patcher_fabric = TransformPatcher::new(alloc.capacity());
         let mut coord_fabric = DispatchCoordinator::new(n_slots, n_dims, ticks_per_day);
-        let (_tx_fabric, rx_fabric) = feeder_channel();
+        let (tx_fabric, rx_fabric) = feeder_channel();
 
         let mut fabric = SimulationFabric::from_hot_parts(HotFabricParts {
             coord: &mut coord_fabric,
             patcher: &mut patcher_fabric,
+            tx: &tx_fabric,
             rx: &rx_fabric,
             registry: &reg,
             allocator: &alloc,
@@ -446,11 +577,12 @@ mod tests {
             let pipelines_f = Pipelines::new(&fabric_state.ctx);
             let mut patcher_f = TransformPatcher::new(alloc.capacity());
             let mut coord_f = DispatchCoordinator::new(n_slots, n_dims, 4);
-            let (_tx_f, rx_f) = feeder_channel();
+            let (tx_f, rx_f) = feeder_channel();
 
             let mut fabric = SimulationFabric::from_hot_parts(HotFabricParts {
                 coord: &mut coord_f,
                 patcher: &mut patcher_f,
+                tx: &tx_f,
                 rx: &rx_f,
                 registry: &reg,
                 allocator: &alloc,
@@ -498,12 +630,13 @@ mod tests {
         let pipelines = Pipelines::new(&state_fabric.ctx);
         let mut patcher = TransformPatcher::new(alloc.capacity());
         let mut coord = DispatchCoordinator::new(n_slots, n_dims, 4);
-        let (_tx, rx) = feeder_channel();
+        let (tx, rx) = feeder_channel();
         let mut hot_step = minimal_mapping_hot(&state_fabric.ctx);
 
         let mut fabric = SimulationFabric::from_hot_parts(HotFabricParts {
             coord: &mut coord,
             patcher: &mut patcher,
+            tx: &tx,
             rx: &rx,
             registry: &reg,
             allocator: &alloc,

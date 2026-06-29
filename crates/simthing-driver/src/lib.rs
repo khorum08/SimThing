@@ -791,9 +791,10 @@ pub use session_resource_flow_silos::{
 pub use simthing_core::StructuralCoord;
 pub use simthing_gpu::SlotAllocError;
 pub use simulation_fabric::{
-    run_mapping_hot_dispatch, run_simulation_fabric_hot_step, run_simulation_fabric_tick,
-    FabricHotStepOutcome, FabricHotStepParams, FabricMappingHotReport, FabricTickOutcome,
-    HotFabricParts, MappingHotPathState, SimulationFabric,
+    run_mapping_hot_dispatch, run_simulation_fabric_hot_cycle, run_simulation_fabric_hot_step,
+    run_simulation_fabric_pre_tick_enqueue, run_simulation_fabric_tick, FabricHotCycleOutcome,
+    FabricHotCycleParams, FabricHotStepOutcome, FabricHotStepParams, FabricMappingHotReport,
+    FabricTickOutcome, HotFabricParts, MappingHotPathState, SimulationFabric,
 };
 pub use spec_replay::{
     apply_spec_delta, apply_spec_snapshot, collect_spec_snapshot, diff_and_emit,
