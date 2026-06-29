@@ -59,6 +59,16 @@ If the change cannot be expressed within these lines, **stop and escalate to the
 - **Recipient agent:** `<agent>` — chosen by **Type**, per the routing table below.
 - **Expected PR title:** `<RUNG-ID>: <imperative summary>`
 - **Canonical design file (the one ladder this rung serves):** `<path>` — read it first; it controls scope/order/lifecycle.
+- **`admission-amendment-request:` `denied` (default) | `allowed`** — whether *this* handoff grants the agent permission to **request** the owner-gated Admission-Substrate Amendment Valve. Leave `denied` unless the rung may genuinely need to add/repair/suspend a sealed kernel/admission restriction.
+
+**The Admission-Substrate Amendment Valve (owner-gated; do not work around seals).** The kernel/admission
+seals (AS-1–8B + the kernel track) are owner-gated. If you hit a seal that genuinely blocks the rung, you
+have exactly two moves: **(a)** if this handoff sets `admission-amendment-request: allowed`, you may *request*
+the valve — surface a written request for **Owner / Exec-DA** approval, stating why it cannot be a
+registration / EML gadget / overlay within the existing seal and whether it is add/repair/suspend; **(b)**
+otherwise, **escalate the blocker to the DA.** You never self-grant, never suspend a seal yourself, and never
+build a sidecar around it. The valve opens only on owner interrogation + approval, recorded as a Deviation
+with a greppable marker (full protocol: the kernel track §3A).
 
 **Recipient routing (Type → agent tier).** Name the agent explicitly; do not default to the most capable
 model for a mechanical task or the cheapest for a judgment task.
