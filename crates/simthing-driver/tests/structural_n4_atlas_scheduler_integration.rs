@@ -133,10 +133,10 @@ fn seed_values_for_theater(
     let mut values = vec![0.0f32; (cells * n_dims) as usize];
     for &(system_id, seed) in seeds {
         if let Some(placement) = theater.placement_for_system(system_id) {
-            let slot = theater.cell_slot(simthing_driver::StructuralGridCoordinate {
-                col: placement.col,
-                row: placement.row,
-            });
+            let slot = theater.cell_slot(simthing_driver::StructuralCoord::new(
+                placement.col,
+                placement.row,
+            ));
             values[idx(slot, 0, n_dims)] = seed;
         }
     }

@@ -154,8 +154,8 @@ fn structural_atlas_halo_enabled_adds_one_cell_structural_n4_halo() {
     );
     for entry in &halo_theaters {
         for halo in &entry.halo_cells {
-            let tentative_col = halo.global_coord.col as i64 - entry.origin.col as i64;
-            let tentative_row = halo.global_coord.row as i64 - entry.origin.row as i64;
+            let tentative_col = halo.global_coord.col() as i64 - entry.origin.col as i64;
+            let tentative_row = halo.global_coord.row() as i64 - entry.origin.row as i64;
             assert!(
                 tentative_col.abs() <= 1 || tentative_row.abs() <= 1,
                 "halo must be one structural N4 step from owned tile"
@@ -181,10 +181,7 @@ fn structural_atlas_halo_distinguishes_owned_from_halo_cells() {
     let mut saw_halo = false;
     for entry in &atlas.theaters {
         for placement in &entry.theater.system_placements {
-            let local = simthing_driver::StructuralGridCoordinate {
-                col: placement.col,
-                row: placement.row,
-            };
+            let local = simthing_driver::StructuralCoord::new(placement.col, placement.row);
             assert_eq!(entry.cell_role(local), StructuralTheaterCellRole::Owned);
             saw_owned = true;
         }
@@ -195,7 +192,8 @@ fn structural_atlas_halo_distinguishes_owned_from_halo_cells() {
             );
             assert!(
                 !entry.theater.system_placements.iter().any(|placement| {
-                    placement.col == halo.local_coord.col && placement.row == halo.local_coord.row
+                    placement.col == halo.local_coord.col()
+                        && placement.row == halo.local_coord.row()
                 }),
                 "halo cells must not appear in system_placements"
             );
@@ -284,21 +282,12 @@ fn structural_atlas_halo_global_local_coordinate_recovery() {
     };
 
     let expected_globals = [
-        (
-            1u32,
-            simthing_driver::StructuralGridCoordinate { col: 9, row: 0 },
-        ),
-        (
-            2u32,
-            simthing_driver::StructuralGridCoordinate { col: 10, row: 0 },
-        ),
+        (1u32, simthing_driver::StructuralCoord::new(9, 0)),
+        (2u32, simthing_driver::StructuralCoord::new(10, 0)),
     ];
     for entry in &atlas.theaters {
         for placement in &entry.theater.system_placements {
-            let local = simthing_driver::StructuralGridCoordinate {
-                col: placement.col,
-                row: placement.row,
-            };
+            let local = simthing_driver::StructuralCoord::new(placement.col, placement.row);
             let global = entry.global_from_local(local);
             let expected = expected_globals
                 .iter()

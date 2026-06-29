@@ -11,7 +11,7 @@ use simthing_core::{CombineFn, SourceSpec, StructuralScalarChannel};
 use simthing_driver::{
     compile_structural_link_neighbor_sum_plan, compile_structural_n4_theater,
     compiled_stencil_to_gpu_config, compiled_w_impedance_compose_to_gpu_config,
-    composed_w_min_plus_stencil_config, StructuralGridCoordinate, StructuralTheaterAdmission,
+    composed_w_min_plus_stencil_config, StructuralCoord, StructuralTheaterAdmission,
 };
 use simthing_gpu::wgpu::util::DeviceExt;
 use simthing_gpu::{
@@ -66,8 +66,8 @@ fn admit_structural_theater(
     }
 }
 
-fn cell_slot(coord: StructuralGridCoordinate, width: u32) -> u32 {
-    coord.row * width + coord.col
+fn cell_slot(coord: StructuralCoord, width: u32) -> u32 {
+    coord.row() * width + coord.col()
 }
 
 fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
@@ -178,10 +178,10 @@ fn mapping_first_slice_derives_structural_n4_theater_from_scenario_authority() {
     let branch = theater.coord_for_system(3).expect("branch");
     let choke = theater.coord_for_system(4).expect("choke");
 
-    assert_eq!(hub, StructuralGridCoordinate { col: 0, row: 0 });
-    assert_eq!(corridor, StructuralGridCoordinate { col: 1, row: 0 });
-    assert_eq!(choke, StructuralGridCoordinate { col: 2, row: 0 });
-    assert_eq!(branch, StructuralGridCoordinate { col: 1, row: 1 });
+    assert_eq!(hub, StructuralCoord::new(0, 0));
+    assert_eq!(corridor, StructuralCoord::new(1, 0));
+    assert_eq!(choke, StructuralCoord::new(2, 0));
+    assert_eq!(branch, StructuralCoord::new(1, 1));
 
     assert!(theater.has_n4_edge(hub, corridor));
     assert!(theater.has_n4_edge(corridor, choke));
@@ -199,11 +199,11 @@ fn mapping_first_slice_grid_n4_adjacency_is_separate_from_hyperlane_links() {
         .n4_edges
         .iter()
         .map(|(a, b)| {
-            let system = |coord: StructuralGridCoordinate| {
+            let system = |coord: StructuralCoord| {
                 theater
                     .system_placements
                     .iter()
-                    .find(|placement| placement.col == coord.col && placement.row == coord.row)
+                    .find(|placement| placement.col == coord.col() && placement.row == coord.row())
                     .expect("system for coord")
                     .system_id
             };
@@ -342,7 +342,7 @@ fn mapping_first_slice_palma_w_compose_and_min_plus_gpu_matches_cpu_oracle() {
     let w_gpu = compiled_w_impedance_compose_to_gpu_config(&w_compiled);
     let hub = theater.coord_for_system(1).expect("hub");
     let stencil =
-        composed_w_min_plus_stencil_config(&w_gpu, 0, 4, (hub.col, hub.row), MIN_PLUS_INF);
+        composed_w_min_plus_stencil_config(&w_gpu, 0, 4, (hub.col(), hub.row()), MIN_PLUS_INF);
 
     let cells = (grid * grid) as usize;
     let n_dims = w_spec.n_dims as usize;

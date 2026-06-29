@@ -787,6 +787,7 @@ pub use session_resource_flow_silos::{
     compile_and_materialize_owner_silo_flow_via_resource_flow, compile_owner_silo_flow_admission,
     OwnerSiloFlowMaterializationReport,
 };
+pub use simthing_core::StructuralCoord;
 pub use simthing_gpu::SlotAllocError;
 pub use spec_replay::{
     apply_spec_delta, apply_spec_snapshot, collect_spec_snapshot, diff_and_emit,
@@ -809,8 +810,7 @@ pub use structural_n4_atlas_partition::{
 };
 pub use structural_n4_theater_compile::{
     compile_structural_n4_theater, AtlasDeferralReason, CompiledStructuralN4Theater,
-    CompiledStructuralPlacement, StructuralGridCoordinate, StructuralTheaterAdmission,
-    StructuralTheaterCompileError,
+    CompiledStructuralPlacement, StructuralTheaterAdmission, StructuralTheaterCompileError,
 };
 pub use w_impedance_compose_bridge::{
     compiled_w_impedance_compose_to_gpu_config, composed_w_min_plus_stencil_config,
