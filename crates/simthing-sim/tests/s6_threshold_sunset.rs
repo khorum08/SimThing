@@ -100,8 +100,8 @@ fn s6_threshold_events_match_cpu_golden() {
         .unwrap();
     let events = session.readback_threshold_events(&state.ctx).unwrap();
     assert_eq!(events.len(), 1);
-    assert_eq!(events[0].slot, 0);
-    assert_eq!(events[0].col, 0);
-    assert_eq!(events[0].event_kind, 42);
-    assert_eq!(events[0].value.to_bits(), 0.75_f32.to_bits());
+    assert_eq!(events[0].slot(), 0);
+    assert_eq!(events[0].col(), 0);
+    assert_eq!(events[0].event_kind(), 42);
+    assert_eq!(events[0].value().to_bits(), 0.75_f32.to_bits());
 }

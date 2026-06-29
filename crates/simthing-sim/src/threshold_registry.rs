@@ -226,7 +226,7 @@ impl ThresholdRegistry {
     ) -> Vec<CapabilityUnlockEvent> {
         events
             .iter()
-            .filter_map(|event| match self.get(event.event_kind)? {
+            .filter_map(|event| match self.get(event.event_kind())? {
                 ThresholdSemantic::CapabilityUnlock {
                     sim_thing_id,
                     property_id,
@@ -253,7 +253,7 @@ impl ThresholdRegistry {
     ) -> Vec<ScriptedEventTriggerEvent> {
         events
             .iter()
-            .filter_map(|event| match self.get(event.event_kind)? {
+            .filter_map(|event| match self.get(event.event_kind())? {
                 ThresholdSemantic::ScriptedEventTrigger { event_id } => {
                     Some(ScriptedEventTriggerEvent {
                         event_id: event_id.clone(),
@@ -271,7 +271,7 @@ impl ThresholdRegistry {
     pub fn has_capability_unlock_in(&self, events: &[ThresholdEvent]) -> bool {
         events.iter().any(|event| {
             matches!(
-                self.get(event.event_kind),
+                self.get(event.event_kind()),
                 Some(ThresholdSemantic::CapabilityUnlock { .. })
             )
         })
@@ -282,7 +282,7 @@ impl ThresholdRegistry {
     pub fn has_scripted_event_trigger_in(&self, events: &[ThresholdEvent]) -> bool {
         events.iter().any(|event| {
             matches!(
-                self.get(event.event_kind),
+                self.get(event.event_kind()),
                 Some(ThresholdSemantic::ScriptedEventTrigger { .. })
             )
         })
@@ -1413,25 +1413,10 @@ mod tests {
         });
 
         let events = vec![
-            ThresholdEvent {
-                slot: 0,
-                col: 0,
-                value: 1.0,
-                event_kind: ek_unlock,
-            },
-            ThresholdEvent {
-                slot: 1,
-                col: 1,
-                value: 2.0,
-                event_kind: ek_velocity,
-            },
+            ThresholdEvent::from_boundary_delivery(0, 0, 1.0, ek_unlock),
+            ThresholdEvent::from_boundary_delivery(1, 1, 2.0, ek_velocity),
             // Out-of-range event_kind: should be filtered.
-            ThresholdEvent {
-                slot: 2,
-                col: 2,
-                value: 3.0,
-                event_kind: 99,
-            },
+            ThresholdEvent::from_boundary_delivery(2, 2, 3.0, 99),
         ];
 
         let unlocks = cpu.extract_capability_unlocks(&events);

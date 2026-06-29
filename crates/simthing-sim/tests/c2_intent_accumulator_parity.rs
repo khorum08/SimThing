@@ -430,10 +430,10 @@ fn c1_c2_combined_accumulator_intent_then_threshold_parity() {
     for (tick, (old, new)) in old_both.iter().zip(new_both.iter()).enumerate() {
         assert_eq!(old.len(), new.len(), "tick {tick} event count");
         for (a, b) in old.iter().zip(new.iter()) {
-            assert_eq!(a.slot, b.slot);
-            assert_eq!(a.col, b.col);
-            assert_eq!(a.event_kind, b.event_kind);
-            assert_eq!(a.value.to_bits(), b.value.to_bits());
+            assert_eq!(a.slot(), b.slot());
+            assert_eq!(a.col(), b.col());
+            assert_eq!(a.event_kind(), b.event_kind());
+            assert_eq!(a.value().to_bits(), b.value().to_bits());
         }
     }
 }

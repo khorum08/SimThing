@@ -173,13 +173,76 @@ pub struct ThresholdRegistration {
 
 /// One sparse threshold-crossing event emitted by Pass 7. CPU reads these at
 /// the day boundary and maps `event_kind` back to a semantic action.
+///
+/// External crates cannot forge decision events directly:
+///
+/// ```compile_fail
+/// fn external_threshold_event_forge() {
+///     let _ = simthing_gpu::ThresholdEvent {
+///         slot: 0,
+///         col: 0,
+///         value: 0.0,
+///         event_kind: 0,
+///     };
+/// }
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ThresholdEvent {
+    slot: u32,
+    col: u32,
+    value: f32,
+    event_kind: u32,
+}
+
+/// GPU byte-layout mirror for Pass 7 `event_candidates` (transport only).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub struct ThresholdEvent {
+pub struct ThresholdEventGpu {
     pub slot: u32,
     pub col: u32,
     pub value: f32,
     pub event_kind: u32,
+}
+
+impl ThresholdEvent {
+    pub fn slot(&self) -> u32 {
+        self.slot
+    }
+
+    pub fn col(&self) -> u32 {
+        self.col
+    }
+
+    pub fn value(&self) -> f32 {
+        self.value
+    }
+
+    pub fn event_kind(&self) -> u32 {
+        self.event_kind
+    }
+
+    pub(crate) fn from_kernel_pass7_readback(
+        slot: u32,
+        col: u32,
+        value: f32,
+        event_kind: u32,
+    ) -> Self {
+        Self {
+            slot,
+            col,
+            value,
+            event_kind,
+        }
+    }
+
+    pub(crate) fn from_gpu_readback(gpu: &ThresholdEventGpu) -> Self {
+        Self::from_kernel_pass7_readback(gpu.slot, gpu.col, gpu.value, gpu.event_kind)
+    }
+
+    /// Boundary/admission replay of a kernel-readback threshold event (not live emission minting).
+    pub fn from_boundary_delivery(slot: u32, col: u32, value: f32, event_kind: u32) -> Self {
+        Self::from_kernel_pass7_readback(slot, col, value, event_kind)
+    }
 }
 
 // ── Reduction (Passes 4–6) ────────────────────────────────────────────────────
@@ -428,7 +491,7 @@ impl WorldGpuState {
         );
         let event_candidates = mk(
             "event_candidates",
-            std::mem::size_of::<ThresholdEvent>() as u64,
+            std::mem::size_of::<ThresholdEventGpu>() as u64,
         );
         // event_count is always exactly 4 bytes — an atomic<u32> reset per tick.
         let event_count = ctx.device.create_buffer(&BufferDescriptor {
@@ -682,7 +745,12 @@ impl WorldGpuState {
         self.accumulator_runtime
             .as_mut()
             .unwrap()
-            .ensure_reduction_soft_session(&self.ctx, n_slots, n_dims, &self.resolved.output_vectors);
+            .ensure_reduction_soft_session(
+                &self.ctx,
+                n_slots,
+                n_dims,
+                &self.resolved.output_vectors,
+            );
     }
 
     /// Upload C-5/C-6 reduction ops and set OrderBand pass count.
@@ -1233,8 +1301,10 @@ impl WorldGpuState {
         self.n_dims = n_dims;
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
         self.resolved.values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
-        self.resolved.previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
-        self.resolved.output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
+        self.resolved.previous_values =
+            self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
+        self.resolved.output_vectors =
+            self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
         self.resolved.previous_output_vectors =
             self.mk_storage_buffer("previous_output_vectors", per_slot_per_col_bytes);
         self.slot_delta_ranges = self.mk_storage_buffer(
@@ -1259,7 +1329,7 @@ impl WorldGpuState {
         );
         self.event_candidates = self.mk_storage_buffer(
             "event_candidates",
-            std::mem::size_of::<ThresholdEvent>() as u64,
+            std::mem::size_of::<ThresholdEventGpu>() as u64,
         );
         self.event_count = self.mk_storage_buffer("event_count", 4);
         self.n_thresholds = 0;
@@ -1461,7 +1531,7 @@ impl WorldGpuState {
     pub fn upload_thresholds(&mut self, regs: &[ThresholdRegistration]) {
         let needed_count = regs.len().max(1);
         let reg_bytes = (needed_count * std::mem::size_of::<ThresholdRegistration>()) as u64;
-        let event_bytes = (needed_count * std::mem::size_of::<ThresholdEvent>()) as u64;
+        let event_bytes = (needed_count * std::mem::size_of::<ThresholdEventGpu>()) as u64;
 
         if reg_bytes > self.threshold_registry.size() {
             self.threshold_registry = self.ctx.device.create_buffer(&BufferDescriptor {
@@ -1501,7 +1571,7 @@ impl WorldGpuState {
             return;
         }
         let reg_size = std::mem::size_of::<ThresholdRegistration>();
-        let event_size = std::mem::size_of::<ThresholdEvent>();
+        let event_size = std::mem::size_of::<ThresholdEventGpu>();
 
         let old_count = self.n_thresholds as u64;
         let new_count = old_count + new_regs.len() as u64;
@@ -1652,9 +1722,12 @@ impl WorldGpuState {
         if n == 0 {
             return Vec::new();
         }
-        let used = (n as usize) * std::mem::size_of::<ThresholdEvent>();
+        let used = (n as usize) * std::mem::size_of::<ThresholdEventGpu>();
         let bytes = self.read_buffer_bytes_range(&self.event_candidates, 0, used as u64);
-        bytemuck::cast_slice(&bytes).to_vec()
+        bytemuck::cast_slice::<u8, ThresholdEventGpu>(&bytes)
+            .iter()
+            .map(ThresholdEvent::from_gpu_readback)
+            .collect()
     }
 
     pub fn values_len(&self) -> usize {
@@ -1692,11 +1765,7 @@ impl WorldGpuState {
     }
 
     /// Boundary/admission install of a contiguous slot row range from CPU shadow.
-    pub fn install_resolved_value_rows_at_boundary(
-        &self,
-        slot_start: u32,
-        rows: &[f32],
-    ) {
+    pub fn install_resolved_value_rows_at_boundary(&self, slot_start: u32, rows: &[f32]) {
         if rows.is_empty() {
             return;
         }
@@ -1727,9 +1796,11 @@ impl WorldGpuState {
     /// Boundary/admission install of previous-tick resolved values snapshot.
     pub fn install_resolved_previous_values_at_boundary(&self, data: &[f32]) {
         assert_eq!(data.len(), self.values_len());
-        self.ctx
-            .queue
-            .write_buffer(&self.resolved.previous_values, 0, bytemuck::cast_slice(data));
+        self.ctx.queue.write_buffer(
+            &self.resolved.previous_values,
+            0,
+            bytemuck::cast_slice(data),
+        );
     }
 
     pub fn read_values(&self) -> Vec<f32> {
@@ -1751,9 +1822,11 @@ impl WorldGpuState {
     /// Boundary/admission install of previous-tick post-reduction output snapshot.
     pub fn install_resolved_previous_output_vectors_at_boundary(&self, data: &[f32]) {
         assert_eq!(data.len(), self.values_len());
-        self.ctx
-            .queue
-            .write_buffer(&self.resolved.previous_output_vectors, 0, bytemuck::cast_slice(data));
+        self.ctx.queue.write_buffer(
+            &self.resolved.previous_output_vectors,
+            0,
+            bytemuck::cast_slice(data),
+        );
     }
 
     pub fn read_previous_output_vectors(&self) -> Vec<f32> {
@@ -2172,7 +2245,9 @@ mod tests {
             state.threshold_registry.size()
                 >= 3 * std::mem::size_of::<ThresholdRegistration>() as u64
         );
-        assert!(state.event_candidates.size() >= 3 * std::mem::size_of::<ThresholdEvent>() as u64);
+        assert!(
+            state.event_candidates.size() >= 3 * std::mem::size_of::<ThresholdEventGpu>() as u64
+        );
     }
 
     #[test]

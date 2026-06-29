@@ -39,7 +39,7 @@ fn run_cpu_threshold_crossing(
         execute_threshold_ops_cpu(previous, &mut values, &ops, 1).expect("cpu threshold oracle");
     emissions
         .into_iter()
-        .map(|e| (e.slot, e.col, e.value, kinds[e.reg_idx as usize]))
+        .map(|e| (e.slot, e.col, e.value, kinds[e.reg_idx() as usize]))
         .collect()
 }
 
@@ -219,7 +219,7 @@ fn e1_no_legacy_threshold_shader_and_routes_through_accumulator_op() {
         .readback_threshold_events(&state.ctx)
         .expect("readback");
     assert_eq!(events.len(), 1);
-    assert_eq!(events[0].event_kind, 1);
+    assert_eq!(events[0].event_kind(), 1);
 }
 
 #[test]
@@ -235,9 +235,9 @@ fn e1_output_buffer_registration_preserved_in_gpu_bridge() {
     let gpu = emit_on_threshold_registrations_to_gpu(std::slice::from_ref(&reg));
     assert_eq!(gpu.len(), 1);
     assert_eq!(gpu[0].buffer, THRESH_BUF_OUTPUT);
-    assert_eq!(gpu[0].slot, 2);
-    assert_eq!(gpu[0].col, 1);
-    assert_eq!(gpu[0].event_kind, 55);
+    assert_eq!(gpu[0].slot(), 2);
+    assert_eq!(gpu[0].col(), 1);
+    assert_eq!(gpu[0].event_kind(), 55);
 }
 
 #[test]

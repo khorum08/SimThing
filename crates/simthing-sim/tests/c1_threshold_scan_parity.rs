@@ -110,10 +110,14 @@ fn fission_stress_100_ticks_accumulator_replay_stable_events() {
     for (tick, (old, new)) in old_path.iter().zip(new_path.iter()).enumerate() {
         assert_eq!(old.len(), new.len(), "tick {tick} event count");
         for (a, b) in old.iter().zip(new.iter()) {
-            assert_eq!(a.slot, b.slot, "tick {tick} slot");
-            assert_eq!(a.col, b.col, "tick {tick} col");
-            assert_eq!(a.event_kind, b.event_kind, "tick {tick} event_kind");
-            assert_eq!(a.value.to_bits(), b.value.to_bits(), "tick {tick} value");
+            assert_eq!(a.slot(), b.slot(), "tick {tick} slot");
+            assert_eq!(a.col(), b.col(), "tick {tick} col");
+            assert_eq!(a.event_kind(), b.event_kind(), "tick {tick} event_kind");
+            assert_eq!(
+                a.value().to_bits(),
+                b.value().to_bits(),
+                "tick {tick} value"
+            );
         }
     }
 }

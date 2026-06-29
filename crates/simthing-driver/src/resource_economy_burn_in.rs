@@ -185,8 +185,8 @@ pub fn run_emission_burn_in(
         let gpu_records = run_accumulator_emission(state, dt)
             .map_err(|e| ResourceEconomyOracleError::Cpu(e.to_string()))?;
 
-        let cpu_total: u32 = cpu_records.iter().map(|r| r.emit_count).sum();
-        let gpu_total: u32 = gpu_records.iter().map(|r| r.emit_count).sum();
+        let cpu_total: u32 = cpu_records.iter().map(|r| r.emit_count()).sum();
+        let gpu_total: u32 = gpu_records.iter().map(|r| r.emit_count()).sum();
         let err = (cpu_total as f32 - gpu_total as f32).abs();
         if err > report.max_abs_conservation_error {
             report.max_abs_conservation_error = err;

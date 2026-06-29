@@ -151,7 +151,7 @@ pub fn resolve_fission_fusion(
     let mut seen_fissions: HashSet<(SimThingId, usize)> = HashSet::new();
 
     for event in events {
-        let Some(sem) = cpu_reg.get(event.event_kind) else {
+        let Some(sem) = cpu_reg.get(event.event_kind()) else {
             continue;
         };
         match sem {
@@ -693,12 +693,9 @@ mod tests {
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 3 * n_dims];
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 1,
-            col: 0,
-            value: 0.2,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            1, 0, 0.2, ek,
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -789,12 +786,9 @@ mod tests {
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 3 * n_dims];
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 1,
-            col: 0,
-            value: 0.2,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            1, 0, 0.2, ek,
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -842,18 +836,8 @@ mod tests {
         let mut shadow = vec![0.0f32; 3 * n_dims];
         // Send the same event twice.
         let events = vec![
-            simthing_gpu::ThresholdEvent {
-                slot: 1,
-                col: 0,
-                value: 0.2,
-                event_kind: ek,
-            },
-            simthing_gpu::ThresholdEvent {
-                slot: 1,
-                col: 0,
-                value: 0.2,
-                event_kind: ek,
-            },
+            simthing_gpu::ThresholdEvent::from_boundary_delivery(1, 0, 0.2, ek),
+            simthing_gpu::ThresholdEvent::from_boundary_delivery(1, 0, 0.2, ek),
         ];
 
         let paths = build_node_paths(&root);
@@ -906,12 +890,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: parent_slot as u32,
-            col: amount_off.lane() as u32,
-            value: 0.24,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            parent_slot as u32,
+            amount_off.lane() as u32,
+            0.24,
+            ek,
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -997,12 +981,12 @@ mod tests {
             property_id: second_pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: slot as u32,
-            col: 0,
-            value: 0.2,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            slot as u32,
+            0,
+            0.2,
+            ek,
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -1079,12 +1063,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: faction_slot as u32,
-            col: amount_off.lane() as u32,
-            value: 0.25,
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            faction_slot as u32,
+            amount_off.lane() as u32,
+            0.25,
             event_kind,
-        }];
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -1157,12 +1141,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: faction_slot as u32,
-            col: amount_off.lane() as u32,
-            value: 0.25,
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            faction_slot as u32,
+            amount_off.lane() as u32,
+            0.25,
             event_kind,
-        }];
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -1212,12 +1196,9 @@ mod tests {
 
         let n_dims = reg.total_columns.max(1);
         let mut shadow = vec![0.0f32; 3 * n_dims];
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 1,
-            col: 0,
-            value: 0.2,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            1, 0, 0.2, ek,
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -1279,12 +1260,9 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.9,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.9, ek,
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -1379,12 +1357,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: faction_slot as u32,
-            col: amount_off.lane() as u32,
-            value: 0.25,
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            faction_slot as u32,
+            amount_off.lane() as u32,
+            0.25,
             event_kind,
-        }];
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(
@@ -1467,12 +1445,12 @@ mod tests {
             property_id: pid,
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: faction_slot as u32,
-            col: amount_off.lane() as u32,
-            value: 0.25,
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            faction_slot as u32,
+            amount_off.lane() as u32,
+            0.25,
             event_kind,
-        }];
+        )];
 
         let paths = build_node_paths(&root);
         let out = resolve_fission_fusion(

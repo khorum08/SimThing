@@ -52,7 +52,7 @@ pub fn resolve_property_expiry(
 
     // GPU-threshold-driven expiry.
     for event in events {
-        let Some(sem) = cpu_reg.get(event.event_kind) else {
+        let Some(sem) = cpu_reg.get(event.event_kind()) else {
             continue;
         };
         let ThresholdSemantic::PropertyExpiry {
@@ -317,12 +317,9 @@ mod tests {
         let n_dims = reg.total_columns;
         let shadow = vec![0.0; alloc.capacity() * n_dims];
 
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.0,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.0, ek,
+        )];
         let out = resolve_property_expiry(
             &mut root, &mut reg, &alloc, &shadow, n_dims, &events, &cpu_reg, None,
         );
@@ -442,12 +439,9 @@ mod tests {
         alloc.populate_from_tree(&root);
         let n_dims = reg.total_columns;
         let shadow = vec![0.0; alloc.capacity() * n_dims];
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.0,
-            event_kind: ek,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(
+            0, 0, 0.0, ek,
+        )];
 
         let mut recursive_root = root.clone();
         let mut recursive_reg = reg.clone();

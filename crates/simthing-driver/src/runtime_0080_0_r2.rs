@@ -596,10 +596,10 @@ fn threshold_to_zero_cohort_event(
     layout: &TierAStateLayout,
     witness: &R1aBoundaryWitness,
 ) -> Option<R1bStructuralEvent> {
-    if emission.slot < layout.num_ships_start {
+    if emission.slot() < layout.num_ships_start {
         return None;
     }
-    let fleet_idx = emission.slot - layout.num_ships_start;
+    let fleet_idx = emission.slot() - layout.num_ships_start;
     if fleet_idx as usize >= witness.fleet_ids().len() {
         return None;
     }

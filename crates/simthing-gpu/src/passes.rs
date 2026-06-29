@@ -185,14 +185,7 @@ impl Pipelines {
             let mut session = runtime.take_intensity_eml_session();
             if let Some(session) = session.as_mut() {
                 let eml = runtime.eml_bind_buffers();
-                session.encode_intensity_eml_into(
-                    ctx,
-                    &mut encoder,
-                    values,
-                    previous,
-                    dt,
-                    eml,
-                );
+                session.encode_intensity_eml_into(ctx, &mut encoder, values, previous, dt, eml);
             }
             runtime.restore_intensity_eml_session(session);
         }
@@ -382,7 +375,12 @@ impl Pipelines {
             });
 
         if let Some(session) = sessions.intent.as_mut() {
-            session.encode_intent_into(ctx, &mut encoder, &state.resolved.values, &state.resolved.previous_values);
+            session.encode_intent_into(
+                ctx,
+                &mut encoder,
+                &state.resolved.values,
+                &state.resolved.previous_values,
+            );
         }
 
         {
@@ -481,7 +479,13 @@ impl Pipelines {
 
         if reduction_soft_active {
             let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-            encoder.copy_buffer_to_buffer(&state.resolved.values, 0, &state.resolved.output_vectors, 0, copy_bytes);
+            encoder.copy_buffer_to_buffer(
+                &state.resolved.values,
+                0,
+                &state.resolved.output_vectors,
+                0,
+                copy_bytes,
+            );
             if let Some(session) = sessions.reduction_soft.as_mut() {
                 self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
             }
@@ -534,7 +538,13 @@ impl Pipelines {
             });
 
         let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-        encoder.copy_buffer_to_buffer(&state.resolved.values, 0, &state.resolved.output_vectors, 0, copy_bytes);
+        encoder.copy_buffer_to_buffer(
+            &state.resolved.values,
+            0,
+            &state.resolved.output_vectors,
+            0,
+            copy_bytes,
+        );
 
         self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
 
@@ -657,7 +667,13 @@ mod tests {
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("accumulator_velocity_encoder"),
             });
-        session.encode_velocity_into(ctx, &mut encoder, &state.resolved.values, &state.resolved.previous_values, dt);
+        session.encode_velocity_into(
+            ctx,
+            &mut encoder,
+            &state.resolved.values,
+            &state.resolved.previous_values,
+            dt,
+        );
         ctx.queue.submit(Some(encoder.finish()));
     }
 
@@ -1208,12 +1224,12 @@ mod tests {
                 _ => up || down,
             };
             if crossed {
-                events.push(ThresholdEvent {
-                    slot: r.slot,
-                    col: r.col,
-                    value: curr,
-                    event_kind: r.event_kind,
-                });
+                events.push(ThresholdEvent::from_kernel_pass7_readback(
+                    r.slot,
+                    r.col,
+                    curr,
+                    r.event_kind,
+                ));
             }
         }
         events
@@ -1344,7 +1360,7 @@ mod tests {
         let mut gpu: Vec<ThresholdEvent> = run_accumulator_threshold_scan(&state, &regs);
 
         // GPU event order is nondeterministic (atomicAdd race). Sort both sides.
-        let key = |e: &ThresholdEvent| (e.event_kind, e.slot, e.col);
+        let key = |e: &ThresholdEvent| (e.event_kind(), e.slot(), e.col());
         let mut cpu_sorted = cpu;
         cpu_sorted.sort_by_key(key);
         gpu.sort_by_key(key);
@@ -1358,15 +1374,15 @@ mod tests {
         );
 
         for (i, (c, g)) in cpu_sorted.iter().zip(gpu.iter()).enumerate() {
-            assert_eq!(c.slot, g.slot, "event {i} slot");
-            assert_eq!(c.col, g.col, "event {i} col");
-            assert_eq!(c.event_kind, g.event_kind, "event {i} event_kind");
+            assert_eq!(c.slot(), g.slot(), "event {i} slot");
+            assert_eq!(c.col(), g.col(), "event {i} col");
+            assert_eq!(c.event_kind(), g.event_kind(), "event {i} event_kind");
             assert_eq!(
-                c.value.to_bits(),
-                g.value.to_bits(),
+                c.value().to_bits(),
+                g.value().to_bits(),
                 "event {i} value: cpu={} gpu={}",
-                c.value,
-                g.value
+                c.value(),
+                g.value()
             );
         }
     }
@@ -1418,8 +1434,8 @@ mod tests {
 
         let gpu = run_accumulator_threshold_scan(&state, &regs);
         assert_eq!(gpu.len(), 1);
-        assert_eq!(gpu[0].value.to_bits(), 0.50_f32.to_bits());
-        assert_eq!(gpu[0].event_kind, 200);
+        assert_eq!(gpu[0].value().to_bits(), 0.50_f32.to_bits());
+        assert_eq!(gpu[0].event_kind(), 200);
     }
 
     /// Pass 7 with no registered thresholds: must be a no-op, no panic.
@@ -1477,11 +1493,11 @@ mod tests {
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, 1.0);
         let events = run_accumulator_threshold_scan(&state, &regs);
         assert_eq!(events.len(), 1, "expected exactly one downward crossing");
-        assert_eq!(events[0].slot, 0);
-        assert_eq!(events[0].col, a_off.lane() as u32);
-        assert_eq!(events[0].event_kind, 7);
+        assert_eq!(events[0].slot(), 0);
+        assert_eq!(events[0].col(), a_off.lane() as u32);
+        assert_eq!(events[0].event_kind(), 7);
         // Post-integration value should be 0.25 bit-exact.
-        assert_eq!(events[0].value.to_bits(), 0.25_f32.to_bits());
+        assert_eq!(events[0].value().to_bits(), 0.25_f32.to_bits());
     }
 
     /// Week 2 success criterion: full Pass 0+1+2+3 pipeline at 1000 slots, 64 dims

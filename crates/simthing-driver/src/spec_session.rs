@@ -1096,12 +1096,7 @@ mod tests {
             property_id: simthing_core::SimPropertyId(0),
             sub_field: SubFieldRole::Amount,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 5.0,
-            event_kind,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 5.0, event_kind)];
         assert!(state.requires_boundary_tick(&events, &registry));
     }
 
@@ -1114,12 +1109,7 @@ mod tests {
         let event_kind = registry.push(simthing_sim::ThresholdSemantic::ScriptedEventTrigger {
             event_id: "spawn_thing".into(),
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 5.0,
-            event_kind,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 5.0, event_kind)];
         assert!(state.requires_boundary_tick(&events, &registry));
     }
 
@@ -1135,12 +1125,7 @@ mod tests {
             property_id: simthing_core::SimPropertyId(0),
             template_idx: 0,
         });
-        let events = vec![simthing_gpu::ThresholdEvent {
-            slot: 0,
-            col: 0,
-            value: 0.1,
-            event_kind,
-        }];
+        let events = vec![simthing_gpu::ThresholdEvent::from_boundary_delivery(0, 0, 0.1, event_kind)];
         assert!(!state.requires_boundary_tick(&events, &registry));
     }
 }
