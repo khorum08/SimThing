@@ -7,8 +7,8 @@ IN PROGRESS — first slice of AS-3: production fission clone-source eligibility
 ## PR / branch / merge
 
 - Branch: `codex/as-kind-out-of-tick-0a`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/952
+- Merge: `ba132e2041` (master)
 
 ## What changed
 
