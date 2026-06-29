@@ -67,7 +67,7 @@ shows the migration surface is larger than one focused PR.
 | 6 | `AS-STRUCTURAL-COORD-0` | STEAD: render coords cannot leak into structural logic (core §0/§7; `stead_spatial_contract.md`) | `StructuralCoord { col, row }` integer newtype that **cannot be constructed from render `f32`** except via an explicit, named conversion; the lowerer / Movement-Front / RF-binding structural paths accept only `StructuralCoord`, never a bare float pair. | Driver `StructuralGridCoordinate` public-field literal seam → private-field `StructuralCoord` + `compile_fail`. `compile_fail`: building a structural coord from render floats. **Now-rung (independent of AS-5).** | Cursor/Grok | **DONE — DA-APPROVED** |
 | 7 | `AS-TICK-FABRIC-BOUNDARY-0` | the **hot-path slice** of no-CPU-planner (core §8) | The per-tick fn accepts only `&mut SimulationFabric` — resolved numeric columns/slots, **no** semantic / strategic / `kind` / overlay-authoring state. Planning inputs are structurally inaccessible *inside* the tick. Capstones AS-3 + AS-4 (they remove `kind` and semantic names; this removes *all* non-resolved state from the tick view). | Session-loop direct GPU dispatch → `run_simulation_fabric_hot_cycle`. `compile_fail`: fabric field access to proto/scenario/tree; mapping hot path cannot reach boundary effects. **0A:** ordinary tick. **0B:** RF + mapping hot dispatch. **0C:** pre-tick feeder enqueue sealed in hot cycle. **Depends on AS-3 + AS-4.** | Cursor/Grok | **DONE — DA-APPROVED** |
 | 8 | `AS-PACKED-UPLOAD-BOUNDARY-0` | the **structural upload slice** of semantic-free-GPU (§4) | The **structural** GPU upload utility consumes only a `PackedUpload` (`[f32; N]` columns + primitive indices); no rich/semantic struct crosses the structural upload seam. **Delivered scope = the structural upload path.** Session-upload paths sealed by **`AS-8B`**. | Old free-row upload signature **removed**; `compile_fail`: a semantic struct / typed index at the structural upload boundary. **Depends on AS-1.** | Cursor/Grok | **DONE — DA-APPROVED** (structural seam) |
-| 8B | `AS-8B` | the **session upload slice** of semantic-free-GPU (§4) | `AccumulatorOpSession` upload consumes only `PackedAccumulatorUpload` / `PackedThresholdUpload` / `PackedIntentUpload`; semantic ops and free GPU slices pack before the upload seam. | Old free-slice session upload signatures **removed**; 6 `compile_fail` proofs on session boundary. §5 GPU residue → *shader-text only* (pending DA review). **Depends on AS-8.** | Cursor/Grok | **PROBATION** |
+| 8B | `AS-8B` | the **session upload slice** of semantic-free-GPU (§4) | `AccumulatorOpSession` upload consumes only `PackedAccumulatorUpload` / `PackedThresholdUpload` / `PackedIntentUpload`; semantic ops and free GPU slices pack before the upload seam. | Old free-slice session upload signatures **removed**; 6 `compile_fail` proofs on session boundary. §5 GPU residue → *shader-text only* (**DA-APPROVED**). **Depends on AS-8.** | Cursor/Grok | **DONE — DA-APPROVED** |
 | F | `AS-CLOSEOUT-0` | — | Scope Ledger across rungs: invariants promoted, **guards/prose retired (the success metric)**, parity intact. DA review. | — | Opus/Owner (DA) | OPEN |
 
 > **DA graduation log (executive DA, 2026-06-29).** Rungs **6 `AS-STRUCTURAL-COORD-0`** and
@@ -122,6 +122,20 @@ shows the migration surface is larger than one focused PR.
 > stays a **directive**, not yet a type-fact, for uploads. Net: rungs **1–8 DA-APPROVED** (8 for its delivered
 > scope); remaining build work = **`AS-8B`** session-upload packed packets; then **F** closeout (consolidate
 > AS-3/AS-4/AS-5/AS-8 sub-rung docs into one ledger each).
+>
+> **DA graduation log (executive DA, 2026-06-29, AS-8B re-review after PR #975).** Rung **8B `AS-8B`** →
+> **DONE / DA-APPROVED. Brief NOT exceeded** — the 37-file diff (13 driver · 5 gpu · 4 sim · ~13 existing
+> test files · 2 docs) is the *legitimate adoption surface* of sealing five session-upload fns: every call
+> site across three crates + their tests rewired to pack-before-upload (`PackedAccumulatorUpload`/
+> `PackedThresholdUpload`/`PackedIntentUpload`). **Zero creep** — no AS-F / 0.0.8.5 / channel_key / coord /
+> fabric files touched (only the ladder doc, 10 lines). This is the *opposite* of AS-2's failure: AS-2 was
+> held for too *few* files (defined-but-not-adopted); AS-8B has many *because* it adopted fully. Seal real
+> (session API consumes packed packets only; semantic slices pack CPU-side **above** the seam — correct per
+> §4), 6 `compile_fail`, parity preserved (83+14 tests). **The GPU residue is now genuinely shader-text-only.**
+> Net: **rungs 1–8B all DA-APPROVED**; the last build rung is done. **`AS-F` closeout is now cleared to open**
+> (consolidate sub-rung docs + final Scope Ledger). The handoff-spine "one authoritative path" line stays a
+> **directive** — the *upload* seal is complete, but the write-seal / emission-seal that make the full
+> invariant a type-fact are the separate AS-9+ cluster.
 
 *Recipient* follows the handoff-template routing (Type → agent). *State:* `DONE` · `OPEN` (queued) · set to `IN PROGRESS` / `PROBATION` / `DA-APPROVED` as a rung lands.
 
@@ -209,7 +223,7 @@ judgment on the true residue (core §1.2):
 - **no-flattening** (§0.6) — specified-vs-implemented recursive structure; types cannot prove a tier was
   not silently collapsed. Stays constitutional + reviewed.
 - **The GPU trust domain — *shader-text only*** (structural upload sealed by AS-8; session upload sealed by
-  AS-8B — pending DA review). Rust cannot see into WGSL text; CPU-oracle parity + the semantic-free *shader*
+  AS-8B). Rust cannot see into WGSL text; CPU-oracle parity + the semantic-free *shader*
   scan remain the only admission the shader has (§4).
 - **Live ontological conformance** — "is this still one accumulate→reduce→threshold loop?" remains DA work.
 
