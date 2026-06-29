@@ -49,10 +49,10 @@ impl ResourceEconomyBoundaryScheduleReport {
                     kind_rank: KIND_RANK_TRANSFER,
                     authoring_id,
                 },
-                source_slot: transfer.source_slot,
-                source_col: transfer.source_col,
-                target_slot: transfer.target_slot,
-                target_col: transfer.target_col,
+                source_slot: transfer.source_slot.raw(),
+                source_col: transfer.source_col.raw_u32(),
+                target_slot: transfer.target_slot.raw(),
+                target_col: transfer.target_col.raw_u32(),
                 amount: transfer.amount,
             });
         }
@@ -70,10 +70,10 @@ impl ResourceEconomyBoundaryScheduleReport {
                     kind_rank: KIND_RANK_RECIPE,
                     authoring_id,
                 },
-                source_slot: recipe.inputs.first().map(|i| i.slot).unwrap_or(0),
-                source_col: recipe.inputs.first().map(|i| i.col).unwrap_or(0),
-                target_slot: recipe.target_slot,
-                target_col: recipe.target_col,
+                source_slot: recipe.inputs.first().map(|i| i.slot.raw()).unwrap_or(0),
+                source_col: recipe.inputs.first().map(|i| i.col.raw_u32()).unwrap_or(0),
+                target_slot: recipe.target_slot.raw(),
+                target_col: recipe.target_col.raw_u32(),
                 amount: 0.0,
             });
         }
@@ -85,7 +85,7 @@ impl ResourceEconomyBoundaryScheduleReport {
 
 #[cfg(test)]
 mod tests {
-    use simthing_core::DiscreteTransferRegistration;
+    use simthing_core::{ColumnIndex, DiscreteTransferRegistration, SlotIndex};
 
     use super::*;
     use crate::resource_economy_compile::{
@@ -117,18 +117,18 @@ mod tests {
         let registry = registry_with_transfers(
             vec![
                 DiscreteTransferRegistration {
-                    source_slot: 0,
-                    source_col: 0,
-                    target_slot: 0,
-                    target_col: 1,
+                    source_slot: SlotIndex::new(0),
+                    source_col: ColumnIndex::new(0),
+                    target_slot: SlotIndex::new(0),
+                    target_col: ColumnIndex::new(1),
                     amount: 4.0,
                     order_band: 1,
                 },
                 DiscreteTransferRegistration {
-                    source_slot: 0,
-                    source_col: 0,
-                    target_slot: 0,
-                    target_col: 2,
+                    source_slot: SlotIndex::new(0),
+                    source_col: ColumnIndex::new(0),
+                    target_slot: SlotIndex::new(0),
+                    target_col: ColumnIndex::new(2),
                     amount: 3.0,
                     order_band: 0,
                 },

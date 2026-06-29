@@ -844,8 +844,8 @@ impl AccumulatorOpSession {
                 } in inputs
                 {
                     flat_inputs.push(AccumulatorInputGpu {
-                        slot: *slot,
-                        col: *col,
+                        slot: slot.raw(),
+                        col: col.raw_u32(),
                         unit_cost_bits: unit_cost.to_bits(),
                         flags: 0,
                     });
@@ -2426,7 +2426,10 @@ fn mk_dummy_eml_buffers(device: &wgpu::Device) -> (Buffer, Buffer) {
 
 #[cfg(test)]
 mod tests {
-    use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+    use simthing_core::{
+        AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex,
+        SourceSpec,
+    };
 
     use crate::accumulator_op::encode::EncodeError;
     use crate::accumulator_op::{
@@ -2447,12 +2450,15 @@ mod tests {
     fn bootstrap_ops() -> Vec<AccumulatorOp> {
         vec![
             AccumulatorOp {
-                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                source: SourceSpec::SlotValue {
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(0),
+                },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Constant(3.0),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(5.0),
@@ -2460,19 +2466,19 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(2, 0)],
+                targets: vec![(SlotIndex::new(2), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::SlotRange {
-                    start: 3,
+                    start: SlotIndex::new(3),
                     count: 2,
-                    col: 0,
+                    col: ColumnIndex::new(0),
                 },
                 combine: CombineFn::Sum,
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(5, 0)],
+                targets: vec![(SlotIndex::new(5), ColumnIndex::new(0))],
             },
         ]
     }
@@ -2518,12 +2524,15 @@ mod tests {
         let n_dims = 1u32;
         let mut values = vec![10.0, 7.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(0.0),
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
 
         let (ctx, mut session) = gpu_session(2, n_dims);
@@ -2545,7 +2554,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
 
         session.upload_values(&ctx, &[10.0]);
@@ -2567,7 +2576,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::AddToTarget,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
 
         session.upload_values(&ctx, &[10.0]);
@@ -2586,12 +2595,15 @@ mod tests {
 
         let mut values = vec![5.0, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(10.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &values);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -2601,12 +2613,15 @@ mod tests {
 
         let mut values = vec![10.0, 0.0];
         let op_small = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(3.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &values);
         session
@@ -2624,12 +2639,15 @@ mod tests {
         let (ctx, mut session) = gpu_session(2, n_dims);
         let mut values = vec![5.0, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(-3.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &values);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -2647,7 +2665,7 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(2.0),
@@ -2655,7 +2673,7 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
@@ -2666,20 +2684,26 @@ mod tests {
     fn upload_ops_rejects_duplicate_consumed_source_same_band() {
         let ops = vec![
             AccumulatorOp {
-                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                source: SourceSpec::SlotValue {
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(0),
+                },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Constant(1.0),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
-                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                source: SourceSpec::SlotValue {
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(0),
+                },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Constant(2.0),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(2, 0)],
+                targets: vec![(SlotIndex::new(2), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
@@ -2703,7 +2727,7 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(2.0),
@@ -2711,7 +2735,7 @@ mod tests {
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
@@ -2727,7 +2751,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(2.0),
@@ -2735,7 +2759,7 @@ mod tests {
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
@@ -2746,12 +2770,15 @@ mod tests {
     fn upload_ops_allows_always_consume_and_orderband_write_same_cell() {
         let ops = vec![
             AccumulatorOp {
-                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                source: SourceSpec::SlotValue {
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(0),
+                },
                 combine: CombineFn::Identity,
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Constant(1.0),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(2.0),
@@ -2759,7 +2786,7 @@ mod tests {
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 2);
@@ -2775,15 +2802,18 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::AddToTarget,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
             AccumulatorOp {
-                source: SourceSpec::SlotValue { slot: 0, col: 0 },
+                source: SourceSpec::SlotValue {
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(0),
+                },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(1),
                 scale: ScaleSpec::Constant(1.0),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 2);
@@ -2799,7 +2829,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(2.0),
@@ -2807,7 +2837,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(4, 1);
@@ -2824,7 +2854,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::AddToTarget,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(1.0),
@@ -2832,7 +2862,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::AddToTarget,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(1.0),
@@ -2840,7 +2870,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::AddToTarget,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
         ];
         let (ctx, mut session) = gpu_session(1, 1);
@@ -2860,7 +2890,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(2, 1);
         session.upload_values(&ctx, &[10.0, 20.0]);
@@ -2883,7 +2913,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(1, 1);
         session.upload_values(&ctx, &[10.0]);
@@ -2899,7 +2929,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         session
             .upload_ops(&ctx, std::slice::from_ref(&add_op))
@@ -2919,7 +2949,10 @@ mod tests {
         session.upload_previous_values(&ctx, &[0.2, 0.0]);
 
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 0.3,
@@ -2927,7 +2960,7 @@ mod tests {
             },
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
         session.tick(&ctx, 0).unwrap();
@@ -2953,7 +2986,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::EmitEvent,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &[0.0, 0.0]);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -2981,7 +3014,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::EmitEvent,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         session.upload_values(&ctx, &[0.0, 0.0]);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -3001,7 +3034,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::EmitEvent,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::Constant(3.0),
@@ -3009,7 +3042,7 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::EmitEvent,
-                targets: vec![(1, 0)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
             },
         ];
         session.upload_values(&ctx, &[0.0; 4]);
@@ -3028,15 +3061,17 @@ mod tests {
     fn b2_encodes_weighted_mean_stub() {
         let op = AccumulatorOp {
             source: SourceSpec::SlotRange {
-                start: 0,
+                start: SlotIndex::new(0),
                 count: 2,
-                col: 0,
+                col: ColumnIndex::new(0),
             },
-            combine: CombineFn::WeightedMean { weight_col: 1 },
+            combine: CombineFn::WeightedMean {
+                weight_col: ColumnIndex::new(1),
+            },
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 2);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -3050,12 +3085,15 @@ mod tests {
         };
 
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::EvalEML { tree_id: 1 },
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 1);
 
@@ -3130,7 +3168,10 @@ mod tests {
     fn b2_encodes_threshold_gate_with_none_consume() {
         use simthing_core::ThresholdDirection;
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 1.0,
@@ -3138,7 +3179,7 @@ mod tests {
             },
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 1);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -3150,8 +3191,8 @@ mod tests {
         let op = AccumulatorOp {
             source: SourceSpec::ConjunctiveCrossing {
                 inputs: vec![InputSpec {
-                    slot: 0,
-                    col: 0,
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(0),
                     unit_cost: 1.0,
                 }],
             },
@@ -3159,7 +3200,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::SubtractFromAllInputs,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let (ctx, mut session) = gpu_session(4, 1);
         session.upload_ops(&ctx, std::slice::from_ref(&op)).unwrap();
@@ -3173,7 +3214,7 @@ mod tests {
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(i, 0)],
+                targets: vec![(SlotIndex::new(i), ColumnIndex::new(0))],
             })
             .collect()
     }

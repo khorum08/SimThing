@@ -34,6 +34,16 @@
 //!     let _ = SlotIndex(0);
 //! }
 //! ```
+//!
+//! ```compile_fail
+//! use simthing_core::{ColumnIndex, SlotIndex};
+//!
+//! fn takes_column(_: ColumnIndex) {}
+//!
+//! fn slot_index_rejects_column_index_compile_fail(slot: SlotIndex) {
+//!     takes_column(slot);
+//! }
+//! ```
 
 use crate::property::RoleOffset;
 use serde::{Deserialize, Serialize};

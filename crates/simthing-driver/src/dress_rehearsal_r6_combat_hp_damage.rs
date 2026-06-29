@@ -30,7 +30,8 @@ use crate::dress_rehearsal_r5_movement_reenroll::{
     DressRehearsalR5Report, GALACTIC_STRUCTURAL_PARENT, SLOTS_PER_CELL,
 };
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+    ThresholdDirection,
 };
 use simthing_spec::{
     plan_mobility_alloc0, MobilityAlloc0BlockSpec, MobilityAlloc0BoundaryEvent,
@@ -626,14 +627,17 @@ pub fn emission_band_ship_attrition(
 fn reduce_up_accumulator_posture(damage_output: i64, channel_total: i64) -> i64 {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: 0,
-            col: DAMAGE_OUTPUT_COL,
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(DAMAGE_OUTPUT_COL as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::SubtractFromAllInputs,
-        targets: vec![(0, DAMAGE_OUTPUT_COL)],
+        targets: vec![(
+            SlotIndex::new(0),
+            ColumnIndex::new(DAMAGE_OUTPUT_COL as usize),
+        )],
     };
     let _ = op;
     channel_total + damage_output
@@ -642,14 +646,17 @@ fn reduce_up_accumulator_posture(damage_output: i64, channel_total: i64) -> i64 
 fn disburse_down_accumulator_posture(damage_in: i64, received_before: i64) -> i64 {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: 0,
-            col: DAMAGE_OUTPUT_COL,
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(DAMAGE_OUTPUT_COL as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::SubtractFromSource,
-        targets: vec![(0, DAMAGE_RECEIVED_COL)],
+        targets: vec![(
+            SlotIndex::new(0),
+            ColumnIndex::new(DAMAGE_RECEIVED_COL as usize),
+        )],
     };
     let _ = op;
     received_before + damage_in
@@ -658,8 +665,8 @@ fn disburse_down_accumulator_posture(damage_in: i64, received_before: i64) -> i6
 fn emission_band_accumulator_posture(ships_destroyed: i64) -> bool {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: 0,
-            col: DAMAGE_RECEIVED_COL,
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(DAMAGE_RECEIVED_COL as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Threshold {
@@ -668,7 +675,10 @@ fn emission_band_accumulator_posture(ships_destroyed: i64) -> bool {
         },
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::EmitEvent,
-        targets: vec![(0, SHIPS_DESTROYED_COL)],
+        targets: vec![(
+            SlotIndex::new(0),
+            ColumnIndex::new(SHIPS_DESTROYED_COL as usize),
+        )],
     };
     let _ = op;
     ships_destroyed > 0
@@ -677,8 +687,8 @@ fn emission_band_accumulator_posture(ships_destroyed: i64) -> bool {
 fn zero_cohort_threshold_emitted(num_ships_after: i64) -> bool {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: 0,
-            col: SHIPS_DESTROYED_COL,
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(SHIPS_DESTROYED_COL as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Threshold {

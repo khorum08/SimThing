@@ -29,7 +29,8 @@ use crate::dress_rehearsal_r6_combat_hp_damage::{
     FLEET_COHORT_NUM_SHIPS, FLEET_DAMAGE_PER_SHIP_PER_TICK, FLEET_HP_PER_SHIP,
 };
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+    ThresholdDirection,
 };
 use simthing_spec::{
     plan_mobility_alloc0, MobilityAlloc0BlockSpec, MobilityAlloc0BoundaryEvent,
@@ -939,8 +940,8 @@ fn arena_membership_for_cell(
 fn construction_emission_posture(progress_after: i64, ship_delta: i64) -> bool {
     let op = AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: 0,
-            col: CONSTRUCTION_PROGRESS_COL,
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(CONSTRUCTION_PROGRESS_COL as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::Threshold {
@@ -949,7 +950,10 @@ fn construction_emission_posture(progress_after: i64, ship_delta: i64) -> bool {
         },
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::EmitEvent,
-        targets: vec![(0, SHIP_COUNT_DELTA_COL)],
+        targets: vec![(
+            SlotIndex::new(0),
+            ColumnIndex::new(SHIP_COUNT_DELTA_COL as usize),
+        )],
     };
     let _ = op;
     progress_after >= SHIP_COST && ship_delta > 0

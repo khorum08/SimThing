@@ -5,7 +5,9 @@
 //! the single resident theater. It does not perform M-4A, multi-atlas scheduling, recursion, or
 //! physical memory compaction.
 
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_core::{
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
 
 use crate::dress_rehearsal_r6c_integrated_run::{R1bStructuralEvent, R1bStructuralEventKind};
@@ -1026,16 +1028,16 @@ fn compaction_copy_ops(layout: &StagingLayout, row: u32) -> Vec<AccumulatorOp> {
     for field in 0..COMPACTION_FIELDS {
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: layout.compaction_staging_slot(row, field),
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(layout.compaction_staging_slot(row, field)),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(COMPACTION_COPY_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
             targets: vec![(
-                layout.compaction_committed_slot(row, field),
-                R1A_COL_CURRENT,
+                SlotIndex::new(layout.compaction_committed_slot(row, field)),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
             )],
         });
     }
@@ -1047,14 +1049,17 @@ fn lineage_copy_ops(layout: &StagingLayout, row: u32) -> Vec<AccumulatorOp> {
     for field in 0..LINEAGE_FIELDS {
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: layout.lineage_staging_slot(row, field),
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(layout.lineage_staging_slot(row, field)),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(LINEAGE_COPY_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(layout.lineage_committed_slot(row, field), R1A_COL_CURRENT)],
+            targets: vec![(
+                SlotIndex::new(layout.lineage_committed_slot(row, field)),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
+            )],
         });
     }
     ops

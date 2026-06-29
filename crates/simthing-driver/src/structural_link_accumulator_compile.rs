@@ -3,8 +3,8 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec, InputSpec,
-    ScaleSpec, SourceSpec, StructuralScalarChannel,
+    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
+    InputSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_spec::{
     validate_scenario_links, validate_stead_mapping_consistency, ScenarioLinkError,
@@ -132,8 +132,8 @@ pub fn compile_structural_link_neighbor_sum_plan(
         let inputs: Vec<InputSpec> = neighbors
             .iter()
             .map(|&neighbor_slot| InputSpec {
-                slot: neighbor_slot,
-                col: input_col,
+                slot: SlotIndex::new(neighbor_slot),
+                col: ColumnIndex::new(input_col as usize),
                 unit_cost: 1.0,
             })
             .collect();
@@ -143,7 +143,10 @@ pub fn compile_structural_link_neighbor_sum_plan(
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::AddToTarget,
-            targets: vec![(target_slot as u32, output_col)],
+            targets: vec![(
+                SlotIndex::new(target_slot as u32),
+                ColumnIndex::new(output_col as usize),
+            )],
         });
     }
 

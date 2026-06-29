@@ -6,8 +6,9 @@
 use std::collections::BTreeMap;
 
 use simthing_core::{
-    eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SourceSpec,
+    eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerMask,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
+    ScaleSpec, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     cpu_horizon, params_from_config, set_debug_readback_allowed, AccumulatorOpSession,
@@ -327,15 +328,15 @@ fn measure_r1_disruption(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
         let target = target_slot_start + cell.cell_index;
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotRange {
-                start,
+                start: SlotIndex::new(start),
                 count,
-                col: col_input,
+                col: ColumnIndex::new(col_input as usize),
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(target, col_input)],
+            targets: vec![(SlotIndex::new(target), ColumnIndex::new(col_input as usize))],
         });
     }
 
@@ -344,8 +345,8 @@ fn measure_r1_disruption(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
         values[idx(target, col_before, n_dims)] = row.disruption_before;
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: target,
-                col: col_before,
+                slot: SlotIndex::new(target),
+                col: ColumnIndex::new(col_before as usize),
             },
             combine: CombineFn::EvalEML {
                 tree_id: R1_TREE_ID,
@@ -353,7 +354,7 @@ fn measure_r1_disruption(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
             gate: GateSpec::OrderBand(1),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(target, col_after)],
+            targets: vec![(SlotIndex::new(target), ColumnIndex::new(col_after as usize))],
         });
     }
 
@@ -729,15 +730,18 @@ fn run_sum_groups(ctx: &GpuContext, groups: &[Vec<f32>]) -> Vec<f32> {
         let count = slot - start;
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotRange {
-                start,
+                start: SlotIndex::new(start),
                 count,
-                col: 0,
+                col: ColumnIndex::new(0),
             },
             combine: CombineFn::Sum,
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(target_start + group_idx as u32, 0)],
+            targets: vec![(
+                SlotIndex::new(target_start + group_idx as u32),
+                ColumnIndex::new(0),
+            )],
         });
     }
     let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
@@ -762,12 +766,15 @@ fn run_single_eval_emission(
     let mut table = EmlGpuProgramTable::new(ctx, 64, 8);
     register_and_upload(ctx, &mut registry, &mut table, tree_id, display_name, nodes);
     let op = AccumulatorOp {
-        source: SourceSpec::SlotValue { slot: 0, col: 0 },
+        source: SourceSpec::SlotValue {
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(0),
+        },
         combine: CombineFn::EvalEML { tree_id },
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::EmitEvent,
-        targets: vec![(0, 0)],
+        targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
     };
     let mut session = AccumulatorOpSession::with_emission_capacity(ctx, 1, n_dims, 1);
     session.upload_values(ctx, slot_values);

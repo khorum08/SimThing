@@ -1266,8 +1266,8 @@ mod tests {
     #[test]
     fn c8b_intensity_op_plan_signature_controls_upload_cache() {
         use simthing_core::{
-            compile_intensity_behavior_to_eml, intensity_tree_id, AccumulatorOp, CombineFn,
-            ConsumeMode, GateSpec, IntensityBehavior, ScaleSpec, SourceSpec,
+            compile_intensity_behavior_to_eml, intensity_tree_id, AccumulatorOp, ColumnIndex,
+            CombineFn, ConsumeMode, GateSpec, IntensityBehavior, ScaleSpec, SlotIndex, SourceSpec,
         };
 
         let ctx = GpuContext::new_blocking().expect("gpu");
@@ -1283,14 +1283,17 @@ mod tests {
         let gen = runtime.eml_registry.generation();
 
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 2 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(2),
+            },
             combine: CombineFn::EvalEML {
                 tree_id: intensity_tree_id(0).0,
             },
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(0, 2)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(2))],
         };
         let signature = IntensityEmlOpPlanSignature {
             eml_registry_generation: gen,
@@ -1313,14 +1316,17 @@ mod tests {
         assert_eq!(runtime.intensity_op_upload_count(), 1);
 
         let op_slot1 = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 1, col: 2 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(1),
+                col: ColumnIndex::new(2),
+            },
             combine: CombineFn::EvalEML {
                 tree_id: intensity_tree_id(0).0,
             },
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(1, 2)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(2))],
         };
         let signature_grown = IntensityEmlOpPlanSignature {
             eml_registry_generation: gen,

@@ -7,7 +7,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_core::{
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
 
 use crate::runtime_0080_0_r0::{RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE};
@@ -1178,14 +1180,17 @@ fn remap_copy_ops(layout: &ApplyLayout, row: u32) -> Vec<AccumulatorOp> {
     (0..SLOT_REMAP_FIELDS)
         .map(|field| AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: layout.remap_staging_slot(row, field),
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(layout.remap_staging_slot(row, field)),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(SLOT_REMAP_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(layout.remap_committed_slot(row, field), R1A_COL_CURRENT)],
+            targets: vec![(
+                SlotIndex::new(layout.remap_committed_slot(row, field)),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
+            )],
         })
         .collect()
 }
@@ -1194,14 +1199,17 @@ fn compacted_copy_ops(layout: &ApplyLayout, row: u32) -> Vec<AccumulatorOp> {
     (0..COMPACTED_SLOT_FIELDS)
         .map(|field| AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: layout.compacted_staging_slot(row, field),
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(layout.compacted_staging_slot(row, field)),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(COMPACTED_TABLE_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(layout.compacted_committed_slot(row, field), R1A_COL_CURRENT)],
+            targets: vec![(
+                SlotIndex::new(layout.compacted_committed_slot(row, field)),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
+            )],
         })
         .collect()
 }
@@ -1210,16 +1218,16 @@ fn membership_copy_ops(layout: &ApplyLayout, row: u32) -> Vec<AccumulatorOp> {
     (0..MEMBERSHIP_REMAP_FIELDS)
         .map(|field| AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: layout.membership_staging_slot(row, field),
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(layout.membership_staging_slot(row, field)),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(MEMBERSHIP_REMAP_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
             targets: vec![(
-                layout.membership_committed_slot(row, field),
-                R1A_COL_CURRENT,
+                SlotIndex::new(layout.membership_committed_slot(row, field)),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
             )],
         })
         .collect()

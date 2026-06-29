@@ -215,20 +215,20 @@ pub fn execute_threshold_ops_cpu(
                         "Threshold+EmitEvent requires SlotValue source",
                     ));
                 };
-                let prev = previous_values[idx(slot, col, n_dims)];
-                let curr = values[idx(slot, col, n_dims)];
+                let prev = previous_values[idx(slot.raw(), col.raw_u32(), n_dims)];
+                let curr = values[idx(slot.raw(), col.raw_u32(), n_dims)];
                 if threshold_crossed_cpu(prev, curr, threshold, direction) {
                     records.push(ThresholdEmission {
                         reg_idx: op_idx as u32,
-                        slot,
-                        col,
+                        slot: slot.raw(),
+                        col: col.raw_u32(),
                         value: curr,
                     });
                 }
             }
             ConsumeMode::None => match &op.source {
                 SourceSpec::SlotValue { slot, col } => {
-                    let i = idx(*slot, *col, n_dims);
+                    let i = idx(slot.raw(), col.raw_u32(), n_dims);
                     let prev = previous_values[i];
                     let curr = values[i];
                     if threshold_crossed_cpu(prev, curr, threshold, direction) {
@@ -309,7 +309,7 @@ fn clamped_transfer(
             "transfer without Constant scale",
         ));
     };
-    let available = values[idx(slot, col, n_dims)];
+    let available = values[idx(slot.raw(), col.raw_u32(), n_dims)];
     Ok(requested.max(0.0).min(available.max(0.0)))
 }
 
@@ -323,7 +323,7 @@ fn clamp_transfer(
         let SourceSpec::SlotValue { slot, col } = op.source else {
             return Ok(write_value);
         };
-        let available = values[idx(slot, col, n_dims)];
+        let available = values[idx(slot.raw(), col.raw_u32(), n_dims)];
         Ok(write_value.max(0.0).min(available.max(0.0)))
     } else {
         Ok(write_value)
@@ -347,14 +347,14 @@ fn gather_and_combine(
             SourceSpec::SlotRange { start, count, col } => {
                 let mut sum = 0.0f32;
                 for offset in 0..*count {
-                    sum += values[idx(start + offset, *col, n_dims)];
+                    sum += values[idx(start.saturating_add(offset).raw(), col.raw_u32(), n_dims)];
                 }
                 Ok(sum)
             }
             SourceSpec::ConjunctiveCrossing { inputs } => {
                 let mut sum = 0.0f32;
                 for input in inputs {
-                    sum += values[idx(input.slot, input.col, n_dims)];
+                    sum += values[idx(input.slot.raw(), input.col.raw_u32(), n_dims)];
                 }
                 Ok(sum)
             }
@@ -373,7 +373,7 @@ fn gather_and_combine(
                 if input.unit_cost <= 0.0 {
                     return Ok(0.0);
                 }
-                let available = values[idx(input.slot, input.col, n_dims)];
+                let available = values[idx(input.slot.raw(), input.col.raw_u32(), n_dims)];
                 amount = amount.min(available / input.unit_cost);
             }
             if inputs.is_empty() {
@@ -389,7 +389,7 @@ fn gather_and_combine(
 fn read_source(values: &[f32], source: &SourceSpec, n_dims: u32) -> Result<f32, CpuOracleError> {
     match source {
         SourceSpec::Constant(value) => Ok(*value),
-        SourceSpec::SlotValue { slot, col } => Ok(values[idx(*slot, *col, n_dims)]),
+        SourceSpec::SlotValue { slot, col } => Ok(values[idx(slot.raw(), col.raw_u32(), n_dims)]),
         SourceSpec::SlotRange { .. } | SourceSpec::ConjunctiveCrossing { .. } => {
             Err(CpuOracleError::Unsupported("source for Identity"))
         }
@@ -403,7 +403,7 @@ fn apply_targets(
     n_dims: u32,
 ) -> Result<(), CpuOracleError> {
     for (slot, col) in &op.targets {
-        let i = idx(*slot, *col, n_dims);
+        let i = idx(slot.raw(), col.raw_u32(), n_dims);
         match op.consume {
             ConsumeMode::AddToTarget => values[i] += write_value,
             ConsumeMode::ScaleTarget => values[i] *= write_value,
@@ -440,7 +440,7 @@ fn apply_consume(
         | ConsumeMode::ResetTarget => Ok(()),
         ConsumeMode::SubtractFromSource => match op.source {
             SourceSpec::SlotValue { slot, col } => {
-                values[idx(slot, col, n_dims)] -= write_value;
+                values[idx(slot.raw(), col.raw_u32(), n_dims)] -= write_value;
                 Ok(())
             }
             _ => Err(CpuOracleError::Unsupported(
@@ -455,7 +455,7 @@ fn apply_consume(
             };
             let unit_count = write_value;
             for input in inputs {
-                let i = idx(input.slot, input.col, n_dims);
+                let i = idx(input.slot.raw(), input.col.raw_u32(), n_dims);
                 values[i] = (values[i] - unit_count * input.unit_cost).max(0.0);
             }
             Ok(())
@@ -485,7 +485,8 @@ fn maybe_emit_event(
 mod tests {
     use super::*;
     use simthing_core::{
-        CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+        ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+        ThresholdDirection,
     };
 
     #[test]
@@ -505,12 +506,15 @@ mod tests {
     fn accumulator_scale_constant_zero_writes_zero() {
         let mut values = vec![10.0, 7.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(0.0),
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 0.0);
@@ -520,12 +524,15 @@ mod tests {
     fn accumulator_transfer_clamps_to_available_source() {
         let mut values = vec![5.0, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(10.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 5.0);
@@ -533,12 +540,15 @@ mod tests {
 
         let mut values = vec![10.0, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(3.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 3.0);
@@ -549,12 +559,15 @@ mod tests {
     fn accumulator_transfer_rejects_negative_requested_transfer() {
         let mut values = vec![5.0, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(-3.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         execute_ops_cpu(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
         assert_eq!(values[1], 0.0);
@@ -570,7 +583,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::EmitEvent,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         let records =
             execute_ops_cpu_with_emissions(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
@@ -589,7 +602,10 @@ mod tests {
         let previous = vec![0.2, 0.0];
         let mut values = vec![0.5, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 0.3,
@@ -597,7 +613,7 @@ mod tests {
             },
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let records =
             execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)
@@ -611,7 +627,10 @@ mod tests {
         let previous = vec![0.4, 0.0];
         let mut values = vec![0.5, 0.0];
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 0.3,
@@ -619,7 +638,7 @@ mod tests {
             },
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let records =
             execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)

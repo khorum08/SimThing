@@ -1,8 +1,8 @@
 //! SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0 — lower admitted owner-silo participants to AccumulatorOp plans.
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec, InputSpec,
-    ScaleSpec, SourceSpec, StructuralScalarChannel,
+    AccumulatorOp, ColumnIndex, CombineFn, CompiledAccumulatorOpPlan, ConsumeMode, GateSpec,
+    InputSpec, ScaleSpec, SlotIndex, SourceSpec, StructuralScalarChannel,
 };
 use simthing_spec::{
     evaluate_owner_silo_flow, owner_silo_flow_participant_inputs, OwnerSiloAdmissionClassification,
@@ -68,8 +68,8 @@ pub(crate) fn compile_participant_channel_sum_plan(
     let n_dims = input_channel.0.max(output_channel.0) + 1;
     let inputs: Vec<InputSpec> = (0..participant_count)
         .map(|slot| InputSpec {
-            slot,
-            col: input_channel.0,
+            slot: SlotIndex::new(slot),
+            col: ColumnIndex::new(input_channel.0 as usize),
             unit_cost: 1.0,
         })
         .collect();
@@ -80,7 +80,10 @@ pub(crate) fn compile_participant_channel_sum_plan(
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(aggregate_slot, output_channel.0)],
+        targets: vec![(
+            SlotIndex::new(aggregate_slot),
+            ColumnIndex::new(output_channel.0 as usize),
+        )],
     }];
 
     CompiledAccumulatorOpPlan {
