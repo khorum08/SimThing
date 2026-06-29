@@ -114,3 +114,12 @@ pub use tree_mutation::apply_structural_mutations;
 mod kind_production_audit;
 #[cfg(test)]
 mod semantic_surface_audit;
+
+#[cfg(test)]
+mod as_sim_semantic_free_public_surface_closure {
+    #[test]
+    fn as_sim_semantic_free_public_surface_closure_is_clean() {
+        super::semantic_surface_audit::tests::as_sim_semantic_free_public_surface_audit();
+        super::kind_production_audit::tests::as_kind_out_of_tick_production_audit_has_no_runtime_kind_reads();
+    }
+}

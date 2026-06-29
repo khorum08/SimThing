@@ -292,13 +292,12 @@ impl SimSession {
     /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
     pub fn sync_resource_flow_if_enabled(&mut self) -> Result<(), SessionError> {
         let enabled = self.proto.flags.use_accumulator_resource_flow;
-        let root = self.proto.root.clone().into_admitted();
         crate::arena_allocation_sync::sync_resource_flow_accumulator(
             &mut self.state,
             &self.proto.registry,
             &self.spec_state.arena_registry,
             &self.spec_state.arena_participant_scaffold,
-            &root,
+            &self.proto.root,
             &self.proto.allocator,
             &self.spec_state.resolved_gated_rates,
             enabled,
@@ -393,7 +392,7 @@ impl SimSession {
         // running the install, so a failed install leaves the
         // just-built `BoundaryProtocol` untouched. See
         // `docs/adr/install_clone_then_commit.md`.
-        let mut admitted = session.proto.root.clone().into_admitted();
+        let mut admitted = session.scenario.root.clone();
         let spec_state = install_atomic(
             game_mode,
             &session.scenario,
@@ -401,7 +400,7 @@ impl SimSession {
             &mut admitted,
             &mut session.proto.allocator,
         )?;
-        session.proto.root.replace(admitted);
+        session.proto.root = SimRuntimeTree::admit(admitted);
         apply_resource_economy_opt_in(&mut session.proto.flags, game_mode);
         session.resource_flow_execution_profile = game_mode.resource_flow_execution_profile;
         session.resource_flow_flag_source =
@@ -1017,17 +1016,15 @@ impl SimSession {
             self.last_resource_flow_dynamic_enrollment_report = None;
             return Ok(());
         }
-        let mut admitted = self.proto.root.clone().into_admitted();
         let report =
             crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
                 &outcome.fission,
                 &mut self.spec_state.arena_registry,
                 &mut self.spec_state.arena_participant_scaffold,
-                &mut admitted,
+                &mut self.proto.root,
                 &self.proto.registry,
                 &mut self.proto.allocator,
             );
-        self.proto.root.replace(admitted);
         let should_sync = report.any_admissions() && self.proto.flags.use_accumulator_resource_flow;
         if !report.admissions.is_empty() || !report.rejections.is_empty() {
             self.last_resource_flow_dynamic_enrollment_report = Some(report);

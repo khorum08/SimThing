@@ -140,7 +140,7 @@ fn open_frontier_v1_flat_star_gpu() -> FlatStarSession {
         .expect("food_flow registered");
     let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
         .expect("column refs");
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

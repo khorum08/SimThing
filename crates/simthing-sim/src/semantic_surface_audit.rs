@@ -2,7 +2,7 @@
 //! name semantic kinds or expose raw `SimThing` borrows.
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use std::path::{Path, PathBuf};
 
     const PUBLIC_MODULES: &[&str] = &[
@@ -29,6 +29,37 @@ mod tests {
     const KIND_FORBIDDEN: &[&str] = &["SimThingKind", "SimThingKindTag", "kind_tag_to_kind"];
 
     const RAW_BORROW_FORBIDDEN: &[&str] = &["&SimThing", "&mut SimThing"];
+
+    fn strip_doc_comments(source: &str) -> String {
+        source
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim_start();
+                !trimmed.starts_with("///") && !trimmed.starts_with("//!")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    fn is_admit_seam_line(line: &str) -> bool {
+        line.contains("pub fn admit(") && line.contains("SimThing")
+    }
+
+    fn line_carries_owned_simthing_return(line: &str) -> bool {
+        let Some(idx) = line.find("-> SimThing") else {
+            return false;
+        };
+        let after = &line[idx + "-> SimThing".len()..];
+        !after.starts_with("Id") && !after.starts_with("Kind")
+    }
+
+    fn line_carries_owned_simthing_param(line: &str) -> bool {
+        line.contains(": SimThing,")
+            || line.contains(": SimThing}")
+            || line.contains("SimThing)")
+                && !line.contains("SimThingId")
+                && !line.contains("SimThingKind")
+    }
 
     fn sim_src_dir() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
@@ -70,7 +101,7 @@ mod tests {
     }
 
     fn production_text(source: &str) -> String {
-        strip_comments(&strip_cfg_test_modules(source))
+        strip_comments(&strip_doc_comments(&strip_cfg_test_modules(source)))
     }
 
     fn is_public_fn_line(line: &str) -> bool {
@@ -84,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn as_sim_semantic_free_public_surface_audit() {
+    pub fn as_sim_semantic_free_public_surface_audit() {
         let src_dir = sim_src_dir();
         let mut violations = Vec::new();
 
@@ -111,12 +142,17 @@ mod tests {
                                 .push(format!("{rel}:{line_no}: public fn borrows raw `{token}`"));
                         }
                     }
-                    if (line.contains("pub fn admit(")
-                        || line.contains("pub fn into_admitted(")
-                        || line.contains("pub fn replace("))
-                        && line.contains("SimThing")
-                    {
-                        violations.retain(|v| !v.starts_with(&format!("{rel}:{line_no}:")));
+                    if !is_admit_seam_line(line) {
+                        if line_carries_owned_simthing_return(line)
+                            || line.contains("-> Option<SimThing>")
+                            || line.contains("-> Vec<SimThing>")
+                            || line.contains("-> Result<SimThing")
+                            || line_carries_owned_simthing_param(line)
+                        {
+                            violations.push(format!(
+                                "{rel}:{line_no}: public fn carries owned `SimThing`"
+                            ));
+                        }
                     }
                 }
                 if is_public_field_line(line) {
@@ -145,6 +181,11 @@ mod tests {
 
     #[test]
     fn sim_public_surface_rejects_raw_simthing_borrows() {
+        as_sim_semantic_free_public_surface_audit();
+    }
+
+    #[test]
+    fn sim_public_surface_rejects_owned_simthing_escape() {
         as_sim_semantic_free_public_surface_audit();
     }
 }

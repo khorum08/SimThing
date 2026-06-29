@@ -169,6 +169,11 @@ pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
     }
 }
 
+/// Kind-free topology predicate for callers that must not name [`SimThingKind`].
+pub fn is_arena_participant_node(node: &SimThing) -> bool {
+    kind_matches("ArenaParticipant", &node.kind)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

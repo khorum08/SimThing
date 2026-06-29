@@ -8,13 +8,14 @@ use simthing_core::{
     EmlExpressionRegistry, LogTier, SimThing, SimThingId, SimThingKind, SubFieldRole, SubFieldSpec,
 };
 use simthing_driver::{
-    all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan,
+    all_reserved_gap_slots, arena_participant_sibling_slots, build_execution_plan_from_authoring,
     gap_pool_snapshot, materialize_arena_participants, nested_fission_gap_report,
-    plan_arena_allocation, refresh_fission_participant_child, register_child_share_formula,
-    reserve_gap_pools_for_parent_slots, resolve_node_columns, run_arena_allocation_oracle,
-    slot_in_participant_sibling_range, slots_are_contiguous, try_alloc_participant_child_in_gap,
-    validate_resource_flow_preflight, ArenaParticipantAllocationReport, FissionPolicy,
-    GapAllocError, GpuArenaDescriptor, HierarchyError, HierarchyNode, NodeColumnRefs,
+    plan_arena_allocation, refresh_fission_participant_child_on_authoring,
+    register_child_share_formula, reserve_gap_pools_for_parent_slots, resolve_node_columns,
+    run_arena_allocation_oracle, slot_in_participant_sibling_range, slots_are_contiguous,
+    try_alloc_participant_child_in_gap, validate_resource_flow_preflight,
+    ArenaParticipantAllocationReport, FissionPolicy, GapAllocError, GpuArenaDescriptor,
+    HierarchyError, HierarchyNode, NodeColumnRefs,
 };
 use simthing_gpu::{GpuContext, SlotAllocator, WorldGpuState};
 use simthing_sim::PipelineFlags;
@@ -230,7 +231,7 @@ fn nested_d4_fixture() -> NestedFixture {
 }
 
 fn layout_from_fixture(f: &NestedFixture) -> simthing_driver::ArenaTreeLayout {
-    build_execution_plan(
+    build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&f.arena),
         &f.root,
@@ -455,7 +456,7 @@ fn e11b_nested_rejects_noncontiguous_active_children_without_compaction() {
     let mid_slot = f.alloc.slot_of(f.mid_ids.node_id).unwrap();
     let flow_id = f.arena.flow_property_id;
 
-    refresh_fission_participant_child(
+    refresh_fission_participant_child_on_authoring(
         &mut f.scaffold,
         &mut f.root,
         mid_slot,
@@ -467,7 +468,7 @@ fn e11b_nested_rejects_noncontiguous_active_children_without_compaction() {
     )
     .expect("gap fission refresh should claim");
 
-    let plan_err = build_execution_plan(
+    let plan_err = build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&f.arena),
         &f.root,

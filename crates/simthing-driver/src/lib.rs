@@ -123,20 +123,23 @@ pub use arena_allocation_sync::{
     ResourceFlowSyncReport,
 };
 pub use arena_hierarchy::{
-    build_custom_layout, build_execution_plan, build_flat_star_layout, build_nested_layout,
-    nested_hierarchy_materialization_report, resolve_node_columns, total_bands_for_depth,
-    ArenaBandLayout, ArenaExecutionPlan, ArenaTreeLayout, HierarchyError, HierarchyNode,
-    NestedHierarchyMaterializationReport, NodeColumnRefs,
+    build_custom_layout, build_execution_plan, build_execution_plan_from_authoring,
+    build_flat_star_layout, build_nested_layout, nested_hierarchy_materialization_report,
+    resolve_node_columns, total_bands_for_depth, ArenaBandLayout, ArenaExecutionPlan,
+    ArenaTreeLayout, HierarchyError, HierarchyNode, NestedHierarchyMaterializationReport,
+    NodeColumnRefs,
 };
 pub use arena_participant::{
     all_reserved_gap_slots, arena_participant_sibling_slots, commit_dynamic_arena_root_append,
-    gap_pool_snapshot, materialize_arena_participants, nested_fission_gap_report,
-    prepare_dynamic_arena_root_append, refresh_fission_participant_child,
-    reserve_gap_pools_for_parent_slots, slot_in_participant_sibling_range, slots_are_contiguous,
-    try_alloc_participant_child_in_gap, try_append_arena_root_sibling_participant,
-    ArenaParticipantAllocationReport, ArenaParticipantIndex, ArenaParticipantScaffold,
-    DynamicEnrollmentError, GapAllocError, NestedFissionGapReport,
-    PendingDynamicArenaRootParticipant, ReservedGapPool,
+    commit_dynamic_arena_root_append_to_authoring, gap_pool_snapshot,
+    materialize_arena_participants, nested_fission_gap_report, prepare_dynamic_arena_root_append,
+    prepare_dynamic_arena_root_append_from_authoring, refresh_fission_participant_child,
+    refresh_fission_participant_child_on_authoring, reserve_gap_pools_for_parent_slots,
+    slot_in_participant_sibling_range, slots_are_contiguous, try_alloc_participant_child_in_gap,
+    try_append_arena_root_sibling_participant,
+    try_append_arena_root_sibling_participant_on_authoring, ArenaParticipantAllocationReport,
+    ArenaParticipantIndex, ArenaParticipantScaffold, DynamicEnrollmentError, GapAllocError,
+    NestedFissionGapReport, PendingDynamicArenaRootParticipant, ReservedGapPool,
 };
 pub use arena_pressure::{
     compile_arena_pressure_scatter, project_arena_pressure_seeds, ArenaPressureError,
@@ -515,7 +518,8 @@ pub use resource_flow_dynamic_enrollment_soak::{
 };
 pub use resource_flow_enrollment::{resolve_resource_flow_enrollment, EnrollmentError};
 pub use resource_flow_fission_enrollment::{
-    react_to_fission_resource_flow_enrollment, DynamicFissionEnrollmentAdmission,
+    react_to_fission_resource_flow_enrollment,
+    react_to_fission_resource_flow_enrollment_on_authoring, DynamicFissionEnrollmentAdmission,
     DynamicFissionEnrollmentRejection, DynamicFissionEnrollmentReport,
 };
 pub use resource_flow_flat_star_continued_soak::{

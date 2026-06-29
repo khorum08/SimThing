@@ -194,7 +194,7 @@ fn nested_layout_for(f: &RonMaterialized) -> simthing_driver::ArenaTreeLayout {
         wildcard_max_expansion: None,
         reserved_orderband_depth: 0,
     };
-    build_execution_plan(
+    build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&arena),
         &f.root,
@@ -272,7 +272,7 @@ fn e11b_nested_materialization_ron_flat_star_regression() {
         wildcard_max_expansion: None,
         reserved_orderband_depth: 0,
     };
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &reg,
         std::slice::from_ref(&arena),
         &root,

@@ -75,4 +75,6 @@ pub use property::{
 };
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};
-pub use simthing::{kind_matches, reserve_simthing_ids_from_tree, SimThing, SimThingKind};
+pub use simthing::{
+    is_arena_participant_node, kind_matches, reserve_simthing_ids_from_tree, SimThing, SimThingKind,
+};

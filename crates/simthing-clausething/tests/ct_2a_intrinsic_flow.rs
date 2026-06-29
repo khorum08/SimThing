@@ -210,7 +210,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
         "ct2a_food",
     )
     .expect("column refs");
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

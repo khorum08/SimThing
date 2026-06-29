@@ -162,7 +162,7 @@ pub fn assert_flat_star_only_no_nested_claims(fx: &FlatStarSession) {
         "Resource Flow soak must use explicit participants"
     );
 
-    let execution = build_execution_plan(
+    let execution = build_execution_plan_from_authoring(
         &fx.session.proto.registry,
         &fx.session.spec_state.arena_registry.arenas,
         &fx.session.proto.root,

@@ -162,11 +162,10 @@ fn rf_pressure_feeds_heatmap_urgency_threshold_and_boundary_commitment() {
     //    the arena bands resolve flows on GPU.
     let (mut session, farmer_id) = open_rf_session(&hydrated);
     assert!(session.proto.flags.use_accumulator_resource_flow);
-    let root = session.proto.root.clone().into_admitted();
     let plan = build_execution_plan(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &root,
+        &session.proto.root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -313,7 +312,10 @@ fn rf_pressure_feeds_heatmap_urgency_threshold_and_boundary_commitment() {
         }
         node.children.iter().find_map(|c| find(c, id))
     }
-    let admitted = session.proto.root.clone().into_admitted();
+    let admitted: SimThing = serde_json::from_str(
+        &serde_json::to_string(&session.proto.root).expect("serialize runtime root"),
+    )
+    .expect("authoring tree roundtrip");
     let farmer = find(&admitted, farmer_id).expect("farmer in tree");
     assert!(
         farmer

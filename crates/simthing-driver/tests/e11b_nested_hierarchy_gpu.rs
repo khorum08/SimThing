@@ -226,7 +226,7 @@ fn scaffold_for(
 }
 
 fn layout_from_fixture(f: &NestedFixture) -> simthing_driver::ArenaTreeLayout {
-    build_execution_plan(
+    build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&f.arena),
         &f.root,
@@ -368,7 +368,7 @@ fn e11b_nested_execution_plan_has_depth_ordered_bands() {
 fn e11b_nested_preserves_participant_identity() {
     let f = nested_d4_fixture();
     let layout = layout_from_fixture(&f);
-    let slots_by_host = &build_execution_plan(
+    let slots_by_host = &build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&f.arena),
         &f.root,

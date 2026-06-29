@@ -98,7 +98,7 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
     }
     game_mode.properties.clear();
     let mut session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
-    let plan = build_execution_plan(
+    let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

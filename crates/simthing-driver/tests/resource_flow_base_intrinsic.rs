@@ -214,7 +214,7 @@ fn install_consumes_base_intrinsic_obligations_without_manual_side_channel() {
         .expect("food_flow");
     let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
         .expect("cols");
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
@@ -261,7 +261,7 @@ fn gpu_resource_flow_consumes_installed_base_rate_against_oracle() {
         .expect("food_flow");
     let cols = resolve_node_columns(&session.proto.registry.property(flow_id).layout, "food")
         .expect("cols");
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

@@ -7,8 +7,8 @@ PASS — public CPU-boundary raw-tree backdoors sealed; replay/delta payloads an
 ## PR / branch / merge
 
 - Branch: `codex/as-sim-semantic-free-0b`
-- PR: (pending push)
-- Merge: (pending)
+- PR: #959
+- Merge: `886ad2d74f`
 
 ## What changed
 

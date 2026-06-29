@@ -412,7 +412,7 @@ fn install_consumes_category_base_obligations_without_manual_side_channel() {
         .iter()
         .position(|arena| arena.name == "settlement_food")
         .expect("settlement_food arena") as u32;
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,
@@ -465,7 +465,7 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
         .iter()
         .position(|arena| arena.name == "settlement_food")
         .expect("settlement_food arena") as u32;
-    let layout = build_execution_plan(
+    let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
         &session.proto.root,

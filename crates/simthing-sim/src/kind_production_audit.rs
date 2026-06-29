@@ -3,7 +3,7 @@
 //! This module exists only under `#[cfg(test)]`; it is not part of the runtime surface.
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use std::path::{Path, PathBuf};
 
     const FORBIDDEN: &[&str] = &["SimThingKind", "SimThingKindTag", "kind_tag_to_kind"];
@@ -86,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn as_kind_out_of_tick_production_audit_has_no_runtime_kind_reads() {
+    pub fn as_kind_out_of_tick_production_audit_has_no_runtime_kind_reads() {
         let src_dir = sim_src_dir();
         let mut files = Vec::new();
         collect_rs_files(&src_dir, &mut files);

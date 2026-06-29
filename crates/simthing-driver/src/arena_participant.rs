@@ -9,6 +9,7 @@ use simthing_core::{
     SimThingKind, SubFieldRole,
 };
 use simthing_gpu::{SlotAllocError, SlotAllocator};
+use simthing_sim::SimRuntimeTree;
 use simthing_spec::{PropertyKey, ResourceFlowSpec, SpecError};
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
@@ -414,7 +415,7 @@ pub struct PendingDynamicArenaRootParticipant {
 /// Preflight arena-root sibling append without mutating tree/scaffold/allocator/registry.
 pub fn prepare_dynamic_arena_root_append(
     scaffold: &ArenaParticipantScaffold,
-    root: &SimThing,
+    root: &SimRuntimeTree,
     arena_idx: ArenaIdx,
     arena_name: &str,
     child_hosted_id: SimThingId,
@@ -439,7 +440,7 @@ pub fn prepare_dynamic_arena_root_append(
         .get(&arena_idx)
         .ok_or(DynamicEnrollmentError::UnknownArena(arena_idx))?;
 
-    let sibling_slots = arena_participant_sibling_slots(root, arena_root_id, allocator);
+    let sibling_slots = arena_participant_sibling_slots_runtime(root, arena_root_id, allocator);
     if sibling_slots.is_empty() {
         return Err(DynamicEnrollmentError::EmptyParticipantBlock {
             arena: arena_name.to_string(),
@@ -490,7 +491,7 @@ pub fn prepare_dynamic_arena_root_append(
 pub fn commit_dynamic_arena_root_append(
     pending: PendingDynamicArenaRootParticipant,
     scaffold: &mut ArenaParticipantScaffold,
-    root: &mut SimThing,
+    root: &mut SimRuntimeTree,
     arena_registry: &mut ArenaRegistry,
     allocator: &mut SlotAllocator,
 ) -> Result<SlotId, DynamicEnrollmentError> {
@@ -515,8 +516,15 @@ pub fn commit_dynamic_arena_root_append(
         });
     }
 
-    let arena_root = find_child_mut(root, pending.arena_root_id).expect("arena root in tree");
-    arena_root.add_child(pending.participant_node);
+    if !root.append_child(
+        pending.arena_root_id,
+        SimRuntimeTree::admit(pending.participant_node),
+    ) {
+        let _ = allocator.tombstone(participant_id);
+        return Err(DynamicEnrollmentError::EmptyParticipantBlock {
+            arena: pending.arena_name,
+        });
+    }
 
     scaffold
         .index
@@ -535,7 +543,7 @@ pub fn commit_dynamic_arena_root_append(
 /// Does not consume E-10R3 gap pools. Rejects when `last_sibling + 1` is blocked.
 pub fn try_append_arena_root_sibling_participant(
     scaffold: &mut ArenaParticipantScaffold,
-    root: &mut SimThing,
+    root: &mut SimRuntimeTree,
     arena_idx: ArenaIdx,
     arena_name: &str,
     child_hosted_id: SimThingId,
@@ -589,7 +597,7 @@ pub fn try_alloc_participant_child_in_gap(
 /// Minimal E-11 fission refresh: claim gap slot and attach `ArenaParticipant` under parent.
 pub fn refresh_fission_participant_child(
     scaffold: &mut ArenaParticipantScaffold,
-    root: &mut SimThing,
+    root: &mut SimRuntimeTree,
     parent_participant_slot: SlotId,
     child_hosted_id: SimThingId,
     flow_property_id: SimPropertyId,
@@ -615,21 +623,8 @@ pub fn refresh_fission_participant_child(
     let parent_id = allocator
         .owner_of(parent_participant_slot)
         .expect("parent slot");
-    let parent = find_child_mut(root, parent_id).expect("parent in tree");
-    parent.add_child(child_participant);
+    root.append_child(parent_id, SimRuntimeTree::admit(child_participant));
     Ok(slot)
-}
-
-fn find_child_mut(node: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
-    if node.id == id {
-        return Some(node);
-    }
-    for child in &mut node.children {
-        if let Some(found) = find_child_mut(child, id) {
-            return Some(found);
-        }
-    }
-    None
 }
 
 /// Return contiguous arena-participant child slots under an arena root (topology order).
@@ -648,6 +643,128 @@ pub fn arena_participant_sibling_slots(
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Kind-free sibling-slot query for admitted runtime trees.
+pub fn arena_participant_sibling_slots_runtime(
+    root: &SimRuntimeTree,
+    arena_root_id: SimThingId,
+    allocator: &SlotAllocator,
+) -> Vec<SlotId> {
+    root.snapshot_node(arena_root_id)
+        .map(|arena_root| {
+            arena_root
+                .children
+                .iter()
+                .filter(|&&child_id| root.node_is_arena_participant(child_id))
+                .map(|&child_id| allocator.slot_of(child_id).expect("participant has slot"))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn runtime_to_authoring(runtime: SimRuntimeTree) -> SimThing {
+    let json = serde_json::to_string(&runtime).expect("serialize runtime tree");
+    serde_json::from_str(&json).expect("deserialize authoring tree")
+}
+
+/// Authoring/test preflight for dynamic arena-root append.
+pub fn prepare_dynamic_arena_root_append_from_authoring(
+    scaffold: &ArenaParticipantScaffold,
+    root: &SimThing,
+    arena_idx: ArenaIdx,
+    arena_name: &str,
+    child_hosted_id: SimThingId,
+    flow_property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    allocator: &SlotAllocator,
+    arena_registry: &ArenaRegistry,
+) -> Result<PendingDynamicArenaRootParticipant, DynamicEnrollmentError> {
+    prepare_dynamic_arena_root_append(
+        scaffold,
+        &SimRuntimeTree::admit(root.clone()),
+        arena_idx,
+        arena_name,
+        child_hosted_id,
+        flow_property_id,
+        registry,
+        allocator,
+        arena_registry,
+    )
+}
+
+/// Authoring/test commit for dynamic arena-root append.
+pub fn commit_dynamic_arena_root_append_to_authoring(
+    pending: PendingDynamicArenaRootParticipant,
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    arena_registry: &mut ArenaRegistry,
+    allocator: &mut SlotAllocator,
+) -> Result<SlotId, DynamicEnrollmentError> {
+    let mut runtime = SimRuntimeTree::admit(root.clone());
+    let slot = commit_dynamic_arena_root_append(
+        pending,
+        scaffold,
+        &mut runtime,
+        arena_registry,
+        allocator,
+    )?;
+    *root = runtime_to_authoring(runtime);
+    Ok(slot)
+}
+
+/// Authoring/test append for flat-star fission enrollment.
+pub fn try_append_arena_root_sibling_participant_on_authoring(
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    arena_idx: ArenaIdx,
+    arena_name: &str,
+    child_hosted_id: SimThingId,
+    flow_property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    arena_registry: &mut ArenaRegistry,
+) -> Result<SlotId, DynamicEnrollmentError> {
+    let mut runtime = SimRuntimeTree::admit(root.clone());
+    let slot = try_append_arena_root_sibling_participant(
+        scaffold,
+        &mut runtime,
+        arena_idx,
+        arena_name,
+        child_hosted_id,
+        flow_property_id,
+        registry,
+        allocator,
+        arena_registry,
+    )?;
+    *root = runtime_to_authoring(runtime);
+    Ok(slot)
+}
+
+/// Authoring/test nested fission child refresh.
+pub fn refresh_fission_participant_child_on_authoring(
+    scaffold: &mut ArenaParticipantScaffold,
+    root: &mut SimThing,
+    parent_participant_slot: SlotId,
+    child_hosted_id: SimThingId,
+    flow_property_id: SimPropertyId,
+    registry: &DimensionRegistry,
+    allocator: &mut SlotAllocator,
+    fission_policy: FissionPolicy,
+) -> Result<SlotId, GapAllocError> {
+    let mut runtime = SimRuntimeTree::admit(root.clone());
+    let slot = refresh_fission_participant_child(
+        scaffold,
+        &mut runtime,
+        parent_participant_slot,
+        child_hosted_id,
+        flow_property_id,
+        registry,
+        allocator,
+        fission_policy,
+    )?;
+    *root = runtime_to_authoring(runtime);
+    Ok(slot)
 }
 
 /// True when `slot` falls in the half-open participant sibling `[first, first + count)`.

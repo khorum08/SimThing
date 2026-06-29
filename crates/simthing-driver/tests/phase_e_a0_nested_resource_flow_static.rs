@@ -10,9 +10,9 @@ use nested_support::{
 };
 use simthing_core::SimThingKind;
 use simthing_driver::{
-    build_execution_plan, nested_fission_gap_report, nested_hierarchy_materialization_report,
-    refresh_fission_participant_child, reserve_gap_pools_for_parent_slots, slots_are_contiguous,
-    total_bands_for_depth, ArenaBandLayout, FissionPolicy,
+    build_execution_plan_from_authoring, nested_fission_gap_report, nested_hierarchy_materialization_report,
+    refresh_fission_participant_child_on_authoring, reserve_gap_pools_for_parent_slots,
+    slots_are_contiguous, total_bands_for_depth, ArenaBandLayout, FissionPolicy,
 };
 use simthing_sim::PipelineFlags;
 
@@ -69,7 +69,7 @@ fn a0_noncontiguous_nested_children_reject_without_compaction() {
     let interiors = layout.interior_participant_slots();
     reserve_gap_pools_for_parent_slots(&mut f.scaffold, &mut f.alloc, &interiors, 1);
     let mid = layout.participant_roots[0].children[0].participant_slot;
-    refresh_fission_participant_child(
+    refresh_fission_participant_child_on_authoring(
         &mut f.scaffold,
         &mut f.root,
         mid,
@@ -93,7 +93,7 @@ fn a0_noncontiguous_nested_children_reject_without_compaction() {
         wildcard_max_expansion: None,
         reserved_orderband_depth: 0,
     };
-    let err = build_execution_plan(
+    let err = build_execution_plan_from_authoring(
         &f.reg,
         std::slice::from_ref(&arena),
         &f.root,
