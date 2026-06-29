@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `codex/kernel-forbid-unsafe-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/984
+- Merge: `41342adde4` (master)
 
 ## What changed
 
