@@ -100,3 +100,6 @@ pub use threshold_registry::{
     VelocityAlertEvent, VelocityAlertRegistration,
 };
 pub use tree_mutation::apply_structural_mutations;
+
+#[cfg(test)]
+mod kind_production_audit;
