@@ -7,8 +7,27 @@
 //!
 //! See `docs/adr_accumulator_op_v2.md` and `docs/design_v7.md` for the
 //! full specification.
+//!
+//! Raw integer targets are uncompilable:
+//!
+//! ```compile_fail
+//! use simthing_core::{AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+//!
+//! fn accumulator_op_rejects_raw_integer_target_slot_compile_fail() {
+//!     let _ = AccumulatorOp {
+//!         source: SourceSpec::Constant(1.0),
+//!         combine: CombineFn::Identity,
+//!         gate: GateSpec::Always,
+//!         scale: ScaleSpec::Identity,
+//!         consume: ConsumeMode::None,
+//!         targets: vec![(0u32, ColumnIndex::new(0))],
+//!     };
+//! }
+//! ```
 
 use serde::{Deserialize, Serialize};
+
+use crate::{ColumnIndex, SlotIndex};
 
 // ── Source ────────────────────────────────────────────────────────────────────
 
@@ -18,10 +37,14 @@ pub enum SourceSpec {
     /// A literal constant baked into the registration.
     Constant(f32),
     /// Read from a single (slot, col) location in the values buffer.
-    SlotValue { slot: u32, col: u32 },
+    SlotValue { slot: SlotIndex, col: ColumnIndex },
     /// Read from a contiguous range of slots; same column in each.
     /// Used for reductions (Sum, Mean, Max, Min, WeightedMean).
-    SlotRange { start: u32, count: u32, col: u32 },
+    SlotRange {
+        start: SlotIndex,
+        count: u32,
+        col: ColumnIndex,
+    },
     /// Read from up to 4 explicit (slot, col, unit_cost) inputs.
     /// Used for conjunctive production recipes.
     ConjunctiveCrossing { inputs: Vec<InputSpec> },
@@ -30,8 +53,8 @@ pub enum SourceSpec {
 /// One input channel for a ConjunctiveCrossing or multi-target source.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct InputSpec {
-    pub slot: u32,
-    pub col: u32,
+    pub slot: SlotIndex,
+    pub col: ColumnIndex,
     /// Cost per unit for emission calculations; 1.0 for non-emission uses.
     pub unit_cost: f32,
 }
@@ -68,7 +91,7 @@ pub enum CombineFn {
     /// Weighted mean: `Σ(value × weight) / Σ(weight)`.
     /// `weight_col` is the column to read for weights on each input slot.
     /// **Soft aggregate.**
-    WeightedMean { weight_col: u32 },
+    WeightedMean { weight_col: ColumnIndex },
     /// Product of all inputs. Used for Multiply overlays.
     Product,
     /// Select the highest-priority input value. Used for Set overlays.
@@ -180,7 +203,7 @@ pub enum ScaleSpec {
     /// Multiply by a constant scale factor.
     Constant(f32),
     /// Multiply by the value in a secondary column (for weighted operations).
-    ByColumn { col: u32 },
+    ByColumn { col: ColumnIndex },
 }
 
 // ── SoftAggregateGuard ────────────────────────────────────────────────────────
@@ -222,7 +245,7 @@ pub struct AccumulatorOp {
     pub scale: ScaleSpec,
     pub consume: ConsumeMode,
     /// Write targets: up to 4 (slot, col) pairs. Must have at least one.
-    pub targets: Vec<(u32, u32)>,
+    pub targets: Vec<(SlotIndex, ColumnIndex)>,
 }
 
 impl AccumulatorOp {
@@ -299,7 +322,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         }
     }
 
@@ -350,7 +373,10 @@ mod tests {
     #[test]
     fn orderband_emit_event_allows_empty_targets() {
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
@@ -363,7 +389,10 @@ mod tests {
     #[test]
     fn threshold_emit_event_allows_empty_targets() {
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 0.5,
@@ -379,22 +408,30 @@ mod tests {
     #[test]
     fn five_targets_is_error() {
         let mut op = minimal_op();
-        op.targets = vec![(0, 0), (1, 0), (2, 0), (3, 0), (4, 0)];
+        op.targets = vec![
+            (SlotIndex::new(0), ColumnIndex::new(0)),
+            (SlotIndex::new(1), ColumnIndex::new(0)),
+            (SlotIndex::new(2), ColumnIndex::new(0)),
+            (SlotIndex::new(3), ColumnIndex::new(0)),
+            (SlotIndex::new(4), ColumnIndex::new(0)),
+        ];
         assert_eq!(op.validate(), Err(AccumulatorOpError::TooManyTargets(5)));
     }
 
     #[test]
     fn weighted_mean_requires_slot_range() {
         let mut op = minimal_op();
-        op.combine = CombineFn::WeightedMean { weight_col: 1 };
+        op.combine = CombineFn::WeightedMean {
+            weight_col: ColumnIndex::new(1),
+        };
         assert_eq!(
             op.validate(),
             Err(AccumulatorOpError::WeightedMeanRequiresSlotRange)
         );
         op.source = SourceSpec::SlotRange {
-            start: 0,
+            start: SlotIndex::new(0),
             count: 4,
-            col: 0,
+            col: ColumnIndex::new(0),
         };
         assert!(op.validate().is_ok());
     }
@@ -403,9 +440,9 @@ mod tests {
     fn empty_slot_range_is_error() {
         let mut op = minimal_op();
         op.source = SourceSpec::SlotRange {
-            start: 0,
+            start: SlotIndex::new(0),
             count: 0,
-            col: 0,
+            col: ColumnIndex::new(0),
         };
         assert_eq!(op.validate(), Err(AccumulatorOpError::EmptySlotRange));
     }
@@ -421,8 +458,8 @@ mod tests {
         op.source = SourceSpec::ConjunctiveCrossing {
             inputs: (0u32..8)
                 .map(|i| InputSpec {
-                    slot: 0,
-                    col: i,
+                    slot: SlotIndex::new(0),
+                    col: ColumnIndex::new(i as usize),
                     unit_cost: 1.0,
                 })
                 .collect(),
@@ -432,8 +469,8 @@ mod tests {
         assert!(op.validate().is_ok());
         op.source = SourceSpec::ConjunctiveCrossing {
             inputs: vec![InputSpec {
-                slot: 0,
-                col: 0,
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
                 unit_cost: 5.0,
             }],
         };
@@ -450,8 +487,8 @@ mod tests {
         );
         op.source = SourceSpec::ConjunctiveCrossing {
             inputs: vec![InputSpec {
-                slot: 0,
-                col: 0,
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
                 unit_cost: 5.0,
             }],
         };
@@ -461,7 +498,10 @@ mod tests {
     #[test]
     fn combine_fn_soft_aggregate_classification() {
         assert!(CombineFn::Mean.is_soft_aggregate());
-        assert!(CombineFn::WeightedMean { weight_col: 0 }.is_soft_aggregate());
+        assert!(CombineFn::WeightedMean {
+            weight_col: ColumnIndex::new(0)
+        }
+        .is_soft_aggregate());
         assert!(!CombineFn::Sum.is_soft_aggregate());
         assert!(!CombineFn::Identity.is_soft_aggregate());
         assert!(!CombineFn::MinAcrossInputs.is_soft_aggregate());
@@ -476,31 +516,33 @@ mod tests {
                 gate: GateSpec::Always,
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::None,
-                targets: vec![(1, 2)],
+                targets: vec![(SlotIndex::new(1), ColumnIndex::new(2))],
             },
             AccumulatorOp {
                 source: SourceSpec::SlotRange {
-                    start: 0,
+                    start: SlotIndex::new(0),
                     count: 8,
-                    col: 0,
+                    col: ColumnIndex::new(0),
                 },
-                combine: CombineFn::WeightedMean { weight_col: 3 },
+                combine: CombineFn::WeightedMean {
+                    weight_col: ColumnIndex::new(3),
+                },
                 gate: GateSpec::OrderBand(2),
                 scale: ScaleSpec::Constant(0.5),
                 consume: ConsumeMode::None,
-                targets: vec![(0, 0)],
+                targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
             },
             AccumulatorOp {
                 source: SourceSpec::ConjunctiveCrossing {
                     inputs: vec![
                         InputSpec {
-                            slot: 1,
-                            col: 0,
+                            slot: SlotIndex::new(1),
+                            col: ColumnIndex::new(0),
                             unit_cost: 5.0,
                         },
                         InputSpec {
-                            slot: 1,
-                            col: 2,
+                            slot: SlotIndex::new(1),
+                            col: ColumnIndex::new(2),
                             unit_cost: 3.0,
                         },
                     ],
@@ -512,15 +554,23 @@ mod tests {
                 },
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::SubtractFromAllInputs,
-                targets: vec![(99, 0)],
+                targets: vec![(SlotIndex::new(99), ColumnIndex::new(0))],
             },
             AccumulatorOp {
-                source: SourceSpec::SlotValue { slot: 5, col: 0 },
+                source: SourceSpec::SlotValue {
+                    slot: SlotIndex::new(5),
+                    col: ColumnIndex::new(0),
+                },
                 combine: CombineFn::EvalEML { tree_id: 42 },
                 gate: GateSpec::LifecycleActive,
-                scale: ScaleSpec::ByColumn { col: 1 },
+                scale: ScaleSpec::ByColumn {
+                    col: ColumnIndex::new(1),
+                },
                 consume: ConsumeMode::EmitEvent,
-                targets: vec![(10, 0), (10, 1)],
+                targets: vec![
+                    (SlotIndex::new(10), ColumnIndex::new(0)),
+                    (SlotIndex::new(10), ColumnIndex::new(1)),
+                ],
             },
         ];
         for op in &ops {

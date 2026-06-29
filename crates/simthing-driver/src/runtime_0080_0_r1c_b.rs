@@ -7,7 +7,9 @@
 
 use std::collections::BTreeSet;
 
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_core::{
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
 
 use crate::runtime_0080_0_r0::{RUNTIME_R0_EXPECTED_R6C_CHECKSUM, RUNTIME_R0_FOREGROUND_CAPTURE};
@@ -658,15 +660,18 @@ fn stage_request_metadata(
 fn select_lowest_candidate_op(layout: &AllocationLayout) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotRange {
-            start: layout.candidate_start,
+            start: SlotIndex::new(layout.candidate_start),
             count: layout.candidate_count,
-            col: R1A_COL_CURRENT,
+            col: ColumnIndex::new(R1A_COL_CURRENT as usize),
         },
         combine: CombineFn::Min,
         gate: GateSpec::OrderBand(ALLOCATION_SELECT_BAND),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(layout.selected_slot, R1A_COL_CURRENT)],
+        targets: vec![(
+            SlotIndex::new(layout.selected_slot),
+            ColumnIndex::new(R1A_COL_CURRENT as usize),
+        )],
     }
 }
 
@@ -680,14 +685,17 @@ fn row_copy_ops(layout: &AllocationLayout, row: u32) -> Vec<AccumulatorOp> {
         };
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: source_slot,
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(source_slot),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(ALLOCATION_ROW_COPY_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(layout.committed_field_slot(row, field), R1A_COL_CURRENT)],
+            targets: vec![(
+                SlotIndex::new(layout.committed_field_slot(row, field)),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
+            )],
         });
     }
     ops

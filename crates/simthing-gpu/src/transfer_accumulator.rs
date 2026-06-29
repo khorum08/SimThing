@@ -3,7 +3,8 @@
 use std::collections::HashSet;
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, EmlTreeId, GateSpec, InputSpec, ScaleSpec, SourceSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlTreeId, GateSpec, InputSpec, ScaleSpec,
+    SlotIndex, SourceSpec,
 };
 
 use crate::{AccumulatorInputGpu, AccumulatorOpGpu, EncodeError, InputListRange};
@@ -137,14 +138,17 @@ pub fn plan_transfer_ops(
             let inp = &reg.inputs[0];
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: inp.slot,
-                    col: inp.col,
+                    slot: SlotIndex::new(inp.slot),
+                    col: ColumnIndex::new(inp.col as usize),
                 },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(reg.order_band),
                 scale: ScaleSpec::Constant(reg.max_transfer.unwrap()),
                 consume: ConsumeMode::SubtractFromSource,
-                targets: vec![(reg.target_slot, reg.target_col)],
+                targets: vec![(
+                    SlotIndex::new(reg.target_slot),
+                    ColumnIndex::new(reg.target_col as usize),
+                )],
             });
             input_lists.push(Vec::new());
         } else {
@@ -152,8 +156,8 @@ pub fn plan_transfer_ops(
                 .inputs
                 .iter()
                 .map(|i| InputSpec {
-                    slot: i.slot,
-                    col: i.col,
+                    slot: SlotIndex::new(i.slot),
+                    col: ColumnIndex::new(i.col as usize),
                     unit_cost: i.unit_cost,
                 })
                 .collect();
@@ -167,7 +171,10 @@ pub fn plan_transfer_ops(
                     ScaleSpec::Constant(reg.output_scale)
                 },
                 consume: ConsumeMode::SubtractFromAllInputs,
-                targets: vec![(reg.target_slot, reg.target_col)],
+                targets: vec![(
+                    SlotIndex::new(reg.target_slot),
+                    ColumnIndex::new(reg.target_col as usize),
+                )],
             });
             input_lists.push(reg.inputs.iter().map(input_to_gpu).collect());
         }
@@ -213,13 +220,13 @@ pub fn conjunctive_recipe_registration_to_transfer(
             .inputs
             .iter()
             .map(|i| TransferInputRef {
-                slot: i.slot,
-                col: i.col,
+                slot: i.slot.raw(),
+                col: i.col.raw_u32(),
                 unit_cost: i.unit_cost,
             })
             .collect(),
-        target_slot: reg.target_slot,
-        target_col: reg.target_col,
+        target_slot: reg.target_slot.raw(),
+        target_col: reg.target_col.raw_u32(),
         output_scale: 1.0,
         max_transfer: None,
         tree_id: None,
@@ -244,12 +251,12 @@ pub fn discrete_transfer_registration_to_transfer(
 ) -> TransferRegistration {
     TransferRegistration {
         inputs: vec![TransferInputRef {
-            slot: reg.source_slot,
-            col: reg.source_col,
+            slot: reg.source_slot.raw(),
+            col: reg.source_col.raw_u32(),
             unit_cost: 1.0,
         }],
-        target_slot: reg.target_slot,
-        target_col: reg.target_col,
+        target_slot: reg.target_slot.raw(),
+        target_col: reg.target_col.raw_u32(),
         output_scale: 1.0,
         max_transfer: Some(reg.amount),
         tree_id: None,

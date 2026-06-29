@@ -1,8 +1,8 @@
 //! C-8d emission substrate planner → AccumulatorOp.
 
 use simthing_core::{
-    AccumulatorOp, CombineFn, ConsumeMode, EmlConsumerKind, EmlExpressionRegistry, EmlTreeId,
-    GateSpec, ScaleSpec, SourceSpec,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerKind, EmlExpressionRegistry,
+    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
 
 use crate::{AccumulatorOpGpu, EncodeError};
@@ -120,8 +120,8 @@ pub fn plan_emission_ops(
         let op = match &reg.formula {
             EmissionFormula::IdentityFloor => AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: reg.source_slot,
-                    col: reg.source_col,
+                    slot: SlotIndex::new(reg.source_slot),
+                    col: ColumnIndex::new(reg.source_col as usize),
                 },
                 combine: CombineFn::Identity,
                 gate: GateSpec::OrderBand(0),
@@ -149,8 +149,8 @@ pub fn plan_emission_ops(
                 registry.assert_consumer_admissible(*tree_id, EmlConsumerKind::Emission)?;
                 AccumulatorOp {
                     source: SourceSpec::SlotValue {
-                        slot: reg.source_slot,
-                        col: reg.source_col,
+                        slot: SlotIndex::new(reg.source_slot),
+                        col: ColumnIndex::new(reg.source_col as usize),
                     },
                     combine: CombineFn::EvalEML { tree_id: tree_id.0 },
                     gate: GateSpec::OrderBand(0),

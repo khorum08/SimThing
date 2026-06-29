@@ -2,12 +2,69 @@
 //!
 //! These compile designer/spec intent into flat [`AccumulatorOp`] registrations
 //! for upload by `simthing-sim` without semantic branching at runtime.
+//!
+//! Slot and column identities are typed — bare integers are uncompilable:
+//!
+//! ```compile_fail
+//! use simthing_core::{AccumulatorOpBuilder, ColumnIndex, ThresholdDirection};
+//!
+//! fn accumulator_builder_rejects_raw_integer_slot_compile_fail() {
+//!     AccumulatorOpBuilder::emit_on_threshold(
+//!         0u32,
+//!         ColumnIndex::new(0),
+//!         0.5,
+//!         ThresholdDirection::Upward,
+//!     );
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! use simthing_core::{AccumulatorOpBuilder, ColumnIndex, PropertyLayout, SubFieldRole, ThresholdDirection};
+//!
+//! fn accumulator_builder_rejects_role_offset_as_slot_compile_fail() {
+//!     let layout = PropertyLayout::standard(0);
+//!     let lane = layout.offset_of(&SubFieldRole::Amount).unwrap();
+//!     AccumulatorOpBuilder::emit_on_threshold(
+//!         lane,
+//!         ColumnIndex::new(0),
+//!         0.5,
+//!         ThresholdDirection::Upward,
+//!     );
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! use simthing_core::{AccumulatorOpBuilder, ColumnIndex, SlotIndex, ThresholdDirection};
+//!
+//! fn accumulator_builder_rejects_raw_integer_column_compile_fail() {
+//!     AccumulatorOpBuilder::emit_on_threshold(
+//!         SlotIndex::new(0),
+//!         0usize,
+//!         0.5,
+//!         ThresholdDirection::Upward,
+//!     );
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! use simthing_core::{AccumulatorOpBuilder, PropertyLayout, SlotIndex, SubFieldRole, ThresholdDirection};
+//!
+//! fn accumulator_builder_rejects_slot_as_role_offset_compile_fail() {
+//!     let layout = PropertyLayout::standard(0);
+//!     AccumulatorOpBuilder::emit_on_threshold(
+//!         SlotIndex::new(0),
+//!         layout.offset_of(&SubFieldRole::Amount).unwrap(),
+//!         0.5,
+//!         ThresholdDirection::Upward,
+//!     );
+//! }
+//! ```
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    AccumulatorOp, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SourceSpec,
-    ThresholdDirection,
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, InputSpec, ScaleSpec, SlotIndex,
+    SourceSpec, ThresholdDirection,
 };
 
 /// Errors returned by AccumulatorOp registration builders (E-2A, E-3, …).
@@ -22,7 +79,7 @@ pub enum AccumulatorOpBuilderError {
     #[error("conjunctive recipe requires at least one input")]
     EmptyConjunctiveInputs,
     #[error("conjunctive recipe unit cost must be finite and > 0 at slot {slot} col {col}")]
-    NonPositiveUnitCost { slot: u32, col: u32 },
+    NonPositiveUnitCost { slot: SlotIndex, col: ColumnIndex },
     #[error("conjunctive recipe throttle_hint_max_per_tick must be > 0")]
     InvalidThrottleHintMaxPerTick,
     #[error("column-aware reduction child slot range must have count > 0")]
@@ -32,8 +89,8 @@ pub enum AccumulatorOpBuilderError {
 /// One input channel for a conjunctive production recipe (E-3).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConjunctiveRecipeInput {
-    pub slot: u32,
-    pub col: u32,
+    pub slot: SlotIndex,
+    pub col: ColumnIndex,
     pub unit_cost: f32,
 }
 
@@ -41,8 +98,8 @@ pub struct ConjunctiveRecipeInput {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ConjunctiveRecipeRegistration {
     pub inputs: Vec<ConjunctiveRecipeInput>,
-    pub target_slot: u32,
-    pub target_col: u32,
+    pub target_slot: SlotIndex,
+    pub target_col: ColumnIndex,
     /// Boundary/throttle metadata for session assembly (E-4+). Not encoded into
     /// [`AccumulatorOp`] and not enforced by the C-8c GPU conjunctive path.
     /// E-3 emits all currently affordable exact recipe units per tick.
@@ -57,10 +114,10 @@ pub struct ConjunctiveRecipeRegistration {
 /// One exact discrete source-debit transfer registration (E-2A).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DiscreteTransferRegistration {
-    pub source_slot: u32,
-    pub source_col: u32,
-    pub target_slot: u32,
-    pub target_col: u32,
+    pub source_slot: SlotIndex,
+    pub source_col: ColumnIndex,
+    pub target_slot: SlotIndex,
+    pub target_col: ColumnIndex,
     pub amount: f32,
     /// Authored D-2a OrderBand gate identity (default 0).
     #[serde(default)]
@@ -78,10 +135,10 @@ fn validate_discrete_transfer_amount(amount: f32) -> Result<(), AccumulatorOpBui
 }
 
 fn validate_discrete_transfer_cells(
-    source_slot: u32,
-    source_col: u32,
-    target_slot: u32,
-    target_col: u32,
+    source_slot: SlotIndex,
+    source_col: ColumnIndex,
+    target_slot: SlotIndex,
+    target_col: ColumnIndex,
 ) -> Result<(), AccumulatorOpBuilderError> {
     if source_slot == target_slot && source_col == target_col {
         return Err(AccumulatorOpBuilderError::SameSourceAndTarget);
@@ -107,8 +164,8 @@ pub enum EmitOnThresholdBuffer {
 /// One threshold-emission registration compiled by the E-1 builder surface.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct EmitOnThresholdRegistration {
-    pub slot: u32,
-    pub col: u32,
+    pub slot: SlotIndex,
+    pub col: ColumnIndex,
     pub threshold: f32,
     pub direction: ThresholdDirection,
     pub event_kind: u32,
@@ -125,8 +182,8 @@ impl AccumulatorOpBuilder {
     /// The op has empty targets; event identity is carried by the parallel
     /// `event_kind` list produced alongside ops at upload time.
     pub fn emit_on_threshold(
-        source_slot: u32,
-        source_col: u32,
+        source_slot: SlotIndex,
+        source_col: ColumnIndex,
         threshold: f32,
         direction: ThresholdDirection,
     ) -> AccumulatorOp {
@@ -151,10 +208,10 @@ impl AccumulatorOpBuilder {
     /// `transfer_amount = min(max(amount, 0), max(source_value, 0))` at execution time;
     /// source is debited and target is credited by that amount.
     pub fn resource_transfer_discrete(
-        source_slot: u32,
-        source_col: u32,
-        target_slot: u32,
-        target_col: u32,
+        source_slot: SlotIndex,
+        source_col: ColumnIndex,
+        target_slot: SlotIndex,
+        target_col: ColumnIndex,
         amount: f32,
     ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
         validate_discrete_transfer_amount(amount)?;
@@ -183,9 +240,9 @@ impl AccumulatorOpBuilder {
     /// but does not affect the compiled op. Per-tick throttling is not enforced
     /// until a later explicit GPU-resident cap mechanism lands.
     pub fn conjunctive_recipe(
-        inputs: &[(u32, u32, f32)],
-        target_slot: u32,
-        target_col: u32,
+        inputs: &[(SlotIndex, ColumnIndex, f32)],
+        target_slot: SlotIndex,
+        target_col: ColumnIndex,
         throttle_hint_max_per_tick: u32,
     ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
         if inputs.is_empty() {
@@ -220,8 +277,8 @@ impl AccumulatorOpBuilder {
 
 /// Convenience alias for [`AccumulatorOpBuilder::emit_on_threshold`].
 pub fn emit_on_threshold(
-    source_slot: u32,
-    source_col: u32,
+    source_slot: SlotIndex,
+    source_col: ColumnIndex,
     threshold: f32,
     direction: ThresholdDirection,
 ) -> AccumulatorOp {
@@ -230,10 +287,10 @@ pub fn emit_on_threshold(
 
 /// Exact discrete source-debit transfer builder (E-2A).
 pub fn try_resource_transfer_discrete(
-    source_slot: u32,
-    source_col: u32,
-    target_slot: u32,
-    target_col: u32,
+    source_slot: SlotIndex,
+    source_col: ColumnIndex,
+    target_slot: SlotIndex,
+    target_col: ColumnIndex,
     amount: f32,
 ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
     AccumulatorOpBuilder::resource_transfer_discrete(
@@ -249,10 +306,10 @@ pub fn try_resource_transfer_discrete(
 ///
 /// Prefer [`try_resource_transfer_discrete`] when handling invalid inputs.
 pub fn resource_transfer_discrete(
-    source_slot: u32,
-    source_col: u32,
-    target_slot: u32,
-    target_col: u32,
+    source_slot: SlotIndex,
+    source_col: ColumnIndex,
+    target_slot: SlotIndex,
+    target_col: ColumnIndex,
     amount: f32,
 ) -> AccumulatorOp {
     try_resource_transfer_discrete(source_slot, source_col, target_slot, target_col, amount)
@@ -261,9 +318,9 @@ pub fn resource_transfer_discrete(
 
 /// Exact conjunctive recipe builder (E-3).
 pub fn try_conjunctive_recipe(
-    inputs: &[(u32, u32, f32)],
-    target_slot: u32,
-    target_col: u32,
+    inputs: &[(SlotIndex, ColumnIndex, f32)],
+    target_slot: SlotIndex,
+    target_col: ColumnIndex,
     throttle_hint_max_per_tick: u32,
 ) -> Result<AccumulatorOp, AccumulatorOpBuilderError> {
     AccumulatorOpBuilder::conjunctive_recipe(
@@ -281,7 +338,7 @@ pub fn conjunctive_recipe_registration_to_op(
     if reg.throttle_hint_max_per_tick == 0 {
         return Err(AccumulatorOpBuilderError::InvalidThrottleHintMaxPerTick);
     }
-    let inputs: Vec<(u32, u32, f32)> = reg
+    let inputs: Vec<(SlotIndex, ColumnIndex, f32)> = reg
         .inputs
         .iter()
         .map(|i| (i.slot, i.col, i.unit_cost))
@@ -390,11 +447,11 @@ pub enum ColumnAwareReductionCombine {
 /// Generic column-aware child→parent reduction registration (Layer 2 convenience).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColumnAwareReductionSpec {
-    pub child_slot_start: u32,
+    pub child_slot_start: SlotIndex,
     pub child_slot_count: u32,
-    pub child_col: u32,
-    pub parent_slot: u32,
-    pub parent_col: u32,
+    pub child_col: ColumnIndex,
+    pub parent_slot: SlotIndex,
+    pub parent_col: ColumnIndex,
     pub combine: ColumnAwareReductionCombine,
     pub order_band: u32,
 }
@@ -427,11 +484,11 @@ pub fn column_aware_reduction_op(
 
 /// Manual `SlotRange` Sum registration equivalent to [`column_aware_reduction_op`].
 pub fn manual_slot_range_sum_op(
-    child_slot_start: u32,
+    child_slot_start: SlotIndex,
     child_slot_count: u32,
-    child_col: u32,
-    parent_slot: u32,
-    parent_col: u32,
+    child_col: ColumnIndex,
+    parent_slot: SlotIndex,
+    parent_col: ColumnIndex,
     order_band: u32,
 ) -> AccumulatorOp {
     AccumulatorOp {
@@ -451,38 +508,64 @@ pub fn manual_slot_range_sum_op(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ColumnIndex, SlotIndex};
 
     #[test]
     fn conjunctive_recipe_validates() {
-        let op = try_conjunctive_recipe(&[(0, 0, 5.0), (0, 1, 3.0)], 0, 2, 4).unwrap();
+        let op = try_conjunctive_recipe(
+            &[
+                (SlotIndex::new(0), ColumnIndex::new(0), 5.0),
+                (SlotIndex::new(0), ColumnIndex::new(1), 3.0),
+            ],
+            SlotIndex::new(0),
+            ColumnIndex::new(2),
+            4,
+        )
+        .unwrap();
         op.validate().expect("conjunctive recipe validates");
     }
 
     #[test]
     fn conjunctive_recipe_rejects_empty_inputs() {
         assert_eq!(
-            try_conjunctive_recipe(&[], 0, 0, 1),
+            try_conjunctive_recipe(&[], SlotIndex::new(0), ColumnIndex::new(0), 1),
             Err(AccumulatorOpBuilderError::EmptyConjunctiveInputs)
         );
     }
 
     #[test]
     fn conjunctive_recipe_accepts_eight_inputs() {
-        let inputs: Vec<(u32, u32, f32)> = (0..8).map(|c| (0, c, 1.0)).collect();
-        let op = try_conjunctive_recipe(&inputs, 0, 8, 1).unwrap();
+        let inputs: Vec<(SlotIndex, ColumnIndex, f32)> = (0..8)
+            .map(|c| (SlotIndex::new(0), ColumnIndex::new(c), 1.0))
+            .collect();
+        let op =
+            try_conjunctive_recipe(&inputs, SlotIndex::new(0), ColumnIndex::new(8), 1).unwrap();
         op.validate().expect("N=8 conjunctive validates");
     }
 
     #[test]
     fn resource_transfer_discrete_validates() {
-        let op = try_resource_transfer_discrete(0, 0, 0, 1, 5.0).unwrap();
+        let op = try_resource_transfer_discrete(
+            SlotIndex::new(0),
+            ColumnIndex::new(0),
+            SlotIndex::new(0),
+            ColumnIndex::new(1),
+            5.0,
+        )
+        .unwrap();
         op.validate().expect("discrete transfer validates");
     }
 
     #[test]
     fn resource_transfer_discrete_rejects_negative_amount() {
         assert_eq!(
-            try_resource_transfer_discrete(0, 0, 0, 1, -1.0),
+            try_resource_transfer_discrete(
+                SlotIndex::new(0),
+                ColumnIndex::new(0),
+                SlotIndex::new(0),
+                ColumnIndex::new(1),
+                -1.0,
+            ),
             Err(AccumulatorOpBuilderError::NegativeAmount)
         );
     }
@@ -490,7 +573,13 @@ mod tests {
     #[test]
     fn resource_transfer_discrete_rejects_same_cell() {
         assert_eq!(
-            try_resource_transfer_discrete(0, 0, 0, 0, 1.0),
+            try_resource_transfer_discrete(
+                SlotIndex::new(0),
+                ColumnIndex::new(0),
+                SlotIndex::new(0),
+                ColumnIndex::new(0),
+                1.0,
+            ),
             Err(AccumulatorOpBuilderError::SameSourceAndTarget)
         );
     }
@@ -499,18 +588,18 @@ mod tests {
     fn rebuild_discrete_transfer_ops_preserves_order() {
         let regs = [
             DiscreteTransferRegistration {
-                source_slot: 0,
-                source_col: 0,
-                target_slot: 0,
-                target_col: 1,
+                source_slot: SlotIndex::new(0),
+                source_col: ColumnIndex::new(0),
+                target_slot: SlotIndex::new(0),
+                target_col: ColumnIndex::new(1),
                 amount: 3.0,
                 order_band: 0,
             },
             DiscreteTransferRegistration {
-                source_slot: 1,
-                source_col: 0,
-                target_slot: 2,
-                target_col: 0,
+                source_slot: SlotIndex::new(1),
+                source_col: ColumnIndex::new(0),
+                target_slot: SlotIndex::new(2),
+                target_col: ColumnIndex::new(0),
                 amount: 7.0,
                 order_band: 0,
             },
@@ -522,7 +611,12 @@ mod tests {
 
     #[test]
     fn emit_on_threshold_validates() {
-        let op = emit_on_threshold(0, 0, 0.5, ThresholdDirection::Upward);
+        let op = emit_on_threshold(
+            SlotIndex::new(0),
+            ColumnIndex::new(0),
+            0.5,
+            ThresholdDirection::Upward,
+        );
         op.validate().expect("threshold emit validates");
     }
 
@@ -530,16 +624,16 @@ mod tests {
     fn rebuild_preserves_order() {
         let regs = [
             EmitOnThresholdRegistration {
-                slot: 1,
-                col: 0,
+                slot: SlotIndex::new(1),
+                col: ColumnIndex::new(0),
                 threshold: 0.5,
                 direction: ThresholdDirection::Upward,
                 event_kind: 10,
                 buffer: EmitOnThresholdBuffer::Values,
             },
             EmitOnThresholdRegistration {
-                slot: 2,
-                col: 1,
+                slot: SlotIndex::new(2),
+                col: ColumnIndex::new(1),
                 threshold: -20.0,
                 direction: ThresholdDirection::Downward,
                 event_kind: 11,
@@ -555,8 +649,8 @@ mod tests {
     #[test]
     fn debt_band_refresh_advances_threshold() {
         let reg = EmitOnThresholdRegistration {
-            slot: 0,
-            col: 0,
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(0),
             threshold: debt_band_next_threshold(10, 20.0),
             direction: ThresholdDirection::Downward,
             event_kind: 1,
@@ -570,17 +664,45 @@ mod tests {
     #[test]
     fn column_aware_reduction_matches_manual_slot_range_sum() {
         let spec = ColumnAwareReductionSpec {
-            child_slot_start: 2,
+            child_slot_start: SlotIndex::new(2),
             child_slot_count: 4,
-            child_col: 1,
-            parent_slot: 50,
-            parent_col: 3,
+            child_col: ColumnIndex::new(1),
+            parent_slot: SlotIndex::new(50),
+            parent_col: ColumnIndex::new(3),
             combine: ColumnAwareReductionCombine::Sum,
             order_band: 0,
         };
         let helper = column_aware_reduction_op(spec).unwrap();
-        let manual = manual_slot_range_sum_op(2, 4, 1, 50, 3, 0);
+        let manual = manual_slot_range_sum_op(
+            SlotIndex::new(2),
+            4,
+            ColumnIndex::new(1),
+            SlotIndex::new(50),
+            ColumnIndex::new(3),
+            0,
+        );
         assert_eq!(helper, manual);
         helper.validate().unwrap();
+    }
+
+    #[test]
+    fn accumulator_builder_emits_same_op_after_index_newtypes() {
+        let reg = EmitOnThresholdRegistration {
+            slot: SlotIndex::new(3),
+            col: ColumnIndex::new(7),
+            threshold: 0.85,
+            direction: ThresholdDirection::Upward,
+            event_kind: 42,
+            buffer: EmitOnThresholdBuffer::Values,
+        };
+        let via_builder = AccumulatorOpBuilder::emit_on_threshold(
+            reg.slot,
+            reg.col,
+            reg.threshold,
+            reg.direction,
+        );
+        let via_reg = emit_on_threshold_registration_to_op(&reg);
+        assert_eq!(via_builder, via_reg);
+        via_builder.validate().unwrap();
     }
 }

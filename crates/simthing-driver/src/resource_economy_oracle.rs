@@ -123,10 +123,10 @@ mod tests {
     #[test]
     fn oracle_discrete_transfer_conserves_pair_total() {
         let transfers = vec![simthing_core::DiscreteTransferRegistration {
-            source_slot: 0,
-            source_col: 0,
-            target_slot: 1,
-            target_col: 0,
+            source_slot: simthing_core::SlotIndex::new(0),
+            source_col: simthing_core::ColumnIndex::new(0),
+            target_slot: simthing_core::SlotIndex::new(1),
+            target_col: simthing_core::ColumnIndex::new(0),
             amount: 1.0,
             order_band: 0,
         }];

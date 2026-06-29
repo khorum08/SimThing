@@ -1,7 +1,8 @@
 //! Phase M-3 — RegionFieldSpec admission and compile preview (spec layer).
 
 use simthing_core::{
-    ColumnAwareReductionCombine, ColumnAwareReductionSpec, WHITELISTED_FORMULA_CLASSES,
+    ColumnAwareReductionCombine, ColumnAwareReductionSpec, ColumnIndex, SlotIndex,
+    WHITELISTED_FORMULA_CLASSES,
 };
 
 use crate::compile::region_field_budget::{
@@ -406,11 +407,11 @@ fn compile_reduction(
         ));
     }
     Ok(ColumnAwareReductionSpec {
-        child_slot_start: reduction.child_slot_start,
+        child_slot_start: SlotIndex::new(reduction.child_slot_start),
         child_slot_count: reduction.child_slot_count,
-        child_col: reduction.child_col,
-        parent_slot: reduction.parent_slot,
-        parent_col: reduction.parent_col,
+        child_col: ColumnIndex::new(reduction.child_col as usize),
+        parent_slot: SlotIndex::new(reduction.parent_slot),
+        parent_col: ColumnIndex::new(reduction.parent_col as usize),
         combine: ColumnAwareReductionCombine::Sum,
         order_band: reduction.order_band,
     })
@@ -500,7 +501,7 @@ fn compile_commitment(
             "commitment source_formula_class must be field_urgency",
         ));
     }
-    if commitment.parent_slot != reduction.parent_slot {
+    if commitment.parent_slot != reduction.parent_slot.raw() {
         return Err(field_err(
             &spec.name,
             "commitment parent_slot must match reduction parent_slot",

@@ -7,9 +7,9 @@
 use std::collections::{BTreeMap, HashMap};
 
 use simthing_core::{
-    eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, DimensionRegistry, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SimProperty, SourceSpec,
+    eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, DimensionRegistry,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
+    EmlTreeId, GateSpec, ScaleSpec, SimProperty, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     set_debug_readback_allowed, write_max_candidate_f_magnitude_bits, AccumulatorOpSession,
@@ -1299,8 +1299,8 @@ impl TierAGpuHarness {
                 ));
                 ops.push(AccumulatorOp {
                     source: SourceSpec::SlotValue {
-                        slot: disruption_slot,
-                        col: COL_CURRENT,
+                        slot: SlotIndex::new(disruption_slot),
+                        col: ColumnIndex::new(COL_CURRENT as usize),
                     },
                     combine: CombineFn::EvalEML {
                         tree_id: R1_TREE_ID,
@@ -1308,7 +1308,10 @@ impl TierAGpuHarness {
                     gate: GateSpec::OrderBand(BAND_R1_EVAL),
                     scale: ScaleSpec::Identity,
                     consume: ConsumeMode::ResetTarget,
-                    targets: vec![(disruption_slot, COL_SCRATCH)],
+                    targets: vec![(
+                        SlotIndex::new(disruption_slot),
+                        ColumnIndex::new(COL_SCRATCH as usize),
+                    )],
                 });
                 ops.push(identity_op(
                     disruption_slot,
@@ -1471,14 +1474,17 @@ fn identity_op(
 ) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: source_slot,
-            col: source_col,
+            slot: SlotIndex::new(source_slot),
+            col: ColumnIndex::new(source_col as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(target_slot, target_col)],
+        targets: vec![(
+            SlotIndex::new(target_slot),
+            ColumnIndex::new(target_col as usize),
+        )],
     }
 }
 
@@ -1511,14 +1517,17 @@ fn build_diffusion_ops(
                     let neighbor_slot = layout.disruption_start + neighbor;
                     ops.push(AccumulatorOp {
                         source: SourceSpec::SlotValue {
-                            slot: neighbor_slot,
-                            col: COL_NEXT,
+                            slot: SlotIndex::new(neighbor_slot),
+                            col: ColumnIndex::new(COL_NEXT as usize),
                         },
                         combine: CombineFn::Identity,
                         gate: GateSpec::OrderBand(add_bands[add_idx + 1]),
                         scale: ScaleSpec::Identity,
                         consume: ConsumeMode::AddToTarget,
-                        targets: vec![(status_slot, COL_NEXT)],
+                        targets: vec![(
+                            SlotIndex::new(status_slot),
+                            ColumnIndex::new(COL_NEXT as usize),
+                        )],
                     });
                 }
             }
@@ -1540,8 +1549,8 @@ fn build_diffusion_ops(
             ));
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: status_slot,
-                    col: COL_CURRENT,
+                    slot: SlotIndex::new(status_slot),
+                    col: ColumnIndex::new(COL_CURRENT as usize),
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: R1A_DIFFUSION_TREE_ID,
@@ -1549,7 +1558,10 @@ fn build_diffusion_ops(
                 gate: GateSpec::OrderBand(BAND_DIFF_EVAL),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(status_slot, COL_NEXT)],
+                targets: vec![(
+                    SlotIndex::new(status_slot),
+                    ColumnIndex::new(COL_NEXT as usize),
+                )],
             });
         }
     }
@@ -1591,8 +1603,8 @@ fn build_stockpile_ops(
         ));
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: stock_slot,
-                col: COL_CURRENT,
+                slot: SlotIndex::new(stock_slot),
+                col: ColumnIndex::new(COL_CURRENT as usize),
             },
             combine: CombineFn::EvalEML {
                 tree_id: R1A_ADD3_SUB_TREE_ID,
@@ -1600,7 +1612,10 @@ fn build_stockpile_ops(
             gate: GateSpec::OrderBand(BAND_STOCKPILE_SUB),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(stock_slot, COL_NEXT)],
+            targets: vec![(
+                SlotIndex::new(stock_slot),
+                ColumnIndex::new(COL_NEXT as usize),
+            )],
         });
     }
     ops
@@ -1639,8 +1654,8 @@ fn build_blockade_ops(
         ));
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: blockade_slot,
-                col: COL_CURRENT,
+                slot: SlotIndex::new(blockade_slot),
+                col: ColumnIndex::new(COL_CURRENT as usize),
             },
             combine: CombineFn::EvalEML {
                 tree_id: R1A_BLOCKADE_SELECT_TREE_ID,
@@ -1648,7 +1663,10 @@ fn build_blockade_ops(
             gate: GateSpec::OrderBand(BAND_BLOCKADE_SELECT),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(blockade_slot, COL_NEXT)],
+            targets: vec![(
+                SlotIndex::new(blockade_slot),
+                ColumnIndex::new(COL_NEXT as usize),
+            )],
         });
     }
     ops
@@ -1671,8 +1689,8 @@ fn build_r6b_ops(
         ));
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: construction_slot,
-                col: COL_CURRENT,
+                slot: SlotIndex::new(construction_slot),
+                col: ColumnIndex::new(COL_CURRENT as usize),
             },
             combine: CombineFn::EvalEML {
                 tree_id: R1A_ADD_TREE_ID,
@@ -1680,7 +1698,10 @@ fn build_r6b_ops(
             gate: GateSpec::OrderBand(BAND_R6B_ADD),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(construction_slot, COL_SCRATCH)],
+            targets: vec![(
+                SlotIndex::new(construction_slot),
+                ColumnIndex::new(COL_SCRATCH as usize),
+            )],
         });
         ops.push(identity_op(
             meta_base + meta.construction_ship_cost_start + sys_idx as u32,
@@ -1698,8 +1719,8 @@ fn build_r6b_ops(
         ));
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: construction_slot,
-                col: COL_CURRENT,
+                slot: SlotIndex::new(construction_slot),
+                col: ColumnIndex::new(COL_CURRENT as usize),
             },
             combine: CombineFn::EvalEML {
                 tree_id: R6B_REMAINDER_TREE_ID,
@@ -1707,7 +1728,10 @@ fn build_r6b_ops(
             gate: GateSpec::OrderBand(BAND_R6B_REMAINDER),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(construction_slot, COL_NEXT)],
+            targets: vec![(
+                SlotIndex::new(construction_slot),
+                ColumnIndex::new(COL_NEXT as usize),
+            )],
         });
     }
     ops
@@ -1751,8 +1775,8 @@ fn build_combat_attrition_ops(
             ));
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: fleet_slot,
-                    col: COL_CURRENT,
+                    slot: SlotIndex::new(fleet_slot),
+                    col: ColumnIndex::new(COL_CURRENT as usize),
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: R6_ATTRITION_TREE_ID,
@@ -1760,7 +1784,10 @@ fn build_combat_attrition_ops(
                 gate: GateSpec::OrderBand(BAND_COMBAT_ATTRITION),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(fleet_slot, COL_NEXT)],
+                targets: vec![(
+                    SlotIndex::new(fleet_slot),
+                    ColumnIndex::new(COL_NEXT as usize),
+                )],
             });
             ops.push(identity_op(
                 fleet_slot,
@@ -1771,8 +1798,8 @@ fn build_combat_attrition_ops(
             ));
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: fleet_slot,
-                    col: COL_CURRENT,
+                    slot: SlotIndex::new(fleet_slot),
+                    col: ColumnIndex::new(COL_CURRENT as usize),
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: R1A_SUB_TREE_ID,
@@ -1780,7 +1807,10 @@ fn build_combat_attrition_ops(
                 gate: GateSpec::OrderBand(BAND_COMBAT_COMMIT),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(fleet_slot, COL_NEXT)],
+                targets: vec![(
+                    SlotIndex::new(fleet_slot),
+                    ColumnIndex::new(COL_NEXT as usize),
+                )],
             });
         }
     }
@@ -1816,8 +1846,8 @@ fn build_combat_ops(
             ));
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: fleet_slot,
-                    col: COL_CURRENT,
+                    slot: SlotIndex::new(fleet_slot),
+                    col: ColumnIndex::new(COL_CURRENT as usize),
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: R1A_ADD_TREE_ID,
@@ -1825,7 +1855,10 @@ fn build_combat_ops(
                 gate: GateSpec::OrderBand(BAND_REINFORCEMENT_ADD),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(fleet_slot, COL_NEXT)],
+                targets: vec![(
+                    SlotIndex::new(fleet_slot),
+                    ColumnIndex::new(COL_NEXT as usize),
+                )],
             });
         }
 
@@ -1846,8 +1879,8 @@ fn build_combat_ops(
             ));
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot: fleet_slot,
-                    col: COL_CURRENT,
+                    slot: SlotIndex::new(fleet_slot),
+                    col: ColumnIndex::new(COL_CURRENT as usize),
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: R1A_ADD_TREE_ID,
@@ -1855,7 +1888,10 @@ fn build_combat_ops(
                 gate: GateSpec::OrderBand(BAND_FUSION_ADD),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(fleet_slot, COL_NEXT)],
+                targets: vec![(
+                    SlotIndex::new(fleet_slot),
+                    ColumnIndex::new(COL_NEXT as usize),
+                )],
             });
         }
     }
@@ -1888,14 +1924,14 @@ fn tier_a_buffer_swap_ops(total_slots: u32) -> Vec<AccumulatorOp> {
     for slot in 0..total_slots {
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot,
-                col: COL_NEXT,
+                slot: SlotIndex::new(slot),
+                col: ColumnIndex::new(COL_NEXT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(slot, COL_CURRENT)],
+            targets: vec![(SlotIndex::new(slot), ColumnIndex::new(COL_CURRENT as usize))],
         });
     }
     ops

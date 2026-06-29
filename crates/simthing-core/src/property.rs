@@ -310,10 +310,6 @@ impl RoleOffset {
     }
 }
 
-/// GPU column index within a property stride. **AS-5 horizon:** still a plain
-/// alias — do not confuse with [`RoleOffset`].
-pub type ColumnIndex = usize;
-
 // ── PropertyValue ─────────────────────────────────────────────────────────────
 
 /// Flat float vector for a single property instance on a single SimThing.

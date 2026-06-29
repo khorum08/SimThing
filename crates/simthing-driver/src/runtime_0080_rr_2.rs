@@ -6,7 +6,8 @@
 
 use simthing_core::{
     rebuild_discrete_transfer_ops, AccumulatorOp, AccumulatorOpBuilder, AccumulatorOpBuilderError,
-    CombineFn, ConsumeMode, DiscreteTransferRegistration, GateSpec, ScaleSpec, SourceSpec,
+    ColumnIndex, CombineFn, ConsumeMode, DiscreteTransferRegistration, GateSpec, ScaleSpec,
+    SlotIndex, SourceSpec,
 };
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
 
@@ -608,18 +609,22 @@ fn build_surface_ops(
             (binding.pop_slot, binding.factory_slot)
         };
         transfers.push(DiscreteTransferRegistration {
-            source_slot: pop_slot,
-            source_col: RR_2_COL_LABOR,
-            target_slot: factory_slot,
-            target_col: RR_2_COL_LABOR,
+            source_slot: SlotIndex::new(pop_slot),
+            source_col: ColumnIndex::new(RR_2_COL_LABOR as usize),
+            target_slot: SlotIndex::new(factory_slot),
+            target_col: ColumnIndex::new(RR_2_COL_LABOR as usize),
             amount: POP_LABOR_PER_TICK as f32,
             order_band: BAND_LABOR_TRANSFER,
         });
         if config.factory_recipe_enabled {
             let mut recipe_op = AccumulatorOpBuilder::conjunctive_recipe(
-                &[(factory_slot, RR_2_COL_LABOR, FACTORY_UNIT_COST_LABOR as f32)],
-                factory_slot,
-                RR_2_COL_PRODUCTION,
+                &[(
+                    SlotIndex::new(factory_slot),
+                    ColumnIndex::new(RR_2_COL_LABOR as usize),
+                    FACTORY_UNIT_COST_LABOR as f32,
+                )],
+                SlotIndex::new(factory_slot),
+                ColumnIndex::new(RR_2_COL_PRODUCTION as usize),
                 99,
             )?;
             recipe_op.gate = GateSpec::OrderBand(BAND_FACTORY_RECIPE);
@@ -637,7 +642,10 @@ fn labor_emit_op(pop_slot: u32) -> AccumulatorOp {
         gate: GateSpec::OrderBand(BAND_LABOR_EMIT),
         scale: ScaleSpec::Constant(POP_LABOR_PER_TICK as f32),
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(pop_slot, RR_2_COL_LABOR)],
+        targets: vec![(
+            SlotIndex::new(pop_slot),
+            ColumnIndex::new(RR_2_COL_LABOR as usize),
+        )],
     }
 }
 

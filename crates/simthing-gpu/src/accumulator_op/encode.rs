@@ -1,9 +1,9 @@
 //! Encode CPU-side [`AccumulatorOp`] registrations into GPU layout structs.
 
 use simthing_core::{
-    eml_nodes::execution_class_to_u32, AccumulatorOp, CombineFn, ConsumeMode,
+    eml_nodes::execution_class_to_u32, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
     EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExecutionClass, EmlExpressionRegistry,
-    EmlTreeId, GateSpec, ScaleSpec, SourceSpec, ThresholdDirection,
+    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, ThresholdDirection,
 };
 
 use crate::world_state::{
@@ -203,8 +203,8 @@ pub fn emit_on_threshold_registrations_to_gpu(
 ) -> Vec<ThresholdRegistration> {
     regs.iter()
         .map(|r| ThresholdRegistration {
-            slot: r.slot,
-            col: r.col,
+            slot: r.slot.raw(),
+            col: r.col.raw_u32(),
             threshold: r.threshold,
             direction: threshold_direction_to_u32(r.direction),
             event_kind: r.event_kind,
@@ -248,8 +248,8 @@ pub fn threshold_registrations_to_ops(
         );
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: r.slot,
-                col: r.col,
+                slot: SlotIndex::new(r.slot),
+                col: ColumnIndex::new(r.col as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
@@ -353,9 +353,11 @@ fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
 fn encode_source(op: &AccumulatorOp) -> Result<(u32, u32, u32, u32), EncodeError> {
     match &op.source {
         SourceSpec::Constant(value) => Ok((source_kind::CONSTANT, value.to_bits(), 0, 0)),
-        SourceSpec::SlotValue { slot, col } => Ok((source_kind::SLOT_VALUE, *slot, *col, 0)),
+        SourceSpec::SlotValue { slot, col } => {
+            Ok((source_kind::SLOT_VALUE, slot.raw(), col.raw_u32(), 0))
+        }
         SourceSpec::SlotRange { start, count, col } => {
-            Ok((source_kind::SLOT_RANGE, *start, *col, *count))
+            Ok((source_kind::SLOT_RANGE, start.raw(), col.raw_u32(), *count))
         }
         SourceSpec::ConjunctiveCrossing { inputs } => {
             if inputs.is_empty() {
@@ -381,7 +383,7 @@ fn encode_combine(
         CombineFn::Max => Ok((combine_kind::MAX, 0, 0, 0, 0)),
         CombineFn::Min => Ok((combine_kind::MIN, 0, 0, 0, 0)),
         CombineFn::WeightedMean { weight_col } => {
-            Ok((combine_kind::WEIGHTED_MEAN, *weight_col, 0, 0, 0))
+            Ok((combine_kind::WEIGHTED_MEAN, weight_col.raw_u32(), 0, 0, 0))
         }
         CombineFn::IntegrateWithClamp {
             dt: _,
@@ -460,10 +462,12 @@ fn encode_consume(consume: ConsumeMode, _gate: &GateSpec) -> Result<u32, EncodeE
     }
 }
 
-fn encode_targets(targets: &[(u32, u32)]) -> ([(u32, u32); 4], u32) {
+fn encode_targets(
+    targets: &[(simthing_core::SlotIndex, simthing_core::ColumnIndex)],
+) -> ([(u32, u32); 4], u32) {
     let mut out = [(0u32, 0u32); 4];
     for (idx, target) in targets.iter().take(4).enumerate() {
-        out[idx] = *target;
+        out[idx] = (target.0.raw(), target.1.raw_u32());
     }
     (out, targets.len() as u32)
 }
@@ -481,7 +485,10 @@ fn other_name_gate(gate: &GateSpec) -> &'static str {
 mod tests {
     use super::*;
     use crate::world_state::THRESH_BUF_OUTPUT;
-    use simthing_core::{CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+    use simthing_core::{
+        ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+        ThresholdDirection,
+    };
 
     #[test]
     fn c2_intent_delta_encodes_affine_params() {
@@ -537,12 +544,15 @@ mod tests {
     #[test]
     fn encodes_transfer_op() {
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 1, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(1),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Always,
             scale: ScaleSpec::Constant(2.0),
             consume: ConsumeMode::SubtractFromSource,
-            targets: vec![(2, 0)],
+            targets: vec![(SlotIndex::new(2), ColumnIndex::new(0))],
         };
         let gpu = AccumulatorOpGpu::from_op(&op).unwrap();
         assert_eq!(gpu.scale_kind, scale_kind::CONSTANT);
@@ -552,7 +562,10 @@ mod tests {
     #[test]
     fn c1_threshold_gate_emit_event_validator_accepts() {
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 0.5,
@@ -568,7 +581,10 @@ mod tests {
     #[test]
     fn threshold_with_none_consume_encodes_ok() {
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::Identity,
             gate: GateSpec::Threshold {
                 value: 0.5,
@@ -576,7 +592,7 @@ mod tests {
             },
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(1, 0)],
+            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
         };
         let result = AccumulatorOpGpu::from_op(&op);
         assert!(result.is_ok(), "{result:?}");
@@ -589,13 +605,13 @@ mod tests {
             source: SourceSpec::ConjunctiveCrossing {
                 inputs: vec![
                     InputSpec {
-                        slot: 1,
-                        col: 0,
+                        slot: SlotIndex::new(1),
+                        col: ColumnIndex::new(0),
                         unit_cost: 5.0,
                     },
                     InputSpec {
-                        slot: 1,
-                        col: 2,
+                        slot: SlotIndex::new(1),
+                        col: ColumnIndex::new(2),
                         unit_cost: 3.0,
                     },
                 ],
@@ -604,7 +620,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::SubtractFromAllInputs,
-            targets: vec![(99, 0)],
+            targets: vec![(SlotIndex::new(99), ColumnIndex::new(0))],
         };
         let result = AccumulatorOpGpu::from_op(&op);
         assert!(
@@ -626,7 +642,7 @@ mod tests {
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::None,
-            targets: vec![(0, 0)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
         };
         let _ = op.validate();
         encode_combine(&op, eml)
@@ -640,7 +656,12 @@ mod tests {
             (CombineFn::Mean, "Mean"),
             (CombineFn::Max, "Max"),
             (CombineFn::Min, "Min"),
-            (CombineFn::WeightedMean { weight_col: 2 }, "WeightedMean"),
+            (
+                CombineFn::WeightedMean {
+                    weight_col: ColumnIndex::new(2),
+                },
+                "WeightedMean",
+            ),
             (CombineFn::Product, "Product"),
             (CombineFn::LastByPriority, "LastByPriority"),
             (
@@ -686,5 +707,43 @@ mod tests {
         let (ops, kinds) = threshold_registrations_to_ops(&regs).unwrap();
         assert_eq!(ops.len(), 1);
         assert_eq!(kinds, vec![1]);
+    }
+
+    #[test]
+    fn accumulator_op_gpu_encoding_preserved_after_index_newtypes() {
+        let op = AccumulatorOp {
+            source: SourceSpec::SlotRange {
+                start: SlotIndex::new(4),
+                count: 3,
+                col: ColumnIndex::new(11),
+            },
+            combine: CombineFn::WeightedMean {
+                weight_col: ColumnIndex::new(5),
+            },
+            gate: GateSpec::OrderBand(2),
+            scale: ScaleSpec::Constant(1.25),
+            consume: ConsumeMode::ResetTarget,
+            targets: vec![
+                (SlotIndex::new(7), ColumnIndex::new(11)),
+                (SlotIndex::new(8), ColumnIndex::new(12)),
+            ],
+        };
+        let gpu = AccumulatorOpGpu::from_op(&op).unwrap();
+        assert_eq!(gpu.source_kind, source_kind::SLOT_RANGE);
+        assert_eq!(gpu.source_slot, 4);
+        assert_eq!(gpu.source_col, 11);
+        assert_eq!(gpu.source_count, 3);
+        assert_eq!(gpu.combine_kind, combine_kind::WEIGHTED_MEAN);
+        assert_eq!(gpu.combine_a, 5);
+        assert_eq!(gpu.gate_kind, gate_kind::ORDER_BAND);
+        assert_eq!(gpu.gate_a, 2);
+        assert_eq!(gpu.scale_kind, scale_kind::CONSTANT);
+        assert_eq!(gpu.scale_a, 1.25f32.to_bits());
+        assert_eq!(gpu.consume, consume_kind::RESET_TARGET);
+        assert_eq!(gpu.n_targets, 2);
+        assert_eq!(gpu.target0_slot, 7);
+        assert_eq!(gpu.target0_col, 11);
+        assert_eq!(gpu.target1_slot, 8);
+        assert_eq!(gpu.target1_col, 12);
     }
 }

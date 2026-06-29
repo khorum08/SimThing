@@ -1,9 +1,9 @@
 //! C-8b intensity migration → AccumulatorOp EvalEML planner.
 
 use simthing_core::{
-    compile_intensity_behavior_to_eml, intensity_tree_id, AccumulatorOp, CombineFn, ConsumeMode,
-    DimensionRegistry, EmlConsumerKind, GateSpec, ScaleSpec, SimPropertyId, SourceSpec,
-    SubFieldRole,
+    compile_intensity_behavior_to_eml, intensity_tree_id, AccumulatorOp, ColumnIndex, CombineFn,
+    ConsumeMode, DimensionRegistry, EmlConsumerKind, GateSpec, ScaleSpec, SimPropertyId, SlotIndex,
+    SourceSpec, SubFieldRole,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -55,8 +55,8 @@ pub fn plan_intensity_eml_ops(entries: &[IntensityEmlEntry], n_slots: u32) -> Ve
         for entry in entries {
             ops.push(AccumulatorOp {
                 source: SourceSpec::SlotValue {
-                    slot,
-                    col: entry.intensity_col,
+                    slot: SlotIndex::new(slot),
+                    col: ColumnIndex::new(entry.intensity_col as usize),
                 },
                 combine: CombineFn::EvalEML {
                     tree_id: entry.tree_id.0,
@@ -64,7 +64,10 @@ pub fn plan_intensity_eml_ops(entries: &[IntensityEmlEntry], n_slots: u32) -> Ve
                 gate: GateSpec::OrderBand(0),
                 scale: ScaleSpec::Identity,
                 consume: ConsumeMode::ResetTarget,
-                targets: vec![(slot, entry.intensity_col)],
+                targets: vec![(
+                    SlotIndex::new(slot),
+                    ColumnIndex::new(entry.intensity_col as usize),
+                )],
             });
         }
     }

@@ -2,6 +2,7 @@ pub mod accumulator_op;
 pub mod accumulator_op_builder;
 pub mod accumulator_spec;
 pub mod arena_layout;
+pub mod column_index;
 pub mod compiled_accumulator_plan;
 pub mod eml_nodes;
 pub mod eml_registry;
@@ -40,6 +41,7 @@ pub use arena_layout::{
     arena_internal_columns_present, expand_arena_internal_columns,
     property_needs_arena_internal_columns, ARENA_INTERNAL_COLUMN_ROLES,
 };
+pub use column_index::ColumnIndex;
 pub use compiled_accumulator_plan::{
     is_exact_integer_f32, CompiledAccumulatorOpPlan, StructuralScalarChannel,
     EXACT_INTEGER_F32_BOUND,
@@ -70,10 +72,10 @@ pub use overlay::{
     PropertyTransformDelta,
 };
 pub use property::{
-    ClampBehavior, ColumnIndex, DecayBehavior, Direction, ExpireEffect, ExpireHandler,
-    FissionTemplate, FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange,
-    PropertyLayout, PropertyValue, RoleOffset, SecondaryCondition, SimProperty, SimThingKindTag,
-    SubFieldRole, SubFieldSpec, TransformOp,
+    ClampBehavior, DecayBehavior, Direction, ExpireEffect, ExpireHandler, FissionTemplate,
+    FissionThreshold, FusionThreshold, IntensityBehavior, IntensityRange, PropertyLayout,
+    PropertyValue, RoleOffset, SecondaryCondition, SimProperty, SimThingKindTag, SubFieldRole,
+    SubFieldSpec, TransformOp,
 };
 pub use reduction::ReductionRule;
 pub use registry::{DimensionRegistry, PropertyColumnRange};

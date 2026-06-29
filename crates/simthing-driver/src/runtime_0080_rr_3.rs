@@ -6,7 +6,8 @@
 
 use simthing_core::{
     rebuild_discrete_transfer_ops, AccumulatorOp, AccumulatorOpBuilder, AccumulatorOpBuilderError,
-    CombineFn, ConsumeMode, DiscreteTransferRegistration, GateSpec, ScaleSpec, SourceSpec,
+    ColumnIndex, CombineFn, ConsumeMode, DiscreteTransferRegistration, GateSpec, ScaleSpec,
+    SlotIndex, SourceSpec,
 };
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, GpuContext};
 
@@ -709,21 +710,21 @@ fn build_recursive_ops(
         }
         ops.push(labor_emit_op(binding.pop_slot));
         transfers.push(DiscreteTransferRegistration {
-            source_slot: binding.pop_slot,
-            source_col: RR_3_COL_LABOR,
-            target_slot: binding.factory_slot,
-            target_col: RR_3_COL_LABOR,
+            source_slot: SlotIndex::new(binding.pop_slot),
+            source_col: ColumnIndex::new(RR_3_COL_LABOR as usize),
+            target_slot: SlotIndex::new(binding.factory_slot),
+            target_col: ColumnIndex::new(RR_3_COL_LABOR as usize),
             amount: POP_LABOR_PER_TICK as f32,
             order_band: BAND_LABOR_TRANSFER,
         });
         let mut recipe_op = AccumulatorOpBuilder::conjunctive_recipe(
             &[(
-                binding.factory_slot,
-                RR_3_COL_LABOR,
+                SlotIndex::new(binding.factory_slot),
+                ColumnIndex::new(RR_3_COL_LABOR as usize),
                 FACTORY_UNIT_COST_LABOR as f32,
             )],
-            binding.factory_slot,
-            RR_3_COL_PRODUCTION,
+            SlotIndex::new(binding.factory_slot),
+            ColumnIndex::new(RR_3_COL_PRODUCTION as usize),
             99,
         )?;
         recipe_op.gate = GateSpec::OrderBand(BAND_FACTORY_RECIPE);
@@ -789,10 +790,10 @@ fn build_recursive_ops(
             let stockpile_slot = stockpile_slot_for_owner(binding.owner, false);
             let band_base = BAND_DISBURSE_BASE + (index as u32) * BAND_DISBURSE_STRIDE;
             transfers.push(DiscreteTransferRegistration {
-                source_slot: stockpile_slot,
-                source_col: RR_3_COL_PRODUCTION,
-                target_slot: binding.galaxy_slot,
-                target_col: RR_3_COL_PRODUCTION,
+                source_slot: SlotIndex::new(stockpile_slot),
+                source_col: ColumnIndex::new(RR_3_COL_PRODUCTION as usize),
+                target_slot: SlotIndex::new(binding.galaxy_slot),
+                target_col: ColumnIndex::new(RR_3_COL_PRODUCTION as usize),
                 amount: STARPORT_PRODUCTION_NEED as f32,
                 order_band: band_base,
             });
@@ -822,10 +823,10 @@ fn tier_transfer(
     band: u32,
 ) -> DiscreteTransferRegistration {
     DiscreteTransferRegistration {
-        source_slot,
-        source_col: RR_3_COL_PRODUCTION,
-        target_slot,
-        target_col: RR_3_COL_PRODUCTION,
+        source_slot: SlotIndex::new(source_slot),
+        source_col: ColumnIndex::new(RR_3_COL_PRODUCTION as usize),
+        target_slot: SlotIndex::new(target_slot),
+        target_col: ColumnIndex::new(RR_3_COL_PRODUCTION as usize),
         amount,
         order_band: band,
     }
@@ -852,7 +853,10 @@ fn labor_emit_op(pop_slot: u32) -> AccumulatorOp {
         gate: GateSpec::OrderBand(BAND_LABOR_EMIT),
         scale: ScaleSpec::Constant(POP_LABOR_PER_TICK as f32),
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(pop_slot, RR_3_COL_LABOR)],
+        targets: vec![(
+            SlotIndex::new(pop_slot),
+            ColumnIndex::new(RR_3_COL_LABOR as usize),
+        )],
     }
 }
 

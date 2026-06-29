@@ -15,9 +15,9 @@
 //! columns (which compound) are impossible here.
 
 use simthing_core::{
-    eml_nodes, AccumulatorOp, CombineFn, ConsumeMode, DimensionRegistry, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    RoleOffset, ScaleSpec, SimThing, SlotIndex, SourceSpec, SubFieldRole,
+    eml_nodes, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, DimensionRegistry,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
+    EmlTreeId, GateSpec, RoleOffset, ScaleSpec, SimThing, SlotIndex, SourceSpec, SubFieldRole,
 };
 use simthing_spec::{
     GatedRateOpSpec, RateFormulaOp, RateFormulaOperandSpec, ResourceFlowSpec, SpecError,
@@ -374,14 +374,17 @@ pub fn build_gated_rate_ops(
 
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot,
-                col: base_col,
+                slot: SlotIndex::new(slot),
+                col: ColumnIndex::new(base_col as usize),
             },
             combine: CombineFn::EvalEML { tree_id: tree_id.0 },
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(slot, intrinsic_col)],
+            targets: vec![(
+                SlotIndex::new(slot),
+                ColumnIndex::new(intrinsic_col as usize),
+            )],
         });
     }
     ops

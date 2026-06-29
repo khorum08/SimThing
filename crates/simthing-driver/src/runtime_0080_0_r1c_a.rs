@@ -8,7 +8,9 @@
 
 use std::collections::BTreeSet;
 
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_core::{
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession};
 
 use crate::dress_rehearsal_r6c_integrated_run::{
@@ -461,14 +463,17 @@ fn build_mark_copy_ops(layout: &MarkLayout) -> Vec<AccumulatorOp> {
     (0..layout.fleet_slots)
         .map(|slot| AccumulatorOp {
             source: SourceSpec::SlotValue {
-                slot: layout.staging_start + slot,
-                col: R1A_COL_CURRENT,
+                slot: SlotIndex::new(layout.staging_start + slot),
+                col: ColumnIndex::new(R1A_COL_CURRENT as usize),
             },
             combine: CombineFn::Identity,
             gate: GateSpec::OrderBand(FREELIST_MARK_COPY_BAND),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(layout.committed_start + slot, R1A_COL_CURRENT)],
+            targets: vec![(
+                SlotIndex::new(layout.committed_start + slot),
+                ColumnIndex::new(R1A_COL_CURRENT as usize),
+            )],
         })
         .collect()
 }
@@ -663,13 +668,13 @@ mod fast_mark_sentinel_tests {
         let sources = vec![
             Runtime0080R1bFreeSlotMarkSource {
                 tick: 1,
-                slot: 4,
+                slot: SlotIndex::new(4),
                 reason: "zero_cohort_departure",
                 source_event_kind: "ZeroCohort",
             },
             Runtime0080R1bFreeSlotMarkSource {
                 tick: 2,
-                slot: 4,
+                slot: SlotIndex::new(4),
                 reason: "duplicate_slot_deduped",
                 source_event_kind: "ZeroCohort",
             },

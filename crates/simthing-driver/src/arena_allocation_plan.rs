@@ -1,6 +1,8 @@
 //! E-11 AccumulatorOp planner (memo §2.3).
 
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_core::{
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+};
 use simthing_gpu::{plan_governed_integration_at_band, GovernedPair, PlannerError};
 use thiserror::Error;
 
@@ -164,8 +166,8 @@ pub fn plan_arena_allocation(
 fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: gpu.source_slot,
-            col: gpu.source_col,
+            slot: SlotIndex::new(gpu.source_slot),
+            col: ColumnIndex::new(gpu.source_col as usize),
         },
         combine: CombineFn::IntegrateWithClamp {
             dt: 0.0,
@@ -176,7 +178,10 @@ fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> Accumula
         gate: GateSpec::OrderBand(gpu.gate_a),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::None,
-        targets: vec![(gpu.target0_slot, gpu.target0_col)],
+        targets: vec![(
+            SlotIndex::new(gpu.target0_slot),
+            ColumnIndex::new(gpu.target0_col as usize),
+        )],
     }
 }
 
@@ -204,7 +209,7 @@ fn reset_op(slot: u32, col: u32, band: u32) -> AccumulatorOp {
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(slot, col)],
+        targets: vec![(SlotIndex::new(slot), ColumnIndex::new(col as usize))],
     }
 }
 
@@ -218,15 +223,18 @@ fn sum_reduction_op(
 ) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotRange {
-            start,
+            start: SlotIndex::new(start),
             count,
-            col: source_col,
+            col: ColumnIndex::new(source_col as usize),
         },
         combine: CombineFn::Sum,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(parent_slot, target_col)],
+        targets: vec![(
+            SlotIndex::new(parent_slot),
+            ColumnIndex::new(target_col as usize),
+        )],
     }
 }
 
@@ -239,14 +247,14 @@ fn broadcast_op(
 ) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: src_slot,
-            col: src_col,
+            slot: SlotIndex::new(src_slot),
+            col: ColumnIndex::new(src_col as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(dst_slot, dst_col)],
+        targets: vec![(SlotIndex::new(dst_slot), ColumnIndex::new(dst_col as usize))],
     }
 }
 
@@ -257,15 +265,15 @@ fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: u32, band: u32) -> Acc
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(dst_slot, dst_col)],
+        targets: vec![(SlotIndex::new(dst_slot), ColumnIndex::new(dst_col as usize))],
     }
 }
 
 fn disburse_op(child_slot: u32, a_f_col: u32, band: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: child_slot,
-            col: 0,
+            slot: SlotIndex::new(child_slot),
+            col: ColumnIndex::new(0),
         },
         combine: CombineFn::EvalEML {
             tree_id: child_share_tree_id().0,
@@ -273,7 +281,10 @@ fn disburse_op(child_slot: u32, a_f_col: u32, band: u32) -> AccumulatorOp {
         gate: GateSpec::OrderBand(band),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::AddToTarget,
-        targets: vec![(child_slot, a_f_col)],
+        targets: vec![(
+            SlotIndex::new(child_slot),
+            ColumnIndex::new(a_f_col as usize),
+        )],
     }
 }
 

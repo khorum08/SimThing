@@ -4,7 +4,9 @@
 //! feeds a generic GPU threshold/emission-band; the CPU witness no longer emits
 //! `ZeroCohort`, and the CPU boundary pass applies GPU-decided journal rows only.
 
-use simthing_core::{AccumulatorOp, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SourceSpec};
+use simthing_core::{
+    AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
+};
 use simthing_gpu::{set_debug_readback_allowed, AccumulatorOpSession, ThresholdEvent};
 
 use crate::dress_rehearsal_r6c_integrated_run::{
@@ -731,14 +733,17 @@ fn build_journal_copy_ops(layout: &EventJournalLayout) -> Vec<AccumulatorOp> {
 fn identity_copy_op(source_slot: u32, target_slot: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: source_slot,
-            col: R1A_COL_CURRENT,
+            slot: SlotIndex::new(source_slot),
+            col: ColumnIndex::new(R1A_COL_CURRENT as usize),
         },
         combine: CombineFn::Identity,
         gate: GateSpec::OrderBand(EVENT_JOURNAL_COPY_BAND),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(target_slot, R1A_COL_CURRENT)],
+        targets: vec![(
+            SlotIndex::new(target_slot),
+            ColumnIndex::new(R1A_COL_CURRENT as usize),
+        )],
     }
 }
 

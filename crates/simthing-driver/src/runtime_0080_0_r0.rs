@@ -6,8 +6,9 @@
 //! validation. GPU-resident state does **not** yet drive the next tick.
 
 use simthing_core::{
-    eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, EmlConsumerMask, EmlExecutionClass,
-    EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec, ScaleSpec, SourceSpec,
+    eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerMask,
+    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
+    ScaleSpec, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     cpu_horizon, params_from_config, set_debug_readback_allowed, AccumulatorOpSession,
@@ -348,14 +349,17 @@ impl GpuResidentScheduler {
     fn dispatch_r1(&mut self, ctx: &GpuContext, world: &DressRehearsalR6cWorld) {
         let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
         let op = AccumulatorOp {
-            source: SourceSpec::SlotValue { slot: 0, col: 0 },
+            source: SourceSpec::SlotValue {
+                slot: SlotIndex::new(0),
+                col: ColumnIndex::new(0),
+            },
             combine: CombineFn::EvalEML {
                 tree_id: R1_TREE_ID,
             },
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(0, 1)],
+            targets: vec![(SlotIndex::new(0), ColumnIndex::new(1))],
         };
         let mut session = AccumulatorOpSession::new(ctx, 1, 2);
         session.upload_values(
@@ -543,15 +547,18 @@ fn run_sum_groups_ephemeral(ctx: &GpuContext, groups: &[Vec<f32>]) -> Vec<f32> {
         let count = slot - start;
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotRange {
-                start,
+                start: SlotIndex::new(start),
                 count,
-                col: 0,
+                col: ColumnIndex::new(0),
             },
             combine: CombineFn::Sum,
             gate: GateSpec::Always,
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(target_start + group_idx as u32, 0)],
+            targets: vec![(
+                SlotIndex::new(target_start + group_idx as u32),
+                ColumnIndex::new(0),
+            )],
         });
     }
     let mut session = AccumulatorOpSession::new(ctx, n_slots, n_dims);
@@ -576,14 +583,17 @@ fn run_single_attrition_emission(
     num_ships_before: f32,
 ) -> u32 {
     let op = AccumulatorOp {
-        source: SourceSpec::SlotValue { slot: 0, col: 0 },
+        source: SourceSpec::SlotValue {
+            slot: SlotIndex::new(0),
+            col: ColumnIndex::new(0),
+        },
         combine: CombineFn::EvalEML {
             tree_id: R6_ATTRITION_TREE_ID,
         },
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::EmitEvent,
-        targets: vec![(0, 0)],
+        targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
     };
     let mut session = AccumulatorOpSession::with_emission_capacity(ctx, 1, 3, 1);
     session.upload_values(ctx, &[hostile_damage, hp_per_ship, num_ships_before]);

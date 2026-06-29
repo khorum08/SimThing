@@ -5,9 +5,9 @@
 //! Not wired into the default production pass graph.
 
 use simthing_core::{
-    column_aware_reduction_op, eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SourceSpec,
+    column_aware_reduction_op, eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
+    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     accumulator_op::set_debug_readback_allowed, AccumulatorOpSession, EmlGpuProgramTable,
@@ -520,7 +520,7 @@ impl FirstSliceMappingSession {
         let tree_id = tree_id_override.unwrap_or(1);
         let n_dims = preview.stencil.n_dims;
         let parent_slot = reduction.parent_slot;
-        let n_slots = parent_slot + 1;
+        let n_slots = parent_slot.raw() + 1;
         let eml_resource_col = 1;
         let eml_weight_a_col = 2;
         let eml_weight_b_col = 3;
@@ -918,8 +918,8 @@ impl FirstSliceMappingSession {
             .write_slot_col_values(
                 ctx,
                 &[
-                    (parent_slot, self.eml_weight_a_col, weight_a),
-                    (parent_slot, self.eml_weight_b_col, weight_b),
+                    (parent_slot.raw(), self.eml_weight_a_col, weight_a),
+                    (parent_slot.raw(), self.eml_weight_b_col, weight_b),
                 ],
             )
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
@@ -959,15 +959,18 @@ impl FirstSliceMappingSession {
 
         let sum_resource_op = AccumulatorOp {
             source: SourceSpec::SlotRange {
-                start: 0,
+                start: SlotIndex::new(0),
                 count: cell_count,
-                col: self.eml_resource_col,
+                col: ColumnIndex::new(self.eml_resource_col as usize),
             },
             combine: CombineFn::Sum,
             gate: GateSpec::OrderBand(0),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(parent_slot, self.eml_resource_col)],
+            targets: vec![(
+                parent_slot,
+                ColumnIndex::new(self.eml_resource_col as usize),
+            )],
         };
 
         let eml_op = AccumulatorOp {
@@ -981,7 +984,7 @@ impl FirstSliceMappingSession {
             gate: GateSpec::OrderBand(1),
             scale: ScaleSpec::Identity,
             consume: ConsumeMode::ResetTarget,
-            targets: vec![(parent_slot, self.eml_output_col)],
+            targets: vec![(parent_slot, ColumnIndex::new(self.eml_output_col as usize))],
         };
 
         if readback_report {
@@ -1010,8 +1013,8 @@ impl FirstSliceMappingSession {
             .acc_session
             .readback_full(ctx)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
-        let threat = out[self.slot_idx(parent_slot, parent_col)];
-        let urgency = out[self.slot_idx(parent_slot, self.eml_output_col)];
+        let threat = out[self.slot_idx(parent_slot.raw(), parent_col.raw_u32())];
+        let urgency = out[self.slot_idx(parent_slot.raw(), self.eml_output_col)];
         Ok((Some(threat), Some(urgency)))
     }
 
@@ -1039,7 +1042,7 @@ impl FirstSliceMappingSession {
             .upload_threshold_ops(
                 ctx,
                 &[ThresholdRegistration {
-                    slot: parent_slot,
+                    slot: parent_slot.raw(),
                     col: self.eml_output_col,
                     threshold,
                     direction: DIR_UPWARD,
@@ -1106,7 +1109,7 @@ impl FirstSliceMappingSession {
             .upload_threshold_ops(
                 ctx,
                 &[ThresholdRegistration {
-                    slot: parent_slot,
+                    slot: parent_slot.raw(),
                     col: self.eml_output_col,
                     threshold,
                     direction: DIR_UPWARD,

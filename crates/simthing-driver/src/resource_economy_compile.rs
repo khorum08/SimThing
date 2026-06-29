@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use simthing_core::{
     discrete_transfer_registration_to_op, rebuild_conjunctive_recipe_ops,
     rebuild_discrete_transfer_ops, rebuild_emit_on_threshold_ops, AccumulatorOpBuilderError,
-    ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DimensionRegistry,
+    ColumnIndex, ConjunctiveRecipeInput, ConjunctiveRecipeRegistration, DimensionRegistry,
     DiscreteTransferRegistration, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
     EmlExpressionRegistry, SimPropertyId, SimThing, SlotIndex,
 };
@@ -121,10 +121,10 @@ pub fn materialize_resource_economy_registrations_with_slots(
         }
 
         let reg = DiscreteTransferRegistration {
-            source_slot,
-            source_col: transfer.source_col,
-            target_slot,
-            target_col: transfer.target_col,
+            source_slot: SlotIndex::new(source_slot),
+            source_col: ColumnIndex::new(transfer.source_col as usize),
+            target_slot: SlotIndex::new(target_slot),
+            target_col: ColumnIndex::new(transfer.target_col as usize),
             amount: transfer.amount,
             order_band: transfer.order_band,
         };
@@ -144,8 +144,8 @@ pub fn materialize_resource_economy_registrations_with_slots(
             .map(|input| {
                 ensure_property_known(registry, input.property)?;
                 Ok(ConjunctiveRecipeInput {
-                    slot: resolve_slot(input.property)?,
-                    col: input.col,
+                    slot: SlotIndex::new(resolve_slot(input.property)?),
+                    col: ColumnIndex::new(input.col as usize),
                     unit_cost: input.unit_cost,
                 })
             })
@@ -153,8 +153,8 @@ pub fn materialize_resource_economy_registrations_with_slots(
 
         let reg = ConjunctiveRecipeRegistration {
             inputs,
-            target_slot: resolve_slot(recipe.target_property)?,
-            target_col: recipe.target_col,
+            target_slot: SlotIndex::new(resolve_slot(recipe.target_property)?),
+            target_col: ColumnIndex::new(recipe.target_col as usize),
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
         };
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
@@ -182,8 +182,8 @@ pub fn materialize_resource_economy_registrations_with_slots(
     for emit in &compiled.emit_on_threshold {
         ensure_property_known(registry, emit.source_property)?;
         let reg = EmitOnThresholdRegistration {
-            slot: resolve_slot(emit.source_property)?,
-            col: emit.source_col,
+            slot: SlotIndex::new(resolve_slot(emit.source_property)?),
+            col: ColumnIndex::new(emit.source_col as usize),
             threshold: emit.threshold,
             direction: emit.direction,
             event_kind: emit.event_kind,

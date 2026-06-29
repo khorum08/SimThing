@@ -78,8 +78,10 @@ shows the migration surface is larger than one focused PR.
 > session-loop dispatch replaced) — net-negative enforcement surface — and parity preserved. This is the
 > clean pattern AS-2 lacked (defined-but-not-adopted). **0R remediation (AS-CHANNEL-NEWTYPES-0R)** adopts
 > newtypes across production/report RF surfaces; DA re-review pending. Rung **5 `AS-INDEX-NEWTYPES-0`** →
-> **PROBATION** after PR merge (`docs/tests/as_index_newtypes_0_results.md`): `SlotIndex` on `SlotAllocator`
-> public boundary + production adoption; AccumulatorOp residue → **0B**. Rungs **1–4**
+> **PROBATION** after PR #969 merge (`docs/tests/as_index_newtypes_0_results.md`): `SlotIndex` on `SlotAllocator`
+> public boundary + production adoption; **0B** (`AS-INDEX-NEWTYPES-0B`) typed AccumulatorOp/builder slot/column
+> axes + GPU encoding parity — CPU-side typed-index residue closed; upload-boundary raw fields remain by design;
+> DA re-review pending before DONE — DA-APPROVED. Rungs **1–4**
 > graduate under the separate AS-2 remediation pass (AS-1 cleared; AS-2 held for adoption; AS-3/AS-4 on
 > doc-consolidation + net-negative confirmation).
 >
@@ -91,7 +93,7 @@ shows the migration surface is larger than one focused PR.
 > core §9 detector 1 now annotated as type-enforced for the tick path (this PR). **AS-4**: public surface
 > sealed (its stated scope); shader-text is the legitimate remaining residue (§5); the `pub(crate)`
 > internal seams are a **named follow-on rung**, not an AS-4 gap. Net: rungs **1, 2, 3, 4, 6, 7 are
-> DA-APPROVED**; **5** PROBATION (0B residue); **8** pending; **F** closeout opens once 5/8 land
+> DA-APPROVED**; **5** PROBATION (0B landed; DA re-review for promotion); **8** pending; **F** closeout opens once 5/8 land
 > (and should consolidate the AS-3 0A–0E / AS-4 0A–0C sub-rung docs into one ledger each).
 
 *Recipient* follows the handoff-template routing (Type → agent). *State:* `DONE` · `OPEN` (queued) · set to `IN PROGRESS` / `PROBATION` / `DA-APPROVED` as a rung lands.
