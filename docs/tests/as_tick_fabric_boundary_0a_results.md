@@ -7,8 +7,8 @@ PASS — ordinary GPU tick migrated behind `SimulationFabric`; hot tick accepts 
 ## PR / branch / merge
 
 - Branch: `codex/as-tick-fabric-boundary-0a`
-- PR: (pending push)
-- Merge: (pending)
+- PR: #962
+- Merge: `1b1022c213`
 
 ## What changed
 
