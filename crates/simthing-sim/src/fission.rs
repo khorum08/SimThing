@@ -50,8 +50,8 @@ use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path, node_at_path_mut};
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    DimensionRegistry, PropertyValue, SecondaryCondition, SimPropertyId, SimThing, SimThingId,
-    SimThingKind, SimThingKindTag, SubFieldRole,
+    DimensionRegistry, PropertyValue, ResolvedFissionChildBlueprint, SecondaryCondition,
+    SimPropertyId, SimThing, SimThingId, SubFieldRole,
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use std::collections::{HashMap, HashSet};
@@ -265,8 +265,8 @@ fn execute_fission(
     // Spawn the child.
     let prop = registry.property(pid);
     let ft = &prop.fission_templates[template_idx];
-    let child_kind = kind_tag_to_kind(&ft.template.child_kind);
-    let mut new_child = SimThing::new(child_kind, current_day);
+    let mut new_child =
+        ResolvedFissionChildBlueprint::from_template(&ft.template).spawn(current_day);
     let new_id = new_child.id;
     let new_slot = allocator.alloc(new_id);
 
@@ -630,22 +630,6 @@ fn remove_child_from_tree(node: &mut SimThing, child_id: SimThingId) -> bool {
     false
 }
 
-fn kind_tag_to_kind(tag: &SimThingKindTag) -> SimThingKind {
-    match tag {
-        SimThingKindTag::Scenario => SimThingKind::Scenario,
-        SimThingKindTag::GameSession => SimThingKind::GameSession,
-        SimThingKindTag::World => SimThingKind::World,
-        SimThingKindTag::Owner => SimThingKind::Owner,
-        SimThingKindTag::Faction => SimThingKind::Faction,
-        SimThingKindTag::StarSystem => SimThingKind::StarSystem,
-        SimThingKindTag::Location => SimThingKind::Location,
-        SimThingKindTag::Cohort => SimThingKind::Cohort,
-        SimThingKindTag::Fleet => SimThingKind::Fleet,
-        SimThingKindTag::Station => SimThingKind::Station,
-        SimThingKindTag::Custom(s) => SimThingKind::Custom(s.clone()),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -655,8 +639,9 @@ mod tests {
         is_fission_clone_source, prepare_fission_clone_sources_for_registry,
         stamp_fission_clone_source_label, DimensionRegistry, Direction, FissionTemplate,
         FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-        PropertyTransformDelta, SecondaryCondition, SimProperty, SimThing, SimThingKind,
-        SimThingKindTag, SubFieldRole, TransformOp, FISSION_CLONE_SOURCE_PROPERTY_ID,
+        PropertyTransformDelta, ResolvedFissionChildBlueprint, SecondaryCondition, SimProperty,
+        SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
+        FISSION_CLONE_SOURCE_PROPERTY_ID,
     };
     use simthing_gpu::SlotAllocator;
 
@@ -677,6 +662,106 @@ mod tests {
             secondary: None,
         }];
         p
+    }
+
+    fn spawned_fission_child_kind(child_kind: SimThingKindTag) -> SimThingKind {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = make_fission_property();
+        prop.fission_templates[0].template.child_kind = child_kind;
+        let pid = reg.register(prop);
+        let template = reg.property(pid).fission_templates[0].template.clone();
+        let expected = ResolvedFissionChildBlueprint::from_template(&template)
+            .spawn(1)
+            .kind;
+
+        let mut alloc = SlotAllocator::new();
+        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+        cohort.add_property(pid, reg.property(pid).default_value());
+        let cid = cohort.id;
+        alloc.alloc(cid);
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        alloc.alloc(root.id);
+        root.add_child(cohort);
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: cid,
+            property_id: pid,
+            template_idx: 0,
+        });
+
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 3 * n_dims];
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: 1,
+            col: 0,
+            value: 0.2,
+            event_kind: ek,
+        }];
+
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
+
+        assert_eq!(out.fissions_executed, 1);
+        let spawned = &root.children[0].children[0];
+        assert_eq!(spawned.kind, expected);
+        spawned.kind.clone()
+    }
+
+    #[test]
+    fn fission_child_spawn_kind_resolution_not_in_sim_runtime() {
+        let template = make_fission_property().fission_templates[0]
+            .template
+            .clone();
+        let via_core = ResolvedFissionChildBlueprint::from_template(&template).spawn(1);
+        let via_fission = spawned_fission_child_kind(SimThingKindTag::Cohort);
+        assert_eq!(via_fission, via_core.kind);
+        assert_eq!(via_fission, SimThingKind::Cohort);
+    }
+
+    #[test]
+    fn fission_spawns_same_child_kind_after_core_spawn_refactor() {
+        let cases = [
+            (SimThingKindTag::Scenario, SimThingKind::Scenario),
+            (SimThingKindTag::GameSession, SimThingKind::GameSession),
+            (SimThingKindTag::World, SimThingKind::World),
+            (SimThingKindTag::Owner, SimThingKind::Owner),
+            (SimThingKindTag::StarSystem, SimThingKind::StarSystem),
+            (SimThingKindTag::Location, SimThingKind::Location),
+            (SimThingKindTag::Cohort, SimThingKind::Cohort),
+            (SimThingKindTag::Fleet, SimThingKind::Fleet),
+            (SimThingKindTag::Station, SimThingKind::Station),
+            (
+                SimThingKindTag::Custom("tech_tree".into()),
+                SimThingKind::Custom("tech_tree".into()),
+            ),
+        ];
+        for (tag, expected) in cases {
+            assert_eq!(spawned_fission_child_kind(tag), expected);
+        }
+        let faction_kind = spawned_fission_child_kind(SimThingKindTag::Faction);
+        #[allow(deprecated)]
+        assert_eq!(faction_kind, SimThingKind::Faction);
+    }
+
+    #[test]
+    fn fission_custom_child_kind_preserved() {
+        let custom = SimThingKindTag::Custom("tech_tree".into());
+        assert_eq!(
+            spawned_fission_child_kind(custom),
+            SimThingKind::Custom("tech_tree".into())
+        );
     }
 
     #[test]
