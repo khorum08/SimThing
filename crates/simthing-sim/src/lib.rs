@@ -46,6 +46,7 @@ pub mod accumulator_plan_tick;
 pub mod boundary;
 pub mod delta_log;
 pub mod fission;
+pub mod fission_clone_source_view;
 pub mod gpu_sync;
 pub mod legacy_oracle;
 pub mod mapping_atlas_scheduler;
@@ -70,6 +71,7 @@ pub use boundary::{
 };
 pub use delta_log::{entries_from_outcome, BoundaryDeltaEntry};
 pub use fission::{ClonedCapabilityRoot, FissionLineageRecord, FissionOutcome};
+pub use fission_clone_source_view::FissionCloneSourceView;
 pub use legacy_oracle::{
     apply_oracle_flags, assert_events_oracle, assert_values_oracle, run_family_oracle,
     LegacyOracleRun, OracleCapture, OracleExactness, OracleFamily, OracleScenario,

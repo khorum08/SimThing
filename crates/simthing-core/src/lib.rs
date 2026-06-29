@@ -6,6 +6,7 @@ pub mod compiled_accumulator_plan;
 pub mod eml_nodes;
 pub mod eml_registry;
 pub mod evaluate;
+pub mod fission_clone_source;
 pub mod ids;
 pub mod intensity_eml;
 pub mod overlay;
@@ -45,6 +46,11 @@ pub use eml_registry::{
     classify_legacy_tree_meta, EmlConsumerKind, EmlConsumerMask, EmlExecutionClass,
     EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlRegistryError, EmlTreeId, EmlTreeMeta,
     MAX_EML_TREE_NODES, WHITELISTED_FORMULA_CLASSES,
+};
+pub use fission_clone_source::{
+    fission_clone_source_label, is_fission_clone_source, prep_fission_clone_source_labels,
+    prep_fission_parent_clone_source_labels, stamp_fission_clone_source_label,
+    FissionCloneSourceLabel, FISSION_CLONE_SOURCE_PROPERTY_ID,
 };
 pub use ids::{
     advance_simthing_id_allocator_past, OverlayId, SimPropertyId, SimThingId,
