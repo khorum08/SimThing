@@ -1,13 +1,23 @@
 //! Fission clone-source runtime view — no `kind` accessor.
 //!
-//! Transposition between clone-source selection and semantic kind reads is
-//! uncompilable:
+//! Direct kind access is uncompilable (`fission_clone_source_view_hides_kind_compile_fail`):
 //!
 //! ```compile_fail
 //! use simthing_sim::FissionCloneSourceView;
 //!
 //! fn peek_kind(v: FissionCloneSourceView<'_>) {
 //!     let _ = v.kind;
+//! }
+//! ```
+//!
+//! Recovering `SimThing` for kind reads is also uncompilable
+//! (`fission_clone_source_view_inner_kind_backdoor_compile_fail`):
+//!
+//! ```compile_fail
+//! use simthing_sim::FissionCloneSourceView;
+//!
+//! fn peek_inner_kind(v: FissionCloneSourceView<'_>) {
+//!     let _ = v.inner().kind;
 //! }
 //! ```
 
@@ -25,10 +35,6 @@ impl<'a> FissionCloneSourceView<'a> {
 
     pub fn id(&self) -> SimThingId {
         self.node.id
-    }
-
-    pub fn inner(&self) -> &'a SimThing {
-        self.node
     }
 
     pub fn children(&self) -> impl Iterator<Item = FissionCloneSourceView<'a>> + 'a {
