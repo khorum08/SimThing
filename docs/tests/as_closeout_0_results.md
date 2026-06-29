@@ -2,7 +2,8 @@
 
 ## Status
 
-PROBATION — 0.0.8.4 Admission Substrate build ladder closed; final DA closeout review required.
+DONE — DA-APPROVED (executive DA, 2026-06-29). 0.0.8.4 Admission Substrate track CLOSED. Rungs 1–8B
+DA-APPROVED; consolidation completed at DA review (10 sub-rung slice docs expunged — see below).
 
 ## PR / branch / merge
 
@@ -107,7 +108,10 @@ Honest residue: what remains outside the type system's reach by nature, not negl
 | `as_packed_upload_boundary_0_results.md` | Summary in this doc's Scope Ledger; original doc updated with DA-APPROVED status |
 | `as_8b_session_upload_packed_packets_results.md` | Summary in this doc's Scope Ledger; original doc updated with DA-APPROVED status |
 
-Sub-rung slice docs (`0a`–`0e`, `0a`–`0c`) are retained as historical record and are not deleted.
+Sub-rung slice docs (AS-3 `0a`–`0e`, AS-4 `0a`–`0c`, AS-7 `0b`–`0c` — 10 files) are **expunged** at DA
+closeout; provenance is retained in the evidence index + this ledger + the live `.rs` tests (the repo's
+standard expunge pattern). Each split rung keeps exactly **one** ledger (AS-3/AS-4 their `*_closeout`;
+AS-7 its `0a`). This is the net-negative consolidation AS-F exists to deliver.
 
 ## Known non-closeout follow-ons
 
@@ -117,7 +121,7 @@ These are not failures of AS-F; they are future optional work recorded so they a
 - **AS-9 intensity / velocity / reduction session envelopes** — `WorldAccumulatorRuntime` runtime envelope still packs CPU-side before calling the sealed session; a future rung could extend packed packets to the runtime envelope itself if needed.
 - **Overlay-lifecycle typestate** — active vs Suspended; tabled in §5A of the design doc.
 - **Arena settlement-phase typestate** — tabled in §5A.
-- **AS-F doc consolidation** — sub-rung slice docs retained as historical record; no further merging required.
+- **AS-F doc consolidation** — DONE at DA closeout: 10 sub-rung slice docs **expunged** (net-negative); each split rung now has exactly one ledger; this doc is the track ledger.
 
 ## Conformance
 
