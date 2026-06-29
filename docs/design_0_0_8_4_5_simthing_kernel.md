@@ -1,0 +1,115 @@
+# 0.0.8.4.5 — SimThing Kernel: Constitution-as-Admission-Substrate
+
+> **Status: PROPOSED (production track, 2026-06-29, owner-directed).** Sits *beneath* the permanent
+> paradigm [`simthing_core_design.md`](simthing_core_design.md) (esp. **§1.2 the admission substrate**) and
+> *beneath* the constitution [`design_0_0_8_3.md`](design_0_0_8_3.md). It is the **keystone follow-on to the
+> closed 0.0.8.4 Admission Substrate** ([`design_0_0_8_4_admission_substrate.md`](design_0_0_8_4_admission_substrate.md))
+> and is sequenced **between** it and the 0.0.8.5 Terran-Pirate track
+> ([`design_0_0_8_5_clausescript_terran_pirate_galaxy.md`](design_0_0_8_5_clausescript_terran_pirate_galaxy.md)).
+>
+> **Thesis — Constitution-as-admission-substrate.** 0.0.8.4 promoted nine invariants from prose to types.
+> This track promotes the *spine itself*: it makes **"the accumulate→reduce→mask→threshold sweep is the only
+> authoritative path to mutate resolved state or emit a decision"** a **type-and-dependency fact**, enforced
+> by a minimal-dependency `simthing-kernel` crate — so the most load-bearing line of the constitution stops
+> being a directive an agent must hold and becomes a wall an agent cannot pass. Like 0.0.8.4, its success
+> metric is **net-negative enforcement surface**, and every rung is a **pure refactor** (CPU-oracle parity
+> bit-exact).
+
+---
+
+## 0. Track harness header (constitution §0.5 Rule 1)
+
+**Fixed base (durable; hold every rung):**
+
+1. [`simthing_core_design.md`](simthing_core_design.md) **§1.2** (admission ladder), **§0.0/§5** (one authoritative loop), **§4** (semantic-free sim; compile-away), **§7** (arena-pressure projection → heatmap).
+2. [`design_0_0_8_3.md`](design_0_0_8_3.md) §0 (constitution; anti-flattening §0.6).
+3. **This file** — the 0.0.8.4.5 canonical design file.
+4. [`design_0_0_8_4_admission_substrate.md`](design_0_0_8_4_admission_substrate.md) — the closed substrate this builds on (`SimulationFabric`, `ColumnIndex`/`SlotIndex`, `StructuralCoord`, channel newtypes, `PackedUpload`) + its §2.1 exit-state taxonomy.
+5. [`handoff_template.md`](handoff_template.md) — binding handoff skeleton (§H anti-kabuki + the context spine, incl. the "one authoritative path" directive this track upgrades to a type-fact).
+
+**Established decisions — do NOT re-derive:**
+
+- **Pure refactor:** types/crate structure change, resolved values do not. CPU-oracle parity bit-exact; existing tests green. A rung that changes a resolved value is wrong.
+- **Seals before extraction.** The write/emission/participation seals land *within existing crates first* (the write-seal is a 0.0.8.5 precondition — below); the `simthing-kernel` crate extraction is the **keystone last**, making the seals dependency-enforced rather than convention.
+- **Ship every seal with its sanctioned channel (§2.1).** A seal that blocks the direct path without a visible conformant path (EML gadget / RF arena / `BoundaryProtocol`) *pushes capable models toward sidecars*. Each seal rung names the sanctioned alternative; the goal is *channeling*, not just denial.
+- **Deny escape *primitives* at the highest admission rung** — `#![forbid(unsafe_code)]` (compiler) + minimal `Cargo.toml` deps (dependency graph), **never** a grep token-firewall (that is the D8 noun-for-verb regression).
+- **Consumer/corpus streamlining is consumer-pulled, NOT bundled here.** This track *enables* ClauseThing-admission and consumer simplification; it does not perform them (constitution consumer-pulled discipline).
+
+---
+
+## 1. Objective, the STEAD precondition, and the productization payoff
+
+**Objective.** Make the accumulator sweep the *only typed/dependency-enforced* path to authoritative mutation
+and decision emission, housed in a minimal-dependency `simthing-kernel` crate.
+
+**Why now (the STEAD precondition — Grok).** 0.0.8.5's central mandate is *"all decisions made entirely by
+STEAD."* STEAD decides on the Movement-Front; the front is only *complete* if **every** effect flows through
+the accumulator → arena-pressure projection → grid-cell heatmap. A bypass mutation is **invisible to the
+front**, so STEAD would decide on a front that lies. **The write-seal is the necessary precondition that
+makes the front complete-able** (the projection bindings make it actual — §5). Therefore the write-seal must
+land **before 0.0.8.5's live-STEAD-decision phase** (it does *not* block 0.0.8.5's earlier galaxy/ownership/
+fleet phases — those run in parallel).
+
+**Why a crate (the productization boundary — owner's point).** A zero-dependency kernel with a small sealed
+surface is the artifact core §1's *second mission* ships: consumers (Studio, the LEWM/field-movie corpus
+tooling, future modders, any "code meant to use with SimThings") depend on the kernel's **read-only view**,
+not on internal mutability. The extraction also yields a **reusable template** — minimal-dep core + sealed
+mutation + read-only view — applicable later to other authorities (spec, scenario). This is permanent
+downstream leverage, not internal hygiene.
+
+**The payoff at closeout.** The handoff-spine "one authoritative path" line **upgrades from directive to
+type-fact**, and "all conflict is resource flow" becomes *uncompilable to bypass* — the constitution's spine,
+enforced by the dependency graph.
+
+---
+
+## 2. The ladder
+
+Each rung: one `compile_fail` (or a `cargo`-deny / dependency check) proving the illegal state no longer
+builds; retire the prose/guard it replaces; pure refactor with parity; one results ledger. Recipient per the
+handoff routing (coding → Cursor/Grok; closeout → Opus/Owner).
+
+| Rung | ID | Promote | Type/dependency move | Retires | Recipient |
+|---|---|---|---|---|---|
+| 0 | `KERNEL-TRACK-OPEN-0` | — | This doc + evidence-index row. | — | Haiku/Sonnet |
+| 1 | `KERNEL-FORBID-UNSAFE-0` | the `unsafe`/raw-pointer sidecar primitive | Relocate any `unsafe` behind the GPU boundary; add `#![forbid(unsafe_code)]` to the semantic-free crates (`simthing-sim`, later `simthing-kernel`). **Compiler-enforced**, strictly stronger than a grep firewall. | Any "no `unsafe`" prose/scan; denies `transmute`/`*mut` sidecars. **All-projects, durable.** | Cursor/Grok |
+| 2 | `KERNEL-DEP-BUDGET-0` | the import-a-sidecar-tool vector | Pin/minimize `simthing-sim` `Cargo.toml`; a new dependency requires DA sign-off (a `cargo`-deny/`deny.toml` check). Precursor to the extraction. | Implicit "don't add heavy deps" prose. | Cursor/Grok |
+| 3 | `KERNEL-WRITE-SEAL-0` | §0.0/§5 — only the sweep mutates resolved state | Resolved column buffer mutable **only** via kernel accumulator passes + the narrow `BoundaryProtocol`; no public setter, no mutation even via `ColumnIndex` except an explicit greppable `raw_lane()` for serialization. Enforced by a kernel-minted capability token (within-crate) — the precursor to crate ownership (rung 6). **Sanctioned channel: EML gadget / RF arena / BoundaryProtocol (§2.1).** | The "one authoritative path" *directive* → type. `compile_fail`: external code mutating a resolved column. **The 0.0.8.5 STEAD precondition.** | Cursor/Grok |
+| 4 | `KERNEL-EMISSION-SEAL-0` | §8 — decisions are threshold crossings | `EmissionRecord` / decision types get **private constructors**; only the threshold-crossing logic (kernel or its CPU-oracle twin) can mint one. **Sanctioned channel: `Threshold`→`EmitEvent`→`BoundaryRequest`.** | "decisions are GPU-resident threshold crossings" prose → type. `compile_fail`: forging an `EmissionRecord`. | Cursor/Grok |
+| 5 | `KERNEL-PARTICIPATION-SEAL-0` | §5.2/§7 — spatial arenas need placed participants | Arena registration accepts only typed participants; a **spatial** arena requires a `StructuralCoord` placement proof (`validate_spatial_binding` as a type, not a runtime check). | The "property possession never admits" / spatial-binding runtime guards → type. `compile_fail`: an unplaced participant entering a spatial arena. | Cursor/Grok |
+| 6 | `KERNEL-CRATE-EXTRACT-0` | §4 — semantic-free core as a dependency-graph fact | **The keystone.** Carve the already-identified semantic-free core (the `AccumulatorOp` passes behind `SimulationFabric` + the sealed column buffer) into **`simthing-kernel`**: minimal deps (ideally only `simthing-eml` + the fabric/index types), `#![forbid(unsafe_code)]`, owns the only mutable column buffer; every other crate depends on its **read-only view**. The seals (3–5) become dependency-enforced, not convention. **May split.** | The semantic-free *source scans* → narrowed to shader-text only; the kernel's dep graph is now the firewall. `compile_fail`/dep-check: a consumer crate reaching kernel-internal mutation. | Cursor/Grok |
+| F | `KERNEL-CLOSEOUT-0` | — | Scope Ledger; **upgrade the handoff-spine "one authoritative path" line directive → type-fact**; record the STEAD-completeness statement (write-seal + projection bindings → complete front by construction); consolidate sub-rung docs (one ledger each). | — | Opus/Owner (DA) |
+
+---
+
+## 3. Sequencing with 0.0.8.5 (parallel, with one gate)
+
+This track does **not** serialize in front of 0.0.8.5. They overlap:
+
+- **0.0.8.5 early phases** (galaxy generation, ownership, planets/factories/cohorts, fleets, hydration) inherit the AS-1–8B boundaries and need **nothing** from this track — proceed in parallel.
+- **`KERNEL-WRITE-SEAL-0` (rung 3) is the one gate:** it must land **before 0.0.8.5's live-STEAD-decision phase**, because that phase's soundness depends on a complete front. The emission-seal (4) gates the same phase.
+- **`KERNEL-CRATE-EXTRACT-0` (rung 6)** can land before *or shortly after* 0.0.8.5's decision phase — the seals already deliver the behavior; the crate makes them dependency-enforced. It must not be rushed into 0.0.8.5's critical path.
+
+So the flagship 2000-star demo is **not delayed**: the cheap hardening (1–2) and the seals (3–5) are small and land alongside 0.0.8.5's early work; only the decision phase waits on the write-seal, which it needed anyway.
+
+## 4. What this opens — recorded, NOT bundled (consumer-pulled)
+
+The kernel boundary *enables* these; per consumer-pulled discipline they open only when a consumer names them:
+
+- **ClauseThing admission streamlining.** Once the kernel's sealed surface is the admission contract, many ClauseThing hydration checks collapse to "does this lower to a valid kernel registration?" — which the type system answers. The clausescript transpiler in **0.0.8.5** is the natural consumer that pulls this.
+- **Consumer migration to the read-only view** (Studio, exporters, corpus tooling) — pulled per consumer.
+- **The reusable authority template** (minimal-dep core + sealed mutation + read-only view) applied to the spec/scenario authorities — a later track, when those authorities are next touched.
+
+## 5. Honest residue (stays prose + admission, by nature)
+
+- **Projection-binding completeness.** The write-seal makes the front *complete-able* (necessary); the front is *actually* complete only where `ArenaPressureBindingSpec` projections exist (sufficient). Whether every gameplay arena has its projection is a **scenario-authoring** obligation (0.0.8.5), DA-reviewed — not a kernel type fact.
+- **`no_std` is not pursued** — the GPU/`wgpu` path needs `std`; the kernel minimizes deps, it does not go bare-metal.
+- **Live ontological conformance** ("is this still one accumulate→reduce→threshold loop?") remains DA judgment — the kernel makes *bypass* uncompilable, not *good modeling* automatic.
+- **WGSL shader text** — the final residue Rust cannot see (unchanged).
+
+## 6. References
+
+- The doctrine: [`simthing_core_design.md`](simthing_core_design.md) §1.2, §0.0, §4, §5, §7, §8.
+- The substrate this builds on: [`design_0_0_8_4_admission_substrate.md`](design_0_0_8_4_admission_substrate.md) (§2.1 exit states; the AS-9 "sealed-authority" cluster this track realizes).
+- Handoff discipline: [`handoff_template.md`](handoff_template.md) (§H; the spine line this track upgrades).
+- Consumer: [`design_0_0_8_5_clausescript_terran_pirate_galaxy.md`](design_0_0_8_5_clausescript_terran_pirate_galaxy.md) (the STEAD-decision phase the write-seal gates).
