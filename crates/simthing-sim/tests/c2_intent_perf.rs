@@ -11,7 +11,7 @@ use simthing_feeder::{
     feeder_channel, DispatchCoordinator, FeederWork, PatchTransform, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 use std::time::Instant;
 
 fn try_gpu() -> Option<GpuContext> {
@@ -53,7 +53,8 @@ fn c2_intent_perf_no_regression() {
         let (tx, rx) = feeder_channel();
 
         let world = SimThing::new(SimThingKind::World, 0);
-        let mut proto = BoundaryProtocol::new(world, reg.clone(), alloc.clone());
+        let mut proto =
+            BoundaryProtocol::new(SimRuntimeTree::admit(world), reg.clone(), alloc.clone());
         proto.flags.use_accumulator_intent = use_accumulator_intent;
         proto.initial_gpu_sync(&coord, &mut state);
 

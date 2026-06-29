@@ -15,8 +15,8 @@ use simthing_gpu::{
     THRESH_BUF_OUTPUT,
 };
 use simthing_sim::{
-    assert_no_hard_trigger_on_soft_aggregate, BoundaryProtocol, SoftAggregateViolation,
-    ThresholdSemantic,
+    assert_no_hard_trigger_on_soft_aggregate, BoundaryProtocol, SimRuntimeTree,
+    SoftAggregateViolation, ThresholdSemantic,
 };
 
 const TOL: f32 = 1e-5;
@@ -325,7 +325,7 @@ fn c5_world_summary_matches_full_values_after_weighted_mean_reduction() {
     coord.shadow.fill(0.5);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_reduction_soft = true;
     proto.initial_gpu_sync(&coord, &mut state);
 

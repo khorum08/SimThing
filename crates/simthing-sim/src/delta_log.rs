@@ -142,7 +142,10 @@ pub enum BoundaryDeltaEntry {
 /// Entries are emitted in boundary step order (lifecycle → expiry → fission →
 /// structural mutations → velocity alerts) so the log reads chronologically
 /// within a day.
-pub fn entries_from_outcome(outcome: &BoundaryOutcome, root: &SimThing) -> Vec<BoundaryDeltaEntry> {
+pub(crate) fn entries_from_outcome(
+    outcome: &BoundaryOutcome,
+    root: &SimThing,
+) -> Vec<BoundaryDeltaEntry> {
     let index = DeltaLogTreeIndex::new(root);
     let mut entries = Vec::with_capacity(estimated_entry_count(outcome));
 

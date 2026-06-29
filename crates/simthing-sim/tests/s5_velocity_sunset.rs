@@ -4,7 +4,7 @@ use simthing_core::{ClampBehavior, DimensionRegistry, SimProperty, SubFieldRole}
 use simthing_gpu::{
     build_governed_pairs, plan_velocity_integration, GpuContext, Pipelines, WorldGpuState,
 };
-use simthing_sim::{BoundaryProtocol, PipelineFlags};
+use simthing_sim::{BoundaryProtocol, PipelineFlags, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -41,7 +41,10 @@ fn s5_velocity_disabled_rejects_governed_velocity_workload() {
     let mut reg = DimensionRegistry::new();
     reg.register(governed_property());
     let mut proto = BoundaryProtocol::new(
-        simthing_core::SimThing::new(simthing_core::SimThingKind::World, 0),
+        SimRuntimeTree::admit(simthing_core::SimThing::new(
+            simthing_core::SimThingKind::World,
+            0,
+        )),
         reg,
         simthing_gpu::SlotAllocator::new(),
     );

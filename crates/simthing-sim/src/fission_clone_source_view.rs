@@ -29,7 +29,7 @@ pub struct FissionCloneSourceView<'a> {
 }
 
 impl<'a> FissionCloneSourceView<'a> {
-    pub fn from_node(node: &'a SimThing) -> Self {
+    pub(crate) fn from_node(node: &'a SimThing) -> Self {
         Self { node }
     }
 

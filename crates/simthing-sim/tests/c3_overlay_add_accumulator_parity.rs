@@ -12,7 +12,7 @@ use simthing_gpu::{
     build_overlay_deltas, GpuContext, Pipelines, SlotAllocator, WorldGpuState, OP_ADD, OP_MULTIPLY,
     OP_SET,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -163,7 +163,7 @@ where
     );
     coord.shadow[..projected_len].copy_from_slice(&projected);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
@@ -378,7 +378,7 @@ fn c3_mixed_overlay_routes_through_c4_orderband_path() {
     );
     coord.shadow[..projected_len].copy_from_slice(&projected);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
@@ -457,13 +457,13 @@ fn c1_c2_c3_combined_accumulator_paths_parity() {
         simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
         coord.shadow[..projected_len].copy_from_slice(&projected);
 
-        let mut proto = BoundaryProtocol::new(world, reg, alloc);
+        let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
         proto.flags.use_accumulator_intent = true;
         proto.flags.use_accumulator_threshold_scan = true;
         proto.flags.use_accumulator_overlay_add = true;
         proto.initial_gpu_sync(&coord, &mut state);
 
-        let cohort_id = proto.root.children[0].id;
+        let cohort_id = proto.root.access(|root| root.children[0].id);
         tx.send(FeederWork::Patch(PatchTransform {
             target: cohort_id,
             delta: PropertyTransformDelta {

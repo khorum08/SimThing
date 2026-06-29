@@ -12,7 +12,7 @@ use simthing_gpu::{
     build_overlay_deltas, GpuContext, Pipelines, SlotAllocator, WorldGpuState, OP_ADD, OP_MULTIPLY,
     OP_SET,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -144,7 +144,7 @@ fn s3_accumulator_overlay_is_default_path() {
     let (_tx, rx) = feeder_channel();
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.initial_gpu_sync(&coord, &mut state);
     assert!(state.accumulator_overlay_add_active);
 
@@ -183,7 +183,7 @@ fn s3_overlay_disabled_rejects_overlay_workload() {
     let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.flags.use_accumulator_overlay_add = false;
     let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         proto.initial_gpu_sync(&coord, &mut state);
@@ -244,7 +244,7 @@ fn s3_overlay_accumulator_matches_cpu_golden_add_multiply_set() {
     let mut expected = coord.shadow.clone();
     apply_overlay_golden(&mut expected, &fx);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.initial_gpu_sync(&coord, &mut state);
     let _ = coord.tick(
         &rx,
@@ -282,7 +282,7 @@ fn s3_overlay_cache_rebuilds_after_fission_or_lifecycle_change() {
     let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
     project_to_coord(&fx, &mut coord);
 
-    let mut proto = BoundaryProtocol::new(fx.world, fx.reg, fx.alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
     proto.initial_gpu_sync(&coord, &mut state);
     let revision = proto.overlay_compile_revision();
     let cache = state

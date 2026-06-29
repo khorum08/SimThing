@@ -20,7 +20,8 @@ use simthing_feeder::{
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
 use simthing_sim::{
     AggregateAlertRegistration, BoundaryDeltaEntry, BoundaryProtocol, ReplayDriver, ReplayFrame,
-    ReplayReader, ReplayWriter, ThresholdBuilder, ThresholdSemantic, VelocityAlertRegistration,
+    ReplayReader, ReplayWriter, SimRuntimeTree, ThresholdBuilder, ThresholdSemantic,
+    VelocityAlertRegistration,
 };
 
 fn try_gpu() -> Option<GpuContext> {
@@ -118,7 +119,7 @@ fn fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean() {
     coord.shadow[base + vel_off] = -0.21;
 
     // Move tree + registry + allocator into BoundaryProtocol.
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     // Initial GPU sync — uploads shadow, overlay deltas, threshold registry.
     proto.initial_gpu_sync(&coord, &mut state);
 
@@ -157,7 +158,10 @@ fn fission_event_spawns_child_and_day_n_plus_1_tick_runs_clean() {
     assert_eq!(outcome.fission.fissions_skipped_secondary, 0);
 
     // A new SimThing was attached as a child of the rebelling cohort.
-    let rebelling = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+    let rebelling = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort still in tree");
     assert_eq!(
         rebelling.children.len(),
         1,
@@ -235,7 +239,7 @@ fn boundary_intent_attach_uses_targeted_value_upload() {
     let base = cohort_slot * n_dims as usize;
     coord.shadow[base + amount_off] = 0.5;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     tx.submit_player_intent(
@@ -313,7 +317,7 @@ fn fission_beyond_initial_headroom_grows_gpu_state() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     let mut events_fired = Vec::new();
@@ -382,7 +386,9 @@ fn fission_beyond_initial_headroom_grows_gpu_state() {
         "post-fission depth buckets should be [World], [Loc], [Cohort], [newChild]"
     );
 
-    let child_id = find_node(&proto.root, cohort_id)
+    let child_id = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
         .expect("cohort exists")
         .children[0]
         .id;
@@ -426,7 +432,7 @@ fn boundary_requests_apply_structural_mutations() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
     let (tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // Queue: AddChild a fleet under the cohort, then Remove a different
@@ -457,7 +463,10 @@ fn boundary_requests_apply_structural_mutations() {
     assert_eq!(outcome.maintainer.allocated, vec![new_fleet_id]);
     assert!(proto.allocator.slot_of(new_fleet_id).is_some());
 
-    let cohort = find_node(&proto.root, cohort_id).expect("cohort exists");
+    let cohort = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort exists");
     assert_eq!(cohort.children.len(), 1);
     assert_eq!(cohort.children[0].id, new_fleet_id);
 }
@@ -484,7 +493,7 @@ fn add_dimension_request_rebuilds_gpu_layout() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, old_n_dims, 1);
     let (tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     let food_id = proto
@@ -494,7 +503,9 @@ fn add_dimension_request_rebuilds_gpu_layout() {
     let food_amount_off = food_layout.offset_of(&SubFieldRole::Amount).unwrap();
     let mut food_value = PropertyValue::from_layout(&food_layout);
     food_value.data[food_amount_off] = 0.72;
-    find_node_mut(&mut proto.root, cohort_id)
+    proto
+        .root
+        .access_mut(|root| find_node_mut(root, cohort_id))
         .expect("cohort exists")
         .add_property(food_id, food_value);
 
@@ -560,8 +571,10 @@ fn velocity_alert_registration_surfaces_at_boundary() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = 0.0;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
-    find_node_mut(&mut proto.root, cohort_id)
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
+    proto
+        .root
+        .access_mut(|root| find_node_mut(root, cohort_id))
         .expect("cohort exists")
         .add_overlay(Overlay {
             id: OverlayId::new(),
@@ -642,7 +655,7 @@ fn player_intent_overlay_arrives_attached_at_boundary() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
     let (tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // ── Player submits an overlay before the boundary tick ────────────
@@ -679,7 +692,10 @@ fn player_intent_overlay_arrives_attached_at_boundary() {
     let outcome = proto.execute(tick_out.events, &mut patcher, &mut coord, &mut state, 1);
     assert_eq!(outcome.player_intents_attached, 1);
 
-    let cohort_node = find_node(&proto.root, cohort_id).expect("cohort in tree");
+    let cohort_node = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort in tree");
     assert!(
         cohort_node.overlays.iter().any(|o| o.id == overlay_id),
         "player intent overlay must be attached to the cohort"
@@ -722,7 +738,7 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
     let (tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // ── Submit player intent: Set Amount = 0.6 ────────────────────────
@@ -765,7 +781,10 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
         "player intent Set(0.6) must be visible on GPU after tick 1"
     );
     // Overlay not yet structurally attached — boundary hasn't run.
-    let cohort_node = find_node(&proto.root, cohort_id).unwrap();
+    let cohort_node = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .unwrap();
     assert!(
         cohort_node.overlays.iter().all(|o| o.id != overlay_id),
         "overlay must not be in tree before boundary"
@@ -787,7 +806,10 @@ fn player_intent_mid_day_effect_lands_on_gpu_before_boundary() {
     assert_eq!(outcome.player_intents_attached, 1);
 
     // Now structurally attached.
-    let cohort_node = find_node(&proto.root, cohort_id).unwrap();
+    let cohort_node = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .unwrap();
     assert!(
         cohort_node.overlays.iter().any(|o| o.id == overlay_id),
         "overlay must be attached after boundary"
@@ -830,7 +852,7 @@ fn player_intent_add_mid_day_uses_integrated_gpu_value() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
     let (tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     let base = cohort_slot * n_dims as usize;
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
@@ -928,7 +950,7 @@ fn observe_live_reports_integrated_gpu_values_mid_day() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 2);
     let (_tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     let base = cohort_slot * n_dims as usize;
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
@@ -1020,7 +1042,7 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
     let (ai_tx, ai_rx) = ai_channel();
     patcher.set_ai_receiver(ai_rx);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // ── AI submits intent: Set Amount = 0.8, urgency = 0.95 ──────────
@@ -1059,7 +1081,9 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
         "AI intent Set(0.8) must reach GPU within the same tick"
     );
     // Not yet in tree.
-    assert!(find_node(&proto.root, cohort_id)
+    assert!(proto
+        .root
+        .access(|root| find_node(root, cohort_id))
         .unwrap()
         .overlays
         .iter()
@@ -1083,7 +1107,9 @@ fn ai_intent_mid_day_effect_and_boundary_attach() {
 
     // Overlay structurally attached.
     assert!(
-        find_node(&proto.root, cohort_id)
+        proto
+            .root
+            .access(|root| find_node(root, cohort_id))
             .unwrap()
             .overlays
             .iter()
@@ -1144,7 +1170,7 @@ fn aggregate_alert_registration_surfaces_at_boundary() {
     coord.shadow[c1_slot * n_dims_us + a_off] = 0.40;
     coord.shadow[c2_slot * n_dims_us + a_off] = 0.40;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.register_aggregate_alert(AggregateAlertRegistration {
         sim_thing_id: loc_id,
         property_id: pid,
@@ -1229,7 +1255,7 @@ fn fission_refires_when_amount_re_crosses_threshold() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     let mut events = Vec::new();
@@ -1252,7 +1278,15 @@ fn fission_refires_when_amount_re_crosses_threshold() {
 
     let first = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
     assert_eq!(first.fission.fissions_executed, 1);
-    assert_eq!(find_node(&proto.root, cohort_id).unwrap().children.len(), 1);
+    assert_eq!(
+        proto
+            .root
+            .access(|root| find_node(root, cohort_id))
+            .unwrap()
+            .children
+            .len(),
+        1
+    );
     assert_eq!(proto.fission_lineage().len(), 1);
 
     // Recovery then relapse: Set Amount high, let velocity carry it down again.
@@ -1289,7 +1323,10 @@ fn fission_refires_when_amount_re_crosses_threshold() {
         "second crossing should spawn another child"
     );
 
-    let cohort = find_node(&proto.root, cohort_id).expect("cohort survives");
+    let cohort = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort survives");
     assert_eq!(
         cohort.children.len(),
         2,
@@ -1353,7 +1390,7 @@ fn aggregate_alert_does_not_refire_while_aggregate_stays_above_threshold() {
     coord.shadow[c1_slot * n_dims_us + a_off] = 0.40;
     coord.shadow[c2_slot * n_dims_us + a_off] = 0.40;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.register_aggregate_alert(AggregateAlertRegistration {
         sim_thing_id: loc_id,
         property_id: pid,
@@ -1453,7 +1490,7 @@ fn remove_after_fission_prunes_lineage() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     let mut events_fired = Vec::new();
@@ -1479,7 +1516,10 @@ fn remove_after_fission_prunes_lineage() {
     let outcome = proto.execute(events_fired, &mut patcher, &mut coord, &mut state, 1);
     assert_eq!(outcome.fission.fissions_executed, 1);
 
-    let rebelling = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+    let rebelling = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort still in tree");
     let child_id = rebelling.children[0].id;
     assert_eq!(proto.fission_lineage().len(), 1);
     assert_eq!(proto.fission_lineage()[0].child_id, child_id);
@@ -1574,7 +1614,7 @@ fn reduction_pipeline_produces_aggregated_output_vectors() {
     coord.shadow[c2_slot * n_dims_us + a_off] = 0.60;
     coord.shadow[c2_slot * n_dims_us + i_off] = 0.80;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // One tick — exercises the full pipeline including Passes 4–6.
@@ -1668,7 +1708,7 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // ── Drive ticks until fission fires ───────────────────────────────
@@ -1694,7 +1734,10 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
 
     // ── Boundary: fission executes, lineage record appears ───────────
     let _ = proto.execute(events_fired, &mut patcher, &mut coord, &mut state, 1);
-    let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+    let cohort = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort still in tree");
     assert_eq!(cohort.children.len(), 1, "fission produced one child");
     let child_id = cohort.children[0].id;
     let child_slot = proto.allocator.slot_of(child_id).unwrap() as usize;
@@ -1759,7 +1802,10 @@ fn fission_then_fusion_applies_scar_and_tombstones_child() {
     assert_eq!(outcome.fission.lineage_removed.len(), 1);
 
     // Child gone.
-    let cohort = find_node(&proto.root, cohort_id).expect("cohort survives");
+    let cohort = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .expect("cohort survives");
     assert!(
         cohort.children.is_empty(),
         "child removed from tree on fusion"
@@ -1830,7 +1876,7 @@ fn replay_round_trip_reconstructs_overlay_and_dimension_changes() {
     let mut coord = DispatchCoordinator::new(N_SLOTS, n_dims, 1);
     let (tx, rx) = feeder_channel();
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // ── Capture initial snapshot ──────────────────────────────────────
@@ -1990,7 +2036,7 @@ fn replay_fission_round_trip_reconstructs_spawned_child_and_lineage() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     let snapshot = proto.snapshot(0);
@@ -2016,7 +2062,12 @@ fn replay_fission_round_trip_reconstructs_spawned_child_and_lineage() {
     let outcome = proto.execute(events, &mut patcher, &mut coord, &mut state, 1);
     assert_eq!(outcome.fission.fissions_executed, 1);
 
-    let spawned_id = find_node(&proto.root, cohort_id).unwrap().children[0].id;
+    let spawned_id = proto
+        .root
+        .access(|root| find_node(root, cohort_id))
+        .unwrap()
+        .children[0]
+        .id;
     let frame = ReplayFrame {
         day: 1,
         entries: proto.take_delta_log(),
@@ -2151,7 +2202,7 @@ fn replay_fission_with_cloned_capability_subtree_reconstructs_full_payload() {
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // Snapshot before any boundary work so replay starts from the same tree.
@@ -2184,7 +2235,10 @@ fn replay_fission_with_cloned_capability_subtree_reconstructs_full_payload() {
     );
 
     // Find the spawned faction and verify the live tree carries the clone.
-    let original_faction = find_node(&proto.root, faction_id).expect("parent faction in tree");
+    let original_faction = proto
+        .root
+        .access(|root| find_node(root, faction_id))
+        .expect("parent faction in tree");
     let spawned_faction = original_faction
         .children
         .iter()
@@ -2397,7 +2451,7 @@ fn fission_with_cloned_capability_subtree_reduction_topology_matches_full_rebuil
     coord.shadow[base + amount_off] = 0.5;
     coord.shadow[base + vel_off] = -0.21;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     let mut events = Vec::new();
@@ -2530,7 +2584,7 @@ fn activated_suspended_overlay_appears_in_gpu_delta_and_affects_values() {
     let vel_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
     coord.shadow[base + vel_off] = 0.0;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // Sanity: the initial sync uploaded zero overlay deltas because the only
@@ -2575,7 +2629,10 @@ fn activated_suspended_overlay_appears_in_gpu_delta_and_affects_values() {
 
     // The overlay is still suspended on the CPU side.
     {
-        let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+        let cohort = proto
+            .root
+            .access(|root| find_node(root, cohort_id))
+            .expect("cohort still in tree");
         let overlay = cohort
             .overlays
             .iter()
@@ -2634,7 +2691,10 @@ fn activated_suspended_overlay_appears_in_gpu_delta_and_affects_values() {
 
     // The overlay's lifecycle is now Permanent (the parked `when_activated`).
     {
-        let cohort = find_node(&proto.root, cohort_id).expect("cohort still in tree");
+        let cohort = proto
+            .root
+            .access(|root| find_node(root, cohort_id))
+            .expect("cohort still in tree");
         let overlay = cohort
             .overlays
             .iter()
@@ -2772,7 +2832,7 @@ fn capability_unlock_fires_in_boundary_integration_test() {
     let base = cap_tree_slot * n_dims as usize;
     coord.shadow[base] = 0.0;
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.initial_gpu_sync(&coord, &mut state);
 
     // ── Build threshold registrations including the capability unlock. ────
@@ -2783,7 +2843,7 @@ fn capability_unlock_fires_in_boundary_integration_test() {
         threshold: THRESHOLD,
     };
     let (gpu_regs, cpu_reg) = ThresholdBuilder::build_with_capability_unlocks(
-        &proto.root,
+        proto.root.access(|root| root),
         &proto.registry,
         &proto.allocator,
         &[],

@@ -9,7 +9,7 @@ use simthing_gpu::{
     build_intensity_eml_entries, project_tree_to_values, set_debug_readback_allowed, GpuContext,
     Pipelines, SlotAllocator, WorldGpuState,
 };
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -71,7 +71,7 @@ fn s2_accumulator_intensity_is_default_path() {
     coord.shadow[..projected_len].copy_from_slice(&projected);
     coord.upload_full_shadow(&state);
 
-    let proto = BoundaryProtocol::new(world, reg, alloc);
+    let proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     assert!(proto.flags.use_accumulator_intensity);
     assert!(proto.flags.use_accumulator_eml);
 
@@ -79,7 +79,10 @@ fn s2_accumulator_intensity_is_default_path() {
     proto.initial_gpu_sync(&coord, &mut state);
     assert!(state.accumulator_intensity_eml_active);
 
-    let cohort_slot = proto.allocator.slot_of(proto.root.children[0].id).unwrap();
+    let cohort_slot = proto
+        .allocator
+        .slot_of(proto.root.access(|root| root.children[0].id))
+        .unwrap();
     let idx = cohort_slot as usize * n_dims as usize + icol;
     let before = state.read_values()[idx];
 
@@ -111,7 +114,7 @@ fn s2_intensity_disabled_rejects_world_with_intensity_behavior() {
     assert!(!build_intensity_eml_entries(&reg).is_empty());
 
     let mut proto = BoundaryProtocol::new(
-        SimThing::new(SimThingKind::World, 0),
+        SimRuntimeTree::admit(SimThing::new(SimThingKind::World, 0)),
         reg,
         SlotAllocator::new(),
     );

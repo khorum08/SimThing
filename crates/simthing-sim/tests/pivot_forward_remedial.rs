@@ -8,7 +8,7 @@ use simthing_feeder::{
     feeder_channel, DispatchCoordinator, FeederWork, PatchTransform, TransformPatcher,
 };
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, WorldGpuState};
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -58,7 +58,7 @@ fn c2_flag_off_clears_stale_intent_accumulator() {
     coord.shadow.fill(0.5);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_intent = true;
     proto.initial_gpu_sync(&coord, &mut state);
     assert!(state
@@ -73,7 +73,7 @@ fn c2_flag_off_clears_stale_intent_accumulator() {
         .as_ref()
         .is_none_or(|r| !r.intent_active()));
 
-    let cohort_id = proto.root.children[0].id;
+    let cohort_id = proto.root.access(|root| root.children[0].id);
     tx.send(FeederWork::Patch(PatchTransform {
         target: cohort_id,
         delta: PropertyTransformDelta {
@@ -124,7 +124,7 @@ fn c1_flag_off_clears_stale_threshold_accumulator() {
     coord.shadow.fill(0.4);
     coord.upload_full_shadow(&state);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_threshold_scan = true;
     proto.initial_gpu_sync(&coord, &mut state);
     assert!(state
@@ -165,7 +165,7 @@ fn disabling_one_accumulator_family_does_not_clear_others() {
     let n_slots = alloc.capacity() as u32;
     let ctx = GpuContext::new_blocking().expect("gpu");
     let mut state = WorldGpuState::new(ctx, &reg, n_slots);
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_intent = true;
     proto.flags.use_accumulator_threshold_scan = true;
     proto.flags.use_accumulator_overlay_add = true;

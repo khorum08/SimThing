@@ -6,7 +6,7 @@ use simthing_core::{
 };
 use simthing_feeder::{feeder_channel, DispatchCoordinator, TransformPatcher};
 use simthing_gpu::{GpuContext, Pipelines, SlotAllocator, ThresholdEvent, WorldGpuState};
-use simthing_sim::BoundaryProtocol;
+use simthing_sim::{BoundaryProtocol, SimRuntimeTree};
 
 fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
@@ -73,7 +73,7 @@ fn run_ticks(n_slots: u32, n_ticks: u32) -> Vec<Vec<ThresholdEvent>> {
     simthing_gpu::project_tree_to_values(&world, &reg, &alloc, n_dims as usize, &mut projected);
     coord.shadow[..projected_len].copy_from_slice(&projected);
 
-    let mut proto = BoundaryProtocol::new(world, reg, alloc);
+    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
     proto.flags.use_accumulator_threshold_scan = true;
     proto.initial_gpu_sync(&coord, &mut state);
 
