@@ -49,6 +49,8 @@
 //! use simthing_sim::SimThingKind;
 //! ```
 
+#![forbid(unsafe_code)]
+
 pub mod accumulator_plan_tick;
 pub mod boundary;
 pub mod delta_log;
