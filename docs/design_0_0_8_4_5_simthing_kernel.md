@@ -98,7 +98,9 @@ measured). A rung that adds runtime cost fails DoD even if it compiles and parit
 3. **Handoff template** — the context spine's "one authoritative path" line **upgrades from directive to type-fact**, AND the template gains a short **"the kernel door"** pointer: *to affect authoritative state, observe via the kernel read-only view and produce a registration / EML / `BoundaryProtocol` effect — here is the entry point; do not grope for sealed paths.* This converts the seal from a wall agents discover by compile-error into a signpost they read first — the token-economy point, applied to the seal itself.
 4. **STEAD-completeness statement** — recorded in the closeout ledger: write-seal (no bypass) + projection bindings (visibility) ⇒ the Movement-Front is complete by construction, so 0.0.8.5's STEAD-only decisions are sound.
 
-Guarantee (1)+(2)+(3) means the kernel's role is documented at all three altitudes — permanent paradigm, cross-version constitution, and the agent-facing handoff — so no agent burns tokens blindly feeling through sealed paths.
+5. **The Admission-Substrate Amendment Valve (§3A)** documented at the same three altitudes — Core Design Doc, Constitution §0 (carry-forward), and the handoff template (with the `admission-amendment-request` request-permission gate). The sanctioned escape must be as well-known as the seals it governs.
+
+Guarantee (1)+(2)+(3)+(5) means the kernel's role **and its owner-gated escape** are documented at all three altitudes — permanent paradigm, cross-version constitution, and the agent-facing handoff — so no agent burns tokens blindly feeling through sealed paths, and no agent invents a sidecar when a legitimate amendment is the answer.
 
 ---
 
@@ -111,6 +113,36 @@ This track does **not** serialize in front of 0.0.8.5. They overlap:
 - **`KERNEL-CRATE-EXTRACT-0` (rung 6)** can land before *or shortly after* 0.0.8.5's decision phase — the seals already deliver the behavior; the crate makes them dependency-enforced. It must not be rushed into 0.0.8.5's critical path.
 
 So the flagship 2000-star demo is **not delayed**: the cheap hardening (1–2) and the seals (3–5) are small and land alongside 0.0.8.5's early work; only the decision phase waits on the write-seal, which it needed anyway.
+
+## 3A. The Admission-Substrate Amendment Valve (owner-gated escape — binding)
+
+The seals are deliberately rigid; that rigidity is the point. But a genuinely new feature or refactor may
+someday need to **add** an authoritative kernel entry, **repair** a seal, or **temporarily suspend** a
+restriction. This valve is the **only sanctioned way** to do so — it exists so a legitimate need routes
+through a loud, recorded, owner-signed door instead of a sidecar (the §2.1 principle applied to the seal
+itself: the sanctioned channel for changing a seal *is* this valve). It applies to **all** admission-substrate
+seals — the closed AS-1–8B boundaries and this track's kernel seals.
+
+**Three gates, all required, default-denied:**
+
+1. **Request-permission (handoff-level).** By default an agent may **not** request the valve. An orchestrator
+   may, in a specific handoff, explicitly grant permission to *request* it
+   (`admission-amendment-request: allowed`, handoff §1). Without that line, the agent **escalates the blocker
+   to the DA** — it does not propose a seal change, and it does not work around the seal.
+2. **Owner / Exec-DA approval, interrogation-backed.** Even with request-permission, the valve opens **only**
+   on the Owner's approval or a direct Owner→DA direction, **after the Owner interrogates the need**: why is
+   this required? why can it not be a registration / EML gadget / overlay within the existing seal? is it
+   add, repair, or suspend? what is the blast radius? Only the Owner or Exec-DA writes the grant; it is never
+   pre-filed; the agent **never self-grants.**
+3. **Recorded amendment + loud, temporary suspensions.** Every grant is a written Deviation/Amendment Record
+   (§0.6 discipline): what changed, why, add/repair/suspend, scope — and for a **suspension**, a **re-seal
+   plan + expiry.** The amendment carries a **greppable named marker** in code; a suspended restriction is
+   never an invisible hole — it is a clearly-named, DA-gated, audit-flagged escape whose default is re-seal.
+
+This preserves the seal's integrity (default-denied, owner-gated, recorded, loud) while guaranteeing
+legitimate future needs a sanctioned path — which is itself the anti-sidecar mechanism: when the only way to
+change a seal is this loud owner-signed door, even a frontier model routes to the *request*, not a hidden
+bypass.
 
 ## 4. What this opens — recorded, NOT bundled (consumer-pulled)
 
