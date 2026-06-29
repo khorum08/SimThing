@@ -7,8 +7,8 @@ PASS — fission child-spawn kind resolution moved from `simthing-sim` to `simth
 ## PR / branch / merge
 
 - Branch: `codex/as-kind-out-of-tick-0c`
-- PR: (pending)
-- Merge: (pending)
+- PR: #954
+- Merge: `7f772392c3`
 
 ## What changed
 
