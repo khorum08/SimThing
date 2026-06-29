@@ -7,8 +7,8 @@ PASS — public `simthing-sim` surface audited; first load-bearing semantic leak
 ## PR / branch / merge
 
 - Branch: `codex/as-sim-semantic-free-0a`
-- PR: (pending)
-- Merge: (pending)
+- PR: #958
+- Merge: `51a8acc635`
 
 ## What changed
 
