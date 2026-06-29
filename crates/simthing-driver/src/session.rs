@@ -18,6 +18,9 @@ use thiserror::Error;
 
 use crate::install::{install_atomic, InstallError, InstallPreview};
 use crate::scenario::Scenario;
+use crate::simulation_fabric::{
+    run_simulation_fabric_tick, FabricTickOutcome, HotFabricParts, SimulationFabric,
+};
 use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
 
@@ -220,7 +223,42 @@ pub struct MappingCommitmentRecord {
     pub event: simthing_gpu::ThresholdEvent,
 }
 
+fn accumulate_tick_outcome(summary: &mut RunSummary, tick: &FabricTickOutcome, tick_wall_ms: f64) {
+    summary.tick_total_ms += tick_wall_ms;
+    summary.ticks_run += 1;
+    summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
+    summary.rmw_readback_bytes += tick.rmw_readback_bytes;
+    summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
+    summary.intent_delta_bytes += tick.intent_delta_bytes;
+    summary.tick_drain_ms += tick.drain_ms;
+    summary.tick_intent_upload_ms += tick.intent_upload_ms;
+    summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
+    summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
+    summary.tick_event_readback_ms += tick.event_readback_ms;
+    summary.tick_event_readback_bytes += tick.event_readback_bytes;
+}
+
 impl SimSession {
+    /// Assemble the hot-path fabric from resolved session tick resources.
+    fn hot_fabric(&mut self) -> SimulationFabric<'_> {
+        SimulationFabric::from_hot_parts(HotFabricParts {
+            coord: &mut self.coord,
+            patcher: &mut self.patcher,
+            rx: &self.rx,
+            registry: &self.proto.registry,
+            allocator: &self.proto.allocator,
+            pipelines: &self.pipelines,
+            state: &mut self.state,
+            dt: self.scenario.dt,
+        })
+    }
+
+    /// Ordinary GPU tick — hot path only; no scenario/boundary/spec state.
+    fn run_hot_tick(&mut self) -> FabricTickOutcome {
+        let mut fabric = self.hot_fabric();
+        run_simulation_fabric_tick(&mut fabric)
+    }
+
     pub fn open(scenario: Scenario) -> Result<Self, SessionError> {
         let ctx = GpuContext::new_blocking()?;
         let n_dims = scenario.registry.total_columns as u32;
@@ -644,27 +682,12 @@ impl SimSession {
             self.submit_tick_patches()?;
             summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
             let tick_started = Instant::now();
-            let tick = self.coord.tick(
-                &self.rx,
-                &mut self.patcher,
-                &self.proto.registry,
-                &self.proto.allocator,
-                &self.pipelines,
-                &mut self.state,
-                self.scenario.dt,
+            let tick = self.run_hot_tick();
+            accumulate_tick_outcome(
+                &mut summary,
+                &tick,
+                tick_started.elapsed().as_secs_f64() * 1000.0,
             );
-            summary.tick_total_ms += tick_started.elapsed().as_secs_f64() * 1000.0;
-            summary.ticks_run += 1;
-            summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
-            summary.rmw_readback_bytes += tick.rmw_readback_bytes;
-            summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
-            summary.intent_delta_bytes += tick.intent_delta_bytes;
-            summary.tick_drain_ms += tick.drain_ms;
-            summary.tick_intent_upload_ms += tick.intent_upload_ms;
-            summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
-            summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
-            summary.tick_event_readback_ms += tick.event_readback_ms;
-            summary.tick_event_readback_bytes += tick.event_readback_bytes;
 
             // CT-3b+4a Line 3: opt-in GPU work rides the same tick — RF
             // arena bands when the pipeline flag is on, then the admitted
@@ -761,27 +784,12 @@ impl SimSession {
             self.submit_tick_patches()?;
             summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
             let tick_started = Instant::now();
-            let tick = self.coord.tick(
-                &self.rx,
-                &mut self.patcher,
-                &self.proto.registry,
-                &self.proto.allocator,
-                &self.pipelines,
-                &mut self.state,
-                self.scenario.dt,
+            let tick = self.run_hot_tick();
+            accumulate_tick_outcome(
+                &mut summary,
+                &tick,
+                tick_started.elapsed().as_secs_f64() * 1000.0,
             );
-            summary.tick_total_ms += tick_started.elapsed().as_secs_f64() * 1000.0;
-            summary.ticks_run += 1;
-            summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
-            summary.rmw_readback_bytes += tick.rmw_readback_bytes;
-            summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
-            summary.intent_delta_bytes += tick.intent_delta_bytes;
-            summary.tick_drain_ms += tick.drain_ms;
-            summary.tick_intent_upload_ms += tick.intent_upload_ms;
-            summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
-            summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
-            summary.tick_event_readback_ms += tick.event_readback_ms;
-            summary.tick_event_readback_bytes += tick.event_readback_bytes;
 
             // CT-3b+4a Line 3: opt-in GPU work rides the same tick — RF
             // arena bands when the pipeline flag is on, then the admitted

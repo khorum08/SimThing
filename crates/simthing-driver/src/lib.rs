@@ -106,6 +106,7 @@ pub mod semantic_local_effects_recursive_source_compile;
 pub mod semantic_participant_delta_preview_compile;
 pub mod session;
 pub mod session_resource_flow_silos;
+pub mod simulation_fabric;
 pub mod spec_replay;
 pub mod spec_session;
 pub mod stress_compose_bridge;
@@ -789,6 +790,9 @@ pub use session_resource_flow_silos::{
 };
 pub use simthing_core::StructuralCoord;
 pub use simthing_gpu::SlotAllocError;
+pub use simulation_fabric::{
+    run_simulation_fabric_tick, FabricTickOutcome, HotFabricParts, SimulationFabric,
+};
 pub use spec_replay::{
     apply_spec_delta, apply_spec_snapshot, collect_spec_snapshot, diff_and_emit,
     json_to_spec_deltas, open_replay_with_spec, read_spec_replay_file, spec_deltas_to_json,
