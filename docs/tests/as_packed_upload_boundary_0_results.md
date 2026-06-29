@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION — public structural GPU upload sealed behind private-field `PackedUpload`; count invariants validated at pack time; byte/readback parity preserved. DA re-review required before AS-8 → DONE — DA-APPROVED.
+DONE -- DA-APPROVED -- structural GPU upload sealed behind PackedUpload; byte parity preserved. DA-approved per graduation log (2026-06-29, PR #973).
 
 ## PR / branch / merge
 

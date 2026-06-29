@@ -4,7 +4,7 @@ Consolidated closeout evidence for rung **AS-KIND-OUT-OF-TICK-0** (slices 0A–0
 
 ## Status
 
-**PROBATION** — production `simthing-sim/src` has zero runtime kind reads; core §9 “no match kind” promoted to type boundary + production audit. Pending DA net-negative confirmation (not DA-APPROVED in this remediation).
+**DONE -- DA-APPROVED** — production `simthing-sim/src` has zero runtime kind reads; core §9 “no match kind” promoted to type boundary + production audit.  DA-approved per graduation log in docs/design_0_0_8_4_admission_substrate.md (2026-06-29).
 
 ## Sub-slice summary
 
