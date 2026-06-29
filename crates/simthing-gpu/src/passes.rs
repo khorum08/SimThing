@@ -131,19 +131,19 @@ impl Pipelines {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: state.values.as_entire_binding(),
+                    resource: state.resolved.values.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: state.previous_values.as_entire_binding(),
+                    resource: state.resolved.previous_values.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: state.output_vectors.as_entire_binding(),
+                    resource: state.resolved.output_vectors.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: state.previous_output_vectors.as_entire_binding(),
+                    resource: state.resolved.previous_output_vectors.as_entire_binding(),
                 },
             ],
         });
@@ -179,6 +179,8 @@ impl Pipelines {
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("intensity_eml_encoder"),
             });
+        let values = &state.resolved.values;
+        let previous = &state.resolved.previous_values;
         if let Some(runtime) = state.accumulator_runtime.as_mut() {
             let mut session = runtime.take_intensity_eml_session();
             if let Some(session) = session.as_mut() {
@@ -186,8 +188,8 @@ impl Pipelines {
                 session.encode_intensity_eml_into(
                     ctx,
                     &mut encoder,
-                    &state.values,
-                    &state.previous_values,
+                    values,
+                    previous,
                     dt,
                     eml,
                 );
@@ -216,8 +218,8 @@ impl Pipelines {
             session.encode_overlay_add_into(
                 ctx,
                 &mut encoder,
-                &state.values,
-                &state.previous_values,
+                &state.resolved.values,
+                &state.resolved.previous_values,
                 state.accumulator_overlay_add_bands,
             );
         }
@@ -347,19 +349,19 @@ impl Pipelines {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: state.values.as_entire_binding(),
+                    resource: state.resolved.values.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: state.previous_values.as_entire_binding(),
+                    resource: state.resolved.previous_values.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: state.output_vectors.as_entire_binding(),
+                    resource: state.resolved.output_vectors.as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: state.previous_output_vectors.as_entire_binding(),
+                    resource: state.resolved.previous_output_vectors.as_entire_binding(),
                 },
             ],
         });
@@ -380,7 +382,7 @@ impl Pipelines {
             });
 
         if let Some(session) = sessions.intent.as_mut() {
-            session.encode_intent_into(ctx, &mut encoder, &state.values, &state.previous_values);
+            session.encode_intent_into(ctx, &mut encoder, &state.resolved.values, &state.resolved.previous_values);
         }
 
         {
@@ -399,8 +401,8 @@ impl Pipelines {
                 session.encode_velocity_into(
                     ctx,
                     &mut encoder,
-                    &state.values,
-                    &state.previous_values,
+                    &state.resolved.values,
+                    &state.resolved.previous_values,
                     dt,
                 );
             }
@@ -415,8 +417,8 @@ impl Pipelines {
                 session.encode_intensity_eml_into(
                     ctx,
                     &mut encoder,
-                    &state.values,
-                    &state.previous_values,
+                    &state.resolved.values,
+                    &state.resolved.previous_values,
                     dt,
                     eml,
                 );
@@ -436,8 +438,8 @@ impl Pipelines {
                 session.encode_transfer_into(
                     ctx,
                     &mut encoder,
-                    &state.values,
-                    &state.previous_values,
+                    &state.resolved.values,
+                    &state.resolved.previous_values,
                     state.accumulator_transfer_bands,
                     eml,
                     input_list,
@@ -454,8 +456,8 @@ impl Pipelines {
                 session.encode_emission_into(
                     ctx,
                     &mut encoder,
-                    &state.values,
-                    &state.previous_values,
+                    &state.resolved.values,
+                    &state.resolved.previous_values,
                     dt,
                     eml,
                 );
@@ -467,8 +469,8 @@ impl Pipelines {
                 session.encode_overlay_add_into(
                     ctx,
                     &mut encoder,
-                    &state.values,
-                    &state.previous_values,
+                    &state.resolved.values,
+                    &state.resolved.previous_values,
                     state.accumulator_overlay_add_bands,
                 );
             }
@@ -479,7 +481,7 @@ impl Pipelines {
 
         if reduction_soft_active {
             let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-            encoder.copy_buffer_to_buffer(&state.values, 0, &state.output_vectors, 0, copy_bytes);
+            encoder.copy_buffer_to_buffer(&state.resolved.values, 0, &state.resolved.output_vectors, 0, copy_bytes);
             if let Some(session) = sessions.reduction_soft.as_mut() {
                 self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
             }
@@ -494,16 +496,17 @@ impl Pipelines {
             session.encode_threshold_scan_with_outputs_into(
                 ctx,
                 &mut encoder,
-                &state.values,
-                &state.previous_values,
-                &state.output_vectors,
-                &state.previous_output_vectors,
+                &state.resolved.values,
+                &state.resolved.previous_values,
+                &state.resolved.output_vectors,
+                &state.resolved.previous_output_vectors,
             );
         }
 
         if sessions.encode_world_summary {
+            let values = &state.resolved.values;
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
-                runtime.encode_world_summary_into(ctx, &mut encoder, &state.values);
+                runtime.encode_world_summary_into(ctx, &mut encoder, values);
             }
         }
 
@@ -531,7 +534,7 @@ impl Pipelines {
             });
 
         let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
-        encoder.copy_buffer_to_buffer(&state.values, 0, &state.output_vectors, 0, copy_bytes);
+        encoder.copy_buffer_to_buffer(&state.resolved.values, 0, &state.resolved.output_vectors, 0, copy_bytes);
 
         self.encode_accumulator_reduction_by_depth(ctx, &mut encoder, state, session);
 
@@ -557,7 +560,7 @@ impl Pipelines {
                     session.encode_reduction_soft_band_into(
                         ctx,
                         encoder,
-                        &state.output_vectors,
+                        &state.resolved.output_vectors,
                         band,
                     );
                 }
@@ -654,7 +657,7 @@ mod tests {
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("accumulator_velocity_encoder"),
             });
-        session.encode_velocity_into(ctx, &mut encoder, &state.values, &state.previous_values, dt);
+        session.encode_velocity_into(ctx, &mut encoder, &state.resolved.values, &state.resolved.previous_values, dt);
         ctx.queue.submit(Some(encoder.finish()));
     }
 
@@ -713,7 +716,7 @@ mod tests {
         let input: Vec<f32> = (0..state.values_len())
             .map(|i| (i as f32) * 0.13 + 0.5)
             .collect();
-        state.write_values(&input);
+        state.install_resolved_values_at_boundary(&input);
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
@@ -764,7 +767,7 @@ mod tests {
         for (s, d) in slots.iter().enumerate() {
             flat[s * n_dims..s * n_dims + stride].copy_from_slice(d);
         }
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
         run_velocity_integration_test_helper(&pipelines, &state, dt);
@@ -805,7 +808,7 @@ mod tests {
         let state = WorldGpuState::new(ctx, &reg, 1);
         let mut flat = vec![0.0f32; state.values_len()];
         flat[..stride].copy_from_slice(&d);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
         run_velocity_integration_test_helper(&pipelines, &state, dt);
@@ -852,7 +855,7 @@ mod tests {
         for (s, d) in slots.iter().enumerate() {
             flat[s * n_dims..s * n_dims + stride].copy_from_slice(d);
         }
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
         run_intensity_eml_on_state(&pipelines, &mut state, &reg, dt);
@@ -944,7 +947,7 @@ mod tests {
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
@@ -1015,7 +1018,7 @@ mod tests {
         let range = reg.column_range(id).clone();
         let mut flat = vec![0.0f32; state.values_len()];
         flat[range.start..range.start + stride].copy_from_slice(&initial_data);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let pipelines = Pipelines::new(&state.ctx);
         pipelines.run_snapshot(&state);
@@ -1069,7 +1072,7 @@ mod tests {
         }];
 
         let mut manual = WorldGpuState::new(ctx, &reg, 1);
-        manual.write_values(&initial);
+        manual.install_resolved_values_at_boundary(&initial);
         manual.upload_intent_deltas(&intent);
         manual.upload_thresholds(&regs);
         let pipelines = Pipelines::new(&manual.ctx);
@@ -1097,8 +1100,8 @@ mod tests {
         intent_session.encode_intent_into(
             &manual.ctx,
             &mut intent_encoder,
-            &manual.values,
-            &manual.previous_values,
+            &manual.resolved.values,
+            &manual.resolved.previous_values,
         );
         manual.ctx.queue.submit(Some(intent_encoder.finish()));
         intent_session.finish_intent(&manual.ctx);
@@ -1109,7 +1112,7 @@ mod tests {
 
         let ctx2 = GpuContext::new_blocking().expect("second gpu context");
         let mut piped = WorldGpuState::new(ctx2, &reg, 1);
-        piped.write_values(&initial);
+        piped.install_resolved_values_at_boundary(&initial);
         piped.upload_intent_deltas(&intent);
         piped.upload_thresholds(&regs);
         let mut piped_intent_session = crate::AccumulatorOpSession::new_attached(
@@ -1242,10 +1245,10 @@ mod tests {
         session.encode_threshold_scan_with_outputs_into(
             &state.ctx,
             &mut encoder,
-            &state.values,
-            &state.previous_values,
-            &state.output_vectors,
-            &state.previous_output_vectors,
+            &state.resolved.values,
+            &state.resolved.previous_values,
+            &state.resolved.output_vectors,
+            &state.resolved.previous_output_vectors,
         );
         state.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&state.ctx);
@@ -1287,8 +1290,8 @@ mod tests {
         previous[3 * n_dims] = 0.60;
         current[3 * n_dims] = 0.40;
 
-        state.write_previous_values(&previous);
-        state.write_values(&current);
+        state.install_resolved_previous_values_at_boundary(&previous);
+        state.install_resolved_values_at_boundary(&current);
 
         let regs = vec![
             ThresholdRegistration {
@@ -1388,8 +1391,8 @@ mod tests {
         prev_out[0 * n_dims] = 0.20;
         curr_out[0 * n_dims] = 0.50;
 
-        state.write_previous_output_vectors(&prev_out);
-        state.write_output_vectors(&curr_out);
+        state.install_resolved_previous_output_vectors_at_boundary(&prev_out);
+        state.install_resolved_output_vectors_at_boundary(&curr_out);
 
         let regs = vec![ThresholdRegistration {
             slot: 0,
@@ -1455,7 +1458,7 @@ mod tests {
         let mut flat = vec![0.0_f32; state.values_len()];
         flat[a_off.lane()] = 0.35; // starts above threshold 0.30
         flat[v_off.lane()] = -0.10; // dt = 1.0 → ends at 0.25, crossing 0.30 downward
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
         let _ = stride;
 
         let regs = vec![ThresholdRegistration {
@@ -1546,7 +1549,7 @@ mod tests {
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let n_overlay_deltas = upload_accumulator_overlay_plan(&mut state, &world, &reg, &alloc);
 
@@ -1683,7 +1686,7 @@ mod tests {
         let n_dims = state.n_dims as usize;
         let mut flat = vec![0.0f32; state.values_len()];
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         upload_accumulator_overlay_plan(&mut state, &world, &reg, &alloc);
 
@@ -1768,7 +1771,7 @@ mod tests {
         // the shader overwrites them via reduction.
         let mut flat = vec![0.0_f32; state.values_len()];
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         // Build + upload topology + rules.
         let topo = build_topology(&world, &alloc);
@@ -1860,7 +1863,7 @@ mod tests {
 
         let mut flat = vec![0.0_f32; state.values_len()];
         project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let topo = build_topology(&world, &alloc);
         let descriptors = build_column_rule_descriptors(&reg, n_dims);

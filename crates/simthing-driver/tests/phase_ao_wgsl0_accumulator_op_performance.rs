@@ -73,7 +73,7 @@ fn rf_parity_run(fast_path: bool) -> nested_support::ParityResult {
     run_arena_allocation_oracle(&layout, &mut oracle, 1.0);
 
     let mut state = WorldGpuState::new(gpu, &f.reg, n_slots);
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     let plan = plan_arena_allocation(&layout, &[], n_slots).unwrap();
     let mut eml = EmlExpressionRegistry::new();
     register_child_share_formula(&mut eml, c).unwrap();
@@ -116,7 +116,7 @@ fn benchmark_rf_path(fast_path: bool, warmup: u32, samples: u32) -> (u64, u64, u
     flat[0] = ROOT_INTRINSIC;
 
     let mut state = WorldGpuState::new(gpu, &f.reg, n_slots);
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     state
         .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
@@ -179,7 +179,7 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_flat_star() {
     register_child_share_formula(&mut eml, cols).unwrap();
 
     let mut legacy_state = WorldGpuState::new(GpuContext::new_blocking().unwrap(), &reg, n_slots);
-    legacy_state.write_values(&flat);
+    legacy_state.install_resolved_values_at_boundary(&flat);
     legacy_state
         .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
@@ -187,7 +187,7 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_flat_star() {
     let legacy = legacy_state.read_values();
 
     let mut fast_state = WorldGpuState::new(GpuContext::new_blocking().unwrap(), &reg, n_slots);
-    fast_state.write_values(&flat);
+    fast_state.install_resolved_values_at_boundary(&flat);
     fast_state
         .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
@@ -220,7 +220,7 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_a0_d4_nested_resource_flow() 
     flat[0] = ROOT_INTRINSIC;
 
     let mut legacy = WorldGpuState::new(GpuContext::new_blocking().unwrap(), &f.reg, n_slots);
-    legacy.write_values(&flat);
+    legacy.install_resolved_values_at_boundary(&flat);
     legacy
         .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
@@ -228,7 +228,7 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_a0_d4_nested_resource_flow() 
     let legacy_vals = legacy.read_values();
 
     let mut fast = WorldGpuState::new(gpu, &f.reg, n_slots);
-    fast.write_values(&flat);
+    fast.install_resolved_values_at_boundary(&flat);
     fast.sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
     fast.run_resource_flow_bands_with_fast_path(plan.n_bands, 1.0, true);
@@ -290,7 +290,7 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_b0_transfer_orderband_if_supp
         let mut state = WorldGpuState::new(GpuContext::new_blocking().unwrap(), &reg, n_slots);
         let mut flat = vec![0.0_f32; (n_slots * n_dims) as usize];
         flat[0] = 10.0;
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
         state.sync_transfer_accumulator(&regs).unwrap();
         let mut runtime = state.accumulator_runtime.take().unwrap();
         let mut session = runtime.take_transfer_session().unwrap();
@@ -301,27 +301,14 @@ fn ao_wgsl0_generic_kernel_matches_existing_ao_for_b0_transfer_orderband_if_supp
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("ao_wgsl0_transfer_test"),
                 });
-        if fast {
-            session.encode_orderband_fast_into(
-                &state.ctx,
-                &mut encoder,
-                &state.values,
-                &state.previous_values,
-                plan.n_bands,
-                1.0,
-                None,
-            );
-        } else {
-            session.encode_orderband_with_eml_into(
-                &state.ctx,
-                &mut encoder,
-                &state.values,
-                &state.previous_values,
-                plan.n_bands,
-                1.0,
-                None,
-            );
-        }
+        state.encode_accumulator_orderband_into(
+            &mut session,
+            &mut encoder,
+            plan.n_bands,
+            1.0,
+            None,
+            fast,
+        );
         state.ctx.queue.submit(Some(encoder.finish()));
         let _ = state.ctx.device.poll(wgpu::Maintain::Wait);
         runtime.restore_transfer_session(Some(session));
@@ -351,7 +338,7 @@ fn ao_wgsl0_unsupported_plan_falls_back_or_rejects_without_semantics_change() {
     flat[0] = ROOT_INTRINSIC;
 
     let mut legacy = WorldGpuState::new(GpuContext::new_blocking().unwrap(), &f.reg, n_slots);
-    legacy.write_values(&flat);
+    legacy.install_resolved_values_at_boundary(&flat);
     legacy
         .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();
@@ -359,7 +346,7 @@ fn ao_wgsl0_unsupported_plan_falls_back_or_rejects_without_semantics_change() {
     let legacy_vals = legacy.read_values();
 
     let mut fast_ok = WorldGpuState::new(gpu, &f.reg, n_slots);
-    fast_ok.write_values(&flat);
+    fast_ok.install_resolved_values_at_boundary(&flat);
     fast_ok
         .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands, &eml)
         .unwrap();

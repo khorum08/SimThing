@@ -88,8 +88,8 @@ fn c1_accumulator_threshold_readback_smoke() {
     let previous = vec![0.4_f32; state.values_len()];
     let current = vec![0.6_f32; state.values_len()];
     // ~100% crossing rate at 10k thresholds (matches fission_stress-scale event volume).
-    state.write_previous_values(&previous);
-    state.write_values(&current);
+    state.install_resolved_previous_values_at_boundary(&previous);
+    state.install_resolved_values_at_boundary(&current);
 
     // AccumulatorOp dispatch (excluded from timing), then
     // readback_threshold_events is the *readback path* we're benchmarking.
@@ -101,9 +101,9 @@ fn c1_accumulator_threshold_readback_smoke() {
         )
         .unwrap();
     let mut measure_new = || {
-        session
-            .dispatch_threshold_scan(&state.ctx, &state.values, &state.previous_values)
-            .unwrap();
+    state
+        .dispatch_accumulator_threshold_scan(&mut session)
+        .unwrap();
         let started = Instant::now();
         let _ = session.readback_threshold_events(&state.ctx).unwrap();
         started.elapsed().as_secs_f64() * 1000.0

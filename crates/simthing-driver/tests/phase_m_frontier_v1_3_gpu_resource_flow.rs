@@ -183,7 +183,7 @@ fn run_gpu_flat_star_allocation(
     for (&(slot, col), &v) in &inputs {
         flat[idx(slot, col, n_dims)] = v;
     }
-    fx.session.state.write_values(&flat);
+    fx.session.state.install_resolved_values_at_boundary(&flat);
 
     let mut oracle = inputs.clone();
     run_arena_allocation_oracle(&fx.layout, &mut oracle, 1.0);

@@ -68,7 +68,7 @@ fn s1_intent_accumulator_matches_cpu_golden() {
     reg.register(SimProperty::simple("core", "value", 0));
     let mut state = WorldGpuState::new(ctx, &reg, 1);
     let initial = vec![0.5_f32, 0.0, 0.0];
-    state.write_values(&initial);
+    state.install_resolved_values_at_boundary(&initial);
     let deltas = [IntentDelta {
         slot: 0,
         col: 0,

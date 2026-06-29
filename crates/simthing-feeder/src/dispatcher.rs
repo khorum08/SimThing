@@ -342,10 +342,7 @@ impl DispatchCoordinator {
             self.shadow.len(),
             state.values_len(),
         );
-        state
-            .ctx
-            .queue
-            .write_buffer(&state.values, 0, bytemuck::cast_slice(&self.shadow));
+        state.install_resolved_values_at_boundary(&self.shadow);
     }
 
     /// Upload one slot's row from the shadow to the GPU. Internal helper.
@@ -353,11 +350,7 @@ impl DispatchCoordinator {
         let n_dims = self.n_dims as usize;
         let base = (slot as usize) * n_dims;
         let row = &self.shadow[base..base + n_dims];
-        let offset = (slot as u64) * (n_dims as u64) * 4;
-        state
-            .ctx
-            .queue
-            .write_buffer(&state.values, offset, bytemuck::cast_slice(row));
+        state.install_resolved_value_rows_at_boundary(slot, row);
     }
 
     /// Upload a contiguous block of slot rows `[slot_start..slot_start + count)`
@@ -372,11 +365,7 @@ impl DispatchCoordinator {
         let base = (slot_start as usize) * n_dims;
         let span = (count as usize) * n_dims;
         let rows = &self.shadow[base..base + span];
-        let offset = (slot_start as u64) * (n_dims as u64) * 4;
-        state
-            .ctx
-            .queue
-            .write_buffer(&state.values, offset, bytemuck::cast_slice(rows));
+        state.install_resolved_value_rows_at_boundary(slot_start, rows);
     }
 
     /// Current monotonic tick id (post-last-tick value).

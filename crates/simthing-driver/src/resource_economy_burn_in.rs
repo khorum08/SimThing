@@ -130,7 +130,7 @@ pub fn run_transfer_recipe_burn_in(
 
     for _ in 0..ticks {
         let mut flat = initial_flat.to_vec();
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         run_transfer_recipe_cpu_oracle(&mut flat, n_dims, transfers, recipes)?;
 
@@ -179,7 +179,7 @@ pub fn run_emission_burn_in(
 
     for _ in 0..ticks {
         let flat = initial_flat.to_vec();
-        state.write_values(&flat);
+        state.install_resolved_values_at_boundary(&flat);
 
         let cpu_records = run_emission_cpu_oracle(&flat, n_dims, emissions)?;
         let gpu_records = run_accumulator_emission(state, dt)

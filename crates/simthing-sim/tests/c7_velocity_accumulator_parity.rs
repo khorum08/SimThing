@@ -41,7 +41,7 @@ fn setup_velocity_state(reg: &DimensionRegistry, n_slots: u32, initial: &[f32]) 
     for (slot, row) in initial.chunks(n_dims).enumerate() {
         flat[slot * n_dims..slot * n_dims + n_dims].copy_from_slice(row);
     }
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
 
     state.ensure_velocity_accumulator();
     let pairs = build_governed_pairs(reg);

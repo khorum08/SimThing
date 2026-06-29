@@ -67,8 +67,8 @@ fn s5_velocity_accumulator_matches_cpu_golden() {
     reg.register(governed_property());
     let mut state = WorldGpuState::new(ctx, &reg, 1);
     let initial = vec![0.25_f32, 0.5, 0.0];
-    state.write_values(&initial);
-    state.write_previous_values(&initial);
+    state.install_resolved_values_at_boundary(&initial);
+    state.install_resolved_previous_values_at_boundary(&initial);
 
     let pairs = build_governed_pairs(&reg);
     let plan = plan_velocity_integration(&pairs, 1);

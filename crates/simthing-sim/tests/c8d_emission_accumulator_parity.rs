@@ -58,7 +58,7 @@ fn setup_emission_state(n_slots: u32, per_slot: &[f32]) -> WorldGpuState {
             flat[base + col] = v;
         }
     }
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     state
 }
 

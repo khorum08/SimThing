@@ -208,6 +208,33 @@ pub fn encode_rule(rule: simthing_core::ReductionRule) -> u32 {
 
 // ── WorldGpuState ─────────────────────────────────────────────────────────────
 
+/// Zero-sized compile-time token: live resolved GPU column writes require
+/// accumulator authority or an explicit boundary/admission install path.
+///
+/// External crates cannot reach resolved GPU buffer fields directly:
+///
+/// ```compile_fail
+/// fn external_resolved_field_access(state: &WorldGpuState) {
+///     let _ = &state.resolved.values;
+/// }
+/// ```
+#[derive(Clone, Copy, Debug)]
+pub struct ResolvedWriteAuthority(());
+
+impl ResolvedWriteAuthority {
+    fn boundary_install() -> Self {
+        Self(())
+    }
+}
+
+/// Sealed resolved-state GPU column buffers (KERNEL-WRITE-SEAL-0).
+pub(crate) struct ResolvedGpuBuffers {
+    pub(crate) values: Buffer,
+    pub(crate) previous_values: Buffer,
+    pub(crate) output_vectors: Buffer,
+    pub(crate) previous_output_vectors: Buffer,
+}
+
 pub struct WorldGpuState {
     pub ctx: GpuContext,
     pub n_slots: u32,
@@ -216,16 +243,7 @@ pub struct WorldGpuState {
     pub n_overlay_deltas: u32,
     pub n_intent_deltas: u32,
 
-    /// Current property values, row-major: index = slot * n_dims + col.
-    pub values: Buffer,
-    /// Snapshot of `values` taken at Pass 0 each tick.
-    pub previous_values: Buffer,
-    /// Per-slot post-reduction output (Pass 4–6 destination).
-    pub output_vectors: Buffer,
-    /// Snapshot of `output_vectors` taken at Pass 0 each tick (before this
-    /// tick's reduction overwrites aggregates). Used by output-buffer Pass 7
-    /// registrations.
-    pub previous_output_vectors: Buffer,
+    pub(crate) resolved: ResolvedGpuBuffers,
 
     /// Property-level flat buffer of GovernedPair structs. Same pairs apply
     /// to every slot — Pass 1 dispatches `(n_pairs × n_slots)` threads.
@@ -299,6 +317,61 @@ pub struct WorldGpuState {
 }
 
 impl WorldGpuState {
+    /// C-1 threshold scan against sealed resolved buffers (external observation path).
+    pub fn dispatch_accumulator_threshold_scan(
+        &self,
+        session: &mut crate::AccumulatorOpSession,
+    ) -> Result<(), crate::AccumulatorOpSessionError> {
+        session.dispatch_threshold_scan(
+            &self.ctx,
+            &self.resolved.values,
+            &self.resolved.previous_values,
+        )
+    }
+
+    /// Indexed scatter from resolved `values` into `dest` (mapping hot path).
+    pub fn dispatch_indexed_scatter_from_resolved_values(
+        &self,
+        scatter: &crate::IndexedScatterOp,
+        dest: &Buffer,
+        entries: &[crate::ScatterEntry],
+    ) -> Result<(), crate::IndexedScatterError> {
+        scatter.dispatch(&self.ctx, &self.resolved.values, dest, entries)
+    }
+
+    /// Encode AccumulatorOp OrderBand passes against sealed resolved buffers.
+    pub fn encode_accumulator_orderband_into(
+        &self,
+        session: &mut crate::AccumulatorOpSession,
+        encoder: &mut wgpu::CommandEncoder,
+        n_bands: u32,
+        dt: f32,
+        eml: Option<(&Buffer, &Buffer)>,
+        fast_path: bool,
+    ) {
+        if fast_path {
+            session.encode_orderband_fast_into(
+                &self.ctx,
+                encoder,
+                &self.resolved.values,
+                &self.resolved.previous_values,
+                n_bands,
+                dt,
+                eml,
+            );
+        } else {
+            session.encode_orderband_with_eml_into(
+                &self.ctx,
+                encoder,
+                &self.resolved.values,
+                &self.resolved.previous_values,
+                n_bands,
+                dt,
+                eml,
+            );
+        }
+    }
+
     pub fn new(ctx: GpuContext, registry: &DimensionRegistry, n_slots: u32) -> Self {
         assert!(n_slots > 0, "n_slots must be > 0");
         assert!(registry.total_columns > 0, "registry has no columns");
@@ -378,10 +451,12 @@ impl WorldGpuState {
             n_governed_pairs,
             n_overlay_deltas: 0,
             n_intent_deltas: 0,
-            values,
-            previous_values,
-            output_vectors,
-            previous_output_vectors,
+            resolved: ResolvedGpuBuffers {
+                values,
+                previous_values,
+                output_vectors,
+                previous_output_vectors,
+            },
             governed_pairs,
             overlay_deltas,
             slot_delta_ranges,
@@ -496,7 +571,7 @@ impl WorldGpuState {
     pub fn dispatch_accumulator_world_summary(&mut self) {
         if let Some(runtime) = self.accumulator_runtime.as_mut() {
             runtime.ensure_summary(&self.ctx, self.n_slots, self.n_dims);
-            runtime.dispatch_world_summary(&self.ctx, &self.values);
+            runtime.dispatch_world_summary(&self.ctx, &self.resolved.values);
         }
     }
 
@@ -607,7 +682,7 @@ impl WorldGpuState {
         self.accumulator_runtime
             .as_mut()
             .unwrap()
-            .ensure_reduction_soft_session(&self.ctx, n_slots, n_dims, &self.output_vectors);
+            .ensure_reduction_soft_session(&self.ctx, n_slots, n_dims, &self.resolved.output_vectors);
     }
 
     /// Upload C-5/C-6 reduction ops and set OrderBand pass count.
@@ -815,8 +890,8 @@ impl WorldGpuState {
             session.encode_orderband_fast_into(
                 &self.ctx,
                 &mut encoder,
-                &self.values,
-                &self.previous_values,
+                &self.resolved.values,
+                &self.resolved.previous_values,
                 n_bands,
                 dt,
                 eml,
@@ -825,8 +900,8 @@ impl WorldGpuState {
             session.encode_orderband_with_eml_into(
                 &self.ctx,
                 &mut encoder,
-                &self.values,
-                &self.previous_values,
+                &self.resolved.values,
+                &self.resolved.previous_values,
                 n_bands,
                 dt,
                 eml,
@@ -1157,10 +1232,10 @@ impl WorldGpuState {
 
         self.n_dims = n_dims;
         let per_slot_per_col_bytes = (self.n_slots as u64) * (self.n_dims as u64) * 4;
-        self.values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
-        self.previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
-        self.output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
-        self.previous_output_vectors =
+        self.resolved.values = self.mk_storage_buffer("values", per_slot_per_col_bytes);
+        self.resolved.previous_values = self.mk_storage_buffer("previous_values", per_slot_per_col_bytes);
+        self.resolved.output_vectors = self.mk_storage_buffer("output_vectors", per_slot_per_col_bytes);
+        self.resolved.previous_output_vectors =
             self.mk_storage_buffer("previous_output_vectors", per_slot_per_col_bytes);
         self.slot_delta_ranges = self.mk_storage_buffer(
             "slot_delta_ranges",
@@ -1253,23 +1328,23 @@ impl WorldGpuState {
                     .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                         label: Some("rebuild_for_slots:preserve"),
                     });
-            encoder.copy_buffer_to_buffer(&self.values, 0, &new_values, 0, preserve_bytes);
+            encoder.copy_buffer_to_buffer(&self.resolved.values, 0, &new_values, 0, preserve_bytes);
             encoder.copy_buffer_to_buffer(
-                &self.previous_values,
+                &self.resolved.previous_values,
                 0,
                 &new_previous_values,
                 0,
                 preserve_bytes,
             );
             encoder.copy_buffer_to_buffer(
-                &self.output_vectors,
+                &self.resolved.output_vectors,
                 0,
                 &new_output_vectors,
                 0,
                 preserve_bytes,
             );
             encoder.copy_buffer_to_buffer(
-                &self.previous_output_vectors,
+                &self.resolved.previous_output_vectors,
                 0,
                 &new_previous_output_vectors,
                 0,
@@ -1278,10 +1353,10 @@ impl WorldGpuState {
             self.ctx.queue.submit(Some(encoder.finish()));
         }
 
-        self.values = new_values;
-        self.previous_values = new_previous_values;
-        self.output_vectors = new_output_vectors;
-        self.previous_output_vectors = new_previous_output_vectors;
+        self.resolved.values = new_values;
+        self.resolved.previous_values = new_previous_values;
+        self.resolved.output_vectors = new_output_vectors;
+        self.resolved.previous_output_vectors = new_previous_output_vectors;
 
         // slot_delta_ranges and child_starts are reset — overlay-delta sync
         // and topology sync both fully rewrite them at every active boundary.
@@ -1544,14 +1619,15 @@ impl WorldGpuState {
     }
 
     pub fn read_output_vectors(&self) -> Vec<f32> {
-        self.read_buffer_f32(&self.output_vectors)
+        self.read_buffer_f32(&self.resolved.output_vectors)
     }
 
-    pub fn write_output_vectors(&self, data: &[f32]) {
+    /// Boundary/admission install of post-reduction output vectors (not a live tick write path).
+    pub fn install_resolved_output_vectors_at_boundary(&self, data: &[f32]) {
         assert_eq!(data.len(), self.values_len());
         self.ctx
             .queue
-            .write_buffer(&self.output_vectors, 0, bytemuck::cast_slice(data));
+            .write_buffer(&self.resolved.output_vectors, 0, bytemuck::cast_slice(data));
     }
 
     /// Reset the per-tick atomic event counter to zero before threshold
@@ -1590,10 +1666,10 @@ impl WorldGpuState {
     /// (agents.md "Transform application — iterative on GPU"). Excludes
     /// short-lived staging buffers and the per-pass uniform buffer.
     pub fn total_buffer_bytes(&self) -> u64 {
-        self.values.size()
-            + self.previous_values.size()
-            + self.output_vectors.size()
-            + self.previous_output_vectors.size()
+        self.resolved.values.size()
+            + self.resolved.previous_values.size()
+            + self.resolved.output_vectors.size()
+            + self.resolved.previous_output_vectors.size()
             + self.governed_pairs.size()
             + self.overlay_deltas.size()
             + self.slot_delta_ranges.size()
@@ -1607,7 +1683,35 @@ impl WorldGpuState {
             + self.depth_slots.size()
     }
 
-    pub fn write_values(&self, data: &[f32]) {
+    /// Boundary/admission install of resolved values from CPU shadow (not a live tick write path).
+    pub fn install_resolved_values_at_boundary(&self, data: &[f32]) {
+        self.install_resolved_values_at_boundary_with_auth(
+            data,
+            ResolvedWriteAuthority::boundary_install(),
+        );
+    }
+
+    /// Boundary/admission install of a contiguous slot row range from CPU shadow.
+    pub fn install_resolved_value_rows_at_boundary(
+        &self,
+        slot_start: u32,
+        rows: &[f32],
+    ) {
+        if rows.is_empty() {
+            return;
+        }
+        assert_eq!(rows.len() % self.n_dims as usize, 0);
+        let offset = (slot_start as u64) * (self.n_dims as u64) * 4;
+        self.ctx
+            .queue
+            .write_buffer(&self.resolved.values, offset, bytemuck::cast_slice(rows));
+    }
+
+    fn install_resolved_values_at_boundary_with_auth(
+        &self,
+        data: &[f32],
+        _auth: ResolvedWriteAuthority,
+    ) {
         assert_eq!(
             data.len(),
             self.values_len(),
@@ -1617,41 +1721,43 @@ impl WorldGpuState {
         );
         self.ctx
             .queue
-            .write_buffer(&self.values, 0, bytemuck::cast_slice(data));
+            .write_buffer(&self.resolved.values, 0, bytemuck::cast_slice(data));
     }
 
-    pub fn write_previous_values(&self, data: &[f32]) {
+    /// Boundary/admission install of previous-tick resolved values snapshot.
+    pub fn install_resolved_previous_values_at_boundary(&self, data: &[f32]) {
         assert_eq!(data.len(), self.values_len());
         self.ctx
             .queue
-            .write_buffer(&self.previous_values, 0, bytemuck::cast_slice(data));
+            .write_buffer(&self.resolved.previous_values, 0, bytemuck::cast_slice(data));
     }
 
     pub fn read_values(&self) -> Vec<f32> {
-        self.read_buffer_f32(&self.values)
+        self.read_buffer_f32(&self.resolved.values)
     }
 
     /// Read one slot's row from the GPU `values` buffer (post-integration).
     pub fn read_values_row(&self, slot: u32) -> Vec<f32> {
         let row_bytes = (self.n_dims as u64) * 4;
         let offset = (slot as u64) * row_bytes;
-        let bytes = self.read_buffer_bytes_range(&self.values, offset, row_bytes);
+        let bytes = self.read_buffer_bytes_range(&self.resolved.values, offset, row_bytes);
         bytemuck::cast_slice(&bytes).to_vec()
     }
 
     pub fn read_previous_values(&self) -> Vec<f32> {
-        self.read_buffer_f32(&self.previous_values)
+        self.read_buffer_f32(&self.resolved.previous_values)
     }
 
-    pub fn write_previous_output_vectors(&self, data: &[f32]) {
+    /// Boundary/admission install of previous-tick post-reduction output snapshot.
+    pub fn install_resolved_previous_output_vectors_at_boundary(&self, data: &[f32]) {
         assert_eq!(data.len(), self.values_len());
         self.ctx
             .queue
-            .write_buffer(&self.previous_output_vectors, 0, bytemuck::cast_slice(data));
+            .write_buffer(&self.resolved.previous_output_vectors, 0, bytemuck::cast_slice(data));
     }
 
     pub fn read_previous_output_vectors(&self) -> Vec<f32> {
-        self.read_buffer_f32(&self.previous_output_vectors)
+        self.read_buffer_f32(&self.resolved.previous_output_vectors)
     }
 
     pub fn read_governed_pairs(&self) -> Vec<GovernedPair> {
@@ -1878,7 +1984,7 @@ mod tests {
         assert_eq!(state.values_len(), 20);
 
         let input: Vec<f32> = (0..20).map(|i| i as f32 * 0.1).collect();
-        state.write_values(&input);
+        state.install_resolved_values_at_boundary(&input);
         let output = state.read_values();
 
         for (i, (a, b)) in input.iter().zip(output.iter()).enumerate() {

@@ -84,7 +84,7 @@ fn setup_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, Vec<f32>) 
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
     let mut flat = vec![0.0_f32; state.values_len()];
     project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     upload_topology(&mut state, &topo, &reg);
 
     state.ensure_reduction_soft_accumulator();
@@ -163,7 +163,7 @@ fn setup_weighted_mean_state() -> (WorldGpuState, DimensionRegistry, Topology, V
     let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
     let mut flat = vec![0.0_f32; state.values_len()];
     project_tree_to_values(&world, &reg, &alloc, n_dims, &mut flat);
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     upload_topology(&mut state, &topo, &reg);
 
     state.ensure_reduction_soft_accumulator();

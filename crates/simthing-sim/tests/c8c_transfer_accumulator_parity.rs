@@ -61,7 +61,7 @@ fn setup_transfer_state(n_slots: u32, per_slot: &[f32]) -> WorldGpuState {
             flat[base + col] = v;
         }
     }
-    state.write_values(&flat);
+    state.install_resolved_values_at_boundary(&flat);
     state
 }
 
@@ -787,7 +787,7 @@ fn c8c_transfer_with_governed_property_requires_accumulator_velocity_or_unbounde
     let mut row = vec![0.0_f32; n_dims];
     row[0] = 10.0; // amount
     row[1] = 2.0; // velocity
-    state.write_values(&row);
+    state.install_resolved_values_at_boundary(&row);
 
     state.ensure_velocity_accumulator();
     let pairs = build_governed_pairs(&reg);

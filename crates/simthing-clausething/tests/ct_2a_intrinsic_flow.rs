@@ -246,7 +246,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
     for (&(slot, col), &v) in &inputs {
         flat[idx(slot, col, n_dims)] = v;
     }
-    session.state.write_values(&flat);
+    session.state.install_resolved_values_at_boundary(&flat);
 
     let mut oracle = inputs.clone();
     run_arena_allocation_oracle(&layout, &mut oracle, 1.0);

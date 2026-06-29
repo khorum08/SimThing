@@ -163,10 +163,10 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
 
     let mut mapping_gpu = FirstSliceMappingSession::open(ctx, profile, &field).expect("open gpu");
     let scatter = IndexedScatterOp::new(ctx);
-    scatter
-        .dispatch(
-            ctx,
-            &session.state.values,
+    session
+        .state
+        .dispatch_indexed_scatter_from_resolved_values(
+            &scatter,
             mapping_gpu.stencil_input_buffer(),
             &entries,
         )
