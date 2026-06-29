@@ -7,8 +7,8 @@ PASS — sealed `FissionCloneSourceView` kind backdoor by removing public `inner
 ## PR / branch / merge
 
 - Branch: `codex/as-kind-out-of-tick-0d`
-- PR: (pending)
-- Merge: (pending)
+- PR: #955
+- Merge: `20f5d2e76a`
 
 ## What changed
 
