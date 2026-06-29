@@ -6,9 +6,9 @@
 
 ## PR / branch / merge
 
-- Branch: `codex/kernel-emission-seal-0`
-- PR: https://github.com/khorum08/SimThing/pull/990
-- Merge: `cb3a509077` (master)
+- Branch: `codex/kernel-emission-seal-0` (+ `codex/kernel-emission-seal-0r` remediation)
+- PR: https://github.com/khorum08/SimThing/pull/990 (+ https://github.com/khorum08/SimThing/pull/992 0R)
+- Merge: `cb3a509077` (0), `edc276495a` (0R remediation)
 
 ## What changed
 
