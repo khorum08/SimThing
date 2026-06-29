@@ -7,8 +7,8 @@ PASS — production/report RF channel identity surfaces adopt `OwnerRef` / `Reso
 ## PR / branch / merge
 
 - Branch: `codex/as-channel-newtypes-0r`
-- PR: (pending)
-- Merge: (pending)
+- PR: #966
+- Merge: `2089c0126b`
 
 ## What changed
 
