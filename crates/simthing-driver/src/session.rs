@@ -19,7 +19,8 @@ use thiserror::Error;
 use crate::install::{install_atomic, InstallError, InstallPreview};
 use crate::scenario::Scenario;
 use crate::simulation_fabric::{
-    run_simulation_fabric_tick, FabricTickOutcome, HotFabricParts, SimulationFabric,
+    run_simulation_fabric_hot_step, FabricHotStepOutcome, FabricHotStepParams, HotFabricParts,
+    MappingHotPathState, SimulationFabric,
 };
 use crate::spec_replay::{self, make_spec_snapshot_record};
 use crate::spec_session::SpecSessionState;
@@ -196,12 +197,12 @@ pub struct SimSession {
 /// CT-3b+4a Line 3: everything the session loop needs to run the admitted
 /// RF-fed heatmap chain per tick, GPU-resident end to end.
 pub struct SessionMappingState {
-    pub mapping: crate::first_slice_mapping_runtime::FirstSliceMappingSession,
-    scatter: simthing_gpu::IndexedScatterOp,
-    entries: Vec<simthing_gpu::ScatterEntry>,
-    cells: Vec<(u32, u32)>,
-    weights: (f32, f32),
-    commitment: simthing_spec::CompiledFirstSliceCommitmentThreshold,
+    pub hot: MappingHotPathState,
+    boundary: MappingBoundaryState,
+}
+
+/// Boundary-time mapping state — commitment effects and journal watermarks.
+struct MappingBoundaryState {
     effect: Option<ResolvedCommitmentEffect>,
     /// Journal watermark: crossings already considered for effect application.
     commitments_consumed: usize,
@@ -223,25 +224,51 @@ pub struct MappingCommitmentRecord {
     pub event: simthing_gpu::ThresholdEvent,
 }
 
-fn accumulate_tick_outcome(summary: &mut RunSummary, tick: &FabricTickOutcome, tick_wall_ms: f64) {
+fn accumulate_tick_outcome(
+    summary: &mut RunSummary,
+    tick: &FabricHotStepOutcome,
+    tick_wall_ms: f64,
+) {
     summary.tick_total_ms += tick_wall_ms;
     summary.ticks_run += 1;
-    summary.rmw_rows_synced += tick.rmw_rows_synced as u64;
-    summary.rmw_readback_bytes += tick.rmw_readback_bytes;
-    summary.intent_deltas_uploaded += tick.intent_deltas_uploaded as u64;
-    summary.intent_delta_bytes += tick.intent_delta_bytes;
-    summary.tick_drain_ms += tick.drain_ms;
-    summary.tick_intent_upload_ms += tick.intent_upload_ms;
-    summary.tick_dirty_upload_ms += tick.dirty_upload_ms;
-    summary.tick_gpu_pipeline_ms += tick.gpu_pipeline_ms;
-    summary.tick_event_readback_ms += tick.event_readback_ms;
-    summary.tick_event_readback_bytes += tick.event_readback_bytes;
+    summary.rmw_rows_synced += tick.tick.rmw_rows_synced as u64;
+    summary.rmw_readback_bytes += tick.tick.rmw_readback_bytes;
+    summary.intent_deltas_uploaded += tick.tick.intent_deltas_uploaded as u64;
+    summary.intent_delta_bytes += tick.tick.intent_delta_bytes;
+    summary.tick_drain_ms += tick.tick.drain_ms;
+    summary.tick_intent_upload_ms += tick.tick.intent_upload_ms;
+    summary.tick_dirty_upload_ms += tick.tick.dirty_upload_ms;
+    summary.tick_gpu_pipeline_ms += tick.tick.gpu_pipeline_ms;
+    summary.tick_event_readback_ms += tick.tick.event_readback_ms;
+    summary.tick_event_readback_bytes += tick.tick.event_readback_bytes;
+    if tick.resource_flow_band_dispatched {
+        summary.resource_flow_band_dispatches += 1;
+    }
+    if let Some(mapping) = &tick.mapping {
+        summary.mapping_ticks += 1;
+        summary.mapping_commitment_events += mapping.threshold_events.len() as u64;
+    }
+}
+
+fn journal_mapping_commitments(
+    mapping_commitments: &mut Vec<MappingCommitmentRecord>,
+    tick_index: u64,
+    mapping: &crate::simulation_fabric::FabricMappingHotReport,
+) {
+    mapping_commitments.extend(mapping.threshold_events.iter().cloned().map(|event| {
+        MappingCommitmentRecord {
+            tick: tick_index,
+            event,
+        }
+    }));
 }
 
 impl SimSession {
-    /// Assemble the hot-path fabric from resolved session tick resources.
-    fn hot_fabric(&mut self) -> SimulationFabric<'_> {
-        SimulationFabric::from_hot_parts(HotFabricParts {
+    /// Hot-path step — ordinary tick + RF bands + mapping dispatch; no scenario/boundary/spec state.
+    fn run_hot_step(&mut self) -> Result<FabricHotStepOutcome, SessionError> {
+        let resource_flow_pipeline_enabled = self.proto.flags.use_accumulator_resource_flow;
+        let mapping_hot = self.mapping.as_mut().map(|m| &mut m.hot);
+        let mut fabric = SimulationFabric::from_hot_parts(HotFabricParts {
             coord: &mut self.coord,
             patcher: &mut self.patcher,
             rx: &self.rx,
@@ -250,13 +277,15 @@ impl SimSession {
             pipelines: &self.pipelines,
             state: &mut self.state,
             dt: self.scenario.dt,
-        })
-    }
-
-    /// Ordinary GPU tick — hot path only; no scenario/boundary/spec state.
-    fn run_hot_tick(&mut self) -> FabricTickOutcome {
-        let mut fabric = self.hot_fabric();
-        run_simulation_fabric_tick(&mut fabric)
+        });
+        run_simulation_fabric_hot_step(
+            &mut fabric,
+            FabricHotStepParams {
+                resource_flow_pipeline_enabled,
+                mapping: mapping_hot,
+            },
+        )
+        .map_err(|e| SessionError::Mapping(format!("{e:?}")))
     }
 
     pub fn open(scenario: Scenario) -> Result<Self, SessionError> {
@@ -575,14 +604,18 @@ impl SimSession {
         .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
         let scatter = simthing_gpu::IndexedScatterOp::new(&self.state.ctx);
         self.mapping = Some(SessionMappingState {
-            mapping,
-            scatter,
-            entries,
-            cells,
-            weights: (weight_pressure, weight_resource),
-            commitment,
-            effect,
-            commitments_consumed: 0,
+            hot: MappingHotPathState::new(
+                mapping,
+                scatter,
+                entries,
+                cells,
+                (weight_pressure, weight_resource),
+                commitment,
+            ),
+            boundary: MappingBoundaryState {
+                effect,
+                commitments_consumed: 0,
+            },
         });
         Ok(())
     }
@@ -599,12 +632,12 @@ impl SimSession {
         let Some(m) = self.mapping.as_mut() else {
             return Ok(false);
         };
-        let pending = self.mapping_commitments.len() > m.commitments_consumed;
-        m.commitments_consumed = self.mapping_commitments.len();
+        let pending = self.mapping_commitments.len() > m.boundary.commitments_consumed;
+        m.boundary.commitments_consumed = self.mapping_commitments.len();
         if !pending {
             return Ok(false);
         }
-        let Some(effect) = m.effect.as_mut() else {
+        let Some(effect) = m.boundary.effect.as_mut() else {
             return Ok(false);
         };
         if effect.once && effect.fired {
@@ -632,46 +665,6 @@ impl SimSession {
         Ok(true)
     }
 
-    /// One in-loop mapping step: on-device pressure scatter, the bounded
-    /// stencil + reduce + ai_will_do EML + commitment scan, and journal the
-    /// crossings. Entirely GPU-resident; no value readback on this path.
-    fn run_mapping_step(&mut self, summary: &mut RunSummary) -> Result<(), SessionError> {
-        let Some(m) = self.mapping.as_mut() else {
-            return Ok(());
-        };
-        let ctx = &self.state.ctx;
-        m.scatter
-            .dispatch(
-                ctx,
-                &self.state.values,
-                m.mapping.stencil_input_buffer(),
-                &m.entries,
-            )
-            .map_err(|e| SessionError::Mapping(format!("{e}")))?;
-        m.mapping
-            .queue_gpu_seed_cells(&m.cells)
-            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
-        let report = m
-            .mapping
-            .tick_with_commitment_spec(
-                ctx,
-                crate::first_slice_mapping_runtime::FirstSliceTickOptions::hot_path(),
-                m.weights,
-                &m.commitment,
-            )
-            .map_err(|e| SessionError::Mapping(format!("{e:?}")))?;
-        summary.mapping_ticks += 1;
-        summary.mapping_commitment_events += report.threshold_events.len() as u64;
-        let tick = summary.ticks_run;
-        self.mapping_commitments.extend(
-            report
-                .threshold_events
-                .into_iter()
-                .map(|event| MappingCommitmentRecord { tick, event }),
-        );
-        Ok(())
-    }
-
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
     pub fn run(&mut self, max_days: u32) -> Result<RunSummary, SessionError> {
         let cap = max_days.min(self.scenario.max_days);
@@ -682,27 +675,21 @@ impl SimSession {
             self.submit_tick_patches()?;
             summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
             let tick_started = Instant::now();
-            let tick = self.run_hot_tick();
+            let hot = self.run_hot_step()?;
             accumulate_tick_outcome(
                 &mut summary,
-                &tick,
+                &hot,
                 tick_started.elapsed().as_secs_f64() * 1000.0,
             );
-
-            // CT-3b+4a Line 3: opt-in GPU work rides the same tick — RF
-            // arena bands when the pipeline flag is on, then the admitted
-            // mapping chain (scatter → stencil → reduce → EML → commitment).
-            if self.proto.flags.use_accumulator_resource_flow
-                && self.state.accumulator_resource_flow_active
-            {
-                self.state.run_resource_flow_bands(
-                    self.state.accumulator_resource_flow_bands,
-                    self.scenario.dt,
+            if let Some(mapping) = &hot.mapping {
+                journal_mapping_commitments(
+                    &mut self.mapping_commitments,
+                    summary.ticks_run,
+                    mapping,
                 );
-                summary.resource_flow_band_dispatches += 1;
             }
-            self.run_mapping_step(&mut summary)?;
 
+            let tick = hot.tick;
             if tick.boundary_reached {
                 let day = tick.day_index;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
@@ -784,27 +771,21 @@ impl SimSession {
             self.submit_tick_patches()?;
             summary.submit_tick_patches_ms += submit_started.elapsed().as_secs_f64() * 1000.0;
             let tick_started = Instant::now();
-            let tick = self.run_hot_tick();
+            let hot = self.run_hot_step()?;
             accumulate_tick_outcome(
                 &mut summary,
-                &tick,
+                &hot,
                 tick_started.elapsed().as_secs_f64() * 1000.0,
             );
-
-            // CT-3b+4a Line 3: opt-in GPU work rides the same tick — RF
-            // arena bands when the pipeline flag is on, then the admitted
-            // mapping chain (scatter → stencil → reduce → EML → commitment).
-            if self.proto.flags.use_accumulator_resource_flow
-                && self.state.accumulator_resource_flow_active
-            {
-                self.state.run_resource_flow_bands(
-                    self.state.accumulator_resource_flow_bands,
-                    self.scenario.dt,
+            if let Some(mapping) = &hot.mapping {
+                journal_mapping_commitments(
+                    &mut self.mapping_commitments,
+                    summary.ticks_run,
+                    mapping,
                 );
-                summary.resource_flow_band_dispatches += 1;
             }
-            self.run_mapping_step(&mut summary)?;
 
+            let tick = hot.tick;
             if tick.boundary_reached {
                 let day = tick.day_index;
                 let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
