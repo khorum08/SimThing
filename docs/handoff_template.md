@@ -26,6 +26,12 @@
   registrations on the one recursive tree — never a subsystem beside it, never a runtime `match kind`.
 - **All conflict / opportunity / ambition / diplomacy is resource flow:** `accumulate → reduce up →
   settle → mask/disburse down → threshold crossings fire decisions`. No combat/economy/AI/pathfinding engine.
+  **There is one authoritative resolution path — this one.** Do not write resolved state or emit a decision
+  from a CPU side-computation; route it as an `AccumulatorOp` / overlay registration or a threshold→`EmitEvent`
+  crossing. If the compiler fights you trying to mutate state or emit from outside the kernel, **that is the
+  boundary, not a bug to work around** — escalate to the DA instead. (The write/emission/participation seals
+  that make this *uncompilable* rather than merely directed are the AS-9+ cluster; until they land this is a
+  binding directive, not yet a type guarantee.)
 - **Decisions are GPU-resident threshold crossings (FIELD_POLICY), never a CPU planner.**
 - **The map is the Movement-Front automaton (STEAD):** bounded-horizon falloff (P1), one shared stencil
   (P2), attractor/threshold projection (P3). The front *is* the route; movement is gradient-following
