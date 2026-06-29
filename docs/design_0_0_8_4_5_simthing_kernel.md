@@ -1,6 +1,9 @@
 # 0.0.8.4.5 — SimThing Kernel: Constitution-as-Admission-Substrate
 
-> **Status: PROPOSED (production track, 2026-06-29, owner-directed).** Sits *beneath* the permanent
+> **Status: OPEN — GREENLIT for orchestration + production (owner-approved 2026-06-29).** Opening sequence:
+> the cheap pair `KERNEL-FORBID-UNSAFE-0` + `KERNEL-DEP-BUDGET-0` (parallel, Cursor/Grok), then the seals
+> (write-seal gates 0.0.8.5's live-STEAD-decision phase), then the crate extraction. Per-rung PROBATION →
+> DA re-review → DONE, same loop as the closed 0.0.8.4 track. Sits *beneath* the permanent
 > paradigm [`simthing_core_design.md`](simthing_core_design.md) (esp. **§1.2 the admission substrate**) and
 > *beneath* the constitution [`design_0_0_8_3.md`](design_0_0_8_3.md). It is the **keystone follow-on to the
 > closed 0.0.8.4 Admission Substrate** ([`design_0_0_8_4_admission_substrate.md`](design_0_0_8_4_admission_substrate.md))
