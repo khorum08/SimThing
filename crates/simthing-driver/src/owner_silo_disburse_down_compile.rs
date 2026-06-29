@@ -3,8 +3,9 @@
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     apply_owner_silo_runtime_disburse_down_cpu, owner_silo_demand_aggregate_totals,
-    owner_silo_demand_buckets_from_planet_child_rf, RuntimeOwnerSiloDemandBucket,
-    RuntimeOwnerSiloDisburseDownResult, SimThingScenarioSpec, SpecError,
+    owner_silo_demand_buckets_from_planet_child_rf, OwnerRef, ResourceKey,
+    RuntimeOwnerSiloDemandBucket, RuntimeOwnerSiloDisburseDownResult, SimThingScenarioSpec,
+    SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -13,8 +14,8 @@ use crate::owner_silo_runtime_writeback_compile::compile_owner_silo_runtime_writ
 /// GPU aggregate proof plan for total requested demand per owner/resource channel.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OwnerSiloDemandAggregateProofPlan {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub demand_plan: CompiledAccumulatorOpPlan,
     pub source_demand_indices: Vec<usize>,
 }

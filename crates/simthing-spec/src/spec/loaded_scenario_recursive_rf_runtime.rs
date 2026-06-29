@@ -10,6 +10,7 @@ use simthing_core::{SimThing, SimThingKind};
 
 use crate::error::SpecError;
 
+use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
 use super::loaded_scenario_studio_session_envelope::evaluate_loaded_scenario_studio_session_envelope_from_json_str;
 use super::planet_child_location::{
     is_planet_gridcell, is_surface_gridcell, local_gridcell_role, planet_id,
@@ -29,10 +30,10 @@ pub enum LoadedScenarioRecursiveRfRuntimeSource {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedScenarioRfParticipantRow {
     pub simthing_id_raw: u32,
-    pub parent_location_id_raw: u32,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
-    pub scope_id: Option<String>,
+    pub parent_location_id: ParentLocationId,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
+    pub scope_id: Option<ScopeId>,
     pub requested_amount: f64,
     pub available_amount: f64,
     pub is_location: bool,
@@ -41,7 +42,7 @@ pub struct LoadedScenarioRfParticipantRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedScenarioRfParentArenaRow {
-    pub parent_location_id_raw: u32,
+    pub parent_location_id: ParentLocationId,
     pub depth: u32,
     pub child_count: u32,
     pub participant_count: u32,
@@ -57,10 +58,10 @@ pub struct LoadedScenarioRfParentArenaRow {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoadedScenarioRfChannelRow {
-    pub parent_location_id_raw: u32,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
-    pub scope_id: Option<String>,
+    pub parent_location_id: ParentLocationId,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
+    pub scope_id: Option<ScopeId>,
     pub requested_total: f64,
     pub available_total: f64,
     pub satisfied_total: f64,
@@ -121,10 +122,13 @@ pub fn evaluate_loaded_scenario_recursive_rf_runtime_from_json_str(
                 .unwrap_or((false, false));
             participant_rows.push(LoadedScenarioRfParticipantRow {
                 simthing_id_raw: row.source_simthing_id_raw,
-                parent_location_id_raw: row.parent_location_id_raw,
+                parent_location_id: row.parent_location_id,
                 owner_ref: Some(row.owner_ref.clone()),
                 resource_key: Some(row.resource_key.clone()),
-                scope_id: scope_by_simthing.get(&row.source_simthing_id_raw).cloned(),
+                scope_id: scope_by_simthing
+                    .get(&row.source_simthing_id_raw)
+                    .cloned()
+                    .map(ScopeId::new),
                 requested_amount: f64::from(row.demand),
                 available_amount: f64::from(row.surplus),
                 is_location,
@@ -141,10 +145,13 @@ pub fn evaluate_loaded_scenario_recursive_rf_runtime_from_json_str(
         parent_arena_rows.push(build_parent_arena_row(arena));
         for settlement in &arena.settlements {
             channel_rows.push(LoadedScenarioRfChannelRow {
-                parent_location_id_raw: settlement.arena_location_id_raw,
+                parent_location_id: ParentLocationId::new(settlement.arena_location_id_raw),
                 owner_ref: Some(settlement.owner_ref.clone()),
                 resource_key: Some(settlement.resource_key.clone()),
-                scope_id: Some(format!("location/{}", settlement.arena_location_id_raw)),
+                scope_id: Some(ScopeId::new(format!(
+                    "location/{}",
+                    settlement.arena_location_id_raw
+                ))),
                 requested_total: f64::from(settlement.total_demand),
                 available_total: f64::from(settlement.total_surplus),
                 satisfied_total: f64::from(settlement.locally_matched_total),
@@ -264,7 +271,7 @@ fn build_parent_arena_row(arena: &LocationRfArenaReport) -> LoadedScenarioRfPare
     }
 
     LoadedScenarioRfParentArenaRow {
-        parent_location_id_raw: arena.location_id_raw,
+        parent_location_id: ParentLocationId::new(arena.location_id_raw),
         depth: arena.depth,
         child_count: arena.child_location_count,
         participant_count: arena.participant_count,
@@ -361,39 +368,37 @@ fn collect_simthing_location_flags_recursive(
 fn sort_participant_rows(rows: &mut [LoadedScenarioRfParticipantRow]) {
     rows.sort_by(|a, b| {
         (
-            a.parent_location_id_raw,
-            a.owner_ref.as_deref().unwrap_or(""),
-            a.resource_key.as_deref().unwrap_or(""),
+            a.parent_location_id,
+            a.owner_ref.as_ref().map(|o| o.as_str()).unwrap_or(""),
+            a.resource_key.as_ref().map(|k| k.as_str()).unwrap_or(""),
             a.simthing_id_raw,
         )
             .cmp(&(
-                b.parent_location_id_raw,
-                b.owner_ref.as_deref().unwrap_or(""),
-                b.resource_key.as_deref().unwrap_or(""),
+                b.parent_location_id,
+                b.owner_ref.as_ref().map(|o| o.as_str()).unwrap_or(""),
+                b.resource_key.as_ref().map(|k| k.as_str()).unwrap_or(""),
                 b.simthing_id_raw,
             ))
     });
 }
 
 fn sort_parent_arena_rows(rows: &mut [LoadedScenarioRfParentArenaRow]) {
-    rows.sort_by(|a, b| {
-        (a.depth, a.parent_location_id_raw).cmp(&(b.depth, b.parent_location_id_raw))
-    });
+    rows.sort_by(|a, b| (a.depth, a.parent_location_id).cmp(&(b.depth, b.parent_location_id)));
 }
 
 fn sort_channel_rows(rows: &mut [LoadedScenarioRfChannelRow]) {
     rows.sort_by(|a, b| {
         (
-            a.parent_location_id_raw,
-            a.owner_ref.as_deref().unwrap_or(""),
-            a.resource_key.as_deref().unwrap_or(""),
-            a.scope_id.as_deref().unwrap_or(""),
+            a.parent_location_id,
+            a.owner_ref.as_ref().map(|o| o.as_str()).unwrap_or(""),
+            a.resource_key.as_ref().map(|k| k.as_str()).unwrap_or(""),
+            a.scope_id.as_ref().map(|s| s.as_str()).unwrap_or(""),
         )
             .cmp(&(
-                b.parent_location_id_raw,
-                b.owner_ref.as_deref().unwrap_or(""),
-                b.resource_key.as_deref().unwrap_or(""),
-                b.scope_id.as_deref().unwrap_or(""),
+                b.parent_location_id,
+                b.owner_ref.as_ref().map(|o| o.as_str()).unwrap_or(""),
+                b.resource_key.as_ref().map(|k| k.as_str()).unwrap_or(""),
+                b.scope_id.as_ref().map(|s| s.as_str()).unwrap_or(""),
             ))
     });
 }
@@ -479,7 +484,7 @@ fn prove_gameplay_rows_parented_to_surface(
         && participant_rows
             .iter()
             .filter(|row| planet_surface_gameplay.contains_key(&row.simthing_id_raw))
-            .all(|row| surface_ids.contains_key(&row.parent_location_id_raw))
+            .all(|row| surface_ids.contains_key(&row.parent_location_id.raw()))
 }
 
 fn collect_surface_gridcell_ids(root: &SimThing) -> BTreeMap<u32, ()> {

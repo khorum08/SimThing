@@ -167,11 +167,11 @@ fn semantic_delta_preview_preserves_owner_resource_scope() {
     assert!(report
         .delta_records
         .iter()
-        .any(|r| r.owner_ref == "owner_a"));
+        .any(|r| r.owner_ref.as_str() == "owner_a"));
     assert!(report
         .delta_records
         .iter()
-        .any(|r| r.owner_ref == "owner_b"));
+        .any(|r| r.owner_ref.as_str() == "owner_b"));
 }
 
 #[test]
@@ -179,7 +179,9 @@ fn semantic_delta_preview_preserves_execution_resource_key_without_authoritative
     let spec = build_sibling_redistribution_spec();
     let recursive = evaluate_recursive_local_rf(&spec).expect("recursive");
     let aggregate_rows = recursive_local_rf_aggregate_source_rows(&recursive);
-    assert!(aggregate_rows.iter().any(|row| row.resource_key == "food"));
+    assert!(aggregate_rows
+        .iter()
+        .any(|row| row.resource_key.as_str() == "food"));
 
     let report = evaluate_semantic_participant_delta_preview(
         &spec,
@@ -191,7 +193,7 @@ fn semantic_delta_preview_preserves_execution_resource_key_without_authoritative
     assert!(report
         .delta_records
         .iter()
-        .all(|record| record.resource_key == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
+        .all(|record| record.resource_key.as_str() == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
 }
 
 #[test]
@@ -308,7 +310,7 @@ fn normal_tests_do_not_write_semantic_delta_preview_fixture() {
         .unwrap();
     cohort.properties.insert(
         OWNER_FLOW_DEMAND_PROPERTY_ID,
-        PropertyValue { data: vec![1.5] },
+        PropertyValue::from_raw_lanes(vec![1.5]),
     );
 
     let err = evaluate_semantic_participant_delta_preview(

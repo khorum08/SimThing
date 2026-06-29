@@ -4,9 +4,9 @@ mod disburse_down_fixture;
 
 use simthing_spec::{
     evaluate_semantic_local_effects, prove_semantic_local_effects_preserve_authority,
-    semantic_local_effects_from_application, serialize_scenario_authority,
+    semantic_local_effects_from_application, serialize_scenario_authority, OwnerRef, ResourceKey,
     RuntimeLocalEffectApplicationRecord, RuntimeLocalEffectApplicationReport, RuntimeTickId,
-    SemanticLocalEffectErrorKind, SemanticLocalEffectKind,
+    ScopeId, SemanticLocalEffectErrorKind, SemanticLocalEffectKind,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -45,9 +45,9 @@ fn make_record(
 ) -> RuntimeLocalEffectApplicationRecord {
     RuntimeLocalEffectApplicationRecord {
         source_simthing_id_raw: source,
-        owner_ref: owner.to_string(),
-        resource_key: "food".to_string(),
-        scope_id: "scope_a".to_string(),
+        owner_ref: OwnerRef::new(owner),
+        resource_key: ResourceKey::new("food"),
+        scope_id: ScopeId::new("scope_a"),
         requested,
         allocated,
         unmet,
@@ -102,7 +102,7 @@ fn semantic_local_effects_marks_resource_satisfied_and_shortfall() {
     let owner_a: Vec<_> = report
         .outputs
         .iter()
-        .filter(|o| o.owner_ref == "owner_a")
+        .filter(|o| o.owner_ref.as_str() == "owner_a")
         .collect();
 
     let cohort_applied = owner_a
@@ -130,7 +130,7 @@ fn semantic_local_effects_marks_resource_satisfied_and_shortfall() {
         .outputs
         .iter()
         .find(|o| {
-            o.owner_ref == "owner_b"
+            o.owner_ref.as_str() == "owner_b"
                 && o.effect_kind == SemanticLocalEffectKind::RuntimeAppliedAmount
         })
         .expect("owner_b applied");
@@ -146,9 +146,9 @@ fn semantic_local_effects_preserves_owner_resource_scope() {
     let report = evaluate_semantic_local_effects(&spec, TICK_ONE, 1).expect("semantic");
 
     for output in &report.outputs {
-        assert!(!output.owner_ref.is_empty());
-        assert!(!output.resource_key.is_empty());
-        assert!(!output.scope_id.is_empty());
+        assert!(!output.owner_ref.as_str().is_empty());
+        assert!(!output.resource_key.as_str().is_empty());
+        assert!(!output.scope_id.as_str().is_empty());
     }
 }
 

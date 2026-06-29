@@ -9,10 +9,10 @@ use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     evaluate_recursive_local_rf, prove_recursive_local_rf_preserves_authority,
     recursive_local_rf_aggregate_source_rows, recursive_local_rf_arena_aggregate_totals,
-    recursive_local_rf_report_matches_planet_child_compatibility_slice,
+    recursive_local_rf_report_matches_planet_child_compatibility_slice, OwnerRef,
     RecursiveLocalRfAggregateSourceRow, RecursiveLocalRfAuthorityProof,
-    RecursiveLocalRfCompatibilityReport, RecursiveLocalRfEvaluationReport, SimThingScenarioSpec,
-    SpecError,
+    RecursiveLocalRfCompatibilityReport, RecursiveLocalRfEvaluationReport, ResourceKey,
+    SimThingScenarioSpec, SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -21,8 +21,8 @@ use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
 #[derive(Debug, Clone, PartialEq)]
 pub struct RecursiveLocalRfAggregateProofPlan {
     pub arena_location_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub surplus_plan: CompiledAccumulatorOpPlan,
     pub demand_plan: CompiledAccumulatorOpPlan,
     /// Indices into `RecursiveLocalRfPlan::aggregate_source_rows`.
@@ -90,10 +90,11 @@ fn compile_recursive_rf_aggregate_proof_plans(
 
     let totals = recursive_local_rf_arena_aggregate_totals(report);
     let mut plans = Vec::with_capacity(totals.len());
-    for ((arena_id, owner_ref, resource_key), (surplus_total, demand_total)) in totals {
+    for ((parent_location_id, owner_ref, resource_key), (surplus_total, demand_total)) in totals {
         if surplus_total == 0 && demand_total == 0 {
             continue;
         }
+        let arena_id = parent_location_id.raw();
         let matching: Vec<_> = aggregate_source_rows
             .iter()
             .enumerate()

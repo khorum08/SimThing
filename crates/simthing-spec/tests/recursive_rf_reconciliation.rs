@@ -43,8 +43,11 @@ fn recursive_rf_reconciliation_preserves_source_ids_owner_resource_and_scope() {
 
     assert!(report.participant_row_compatible);
     for row in &legacy {
-        assert!(!row.owner_ref.is_empty());
-        assert_eq!(row.resource_key, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY);
+        assert!(!row.owner_ref.as_str().is_empty());
+        assert_eq!(
+            row.resource_key.as_str(),
+            PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
+        );
         assert!(row.planet_gridcell_id_raw > 0);
     }
 }
@@ -56,7 +59,7 @@ fn recursive_rf_reconciliation_preserves_generic_resource_key_fallback() {
 
     assert!(legacy
         .iter()
-        .all(|row| row.resource_key == OWNER_FLOW_DEFAULT_RESOURCE_KEY));
+        .all(|row| row.resource_key.as_str() == OWNER_FLOW_DEFAULT_RESOURCE_KEY));
 }
 
 #[test]
@@ -66,7 +69,8 @@ fn recursive_rf_reconciliation_supports_explicit_resource_key_metadata() {
 
     assert!(recursive
         .iter()
-        .any(|row| row.resource_key == "food" && row.source_kind_label == "direct_participant"));
+        .any(|row| row.resource_key.as_str() == "food"
+            && row.source_kind_label == "direct_participant"));
 }
 
 #[test]

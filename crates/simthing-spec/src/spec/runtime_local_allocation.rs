@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 
+use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
 use super::owner_silo_disburse_down::RuntimeOwnerSiloDisburseDownResult;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,9 +16,9 @@ pub enum RuntimeLocalAllocationApplicationErrorKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeLocalAllocationApplicationError {
     pub kind: RuntimeLocalAllocationApplicationErrorKind,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
-    pub scope_id: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
+    pub scope_id: Option<ScopeId>,
     pub source_simthing_id_raw: Option<u32>,
     pub message: String,
 }
@@ -25,9 +26,9 @@ pub struct RuntimeLocalAllocationApplicationError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeLocalAllocationState {
     pub source_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
-    pub scope_id: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
+    pub scope_id: ScopeId,
     pub planet_id: Option<String>,
     pub star_system_gridcell_id_raw: Option<u32>,
     pub requested: u32,
@@ -185,9 +186,9 @@ pub fn apply_runtime_local_allocations_from_disburse_down(
 /// Aggregate allocated totals per owner/resource for GPU proof comparison.
 pub fn runtime_local_allocation_aggregate_totals(
     report: &RuntimeLocalAllocationApplicationReport,
-) -> std::collections::BTreeMap<(String, String), u32> {
+) -> std::collections::BTreeMap<(OwnerRef, ResourceKey), u32> {
     use std::collections::BTreeMap;
-    let mut totals: BTreeMap<(String, String), u32> = BTreeMap::new();
+    let mut totals: BTreeMap<(OwnerRef, ResourceKey), u32> = BTreeMap::new();
     for state in &report.states {
         let entry = totals
             .entry((state.owner_ref.clone(), state.resource_key.clone()))

@@ -3,7 +3,8 @@
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     evaluate_local_participant_effects, local_participant_effects_aggregate_totals,
-    LocalParticipantEffectsReport, RuntimeTickId, SimThingScenarioSpec, SpecError,
+    LocalParticipantEffectsReport, OwnerRef, ResourceKey, RuntimeTickId, SimThingScenarioSpec,
+    SpecError,
 };
 
 use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
@@ -12,8 +13,8 @@ use crate::runtime_tick_shell_compile::compile_runtime_tick_shell_plan;
 /// GPU aggregate proof plan for allocated/unmet effect totals per owner/resource channel.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalParticipantEffectAggregateProofPlan {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub allocated_plan: CompiledAccumulatorOpPlan,
     pub unmet_plan: CompiledAccumulatorOpPlan,
     pub source_effect_indices: Vec<usize>,

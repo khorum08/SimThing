@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 
+use super::channel_key::{OwnerRef, ResourceKey, ScopeId};
 use super::runtime_local_allocation::RuntimeLocalAllocationState;
 use super::runtime_rf_tick::evaluate_runtime_rf_tick;
 use super::runtime_tick_shell::{evaluate_runtime_tick_shell, RuntimeTickId};
@@ -39,9 +40,9 @@ pub struct LocalParticipantEffectsDeferral {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeLocalParticipantEffect {
     pub source_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
-    pub scope_id: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
+    pub scope_id: ScopeId,
     pub requested: u32,
     pub allocated: u32,
     pub unmet: u32,
@@ -270,9 +271,9 @@ fn default_deferrals() -> Vec<LocalParticipantEffectsDeferral> {
 /// Aggregate allocated and unmet totals per owner/resource for GPU proof comparison.
 pub fn local_participant_effects_aggregate_totals(
     report: &LocalParticipantEffectsReport,
-) -> std::collections::BTreeMap<(String, String), (u32, u32)> {
+) -> std::collections::BTreeMap<(OwnerRef, ResourceKey), (u32, u32)> {
     use std::collections::BTreeMap;
-    let mut totals: BTreeMap<(String, String), (u32, u32)> = BTreeMap::new();
+    let mut totals: BTreeMap<(OwnerRef, ResourceKey), (u32, u32)> = BTreeMap::new();
     for effect in &report.effects {
         let entry = totals
             .entry((effect.owner_ref.clone(), effect.resource_key.clone()))

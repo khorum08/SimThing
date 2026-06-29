@@ -354,10 +354,9 @@ fn national_ideas_full_path_activate_switch_verify() {
         fixture.n_dims,
         None,
     );
-    fixture.tree = serde_json::from_str(
-        &serde_json::to_string(&runtime).expect("serialize runtime root"),
-    )
-    .expect("authoring tree roundtrip");
+    fixture.tree =
+        serde_json::from_str(&serde_json::to_string(&runtime).expect("serialize runtime root"))
+            .expect("authoring tree roundtrip");
 
     let naval_lifecycle = &fixture
         .tree

@@ -8,6 +8,7 @@ use std::collections::BTreeSet;
 
 use simthing_core::{SimThing, SimThingKind};
 
+use super::channel_key::OwnerRef;
 use super::scenario::{
     game_session_child_mut, game_session_galaxy_map, gridcell_role, is_galaxy_map_entity,
     scenario_metadata_string, scenario_metadata_string_value, structural_property_value_u32,
@@ -136,7 +137,7 @@ pub struct PlanetNonGridChildEntry {
     pub planet_id: String,
     pub child_simthing_id_raw: u32,
     pub child_kind_label: String,
-    pub owner_ref: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
 }
 
 pub fn planet_non_grid_child_kind_label(kind: &SimThingKind) -> String {
@@ -187,7 +188,7 @@ pub fn collect_planet_non_grid_children(
                     planet_id: planet_id.clone(),
                     child_simthing_id_raw: child.id.raw(),
                     child_kind_label: planet_non_grid_child_kind_label(&child.kind),
-                    owner_ref: planet_non_grid_child_owner_ref(child),
+                    owner_ref: planet_non_grid_child_owner_ref(child).map(OwnerRef::new),
                 });
             }
         }

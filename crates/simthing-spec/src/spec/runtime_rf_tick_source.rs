@@ -6,6 +6,7 @@
 
 use std::collections::BTreeSet;
 
+use super::channel_key::{OwnerRef, ResourceKey};
 use super::recursive_local_rf::{
     evaluate_recursive_local_rf, recursive_local_rf_aggregate_source_rows,
 };
@@ -56,8 +57,8 @@ pub enum RuntimeRfTickSourceDeltaKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeRfTickSourceDelta {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub legacy_surplus_total: u32,
     pub legacy_demand_total: u32,
     pub recursive_surplus_total: u32,

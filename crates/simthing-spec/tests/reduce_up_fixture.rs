@@ -3,10 +3,11 @@
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
-    apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata, is_surface_gridcell,
-    make_galaxy_map, make_owner_entity, make_planet_gridcell, structural_property_value_u32, SimThingScenarioGrid,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata,
+    is_surface_gridcell, make_galaxy_map, make_owner_entity, make_planet_gridcell,
+    structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
+    SimThingScenarioSpec, SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,

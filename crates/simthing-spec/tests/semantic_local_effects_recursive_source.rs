@@ -156,8 +156,14 @@ fn semantic_recursive_source_preserves_owner_resource_scope() {
     .expect("recursive");
 
     let semantic = report.recursive_semantic_report.as_ref().expect("semantic");
-    assert!(semantic.outputs.iter().any(|o| o.owner_ref == "owner_a"));
-    assert!(semantic.outputs.iter().any(|o| o.owner_ref == "owner_b"));
+    assert!(semantic
+        .outputs
+        .iter()
+        .any(|o| o.owner_ref.as_str() == "owner_a"));
+    assert!(semantic
+        .outputs
+        .iter()
+        .any(|o| o.owner_ref.as_str() == "owner_b"));
 }
 
 #[test]
@@ -166,7 +172,9 @@ fn semantic_recursive_source_preserves_recursive_resource_metadata_but_uses_curr
     let spec = build_sibling_redistribution_spec();
     let recursive = evaluate_recursive_local_rf(&spec).expect("recursive");
     let aggregate_rows = recursive_local_rf_aggregate_source_rows(&recursive);
-    assert!(aggregate_rows.iter().any(|row| row.resource_key == "food"));
+    assert!(aggregate_rows
+        .iter()
+        .any(|row| row.resource_key.as_str() == "food"));
 
     let report = evaluate_semantic_local_effects_with_rf_source(
         &spec,
@@ -179,7 +187,7 @@ fn semantic_recursive_source_preserves_recursive_resource_metadata_but_uses_curr
     assert!(semantic
         .outputs
         .iter()
-        .all(|output| output.resource_key == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
+        .all(|output| output.resource_key.as_str() == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
 }
 
 #[test]
@@ -310,7 +318,7 @@ fn normal_tests_do_not_write_semantic_recursive_source_fixture() {
         .unwrap();
     cohort.properties.insert(
         OWNER_FLOW_DEMAND_PROPERTY_ID,
-        PropertyValue { data: vec![1.5] },
+        PropertyValue::from_raw_lanes(vec![1.5]),
     );
 
     let err = evaluate_semantic_local_effects_with_rf_source(

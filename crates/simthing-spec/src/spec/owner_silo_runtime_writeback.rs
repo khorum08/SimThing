@@ -6,9 +6,10 @@ use std::collections::BTreeMap;
 
 use simthing_core::SimThing;
 
+use super::channel_key::{OwnerRef, ResourceKey};
 use super::planet_child_rf::{
-    PlanetChildRfAdmissionClassification, PlanetChildRfReduceUpReport,
-    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    planet_child_rf_default_resource_key, PlanetChildRfAdmissionClassification,
+    PlanetChildRfReduceUpReport, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 use super::scenario::{
     game_session_owners, owner_entity_id, owner_has_silo_metadata, owner_silo_capacity,
@@ -29,16 +30,16 @@ pub enum RuntimeOwnerSiloWritebackErrorKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloWritebackError {
     pub kind: RuntimeOwnerSiloWritebackErrorKind,
-    pub owner_ref: Option<String>,
-    pub resource_key: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
+    pub resource_key: Option<ResourceKey>,
     pub message: String,
 }
 
 /// Runtime-resident owner-silo channel state (not Scenario authority).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloState {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub current: u32,
     pub capacity: Option<u32>,
 }
@@ -46,8 +47,8 @@ pub struct RuntimeOwnerSiloState {
 /// Aggregated owner/resource writeback input derived from planet-local reduce-up buckets.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloWritebackInput {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub net_surplus: u32,
     pub net_deficit: u32,
     pub source_bucket_count: u32,
@@ -56,8 +57,8 @@ pub struct RuntimeOwnerSiloWritebackInput {
 /// Deterministic runtime writeback outcome for one owner/resource channel.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuntimeOwnerSiloWritebackResult {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub previous_current: u32,
     pub next_current: u32,
     pub capacity: Option<u32>,
@@ -80,9 +81,10 @@ pub fn runtime_owner_silo_states_from_scenario(
 
     let mut states = Vec::new();
     for owner in owners {
-        let Some(owner_ref) = owner_entity_id(owner) else {
+        let Some(owner_ref_str) = owner_entity_id(owner) else {
             continue;
         };
+        let owner_ref = OwnerRef::new(&owner_ref_str);
         if !owner_has_silo_metadata(owner) {
             continue;
         }
@@ -90,7 +92,7 @@ pub fn runtime_owner_silo_states_from_scenario(
         let current = read_required_silo_amount(
             owner,
             OWNER_SILO_CURRENT_PROPERTY_ID,
-            &owner_ref,
+            &owner_ref_str,
             "owner_silo_current",
         )?;
         let capacity = match owner.properties.get(&OWNER_SILO_CAPACITY_PROPERTY_ID) {
@@ -98,7 +100,7 @@ pub fn runtime_owner_silo_states_from_scenario(
             Some(value) => Some(read_required_silo_amount(
                 owner,
                 OWNER_SILO_CAPACITY_PROPERTY_ID,
-                &owner_ref,
+                &owner_ref_str,
                 "owner_silo_capacity",
             )?),
         };
@@ -108,7 +110,7 @@ pub fn runtime_owner_silo_states_from_scenario(
                 return Err(RuntimeOwnerSiloWritebackError {
                     kind: RuntimeOwnerSiloWritebackErrorKind::InvalidOwnerSiloAmount,
                     owner_ref: Some(owner_ref.clone()),
-                    resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
+                    resource_key: Some(planet_child_rf_default_resource_key()),
                     message: format!(
                         "owner_silo_current ({current}) exceeds owner_silo_capacity ({capacity})"
                     ),
@@ -118,7 +120,7 @@ pub fn runtime_owner_silo_states_from_scenario(
 
         states.push(RuntimeOwnerSiloState {
             owner_ref,
-            resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
+            resource_key: planet_child_rf_default_resource_key(),
             current,
             capacity,
         });
@@ -157,19 +159,19 @@ pub fn owner_silo_writeback_inputs_from_planet_child_reduce_up(
         });
     }
 
-    let mut grouped: BTreeMap<(String, String), (u64, u64, u32)> = BTreeMap::new();
+    let mut grouped: BTreeMap<(OwnerRef, ResourceKey), (u64, u64, u32)> = BTreeMap::new();
     for bucket in &reduce_up.buckets {
         if bucket.net_surplus < 0 || bucket.net_deficit < 0 {
             return Err(RuntimeOwnerSiloWritebackError {
                 kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-                owner_ref: Some(bucket.scope.owner_ref.as_str().to_string()),
-                resource_key: Some(bucket.scope.resource_key.as_str().to_string()),
+                owner_ref: Some(bucket.scope.owner_ref.clone()),
+                resource_key: Some(bucket.scope.resource_key.clone()),
                 message: "bucket net values must be non-negative".to_string(),
             });
         }
         let key = (
-            bucket.scope.owner_ref.as_str().to_string(),
-            bucket.scope.resource_key.as_str().to_string(),
+            bucket.scope.owner_ref.clone(),
+            bucket.scope.resource_key.clone(),
         );
         let entry = grouped.entry(key).or_insert((0, 0, 0));
         entry.0 = entry
@@ -177,8 +179,8 @@ pub fn owner_silo_writeback_inputs_from_planet_child_reduce_up(
             .checked_add(bucket.net_surplus as u64)
             .ok_or_else(|| RuntimeOwnerSiloWritebackError {
                 kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-                owner_ref: Some(bucket.scope.owner_ref.as_str().to_string()),
-                resource_key: Some(bucket.scope.resource_key.as_str().to_string()),
+                owner_ref: Some(bucket.scope.owner_ref.clone()),
+                resource_key: Some(bucket.scope.resource_key.clone()),
                 message: "net_surplus aggregate overflow".to_string(),
             })?;
         entry.1 = entry
@@ -186,8 +188,8 @@ pub fn owner_silo_writeback_inputs_from_planet_child_reduce_up(
             .checked_add(bucket.net_deficit as u64)
             .ok_or_else(|| RuntimeOwnerSiloWritebackError {
                 kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-                owner_ref: Some(bucket.scope.owner_ref.as_str().to_string()),
-                resource_key: Some(bucket.scope.resource_key.as_str().to_string()),
+                owner_ref: Some(bucket.scope.owner_ref.clone()),
+                resource_key: Some(bucket.scope.resource_key.clone()),
                 message: "net_deficit aggregate overflow".to_string(),
             })?;
         entry.2 += 1;
@@ -225,7 +227,7 @@ pub fn apply_owner_silo_runtime_writeback_cpu(
     initial: &[RuntimeOwnerSiloState],
     inputs: &[RuntimeOwnerSiloWritebackInput],
 ) -> Result<Vec<RuntimeOwnerSiloWritebackResult>, RuntimeOwnerSiloWritebackError> {
-    let mut state_map: BTreeMap<(String, String), RuntimeOwnerSiloState> = BTreeMap::new();
+    let mut state_map: BTreeMap<(OwnerRef, ResourceKey), RuntimeOwnerSiloState> = BTreeMap::new();
     for state in initial {
         state_map.insert(
             (state.owner_ref.clone(), state.resource_key.clone()),
@@ -267,8 +269,8 @@ pub fn apply_owner_silo_runtime_writeback_cpu(
 }
 
 fn apply_single_writeback(
-    owner_ref: &str,
-    resource_key: &str,
+    owner_ref: &OwnerRef,
+    resource_key: &ResourceKey,
     previous_current: u32,
     capacity: Option<u32>,
     net_surplus: u32,
@@ -277,8 +279,8 @@ fn apply_single_writeback(
     let after_surplus = previous_current.checked_add(net_surplus).ok_or_else(|| {
         RuntimeOwnerSiloWritebackError {
             kind: RuntimeOwnerSiloWritebackErrorKind::ArithmeticOverflow,
-            owner_ref: Some(owner_ref.to_string()),
-            resource_key: Some(resource_key.to_string()),
+            owner_ref: Some(owner_ref.clone()),
+            resource_key: Some(resource_key.clone()),
             message: "previous_current + net_surplus overflow".to_string(),
         }
     })?;
@@ -296,8 +298,8 @@ fn apply_single_writeback(
     };
 
     Ok(RuntimeOwnerSiloWritebackResult {
-        owner_ref: owner_ref.to_string(),
-        resource_key: resource_key.to_string(),
+        owner_ref: owner_ref.clone(),
+        resource_key: resource_key.clone(),
         previous_current,
         next_current,
         capacity,
@@ -317,8 +319,8 @@ fn read_required_silo_amount(
     let Some(value) = owner.properties.get(&property_id) else {
         return Err(RuntimeOwnerSiloWritebackError {
             kind: RuntimeOwnerSiloWritebackErrorKind::MissingOwnerSiloMetadata,
-            owner_ref: Some(owner_ref.to_string()),
-            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
+            owner_ref: Some(OwnerRef::new(owner_ref)),
+            resource_key: Some(planet_child_rf_default_resource_key()),
             message: format!("{label} is required for runtime owner-silo writeback"),
         });
     };
@@ -326,8 +328,8 @@ fn read_required_silo_amount(
         Some(amount) => Ok(amount),
         None => Err(RuntimeOwnerSiloWritebackError {
             kind: RuntimeOwnerSiloWritebackErrorKind::InvalidOwnerSiloAmount,
-            owner_ref: Some(owner_ref.to_string()),
-            resource_key: Some(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string()),
+            owner_ref: Some(OwnerRef::new(owner_ref)),
+            resource_key: Some(planet_child_rf_default_resource_key()),
             message: format!("{label} must be a non-negative exact integer f32 mirror"),
         }),
     }

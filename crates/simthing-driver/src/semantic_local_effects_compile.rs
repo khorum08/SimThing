@@ -3,8 +3,9 @@
 use simthing_core::{CompiledAccumulatorOpPlan, StructuralScalarChannel};
 use simthing_spec::{
     evaluate_semantic_local_effects, prove_semantic_local_effects_preserve_authority,
-    semantic_local_effects_aggregate_totals, RuntimeTickId, SemanticLocalEffectAuthorityProof,
-    SemanticLocalEffectKind, SemanticLocalEffectReport, SimThingScenarioSpec, SpecError,
+    semantic_local_effects_aggregate_totals, OwnerRef, ResourceKey, RuntimeTickId,
+    SemanticLocalEffectAuthorityProof, SemanticLocalEffectKind, SemanticLocalEffectReport,
+    SimThingScenarioSpec, SpecError,
 };
 
 use crate::local_effect_application_compile::compile_local_effect_application_plan;
@@ -13,8 +14,8 @@ use crate::owner_silo_accumulator_compile::compile_participant_channel_sum_plan;
 /// GPU aggregate proof plan for runtime_applied/shortfall semantic totals per owner/resource.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SemanticLocalEffectAggregateProofPlan {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub runtime_applied_plan: CompiledAccumulatorOpPlan,
     pub shortfall_plan: CompiledAccumulatorOpPlan,
     pub source_output_indices: Vec<usize>,

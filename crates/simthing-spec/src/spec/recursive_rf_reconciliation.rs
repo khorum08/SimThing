@@ -7,6 +7,7 @@
 
 use std::collections::BTreeMap;
 
+use super::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
 use super::planet_child_rf::{
     planet_child_rf_participant_inputs, scope_key_from_participant,
     PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
@@ -23,8 +24,8 @@ pub struct PlanetChildRfProjectionRow {
     pub source_simthing_id_raw: u32,
     pub planet_gridcell_id_raw: u32,
     pub star_system_gridcell_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub surplus: u32,
     pub demand: u32,
     pub deficit: u32,
@@ -35,9 +36,9 @@ pub struct RecursiveRfProjectionRow {
     pub source_simthing_or_location_id_raw: u32,
     pub source_kind_label: String,
     pub arena_location_id_raw: u32,
-    pub parent_location_id_raw: Option<u32>,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub parent_location_id: Option<ParentLocationId>,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub surplus: u32,
     pub demand: u32,
     pub net_surplus: u32,
@@ -46,8 +47,8 @@ pub struct RecursiveRfProjectionRow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecursiveRfReconciliationBucket {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub planet_gridcell_id_raw: Option<u32>,
     pub star_system_gridcell_id_raw: Option<u32>,
     pub legacy_surplus_total: u32,
@@ -72,8 +73,8 @@ pub enum RecursiveRfReconciliationMismatchKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecursiveRfReconciliationMismatch {
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub source_simthing_id_raw: Option<u32>,
     pub location_id_raw: Option<u32>,
     pub mismatch_kind: RecursiveRfReconciliationMismatchKind,
@@ -149,8 +150,8 @@ pub fn project_planet_child_rf_ladder_rows(
             source_simthing_id_raw: participant.simthing_id_raw,
             planet_gridcell_id_raw: participant.planet_gridcell_id_raw,
             star_system_gridcell_id_raw: scope.star_system_gridcell_id_raw.unwrap_or(0),
-            owner_ref: participant.owner_ref.into_inner(),
-            resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string(),
+            owner_ref: participant.owner_ref.clone(),
+            resource_key: super::planet_child_rf::planet_child_rf_default_resource_key(),
             surplus: participant.surplus,
             demand: participant.deficit,
             deficit: participant.deficit,
@@ -192,7 +193,7 @@ pub fn project_recursive_local_rf_rows(
             .arena_reports
             .iter()
             .find(|arena| arena.location_id_raw == source.arena_location_id_raw);
-        let parent_location_id_raw = arena.and_then(|arena| arena.parent_location_id_raw);
+        let parent_location_id = arena.and_then(|arena| arena.parent_location_id);
         let (source_kind_label, net_surplus, net_deficit) = match source.source_kind {
             RecursiveLocalRfAggregateSourceKind::DirectParticipant => {
                 ("direct_participant".to_string(), 0, 0)
@@ -207,7 +208,7 @@ pub fn project_recursive_local_rf_rows(
             source_simthing_or_location_id_raw: source.source_simthing_or_location_id_raw,
             source_kind_label,
             arena_location_id_raw: source.arena_location_id_raw,
-            parent_location_id_raw,
+            parent_location_id,
             owner_ref: source.owner_ref.clone(),
             resource_key: source.resource_key.clone(),
             surplus: source.surplus,
@@ -223,7 +224,7 @@ pub fn project_recursive_local_rf_rows(
                 source_simthing_or_location_id_raw: arena.location_id_raw,
                 source_kind_label: "arena_settlement".to_string(),
                 arena_location_id_raw: arena.location_id_raw,
-                parent_location_id_raw: arena.parent_location_id_raw,
+                parent_location_id: arena.parent_location_id,
                 owner_ref: settlement.owner_ref.clone(),
                 resource_key: settlement.resource_key.clone(),
                 surplus: settlement.total_surplus,
@@ -291,8 +292,8 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
             continue;
         };
 
-        if recursive.resource_key != legacy.resource_key
-            && legacy.resource_key != PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
+        if recursive.resource_key.as_str() != legacy.resource_key.as_str()
+            && legacy.resource_key.as_str() != PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
         {
             mismatches.push(RecursiveRfReconciliationMismatch {
                 owner_ref: legacy.owner_ref.clone(),
@@ -303,7 +304,7 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
                 legacy_value: 0,
                 recursive_value: 0,
             });
-        } else if recursive.resource_key != legacy.resource_key {
+        } else if recursive.resource_key.as_str() != legacy.resource_key.as_str() {
             mismatches.push(RecursiveRfReconciliationMismatch {
                 owner_ref: legacy.owner_ref.clone(),
                 resource_key: legacy.resource_key.clone(),
@@ -341,7 +342,10 @@ pub fn reconcile_planet_child_rf_with_recursive_local_rf(
     }
 
     for recursive in &direct_recursive {
-        let star_system_gridcell_id_raw = recursive.parent_location_id_raw.filter(|id| *id > 0);
+        let star_system_gridcell_id_raw = recursive
+            .parent_location_id
+            .map(ParentLocationId::raw)
+            .filter(|id| *id > 0);
         let key = BucketKey {
             owner_ref: recursive.owner_ref.clone(),
             resource_key: recursive.resource_key.clone(),
@@ -494,8 +498,8 @@ pub fn prove_recursive_rf_reconciliation_preserves_authority(
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct BucketKey {
-    owner_ref: String,
-    resource_key: String,
+    owner_ref: OwnerRef,
+    resource_key: ResourceKey,
     planet_gridcell_id_raw: Option<u32>,
     star_system_gridcell_id_raw: Option<u32>,
 }

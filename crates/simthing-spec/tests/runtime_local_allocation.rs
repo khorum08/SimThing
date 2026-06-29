@@ -7,9 +7,9 @@ use simthing_spec::{
     apply_runtime_local_allocations_from_disburse_down, evaluate_planet_child_rf_reduce_up,
     owner_silo_demand_buckets_from_planet_child_rf,
     owner_silo_writeback_inputs_from_planet_child_reduce_up,
-    runtime_owner_silo_states_from_scenario, serialize_scenario_authority,
+    runtime_owner_silo_states_from_scenario, serialize_scenario_authority, OwnerRef, ResourceKey,
     RuntimeLocalAllocationApplicationErrorKind, RuntimeOwnerSiloDisburseDownAllocation,
-    RuntimeOwnerSiloDisburseDownResult, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    RuntimeOwnerSiloDisburseDownResult, ScopeId, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -45,7 +45,7 @@ fn runtime_local_allocation_records_allocated_and_unmet_per_source() {
     let owner_a: Vec<_> = report
         .states
         .iter()
-        .filter(|s| s.owner_ref == "owner_a")
+        .filter(|s| s.owner_ref.as_str() == "owner_a")
         .collect();
     assert_eq!(owner_a.len(), 2);
     let cohort = owner_a.iter().find(|s| s.requested == 20).expect("cohort");
@@ -58,7 +58,7 @@ fn runtime_local_allocation_records_allocated_and_unmet_per_source() {
     let owner_b = report
         .states
         .iter()
-        .find(|s| s.owner_ref == "owner_b")
+        .find(|s| s.owner_ref.as_str() == "owner_b")
         .expect("owner_b");
     assert_eq!(owner_b.requested, 10);
     assert_eq!(owner_b.allocated, 10);
@@ -72,8 +72,11 @@ fn runtime_local_allocation_preserves_owner_resource_scope() {
     let report = apply_runtime_local_allocations_from_disburse_down(&disburse).expect("apply");
 
     for state in &report.states {
-        assert_eq!(state.resource_key, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY);
-        assert!(!state.scope_id.is_empty());
+        assert_eq!(
+            state.resource_key.as_str(),
+            PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
+        );
+        assert!(!state.scope_id.as_str().is_empty());
         assert_eq!(state.planet_id.as_deref(), Some(state.scope_id.as_str()));
         assert!(state.star_system_gridcell_id_raw.is_some());
     }
@@ -82,16 +85,16 @@ fn runtime_local_allocation_preserves_owner_resource_scope() {
 #[test]
 fn runtime_local_allocation_rejects_missing_source_simthing_id() {
     let disburse = vec![RuntimeOwnerSiloDisburseDownResult {
-        owner_ref: "owner_x".into(),
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
+        owner_ref: OwnerRef::new("owner_x"),
+        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
         available_before: 10,
         allocated_total: 5,
         remaining_after: 5,
         unmet_total: 0,
         allocations: vec![RuntimeOwnerSiloDisburseDownAllocation {
-            owner_ref: "owner_x".into(),
-            resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
-            scope_id: "scope_a".into(),
+            owner_ref: OwnerRef::new("owner_x"),
+            resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
+            scope_id: ScopeId::new("scope_a"),
             planet_id: Some("scope_a".into()),
             star_system_gridcell_id_raw: Some(8),
             requested: 5,
@@ -111,9 +114,9 @@ fn runtime_local_allocation_rejects_missing_source_simthing_id() {
 #[test]
 fn runtime_local_allocation_rejects_duplicate_source_allocation() {
     let allocation = RuntimeOwnerSiloDisburseDownAllocation {
-        owner_ref: "owner_x".into(),
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
-        scope_id: "scope_a".into(),
+        owner_ref: OwnerRef::new("owner_x"),
+        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
+        scope_id: ScopeId::new("scope_a"),
         planet_id: Some("scope_a".into()),
         star_system_gridcell_id_raw: Some(8),
         requested: 5,
@@ -123,8 +126,8 @@ fn runtime_local_allocation_rejects_duplicate_source_allocation() {
         source_simthing_id_raw: Some(101),
     };
     let disburse = vec![RuntimeOwnerSiloDisburseDownResult {
-        owner_ref: "owner_x".into(),
-        resource_key: PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.into(),
+        owner_ref: OwnerRef::new("owner_x"),
+        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
         available_before: 10,
         allocated_total: 10,
         remaining_after: 0,

@@ -6,6 +6,7 @@
 
 use std::collections::BTreeMap;
 
+use super::channel_key::{OwnerRef, ResourceKey};
 use super::runtime_tick_history::scenario_authority_digest;
 use super::runtime_tick_shell::RuntimeTickId;
 use super::scenario::SimThingScenarioSpec;
@@ -34,8 +35,8 @@ pub enum RuntimeParticipantStateMutationKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeParticipantStateRow {
     pub participant_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub scope_id: Option<u32>,
     pub property_id: String,
     pub value: f64,
@@ -45,8 +46,8 @@ pub struct RuntimeParticipantStateRow {
 pub struct RuntimeParticipantStateMutationRecord {
     pub source_delta_preview_id: u32,
     pub participant_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub scope_id: Option<u32>,
     pub mutation_kind: RuntimeParticipantStateMutationKind,
     pub property_id: String,
@@ -268,7 +269,7 @@ fn build_state_mutation_report(
     })
 }
 
-type StateKey = (u32, String, String, Option<u32>, String);
+type StateKey = (u32, OwnerRef, ResourceKey, Option<u32>, String);
 
 fn apply_delta_previews_to_runtime_state(
     delta_records: &[ParticipantPropertyDeltaPreviewRecord],

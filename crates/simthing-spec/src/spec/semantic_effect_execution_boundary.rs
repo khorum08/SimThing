@@ -4,6 +4,7 @@
 //! behind explicit source mode. CPU responsibilities: oracle/reference/shadow projection,
 //! semantic-side bookkeeping, compile-plan construction, and owner/user-facing report formatting.
 
+use super::channel_key::{OwnerRef, ResourceKey};
 use super::runtime_tick_history::scenario_authority_digest;
 use super::runtime_tick_shell::RuntimeTickId;
 use super::scenario::SimThingScenarioSpec;
@@ -30,8 +31,8 @@ pub enum SemanticEffectExecutionKind {
 pub struct SemanticEffectExecutionRecord {
     pub source_semantic_effect_id: u32,
     pub source_simthing_id_raw: u32,
-    pub owner_ref: String,
-    pub resource_key: String,
+    pub owner_ref: OwnerRef,
+    pub resource_key: ResourceKey,
     pub scope_id: Option<u32>,
     pub execution_kind: SemanticEffectExecutionKind,
     pub amount: u32,
@@ -269,7 +270,7 @@ fn semantic_outputs_to_execution_records(
             source_simthing_id_raw: output.source_simthing_id_raw,
             owner_ref: output.owner_ref.clone(),
             resource_key: output.resource_key.clone(),
-            scope_id: parse_scope_id(&output.scope_id),
+            scope_id: parse_scope_id(output.scope_id.as_str()),
             execution_kind: map_execution_kind(output.effect_kind),
             amount: output.amount,
             participant_property_mutation_deferred: true,

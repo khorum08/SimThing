@@ -6,6 +6,7 @@
 
 use std::collections::BTreeSet;
 
+use super::channel_key::{OwnerRef, ScopeId};
 use super::owner_silo_disburse_down::{
     apply_owner_silo_runtime_disburse_down_cpu, demand_bucket_sort_key,
     owner_silo_demand_buckets_from_planet_child_rf, RuntimeOwnerSiloDemandBucket,
@@ -17,8 +18,8 @@ use super::owner_silo_runtime_writeback::{
     runtime_owner_silo_states_from_scenario,
 };
 use super::planet_child_rf::{
-    evaluate_planet_child_rf_reduce_up, PlanetChildRfAdmissionClassification,
-    PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
+    evaluate_planet_child_rf_reduce_up, planet_child_rf_default_resource_key,
+    PlanetChildRfAdmissionClassification, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 use super::recursive_local_rf::{
     evaluate_recursive_local_rf, recursive_local_rf_aggregate_source_rows,
@@ -111,13 +112,14 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
             message: e.message,
         })?;
 
-    let owner_refs: BTreeSet<String> = game_session_owners(scenario)
+    let owner_refs: BTreeSet<OwnerRef> = game_session_owners(scenario)
         .map_err(|_| OwnerSiloRecursiveSourceError {
             kind: OwnerSiloRecursiveSourceErrorKind::RecursiveEvaluationRejected,
             message: "game session owners unavailable".to_string(),
         })?
         .into_iter()
         .filter_map(owner_entity_id)
+        .map(OwnerRef::new)
         .collect();
 
     let aggregate_rows = recursive_local_rf_aggregate_source_rows(&recursive_report);
@@ -132,15 +134,15 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
                 kind: OwnerSiloRecursiveSourceErrorKind::RecursiveEvaluationRejected,
                 message: format!(
                     "recursive demand references unknown owner/channel {}",
-                    row.owner_ref
+                    row.owner_ref.as_str()
                 ),
             });
         }
 
         // Owner-silo disburse-down writeback channels use planet-child reduce-up scope keys ("generic").
-        let resource_key = PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string();
+        let resource_key = planet_child_rf_default_resource_key();
 
-        let scope_id = format!("location/{}", row.arena_location_id_raw);
+        let scope_id = ScopeId::new(format!("location/{}", row.arena_location_id_raw));
         buckets.push(RuntimeOwnerSiloDemandBucket {
             owner_ref: row.owner_ref.clone(),
             resource_key,
@@ -163,12 +165,13 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
                     kind: OwnerSiloRecursiveSourceErrorKind::RecursiveEvaluationRejected,
                     message: format!(
                         "recursive parent deficit references unknown owner/channel {}",
-                        settlement.owner_ref
+                        settlement.owner_ref.as_str()
                     ),
                 });
             }
-            let resource_key = PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string();
-            let scope_id = format!("location/{}/parent_deficit", arena.location_id_raw);
+            let resource_key = planet_child_rf_default_resource_key();
+            let scope_id =
+                ScopeId::new(format!("location/{}/parent_deficit", arena.location_id_raw));
             buckets.push(RuntimeOwnerSiloDemandBucket {
                 owner_ref: settlement.owner_ref.clone(),
                 resource_key,
@@ -191,18 +194,21 @@ pub fn owner_silo_demand_buckets_from_recursive_local_rf(
                 kind: OwnerSiloRecursiveSourceErrorKind::RecursiveEvaluationRejected,
                 message: format!(
                     "recursive root deficit references unknown owner/channel {}",
-                    output.owner_ref
+                    output.owner_ref.as_str()
                 ),
             });
         }
-        let resource_key = PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY.to_string();
-        let scope_id = format!("location/{}/root_deficit", output.parent_location_id_raw);
+        let resource_key = planet_child_rf_default_resource_key();
+        let scope_id = ScopeId::new(format!(
+            "location/{}/root_deficit",
+            output.parent_location_id.raw()
+        ));
         buckets.push(RuntimeOwnerSiloDemandBucket {
             owner_ref: output.owner_ref.clone(),
             resource_key,
             scope_id,
             planet_id: None,
-            star_system_gridcell_id_raw: Some(output.parent_location_id_raw),
+            star_system_gridcell_id_raw: Some(output.parent_location_id.raw()),
             requested: output.net_deficit,
             priority: OWNER_FLOW_DEFAULT_PRIORITY,
             source_simthing_id_raw: Some(output.child_location_id_raw),
