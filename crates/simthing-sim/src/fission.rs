@@ -45,12 +45,13 @@
 //! Amount re-crosses the fission threshold later, a new child may spawn. That
 //! is intentional (see `docs/state-authority.md`).
 
+use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
 use crate::tree_index::{node_at_path, node_at_path_mut};
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    DimensionRegistry, PropertyValue, SecondaryCondition, SimPropertyId, SimThing, SimThingId,
-    SimThingKind, SimThingKindTag, SubFieldRole,
+    prep_fission_parent_clone_source_labels, DimensionRegistry, PropertyValue, SecondaryCondition,
+    SimPropertyId, SimThing, SimThingId, SimThingKind, SimThingKindTag, SubFieldRole,
 };
 use simthing_gpu::{SlotAllocator, ThresholdEvent};
 use std::collections::{HashMap, HashSet};
@@ -108,8 +109,8 @@ pub struct FissionOutcome {
 }
 
 /// Provenance record for one fission-cloned capability subtree root.
-/// Emitted per `is_capability_container` child found on the fission
-/// parent and successfully cloned onto the spawned child.
+/// Emitted per resolved clone-source child found on the fission parent
+/// and successfully cloned onto the spawned child.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClonedCapabilityRoot {
     /// The new SimThing the clone was attached to (i.e. the fission's
@@ -269,6 +270,17 @@ fn execute_fission(
     let new_id = new_child.id;
     let new_slot = allocator.alloc(new_id);
 
+    if ft.template.clone_capability_children {
+        if let Some(path) = node_paths.get(&stid) {
+            if let Some(parent_mut) = node_at_path_mut(root, path) {
+                prep_fission_parent_clone_source_labels(
+                    parent_mut,
+                    &ft.template.capability_container_kinds,
+                );
+            }
+        }
+    }
+
     if let Some(parent) = node_paths
         .get(&stid)
         .and_then(|path| node_at_path(root, path))
@@ -367,14 +379,7 @@ fn seed_fission_child(
     }
 }
 
-pub(crate) fn is_capability_container(kind: &SimThingKind, container_kinds: &[String]) -> bool {
-    match kind {
-        SimThingKind::Custom(name) => container_kinds.iter().any(|k| k == name),
-        _ => false,
-    }
-}
-
-/// Clone every capability container subtree from `parent` into `child`.
+/// Clone every resolved clone-source subtree from `parent` into `child`.
 /// Returns one `ClonedCapabilityRoot` per cloned subtree so the driver
 /// can register new `CapabilityTreeInstance`s + threshold registrations
 /// (S5 follow-up — fission-spawned trees otherwise have no thresholds
@@ -389,11 +394,7 @@ fn clone_capability_children(
     container_kinds: &[String],
 ) -> Vec<ClonedCapabilityRoot> {
     let mut roots = Vec::new();
-    for source_child in parent
-        .children
-        .iter()
-        .filter(|node| is_capability_container(&node.kind, container_kinds))
-    {
+    for source_child in fission_clone_source_children(parent, container_kinds) {
         let source_root_id = source_child.id;
         let (cloned, id_pairs, overlay_id_pairs) =
             clone_subtree_with_fresh_ids(source_child, parent.id, child.id);
@@ -662,9 +663,10 @@ mod tests {
     use crate::threshold_registry::{ThresholdRegistry, ThresholdSemantic};
     use crate::tree_index::build_node_paths;
     use simthing_core::{
-        DimensionRegistry, Direction, FissionTemplate, FissionThreshold, Overlay, OverlayId,
-        OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta, SecondaryCondition,
-        SimProperty, SimThing, SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
+        is_fission_clone_source, stamp_fission_clone_source_label, DimensionRegistry, Direction,
+        FissionTemplate, FissionThreshold, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+        OverlaySource, PropertyTransformDelta, SecondaryCondition, SimProperty, SimThing,
+        SimThingKind, SimThingKindTag, SubFieldRole, TransformOp,
     };
     use simthing_gpu::SlotAllocator;
 
@@ -855,8 +857,14 @@ mod tests {
             .property(pid)
             .expect("child inherits activating property");
         assert_eq!(seeded.lane_at_offset(amount_off), 0.0);
-        assert_eq!(seeded.lane_at_offset(velocity_off).to_bits(), (-0.12f32).to_bits());
-        assert_eq!(seeded.lane_at_offset(intensity_off).to_bits(), (0.66f32).to_bits());
+        assert_eq!(
+            seeded.lane_at_offset(velocity_off).to_bits(),
+            (-0.12f32).to_bits()
+        );
+        assert_eq!(
+            seeded.lane_at_offset(intensity_off).to_bits(),
+            (0.66f32).to_bits()
+        );
 
         let child_slot = alloc.slot_of(child.id).unwrap() as usize;
         let child_base = child_slot * n_dims;
@@ -1226,5 +1234,108 @@ mod tests {
         // Child gone from tree + allocator.
         assert!(root.children[0].children.is_empty());
         assert!(alloc.slot_of(child_id).is_none());
+    }
+
+    #[test]
+    fn fission_clone_sources_no_longer_require_kind_branch() {
+        let kinds = vec!["tech_tree".into()];
+
+        let mut stamped = SimThing::new(SimThingKind::Location, 0);
+        stamp_fission_clone_source_label(&mut stamped, "tech_tree");
+        assert!(is_fission_clone_source(&stamped, &kinds));
+
+        let matching_kind_no_stamp = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        assert!(!is_fission_clone_source(&matching_kind_no_stamp, &kinds));
+
+        let other_kind = SimThing::new(SimThingKind::Custom("other".into()), 0);
+        assert!(!is_fission_clone_source(&other_kind, &kinds));
+    }
+
+    #[test]
+    fn fission_clone_capability_subtrees_behavior_preserved() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = make_fission_property();
+        prop.fission_templates[0].template.child_kind = SimThingKindTag::Faction;
+        prop.fission_templates[0].template.clone_capability_children = true;
+        prop.fission_templates[0]
+            .template
+            .capability_container_kinds
+            .push("tech_tree".into());
+        let pid = reg.register(prop);
+        let layout = reg.property(pid).layout.clone();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut faction = SimThing::new(SimThingKind::Faction, 0);
+        faction.add_property(pid, reg.property(pid).default_value());
+        let faction_id = faction.id;
+
+        let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tech_tree.add_property(pid, reg.property(pid).default_value());
+        let tech_tree_id = tech_tree.id;
+        let leaf = SimThing::new(SimThingKind::Custom("propulsion".into()), 0);
+        let leaf_id = leaf.id;
+        tech_tree.add_child(leaf);
+        faction.add_child(tech_tree);
+        faction.add_child(SimThing::new(
+            SimThingKind::Custom("ordinary_child".into()),
+            0,
+        ));
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(faction);
+
+        let mut alloc = SlotAllocator::new();
+        alloc.populate_from_tree(&root);
+        let faction_slot = alloc.slot_of(faction_id).unwrap() as usize;
+
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 16 * n_dims];
+        shadow[faction_slot * n_dims + amount_off.lane()] = 0.25;
+
+        let mut cpu_reg = ThresholdRegistry::new();
+        let event_kind = cpu_reg.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: faction_id,
+            property_id: pid,
+            template_idx: 0,
+        });
+        let events = vec![simthing_gpu::ThresholdEvent {
+            slot: faction_slot as u32,
+            col: amount_off.lane() as u32,
+            value: 0.25,
+            event_kind,
+        }];
+
+        let paths = build_node_paths(&root);
+        let out = resolve_fission_fusion(
+            &mut root,
+            &paths,
+            &reg,
+            &mut alloc,
+            &events,
+            &cpu_reg,
+            &mut shadow,
+            n_dims,
+            1,
+        );
+
+        assert_eq!(out.fissions_executed, 1);
+        assert!(out.cloned_capability_subtrees);
+        assert_eq!(out.cloned_capability_roots.len(), 1);
+        assert_eq!(out.cloned_capability_roots[0].source_root_id, tech_tree_id);
+
+        let spawned = root.children[0]
+            .children
+            .iter()
+            .find(|child| child.id != faction_id && child.kind == SimThingKind::Faction)
+            .expect("spawned faction");
+        assert_eq!(
+            spawned.children.len(),
+            1,
+            "only cloned tech_tree, not ordinary_child"
+        );
+        let cloned_tree = &spawned.children[0];
+        assert_ne!(cloned_tree.id, tech_tree_id);
+        assert_eq!(cloned_tree.children.len(), 1);
+        assert_ne!(cloned_tree.children[0].id, leaf_id);
     }
 }

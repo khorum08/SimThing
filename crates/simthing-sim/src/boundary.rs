@@ -40,7 +40,8 @@
 //! rebuilds during GPU sync.
 
 use simthing_core::{
-    DecayBehavior, DimensionRegistry, OverlayLifecycle, SimPropertyId, SimThing, SimThingId,
+    prep_fission_parent_clone_source_labels, DecayBehavior, DimensionRegistry, OverlayLifecycle,
+    SimPropertyId, SimThing, SimThingId,
 };
 use simthing_feeder::{
     BoundaryRequest, CapabilityUnlockRegistration, DispatchCoordinator, MaintainerOutcome,
@@ -54,9 +55,8 @@ use simthing_gpu::{
 };
 
 use crate::delta_log::{entries_from_outcome, BoundaryDeltaEntry};
-use crate::fission::{
-    is_capability_container, resolve_fission_fusion, FissionLineageRecord, FissionOutcome,
-};
+use crate::fission::{resolve_fission_fusion, FissionLineageRecord, FissionOutcome};
+use crate::fission_clone_source_view::fission_clone_source_children;
 use crate::gpu_sync::{sync_gpu_buffers, GpuSyncOutcome};
 use crate::observability::{observe, ObservabilityReport, ObserveFidelity};
 use crate::overlay_lifecycle::{resolve_overlay_lifecycle, LifecycleOutcome};
@@ -523,7 +523,7 @@ impl BoundaryProtocol {
         let fission_headroom = projected_fission_slots(
             &events,
             &self.cpu_threshold_registry,
-            &self.root,
+            &mut self.root,
             &boundary_paths,
             &self.registry,
         );
@@ -1259,7 +1259,7 @@ fn projected_add_child_slots(requests: &[BoundaryRequest]) -> usize {
 fn projected_fission_slots(
     events: &[ThresholdEvent],
     registry: &ThresholdRegistry,
-    root: &SimThing,
+    root: &mut SimThing,
     node_paths: &std::collections::HashMap<SimThingId, Vec<usize>>,
     dim_reg: &DimensionRegistry,
 ) -> usize {
@@ -1283,15 +1283,11 @@ fn projected_fission_slots(
                     if ft.template.clone_capability_children {
                         if let Some(parent) = node_paths
                             .get(&sim_thing_id)
-                            .and_then(|path| crate::tree_index::node_at_path(root, path))
+                            .and_then(|path| crate::tree_index::node_at_path_mut(root, path))
                         {
                             let container_kinds = &ft.template.capability_container_kinds;
-                            slots += parent
-                                .children
-                                .iter()
-                                .filter(|child| {
-                                    is_capability_container(&child.kind, container_kinds)
-                                })
+                            prep_fission_parent_clone_source_labels(parent, container_kinds);
+                            slots += fission_clone_source_children(parent, container_kinds)
                                 .map(subtree_size)
                                 .sum::<usize>();
                         }
@@ -1617,9 +1613,72 @@ mod tests {
         }];
 
         assert_eq!(
-            projected_fission_slots(&events, &threshold_registry, &root, &paths, &reg),
+            projected_fission_slots(&events, &threshold_registry, &mut root, &paths, &reg),
             3,
             "one fission child plus two nodes in the cloned tech tree"
+        );
+    }
+
+    #[test]
+    fn projected_fission_slots_match_resolved_clone_sources() {
+        let mut reg = DimensionRegistry::new();
+        let mut prop = SimProperty::simple("core", "loyalty", 0);
+        prop.fission_templates = vec![FissionThreshold {
+            sub_field: SubFieldRole::Amount,
+            threshold: 0.3,
+            direction: Direction::Falling,
+            template: FissionTemplate {
+                child_kind: SimThingKindTag::Faction,
+                fusion_intensity_threshold: 0.8,
+                fusion_scar_coefficient: 0.05,
+                resolution_label: "resolved".into(),
+                clone_capability_children: true,
+                capability_container_kinds: vec!["tech_tree".into()],
+            },
+            secondary: None,
+        }];
+        let pid = reg.register(prop);
+
+        let mut faction = SimThing::new(SimThingKind::Faction, 0);
+        let faction_id = faction.id;
+        faction.add_property(pid, reg.property(pid).default_value());
+        let mut tech_tree = SimThing::new(SimThingKind::Custom("tech_tree".into()), 0);
+        tech_tree.add_child(SimThing::new(SimThingKind::Custom("tech_leaf".into()), 0));
+        faction.add_child(tech_tree);
+        faction.add_child(SimThing::new(
+            SimThingKind::Custom("ordinary_child".into()),
+            0,
+        ));
+
+        let mut root = SimThing::new(SimThingKind::Location, 0);
+        root.add_child(faction);
+        let paths = build_node_paths(&root);
+
+        let mut threshold_registry = ThresholdRegistry::new();
+        let event_kind = threshold_registry.push(ThresholdSemantic::FissionTrigger {
+            sim_thing_id: faction_id,
+            property_id: pid,
+            template_idx: 0,
+        });
+        let events = vec![ThresholdEvent {
+            slot: 0,
+            col: 0,
+            value: 0.2,
+            event_kind,
+        }];
+
+        let container_kinds = vec!["tech_tree".into()];
+        let projected =
+            projected_fission_slots(&events, &threshold_registry, &mut root, &paths, &reg);
+
+        let parent = &root.children[0];
+        let resolved_clone_slots = 1 + fission_clone_source_children(parent, &container_kinds)
+            .map(subtree_size)
+            .sum::<usize>();
+
+        assert_eq!(
+            projected, resolved_clone_slots,
+            "slot projection and resolved clone-source count must agree"
         );
     }
 
