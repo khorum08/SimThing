@@ -17,8 +17,8 @@
 ### AS-INDEX-NEWTYPES-0B
 
 - Branch: `codex/as-index-newtypes-0b`
-- PR: (pending push)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/970
+- Merge: `ffae0eb5f6` (master)
 
 ## What changed
 
