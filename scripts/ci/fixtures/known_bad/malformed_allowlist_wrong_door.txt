@@ -1,0 +1,2 @@
+# CI fixture: malformed allowlist — symbol tail does not match door-class read.
+forge_x | read | bad rationale | retire when typed
