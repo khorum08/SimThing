@@ -285,7 +285,7 @@ impl WorldGpuState {
         encoder: &mut wgpu::CommandEncoder,
         n_bands: u32,
         dt: f32,
-        eml: Option<(&Buffer, &Buffer)>,
+        eml: Option<&crate::EmlGpuProgramTable>,
         fast_path: bool,
     ) {
         if fast_path {
@@ -815,7 +815,7 @@ impl WorldGpuState {
             self.accumulator_runtime = Some(runtime);
             return;
         };
-        let eml = runtime.eml_bind_buffers();
+        let eml = runtime.eml_program_table();
         let mut encoder = self
             .ctx
             .device
@@ -947,12 +947,12 @@ impl WorldGpuState {
         let (input_list_generation, ranges) = {
             let runtime = self.accumulator_runtime.as_mut().unwrap();
             runtime.ensure_input_list_table(&self.ctx);
-            let ranges = runtime.input_lists.as_mut().unwrap().upload_lists(
+            let ranges = runtime.input_lists_mut().unwrap().upload_lists(
                 &self.ctx,
                 &non_empty_lists,
                 source_generation,
             )?;
-            let gen = runtime.input_lists.as_ref().unwrap().generation;
+            let gen = runtime.input_lists_ref().unwrap().generation;
             (gen, ranges)
         };
         self.ensure_transfer_accumulator();

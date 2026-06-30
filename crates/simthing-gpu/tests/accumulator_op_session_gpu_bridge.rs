@@ -74,7 +74,7 @@ fn test_r2_bridge_bounds_validation() {
         let session = AccumulatorOpSession::new(ctx, 2, 2);
 
         let err = session
-            .copy_values_prefix_from_buffer(ctx, session.values_buffer(), 0, 0, 32)
+            .copy_values_prefix_from_buffer(ctx, &src, 0, 0, 999999)
             .unwrap_err();
         assert!(matches!(
             err,

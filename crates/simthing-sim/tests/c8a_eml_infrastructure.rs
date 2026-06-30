@@ -1,9 +1,9 @@
 //! C-8a EML infrastructure — registry, GPU program table, EvalEML interpreter parity.
 
 use simthing_core::{
-    eml_opcode, AccumulatorOp, CombineFn, ConsumeMode, EmlConsumerKind, EmlConsumerMask,
-    EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId, GateSpec,
-    ScaleSpec, SourceSpec,
+    eml_opcode, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlConsumerKind,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu,
+    EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
     eval_eml_cpu, set_debug_readback_allowed, AccumulatorOpGpu, AccumulatorOpSession,
@@ -71,14 +71,14 @@ fn register_and_upload(
 fn eval_eml_op(tree_id: u32, eval_slot: u32, target_slot: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::SlotValue {
-            slot: eval_slot,
-            col: 0,
+            slot: SlotIndex::new(eval_slot),
+            col: ColumnIndex::new(0),
         },
         combine: CombineFn::EvalEML { tree_id },
         gate: GateSpec::Always,
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::ResetTarget,
-        targets: vec![(target_slot, 0)],
+        targets: vec![(SlotIndex::new(target_slot), ColumnIndex::new(0))],
     }
 }
 
@@ -99,8 +99,7 @@ fn run_eval_eml_gpu(
                 .unwrap(),
         )
         .unwrap();
-    let eml = Some((&table.node_buffer, &table.range_buffer));
-    session.tick_with_eml(ctx, 0, eml).unwrap();
+    session.tick_with_eml(ctx, 0, Some(table)).unwrap();
     session.readback_full(ctx).unwrap()
 }
 
@@ -347,7 +346,6 @@ fn c8a_eval_eml_clamp_min_max_select_bit_exact() {
     );
 
     let mut session = AccumulatorOpSession::new(&ctx, 4, 1);
-    let eml = Some((&table.node_buffer, &table.range_buffer));
     session.upload_values(&ctx, &clamp_values);
 
     let ops = vec![eval_eml_op(1, 0, 1), eval_eml_op(2, 0, 2)];
@@ -358,7 +356,7 @@ fn c8a_eval_eml_clamp_min_max_select_bit_exact() {
             &PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec()).unwrap(),
         )
         .unwrap();
-    session.tick_with_eml(&ctx, 0, eml).unwrap();
+    session.tick_with_eml(&ctx, 0, Some(&table)).unwrap();
     let gpu = session.readback_full(&ctx).unwrap();
 
     assert_eq!(gpu[1].to_bits(), clamp_cpu.to_bits());
@@ -413,7 +411,6 @@ fn c8a_multiple_eml_trees_one_dispatch() {
     assert_eq!(registry.tree_range_index(EmlTreeId(2)), Some(1));
 
     let mut session = AccumulatorOpSession::new(&ctx, 4, 1);
-    let eml = Some((&table.node_buffer, &table.range_buffer));
     let ops = vec![eval_eml_op(1, 0, 1), eval_eml_op(2, 0, 2)];
     let gpu_ops = AccumulatorOpGpu::encode_bootstrap_set_with_eml(&ops, Some(&registry)).unwrap();
     assert_eq!(gpu_ops[0].combine_a, 0);
@@ -425,7 +422,7 @@ fn c8a_multiple_eml_trees_one_dispatch() {
             &PackedAccumulatorUpload::from_gpu_ops(gpu_ops.to_vec()).unwrap(),
         )
         .unwrap();
-    session.tick_with_eml(&ctx, 0, eml).unwrap();
+    session.tick_with_eml(&ctx, 0, Some(&table)).unwrap();
     let gpu = session.readback_full(&ctx).unwrap();
     assert_eq!(gpu[1].to_bits(), 5.0f32.to_bits());
     assert_eq!(gpu[2].to_bits(), 7.0f32.to_bits());
@@ -558,7 +555,6 @@ fn c8a_persistent_node_buffer_no_per_dispatch_upload() {
     let uploads_after_register = table.node_upload_count;
 
     let mut session = AccumulatorOpSession::new(&ctx, 4, 1);
-    let eml = Some((&table.node_buffer, &table.range_buffer));
     let op = eval_eml_op(1, 0, 1);
     session.upload_values(&ctx, &[0.0; 4]);
     session
@@ -570,7 +566,7 @@ fn c8a_persistent_node_buffer_no_per_dispatch_upload() {
         .unwrap();
 
     for _ in 0..3 {
-        session.tick_with_eml(&ctx, 0, eml).unwrap();
+        session.tick_with_eml(&ctx, 0, Some(&table)).unwrap();
     }
     assert_eq!(table.node_upload_count, uploads_after_register);
     assert_eq!(table.range_upload_count, uploads_after_register);

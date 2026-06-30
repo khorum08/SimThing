@@ -472,14 +472,14 @@ fn c8d_eval_eml_emission_does_not_reupload_eml_per_tick() {
     state.sync_emission_accumulator(&regs).expect("sync");
     let runtime = state.accumulator_runtime.as_ref().unwrap();
     let eml_generation = runtime.eml_generation();
-    let eml_upload_count = runtime.eml.as_ref().unwrap().upload_count();
+    let eml_upload_count = runtime.eml_program_table().unwrap().upload_count();
     let op_uploads = runtime.emission_op_upload_count();
     run_accumulator_emission(&mut state, 1.0).expect("tick");
     state.sync_emission_accumulator(&regs).expect("re-sync");
     let runtime = state.accumulator_runtime.as_ref().unwrap();
     assert_eq!(runtime.eml_generation(), eml_generation);
     assert_eq!(
-        runtime.eml.as_ref().unwrap().upload_count(),
+        runtime.eml_program_table().unwrap().upload_count(),
         eml_upload_count
     );
     assert_eq!(runtime.emission_op_upload_count(), op_uploads);

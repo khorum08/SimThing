@@ -22,7 +22,7 @@ pub enum InputListUploadError {
 
 /// Persistent GPU-resident input-list storage for MinAcrossInputs transfer.
 pub struct AccumulatorInputListTable {
-    pub buffer: Buffer,
+    buffer: Buffer,
     pub entries: Vec<AccumulatorInputGpu>,
     pub generation: u64,
     pub uploaded_generation: Option<u64>,
@@ -47,7 +47,7 @@ impl AccumulatorInputListTable {
         }
     }
 
-    pub fn buffer(&self) -> &Buffer {
+    pub(crate) fn buffer(&self) -> &Buffer {
         &self.buffer
     }
 

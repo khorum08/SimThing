@@ -377,7 +377,7 @@ fn measure_r1_disruption(ctx: &GpuContext) -> GpuMeasure0080ShapeReport {
             &PackedAccumulatorUpload::from_ops_with_eml(&ops, Some(&registry)).unwrap(),
         )
         .expect("R1 GPU measure ops");
-    let eml = Some((&table.node_buffer, &table.range_buffer));
+    let eml = Some(&table);
     session.tick_with_eml(ctx, 0, eml).expect("R1 sum tick");
     session
         .tick_with_eml(ctx, 1, eml)
@@ -790,7 +790,7 @@ fn run_single_eval_emission(
                 .unwrap(),
         )
         .expect("single EvalEML emission upload");
-    let eml = Some((&table.node_buffer, &table.range_buffer));
+    let eml = Some(&table);
     session
         .tick_with_eml(ctx, 0, eml)
         .expect("single EvalEML emission tick");

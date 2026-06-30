@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod accumulator_op;
+pub mod candidate_f_magnitude;
 pub mod context;
 pub mod cpu_oracle;
 pub mod emission_accumulator;
@@ -45,6 +46,10 @@ pub use accumulator_op::{
     WorldAccumulatorRuntime, WorldSummaryRuntime, AO_WGSL0_ENTRY_POINT, DEFAULT_EML_NODE_CAPACITY,
     DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
     WORKGROUP_SIZE,
+};
+pub use candidate_f_magnitude::{
+    max_candidate_f_magnitude_bits, write_max_candidate_f_magnitude_bits, CandidateFMagnitudeError,
+    GradientPairGpu,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use cpu_oracle::{execute_ops_cpu_with_emissions, CpuOracleError};

@@ -170,7 +170,7 @@ fn run_bands(
             &PackedAccumulatorUpload::from_ops_with_eml(ops, Some(&setup.registry)).unwrap(),
         )
         .unwrap();
-    let eml = Some((&setup.table.node_buffer, &setup.table.range_buffer));
+    let eml = Some(&setup.table);
     for band in [0u32, 1] {
         session.tick_with_eml(ctx, band, eml).unwrap();
     }

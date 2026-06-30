@@ -738,9 +738,27 @@ impl AccumulatorOpSession {
         Ok(())
     }
 
-    /// Generic values buffer for GPU-resident substrate bridges.
-    pub fn values_buffer(&self) -> &Buffer {
+    /// Authoritative resolved-values buffer (kernel-internal bind/readback only).
+    pub(crate) fn values_buffer(&self) -> &Buffer {
         &self.values_buffer
+    }
+
+    /// Write max candidate-F magnitude bits into this session's values buffer.
+    pub fn write_max_candidate_f_magnitude_bits(
+        &self,
+        ctx: &GpuContext,
+        gradients: &[crate::GradientPairGpu],
+        target_slot: u32,
+        target_col: u32,
+    ) -> Result<(), crate::CandidateFMagnitudeError> {
+        crate::write_max_candidate_f_magnitude_bits(
+            ctx,
+            gradients,
+            self.values_buffer(),
+            target_slot,
+            target_col,
+            self.n_dims,
+        )
     }
 
     /// Upload previous-tick values for threshold crossing tests.
@@ -751,12 +769,6 @@ impl AccumulatorOpSession {
             0,
             bytemuck::cast_slice(values),
         );
-    }
-
-    /// Bind persistent EML program-table buffers (or leave session dummies when unset).
-    pub fn set_eml_buffers(&mut self, node_buffer: Buffer, range_buffer: Buffer) {
-        self.eml_node_buffer = node_buffer;
-        self.eml_range_buffer = range_buffer;
     }
 
     fn resolve_eml_buffers<'a>(
@@ -945,8 +957,18 @@ impl AccumulatorOpSession {
         self.tick_with_eml(ctx, band, None)
     }
 
-    /// Dispatch with optional external EML program-table buffer bindings.
+    /// Dispatch with optional external EML program-table bindings.
     pub fn tick_with_eml(
+        &mut self,
+        ctx: &GpuContext,
+        band: u32,
+        eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
+    ) -> Result<(), AccumulatorOpSessionError> {
+        let eml_bufs = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
+        self.tick_with_eml_buffers(ctx, band, eml_bufs)
+    }
+
+    fn tick_with_eml_buffers(
         &mut self,
         ctx: &GpuContext,
         band: u32,
@@ -1273,6 +1295,28 @@ impl AccumulatorOpSession {
         previous_values: &Buffer,
         n_bands: u32,
         dt: f32,
+        eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
+    ) {
+        let eml_bufs = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
+        self.encode_orderband_with_eml_buffers_into(
+            ctx,
+            encoder,
+            values,
+            previous_values,
+            n_bands,
+            dt,
+            eml_bufs,
+        );
+    }
+
+    fn encode_orderband_with_eml_buffers_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        n_bands: u32,
+        dt: f32,
         eml: Option<(&Buffer, &Buffer)>,
     ) {
         if self.n_ops == 0 || n_bands == 0 {
@@ -1333,6 +1377,28 @@ impl AccumulatorOpSession {
     /// churn that dominates at endgame scale (deep hierarchies → many bands per tick).
     /// `tick_params._pad1` stores total band count for harness reporting.
     pub fn encode_orderband_fast_into(
+        &mut self,
+        ctx: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        values: &Buffer,
+        previous_values: &Buffer,
+        n_bands: u32,
+        dt: f32,
+        eml: Option<&super::eml_program_table::EmlGpuProgramTable>,
+    ) {
+        let eml_bufs = eml.map(super::eml_program_table::EmlGpuProgramTable::bind_buffers);
+        self.encode_orderband_fast_buffers_into(
+            ctx,
+            encoder,
+            values,
+            previous_values,
+            n_bands,
+            dt,
+            eml_bufs,
+        );
+    }
+
+    fn encode_orderband_fast_buffers_into(
         &mut self,
         ctx: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,

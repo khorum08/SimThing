@@ -465,7 +465,7 @@ pub fn run_store_gpu_parity(
     session
         .upload_packed_ops(ctx, &PackedAccumulatorUpload::from_ops_with_eml(&ops, Some(&registry)).unwrap())
         .expect("STORE-GPU ops must encode on GPU (EvalEML+Sum; mask via CMP_EQ/SELECT not ByColumn encode)");
-    let eml = Some((&table.node_buffer, &table.range_buffer));
+    let eml = Some(&table);
     session
         .tick_with_eml(ctx, MASK_ORDER_BAND, eml)
         .expect("STORE-GPU mask tick");

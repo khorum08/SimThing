@@ -471,7 +471,7 @@ fn c8b_unchanged_intensity_formula_does_not_reupload_eml_table_each_boundary() {
     state.sync_intensity_eml_accumulator(&reg);
 
     let runtime = state.accumulator_runtime.as_ref().unwrap();
-    let table = runtime.eml.as_ref().unwrap();
+    let table = runtime.eml_program_table().unwrap();
     assert_eq!(table.node_upload_count, node_uploads);
     assert_eq!(table.range_upload_count, range_uploads);
     assert_eq!(runtime.eml_registry.generation(), eml_gen);

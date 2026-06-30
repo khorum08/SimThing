@@ -233,7 +233,10 @@ struct UploadSnapshot {
 fn snapshot_upload_counts(state: &WorldGpuState) -> UploadSnapshot {
     let runtime = state.accumulator_runtime.as_ref().unwrap();
     UploadSnapshot {
-        eml_upload_count: runtime.eml.as_ref().map(|t| t.upload_count()).unwrap_or(0),
+        eml_upload_count: runtime
+            .eml_program_table()
+            .map(|t| t.upload_count())
+            .unwrap_or(0),
         input_list_upload_count: runtime
             .input_lists
             .as_ref()

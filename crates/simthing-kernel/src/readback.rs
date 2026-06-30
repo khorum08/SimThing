@@ -73,3 +73,59 @@
 //!     let _ = simthing_kernel::ResolvedWriteAuthority::for_boundary_install();
 //! }
 //! ```
+//!
+//! External crates cannot obtain session resolved-values buffer for queue writes:
+//!
+//! ```compile_fail
+//! fn external_session_values_queue_write(
+//!     queue: &wgpu::Queue,
+//!     session: &simthing_kernel::AccumulatorOpSession,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     queue.write_buffer(session.values_buffer(), 0, &bytes);
+//! }
+//! ```
+//!
+//! External crates cannot obtain EML program node/range buffers for queue writes:
+//!
+//! ```compile_fail
+//! fn external_eml_program_node_write(
+//!     queue: &wgpu::Queue,
+//!     table: &simthing_kernel::EmlGpuProgramTable,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     queue.write_buffer(table.node_buffer(), 0, &bytes);
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! fn external_eml_program_range_write(
+//!     queue: &wgpu::Queue,
+//!     table: &simthing_kernel::EmlGpuProgramTable,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     queue.write_buffer(table.range_buffer(), 0, &bytes);
+//! }
+//! ```
+//!
+//! External crates cannot obtain input-list buffer for queue writes:
+//!
+//! ```compile_fail
+//! fn external_input_list_buffer_write(
+//!     queue: &wgpu::Queue,
+//!     table: &simthing_kernel::AccumulatorInputListTable,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     queue.write_buffer(table.buffer(), 0, &bytes);
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! fn external_input_list_field_write(
+//!     queue: &wgpu::Queue,
+//!     table: &simthing_kernel::AccumulatorInputListTable,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     queue.write_buffer(&table.buffer, 0, &bytes);
+//! }
+//! ```
