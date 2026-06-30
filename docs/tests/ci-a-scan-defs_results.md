@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-scan-defs-0r`
-- PR: (pending)
-- Merge: (pending)
+- PR: [#1025](https://github.com/khorum08/SimThing/pull/1025)
+- Merge: `1b4ed6e4a4` (master)
 
 ## Recipient Agent
 
