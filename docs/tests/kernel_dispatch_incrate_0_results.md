@@ -6,10 +6,10 @@
 
 ## PR / branch / merge
 
-- Branch: `kernel-dispatch-incrate-0`
-- PR: (pending)
+- Branch: `kernel-dispatch-incrate-0` (deleted on merge)
+- PR: [#1005](https://github.com/khorum08/SimThing/pull/1005)
 - Baseline (pre-dispatch): `a5be333c4f` (master post-0R2 docs)
-- Post-dispatch commit: (pending)
+- Post-dispatch merge: `43f78ab48bd153fc18ad4921c18c7d4023fa8937`
 
 ## Owner ruling applied
 
