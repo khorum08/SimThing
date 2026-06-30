@@ -104,8 +104,8 @@ Opus / Owner
 
 ## Known gaps / next
 
-- `CI-A-FIXTURES-0` — blocked until 0R2 lands; committed negative-control corpus.
-- Pre-existing FAIL: `gpu_readback.rs` public `new -> Self` on three readback types (crate seal rung, not 0R2 scope).
+- Pre-existing FAIL from 0R2 (`gpu_readback.rs` public `new -> Self` ×3) **restored to PASS** by `KERNEL-GPUREADBACK-CONSTRUCTORS-SEAL-0`.
+- `CI-A-FIXTURES-0` — unblocked once constructor seal lands on master.
 - `CI-A-SELF-TEST-0`, `CI-A-WORKFLOW-0`, `CI-A-INSPECT-TRIAGE-0`.
 - `validate_and_mint_placed_participants_by_location_id` remains a core re-export, not a kernel-local `pub fn` — out of kernel sealed-producer enumeration scope.
 
