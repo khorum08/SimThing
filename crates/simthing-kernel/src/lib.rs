@@ -48,8 +48,8 @@ pub use accumulator_op::{
     WORKGROUP_SIZE,
 };
 pub use candidate_f_magnitude::{
-    max_candidate_f_magnitude_bits, write_max_candidate_f_magnitude_bits, CandidateFMagnitudeError,
-    GradientPairGpu,
+    max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,
+    CandidateFMagnitudeRequest, GradientPairGpu,
 };
 pub use context::{GpuContext, GpuInitError};
 pub use cpu_oracle::{execute_ops_cpu_with_emissions, CpuOracleError};

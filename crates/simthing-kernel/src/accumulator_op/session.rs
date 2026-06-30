@@ -744,21 +744,20 @@ impl AccumulatorOpSession {
     }
 
     /// Write max candidate-F magnitude bits into this session's values buffer.
-    pub fn write_max_candidate_f_magnitude_bits(
+    pub fn apply_candidate_f_exact_magnitude(
         &self,
         ctx: &GpuContext,
-        gradients: &[crate::GradientPairGpu],
-        target_slot: u32,
-        target_col: u32,
-    ) -> Result<(), crate::CandidateFMagnitudeError> {
-        crate::write_max_candidate_f_magnitude_bits(
+        request: crate::CandidateFMagnitudeRequest<'_>,
+    ) -> Result<crate::CandidateFMagnitudeReport, crate::CandidateFMagnitudeError> {
+        crate::candidate_f_magnitude::write_max_candidate_f_magnitude_bits(
             ctx,
-            gradients,
+            request.gradients,
             self.values_buffer(),
-            target_slot,
-            target_col,
+            request.target_slot,
+            request.target_col,
             self.n_dims,
-        )
+        )?;
+        Ok(crate::CandidateFMagnitudeReport)
     }
 
     /// Upload previous-tick values for threshold crossing tests.
