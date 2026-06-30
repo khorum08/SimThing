@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `codex/kernel-crate-extract-0`
-- PR: https://github.com/khorum08/SimThing/pull/996
-- Merge: `b677b43cb8`
+- PR: https://github.com/khorum08/SimThing/pull/996 (+ https://github.com/khorum08/SimThing/pull/998 0R)
+- Merge: `b677b43cb8` (0), `0438557e8a` (0R)
 
 ## What changed
 
