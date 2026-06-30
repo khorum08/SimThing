@@ -12,6 +12,7 @@ pub mod fission_clone_source;
 pub mod ids;
 pub mod intensity_eml;
 pub mod overlay;
+pub mod placed_participant;
 pub mod property;
 pub mod reduction;
 pub mod registry;
@@ -70,6 +71,11 @@ pub use intensity_eml::{
 pub use overlay::{
     DissolveCondition, Overlay, OverlayKind, OverlayLifecycle, OverlaySource,
     PropertyTransformDelta,
+};
+pub use placed_participant::{
+    validate_and_mint_placed_participants_by_location_id,
+    validate_location_ids_have_structural_placements, PlacedParticipant,
+    PlacedParticipantValidationError, StructuralGridPlacement,
 };
 pub use property::{
     ClampBehavior, DecayBehavior, Direction, ExpireEffect, ExpireHandler, FissionTemplate,

@@ -1,6 +1,7 @@
 use crate::spec::install_target::InstallTargetSpec;
 use crate::spec::script::PropertyKey;
 use serde::{Deserialize, Serialize};
+use simthing_core::PlacedParticipant;
 
 /// Authored Resource Flow arena admission graph (E-10).
 ///
@@ -230,11 +231,35 @@ pub struct ExplicitParticipantSpec {
 }
 
 impl ExplicitParticipantSpec {
-    /// Flat-star participant (direct child of the arena root).
+    /// Flat-star participant (direct child of the arena root) — **non-spatial RF channel identity**.
+    ///
+    /// Spatially-bound RF arenas over gridcell `Location`s must enroll via [`Self::spatial`] with a
+    /// sealed [`PlacedParticipant`] proof minted by structural/boundary validation.
     pub fn flat(slot: u32, subtree_root_id: u32) -> Self {
         Self {
             slot,
             subtree_root_id,
+            parent_subtree_root_id: None,
+        }
+    }
+
+    /// Spatial arena participant — requires a sealed [`PlacedParticipant`] placement proof.
+    ///
+    /// External code cannot enroll a spatial gridcell `Location` with channel identity alone:
+    ///
+    /// ```compile_fail
+    /// use simthing_core::{SimThingId, StructuralCoord};
+    /// use simthing_spec::ExplicitParticipantSpec;
+    /// fn spatial_arena_participant_without_placed_proof() {
+    ///     let _coord = StructuralCoord::new(0, 0);
+    ///     let _id = SimThingId::from_session_raw(42);
+    ///     let _ = ExplicitParticipantSpec::from_spatial_channel_identity(0, _id, _coord);
+    /// }
+    /// ```
+    pub fn spatial(slot: u32, placed: PlacedParticipant) -> Self {
+        Self {
+            slot,
+            subtree_root_id: placed.participant().raw(),
             parent_subtree_root_id: None,
         }
     }
@@ -247,6 +272,29 @@ impl ExplicitParticipantSpec {
             parent_subtree_root_id: Some(parent_subtree_root_id),
         }
     }
+
+    /// Nested spatial arena participant — requires a sealed [`PlacedParticipant`] placement proof.
+    pub fn spatial_nested(
+        slot: u32,
+        placed: PlacedParticipant,
+        parent_subtree_root_id: u64,
+    ) -> Self {
+        Self {
+            slot,
+            subtree_root_id: placed.participant().raw(),
+            parent_subtree_root_id: Some(parent_subtree_root_id),
+        }
+    }
+}
+
+/// Build explicit participants for a spatially-bound RF arena from sealed placement proofs.
+pub fn spatial_arena_explicit_participants(
+    slot_and_placed: &[(u32, PlacedParticipant)],
+) -> Vec<ExplicitParticipantSpec> {
+    slot_and_placed
+        .iter()
+        .map(|(slot, placed)| ExplicitParticipantSpec::spatial(*slot, *placed))
+        .collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
