@@ -66,6 +66,11 @@ The final `DOCTRINE-SCAN-VERDICT:` line is a **stable machine-parseable footer**
 
 **Reliability legend (the DA must know what to trust):** each scan is tagged `RELIABLE` (a hit is a real violation — CI-blocking) or `HEURISTIC` (a hit may be a false-positive / needs judgment — INSPECT-only). The DA consumes FAILs as findings, INSPECTs as "closer look," and ignores nothing silently.
 
+**Loop discipline (binding — three precisions that keep the verdict honest):**
+- **CI check-status vs doctrine verdict are two things.** The CI *check* goes red only on a hard `FAIL` or a self-test `FAIL`; an `INSPECT` verdict leaves the check green-but-flagged. So `PASS` (verdict) means `selftest=PASS, failures=0, inspect=0`; an INSPECT-bearing run is not a PASS even though its check is green.
+- **INSPECT does not auto-merge.** On any PR touching the authority surface (`seal-residue-risk`), the orchestrator **holds the merge** until the DA classifies the flag (false-positive / acceptable residue / real issue / scan needs promotion-or-deletion). Merge-then-notify is how INSPECT rots into furniture — the exact failure §0 forbids.
+- **A green positive control is necessary, not sufficient — the DA audits allowlist *legitimacy*.** A too-permissive allowlist makes `master` scan clean while *laundering a real leak into "sanctioned."* At every gate the DA verifies each `allow/*.txt` record is a genuinely sanctioned door (correct `door-class`, true rationale) — not merely that hard-failures = 0. And **until `CI-A-WORKFLOW-0` lands there is no CI**: the scan is self-reported by the implementer, so the DA independently re-runs/audits the branch **against the tree, never the relayed report** (the kernel track's most-repeated lesson).
+
 ---
 
 ## 2. Track A — grep-only CI doctrinal tripwire (NOW)
