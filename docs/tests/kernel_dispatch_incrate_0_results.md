@@ -161,9 +161,10 @@ Delta +7.2% on single-run readback smoke (Windows dev profile, discrete GPU). Wi
 
 ### PR / branch / merge
 
-- Branch: `kernel-dispatch-incrate-0r` (pending)
+- Branch: `kernel-dispatch-incrate-0r` (deleted on merge)
 - Parent: [#1005](https://github.com/khorum08/SimThing/pull/1005) `43f78ab48b`
-- Post-0R merge: (pending)
+- PR: [#1007](https://github.com/khorum08/SimThing/pull/1007)
+- Post-0R merge: `a7544e124f`
 
 ### DA hold source
 
