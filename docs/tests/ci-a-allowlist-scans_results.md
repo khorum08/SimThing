@@ -6,9 +6,9 @@
 
 ## PR / branch / merge
 
-- Branch: `ci-a-allowlist-scans-0` → `ci-a-allowlist-scans-0r` (0R)
-- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0) — 0R PR pending
-- Merge: `78ad4631a3` (0); 0R merge SHA pending
+- Branch: `ci-a-allowlist-scans-0r` (0R)
+- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0), [#1028](https://github.com/khorum08/SimThing/pull/1028) (0R)
+- Merge: `78ad4631a3` (0), `74f0c810c1` (0R, master)
 
 ## Recipient Agent
 
@@ -96,7 +96,7 @@ Opus / Owner
 ## DOCTRINE SCAN REPORT
 
 ```
-DOCTRINE SCAN REPORT  (commit pending, 0R positive control)
+DOCTRINE SCAN REPORT  (commit 74f0c810c1, 2026-06-30T22:20:51Z)
   scanner self-test: SKIPPED
   --- results ---
   B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
