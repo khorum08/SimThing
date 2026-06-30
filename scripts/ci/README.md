@@ -14,7 +14,8 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `verify_kernel_surface.py` | Diff `kernel_surface.txt` against `lib.rs` exports |
 | `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
 | `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report |
-| `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** (inert until `doctrine_selftest.sh` lands) |
+| `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` |
+| `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** |
 
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
 
@@ -25,13 +26,16 @@ Committed in **`CI-A-FIXTURES-0`**. See `fixtures/README.md` for the known-bad a
 - **known_bad/** — one fixture per RELIABLE scan (plus HEURISTIC production negative controls).
 - **traps/** — false-positive shapes (comments, `#[cfg(test)]`, `pub(crate)`, jomini `write_*`, etc.).
 
-Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs target `crates/**` and allowlists only. The next rung **`CI-A-SELF-TEST-0`** wires `doctrine_selftest.sh` to exercise this corpus.
+Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs target `crates/**` and allowlists only. **`doctrine_selftest.sh`** injects fixtures into temporary sandbox trees and runs a copied scanner against those paths.
 
 ## Run locally (optional)
 
 ```bash
-bash scripts/ci/doctrine_scan.sh
+bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS before trusting scans)
+bash scripts/ci/doctrine_scan.sh       # production tree scan
 ```
+
+`doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** will run the self-test in CI before the PR scan.
 
 Authoritative execution is on GitHub (`ubuntu-latest`) after `CI-A-WORKFLOW-0`. Exit non-zero only on hard `FAIL` or scanner/data-format error; `INSPECT` exits zero.
 
@@ -86,9 +90,9 @@ Add one conforming line to the relevant `allow/*.txt` with symbol, door-class, r
 
 When an invariant promotes to a type boundary, **delete the scan** in the same PR — do not accumulate prose guards.
 
-## What this rung does not include
+## What this track does not include
 
-- Self-test runner (`doctrine_selftest.sh`), workflow YAML, hook installer, triage log
+- Workflow YAML, hook installer, triage log
 - Any fourth allowlist/config layer
 
-Fixtures live under `fixtures/` — see `fixtures/README.md`.
+Fixtures live under `fixtures/` — see `fixtures/README.md`. Self-test runner: `doctrine_selftest.sh`.

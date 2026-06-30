@@ -45,6 +45,10 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `traps/cfg_test_semantic_words.rs` | semantic words in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
 | `traps/cfg_test_kind_read.rs` | `.kind` in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
 
-## Self-test (next rung)
+## Self-test (`CI-A-SELF-TEST-0`)
 
-`CI-A-SELF-TEST-0` will wire `doctrine_selftest.sh` to run each RELIABLE known-bad against its scan (must FAIL) and trap corpus + clean master (must NOT FAIL).
+`doctrine_selftest.sh` injects each fixture into a temporary production-shaped sandbox (`tmp/scripts/ci/`, `tmp/crates/…`, temp `deny.toml` when needed) and runs a copied `doctrine_scan.sh`. Do **not** point production `doctrine_scan.sh` at this directory.
+
+```bash
+bash scripts/ci/doctrine_selftest.sh
+```
