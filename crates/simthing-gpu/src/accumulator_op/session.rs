@@ -18,7 +18,7 @@ use simthing_kernel::readback::emission_record_from_kernel_emit_event;
 use simthing_kernel::readback::{
     emission_records_from_gpu, threshold_emissions_from_gpu, threshold_event_from_pass7_readback,
 };
-use simthing_kernel::ThresholdEvent;
+use simthing_kernel::{ReadbackAuthority, ThresholdEvent};
 
 use super::encode::EncodeError;
 use super::packed_session_upload::{
@@ -1963,7 +1963,10 @@ impl AccumulatorOpSession {
         let used = (count as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.threshold_emission_buffer, 0, used);
         let gpu: &[ThresholdEmissionGpu] = bytemuck::cast_slice(&bytes);
-        Ok(threshold_emissions_from_gpu(gpu))
+        Ok(threshold_emissions_from_gpu(
+            gpu,
+            ReadbackAuthority::for_kernel_readback(),
+        ))
     }
 
     /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
@@ -1972,6 +1975,7 @@ impl AccumulatorOpSession {
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEvent>, AccumulatorOpSessionError> {
         let emissions = self.readback_threshold_emissions(ctx)?;
+        let authority = ReadbackAuthority::for_kernel_readback();
         Ok(emissions
             .into_iter()
             .map(|e| {
@@ -1980,6 +1984,7 @@ impl AccumulatorOpSession {
                     e.col(),
                     e.value(),
                     self.threshold_event_kinds[e.reg_idx() as usize],
+                    authority,
                 )
             })
             .collect())
@@ -2003,7 +2008,10 @@ impl AccumulatorOpSession {
         let used = (read_count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok((count, emission_records_from_gpu(gpu)))
+        Ok((
+            count,
+            emission_records_from_gpu(gpu, ReadbackAuthority::for_kernel_readback()),
+        ))
     }
 
     /// Read compact emission records written by EmitEvent ops this tick.
@@ -2024,7 +2032,10 @@ impl AccumulatorOpSession {
         let used = (count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok(emission_records_from_gpu(gpu))
+        Ok(emission_records_from_gpu(
+            gpu,
+            ReadbackAuthority::for_kernel_readback(),
+        ))
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
@@ -2931,7 +2942,11 @@ mod tests {
         let emissions = session.readback_emissions(&ctx).unwrap();
         assert_eq!(
             emissions,
-            vec![emission_record_from_kernel_emit_event(0, 3)]
+            vec![emission_record_from_kernel_emit_event(
+                0,
+                3,
+                ReadbackAuthority::for_kernel_readback(),
+            )]
         );
         let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.7);

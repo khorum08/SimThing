@@ -15,7 +15,7 @@ use bytemuck::{Pod, Zeroable};
 use simthing_core::{
     ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId,
 };
-use simthing_kernel::{readback::threshold_events_from_gpu, ResolvedGpuBuffers};
+use simthing_kernel::{readback::threshold_events_from_gpu, ReadbackAuthority, ResolvedGpuBuffers};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -1612,7 +1612,10 @@ impl WorldGpuState {
         }
         let used = (n as usize) * std::mem::size_of::<ThresholdEventGpu>();
         let bytes = self.read_buffer_bytes_range(&self.event_candidates, 0, used as u64);
-        threshold_events_from_gpu(bytemuck::cast_slice::<u8, ThresholdEventGpu>(&bytes))
+        threshold_events_from_gpu(
+            bytemuck::cast_slice::<u8, ThresholdEventGpu>(&bytes),
+            ReadbackAuthority::for_kernel_readback(),
+        )
     }
 
     pub fn values_len(&self) -> usize {

@@ -70,9 +70,9 @@ Proof: `cargo tree -p simthing-kernel`; `cargo tree -i simthing-kernel` shows gp
 |---|---|---|---|---|
 | `ResolvedWriteAuthority` | `compile_fail` | None | Hidden `for_boundary_install()` | OK |
 | `ResolvedGpuBuffers` | N/A (fields private) | `new()` takes buffers only | Gpu runtime constructs; no external mutation | OK |
-| `EmissionRecord` | `compile_fail` | None | `readback::*` from real GPU/oracle bytes | OK |
-| `ThresholdEmission` | `compile_fail` | None | `readback::*` | OK |
-| `ThresholdEvent` | `compile_fail` (struct + named) | None | Pass-7 readback / `cpu_oracle_threshold_events` | OK — oracle is crossing-derived |
+| `EmissionRecord` | `compile_fail` | None | `readback::*` + `ReadbackAuthority` from gpu readback path | OK (post-0R) |
+| `ThresholdEmission` | `compile_fail` | None | `readback::*` + authority | OK (post-0R) |
+| `ThresholdEvent` | `compile_fail` (struct + named) | None | Pass-7 readback / oracle + authority for bridges | OK (post-0R) |
 | `PlacedParticipant` | `compile_fail` | None | Validators in kernel participation module | OK |
 
 **Soft point (justified):** `cpu_oracle_threshold_events` remains public in the kernel for parity tests and CPU-oracle twins. It derives events from buffer crossings + registrations; callers cannot pick arbitrary `(slot, col, event_kind)` tuples.
@@ -145,3 +145,51 @@ Delta within noise; no regression. Smoke asserts finite timing (no ratio gate on
 - Move `AccumulatorOpSession` / full tick orchestration into kernel in a follow-on slice if DA wants authority code colocated (optional; seals already dependency-enforced).
 - Tighten `cpu_oracle_threshold_events` to test-only scope if DA prefers after parity harness audit.
 - DA re-review: PROBATION → DONE.
+
+## 0R remediation — public POD readback bridge launder vector
+
+**DA hold source:** `KERNEL-CRATE-EXTRACT-0` left public readback bridges (`threshold_events_from_gpu(gpu: &[ThresholdEventGpu])`, etc.) accepting forgeable public POD with all-public fields — external crates could fabricate POD bytes and mint sealed authoritative types without kernel emission.
+
+**Exact fix (Option A):** Added ZST `ReadbackAuthority(())` with private field, no public constructor, `compile_fail` on struct literal, and `#[doc(hidden)] for_kernel_readback()` for `simthing-gpu` session/buffer readback paths only. Every bridge returning a sealed type now requires `ReadbackAuthority`:
+
+| Bridge | Gated |
+|---|---|
+| `threshold_events_from_gpu` | yes |
+| `threshold_emissions_from_gpu` | yes |
+| `emission_records_from_gpu` | yes |
+| `threshold_event_from_pass7_readback` | yes |
+| `emission_record_from_kernel_emit_event` | yes |
+| `emission_record_from_cpu_oracle` | yes |
+| `threshold_emission_from_cpu_oracle` | yes |
+
+**Public bridge audit (post-0R):**
+
+| Function | Returns sealed type? | Forgeable input without authority? | Verdict |
+|---|---|---|---|
+| `threshold_events_from_gpu` | yes | POD forge blocked — requires `ReadbackAuthority` | OK |
+| `threshold_emissions_from_gpu` | yes | same | OK |
+| `emission_records_from_gpu` | yes | same | OK |
+| `threshold_event_from_pass7_readback` | yes | raw tuple blocked — requires authority | OK |
+| `emission_record_from_kernel_emit_event` | yes | same | OK |
+| `emission_record_from_cpu_oracle` | yes | same | OK |
+| `threshold_emission_from_cpu_oracle` | yes | same | OK |
+| `cpu_oracle_threshold_events` | yes | derives from buffer crossings + registrations | OK — not POD launder |
+| `validate_and_mint_placed_participants_by_location_id` | `PlacedParticipant` | validates structural table | OK |
+| `ResolvedWriteAuthority::for_boundary_install` | write token | hidden gpu boundary path | OK (write seal) |
+
+**New compile-fail proofs (3, not counting prior 7 direct-forge):**
+
+| Proof | Catches |
+|---|---|
+| `readback.rs` `external_pod_bridge_launder` | Forged `ThresholdEventGpu` + bridge without authority |
+| `readback.rs` `external_emission_pod_bridge_launder` | Forged `EmissionRecordGpu` + bridge without authority |
+| `readback_authority.rs` `external_readback_authority_forge` | Direct `ReadbackAuthority(())` construction |
+
+**0R proofs rerun:** `cargo test -p simthing-kernel --doc` (10 compile_fail), `cargo test -p simthing-gpu threshold --lib` (18), `cargo test -p simthing-sim --test s6_threshold_sunset` (4), `c1_threshold_perf --release` (0.2060 ms readback).
+
+**0R scope:** `crates/simthing-kernel/src/sealed/readback_authority.rs`, `readback.rs`, `sealed/mod.rs`, `lib.rs`; `simthing-gpu` session/world_state/cpu_oracle/emission_accumulator call sites.
+
+**0R performance:** Prior extraction readback `new_ms=0.1888`; post-0R `new_ms=0.2060` (baseline pre-extraction `0.2145`). ZST authority parameter is zero-cost; no regression beyond noise.
+
+**0R inlining:** `ReadbackAuthority` is a ZST passed by value (same pattern as `ResolvedWriteAuthority`); extraction LTO/inlining proof still applies — authority param erases at compile time, no runtime branch.
+

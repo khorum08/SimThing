@@ -255,6 +255,7 @@ pub fn cpu_oracle_emission_records(
             Ok(simthing_kernel::readback::emission_record_from_cpu_oracle(
                 emission.reg_idx,
                 emit_count,
+                simthing_kernel::ReadbackAuthority::for_kernel_readback(),
             ))
         })
         .collect()
