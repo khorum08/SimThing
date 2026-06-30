@@ -2,13 +2,13 @@
 
 ## Status
 
-**PROBATION** — closed-set RELIABLE allowlist scans implemented; 0R patches sealed-producer `Self` return gap. Self-reported implementer proof only; not DA acceptance.
+**PROBATION** — closed-set RELIABLE allowlist scans implemented; 0R/0R2 patch sealed-producer `Self` return and constructor gaps. Self-reported implementer proof only; not DA acceptance.
 
 ## PR / branch / merge
 
-- Branch: `ci-a-allowlist-scans-0r` (0R)
-- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0), [#1028](https://github.com/khorum08/SimThing/pull/1028) (0R)
-- Merge: `78ad4631a3` (0), `74f0c810c1` (0R, master)
+- Branch: `ci-a-allowlist-scans-0r2` (0R2)
+- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0), [#1028](https://github.com/khorum08/SimThing/pull/1028) (0R), 0R2 PR pending
+- Merge: `78ad4631a3` (0), `74f0c810c1` (0R); 0R2 merge SHA pending
 
 ## Recipient Agent
 
@@ -37,13 +37,18 @@ Opus / Owner
 
 - `scan_allowlists.py`: track inherent `impl SealedType { … }` blocks via brace-aware line map.
 - `return_type_is_sealed`: treat `-> Self` as sealed when enclosing impl target is in `SEALED_IMPL_TARGETS`.
-- Constructor exclusion (`new`/`default`) unchanged — avoids false positives on non-sealed helpers.
+- Constructor exclusion (`new`/`default`) applies only outside sealed impl blocks (0R2).
+
+### CI-A-ALLOWLIST-SCANS-0R2 — sealed `new/default -> Self` constructor gap
+
+- `scan_sealed_producers`: compute `impl_sealed` before constructor skip; skip `new`/`default` only when `impl_sealed is None`.
+- Public sealed constructors hard FAIL (no allowlist door shape); exposes 3 pre-existing `gpu_readback.rs` readback `new` (crate remediation out of scope).
 
 ## Load-bearing proofs
 
 | Proof | Result |
 |---|---|
-| `bash scripts/ci/doctrine_scan.sh` | PASS — 0 hard FAIL, footer once |
+| `bash scripts/ci/doctrine_scan.sh` | FAIL 3 — pre-existing `gpu_readback.rs` sealed `new` (doctrine-correct per 0R2); buffer/kernel scans PASS |
 | `python scripts/ci/verify_kernel_surface.py` | PASS — 195/195 exact match |
 
 ## Negative controls (local, reverted before commit)
@@ -65,13 +70,23 @@ Opus / Owner
 |---|---|---|---|
 | Same-line Self producer | `impl ThresholdEvent { pub fn forge_probe(...) -> Self { ... } }` | FAIL | exit 1 — `forge_probe -> Self (ThresholdEvent)` |
 | Split-declaration Self producer | `#[doc(hidden)] pub fn forge_split(...)\n-> Self` | FAIL | exit 1 — `forge_split -> Self (ThresholdEvent)` |
-| Non-sealed constructor | `impl PlainHelper { pub fn new() -> Self { ... } }` | no FAIL | exit 1 only for forge_* (PlainHelper::new not flagged) |
+| Non-sealed constructor | `impl PlainHelper { pub fn new() -> Self { ... } }` | no FAIL | not flagged (with probe) |
+
+### 0R2 — sealed `new/default -> Self`
+
+| Control | Mutation | Expected | Observed |
+|---|---|---|---|
+| Sealed `new` | `impl ThresholdEvent { pub fn new(...) -> Self }` | FAIL | exit 1 — `new -> Self (ThresholdEvent)` |
+| Sealed `default` | `impl ThresholdEvent { pub fn default() -> Self }` | FAIL | exit 1 — `default -> Self (ThresholdEvent)` |
+| Split/doc-hidden sealed `new` | `#[doc(hidden)] pub fn new_split(...)\n-> Self` | FAIL | exit 1 — `new_split -> Self (ThresholdEvent)` |
+| Non-sealed constructor | `impl PlainHelper { pub fn new() -> Self }` | no FAIL | not flagged |
+| Pre-existing (master) | `gpu_readback.rs` readback `pub fn new -> Self` ×3 | FAIL | exit 1 — EmissionRecordReadback, ThresholdEmissionReadback, ThresholdEventCandidatesReadback |
 
 ## Scope Ledger
 
 | Path | Touched |
 |---|---|
-| `scripts/ci/scan_allowlists.py` | yes (0 + 0R) |
+| `scripts/ci/scan_allowlists.py` | yes (0 + 0R + 0R2) |
 | `scripts/ci/doctrine_scan.sh` | yes (0 only) |
 | `scripts/ci/scans.tsv` | yes (0 only) |
 | `scripts/ci/allow/sealed_producers.txt` | yes (0 only) |
@@ -89,7 +104,8 @@ Opus / Owner
 
 ## Known gaps / next
 
-- `CI-A-FIXTURES-0` — blocked until 0R lands; committed negative-control corpus (forward note: production semantic/.kind INSPECT controls).
+- `CI-A-FIXTURES-0` — blocked until 0R2 lands; committed negative-control corpus.
+- Pre-existing FAIL: `gpu_readback.rs` public `new -> Self` on three readback types (crate seal rung, not 0R2 scope).
 - `CI-A-SELF-TEST-0`, `CI-A-WORKFLOW-0`, `CI-A-INSPECT-TRIAGE-0`.
 - `validate_and_mint_placed_participants_by_location_id` remains a core re-export, not a kernel-local `pub fn` — out of kernel sealed-producer enumeration scope.
 
