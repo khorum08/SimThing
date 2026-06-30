@@ -1,0 +1,3 @@
+# symbol | door-class | rationale | promotion-blocker
+max_candidate_f_magnitude_bits | inert-util | Caller-owned ephemeral GPU buffers for exact-magnitude oracle probe | retire when oracle probe is in-crate only and not exported
+IndexedScatterOp::dispatch | inert-util | Indexed scatter dispatch with caller-owned src/dst buffers | retire when scatter buffers are session-sealed and dispatch is in-crate only

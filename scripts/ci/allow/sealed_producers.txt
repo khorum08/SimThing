@@ -1,0 +1,10 @@
+# symbol | door-class | rationale | promotion-blocker
+cpu_oracle_threshold_events | cpu_oracle | CPU-oracle twin for threshold events; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
+cpu_oracle_emission_records | cpu_oracle | CPU-oracle twin for emission records; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
+apply_candidate_f_exact_magnitude | apply | Sanctioned exact-magnitude write door for Candidate F | retire when exact write is an in-crate AccumulatorOp type boundary only
+read_event_candidates | read | Read sealed ThresholdEvent candidates from WorldGpuState | retire when threshold events are observed only via typed read view
+read_records | read | Read sealed EmissionRecord values via EmissionRecordReadback | retire when emission readback is in-crate only
+read_records_capped | read | Capped read of sealed EmissionRecord via readback helper | retire when emission readback is in-crate only
+read_threshold_emissions | read | Read sealed ThresholdEmission via ThresholdEmissionReadback | retire when threshold emission readback is in-crate only
+read_threshold_events | read | Read sealed ThresholdEvent via ThresholdEmissionReadback | retire when threshold event readback is in-crate only
+read_events | read | Read threshold event candidates via ThresholdEventCandidatesReadback | retire when candidate readback is in-crate only
