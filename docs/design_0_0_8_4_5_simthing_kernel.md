@@ -220,6 +220,32 @@ afterward is exactly `{ in-crate-WGSL-correctness, consumer-side unsafe }` — b
 new crate-boundary path. Extending the seal as far as it *can* go = forbid-unsafe on every crate we own
 (the `KERNEL-FORBID-UNSAFE` rung, generalized to `simthing-gpu` once the orchestration lands there too).
 
+### 5.2 Bypass-state catalogue — the residue is a red-flag scan, not a passive gap (binding)
+
+The residue is acceptable **only because routing through it is a *deliberate* act we can detect.** In safe
+Rust within our crates you **cannot** forge a sealed authority type or reach an authoritative buffer by
+accident — every route requires an unmistakable, **greppable** construct. The finite set of those constructs
+is the **bypass-state catalogue**: each is a *deliberate-circumvention signal*, and a hit on any is a **red
+flag** requiring DA sign-off (or a recorded amendment-valve grant). The scan is the highest admission rung
+available for a surface types cannot reach (§1.2 rung-3 used *correctly* — over genuine residue, not as a
+substitute for a type that should exist).
+
+| # | Bypass state (deliberate-circumvention signal) | Detect |
+|---|---|---|
+| B1 | **`unsafe`** in any crate that can name a sealed authority type or an authoritative buffer (the `mem::transmute` forge route) | `forbid(unsafe_code)` on the crate (compiler); a new `unsafe` is a red flag |
+| B2 | a sealed authority type deriving **`Pod`/`Zeroable`/`Deserialize`/`Serialize`/`Default`** (opens transmute / serde / default forge) | scan derives on sealed types; only `Clone/Copy/Debug/PartialEq(/Eq/Hash)` allowed |
+| B3 | a `pub`/`#[doc(hidden)] pub fn` returning **`&Buffer`/`&mut Buffer`/`BindingResource`** for an authoritative buffer (the visibility leak) | boundary scan of the kernel public API |
+| B4 | a `pub fn … -> SealedType` (or `Vec<…>`) taking **forgeable input** (`*Gpu` POD / raw `u32`/`f32` / `&[u8]`) — the bridge-launder | scan public producers of sealed types |
+| B5 | accepting an **external `ShaderModule`/`ComputePipeline`/WGSL string** for authoritative buffers (custom-compute route) | scan kernel public API for shader/pipeline params |
+| B6 | exposing **`ctx`/`Queue`/`Device`** so it can be paired with an authoritative buffer handle | boundary scan |
+| B7 | **`mem::transmute` / `bytemuck::cast*`** whose target is a sealed authority type | grep (covered by B1 if unsafe-forbidden, but `bytemuck` cast is safe — B2 closes it by keeping sealed types non-Pod) |
+| B8 | a new **dependency** on the kernel (or any crate that names sealed types) that pulls in `unsafe`/serde-for-authority | the dependency-budget gate |
+
+**These are red flags, not auto-rejections.** A legitimate need routes through the **amendment valve** (§3A,
+owner-gated); an illegitimate one is exactly the deliberate circumvention the catalogue exists to make loud.
+Either way the route is *visible*. The orchestrator runs the scan on any rung that touches the kernel
+authority surface; the handoff template flags the risk up front (handoff §1).
+
 ## 6. References
 
 - The doctrine: [`simthing_core_design.md`](simthing_core_design.md) §1.2, §0.0, §4, §5, §7, §8.

@@ -60,6 +60,7 @@ If the change cannot be expressed within these lines, **stop and escalate to the
 - **Expected PR title:** `<RUNG-ID>: <imperative summary>`
 - **Canonical design file (the one ladder this rung serves):** `<path>` — read it first; it controls scope/order/lifecycle.
 - **`admission-amendment-request:` `denied` (default) | `allowed`** — whether *this* handoff grants the agent permission to **request** the owner-gated Admission-Substrate Amendment Valve. Leave `denied` unless the rung may genuinely need to add/repair/suspend a sealed kernel/admission restriction.
+- **`seal-residue-risk:` `none` (default) | `<B#…>`** — does this rung touch the kernel **authority surface** (sealed types, authoritative buffers, GPU dispatch/encode/readback, derives on sealed types, `unsafe`, or kernel dependencies)? If yes, **name the bypass-state(s) it could produce** (the catalogue `B1–B8`, kernel track §5.2) so review runs the bypass scan and treats a hit as a **red flag** requiring DA sign-off. The residue is unenforceable by types *by nature*; routing through it is always **deliberate**, so it must be **declared and scanned**, never silent.
 
 **The Admission-Substrate Amendment Valve (owner-gated; do not work around seals).** The kernel/admission
 seals (AS-1–8B + the kernel track) are owner-gated. If you hit a seal that genuinely blocks the rung, you
