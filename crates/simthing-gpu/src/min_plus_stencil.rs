@@ -17,8 +17,8 @@ use wgpu::{
     ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
 
-use crate::context::GpuContext;
-use crate::indexed_scatter::{IndexedScatterError, IndexedScatterOp, ScatterEntry};
+use crate::GpuContext;
+use simthing_kernel::{IndexedScatterError, IndexedScatterOp, ScatterEntry};
 
 pub const MIN_PLUS_INF: f32 = f32::INFINITY;
 pub const MIN_PLUS_WORKGROUP_SIZE: u32 = 8;

@@ -6,8 +6,9 @@ use simthing_core::{
     EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, ThresholdDirection,
 };
 
-use simthing_kernel::{
-    ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES,
+use crate::registration::{
+    ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
+    THRESH_BUF_VALUES,
 };
 
 use crate::world_state::IntentDelta;
@@ -212,7 +213,7 @@ pub fn emit_on_threshold_registrations_to_gpu(
             event_kind: r.event_kind,
             buffer: match r.buffer {
                 EmitOnThresholdBuffer::Values => THRESH_BUF_VALUES,
-                EmitOnThresholdBuffer::Output => crate::world_state::THRESH_BUF_OUTPUT,
+                EmitOnThresholdBuffer::Output => THRESH_BUF_OUTPUT,
             },
         })
         .collect()
@@ -245,9 +246,7 @@ pub fn threshold_registrations_to_ops(
     let mut ops = Vec::with_capacity(regs.len());
     let mut event_kinds = Vec::with_capacity(regs.len());
     for r in regs {
-        debug_assert!(
-            r.buffer == THRESH_BUF_VALUES || r.buffer == crate::world_state::THRESH_BUF_OUTPUT
-        );
+        debug_assert!(r.buffer == THRESH_BUF_VALUES || r.buffer == THRESH_BUF_OUTPUT);
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(r.slot),
@@ -486,7 +485,7 @@ fn other_name_gate(gate: &GateSpec) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world_state::THRESH_BUF_OUTPUT;
+    use crate::registration::THRESH_BUF_OUTPUT;
     use simthing_core::{
         ColumnIndex, CombineFn, ConsumeMode, GateSpec, ScaleSpec, SlotIndex, SourceSpec,
         ThresholdDirection,

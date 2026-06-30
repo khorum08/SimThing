@@ -7,8 +7,8 @@ use bytemuck::{Pod, Zeroable};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
-use crate::context::GpuContext;
 use crate::min_plus_stencil::{MinPlusStencilConfig, MinPlusTraversalGpuOutputHandle};
+use crate::GpuContext;
 
 pub const TRAVERSAL_D_PROBE_MAX_CANDIDATES: u32 = 64;
 

@@ -11,11 +11,13 @@
 //!
 //! Threshold registry / event_candidates buffers are deferred to Pass 7 work.
 
+use crate::gpu_readback::ThresholdEventCandidatesReadback;
+use crate::resolved::ResolvedGpuBuffers;
+use crate::sealed::ResolvedWriteAuthority;
 use bytemuck::{Pod, Zeroable};
 use simthing_core::{
     ClampBehavior, DimensionRegistry, PropertyColumnRange, PropertyLayout, SimPropertyId,
 };
-use simthing_kernel::{ResolvedGpuBuffers, ThresholdEventCandidatesReadback};
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, Maintain, MapMode};
 
 use crate::accumulator_op::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
@@ -142,13 +144,13 @@ pub struct IntentDelta {
     pub add: f32,
 }
 
-// ── ThresholdRegistration / ThresholdEvent — Pass 7 (authority in simthing-kernel) ──
+// ── ThresholdRegistration / ThresholdEvent re-exports for legacy import paths ──
 
-pub use simthing_kernel::{
-    cpu_oracle_threshold_events, ResolvedWriteAuthority, ThresholdEvent, ThresholdEventGpu,
+pub use crate::registration::{
     ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
 };
+pub use crate::sealed::{cpu_oracle_threshold_events, ThresholdEvent, ThresholdEventGpu};
 
 // ── Reduction (Passes 4–6) ────────────────────────────────────────────────────
 pub const RULE_MEAN: u32 = 0;
@@ -1619,7 +1621,7 @@ impl WorldGpuState {
     pub fn install_resolved_values_at_boundary(&self, data: &[f32]) {
         self.install_resolved_values_at_boundary_with_auth(
             data,
-            ResolvedWriteAuthority::for_boundary_install(),
+            ResolvedWriteAuthority::boundary_install(),
         );
     }
 

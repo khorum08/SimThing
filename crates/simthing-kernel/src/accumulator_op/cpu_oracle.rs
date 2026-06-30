@@ -2,7 +2,7 @@
 
 use simthing_core::{eml_opcode, EmlNodeGpu};
 
-pub use simthing_kernel::{
+pub use crate::cpu_oracle::{
     execute_ops_cpu, execute_ops_cpu_with_emissions, execute_threshold_ops_cpu, CpuOracleError,
 };
 

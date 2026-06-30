@@ -20,8 +20,8 @@ use super::session::{AccumulatorOpSession, AccumulatorOpSessionError};
 use super::types::AccumulatorOpGpu;
 use super::types::DEFAULT_THRESHOLD_EMISSION_CAPACITY;
 use super::world_summary::WorldSummaryRuntime;
+use crate::context::GpuContext;
 use crate::world_state::IntentDelta;
-use crate::GpuContext;
 
 /// Cache key for uploaded C-8b intensity EvalEML ops (world shape + EML plan).
 #[derive(Clone, Debug, PartialEq, Eq)]

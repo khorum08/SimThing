@@ -216,11 +216,11 @@ pub fn scan_for_forbidden_validation_tokens(source: &str, label: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::GpuContext;
     use crate::structural_upload::{
         upload_structural_rows_to_gpu, PackedUpload, StructuralFrameGpuRow, StructuralLinkGpuRow,
         StructuralLocationGpuRow, FRAME_ROW_BYTES, LINK_ROW_BYTES,
     };
+    use crate::GpuContext;
 
     fn sample_rows() -> StructuralUploadRows {
         StructuralUploadRows {

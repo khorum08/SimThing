@@ -13,9 +13,8 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
-use simthing_kernel::{
-    EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback, ThresholdEvent,
-};
+use crate::gpu_readback::{EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback};
+use crate::sealed::ThresholdEvent;
 
 use super::encode::EncodeError;
 use super::packed_session_upload::{

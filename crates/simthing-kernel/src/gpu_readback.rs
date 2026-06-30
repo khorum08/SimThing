@@ -106,12 +106,12 @@ impl EmissionRecordReadback {
     }
 
     #[doc(hidden)]
-    pub fn records_binding(&self) -> &Buffer {
+    pub(crate) fn records_binding(&self) -> &Buffer {
         &self.records
     }
 
     #[doc(hidden)]
-    pub fn count_binding(&self) -> &Buffer {
+    pub(crate) fn count_binding(&self) -> &Buffer {
         &self.count
     }
 
@@ -222,12 +222,12 @@ impl ThresholdEmissionReadback {
     }
 
     #[doc(hidden)]
-    pub fn records_binding(&self) -> &Buffer {
+    pub(crate) fn records_binding(&self) -> &Buffer {
         &self.records
     }
 
     #[doc(hidden)]
-    pub fn count_binding(&self) -> &Buffer {
+    pub(crate) fn count_binding(&self) -> &Buffer {
         &self.count
     }
 
@@ -330,12 +330,12 @@ impl ThresholdEventCandidatesReadback {
     }
 
     #[doc(hidden)]
-    pub fn candidates_binding(&self) -> &Buffer {
+    pub(crate) fn candidates_binding(&self) -> &Buffer {
         &self.candidates
     }
 
     #[doc(hidden)]
-    pub fn count_binding(&self) -> &Buffer {
+    pub(crate) fn count_binding(&self) -> &Buffer {
         &self.count
     }
 

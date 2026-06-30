@@ -9,7 +9,7 @@ use wgpu::{
 
 use super::session::{AccumulatorOpSessionError, WORKGROUP_SIZE};
 use super::types::{AccumulatorSummaryParams, SlotSummary, SlotSummaryGpu};
-use crate::GpuContext;
+use crate::context::GpuContext;
 
 /// Dedicated B-4 summary resources for integrated world execution (C-INF remedial).
 pub struct WorldSummaryRuntime {

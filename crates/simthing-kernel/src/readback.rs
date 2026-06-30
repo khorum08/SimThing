@@ -53,3 +53,23 @@
 //!     let _ = simthing_kernel::emission_records_from_gpu(&[forged], auth);
 //! }
 //! ```
+//!
+//! External crates cannot obtain a public resolved-values buffer handle for queue writes:
+//!
+//! ```compile_fail
+//! fn external_resolved_queue_write(
+//!     queue: &wgpu::Queue,
+//!     buffers: &simthing_kernel::ResolvedGpuBuffers,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     queue.write_buffer(buffers.values(), 0, &bytes);
+//! }
+//! ```
+//!
+//! External crates cannot obtain a public write-authority minter:
+//!
+//! ```compile_fail
+//! fn external_write_authority_minter() {
+//!     let _ = simthing_kernel::ResolvedWriteAuthority::for_boundary_install();
+//! }
+//! ```
