@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-self-test-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: [#1032](https://github.com/khorum08/SimThing/pull/1032)
+- Merge: `7f5bc53670` (master)
 
 ## Recipient Agent
 
