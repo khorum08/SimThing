@@ -186,6 +186,40 @@ The kernel boundary *enables* these; per consumer-pulled discipline they open on
 - **Live ontological conformance** ("is this still one accumulate→reduce→threshold loop?") remains DA judgment — the kernel makes *bypass* uncompilable, not *good modeling* automatic.
 - **WGSL shader text** — the final residue Rust cannot see (unchanged).
 
+### 5.1 Where the seal bottoms out (the terminus map — so no leak surfaces reactively)
+
+The sealing recursion has a definite floor. `KERNEL-DISPATCH-INCRATE-0` closes the **last cross-crate
+*visibility* leak** (the `&Buffer` / `ctx` path); after it, **no further crate-boundary path out exists in
+safe Rust.** The adjacent forge vectors were checked against the tree (2026-06-29) and are **already closed**,
+and the dispatch move must *preserve* them (DoD invariants, do not regress):
+
+- **Transmute-from-bytes is closed:** the sealed types derive only `Clone/Copy/Debug/PartialEq(/Eq/Hash)` —
+  **not `bytemuck::Pod`/`Zeroable`** — so `cast`-from-bytes cannot forge them. (Their `*Gpu` mirrors are Pod;
+  the sealed types must never become Pod.)
+- **Serde forge is closed:** the sealed types **do not derive `Deserialize`** (serde's derive is a backdoor
+  constructor for private-field types). Any save/load of authority must go through a controlled, validated
+  path, never `from_*` straight into a sealed type.
+- **External-shader injection is closed:** the kernel accepts **no external `ShaderModule`/`Pipeline`** for
+  authoritative buffers — the compute shaders are kernel-internal. The dispatch move keeps them so.
+
+Below those, **two structural floors remain — not leaks, the acknowledged residue where type-enforcement
+ends by nature:**
+
+1. **WGSL shader text** (above) — a correct in-crate, semantic-free shader + CPU-oracle parity is the
+   admission; Rust cannot type-check the shader.
+2. **`unsafe` in a *consumer* crate** — the true terminus. `#![forbid(unsafe_code)]` governs the kernel and
+   the crates we apply it to (e.g. `simthing-sim`), **not** arbitrary dependents. A consumer that writes
+   `unsafe { mem::transmute }` can forge any sealed type by replicating its layout; no crate seal can stop a
+   consumer's own `unsafe`. **So the seal is a type-*fact* within the kernel + forbid-unsafe crates, and an
+   honest *directive* (+ the amendment valve, + license/social boundary) at the ecosystem edge** (third-party
+   modders/researchers). That edge is unenforceable by types **by design**, and that is acceptable — it is
+   where the productization boundary meets the open world.
+
+**So the answer to "is dispatch-in-crate the end?": yes for the visibility recursion.** The residue
+afterward is exactly `{ in-crate-WGSL-correctness, consumer-side unsafe }` — both already named, neither a
+new crate-boundary path. Extending the seal as far as it *can* go = forbid-unsafe on every crate we own
+(the `KERNEL-FORBID-UNSAFE` rung, generalized to `simthing-gpu` once the orchestration lands there too).
+
 ## 6. References
 
 - The doctrine: [`simthing_core_design.md`](simthing_core_design.md) §1.2, §0.0, §4, §5, §7, §8.
