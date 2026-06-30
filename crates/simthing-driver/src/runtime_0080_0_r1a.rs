@@ -12,7 +12,7 @@ use simthing_core::{
     EmlTreeId, GateSpec, ScaleSpec, SimProperty, SlotIndex, SourceSpec,
 };
 use simthing_gpu::{
-    set_debug_readback_allowed, write_max_candidate_f_magnitude_bits, AccumulatorOpSession,
+    set_debug_readback_allowed, AccumulatorOpSession,
     AccumulatorPipelineSessions, EmlGpuProgramTable, GpuContext, GradientPairGpu,
     PackedAccumulatorUpload, PackedThresholdUpload, Pipelines, ThresholdEvent,
     ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, THRESH_BUF_VALUES,
@@ -1345,7 +1345,7 @@ impl TierAGpuHarness {
 
         {
             let ctx = &self.world.ctx;
-            let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
+            let eml = Some(&self.eml_table);
             self.tier_a
                 .upload_packed_ops(
                     ctx,
@@ -1418,7 +1418,7 @@ impl TierAGpuHarness {
                     .unwrap(),
             )
             .map_err(|_| "probe_upload_ops_failed")?;
-        let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
+        let eml = Some(&self.eml_table);
         for band in 0..TIER_A_BAND_COUNT {
             probe
                 .tick_with_eml(ctx, band, eml)
@@ -1472,14 +1472,13 @@ impl TierAGpuHarness {
             self.counters.note_dispatch();
             return expected_mag.abs();
         }
-        write_max_candidate_f_magnitude_bits(
-            ctx,
-            gradients,
-            self.tier_a.values_buffer(),
-            layout.r4_scratch_start,
-            COL_NEXT,
-            N_DIMS,
-        )
+        self.tier_a
+            .write_max_candidate_f_magnitude_bits(
+                ctx,
+                gradients,
+                layout.r4_scratch_start,
+                COL_NEXT,
+            )
         .expect("candidate f magnitude");
         self.counters.note_dispatch();
         0.0

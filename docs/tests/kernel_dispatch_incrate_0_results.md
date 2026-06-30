@@ -150,3 +150,120 @@ Delta +7.2% on single-run readback smoke (Windows dev profile, discrete GPU). Wi
 - Soft point: `cpu_oracle_threshold_events` remains public oracle twin.
 - `WorldGpuState` still exposes tick-upload `pub Buffer` fields (overlay/governed pairs); not resolved authority — monitor if DA wants further narrowing.
 - `KERNEL-CLOSEOUT-0`: constitution §0 carry-forward, core design doc kernel section, handoff template upgrade.
+
+---
+
+## 0R remediation — residual buffer leaks and residue-as-tripwire scan
+
+### Status
+
+**PROBATION** — DA-hold residual buffer accessors sealed; B3/B6 tripwire scan recorded. Not DA-approved.
+
+### PR / branch / merge
+
+- Branch: `kernel-dispatch-incrate-0r` (pending)
+- Parent: [#1005](https://github.com/khorum08/SimThing/pull/1005) `43f78ab48b`
+- Post-0R merge: (pending)
+
+### DA hold source
+
+DA found live leaks after DISPATCH-INCRATE-0: `values_buffer()`, EML `node_buffer`/`range_buffer`, input-list `buffer`, and `eml_bind_buffers`/`input_list_bind_buffer` returning `&Buffer`. B3/B6 residue-as-tripwire scan required.
+
+### What changed
+
+- Sealed `AccumulatorOpSession::values_buffer()` → `pub(crate)`; added public `write_max_candidate_f_magnitude_bits()` for driver candidate-F path.
+- Sealed `EmlGpuProgramTable` node/range fields; `bind_buffers()` is `pub(crate)` only.
+- Sealed `AccumulatorInputListTable::buffer` field and accessor → private / `pub(crate)`.
+- Sealed `WorldAccumulatorRuntime::eml_bind_buffers()` and `input_list_bind_buffer()` → `pub(crate)`.
+- Made `WorldAccumulatorRuntime::eml` and `input_lists` private; added `eml_program_table()` read-only accessor.
+- Changed `tick_with_eml` / encode paths to take `Option<&EmlGpuProgramTable>` instead of buffer tuples.
+- Added 5 compile-fail proofs for session/EML/input-list queue-write attacks (25 total doc tests).
+- Moved `candidate_f_magnitude` implementation to kernel; gpu re-exports.
+- Updated driver/sim/gpu test call sites.
+
+### Sealed residual surfaces
+
+| Surface | After 0R |
+|---|---|
+| `AccumulatorOpSession::values_buffer()` | `pub(crate)` |
+| `EmlGpuProgramTable::{node_buffer,range_buffer}` fields | private |
+| `EmlGpuProgramTable::bind_buffers()` | `pub(crate)` |
+| `AccumulatorInputListTable::buffer` | private |
+| `AccumulatorInputListTable::buffer()` | `pub(crate)` |
+| `WorldAccumulatorRuntime::eml_bind_buffers()` | `pub(crate)` |
+| `WorldAccumulatorRuntime::input_list_bind_buffer()` | `pub(crate)` |
+| `set_eml_buffers()` | removed (unused) |
+
+### B1–B8 residue scan
+
+| Class | Hit | Classification |
+|---|---|---|
+| B1 public sealed minter | sealed types use private fields + compile_fail | **Sealed** |
+| B2 authority token minter | none public | **Clean** |
+| B3 authoritative `&Buffer` | resolved/eml/input-list/session values sealed | **Sealed** |
+| B3 tick-upload `WorldGpuState::{governed_pairs,overlay_deltas,...}` | upload buffers, not resolved/EML/input authority | **Non-authoritative (tick upload)** |
+| B3 `write_max_candidate_f_magnitude_bits(..., target: &Buffer)` | generic utility; no kernel session buffer escape | **Non-authoritative utility** |
+| B3 `dispatch_world_summaries(values: &Buffer)` | pre-existing; caller-owned buffer param | **Soft point (pre-existing)** |
+| B4 POD bridge | removed (0R2) | **Clean** |
+| B5 raw write hooks | high-level dispatch only | **Clean** |
+| B6 `GpuContext::{device,queue}` + `WorldGpuState::ctx` | public; no authoritative buffer handle pairs | **Option B — harmless after B3 seal** |
+| B7 scaffold | none added | **Clean** |
+| B8 deps/unsafe | `#![forbid(unsafe_code)]`; dep budget unchanged | **Clean** |
+
+### Approved residue whitelist
+
+**Empty** — no DA/Owner-approved observable residue entries added.
+
+### Context / queue-pairing ruling
+
+**Option B.** `pub ctx`, `pub device`, and `pub queue` remain because no authoritative buffer handle escapes the kernel public API after 0R. External code cannot name resolved values, EML program buffers, or input-list buffers for `queue.write_buffer` or shader bind forgery.
+
+### Compile-fail proofs (+ what each catches)
+
+| Proof | Catches |
+|---|---|
+| `external_session_values_queue_write` | `session.values_buffer()` + queue write |
+| `external_eml_program_node_write` | `table.node_buffer()` + queue write |
+| `external_eml_program_range_write` | `table.range_buffer()` + queue write |
+| `external_input_list_buffer_write` | `table.buffer()` + queue write |
+| `external_input_list_field_write` | public `.buffer` field + queue write |
+| (prior 20 proofs) | POD bridge, readback authority, resolved buffers, write authority, sealed literals |
+
+**Total:** 25 doc `compile_fail` tests.
+
+### Value parity
+
+| Harness | Result |
+|---|---|
+| `cargo test -p simthing-kernel --doc` | 25/25 |
+| `cargo test -p simthing-kernel threshold --lib` | 19/19 |
+| `cargo test -p simthing-sim --test s6_threshold_sunset` | 4/4 |
+| `cargo test -p simthing-sim --test c8a_eml_infrastructure` | 10/10 |
+| sim semantic-free + kind audits | pass |
+
+### Performance parity
+
+Command: `cargo test -p simthing-sim --test c1_threshold_perf -- --nocapture` (5 consecutive runs, Windows dev profile, discrete GPU).
+
+| Run | `new_ms` |
+|---|---|
+| 1 | 0.2123 |
+| 2–5 | (all passed internal gate; same harness, ~0.20–0.22 ms band) |
+
+Baseline post-DISPATCH-INCRATE-0 single-run: 0.2163 ms. Post-0R median ~0.21 ms — within noise; no regression gate failure. Prior +7.2% single-run vs 0R2 baseline was noise, not introduced by visibility-only 0R.
+
+### Inlining proof
+
+Visibility-only refactor: no new dynamic dispatch, trait objects, boxed callbacks, runtime checks, or per-tick allocation. Hot dispatch remains in-crate from DISPATCH-INCRATE-0.
+
+### Scope Ledger (0R additions)
+
+| File / area | Change |
+|---|---|
+| `accumulator_op/session.rs` | seal values_buffer; EML table API |
+| `accumulator_op/eml_program_table.rs` | private buffer fields |
+| `accumulator_op/input_list_table.rs` | private buffer field |
+| `accumulator_op/runtime.rs` | seal bind helpers; eml_program_table() |
+| `readback.rs` | +5 compile_fail proofs |
+| `candidate_f_magnitude.rs` + shader | moved to kernel |
+| driver/sim/gpu tests | EML table API migration |

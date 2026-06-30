@@ -32,8 +32,8 @@ pub enum EmlUploadError {
 
 /// Persistent GPU-resident EML program storage (shared across AccumulatorOp sessions).
 pub struct EmlGpuProgramTable {
-    pub node_buffer: Buffer,
-    pub range_buffer: Buffer,
+    node_buffer: Buffer,
+    range_buffer: Buffer,
     pub generation: u64,
     pub ranges: Vec<EmlTreeRangeGpu>,
     pub node_capacity: u32,
@@ -75,12 +75,8 @@ impl EmlGpuProgramTable {
         }
     }
 
-    pub fn node_buffer(&self) -> &Buffer {
-        &self.node_buffer
-    }
-
-    pub fn range_buffer(&self) -> &Buffer {
-        &self.range_buffer
+    pub(crate) fn bind_buffers(&self) -> (&Buffer, &Buffer) {
+        (&self.node_buffer, &self.range_buffer)
     }
 
     /// Total GPU upload operations performed on this table (node buffer writes).

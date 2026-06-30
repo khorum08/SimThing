@@ -123,7 +123,7 @@ fn run_gadget_runtime(
                 .unwrap(),
         )
         .expect("upload EvalEML op");
-    let eml = Some((&table.node_buffer, &table.range_buffer));
+    let eml = Some(&table);
     session.tick_with_eml(ctx, 0, eml).expect("EvalEML tick");
     let out = session.readback_full(ctx).expect("readback");
     out[(EVAL_SLOT * N_DIMS + target_col) as usize]

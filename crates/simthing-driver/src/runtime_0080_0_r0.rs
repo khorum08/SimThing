@@ -347,7 +347,7 @@ impl GpuResidentScheduler {
     }
 
     fn dispatch_r1(&mut self, ctx: &GpuContext, world: &DressRehearsalR6cWorld) {
-        let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
+        let eml = Some(&self.eml_table);
         let op = AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(0),
@@ -606,15 +606,7 @@ fn run_single_attrition_emission(
     };
     let mut session = AccumulatorOpSession::with_emission_capacity(ctx, 1, 3, 1);
     session.upload_values(ctx, &[hostile_damage, hp_per_ship, num_ships_before]);
-    let eml = Some((&table.node_buffer, &table.range_buffer));
-    session
-        .upload_packed_ops(
-            ctx,
-            &PackedAccumulatorUpload::from_ops_with_eml(std::slice::from_ref(&op), Some(registry))
-                .unwrap(),
-        )
-        .expect("attrition op");
-    session.tick_with_eml(ctx, 0, eml).expect("attrition tick");
+    session.tick_with_eml(ctx, 0, Some(table)).expect("attrition tick");
     session
         .readback_emissions(ctx)
         .ok()

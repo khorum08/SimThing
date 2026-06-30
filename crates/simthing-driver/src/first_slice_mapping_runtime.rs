@@ -998,7 +998,7 @@ impl FirstSliceMappingSession {
         self.acc_session
             .upload_packed_ops(ctx, &upload)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;
-        let eml = Some((&self.eml_table.node_buffer, &self.eml_table.range_buffer));
+        let eml = Some(&self.eml_table);
         self.acc_session
             .tick_with_eml(ctx, 0, eml)
             .map_err(|e| FirstSliceMappingError::Accumulator(format!("{e}")))?;

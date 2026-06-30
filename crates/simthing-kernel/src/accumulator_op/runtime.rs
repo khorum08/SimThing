@@ -176,10 +176,10 @@ pub struct WorldAccumulatorRuntime {
     transfer_op_upload_count: u64,
     emission_op_plan_signature: Option<EmissionOpPlanSignature>,
     emission_op_upload_count: u64,
-    pub input_lists: Option<super::input_list_table::AccumulatorInputListTable>,
+    input_lists: Option<super::input_list_table::AccumulatorInputListTable>,
 
     /// C-8a persistent GPU EML program table (shared across sessions).
-    pub eml: Option<EmlGpuProgramTable>,
+    eml: Option<EmlGpuProgramTable>,
     /// Authoritative EML formula registry; uploaded at boundary sync when enabled.
     pub eml_registry: EmlExpressionRegistry,
 }
@@ -269,8 +269,12 @@ impl WorldAccumulatorRuntime {
         // `WorldAccumulatorRuntime::eml_bind_buffers()` into encode/tick helpers.
     }
 
-    pub fn eml_bind_buffers(&self) -> Option<(&wgpu::Buffer, &wgpu::Buffer)> {
-        self.eml.as_ref().map(|t| (&t.node_buffer, &t.range_buffer))
+    pub fn eml_program_table(&self) -> Option<&EmlGpuProgramTable> {
+        self.eml.as_ref()
+    }
+
+    pub(crate) fn eml_bind_buffers(&self) -> Option<(&wgpu::Buffer, &wgpu::Buffer)> {
+        self.eml.as_ref().map(EmlGpuProgramTable::bind_buffers)
     }
 
     pub fn apply_eml_bindings_to_sessions(&mut self) {
@@ -711,6 +715,18 @@ impl WorldAccumulatorRuntime {
         Ok(())
     }
 
+    pub(crate) fn input_lists_mut(
+        &mut self,
+    ) -> Option<&mut super::input_list_table::AccumulatorInputListTable> {
+        self.input_lists.as_mut()
+    }
+
+    pub(crate) fn input_lists_ref(
+        &self,
+    ) -> Option<&super::input_list_table::AccumulatorInputListTable> {
+        self.input_lists.as_ref()
+    }
+
     pub fn ensure_input_list_table(&mut self, ctx: &GpuContext) {
         if self.input_lists.is_none() {
             self.input_lists = Some(super::input_list_table::AccumulatorInputListTable::new(
@@ -720,7 +736,7 @@ impl WorldAccumulatorRuntime {
         }
     }
 
-    pub fn input_list_bind_buffer(&self) -> Option<&wgpu::Buffer> {
+    pub(crate) fn input_list_bind_buffer(&self) -> Option<&wgpu::Buffer> {
         self.input_lists.as_ref().map(|t| t.buffer())
     }
 
@@ -1265,12 +1281,12 @@ mod tests {
             )
             .unwrap();
         runtime.upload_eml_trees(&ctx).unwrap();
-        let table = runtime.eml.as_ref().unwrap();
+        let table = runtime.eml_program_table().unwrap();
         let node_uploads = table.node_upload_count;
         let range_uploads = table.range_upload_count;
         let generation = table.generation;
         runtime.upload_eml_trees(&ctx).unwrap();
-        let table = runtime.eml.as_ref().unwrap();
+        let table = runtime.eml_program_table().unwrap();
         assert_eq!(table.node_upload_count, node_uploads);
         assert_eq!(table.range_upload_count, range_uploads);
         assert_eq!(table.generation, generation);
