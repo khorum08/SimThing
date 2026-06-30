@@ -76,7 +76,7 @@ pub struct EmissionRecordReadback {
 }
 
 impl EmissionRecordReadback {
-    pub fn new(device: &Device, capacity: u32) -> Self {
+    pub(crate) fn new(device: &Device, capacity: u32) -> Self {
         let record_len = (capacity as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
         let records = device.create_buffer(&BufferDescriptor {
             label: Some("kernel_emission_records"),
@@ -178,7 +178,7 @@ pub struct ThresholdEmissionReadback {
 }
 
 impl ThresholdEmissionReadback {
-    pub fn new(device: &Device, capacity: u32) -> Self {
+    pub(crate) fn new(device: &Device, capacity: u32) -> Self {
         let record_len = (capacity as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
         let records = device.create_buffer(&BufferDescriptor {
             label: Some("kernel_threshold_emissions"),
@@ -293,7 +293,7 @@ pub struct ThresholdEventCandidatesReadback {
 }
 
 impl ThresholdEventCandidatesReadback {
-    pub fn new(device: &Device, candidate_bytes: u64) -> Self {
+    pub(crate) fn new(device: &Device, candidate_bytes: u64) -> Self {
         let candidates = device.create_buffer(&BufferDescriptor {
             label: Some("kernel_event_candidates"),
             size: candidate_bytes.max(std::mem::size_of::<ThresholdEventGpu>() as u64),
