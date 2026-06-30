@@ -131,19 +131,19 @@ impl Pipelines {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: state.resolved.values.as_entire_binding(),
+                    resource: state.resolved.values().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: state.resolved.previous_values.as_entire_binding(),
+                    resource: state.resolved.previous_values().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: state.resolved.output_vectors.as_entire_binding(),
+                    resource: state.resolved.output_vectors().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: state.resolved.previous_output_vectors.as_entire_binding(),
+                    resource: state.resolved.previous_output_vectors().as_entire_binding(),
                 },
             ],
         });
@@ -179,8 +179,8 @@ impl Pipelines {
             .create_command_encoder(&CommandEncoderDescriptor {
                 label: Some("intensity_eml_encoder"),
             });
-        let values = &state.resolved.values;
-        let previous = &state.resolved.previous_values;
+        let values = &state.resolved.values();
+        let previous = &state.resolved.previous_values();
         if let Some(runtime) = state.accumulator_runtime.as_mut() {
             let mut session = runtime.take_intensity_eml_session();
             if let Some(session) = session.as_mut() {
@@ -211,8 +211,8 @@ impl Pipelines {
             session.encode_overlay_add_into(
                 ctx,
                 &mut encoder,
-                &state.resolved.values,
-                &state.resolved.previous_values,
+                &state.resolved.values(),
+                &state.resolved.previous_values(),
                 state.accumulator_overlay_add_bands,
             );
         }
@@ -342,19 +342,19 @@ impl Pipelines {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: state.resolved.values.as_entire_binding(),
+                    resource: state.resolved.values().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: state.resolved.previous_values.as_entire_binding(),
+                    resource: state.resolved.previous_values().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: state.resolved.output_vectors.as_entire_binding(),
+                    resource: state.resolved.output_vectors().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: state.resolved.previous_output_vectors.as_entire_binding(),
+                    resource: state.resolved.previous_output_vectors().as_entire_binding(),
                 },
             ],
         });
@@ -378,8 +378,8 @@ impl Pipelines {
             session.encode_intent_into(
                 ctx,
                 &mut encoder,
-                &state.resolved.values,
-                &state.resolved.previous_values,
+                &state.resolved.values(),
+                &state.resolved.previous_values(),
             );
         }
 
@@ -399,8 +399,8 @@ impl Pipelines {
                 session.encode_velocity_into(
                     ctx,
                     &mut encoder,
-                    &state.resolved.values,
-                    &state.resolved.previous_values,
+                    &state.resolved.values(),
+                    &state.resolved.previous_values(),
                     dt,
                 );
             }
@@ -415,8 +415,8 @@ impl Pipelines {
                 session.encode_intensity_eml_into(
                     ctx,
                     &mut encoder,
-                    &state.resolved.values,
-                    &state.resolved.previous_values,
+                    &state.resolved.values(),
+                    &state.resolved.previous_values(),
                     dt,
                     eml,
                 );
@@ -436,8 +436,8 @@ impl Pipelines {
                 session.encode_transfer_into(
                     ctx,
                     &mut encoder,
-                    &state.resolved.values,
-                    &state.resolved.previous_values,
+                    &state.resolved.values(),
+                    &state.resolved.previous_values(),
                     state.accumulator_transfer_bands,
                     eml,
                     input_list,
@@ -454,8 +454,8 @@ impl Pipelines {
                 session.encode_emission_into(
                     ctx,
                     &mut encoder,
-                    &state.resolved.values,
-                    &state.resolved.previous_values,
+                    &state.resolved.values(),
+                    &state.resolved.previous_values(),
                     dt,
                     eml,
                 );
@@ -467,8 +467,8 @@ impl Pipelines {
                 session.encode_overlay_add_into(
                     ctx,
                     &mut encoder,
-                    &state.resolved.values,
-                    &state.resolved.previous_values,
+                    &state.resolved.values(),
+                    &state.resolved.previous_values(),
                     state.accumulator_overlay_add_bands,
                 );
             }
@@ -480,9 +480,9 @@ impl Pipelines {
         if reduction_soft_active {
             let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
             encoder.copy_buffer_to_buffer(
-                &state.resolved.values,
+                &state.resolved.values(),
                 0,
-                &state.resolved.output_vectors,
+                &state.resolved.output_vectors(),
                 0,
                 copy_bytes,
             );
@@ -500,15 +500,15 @@ impl Pipelines {
             session.encode_threshold_scan_with_outputs_into(
                 ctx,
                 &mut encoder,
-                &state.resolved.values,
-                &state.resolved.previous_values,
-                &state.resolved.output_vectors,
-                &state.resolved.previous_output_vectors,
+                &state.resolved.values(),
+                &state.resolved.previous_values(),
+                &state.resolved.output_vectors(),
+                &state.resolved.previous_output_vectors(),
             );
         }
 
         if sessions.encode_world_summary {
-            let values = &state.resolved.values;
+            let values = &state.resolved.values();
             if let Some(runtime) = state.accumulator_runtime.as_mut() {
                 runtime.encode_world_summary_into(ctx, &mut encoder, values);
             }
@@ -539,9 +539,9 @@ impl Pipelines {
 
         let copy_bytes = (state.n_slots * state.n_dims * 4) as u64;
         encoder.copy_buffer_to_buffer(
-            &state.resolved.values,
+            &state.resolved.values(),
             0,
-            &state.resolved.output_vectors,
+            &state.resolved.output_vectors(),
             0,
             copy_bytes,
         );
@@ -570,7 +570,7 @@ impl Pipelines {
                     session.encode_reduction_soft_band_into(
                         ctx,
                         encoder,
-                        &state.resolved.output_vectors,
+                        &state.resolved.output_vectors(),
                         band,
                     );
                 }
@@ -670,8 +670,8 @@ mod tests {
         session.encode_velocity_into(
             ctx,
             &mut encoder,
-            &state.resolved.values,
-            &state.resolved.previous_values,
+            &state.resolved.values(),
+            &state.resolved.previous_values(),
             dt,
         );
         ctx.queue.submit(Some(encoder.finish()));
@@ -1116,8 +1116,8 @@ mod tests {
         intent_session.encode_intent_into(
             &manual.ctx,
             &mut intent_encoder,
-            &manual.resolved.values,
-            &manual.resolved.previous_values,
+            &manual.resolved.values(),
+            &manual.resolved.previous_values(),
         );
         manual.ctx.queue.submit(Some(intent_encoder.finish()));
         intent_session.finish_intent(&manual.ctx);
@@ -1243,10 +1243,10 @@ mod tests {
         session.encode_threshold_scan_with_outputs_into(
             &state.ctx,
             &mut encoder,
-            &state.resolved.values,
-            &state.resolved.previous_values,
-            &state.resolved.output_vectors,
-            &state.resolved.previous_output_vectors,
+            &state.resolved.values(),
+            &state.resolved.previous_values(),
+            &state.resolved.output_vectors(),
+            &state.resolved.previous_output_vectors(),
         );
         state.ctx.queue.submit(Some(encoder.finish()));
         session.finish_threshold_scan(&state.ctx);

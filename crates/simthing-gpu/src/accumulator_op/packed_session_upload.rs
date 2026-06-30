@@ -79,7 +79,9 @@
 
 use simthing_core::{AccumulatorOp, EmlExpressionRegistry, InputSpec, SourceSpec};
 
-use crate::world_state::{IntentDelta, ThresholdRegistration};
+use simthing_kernel::ThresholdRegistration;
+
+use crate::world_state::IntentDelta;
 
 use super::bootstrap_validate::validate_no_contention;
 use super::encode::{threshold_registrations_to_ops, EncodeError};

@@ -7,6 +7,7 @@ mod tests {
     /// Direct `[dependencies]` allowlisted at KERNEL-DEP-BUDGET-0 (DA sign-off required to extend).
     const RUNTIME_ALLOWLIST: &[&str] = &[
         "simthing-core",
+        "simthing-kernel",
         "simthing-gpu",
         "simthing-feeder",
         "bytemuck",

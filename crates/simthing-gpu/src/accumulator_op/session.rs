@@ -13,7 +13,12 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
-use crate::world_state::ThresholdEvent;
+#[cfg(test)]
+use simthing_kernel::readback::emission_record_from_kernel_emit_event;
+use simthing_kernel::readback::{
+    emission_records_from_gpu, threshold_emissions_from_gpu, threshold_event_from_pass7_readback,
+};
+use simthing_kernel::ThresholdEvent;
 
 use super::encode::EncodeError;
 use super::packed_session_upload::{
@@ -1958,10 +1963,7 @@ impl AccumulatorOpSession {
         let used = (count as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.threshold_emission_buffer, 0, used);
         let gpu: &[ThresholdEmissionGpu] = bytemuck::cast_slice(&bytes);
-        Ok(gpu
-            .iter()
-            .map(ThresholdEmission::from_gpu_readback)
-            .collect())
+        Ok(threshold_emissions_from_gpu(gpu))
     }
 
     /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
@@ -1973,7 +1975,7 @@ impl AccumulatorOpSession {
         Ok(emissions
             .into_iter()
             .map(|e| {
-                ThresholdEvent::from_kernel_pass7_readback(
+                threshold_event_from_pass7_readback(
                     e.slot(),
                     e.col(),
                     e.value(),
@@ -2001,10 +2003,7 @@ impl AccumulatorOpSession {
         let used = (read_count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok((
-            count,
-            gpu.iter().map(EmissionRecord::from_gpu_readback).collect(),
-        ))
+        Ok((count, emission_records_from_gpu(gpu)))
     }
 
     /// Read compact emission records written by EmitEvent ops this tick.
@@ -2025,7 +2024,7 @@ impl AccumulatorOpSession {
         let used = (count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
         let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
         let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok(gpu.iter().map(EmissionRecord::from_gpu_readback).collect())
+        Ok(emission_records_from_gpu(gpu))
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
@@ -2932,7 +2931,7 @@ mod tests {
         let emissions = session.readback_emissions(&ctx).unwrap();
         assert_eq!(
             emissions,
-            vec![EmissionRecord::from_kernel_emit_event(0, 3)]
+            vec![emission_record_from_kernel_emit_event(0, 3)]
         );
         let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.7);

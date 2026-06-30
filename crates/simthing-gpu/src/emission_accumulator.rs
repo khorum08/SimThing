@@ -252,7 +252,7 @@ pub fn cpu_oracle_emission_records(
                     return Err(EmissionPlanError::MissingEmlRegistry);
                 }
             };
-            Ok(crate::EmissionRecord::from_cpu_oracle(
+            Ok(simthing_kernel::readback::emission_record_from_cpu_oracle(
                 emission.reg_idx,
                 emit_count,
             ))
