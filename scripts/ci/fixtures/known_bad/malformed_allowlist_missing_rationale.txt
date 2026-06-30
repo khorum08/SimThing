@@ -1,0 +1,2 @@
+# CI fixture: malformed allowlist — missing rationale field (3 fields only).
+forge_x | apply |

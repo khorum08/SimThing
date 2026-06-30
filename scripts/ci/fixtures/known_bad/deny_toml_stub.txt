@@ -1,0 +1,2 @@
+# CI fixture: DENY-TOML-STUB — placeholder deny.toml (stub policy file).
+# Self-test copies this to a temp deny.toml when exercising DENY-TOML-STUB.

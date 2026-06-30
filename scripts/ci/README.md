@@ -14,8 +14,18 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `verify_kernel_surface.py` | Diff `kernel_surface.txt` against `lib.rs` exports |
 | `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
 | `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report |
+| `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** (inert until `doctrine_selftest.sh` lands) |
 
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
+
+## Fixture corpus (`fixtures/`)
+
+Committed in **`CI-A-FIXTURES-0`**. See `fixtures/README.md` for the known-bad and trap inventory.
+
+- **known_bad/** — one fixture per RELIABLE scan (plus HEURISTIC production negative controls).
+- **traps/** — false-positive shapes (comments, `#[cfg(test)]`, `pub(crate)`, jomini `write_*`, etc.).
+
+Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs target `crates/**` and allowlists only. The next rung **`CI-A-SELF-TEST-0`** wires `doctrine_selftest.sh` to exercise this corpus.
 
 ## Run locally (optional)
 
@@ -78,5 +88,7 @@ When an invariant promotes to a type boundary, **delete the scan** in the same P
 
 ## What this rung does not include
 
-- Fixtures, self-test, workflow YAML, hook installer, triage log
+- Self-test runner (`doctrine_selftest.sh`), workflow YAML, hook installer, triage log
 - Any fourth allowlist/config layer
+
+Fixtures live under `fixtures/` — see `fixtures/README.md`.
