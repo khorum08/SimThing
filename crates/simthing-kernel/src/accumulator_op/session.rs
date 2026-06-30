@@ -2143,7 +2143,7 @@ impl AccumulatorOpSession {
     }
 
     /// Standalone submit: write summaries for an external values buffer.
-    pub fn dispatch_world_summaries(&self, ctx: &GpuContext, values: &Buffer) {
+    pub(crate) fn dispatch_world_summaries(&self, ctx: &GpuContext, values: &Buffer) {
         let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {

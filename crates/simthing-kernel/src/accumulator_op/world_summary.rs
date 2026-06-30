@@ -86,11 +86,11 @@ impl WorldSummaryRuntime {
         self.n_dims
     }
 
-    pub fn encode_into(&self, ctx: &GpuContext, encoder: &mut CommandEncoder, values: &Buffer) {
+    pub(crate) fn encode_into(&self, ctx: &GpuContext, encoder: &mut CommandEncoder, values: &Buffer) {
         self.encode_write_summaries_for_values(ctx, encoder, values);
     }
 
-    pub fn dispatch(&self, ctx: &GpuContext, values: &Buffer) {
+    pub(crate) fn dispatch(&self, ctx: &GpuContext, values: &Buffer) {
         let mut encoder = ctx
             .device
             .create_command_encoder(&CommandEncoderDescriptor {
