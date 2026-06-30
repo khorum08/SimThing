@@ -6,6 +6,7 @@ authors.workspace = true
 
 [dependencies]
 simthing-core    = { path = "../simthing-core" }
+simthing-kernel  = { path = "../simthing-kernel" }
 simthing-gpu     = { path = "../simthing-gpu" }
 simthing-feeder  = { path = "../simthing-feeder" }
 bytemuck         = { workspace = true }

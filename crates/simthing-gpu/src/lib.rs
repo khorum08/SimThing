@@ -39,11 +39,10 @@ pub use accumulator_op::{
     set_debug_readback_allowed, summaries_from_values, threshold_registrations_to_ops,
     AccumulatorInputGpu, AccumulatorInputListTable, AccumulatorOpGpu, AccumulatorOpSession,
     AccumulatorOpSessionError, AoWgsl0Compatibility, AoWgsl0FallbackReason, AoWgsl0PlanShape,
-    DebugReadbackGuard, EmissionOpPlanSignature, EmissionRecord, EmlGpuProgramTable,
-    EmlTreeRangeGpu, EmlUploadError, EncodeError, ExactnessClass, InputListRange,
-    IntensityEmlOpPlanSignature, LegacyOracleFamily, OpSetHandle, OperationFamily,
-    OverlayCompileCache, PackedAccumulatorUpload, PackedIntentUpload, PackedThresholdUpload,
-    SlotSummary, ThresholdEmission, ThresholdEmissionGpu, TransferOpPlanSignature,
+    DebugReadbackGuard, EmissionOpPlanSignature, EmlGpuProgramTable, EmlTreeRangeGpu,
+    EmlUploadError, EncodeError, ExactnessClass, InputListRange, IntensityEmlOpPlanSignature,
+    LegacyOracleFamily, OpSetHandle, OperationFamily, OverlayCompileCache, PackedAccumulatorUpload,
+    PackedIntentUpload, PackedThresholdUpload, SlotSummary, TransferOpPlanSignature,
     WorldAccumulatorRuntime, WorldSummaryRuntime, AO_WGSL0_ENTRY_POINT, DEFAULT_EML_NODE_CAPACITY,
     DEFAULT_EML_TREE_CAPACITY, DEFAULT_INPUT_LIST_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
@@ -110,6 +109,12 @@ pub use scheduled_w_palma_batch::{
     ScheduledWPalmaChainEvidence,
 };
 pub use simthing_core::SlotIndex;
+pub use simthing_kernel::{
+    cpu_oracle_threshold_events, EmissionRecord, EmissionRecordGpu, PlacedParticipant,
+    ResolvedWriteAuthority, ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent,
+    ThresholdEventGpu, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD,
+    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES,
+};
 pub use slot::{SlotAllocError, SlotAllocator};
 pub use stress_compose::{
     cpu_stress_compose_oracle, StressComposeConfig, StressComposeError, StressComposeOp,
@@ -155,10 +160,8 @@ pub use w_impedance_compose::{
     W_IMPEDANCE_COMPOSE_WORKGROUP_SIZE,
 };
 pub use world_state::{
-    build_governed_pairs, cpu_oracle_threshold_events, encode_rule, governed_pairs_for_property,
-    GovernedPair, IntentDelta, OverlayDelta, ResolvedWriteAuthority, SlotDeltaRange,
-    ThresholdEvent, ThresholdEventGpu, ThresholdRegistration, WorldGpuState, CLAMP_BOUNDED,
-    CLAMP_FLOORED, CLAMP_UNBOUNDED, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, OP_ADD, OP_MULTIPLY,
-    OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM, RULE_WEIGHTED_MEAN,
-    THRESH_BUF_OUTPUT, THRESH_BUF_VALUES, WEIGHT_COL_NONE,
+    build_governed_pairs, encode_rule, governed_pairs_for_property, GovernedPair, IntentDelta,
+    OverlayDelta, SlotDeltaRange, WorldGpuState, CLAMP_BOUNDED, CLAMP_FLOORED, CLAMP_UNBOUNDED,
+    OP_ADD, OP_MULTIPLY, OP_SET, RULE_FIRST, RULE_MAX, RULE_MEAN, RULE_MIN, RULE_SUM,
+    RULE_WEIGHTED_MEAN, WEIGHT_COL_NONE,
 };

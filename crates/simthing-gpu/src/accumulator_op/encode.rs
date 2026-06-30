@@ -6,9 +6,11 @@ use simthing_core::{
     EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, ThresholdDirection,
 };
 
-use crate::world_state::{
-    IntentDelta, ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES,
+use simthing_kernel::{
+    ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_VALUES,
 };
+
+use crate::world_state::IntentDelta;
 
 use super::bootstrap_validate::{validate_no_contention, BootstrapContention};
 use super::input_list_table::InputListRange;

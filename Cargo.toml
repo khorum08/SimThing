@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/simthing-core",
+    "crates/simthing-kernel",
     "crates/simthing-gpu",
     "crates/simthing-feeder",
     "crates/simthing-sim",

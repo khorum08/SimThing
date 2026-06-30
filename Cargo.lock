@@ -5346,6 +5346,17 @@ dependencies = [
  "bytemuck",
  "pollster 0.3.0",
  "simthing-core",
+ "simthing-kernel",
+ "thiserror 2.0.18",
+ "wgpu 22.1.0",
+]
+
+[[package]]
+name = "simthing-kernel"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "simthing-core",
  "thiserror 2.0.18",
  "wgpu 22.1.0",
 ]
@@ -5395,6 +5406,7 @@ dependencies = [
  "simthing-core",
  "simthing-feeder",
  "simthing-gpu",
+ "simthing-kernel",
  "thiserror 2.0.18",
 ]
 
