@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-fixtures-0`
-- PR: pending
-- Merge: pending
+- PR: [#1031](https://github.com/khorum08/SimThing/pull/1031)
+- Merge: `a2878eb63b` (master)
 
 ## Recipient Agent
 
@@ -121,7 +121,7 @@ scripts/ci/fixtures/traps/studio_antialiasing.rs
 ## DOCTRINE SCAN REPORT
 
 ```
-DOCTRINE SCAN REPORT  (commit ea4c33422a, 2026-06-30T23:11:19Z)
+DOCTRINE SCAN REPORT  (commit a2878eb63b, 2026-06-30T23:14:27Z)
   scanner self-test: SKIPPED
   --- results ---
   B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
