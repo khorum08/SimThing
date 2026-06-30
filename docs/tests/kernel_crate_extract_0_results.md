@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `codex/kernel-crate-extract-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/996
+- Merge: `b677b43cb8`
 
 ## What changed
 
@@ -104,7 +104,7 @@ No resolved-value or threshold-event semantics changed; refactor moves types and
 
 | | Baseline (master) | After extraction |
 |---|---|---|
-| Commit | `b44d9659126bb8f4a687cad5053253e167e6e6b1` | (this branch) |
+| Commit | `b44d9659126bb8f4a687cad5053253e167e6e6b1` | `b677b43cb8` |
 | Command | `cargo test -p simthing-sim --test c1_threshold_perf --release c1_accumulator_threshold_readback_smoke -- --nocapture` | same |
 | Environment | Windows 10, local GPU | same |
 | `new_ms` (10k regs, readback-only) | **0.2145** | **0.1888** |
