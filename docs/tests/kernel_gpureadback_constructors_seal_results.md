@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `kernel-gpureadback-constructors-seal-0`
-- PR: pending
-- Merge: pending
+- PR: [#1030](https://github.com/khorum08/SimThing/pull/1030)
+- Merge: `cd510ac684` (master)
 
 ## Recipient Agent
 
