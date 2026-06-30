@@ -137,9 +137,11 @@ def scan_sealed_producers(allow_path: Path) -> list[str]:
         impl_map = build_sealed_impl_line_map(lines)
         rel = path.relative_to(ROOT).as_posix()
         for line_no, name, rtype, is_crate in extract_pub_functions(text):
-            if is_crate or name in CONSTRUCTOR_NAMES:
+            if is_crate:
                 continue
             impl_sealed = impl_map.get(line_no)
+            if name in CONSTRUCTOR_NAMES and impl_sealed is None:
+                continue
             if not return_type_is_sealed(rtype, impl_sealed):
                 continue
             display_rtype = rtype if rtype.strip() != "Self" else f"Self ({impl_sealed})"
