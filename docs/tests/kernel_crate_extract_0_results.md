@@ -193,3 +193,86 @@ Delta within noise; no regression. Smoke asserts finite timing (no ratio gate on
 
 **0R inlining:** `ReadbackAuthority` is a ZST passed by value (same pattern as `ResolvedWriteAuthority`); extraction LTO/inlining proof still applies — authority param erases at compile time, no runtime branch.
 
+## 0R2 remediation — in-crate readback minting
+
+**DA hold source:** 0R `ReadbackAuthority::for_kernel_readback()` is `pub` (`#[doc(hidden)]` only hides docs). Any crate depending on `simthing-kernel` can mint authority and launder forged GPU POD through public bridges — token gating cannot work cross-crate (Rust has no friend-crate visibility).
+
+**Why token gating fails cross-crate:** private tuple field blocks struct literal, but a public minter reopens the seal; appearance is not enforcement.
+
+**Exact readback/source-buffer move:**
+
+| Kernel-owned type | Buffers | Public read API |
+|---|---|---|
+| `EmissionRecordReadback` | emission records + count | `read_records`, `read_records_capped` → `Vec<EmissionRecord>` |
+| `ThresholdEmissionReadback` | threshold emissions + count | `read_threshold_emissions`, `read_threshold_events` → sealed vecs |
+| `ThresholdEventCandidatesReadback` | Pass 7 event_candidates + count | `read_events` → `Vec<ThresholdEvent>` |
+
+GPU dispatch binds via `#[doc(hidden)] records_binding()` / `count_binding()` only; mint uses `pub(crate)` sealed minters inside kernel.
+
+**Removed public minters/bridges:**
+
+- `ReadbackAuthority` + `for_kernel_readback()` (deleted)
+- `threshold_events_from_gpu`, `threshold_emissions_from_gpu`, `emission_records_from_gpu`
+- `threshold_event_from_pass7_readback`, `emission_record_from_kernel_emit_event`
+- `emission_record_from_cpu_oracle`, `threshold_emission_from_cpu_oracle`
+
+**CPU oracle mint moved in-crate:** `cpu_oracle.rs` (`execute_ops_cpu_with_emissions`, `execute_threshold_ops_cpu`), `emission_oracle.rs` (`cpu_oracle_emission_records`); gpu re-exports or thin-wraps.
+
+**Public API audit (post-0R2):**
+
+| Function | Returns sealed? | Forgeable input? | Verdict |
+|---|---|---|---|
+| `EmissionRecordReadback::read_records` | yes | no — reads kernel-owned GPU buffer | OK |
+| `ThresholdEmissionReadback::read_threshold_emissions/events` | yes | no | OK |
+| `ThresholdEventCandidatesReadback::read_events` | yes | no | OK |
+| `cpu_oracle_threshold_events` | yes | derives from buffer crossings + registrations | OK |
+| `execute_ops_cpu_with_emissions` | yes | derives from op execution | OK |
+| `execute_threshold_ops_cpu` | yes | derives from threshold execution | OK |
+| `cpu_oracle_emission_records` | yes | derives from flat + registration formulas | OK |
+| `validate_and_mint_placed_participants_by_location_id` | `PlacedParticipant` | validates structural table | OK |
+| `ResolvedWriteAuthority::for_boundary_install` | write token | hidden gpu boundary path | OK |
+
+No public function accepts forgeable POD and returns sealed authority.
+
+**Compile-fail proofs (11 total doc tests):**
+
+| Proof | Catches |
+|---|---|
+| `readback.rs` `external_mint_then_launder_threshold_event` | Mint authority + forged POD + bridge (real attack) |
+| `readback.rs` `external_mint_then_launder_emission_record` | Mint authority + forged emission POD + bridge |
+| `readback.rs` `external_pod_bridge_launder` | Bridge without authority (legacy) |
+| `readback.rs` `external_emission_pod_bridge_launder` | Emission bridge without authority |
+| Prior 7 direct-forge compile_fails on sealed types | Struct literal / named constructor forge |
+
+**0R2 proofs rerun:** `cargo test -p simthing-kernel --doc` (11 compile_fail), `cargo test -p simthing-gpu threshold --lib` (18/18), `cargo test -p simthing-sim --test s6_threshold_sunset` (4/4), `mapgen_rf_stead_binding` (7/7), `c1_threshold_perf --release` readback `new_ms=0.2017`.
+
+**Dependency graph:** `simthing-kernel` → `simthing-core`, `bytemuck`, `thiserror`, `wgpu`; no `simthing-kernel → simthing-gpu` cycle; `#![forbid(unsafe_code)]` retained.
+
+**Value parity:** threshold scan CPU oracle, session readback, s6 sunset, mapgen RF binding — all green; no semantic/value changes.
+
+**Performance parity:** pre-extraction `0.2145` ms; post-extraction `0.1888`; post-0R `0.2060`; post-0R2 `0.2017` — within noise; no new hot-path runtime check or dynamic dispatch (readback path unchanged except crate boundary for mint).
+
+**Inlining proof:** accumulator hot path still dispatches from `simthing-gpu` session with kernel-owned buffer bindings only; readback mint is cold-path post-dispatch; no cross-crate indirection on encode/dispatch.
+
+**0R2 scope ledger:**
+
+| File | Change |
+|---|---|
+| `crates/simthing-kernel/src/gpu_readback.rs` | added — kernel-owned readback buffers + in-crate mint |
+| `crates/simthing-kernel/src/cpu_oracle.rs` | added — CPU oracle mint in-crate |
+| `crates/simthing-kernel/src/emission_oracle.rs` | added — emission CPU oracle |
+| `crates/simthing-kernel/src/readback.rs` | compile_fail docs only; bridges removed |
+| `crates/simthing-kernel/src/sealed/readback_authority.rs` | deleted |
+| `crates/simthing-kernel/src/lib.rs`, `sealed/mod.rs` | exports updated |
+| `crates/simthing-gpu/src/accumulator_op/session.rs` | embed kernel readback types |
+| `crates/simthing-gpu/src/world_state.rs` | `ThresholdEventCandidatesReadback` |
+| `crates/simthing-gpu/src/accumulator_op/cpu_oracle.rs` | re-export kernel oracle |
+| `crates/simthing-gpu/src/emission_accumulator.rs` | delegate to kernel emission oracle |
+| `docs/tests/kernel_crate_extract_0_results.md` | this section |
+| `docs/design_0_0_8_4_5_simthing_kernel.md` | rung 6 HELD → PROBATION |
+| `docs/tests/current_evidence_index.md` | 0R2 row |
+
+**Not touched:** `deny.toml`, 0.0.8.5 ClauseScript, closeout landings, full `AccumulatorOpSession` orchestration move.
+
+**Known gaps / next:** DA re-review PROBATION → DONE; optional full session orchestration extraction; optional `cpu_oracle_threshold_events` test-only scope tighten.
+

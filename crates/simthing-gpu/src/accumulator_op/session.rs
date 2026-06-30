@@ -13,12 +13,9 @@ use wgpu::{
 };
 
 use crate::context::GpuContext;
-#[cfg(test)]
-use simthing_kernel::readback::emission_record_from_kernel_emit_event;
-use simthing_kernel::readback::{
-    emission_records_from_gpu, threshold_emissions_from_gpu, threshold_event_from_pass7_readback,
+use simthing_kernel::{
+    EmissionRecordReadback, KernelReadbackError, ThresholdEmissionReadback, ThresholdEvent,
 };
-use simthing_kernel::{ReadbackAuthority, ThresholdEvent};
 
 use super::encode::EncodeError;
 use super::packed_session_upload::{
@@ -26,9 +23,9 @@ use super::packed_session_upload::{
 };
 use super::types::{AccumulatorInputGpu, AccumulatorOpGpu};
 use super::types::{
-    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmissionRecordGpu, EmlNodeGpu,
-    EmlTreeRangeGpu, SlotSummary, SlotSummaryGpu, ThresholdEmission, ThresholdEmissionGpu,
-    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    AccumulatorSummaryParams, AccumulatorTickParams, EmissionRecord, EmlNodeGpu, EmlTreeRangeGpu,
+    SlotSummary, SlotSummaryGpu, ThresholdEmission, DEFAULT_EMISSION_CAPACITY,
+    DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
@@ -115,22 +112,31 @@ pub enum AccumulatorOpSessionError {
     },
 }
 
+impl From<KernelReadbackError> for AccumulatorOpSessionError {
+    fn from(err: KernelReadbackError) -> Self {
+        match err {
+            KernelReadbackError::EmissionOverflow { count, capacity } => {
+                Self::EmissionOverflow { count, capacity }
+            }
+            KernelReadbackError::ThresholdEmissionOverflow { count, capacity } => {
+                Self::ThresholdEmissionOverflow { count, capacity }
+            }
+        }
+    }
+}
+
 /// GPU-resident AccumulatorOp session (B-2 bootstrap + C-1 threshold scan).
 pub struct AccumulatorOpSession {
     n_slots: u32,
     n_dims: u32,
     n_ops: u32,
-    emission_capacity: u32,
-    threshold_emission_capacity: u32,
 
     op_buffer: Buffer,
     values_buffer: Buffer,
     previous_values_buffer: Buffer,
     summary_buffer: Buffer,
-    emission_buffer: Buffer,
-    emission_count: Buffer,
-    threshold_emission_buffer: Buffer,
-    threshold_emission_count: Buffer,
+    emission_readback: EmissionRecordReadback,
+    threshold_emission_readback: ThresholdEmissionReadback,
 
     tick_uniform: Buffer,
     summary_uniform: Buffer,
@@ -235,10 +241,6 @@ impl AccumulatorOpSession {
         let device = &ctx.device;
         let values_len = (n_slots * n_dims) as u64 * 4;
         let summary_len = (n_slots as u64) * std::mem::size_of::<SlotSummaryGpu>() as u64;
-        let emission_len =
-            (emission_capacity as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
-        let threshold_emission_len = (threshold_emission_capacity as u64)
-            * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
 
         let op_buffer = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_op_buffer"),
@@ -268,33 +270,9 @@ impl AccumulatorOpSession {
             mapped_at_creation: false,
         });
 
-        let emission_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("accumulator_emissions"),
-            size: emission_len.max(4),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        let emission_count = device.create_buffer(&BufferDescriptor {
-            label: Some("accumulator_emission_count"),
-            size: 4,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        let threshold_emission_buffer = device.create_buffer(&BufferDescriptor {
-            label: Some("accumulator_threshold_emissions"),
-            size: threshold_emission_len.max(4),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
-
-        let threshold_emission_count = device.create_buffer(&BufferDescriptor {
-            label: Some("accumulator_threshold_emission_count"),
-            size: 4,
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_DST | BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
-        });
+        let emission_readback = EmissionRecordReadback::new(device, emission_capacity);
+        let threshold_emission_readback =
+            ThresholdEmissionReadback::new(device, threshold_emission_capacity);
 
         let tick_uniform = device.create_buffer(&BufferDescriptor {
             label: Some("accumulator_tick_params"),
@@ -469,16 +447,12 @@ impl AccumulatorOpSession {
             n_slots,
             n_dims,
             n_ops: 0,
-            emission_capacity,
-            threshold_emission_capacity,
             op_buffer,
             values_buffer,
             previous_values_buffer,
             summary_buffer,
-            emission_buffer,
-            emission_count,
-            threshold_emission_buffer,
-            threshold_emission_count,
+            emission_readback,
+            threshold_emission_readback,
             tick_uniform,
             summary_uniform,
             eml_node_buffer,
@@ -531,10 +505,8 @@ impl AccumulatorOpSession {
             + self.values_buffer.size()
             + self.previous_values_buffer.size()
             + self.summary_buffer.size()
-            + self.emission_buffer.size()
-            + self.emission_count.size()
-            + self.threshold_emission_buffer.size()
-            + self.threshold_emission_count.size()
+            + self.emission_readback.total_buffer_bytes()
+            + self.threshold_emission_readback.total_buffer_bytes()
             + self.tick_uniform.size()
             + self.summary_uniform.size()
             + self.eml_node_buffer.size()
@@ -555,11 +527,11 @@ impl AccumulatorOpSession {
     }
 
     pub fn emission_capacity(&self) -> u32 {
-        self.emission_capacity
+        self.emission_readback.capacity()
     }
 
     pub fn threshold_emission_capacity(&self) -> u32 {
-        self.threshold_emission_capacity
+        self.threshold_emission_readback.capacity()
     }
 
     /// Whether this session was created with GPU timestamp query support.
@@ -934,17 +906,8 @@ impl AccumulatorOpSession {
     }
 
     pub fn ensure_threshold_emission_capacity(&mut self, ctx: &GpuContext, capacity: u32) {
-        if capacity <= self.threshold_emission_capacity {
-            return;
-        }
-        let len = (capacity as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
-        self.threshold_emission_buffer = ctx.device.create_buffer(&BufferDescriptor {
-            label: Some("accumulator_threshold_emissions"),
-            size: len.max(4),
-            usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        self.threshold_emission_capacity = capacity;
+        self.threshold_emission_readback
+            .ensure_capacity(&ctx.device, capacity);
     }
 
     /// Upload folded intent deltas as a packed intent packet (C-2).
@@ -1268,8 +1231,8 @@ impl AccumulatorOpSession {
                 current_band: band,
                 n_slots: self.n_slots,
                 n_dims: self.n_dims,
-                emission_capacity: self.emission_capacity,
-                threshold_emission_capacity: self.threshold_emission_capacity,
+                emission_capacity: self.emission_readback.capacity(),
+                threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: 0,
                 _pad1: 0,
             };
@@ -1327,8 +1290,8 @@ impl AccumulatorOpSession {
                 current_band: band,
                 n_slots: self.n_slots,
                 n_dims: self.n_dims,
-                emission_capacity: self.emission_capacity,
-                threshold_emission_capacity: self.threshold_emission_capacity,
+                emission_capacity: self.emission_readback.capacity(),
+                threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: dt.to_bits(),
                 _pad1: 0,
             };
@@ -1396,8 +1359,8 @@ impl AccumulatorOpSession {
                 current_band: band,
                 n_slots: self.n_slots,
                 n_dims: self.n_dims,
-                emission_capacity: self.emission_capacity,
-                threshold_emission_capacity: self.threshold_emission_capacity,
+                emission_capacity: self.emission_readback.capacity(),
+                threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: dt.to_bits(),
                 _pad1: n_bands,
             };
@@ -1470,11 +1433,11 @@ impl AccumulatorOpSession {
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: self.emission_buffer.as_entire_binding(),
+                    resource: self.emission_readback.records_binding().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: self.emission_count.as_entire_binding(),
+                    resource: self.emission_readback.count_binding().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 4,
@@ -1486,11 +1449,17 @@ impl AccumulatorOpSession {
                 },
                 BindGroupEntry {
                     binding: 6,
-                    resource: self.threshold_emission_buffer.as_entire_binding(),
+                    resource: self
+                        .threshold_emission_readback
+                        .records_binding()
+                        .as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 7,
-                    resource: self.threshold_emission_count.as_entire_binding(),
+                    resource: self
+                        .threshold_emission_readback
+                        .count_binding()
+                        .as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 8,
@@ -1552,8 +1521,8 @@ impl AccumulatorOpSession {
             current_band: band,
             n_slots: self.n_slots,
             n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
+            emission_capacity: self.emission_readback.capacity(),
+            threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: 0,
             _pad1: 0,
         };
@@ -1603,8 +1572,8 @@ impl AccumulatorOpSession {
             current_band: 0,
             n_slots: self.n_slots,
             n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
+            emission_capacity: self.emission_readback.capacity(),
+            threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: dt.to_bits(),
             _pad1: 0,
         };
@@ -1655,8 +1624,8 @@ impl AccumulatorOpSession {
             current_band: 0,
             n_slots: self.n_slots,
             n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
+            emission_capacity: self.emission_readback.capacity(),
+            threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: dt.to_bits(),
             _pad1: 0,
         };
@@ -1712,8 +1681,8 @@ impl AccumulatorOpSession {
                 current_band: band,
                 n_slots: self.n_slots,
                 n_dims: self.n_dims,
-                emission_capacity: self.emission_capacity,
-                threshold_emission_capacity: self.threshold_emission_capacity,
+                emission_capacity: self.emission_readback.capacity(),
+                threshold_emission_capacity: self.threshold_emission_readback.capacity(),
                 dt_bits: 0,
                 _pad1: 0,
             };
@@ -1767,8 +1736,8 @@ impl AccumulatorOpSession {
             current_band: 0,
             n_slots: self.n_slots,
             n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
+            emission_capacity: self.emission_readback.capacity(),
+            threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: dt.to_bits(),
             _pad1: 0,
         };
@@ -1804,8 +1773,8 @@ impl AccumulatorOpSession {
             current_band: band,
             n_slots: self.n_slots,
             n_dims: self.n_dims,
-            emission_capacity: self.emission_capacity,
-            threshold_emission_capacity: self.threshold_emission_capacity,
+            emission_capacity: self.emission_readback.capacity(),
+            threshold_emission_capacity: self.threshold_emission_readback.capacity(),
             dt_bits: 0,
             _pad1: 0,
         };
@@ -1881,11 +1850,11 @@ impl AccumulatorOpSession {
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: self.emission_buffer.as_entire_binding(),
+                    resource: self.emission_readback.records_binding().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: self.emission_count.as_entire_binding(),
+                    resource: self.emission_readback.count_binding().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 4,
@@ -1897,11 +1866,17 @@ impl AccumulatorOpSession {
                 },
                 BindGroupEntry {
                     binding: 6,
-                    resource: self.threshold_emission_buffer.as_entire_binding(),
+                    resource: self
+                        .threshold_emission_readback
+                        .records_binding()
+                        .as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 7,
-                    resource: self.threshold_emission_count.as_entire_binding(),
+                    resource: self
+                        .threshold_emission_readback
+                        .count_binding()
+                        .as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 8,
@@ -1950,23 +1925,9 @@ impl AccumulatorOpSession {
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEmission>, AccumulatorOpSessionError> {
-        let count = self.read_threshold_emission_count(ctx)?;
-        if count == 0 {
-            return Ok(Vec::new());
-        }
-        if count > self.threshold_emission_capacity {
-            return Err(AccumulatorOpSessionError::ThresholdEmissionOverflow {
-                count,
-                capacity: self.threshold_emission_capacity,
-            });
-        }
-        let used = (count as u64) * std::mem::size_of::<ThresholdEmissionGpu>() as u64;
-        let bytes = self.read_buffer_bytes_range(ctx, &self.threshold_emission_buffer, 0, used);
-        let gpu: &[ThresholdEmissionGpu] = bytemuck::cast_slice(&bytes);
-        Ok(threshold_emissions_from_gpu(
-            gpu,
-            ReadbackAuthority::for_kernel_readback(),
-        ))
+        self.threshold_emission_readback
+            .read_threshold_emissions(&ctx.device, &ctx.queue)
+            .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Reconstruct Pass 7 `ThresholdEvent`s from compact threshold emissions.
@@ -1974,25 +1935,14 @@ impl AccumulatorOpSession {
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<ThresholdEvent>, AccumulatorOpSessionError> {
-        let emissions = self.readback_threshold_emissions(ctx)?;
-        let authority = ReadbackAuthority::for_kernel_readback();
-        Ok(emissions
-            .into_iter()
-            .map(|e| {
-                threshold_event_from_pass7_readback(
-                    e.slot(),
-                    e.col(),
-                    e.value(),
-                    self.threshold_event_kinds[e.reg_idx() as usize],
-                    authority,
-                )
-            })
-            .collect())
+        self.threshold_emission_readback
+            .read_threshold_events(&ctx.device, &ctx.queue, &self.threshold_event_kinds)
+            .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Total emission record attempts this tick (may exceed capacity on overflow).
     pub fn read_emission_count(&self, ctx: &GpuContext) -> Result<u32, AccumulatorOpSessionError> {
-        self.read_emission_count_inner(ctx)
+        Ok(self.emission_readback.read_count(&ctx.device, &ctx.queue))
     }
 
     /// Read up to `emission_capacity` records plus the total attempt count.
@@ -2000,18 +1950,9 @@ impl AccumulatorOpSession {
         &self,
         ctx: &GpuContext,
     ) -> Result<(u32, Vec<EmissionRecord>), AccumulatorOpSessionError> {
-        let count = self.read_emission_count_inner(ctx)?;
-        if count == 0 {
-            return Ok((0, Vec::new()));
-        }
-        let read_count = count.min(self.emission_capacity);
-        let used = (read_count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
-        let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
-        let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok((
-            count,
-            emission_records_from_gpu(gpu, ReadbackAuthority::for_kernel_readback()),
-        ))
+        self.emission_readback
+            .read_records_capped(&ctx.device, &ctx.queue)
+            .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Read compact emission records written by EmitEvent ops this tick.
@@ -2019,23 +1960,9 @@ impl AccumulatorOpSession {
         &self,
         ctx: &GpuContext,
     ) -> Result<Vec<EmissionRecord>, AccumulatorOpSessionError> {
-        let count = self.read_emission_count_inner(ctx)?;
-        if count == 0 {
-            return Ok(Vec::new());
-        }
-        if count > self.emission_capacity {
-            return Err(AccumulatorOpSessionError::EmissionOverflow {
-                count,
-                capacity: self.emission_capacity,
-            });
-        }
-        let used = (count as u64) * std::mem::size_of::<EmissionRecordGpu>() as u64;
-        let bytes = self.read_buffer_bytes_range(ctx, &self.emission_buffer, 0, used);
-        let gpu: &[EmissionRecordGpu] = bytemuck::cast_slice(&bytes);
-        Ok(emission_records_from_gpu(
-            gpu,
-            ReadbackAuthority::for_kernel_readback(),
-        ))
+        self.emission_readback
+            .read_records(&ctx.device, &ctx.queue)
+            .map_err(AccumulatorOpSessionError::from)
     }
 
     /// Full values buffer readback — debug only unless explicitly allowed.
@@ -2051,29 +1978,11 @@ impl AccumulatorOpSession {
     }
 
     fn reset_emission_count(&self, ctx: &GpuContext) {
-        ctx.queue
-            .write_buffer(&self.emission_count, 0, &0u32.to_le_bytes());
+        self.emission_readback.reset_count(&ctx.queue);
     }
 
     fn reset_threshold_emission_count(&self, ctx: &GpuContext) {
-        ctx.queue
-            .write_buffer(&self.threshold_emission_count, 0, &0u32.to_le_bytes());
-    }
-
-    fn read_emission_count_inner(
-        &self,
-        ctx: &GpuContext,
-    ) -> Result<u32, AccumulatorOpSessionError> {
-        let bytes = self.read_buffer_bytes(ctx, &self.emission_count);
-        Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-    }
-
-    fn read_threshold_emission_count(
-        &self,
-        ctx: &GpuContext,
-    ) -> Result<u32, AccumulatorOpSessionError> {
-        let bytes = self.read_buffer_bytes(ctx, &self.threshold_emission_count);
-        Ok(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+        self.threshold_emission_readback.reset_count(&ctx.queue);
     }
 
     fn read_execute_pass_timestamp(&mut self, ctx: &GpuContext) {
@@ -2940,14 +2849,9 @@ mod tests {
         session.tick(&ctx, 0).unwrap();
 
         let emissions = session.readback_emissions(&ctx).unwrap();
-        assert_eq!(
-            emissions,
-            vec![emission_record_from_kernel_emit_event(
-                0,
-                3,
-                ReadbackAuthority::for_kernel_readback(),
-            )]
-        );
+        assert_eq!(emissions.len(), 1);
+        assert_eq!(emissions[0].reg_idx(), 0);
+        assert_eq!(emissions[0].emit_count(), 3);
         let values = session.readback_full(&ctx).unwrap();
         assert_eq!(values[0], 3.7);
     }
