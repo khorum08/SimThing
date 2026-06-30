@@ -42,10 +42,10 @@ door_class_matches_producer_grammar() {
   local tail
   tail="$(symbol_tail "$symbol")"
   case "$door" in
-    read) [[ "$tail" =~ ^read_ ]] ;;
+    read) [[ "$tail" =~ ^(read_|readback_) ]] ;;
     dispatch) [[ "$tail" =~ ^dispatch_ ]] || [[ "$tail" == "dispatch" ]] ;;
     apply) [[ "$tail" =~ ^apply_ ]] ;;
-    cpu_oracle) [[ "$tail" =~ ^cpu_oracle_ ]] ;;
+    cpu_oracle) [[ "$tail" =~ ^cpu_oracle_ ]] || [[ "$tail" == "execute_ops_cpu_with_emissions" ]] || [[ "$tail" == "execute_threshold_ops_cpu" ]] ;;
     *) false ;;
   esac
 }
@@ -278,6 +278,43 @@ run_rg_scan() {
   return 0
 }
 
+run_allowlist_scan() {
+  local mode="$1"
+  local -n _matches_out="$2"
+  _matches_out=()
+
+  if ! command -v python >/dev/null 2>&1; then
+    die_scanner "python not found on PATH (required for @ALLOWLIST scans)"
+    return 2
+  fi
+
+  local script="${SCRIPT_DIR}/scan_allowlists.py"
+  if [[ ! -f "$script" ]]; then
+    die_scanner "missing scan_allowlists.py"
+    return 2
+  fi
+
+  local out=""
+  local py_status=0
+  set +e
+  out="$(python "$script" "$mode" 2>&1)"
+  py_status=$?
+  set -e
+
+  if [[ "$py_status" -eq 2 ]]; then
+    die_scanner "allowlist scan error (${mode}): ${out}"
+    return 2
+  fi
+
+  if [[ -n "$out" ]]; then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      _matches_out+=("$line")
+    done <<<"$out"
+  fi
+  return 0
+}
+
 run_require_scan() {
   local pattern="$1"
   local target_glob="$2"
@@ -338,8 +375,9 @@ run_scans() {
     local doctrine_ref="${fields[5]}"
     local promotion_blocker="${fields[6]}"
     local require_mode=0
+    local allowlist_mode=""
 
-    if [[ -z "$scan_id" || -z "$severity" || -z "$target_glob" || -z "$pattern" || -z "$doctrine_ref" ]]; then
+    if [[ -z "$scan_id" || -z "$severity" || -z "$pattern" || -z "$doctrine_ref" ]]; then
       die_scanner "scans.tsv:${line_num}: empty required field in '${scan_id}'"
       continue
     fi
@@ -360,11 +398,16 @@ run_scans() {
     if [[ "$pattern" == @REQUIRE:* ]]; then
       require_mode=1
       pattern="${pattern#@REQUIRE:}"
+    elif [[ "$pattern" == @ALLOWLIST:* ]]; then
+      allowlist_mode="${pattern#@ALLOWLIST:}"
     fi
 
     local matches=()
     local run_status=0
-    if [[ "$require_mode" -eq 1 ]]; then
+    if [[ -n "$allowlist_mode" ]]; then
+      run_allowlist_scan "$allowlist_mode" matches
+      run_status=$?
+    elif [[ "$require_mode" -eq 1 ]]; then
       run_require_scan "$pattern" "$target_glob" matches
       run_status=$?
     else

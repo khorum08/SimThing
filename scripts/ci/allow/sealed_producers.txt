@@ -1,6 +1,8 @@
 # symbol | door-class | rationale | promotion-blocker
 cpu_oracle_threshold_events | cpu_oracle | CPU-oracle twin for threshold events; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
 cpu_oracle_emission_records | cpu_oracle | CPU-oracle twin for emission records; parity-only path | retire when CPU oracle is type-quarantined to in-crate parity harness
+execute_ops_cpu_with_emissions | cpu_oracle | CPU-oracle batch path returning emission records; parity-only | retire when CPU oracle batch path is in-crate only
+execute_threshold_ops_cpu | cpu_oracle | CPU-oracle batch path returning threshold emissions; parity-only | retire when CPU oracle batch path is in-crate only
 apply_candidate_f_exact_magnitude | apply | Sanctioned exact-magnitude write door for Candidate F | retire when exact write is an in-crate AccumulatorOp type boundary only
 read_event_candidates | read | Read sealed ThresholdEvent candidates from WorldGpuState | retire when threshold events are observed only via typed read view
 read_records | read | Read sealed EmissionRecord values via EmissionRecordReadback | retire when emission readback is in-crate only
@@ -8,3 +10,7 @@ read_records_capped | read | Capped read of sealed EmissionRecord via readback h
 read_threshold_emissions | read | Read sealed ThresholdEmission via ThresholdEmissionReadback | retire when threshold emission readback is in-crate only
 read_threshold_events | read | Read sealed ThresholdEvent via ThresholdEmissionReadback | retire when threshold event readback is in-crate only
 read_events | read | Read threshold event candidates via ThresholdEventCandidatesReadback | retire when candidate readback is in-crate only
+readback_threshold_emissions | read | Session readback door for sealed ThresholdEmission records | retire when threshold emission readback is in-crate only
+readback_threshold_events | read | Session readback door for sealed ThresholdEvent records | retire when threshold event readback is in-crate only
+readback_emissions | read | Session readback door for sealed EmissionRecord slice | retire when emission readback is in-crate only
+readback_emissions_capped | read | Capped session readback door for sealed EmissionRecord records | retire when emission readback is in-crate only

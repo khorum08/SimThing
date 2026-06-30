@@ -7,11 +7,13 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | Path | Role |
 |---|---|
 | `scans.tsv` | One scan per non-comment line: `id \| severity \| target-glob \| pattern \| exclude \| doctrine-ref \| promotion-blocker` |
-| `allow/sealed_producers.txt` | Sanctioned sealed-type producer doors (`read_*` / `dispatch_*` / `apply_*` / `cpu_oracle_*`) |
+| `sealed_producers.txt` | Sanctioned sealed-type producer doors (`read_*`/`readback_*` / `dispatch_*` / `apply_*` / `cpu_oracle_*`) |
 | `allow/inert_buffer_handles.txt` | Provably-inert public buffer utilities (`inert-util` only) |
 | `allow/kernel_surface.txt` | Closed set of kernel `lib.rs` exports (`surface-inert` / `authority-export` / `sealed-export`) |
 | `audit_kernel_surface.py` | Re-derive `kernel_surface.txt` from `lib.rs` (grouped + single-line `pub use`) |
-| `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U`, emits the §1 report |
+| `verify_kernel_surface.py` | Diff `kernel_surface.txt` against `lib.rs` exports |
+| `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
+| `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report |
 
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
 
@@ -29,7 +31,7 @@ Authoritative execution is on GitHub (`ubuntu-latest`) after `CI-A-WORKFLOW-0`. 
 
 | File | Allowed `door-class` values | Grammar |
 |---|---|---|
-| `sealed_producers.txt` | `read`, `dispatch`, `apply`, `cpu_oracle` | Symbol must match producer prefix grammar |
+| `sealed_producers.txt` | `read`, `dispatch`, `apply`, `cpu_oracle` | `read_*`/`readback_*`; `dispatch_*`; `apply_*`; `cpu_oracle_*` or sanctioned `execute_*_cpu` oracle batch doors |
 | `inert_buffer_handles.txt` | `inert-util` | Genuinely inert caller-owned buffer utilities only |
 | `kernel_surface.txt` | `surface-inert`, `authority-export`, `sealed-export` | **`inert-util` forbidden** — no laundering authority as inert |
 
@@ -53,7 +55,18 @@ python scripts/ci/verify_kernel_surface.py   # completeness diff vs lib.rs
 3. Every `RELIABLE` line needs a non-empty `promotion-blocker`.
 4. Use `rg -U` multiline patterns; put false-positive filters in `exclude` (semicolon-separated).
 5. Prefix pattern with `@REQUIRE:` when the scan must find the pattern in every target file.
-6. Do **not** edit `doctrine_scan.sh` for doctrine changes (HEURISTIC-only generic filters live in the runner).
+6. Prefix pattern with `@ALLOWLIST:sealed-producers`, `@ALLOWLIST:buffer-handles`, or `@ALLOWLIST:kernel-surface` for closed-set RELIABLE allowlist scans (implemented by `scan_allowlists.py`).
+7. Do **not** edit `doctrine_scan.sh` for doctrine changes (HEURISTIC-only generic filters and generic `@ALLOWLIST:` dispatch live in the runner).
+
+## Closed-set allowlist scans (RELIABLE)
+
+| Scan ID | Allowlist | Behavior |
+|---|---|---|
+| `ALLOW-SEALED-PRODUCERS` | `sealed_producers.txt` | Every public `pub fn` in `simthing-kernel/src` returning a sealed type must be allowlisted (multiline signatures; `pub(crate)` excluded) |
+| `ALLOW-BUFFER-HANDLES` | `inert_buffer_handles.txt` | Every public `Buffer`/`&Buffer`/`BindingResource` escape must be allowlisted or `pub(crate)` |
+| `ALLOW-KERNEL-SURFACE` | `kernel_surface.txt` | `lib.rs` exports must exactly match the allowlist (grouped + single-line `pub use`) |
+
+On FAIL, add one conforming row to the relevant `allow/*.txt` — do not edit the scanner.
 
 ## Earn one allowlist record
 
@@ -65,6 +78,5 @@ When an invariant promotes to a type boundary, **delete the scan** in the same P
 
 ## What this rung does not include
 
-- Closed-set allowlist **enforcement** scans (`CI-A-ALLOWLIST-SCANS-0`)
 - Fixtures, self-test, workflow YAML, hook installer, triage log
 - Any fourth allowlist/config layer
