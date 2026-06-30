@@ -36,7 +36,7 @@ symbol_tail() {
   fi
 }
 
-door_class_matches_grammar() {
+door_class_matches_producer_grammar() {
   local symbol="$1"
   local door="$2"
   local tail
@@ -46,9 +46,80 @@ door_class_matches_grammar() {
     dispatch) [[ "$tail" =~ ^dispatch_ ]] || [[ "$tail" == "dispatch" ]] ;;
     apply) [[ "$tail" =~ ^apply_ ]] ;;
     cpu_oracle) [[ "$tail" =~ ^cpu_oracle_ ]] ;;
-    inert-util) true ;;
     *) false ;;
   esac
+}
+
+validate_allow_record() {
+  local relpath="$1"
+  local line_num="$2"
+  local symbol="$3"
+  local door="$4"
+  local rationale="$5"
+  local blocker="$6"
+
+  case "$relpath" in
+    allow/sealed_producers.txt)
+      case "$door" in
+        read|dispatch|apply|cpu_oracle) ;;
+        *)
+          die_scanner "${relpath}:${line_num}: invalid door-class '${door}' (sealed_producers: read|dispatch|apply|cpu_oracle only)"
+          return
+          ;;
+      esac
+      if ! door_class_matches_producer_grammar "$symbol" "$door"; then
+        die_scanner "${relpath}:${line_num}: symbol '${symbol}' does not match door-class '${door}' grammar"
+      fi
+      ;;
+    allow/inert_buffer_handles.txt)
+      if [[ "$door" != "inert-util" ]]; then
+        die_scanner "${relpath}:${line_num}: invalid door-class '${door}' (inert_buffer_handles: inert-util only)"
+      fi
+      ;;
+    allow/kernel_surface.txt)
+      case "$door" in
+        surface-inert|authority-export|sealed-export) ;;
+        inert-util)
+          die_scanner "${relpath}:${line_num}: inert-util is forbidden in kernel_surface.txt (use surface-inert|authority-export|sealed-export)"
+          ;;
+        *)
+          die_scanner "${relpath}:${line_num}: invalid door-class '${door}' (kernel_surface: surface-inert|authority-export|sealed-export only)"
+          ;;
+      esac
+      ;;
+    *)
+      die_scanner "${relpath}:${line_num}: unknown allowlist file"
+      ;;
+  esac
+}
+
+validate_allow_file() {
+  local file="$1"
+  local relpath="${file#"${SCRIPT_DIR}/"}"
+  local line_num=0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line_num=$((line_num + 1))
+    line="$(trim "$line")"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    local fields=()
+    if ! parse_allow_fields "$line" fields; then
+      die_scanner "${relpath}:${line_num}: expected 4 fields (symbol | door-class | rationale | promotion-blocker)"
+      continue
+    fi
+    if [[ "${#fields[@]}" -ne 4 ]]; then
+      die_scanner "${relpath}:${line_num}: expected 4 fields, got ${#fields[@]}"
+      continue
+    fi
+    local symbol="${fields[0]}"
+    local door="${fields[1]}"
+    local rationale="${fields[2]}"
+    local blocker="${fields[3]}"
+    if [[ -z "$symbol" || -z "$door" || -z "$rationale" || -z "$blocker" ]]; then
+      die_scanner "${relpath}:${line_num}: empty symbol, door-class, rationale, or promotion-blocker"
+      continue
+    fi
+    validate_allow_record "$relpath" "$line_num" "$symbol" "$door" "$rationale" "$blocker"
+  done <"$file"
 }
 
 parse_fields() {
@@ -95,44 +166,6 @@ parse_allow_fields() {
   return 0
 }
 
-validate_allow_file() {
-  local file="$1"
-  local relpath="${file#"${SCRIPT_DIR}/"}"
-  local line_num=0
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    line_num=$((line_num + 1))
-    line="$(trim "$line")"
-    [[ -z "$line" || "$line" == \#* ]] && continue
-    local fields=()
-    if ! parse_allow_fields "$line" fields; then
-      die_scanner "${relpath}:${line_num}: expected 4 fields (symbol | door-class | rationale | promotion-blocker)"
-      continue
-    fi
-    if [[ "${#fields[@]}" -ne 4 ]]; then
-      die_scanner "${relpath}:${line_num}: expected 4 fields, got ${#fields[@]}"
-      continue
-    fi
-    local symbol="${fields[0]}"
-    local door="${fields[1]}"
-    local rationale="${fields[2]}"
-    local blocker="${fields[3]}"
-    if [[ -z "$symbol" || -z "$door" || -z "$rationale" || -z "$blocker" ]]; then
-      die_scanner "${relpath}:${line_num}: empty symbol, door-class, rationale, or promotion-blocker"
-      continue
-    fi
-    case "$door" in
-      read|dispatch|apply|cpu_oracle|inert-util) ;;
-      *)
-        die_scanner "${relpath}:${line_num}: invalid door-class '${door}' (must be read|dispatch|apply|cpu_oracle|inert-util)"
-        continue
-        ;;
-    esac
-    if ! door_class_matches_grammar "$symbol" "$door"; then
-      die_scanner "${relpath}:${line_num}: symbol '${symbol}' does not match door-class '${door}' grammar"
-    fi
-  done <"$file"
-}
-
 load_and_validate_allowlists() {
   local f
   for f in "${ALLOW_DIR}/sealed_producers.txt" "${ALLOW_DIR}/inert_buffer_handles.txt" "${ALLOW_DIR}/kernel_surface.txt"; do
@@ -167,17 +200,59 @@ line_matches_any_exclude() {
   return 1
 }
 
+heuristic_in_cfg_test_region() {
+  local line="$1"
+  local file line_num rel
+  if [[ "$line" =~ ^(.+):([0-9]+): ]]; then
+    file="${BASH_REMATCH[1]}"
+    line_num="${BASH_REMATCH[2]}"
+  else
+    return 1
+  fi
+  file="${file//\\//}"
+  file="${file#./}"
+  if [[ "$file" == crates/* ]]; then
+    rel="$file"
+  elif [[ "$file" == */crates/* ]]; then
+    rel="${file#*/crates/}"
+    rel="crates/${rel}"
+  else
+    return 1
+  fi
+  local abs="${REPO_ROOT}/${rel}"
+  [[ -f "$abs" ]] || return 1
+  local cfg_line=0
+  local entry n
+  while IFS= read -r entry; do
+    [[ -z "$entry" ]] && continue
+    n="${entry%%:*}"
+    [[ "$n" =~ ^[0-9]+$ ]] || continue
+    if [[ "$n" -lt "$line_num" && "$n" -gt "$cfg_line" ]]; then
+      cfg_line="$n"
+    fi
+  done < <(rg -n '#\[cfg\(test\)\]' "$abs" 2>/dev/null || true)
+  [[ "$cfg_line" -eq 0 ]] && return 1
+  sed -n "${cfg_line},$((cfg_line + 4))p" "$abs" | rg -q 'mod tests' 2>/dev/null || return 1
+  [[ "$line_num" -gt "$cfg_line" ]]
+}
+
 run_rg_scan() {
   local pattern="$1"
   local target_glob="$2"
   local excludes="$3"
-  local -n _matches_out="$4"
+  local severity="$4"
+  local -n _matches_out="$5"
   _matches_out=()
+
+  local rg_args=(-U --multiline --no-heading --line-number --with-filename -g "$target_glob" -e "$pattern")
+  if [[ "$severity" == "HEURISTIC" ]]; then
+    rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+  fi
 
   local rg_out=""
   local rg_status=0
   set +e
-  rg_out="$(cd "$REPO_ROOT" && rg -U --multiline --no-heading --line-number --with-filename -g "$target_glob" -e "$pattern" . 2>&1)"
+  rg_out="$(cd "$REPO_ROOT" && rg "${rg_args[@]}" . 2>&1)"
   rg_status=$?
   set -e
 
@@ -193,6 +268,9 @@ run_rg_scan() {
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
     if line_matches_any_exclude "$line" "$excludes"; then
+      continue
+    fi
+    if [[ "$severity" == "HEURISTIC" ]] && heuristic_in_cfg_test_region "$line"; then
       continue
     fi
     _matches_out+=("$line")
@@ -290,7 +368,7 @@ run_scans() {
       run_require_scan "$pattern" "$target_glob" matches
       run_status=$?
     else
-      run_rg_scan "$pattern" "$target_glob" "$excludes" matches
+      run_rg_scan "$pattern" "$target_glob" "$excludes" "$severity" matches
       run_status=$?
     fi
     if [[ "$run_status" -eq 2 ]]; then
