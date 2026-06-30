@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-allowlist-scans-0r2` (0R2)
-- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0), [#1028](https://github.com/khorum08/SimThing/pull/1028) (0R), 0R2 PR pending
-- Merge: `78ad4631a3` (0), `74f0c810c1` (0R); 0R2 merge SHA pending
+- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0), [#1028](https://github.com/khorum08/SimThing/pull/1028) (0R), [#1029](https://github.com/khorum08/SimThing/pull/1029) (0R2)
+- Merge: `78ad4631a3` (0), `74f0c810c1` (0R), `a1fc28babf` (0R2, master)
 
 ## Recipient Agent
 
@@ -112,7 +112,7 @@ Opus / Owner
 ## DOCTRINE SCAN REPORT
 
 ```
-DOCTRINE SCAN REPORT  (commit 74f0c810c1, 2026-06-30T22:20:51Z)
+DOCTRINE SCAN REPORT  (commit a1fc28babf, 2026-06-30T22:37:35Z)
   scanner self-test: SKIPPED
   --- results ---
   B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
@@ -126,10 +126,12 @@ DOCTRINE SCAN REPORT  (commit 74f0c810c1, 2026-06-30T22:20:51Z)
   SIM-KIND-READ  PASS  0  design §5 sim .kind read
   SEMANTIC-WORDS  PASS  0  design §5 semantic words below spec
   SPEC-STRING-CHANNEL  PASS  0  design §5 stringly channel identity
-  ALLOW-SEALED-PRODUCERS  PASS  0  design §5 sealed producer allowlist
+  ALLOW-SEALED-PRODUCERS  FAIL  3  design §5 sealed producer allowlist crates/simthing-kernel/src/gpu_readback.rs:77: unsanctioned sealed producer `new` -> Self (EmissionRecordReadback)
+ crates/simthing-kernel/src/gpu_readback.rs:178: unsanctioned sealed producer `new` -> Self (ThresholdEmissionReadback)
+ crates/simthing-kernel/src/gpu_readback.rs:291: unsanctioned sealed producer `new` -> Self (ThresholdEventCandidatesReadback)
   ALLOW-BUFFER-HANDLES  PASS  0  design §5 buffer handle allowlist
   ALLOW-KERNEL-SURFACE  PASS  0  design §5 kernel surface allowlist
   --- summary ---
-  hard failures: 0   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
-DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  hard failures: 3   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
+DOCTRINE-SCAN-VERDICT: FAIL  failures=3 inspect=0 selftest=SKIPPED
 ```
