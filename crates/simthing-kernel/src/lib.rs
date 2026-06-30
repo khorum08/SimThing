@@ -28,9 +28,9 @@ pub use registration::{
 };
 pub use resolved::ResolvedGpuBuffers;
 pub use sealed::{
-    cpu_oracle_threshold_events, EmissionRecord, EmissionRecordGpu, ResolvedWriteAuthority,
-    ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent, ThresholdEventGpu,
-    DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
+    cpu_oracle_threshold_events, EmissionRecord, EmissionRecordGpu, ReadbackAuthority,
+    ResolvedWriteAuthority, ThresholdEmission, ThresholdEmissionGpu, ThresholdEvent,
+    ThresholdEventGpu, DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
 
 #[cfg(test)]

@@ -8,6 +8,7 @@ use simthing_core::{
 use simthing_kernel::readback::{
     emission_record_from_cpu_oracle, threshold_emission_from_cpu_oracle,
 };
+use simthing_kernel::ReadbackAuthority;
 
 use crate::world_state::IntentDelta;
 
@@ -227,6 +228,7 @@ pub fn execute_threshold_ops_cpu(
                         slot.raw(),
                         col.raw_u32(),
                         curr,
+                        ReadbackAuthority::for_kernel_readback(),
                     ));
                 }
             }
@@ -478,7 +480,11 @@ fn maybe_emit_event(
     }
     let emit_count = write_value.max(0.0).floor() as u32;
     if emit_count > 0 {
-        records.push(emission_record_from_cpu_oracle(op_idx as u32, emit_count));
+        records.push(emission_record_from_cpu_oracle(
+            op_idx as u32,
+            emit_count,
+            ReadbackAuthority::for_kernel_readback(),
+        ));
     }
 }
 
@@ -588,7 +594,14 @@ mod tests {
         };
         let records =
             execute_ops_cpu_with_emissions(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(records, vec![emission_record_from_cpu_oracle(0, 3)]);
+        assert_eq!(
+            records,
+            vec![emission_record_from_cpu_oracle(
+                0,
+                3,
+                ReadbackAuthority::for_kernel_readback(),
+            )]
+        );
         assert_eq!(values[0], 3.7);
     }
 
