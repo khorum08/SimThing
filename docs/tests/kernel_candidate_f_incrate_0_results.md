@@ -8,7 +8,8 @@
 
 - Branch: `kernel-candidate-f-incrate-0`
 - Parent: [#1009](https://github.com/khorum08/SimThing/pull/1009) `094178ed7b` (DISPATCH-INCRATE-0R2)
-- PR: (pending)
+- PR: [#1011](https://github.com/khorum08/SimThing/pull/1011)
+- Post-merge: `dcce2e6b28`
 
 ## Owner decision applied
 
