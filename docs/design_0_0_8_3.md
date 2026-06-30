@@ -297,6 +297,31 @@ withdrawn-phrase scan + structural/MF/PALMA/ledger guards, including a guard tha
 its `stead_spatial_contract.md` pointer remain present in §0**) and `mapgen_rf_stead_binding.rs`. A future
 constitution that drops this clause or the pointer is **defective** (§0 preamble).
 
+### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)
+
+> **Added 2026-06-29 by design authority on owner mandate, after the 0.0.8.4 / 0.0.8.4.5 admission-substrate
+> + SimThing-Kernel tracks. Like the rest of §0, this carries forward verbatim to every future version,
+> amended only by addition.** The full paradigm is [`simthing_core_design.md`](simthing_core_design.md) §1.2
+> + §1.2.1 (load-bearing and governing); a longer `simthing-kernel` ADR may elaborate but never supersedes it.
+
+1. **Doctrine-as-Type.** Encode an invariant at the highest admission rung that can express it — **type
+   boundary (illegal state uncompilable) > admission hard-error > guard scan > prose.** A guard scan or prose
+   rule that exists only because a type didn't is a **promotion target**, not a fixture. This is permanent and
+   applies to *past* routes (refactor them up) as much as new ones.
+2. **The kernel is the authority.** `simthing-kernel` is the sole owner of authoritative state and sole minter
+   of authoritative effects; consumers get a read-only view + sanctioned in-crate doors. It is the
+   runtime-authority layer and composes with (never replaces) content-admission.
+3. **The cross-crate seal law.** *Mint authoritative types in the crate that privately owns their source of
+   truth; never re-seal across a crate boundary with a token* (Rust has no friend-crate visibility; cross-crate
+   `pub`/`#[doc(hidden)]` is capability-for-everyone). When sealing conflicts with crate convenience,
+   Doctrine-as-Type wins and the code moves *into* the owning crate. Binding on every future authority
+   extraction (spec, scenario, …).
+4. **Residue-as-tripwire.** The irreducible residue (CPU-oracle twin, WGSL text, inert utilities) is a
+   **named, greppable tripwire catalogue**, admissible only per-item and justified — never a categorical
+   wave-through — so routing through it is a *declared, deliberate circumvention* the orchestrator flags
+   (`seal-residue-risk`). An artifact that looks like a gate but enforces nothing is **deleted, not
+   annotated** (§0.6.6).
+
 ---
 
 ## A. Closeout addendum — the ClauseThing vertical (ratified 2026-06-15)

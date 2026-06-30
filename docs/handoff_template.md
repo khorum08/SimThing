@@ -47,6 +47,13 @@
   **guard scan** > **prose**. Do not narrate in prose or a guard test what a type should make
   unrepresentable; a guard scan that exists only because a type didn't is a promotion target. Spend the
   budget Rust frees on type/admission boundaries + semantic conformance — never on process ceremony.
+- **The kernel owns authority; seals don't cross crate boundaries (core §1.2.1, constitution §0.9).**
+  Authoritative state/effects live in `simthing-kernel`; consumers get a read-only view + sanctioned doors.
+  **Mint authoritative types in the crate that privately owns their source of truth; never re-seal across a
+  crate boundary with a token** (cross-crate `pub`/`#[doc(hidden)]` is capability-for-everyone). The
+  irreducible residue (CPU-oracle twin, WGSL, inert utilities) is a **named tripwire catalogue, not a gap** —
+  routing through it is deliberate circumvention; flag it (`seal-residue-risk`). An artifact that looks like a
+  gate but enforces nothing is deleted, not annotated.
 
 If the change cannot be expressed within these lines, **stop and escalate to the DA** — do not special-case.
 
