@@ -5,8 +5,10 @@
 //! PALMA, FIELD_POLICY, hyperlane coupling, or runtime/GPU/driver/simthing-sim surfaces.
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SimThing, SimThingId, SubFieldRole,
-    SubFieldSpec,
+    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, PlacedParticipantValidationError,
+    SimThing, SimThingId, StructuralGridPlacement, SubFieldRole, SubFieldSpec,
+    validate_and_mint_placed_participants_by_location_id,
+    validate_location_ids_have_structural_placements,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::{
@@ -14,7 +16,10 @@ use simthing_spec::spec::resource_flow::{
     EnrollmentSelectorSpec, ResourceFlowOptInMode, ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
-use simthing_spec::{ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, PropertySpec};
+use simthing_spec::{
+    ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, PropertySpec,
+    spatial_arena_explicit_participants,
+};
 
 use crate::hydrate_scenario::HydratedScenarioPack;
 use crate::mapgen_lattice::{
@@ -182,31 +187,60 @@ pub fn validate_spatial_binding(
     if mode == SpatialBindingMode::SpatiallyNeutral {
         return Ok(());
     }
-    let mut placed: std::collections::BTreeMap<&str, (u32, u32)> =
-        std::collections::BTreeMap::new();
-    for placement in &grid_metadata.placements {
-        if placed
-            .insert(
-                placement.location_id.as_str(),
-                (placement.row, placement.col),
-            )
-            .is_some()
-        {
-            return Err(MapGenResourceFlowError::new(format!(
-                "spatially-bound RF: duplicate structural grid placement for Location `{}`",
-                placement.location_id
-            )));
-        }
-    }
-    for id in participant_node_ids {
-        if !placed.contains_key(id.as_str()) {
-            return Err(MapGenResourceFlowError::new(format!(
-                "spatially-bound RF: Location participant `{id}` has no structural grid placement \
-                 (STEAD/Mapping: Location participation is spatially indexed through grid_metadata, never render metadata)"
-            )));
-        }
-    }
-    Ok(())
+    let placements: Vec<StructuralGridPlacement<'_>> = grid_metadata
+        .placements
+        .iter()
+        .map(|placement| StructuralGridPlacement {
+            location_id: placement.location_id.as_str(),
+            coord: simthing_core::StructuralCoord::new(placement.col, placement.row),
+        })
+        .collect();
+    let participant_refs: Vec<&str> = participant_node_ids.iter().map(String::as_str).collect();
+    validate_location_ids_have_structural_placements(&participant_refs, &placements)
+        .map_err(map_placed_participant_validation_error)
+}
+
+fn map_placed_participant_validation_error(
+    err: PlacedParticipantValidationError,
+) -> MapGenResourceFlowError {
+    MapGenResourceFlowError::new(err.message)
+}
+
+fn mint_spatial_arena_participants(
+    gridcells: &[GridcellEnrollment],
+    hierarchy: &MapGenLatticeHierarchy,
+) -> Result<Vec<ExplicitParticipantSpec>, MapGenResourceFlowError> {
+    let placements: Vec<StructuralGridPlacement<'_>> = hierarchy
+        .pack
+        .grid_metadata
+        .placements
+        .iter()
+        .map(|placement| StructuralGridPlacement {
+            location_id: placement.location_id.as_str(),
+            coord: simthing_core::StructuralCoord::new(placement.col, placement.row),
+        })
+        .collect();
+    let participants: Vec<(SimThingId, &str)> = gridcells
+        .iter()
+        .map(|cell| (cell.simthing_id, cell.node_id.as_str()))
+        .collect();
+    let proofs = validate_and_mint_placed_participants_by_location_id(&participants, &placements)
+        .map_err(map_placed_participant_validation_error)?;
+    let slot_and_placed: Vec<(u32, _)> = gridcells
+        .iter()
+        .zip(proofs.iter())
+        .map(|(gridcell, proof)| {
+            let slot = install_slot_for_simthing(&hierarchy.pack.root, gridcell.simthing_id)
+                .ok_or_else(|| {
+                    MapGenResourceFlowError::new(format!(
+                        "gridcell node `{}` missing from install slot map",
+                        gridcell.node_id
+                    ))
+                })?;
+            Ok((slot, *proof))
+        })
+        .collect::<Result<Vec<_>, MapGenResourceFlowError>>()?;
+    Ok(spatial_arena_explicit_participants(&slot_and_placed))
 }
 
 /// Generate bounded Resource Flow enrollment from a PR3 lattice hierarchy.
@@ -287,22 +321,8 @@ pub fn generate_mapgen_resource_flow_enrollment(
             ))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let suppression_participants: Vec<ExplicitParticipantSpec> = gridcells
-        .iter()
-        .map(|gridcell| {
-            let slot = install_slot_for_simthing(&hierarchy.pack.root, gridcell.simthing_id)
-                .ok_or_else(|| {
-                    MapGenResourceFlowError::new(format!(
-                        "gridcell node `{}` missing from install slot map",
-                        gridcell.node_id
-                    ))
-                })?;
-            Ok(ExplicitParticipantSpec::flat(
-                slot,
-                gridcell.simthing_id.raw(),
-            ))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let suppression_participants: Vec<ExplicitParticipantSpec> =
+        mint_spatial_arena_participants(&gridcells, hierarchy)?;
 
     let deposit_arena = ArenaSpec {
         name: MAPGEN_RF_DEPOSIT_ARENA.into(),
