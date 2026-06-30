@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-allowlist-scans-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027)
+- Merge: `78ad4631a3` (master)
 
 ## Recipient Agent
 
@@ -78,7 +78,7 @@ Opus / Owner
 ## DOCTRINE SCAN REPORT
 
 ```
-DOCTRINE SCAN REPORT  (commit 5c27d209dd, 2026-06-30T21:58:48Z)
+DOCTRINE SCAN REPORT  (commit 78ad4631a3, 2026-06-30T22:05:13Z)
   scanner self-test: SKIPPED
   --- results ---
   B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
