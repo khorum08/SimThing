@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `codex/kernel-participation-seal-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: https://github.com/khorum08/SimThing/pull/994
+- Merge: `f2b4017844`
 
 ## What changed
 
