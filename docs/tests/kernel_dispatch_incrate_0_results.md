@@ -281,7 +281,8 @@ Visibility-only refactor: no new dynamic dispatch, trait objects, boxed callback
 
 - Branch: `kernel-dispatch-incrate-0r2`
 - Parent: [#1007](https://github.com/khorum08/SimThing/pull/1007) `a7544e124f`
-- PR: (pending)
+- PR: [#1009](https://github.com/khorum08/SimThing/pull/1009)
+- Post-0R2 merge: `094178ed7b`
 
 ### Mission source
 
