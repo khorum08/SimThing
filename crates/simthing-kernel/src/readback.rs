@@ -140,3 +140,29 @@
 //!     state.ctx.queue.write_buffer(&state.threshold_registry, 0, &bytes);
 //! }
 //! ```
+//!
+//! External crates cannot call the retired session candidate-F write helper:
+//!
+//! ```compile_fail
+//! fn external_session_candidate_f_write(
+//!     ctx: &simthing_kernel::GpuContext,
+//!     session: &simthing_kernel::AccumulatorOpSession,
+//! ) {
+//!     let gradients = [simthing_kernel::GradientPairGpu { dx: 1.0, dy: 0.0 }];
+//!     let _ = session.write_max_candidate_f_magnitude_bits(ctx, &gradients, 0, 0);
+//! }
+//! ```
+//!
+//! External crates cannot call the retired kernel candidate-F write helper:
+//!
+//! ```compile_fail
+//! fn external_kernel_candidate_f_write_helper(
+//!     ctx: &simthing_kernel::GpuContext,
+//!     target: &wgpu::Buffer,
+//! ) {
+//!     let gradients = [simthing_kernel::GradientPairGpu { dx: 1.0, dy: 0.0 }];
+//!     let _ = simthing_kernel::write_max_candidate_f_magnitude_bits(
+//!         ctx, &gradients, target, 0, 0, 1,
+//!     );
+//! }
+//! ```

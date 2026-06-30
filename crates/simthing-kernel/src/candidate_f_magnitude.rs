@@ -11,6 +11,19 @@ pub struct GradientPairGpu {
     pub dy: f32,
 }
 
+/// Non-authoritative candidate-F inputs supplied by external crates.
+///
+/// The kernel resolves `target_slot` / `target_col` against this session's sealed
+/// values buffer and performs the exact-magnitude write internally.
+pub struct CandidateFMagnitudeRequest<'a> {
+    pub gradients: &'a [GradientPairGpu],
+    pub target_slot: u32,
+    pub target_col: u32,
+}
+
+/// Kernel-owned candidate-F write outcome (write completed; observe via readback if needed).
+pub struct CandidateFMagnitudeReport;
+
 #[derive(Debug, Error)]
 pub enum CandidateFMagnitudeError {
     #[error("no gradient rows supplied")]
@@ -153,7 +166,8 @@ pub fn max_candidate_f_magnitude_bits(
     Ok(value)
 }
 
-pub fn write_max_candidate_f_magnitude_bits(
+/// Kernel-internal: compute max candidate-F magnitude and write into a values buffer cell.
+pub(crate) fn write_max_candidate_f_magnitude_bits(
     ctx: &GpuContext,
     gradients: &[GradientPairGpu],
     target_values: &wgpu::Buffer,
@@ -269,4 +283,44 @@ pub fn write_max_candidate_f_magnitude_bits(
     encoder.copy_buffer_to_buffer(&output, 0, target_values, target_offset, 4);
     ctx.queue.submit(Some(encoder.finish()));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::AccumulatorOpSession;
+
+    fn try_ctx() -> Option<GpuContext> {
+        GpuContext::new_blocking().ok()
+    }
+
+    #[test]
+    fn apply_candidate_f_exact_magnitude_writes_resolved_cell() {
+        let Some(ctx) = try_ctx() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+        let n_slots = 4u32;
+        let n_dims = 4u32;
+        let session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
+        let gradients = [
+            GradientPairGpu { dx: 3.0, dy: 4.0 },
+            GradientPairGpu { dx: 0.0, dy: 0.0 },
+        ];
+        let expected_bits = max_candidate_f_magnitude_bits(&ctx, &gradients).expect("oracle max");
+        session
+            .apply_candidate_f_exact_magnitude(
+                &ctx,
+                CandidateFMagnitudeRequest {
+                    gradients: &gradients,
+                    target_slot: 1,
+                    target_col: 2,
+                },
+            )
+            .expect("apply candidate f");
+
+        let idx = (1 * n_dims + 2) as usize;
+        let values = session.readback_full(&ctx).expect("readback");
+        assert_eq!(values[idx].to_bits(), expected_bits);
+    }
 }

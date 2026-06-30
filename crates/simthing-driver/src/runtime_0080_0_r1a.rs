@@ -13,8 +13,8 @@ use simthing_core::{
 };
 use simthing_gpu::{
     set_debug_readback_allowed, AccumulatorOpSession,
-    AccumulatorPipelineSessions, EmlGpuProgramTable, GpuContext, GradientPairGpu,
-    PackedAccumulatorUpload, PackedThresholdUpload, Pipelines, ThresholdEvent,
+    AccumulatorPipelineSessions, CandidateFMagnitudeRequest, EmlGpuProgramTable, GpuContext,
+    GradientPairGpu, PackedAccumulatorUpload, PackedThresholdUpload, Pipelines, ThresholdEvent,
     ThresholdRegistration, WorldGpuState, DIR_DOWNWARD, THRESH_BUF_VALUES,
 };
 
@@ -1473,13 +1473,15 @@ impl TierAGpuHarness {
             return expected_mag.abs();
         }
         self.tier_a
-            .write_max_candidate_f_magnitude_bits(
+            .apply_candidate_f_exact_magnitude(
                 ctx,
-                gradients,
-                layout.r4_scratch_start,
-                COL_NEXT,
+                CandidateFMagnitudeRequest {
+                    gradients,
+                    target_slot: layout.r4_scratch_start,
+                    target_col: COL_NEXT,
+                },
             )
-        .expect("candidate f magnitude");
+            .expect("candidate f magnitude");
         self.counters.note_dispatch();
         0.0
     }

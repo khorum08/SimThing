@@ -26,8 +26,8 @@ pub use atlas_mask::{
     C0_DEFAULT_N_DIMS,
 };
 pub use candidate_f_magnitude::{
-    max_candidate_f_magnitude_bits, write_max_candidate_f_magnitude_bits, CandidateFMagnitudeError,
-    GradientPairGpu,
+    max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,
+    CandidateFMagnitudeRequest, GradientPairGpu,
 };
 pub use min_plus_stencil::{
     cell_index, cpu_min_plus_d_from_w, cpu_min_plus_relaxation, cpu_min_plus_step, extract_d_flat,

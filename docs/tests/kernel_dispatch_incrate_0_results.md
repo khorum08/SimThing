@@ -355,8 +355,8 @@ session.rs:742:    pub(crate) fn values_buffer(&self) -> &Buffer {
 
 | Item | Evidence |
 |---|---|
-| `write_max_candidate_f_magnitude_bits(..., target_values: &Buffer)` | (a) Not state/delta/registry/program/topology — diagnostic scratch-bit write utility for candidate-F probe. (b) Never read by accumulate→reduce→threshold sweep as authority. (c) External callers supply their own target buffer; kernel does not export session `values_buffer()` — ctx-unpairable with sealed authoritative handles. Production path uses `AccumulatorOpSession::write_max_candidate_f_magnitude_bits` (no buffer param). |
 | `IndexedScatterOp::dispatch(src, dst, …)` + `WorldGpuState::dispatch_indexed_scatter_from_resolved_values(dest, …)` | (a) Generic bounded data-movement primitive; not a kernel-owned authoritative buffer field. (b) Resolved `src` is bound internally via `pub(crate) resolved.values()`; external code only names caller-owned `dest` (projection buffer). (c) Cannot pair public `ctx` with any sealed authoritative handle for queue write. |
+| `max_candidate_f_magnitude_bits(ctx, gradients)` | Inert probe utility — caller-owned ephemeral buffers; returns u32 bits only; never writes resolved state. (Sealed write path: `apply_candidate_f_exact_magnitude` — see `kernel_candidate_f_incrate_0_results.md`.) |
 | `cpu_oracle_threshold_events` | Sanctioned CPU twin (crossing-derived oracle); doctrine-blessed tripwire per §5.2 standing residue. |
 | In-crate WGSL shader text | Permanent residue — CPU-oracle parity is admission; Rust cannot type-check shader. |
 
