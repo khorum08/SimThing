@@ -1,11 +1,11 @@
 //! GPU-layout types for AccumulatorOp v2 Pass B.
 
-use bytemuck::{Pod, Zeroable};
-pub use simthing_core::EmlNodeGpu;
-pub use simthing_kernel::{
+pub use crate::sealed::{
     EmissionRecord, EmissionRecordGpu, ThresholdEmission, ThresholdEmissionGpu,
     DEFAULT_EMISSION_CAPACITY, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
 };
+use bytemuck::{Pod, Zeroable};
+pub use simthing_core::EmlNodeGpu;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]

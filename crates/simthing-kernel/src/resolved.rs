@@ -25,43 +25,35 @@ impl ResolvedGpuBuffers {
         }
     }
 
-    #[doc(hidden)]
-    pub fn values(&self) -> &Buffer {
+    pub(crate) fn values(&self) -> &Buffer {
         &self.values
     }
 
-    #[doc(hidden)]
-    pub fn previous_values(&self) -> &Buffer {
+    pub(crate) fn previous_values(&self) -> &Buffer {
         &self.previous_values
     }
 
-    #[doc(hidden)]
-    pub fn output_vectors(&self) -> &Buffer {
+    pub(crate) fn output_vectors(&self) -> &Buffer {
         &self.output_vectors
     }
 
-    #[doc(hidden)]
-    pub fn previous_output_vectors(&self) -> &Buffer {
+    pub(crate) fn previous_output_vectors(&self) -> &Buffer {
         &self.previous_output_vectors
     }
 
-    #[doc(hidden)]
-    pub fn set_values(&mut self, buffer: Buffer) {
+    pub(crate) fn set_values(&mut self, buffer: Buffer) {
         self.values = buffer;
     }
 
-    #[doc(hidden)]
-    pub fn set_previous_values(&mut self, buffer: Buffer) {
+    pub(crate) fn set_previous_values(&mut self, buffer: Buffer) {
         self.previous_values = buffer;
     }
 
-    #[doc(hidden)]
-    pub fn set_output_vectors(&mut self, buffer: Buffer) {
+    pub(crate) fn set_output_vectors(&mut self, buffer: Buffer) {
         self.output_vectors = buffer;
     }
 
-    #[doc(hidden)]
-    pub fn set_previous_output_vectors(&mut self, buffer: Buffer) {
+    pub(crate) fn set_previous_output_vectors(&mut self, buffer: Buffer) {
         self.previous_output_vectors = buffer;
     }
 }

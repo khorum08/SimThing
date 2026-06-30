@@ -2,7 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    const RUNTIME_ALLOWLIST: &[&str] = &["simthing-core", "bytemuck", "thiserror", "wgpu"];
+    const RUNTIME_ALLOWLIST: &[&str] =
+        &["simthing-core", "bytemuck", "pollster", "thiserror", "wgpu"];
 
     fn dependency_section<'a>(manifest: &'a str, section: &str) -> &'a str {
         let header = format!("[{section}]");

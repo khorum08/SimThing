@@ -79,7 +79,7 @@
 
 use simthing_core::{AccumulatorOp, EmlExpressionRegistry, InputSpec, SourceSpec};
 
-use simthing_kernel::ThresholdRegistration;
+use crate::registration::ThresholdRegistration;
 
 use crate::world_state::IntentDelta;
 

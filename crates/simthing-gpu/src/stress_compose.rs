@@ -6,7 +6,7 @@ use bytemuck::{Pod, Zeroable};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
-use crate::context::GpuContext;
+use crate::GpuContext;
 
 pub const STRESS_COMPOSE_WORKGROUP_SIZE: u32 = 256;
 pub const STRESS_COMPOSE_MAX_PROFILES: u32 = 8;

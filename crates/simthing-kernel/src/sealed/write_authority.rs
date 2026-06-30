@@ -17,10 +17,4 @@ impl ResolvedWriteAuthority {
     pub(crate) fn boundary_install() -> Self {
         Self(())
     }
-
-    /// Boundary/admission install token for `simthing-gpu` resolved-state writers.
-    #[doc(hidden)]
-    pub fn for_boundary_install() -> Self {
-        Self::boundary_install()
-    }
 }

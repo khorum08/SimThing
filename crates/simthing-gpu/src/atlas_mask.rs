@@ -12,12 +12,12 @@ use wgpu::{
     PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
 
-use crate::context::GpuContext;
 use crate::structured_field_stencil::{
     StructuredFieldStencilBoundaryMode, StructuredFieldStencilConfig,
     StructuredFieldStencilMaskMode, StructuredFieldStencilOperator,
     StructuredFieldStencilSourcePolicy,
 };
+use crate::GpuContext;
 
 const WGSL_ATLAS_MASK: &str = include_str!("shaders/structured_field_stencil_atlas_mask.wgsl");
 

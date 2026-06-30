@@ -230,16 +230,14 @@ pub fn emission_plan_signature_fields(
     )
 }
 
-fn to_oracle_registration(
-    reg: &EmissionRegistration,
-) -> simthing_kernel::EmissionOracleRegistration {
-    use simthing_kernel::EmissionOracleFormula;
+fn to_oracle_registration(reg: &EmissionRegistration) -> crate::EmissionOracleRegistration {
+    use crate::EmissionOracleFormula;
     let formula = match &reg.formula {
         EmissionFormula::IdentityFloor => EmissionOracleFormula::IdentityFloor,
         EmissionFormula::Constant { value } => EmissionOracleFormula::Constant { value: *value },
         EmissionFormula::EvalEml { .. } => EmissionOracleFormula::EvalEml,
     };
-    simthing_kernel::EmissionOracleRegistration {
+    crate::EmissionOracleRegistration {
         reg_idx: reg.reg_idx,
         source_slot: reg.source_slot,
         source_col: reg.source_col,
@@ -254,9 +252,9 @@ pub fn cpu_oracle_emission_records(
     emissions: &[EmissionRegistration],
 ) -> Result<Vec<crate::EmissionRecord>, EmissionPlanError> {
     let oracle_regs: Vec<_> = emissions.iter().map(to_oracle_registration).collect();
-    simthing_kernel::cpu_oracle_emission_records(flat, n_dims, &oracle_regs).map_err(|e| match e {
-        simthing_kernel::EmissionOracleError::MissingEmlRegistry => {
-            EmissionPlanError::MissingEmlRegistry
+    crate::emission_oracle::cpu_oracle_emission_records(flat, n_dims, &oracle_regs).map_err(|e| {
+        match e {
+            crate::EmissionOracleError::MissingEmlRegistry => EmissionPlanError::MissingEmlRegistry,
         }
     })
 }

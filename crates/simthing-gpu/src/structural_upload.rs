@@ -404,7 +404,7 @@ pub fn readback_matches_source(readback: &StructuralUploadReadback, upload: &Pac
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::context::GpuContext;
+    use crate::GpuContext;
 
     #[test]
     fn structural_gpu_rows_are_repr_c_stable() {

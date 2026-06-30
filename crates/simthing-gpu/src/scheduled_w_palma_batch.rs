@@ -4,11 +4,11 @@
 
 use wgpu::CommandEncoderDescriptor;
 
-use crate::context::GpuContext;
 use crate::min_plus_stencil::{MinPlusStencilError, MinPlusStencilOp};
 use crate::w_impedance_compose::{
     WImpedanceComposeConfig, WImpedanceComposeError, WImpedanceComposeOp,
 };
+use crate::GpuContext;
 
 /// Compact evidence from a serial or scheduled W→PALMA GPU chain.
 #[derive(Debug, Clone, PartialEq)]

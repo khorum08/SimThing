@@ -13,7 +13,7 @@ use wgpu::{
     PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages,
 };
 
-use crate::context::GpuContext;
+use crate::GpuContext;
 
 pub const WORKGROUP_SIZE: u32 = 8;
 
