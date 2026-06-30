@@ -189,22 +189,22 @@ pub struct WorldGpuState {
 
     /// Property-level flat buffer of GovernedPair structs. Same pairs apply
     /// to every slot — Pass 1 dispatches `(n_pairs × n_slots)` threads.
-    pub governed_pairs: Buffer,
+    pub(crate) governed_pairs: Buffer,
 
     /// Flat per-tick array of overlay deltas, ancestor stack then local, in
     /// evaluation order. Grows as needed via `upload_overlay_deltas`.
-    pub overlay_deltas: Buffer,
+    pub(crate) overlay_deltas: Buffer,
 
     /// Per-slot (offset, length) into `overlay_deltas`. Size: `n_slots × 8B`.
-    pub slot_delta_ranges: Buffer,
+    pub(crate) slot_delta_ranges: Buffer,
 
     /// Flat per-tick array of folded player/AI/feeder intent deltas. Grows as
     /// needed via `upload_intent_deltas`.
-    pub intent_deltas: Buffer,
+    pub(crate) intent_deltas: Buffer,
 
     /// Pass 7 inputs: flat array of ThresholdRegistration structs.
     /// Grows on demand via `upload_thresholds`.
-    pub threshold_registry: Buffer,
+    pub(crate) threshold_registry: Buffer,
     /// Pass 7 outputs: kernel-owned event candidate readback buffers.
     threshold_events: ThresholdEventCandidatesReadback,
 
@@ -215,15 +215,15 @@ pub struct WorldGpuState {
     // ── Reduction (Passes 4–6) ───────────────────────────────────────────────
     /// CSR child topology: `child_starts[i]..child_starts[i+1]` indexes
     /// children of parent slot `i`. Length `n_slots + 1` u32s.
-    pub child_starts: Buffer,
+    pub(crate) child_starts: Buffer,
     /// Concatenated child slot indices, in canonical (ascending slot) order.
-    pub child_indices: Buffer,
+    pub(crate) child_indices: Buffer,
     /// Per-column reduction rule (u32), length `n_dims`.
-    pub column_rules: Buffer,
+    pub(crate) column_rules: Buffer,
     /// Concatenated depth buckets — slot indices grouped by tree depth.
     /// `depth_bucket_ranges` tells AccumulatorOp reduction encoding how to
     /// slice this. Empty when no topology has been uploaded yet.
-    pub depth_slots: Buffer,
+    pub(crate) depth_slots: Buffer,
     /// (offset, size) into `depth_slots` per depth. The dispatcher iterates
     /// these from the last entry (deepest) to the first (root depth).
     pub depth_bucket_ranges: Vec<(u32, u32)>,

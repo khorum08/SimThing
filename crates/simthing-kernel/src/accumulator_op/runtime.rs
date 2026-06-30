@@ -1191,7 +1191,7 @@ impl WorldAccumulatorRuntime {
         }
     }
 
-    pub fn dispatch_world_summary(&mut self, ctx: &GpuContext, values: &wgpu::Buffer) -> bool {
+    pub(crate) fn dispatch_world_summary(&mut self, ctx: &GpuContext, values: &wgpu::Buffer) -> bool {
         if let Some(summary) = self.summary.as_ref() {
             summary.dispatch(ctx, values);
             true

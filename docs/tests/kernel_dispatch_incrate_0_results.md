@@ -268,3 +268,147 @@ Visibility-only refactor: no new dynamic dispatch, trait objects, boxed callback
 | `readback.rs` | +5 compile_fail proofs |
 | `candidate_f_magnitude.rs` + shader | moved to kernel |
 | driver/sim/gpu tests | EML table API migration |
+
+---
+
+## 0R2 remediation — seal the authoritative buffer class (default-sealed)
+
+### Status
+
+**PROBATION** — all `WorldGpuState` authoritative buffer fields and in-crate bind/dispatch `&Buffer` accessors sealed to `pub(crate)`; B3 class grep clean; B6 Option B confirmed (not asserted). Not DA-approved.
+
+### PR / branch / merge
+
+- Branch: `kernel-dispatch-incrate-0r2`
+- Parent: [#1007](https://github.com/khorum08/SimThing/pull/1007) `a7544e124f`
+- PR: (pending)
+
+### Mission source
+
+Handoff KERNEL-DISPATCH-INCRATE-0R2 — stop fixing instances; seal the class. §1.1 ruling + §5.2 catalogue in `docs/design_0_0_8_4_5_simthing_kernel.md`. Residue risk: B3, B6.
+
+### What changed
+
+- Sealed all nine authoritative `WorldGpuState` buffer fields to `pub(crate)`:
+  `governed_pairs`, `overlay_deltas`, `slot_delta_ranges`, `intent_deltas`,
+  `threshold_registry`, `child_starts`, `child_indices`, `column_rules`, `depth_slots`.
+- Sealed in-crate world-summary bind paths: `WorldSummaryRuntime::{encode_into,dispatch}`,
+  `WorldAccumulatorRuntime::dispatch_world_summary`, `AccumulatorOpSession::dispatch_world_summaries`
+  → `pub(crate)`.
+- Added compile-fail proof `external_threshold_registry_queue_write` — external
+  `state.ctx.queue.write_buffer(&state.threshold_registry, …)` does not compile.
+- No behavior change; upload/dispatch/readback entry points unchanged for consumers.
+
+### Sealed authoritative buffer class
+
+| Surface | After 0R2 |
+|---|---|
+| `WorldGpuState::resolved` | `pub(crate)` (0) |
+| `WorldGpuState::{governed_pairs,overlay_deltas,slot_delta_ranges,intent_deltas,threshold_registry}` | `pub(crate)` |
+| `WorldGpuState::{child_starts,child_indices,column_rules,depth_slots}` | `pub(crate)` |
+| `ResolvedGpuBuffers::{values,previous_values,output_vectors,previous_output_vectors}` | `pub(crate)` (0R) |
+| `AccumulatorOpSession::values_buffer()` | `pub(crate)` (0R) |
+| `EmlGpuProgramTable` / `AccumulatorInputListTable` buffers | private + `pub(crate)` accessors (0R) |
+| World-summary resolved bind params | `pub(crate)` |
+
+External crates route through `upload_*()`, `dispatch_*()`, and `read_*()` — no direct field or buffer-handle access.
+
+### B3 default-sealed grep (authoritative handles)
+
+Command: `rg -nE "pub (fn \w+\(&self\) ?-> ?&.*Buffer|\w+: Buffer)" crates/simthing-kernel/src`
+
+```
+(no matches — zero public `Buffer` fields or `&Buffer` self-accessors)
+```
+
+All authoritative handles are `pub(crate)` only (representative hits):
+
+```
+world_state.rs:192:    pub(crate) governed_pairs: Buffer,
+world_state.rs:196:    pub(crate) overlay_deltas: Buffer,
+world_state.rs:199:    pub(crate) slot_delta_ranges: Buffer,
+world_state.rs:203:    pub(crate) intent_deltas: Buffer,
+world_state.rs:207:    pub(crate) threshold_registry: Buffer,
+world_state.rs:218:    pub(crate) child_starts: Buffer,
+world_state.rs:220:    pub(crate) child_indices: Buffer,
+world_state.rs:222:    pub(crate) column_rules: Buffer,
+world_state.rs:226:    pub(crate) depth_slots: Buffer,
+resolved.rs:28:    pub(crate) fn values(&self) -> &Buffer {
+session.rs:742:    pub(crate) fn values_buffer(&self) -> &Buffer {
+```
+
+### B1–B8 residue scan
+
+| Class | Hit | Classification |
+|---|---|---|
+| B1 `unsafe` forge | `#![forbid(unsafe_code)]` on kernel | **Clean** |
+| B2 sealed-type derives | only Clone/Copy/Debug/PartialEq on sealed types | **Clean** |
+| B3 authoritative `&Buffer` / `Buffer` fields | class grep returns zero `pub` hits | **Sealed** |
+| B4 POD bridge | removed (CRATE-EXTRACT-0R2) | **Clean** |
+| B5 external shader/pipeline params | none on authoritative path | **Clean** |
+| B6 `ctx`/`Queue`/`Device` pairing | public `WorldGpuState::ctx`; no authoritative buffer handle escapes public API | **Option B — confirmed harmless** |
+| B7 bytemuck cast to sealed types | sealed types non-Pod | **Clean** |
+| B8 deps/unsafe | dep budget unchanged | **Clean** |
+
+### Per-item residue whitelist (declared tripwires — not holes)
+
+| Item | Evidence |
+|---|---|
+| `write_max_candidate_f_magnitude_bits(..., target_values: &Buffer)` | (a) Not state/delta/registry/program/topology — diagnostic scratch-bit write utility for candidate-F probe. (b) Never read by accumulate→reduce→threshold sweep as authority. (c) External callers supply their own target buffer; kernel does not export session `values_buffer()` — ctx-unpairable with sealed authoritative handles. Production path uses `AccumulatorOpSession::write_max_candidate_f_magnitude_bits` (no buffer param). |
+| `IndexedScatterOp::dispatch(src, dst, …)` + `WorldGpuState::dispatch_indexed_scatter_from_resolved_values(dest, …)` | (a) Generic bounded data-movement primitive; not a kernel-owned authoritative buffer field. (b) Resolved `src` is bound internally via `pub(crate) resolved.values()`; external code only names caller-owned `dest` (projection buffer). (c) Cannot pair public `ctx` with any sealed authoritative handle for queue write. |
+| `cpu_oracle_threshold_events` | Sanctioned CPU twin (crossing-derived oracle); doctrine-blessed tripwire per §5.2 standing residue. |
+| In-crate WGSL shader text | Permanent residue — CPU-oracle parity is admission; Rust cannot type-check shader. |
+
+No categorical “tick-upload = non-authoritative” wave-through. Former tick-upload fields are sealed because they participate in authoritative computation (program/delta/registry/topology).
+
+### Context / queue-pairing ruling (B6)
+
+**Option B confirmed.** After 0R2, grep of external crates finds zero `state.{governed_pairs,threshold_registry,…}` field access. Public `ctx`/`device`/`queue` cannot be paired with any authoritative kernel buffer handle — compile-fail proves `threshold_registry` field write; resolved/EML/input-list proofs from 0R remain green.
+
+### Compile-fail proofs (+ what each catches)
+
+| Proof | Catches |
+|---|---|
+| `external_threshold_registry_queue_write` | `WorldGpuState::threshold_registry` field + `ctx.queue.write_buffer` |
+| (prior 25 proofs) | POD bridge, readback authority, resolved buffers, session/EML/input-list queue writes |
+
+**Total:** 26 doc `compile_fail` tests.
+
+### Value parity
+
+| Harness | Result |
+|---|---|
+| `cargo test -p simthing-kernel --doc` | 26/26 |
+| `cargo test -p simthing-kernel threshold --lib` | 19/19 |
+| `cargo test -p simthing-sim --test s6_threshold_sunset` | 4/4 |
+| `cargo test -p simthing-sim --test c8a_eml_infrastructure` | 10/10 |
+
+### Performance parity
+
+Command: `cargo test -p simthing-sim --test c1_threshold_perf -- --nocapture`
+
+| Run | `new_ms` |
+|---|---|
+| 1 (0R2 post-seal) | 0.1869 |
+
+Post-0R band ~0.20–0.22 ms; visibility-only change — no regression gate failure.
+
+### Inlining proof
+
+Visibility-only refactor: no new dynamic dispatch, trait objects, boxed callbacks, runtime checks, or per-tick allocation.
+
+### Scope Ledger (0R2 additions)
+
+| File / area | Change |
+|---|---|
+| `world_state.rs` | seal nine authoritative `Buffer` fields → `pub(crate)` |
+| `accumulator_op/world_summary.rs` | seal `encode_into` / `dispatch` |
+| `accumulator_op/runtime.rs` | seal `dispatch_world_summary` |
+| `accumulator_op/session.rs` | seal `dispatch_world_summaries` |
+| `readback.rs` | +1 compile_fail (`threshold_registry`) |
+
+### Forward residue (unchanged — KERNEL-CLOSEOUT-0 lands permanently)
+
+- `cpu_oracle_threshold_events` — sanctioned CPU twin tripwire
+- WGSL shader text — permanent in-crate residue
+- Next rung: **KERNEL-CLOSEOUT-0** (constitution §0 + core design doc + handoff spine landings)

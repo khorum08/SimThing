@@ -129,3 +129,14 @@
 //!     queue.write_buffer(&table.buffer, 0, &bytes);
 //! }
 //! ```
+//!
+//! External crates cannot obtain the threshold decision registry buffer for queue writes:
+//!
+//! ```compile_fail
+//! fn external_threshold_registry_queue_write(
+//!     state: &simthing_kernel::WorldGpuState,
+//! ) {
+//!     let bytes = [0u8; 16];
+//!     state.ctx.queue.write_buffer(&state.threshold_registry, 0, &bytes);
+//! }
+//! ```
