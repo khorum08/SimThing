@@ -189,6 +189,40 @@ column access that makes a hardcoded `data[N]` unrepresentable; a semantic-free 
 public surface. Each such move **deletes a guard test, shortens the prose constitution, and makes a class
 of drift impossible rather than merely against the rules.**
 
+### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire
+
+The admission substrate has a **home**: `simthing-kernel` is the SimThing rustification embodied as a crate
+— the sole owner of authoritative state and the sole minter of authoritative effects. Every other crate
+either depends on its **read-only view** (to observe) or hands it **registrations / EML data** (which it
+executes); authoritative mutation and decision emission happen only through its sanctioned in-crate doors
+(`dispatch_tick`, `read_*() -> Vec<Sealed>`, `apply_*`). It is the *runtime-authority* layer and **composes
+with — does not replace —** the content-admission layer (hydration/spec), which compiles *down* to kernel
+registrations. (A longer `simthing-kernel` ADR may elaborate; **this section is the load-bearing summary and
+governs.**)
+
+**The cross-crate seal law (hard-won; binding on every future authority extraction).** A seal that is
+`pub(crate)`-safe inside one crate becomes **forgeable the moment its type crosses a crate boundary** — Rust
+has no friend-crate visibility, so a `pub` minter/handle one crate can call is one *every* crate can call,
+and `#[doc(hidden)]` is obscurity, not enforcement. Therefore:
+
+> **Mint authoritative types in the crate that privately owns their source of truth; never re-seal across a
+> crate boundary with a token.** When sealing is in tension with crate convenience, Doctrine-as-Type wins
+> and the code moves *into* the owning crate — never the other way.
+
+This is why authoritative dispatch/encode/readback live *inside* the kernel: `&Buffer`, the `Queue`/`Device`,
+and any raw write path never cross the boundary; consumers get sealed doors. The same law governs the next
+authority extractions (spec, scenario) — apply it by construction, do not re-derive it through another round
+of cross-boundary leaks.
+
+**Residue-as-tripwire.** Doctrine-as-Type never reaches 100%; an irreducible residue remains (the CPU-oracle
+twin, the WGSL shader text Rust cannot see, and inert *utility* ops that are harmless because no authoritative
+handle can be fed to them). That residue is **not a passive gap — it is a named, greppable tripwire
+catalogue.** Each item is admissible only as an **explicit, per-item, justified** entry (provably
+non-authoritative / sanctioned-and-defined / unpairable-to-harm) — **never a categorical wave-through** — and
+routing through it is therefore a *declared, deliberate circumvention*, a red flag the orchestrator and the
+handoff template must surface (`seal-residue-risk`). Its sibling rule: an artifact that merely *looks* like a
+gate but enforces nothing is **deleted, not annotated** (constitution §0.6.6) — appearance is not enforcement.
+
 ---
 
 ## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment
