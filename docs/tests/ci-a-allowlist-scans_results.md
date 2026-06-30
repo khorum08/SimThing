@@ -2,13 +2,13 @@
 
 ## Status
 
-**PROBATION** — closed-set RELIABLE allowlist scans implemented; positive control zero hard FAIL. Self-reported implementer proof only; not DA acceptance.
+**PROBATION** — closed-set RELIABLE allowlist scans implemented; 0R patches sealed-producer `Self` return gap. Self-reported implementer proof only; not DA acceptance.
 
 ## PR / branch / merge
 
-- Branch: `ci-a-allowlist-scans-0`
-- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027)
-- Merge: `78ad4631a3` (master)
+- Branch: `ci-a-allowlist-scans-0` → `ci-a-allowlist-scans-0r` (0R)
+- PR: [#1027](https://github.com/khorum08/SimThing/pull/1027) (0) — 0R PR pending
+- Merge: `78ad4631a3` (0); 0R merge SHA pending
 
 ## Recipient Agent
 
@@ -24,12 +24,20 @@ Opus / Owner
 
 ## What changed
 
+### CI-A-ALLOWLIST-SCANS-0
+
 - Added `scripts/ci/scan_allowlists.py` — stdlib closed-set engine for sealed producers, buffer handles, kernel surface.
 - Extended `doctrine_scan.sh` with generic `@ALLOWLIST:` dispatch (no per-symbol hard-coding).
 - Added three RELIABLE scans to `scans.tsv`: `ALLOW-SEALED-PRODUCERS`, `ALLOW-BUFFER-HANDLES`, `ALLOW-KERNEL-SURFACE`.
 - Completed `sealed_producers.txt` with sanctioned session readback + CPU oracle batch doors discovered during enumeration.
 - Extended producer grammar: `readback_*` under `read`; `execute_ops_cpu_with_emissions` / `execute_threshold_ops_cpu` under `cpu_oracle`.
 - Updated `scripts/ci/README.md` and design lifecycle row → PROBATION.
+
+### CI-A-ALLOWLIST-SCANS-0R — sealed-producer `Self` return gap
+
+- `scan_allowlists.py`: track inherent `impl SealedType { … }` blocks via brace-aware line map.
+- `return_type_is_sealed`: treat `-> Self` as sealed when enclosing impl target is in `SEALED_IMPL_TARGETS`.
+- Constructor exclusion (`new`/`default`) unchanged — avoids false positives on non-sealed helpers.
 
 ## Load-bearing proofs
 
@@ -40,45 +48,55 @@ Opus / Owner
 
 ## Negative controls (local, reverted before commit)
 
+### 0 baseline
+
 | Control | Command / mutation | Expected | Observed |
 |---|---|---|---|
-| Unsanctioned sealed producer | Temp `crates/simthing-kernel/src/_doctrine_probe.rs` with `pub fn forge_probe() -> crate::ThresholdEvent` | FAIL | `scan_allowlists.py sealed-producers` exit 1 |
-| Split-declaration producer | Same file, `pub fn forge_split(...)\n-> ThresholdEvent` | FAIL | exit 1 |
-| Public buffer escape | Temp probe `pub fn leak_buffer(&self) -> &wgpu::Buffer` | FAIL | `scan_allowlists.py buffer-handles` exit 1 |
-| New lib.rs export | Append `pub mod _doctrine_probe_mod;` to `lib.rs` | FAIL | reports missing from kernel_surface.txt |
-| Malformed producer row | Append `forge_x \| read \| bad \| retire` to sealed_producers.txt | scanner error | grammar rejection, exit 1 |
-| inert-util in kernel_surface | Append `Bad \| inert-util \| ...` to kernel_surface.txt | scanner error | forbidden class, exit 1 |
+| Unsanctioned sealed producer | Temp probe `pub fn forge_probe() -> crate::ThresholdEvent` | FAIL | exit 1 |
+| Split-declaration producer | `pub fn forge_split(...)\n-> ThresholdEvent` | FAIL | exit 1 |
+| Public buffer escape | Temp probe `pub fn leak_buffer() -> &wgpu::Buffer` | FAIL | `buffer-handles` exit 1 |
+| New lib.rs export | Append `pub mod _doctrine_probe_mod;` | FAIL | missing from kernel_surface.txt |
+| Malformed producer row | `forge_x \| read \| bad \| retire` | scanner error | grammar rejection, exit 1 |
+| inert-util in kernel_surface | `Bad \| inert-util \| ...` | scanner error | forbidden class, exit 1 |
+
+### 0R — Self return in sealed impl
+
+| Control | Mutation | Expected | Observed |
+|---|---|---|---|
+| Same-line Self producer | `impl ThresholdEvent { pub fn forge_probe(...) -> Self { ... } }` | FAIL | exit 1 — `forge_probe -> Self (ThresholdEvent)` |
+| Split-declaration Self producer | `#[doc(hidden)] pub fn forge_split(...)\n-> Self` | FAIL | exit 1 — `forge_split -> Self (ThresholdEvent)` |
+| Non-sealed constructor | `impl PlainHelper { pub fn new() -> Self { ... } }` | no FAIL | exit 1 only for forge_* (PlainHelper::new not flagged) |
 
 ## Scope Ledger
 
 | Path | Touched |
 |---|---|
-| `scripts/ci/scan_allowlists.py` | yes (new) |
-| `scripts/ci/doctrine_scan.sh` | yes |
-| `scripts/ci/scans.tsv` | yes |
-| `scripts/ci/allow/sealed_producers.txt` | yes (complete sanctioned set) |
-| `scripts/ci/README.md` | yes |
+| `scripts/ci/scan_allowlists.py` | yes (0 + 0R) |
+| `scripts/ci/doctrine_scan.sh` | yes (0 only) |
+| `scripts/ci/scans.tsv` | yes (0 only) |
+| `scripts/ci/allow/sealed_producers.txt` | yes (0 only) |
+| `scripts/ci/README.md` | yes (0 only) |
 | `docs/tests/ci-a-allowlist-scans_results.md` | yes |
 | `docs/tests/current_evidence_index.md` | yes |
-| `docs/design_0_0_8_4_6_ci_scaffolding.md` | yes (PROBATION flip) |
-| `crates/**`, workflows, fixtures, self-test, triage | **no** |
+| `docs/design_0_0_8_4_6_ci_scaffolding.md` | yes (0 PROBATION flip) |
+| `crates/**`, workflows, fixtures, self-test, triage | **no** (temp probe only, reverted) |
 
 ## Conformance
 
 - Closed-set scans are data-driven via `@ALLOWLIST:` + allowlists; runner remains thin.
-- No crate edits, no new dependencies, no fixtures/workflow/triage artifacts.
+- No crate edits committed, no new dependencies, no fixtures/workflow/triage artifacts.
 - Legitimate remediation: one allowlist row with rationale + promotion-blocker.
 
 ## Known gaps / next
 
-- `CI-A-FIXTURES-0` — committed negative-control corpus (forward note: production semantic/.kind INSPECT controls).
+- `CI-A-FIXTURES-0` — blocked until 0R lands; committed negative-control corpus (forward note: production semantic/.kind INSPECT controls).
 - `CI-A-SELF-TEST-0`, `CI-A-WORKFLOW-0`, `CI-A-INSPECT-TRIAGE-0`.
 - `validate_and_mint_placed_participants_by_location_id` remains a core re-export, not a kernel-local `pub fn` — out of kernel sealed-producer enumeration scope.
 
 ## DOCTRINE SCAN REPORT
 
 ```
-DOCTRINE SCAN REPORT  (commit 78ad4631a3, 2026-06-30T22:05:13Z)
+DOCTRINE SCAN REPORT  (commit pending, 0R positive control)
   scanner self-test: SKIPPED
   --- results ---
   B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
