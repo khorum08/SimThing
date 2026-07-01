@@ -1,7 +1,7 @@
 # Sanctioned Surface Digest
 
 > GENERATED FILE. Do not hand-edit. Regenerate with `bash scripts/ci/gen_digest.sh`.
-> Source of truth: `scripts/ci/allow/*.txt` and `scripts/ci/scans.tsv`.
+> Source of truth: `scripts/ci/allow/*.txt` and `scripts/ci/scans.tsv`; optional track mode reads only the explicit track doc sibling addendum.
 
 This digest is a derived context artifact for low-context agents. If it disagrees with CI data, the CI data wins and this file or generator is wrong.
 

@@ -3,14 +3,37 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 [--check]"
+  echo "usage: $0 [--check] [--track-doc PATH] [--output PATH]"
   exit 2
 }
 
-mode="${1:-generate}"
-if [[ $# -gt 1 || ( "$mode" != "generate" && "$mode" != "--check" ) ]]; then
-  usage
-fi
+mode="generate"
+track_doc=""
+output_path=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --check)
+      mode="--check"
+      shift
+      ;;
+    --track-doc)
+      track_doc="${2:-}"
+      [[ -n "$track_doc" ]] || usage
+      shift 2
+      ;;
+    --output)
+      output_path="${2:-}"
+      [[ -n "$output_path" ]] || usage
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
@@ -25,7 +48,7 @@ else
   exit 2
 fi
 
-exec "$python_bin" - "$REPO_ROOT" "$mode" <<'PY'
+exec "$python_bin" - "$REPO_ROOT" "$mode" "$track_doc" "$output_path" <<'PY'
 import hashlib
 import pathlib
 import sys
@@ -33,21 +56,54 @@ import tempfile
 
 REPO_ROOT = pathlib.Path(sys.argv[1])
 MODE = sys.argv[2]
+TRACK_DOC_ARG = sys.argv[3]
+OUTPUT_ARG = sys.argv[4]
 CHECK = MODE == "--check"
 DIGEST_PATH = REPO_ROOT / "docs/sanctioned_surface.md"
 
-SOURCES = [
+GLOBAL_SOURCES = [
     "scripts/ci/allow/sealed_producers.txt",
     "scripts/ci/allow/inert_buffer_handles.txt",
     "scripts/ci/allow/kernel_surface.txt",
     "scripts/ci/allow/sealed_types.txt",
     "scripts/ci/scans.tsv",
 ]
+TRACK_ALLOW_FILES = [
+    "sealed_producers.txt",
+    "inert_buffer_handles.txt",
+    "kernel_surface.txt",
+    "sealed_types.txt",
+]
 
 
 def fail(message):
     print(f"gen_digest: {message}", file=sys.stderr)
     sys.exit(1)
+
+
+def repo_rel_path(path_arg, label):
+    path = pathlib.Path(path_arg)
+    abs_path = path if path.is_absolute() else REPO_ROOT / path
+    try:
+        rel = abs_path.resolve().relative_to(REPO_ROOT.resolve())
+    except ValueError:
+        fail(f"{label} must be inside the repo: {path_arg}")
+    return rel.as_posix()
+
+
+TRACK_DOC_REL = repo_rel_path(TRACK_DOC_ARG, "--track-doc") if TRACK_DOC_ARG else ""
+if TRACK_DOC_REL and not (REPO_ROOT / TRACK_DOC_REL).is_file():
+    fail(f"--track-doc is not a repo file: {TRACK_DOC_ARG}")
+
+if OUTPUT_ARG:
+    OUTPUT_PATH = REPO_ROOT / repo_rel_path(OUTPUT_ARG, "--output")
+elif TRACK_DOC_REL:
+    OUTPUT_PATH = None
+else:
+    OUTPUT_PATH = DIGEST_PATH
+
+if CHECK and TRACK_DOC_REL and OUTPUT_PATH is None:
+    fail("--track-doc --check requires --output PATH")
 
 
 def read_text(rel_path):
@@ -152,19 +208,72 @@ def table(headers, rows):
 
 def build_model():
     model = {
-        "sealed_producers": parse_allow("scripts/ci/allow/sealed_producers.txt"),
-        "inert_handles": parse_allow("scripts/ci/allow/inert_buffer_handles.txt"),
-        "kernel_surface": parse_allow("scripts/ci/allow/kernel_surface.txt"),
-        "sealed_types": parse_sealed_types("scripts/ci/allow/sealed_types.txt"),
-        "scans": parse_scans("scripts/ci/scans.tsv"),
+        "sealed_producers": [(row, "scripts/ci/allow/sealed_producers.txt") for row in parse_allow("scripts/ci/allow/sealed_producers.txt")],
+        "inert_handles": [(row, "scripts/ci/allow/inert_buffer_handles.txt") for row in parse_allow("scripts/ci/allow/inert_buffer_handles.txt")],
+        "kernel_surface": [(row, "scripts/ci/allow/kernel_surface.txt") for row in parse_allow("scripts/ci/allow/kernel_surface.txt")],
+        "sealed_types": [(row, "scripts/ci/allow/sealed_types.txt") for row in parse_sealed_types("scripts/ci/allow/sealed_types.txt")],
+        "scans": [(row, "scripts/ci/scans.tsv") for row in parse_scans("scripts/ci/scans.tsv")],
+        "sources": list(GLOBAL_SOURCES),
     }
-    for section, rows in model.items():
-        ensure_unique(rows, section)
+    for section in ("sealed_producers", "inert_handles", "kernel_surface", "sealed_types", "scans"):
+        ensure_unique([row for row, _ in model[section]], section)
+
+    if TRACK_DOC_REL:
+        add_track_addendum(model)
     return model
 
 
-def with_source(rows, rel_path):
-    return [tuple(row) + (source_name(rel_path),) for row in rows]
+def section_key(section, row):
+    return row[0]
+
+
+def add_rows(model, section, rel_path, rows):
+    if not rows:
+        fail(f"empty track addendum source: {rel_path}")
+    existing = {section_key(section, row) for row, _ in model[section]}
+    local = set()
+    for row in rows:
+        key = section_key(section, row)
+        if key in existing:
+            if section == "scans":
+                fail(f"{rel_path}: track addendum redefines global scan-id '{key}'")
+            fail(f"{rel_path}: track addendum duplicates global {section} key '{key}'")
+        if key in local:
+            fail(f"{rel_path}: duplicate track addendum {section} key '{key}'")
+        local.add(key)
+        model[section].append((row, rel_path))
+    if rel_path not in model["sources"]:
+        model["sources"].append(rel_path)
+
+
+def add_track_addendum(model):
+    scans_rel = f"{TRACK_DOC_REL}.ci.tsv"
+    if (REPO_ROOT / scans_rel).is_file():
+        add_rows(model, "scans", scans_rel, parse_scans(scans_rel))
+
+    allow_dir_rel = f"{TRACK_DOC_REL}.ci.allow"
+    allow_dir = REPO_ROOT / allow_dir_rel
+    if not allow_dir.is_dir():
+        return
+    known = set(TRACK_ALLOW_FILES)
+    for child in sorted(allow_dir.iterdir()):
+        if not child.is_file():
+            continue
+        if child.name not in known:
+            fail(f"{allow_dir_rel}/{child.name}: unknown track addendum allow file")
+    addendum_sources = {
+        "sealed_producers": (f"{allow_dir_rel}/sealed_producers.txt", parse_allow),
+        "inert_handles": (f"{allow_dir_rel}/inert_buffer_handles.txt", parse_allow),
+        "kernel_surface": (f"{allow_dir_rel}/kernel_surface.txt", parse_allow),
+        "sealed_types": (f"{allow_dir_rel}/sealed_types.txt", parse_sealed_types),
+    }
+    for section, (rel_path, parser) in addendum_sources.items():
+        if (REPO_ROOT / rel_path).is_file():
+            add_rows(model, section, rel_path, parser(rel_path))
+
+
+def with_source(records):
+    return [tuple(row) + (source_name(rel_path),) for row, rel_path in records]
 
 
 def generate_markdown(model):
@@ -172,16 +281,21 @@ def generate_markdown(model):
         "# Sanctioned Surface Digest",
         "",
         "> GENERATED FILE. Do not hand-edit. Regenerate with `bash scripts/ci/gen_digest.sh`.",
-        "> Source of truth: `scripts/ci/allow/*.txt` and `scripts/ci/scans.tsv`.",
+        "> Source of truth: `scripts/ci/allow/*.txt` and `scripts/ci/scans.tsv`; optional track mode reads only the explicit track doc sibling addendum.",
         "",
         "This digest is a derived context artifact for low-context agents. If it disagrees with CI data, the CI data wins and this file or generator is wrong.",
         "",
         "## Source Manifest",
         "",
     ]
+    if TRACK_DOC_REL:
+        lines.extend([
+            f"Track mode: `{TRACK_DOC_REL}`.",
+            "",
+        ])
 
     manifest_rows = []
-    for rel_path in SOURCES:
+    for rel_path in model["sources"]:
         count, digest = source_fingerprint(rel_path)
         manifest_rows.append((rel_path, str(count), digest))
     lines.extend(table(["source", "data rows", "sha256"], manifest_rows))
@@ -189,29 +303,30 @@ def generate_markdown(model):
     lines.extend(["", "## Sanctioned Sealed Producers", ""])
     lines.extend(table(
         ["symbol", "door-class", "rationale", "promotion-blocker", "source"],
-        with_source(model["sealed_producers"], "scripts/ci/allow/sealed_producers.txt"),
+        with_source(model["sealed_producers"]),
     ))
 
     lines.extend(["", "## Inert Buffer Handles", ""])
     lines.extend(table(
         ["symbol", "door-class", "rationale", "promotion-blocker", "source"],
-        with_source(model["inert_handles"], "scripts/ci/allow/inert_buffer_handles.txt"),
+        with_source(model["inert_handles"]),
     ))
 
     lines.extend(["", "## Kernel Surface", ""])
     lines.extend(table(
         ["symbol/signature", "door-class", "rationale", "promotion-blocker", "source"],
-        with_source(model["kernel_surface"], "scripts/ci/allow/kernel_surface.txt"),
+        with_source(model["kernel_surface"]),
     ))
 
     lines.extend(["", "## Sealed Types", ""])
     lines.extend(table(
         ["sealed type", "source"],
-        [(row[0], "sealed_types.txt") for row in model["sealed_types"]],
+        [(row[0], source_name(rel_path)) for row, rel_path in model["sealed_types"]],
     ))
 
     scan_rows = []
-    for scan_id, severity, target, pattern, exclude, doctrine_ref, promotion_blocker in model["scans"]:
+    for row, rel_path in model["scans"]:
+        scan_id, severity, target, pattern, exclude, doctrine_ref, promotion_blocker = row
         scan_rows.append((
             scan_id,
             severity,
@@ -220,7 +335,7 @@ def generate_markdown(model):
             pattern,
             exclude if exclude else "(none)",
             promotion_blocker,
-            "scans.tsv",
+            source_name(rel_path),
         ))
     lines.extend(["", "## Forbidden / Screened Patterns", ""])
     lines.extend(table(
@@ -277,10 +392,10 @@ def parse_generated_table(text, heading):
 
 def verify_generated_exactness(text, model):
     expected = {
-        "Sanctioned Sealed Producers": with_source(model["sealed_producers"], "scripts/ci/allow/sealed_producers.txt"),
-        "Inert Buffer Handles": with_source(model["inert_handles"], "scripts/ci/allow/inert_buffer_handles.txt"),
-        "Kernel Surface": with_source(model["kernel_surface"], "scripts/ci/allow/kernel_surface.txt"),
-        "Sealed Types": [(row[0], "sealed_types.txt") for row in model["sealed_types"]],
+        "Sanctioned Sealed Producers": with_source(model["sealed_producers"]),
+        "Inert Buffer Handles": with_source(model["inert_handles"]),
+        "Kernel Surface": with_source(model["kernel_surface"]),
+        "Sealed Types": [(row[0], source_name(rel_path)) for row, rel_path in model["sealed_types"]],
     }
     for heading, rows in expected.items():
         if parse_generated_table(text, heading) != rows:
@@ -291,18 +406,22 @@ model = build_model()
 generated = generate_markdown(model)
 
 if CHECK:
-    if not DIGEST_PATH.is_file():
-        fail("docs/sanctioned_surface.md is missing")
-    current = DIGEST_PATH.read_text(encoding="utf-8")
+    check_path = OUTPUT_PATH or DIGEST_PATH
+    if not check_path.is_file():
+        fail(f"{check_path.relative_to(REPO_ROOT).as_posix()} is missing")
+    current = check_path.read_text(encoding="utf-8")
     verify_generated_exactness(current, model)
     if current != generated:
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, suffix=".md") as tmp:
             tmp.write(generated)
             tmp_path = tmp.name
-        fail(f"docs/sanctioned_surface.md is stale; expected output written to {tmp_path}")
+        fail(f"{check_path.relative_to(REPO_ROOT).as_posix()} is stale; expected output written to {tmp_path}")
     print("gen_digest --check: PASS")
 else:
-    DIGEST_PATH.parent.mkdir(parents=True, exist_ok=True)
-    DIGEST_PATH.write_text(generated, encoding="utf-8", newline="\n")
-    print("generated docs/sanctioned_surface.md")
+    if OUTPUT_PATH is None:
+        sys.stdout.write(generated)
+    else:
+        OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        OUTPUT_PATH.write_text(generated, encoding="utf-8", newline="\n")
+        print(f"generated {OUTPUT_PATH.relative_to(REPO_ROOT).as_posix()}")
 PY

@@ -16,11 +16,25 @@ PR_DELTA_MODE=0
 PR_BASE_SHA=""
 PR_HEAD_SHA=""
 declare -A PR_DELTA_LINE_MAP=()
+TRACK_DOC=""
+TRACK_DOC_REL=""
+ADDENDUM_SCANS_TSV=""
+ADDENDUM_ALLOW_DIR=""
+PROVE_ADDENDUM=0
 
 declare -a REPORT_LINES=()
 
 JUSTIF_FILE="${SCRIPT_DIR}/inspect_justifications.tsv"
 declare -A JUSTIFS=()
+declare -A GLOBAL_SCAN_IDS=()
+declare -A GLOBAL_ALLOW_KEYS=()
+
+usage() {
+  cat >&2 <<'EOF'
+usage: doctrine_scan.sh [--pr-delta BASE [HEAD]] [--track-doc PATH]
+       doctrine_scan.sh --prove-addendum
+EOF
+}
 
 load_justifications() {
   if [[ ! -f "$JUSTIF_FILE" ]]; then
@@ -78,8 +92,9 @@ validate_allow_record() {
   local rationale="$5"
   local blocker="$6"
 
-  case "$relpath" in
-    allow/sealed_producers.txt)
+  local allow_name="${relpath##*/}"
+  case "$allow_name" in
+    sealed_producers.txt)
       case "$door" in
         read|dispatch|apply|cpu_oracle) ;;
         *)
@@ -91,12 +106,12 @@ validate_allow_record() {
         die_scanner "${relpath}:${line_num}: symbol '${symbol}' does not match door-class '${door}' grammar"
       fi
       ;;
-    allow/inert_buffer_handles.txt)
+    inert_buffer_handles.txt)
       if [[ "$door" != "inert-util" ]]; then
         die_scanner "${relpath}:${line_num}: invalid door-class '${door}' (inert_buffer_handles: inert-util only)"
       fi
       ;;
-    allow/kernel_surface.txt)
+    kernel_surface.txt)
       case "$door" in
         surface-inert|authority-export|sealed-export) ;;
         inert-util)
@@ -140,6 +155,17 @@ validate_allow_file() {
     fi
     validate_allow_record "$relpath" "$line_num" "$symbol" "$door" "$rationale" "$blocker"
   done <"$file"
+}
+
+repo_relpath() {
+  local path="$1"
+  path="${path//\\//}"
+  path="${path#./}"
+  local root="${REPO_ROOT//\\//}"
+  if [[ "$path" == "$root"/* ]]; then
+    path="${path#"${root}/"}"
+  fi
+  printf '%s' "$path"
 }
 
 parse_fields() {
@@ -195,6 +221,141 @@ load_and_validate_allowlists() {
     fi
     validate_allow_file "$f"
   done
+}
+
+load_global_keys() {
+  GLOBAL_SCAN_IDS=()
+  GLOBAL_ALLOW_KEYS=()
+
+  local line line_num=0 fields=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line_num=$((line_num + 1))
+    line="$(trim "$line")"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if ! parse_fields "$line" fields; then
+      die_scanner "scans.tsv:${line_num}: malformed record (expected 7 fields)"
+      continue
+    fi
+    GLOBAL_SCAN_IDS["${fields[0]}"]=1
+  done <"$SCANS_TSV"
+
+  local f rel base allow_fields=()
+  for f in "${ALLOW_DIR}/sealed_producers.txt" "${ALLOW_DIR}/inert_buffer_handles.txt" "${ALLOW_DIR}/kernel_surface.txt"; do
+    [[ -f "$f" ]] || continue
+    rel="${f#"${SCRIPT_DIR}/"}"
+    base="${rel##*/}"
+    line_num=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line_num=$((line_num + 1))
+      line="$(trim "$line")"
+      [[ -z "$line" || "$line" == \#* ]] && continue
+      if ! parse_allow_fields "$line" allow_fields; then
+        die_scanner "${rel}:${line_num}: expected 4 fields (symbol | door-class | rationale | promotion-blocker)"
+        continue
+      fi
+      GLOBAL_ALLOW_KEYS["${base}:${allow_fields[0]}"]=1
+    done <"$f"
+  done
+
+  f="${ALLOW_DIR}/sealed_types.txt"
+  if [[ -f "$f" ]]; then
+    line_num=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line_num=$((line_num + 1))
+      line="$(trim "$line")"
+      [[ -z "$line" || "$line" == \#* ]] && continue
+      GLOBAL_ALLOW_KEYS["sealed_types.txt:${line}"]=1
+    done <"$f"
+  fi
+}
+
+resolve_track_addendum() {
+  [[ -z "$TRACK_DOC" ]] && return
+  TRACK_DOC_REL="$(repo_relpath "$TRACK_DOC")"
+  if [[ ! -f "${REPO_ROOT}/${TRACK_DOC_REL}" ]]; then
+    die_scanner "--track-doc is not a repo file: ${TRACK_DOC}"
+    return
+  fi
+  ADDENDUM_SCANS_TSV="${REPO_ROOT}/${TRACK_DOC_REL}.ci.tsv"
+  ADDENDUM_ALLOW_DIR="${REPO_ROOT}/${TRACK_DOC_REL}.ci.allow"
+}
+
+validate_track_scan_addendum() {
+  [[ -n "$ADDENDUM_SCANS_TSV" && -f "$ADDENDUM_SCANS_TSV" ]] || return
+
+  local line line_num=0 fields=()
+  declare -A local_ids=()
+  local rel="${TRACK_DOC_REL}.ci.tsv"
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line_num=$((line_num + 1))
+    line="$(trim "$line")"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if ! parse_fields "$line" fields; then
+      die_scanner "${rel}:${line_num}: malformed record (expected 7 fields)"
+      continue
+    fi
+    local scan_id="${fields[0]}"
+    if [[ -n "${GLOBAL_SCAN_IDS[$scan_id]:-}" ]]; then
+      die_scanner "${rel}:${line_num}: track addendum redefines global scan-id '${scan_id}'"
+    fi
+    if [[ -n "${local_ids[$scan_id]:-}" ]]; then
+      die_scanner "${rel}:${line_num}: duplicate track addendum scan-id '${scan_id}'"
+    fi
+    local_ids["$scan_id"]=1
+  done <"$ADDENDUM_SCANS_TSV"
+}
+
+validate_track_allow_addendum() {
+  [[ -n "$ADDENDUM_ALLOW_DIR" && -d "$ADDENDUM_ALLOW_DIR" ]] || return
+
+  local f base rel line line_num fields=()
+  declare -A local_keys=()
+  shopt -s nullglob
+  for f in "${ADDENDUM_ALLOW_DIR}"/*; do
+    base="${f##*/}"
+    rel="$(repo_relpath "$f")"
+    case "$base" in
+      sealed_producers.txt|inert_buffer_handles.txt|kernel_surface.txt|sealed_types.txt) ;;
+      *)
+        die_scanner "${rel}: unknown track addendum allow file"
+        continue
+        ;;
+    esac
+
+    line_num=0
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line_num=$((line_num + 1))
+      line="$(trim "$line")"
+      [[ -z "$line" || "$line" == \#* ]] && continue
+      if [[ "$base" == "sealed_types.txt" ]]; then
+        if [[ "$line" == *" | "* || "$line" == *" "* || "$line" == *$'\t'* ]]; then
+          die_scanner "${rel}:${line_num}: malformed sealed type (expected one bare name)"
+          continue
+        fi
+        fields=("$line")
+      else
+        if ! parse_allow_fields "$line" fields; then
+          die_scanner "${rel}:${line_num}: expected 4 fields (symbol | door-class | rationale | promotion-blocker)"
+          continue
+        fi
+        if [[ "${#fields[@]}" -ne 4 || -z "${fields[0]}" || -z "${fields[1]}" || -z "${fields[2]}" || -z "${fields[3]}" ]]; then
+          die_scanner "${rel}:${line_num}: empty symbol, door-class, rationale, or promotion-blocker"
+          continue
+        fi
+        validate_allow_record "$rel" "$line_num" "${fields[0]}" "${fields[1]}" "${fields[2]}" "${fields[3]}"
+      fi
+
+      local key="${base}:${fields[0]}"
+      if [[ -n "${GLOBAL_ALLOW_KEYS[$key]:-}" ]]; then
+        die_scanner "${rel}:${line_num}: track addendum duplicates global allow key '${key}'"
+      fi
+      if [[ -n "${local_keys[$key]:-}" ]]; then
+        die_scanner "${rel}:${line_num}: duplicate track addendum allow key '${key}'"
+      fi
+      local_keys["$key"]=1
+    done <"$f"
+  done
+  shopt -u nullglob
 }
 
 line_matches_any_exclude() {
@@ -483,7 +644,9 @@ run_require_scan() {
   return 0
 }
 
-run_scans() {
+run_scan_file() {
+  local scan_file="$1"
+  local scan_label="$2"
   local line_num=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     line_num=$((line_num + 1))
@@ -492,11 +655,11 @@ run_scans() {
 
     local fields=()
     if ! parse_fields "$line" fields; then
-      die_scanner "scans.tsv:${line_num}: malformed record (expected 7 fields)"
+      die_scanner "${scan_label}:${line_num}: malformed record (expected 7 fields)"
       continue
     fi
     if [[ "${#fields[@]}" -ne 7 ]]; then
-      die_scanner "scans.tsv:${line_num}: malformed record (expected 7 fields, got ${#fields[@]})"
+      die_scanner "${scan_label}:${line_num}: malformed record (expected 7 fields, got ${#fields[@]})"
       continue
     fi
 
@@ -511,20 +674,20 @@ run_scans() {
     local allowlist_mode=""
 
     if [[ -z "$scan_id" || -z "$severity" || -z "$pattern" || -z "$doctrine_ref" ]]; then
-      die_scanner "scans.tsv:${line_num}: empty required field in '${scan_id}'"
+      die_scanner "${scan_label}:${line_num}: empty required field in '${scan_id}'"
       continue
     fi
 
     case "$severity" in
       RELIABLE|HEURISTIC) ;;
       *)
-        die_scanner "scans.tsv:${line_num}: invalid severity '${severity}' in '${scan_id}'"
+        die_scanner "${scan_label}:${line_num}: invalid severity '${severity}' in '${scan_id}'"
         continue
         ;;
     esac
 
     if [[ "$severity" == "RELIABLE" && -z "$promotion_blocker" ]]; then
-      die_scanner "scans.tsv:${line_num}: RELIABLE scan '${scan_id}' missing promotion-blocker"
+      die_scanner "${scan_label}:${line_num}: RELIABLE scan '${scan_id}' missing promotion-blocker"
       continue
     fi
 
@@ -575,7 +738,131 @@ run_scans() {
     if [[ "$verdict" == "FAIL" ]]; then
       echo "remedy: if this is a legitimate new door, add a conforming record to scripts/ci/allow/<file>.txt with rationale and promotion-blocker; do not edit the scanner" >&2
     fi
+  done <"$scan_file"
+}
+
+run_scans() {
+  run_scan_file "$SCANS_TSV" "scans.tsv"
+  if [[ -n "$ADDENDUM_SCANS_TSV" && -f "$ADDENDUM_SCANS_TSV" ]]; then
+    run_scan_file "$ADDENDUM_SCANS_TSV" "${TRACK_DOC_REL}.ci.tsv"
+  fi
+}
+
+assert_contains() {
+  local haystack="$1"
+  local needle="$2"
+  local label="$3"
+  if [[ "$haystack" != *"$needle"* ]]; then
+    echo "addendum proof failed (${label}): missing '${needle}'" >&2
+    return 1
+  fi
+}
+
+assert_not_contains() {
+  local haystack="$1"
+  local needle="$2"
+  local label="$3"
+  if [[ "$haystack" == *"$needle"* ]]; then
+    echo "addendum proof failed (${label}): unexpected '${needle}'" >&2
+    return 1
+  fi
+}
+
+run_addendum_proof() {
+  local tmp_rel="scripts/ci/tmp_track_addendum_proof_$$"
+  local tmp_abs="${REPO_ROOT}/${tmp_rel}"
+  rm -rf "$tmp_abs"
+  mkdir -p "${tmp_abs}/active" "${tmp_abs}/active_track.md.ci.allow" "${tmp_abs}/inactive_track.md.ci.allow"
+  trap "rm -rf '${tmp_abs}'" EXIT
+
+  printf '# active track proof fixture\n' >"${tmp_abs}/active_track.md"
+  printf '# clean track proof fixture\n' >"${tmp_abs}/clean_track.md"
+  printf '# inactive track proof fixture\n' >"${tmp_abs}/inactive_track.md"
+  printf 'fn proof() { let _x = "TRACK_LOCAL_BAD_TOKEN"; }\n' >"${tmp_abs}/active/bad.rs"
+  printf 'TRACK-LOCAL-BAD | RELIABLE | %s/active/** | TRACK_LOCAL_BAD_TOKEN |  | addendum proof local reliable | proof fixture promotion blocker\n' "$tmp_rel" >"${tmp_abs}/active_track.md.ci.tsv"
+  printf 'ACTIVE_TRACK_ONLY_TYPE\n' >"${tmp_abs}/active_track.md.ci.allow/sealed_types.txt"
+  printf 'INACTIVE-BAD | RELIABLE | %s/active/** | TRACK_LOCAL_BAD_TOKEN |  | inactive addendum proof | proof fixture promotion blocker\n' "$tmp_rel" >"${tmp_abs}/inactive_track.md.ci.tsv"
+  printf 'INACTIVE_TRACK_ONLY_TYPE\n' >"${tmp_abs}/inactive_track.md.ci.allow/sealed_types.txt"
+
+  local global_id=""
+  local line fields=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="$(trim "$line")"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    parse_fields "$line" fields || continue
+    global_id="${fields[0]}"
+    break
   done <"$SCANS_TSV"
+  if [[ -z "$global_id" ]]; then
+    echo "addendum proof failed: no global scan-id found" >&2
+    return 1
+  fi
+  printf '# redefining track proof fixture\n' >"${tmp_abs}/redefine_track.md"
+  printf '%s | HEURISTIC | %s/active/** | TRACK_LOCAL_BAD_TOKEN |  | forbidden global redefine proof | proof fixture blocker\n' "$global_id" "$tmp_rel" >"${tmp_abs}/redefine_track.md.ci.tsv"
+
+  local out status digest_path
+
+  set +e
+  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/active_track.md" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
+    echo "addendum proof failed (active addendum): expected nonzero scan status" >&2
+    echo "$out" >&2
+    return 1
+  fi
+  assert_contains "$out" "TRACK-LOCAL-BAD  FAIL  1" "active addendum" || return 1
+
+  set +e
+  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -ne 0 ]]; then
+    echo "addendum proof failed (no opt-in): expected global scan to pass" >&2
+    echo "$out" >&2
+    return 1
+  fi
+  assert_not_contains "$out" "TRACK-LOCAL-BAD" "no opt-in" || return 1
+
+  set +e
+  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/clean_track.md" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -ne 0 ]]; then
+    echo "addendum proof failed (inactive detached): expected clean active track to pass" >&2
+    echo "$out" >&2
+    return 1
+  fi
+  assert_not_contains "$out" "INACTIVE-BAD" "inactive detached" || return 1
+
+  set +e
+  out="$(bash "${SCRIPT_DIR}/doctrine_scan.sh" --track-doc "${tmp_rel}/redefine_track.md" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
+    echo "addendum proof failed (forbidden global redefine): expected nonzero status" >&2
+    echo "$out" >&2
+    return 1
+  fi
+  assert_contains "$out" "track addendum redefines global scan-id '${global_id}'" "forbidden global redefine" || return 1
+
+  digest_path="${tmp_rel}/active_digest.md"
+  out="$(bash "${SCRIPT_DIR}/gen_digest.sh" --track-doc "${tmp_rel}/active_track.md" --output "$digest_path" 2>&1)" || {
+    echo "$out" >&2
+    return 1
+  }
+  out="$(bash "${SCRIPT_DIR}/gen_digest.sh" --track-doc "${tmp_rel}/active_track.md" --output "$digest_path" --check 2>&1)" || {
+    echo "$out" >&2
+    return 1
+  }
+  local digest_text
+  digest_text="$(<"${REPO_ROOT}/${digest_path}")"
+  assert_contains "$digest_text" "ACTIVE_TRACK_ONLY_TYPE" "track digest active allow" || return 1
+  assert_contains "$digest_text" "TRACK-LOCAL-BAD" "track digest active scan" || return 1
+  assert_not_contains "$digest_text" "INACTIVE_TRACK_ONLY_TYPE" "track digest inactive allow" || return 1
+  assert_not_contains "$digest_text" "INACTIVE-BAD" "track digest inactive scan" || return 1
+
+  echo "doctrine_scan --prove-addendum: PASS"
 }
 
 emit_report() {
@@ -607,6 +894,14 @@ emit_report() {
     echo "  reliable scope: whole-tree"
     echo "  heuristic scope: whole-tree"
   fi
+  if [[ -n "$TRACK_DOC_REL" ]]; then
+    echo "  track doc: ${TRACK_DOC_REL}"
+    if [[ -n "$ADDENDUM_SCANS_TSV" && -f "$ADDENDUM_SCANS_TSV" ]]; then
+      echo "  track addendum: ${TRACK_DOC_REL}.ci.tsv"
+    else
+      echo "  track addendum: none (global floor only)"
+    fi
+  fi
   echo "  --- results ---"
   local entry
   for entry in "${REPORT_LINES[@]}"; do
@@ -636,16 +931,59 @@ emit_report() {
 }
 
 main() {
-  if [[ "${1:-}" == "--pr-delta" ]]; then
-    PR_DELTA_MODE=1
-    PR_BASE_SHA="${2:-}"
-    PR_HEAD_SHA="${3:-HEAD}"
-    if [[ -z "$PR_BASE_SHA" ]]; then
-      die_scanner "missing base SHA for --pr-delta"
-      emit_report
-      exit 1
-    fi
-    shift 3
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --pr-delta)
+        PR_DELTA_MODE=1
+        PR_BASE_SHA="${2:-}"
+        if [[ -n "${3:-}" && "${3:-}" != --* ]]; then
+          PR_HEAD_SHA="$3"
+        else
+          PR_HEAD_SHA="HEAD"
+        fi
+        if [[ -z "$PR_BASE_SHA" ]]; then
+          die_scanner "missing base SHA for --pr-delta"
+          emit_report
+          exit 1
+        fi
+        shift
+        shift
+        if [[ $# -gt 0 && "${1:-}" != --* ]]; then
+          shift
+        fi
+        ;;
+      --track-doc)
+        TRACK_DOC="${2:-}"
+        if [[ -z "$TRACK_DOC" ]]; then
+          die_scanner "missing path for --track-doc"
+          emit_report
+          exit 1
+        fi
+        shift 2
+        ;;
+      --prove-addendum)
+        PROVE_ADDENDUM=1
+        shift
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        usage
+        die_scanner "unknown argument: $1"
+        emit_report
+        exit 1
+        ;;
+    esac
+  done
+
+  if [[ "$PROVE_ADDENDUM" -eq 1 ]]; then
+    run_addendum_proof
+    exit $?
+  fi
+
+  if [[ "$PR_DELTA_MODE" -eq 1 ]]; then
     if ! git -C "$REPO_ROOT" rev-parse --verify "${PR_BASE_SHA}^{commit}" >/dev/null 2>&1; then
       die_scanner "invalid base SHA for --pr-delta: ${PR_BASE_SHA}"
       emit_report
@@ -671,6 +1009,10 @@ main() {
   fi
 
   load_and_validate_allowlists
+  load_global_keys
+  resolve_track_addendum
+  validate_track_scan_addendum
+  validate_track_allow_addendum
   load_justifications
   if [[ "$scanner_errors" -eq 0 ]]; then
     run_scans

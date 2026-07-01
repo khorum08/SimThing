@@ -19,7 +19,7 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `audit_kernel_surface.py` | Re-derive `kernel_surface.txt` from `lib.rs` (grouped + single-line `pub use`) |
 | `verify_kernel_surface.py` | Diff `kernel_surface.txt` against `lib.rs` exports |
 | `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
-| `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report (default whole-tree; `--pr-delta BASE HEAD` for PR mode) |
+| `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report (default whole-tree; `--pr-delta BASE HEAD` for PR mode; `--track-doc PATH` for an opt-in sibling track addendum) |
 | `doctrine_pr_scan.sh` | PR workflow wrapper — HEURISTIC delta-scope, RELIABLE whole-tree (`--prove-delta` for local proof cases) |
 | `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` (CI-A-SELFTEST-0R repaired for determinism) |
 | `inspect_spam_check.sh` | Spam-bound checker for INSPECT flags (CI-A-SELFTEST-INSPECT-REPAIR-0 — real branch-history checks + leak-safe `--prove`) |
@@ -45,8 +45,12 @@ Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs tar
 ```bash
 bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS before trusting scans)
 bash scripts/ci/doctrine_scan.sh       # whole-tree production scan (master positive control)
+bash scripts/ci/doctrine_scan.sh --track-doc docs/<track>.md   # global floor + that track doc's sibling addendum, if present
+bash scripts/ci/doctrine_scan.sh --prove-addendum              # synthetic proof: opt-in, auto-detach, additive-only, track digest scope
 bash scripts/ci/doctrine_pr_scan.sh BASE_SHA HEAD_SHA   # PR-delta scan (HEURISTIC delta, RELIABLE whole-tree)
 bash scripts/ci/doctrine_pr_scan.sh --prove-delta       # local PR-delta proof cases
+bash scripts/ci/gen_digest.sh --track-doc docs/<track>.md --output docs/tests/<track>_digest.md
+bash scripts/ci/gen_digest.sh --track-doc docs/<track>.md --output docs/tests/<track>_digest.md --check
 bash scripts/ci/inspect_spam_check.sh <branch>         # triage spam check (no name-based fixture aliases)
 bash scripts/ci/inspect_spam_check.sh --prove          # synthetic temp-repo proof cases
 ```
@@ -99,6 +103,19 @@ python scripts/ci/verify_kernel_surface.py   # completeness diff vs lib.rs
 | `ALLOW-KERNEL-SURFACE` | `kernel_surface.txt` | `lib.rs` exports must exactly match the allowlist (grouped + single-line `pub use`) |
 
 On FAIL, add one conforming row to the relevant `allow/*.txt` — do not edit the scanner.
+
+## Opt-in track addenda
+
+A production track may carry a CI addendum next to its canonical track document:
+
+| Path | Role |
+|---|---|
+| `<track-doc>.ci.tsv` | Track-local scan rows with the same seven-field schema as `scripts/ci/scans.tsv` |
+| `<track-doc>.ci.allow/` | Optional track-local digest context using `sealed_producers.txt`, `inert_buffer_handles.txt`, `kernel_surface.txt`, and/or `sealed_types.txt` with the same row formats as global allowlists |
+
+The addendum is strictly opt-in. `doctrine_scan.sh` loads no track addenda unless invoked with `--track-doc PATH`, and then loads only that document's sibling files. An absent sibling addendum means global-floor-only.
+
+Addenda are additive-only. A track addendum scan-id must not redefine a global `scans.tsv` id, and a track digest allow row must not duplicate a global allow/type key. These are scanner/data errors, not triage findings. Track digest mode reads global sources plus the active track's sibling addendum only; it never overwrites `docs/sanctioned_surface.md` unless run in ordinary global mode.
 
 ## Earn one allowlist record
 
