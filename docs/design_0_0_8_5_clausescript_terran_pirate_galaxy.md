@@ -26,6 +26,7 @@
 4. [`clausething/ClauseThing_Spec.md`](clausething/ClauseThing_Spec.md) §4 (the deep correspondence table) + §8 (sequencing hard problems) — the ClauseScript→SimThing isomorphism and its known gaps.
 5. [`clausething/ct_2c_economic_category_memo.md`](clausething/ct_2c_economic_category_memo.md) — the modifier-key decoder, the `_mult`/`_add` inheritance asymmetry, and the movables doctrine (fleets/cohorts/leaders are ordinary SimThings).
 6. [`stead_spatial_contract.md`](stead_spatial_contract.md) — the 8 STEAD invariants (mandatory for any MapGen / Location-grid / Movement-Front / Gu-Yang / PALMA / RF-over-gridcell work).
+7. [`ci_screening_surface.md`](ci_screening_surface.md) — the live CI **carrot+stick** layer (0.0.8.4.6, CLOSED): the screening logic, the **agent onboarding procedure (§7)**, and the per-track addendum standards (§8). Every PR of this track is gated by the doctrine-scan; **follow §7 every rung.**
 
 A rung handoff may add ≤3 rung-local links it directly consumes; rung-local links never accrete into this base.
 
@@ -42,6 +43,7 @@ A rung handoff may add ≤3 rung-local links it directly consumes; rung-local li
 - **Exact magnitude gates route through Candidate F** (constitution §0.7). Native `sqrt`/`length`/`distance` are `ApproximateDiagnostic` only.
 - **Closed lowering layers are closed** (constitution §A): a producer/front-end change makes zero edits to closed `crates/simthing-clausething/src/` lowerers *except* under a DA-authorized amendment. **This track carries two such owner-authorized amendments — see §1.**
 - **No silent tier collapse; Deviation Record + Scope Ledger on every closure** (constitution §0.6). Parking a specified tier is a recorded, approved Deviation — never an implicit free pass.
+- **The CI carrot+stick layer (0.0.8.4.6, CLOSED) is live and applies to every PR here.** *Stick* — the GitHub `Doctrine Scan` gate screens every PR (clean **RELIABLE** = DA-equivalent; `FAIL` = HOLD; `INSPECT` → §1A triage); it now **mechanizes several of this track's own invariants** (the `SEMANTIC-WORDS`/`SIM-KIND-READ` scans enforce the "grep for terran/pirate comes up empty" rule above; the sealed-kernel scans enforce the one-authoritative-path rule). *Carrot* — **follow the onboarding procedure** ([`ci_screening_surface.md`](ci_screening_surface.md) §7): read the **sanctioned-surface digest** (`docs/sanctioned_surface.md`) *before* grepping the kernel surface, and run the **inner-loop self-scan** (`cargo check -p` + `doctrine_scan.sh`) during edits — the digest is your pre-computed grep answer. If a Terran-Pirate-specific anti-pattern chronically fires (triage log evidence), this track may author an **opt-in per-track CI addendum** (§8) — additive-only, never widening the global floor. Architectural insight a seal blocks routes through the **breakthrough valve** (gated + invited): surface a baseline-backed proposal, never self-grant.
 
 ---
 
