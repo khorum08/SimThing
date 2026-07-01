@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-workflow-0`
-- PR: (pending)
-- Merge: (pending)
+- PR: [#1033](https://github.com/khorum08/SimThing/pull/1033)
+- Merge: `17f83ffb74` (master)
 
 ## Recipient Agent
 
@@ -62,7 +62,11 @@ Structural verification (pre-merge):
 - `Publish doctrine reports` appends to `$GITHUB_STEP_SUMMARY` with `if: always()`.
 - `Upload doctrine reports` uses `actions/upload-artifact@v4` with `if: always()`.
 
-First workflow run: (pending — recorded after merge to `master`).
+First workflow run:
+
+- PR run: [28484300532](https://github.com/khorum08/SimThing/actions/runs/28484300532) — **success** (55s, `pull_request` on `ci-a-workflow-0`).
+- Master run: [28484307583](https://github.com/khorum08/SimThing/actions/runs/28484307583) — **success** (47s, push to `master` after merge).
+- Artifact `doctrine-scan-reports` uploaded on both runs.
 
 ## Scope Ledger
 
