@@ -60,6 +60,9 @@
   **deliberate, reviewed widening of a sanctioned door**, never a scanner-edit dodge. A scan is itself
   residue: promoting its invariant to a type/admission boundary **retires the now-redundant scan in the same
   PR** (§1.2's promotion-target rule, mechanized).
+- **Inner loop (Track C §3A): run `cargo check -p <touched-crate>` and `bash scripts/ci/doctrine_scan.sh`
+  after small edits, not only at PR time** — the FAIL-with-remedy is a steering signal during generation,
+  not just an after-the-fact gate; full contract: [`ci_screening_surface.md`](ci_screening_surface.md).
 - **No rung touching PROBATION / authority / gate state merges before DA clearance.** A truthful corrective
   self-report of a breach may be accepted on its merits; it is never precedent for skipping clearance again.
   **Verify the tree, not the relayed report** — a clean CI check or a proof transcript pasted into a PR body

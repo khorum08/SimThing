@@ -138,6 +138,22 @@ pub enum ThresholdSemantic {
     },
 }
 
+impl ThresholdSemantic {
+    /// Short, stable tag for observability/log lines. Display-only — never
+    /// used for runtime branching (semantic-free sim doctrine, core §1.2).
+    pub fn debug_kind(&self) -> &'static str {
+        match self {
+            ThresholdSemantic::FissionTrigger { .. } => "fission_trigger",
+            ThresholdSemantic::FusionTrigger { .. } => "fusion_trigger",
+            ThresholdSemantic::PropertyExpiry { .. } => "property_expiry",
+            ThresholdSemantic::VelocityAlert { .. } => "velocity_alert",
+            ThresholdSemantic::AggregateAlert { .. } => "aggregate_alert",
+            ThresholdSemantic::CapabilityUnlock { .. } => "capability_unlock",
+            ThresholdSemantic::ScriptedEventTrigger { .. } => "scripted_event_trigger",
+        }
+    }
+}
+
 /// AI-facing threshold registration for a rate/trajectory column on `values`.
 #[derive(Clone, Debug)]
 pub struct VelocityAlertRegistration {
@@ -1062,6 +1078,28 @@ mod tests {
         let (gpu, cpu) = ThresholdBuilder::build(&root, &reg, &allocator);
         assert!(gpu.is_empty());
         assert!(cpu.is_empty());
+    }
+
+    #[test]
+    fn debug_kind_tags_are_stable_and_display_only() {
+        let id = simthing_core::SimThing::new(simthing_core::SimThingKind::Cohort, 0).id;
+        let expiry = ThresholdSemantic::PropertyExpiry {
+            sim_thing_id: id,
+            property_id: SimPropertyId(0),
+        };
+        assert_eq!(expiry.debug_kind(), "property_expiry");
+
+        let unlock = ThresholdSemantic::CapabilityUnlock {
+            sim_thing_id: id,
+            property_id: SimPropertyId(0),
+            sub_field: SubFieldRole::Amount,
+        };
+        assert_eq!(unlock.debug_kind(), "capability_unlock");
+
+        let scripted = ThresholdSemantic::ScriptedEventTrigger {
+            event_id: "low_loyalty".into(),
+        };
+        assert_eq!(scripted.debug_kind(), "scripted_event_trigger");
     }
 
     #[test]
