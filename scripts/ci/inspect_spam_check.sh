@@ -129,7 +129,7 @@ if [[ "$branch" == "single-gray-zone" || "$branch" == "single" || "$branch" == "
   exit 0
 fi
 
-if [[ "$branch" == "symbol-walking" || "$branch" == "spam-history" || "$branch" == "spam-symbol" || "$branch" == "spam-rising" || "$branch" == "spam" ]]; then
+if [[ "$branch" == "symbol-walking" || "$branch" == "spam-history" || "$branch" == "spam-symbol" || "$branch" == "spam-rising" || "$branch" == "spam" || "$branch" == "many-inspect" || "$branch" == "rising" ]]; then
   echo "INSPECT-SPAM-CHECK: SPAM"
   exit 1
 fi
