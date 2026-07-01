@@ -8,8 +8,8 @@ use simthing_driver::compile_and_materialize_resource_flow;
 use simthing_spec::{
     compile_property, compile_resource_flow_admission, ArenaSpec, BaseFlowDirectionSpec,
     BaseFlowObligationSpec, CouplingDelaySpec, CouplingSpec, ExplicitParticipantSpec,
-    FissionPolicySpec, InstallTargetSpec, PropertyKey, PropertySpec, ResourceFlowSpec, SpecError,
-    WildcardAdmissionSpec,
+    FissionPolicySpec, InstallTargetSpec, PropertyKey, PropertySpec,
+    ResourceFlowCapacityBudgetSpec, ResourceFlowSpec, SpecError, WildcardAdmissionSpec,
 };
 
 fn flow_subfield(role_name: &str, accumulator: AccumulatorSpec) -> SubFieldSpec {
@@ -420,6 +420,58 @@ fn e10_expansion_report_is_stable() {
     );
     assert_eq!(report_a.total_orderband_depth_reserved, 0);
     assert_eq!(report_a.total_registration_estimate, Some(3));
+}
+
+#[test]
+fn e10_capacity_budget_scales_arena_caps_with_checked_totals() {
+    let reg = setup_two_arena_registry();
+    let mut food = food_arena_spec(1);
+    food.explicit_participants = vec![
+        ExplicitParticipantSpec::flat(1, 42),
+        ExplicitParticipantSpec::flat(2, 43),
+        ExplicitParticipantSpec::flat(3, 44),
+    ];
+    food.max_coupling_fanout = 1;
+    food.max_orderband_depth = 1;
+    food.reserved_orderband_depth = 6;
+
+    let spec = ResourceFlowSpec {
+        arenas: vec![food, research_arena_spec()],
+        couplings: vec![CouplingSpec {
+            from_arena: "food".into(),
+            to_arena: "research".into(),
+            delay: CouplingDelaySpec::OneTickDelay,
+        }],
+        capacity_budget: Some(ResourceFlowCapacityBudgetSpec {
+            simthing_count: 704,
+            property_columns: 12,
+            rf_arena_count: 2,
+            participants_per_arena: 704,
+            coupling_fanout_per_arena: 8,
+            orderband_depth: 16,
+            emission_capacity: 704,
+            threshold_emission_capacity: 704,
+            gpu_slots: 768,
+            field_buffer_cells: 70_400,
+            readback_records: 704,
+        }),
+        ..Default::default()
+    };
+
+    let compiled = compile_resource_flow_admission(&spec, &reg).expect("compile");
+    assert_eq!(compiled.arenas[0].max_participants, 704);
+    assert_eq!(compiled.arenas[0].max_coupling_fanout, 8);
+    assert_eq!(compiled.arenas[0].max_orderband_depth, 16);
+    let budget = compiled.capacity_budget.expect("resolved capacity budget");
+    assert_eq!(budget.field_value_cells, 768 * 12);
+    assert_eq!(budget.rf_registration_budget, 2 * (704 + 8 + 16));
+
+    let (_, report) = compile_and_materialize_resource_flow(&spec, &reg).expect("materialize");
+    assert_eq!(report.participant_count, 4);
+    assert_eq!(
+        report.capacity_budget.expect("report budget").gpu_slots,
+        768
+    );
 }
 
 #[test]

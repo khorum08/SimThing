@@ -12,12 +12,14 @@ SimThing Studio is an editor and presentation shell over **SimThing-Spec scenari
 
 **Current baseline (2026-06-20):** the **Scenario Runtime + Save/Load Closing Track is DA-APPROVED and closed** (PR #852, provenance PR #853). The surface-gridcell HOLD from final DA review was resolved by **SCENARIO-PLANET-SURFACE-GRIDCELL-TIER-0** (PR #851). **The next production track is selected by the project owner** — future agents must not reopen the closed ladder unless the owner explicitly requests regression review or a new defect is found.
 
+**Closed capability anchors:** GENERAL-SCENARIO-INGESTION-ADMISSION-0 admits arbitrary Scenario ingestion; SESSION-RESOURCE-FLOW-SILOS-0, SESSION-RESOURCE-FLOW-SILOS-HARDEN-0, and SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0 cover owner-silo RF lowering; STUDIO-INGESTION-ADMISSION-REPORT-DISPLAY-0 keeps Studio on spec ingestion APIs; STRUCTURAL-PLACEMENT-EDIT-COMMANDS-0 keeps structural edits in spec authority; PLANET-LOCAL-GRID-REMEDIATION-0 records that the star-system local grid GPU operator deferred.
+
 **Anti-hygiene rule:** Reject docs-only or comparison-only rungs unless they directly enable one of: Scenario load, validation, STEAD mapping, Studio projection rebuild, recursive spatial-tree RF runtime, candidate ScenarioSpec mutation, candidate save/reopen, Studio UI closure, or DA precheck readiness.
 
 ## SimThing Doctrine
 
 - Everything is a **SimThing**; behavior is expressed as SimThings, properties, overlays, and admitted accumulator/resource-flow surfaces.
-- After generation or import, the sole authoritative substrate is **`SimThingScenarioSpec`**: recursive `SimThing` root tree plus structural grid metadata, placements, links, and provenance.
+- After generation or import, the sole authoritative substrate is **`SimThingScenarioSpec`** (`root: Scenario` -> `GameSession` -> `Owner(s)` -> `GalaxyMap`): recursive `SimThing` root tree plus structural grid metadata, placements, links, and provenance.
 - Studio projections, Bevy entities, GPU buffers, runtime reports, and editor config are **not** model authority.
 - Model edits apply to scenario authority first; Studio rebuilds projection layers from authority.
 - Terran Pirate is a **lower-layer golden fixture** only — not the canonical save-game tree shape.

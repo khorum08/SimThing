@@ -1,4 +1,6 @@
+use crate::error::SpecError;
 use crate::spec::install_target::InstallTargetSpec;
+use crate::spec::scenario::SCENARIO_STRUCTURAL_INTEGER_MAX;
 use crate::spec::script::PropertyKey;
 use serde::{Deserialize, Serialize};
 use simthing_core::PlacedParticipant;
@@ -23,6 +25,9 @@ pub struct ResourceFlowSpec {
     pub couplings: Vec<CouplingSpec>,
     #[serde(default)]
     pub base_obligations: Vec<BaseFlowObligationSpec>,
+    /// Optional session-class capacity budget for scaling RF descriptor caps and GPU reservations.
+    #[serde(default)]
+    pub capacity_budget: Option<ResourceFlowCapacityBudgetSpec>,
     /// CT-RF-EML-RATE-0: trigger-gated rate contributions evaluated per tick
     /// by an `EvalEML` effective-rate band ordered before the arena reduce
     /// bands — `intrinsic = (base + Σ add×gate) × (1 + Σ mult×gate)`,
@@ -31,6 +36,159 @@ pub struct ResourceFlowSpec {
     /// transforms directly on rate columns are rejected (compounding).
     #[serde(default)]
     pub gated_rates: Vec<GatedRateSpec>,
+}
+
+/// Budgeted RF capacity surfaces. Inputs are authoring/session budgets, not runtime semantics.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourceFlowCapacityBudgetSpec {
+    pub simthing_count: u32,
+    pub property_columns: u32,
+    pub rf_arena_count: u32,
+    pub participants_per_arena: u32,
+    pub coupling_fanout_per_arena: u32,
+    pub orderband_depth: u32,
+    pub emission_capacity: u32,
+    pub threshold_emission_capacity: u32,
+    pub gpu_slots: u32,
+    pub field_buffer_cells: u32,
+    pub readback_records: u32,
+}
+
+/// Checked resolved view of [`ResourceFlowCapacityBudgetSpec`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedResourceFlowCapacityBudget {
+    pub simthing_count: u32,
+    pub property_columns: u32,
+    pub rf_arena_count: u32,
+    pub participants_per_arena: u32,
+    pub coupling_fanout_per_arena: u32,
+    pub orderband_depth: u32,
+    pub emission_capacity: u32,
+    pub threshold_emission_capacity: u32,
+    pub gpu_slots: u32,
+    pub field_buffer_cells: u32,
+    pub readback_records: u32,
+    pub field_value_cells: u128,
+    pub rf_registration_budget: u128,
+}
+
+/// Resolve an optional RF capacity budget with checked `u128` arithmetic.
+pub fn resolve_resource_flow_capacity_budget(
+    spec: Option<&ResourceFlowCapacityBudgetSpec>,
+) -> Result<Option<ResolvedResourceFlowCapacityBudget>, SpecError> {
+    let Some(spec) = spec else {
+        return Ok(None);
+    };
+
+    for (surface, value) in [
+        ("simthing_count", spec.simthing_count),
+        ("property_columns", spec.property_columns),
+        ("rf_arena_count", spec.rf_arena_count),
+        ("participants_per_arena", spec.participants_per_arena),
+        ("coupling_fanout_per_arena", spec.coupling_fanout_per_arena),
+        ("orderband_depth", spec.orderband_depth),
+        ("emission_capacity", spec.emission_capacity),
+        (
+            "threshold_emission_capacity",
+            spec.threshold_emission_capacity,
+        ),
+        ("gpu_slots", spec.gpu_slots),
+        ("field_buffer_cells", spec.field_buffer_cells),
+        ("readback_records", spec.readback_records),
+    ] {
+        validate_budget_surface(surface, value)?;
+    }
+
+    let gpu_slots = spec.gpu_slots.max(spec.simthing_count);
+    let field_value_cells = checked_mul(
+        "field_value_cells",
+        u128::from(gpu_slots),
+        u128::from(spec.property_columns),
+    )?;
+    let per_arena_registration_budget = checked_add(
+        "per_arena_registration_budget",
+        u128::from(spec.participants_per_arena),
+        checked_add(
+            "per_arena_registration_budget",
+            u128::from(spec.coupling_fanout_per_arena),
+            u128::from(spec.orderband_depth),
+        )?,
+    )?;
+    let rf_registration_budget = checked_mul(
+        "rf_registration_budget",
+        u128::from(spec.rf_arena_count),
+        per_arena_registration_budget,
+    )?;
+
+    Ok(Some(ResolvedResourceFlowCapacityBudget {
+        simthing_count: spec.simthing_count,
+        property_columns: spec.property_columns,
+        rf_arena_count: spec.rf_arena_count,
+        participants_per_arena: spec.participants_per_arena,
+        coupling_fanout_per_arena: spec.coupling_fanout_per_arena,
+        orderband_depth: spec.orderband_depth,
+        emission_capacity: spec.emission_capacity,
+        threshold_emission_capacity: spec.threshold_emission_capacity,
+        gpu_slots,
+        field_buffer_cells: spec.field_buffer_cells,
+        readback_records: spec.readback_records,
+        field_value_cells,
+        rf_registration_budget,
+    }))
+}
+
+pub fn effective_resource_flow_arena_caps(
+    arena: &ArenaSpec,
+    budget: Option<&ResolvedResourceFlowCapacityBudget>,
+) -> (u32, u32, u32) {
+    match budget {
+        None => (
+            arena.max_participants,
+            arena.max_coupling_fanout,
+            arena.max_orderband_depth,
+        ),
+        Some(budget) => (
+            arena.max_participants.max(budget.participants_per_arena),
+            arena
+                .max_coupling_fanout
+                .max(budget.coupling_fanout_per_arena),
+            arena.max_orderband_depth.max(budget.orderband_depth),
+        ),
+    }
+}
+
+fn validate_budget_surface(surface: &str, value: u32) -> Result<(), SpecError> {
+    if value == 0 {
+        return Err(SpecError::ResourceFlowCapacityBudget {
+            surface: surface.into(),
+            reason: "must be greater than zero".into(),
+        });
+    }
+    if u128::from(value) > u128::from(SCENARIO_STRUCTURAL_INTEGER_MAX) {
+        return Err(SpecError::ResourceFlowCapacityBudget {
+            surface: surface.into(),
+            reason: format!(
+                "must be <= SCENARIO_STRUCTURAL_INTEGER_MAX ({SCENARIO_STRUCTURAL_INTEGER_MAX})"
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn checked_add(surface: &str, a: u128, b: u128) -> Result<u128, SpecError> {
+    a.checked_add(b)
+        .ok_or_else(|| SpecError::ResourceFlowCapacityBudget {
+            surface: surface.into(),
+            reason: "checked u128 addition overflowed".into(),
+        })
+}
+
+fn checked_mul(surface: &str, a: u128, b: u128) -> Result<u128, SpecError> {
+    a.checked_mul(b)
+        .ok_or_else(|| SpecError::ResourceFlowCapacityBudget {
+            surface: surface.into(),
+            reason: "checked u128 multiplication overflowed".into(),
+        })
 }
 
 /// One dynamic rate contribution (CT-RF-EML-RATE-0). With a `trigger` the

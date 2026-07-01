@@ -2,7 +2,11 @@
 
 use simthing_core::SimThing;
 use simthing_gpu::SlotAllocator;
-use simthing_spec::{EnrollmentSelectorSpec, ExplicitParticipantSpec, ResourceFlowSpec, SpecError};
+use simthing_spec::{
+    effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget,
+    EnrollmentSelectorSpec, ExplicitParticipantSpec, ResolvedResourceFlowCapacityBudget,
+    ResourceFlowSpec, SpecError,
+};
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -37,6 +41,7 @@ pub fn resolve_resource_flow_enrollment(
     allocator: &SlotAllocator,
 ) -> Result<ResourceFlowSpec, EnrollmentError> {
     let mut resolved = spec.clone();
+    let capacity_budget = resolve_resource_flow_capacity_budget(spec.capacity_budget.as_ref())?;
     for arena in &mut resolved.arenas {
         match arena
             .enrollment
@@ -49,7 +54,7 @@ pub fn resolve_resource_flow_enrollment(
                     resolve_install_target_to_explicit(arena, target, scenario, root, allocator)?;
             }
         }
-        validate_resolved_arena_admission(arena)?;
+        validate_resolved_arena_admission(arena, capacity_budget.as_ref())?;
     }
     Ok(resolved)
 }
@@ -78,6 +83,7 @@ fn resolve_install_target_to_explicit(
 
 fn validate_resolved_arena_admission(
     arena: &simthing_spec::ArenaSpec,
+    capacity_budget: Option<&ResolvedResourceFlowCapacityBudget>,
 ) -> Result<(), EnrollmentError> {
     let mut seen = HashSet::new();
     for participant in &arena.explicit_participants {
@@ -98,10 +104,11 @@ fn validate_resolved_arena_admission(
     }
 
     let computed = arena.explicit_participants.len() as u32;
-    if computed > arena.max_participants {
+    let (max_participants, _, _) = effective_resource_flow_arena_caps(arena, capacity_budget);
+    if computed > max_participants {
         return Err(SpecError::MaxParticipantsExceeded {
             arena: arena.name.clone(),
-            declared: arena.max_participants,
+            declared: max_participants,
             computed,
         }
         .into());

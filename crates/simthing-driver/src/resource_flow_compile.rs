@@ -82,7 +82,8 @@ pub fn materialize_arena_registry(
     }
 
     let (registry, _) = builder.build()?;
-    let report = expansion_report_from_registry(&registry);
+    let mut report = expansion_report_from_registry(&registry);
+    report.capacity_budget = admission.capacity_budget.clone();
     Ok((registry, report))
 }
 
@@ -144,6 +145,7 @@ fn expansion_report_from_registry(registry: &ArenaRegistry) -> ResourceFlowExpan
         per_arena_coupling_fanout,
         total_registration_estimate,
         total_orderband_depth_reserved,
+        capacity_budget: None,
         rejected: Vec::new(),
     }
 }
