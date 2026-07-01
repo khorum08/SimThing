@@ -1,6 +1,6 @@
 # 0.0.8.4.6 — CI Scaffolding: the Doctrinal Tripwire Layer
 
-> **Status: PROPOSED (production track, 2026-06-29, owner-directed).** An infrastructure sub-track in the
+> **Status: DA-CLOSED (production track, 2026-07-01; Track C closed via `CI-C-CLOSEOUT-0`).** An infrastructure sub-track in the
 > 0.0.8.4.x lane (after the closed `simthing-kernel` track 0.0.8.4.5), sequenced **before** the 0.0.8.5
 > Terran-Pirate track. *(Owner said "0.0.8.5"; that number is held by Terran-Pirate, so this is numbered
 > 0.0.8.4.6 to avoid collision — bump TP to 0.0.8.6 and renumber this to 0.0.8.5 on owner request.)*
@@ -8,8 +8,9 @@
 > **Purpose.** Automate the repeated DA doctrinal scans into a free, fast, public-repo GitHub Actions layer
 > so that **agents and the orchestrator may treat a clean CI result as "the DA ran these scans"** — and a
 > flagged result routes to DA for the judgment a grep cannot make. The executable tests (builds, GPU parity,
-> Studio) stay **local**, by architecture. Two tracks: **A (now)** the grep-only tripwire layer + its own
-> validation; **B (deferred)** a local executable harness that emits the same report contract.
+> Studio) stay **local**, by architecture. Completed CI scaffolding now has Track A closed as the grep-only
+> tripwire layer and Track C closed as the generation-time constraint layer; Track B remains deferred as the
+> local executable harness for sanctioned-door logic proof.
 
 ---
 
@@ -143,7 +144,7 @@ INSPECT   — requires author justification (missing = unresolved); bounded loop
 SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a false PASS (§0.6.6).
 ```
 
-**Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) and Track C (the carrot) remain DEFERRED-but-scoped.**
+**Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) remains deferred until a consumer needs executable seal-proof; Track C (the carrot) is DA-CLOSED.**
 
 **Auditable screening-surface reference:** [`ci_screening_surface.md`](ci_screening_surface.md) — the single authoritative map of the screening logic, every scan/allow/block-list file, the strict rigor to add a `scans.tsv` or allowlist entry, and the triage agent's narrowing role. Built for auditability, maintenance, and Track C introspection/onboarding. Any change to the screening surface updates it in the same PR.
 
@@ -167,7 +168,7 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 | 2 | `CI-B-TRIPWIRE-TAGS-0` | Executable-specific tripwires: **GPU-skipped → `INSPECT`** (seal/parity not fully verified here; owner's machine confirms — never a silent PASS); **flaky / perf-variance → `INSPECT`** with the run band (the +49% single-run noise needs a multi-run); **compile_fail proven / parity bit-exact → `PASS`**. | Cursor/Grok | **DEFERRED** | each tag emitted correctly on a representative run. |
 | F | `CI-B-CLOSEOUT-0` | "Test batteries executed by the DA" holds for the executable dimension too — run on the machine that can execute them; contract recorded. | Opus/Owner (DA) | **DEFERRED** | recorded; track CLOSED. |
 
-## 3A. Track C — the carrot (generation-time constraint, DEFERRED-but-scoped)
+## 3A. Track C — the carrot (generation-time constraint, DA-CLOSED)
 
 > The stick (Tracks A/B) catches violations *after* generation. The carrot pulls the same constraint
 > geometry *forward* so the conformant path is the path of least resistance — the immediate-feasible form of
@@ -176,9 +177,11 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 > feasible reuses Track A's artifacts and needs no new infrastructure. Opens after Track A lands; lightens
 > §1A by reducing INSPECT volume at the source.
 
+> Closeout note: Track C is closed as of 2026-07-01. The table preserves rung history; current lifecycle state is COMPLETE for C1/C2/C3 and DA-CLOSED for CF.
+
 | Rung | ID | Scope | Recipient | State | DoD |
 |---|---|---|---|---|---|
-| 0 | `CI-C-TRACK-OPEN-0` | Open after Track A closes. | Opus/Owner (DA) | **DONE — DA-OPENED** (2026-07-01; Track A verified CLOSED in the tree, `doctrine_scan` PASS) | Track A CLOSED; **Track C OPEN**; `CI-C-INNER-LOOP-0` is the next active rung; C2/C3/CF held to their gates. |
+| 0 | `CI-C-TRACK-OPEN-0` | Open after Track A closes. | Opus/Owner (DA) | **DONE — DA-OPENED** (2026-07-01; Track A verified CLOSED in the tree, `doctrine_scan` PASS) | Track A CLOSED; Track C opened, sequenced, and later DA-CLOSED at `CI-C-CLOSEOUT-0`. |
 | 1 | `CI-C-INNER-LOOP-0` | **Tier 1 — tighten the agent's inner loop.** Convention (handoff + landing): a coding agent runs `cargo check -p <crate>` **and** `bash scripts/ci/doctrine_scan.sh` after each small edit, not at PR time — the *same* scanner consulted earlier, so a doomed path is pruned seconds after birth, in the agent's own loop, before DA/CI/triage see it. The FAIL-with-remedy (already in `CI-A-RUNNER-0`) is the steering signal. | Haiku/Sonnet (convention) + Cursor/Grok (adopt) | **COMPLETE** (DA light review 2026-07-01 — trusted green CI; verified only the residue: `debug_kind()` is display-only, zero tick-path call sites, no new semantics; the `faction_capability_unlock` slip caught pre-PR by the inner loop; `triage_log.tsv` seeded with 1 real GREEN row (commit fd11b746), clearance spot-audited legitimate) | Convention landed as a one-line pointer in `handoff_template.md` (context spine) and `agents.md`, both delegating detail to `ci_screening_surface.md` §6. Sample rung: a real `simthing-sim` inner-loop edit (`ThresholdSemantic::debug_kind`) tripped `SEMANTIC-WORDS` (INSPECT, real transcript), was triaged GREEN and fixed before PR, logged in `triage_log.tsv`. See `docs/tests/ci-c-inner-loop-0_results.md`. |
 | 2 | `CI-C-DIGEST-0` | **Tier 2 — the sanctioned-surface digest (context-space "CFGzip").** `scripts/ci/gen_digest.sh` reads `allow/*.txt` → a compact `docs/sanctioned_surface.md`: the *only* kernel doors an agent may call (door-class + signature) + the forbidden patterns + why. Injected into any kernel-touching handoff. The CI onboarding heuristic keeps `allow/*.txt` current, so the digest is **accurate for free** — the same artifact that keeps CI honest steers the agent's context. The killer aid for **low-context agents**: a tiny, always-current statement of the valid surface, so a small window can't drift. **Token-economy purpose — it is the agent's *pre-computed grep answer* (read-instead-of-grep):** a kernel-touching agent otherwise burns exploratory greps rediscovering the sanctioned surface every rung; the digest hands it the answer, replacing the *"what may I call / is X sealed"* greps — as the inner-loop self-scan replaces *"did I violate"* greps and FAIL-as-teacher replaces *"where is the violation"* greps. **Boundary:** the digest answers *sanctioned-surface + conformance only*, never general code navigation — it is **not a code index and must not grow into one** (that metastasis is what §0's minimalism forbids; general navigation greps stay the agent's own). | Cursor/Grok | **COMPLETE** (0R DA-verified at CF, 2026-07-01: `gen_digest --check` wired into the workflow with `set -o pipefail` (exit not masked); DA perturbed the digest → `--check` exit 1 (drift bites); 5/5 embedded sha256 match live sources) | `scripts/ci/gen_digest.sh` regenerates `docs/sanctioned_surface.md` from `scripts/ci/allow/*.txt` + `scripts/ci/scans.tsv`; `--check` byte-compares and verifies generated door/type rows exactly equal parsed allowlist data; **and `--check` runs in `.github/workflows/doctrine-scan.yml` so drift hard-FAILs on every PR and master push.** Evidence: `docs/tests/ci-c-digest-0_results.md` and `docs/tests/ci-c-digest-0r_results.md`. |
 | 3 | `CI-C-TRACK-ADDENDUM-0` | **Opt-in, auto-detaching per-track CI addendum — generalize the harness without sprawl.** A production track MAY carry a CI addendum **co-located with its own track doc** (a fenced `ci-addendum` block, or a sibling `<track>.ci.tsv` / `<track>.ci.allow/`): its track-specific scans + the sanctioned-surface a track-scoped digest draws from. Three hard properties keep the minimalist discipline intact: **(a) strictly opt-in** — most tracks carry none; absent an addendum only the global floor runs. **(b) auto-detaching** — the runner loads it only when invoked for that track's scope (the PR/handoff declares its canonical track doc); it travels *with* the track doc, so when the track archives its addendum archives too and stops applying — **no central registry accumulates, the global `scripts/ci/scans.tsv` / `allow/*.txt` stay sparse and singular.** **(c) additive-only** — an addendum can ADD a scan, TIGHTEN, or define a digest surface; it can **never remove or widen the global floor** (a config-level laundering attempt — an addendum that disables/loosens a global scan — hard FAILs). Same rigor as the floor: DA-reviewed like an allowlist edit, each entry carries `promotion-blocker` + door-class grammar; **populated reactively from the triage log, never speculatively.** The `CI-C-DIGEST-0` generator reads *global + the active track's addendum* for that track's onboarding only. | Cursor/Grok | **COMPLETE** (DA-verified at CF, 2026-07-01: `--prove-addendum` PASS with substantive assertions — opt-in, auto-detach, additive-only-reject, digest-scope; global `scans.tsv`/`allow/**` byte-unchanged; impl commit `bc2e23ecc7` clean; results-doc packaging irregularity ruled cosmetic) | `doctrine_scan.sh --track-doc <track-doc>` loads only the selected sibling `<track-doc>.ci.tsv` / `<track-doc>.ci.allow/`; default scan remains global-only; `--prove-addendum` proves opt-in, auto-detach, additive-only scan-id rejection, and active-track-only digest scope. No `scripts/ci/scans.tsv`, `scripts/ci/allow/**`, workflow, or crate edits. Evidence: `docs/tests/ci-c-track-addendum-0_results.md`. |
