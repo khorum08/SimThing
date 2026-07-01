@@ -2,6 +2,11 @@
 
 Track A grep-only tripwire data lives here. **Heuristics and allowlists are data; the runner is a thin engine.**
 
+> **Authoritative reference:** [`docs/ci_screening_surface.md`](../../docs/ci_screening_surface.md) — the full
+> map of the screening logic, every file, the **strict rigor to add a `scans.tsv` / allowlist entry**, and the
+> triage agent's role. This README is the operational layout; the surface doc is the auditable reference and the
+> foundation for Track C introspection/onboarding. Change the screening surface → update both in the same PR.
+
 ## Layout
 
 | Path | Role |
