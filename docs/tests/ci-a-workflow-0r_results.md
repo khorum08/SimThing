@@ -69,7 +69,8 @@ Local: `bash scripts/ci/doctrine_pr_scan.sh --prove-delta`
 
 ## GitHub Actions proof
 
-(pending — recorded after PR merge)
+- PR run: [28486698473](https://github.com/khorum08/SimThing/actions/runs/28486698473) — **success** (54s); PR-delta scan executed, whole-tree skipped. Artifact `doctrine-scan-reports` uploaded on both.
+- Master run: [28486710545](https://github.com/khorum08/SimThing/actions/runs/28486710545) — **success** (50s); whole-tree scan executed, PR-delta skipped. Artifact `doctrine-scan-reports` uploaded on both.
 
 ## Load-bearing proofs
 

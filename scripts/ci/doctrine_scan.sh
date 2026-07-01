@@ -19,6 +19,22 @@ declare -A PR_DELTA_LINE_MAP=()
 
 declare -a REPORT_LINES=()
 
+JUSTIF_FILE="${SCRIPT_DIR}/inspect_justifications.tsv"
+declare -A JUSTIFS=()
+
+load_justifications() {
+  if [[ ! -f "$JUSTIF_FILE" ]]; then
+    return
+  fi
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="$(trim "$line")"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    # key on scan-id for simplicity (first field)
+    key="${line%% | *}"
+    JUSTIFS["$key"]="$line"
+  done <"$JUSTIF_FILE"
+}
+
 die_scanner() {
   echo "scanner/data error: $*" >&2
   scanner_errors=$((scanner_errors + 1))
@@ -573,6 +589,24 @@ emit_report() {
   echo "  --- summary ---"
   echo "  hard failures: ${hard_failures}   inspect flags: ${inspect_flags}   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only"
   echo "DOCTRINE-SCAN-VERDICT: ${verdict}  failures=${hard_failures} inspect=${inspect_flags} selftest=${selftest_status}"
+
+  echo "  --- inspect justifications ---"
+  if [[ ${#JUSTIFS[@]} -gt 0 ]]; then
+    echo "  justifications file present with ${#JUSTIFS[@]} entries"
+  else
+    echo "  no justifications file present (INSPECTs report as unresolved)"
+  fi
+  if (( inspect_flags > 0 )); then
+    echo "  INSPECT findings present; per-INSPECT status: check justifications file or report for unresolved"
+    echo "  INSPECT-JUSTIFICATION:"
+    echo "    scan-id: <HEURISTIC_SCAN_ID>"
+    echo "    location: <file:line or symbol>"
+    if [[ ${#JUSTIFS[@]} -gt 0 ]]; then
+      echo "    status: provided via inspect_justifications.tsv"
+    else
+      echo "    status: unresolved"
+    fi
+  fi
 }
 
 main() {
@@ -611,6 +645,7 @@ main() {
   fi
 
   load_and_validate_allowlists
+  load_justifications
   if [[ "$scanner_errors" -eq 0 ]]; then
     run_scans
   fi
