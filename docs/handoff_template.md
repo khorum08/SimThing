@@ -224,7 +224,21 @@ Load-bearing proofs (+ what each catches):
 Scope Ledger:
 Conformance (spine/D-directives held):
 Known gaps / next:
+Graduation routing (for DA — why this is PROBATION, not self-marked COMPLETE):
+  CI verdict:          <PASS-RELIABLE | INSPECT(n) | FAIL>
+  Triage entries:      <none | scan-id:outcome …>   (this rung's rows in triage_log.tsv)
+  Risk class:          <none | semantic | data-deliverable | gate-wiring | seal-residue | allowlist-edit>  (name ALL that apply)
+  Falsification check: <the exact check(s) that would confirm/deny "done" — what the DA runs to spend tokens precisely>
+  Recommended posture: <light: confirm deliverables | deep: investigate> — <one line why>
 ```
+
+> **The orchestrator never self-marks a rung COMPLETE.** It relays PROBATION with the **Graduation-routing**
+> block above so the DA routes graduation *cost* by declared risk, not by re-deriving it from scratch. The
+> triage log says *what fired*; this block says *what the scanner can't see* (the structural risk class) — the DA
+> needs both. Routing rule (`ci_screening_surface.md` §5): `Risk class: none` + green RELIABLE + no escalation →
+> **light** (confirm the deliverables exist, graduate); **data-deliverable / gate-wiring / seal-residue /
+> allowlist-edit / triage-ESCALATE** → **deep** (byte-faithfulness, prove-the-guard-bites, tree/legitimacy audit).
+> The **Falsification check** names exactly where a deep review should spend — never "re-verify everything."
 
 ---
 

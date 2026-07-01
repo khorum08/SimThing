@@ -160,6 +160,32 @@ a data-driven action. The triage agent also gate-keeps **allowlist widenings**: 
 deliberate, reviewed, diff-visible edit, and triage flags a widening that isn't grammar-conforming or
 self-justifying. Narrow by construction; open only to legitimate, justified growth.
 
+### Graduation routing — corpus + rationale → posture (how the DA spends tokens)
+
+The triage log is the DA's telemetry, but it captures **one** risk axis — INSPECT / heuristic. It is *necessary
+but not sufficient* for deciding how deep a graduation review must go. **Track C's corpus proved this
+empirically:** it holds a single GREEN row (the C1 inner-loop demo), and `CI-C-DIGEST-0` raised **zero** INSPECTs
+— yet C2 needed a *deep* review, because its risk was structural (a machine-parsed digest whose freshness was
+ungated), invisible to the triage log. A DA routing graduation from the log alone would have graduated C2 light
+and missed it.
+
+So the DA routes graduation depth from **two** inputs: the **triage log** (*what fired*) **and** the
+orchestrator's **Graduation-routing block** (handoff §11 — *the structural risk class the scanner can't see, and
+the exact falsification check*). The orchestrator never self-marks COMPLETE; it relays PROBATION with that block,
+and the DA applies:
+
+| Declared risk class | Posture | What the DA actually does |
+|---|---|---|
+| `none` + green RELIABLE + no escalation | **light** | confirm the named deliverables exist; graduate |
+| `semantic` | targeted | one judgment check (e.g. call-site analysis of a new accessor) |
+| `data-deliverable` / `gate-wiring` | **deep** | byte-faithfulness against the source; *prove the guard bites* (perturb → FAIL) |
+| `seal-residue` / `allowlist-edit` | **deep** | tree / legitimacy audit (door-class, no laundering) |
+| triage `ESCALATE` present | **deep** | the escalation was already headed to the DA |
+
+The **Falsification check** in the block tells the DA *where* to spend on a deep review — never "re-verify
+everything." This is what makes graduation cost *decay*: a well-declared PROBATION lets the DA confirm-deliverables
+in seconds where CI already vouches, and reserve token-heavy investigation for exactly the residue CI cannot see.
+
 ---
 
 ## 6. Track C — the live carrot (the scanner pulled forward)
