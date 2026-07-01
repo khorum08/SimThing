@@ -22,6 +22,7 @@ Every `pull_request` and every `push` runs the **Doctrine Scan** GitHub Actions 
 
 ```
 checkout → ensure rg (preinstalled + apt fallback)
+  → digest freshness (gen_digest.sh --check)  # stale sanctioned_surface.md hard-FAILs with regenerate remedy
   → self-test        (doctrine_selftest.sh)      # prove the scanner still catches its known-bads, or the whole run FAILs
   → PR-delta scan    (doctrine_pr_scan.sh)        # on pull_request: RELIABLE whole-tree, HEURISTIC on the diff only
   → spam check       (inspect_spam_check.sh)      # §1A hill-climbing bounds

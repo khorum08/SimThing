@@ -27,7 +27,7 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `inspect_justifications.tsv` | Optional author-provided per-INSPECT justifications |
 | `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** |
 
-GitHub Actions gate: `.github/workflows/doctrine-scan.yml` (**`CI-A-WORKFLOW-0`**) — self-test then production scan on `pull_request` and push to `master`.
+GitHub Actions gate: `.github/workflows/doctrine-scan.yml` (**`CI-A-WORKFLOW-0`**) — digest freshness check, self-test, then production scan on `pull_request` and push to `master`.
 
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
 
@@ -44,6 +44,7 @@ Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs tar
 
 ```bash
 bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS before trusting scans)
+bash scripts/ci/gen_digest.sh --check  # global sanctioned-surface freshness check (CI-enforced)
 bash scripts/ci/doctrine_scan.sh       # whole-tree production scan (master positive control)
 bash scripts/ci/doctrine_scan.sh --track-doc docs/<track>.md   # global floor + that track doc's sibling addendum, if present
 bash scripts/ci/doctrine_scan.sh --prove-addendum              # synthetic proof: opt-in, auto-detach, additive-only, track digest scope
@@ -55,7 +56,7 @@ bash scripts/ci/inspect_spam_check.sh <branch>         # triage spam check (no n
 bash scripts/ci/inspect_spam_check.sh --prove          # synthetic temp-repo proof cases
 ```
 
-GitHub Actions (`.github/workflows/doctrine-scan.yml`): **pull_request** runs self-test then `doctrine_pr_scan.sh` with base/head SHAs; **push to master** runs self-test then whole-tree `doctrine_scan.sh`.
+GitHub Actions (`.github/workflows/doctrine-scan.yml`): **pull_request** runs global digest freshness, self-test, then `doctrine_pr_scan.sh` with base/head SHAs; **push to master** runs global digest freshness, self-test, then whole-tree `doctrine_scan.sh`.
 
 `doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** runs the self-test in CI before the production scan on every PR and push to `master`.
 

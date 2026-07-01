@@ -415,7 +415,10 @@ if CHECK:
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, suffix=".md") as tmp:
             tmp.write(generated)
             tmp_path = tmp.name
-        fail(f"{check_path.relative_to(REPO_ROOT).as_posix()} is stale; expected output written to {tmp_path}")
+        fail(
+            f"{check_path.relative_to(REPO_ROOT).as_posix()} is stale; expected output written to {tmp_path}; "
+            "remedy: run `bash scripts/ci/gen_digest.sh` and commit docs/sanctioned_surface.md"
+        )
     print("gen_digest --check: PASS")
 else:
     if OUTPUT_PATH is None:
