@@ -7,8 +7,9 @@
 ## PR / branch / merge
 
 - Branch: `ci-c-digest-0`
-- PR: pending
+- PR: [#1056](https://github.com/khorum08/SimThing/pull/1056)
 - Merge: pending
+- First live PR-head Doctrine Scan: [28501767278](https://github.com/khorum08/SimThing/actions/runs/28501767278) / job `84480517525` - SUCCESS on head `bcf1ec2f3242e0d64923b464b4813db3827b7c59`
 
 ## What changed
 
@@ -188,5 +189,4 @@ No INSPECT fired in the fresh base scan or final C2 branch scan. No `scripts/ci/
 
 ## Known gaps / next
 
-- Replace pending PR/merge fields after PR creation and merge.
 - Do not merge until live GitHub Actions Doctrine Scan succeeds on this PR's own head.
