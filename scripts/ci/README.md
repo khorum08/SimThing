@@ -16,6 +16,9 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report (default whole-tree; `--pr-delta BASE HEAD` for PR mode) |
 | `doctrine_pr_scan.sh` | PR workflow wrapper — HEURISTIC delta-scope, RELIABLE whole-tree (`--prove-delta` for local proof cases) |
 | `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` |
+| `inspect_spam_check.sh` | Spam-bound checker for INSPECT flags (CI-A-INSPECT-TRIAGE-0) |
+| `triage_log.tsv` | Append-only triage log (CI-A-INSPECT-TRIAGE-0) |
+| `inspect_justifications.tsv` | Optional author-provided per-INSPECT justifications |
 | `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** |
 
 GitHub Actions gate: `.github/workflows/doctrine-scan.yml` (**`CI-A-WORKFLOW-0`**) — self-test then production scan on `pull_request` and push to `master`.
@@ -38,6 +41,7 @@ bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS bef
 bash scripts/ci/doctrine_scan.sh       # whole-tree production scan (master positive control)
 bash scripts/ci/doctrine_pr_scan.sh BASE_SHA HEAD_SHA   # PR-delta scan (HEURISTIC delta, RELIABLE whole-tree)
 bash scripts/ci/doctrine_pr_scan.sh --prove-delta       # local PR-delta proof cases
+bash scripts/ci/inspect_spam_check.sh clean            # triage spam check (CI-A-INSPECT-TRIAGE-0)
 ```
 
 GitHub Actions (`.github/workflows/doctrine-scan.yml`): **pull_request** runs self-test then `doctrine_pr_scan.sh` with base/head SHAs; **push to master** runs self-test then whole-tree `doctrine_scan.sh`.

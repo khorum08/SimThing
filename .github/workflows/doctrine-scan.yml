@@ -34,6 +34,12 @@ jobs:
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.sha }}" | tee doctrine-scan-report.txt
 
+      - name: Triage spam check (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -o pipefail
+          bash scripts/ci/inspect_spam_check.sh "${{ github.head_ref }}" | tee doctrine-triage-report.txt || true
+
       - name: Doctrine scan (whole-tree)
         if: github.event_name == 'push'
         run: |
@@ -53,6 +59,11 @@ jobs:
             echo '```'
             cat doctrine-scan-report.txt 2>/dev/null || true
             echo '```'
+            echo
+            echo "## Doctrine triage / spam check"
+            echo '```'
+            cat doctrine-triage-report.txt 2>/dev/null || true
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload doctrine reports
@@ -63,4 +74,5 @@ jobs:
           path: |
             doctrine-selftest-report.txt
             doctrine-scan-report.txt
+            doctrine-triage-report.txt
           if-no-files-found: ignore
