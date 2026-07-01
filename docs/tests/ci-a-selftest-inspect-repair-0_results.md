@@ -68,7 +68,13 @@ extra: []
 
 ## GitHub Actions proof
 
-Corrective PR Actions run: pending until this branch is pushed.
+Corrective PR #1041 first workflow run:
+
+- Actions run `28492389014`
+- Job `84451616254`
+- Check `doctrine-scan`
+- Conclusion `SUCCESS`
+- Completed `2026-07-01T03:56:52Z`
 
 ## Scope ledger
 
