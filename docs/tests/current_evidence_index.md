@@ -317,6 +317,9 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
   `mapgenerator_cli_visual_spiral_1500` render (later starlane/connected renders retained as CURRENT_EVIDENCE).
 - **Meta-cleanup stragglers** — `typeface_cleanup_docs_archive`, `local_wip_gpu_render_delete`.
 
+## 0.0.8.4.6 CI Scaffolding — Track A (CLOSED 2026-07-01)
+- [`ci-a-closeout_results.md`](ci-a-closeout_results.md) — Track A **DA-CLOSED**: doctrine landed at three altitudes (#1043), `SEALED_TYPES` migrated to `allow/sealed_types.txt` (data, fail-loud), reliability legend published, full command battery PASS on master (self-test/scan/PR-delta/spam-prove/195-surface). Non-blocking debt: self-test ~7 min. Track B / Track C deferred-but-scoped.
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."

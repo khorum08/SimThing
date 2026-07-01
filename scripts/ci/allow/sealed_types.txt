@@ -1,0 +1,18 @@
+# Sealed authority type names — the closed set whose producers must appear on
+# allow/sealed_producers.txt (CI-A-ALLOWLIST-SCANS-0). One type name per line.
+# NOT a door-class record (unlike the other allow/*.txt files) — this is the bare
+# name list loaded by scan_allowlists.py. Migrated from a hard-coded tuple at
+# CI-A-CLOSEOUT-0 so no invariant lives in the engine (doctrine-as-data, §0).
+# Adding/removing a sealed type is a one-line, diff-auditable data edit here.
+ThresholdEvent
+ThresholdEventGpu
+ThresholdEventCandidatesReadback
+EmissionRecord
+EmissionRecordGpu
+EmissionRecordReadback
+ThresholdEmission
+ThresholdEmissionGpu
+ThresholdEmissionReadback
+PlacedParticipant
+ResolvedWriteAuthority
+CandidateFMagnitudeReport

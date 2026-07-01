@@ -10,21 +10,30 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 KERNEL_SRC = ROOT / "crates/simthing-kernel/src"
 LIB_RS = KERNEL_SRC / "lib.rs"
+SEALED_TYPES_FILE = ROOT / "scripts/ci/allow/sealed_types.txt"
 
-SEALED_TYPES = (
-    "ThresholdEvent",
-    "ThresholdEventGpu",
-    "ThresholdEventCandidatesReadback",
-    "EmissionRecord",
-    "EmissionRecordGpu",
-    "EmissionRecordReadback",
-    "ThresholdEmission",
-    "ThresholdEmissionGpu",
-    "ThresholdEmissionReadback",
-    "PlacedParticipant",
-    "ResolvedWriteAuthority",
-    "CandidateFMagnitudeReport",
-)
+
+def load_sealed_types() -> tuple[str, ...]:
+    """Load the sealed-type name set from data (no invariant hard-coded in the engine).
+
+    Fails loudly: a missing or empty/unparseable data file is a scanner/data error,
+    not a silent pass — doctrine_scan.sh surfaces the non-zero exit as a FAIL verdict.
+    """
+    if not SEALED_TYPES_FILE.exists():
+        sys.stderr.write(f"scan_allowlists: missing sealed-types data file {SEALED_TYPES_FILE}\n")
+        raise SystemExit(2)
+    names = tuple(
+        line.strip()
+        for line in SEALED_TYPES_FILE.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    )
+    if not names:
+        sys.stderr.write(f"scan_allowlists: sealed-types data file is empty {SEALED_TYPES_FILE}\n")
+        raise SystemExit(2)
+    return names
+
+
+SEALED_TYPES = load_sealed_types()
 
 CONSTRUCTOR_NAMES = frozenset({"new", "default"})
 
