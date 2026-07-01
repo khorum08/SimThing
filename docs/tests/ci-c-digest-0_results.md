@@ -8,8 +8,9 @@
 
 - Branch: `ci-c-digest-0`
 - PR: [#1056](https://github.com/khorum08/SimThing/pull/1056)
-- Merge: pending
+- Merge: `0587ef861f884bdef4c741699313968debf067bc` (master, merged 2026-07-01T07:45:24Z)
 - First live PR-head Doctrine Scan: [28501767278](https://github.com/khorum08/SimThing/actions/runs/28501767278) / job `84480517525` - SUCCESS on head `bcf1ec2f3242e0d64923b464b4813db3827b7c59`
+- Final live PR-head Doctrine Scan before merge: [28501867908](https://github.com/khorum08/SimThing/actions/runs/28501867908) / job `84480845991` - SUCCESS on head `5c66058d9c9ab9bd9458f00f84b6da9f1d6d0d91`
 
 ## What changed
 
@@ -189,4 +190,4 @@ No INSPECT fired in the fresh base scan or final C2 branch scan. No `scripts/ci/
 
 ## Known gaps / next
 
-- Do not merge until live GitHub Actions Doctrine Scan succeeds on this PR's own head.
+- C3 and CF remain DEFERRED.
