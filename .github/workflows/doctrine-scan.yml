@@ -1,0 +1,55 @@
+name: Doctrine Scan
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  doctrine-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure ripgrep
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ripgrep
+          fi
+
+      - name: Doctrine self-test
+        run: |
+          set -o pipefail
+          bash scripts/ci/doctrine_selftest.sh | tee doctrine-selftest-report.txt
+
+      - name: Doctrine scan
+        run: |
+          set -o pipefail
+          bash scripts/ci/doctrine_scan.sh | tee doctrine-scan-report.txt
+
+      - name: Publish doctrine reports
+        if: always()
+        run: |
+          {
+            echo "## Doctrine self-test"
+            echo '```'
+            cat doctrine-selftest-report.txt 2>/dev/null || true
+            echo '```'
+            echo
+            echo "## Doctrine scan"
+            echo '```'
+            cat doctrine-scan-report.txt 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload doctrine reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doctrine-scan-reports
+          path: |
+            doctrine-selftest-report.txt
+            doctrine-scan-report.txt
+          if-no-files-found: ignore
