@@ -143,10 +143,10 @@ Note: `bash scripts/ci/doctrine_scan.sh`'s own justification-file summary line (
 Logged to `scripts/ci/triage_log.tsv`:
 
 ```
-SEMANTIC-WORDS | ci-c-inner-loop-0 | green | inner-loop demo: new ThresholdSemantic::debug_kind() first draft tagged CapabilityUnlock as "faction_capability_unlock" (legacy vocabulary, echoing the variant's own doc comment); doctrine_scan.sh caught it as a real INSPECT before PR; renamed to "capability_unlock" (drops legacy term, matches sibling tag naming with no subject prefix); final whole-tree scan PASS 0; transcript in docs/tests/ci-c-inner-loop-0_results.md | <commit>
+SEMANTIC-WORDS | ci-c-inner-loop-0 | green | inner-loop demo: new ThresholdSemantic::debug_kind() first draft tagged CapabilityUnlock as "faction_capability_unlock" (legacy vocabulary, echoing the variant's own doc comment); doctrine_scan.sh caught it as a real INSPECT before PR; renamed to "capability_unlock" (drops legacy term, matches sibling tag naming with no subject prefix); final whole-tree scan PASS 0; transcript in docs/tests/ci-c-inner-loop-0_results.md | fd11b746
 ```
 
-(`<commit>` filled with the real branch-head SHA in a same-branch follow-up commit once the initial commit exists — see Scope Ledger.)
+Commit `fd11b746` is the real branch-head SHA of the commit that lands this fix (`ci-c-inner-loop-0`).
 
 ## Load-bearing proofs
 
