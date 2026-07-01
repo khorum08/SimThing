@@ -17,6 +17,13 @@ declare -a KB_REPORT=()
 declare -a HE_REPORT=()
 declare -a TRAP_REPORT=()
 
+cleanup() {
+  if [[ -n "${SKELETON:-}" && -d "$SKELETON" ]]; then
+    rm -rf "$SKELETON"
+  fi
+}
+trap cleanup EXIT
+
 fail_selftest() {
   selftest_failures=$((selftest_failures + 1))
 }
@@ -28,8 +35,27 @@ trim() {
   printf '%s' "$s"
 }
 
+SKELETON=""
+
+prepare_skeleton() {
+  SKELETON="$(mktemp -d "${TMPDIR:-/tmp}/selftest-skel-XXXXXX")"
+  copy_ci_bundle "$SKELETON"
+  ensure_minimal_crates "$SKELETON"
+  mkdir -p "$SKELETON/crates/simthing-kernel/src"
+  mkdir -p "$SKELETON/crates/simthing-sim/src"
+  mkdir -p "$SKELETON/crates/simthing-spec/src"
+  cp "${REPO_ROOT}/crates/simthing-kernel/src/lib.rs" "$SKELETON/crates/simthing-kernel/src/lib.rs" 2>/dev/null || echo '#![forbid(unsafe_code)]' > "$SKELETON/crates/simthing-kernel/src/lib.rs"
+  cp "${REPO_ROOT}/crates/simthing-sim/src/lib.rs" "$SKELETON/crates/simthing-sim/src/lib.rs" 2>/dev/null || echo '#![forbid(unsafe_code)]' > "$SKELETON/crates/simthing-sim/src/lib.rs"
+  echo '// spec stub' > "$SKELETON/crates/simthing-spec/src/lib.rs"
+}
+
 begin_sandbox() {
+  if [[ -z "${SKELETON:-}" || ! -d "$SKELETON" ]]; then
+    prepare_skeleton
+  fi
   ROOT_SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/simthing-selftest-XXXXXX")"
+  # reliable cross platform tree copy (tar available in git bash)
+  (cd "$SKELETON" && tar cf - .) 2>/dev/null | (cd "$ROOT_SANDBOX" && tar xf -) 2>/dev/null || cp -r "$SKELETON/." "$ROOT_SANDBOX/"
 }
 
 end_sandbox() {
@@ -47,6 +73,12 @@ copy_ci_bundle() {
     "${CI_SRC}/scan_allowlists.py" \
     "${root}/scripts/ci/"
   cp "${CI_SRC}/allow/"*.txt "${root}/scripts/ci/allow/"
+  # copy triage/justif tsv if present to avoid any outer state leakage in scans
+  for f in inspect_justifications.tsv triage_log.tsv; do
+    if [[ -f "${CI_SRC}/$f" ]]; then
+      cp "${CI_SRC}/$f" "${root}/scripts/ci/"
+    fi
+  done
 }
 
 ensure_minimal_crates() {
@@ -94,6 +126,11 @@ parse_footer_verdict() {
   local line
   line="$(grep 'DOCTRINE-SCAN-VERDICT:' "$out_file" | tail -1 || true)"
   if [[ "$line" =~ DOCTRINE-SCAN-VERDICT:[[:space:]]*(PASS|FAIL|INSPECT)[[:space:]]+failures=([0-9]+)[[:space:]]+inspect=([0-9]+) ]]; then
+    printf '%s %s %s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+    return 0
+  fi
+  # fallback tolerant parse for lines with trailing fields like selftest=...
+  if [[ "$line" =~ DOCTRINE-SCAN-VERDICT:[[:space:]]*([A-Z]+)[[:space:]]+failures=([0-9]+)[[:space:]]+inspect=([0-9]+) ]]; then
     printf '%s %s %s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
     return 0
   fi

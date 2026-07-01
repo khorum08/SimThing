@@ -15,8 +15,8 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
 | `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report (default whole-tree; `--pr-delta BASE HEAD` for PR mode) |
 | `doctrine_pr_scan.sh` | PR workflow wrapper — HEURISTIC delta-scope, RELIABLE whole-tree (`--prove-delta` for local proof cases) |
-| `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` |
-| `inspect_spam_check.sh` | Spam-bound checker for INSPECT flags (CI-A-INSPECT-TRIAGE-0) |
+| `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` (CI-A-SELFTEST-0R repaired for determinism) |
+| `inspect_spam_check.sh` | Spam-bound checker for INSPECT flags (CI-A-INSPECT-TRIAGE-0R — real impl, not 0-byte) |
 | `triage_log.tsv` | Append-only triage log (CI-A-INSPECT-TRIAGE-0) |
 | `inspect_justifications.tsv` | Optional author-provided per-INSPECT justifications |
 | `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** |
