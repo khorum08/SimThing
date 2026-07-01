@@ -38,7 +38,7 @@ run 28495380603 (#1044, master push, ~1m):
   DOCTRINE-SELFTEST-VERDICT: PASS          # scanner proven un-rotted, in CI
   DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
 ```
-Recent history: #1039–#1044 PR + push runs all `completed / success`. **The full battery runs in ~1 min on ubuntu** — the ~7-min figure is a Windows-git-bash process-spawn artifact and does not exist in the authoritative environment. A green run means the self-test passed (the scanner catches its known-bads) *and* the PR scan passed — so a clean check is genuinely DA-equivalent, on GitHub, per the reliability legend.
+The path branches correctly by event: on **`pull_request`** the "Doctrine scan (PR delta)" step logs `heuristic scope: changed files / changed lines` → `VERDICT: PASS` (rung `CI-A-WORKFLOW-0R`, DA-verified on GitHub, run 28495379717); on **`push`** the whole-tree scan keeps the positive control. The `Ensure ripgrep` step also exercised its `apt` fallback on a runner where rg was not preinstalled — the resilience line works. Recent history: #1039–#1045 PR + push runs all `completed / success`. **The full battery runs in ~1 min on ubuntu** — the ~7-min figure is a Windows-git-bash process-spawn artifact and does not exist in the authoritative environment. A green run means the self-test passed (the scanner catches its known-bads) *and* the PR scan passed — so a clean check is genuinely DA-equivalent, on GitHub, per the reliability legend.
 
 ## Three-altitude landing verification (grep)
 - `docs/simthing_core_design.md` — DA-equivalence + retirement/promotion-target present.
