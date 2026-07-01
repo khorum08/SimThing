@@ -35,6 +35,13 @@ Repair:
 - **`crates/simthing-kernel/src/accumulator_op/session.rs`:** velocity encoding submits compact dispatches in bounded chunks and op/input-list upload byte sizing uses checked arithmetic with typed session errors.
 - **`crates/simthing-kernel/src/velocity_accumulator.rs`:** `plan_velocity_integration_compacts_scale_upload` pins the TP-scale shape to pair-count upload: under 2 MB compact, over 10 GB if re-expanded.
 
+## 0R2 parity proof
+
+The existing CPU-oracle velocity parity tests pass against the compact velocity execution path:
+
+- `velocity_integration_matches_cpu_oracle_dt_one`
+- `velocity_integration_matches_cpu_oracle_fractional_dt`
+
 ## Terminal session proof
 
 Real-adapter `SimSession::open_from_spec` succeeded; `session.mapping.is_none()` asserted.
@@ -49,6 +56,7 @@ Preserved legs unchanged: seed `770421`, 1500-star connected disc, lattice hiera
 | `cargo check -p simthing-driver` | PASS |
 | `cargo check -p simthing-clausething` | PASS |
 | `cargo test -p simthing-kernel rebuild_for_slots_expands_column_rules_when_dims_grow` | PASS |
+| `cargo test -p simthing-kernel velocity_integration_matches_cpu_oracle -- --nocapture` | PASS (dt=1.0 and fractional dt) |
 | `cargo test -p simthing-kernel plan_velocity_integration_compacts_scale_upload` | PASS |
 | `cargo test -p simthing-mapgenerator --test topology_stead` | PASS (9/9) |
 | `cargo test -p simthing-mapgenerator --test connectivity` | PASS (7/7) |
@@ -67,6 +75,7 @@ None for this repair rung (`scripts/ci/triage_log.tsv` has no `TP-SCALE-ENVELOPE
 | Remove catch_unwind false-green session path | preserved |
 | Fix reduction-topology `column_rules` sizing on slot growth | preserved |
 | Repair velocity op upload at 7505-slot / 14585-pair shape | implemented |
+| CPU-oracle velocity parity for compact GPU execution | passed (dt=1.0 and fractional dt) |
 | Preserve 1500-star / RF-budget / install_atomic legs | implemented |
 | Terminal `mapping.is_none()` on local adapter | reached and asserted |
 | Phase 1 content / scanners / allowlists / new AccumulatorRole | held (untouched) |
@@ -78,9 +87,9 @@ None for this repair rung (`scripts/ci/triage_log.tsv` has no `TP-SCALE-ENVELOPE
 Graduation routing (for orchestrator review - why PROBATION, not COMPLETE):
   CI verdict:          PASS-RELIABLE
   Triage entries:      none
-  Risk class:          kernel/driver GPU velocity-op buffer sizing + scale-proof
-  Falsification check: Verify the 1500-star scale test no longer has a catch_unwind-swallow passing path; verify real-adapter SimSession::open_from_spec either reaches mapping.is_none() or returns a typed velocity-upload deferral Err; verify install_atomic still exercises the accepted RF budget at 7505-slot scale; verify upload_reduction_topology / column_rules repair remains intact; verify no Phase 1 content, semantic runtime leakage, new AccumulatorRole, per-tick allocation, atlas scheduler, or scanner/allowlist edits.
-  Recommended posture: deep - this repairs the next real GPU capacity surface exposed by the scale-envelope gate and is inherited by later Terran-Pirate rungs.
+  Risk class:          kernel/WGSL compact velocity parity + scale-proof
+  Falsification check: Verify compact velocity GPU execution matches CPU oracle for dt=1.0 and fractional dt; verify real-adapter SimSession::open_from_spec reaches mapping.is_none(); verify compact upload stays bounded; verify no Phase 1 content, new AccumulatorRole, per-tick allocation, scanner/allowlist edit, or catch_unwind false-green path.
+  Recommended posture: deep - this is the final semantic-preservation proof for a WGSL/kernel execution change inherited by later Terran-Pirate rungs.
 ```
 
 ## Known gaps / next
