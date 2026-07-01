@@ -131,6 +131,12 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
 - **Inner loop (Track C):** run `cargo check -p <touched-crate>` and `bash scripts/ci/doctrine_scan.sh` after
   small edits, before PR-time cleanup — the same scanner, consulted earlier, so a doomed path is pruned in
   your own loop instead of at CI/triage/DA.
+- **Onboarding standard (follow it every rung):** [`ci_screening_surface.md`](ci_screening_surface.md) **§7**
+  is the ordered agent onboarding procedure (read the digest `docs/sanctioned_surface.md` *before* grepping for
+  the kernel surface → run the inner loop → handle FAIL/INSPECT → regenerate the digest if you touch
+  `allow/*.txt`/`scans.tsv`). §6 is the live carrot (digest / inner-loop / CI gate); §8 is how a production
+  track authors an opt-in per-track addendum. The digest is your pre-computed grep answer — read it, don't
+  re-derive the surface.
 
 ## Agent completion discipline (mandatory for implementation rungs)
 
