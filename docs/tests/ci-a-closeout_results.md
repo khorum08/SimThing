@@ -30,6 +30,16 @@ python scripts/ci/verify_kernel_surface.py          -> 195/195, missing: [], ext
 ```
 Fail-loud proof: with `sealed_types.txt` removed, `doctrine_scan.sh` emits `scanner/data error: … missing sealed-types data file` (not PASS).
 
+## GitHub-side screening — confirmed working (the authoritative gate)
+Verified from actual CI run logs, not inferred. The `Doctrine Scan` workflow triggers on **every `pull_request` and every `push`**, running the self-test then the scan on `ubuntu-latest`:
+```
+run 28495380603 (#1044, master push, ~1m):
+  DOCTRINE SELFTEST REPORT
+  DOCTRINE-SELFTEST-VERDICT: PASS          # scanner proven un-rotted, in CI
+  DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+```
+Recent history: #1039–#1044 PR + push runs all `completed / success`. **The full battery runs in ~1 min on ubuntu** — the ~7-min figure is a Windows-git-bash process-spawn artifact and does not exist in the authoritative environment. A green run means the self-test passed (the scanner catches its known-bads) *and* the PR scan passed — so a clean check is genuinely DA-equivalent, on GitHub, per the reliability legend.
+
 ## Three-altitude landing verification (grep)
 - `docs/simthing_core_design.md` — DA-equivalence + retirement/promotion-target present.
 - `docs/design_0_0_8_3.md` — DA-equivalence + retirement present (contract + §1A + merge-hold + verify-the-tree).
