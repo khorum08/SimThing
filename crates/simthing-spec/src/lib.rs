@@ -513,11 +513,13 @@ pub use spec::resource_economy::{
     ResourceTransferSpec,
 };
 pub use spec::resource_flow::{
+    effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget,
     spatial_arena_explicit_participants, ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec,
     CouplingDelaySpec, CouplingSpec, EnrollmentSelectorSpec, ExplicitParticipantSpec,
     FissionPolicySpec, GatedRateOpSpec, GatedRateSpec, GatedRateTriggerSpec, RateFormulaOp,
-    RateFormulaOpSpec, RateFormulaOperandSpec, RateFormulaSpec, ResourceFlowExecutionProfile,
-    ResourceFlowOptInMode, ResourceFlowSpec, WildcardAdmissionSpec,
+    RateFormulaOpSpec, RateFormulaOperandSpec, RateFormulaSpec, ResolvedResourceFlowCapacityBudget,
+    ResourceFlowCapacityBudgetSpec, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
+    ResourceFlowSpec, WildcardAdmissionSpec,
 };
 pub use spec::runtime_local_allocation::{
     apply_runtime_local_allocations_from_disburse_down, runtime_local_allocation_aggregate_totals,

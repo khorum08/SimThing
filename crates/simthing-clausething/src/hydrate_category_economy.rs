@@ -289,6 +289,7 @@ pub fn hydrate_category_economy_pack(
                 arenas,
                 couplings: vec![],
                 base_obligations,
+                capacity_budget: None,
                 gated_rates,
             }),
             resource_economy: None,

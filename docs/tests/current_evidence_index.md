@@ -321,11 +321,12 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
   `mapgenerator_cli_visual_spiral_1500` render (later starlane/connected renders retained as CURRENT_EVIDENCE).
 - **Meta-cleanup stragglers** — `typeface_cleanup_docs_archive`, `local_wip_gpu_render_delete`.
 
-## 0.0.8.5 Terran-Pirate Galaxy — Track opening (OPEN 2026-07-01)
+## 0.0.8.5 Terran-Pirate Galaxy — Track opening and capacity amendment (OPEN 2026-07-01)
 
 | Evidence | Status | Notes |
 |---|---|---|
 | **TP-TRACK-OPEN-0** — track-open lifecycle bookkeeping; canonical design status + harness | branch evidence | **DA-OPENED / TRACK OPEN** — [`tp_track_open_0_results.md`](tp_track_open_0_results.md); docs-only; implementation not started; `TP-RF-CAPACITY-AMENDMENT-0` next; Phase 1 held behind DA capacity review |
+| **TP-RF-CAPACITY-AMENDMENT-0** — budget-driven RF arena caps + GPU slot/emission capacity for 250-owned + fleet load | branch evidence | **PROBATION / DA-REVIEW HOLD** — [`tp_rf_capacity_amendment_0_results.md`](tp_rf_capacity_amendment_0_results.md); Tier-2 closed-lowerer capacity amendment; Phase 1 remains held pending Owner/DA review |
 
 ## 0.0.8.4.6 CI Scaffolding — Track C (the carrot, CLOSED 2026-07-01)
 - [`ci-c-closeout-0_results.md`](ci-c-closeout-0_results.md) — Track C **DA-CLOSED**: C1/C2/C3 COMPLETE; scanner now serves all three positions (digest before / inner-loop during / CI gate after); C2 digest freshness gated + drift-bites (DA-perturbed the digest → `--check` exit 1); C3 addendum guarantees proven (`--prove-addendum`: opt-in/auto-detach/additive-only/digest-scope); global lists byte-unchanged; triage corpus = 1 GREEN row (too thin for promotion/retirement, no action).

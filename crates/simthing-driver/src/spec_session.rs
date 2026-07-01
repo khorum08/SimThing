@@ -10,6 +10,7 @@ use simthing_feeder::{
 };
 use simthing_gpu::ThresholdEvent;
 use simthing_sim::{BoundaryHookContext, ThresholdRegistry};
+use simthing_spec::ResolvedResourceFlowCapacityBudget;
 use simthing_spec::{
     ActivationMode, CapabilityBoundaryContext, CapabilityEntryKey, CapabilityTreeBoundaryHandler,
     CapabilityTreeDefinition, CapabilityTreeDefinitionId, CapabilityTreeDiagnostic,
@@ -95,6 +96,8 @@ pub struct SpecSessionState {
     /// CT-RF-EML-RATE-0: install-resolved gated rate terms consumed by the
     /// resource-flow sync (effective-rate EvalEML band before reduce bands).
     pub resolved_gated_rates: Vec<crate::gated_rates::ResolvedGatedRate>,
+    /// Checked RF capacity budget used for session slot and emission reservations.
+    pub resource_flow_capacity_budget: Option<ResolvedResourceFlowCapacityBudget>,
     /// Materialized production transfer/recipe/emission/threshold registrations (Phase T-3/T-4).
     pub resource_economy_registry: Option<crate::resource_economy_compile::ResourceEconomyRegistry>,
     player_selections: Vec<(CapabilityInstanceKey, CapabilityEntryKey)>,

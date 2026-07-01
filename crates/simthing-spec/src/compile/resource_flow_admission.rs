@@ -6,7 +6,9 @@
 
 use crate::error::SpecError;
 use crate::spec::resource_flow::{
-    CouplingDelaySpec, CouplingSpec, FissionPolicySpec, ResourceFlowSpec, WildcardAdmissionSpec,
+    effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget, CouplingDelaySpec,
+    CouplingSpec, FissionPolicySpec, ResolvedResourceFlowCapacityBudget, ResourceFlowSpec,
+    WildcardAdmissionSpec,
 };
 use crate::spec::script::PropertyKey;
 use simthing_core::{
@@ -20,6 +22,7 @@ use std::collections::{HashMap, HashSet};
 pub struct CompiledResourceFlowAdmission {
     pub arenas: Vec<CompiledArenaAdmission>,
     pub couplings: Vec<CompiledCouplingAdmission>,
+    pub capacity_budget: Option<ResolvedResourceFlowCapacityBudget>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -61,6 +64,7 @@ pub struct ResourceFlowExpansionReport {
     pub per_arena_coupling_fanout: Vec<(String, u32)>,
     pub total_registration_estimate: Option<u32>,
     pub total_orderband_depth_reserved: u32,
+    pub capacity_budget: Option<ResolvedResourceFlowCapacityBudget>,
     pub rejected: Vec<ResourceFlowDiagnostic>,
 }
 
@@ -79,8 +83,11 @@ pub fn compile_resource_flow_admission(
         return Ok(CompiledResourceFlowAdmission {
             arenas: Vec::new(),
             couplings: Vec::new(),
+            capacity_budget: None,
         });
     }
+
+    let capacity_budget = resolve_resource_flow_capacity_budget(spec.capacity_budget.as_ref())?;
 
     let arena_names: HashSet<&str> = spec.arenas.iter().map(|a| a.name.as_str()).collect();
     if arena_names.len() != spec.arenas.len() {
@@ -138,13 +145,16 @@ pub fn compile_resource_flow_admission(
             .as_ref()
             .and_then(|w| w.max_expansion);
 
+        let (max_participants, max_coupling_fanout, max_orderband_depth) =
+            effective_resource_flow_arena_caps(arena, capacity_budget.as_ref());
+
         compiled_arenas.push(CompiledArenaAdmission {
             name: arena.name.clone(),
             flow_property_id,
             balance_property_id,
-            max_participants: arena.max_participants,
-            max_coupling_fanout: arena.max_coupling_fanout,
-            max_orderband_depth: arena.max_orderband_depth,
+            max_participants,
+            max_coupling_fanout,
+            max_orderband_depth,
             fission_policy: arena.fission_policy,
             reserved_orderband_depth: arena.reserved_orderband_depth,
             explicit_participants,
@@ -167,6 +177,7 @@ pub fn compile_resource_flow_admission(
     Ok(CompiledResourceFlowAdmission {
         arenas: compiled_arenas,
         couplings: compiled_couplings,
+        capacity_budget,
     })
 }
 

@@ -125,6 +125,7 @@ pub fn hydrate_resource_flow_pack(
         }],
         couplings: vec![],
         base_obligations: vec![],
+        capacity_budget: None,
         gated_rates: vec![],
     };
 

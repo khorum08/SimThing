@@ -210,6 +210,9 @@ pub enum SpecError {
     #[error("Resource Flow base obligation `{id}` rate must be finite and >= 0")]
     InvalidBaseFlowObligationRate { id: String },
 
+    #[error("Resource Flow capacity budget `{surface}`: {reason}")]
+    ResourceFlowCapacityBudget { surface: String, reason: String },
+
     // ── Resource Flow preflight (E-10R, driver-mapped) ─────────────────────────
     #[error("arena `{arena}` explicit participant subtree_root_id {subtree_root_id} is unknown in the live session")]
     UnknownExplicitParticipantSimThing { arena: String, subtree_root_id: u32 },

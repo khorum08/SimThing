@@ -14,10 +14,11 @@ use simthing_core::{
 };
 use simthing_gpu::SlotAllocator;
 use simthing_spec::{
-    compile_event, compile_overlay, compile_property, compile_resource_economy, CapabilityEntryKey,
-    CapabilityTreeBuildOutput, CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec,
-    CapabilityTreeState, CapabilityUnlockRegistration, DomainPackSpec, EffectSpec, EffectTarget,
-    EventSpec, GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec,
+    compile_event, compile_overlay, compile_property, compile_resource_economy,
+    resolve_resource_flow_capacity_budget, CapabilityEntryKey, CapabilityTreeBuildOutput,
+    CapabilityTreeBuilder, CapabilityTreeInstance, CapabilityTreeSpec, CapabilityTreeState,
+    CapabilityUnlockRegistration, DomainPackSpec, EffectSpec, EffectTarget, EventSpec,
+    GameModeSpec, InstallTargetSpec, OverlaySpec, PropertyKey, ResourceEconomySpec,
     ResourceFlowSpec, SpecError,
 };
 use std::collections::{HashMap, HashSet};
@@ -173,7 +174,17 @@ pub fn compile_and_install(
     }
 
     // ── 3 + 4. Resolve install targets and clone trees per owner.
-    let n_slots_cap = scenario.n_slots as usize;
+    let resource_flow_capacity_budget = match &game_mode.resource_flow {
+        Some(resource_flow) => {
+            resolve_resource_flow_capacity_budget(resource_flow.capacity_budget.as_ref())?
+        }
+        None => None,
+    };
+    let n_slots_cap = resource_flow_capacity_budget
+        .as_ref()
+        .map(|budget| budget.gpu_slots as usize)
+        .unwrap_or(scenario.n_slots as usize)
+        .max(scenario.n_slots as usize);
     for compiled in &compiled_trees {
         let owners = resolve_install_target(&compiled.spec.install, scenario, root)?;
         if owners.is_empty() {
@@ -219,7 +230,7 @@ pub fn compile_and_install(
                 cap: n_slots_cap,
             });
         }
-        let (arena_registry, _report) = compile_and_materialize_resource_flow(&resolved, registry)?;
+        let (arena_registry, report) = compile_and_materialize_resource_flow(&resolved, registry)?;
         seed_base_flow_obligations(&base_obligations, registry, root, allocator, &scaffold)?;
         // CT-RF-EML-RATE-0: resolve gated rates and copy the folded static
         // rate into the base column the per-tick EvalEML band reads.
@@ -230,6 +241,7 @@ pub fn compile_and_install(
         state.resolved_gated_rates = gated;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
+        state.resource_flow_capacity_budget = report.capacity_budget;
     }
 
     // ── 4c. Resource economy (Phase T): compile + live-slot materialization.

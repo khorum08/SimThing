@@ -358,7 +358,7 @@ fn planet_non_grid_children_under_spec(
                 child_kind_label: entry.child_kind_label,
                 planet_id: entry.planet_id,
                 parent_planet_gridcell_id_raw: entry.planet_gridcell_id_raw,
-                owner_ref: entry.owner_ref,
+                owner_ref: entry.owner_ref.map(|owner_ref| owner_ref.into_inner()),
                 admission_status: admission_status.clone(),
                 deferrals,
             }

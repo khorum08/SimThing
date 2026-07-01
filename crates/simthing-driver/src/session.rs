@@ -351,11 +351,23 @@ impl SimSession {
     pub fn install_spec_state(&mut self, spec_state: SpecSessionState) -> Result<(), SessionError> {
         self.spec_state = spec_state;
         self.resync_gpu_shape_after_spec_install();
+        self.reserve_resource_flow_capacity_budget();
         self.sync_spec_threshold_registrations();
         self.sync_resource_flow_if_enabled()?;
         self.sync_resource_economy_at_install()?;
         self.proto.initial_gpu_sync(&self.coord, &mut self.state);
         Ok(())
+    }
+
+    fn reserve_resource_flow_capacity_budget(&mut self) {
+        let Some(budget) = &self.spec_state.resource_flow_capacity_budget else {
+            return;
+        };
+        let emission_capacity = budget
+            .emission_capacity
+            .max(budget.threshold_emission_capacity)
+            .max(simthing_gpu::DEFAULT_THRESHOLD_EMISSION_CAPACITY);
+        self.state.ensure_threshold_accumulator(emission_capacity);
     }
 
     /// Sync E-11 resource-flow AccumulatorOps when the pipeline flag is enabled.
@@ -410,6 +422,13 @@ impl SimSession {
             .coord
             .n_slots()
             .max(self.proto.allocator.capacity() as u32)
+            .max(
+                self.spec_state
+                    .resource_flow_capacity_budget
+                    .as_ref()
+                    .map(|budget| budget.gpu_slots)
+                    .unwrap_or(0),
+            )
             .max(1);
         let required_dims = self.proto.registry.total_columns as u32;
 

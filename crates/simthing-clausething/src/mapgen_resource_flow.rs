@@ -395,6 +395,7 @@ pub fn generate_mapgen_resource_flow_enrollment(
         arenas: vec![deposit_arena.clone(), suppression_arena.clone()],
         couplings,
         base_obligations,
+        capacity_budget: None,
         gated_rates: vec![],
     };
     validate_resource_flow_enrollment(&resource_flow)?;
