@@ -7,8 +7,8 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-workflow-0r`
-- PR: (pending)
-- Merge: (pending)
+- PR: [#1035](https://github.com/khorum08/SimThing/pull/1035)
+- Merge: `4c14dd6487` (master)
 
 ## Recipient Agent
 
