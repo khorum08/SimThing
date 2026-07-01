@@ -321,6 +321,30 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    wave-through — so routing through it is a *declared, deliberate circumvention* the orchestrator flags
    (`seal-residue-risk`). An artifact that looks like a gate but enforces nothing is **deleted, not
    annotated** (§0.6.6).
+5. **CI doctrine-scan is the automated rung-3 layer, DA-equivalent when clean.** *(Added 2026-07-01 by
+   design authority on owner mandate, `0.0.8.4.6` CI Scaffolding track; full contract:
+   [`design_0_0_8_4_6_ci_scaffolding.md`](design_0_0_8_4_6_ci_scaffolding.md).)* The GitHub-side grep layer
+   (`scripts/ci/doctrine_scan.sh` + `scripts/ci/scans.tsv` + `scripts/ci/allow/*.txt`) is the executable form
+   of the admission ladder's guard-scan rung, standing in for a type/admission boundary that does not exist
+   yet. **The DA-equivalence contract:** a clean **RELIABLE** scan (allowlist scans especially) is
+   **DA-equivalent** for that scan — trusted without re-verification; `FAIL` is a **HOLD**; `INSPECT` (a
+   **HEURISTIC** hit, or a RELIABLE hit in a known false-positive zone) is **look/triage**, never a silent
+   pass and never an automatic block. **The §1A triage contract:** an INSPECT routes first through a free
+   triage tier before the scarce DA — the PR author pays first with a one-line structured justification per
+   flag; a bounded loop + greppable spam-bounds (excess INSPECT volume, symbol-walking across HEURISTIC
+   scan-ids, INSPECT rising while a RELIABLE FAIL stays open) force hill-climbing to escalate-as-FAIL instead
+   of laundering through the soft tier; a DA spot-audit remains the backstop over triage clearances. **The
+   allowlist contract:** an `allow/*.txt` entry is a **typed admission record**, not a babysat list — a new
+   entry is a **deliberate, reviewed widening of a sanctioned door** (correct door-class grammar + rationale
+   + promotion-blocker), never a scanner edit to dodge a valid finding. **The scan-retirement obligation:** a
+   scan is itself residue (§0.9.4) — when the invariant it guards is promoted to a type boundary or admission
+   hard-error, the rung that promotes it **retires (narrows or deletes) the now-redundant scan in the same
+   PR**; a RELIABLE scan with no promotion-blocker is a flagged anomaly. **The merge-hold rule:** no rung that
+   changes PROBATION / authority / gate-state semantics merges before DA/Owner clearance; a truthful
+   corrective self-report of a breach may be accepted on its merits, but it is never precedent for skipping
+   clearance again. **The verification rule:** the DA (and any orchestrator relaying a proof) verifies the
+   *tree*, never a relayed report — a clean CI check is not a substitute for the DA independently confirming
+   the branch matches what was claimed.
 
 ---
 

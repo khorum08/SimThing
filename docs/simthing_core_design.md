@@ -214,6 +214,23 @@ and any raw write path never cross the boundary; consumers get sealed doors. The
 authority extractions (spec, scenario) — apply it by construction, do not re-derive it through another round
 of cross-boundary leaks.
 
+**CI doctrine-scan — the automated rung-3 guard layer (`0.0.8.4.6`).** The admission ladder's rung 3 (guard
+test / source scan, §1.2) is not left to an agent's memory of the constitution — it is a free, GitHub-side
+grep layer (`scripts/ci/doctrine_scan.sh` + `scripts/ci/scans.tsv` + `scripts/ci/allow/*.txt`) that runs on
+every PR and treats a clean result as **DA-equivalent**, not merely "no error found": a clean **RELIABLE**
+scan (especially the closed-set allowlist scans) is trusted without DA re-verification, the same way a
+compiling program is trusted without re-reading it. `FAIL` on a RELIABLE scan is a HOLD; `INSPECT` (a
+**HEURISTIC** scan, or an inherently-judgment hit) routes to a bounded, cost-symmetric triage tier before it
+ever reaches the scarce DA — it is never a silent pass and never an automatic block. This is executable
+admission friction standing in for a type boundary that does not exist yet, so it inherits the same
+mortality clause as any rung-3 device: **a scan is residue.** When the invariant it guards is promoted to a
+type boundary or an admission hard-error (rung 1 or 2), the now-redundant scan is retired — narrowed or
+deleted — in the *same* PR that lands the promotion, exactly as "a guard test or source scan that exists
+only because a type didn't is a promotion target" already directs. Full contract:
+[`design_0_0_8_4_6_ci_scaffolding.md`](design_0_0_8_4_6_ci_scaffolding.md) (governs); the constitution
+carries the DA-equivalence + triage doctrine forward (`design_0_0_8_3.md` §0.9); every handoff declares
+`seal-residue-risk` and, when it touches a scanned door, whether the scan should retire with it.
+
 **Residue-as-tripwire.** Doctrine-as-Type never reaches 100%; an irreducible residue remains (the CPU-oracle
 twin, the WGSL shader text Rust cannot see, and inert *utility* ops that are harmless because no authoritative
 handle can be fed to them). That residue is **not a passive gap — it is a named, greppable tripwire
