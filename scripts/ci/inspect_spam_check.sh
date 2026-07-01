@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI-A-INSPECT-TRIAGE-0R — real INSPECT spam bound checker.
+# CI-A-SELFTEST-INSPECT-REPAIR-0 — real INSPECT spam bound checker.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,6 +19,9 @@ fi
 
 # --- analysis helpers (real git history delta counting) ---
 
+inspect_added_pattern='(faction|combat|terran|pirate|diplomacy|\.kind\b|data\[[0-9]+\])'
+reliable_added_pattern='(unsafe fn|pub fn (from_boundary|for_kernel|for_boundary))'
+
 get_base() {
   local br="$1"
   # Robust for fresh git init (may be main or the branch itself) and no remotes
@@ -33,9 +36,9 @@ count_branch_introduced_inspect() {
   local br="$1"
   local base
   base="$(get_base "$br")"
-  # Proxy: number of commits on the branch (each can introduce INSPECT deltas)
   local n
-  n=$(git rev-list --count "$base..$br" 2>/dev/null || echo 0)
+  n=$(git log --no-color --pretty=format: -p "$base..$br" -- . 2>/dev/null |
+    awk '/^\+[^+].*(faction|combat|terran|pirate|diplomacy|\.kind\>|data\[[0-9]+\])/ { n++ } END { print n + 0 }')
   printf '%s' "$n"
 }
 
@@ -43,100 +46,155 @@ same_symbol_multiple_heuristics() {
   local br="$1"
   local base
   base="$(get_base "$br")"
-  # Look for same file:line or symbol appearing under >=2 different HEURISTIC scan patterns across commits
-  # Simple: collect "locations" per heuristic-ish pattern in the branch diffs
-  local symbols
-  symbols="$(git log --no-color --pretty=format:%H -p "$base..$br" -- . 2>/dev/null | grep -E '^\+.*(faction|combat|terran|pirate|diplomacy|\.kind\b|data\[[0-9]+\])' | sed 's/.*\(faction\|combat\|terran\|pirate\|diplomacy\|\.kind\|data\[[0-9]\+\]\).*/\1/' | sort | uniq -c | awk '$1>=2 {print}' | wc -l || echo 0)"
-  [[ "$symbols" -gt 0 ]]
+  local hits
+  hits="$(git log --no-color --pretty=format: -p "$base..$br" -- . 2>/dev/null |
+    awk '
+      /^\+\+\+ b\// {
+        file = substr($0, 7)
+        next
+      }
+      /^\+[^+]/ {
+        line = substr($0, 2)
+        scan = ""
+        if (line ~ /(faction|combat|terran|pirate|diplomacy)/) scan = "HEUR-SEMANTIC"
+        if (line ~ /\.kind\>/) scan = "HEUR-KIND"
+        if (line ~ /data\[[0-9]+\]/) scan = "HEUR-DATA"
+        if (scan == "") next
+        symbol = file
+        if (match(line, /fn[ \t]+[A-Za-z_][A-Za-z0-9_]*/)) {
+          symbol = file ":" substr(line, RSTART, RLENGTH)
+        }
+        print symbol "|" scan
+      }
+    ' |
+    sort -u |
+    awk -F'|' '{ seen[$1]++ } END { for (s in seen) if (seen[s] >= 2) n++; print n + 0 }' ||
+    echo 0)"
+  [[ "$hits" -gt 0 ]]
 }
 
 inspect_rising_while_reliable_open() {
   local br="$1"
   local base
   base="$(get_base "$br")"
-  # Detect if there is a RELIABLE-like marker (e.g. unsafe or known bad pattern) that stays, while INSPECT additions increase
+  local reliable_seen=0
   local reliable_open=0
   local inspect_rise=0
-  local c
-  while IFS= read -r c; do
-    local diff
-    diff="$(git diff --no-color -U0 "${c}^" "$c" -- . 2>/dev/null || true)"
-    if echo "$diff" | grep -qE '^\+.*(unsafe fn|pub fn (from_boundary|for_kernel|for_boundary))'; then
-      reliable_open=1
-    fi
-    local new_i
-    new_i="$(echo "$diff" | grep -cE '^\+.*(faction|combat|terran|pirate|diplomacy|\.kind\b|data\[[0-9]+\])' || echo 0)"
-    if [[ "$new_i" -gt 0 && "$reliable_open" -eq 1 ]]; then
-      inspect_rise=$((inspect_rise + new_i))
-    fi
-  done < <(git rev-list "$base..$br" --reverse 2>/dev/null || true)
-  [[ "$reliable_open" -eq 1 && "$inspect_rise" -gt 0 ]]
+  local line
+  while IFS= read -r line; do
+    case "$line" in
+      "+++"*) continue ;;
+      "---"*) continue ;;
+      +*)
+        if [[ "$line" =~ unsafe[[:space:]]+fn || "$line" =~ pub[[:space:]]+fn[[:space:]]+(from_boundary|for_kernel|for_boundary) ]]; then
+          reliable_seen=1
+          reliable_open=1
+        fi
+        if [[ "$line" =~ (faction|combat|terran|pirate|diplomacy|\.kind|data\[[0-9]+\]) && "$reliable_open" -eq 1 ]]; then
+          inspect_rise=$((inspect_rise + 1))
+        fi
+        ;;
+      -*)
+        if [[ "$line" =~ unsafe[[:space:]]+fn || "$line" =~ pub[[:space:]]+fn[[:space:]]+(from_boundary|for_kernel|for_boundary) ]]; then
+          reliable_open=0
+        fi
+        ;;
+    esac
+  done < <(git log --reverse --no-color --pretty=format: -p "$base..$br" -- . 2>/dev/null || true)
+  [[ "$reliable_open" -eq 1 && "$reliable_seen" -eq 1 && "$inspect_rise" -gt 0 ]]
+}
+
+new_temp_repo() {
+  local prefix="$1"
+  local td
+  td="$(mktemp -d "/tmp/${prefix}-XXXX")" || exit 1
+  git -C "$td" init -q
+  git -C "$td" config user.email "ci@example.invalid"
+  git -C "$td" config user.name "CI Proof"
+  git -C "$td" commit --allow-empty -m "init" -q
+  printf '%s' "$td"
+}
+
+commit_file() {
+  local td="$1"
+  local path="$2"
+  local content="$3"
+  local message="$4"
+  printf '%s\n' "$content" > "${td}/${path}"
+  git -C "$td" add "$path"
+  git -C "$td" commit -q -m "$message"
+}
+
+run_proof_case() {
+  local td="$1"
+  local br="$2"
+  local expected_rc="$3"
+  local label="$4"
+  local out
+  local rc
+  out=$(cd "$td" && "${BASH:-bash}" "$SCRIPT_DIR/inspect_spam_check.sh" "$br" 2>&1)
+  rc=$?
+  echo "${label}: ${out}"
+  echo "RC=${rc}"
+  if [[ "$rc" -ne "$expected_rc" ]]; then
+    echo "${label}: expected RC=${expected_rc}, got RC=${rc}"
+    return 1
+  fi
+  return 0
 }
 
 # --- main ---
 
 if [[ "$branch" == "--prove" ]]; then
   echo "=== INSPECT-SPAM-PROOF CASES ==="
+  proof_failed=0
 
   # 1. single-gray-zone -> OK
-  td=$(mktemp -d /tmp/spam-proof-gray-XXXX)
-  (cd "$td" && git init -q && git commit --allow-empty -m "init" -q)
-  (cd "$td" && git checkout -q -b single-gray-zone && echo "gray zone comment // faction in doc only" > gray.rs && git add gray.rs && git commit -q -m "single gray zone INSPECT")
-  res=$(cd "$td" && bash "$SCRIPT_DIR/inspect_spam_check.sh" single-gray-zone 2>/dev/null; echo "RC=$?")
-  echo "single-gray-zone: $res"
+  td=$(new_temp_repo "spam-proof-gray")
+  git -C "$td" checkout -q -b proof-single-gray-zone
+  commit_file "$td" "gray.rs" "gray zone comment // faction in doc only" "single gray zone INSPECT"
+  run_proof_case "$td" "proof-single-gray-zone" 0 "single-gray-zone" || proof_failed=1
   rm -rf "$td"
 
   # 2. symbol-walking -> SPAM (same symbol under >=2 HEUR)
-  td=$(mktemp -d /tmp/spam-proof-symbol-XXXX)
-  (cd "$td" && git init -q && git commit --allow-empty -m "init" -q)
-  (cd "$td" && git checkout -q -b symbol-walking)
-  echo 'fn x() { /* faction */ }' > s.rs ; git add s.rs ; git commit -q -m "HEUR-SEMANTIC"
-  echo 'fn x() { let k = thing.kind; }' > s.rs ; git add s.rs ; git commit -q -m "HEUR-KIND on same sym"
-  res=$(cd "$td" && bash "$SCRIPT_DIR/inspect_spam_check.sh" symbol-walking 2>/dev/null; echo "RC=$?")
-  echo "symbol-walking: $res"
+  td=$(new_temp_repo "spam-proof-symbol")
+  git -C "$td" checkout -q -b proof-symbol-walking
+  commit_file "$td" "s.rs" 'fn x() { /* faction */ }' "HEUR-SEMANTIC"
+  commit_file "$td" "s.rs" 'fn x() { let k = thing.kind; }' "HEUR-KIND on same sym"
+  run_proof_case "$td" "proof-symbol-walking" 1 "symbol-walking" || proof_failed=1
   rm -rf "$td"
 
   # 3. >3 branch-introduced INSPECT -> SPAM
-  td=$(mktemp -d /tmp/spam-proof-many-XXXX)
-  (cd "$td" && git init -q && git commit --allow-empty -m "init" -q)
-  (cd "$td" && git checkout -q -b many-inspect)
-  for i in 1 2 3 4 5; do echo "ins$i: faction here" > "f$i.rs"; git add "f$i.rs"; git commit -q -m "INSPECT $i"; done
-  res=$(cd "$td" && bash "$SCRIPT_DIR/inspect_spam_check.sh" many-inspect 2>/dev/null; echo "RC=$?")
-  echo ">3-inspect: $res"
+  td=$(new_temp_repo "spam-proof-many")
+  git -C "$td" checkout -q -b proof-many-inspect
+  for i in 1 2 3 4 5; do
+    commit_file "$td" "f${i}.rs" "ins${i}: faction here" "INSPECT ${i}"
+  done
+  run_proof_case "$td" "proof-many-inspect" 1 ">3-inspect" || proof_failed=1
   rm -rf "$td"
 
-  # 4. same symbol >=2 different HEUR -> SPAM (covered in symbol-walking)
-  echo "same-symbol-2heur: covered by symbol-walking case"
+  # 4. branch-name alias quarantine -> OK (name alone is not proof)
+  td=$(new_temp_repo "spam-proof-alias")
+  git -C "$td" checkout -q -b spam
+  run_proof_case "$td" "spam" 0 "branch-name-alias-only" || proof_failed=1
+  rm -rf "$td"
 
   # 5. INSPECT rising while RELIABLE FAIL open -> SPAM
-  td=$(mktemp -d /tmp/spam-proof-rising-XXXX)
-  (cd "$td" && git init -q && git commit --allow-empty -m "init" -q)
-  (cd "$td" && git checkout -q -b rising)
-  echo 'unsafe fn bad() {}' > bad.rs ; git add bad.rs ; git commit -q -m "RELIABLE open"
-  echo 'faction1' > i1.rs ; git add i1.rs ; git commit -q -m "INSPECT 1"
-  echo 'faction2' > i2.rs ; git add i2.rs ; git commit -q -m "INSPECT 2"
-  echo 'faction3' > i3.rs ; git add i3.rs ; git commit -q -m "INSPECT 3 rising"
-  res=$(cd "$td" && bash "$SCRIPT_DIR/inspect_spam_check.sh" rising 2>/dev/null; echo "RC=$?")
-  echo "rising-while-reliable: $res"
+  td=$(new_temp_repo "spam-proof-rising")
+  git -C "$td" checkout -q -b proof-rising-while-reliable
+  commit_file "$td" "bad.rs" 'unsafe fn bad() {}' "RELIABLE open"
+  commit_file "$td" "i1.rs" "faction1" "INSPECT 1"
+  commit_file "$td" "i2.rs" "faction2" "INSPECT 2"
+  commit_file "$td" "i3.rs" "faction3" "INSPECT 3 rising"
+  run_proof_case "$td" "proof-rising-while-reliable" 1 "rising-while-reliable" || proof_failed=1
   rm -rf "$td"
 
+  if [[ "$proof_failed" -ne 0 ]]; then
+    echo "INSPECT-SPAM-PROOF: FAIL"
+    exit 1
+  fi
   echo "INSPECT-SPAM-PROOF: PASS"
   exit 0
-fi
-
-# Normal branch invocation
-# Documented fixture modes for harness (single-gray-zone, symbol-walking).
-# For real <branch> names, always use the delta analysis below.
-# These two names are the only shortcuts; they represent the documented test cases.
-
-if [[ "$branch" == "single-gray-zone" || "$branch" == "single" || "$branch" == "clean" ]]; then
-  echo "INSPECT-SPAM-CHECK: OK"
-  exit 0
-fi
-
-if [[ "$branch" == "symbol-walking" || "$branch" == "spam-history" || "$branch" == "spam-symbol" || "$branch" == "spam-rising" || "$branch" == "spam" ]]; then
-  echo "INSPECT-SPAM-CHECK: SPAM"
-  exit 1
 fi
 
 # Real analysis on provided branch name

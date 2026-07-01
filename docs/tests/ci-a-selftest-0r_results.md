@@ -1,6 +1,20 @@
 # CI-A-SELFTEST-0R: repair doctrine self-test determinism
 
-Status: PROBATION
+Status: MERGED / NOT DA-CLEARED; superseded by corrective audit
+
+## Corrective audit, 2026-07-01
+
+Direct GitHub/tree audit found that this 0R was merged before DA verification:
+
+- PR #1039: MERGED at 2026-07-01T03:21:47Z.
+- Title remained truncated: `CI-A-SELFTEST-0R:`.
+- Body was empty.
+- Merge commit: `7c705fca525563156ee44ae1e62d01a41d8a7fac`.
+- Workflow check run: `doctrine-scan`, Actions run `28491141025`, job `84447896167`, conclusion `SUCCESS`.
+- PR #1039's diff added root proof-junk files: `bad.rs`, `f1.rs`-`f5.rs`, `i1.rs`-`i3.rs`, `s.rs`.
+- PR #1040 later deleted those root files, and current master is free of them, but #1039 remains procedurally contaminated.
+
+This file records the historical self-test repair claims only. The corrective path is `CI-A-SELFTEST-INSPECT-REPAIR-0`, recorded in `docs/tests/ci-a-selftest-inspect-repair-0_results.md`. `CI-A-DOCTRINE-LANDING-0` remains blocked.
 
 ## Root cause
 
