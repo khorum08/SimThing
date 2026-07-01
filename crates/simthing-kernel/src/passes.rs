@@ -643,7 +643,11 @@ mod tests {
 
     /// Test-only AccumulatorOp velocity helper using an attached session.
     /// Not a production fallback; S-5 deleted the legacy velocity pass.
-    fn run_velocity_integration_test_helper(pipelines: &Pipelines, state: &WorldGpuState, dt: f32) {
+    fn run_velocity_integration_test_helper(
+        _pipelines: &Pipelines,
+        state: &WorldGpuState,
+        dt: f32,
+    ) {
         if state.n_governed_pairs == 0 {
             return;
         }

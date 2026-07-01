@@ -112,6 +112,8 @@ const CONSUME_ADD_TO_TARGET: u32 = 6u;
 const SCALE_IDENTITY: u32 = 0u;
 const SCALE_CONSTANT: u32 = 1u;
 
+const EXECUTE_MODE_COMPACT_VELOCITY: u32 = 1u;
+
 const DIR_UPWARD: u32 = 0u;
 const DIR_DOWNWARD: u32 = 1u;
 const DIR_EITHER: u32 = 2u;
@@ -664,6 +666,33 @@ fn maybe_emit_event(op_idx: u32, write_value: f32, op: AccumulatorOpGpu) {
     }
 }
 
+fn integrate_clamp_at_slots(op: AccumulatorOpGpu, amount_slot: u32, velocity_slot: u32) {
+    let amount_idx = linear_idx(amount_slot, op.target0_col);
+    let velocity_idx = linear_idx(velocity_slot, op.target1_col);
+
+    let amount0 = atomic_read_f32_at(amount_idx);
+    let raw_vel = atomic_read_f32_at(velocity_idx);
+
+    let dt = bitcast<f32>(tick_params.dt_bits);
+    let vel_max = bitcast<f32>(op.combine_a);
+    let clamp_min = bitcast<f32>(op.combine_b);
+    let clamp_max = bitcast<f32>(op.combine_c);
+    let clamp_kind = op.combine_d;
+
+    let effective_vel = clamp(raw_vel, -vel_max, vel_max);
+    let delta = effective_vel * dt;
+    let new_val = amount0 + delta;
+    let clamped = apply_amount_clamp(clamp_kind, clamp_min, clamp_max, new_val);
+
+    atomic_store_f32_at(amount_idx, clamped);
+
+    if (amount_at_floor(clamp_kind, clamp_min, clamped)) {
+        atomic_store_f32_at(velocity_idx, max(raw_vel, 0.0));
+    } else if (amount_at_ceiling(clamp_kind, clamp_max, clamped)) {
+        atomic_store_f32_at(velocity_idx, min(raw_vel, 0.0));
+    }
+}
+
 fn dispatch_one_op_for_band(op_idx: u32, op: AccumulatorOpGpu, current_band: u32) {
     // C-2 folded intent deltas: direct affine update on one cell, no targets.
     if (op.combine_kind == COMBINE_AFFINE_INTENT) {
@@ -684,30 +713,7 @@ fn dispatch_one_op_for_band(op_idx: u32, op: AccumulatorOpGpu, current_band: u32
     // C-7 GovernedPair velocity integration — multi-target write with legacy
     // semantics (amount integrate + optional velocity pinning at floor/ceiling).
     if (op.combine_kind == COMBINE_INTEGRATE_CLAMP) {
-        let amount_idx = linear_idx(op.target0_slot, op.target0_col);
-        let velocity_idx = linear_idx(op.target1_slot, op.target1_col);
-
-        let amount0 = atomic_read_f32_at(amount_idx);
-        let raw_vel = atomic_read_f32_at(velocity_idx);
-
-        let dt = bitcast<f32>(tick_params.dt_bits);
-        let vel_max = bitcast<f32>(op.combine_a);
-        let clamp_min = bitcast<f32>(op.combine_b);
-        let clamp_max = bitcast<f32>(op.combine_c);
-        let clamp_kind = op.combine_d;
-
-        let effective_vel = clamp(raw_vel, -vel_max, vel_max);
-        let delta = effective_vel * dt;
-        let new_val = amount0 + delta;
-        let clamped = apply_amount_clamp(clamp_kind, clamp_min, clamp_max, new_val);
-
-        atomic_store_f32_at(amount_idx, clamped);
-
-        if (amount_at_floor(clamp_kind, clamp_min, clamped)) {
-            atomic_store_f32_at(velocity_idx, max(raw_vel, 0.0));
-        } else if (amount_at_ceiling(clamp_kind, clamp_max, clamped)) {
-            atomic_store_f32_at(velocity_idx, min(raw_vel, 0.0));
-        }
+        integrate_clamp_at_slots(op, op.target0_slot, op.target1_slot);
         return;
     }
 
@@ -750,7 +756,29 @@ fn dispatch_one_op_for_band(op_idx: u32, op: AccumulatorOpGpu, current_band: u32
 
 @compute @workgroup_size(64)
 fn execute_ops(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let op_idx = gid.x;
+    var op_idx = gid.x;
+    if (tick_params._pad1 == EXECUTE_MODE_COMPACT_VELOCITY) {
+        let op_count = tick_params.n_ops;
+        if (op_count == 0u) {
+            return;
+        }
+        op_idx = op_idx + tick_params.current_band;
+        let total_invocations = op_count * tick_params.n_slots;
+        if (op_idx >= total_invocations) {
+            return;
+        }
+
+        let packed_op_idx = op_idx % op_count;
+        let slot_offset = op_idx / op_count;
+        let op = ops[packed_op_idx];
+        if (slot_offset >= op.source_count) {
+            return;
+        }
+        let slot = op.source_slot + slot_offset;
+        integrate_clamp_at_slots(op, slot, slot);
+        return;
+    }
+
     if (op_idx >= tick_params.n_ops) {
         return;
     }
