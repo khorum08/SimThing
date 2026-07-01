@@ -106,6 +106,20 @@ delivering this rung, you perceive a materially better architecture that a seal 
   the channel *costlier than conformance*, never a shortcut, so it can't become the aspirational exit.
 - **You surface; the Owner decides.** Never self-grant. A baseline-backed, dividend-carrying insight is a valued
   contribution; an argument in place of a working solution is a `FAIL`.
+- **The payoff is *signed* so honesty strictly dominates — risk-free is not enough.** A genuine gated experiment
+  is **positively credited** (recorded to the triage/amendment log with your authorship; the Owner routes trust
+  and interesting work by it); finding **none costs you exactly nothing** (no obligation to invent one — silence
+  is a valid, unpenalized outcome); a fabricated / ungated argument-in-place-of-a-solution is a `FAIL`. Merely
+  *harmless-but-unrewarded* (payoff ≥ 0) still loses to silence for a closure-seeker; the surfaced insight must
+  pay **strictly more than silence** (payoff > 0) or the equilibrium satisfices to the compliance boundary
+  (Gopalakrishnan–Marden–Wierman 2014 — a stable non-degenerate equilibrium requires marginal utility of the
+  elegant alternative to be positive, not just non-negative).
+> **Design constraint for any future exploration lane (do NOT build before a consumer exists).** If/when the
+> amendment log shows real demand and a lane is built, it must be **structurally non-gating** — a self-test
+> proving a conformant baseline's PASS is *invariant* to any attached experiment artifact — so the risk-free
+> guarantee is provable-by-construction, not merely promised (marginal-utility-≥0, mechanized). The *positive*
+> pull (rewarding elegance) is **not** greppable and must **not** become a CI metric/score — elegance is DA
+> judgment by nature; a CI script can enforce the floor (≥0), never adjudicate the reward (>0).
 
 **Recipient routing (Type → agent tier).** Name the agent explicitly; do not default to the most capable
 model for a mechanical task or the cheapest for a judgment task.
