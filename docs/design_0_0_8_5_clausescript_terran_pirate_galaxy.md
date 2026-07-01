@@ -1,6 +1,6 @@
 # 0.0.8.5 — ClauseScript Terran-Pirate Galaxy Production Track
 
-> **Status: OPEN (production track; execution opened 2026-07-01 at `TP-TRACK-OPEN-0`).** Resequenced
+> **Status: OPEN / DA-OPENED (production track, Phase 0; execution opened 2026-07-01 at `TP-TRACK-OPEN-0`).** Resequenced
 > 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed). Prerequisite ladder landed in the tree:
 > [`0.0.8.4 Admission Substrate`](design_0_0_8_4_admission_substrate.md) (`AS-CLOSEOUT-0` CLOSED),
 > [`0.0.8.4.5 simthing-kernel`](design_0_0_8_4_5_simthing_kernel.md) (`KERNEL-CLOSEOUT-0` CLOSED),
@@ -280,15 +280,17 @@ run**; each rung names its exact targeted tests.
 
 ### Phase 0 — Track opening & the capacity amendment (clears the galaxy-scale gate first)
 
-**Track open (`TP-TRACK-OPEN-0`, 2026-07-01).** Execution is open; the 0.0.8.4 prerequisite ladder is verified CLOSED in the tree. No runtime, capacity, decoder, harness, CI, or scenario content work has started. Next active rung: `TP-RF-CAPACITY-AMENDMENT-0`. Evidence: [`docs/tests/tp-track-open-0_results.md`](tests/tp-track-open-0_results.md).
+**Track open (`TP-TRACK-OPEN-0`, 2026-07-01) — DONE / DA-OPENED.** Execution is open; the 0.0.8.4 prerequisite ladder is verified CLOSED in the tree. No runtime, capacity, decoder, harness, CI, or scenario content work has started. Next active rung: `TP-RF-CAPACITY-AMENDMENT-0`. Phase 1+ held until DA review of the capacity amendment. Evidence: [`docs/tests/tp_track_open_0_results.md`](tests/tp_track_open_0_results.md).
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 0.0 | `TP-TRACK-OPEN-0` | This document + evidence-index row + harness. Docs only. | Doc lands; ledger row honest (impl not started). | — |
+| 0.0 | `TP-TRACK-OPEN-0` | This document + evidence-index row + harness. Docs only. | **DONE — DA-OPENED** (2026-07-01): doc lands; ledger row honest (impl not started). | — |
 | 0.1 | `TP-RF-CAPACITY-AMENDMENT-0` | **§1.1 amendment.** Scale **all three `GpuArenaDescriptor` caps** (`max_participants`, coupling-fanout, orderband-depth) **plus GPU slot & emission capacity** to galaxy scale (budget-driven, not magic constants — mirror `MapgenStructuralGridBudget` checked-`u128`). No new `AccumulatorRole`, no semantic WGSL, no per-tick allocation; pool growth at boundaries only (constitution §0.4). **Output: one concise capacity-budget ledger** (§1A.1 #3) — a single table, **not a proof battery** (D4). | Existing RF/admission tests stay green; one galaxy-scale admission test installs at the 250-owned + fleet load; `e10_resource_flow_admission` extended; CPU-oracle parity preserved; budget ledger lands. | **Tier-2** (closed lowerer + binding caps) |
 | 0.2 | `TP-SCALE-ENVELOPE-0` | Prove the **base 1500-star disc** lattice + topology admit/install at scale through the widened caps (placement/topology already tested at 1500 in `topology_stead.rs`; this proves *install*, not just placement). | Headless: generate 1500-star disc → lattice hierarchy → admit/install → compact GPU readback `is_none()` on a real adapter. | Tier-1 over 0.1 |
 
 ### Phase 1 — Base galaxy production (mostly reuse; Studio-consistency proof)
+
+**Held** — Phase 1+ rungs remain blocked until DA review of `TP-RF-CAPACITY-AMENDMENT-0` completes.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
