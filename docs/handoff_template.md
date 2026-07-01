@@ -54,6 +54,16 @@
   irreducible residue (CPU-oracle twin, WGSL, inert utilities) is a **named tripwire catalogue, not a gap** —
   routing through it is deliberate circumvention; flag it (`seal-residue-risk`). An artifact that looks like a
   gate but enforces nothing is deleted, not annotated.
+- **CI doctrine-scan is the automated DA scan layer (core §1.2.1, constitution §0.9.5).** A clean **RELIABLE**
+  scan is **DA-equivalent** for that scan — trust it, don't re-verify; `FAIL` is a **HOLD**; `INSPECT` routes
+  to §1A triage (bounded, cost-symmetric, spam-bounded), never a silent pass. An allowlist edit is a
+  **deliberate, reviewed widening of a sanctioned door**, never a scanner-edit dodge. A scan is itself
+  residue: promoting its invariant to a type/admission boundary **retires the now-redundant scan in the same
+  PR** (§1.2's promotion-target rule, mechanized).
+- **No rung touching PROBATION / authority / gate state merges before DA clearance.** A truthful corrective
+  self-report of a breach may be accepted on its merits; it is never precedent for skipping clearance again.
+  **Verify the tree, not the relayed report** — a clean CI check or a proof transcript pasted into a PR body
+  is a claim, not a substitute for the DA independently confirming the branch.
 
 If the change cannot be expressed within these lines, **stop and escalate to the DA** — do not special-case.
 
@@ -67,7 +77,10 @@ If the change cannot be expressed within these lines, **stop and escalate to the
 - **Expected PR title:** `<RUNG-ID>: <imperative summary>`
 - **Canonical design file (the one ladder this rung serves):** `<path>` — read it first; it controls scope/order/lifecycle.
 - **`admission-amendment-request:` `denied` (default) | `allowed`** — whether *this* handoff grants the agent permission to **request** the owner-gated Admission-Substrate Amendment Valve. Leave `denied` unless the rung may genuinely need to add/repair/suspend a sealed kernel/admission restriction.
-- **`seal-residue-risk:` `none` (default) | `<B#…>`** — does this rung touch the kernel **authority surface** (sealed types, authoritative buffers, GPU dispatch/encode/readback, derives on sealed types, `unsafe`, or kernel dependencies)? If yes, **name the bypass-state(s) it could produce** (the catalogue `B1–B8`, kernel track §5.2) so review runs the bypass scan and treats a hit as a **red flag** requiring DA sign-off. The residue is unenforceable by types *by nature*; routing through it is always **deliberate**, so it must be **declared and scanned**, never silent.
+- **`seal-residue-risk:` `none` (default) | `<B#…>` | `authority boundary touched` | `scan-retirement candidate`** — does this rung touch the kernel **authority surface** (sealed types, authoritative buffers, GPU dispatch/encode/readback, derives on sealed types, `unsafe`, or kernel dependencies)? If yes, **name the bypass-state(s) it could produce** (the catalogue `B1–B8`, kernel track §5.2) so review runs the bypass scan and treats a hit as a **red flag** requiring DA sign-off. Use `scan-retirement candidate` when the rung promotes a scanned invariant to a type boundary or admission hard-error — see the **retirement obligation** below. The residue is unenforceable by types *by nature*; routing through it is always **deliberate**, so it must be **declared and scanned**, never silent.
+- **`ci-doctrine-scan:`** — expected commands (`doctrine_scan.sh` / `doctrine_pr_scan.sh` / `doctrine_selftest.sh`); whether RELIABLE, HEURISTIC, or INSPECT paths are touched by this rung's diff; whether an `allow/*.txt` edit is expected (if so, name the file — an allowlist edit is a **deliberate, reviewed widening of a sanctioned door**, never a scanner-logic dodge to avoid a valid finding).
+- **Retirement obligation** — if this rung promotes a scanned invariant to a type boundary or admission hard-error, it **deletes or narrows the now-redundant scan in the same PR** (`scripts/ci/scans.tsv` / `allow/*.txt`); a guard scan kept alive after its type boundary lands is residue, not a fixture.
+- **Merge-hold rule** — a rung whose handoff or diff touches PROBATION status, kernel/CI authority, or gate-state semantics **does not merge before DA/Owner clearance**, full stop. **Do not trust relayed proof — verify the tree**: the implementer's pasted transcript is a claim; the DA (or any reviewer standing in) confirms it against the actual branch before treating the rung as cleared.
 
 **The Admission-Substrate Amendment Valve (owner-gated; do not work around seals).** The kernel/admission
 seals (AS-1–8B + the kernel track) are owner-gated. If you hit a seal that genuinely blocks the rung, you

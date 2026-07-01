@@ -68,13 +68,13 @@ extra: []
 
 ## GitHub Actions proof
 
-Corrective PR #1041 first workflow run:
+Corrective PR #1041, tree-verified via `gh run view` (not merely relayed):
 
-- Actions run `28492389014`
-- Job `84451616254`
-- Check `doctrine-scan`
-- Conclusion `SUCCESS`
-- Completed `2026-07-01T03:56:52Z`
+- **First PR run** (`pull_request`, branch `codex/ci-selftest-inspect-repair-0`): Actions run `28492389014`, job `84451616254`, conclusion `SUCCESS`, completed `2026-07-01T03:56:52Z`.
+- **Second PR run** (`pull_request`, same branch, after the `docs(0.0.8.4.6): DA-clear...` follow-up commit — this is the run Opus's independent ruling cites as final): Actions run `28492477649`, job `84451883130`, conclusion `SUCCESS`, ~52s, `2026-07-01T03:58:38Z`.
+- **Actual master push run after PR #1041 merge** (`push`, `master`): Actions run `28492521172`, job `84452014679`, conclusion `SUCCESS`, ~1m3s, `2026-07-01T04:00:01Z`.
+
+Correction to the Opus-relayed label: `28492477649` / `84451883130` is a **`pull_request`** run on the PR branch, not the master push run its "final post-merge/master run" label implied — tree-verified via `gh run view 28492477649`. All three runs above are genuine and `SUCCESS`; recorded together per "clarify, don't erase."
 
 ## Scope ledger
 
