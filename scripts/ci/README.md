@@ -17,6 +17,8 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` |
 | `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** |
 
+GitHub Actions gate: `.github/workflows/doctrine-scan.yml` (**`CI-A-WORKFLOW-0`**) — self-test then production scan on `pull_request` and push to `master`.
+
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
 
 ## Fixture corpus (`fixtures/`)
@@ -35,9 +37,9 @@ bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS bef
 bash scripts/ci/doctrine_scan.sh       # production tree scan
 ```
 
-`doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** will run the self-test in CI before the PR scan.
+`doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** runs the self-test in CI before the production scan on every PR and push to `master`.
 
-Authoritative execution is on GitHub (`ubuntu-latest`) after `CI-A-WORKFLOW-0`. Exit non-zero only on hard `FAIL` or scanner/data-format error; `INSPECT` exits zero.
+Authoritative execution is on GitHub (`ubuntu-latest`) via `.github/workflows/doctrine-scan.yml`. Exit non-zero only on hard `FAIL` or scanner/data-format error; `INSPECT` exits zero.
 
 **CI-A-WORKFLOW-0 rule:** run **RELIABLE** scans whole-tree; run **HEURISTIC** scans against the **PR diff only**. Whole-tree `doctrine_scan.sh` output is positive-control evidence, not the per-PR triage volume. §1A spam-bounds count branch-introduced (delta) INSPECTs, never baseline.
 
