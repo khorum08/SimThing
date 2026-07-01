@@ -111,6 +111,24 @@ Named guard tests you must never weaken:
   the CPU `Evaluator` across all `TransformOp` variants. New transform variant ⇒ extend it
   with a parity assertion.
 
+## CI doctrine-scan (the automated doctrinal screen)
+
+Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → scan → verdict). It is the
+**mechanized rung-3 of the admission ladder — the automated DA scan layer, not governance theater.**
+
+- A clean **RELIABLE** result is **DA-equivalent** — trust it, don't re-verify. **FAIL** is a HOLD: fix the
+  violation, or — only if it is a legitimately new sanctioned door — add a *conforming* `allow/*.txt` record
+  under the rigor below. **Never edit the scanner to dodge a valid finding.** **INSPECT** routes to §1A
+  triage, never a silent pass.
+- To change *what is screened*, read [`ci_screening_surface.md`](ci_screening_surface.md) — the authoritative
+  map of the scan/allow/block lists and the **strict rigor** for a `scans.tsv` / allowlist entry (7 fields, a
+  mandatory `promotion-blocker`, promote-to-a-type-not-a-scan, no-invariant-in-the-engine, prove-or-it-doesn't-land).
+  A change to the screening surface updates that reference **in the same PR**.
+- **The floor the CI cannot enforce, so you must:** run the check and **paste real output — never assert or
+  fabricate**; **verify the tree, not the relayed report**; **no merge before DA clearance** on any authority /
+  gate / PROBATION rung. Anti-kabuki guidance cuts ceremony, never this floor — see the handoff template §H
+  (the binding authority; do not restate or dilute it elsewhere).
+
 ## Agent completion discipline (mandatory for implementation rungs)
 
 Before any SimThing **implementation or remediation** handoff, read and follow

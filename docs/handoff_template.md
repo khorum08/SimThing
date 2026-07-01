@@ -230,6 +230,24 @@ Known gaps / next:
 A handoff or its resulting PR is **rejected at review** if it does any of the following. Each is a
 real, observed failure mode, not a hypothetical.
 
+> **This section cuts ceremony, not proof — it is not a permission slip.** Every rule below targets
+> *over*-production (governance theater). The opposite failure — **under-proof** — is rejected just as hard,
+> and **citing an anti-kabuki rule to justify skipping proof is itself the non-conformant route this section
+> exists to catch.** The load-bearing floor is **never** kabuki:
+> - **Run the check and paste its real output.** Never assert, summarize, or fabricate a result you did not
+>   produce. A "self-test / scan green" claim means the command **actually ran green on this branch** — not
+>   that the logic "looks right." (Both happened on the CI track: a 0-byte checker with fabricated proof cases,
+>   and an allowlist "clean" that a one-line grep disproved.)
+> - **Verify the tree, not the relayed report**, and **do not merge before DA clearance** on any authority /
+>   gate / PROBATION rung (spine, above).
+> - **The maintained, data-driven, self-testing CI doctrine-scan is the one *sanctioned* guard layer** — the
+>   mechanized rung-3 of the admission ladder. Rule 2 forbids *new ad-hoc greps in your PR*; it does **not**
+>   forbid adding a reviewed `scripts/ci/scans.tsv` / `allow/*.txt` entry under the §4 rigor in
+>   [`ci_screening_surface.md`](ci_screening_surface.md). Do not cite rule 2 or D8 to argue the CI screen
+>   shouldn't exist or that you may skip running it.
+>
+> Kabuki is doing governance work *instead of* the feature. Skipping proof is doing **neither** — and is worse.
+
 1. **Tests a condition guaranteed by the type system or hard-errored at admission**, beyond one
    representative negative test per rejection class. Batteries enumerating malformed variants are kabuki (A).
 2. **Authors bespoke guard scripts that restate the scope diff.** One forbidden-path `git diff` check + the
