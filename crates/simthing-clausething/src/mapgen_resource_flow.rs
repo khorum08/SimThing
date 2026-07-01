@@ -5,25 +5,27 @@
 //! PALMA, FIELD_POLICY, hyperlane coupling, or runtime/GPU/driver/simthing-sim surfaces.
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, PlacedParticipantValidationError,
-    SimThing, SimThingId, StructuralGridPlacement, SubFieldRole, SubFieldSpec,
     validate_and_mint_placed_participants_by_location_id,
-    validate_location_ids_have_structural_placements,
+    validate_location_ids_have_structural_placements, AccumulatorRole, AccumulatorSpec,
+    ClampBehavior, LogTier, PlacedParticipantValidationError, SimThing, SimThingId,
+    StructuralGridPlacement, SubFieldRole, SubFieldSpec,
 };
 use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::resource_flow::{
     BaseFlowDirectionSpec, BaseFlowObligationSpec, CouplingDelaySpec, CouplingSpec,
-    EnrollmentSelectorSpec, ResourceFlowOptInMode, ResourceFlowSpec,
+    EnrollmentSelectorSpec, ResourceFlowCapacityBudgetSpec, ResourceFlowOptInMode,
+    ResourceFlowSpec,
 };
 use simthing_spec::spec::script::PropertyKey;
 use simthing_spec::{
-    ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec, PropertySpec,
-    spatial_arena_explicit_participants,
+    effective_resource_flow_arena_caps, resolve_resource_flow_capacity_budget,
+    spatial_arena_explicit_participants, ArenaSpec, ExplicitParticipantSpec, FissionPolicySpec,
+    PropertySpec,
 };
 
 use crate::hydrate_scenario::HydratedScenarioPack;
 use crate::mapgen_lattice::{
-    MapGenLatticeHierarchy, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
+    assert_allowed_simthing_kinds, collect_gridcell_location_ids, MapGenLatticeHierarchy,
 };
 use crate::mapgen_neutral_ast::MapGenNeutralDocument;
 
@@ -62,12 +64,13 @@ pub const MAPGEN_RF_DEFAULT_MAX_COUPLING_FANOUT: u32 = 4;
 pub const MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH: u32 = 8;
 
 /// Bounded Resource Flow enrollment options for MapGen PR4.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MapGenResourceFlowOptions {
     pub suppression_max_participants: u32,
     pub deposit_max_participants: u32,
     pub max_coupling_fanout: u32,
     pub max_orderband_depth: u32,
+    pub capacity_budget: Option<ResourceFlowCapacityBudgetSpec>,
 }
 
 impl Default for MapGenResourceFlowOptions {
@@ -77,6 +80,7 @@ impl Default for MapGenResourceFlowOptions {
             deposit_max_participants: MAPGEN_RF_DEFAULT_DEPOSIT_MAX_PARTICIPANTS,
             max_coupling_fanout: MAPGEN_RF_DEFAULT_MAX_COUPLING_FANOUT,
             max_orderband_depth: MAPGEN_RF_DEFAULT_MAX_ORDERBAND_DEPTH,
+            capacity_budget: None,
         }
     }
 }
@@ -261,18 +265,30 @@ pub fn generate_mapgen_resource_flow_enrollment(
             "PR4 requires at least one gridcell participant in the PR3 hierarchy",
         ));
     }
-    if gridcells.len() as u32 > options.suppression_max_participants {
+    let effective_suppression_max_participants = options
+        .capacity_budget
+        .as_ref()
+        .map(|budget| budget.participants_per_arena)
+        .unwrap_or(0)
+        .max(options.suppression_max_participants);
+    let effective_deposit_max_participants = options
+        .capacity_budget
+        .as_ref()
+        .map(|budget| budget.participants_per_arena)
+        .unwrap_or(0)
+        .max(options.deposit_max_participants);
+    if gridcells.len() as u32 > effective_suppression_max_participants {
         return Err(MapGenResourceFlowError::new(format!(
             "gridcell participant count {} exceeds suppression max_participants {}",
             gridcells.len(),
-            options.suppression_max_participants
+            effective_suppression_max_participants
         )));
     }
-    if deposits.len() as u32 > options.deposit_max_participants {
+    if deposits.len() as u32 > effective_deposit_max_participants {
         return Err(MapGenResourceFlowError::new(format!(
             "deposit participant count {} exceeds deposit max_participants {}",
             deposits.len(),
-            options.deposit_max_participants
+            effective_deposit_max_participants
         )));
     }
 
@@ -363,17 +379,25 @@ pub fn generate_mapgen_resource_flow_enrollment(
 
     validate_arena_caps(&deposit_arena)?;
     validate_arena_caps(&suppression_arena)?;
-    validate_explicit_enrollment(&deposit_arena)?;
-    validate_explicit_enrollment(&suppression_arena)?;
+    validate_explicit_enrollment_with_max(&deposit_arena, effective_deposit_max_participants)?;
+    validate_explicit_enrollment_with_max(
+        &suppression_arena,
+        effective_suppression_max_participants,
+    )?;
 
     let couplings = vec![CouplingSpec {
         from_arena: MAPGEN_RF_DEPOSIT_ARENA.into(),
         to_arena: MAPGEN_RF_SUPPRESSION_ARENA.into(),
         delay: CouplingDelaySpec::OneTickDelay,
     }];
-    validate_coupling_fanout(
+    let resolved_capacity_budget =
+        resolve_resource_flow_capacity_budget(options.capacity_budget.as_ref()).map_err(|err| {
+            MapGenResourceFlowError::new(format!("RF capacity budget rejected: {err}"))
+        })?;
+    validate_coupling_fanout_with_budget(
         &[deposit_arena.clone(), suppression_arena.clone()],
         &couplings,
+        resolved_capacity_budget.as_ref(),
     )?;
 
     let base_obligations: Vec<BaseFlowObligationSpec> = deposits
@@ -395,7 +419,7 @@ pub fn generate_mapgen_resource_flow_enrollment(
         arenas: vec![deposit_arena.clone(), suppression_arena.clone()],
         couplings,
         base_obligations,
-        capacity_budget: None,
+        capacity_budget: options.capacity_budget.clone(),
         gated_rates: vec![],
     };
     validate_resource_flow_enrollment(&resource_flow)?;
@@ -428,7 +452,7 @@ pub fn generate_mapgen_resource_flow_enrollment(
 pub fn generate_default_mapgen_resource_flow_enrollment(
     document: &MapGenNeutralDocument,
 ) -> Result<MapGenResourceFlowEnrollment, MapGenResourceFlowError> {
-    use crate::mapgen_lattice::{MapGenLatticeOptions, generate_mapgen_lattice_hierarchy};
+    use crate::mapgen_lattice::{generate_mapgen_lattice_hierarchy, MapGenLatticeOptions};
     let hierarchy = generate_mapgen_lattice_hierarchy(document, MapGenLatticeOptions::default())
         .map_err(|err| MapGenResourceFlowError::new(err.message))?;
     generate_mapgen_resource_flow_enrollment(&hierarchy, MapGenResourceFlowOptions::default())
@@ -515,17 +539,51 @@ pub fn validate_resource_flow_enrollment(
             "PR4 requires at least one RF arena",
         ));
     }
+    let capacity_budget = resolve_resource_flow_capacity_budget(spec.capacity_budget.as_ref())
+        .map_err(|err| {
+            MapGenResourceFlowError::new(format!("RF capacity budget rejected: {err}"))
+        })?;
     for arena in &spec.arenas {
         validate_arena_caps(arena)?;
-        validate_explicit_enrollment(arena)?;
+        let (max_participants, _, _) =
+            effective_resource_flow_arena_caps(arena, capacity_budget.as_ref());
+        validate_explicit_enrollment_with_max(arena, max_participants)?;
     }
-    validate_coupling_fanout(&spec.arenas, &spec.couplings)?;
+    validate_coupling_fanout_with_budget(&spec.arenas, &spec.couplings, capacity_budget.as_ref())?;
     Ok(())
 }
 
-fn validate_coupling_fanout(
+fn validate_explicit_enrollment_with_max(
+    arena: &ArenaSpec,
+    max_participants: u32,
+) -> Result<(), MapGenResourceFlowError> {
+    if arena.enrollment.is_none() {
+        return Err(MapGenResourceFlowError::new(format!(
+            "arena `{}` missing explicit enrollment selector",
+            arena.name
+        )));
+    }
+    if arena.explicit_participants.is_empty() && arena.wildcard_admission.is_none() {
+        return Err(MapGenResourceFlowError::new(format!(
+            "arena `{}` missing explicit participants",
+            arena.name
+        )));
+    }
+    if arena.explicit_participants.len() as u32 > max_participants {
+        return Err(MapGenResourceFlowError::new(format!(
+            "arena `{}` participant count {} exceeds max_participants {}",
+            arena.name,
+            arena.explicit_participants.len(),
+            max_participants
+        )));
+    }
+    Ok(())
+}
+
+fn validate_coupling_fanout_with_budget(
     arenas: &[ArenaSpec],
     couplings: &[CouplingSpec],
+    capacity_budget: Option<&simthing_spec::ResolvedResourceFlowCapacityBudget>,
 ) -> Result<(), MapGenResourceFlowError> {
     let mut out_fanout = std::collections::BTreeMap::<&str, u32>::new();
     let mut in_fanout = std::collections::BTreeMap::<&str, u32>::new();
@@ -539,10 +597,12 @@ fn validate_coupling_fanout(
             .copied()
             .unwrap_or(0)
             .max(in_fanout.get(arena.name.as_str()).copied().unwrap_or(0));
-        if fanout > arena.max_coupling_fanout {
+        let (_, max_coupling_fanout, _) =
+            effective_resource_flow_arena_caps(arena, capacity_budget);
+        if fanout > max_coupling_fanout {
             return Err(MapGenResourceFlowError::new(format!(
                 "arena `{}` coupling fanout {fanout} exceeds max_coupling_fanout {}",
-                arena.name, arena.max_coupling_fanout
+                arena.name, max_coupling_fanout
             )));
         }
     }

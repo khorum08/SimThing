@@ -1311,6 +1311,13 @@ impl WorldGpuState {
             (self.n_slots as u64) * std::mem::size_of::<SlotDeltaRange>() as u64,
         );
         self.child_starts = self.mk_storage_buffer("child_starts", ((self.n_slots as u64) + 1) * 4);
+        // column_rules tracks n_dims; slot growth often coincides with registry
+        // expansion from spec install (rebuild_for_registry is skipped when slots grow).
+        self.column_rules = self.mk_storage_buffer("column_rules", (self.n_dims as u64) * 8);
+        if !preserve {
+            self.child_indices = self.mk_storage_buffer("child_indices", 4);
+            self.depth_slots = self.mk_storage_buffer("depth_slots", 4);
+        }
 
         self.rebuild_property_buffers(registry);
 
@@ -1997,6 +2004,31 @@ mod tests {
         assert_eq!(state.read_values().len(), 24);
         assert!(state.slot_delta_ranges.size() >= 8 * std::mem::size_of::<SlotDeltaRange>() as u64);
         assert!(state.child_starts.size() >= 9 * 4);
+    }
+
+    #[test]
+    fn rebuild_for_slots_expands_column_rules_when_dims_grow() {
+        let Some(ctx) = try_gpu() else {
+            eprintln!("skipping: no GPU");
+            return;
+        };
+
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut state = WorldGpuState::new(ctx, &reg, 2);
+        let small_rules = state.column_rules.size();
+
+        reg.register(property_with_intensity("food_security"));
+        reg.register(property_with_intensity("minerals"));
+        state.rebuild_for_slots(8, &reg);
+
+        assert_eq!(state.n_slots, 8);
+        assert!(state.n_dims > 3);
+        assert!(
+            state.column_rules.size() >= (state.n_dims as u64) * 8,
+            "column_rules must track n_dims after slot+registry growth"
+        );
+        assert!(state.column_rules.size() > small_rules);
     }
 
     #[test]

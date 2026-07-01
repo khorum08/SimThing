@@ -28,6 +28,7 @@ use super::types::{
 };
 
 pub const WORKGROUP_SIZE: u32 = 64;
+const EXECUTE_MODE_COMPACT_VELOCITY: u32 = 1;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -109,6 +110,10 @@ pub enum AccumulatorOpSessionError {
         count: u32,
         n_slots: u32,
     },
+    #[error("op upload byte size overflow: ops={ops}, op_size={op_size}")]
+    OpUploadByteSizeOverflow { ops: usize, op_size: usize },
+    #[error("input-list upload byte size overflow: inputs={inputs}, input_size={input_size}")]
+    InputListUploadByteSizeOverflow { inputs: usize, input_size: usize },
 }
 
 impl From<KernelReadbackError> for AccumulatorOpSessionError {
@@ -813,7 +818,13 @@ impl AccumulatorOpSession {
         if flat_inputs.is_empty() {
             return Ok(());
         }
-        let byte_len = flat_inputs.len() * std::mem::size_of::<AccumulatorInputGpu>();
+        let input_size = std::mem::size_of::<AccumulatorInputGpu>();
+        let byte_len = flat_inputs.len().checked_mul(input_size).ok_or(
+            AccumulatorOpSessionError::InputListUploadByteSizeOverflow {
+                inputs: flat_inputs.len(),
+                input_size,
+            },
+        )?;
         if self.input_list_buffer.size() < byte_len as u64 {
             self.input_list_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_input_list_buffer"),
@@ -839,7 +850,13 @@ impl AccumulatorOpSession {
             self.n_ops = 0;
             return Ok(());
         }
-        let byte_len = gpu_ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        let op_size = std::mem::size_of::<AccumulatorOpGpu>();
+        let byte_len = gpu_ops.len().checked_mul(op_size).ok_or(
+            AccumulatorOpSessionError::OpUploadByteSizeOverflow {
+                ops: gpu_ops.len(),
+                op_size,
+            },
+        )?;
         if self.op_buffer.size() < byte_len as u64 {
             self.op_buffer = ctx.device.create_buffer(&BufferDescriptor {
                 label: Some("accumulator_op_buffer"),
@@ -1631,40 +1648,52 @@ impl AccumulatorOpSession {
         }
         self.last_pass_time_us = None;
 
-        let tick_params = AccumulatorTickParams {
-            n_ops: self.n_ops,
-            current_band: 0,
-            n_slots: self.n_slots,
-            n_dims: self.n_dims,
-            emission_capacity: self.emission_readback.capacity(),
-            threshold_emission_capacity: self.threshold_emission_readback.capacity(),
-            dt_bits: dt.to_bits(),
-            _pad1: 0,
-        };
-        let tick_uniform = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("accumulator_velocity_tick_uniform"),
-                contents: bytemuck::bytes_of(&tick_params),
-                usage: BufferUsages::UNIFORM,
-            });
-        let execute_bind_group = self.create_execute_bind_group_with_uniform(
-            ctx,
-            values,
-            previous_values,
-            &tick_uniform,
-            None,
-            None,
+        let total_invocations = (self.n_ops as u64) * (self.n_slots as u64);
+        assert!(
+            total_invocations <= u32::MAX as u64,
+            "compact velocity dispatch exceeds u32 addressable range"
         );
+        let max_groups_x = ctx.device.limits().max_compute_workgroups_per_dimension as u64;
+        let max_invocations_per_chunk = max_groups_x * WORKGROUP_SIZE as u64;
+        let mut base = 0u64;
+        while base < total_invocations {
+            let chunk_invocations = (total_invocations - base).min(max_invocations_per_chunk);
+            let groups = chunk_invocations.div_ceil(WORKGROUP_SIZE as u64) as u32;
+            let tick_params = AccumulatorTickParams {
+                n_ops: self.n_ops,
+                current_band: base as u32,
+                n_slots: self.n_slots,
+                n_dims: self.n_dims,
+                emission_capacity: self.emission_readback.capacity(),
+                threshold_emission_capacity: self.threshold_emission_readback.capacity(),
+                dt_bits: dt.to_bits(),
+                _pad1: EXECUTE_MODE_COMPACT_VELOCITY,
+            };
+            let tick_uniform = ctx
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("accumulator_velocity_tick_uniform"),
+                    contents: bytemuck::bytes_of(&tick_params),
+                    usage: BufferUsages::UNIFORM,
+                });
+            let execute_bind_group = self.create_execute_bind_group_with_uniform(
+                ctx,
+                values,
+                previous_values,
+                &tick_uniform,
+                None,
+                None,
+            );
 
-        let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
-            label: Some("accumulator_velocity_pass"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(&self.execute_pipeline);
-        pass.set_bind_group(0, &execute_bind_group, &[]);
-        let groups = self.n_ops.div_ceil(WORKGROUP_SIZE);
-        pass.dispatch_workgroups(groups, 1, 1);
+            let mut pass = encoder.begin_compute_pass(&ComputePassDescriptor {
+                label: Some("accumulator_velocity_pass"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.execute_pipeline);
+            pass.set_bind_group(0, &execute_bind_group, &[]);
+            pass.dispatch_workgroups(groups, 1, 1);
+            base += chunk_invocations;
+        }
     }
 
     /// Encode C-8b intensity EvalEML ops into the caller's command encoder.

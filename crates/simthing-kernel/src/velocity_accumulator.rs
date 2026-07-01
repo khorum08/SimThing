@@ -28,10 +28,16 @@ pub struct VelocityAccumulatorPlan {
 /// E-7 alias: plan governed integration for arbitrary `governed_by` pairs.
 pub type GovernedIntegrationPlan = VelocityAccumulatorPlan;
 
-/// Build one AccumulatorOp per `(slot, governed pair)` matching legacy Pass 1
-/// dispatch topology (`n_slots * n_pairs` threads).
+/// Build one compact AccumulatorOp per governed pair. The velocity encoder
+/// expands each pair across `n_slots` GPU invocations at dispatch time, avoiding
+/// a host upload of `n_slots * n_pairs` materialized ops.
 pub fn plan_velocity_integration(pairs: &[GovernedPair], n_slots: u32) -> VelocityAccumulatorPlan {
-    plan_governed_integration(pairs, n_slots)
+    let ops = pairs
+        .iter()
+        .map(|pair| compact_pair_to_gpu_op(pair, n_slots))
+        .collect::<Vec<_>>();
+    let n_bands = if ops.is_empty() { 0 } else { 1 };
+    VelocityAccumulatorPlan { ops, n_bands }
 }
 
 /// E-7: compile arbitrary `governed_by` pairs to `IntegrateWithClamp` ops.
@@ -103,13 +109,43 @@ fn pair_to_gpu_op(slot: u32, pair: &GovernedPair, gate: u32, gate_a: u32) -> Acc
     }
 }
 
+fn compact_pair_to_gpu_op(pair: &GovernedPair, n_slots: u32) -> AccumulatorOpGpu {
+    AccumulatorOpGpu {
+        source_kind: source_kind::SLOT_RANGE,
+        source_slot: 0,
+        source_col: pair.governing_col,
+        source_count: n_slots,
+        combine_kind: combine_kind::INTEGRATE_CLAMP,
+        combine_a: pair.vel_max.to_bits(),
+        combine_b: pair.clamp_min.to_bits(),
+        combine_c: pair.clamp_max.to_bits(),
+        combine_d: pair.clamp_kind,
+        gate_kind: gate_kind::ALWAYS,
+        gate_a: 0,
+        gate_b: 0,
+        scale_kind: scale_kind::IDENTITY,
+        scale_a: 0,
+        consume: consume_kind::NONE,
+        target0_slot: 0,
+        target0_col: pair.governed_col,
+        target1_slot: 0,
+        target1_col: pair.governing_col,
+        target2_slot: 0,
+        target2_col: 0,
+        target3_slot: 0,
+        target3_col: 0,
+        n_targets: 2,
+        _pad: 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::world_state::{CLAMP_BOUNDED, CLAMP_FLOORED};
 
     #[test]
-    fn plan_emits_slot_pair_ops() {
+    fn plan_emits_compact_pair_ops() {
         let pairs = vec![GovernedPair {
             governed_col: 0,
             governing_col: 1,
@@ -119,12 +155,36 @@ mod tests {
             clamp_kind: CLAMP_BOUNDED,
         }];
         let plan = plan_velocity_integration(&pairs, 3);
-        assert_eq!(plan.ops.len(), 3);
+        assert_eq!(plan.ops.len(), 1);
         assert_eq!(plan.n_bands, 1);
+        assert_eq!(plan.ops[0].source_kind, source_kind::SLOT_RANGE);
+        assert_eq!(plan.ops[0].source_count, 3);
         assert_eq!(plan.ops[0].target0_slot, 0);
-        assert_eq!(plan.ops[1].target0_slot, 1);
-        assert_eq!(plan.ops[2].target0_slot, 2);
         assert_eq!(plan.ops[0].combine_kind, combine_kind::INTEGRATE_CLAMP);
+    }
+
+    #[test]
+    fn plan_velocity_integration_compacts_scale_upload() {
+        let pairs = (0..14_585)
+            .map(|idx| GovernedPair {
+                governed_col: idx * 3,
+                governing_col: idx * 3 + 1,
+                clamp_min: 0.0,
+                clamp_max: 1.0,
+                vel_max: f32::INFINITY,
+                clamp_kind: CLAMP_BOUNDED,
+            })
+            .collect::<Vec<_>>();
+
+        let plan = plan_velocity_integration(&pairs, 7_505);
+        assert_eq!(plan.ops.len(), pairs.len());
+        assert_eq!(plan.ops[0].source_count, 7_505);
+        assert_eq!(plan.ops.last().unwrap().source_count, 7_505);
+
+        let compact_bytes = plan.ops.len() * std::mem::size_of::<AccumulatorOpGpu>();
+        let expanded_bytes = pairs.len() * 7_505 * std::mem::size_of::<AccumulatorOpGpu>();
+        assert!(compact_bytes < 2_000_000);
+        assert!(expanded_bytes > 10_000_000_000);
     }
 
     #[test]
