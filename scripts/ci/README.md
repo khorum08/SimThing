@@ -8,6 +8,7 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 |---|---|
 | `scans.tsv` | One scan per non-comment line: `id \| severity \| target-glob \| pattern \| exclude \| doctrine-ref \| promotion-blocker` |
 | `sealed_producers.txt` | Sanctioned sealed-type producer doors (`read_*`/`readback_*` / `dispatch_*` / `apply_*` / `cpu_oracle_*`) |
+| `allow/sealed_types.txt` | Closed set of sealed authority **type names** (bare list, not a door-class record). Loaded by `scan_allowlists.py` — migrated from a hard-coded tuple at closeout; missing/empty fails loudly |
 | `allow/inert_buffer_handles.txt` | Provably-inert public buffer utilities (`inert-util` only) |
 | `allow/kernel_surface.txt` | Closed set of kernel `lib.rs` exports (`surface-inert` / `authority-export` / `sealed-export`) |
 | `audit_kernel_surface.py` | Re-derive `kernel_surface.txt` from `lib.rs` (grouped + single-line `pub use`) |
