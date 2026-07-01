@@ -186,7 +186,7 @@ the load-bearing kind), and the scan report is the *output of a running guard*, 
 produced *in place of* one. "Proof batteries" names an enumeration of admission-guaranteed variants, or a
 document standing in for execution — never the self-test that keeps the guard honest. Do not read this
 corollary as licence to skip running the scan or to call a running guard "ceremony" (see constitution §0.6
-binding 6 and `invariants.md` → "A running guard is not ceremony").
+binding 6 and `invariants.md` → "The CI doctrine-scan is the primary automated compliance mechanism").
 
 **Horizon.** The standing goal is to express ever more SimThing core objects as **type signatures that
 carry this rigor intrinsically** — runtime node types that cannot name a kind or a game concept; channel
