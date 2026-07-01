@@ -1,72 +1,80 @@
-# TP-SCALE-ENVELOPE-0 Results
+# TP-SCALE-ENVELOPE-0 / 0R Results
 
 ## Status
 
-PROBATION / INSPECT(1). This rung proves the 1500-star disc generation -> lattice -> RF admission -> link lowering -> install path at scale, but it does not self-mark COMPLETE. The live-adapter session-open leg is attempted and skip-aware; on this machine it is blocked by a driver/kernel reduction-topology upload rejection during `initial_gpu_sync`, so compact mapping readback is not claimed.
+**PROBATION** — `TP-SCALE-ENVELOPE-0` remains **HELD**; repair rung `TP-SCALE-ENVELOPE-0R` landed on branch `tp-scale-envelope-0` (PR #1073 retitled). The swallowed-panic false-green path is removed. The reduction-topology upload defect is repaired; orchestrator review required before promoting the rung.
 
-## What changed
+## Original HOLD
 
-- Added `crates/simthing-clausething/tests/tp_scale_envelope.rs` with a focused 1500-star disc scale-envelope proof.
-- Wired `MapGenResourceFlowOptions::capacity_budget` through the MapGen RF lowerer so budgeted effective caps are consumed before final `ResourceFlowSpec` validation.
-- Updated the 0.0.8.5 design row and evidence index to route this rung as PROBATION / INSPECT(1), not COMPLETE.
+`TP-SCALE-ENVELOPE-0` proved generate → lattice → RF-budget → link → `install_atomic` at 1500-star scale, but the terminal exit proof was false-green:
 
-## Accepted substrate consumed
+- On a real adapter, `SimSession::open_from_spec` panicked in `initial_gpu_sync → WorldGpuState::upload_reduction_topology` (`Queue::write_buffer` overran a **24-byte** `column_rules` destination buffer).
+- The test used `catch_unwind`, printed `skipping live adapter session proof; initial_gpu_sync reduction-topology upload rejected the scale shape`, and returned green without reaching `assert!(session.mapping.is_none())`.
 
-TP-RF-CAPACITY-AMENDMENT-0 is COMPLETE — DA/Owner-cleared. This rung consumes that accepted capacity path; it does not reopen the RF capacity amendment.
+Root cause: `WorldGpuState::rebuild_for_slots` grew `n_slots` and `n_dims` together but did **not** reallocate `column_rules` (sized only at `WorldGpuState::new` from the placeholder registry). `rebuild_for_registry` already resized `column_rules`; the slot-growth path did not.
 
-## Scale envelope proof
+## 0R repair
 
-The new test `tp_scale_envelope_disc_1500_admits_installs_with_budget`:
+- **`crates/simthing-kernel/src/world_state.rs`:** `rebuild_for_slots` now reallocates `column_rules` (and resets reduction sidecar buffers when the value-preservation path does not apply) whenever slot capacity grows with a widened registry.
+- **`crates/simthing-kernel/src/accumulator_op/runtime.rs`:** `ensure_velocity_session` recreates the session when `n_slots` / `n_dims` no longer match (stale-session guard after shape sync).
+- **`crates/simthing-clausething/tests/tp_scale_envelope.rs`:** removed the `catch_unwind` swallow-and-return path; session open is a direct `expect("open TP scale session")` plus `assert!(session.mapping.is_none())`.
 
-- Generates the 1500-star elliptical disc from seed `770421`, producer lattice request `300`, connected hyperlanes, and deterministic generation.
-- Lowers the generated scenario into the existing lattice hierarchy. The honored structural frame is derived from authored placements, exceeds the standard dense-field cap, and remains within the producer lattice request.
-- Consumes the accepted RF capacity budget to admit 1500 deposit participants and 1500 gridcell participants across two RF arenas with `participants_per_arena = 2048`.
-- Lowers hyperlane topology through existing link/lane-coupling surfaces with widened test-time caps only.
-- Confirms dense Movement-Front authoring over the scale frame typed-defers to the atlas rung instead of pretending full-grid field execution exists.
-- Installs through `install_atomic` with the resolved RF capacity budget and the observed 7505-slot scale footprint.
+## Terminal session proof
+
+**Local real-adapter run (2026-07-01, Windows):**
+
+- Reduction-topology upload no longer fails on the 24-byte `column_rules` buffer; `upload_reduction_topology` completes.
+- `SimSession::open_from_spec` still fails later in the same `initial_gpu_sync` at `upload_velocity_ops_with_bands → write_op_bytes` with wgpu `Queue::write_buffer: Not enough memory left` (honest panic — not swallowed).
+- **Not yet claimed:** `session.mapping.is_none()` on this host. Orchestrator should re-run on hardware with sufficient GPU memory or adjudicate whether velocity op upload at 7505-slot headroom needs a follow-on sizing rung.
+
+Preserved legs unchanged: seed `770421`, 1500-star connected disc, lattice hierarchy, structural frame above dense-field cap, budgeted RF admission (3000 participants / 2 arenas), typed atlas deferral, `install_atomic` through 7505-slot footprint.
 
 ## Load-bearing proofs
 
-Required local validation:
-
-- `cargo check -p simthing-mapgenerator` - PASS (existing warnings only).
-- `cargo check -p simthing-clausething` - PASS (existing warnings only).
-- `cargo check -p simthing-driver` - PASS (existing warnings only).
-- `cargo test -p simthing-mapgenerator topology_stead` - PASS but matched 0 tests because `topology_stead` is an integration-test binary name, not a function filter.
-- `cargo test -p simthing-mapgenerator --test topology_stead` - PASS, 9/9.
-- `cargo test -p simthing-mapgenerator connectivity` - PASS; also ran matching connectivity/report tests.
-- `cargo test -p simthing-mapgenerator --test connectivity` - PASS, 7/7.
-- `cargo test -p simthing-clausething --test tp_scale_envelope tp_scale_envelope_disc_1500_admits_installs_with_budget -- --nocapture` - PASS, 1/1. Local output includes the skip-aware live-adapter inspect line below.
-- `bash scripts/ci/gen_digest.sh --check` - PASS.
-- `bash scripts/ci/doctrine_scan.sh` - PASS, failures=0 inspect=0, reliability RELIABLE, scanner self-test SKIPPED.
+| Check | Result |
+|---|---|
+| `cargo check -p simthing-kernel` | PASS |
+| `cargo check -p simthing-driver` | PASS |
+| `cargo check -p simthing-clausething` | PASS |
+| `cargo test -p simthing-kernel rebuild_for_slots_expands_column_rules_when_dims_grow` | PASS |
+| `cargo test -p simthing-mapgenerator --test topology_stead` | PASS (9/9) |
+| `cargo test -p simthing-mapgenerator --test connectivity` | PASS (7/7) |
+| `cargo test -p simthing-clausething --test tp_scale_envelope tp_scale_envelope_disc_1500_admits_installs_with_budget` | FAIL (honest) — velocity `write_op_bytes` wgpu validation on local adapter; no skip message |
+| `bash scripts/ci/gen_digest.sh --check` | skipped — WSL/bash unavailable locally |
+| `bash scripts/ci/doctrine_scan.sh` | skipped — WSL/bash unavailable locally |
 
 ## INSPECT / triage
 
-INSPECT(1): the local adapter exists, but `SimSession::open_from_spec` for the 7505-slot scale pack trips a caught wgpu validation panic during `WorldGpuState::upload_reduction_topology` from `initial_gpu_sync` (`Queue::write_buffer` would overrun a 24-byte destination buffer). The test reports this as a skip-aware live-adapter boundary and does not fabricate compact mapping readback. The admission/install proof remains load-bearing through `install_atomic`.
-
-No `scripts/ci/triage_log.tsv` row has been added by this rung.
+None for this repair rung (`scripts/ci/triage_log.tsv` unchanged).
 
 ## Scope Ledger
 
-- Phase 1 scenario content: none.
-- Terran/Pirate ownership, fleets, factories, cohorts, combat, diplomacy, fronts, or `ai_will_do`: none.
-- Route solver/pathfinding/predecessor surfaces: none.
-- Semantic strings below spec: none added.
-- CI allowlist/addendum/scanner edits: none.
-- New `AccumulatorRole`: none.
-- Per-tick allocation or atlas scheduler: none.
-- RF capacity amendment status: consumed as accepted substrate; not reopened.
+| Element | State |
+|---|---|
+| Remove catch_unwind false-green session path | implemented |
+| Fix reduction-topology `column_rules` sizing on slot growth | implemented |
+| Preserve 1500-star / RF-budget / install_atomic legs | implemented |
+| Terminal `mapping.is_none()` on local adapter | **not reached** — velocity upload blocks session open (honest failure) |
+| Phase 1 content / scanners / allowlists / new AccumulatorRole | held (untouched) |
+| `TP-SCALE-ENVELOPE-0` self-marked COMPLETE | held (orchestrator only) |
 
 ## Graduation routing
 
-Graduation routing (for DA — why PROBATION, not COMPLETE):
-  CI verdict:          PASS-RELIABLE (local doctrine); rung still INSPECT(1) on live-adapter session proof
+```
+Graduation routing (for orchestrator review — why PROBATION, not COMPLETE):
+  CI verdict:          PASS-RELIABLE | INSPECT(n) | FAIL (pending live GitHub Doctrine Scan on PR #1073)
   Triage entries:      none
-  Risk class:          data-deliverable + scale-proof
-  Falsification check: Verify 1500-star disc generation/topology/admit/install path runs through the accepted widened capacity budget; verify no Phase 1 scenario content, no semantic runtime leakage, no new AccumulatorRole, no per-tick allocation, no atlas scheduler.
-  Recommended posture: deep — this is the install-scale gate for every later Terran-Pirate scenario rung; accept only if the proof exercises the real install path.
+  Risk class:          kernel/driver GPU buffer sizing + scale-proof
+  Falsification check: Verify the 1500-star scale test no longer has a catch_unwind-swallow passing path;
+                       verify upload_reduction_topology no longer overruns the 24-byte column_rules buffer;
+                       verify install_atomic still exercises the accepted RF budget at 7505-slot scale;
+                       verify no Phase 1 content, semantic runtime leakage, new AccumulatorRole,
+                       per-tick allocation, atlas scheduler, or scanner/allowlist edits.
+  Recommended posture: deep — repairs a false-green scale gate and touches GPU/session capacity behavior
+                       inherited by later Terran-Pirate rungs.
+```
 
 ## Known gaps / next
 
-- DA/Owner review must adjudicate the live-adapter `initial_gpu_sync` reduction-topology inspect before promoting the rung.
-- Phase 1+ Terran-Pirate content remains gated behind this scale proof.
+- Orchestrator adjudication: confirm full `SimSession::open_from_spec` + `mapping.is_none()` on a capable GPU, or scope a follow-on sizing rung if velocity op upload at budget headroom is the remaining scale defect.
+- Phase 1+ remains blocked behind scale-envelope closeout.

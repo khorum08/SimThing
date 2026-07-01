@@ -616,6 +616,13 @@ impl WorldAccumulatorRuntime {
         n_dims: u32,
         emission_capacity: u32,
     ) {
+        if self
+            .velocity_session
+            .as_ref()
+            .is_some_and(|s| s.n_slots() != n_slots || s.n_dims() != n_dims)
+        {
+            self.clear_velocity();
+        }
         if self.velocity_session.is_none() {
             let mut session =
                 AccumulatorOpSession::new_attached(ctx, n_slots, n_dims, emission_capacity);

@@ -239,22 +239,8 @@ fn tp_scale_envelope_disc_1500_admits_installs_with_budget() {
         eprintln!("TP-SCALE-ENVELOPE-0: skipping live adapter session proof; no GPU adapter");
         return;
     }
-    let previous_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-    let session_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        SimSession::open_from_spec(scenario, &pack.game_mode)
-    }));
-    std::panic::set_hook(previous_hook);
-    let session = match session_result {
-        Ok(Ok(session)) => session,
-        Ok(Err(err)) => panic!("open_from_spec returned error: {err}"),
-        Err(_) => {
-            eprintln!(
-                "TP-SCALE-ENVELOPE-0: skipping live adapter session proof; initial_gpu_sync reduction-topology upload rejected the scale shape"
-            );
-            return;
-        }
-    };
+    let session =
+        SimSession::open_from_spec(scenario, &pack.game_mode).expect("open TP scale session");
     let opened_budget = session
         .spec_state
         .resource_flow_capacity_budget
