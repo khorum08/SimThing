@@ -1,1 +1,1 @@
-fn x() { let k = thing.kind; }
+fn x() { /* faction */ }
