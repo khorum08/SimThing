@@ -21,6 +21,11 @@ jobs:
             sudo apt-get install -y ripgrep
           fi
 
+      - name: Sanctioned surface digest freshness
+        run: |
+          set -o pipefail
+          bash scripts/ci/gen_digest.sh --check 2>&1 | tee doctrine-digest-report.txt
+
       - name: Doctrine self-test
         run: |
           set -o pipefail
@@ -56,6 +61,11 @@ jobs:
             cat doctrine-selftest-report.txt 2>/dev/null || true
             echo '```'
             echo
+            echo "## Sanctioned surface digest freshness"
+            echo '```'
+            cat doctrine-digest-report.txt 2>/dev/null || true
+            echo '```'
+            echo
             echo "## Doctrine scan"
             echo '```'
             cat doctrine-scan-report.txt 2>/dev/null || true
@@ -73,6 +83,7 @@ jobs:
         with:
           name: doctrine-scan-reports
           path: |
+            doctrine-digest-report.txt
             doctrine-selftest-report.txt
             doctrine-scan-report.txt
             doctrine-triage-report.txt
