@@ -321,6 +321,9 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
   `mapgenerator_cli_visual_spiral_1500` render (later starlane/connected renders retained as CURRENT_EVIDENCE).
 - **Meta-cleanup stragglers** — `typeface_cleanup_docs_archive`, `local_wip_gpu_render_delete`.
 
+## 0.0.8.5 Terran-Pirate Galaxy — Track opening (OPEN 2026-07-01)
+- [`tp-track-open-0_results.md`](tp-track-open-0_results.md) — `TP-TRACK-OPEN-0` **DA-OPENED**: 0.0.8.4 prerequisite ladder verified CLOSED (admission substrate, `simthing-kernel`, CI Track A + Track C); track open for execution; `TP-RF-CAPACITY-AMENDMENT-0` next; impl not started.
+
 ## 0.0.8.4.6 CI Scaffolding — Track C (the carrot, CLOSED 2026-07-01)
 - [`ci-c-closeout-0_results.md`](ci-c-closeout-0_results.md) — Track C **DA-CLOSED**: C1/C2/C3 COMPLETE; scanner now serves all three positions (digest before / inner-loop during / CI gate after); C2 digest freshness gated + drift-bites (DA-perturbed the digest → `--check` exit 1); C3 addendum guarantees proven (`--prove-addendum`: opt-in/auto-detach/additive-only/digest-scope); global lists byte-unchanged; triage corpus = 1 GREEN row (too thin for promotion/retirement, no action).
 - [`ci-c-track-open-0_results.md`](ci-c-track-open-0_results.md) — `CI-C-TRACK-OPEN-0` **DA-OPENED**: Track A verified CLOSED, `doctrine_scan` PASS; Track C open, `CI-C-INNER-LOOP-0` next. Track C dogfoods the live CI+triage → a `triage_log.tsv` corpus reviewed at closeout.

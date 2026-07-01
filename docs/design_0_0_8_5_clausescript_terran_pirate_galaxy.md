@@ -1,10 +1,11 @@
 # 0.0.8.5 — ClauseScript Terran-Pirate Galaxy Production Track
 
-> **Status: OPEN, DEFERRED — resequenced 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed).** Promoted
-> ahead of it is the [`0.0.8.4 Admission Substrate track`](design_0_0_8_4_admission_substrate.md)
-> (doctrine-as-type), which is smaller, compounding, and de-risks this track — every invariant it
-> promotes to a type boundary, this track inherits for free. Begin 0.0.8.5 execution after the 0.0.8.4
-> ladder lands (or earlier by explicit owner re-sequence). Opened 2026-06-28, owner-authorized maximal scope. Sits
+> **Status: OPEN (production track; execution opened 2026-07-01 at `TP-TRACK-OPEN-0`).** Resequenced
+> 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed). Prerequisite ladder landed in the tree:
+> [`0.0.8.4 Admission Substrate`](design_0_0_8_4_admission_substrate.md) (`AS-CLOSEOUT-0` CLOSED),
+> [`0.0.8.4.5 simthing-kernel`](design_0_0_8_4_5_simthing_kernel.md) (`KERNEL-CLOSEOUT-0` CLOSED),
+> [`0.0.8.4.6 CI scaffolding`](design_0_0_8_4_6_ci_scaffolding.md) (Track A + Track C DA-CLOSED).
+> Implementation begins at `TP-RF-CAPACITY-AMENDMENT-0`. Owner-authorized maximal scope (2026-06-28). Sits
 > *beneath* [`simthing_core_design.md`](simthing_core_design.md) (permanent paradigm, incl. **§1.2 the
 > admission substrate**) and *beneath* the active constitution [`design_0_0_8_3.md`](design_0_0_8_3.md).
 > This document is the authoritative 0.0.8.5 production design track and PR ladder. It opens the **first full-scenario native ClauseScript
@@ -278,6 +279,8 @@ Tier gates per constitution §0.5 Rule 7 and ClauseThing_Spec §5/§7. **`cargo 
 run**; each rung names its exact targeted tests.
 
 ### Phase 0 — Track opening & the capacity amendment (clears the galaxy-scale gate first)
+
+**Track open (`TP-TRACK-OPEN-0`, 2026-07-01).** Execution is open; the 0.0.8.4 prerequisite ladder is verified CLOSED in the tree. No runtime, capacity, decoder, harness, CI, or scenario content work has started. Next active rung: `TP-RF-CAPACITY-AMENDMENT-0`. Evidence: [`docs/tests/tp-track-open-0_results.md`](tests/tp-track-open-0_results.md).
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
