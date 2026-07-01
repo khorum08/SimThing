@@ -278,6 +278,12 @@ PRs **#768–#775** (Terran Pirate skeleton through structural atlas halo admiss
 
 **Superseded main-track habits:** Terran-Pirate-only PRs as primary development direction; one-more-proof-slice handoffs that do not expand arbitrary scenario ingestion; evidence/doc churn treated as product progress.
 
+## CI Scaffolding Track (0.0.8.4.6) — 0R updates (Part A)
+
+| Evidence | Status | Notes |
+|---|---|---|
+| CI-A-SELFTEST-0R | **PROBATION** (branch `ci-a-selftest-0r`, commit ~47ec2469) | `docs/tests/ci-a-selftest-0r_results.md`. Root cause fixed (rg-n fragility + bad cfg regex + tsv leakage + parse + spawn). `bash scripts/ci/doctrine_selftest.sh` → `DOCTRINE-SELFTEST-VERDICT: PASS`. `cfg_test_semantic_words` in-battery PASS (hard=0) matches isolated direct scan. Transcripts from real local runs (rg 15.1 + portable bash). Part B gated until DA clear + merge. |
+
 **Guardrail:** Future main-track scenario PRs must introduce or generalize scenario/session/owner/map ingestion capability. A PR centered only on Terran Pirate is remedial unless explicitly scoped as a lower-layer regression fixture.
 
 Rows tagged **LOWER_LAYER_GOLDEN_FIXTURE** in the amendment table above (from **TERRAN-PIRATE-SCENARIO-SKELETON-0** through **DRIVER-STRUCTURAL-ATLAS-HALO-0**, PRs #768–#775) retain their PROBATION reports but are **not** scenario-ontology evidence.

@@ -45,18 +45,67 @@ Previously ~8 min (process-spawn dominated). With exclusion in-process and other
 ## Load-bearing transcripts (real local runs, commands shown)
 
 ```bash
+bash scripts/ci/doctrine_selftest.sh
+```
+```
+DOCTRINE SELFTEST REPORT
+  positive control: PASS
+  known-bad:
+    B3-BUFFER-ESCAPE (b3_buffer_escape)  PASS
+    FORGE-MINTERS (forge_minter)  PASS
+    UNSAFE-FN (unsafe_fn)  PASS
+    UNSAFE-ALLOW-ATTR (unsafe_allow_attr)  PASS
+    UNSAFE-FORBID-ATTR (unsafe_forbid_missing)  PASS
+    AS5-COLUMN-ALIAS (as5_column_alias)  PASS
+    DENY-TOML-STUB (deny_toml_stub)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer_split)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer_self)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_constructor_new)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer_doc_hidden)  PASS
+    ALLOW-BUFFER-HANDLES (allow_buffer_handle)  PASS
+    ALLOW-KERNEL-SURFACE (allow_kernel_surface_lib)  PASS
+    allowlist validation (malformed_wrong_door)  PASS
+    allowlist validation (malformed_missing_rationale)  PASS
+  heuristic controls:
+    RAW-DATA-INDEX (raw_data_index)  PASS
+    SIM-KIND-READ (sim_kind_read)  PASS
+    SEMANTIC-WORDS (semantic_words_production)  PASS
+    SPEC-STRING-CHANNEL (spec_string_channel)  PASS
+  traps:
+    jomini_write  PASS
+    studio_antialiasing  PASS
+    pub_crate_sealed_accessor  PASS
+    comment_semantic_words  PASS
+    cfg_test_semantic_words  PASS
+    cfg_test_kind_read  PASS
+  rot test: PASS
+DOCTRINE-SELFTEST-VERDICT: PASS
+```
+
+(Note: `cfg_test_semantic_words  PASS` (hard=0) in full battery matches the isolated direct scan of the identical sandbox below.)
+
+```bash
 bash scripts/ci/doctrine_scan.sh
 ```
-(See .tmp_scan.out in session; verdict PASS failures=0 inspect=0)
+```
+DOCTRINE SCAN REPORT  (commit 66e8bd7ea0, 2026-07-01T02:36:56Z)
+  ...
+  hard failures: 0   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  ...
+EXIT_CODE=0
+```
 
 ```bash
 bash scripts/ci/doctrine_pr_scan.sh --prove-delta
 ```
-Output (abridged):
 ```
 PR-delta proof cases
   no heuristic violation -> PASS  PASS
-  ...
+  baseline heuristic outside delta suppressed  PASS
+  heuristic violation in delta -> INSPECT  PASS
+  reliable violation in tree -> FAIL  PASS
 PR-delta proof: PASS
 EXIT_CODE=0
 ```
@@ -67,19 +116,29 @@ python scripts/ci/verify_kernel_surface.py
 ```
 lib.rs exports: 195
 kernel_surface.txt: 195
-...
+missing: []
+extra: []
+build_overlay_deltas: present
+project_tree_to_values: present
+ResolvedGpuBuffers: present
+forms: grouped=20 single-line=3
 EXIT_CODE=0
 ```
 
 ```bash
-# isolated cfg trap (command equivalent)
-SANDBOX=$(mktemp -d ...); ... prepare + cp trap ; cd $SANDBOX ; bash scripts/ci/doctrine_scan.sh
-DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0
-  SEMANTIC-WORDS  PASS  0
-  hard failures: 0
+# isolated direct scan of cfg_test_semantic_words trap (prepare_trap_baseline + cd sandbox + scan)
+SANDBOX=$(mktemp -d /tmp/selftest-isolated-cfg-XXXX)
+... (copy bundle + real libs + cp fixtures/traps/cfg_test_semantic_words.rs to kernel/src/_selftest_trap.rs)
+cd $SANDBOX && bash scripts/ci/doctrine_scan.sh
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  SEMANTIC-WORDS  PASS  0  design §5 semantic words below spec
+  hard failures: 0   inspect flags: 0
+EXIT: 0
 ```
 
-Full `bash scripts/ci/doctrine_selftest.sh` transcript (DOCTRINE-SELFTEST-VERDICT: PASS + cfg case agreement) to be appended after completion (runtime >5min on this host; will be captured in follow-up).
+In-battery verdict for the case (from selftest report) == isolated direct scan verdict: both PASS, hard=0. (The semantic word "faction" inside #[cfg(test)] mod tests is now correctly filtered by the pure-bash heuristic_in_cfg_test_region.)
+
+Full runtime on this host ~7min (spawn bound); selftest transcript above is from real execution `bash scripts/ci/doctrine_selftest.sh 2>&1 | tail -50` (exit 0 overall).
 
 ## Scope Ledger
 
