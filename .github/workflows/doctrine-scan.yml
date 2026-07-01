@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Ensure ripgrep
         run: |
@@ -24,7 +26,16 @@ jobs:
           set -o pipefail
           bash scripts/ci/doctrine_selftest.sh | tee doctrine-selftest-report.txt
 
-      - name: Doctrine scan
+      - name: Doctrine scan (PR delta)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -o pipefail
+          bash scripts/ci/doctrine_pr_scan.sh \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.sha }}" | tee doctrine-scan-report.txt
+
+      - name: Doctrine scan (whole-tree)
+        if: github.event_name == 'push'
         run: |
           set -o pipefail
           bash scripts/ci/doctrine_scan.sh | tee doctrine-scan-report.txt
