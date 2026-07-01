@@ -19,3 +19,7 @@ tmp/
 temp/
 .claude/settings.local.json
 .cursor/r1a_old_full.rs
+
+# CI proof-run scratch (never commit)
+.tmp_*
+scripts/ci/.tmp_*
