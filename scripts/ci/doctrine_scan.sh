@@ -210,11 +210,23 @@ line_matches_any_exclude() {
   for pat in "${_ex_arr[@]}"; do
     pat="$(trim "$pat")"
     [[ -z "$pat" ]] && continue
-    if printf '%s\n' "$content" | rg -q -e "$pat" 2>/dev/null; then
-      return 0
-    fi
-    if [[ "$content" != "$line" ]] && printf '%s\n' "$line" | rg -q -e "$pat" 2>/dev/null; then
-      return 0
+    if [[ "$pat" == ^* ]]; then
+      # fast path for ^ excludes, avoid rg spawn
+      if [[ "$content" =~ $pat ]]; then
+        return 0
+      fi
+    elif [[ "$pat" != *[.\\\*\+\?\|\(\)\[\]\{\}\^$]* ]]; then
+      # simple literal (no regex metachars), in-process contains
+      if [[ "$content" == *"$pat"* ]]; then
+        return 0
+      fi
+    else
+      if printf '%s\n' "$content" | rg -q -e "$pat" 2>/dev/null; then
+        return 0
+      fi
+      if [[ "$content" != "$line" ]] && printf '%s\n' "$line" | rg -q -e "$pat" 2>/dev/null; then
+        return 0
+      fi
     fi
   done
   return 1
@@ -241,18 +253,32 @@ heuristic_in_cfg_test_region() {
   fi
   local abs="${REPO_ROOT}/${rel}"
   [[ -f "$abs" ]] || return 1
+  # Use bash to find last #[cfg(test)] before line_num (no rg -n, robust across builds)
   local cfg_line=0
-  local entry n
-  while IFS= read -r entry; do
-    [[ -z "$entry" ]] && continue
-    n="${entry%%:*}"
-    [[ "$n" =~ ^[0-9]+$ ]] || continue
-    if [[ "$n" -lt "$line_num" && "$n" -gt "$cfg_line" ]]; then
-      cfg_line="$n"
+  local n=0
+  local l
+  while IFS= read -r l || [[ -n "$l" ]]; do
+    n=$((n + 1))
+    if [[ "$l" =~ ^[[:space:]]*#\[[Cc]fg\(test\)\] ]]; then
+      if [[ "$n" -lt "$line_num" && "$n" -gt "$cfg_line" ]]; then
+        cfg_line=$n
+      fi
     fi
-  done < <(rg -n '#\[cfg\(test\)\]' "$abs" 2>/dev/null || true)
+  done < "$abs"
   [[ "$cfg_line" -eq 0 ]] && return 1
-  sed -n "${cfg_line},$((cfg_line + 4))p" "$abs" | rg -q 'mod tests' 2>/dev/null || return 1
+  # check following lines contain mod tests (pure bash, no sed/rg spawn)
+  local has_mod=1
+  local i=0
+  while IFS= read -r l || [[ -n "$l" ]]; do
+    i=$((i + 1))
+    if [[ $i -lt $cfg_line ]]; then continue; fi
+    if [[ $i -gt $((cfg_line + 4)) ]]; then break; fi
+    if [[ "$l" =~ mod[[:space:]]+tests ]]; then
+      has_mod=0
+      break
+    fi
+  done < "$abs"
+  [[ $has_mod -eq 0 ]] || return 1
   [[ "$line_num" -gt "$cfg_line" ]]
 }
 
