@@ -13,7 +13,8 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 | `audit_kernel_surface.py` | Re-derive `kernel_surface.txt` from `lib.rs` (grouped + single-line `pub use`) |
 | `verify_kernel_surface.py` | Diff `kernel_surface.txt` against `lib.rs` exports |
 | `scan_allowlists.py` | Closed-set allowlist scan engine (`sealed-producers`, `buffer-handles`, `kernel-surface`) |
-| `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report |
+| `doctrine_scan.sh` | Thin runner: reads data, runs `rg -U` and `@ALLOWLIST:` scans, emits the §1 report (default whole-tree; `--pr-delta BASE HEAD` for PR mode) |
+| `doctrine_pr_scan.sh` | PR workflow wrapper — HEURISTIC delta-scope, RELIABLE whole-tree (`--prove-delta` for local proof cases) |
 | `doctrine_selftest.sh` | Fixture self-test runner: exercises `fixtures/` corpus against sandbox copies of `doctrine_scan.sh` |
 | `fixtures/` | Known-bad and false-positive trap corpus for **`CI-A-SELF-TEST-0`** |
 
@@ -34,8 +35,12 @@ Normal `doctrine_scan.sh` does **not** scan `fixtures/` — production globs tar
 
 ```bash
 bash scripts/ci/doctrine_selftest.sh   # fixture corpus self-test (must PASS before trusting scans)
-bash scripts/ci/doctrine_scan.sh       # production tree scan
+bash scripts/ci/doctrine_scan.sh       # whole-tree production scan (master positive control)
+bash scripts/ci/doctrine_pr_scan.sh BASE_SHA HEAD_SHA   # PR-delta scan (HEURISTIC delta, RELIABLE whole-tree)
+bash scripts/ci/doctrine_pr_scan.sh --prove-delta       # local PR-delta proof cases
 ```
+
+GitHub Actions (`.github/workflows/doctrine-scan.yml`): **pull_request** runs self-test then `doctrine_pr_scan.sh` with base/head SHAs; **push to master** runs self-test then whole-tree `doctrine_scan.sh`.
 
 `doctrine_selftest.sh` proves each RELIABLE known-bad still trips its scan, HEURISTIC production controls yield INSPECT, traps do not hard-FAIL, and neutralizing a scan pattern is detected (rot test). **`CI-A-WORKFLOW-0`** runs the self-test in CI before the production scan on every PR and push to `master`.
 

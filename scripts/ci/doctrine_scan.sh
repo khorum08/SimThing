@@ -12,6 +12,10 @@ scanner_errors=0
 hard_failures=0
 inspect_flags=0
 selftest_status="SKIPPED"
+PR_DELTA_MODE=0
+PR_BASE_SHA=""
+PR_HEAD_SHA=""
+declare -A PR_DELTA_LINE_MAP=()
 
 declare -a REPORT_LINES=()
 
@@ -236,6 +240,69 @@ heuristic_in_cfg_test_region() {
   [[ "$line_num" -gt "$cfg_line" ]]
 }
 
+normalize_match_path() {
+  local file="$1"
+  file="${file//\\//}"
+  file="${file#./}"
+  local root="${REPO_ROOT//\\//}"
+  if [[ "$file" == "$root"/* ]]; then
+    file="${file#"${root}/"}"
+  fi
+  printf '%s' "$file"
+}
+
+load_pr_delta_line_map() {
+  PR_DELTA_LINE_MAP=()
+  local current_file=""
+  local line
+  while IFS= read -r line; do
+    line="${line//$'\r'/}"
+    if [[ "$line" =~ ^\+\+\+\ b/(.+)$ ]]; then
+      current_file="${BASH_REMATCH[1]}"
+      current_file="$(normalize_match_path "$current_file")"
+    elif [[ "$line" =~ ^@@\ .*\+([0-9]+)(,([0-9]+))?\ @@ ]]; then
+      local start="${BASH_REMATCH[1]}"
+      local count="${BASH_REMATCH[3]:-1}"
+      local i
+      for ((i = 0; i < count; i++)); do
+        PR_DELTA_LINE_MAP["${current_file}:$((start + i))"]=1
+      done
+    fi
+  done < <(git -C "$REPO_ROOT" diff -U0 "${PR_BASE_SHA}".."${PR_HEAD_SHA}" 2>/dev/null || true)
+}
+
+pr_delta_scope_files() {
+  local target_glob="$1"
+  local changed globbed f
+  declare -A seen=()
+  while IFS= read -r changed; do
+    [[ -z "$changed" ]] && continue
+    changed="${changed//$'\r'/}"
+    changed="$(normalize_match_path "$changed")"
+    seen["$changed"]=1
+  done < <(git -C "$REPO_ROOT" diff --name-only "${PR_BASE_SHA}".."${PR_HEAD_SHA}" 2>/dev/null || true)
+
+  while IFS= read -r globbed; do
+    [[ -z "$globbed" ]] && continue
+    globbed="$(normalize_match_path "$globbed")"
+    if [[ -n "${seen[$globbed]:-}" ]]; then
+      printf '%s\n' "$globbed"
+    fi
+  done < <(cd "$REPO_ROOT" && rg --files -g "$target_glob" . 2>/dev/null || true)
+}
+
+match_line_in_pr_delta() {
+  local match="$1"
+  local file line
+  if [[ "$match" =~ ^(.+):([0-9]+): ]]; then
+    file="$(normalize_match_path "${BASH_REMATCH[1]}")"
+    line="${BASH_REMATCH[2]}"
+    [[ -n "${PR_DELTA_LINE_MAP[${file}:${line}]:-}" ]]
+  else
+    false
+  fi
+}
+
 run_rg_scan() {
   local pattern="$1"
   local target_glob="$2"
@@ -244,15 +311,36 @@ run_rg_scan() {
   local -n _matches_out="$5"
   _matches_out=()
 
-  local rg_args=(-U --multiline --no-heading --line-number --with-filename -g "$target_glob" -e "$pattern")
-  if [[ "$severity" == "HEURISTIC" ]]; then
+  local rg_args=(-U --multiline --no-heading --line-number --with-filename -e "$pattern")
+  local search_paths=()
+  local use_relative_paths=0
+  if [[ "$severity" == "HEURISTIC" && "$PR_DELTA_MODE" -eq 1 ]]; then
+    local scope_file
+    while IFS= read -r scope_file; do
+      [[ -z "$scope_file" ]] && continue
+      search_paths+=("$scope_file")
+    done < <(pr_delta_scope_files "$target_glob")
+    if [[ "${#search_paths[@]}" -eq 0 ]]; then
+      return 0
+    fi
+    use_relative_paths=1
     rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+  else
+    rg_args+=(-g "$target_glob")
+    if [[ "$severity" == "HEURISTIC" ]]; then
+      rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+    fi
+    search_paths=(".")
   fi
 
   local rg_out=""
   local rg_status=0
   set +e
-  rg_out="$(cd "$REPO_ROOT" && rg "${rg_args[@]}" . 2>&1)"
+  if [[ "$use_relative_paths" -eq 1 ]]; then
+    rg_out="$(cd "$REPO_ROOT" && rg "${rg_args[@]}" "${search_paths[@]}" 2>&1)"
+  else
+    rg_out="$(cd "$REPO_ROOT" && rg "${rg_args[@]}" "${search_paths[0]}" 2>&1)"
+  fi
   rg_status=$?
   set -e
 
@@ -271,6 +359,9 @@ run_rg_scan() {
       continue
     fi
     if [[ "$severity" == "HEURISTIC" ]] && heuristic_in_cfg_test_region "$line"; then
+      continue
+    fi
+    if [[ "$severity" == "HEURISTIC" && "$PR_DELTA_MODE" -eq 1 ]] && ! match_line_in_pr_delta "$line"; then
       continue
     fi
     _matches_out+=("$line")
@@ -462,6 +553,18 @@ emit_report() {
 
   echo "DOCTRINE SCAN REPORT  (commit ${sha}, ${ts})"
   echo "  scanner self-test: ${selftest_status}"
+  if [[ "$PR_DELTA_MODE" -eq 1 ]]; then
+    local base_short head_short
+    base_short="$(git -C "$REPO_ROOT" rev-parse --short "${PR_BASE_SHA}" 2>/dev/null || echo "$PR_BASE_SHA")"
+    head_short="$(git -C "$REPO_ROOT" rev-parse --short "${PR_HEAD_SHA}" 2>/dev/null || echo "$PR_HEAD_SHA")"
+    echo "  scan mode: PR delta (${base_short}..${head_short})"
+    echo "  reliable scope: whole-tree"
+    echo "  heuristic scope: changed files / changed lines"
+  else
+    echo "  scan mode: whole-tree"
+    echo "  reliable scope: whole-tree"
+    echo "  heuristic scope: whole-tree"
+  fi
   echo "  --- results ---"
   local entry
   for entry in "${REPORT_LINES[@]}"; do
@@ -473,6 +576,29 @@ emit_report() {
 }
 
 main() {
+  if [[ "${1:-}" == "--pr-delta" ]]; then
+    PR_DELTA_MODE=1
+    PR_BASE_SHA="${2:-}"
+    PR_HEAD_SHA="${3:-HEAD}"
+    if [[ -z "$PR_BASE_SHA" ]]; then
+      die_scanner "missing base SHA for --pr-delta"
+      emit_report
+      exit 1
+    fi
+    shift 3
+    if ! git -C "$REPO_ROOT" rev-parse --verify "${PR_BASE_SHA}^{commit}" >/dev/null 2>&1; then
+      die_scanner "invalid base SHA for --pr-delta: ${PR_BASE_SHA}"
+      emit_report
+      exit 1
+    fi
+    if ! git -C "$REPO_ROOT" rev-parse --verify "${PR_HEAD_SHA}^{commit}" >/dev/null 2>&1; then
+      die_scanner "invalid head SHA for --pr-delta: ${PR_HEAD_SHA}"
+      emit_report
+      exit 1
+    fi
+    load_pr_delta_line_map
+  fi
+
   if ! command -v rg >/dev/null 2>&1; then
     die_scanner "ripgrep (rg) not found on PATH"
     emit_report
