@@ -180,7 +180,13 @@ semantic conformance the compiler cannot check — and **never** to process cere
 comparison memos, proof batteries, governance artifacts). Ceremony is not a language tax that Rust removes;
 it is non-load-bearing everywhere, and it is the failure mode of an agent discharging uncertainty it could
 not resolve. Executable verification (CPU-oracle parity, admission hard-errors, minimal targeted tests)
-*transfers and remains load-bearing*; ceremony does not.
+*transfers and remains load-bearing*; ceremony does not. **The CI doctrine-scan is executable verification,
+not ceremony:** its self-test *runs* and proves each scan still catches its known-bad (minimal targeted tests,
+the load-bearing kind), and the scan report is the *output of a running guard*, not a governance artifact
+produced *in place of* one. "Proof batteries" names an enumeration of admission-guaranteed variants, or a
+document standing in for execution — never the self-test that keeps the guard honest. Do not read this
+corollary as licence to skip running the scan or to call a running guard "ceremony" (see constitution §0.6
+binding 6 and `invariants.md` → "A running guard is not ceremony").
 
 **Horizon.** The standing goal is to express ever more SimThing core objects as **type signatures that
 carry this rigor intrinsically** — runtime node types that cannot name a kind or a game concept; channel
