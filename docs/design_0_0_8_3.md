@@ -204,7 +204,13 @@ specified recursive/structured design and then claim it IMPLEMENTED / PASS / CLO
    of predecessor artifacts, or harness ceremony in place of the specified consumer actually running is
    void (sibling of `invariants.md` "Scenario Proof" and the gating policy §6 stop rule, now binding for
    closure). "Project-management cosplay" — activity that produces governance artifacts instead of the
-   specified feature — is the failure mode this law exists to kill.
+   specified feature — is the failure mode this law exists to kill. **This law is not a lever against
+   execution.** "Harness ceremony" is a harness that produces artifacts *in place of* running; a **running
+   guard** that actually executes and enforces is real enforcement under binding 6, not ceremony — the **CI
+   doctrine-scan** is exactly such a guard. And the positive half — "the specified consumer must actually
+   run" — is the anti-fabrication floor: *asserting or fabricating a result you did not run* is the worst
+   ceremony of all. Do not cite this law (or D8, or "no governance artifacts") to skip running the CI screen
+   or to argue it should not exist (see `invariants.md` → "A running guard is not ceremony").
 6. **No inert scaffolding (appearance-of-completeness is void).** *(Added 2026-06-29 by design authority on
    owner direction, after an unwired `deny.toml` stub provided the *appearance* of dependency compliance
    while enforcing nothing.)* An artifact that **looks like** a capability, gate, check, or completed
