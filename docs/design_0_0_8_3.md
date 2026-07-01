@@ -351,6 +351,17 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    clearance again. **The verification rule:** the DA (and any orchestrator relaying a proof) verifies the
    *tree*, never a relayed report — a clean CI check is not a substitute for the DA independently confirming
    the branch matches what was claimed.
+6. **The breakthrough valve — gated *and* invited.** *(Added 2026-07-01 by design authority on owner mandate.)*
+   The boundary is the boundary — but a genuine structural win a seal would block must be **surfacible, not
+   suppressed.** An architectural experiment against a sealed boundary travels as a **pair** (neither half is
+   safe alone): the **gate** — a *working, conformant baseline delivered first* (no baseline → not entertained;
+   this defeats hill-climbing into persuasive prose to dodge a hard problem) + bit-exact CPU-oracle parity + a
+   *measured* local hot-path dividend + adversarial **D2**-substrate-ladder exhaustion by a **decorrelated**
+   reviewer — makes the channel **costlier than conformance**, never a shortcut; and the **incentive** — the
+   experiment rides **risk-free alongside** the already-green conformant rung, **never gates its PASS**, and is
+   **explicitly invited** — keeps a closure-seeking agent from *burying* a real insight. Gate-without-incentive
+   is **sterile**; incentive-without-gate is a **loophole**. Owner-gated throughout via the Admission-Substrate
+   Amendment Valve (kernel-track §3A): **surface, never self-grant.**
 
 ---
 
