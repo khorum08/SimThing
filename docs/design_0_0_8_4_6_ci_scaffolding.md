@@ -145,6 +145,8 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 
 **Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) and Track C (the carrot) remain DEFERRED-but-scoped.**
 
+**Auditable screening-surface reference:** [`ci_screening_surface.md`](ci_screening_surface.md) — the single authoritative map of the screening logic, every scan/allow/block-list file, the strict rigor to add a `scans.tsv` or allowlist entry, and the triage agent's narrowing role. Built for auditability, maintenance, and Track C introspection/onboarding. Any change to the screening surface updates it in the same PR.
+
 ## 3. Track B — local executable validation harness (DEFERRED)
 
 > Opens after Track A lands and a consumer needs it (e.g., 0.0.8.5 rungs wanting seal-proof on every change).
