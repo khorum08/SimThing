@@ -38,7 +38,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           set -o pipefail
-          bash scripts/ci/inspect_spam_check.sh "${{ github.head_ref }}" | tee doctrine-triage-report.txt || true
+          bash scripts/ci/inspect_spam_check.sh "${{ github.head_ref }}" > doctrine-triage-report.txt
+          cat doctrine-triage-report.txt
 
       - name: Doctrine scan (whole-tree)
         if: github.event_name == 'push'
