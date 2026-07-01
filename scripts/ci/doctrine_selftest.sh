@@ -436,11 +436,13 @@ emit_report() {
 main() {
   if ! command -v rg >/dev/null 2>&1; then
     echo "doctrine_selftest: ripgrep (rg) not found on PATH" >&2
+    fail_selftest   # the self-test could not run; it must not report PASS (§0.6.6 false-confidence)
     emit_report
     exit 1
   fi
   if ! command -v python >/dev/null 2>&1; then
     echo "doctrine_selftest: python not found on PATH" >&2
+    fail_selftest   # the self-test could not run; it must not report PASS (§0.6.6 false-confidence)
     emit_report
     exit 1
   fi
