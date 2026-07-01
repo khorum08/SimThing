@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - `TP-SCALE-ENVELOPE-0` remains **HELD** for orchestrator review. Repair rung `TP-SCALE-ENVELOPE-0R2` updates PR #1073 on branch `tp-scale-envelope-0`. The swallowed-panic false-green path remains removed; the 0R reduction-topology repair remains intact; 0R2 repairs the next live-adapter velocity-op upload failure exposed by the 1500-star session proof.
+**COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01.** `TP-SCALE-ENVELOPE-0`, `TP-SCALE-ENVELOPE-0R`, and `TP-SCALE-ENVELOPE-0R2` are cleared for merge on PR #1073. The original HOLD remains preserved below as history: 0R repaired the false-green reduction-topology failure, and 0R2 repaired the velocity upload scale failure while proving CPU-oracle parity plus real-adapter `mapping.is_none()`.
 
 ## Original HOLD
 
@@ -78,21 +78,21 @@ None for this repair rung (`scripts/ci/triage_log.tsv` has no `TP-SCALE-ENVELOPE
 | CPU-oracle velocity parity for compact GPU execution | passed (dt=1.0 and fractional dt) |
 | Preserve 1500-star / RF-budget / install_atomic legs | implemented |
 | Terminal `mapping.is_none()` on local adapter | reached and asserted |
-| Phase 1 content / scanners / allowlists / new AccumulatorRole | held (untouched) |
-| `TP-SCALE-ENVELOPE-0` self-marked COMPLETE | held (orchestrator only) |
+| Phase 1 content / scanners / allowlists / new AccumulatorRole | untouched in closeout |
+| `TP-SCALE-ENVELOPE-0` status | COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01 |
 
-## Graduation routing
+## Closeout routing
 
 ```
-Graduation routing (for orchestrator review - why PROBATION, not COMPLETE):
+Closeout routing (DA-equivalent orchestrator-cleared 2026-07-01):
   CI verdict:          PASS-RELIABLE
   Triage entries:      none
   Risk class:          kernel/WGSL compact velocity parity + scale-proof
   Falsification check: Verify compact velocity GPU execution matches CPU oracle for dt=1.0 and fractional dt; verify real-adapter SimSession::open_from_spec reaches mapping.is_none(); verify compact upload stays bounded; verify no Phase 1 content, new AccumulatorRole, per-tick allocation, scanner/allowlist edit, or catch_unwind false-green path.
-  Recommended posture: deep - this is the final semantic-preservation proof for a WGSL/kernel execution change inherited by later Terran-Pirate rungs.
+  Final posture:       COMPLETE - DA-equivalent orchestrator-cleared; merge authorized after live CI remains green.
 ```
 
 ## Known gaps / next
 
-- PR #1073 remains PROBATION and must not merge without orchestrator review.
-- Phase 1+ remains blocked behind scale-envelope closeout.
+- PR #1073 is merge-authorized after this docs-only closeout commit and live CI remain green.
+- Phase 1 is now unblocked; next active rung is `TP-BASE-DISC-GEN-0`, the first Phase 1 base-galaxy production rung.
