@@ -94,6 +94,19 @@ otherwise, **escalate the blocker to the DA.** You never self-grant, never suspe
 build a sidecar around it. The valve opens only on owner interrogation + approval, recorded as a Deviation
 with a greppable marker (full protocol: the kernel track §3A).
 
+**Architectural experiments — gated *and* invited (the breakthrough valve; core §1.2.1, constitution §0.9.6).**
+The valve is a *pressure-relief for genuine insight, never an alternative to solving the problem.* If, while
+delivering this rung, you perceive a materially better architecture that a seal blocks:
+- **Deliver the conformant baseline first and let the rung close green.** The experiment is **decoupled and
+  risk-free**: it **never gates your PASS** and **cannot cost you closure** — so surfacing it is welcomed, not
+  penalized. (This is deliberate: without it, a closure-seeking agent buries the insight.)
+- **Surface it as a *proven* proposal, not prose:** the working baseline + bit-exact CPU-oracle parity + a
+  **measured** local hot-path dividend + why the substrate ladder (D2: RF → overlay → EML → JIT) cannot achieve
+  it. **No baseline, no measured dividend, or an unexhausted D2 ladder → it is not entertained** — this keeps
+  the channel *costlier than conformance*, never a shortcut, so it can't become the aspirational exit.
+- **You surface; the Owner decides.** Never self-grant. A baseline-backed, dividend-carrying insight is a valued
+  contribution; an argument in place of a working solution is a `FAIL`.
+
 **Recipient routing (Type → agent tier).** Name the agent explicitly; do not default to the most capable
 model for a mechanical task or the cheapest for a judgment task.
 

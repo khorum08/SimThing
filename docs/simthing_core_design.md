@@ -246,6 +246,30 @@ routing through it is therefore a *declared, deliberate circumvention*, a red fl
 handoff template must surface (`seal-residue-risk`). Its sibling rule: an artifact that merely *looks* like a
 gate but enforces nothing is **deleted, not annotated** (constitution §0.6.6) — appearance is not enforcement.
 
+**The breakthrough valve — gated *and* invited, so the ontology can learn without drifting.** The boundary is
+the boundary: ~99% of the time an agent executes within the ontology or escalates, and that is the point of the
+whole constraint system. But a sufficiently capable model will occasionally see a genuine structural win the
+ontology would block, and a system that only ever *suppresses* that never learns it was wrong. The resolution is
+a channel that is **rare and high-certainty by construction**, made of **two mechanisms that must travel
+together** — neither is safe alone:
+- **The gate (asymmetric cost — keeps abuse out, volume near-zero).** An architectural experiment against a
+  sealed boundary is entertained only with **(1)** a *working, compiling, fully conformant baseline delivered
+  first* — no baseline, no experiment (this alone defeats hill-climbing into cheap persuasive prose to dodge a
+  hard compiler puzzle); **(2)** bit-exact CPU-oracle parity with that baseline; **(3)** a *measured* hot-path
+  dividend (run locally — perf lives on the GPU, not the grep CI); **(4)** an adversarial exhaustion of the
+  substrate ladder (D2) by a **decorrelated** reviewer whose default is *"prove this is achievable conformantly
+  with an EML gadget / column remap."* The channel is deliberately **more expensive than conformance**, never a
+  shortcut.
+- **The incentive (risk-free, decoupled, invited — keeps genuine insight from being suppressed).** A
+  closure-seeking agent will otherwise take the conformant path and *bury* the insight, so the experiment must
+  ride **alongside** the already-green conformant rung: it **does not gate the rung's PASS** (the baseline merges
+  regardless), it **cannot jeopardize closure**, and the handoff **explicitly invites and values it**. Closure
+  comes from the baseline; elegance is a separate, downside-free lane, so the two stop competing.
+
+Gate-without-incentive is **sterile** (agents just conform and close); incentive-without-gate is a **loophole**
+(drift by persuasion). The channel stays **owner-gated** (the Admission-Substrate Amendment Valve, kernel-track
+§3A): the agent never self-grants — a proven experiment is *surfaced*, and the owner *decides*.
+
 ---
 
 ## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment
