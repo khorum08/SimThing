@@ -7,8 +7,10 @@
 ## PR / branch / merge
 
 - Branch: `ci-a-doctrine-landing-0`
-- PR: (recorded after push)
-- Merge: (recorded after push)
+- PR: [#1043](https://github.com/khorum08/SimThing/pull/1043)
+- Merge: `a1ef8334ff` (master)
+- PR run: [28494374601](https://github.com/khorum08/SimThing/actions/runs/28494374601) — success (56s)
+- Master push run: [28494467422](https://github.com/khorum08/SimThing/actions/runs/28494467422) — success (53s)
 
 ## Recipient Agent
 
