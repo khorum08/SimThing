@@ -10,7 +10,7 @@ The harness produced opposite verdicts for identical inputs on `cfg_test_semanti
 - isolated prepare_trap_baseline + direct scan: hard=0 (PASS)
 
 Root causes identified and fixed:
-- `heuristic_in_cfg_test_region` used `rg -n` + fragile line parsing that varied with rg build/invocation (pcre2 or not, windows paths). Switched to pure-bash file read.
+- `heuristic_in_cfg_test_region` used `rg -n` + fragile line parsing that varied with rg build/invocation and windows paths. Switched to pure-bash file read. (Note: the scanner does not use `rg -P`; PCRE2 is irrelevant to correctness per §1A ruling.)
 - The bash replacement regex was still wrong (`# ` instead of `#[`); `#[cfg(test)]` lines were never detected, so semantic trap was not suppressed.
 - `copy_ci_bundle` did not copy `inspect_justifications.tsv` / `triage_log.tsv`, risking outer state leakage into sandboxed scans (run_positive_control runs real-tree scan).
 - `parse_footer_verdict` regex did not tolerate the trailing `selftest=...` field the scanner always emits, producing UNKNOWN for valid PASS/FAIL lines.
@@ -36,7 +36,7 @@ DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
 
 The cfg filter now correctly skips "faction" inside the `#[cfg(test)] mod tests`.
 
-In-battery will match after full run (same inputs, same verdict).
+In-battery and isolated direct scan of the same sandbox inputs both report `cfg_test_semantic_words  PASS` (hard=0) and overall `DOCTRINE-SELFTEST-VERDICT: PASS`.
 
 ## Runtime
 
@@ -150,15 +150,55 @@ Followed exactly. No forbidden files touched.
 - Further spawn reduction (e.g. single skeleton + in-process allowlist for selftest) can be follow-up if DA requests.
 
 DOCTRINE SELFTEST REPORT:
-  (to be pasted from real run)
+```
+DOCTRINE SELFTEST REPORT
+  positive control: PASS
+  known-bad:
+    B3-BUFFER-ESCAPE (b3_buffer_escape)  PASS
+    FORGE-MINTERS (forge_minter)  PASS
+    UNSAFE-FN (unsafe_fn)  PASS
+    UNSAFE-ALLOW-ATTR (unsafe_allow_attr)  PASS
+    UNSAFE-FORBID-ATTR (unsafe_forbid_missing)  PASS
+    AS5-COLUMN-ALIAS (as5_column_alias)  PASS
+    DENY-TOML-STUB (deny_toml_stub)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer_split)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer_self)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_constructor_new)  PASS
+    ALLOW-SEALED-PRODUCERS (allow_sealed_producer_doc_hidden)  PASS
+    ALLOW-BUFFER-HANDLES (allow_buffer_handle)  PASS
+    ALLOW-KERNEL-SURFACE (allow_kernel_surface_lib)  PASS
+    allowlist validation (malformed_wrong_door)  PASS
+    allowlist validation (malformed_missing_rationale)  PASS
+  heuristic controls:
+    RAW-DATA-INDEX (raw_data_index)  PASS
+    SIM-KIND-READ (sim_kind_read)  PASS
+    SEMANTIC-WORDS (semantic_words_production)  PASS
+    SPEC-STRING-CHANNEL (spec_string_channel)  PASS
+  traps:
+    jomini_write  PASS
+    studio_antialiasing  PASS
+    pub_crate_sealed_accessor  PASS
+    comment_semantic_words  PASS
+    cfg_test_semantic_words  PASS
+    cfg_test_kind_read  PASS
+  rot test: PASS
+DOCTRINE-SELFTEST-VERDICT: PASS
+```
 
 DOCTRINE SCAN REPORT:
+```
   hard failures: 0   inspect flags: 0
 DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+```
 
 PR-DELTA PROOF:
-  PR-delta proof: PASS
+```
+PR-delta proof: PASS
+```
 
 KERNEL SURFACE VERIFY:
-  195/195
-  EXIT_CODE=0
+```
+195/195
+EXIT_CODE=0
+```
