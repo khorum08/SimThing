@@ -7,8 +7,10 @@
 ## PR / branch / merge
 
 - Branch: `ci-c-inner-loop-0`
-- PR: (recorded after push)
-- Merge: (recorded after push)
+- PR: [#1055](https://github.com/khorum08/SimThing/pull/1055)
+- Merge: `ee08d7bfc0` (master)
+- PR run: [28500375212](https://github.com/khorum08/SimThing/actions/runs/28500375212) — success (54s)
+- Master push run: [28500456595](https://github.com/khorum08/SimThing/actions/runs/28500456595) — success (53s)
 
 ## What changed
 
