@@ -72,10 +72,12 @@ jobs:
           PLAN="${{ inputs.plan || 'false' }}"
           TESTED_REF="${{ inputs.tested_ref || '' }}"
           MERGE_STATUS="UNAVAILABLE"
+          MERGE_REF=""
           if [[ -n "$PR" ]]; then
             git fetch origin "pull/${PR}/merge:refs/remotes/origin/pr-merge" 2>/dev/null || true
             if git rev-parse --verify origin/pr-merge >/dev/null 2>&1; then
               MERGE_STATUS="PASS"
+              MERGE_REF="origin/pr-merge"
               if [[ -z "$TESTED_REF" ]]; then
                 TESTED_REF="refs/pull/${PR}/merge"
               fi
@@ -84,6 +86,9 @@ jobs:
           if [[ -z "$TESTED_REF" ]]; then
             TESTED_REF="${HEAD}"
           fi
+          {
+            echo "merge_ref=${MERGE_REF}"
+          } >> "$GITHUB_OUTPUT"
           {
             echo "pr=${PR}"
             echo "head_sha=${HEAD}"
@@ -96,9 +101,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Checkout tested ref
-        if: steps.meta.outputs.tested_ref != steps.meta.outputs.head_sha
+        if: steps.meta.outputs.merge_ref != ''
         run: |
-          git checkout "${{ steps.meta.outputs.tested_ref }}"
+          git checkout "${{ steps.meta.outputs.merge_ref }}"
 
       - name: Install Rust toolchain
         if: steps.meta.outputs.plan != 'true'
