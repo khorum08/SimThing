@@ -4,6 +4,12 @@
 
 **PROBATION** — Track B webchat orchestration + GitHub-side CPU proof slice wired. No self-merge; DA/orchestrator clearance required.
 
+## PR / branch / merge
+
+- Branch: `ci-b-webchat-pr1`
+- PR: [#1083](https://github.com/khorum08/SimThing/pull/1083)
+- Merge: pending DA clearance
+
 ## What changed
 
 - **Docs-only pass (Part 0):** `docs/ci_screening_surface.md` §9 (webchat orchestration quick-reference); `docs/design_0_0_8_4_6_ci_scaffolding.md` §3B.1 cites §9.
