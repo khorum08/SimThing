@@ -101,7 +101,15 @@ Additional targeted repair slice:
 
 ## GitHub-Side Doctrine Exec Proof
 
-Pending `/seal-proof profile=test-pare-spec` on the pushed PR head. This rung remains PROBATION until that live GitHub-side exact-binary proof is recorded.
+Live targeted Doctrine Exec proof completed on the PR merge ref.
+
+- profile: test-pare-spec
+- head_sha: 560bacee19627171774f14ae491d0a6359c6ed6a
+- tested_ref: refs/pull/1091/merge
+- merge_ref_status: PASS
+- run: 28614694073
+- job: 84855509020 / doctrine-exec
+- verdict: DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0
 
 ## Inventory / Boundary / Drift Checks
 
@@ -126,13 +134,13 @@ No runtime crate source, kernel/sim/gpu/driver tests, workflows, scanner allowli
 
 ## Graduation Routing
 
-CI verdict: local targeted exact-binary profile `INSPECT(0)` because owner-deep/head metadata is unavailable locally; local doctrine scan/digest PASS; live GitHub verdict pending.
+CI verdict: PASS-RELIABLE for PR Doctrine Scan, default smoke, and targeted test-pare-spec GitHub proof on head 560bacee19627171774f14ae491d0a6359c6ed6a.
 
 Triage entries: none locally (`failures=0 inspect=0`).
 
 Risk class: test deletion + boundary-ledger execution + owner-edict full-battery reduction
 
-Falsification check: verify all considered rows have terminal review dispositions; no never-pare or active TP row was removed; type/seal, admission, scan, classifier, and usecase-owned rows follow their owning boundary; inventory/boundary/drift checks, doctrine scan, digest, local exact binaries, and GitHub exact-binary Doctrine Exec pass; no full-crate or all-crates cargo test was run. Local proof is complete; GitHub-side exact-binary proof remains the graduation gate.
+Falsification check: verify all considered rows have terminal review dispositions; no never-pare or active TP row was removed; type/seal, admission, scan, classifier, and usecase-owned rows follow their owning boundary; inventory/boundary/drift checks, doctrine scan, digest, local exact binaries, and GitHub exact-binary Doctrine Exec pass; no full-crate or all-crates cargo test was run.
 
 Recommended posture: deep.
 
