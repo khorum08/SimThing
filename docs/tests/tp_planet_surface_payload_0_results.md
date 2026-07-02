@@ -1,6 +1,10 @@
 # TP-PLANET-SURFACE-PAYLOAD-0 Results
 
-Status: **PROBATION** — implementation proof complete; orchestrator/DA review required before merge.
+Status: **DONE — DA-APPROVED (2026-07-02, executive DA deep review post-merge).** The DA re-ran the full
+12-test suite + the ownership-columns 9 (all green), verified the surface tier resolves through the
+pre-existing `simthing-spec` tier-evaluation surfaces, and confirmed live CI green. **Merge-hold breach
+recorded:** PR #1079 merged while this doc read PROBATION — accepted on merits (truthful state, sound
+substance), not precedent (§0.9.5).
 
 ## What changed
 
