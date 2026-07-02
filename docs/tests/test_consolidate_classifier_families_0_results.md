@@ -109,15 +109,16 @@ PR: [#1092](https://github.com/khorum08/SimThing/pull/1092)
 
 Remedial commits on branch: extended `test-deletion-*` command timeout to 900s; Linux Bevy pkg-config bootstrap in `doctrine_exec.sh`; `x11` feature on `simthing-tools` dev-dep bevy for headless CI compile.
 
-Fresh proof pending on current head after remedial commits.
+Accepted targeted proof on `39851807fc34ce0da74c74fe61827243d31cd239`:
 
-Required acceptance:
-
-- `profile: test-consolidate-classifier-families`
-- `tested_ref: refs/pull/1092/merge`
-- `merge_ref_status: PASS`
-- `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
-- no `doctrine_surface_truth.sh` command (`risk_class=test-deletion-classifier-consolidation`)
+- profile: `test-consolidate-classifier-families`
+- head_sha: `39851807fc34ce0da74c74fe61827243d31cd239`
+- tested_ref: `refs/pull/1092/merge`
+- merge_ref_status: PASS
+- run: 28623116615
+- job: doctrine-exec
+- verdict: `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
+- command list: seven exact `cargo test -p <crate> --test test_consolidate_classifier_families_0_hygiene_consolidation -- --nocapture` only; no `doctrine_surface_truth.sh`
 
 ## Doctrine scan / digest
 
