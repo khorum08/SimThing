@@ -1,10 +1,12 @@
 # TP-BASE-EMBED-0 Results
 
-Status: **PROBATION** - implementation proof complete; orchestrator review required before merge.
+Status: **COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01**.
 
 ## What Changed
 
 `TP-BASE-EMBED-0` adds scenario-container admission for an embedded `static_galaxy_scenario` block. The outer `.clause` still parses through `parse_raw_document`; the embed is hydrated inside the existing scenario-container front end and carries the producer-owned base provenance separately from the overlay runtime metadata.
+
+`TP-BASE-EMBED-0` is COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01. The rung embeds the canonical TP base disc through the scenario-container grammar path and proves combined `.clause` parse, base lattice identity, namespaced overlay location-targets, duplicate-id span errors, and producer-provenance / overlay-runtime separation. Live Doctrine Scan passed on PR head `0c484813`.
 
 ## Embedded Base Source
 
@@ -60,7 +62,7 @@ bash scripts/ci/doctrine_scan.sh
 
 Local doctrine scan: PASS, failures=0, inspect=0.
 Local gen_digest --check: PASS.
-Live PR-head CI: pending after push.
+Live GitHub Doctrine Scan: PASS on PR head `0c484813`.
 
 ## Scope Ledger
 
@@ -76,18 +78,18 @@ Live PR-head CI: pending after push.
 
 ## Graduation Routing
 
-Graduation routing (for orchestrator review - why PROBATION, not COMPLETE):
+Graduation routing:
 
-CI verdict: local PASS; live PR-head CI pending after push
+CI verdict: PASS-RELIABLE
 
-Triage entries: none locally
+Triage entries: none
 
 Risk class: combined-document grammar + base-provenance binding
 
 Falsification check: Verify combined `.clause` parses through the existing neutral-AST parser; verify embedded base lattice round-trips identical to TP-BASE-DISC-GEN-0; verify namespaced ids become overlay location-targets; verify duplicate ids hard-error with a span; verify producer provenance remains distinct from overlay runtime; verify no Phase 2+ content, runtime/GPU change, new AccumulatorRole, scanner/allowlist edit, or second parser/third loading path.
 
-Recommended posture: deep - this is the grammar path every later Terran/Pirate overlay rung will consume.
+Recommended posture: COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01; this is the grammar path every later Terran/Pirate overlay rung will consume.
 
 ## Known Gaps / Next
 
-Do not self-merge. Leave PR in PROBATION for orchestrator review.
+Next active rung is `TP-OWNER-SIBLINGS-0`.
