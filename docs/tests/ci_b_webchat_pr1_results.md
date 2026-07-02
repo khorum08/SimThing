@@ -34,7 +34,7 @@
 | Path-filter + `workflow_dispatch` triggers | wired |
 | Per-crate CPU battery via profiles | wired via `doctrine_exec_profiles.tsv` + `doctrine_exec.sh` |
 | GPU legs → INSPECT never PASS | wired via `run_inspect_cmd` + profile `gpu_required` |
-| Live green on PR head | pending GitHub Actions run post-push |
+| Live green on PR head | doctrine-scan PASS (run 28567638850); doctrine-exec ran ~21m — initial false FAIL from exit-code capture bug fixed in `b5fec53b` follow-up |
 | Known-bad `compile_fail` regression red | pending probe/workflow run |
 
 ## SHA freshness proof
