@@ -2,7 +2,7 @@
 
 This is the rustification backlog for KEEP rows whose survival is tied to a named promotion target. A follow-on `TEST-PROMOTE-<boundary>-0` rung must land the type/admission/scan boundary and retire redundant tests in the same PR.
 
-total promotion-target rows: 9
+total promotion-target rows: 15
 
 | target_boundary | owning_crate | row_count | example_rows | recommended_promotion_rung | retirement_action |
 |---|---|---:|---|---|---|
@@ -15,6 +15,12 @@ total promotion-target rows: 9
 | `promotion-target:test-pare-spec-b-t2-simthing-spec-topology-admission` | simthing-spec | 1 | `crates/simthing-spec/tests/planet_child_location_admission.rs::duplicate_planet_id_rejected` | `TEST-PROMOTE-SPEC-TOPOLOGY-0` | Retire when topology admission is owned below runtime tests. |
 | `promotion-target:test-pare-spec-field-payload-admission-integration-representative` | simthing-spec | 1 | `crates/simthing-spec/tests/bh2s_stress_compose_admission.rs::bh2s_admission_rejects_input_field_budget_exceeded` | `TEST-PROMOTE-SPEC-FIELD-PAYLOAD-0` | Retire with the field-payload admission representative above. |
 | `promotion-target:test-pare-spec-hygiene-theater-table` | simthing-spec | 1 | `crates/simthing-spec/tests/test_pare_spec_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-SPEC-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
+| `promotion-target:test-consolidate-classifier-families-clausething-hygiene-table` | simthing-clausething | 1 | `crates/simthing-clausething/tests/test_consolidate_classifier_families_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-CLAUSETHING-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
+| `promotion-target:test-consolidate-classifier-families-driver-hygiene-table` | simthing-driver | 1 | `crates/simthing-driver/tests/test_consolidate_classifier_families_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-DRIVER-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
+| `promotion-target:test-consolidate-classifier-families-gpu-hygiene-table` | simthing-gpu | 1 | `crates/simthing-gpu/tests/test_consolidate_classifier_families_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-GPU-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
+| `promotion-target:test-consolidate-classifier-families-mapeditor-hygiene-table` | simthing-mapeditor | 1 | `crates/simthing-mapeditor/tests/test_consolidate_classifier_families_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-MAPEDITOR-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
+| `promotion-target:test-consolidate-classifier-families-tools-hygiene-table` | simthing-tools | 1 | `crates/simthing-tools/tests/test_consolidate_classifier_families_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-TOOLS-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
+| `promotion-target:test-consolidate-classifier-families-workshop-hygiene-table` | simthing-workshop | 1 | `crates/simthing-workshop/tests/test_consolidate_classifier_families_0_hygiene_consolidation.rs::hygiene_theater_cases_table_preserves_inputs` | `TEST-PROMOTE-WORKSHOP-HYGIENE-THEATER-0` | Retire if the classifier-input family gets a stronger generated table or non-runtime proof. |
 
 **DA correction (executive DA, 2026-07-02, 0R on PR #1088).** The initial plan listed 122 promotion-target
 rows — all of them never-pare-set members: the nine STEAD `stead_spatial_contract.md` §8 required suites
@@ -26,11 +32,10 @@ permanent home; the enum now carries `permanent-residue:doc-named-invariant` and
 `permanent-residue:stead-required`, and the 122 rows are reclassified accordingly. The kernel/sim strict
 tier is deliberately **not** widened by these tokens.
 
-The genuine promotion backlog now starts with `TEST-PARE-SPEC-0`: retained representatives that survive
-the first material spec paring wave carry promotion targets so they can be retired by later stronger
-boundaries rather than becoming permanent residue by accident.
+The genuine promotion backlog now includes `TEST-CONSOLIDATE-CLASSIFIER-FAMILIES-0`: six cross-crate hygiene-theater table representatives
+carry promotion targets; the `simthing-sim` table remains provisional `AUDIT` under the kernel/sim strict tier.
 
-The remaining promotion backlog populates as the 5,032 AUDIT rows classify through the paring waves: any
+The remaining promotion backlog populates as AUDIT rows classify through the paring waves: any
 AUDIT row that survives as KEEP must then name a permanent-residue class or a legal (non-never-pare)
 promotion target, and this plan regenerates from those rows.
 

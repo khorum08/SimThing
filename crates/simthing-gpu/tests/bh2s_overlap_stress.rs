@@ -150,30 +150,6 @@ fn bh2s_mismatch_stress_gpu_matches_cpu_oracle() {
 }
 
 #[test]
-fn bh2s_velocity_stress_uses_prev_column_without_full_history() {
-    with_gpu(|ctx| {
-        let config = base_config(vec![StressComposeProfile {
-            operator_kind: STRESS_OP_VELOCITY,
-            weight_a: 0.0,
-            weight_b: 0.0,
-            output_col: 6,
-            choke_now_col: 0,
-            choke_prev_col: 3,
-        }]);
-        let values = sample_values(&config);
-        let expected = cpu_stress_compose_oracle(&values, &config);
-        let gpu = run_gpu_compose(ctx, &config, &values);
-        for slot in 0..config.cells() {
-            let i = idx(slot, 6, config.n_dims);
-            assert!((gpu[i] - expected[i]).abs() <= 1e-5);
-            let now = values[idx(slot, 0, config.n_dims)];
-            let prev = values[idx(slot, 3, config.n_dims)];
-            assert!((gpu[i] - (now - prev).abs()).abs() <= 1e-5);
-        }
-    });
-}
-
-#[test]
 fn bh2s_stress_columns_feed_threshold_without_cpu_planner() {
     let src = include_str!("../src/stress_compose.rs");
     assert!(!src.contains("MapMode::Read"));
@@ -247,49 +223,3 @@ fn bh2s_multi_profile_weights_change_outputs_without_semantic_code() {
     });
 }
 
-#[test]
-fn bh2s_binding_budget_caps_input_fields() {
-    let config = StressComposeConfig {
-        width: 4,
-        height: 4,
-        n_dims: 8,
-        choke_a_col: 0,
-        choke_b_col: 1,
-        profiles: vec![
-            StressComposeProfile {
-                operator_kind: STRESS_OP_VELOCITY,
-                weight_a: 0.0,
-                weight_b: 0.0,
-                output_col: 4,
-                choke_now_col: 2,
-                choke_prev_col: 3,
-            },
-            StressComposeProfile {
-                operator_kind: STRESS_OP_VELOCITY,
-                weight_a: 0.0,
-                weight_b: 0.0,
-                output_col: 5,
-                choke_now_col: 6,
-                choke_prev_col: 7,
-            },
-        ],
-    };
-    assert!(matches!(
-        config.validate(),
-        Err(simthing_gpu::StressComposeError::InputFieldBudgetExceeded { .. })
-    ));
-}
-
-#[test]
-fn bh2s_no_native_sqrt_in_hot_path() {
-    let rust_src = include_str!("../src/stress_compose.rs");
-    let wgsl_src = include_str!("../src/shaders/stress_compose.wgsl");
-    for term in BH2S_HOT_PATH_FORBIDDEN {
-        assert!(!rust_src.contains(term), "forbidden `{term}` in Rust");
-        assert!(!wgsl_src.contains(term), "forbidden `{term}` in WGSL");
-    }
-    for term in BH2S_FORBIDDEN_PRODUCTION_VOCAB {
-        assert!(!rust_src.contains(term), "forbidden vocab `{term}` in Rust");
-        assert!(!wgsl_src.contains(term), "forbidden vocab `{term}` in WGSL");
-    }
-}

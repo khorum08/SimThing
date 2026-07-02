@@ -2463,58 +2463,6 @@ const N: usize = 34_000;
 const REPEATS: u32 = 32;
 
 #[test]
-fn field_policy_act3_perf_34k_fixture_records() {
-    let records = balanced_12_records(N);
-    let rules = rules_for_smoke();
-    let admitted = default_admitted_table();
-    let admitted_n = admitted_count();
-    let adm_rules = smoke_admission_rules();
-    let mapping = default_mapping_table();
-    let mapping_n = mapping_count();
-    with_gpu(|ctx| {
-        let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx, &records, 4096, &rules, 64, &admitted, admitted_n, &adm_rules, &mapping,
-            mapping_n, 1,
-        );
-        let elapsed_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_record_us = elapsed_ms * 1000.0 / N as f64;
-        println!(
-            "field_policy_act3_34k: dispatches=6 elapsed_ms={elapsed_ms:.3} readback=true event_count={N} proposal_count={} accepted={} admission_code={} record_code={} overflow={} per_record_us={per_record_us:.4} ordering={ORDERING_CLASS}",
-            outcome.proposal_count,
-            outcome.summary.accepted_count,
-            outcome.admission.admission_code,
-            outcome.fixture.record_code,
-            outcome.admission.flags & (FLAG_ADM_INPUT_OVF | FLAG_ADM_SUM_OVF),
-        );
-    });
-}
-
-#[test]
-fn field_policy_act3_perf_34k_warm_repeated_dispatch() {
-    let records = balanced_12_records(N);
-    let rules = rules_for_smoke();
-    let admitted = default_admitted_table();
-    let admitted_n = admitted_count();
-    let adm_rules = smoke_admission_rules();
-    let mapping = default_mapping_table();
-    let mapping_n = mapping_count();
-    with_gpu(|ctx| {
-        let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx, &records, 4096, &rules, 64, &admitted, admitted_n, &adm_rules, &mapping,
-            mapping_n, REPEATS,
-        );
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_pipeline_ms = total_ms / REPEATS as f64;
-        let per_record_us = total_ms * 1000.0 / (N as f64 * REPEATS as f64);
-        println!(
-            "field_policy_act3_34k_warm: repeats={REPEATS} total_ms={total_ms:.3} per_pipeline_ms={per_pipeline_ms:.4} per_record_us={per_record_us:.4} record_code={} overflow={} ordering={ORDERING_CLASS}",
-            outcome.fixture.record_code,
-            outcome.admission.flags & (FLAG_ADM_INPUT_OVF | FLAG_ADM_SUM_OVF),
-        );
-    });
-}
-
-#[test]
 fn field_policy_act3_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

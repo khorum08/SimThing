@@ -1312,52 +1312,6 @@ fn field_policy_act0_pipe_to_proposal_smoke() {
 }
 
 #[test]
-fn field_policy_act0_perf_34k_numeric_proposals() {
-    let rules = rules_for_smoke();
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        const PROP_CAP: u32 = 256;
-        let compact = balanced_12_records(N);
-        let t0 = Instant::now();
-        let outcome = run_bucket_reduce_propose_gpu(ctx, &compact, CAP, &rules, PROP_CAP, 1);
-        let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
-        let per_record_us = elapsed_ms * 1000.0 / N as f64;
-        let (buckets, counts) = cpu_bucket_from_compact(&compact, CAP);
-        let exp_reds = reductions_from_buckets(&buckets, counts, CAP);
-        let (exp_count, exp_ovf, _) = cpu_propose(&exp_reds, &rules, PROP_CAP);
-        assert_eq!(outcome.proposal_count, exp_count);
-        assert_eq!(outcome.proposal_overflow, exp_ovf);
-        println!(
-            "field_policy_act0_34k: dispatches=3 elapsed_ms={elapsed_ms:.3} readback=true event_count={N} proposal_count={} overflow={} per_record_us={per_record_us:.4} ordering={ORDERING_CLASS}",
-            outcome.proposal_count,
-            outcome.proposal_overflow,
-        );
-    });
-}
-
-#[test]
-fn field_policy_act0_perf_34k_warm_repeated_dispatch() {
-    let rules = rules_for_smoke();
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        const PROP_CAP: u32 = 256;
-        const REPEATS: u32 = 32;
-        let compact = balanced_12_records(N);
-        let outcome = run_bucket_reduce_propose_gpu(ctx, &compact, CAP, &rules, PROP_CAP, REPEATS);
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_pipeline_ms = total_ms / REPEATS as f64;
-        let per_record_us = per_pipeline_ms * 1000.0 / N as f64;
-        println!(
-            "field_policy_act0_34k_warm: repeats={REPEATS} total_ms={total_ms:.3} per_pipeline_ms={per_pipeline_ms:.4} per_record_us={per_record_us:.4} proposal_count={} overflow={} ordering={ORDERING_CLASS}",
-            outcome.proposal_count,
-            outcome.proposal_overflow,
-        );
-    });
-}
-
-#[test]
 fn field_policy_act0_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

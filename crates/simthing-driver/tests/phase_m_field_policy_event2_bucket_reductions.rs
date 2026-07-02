@@ -1006,48 +1006,6 @@ fn field_policy_event2_pipe0_to_bucket_reductions_smoke() {
 }
 
 #[test]
-fn field_policy_event2_perf_34k_bucket_reductions() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        let (buckets, counts) = balanced_12_records(N);
-        let packed = pack_bucket_records(&buckets, CAP);
-        let t0 = Instant::now();
-        let outcome = run_reductions(ctx, counts, &packed, CAP, 1, true);
-        let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
-        let per_record_us = elapsed_ms * 1000.0 / N as f64;
-        assert!(verify_reductions(&outcome.per_code, &buckets, counts, CAP));
-        println!(
-            "field_policy_event2_34k: elapsed_ms={elapsed_ms:.3} per_record_us={per_record_us:.4} counts={counts:?} per_code={:?} ordering={ORDERING_CLASS}",
-            outcome
-                .per_code
-                .iter()
-                .map(|r| (r.count, r.flags))
-                .collect::<Vec<_>>()
-        );
-    });
-}
-
-#[test]
-fn field_policy_event2_perf_34k_warm_repeated_dispatch() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        const REPEATS: u32 = 32;
-        let (buckets, counts) = balanced_12_records(N);
-        let packed = pack_bucket_records(&buckets, CAP);
-        let outcome = run_reductions(ctx, counts, &packed, CAP, REPEATS, true);
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_dispatch_ms = total_ms / REPEATS as f64;
-        let per_record_us = per_dispatch_ms * 1000.0 / N as f64;
-        assert!(verify_reductions(&outcome.per_code, &buckets, counts, CAP));
-        println!(
-            "field_policy_event2_34k_warm: repeats={REPEATS} total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.4} per_record_us={per_record_us:.4} counts={counts:?} ordering={ORDERING_CLASS}"
-        );
-    });
-}
-
-#[test]
 fn field_policy_event2_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

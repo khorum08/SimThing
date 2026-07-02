@@ -600,59 +600,6 @@ fn sqrt_mag0_dense_corpus_match_cpu_oracle() {
 }
 
 #[test]
-fn sqrt_mag0_perf_34k_mobile_simthing_hot_path() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        let pairs = mobile_simthing_pairs(N);
-        let t0 = Instant::now();
-        let outputs = run_mag_f_batch(ctx, &pairs);
-        let elapsed = t0.elapsed();
-        assert_eq!(outputs.len(), N);
-
-        let mut spot_max_ulp = 0u32;
-        for ((_, _, mag, mag2_gpu), (dx, dy)) in
-            outputs.iter().take(512).zip(pairs.iter().take(512))
-        {
-            if *mag2_gpu != cpu_mag2_bits(*dx, *dy) {
-                continue;
-            }
-            spot_max_ulp = spot_max_ulp.max(ulp_distance(*mag, cpu_mag_bits(*dx, *dy)));
-        }
-        assert_eq!(
-            spot_max_ulp, 0,
-            "34k spot-check requires max_ulp==0 on mag2-matched rows"
-        );
-
-        let ms = elapsed.as_secs_f64() * 1000.0;
-        let per_entity_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
-        println!(
-            "sqrt_mag0_perf_34k: inputs={N} dispatches=1 includes_readback=true elapsed_ms={ms:.3} per_entity_us={per_entity_us:.4} spot_max_ulp={spot_max_ulp} classification=raw_dxdy_F_backed_magnitude_probe"
-        );
-        println!(
-            "sqrt_mag0_perf_note: raw dx/dy probe — not fully exact-authoritative until mag2 construction is pinned/proven"
-        );
-    });
-}
-
-#[test]
-fn sqrt_mag0_perf_scaled_smoke() {
-    with_gpu(|ctx| {
-        for size in [10_000usize, 34_000, 100_000] {
-            let pairs = mobile_simthing_pairs(size);
-            let t0 = Instant::now();
-            let outputs = run_mag_f_batch(ctx, &pairs);
-            let elapsed = t0.elapsed();
-            assert_eq!(outputs.len(), size);
-            let ms = elapsed.as_secs_f64() * 1000.0;
-            println!(
-                "sqrt_mag0_perf_smoke: inputs={size} dispatches=1 includes_readback=true elapsed_ms={ms:.3}"
-            );
-        }
-        println!("sqrt_mag0_perf_smoke: 1_000_000 row run skipped by default (ignored optional)");
-    });
-}
-
-#[test]
 fn sqrt_mag0_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

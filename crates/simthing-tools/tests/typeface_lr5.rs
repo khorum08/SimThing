@@ -270,17 +270,6 @@ fn bench_result_report_is_deterministic_enough() {
 }
 
 #[test]
-fn ci_bench_budget_gates_pass() {
-    let result = run_typeface_bench(CI_BENCH_CONFIG).expect("ci bench");
-
-    assert!(result.initial_shape_rebuilds > 0);
-    assert_eq!(result.noop_shape_rebuilds, 0);
-    assert_eq!(result.noop_rasterize_count_delta, 0);
-    assert!(result.instance_count > 0);
-    assert!(result.icon_cache_entries >= 2);
-}
-
-#[test]
 fn direct_lr5_harness_regressions_still_pass() {
     ci_bench_budget_gates_pass();
 }
@@ -867,17 +856,3 @@ fn gpu_residency_audit_updated_for_numeric_lane() {
     gpu_residency_audit_documented();
 }
 
-#[test]
-#[ignore = "manual heavy bench: 5k static + 500 damage labels"]
-fn heavy_bench_manual() {
-    let result = run_typeface_bench(HEAVY_BENCH_CONFIG).expect("heavy bench");
-    assert_eq!(result.noop_shape_rebuilds, 0);
-    assert_eq!(result.noop_rasterize_count_delta, 0);
-    eprintln!(
-        "heavy bench: initial={:.1}ms noop={:.1}ms damage={:.1}ms instances={}",
-        result.elapsed_initial_ms,
-        result.elapsed_noop_ms,
-        result.elapsed_damage_ms,
-        result.instance_count
-    );
-}

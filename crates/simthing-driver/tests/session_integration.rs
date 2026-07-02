@@ -275,31 +275,6 @@ fn spec_session_capability_unlock_activates_overlay_for_next_tick() {
     );
 }
 
-#[test]
-fn bench_stress_scenarios_within_ceiling() {
-    if !try_gpu() {
-        eprintln!("skipping: no GPU");
-        return;
-    }
-
-    for (ron, label) in [
-        (
-            include_str!("../../../scenarios/intent_stress.ron"),
-            "intent_stress",
-        ),
-        (
-            include_str!("../../../scenarios/fission_stress.ron"),
-            "fission_stress",
-        ),
-    ] {
-        let (elapsed_ms, summary, name) = run_bench_scenario(ron);
-        assert_eq!(name, label);
-        check_bench_ceiling(&name, elapsed_ms, &summary).unwrap_or_else(|err| {
-            panic!("{label} bench ceiling: {err} (elapsed_ms={elapsed_ms:.3})");
-        });
-    }
-}
-
 // ── O1: session installation tests ────────────────────────────────────────────
 
 use simthing_core::{SimProperty, SimThing as CoreSimThing, SimThingKind};

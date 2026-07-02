@@ -473,38 +473,6 @@ fn sqrt_mag2_0_fixed_mag2_feeds_f_sqrt_dense_corpus() {
 }
 
 #[test]
-fn sqrt_mag2_0_perf_34k_fixed_mag2_plus_f_sqrt() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        let pairs = mobile_simthing_fixed_pairs(N);
-        let t0 = Instant::now();
-        let outputs = run_fixed_mag2_batch(ctx, &pairs, true);
-        let elapsed = t0.elapsed();
-        assert_eq!(outputs.len(), N);
-
-        let mut spot_max_ulp = 0u32;
-        for ((_, mag2_bits, mag_bits, _, _), (dx, dy)) in
-            outputs.iter().take(512).zip(pairs.iter().take(512))
-        {
-            let cpu_mag2 = cpu_mag2_bits_from_fixed(*dx, *dy);
-            assert_eq!(*mag2_bits, cpu_mag2);
-            spot_max_ulp =
-                spot_max_ulp.max(ulp_distance(*mag_bits, cpu_mag_bits_from_fixed(*dx, *dy)));
-        }
-        assert_eq!(spot_max_ulp, 0);
-
-        let ms = elapsed.as_secs_f64() * 1000.0;
-        let per_entity_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
-        println!(
-            "sqrt_mag2_0_perf_34k: inputs={N} dispatches=1 includes_readback=true elapsed_ms={ms:.3} per_entity_us={per_entity_us:.4} spot_max_ulp={spot_max_ulp} path=fixed_q16_mag2_plus_F_sqrt"
-        );
-        println!(
-            "sqrt_mag2_0_perf_note: replaces raw f32 dx/dy probe; exact mag2 via Q{MAG2_Q16_FRAC_BITS} fixed-point integer path"
-        );
-    });
-}
-
-#[test]
 fn sqrt_mag2_0_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

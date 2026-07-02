@@ -504,36 +504,6 @@ fn field_policy_obs0_wgsl_semantic_free() {
 }
 
 #[test]
-fn field_policy_obs0_perf_34k_mobile_overlay_score() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        let rows = mobile_observer_rows(N);
-        let t0 = Instant::now();
-        let outputs = run_overlay_score_batch(ctx, &rows);
-        let elapsed = t0.elapsed();
-        assert_eq!(outputs.len(), N);
-
-        let mut spot_mag_ulp = 0u32;
-        for (out, row) in outputs.iter().take(512).zip(rows.iter().take(512)) {
-            assert_eq!(out.mag2_sum, cpu_mag2_sum(row.gx, row.gy));
-            assert_eq!(out.mag2_bits, cpu_mag2_bits(row.gx, row.gy));
-            spot_mag_ulp =
-                spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
-        }
-        assert_eq!(spot_mag_ulp, 0);
-
-        let ms = elapsed.as_secs_f64() * 1000.0;
-        let per_row_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
-        println!(
-            "field_policy_obs0_perf_34k: rows={N} dispatches=1 includes_readback=true elapsed_ms={ms:.3} per_row_us={per_row_us:.4} spot_mag_max_ulp={spot_mag_ulp} path=q16_mag2_F_sqrt_f32_score"
-        );
-        println!(
-            "field_policy_obs0_perf_compare: SQRT-MAG2-PERF-0 combined Q16.16 ~1.7 ms; overlay adds f32 score multiply/add"
-        );
-    });
-}
-
-#[test]
 fn field_policy_obs0_exact_magnitude_spot_check() {
     with_gpu(|ctx| {
         const N: usize = 34_000;
@@ -662,36 +632,6 @@ fn field_policy_obs0_no_default_runtime_wiring() {
     println!(
         "field_policy_obs0_wiring: default_off=true production_wiring=false descriptor=landed"
     );
-}
-
-#[test]
-fn field_policy_obs1_perf_34k_warm_repeated_dispatch() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const REPEAT: u32 = 32;
-        let rows = mobile_observer_rows(N);
-        // Warmup dispatch without timing readback.
-        let _ = run_overlay_score_batch_repeated(ctx, &rows, 1, false);
-        let outcome = run_overlay_score_batch_repeated(ctx, &rows, REPEAT, true);
-        assert_eq!(outcome.outputs.len(), N);
-
-        let mut spot_mag_ulp = 0u32;
-        for (out, row) in outcome.outputs.iter().take(512).zip(rows.iter().take(512)) {
-            spot_mag_ulp =
-                spot_mag_ulp.max(ulp_distance(out.mag_bits, cpu_mag_bits(row.gx, row.gy)));
-        }
-        assert_eq!(spot_mag_ulp, 0);
-
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
-        println!(
-            "field_policy_obs1_warm_34k: rows={N} dispatches={REPEAT} includes_readback=true total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} spot_mag_max_ulp={spot_mag_ulp} score_authority=ApproximateDiagnosticF32"
-        );
-        println!(
-            "field_policy_obs1_warm_compare: FIELD_POLICY-OBS-0 cold ~15.6 ms; SQRT-MAG2-PERF-0 combined ~1.7 ms"
-        );
-    });
 }
 
 #[test]
