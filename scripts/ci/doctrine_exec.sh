@@ -321,6 +321,7 @@ IFS='|' read -r _profile_id PROFILE_CLASS RISK_CLASS crate_checks tests doc_test
 [[ "$doc_tests" == "-" ]] && doc_tests=""
 if [[ "$RISK_CLASS" == test-deletion-* ]]; then
   SURFACE_TRUTH_REQUIRED="no"
+  ACTIVE_TIMEOUT="${DOCTRINE_EXEC_COMMAND_TIMEOUT_SECONDS:-900}"
 fi
 if [[ "$PROFILE_CLASS" == "smoke" ]]; then
   ACTIVE_TIMEOUT="$SMOKE_TIMEOUT"
