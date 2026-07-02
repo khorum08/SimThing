@@ -18,6 +18,9 @@ use simthing_spec::spec::install_target::InstallTargetSpec;
 use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
+use simthing_spec::spec::scenario::{
+    SimThingScenarioGrid, SimThingScenarioProvenance, deserialize_scenario_authority,
+};
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 
@@ -97,6 +100,10 @@ pub struct HydratedScenarioPack {
     pub palma_feedstock: Option<HydratedScenarioPalmaFeedstock>,
     /// PR6 optional FIELD_POLICY threshold / commitment feedstock metadata.
     pub commitment: Option<HydratedScenarioCommitment>,
+    /// TP-BASE-EMBED-0 embedded producer-owned base scenarios consumed through
+    /// the scenario-container grammar. Runtime ownership remains with this pack.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub embedded_static_galaxy_scenarios: Vec<HydratedEmbeddedStaticGalaxyScenario>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -133,6 +140,18 @@ pub struct HydratedScenarioLink {
     pub to: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedEmbeddedStaticGalaxyScenario {
+    pub id: String,
+    pub namespace: String,
+    pub scenario_id: String,
+    pub map_quality_status: String,
+    pub provenance: SimThingScenarioProvenance,
+    pub source_structural_grid: SimThingScenarioGrid,
+    pub namespaced_placements: Vec<HydratedScenarioGridPlacement>,
+    pub namespaced_links: Vec<HydratedScenarioLink>,
+}
+
 pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, HydrateError> {
     let RawValue::Block(root) = &document.root else {
         return Err(HydrateError::new("document root must be a property block"));
@@ -165,6 +184,10 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut seen_property_ids = BTreeSet::new();
     let mut seen_overlay_ids = BTreeSet::new();
     let mut raw_links = Vec::new();
+    let mut embedded_static_galaxy_scenarios = Vec::new();
+    let mut embedded_placements = Vec::new();
+    let mut embedded_grid_size = None;
+    let mut seen_location_targets = BTreeSet::new();
     let mut field_operator_count = 0_usize;
     let mut field_operator_pack = None;
     let mut palma_feedstock_count = 0_usize;
@@ -185,7 +208,24 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     &mut seen_property_ids,
                     &mut seen_overlay_ids,
                 )?;
+                if !seen_location_targets.insert(node.id.clone()) {
+                    return Err(HydrateError::new_spanned(
+                        format!("duplicate scenario location-target id `{}`", node.id),
+                        Some(field.key.span.clone()),
+                    ));
+                }
                 locations.push(node);
+            }
+            "static_galaxy_scenario" => {
+                let embedded = parse_static_galaxy_scenario(field, &mut seen_location_targets)?;
+                let frame_edge = embedded
+                    .source_structural_grid
+                    .frame
+                    .width
+                    .max(embedded.source_structural_grid.frame.height);
+                embedded_grid_size = Some(embedded_grid_size.unwrap_or(0).max(frame_edge));
+                embedded_placements.extend(embedded.namespaced_placements.iter().cloned());
+                embedded_static_galaxy_scenarios.push(embedded);
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -251,13 +291,18 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         }
     }
 
-    if locations.is_empty() {
+    if locations.is_empty() && embedded_static_galaxy_scenarios.is_empty() {
         return Err(HydrateError::new(
-            "scenario requires at least one `location` block",
+            "scenario requires at least one `location` or `static_galaxy_scenario` block",
         ));
     }
 
-    let grid_metadata = build_grid_metadata(&locations, raw_links)?;
+    let grid_metadata = build_grid_metadata(
+        &locations,
+        raw_links,
+        embedded_placements,
+        embedded_grid_size,
+    )?;
 
     let display_name = metadata
         .get("display_name")
@@ -354,6 +399,143 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         stress_compose,
         palma_feedstock,
         commitment: commitment.map(|finalized| finalized.metadata),
+        embedded_static_galaxy_scenarios,
+    })
+}
+
+fn parse_static_galaxy_scenario(
+    property: &RawProperty,
+    seen_location_targets: &mut BTreeSet<String>,
+) -> Result<HydratedEmbeddedStaticGalaxyScenario, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "static_galaxy_scenario")?;
+    let mut id = header_id;
+    let mut namespace = None;
+    let mut source_json = None;
+    let mut map_quality_status = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => {
+                let explicit_id = read_scalar_text(field, "id")?;
+                if !id.is_empty() && id != explicit_id {
+                    return Err(HydrateError::new_spanned(
+                        format!("header id `{id}` does not match explicit id `{explicit_id}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                id = explicit_id;
+            }
+            "namespace" => namespace = Some(read_scalar_text(field, "namespace")?),
+            "source_json" | "include_json" => {
+                source_json = Some(read_scalar_text(field, &field.key.text)?);
+            }
+            "map_quality_status" => {
+                map_quality_status = Some(read_scalar_text(field, "map_quality_status")?);
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported static_galaxy_scenario field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if id.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`static_galaxy_scenario` requires an id",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let namespace = require_field(namespace, "namespace", property)?;
+    if namespace.trim().is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`static_galaxy_scenario.namespace` must be non-empty",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let map_quality_status = require_field(map_quality_status, "map_quality_status", property)?;
+    if map_quality_status != "PASS" {
+        return Err(HydrateError::new_spanned(
+            format!(
+                "static_galaxy_scenario map_quality_status is `{map_quality_status}`, expected `PASS`"
+            ),
+            Some(property.key.span.clone()),
+        ));
+    }
+    let source_json = require_field(source_json, "source_json", property)?;
+    let source = std::fs::read_to_string(&source_json).map_err(|err| {
+        HydrateError::new_spanned(
+            format!("failed to read static_galaxy_scenario source `{source_json}`: {err}"),
+            Some(property.key.span.clone()),
+        )
+    })?;
+    let scenario = deserialize_scenario_authority(&source).map_err(|err| {
+        HydrateError::new_spanned(
+            format!("failed to parse static_galaxy_scenario source `{source_json}`: {err}"),
+            Some(property.key.span.clone()),
+        )
+    })?;
+
+    let mut target_by_system_id = BTreeMap::new();
+    let mut namespaced_placements = Vec::with_capacity(scenario.structural_grid.placements.len());
+    for placement in &scenario.structural_grid.placements {
+        let namespaced_location_id = namespace_id(&namespace, &placement.location_id);
+        let namespaced_target_id = namespace_id(&namespace, &placement.target_id);
+        if !seen_location_targets.insert(namespaced_target_id.clone()) {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "duplicate scenario location-target id `{namespaced_target_id}` from static_galaxy_scenario `{id}`"
+                ),
+                Some(property.key.span.clone()),
+            ));
+        }
+        target_by_system_id.insert(
+            placement.system_id.to_string(),
+            namespaced_target_id.clone(),
+        );
+        namespaced_placements.push(HydratedScenarioGridPlacement {
+            location_id: namespaced_location_id,
+            target_id: namespaced_target_id,
+            row: placement.row,
+            col: placement.col,
+        });
+    }
+
+    let mut namespaced_links = BTreeSet::new();
+    for link in &scenario.links {
+        let from = target_by_system_id
+            .get(&link.from_system_id)
+            .ok_or_else(|| {
+                HydrateError::new_spanned(
+                    format!(
+                        "static_galaxy_scenario link endpoint `{}` has no structural placement",
+                        link.from_system_id
+                    ),
+                    Some(property.key.span.clone()),
+                )
+            })?;
+        let to = target_by_system_id.get(&link.to_system_id).ok_or_else(|| {
+            HydrateError::new_spanned(
+                format!(
+                    "static_galaxy_scenario link endpoint `{}` has no structural placement",
+                    link.to_system_id
+                ),
+                Some(property.key.span.clone()),
+            )
+        })?;
+        namespaced_links.insert(canonical_namespaced_link(from.clone(), to.clone()));
+    }
+
+    Ok(HydratedEmbeddedStaticGalaxyScenario {
+        id,
+        namespace,
+        scenario_id: scenario.scenario_id,
+        map_quality_status,
+        provenance: scenario.provenance,
+        source_structural_grid: scenario.structural_grid,
+        namespaced_placements,
+        namespaced_links: namespaced_links.into_iter().collect(),
     })
 }
 
@@ -677,11 +859,24 @@ fn parse_link(property: &RawProperty) -> Result<HydratedScenarioLink, HydrateErr
 fn build_grid_metadata(
     locations: &[HydratedScenarioNode],
     raw_links: Vec<HydratedScenarioLink>,
+    embedded_placements: Vec<HydratedScenarioGridPlacement>,
+    embedded_grid_size: Option<u32>,
 ) -> Result<HydratedScenarioGridMetadata, HydrateError> {
-    let grid_size = smallest_square_edge(locations.len());
+    let grid_size = embedded_grid_size.unwrap_or_else(|| {
+        embedded_placements
+            .iter()
+            .map(|placement| placement.row.max(placement.col))
+            .max()
+            .map(|max_coord| max_coord.saturating_add(1))
+            .unwrap_or_else(|| smallest_square_edge(locations.len()))
+    });
     let mut location_ids = BTreeSet::new();
-    let mut placements = Vec::new();
+    let mut placements = embedded_placements;
     let mut placement_by_id = BTreeMap::new();
+    for placement in &placements {
+        location_ids.insert(placement.target_id.clone());
+        placement_by_id.insert(placement.target_id.clone(), (placement.row, placement.col));
+    }
 
     for (index, location) in locations.iter().enumerate() {
         location_ids.insert(location.id.clone());
@@ -747,6 +942,18 @@ fn build_grid_metadata(
         placements,
         links,
     })
+}
+
+fn namespace_id(namespace: &str, id: &str) -> String {
+    format!("{namespace}::{id}")
+}
+
+fn canonical_namespaced_link(from: String, to: String) -> HydratedScenarioLink {
+    if from < to {
+        HydratedScenarioLink { from, to }
+    } else {
+        HydratedScenarioLink { from: to, to: from }
+    }
 }
 
 fn smallest_square_edge(count: usize) -> u32 {
