@@ -340,8 +340,11 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [`ci-c-closeout-0_results.md`](ci-c-closeout-0_results.md) — Track C **DA-CLOSED**: C1/C2/C3 COMPLETE; scanner now serves all three positions (digest before / inner-loop during / CI gate after); C2 digest freshness gated + drift-bites (DA-perturbed the digest → `--check` exit 1); C3 addendum guarantees proven (`--prove-addendum`: opt-in/auto-detach/additive-only/digest-scope); global lists byte-unchanged; triage corpus = 1 GREEN row (too thin for promotion/retirement, no action).
 - [`ci-c-track-open-0_results.md`](ci-c-track-open-0_results.md) — `CI-C-TRACK-OPEN-0` **DA-OPENED**: Track A verified CLOSED, `doctrine_scan` PASS; Track C open, `CI-C-INNER-LOOP-0` next. Track C dogfoods the live CI+triage → a `triage_log.tsv` corpus reviewed at closeout.
 
+## 0.0.8.4.6 CI Scaffolding — Track B (OPEN 2026-07-02)
+- [`ci_b_webchat_pr1_results.md`](ci_b_webchat_pr1_results.md) — `CI-B-WEBCHAT-PR1` **PROBATION**: webchat orchestration guidance (`ci_screening_surface.md` §9); non-blocking `doctrine-exec.yml` CPU proof + `doctrine-exec-commands.yml` `/seal-proof`/`/triage` surfaces; profiles `seal-residue`/`full-cpu`/`data-deliverable`; surface-truth baseline; seed probes; SHA-bound `doctrine_exec_report.json`. Track A untouched. DA clearance required before merge.
+
 ## 0.0.8.4.6 CI Scaffolding — Track A (CLOSED 2026-07-01)
-- [`ci-a-closeout_results.md`](ci-a-closeout_results.md) — Track A **DA-CLOSED**: doctrine landed at three altitudes (#1043), `SEALED_TYPES` migrated to `allow/sealed_types.txt` (data, fail-loud), reliability legend published, full command battery PASS on master (self-test/scan/PR-delta/spam-prove/195-surface). Non-blocking debt: self-test ~7 min. Track B / Track C deferred-but-scoped.
+- [`ci-a-closeout_results.md`](ci-a-closeout_results.md) — Track A **DA-CLOSED**: doctrine landed at three altitudes (#1043), `SEALED_TYPES` migrated to `allow/sealed_types.txt` (data, fail-loud), reliability legend published, full command battery PASS on master (self-test/scan/PR-delta/spam-prove/195-surface). Non-blocking debt: self-test ~7 min. Track B OPEN (2026-07-02); Track C DA-CLOSED.
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

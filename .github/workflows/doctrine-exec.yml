@@ -1,0 +1,176 @@
+name: Doctrine Exec
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number
+        required: false
+        type: string
+      head_sha:
+        description: PR head SHA to bind the report
+        required: false
+        type: string
+      base_sha:
+        description: PR base SHA
+        required: false
+        type: string
+      profile:
+        description: doctrine_exec profile id
+        required: false
+        default: full-cpu
+        type: string
+      probe:
+        description: probe id (overrides profile run)
+        required: false
+        type: string
+      plan:
+        description: plan mode only (print commands, run nothing)
+        required: false
+        default: false
+        type: boolean
+      tested_ref:
+        description: git ref actually tested
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - crates/simthing-kernel/**
+      - crates/simthing-sim/**
+      - crates/simthing-gpu/**
+      - crates/simthing-driver/**
+      - crates/simthing-spec/**
+      - crates/simthing-clausething/**
+      - scripts/ci/doctrine_exec*
+      - scripts/ci/doctrine_surface_truth.sh
+      - scripts/ci/doctrine_exec_profiles.tsv
+      - .github/workflows/doctrine-exec.yml
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  doctrine-exec:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
+
+      - name: Resolve PR metadata
+        id: meta
+        run: |
+          set -euo pipefail
+          PR="${{ inputs.pr || github.event.pull_request.number || '' }}"
+          HEAD="${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}"
+          BASE="${{ inputs.base_sha || github.event.pull_request.base.sha || '' }}"
+          PROFILE="${{ inputs.profile || 'full-cpu' }}"
+          PROBE="${{ inputs.probe || '' }}"
+          PLAN="${{ inputs.plan || 'false' }}"
+          TESTED_REF="${{ inputs.tested_ref || '' }}"
+          MERGE_STATUS="UNAVAILABLE"
+          if [[ -n "$PR" ]]; then
+            git fetch origin "pull/${PR}/merge:refs/remotes/origin/pr-merge" 2>/dev/null || true
+            if git rev-parse --verify origin/pr-merge >/dev/null 2>&1; then
+              MERGE_STATUS="PASS"
+              if [[ -z "$TESTED_REF" ]]; then
+                TESTED_REF="refs/pull/${PR}/merge"
+              fi
+            fi
+          fi
+          if [[ -z "$TESTED_REF" ]]; then
+            TESTED_REF="${HEAD}"
+          fi
+          {
+            echo "pr=${PR}"
+            echo "head_sha=${HEAD}"
+            echo "base_sha=${BASE}"
+            echo "profile=${PROFILE}"
+            echo "probe=${PROBE}"
+            echo "plan=${PLAN}"
+            echo "tested_ref=${TESTED_REF}"
+            echo "merge_ref_status=${MERGE_STATUS}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tested ref
+        if: steps.meta.outputs.tested_ref != steps.meta.outputs.head_sha
+        run: |
+          git checkout "${{ steps.meta.outputs.tested_ref }}"
+
+      - name: Install Rust toolchain
+        if: steps.meta.outputs.plan != 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install nightly + cargo-public-api
+        if: steps.meta.outputs.plan != 'true'
+        run: |
+          rustup toolchain install nightly -c rust-src --profile minimal
+          cargo install cargo-public-api --locked
+
+      - name: Plan mode (no execution)
+        if: steps.meta.outputs.plan == 'true'
+        env:
+          DOCTRINE_EXEC_PROFILE: ${{ steps.meta.outputs.profile }}
+        run: |
+          set -o pipefail
+          bash scripts/ci/doctrine_exec_plan.sh --profile "${{ steps.meta.outputs.profile }}" | tee doctrine-exec-report.txt
+          echo "DOCTRINE-EXEC-VERDICT: PASS plan-only profile=${{ steps.meta.outputs.profile }} head_sha=${{ steps.meta.outputs.head_sha }}"
+
+      - name: Run doctrine exec
+        if: steps.meta.outputs.plan != 'true'
+        env:
+          DOCTRINE_EXEC_PR: ${{ steps.meta.outputs.pr }}
+          DOCTRINE_EXEC_HEAD_SHA: ${{ steps.meta.outputs.head_sha }}
+          DOCTRINE_EXEC_BASE_SHA: ${{ steps.meta.outputs.base_sha }}
+          DOCTRINE_EXEC_TESTED_REF: ${{ steps.meta.outputs.tested_ref }}
+          DOCTRINE_EXEC_MERGE_REF_STATUS: ${{ steps.meta.outputs.merge_ref_status }}
+          DOCTRINE_EXEC_PROFILE: ${{ steps.meta.outputs.profile }}
+          DOCTRINE_EXEC_MODE: ${{ steps.meta.outputs.probe != '' && 'probe' || 'run' }}
+          DOCTRINE_EXEC_PROBE: ${{ steps.meta.outputs.probe }}
+        run: |
+          set -o pipefail
+          bash scripts/ci/doctrine_exec.sh | tee -a doctrine-exec-report.txt
+          ec=${PIPESTATUS[0]}
+          exit "$ec"
+
+      - name: Stale report check (proof hook)
+        if: always() && steps.meta.outputs.plan != 'true' && hashFiles('doctrine_exec_report.json') != ''
+        run: |
+          bash scripts/ci/doctrine_exec_stale_check.sh doctrine_exec_report.json "${{ steps.meta.outputs.head_sha }}"
+
+      - name: Publish doctrine exec summary
+        if: always()
+        run: |
+          {
+            echo "## Doctrine Exec"
+            echo "pr: ${{ steps.meta.outputs.pr }}"
+            echo "head_sha: ${{ steps.meta.outputs.head_sha }}"
+            echo "base_sha: ${{ steps.meta.outputs.base_sha }}"
+            echo "tested_ref: ${{ steps.meta.outputs.tested_ref }}"
+            echo "merge_ref_status: ${{ steps.meta.outputs.merge_ref_status }}"
+            echo "workflow_run_id: ${{ github.run_id }}"
+            echo "job_id: ${{ github.job }}"
+            echo '```'
+            cat doctrine-exec-report.txt 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload doctrine exec report
+        if: always() && steps.meta.outputs.plan != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: doctrine-exec-report
+          path: |
+            doctrine-exec-report.txt
+            doctrine_exec_report.json
+          if-no-files-found: ignore
+
+      - name: Update sticky PR comment
+        if: always() && steps.meta.outputs.pr != '' && steps.meta.outputs.plan != 'true' && hashFiles('doctrine-exec-report.txt') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/ci/doctrine_exec_comment.sh "${{ steps.meta.outputs.pr }}" doctrine-exec-report.txt

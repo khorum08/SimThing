@@ -1,0 +1,230 @@
+name: Doctrine Exec Commands
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  parse-command:
+    if: |
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) ||
+      github.event_name == 'pull_request_review' ||
+      github.event_name == 'pull_request_review_comment'
+    runs-on: ubuntu-latest
+    outputs:
+      command: ${{ steps.parse.outputs.command }}
+      plan: ${{ steps.parse.outputs.plan }}
+      profile: ${{ steps.parse.outputs.profile }}
+      probe: ${{ steps.parse.outputs.probe }}
+      triage_scan: ${{ steps.parse.outputs.triage_scan }}
+      triage_outcome: ${{ steps.parse.outputs.triage_outcome }}
+      triage_reason: ${{ steps.parse.outputs.triage_reason }}
+      pr_number: ${{ steps.context.outputs.pr_number }}
+      head_sha: ${{ steps.context.outputs.head_sha }}
+      base_sha: ${{ steps.context.outputs.base_sha }}
+      head_ref: ${{ steps.context.outputs.head_ref }}
+      is_collaborator: ${{ steps.auth.outputs.is_collaborator }}
+      is_fork: ${{ steps.auth.outputs.is_fork }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve PR context
+        id: context
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            PR="${{ github.event.issue.number }}"
+            JSON="$(gh api "repos/${{ github.repository }}/pulls/${PR}")"
+          elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
+            PR="${{ github.event.pull_request.number }}"
+            JSON='${{ toJson(github.event.pull_request) }}'
+          else
+            PR="${{ github.event.pull_request.number }}"
+            JSON='${{ toJson(github.event.pull_request) }}'
+          fi
+          HEAD="$(echo "$JSON" | jq -r '.head.sha')"
+          BASE="$(echo "$JSON" | jq -r '.base.sha')"
+          HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
+          {
+            echo "pr_number=${PR}"
+            echo "head_sha=${HEAD}"
+            echo "base_sha=${BASE}"
+            echo "head_ref=${HEAD_REF}"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Collaborator and fork checks
+        id: auth
+        run: |
+          set -euo pipefail
+          ASSOC=""
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            ASSOC="${{ github.event.comment.author_association }}"
+          elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
+            ASSOC="${{ github.event.review.author_association }}"
+          else
+            ASSOC="${{ github.event.comment.author_association }}"
+          fi
+          IS_COLLAB="false"
+          case "$ASSOC" in
+            OWNER|MEMBER|COLLABORATOR) IS_COLLAB="true" ;;
+          esac
+          IS_FORK="false"
+          if [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
+            if [[ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
+              IS_FORK="true"
+            fi
+          elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+            if [[ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
+              IS_FORK="true"
+            fi
+          else
+            PR_JSON="$(gh api "repos/${{ github.repository }}/pulls/${{ steps.context.outputs.pr_number }}")"
+            if [[ "$(echo "$PR_JSON" | jq -r '.head.repo.full_name')" != "${{ github.repository }}" ]]; then
+              IS_FORK="true"
+            fi
+          fi
+          echo "is_collaborator=${IS_COLLAB}" >> "$GITHUB_OUTPUT"
+          echo "is_fork=${IS_FORK}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Parse command body
+        id: parse
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: |
+          set -euo pipefail
+          OUT="$(bash scripts/ci/doctrine_exec_commands.sh 2>&1 || true)"
+          echo "$OUT"
+          CMD="$(echo "$OUT" | awk -F': ' '/^COMMAND: /{print $2; exit}')"
+          if [[ -z "$CMD" || "$CMD" == "ignore" ]]; then
+            echo "command=ignore" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == "triage-invalid" ]]; then
+            echo "command=triage-invalid" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == seal-proof* ]]; then
+            echo "command=seal-proof" >> "$GITHUB_OUTPUT"
+            PLAN="$(echo "$CMD" | sed -n 's/.*plan=\([^ ]*\).*/\1/p')"
+            PROFILE="$(echo "$CMD" | sed -n 's/.*profile=\([^ ]*\).*/\1/p')"
+            PROBE="$(echo "$CMD" | sed -n 's/.*probe=\([^ ]*\).*/\1/p')"
+            [[ -n "$PROFILE" ]] || PROFILE="full-cpu"
+            echo "plan=${PLAN:-false}" >> "$GITHUB_OUTPUT"
+            echo "profile=${PROFILE}" >> "$GITHUB_OUTPUT"
+            echo "probe=${PROBE}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == triage* ]]; then
+            echo "command=triage" >> "$GITHUB_OUTPUT"
+            echo "triage_scan=$(echo "$CMD" | sed -n 's/.*scan=\([^ ]*\).*/\1/p')" >> "$GITHUB_OUTPUT"
+            echo "triage_outcome=$(echo "$CMD" | sed -n 's/.*outcome=\([^ ]*\).*/\1/p')" >> "$GITHUB_OUTPUT"
+            echo "triage_reason=$(echo "$CMD" | sed -n 's/.*reason=\(.*\)/\1/p')" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "command=ignore" >> "$GITHUB_OUTPUT"
+
+  dispatch-seal-proof:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'seal-proof' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch doctrine-exec workflow (run/probe/profile)
+        if: needs.parse-command.outputs.plan != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run doctrine-exec.yml \
+            -f pr="${{ needs.parse-command.outputs.pr_number }}" \
+            -f head_sha="${{ needs.parse-command.outputs.head_sha }}" \
+            -f base_sha="${{ needs.parse-command.outputs.base_sha }}" \
+            -f profile="${{ needs.parse-command.outputs.profile }}" \
+            -f probe="${{ needs.parse-command.outputs.probe }}" \
+            -f plan=false
+          echo "Dispatched doctrine-exec for PR ${{ needs.parse-command.outputs.pr_number }}"
+
+      - name: Plan mode (no workflow dispatch)
+        if: needs.parse-command.outputs.plan == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_sha }}
+
+      - name: Post plan output to sticky comment
+        if: needs.parse-command.outputs.plan == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOCTRINE_EXEC_PROFILE: ${{ needs.parse-command.outputs.profile }}
+        run: |
+          bash scripts/ci/doctrine_exec_plan.sh --profile "${{ needs.parse-command.outputs.profile }}" > doctrine-exec-report.txt
+          {
+            echo "DOCTRINE-EXEC-PLAN (no runner execution)"
+            echo "pr: ${{ needs.parse-command.outputs.pr_number }}"
+            echo "head_sha: ${{ needs.parse-command.outputs.head_sha }}"
+            echo "base_sha: ${{ needs.parse-command.outputs.base_sha }}"
+            echo "tested_ref: n/a (plan mode)"
+            echo "merge_ref_status: n/a"
+            echo "workflow_run_id: ${{ github.run_id }}"
+            echo "job_id: ${{ github.job }}"
+          } >> doctrine-exec-report.txt
+          echo "DOCTRINE-EXEC-VERDICT: PASS plan-only profile=${{ needs.parse-command.outputs.profile }} head_sha=${{ needs.parse-command.outputs.head_sha }}" >> doctrine-exec-report.txt
+          bash scripts/ci/doctrine_exec_comment.sh "${{ needs.parse-command.outputs.pr_number }}" doctrine-exec-report.txt
+
+  triage-append:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'triage' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Append triage row
+        run: |
+          bash scripts/ci/doctrine_exec_triage.sh \
+            "${{ needs.parse-command.outputs.triage_scan }}" \
+            "${{ needs.parse-command.outputs.triage_outcome }}" \
+            "${{ needs.parse-command.outputs.triage_reason }}" \
+            "${{ needs.parse-command.outputs.head_ref }}" \
+            "${{ needs.parse-command.outputs.head_sha }}"
+
+      - name: Commit triage row to PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/ci/triage_log.tsv
+          git commit -m "triage: ${{ needs.parse-command.outputs.triage_scan }} ${{ needs.parse-command.outputs.triage_outcome }} (CI-B-GH-TRIAGE-0)"
+          git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"
+
+  reject-malformed-triage:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'triage-invalid' &&
+      needs.parse-command.outputs.is_collaborator == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post malformed triage format
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ needs.parse-command.outputs.pr_number }}" --body "FORMAT: /triage <scan-id> <delete|green|escalate> <reason>"
