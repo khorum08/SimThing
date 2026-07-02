@@ -280,7 +280,7 @@ run**; each rung names its exact targeted tests.
 
 ### Phase 0 — Track opening & the capacity amendment (clears the galaxy-scale gate first)
 
-**Track open (`TP-TRACK-OPEN-0`, 2026-07-01) — DONE / DA-OPENED.** Execution is open; the 0.0.8.4 prerequisite ladder is verified CLOSED in the tree. The Tier-2 capacity amendment `TP-RF-CAPACITY-AMENDMENT-0` is **COMPLETE — DA/Owner-cleared** (2026-07-01, independent re-review of PR #1071 against the merged tree), and `TP-SCALE-ENVELOPE-0` / 0R / 0R2 is **COMPLETE — DA-equivalent orchestrator-cleared 2026-07-01**. The next active rung is `TP-BASE-DISC-GEN-0` (1.0). Evidence: [`docs/tests/tp_track_open_0_results.md`](tests/tp_track_open_0_results.md).
+**Track open (`TP-TRACK-OPEN-0`, 2026-07-01) - DONE / DA-OPENED.** Execution is open; the 0.0.8.4 prerequisite ladder is verified CLOSED in the tree. The Tier-2 capacity amendment `TP-RF-CAPACITY-AMENDMENT-0` is **COMPLETE - DA/Owner-cleared** (2026-07-01, independent re-review of PR #1071 against the merged tree), `TP-SCALE-ENVELOPE-0` / 0R / 0R2 is **COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01**, and `TP-BASE-DISC-GEN-0` is **COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01**. The next active rung is `TP-BASE-EMBED-0` (1.1). Evidence: [`docs/tests/tp_track_open_0_results.md`](tests/tp_track_open_0_results.md).
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
@@ -292,11 +292,11 @@ run**; each rung names its exact targeted tests.
 
 ### Phase 1 - Base galaxy production (mostly reuse; Studio-consistency proof)
 
-**Phase 1 is now unblocked.** `TP-SCALE-ENVELOPE-0` / 0R / 0R2 is COMPLETE — DA-equivalent orchestrator-cleared 2026-07-01. The next active rung is `TP-BASE-DISC-GEN-0`, the first Phase 1 base-galaxy production rung.
+**Phase 1 is now unblocked.** `TP-SCALE-ENVELOPE-0` / 0R / 0R2 and `TP-BASE-DISC-GEN-0` are COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01. The next active rung is `TP-BASE-EMBED-0`, the scenario-container embedding rung.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 1.0 | `TP-BASE-DISC-GEN-0` | **PROBATION** - emits the canonical **disc, 1500-star** base `static_galaxy_scenario` (seed `770421`) with deterministic SimThing-authored Stellaris-style star-name corpus assignment. Seed, generator params, profile id, corpus source, and assignment mode are captured in scenario metadata. Evidence: [`docs/tests/tp_base_disc_gen_0_results.md`](tests/tp_base_disc_gen_0_results.md). | Byte-identical regeneration from recorded seed/params PASS; `map_quality_status = PASS`; names assigned deterministically by system id; Studio Generate path produces the same canonical bytes after TP canonicalization. | Tier-1 |
+| 1.0 | `TP-BASE-DISC-GEN-0` | **COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01**. Emits the canonical **disc, 1500-star** base `static_galaxy_scenario` (seed `770421`) with deterministic SimThing-authored Stellaris-style star-name corpus assignment. Seed, generator params, profile id, corpus source, and assignment mode are captured in scenario metadata. Evidence: [`docs/tests/tp_base_disc_gen_0_results.md`](tests/tp_base_disc_gen_0_results.md). | Byte-identical regeneration from recorded seed/params PASS; `map_quality_status = PASS`; names assigned deterministically by system id; Studio Generate path produces the same canonical bytes after TP canonicalization; live Doctrine Scan passed on PR head `29e374d3`. | Tier-1 |
 | 1.1 | `TP-BASE-EMBED-0` | **One grammar, no third path** (§1A.1 #1): the scenario-container front-end accepts the MapGenerator base as an embedded/`include` `static_galaxy_scenario { ... }` block parsed by the **existing neutral-AST parser**; base system ids are **namespaced → become the overlay's location-targets**; **duplicate ids hard-error**; producer owns base provenance, overlay owns runtime. | The combined `.clause` parses; base lattice round-trips identical to rung 1.0; id-collision rejected with a span. | Tier-2 (combined-document grammar) |
 
 ### Phase 2 — Ownership: owners, planets, factories, cohorts (the scenario-container widening)

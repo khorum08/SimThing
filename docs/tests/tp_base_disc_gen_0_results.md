@@ -1,6 +1,6 @@
 # TP-BASE-DISC-GEN-0 Results
 
-Status: **PROBATION** - implementation proof complete; orchestrator review required before merge.
+Status: **COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01**.
 
 ## Scope
 
@@ -39,6 +39,8 @@ Recorded in scenario provenance as `generator_profile_id`, `generator_params_jso
 
 The canonical artifact path normalizes generated SimThing ids before save so repeated generation and Studio generation converge byte-for-byte without changing live Studio allocation behavior.
 
+`TP-BASE-DISC-GEN-0` is COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01. The rung emits the canonical seed-pinned 1500-star base disc artifact and proves byte-identical regeneration from recorded metadata, Studio Generate parity, `map_quality_status = PASS`, and deterministic seeded star-name assignment by system id. Live Doctrine Scan passed on PR head `29e374d3`.
+
 ## Load-Bearing Validation
 
 Local targeted validation:
@@ -60,7 +62,7 @@ bash scripts/ci/doctrine_scan.sh
 
 Local doctrine scan: PASS, failures=0, inspect=0.
 Local gen_digest --check: PASS.
-Live PR-head CI: pending after push.
+Live GitHub Doctrine Scan: PASS on PR head `29e374d3`.
 
 ## Scope Ledger
 
@@ -74,16 +76,16 @@ Live PR-head CI: pending after push.
 
 ## Graduation Routing
 
-CI verdict: local PASS; live PR-head CI pending after push
+CI verdict: PASS-RELIABLE
 
-Triage entries: none locally
+Triage entries: none
 
 Risk class: canonical producer artifact + Studio parity + ScenarioSpec provenance
 
 Falsification check: regenerate from recorded seed/params byte-identically; prove Studio Generate path emits identical canonical artifact; assert map quality PASS; assert seeded Stellaris-style names are deterministic and unique for all 1500 systems; verify no Phase 1 overlay content, scanner/allowlist edit, new `AccumulatorRole`, or lower-boundary semantic change.
 
-Recommended posture: deep - this fixture becomes the Phase 1 base galaxy for later embedding and overlay rungs.
+Recommended posture: COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01; this fixture becomes the Phase 1 base galaxy for later embedding and overlay rungs.
 
 ## Known Gaps / Next
 
-Next active rung after orchestrator clearance is `TP-BASE-EMBED-0`.
+Next active rung is `TP-BASE-EMBED-0`.
