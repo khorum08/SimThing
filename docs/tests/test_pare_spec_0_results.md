@@ -101,15 +101,19 @@ Additional targeted repair slice:
 
 ## GitHub-Side Doctrine Exec Proof
 
-Live targeted Doctrine Exec proof completed on the PR merge ref.
+Initial targeted implementation proof on `560bacee19627171774f14ae491d0a6359c6ed6a` ran the exact edited `simthing-spec` binaries, but also inherited the unrelated non-smoke `doctrine_surface_truth.sh` add-on and therefore surfaced a kernel public API `SURFACE-TRUTH: INSPECT` unrelated to this deletion wave. That run is not a clean PASS for graduation.
+
+`TEST-PARE-SPEC-0R2` corrected test-deletion profile semantics: `risk_class=test-deletion-*` profiles prove only their exact test binaries and do not run surface-truth.
+
+Fresh targeted proof on current head (pending run/job IDs after `/seal-proof profile=test-pare-spec`):
 
 - profile: test-pare-spec
-- head_sha: 560bacee19627171774f14ae491d0a6359c6ed6a
+- head_sha: pending 0R2 remedial head
 - tested_ref: refs/pull/1091/merge
 - merge_ref_status: PASS
-- run: 28614694073
-- job: 84855509020 / doctrine-exec
-- verdict: DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0
+- run: pending
+- job: pending / doctrine-exec
+- verdict: pending clean `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0` with no `doctrine_surface_truth.sh` in command list
 
 ## Inventory / Boundary / Drift Checks
 
@@ -134,7 +138,7 @@ No runtime crate source, kernel/sim/gpu/driver tests, workflows, scanner allowli
 
 ## Graduation Routing
 
-CI verdict: PASS-RELIABLE for PR Doctrine Scan, default smoke, and targeted test-pare-spec GitHub proof on head 560bacee19627171774f14ae491d0a6359c6ed6a.
+CI verdict: pending 0R2 — Doctrine Scan on current head plus fresh targeted `test-pare-spec` proof with `failures=0 inspect=0` and no surface-truth add-on.
 
 Triage entries: none locally (`failures=0 inspect=0`).
 

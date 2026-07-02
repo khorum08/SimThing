@@ -319,7 +319,7 @@ IFS='|' read -r _profile_id PROFILE_CLASS RISK_CLASS crate_checks tests doc_test
 [[ "$crate_checks" == "-" ]] && crate_checks=""
 [[ "$tests" == "-" ]] && tests=""
 [[ "$doc_tests" == "-" ]] && doc_tests=""
-if [[ "$RISK_CLASS" == "test-deletion-clausething" ]]; then
+if [[ "$RISK_CLASS" == test-deletion-* ]]; then
   SURFACE_TRUTH_REQUIRED="no"
 fi
 if [[ "$PROFILE_CLASS" == "smoke" ]]; then
