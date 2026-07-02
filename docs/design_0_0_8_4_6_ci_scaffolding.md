@@ -237,6 +237,8 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
   reintroduces the exact staleness channel the SHA-binding closes, and a second status surface rots into
   inert scaffolding (§0.6.6). The sticky comment + the checks UI are the display surface; do not re-derive.
 
+Operational orchestrator guide: [`ci_screening_surface.md`](ci_screening_surface.md) §9 is the quick-reference surface for webchat-triggered `/seal-proof`, `/triage`, stale-report checks, report artifacts, profiles, probes, and plan mode. §3B.1 remains the canonical contract; the surface doc is the operator-facing map.
+
 ### 3C. DA re-evaluation log (2026-07-02, Fable 5 — full-structure review, owner-mandated)
 
 Findings and proposals recorded so they are never re-derived. Nothing below weakens the blocking gate or adds a
