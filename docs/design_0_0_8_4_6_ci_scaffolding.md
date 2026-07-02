@@ -1,6 +1,6 @@
 # 0.0.8.4.6 — CI Scaffolding: the Doctrinal Tripwire Layer
 
-> **Status: DA-CLOSED (production track, 2026-07-01; Track C closed via `CI-C-CLOSEOUT-0`).** An infrastructure sub-track in the
+> **Status: Tracks A + C DA-CLOSED (2026-07-01); Track B OPEN (DA-OPENED 2026-07-02, consumer named — §3).** An infrastructure sub-track in the
 > 0.0.8.4.x lane (after the closed `simthing-kernel` track 0.0.8.4.5), sequenced **before** the 0.0.8.5
 > Terran-Pirate track. *(Owner said "0.0.8.5"; that number is held by Terran-Pirate, so this is numbered
 > 0.0.8.4.6 to avoid collision — bump TP to 0.0.8.6 and renumber this to 0.0.8.5 on owner request.)*
@@ -9,8 +9,9 @@
 > so that **agents and the orchestrator may treat a clean CI result as "the DA ran these scans"** — and a
 > flagged result routes to DA for the judgment a grep cannot make. The executable tests (builds, GPU parity,
 > Studio) stay **local**, by architecture. Completed CI scaffolding now has Track A closed as the grep-only
-> tripwire layer and Track C closed as the generation-time constraint layer; Track B remains deferred as the
-> local executable harness for sanctioned-door logic proof.
+> tripwire layer and Track C closed as the generation-time constraint layer; Track B is now OPEN as the
+> local executable harness for sanctioned-door logic proof (DA-OPENED 2026-07-02; consumer: the 0.0.8.5
+> seal-residue door-logic rungs — §3).
 
 ---
 
@@ -144,11 +145,11 @@ INSPECT   — requires author justification (missing = unresolved); bounded loop
 SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a false PASS (§0.6.6).
 ```
 
-**Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) remains deferred until a consumer needs executable seal-proof; Track C (the carrot) is DA-CLOSED.**
+**Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) remains deferred until a consumer needs executable seal-proof; Track C (the carrot) is DA-CLOSED.** *(Update 2026-07-02: that consumer arrived — Track B OPENED, §3.)*
 
 **Auditable screening-surface reference:** [`ci_screening_surface.md`](ci_screening_surface.md) — the single authoritative map of the screening logic, every scan/allow/block-list file, the strict rigor to add a `scans.tsv` or allowlist entry, and the triage agent's narrowing role. Built for auditability, maintenance, and Track C introspection/onboarding. Any change to the screening surface updates it in the same PR.
 
-## 3. Track B — local executable validation harness (DEFERRED)
+## 3. Track B — local executable validation harness (OPEN — DA-OPENED 2026-07-02)
 
 > Opens after Track A lands and a consumer needs it (e.g., 0.0.8.5 rungs wanting seal-proof on every change).
 > Executable tests stay **local** (Rust toolchain + the owner's GPU/Windows), per architecture. Reuses the
@@ -160,13 +161,26 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 > (the residue grep can't reach, per §1). Every other rung is fully served by Track A. This keeps the
 > expensive layer off the PRs that don't need it and is the precise complement to "green Track A ≠ door logic
 > verified." Anything beyond this rule is deferred until a consumer actually opens Track B.
+>
+> **Opening adjudication (executive DA, 2026-07-02, owner-ratified).** The consumer arrived and is named: the
+> **0.0.8.5 seal-residue door-logic rung class.** Live evidence: the original `TP-SCALE-ENVELOPE-0` terminal
+> proof was a `catch_unwind` false-green that **passed grep-CI by design** (door logic is invisible to Track A,
+> exactly as §4 declares) and was caught only downstream; its 0R/0R2 repairs were `seal-residue-risk` rungs
+> whose seal-proof (`compile_fail` + CPU-oracle parity + real-adapter terminal assertion) had to be run by the
+> scarce DA personally — the precise cost this track exists to eliminate. Phases 3–6 of 0.0.8.5 (shipsize
+> decoder, combat arena, fronts, fleet movement) make recurrence near-certain. The trigger rule above is
+> unchanged and now live. **Named candidate variant (recorded, owner-gated, not opened):** a separate,
+> non-blocking GitHub-side workflow running only the `compile_fail` doc-test suite (toolchain, no GPU) — it
+> would give the webchat orchestrator remote seal-proof visibility instead of a relayed local report. It must
+> never touch the blocking Track A gate (the no-toolchain/instant property is inviolate) and opens only on
+> owner authorization.
 
 | Rung | ID | Scope | Recipient | State | DoD |
 |---|---|---|---|---|---|
-| 0 | `CI-B-TRACK-OPEN-0` | Open when a consumer needs per-change seal-proof. | Opus/Owner (DA) | **DEFERRED** | consumer named. |
-| 1 | `CI-B-LOCAL-HARNESS-0` | `scripts/ci/doctrine_tests.sh` (local) — `cargo fmt --check`, `cargo test -p <crate> --doc` (the `compile_fail` suite that *proves* the seals — the one thing grep can't), targeted `cargo check -p`/`test -p`, parity tests. Emits the §1 report. | Cursor/Grok | **DEFERRED** | runs locally; emits the report. |
-| 2 | `CI-B-TRIPWIRE-TAGS-0` | Executable-specific tripwires: **GPU-skipped → `INSPECT`** (seal/parity not fully verified here; owner's machine confirms — never a silent PASS); **flaky / perf-variance → `INSPECT`** with the run band (the +49% single-run noise needs a multi-run); **compile_fail proven / parity bit-exact → `PASS`**. | Cursor/Grok | **DEFERRED** | each tag emitted correctly on a representative run. |
-| F | `CI-B-CLOSEOUT-0` | "Test batteries executed by the DA" holds for the executable dimension too — run on the machine that can execute them; contract recorded. | Opus/Owner (DA) | **DEFERRED** | recorded; track CLOSED. |
+| 0 | `CI-B-TRACK-OPEN-0` | Open when a consumer needs per-change seal-proof. | Opus/Owner (DA) | **DONE — DA-OPENED** (2026-07-02) | consumer named: the 0.0.8.5 seal-residue door-logic rungs (owner-ratified; see opening adjudication above). |
+| 1 | `CI-B-LOCAL-HARNESS-0` | `scripts/ci/doctrine_tests.sh` (local) — `cargo fmt --check`, `cargo test -p <crate> --doc` (the `compile_fail` suite that *proves* the seals — the one thing grep can't), targeted `cargo check -p`/`test -p`, parity tests. Emits the §1 report. | Cursor/Grok | **OPEN** (queued) | runs locally; emits the report. |
+| 2 | `CI-B-TRIPWIRE-TAGS-0` | Executable-specific tripwires: **GPU-skipped → `INSPECT`** (seal/parity not fully verified here; owner's machine confirms — never a silent PASS); **flaky / perf-variance → `INSPECT`** with the run band (the +49% single-run noise needs a multi-run); **compile_fail proven / parity bit-exact → `PASS`**. | Cursor/Grok | **OPEN** (queued after 1) | each tag emitted correctly on a representative run. |
+| F | `CI-B-CLOSEOUT-0` | "Test batteries executed by the DA" holds for the executable dimension too — run on the machine that can execute them; contract recorded. | Opus/Owner (DA) | **OPEN** (after 1–2) | recorded; track CLOSED. |
 
 ## 3A. Track C — the carrot (generation-time constraint, DA-CLOSED)
 
