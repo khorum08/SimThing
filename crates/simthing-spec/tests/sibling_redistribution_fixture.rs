@@ -4,7 +4,7 @@ use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
-    apply_star_system_local_grid_frame_metadata, make_galaxy_map, make_owner_entity,
+    apply_star_system_local_grid_frame_metadata, is_surface_gridcell, make_galaxy_map, make_owner_entity,
     make_planet_gridcell, structural_property_value_u32, SimThingScenarioGrid,
     SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
     GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
@@ -18,6 +18,7 @@ pub fn build_sibling_redistribution_spec() -> SimThingScenarioSpec {
         source: "RECURSIVE-LOCAL-RF-EVALUATOR-0".into(),
         generator_seed: 0x0003_4567_89AB_CDEF,
         generator_shape: "recursive_local_rf_sibling".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -58,13 +59,23 @@ pub fn build_sibling_redistribution_spec() -> SimThingScenarioSpec {
     let mut planet_a_cohort = SimThing::new(SimThingKind::Cohort, 0);
     apply_participant_owner_flow_metadata(&mut planet_a_cohort, "owner_a", 30, 0);
     apply_participant_owner_flow_resource_key_metadata(&mut planet_a_cohort, "food");
-    planet_a.add_child(planet_a_cohort);
+    planet_a
+        .children
+        .iter_mut()
+        .find(|child| is_surface_gridcell(child))
+        .expect("planet_a surface")
+        .add_child(planet_a_cohort);
 
     let mut planet_b = make_planet_gridcell("planet_b", 1, 0, Some("Planet B"));
     let mut planet_b_cohort = SimThing::new(SimThingKind::Cohort, 0);
     apply_participant_owner_flow_metadata(&mut planet_b_cohort, "owner_a", 0, 20);
     apply_participant_owner_flow_resource_key_metadata(&mut planet_b_cohort, "food");
-    planet_b.add_child(planet_b_cohort);
+    planet_b
+        .children
+        .iter_mut()
+        .find(|child| is_surface_gridcell(child))
+        .expect("planet_b surface")
+        .add_child(planet_b_cohort);
 
     star_system.add_child(planet_a);
     star_system.add_child(planet_b);

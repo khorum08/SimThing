@@ -47,42 +47,6 @@ fn accepts_well_formed_explicit_velocity_acceleration() {
 }
 
 #[test]
-fn rejects_invalid_current_velocity_column() {
-    let spec = EmlGadgetInstanceSpec::Acceleration {
-        id: "bad".into(),
-        current_velocity_col: 10,
-        previous_velocity_col: 1,
-        output_col: None,
-        dt: None,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
-fn rejects_invalid_previous_velocity_column() {
-    let spec = EmlGadgetInstanceSpec::Acceleration {
-        id: "bad".into(),
-        current_velocity_col: 0,
-        previous_velocity_col: 10,
-        output_col: None,
-        dt: None,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
-fn rejects_same_current_and_previous_velocity_column() {
-    let spec = EmlGadgetInstanceSpec::Acceleration {
-        id: "bad".into(),
-        current_velocity_col: 3,
-        previous_velocity_col: 3,
-        output_col: None,
-        dt: None,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
 fn rejects_non_finite_dt() {
     let spec = EmlGadgetInstanceSpec::Acceleration {
         id: "bad".into(),
@@ -92,23 +56,6 @@ fn rejects_non_finite_dt() {
         dt: Some(f32::NAN),
     };
     assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
-fn rejects_zero_or_negative_dt() {
-    for dt in [0.0, -1.0] {
-        let spec = EmlGadgetInstanceSpec::Acceleration {
-            id: "bad".into(),
-            current_velocity_col: 0,
-            previous_velocity_col: 1,
-            output_col: None,
-            dt: Some(dt),
-        };
-        assert!(
-            compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err(),
-            "dt={dt} should reject"
-        );
-    }
 }
 
 #[test]

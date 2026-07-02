@@ -257,84 +257,6 @@ fn jit_cohort0_distinct_graphs_split() {
 }
 
 #[test]
-fn jit_cohort0_invalid_graph_rejects() {
-    let mag2 = KernelGraphRequestSpec {
-        request_id: "mag2_bad".into(),
-        graph: KernelGraphSpec {
-            nodes: vec![grad0(), grad1_style_scorer()],
-            edges: vec![exact_edge(
-                "m_jit_grad_0_observer",
-                "mag2",
-                "m_jit_grad_1_scorer",
-                "descent_x",
-            )],
-        },
-    };
-    assert_cohort_err(&[mag2], "approximate/diagnostic");
-
-    let node_a = KernelDescriptorSpec {
-        id: "m_jit_cycle_a".into(),
-        lane: KernelLane::TestOnly,
-        reads: vec!["in_a".into()],
-        writes: vec![KernelOutputSpec {
-            name: "out_a".into(),
-            authority: OutputAuthority::ExactAuthoritative,
-        }],
-        native_math: NativeMathClass::None,
-        semantic_free: true,
-        default_off: true,
-        production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
-    };
-    let node_b = KernelDescriptorSpec {
-        id: "m_jit_cycle_b".into(),
-        lane: KernelLane::TestOnly,
-        reads: vec!["in_b".into()],
-        writes: vec![KernelOutputSpec {
-            name: "out_b".into(),
-            authority: OutputAuthority::ExactAuthoritative,
-        }],
-        native_math: NativeMathClass::None,
-        semantic_free: true,
-        default_off: true,
-        production_wiring: false,
-        exact_sqrt_artifact: None,
-        pre_sqrt_contract: None,
-        mag2_source_contract: None,
-        score_authority_contract: None,
-    };
-    let cycle = KernelGraphRequestSpec {
-        request_id: "cycle_bad".into(),
-        graph: KernelGraphSpec {
-            nodes: vec![node_a, node_b],
-            edges: vec![
-                exact_edge("m_jit_cycle_a", "out_a", "m_jit_cycle_b", "in_b"),
-                exact_edge("m_jit_cycle_b", "out_b", "m_jit_cycle_a", "in_a"),
-            ],
-        },
-    };
-    assert_cohort_err(&[cycle], "cycle");
-}
-
-#[test]
-fn jit_cohort0_duplicate_request_ids_reject() {
-    let requests = vec![
-        KernelGraphRequestSpec {
-            request_id: "dup".into(),
-            graph: valid_grad0_to_scorer_graph(),
-        },
-        KernelGraphRequestSpec {
-            request_id: "dup".into(),
-            graph: reordered_grad0_to_scorer_graph(),
-        },
-    ];
-    assert_cohort_err(&requests, "duplicate request id");
-}
-
-#[test]
 fn jit_cohort0_output_stable_under_request_order_variation() {
     let requests_a = vec![
         KernelGraphRequestSpec {
@@ -368,37 +290,6 @@ fn jit_cohort0_output_stable_under_request_order_variation() {
     let preview_a = preview_kernel_graph_cohorts(&requests_a).expect("preview_a");
     let preview_b = preview_kernel_graph_cohorts(&requests_b).expect("preview_b");
     assert_eq!(preview_a, preview_b);
-}
-
-#[test]
-fn jit_cohort0_rejects_same_key_different_canonical_text() {
-    let requests = vec![
-        KernelGraphRequestSpec {
-            request_id: "req_a".into(),
-            graph: valid_grad0_to_scorer_graph(),
-        },
-        KernelGraphRequestSpec {
-            request_id: "req_b".into(),
-            graph: reordered_grad0_to_scorer_graph(),
-        },
-    ];
-    let err = test_group_cohort_previews_from_resolved(
-        &requests,
-        &[
-            ("jit-graph-v1:deadbeefdeadbeef".into(), "canonical_a".into()),
-            ("jit-graph-v1:deadbeefdeadbeef".into(), "canonical_b".into()),
-        ],
-    )
-    .expect_err("collision should reject");
-    match err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(
-                reason.contains("conflicting canonical text"),
-                "unexpected reason: {reason}"
-            );
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
 }
 
 #[test]

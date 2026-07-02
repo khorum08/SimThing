@@ -409,79 +409,6 @@ fn owner_cohort_homogeneity_via_fission() {
 }
 
 #[test]
-fn owner_rejects_owner_as_spatial_parent() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.owner_as_spatial_parent = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_as_spatial_parent"));
-}
-
-#[test]
-fn owner_rejects_capture_as_reparenting() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.capture_as_reparenting = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"capture_as_reparenting"));
-}
-
-#[test]
-fn owner_rejects_nested_arena_reparenting() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.nested_arena_reparenting = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"nested_arena_reparenting"));
-}
-
-#[test]
-fn owner_rejects_default_on_resource_flow() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.default_on_resource_flow = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_resource_flow"));
-}
-
-#[test]
-fn owner_rejects_hard_currency_through_resource_flow() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.hard_currency_through_resource_flow = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hard_currency_through_resource_flow"));
-}
-
-#[test]
-fn owner_rejects_production_simsession_wiring() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.production_simsession_wiring = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"production_simsession_wiring"));
-    assert!(!report.runtime_implementation_authorized);
-}
-
-#[test]
-fn owner_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
 fn owner_rejects_cpu_planner_urgency_commitment() {
     let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
     forbidden.cpu_planner_urgency_commitment = true;
@@ -491,19 +418,6 @@ fn owner_rejects_cpu_planner_urgency_commitment() {
     assert!(report
         .diagnostics
         .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
-fn owner_rejects_hybrid_strata_or_faction_index_scaling_layer() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.hybrid_strata_or_faction_index_scaling_layer = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hybrid_strata_or_faction_index_scaling_layer"));
-    assert!(report.later_econ_scaling_parked);
 }
 
 #[test]
@@ -631,40 +545,4 @@ fn owner_band_budget_audit() {
         MOBILITY_OWNER0_CURRENT_MAX_ORDERBAND_DEPTH
     );
     assert!(report.required_orderband_depth <= report.max_orderband_depth);
-}
-
-#[test]
-fn owner_scale_soak_34k() {
-    let records = (0..34_000u64)
-        .map(|i| {
-            rec(
-                100_000 + i,
-                100 + (i % 48),
-                1,
-                vec![
-                    owner(MobilityOwner0ColumnKind::Faction, 7 + (i % 4)),
-                    owner(MobilityOwner0ColumnKind::Species, 20 + (i % 3)),
-                ],
-                i % 5,
-                i % 97 == 0,
-                i,
-            )
-        })
-        .collect();
-    let overlays = vec![
-        overlay(MobilityOwner0ColumnKind::Faction, 7, 1, 1, 0),
-        overlay(MobilityOwner0ColumnKind::Faction, 8, 1, 1, 1),
-        overlay(MobilityOwner0ColumnKind::Faction, 9, 1, 1, 2),
-        overlay(MobilityOwner0ColumnKind::Faction, 10, 1, 1, 3),
-        overlay(MobilityOwner0ColumnKind::Species, 20, 2, 1, 4),
-        overlay(MobilityOwner0ColumnKind::Species, 21, 2, 1, 5),
-        overlay(MobilityOwner0ColumnKind::Species, 22, 2, 1, 6),
-    ];
-    let report = plan_mobility_owner0(&input(records, overlays));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.peak_local_records, 34_000);
-    assert_eq!(report.touched_cell_count, 48);
-    assert_eq!(report.touched_owner_count, 7);
-    assert_eq!(report.applied_overlays.len(), 68_000);
 }

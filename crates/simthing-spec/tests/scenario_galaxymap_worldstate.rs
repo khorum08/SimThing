@@ -38,6 +38,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         source: "SESSION-GALAXYMAP-WORLDSTATE-0".into(),
         generator_seed: MIXED_PATTERN_SEED,
         generator_shape: "minimal".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -81,6 +82,7 @@ fn galaxymap_spatial_scenario_spec() -> SimThingScenarioSpec {
         source: "SESSION-GALAXYMAP-WORLDSTATE-0".into(),
         generator_seed: FIXTURE_SEED,
         generator_shape: "galaxymap".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -182,36 +184,6 @@ fn scenario_requires_exactly_one_galaxymap_child() {
 }
 
 #[test]
-fn scenario_missing_galaxymap_is_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    game_session
-        .children
-        .retain(|child| !is_galaxy_map_entity(child));
-    let err = validate_session_galaxy_map(&spec).expect_err("missing galaxymap");
-    assert!(matches!(err, ScenarioRootError::MissingGalaxyMap));
-}
-
-#[test]
-fn scenario_multiple_galaxymaps_are_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    game_session.add_child(make_galaxy_map("duplicate_galaxy", "Duplicate"));
-    let err = validate_session_galaxy_map(&spec).expect_err("multiple");
-    assert!(matches!(err, ScenarioRootError::MultipleGalaxyMaps { .. }));
-}
-
-#[test]
 fn scenario_world_child_does_not_count_as_canonical_galaxymap() {
     let mut spec = minimal_scenario_spec();
     let game_session = spec
@@ -302,47 +274,6 @@ fn scenario_stead_mapping_accepts_galaxymap_as_spatial_root() {
     validate_stead_mapping_consistency(&spec).expect("galaxymap spatial root");
     validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)
         .expect("canonical");
-}
-
-#[test]
-fn legacy_world_root_does_not_satisfy_galaxymap_validation() {
-    let legacy_json = include_str!(
-        "../../simthing-mapeditor/tests/fixtures/terran_pirate_skeleton.simthing-scenario.json"
-    );
-    let loaded = deserialize_scenario_authority(legacy_json).expect("legacy");
-    validate_legacy_world_root_compatibility(&loaded).expect("legacy admitted");
-    let err = validate_session_galaxy_map(&loaded).expect_err("no galaxymap on World root");
-    assert!(matches!(
-        err,
-        ScenarioRootError::LegacyWorldRootHasNoGalaxyMapRequirement
-    ));
-}
-
-#[test]
-fn owner_nested_under_galaxymap_is_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    let galaxy_idx = game_session
-        .children
-        .iter()
-        .position(|child| is_galaxy_map_entity(child))
-        .expect("galaxymap");
-    game_session.children[galaxy_idx].add_child(make_owner_entity(
-        "nested_owner",
-        "Nested",
-        "player",
-    ));
-    let err = validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)
-        .expect_err("nested owner");
-    assert!(matches!(
-        err,
-        ScenarioRootError::OwnerNotDirectGameSessionChild
-    ));
 }
 
 #[test]

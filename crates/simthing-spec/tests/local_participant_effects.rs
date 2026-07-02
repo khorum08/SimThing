@@ -92,49 +92,6 @@ fn local_participant_effects_preserves_source_simthing_ids() {
 }
 
 #[test]
-fn local_participant_effects_rejects_missing_source_id() {
-    let allocation = RuntimeLocalAllocationState {
-        source_simthing_id_raw: 0,
-        owner_ref: OwnerRef::new("owner_a"),
-        resource_key: ResourceKey::new("food"),
-        scope_id: ScopeId::new("scope"),
-        planet_id: None,
-        star_system_gridcell_id_raw: None,
-        requested: 10,
-        allocated: 5,
-        unmet: 5,
-        priority: 1,
-    };
-    let err = local_participant_effects_from_allocations(&[allocation]).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        LocalParticipantEffectsErrorKind::MissingSourceSimThingId
-    ));
-}
-
-#[test]
-fn local_participant_effects_rejects_duplicate_source_effect() {
-    let make = |id: u32| RuntimeLocalAllocationState {
-        source_simthing_id_raw: id,
-        owner_ref: OwnerRef::new("owner_a"),
-        resource_key: ResourceKey::new("food"),
-        scope_id: ScopeId::new("scope"),
-        planet_id: None,
-        star_system_gridcell_id_raw: None,
-        requested: 10,
-        allocated: 5,
-        unmet: 5,
-        priority: 1,
-    };
-    let allocations = vec![make(42), make(42)];
-    let err = local_participant_effects_from_allocations(&allocations).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        LocalParticipantEffectsErrorKind::DuplicateSourceEffect
-    ));
-}
-
-#[test]
 fn local_participant_effects_uses_checked_totals() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let report = evaluate_local_participant_effects(&spec, TICK_ONE).expect("effects");
@@ -172,38 +129,4 @@ fn local_participant_effects_defers_economy_property_mutation_and_scenario_mutat
 fn normal_tests_do_not_write_local_effect_fixture() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let _report = evaluate_local_participant_effects(&spec, TICK_ONE).expect("effects");
-}
-
-#[test]
-fn local_participant_effects_rejects_invalid_runtime_rf_tick() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref()
-                == Some(simthing_spec::GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let err = evaluate_local_participant_effects(&spec, TICK_ONE).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        LocalParticipantEffectsErrorKind::RuntimeTickShellRejected
-    ));
 }

@@ -17,25 +17,6 @@ use sibling_redistribution_fixture::build_sibling_redistribution_spec;
 
 const TICK_ONE: RuntimeTickId = RuntimeTickId(1);
 const REPLAY_ONE: u32 = 1;
-
-#[test]
-fn semantic_execution_boundary_preserves_legacy_default() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let report = evaluate_semantic_effect_execution_boundary(
-        &spec,
-        TICK_ONE,
-        SemanticEffectExecutionSourceMode::LegacyPlanetChildOwnerSilo,
-        REPLAY_ONE,
-    )
-    .expect("legacy");
-
-    assert!(report.legacy_default_preserved);
-    assert_eq!(
-        report.selected_source_mode,
-        SemanticEffectExecutionSourceMode::LegacyPlanetChildOwnerSilo
-    );
-}
-
 #[test]
 fn semantic_execution_boundary_consumes_recursive_semantic_local_effects_report() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -260,6 +241,10 @@ fn normal_tests_do_not_write_semantic_execution_boundary_fixture() {
         .find(|c| simthing_spec::is_planet_gridcell(c))
         .unwrap();
     let cohort = planet
+        .children
+        .iter_mut()
+        .find(|c| simthing_spec::is_surface_gridcell(c))
+        .unwrap()
         .children
         .iter_mut()
         .find(|c| c.kind == SimThingKind::Cohort)

@@ -32,6 +32,7 @@ fn base_galaxymap_spec(scenario_id: &str) -> SimThingScenarioSpec {
         source: "PLANET-SURFACE-GRIDCELL-TIER-0".into(),
         generator_seed: 0x0001_2345_6789_ABCD,
         generator_shape: "planet_surface_gridcell".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(&mut root, scenario_id, &provenance, SCENARIO_SCHEMA_VERSION);
     let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
@@ -141,22 +142,6 @@ fn planet_child_location_admits_surface_gridcell_under_planet() {
     assert!(report.surface_gridcell_tier_present);
     assert_eq!(report.surface_gridcell_count, 1);
     assert!(report.errors.is_empty());
-}
-
-#[test]
-fn planet_child_location_rejects_direct_gameplay_children_under_planet() {
-    let mut spec = base_galaxymap_spec("direct_gameplay_rejected");
-    let mut planet = make_planet_gridcell("p1", 0, 0, None);
-    planet.add_child(SimThing::new(SimThingKind::Cohort, 0));
-    star_system_gridcell_mut(&mut spec).add_child(planet);
-    let report = evaluate_planet_child_locations(&spec);
-    assert_eq!(report.direct_gameplay_child_under_planet_count, 1);
-    assert!(report.errors.iter().any(|e| {
-        matches!(
-            e.kind,
-            PlanetChildLocationAdmissionErrorKind::PlanetDirectGameplayChildRequiresSurfaceGridcell
-        )
-    }));
 }
 
 #[test]

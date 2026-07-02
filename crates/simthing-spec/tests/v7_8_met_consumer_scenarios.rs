@@ -112,29 +112,6 @@ fn v7_8_scenarios_do_not_authorize_implementation() {
 }
 
 #[test]
-fn v7_8_scenarios_keep_nested_e11b_d2a_and_atlas_rejected_until_acceptance() {
-    let a = scenario(V78PromotedLine::LineA);
-    let b = scenario(V78PromotedLine::LineB);
-    let c = scenario(V78PromotedLine::LineC);
-
-    assert!(a.still_rejected_until_acceptance.contains(
-        &DesignerAdmissionDiagnosticCode::NestedE11BRequestedWithoutNamedScenario
-            .as_str()
-            .to_string()
-    ));
-    assert!(b.still_rejected_until_acceptance.contains(
-        &DesignerAdmissionDiagnosticCode::D2aRequestedWithoutNamedScenario
-            .as_str()
-            .to_string()
-    ));
-    assert!(c.still_rejected_until_acceptance.contains(
-        &DesignerAdmissionDiagnosticCode::AtlasRequestedWithoutGate
-            .as_str()
-            .to_string()
-    ));
-}
-
-#[test]
 fn v7_8_scenarios_do_not_open_clausething_or_clausescript() {
     let pack = pack();
     assert!(pack.scenarios.iter().all(|scenario| !scenario

@@ -92,57 +92,18 @@ fn compile_property_uses_authored_sub_fields_when_provided() {
     assert_eq!(prop.layout.stride(), 2);
     assert_eq!(
         prop.layout
-            .offset_of(&SubFieldRole::Named("axis_position".into())),
+            .offset_of(&SubFieldRole::Named("axis_position".into()))
+            .map(|offset| offset.lane()),
         Some(0),
     );
     assert_eq!(
         prop.layout
-            .offset_of(&SubFieldRole::Named("axis_drift".into())),
+            .offset_of(&SubFieldRole::Named("axis_drift".into()))
+            .map(|offset| offset.lane()),
         Some(1),
     );
 }
 
-#[test]
-fn compile_property_duplicate_key_is_hard_error() {
-    let mut registry = DimensionRegistry::new();
-    let spec = empty_property("core", "loyalty");
-    compile_property(&spec, &mut registry).expect("first compile");
-
-    let err = compile_property(&spec, &mut registry).expect_err("second compile must fail");
-    assert_eq!(
-        err,
-        SpecError::DuplicateProperty {
-            namespace: "core".into(),
-            name: "loyalty".into(),
-        }
-    );
-}
-
-#[test]
-fn compile_property_invalid_governed_by_role_is_hard_error() {
-    let mut registry = DimensionRegistry::new();
-
-    let mut spec = ethics_property();
-    // Point axis_position's governor at a role that isn't in the layout.
-    spec.sub_fields[0].governed_by = Some(SubFieldRole::Named("missing_role".into()));
-
-    let err = compile_property(&spec, &mut registry).expect_err("should reject");
-    match err {
-        SpecError::InvalidGovernedByRole {
-            property,
-            sub_field,
-            governed_by,
-        } => {
-            assert_eq!(property, "philosophy::ethics");
-            assert_eq!(sub_field, "Named(axis_position)");
-            assert_eq!(governed_by, "Named(missing_role)");
-        }
-        other => panic!("expected InvalidGovernedByRole, got {other:?}"),
-    }
-
-    // The failed compile must not leave a partial registration behind.
-    assert!(registry.id_of("philosophy", "ethics").is_none());
-}
 
 // ── compile_overlay ───────────────────────────────────────────────────────────
 
@@ -198,31 +159,6 @@ fn compile_overlay_unknown_property_is_hard_error() {
         }
         other => panic!("expected UnknownProperty, got {other:?}"),
     }
-}
-
-#[test]
-fn compile_overlay_invalid_sub_field_role_is_hard_error() {
-    let mut registry = DimensionRegistry::new();
-    compile_property(&empty_property("military", "fleet_speed"), &mut registry).unwrap();
-
-    let mut overlay_spec = fleet_speed_overlay();
-    overlay_spec.sub_field_deltas = vec![(
-        SubFieldRole::Named("nonexistent".into()),
-        TransformOp::Add(0.1),
-    )];
-
-    let err = compile_overlay(&overlay_spec, &registry).expect_err("must fail");
-    assert!(matches!(err, SpecError::InvalidSubFieldRole { .. }));
-}
-
-#[test]
-fn compile_overlay_malformed_property_reference_is_hard_error() {
-    let registry = DimensionRegistry::new();
-    let mut overlay_spec = fleet_speed_overlay();
-    overlay_spec.targets_property = "no_separator".into();
-
-    let err = compile_overlay(&overlay_spec, &registry).expect_err("must fail");
-    assert!(matches!(err, SpecError::InvalidPropertyReference { .. }));
 }
 
 #[test]

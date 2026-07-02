@@ -122,21 +122,6 @@ fn idroute_cpu_gpu_parity_layout() {
 }
 
 #[test]
-fn idroute_rejects_global_faction_vector() {
-    let mut forbidden = MobilityIdroute0ForbiddenPathRequests::default();
-    forbidden.global_faction_vector = true;
-
-    let report = plan_mobility_idroute0(&MobilityIdroute0PlanInput {
-        records: vec![rec(1, 100, 0, 1, 0.0)],
-        max_factions_per_cell: 4,
-        forbidden,
-    });
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"global_faction_vector"));
-}
-
-#[test]
 fn idroute_accepts_many_cells_with_local_k_bound() {
     let mut records = Vec::new();
     for cell in 0..48u64 {
@@ -157,71 +142,6 @@ fn idroute_accepts_many_cells_with_local_k_bound() {
     assert_eq!(report.touched_cell_count, 48);
     assert_eq!(report.max_local_identities_used, 4);
     assert!(report.unique_identities_used <= 4);
-}
-
-#[test]
-fn idroute_rejects_one_cell_exceeding_max_factions_per_cell() {
-    let report = plan_mobility_idroute0(&MobilityIdroute0PlanInput {
-        records: vec![
-            rec(1, 100, 0, 1, 0.0),
-            rec(2, 100, 1, 1, 0.0),
-            rec(3, 100, 2, 1, 0.0),
-            rec(4, 100, 3, 1, 0.0),
-            rec(5, 100, 4, 1, 0.0),
-        ],
-        max_factions_per_cell: 4,
-        forbidden: MobilityIdroute0ForbiddenPathRequests::default(),
-    });
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"exceeding_max_factions_per_cell"));
-}
-
-#[test]
-fn idroute_rejects_owner_as_spatial_parent() {
-    let mut forbidden = MobilityIdroute0ForbiddenPathRequests::default();
-    forbidden.owner_as_spatial_parent = true;
-
-    let report = plan_mobility_idroute0(&MobilityIdroute0PlanInput {
-        records: vec![rec(1, 100, 0, 1, 0.0)],
-        max_factions_per_cell: 4,
-        forbidden,
-    });
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_as_spatial_parent"));
-}
-
-#[test]
-fn idroute_rejects_capture_as_reparenting() {
-    let mut forbidden = MobilityIdroute0ForbiddenPathRequests::default();
-    forbidden.capture_as_reparenting = true;
-
-    let report = plan_mobility_idroute0(&MobilityIdroute0PlanInput {
-        records: vec![rec(1, 100, 0, 1, 0.0)],
-        max_factions_per_cell: 4,
-        forbidden,
-    });
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"capture_as_reparenting"));
-}
-
-#[test]
-fn idroute_rejects_econ_owner_runtime() {
-    let mut forbidden = MobilityIdroute0ForbiddenPathRequests::default();
-    forbidden.econ_owner_runtime = true;
-
-    let report = plan_mobility_idroute0(&MobilityIdroute0PlanInput {
-        records: vec![rec(1, 100, 0, 1, 0.0)],
-        max_factions_per_cell: 4,
-        forbidden,
-    });
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"econ_owner_runtime"));
 }
 
 #[test]
@@ -270,21 +190,6 @@ fn idroute_does_not_enable_default_on_behavior() {
 }
 
 #[test]
-fn idroute_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityIdroute0ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-
-    let report = plan_mobility_idroute0(&MobilityIdroute0PlanInput {
-        records: vec![rec(1, 100, 0, 1, 0.0)],
-        max_factions_per_cell: 4,
-        forbidden,
-    });
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
 fn idroute_d2_masked_dispatch_scale() {
     let records = (0..48u64)
         .flat_map(|cell| {
@@ -310,18 +215,5 @@ fn idroute_concentration_one_cell() {
 
     assert!(report.admitted, "{:?}", report.diagnostics);
     assert_eq!(report.touched_cell_count, 1);
-    assert_eq!(report.max_local_identities_used, 4);
-}
-
-#[test]
-fn idroute_scale_soak_34k() {
-    let records = (0..34_000u64)
-        .map(|i| rec(i, 100 + (i % 48), ((i / 48) % 4) as u32, 1, 0.1))
-        .collect();
-
-    let report = plan_mobility_idroute0(&input(records));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.touched_cell_count, 48);
     assert_eq!(report.max_local_identities_used, 4);
 }

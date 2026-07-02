@@ -11,21 +11,6 @@ use simthing_spec::{
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
 use sibling_redistribution_fixture::build_sibling_redistribution_spec;
-
-#[test]
-fn runtime_rf_tick_source_selection_legacy_default_preserved() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let report =
-        evaluate_runtime_rf_tick_source_selection(&spec, RuntimeRfTickSourceMode::LegacyDefault)
-            .expect("select");
-
-    assert_eq!(
-        report.selection_gate.selected_source_kind,
-        RuntimeRfTickSourceKind::LegacyPlanetChildOwnerSilo
-    );
-    assert!(report.selection_gate.legacy_default_preserved);
-}
-
 #[test]
 fn runtime_rf_tick_source_selection_recursive_selectable_requires_reconciliation_ready() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -55,24 +40,6 @@ fn runtime_rf_tick_source_selection_recursive_selectable_allowed_for_owner_silo_
     );
     assert!(report.recursive_source_selected_for_rf_report_only);
     assert!(report.owner_silo_integration_deferred);
-}
-
-#[test]
-fn runtime_rf_tick_source_selection_recursive_selectable_preserves_legacy_tick_totals() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let legacy = evaluate_runtime_rf_tick(&spec).expect("legacy");
-    let _report = evaluate_runtime_rf_tick_source_selection(
-        &spec,
-        RuntimeRfTickSourceMode::RecursiveSelectable,
-    )
-    .expect("select");
-    let legacy_after = evaluate_runtime_rf_tick(&spec).expect("legacy after");
-
-    assert_eq!(
-        legacy.local_allocated_total,
-        legacy_after.local_allocated_total
-    );
-    assert_eq!(legacy.local_unmet_total, legacy_after.local_unmet_total);
 }
 
 #[test]

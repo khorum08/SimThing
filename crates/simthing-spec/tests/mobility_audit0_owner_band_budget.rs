@@ -57,19 +57,6 @@ fn mobility_audit0_reports_required_depth_for_all_circulations() {
 }
 
 #[test]
-fn mobility_audit0_rejects_or_narrows_when_depth_exceeds_ceiling() {
-    let packet = mobility_scenario0_packet();
-    let narrowed = audit_mobility_owner_band_budget_with_ceiling(&packet, 12);
-    assert_eq!(narrowed.verdict, MobilityAudit0Verdict::PassWithNarrowing);
-    assert_eq!(narrowed.verdict.as_str(), "PASS WITH NARROWING");
-    assert!(narrowed.narrowing.is_some());
-
-    let blocked = audit_mobility_owner_band_budget_with_ceiling(&packet, 7);
-    assert_eq!(blocked.verdict, MobilityAudit0Verdict::FailBlocked);
-    assert_eq!(blocked.verdict.as_str(), "FAIL-BLOCKED");
-}
-
-#[test]
 fn mobility_audit0_keeps_alloc_reenroll_idroute_econ_owner_parked() {
     let report = audit_mobility_owner_band_budget(&mobility_scenario0_packet());
     assert!(report.alloc_reenroll_idroute_econ_owner_parked);

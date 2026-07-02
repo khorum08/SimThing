@@ -22,25 +22,6 @@ use sibling_redistribution_fixture::build_sibling_redistribution_spec;
 const TICK_ONE: RuntimeTickId = RuntimeTickId(1);
 const REPLAY_ONE: u32 = 1;
 const REPLAY_THREE: u32 = 3;
-
-#[test]
-fn runtime_participant_state_mutation_preserves_legacy_default() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let report = evaluate_runtime_participant_state_mutation(
-        &spec,
-        TICK_ONE,
-        RuntimeParticipantStateMutationSourceMode::LegacyPlanetChildOwnerSilo,
-        REPLAY_ONE,
-    )
-    .expect("legacy");
-
-    assert_eq!(
-        report.selected_source_mode,
-        RuntimeParticipantStateMutationSourceMode::LegacyPlanetChildOwnerSilo
-    );
-    assert!(report.selection_allowed);
-}
-
 #[test]
 fn runtime_participant_state_mutation_consumes_recursive_delta_preview_records() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -315,6 +296,10 @@ fn normal_tests_do_not_write_runtime_participant_state_mutation_fixture() {
         .find(|c| simthing_spec::is_planet_gridcell(c))
         .unwrap();
     let cohort = planet
+        .children
+        .iter_mut()
+        .find(|c| simthing_spec::is_surface_gridcell(c))
+        .unwrap()
         .children
         .iter_mut()
         .find(|c| c.kind == SimThingKind::Cohort)

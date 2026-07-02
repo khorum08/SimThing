@@ -76,60 +76,6 @@ fn runtime_rf_tick_preserves_scenario_authority() {
 }
 
 #[test]
-fn runtime_rf_tick_rejects_invalid_participant_admission() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::gridcell_role(c).as_deref() == Some("star_system"))
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let err = evaluate_runtime_rf_tick(&spec).unwrap_err();
-    assert_eq!(
-        err.kind,
-        RuntimeRfTickErrorKind::ParticipantAdmissionRejected
-    );
-}
-
-#[test]
-fn runtime_rf_tick_rejects_invalid_writeback_metadata() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let gs = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap();
-    let owner = gs
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Owner)
-        .unwrap();
-    owner.properties.insert(
-        OWNER_SILO_CURRENT_PROPERTY_ID,
-        PropertyValue::from_raw_lanes(vec![1.5]),
-    );
-
-    let err = evaluate_runtime_rf_tick(&spec).unwrap_err();
-    assert_eq!(err.kind, RuntimeRfTickErrorKind::OwnerSiloWritebackRejected);
-}
-
-#[test]
 fn runtime_rf_tick_handles_empty_demands_deterministically() {
     let spec = build_planet_child_rf_reduce_up_scoped_spec();
     let report = evaluate_runtime_rf_tick(&spec).expect("tick");

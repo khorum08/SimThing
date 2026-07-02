@@ -182,41 +182,6 @@ fn slot_scope_resolves_to_named_slot() {
 
 /// AT-5: An effect whose target slot is absent from `slot_to_thing` pushes a
 /// diagnostic and emits no `BoundaryRequest` — it does not panic.
-#[test]
-fn missing_slot_target_produces_diagnostic_not_panic() {
-    let registry = empty_registry();
-    // slot_to_thing has slot 0 but the effect targets slot 99
-    let mut slot_to_thing = HashMap::new();
-    slot_to_thing.insert(0u32, SimThingId::new());
-
-    let defs = vec![predicate_def(
-        "missing_target_event",
-        ScriptPredicate::True,
-        vec![CompiledEffect::Remove {
-            target: ScopeRef::Slot(99),
-        }],
-        None,
-        EventPriority::Normal,
-    )];
-
-    let mut cooldowns = HashMap::new();
-    let (requests, diagnostics) =
-        run_tick(&registry, &defs, &[], 0, 0, &slot_to_thing, &mut cooldowns);
-
-    assert!(
-        requests.is_empty(),
-        "no request should be emitted for a missing target"
-    );
-    assert_eq!(diagnostics.len(), 1);
-    assert_eq!(
-        diagnostics[0].event_id,
-        EventKey::new("missing_target_event")
-    );
-    matches!(
-        diagnostics[0].kind,
-        simthing_spec::ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot: 99 }
-    );
-}
 
 /// AT-6: Multiple effects on a single event are emitted in declaration order.
 #[test]

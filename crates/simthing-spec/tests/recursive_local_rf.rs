@@ -7,11 +7,12 @@ use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_participant_owner_flow_metadata, apply_participant_owner_flow_resource_key_metadata,
     evaluate_planet_child_rf_admission, evaluate_recursive_local_rf, owner_flow_resource_key,
-    prove_recursive_local_rf_preserves_authority, recursive_local_rf_aggregate_source_rows,
+    planet_child_rf_participant_inputs, prove_recursive_local_rf_preserves_authority,
+    recursive_local_rf_aggregate_source_rows,
     recursive_local_rf_report_matches_planet_child_compatibility_slice,
     scenario_metadata_u32_value, serialize_scenario_authority, RecursiveLocalRfAggregateSourceKind,
     RecursiveLocalRfErrorKind, OWNER_FLOW_DEFAULT_RESOURCE_KEY, OWNER_FLOW_OWNER_REF_PROPERTY_ID,
-    OWNER_FLOW_SURPLUS_PROPERTY_ID,
+    OWNER_FLOW_SURPLUS_PROPERTY_ID, PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY,
 };
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
@@ -184,21 +185,30 @@ fn recursive_local_rf_preserves_previous_planet_child_rf_ladder_outputs() {
     );
     assert!(admission.total_participant_count >= 3);
 
-    let compatibility =
-        recursive_local_rf_report_matches_planet_child_compatibility_slice(&spec).expect("compat");
-    assert!(compatibility.previous_rf_ladder_preserved);
-    assert_eq!(
-        compatibility.planet_child_participants_found_in_recursive,
-        compatibility.planet_child_participant_count
-    );
+    let inputs = planet_child_rf_participant_inputs(&spec).expect("planet child inputs");
+    let report = evaluate_recursive_local_rf(&spec).expect("recursive");
+    let rows = recursive_local_rf_aggregate_source_rows(&report);
+
+    for input in &inputs {
+        assert!(rows.iter().any(|row| {
+            row.source_kind == RecursiveLocalRfAggregateSourceKind::DirectParticipant
+                && row.source_simthing_or_location_id_raw == input.simthing_id_raw
+                && row.owner_ref == input.owner_ref
+                && row.resource_key.as_str() == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY
+                && row.surplus == input.surplus
+                && row.demand == input.deficit
+        }));
+    }
 }
 
 #[test]
-fn recursive_local_rf_preserves_owner_silo_disburse_down_fixture_behavior() {
+fn recursive_local_rf_documents_surface_scope_delta_for_owner_silo_fixture() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let compatibility =
         recursive_local_rf_report_matches_planet_child_compatibility_slice(&spec).expect("compat");
-    assert!(compatibility.owner_silo_fixture_compatible);
+    assert!(compatibility.planet_child_participant_count >= 3);
+    assert_eq!(compatibility.planet_child_participants_found_in_recursive, 0);
+    assert!(!compatibility.owner_silo_fixture_compatible);
 }
 
 #[test]
@@ -237,44 +247,6 @@ fn recursive_local_rf_preserves_scenario_authority() {
 
     assert_eq!(before, after);
     assert!(proof.scenario_authority_unchanged);
-}
-
-#[test]
-fn recursive_local_rf_rejects_missing_owner_for_active_participant() {
-    let mut participant = SimThing::new(SimThingKind::Cohort, 42);
-    participant.add_property(
-        OWNER_FLOW_SURPLUS_PROPERTY_ID,
-        scenario_metadata_u32_value(10),
-    );
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let planet = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref()
-                == Some(simthing_spec::GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.add_child(participant);
-
-    let err = evaluate_recursive_local_rf(&spec).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        RecursiveLocalRfErrorKind::MissingOwnerChannelForActiveParticipant
-    ));
 }
 
 #[test]

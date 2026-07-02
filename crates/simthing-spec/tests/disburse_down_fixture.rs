@@ -33,6 +33,7 @@ pub fn build_owner_silo_disburse_down_scoped_spec() -> SimThingScenarioSpec {
         source: "OWNER-SILO-DISBURSE-DOWN-0".into(),
         generator_seed: 0x0002_3456_789A_BCDE,
         generator_shape: "owner_silo_disburse_down".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,

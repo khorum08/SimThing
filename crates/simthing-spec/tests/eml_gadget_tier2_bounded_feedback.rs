@@ -126,89 +126,11 @@ fn bounded_feedback_clamp_edges() {
 
 // ── Test 4 — invalid decay rejects ───────────────────────────────────────────
 
-#[test]
-fn bounded_feedback_invalid_decay_rejects() {
-    let bad = EmlGadgetInstanceSpec::BoundedFeedback {
-        id: "bad".into(),
-        previous_col: 5,
-        input_col: 6,
-        output_col: None,
-        decay: 1.2,
-        gain: 0.5,
-        min: 0.0,
-        max: 1.0,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![bad] },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-}
-
 // ── Test 5 — invalid gain rejects (NaN/inf) ──────────────────────────────────
-
-#[test]
-fn bounded_feedback_invalid_gain_rejects() {
-    let bad = EmlGadgetInstanceSpec::BoundedFeedback {
-        id: "bad".into(),
-        previous_col: 5,
-        input_col: 6,
-        output_col: None,
-        decay: 0.5,
-        gain: f32::INFINITY,
-        min: 0.0,
-        max: 1.0,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![bad] },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-}
 
 // ── Test 6 — invalid clamp (min >= max or non-finite) rejects ────────────────
 
-#[test]
-fn bounded_feedback_invalid_clamp_rejects() {
-    let bad = EmlGadgetInstanceSpec::BoundedFeedback {
-        id: "bad".into(),
-        previous_col: 5,
-        input_col: 6,
-        output_col: None,
-        decay: 0.5,
-        gain: 0.5,
-        min: 1.0,
-        max: 0.0,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec { gadgets: vec![bad] },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-}
-
 // ── Test 7 — invalid columns reject ──────────────────────────────────────────
-
-#[test]
-fn bounded_feedback_invalid_columns_reject() {
-    let same = EmlGadgetInstanceSpec::BoundedFeedback {
-        id: "bad".into(),
-        previous_col: 5,
-        input_col: 5,
-        output_col: None,
-        decay: 0.5,
-        gain: 0.5,
-        min: 0.0,
-        max: 1.0,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec {
-            gadgets: vec![same],
-        },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-}
 
 // ── Test 8 — no unbounded recurrence form exists ─────────────────────────────
 

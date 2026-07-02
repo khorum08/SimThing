@@ -48,6 +48,7 @@ import tempfile
 root = pathlib.Path(sys.argv[1])
 inventory_path = pathlib.Path(sys.argv[2])
 prove = sys.argv[3] == "1"
+residue_classes_path = root / "scripts/ci/test_residue_classes.tsv"
 
 header = [
     "crate",
@@ -61,16 +62,25 @@ header = [
     "promotion_target",
 ]
 
-permanent_targets = {
-    "permanent-residue:oracle-parity",
-    "permanent-residue:golden-byte",
-    "permanent-residue:seal-proof",
-    "permanent-residue:determinism",
-    "permanent-residue:behavior-regression",
-    "permanent-residue:escaped-bug",
-    "permanent-residue:doc-named-invariant",
-    "permanent-residue:stead-required",
-}
+def read_residue_classes(path: pathlib.Path) -> set[str]:
+    if not path.exists():
+        print(f"TEST-INVENTORY-DRIFT-CHECK-VERDICT: FAIL")
+        print(f"  - missing residue class table {path}")
+        sys.exit(1)
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        if reader.fieldnames != ["promotion_target"]:
+            print(f"TEST-INVENTORY-DRIFT-CHECK-VERDICT: FAIL")
+            print(f"  - bad residue class header: {reader.fieldnames!r}")
+            sys.exit(1)
+        values = {row["promotion_target"].strip() for row in reader if row["promotion_target"].strip()}
+    if not values:
+        print(f"TEST-INVENTORY-DRIFT-CHECK-VERDICT: FAIL")
+        print(f"  - empty residue class table {path}")
+        sys.exit(1)
+    return values
+
+permanent_targets = read_residue_classes(residue_classes_path)
 kernel_sim_permanent = permanent_targets | {
     "permanent-residue:seal-proof",
     "permanent-residue:oracle-parity",

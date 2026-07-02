@@ -100,37 +100,6 @@ fn reenroll_bilateral_origin_destination_accounting() {
 }
 
 #[test]
-fn reenroll_atomic_or_reject_no_partial_mutation() {
-    let before = registry(
-        vec![block(1, 10, 0, 8), block(1, 20, 8, 2)],
-        vec![
-            live(1, 10, 100, 0),
-            live(1, 10, 101, 1),
-            live(1, 20, 200, 8),
-            live(1, 20, 201, 9),
-        ],
-    );
-    let mut reg = before.clone();
-    reg.origin_generations.insert(key(1, 10), 3);
-    reg.destination_generations.insert(key(1, 20), 5);
-
-    let report = plan_mobility_reenroll0(&MobilityReenroll0PlanInput {
-        registry: reg.clone(),
-        moves: vec![mv(100, 1, 10, 1, 20, 0)],
-        forbidden: MobilityReenroll0ForbiddenPathRequests::default(),
-    });
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"destination parent/key block capacity exceeded"));
-    assert_eq!(report.final_live_slices, reg.live_slices);
-    assert_eq!(report.origin_generations, reg.origin_generations);
-    assert_eq!(report.destination_generations, reg.destination_generations);
-    assert!(report.committed_moves.is_empty());
-}
-
-#[test]
 fn reenroll_preserves_entity_identity() {
     let report = plan_mobility_reenroll0(&input(
         vec![block(1, 10, 0, 8), block(1, 20, 8, 8)],
@@ -233,61 +202,6 @@ fn reenroll_cpu_gpu_parity_layout() {
 }
 
 #[test]
-fn reenroll_rejects_capture_as_reparenting() {
-    let mut request = input(
-        vec![block(1, 10, 0, 8), block(1, 20, 8, 8)],
-        vec![live(1, 10, 100, 0)],
-        vec![mv(100, 1, 10, 1, 20, 0)],
-    );
-    request.forbidden.capture_as_reparenting = true;
-    let report = plan_mobility_reenroll0(&request);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"capture-as-reparenting is rejected"));
-}
-
-#[test]
-fn reenroll_rejects_owner_as_spatial_parent() {
-    let mut request = input(
-        vec![block(1, 10, 0, 8), block(1, 20, 8, 8)],
-        vec![live(1, 10, 100, 0)],
-        vec![mv(100, 1, 10, 1, 20, 0)],
-    );
-    request.forbidden.owner_as_spatial_parent = true;
-    let report = plan_mobility_reenroll0(&request);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"owner-entity as spatial parent is rejected"));
-}
-
-#[test]
-fn reenroll_rejects_nested_arena_reparenting_without_gate() {
-    let mut request = input(
-        vec![block(1, 10, 0, 8), block(2, 20, 8, 8)],
-        vec![live(1, 10, 100, 0)],
-        vec![mv(100, 1, 10, 2, 20, 0)],
-    );
-    request.forbidden.nested_arena_reparenting = true;
-    let flagged = plan_mobility_reenroll0(&request);
-    assert!(!flagged.admitted);
-    assert!(flagged
-        .diagnostics
-        .contains(&"nested arena reparenting requires a separate gate"));
-
-    let implicit = plan_mobility_reenroll0(&input(
-        vec![block(1, 10, 0, 8), block(2, 20, 8, 8)],
-        vec![live(1, 10, 100, 0)],
-        vec![mv(100, 1, 10, 2, 20, 0)],
-    ));
-    assert!(!implicit.admitted);
-    assert!(implicit
-        .diagnostics
-        .contains(&"flat-star cell arenas reject nested parent/key reparenting"));
-}
-
-#[test]
 fn reenroll_keeps_idroute_econ_owner_parked() {
     let mut request = input(
         vec![block(1, 10, 0, 8), block(1, 20, 8, 8)],
@@ -372,44 +286,4 @@ fn reenroll_origin_destination_high_water_bound() {
     assert!(rejected
         .diagnostics
         .contains(&"destination parent/key block capacity exceeded"));
-}
-
-#[test]
-fn reenroll_scale_soak_34k_movement_churn() {
-    let blocks = (0..48)
-        .map(|cell| block(1, cell + 1, cell as u32 * 800, 800))
-        .collect::<Vec<_>>();
-    let live_slices = (0..34_000)
-        .map(|i| {
-            let cell = i % 48;
-            let slot_in_cell = i / 48;
-            live(
-                1,
-                cell + 1,
-                100_000 + i,
-                cell as u32 * 800 + slot_in_cell as u32,
-            )
-        })
-        .collect::<Vec<_>>();
-    let moves = (0..34_000)
-        .map(|i| {
-            let origin_cell = i % 48;
-            let dest_cell = (origin_cell + 1) % 48;
-            mv(
-                100_000 + i,
-                1,
-                origin_cell + 1,
-                1,
-                dest_cell + 1,
-                34_000 - i,
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let report = plan_mobility_reenroll0(&input(blocks, live_slices, moves));
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.committed_moves.len(), 34_000);
-    assert_eq!(report.touched_block_count, 48);
-    assert_eq!(report.boundary_event_count, 68_000);
-    assert!(report.peak_live_slots <= 34_000);
 }

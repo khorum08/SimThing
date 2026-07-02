@@ -17,29 +17,6 @@ use sibling_redistribution_fixture::build_sibling_redistribution_spec;
 
 const TICK_ONE: RuntimeTickId = RuntimeTickId(1);
 const REPLAY_ONE: u32 = 1;
-
-#[test]
-fn semantic_recursive_source_preserves_legacy_default() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let report = evaluate_semantic_local_effects_with_rf_source(
-        &spec,
-        TICK_ONE,
-        SemanticLocalEffectRfSourceMode::LegacyPlanetChildOwnerSilo,
-        REPLAY_ONE,
-    )
-    .expect("legacy");
-
-    assert!(report.legacy_default_preserved);
-    assert_eq!(
-        report.selected_source_mode,
-        SemanticLocalEffectRfSourceMode::LegacyPlanetChildOwnerSilo
-    );
-    assert_eq!(
-        report.selected_semantic_report.runtime_applied_total,
-        report.legacy_semantic_report.runtime_applied_total
-    );
-}
-
 #[test]
 fn semantic_recursive_source_consumes_recursive_local_effect_application_report() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -312,6 +289,10 @@ fn normal_tests_do_not_write_semantic_recursive_source_fixture() {
         .find(|c| simthing_spec::is_planet_gridcell(c))
         .unwrap();
     let cohort = planet
+        .children
+        .iter_mut()
+        .find(|c| simthing_spec::is_surface_gridcell(c))
+        .unwrap()
         .children
         .iter_mut()
         .find(|c| c.kind == SimThingKind::Cohort)

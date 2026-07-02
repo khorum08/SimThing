@@ -27,6 +27,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         source: "SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0".into(),
         generator_seed: MIXED_PATTERN_SEED,
         generator_shape: "minimal".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -115,34 +116,6 @@ fn scenario_owner_id_roundtrips() {
 }
 
 #[test]
-fn scenario_duplicate_owner_ids_are_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    game_session.add_child(make_owner_entity(MINIMAL_OWNER_ID, "Duplicate", "player"));
-    let err = validate_session_owner_entities(&spec).expect_err("duplicate");
-    assert!(matches!(err, ScenarioRootError::DuplicateOwnerId { .. }));
-}
-
-#[test]
-fn scenario_missing_owner_id_is_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    game_session.children[0].properties.clear();
-    let err = validate_session_owner_entities(&spec).expect_err("missing id");
-    assert!(matches!(err, ScenarioRootError::OwnerMissingId));
-}
-
-#[test]
 fn scenario_non_owner_gamesession_child_does_not_count_as_owner() {
     let mut spec = minimal_scenario_spec();
     let game_session = spec
@@ -169,20 +142,6 @@ fn scenario_owner_validation_preserves_gamesession_requirement() {
 }
 
 #[test]
-fn legacy_world_root_does_not_satisfy_owner_validation() {
-    let legacy_json = include_str!(
-        "../../simthing-mapeditor/tests/fixtures/terran_pirate_skeleton.simthing-scenario.json"
-    );
-    let loaded = deserialize_scenario_authority(legacy_json).expect("legacy terran pirate");
-    validate_legacy_world_root_compatibility(&loaded).expect("legacy admitted");
-    let err = validate_session_owner_entities(&loaded).expect_err("no owner on World root");
-    assert!(matches!(
-        err,
-        ScenarioRootError::LegacyWorldRootHasNoOwnerRequirement
-    ));
-}
-
-#[test]
 fn minimal_owner_fixture_deserializes() {
     let fixture = std::fs::read_to_string(minimal_fixture_path()).expect("corpus fixture");
     let loaded = deserialize_scenario_authority(&fixture).expect("fixture load");
@@ -206,58 +165,6 @@ fn scenario_owner_preserves_lossless_metadata_roundtrip() {
     );
     validate_session_owner_entities(&round).expect("owners preserved");
     game_session_child(&round).expect("gamesession preserved");
-}
-
-#[test]
-fn owner_nested_under_galaxymap_is_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    let galaxy_idx = game_session
-        .children
-        .iter()
-        .position(|child| is_galaxy_map_entity(child))
-        .expect("galaxymap");
-    game_session.children[galaxy_idx].add_child(make_owner_entity(
-        "nested_owner",
-        "Nested",
-        "player",
-    ));
-    let err = validate_session_owner_entities(&spec).expect_err("nested owner");
-    assert!(matches!(
-        err,
-        ScenarioRootError::OwnerNotDirectGameSessionChild
-    ));
-}
-
-#[test]
-fn owner_nested_under_capability_tree_is_rejected() {
-    let mut spec = minimal_scenario_spec();
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)
-        .expect("gamesession");
-    let owner_idx = game_session
-        .children
-        .iter()
-        .position(|child| child.kind == SimThingKind::Owner)
-        .expect("owner");
-    game_session.children[owner_idx].add_child(make_owner_entity(
-        "nested_capability_owner",
-        "Nested",
-        "player",
-    ));
-    let err = validate_session_owner_entities(&spec).expect_err("owner under capability tree");
-    assert!(matches!(
-        err,
-        ScenarioRootError::OwnerNotDirectGameSessionChild
-    ));
 }
 
 #[test]

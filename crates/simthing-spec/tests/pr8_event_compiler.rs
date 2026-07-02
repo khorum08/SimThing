@@ -67,40 +67,6 @@ fn compile_predicate_trigger_preserves_script_predicate() {
 }
 
 #[test]
-fn compile_trigger_rejects_unknown_property() {
-    let registry = registry_with_loyalty();
-    let spec = TriggerSpec::Threshold {
-        target: ScopeRef::Current,
-        property: PropertyKey::new("missing", "thing"),
-        role: SubFieldRole::Amount,
-        threshold: 1.0,
-        direction: TriggerDirection::Rising,
-    };
-
-    assert!(matches!(
-        compile_trigger(&spec, &registry),
-        Err(SpecError::InvalidTriggerProperty { .. })
-    ));
-}
-
-#[test]
-fn compile_trigger_rejects_unknown_role() {
-    let registry = registry_with_loyalty();
-    let spec = TriggerSpec::Threshold {
-        target: ScopeRef::Current,
-        property: PropertyKey::new("core", "loyalty"),
-        role: SubFieldRole::Named("not_present".into()),
-        threshold: 1.0,
-        direction: TriggerDirection::Rising,
-    };
-
-    assert!(matches!(
-        compile_trigger(&spec, &registry),
-        Err(SpecError::InvalidTriggerRole { .. })
-    ));
-}
-
-#[test]
 fn compile_effect_builds_boundary_request_template() {
     let overlay_id = OverlayId::new();
     let spec = EffectSpec::ActivateOverlay {

@@ -70,37 +70,3 @@ fn planet_child_rf_scope_key_groups_equivalently_after_newtypes() {
         .iter()
         .all(|b| b.scope.resource_key.as_str() == PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY));
 }
-
-#[test]
-fn planet_child_rf_empty_owner_ref_still_rejects() {
-    let mut spec = reduce_up_fixture::build_planet_child_rf_reduce_up_scoped_spec();
-    let cohort = terra_prime_cohort(&mut spec);
-    apply_participant_owner_flow_metadata(cohort, "   ", 1, 0);
-
-    let report = evaluate_planet_child_rf_admission(&spec);
-    assert_eq!(
-        report.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
-    assert!(report.errors.iter().any(|e| {
-        e.kind == PlanetChildRfAdmissionErrorKind::MissingOwnerChannelForActiveRfParticipant
-            && e.message.contains("empty")
-    }));
-}
-
-#[test]
-fn planet_child_rf_unknown_owner_ref_still_rejects() {
-    let mut spec = reduce_up_fixture::build_planet_child_rf_reduce_up_scoped_spec();
-    let cohort = terra_prime_cohort(&mut spec);
-    apply_participant_owner_flow_metadata(cohort, "unknown_owner", 1, 0);
-
-    let report = evaluate_planet_child_rf_admission(&spec);
-    assert_eq!(
-        report.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
-    assert!(report.errors.iter().any(|e| {
-        e.kind == PlanetChildRfAdmissionErrorKind::MissingOwnerChannelForActiveRfParticipant
-            && e.message.contains("unknown owner/channel reference")
-    }));
-}

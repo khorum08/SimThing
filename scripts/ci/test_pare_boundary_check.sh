@@ -23,6 +23,8 @@ boundaries_path = pathlib.Path(sys.argv[1])
 boundary_rows_path = pathlib.Path(sys.argv[2])
 inventory_path = pathlib.Path(sys.argv[3])
 audit_path = pathlib.Path(sys.argv[4])
+root = boundaries_path.resolve().parents[2]
+residue_classes_path = root / "scripts/ci/test_residue_classes.tsv"
 
 boundary_header = [
     "boundary_id",
@@ -98,18 +100,24 @@ allowed_dispositions = {
     "NEVER_PARE",
 }
 allowed_confidence = {"high", "medium", "low"}
-allowed_keep_targets = {
-    "permanent-residue:oracle-parity",
-    "permanent-residue:golden-byte",
-    "permanent-residue:seal-proof",
-    "permanent-residue:determinism",
-    "permanent-residue:behavior-regression",
-    "permanent-residue:escaped-bug",
-    "permanent-residue:doc-named-invariant",
-    "permanent-residue:stead-required",
-}
 
 errors: list[str] = []
+
+def read_residue_classes(path: pathlib.Path) -> set[str]:
+    if not path.exists():
+        errors.append(f"missing residue class table {path}")
+        return set()
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        if reader.fieldnames != ["promotion_target"]:
+            errors.append(f"bad residue class header: {reader.fieldnames!r}")
+            return set()
+        values = {row["promotion_target"].strip() for row in reader if row["promotion_target"].strip()}
+    if not values:
+        errors.append(f"empty residue class table {path}")
+    return values
+
+allowed_keep_targets = read_residue_classes(residue_classes_path)
 
 def read_tsv(path: pathlib.Path, header: list[str], label: str) -> list[dict[str, str]]:
     if not path.exists():

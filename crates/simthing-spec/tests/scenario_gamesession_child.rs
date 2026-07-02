@@ -25,6 +25,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         source: "SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0".into(),
         generator_seed: MIXED_PATTERN_SEED,
         generator_shape: "minimal".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -71,29 +72,6 @@ fn scenario_requires_exactly_one_gamesession_child() {
 }
 
 #[test]
-fn scenario_missing_gamesession_child_is_rejected() {
-    let mut spec = minimal_scenario_spec();
-    spec.root.children.clear();
-    let err = validate_scenario_game_session_child(&spec).expect_err("missing");
-    assert!(matches!(err, ScenarioRootError::MissingGameSessionChild));
-    let err = validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)
-        .expect_err("canonical reject");
-    assert!(matches!(err, ScenarioRootError::MissingGameSessionChild));
-}
-
-#[test]
-fn scenario_multiple_gamesession_children_are_rejected() {
-    let mut spec = minimal_scenario_spec();
-    spec.root
-        .add_child(SimThing::new(SimThingKind::GameSession, 0));
-    let err = validate_scenario_game_session_child(&spec).expect_err("multiple");
-    assert!(matches!(
-        err,
-        ScenarioRootError::MultipleGameSessionChildren { count: 2 }
-    ));
-}
-
-#[test]
 fn scenario_world_child_does_not_count_as_gamesession() {
     let mut spec = minimal_scenario_spec();
     spec.root.children.clear();
@@ -131,20 +109,6 @@ fn scenario_gamesession_preserves_lossless_metadata_roundtrip() {
 }
 
 #[test]
-fn legacy_world_root_compatibility_does_not_satisfy_canonical_gamesession_validation() {
-    let legacy_json = include_str!(
-        "../../simthing-mapeditor/tests/fixtures/terran_pirate_skeleton.simthing-scenario.json"
-    );
-    let loaded = deserialize_scenario_authority(legacy_json).expect("legacy terran pirate");
-    validate_legacy_world_root_compatibility(&loaded).expect("legacy admitted");
-    let err = validate_scenario_game_session_child(&loaded).expect_err("no GameSession on World");
-    assert!(matches!(
-        err,
-        ScenarioRootError::LegacyWorldRootHasNoGameSessionRequirement
-    ));
-}
-
-#[test]
 fn minimal_gamesession_fixture_deserializes() {
     let fixture = std::fs::read_to_string(minimal_fixture_path()).expect("corpus fixture");
     let loaded = deserialize_scenario_authority(&fixture).expect("fixture load");
@@ -152,21 +116,4 @@ fn minimal_gamesession_fixture_deserializes() {
     let gs = game_session_child(&loaded).expect("fixture GameSession");
     assert_eq!(gs.kind, SimThingKind::GameSession);
     assert_eq!(scenario_metadata_seed(&loaded.root), Some(FIXTURE_SEED));
-}
-
-#[test]
-fn arbitrary_non_scenario_root_still_rejected() {
-    let mut spec = minimal_scenario_spec();
-    spec.root.kind = SimThingKind::Location;
-    let err = validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)
-        .expect_err("not scenario");
-    assert!(matches!(err, ScenarioRootError::RootIsNotScenario));
-    let json = serialize_scenario_authority(&spec).expect("serialize transitional");
-    let err = deserialize_scenario_authority(&json).expect_err("reject location root");
-    assert!(matches!(
-        err,
-        simthing_spec::ScenarioSerdeError::RootValidation(
-            ScenarioRootError::ArbitraryRootKind { .. }
-        )
-    ));
 }

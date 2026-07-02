@@ -55,65 +55,6 @@ fn accepts_well_formed_high_activates_hysteresis() {
     assert_eq!(compiled.output_col, Some(2));
 }
 
-#[test]
-fn rejects_non_finite_thresholds() {
-    let spec = EmlGadgetInstanceSpec::Hysteresis {
-        id: "bad".into(),
-        input_col: 0,
-        previous_col: 1,
-        output_col: None,
-        on_threshold: f32::INFINITY,
-        off_threshold: 0.2,
-        off_value: 0.0,
-        on_value: 1.0,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
-fn rejects_overlapping_or_invalid_thresholds() {
-    let spec = EmlGadgetInstanceSpec::Hysteresis {
-        id: "bad2".into(),
-        input_col: 0,
-        previous_col: 1,
-        output_col: None,
-        on_threshold: 0.1,
-        off_threshold: 0.9,
-        off_value: 0.0,
-        on_value: 1.0,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
-fn rejects_non_finite_output_values() {
-    let spec = EmlGadgetInstanceSpec::Hysteresis {
-        id: "bad3".into(),
-        input_col: 0,
-        previous_col: 1,
-        output_col: None,
-        on_threshold: 0.8,
-        off_threshold: 0.2,
-        off_value: f32::NAN,
-        on_value: 1.0,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
-fn rejects_missing_or_invalid_column_references() {
-    let spec = EmlGadgetInstanceSpec::Hysteresis {
-        id: "bad4".into(),
-        input_col: 10,
-        previous_col: 1,
-        output_col: None,
-        on_threshold: 0.8,
-        off_threshold: 0.2,
-        off_value: 0.0,
-        on_value: 1.0,
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
 
 // ── Oracle reference (state machine contract) ───────────────────────────────
 

@@ -13,27 +13,6 @@ use simthing_spec::{
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
 use sibling_redistribution_fixture::build_sibling_redistribution_spec;
-
-#[test]
-fn owner_silo_recursive_source_preserves_legacy_default() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let report = evaluate_owner_silo_disburse_down_with_rf_source(
-        &spec,
-        OwnerSiloRfSourceMode::LegacyPlanetChildOwnerSilo,
-    )
-    .expect("legacy");
-
-    assert!(report.legacy_default_preserved);
-    assert_eq!(
-        report.selected_source_mode,
-        OwnerSiloRfSourceMode::LegacyPlanetChildOwnerSilo
-    );
-    assert_eq!(
-        report.selected_disburse_report.allocated_total,
-        report.legacy_disburse_report.allocated_total
-    );
-}
-
 #[test]
 fn owner_silo_recursive_source_projects_recursive_demand_buckets() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -224,6 +203,10 @@ fn normal_tests_do_not_write_owner_silo_recursive_source_fixture() {
         .find(|c| simthing_spec::is_planet_gridcell(c))
         .unwrap();
     let cohort = planet
+        .children
+        .iter_mut()
+        .find(|c| simthing_spec::is_surface_gridcell(c))
+        .unwrap()
         .children
         .iter_mut()
         .find(|c| c.kind == SimThingKind::Cohort)

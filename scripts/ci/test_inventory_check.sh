@@ -21,6 +21,7 @@ root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
 audit = root / "scripts/ci/test_pare_audit.tsv"
 boundary_rows = root / "scripts/ci/test_pare_boundary_rows.tsv"
+residue_classes = root / "scripts/ci/test_residue_classes.tsv"
 
 required = [
     "crate",
@@ -49,16 +50,24 @@ allowed_class = {
     "unknown",
 }
 allowed_verdict = {"KEEP", "PARE", "AUDIT"}
-allowed_keep_targets = {
-    "permanent-residue:oracle-parity",
-    "permanent-residue:golden-byte",
-    "permanent-residue:seal-proof",
-    "permanent-residue:determinism",
-    "permanent-residue:behavior-regression",
-    "permanent-residue:escaped-bug",
-    "permanent-residue:doc-named-invariant",
-    "permanent-residue:stead-required",
-}
+errors: list[str] = []
+inspect: list[str] = []
+
+def read_residue_classes(path: pathlib.Path) -> set[str]:
+    if not path.exists():
+        errors.append(f"missing residue class table {path}")
+        return set()
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        if reader.fieldnames != ["promotion_target"]:
+            errors.append(f"bad residue class header: {reader.fieldnames!r}")
+            return set()
+        values = {row["promotion_target"].strip() for row in reader if row["promotion_target"].strip()}
+    if not values:
+        errors.append(f"empty residue class table {path}")
+    return values
+
+allowed_keep_targets = read_residue_classes(residue_classes)
 collapse_re = re.compile(r"^COLLAPSE\([0-9]+(?:->|→)1\)$")
 candidate_classes = {
     "admission-adjacent",
@@ -148,9 +157,6 @@ def discovered_items() -> set[tuple[str, str, str, str]]:
             rel = path.relative_to(root)
             items.add(("scripts-ci", norm(rel), rel.name, "fixture"))
     return items
-
-errors: list[str] = []
-inspect: list[str] = []
 
 if not inventory.exists():
     errors.append(f"missing inventory {inventory}")
@@ -310,6 +316,7 @@ else:
         for path in changed
         if re.match(r"^crates/[^/]+/(src|tests|benches)/", path)
         and not re.match(r"^crates/simthing-clausething/tests/[^/]+\.rs$", path)
+        and not re.match(r"^crates/simthing-spec/tests/[^/]+\.rs$", path)
     ]
     if crate_edits:
         errors.append(f"crate source/test files changed: {crate_edits[:10]}")

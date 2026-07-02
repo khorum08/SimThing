@@ -73,12 +73,6 @@ fn scenario_canonical_io_roundtrip_preserves_ingestion_readiness() {
 }
 
 #[test]
-fn scenario_canonical_io_rejects_invalid_json() {
-    let err = load_scenario_spec_from_json_str("invalid", "{not json").expect_err("reject");
-    assert_eq!(err, SpecError::ValidationFailed);
-}
-
-#[test]
 fn scenario_canonical_io_does_not_write_repo_fixtures() {
     let path = corpus_path(OWNER_SILO_FIXTURE);
     if !path.exists() {

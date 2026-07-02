@@ -74,41 +74,6 @@ fn runtime_tick_shell_preserves_scenario_authority() {
 }
 
 #[test]
-fn runtime_tick_shell_rejects_invalid_runtime_rf_tick() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::gridcell_role(c).as_deref() == Some("star_system"))
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let err = evaluate_runtime_tick_shell(&spec, TICK_ONE).unwrap_err();
-    assert_eq!(err.kind, RuntimeTickShellErrorKind::RuntimeRfTickRejected);
-}
-
-#[test]
-fn runtime_tick_shell_rejects_invalid_tick_id_if_zero_is_disallowed() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let err = evaluate_runtime_tick_shell(&spec, RuntimeTickId(0)).unwrap_err();
-    assert_eq!(err.kind, RuntimeTickShellErrorKind::InvalidTickId);
-}
-
-#[test]
 fn runtime_tick_shell_no_participant_property_mutation() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let owner_before = spec

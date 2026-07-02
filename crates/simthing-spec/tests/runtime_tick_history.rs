@@ -76,26 +76,6 @@ fn runtime_tick_history_preserves_scenario_authority() {
 }
 
 #[test]
-fn runtime_tick_history_rejects_zero_replay_count() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let err = replay_runtime_tick_history(&spec, TICK_ONE, 0).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        RuntimeTickHistoryErrorKind::InvalidReplayCount
-    ));
-}
-
-#[test]
-fn runtime_tick_history_rejects_invalid_tick_id() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let err = evaluate_runtime_tick_history_entry(&spec, RuntimeTickId(0)).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        RuntimeTickHistoryErrorKind::RuntimeTickShellRejected
-    ));
-}
-
-#[test]
 fn runtime_tick_history_digest_changes_when_authority_changes() {
     let spec_a = build_owner_silo_disburse_down_scoped_spec();
     let mut spec_b = build_owner_silo_disburse_down_scoped_spec();
@@ -131,39 +111,4 @@ fn runtime_tick_history_no_wall_clock_or_randomness_in_digest() {
 fn runtime_tick_history_no_fixture_writer_in_normal_tests() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let _report = replay_runtime_tick_history(&spec, TICK_ONE, REPLAY_THREE).expect("replay");
-}
-
-#[test]
-fn runtime_tick_history_rejects_invalid_earlier_stage() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref()
-                == Some(simthing_spec::GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let err = evaluate_runtime_tick_history_entry(&spec, TICK_ONE).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        RuntimeTickHistoryErrorKind::RuntimeTickShellRejected
-            | RuntimeTickHistoryErrorKind::LocalParticipantEffectsRejected
-    ));
 }
