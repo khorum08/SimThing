@@ -1,6 +1,10 @@
 # TP-OWNERSHIP-COLUMNS-0 Results
 
-Status: **DONE — DA-APPROVED (2026-07-02, executive DA full review; PROBATION cleared, merge of PR #1078 authorized)**.
+Status: **COMPLETE — DA-equivalent orchestrator-cleared 2026-07-01**.
+
+TP-OWNERSHIP-COLUMNS-0 is COMPLETE — DA-equivalent orchestrator-cleared 2026-07-01.
+
+The rung assigns ownership as owner refs/columns over the canonical embedded TP base: 200 Terran systems, 50 Pirate systems, and 1250 neutral systems. Terran and Pirate volumes are deterministic integer Chebyshev selections, Pirate is adjacent to Terran, owner refs resolve to GameSession sibling owners, systems remain GalaxyMap children, and capture is proven as an owner-column flip with no SimThing identity or spatial-parentage mutation. Live Doctrine Scan passed on PR head 6b325bc.
 
 ## Scope
 
@@ -108,7 +112,7 @@ Live GitHub Doctrine Scan: PASS on PR #1078.
 
 ## Graduation Routing
 
-CI verdict: PASS-RELIABLE; PROBATION pending orchestrator review.
+CI verdict: PASS-RELIABLE.
 
 Triage entries: none locally.
 
@@ -116,7 +120,7 @@ Risk class: ownership-column authoring over canonical embedded TP base
 
 Falsification check: Verify combined embedded base plus owner siblings plus ownership volumes parse; verify exactly 200 Terran, 50 Pirate, and 1250 neutral systems; verify Terran/Pirate Chebyshev selection and adjacency; verify owner refs point to existing sibling owners; verify systems remain spatial children of GalaxyMap; verify capture-as-column-flip changes only the owner ref; verify no Phase 2 child content, runtime/GPU change, scanner/allowlist edit, new AccumulatorRole, or owner-as-parent semantics.
 
-Recommended posture: DONE — DA-APPROVED (2026-07-02). Executive DA re-ran the full 9-test suite (PASS), verified the Chebyshev selection is integer-only in `hydrate_scenario.rs`, and confirmed live Doctrine Scan green on PR #1078 (run 28563325202). Merge authorized under the §0.9.5 merge-hold rule.
+Recommended posture: COMPLETE — DA-equivalent orchestrator-cleared 2026-07-01. Live Doctrine Scan green on PR #1078 head 6b325bc.
 
 ## Known Gaps / Next
 
