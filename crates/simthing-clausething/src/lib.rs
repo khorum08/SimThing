@@ -72,7 +72,8 @@ pub use hydrate_resource_flow::{
 pub use hydrate_scenario::{
     HydratedEmbeddedStaticGalaxyScenario, HydratedScenarioGridMetadata,
     HydratedScenarioGridPlacement, HydratedScenarioLink, HydratedScenarioNode,
-    HydratedScenarioPack, PR3_MAX_LINK_FANOUT, PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
+    HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
+    PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
 };
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};

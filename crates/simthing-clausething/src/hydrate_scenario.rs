@@ -19,7 +19,10 @@ use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
 use simthing_spec::spec::scenario::{
-    SimThingScenarioGrid, SimThingScenarioProvenance, deserialize_scenario_authority,
+    OWNER_COLOR_INDEX_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SimThingScenarioGrid,
+    SimThingScenarioProvenance, apply_owner_silo_metadata, apply_scenario_metadata_to_root,
+    deserialize_scenario_authority, make_galaxy_map, make_owner_entity,
+    scenario_metadata_u32_value,
 };
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
@@ -104,6 +107,14 @@ pub struct HydratedScenarioPack {
     /// the scenario-container grammar. Runtime ownership remains with this pack.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub embedded_static_galaxy_scenarios: Vec<HydratedEmbeddedStaticGalaxyScenario>,
+    /// TP-OWNER-SIBLINGS-0 canonical authoring tree:
+    /// Scenario -> GameSession -> {Owner..., GalaxyMap}. The legacy `root`
+    /// remains unchanged for existing scenario-container consumers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authority_root: Option<SimThing>,
+    /// Authored owner declarations lowered into direct GameSession children.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub owners: Vec<HydratedScenarioOwner>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -152,6 +163,21 @@ pub struct HydratedEmbeddedStaticGalaxyScenario {
     pub namespaced_links: Vec<HydratedScenarioLink>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedScenarioOwner {
+    pub id: String,
+    pub owner_key: String,
+    pub display_name: String,
+    pub archetype: String,
+    pub color_index: Option<u32>,
+    pub stockpile_seed: Option<u32>,
+    pub stockpile_capacity: Option<u32>,
+    pub policy_profile: Option<String>,
+    pub personality_profile: Option<String>,
+    pub capability_profile: Option<String>,
+    pub simthing_id: SimThingId,
+}
+
 pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, HydrateError> {
     let RawValue::Block(root) = &document.root else {
         return Err(HydrateError::new("document root must be a property block"));
@@ -184,6 +210,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut seen_property_ids = BTreeSet::new();
     let mut seen_overlay_ids = BTreeSet::new();
     let mut raw_links = Vec::new();
+    let mut owners = Vec::new();
+    let mut seen_owner_keys = BTreeSet::new();
     let mut embedded_static_galaxy_scenarios = Vec::new();
     let mut embedded_placements = Vec::new();
     let mut embedded_grid_size = None;
@@ -226,6 +254,16 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                 embedded_grid_size = Some(embedded_grid_size.unwrap_or(0).max(frame_edge));
                 embedded_placements.extend(embedded.namespaced_placements.iter().cloned());
                 embedded_static_galaxy_scenarios.push(embedded);
+            }
+            "owner" => {
+                let owner = parse_owner(field)?;
+                if !seen_owner_keys.insert(owner.owner_key.clone()) {
+                    return Err(HydrateError::new_spanned(
+                        format!("duplicate scenario owner id `{}`", owner.owner_key),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                owners.push(owner);
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -387,6 +425,16 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     }
 
     root_node.simthing_id = root.id;
+    let authority_root = if owners.is_empty() {
+        None
+    } else {
+        Some(build_authority_root(
+            &scenario_id,
+            &metadata,
+            &owners,
+            embedded_static_galaxy_scenarios.first(),
+        ))
+    };
     Ok(HydratedScenarioPack {
         scenario_id,
         metadata,
@@ -400,7 +448,145 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         palma_feedstock,
         commitment: commitment.map(|finalized| finalized.metadata),
         embedded_static_galaxy_scenarios,
+        authority_root,
+        owners,
     })
+}
+
+fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "owner")?;
+    let mut id = header_id;
+    let mut owner_key = None;
+    let mut display_name = None;
+    let mut archetype = None;
+    let mut stockpile_seed = None;
+    let mut stockpile_capacity = None;
+    let mut color_index = None;
+    let mut policy_profile = None;
+    let mut personality_profile = None;
+    let mut capability_profile = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => {
+                let explicit_id = read_scalar_text(field, "id")?;
+                if !id.is_empty() && id != explicit_id {
+                    return Err(HydrateError::new_spanned(
+                        format!("header id `{id}` does not match explicit id `{explicit_id}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                id = explicit_id;
+            }
+            "owner_key" => owner_key = Some(read_scalar_text(field, "owner_key")?),
+            "display_name" | "name" => {
+                display_name = Some(read_scalar_text(field, &field.key.text)?);
+            }
+            "archetype" => archetype = Some(read_scalar_text(field, "archetype")?),
+            "stockpile_seed" | "stockpile_current" => {
+                stockpile_seed = Some(read_scalar_u32(field, &field.key.text)?);
+            }
+            "stockpile_capacity" => {
+                stockpile_capacity = Some(read_scalar_u32(field, "stockpile_capacity")?);
+            }
+            "color_index" => color_index = Some(read_scalar_u32(field, "color_index")?),
+            "policy_profile" => policy_profile = Some(read_scalar_text(field, "policy_profile")?),
+            "personality_profile" => {
+                personality_profile = Some(read_scalar_text(field, "personality_profile")?);
+            }
+            "capability_profile" => {
+                capability_profile = Some(read_scalar_text(field, "capability_profile")?);
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported owner field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if id.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`owner` requires an id",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let owner_key = owner_key.unwrap_or_else(|| id.clone());
+    if owner_key.trim().is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`owner.owner_key` must be non-empty",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let display_name = display_name.unwrap_or_else(|| id.clone());
+    let archetype = archetype.unwrap_or_else(|| owner_key.clone());
+    let owner = HydratedScenarioOwner {
+        id,
+        owner_key,
+        display_name,
+        archetype,
+        color_index,
+        stockpile_seed,
+        stockpile_capacity,
+        policy_profile,
+        personality_profile,
+        capability_profile,
+        simthing_id: SimThingId::new(),
+    };
+    Ok(owner)
+}
+
+fn build_authority_root(
+    scenario_id: &str,
+    metadata: &BTreeMap<String, String>,
+    owners: &[HydratedScenarioOwner],
+    embedded: Option<&HydratedEmbeddedStaticGalaxyScenario>,
+) -> SimThing {
+    let mut root = SimThing::new(SimThingKind::Scenario, 0);
+    let provenance = embedded
+        .map(|embedded| embedded.provenance.clone())
+        .unwrap_or_else(|| SimThingScenarioProvenance {
+            source: "ClauseThingScenarioContainer".to_string(),
+            generator_shape: "scenario_container".to_string(),
+            ..SimThingScenarioProvenance::default()
+        });
+    apply_scenario_metadata_to_root(&mut root, scenario_id, &provenance, SCENARIO_SCHEMA_VERSION);
+
+    let mut session = SimThing::new(SimThingKind::GameSession, 0);
+    for owner in owners {
+        session.add_child(owner_simthing(owner));
+    }
+    let map_id = embedded
+        .map(|embedded| {
+            namespace_id(
+                &embedded.namespace,
+                &embedded.source_structural_grid.map_container_id,
+            )
+        })
+        .unwrap_or_else(|| format!("{scenario_id}::galaxy_map"));
+    let display_name = metadata
+        .get("display_name")
+        .map(String::as_str)
+        .unwrap_or(scenario_id);
+    session.add_child(make_galaxy_map(&map_id, display_name));
+    root.add_child(session);
+    root
+}
+
+fn owner_simthing(owner: &HydratedScenarioOwner) -> SimThing {
+    let mut simthing = make_owner_entity(&owner.owner_key, &owner.display_name, &owner.archetype);
+    simthing.id = owner.simthing_id;
+    if let Some(color_index) = owner.color_index {
+        simthing.add_property(
+            OWNER_COLOR_INDEX_PROPERTY_ID,
+            scenario_metadata_u32_value(color_index),
+        );
+    }
+    if let Some(stockpile_seed) = owner.stockpile_seed {
+        apply_owner_silo_metadata(&mut simthing, stockpile_seed, owner.stockpile_capacity);
+    }
+    simthing
 }
 
 fn parse_static_galaxy_scenario(
@@ -1125,6 +1311,16 @@ fn read_scalar_f32(property: &RawProperty, field: &str) -> Result<f32, HydrateEr
         ));
     }
     Ok(value)
+}
+
+fn read_scalar_u32(property: &RawProperty, field: &str) -> Result<u32, HydrateError> {
+    let text = read_scalar_text(property, field)?;
+    text.parse::<u32>().map_err(|_| {
+        HydrateError::new_spanned(
+            format!("`{field}` must be a non-negative integer literal, got `{text}`"),
+            Some(property.key.span.clone()),
+        )
+    })
 }
 
 fn require_field<T>(
