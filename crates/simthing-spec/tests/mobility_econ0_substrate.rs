@@ -99,17 +99,6 @@ fn econ_hard_band_alpha_before_soft_band_beta() {
 }
 
 #[test]
-fn econ_rejects_hard_soft_silent_mix() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.hard_soft_silent_mix = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"hard_soft_silent_mix"));
-}
-
-#[test]
 fn econ_deterministic_up_down_disburse() {
     let a = plan_mobility_econ0(&input(vec![
         rec(1, 101, 7, 4, 8, 0.5, 99),
@@ -135,17 +124,6 @@ fn econ_cpu_gpu_parity_layout() {
 }
 
 #[test]
-fn econ_rejects_owner_overlay_runtime() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.owner_overlay_runtime = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_overlay_runtime"));
-}
-
-#[test]
 fn econ_keeps_owner_parked() {
     let accepted = plan_mobility_econ0(&input(vec![rec(1, 100, 7, 4, 3, 0.25, 0)]));
     assert!(accepted.admitted, "{:?}", accepted.diagnostics);
@@ -160,64 +138,6 @@ fn econ_keeps_owner_parked() {
 }
 
 #[test]
-fn econ_rejects_default_on_resource_flow() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.default_on_resource_flow = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_resource_flow"));
-}
-
-#[test]
-fn econ_rejects_hard_currency_through_resource_flow() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.hard_currency_through_resource_flow = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hard_currency_through_resource_flow"));
-}
-
-#[test]
-fn econ_rejects_float_structural_gate() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.float_structural_gate = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"float_structural_gate"));
-}
-
-#[test]
-fn econ_rejects_production_simsession_wiring() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.production_simsession_wiring = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(!report.runtime_implementation_authorized);
-    assert!(report.diagnostics.contains(&"production_simsession_wiring"));
-}
-
-#[test]
-fn econ_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
 fn econ_rejects_cpu_planner_urgency_commitment() {
     let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
     forbidden.cpu_planner_urgency_commitment = true;
@@ -228,42 +148,6 @@ fn econ_rejects_cpu_planner_urgency_commitment() {
     assert!(report
         .diagnostics
         .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
-fn econ_rejects_owner_as_spatial_parent() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.owner_as_spatial_parent = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_as_spatial_parent"));
-}
-
-#[test]
-fn econ_rejects_capture_as_reparenting() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.capture_as_reparenting = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"capture_as_reparenting"));
-}
-
-#[test]
-fn econ_rejects_hybrid_strata_or_faction_index_scaling_layer() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.hybrid_strata_or_faction_index_scaling_layer = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hybrid_strata_or_faction_index_scaling_layer"));
-    assert!(report.later_econ_scaling_parked);
 }
 
 #[test]
@@ -290,18 +174,4 @@ fn econ_concentration_one_session() {
     assert_eq!(report.touched_session_count, 1);
     assert_eq!(report.touched_cell_count, 48);
     assert_eq!(report.touched_resource_count, 3);
-}
-
-#[test]
-fn econ_scale_soak_34k() {
-    let records = (0..34_000u64)
-        .map(|i| rec(1 + (i % 2), 100 + (i % 48), 7 + (i % 4), 1, 1, 0.1, i))
-        .collect();
-    let report = plan_mobility_econ0(&input(records));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.peak_local_records, 34_000);
-    assert_eq!(report.touched_cell_count, 48);
-    assert_eq!(report.touched_resource_count, 4);
-    assert!(report.conservation_preserved);
 }

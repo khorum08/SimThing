@@ -252,27 +252,6 @@ fn multi_gadget_total_over_cap_admits_as_per_gadget_only() {
 
 // ── R2 Test 2 — single gadget over cap still rejects ────────────────────────
 
-#[test]
-fn single_gadget_over_cap_rejects() {
-    let input_cols: Vec<u32> = (0..9).collect();
-    let weight_cols: Vec<u32> = (20..29).collect();
-    let spec = EmlGadgetStackSpec {
-        gadgets: vec![EmlGadgetInstanceSpec::WeightedAccumulator {
-            id: "too_many_inputs".into(),
-            input_cols,
-            weight_cols,
-            output_col: Some(40),
-        }],
-    };
-    let err = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions { max_col: 64 }).unwrap_err();
-    let msg = err.to_string();
-    assert!(
-        msg.contains("exceeds EvalEML cap"),
-        "expected cap rejection, got `{msg}`"
-    );
-    assert!(msg.contains("too_many_inputs") || msg.contains("gadget"));
-}
-
 // ── Test 5 — RON gadget stack admits ─────────────────────────────────────────
 
 const TIER1_STACK_RON: &str = r#"
@@ -431,20 +410,6 @@ fn walkdir_light(root: &std::path::Path) -> Vec<std::path::PathBuf> {
 }
 
 // ── Test 7 — invalid unknown gadget rejects ──────────────────────────────────
-
-#[test]
-fn unknown_gadget_kind_rejects() {
-    let err = reject_unknown_gadget_kind("NotAGadget", "bad_id").unwrap_err();
-    match err {
-        SpecError::EmlGadgetAdmission { gadget, reason } => {
-            assert_eq!(gadget, "bad_id");
-            assert!(reason.contains("unknown gadget kind"));
-            assert!(reason.contains("NotAGadget"));
-            assert!(reason.contains("FieldSampler"));
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-}
 
 // ── Test 8 — invalid params reject clearly ───────────────────────────────────
 

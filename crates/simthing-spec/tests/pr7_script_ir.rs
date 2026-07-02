@@ -190,30 +190,6 @@ fn script_expr_reports_slot_out_of_bounds() {
 }
 
 #[test]
-fn script_expr_reports_division_by_zero_and_invalid_clamp() {
-    let registry = registry_with_properties();
-    let shadow = vec![0.0; registry.total_columns];
-    let div = ScriptExpr::Div(
-        Box::new(ScriptExpr::Const(1.0)),
-        Box::new(ScriptExpr::Const(0.0)),
-    );
-    let clamp = ScriptExpr::Clamp {
-        value: Box::new(ScriptExpr::Const(1.0)),
-        min: 2.0,
-        max: 1.0,
-    };
-
-    assert_eq!(
-        div.eval(&ctx(&registry, &shadow, 0)),
-        Err(ScriptEvalError::DivisionByZero)
-    );
-    assert_eq!(
-        clamp.eval(&ctx(&registry, &shadow, 0)),
-        Err(ScriptEvalError::InvalidClamp { min: 2.0, max: 1.0 })
-    );
-}
-
-#[test]
 fn script_ir_round_trips_through_serde() {
     let original = ScriptExpr::Gate(Box::new(ScriptPredicate::Or(vec![
         ScriptPredicate::Greater(ScriptExpr::Const(2.0), ScriptExpr::Const(1.0)),

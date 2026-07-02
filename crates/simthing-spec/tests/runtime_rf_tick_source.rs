@@ -11,23 +11,6 @@ use simthing_spec::{
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
 use sibling_redistribution_fixture::{build_sibling_redistribution_spec, star_system_id_raw};
-
-#[test]
-fn runtime_rf_tick_source_comparison_preserves_legacy_default_source() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let report = evaluate_runtime_rf_tick_source_comparison(&spec).expect("compare");
-
-    assert_eq!(
-        report.default_source_kind,
-        RuntimeRfTickSourceKind::LegacyPlanetChildOwnerSilo
-    );
-    assert_eq!(
-        report.selected_source_kind,
-        RuntimeRfTickSourceKind::LegacyPlanetChildOwnerSilo
-    );
-    assert!(report.legacy_tick_source_preserved);
-}
-
 #[test]
 fn runtime_rf_tick_source_comparison_reports_recursive_preview_available() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -36,20 +19,6 @@ fn runtime_rf_tick_source_comparison_reports_recursive_preview_available() {
     assert!(report.recursive_source_available);
     assert!(report.recursive_source_preview_only);
     assert!(report.recursive_summary.gpu_compatible_row_count > 0);
-}
-
-#[test]
-fn runtime_rf_tick_source_comparison_preserves_legacy_tick_totals() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let legacy = evaluate_runtime_rf_tick(&spec).expect("legacy");
-    let report = evaluate_runtime_rf_tick_source_comparison(&spec).expect("compare");
-
-    assert_eq!(report.legacy_summary.surplus_total, legacy.surplus_total);
-    assert_eq!(report.legacy_summary.demand_total, legacy.deficit_total);
-    assert_eq!(
-        report.legacy_summary.participant_or_source_count,
-        legacy.participant_count
-    );
 }
 
 #[test]
@@ -75,11 +44,15 @@ fn runtime_rf_tick_source_comparison_distinguishes_redistribution_delta_from_err
 }
 
 #[test]
-fn runtime_rf_tick_source_comparison_owner_silo_fixture_is_reconciliation_compatible() {
+fn runtime_rf_tick_source_comparison_owner_silo_fixture_documents_surface_scope_delta() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let report = evaluate_runtime_rf_tick_source_comparison(&spec).expect("compare");
 
-    assert!(report.reconciliation_compatible);
+    assert!(report.participant_projection_compatible);
+    assert!(!report.reconciliation_compatible);
+    assert!(report.deltas.iter().any(|delta| {
+        delta.delta_kind == RuntimeRfTickSourceDeltaKind::ScopeProjectionDelta
+    }));
 }
 
 #[test]

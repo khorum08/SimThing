@@ -106,50 +106,6 @@ fn l1_1_preflight_preview_reports_structural_manifest_diagnostics() {
 }
 
 #[test]
-fn l1_1_preflight_preview_rejects_default_on() {
-    let mut manifest = DesignerAdmissionPreflightManifest::frontier_v2_happy_path();
-    manifest.enabled_by_default = true;
-    let preview = preview_designer_admission_preflight(&manifest);
-    preview_rejects_code(&preview, DesignerAdmissionDiagnosticCode::DefaultOnRejected);
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_resource_flow_bypass() {
-    let preview = preview_with_token("guardrail", "resource_flow_bypass");
-    preview_rejects_code(
-        &preview,
-        DesignerAdmissionDiagnosticCode::ResourceFlowBypassRejected,
-    );
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_cross_entity_movement_write() {
-    let preview = preview_with_token("guardrail", "cross_entity_movement_write");
-    preview_rejects_code(
-        &preview,
-        DesignerAdmissionDiagnosticCode::CrossEntityMovementWriteRejected,
-    );
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_production_commitment_emission() {
-    let preview = preview_with_token("guardrail", "production_commitment_emission");
-    preview_rejects_code(
-        &preview,
-        DesignerAdmissionDiagnosticCode::ProductionCommitmentEmissionRejected,
-    );
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_shared_pool_tick_write() {
-    let preview = preview_with_token("guardrail", "shared_pool_tick_write");
-    preview_rejects_code(
-        &preview,
-        DesignerAdmissionDiagnosticCode::SharedPoolTickWriteRejected,
-    );
-}
-
-#[test]
 fn l1_1_preflight_preview_parks_clause_script_and_clausething() {
     let script = preview_with_token("authoring", "clause_script_parser");
     preview_rejects_code(
@@ -161,71 +117,6 @@ fn l1_1_preflight_preview_parks_clause_script_and_clausething() {
     preview_rejects_code(
         &clausething,
         DesignerAdmissionDiagnosticCode::ClauseThingRuntimeRequestParked,
-    );
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_frontier_v2_5() {
-    let preview = preview_with_token("runtime", "frontier_v2_5");
-    preview_rejects_code(
-        &preview,
-        DesignerAdmissionDiagnosticCode::FrontierV2FiveRequestRejected,
-    );
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_field_policy_ladder_reopen() {
-    for token in ["act_5", "event_3", "obs_5", "pipe_1"] {
-        let preview = preview_with_token("runtime", token);
-        preview_rejects_code(
-            &preview,
-            DesignerAdmissionDiagnosticCode::ActEventObsPipeLadderReopenRejected,
-        );
-    }
-}
-
-#[test]
-fn l1_1_preflight_preview_rejects_parked_v7_8_lines() {
-    let atlas = preview_with_token("mapping", "atlas_batching");
-    preview_rejects_code(
-        &atlas,
-        DesignerAdmissionDiagnosticCode::AtlasRequestedWithoutGate,
-    );
-
-    let active = preview_with_token("mapping", "active_mask");
-    preview_rejects_code(
-        &active,
-        DesignerAdmissionDiagnosticCode::ActiveMaskRequestedWithoutGate,
-    );
-
-    let perception = preview_with_token("mapping", "perception_fog");
-    preview_rejects_code(
-        &perception,
-        DesignerAdmissionDiagnosticCode::PerceptionFogRequestedWithoutGate,
-    );
-
-    let source = preview_with_token("mapping", "source_identity");
-    preview_rejects_code(
-        &source,
-        DesignerAdmissionDiagnosticCode::SourceIdentityRequestedWithoutGate,
-    );
-
-    let nested = preview_with_token("resource_flow", "nested_e11b");
-    preview_rejects_code(
-        &nested,
-        DesignerAdmissionDiagnosticCode::NestedE11BRequestedWithoutNamedScenario,
-    );
-
-    let e11b5 = preview_with_token("resource_flow", "e11b5_dynamic_enrollment");
-    preview_rejects_code(
-        &e11b5,
-        DesignerAdmissionDiagnosticCode::E11B5RequestedWithoutNamedScenario,
-    );
-
-    let d2a = preview_with_token("resource_flow", "d2a_boundary_scheduling");
-    preview_rejects_code(
-        &d2a,
-        DesignerAdmissionDiagnosticCode::D2aRequestedWithoutNamedScenario,
     );
 }
 

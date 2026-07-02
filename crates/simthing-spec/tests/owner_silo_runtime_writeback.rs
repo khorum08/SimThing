@@ -52,28 +52,6 @@ fn owner_silo_writeback_inputs_keep_planet_scopes_as_sources_not_channels() {
 }
 
 #[test]
-fn owner_silo_writeback_inputs_reject_unknown_owner_ref() {
-    let initial = vec![RuntimeOwnerSiloState {
-        owner_ref: OwnerRef::new("owner_a"),
-        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
-        current: 50,
-        capacity: Some(100),
-    }];
-    let inputs = vec![RuntimeOwnerSiloWritebackInput {
-        owner_ref: OwnerRef::new("owner_missing"),
-        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
-        net_surplus: 1,
-        net_deficit: 0,
-        source_bucket_count: 1,
-    }];
-    let err = apply_owner_silo_runtime_writeback_cpu(&initial, &inputs).unwrap_err();
-    assert_eq!(
-        err.kind,
-        RuntimeOwnerSiloWritebackErrorKind::UnknownOwnerReference
-    );
-}
-
-#[test]
 fn owner_silo_writeback_inputs_do_not_mutate_scenario_authority() {
     let spec = build_planet_child_rf_reduce_up_scoped_spec();
     let before = serialize_scenario_authority(&spec).expect("serialize");

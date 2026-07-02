@@ -387,6 +387,7 @@ Boundary tiers:
 | D2a | `TEST-PARE-CLAUSETHING-0` | First per-crate collapse under the old same-family standard. | **COMPLETE / HISTORICAL** | Closed by #1086; its 41 blocked rows are rekeyed by boundary in `TEST-PARE-STANDARD-DA-0`. |
 | D-DA | `TEST-PARE-STANDARD-DA-0` | Adopt boundary-keyed paring standard and regenerate the ledger with zero deletions. | **DONE — DA-APPROVED** (2026-07-02, deep review; merged #1087) | `scripts/ci/test_pare_boundaries.tsv` and `scripts/ci/test_pare_boundary_rows.tsv` cover every live inventory row plus historical PARED rows; `scripts/ci/test_pare_boundary_check.sh` enforces owner/tier/disposition rules; module-marker rows are mapped or promotion-required; no cargo tests or crate edits. |
 | D-LAW | `TEST-ADMISSION-REGIME-0` | Make test admission standing law, not Track D commentary. | **DONE — DA-APPROVED** (2026-07-02, deep review + DA 0R; landed on master via #1088→#1089) | Doctrine landings in core/constitution/handoff; `promotion_target` survivor trichotomy in `scripts/ci/test_inventory.tsv`; `TEST-BUDGET` delta heuristic; `test_inventory_drift_check.sh` stock gate wired into doctrine scan/selftest; kernel/sim KEEP strict tier; promotion-wave plan reconciles with ledger. |
+| D2b | `TEST-PARE-SPEC-0` | First material `simthing-spec` deletion/collapse/consolidation wave under standing admission law. | **PROBATION** | Source review records 451 initial rows: 425 runtime rows deleted, 7 hygiene-theater inputs consolidated into one table-driven test, 1 integration representative retained from the actionable set, and 18 source-level rows blocked by the `src/**` edit ban and rekeyed for source-rung follow-up; live inventory drops to 5,870 rows; the `test-pare-spec` Doctrine Exec profile runs exact edited `simthing-spec` integration binaries only. |
 | D2+ | `TEST-PARE-BOUNDARY-*` | Future coverage-complete deletion/collapse waves by boundary family. | **FUTURE** | Each wave processes every row in its named boundary families to terminal disposition; no row quotas; no broad full-crate test sweep is used as proof. |
 | DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after material reduction lands. | **FUTURE** | Until then, weekly scheduled sentinel = sentinel-core only and full quarantined battery = workflow_dispatch-only. |
 
@@ -403,11 +404,9 @@ Boundary tiers:
 > precedence rule recorded; the kernel/sim strict tier was deliberately **not** widened. **Process slip
 > (the DA's own, recorded):** #1088 merged into its stacked base branch because #1087's head branch was not
 > deleted at merge, so GitHub never retargeted the child PR — corrected via #1089 through the normal gate.
-> Lesson: stacked merges use `--delete-branch`, or retarget the child before merging. **Recorded debt
-> (promotion target):** the legal `permanent-residue` token set is now duplicated across three checkers
-> (`test_inventory_drift_check.sh` / `test_inventory_check.sh` / `test_pare_boundary_check.sh`) — "no
-> invariant in the engine" wants one data file all three read; consolidate at the next Track D rung that
-> touches a checker.
+> Lesson: stacked merges use `--delete-branch`, or retarget the child before merging. **Recorded debt resolved by `TEST-PARE-SPEC-0`:** the legal `permanent-residue` token set now
+> lives in `scripts/ci/test_residue_classes.tsv`, read by `test_inventory_drift_check.sh`,
+> `test_inventory_check.sh`, and `test_pare_boundary_check.sh`.
 
 ## 5. Honest residue / non-goals
 

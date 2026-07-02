@@ -39,6 +39,7 @@ fn base_spec(scenario_id: &str) -> SimThingScenarioSpec {
         source: "SESSION-RESOURCE-FLOW-SILOS-0".into(),
         generator_seed: 0x0001_2345_6789_ABCD,
         generator_shape: "owner_silo".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(&mut root, scenario_id, &provenance, SCENARIO_SCHEMA_VERSION);
     let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
@@ -179,79 +180,6 @@ fn owner_silo_unresolved_deficit_reported() {
 }
 
 #[test]
-fn owner_silo_unknown_owner_ref_rejected() {
-    let json = load_corpus("owner_silo_unknown_owner_ref.simthing-scenario.json");
-    let spec = simthing_spec::deserialize_scenario_authority(&json).expect("parse");
-    let report = evaluate_owner_silo_flow(&spec);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::UnknownOwnerReference }));
-}
-
-#[test]
-fn owner_silo_missing_silo_rejected_or_partially_admitted_with_typed_deferral() {
-    let json = load_corpus("owner_silo_missing_silo.simthing-scenario.json");
-    let spec = simthing_spec::deserialize_scenario_authority(&json).expect("parse");
-    let report = evaluate_owner_silo_flow(&spec);
-    assert!(matches!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-            | OwnerSiloAdmissionClassification::PartiallyAdmitted
-    ));
-    assert!(
-        report
-            .errors
-            .iter()
-            .any(|e| e.kind == OwnerSiloAdmissionErrorKind::OwnerMissingSilo)
-            || report
-                .deferrals
-                .iter()
-                .any(|d| d.kind == OwnerSiloDeferralKind::ResourceFlowExecutionDeferred)
-    );
-}
-
-#[test]
-fn owner_silo_invalid_negative_or_nan_amount_rejected() {
-    let mut spec = base_spec("invalid_amount");
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .expect("gs");
-    let galaxy_map = game_session
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .expect("map");
-    let mut gridcell = SimThing::new(SimThingKind::Location, 0);
-    apply_gridcell_role_metadata(&mut gridcell, GALAXY_GRIDCELL_ROLE_INERT);
-    let mut participant = SimThing::new(SimThingKind::Cohort, 0);
-    apply_participant_owner_flow_metadata(&mut participant, "owner_a", 0, 0);
-    participant.add_property(
-        simthing_spec::OWNER_FLOW_SURPLUS_PROPERTY_ID,
-        simthing_core::PropertyValue { data: vec![-5.0] },
-    );
-    gridcell.add_child(participant);
-    galaxy_map.add_child(gridcell);
-
-    let report = evaluate_owner_silo_flow(&spec);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::InvalidSurplusAmount }));
-}
-
-#[test]
 fn owner_silo_does_not_require_owner_spatial_parenting() {
     let spec = balanced_flow_spec();
     let game_session = spec
@@ -317,70 +245,6 @@ fn owner_mut(spec: &mut SimThingScenarioSpec) -> &mut SimThing {
 }
 
 #[test]
-fn owner_silo_invalid_current_rejected() {
-    let mut spec = base_spec("invalid_silo_current");
-    add_gridcell_with_participant(&mut spec, GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0, 10, 0);
-    owner_mut(&mut spec).add_property(
-        simthing_spec::OWNER_SILO_CURRENT_PROPERTY_ID,
-        simthing_core::PropertyValue { data: vec![-3.0] },
-    );
-    let report = evaluate_owner_silo_flow(&spec);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report.errors.iter().any(|e| {
-        e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount
-            && e.message.contains("owner_silo_current")
-    }));
-}
-
-#[test]
-fn owner_silo_invalid_capacity_rejected() {
-    let mut spec = base_spec("invalid_silo_capacity");
-    add_gridcell_with_participant(&mut spec, GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0, 10, 0);
-    owner_mut(&mut spec).add_property(
-        simthing_spec::OWNER_SILO_CAPACITY_PROPERTY_ID,
-        simthing_core::PropertyValue {
-            data: vec![f32::NAN],
-        },
-    );
-    let report = evaluate_owner_silo_flow(&spec);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report.errors.iter().any(|e| {
-        e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount
-            && e.message.contains("owner_silo_capacity")
-    }));
-}
-
-#[test]
-fn owner_silo_current_greater_than_capacity_rejected_or_typed_deferred() {
-    let mut spec = base_spec("current_gt_capacity");
-    add_gridcell_with_participant(&mut spec, GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0, 5, 0);
-    let owner = owner_mut(&mut spec);
-    owner.properties.insert(
-        simthing_spec::OWNER_SILO_CURRENT_PROPERTY_ID,
-        structural_property_value_u32(80),
-    );
-    owner.properties.insert(
-        simthing_spec::OWNER_SILO_CAPACITY_PROPERTY_ID,
-        structural_property_value_u32(50),
-    );
-    let report = evaluate_owner_silo_flow(&spec);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report.errors.iter().any(|e| {
-        e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount
-            && e.message.contains("exceeds owner_silo_capacity")
-    }));
-}
-
-#[test]
 fn owner_silo_marker_without_current_behavior_is_explicitly_tested() {
     let mut spec = base_spec("marker_placeholder_only");
     let owner = owner_mut(&mut spec);
@@ -420,69 +284,6 @@ fn owner_silo_marker_without_current_behavior_is_explicitly_tested() {
 }
 
 #[test]
-fn ingestion_rejects_invalid_owner_silo_current() {
-    let mut spec = base_spec("ingest_invalid_current");
-    add_gridcell_with_participant(&mut spec, GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0, 10, 0);
-    owner_mut(&mut spec).add_property(
-        simthing_spec::OWNER_SILO_CURRENT_PROPERTY_ID,
-        simthing_core::PropertyValue { data: vec![-1.0] },
-    );
-    let result = ingest_scenario("ingest_invalid_current", &spec, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    let silo = result.owner_silo.expect("owner_silo report");
-    assert!(silo
-        .errors
-        .iter()
-        .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount }));
-    assert!(result
-        .errors
-        .iter()
-        .any(|e| e.code == "owner_silo" && e.message.contains("InvalidSiloAmount")));
-}
-
-#[test]
-fn ingestion_rejects_invalid_owner_silo_capacity() {
-    let mut spec = base_spec("ingest_invalid_capacity");
-    add_gridcell_with_participant(&mut spec, GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0, 10, 0);
-    owner_mut(&mut spec).add_property(
-        simthing_spec::OWNER_SILO_CAPACITY_PROPERTY_ID,
-        simthing_core::PropertyValue { data: vec![-2.0] },
-    );
-    let result = ingest_scenario("ingest_invalid_capacity", &spec, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    let silo = result.owner_silo.expect("owner_silo report");
-    assert!(silo
-        .errors
-        .iter()
-        .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount }));
-    assert!(result
-        .errors
-        .iter()
-        .any(|e| e.code == "owner_silo" && e.message.contains("InvalidSiloAmount")));
-}
-
-#[test]
-fn owner_silo_invalid_silo_amount_corpus_rejected() {
-    let json = load_corpus("owner_silo_invalid_silo_amount.simthing-scenario.json");
-    let spec = simthing_spec::deserialize_scenario_authority(&json).expect("parse");
-    let report = evaluate_owner_silo_flow(&spec);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| { e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount }));
-}
-
-#[test]
 fn owner_silo_gpu_plan_inputs_preserve_non_mutating_oracle() {
     let spec = balanced_flow_spec();
     let report = evaluate_owner_silo_flow(&spec);
@@ -493,15 +294,6 @@ fn owner_silo_gpu_plan_inputs_preserve_non_mutating_oracle() {
     assert_eq!(report.reducible_surplus_total, 30.0);
     assert_eq!(report.resolvable_deficit_total, 20.0);
     assert_eq!(report.unresolved_deficit_total, 0.0);
-}
-
-#[test]
-fn owner_silo_invalid_silo_still_rejected_before_driver_lowering() {
-    let json = load_corpus("owner_silo_invalid_silo_amount.simthing-scenario.json");
-    let spec = simthing_spec::deserialize_scenario_authority(&json).expect("parse");
-    assert!(owner_silo_flow_participant_inputs(&spec).is_err());
-    // Driver lowering is integration-tested in simthing-driver; spec refuses rejected admission.
-    let _ = SpecError::ValidationFailed;
 }
 
 #[test]
@@ -637,7 +429,7 @@ fn write_invalid_silo_amount() {
     add_gridcell_with_participant(&mut spec, GALAXY_GRIDCELL_ROLE_INERT, 1, 0, 0, 10, 0);
     owner_mut(&mut spec).add_property(
         simthing_spec::OWNER_SILO_CURRENT_PROPERTY_ID,
-        simthing_core::PropertyValue { data: vec![-7.0] },
+        simthing_core::PropertyValue::from_raw_lanes(vec![-7.0]),
     );
     write_json(
         &spec,

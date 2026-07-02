@@ -102,13 +102,6 @@ fn scenario_stead_map_roundtrip_rebuilds_studio_projection_inputs() {
 }
 
 #[test]
-fn scenario_stead_map_roundtrip_rejects_invalid_json() {
-    let err = evaluate_scenario_stead_map_roundtrip_from_json_str("invalid", "{not json")
-        .expect_err("reject");
-    assert_eq!(err, SpecError::ValidationFailed);
-}
-
-#[test]
 fn normal_tests_do_not_write_scenario_stead_map_fixtures() {
     let path = corpus_path(OWNER_SILO_FIXTURE);
     if !path.exists() {

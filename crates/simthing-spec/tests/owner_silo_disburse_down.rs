@@ -64,85 +64,6 @@ fn owner_silo_disburse_down_ignores_children_without_demand_metadata() {
 }
 
 #[test]
-fn owner_silo_disburse_down_rejects_malformed_demand() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let gs = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap();
-    let star = gs
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::gridcell_role(c).as_deref() == Some("star_system"))
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    let cohort = planet
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Cohort)
-        .unwrap();
-    cohort.properties.insert(
-        OWNER_FLOW_DEMAND_PROPERTY_ID,
-        PropertyValue::from_raw_lanes(vec![1.5]),
-    );
-
-    let err = owner_silo_demand_buckets_from_planet_child_rf(&spec).unwrap_err();
-    assert_eq!(
-        err.kind,
-        RuntimeOwnerSiloDisburseDownErrorKind::InvalidDemandAmount
-    );
-}
-
-#[test]
-fn owner_silo_disburse_down_rejects_active_demand_without_owner_channel() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let gs = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap();
-    let star = gs
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::gridcell_role(c).as_deref() == Some("star_system"))
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    let cohort = planet
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Cohort)
-        .unwrap();
-    cohort
-        .properties
-        .remove(&simthing_spec::OWNER_FLOW_OWNER_REF_PROPERTY_ID);
-
-    let err = owner_silo_demand_buckets_from_planet_child_rf(&spec).unwrap_err();
-    assert_eq!(
-        err.kind,
-        RuntimeOwnerSiloDisburseDownErrorKind::MissingOwnerChannelForActiveDemand
-    );
-}
-
-#[test]
 fn owner_silo_disburse_down_allocates_by_priority() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let writeback = writeback_results_for_spec(&spec);
@@ -275,44 +196,6 @@ fn owner_silo_disburse_down_empty_demands_defer_or_zero_plan() {
     let writeback = writeback_results_for_spec(&spec);
     let results = apply_owner_silo_runtime_disburse_down_cpu(&writeback, &buckets).expect("empty");
     assert!(results.is_empty());
-}
-
-#[test]
-fn owner_silo_disburse_down_defaults_missing_priority() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let gs = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap();
-    let star = gs
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::gridcell_role(c).as_deref() == Some("star_system"))
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::planet_id(c).as_deref() == Some("border_moon"))
-        .unwrap();
-    let cohort = planet
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Cohort)
-        .unwrap();
-    cohort.properties.remove(&OWNER_FLOW_PRIORITY_PROPERTY_ID);
-
-    let buckets = owner_silo_demand_buckets_from_planet_child_rf(&spec).expect("buckets");
-    let moon = buckets
-        .iter()
-        .find(|b| b.owner_ref.as_str() == "owner_b")
-        .expect("moon");
-    assert_eq!(moon.priority, OWNER_FLOW_DEFAULT_PRIORITY);
 }
 
 #[test]

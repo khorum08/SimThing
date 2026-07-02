@@ -50,6 +50,7 @@ fn build_planet_child_rf_reduce_up_scoped_spec() -> SimThingScenarioSpec {
         source: "PLANET-CHILD-RF-REDUCE-UP-0".into(),
         generator_seed: 0x0001_2345_6789_ABCD,
         generator_shape: "planet_child_rf_reduce_up".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -182,39 +183,6 @@ fn border_moon_bucket(
 }
 
 #[test]
-fn planet_child_rf_reduce_up_rejects_rejected_participant_admission() {
-    let mut spec = build_planet_child_rf_reduce_up_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref() == Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let report = evaluate_planet_child_rf_reduce_up(&spec);
-    assert_eq!(
-        report.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
-}
-
-#[test]
 fn planet_child_rf_reduce_up_groups_by_owner_channel() {
     let spec = build_planet_child_rf_reduce_up_scoped_spec();
     let report = evaluate_planet_child_rf_reduce_up(&spec);
@@ -316,7 +284,13 @@ fn planet_child_rf_reduce_up_empty_participants_defer_not_panic() {
         .iter_mut()
         .filter(|c| simthing_spec::is_planet_gridcell(c))
     {
-        planet.children.clear();
+        planet
+            .children
+            .iter_mut()
+            .find(|c| simthing_spec::is_surface_gridcell(c))
+            .expect("surface gridcell")
+            .children
+            .clear();
     }
 
     let report = evaluate_planet_child_rf_reduce_up(&spec);
@@ -328,48 +302,6 @@ fn planet_child_rf_reduce_up_empty_participants_defer_not_panic() {
             simthing_spec::PlanetChildRfDeferralKind::PlanetChildRfNoParticipants
         )
     }));
-}
-
-#[test]
-fn planet_child_rf_reduce_up_rejects_overflow_if_checked_math_fails() {
-    let mut spec = build_planet_child_rf_reduce_up_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref() == Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let terra = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::planet_id(c).as_deref() == Some("terra_prime"))
-        .unwrap();
-    for child in terra.children.iter_mut() {
-        child.add_property(
-            simthing_spec::OWNER_FLOW_SURPLUS_PROPERTY_ID,
-            structural_property_value_u32(u32::MAX),
-        );
-    }
-
-    let report = evaluate_planet_child_rf_reduce_up(&spec);
-    assert_eq!(
-        report.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| { e.kind == PlanetChildRfAdmissionErrorKind::InvalidPlanetChildRfAmount }));
 }
 
 #[test]

@@ -281,13 +281,6 @@ fn scenario_candidate_save_reopen_defers_persistent_history_ui_and_gpu_dispatch(
 }
 
 #[test]
-fn scenario_candidate_save_reopen_rejects_invalid_json() {
-    let err = evaluate_scenario_candidate_save_reopen_from_json_str("invalid", "{not json")
-        .expect_err("reject");
-    assert_eq!(err, SpecError::ValidationFailed);
-}
-
-#[test]
 fn normal_tests_do_not_write_candidate_save_reopen_fixtures() {
     let path = corpus_path(OWNER_SILO_FIXTURE);
     if !path.exists() {

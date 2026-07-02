@@ -115,7 +115,7 @@ fn capability_tree_builder_registers_properties_and_overlays() {
     assert_eq!(out.tree.kind, SimThingKind::Custom("tech_tree".into()));
     assert!(out.tree.properties.contains_key(&prop_id));
     let pv = out.tree.property(prop_id).unwrap();
-    assert_eq!(pv.data, vec![0.0]);
+    assert_eq!(pv.raw_lanes(), &[0.0]);
 
     // One overlay attached per effect — suspended.
     assert_eq!(out.tree.overlays.len(), 1);
@@ -160,25 +160,6 @@ fn capability_tree_builder_enforces_reduction_max() {
         );
         assert_eq!(sf.reduction_override, Some(ReductionRule::Max));
     }
-}
-
-#[test]
-fn capability_tree_builder_validates_duplicate_entry_id() {
-    let mut registry = registry_with_fleet_speed();
-    let spec = tree_spec(vec![category(
-        "tech",
-        "propulsion",
-        vec![
-            entry("drive", 100.0, ActivationMode::Threshold, vec![]),
-            entry("drive", 200.0, ActivationMode::Threshold, vec![]), // duplicate id
-        ],
-    )]);
-
-    let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
-    assert!(
-        matches!(err, SpecError::DuplicateEntry(_, _)),
-        "got {err:?}"
-    );
 }
 
 #[test]
@@ -415,79 +396,6 @@ fn capability_tree_logical_effect_keys_are_stable_across_builds() {
 }
 
 // ── Supplementary tests (beyond the 11 acceptance criteria) ───────────────────
-
-#[test]
-fn capability_tree_builder_rejects_self_referential_prereq() {
-    let mut registry = registry_with_fleet_speed();
-    let spec = tree_spec(vec![category(
-        "tech",
-        "propulsion",
-        vec![entry(
-            "drive",
-            100.0,
-            ActivationMode::Threshold,
-            vec![CapabilityPrereqSpec {
-                category: "tech::propulsion".into(),
-                entry_id: "drive".into(),
-            }],
-        )],
-    )]);
-
-    let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
-    assert!(
-        matches!(err, SpecError::SelfReferentialPrereq(_)),
-        "got {err:?}"
-    );
-}
-
-#[test]
-fn capability_tree_builder_rejects_unknown_prereq_category() {
-    let mut registry = registry_with_fleet_speed();
-    let spec = tree_spec(vec![category(
-        "tech",
-        "propulsion",
-        vec![entry(
-            "drive",
-            100.0,
-            ActivationMode::Threshold,
-            vec![CapabilityPrereqSpec {
-                category: "tech::bogus".into(),
-                entry_id: "anything".into(),
-            }],
-        )],
-    )]);
-
-    let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
-    assert!(
-        matches!(err, SpecError::UnknownPrereqCategory { .. }),
-        "got {err:?}"
-    );
-}
-
-#[test]
-fn capability_tree_builder_rejects_unknown_prereq_entry() {
-    let mut registry = registry_with_fleet_speed();
-    let spec = tree_spec(vec![category(
-        "tech",
-        "propulsion",
-        vec![entry(
-            "drive",
-            100.0,
-            ActivationMode::Threshold,
-            vec![CapabilityPrereqSpec {
-                category: "tech::propulsion".into(),
-                entry_id: "nonexistent".into(),
-            }],
-        )],
-    )]);
-
-    let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
-    assert!(
-        matches!(err, SpecError::UnknownPrereqEntry { .. }),
-        "got {err:?}"
-    );
-}
-
 #[test]
 fn capability_tree_builder_rejects_unsupported_max_active() {
     use simthing_spec::{MaxActivePolicy, ReplacementPolicy};
@@ -513,21 +421,6 @@ fn capability_tree_builder_rejects_unsupported_max_active() {
     let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
     assert!(
         matches!(err, SpecError::UnsupportedMaxActive { .. }),
-        "got {err:?}"
-    );
-}
-
-#[test]
-fn capability_tree_builder_rejects_invalid_effect_target_property() {
-    let mut registry = registry_with_fleet_speed();
-    let mut e = entry("drive", 100.0, ActivationMode::Threshold, vec![]);
-    e.effects[0].targets_property = "nonexistent::property".into();
-
-    let spec = tree_spec(vec![category("tech", "propulsion", vec![e])]);
-
-    let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
-    assert!(
-        matches!(err, SpecError::InvalidEffectTarget { .. }),
         "got {err:?}"
     );
 }

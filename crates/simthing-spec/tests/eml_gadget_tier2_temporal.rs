@@ -94,40 +94,6 @@ fn velocity_monitor_oracle_parity() {
 
 // ── Test 3 — VelocityMonitor invalid params reject ───────────────────────────
 
-#[test]
-fn velocity_monitor_invalid_params_reject() {
-    // missing / bad columns would be caught by validate_col in real use with low max_col
-    let bad_dt = EmlGadgetInstanceSpec::VelocityMonitor {
-        id: "bad".into(),
-        current_col: 5,
-        previous_col: 6,
-        output_col: None,
-        dt: Some(0.0),
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec {
-            gadgets: vec![bad_dt],
-        },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-
-    let same_cols = EmlGadgetInstanceSpec::VelocityMonitor {
-        id: "same".into(),
-        current_col: 5,
-        previous_col: 5,
-        output_col: None,
-        dt: None,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec {
-            gadgets: vec![same_cols],
-        },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(matches!(res, Err(SpecError::EmlGadgetAdmission { .. })));
-}
-
 // ── Test 4 — Decay compile + stateful sequence oracle parity ─────────────────
 
 #[test]
@@ -160,23 +126,6 @@ fn decay_oracle_parity() {
 }
 
 // ── Test 5 — Decay invalid params reject ─────────────────────────────────────
-
-#[test]
-fn decay_invalid_params_reject() {
-    let bad_decay = EmlGadgetInstanceSpec::Decay {
-        id: "bad".into(),
-        state_col: 5,
-        output_col: None,
-        decay: 1.5,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec {
-            gadgets: vec![bad_decay],
-        },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-}
 
 // ── Test 6 — EMA compile + stateful sequence oracle parity ───────────────────
 
@@ -214,24 +163,6 @@ fn ema_oracle_parity() {
 }
 
 // ── Test 7 — EMA invalid params reject ───────────────────────────────────────
-
-#[test]
-fn ema_invalid_params_reject() {
-    let bad_decay = EmlGadgetInstanceSpec::Ema {
-        id: "bad".into(),
-        input_col: 5,
-        previous_col: 6,
-        output_col: None,
-        decay: -0.1,
-    };
-    let res = compile_eml_gadget_stack(
-        &EmlGadgetStackSpec {
-            gadgets: vec![bad_decay],
-        },
-        EmlGadgetCompileOptions { max_col: 64 },
-    );
-    assert!(res.is_err());
-}
 
 // ── Test 8 — no runtime scheduling / gadget execution posture ────────────────
 

@@ -334,25 +334,6 @@ fn runtime0_no_hard_soft_silent_mix() {
 }
 
 #[test]
-fn runtime0_rejects_default_on_behavior() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.default_on_behavior = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_behavior"));
-    assert!(!report.harness_invoked);
-}
-
-#[test]
-fn runtime0_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
 fn runtime0_rejects_cpu_planner_urgency_commitment() {
     let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
     forbidden.cpu_planner_urgency_commitment = true;
@@ -361,107 +342,6 @@ fn runtime0_rejects_cpu_planner_urgency_commitment() {
     assert!(report
         .diagnostics
         .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
-fn runtime0_rejects_owner_as_spatial_parent() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.owner_as_spatial_parent = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_as_spatial_parent"));
-}
-
-#[test]
-fn runtime0_rejects_capture_as_reparenting() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.capture_as_reparenting = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"capture_as_reparenting"));
-}
-
-#[test]
-fn runtime0_rejects_nested_arena_reparenting() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.nested_arena_reparenting = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"nested_arena_reparenting"));
-}
-
-#[test]
-fn runtime0_rejects_default_on_resource_flow() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.default_on_resource_flow = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_resource_flow"));
-}
-
-#[test]
-fn runtime0_rejects_hard_currency_through_resource_flow() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.hard_currency_through_resource_flow = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hard_currency_through_resource_flow"));
-}
-
-#[test]
-fn runtime0_rejects_hybrid_strata_or_faction_index_scaling() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.hybrid_strata_or_faction_index_scaling = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hybrid_strata_or_faction_index_scaling"));
-}
-
-#[test]
-fn runtime0_rejects_closed_ladder_reopen() {
-    let mut forbidden = MobilityRuntime0ForbiddenPathRequests::default();
-    forbidden.closed_ladder_reopen = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"closed_ladder_reopen"));
-    assert!(!report.closed_ladders_reopened);
-}
-
-#[test]
-fn runtime0_34k_integrated_scenario_soak() {
-    let mut input = fixture();
-    input.idroute.records = (0..34_000u64)
-        .map(|i| idrec(10_000 + i, 10 + (i % 48), (i % 4) as u32, 1, 0.25))
-        .collect();
-    input.econ.records = (0..48u64)
-        .map(|i| erec(10 + i, 7, 800, 700, 0.25, i))
-        .collect();
-    input.owner.records = (0..34_000u64)
-        .map(|i| {
-            orec(
-                10_000 + i,
-                10 + (i % 48),
-                1,
-                vec![
-                    owner(MobilityOwner0ColumnKind::Faction, 7 + (i % 4)),
-                    owner(MobilityOwner0ColumnKind::Species, 20 + (i % 3)),
-                ],
-            )
-        })
-        .collect();
-    input.owner.overlays = vec![
-        overlay(MobilityOwner0ColumnKind::Faction, 7, 42, 1),
-        overlay(MobilityOwner0ColumnKind::Species, 20, 43, 1),
-    ];
-
-    let report = compose_mobility_runtime0(&input);
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.owner_report.unwrap().peak_local_records, 34_000);
-    assert!(report.cpu_gpu_parity_preserved);
 }
 
 #[test]

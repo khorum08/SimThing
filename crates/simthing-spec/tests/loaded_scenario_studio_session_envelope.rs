@@ -131,14 +131,6 @@ fn loaded_scenario_session_envelope_defers_savefile_persistence_and_history() {
 }
 
 #[test]
-fn loaded_scenario_session_envelope_rejects_invalid_json() {
-    let err =
-        evaluate_loaded_scenario_studio_session_envelope_from_json_str("invalid", "{not json")
-            .expect_err("reject");
-    assert_eq!(err, SpecError::ValidationFailed);
-}
-
-#[test]
 fn normal_tests_do_not_write_loaded_scenario_session_fixtures() {
     let path = corpus_path(OWNER_SILO_FIXTURE);
     if !path.exists() {

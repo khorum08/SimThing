@@ -106,47 +106,6 @@ fn local_effect_application_preserves_source_simthing_ids() {
 }
 
 #[test]
-fn local_effect_application_rejects_missing_source_id() {
-    let effect = RuntimeLocalParticipantEffect {
-        source_simthing_id_raw: 0,
-        owner_ref: OwnerRef::new("owner_a"),
-        resource_key: ResourceKey::new("food"),
-        scope_id: ScopeId::new("scope"),
-        requested: 10,
-        allocated: 5,
-        unmet: 5,
-        satisfied: false,
-        effect_application_deferred: true,
-    };
-    let err = apply_runtime_local_effect_records(&[effect]).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        LocalEffectApplicationErrorKind::MissingSourceSimThingId
-    ));
-}
-
-#[test]
-fn local_effect_application_rejects_duplicate_source_application() {
-    let make = |id: u32| RuntimeLocalParticipantEffect {
-        source_simthing_id_raw: id,
-        owner_ref: OwnerRef::new("owner_a"),
-        resource_key: ResourceKey::new("food"),
-        scope_id: ScopeId::new("scope"),
-        requested: 10,
-        allocated: 5,
-        unmet: 5,
-        satisfied: false,
-        effect_application_deferred: true,
-    };
-    let effects = vec![make(42), make(42)];
-    let err = apply_runtime_local_effect_records(&effects).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        LocalEffectApplicationErrorKind::DuplicateSourceApplication
-    ));
-}
-
-#[test]
 fn local_effect_application_uses_checked_totals() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let report = evaluate_runtime_local_effect_application(&spec, TICK_ONE).expect("application");

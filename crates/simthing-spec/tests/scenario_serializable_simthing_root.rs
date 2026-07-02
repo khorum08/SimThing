@@ -31,6 +31,7 @@ fn minimal_scenario_spec() -> SimThingScenarioSpec {
         source: "SCENARIO-SERIALIZABLE-SIMTHING-ROOT-0".into(),
         generator_seed: MIXED_PATTERN_SEED,
         generator_shape: "minimal".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,
@@ -105,48 +106,6 @@ fn scenario_seed_roundtrips_low_high_mixed_pattern() {
 }
 
 #[test]
-fn scenario_seed_rejects_malformed_length() {
-    let mut spec = minimal_scenario_spec();
-    spec.root.add_property(
-        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
-        PropertyValue {
-            data: vec![0.0, 0.0],
-        },
-    );
-    assert_eq!(scenario_metadata_seed(&spec.root), None);
-    let err = validate_scenario_root_authority(&spec, ScenarioRootValidationMode::Canonical)
-        .expect_err("malformed length");
-    assert!(matches!(
-        err,
-        ScenarioRootError::MissingScenarioMetadata("generator_seed")
-    ));
-}
-
-#[test]
-fn scenario_seed_rejects_fractional_chunks_if_chunk_encoding_is_used() {
-    let mut spec = minimal_scenario_spec();
-    spec.root.add_property(
-        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
-        PropertyValue {
-            data: vec![1.5, 0.0, 0.0, 0.0],
-        },
-    );
-    assert_eq!(scenario_metadata_seed(&spec.root), None);
-}
-
-#[test]
-fn scenario_seed_rejects_out_of_range_chunks_if_chunk_encoding_is_used() {
-    let mut spec = minimal_scenario_spec();
-    spec.root.add_property(
-        SCENARIO_GENERATOR_SEED_PROPERTY_ID,
-        PropertyValue {
-            data: vec![65536.0, 0.0, 0.0, 0.0],
-        },
-    );
-    assert_eq!(scenario_metadata_seed(&spec.root), None);
-}
-
-#[test]
 fn scenario_root_roundtrips_metadata_properties() {
     let scenario = minimal_scenario_spec();
     let json = serialize_scenario_authority(&scenario).expect("serialize");
@@ -196,8 +155,8 @@ fn scenario_root_metadata_from_sidecar_is_exact() {
 #[test]
 fn scenario_metadata_seed_value_uses_four_u16_chunks() {
     let value = scenario_metadata_seed_value(MIXED_PATTERN_SEED);
-    assert_eq!(value.data.len(), 4);
-    assert_eq!(value.data, vec![57072.0, 39612.0, 22136.0, 4660.0]);
+    assert_eq!(value.raw_lanes().len(), 4);
+    assert_eq!(value.raw_lanes(), &[57072.0, 39612.0, 22136.0, 4660.0]);
 }
 
 #[test]
@@ -218,19 +177,6 @@ fn scenario_root_fixture_deserializes_from_corpus() {
 }
 
 #[test]
-fn legacy_world_root_fixture_uses_explicit_compatibility_path() {
-    let legacy_json = include_str!(
-        "../../simthing-mapeditor/tests/fixtures/terran_pirate_skeleton.simthing-scenario.json"
-    );
-    let loaded = deserialize_scenario_authority(legacy_json).expect("legacy terran pirate");
-    assert_eq!(loaded.root.kind, SimThingKind::World);
-    validate_legacy_world_root_compatibility(&loaded).expect("legacy World-root admitted");
-    assert!(
-        validate_scenario_root_authority(&loaded, ScenarioRootValidationMode::Canonical).is_err()
-    );
-}
-
-#[test]
 fn scenario_sidecar_metadata_is_transitional_not_authority() {
     let mut scenario = minimal_scenario_spec();
     scenario.scenario_id = "stale_sidecar".to_string();
@@ -239,18 +185,6 @@ fn scenario_sidecar_metadata_is_transitional_not_authority() {
     assert!(matches!(
         err,
         ScenarioRootError::ScenarioMetadataMismatch { .. }
-    ));
-}
-
-#[test]
-fn scenario_root_rejects_missing_metadata_if_canonical_mode_requires_it() {
-    let mut scenario = minimal_scenario_spec();
-    scenario.root.properties.remove(&SCENARIO_ID_PROPERTY_ID);
-    let err = validate_scenario_root_authority(&scenario, ScenarioRootValidationMode::Canonical)
-        .expect_err("missing metadata");
-    assert!(matches!(
-        err,
-        ScenarioRootError::MissingScenarioMetadata("scenario_id")
     ));
 }
 

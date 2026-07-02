@@ -184,13 +184,6 @@ fn loaded_scenario_runtime_report_chain_defers_savefile_history_ui_and_gpu_dispa
 }
 
 #[test]
-fn loaded_scenario_runtime_report_chain_rejects_invalid_json() {
-    let err = evaluate_loaded_scenario_runtime_report_chain_from_json_str("invalid", "{not json")
-        .expect_err("reject");
-    assert_eq!(err, SpecError::ValidationFailed);
-}
-
-#[test]
 fn normal_tests_do_not_write_loaded_scenario_runtime_chain_fixtures() {
     let path = corpus_path(OWNER_SILO_FIXTURE);
     if !path.exists() {

@@ -19,6 +19,7 @@ pub fn build_planet_child_rf_reduce_up_scoped_spec() -> SimThingScenarioSpec {
         source: "OWNER-SILO-RUNTIME-WRITEBACK-0".into(),
         generator_seed: 0x0001_2345_6789_ABCD,
         generator_shape: "owner_silo_runtime_writeback".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(
         &mut root,

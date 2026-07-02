@@ -168,30 +168,6 @@ fn semantic_local_effects_preserves_source_simthing_ids() {
 }
 
 #[test]
-fn semantic_local_effects_rejects_missing_source_id() {
-    let report = make_application_report(vec![make_record(0, "owner_a", 10, 5, 5, false)]);
-    let err = semantic_local_effects_from_application(&report).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        SemanticLocalEffectErrorKind::MissingSourceSimThingId
-    ));
-}
-
-#[test]
-fn semantic_local_effects_rejects_duplicate_output() {
-    let records = vec![
-        make_record(42, "owner_a", 10, 5, 5, false),
-        make_record(42, "owner_a", 10, 5, 5, false),
-    ];
-    let report = make_application_report(records);
-    let err = semantic_local_effects_from_application(&report).unwrap_err();
-    assert!(matches!(
-        err.kind,
-        SemanticLocalEffectErrorKind::DuplicateSemanticOutput
-    ));
-}
-
-#[test]
 fn semantic_local_effects_uses_checked_totals() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let report = evaluate_semantic_local_effects(&spec, TICK_ONE, 1).expect("semantic");

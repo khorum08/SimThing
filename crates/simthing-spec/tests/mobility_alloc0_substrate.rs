@@ -218,68 +218,6 @@ fn alloc_collapse_fragmentation_ratio() {
 }
 
 #[test]
-fn alloc_scale_soak_34k() {
-    let blocks = (0..48)
-        .map(|cell| block(10 + cell, 1, cell as u32 * 800, 800))
-        .collect::<Vec<_>>();
-    let events = (0..34_000)
-        .map(|i| {
-            let cell = i % 48;
-            arrival(10 + cell, 1, 100_000 + i, 34_000 - i)
-        })
-        .collect::<Vec<_>>();
-
-    let report = plan_mobility_alloc0(&input(blocks, vec![], events));
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.assignments.len(), 34_000);
-    assert_eq!(report.bulk_accounting_group_count, 48);
-    assert_eq!(report.total_declared_slots, 38_400);
-    assert!(report.peak_live_slots <= report.total_declared_slots);
-}
-
-#[test]
-fn alloc_rejects_live_compaction() {
-    let mut request = input(vec![block(1, 10, 0, 8)], vec![], vec![]);
-    request.forbidden.live_compaction = true;
-    let report = plan_mobility_alloc0(&request);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"live compaction is rejected"));
-}
-
-#[test]
-fn alloc_rejects_arrival_order_replay_significance() {
-    let mut request = input(vec![block(1, 10, 0, 8)], vec![], vec![]);
-    request.forbidden.arrival_order_replay_significance = true;
-    let report = plan_mobility_alloc0(&request);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"arrival-order replay-significant assignment is rejected"));
-}
-
-#[test]
-fn alloc_rejects_gpu_semaphore_or_atomic_path() {
-    let mut request = input(vec![block(1, 10, 0, 8)], vec![], vec![]);
-    request.forbidden.gpu_semaphore_or_atomic_path = true;
-    let report = plan_mobility_alloc0(&request);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"GPU semaphore or nondeterministic atomic allocator path is rejected"));
-}
-
-#[test]
-fn alloc_rejects_indirection_list_slotrange() {
-    let mut request = input(vec![block(1, 10, 0, 8)], vec![], vec![]);
-    request.forbidden.indirection_list_slotrange = true;
-    let report = plan_mobility_alloc0(&request);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"indirection-list SlotRange is rejected"));
-}
-
-#[test]
 fn alloc_keeps_reenroll_idroute_econ_owner_parked() {
     let mut request = input(vec![block(1, 10, 0, 8)], vec![], vec![]);
     request.forbidden.reenroll_idroute_econ_owner = true;

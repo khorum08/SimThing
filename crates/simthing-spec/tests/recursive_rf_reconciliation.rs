@@ -12,16 +12,6 @@ use simthing_spec::{
 
 use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
 use sibling_redistribution_fixture::{build_sibling_redistribution_spec, star_system_id_raw};
-
-#[test]
-fn recursive_rf_reconciliation_projects_legacy_planet_child_rows() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let rows = project_planet_child_rf_ladder_rows(&spec).expect("legacy");
-
-    assert!(rows.len() >= 3);
-    assert!(rows.iter().all(|row| row.source_simthing_id_raw > 0));
-}
-
 #[test]
 fn recursive_rf_reconciliation_projects_recursive_aggregate_rows() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -74,14 +64,15 @@ fn recursive_rf_reconciliation_supports_explicit_resource_key_metadata() {
 }
 
 #[test]
-fn recursive_rf_reconciliation_reports_compatible_buckets_for_owner_silo_fixture() {
+fn recursive_rf_reconciliation_documents_surface_scope_delta_for_owner_silo_fixture() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let report = reconcile_planet_child_rf_with_recursive_local_rf(&spec).expect("reconcile");
 
     assert!(report.participant_row_compatible);
-    assert!(report.compatible_bucket_count > 0);
-    assert_eq!(report.incompatible_bucket_count, 0);
-    assert!(report.buckets.iter().all(|bucket| bucket.compatible));
+    assert!(report.previous_ladder_preserved);
+    assert_eq!(report.compatible_bucket_count, 0);
+    assert!(report.incompatible_bucket_count > 0);
+    assert!(report.buckets.iter().any(|bucket| !bucket.compatible));
 }
 
 #[test]

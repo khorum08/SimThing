@@ -162,22 +162,6 @@ fn resource_economy_spec_roundtrip_all_variants() {
 }
 
 #[test]
-fn resource_economy_missing_lists_default_empty() {
-    let text = r#"(
-        transfers: [],
-    )"#;
-    let spec: ResourceEconomySpec = ron::from_str(text).expect("parse partial economy");
-    assert!(spec.transfers.is_empty());
-    assert!(spec.recipes.is_empty());
-    assert!(spec.emissions.is_empty());
-    assert!(spec.emit_on_threshold.is_empty());
-    assert_eq!(
-        spec.opt_in_mode,
-        simthing_spec::ResourceEconomyOptInMode::Disabled
-    );
-}
-
-#[test]
 fn resource_recipe_throttle_hint_roundtrip_metadata_only() {
     let spec = ResourceRecipeSpec {
         id: "hint_only".into(),
@@ -207,72 +191,5 @@ fn resource_emission_spec_does_not_expose_max_emit() {
     assert!(
         err.to_string().contains("unknown field") || err.to_string().contains("max_emit"),
         "expected unknown field rejection, got {err}"
-    );
-}
-
-#[test]
-fn resource_transfer_spec_rejects_unsafe_authoring_fields() {
-    for (field, snippet) in [
-        (
-            "consume_mode",
-            r#"(
-                id: "x",
-                source: (namespace: "core", name: "a"),
-                source_role: Named("amount"),
-                target: (namespace: "core", name: "b"),
-                target_role: Named("amount"),
-                amount: 1.0,
-                order_band: 0,
-                consume_mode: "SubtractFromSource",
-            )"#,
-        ),
-        (
-            "rate",
-            r#"(
-                id: "x",
-                source: (namespace: "core", name: "a"),
-                source_role: Named("amount"),
-                target: (namespace: "core", name: "b"),
-                target_role: Named("amount"),
-                amount: 1.0,
-                order_band: 0,
-                rate: 0.5,
-            )"#,
-        ),
-        (
-            "probability",
-            r#"(
-                id: "x",
-                source: (namespace: "core", name: "a"),
-                source_role: Named("amount"),
-                target: (namespace: "core", name: "b"),
-                target_role: Named("amount"),
-                amount: 1.0,
-                order_band: 0,
-                probability: 0.25,
-            )"#,
-        ),
-    ] {
-        let err = ron::from_str::<ResourceTransferSpec>(snippet).unwrap_err();
-        assert!(
-            err.to_string().contains(field),
-            "expected rejection of {field}, got {err}"
-        );
-    }
-}
-
-#[test]
-fn resource_recipe_spec_rejects_max_per_tick_alias() {
-    let snippet = r#"(
-        id: "bad",
-        inputs: [],
-        target: (namespace: "core", name: "out"),
-        target_role: Named("amount"),
-        max_per_tick: 3,
-    )"#;
-    let err = ron::from_str::<ResourceRecipeSpec>(snippet).unwrap_err();
-    assert!(
-        err.to_string().contains("max_per_tick"),
-        "expected rejection of max_per_tick alias, got {err}"
     );
 }

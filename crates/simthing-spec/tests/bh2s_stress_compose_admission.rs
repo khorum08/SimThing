@@ -26,12 +26,6 @@ fn base_spec() -> StressComposeSpec {
 }
 
 #[test]
-fn bh2s_admission_accepts_valid_stress_shape() {
-    let compiled = compile_stress_compose_preview(&base_spec()).expect("valid");
-    assert_eq!(compiled.profiles.len(), 2);
-}
-
-#[test]
 fn bh2s_admission_rejects_input_field_budget_exceeded() {
     let spec = StressComposeSpec {
         width: 4,
@@ -59,18 +53,4 @@ fn bh2s_admission_rejects_input_field_budget_exceeded() {
     assert!(compile_stress_compose_preview(&spec).is_err());
     assert!(spec.profiles.len() <= STRESS_COMPOSE_MAX_PROFILES);
     let _ = STRESS_COMPOSE_MAX_INPUT_FIELDS;
-}
-
-#[test]
-fn bh2s_admission_rejects_duplicate_output_cols() {
-    let mut spec = base_spec();
-    spec.profiles[1].output_col = 4;
-    assert!(compile_stress_compose_preview(&spec).is_err());
-}
-
-#[test]
-fn bh2s_admission_rejects_column_aliasing() {
-    let mut spec = base_spec();
-    spec.profiles[0].output_col = 0;
-    assert!(compile_stress_compose_preview(&spec).is_err());
 }

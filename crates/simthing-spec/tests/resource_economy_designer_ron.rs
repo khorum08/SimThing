@@ -67,18 +67,3 @@ fn resource_economy_designer_ron_compile_succeeds() {
     assert_eq!(compiled.recipes[0].inputs.len(), 2);
     assert_eq!(compiled.emissions.len(), 1);
 }
-
-#[test]
-fn resource_economy_designer_ron_unknown_field_rejected_if_supported() {
-    let invalid = FIXTURE.replace(
-        "source: (namespace: \"core\", name: \"credits\")",
-        "soruce_property: (namespace: \"core\", name: \"credits\")",
-    );
-    let err = deserialize_game_mode_ron(&invalid).expect_err("unknown transfer field rejected");
-    let message = err.to_string();
-
-    assert!(
-        message.contains("soruce_property") || message.contains("unknown field"),
-        "unexpected error: {message}"
-    );
-}

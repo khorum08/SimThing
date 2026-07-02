@@ -83,65 +83,6 @@ fn runtime_local_allocation_preserves_owner_resource_scope() {
 }
 
 #[test]
-fn runtime_local_allocation_rejects_missing_source_simthing_id() {
-    let disburse = vec![RuntimeOwnerSiloDisburseDownResult {
-        owner_ref: OwnerRef::new("owner_x"),
-        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
-        available_before: 10,
-        allocated_total: 5,
-        remaining_after: 5,
-        unmet_total: 0,
-        allocations: vec![RuntimeOwnerSiloDisburseDownAllocation {
-            owner_ref: OwnerRef::new("owner_x"),
-            resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
-            scope_id: ScopeId::new("scope_a"),
-            planet_id: Some("scope_a".into()),
-            star_system_gridcell_id_raw: Some(8),
-            requested: 5,
-            allocated: 5,
-            unmet: 0,
-            priority: 10,
-            source_simthing_id_raw: None,
-        }],
-    }];
-    let err = apply_runtime_local_allocations_from_disburse_down(&disburse).unwrap_err();
-    assert_eq!(
-        err.kind,
-        RuntimeLocalAllocationApplicationErrorKind::MissingSourceSimThingId
-    );
-}
-
-#[test]
-fn runtime_local_allocation_rejects_duplicate_source_allocation() {
-    let allocation = RuntimeOwnerSiloDisburseDownAllocation {
-        owner_ref: OwnerRef::new("owner_x"),
-        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
-        scope_id: ScopeId::new("scope_a"),
-        planet_id: Some("scope_a".into()),
-        star_system_gridcell_id_raw: Some(8),
-        requested: 5,
-        allocated: 5,
-        unmet: 0,
-        priority: 10,
-        source_simthing_id_raw: Some(101),
-    };
-    let disburse = vec![RuntimeOwnerSiloDisburseDownResult {
-        owner_ref: OwnerRef::new("owner_x"),
-        resource_key: ResourceKey::new(PLANET_CHILD_RF_DEFAULT_RESOURCE_KEY),
-        available_before: 10,
-        allocated_total: 10,
-        remaining_after: 0,
-        unmet_total: 0,
-        allocations: vec![allocation.clone(), allocation],
-    }];
-    let err = apply_runtime_local_allocations_from_disburse_down(&disburse).unwrap_err();
-    assert_eq!(
-        err.kind,
-        RuntimeLocalAllocationApplicationErrorKind::DuplicateSourceAllocation
-    );
-}
-
-#[test]
 fn runtime_local_allocation_uses_checked_totals() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let disburse = disburse_results_for_spec(&spec);

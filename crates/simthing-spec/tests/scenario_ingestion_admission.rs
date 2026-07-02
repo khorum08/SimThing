@@ -26,6 +26,28 @@ fn corpus_path(name: &str) -> PathBuf {
         .join(name)
 }
 
+fn repo_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").join(name)
+}
+
+fn resolve_corpus_path_reference(reference: &str) -> PathBuf {
+    let trimmed = reference.trim();
+    let literal = PathBuf::from(trimmed);
+    if literal.exists() {
+        return literal;
+    }
+
+    let normalized = trimmed.replace('\\', "/");
+    if let Some(index) = normalized.find("scenarios/") {
+        let candidate = repo_path(&normalized[index..]);
+        if candidate.exists() {
+            return candidate;
+        }
+    }
+
+    literal
+}
+
 fn load_corpus(name: &str) -> String {
     fs::read_to_string(corpus_path(name)).unwrap_or_else(|_| panic!("missing corpus {name}"))
 }
@@ -36,6 +58,7 @@ fn base_canonical_spec(scenario_id: &str) -> SimThingScenarioSpec {
         source: "GENERAL-SCENARIO-INGESTION-ADMISSION-0".into(),
         generator_seed: 0x0001_2345_6789_ABCD,
         generator_shape: "ingestion".into(),
+        ..SimThingScenarioProvenance::default()
     };
     apply_scenario_metadata_to_root(&mut root, scenario_id, &provenance, SCENARIO_SCHEMA_VERSION);
     let mut game_session = SimThing::new(SimThingKind::GameSession, 0);
@@ -144,46 +167,6 @@ fn galaxymap_with_gridcells() -> SimThingScenarioSpec {
 }
 
 #[test]
-fn ingests_minimal_scenario_root_as_admitted_or_partially_admitted() {
-    let json = load_corpus("minimal_scenario_root.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("minimal_scenario_root", &json, CANONICAL_PROFILE);
-    assert!(matches!(
-        result.classification,
-        ScenarioIngestionClassification::Admitted
-            | ScenarioIngestionClassification::PartiallyAdmitted
-    ));
-    assert!(result.validation.canonical_validation_ok);
-    assert!(result.canonical_tree.has_game_session);
-    assert_eq!(result.owner_admission.owner_count, 1);
-}
-
-#[test]
-fn ingests_minimal_galaxymap_as_admitted() {
-    let json = load_corpus("minimal_scenario_galaxymap.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("minimal_galaxymap", &json, CANONICAL_PROFILE);
-    assert!(matches!(
-        result.classification,
-        ScenarioIngestionClassification::Admitted
-            | ScenarioIngestionClassification::PartiallyAdmitted
-    ));
-    assert_eq!(result.canonical_tree.gridcell_count, 2);
-    assert_eq!(result.galaxy_map_admission.gridcell_inert_count, 1);
-    assert_eq!(result.galaxy_map_admission.gridcell_star_system_count, 1);
-    assert!(result.owner_silo.is_some());
-}
-
-#[test]
-fn rejects_missing_gamesession() {
-    let json = load_corpus("invalid_missing_gamesession.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("missing_gs", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(!result.validation.gamesession_ok);
-}
-
-#[test]
 fn rejects_missing_owner() {
     let json = load_corpus("invalid_missing_owner.simthing-scenario.json");
     let (result, _) = ingest_scenario_from_str("missing_owner", &json, CANONICAL_PROFILE);
@@ -209,60 +192,9 @@ fn rejects_duplicate_owner_ids() {
 }
 
 #[test]
-fn rejects_missing_galaxymap() {
-    let json = load_corpus("invalid_missing_galaxymap.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("missing_map", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(!result.validation.galaxy_map_ok);
-}
-
-#[test]
-fn rejects_bad_map_container() {
-    let json = load_corpus("invalid_bad_map_container.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("bad_map_container", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(!result.validation.stead_mapping_ok);
-}
-
-#[test]
-fn classifies_planet_child_as_unsupported_not_rejected_if_otherwise_valid() {
-    let json = load_corpus("unsupported_planet_child_valid_schema.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("planet_child", &json, CANONICAL_PROFILE);
-    assert_ne!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(result
-        .deferrals
-        .iter()
-        .any(|d| { d.kind == ScenarioDeferralKind::UnsupportedChildLocationRole }));
-}
-
-#[test]
-fn classifies_unknown_gridcell_role_as_unsupported_or_partially_admitted() {
-    let json = load_corpus("unsupported_unknown_gridcell_role.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("unknown_role", &json, CANONICAL_PROFILE);
-    assert!(matches!(
-        result.classification,
-        ScenarioIngestionClassification::PartiallyAdmitted
-            | ScenarioIngestionClassification::Unsupported
-    ));
-    assert!(result
-        .deferrals
-        .iter()
-        .any(|d| { d.kind == ScenarioDeferralKind::UnsupportedGridcellRole }));
-}
-
-#[test]
 fn classifies_legacy_terran_pirate_as_legacy_compatibility_not_canonical() {
     let reference = load_corpus("legacy_world_root_terran_pirate_reference.txt");
-    let path = PathBuf::from(reference.trim());
+    let path = resolve_corpus_path_reference(&reference);
     let json = fs::read_to_string(&path).expect("terran pirate path");
     let (result, _) = ingest_scenario_from_str("terran_pirate", &json, CANONICAL_PROFILE);
     assert_ne!(
@@ -277,55 +209,6 @@ fn classifies_legacy_terran_pirate_as_legacy_compatibility_not_canonical() {
         .any(|d| { d.kind == ScenarioDeferralKind::LegacyWorldRootCompatibility }));
 }
 
-#[test]
-fn ingestion_result_contains_typed_deferrals() {
-    let mut spec = base_canonical_spec("typed_deferrals");
-    let game_session = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .expect("gs");
-    let owner = game_session
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Owner)
-        .expect("owner");
-    owner.add_child(SimThing::new(
-        SimThingKind::Custom("CapabilityTree".into()),
-        0,
-    ));
-    let result = ingest_scenario("typed_deferrals", &spec, CANONICAL_PROFILE);
-    assert!(result.deferrals.iter().any(|d| {
-        d.kind == ScenarioDeferralKind::CapabilityTreeNotYetExecuted
-            && d.simthing_id_raw.is_some()
-            && !d.reason.is_empty()
-    }));
-}
-
-#[test]
-fn ingestion_result_preserves_lossless_seed_metadata() {
-    let json = load_corpus("minimal_scenario_root.simthing-scenario.json");
-    let (result, spec) = ingest_scenario_from_str("seed_meta", &json, CANONICAL_PROFILE);
-    let spec = spec.expect("spec");
-    assert!(result.validation.seed_metadata_ok);
-    let seed = scenario_metadata_seed(&spec.root).expect("root seed");
-    assert_eq!(seed, spec.provenance.generator_seed);
-    assert_eq!(seed, 0x0001_2345_6789_ABCD);
-}
-
-#[test]
-#[ignore = "run once to refresh corpus invalid/unsupported fixtures"]
-fn write_ingestion_corpus_fixtures() {
-    write_missing_gamesession();
-    write_missing_owner();
-    write_duplicate_owners();
-    write_missing_galaxymap();
-    write_bad_map_container();
-    write_planet_child();
-    write_unknown_gridcell_role();
-    write_terran_pirate_reference();
-}
 
 fn write_json(spec: &SimThingScenarioSpec, name: &str) {
     let json = serialize_scenario_authority(spec).expect("serialize");
