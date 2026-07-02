@@ -382,13 +382,32 @@ Boundary tiers:
 
 | Rung | ID | Scope | State | DoD |
 |---|---|---|---|---|
-| D0 | `TEST-PARE-INVENTORY-0` | Mechanical inventory and classification of the current test corpus; zero deletions. | **PROBATION** | `scripts/ci/test_inventory.tsv` exists; `scripts/ci/test_inventory_check.sh` validates schema, exact mechanical coverage, never-pare rules, and superseding-boundary requirements; results recorded in `docs/tests/test_pare_inventory_0_results.md`. |
+| D0 | `TEST-PARE-INVENTORY-0` | Mechanical inventory and classification of the current test corpus; zero deletions. | **DONE — DA-APPROVED** (2026-07-02, validated end-to-end during the D-DA/D-LAW deep review) | `scripts/ci/test_inventory.tsv` exists; `scripts/ci/test_inventory_check.sh` validates schema, exact mechanical coverage, never-pare rules, and superseding-boundary requirements; results recorded in `docs/tests/test_pare_inventory_0_results.md`. |
 | D1 | `TEST-PARE-AUDIT-1` | Legacy source-file-family audit of D0 candidate rows. | **SUPERSEDED** | Preserved as historical context only; it is no longer deletion authority after `DA-RULING: ADMISSION-BOUNDARY-COLLAPSE`. |
 | D2a | `TEST-PARE-CLAUSETHING-0` | First per-crate collapse under the old same-family standard. | **COMPLETE / HISTORICAL** | Closed by #1086; its 41 blocked rows are rekeyed by boundary in `TEST-PARE-STANDARD-DA-0`. |
-| D-DA | `TEST-PARE-STANDARD-DA-0` | Adopt boundary-keyed paring standard and regenerate the ledger with zero deletions. | **PROBATION** | `scripts/ci/test_pare_boundaries.tsv` and `scripts/ci/test_pare_boundary_rows.tsv` cover every live inventory row plus historical PARED rows; `scripts/ci/test_pare_boundary_check.sh` enforces owner/tier/disposition rules; module-marker rows are mapped or promotion-required; no cargo tests or crate edits. |
-| D-LAW | `TEST-ADMISSION-REGIME-0` | Make test admission standing law, not Track D commentary. | **PROBATION** | Doctrine landings in core/constitution/handoff; `promotion_target` survivor trichotomy in `scripts/ci/test_inventory.tsv`; `TEST-BUDGET` delta heuristic; `test_inventory_drift_check.sh` stock gate wired into doctrine scan/selftest; kernel/sim KEEP strict tier; promotion-wave plan reconciles with ledger. |
+| D-DA | `TEST-PARE-STANDARD-DA-0` | Adopt boundary-keyed paring standard and regenerate the ledger with zero deletions. | **DONE — DA-APPROVED** (2026-07-02, deep review; merged #1087) | `scripts/ci/test_pare_boundaries.tsv` and `scripts/ci/test_pare_boundary_rows.tsv` cover every live inventory row plus historical PARED rows; `scripts/ci/test_pare_boundary_check.sh` enforces owner/tier/disposition rules; module-marker rows are mapped or promotion-required; no cargo tests or crate edits. |
+| D-LAW | `TEST-ADMISSION-REGIME-0` | Make test admission standing law, not Track D commentary. | **DONE — DA-APPROVED** (2026-07-02, deep review + DA 0R; landed on master via #1088→#1089) | Doctrine landings in core/constitution/handoff; `promotion_target` survivor trichotomy in `scripts/ci/test_inventory.tsv`; `TEST-BUDGET` delta heuristic; `test_inventory_drift_check.sh` stock gate wired into doctrine scan/selftest; kernel/sim KEEP strict tier; promotion-wave plan reconciles with ledger. |
 | D2+ | `TEST-PARE-BOUNDARY-*` | Future coverage-complete deletion/collapse waves by boundary family. | **FUTURE** | Each wave processes every row in its named boundary families to terminal disposition; no row quotas; no broad full-crate test sweep is used as proof. |
 | DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after material reduction lands. | **FUTURE** | Until then, weekly scheduled sentinel = sentinel-core only and full quarantined battery = workflow_dispatch-only. |
+
+> **DA graduation log (executive DA, 2026-07-02 — D0 + D-DA + D-LAW).** All three rungs **DONE / DA-APPROVED**
+> after deep review against the tree: three-altitude doctrine landings verified (core §1.2, constitution
+> §0.9.5 by addition incl. the kernel strict tier, handoff template §6); all four drift-gate FAIL cases
+> proven biting (unledgered, stale-ledger, unowned-KEEP, kernel-strict-tier); ledger counts reconciled
+> (6,301 rows; KEEP 829; AUDIT 5,472 awaiting waves); kernel/sim KEEP rows verified exclusively never-pare
+> classes (138 oracle-parity / 39 seal-proof / 2 golden-byte). **DA 0R applied pre-merge:** the initial
+> ledger filed all 122 promotion-target rows on never-pare-set members (the nine STEAD §8 suites +
+> `custom_layout_ethics_axis`) — never-pare takes categorical precedence over promotion-targeting; root
+> cause was the DA handoff's own incomplete `permanent-residue` enum (no doc-named/stead-required tokens).
+> Enum extended in all three checkers, 122 rows reclassified, wave plan corrected to zero rows with the
+> precedence rule recorded; the kernel/sim strict tier was deliberately **not** widened. **Process slip
+> (the DA's own, recorded):** #1088 merged into its stacked base branch because #1087's head branch was not
+> deleted at merge, so GitHub never retargeted the child PR — corrected via #1089 through the normal gate.
+> Lesson: stacked merges use `--delete-branch`, or retarget the child before merging. **Recorded debt
+> (promotion target):** the legal `permanent-residue` token set is now duplicated across three checkers
+> (`test_inventory_drift_check.sh` / `test_inventory_check.sh` / `test_pare_boundary_check.sh`) — "no
+> invariant in the engine" wants one data file all three read; consolidate at the next Track D rung that
+> touches a checker.
 
 ## 5. Honest residue / non-goals
 
