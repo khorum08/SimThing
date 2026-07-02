@@ -92,7 +92,7 @@ bash scripts/ci/doctrine_scan.sh
 
 Local doctrine scan: PASS, failures=0, inspect=0.
 Local gen_digest --check: PASS.
-Live GitHub Doctrine Scan: pending until PR head CI completes.
+Live GitHub Doctrine Scan: PASS on PR #1078.
 
 ## Scope Ledger
 
@@ -108,7 +108,7 @@ Live GitHub Doctrine Scan: pending until PR head CI completes.
 
 ## Graduation Routing
 
-CI verdict: PASS-RELIABLE after live GitHub Doctrine Scan passes on the PR head; PROBATION until then.
+CI verdict: PASS-RELIABLE; PROBATION pending orchestrator review.
 
 Triage entries: none locally.
 
