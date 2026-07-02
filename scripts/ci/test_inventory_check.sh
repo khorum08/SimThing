@@ -20,6 +20,7 @@ import sys
 root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
 audit = root / "scripts/ci/test_pare_audit.tsv"
+boundary_rows = root / "scripts/ci/test_pare_boundary_rows.tsv"
 
 required = [
     "crate",
@@ -262,14 +263,21 @@ else:
             errors.append(f"audit missing {len(missing_audit)} candidate rows; first={missing_audit[:5]}")
         if extra_audit:
             errors.append(f"audit has {len(extra_audit)} non-candidate rows; first={extra_audit[:5]}")
-        print("TEST-PARE-AUDIT REPORT")
+        print("TEST-PARE-AUDIT LEGACY REPORT")
         print(f"  audit rows: {len(audit_rows)}")
         print(f"  candidate rows: {len(candidate_keys)}")
         print(f"  missing audit rows: {len(missing_audit)}")
         print(f"  extra audit rows: {len(extra_audit)}")
     else:
-        print("TEST-PARE-AUDIT REPORT")
+        print("TEST-PARE-AUDIT LEGACY REPORT")
         print("  audit file: absent")
+
+    print("TEST-PARE-BOUNDARY AUTHORITY")
+    if boundary_rows.exists():
+        print(f"  boundary rows file: {boundary_rows.relative_to(root)}")
+        print("  status: authoritative deletion/collapse ledger; validate with scripts/ci/test_pare_boundary_check.sh")
+    else:
+        errors.append(f"missing boundary authority file {boundary_rows}")
 
     try:
         diff = subprocess.run(

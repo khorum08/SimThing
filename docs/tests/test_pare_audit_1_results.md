@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - D1 created the actionable paring ledger. It does not delete or edit tests.
+**SUPERSEDED** - D1 created the old source-file-family paring ledger. `TEST-PARE-STANDARD-DA-0` replaces it as deletion authority with a boundary-keyed ledger after `DA-RULING: ADMISSION-BOUNDARY-COLLAPSE`.
 
 Prerequisite satisfied: PR #1084 (`TEST-PARE-INVENTORY-0`) merged to `master` at `0aa10bd0b4f954defeef00fe5a979e8598d8f23f` before this branch was opened.
 
@@ -14,6 +14,14 @@ Prerequisite satisfied: PR #1084 (`TEST-PARE-INVENTORY-0`) merged to `master` at
 - Updated Track D design/operator/evidence docs.
 
 ## Audit Method
+
+Supersession note: this method is retained as historical context only. The old `PARE`, `COLLAPSE`, and `AUDIT-BLOCKED` classifications do not authorize deletion after the DA ruling. Current Track D deletion authority is:
+
+- `scripts/ci/test_pare_boundaries.tsv`
+- `scripts/ci/test_pare_boundary_rows.tsv`
+- `scripts/ci/test_pare_boundary_check.sh`
+
+Under the new standard, admission-adjacent, hygiene-theater, and usecase-superseded rows are presumptive retire/collapse/consolidate unless the row names a unique invariant not enforced by a type/seal boundary, admission hard-error, doctrine scan, compile-fail proof, oracle, golden artifact, required invariant, or active live rung suite.
 
 D1 audits the D0 candidate classes:
 
@@ -117,6 +125,8 @@ Unknown D1 rows: 0.
 
 All 138 unknown rows are now `AUDIT-BLOCKED` with the `module-marker-blocked` audit class and a reason: the row represents a test module marker, so deletion/collapse requires source-level expansion before a paring decision.
 
+Boundary-standard correction: `AUDIT-BLOCKED` is a queue state, not a shield. `TEST-PARE-STANDARD-DA-0` maps module markers with child rows already inventoried and marks the remaining mechanically unexpanded markers `PROMOTION_REQUIRED` with a specific missing-boundary reason.
+
 ## Boundary Evidence
 
 Boundary families used in `scripts/ci/test_pare_audit.tsv`:
@@ -199,9 +209,9 @@ TEST-INVENTORY-CHECK-VERDICT: PASS
 
 ## Graduation Routing
 
-Recommended status: **PROBATION**.
+Recommended status: **SUPERSEDED BY TEST-PARE-STANDARD-DA-0**.
 
-Why: D1 creates a deletion/collapse plan, but no tests are deleted yet. DA should verify candidate coverage, boundary naming, representative rows, never-pare protection, unknown reduction, and the zero crate source/test diff before authorizing the first per-crate paring PR.
+Why: D1 created the first deletion/collapse plan, but the DA ruling replaces its source-family standard with boundary ownership, tiered dispositions, a consolidation exit, and promotion-required rows.
 
 ## Known Gaps / Next
 

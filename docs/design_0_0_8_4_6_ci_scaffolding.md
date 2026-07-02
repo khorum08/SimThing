@@ -346,30 +346,48 @@ spawn-per-fixture.
 
 ## 4. Track D - test-corpus paring: admission ladder applied to tests
 
-Track D opens after `CI-B-WEBCHAT-PR1R` as a corpus-maintenance track for tests themselves. Its first job is not
-deletion. Its first job is a complete inventory and conservative classification pass so later paring rungs can
-distinguish seal/oracle proof from duplicated admission theater.
+Track D opens after `CI-B-WEBCHAT-PR1R` as a corpus-maintenance track for tests themselves. Fable High / DA ruling
+`DA-RULING: ADMISSION-BOUNDARY-COLLAPSE` resets the deletion authority: the old source-file-family ledger is legacy
+context only. Current authority is boundary-keyed, with tests hanging off the proof boundary that owns the invariant.
+
+The burden of proof is on retention for admission-adjacent, hygiene-theater, and usecase-superseded rows. Historical examples are not inherently valuable. A test whose invariant is owned by a type/seal boundary, admission hard-error, doctrine scan, compile-fail proof, oracle, golden artifact, or required invariant is retired, collapsed, or consolidated according to the owning boundary tier. Rejection-class enumeration beyond one representative is kabuki by existing law.
+
+Classifier-input families consolidate to one table-driven test when variants exercise distinct classifier paths. They do not survive as N independent tests, and they are not deleted if no other boundary owns the classifier behavior.
 
 Fable route for operators:
 
 - Owner-deep full batteries are quarantined artillery, not routine proof.
-- Weekly/master-only or ladder-boundary owner-deep cadence is not decided until after paring data exists.
+- Until material reduction lands: weekly scheduled sentinel = sentinel-core only; full quarantined battery = workflow_dispatch-only.
+- `sentinel-core` means oracle/parity, compile_fail, golden-byte, STEAD-required, determinism, doc-named invariants, and active live rung suites where applicable.
+- After paring, the full battery may graduate to scheduled sentinel plus ladder-boundary run.
 - Smoke PASS is mechanics-only; it is not seal-proof.
 - Seal-residue rungs still require targeted profile/probe proof.
 - Timeout semantics and profile data remain Track B concerns.
-- Track D starts with inventory and classification, with zero deletions.
+- Track D standard and ledger rungs create deletion authority; per-boundary waves perform actual deletions/collapses.
 
 Draconian rule: never pare `compile_fail`, trybuild, seal-proof, oracle-parity, golden-byte, STEAD-required,
-invariant-required, or named invariant coverage unless a later rung proves an explicit stronger superseding
-boundary. D0 records candidates; it does not remove tests.
+invariant-required, doc-named invariant coverage, `custom_layout_ethics_axis`, escaped-bug regressions, or active
+track live rung suites while their track is open, unless a later DA-cleared rung proves an explicit stronger
+superseding boundary.
+
+Boundary tiers:
+
+- `TIER1_TYPE_SEAL`: illegal state is uncompilable; runtime duplicates are DELETE candidates with zero runtime representatives.
+- `TIER2_ADMISSION_HARD_ERROR`: one representative negative test per admission boundary; variants collapse to that representative.
+- `TIER3_DOCTRINE_SCAN`: scanner self-test is the representative; source tests duplicating scanned invariants are DELETE candidates.
+- `TIER4_CLASSIFIER_CONSOLIDATION`: real classifier coverage becomes one table-driven test containing the input rows.
+- `TIER5_BEHAVIOR_REGRESSION`: retained behavior/escaped-bug rows unless a future stronger owner is named.
+- `TIER6_PROMOTION_REQUIRED`: real invariant with no owner yet; this is a rustification queue, not a shield.
+- `TIER7_NEVER_PARE`: terminal proof classes and active live rung suites.
 
 | Rung | ID | Scope | State | DoD |
 |---|---|---|---|---|
 | D0 | `TEST-PARE-INVENTORY-0` | Mechanical inventory and classification of the current test corpus; zero deletions. | **PROBATION** | `scripts/ci/test_inventory.tsv` exists; `scripts/ci/test_inventory_check.sh` validates schema, exact mechanical coverage, never-pare rules, and superseding-boundary requirements; results recorded in `docs/tests/test_pare_inventory_0_results.md`. |
-| D1 | `TEST-PARE-AUDIT-1` | Audit D0 candidate rows against actual admission, usecase, duplication, and hygiene boundaries. | **PROBATION** | `scripts/ci/test_pare_audit.tsv` accounts for all 1,226 D0 candidate rows: 50 PARE-plan rows, 542 COLLAPSE-plan rows, and 634 AUDIT-BLOCKED rows; every PARE/COLLAPSE row names a superseding boundary/representative as required; unknown rows are reduced to explicit AUDIT-BLOCKED reasons; no seal/oracle/golden/STEAD/invariant/compile-fail coverage is weakened. |
-| D2a | `TEST-PARE-CLAUSETHING-0` | First per-crate collapse: clausething Wave 2 duplicate admission batteries. | **PROBATION** | Source review partitions D1's 49 planned COLLAPSE rows; 4 same-family tests are deleted, 4 representatives are kept, and 41 rows are blocked as distinct rejection families; live inventory re-checks at 6,296 rows with no missing/extra rows; no never-pare coverage is removed. |
-| D2+ | `TEST-PARE-CRATE-*` | Further per-crate deletion/collapse proposals. | **FUTURE** | Each proposed PARE/COLLAPSE row names the surviving boundary and passes targeted proof; no broad full-crate test sweep is used as the proof. |
-| DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after paring data exists. | **FUTURE** | Cadence recommendation is based on D0/D1 data and Track B profile evidence; smoke remains mechanics-only. |
+| D1 | `TEST-PARE-AUDIT-1` | Legacy source-file-family audit of D0 candidate rows. | **SUPERSEDED** | Preserved as historical context only; it is no longer deletion authority after `DA-RULING: ADMISSION-BOUNDARY-COLLAPSE`. |
+| D2a | `TEST-PARE-CLAUSETHING-0` | First per-crate collapse under the old same-family standard. | **COMPLETE / HISTORICAL** | Closed by #1086; its 41 blocked rows are rekeyed by boundary in `TEST-PARE-STANDARD-DA-0`. |
+| D-DA | `TEST-PARE-STANDARD-DA-0` | Adopt boundary-keyed paring standard and regenerate the ledger with zero deletions. | **PROBATION** | `scripts/ci/test_pare_boundaries.tsv` and `scripts/ci/test_pare_boundary_rows.tsv` cover every live inventory row plus historical PARED rows; `scripts/ci/test_pare_boundary_check.sh` enforces owner/tier/disposition rules; module-marker rows are mapped or promotion-required; no cargo tests or crate edits. |
+| D2+ | `TEST-PARE-BOUNDARY-*` | Future coverage-complete deletion/collapse waves by boundary family. | **FUTURE** | Each wave processes every row in its named boundary families to terminal disposition; no row quotas; no broad full-crate test sweep is used as proof. |
+| DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after material reduction lands. | **FUTURE** | Until then, weekly scheduled sentinel = sentinel-core only and full quarantined battery = workflow_dispatch-only. |
 
 ## 5. Honest residue / non-goals
 
