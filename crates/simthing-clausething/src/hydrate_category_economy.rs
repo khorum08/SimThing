@@ -6,6 +6,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use serde::{Deserialize, Serialize};
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, ClampBehavior, LogTier, SubFieldRole, SubFieldSpec,
     TransformOp,
@@ -50,20 +51,20 @@ pub struct CategoryFlowContribution {
     pub rate: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EconomicAxis {
     Produces,
     Upkeep,
     Cost,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EconomicOp {
     Add,
     Mult,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DecodedEconomicKey {
     pub category: String,
     pub resource: String,

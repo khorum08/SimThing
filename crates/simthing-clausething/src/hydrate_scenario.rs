@@ -22,14 +22,21 @@ use simthing_spec::spec::scenario::{
     GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
     OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
     SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SimThingScenarioGrid, SimThingScenarioProvenance,
-    apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_scenario_metadata_to_root,
-    deserialize_scenario_authority, make_galaxy_map, make_owner_entity,
-    scenario_metadata_string_value, scenario_metadata_u32_value, structural_property_value_u32,
+    apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
+    apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
+    deserialize_scenario_authority, make_galaxy_map, make_owner_entity, scenario_metadata_string_value,
+    scenario_metadata_u32_value, structural_property_value_u32,
+};
+use simthing_spec::{
+    apply_star_system_local_grid_frame_metadata, is_surface_gridcell, make_planet_gridcell,
+    PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
 };
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 
 use crate::error::HydrateError;
+use crate::hydrate_category_economy::{decode_economic_modifier_key, DecodedEconomicKey};
 use crate::hydrate_field_operator::hydrate_field_operator_property;
 use crate::hydrate_palma_feedstock::{
     HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK, finalize_palma_feedstock,
@@ -120,6 +127,24 @@ pub struct HydratedScenarioPack {
     /// TP-OWNERSHIP-COLUMNS-0 deterministic ownership-volume assignments.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ownership_volumes: Vec<HydratedOwnershipVolume>,
+    /// TP-PLANET-SURFACE-PAYLOAD-0 owned/neutral planet/surface/factory/cohort authoring.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub planet_surface_payloads: Vec<HydratedPlanetSurfacePayload>,
+}
+
+/// Authored planet/surface payload profile for owned or neutral star systems.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HydratedPlanetSurfacePayload {
+    pub id: String,
+    pub applies_to: String,
+    pub planets_per_system_min: u32,
+    pub surface_grid: String,
+    pub factory_min: u32,
+    pub cohort_min: u32,
+    pub categories: Vec<String>,
+    pub resources: Vec<String>,
+    pub decoded_modifier_keys: Vec<DecodedEconomicKey>,
+    pub modifier_amounts: Vec<f32>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -254,6 +279,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut seen_owner_keys = BTreeSet::new();
     let mut ownership_volume_drafts = Vec::new();
     let mut seen_ownership_volume_ids = BTreeSet::new();
+    let mut planet_surface_payload_drafts = Vec::new();
+    let mut seen_planet_surface_payload_ids = BTreeSet::new();
     let mut embedded_static_galaxy_scenarios = Vec::new();
     let mut embedded_placements = Vec::new();
     let mut embedded_grid_size = None;
@@ -316,6 +343,16 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     ));
                 }
                 ownership_volume_drafts.push(volume);
+            }
+            "planet_surface_payload" => {
+                let payload = parse_planet_surface_payload(field)?;
+                if !seen_planet_surface_payload_ids.insert(payload.id.clone()) {
+                    return Err(HydrateError::new_spanned(
+                        format!("duplicate planet_surface_payload id `{}`", payload.id),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                planet_surface_payload_drafts.push(payload);
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -482,6 +519,18 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         &owners,
         embedded_static_galaxy_scenarios.first(),
     )?;
+    let planet_surface_payloads = finalize_planet_surface_payloads(planet_surface_payload_drafts)?;
+    for payload in &planet_surface_payloads {
+        for overlay in payload_economy_overlays(payload, &scenario_id) {
+            if !seen_overlay_ids.insert(overlay.id.clone()) {
+                return Err(HydrateError::new(format!(
+                    "duplicate economy overlay id `{}` from planet_surface_payload `{}`",
+                    overlay.id, payload.id
+                )));
+            }
+            game_mode.overlays.push(overlay);
+        }
+    }
     let authority_root = if owners.is_empty() {
         None
     } else {
@@ -491,6 +540,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
             &owners,
             embedded_static_galaxy_scenarios.first(),
             &ownership_volumes,
+            &planet_surface_payloads,
         ))
     };
     Ok(HydratedScenarioPack {
@@ -509,6 +559,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         authority_root,
         owners,
         ownership_volumes,
+        planet_surface_payloads,
     })
 }
 
@@ -602,6 +653,7 @@ fn build_authority_root(
     owners: &[HydratedScenarioOwner],
     embedded: Option<&HydratedEmbeddedStaticGalaxyScenario>,
     ownership_volumes: &[HydratedOwnershipVolume],
+    planet_surface_payloads: &[HydratedPlanetSurfacePayload],
 ) -> SimThing {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
     let provenance = embedded
@@ -631,7 +683,12 @@ fn build_authority_root(
         .unwrap_or(scenario_id);
     let mut galaxy_map = make_galaxy_map(&map_id, display_name);
     if let Some(embedded) = embedded {
-        attach_embedded_gridcells(&mut galaxy_map, embedded, ownership_volumes);
+        attach_embedded_gridcells(
+            &mut galaxy_map,
+            embedded,
+            ownership_volumes,
+            planet_surface_payloads,
+        );
     }
     session.add_child(galaxy_map);
     root.add_child(session);
@@ -642,6 +699,7 @@ fn attach_embedded_gridcells(
     galaxy_map: &mut SimThing,
     embedded: &HydratedEmbeddedStaticGalaxyScenario,
     ownership_volumes: &[HydratedOwnershipVolume],
+    planet_surface_payloads: &[HydratedPlanetSurfacePayload],
 ) {
     let mut owner_by_target = BTreeMap::new();
     for volume in ownership_volumes {
@@ -649,9 +707,20 @@ fn attach_embedded_gridcells(
             owner_by_target.insert(system.target_id.clone(), system.owner_ref.clone());
         }
     }
+    let owned_payload = planet_surface_payloads
+        .iter()
+        .find(|payload| payload.applies_to == "owned_systems");
+    let neutral_payload = planet_surface_payloads
+        .iter()
+        .find(|payload| payload.applies_to == "neutral_systems");
     for placement in &embedded.namespaced_placements {
         let mut gridcell = SimThing::new(SimThingKind::Location, 0);
         apply_gridcell_role_metadata(&mut gridcell, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM);
+        apply_star_system_local_grid_frame_metadata(
+            &mut gridcell,
+            STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
+            STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
+        );
         gridcell.add_property(
             SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
             structural_property_value_u32(placement.col),
@@ -660,13 +729,68 @@ fn attach_embedded_gridcells(
             SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
             structural_property_value_u32(placement.row),
         );
-        if let Some(owner_ref) = owner_by_target.get(&placement.target_id) {
+        let owner_ref = owner_by_target.get(&placement.target_id).cloned();
+        if let Some(owner_ref) = owner_ref.as_ref() {
             gridcell.add_property(
                 OWNER_FLOW_OWNER_REF_PROPERTY_ID,
                 scenario_metadata_string_value(owner_ref),
             );
         }
+        if let Some(payload) = if owner_ref.is_some() {
+            owned_payload
+        } else {
+            neutral_payload
+        } {
+            attach_planet_surface_payload_to_system(
+                &mut gridcell,
+                &placement.target_id,
+                owner_ref.as_deref(),
+                payload,
+            );
+        }
         galaxy_map.add_child(gridcell);
+    }
+}
+
+fn attach_planet_surface_payload_to_system(
+    star_system: &mut SimThing,
+    target_id: &str,
+    owner_ref: Option<&str>,
+    payload: &HydratedPlanetSurfacePayload,
+) {
+    for planet_index in 0..payload.planets_per_system_min {
+        let planet_id = format!("{target_id}_planet_{planet_index}");
+        let display_name = format!("Planet {planet_index} ({target_id})");
+        let mut planet = make_planet_gridcell(&planet_id, planet_index, 0, Some(&display_name));
+        if let Some(owner) = owner_ref {
+            planet.add_property(
+                PLANET_OWNER_REF_PROPERTY_ID,
+                scenario_metadata_string_value(owner),
+            );
+            let surface = planet
+                .children
+                .iter_mut()
+                .find(|child| is_surface_gridcell(child))
+                .expect("planet gridcell carries mandated 1x1 surface");
+            for factory_index in 0..payload.factory_min {
+                let mut factory =
+                    SimThing::new(SimThingKind::Custom("Infrastructure".into()), 0);
+                apply_participant_owner_flow_metadata(&mut factory, owner, 5 + factory_index, 0);
+                if let Some(resource) = payload.resources.first() {
+                    apply_participant_owner_flow_resource_key_metadata(&mut factory, resource);
+                }
+                surface.add_child(factory);
+            }
+            for cohort_index in 0..payload.cohort_min {
+                let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
+                apply_participant_owner_flow_metadata(&mut cohort, owner, 0, 3 + cohort_index);
+                if let Some(resource) = payload.resources.first() {
+                    apply_participant_owner_flow_resource_key_metadata(&mut cohort, resource);
+                }
+                surface.add_child(cohort);
+            }
+        }
+        star_system.add_child(planet);
     }
 }
 
@@ -683,6 +807,292 @@ fn owner_simthing(owner: &HydratedScenarioOwner) -> SimThing {
         apply_owner_silo_metadata(&mut simthing, stockpile_seed, owner.stockpile_capacity);
     }
     simthing
+}
+
+#[derive(Debug, Clone)]
+struct ParsedPlanetSurfacePayload {
+    id: String,
+    applies_to: Option<String>,
+    planets_per_system_min: Option<u32>,
+    surface_grid: Option<String>,
+    factory_min: Option<u32>,
+    cohort_min: Option<u32>,
+    categories: Vec<String>,
+    resources: Vec<String>,
+    modifier_entries: Vec<(String, f32, RawSpan)>,
+    span: RawSpan,
+}
+
+fn parse_planet_surface_payload(
+    property: &RawProperty,
+) -> Result<ParsedPlanetSurfacePayload, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "planet_surface_payload")?;
+    let mut id = header_id;
+    let mut applies_to = None;
+    let mut planets_per_system_min = None;
+    let mut surface_grid = None;
+    let mut factory_min = None;
+    let mut cohort_min = None;
+    let mut categories = Vec::new();
+    let mut resources = Vec::new();
+    let mut modifier_entries = Vec::new();
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => {
+                let explicit_id = read_scalar_text(field, "id")?;
+                if !id.is_empty() && id != explicit_id {
+                    return Err(HydrateError::new_spanned(
+                        format!("header id `{id}` does not match explicit id `{explicit_id}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                id = explicit_id;
+            }
+            "applies_to" => applies_to = Some(read_scalar_text(field, "applies_to")?),
+            "planets_per_system_min" => {
+                planets_per_system_min = Some(read_scalar_u32(field, "planets_per_system_min")?);
+            }
+            "surface_grid" => surface_grid = Some(read_scalar_text(field, "surface_grid")?),
+            "factory_min" => factory_min = Some(read_scalar_u32(field, "factory_min")?),
+            "cohort_min" => cohort_min = Some(read_scalar_u32(field, "cohort_min")?),
+            "category_map" => categories.extend(parse_category_map_names(field)?),
+            "resource" => resources.push(parse_payload_resource_name(field)?),
+            "modifier" => {
+                modifier_entries.extend(parse_payload_modifier_entries(field)?);
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported planet_surface_payload field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    Ok(ParsedPlanetSurfacePayload {
+        id,
+        applies_to,
+        planets_per_system_min,
+        surface_grid,
+        factory_min,
+        cohort_min,
+        categories,
+        resources,
+        modifier_entries,
+        span: property.key.span.clone(),
+    })
+}
+
+fn parse_category_map_names(property: &RawProperty) -> Result<Vec<String>, HydrateError> {
+    let block = require_block(property, "category_map")?;
+    Ok(block
+        .properties
+        .iter()
+        .map(|field| field.key.text.clone())
+        .collect())
+}
+
+fn parse_payload_resource_name(property: &RawProperty) -> Result<String, HydrateError> {
+    let block = require_block(property, "resource")?;
+    let mut name = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "name" => name = Some(read_scalar_text(field, "name")?),
+            "id" | "namespace" | "display_name" => {}
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported planet_surface_payload resource field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(require_field(name, "name", property)?)
+}
+
+fn parse_payload_modifier_entries(
+    property: &RawProperty,
+) -> Result<Vec<(String, f32, RawSpan)>, HydrateError> {
+    let block = require_block(property, "modifier")?;
+    let mut entries = Vec::new();
+    for field in &block.properties {
+        let amount = read_scalar_f32(field, &field.key.text)?;
+        entries.push((field.key.text.clone(), amount, field.key.span.clone()));
+    }
+    if entries.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "modifier requires at least one economic modifier key",
+            Some(property.key.span.clone()),
+        ));
+    }
+    Ok(entries)
+}
+
+fn finalize_planet_surface_payloads(
+    drafts: Vec<ParsedPlanetSurfacePayload>,
+) -> Result<Vec<HydratedPlanetSurfacePayload>, HydrateError> {
+    let mut finalized = Vec::new();
+    for draft in drafts {
+        if draft.id.is_empty() {
+            return Err(HydrateError::new_spanned(
+                "`planet_surface_payload` requires an id",
+                Some(draft.span.clone()),
+            ));
+        }
+        let applies_to = draft.applies_to.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`planet_surface_payload.applies_to` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        if applies_to != "owned_systems" && applies_to != "neutral_systems" {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "unsupported planet_surface_payload applies_to `{applies_to}` (expected `owned_systems` or `neutral_systems`)"
+                ),
+                Some(draft.span.clone()),
+            ));
+        }
+        let planets_per_system_min = draft.planets_per_system_min.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`planet_surface_payload.planets_per_system_min` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        if planets_per_system_min == 0 {
+            return Err(HydrateError::new_spanned(
+                "`planet_surface_payload.planets_per_system_min` must be greater than zero",
+                Some(draft.span.clone()),
+            ));
+        }
+        let surface_grid = draft.surface_grid.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`planet_surface_payload.surface_grid` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        if surface_grid != "1x1" {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "unsupported planet_surface_payload surface_grid `{surface_grid}` (only `1x1` is admitted)"
+                ),
+                Some(draft.span.clone()),
+            ));
+        }
+        let factory_min = draft.factory_min.unwrap_or(0);
+        let cohort_min = draft.cohort_min.unwrap_or(0);
+        if applies_to == "owned_systems" {
+            if factory_min == 0 {
+                return Err(HydrateError::new_spanned(
+                    "`owned_systems` planet_surface_payload requires `factory_min` greater than zero",
+                    Some(draft.span.clone()),
+                ));
+            }
+            if cohort_min == 0 {
+                return Err(HydrateError::new_spanned(
+                    "`owned_systems` planet_surface_payload requires `cohort_min` greater than zero",
+                    Some(draft.span.clone()),
+                ));
+            }
+        } else if factory_min != 0 || cohort_min != 0 {
+            return Err(HydrateError::new_spanned(
+                "`neutral_systems` planet_surface_payload requires `factory_min = 0` and `cohort_min = 0`",
+                Some(draft.span.clone()),
+            ));
+        }
+
+        let mut decoded_modifier_keys = Vec::new();
+        let mut modifier_amounts = Vec::new();
+        if applies_to == "owned_systems" {
+            if draft.categories.is_empty() {
+                return Err(HydrateError::new_spanned(
+                    "`owned_systems` planet_surface_payload requires at least one `category_map` entry",
+                    Some(draft.span.clone()),
+                ));
+            }
+            if draft.resources.is_empty() {
+                return Err(HydrateError::new_spanned(
+                    "`owned_systems` planet_surface_payload requires at least one `resource` block",
+                    Some(draft.span.clone()),
+                ));
+            }
+            if draft.modifier_entries.is_empty() {
+                return Err(HydrateError::new_spanned(
+                    "`owned_systems` planet_surface_payload requires at least one `modifier` block",
+                    Some(draft.span.clone()),
+                ));
+            }
+            for (key, amount, span) in &draft.modifier_entries {
+                let decoded = decode_economic_modifier_key(key, &draft.categories, &draft.resources)
+                    .map_err(|mut err| {
+                        if err.span.is_none() {
+                            err.span = Some(span.clone());
+                        }
+                        err
+                    })?;
+                decoded_modifier_keys.push(decoded);
+                modifier_amounts.push(*amount);
+            }
+        }
+
+        finalized.push(HydratedPlanetSurfacePayload {
+            id: draft.id,
+            applies_to,
+            planets_per_system_min,
+            surface_grid,
+            factory_min,
+            cohort_min,
+            categories: draft.categories,
+            resources: draft.resources,
+            decoded_modifier_keys,
+            modifier_amounts,
+        });
+    }
+    Ok(finalized)
+}
+
+fn payload_economy_overlays(
+    payload: &HydratedPlanetSurfacePayload,
+    scenario_id: &str,
+) -> Vec<OverlaySpec> {
+    if payload.applies_to != "owned_systems" || payload.decoded_modifier_keys.is_empty() {
+        return Vec::new();
+    }
+    payload
+        .decoded_modifier_keys
+        .iter()
+        .zip(payload.modifier_amounts.iter())
+        .enumerate()
+        .map(|(index, (decoded, amount))| {
+            let property = format!(
+                "{}_{}_{}",
+                decoded.category,
+                decoded.resource,
+                match decoded.axis {
+                    crate::hydrate_category_economy::EconomicAxis::Produces => "produces",
+                    crate::hydrate_category_economy::EconomicAxis::Upkeep => "upkeep",
+                    crate::hydrate_category_economy::EconomicAxis::Cost => "cost",
+                }
+            );
+            let transform = match decoded.op {
+                crate::hydrate_category_economy::EconomicOp::Add => TransformOp::Add(*amount),
+                crate::hydrate_category_economy::EconomicOp::Mult => TransformOp::Multiply(*amount),
+            };
+            OverlaySpec {
+                id: format!("{}::{}::payload_modifier_{index}", scenario_id, payload.id),
+                display_name: format!("{} payload modifier {index}", payload.id),
+                targets_property: property,
+                sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
+                lifecycle: OverlayLifecycle::Permanent,
+                kind: OverlayKind::Policy,
+                source: OverlaySource::Player,
+                install: InstallTargetSpec::ScenarioListed {
+                    target_id: scenario_id.to_string(),
+                },
+            }
+        })
+        .collect()
 }
 
 fn parse_ownership_volume(property: &RawProperty) -> Result<ParsedOwnershipVolume, HydrateError> {
