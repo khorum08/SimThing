@@ -34,7 +34,7 @@
 | Path-filter + `workflow_dispatch` triggers | wired |
 | Per-crate CPU battery via profiles | wired via `doctrine_exec_profiles.tsv` + `doctrine_exec.sh` |
 | GPU legs → INSPECT never PASS | wired via `run_inspect_cmd` + profile `gpu_required` |
-| Live green on PR head | doctrine-scan PASS (run 28567638850); doctrine-exec ran ~21m — initial false FAIL from exit-code capture bug fixed in `b5fec53b` follow-up |
+| Live green on PR head | doctrine-scan PASS (run 28569023347, 1m19s). doctrine-exec run 28569023317: **FAIL** in 4m36s — `cargo test -p simthing-kernel` 42 failures on `refs/pull/1083/merge` (merge_ref_status PASS); sticky comment + artifact uploaded. `set -e` in `run_cmd` aborted before verdict footer — fixed in follow-up commit. |
 | Known-bad `compile_fail` regression red | pending probe/workflow run |
 
 ## SHA freshness proof

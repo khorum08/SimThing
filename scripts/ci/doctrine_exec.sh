@@ -27,9 +27,12 @@ INSPECT_LINES=()
 run_cmd() {
   local label="$1"
   shift
+  local ec=0
   echo "+ $*"
+  set +e
   "$@"
-  local ec=$?
+  ec=$?
+  set -e
   if [[ "$ec" -eq 0 ]]; then
     return 0
   fi
@@ -41,8 +44,13 @@ run_cmd() {
 run_inspect_cmd() {
   local label="$1"
   shift
+  local ec=0
   echo "+ (inspect) $*"
-  if "$@"; then
+  set +e
+  "$@"
+  ec=$?
+  set -e
+  if [[ "$ec" -eq 0 ]]; then
     return 0
   fi
   INSPECT_LINES+=("$label skipped or inconclusive (GPU/local)")
