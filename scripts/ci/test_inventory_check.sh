@@ -56,6 +56,8 @@ allowed_keep_targets = {
     "permanent-residue:determinism",
     "permanent-residue:behavior-regression",
     "permanent-residue:escaped-bug",
+    "permanent-residue:doc-named-invariant",
+    "permanent-residue:stead-required",
 }
 collapse_re = re.compile(r"^COLLAPSE\([0-9]+(?:->|→)1\)$")
 candidate_classes = {

@@ -68,6 +68,8 @@ permanent_targets = {
     "permanent-residue:determinism",
     "permanent-residue:behavior-regression",
     "permanent-residue:escaped-bug",
+    "permanent-residue:doc-named-invariant",
+    "permanent-residue:stead-required",
 }
 kernel_sim_permanent = permanent_targets | {
     "permanent-residue:seal-proof",
