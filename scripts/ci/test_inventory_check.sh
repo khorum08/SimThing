@@ -14,10 +14,12 @@ fi
 import csv
 import pathlib
 import re
+import subprocess
 import sys
 
 root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
+audit = root / "scripts/ci/test_pare_audit.tsv"
 
 required = [
     "crate",
@@ -46,6 +48,29 @@ allowed_class = {
 }
 allowed_verdict = {"KEEP", "PARE", "AUDIT"}
 collapse_re = re.compile(r"^COLLAPSE\([0-9]+(?:->|→)1\)$")
+candidate_classes = {
+    "admission-adjacent",
+    "hygiene-theater",
+    "usecase-superseded",
+    "unknown",
+    "duplicate-battery",
+}
+audit_required = [
+    "crate",
+    "file",
+    "test_name",
+    "kind",
+    "current_class",
+    "audit_class",
+    "audit_verdict",
+    "superseding_boundary",
+    "representative_to_keep",
+    "deletion_wave",
+    "confidence",
+    "note",
+]
+allowed_audit_verdict = {"PARE", "KEEP", "AUDIT-BLOCKED"}
+allowed_confidence = {"high", "medium", "low"}
 
 test_attr_re = re.compile(r"#\[\s*(?:(?:tokio|async_std)::)?test(?:\(|\])")
 fn_re = re.compile(r"\bfn\s+([A-Za-z_][A-Za-z0-9_]*)")
@@ -119,11 +144,13 @@ else:
             rows = list(reader)
 
     seen: set[tuple[str, str, str, str]] = set()
+    inventory_by_key: dict[tuple[str, str, str, str], dict[str, str]] = {}
     for line_no, row in enumerate(rows, start=2):
         key = (row["crate"], row["file"], row["test_name"], row["kind"])
         if key in seen:
             errors.append(f"line {line_no}: duplicate inventory key {key}")
         seen.add(key)
+        inventory_by_key[key] = row
         if row["kind"] not in allowed_kind:
             errors.append(f"line {line_no}: invalid kind {row['kind']}")
         if row["class"] not in allowed_class:
@@ -162,6 +189,85 @@ else:
             print(f"    {item}")
     else:
         print("  inspect: none")
+
+    audit_rows: list[dict[str, str]] = []
+    if audit.exists():
+        with audit.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            if reader.fieldnames != audit_required:
+                errors.append(f"bad audit header: {reader.fieldnames!r}")
+            else:
+                audit_rows = list(reader)
+
+        audit_seen: set[tuple[str, str, str, str]] = set()
+        for line_no, row in enumerate(audit_rows, start=2):
+            key = (row["crate"], row["file"], row["test_name"], row["kind"])
+            inv = inventory_by_key.get(key)
+            if inv is None:
+                errors.append(f"audit line {line_no}: row does not reference inventory key {key}")
+                continue
+            if key in audit_seen:
+                errors.append(f"audit line {line_no}: duplicate audit key {key}")
+            audit_seen.add(key)
+            if row["current_class"] != inv["class"]:
+                errors.append(
+                    f"audit line {line_no}: current_class {row['current_class']} does not match inventory {inv['class']}"
+                )
+            verdict = row["audit_verdict"]
+            is_collapse = collapse_re.match(verdict) is not None
+            if verdict not in allowed_audit_verdict and not is_collapse:
+                errors.append(f"audit line {line_no}: invalid audit_verdict {verdict}")
+            if row["confidence"] not in allowed_confidence:
+                errors.append(f"audit line {line_no}: invalid confidence {row['confidence']}")
+            if verdict == "PARE" and not row["superseding_boundary"].strip():
+                errors.append(f"audit line {line_no}: PARE lacks superseding_boundary")
+            if is_collapse:
+                if not row["superseding_boundary"].strip():
+                    errors.append(f"audit line {line_no}: COLLAPSE lacks superseding_boundary")
+                if not row["representative_to_keep"].strip():
+                    errors.append(f"audit line {line_no}: COLLAPSE lacks representative_to_keep")
+            if verdict == "AUDIT-BLOCKED" and not row["note"].strip():
+                errors.append(f"audit line {line_no}: AUDIT-BLOCKED lacks reason note")
+            never_pare = (
+                inv["kind"] in {"compile_fail", "trybuild"}
+                or inv["class"] in {"seal-proof", "oracle-parity", "golden-byte", "invariant-required", "stead-required"}
+                or inv["test_name"] == "custom_layout_ethics_axis"
+            )
+            if never_pare and verdict != "KEEP":
+                errors.append(f"audit line {line_no}: never-pare row is {verdict}: {key}")
+
+        candidate_keys = {key for key, row in inventory_by_key.items() if row["class"] in candidate_classes}
+        missing_audit = sorted(candidate_keys - audit_seen)
+        extra_audit = sorted(audit_seen - candidate_keys)
+        if missing_audit:
+            errors.append(f"audit missing {len(missing_audit)} candidate rows; first={missing_audit[:5]}")
+        if extra_audit:
+            errors.append(f"audit has {len(extra_audit)} non-candidate rows; first={extra_audit[:5]}")
+        print("TEST-PARE-AUDIT REPORT")
+        print(f"  audit rows: {len(audit_rows)}")
+        print(f"  candidate rows: {len(candidate_keys)}")
+        print(f"  missing audit rows: {len(missing_audit)}")
+        print(f"  extra audit rows: {len(extra_audit)}")
+    else:
+        print("TEST-PARE-AUDIT REPORT")
+        print("  audit file: absent")
+
+    try:
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", "origin/master...HEAD"],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        changed = diff.stdout.splitlines() if diff.returncode == 0 else []
+    except OSError:
+        changed = []
+    crate_edits = [
+        path for path in changed if re.match(r"^crates/[^/]+/(src|tests|benches)/", path)
+    ]
+    if crate_edits:
+        errors.append(f"crate source/test files changed: {crate_edits[:10]}")
 
 if errors:
     print("TEST-INVENTORY-CHECK-VERDICT: FAIL")
