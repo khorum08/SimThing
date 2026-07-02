@@ -1,6 +1,6 @@
 # TP-OWNERSHIP-COLUMNS-0 Results
 
-Status: **PROBATION**.
+Status: **DONE — DA-APPROVED (2026-07-02, executive DA full review; PROBATION cleared, merge of PR #1078 authorized)**.
 
 ## Scope
 
@@ -116,7 +116,7 @@ Risk class: ownership-column authoring over canonical embedded TP base
 
 Falsification check: Verify combined embedded base plus owner siblings plus ownership volumes parse; verify exactly 200 Terran, 50 Pirate, and 1250 neutral systems; verify Terran/Pirate Chebyshev selection and adjacency; verify owner refs point to existing sibling owners; verify systems remain spatial children of GalaxyMap; verify capture-as-column-flip changes only the owner ref; verify no Phase 2 child content, runtime/GPU change, scanner/allowlist edit, new AccumulatorRole, or owner-as-parent semantics.
 
-Recommended posture: PROBATION pending live CI and orchestrator review.
+Recommended posture: DONE — DA-APPROVED (2026-07-02). Executive DA re-ran the full 9-test suite (PASS), verified the Chebyshev selection is integer-only in `hydrate_scenario.rs`, and confirmed live Doctrine Scan green on PR #1078 (run 28563325202). Merge authorized under the §0.9.5 merge-hold rule.
 
 ## Known Gaps / Next
 
