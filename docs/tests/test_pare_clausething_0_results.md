@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - first per-crate Track D paring rung complete; four same-family clausething admission tests deleted after source review.
+**COMPLETE** - first per-crate Track D paring rung complete after 0R targeted GitHub proof and docs closeout; four same-family clausething admission tests deleted after source review.
 
 Prerequisite satisfied: PR #1085 (`TEST-PARE-AUDIT-1`) merged to `master` at `54c498633756f1e801ceba0926b62b1db3eca2c7` before this branch was opened.
 
@@ -137,13 +137,15 @@ Local targeted executor proof after the correction:
 
 Live Doctrine Exec:
 
-- profile: pending
-- head_sha: pending
-- tested_ref: pending
-- merge_ref_status: pending
-- run: pending
-- job: pending
-- verdict: pending
+- profile: test-pare-clausething
+- head_sha: 04dd0adef434c4de0bb7a224d89870db6b1bec70
+- tested_ref: refs/pull/1086/merge
+- merge_ref_status: PASS
+- run: 28602676003
+- job: 84814726579 / doctrine-exec
+- verdict: DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0
+- ct_scenario_container: PASS, 43 passed / 0 failed
+- mapgenerator_cli_pr6_generated_hyperlanes_lower: PASS, 6 passed / 0 failed
 
 ## Scope Ledger
 
@@ -158,11 +160,10 @@ Live Doctrine Exec:
 
 ## Graduation Routing
 
-Recommended status: **PROBATION**.
+Recommended status: **COMPLETE**.
 
-Why: this is the first actual deletion/collapse rung. DA should verify every deletion has a same-family representative, `ct_scenario_container.rs` was partitioned rather than mechanically collapsed, never-pare classes remain untouched, and the edited test binaries plus inventory/check/doctrine/digest validation pass.
+Why: the first actual deletion/collapse rung now has same-family representative review, `ct_scenario_container.rs` partitioning rather than mechanical collapse, preserved never-pare classes, exact inventory/check/doctrine/digest validation, and SHA-bound targeted GitHub proof on `refs/pull/1086/merge`.
 
 ## Known Gaps / Next
 
-- DA review of this first deletion rung.
-- If accepted, continue Track D with the next narrowly scoped per-crate collapse, likely remaining clausething blocked families only after stronger source-level grouping or `TEST-PARE-SPEC-0` for Wave 3.
+- After merge, continue Track D with the next narrowly scoped per-crate collapse, likely remaining clausething blocked families only after stronger source-level grouping or `TEST-PARE-SPEC-0` for Wave 3.
