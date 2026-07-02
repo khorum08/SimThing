@@ -31,6 +31,7 @@ required = [
     "superseding_boundary",
     "verdict",
     "note",
+    "promotion_target",
 ]
 allowed_kind = {"unit", "integration", "doc", "compile_fail", "trybuild", "fixture", "unknown"}
 allowed_class = {
@@ -48,6 +49,14 @@ allowed_class = {
     "unknown",
 }
 allowed_verdict = {"KEEP", "PARE", "AUDIT"}
+allowed_keep_targets = {
+    "permanent-residue:oracle-parity",
+    "permanent-residue:golden-byte",
+    "permanent-residue:seal-proof",
+    "permanent-residue:determinism",
+    "permanent-residue:behavior-regression",
+    "permanent-residue:escaped-bug",
+}
 collapse_re = re.compile(r"^COLLAPSE\([0-9]+(?:->|→)1\)$")
 candidate_classes = {
     "admission-adjacent",
@@ -166,6 +175,10 @@ else:
             errors.append(f"line {line_no}: invalid class {row['class']}")
         if row["verdict"] not in allowed_verdict and not collapse_re.match(row["verdict"]):
             errors.append(f"line {line_no}: invalid verdict {row['verdict']}")
+        if row["verdict"] == "KEEP":
+            target = row["promotion_target"].strip()
+            if target not in allowed_keep_targets and not target.startswith("promotion-target:"):
+                errors.append(f"line {line_no}: KEEP row lacks permanent-residue class or promotion target")
         if (row["verdict"] == "PARE" or row["verdict"].startswith("COLLAPSE(")) and not row["superseding_boundary"].strip():
             errors.append(f"line {line_no}: {row['verdict']} row lacks superseding_boundary")
         if row["class"] == "admission-adjacent" and row["verdict"] != "AUDIT":

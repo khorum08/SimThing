@@ -16,6 +16,7 @@ PR_DELTA_MODE=0
 PR_BASE_SHA=""
 PR_HEAD_SHA=""
 declare -A PR_DELTA_LINE_MAP=()
+declare -A PR_DELTA_ADDED_LINE_TEXT=()
 TRACK_DOC=""
 TRACK_DOC_REL=""
 ADDENDUM_SCANS_TSV=""
@@ -456,7 +457,9 @@ normalize_match_path() {
 
 load_pr_delta_line_map() {
   PR_DELTA_LINE_MAP=()
+  PR_DELTA_ADDED_LINE_TEXT=()
   local current_file=""
+  local current_new_line=0
   local line
   while IFS= read -r line; do
     line="${line//$'\r'/}"
@@ -466,10 +469,18 @@ load_pr_delta_line_map() {
     elif [[ "$line" =~ ^@@\ .*\+([0-9]+)(,([0-9]+))?\ @@ ]]; then
       local start="${BASH_REMATCH[1]}"
       local count="${BASH_REMATCH[3]:-1}"
+      current_new_line="$start"
       local i
       for ((i = 0; i < count; i++)); do
         PR_DELTA_LINE_MAP["${current_file}:$((start + i))"]=1
       done
+    elif [[ "$line" == "+"* && "$line" != "+++"* && -n "$current_file" && "$current_new_line" -gt 0 ]]; then
+      PR_DELTA_ADDED_LINE_TEXT["${current_file}:${current_new_line}"]="${line#+}"
+      current_new_line=$((current_new_line + 1))
+    elif [[ "$line" == "-"* && "$line" != "---"* ]]; then
+      :
+    elif [[ -n "$current_file" && "$current_new_line" -gt 0 ]]; then
+      current_new_line=$((current_new_line + 1))
     fi
   done < <(git -C "$REPO_ROOT" diff -U0 "${PR_BASE_SHA}".."${PR_HEAD_SHA}" 2>/dev/null || true)
 }
@@ -609,6 +620,46 @@ run_allowlist_scan() {
   return 0
 }
 
+file_has_table_driven_form() {
+  local file="$1"
+  local abs="${REPO_ROOT}/${file}"
+  [[ -f "$abs" ]] || return 1
+  rg -q -e 'const[[:space:]]+[A-Z0-9_]*CASES|static[[:space:]]+[A-Z0-9_]*CASES|for[[:space:]]+.*[[:space:]]+in[[:space:]]+.*CASES|for[[:space:]]+.*[[:space:]]+in[[:space:]]+cases|table_driven|TEST_BUDGET_TABLE_DRIVEN_OK' "$abs" 2>/dev/null
+}
+
+run_test_budget_scan() {
+  local target_glob="$1"
+  local -n _matches_out="$2"
+  _matches_out=()
+
+  [[ "$PR_DELTA_MODE" -eq 1 ]] || return 0
+
+  declare -A added_counts=()
+  local key file line text
+  for key in "${!PR_DELTA_ADDED_LINE_TEXT[@]}"; do
+    file="${key%:*}"
+    text="${PR_DELTA_ADDED_LINE_TEXT[$key]}"
+    [[ "$file" == *.rs ]] || continue
+    case "$file" in
+      crates/*) ;;
+      *) continue ;;
+    esac
+    if [[ "$text" =~ ^[[:space:]]*#\[[[:space:]]*((tokio|async_std)::)?test(\(|\]) ]]; then
+      added_counts["$file"]=$(( ${added_counts["$file"]:-0} + 1 ))
+    fi
+  done
+
+  for file in "${!added_counts[@]}"; do
+    if [[ "${added_counts[$file]}" -le 3 ]]; then
+      continue
+    fi
+    if file_has_table_driven_form "$file"; then
+      continue
+    fi
+    _matches_out+=("${file}: added ${added_counts[$file]} #[test] functions without table-driven form")
+  done
+}
+
 run_require_scan() {
   local pattern="$1"
   local target_glob="$2"
@@ -672,6 +723,11 @@ run_scan_file() {
     local promotion_blocker="${fields[6]}"
     local require_mode=0
     local allowlist_mode=""
+    local test_budget_mode=0
+
+    if [[ "${DOCTRINE_SCAN_ONLY_TEST_BUDGET:-0}" == "1" && "$scan_id" != "TEST-BUDGET" ]]; then
+      continue
+    fi
 
     if [[ -z "$scan_id" || -z "$severity" || -z "$pattern" || -z "$doctrine_ref" ]]; then
       die_scanner "${scan_label}:${line_num}: empty required field in '${scan_id}'"
@@ -696,11 +752,16 @@ run_scan_file() {
       pattern="${pattern#@REQUIRE:}"
     elif [[ "$pattern" == @ALLOWLIST:* ]]; then
       allowlist_mode="${pattern#@ALLOWLIST:}"
+    elif [[ "$pattern" == @TEST_BUDGET ]]; then
+      test_budget_mode=1
     fi
 
     local matches=()
     local run_status=0
-    if [[ -n "$allowlist_mode" ]]; then
+    if [[ "$test_budget_mode" -eq 1 ]]; then
+      run_test_budget_scan "$target_glob" matches
+      run_status=$?
+    elif [[ -n "$allowlist_mode" ]]; then
       run_allowlist_scan "$allowlist_mode" matches
       run_status=$?
     elif [[ "$require_mode" -eq 1 ]]; then
@@ -746,6 +807,29 @@ run_scans() {
   if [[ -n "$ADDENDUM_SCANS_TSV" && -f "$ADDENDUM_SCANS_TSV" ]]; then
     run_scan_file "$ADDENDUM_SCANS_TSV" "${TRACK_DOC_REL}.ci.tsv"
   fi
+}
+
+run_inventory_drift_gate() {
+  [[ "${DOCTRINE_SCAN_SKIP_DRIFT:-0}" == "1" ]] && return 0
+  local drift_script="${SCRIPT_DIR}/test_inventory_drift_check.sh"
+  [[ -f "$drift_script" ]] || {
+    die_scanner "missing test inventory drift gate: scripts/ci/test_inventory_drift_check.sh"
+    return 1
+  }
+  local out status
+  set +e
+  out="$(bash "$drift_script" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -ne 0 ]]; then
+    die_scanner "test inventory drift gate failed"
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      REPORT_LINES+=("TEST-INVENTORY-DRIFT  FAIL  1  ${line}")
+    done <<<"$out"
+    return 1
+  fi
+  REPORT_LINES+=("TEST-INVENTORY-DRIFT  PASS  0  stock gate: inventory matches discovered tests and KEEP rows are owned")
 }
 
 assert_contains() {
@@ -1016,6 +1100,7 @@ main() {
   load_justifications
   if [[ "$scanner_errors" -eq 0 ]]; then
     run_scans
+    run_inventory_drift_gate
   fi
   emit_report
 

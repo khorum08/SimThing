@@ -345,7 +345,12 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    + promotion-blocker), never a scanner edit to dodge a valid finding. **The scan-retirement obligation:** a
    scan is itself residue (§0.9.4) — when the invariant it guards is promoted to a type boundary or admission
    hard-error, the rung that promotes it **retires (narrows or deletes) the now-redundant scan in the same
-   PR**; a RELIABLE scan with no promotion-blocker is a flagged anomaly. **The merge-hold rule:** no rung that
+   PR**; promotion also retires the now-redundant test in the same PR. Tests are ladder residue, like scans:
+   a KEEP-class test is admitted only when it names the regression nothing higher on the ladder owns. A KEEP
+   row without a permanent-residue class or promotion target is illegal. In `simthing-kernel` and
+   `simthing-sim`, KEEP-class tests are legal only for never-pare/permanent-residue classes; admission-rejection
+   enumeration and hygiene tests are drift failures, not INSPECTs. A RELIABLE scan with no promotion-blocker is
+   a flagged anomaly. **The merge-hold rule:** no rung that
    changes PROBATION / authority / gate-state semantics merges before DA/Owner clearance; a truthful
    corrective self-report of a breach may be accepted on its merits, but it is never precedent for skipping
    clearance again. **The verification rule:** the DA (and any orchestrator relaying a proof) verifies the

@@ -174,6 +174,10 @@ constitution's Specification-Fidelity law), the GPU/WGSL **trust domain Rust's c
 (§4 — hence CPU-oracle parity is the *only* admission the shader has), and live ontological conformance.
 That residue is small by design; everything else should fail to compile or fail to admit.
 
+Tests are ladder residue, like scans. A KEEP-class test is admitted only when it names the regression nothing higher on the ladder owns. If a type boundary, admission hard-error, doctrine scan, compile-fail proof, oracle, golden artifact, or required invariant owns the condition, the test must be retired, collapsed, or consolidated. Promotion of an invariant into a higher rung retires redundant tests in the same PR.
+
+A test is rung-3/4 ladder residue like a scan. Test admission requires naming the regression nothing higher on the ladder owns. Promotion retires redundant tests in the same PR.
+
 **A corollary on hygiene.** Because the compiler discharges the mechanical-correctness layer, the budget
 it frees must go **entirely** to the two rungs that still pay rent — type/admission boundaries and the
 semantic conformance the compiler cannot check — and **never** to process ceremony (status docs,
