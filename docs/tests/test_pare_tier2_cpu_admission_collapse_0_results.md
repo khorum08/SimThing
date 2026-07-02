@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - implementation proof in progress for DA/orchestrator review. This PR is not self-cleared for merge.
+**PROBATION - implementation and final GitHub proof complete; awaiting DA/orchestrator merge review. Not self-cleared for merge.**
 
 ## Orientation / Predecessor Rungs
 
@@ -105,18 +105,17 @@ The local verdict label is `INSPECT` because owner-deep/head metadata is unavail
 
 First GitHub dispatch failed on adapter-bound `ct_2a_intrinsic_flow`; the profile was then narrowed to exact admitted `simthing-clausething` CPU-safe binaries only, with mapgenerator rows blocked by the current checker guard.
 
-Live Doctrine Exec after narrowing:
+Final targeted GitHub Doctrine Exec on current PR head:
 
 - profile: `test-pare-tier2-cpu-admission-collapse`
-- head_sha: `e81f656ee643da7543c9be8acf1ac617f2404bd4`
+- head_sha: `4b8d645e90e7b9caf86c2e265b8cc0cce0f0514f`
 - tested_ref: `refs/pull/1094/merge`
 - merge_ref_status: PASS
-- run: 28628411511
-- job: 84899910586 / doctrine-exec
+- run: `28628620651`
+- job: `84900534881 / doctrine-exec`
 - verdict: `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
-- forbidden proof markers: no `doctrine_surface_truth.sh`, no `apt-get`, no workspace/full-crate cargo command, no driver/gpu/mapeditor/tools/workshop/kernel/sim test binary, no adapter-bound `ct_2a`/`ct_2c` binary, no mapgenerator test binary.
-
-This docs-only evidence update must be followed by a final live Doctrine Exec rerun on the updated PR head before merge consideration.
+- command list: seven exact `cargo test -p simthing-clausething --test <binary> -- --nocapture` commands only
+- forbidden markers absent: no `doctrine_surface_truth.sh`, no `apt-get`, no workspace/full-crate cargo command, no owner-deep, no driver/gpu/mapeditor/tools/workshop/kernel/sim binary, no adapter-bound `ct_2a`/`ct_2c` binary, no mapgenerator binary.
 
 ## Doctrine Scan / Digest
 
@@ -142,11 +141,11 @@ No crate `src/**`, workflows, scanner allowlists, `doctrine_exec.sh`, `Cargo.tom
 ## Graduation Routing
 
 Graduation routing (for DA/orchestrator - why PROBATION, not COMPLETE):
-  CI verdict:          PASS-RELIABLE | INSPECT(n) | FAIL
+  CI verdict:          PASS-RELIABLE - current-head Doctrine Scan and Doctrine Exec PASS; targeted CPU-only Doctrine Exec PASS on refs/pull/1094/merge, run 28628620651, job 84900534881, failures=0 inspect=0.
   Triage entries:      this PR's rows in scripts/ci/triage_log.tsv, or "none"
   Risk class:          Tier 2 admission collapse + test deletion + boundary-ledger execution + CPU-only proof-boundary discipline
   Falsification check: Verify every processed Tier 2 row has terminal disposition; verify one representative per processed admission boundary; verify deleted rows differ only by enumeration/fixture/vocabulary/shape under same boundary; verify no never-pare, active TP, kernel/sim strict-tier, source-level, or Bevy/GPU-linked row was improperly deleted; verify inventory/boundary/drift, doctrine_scan, gen_digest, and targeted CPU-only Doctrine Exec pass; verify no full-crate/workspace/owner-deep cargo test was run.
-  Recommended posture: deep - this is the first Tier 2 collapse wave after the proof-boundary correction.
+  Recommended posture: deep - first Tier 2 collapse wave after proof-boundary correction; merge-reviewable after docs 0R.
 
 ## Known Gaps / Next
 
