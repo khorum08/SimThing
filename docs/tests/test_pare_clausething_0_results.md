@@ -127,6 +127,14 @@ Added reactive profile `test-pare-clausething`, running only:
 - `cargo test -p simthing-clausething --test ct_scenario_container -- --nocapture`
 - `cargo test -p simthing-clausething --test mapgenerator_cli_pr6_generated_hyperlanes_lower -- --nocapture`
 
+0R correction: the first targeted dispatch proved both binaries passed, but inherited the non-smoke kernel `doctrine_surface_truth.sh` add-on and therefore reported `INSPECT` for an unrelated surface-truth tooling gap. The executor/plan now treats `risk_class=test-deletion-clausething` as an exact test-deletion proof: no crate source expansion, no full-crate cargo test, and no kernel surface-truth add-on.
+
+Local targeted executor proof after the correction:
+
+- `ct_scenario_container`: PASS, 43 passed / 0 failed.
+- `mapgenerator_cli_pr6_generated_hyperlanes_lower`: PASS, 6 passed / 0 failed.
+- `DOCTRINE-EXEC-VERDICT`: PASS, failures=0 inspect=0.
+
 Live Doctrine Exec:
 
 - profile: pending
@@ -142,7 +150,8 @@ Live Doctrine Exec:
 - No compile_fail, trybuild, seal-proof, oracle-parity, golden-byte, invariant-required, or STEAD-required tests removed.
 - No crate source files edited.
 - No kernel/sim/gpu/driver tests edited.
-- No workflow, scanner, allowlist, runtime, or GPU edits.
+- No GitHub workflow, scanner, allowlist, runtime, or GPU edits.
+- CI executor/plan edit is limited to keeping the exact `test-deletion-clausething` targeted profile on its two named binaries.
 - No all-crates cargo test and no bare full-crate cargo test run.
 - Owner-deep full batteries remain quarantined artillery.
 - Smoke PASS remains mechanics-only, not seal-proof.

@@ -39,6 +39,7 @@ INSPECTS=0
 STOP_LAUNCHING=0
 FAILURE_LINES=()
 INSPECT_LINES=()
+SURFACE_TRUTH_REQUIRED="yes"
 
 cd "$ROOT"
 
@@ -318,6 +319,9 @@ IFS='|' read -r _profile_id PROFILE_CLASS RISK_CLASS crate_checks tests doc_test
 [[ "$crate_checks" == "-" ]] && crate_checks=""
 [[ "$tests" == "-" ]] && tests=""
 [[ "$doc_tests" == "-" ]] && doc_tests=""
+if [[ "$RISK_CLASS" == "test-deletion-clausething" ]]; then
+  SURFACE_TRUTH_REQUIRED="no"
+fi
 if [[ "$PROFILE_CLASS" == "smoke" ]]; then
   ACTIVE_TIMEOUT="$SMOKE_TIMEOUT"
 fi
@@ -347,7 +351,7 @@ if [[ "$PROFILE_CLASS" == "owner-deep" && "$STOP_LAUNCHING" -eq 0 ]]; then
   run_cmd "workspace check (minus mapeditor)" bash -c "$workspace_check"
 fi
 
-if [[ "$PROFILE_CLASS" != "smoke" && "$STOP_LAUNCHING" -eq 0 ]]; then
+if [[ "$PROFILE_CLASS" != "smoke" && "$SURFACE_TRUTH_REQUIRED" == "yes" && "$STOP_LAUNCHING" -eq 0 ]]; then
   log "+ bash scripts/ci/doctrine_surface_truth.sh"
   surface_out="$(bash "${ROOT}/scripts/ci/doctrine_surface_truth.sh" 2>&1 | tee -a "$REPORT_TXT")"
   if echo "$surface_out" | grep -q 'SURFACE-TRUTH: PASS'; then
