@@ -52,7 +52,7 @@ Local PR1R proof:
 | plan mode | PASS - `doctrine_exec_plan.sh --profile ci-b-webchat-smoke` printed resolved commands and ran nothing |
 | stale check | PASS - matching `head_sha` passed; mismatched `head_sha` failed |
 
-Live proofs are updated after the repaired PR head runs in GitHub Actions. PR1R keeps posture **PROBATION** until DA/orchestrator clearance.
+Live PR1R proof on repaired head `344603153a6c89572e80d6be5d47a2a56d57d10c`: doctrine-exec PASS in 8s (run 28596571540, job 84793437505) using `ci-b-webchat-smoke`, with Rust install steps skipped, `DOCTRINE-EXEC-VERDICT` emitted, `doctrine_exec_report.json` uploaded, stale check PASS, and sticky PR comment updated. Doctrine-scan PASS in 1m8s (run 28596571465, job 84793436932). PR1R keeps posture **PROBATION** until DA/orchestrator clearance.
 
 ## Docs-only orchestration guidance pass
 
@@ -69,8 +69,8 @@ Live proofs are updated after the repaired PR head runs in GitHub Actions. PR1R 
 | Path-filter + `workflow_dispatch` triggers | wired |
 | Profile-bound executable proof | wired via `doctrine_exec_profiles.tsv` + `doctrine_exec.sh`; default is `ci-b-webchat-smoke`, broad full-crate batteries are owner-deep only |
 | GPU legs → INSPECT never PASS | wired via `run_inspect_cmd` + profile `gpu_required` |
-| Live green on PR head | PR1 pre-repair doctrine-scan PASS (run 28569023347, 1m19s). PR1 doctrine-exec failure diagnosed as forbidden broad `full-cpu` default. PR1R live runs pending on repaired head. |
-| Known-bad probe finalizes | local `panic-swallow` probe finalized with footer + JSON; workflow probe proof pending on repaired head |
+| Live green on PR head | PR1R repaired head `344603153a6c89572e80d6be5d47a2a56d57d10c`: doctrine-exec PASS in 8s (run 28596571540, job 84793437505); doctrine-scan PASS in 1m8s (run 28596571465, job 84793436932). |
+| Known-bad probe finalizes | local `panic-swallow` probe finalized with footer + JSON; broader workflow probe exercise remains DA/orchestrator optional |
 
 ## SHA freshness proof
 
@@ -97,7 +97,7 @@ Live proofs are updated after the repaired PR head runs in GitHub Actions. PR1R 
 
 - `doctrine-exec-commands.yml` listens on `issue_comment`, `pull_request_review`, `pull_request_review_comment`.
 - Collaborator-only (`OWNER|MEMBER|COLLABORATOR`); fork PRs ignored for write-token paths.
-- Live command-surface proofs pending repaired-head workflow/comment exercises.
+- Live automatic PR doctrine-exec proof passed on repaired head and updated the sticky comment. Additional manual comment-command exercises remain DA/orchestrator optional.
 
 ## Plan-mode proof
 
