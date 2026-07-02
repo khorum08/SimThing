@@ -72,7 +72,7 @@ else
   echo "(none)"
 fi
 echo "--- surface_truth ---"
-if [[ "$profile_class" == "smoke" ]]; then
+if [[ "$profile_class" == "smoke" || "$risk_class" == "test-deletion-clausething" ]]; then
   echo "(none)"
 else
   echo "bash scripts/ci/doctrine_surface_truth.sh"

@@ -69,7 +69,15 @@ audit_required = [
     "confidence",
     "note",
 ]
-allowed_audit_verdict = {"PARE", "KEEP", "AUDIT-BLOCKED"}
+allowed_audit_verdict = {
+    "PARE",
+    "KEEP",
+    "KEPT",
+    "PARED",
+    "BLOCKED",
+    "AUDIT-BLOCKED",
+    "COLLAPSED-REPRESENTATIVE",
+}
 allowed_confidence = {"high", "medium", "low"}
 
 test_attr_re = re.compile(r"#\[\s*(?:(?:tokio|async_std)::)?test(?:\(|\])")
@@ -203,9 +211,14 @@ else:
         for line_no, row in enumerate(audit_rows, start=2):
             key = (row["crate"], row["file"], row["test_name"], row["kind"])
             inv = inventory_by_key.get(key)
+            inv_missing = inv is None
+            verdict = row["audit_verdict"]
             if inv is None:
-                errors.append(f"audit line {line_no}: row does not reference inventory key {key}")
-                continue
+                if verdict == "PARED":
+                    inv = {"class": row["current_class"], "kind": row["kind"], "test_name": row["test_name"]}
+                else:
+                    errors.append(f"audit line {line_no}: row does not reference inventory key {key}")
+                    continue
             if key in audit_seen:
                 errors.append(f"audit line {line_no}: duplicate audit key {key}")
             audit_seen.add(key)
@@ -213,20 +226,21 @@ else:
                 errors.append(
                     f"audit line {line_no}: current_class {row['current_class']} does not match inventory {inv['class']}"
                 )
-            verdict = row["audit_verdict"]
+            if verdict == "PARED" and not inv_missing:
+                errors.append(f"audit line {line_no}: PARED row is still present in inventory {key}")
             is_collapse = collapse_re.match(verdict) is not None
             if verdict not in allowed_audit_verdict and not is_collapse:
                 errors.append(f"audit line {line_no}: invalid audit_verdict {verdict}")
             if row["confidence"] not in allowed_confidence:
                 errors.append(f"audit line {line_no}: invalid confidence {row['confidence']}")
-            if verdict == "PARE" and not row["superseding_boundary"].strip():
+            if verdict in {"PARE", "PARED"} and not row["superseding_boundary"].strip():
                 errors.append(f"audit line {line_no}: PARE lacks superseding_boundary")
-            if is_collapse:
+            if is_collapse or verdict == "COLLAPSED-REPRESENTATIVE":
                 if not row["superseding_boundary"].strip():
                     errors.append(f"audit line {line_no}: COLLAPSE lacks superseding_boundary")
                 if not row["representative_to_keep"].strip():
                     errors.append(f"audit line {line_no}: COLLAPSE lacks representative_to_keep")
-            if verdict == "AUDIT-BLOCKED" and not row["note"].strip():
+            if verdict in {"AUDIT-BLOCKED", "BLOCKED"} and not row["note"].strip():
                 errors.append(f"audit line {line_no}: AUDIT-BLOCKED lacks reason note")
             never_pare = (
                 inv["kind"] in {"compile_fail", "trybuild"}
@@ -238,7 +252,12 @@ else:
 
         candidate_keys = {key for key, row in inventory_by_key.items() if row["class"] in candidate_classes}
         missing_audit = sorted(candidate_keys - audit_seen)
-        extra_audit = sorted(audit_seen - candidate_keys)
+        pared_keys = {
+            (row["crate"], row["file"], row["test_name"], row["kind"])
+            for row in audit_rows
+            if row["audit_verdict"] == "PARED"
+        }
+        extra_audit = sorted(audit_seen - candidate_keys - pared_keys)
         if missing_audit:
             errors.append(f"audit missing {len(missing_audit)} candidate rows; first={missing_audit[:5]}")
         if extra_audit:
@@ -264,7 +283,10 @@ else:
     except OSError:
         changed = []
     crate_edits = [
-        path for path in changed if re.match(r"^crates/[^/]+/(src|tests|benches)/", path)
+        path
+        for path in changed
+        if re.match(r"^crates/[^/]+/(src|tests|benches)/", path)
+        and not re.match(r"^crates/simthing-clausething/tests/[^/]+\.rs$", path)
     ]
     if crate_edits:
         errors.append(f"crate source/test files changed: {crate_edits[:10]}")

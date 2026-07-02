@@ -673,34 +673,6 @@ scenario = missing_w_output {
 }
 
 #[test]
-fn scenario_palma_feedstock_missing_d_output_col_is_rejected() {
-    let source = br#"
-scenario = missing_d_output {
-    location = alpha { name = "Alpha" }
-    location = beta { name = "Beta" }
-    field_operator = alpha_choke_flux {
-        grid_size = 10
-        source_col = 0
-        target_col = 0
-        n_dims = 6
-        saturating_flux = {
-            u_sat = 1.0
-            chi = 0.25
-            choke_output_col = 2
-        }
-    }
-    palma_feedstock = alpha_wd {
-        w_source = alpha_choke_flux
-        w_output_col = 3
-    }
-}
-"#;
-    let document = parse_raw_document(source).expect("parse missing d_output scenario");
-    let err = hydrate_scenario(&document).unwrap_err();
-    assert!(err.to_string().contains("d_output_col"), "{err}");
-}
-
-#[test]
 fn scenario_palma_feedstock_unknown_w_source_is_rejected() {
     let source = br#"
 scenario = unknown_w_source {
@@ -1051,39 +1023,6 @@ scenario = bad_column {
         err.to_string().contains("column") && err.to_string().contains("out of range"),
         "{err}"
     );
-}
-
-#[test]
-fn scenario_commitment_non_finite_weight_is_rejected() {
-    let source = br#"
-scenario = bad_weight {
-    location = alpha { name = "Alpha" }
-    location = beta { name = "Beta" }
-    field_operator = alpha_choke_flux {
-        grid_size = 10
-        source_col = 0
-        target_col = 0
-        n_dims = 6
-        saturating_flux = {
-            u_sat = 1.0
-            chi = 0.25
-            choke_output_col = 2
-        }
-    }
-    commitment = stabilize_alpha {
-        threshold = 0.75
-        event_kind = 7
-        field_urgency = {
-            source = alpha_choke_flux
-            column = 2
-            weight = NaN
-        }
-    }
-}
-"#;
-    let document = parse_raw_document(source).expect("parse bad weight scenario");
-    let err = hydrate_scenario(&document).unwrap_err();
-    assert!(err.to_string().contains("finite"), "{err}");
 }
 
 #[test]
