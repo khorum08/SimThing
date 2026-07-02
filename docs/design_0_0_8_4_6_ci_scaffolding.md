@@ -1,6 +1,6 @@
 # 0.0.8.4.6 — CI Scaffolding: the Doctrinal Tripwire Layer
 
-> **Status: DA-CLOSED (production track, 2026-07-01; Track C closed via `CI-C-CLOSEOUT-0`).** An infrastructure sub-track in the
+> **Status: Tracks A + C DA-CLOSED (2026-07-01); Track B OPEN (DA-OPENED 2026-07-02, consumer named — §3).** An infrastructure sub-track in the
 > 0.0.8.4.x lane (after the closed `simthing-kernel` track 0.0.8.4.5), sequenced **before** the 0.0.8.5
 > Terran-Pirate track. *(Owner said "0.0.8.5"; that number is held by Terran-Pirate, so this is numbered
 > 0.0.8.4.6 to avoid collision — bump TP to 0.0.8.6 and renumber this to 0.0.8.5 on owner request.)*
@@ -9,8 +9,9 @@
 > so that **agents and the orchestrator may treat a clean CI result as "the DA ran these scans"** — and a
 > flagged result routes to DA for the judgment a grep cannot make. The executable tests (builds, GPU parity,
 > Studio) stay **local**, by architecture. Completed CI scaffolding now has Track A closed as the grep-only
-> tripwire layer and Track C closed as the generation-time constraint layer; Track B remains deferred as the
-> local executable harness for sanctioned-door logic proof.
+> tripwire layer and Track C closed as the generation-time constraint layer; Track B is now OPEN as the
+> local executable harness for sanctioned-door logic proof (DA-OPENED 2026-07-02; consumer: the 0.0.8.5
+> seal-residue door-logic rungs — §3).
 
 ---
 
@@ -144,11 +145,11 @@ INSPECT   — requires author justification (missing = unresolved); bounded loop
 SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a false PASS (§0.6.6).
 ```
 
-**Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) remains deferred until a consumer needs executable seal-proof; Track C (the carrot) is DA-CLOSED.**
+**Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) remains deferred until a consumer needs executable seal-proof; Track C (the carrot) is DA-CLOSED.** *(Update 2026-07-02: that consumer arrived — Track B OPENED, §3.)*
 
 **Auditable screening-surface reference:** [`ci_screening_surface.md`](ci_screening_surface.md) — the single authoritative map of the screening logic, every scan/allow/block-list file, the strict rigor to add a `scans.tsv` or allowlist entry, and the triage agent's narrowing role. Built for auditability, maintenance, and Track C introspection/onboarding. Any change to the screening surface updates it in the same PR.
 
-## 3. Track B — local executable validation harness (DEFERRED)
+## 3. Track B — local executable validation harness (OPEN — DA-OPENED 2026-07-02)
 
 > Opens after Track A lands and a consumer needs it (e.g., 0.0.8.5 rungs wanting seal-proof on every change).
 > Executable tests stay **local** (Rust toolchain + the owner's GPU/Windows), per architecture. Reuses the
@@ -160,13 +161,117 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 > (the residue grep can't reach, per §1). Every other rung is fully served by Track A. This keeps the
 > expensive layer off the PRs that don't need it and is the precise complement to "green Track A ≠ door logic
 > verified." Anything beyond this rule is deferred until a consumer actually opens Track B.
+>
+> **Opening adjudication (executive DA, 2026-07-02, owner-ratified).** The consumer arrived and is named: the
+> **0.0.8.5 seal-residue door-logic rung class.** Live evidence: the original `TP-SCALE-ENVELOPE-0` terminal
+> proof was a `catch_unwind` false-green that **passed grep-CI by design** (door logic is invisible to Track A,
+> exactly as §4 declares) and was caught only downstream; its 0R/0R2 repairs were `seal-residue-risk` rungs
+> whose seal-proof (`compile_fail` + CPU-oracle parity + real-adapter terminal assertion) had to be run by the
+> scarce DA personally — the precise cost this track exists to eliminate. Phases 3–6 of 0.0.8.5 (shipsize
+> decoder, combat arena, fronts, fleet movement) make recurrence near-certain. The trigger rule above is
+> unchanged and now live. **Named candidate variant (recorded, owner-gated, not opened):** a separate,
+> non-blocking GitHub-side workflow running only the `compile_fail` doc-test suite (toolchain, no GPU) — it
+> would give the webchat orchestrator remote seal-proof visibility instead of a relayed local report. It must
+> never touch the blocking Track A gate (the no-toolchain/instant property is inviolate) and opens only on
+> owner authorization.
 
 | Rung | ID | Scope | Recipient | State | DoD |
 |---|---|---|---|---|---|
-| 0 | `CI-B-TRACK-OPEN-0` | Open when a consumer needs per-change seal-proof. | Opus/Owner (DA) | **DEFERRED** | consumer named. |
-| 1 | `CI-B-LOCAL-HARNESS-0` | `scripts/ci/doctrine_tests.sh` (local) — `cargo fmt --check`, `cargo test -p <crate> --doc` (the `compile_fail` suite that *proves* the seals — the one thing grep can't), targeted `cargo check -p`/`test -p`, parity tests. Emits the §1 report. | Cursor/Grok | **DEFERRED** | runs locally; emits the report. |
-| 2 | `CI-B-TRIPWIRE-TAGS-0` | Executable-specific tripwires: **GPU-skipped → `INSPECT`** (seal/parity not fully verified here; owner's machine confirms — never a silent PASS); **flaky / perf-variance → `INSPECT`** with the run band (the +49% single-run noise needs a multi-run); **compile_fail proven / parity bit-exact → `PASS`**. | Cursor/Grok | **DEFERRED** | each tag emitted correctly on a representative run. |
-| F | `CI-B-CLOSEOUT-0` | "Test batteries executed by the DA" holds for the executable dimension too — run on the machine that can execute them; contract recorded. | Opus/Owner (DA) | **DEFERRED** | recorded; track CLOSED. |
+| 0 | `CI-B-TRACK-OPEN-0` | Open when a consumer needs per-change seal-proof. | Opus/Owner (DA) | **DONE — DA-OPENED** (2026-07-02) | consumer named: the 0.0.8.5 seal-residue door-logic rungs (owner-ratified; see opening adjudication above). |
+| 1 | `CI-B-LOCAL-HARNESS-0` | `scripts/ci/doctrine_tests.sh` (local) — `cargo fmt --check`, `cargo test -p <crate> --doc` (the `compile_fail` suite that *proves* the seals — the one thing grep can't), targeted `cargo check -p`/`test -p`, parity tests. Emits the §1 report. | Cursor/Grok | **OPEN** (queued) | runs locally; emits the report. |
+| 2 | `CI-B-TRIPWIRE-TAGS-0` | Executable-specific tripwires: **GPU-skipped → `INSPECT`** (seal/parity not fully verified here; owner's machine confirms — never a silent PASS); **flaky / perf-variance → `INSPECT`** with the run band (the +49% single-run noise needs a multi-run); **compile_fail proven / parity bit-exact → `PASS`**. | Cursor/Grok | **OPEN** (queued after 1) | each tag emitted correctly on a representative run. |
+| F | `CI-B-CLOSEOUT-0` | "Test batteries executed by the DA" holds for the executable dimension too — run on the machine that can execute them; contract recorded. | Opus/Owner (DA) | **OPEN** (after 1–2) | recorded; track CLOSED. |
+
+### 3B. Track B expansion — GitHub-side CPU execution for webchat orchestration (owner-mandated, 2026-07-02)
+
+> **Owner mandate (2026-07-02):** extend Track B so a webchat orchestrator with the GitHub connector can *run
+> and consume* CPU-side executable verification GitHub-side, not only via relayed local reports. Constraint
+> honored by construction: the blocking Track A gate keeps its no-toolchain/instant property untouched —
+> everything here is a **separate, non-blocking workflow**. Contract: a green GH-CPU run is **DA-equivalent for
+> the CPU-side seal-proof class only**; GPU parity stays local and tripwire-tagged (GPU-skipped → `INSPECT`),
+> per §1 and the Track B trigger rule. Verified 2026-07-02: `.gitattributes` LF normalization is in place, so
+> ubuntu byte-identity tests are platform-safe.
+
+| Rung | ID | Scope | Recipient | State | DoD |
+|---|---|---|---|---|---|
+| 3 | `CI-B-GH-CPU-0` | `.github/workflows/doctrine-exec.yml` — **separate, non-blocking**: rust-cache; `cargo test -p simthing-kernel --doc` (the `compile_fail` seal-proof suite); the named CPU-side oracle/planner suites (velocity parity, compaction pins); `cargo check -p` over the authority crates. Emits the §1 report + a **`DOCTRINE-EXEC-VERDICT:`** footer to the job summary (the connector-greppable line). Triggered by path-filter on authority-crate paths + `workflow_dispatch`. **Double dividend:** green ubuntu runs of the `f32::to_bits` oracle suites beside the owner's Windows runs are a standing **cross-platform bit-exactness sentinel** for the corpus mission (core §1 second mission). | Cursor/Grok | **OPEN** (queued — fold into the CI-B-1 handoff) | a known-bad `compile_fail` regression fails the workflow; footer greppable via the connector; the Track A workflow is untouched. |
+| 4 | `CI-B-GH-COMMENT-0` | ChatOps initiation: a `/seal-proof` PR comment (**collaborator-only; never fork-triggered**) dispatches `doctrine-exec.yml` on the PR head and posts/updates **one sticky PR comment** carrying the report footer — the webchat orchestrator both *initiates* and *reads* executable verification in the PR thread, no local relay. | Cursor/Grok | **OPEN** (queued after 3) | comment triggers the run; sticky comment updates, never duplicates; non-collaborator comments are ignored. |
+| 5 | `CI-B-SURFACE-TRUTH-0` | **Candidate — owner-gated.** In `doctrine-exec.yml`: `cargo public-api` diff of `simthing-kernel` against a committed baseline — the **compiler-derived** public surface, auditing the grep allowlist's *enumeration completeness* (the single-line-`pub use` class of hole, §5). The fast grep stays the blocking gate; this is its periodic deep verifier — the "stricter reference implementation" differential the verifier-fuzzing literature prescribes (arXiv:2606.01066, verified). | Cursor/Grok | **RECORDED** — opens on owner authorization | a surface item invisible to the grep enumeration but present in rustdoc output is reported. |
+
+### 3C. DA re-evaluation log (2026-07-02, Fable 5 — full-structure review, owner-mandated)
+
+Findings and proposals recorded so they are never re-derived. Nothing below weakens the blocking gate or adds a
+metered dependency; everything is free-tier. Nothing was found that should be **deleted** — the structure passes
+its own minimalism test; the opportunities are promotions and free-capability captures, not repairs.
+
+**Platform promotions (owner-gated; one-time repo settings — each lifts an existing convention to platform
+enforcement, the admission-ladder move applied to the repository itself):**
+1. **Branch protection on `master` with `doctrine-scan` as a required status check.** Verified 2026-07-02:
+   master is currently **unprotected** — FAIL-blocks-merge is convention only. This makes it platform fact.
+2. **Enable repo auto-merge** (verified currently disabled). DA clearance = approve; the platform waits for
+   green — removes the merge watch-loop for AFK/webchat orchestration.
+3. **CODEOWNERS over `scripts/ci/**` + `docs/sanctioned_surface.md`** — platform-enforced review on
+   screening-surface edits. Trade-off: requires the owner's human review event on rare allowlist edits.
+
+**Track C / GWM extensions (owner-gated; constitution-level if adopted):**
+4. **The Promotion Rider.** Extend the breakthrough valve's signed-payoff geometry (arXiv:1402.3610 — strictly
+   positive, decoupled marginal utility) from rare architectural experiments to the **common currency**: any
+   rung MAY carry an optional, **non-gating** rider that promotes one rung-adjacent invariant up the admission
+   ladder (scan/prose → type/admission hard-error), retiring its scan **in the same PR**. Genuine = credited in
+   the graduation log; absent = zero; fabricated = FAIL. Self-verifying by construction (the rider's proof *is*
+   net-negative enforcement surface). Converts `scans.tsv` shrinkage from a passive obligation into a standing
+   positive pull.
+5. **The baseline-zero promotion signal.** Corpus-maintenance rule: a HEURISTIC whose whole-tree master baseline
+   is **zero** across consecutive maintenance reviews is **promotion-ready** (upgrade to RELIABLE, or complete
+   its type boundary) — the opposite tail of "chronically firing → retire." **Live datum:** as of 2026-07-02
+   all four HEURISTICs are baseline-zero on master; all four are flagged for promotion evaluation at the next
+   corpus-maintenance review.
+
+**Data-home addition (fold into the CI-B-1 handoff; §4 rigor — fixture + trap + selftest wiring):**
+6. **`TEST-PANIC-SWALLOW` (HEURISTIC → INSPECT):** `catch_unwind` over `crates/**/tests/**` — born from the live
+   `TP-SCALE-ENVELOPE-0` false-green (the incident is its own known-bad fixture). Promotion-blocker: retire if a
+   proof-path panic-swallow becomes structurally unrepresentable.
+6b. **Adversarial evasion fixtures (same handoff):** extend the fixture corpus with the Rust evasion classes
+   grep is structurally weakest against — a macro-expansion producer (`macro_rules!` expanding to a
+   `pub fn -> SealedType`), an inline-`mod` split declaration, an attribute-interposed declaration
+   (`#[inline]` between `pub fn` and its return type), and **rename-on-re-export grammar laundering**
+   (`pub use …::forge_x as read_x;`) — each either caught by its scan or honestly downgraded per the §0
+   line-split rule. Grounded in verifier fuzzing (arXiv:2606.01066, verified): any looseness in the verifier's
+   parsing stack is a latent false-PASS channel, and the allowlist false negative is this layer's named worst
+   failure.
+7. **Scheduled corpus-maintenance workflow (owner-gated, parking-aware):** a monthly `schedule:` run of the
+   whole-tree scan + per-scan-id triage-log stats, updating **one standing issue** — keeps the §1A maintenance
+   cadence alive while the repo is parked. Only valuable if the owner reads it; owner decides.
+
+**External research adjudication (2026-07-02; owner-relayed digest, all four arXiv IDs verified live on arXiv):**
+- **ADOPTED IN PART — arXiv:2606.01066** (*Fuzzing RLVR Verifiers*): as items 6b (adversarial evasion fixtures)
+  and the `CI-B-SURFACE-TRUTH-0` stricter-reference differential. The full dynamic mutation **engine is
+  REJECTED**: it gold-plates rung-3 residue designed to shrink, against an RL-optimizer threat model we do not
+  have — our agents are frozen, bounded-retry, and already bounded by the §1A spam-bounds.
+- **ADOPTED IN PART — arXiv:2606.31706** (*AdaTrans*, error-adaptive repair; 95.51%/81.09% empirical): the
+  repair-posture stratification lands as one onboarding bullet in `ci_screening_surface.md` §7 — scanner FAIL =
+  token-cheap printed remedy; kernel seal breach = structural re-derivation, never lifetime/clone/`unsafe`
+  patch-append; parity mismatch = oracle-first.
+- **REJECTED — arXiv:2605.04000** (RL false-positive suppression + selective fuzz for Rust static analysis):
+  category error here — our INSPECTs flag *ontology* leaks, not memory-safety warnings; memory safety is
+  discharged at rung 1 (`forbid(unsafe_code)` + compiler), and fuzz-validating admission-guaranteed layouts is
+  the §H proof-battery anti-pattern. Its "~81 baseline INSPECTs" premise is stale (baseline is zero); an
+  auto-clear of INSPECT→PASS would delete the legitimacy check ("scanner stopped complaining is not a
+  clearance"). Its sound grain — ambiguous static signal → cheap localized dynamic check before scarce
+  judgment — **is already the Track B trigger rule.**
+- **REJECTED / PARKED — arXiv:2602.01698** (*Latent Exploration Decoding*): requires intermediate-layer logit
+  access — infeasible on the closed-API fleet (the same gate as the parked constrained-decoding study). Its
+  behavioral analog (explore-then-harden dual pass) is deliberately **inverted** by the breakthrough valve
+  (conformant baseline FIRST; exploration rides risk-free alongside) — the GWM-correct order; a mandated
+  unconstrained first pass on production rungs is a drift channel, not a carrot.
+
+**Evaluated and REJECTED (do not re-derive):** Miri/sanitizers (the authority crates forbid `unsafe`; near-zero
+yield); consolidating the three thin Python engines (churn without dividend); a new track letter or central
+registry (the per-track addendum already generalizes); making `doctrine-exec` blocking (a toolchain in the merge
+path violates the inviolate no-toolchain property); agent reputation/scoring tiers (governance ceremony);
+`cargo fmt`/clippy gates in Track A (same inviolate property). **Simplicity debt noted:** the ~7-min self-test
+runtime is Windows process-spawn overhead only (ubuntu ≈1 min); the Track B local harness must batch, never
+spawn-per-fixture.
 
 ## 3A. Track C — the carrot (generation-time constraint, DA-CLOSED)
 
