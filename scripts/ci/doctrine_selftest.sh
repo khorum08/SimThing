@@ -12,6 +12,8 @@ ROOT_SANDBOX=""
 selftest_failures=0
 positive_control="FAIL"
 rot_test_result="FAIL"
+test_budget_result="FAIL"
+drift_proof_result="FAIL"
 
 declare -a KB_REPORT=()
 declare -a HE_REPORT=()
@@ -116,7 +118,7 @@ run_scan_in_sandbox() {
   local root="$1"
   local out_file="$2"
   set +e
-  (cd "$root" && bash "scripts/ci/doctrine_scan.sh") >"$out_file" 2>&1
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh") >"$out_file" 2>&1
   printf '%s' $?
   set -e
 }
@@ -394,6 +396,95 @@ run_rot_test() {
   end_sandbox
 }
 
+run_test_budget_proof() {
+  local root out base head exit_code verdict hard inspect sv count
+  root="$(mktemp -d "${TMPDIR:-/tmp}/test-budget-proof-XXXXXX")"
+  copy_ci_bundle "$root"
+  ensure_minimal_crates "$root"
+  mkdir -p "${root}/crates/simthing-spec/tests"
+  (
+    cd "$root" &&
+    git init -q &&
+    git config user.email "ci@example.invalid" &&
+    git config user.name "Doctrine Selftest" &&
+    git add . &&
+    git commit -q -m baseline
+  )
+  base="$(git -C "$root" rev-parse HEAD)"
+  cp "${FIXTURES}/test_budget/enumeration_burst.rs" "${root}/crates/simthing-spec/tests/budget.rs"
+  (
+    cd "$root" &&
+    git add . &&
+    git commit -q -m enumeration-burst
+  )
+  head="$(git -C "$root" rev-parse HEAD)"
+  out="${root}/scan-enum.out"
+  set +e
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 DOCTRINE_SCAN_ONLY_TEST_BUDGET=1 bash "scripts/ci/doctrine_scan.sh" --pr-delta "$base" "$head") >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "TEST-BUDGET")"
+  if [[ "$verdict" != "INSPECT" || "$sv" != "INSPECT" || "$count" -le 0 || "$exit_code" -ne 0 ]]; then
+    test_budget_result="FAIL (enumeration burst verdict=${verdict} scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    rm -rf "$root"
+    return
+  fi
+  rm -rf "$root"
+
+  root="$(mktemp -d "${TMPDIR:-/tmp}/test-budget-trap-XXXXXX")"
+  copy_ci_bundle "$root"
+  ensure_minimal_crates "$root"
+  mkdir -p "${root}/crates/simthing-spec/tests"
+  (
+    cd "$root" &&
+    git init -q &&
+    git config user.email "ci@example.invalid" &&
+    git config user.name "Doctrine Selftest" &&
+    git add . &&
+    git commit -q -m baseline
+  )
+  base="$(git -C "$root" rev-parse HEAD)"
+  cp "${FIXTURES}/test_budget/table_driven_trap.rs" "${root}/crates/simthing-spec/tests/budget.rs"
+  (
+    cd "$root" &&
+    git add . &&
+    git commit -q -m table-driven-trap
+  )
+  head="$(git -C "$root" rev-parse HEAD)"
+  out="${root}/scan-table.out"
+  set +e
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 DOCTRINE_SCAN_ONLY_TEST_BUDGET=1 bash "scripts/ci/doctrine_scan.sh" --pr-delta "$base" "$head") >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "TEST-BUDGET")"
+  if [[ "$hard" -eq 0 && "$sv" == "PASS" && "$count" -eq 0 && "$exit_code" -eq 0 ]]; then
+    test_budget_result="PASS"
+  else
+    test_budget_result="FAIL (table trap verdict=${verdict} scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+  fi
+  rm -rf "$root"
+}
+
+run_drift_proof() {
+  local out exit_code
+  out="$(mktemp "${TMPDIR:-/tmp}/drift-proof-XXXXXX")"
+  set +e
+  bash "${REPO_ROOT}/scripts/ci/test_inventory_drift_check.sh" --prove >"$out" 2>&1
+  exit_code=$?
+  set -e
+  if [[ "$exit_code" -eq 0 ]] && grep -q 'TEST-INVENTORY-DRIFT-PROVE-VERDICT: PASS' "$out"; then
+    drift_proof_result="PASS"
+  else
+    drift_proof_result="FAIL (exit=${exit_code})"
+    fail_selftest
+  fi
+  rm -f "$out"
+}
+
 run_all_cases() {
   expect_reliable_fail "b3_buffer_escape" "B3-BUFFER-ESCAPE" \
     setup_kernel_src b3_buffer_escape.rs
@@ -463,6 +554,8 @@ emit_report() {
     echo "    ${line}"
   done
   echo "  rot test: ${rot_test_result}"
+  echo "  test budget proof: ${test_budget_result}"
+  echo "  inventory drift proof: ${drift_proof_result}"
   if [[ "$selftest_failures" -eq 0 ]]; then
     echo "DOCTRINE-SELFTEST-VERDICT: PASS"
   else
@@ -493,6 +586,8 @@ main() {
   run_positive_control
   run_all_cases
   run_rot_test
+  run_test_budget_proof
+  run_drift_proof
   emit_report
 
   if [[ "$selftest_failures" -gt 0 ]]; then

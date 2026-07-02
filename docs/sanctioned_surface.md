@@ -13,7 +13,7 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | scripts/ci/allow/inert_buffer_handles.txt | 2 | 9e2069fa5730f17cacde1c671ebc17beb59f50738d2dcb914bceae13f9b8b3a4 |
 | scripts/ci/allow/kernel_surface.txt | 195 | ef142af8daafafe87dd7ae045fbd4400adcdd8eb5c73e581977b5209d53e5074 |
 | scripts/ci/allow/sealed_types.txt | 12 | 0465cdb467587a9fd44051ba281121b8bf5d718ac7e0ede1998856c6ded97a65 |
-| scripts/ci/scans.tsv | 14 | a28be2dfd7f1ca2af3c073fdfc33a1bbb6e3988140d674371569a1c4940ea86c |
+| scripts/ci/scans.tsv | 15 | b45359426ed1980f16df42e0fa838f8f8f38e2f6000d04fff62b62aaefb1516d |
 
 ## Sanctioned Sealed Producers
 
@@ -277,3 +277,4 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | ALLOW-SEALED-PRODUCERS | RELIABLE | design §5 sealed producer allowlist | crates/simthing-kernel/src/** | @ALLOWLIST:sealed-producers | (none) | retire when sealed producers are type-boundary admitted | scans.tsv |
 | ALLOW-BUFFER-HANDLES | RELIABLE | design §5 buffer handle allowlist | crates/simthing-kernel/src/** | @ALLOWLIST:buffer-handles | (none) | retire when buffer handles are crate-private type boundary only | scans.tsv |
 | ALLOW-KERNEL-SURFACE | RELIABLE | design §5 kernel surface allowlist | crates/simthing-kernel/src/lib.rs | @ALLOWLIST:kernel-surface | (none) | retire when kernel exports are type-boundary closed | scans.tsv |
+| TEST-BUDGET | HEURISTIC | design §0.9.5 test admission budget | crates/** | @TEST_BUDGET | (none) | retire if test admission becomes a typed ledger gate end-to-end | scans.tsv |
