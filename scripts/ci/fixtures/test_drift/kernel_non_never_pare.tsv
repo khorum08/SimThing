@@ -1,0 +1,2 @@
+crate	file	test_name	kind	class	superseding_boundary	verdict	note	promotion_target
+simthing-kernel	crates/simthing-kernel/src/non_never.rs	kernel_admission_enumeration	unit	admission-adjacent	B-T2-KERNEL-ADMISSION	KEEP	fixture row should fail kernel strict tier	promotion-target:kernel-admission-boundary

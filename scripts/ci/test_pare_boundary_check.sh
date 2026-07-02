@@ -98,6 +98,16 @@ allowed_dispositions = {
     "NEVER_PARE",
 }
 allowed_confidence = {"high", "medium", "low"}
+allowed_keep_targets = {
+    "permanent-residue:oracle-parity",
+    "permanent-residue:golden-byte",
+    "permanent-residue:seal-proof",
+    "permanent-residue:determinism",
+    "permanent-residue:behavior-regression",
+    "permanent-residue:escaped-bug",
+    "permanent-residue:doc-named-invariant",
+    "permanent-residue:stead-required",
+}
 
 errors: list[str] = []
 
@@ -228,6 +238,13 @@ for line_no, row in enumerate(rows, start=2):
 
     if inv is not None and is_never_pare_inventory(inv) and disposition != "NEVER_PARE":
         errors.append(f"boundary-row line {line_no}: never-pare inventory row is {disposition}: {key}")
+
+    if inv is not None and inv.get("verdict") == "KEEP":
+        target = inv.get("promotion_target", "").strip()
+        if target not in allowed_keep_targets and not target.startswith("promotion-target:"):
+            errors.append(f"boundary-row line {line_no}: inventory KEEP row lacks legal promotion_target: {key}")
+        if inv["crate"] in {"simthing-kernel", "simthing-sim"} and target not in allowed_keep_targets:
+            errors.append(f"boundary-row line {line_no}: kernel/sim KEEP row is not permanent-residue: {key}")
 
     if row["test_name"].startswith("cfg_test_mod::"):
         module_total += 1

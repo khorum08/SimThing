@@ -188,6 +188,7 @@ Every test must name the **regression it catches.** Apply this triage:
 - **A rejection class** (malformed input the admission layer hard-errors) → **one** representative negative test that the span-error fires. **Not** an enumeration of every malformed variant.
 - **Guaranteed by the type system / typestate / the firewall** → **zero tests.** You do not test that an enum cannot hold an illegal variant.
 - **Reuse existing oracles/guards** (the semantic-free guard, the arena-allocation oracle, the canonical save/load battery). **Never re-derive** a guard the repo already runs.
+- A new KEEP-class test names its promotion target or its permanent-residue class.
 
 List the load-bearing tests for this rung, each with its one-line justification:
 

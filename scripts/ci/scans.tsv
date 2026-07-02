@@ -13,3 +13,4 @@ SPEC-STRING-CHANNEL | HEURISTIC | crates/simthing-spec/src/** | owner_ref *: *(O
 ALLOW-SEALED-PRODUCERS | RELIABLE | crates/simthing-kernel/src/** | @ALLOWLIST:sealed-producers |  | design §5 sealed producer allowlist | retire when sealed producers are type-boundary admitted
 ALLOW-BUFFER-HANDLES | RELIABLE | crates/simthing-kernel/src/** | @ALLOWLIST:buffer-handles |  | design §5 buffer handle allowlist | retire when buffer handles are crate-private type boundary only
 ALLOW-KERNEL-SURFACE | RELIABLE | crates/simthing-kernel/src/lib.rs | @ALLOWLIST:kernel-surface |  | design §5 kernel surface allowlist | retire when kernel exports are type-boundary closed
+TEST-BUDGET | HEURISTIC | crates/** | @TEST_BUDGET |  | design §0.9.5 test admission budget | retire if test admission becomes a typed ledger gate end-to-end

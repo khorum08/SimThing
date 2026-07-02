@@ -1,0 +1,2 @@
+crate	file	test_name	kind	class	superseding_boundary	verdict	note	promotion_target
+simthing-spec	crates/simthing-spec/tests/unowned.rs	unowned_keep	integration	behavior-regression	B-T5-BEHAVIOR-REGRESSION	KEEP	fixture row should fail unowned KEEP	
