@@ -196,7 +196,7 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 |---|---|---|---|---|---|
 | 3 | `CI-B-GH-CPU-0` | `.github/workflows/doctrine-exec.yml` — **separate, non-blocking**: rust-cache; `cargo test -p simthing-kernel --doc` (the `compile_fail` seal-proof suite); the named CPU-side oracle/planner suites (velocity parity, compaction pins); `cargo check -p` over the authority crates. Emits the §1 report + a **`DOCTRINE-EXEC-VERDICT:`** footer to the job summary (the connector-greppable line). Triggered by path-filter on authority-crate paths + `workflow_dispatch`. **Double dividend:** green ubuntu runs of the `f32::to_bits` oracle suites beside the owner's Windows runs are a standing **cross-platform bit-exactness sentinel** for the corpus mission (core §1 second mission). | Cursor/Grok | **OPEN** (queued — fold into the CI-B-1 handoff) | a known-bad `compile_fail` regression fails the workflow; footer greppable via the connector; the Track A workflow is untouched. |
 | 4 | `CI-B-GH-COMMENT-0` | ChatOps initiation: a `/seal-proof` PR comment (**collaborator-only; never fork-triggered**) dispatches `doctrine-exec.yml` on the PR head and posts/updates **one sticky PR comment** carrying the report footer — the webchat orchestrator both *initiates* and *reads* executable verification in the PR thread, no local relay. | Cursor/Grok | **OPEN** (queued after 3) | comment triggers the run; sticky comment updates, never duplicates; non-collaborator comments are ignored. |
-| 5 | `CI-B-SURFACE-TRUTH-0` | **Candidate — owner-gated.** In `doctrine-exec.yml`: `cargo public-api` diff of `simthing-kernel` against a committed baseline — the **compiler-derived** public surface, auditing the grep allowlist's *enumeration completeness* (the single-line-`pub use` class of hole, §5). The fast grep stays the blocking gate; this is its periodic deep verifier. | Cursor/Grok | **RECORDED** — opens on owner authorization | a surface item invisible to the grep enumeration but present in rustdoc output is reported. |
+| 5 | `CI-B-SURFACE-TRUTH-0` | **Candidate — owner-gated.** In `doctrine-exec.yml`: `cargo public-api` diff of `simthing-kernel` against a committed baseline — the **compiler-derived** public surface, auditing the grep allowlist's *enumeration completeness* (the single-line-`pub use` class of hole, §5). The fast grep stays the blocking gate; this is its periodic deep verifier — the "stricter reference implementation" differential the verifier-fuzzing literature prescribes (arXiv:2606.01066, verified). | Cursor/Grok | **RECORDED** — opens on owner authorization | a surface item invisible to the grep enumeration but present in rustdoc output is reported. |
 
 ### 3C. DA re-evaluation log (2026-07-02, Fable 5 — full-structure review, owner-mandated)
 
@@ -231,9 +231,39 @@ enforcement, the admission-ladder move applied to the repository itself):**
 6. **`TEST-PANIC-SWALLOW` (HEURISTIC → INSPECT):** `catch_unwind` over `crates/**/tests/**` — born from the live
    `TP-SCALE-ENVELOPE-0` false-green (the incident is its own known-bad fixture). Promotion-blocker: retire if a
    proof-path panic-swallow becomes structurally unrepresentable.
+6b. **Adversarial evasion fixtures (same handoff):** extend the fixture corpus with the Rust evasion classes
+   grep is structurally weakest against — a macro-expansion producer (`macro_rules!` expanding to a
+   `pub fn -> SealedType`), an inline-`mod` split declaration, an attribute-interposed declaration
+   (`#[inline]` between `pub fn` and its return type), and **rename-on-re-export grammar laundering**
+   (`pub use …::forge_x as read_x;`) — each either caught by its scan or honestly downgraded per the §0
+   line-split rule. Grounded in verifier fuzzing (arXiv:2606.01066, verified): any looseness in the verifier's
+   parsing stack is a latent false-PASS channel, and the allowlist false negative is this layer's named worst
+   failure.
 7. **Scheduled corpus-maintenance workflow (owner-gated, parking-aware):** a monthly `schedule:` run of the
    whole-tree scan + per-scan-id triage-log stats, updating **one standing issue** — keeps the §1A maintenance
    cadence alive while the repo is parked. Only valuable if the owner reads it; owner decides.
+
+**External research adjudication (2026-07-02; owner-relayed digest, all four arXiv IDs verified live on arXiv):**
+- **ADOPTED IN PART — arXiv:2606.01066** (*Fuzzing RLVR Verifiers*): as items 6b (adversarial evasion fixtures)
+  and the `CI-B-SURFACE-TRUTH-0` stricter-reference differential. The full dynamic mutation **engine is
+  REJECTED**: it gold-plates rung-3 residue designed to shrink, against an RL-optimizer threat model we do not
+  have — our agents are frozen, bounded-retry, and already bounded by the §1A spam-bounds.
+- **ADOPTED IN PART — arXiv:2606.31706** (*AdaTrans*, error-adaptive repair; 95.51%/81.09% empirical): the
+  repair-posture stratification lands as one onboarding bullet in `ci_screening_surface.md` §7 — scanner FAIL =
+  token-cheap printed remedy; kernel seal breach = structural re-derivation, never lifetime/clone/`unsafe`
+  patch-append; parity mismatch = oracle-first.
+- **REJECTED — arXiv:2605.04000** (RL false-positive suppression + selective fuzz for Rust static analysis):
+  category error here — our INSPECTs flag *ontology* leaks, not memory-safety warnings; memory safety is
+  discharged at rung 1 (`forbid(unsafe_code)` + compiler), and fuzz-validating admission-guaranteed layouts is
+  the §H proof-battery anti-pattern. Its "~81 baseline INSPECTs" premise is stale (baseline is zero); an
+  auto-clear of INSPECT→PASS would delete the legitimacy check ("scanner stopped complaining is not a
+  clearance"). Its sound grain — ambiguous static signal → cheap localized dynamic check before scarce
+  judgment — **is already the Track B trigger rule.**
+- **REJECTED / PARKED — arXiv:2602.01698** (*Latent Exploration Decoding*): requires intermediate-layer logit
+  access — infeasible on the closed-API fleet (the same gate as the parked constrained-decoding study). Its
+  behavioral analog (explore-then-harden dual pass) is deliberately **inverted** by the breakthrough valve
+  (conformant baseline FIRST; exploration rides risk-free alongside) — the GWM-correct order; a mandated
+  unconstrained first pass on production rungs is a drift channel, not a carrot.
 
 **Evaluated and REJECTED (do not re-derive):** Miri/sanitizers (the authority crates forbid `unsafe`; near-zero
 yield); consolidating the three thin Python engines (churn without dividend); a new track letter or central

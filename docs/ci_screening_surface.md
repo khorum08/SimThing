@@ -222,7 +222,12 @@ three trustworthy.
 2. **Run the inner loop as you edit.** After each small edit: `cargo check -p <touched-crate>`, then
    `bash scripts/ci/doctrine_scan.sh`. Fix a FAIL immediately from its printed remedy; do not accumulate.
 3. **On a FAIL:** fix the violation, **or** — only if it is a legitimately new sanctioned door — add a conforming
-   `allow/*.txt` record per §4. **Never edit the scanner to dodge a valid finding.**
+   `allow/*.txt` record per §4. **Never edit the scanner to dodge a valid finding.** Match repair posture to
+   failure class (error-adaptive repair, arXiv:2606.31706): a scanner/allowlist FAIL is token-cheap — apply the
+   printed remedy; a **kernel seal breach** (`compile_fail` / private-field / visibility error at a sealed
+   boundary) means the *design* is wrong — step back, re-derive the type boundary, or route through a sanctioned
+   door (`docs/sanctioned_surface.md`), and **never** patch-append lifetimes, clones, or `unsafe` to force past
+   a seal; a CPU-oracle **parity mismatch** is behavioral — debug oracle-first before touching the GPU leg.
 4. **On an INSPECT:** it does not block, but it is **not done**. Attach a one-line justification and route it to
    the triage agent (§5); never silently merge a green-with-INSPECT PR.
 5. **If you edit `allow/*.txt` or `scans.tsv`:** regenerate the digest (`bash scripts/ci/gen_digest.sh`) and
