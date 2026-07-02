@@ -344,14 +344,40 @@ spawn-per-fixture.
 | 3 | `CI-C-TRACK-ADDENDUM-0` | **Opt-in, auto-detaching per-track CI addendum — generalize the harness without sprawl.** A production track MAY carry a CI addendum **co-located with its own track doc** (a fenced `ci-addendum` block, or a sibling `<track>.ci.tsv` / `<track>.ci.allow/`): its track-specific scans + the sanctioned-surface a track-scoped digest draws from. Three hard properties keep the minimalist discipline intact: **(a) strictly opt-in** — most tracks carry none; absent an addendum only the global floor runs. **(b) auto-detaching** — the runner loads it only when invoked for that track's scope (the PR/handoff declares its canonical track doc); it travels *with* the track doc, so when the track archives its addendum archives too and stops applying — **no central registry accumulates, the global `scripts/ci/scans.tsv` / `allow/*.txt` stay sparse and singular.** **(c) additive-only** — an addendum can ADD a scan, TIGHTEN, or define a digest surface; it can **never remove or widen the global floor** (a config-level laundering attempt — an addendum that disables/loosens a global scan — hard FAILs). Same rigor as the floor: DA-reviewed like an allowlist edit, each entry carries `promotion-blocker` + door-class grammar; **populated reactively from the triage log, never speculatively.** The `CI-C-DIGEST-0` generator reads *global + the active track's addendum* for that track's onboarding only. | Cursor/Grok | **COMPLETE** (DA-verified at CF, 2026-07-01: `--prove-addendum` PASS with substantive assertions — opt-in, auto-detach, additive-only-reject, digest-scope; global `scans.tsv`/`allow/**` byte-unchanged; impl commit `bc2e23ecc7` clean; results-doc packaging irregularity ruled cosmetic) | `doctrine_scan.sh --track-doc <track-doc>` loads only the selected sibling `<track-doc>.ci.tsv` / `<track-doc>.ci.allow/`; default scan remains global-only; `--prove-addendum` proves opt-in, auto-detach, additive-only scan-id rejection, and active-track-only digest scope. No `scripts/ci/scans.tsv`, `scripts/ci/allow/**`, workflow, or crate edits. Evidence: `docs/tests/ci-c-track-addendum-0_results.md`. |
 | F | `CI-C-CLOSEOUT-0` | Record that the scanner now serves all three pipeline positions — **before** (digest), **during** (inner-loop self-scan), **after** (CI gate) — one artifact slid leftward; FAIL-as-teacher confirmed; the opt-in per-track addendum is documented in `ci_screening_surface.md` as the *only* sanctioned generalization path (global floor stays sparse). **+ the first corpus-maintenance review:** Track C dogfoods the live CI+triage tier — every INSPECT its PRs (and the C1 substrate-touching inner-loop demo) raise is triaged via §1A and **logged to `triage_log.tsv`, never silently passed**; at closeout the DA reads the accumulated corpus, classifies what fired (false-positive / real / gray), and names any chronically-firing HEURISTIC as a retirement/promotion candidate (or records "corpus thin → scans well-tuned"). | Opus/Owner (DA) | **DA-CLOSED** (2026-07-01 — C1/C2/C3 all COMPLETE; three-position scanner live; corpus reviewed = 1 GREEN row, too thin for promotion/retirement, no action; **Track C CLOSED**; evidence `docs/tests/ci-c-closeout-0_results.md`) | recorded; `triage_log.tsv` corpus reviewed; retirement/promotion candidates named or explicitly "none"; corpus observation recorded; track CLOSED. |
 
-## 4. Honest residue / non-goals
+## 4. Track D - test-corpus paring: admission ladder applied to tests
+
+Track D opens after `CI-B-WEBCHAT-PR1R` as a corpus-maintenance track for tests themselves. Its first job is not
+deletion. Its first job is a complete inventory and conservative classification pass so later paring rungs can
+distinguish seal/oracle proof from duplicated admission theater.
+
+Fable route for operators:
+
+- Owner-deep full batteries are quarantined artillery, not routine proof.
+- Weekly/master-only or ladder-boundary owner-deep cadence is not decided until after paring data exists.
+- Smoke PASS is mechanics-only; it is not seal-proof.
+- Seal-residue rungs still require targeted profile/probe proof.
+- Timeout semantics and profile data remain Track B concerns.
+- Track D starts with inventory and classification, with zero deletions.
+
+Draconian rule: never pare `compile_fail`, trybuild, seal-proof, oracle-parity, golden-byte, STEAD-required,
+invariant-required, or named invariant coverage unless a later rung proves an explicit stronger superseding
+boundary. D0 records candidates; it does not remove tests.
+
+| Rung | ID | Scope | State | DoD |
+|---|---|---|---|---|
+| D0 | `TEST-PARE-INVENTORY-0` | Mechanical inventory and classification of the current test corpus; zero deletions. | **PROBATION** | `scripts/ci/test_inventory.tsv` exists; `scripts/ci/test_inventory_check.sh` validates schema, exact mechanical coverage, never-pare rules, and superseding-boundary requirements; results recorded in `docs/tests/test_pare_inventory_0_results.md`. |
+| D1 | `TEST-PARE-AUDIT-1` | Audit D0 `AUDIT` rows against actual admission, usecase, duplication, and hygiene boundaries. | **FUTURE** | Candidate rows either gain a hard superseding boundary or remain KEEP/AUDIT; no seal/oracle/golden/STEAD/invariant/compile-fail coverage is weakened. |
+| D2+ | `TEST-PARE-CRATE-*` | Per-crate deletion/collapse proposals. | **FUTURE** | Each proposed PARE/COLLAPSE row names the surviving boundary and passes targeted proof; no broad full-crate test sweep is used as the proof. |
+| DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after paring data exists. | **FUTURE** | Cadence recommendation is based on D0/D1 data and Track B profile evidence; smoke remains mechanics-only. |
+
+## 5. Honest residue / non-goals
 
 - **What grep still cannot prove, with allowlists, shrinks to one thing:** the *internal logic correctness* of a sanctioned door (does it compute/write the right thing) — Track B `compile_fail`/parity territory, genuinely not greppable, and triggered only on rungs that change a door's logic (flagged `seal-residue-risk`). The allowlist scans close the rest: "no unsanctioned producer/handle/surface exists" is now a *trusted* CI verdict, not a DA re-check. Do not, however, let a green Track A imply a sanctioned door's *logic* is verified — that is Track B.
 - **HEURISTIC scans will have false-positives** by nature (semantic words, raw indices, kind reads can be legitimate). That is *why* they are `INSPECT`, not `FAIL` — surfacing-not-blocking is the correct posture; tightening a heuristic into a reliable type/admission boundary is the §1.2 promotion path, tracked separately.
 - **No new commercial tooling / MCPs.** Pure shell + grep + GitHub Actions on a public repo. Free, instant, no learning-curve tax.
 - Track A does **not** build, test, run GPU, or touch `simthing-mapeditor` (Studio/Bevy) — those are local-only.
 
-## 5. Practical notes — the seed scans (reuse the DA's tuned greps)
+## 6. Practical notes — the seed scans (reuse the DA's tuned greps)
 
 The exact patterns the DA ran this session, with the false-positive exclusions already tuned. `CI-A-SCAN-SCRIPT-0`
 encodes these; each carries its severity. Target `crates/**/src` (not `tests/` for HEURISTIC scans), exclude
@@ -378,7 +404,7 @@ is illustrative.
 
 **Known false-positive traps to exclude (the ones the DA hit and tuned out):** `crates/simthing-clausething/src/jomini/**` `write_*` (text writer, not buffer writes); `studio_antialiasing` module-name matches (not the AA *report*); `pub(crate)` (sealed = correct); a scan's own pattern-literals inside its `compile_fail`/results doc.
 
-## 6. References
+## 7. References
 
 - Doctrine: [`simthing_core_design.md`](simthing_core_design.md) §1.2/§1.2.1; constitution [`design_0_0_8_3.md`](design_0_0_8_3.md) §0.6.6/§0.9.
 - The B1–B8 catalogue: [`design_0_0_8_4_5_simthing_kernel.md`](design_0_0_8_4_5_simthing_kernel.md) §5.2.

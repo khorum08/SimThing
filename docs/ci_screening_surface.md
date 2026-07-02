@@ -280,6 +280,8 @@ Owner edict on full batteries: Track B exists to avoid hygiene-theater test swee
 
 The orchestrator must reject any doctrine-exec report whose default or comment-triggered path ran a casual full-crate cargo test battery. Use plan mode to inspect commands before execution. Prefer exact targeted profiles and guard-bite probes. Full-cpu / owner-deep batteries are exceptional owner-dispatch artillery, not routine validation.
 
+Track D note: owner-deep full batteries remain quarantined artillery. Smoke PASS is mechanics-only and not seal-proof. Seal-residue rungs still require targeted profile/probe proof. Do not decide weekly/master-only owner-deep cadence until `TEST-PARE-INVENTORY-0` and later audit data exist. Track D inventory is classification only and deletes no tests.
+
 Use `/triage <scan-id> <delete|green|escalate> <reason>` to append a §1A row to `scripts/ci/triage_log.tsv` on the PR branch. Malformed commands must be rejected with the expected format. Commands are collaborator-only and accepted from issue comments and PR review/review-comment events. Never run untrusted fork code under a write token.
 
 A doctrine-exec report is accepted only if it is fresh:
