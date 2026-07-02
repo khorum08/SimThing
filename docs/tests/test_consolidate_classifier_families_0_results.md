@@ -100,7 +100,15 @@ Profile: `test-consolidate-classifier-families`
 cargo test -p simthing-spec --test test_consolidate_classifier_families_0_hygiene_consolidation -- --nocapture
 ```
 
-Pending fresh run on 0R head after push.
+Accepted 0R proof on `bfcc986c56d725e64a5a8a0bef34bb19c4b992a2`:
+
+- profile: `test-consolidate-classifier-families`
+- tested_ref: `refs/pull/1092/merge`
+- merge_ref_status: PASS
+- run: 28626085144
+- verdict: `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
+- command: `cargo test -p simthing-spec --test test_consolidate_classifier_families_0_hygiene_consolidation -- --nocapture` only
+- no `apt-get`, no `doctrine_surface_truth.sh`, no Bevy/GPU-linked binaries
 
 **Rejected prior proof:** run `28623116615` (seven Bevy-linked binaries + desktop bootstrap).
 
