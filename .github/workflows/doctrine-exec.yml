@@ -146,9 +146,7 @@ jobs:
           DOCTRINE_EXEC_PROBE: ${{ steps.meta.outputs.probe }}
         run: |
           set -o pipefail
-          bash scripts/ci/doctrine_exec.sh | tee -a doctrine-exec-report.txt
-          ec=${PIPESTATUS[0]}
-          exit "$ec"
+          bash scripts/ci/doctrine_exec.sh
 
       - name: Stale report check (proof hook)
         if: always() && steps.meta.outputs.plan != 'true' && hashFiles('doctrine_exec_report.json') != ''
