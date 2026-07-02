@@ -366,7 +366,7 @@ boundary. D0 records candidates; it does not remove tests.
 | Rung | ID | Scope | State | DoD |
 |---|---|---|---|---|
 | D0 | `TEST-PARE-INVENTORY-0` | Mechanical inventory and classification of the current test corpus; zero deletions. | **PROBATION** | `scripts/ci/test_inventory.tsv` exists; `scripts/ci/test_inventory_check.sh` validates schema, exact mechanical coverage, never-pare rules, and superseding-boundary requirements; results recorded in `docs/tests/test_pare_inventory_0_results.md`. |
-| D1 | `TEST-PARE-AUDIT-1` | Audit D0 `AUDIT` rows against actual admission, usecase, duplication, and hygiene boundaries. | **FUTURE** | Candidate rows either gain a hard superseding boundary or remain KEEP/AUDIT; no seal/oracle/golden/STEAD/invariant/compile-fail coverage is weakened. |
+| D1 | `TEST-PARE-AUDIT-1` | Audit D0 candidate rows against actual admission, usecase, duplication, and hygiene boundaries. | **PROBATION** | `scripts/ci/test_pare_audit.tsv` accounts for all 1,226 D0 candidate rows: 50 PARE-plan rows, 542 COLLAPSE-plan rows, and 634 AUDIT-BLOCKED rows; every PARE/COLLAPSE row names a superseding boundary/representative as required; unknown rows are reduced to explicit AUDIT-BLOCKED reasons; no seal/oracle/golden/STEAD/invariant/compile-fail coverage is weakened. |
 | D2+ | `TEST-PARE-CRATE-*` | Per-crate deletion/collapse proposals. | **FUTURE** | Each proposed PARE/COLLAPSE row names the surviving boundary and passes targeted proof; no broad full-crate test sweep is used as the proof. |
 | DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after paring data exists. | **FUTURE** | Cadence recommendation is based on D0/D1 data and Track B profile evidence; smoke remains mechanics-only. |
 
