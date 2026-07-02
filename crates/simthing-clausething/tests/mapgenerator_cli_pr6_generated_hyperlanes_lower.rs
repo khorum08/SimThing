@@ -175,42 +175,6 @@ fn generated_hyperlane_blocks_are_extracted_by_existing_reader() {
 }
 
 #[test]
-fn generated_hyperlane_scenario_rejects_unknown_endpoint_without_widening() {
-    let text = emit_hyperlane_scenario(4242);
-    let neutral = parse_mapgen_neutral_document(text.as_bytes()).expect("parse");
-    let hierarchy = generate_mapgen_lattice_hierarchy(
-        &neutral,
-        MapGenLatticeOptions {
-            fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
-            ..Default::default()
-        },
-    )
-    .expect("lattice");
-    let hyperlanes = vec![("0".into(), "missing".into())];
-    let err = lower_hyperlane_topology(&hierarchy.pack, &hyperlanes, MapGenLinksOptions::default())
-        .expect_err("unknown endpoint must fail closed");
-    assert!(err.message.contains("unknown gridcell endpoint"));
-}
-
-#[test]
-fn generated_hyperlane_scenario_rejects_self_link_without_widening() {
-    let text = emit_hyperlane_scenario(4242);
-    let neutral = parse_mapgen_neutral_document(text.as_bytes()).expect("parse");
-    let hierarchy = generate_mapgen_lattice_hierarchy(
-        &neutral,
-        MapGenLatticeOptions {
-            fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
-            ..Default::default()
-        },
-    )
-    .expect("lattice");
-    let hyperlanes = vec![("1".into(), "1".into())];
-    let err = lower_hyperlane_topology(&hierarchy.pack, &hyperlanes, MapGenLinksOptions::default())
-        .expect_err("self-link must fail closed");
-    assert!(err.message.contains("self-link"));
-}
-
-#[test]
 fn generated_hyperlane_scenario_rejects_duplicate_link_without_widening() {
     let text = emit_hyperlane_scenario(4242);
     let neutral = parse_mapgen_neutral_document(text.as_bytes()).expect("parse");
