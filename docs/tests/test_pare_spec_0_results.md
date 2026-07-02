@@ -105,15 +105,16 @@ Initial targeted implementation proof on `560bacee19627171774f14ae491d0a6359c6ed
 
 `TEST-PARE-SPEC-0R2` corrected test-deletion profile semantics: `risk_class=test-deletion-*` profiles prove only their exact test binaries and do not run surface-truth.
 
-Fresh targeted proof on current head (pending run/job IDs after `/seal-proof profile=test-pare-spec`):
+Fresh targeted proof on `ec26d2ebeae5d4ccb60841f7f9ebcb03f8fe9d0a` (`TEST-PARE-SPEC-0R2`):
 
 - profile: test-pare-spec
-- head_sha: pending 0R2 remedial head
+- head_sha: ec26d2ebeae5d4ccb60841f7f9ebcb03f8fe9d0a
 - tested_ref: refs/pull/1091/merge
 - merge_ref_status: PASS
-- run: pending
-- job: pending / doctrine-exec
-- verdict: pending clean `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0` with no `doctrine_surface_truth.sh` in command list
+- run: 28616140117
+- job: 84860347572 / doctrine-exec
+- verdict: DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0
+- command list: exact `cargo test -p simthing-spec --test <binary> -- --nocapture` only; no `doctrine_surface_truth.sh`
 
 ## Inventory / Boundary / Drift Checks
 
@@ -138,7 +139,7 @@ No runtime crate source, kernel/sim/gpu/driver tests, workflows, scanner allowli
 
 ## Graduation Routing
 
-CI verdict: pending 0R2 — Doctrine Scan on current head plus fresh targeted `test-pare-spec` proof with `failures=0 inspect=0` and no surface-truth add-on.
+CI verdict: PASS-RELIABLE for PR Doctrine Scan on head `ec26d2ebeae5d4ccb60841f7f9ebcb03f8fe9d0a` and fresh targeted `test-pare-spec` GitHub proof (run 28616140117) with `failures=0 inspect=0` and no surface-truth add-on.
 
 Triage entries: none locally (`failures=0 inspect=0`).
 
