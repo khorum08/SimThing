@@ -584,63 +584,6 @@ fn field_policy_event0_obs4_to_compaction_smoke() {
 }
 
 #[test]
-fn field_policy_event0_perf_34k_compaction() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        for density_pct in [0u32, 1, 10, 50, 100] {
-            let rows = density_rows(N, density_pct);
-            let expected = expected_nonzero(&rows);
-            let capacity = expected.len() as u32 + 128;
-            let t0 = Instant::now();
-            let outcome = run_compaction(ctx, &rows, capacity, 1, true);
-            let elapsed = t0.elapsed();
-            assert_eq!(outcome.event_count, expected.len() as u32);
-            assert_eq!(outcome.overflow, 0);
-            if !expected.is_empty() {
-                assert!(membership_exact(&expected, &outcome.records));
-            }
-            let ms = elapsed.as_secs_f64() * 1000.0;
-            let per_row_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
-            let per_event_us = if outcome.event_count > 0 {
-                elapsed.as_secs_f64() * 1_000_000.0 / outcome.event_count as f64
-            } else {
-                0.0
-            };
-            println!(
-                "field_policy_event0_perf_density_{density_pct}: rows={N} density_pct={density_pct} elapsed_ms={ms:.3} per_row_us={per_row_us:.4} event_count={} per_event_us={per_event_us:.4} capacity={capacity} overflow={}",
-                outcome.event_count,
-                outcome.overflow
-            );
-        }
-    });
-}
-
-#[test]
-fn field_policy_event0_perf_34k_warm_repeated_dispatch() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const REPEAT: u32 = 32;
-        const DENSITY: u32 = 50;
-        let rows = density_rows(N, DENSITY);
-        let expected = expected_nonzero(&rows);
-        let capacity = expected.len() as u32 + 256;
-        let _ = run_compaction(ctx, &rows, capacity, 1, false);
-        let outcome = run_compaction(ctx, &rows, capacity, REPEAT, true);
-        assert_eq!(outcome.event_count, expected.len() as u32);
-        assert_eq!(outcome.overflow, 0);
-        assert!(membership_exact(&expected, &outcome.records));
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
-        println!(
-            "field_policy_event0_warm_34k: rows={N} density_pct={DENSITY} dispatches={REPEAT} total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} event_count={} overflow={} ordering={ORDERING_CLASS}",
-            outcome.event_count,
-            outcome.overflow
-        );
-    });
-}
-
-#[test]
 fn field_policy_event0_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

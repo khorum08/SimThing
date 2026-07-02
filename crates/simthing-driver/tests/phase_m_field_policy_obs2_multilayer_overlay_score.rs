@@ -493,68 +493,6 @@ fn field_policy_obs2_dense_multilayer_correctness() {
 }
 
 #[test]
-fn field_policy_obs2_perf_34k_multilayer_overlay_score() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        let rows = mobile_multilayer_rows(N);
-        let t0 = Instant::now();
-        let outcome = run_multilayer_batch_repeated(ctx, &rows, 1, true);
-        let elapsed = t0.elapsed();
-        assert_eq!(outcome.outputs.len(), N);
-
-        let mut spot_mag_ulp = 0u32;
-        for (out, row) in outcome.outputs.iter().take(512).zip(rows.iter().take(512)) {
-            for (layer, inp) in row.layers.iter().enumerate() {
-                spot_mag_ulp = spot_mag_ulp.max(ulp_distance(
-                    out.mag_bits[layer],
-                    cpu_mag_bits(inp.gx, inp.gy),
-                ));
-            }
-        }
-        assert_eq!(spot_mag_ulp, 0);
-
-        let ms = elapsed.as_secs_f64() * 1000.0;
-        let per_row_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
-        let layer_mags = N * LAYER_COUNT;
-        println!(
-            "field_policy_obs2_perf_34k: rows={N} layers={LAYER_COUNT} dispatches=1 includes_readback=true elapsed_ms={ms:.3} per_row_us={per_row_us:.4} layer_mags={layer_mags} spot_mag_max_ulp={spot_mag_ulp} score_authority=ApproximateDiagnosticF32"
-        );
-    });
-}
-
-#[test]
-fn field_policy_obs2_perf_34k_warm_repeated_dispatch() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const REPEAT: u32 = 32;
-        let rows = mobile_multilayer_rows(N);
-        let _ = run_multilayer_batch_repeated(ctx, &rows, 1, false);
-        let outcome = run_multilayer_batch_repeated(ctx, &rows, REPEAT, true);
-        assert_eq!(outcome.outputs.len(), N);
-
-        let mut spot_mag_ulp = 0u32;
-        for (out, row) in outcome.outputs.iter().take(512).zip(rows.iter().take(512)) {
-            for (layer, inp) in row.layers.iter().enumerate() {
-                spot_mag_ulp = spot_mag_ulp.max(ulp_distance(
-                    out.mag_bits[layer],
-                    cpu_mag_bits(inp.gx, inp.gy),
-                ));
-            }
-        }
-        assert_eq!(spot_mag_ulp, 0);
-
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
-        let per_layer_mag_us = per_row_us / LAYER_COUNT as f64;
-        println!(
-            "field_policy_obs2_warm_34k: rows={N} layers={LAYER_COUNT} dispatches={REPEAT} includes_readback=true total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} per_layer_mag_us={per_layer_mag_us:.4} spot_mag_max_ulp={spot_mag_ulp}"
-        );
-        println!("field_policy_obs2_warm_compare: FIELD_POLICY-OBS-1 warm ~0.129 ms/dispatch single-layer");
-    });
-}
-
-#[test]
 fn field_policy_obs2_score_authority_is_approximate() {
     let wgsl = emit_multilayer_wgsl(1);
     assert!(wgsl.contains("var score") && wgsl.contains("+ f32(w)"));

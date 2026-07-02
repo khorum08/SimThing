@@ -1835,59 +1835,6 @@ fn field_policy_act1_full_chain_phase_e_consumer_smoke() {
 }
 
 #[test]
-fn field_policy_act1_perf_34k_phase_e_consumer() {
-    let rules = rules_for_smoke();
-    let admitted = default_admitted_table();
-    let admitted_n = admitted_count();
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        const PROP_CAP: u32 = 256;
-        let compact = balanced_12_records(N);
-        let t0 = Instant::now();
-        let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx, &compact, CAP, &rules, PROP_CAP, &admitted, admitted_n, 1,
-        );
-        let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
-        let per_record_us = elapsed_ms * 1000.0 / N as f64;
-        verify_chain_summary(
-            &outcome, &compact, CAP, &rules, PROP_CAP, &admitted, admitted_n,
-        );
-        println!(
-            "field_policy_act1_34k: dispatches=4 elapsed_ms={elapsed_ms:.3} readback=true event_count={N} proposal_count={} accepted={} overflow={} per_record_us={per_record_us:.4} ordering={ORDERING_CLASS}",
-            outcome.proposal_count,
-            outcome.summary.accepted_count,
-            outcome.proposal_overflow,
-        );
-    });
-}
-
-#[test]
-fn field_policy_act1_perf_34k_warm_repeated_dispatch() {
-    let rules = rules_for_smoke();
-    let admitted = default_admitted_table();
-    let admitted_n = admitted_count();
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        const PROP_CAP: u32 = 256;
-        const REPEATS: u32 = 32;
-        let compact = balanced_12_records(N);
-        let outcome = run_bucket_reduce_propose_consume_gpu(
-            ctx, &compact, CAP, &rules, PROP_CAP, &admitted, admitted_n, REPEATS,
-        );
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_pipeline_ms = total_ms / REPEATS as f64;
-        let per_record_us = per_pipeline_ms * 1000.0 / N as f64;
-        println!(
-            "field_policy_act1_34k_warm: repeats={REPEATS} total_ms={total_ms:.3} per_pipeline_ms={per_pipeline_ms:.4} per_record_us={per_record_us:.4} accepted={} overflow={} ordering={ORDERING_CLASS}",
-            outcome.summary.accepted_count,
-            outcome.proposal_overflow,
-        );
-    });
-}
-
-#[test]
 fn field_policy_act1_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),

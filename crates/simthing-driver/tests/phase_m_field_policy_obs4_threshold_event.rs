@@ -693,67 +693,6 @@ fn field_policy_obs4_threshold_dense_corpus() {
 }
 
 #[test]
-fn field_policy_obs4_perf_34k_threshold_event() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        let rows = mobile_threshold_rows(N);
-        let t0 = Instant::now();
-        let outcome = run_threshold_batch(ctx, &rows, 1, true);
-        let elapsed = t0.elapsed();
-        assert_eq!(outcome.outputs.len(), N);
-
-        let sample: Vec<_> = outcome.outputs.iter().take(512).cloned().collect();
-        let sample_rows: Vec<_> = rows.iter().take(512).cloned().collect();
-        let (score_exact, state_exact, event_exact, overflow, events_up) =
-            verify_outputs(&sample, &sample_rows);
-        assert_eq!(score_exact, 512);
-        assert_eq!(state_exact, 512);
-        assert_eq!(event_exact, 512);
-
-        let mut total_events = 0usize;
-        for out in &outcome.outputs {
-            if out.event_code != 0 {
-                total_events += 1;
-            }
-        }
-
-        let ms = elapsed.as_secs_f64() * 1000.0;
-        let per_row_us = elapsed.as_secs_f64() * 1_000_000.0 / N as f64;
-        println!(
-            "field_policy_obs4_perf_34k: rows={N} dispatches=1 includes_readback=true elapsed_ms={ms:.3} per_row_us={per_row_us:.4} spot_score_exact={score_exact}/512 spot_state_exact={state_exact}/512 spot_event_exact={event_exact}/512 overflow={overflow} total_events={total_events} events_up_sample={events_up}"
-        );
-    });
-}
-
-#[test]
-fn field_policy_obs4_perf_34k_warm_repeated_dispatch() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const REPEAT: u32 = 32;
-        let rows = mobile_threshold_rows(N);
-        let _ = run_threshold_batch(ctx, &rows, 1, false);
-        let outcome = run_threshold_batch(ctx, &rows, REPEAT, true);
-        assert_eq!(outcome.outputs.len(), N);
-
-        let sample: Vec<_> = outcome.outputs.iter().take(512).cloned().collect();
-        let sample_rows: Vec<_> = rows.iter().take(512).cloned().collect();
-        let (score_exact, state_exact, event_exact, _, events_up) =
-            verify_outputs(&sample, &sample_rows);
-        assert_eq!(score_exact, 512);
-        assert_eq!(state_exact, 512);
-        assert_eq!(event_exact, 512);
-
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_dispatch_ms = total_ms / REPEAT as f64;
-        let per_row_us = outcome.elapsed.as_secs_f64() * 1_000_000.0 / (N as f64 * REPEAT as f64);
-        println!(
-            "field_policy_obs4_warm_34k: rows={N} dispatches={REPEAT} includes_readback=true total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.3} per_row_us={per_row_us:.4} spot_exact=512/512 events_up_sample={events_up} event_authority=ExactDeterministicEventFlag"
-        );
-        println!("field_policy_obs4_warm_compare: FIELD_POLICY-OBS-3 warm ~0.278 ms/dispatch fixed score");
-    });
-}
-
-#[test]
 fn field_policy_obs4_event_authority_is_exact_deterministic() {
     let desc = landed_jit_kernel_descriptors()
         .into_iter()

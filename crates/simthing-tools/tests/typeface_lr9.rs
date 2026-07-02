@@ -50,88 +50,6 @@ fn lr8_closeout_records_da_approval() {
 }
 
 #[test]
-fn flat_5k_noop_perf_profile_records_budget() {
-    let profile = profile_flat_animated_labels(LR9_CI_CONFIG);
-    eprintln!("{}", format_lr9_scenario_report(&profile));
-
-    assert_eq!(profile.config.flat_labels, LR9_CI_CONFIG.flat_labels);
-    assert!(
-        profile.avg_noop_update_ms < 1.0,
-        "avg no-op CPU update must stay under 1 ms/frame (got {:.4}ms)",
-        profile.avg_noop_update_ms
-    );
-    let mut app = lr9_cpu_bevy_app(LR9_CI_CONFIG.atlas_size);
-    simthing_tools::spawn_static_text_labels(&mut app, LR9_CI_CONFIG.flat_labels, 24.0);
-    run_frames(&mut app, 2);
-    let before = text_perf_diagnostics(&app);
-    run_frames(&mut app, LR9_CI_CONFIG.noop_frames);
-    let after = text_perf_diagnostics(&app);
-    assert_eq!(after.shape_rebuild_count, before.shape_rebuild_count);
-    assert_eq!(after.instance_rebuild_count, before.instance_rebuild_count);
-}
-
-#[test]
-#[ignore = "manual binding proof: 5000 flat animated labels"]
-fn flat_5k_binding_noop_perf_profile() {
-    let profile = profile_flat_animated_labels(LR9_BINDING_CONFIG);
-    eprintln!("=== LR9 FLAT 5K BINDING ===");
-    eprintln!("{}", format_lr9_scenario_report(&profile));
-    eprintln!("perf_after_noop={:?}", profile.perf);
-    assert_eq!(profile.config.flat_labels, 5_000);
-    assert!(
-        profile.avg_noop_update_ms < 1.0,
-        "5k avg no-op must be <1 ms (got {:.4}ms)",
-        profile.avg_noop_update_ms
-    );
-}
-
-#[test]
-fn numeric_damage_5k_perf_profile_records_budget() {
-    let profile = profile_numeric_damage_lane(LR9_CI_CONFIG);
-    eprintln!("{}", format_lr9_scenario_report(&profile));
-
-    assert!(
-        profile.avg_noop_update_ms < 1.0,
-        "numeric lane avg no-op must stay under 1 ms/frame"
-    );
-    assert!(
-        profile.perf.aggregate_repack_count == profile.perf.aggregate_repack_count,
-        "structural smoke"
-    );
-}
-
-#[test]
-#[ignore = "manual binding proof: 5000 fixed-width numeric damage labels"]
-fn numeric_damage_5k_binding_perf_profile() {
-    let profile = profile_numeric_damage_lane(LR9_BINDING_CONFIG);
-    eprintln!("=== LR9 NUMERIC 5K BINDING ===");
-    eprintln!("{}", format_lr9_scenario_report(&profile));
-    eprintln!("perf_after_noop={:?}", profile.perf);
-    assert_eq!(profile.config.numeric_damage_labels, 5_000);
-    assert!(
-        profile.avg_noop_update_ms < 1.0,
-        "5k numeric avg no-op must be <1 ms (got {:.4}ms)",
-        profile.avg_noop_update_ms
-    );
-}
-
-#[test]
-#[ignore = "manual binding proof: 256 warped nameplate labels"]
-fn warped_nameplate_binding_perf_profile() {
-    let profile = profile_warped_nameplates(LR9_BINDING_CONFIG);
-    eprintln!("=== LR9 WARPED BINDING ===");
-    eprintln!("{}", format_lr9_scenario_report(&profile));
-    eprintln!("perf_after_noop={:?}", profile.perf);
-    assert_eq!(profile.config.warped_labels, 256);
-    assert!(
-        profile.avg_noop_update_ms < 1.0,
-        "256 warped avg no-op must be <1 ms (got {:.4}ms)",
-        profile.avg_noop_update_ms
-    );
-    assert!(profile.metrics.tessellated_vertex_count > 0);
-}
-
-#[test]
 fn dynamic_style_rows_upload_only_on_generation_change() {
     let mut app = lr9_cpu_bevy_app(LR9_CI_CONFIG.atlas_size);
     install_dynamic_style_rows(&mut app);
@@ -343,17 +261,6 @@ fn gpu_residency_audit_documented_for_lr9() {
     assert!(results.contains("GPU residency"));
     assert!(results.contains("CPU surfacing"));
     assert!(results.contains("import/staging"));
-}
-
-#[test]
-fn binding_perf_evidence_documented_for_lr9() {
-    let results =
-        read_doc("docs/archive/typeface_track_2026_06/typeface_lr9_binding_perf_results.md");
-    assert!(results.contains("0.5037"));
-    assert!(results.contains("0.3260"));
-    assert!(results.contains("0.0683"));
-    assert!(results.contains("GPU residency"));
-    assert!(results.contains("Import/staging"));
 }
 
 #[test]

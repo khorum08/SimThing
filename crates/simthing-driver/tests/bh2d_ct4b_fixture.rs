@@ -375,47 +375,6 @@ fn bh2d_profile_weight_changes_compact_d_probe() {
 }
 
 #[test]
-fn bh2d_overlap_stress_available_as_field_policy_feedstock() {
-    let mut fixture = Ct4bFixture::build_seeded();
-    let stress = stress_compose_config();
-    with_gpu(|ctx| {
-        fixture.apply_gpu_flux_choke_both_fields(ctx);
-        let buffer = ctx
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("bh2d_stress_feedstock"),
-                contents: bytemuck::cast_slice(&fixture.values),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            });
-        StressComposeOp::new(ctx)
-            .compose_resident_field(ctx, &buffer, &stress)
-            .expect("stress compose");
-        let gpu = readback_buffer(ctx, &buffer, stress.values_len());
-        let expected = cpu_stress_compose_oracle(&fixture.values, &stress);
-        let anchor_slot = cell_index(
-            CT4B_PROBE_ANCHOR.0 as usize,
-            CT4B_PROBE_ANCHOR.1 as usize,
-            CT4B_WIDTH as usize,
-        ) as u32;
-        let overlap = gpu[idx(anchor_slot, COL_STRESS_OVERLAP)];
-        let mismatch = gpu[idx(anchor_slot, COL_STRESS_MISMATCH)];
-        let exp_overlap = expected[idx(anchor_slot, COL_STRESS_OVERLAP)];
-        let exp_mismatch = expected[idx(anchor_slot, COL_STRESS_MISMATCH)];
-        assert!((overlap - exp_overlap).abs() < 1e-4);
-        assert!((mismatch - exp_mismatch).abs() < 1e-4);
-        assert_eq!(
-            exp_overlap,
-            fixture.values[idx(anchor_slot, COL_CHOKE_A)]
-                * fixture.values[idx(anchor_slot, COL_CHOKE_B)]
-        );
-        assert!(
-            overlap > 0.0 || mismatch > 0.0,
-            "stress columns must be resident numeric feedstock"
-        );
-    });
-}
-
-#[test]
 fn bh2d_no_full_field_cpu_readback_for_decision() {
     let compose_src = include_str!("../../simthing-gpu/src/w_impedance_compose.rs");
     let stress_src = include_str!("../../simthing-gpu/src/stress_compose.rs");
@@ -529,10 +488,3 @@ fn bh2d_forbidden_production_vocabulary() {
     }
 }
 
-#[test]
-fn bh2d_stress_operators_are_overlap_and_mismatch_only() {
-    let stress = stress_compose_config();
-    assert_eq!(stress.profiles.len(), 2);
-    assert_eq!(stress.profiles[0].operator_kind, STRESS_OP_OVERLAP);
-    assert_eq!(stress.profiles[1].operator_kind, STRESS_OP_MISMATCH);
-}

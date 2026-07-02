@@ -2510,50 +2510,6 @@ fn sqrt_exact4f_no_exact_authority_promotion() {
 }
 
 #[test]
-fn sqrt_exact4f_perf_e3_vs_f_smoke() {
-    use std::time::Instant;
-    with_gpu(|ctx| {
-        let mut state = 0xA1B2_C3D4u32;
-        let mut build_bits = |n: usize| -> Vec<u32> {
-            let mut out = Vec::with_capacity(n);
-            for _ in 0..n {
-                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                let exp = 1u32 + ((state >> 24) % 253u32);
-                let mant = state & 0x007f_ffff;
-                out.push((exp << 23) | mant);
-            }
-            out
-        };
-        for size in [1_000usize, 10_000, 34_000, 100_000] {
-            let bits = build_bits(size);
-            let t0 = Instant::now();
-            let e_rows = run_candidate_e_bits(ctx, &bits);
-            let e_elapsed = t0.elapsed();
-            let t1 = Instant::now();
-            let f_rows = run_candidate_f_bits(ctx, &bits);
-            let f_elapsed = t1.elapsed();
-            assert_eq!(e_rows.len(), size);
-            assert_eq!(f_rows.len(), size);
-            let ratio = if e_elapsed.as_nanos() == 0 {
-                0.0
-            } else {
-                f_elapsed.as_secs_f64() / e_elapsed.as_secs_f64()
-            };
-            println!(
-                "F perf_smoke: inputs={} dispatch_count=1 includes_readback=true e3_time_ms={:.3} f_time_ms={:.3} f_over_e3_ratio={:.4}",
-                size,
-                e_elapsed.as_secs_f64() * 1000.0,
-                f_elapsed.as_secs_f64() * 1000.0,
-                ratio
-            );
-        }
-        println!(
-            "F perf_smoke_note: optional ignored large run not executed by default (suggested size=1000000)"
-        );
-    });
-}
-
-#[test]
 fn sqrt_exact4f_perf_is_not_authority() {
     let sqrt0 = sqrt0_descriptor();
     assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);

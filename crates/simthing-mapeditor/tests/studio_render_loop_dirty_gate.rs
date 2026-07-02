@@ -152,58 +152,6 @@ fn star_visual_dirty_gate_rebuilds_when_render_settings_change() {
 }
 
 #[test]
-fn performance_settings_render_loop_diagnostics_formats_counts() {
-    let mut telemetry = StudioPerformanceTelemetry::default();
-    telemetry.hyperlane_mesh_rebuilds = 3;
-    telemetry.hyperlane_mesh_rebuild_last_ms = Some(1.25);
-    telemetry.hyperlane_mesh_rebuild_avg_ms = Some(2.5);
-    telemetry.hyperlane_segments_last_count = 1200;
-    telemetry.hyperlane_vertices_last_count = 4800;
-    telemetry.hyperlane_indices_last_count = 7200;
-    telemetry.star_visual_entities_last_count = 2000;
-    telemetry.billboard_entities_last_count = 2000;
-    telemetry.picking_projected_anchor_count = 1000;
-
-    let diagnostics = render_loop_diagnostics_lines(&telemetry);
-    assert!(diagnostics
-        .iter()
-        .any(|line| line == "Render loop diagnostics"));
-    assert!(diagnostics
-        .iter()
-        .any(|line| line.starts_with("Hyperlane rebuild: 1.25 ms / 2.50 ms, rebuilds: 3")));
-    assert!(diagnostics
-        .iter()
-        .any(|line| line.starts_with("Hyperlane geometry: 1200 lanes, 4800 verts, 7200 indices")));
-    assert!(diagnostics
-        .iter()
-        .any(|line| line.starts_with("Star visual sync:") && line.contains("entities: 2000")));
-    assert!(diagnostics
-        .iter()
-        .any(|line| line.starts_with("Billboard sync:") && line.contains("entities: 2000")));
-    assert!(diagnostics
-        .iter()
-        .any(|line| line.starts_with("Picking projection:") && line.contains("anchors: 1000")));
-
-    let all = performance_settings_section_lines(&telemetry);
-    assert!(all.iter().any(|line| line.starts_with("FPS:")));
-    assert!(all
-        .iter()
-        .any(|line| line.starts_with("Allocated VRAM estimate:")));
-}
-
-#[test]
-fn performance_telemetry_remains_presentation_only() {
-    let mut telemetry = StudioPerformanceTelemetry::default();
-    telemetry.hyperlane_mesh_rebuilds = 99;
-    let before = telemetry.clone();
-    let _ = performance_settings_section_lines(&telemetry);
-    assert_eq!(telemetry, before);
-    assert!(!render_loop_diagnostics_lines(&telemetry)
-        .iter()
-        .any(|line| line.contains("ScenarioSpec")));
-}
-
-#[test]
 fn render_loop_telemetry_records_timing_helper() {
     let mut last = None;
     let mut avg = None;

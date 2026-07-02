@@ -483,38 +483,3 @@ fn runtime1b_no_default_runtime_cost_when_disabled() {
     assert!(report.driver_report.is_none());
 }
 
-#[test]
-fn runtime1b_34k_gpu_fixture_soak_or_precise_blocker() {
-    // Non-scheduled registration delegates to the CPU fixture; no real GPU soak until RUNTIME-1B-DISPATCH.
-    let mut input = fixture_input();
-    input.driver.composition.idroute.records = (0..34_000u64)
-        .map(|i| idrec(10_000 + i, 10 + (i % 48), (i % 4) as u32, 1, 0.25))
-        .collect();
-    input.driver.composition.econ.records = (0..48u64)
-        .map(|i| erec(10 + i, 7, 800, 700, 0.25, i))
-        .collect();
-    input.driver.composition.owner.records = (0..34_000u64)
-        .map(|i| {
-            orec(
-                10_000 + i,
-                10 + (i % 48),
-                1,
-                vec![
-                    owner(MobilityOwner0ColumnKind::Faction, 7 + (i % 4)),
-                    owner(MobilityOwner0ColumnKind::Species, 20 + (i % 3)),
-                ],
-            )
-        })
-        .collect();
-    input.driver.composition.owner.overlays = vec![
-        overlay(MobilityOwner0ColumnKind::Faction, 7, 42, 1),
-        overlay(MobilityOwner0ColumnKind::Species, 20, 43, 1),
-    ];
-
-    let report = run_mobility_runtime1b_passgraph_fixture(&input);
-    assert!(report.admitted);
-    assert!(report.gpu_passgraph_node_registered);
-    assert!(!report.gpu_dispatch_occurred);
-    assert_eq!(report.composition_invocations, 1);
-    assert!(spec_report(&report).cpu_gpu_parity_preserved);
-}

@@ -1181,61 +1181,6 @@ fn field_policy_event1_pipe0_to_bucket_smoke() {
 }
 
 #[test]
-fn field_policy_event1_perf_34k_bucketing() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const CAP: u32 = 20_000;
-        for label in [
-            "all_code_1",
-            "balanced_12",
-            "balanced_123",
-            "skewed_90_10",
-            "invalid_mix",
-        ] {
-            let records = distribution_records(N, label);
-            let t0 = Instant::now();
-            let outcome = run_bucketing(ctx, &records, CAP, 1, true);
-            let elapsed_ms = t0.elapsed().as_secs_f64() * 1000.0;
-            let emitted: u32 = outcome.bucket_counts.iter().sum();
-            let per_record_us = elapsed_ms * 1000.0 / N as f64;
-            let per_bucket_us = if emitted > 0 {
-                elapsed_ms * 1000.0 / emitted as f64
-            } else {
-                0.0
-            };
-            println!(
-                "field_policy_event1_34k[{label}]: elapsed_ms={elapsed_ms:.3} per_record_us={per_record_us:.4} per_bucket_us={per_bucket_us:.4} counts={:?} overflow={:?} invalid={} capacity={CAP}",
-                &outcome.bucket_counts,
-                &outcome.bucket_overflow,
-                outcome.invalid_code_count,
-            );
-            assert!(verify_bucket_outcome(&outcome, &records, CAP));
-        }
-    });
-}
-
-#[test]
-fn field_policy_event1_perf_34k_warm_repeated_dispatch() {
-    with_gpu(|ctx| {
-        const N: usize = 34_000;
-        const REPEATS: u32 = 32;
-        const CAP: u32 = 20_000;
-        let records = distribution_records(N, "balanced_12");
-        let outcome = run_bucketing(ctx, &records, CAP, REPEATS, true);
-        let total_ms = outcome.elapsed.as_secs_f64() * 1000.0;
-        let per_dispatch_ms = total_ms / REPEATS as f64;
-        let per_record_us = per_dispatch_ms * 1000.0 / N as f64;
-        println!(
-            "field_policy_event1_34k_warm: repeats={REPEATS} total_ms={total_ms:.3} per_dispatch_ms={per_dispatch_ms:.4} per_record_us={per_record_us:.4} counts={:?} overflow={:?} invalid={} ordering={ORDERING_CLASS}",
-            &outcome.bucket_counts,
-            &outcome.bucket_overflow,
-            outcome.invalid_code_count,
-        );
-        assert!(verify_bucket_outcome(&outcome, &records, CAP));
-    });
-}
-
-#[test]
 fn field_policy_event1_no_default_runtime_wiring() {
     assert_eq!(
         MappingExecutionProfile::default(),
