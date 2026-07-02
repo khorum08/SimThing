@@ -18,7 +18,7 @@ emit_public_api() {
   local dir="$1"
   (
     cd "$dir"
-    cargo +nightly public-api -p simthing-kernel 2>/dev/null | grep '^pub ' || true
+    cargo +nightly public-api -p simthing-kernel 2>/dev/null | grep '^pub ' | sed -E 's/\(.*/(...)/' | sort -u || true
   )
 }
 
@@ -34,6 +34,11 @@ fi
 
 if [[ ! -f "$BASELINE" ]]; then
   echo "SURFACE-TRUTH: INSPECT missing baseline $BASELINE"
+  exit 0
+fi
+
+if [[ ! -s "$CURRENT" ]]; then
+  echo "SURFACE-TRUTH: INSPECT empty current public API listing"
   exit 0
 fi
 

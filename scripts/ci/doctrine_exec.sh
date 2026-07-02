@@ -28,10 +28,11 @@ run_cmd() {
   local label="$1"
   shift
   echo "+ $*"
-  if "$@"; then
+  "$@"
+  local ec=$?
+  if [[ "$ec" -eq 0 ]]; then
     return 0
   fi
-  local ec=$?
   FAILURE_LINES+=("$label failed (exit $ec)")
   FAILURES=$((FAILURES + 1))
   return 0
