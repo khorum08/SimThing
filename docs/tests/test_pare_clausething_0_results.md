@@ -118,6 +118,25 @@ Result:
 - `doctrine_scan`: PASS, failures=0 inspect=0.
 - `gen_digest --check`: PASS.
 
+## TEST-PARE-CLAUSETHING-0R Targeted GitHub Proof
+
+The initial live Doctrine Exec run used `ci-b-webchat-smoke`, which proves workflow mechanics only. Because this is the first actual deletion rung, #1086 requires a SHA-bound targeted executable proof.
+
+Added reactive profile `test-pare-clausething`, running only:
+
+- `cargo test -p simthing-clausething --test ct_scenario_container -- --nocapture`
+- `cargo test -p simthing-clausething --test mapgenerator_cli_pr6_generated_hyperlanes_lower -- --nocapture`
+
+Live Doctrine Exec:
+
+- profile: pending
+- head_sha: pending
+- tested_ref: pending
+- merge_ref_status: pending
+- run: pending
+- job: pending
+- verdict: pending
+
 ## Scope Ledger
 
 - No compile_fail, trybuild, seal-proof, oracle-parity, golden-byte, invariant-required, or STEAD-required tests removed.
