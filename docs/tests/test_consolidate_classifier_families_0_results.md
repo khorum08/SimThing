@@ -2,7 +2,7 @@
 
 ## Status
 
-**0R remedial complete** — proof boundary narrowed to CPU-only representative. Awaiting fresh GitHub Doctrine Exec on current head; prior green proof on seven Bevy/GPU-linked binaries is **not accepted**.
+**DONE — merged #1092**. 0R remedial complete; proof boundary narrowed to CPU-only representative; accepted targeted GitHub proof passed; final docs-only head had green Doctrine Exec/Doctrine Scan; merge commit ca195159993660124a8aa8edf1f1baf5bcecbe09.
 
 ## 0R proof boundary correction
 
@@ -100,9 +100,12 @@ Profile: `test-consolidate-classifier-families`
 cargo test -p simthing-spec --test test_consolidate_classifier_families_0_hygiene_consolidation -- --nocapture
 ```
 
+Accepted targeted 0R proof ran on `bfcc986c56d725e64a5a8a0bef34bb19c4b992a2`. Final PR head `02cc5f70e50f071cb9c11229f93919bd77428b06` is one docs-only commit after that proof head, modifying only this results document. Final-head Doctrine Exec and Doctrine Scan also passed.
+
 Accepted 0R proof on `bfcc986c56d725e64a5a8a0bef34bb19c4b992a2`:
 
 - profile: `test-consolidate-classifier-families`
+- job: 84892784178
 - tested_ref: `refs/pull/1092/merge`
 - merge_ref_status: PASS
 - run: 28626085144
@@ -128,11 +131,11 @@ Accepted 0R proof on `bfcc986c56d725e64a5a8a0bef34bb19c4b992a2`:
 
 ```text
 Graduation routing:
-  CI verdict:          PASS-RELIABLE (local stock gates + CPU-only targeted test); GitHub proof pending on 0R head
+  CI verdict:          PASS-RELIABLE. Accepted targeted CPU-only Doctrine Exec proof passed on bfcc986c56d725e64a5a8a0bef34bb19c4b992a2; final docs-only head 02cc5f70e50f071cb9c11229f93919bd77428b06 had green Doctrine Exec and Doctrine Scan; #1092 merged at ca195159993660124a8aa8edf1f1baf5bcecbe09.
   Triage entries:      none
   Risk class:          classifier consolidation + test deletion + 0R proof-boundary correction
   Falsification check: 132 rows preserved in CPU table; no Bevy bootstrap; no simthing-sim table; profile CPU-only
-  Recommended posture: standard — proof boundary now matches Track D doctrine
+  Recommended posture: DONE — merged after 0R proof-boundary correction.
 ```
 
 ## Known gaps / next
