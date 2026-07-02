@@ -245,6 +245,21 @@ run_inspect_cmd() {
   return 0
 }
 
+install_linux_bevy_test_deps_if_needed() {
+  local commands="$1"
+  if [[ "$(uname -s)" != "Linux" ]]; then
+    return 0
+  fi
+  if [[ "$commands" != *"simthing-driver"* && "$commands" != *"simthing-mapeditor"* ]]; then
+    return 0
+  fi
+  if command -v apt-get >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1; then
+    log "+ installing Linux pkg-config deps for Bevy-linked driver/mapeditor test compile"
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq libasound2-dev libudev-dev libxkbcommon-dev pkg-config
+  fi
+}
+
 run_semicolon_commands() {
   local value="$1"
   local cmd
@@ -344,6 +359,7 @@ for crate in "${CHECK_CRATES[@]}"; do
   run_cmd "cargo check -p $crate" cargo check -p "$crate"
 done
 
+install_linux_bevy_test_deps_if_needed "$tests"
 run_semicolon_commands "$tests"
 run_semicolon_commands "$doc_tests"
 
