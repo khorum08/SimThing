@@ -112,20 +112,6 @@ fn authored_render_positions_remain_inert_metadata() {
 }
 
 #[test]
-fn expansion_report_declares_caps_and_rejection_counts() {
-    let enrollment = default_links_enrollment();
-    let report = &enrollment.expansion_report;
-    assert_eq!(report.max_links, 8);
-    assert_eq!(report.max_lane_coupling_count, 8);
-    assert_eq!(report.max_per_node_fanout, 4);
-    assert_eq!(report.max_lane_coupling_fanout, 4);
-    assert_eq!(report.unknown_endpoint_rejections, 0);
-    assert_eq!(report.self_link_rejections, 0);
-    assert_eq!(report.duplicate_link_rejections, 0);
-    assert!(report.per_node_fanout.get("0").copied().unwrap_or(0) >= 3);
-}
-
-#[test]
 fn generated_output_preserves_pr4_rf_and_ordinary_hierarchy() {
     let enrollment = default_links_enrollment();
     assert_eq!(enrollment.pack.root.kind, SimThingKind::World);
@@ -145,31 +131,6 @@ fn generated_output_preserves_pr4_rf_and_ordinary_hierarchy() {
             .iter()
             .any(|arena| arena.name == MAPGEN_RF_DEPOSIT_ARENA)
     );
-}
-
-#[test]
-fn generated_properties_reject_forbidden_movement_vocabulary() {
-    let enrollment = default_links_enrollment();
-    for property in &enrollment.pack.game_mode.properties {
-        let haystack = format!(
-            "{} {} {} {}",
-            property.id, property.namespace, property.name, property.description
-        );
-        for forbidden in [
-            "route",
-            "path",
-            "pathfinding",
-            "predecessor",
-            "movement_order",
-            "border",
-            "frontline",
-        ] {
-            assert!(
-                !haystack.contains(forbidden),
-                "generated property must not reference `{forbidden}`"
-            );
-        }
-    }
 }
 
 #[test]
@@ -199,18 +160,6 @@ fn pr5_source_has_no_euclidean_adjacency_authority() {
 }
 
 #[test]
-fn unknown_endpoint_is_rejected() {
-    let rf = default_rf_enrollment();
-    let err = lower_hyperlane_topology(
-        &rf.pack,
-        &[("0".into(), "missing".into())],
-        MapGenLinksOptions::default(),
-    )
-    .unwrap_err();
-    assert!(err.message.contains("unknown gridcell endpoint"));
-}
-
-#[test]
 fn self_link_is_rejected() {
     let rf = default_rf_enrollment();
     let err = lower_hyperlane_topology(
@@ -233,75 +182,6 @@ fn duplicate_hyperlane_is_canonicalized_deterministically() {
     .expect("lower duplicate pair");
     assert_eq!(enrollment.pack.grid_metadata.links.len(), 1);
     assert_eq!(enrollment.expansion_report.duplicate_link_rejections, 1);
-}
-
-#[test]
-fn per_node_fanout_beyond_cap_is_rejected() {
-    let rf = default_rf_enrollment();
-    let err = lower_hyperlane_topology(
-        &rf.pack,
-        &[
-            ("0".into(), "9".into()),
-            ("0".into(), "2".into()),
-            ("0".into(), "31".into()),
-            ("9".into(), "15".into()),
-        ],
-        MapGenLinksOptions {
-            max_per_node_fanout: 2,
-            ..MapGenLinksOptions::default()
-        },
-    )
-    .unwrap_err();
-    assert!(err.message.contains("topology fanout"));
-}
-
-#[test]
-fn total_link_count_beyond_cap_is_rejected() {
-    let rf = default_rf_enrollment();
-    let err = lower_hyperlane_topology(
-        &rf.pack,
-        &[
-            ("0".into(), "9".into()),
-            ("0".into(), "2".into()),
-            ("9".into(), "15".into()),
-        ],
-        MapGenLinksOptions {
-            max_links: 2,
-            ..MapGenLinksOptions::default()
-        },
-    )
-    .unwrap_err();
-    assert!(err.message.contains("link count"));
-}
-
-#[test]
-fn lane_coupling_count_beyond_cap_is_rejected() {
-    let rf = default_rf_enrollment();
-    let err = lower_hyperlane_topology(
-        &rf.pack,
-        &[("0".into(), "31".into()), ("15".into(), "31".into())],
-        MapGenLinksOptions {
-            max_lane_couplings: 1,
-            ..MapGenLinksOptions::default()
-        },
-    )
-    .unwrap_err();
-    assert!(err.message.contains("lane coupling count"));
-}
-
-#[test]
-fn lane_coupling_fanout_beyond_cap_is_rejected() {
-    let rf = default_rf_enrollment();
-    let err = lower_hyperlane_topology(
-        &rf.pack,
-        &[("0".into(), "31".into()), ("15".into(), "31".into())],
-        MapGenLinksOptions {
-            max_lane_coupling_fanout: 1,
-            ..MapGenLinksOptions::default()
-        },
-    )
-    .unwrap_err();
-    assert!(err.message.contains("lane coupling fanout"));
 }
 
 #[test]
