@@ -52,7 +52,7 @@ Local PR1R proof:
 | plan mode | PASS - `doctrine_exec_plan.sh --profile ci-b-webchat-smoke` printed resolved commands and ran nothing |
 | stale check | PASS - matching `head_sha` passed; mismatched `head_sha` failed |
 
-Live PR1R proof on repaired head `344603153a6c89572e80d6be5d47a2a56d57d10c`: doctrine-exec PASS in 8s (run 28596571540, job 84793437505) using `ci-b-webchat-smoke`, with Rust install steps skipped, `DOCTRINE-EXEC-VERDICT` emitted, `doctrine_exec_report.json` uploaded, stale check PASS, and sticky PR comment updated. Doctrine-scan PASS in 1m8s (run 28596571465, job 84793436932). PR1R keeps posture **PROBATION** until DA/orchestrator clearance.
+Live PR1R proof on final repaired head `346a7be716d60b91b1ffc5723acdb8aa09bc07b7`: doctrine-exec PASS in 9s (run 28596787324, job 84794183743) using `ci-b-webchat-smoke`, with Rust install steps skipped, `DOCTRINE-EXEC-VERDICT` emitted, `doctrine_exec_report.json` uploaded, stale check PASS, and sticky PR comment SHA-bound to final head with `owner_deep=false`. Doctrine-scan PASS in 1m9s (run 28596787019, job 84794182586). PR1R keeps posture **PROBATION** until DA/orchestrator clearance.
 
 ## Docs-only orchestration guidance pass
 
@@ -69,7 +69,7 @@ Live PR1R proof on repaired head `344603153a6c89572e80d6be5d47a2a56d57d10c`: doc
 | Path-filter + `workflow_dispatch` triggers | wired |
 | Profile-bound executable proof | wired via `doctrine_exec_profiles.tsv` + `doctrine_exec.sh`; default is `ci-b-webchat-smoke`, broad full-crate batteries are owner-deep only |
 | GPU legs → INSPECT never PASS | wired via `run_inspect_cmd` + profile `gpu_required` |
-| Live green on PR head | PR1R repaired head `344603153a6c89572e80d6be5d47a2a56d57d10c`: doctrine-exec PASS in 8s (run 28596571540, job 84793437505); doctrine-scan PASS in 1m8s (run 28596571465, job 84793436932). |
+| Live green on PR head | PR1R final repaired head `346a7be716d60b91b1ffc5723acdb8aa09bc07b7`: doctrine-exec PASS in 9s (run 28596787324, job 84794183743); doctrine-scan PASS in 1m9s (run 28596787019, job 84794182586); sticky comment SHA-bound to final head with profile `ci-b-webchat-smoke`, `owner_deep=false`; `doctrine_exec_report.json` uploaded. |
 | Known-bad probe finalizes | local `panic-swallow` probe finalized with footer + JSON; broader workflow probe exercise remains DA/orchestrator optional |
 
 ## SHA freshness proof
