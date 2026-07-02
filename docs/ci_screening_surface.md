@@ -152,6 +152,8 @@ Four fences keep triage honest (full protocol: track §1A):
 4. **Decorrelated reviewer + DA spot-audit** — the DA samples a % of DELETE/GREEN clearances against the tree
    until triage accuracy is established (a clearance is named residue `triage-cleared-uninspected`).
 
+For webchat-driven executable proof and remote §1A triage commands, see §9.
+
 **Why the triage agent is the discipline mechanism, not just a filter:** its escalation log (`triage_log.tsv`)
 *is* the per-scan-id promotion telemetry. A HEURISTIC that keeps reaching ESCALATE is, by construction, a scan
 that needs promotion or deletion. So the standing **corpus-maintenance cadence** (per-track-closeout or
@@ -263,3 +265,33 @@ when its own anti-patterns keep reaching ESCALATE (triage-driven, never speculat
 
 **Boundary:** an addendum extends *screening + the sanctioned surface* for one track — it is **not a code index
 and must not grow into one** (§6). General code navigation stays the agent's own greps.
+
+For webchat-driven executable proof and remote §1A triage commands, see §9.
+
+---
+
+## 9. Webchat orchestration with Track B executable proof
+
+Track B adds non-blocking executable proof surfaces for the webchat orchestrator. Track A remains the blocking no-toolchain grep gate.
+
+Use `/seal-proof` to initiate a GitHub-side CPU proof run. Use `/seal-proof plan [profile=<id>]` to print resolved commands without spending runner time. Use `/seal-proof profile=<id>` for a rung-class proof battery. Use `/seal-proof probe=<probe-id>` for known-bad guard-bite probes; a green known-bad probe is FAIL.
+
+Owner edict on full batteries: Track B exists to avoid hygiene-theater test sweeps. Bare full-crate `cargo test -p <crate>` is forbidden in automatic PR-triggered, comment-triggered, and default doctrine-exec paths. Broad full-crate batteries are quarantined behind owner-deep `workflow_dispatch` only and must never be the default proof path for a small-edit handoff.
+
+The orchestrator must reject any doctrine-exec report whose default or comment-triggered path ran a casual full-crate cargo test battery. Use plan mode to inspect commands before execution. Prefer exact targeted profiles and guard-bite probes. Full-cpu / owner-deep batteries are exceptional owner-dispatch artillery, not routine validation.
+
+Use `/triage <scan-id> <delete|green|escalate> <reason>` to append a §1A row to `scripts/ci/triage_log.tsv` on the PR branch. Malformed commands must be rejected with the expected format. Commands are collaborator-only and accepted from issue comments and PR review/review-comment events. Never run untrusted fork code under a write token.
+
+A doctrine-exec report is accepted only if it is fresh:
+
+- `head_sha` equals the current PR head
+- `base_sha` is recorded
+- `tested_ref` is recorded
+- `workflow_run_id` and `job_id` are recorded
+- `merge_ref_status` is PASS, or UNAVAILABLE is treated as INSPECT for merge-sensitive rungs
+
+The authoritative one-line verdict is:
+
+`DOCTRINE-EXEC-VERDICT: PASS|FAIL|INSPECT ...`
+
+`doctrine_exec_report.json` is a generated mirror of the same run, not a second truth. The sticky PR comment and job summary must agree. Labels are not verdicts and must not be used as proof.

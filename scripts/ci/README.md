@@ -29,6 +29,8 @@ Track A grep-only tripwire data lives here. **Heuristics and allowlists are data
 
 GitHub Actions gate: `.github/workflows/doctrine-scan.yml` (**`CI-A-WORKFLOW-0`**) — digest freshness check, self-test, then production scan on `pull_request` and push to `master`.
 
+Track B executable proof (non-blocking): `.github/workflows/doctrine-exec.yml` (**`CI-B-GH-CPU-0`**) + `.github/workflows/doctrine-exec-commands.yml` (**`CI-B-GH-COMMENT-0` / `CI-B-GH-TRIAGE-0`**). Operator quick-reference: `docs/ci_screening_surface.md` §9.
+
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
 
 ## Fixture corpus (`fixtures/`)
