@@ -100,6 +100,7 @@ pub fn terran_pirate_skeleton_scenario_spec() -> SimThingScenarioSpec {
             source: TERRAN_PIRATE_SKELETON_PROVENANCE_SOURCE.to_string(),
             generator_seed: 0,
             generator_shape: "terran_pirate_skeleton".to_string(),
+            ..SimThingScenarioProvenance::default()
         },
     }
 }

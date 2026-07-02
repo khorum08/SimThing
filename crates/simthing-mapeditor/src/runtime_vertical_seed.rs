@@ -81,6 +81,7 @@ pub fn runtime_vertical_seed_scenario_spec() -> SimThingScenarioSpec {
             source: RUNTIME_VERTICAL_SEED_PROVENANCE_SOURCE.to_string(),
             generator_seed: 0,
             generator_shape: "vertical_test_seed".to_string(),
+            ..SimThingScenarioProvenance::default()
         },
     }
 }

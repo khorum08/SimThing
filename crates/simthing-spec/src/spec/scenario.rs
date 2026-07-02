@@ -31,6 +31,10 @@ pub const SCENARIO_SCHEMA_VERSION_PROPERTY_ID: SimPropertyId = SimPropertyId(8_3
 pub const SCENARIO_SOURCE_LABEL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_202);
 pub const SCENARIO_GENERATOR_SHAPE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_203);
 pub const SCENARIO_GENERATOR_SEED_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_204);
+pub const SCENARIO_GENERATOR_PROFILE_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_205);
+pub const SCENARIO_GENERATOR_PARAMS_JSON_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_206);
+pub const SCENARIO_NAME_CORPUS_SOURCE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_207);
+pub const SCENARIO_NAME_ASSIGNMENT_MODE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_208);
 
 /// Canonical Owner entity metadata on direct GameSession children (string: length + UTF-8 bytes as f32).
 pub const OWNER_ID_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_300);
@@ -231,6 +235,14 @@ pub struct SimThingScenarioProvenance {
     pub source: String,
     pub generator_seed: u64,
     pub generator_shape: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub generator_profile_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub generator_params_json: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub name_corpus_source: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub name_assignment_mode: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -503,6 +515,30 @@ pub fn apply_scenario_metadata_to_root(
         SCENARIO_GENERATOR_SEED_PROPERTY_ID,
         scenario_metadata_seed_value(provenance.generator_seed),
     );
+    if !provenance.generator_profile_id.is_empty() {
+        root.add_property(
+            SCENARIO_GENERATOR_PROFILE_ID_PROPERTY_ID,
+            scenario_metadata_string_value(&provenance.generator_profile_id),
+        );
+    }
+    if !provenance.generator_params_json.is_empty() {
+        root.add_property(
+            SCENARIO_GENERATOR_PARAMS_JSON_PROPERTY_ID,
+            scenario_metadata_string_value(&provenance.generator_params_json),
+        );
+    }
+    if !provenance.name_corpus_source.is_empty() {
+        root.add_property(
+            SCENARIO_NAME_CORPUS_SOURCE_PROPERTY_ID,
+            scenario_metadata_string_value(&provenance.name_corpus_source),
+        );
+    }
+    if !provenance.name_assignment_mode.is_empty() {
+        root.add_property(
+            SCENARIO_NAME_ASSIGNMENT_MODE_PROPERTY_ID,
+            scenario_metadata_string_value(&provenance.name_assignment_mode),
+        );
+    }
 }
 
 pub fn sync_sidecar_from_root_metadata(spec: &mut SimThingScenarioSpec) {
@@ -520,6 +556,18 @@ pub fn sync_sidecar_from_root_metadata(spec: &mut SimThingScenarioSpec) {
     if let Some(seed) = scenario_metadata_seed(&spec.root) {
         spec.provenance.generator_seed = seed;
     }
+    spec.provenance.generator_profile_id =
+        scenario_metadata_string(&spec.root, SCENARIO_GENERATOR_PROFILE_ID_PROPERTY_ID)
+            .unwrap_or_default();
+    spec.provenance.generator_params_json =
+        scenario_metadata_string(&spec.root, SCENARIO_GENERATOR_PARAMS_JSON_PROPERTY_ID)
+            .unwrap_or_default();
+    spec.provenance.name_corpus_source =
+        scenario_metadata_string(&spec.root, SCENARIO_NAME_CORPUS_SOURCE_PROPERTY_ID)
+            .unwrap_or_default();
+    spec.provenance.name_assignment_mode =
+        scenario_metadata_string(&spec.root, SCENARIO_NAME_ASSIGNMENT_MODE_PROPERTY_ID)
+            .unwrap_or_default();
 }
 
 pub fn sync_root_metadata_from_sidecar(spec: &mut SimThingScenarioSpec) {

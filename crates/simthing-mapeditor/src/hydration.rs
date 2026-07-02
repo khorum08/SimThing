@@ -370,6 +370,7 @@ pub fn hydrate_mapgen_result_into_simthing_spec_with_star_names(
             source: "MapGeneratorLibrary".to_string(),
             generator_seed: report.generator.seed,
             generator_shape: report.request.shape.clone(),
+            ..SimThingScenarioProvenance::default()
         },
     };
     validate_stead_mapping_consistency(&scenario)
@@ -700,6 +701,7 @@ mod tests {
                 source: "test".to_string(),
                 generator_seed: 1,
                 generator_shape: "test".to_string(),
+                ..SimThingScenarioProvenance::default()
             },
         }
     }

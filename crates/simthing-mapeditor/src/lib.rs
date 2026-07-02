@@ -36,6 +36,7 @@ pub mod studio_screenshot;
 pub mod studio_structural_edit;
 pub mod studio_typeface_shell;
 pub mod terran_pirate_skeleton;
+pub mod tp_base_disc;
 pub mod view_model;
 
 #[cfg(windows)]
@@ -174,6 +175,14 @@ pub use studio_typeface_shell::{
 pub use terran_pirate_skeleton::{
     terran_pirate_skeleton_dense_inputs, terran_pirate_skeleton_scenario_spec,
     TERRAN_PIRATE_SKELETON_PROVENANCE_SOURCE, TERRAN_PIRATE_SKELETON_SCENARIO_ID,
+};
+pub use tp_base_disc::{
+    canonicalize_tp_base_disc_scenario, generate_tp_base_disc_artifact,
+    generate_tp_base_disc_artifact_from_recorded_metadata, stamp_tp_base_disc_metadata,
+    tp_base_disc_generation_profile, tp_base_disc_star_name_corpus_source, TpBaseDiscArtifact,
+    TpBaseDiscError, TP_BASE_DISC_LATTICE_EDGE, TP_BASE_DISC_NAME_ASSIGNMENT_MODE,
+    TP_BASE_DISC_NAME_CORPUS_SOURCE, TP_BASE_DISC_RUNG_ID, TP_BASE_DISC_SCENARIO_ID,
+    TP_BASE_DISC_SEED, TP_BASE_DISC_STARS,
 };
 pub use view_model::{
     StudioGalaxyRenderMeta, StudioGalaxyViewModel, StudioHyperlaneView, StudioStarView,
