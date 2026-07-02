@@ -70,9 +70,9 @@ pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
 };
 pub use hydrate_scenario::{
-    HydratedEmbeddedStaticGalaxyScenario, HydratedScenarioGridMetadata,
-    HydratedScenarioGridPlacement, HydratedScenarioLink, HydratedScenarioNode,
-    HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
+    HydratedEmbeddedStaticGalaxyScenario, HydratedOwnedSystem, HydratedOwnershipVolume,
+    HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioLink,
+    HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
     PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
 };
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
