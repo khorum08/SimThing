@@ -1,6 +1,6 @@
 # TP-PLANET-SURFACE-PAYLOAD-0 Results
 
-Status: **PROBATION** — handoff requires orchestrator review; do not self-merge.
+Status: **PROBATION** — implementation proof complete; orchestrator/DA review required before merge.
 
 ## What changed
 
@@ -95,7 +95,7 @@ Unsupported payload fields, zero `factory_min` on owned payloads, and non-zero f
 
 ## Load-bearing validation
 
-Local targeted validation (bash unavailable on this host — live GitHub Doctrine Scan required on PR):
+Local targeted validation (bash unavailable on this host — live GitHub Doctrine Scan verified on PR #1079):
 
 ```bash
 cargo check -p simthing-clausething
@@ -116,7 +116,10 @@ Local results:
 ## INSPECT / triage
 
 Local triage entries: none.
-Live GitHub Doctrine Scan: pending on PR head.
+
+Live GitHub Doctrine Scan: PASS on PR #1079 head 9ad9aacea596160f7851f04aadc2ccde8f9cd450.
+Run: 28564092572
+Job: 84687704189
 
 ## Scope Ledger
 
@@ -132,7 +135,7 @@ Live GitHub Doctrine Scan: pending on PR head.
 
 Graduation routing (for orchestrator review — why PROBATION, not COMPLETE):
 
-- CI verdict: PASS-RELIABLE (pending live GitHub Doctrine Scan on PR head)
+- CI verdict: PASS-RELIABLE
 - Triage entries: none
 - Risk class: surface-tier non-vacuity + owned-system payload authoring + RF settlement
 - Falsification check: Verify every owned system has planet + mandated 1×1 surface + factory + cohort; verify every neutral system has planet + mandated 1×1 surface and no factory/cohort; verify surface tier is non-vacuous; verify TP-OWNERSHIP-COLUMNS-0 owner refs/counts remain unchanged; verify RF settles surface→planet→star→galaxy through existing resource-flow/modifier surfaces; verify no fleets, ships, combat, diplomacy, AI, pathfinding, runtime/GPU change, new AccumulatorRole, scanner/allowlist edit, second parser, third loading path, or owner-as-parent semantics.
@@ -140,4 +143,6 @@ Graduation routing (for orchestrator review — why PROBATION, not COMPLETE):
 
 ## Known gaps / next
 
-Next active rung after clearance: `TP-SHIPSIZE-DECODER-0` (Phase 3) per design ladder, or orchestrator-directed Phase 2 follow-on if economy depth expansion is required before fleet authoring.
+Parking state: `TP-PLANET-SURFACE-PAYLOAD-0` remains PROBATION — docs corrected, CI green, awaiting orchestrator/DA clearance. Grok is parked; do not start `TP-SHIPSIZE-DECODER-0`. Ready for CI Track B handoff after Fable lands the CI scaffolding refactor.
+
+Binding follow-on from Fable DA: `HydratedScenarioPack` now carries canonical `authority_root` beside the legacy scenario-container `root`. This is acceptable for now because both are proven projections of the same hydration sources, but it is a divergence seam. By latest `TP-FULL-TRANSPILE-0`, consumers must converge onto `authority_root` or a formal Deviation must derive/retire the legacy root.
