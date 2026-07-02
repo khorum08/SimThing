@@ -15,9 +15,44 @@
 - **Docs-only pass (Part 0):** `docs/ci_screening_surface.md` §9 (webchat orchestration quick-reference); `docs/design_0_0_8_4_6_ci_scaffolding.md` §3B.1 cites §9.
 - **Workflow:** `.github/workflows/doctrine-exec.yml` — non-blocking CPU proof (`continue-on-error: true`); `.github/workflows/doctrine-exec-commands.yml` — `/seal-proof` and `/triage` command surfaces.
 - **Scripts:** `doctrine_exec.sh`, `doctrine_exec_plan.sh`, `doctrine_exec_probes.sh`, `doctrine_surface_truth.sh`, `doctrine_exec_stale_check.sh`, `doctrine_exec_comment.sh`, `doctrine_exec_commands.sh`, `doctrine_exec_triage.sh`.
-- **Data:** `doctrine_exec_profiles.tsv` (seal-residue, full-cpu, data-deliverable); `kernel_public_api_baseline.txt` (cargo-public-api pub-line baseline).
+- **Data:** `doctrine_exec_profiles.tsv` (`ci-b-webchat-smoke`, `seal-residue`, `data-deliverable`, `timeout-finalize-proof`, `owner-deep-full-cpu-quarantined`); `kernel_public_api_baseline.txt` (cargo-public-api pub-line baseline).
 - **Design:** §3B rungs 3–6 → **PROBATION** (`CI-B-WEBCHAT-PR1`).
 - **Untouched:** `.github/workflows/doctrine-scan.yml`, Track A blocking gate, authority crate sources.
+
+## CI-B-WEBCHAT-PR1R owner-edict repair
+
+Owner edict: long full-battery tests must be vanishingly rare. Full-crate `cargo test -p <crate>` is forbidden in automatic PR-triggered, comment-triggered, and default doctrine-exec paths.
+
+Cause of long run: the original Track B default resolved to `full-cpu`, whose profile ran broad per-crate `cargo test -p <crate>` commands. A small workflow edit could therefore launch a long repo-scale test battery before promptly emitting `DOCTRINE-EXEC-VERDICT`, `doctrine_exec_report.json`, and sticky-comment proof.
+
+Repair:
+
+- automatic PR profile changed from `full-cpu` to `ci-b-webchat-smoke`
+- broad full-cpu profile renamed/quarantined as `owner-deep-full-cpu-quarantined`
+- owner-deep profile requires explicit `workflow_dispatch` `owner_deep=true`
+- `/seal-proof` default resolves to `ci-b-webchat-smoke`
+- `/seal-proof profile=owner-deep-*` is rejected from comment/review-command paths
+- `profile_class = smoke | targeted | probe | owner-deep` added to `doctrine_exec_profiles.tsv`
+- profile lint rejects bare full-crate cargo tests in casual profiles
+- per-command timeouts added
+- fail-fast-with-finalize added for non-owner-deep profiles
+- footer/artifact/sticky proof surface now appears even after fail/timeout
+
+Local PR1R proof:
+
+| Proof | Result |
+|---|---|
+| smoke/default profile | PASS - `DOCTRINE-EXEC-VERDICT: PASS`, `profile=ci-b-webchat-smoke`, `profile_class=smoke`, `owner_deep=false`, `doctrine_exec_report.json` written |
+| profile lint reject | PASS - temp targeted profile containing `cargo test -p simthing-kernel` produced `PROFILE-LINT: FAIL` |
+| owner-deep comment rejection | PASS - fake issue comment `/seal-proof profile=owner-deep-full-cpu-quarantined` produced `COMMAND: seal-proof-rejected` |
+| owner-deep runner rejection | PASS - `owner-deep-full-cpu-quarantined` without `owner_deep=true` finalized `DOCTRINE-EXEC-VERDICT: FAIL` and wrote JSON |
+| owner-deep dispatch authorization shape | PASS - `DOCTRINE_EXEC_OWNER_DEEP_ALLOWED=true doctrine_exec_plan.sh --profile owner-deep-full-cpu-quarantined` resolves the quarantined profile in plan mode without execution |
+| timeout finalization | PASS - `timeout-finalize-proof` with `DOCTRINE_EXEC_COMMAND_TIMEOUT_SECONDS=1` finalized `DOCTRINE-EXEC-VERDICT: FAIL` and wrote JSON |
+| probe finalization | PASS - `panic-swallow` probe finalized with `DOCTRINE-EXEC-VERDICT` and JSON |
+| plan mode | PASS - `doctrine_exec_plan.sh --profile ci-b-webchat-smoke` printed resolved commands and ran nothing |
+| stale check | PASS - matching `head_sha` passed; mismatched `head_sha` failed |
+
+Live proofs are updated after the repaired PR head runs in GitHub Actions. PR1R keeps posture **PROBATION** until DA/orchestrator clearance.
 
 ## Docs-only orchestration guidance pass
 
@@ -32,10 +67,10 @@
 | `doctrine-exec.yml` present, non-blocking | wired — `continue-on-error: true` |
 | `doctrine-scan.yml` unchanged | verified — no diff |
 | Path-filter + `workflow_dispatch` triggers | wired |
-| Per-crate CPU battery via profiles | wired via `doctrine_exec_profiles.tsv` + `doctrine_exec.sh` |
+| Profile-bound executable proof | wired via `doctrine_exec_profiles.tsv` + `doctrine_exec.sh`; default is `ci-b-webchat-smoke`, broad full-crate batteries are owner-deep only |
 | GPU legs → INSPECT never PASS | wired via `run_inspect_cmd` + profile `gpu_required` |
-| Live green on PR head | doctrine-scan PASS (run 28569023347, 1m19s). doctrine-exec run 28569023317: **FAIL** in 4m36s — `cargo test -p simthing-kernel` 42 failures on `refs/pull/1083/merge` (merge_ref_status PASS); sticky comment + artifact uploaded. `set -e` in `run_cmd` aborted before verdict footer — fixed in follow-up commit. |
-| Known-bad `compile_fail` regression red | pending probe/workflow run |
+| Live green on PR head | PR1 pre-repair doctrine-scan PASS (run 28569023347, 1m19s). PR1 doctrine-exec failure diagnosed as forbidden broad `full-cpu` default. PR1R live runs pending on repaired head. |
+| Known-bad probe finalizes | local `panic-swallow` probe finalized with footer + JSON; workflow probe proof pending on repaired head |
 
 ## SHA freshness proof
 
@@ -62,7 +97,7 @@
 
 - `doctrine-exec-commands.yml` listens on `issue_comment`, `pull_request_review`, `pull_request_review_comment`.
 - Collaborator-only (`OWNER|MEMBER|COLLABORATOR`); fork PRs ignored for write-token paths.
-- Live proofs pending post-merge PR comment/review exercises.
+- Live command-surface proofs pending repaired-head workflow/comment exercises.
 
 ## Plan-mode proof
 

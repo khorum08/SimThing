@@ -4,8 +4,12 @@ set -euo pipefail
 
 EVENT_NAME="${GITHUB_EVENT_NAME:?}"
 EVENT_PATH="${GITHUB_EVENT_PATH:?}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+  PYTHON_BIN="python"
+fi
 
-body="$(python3 - <<'PY' "$EVENT_PATH" "$EVENT_NAME"
+body="$("$PYTHON_BIN" - <<'PY' "$EVENT_PATH" "$EVENT_NAME"
 import json, sys
 path, name = sys.argv[1], sys.argv[2]
 ev = json.load(open(path, encoding="utf-8"))
@@ -33,11 +37,15 @@ fi
 
 if [[ "$cmd" == "seal-proof" ]]; then
   plan="false"
-  profile="full-cpu"
+  profile="ci-b-webchat-smoke"
   probe=""
   if [[ "$body" =~ plan ]]; then plan="true"; fi
   if [[ "$body" =~ profile=([a-z0-9_-]+) ]]; then profile="${BASH_REMATCH[1]}"; fi
   if [[ "$body" =~ probe=([a-z0-9_-]+) ]]; then probe="${BASH_REMATCH[1]}"; fi
+  if [[ "$profile" == owner-deep-* ]]; then
+    echo "COMMAND: seal-proof-rejected reason=owner-deep-comment-path profile=${profile}"
+    exit 0
+  fi
   echo "COMMAND: seal-proof plan=${plan} profile=${profile} probe=${probe}"
   exit 0
 fi

@@ -117,12 +117,18 @@ jobs:
             echo "command=triage-invalid" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [[ "$CMD" == seal-proof-rejected* ]]; then
+            echo "command=seal-proof-rejected" >> "$GITHUB_OUTPUT"
+            PROFILE="$(echo "$CMD" | sed -n 's/.*profile=\([^ ]*\).*/\1/p')"
+            echo "profile=${PROFILE}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [[ "$CMD" == seal-proof* ]]; then
             echo "command=seal-proof" >> "$GITHUB_OUTPUT"
             PLAN="$(echo "$CMD" | sed -n 's/.*plan=\([^ ]*\).*/\1/p')"
             PROFILE="$(echo "$CMD" | sed -n 's/.*profile=\([^ ]*\).*/\1/p')"
             PROBE="$(echo "$CMD" | sed -n 's/.*probe=\([^ ]*\).*/\1/p')"
-            [[ -n "$PROFILE" ]] || PROFILE="full-cpu"
+            [[ -n "$PROFILE" ]] || PROFILE="ci-b-webchat-smoke"
             echo "plan=${PLAN:-false}" >> "$GITHUB_OUTPUT"
             echo "profile=${PROFILE}" >> "$GITHUB_OUTPUT"
             echo "probe=${PROBE}" >> "$GITHUB_OUTPUT"
@@ -184,6 +190,19 @@ jobs:
           } >> doctrine-exec-report.txt
           echo "DOCTRINE-EXEC-VERDICT: PASS plan-only profile=${{ needs.parse-command.outputs.profile }} head_sha=${{ needs.parse-command.outputs.head_sha }}" >> doctrine-exec-report.txt
           bash scripts/ci/doctrine_exec_comment.sh "${{ needs.parse-command.outputs.pr_number }}" doctrine-exec-report.txt
+
+  reject-owner-deep-seal-proof:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'seal-proof-rejected' &&
+      needs.parse-command.outputs.is_collaborator == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post owner-deep rejection
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ needs.parse-command.outputs.pr_number }}" --body "DOCTRINE-EXEC-VERDICT: FAIL rejected owner-deep profile=${{ needs.parse-command.outputs.profile }} from /seal-proof comment path. Use workflow_dispatch with owner_deep=true."
 
   triage-append:
     needs: parse-command

@@ -18,8 +18,13 @@ on:
       profile:
         description: doctrine_exec profile id
         required: false
-        default: full-cpu
+        default: ci-b-webchat-smoke
         type: string
+      owner_deep:
+        description: Allow owner-deep quarantined profile
+        required: false
+        default: false
+        type: boolean
       probe:
         description: probe id (overrides profile run)
         required: false
@@ -67,7 +72,8 @@ jobs:
           PR="${{ inputs.pr || github.event.pull_request.number || '' }}"
           HEAD="${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}"
           BASE="${{ inputs.base_sha || github.event.pull_request.base.sha || '' }}"
-          PROFILE="${{ inputs.profile || 'full-cpu' }}"
+          PROFILE="${{ inputs.profile || 'ci-b-webchat-smoke' }}"
+          OWNER_DEEP="${{ inputs.owner_deep || 'false' }}"
           PROBE="${{ inputs.probe || '' }}"
           PLAN="${{ inputs.plan || 'false' }}"
           TESTED_REF="${{ inputs.tested_ref || '' }}"
@@ -94,6 +100,7 @@ jobs:
             echo "head_sha=${HEAD}"
             echo "base_sha=${BASE}"
             echo "profile=${PROFILE}"
+            echo "owner_deep=${OWNER_DEEP}"
             echo "probe=${PROBE}"
             echo "plan=${PLAN}"
             echo "tested_ref=${TESTED_REF}"
@@ -106,11 +113,11 @@ jobs:
           git checkout "${{ steps.meta.outputs.merge_ref }}"
 
       - name: Install Rust toolchain
-        if: steps.meta.outputs.plan != 'true'
+        if: steps.meta.outputs.plan != 'true' && steps.meta.outputs.profile != 'ci-b-webchat-smoke' && (steps.meta.outputs.profile != 'owner-deep-full-cpu-quarantined' || steps.meta.outputs.owner_deep == 'true')
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install nightly + cargo-public-api
-        if: steps.meta.outputs.plan != 'true'
+        if: steps.meta.outputs.plan != 'true' && steps.meta.outputs.profile != 'ci-b-webchat-smoke' && (steps.meta.outputs.profile != 'owner-deep-full-cpu-quarantined' || steps.meta.outputs.owner_deep == 'true')
         run: |
           rustup toolchain install nightly -c rust-src --profile minimal
           cargo install cargo-public-api --locked
@@ -119,6 +126,7 @@ jobs:
         if: steps.meta.outputs.plan == 'true'
         env:
           DOCTRINE_EXEC_PROFILE: ${{ steps.meta.outputs.profile }}
+          DOCTRINE_EXEC_OWNER_DEEP_ALLOWED: ${{ steps.meta.outputs.owner_deep }}
         run: |
           set -o pipefail
           bash scripts/ci/doctrine_exec_plan.sh --profile "${{ steps.meta.outputs.profile }}" | tee doctrine-exec-report.txt
@@ -133,6 +141,7 @@ jobs:
           DOCTRINE_EXEC_TESTED_REF: ${{ steps.meta.outputs.tested_ref }}
           DOCTRINE_EXEC_MERGE_REF_STATUS: ${{ steps.meta.outputs.merge_ref_status }}
           DOCTRINE_EXEC_PROFILE: ${{ steps.meta.outputs.profile }}
+          DOCTRINE_EXEC_OWNER_DEEP_ALLOWED: ${{ steps.meta.outputs.owner_deep }}
           DOCTRINE_EXEC_MODE: ${{ steps.meta.outputs.probe != '' && 'probe' || 'run' }}
           DOCTRINE_EXEC_PROBE: ${{ steps.meta.outputs.probe }}
         run: |
@@ -156,8 +165,14 @@ jobs:
             echo "base_sha: ${{ steps.meta.outputs.base_sha }}"
             echo "tested_ref: ${{ steps.meta.outputs.tested_ref }}"
             echo "merge_ref_status: ${{ steps.meta.outputs.merge_ref_status }}"
+            echo "profile: ${{ steps.meta.outputs.profile }}"
+            echo "owner_deep: ${{ steps.meta.outputs.owner_deep }}"
             echo "workflow_run_id: ${{ github.run_id }}"
             echo "job_id: ${{ github.job }}"
+            if [[ "${{ steps.meta.outputs.owner_deep }}" == "true" ]]; then
+              echo ""
+              echo "**OWNER-DEEP QUARANTINE ACTIVE:** broad full-crate batteries are exceptional owner-dispatch artillery."
+            fi
             echo '```'
             cat doctrine-exec-report.txt 2>/dev/null || true
             echo '```'

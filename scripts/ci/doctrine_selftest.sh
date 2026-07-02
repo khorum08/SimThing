@@ -484,6 +484,12 @@ main() {
     exit 1
   fi
 
+  if ! bash "${REPO_ROOT}/scripts/ci/doctrine_exec_profile_lint.sh"; then
+    fail_selftest
+    emit_report
+    exit 1
+  fi
+
   run_positive_control
   run_all_cases
   run_rot_test
