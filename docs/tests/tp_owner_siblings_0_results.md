@@ -67,7 +67,7 @@ bash scripts/ci/doctrine_scan.sh
 
 Local doctrine scan: PASS, failures=0, inspect=0.
 Local gen_digest --check: PASS.
-Live GitHub Doctrine Scan: pending on PR head.
+Live GitHub Doctrine Scan: PASS on PR #1077.
 
 ## Scope Ledger
 
