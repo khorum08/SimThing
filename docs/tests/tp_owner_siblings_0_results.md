@@ -1,6 +1,6 @@
 # TP-OWNER-SIBLINGS-0 Results
 
-Status: **PROBATION**.
+Status: **COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01**.
 
 ## Scope
 
@@ -15,6 +15,8 @@ Scenario
 ```
 
 The legacy scenario-container `root` and embedded-base grid metadata remain intact for existing consumers; the new canonical tree is exposed separately as the owner-sibling authority root.
+
+`TP-OWNER-SIBLINGS-0` is COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01. The rung adds ClauseScript authoring for Terran and Pirate Owner SimThings as direct GameSession siblings, proves GalaxyMap remains a sibling rather than an owner child, preserves the embedded base placements, hard-errors duplicate/unsupported owner declarations with spans, and roundtrips owner metadata distinct from spatial parentage. Live Doctrine Scan passed on PR head `19bbe37a`.
 
 ## Owner Syntax Proof
 
@@ -86,7 +88,7 @@ Live GitHub Doctrine Scan: PASS on PR #1077.
 
 ## Graduation Routing
 
-CI verdict: PASS-RELIABLE pending live CI
+CI verdict: PASS-RELIABLE
 
 Triage entries: none
 
@@ -94,8 +96,8 @@ Risk class: first owner-as-sibling ClauseScript authoring over embedded TP base
 
 Falsification check: Verify Terran/Pirate owner blocks parse through the existing scenario-container path; verify hydrated owners are direct GameSession children; verify GalaxyMap remains a sibling and not an owner child; verify embedded base placements are unchanged; verify duplicate owner ids and unsupported fields hard-error with spans; verify scenario save/reopen preserves owner metadata distinct from spatial parentage; verify no owner columns, Phase 2+ content, runtime/GPU change, scanner/allowlist edit, new AccumulatorRole, or alternate parser/loading path.
 
-Recommended posture: PROBATION for orchestrator review; do not self-merge this rung.
+Recommended posture: COMPLETE - DA-equivalent orchestrator-cleared 2026-07-01.
 
 ## Known Gaps / Next
 
-Next active rung after orchestrator clearance is `TP-OWNERSHIP-COLUMNS-0`.
+Next active rung is `TP-OWNERSHIP-COLUMNS-0`.
