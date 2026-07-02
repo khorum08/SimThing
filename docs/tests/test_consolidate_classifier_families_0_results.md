@@ -96,16 +96,25 @@ No `cargo test -p <crate>`, no `cargo test --workspace`, no owner-deep battery.
 
 ## GitHub-side Doctrine Exec proof
 
-Pending after push:
+PR: [#1092](https://github.com/khorum08/SimThing/pull/1092)
 
-```text
-/seal-proof profile=test-consolidate-classifier-families
-```
+`/seal-proof profile=test-consolidate-classifier-families` comment dispatched; `doctrine-exec-commands` dispatch failed (pre-existing `fatal: not a git repository` in command workflow). Manual `workflow_dispatch` proofs:
+
+| run | head | verdict | note |
+|---|---|---|---|
+| 28620041836 | 27ce7990 | FAIL | driver command 300s timeout |
+| 28620641250 | 8c5f7d7e | FAIL | driver `alsa-sys` missing on Linux |
+| 28621262762 | 818e80c6 | FAIL | driver `wayland-sys` missing |
+| 28621909072 | 22c12711 | FAIL | tools `winit` Linux backend (5/7 binaries passed) |
+
+Remedial commits on branch: extended `test-deletion-*` command timeout to 900s; Linux Bevy pkg-config bootstrap in `doctrine_exec.sh`; `x11` feature on `simthing-tools` dev-dep bevy for headless CI compile.
+
+Fresh proof pending on current head after remedial commits.
 
 Required acceptance:
 
 - `profile: test-consolidate-classifier-families`
-- `tested_ref: refs/pull/<PR>/merge`
+- `tested_ref: refs/pull/1092/merge`
 - `merge_ref_status: PASS`
 - `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
 - no `doctrine_surface_truth.sh` command (`risk_class=test-deletion-classifier-consolidation`)

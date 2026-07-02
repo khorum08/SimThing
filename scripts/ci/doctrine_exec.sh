@@ -250,7 +250,7 @@ install_linux_bevy_test_deps_if_needed() {
   if [[ "$(uname -s)" != "Linux" ]]; then
     return 0
   fi
-  if [[ "$commands" != *"simthing-driver"* && "$commands" != *"simthing-mapeditor"* ]]; then
+  if [[ "$commands" != *"simthing-driver"* && "$commands" != *"simthing-mapeditor"* && "$commands" != *"simthing-tools"* ]]; then
     return 0
   fi
   if command -v apt-get >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1; then
