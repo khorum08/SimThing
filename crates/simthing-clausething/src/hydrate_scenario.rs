@@ -19,10 +19,12 @@ use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
 use simthing_spec::spec::scenario::{
-    OWNER_COLOR_INDEX_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SimThingScenarioGrid,
-    SimThingScenarioProvenance, apply_owner_silo_metadata, apply_scenario_metadata_to_root,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
+    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SimThingScenarioGrid, SimThingScenarioProvenance,
+    apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_scenario_metadata_to_root,
     deserialize_scenario_authority, make_galaxy_map, make_owner_entity,
-    scenario_metadata_u32_value,
+    scenario_metadata_string_value, scenario_metadata_u32_value, structural_property_value_u32,
 };
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
@@ -37,7 +39,7 @@ use crate::hydrate_scenario_commitment::{
     HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT, ParsedCommitmentEffectDraft,
     finalize_scenario_commitment, parse_commitment_property,
 };
-use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawValue};
+use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
 pub const PR3_MAX_LINK_FANOUT: usize = 4;
 /// PR4 admits one scenario-contained SaturatingFlux field operator per document.
@@ -115,6 +117,9 @@ pub struct HydratedScenarioPack {
     /// Authored owner declarations lowered into direct GameSession children.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub owners: Vec<HydratedScenarioOwner>,
+    /// TP-OWNERSHIP-COLUMNS-0 deterministic ownership-volume assignments.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ownership_volumes: Vec<HydratedOwnershipVolume>,
 }
 
 /// Authored scenario node declaration paired with its generated `SimThingId`.
@@ -178,6 +183,41 @@ pub struct HydratedScenarioOwner {
     pub simthing_id: SimThingId,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedOwnershipVolume {
+    pub id: String,
+    pub owner: String,
+    pub count: u32,
+    pub selection: String,
+    pub seed: Option<u64>,
+    pub adjacent_to: Option<String>,
+    pub anchor_row: u32,
+    pub anchor_col: u32,
+    pub assigned_systems: Vec<HydratedOwnedSystem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedOwnedSystem {
+    pub location_id: String,
+    pub target_id: String,
+    pub row: u32,
+    pub col: u32,
+    pub owner_ref: String,
+}
+
+#[derive(Debug, Clone)]
+struct ParsedOwnershipVolume {
+    id: String,
+    owner: String,
+    count: u32,
+    selection: String,
+    seed: Option<u64>,
+    anchor_row: Option<u32>,
+    anchor_col: Option<u32>,
+    adjacent_to: Option<String>,
+    span: RawSpan,
+}
+
 pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, HydrateError> {
     let RawValue::Block(root) = &document.root else {
         return Err(HydrateError::new("document root must be a property block"));
@@ -212,6 +252,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut raw_links = Vec::new();
     let mut owners = Vec::new();
     let mut seen_owner_keys = BTreeSet::new();
+    let mut ownership_volume_drafts = Vec::new();
+    let mut seen_ownership_volume_ids = BTreeSet::new();
     let mut embedded_static_galaxy_scenarios = Vec::new();
     let mut embedded_placements = Vec::new();
     let mut embedded_grid_size = None;
@@ -264,6 +306,16 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     ));
                 }
                 owners.push(owner);
+            }
+            "ownership_volume" => {
+                let volume = parse_ownership_volume(field)?;
+                if !seen_ownership_volume_ids.insert(volume.id.clone()) {
+                    return Err(HydrateError::new_spanned(
+                        format!("duplicate ownership_volume id `{}`", volume.id),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                ownership_volume_drafts.push(volume);
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -425,6 +477,11 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     }
 
     root_node.simthing_id = root.id;
+    let ownership_volumes = finalize_ownership_volumes(
+        &ownership_volume_drafts,
+        &owners,
+        embedded_static_galaxy_scenarios.first(),
+    )?;
     let authority_root = if owners.is_empty() {
         None
     } else {
@@ -433,6 +490,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
             &metadata,
             &owners,
             embedded_static_galaxy_scenarios.first(),
+            &ownership_volumes,
         ))
     };
     Ok(HydratedScenarioPack {
@@ -450,6 +508,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         embedded_static_galaxy_scenarios,
         authority_root,
         owners,
+        ownership_volumes,
     })
 }
 
@@ -542,6 +601,7 @@ fn build_authority_root(
     metadata: &BTreeMap<String, String>,
     owners: &[HydratedScenarioOwner],
     embedded: Option<&HydratedEmbeddedStaticGalaxyScenario>,
+    ownership_volumes: &[HydratedOwnershipVolume],
 ) -> SimThing {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
     let provenance = embedded
@@ -569,9 +629,45 @@ fn build_authority_root(
         .get("display_name")
         .map(String::as_str)
         .unwrap_or(scenario_id);
-    session.add_child(make_galaxy_map(&map_id, display_name));
+    let mut galaxy_map = make_galaxy_map(&map_id, display_name);
+    if let Some(embedded) = embedded {
+        attach_embedded_gridcells(&mut galaxy_map, embedded, ownership_volumes);
+    }
+    session.add_child(galaxy_map);
     root.add_child(session);
     root
+}
+
+fn attach_embedded_gridcells(
+    galaxy_map: &mut SimThing,
+    embedded: &HydratedEmbeddedStaticGalaxyScenario,
+    ownership_volumes: &[HydratedOwnershipVolume],
+) {
+    let mut owner_by_target = BTreeMap::new();
+    for volume in ownership_volumes {
+        for system in &volume.assigned_systems {
+            owner_by_target.insert(system.target_id.clone(), system.owner_ref.clone());
+        }
+    }
+    for placement in &embedded.namespaced_placements {
+        let mut gridcell = SimThing::new(SimThingKind::Location, 0);
+        apply_gridcell_role_metadata(&mut gridcell, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM);
+        gridcell.add_property(
+            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+            structural_property_value_u32(placement.col),
+        );
+        gridcell.add_property(
+            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+            structural_property_value_u32(placement.row),
+        );
+        if let Some(owner_ref) = owner_by_target.get(&placement.target_id) {
+            gridcell.add_property(
+                OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+                scenario_metadata_string_value(owner_ref),
+            );
+        }
+        galaxy_map.add_child(gridcell);
+    }
 }
 
 fn owner_simthing(owner: &HydratedScenarioOwner) -> SimThing {
@@ -587,6 +683,311 @@ fn owner_simthing(owner: &HydratedScenarioOwner) -> SimThing {
         apply_owner_silo_metadata(&mut simthing, stockpile_seed, owner.stockpile_capacity);
     }
     simthing
+}
+
+fn parse_ownership_volume(property: &RawProperty) -> Result<ParsedOwnershipVolume, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "ownership_volume")?;
+    let mut id = header_id;
+    let mut owner = None;
+    let mut count = None;
+    let mut selection = None;
+    let mut seed = None;
+    let mut anchor_row = None;
+    let mut anchor_col = None;
+    let mut adjacent_to = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => {
+                let explicit_id = read_scalar_text(field, "id")?;
+                if !id.is_empty() && id != explicit_id {
+                    return Err(HydrateError::new_spanned(
+                        format!("header id `{id}` does not match explicit id `{explicit_id}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                id = explicit_id;
+            }
+            "owner" => owner = Some(read_scalar_text(field, "owner")?),
+            "count" => count = Some(read_scalar_u32(field, "count")?),
+            "selection" => selection = Some(read_scalar_text(field, "selection")?),
+            "seed" => seed = Some(read_scalar_u64(field, "seed")?),
+            "anchor_row" => anchor_row = Some(read_scalar_u32(field, "anchor_row")?),
+            "anchor_col" => anchor_col = Some(read_scalar_u32(field, "anchor_col")?),
+            "adjacent_to" => adjacent_to = Some(read_scalar_text(field, "adjacent_to")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported ownership_volume field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if id.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`ownership_volume` requires an id",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let owner = require_field(owner, "owner", property)?;
+    if owner.trim().is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`ownership_volume.owner` must be non-empty",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let count = require_field(count, "count", property)?;
+    if count == 0 {
+        return Err(HydrateError::new_spanned(
+            "`ownership_volume.count` must be greater than zero",
+            Some(property.key.span.clone()),
+        ));
+    }
+    let selection = selection.unwrap_or_else(|| "chebyshev_contiguous".to_string());
+    if selection != "chebyshev_contiguous" {
+        return Err(HydrateError::new_spanned(
+            format!("unsupported ownership_volume selection `{selection}`"),
+            Some(property.key.span.clone()),
+        ));
+    }
+
+    Ok(ParsedOwnershipVolume {
+        id,
+        owner,
+        count,
+        selection,
+        seed,
+        anchor_row,
+        anchor_col,
+        adjacent_to,
+        span: property.key.span.clone(),
+    })
+}
+
+fn finalize_ownership_volumes(
+    drafts: &[ParsedOwnershipVolume],
+    owners: &[HydratedScenarioOwner],
+    embedded: Option<&HydratedEmbeddedStaticGalaxyScenario>,
+) -> Result<Vec<HydratedOwnershipVolume>, HydrateError> {
+    if drafts.is_empty() {
+        return Ok(Vec::new());
+    }
+    let embedded = embedded.ok_or_else(|| {
+        HydrateError::new_spanned(
+            "ownership_volume requires an embedded static_galaxy_scenario",
+            drafts.first().map(|draft| draft.span.clone()),
+        )
+    })?;
+    let owner_keys: BTreeSet<_> = owners
+        .iter()
+        .map(|owner| owner.owner_key.as_str())
+        .collect();
+    let mut assigned_by_target: BTreeMap<String, String> = BTreeMap::new();
+    let mut finalized = Vec::new();
+
+    for draft in drafts {
+        if !owner_keys.contains(draft.owner.as_str()) {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "ownership_volume `{}` references unknown owner `{}`",
+                    draft.id, draft.owner
+                ),
+                Some(draft.span.clone()),
+            ));
+        }
+        let (selected, anchor_row, anchor_col) =
+            select_ownership_systems(draft, embedded, &finalized, &assigned_by_target)?;
+        let mut assigned_systems = Vec::new();
+        for placement in selected {
+            if let Some(previous_owner) = assigned_by_target.get(&placement.target_id) {
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "ownership_volume `{}` overlaps `{}` already owned by `{previous_owner}`",
+                        draft.id, placement.target_id
+                    ),
+                    Some(draft.span.clone()),
+                ));
+            }
+            assigned_by_target.insert(placement.target_id.clone(), draft.owner.clone());
+            assigned_systems.push(HydratedOwnedSystem {
+                location_id: placement.location_id.clone(),
+                target_id: placement.target_id.clone(),
+                row: placement.row,
+                col: placement.col,
+                owner_ref: draft.owner.clone(),
+            });
+        }
+        finalized.push(HydratedOwnershipVolume {
+            id: draft.id.clone(),
+            owner: draft.owner.clone(),
+            count: draft.count,
+            selection: draft.selection.clone(),
+            seed: draft.seed,
+            adjacent_to: draft.adjacent_to.clone(),
+            anchor_row,
+            anchor_col,
+            assigned_systems,
+        });
+    }
+
+    Ok(finalized)
+}
+
+fn select_ownership_systems(
+    draft: &ParsedOwnershipVolume,
+    embedded: &HydratedEmbeddedStaticGalaxyScenario,
+    finalized: &[HydratedOwnershipVolume],
+    assigned_by_target: &BTreeMap<String, String>,
+) -> Result<(Vec<HydratedScenarioGridPlacement>, u32, u32), HydrateError> {
+    let placements = sorted_placements(&embedded.namespaced_placements);
+    let count = draft.count as usize;
+    if count > placements.len() {
+        return Err(HydrateError::new_spanned(
+            format!(
+                "ownership_volume `{}` requests {} systems but only {} placements exist",
+                draft.id,
+                draft.count,
+                placements.len()
+            ),
+            Some(draft.span.clone()),
+        ));
+    }
+    let reference_coords = if let Some(reference) = draft.adjacent_to.as_ref() {
+        let volume = finalized
+            .iter()
+            .find(|volume| &volume.id == reference)
+            .ok_or_else(|| {
+                HydrateError::new_spanned(
+                    format!(
+                        "ownership_volume `{}` references unknown adjacent_to volume `{reference}`",
+                        draft.id
+                    ),
+                    Some(draft.span.clone()),
+                )
+            })?;
+        Some(
+            volume
+                .assigned_systems
+                .iter()
+                .map(|system| (system.row, system.col))
+                .collect::<BTreeSet<_>>(),
+        )
+    } else {
+        None
+    };
+    if let Some(reference_coords) = reference_coords.as_ref() {
+        let mut candidates = placements
+            .into_iter()
+            .filter(|placement| !assigned_by_target.contains_key(&placement.target_id))
+            .map(|placement| {
+                let distance = reference_coords
+                    .iter()
+                    .map(|coord| chebyshev_distance((placement.row, placement.col), *coord))
+                    .min()
+                    .unwrap_or(u32::MAX);
+                (distance, placement)
+            })
+            .collect::<Vec<_>>();
+        candidates.sort_by(|left, right| {
+            (left.0, left.1.row, left.1.col, left.1.target_id.as_str()).cmp(&(
+                right.0,
+                right.1.row,
+                right.1.col,
+                right.1.target_id.as_str(),
+            ))
+        });
+        if candidates.len() >= count {
+            let selected = candidates
+                .into_iter()
+                .take(count)
+                .map(|(_, placement)| placement)
+                .collect::<Vec<_>>();
+            let anchor = selected[0].clone();
+            return Ok((selected, anchor.row, anchor.col));
+        }
+    } else {
+        let anchors: Vec<_> = if let (Some(anchor_row), Some(anchor_col)) =
+            (draft.anchor_row, draft.anchor_col)
+        {
+            vec![placements
+                    .iter()
+                    .position(|placement| {
+                        placement.row == anchor_row && placement.col == anchor_col
+                    })
+                    .ok_or_else(|| {
+                        HydrateError::new_spanned(
+                            format!(
+                                "ownership_volume `{}` anchor ({anchor_row},{anchor_col}) is not an embedded placement",
+                                draft.id
+                            ),
+                            Some(draft.span.clone()),
+                        )
+                    })?]
+        } else {
+            let mut anchors: Vec<_> = placements
+                .iter()
+                .enumerate()
+                .map(|(index, _)| index)
+                .collect();
+            rotate_by_seed(&mut anchors, draft.seed);
+            anchors
+        };
+        for anchor_index in anchors {
+            let anchor = placements[anchor_index].clone();
+            let mut candidates = placements.clone();
+            candidates.sort_by(|left, right| {
+                (
+                    chebyshev_distance((left.row, left.col), (anchor.row, anchor.col)),
+                    left.row,
+                    left.col,
+                    left.target_id.as_str(),
+                )
+                    .cmp(&(
+                        chebyshev_distance((right.row, right.col), (anchor.row, anchor.col)),
+                        right.row,
+                        right.col,
+                        right.target_id.as_str(),
+                    ))
+            });
+            if candidates.len() >= count {
+                return Ok((
+                    candidates.into_iter().take(count).collect(),
+                    anchor.row,
+                    anchor.col,
+                ));
+            }
+        }
+    }
+    Err(HydrateError::new_spanned(
+        format!(
+            "ownership_volume `{}` could not select {} Chebyshev-contiguous systems",
+            draft.id, draft.count
+        ),
+        Some(draft.span.clone()),
+    ))
+}
+
+fn sorted_placements(
+    placements: &[HydratedScenarioGridPlacement],
+) -> Vec<HydratedScenarioGridPlacement> {
+    let mut sorted = placements.to_vec();
+    sorted.sort_by(|left, right| {
+        (left.row, left.col, &left.target_id).cmp(&(right.row, right.col, &right.target_id))
+    });
+    sorted
+}
+
+fn rotate_by_seed(indices: &mut Vec<usize>, seed: Option<u64>) {
+    if indices.is_empty() {
+        return;
+    }
+    let offset = seed.unwrap_or(0) as usize % indices.len();
+    indices.rotate_left(offset);
+}
+
+fn chebyshev_distance(left: (u32, u32), right: (u32, u32)) -> u32 {
+    left.0.abs_diff(right.0).max(left.1.abs_diff(right.1))
 }
 
 fn parse_static_galaxy_scenario(
@@ -1316,6 +1717,16 @@ fn read_scalar_f32(property: &RawProperty, field: &str) -> Result<f32, HydrateEr
 fn read_scalar_u32(property: &RawProperty, field: &str) -> Result<u32, HydrateError> {
     let text = read_scalar_text(property, field)?;
     text.parse::<u32>().map_err(|_| {
+        HydrateError::new_spanned(
+            format!("`{field}` must be a non-negative integer literal, got `{text}`"),
+            Some(property.key.span.clone()),
+        )
+    })
+}
+
+fn read_scalar_u64(property: &RawProperty, field: &str) -> Result<u64, HydrateError> {
+    let text = read_scalar_text(property, field)?;
+    text.parse::<u64>().map_err(|_| {
         HydrateError::new_spanned(
             format!("`{field}` must be a non-negative integer literal, got `{text}`"),
             Some(property.key.span.clone()),
