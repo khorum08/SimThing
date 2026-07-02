@@ -204,6 +204,39 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 | 5 | `CI-B-SURFACE-TRUTH-0` | **Candidate — owner-gated.** In `doctrine-exec.yml`: `cargo public-api` diff of `simthing-kernel` against a committed baseline — the **compiler-derived** public surface, auditing the grep allowlist's *enumeration completeness* (the single-line-`pub use` class of hole, §5). The fast grep stays the blocking gate; this is its periodic deep verifier — the "stricter reference implementation" differential the verifier-fuzzing literature prescribes (arXiv:2606.01066, verified). | Cursor/Grok | **OPEN** (owner-ratified 2026-07-02; queued after 3) | a surface item invisible to the grep enumeration but present in rustdoc output is reported. |
 | 6 | `CI-B-GH-TRIAGE-0` | **Triage/orchestration empowerment (owner-ratified 2026-07-02 — the high-leverage GH-side tooling).** (a) The doctrine-scan workflow posts/updates **one sticky PR comment** carrying the `DOCTRINE-SCAN-VERDICT` footer + any INSPECT lines + the spam-check verdict — the triage agent reads the whole §1A picture in the PR thread. (b) A **collaborator-only** `/triage <scan-id> <delete\|green\|escalate> <reason>` PR comment-command validates the §1A row format and **commits the row to `scripts/ci/triage_log.tsv`** on the PR branch — the webchat triage tier discharges the entire §1A loop GitHub-side, with the row visible in the PR diff. (c) A malformed `/triage` command is rejected with the required format printed (FAIL-as-teacher). No new engine logic; the §1A protocol is unchanged — this is its remote *surface*. | Cursor/Grok | **OPEN** (queued after 3) | `/triage` appends a valid row and rejects malformed ones; the sticky comment updates in place, never duplicates; non-collaborator comments are ignored; the log row is diff-visible. |
 
+#### 3B.1 Webchat-orchestration contract (adopted from orchestrator review, DA-adjudicated 2026-07-02 — governs rungs 3–6)
+
+- **Command channels:** `/seal-proof` and `/triage` are accepted from **both** `issue_comment` and
+  `pull_request_review` / review-comment events — the webchat GitHub connector reliably submits PR reviews
+  even where plain issue comments are unavailable. Same collaborator-only rule; **never run untrusted fork
+  code under a write token.**
+- **SHA-bound verdicts (the verify-the-tree rule, mechanized):** every sticky comment, job summary, and
+  artifact carries `pr`, `head_sha`, `base_sha`, `tested_ref`, `workflow_run_id`, `job_id`. A report is
+  **stale unless its `head_sha` equals the current PR head** — the orchestrator never accepts an old green
+  after a force-push.
+- **Merge-ref testing:** PR proofs run against `refs/pull/<PR>/merge` where available (the
+  `actions/checkout` default on `pull_request`); the report states `tested_ref` and `merge_ref_status:
+  PASS | UNAVAILABLE` — `UNAVAILABLE` is `INSPECT` for merge-sensitive rungs (a branch-head PASS can still
+  fail after master merges).
+- **Durable machine artifact:** upload `doctrine_exec_report.json` (`artifact_version: doctrine-exec.v1`;
+  verdict, SHAs/refs above, exact commands, tests, failures, inspect entries, triage rows) beside the human
+  footer. The footer stays the source of truth; the JSON is its **generated mirror from the same run**
+  (digest discipline) — never a divergent second truth.
+- **Profiles (data over the fixed engine):** `scripts/ci/doctrine_exec_profiles.tsv` maps rung risk classes
+  to exact targeted batteries (`profile_id | risk_class | crate_checks | tests | doc_tests | gpu_required |
+  expected_verdict_if_gpu_missing`); invoked as `/seal-proof profile=<id>`. Populated **reactively per rung
+  class, never speculatively** (§4 rigor); prevents over- and under-running batteries.
+- **Probe mode (guard-bite on demand):** `/seal-proof probe=<probe-id>` runs a known-bad fixture and
+  **expects red — a green probe against a known-bad is itself a FAIL.** Probes run in temp-workspace
+  isolation (the #1041 lesson). This mechanizes the DA deep-review action "prove the guard bites"
+  (`ci_screening_surface.md` §5). Seed probes: `compile-fail-seal-break`, `panic-swallow`,
+  `invisible-pub-use`, `macro-expanded-seal-export`.
+- **Plan mode:** `/seal-proof plan [profile=<id>]` prints the resolved commands **without running them** —
+  orchestration confirms the battery matches the rung's Graduation-routing block before spending runner time.
+- **REJECTED — verdict PR labels** (`doctrine-exec/pass|inspect|fail`): a non-SHA-bound advisory mirror
+  reintroduces the exact staleness channel the SHA-binding closes, and a second status surface rots into
+  inert scaffolding (§0.6.6). The sticky comment + the checks UI are the display surface; do not re-derive.
+
 ### 3C. DA re-evaluation log (2026-07-02, Fable 5 — full-structure review, owner-mandated)
 
 Findings and proposals recorded so they are never re-derived. Nothing below weakens the blocking gate or adds a
@@ -248,6 +281,10 @@ enforcement, the admission-ladder move applied to the repository itself):**
 7. **Scheduled corpus-maintenance workflow (owner-gated, parking-aware):** a monthly `schedule:` run of the
    whole-tree scan + per-scan-id triage-log stats, updating **one standing issue** — keeps the §1A maintenance
    cadence alive while the repo is parked. Only valuable if the owner reads it; owner decides.
+8. **Windows-runner CPU parity matrix (owner-gated candidate, orchestrator-proposed 2026-07-02):** a
+   `windows-latest` job running the `f32::to_bits` oracle suites so the cross-platform bit-exactness sentinel
+   (§3B rung 3) proves both directions in CI rather than ubuntu-CI-vs-owner's-box. Costs runner minutes
+   (Windows runners are slower); opens only on owner authorization.
 
 **External research adjudication (2026-07-02; owner-relayed digest, all four arXiv IDs verified live on arXiv):**
 - **ADOPTED IN PART — arXiv:2606.01066** (*Fuzzing RLVR Verifiers*): as items 6b (adversarial evasion fixtures)
