@@ -256,7 +256,18 @@ install_linux_bevy_test_deps_if_needed() {
   if command -v apt-get >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1; then
     log "+ installing Linux pkg-config deps for Bevy-linked driver/mapeditor test compile"
     sudo apt-get update -qq
-    sudo apt-get install -y -qq libasound2-dev libudev-dev libxkbcommon-dev pkg-config
+    sudo apt-get install -y -qq \
+      libasound2-dev \
+      libgl1-mesa-dev \
+      libudev-dev \
+      libwayland-dev \
+      libx11-dev \
+      libxcursor-dev \
+      libxi-dev \
+      libxkbcommon-dev \
+      libxrandr-dev \
+      libvulkan-dev \
+      pkg-config
   fi
 }
 
