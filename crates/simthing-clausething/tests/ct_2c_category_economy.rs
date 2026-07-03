@@ -9,10 +9,10 @@ use simthing_clausething::{
 };
 use simthing_core::{DimensionRegistry, SimThing, SimThingKind, SlotIndex};
 use simthing_driver::{
-    Scenario, SimSession, build_execution_plan_from_authoring,
+    Scenario, SessionError, SimSession, build_execution_plan_from_authoring,
     resolve_node_columns, run_arena_allocation_oracle,
 };
-use simthing_gpu::{GpuContext, SlotAllocator};
+use simthing_gpu::{GpuContext, GpuInitError, SlotAllocator};
 use simthing_spec::{
     BaseFlowDirectionSpec, ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode,
     compile_property, deserialize_game_mode_ron,
@@ -95,16 +95,34 @@ fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario)
     }
 }
 
-fn open_ct2c_session(hydrated: &simthing_clausething::HydratedCategoryEconomyPack) -> SimSession {
+fn open_from_spec_or_skip(scenario: Scenario, game_mode: &GameModeSpec) -> Option<SimSession> {
+    match SimSession::open_from_spec(scenario, game_mode) {
+        Ok(session) => Some(session),
+        Err(SessionError::Gpu(GpuInitError::NoAdapter)) => {
+            eprintln!("skipping: no GPU");
+            None
+        }
+        Err(err) => panic!("open_from_spec: {err}"),
+    }
+}
+
+fn open_ct2c_session(
+    hydrated: &simthing_clausething::HydratedCategoryEconomyPack,
+) -> Option<SimSession> {
     let scenario = ct2c_scenario(3, &hydrated.game_mode);
     let mut game_mode = hydrated.game_mode.clone();
     fill_explicit_participants(&mut game_mode, &scenario);
     game_mode.properties.clear();
-    SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec")
+    open_from_spec_or_skip(scenario, &game_mode)
 }
 
-fn try_gpu() -> Option<GpuContext> {
-    GpuContext::new_blocking().ok()
+fn gpu_gate() -> Option<std::sync::MutexGuard<'static, ()>> {
+    let guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    if GpuContext::new_blocking().is_err() {
+        eprintln!("skipping: no GPU");
+        return None;
+    }
+    Some(guard)
 }
 
 fn idx(slot: SlotIndex, col: u32, n_dims: u32) -> usize {
@@ -294,8 +312,7 @@ simthing_ct2c_bad = {
 
 #[test]
 fn resource_flow_presence_without_opt_in_stays_disabled() {
-    let Some(_gpu) = try_gpu() else {
-        eprintln!("skipping: no GPU");
+    let Some(_guard) = gpu_gate() else {
         return;
     };
     let mut hydrated = hydrate_category();
@@ -309,19 +326,22 @@ fn resource_flow_presence_without_opt_in_stays_disabled() {
     fill_explicit_participants(&mut hydrated.game_mode, &scenario);
     let mut game_mode = hydrated.game_mode.clone();
     game_mode.properties.clear();
-    let session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let Some(session) = open_from_spec_or_skip(scenario, &game_mode) else {
+        return;
+    };
     assert!(!session.proto.flags.use_accumulator_resource_flow);
     assert!(!session.state.accumulator_resource_flow_active);
 }
 
 #[test]
 fn installed_category_arena_participation_is_explicit_and_bounded() {
-    let Some(_gpu) = try_gpu() else {
-        eprintln!("skipping: no GPU");
+    let Some(_guard) = gpu_gate() else {
         return;
     };
     let hydrated = hydrate_category();
-    let session = open_ct2c_session(&hydrated);
+    let Some(session) = open_ct2c_session(&hydrated) else {
+        return;
+    };
     let registry = &session.spec_state.arena_registry;
     assert_eq!(registry.arenas.len(), 2);
     for arena in &registry.arenas {
@@ -342,14 +362,14 @@ fn installed_category_arena_participation_is_explicit_and_bounded() {
 
 #[test]
 fn install_consumes_category_base_obligations_without_manual_side_channel() {
-    let Some(_gpu) = try_gpu() else {
-        eprintln!("skipping: no GPU");
+    let Some(_guard) = gpu_gate() else {
         return;
     };
-    let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
 
     let hydrated = hydrate_category();
-    let session = open_ct2c_session(&hydrated);
+    let Some(session) = open_ct2c_session(&hydrated) else {
+        return;
+    };
     let flow_id = session
         .proto
         .registry
@@ -393,14 +413,15 @@ fn install_consumes_category_base_obligations_without_manual_side_channel() {
 
 #[test]
 fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
-    let Some(ctx) = try_gpu() else {
-        eprintln!("skipping GPU assertions: no GPU");
+    let Some(guard) = gpu_gate() else {
         return;
     };
-    let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let ctx = GpuContext::new_blocking().expect("gpu gate already checked adapter");
 
     let hydrated = hydrate_category();
-    let mut session = open_ct2c_session(&hydrated);
+    let Some(mut session) = open_ct2c_session(&hydrated) else {
+        return;
+    };
     assert!(session.proto.flags.use_accumulator_resource_flow);
 
     let flow_id = session
@@ -517,4 +538,5 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
 
     drop(session);
     drop(ctx);
+    drop(guard);
 }
