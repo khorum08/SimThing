@@ -1,0 +1,2 @@
+live_surface_id	crate	surviving_test_row	survivor_file	survivor_test_name	proof_mode	coverage_status	notes
+simthing-core|crates/simthing-core/src/property.rs|custom_layout_ethics_axis|unit	simthing-core	simthing-core|crates/simthing-core/src/property.rs|custom_layout_ethics_axis|unit	crates/simthing-core/src/property.rs	custom_layout_ethics_axis	gha-cpu	TRUE_MEMBER	KEEP doc-named invariant surface.
