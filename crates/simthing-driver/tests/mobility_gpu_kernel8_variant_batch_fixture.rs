@@ -144,17 +144,6 @@ fn mobility_gpu_kernel8_variant_batch_includes_dense_bulk_variant() {
 
 #[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
-fn mobility_gpu_kernel8_variant_batch_cpu_oracle_complete_per_variant() {
-    let report = run_mobility_gpu_kernel8_fixture(&fixture_input());
-    assert!(report.cpu_oracle_complete_per_variant);
-    for variant in &report.variants {
-        assert_ne!(variant.cpu_chain_checksum, 0);
-        assert_eq!(variant.row_count, MOBILITY_GPU_KERNEL4_ROW_COUNT);
-    }
-}
-
-#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
-#[test]
 fn mobility_gpu_kernel8_variant_batch_gpu_checksums_match_or_unavailable() {
     let report = run_mobility_gpu_kernel8_fixture(&fixture_input());
     assert!(report.gpu_checksums_match_or_unavailable);
@@ -288,15 +277,6 @@ fn mobility_gpu_kernel8_variant_batch_no_gpu_allocator_or_nondeterministic_atomi
     assert!(rejected_with(forbidden)
         .diagnostics
         .contains(&"gpu_allocator_or_nondeterministic_atomics"));
-}
-
-#[test]
-fn mobility_gpu_kernel8_variant_batch_no_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityGpuKernel8ForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    assert!(rejected_with(forbidden)
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]

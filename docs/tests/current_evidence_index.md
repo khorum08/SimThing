@@ -363,6 +363,8 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 
 - [`test_pare_protected_residue_0_results.md`](test_pare_protected_residue_0_results.md) - `TEST-PARE-PROTECTED-RESIDUE-0` **PROBATION**: PR B follow-up to #1102; merged #1102 at `304541ae2e40a1afbb96d0ef9d435c5ceb06956c`; all 98 FALSE_MEMBER protected oracle-parity claims reclassified to `usecase-superseded` PARE, 112 NEEDS_PROMOTION claims retained as `B-T6-PROTECTED-ORACLE-PROMOTION-REVIEW` AUDIT rows, 4 LEDGER_DEFECT module markers moved to module-marker expansion, and 33 dependency-floor rows preserved; inventory remains 5,332; zero source deletion, no cargo tests, no GHA GPU/Bevy/desktop proof.
 
+- [`test_pare_protected_pare_delete_0_results.md`](test_pare_protected_pare_delete_0_results.md) - `TEST-PARE-PROTECTED-PARE-DELETE-0` **PROBATION**: PR C follow-up to #1103; merged #1103 at `f32a0a93db068f95cf5201860063951568cfdec0`; all 98 unprotected FALSE_MEMBER-to-PARE rows physically deleted, 0 blocked, inventory 5,332 -> 5,234; no TRUE_MEMBER, NEEDS_PROMOTION, dependency-floor, STEAD, seal, golden, doc-named, SimThing-Kernel, or CI Scaffolding row targeted; targeted profile `test-pare-protected-pare-delete` uses cargo check floors only.
+
 ## 0.0.8.4.6 CI Scaffolding — Track A (CLOSED 2026-07-01)
 - [`ci-a-closeout_results.md`](ci-a-closeout_results.md) — Track A **DA-CLOSED**: doctrine landed at three altitudes (#1043), `SEALED_TYPES` migrated to `allow/sealed_types.txt` (data, fail-loud), reliability legend published, full command battery PASS on master (self-test/scan/PR-delta/spam-prove/195-surface). Non-blocking debt: self-test ~7 min. Track B OPEN (2026-07-02); Track C DA-CLOSED.
 

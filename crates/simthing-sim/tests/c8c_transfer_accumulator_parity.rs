@@ -430,54 +430,6 @@ fn c8c_transfer_does_not_reupload_input_lists_per_tick() {
 }
 
 #[test]
-fn c8c_cpu_oracle_matches_single_and_conjunctive_transfer() {
-    let regs = vec![TransferRegistration {
-        inputs: vec![TransferInputRef {
-            slot: 0,
-            col: 0,
-            unit_cost: 1.0,
-        }],
-        target_slot: 0,
-        target_col: 1,
-        output_scale: 1.0,
-        max_transfer: Some(3.0),
-        tree_id: None,
-        order_band: 0,
-    }];
-    let plan = plan_transfer_ops(&regs).unwrap();
-    let mut values = vec![10.0, 2.0];
-    execute_ops_cpu(&mut values, &plan.ops, 0, 2).expect("cpu oracle");
-    assert_eq!(values, vec![7.0, 5.0]);
-
-    let conj = vec![TransferRegistration {
-        inputs: vec![
-            TransferInputRef {
-                slot: 0,
-                col: 0,
-                unit_cost: 5.0,
-            },
-            TransferInputRef {
-                slot: 0,
-                col: 1,
-                unit_cost: 3.0,
-            },
-        ],
-        target_slot: 0,
-        target_col: 2,
-        output_scale: 1.0,
-        max_transfer: None,
-        tree_id: None,
-        order_band: 0,
-    }];
-    let plan = plan_transfer_ops(&conj).unwrap();
-    let mut values = vec![10.0, 9.0, 0.0];
-    execute_ops_cpu(&mut values, &plan.ops, 0, 3).expect("cpu oracle");
-    assert_eq!(values[0], 0.0);
-    assert_eq!(values[1], 3.0);
-    assert_eq!(values[2], 2.0);
-}
-
-#[test]
 fn c8c_combined_c1_c2_c4_s4_c7_c8b_c8c_all_flags_on() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");

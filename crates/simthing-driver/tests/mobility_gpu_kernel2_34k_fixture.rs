@@ -296,14 +296,6 @@ fn mobility_gpu_kernel2_34k_delegates_to_kernel1_path() {
 }
 
 #[test]
-fn mobility_gpu_kernel2_34k_cpu_oracle_complete() {
-    let report = run_mobility_gpu_kernel2_fixture(&fixture_input());
-    assert!(report.cpu_oracle_complete);
-    assert_ne!(report.cpu_oracle_checksum, 0);
-    assert_eq!(report.row_count, MOBILITY_GPU_KERNEL2_ROW_COUNT);
-}
-
-#[test]
 fn mobility_gpu_kernel2_34k_reports_gpu_checksum_or_unavailable() {
     let report = run_mobility_gpu_kernel2_fixture(&fixture_input());
     match report.parity_classification {
@@ -419,11 +411,6 @@ fn mobility_gpu_kernel2_34k_no_gpu_allocator_or_nondeterministic_atomics() {
     let report = run_mobility_gpu_kernel2_fixture(&fixture_input());
     assert!(!report.gpu_allocator_used);
     assert!(!report.nondeterministic_atomics_used);
-}
-
-#[test]
-fn mobility_gpu_kernel2_34k_no_cpu_planner_urgency_commitment() {
-    assert!(!run_mobility_gpu_kernel2_fixture(&fixture_input()).cpu_planner_urgency_commitment);
 }
 
 #[test]

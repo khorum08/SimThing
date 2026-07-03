@@ -264,37 +264,3 @@ fn c0_rejects_non_homogeneous_square_batch_for_g0_mask() {
         "non-square tiles must not pass G=0 homogeneous batch"
     );
 }
-
-#[test]
-fn c0_cpu_protocol_oracle_matches_itself() {
-    let shape = c0_fixture_shape();
-    let (values, aw, ah) = build_c0_atlas_fixture_values(&shape);
-    let config = c0_atlas_config(aw, ah, &shape);
-    let a = cpu_caller_managed_atlas_protocol(
-        &values,
-        &config,
-        shape.tile_size(),
-        shape.tile_count,
-        AtlasIsolationMode::FlushTileLocalMask,
-        AtlasNormalizeVariant::FixedDenominator,
-    );
-    let b = cpu_caller_managed_atlas_protocol(
-        &values,
-        &config,
-        shape.tile_size(),
-        shape.tile_count,
-        AtlasIsolationMode::FlushTileLocalMask,
-        AtlasNormalizeVariant::FixedDenominator,
-    );
-    assert_eq!(
-        max_full_tile_error(
-            &a,
-            &b,
-            aw,
-            shape.tile_size(),
-            shape.tile_count,
-            shape.n_dims
-        ),
-        0.0
-    );
-}

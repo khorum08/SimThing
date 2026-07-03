@@ -20,37 +20,6 @@ fn assert_report_ok(report: &simthing_workshop::transfer_contention::TransferCon
 }
 
 #[test]
-fn transfer_contention_cpu_oracle_handles_priority_edges() {
-    let scenario = make_manual_priority_edge_scenario();
-    let (final_pools, final_queues, _summaries, records) =
-        resolve_cpu_contention_n_ticks(&scenario, 1);
-
-    assert_eq!(final_pools[0].amount, 0);
-    assert_eq!(records[0].allocated, 30);
-    assert_eq!(records[1].allocated, 70);
-    assert_eq!(records[2].allocated, 0);
-
-    assert_eq!(final_queues[0].units, 3);
-    assert_eq!(final_queues[1].units, 7);
-    assert_eq!(final_queues[2].units, 0);
-
-    assert!(priority_allocation_check(
-        &scenario,
-        &scenario.pools,
-        &records,
-        1
-    ));
-    assert!(conservation_check_contention_records(
-        &scenario.pools,
-        &final_pools,
-        &scenario.queues,
-        &final_queues,
-        &scenario.queues,
-        &records
-    ));
-}
-
-#[test]
 fn transfer_contention_replay_reconstructs_cpu() {
     let scenario =
         make_transfer_contention_scenario("transfer_replay_small", 64, 256, 0.7, false, false);

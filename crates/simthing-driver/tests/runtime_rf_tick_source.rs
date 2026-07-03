@@ -184,17 +184,3 @@ fn runtime_rf_tick_source_tick_shell_wrapper_preserves_default_shell() {
             .recursive_source_preview_only
     );
 }
-
-#[test]
-fn runtime_rf_tick_source_cpu_oracle_does_not_wire_recursive_into_tick_shell_default() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_runtime_rf_tick_source_comparison_plan(&spec).expect("compile");
-    let shell = compile_runtime_tick_shell_plan(&spec, TICK_ONE).expect("shell");
-
-    assert!(plan.tick_shell_source_replacement_deferred);
-    assert!(shell.execution_report.runtime_rf_tick_ready);
-    assert_eq!(
-        plan.default_source_kind,
-        RuntimeRfTickSourceKind::LegacyPlanetChildOwnerSilo
-    );
-}

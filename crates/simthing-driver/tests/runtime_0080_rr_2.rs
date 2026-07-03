@@ -87,13 +87,6 @@ fn rr_2_gpu_computes_production_generation() {
 }
 
 #[test]
-fn rr_2_labor_bits_match_rr_0_oracle() {
-    let admitted = report();
-    assert!(admitted.labor_parity_ok);
-    assert!(admitted.parity_rows.iter().all(|row| row.parity));
-}
-
-#[test]
 fn rr_2_production_bits_match_rr_0_oracle() {
     let admitted = report();
     assert!(admitted.production_parity_ok);

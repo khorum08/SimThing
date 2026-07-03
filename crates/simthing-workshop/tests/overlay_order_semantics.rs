@@ -14,20 +14,6 @@ fn assert_report_ok(report: &simthing_workshop::overlay_order::OverlayOrderRepor
 }
 
 #[test]
-fn overlay_order_cpu_oracle_handles_adversarial_ordering() {
-    let scenario = make_manual_adversarial_scenario();
-    let outputs = apply_overlays_cpu_current(&scenario);
-
-    assert!((outputs[0] - 30.0).abs() <= 1e-6);
-    assert!((outputs[1] - 25.0).abs() <= 1e-6);
-    assert!((outputs[2] - 3.0).abs() <= 1e-6);
-    assert!((outputs[3] - 8.0).abs() <= 1e-6);
-    assert!((outputs[4] - 7.0).abs() <= 1e-6);
-    assert!((outputs[5] - 16.0).abs() <= 1e-6);
-    assert!((outputs[6] - 31.0).abs() <= 1e-6);
-}
-
-#[test]
 fn overlay_order_compiler_preserves_cpu_semantics() {
     let scenario = make_overlay_order_scenario("overlay_order_adversarial_small", 128, 8, 4, true);
     let cpu_current = apply_overlays_cpu_current(&scenario);

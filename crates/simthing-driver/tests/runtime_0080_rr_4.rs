@@ -22,13 +22,6 @@ fn rr_4_opt_in_default_off() {
 }
 
 #[test]
-fn rr_4_consumes_rr_0_recursive_world_and_oracle() {
-    let admitted = report();
-    assert!(admitted.rr_0_world_consumed);
-    assert_eq!(admitted.ticks_completed, R6C_CANONICAL_TICK_COUNT);
-}
-
-#[test]
 fn rr_4_consumes_rr_1_nested_residency() {
     assert!(report().rr_1_residency_consumed);
 }
@@ -113,36 +106,6 @@ fn rr_4_gpu_disburses_galaxy_to_system_each_tick() {
 #[test]
 fn rr_4_gpu_disburses_system_to_surface_or_starport_each_tick() {
     assert!(report().per_tick_disburse_down_parity_ok);
-}
-
-#[test]
-fn rr_4_per_tick_labor_bits_match_rr_0_oracle() {
-    assert!(report().per_tick_labor_parity_ok);
-}
-
-#[test]
-fn rr_4_per_tick_production_bits_match_rr_0_oracle() {
-    assert!(report().per_tick_production_parity_ok);
-}
-
-#[test]
-fn rr_4_per_tick_reduce_up_bits_match_rr_0_oracle() {
-    assert!(report().per_tick_reduce_up_parity_ok);
-}
-
-#[test]
-fn rr_4_per_tick_disburse_down_bits_match_rr_0_oracle() {
-    assert!(report().per_tick_disburse_down_parity_ok);
-}
-
-#[test]
-fn rr_4_final_stockpile_bits_match_rr_0_oracle() {
-    assert!(report().final_stockpile_parity_ok);
-}
-
-#[test]
-fn rr_4_final_starport_or_target_bits_match_rr_0_oracle() {
-    assert!(report().final_starport_parity_ok);
 }
 
 #[test]

@@ -138,19 +138,6 @@ fn econ_keeps_owner_parked() {
 }
 
 #[test]
-fn econ_rejects_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
 fn econ_multi_cell_clearinghouse_scale() {
     let records = (0..48u64)
         .map(|cell| rec(1, 100 + cell, 7, 2, 1 + (cell % 3) as i64, 0.25, cell))

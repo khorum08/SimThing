@@ -342,17 +342,6 @@ fn runtime1_no_hard_soft_silent_mix() {
 }
 
 #[test]
-fn runtime1_rejects_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
 fn runtime1_dirty_owner_modifier_steady_state_zero_redisperse() {
     let report = run_mobility_runtime1a_production_fixture(&fixture_input());
     assert!(report.admitted, "{:?}", report.diagnostics);

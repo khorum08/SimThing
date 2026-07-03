@@ -96,19 +96,6 @@ fn store_gpu_status_matches_gate() {
 }
 
 #[test]
-fn store_gpu_consumes_accepted_store_oracle() {
-    let materialization = canonical_materialization();
-    let oracle_a = store_oracle_from_materialization(&materialization);
-    let oracle_b = store_oracle_from_materialization(&materialization);
-    assert_eq!(oracle_a, oracle_b);
-    let layout = build_store_gpu_fixture_layout(&oracle_a);
-    assert_eq!(layout.n_target_slots as usize, oracle_a.entries.len());
-    let store_source = include_str!("../src/dress_rehearsal_atlas_batch_0_store.rs");
-    assert!(!store_source.contains("dress_rehearsal_atlas_batch_0_store_gpu"));
-    assert!(!store_source.contains("AccumulatorOpSession"));
-}
-
-#[test]
 fn no_semantic_shader_or_gameplay_inputs() {
     let oracle = canonical_store_oracle();
     let layout = build_store_gpu_fixture_layout(&oracle);

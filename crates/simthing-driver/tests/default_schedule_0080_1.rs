@@ -240,18 +240,6 @@ fn default_schedule_0080_1_no_external_boundary_request() {
 }
 
 #[test]
-fn default_schedule_0080_1_no_cpu_planner_or_commitment() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_urgency_commitment);
-
-    let rejected = rejected_with(|f| f.cpu_planner_urgency_commitment = true);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
 fn default_schedule_0080_1_no_default_session_pass_graph_wiring() {
     let admitted = report();
     assert!(!admitted.default_session_pass_graph_wiring);

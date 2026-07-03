@@ -284,35 +284,4 @@ mod tests {
         build_custom_layout(0, &arena_desc(16), c, Default::default(), 9, vec![root]).unwrap()
     }
 
-    #[test]
-    fn oracle_d2_positive_weights_split_budget() {
-        let layout = d2_star();
-        let c = cols();
-        let mut values = HashMap::new();
-        set(&mut values, 10, c.intrinsic_flow_col, 10.0);
-        set(&mut values, 11, c.weight_col, 1.0);
-        set(&mut values, 12, c.weight_col, 3.0);
-        run_arena_allocation_oracle(&layout, &mut values, 1.0);
-        assert!((get(&values, 11, c.allocated_flow_col) - 2.5).abs() < 1e-5);
-        assert!((get(&values, 12, c.allocated_flow_col) - 7.5).abs() < 1e-5);
-    }
-
-    #[test]
-    fn oracle_zero_weight_sum_allocates_zero() {
-        let layout = d2_star();
-        let c = cols();
-        let mut values = HashMap::new();
-        set(&mut values, 10, c.intrinsic_flow_col, 5.0);
-        set(&mut values, 11, c.weight_col, 0.0);
-        set(&mut values, 12, c.weight_col, 0.0);
-        run_arena_allocation_oracle(&layout, &mut values, 1.0);
-        assert_eq!(
-            get(&values, 11, c.allocated_flow_col).to_bits(),
-            0.0_f32.to_bits()
-        );
-        assert_eq!(
-            get(&values, 12, c.allocated_flow_col).to_bits(),
-            0.0_f32.to_bits()
-        );
-    }
 }

@@ -384,17 +384,6 @@ fn mobility_gpu_kernel3_projection_ignores_owner_and_econ_semantics_in_shader() 
 }
 
 #[test]
-fn mobility_gpu_kernel3_projection_cpu_oracle_complete() {
-    let report = run_mobility_gpu_kernel3_fixture(&fixture_input());
-    assert!(report.cpu_oracle_complete);
-    assert_ne!(report.cpu_oracle_checksum, 0);
-
-    let columns = report.projection.unwrap().columns;
-    let oracle = cpu_column_transform_oracle(&columns);
-    assert_eq!(oracle.out_parent.len(), columns.entity_id.len());
-}
-
-#[test]
 fn mobility_gpu_kernel3_projection_reports_gpu_checksum_or_unavailable() {
     let report = run_mobility_gpu_kernel3_fixture(&fixture_input());
     match report.parity_classification {
@@ -502,11 +491,6 @@ fn mobility_gpu_kernel3_projection_no_gpu_allocator_or_nondeterministic_atomics(
     let report = run_mobility_gpu_kernel3_fixture(&fixture_input());
     assert!(!report.gpu_allocator_used);
     assert!(!report.nondeterministic_atomics_used);
-}
-
-#[test]
-fn mobility_gpu_kernel3_projection_no_cpu_planner_urgency_commitment() {
-    assert!(!run_mobility_gpu_kernel3_fixture(&fixture_input()).cpu_planner_urgency_commitment);
 }
 
 #[test]

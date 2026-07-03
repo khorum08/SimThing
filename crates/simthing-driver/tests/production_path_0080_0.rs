@@ -70,21 +70,6 @@ fn production_path_0080_0_field_policy_threshold_emits_boundary_request() {
 }
 
 #[test]
-fn production_path_0080_0_no_cpu_planner_or_external_move_script() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_used);
-    assert!(!admitted.external_move_script_used);
-
-    let rejected = rejected_with(|forbidden| {
-        forbidden.cpu_planner_or_external_move_script = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"cpu_planner_or_external_move_script"));
-}
-
-#[test]
 fn production_path_0080_0_identity_preserved_after_relocation() {
     let admitted = report();
     assert_eq!(

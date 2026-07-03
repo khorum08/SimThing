@@ -118,21 +118,6 @@ fn default_schedule_0080_0_routes_boundary_request_to_production_path() {
 }
 
 #[test]
-fn default_schedule_0080_0_no_cpu_planner_or_external_move_script() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_used);
-    assert!(!admitted.external_move_script_used);
-
-    let rejected = rejected_with(|forbidden| {
-        forbidden.cpu_planner_or_external_move_script = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"cpu_planner_or_external_move_script"));
-}
-
-#[test]
 fn default_schedule_0080_0_preserves_identity_owner_overlay_economy() {
     let admitted = report();
     let production = admitted.step_reports[0]

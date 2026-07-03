@@ -153,14 +153,3 @@ fn recursive_rf_reconciliation_compile_preserves_scenario_authority() {
             .scenario_authority_mutation_deferred
     );
 }
-
-#[test]
-fn recursive_rf_reconciliation_cpu_oracle_does_not_wire_recursive_rf_into_tick_shell() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_recursive_rf_reconciliation_plan(&spec).expect("compile");
-    let rf = compile_runtime_rf_tick_plan(&spec).expect("rf");
-
-    assert!(plan.tick_shell_source_replacement_deferred);
-    assert!(rf.tick_report.participant_admission_ready);
-    assert!(plan.previous_ladder_preserved);
-}

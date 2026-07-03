@@ -142,15 +142,6 @@ fn runtime_0080_r0_avoids_intermediate_cpu_state_readback_between_ticks() {
 }
 
 #[test]
-fn runtime_0080_r0_matches_r6c_cpu_oracle_checksum() {
-    let admitted = report();
-    assert_eq!(
-        admitted.r6c_checksum_observed,
-        RUNTIME_R0_EXPECTED_R6C_CHECKSUM
-    );
-}
-
-#[test]
 fn runtime_0080_r0_r4_f32_within_accepted_bound() {
     let admitted = report();
     assert!(admitted.r4_within_bound);

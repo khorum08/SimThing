@@ -58,22 +58,6 @@ fn accepts_well_formed_high_activates_hysteresis() {
 
 // ── Oracle reference (state machine contract) ───────────────────────────────
 
-#[test]
-fn cpu_oracle_off_to_on_on_crossing() {
-    assert_eq!(oracle_hysteresis(0.0, 0.9, 0.8, 0.2, 0.0, 1.0), 1.0);
-}
-
-#[test]
-fn cpu_oracle_on_to_off_on_crossing() {
-    assert_eq!(oracle_hysteresis(1.0, 0.1, 0.8, 0.2, 0.0, 1.0), 0.0);
-}
-
-#[test]
-fn cpu_oracle_holds_in_deadband() {
-    assert_eq!(oracle_hysteresis(1.0, 0.5, 0.8, 0.2, 0.0, 1.0), 1.0);
-    assert_eq!(oracle_hysteresis(0.0, 0.5, 0.8, 0.2, 0.0, 1.0), 0.0);
-}
-
 // ── Compiled-node parity (2D R1) ─────────────────────────────────────────────
 
 #[test]

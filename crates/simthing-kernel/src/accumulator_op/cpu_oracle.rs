@@ -154,19 +154,6 @@ mod tests {
     };
 
     #[test]
-    fn c2_intent_affine_cpu_oracle() {
-        let mut values = vec![10.0, 7.0];
-        let deltas = [IntentDelta {
-            slot: 0,
-            col: 0,
-            mul: 2.0,
-            add: 3.0,
-        }];
-        execute_intent_deltas_cpu(&mut values, &deltas, 1);
-        assert_eq!(values[0], 23.0);
-    }
-
-    #[test]
     fn accumulator_scale_constant_zero_writes_zero() {
         let mut values = vec![10.0, 7.0];
         let op = AccumulatorOp {

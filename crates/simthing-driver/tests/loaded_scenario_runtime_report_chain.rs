@@ -66,12 +66,6 @@ fn loaded_scenario_runtime_report_chain_compile_reports_gpu_compatible_surface()
 }
 
 #[test]
-fn loaded_scenario_runtime_report_chain_compile_reports_cpu_oracle_only() {
-    let plan = compile_fixture();
-    assert!(plan.cpu_oracle_only);
-}
-
-#[test]
 fn loaded_scenario_runtime_report_chain_compile_reports_report_mode_only() {
     let plan = compile_fixture();
     assert!(plan.explicit_runtime_report_mode_only);

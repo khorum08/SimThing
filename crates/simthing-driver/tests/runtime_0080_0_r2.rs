@@ -99,16 +99,6 @@ fn r2_zero_cohort_not_cpu_decided() {
 }
 
 #[test]
-fn r2_compares_against_r6c_cpu_oracle() {
-    let admitted = report();
-    if blocked(admitted) {
-        return;
-    }
-    assert!(admitted.event_journal_parity);
-    assert!(admitted.tier_a_tick100_matches_oracle);
-}
-
-#[test]
 fn r2_reports_expected_r6c_checksum() {
     let admitted = report();
     if blocked(admitted) {

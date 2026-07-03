@@ -150,12 +150,6 @@ fn loaded_scenario_runtime_report_chain_emits_gpu_compatible_surface() {
 }
 
 #[test]
-fn loaded_scenario_runtime_report_chain_cpu_oracle_only() {
-    let chain = evaluate_fixture();
-    assert!(chain.cpu_oracle_only);
-}
-
-#[test]
 fn loaded_scenario_runtime_report_chain_preserves_scenario_authority() {
     assert!(
         prove_loaded_scenario_runtime_report_chain_preserves_authority(

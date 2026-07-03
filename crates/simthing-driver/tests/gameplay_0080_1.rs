@@ -262,18 +262,6 @@ fn gameplay_0080_1_no_direct_movement_or_external_boundary_request() {
 }
 
 #[test]
-fn gameplay_0080_1_no_cpu_planner_or_commitment() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_urgency_commitment);
-
-    let rejected = rejected_with(|forbidden| forbidden.cpu_planner_urgency_commitment = true);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
 fn gameplay_0080_1_no_semantic_or_raw_wgsl() {
     let admitted = report();
     assert!(!admitted.semantic_or_raw_wgsl_present);

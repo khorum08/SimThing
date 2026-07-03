@@ -368,16 +368,6 @@ fn runtime1a_runtime_fixture_no_hard_soft_silent_mix() {
     assert!(!spec_report(&report).hard_soft_silent_mix);
 }
 #[test]
-fn runtime1a_runtime_fixture_rejects_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-#[test]
 fn runtime1a_runtime_fixture_no_default_runtime_cost_when_disabled() {
     let report = run_mobility_runtime1a_driver_fixture(&MobilityRuntime1aDriverFixtureInput {
         session: MobilityRuntime1aDriverFixtureSession::default_disabled(),

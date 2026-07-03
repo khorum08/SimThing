@@ -570,60 +570,6 @@ mod tests {
     }
 
     #[test]
-    fn cpu_oracle_mean_intensity_max() {
-        let (reg, lid, world, alloc) = small_tree();
-        let layout = reg.property(lid).layout.clone();
-        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let i_off = layout.offset_of(&SubFieldRole::Intensity).unwrap();
-
-        let n_dims = reg.total_columns;
-        let topo = build_topology(&world, &alloc);
-        let descriptors = build_column_rule_descriptors(&reg, n_dims);
-
-        // Project leaves into flat values (only cohort rows have data).
-        let mut values = vec![0.0_f32; alloc.capacity() * n_dims];
-        crate::projection::project_tree_to_values(&world, &reg, &alloc, n_dims, &mut values);
-
-        let mut output = vec![0.0_f32; values.len()];
-        cpu_reduce_oracle(&topo, &descriptors, n_dims, &values, &mut output);
-
-        // Location's reduced row: amount = mean(0.40, 0.60) = 0.50, intensity = max(0.10, 0.80) = 0.80.
-        let loc_id = world.children[0].id;
-        let loc_slot = alloc.slot_of(loc_id).unwrap().as_usize();
-        let range = reg.column_range(lid);
-        assert_eq!(
-            output[loc_slot * n_dims + range.start + a_off.lane()].to_bits(),
-            0.50_f32.to_bits()
-        );
-        assert_eq!(
-            output[loc_slot * n_dims + range.start + i_off.lane()].to_bits(),
-            0.80_f32.to_bits()
-        );
-
-        // World's reduced row equals location's (single child, mean of one = identity, max of one = identity).
-        let world_slot = alloc.slot_of(world.id).unwrap().as_usize();
-        for col in 0..n_dims {
-            assert_eq!(
-                output[world_slot * n_dims + col].to_bits(),
-                output[loc_slot * n_dims + col].to_bits(),
-                "world should mirror its single child at col {col}"
-            );
-        }
-
-        // Leaves: output rows match input values bit-exactly.
-        for cohort in &world.children[0].children {
-            let s = alloc.slot_of(cohort.id).unwrap().as_usize();
-            for col in 0..n_dims {
-                assert_eq!(
-                    output[s * n_dims + col].to_bits(),
-                    values[s * n_dims + col].to_bits(),
-                    "leaf slot {s} col {col} should be identity"
-                );
-            }
-        }
-    }
-
-    #[test]
     fn column_rules_respect_override() {
         let mut reg = DimensionRegistry::new();
 

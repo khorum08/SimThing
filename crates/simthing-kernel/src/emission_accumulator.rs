@@ -330,29 +330,6 @@ mod tests {
     }
 
     #[test]
-    fn c8d_emission_rejects_cpu_oracle_only_formula() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(2);
-        let mut meta = exact_meta(2);
-        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
-        meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
-        assert!(registry
-            .register_formula(
-                id,
-                meta,
-                vec![EmlNodeGpu {
-                    opcode: eml_opcode::LITERAL_F32,
-                    flags: 0,
-                    a: 1.0f32.to_bits(),
-                    b: 0,
-                    c: 0,
-                    d: 0,
-                }]
-            )
-            .is_err());
-    }
-
-    #[test]
     fn encode_sets_reg_idx_in_combine_b() {
         let regs = vec![EmissionRegistration {
             source_slot: 0,

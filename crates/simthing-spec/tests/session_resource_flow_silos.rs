@@ -284,19 +284,6 @@ fn owner_silo_marker_without_current_behavior_is_explicitly_tested() {
 }
 
 #[test]
-fn owner_silo_gpu_plan_inputs_preserve_non_mutating_oracle() {
-    let spec = balanced_flow_spec();
-    let report = evaluate_owner_silo_flow(&spec);
-    let inputs = owner_silo_flow_participant_inputs(&spec).expect("inputs");
-    assert_eq!(inputs.len(), 2);
-    assert_eq!(inputs.iter().map(|p| p.surplus).sum::<u32>(), 30);
-    assert_eq!(inputs.iter().map(|p| p.deficit).sum::<u32>(), 20);
-    assert_eq!(report.reducible_surplus_total, 30.0);
-    assert_eq!(report.resolvable_deficit_total, 20.0);
-    assert_eq!(report.unresolved_deficit_total, 0.0);
-}
-
-#[test]
 fn owner_silo_ingestion_reports_gpu_participant_accumulation_readiness() {
     let json = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
     let (result, _) = ingest_scenario_from_str("balanced", &json, CANONICAL_PROFILE);
