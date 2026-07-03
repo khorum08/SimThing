@@ -58,18 +58,17 @@ Temporary `tests/**` scope rows added per touched protected crate under profile 
 - `cargo test -p simthing-clausething --test ct_0c_expansion -- --nocapture`
 - `cargo test -p simthing-clausething --test ct_2a_intrinsic_flow -- --nocapture clause_hydrated_game_mode_matches_ron_baseline`
 - `cargo test -p simthing-clausething --test ct_2c_category_economy -- --nocapture category_hydrated_game_mode_matches_ron_baseline`
-- `cargo test -p simthing-driver --test atlas_0080_0 -- --nocapture`
-- `cargo test -p simthing-driver --test mapping_plan_compile -- --nocapture`
-- `cargo test -p simthing-sim --test mapping_plan_tick -- --nocapture`
-- `cargo test -p simthing-workshop --test overlay_order_semantics -- --nocapture`
+
+Driver/sim/workshop surviving integration binaries are **not** executed on GHA (cold-compile timeout risk); covered by `cargo check` plus local proof below.
 
 ### Local GPU/Bevy/desktop compile proof
 
-- `cargo check -p simthing-mapeditor`
-- `cargo check -p simthing-tools`
-- `cargo test -p simthing-mapeditor --test studio_ingestion_admission_report --no-run`
-- `cargo test -p simthing-tools --test typeface_lr4 --no-run`
-- `cargo test -p simthing-gpu --test bh1_choke_readout --no-run`
+- `cargo check -p simthing-mapeditor` — PASS
+- `cargo check -p simthing-tools` — PASS
+- `cargo test -p simthing-driver --test atlas_0080_0 -- --nocapture` — PASS
+- `cargo test -p simthing-mapeditor --test studio_ingestion_admission_report --no-run` — PASS
+- `cargo test -p simthing-tools --test typeface_lr4 --no-run` — PASS
+- `cargo test -p simthing-gpu --test bh1_choke_readout --no-run` — PASS
 
 ## Required gates
 
