@@ -37,7 +37,7 @@ Temporary `tests/**` scope rows added per touched protected crate under profile 
 
 ## Targeted proof
 
-Profile `test-pare-gpu-bevy-residue`: `cargo check` for touched crates plus exact surviving integration test binaries only. No owner-deep batteries.
+Profile `test-pare-gpu-bevy-residue`: `cargo check` for touched crates, `mapeditor_linux_cargo_check.sh`, and `cargo test --no-run` for each surviving integration test binary (compile proof on headless CI; no owner-deep execution).
 
 ## Required gates
 
