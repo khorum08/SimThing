@@ -55,7 +55,16 @@ No full-crate test sweep, workspace test, owner-deep, GPU session, Bevy, or desk
 
 ## Required gates
 
-Local gate proof: see commit message / PR CI.
+Local gate proof:
+
+- `scripts/ci/test_edit_scope_check.sh --prove` — PASS
+- `scripts/ci/test_inventory_check.sh` — PASS; rows 5583
+- `scripts/ci/test_pare_boundary_check.sh` — PASS
+- `scripts/ci/test_inventory_drift_check.sh` — PASS
+- `scripts/ci/doctrine_scan.sh` — PASS; failures 0, inspect 0
+- `scripts/ci/gen_digest.sh --check` — PASS
+- `scripts/ci/doctrine_exec_profile_lint.sh` — PASS
+- `cargo check -p` for all seven touched crates — PASS
 
 ## GitHub Doctrine Exec
 

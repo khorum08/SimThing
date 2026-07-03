@@ -94,7 +94,12 @@ def read_scope_rows() -> list[dict[str, str]]:
 
 def matching_rows(rows: list[dict[str, str]], path: str) -> list[dict[str, str]]:
     pure = pathlib.PurePosixPath(path)
-    return [row for row in rows if pure.match(row["path_glob"].strip())]
+    matches: list[dict[str, str]] = []
+    for row in rows:
+        glob = row["path_glob"].strip()
+        if pure.match(glob) or pure.full_match(glob):
+            matches.append(row)
+    return matches
 
 
 def check_paths(rows: list[dict[str, str]], paths: list[str]) -> int:
