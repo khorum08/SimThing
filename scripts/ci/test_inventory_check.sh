@@ -10,7 +10,7 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   PYTHON_BIN="python"
 fi
 
-"$PYTHON_BIN" - <<'PY' "$ROOT" "$INVENTORY"
+"$PYTHON_BIN" - <<'PY' "$ROOT" "$INVENTORY" "$@"
 import csv
 import os
 import pathlib
@@ -20,6 +20,7 @@ import sys
 
 root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
+args = sys.argv[3:]
 audit = root / "scripts/ci/test_pare_audit.tsv"
 boundary_rows = root / "scripts/ci/test_pare_boundary_rows.tsv"
 residue_classes = root / "scripts/ci/test_residue_classes.tsv"
@@ -54,6 +55,63 @@ allowed_class = {
 allowed_verdict = {"KEEP", "PARE", "AUDIT"}
 errors: list[str] = []
 inspect: list[str] = []
+
+judgment_note_classes = {"behavior-regression", "escaped-bug"}
+bad_judgment_notes = {
+    "catches: behavior regression",
+    "catches: escaped bug",
+    "catches: important coverage",
+    "permanent-residue:behavior-regression",
+    "permanent-residue:escaped-bug",
+    "regression test",
+}
+
+def judgment_note_ok(note: str) -> bool:
+    normalized = " ".join(note.strip().lower().split())
+    if normalized in bad_judgment_notes:
+        return False
+    if not normalized.startswith("catches: "):
+        return False
+    detail = normalized.removeprefix("catches: ").strip()
+    if len(detail) < 24:
+        return False
+    if detail in {"behavior regression", "escaped bug", "important coverage", "regression test"}:
+        return False
+    return True
+
+def prove_judgment_note_rule() -> None:
+    bad = [
+        "catches: behavior regression",
+        "catches: escaped bug",
+        "catches: important coverage",
+        "permanent-residue:behavior-regression",
+        "regression test",
+        "kept because it matters",
+    ]
+    good = [
+        "catches: TP-17 route detachment panic when detached child overlays settle twice",
+        "catches: bug-2026-06-14 map edge saturation emitted non-monotonic frontier",
+    ]
+    failed = False
+    for note in bad:
+        if judgment_note_ok(note):
+            print(f"  BAD accepted unexpectedly: {note}")
+            failed = True
+    for note in good:
+        if not judgment_note_ok(note):
+            print(f"  GOOD rejected unexpectedly: {note}")
+            failed = True
+    if failed:
+        print("JUDGMENT-NOTE-RULE-VERDICT: FAIL")
+        sys.exit(1)
+    print("JUDGMENT-NOTE-RULE-VERDICT: PASS")
+    sys.exit(0)
+
+if args == ["--prove-judgment-note-rule"]:
+    prove_judgment_note_rule()
+if args:
+    print(f"unknown arg(s): {' '.join(args)}", file=sys.stderr)
+    sys.exit(2)
 
 def read_residue_classes(path: pathlib.Path) -> set[str]:
     if not path.exists():
@@ -198,6 +256,10 @@ else:
             target = row["promotion_target"].strip()
             if target not in allowed_keep_targets and not target.startswith("promotion-target:"):
                 errors.append(f"line {line_no}: KEEP row lacks permanent-residue class or promotion target")
+            if row["class"] in judgment_note_classes and not judgment_note_ok(row["note"]):
+                errors.append(
+                    f"line {line_no}: KEEP {row['class']} row lacks specific 'catches:' judgment note"
+                )
         if (row["verdict"] == "PARE" or row["verdict"].startswith("COLLAPSE(")) and not row["superseding_boundary"].strip():
             errors.append(f"line {line_no}: {row['verdict']} row lacks superseding_boundary")
         if row["class"] == "admission-adjacent" and row["verdict"] != "AUDIT":

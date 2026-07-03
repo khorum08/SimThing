@@ -2,7 +2,7 @@
 
 ## Status
 
-**DONE — merged #1101**. Merge commit `e49c8a258e`.
+**DONE — merged #1101**. Merge commit `e49c8a258e4bd58d9c78b6c82b698cd5650dbaca`; head `317aba88f649a027fcd2c9997b182a7c27005cce`.
 
 ## Mission
 

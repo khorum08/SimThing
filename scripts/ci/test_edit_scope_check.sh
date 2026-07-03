@@ -12,6 +12,7 @@ fi
 
 "$PYTHON_BIN" - "$ROOT" "$SCOPE_TABLE" "$@" <<'PY'
 import csv
+import fnmatch
 import pathlib
 import sys
 
@@ -103,7 +104,7 @@ def matching_rows(rows: list[dict[str, str]], path: str) -> list[dict[str, str]]
     matches: list[dict[str, str]] = []
     for row in rows:
         glob = row["path_glob"].strip()
-        if pure.match(glob) or pure.full_match(glob):
+        if pure.match(glob) or fnmatch.fnmatchcase(path, glob):
             matches.append(row)
     return matches
 
