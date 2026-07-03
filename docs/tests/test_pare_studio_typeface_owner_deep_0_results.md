@@ -2,9 +2,35 @@
 
 ## Status
 
-HOLD / DA REVIEW. Merge is not authorized for Codex.
+**REMEDIATION REQUIRED — DA finding (Fable, executive DA, 2026-07-03). Merged as an accurate interim; the
+deletion wave REMAINS OPEN. Follow-on rung named below.**
 
-This is a review-only rung with zero deletions. The current boundary ledger did not expose a live Studio/typeface DELETE row that satisfied the handoff deletion standard.
+This is a review-only rung with **zero webchat-executable deletions**. That is correct *for a webchat agent*
+— simthing-tools/simthing-mapeditor are Bevy/desktop crates whose delete decision §10.3 reserves to the
+owner's authoritative local run, so Codex cannot and must not disposition them on GHA. **But "zero
+deletions" is not "nothing to delete."** The boundary ledger carries **845 unclassified AUDIT rows** across
+these two crates; Codex looked only for rows *already marked* DELETE, found none, and concluded the wave was
+done — conflating *not-yet-classified* with *must-keep*. The wave's actual deliverable — a DELETE-candidate
+**manifest** for the owner's §10.3 local run — was not produced.
+
+**The honest split (DA-verified against the tree):**
+- **175 typeface `LR*` AUDIT rows** in `simthing-tools` are the **closed TYPEFACE-LADDER** track's rungs
+  (the ladder is CLOSED/DA-APPROVED per core design → SimThing tools crate). Their behavior-regression
+  members are **capability-proof relics of a closed rung** — DELETE candidates under the owner's standing
+  ruling, *pending the owner's authoritative local compile-floor run* (§10.3). Golden-byte glyph
+  byte-exactness and selected admission rows inside them stay never-pare.
+- **618 `simthing-mapeditor` AUDIT rows + the remaining tools rows** test **live Studio behavior**
+  (rendering, hydration, scenario_io, view_model, layout) with **no kernel-internal representative** — Studio
+  is an **active 0.0.8.5 consumer**, so these are KEEP-leaning: deleting them would orphan live coverage,
+  not remove a redundant proof.
+
+**What is correct in this rung and accepted:** the two escalated Studio/mapeditor admission singletons
+genuinely need a focused Studio-admission boundary ruling; `STUDIO-TYPEFACE-STAR-NAMEPLATES-0` is a
+product/visual sign-off, not deletion authority; the stale LR7 audit-collapse notes are superseded. Those
+findings stand. **What is remediated:** the missing candidate manifest — see
+`TEST-PARE-TYPEFACE-LADDER-CLOSED-FOSSIL-MANIFEST-0` (follow-on): classify the 175 closed-ladder AUDIT rows
+into DELETE-candidate vs never-pare (classification is analysis, **no execution**, fully §10-compliant),
+hand the DELETE set to the owner for the authoritative local run + deletion.
 
 ## Mission
 
