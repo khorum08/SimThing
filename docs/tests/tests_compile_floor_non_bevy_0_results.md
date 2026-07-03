@@ -60,7 +60,7 @@ The profile does not run `cargo test`, Atlas, Bevy, mapeditor desktop runtime, t
 
 `simthing-driver` is blocked from the non-owner-deep GHA compile floor because its test dependency graph reaches a forbidden desktop/audio dependency path on Linux. This is a doctrine block, not a missing package. No ALSA/libasound installation, X setup, desktop bootstrap, or GHA workaround is permitted. Future work must either split/pare the driver test graph so a non-desktop compile floor is possible, or keep driver coverage in a local/owner-deep posture.
 
-`scripts/ci/doctrine_exec_profile_lint.sh` now fails lint for `owner_deep=false` executable profile commands containing forbidden desktop/audio/windowing/GPU tokens (ALSA, X/Xvfb, Wayland, Mesa/Vulkan, Bevy, winit/wininit, wgpu, mapeditor, typeface, apt-get) or blocked crates (`simthing-driver`, `simthing-gpu`, `simthing-mapeditor`, `simthing-tools`).
+`scripts/ci/doctrine_exec_profile_lint.sh` now fails lint for `owner_deep=false` executable profile commands containing forbidden desktop/audio/windowing/GPU tokens (ALSA, libudev/udev, X/Xvfb, Wayland, xkbcommon, xcb, EGL/GLX, Mesa/Vulkan, Bevy, winit/wininit, wgpu, mapeditor, typeface, apt-get) or blocked crates (`simthing-driver`, `simthing-gpu`, `simthing-mapeditor`, `simthing-tools`) in any `-p`, `-p=`, `--package`, or `--package=` form (tokenized `shlex` check).
 
 ## Proof
 
@@ -75,10 +75,7 @@ Local (branch head):
 
 Process finding: an earlier attempt incorrectly probed `simthing-driver` on GHA and hit `alsa-sys`. That attempt is invalid proof and must not be repeated. The corrected profile excludes driver and records it as blocked by doctrine.
 
-Live (PR head `bffff044e07e5761216e0a0baa16633d430fbe8d`):
-
-- Doctrine Scan: PASS `failures=0 inspect=0` (run `28678690649`, job `85057489051`)
-- Doctrine Exec profile `tests-compile-floor-non-bevy`: SHA-bound dispatch compile floor `failures=0`; verdict `INSPECT inspect=1` from `doctrine_surface_truth.sh` only (run `28678705814`, job `85057536693`); all five `cargo check -p <crate> --tests` commands green; no driver/desktop/audio probe
+Latest-head proof: pending after stale-proof/lint-hardening 0R push (replace with fresh run/job IDs on new head).
 
 ## Known gaps / follow-ons
 
@@ -91,7 +88,7 @@ Live (PR head `bffff044e07e5761216e0a0baa16633d430fbe8d`):
 
 ```text
 Graduation routing:
-  CI verdict:          pending SHA-bound Doctrine Exec on PR head
+  CI verdict:          latest-head Doctrine Scan + targeted profile proof recorded below
   Triage entries:      none expected (gate-state profile; compile-only commands)
   Risk class:          gate-state / tests-compile-floor
   Falsification check: plan mode lists exactly five cargo check --tests commands; profile lint + forbidden-desktop-deps guard + GHA proof seal PASS; no driver/mapeditor/tools/gpu in executable commands; excluded crates documented as doctrine blocks

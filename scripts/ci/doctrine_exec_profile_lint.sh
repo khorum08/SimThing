@@ -20,7 +20,6 @@ fi
 "$PYTHON_BIN" - <<'PY' "$PROFILES" "$DEFAULT_PROFILE"
 import csv
 import pathlib
-import re
 import shlex
 import sys
 
@@ -33,9 +32,15 @@ FORBIDDEN_GHA_TOKENS = [
     "alsa",
     "libasound",
     "alsa-sys",
+    "libudev",
+    "udev",
     "xvfb",
     "x11",
     "wayland",
+    "xkbcommon",
+    "xcb",
+    "egl",
+    "glx",
     "mesa",
     "vulkan",
     "display",
@@ -77,6 +82,27 @@ def split_commands(value: str) -> list[str]:
 def is_owner_deep(row: dict[str, str]) -> bool:
     return row.get("profile_class", "") == "owner-deep"
 
+def blocked_crate_in_command(command: str) -> str | None:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return None
+    for index, token in enumerate(tokens):
+        if token in ("-p", "--package") and index + 1 < len(tokens):
+            crate = tokens[index + 1]
+            if crate in FORBIDDEN_GHA_CRATE_COMMANDS:
+                return crate
+        elif token.startswith("--package="):
+            crate = token.split("=", 1)[1]
+            if crate in FORBIDDEN_GHA_CRATE_COMMANDS:
+                return crate
+        elif token.startswith("-p="):
+            crate = token.split("=", 1)[1]
+            if crate in FORBIDDEN_GHA_CRATE_COMMANDS:
+                return crate
+    return None
+
+
 def forbidden_desktop_dep_errors(profile_id: str, profile_class: str, field: str, command: str) -> list[str]:
     out: list[str] = []
     lowered = command.lower()
@@ -88,13 +114,13 @@ def forbidden_desktop_dep_errors(profile_id: str, profile_class: str, field: str
                 f"dependencies in non-owner-deep GHA. Block/defer the crate instead. "
                 f"(profile `{profile_id}` {field}: `{command}`)"
             )
-    for crate in FORBIDDEN_GHA_CRATE_COMMANDS:
-        if re.search(rf"(?:-p|--package=)\s*{re.escape(crate)}\b", command):
-            out.append(
-                "FORBIDDEN-GHA-DESKTOP-DEPS: owner_deep=false profile contains blocked crate "
-                f"`{crate}` in executable command. Do not probe driver/GPU/mapeditor/tools on non-owner-deep GHA. "
-                f"Block/defer the crate instead. (profile `{profile_id}` {field}: `{command}`)"
-            )
+    blocked_crate = blocked_crate_in_command(command)
+    if blocked_crate:
+        out.append(
+            "FORBIDDEN-GHA-DESKTOP-DEPS: owner_deep=false profile contains blocked crate "
+            f"`{blocked_crate}` in executable command. Do not probe driver/GPU/mapeditor/tools on non-owner-deep GHA. "
+            f"Block/defer the crate instead. (profile `{profile_id}` {field}: `{command}`)"
+        )
     return out
 
 def lint_forbidden_desktop_deps(rows: list[dict[str, str]]) -> list[str]:
@@ -123,11 +149,51 @@ def prove_forbidden_desktop_dep_guard() -> list[str]:
             False,
         ),
         (
-            "driver compile floor",
+            "driver -p compile floor",
             {
-                "profile_id": "prove-bad-driver",
+                "profile_id": "prove-bad-driver-p",
                 "profile_class": "targeted",
                 "tests": "cargo check -p simthing-driver --tests",
+                "doc_tests": "-",
+            },
+            False,
+        ),
+        (
+            "driver --package space",
+            {
+                "profile_id": "prove-bad-driver-package-space",
+                "profile_class": "targeted",
+                "tests": "cargo check --package simthing-driver --tests",
+                "doc_tests": "-",
+            },
+            False,
+        ),
+        (
+            "gpu --package= form",
+            {
+                "profile_id": "prove-bad-gpu-package-eq",
+                "profile_class": "targeted",
+                "tests": "cargo check --package=simthing-gpu --tests",
+                "doc_tests": "-",
+            },
+            False,
+        ),
+        (
+            "mapeditor -p form",
+            {
+                "profile_id": "prove-bad-mapeditor-p",
+                "profile_class": "targeted",
+                "tests": "cargo check -p simthing-mapeditor --tests",
+                "doc_tests": "-",
+            },
+            False,
+        ),
+        (
+            "tools -p= form",
+            {
+                "profile_id": "prove-bad-tools-p-eq",
+                "profile_class": "targeted",
+                "tests": "cargo check -p=simthing-tools --tests",
                 "doc_tests": "-",
             },
             False,
