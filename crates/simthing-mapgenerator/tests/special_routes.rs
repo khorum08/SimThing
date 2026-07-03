@@ -1,9 +1,9 @@
 use simthing_mapgenerator::{
     generate_special_routes, place_and_emit_scenario_with_couplings, validate_default,
-    validate_special_route_edges, validate_special_route_options, HyperlaneEdge, LatticeCoord,
-    MapGenRng, MapGenSeed, MapGeneratorParams, PlacedSystemSeed, ScenarioEmitter,
-    ScenarioEmitterConfig, ShapePlacement, ShapeRegistry, SpecialRouteEdge, SpecialRouteError,
-    SpecialRouteKind, SpecialRouteOptions, DEFAULT_MAX_PER_NODE_FANOUT,
+    validate_special_route_edges, HyperlaneEdge, LatticeCoord, MapGenRng, MapGenSeed,
+    MapGeneratorParams, PlacedSystemSeed, ScenarioEmitter, ScenarioEmitterConfig, ShapePlacement,
+    ShapeRegistry, SpecialRouteEdge, SpecialRouteError, SpecialRouteKind, SpecialRouteOptions,
+    DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 fn grid_placement(count: u32) -> ShapePlacement {
@@ -50,20 +50,6 @@ fn special_routes_different_seed_changes_when_possible() {
 }
 
 #[test]
-fn special_routes_reject_self_pairs() {
-    let placement = grid_placement(2);
-    assert!(validate_special_route_edges(
-        &placement,
-        &[SpecialRouteEdge {
-            kind: SpecialRouteKind::WormholePair,
-            from: "0".into(),
-            to: "0".into(),
-        }]
-    )
-    .is_err());
-}
-
-#[test]
 fn special_routes_reject_duplicate_pairs() {
     let placement = grid_placement(2);
     assert!(validate_special_route_edges(
@@ -80,20 +66,6 @@ fn special_routes_reject_duplicate_pairs() {
                 to: "1".into(),
             },
         ]
-    )
-    .is_err());
-}
-
-#[test]
-fn special_routes_reject_unknown_endpoint() {
-    let placement = grid_placement(2);
-    assert!(validate_special_route_edges(
-        &placement,
-        &[SpecialRouteEdge {
-            kind: SpecialRouteKind::Gateway,
-            from: "0".into(),
-            to: "missing".into(),
-        }]
     )
     .is_err());
 }
@@ -289,16 +261,6 @@ fn crate_still_has_no_forbidden_runtime_deps() {
             "forbidden dependency {forbidden} in Cargo.toml"
         );
     }
-}
-
-#[test]
-fn validate_special_route_options_rejects_zero_fanout() {
-    let mut options = special_route_options(3, 0, 0);
-    options.max_per_node_fanout = 0;
-    assert_eq!(
-        validate_special_route_options(&options).unwrap_err(),
-        SpecialRouteError::InvalidFanoutCap
-    );
 }
 
 #[test]

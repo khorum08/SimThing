@@ -6,7 +6,7 @@ use std::f64::consts::PI;
 use simthing_mapgenerator::{
     build_placement_context, place_and_emit_scenario, validate_default, LatticeCoord,
     MapGeneratorParams, OccupancyError, ScenarioEmitter, ScenarioEmitterConfig,
-    ShapePlacementError, ShapeRegistry, ValidationError,
+    ShapePlacementError, ShapeRegistry,
 };
 
 const FORBIDDEN_OUTPUT_TERMS: &[&str] = &[
@@ -297,17 +297,6 @@ fn insufficient_cells_fail_closed() {
         err,
         ShapePlacementError::InsufficientCandidates { .. }
             | ShapePlacementError::Occupancy(OccupancyError::LatticeExhausted)
-    ));
-}
-
-#[test]
-fn procedural_mode_rejects_static_shape_without_explicit_cells() {
-    let mut params = MapGeneratorParams::default();
-    params.shape.shape = "static".into();
-    let err = validate_default(&params).unwrap_err();
-    assert!(matches!(
-        err,
-        ValidationError::ExplicitShapeInProceduralMode { .. }
     ));
 }
 

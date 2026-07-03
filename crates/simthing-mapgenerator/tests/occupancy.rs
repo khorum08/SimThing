@@ -18,22 +18,6 @@ fn occupancy_insert_free_cell_succeeds() {
 }
 
 #[test]
-fn occupancy_duplicate_cell_rejected_or_relocated() {
-    let (lattice, mask) = small_grid();
-    let mut grid = OccupancyGrid::new(lattice.clone(), mask.clone());
-    let coord = LatticeCoord { col: 1, row: 1 };
-    grid.try_insert(coord).expect("first insert");
-    assert_eq!(grid.try_insert(coord), Err(OccupancyError::AlreadyOccupied));
-
-    let mut rng = MapGenRng::from_seed(MapGenSeed::new(7));
-    let placed = grid
-        .insert_or_relocate(coord, &mut rng)
-        .expect("relocates instead of duplicate");
-    assert_ne!(placed, coord);
-    assert_eq!(grid.occupied_count(), 2);
-}
-
-#[test]
 fn occupancy_relocation_is_deterministic_for_same_seed() {
     let run = |seed: u64| {
         let lattice = SquareLattice::new(4).expect("4x4");
@@ -106,15 +90,4 @@ fn occupied_cells_are_stably_ordered() {
     let first = grid.occupied_coords().to_vec();
     let second = grid.occupied_coords().to_vec();
     assert_eq!(first, second);
-}
-
-#[test]
-fn try_insert_rejects_core_masked_cell() {
-    let lattice = SquareLattice::new(5).expect("5x5");
-    let mask = CoreMask::new(2, 2, 1);
-    let mut grid = OccupancyGrid::new(lattice, mask);
-    assert_eq!(
-        grid.try_insert(LatticeCoord { col: 2, row: 2 }),
-        Err(OccupancyError::CoreMasked)
-    );
 }

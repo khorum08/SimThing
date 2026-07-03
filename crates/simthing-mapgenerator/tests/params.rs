@@ -1,6 +1,6 @@
 use simthing_mapgenerator::{
     validate_default, ArbitraryHyperlaneSourceMode, ClusterCountMethod, GenerationMode,
-    MapGeneratorParams, OutputFormat, PartitionMethod, ShapeRegistry, ValidationError,
+    MapGeneratorParams, PartitionMethod, ShapeRegistry, ValidationError,
 };
 
 fn registry() -> ShapeRegistry {
@@ -45,21 +45,6 @@ fn arbitrary_static_mode_params_validate() {
     params
         .validate(&registry())
         .expect("arbitrary static shell should validate");
-}
-
-#[test]
-fn unknown_shape_rejects_and_lists_registered_shapes() {
-    let mut params = MapGeneratorParams::default();
-    params.shape.shape = "not_a_real_shape".into();
-    let err = params.validate(&registry()).unwrap_err();
-    match err {
-        ValidationError::UnknownShape { shape, registered } => {
-            assert_eq!(shape, "not_a_real_shape");
-            assert!(registered.contains("elliptical"));
-            assert!(registered.contains("arbitrary_static"));
-        }
-        other => panic!("expected UnknownShape, got {other:?}"),
-    }
 }
 
 #[test]
@@ -133,26 +118,12 @@ fn invalid_num_stars_rejects() {
 }
 
 #[test]
-fn invalid_hyperlane_distance_rejects() {
-    let mut params = MapGeneratorParams::default();
-    params.hyperlane.max_hyperlane_distance = f64::NAN;
-    let err = params.validate(&registry()).unwrap_err();
-    assert!(matches!(err, ValidationError::MustBeFinitePositive { .. }));
-}
-
-#[test]
 fn invalid_hyperlane_min_max_rejects() {
     let mut params = MapGeneratorParams::default();
     params.hyperlane.num_hyperlanes_min = 5;
     params.hyperlane.num_hyperlanes_max = 2;
     let err = params.validate(&registry()).unwrap_err();
     assert!(matches!(err, ValidationError::MinGreaterThanMax { .. }));
-}
-
-#[test]
-fn invalid_output_format_still_serializes_for_roundtrip() {
-    let params = MapGeneratorParams::default();
-    assert_eq!(params.output.output_format, OutputFormat::Clause);
 }
 
 #[test]

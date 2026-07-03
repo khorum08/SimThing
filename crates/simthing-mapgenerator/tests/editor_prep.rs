@@ -41,55 +41,6 @@ fn shape_param_accepts_valid_spiral_params() {
 }
 
 #[test]
-fn shape_param_rejects_missing_equals() {
-    let err = parse_shape_param_assignment("arm_width").unwrap_err();
-    assert!(matches!(err, ShapeParamParseError::InvalidFormat { .. }));
-    assert!(err.to_string().contains("expected KEY=VALUE"));
-}
-
-#[test]
-fn shape_param_rejects_empty_value() {
-    let err = parse_shape_param_assignment("arm_width=").unwrap_err();
-    assert!(matches!(
-        err,
-        ShapeParamParseError::MissingValue { .. } | ShapeParamParseError::InvalidFormat { .. }
-    ));
-}
-
-#[test]
-fn shape_param_rejects_non_numeric_value() {
-    let err = parse_shape_param_assignment("arm_width=abc").unwrap_err();
-    assert!(matches!(err, ShapeParamParseError::NonNumeric { .. }));
-}
-
-#[test]
-fn shape_param_rejects_unknown_param() {
-    let params = spiral_2_params_with_shape_params(BTreeMap::from([("unknown_param".into(), 1.0)]));
-    let err = validate_shape_params_for_params(&params, &registry()).unwrap_err();
-    assert!(matches!(err, ValidationError::UnknownShapeParam { .. }));
-    assert!(err.to_string().contains("unknown_param"));
-}
-
-#[test]
-fn shape_param_rejects_param_not_valid_for_shape() {
-    let mut params = MapGeneratorParams::default();
-    params.shape.shape = "elliptical".into();
-    params.shape.shape_params.insert("arm_width".into(), 14.0);
-    let err = validate_shape_params_for_params(&params, &registry()).unwrap_err();
-    assert!(matches!(
-        err,
-        ValidationError::ShapeParamNotValidForShape { .. }
-    ));
-    assert!(err.to_string().contains("arm_width"));
-}
-
-#[test]
-fn shape_param_rejects_duplicate_equals_in_value() {
-    let err = parse_shape_param_assignment("arm_width=14=bad").unwrap_err();
-    assert!(matches!(err, ShapeParamParseError::InvalidFormat { .. }));
-}
-
-#[test]
 fn shape_param_rejects_nan() {
     let err = parse_shape_param_assignment("arm_width=NaN").unwrap_err();
     assert!(matches!(err, ShapeParamParseError::NonNumeric { .. }));

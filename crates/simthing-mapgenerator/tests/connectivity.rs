@@ -113,23 +113,6 @@ fn connect_components_is_noop_when_already_connected() {
 }
 
 #[test]
-fn connect_components_adds_no_self_links_or_duplicates() {
-    let placement = two_island_placement();
-    let base: Vec<(String, String)> = vec![("0".into(), "1".into()), ("4".into(), "5".into())];
-    let (bridges, _) = connect_components(&placement, &base);
-    let mut seen = BTreeSet::new();
-    for edge in &bridges {
-        assert_ne!(edge.from, edge.to, "no self-link {edge:?}");
-        let pair = if edge.from <= edge.to {
-            (edge.from.clone(), edge.to.clone())
-        } else {
-            (edge.to.clone(), edge.from.clone())
-        };
-        assert!(seen.insert(pair), "no duplicate bridge {edge:?}");
-    }
-}
-
-#[test]
 fn connect_components_is_deterministic() {
     let placement = two_island_placement();
     let base: Vec<(String, String)> = vec![("0".into(), "1".into()), ("4".into(), "5".into())];

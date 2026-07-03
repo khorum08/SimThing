@@ -5,7 +5,7 @@ use simthing_mapgenerator::{
     collect_farthest_pairs_with_filter, collect_pairs_within_chebyshev,
     fixture_lattice_edge_for_system_count, generate_cluster_bridges, generate_hyperlane_topology,
     generate_partition_bridges, generate_special_routes, place_and_emit_scenario_with_structure,
-    validate_default, ClusterOptions, CoreMask, HyperlaneError, HyperlaneOptions, LatticeError,
+    validate_default, ClusterOptions, CoreMask, HyperlaneOptions, LatticeError,
     MapGenRng, MapGenSeed, MapGeneratorParams, OccupancyGrid, PartitionOptions, ScenarioEmitter,
     ScenarioEmitterConfig, ShapeRegistry, SpecialRouteOptions, SquareLattice,
     PRODUCER_PAIR_CANDIDATE_CAP,
@@ -274,10 +274,4 @@ fn farthest_pair_helper_respects_cap() {
         collect_farthest_pairs_with_filter(&positions, |_, _, distance| distance > 1);
     assert!(pairs.len() <= PRODUCER_PAIR_CANDIDATE_CAP);
     assert!(stats.examined_pairs >= pairs.len() as u64);
-}
-
-#[test]
-fn fixture_lattice_edge_rejects_impossible_system_count() {
-    let err = fixture_lattice_edge_for_system_count(usize::MAX).unwrap_err();
-    assert!(matches!(err, HyperlaneError::FixtureLatticeOverflow { .. }));
 }

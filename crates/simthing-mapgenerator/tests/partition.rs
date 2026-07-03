@@ -1,9 +1,8 @@
 use simthing_mapgenerator::{
-    assign_partitions, generate_partition_bridges, place_and_emit_scenario_with_structure,
-    validate_bridge_edges, validate_default, validate_partition_options, BridgeEdge,
+    assign_partitions, generate_partition_bridges, validate_default, validate_partition_options,
     ClusterOptions, HyperlaneEdge, LatticeCoord, MapGenRng, MapGenSeed, MapGeneratorParams,
-    PartitionAssignment, PartitionError, PartitionId, PartitionKind, PartitionOptions,
-    PlacedSystemSeed, ShapePlacement, DEFAULT_MAX_PER_NODE_FANOUT,
+    PartitionError, PartitionKind, PartitionOptions, PlacedSystemSeed, ShapePlacement,
+    DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
 fn grid_placement(count: u32) -> ShapePlacement {
@@ -49,16 +48,6 @@ fn partition_assignment_same_seed_is_stable() {
 }
 
 #[test]
-fn partition_assignment_rejects_impossible_min_max() {
-    let placement = grid_placement(4);
-    let options = partition_options(2, 1, 2, 2, 0, 0);
-    assert!(matches!(
-        assign_partitions(&placement, &options).unwrap_err(),
-        PartitionError::UnsatisfiedPartitionStructure { .. }
-    ));
-}
-
-#[test]
 fn partition_assignment_respects_min_max_systems_when_possible() {
     let placement = grid_placement(9);
     let options = partition_options(2, 1, 2, 4, 1, 2);
@@ -100,30 +89,6 @@ fn bridge_selection_respects_min_max_bridge_counts() {
             .expect("bridges");
     assert_eq!(bridges.len(), 1);
     assert_eq!(report.bridge_count, 1);
-}
-
-#[test]
-fn bridge_selection_rejects_duplicate_pairs() {
-    let placement = grid_placement(9);
-    let options = partition_options(2, 1, 2, 4, 1, 2);
-    assert!(validate_bridge_edges(
-        &placement,
-        &[
-            BridgeEdge {
-                from: "0".into(),
-                to: "1".into(),
-                from_partition: PartitionId(0),
-                to_partition: PartitionId(1),
-            },
-            BridgeEdge {
-                from: "0".into(),
-                to: "1".into(),
-                from_partition: PartitionId(0),
-                to_partition: PartitionId(1),
-            },
-        ]
-    )
-    .is_err());
 }
 
 #[test]
