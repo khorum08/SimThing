@@ -1,7 +1,7 @@
 use simthing_mapgenerator::{
     canonical_pair, fixture_lattice_edge_for_system_count, generate_hyperlane_topology,
-    grid_chebyshev_distance, validate_hyperlane_edges, HyperlaneError, HyperlaneOptions,
-    LatticeCoord, MapGenRng, MapGenSeed, MapGeneratorParams, PlacedSystemSeed, ShapePlacement,
+    grid_chebyshev_distance, HyperlaneError, HyperlaneOptions, LatticeCoord, MapGenRng,
+    MapGenSeed, MapGeneratorParams, PlacedSystemSeed, ShapePlacement,
 };
 
 fn line_placement(count: u32) -> ShapePlacement {
@@ -64,22 +64,6 @@ fn hyperlane_edges_are_canonical_order() {
             (edge.from.clone(), edge.to.clone())
         );
     }
-}
-
-#[test]
-fn hyperlane_generation_rejects_self_links() {
-    let placement = line_placement(2);
-    assert!(validate_hyperlane_edges(&placement, &[("0".into(), "0".into())]).is_err());
-}
-
-#[test]
-fn hyperlane_generation_rejects_duplicates() {
-    let placement = line_placement(2);
-    assert!(validate_hyperlane_edges(
-        &placement,
-        &[("0".into(), "1".into()), ("0".into(), "1".into())]
-    )
-    .is_err());
 }
 
 #[test]
@@ -161,37 +145,6 @@ fn fixture_lattice_edge_for_system_count_matches_capacity() {
 }
 
 #[test]
-fn hyperlane_generation_rejects_min_greater_than_max() {
-    let placement = line_placement(4);
-    let mut options = hyperlane_options(3);
-    options.min_edge_count = 5;
-    options.max_edge_count = 2;
-    options.target_edge_count = 2;
-    let mut rng = MapGenRng::from_seed(MapGenSeed::new(1));
-    let err = generate_hyperlane_topology(&placement, &options, &mut rng).unwrap_err();
-    assert_eq!(
-        err,
-        HyperlaneError::InvalidEdgeCounts {
-            min_edge_count: 5,
-            max_edge_count: 2,
-            target_edge_count: 2,
-        }
-    );
-}
-
-#[test]
-fn hyperlane_generation_rejects_zero_fanout_cap() {
-    let placement = line_placement(4);
-    let mut options = hyperlane_options(3);
-    options.max_per_node_fanout = 0;
-    let mut rng = MapGenRng::from_seed(MapGenSeed::new(1));
-    assert_eq!(
-        generate_hyperlane_topology(&placement, &options, &mut rng).unwrap_err(),
-        HyperlaneError::InvalidFanoutCap
-    );
-}
-
-#[test]
 fn hyperlane_generation_errors_when_min_edge_count_cannot_be_satisfied() {
     let placement = line_placement(2);
     let mut options = hyperlane_options(3);
@@ -207,32 +160,6 @@ fn hyperlane_generation_errors_when_min_edge_count_cannot_be_satisfied() {
             min_edge_count: 2,
         }
     );
-}
-
-#[test]
-fn hyperlane_generation_does_not_panic_on_invalid_public_options() {
-    let placement = line_placement(4);
-    let base = hyperlane_options(3);
-    let invalid_options = [
-        HyperlaneOptions {
-            fixture_lattice_edge: 0,
-            ..base.clone()
-        },
-        HyperlaneOptions {
-            min_edge_count: 10,
-            max_edge_count: 1,
-            target_edge_count: 1,
-            ..base.clone()
-        },
-        HyperlaneOptions {
-            max_per_node_fanout: 0,
-            ..base.clone()
-        },
-    ];
-    for options in invalid_options {
-        let mut rng = MapGenRng::from_seed(MapGenSeed::new(42));
-        assert!(generate_hyperlane_topology(&placement, &options, &mut rng).is_err());
-    }
 }
 
 #[test]

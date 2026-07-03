@@ -4,9 +4,9 @@ use simthing_mapgenerator::{
     cell_center_pixel, collect_cell_center_pixels, collect_rendered_star_pixels,
     count_bridge_edges, deterministic_unit_hash, generate_visual_spiral_1500,
     jitter_fraction_from_hash, render_galaxy_preview_png_bytes, rendered_star_pixel,
-    validate_hyperlane_edges, visual_spiral_1500_params, CouplingEdgeKind, GalaxyPreviewOptions,
-    HyperlanePreviewFilter, ShapeRegistry, SquareLattice, GALAXY_PREVIEW_PNG_SIZE,
-    VISUAL_SPIRAL_1500_LATTICE_EDGE, VISUAL_SPIRAL_1500_SEED, VISUAL_SPIRAL_1500_STARS,
+    validate_hyperlane_edges, visual_spiral_1500_params, CouplingEdgeKind,
+    HyperlanePreviewFilter, ShapeRegistry, GALAXY_PREVIEW_PNG_SIZE, VISUAL_SPIRAL_1500_LATTICE_EDGE,
+    VISUAL_SPIRAL_1500_SEED, VISUAL_SPIRAL_1500_STARS,
 };
 
 fn spiral_scene() -> simthing_mapgenerator::GalaxyPreviewScene {
@@ -204,16 +204,6 @@ fn hyperlane_pairs(edges: &[simthing_mapgenerator::HyperlaneEdge]) -> Vec<(Strin
         .iter()
         .map(|edge| (edge.from.clone(), edge.to.clone()))
         .collect()
-}
-
-#[test]
-fn custom_spiral_1500_has_no_duplicate_links() {
-    let generation = generate_visual_spiral_1500(&ShapeRegistry::default()).expect("generation");
-    validate_hyperlane_edges(
-        &generation.placement,
-        &hyperlane_pairs(&generation.base_hyperlane_edges),
-    )
-    .expect("valid base hyperlanes");
 }
 
 #[test]

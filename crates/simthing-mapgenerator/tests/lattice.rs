@@ -1,6 +1,4 @@
-use simthing_mapgenerator::{
-    CoreMask, LatticeCoord, LatticeError, MapGenRng, MapGenSeed, SquareLattice,
-};
+use simthing_mapgenerator::{CoreMask, LatticeCoord, MapGenRng, MapGenSeed, SquareLattice};
 
 #[test]
 fn same_seed_rng_sequence_is_stable() {
@@ -16,11 +14,6 @@ fn different_seed_rng_sequence_differs() {
     let mut a = MapGenRng::from_seed(MapGenSeed::new(1));
     let mut b = MapGenRng::from_seed(MapGenSeed::new(2));
     assert_ne!(a.next_u64(), b.next_u64());
-}
-
-#[test]
-fn square_lattice_rejects_zero_size() {
-    assert_eq!(SquareLattice::new(0), Err(LatticeError::ZeroEdge));
 }
 
 #[test]

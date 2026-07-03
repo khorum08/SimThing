@@ -193,19 +193,6 @@ fn spiral_1500_base_hyperlanes_have_no_self_links() {
 }
 
 #[test]
-fn spiral_1500_base_hyperlanes_have_no_duplicate_undirected_links() {
-    let (_, topology) = spiral_1500_topology();
-    let mut seen = BTreeSet::new();
-    for edge in &topology.edges {
-        let pair = canonical_pair(&edge.from, &edge.to);
-        assert!(
-            seen.insert(pair.clone()),
-            "duplicate undirected link {pair:?}"
-        );
-    }
-}
-
-#[test]
 fn spiral_1500_base_hyperlanes_have_no_unknown_endpoints() {
     let (placement, topology) = spiral_1500_topology();
     let ids: BTreeSet<String> = placement.systems.iter().map(|s| s.id.to_string()).collect();

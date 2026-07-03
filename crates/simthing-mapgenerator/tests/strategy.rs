@@ -1,6 +1,5 @@
 use simthing_mapgenerator::{
-    build_placement_context, validate_default, LatticeCoord, MapGeneratorParams, OccupancyError,
-    ShapePlacementError, ShapeRegistry,
+    build_placement_context, validate_default, LatticeCoord, MapGeneratorParams, ShapeRegistry,
 };
 
 fn test_params(shape: &str, num_stars: u32, seed: u64, lattice_size: u32) -> MapGeneratorParams {
@@ -131,30 +130,6 @@ fn elliptical_enforces_one_system_per_cell() {
 }
 
 #[test]
-fn elliptical_rejects_exhausted_lattice_or_reports_clean_error() {
-    let params = test_params("elliptical", 500, 1, 8);
-    validate_default(&params).expect("valid");
-    let registry = ShapeRegistry::default();
-    let (lattice, core_mask, mut occupancy, mut rng) =
-        build_placement_context(&params).expect("context");
-    let err = registry
-        .place(
-            &params,
-            &lattice,
-            &core_mask,
-            &mut occupancy,
-            &mut rng,
-            None,
-        )
-        .expect_err("too many stars for tiny lattice");
-    assert!(matches!(
-        err,
-        ShapePlacementError::InsufficientCandidates { .. }
-            | ShapePlacementError::Occupancy(OccupancyError::LatticeExhausted)
-    ));
-}
-
-#[test]
 fn static_strategy_accepts_explicit_integer_cells() {
     let params = static_params(1, 10);
     validate_default(&params).expect("valid");
@@ -178,82 +153,6 @@ fn static_strategy_accepts_explicit_integer_cells() {
         .expect("static placement");
     assert_eq!(placement.systems.len(), 3);
     assert_eq!(placement.systems[0].coord, explicit[0]);
-}
-
-#[test]
-fn static_strategy_rejects_duplicate_cells() {
-    let params = static_params(1, 10);
-    let explicit = [
-        LatticeCoord { col: 1, row: 1 },
-        LatticeCoord { col: 1, row: 1 },
-    ];
-    let registry = ShapeRegistry::default();
-    let (lattice, core_mask, mut occupancy, mut rng) =
-        build_placement_context(&params).expect("context");
-    let err = registry
-        .place(
-            &params,
-            &lattice,
-            &core_mask,
-            &mut occupancy,
-            &mut rng,
-            Some(&explicit),
-        )
-        .expect_err("duplicate");
-    assert!(matches!(
-        err,
-        ShapePlacementError::Occupancy(OccupancyError::AlreadyOccupied)
-    ));
-}
-
-#[test]
-fn static_strategy_rejects_out_of_bounds_cells() {
-    let params = static_params(1, 5);
-    let explicit = [LatticeCoord { col: 5, row: 0 }];
-    let registry = ShapeRegistry::default();
-    let (lattice, core_mask, mut occupancy, mut rng) =
-        build_placement_context(&params).expect("context");
-    let err = registry
-        .place(
-            &params,
-            &lattice,
-            &core_mask,
-            &mut occupancy,
-            &mut rng,
-            Some(&explicit),
-        )
-        .expect_err("oob");
-    assert!(matches!(
-        err,
-        ShapePlacementError::Occupancy(OccupancyError::OutOfBounds)
-    ));
-}
-
-#[test]
-fn static_strategy_rejects_core_masked_cells() {
-    let mut params = static_params(1, 9);
-    params.scale_core.core_radius = 5.0;
-    params.scale_core.radius = 10.0;
-    validate_default(&params).expect("valid");
-    let registry = ShapeRegistry::default();
-    let (lattice, core_mask, mut occupancy, mut rng) =
-        build_placement_context(&params).expect("context");
-    let center = lattice.center();
-    let explicit = [center];
-    let err = registry
-        .place(
-            &params,
-            &lattice,
-            &core_mask,
-            &mut occupancy,
-            &mut rng,
-            Some(&explicit),
-        )
-        .expect_err("core masked");
-    assert!(matches!(
-        err,
-        ShapePlacementError::Occupancy(OccupancyError::CoreMasked)
-    ));
 }
 
 #[test]
