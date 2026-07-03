@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - implementation and local targeted proof complete; GitHub-side Doctrine Exec pending.
+**PROBATION** - implementation, local targeted proof, and GitHub-side targeted Doctrine Exec proof complete; awaiting merge review.
 
 ## Mission
 
@@ -77,11 +77,19 @@ Local gate proof:
 
 Profile added: `test-pare-mapgenerator-admission-collapse`
 
-Expected dispatch:
+Live proof:
 
-`/seal-proof profile=test-pare-mapgenerator-admission-collapse`
-
-GitHub-side Doctrine Exec is pending for the PR merge ref.
+- profile: `test-pare-mapgenerator-admission-collapse`
+- head_sha: `db874f721e64a705ddd30dbc06f603f8bef705d7`
+- tested_ref: `refs/pull/1096/merge`
+- merge_ref_status: PASS
+- run: `28630761735`
+- job: `84906953240 / doctrine-exec`
+- verdict: `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
+- proof commands: exact edited `simthing-mapgenerator --test ...` binaries only
+- no `doctrine_surface_truth.sh`
+- no `apt-get`
+- no full-crate/workspace/owner-deep/GPU/Bevy/desktop proof
 
 ## Graduation Routing
 
