@@ -5,7 +5,16 @@ set -euo pipefail
 if [[ "$(uname -s)" == "Linux" ]] && command -v apt-get >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
   sudo apt-get update -qq
-  sudo apt-get install -y -qq libasound2-dev libudev-dev libxkbcommon-dev
+  sudo apt-get install -y -qq \
+    libasound2-dev \
+    libudev-dev \
+    libwayland-dev \
+    libxkbcommon-dev \
+    libx11-dev \
+    libxcursor-dev \
+    libxi-dev \
+    libxrandr-dev \
+    libvulkan-dev
 fi
 
 cargo check -p simthing-mapeditor
