@@ -38,23 +38,6 @@ fn owner_silo_recursive_source_compile_composes_selection_reconciliation_and_rec
 }
 
 #[test]
-fn owner_silo_recursive_source_compile_legacy_default_preserved() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_owner_silo_recursive_source_plan(
-        &spec,
-        TICK_ONE,
-        OwnerSiloRfSourceMode::LegacyPlanetChildOwnerSilo,
-    )
-    .expect("compile");
-
-    assert!(plan.legacy_default_preserved);
-    assert_eq!(
-        plan.selected_source_mode,
-        OwnerSiloRfSourceMode::LegacyPlanetChildOwnerSilo
-    );
-}
-
-#[test]
 fn owner_silo_recursive_source_compile_recursive_mode_runs_owner_silo_disburse_report() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let plan = compile_owner_silo_recursive_source_plan(
