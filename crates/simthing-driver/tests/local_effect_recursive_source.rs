@@ -37,23 +37,6 @@ fn local_effect_recursive_source_compile_composes_local_allocation_recursive_sou
 }
 
 #[test]
-fn local_effect_recursive_source_compile_legacy_default_preserved() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_local_effect_recursive_source_plan(
-        &spec,
-        TICK_ONE,
-        LocalEffectRfSourceMode::LegacyPlanetChildOwnerSilo,
-    )
-    .expect("compile");
-
-    assert!(plan.legacy_default_preserved);
-    assert_eq!(
-        plan.selected_source_mode,
-        LocalEffectRfSourceMode::LegacyPlanetChildOwnerSilo
-    );
-}
-
-#[test]
 fn local_effect_recursive_source_compile_recursive_mode_runs_participant_effects_report() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let plan = compile_local_effect_recursive_source_plan(

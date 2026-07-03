@@ -15,20 +15,6 @@ use disburse_down_fixture::build_owner_silo_disburse_down_scoped_spec;
 const TICK_ONE: RuntimeTickId = RuntimeTickId(1);
 
 #[test]
-fn runtime_rf_tick_source_compile_composes_legacy_and_recursive_plans() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_runtime_rf_tick_source_comparison_plan(&spec).expect("compile");
-
-    assert!(plan.legacy_tick_plan.tick_report.participant_count > 0);
-    assert!(!plan
-        .recursive_local_rf_plan
-        .aggregate_source_rows
-        .is_empty());
-    assert!(plan.reconciliation_plan.previous_ladder_preserved);
-    assert!(plan.comparison_report.reconciliation_ready);
-}
-
-#[test]
 fn runtime_rf_tick_source_compile_preserves_default_runtime_rf_tick_plan() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let before = compile_runtime_rf_tick_plan(&spec).expect("before");

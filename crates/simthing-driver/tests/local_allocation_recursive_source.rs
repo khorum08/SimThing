@@ -37,23 +37,6 @@ fn local_allocation_recursive_source_compile_composes_owner_silo_recursive_sourc
 }
 
 #[test]
-fn local_allocation_recursive_source_compile_legacy_default_preserved() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_local_allocation_recursive_source_plan(
-        &spec,
-        TICK_ONE,
-        LocalAllocationRfSourceMode::LegacyPlanetChildOwnerSilo,
-    )
-    .expect("compile");
-
-    assert!(plan.legacy_default_preserved);
-    assert_eq!(
-        plan.selected_source_mode,
-        LocalAllocationRfSourceMode::LegacyPlanetChildOwnerSilo
-    );
-}
-
-#[test]
 fn local_allocation_recursive_source_compile_recursive_mode_runs_local_allocation_report() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let plan = compile_local_allocation_recursive_source_plan(

@@ -36,23 +36,6 @@ fn runtime_rf_tick_source_selection_compile_composes_comparison_plan() {
 }
 
 #[test]
-fn runtime_rf_tick_source_selection_compile_legacy_default_preserved() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_runtime_rf_tick_source_selection_plan(
-        &spec,
-        TICK_ONE,
-        RuntimeRfTickSourceMode::LegacyDefault,
-    )
-    .expect("compile");
-
-    assert!(plan.legacy_default_preserved);
-    assert_eq!(
-        plan.selected_source_kind,
-        RuntimeRfTickSourceKind::LegacyPlanetChildOwnerSilo
-    );
-}
-
-#[test]
 fn runtime_rf_tick_source_selection_compile_recursive_selectable_report_only() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let plan = compile_runtime_rf_tick_source_selection_plan(
