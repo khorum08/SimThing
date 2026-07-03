@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # CI-B-WEBCHAT-PR1R: quarantine casual full-crate cargo test batteries.
+# GHA-PROOF-SEAL-0: forbid Atlas/Bevy/GPU/desktop proof in non-owner-deep profiles.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PROFILES="${DOCTRINE_EXEC_PROFILE_LINT_FILE:-${ROOT}/scripts/ci/doctrine_exec_profiles.tsv}"
 DEFAULT_PROFILE="${DOCTRINE_EXEC_DEFAULT_PROFILE:-ci-b-webchat-smoke}"
+GHA_PROOF_SEAL="${ROOT}/scripts/ci/doctrine_exec_gha_proof_seal.sh"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   PYTHON_BIN="python"
+fi
+
+if [[ "${1:-}" == "--prove-gha-proof-seal" ]]; then
+  bash "$GHA_PROOF_SEAL" --prove
+  exit 0
 fi
 
 "$PYTHON_BIN" - <<'PY' "$PROFILES" "$DEFAULT_PROFILE"
@@ -99,3 +106,5 @@ if errors:
 
 print(f"PROFILE-LINT: PASS profiles={len(rows)} default={default_profile}")
 PY
+
+bash "$GHA_PROOF_SEAL"

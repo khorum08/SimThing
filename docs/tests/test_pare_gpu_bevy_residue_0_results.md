@@ -61,7 +61,7 @@ Temporary `tests/**` scope rows added per touched protected crate under profile 
 
 Driver/sim/workshop surviving integration binaries are **not** executed on GHA (cold-compile timeout risk); covered by `cargo check` plus local proof below.
 
-**Remedial closeout (orchestration):** `cargo test -p simthing-driver --test atlas_0080_0` was **removed** from the GitHub profile after run `28636114868` timed out at 300s on cold CI compile (desktop/Bevy transitive deps). Do **not** re-add atlas to GHA targeted proof.
+**Remedial closeout (orchestration):** `cargo test -p simthing-driver --test atlas_0080_0` was **removed** from the GitHub profile after run `28636114868` timed out at 300s on cold CI compile (desktop/Bevy transitive deps). Do **not** re-add atlas to GHA targeted proof. **`GHA-PROOF-SEAL-0`** now enforces this mechanically via `doctrine_exec_gha_proof_seal.sh` / `doctrine_exec_profile_lint.sh`.
 
 ### Class 1 survivor — `atlas_0080_0` (local / owner-deep only)
 
