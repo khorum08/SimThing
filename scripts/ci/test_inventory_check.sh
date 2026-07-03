@@ -40,6 +40,7 @@ required = [
 allowed_kind = {"unit", "integration", "doc", "compile_fail", "trybuild", "fixture", "unknown"}
 allowed_class = {
     "behavior-regression",
+    "determinism",
     "oracle-parity",
     "seal-proof",
     "golden-byte",

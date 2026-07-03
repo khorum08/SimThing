@@ -365,6 +365,8 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 
 - [`test_pare_protected_pare_delete_0_results.md`](test_pare_protected_pare_delete_0_results.md) - `TEST-PARE-PROTECTED-PARE-DELETE-0` **PROBATION**: PR C follow-up to #1103; merged #1103 at `f32a0a93db068f95cf5201860063951568cfdec0`; all 98 unprotected FALSE_MEMBER-to-PARE rows physically deleted, 0 blocked, inventory 5,332 -> 5,234; no TRUE_MEMBER, NEEDS_PROMOTION, dependency-floor, STEAD, seal, golden, doc-named, SimThing-Kernel, or CI Scaffolding row targeted; targeted profile `test-pare-protected-pare-delete` uses cargo check floors only.
 
+- [`test_pare_conservative_survivor_delete_0_results.md`](test_pare_conservative_survivor_delete_0_results.md) - `TEST-PARE-CONSERVATIVE-SURVIVOR-DELETE-0` **DA-EXECUTED** (2026-07-03): executive DA review of the 112 conservative promotion-review survivors under owner authority; 87 fossils deleted + 2 emptied files, inventory 5,234 -> 5,147; 25 keeps reclassified to permanent residue with judgment `catches:` notes; all protected-oracle-review promotion rows retired; #1104 scope rows re-sealed; MAJOR FINDING: sim c-suite TRUE_MEMBER parity binaries non-compiling on master (pre-existing; follow-on `TEST-REPAIR-OR-REPLACE-TRUE-ORACLE-BINARIES-0`).
+
 ## 0.0.8.4.6 CI Scaffolding — Track A (CLOSED 2026-07-01)
 - [`ci-a-closeout_results.md`](ci-a-closeout_results.md) — Track A **DA-CLOSED**: doctrine landed at three altitudes (#1043), `SEALED_TYPES` migrated to `allow/sealed_types.txt` (data, fail-loud), reliability legend published, full command battery PASS on master (self-test/scan/PR-delta/spam-prove/195-surface). Non-blocking debt: self-test ~7 min. Track B OPEN (2026-07-02); Track C DA-CLOSED.
 

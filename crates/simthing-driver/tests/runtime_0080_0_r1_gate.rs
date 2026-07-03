@@ -75,32 +75,3 @@ fn r1_fast_default_off_or_opt_in_contract() {
     assert_eq!(c_f.zero_cohort_row_count, 0);
 }
 
-#[test]
-fn r1_fast_no_authority_or_cpu_redecision_on_default_off() {
-    let b = run_runtime_0080_0_r1c_b(&Runtime0080R1cBInput::default_simsession());
-    assert!(!b.resident_compaction_authority);
-    assert!(!b.resident_lineage_rewrite_authority);
-    assert!(!b.resident_fusion_compaction_authority);
-    assert!(!b.resident_reenroll_scatter_authority);
-    assert!(!b.cpu_selected_any_slot);
-
-    let c = run_runtime_0080_0_r1c_c(&Runtime0080R1cCInput::default_simsession());
-    assert!(!c.resident_compaction_authority);
-    assert!(!c.resident_lineage_rewrite_authority);
-    assert!(!c.resident_fusion_compaction_authority);
-    assert!(!c.resident_reenroll_scatter_authority);
-    assert!(!c.resident_m4a_authority);
-    assert!(!c.cpu_shadow.cpu_selected_membership_effects);
-
-    let d = run_runtime_0080_0_r1c_d(&Runtime0080R1cDInput::default_simsession());
-    assert!(!d.cpu_shadow.cpu_decided_any_compaction_row);
-    assert!(!d.cpu_shadow.cpu_decided_any_lineage_row);
-    assert!(!d.resident_m4a_authority);
-    assert!(!d.default_session_wiring);
-
-    let e = run_runtime_0080_0_r1c_e(&Runtime0080R1cEInput::default_simsession());
-    assert!(!e.cpu_shadow.cpu_decided_any_slot_remap);
-    assert!(!e.cpu_shadow.cpu_decided_any_compacted_table_row);
-    assert!(!e.cpu_shadow.cpu_decided_any_lineage_application);
-    assert!(!e.default_session_wiring);
-}

@@ -14,22 +14,6 @@ fn assert_report_ok(report: &simthing_workshop::overlay_order::OverlayOrderRepor
 }
 
 #[test]
-fn overlay_order_compiler_preserves_cpu_semantics() {
-    let scenario = make_overlay_order_scenario("overlay_order_adversarial_small", 128, 8, 4, true);
-    let cpu_current = apply_overlays_cpu_current(&scenario);
-    let compiled = compile_overlay_order_bands(&scenario);
-    let cpu_compiled = apply_compiled_overlays_cpu(&scenario, &compiled);
-
-    assert_eq!(cpu_current, cpu_compiled);
-    assert!(compiled.compile_stats.compiled_op_count <= compiled.compile_stats.raw_overlay_count);
-
-    let report =
-        compare_overlay_order_rich_with_harness(&OverlayOrderHarness::new().unwrap(), &scenario)
-            .unwrap();
-    assert_eq!(report.semantic_gate, "PASS");
-}
-
-#[test]
 fn overlay_order_gpu_matches_cpu_small() {
     let scenario = make_overlay_order_scenario("overlay_order_small", 128, 8, 4, true);
     let harness = OverlayOrderHarness::new().unwrap();

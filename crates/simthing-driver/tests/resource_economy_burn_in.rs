@@ -145,20 +145,3 @@ fn resource_economy_transfer_and_emission_flags_default_false() {
     assert!(!flags.use_accumulator_emission);
 }
 
-#[test]
-fn resource_economy_no_cpu_fallback_path() {
-    let driver_lib = include_str!("../src/lib.rs");
-    let burn_in = include_str!("../src/resource_economy_burn_in.rs");
-    let sync = include_str!("../src/resource_economy_sync.rs");
-    for src in [driver_lib, burn_in, sync] {
-        assert!(
-            !src.contains("cpu_fallback") && !src.contains("CpuFallback"),
-            "resource economy production path must not introduce CPU fallback"
-        );
-    }
-    let sim_cargo = include_str!("../../simthing-sim/Cargo.toml");
-    assert!(
-        !sim_cargo.contains("simthing-spec"),
-        "simthing-sim must remain spec-free"
-    );
-}

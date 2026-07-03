@@ -33,36 +33,6 @@ fn assert_resident_report_ok(
 }
 
 #[test]
-fn multitarget_cpu_resolver_handles_edge_cases() {
-    let scenario = make_manual_edge_case_scenario();
-    let (outputs, compact, _) = resolve_cpu_current(&scenario, false);
-
-    assert_eq!(outputs[0].source_pool, 0);
-    assert_eq!(outputs[0].queue_accum, 0);
-    assert_eq!(outputs[0].units, 1);
-    assert_eq!(compact[0].transfer_amount, 0);
-
-    assert_eq!(outputs[1].source_pool, 500);
-    assert_eq!(compact[1].transfer_amount, 0);
-
-    assert_eq!(outputs[2].queue_accum, 9);
-    assert_eq!(outputs[2].units, 1);
-
-    assert_eq!(outputs[3].units, 1);
-    assert_eq!(outputs[3].queue_accum, 10);
-
-    assert_eq!(outputs[4].units, 4);
-    assert_eq!(outputs[4].queue_accum, 0);
-
-    assert_eq!(outputs[5].units, 4);
-    assert_eq!(outputs[6].units, 5);
-    assert_eq!(outputs[7].units, 500);
-    assert_eq!(outputs[8].source_pool, 0);
-    assert_eq!(outputs[9], scenario.states[9]);
-    assert_eq!(compact[9].transfer_amount, 0);
-}
-
-#[test]
 fn multitarget_compact_replay_reconstructs_cpu() {
     let scenario = make_multitarget_scenario("multitarget_replay_small", 256, 0.5, false);
     let (cpu_final, compact, _) = resolve_cpu_current(&scenario, false);

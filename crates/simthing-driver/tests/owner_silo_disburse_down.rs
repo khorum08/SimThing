@@ -73,64 +73,6 @@ fn owner_silo_disburse_down_compile_preserves_owner_channels() {
 }
 
 #[test]
-fn owner_silo_disburse_down_cpu_allocation_matches_expected_fixture() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_owner_silo_disburse_down_plan(&spec).expect("compile");
-
-    let owner_a = plan
-        .cpu_results
-        .iter()
-        .find(|r| r.owner_ref == "owner_a")
-        .expect("owner_a");
-    assert_eq!(owner_a.available_before, 62);
-    assert_eq!(owner_a.remaining_after, 0);
-    assert_eq!(owner_a.allocated_total, 62);
-    assert_eq!(owner_a.unmet_total, 8);
-
-    let cohort = owner_a
-        .allocations
-        .iter()
-        .find(|a| a.requested == 20)
-        .expect("cohort");
-    assert_eq!(cohort.allocated, 20);
-    assert_eq!(cohort.unmet, 0);
-
-    let fleet = owner_a
-        .allocations
-        .iter()
-        .find(|a| a.requested == 50)
-        .expect("fleet");
-    assert_eq!(fleet.allocated, 42);
-    assert_eq!(fleet.unmet, 8);
-
-    let owner_b = plan
-        .cpu_results
-        .iter()
-        .find(|r| r.owner_ref == "owner_b")
-        .expect("owner_b");
-    assert_eq!(owner_b.available_before, 45);
-    assert_eq!(owner_b.remaining_after, 35);
-    assert_eq!(owner_b.allocated_total, 10);
-    assert_eq!(owner_b.unmet_total, 0);
-}
-
-#[test]
-fn owner_silo_disburse_down_cpu_records_remaining_and_unmet() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_owner_silo_disburse_down_plan(&spec).expect("compile");
-    for result in &plan.cpu_results {
-        assert_eq!(
-            result.remaining_after,
-            result
-                .available_before
-                .saturating_sub(result.allocated_total)
-        );
-        let sum_unmet: u32 = result.allocations.iter().map(|a| a.unmet).sum();
-        assert_eq!(result.unmet_total, sum_unmet);
-    }
-}
-
-#[test]
 fn owner_silo_disburse_down_scenario_authority_unchanged() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let before = serialize_scenario_authority(&spec).expect("serialize");

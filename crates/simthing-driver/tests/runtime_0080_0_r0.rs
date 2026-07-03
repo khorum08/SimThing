@@ -136,12 +136,6 @@ fn runtime_0080_r0_holds_world_state_gpu_resident_across_ticks() {
 }
 
 #[test]
-fn runtime_0080_r0_avoids_intermediate_cpu_state_readback_between_ticks() {
-    let admitted = report();
-    assert_eq!(admitted.inter_tick_world_readbacks, 0);
-}
-
-#[test]
 fn runtime_0080_r0_r4_f32_within_accepted_bound() {
     let admitted = report();
     assert!(admitted.r4_within_bound);

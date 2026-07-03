@@ -310,14 +310,3 @@ fn mobility_gpu_kernel9_frame_stream_no_default_runtime_cost_when_disabled() {
     assert_eq!(report.named_gate, MOBILITY_GPU_KERNEL9_NAMED_GATE);
 }
 
-#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
-#[test]
-fn mobility_gpu_kernel9_frame_cpu_checksum_is_order_sensitive() {
-    let report = run_mobility_gpu_kernel9_fixture(&fixture_input());
-    let canonical = frame_by_id(&report, MOBILITY_GPU_KERNEL9_FRAME_CANONICAL);
-    let alt = frame_by_id(&report, MOBILITY_GPU_KERNEL9_FRAME_ALT_ORDER);
-    assert_ne!(
-        frame_cpu_checksum(&canonical.variants),
-        frame_cpu_checksum(&alt.variants)
-    );
-}

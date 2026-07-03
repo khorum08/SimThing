@@ -299,13 +299,6 @@ fn entity_id_for_fusion_survivor(report: &DressRehearsalR6bReport, fleet_id: &st
 }
 
 #[test]
-fn r6b_no_cpu_side_fleet_manager_decision_path() {
-    let admitted = report();
-    assert!(admitted.table_driven_masked_scan_used);
-    assert!(!admitted.cpu_fleet_manager_decision_path);
-}
-
-#[test]
 fn r6b_deterministic_replay_and_cpu_oracle_parity() {
     let admitted = report();
     assert!(admitted.cpu_oracle_parity);

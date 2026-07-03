@@ -201,21 +201,6 @@ fn c5_accumulator_mean_three_runs_bit_identical() {
 }
 
 #[test]
-fn c5_mean_legacy_vs_accumulator_within_1e_5() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let (mut state, reg, topo, flat) = setup_mean_state();
-    let golden = golden_output(&topo, &reg, &flat);
-    run_c5_reduction_only(&mut state);
-    let acc = state.read_output_vectors();
-    let err = max_abs_error(&golden, &acc);
-    assert!(err < TOL, "golden vs accumulator max_abs_error={err}");
-}
-
-#[test]
 fn c5_accumulator_weighted_mean_three_runs_bit_identical() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
@@ -236,54 +221,6 @@ fn c5_accumulator_weighted_mean_three_runs_bit_identical() {
     for (i, (a, b)) in run1.iter().zip(run3.iter()).enumerate() {
         assert_eq!(a.to_bits(), b.to_bits(), "run1 vs run3 at {i}");
     }
-}
-
-#[test]
-fn c5_weighted_mean_legacy_vs_accumulator_within_1e_5() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let (mut state, reg, topo, flat) = setup_weighted_mean_state();
-    let golden = golden_output(&topo, &reg, &flat);
-    run_c5_reduction_only(&mut state);
-    let acc = state.read_output_vectors();
-    let err = max_abs_error(&golden, &acc);
-    assert!(err < TOL, "golden vs accumulator max_abs_error={err}");
-}
-
-#[test]
-fn c5_weighted_mean_reads_exact_reduced_weight_columns_by_depth() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let (mut state, reg, topo, flat) = setup_weighted_mean_state();
-    let golden = golden_output(&topo, &reg, &flat);
-    run_c5_reduction_only(&mut state);
-    let c5 = state.read_output_vectors();
-
-    let cross_err = max_abs_error(&golden, &c5);
-    assert!(
-        cross_err < TOL,
-        "golden vs C-5 max_abs_error={cross_err} (exact-weight dependency ordering)"
-    );
-
-    // (0*1 + 1*100) / 101 — sensitive to whether world WeightedMean sees
-    // exact-summed location population or stale leaf-copy weights.
-    const EXPECTED_WORLD_LOYALTY: f32 = 100.0 / 101.0;
-
-    let loyalty_id = reg.id_of("core", "loyalty").expect("loyalty");
-    let loyalty_layout = reg.property(loyalty_id).layout.clone();
-    let loyalty_a_off = loyalty_layout.offset_of(&SubFieldRole::Amount).unwrap();
-    let loyalty_gpu_col = reg.column_range(loyalty_id).start + loyalty_a_off;
-    let world_loyalty = c5[loyalty_gpu_col];
-    assert!(
-        (world_loyalty - EXPECTED_WORLD_LOYALTY).abs() < TOL,
-        "world loyalty={world_loyalty} expected={EXPECTED_WORLD_LOYALTY}"
-    );
 }
 
 #[test]

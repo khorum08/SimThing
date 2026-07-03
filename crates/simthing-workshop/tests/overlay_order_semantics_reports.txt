@@ -23,20 +23,20 @@ current_deterministic: true
 pivot_deterministic: true
 
 Timing:
-cpu_current_us: 16
-cpu_compile_us: 258
-current_warm_mean_us: 796
-current_warm_min_us: 620
-current_warm_max_us: 1052
-pivot_warm_mean_us: 724
-pivot_warm_min_us: 638
-pivot_warm_max_us: 837
-speedup_pivot_vs_current: 1.099x
+cpu_current_us: 15
+cpu_compile_us: 285
+current_warm_mean_us: 852
+current_warm_min_us: 596
+current_warm_max_us: 1590
+pivot_warm_mean_us: 881
+pivot_warm_min_us: 672
+pivot_warm_max_us: 1895
+speedup_pivot_vs_current: 0.967x
 
 Interpretation:
 semantic_gate: PASS
 determinism_gate: PASS
-performance_interpretation: Modest pivot advantage (1.10x, 1.0–1.5x band)
+performance_interpretation: Current competitive (pivot <= 1.0x)
 risk_interpretation: low compression — compiler mostly preserves per-overlay ops; mixed op kinds detected in bands — compiler remained conservative (unsafe_grouping_detected=true); overlay_semantic_class=WEAK_PASS
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
 
@@ -64,20 +64,20 @@ current_deterministic: true
 pivot_deterministic: true
 
 Timing:
-cpu_current_us: 15762
-cpu_compile_us: 95773
-current_warm_mean_us: 73723
-current_warm_min_us: 68569
-current_warm_max_us: 82604
-pivot_warm_mean_us: 60877
-pivot_warm_min_us: 54429
-pivot_warm_max_us: 72527
-speedup_pivot_vs_current: 1.211x
+cpu_current_us: 11731
+cpu_compile_us: 84821
+current_warm_mean_us: 64993
+current_warm_min_us: 64175
+current_warm_max_us: 66413
+pivot_warm_mean_us: 49896
+pivot_warm_min_us: 48638
+pivot_warm_max_us: 51225
+speedup_pivot_vs_current: 1.303x
 
 Interpretation:
 semantic_gate: PASS
 determinism_gate: PASS
-performance_interpretation: Modest pivot advantage (1.21x, 1.0–1.5x band)
+performance_interpretation: Modest pivot advantage (1.30x, 1.0–1.5x band)
 risk_interpretation: meaningful compression (83.0% of raw overlays); mixed op kinds detected in bands — compiler remained conservative (unsafe_grouping_detected=true); overlay_semantic_class=STRONG_PASS
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
 
@@ -105,20 +105,20 @@ current_deterministic: true
 pivot_deterministic: true
 
 Timing:
-cpu_current_us: 13329
-cpu_compile_us: 160009
-current_warm_mean_us: 97526
-current_warm_min_us: 95154
-current_warm_max_us: 100218
-pivot_warm_mean_us: 87845
-pivot_warm_min_us: 86815
-pivot_warm_max_us: 89093
-speedup_pivot_vs_current: 1.110x
+cpu_current_us: 12857
+cpu_compile_us: 149709
+current_warm_mean_us: 96812
+current_warm_min_us: 92430
+current_warm_max_us: 103474
+pivot_warm_mean_us: 86038
+pivot_warm_min_us: 83511
+pivot_warm_max_us: 87334
+speedup_pivot_vs_current: 1.125x
 
 Interpretation:
 semantic_gate: PASS
 determinism_gate: PASS
-performance_interpretation: Modest pivot advantage (1.11x, 1.0–1.5x band)
+performance_interpretation: Modest pivot advantage (1.13x, 1.0–1.5x band)
 risk_interpretation: low compression — compiler mostly preserves per-overlay ops; mixed op kinds detected in bands — compiler remained conservative (unsafe_grouping_detected=true); overlay_semantic_class=WEAK_PASS
 note: GPU warm timings include buffer upload, dispatch, wait, and readback; not pure shader time.
 

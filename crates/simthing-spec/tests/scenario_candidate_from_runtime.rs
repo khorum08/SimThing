@@ -164,12 +164,6 @@ fn scenario_candidate_from_runtime_uses_gpu_compatible_source_rows() {
 }
 
 #[test]
-fn scenario_candidate_from_runtime_cpu_candidate_serialization_only() {
-    let report = evaluate_fixture();
-    assert!(report.cpu_candidate_serialization_only);
-}
-
-#[test]
 fn scenario_candidate_from_runtime_defers_candidate_save() {
     let report = evaluate_fixture();
     assert!(report.candidate_save_deferred);
