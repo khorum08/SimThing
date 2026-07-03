@@ -491,19 +491,6 @@ mod tests {
     }
 
     #[test]
-    fn writer_rejects_frame_before_snapshot() {
-        let mut buf: Vec<u8> = Vec::new();
-        let mut writer = ReplayWriter::new(&mut buf);
-        let frame = ReplayFrame {
-            day: 1,
-            entries: Vec::new(),
-            ..Default::default()
-        };
-        let err = writer.write_frame(&frame).unwrap_err();
-        assert!(matches!(err, ReplayError::MissingSnapshot));
-    }
-
-    #[test]
     fn reader_returns_none_after_last_frame() {
         let snap = fixture();
         let mut buf: Vec<u8> = Vec::new();

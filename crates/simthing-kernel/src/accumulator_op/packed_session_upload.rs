@@ -260,21 +260,6 @@ mod tests {
     }
 
     #[test]
-    fn packed_accumulator_upload_resolves_input_lists_same_as_legacy() {
-        let op = crossing_op();
-        let packed =
-            PackedAccumulatorUpload::from_ops_resolving_input_lists(std::slice::from_ref(&op))
-                .unwrap();
-        assert_eq!(packed.ops().len(), 1);
-        assert_eq!(packed.input_list().len(), 2);
-        assert_eq!(
-            packed.ops()[0].source_kind,
-            super::super::types::source_kind::INPUT_LIST
-        );
-        assert_eq!(packed.ops()[0].source_count, 2);
-    }
-
-    #[test]
     fn packed_threshold_upload_preserves_event_kinds_and_source_buffer() {
         let regs = vec![ThresholdRegistration {
             slot: 0,

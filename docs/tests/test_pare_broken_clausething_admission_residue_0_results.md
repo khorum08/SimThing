@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** — local targeted proof complete; GitHub Doctrine Exec pending on PR merge ref.
+**DONE — merged #1098**. Live inventory after merge: **5671**.
 
 ## Ruling applied
 

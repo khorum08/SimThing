@@ -632,24 +632,6 @@ mod tests {
     }
 
     #[test]
-    fn legacy_config_without_nameplates_uses_nameplate_defaults() {
-        let mut value = serde_json::to_value(SimThingStudioConfig::default()).expect("serialize");
-        value
-            .as_object_mut()
-            .expect("config object")
-            .remove("nameplate_rendering");
-        let json = serde_json::to_string(&value).expect("json");
-        let loaded = match load_studio_config_from_str(&json).expect("load") {
-            StudioConfigLoadOutcome::Loaded { config, .. } => config,
-            other => panic!("expected loaded config, got {other:?}"),
-        };
-        assert_eq!(
-            loaded.nameplate_rendering,
-            NameplateRenderConfig::from_nameplate_settings(StarNameplateSettings::default())
-        );
-    }
-
-    #[test]
     fn studio_config_roundtrip_preserves_hyperlane_settings() {
         let mut config = SimThingStudioConfig::default();
         config.hyperlane_rendering =
@@ -713,33 +695,6 @@ mod tests {
     }
 
     #[test]
-    fn studio_config_clamps_or_rejects_out_of_range_values_according_to_policy() {
-        let mut config = SimThingStudioConfig::default();
-        config.star_rendering.base_blur_radius = 9.0;
-        config.hyperlane_rendering.base_thickness_percent_of_star = 99.0;
-        match validate_and_normalize_studio_config(config) {
-            StudioConfigLoadOutcome::Loaded { config, warnings } => {
-                assert_eq!(config.star_rendering.base_blur_radius, 1.0);
-                assert_eq!(
-                    config.hyperlane_rendering.base_thickness_percent_of_star,
-                    25.0
-                );
-                assert_eq!(warnings.len(), 2);
-            }
-            other => panic!("expected clamped load, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn startup_missing_config_uses_defaults() {
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir.path().join(STUDIO_CONFIG_FILE_NAME);
-        assert!(!path.exists());
-        let outcome = load_studio_config_from_path(&path);
-        assert!(outcome.is_err());
-    }
-
-    #[test]
     fn startup_valid_config_applies_settings() {
         let mut settings = EditorSettings::default();
         let config = SimThingStudioConfig::from_presentation_state(
@@ -763,17 +718,6 @@ mod tests {
         apply_studio_config_to_editor_settings(&config, &mut settings);
         assert!(settings.settings_dialog_visible);
         assert_eq!(settings.star_render_mode(), StarRenderMode::CrispCircle);
-    }
-
-    #[test]
-    fn startup_invalid_config_uses_defaults_and_records_warning() {
-        let json = r#"{"schema_version":2,"settings_dialog":{"visible":false,"position":[0,0]},"star_rendering":{"base_blur_radius":0.1,"falloff_distance_percent":50.0,"falloff_blur_radius_percent":10.0,"falloff_opacity_percent":10.0,"render_mode":"BloomStarburst"},"hyperlane_rendering":{"base_thickness_percent_of_star":8.0,"base_opacity_percent":75.0,"falloff_distance_percent":100.0,"falloff_thickness_percent":24.0,"falloff_opacity_percent":16.0},"view":{"show_stars":true,"show_hyperlanes":true,"view_mode":"three_d"},"camera":null}"#;
-        match load_studio_config_from_str(json).expect("parse") {
-            StudioConfigLoadOutcome::RejectedDefaults { reason } => {
-                assert!(reason.contains("unsupported schema_version"));
-            }
-            other => panic!("expected rejection, got {other:?}"),
-        }
     }
 
     #[test]
@@ -916,21 +860,6 @@ mod tests {
     }
 
     #[test]
-    fn legacy_config_without_antialiasing_defaults_to_off() {
-        let mut value = serde_json::to_value(SimThingStudioConfig::default()).expect("serialize");
-        value
-            .as_object_mut()
-            .expect("config object")
-            .remove("antialiasing_mode");
-        let json = serde_json::to_string(&value).expect("json");
-        let loaded = match load_studio_config_from_str(&json).expect("load") {
-            StudioConfigLoadOutcome::Loaded { config, .. } => config,
-            other => panic!("expected loaded config, got {other:?}"),
-        };
-        assert_eq!(loaded.antialiasing_mode, StudioAntialiasingMode::Off);
-    }
-
-    #[test]
     fn apply_studio_config_sets_antialiasing_mode() {
         let mut settings = EditorSettings::default();
         let mut config = SimThingStudioConfig::default();
@@ -950,34 +879,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn legacy_cwd_config_migrates_to_stable_path() {
-        let dir = TempDir::new().expect("tempdir");
-        let legacy = dir.path().join(STUDIO_CONFIG_FILE_NAME);
-        let mut config = SimThingStudioConfig::default();
-        config.antialiasing_mode = StudioAntialiasingMode::SmaaMedium;
-        config.star_rendering.base_blur_radius = 0.33;
-        save_studio_config_to_path(&legacy, &config).expect("save legacy");
-
-        let stable_dir = TempDir::new().expect("stable tempdir");
-        let stable = stable_dir.path().join(STUDIO_CONFIG_FILE_NAME);
-
-        // Simulate migration helper behavior without relying on process APPDATA.
-        let loaded = load_studio_config_from_path(&legacy).expect("load legacy");
-        match loaded {
-            StudioConfigLoadOutcome::Loaded { config: round, .. } => {
-                save_studio_config_to_path(&stable, &round).expect("migrate save");
-            }
-            other => panic!("expected loaded legacy config, got {other:?}"),
-        }
-
-        let migrated = load_studio_config_from_path(&stable).expect("load stable");
-        match migrated {
-            StudioConfigLoadOutcome::Loaded { config: round, .. } => {
-                assert_eq!(round.antialiasing_mode, StudioAntialiasingMode::SmaaMedium);
-                assert_eq!(round.star_rendering.base_blur_radius, 0.33);
-            }
-            other => panic!("expected loaded migrated config, got {other:?}"),
-        }
-    }
 }

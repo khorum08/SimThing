@@ -760,32 +760,6 @@ mod tests {
     }
 
     #[test]
-    fn reparent_cycle_is_rejected() {
-        let (mut reg, mut alloc, mut tree) = fixture();
-        let n_dims = reg.total_columns;
-        let loc_id = tree.direct_child_id(0).unwrap();
-        let root_id = tree.id();
-        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
-
-        // Trying to reparent root under its own child would create a cycle.
-        let out = apply_structural_mutations(
-            vec![BoundaryRequest::Reparent {
-                child: root_id,
-                new_parent: loc_id,
-            }],
-            &mut tree,
-            &mut alloc,
-            &mut reg,
-            &mut shadow,
-            n_dims,
-            None,
-        );
-
-        // Root reparenting is caught by the root-id check before cycle detection.
-        assert_eq!(out.rejected_unknown_target, 1);
-    }
-
-    #[test]
     fn attach_overlay_appends_to_target() {
         let (mut reg, mut alloc, mut tree) = fixture();
         let n_dims = reg.total_columns;

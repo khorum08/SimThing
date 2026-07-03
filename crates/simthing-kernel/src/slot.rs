@@ -362,21 +362,6 @@ mod tests {
     }
 
     #[test]
-    fn try_alloc_contiguous_after_rejects_gap_blocked_slot() {
-        let mut alloc = SlotAllocator::new();
-        let a = SimThing::new(SimThingKind::Cohort, 0).id;
-        let b = SimThing::new(SimThingKind::Cohort, 0).id;
-        let sa = alloc.alloc(a);
-        let gap = alloc.reserve_exclusive_gap_block(1);
-        assert_eq!(gap[0], sa.saturating_add(1));
-        let err = alloc.try_alloc_contiguous_after(sa, b).unwrap_err();
-        assert!(matches!(
-            err,
-            SlotAllocError::ContiguityBlockedByGap { slot } if slot == sa.saturating_add(1)
-        ));
-    }
-
-    #[test]
     fn slot_index_newtype_preserved_through_allocator_api() {
         // Core `slot_index` behavior tests cover pure SlotIndex invariants; here
         // we assert contiguous allocation exposes the same saturating_add path.

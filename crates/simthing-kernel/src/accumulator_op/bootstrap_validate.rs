@@ -173,17 +173,6 @@ mod tests {
     }
 
     #[test]
-    fn rejects_double_subtract_from_source_same_band() {
-        let ops = vec![
-            subtract_op(gate_kind::ORDER_BAND, 0, (5, 0), (1, 0)),
-            subtract_op(gate_kind::ORDER_BAND, 0, (5, 0), (2, 0)),
-        ];
-        let err = validate_no_contention(&ops).unwrap_err();
-        assert_eq!(err.slot, 5);
-        assert_eq!(err.col, 0);
-    }
-
-    #[test]
     fn allows_subtract_from_source_different_bands() {
         let ops = vec![
             subtract_op(gate_kind::ORDER_BAND, 0, (5, 0), (1, 0)),

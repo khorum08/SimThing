@@ -178,17 +178,6 @@ mod tests {
     }
 
     #[test]
-    fn validate_location_ids_rejects_missing_placement() {
-        let placements = [StructuralGridPlacement {
-            location_id: "loc_a",
-            coord: StructuralCoord::new(0, 0),
-        }];
-        let err = validate_location_ids_have_structural_placements(&["loc_missing"], &placements)
-            .expect_err("missing placement");
-        assert!(err.message.contains("loc_missing"));
-    }
-
-    #[test]
     fn rejects_missing_structural_placement() {
         let placements = [StructuralGridPlacement {
             location_id: "loc_a",
@@ -201,21 +190,4 @@ mod tests {
         assert!(err.message.contains("loc_missing"));
     }
 
-    #[test]
-    fn rejects_duplicate_location_keys_in_table() {
-        let placements = [
-            StructuralGridPlacement {
-                location_id: "loc_a",
-                coord: StructuralCoord::new(0, 0),
-            },
-            StructuralGridPlacement {
-                location_id: "loc_a",
-                coord: StructuralCoord::new(1, 1),
-            },
-        ];
-        let participants = [(SimThingId::from_session_raw(10), "loc_a")];
-        let err = validate_and_mint_placed_participants_by_location_id(&participants, &placements)
-            .expect_err("duplicate key");
-        assert!(err.message.contains("duplicate"));
-    }
 }

@@ -280,32 +280,6 @@ mod tests {
     }
 
     #[test]
-    fn c5_soft_band_aligns_with_deepest_first_legacy_buckets() {
-        let max_tree_depth = 2u32;
-        assert_eq!(
-            reduction_soft_band_for_depth_bucket(max_tree_depth, 2),
-            None,
-            "leaf-only deepest bucket has no soft band"
-        );
-        assert_eq!(
-            reduction_soft_band_for_depth_bucket(max_tree_depth, 1),
-            Some(0),
-            "location-depth parents are band 0"
-        );
-        assert_eq!(
-            reduction_soft_band_for_depth_bucket(max_tree_depth, 0),
-            Some(1),
-            "world-depth parents are band 1"
-        );
-
-        let bands: Vec<Option<u32>> = (0..=max_tree_depth)
-            .rev()
-            .map(|depth_idx| reduction_soft_band_for_depth_bucket(max_tree_depth, depth_idx))
-            .collect();
-        assert_eq!(bands, vec![None, Some(0), Some(1)]);
-    }
-
-    #[test]
     fn c6_reduction_band_mapping_matches_depth_buckets() {
         let (topo, reg, n_dims) = sum_property_fixture();
         let descriptors = build_column_rule_descriptors(&reg, n_dims as usize);

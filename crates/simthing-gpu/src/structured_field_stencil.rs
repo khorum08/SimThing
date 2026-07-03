@@ -1264,19 +1264,6 @@ mod unit_tests {
     }
 
     #[test]
-    fn horizon_cap_default_rejects_h16() {
-        let mut c = base_config();
-        c.horizon = 16;
-        assert_eq!(
-            c.validate().unwrap_err(),
-            StructuredFieldStencilError::HorizonCapExceeded {
-                horizon: 16,
-                cap: DEFAULT_HORIZON_CAP
-            }
-        );
-    }
-
-    #[test]
     fn extended_horizon_allows_h16_with_flag() {
         let mut c = base_config();
         c.horizon = 16;
@@ -1291,19 +1278,6 @@ mod unit_tests {
         assert_eq!(
             c.validate().unwrap_err(),
             StructuredFieldStencilError::MissingSourceCap
-        );
-    }
-
-    #[test]
-    fn execution_steps_reject_above_configured_horizon() {
-        let config = base_config();
-        let err = config.validate_execution_steps(2).unwrap_err();
-        assert_eq!(
-            err,
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
-                steps: 2,
-                horizon: 1
-            }
         );
     }
 

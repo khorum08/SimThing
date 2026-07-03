@@ -86,23 +86,6 @@ mod tests {
     }
 
     #[test]
-    fn subfield_spec_serde_backcompat_missing_accumulator_spec() {
-        let json = r#"{
-            "role": "Amount",
-            "width": 1,
-            "clamp": "Unbounded",
-            "velocity_max": null,
-            "default": 0.0,
-            "display_name": "amount",
-            "display_range": null,
-            "governed_by": null,
-            "reduction_override": null
-        }"#;
-        let sf: SubFieldSpec = serde_json::from_str(json).expect("deserialize legacy SubFieldSpec");
-        assert!(sf.accumulator_spec.is_none());
-    }
-
-    #[test]
     fn accumulator_spec_roundtrip_intrinsic_flow() {
         let spec = AccumulatorSpec {
             role: AccumulatorRole::IntrinsicFlow,

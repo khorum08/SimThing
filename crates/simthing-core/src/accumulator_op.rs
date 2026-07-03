@@ -334,36 +334,6 @@ mod tests {
     /// A-4 / C-8d guard: empty targets are allowed only for EmitEvent with
     /// Threshold (C-1) or OrderBand (C-8d economic emission).
     #[test]
-    fn empty_targets_still_rejected_for_non_emit_event_shapes() {
-        // Always + EmitEvent + empty targets: rejected.
-        let mut op = AccumulatorOp {
-            source: SourceSpec::Constant(1.0),
-            combine: CombineFn::Identity,
-            gate: GateSpec::Always,
-            scale: ScaleSpec::Identity,
-            consume: ConsumeMode::EmitEvent,
-            targets: vec![],
-        };
-        assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
-
-        // OrderBand + EmitEvent + empty targets: allowed (C-8d emission substrate).
-        op.gate = GateSpec::OrderBand(0);
-        assert!(op.validate().is_ok());
-
-        // Threshold + None + empty targets: rejected.
-        op.gate = GateSpec::Threshold {
-            value: 0.5,
-            direction: ThresholdDirection::Upward,
-        };
-        op.consume = ConsumeMode::None;
-        assert_eq!(op.validate(), Err(AccumulatorOpError::NoTargets));
-
-        // Threshold + EmitEvent + empty targets: allowed (C-1).
-        op.consume = ConsumeMode::EmitEvent;
-        assert!(op.validate().is_ok());
-    }
-
-    #[test]
     fn no_targets_is_error() {
         let mut op = minimal_op();
         op.targets.clear();

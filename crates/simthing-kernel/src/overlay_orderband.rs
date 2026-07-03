@@ -190,13 +190,4 @@ mod tests {
         assert_eq!(plan.n_bands, 0);
     }
 
-    #[test]
-    fn c4_planner_no_duplicate_band_slot_col() {
-        let deltas = vec![
-            delta(0, OP_ADD, 1.0),
-            delta(1, OP_MULTIPLY, 2.0),
-            delta(0, OP_SET, 3.0),
-        ];
-        let _ = plan_overlay_orderband(&deltas, &[range(0, 3)], 1);
-    }
 }

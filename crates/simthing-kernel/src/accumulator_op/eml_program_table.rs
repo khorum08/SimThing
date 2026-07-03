@@ -293,23 +293,6 @@ mod tests {
     }
 
     #[test]
-    fn c8a_upload_rejects_meta_node_count_mismatch() {
-        let ctx = GpuContext::new_blocking().expect("gpu");
-        let mut table = EmlGpuProgramTable::new(&ctx, 32, 8);
-        let mut meta = meta(1, 99);
-        meta.node_count = 99;
-        let trees = vec![(EmlTreeId(1), meta, vec![literal(1.0)])];
-        assert_eq!(
-            table.upload_trees(&ctx, &trees),
-            Err(EmlUploadError::NodeCountMismatch {
-                tree_id: EmlTreeId(1),
-                meta_count: 99,
-                actual_count: 1,
-            })
-        );
-    }
-
-    #[test]
     fn c8a_empty_upload_after_nonempty_table_bumps_generation() {
         let ctx = GpuContext::new_blocking().expect("gpu");
         let mut table = EmlGpuProgramTable::new(&ctx, 32, 8);

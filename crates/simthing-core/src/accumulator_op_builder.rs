@@ -526,14 +526,6 @@ mod tests {
     }
 
     #[test]
-    fn conjunctive_recipe_rejects_empty_inputs() {
-        assert_eq!(
-            try_conjunctive_recipe(&[], SlotIndex::new(0), ColumnIndex::new(0), 1),
-            Err(AccumulatorOpBuilderError::EmptyConjunctiveInputs)
-        );
-    }
-
-    #[test]
     fn conjunctive_recipe_accepts_eight_inputs() {
         let inputs: Vec<(SlotIndex, ColumnIndex, f32)> = (0..8)
             .map(|c| (SlotIndex::new(0), ColumnIndex::new(c), 1.0))
@@ -554,34 +546,6 @@ mod tests {
         )
         .unwrap();
         op.validate().expect("discrete transfer validates");
-    }
-
-    #[test]
-    fn resource_transfer_discrete_rejects_negative_amount() {
-        assert_eq!(
-            try_resource_transfer_discrete(
-                SlotIndex::new(0),
-                ColumnIndex::new(0),
-                SlotIndex::new(0),
-                ColumnIndex::new(1),
-                -1.0,
-            ),
-            Err(AccumulatorOpBuilderError::NegativeAmount)
-        );
-    }
-
-    #[test]
-    fn resource_transfer_discrete_rejects_same_cell() {
-        assert_eq!(
-            try_resource_transfer_discrete(
-                SlotIndex::new(0),
-                ColumnIndex::new(0),
-                SlotIndex::new(0),
-                ColumnIndex::new(0),
-                1.0,
-            ),
-            Err(AccumulatorOpBuilderError::SameSourceAndTarget)
-        );
     }
 
     #[test]

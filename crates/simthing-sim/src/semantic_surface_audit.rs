@@ -179,13 +179,4 @@ pub mod tests {
         );
     }
 
-    #[test]
-    fn sim_public_surface_rejects_raw_simthing_borrows() {
-        as_sim_semantic_free_public_surface_audit();
-    }
-
-    #[test]
-    fn sim_public_surface_rejects_owned_simthing_escape() {
-        as_sim_semantic_free_public_surface_audit();
-    }
 }
