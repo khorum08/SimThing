@@ -221,7 +221,7 @@ mod tests {
     use super::*;
     use crate::arena_hierarchy::{build_custom_layout, HierarchyNode, NodeColumnRefs};
     use crate::arena_registry::GpuArenaDescriptor;
-    use simthing_core::SimPropertyId;
+    use simthing_core::{SimPropertyId, SlotIndex};
 
     fn arena_desc(max_depth_budget: u32) -> GpuArenaDescriptor {
         GpuArenaDescriptor {
@@ -257,7 +257,7 @@ mod tests {
         let c = cols();
         let leaves = vec![
             HierarchyNode {
-                participant_slot: 11,
+                participant_slot: SlotIndex::new(11),
                 hosted_simthing_id: Default::default(),
                 depth: 1,
                 children: vec![],
@@ -265,7 +265,7 @@ mod tests {
                 gap_used: 0,
             },
             HierarchyNode {
-                participant_slot: 12,
+                participant_slot: SlotIndex::new(12),
                 hosted_simthing_id: Default::default(),
                 depth: 1,
                 children: vec![],
@@ -274,14 +274,22 @@ mod tests {
             },
         ];
         let root = HierarchyNode {
-            participant_slot: 10,
+            participant_slot: SlotIndex::new(10),
             hosted_simthing_id: Default::default(),
             depth: 0,
             children: leaves,
             cols: c,
             gap_used: 0,
         };
-        build_custom_layout(0, &arena_desc(16), c, Default::default(), 9, vec![root]).unwrap()
+        build_custom_layout(
+            0,
+            &arena_desc(16),
+            c,
+            Default::default(),
+            SlotIndex::new(9),
+            vec![root],
+        )
+        .unwrap()
     }
 
 }
