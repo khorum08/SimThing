@@ -2,117 +2,105 @@
 
 ## Status
 
-PROBATION - pending DA review.
+INTERVENTION 0I APPLIED / PROBATION - DA review required.
 
-This rung retired non-compiling fossil test binaries surfaced by the D2o major finding and by the required iterative `cargo check -p <crate> --tests` floor. It does not self-mark COMPLETE and is not merge-cleared without DA review.
+#1106 is not merge-authorized. Passing local checks or a green CI result is proof input only, not clearance.
+
+INTERVENTION 0I applied: #1106 was corrected after scope review. CI/gate-state edits were reverted or neutralized; admission-substrate deletions were restored/deferred; simthing-kernel remained untouched; deletion continued aggressively only across allowed non-kernel, non-admission test surfaces. PR remains PROBATION / DA review required. No merge authorization.
 
 ## PR / branch / merge
 
 - Branch: `test-repair-or-replace-true-oracle-binaries-0`
 - PR: #1106
 - Base SHA: `6c637fcd89f2293408656825186e515618737c57`
+- Prior intervention head: `f26682eae33931e7d29dd293bb829909490f9724`
 - Merge SHA, if merged: none
 
-## Pre-flight verification
+## Scope correction
 
-- `master` contains #1105 merge `6c637fcd89f2293408656825186e515618737c57`.
-- Opening Track D inventory: 5,147 rows.
-- The six closed D2o `td-csd-*` edit-scope rows were present before this rung and were removed as the first edit.
-- `docs/tests/test_pare_conservative_survivor_delete_0_results.md` records the D2o major finding and names this follow-on.
+- Reverted CI/gate-state profile/scope edits: `scripts/ci/doctrine_exec_profiles.tsv` and `scripts/ci/test_edit_scope.tsv` are restored to the master/base state. This PR no longer adds `test-repair-or-replace-true-oracle-binaries`, changes `sentinel-core`, or carries `td-torb-*` scope authority.
+- Restored/deferred admission-substrate files: 9 files / 30 inventory rows under `crates/simthing-spec/tests/**` and `crates/simthing-clausething/tests/**`.
+- Kernel files touched: no.
+- Allowed-surface deletions retained: 115 non-kernel, non-admission fossil test binaries / 895 inventory rows across `simthing-driver`, `simthing-sim`, and `simthing-gpu`.
+- New replacement binaries added by the aborted 0R path: none.
+- Scanner/allowlist edits: none.
 
-## Discovery sweep
+## Deferred admission-substrate deletion candidates
 
-The required compile sweep was run with exact `cargo check -p <crate> --tests` commands over `simthing-core`, `simthing-kernel`, `simthing-sim`, `simthing-driver`, `simthing-spec`, `simthing-workshop`, `simthing-clausething`, `simthing-mapgenerator`, and `simthing-gpu`.
+Follow-on rung: `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0`.
 
-The first sweep found broken binaries in `simthing-sim`, `simthing-driver`, `simthing-spec`, `simthing-clausething`, and `simthing-gpu`. Iterative driver sweeps then exposed dependent fossil callers until the full floor passed.
+| Path | Reason discovered | Why deletion is deferred | Recommended follow-on |
+|---|---|---|---|
+| `crates/simthing-clausething/tests/ct_1b_recalc.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-clausething/tests/ct_1c_tradition.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-clausething/tests/ct_3b_4a_gpu_projection.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-clausething/tests/ct_3b_4a_headline.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-clausething/tests/ct_3b_4a_session_loop.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-clausething/tests/ct_rf_eml_rate.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-spec/tests/owner_silo_disburse_down.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-spec/tests/owner_silo_runtime_writeback.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+| `crates/simthing-spec/tests/resource_flow_opt_in_roundtrip.rs` | compile-floor/dead-binary sweep | admission-substrate protected from this sweep | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
+
+## Review table
 
 Durable review table: `docs/tests/test_repair_or_replace_true_oracle_binaries_0_review.tsv`.
 
-## What changed
+0I columns distinguish:
 
-- Removed the closed D2o temporary scope rows.
-- Added temporary scope rows for this rung's touched test/source-test surfaces.
-- Deleted 124 non-compiling fossil test binaries: 92 `simthing-driver`, 20 `simthing-sim`, 6 `simthing-clausething`, 3 `simthing-gpu`, and 3 `simthing-spec`.
-- Removed 925 matching live inventory rows and recorded historical `PARED` audit rows under this deletion wave.
-- Removed protected coverage rows that pointed at deleted/non-compiling owners.
-- Added the targeted Doctrine Exec profile `test-repair-or-replace-true-oracle-binaries`.
-- Added/updated bounded `sentinel-core` to carry the same GHA-safe tests-compile floor.
-- Made narrow `#[cfg(test)]` driver source fixes for current slot newtypes.
+- `DEFERRED_ADMISSION_SUBSTRATE` for every restored spec/clausething row.
+- `DELETED_ALLOWED_SURFACE` for retained deletions in allowed non-kernel, non-admission test surfaces.
+- `OWNED_BY_EXISTING_COMPILING_TEST` where a deleted live surface has an existing current owner.
+- `DEFERRED_FOR_DA` where a live surface needs DA review rather than a new replacement binary in this intervention.
 
-## Deleted / replaced / repaired
+## Inventory
 
-- Deleted: 925 inventory rows / 124 files.
-- Replaced: none.
-- Repaired: test-only driver source modules for `SlotIndex` API adoption.
+- Before #1106: 5,147 rows.
+- Before intervention: 4,222 rows.
+- After intervention: 4,252 rows.
+- Restored/deferred admission rows: 30.
+- Deleted allowed-surface rows retained: 895.
 
-Review-table candidate sources: `dead-binary` 71 rows, `dress-rehearsal-lineage` 9 rows, `discovery-sweep` 845 rows.
+## D2o KEEP surface dispositions
 
-## Coverage re-key
+- PALMA field-not-route: re-keyed to the existing STEAD guard `crates/simthing-clausething/tests/stead_spatial_contract_guards.rs::palma_feedstock_indexes_structural_grid_and_emits_no_routes`; not rerun in this intervention because clausething is protected from this sweep.
+- c4 lifecycle/fission inheritance: re-keyed to existing sim unit owners `crates/simthing-sim/src/tree_mutation.rs::activate_overlay_restores_parked_lifecycle` and `crates/simthing-sim/src/fission.rs::fission_clone_capability_children_remaps_affects_and_copies_shadow`.
+- c5 SoftAggregateGuard surfaces: re-keyed/deferred against existing `threshold_registry.rs` validator machinery; no new replacement binary was added because this intervention does not add inventory-backed tests.
 
-Coverage rows whose surviving owner was a deleted/non-compiling binary were removed from `docs/tests/protected_class_oracle_parity_coverage.tsv`. Existing compiling owners remain for live retained surfaces; fossil-only surfaces are recorded in the review table as retired rather than kept as false coverage claims.
+## Proof
 
-## Tests-compile floor
+0I local/static proof rerun:
 
-Local owner compile floor passed for all nine required crates:
+- `bash scripts/ci/doctrine_scan.sh`: PASS, failures=0 inspect=0.
+- `bash scripts/ci/gen_digest.sh --check`: PASS.
+- `bash scripts/ci/test_inventory_check.sh`: PASS; rows=4,252, discovered=4,252, missing=0, extra=0.
+- `bash scripts/ci/test_pare_boundary_check.sh`: PASS; live inventory rows=4,252, missing owning boundary=0.
+- `bash scripts/ci/test_inventory_drift_check.sh`: PASS; unledgered=0, stale=0.
+- `cargo check -p simthing-driver`: PASS.
+- `cargo check -p simthing-sim`: PASS.
+- `cargo check -p simthing-gpu`: PASS.
+- `cargo check -p simthing-workshop`: PASS.
+- `cargo check -p simthing-mapgenerator`: PASS.
 
-```bash
-cargo check -p simthing-core --tests
-cargo check -p simthing-kernel --tests
-cargo check -p simthing-sim --tests
-cargo check -p simthing-driver --tests
-cargo check -p simthing-spec --tests
-cargo check -p simthing-workshop --tests
-cargo check -p simthing-clausething --tests
-cargo check -p simthing-mapgenerator --tests
-cargo check -p simthing-gpu --tests
-```
-
-GHA targeted Doctrine Exec uses the same compile-only shape except for `simthing-driver`, which is local-only for this rung because its `--tests` graph currently pulls the desktop `simthing-mapeditor` / Bevy audio stack and fails on Linux without ALSA before reaching any driver test compile evidence. The live profile therefore runs:
-
-```bash
-cargo check -p simthing-core --tests
-cargo check -p simthing-kernel --tests
-cargo check -p simthing-sim --tests
-cargo check -p simthing-spec --tests
-cargo check -p simthing-workshop --tests
-cargo check -p simthing-clausething --tests
-cargo check -p simthing-mapgenerator --tests
-cargo check -p simthing-gpu --tests
-```
-
-The first #1106 targeted dispatch proved this boundary by failing only at `cargo check -p simthing-driver --tests` on `alsa-sys` pkg-config lookup, not at a retired-oracle compile error. That command remains recorded as local owner proof rather than non-owner-deep GHA proof. The corrected head's targeted dispatch passed the desktop-safe GHA floor.
-
-## Load-bearing proofs
-
-- Discovery sweep: review table records every retired row and catches hidden dead binaries outside the D2o seed set.
-- Local `cargo check --tests` floor: PASS for all nine listed crates; catches this dead-binary class reforming, including the driver fossil set.
-- GHA targeted compile floor: desktop-safe eight-crate `cargo check --tests` floor excludes only `simthing-driver` because the driver dev-dependency graph pulls Linux desktop audio setup before semantic test compilation.
-- Replacement tests: none; no replacement proofs were added.
-- Coverage map check: stale coverage rows pointing at deleted files removed; catches false coverage owners.
-- Scope gate: PASS; catches lingering closed-rung scope authority and unauthorized edit surfaces.
-- Profile lint + GHA proof-seal: PASS; catches accidental Atlas/Bevy/GPU/desktop proof in non-owner-deep GHA profiles.
-- Doctrine Scan: PASS, failures=0 inspect=0; run `28661344043`, job `85002439377`.
-- Digest: PASS locally and in Doctrine Scan.
-- Targeted Doctrine Exec: corrected desktop-safe proof-profile dispatch PASS, failures=0 inspect=0; run `28661354065`, job `85002476105`, profile `test-repair-or-replace-true-oracle-binaries`, head `e913a5602a8024ee08e497bd24d6fc503cfbff78`, tested ref `refs/pull/1106/merge`, merge ref status PASS. After evidence-only commits, the PR body / sticky Doctrine Exec comment records the latest current-head rerun.
+No broad full-crate cargo tests were used.
 
 ## Scope Ledger
 
-- Specified: delete/replace/repair dead TRUE_MEMBER oracle/parity fossil binaries; re-key coverage; add compile floors; keep PR PROBATION.
-- Implemented: deletion-dominant cleanup, coverage pruning, historical audit rows, inventory update, profile floor, source-test API repair.
+- Specified: correct #1106 scope; remove unauthorized profile/scope edits; restore/defer admission-substrate deletions; keep kernel untouched; continue deletion only in allowed surfaces.
+- Implemented: profile/scope rows reverted, protected admission files restored, inventory/audit ledger reconciled to restored files, allowed non-admission deletions retained, evidence updated.
 - Proxied: none.
-- Deferred: DA review of retired fossil-only coverage surfaces.
-- Out of scope: product logic changes, scanner/allowlist edits, mapeditor/tools GHA runtime proof, Atlas/Bevy/GPU runtime proof.
+- Deferred: admission-substrate dead-binary deletion to `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0`; DA review of live-surface owner equivalence; any CI compile-floor architecture repair.
+- Out of scope: product logic changes, scanner/allowlist edits, new CI profiles, new GHA proof-seal logic, simthing-kernel/spec/clausething replacements, merge.
 
 ## Known gaps / next
 
 - PR remains PROBATION pending DA review.
-- Targeted Doctrine Exec has passed against the current PR merge ref; DA review is still required before clearance/merge.
-- Temporary `td-torb-*` scope rows should be re-sealed after this rung closes.
+- No merge authorization.
+- Any admission-substrate deletion belongs to `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0`.
+- Any standing CI compile-floor repair belongs to a separate CI rung, not this intervention.
 
 ## Graduation routing
 
-- CI verdict: PASS-RELIABLE locally and on live PR checks; DA clearance still required before merge.
-- Triage entries: none locally.
-- Risk class: test deletion + coverage re-key + gate-wiring + temporary scope rows.
-- Falsification check: DA runs the cargo-check `--tests` floor, verifies every live oracle coverage row points at a compiling owner, perturbs one dead binary reference to prove the compile floor fails, and checks the review table against the inventory/boundary diff.
-- Recommended posture: deep - deletion against formerly TRUE_MEMBER / oracle-parity claims plus gate-wiring requires DA inspection, not light review.
+- CI verdict: pending/DA review; local proof only unless a live check is separately dispatched.
+- Risk class: deletion wave + scope correction.
+- Recommended posture: deep DA review.
+- Merge authorization: none.
