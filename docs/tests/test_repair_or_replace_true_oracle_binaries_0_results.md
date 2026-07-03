@@ -9,7 +9,7 @@ This rung retired non-compiling fossil test binaries surfaced by the D2o major f
 ## PR / branch / merge
 
 - Branch: `test-repair-or-replace-true-oracle-binaries-0`
-- PR: pending
+- PR: #1106
 - Base SHA: `6c637fcd89f2293408656825186e515618737c57`
 - Merge SHA, if merged: none
 
@@ -36,7 +36,7 @@ Durable review table: `docs/tests/test_repair_or_replace_true_oracle_binaries_0_
 - Removed 925 matching live inventory rows and recorded historical `PARED` audit rows under this deletion wave.
 - Removed protected coverage rows that pointed at deleted/non-compiling owners.
 - Added the targeted Doctrine Exec profile `test-repair-or-replace-true-oracle-binaries`.
-- Added/updated bounded `sentinel-core` to carry the same tests-compile floor.
+- Added/updated bounded `sentinel-core` to carry the same GHA-safe tests-compile floor.
 - Made narrow `#[cfg(test)]` driver source fixes for current slot newtypes.
 
 ## Deleted / replaced / repaired
@@ -53,7 +53,7 @@ Coverage rows whose surviving owner was a deleted/non-compiling binary were remo
 
 ## Tests-compile floor
 
-Added GHA-safe compile-only commands to profile `test-repair-or-replace-true-oracle-binaries` and `sentinel-core`:
+Local owner compile floor passed for all nine required crates:
 
 ```bash
 cargo check -p simthing-core --tests
@@ -67,29 +67,45 @@ cargo check -p simthing-mapgenerator --tests
 cargo check -p simthing-gpu --tests
 ```
 
+GHA targeted Doctrine Exec uses the same compile-only shape except for `simthing-driver`, which is local-only for this rung because its `--tests` graph currently pulls the desktop `simthing-mapeditor` / Bevy audio stack and fails on Linux without ALSA before reaching any driver test compile evidence. The live profile therefore runs:
+
+```bash
+cargo check -p simthing-core --tests
+cargo check -p simthing-kernel --tests
+cargo check -p simthing-sim --tests
+cargo check -p simthing-spec --tests
+cargo check -p simthing-workshop --tests
+cargo check -p simthing-clausething --tests
+cargo check -p simthing-mapgenerator --tests
+cargo check -p simthing-gpu --tests
+```
+
+The first #1106 targeted dispatch proved this boundary by failing only at `cargo check -p simthing-driver --tests` on `alsa-sys` pkg-config lookup, not at a retired-oracle compile error. That command remains recorded as local owner proof rather than non-owner-deep GHA proof.
+
 ## Load-bearing proofs
 
 - Discovery sweep: review table records every retired row and catches hidden dead binaries outside the D2o seed set.
-- `cargo check --tests` floor: PASS for all nine listed crates; catches this dead-binary class reforming.
+- Local `cargo check --tests` floor: PASS for all nine listed crates; catches this dead-binary class reforming, including the driver fossil set.
+- GHA targeted compile floor: desktop-safe eight-crate `cargo check --tests` floor excludes only `simthing-driver` because the driver dev-dependency graph pulls Linux desktop audio setup before semantic test compilation.
 - Replacement tests: none; no replacement proofs were added.
 - Coverage map check: stale coverage rows pointing at deleted files removed; catches false coverage owners.
 - Scope gate: PASS; catches lingering closed-rung scope authority and unauthorized edit surfaces.
 - Profile lint + GHA proof-seal: PASS; catches accidental Atlas/Bevy/GPU/desktop proof in non-owner-deep GHA profiles.
 - Doctrine Scan: PASS, failures=0 inspect=0.
-- Targeted Doctrine Exec: pending PR `/seal-proof profile=test-repair-or-replace-true-oracle-binaries`.
+- Targeted Doctrine Exec: first #1106 dispatch failed on GHA Linux `alsa-sys` setup after the profile included local-only `simthing-driver --tests`; profile narrowed to the desktop-safe live floor and must be rerun on the current head before clearance.
 
 ## Scope Ledger
 
 - Specified: delete/replace/repair dead TRUE_MEMBER oracle/parity fossil binaries; re-key coverage; add compile floors; keep PR PROBATION.
 - Implemented: deletion-dominant cleanup, coverage pruning, historical audit rows, inventory update, profile floor, source-test API repair.
 - Proxied: none.
-- Deferred: DA review of retired fossil-only coverage surfaces; live targeted Doctrine Exec proof after PR creation.
+- Deferred: DA review of retired fossil-only coverage surfaces; live targeted Doctrine Exec rerun on the desktop-safe current head.
 - Out of scope: product logic changes, scanner/allowlist edits, mapeditor/tools GHA runtime proof, Atlas/Bevy/GPU runtime proof.
 
 ## Known gaps / next
 
 - PR remains PROBATION pending DA review.
-- Targeted Doctrine Exec must be run against the PR merge ref before clearance.
+- Targeted Doctrine Exec must be rerun against the current PR merge ref before clearance.
 - Temporary `td-torb-*` scope rows should be re-sealed after this rung closes.
 
 ## Graduation routing
