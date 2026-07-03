@@ -113,12 +113,15 @@ Trigger: `/seal-proof profile=test-pare-gpu-bevy-residue`
 
 | Run | Head | Verdict | Notes |
 |---|---|---|---|
-| `28636487452` | `811c7c0e0a` | **PASS** failures=0 inspect=0 | authoritative CPU-only profile (pre-merge) |
+| `28636990813` | `a30bf54f3e` | **PASS** failures=0 inspect=0 | authoritative master closeout (docs + merged #1100) |
+| `28636487452` | `811c7c0e0a` | PASS failures=0 inspect=0 | pre-merge CPU-only profile proof |
 | `28636114868` | `6bf8502276` | FAIL | atlas_0080_0 timed out — remediated by profile removal |
+
+Workflow-dispatch runs without a PR report `DOCTRINE-EXEC-VERDICT: INSPECT` when `merge_ref_status=UNAVAILABLE`; executable outcome is still failures=0 inspect=0.
 
 ## Graduation routing
 
-- CI verdict: **PASS** — run `28636487452`, failures 0, inspect 0 (remediated profile; atlas excluded from GHA)
+- CI verdict: **PASS** — run `28636990813` on master `a30bf54f3e`, failures 0, inspect 0 (remediated profile; atlas excluded from GHA)
 - Risk class: integration fossil deletion under DA-approved temporary tests scope; GPU/Bevy/desktop legs local-only
 - Falsification check: 251 deleted rows are Class 2 collapse targets with named representatives; Class 1 rows retained; no product code edited outside `#[test]` surfaces
 - Recommended posture: deep — largest inventory drop in Track D owner-deep residue wave
