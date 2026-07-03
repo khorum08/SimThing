@@ -30,7 +30,7 @@ INTERVENTION 0I applied: #1106 was corrected after scope review. CI/gate-state e
 
 Fable ruling required replacement representatives for SoftAggregateGuard boundary-firing and fission capability-OVERLAY inheritance. These are behavior-regression representatives with catches: notes, not new gate-state or product logic.
 
-#1106 remains HOLD pending DA/Owner review after representative restore.
+The protected-representative surface remains HOLD pending DA/Owner review of #1111 after representative restore. Parent #1106 has already merged after DA split.
 
 Representative restore branch: `codex/test-pare-protected-representative-restore-0`.
 
