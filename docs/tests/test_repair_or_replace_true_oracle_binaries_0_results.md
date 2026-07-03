@@ -80,7 +80,7 @@ cargo check -p simthing-mapgenerator --tests
 cargo check -p simthing-gpu --tests
 ```
 
-The first #1106 targeted dispatch proved this boundary by failing only at `cargo check -p simthing-driver --tests` on `alsa-sys` pkg-config lookup, not at a retired-oracle compile error. That command remains recorded as local owner proof rather than non-owner-deep GHA proof.
+The first #1106 targeted dispatch proved this boundary by failing only at `cargo check -p simthing-driver --tests` on `alsa-sys` pkg-config lookup, not at a retired-oracle compile error. That command remains recorded as local owner proof rather than non-owner-deep GHA proof. The corrected head's targeted dispatch passed the desktop-safe GHA floor.
 
 ## Load-bearing proofs
 
@@ -91,26 +91,27 @@ The first #1106 targeted dispatch proved this boundary by failing only at `cargo
 - Coverage map check: stale coverage rows pointing at deleted files removed; catches false coverage owners.
 - Scope gate: PASS; catches lingering closed-rung scope authority and unauthorized edit surfaces.
 - Profile lint + GHA proof-seal: PASS; catches accidental Atlas/Bevy/GPU/desktop proof in non-owner-deep GHA profiles.
-- Doctrine Scan: PASS, failures=0 inspect=0.
-- Targeted Doctrine Exec: first #1106 dispatch failed on GHA Linux `alsa-sys` setup after the profile included local-only `simthing-driver --tests`; profile narrowed to the desktop-safe live floor and must be rerun on the current head before clearance.
+- Doctrine Scan: PASS, failures=0 inspect=0; run `28661344043`, job `85002439377`.
+- Digest: PASS locally and in Doctrine Scan.
+- Targeted Doctrine Exec: corrected desktop-safe proof-profile dispatch PASS, failures=0 inspect=0; run `28661354065`, job `85002476105`, profile `test-repair-or-replace-true-oracle-binaries`, head `e913a5602a8024ee08e497bd24d6fc503cfbff78`, tested ref `refs/pull/1106/merge`, merge ref status PASS. After evidence-only commits, the PR body / sticky Doctrine Exec comment records the latest current-head rerun.
 
 ## Scope Ledger
 
 - Specified: delete/replace/repair dead TRUE_MEMBER oracle/parity fossil binaries; re-key coverage; add compile floors; keep PR PROBATION.
 - Implemented: deletion-dominant cleanup, coverage pruning, historical audit rows, inventory update, profile floor, source-test API repair.
 - Proxied: none.
-- Deferred: DA review of retired fossil-only coverage surfaces; live targeted Doctrine Exec rerun on the desktop-safe current head.
+- Deferred: DA review of retired fossil-only coverage surfaces.
 - Out of scope: product logic changes, scanner/allowlist edits, mapeditor/tools GHA runtime proof, Atlas/Bevy/GPU runtime proof.
 
 ## Known gaps / next
 
 - PR remains PROBATION pending DA review.
-- Targeted Doctrine Exec must be rerun against the current PR merge ref before clearance.
+- Targeted Doctrine Exec has passed against the current PR merge ref; DA review is still required before clearance/merge.
 - Temporary `td-torb-*` scope rows should be re-sealed after this rung closes.
 
 ## Graduation routing
 
-- CI verdict: pending final live CI.
+- CI verdict: PASS-RELIABLE locally and on live PR checks; DA clearance still required before merge.
 - Triage entries: none locally.
 - Risk class: test deletion + coverage re-key + gate-wiring + temporary scope rows.
 - Falsification check: DA runs the cargo-check `--tests` floor, verifies every live oracle coverage row points at a compiling owner, perturbs one dead binary reference to prove the compile floor fails, and checks the review table against the inventory/boundary diff.
