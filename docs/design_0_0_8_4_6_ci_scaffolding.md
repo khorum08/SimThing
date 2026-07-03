@@ -364,6 +364,7 @@ Fable route for operators:
 - Seal-residue rungs still require targeted profile/probe proof.
 - Timeout semantics and profile data remain Track B concerns.
 - Track D standard and ledger rungs create deletion authority; per-boundary waves perform actual deletions/collapses.
+- **GHA targeted Doctrine Exec is CPU-only** unless the profile is explicitly `owner-deep`. Atlas/Bevy/GPU/desktop/mapeditor/tools runtime binaries are local-owner-deep only. The GHA profile may use `cargo check` floors for affected crates, but not runtime integration binaries that require desktop/GPU/cold heavyweight paths. Enforced by `scripts/ci/doctrine_exec_gha_proof_seal.sh` via `doctrine_exec_profile_lint.sh` (see `GHA-PROOF-SEAL-0`).
 
 Draconian rule: never pare `compile_fail`, trybuild, seal-proof, oracle-parity, golden-byte, STEAD-required,
 invariant-required, doc-named invariant coverage, `custom_layout_ethics_axis`, escaped-bug regressions, or active
@@ -396,6 +397,7 @@ Boundary tiers:
 | D2h | `TEST-PARE-BROKEN-CLAUSETHING-ADMISSION-RESIDUE-0` | Delete broken clausething admission duplicates under owner-deep residue ruling. | **DONE - merged #1098** | 4 admission rows deleted; representatives proven; inventory 5,671; profile `test-pare-broken-clausething-admission-residue`. |
 | D2i | `TEST-PARE-SRC-UNIT-FOSSIL-RESIDUE-0` | Delete src cfg-test admission/usecase fossil residue across protected crates under DA-approved temporary src scope. | **DONE — merged #1099** | 88 src unit rows deleted (mapeditor 42, kernel 15, core 9, sim 9, driver 6, gpu 6, feeder 1); inventory 5,583; profile `test-pare-src-unit-fossil-residue`; merge commit `3871f864e7`. |
 | D2j | `TEST-PARE-GPU-BEVY-RESIDUE-0` | Delete Class 2 GPU/Bevy/desktop integration capability-proof relic tests across protected runtime crates under DA-approved temporary tests scope. | **DONE — merged #1100** | 251 integration rows deleted; 23 Class 1 kept; inventory 5,583 → 5,332; CPU-only GHA profile (cargo check floors + clausething CPU reps; no atlas hang); `atlas_0080_0` Class 1 survivor local-only; merge commit `a71700f3fb`; remedial closeout `a30bf54f3e`; Doctrine Exec master PASS run `28636990813` (failures=0 inspect=0). |
+| D2k | `GHA-PROOF-SEAL-0` | Mechanical guard: non-owner-deep Doctrine Exec profiles cannot include Atlas/Bevy/GPU/desktop proof commands. | **DONE — pending merge** | `doctrine_exec_gha_proof_seal.sh` + profile lint integration; `--prove-gha-proof-seal`; remediated `test-pare-src-unit-fossil-residue` mapeditor script residue; evidence `docs/tests/gha_proof_seal_0_results.md`. |
 | D2+ | `TEST-PARE-BOUNDARY-*` | Future coverage-complete deletion/collapse waves by boundary family. | **FUTURE** | Each wave processes every row in its named boundary families to terminal disposition; no row quotas; no broad full-crate test sweep is used as proof. |
 | DF | `TEST-PARE-CADENCE-DF` | Decide owner-deep cadence after material reduction lands. | **FUTURE** | Until then, weekly scheduled sentinel = sentinel-core only and full quarantined battery = workflow_dispatch-only. |
 
