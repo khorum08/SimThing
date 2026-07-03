@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION - implementation and final GitHub proof complete; awaiting DA/orchestrator merge review. Not self-cleared for merge.**
+**DONE - merged #1094.** Merge commit: `68f6b87de52964580fa6b11020e7d9ce64d13077`. Live inventory: 5706.
 
 ## Orientation / Predecessor Rungs
 

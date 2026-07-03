@@ -12,6 +12,7 @@ fi
 
 "$PYTHON_BIN" - <<'PY' "$ROOT" "$INVENTORY"
 import csv
+import os
 import pathlib
 import re
 import subprocess
@@ -22,6 +23,7 @@ inventory = pathlib.Path(sys.argv[2])
 audit = root / "scripts/ci/test_pare_audit.tsv"
 boundary_rows = root / "scripts/ci/test_pare_boundary_rows.tsv"
 residue_classes = root / "scripts/ci/test_residue_classes.tsv"
+edit_scope_check = root / "scripts/ci/test_edit_scope_check.sh"
 
 required = [
     "crate",
@@ -116,6 +118,15 @@ def crate_for(path: pathlib.Path) -> str:
 
 def norm(path: pathlib.Path) -> str:
     return path.as_posix()
+
+def bash_cmd(script: pathlib.Path) -> list[str]:
+    if os.name == "nt":
+        git_bash_exepath = os.environ.get("EXEPATH")
+        if git_bash_exepath:
+            git_bash = pathlib.Path(git_bash_exepath) / "bash.exe"
+            if git_bash.exists():
+                return [str(git_bash), str(script)]
+    return ["bash", str(script)]
 
 def rust_files() -> list[pathlib.Path]:
     files: set[pathlib.Path] = set()
@@ -315,11 +326,26 @@ else:
         path
         for path in changed
         if re.match(r"^crates/[^/]+/(src|tests|benches)/", path)
-        and not re.match(r"^crates/simthing-clausething/tests/[^/]+\.rs$", path)
-        and not re.match(r"^crates/simthing-spec/tests/[^/]+\.rs$", path)
     ]
-    if crate_edits:
-        errors.append(f"crate source/test files changed: {crate_edits[:10]}")
+    if edit_scope_check.exists():
+        cmd = bash_cmd(edit_scope_check)
+        if crate_edits:
+            cmd.extend(["--paths", *crate_edits])
+        scope = subprocess.run(
+            cmd,
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if scope.stdout:
+            print(scope.stdout.rstrip())
+        if scope.stderr:
+            print(scope.stderr.rstrip())
+        if scope.returncode != 0:
+            errors.append("test edit scope check failed")
+    else:
+        errors.append(f"missing test edit scope checker {edit_scope_check}")
 
 if errors:
     print("TEST-INVENTORY-CHECK-VERDICT: FAIL")
