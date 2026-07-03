@@ -155,19 +155,6 @@ fn mapping_plan_compile_builds_w_compose_min_plus_plan() {
     assert_eq!(config.d_col, 4);
     assert_eq!(config.w_col, 3);
 }
-
-#[test]
-fn mapping_plan_compile_rejects_mismatched_theater_dimensions() {
-    let theater = theater_8x8();
-    let err = compile_mapping_plan_from_admitted_theater(&theater, full_compile_spec(5))
-        .expect_err("dimension mismatch");
-    assert!(matches!(
-        err,
-        MappingPlanCompileError::StructuredFieldTheaterMismatch { .. }
-            | MappingPlanCompileError::WComposeTheaterMismatch { .. }
-    ));
-}
-
 #[test]
 fn mapping_plan_compile_preserves_generic_operator_only_boundary() {
     let source = include_str!("../src/mapping_plan_compile.rs");

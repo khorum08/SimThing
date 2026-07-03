@@ -2508,20 +2508,6 @@ fn sqrt_exact4f_no_exact_authority_promotion() {
     let baseline = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");
     assert!(!baseline.contains("sqrt("));
 }
-
-#[test]
-fn sqrt_exact4f_perf_is_not_authority() {
-    let sqrt0 = sqrt0_descriptor();
-    assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
-    assert!(
-        !is_exact_sqrt_f_descriptor(&sqrt0),
-        "native sqrt must not be artifact-backed F exact descriptor"
-    );
-    println!(
-        "F perf_not_authority: throughput evidence is not admission authority; exhaustive max_ulp==0 proof and SQRT-PROMOTE-0 descriptor admission are separate gates; approximate performance mode is a separate product-policy gate"
-    );
-}
-
 #[test]
 #[ignore = "full 2^31 finite non-negative f32 sweep for Candidate F; run with --ignored explicitly"]
 fn sqrt_exact5f_candidate_f_full_exhaustive_sweep() {

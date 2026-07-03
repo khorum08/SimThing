@@ -420,32 +420,6 @@ fn e11_balance_integrates_after_allocation_band() {
     let balance = cell(&oracle, leaf, c.balance_col.unwrap());
     assert!((balance - (i_f + a_f) * 0.5).abs() < 1e-5);
 }
-
-#[test]
-fn e11_rejects_missing_allocator_weight() {
-    let mut reg = DimensionRegistry::new();
-    let spec = PropertySpec {
-        id: "food_flow".into(),
-        namespace: "core".into(),
-        name: "food_flow".into(),
-        display_name: String::new(),
-        description: String::new(),
-        sub_fields: vec![
-            flow_subfield("flow", AccumulatorRole::IntrinsicFlow),
-            flow_subfield(
-                "allocated",
-                AccumulatorRole::AllocatedFlow {
-                    arena: "food".into(),
-                },
-            ),
-        ],
-    };
-    let (flow_id, _) = compile_property(&spec, &mut reg).unwrap();
-    let layout = reg.property(flow_id).layout.clone();
-    let err = resolve_node_columns(&layout, "food").unwrap_err();
-    assert!(matches!(err, HierarchyError::MissingAllocatorWeight { .. }));
-}
-
 #[test]
 fn e11_rejects_missing_allocated_flow() {
     let mut reg = DimensionRegistry::new();

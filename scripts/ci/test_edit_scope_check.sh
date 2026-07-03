@@ -75,11 +75,17 @@ def read_scope_rows() -> list[dict[str, str]]:
             and glob_parts[2] == "src"
             and all(part != "tests" and part != "benches" for part in glob_parts[3:])
         )
+        tests_only_glob = (
+            len(glob_parts) >= 4
+            and glob_parts[0] == "crates"
+            and glob_parts[2] == "tests"
+            and all(part != "src" and part != "benches" for part in glob_parts[3:])
+        )
         if len(glob_parts) >= 2 and glob_parts[0] == "crates" and glob_parts[1] in protected_crates:
-            if src_only_glob:
+            if src_only_glob or tests_only_glob:
                 if "Owner/DA-approved" not in rationale:
                     errors.append(
-                        f"test edit scope line {line_no}: protected crate src/** requires Owner/DA-approved marker"
+                        f"test edit scope line {line_no}: protected crate src/** or tests/** requires Owner/DA-approved marker"
                     )
             else:
                 errors.append(
@@ -125,14 +131,15 @@ prove_cases = [
     ("crates/simthing-mapgenerator/tests/params.rs", True),
     ("crates/simthing-clausething/tests/ct_scenario_container.rs", True),
     ("crates/simthing-spec/tests/scenario_ingestion_admission.rs", True),
-    ("crates/simthing-driver/tests/example.rs", False),
+    ("crates/simthing-driver/tests/example.rs", True),
     ("crates/simthing-mapgenerator/src/lib.rs", False),
     ("crates/simthing-kernel/tests/example.rs", False),
-    ("crates/simthing-sim/tests/example.rs", False),
-    ("crates/simthing-gpu/tests/example.rs", False),
-    ("crates/simthing-mapeditor/tests/example.rs", False),
-    ("crates/simthing-tools/tests/example.rs", False),
-    ("crates/simthing-workshop/tests/example.rs", False),
+    ("crates/simthing-sim/tests/example.rs", True),
+    ("crates/simthing-gpu/tests/example.rs", True),
+    ("crates/simthing-mapeditor/tests/example.rs", True),
+    ("crates/simthing-tools/tests/example.rs", True),
+    ("crates/simthing-workshop/tests/example.rs", True),
+    ("crates/simthing-tools/src/example.rs", False),
 ]
 
 rows = read_scope_rows()

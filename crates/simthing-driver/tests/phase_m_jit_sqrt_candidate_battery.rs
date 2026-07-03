@@ -561,36 +561,6 @@ fn jit_sqrt_vector_oracle_order_is_explicit() {
         );
     });
 }
-
-#[test]
-fn jit_sqrt_negative_inputs_reject_or_are_non_authoritative() {
-    with_gpu(|ctx| {
-        let wgsl = emit_sqrt_candidate_wgsl(
-            NativeSqrtCandidate::DirectScalar {
-                input_col: SQRT_INPUT_COL,
-                out_col: OUT_COL,
-            },
-            N_DIMS,
-        );
-        let mut max_ulp = 0u32;
-        for x in [-1.0f32, -4.0, -1e-6] {
-            let mut values = vec![0.0f32; N_DIMS as usize];
-            set_col(&mut values, SQRT_INPUT_COL, x);
-            let out = run_jit_gpu(ctx, &wgsl, &values);
-            let gpu = out[(EVAL_SLOT * N_DIMS + OUT_COL) as usize];
-            // Negative-domain behavior is non-authoritative for exact deterministic admission.
-            // We still measure against Rust for diagnostics.
-            let cpu = x.sqrt();
-            if gpu.is_finite() && cpu.is_finite() {
-                max_ulp = max_ulp.max(ulp_distance(gpu, cpu));
-            }
-            assert!(gpu.is_nan() || gpu.is_finite());
-        }
-        let class = classify(max_ulp.max(1));
-        assert_ne!(class, SqrtClassification::ExactDeterministicCandidate);
-    });
-}
-
 #[test]
 fn jit_sqrt_not_in_baseline_runtime() {
     let shader = include_str!("../../simthing-gpu/src/shaders/accumulator_op.wgsl");

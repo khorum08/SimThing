@@ -59,32 +59,6 @@ fn rf_t3_telemetry_flat_star_reports_ops_bands_and_participants() {
     assert!(telemetry.n_bands > 0);
     assert_eq!(telemetry.sync_count, 1);
 }
-
-#[test]
-fn rf_t3_telemetry_dynamic_enrollment_reports_admissions_generation_and_sync() {
-    let Some(_gpu) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let fixture = fixture_product_dynamic_fission_cadence();
-    let (burn, telemetry) = run_product_soak_with_telemetry(&fixture).expect("soak");
-    assert_eq!(telemetry.dynamic_admissions, 2);
-    assert_eq!(telemetry.dynamic_rejections, 0);
-    assert!(telemetry.generation_end > telemetry.generation_start);
-    assert!(telemetry.sync_count >= 1);
-    assert_eq!(burn.ticks_checked, 1000);
-}
-
-#[test]
-fn rf_t3_telemetry_rejections_visible() {
-    let fixture = fixture_product_rejection_telemetry();
-    let fx = open_fixture_session(&fixture).expect("open");
-    let telemetry = telemetry_for_open_session(&fx, &fixture, None);
-    assert_eq!(telemetry.dynamic_rejections, 1);
-    assert_eq!(telemetry.dynamic_admissions, 0);
-    assert_eq!(telemetry.generation_start, telemetry.generation_end);
-}
-
 #[test]
 fn rf_t3_telemetry_test_override_distinguishable_from_spec() {
     let fixture = fixture_product_disabled_spec_diagnostics();

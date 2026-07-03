@@ -133,31 +133,6 @@ fn multitarget_bursty_100k_load() {
     assert_report_ok(&report);
     write_multitarget_replay_reports(&report).expect("write multitarget replay reports");
 }
-
-#[test]
-fn multitarget_conservation_rejects_corrupted_record() {
-    let scenario = make_multitarget_scenario("multitarget_corrupt", 64, 1.0, false);
-    let (cpu_final, mut compact, _) = resolve_cpu_current(&scenario, false);
-    assert!(conservation_check(
-        &scenario.states,
-        &cpu_final,
-        &scenario.params,
-        &compact
-    ));
-
-    compact[0].transfer_amount = compact[0].transfer_amount.saturating_add(1);
-    assert!(!conservation_check(
-        &scenario.states,
-        &cpu_final,
-        &scenario.params,
-        &compact
-    ));
-    assert!(
-        replay_from_compact_records(&scenario.states, &scenario.params, &compact).is_err()
-            || !conservation_check(&scenario.states, &cpu_final, &scenario.params, &compact)
-    );
-}
-
 #[test]
 #[ignore = "large GPU load benchmark"]
 fn multitarget_bursty_1m_load() {

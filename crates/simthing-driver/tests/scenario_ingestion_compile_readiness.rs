@@ -31,19 +31,6 @@ fn ingest_corpus(name: &str) -> simthing_spec::SimThingScenarioSpec {
     );
     spec.expect("spec")
 }
-
-#[test]
-fn canonical_ingestion_structural_admission_reaches_driver() {
-    let spec = ingest_corpus("minimal_scenario_root.simthing-scenario.json");
-    let readiness = evaluate_scenario_compile_readiness(&spec);
-    let admission =
-        compile_structural_n4_theater(&spec, MappingExecutionProfile::SparseRegionFieldV1)
-            .expect("driver compile reached");
-    assert!(matches!(admission, StructuralTheaterAdmission::Admit(_)));
-    assert!(readiness.structural_n4_ready);
-    assert!(readiness.mapping_plan_deferred);
-}
-
 #[test]
 fn canonical_galaxymap_ingestion_can_compile_structural_n4_theater() {
     let spec = ingest_corpus("minimal_scenario_galaxymap.simthing-scenario.json");

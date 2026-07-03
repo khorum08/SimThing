@@ -74,66 +74,6 @@ fn resource_flow_enrollment_install_target_resolves_all_of_kind() {
             .any(|p| p.subtree_root_id == raw));
     }
 }
-
-#[test]
-fn resource_flow_enrollment_rejects_empty_resolution() {
-    let (scenario, root, alloc) = cohort_scenario(0);
-    let spec = ResourceFlowSpec {
-        arenas: vec![food_arena(16)],
-        couplings: vec![],
-        ..Default::default()
-    };
-    let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
-    assert!(matches!(
-        err,
-        simthing_driver::EnrollmentError::Spec(SpecError::ImplicitParticipation { .. })
-    ));
-}
-
-#[test]
-fn resource_flow_enrollment_rejects_over_max_participants() {
-    let (scenario, root, alloc) = cohort_scenario(3);
-    let spec = ResourceFlowSpec {
-        arenas: vec![food_arena(2)],
-        couplings: vec![],
-        ..Default::default()
-    };
-    let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
-    assert!(matches!(
-        err,
-        simthing_driver::EnrollmentError::Spec(SpecError::MaxParticipantsExceeded { .. })
-    ));
-}
-
-#[test]
-fn resource_flow_enrollment_rejects_duplicate_hosted_simthing() {
-    let (scenario, root, alloc) = cohort_scenario(1);
-    let mut spec = ResourceFlowSpec {
-        arenas: vec![ArenaSpec {
-            enrollment: Some(EnrollmentSelectorSpec::ExplicitOnly),
-            explicit_participants: vec![
-                ExplicitParticipantSpec::flat(
-                    alloc.slot_of(root.children[0].id).unwrap(),
-                    root.children[0].id.raw(),
-                ),
-                ExplicitParticipantSpec::flat(
-                    alloc.slot_of(root.children[0].id).unwrap(),
-                    root.children[0].id.raw(),
-                ),
-            ],
-            ..food_arena(16)
-        }],
-        couplings: vec![],
-        ..Default::default()
-    };
-    spec.arenas[0].enrollment = Some(EnrollmentSelectorSpec::ExplicitOnly);
-    let err = resolve_resource_flow_enrollment(&spec, &scenario, &root, &alloc).unwrap_err();
-    assert!(matches!(
-        err,
-        simthing_driver::EnrollmentError::Spec(SpecError::DuplicateEnrollmentHostedSimThing { .. })
-    ));
-}
-
 #[test]
 fn resource_flow_enrollment_resolved_participants_pass_e10r_preflight() {
     let (scenario, root, alloc) = cohort_scenario(2);

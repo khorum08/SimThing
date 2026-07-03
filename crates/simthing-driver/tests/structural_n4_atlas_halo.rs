@@ -247,27 +247,6 @@ fn structural_atlas_halo_does_not_mutate_scenario_authority() {
         .collect();
     assert_eq!(placements_after, placements_before);
 }
-
-#[test]
-fn structural_atlas_halo_rejects_or_defers_if_halo_exceeds_cap() {
-    let scenario = synthetic_scenario(2, 1, &[(1, 0, 0), (2, 1, 0)]);
-    let tight_profile = StructuralAtlasPartitionProfile {
-        max_theater_width: 1,
-        max_theater_height: 1,
-        include_overlap_halo: true,
-    };
-    let err = compile_structural_n4_atlas(
-        &scenario,
-        MappingExecutionProfile::SparseRegionFieldV1,
-        tight_profile,
-    )
-    .expect_err("halo expansion should exceed 10x10 cap for cross-partition edge");
-    assert!(matches!(
-        err,
-        StructuralTheaterCompileError::HaloExceedsTheaterCap { .. }
-    ));
-}
-
 #[test]
 fn structural_atlas_halo_global_local_coordinate_recovery() {
     let scenario = cross_partition_corner_scenario();

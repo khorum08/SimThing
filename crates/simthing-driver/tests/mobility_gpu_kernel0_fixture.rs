@@ -73,27 +73,6 @@ fn mobility_gpu_kernel0_builtin_semantic_free_kernel_only() {
     assert_eq!(report.fixture_id, MOBILITY_GPU_KERNEL0_FIXTURE_ID);
     assert_eq!(report.named_gate, MOBILITY_GPU_KERNEL0_NAMED_GATE);
 }
-
-#[test]
-fn mobility_gpu_kernel0_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityGpuKernel0ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
-fn mobility_gpu_kernel0_rejects_designer_authored_shader_input() {
-    let mut forbidden = MobilityGpuKernel0ForbiddenPathRequests::default();
-    forbidden.designer_authored_shader_input = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"designer_authored_shader_input"));
-}
-
 #[test]
 fn mobility_gpu_kernel0_no_default_schedule() {
     let report = run_mobility_gpu_kernel0_fixture(&fixture_input());

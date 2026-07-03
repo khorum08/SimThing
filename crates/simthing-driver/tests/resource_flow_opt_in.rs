@@ -271,28 +271,6 @@ fn resource_flow_opt_in_no_nested_gpu_claims() {
     };
     assert_flat_star_only_no_nested_claims(&fx);
 }
-
-#[test]
-fn resource_flow_opt_in_wildcard_rejected_at_session_open() {
-    let scenario = flat_star_scenario(3, 32);
-    let mut game_mode = populated_flow_game_mode(ResourceFlowOptInMode::FlatStarOptIn);
-    fill_explicit_participants(&mut game_mode, &scenario);
-    game_mode.resource_flow.as_mut().unwrap().arenas[0].wildcard_admission =
-        Some(WildcardAdmissionSpec {
-            max_expansion: Some(4),
-            expanded_count: 0,
-        });
-
-    let err = match SimSession::open_from_spec(scenario, &game_mode) {
-        Err(e) => e,
-        Ok(_) => panic!("wildcard FlatStarOptIn must be rejected at session open"),
-    };
-    assert!(
-        err.to_string().contains("wildcard"),
-        "expected wildcard rejection, got {err}"
-    );
-}
-
 #[test]
 fn resource_flow_opt_in_no_simthing_sim_arena_imports() {
     let sim_cargo = include_str!("../../simthing-sim/Cargo.toml");

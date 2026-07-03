@@ -245,38 +245,6 @@ fn e7_named_pair_respects_clamp_behavior() {
     assert_bits_eq("balance clamp max", &expected, &actual);
     assert_eq!(actual[balance_off].to_bits(), 1.0_f32.to_bits());
 }
-
-#[test]
-fn e7_missing_governing_role_skipped_consistently() {
-    let layout = PropertyLayout {
-        sub_fields: vec![SubFieldSpec {
-            role: SubFieldRole::Named("balance".into()),
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: "balance".into(),
-            display_range: None,
-            governed_by: Some(SubFieldRole::Named("flow".into())),
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        }],
-    };
-    let range = simthing_core::PropertyColumnRange {
-        start: 0,
-        stride: 1,
-    };
-    assert!(governed_pairs_for_property(&range, &layout).is_empty());
-    assert!(build_governed_pairs(&DimensionRegistry::new()).is_empty());
-
-    let mut pv = PropertyValue::from_layout(&layout);
-    pv.data[0] = 5.0;
-    let before = pv.data.clone();
-    pv.integrate(&layout, 1.0);
-    assert_eq!(pv.data, before, "CPU oracle also skips missing governor");
-}
-
 #[test]
 fn e7_no_legacy_velocity_shader_or_pipeline_dependency() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))

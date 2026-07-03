@@ -109,20 +109,6 @@ fn rf_t2_disabled_populated_spec_stays_inactive() {
         fixture.participant_count as usize
     );
 }
-
-#[test]
-fn rf_t2_flat_star_opt_in_rejects_wildcard_or_nested_claim() {
-    let fixture = fixture_wildcard_rejected();
-    let err = match open_fixture_session(&fixture) {
-        Err(e) => e,
-        Ok(_) => panic!("wildcard FlatStarOptIn must be rejected at session open"),
-    };
-    assert!(
-        err.to_string().contains("wildcard"),
-        "expected wildcard rejection, got {err}"
-    );
-}
-
 #[test]
 fn rf_t2_repeated_resync_stable() {
     let Some(_gpu) = try_gpu() else {

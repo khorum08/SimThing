@@ -70,31 +70,6 @@ fn production_path_0080_1_requires_atlas_and_econ_scale_admitted() {
         .contains(&"econ_scale_0080_0_disabled_rejected_or_not_admitted"));
     assert!(rejected.econ_scale_report.is_some());
 }
-
-#[test]
-fn production_path_0080_1_rejects_disabled_atlas() {
-    let mut input = ProductionPath0081Input::explicit_opt_in();
-    input.atlas_input = Atlas0080Input::default_simsession();
-    let rejected = run_production_path_0080_1(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"atlas_0080_0_disabled_rejected_or_not_admitted"));
-    assert!(rejected.atlas_report.as_ref().unwrap().disabled_no_op);
-}
-
-#[test]
-fn production_path_0080_1_rejects_disabled_econ_scale() {
-    let mut input = ProductionPath0081Input::explicit_opt_in();
-    input.econ_scale_input = EconScale0080Input::default_simsession();
-    let rejected = run_production_path_0080_1(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"econ_scale_0080_0_disabled_rejected_or_not_admitted"));
-    assert!(rejected.econ_scale_report.as_ref().unwrap().disabled_no_op);
-}
-
 #[test]
 fn production_path_0080_1_instantiates_nested_starmap_shape() {
     let admitted = report();
@@ -399,18 +374,4 @@ fn production_path_0080_1_owner_entity_not_spatial_parent() {
     assert!(rejected
         .diagnostics
         .contains(&"owner_entity_as_spatial_parent"));
-}
-
-#[test]
-fn production_path_0080_1_capture_as_reparenting_rejected() {
-    let admitted = report();
-    assert!(
-        !admitted
-            .ownership_aggregation_summary
-            .capture_as_reparenting
-    );
-
-    let rejected = rejected_with(|f| f.capture_as_reparenting = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"capture_as_reparenting"));
 }

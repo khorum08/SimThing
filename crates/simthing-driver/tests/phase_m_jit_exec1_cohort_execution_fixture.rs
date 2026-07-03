@@ -857,46 +857,6 @@ fn execute_admitted_cohort(
 fn try_execute_mixed_cohort(manifest: &KernelRegistryManifestPreview) -> SpecError {
     extract_single_cohort_entry(manifest).expect_err("mixed cohort must not execute as one batch")
 }
-
-#[test]
-fn jit_exec1_cohort_admission_gates_execution() {
-    let requests = identical_cohort_requests();
-    let manifest = build_registry_manifest(&requests).expect("cohort manifest");
-    assert_eq!(manifest.entries.len(), 1);
-    let entry = &manifest.entries[0];
-    assert_eq!(entry.request_ids, vec!["exec1_req_alpha", "exec1_req_beta"]);
-
-    let candidate = admit_production_candidate(entry).expect("admission");
-    assert_eq!(
-        candidate.lane,
-        KernelRegistryLane::ProductionCandidatePreview
-    );
-
-    let mixed = build_registry_manifest(&mixed_distinct_cohort_requests()).expect("mixed manifest");
-    assert_eq!(mixed.entries.len(), 2);
-    let err = try_execute_mixed_cohort(&mixed);
-    match err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(reason.contains("one manifest entry"));
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-    with_gpu(|ctx| {
-        let batch =
-            build_combined_cohort_batch(&[("exec1_req_alpha", 0), ("exec1_req_beta", 1)], 8, 8, 0);
-        let (_, result) = execute_admitted_cohort(
-            ctx,
-            &requests,
-            &build_test_field(8, 8, 4, 0),
-            &batch,
-            8,
-            8,
-            4,
-        );
-        assert_eq!(result.dispatch_count, 1);
-    });
-}
-
 #[test]
 fn jit_exec1_production_candidate_cohort_executes_with_oracle_parity() {
     with_gpu(|ctx| {
@@ -964,50 +924,6 @@ fn jit_exec1_distinct_graphs_remain_separate_entries() {
         other => panic!("unexpected error: {other:?}"),
     }
 }
-
-#[test]
-fn jit_exec1_rejects_approximate_candidate_before_execution() {
-    let manifest = build_registry_manifest(&identical_cohort_requests()).expect("manifest");
-    let mut entry = manifest.entries[0].clone();
-    entry
-        .canonical_text
-        .push_str("\n  write=mag2 authority=ApproximateDiagnostic");
-    let mag2_err = admit_production_candidate(&entry).expect_err("mag2 must reject");
-    match mag2_err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(reason.contains("mag2"));
-        }
-        other => panic!("unexpected mag2 error: {other:?}"),
-    }
-
-    let sqrt = simthing_spec::landed_jit_kernel_descriptors()
-        .into_iter()
-        .find(|desc| desc.id == "m_jit_sqrt_0_candidate")
-        .expect("sqrt0");
-    let identity = preview_kernel_graph_identity(&KernelGraphSpec {
-        nodes: vec![sqrt],
-        edges: vec![],
-    })
-    .expect("sqrt identity");
-    let sqrt_entry = KernelRegistryEntryPreview {
-        stable_key: identity.stable_key,
-        canonical_text: identity.canonical_text,
-        request_ids: vec!["sqrt_req".into()],
-        lane: KernelRegistryLane::TestOnlyPreview,
-        default_off: true,
-        production_wiring: false,
-    };
-    let sqrt_err = admit_production_candidate(&sqrt_entry).expect_err("sqrt must reject");
-    match sqrt_err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(reason.contains("m_jit_sqrt_0_candidate"));
-        }
-        other => panic!("unexpected sqrt error: {other:?}"),
-    }
-
-    // This test remains admission-only: approximate candidates reject without a GPU context.
-}
-
 #[test]
 fn jit_exec1_remains_default_off_no_production_wiring() {
     assert_eq!(

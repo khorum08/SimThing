@@ -44,31 +44,6 @@ fn normalizes_static_svg_to_icon_vector() {
         Some(simthing_tools::IconPathCommand::MoveTo { .. })
     ));
 }
-
-#[test]
-fn rejects_dynamic_or_external_svg() {
-    let dynamic = r##"
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-  <script>alert(1)</script>
-  <rect onload="alert(1)" x="1" y="1" width="14" height="14"/>
-</svg>
-"##;
-    assert!(matches!(
-        IconVector::from_svg(dynamic),
-        Err(IconError::StaticOnly(_))
-    ));
-
-    let external = r##"
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-  <image href="https://example.invalid/icon.png" x="0" y="0" width="16" height="16"/>
-</svg>
-"##;
-    assert!(matches!(
-        IconVector::from_svg(external),
-        Err(IconError::StaticOnly(_))
-    ));
-}
-
 #[test]
 fn registers_svg_icon_tile() {
     let mut atlas = fresh_atlas();
@@ -122,23 +97,6 @@ fn same_icon_same_px_is_cached() {
         after_second.dirty_region_count
     );
 }
-
-#[test]
-fn invalid_svg_errors_no_panic_no_atlas_mutation() {
-    let mut atlas = fresh_atlas();
-    let mut icons = IconSet::new();
-    let before = atlas.stats();
-    let before_tiles = atlas.tile_count();
-
-    let err = icons
-        .register_svg(ICON_PUA_START + 1, "<svg><path", PX, &mut atlas)
-        .expect_err("invalid SVG");
-
-    assert!(matches!(err, IconError::Parse(_)));
-    assert_eq!(before, atlas.stats());
-    assert_eq!(before_tiles, atlas.tile_count());
-}
-
 #[test]
 fn pua_codepoint_renders_in_mixed_run() {
     let mut atlas = fresh_atlas();

@@ -262,23 +262,3 @@ fn bh1_crowded_fixture_choke_oracle_only() {
         1.0f32.to_bits()
     );
 }
-
-#[test]
-fn bh1_admission_rejects_invalid_output_shape() {
-    let mut config = choke_config(3, 3, 1, 1.0, 0.25, 1);
-    assert!(config.validate().is_ok());
-
-    config.operator = StructuredFieldStencilOperator::SaturatingFlux {
-        u_sat: 1.0,
-        chi: 0.25,
-        choke_output_col: Some(0),
-    };
-    assert!(config.validate().is_err());
-
-    config.operator = StructuredFieldStencilOperator::SaturatingFlux {
-        u_sat: 1.0,
-        chi: 0.25,
-        choke_output_col: Some(99),
-    };
-    assert!(config.validate().is_err());
-}

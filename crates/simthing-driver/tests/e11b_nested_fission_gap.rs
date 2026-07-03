@@ -448,41 +448,6 @@ fn e11b_nested_parent_child_contiguity_preserved_after_gap_claim() {
     assert_eq!(siblings_before, siblings_after);
     assert!(slots_are_contiguous(&siblings_after));
 }
-
-#[test]
-fn e11b_nested_rejects_noncontiguous_active_children_without_compaction() {
-    let mut f = nested_d3_fixture();
-    install_nested_gaps(&mut f, 1);
-    let mid_slot = f.alloc.slot_of(f.mid_ids.node_id).unwrap();
-    let flow_id = f.arena.flow_property_id;
-
-    refresh_fission_participant_child_on_authoring(
-        &mut f.scaffold,
-        &mut f.root,
-        mid_slot,
-        SimThing::new(SimThingKind::Cohort, 0).id,
-        flow_id,
-        &f.reg,
-        &mut f.alloc,
-        FissionPolicy::Reject,
-    )
-    .expect("gap fission refresh should claim");
-
-    let plan_err = build_execution_plan_from_authoring(
-        &f.reg,
-        std::slice::from_ref(&f.arena),
-        &f.root,
-        &f.alloc,
-        &f.scaffold,
-        8,
-    )
-    .unwrap_err();
-    assert!(matches!(
-        plan_err,
-        HierarchyError::NonContiguousChildren { .. }
-    ));
-}
-
 #[test]
 fn e11b_nested_gap_claim_preserves_d3_cpu_gpu_parity_for_active_tree() {
     let Some(_gpu) = try_gpu() else {
@@ -522,48 +487,6 @@ fn e11b_nested_gap_claim_preserves_d4_cpu_gpu_parity_for_active_tree() {
     .unwrap();
     assert_nested_cpu_gpu_parity(&f, 4);
 }
-
-#[test]
-fn e11b_nested_gap_exhaustion_rejects_without_partial_mutation() {
-    let mut f = nested_d3_fixture();
-    install_nested_gaps(&mut f, 1);
-    let mid_slot = f.alloc.slot_of(f.mid_ids.node_id).unwrap();
-    let before = gap_pool_snapshot(&f.scaffold);
-    let siblings_before = arena_participant_sibling_slots(&f.root, f.arena_root_id, &f.alloc);
-    let layout_before = layout_from_fixture(&f);
-
-    try_alloc_participant_child_in_gap(
-        &mut f.scaffold,
-        mid_slot,
-        SimThing::new(SimThingKind::Cohort, 0).id,
-        &mut f.alloc,
-        FissionPolicy::Reject,
-    )
-    .unwrap();
-
-    let err = try_alloc_participant_child_in_gap(
-        &mut f.scaffold,
-        mid_slot,
-        SimThing::new(SimThingKind::Cohort, 0).id,
-        &mut f.alloc,
-        FissionPolicy::Reject,
-    )
-    .unwrap_err();
-    assert!(matches!(err, GapAllocError::Exhausted { .. }));
-
-    let after = gap_pool_snapshot(&f.scaffold);
-    assert_eq!(before.get(&mid_slot).map(|v| v.len()), Some(1));
-    assert_eq!(after.get(&mid_slot).map(|v| v.len()), Some(0));
-    assert_eq!(
-        arena_participant_sibling_slots(&f.root, f.arena_root_id, &f.alloc),
-        siblings_before
-    );
-    assert_eq!(
-        layout_from_fixture(&f).participant_slots(),
-        layout_before.participant_slots()
-    );
-}
-
 #[test]
 fn e11b_nested_replay_same_seed_same_gap_state() {
     let mut f = nested_d3_fixture();

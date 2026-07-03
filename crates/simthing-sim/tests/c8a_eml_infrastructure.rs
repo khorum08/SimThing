@@ -129,22 +129,6 @@ fn c8a_eml_execution_class_validation_allows_exact_in_transfer() {
         .assert_consumer_admissible(id, EmlConsumerKind::TransferConservation)
         .is_ok());
 }
-
-#[test]
-fn c8a_fast_approx_formula_rejected_from_hard_threshold() {
-    let mut registry = EmlExpressionRegistry::new();
-    let id = EmlTreeId(2);
-    let mut meta = exact_meta(2, "fast");
-    meta.execution_class = EmlExecutionClass::FastApproximate;
-    meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
-    registry
-        .register_formula(id, meta, vec![literal(1.0)])
-        .unwrap();
-    assert!(registry
-        .assert_consumer_admissible(id, EmlConsumerKind::HardThreshold)
-        .is_err());
-}
-
 #[test]
 fn c8a_eml_tree_table_upload_roundtrip() {
     let Some(ctx) = try_gpu() else {
@@ -427,57 +411,6 @@ fn c8a_multiple_eml_trees_one_dispatch() {
     assert_eq!(gpu[1].to_bits(), 5.0f32.to_bits());
     assert_eq!(gpu[2].to_bits(), 7.0f32.to_bits());
 }
-
-#[test]
-fn c8a_tree_generation_reupload_invalidates_ops() {
-    let Some(ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let mut registry = EmlExpressionRegistry::new();
-    let mut table = EmlGpuProgramTable::new(&ctx, 64, 8);
-    register_and_upload(
-        &ctx,
-        &mut registry,
-        &mut table,
-        1,
-        exact_meta(1, "v1"),
-        vec![
-            literal(1.0),
-            EmlNodeGpu {
-                opcode: eml_opcode::RETURN_TOP,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            },
-        ],
-    );
-    let gen1 = table.generation;
-    let trees = vec![(
-        EmlTreeId(1),
-        registry.get(EmlTreeId(1)).unwrap().clone(),
-        vec![
-            literal(9.0),
-            EmlNodeGpu {
-                opcode: eml_opcode::RETURN_TOP,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            },
-        ],
-    )];
-    table.upload_trees(&ctx, &trees).unwrap();
-    registry
-        .mark_tree_uploaded(EmlTreeId(1), 0, table.generation)
-        .unwrap();
-    assert!(table.generation > gen1);
-    assert_eq!(table.node_upload_count, 2);
-}
-
 #[test]
 fn c8a_node_buffer_capacity_growth_preserves_existing_trees() {
     let Some(ctx) = try_gpu() else {

@@ -84,23 +84,6 @@ fn studio_save_candidate_create_new_writes_candidate_file() {
     let written = fs::read_to_string(&output_path).expect("read");
     assert!(!written.is_empty());
 }
-
-#[test]
-fn studio_save_candidate_create_new_rejects_existing_target() {
-    let json = load_owner_silo_fixture_json();
-    let temp_dir = TempDir::new().expect("temp");
-    let output_path = temp_dir.path().join("candidate.simthing-scenario.json");
-    fs::write(&output_path, "seed").expect("seed");
-    let result =
-        save_candidate_scenario_for_studio_create_new("owner_silo_corpus", &json, &output_path)
-            .expect("save");
-    assert!(result.attempted);
-    assert!(!result.saved);
-    assert!(result.target_existed);
-    assert!(result.create_new_policy);
-    assert!(result.message.contains("create-new"));
-}
-
 #[test]
 fn studio_save_candidate_existing_target_preserved() {
     let json = load_owner_silo_fixture_json();

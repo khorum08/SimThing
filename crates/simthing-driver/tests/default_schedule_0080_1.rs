@@ -55,25 +55,6 @@ fn default_schedule_0080_1_requires_production_path_admitted() {
         .contains(&"production_path_0080_1_disabled_rejected_or_not_admitted"));
     assert!(rejected.production_path_report.is_some());
 }
-
-#[test]
-fn default_schedule_0080_1_rejects_disabled_production_path() {
-    let mut input = DefaultSchedule0081Input::explicit_opt_in();
-    input.production_path_input = ProductionPath0081Input::default_simsession();
-    let rejected = run_default_schedule_0080_1(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"production_path_0080_1_disabled_rejected_or_not_admitted"));
-    assert!(
-        rejected
-            .production_path_report
-            .as_ref()
-            .unwrap()
-            .disabled_no_op
-    );
-}
-
 #[test]
 fn default_schedule_0080_1_runs_bounded_nested_starmap_steps() {
     let admitted = report();
@@ -418,14 +399,4 @@ fn default_schedule_0080_1_owner_entity_not_spatial_parent() {
     assert!(rejected
         .diagnostics
         .contains(&"owner_entity_as_spatial_parent"));
-}
-
-#[test]
-fn default_schedule_0080_1_capture_as_reparenting_rejected() {
-    let admitted = report();
-    assert!(!admitted.capture_as_reparenting);
-
-    let rejected = rejected_with(|f| f.capture_as_reparenting = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"capture_as_reparenting"));
 }

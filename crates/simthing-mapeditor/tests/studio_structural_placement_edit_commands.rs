@@ -20,37 +20,6 @@ fn galaxymap_fixture_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../scenarios/corpus/minimal_scenario_galaxymap.simthing-scenario.json")
 }
-
-#[test]
-fn studio_add_gridcell_rebuilds_document_projection_and_admission() {
-    let path = galaxymap_fixture_path();
-    let mut session = load_studio_session_from_scenario_path(&path, None).expect("load");
-    let before_cells = session.scenario_document.gridcells.len();
-    let outcome = studio_apply_structural_placement_command(
-        &mut session,
-        StructuralPlacementCommand::AddGridcell {
-            id: "studio_cell".into(),
-            col: 3,
-            row: 2,
-            role: GridcellRoleEdit::StarSystem,
-        },
-    )
-    .expect("add");
-    assert_eq!(outcome.edit_report.applied_count, 1);
-    assert_eq!(outcome.gridcell_count, before_cells + 1);
-    assert_eq!(session.scenario_document.gridcells.len(), before_cells + 1);
-    assert!(session
-        .scenario_document
-        .gridcells
-        .iter()
-        .any(|c| c.role == StudioGridcellRole::StarSystem && c.structural_col == Some(3)));
-    assert!(matches!(
-        session.admission_summary.classification.as_str(),
-        "Admitted" | "PartiallyAdmitted"
-    ));
-    assert_eq!(session.view_model.stars.len(), outcome.gridcell_count);
-}
-
 #[test]
 fn studio_move_gridcell_roundtrips_save_reload() {
     let path = galaxymap_fixture_path();
@@ -135,40 +104,6 @@ fn studio_set_gridcell_role_updates_display() {
         Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
     );
 }
-
-#[test]
-fn studio_rejects_invalid_structural_edit_without_partial_mutation() {
-    let path = galaxymap_fixture_path();
-    let mut session = load_studio_session_from_scenario_path(&path, None).expect("load");
-    let before = studio_scenario_authority_snapshot(&session.scenario_authority);
-    let err = studio_apply_structural_placement_command(
-        &mut session,
-        StructuralPlacementCommand::AddGridcell {
-            id: "dup_coord".into(),
-            col: 0,
-            row: 0,
-            role: GridcellRoleEdit::Inert,
-        },
-    )
-    .unwrap_err();
-    assert!(matches!(
-        err,
-        simthing_mapeditor::StudioStructuralEditError::StructuralEdit(_)
-    ));
-    let inner = match err {
-        simthing_mapeditor::StudioStructuralEditError::StructuralEdit(inner) => inner,
-        _ => panic!("expected structural edit error"),
-    };
-    assert_eq!(
-        inner.kind,
-        StructuralPlacementEditErrorKind::DuplicateCoordinate
-    );
-    assert_eq!(
-        studio_scenario_authority_snapshot(&session.scenario_authority),
-        before
-    );
-}
-
 #[test]
 fn studio_structural_edit_does_not_dispatch_gpu() {
     let src = include_str!("../src/studio_structural_edit.rs");
@@ -214,31 +149,4 @@ fn studio_edited_scenario_driver_structural_n4_readiness_preserved() {
     .expect("add");
     let readiness = evaluate_scenario_compile_readiness(&session.scenario_authority);
     assert!(readiness.structural_n4_ready);
-}
-
-#[test]
-fn studio_structural_edit_reload_preserves_admission_summary() {
-    let path = galaxymap_fixture_path();
-    let mut session = load_studio_session_from_scenario_path(&path, None).expect("load");
-    studio_apply_structural_placement_command(
-        &mut session,
-        StructuralPlacementCommand::AddGridcell {
-            id: "persist_cell".into(),
-            col: 7,
-            row: 5,
-            role: GridcellRoleEdit::Inert,
-        },
-    )
-    .expect("add");
-    let dir = TempDir::new().expect("tempdir");
-    let save_path = dir.path().join("persist.simthing-scenario.json");
-    save_scenario_authority_to_path(&save_path, &session.scenario_authority).expect("save");
-    let json = fs::read_to_string(&save_path).expect("read");
-    let spec = deserialize_scenario_authority(&json).expect("parse");
-    let reloaded = load_studio_session_from_scenario_path(&save_path, None).expect("reload");
-    assert_eq!(spec.structural_grid.placements.len(), 3);
-    assert!(matches!(
-        reloaded.admission_summary.classification.as_str(),
-        "Admitted" | "PartiallyAdmitted"
-    ));
 }

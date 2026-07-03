@@ -4,10 +4,12 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use simthing_clausething::{hydrate_resource_flow_pack, net_intrinsic_flow, parse_raw_document};
-use simthing_core::{DimensionRegistry, SimThing, SimThingKind};
+use simthing_core::{DimensionRegistry, SimThing, SimThingKind, SlotIndex};
 use simthing_driver::{
-    Scenario, SimSession, build_execution_plan, resolve_node_columns, run_arena_allocation_oracle,
+    Scenario, SessionError, SimSession, build_execution_plan_from_authoring,
+    resolve_node_columns, run_arena_allocation_oracle,
 };
+use simthing_gpu::GpuInitError;
 use simthing_gpu::{GpuContext, SlotAllocator};
 use simthing_spec::{
     ExplicitParticipantSpec, GameModeSpec, ResourceFlowOptInMode, compile_property,
@@ -58,12 +60,32 @@ fn ct2a_scenario(hosted_count: usize, game_mode: &GameModeSpec) -> Scenario {
 /// Session open mirrors the flat-star harness: scenario registry carries flow
 /// columns for GPU sizing; game-mode properties are cleared to avoid duplicate
 /// compile while resource-flow admission still references the same keys.
-fn open_ct2a_session(hydrated: &simthing_clausething::HydratedResourceFlowPack) -> SimSession {
+fn open_from_spec_or_skip(scenario: Scenario, game_mode: &GameModeSpec) -> Option<SimSession> {
+    match SimSession::open_from_spec(scenario, game_mode) {
+        Ok(session) => Some(session),
+        Err(SessionError::Gpu(GpuInitError::NoAdapter)) => {
+            eprintln!("skipping: no GPU");
+            None
+        }
+        Err(err) => panic!("open_from_spec: {err}"),
+    }
+}
+
+fn open_ct2a_session(hydrated: &simthing_clausething::HydratedResourceFlowPack) -> Option<SimSession> {
     let mut game_mode = hydrated.game_mode.clone();
     let scenario = ct2a_scenario(3, &hydrated.game_mode);
     fill_explicit_participants(&mut game_mode, &scenario);
     game_mode.properties.clear();
-    SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec")
+    open_from_spec_or_skip(scenario, &game_mode)
+}
+
+fn gpu_gate() -> Option<std::sync::MutexGuard<'static, ()>> {
+    let guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    if GpuContext::new_blocking().is_err() {
+        eprintln!("skipping: no GPU");
+        return None;
+    }
+    Some(guard)
 }
 
 fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario) {
@@ -73,26 +95,22 @@ fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario)
         .root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw()))
         .collect();
     game_mode.resource_flow.as_mut().unwrap().arenas[0].explicit_participants = participants;
 }
 
-fn try_gpu() -> Option<GpuContext> {
-    GpuContext::new_blocking().ok()
-}
-
-fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
-    (slot * n_dims + col) as usize
+fn idx(slot: SlotIndex, col: u32, n_dims: u32) -> usize {
+    (slot.raw() * n_dims + col) as usize
 }
 
 fn flat_star_cell_inputs(
-    root_slot: u32,
-    leaf_slots: &[u32],
+    root_slot: SlotIndex,
+    leaf_slots: &[SlotIndex],
     cols: simthing_driver::NodeColumnRefs,
     root_intrinsic_flow: f32,
     leaf_weights: &[f32],
-) -> HashMap<(u32, u32), f32> {
+) -> HashMap<(SlotIndex, u32), f32> {
     let mut inputs = HashMap::from([((root_slot, cols.intrinsic_flow_col), root_intrinsic_flow)]);
     for (slot, &weight) in leaf_slots.iter().zip(leaf_weights.iter()) {
         inputs.insert((*slot, cols.weight_col), weight);
@@ -115,6 +133,9 @@ fn clause_hydrated_game_mode_matches_ron_baseline() {
 
 #[test]
 fn resource_flow_presence_without_opt_in_stays_disabled() {
+    let Some(_guard) = gpu_gate() else {
+        return;
+    };
     let mut hydrated = hydrate_from_clause();
     hydrated
         .game_mode
@@ -126,15 +147,22 @@ fn resource_flow_presence_without_opt_in_stays_disabled() {
     fill_explicit_participants(&mut hydrated.game_mode, &scenario);
     let mut game_mode = hydrated.game_mode.clone();
     game_mode.properties.clear();
-    let session = SimSession::open_from_spec(scenario, &game_mode).expect("open_from_spec");
+    let Some(session) = open_from_spec_or_skip(scenario, &game_mode) else {
+        return;
+    };
     assert!(!session.proto.flags.use_accumulator_resource_flow);
     assert!(!session.state.accumulator_resource_flow_active);
 }
 
 #[test]
 fn installed_arena_participation_is_explicit_and_bounded() {
+    let Some(_guard) = gpu_gate() else {
+        return;
+    };
     let hydrated = hydrate_from_clause();
-    let session = open_ct2a_session(&hydrated);
+    let Some(session) = open_ct2a_session(&hydrated) else {
+        return;
+    };
     let arena = &session.spec_state.arena_registry.arenas[0];
     assert_eq!(arena.name, "ct2a_food");
     let (_start, participant_count) = arena.participant_range;
@@ -153,11 +181,10 @@ fn installed_arena_participation_is_explicit_and_bounded() {
 
 #[test]
 fn gpu_micro_economy_matches_arena_allocation_oracle() {
-    let Some(ctx) = try_gpu() else {
-        eprintln!("skipping GPU assertions: no GPU");
+    let Some(guard) = gpu_gate() else {
         return;
     };
-    let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
+    let ctx = GpuContext::new_blocking().expect("gpu gate already checked adapter");
 
     let hydrated = hydrate_from_clause();
     assert_eq!(
@@ -169,7 +196,9 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
             .opt_in_mode,
         ResourceFlowOptInMode::FlatStarOptIn
     );
-    let mut session = open_ct2a_session(&hydrated);
+    let Some(mut session) = open_ct2a_session(&hydrated) else {
+        return;
+    };
     assert!(session.proto.flags.use_accumulator_resource_flow);
     session
         .sync_resource_flow_if_enabled()
@@ -188,7 +217,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
+        &session.scenario.root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -200,7 +229,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
     .expect("one arena");
 
     let root = layout.participant_roots[0].participant_slot;
-    let leaves: Vec<u32> = layout.participant_roots[0]
+    let leaves: Vec<SlotIndex> = layout.participant_roots[0]
         .children
         .iter()
         .map(|n| n.participant_slot)
@@ -246,4 +275,5 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
 
     drop(session);
     drop(ctx);
+    drop(guard);
 }

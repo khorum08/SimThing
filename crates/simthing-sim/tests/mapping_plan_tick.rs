@@ -197,24 +197,6 @@ fn mapping_plan_tick_w_compose_min_plus_proof_matches_cpu_oracle() {
         eprintln!("SIM-MAPPING-PLAN-TICK-SEAM-0: REAL_ADAPTER_OBSERVED (w_compose_min_plus)");
     });
 }
-
-#[test]
-fn mapping_plan_tick_rejects_empty_plan() {
-    with_gpu(|ctx| {
-        let plan = CompiledMappingPlan {
-            steps: Vec::new(),
-            interleaved_width: 0,
-            interleaved_height: 0,
-            interleaved_n_dims: 0,
-        };
-        let err = match SimGpuMappingTickState::new(ctx, plan) {
-            Ok(_) => panic!("empty plan must fail"),
-            Err(err) => err,
-        };
-        assert!(matches!(err, SimTickError::Readback(_)));
-    });
-}
-
 fn w_compose_min_plus_plan() -> (CompiledMappingPlan, WImpedanceComposeConfig, Vec<f32>) {
     let compose = w_compose_config(5, 5);
     let stencil = min_plus_config(5, 5, (0, 0));

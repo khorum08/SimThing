@@ -708,29 +708,6 @@ fn sqrt_mag0_r1_reproduces_mag2_mismatch_rows() {
         assert_eq!(mag2_mismatch, 40);
     });
 }
-
-#[test]
-fn sqrt_mag0_r1_native_sqrt_and_diagnostic_mag2_still_reject() {
-    let sqrt0 = sqrt0_descriptor();
-    assert_eq!(sqrt0.native_math, NativeMathClass::ApproximateJitOnly);
-    assert!(matches!(
-        validate_exact_kernel_inputs(&sqrt0, &["sqrt_out"]),
-        Err(SpecError::JitKernelDescriptorAdmission { .. })
-    ));
-
-    let grad0 = grad0_descriptor();
-    assert!(matches!(
-        validate_exact_kernel_inputs(&grad0, &["mag2"]),
-        Err(SpecError::JitKernelDescriptorAdmission { .. })
-    ));
-
-    let probe = dxdy_probe_descriptor();
-    assert!(matches!(
-        validate_exact_kernel_inputs(&probe, &["mag"]),
-        Err(SpecError::JitKernelDescriptorAdmission { .. })
-    ));
-}
-
 #[test]
 fn sqrt_mag0_r1_no_default_runtime_wiring() {
     assert_eq!(

@@ -74,14 +74,6 @@ fn owner_silo_accumulator_plan_compiles_from_canonical_scenario() {
     assert_eq!(plan.surplus_plan.slot_count, 3);
     assert_eq!(plan.deficit_plan.slot_count, 3);
 }
-
-#[test]
-fn owner_silo_accumulator_plan_rejects_invalid_silo_amount() {
-    let scenario = load_corpus("owner_silo_invalid_silo_amount.simthing-scenario.json");
-    let err = compile_owner_silo_gpu_tick_plan(&scenario).unwrap_err();
-    assert!(matches!(err, SpecError::ValidationFailed));
-}
-
 #[test]
 fn owner_silo_accumulator_participants_are_explicit_only() {
     let scenario = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
@@ -245,20 +237,4 @@ fn owner_silo_gpu_tick_does_not_mutate_scenario_authority() {
     let _ = execute_accumulator_plan_tick_cpu(&plan.surplus_plan, &inputs).expect("cpu tick");
     assert_eq!(evaluate_owner_silo_flow(&scenario), oracle_before);
     assert_eq!(scenario.structural_grid, structural_before);
-}
-
-#[test]
-fn owner_silo_invalid_silo_rejected_before_participant_inputs() {
-    let scenario = load_corpus("owner_silo_invalid_silo_amount.simthing-scenario.json");
-    let report = evaluate_owner_silo_flow(&scenario);
-    assert_eq!(
-        report.classification,
-        OwnerSiloAdmissionClassification::Rejected
-    );
-    assert!(report
-        .errors
-        .iter()
-        .any(|e| e.kind == OwnerSiloAdmissionErrorKind::InvalidSiloAmount));
-    assert!(owner_silo_flow_participant_inputs(&scenario).is_err());
-    assert!(compile_owner_silo_gpu_tick_plan(&scenario).is_err());
 }

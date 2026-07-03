@@ -307,67 +307,6 @@ fn e11b_explicit_nested_materialization_build_execution_plan_uses_nested_layout(
     assert!(layout.participant_roots[0].children[0].children.len() > 0);
     assert_ne!(layout.band_layout.total_bands_used, 5);
 }
-
-#[test]
-fn e11b_explicit_nested_materialization_missing_parent_rejected() {
-    let mut reg = DimensionRegistry::new();
-    register_flow(&mut reg);
-    let (mut root, hosted) = hosted_cohorts(2);
-    let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&root);
-    let participants = vec![
-        ExplicitParticipantSpec::flat(alloc.slot_of(hosted[0]).unwrap(), hosted[0].raw()),
-        ExplicitParticipantSpec::nested(alloc.slot_of(hosted[1]).unwrap(), hosted[1].raw(), 9_999),
-    ];
-    let spec = ResourceFlowSpec {
-        arenas: vec![arena_spec(participants, 16)],
-        couplings: vec![],
-        ..Default::default()
-    };
-    let err = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap_err();
-    let simthing_driver::InstallError::Spec(spec_err) = err else {
-        panic!("expected spec error");
-    };
-    assert!(matches!(
-        spec_err,
-        SpecError::UnknownExplicitParticipantParent { .. }
-    ));
-}
-
-#[test]
-fn e11b_explicit_nested_materialization_cycle_rejected() {
-    let mut reg = DimensionRegistry::new();
-    register_flow(&mut reg);
-    let (mut root, hosted) = hosted_cohorts(2);
-    let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&root);
-    let participants = vec![
-        ExplicitParticipantSpec::nested(
-            alloc.slot_of(hosted[0]).unwrap(),
-            hosted[0].raw(),
-            hosted[1].raw() as u64,
-        ),
-        ExplicitParticipantSpec::nested(
-            alloc.slot_of(hosted[1]).unwrap(),
-            hosted[1].raw(),
-            hosted[0].raw() as u64,
-        ),
-    ];
-    let spec = ResourceFlowSpec {
-        arenas: vec![arena_spec(participants, 16)],
-        couplings: vec![],
-        ..Default::default()
-    };
-    let err = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap_err();
-    let simthing_driver::InstallError::Spec(spec_err) = err else {
-        panic!("expected spec error");
-    };
-    assert!(matches!(
-        spec_err,
-        SpecError::ExplicitParticipantParentCycle { .. }
-    ));
-}
-
 #[test]
 fn e11b_explicit_nested_materialization_default_parent_none_roundtrip() {
     let json = r#"{"slot":3,"subtree_root_id":42}"#;

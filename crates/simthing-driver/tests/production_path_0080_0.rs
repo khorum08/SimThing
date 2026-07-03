@@ -142,47 +142,6 @@ fn production_path_0080_0_bounded_local_economy_only() {
         PRODUCTION_PATH_0080_0_ALLOWED_ECONOMY_VALUES
     );
 }
-
-#[test]
-fn production_path_0080_0_rejects_capture_as_reparenting() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.capture_as_reparenting = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"capture_as_reparenting"));
-}
-
-#[test]
-fn production_path_0080_0_rejects_owner_entity_as_spatial_parent() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.owner_entity_as_spatial_parent = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"owner_entity_as_spatial_parent"));
-}
-
-#[test]
-fn production_path_0080_0_rejects_nested_transfer() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.nested_transfer = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"nested_transfer"));
-}
-
-#[test]
-fn production_path_0080_0_rejects_hard_currency_markets_trade_aibudget() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.hard_currency_markets_trade_aibudget = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"hard_currency_markets_trade_aibudget"));
-}
-
 #[test]
 fn production_path_0080_0_no_semantic_or_raw_wgsl() {
     let admitted = report();

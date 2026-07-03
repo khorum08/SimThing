@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** — local gates and `cargo check` complete; GitHub Doctrine Exec pending on PR merge ref.
+**DONE — merged #1099**. Merge commit `3871f864e7`. Live inventory after merge: **5583**.
 
 ## Mission
 

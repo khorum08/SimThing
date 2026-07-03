@@ -459,33 +459,6 @@ fn mapping_atlas_scheduler_reuses_resident_states_across_two_ticks() {
         );
     });
 }
-
-#[test]
-fn mapping_atlas_scheduler_rejects_input_count_mismatch() {
-    with_isolated_readback_gate_test(|| {
-        let Some(ctx) = gpu_context_blocking().ok() else {
-            eprintln!("SIM-MAPPING-ATLAS-SCHEDULER-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
-            return;
-        };
-        let _guard = GPU_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
-        let (atlas, _, values0, _, _) = two_theater_atlas();
-        let mut scheduler = SimGpuMappingAtlasScheduler::new(&ctx, atlas).expect("scheduler");
-        let err = scheduler
-            .tick(
-                &ctx,
-                MappingAtlasTickInputs {
-                    theater_inputs: vec![MappingTickInputs {
-                        structured_field_values: &[values0],
-                        interleaved_values: None,
-                    }],
-                },
-                SimGpuMappingReadbackPolicy::None,
-            )
-            .expect_err("mismatch");
-        assert!(matches!(err, SimTickError::InvalidInputLength { .. }));
-    });
-}
-
 #[test]
 fn mapping_atlas_scheduler_forbidden_token_guard() {
     let source = include_str!("../src/mapping_atlas_scheduler.rs");

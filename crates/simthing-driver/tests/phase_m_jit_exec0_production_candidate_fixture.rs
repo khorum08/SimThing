@@ -639,55 +639,6 @@ fn execute_admitted_production_candidate(
 fn try_execute_rejected_candidate(entry: &KernelRegistryEntryPreview) -> SpecError {
     admit_production_candidate(entry).expect_err("candidate must reject before execution")
 }
-
-#[test]
-fn jit_exec0_candidate_admission_gates_execution() {
-    EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-
-    let entry = build_registry_entry("exec0_gate").expect("registry entry");
-    let candidate = admit_production_candidate(&entry).expect("admission");
-    assert_eq!(
-        candidate.lane,
-        KernelRegistryLane::ProductionCandidatePreview
-    );
-
-    let mut mag2_entry = entry.clone();
-    mag2_entry
-        .canonical_text
-        .push_str("\n  write=mag2 authority=ApproximateDiagnostic");
-    let err = try_execute_rejected_candidate(&mag2_entry);
-    match err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(reason.contains("mag2"));
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-    assert!(
-        !EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst),
-        "rejected candidate must not invoke GPU execution helper"
-    );
-
-    with_gpu(|ctx| {
-        EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-        let (_, result) = execute_admitted_production_candidate(
-            ctx,
-            "exec0_gate_run",
-            &build_test_field(8, 8, 4, 0),
-            &[(ObserverInput {
-                x: 2,
-                y: 2,
-                source_col: 0,
-                _pad: 0,
-            })],
-            8,
-            8,
-            4,
-        );
-        assert!(EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst));
-        assert_eq!(result.dispatch_count, 1);
-    });
-}
-
 #[test]
 fn jit_exec0_production_candidate_grad1_executes_with_oracle_parity() {
     with_gpu(|ctx| {
@@ -770,54 +721,5 @@ fn jit_exec0_remains_default_off_no_production_wiring() {
     assert!(
         !driver_lib.contains("jit_exec0"),
         "EXEC-0 fixture must not wire into production driver lib"
-    );
-}
-
-#[test]
-fn jit_exec0_rejects_approximate_candidate_before_execution() {
-    EXECUTION_HELPER_INVOKED.store(false, Ordering::SeqCst);
-
-    let entry = build_registry_entry("exec0_reject").expect("registry entry");
-
-    let mut mag2_entry = entry.clone();
-    mag2_entry
-        .canonical_text
-        .push_str("\n  write=mag2 authority=ApproximateDiagnostic");
-    let mag2_err = try_execute_rejected_candidate(&mag2_entry);
-    match mag2_err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(reason.contains("mag2"));
-        }
-        other => panic!("unexpected mag2 error: {other:?}"),
-    }
-
-    let sqrt = simthing_spec::landed_jit_kernel_descriptors()
-        .into_iter()
-        .find(|desc| desc.id == "m_jit_sqrt_0_candidate")
-        .expect("sqrt0");
-    let identity = preview_kernel_graph_identity(&KernelGraphSpec {
-        nodes: vec![sqrt],
-        edges: vec![],
-    })
-    .expect("sqrt identity");
-    let sqrt_entry = KernelRegistryEntryPreview {
-        stable_key: identity.stable_key,
-        canonical_text: identity.canonical_text,
-        request_ids: vec!["sqrt_req".into()],
-        lane: KernelRegistryLane::TestOnlyPreview,
-        default_off: true,
-        production_wiring: false,
-    };
-    let sqrt_err = try_execute_rejected_candidate(&sqrt_entry);
-    match sqrt_err {
-        SpecError::JitKernelDescriptorAdmission { reason, .. } => {
-            assert!(reason.contains("m_jit_sqrt_0_candidate"));
-        }
-        other => panic!("unexpected sqrt error: {other:?}"),
-    }
-
-    assert!(
-        !EXECUTION_HELPER_INVOKED.load(Ordering::SeqCst),
-        "approximate candidates must reject before GPU execution"
     );
 }

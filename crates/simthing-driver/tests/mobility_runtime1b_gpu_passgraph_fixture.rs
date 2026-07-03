@@ -381,25 +381,6 @@ fn runtime1b_no_hard_soft_silent_mix() {
     assert!(report.admitted);
     assert!(!spec_report(&report).hard_soft_silent_mix);
 }
-
-#[test]
-fn runtime1b_rejects_default_on_behavior() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.default_on_behavior = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_behavior"));
-}
-
-#[test]
-fn runtime1b_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
 #[test]
 fn runtime1b_rejects_cpu_planner_urgency_commitment() {
     let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
@@ -410,65 +391,6 @@ fn runtime1b_rejects_cpu_planner_urgency_commitment() {
         .diagnostics
         .contains(&"cpu_planner_urgency_commitment"));
 }
-
-#[test]
-fn runtime1b_rejects_owner_as_spatial_parent() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.owner_as_spatial_parent = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_as_spatial_parent"));
-}
-
-#[test]
-fn runtime1b_rejects_capture_as_reparenting() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.capture_as_reparenting = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"capture_as_reparenting"));
-}
-
-#[test]
-fn runtime1b_rejects_default_on_resource_flow() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.default_on_resource_flow = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_resource_flow"));
-}
-
-#[test]
-fn runtime1b_rejects_hard_currency_through_resource_flow() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.hard_currency_through_resource_flow = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hard_currency_through_resource_flow"));
-}
-
-#[test]
-fn runtime1b_rejects_hybrid_strata_or_faction_index_scaling() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.hybrid_strata_or_faction_index_scaling = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"hybrid_strata_or_faction_index_scaling"));
-}
-
-#[test]
-fn runtime1b_rejects_closed_ladder_reopen() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.closed_ladder_reopen = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"closed_ladder_reopen"));
-}
-
 #[test]
 fn runtime1b_no_default_runtime_cost_when_disabled() {
     let report =

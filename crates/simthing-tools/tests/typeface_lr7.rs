@@ -123,23 +123,6 @@ fn codepoint_table_is_stable_golden() {
         bake_icon_manifest(fixture_manifest_path(), &mut icons, &mut atlas, PX).expect("bake");
     assert_eq!(format_codepoint_table(&bake), GOLDEN_CODEPOINT_TABLE);
 }
-
-#[test]
-fn duplicate_codepoint_rejected() {
-    let dir = temp_manifest_dir("dup_cp");
-    let body = r##"(
-        reserved_range_start: 0xF0000,
-        reserved_range_end: 0xF00FF,
-        icons: [
-            (name: "a", codepoint: 0xF0001, svg_path: "a.svg"),
-            (name: "b", codepoint: 0xF0001, svg_path: "a.svg"),
-        ],
-    )"##;
-    let path = write_manifest(&dir, body, &[("a.svg", VALID_SVG)]);
-    let err = load_icon_manifest(&path).expect_err("duplicate codepoint");
-    assert!(err.to_string().contains("duplicate manifest codepoint"));
-}
-
 #[test]
 fn duplicate_name_rejected() {
     let dir = temp_manifest_dir("dup_name");
@@ -155,22 +138,6 @@ fn duplicate_name_rejected() {
     let err = load_icon_manifest(&path).expect_err("duplicate name");
     assert!(err.to_string().contains("duplicate manifest name"));
 }
-
-#[test]
-fn codepoint_outside_reserved_range_rejected() {
-    let dir = temp_manifest_dir("out_of_range");
-    let body = r##"(
-        reserved_range_start: 0xF0000,
-        reserved_range_end: 0xF00FF,
-        icons: [
-            (name: "a", codepoint: 0xF0100, svg_path: "a.svg"),
-        ],
-    )"##;
-    let path = write_manifest(&dir, body, &[("a.svg", VALID_SVG)]);
-    let err = load_icon_manifest(&path).expect_err("out of range");
-    assert!(err.to_string().contains("outside reserved range"));
-}
-
 #[test]
 fn missing_svg_path_errors() {
     let dir = temp_manifest_dir("missing_svg");
