@@ -20,6 +20,7 @@ fi
 "$PYTHON_BIN" - <<'PY' "$PROFILES" "$DEFAULT_PROFILE"
 import csv
 import pathlib
+import re
 import shlex
 import sys
 
@@ -27,6 +28,35 @@ profiles_path = pathlib.Path(sys.argv[1])
 default_profile = sys.argv[2]
 
 errors: list[str] = []
+
+FORBIDDEN_GHA_TOKENS = [
+    "alsa",
+    "libasound",
+    "alsa-sys",
+    "xvfb",
+    "x11",
+    "wayland",
+    "mesa",
+    "vulkan",
+    "display",
+    "wayland_display",
+    "pulseaudio",
+    "pipewire",
+    "bevy",
+    "winit",
+    "wininit",
+    "wgpu",
+    "apt-get",
+    "mapeditor",
+    "typeface",
+]
+
+FORBIDDEN_GHA_CRATE_COMMANDS = [
+    "simthing-driver",
+    "simthing-gpu",
+    "simthing-mapeditor",
+    "simthing-tools",
+]
 
 if not profiles_path.exists():
     print(f"PROFILE-LINT: FAIL missing profiles file {profiles_path}")
@@ -43,6 +73,83 @@ elif by_id[default_profile].get("profile_class") == "owner-deep":
 
 def split_commands(value: str) -> list[str]:
     return [part.strip() for part in (value or "").split(";") if part.strip()]
+
+def is_owner_deep(row: dict[str, str]) -> bool:
+    return row.get("profile_class", "") == "owner-deep"
+
+def forbidden_desktop_dep_errors(profile_id: str, profile_class: str, field: str, command: str) -> list[str]:
+    out: list[str] = []
+    lowered = command.lower()
+    for token in FORBIDDEN_GHA_TOKENS:
+        if token in lowered:
+            out.append(
+                "FORBIDDEN-GHA-DESKTOP-DEPS: owner_deep=false profile contains desktop/audio/windowing/GPU token "
+                f"'{token}'. Do not install/probe ALSA, X, Bevy, winit, wgpu, mapeditor, typeface, or desktop/GPU "
+                f"dependencies in non-owner-deep GHA. Block/defer the crate instead. "
+                f"(profile `{profile_id}` {field}: `{command}`)"
+            )
+    for crate in FORBIDDEN_GHA_CRATE_COMMANDS:
+        if re.search(rf"(?:-p|--package=)\s*{re.escape(crate)}\b", command):
+            out.append(
+                "FORBIDDEN-GHA-DESKTOP-DEPS: owner_deep=false profile contains blocked crate "
+                f"`{crate}` in executable command. Do not probe driver/GPU/mapeditor/tools on non-owner-deep GHA. "
+                f"Block/defer the crate instead. (profile `{profile_id}` {field}: `{command}`)"
+            )
+    return out
+
+def lint_forbidden_desktop_deps(rows: list[dict[str, str]]) -> list[str]:
+    out: list[str] = []
+    for row in rows:
+        profile_id = row.get("profile_id", "")
+        profile_class = row.get("profile_class", "")
+        if is_owner_deep(row):
+            continue
+        for field in ("tests", "doc_tests"):
+            for command in split_commands(row.get(field, "")):
+                out.extend(forbidden_desktop_dep_errors(profile_id, profile_class, field, command))
+    return out
+
+def prove_forbidden_desktop_dep_guard() -> list[str]:
+    out: list[str] = []
+    bad_cases = [
+        (
+            "apt-get libasound",
+            {
+                "profile_id": "prove-bad-apt-alsa",
+                "profile_class": "targeted",
+                "tests": "apt-get install -y libasound2-dev",
+                "doc_tests": "-",
+            },
+            False,
+        ),
+        (
+            "driver compile floor",
+            {
+                "profile_id": "prove-bad-driver",
+                "profile_class": "targeted",
+                "tests": "cargo check -p simthing-driver --tests",
+                "doc_tests": "-",
+            },
+            False,
+        ),
+        (
+            "clean compile floor",
+            {
+                "profile_id": "prove-good-floor",
+                "profile_class": "targeted",
+                "tests": "cargo check -p simthing-core --tests;cargo check -p simthing-kernel --tests",
+                "doc_tests": "-",
+            },
+            True,
+        ),
+    ]
+    for label, row, should_pass in bad_cases:
+        hits = lint_forbidden_desktop_deps([row])
+        if should_pass and hits:
+            out.append(f"forbidden-desktop-deps prove `{label}` expected PASS got FAIL: {hits[0]}")
+        if not should_pass and not hits:
+            out.append(f"forbidden-desktop-deps prove `{label}` expected FAIL got PASS")
+    return out
 
 def cargo_test_occurrences(command: str) -> list[list[str]]:
     try:
@@ -97,6 +204,9 @@ for row in rows:
                     errors.append(
                         f"profile `{profile_id}` ({profile_class}) uses broad `--lib` cargo test without an exact selector: `{command}`"
                     )
+
+errors.extend(lint_forbidden_desktop_deps(rows))
+errors.extend(prove_forbidden_desktop_dep_guard())
 
 if errors:
     print("PROFILE-LINT: FAIL")

@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / DA REVIEW**. This rung is gate-state. It is not orchestrator-mergeable. Fable/DA or Owner clearance is required before merge.
+**PROBATION / DA REVIEW after 0R**. This rung is gate-state. It is not orchestrator-mergeable. Fable/DA or Owner clearance is required before merge.
 
 ## Mission
 
@@ -32,7 +32,7 @@ Profile `tests-compile-floor-non-bevy` runs `cargo check -p <crate> --tests` for
 | simthing-core | PASS | yes | yes | CPU-only; no Bevy/desktop/typeface dev-deps | — | — |
 | simthing-kernel | PASS | yes | yes | authority crate; compile-only; no runtime GPU proof | — | — |
 | simthing-sim | PASS | yes | yes | CPU-oracle parity tests compile without desktop bootstrap | — | — |
-| simthing-driver | PASS locally; FAIL on GHA Linux (`alsa-sys` custom build) | no | no | test dependency chain pulls ALSA on ubuntu-latest even for compile-only `--tests` | ALSA/audio + GPU runtime integration surface | `TESTS-COMPILE-FLOOR-BLOCKED-DRIVER-0` |
+| simthing-driver | blocked (doctrine) | no | no | test dependency graph reaches forbidden desktop/audio path on Linux; doctrine block, not a missing package | ALSA/audio + GPU runtime integration surface | split/pare driver test graph or local/owner-deep posture only |
 | simthing-workshop | PASS | yes | yes | CPU workshop tests compile without Bevy mapeditor/tools drag | — | — |
 | simthing-mapgenerator | PASS | yes | yes | CPU mapgenerator tests compile without Studio/Bevy | — | — |
 | simthing-spec | FAIL (ResourceFlowSpec `capacity_budget` drift in deferred admission tests) | n/a | no | non-compiling deferred admission-substrate test binaries on live master | Admission Substrate deferred corpus | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
@@ -58,6 +58,10 @@ expected_verdict_if_gpu_missing: PASS
 
 The profile does not run `cargo test`, Atlas, Bevy, mapeditor desktop runtime, tools typeface runtime, GPU runtime proof, `apt-get`, or x11/wayland/ALSA setup.
 
+`simthing-driver` is blocked from the non-owner-deep GHA compile floor because its test dependency graph reaches a forbidden desktop/audio dependency path on Linux. This is a doctrine block, not a missing package. No ALSA/libasound installation, X setup, desktop bootstrap, or GHA workaround is permitted. Future work must either split/pare the driver test graph so a non-desktop compile floor is possible, or keep driver coverage in a local/owner-deep posture.
+
+`scripts/ci/doctrine_exec_profile_lint.sh` now fails lint for `owner_deep=false` executable profile commands containing forbidden desktop/audio/windowing/GPU tokens (ALSA, X/Xvfb, Wayland, Mesa/Vulkan, Bevy, winit/wininit, wgpu, mapeditor, typeface, apt-get) or blocked crates (`simthing-driver`, `simthing-gpu`, `simthing-mapeditor`, `simthing-tools`).
+
 ## Proof
 
 Local (branch head):
@@ -69,11 +73,12 @@ Local (branch head):
 - Included `cargo check -p <crate> --tests` commands: all PASS locally for the five included crates
 - `git diff --check origin/master...HEAD`: PASS
 
-Live (PR head `014fc48536f20adb7b48c731c70f4d67284b6bae`):
+Process finding: an earlier attempt incorrectly probed `simthing-driver` on GHA and hit `alsa-sys`. That attempt is invalid proof and must not be repeated. The corrected profile excludes driver and records it as blocked by doctrine.
 
-- Doctrine Scan: PASS run `28677453402` / job `85053735357` (initial push; re-validated on 0R)
-- Doctrine Exec profile `tests-compile-floor-non-bevy` initial dispatch: FAIL run `28677549095` / job `85054028905` — `cargo check -p simthing-driver --tests` failed on GHA Linux (`alsa-sys`); driver removed in 0R
-- Doctrine Exec 0R dispatch: INSPECT run `28677688348` / job `85054448774` — all five `cargo check -p <crate> --tests` commands PASS; `failures=0 inspect=1` from `surface-truth divergence or tooling gap` (gate-state profile runs surface-truth; compile floor itself green)
+Live (PR head — record after 0R push):
+
+- Doctrine Scan: pending on latest 0R head
+- Doctrine Exec profile `tests-compile-floor-non-bevy`: pending SHA-bound dispatch on latest 0R head (five-crate floor only; no driver/desktop/audio probe)
 
 ## Known gaps / follow-ons
 
@@ -89,6 +94,6 @@ Graduation routing:
   CI verdict:          pending SHA-bound Doctrine Exec on PR head
   Triage entries:      none expected (gate-state profile; compile-only commands)
   Risk class:          gate-state / tests-compile-floor
-  Falsification check: plan mode lists exactly five cargo check --tests commands; profile lint + GHA proof seal PASS; no Bevy/GPU/desktop strings in profile; excluded crates documented with reasons including GHA `alsa-sys` driver block
+  Falsification check: plan mode lists exactly five cargo check --tests commands; profile lint + forbidden-desktop-deps guard + GHA proof seal PASS; no driver/mapeditor/tools/gpu in executable commands; excluded crates documented as doctrine blocks
   Recommended posture: PROBATION / DA REVIEW — not orchestrator-mergeable
 ```
