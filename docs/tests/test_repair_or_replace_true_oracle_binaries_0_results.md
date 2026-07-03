@@ -14,7 +14,7 @@ INTERVENTION 0I applied: #1106 was corrected after scope review. CI/gate-state e
 - PR: #1106
 - Base SHA: `6c637fcd89f2293408656825186e515618737c57`
 - Prior intervention head: `f26682eae33931e7d29dd293bb829909490f9724`
-- Merge SHA, if merged: none
+- Merge SHA, if merged: `eab1d7d5b8f0e494813a3d9d6094f3b9e95ae390` (parent #1106 split/merge; representative restore remains separate DA-held follow-up)
 
 ## Scope correction
 
@@ -24,6 +24,38 @@ INTERVENTION 0I applied: #1106 was corrected after scope review. CI/gate-state e
 - Allowed-surface deletions retained: 115 non-kernel, non-admission fossil test binaries / 895 inventory rows across `simthing-driver`, `simthing-sim`, and `simthing-gpu`.
 - New replacement binaries added by the aborted 0R path: none.
 - Scanner/allowlist edits: none.
+
+
+## TEST-PARE-PROTECTED-REPRESENTATIVE-RESTORE-0
+
+Fable ruling required replacement representatives for SoftAggregateGuard boundary-firing and fission capability-OVERLAY inheritance. These are behavior-regression representatives with catches: notes, not new gate-state or product logic.
+
+#1106 remains HOLD pending DA/Owner review after representative restore.
+
+Representative restore branch: `codex/test-pare-protected-representative-restore-0`.
+
+Restored representatives:
+
+- SoftAggregateGuard boundary-fires: `crates/simthing-sim/tests/protected_representative_restore.rs::assert_no_hard_trigger_on_soft_aggregate`; blocks unguarded `WeightedMean -> threshold` hard OUTPUT registration while preserving Quantized hard-boundary registration and AggregateAlert OUTPUT registration.
+- Fission capability-OVERLAY inheritance: `crates/simthing-sim/tests/protected_representative_restore.rs::clone_capability_children`; executes public fission resolution and asserts cloned capability-tree overlay ids, remapped overlay `affects`, cloned-root provenance, and shadow-row copy.
+
+Inventory delta after representative restore:
+
+- After #1106/#1107 split: 4,243 rows.
+- Representative restore delta: +2 rows.
+- After representative restore: 4,245 rows.
+
+Representative restore proof status:
+
+- `cargo test -p simthing-sim --test protected_representative_restore assert_no_hard_trigger_on_soft_aggregate -- --nocapture`: PASS.
+- `cargo test -p simthing-sim --test protected_representative_restore clone_capability_children -- --nocapture`: PASS.
+- `cargo check -p simthing-sim`: PASS.
+- `bash scripts/ci/doctrine_scan.sh`: PASS, `DOCTRINE-SCAN-VERDICT: PASS failures=0 inspect=0 selftest=SKIPPED`.
+- `bash scripts/ci/gen_digest.sh --check`: PASS.
+- `bash scripts/ci/test_inventory_check.sh`: PASS, 4,245 rows / 4,245 discovered / 0 missing / 0 extra.
+- `bash scripts/ci/test_pare_boundary_check.sh`: PASS, all 4,245 live rows have owning boundary mappings.
+- `bash scripts/ci/test_inventory_drift_check.sh`: PASS, unledgered 0 / stale 0.
+- Local note: Git Bash was available; scanner scripts required `Python312` on PATH.
 
 ## Deferred admission-substrate deletion candidates
 
