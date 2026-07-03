@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** — GitHub CPU-only Doctrine Exec proof pending; local GPU/Bevy/desktop compile proof recorded below.
+**DONE — merged #1100**. Merge commit `a71700f3fb`. Live inventory after merge: **5332**.
 
 ## Ruling applied
 
@@ -61,6 +61,19 @@ Temporary `tests/**` scope rows added per touched protected crate under profile 
 
 Driver/sim/workshop surviving integration binaries are **not** executed on GHA (cold-compile timeout risk); covered by `cargo check` plus local proof below.
 
+**Remedial closeout (orchestration):** `cargo test -p simthing-driver --test atlas_0080_0` was **removed** from the GitHub profile after run `28636114868` timed out at 300s on cold CI compile (desktop/Bevy transitive deps). Do **not** re-add atlas to GHA targeted proof.
+
+### Class 1 survivor — `atlas_0080_0` (local / owner-deep only)
+
+The `atlas_0080_0` binary survives Wave 3 with Class 1 rows (golden-byte, oracle-parity, behavior-regression). It is **not** a GitHub targeted-proof command. Proof posture:
+
+| Surface | Command | Where |
+|---|---|---|
+| GHA targeted profile | *(excluded)* | `cargo check -p simthing-driver` floor only |
+| Local owner-deep | `cargo test -p simthing-driver --test atlas_0080_0 -- --nocapture` | owner machine — PASS on Windows head `811c7c0e0a` |
+
+Deleted atlas admission duplicates (e.g. `atlas_0080_0_rejects_other_stop_lines`) are covered by wave review disposition and `e10r_rejects_slot_mismatch` representative; the surviving binary itself is Class 1 retention, not deleted-residue proof.
+
 ### Local GPU/Bevy/desktop compile proof
 
 - `cargo check -p simthing-mapeditor` — PASS
@@ -92,13 +105,20 @@ Local GPU/Bevy/desktop compile proof:
 
 ## GitHub Doctrine Exec
 
-Profile: `test-pare-gpu-bevy-residue` (CPU-only on GHA)
+Profile: `test-pare-gpu-bevy-residue` (CPU-only on GHA; no Bevy/mapeditor/tools/atlas legs)
+
+Commands: five `cargo check -p` floors + four clausething CPU representative tests only. No workspace test sweep. No `atlas_0080_0`.
 
 Trigger: `/seal-proof profile=test-pare-gpu-bevy-residue`
 
+| Run | Head | Verdict | Notes |
+|---|---|---|---|
+| `28636487452` | `811c7c0e0a` | **PASS** failures=0 inspect=0 | authoritative CPU-only profile (pre-merge) |
+| `28636114868` | `6bf8502276` | FAIL | atlas_0080_0 timed out — remediated by profile removal |
+
 ## Graduation routing
 
-- CI verdict: pending GitHub CPU-only proof
+- CI verdict: **PASS** — run `28636487452`, failures 0, inspect 0 (remediated profile; atlas excluded from GHA)
 - Risk class: integration fossil deletion under DA-approved temporary tests scope; GPU/Bevy/desktop legs local-only
 - Falsification check: 251 deleted rows are Class 2 collapse targets with named representatives; Class 1 rows retained; no product code edited outside `#[test]` surfaces
 - Recommended posture: deep — largest inventory drop in Track D owner-deep residue wave
