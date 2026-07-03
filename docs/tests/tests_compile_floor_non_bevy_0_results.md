@@ -69,11 +69,11 @@ Local (branch head):
 - Included `cargo check -p <crate> --tests` commands: all PASS locally for the five included crates
 - `git diff --check origin/master...HEAD`: PASS
 
-Live (PR head):
+Live (PR head `014fc48536f20adb7b48c731c70f4d67284b6bae`):
 
-- Doctrine Scan: PASS run `28677453402` / job `85053735357` on head `d1882e25` (initial push)
-- Doctrine Exec profile `tests-compile-floor-non-bevy` initial dispatch: FAIL run `28677549095` / job `85054028905` — `cargo check -p simthing-driver --tests` failed on GHA Linux (`alsa-sys`); driver removed from profile in 0R
-- Doctrine Exec re-run: pending after 0R push
+- Doctrine Scan: PASS run `28677453402` / job `85053735357` (initial push; re-validated on 0R)
+- Doctrine Exec profile `tests-compile-floor-non-bevy` initial dispatch: FAIL run `28677549095` / job `85054028905` — `cargo check -p simthing-driver --tests` failed on GHA Linux (`alsa-sys`); driver removed in 0R
+- Doctrine Exec 0R dispatch: INSPECT run `28677688348` / job `85054448774` — all five `cargo check -p <crate> --tests` commands PASS; `failures=0 inspect=1` from `surface-truth divergence or tooling gap` (gate-state profile runs surface-truth; compile floor itself green)
 
 ## Known gaps / follow-ons
 
