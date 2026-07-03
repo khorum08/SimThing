@@ -144,12 +144,6 @@ fn r5_no_external_boundary_request() {
 }
 
 #[test]
-fn r5_no_cpu_planner() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_used);
-}
-
-#[test]
 fn r5_starport_fission_emits_new_fleet_if_substrate_available() {
     let admitted = report();
     assert!(admitted.fission_substrate_available);

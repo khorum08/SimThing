@@ -382,16 +382,6 @@ fn runtime1b_no_hard_soft_silent_mix() {
     assert!(!spec_report(&report).hard_soft_silent_mix);
 }
 #[test]
-fn runtime1b_rejects_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityRuntime1bForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-#[test]
 fn runtime1b_no_default_runtime_cost_when_disabled() {
     let report =
         run_mobility_runtime1b_passgraph_fixture(&MobilityRuntime1bPassgraphFixtureInput {

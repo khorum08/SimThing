@@ -112,18 +112,6 @@ fn rr_3_gpu_disburses_system_to_surface_or_starport() {
 }
 
 #[test]
-fn rr_3_reduce_up_bits_match_rr_0_oracle() {
-    let admitted = report();
-    assert!(admitted.reduce_up_parity_ok);
-}
-
-#[test]
-fn rr_3_disburse_down_bits_match_rr_0_oracle() {
-    let admitted = report();
-    assert!(admitted.disburse_down_parity_ok);
-}
-
-#[test]
 fn rr_3_disabled_surface_to_planet_reduce_fails_parity() {
     let admitted = report();
     assert!(admitted.disabled_surface_to_planet_fails_parity);

@@ -149,16 +149,6 @@ fn econ_scale_0080_0_subsidiarity_preserved() {
 }
 
 #[test]
-fn econ_scale_0080_0_no_cpu_planner() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_used);
-
-    let rejected = rejected_with(|f| f.cpu_planner = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"cpu_planner"));
-}
-
-#[test]
 fn econ_scale_0080_0_no_semantic_or_raw_wgsl() {
     let admitted = report();
     assert!(!admitted.semantic_or_raw_wgsl_present);

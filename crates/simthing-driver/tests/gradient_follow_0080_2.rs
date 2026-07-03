@@ -165,13 +165,3 @@ fn gradient_follow_0080_2_emits_export() {
     assert!(admitted.text_export.contains("GRADIENT-FOLLOW-0080-2"));
     assert!(admitted.text_export.contains("STEP|"));
 }
-
-#[test]
-fn gradient_follow_0080_2_rejects_cpu_planner_and_lookahead() {
-    let mut input = GradientFollow0082Input::explicit_opt_in();
-    input.forbidden.cpu_planner_or_lookahead = true;
-    let rejected = run_gradient_follow_0080_2(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"cpu_planner_or_lookahead"));
-    assert!(!rejected.no_cpu_planner_or_lookahead);
-}

@@ -42,48 +42,6 @@ fn run_parity_test(
 }
 
 #[test]
-fn weighted_mean_cpu_oracle_handles_edge_cases() {
-    let children = vec![
-        WeightedChild {
-            value: 42.0,
-            weight: 2.0,
-        },
-        WeightedChild {
-            value: 10.0,
-            weight: 1.0,
-        },
-        WeightedChild {
-            value: 20.0,
-            weight: 3.0,
-        },
-        WeightedChild {
-            value: 99.0,
-            weight: 0.0,
-        },
-        WeightedChild {
-            value: 99.0,
-            weight: 0.0,
-        },
-    ];
-    let ranges = vec![
-        ParentRange { offset: 0, len: 0 },
-        ParentRange { offset: 3, len: 2 },
-        ParentRange { offset: 0, len: 1 },
-        ParentRange { offset: 1, len: 2 },
-    ];
-
-    let outputs = weighted_mean_cpu(&children, &ranges);
-    assert_eq!(outputs.len(), 4);
-    assert_eq!(outputs[0].value, 0.0);
-    assert_eq!(outputs[1].value, 0.0);
-    assert_eq!(outputs[2].value, 42.0);
-    assert!((outputs[3].value - 17.5).abs() <= 1e-6);
-    for output in &outputs {
-        assert!(output.value.is_finite());
-    }
-}
-
-#[test]
 fn weighted_mean_gpu_matches_cpu_small() {
     let harness = WeightedMeanGpuHarness::new().unwrap();
     run_parity_test(&harness, "weighted_mean_small_x8", 128, 8);

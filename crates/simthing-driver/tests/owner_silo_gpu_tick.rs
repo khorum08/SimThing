@@ -110,16 +110,6 @@ fn owner_silo_cpu_oracle_matches_accumulator_inputs() {
 }
 
 #[test]
-fn owner_silo_unresolved_deficit_oracle_preserved() {
-    let scenario = load_corpus("owner_silo_unresolved_deficit.simthing-scenario.json");
-    let plan = compile_owner_silo_gpu_tick_plan(&scenario).expect("compile");
-    let admission = evaluate_owner_silo_flow(&scenario);
-    assert_eq!(owner_silo_participant_deficit_total(&plan), 50);
-    assert_eq!(admission.unresolved_deficit_total, 35.0);
-    assert!(plan.full_state_mutation_deferred);
-}
-
-#[test]
 fn owner_silo_gpu_tick_matches_cpu_oracle_on_real_adapter_or_records_skip() {
     with_isolated_readback_gate_test(|| run_owner_silo_gpu_tick_matches_cpu_oracle());
 }

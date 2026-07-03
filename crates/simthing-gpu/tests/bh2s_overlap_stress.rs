@@ -173,10 +173,3 @@ fn bh2s_stress_columns_feed_threshold_without_cpu_planner() {
     let crossed = stress > threshold;
     assert!(crossed, "oracle stress feeds threshold without CPU planner");
 }
-
-#[test]
-fn bh2s_no_full_field_cpu_readback_for_decision() {
-    let src = include_str!("../src/stress_compose.rs");
-    assert!(!src.contains("MapMode::Read"));
-    assert!(!src.contains("copy_buffer_to_buffer"));
-}

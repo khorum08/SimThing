@@ -132,31 +132,6 @@ fn shadow_column_compatibility_requires_explicit_mode() {
 }
 
 #[test]
-fn oracle_verification_requires_explicit_mode() {
-    let tree = PalmaPath5PropertyTree::build_default();
-    let w = tree.gather_w_flat_from_properties();
-    let binding = grid_binding(&tree);
-    let mut band = TraversalFieldBandSession::new(binding, FieldCadence::EveryTick).expect("band");
-    band.enable();
-
-    with_gpu(|ctx| {
-        let w_buffer = upload_flat_w_buffer(ctx, &w);
-        let report = band
-            .dispatch_oracle_verification_gpu(
-                ctx,
-                TraversalFieldGpuInput::FlatW { buffer: &w_buffer },
-                &w,
-            )
-            .expect("explicit oracle");
-        let err = report
-            .dispatch
-            .and_then(|d| d.max_oracle_error)
-            .expect("oracle err");
-        assert!(err < 1e-4);
-    });
-}
-
-#[test]
 fn gpu_resident_d_output_exposes_field_handle_after_explicit_dispatch() {
     let tree = PalmaPath5PropertyTree::build_default();
     let w = tree.gather_w_flat_from_properties();

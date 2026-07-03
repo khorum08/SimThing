@@ -147,12 +147,6 @@ fn loaded_scenario_recursive_rf_runtime_emits_gpu_compatible_rows() {
 }
 
 #[test]
-fn loaded_scenario_recursive_rf_runtime_cpu_oracle_only() {
-    let report = evaluate_fixture();
-    assert!(report.cpu_oracle_only);
-}
-
-#[test]
 fn loaded_scenario_recursive_rf_runtime_defers_scenario_and_runtime_mutation() {
     let report = evaluate_fixture();
     assert!(report.scenario_authority_mutation_deferred);

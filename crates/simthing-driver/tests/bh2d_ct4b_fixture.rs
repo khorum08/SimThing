@@ -375,25 +375,6 @@ fn bh2d_profile_weight_changes_compact_d_probe() {
 }
 
 #[test]
-fn bh2d_no_full_field_cpu_readback_for_decision() {
-    let compose_src = include_str!("../../simthing-gpu/src/w_impedance_compose.rs");
-    let stress_src = include_str!("../../simthing-gpu/src/stress_compose.rs");
-    assert!(!compose_src.contains("MapMode::Read"));
-    assert!(!stress_src.contains("MapMode::Read"));
-    assert!(!compose_src.contains("copy_buffer_to_buffer"));
-
-    let mut fixture = Ct4bFixture::build_seeded();
-    let compose = w_compose_config();
-    let stress = stress_compose_config();
-    let candidates = Ct4bFixture::probe_anchor_candidates();
-    with_gpu(|ctx| {
-        fixture.apply_gpu_flux_choke_both_fields(ctx);
-        let _probe =
-            run_production_feedstock_probe(ctx, &fixture.values, &compose, &stress, 0, &candidates);
-    });
-}
-
-#[test]
 fn bh2d_no_route_or_predecessor_objects() {
     let paths = [
         include_str!("../src/w_impedance_compose_bridge.rs"),

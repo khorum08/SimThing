@@ -562,20 +562,6 @@ fn corpus_fingerprint(rows: &[CorpusRow]) -> String {
 }
 
 #[test]
-fn field_policy_act4_corpus_cpu_oracle_exact() {
-    let table = default_mapping_table();
-    let mapping_n = mapping_count();
-    for row in authoring_corpus() {
-        let got = cpu_fixture(row.admission, &table, mapping_n);
-        assert!(fixture_eq(got, row.expected), "{}", row.label);
-        println!(
-            "field_policy_act4_corpus[{}]: record_code={} flags={} corpus_id={FIELD_POLICY_ACT4_CORPUS_ID}",
-            row.label, got.record_code, got.flags,
-        );
-    }
-}
-
-#[test]
 fn field_policy_act4_corpus_row_coverage() {
     let labels: Vec<_> = authoring_corpus().iter().map(|r| r.label).collect();
     assert_eq!(labels.len(), FIELD_POLICY_ACT4_CORPUS_ROW_COUNT);

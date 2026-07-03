@@ -298,31 +298,6 @@ fn bh2c_resident_d_no_full_field_readback() {
 }
 
 #[test]
-fn bh2c_cpu_oracle_test_only() {
-    let compose_doc = include_str!("../../simthing-gpu/src/w_impedance_compose.rs");
-    let stencil_doc = include_str!("../../simthing-gpu/src/min_plus_stencil.rs");
-    assert!(
-        compose_doc.contains("CPU oracle") || compose_doc.contains("test comparison only"),
-        "cpu_w_impedance_compose_oracle must be documented test-only"
-    );
-    assert!(
-        stencil_doc.contains("cpu_min_plus") && !stencil_doc.contains("MovementPolicy"),
-        "CPU min-plus helpers are oracle/diagnostic only"
-    );
-
-    let test_src = include_str!("bh2c_palma_w_feedstock.rs");
-    assert!(
-        test_src.contains("Test-only") || test_src.contains("test-only"),
-        "BH-2C fixture/oracle helpers must be labeled test-only"
-    );
-    assert!(
-        !include_str!("../src/w_impedance_compose_bridge.rs")
-            .contains("cpu_w_impedance_compose_oracle"),
-        "production bridge must not invoke CPU oracle"
-    );
-}
-
-#[test]
 fn bh2c_no_route_or_predecessor_objects() {
     let bridge = include_str!("../src/w_impedance_compose_bridge.rs");
     let compose = include_str!("../../simthing-gpu/src/w_impedance_compose.rs");

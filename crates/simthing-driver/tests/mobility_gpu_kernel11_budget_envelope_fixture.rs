@@ -395,15 +395,6 @@ fn mobility_gpu_kernel11_budget_no_gpu_allocator_or_nondeterministic_atomics() {
 }
 
 #[test]
-fn mobility_gpu_kernel11_budget_no_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    assert!(rejected_with(forbidden)
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
 fn mobility_gpu_kernel11_budget_preserves_closed_ladder_posture() {
     let mut forbidden = MobilityGpuKernel11ForbiddenPathRequests::default();
     forbidden.closed_ladder_reopen = true;

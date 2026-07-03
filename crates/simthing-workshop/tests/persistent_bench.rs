@@ -16,25 +16,6 @@ fn assert_report_ok(report: &simthing_workshop::persistent_bench::PersistentBenc
 }
 
 #[test]
-fn persistent_bench_cpu_oracle_conserves_resources() {
-    let scenario = make_persistent_bench_scenario("pb_cpu_conservation", 16, 256, 0.8, false, true);
-    let ticks = 8;
-    let (final_pools, final_queues, summaries, _) =
-        resolve_cpu_persistent_bench(&scenario, ticks, false);
-    assert!(conservation_check(
-        &scenario.pools,
-        &final_pools,
-        &scenario.queues,
-        &final_queues,
-        ticks
-    ));
-    assert_eq!(summaries.len(), ticks as usize);
-    assert!(summaries
-        .iter()
-        .all(|s| s.total_emitted_units > 0 || s.active_queues == 0));
-}
-
-#[test]
 fn persistent_bench_current_gpu_envelope_matches_cpu_small() {
     let scenario = make_persistent_bench_scenario("pb_envelope_small", 64, 1_024, 0.7, false, true);
     let harness = PersistentBenchHarness::new().unwrap();

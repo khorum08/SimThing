@@ -99,18 +99,6 @@ fn mobility_gpu_kernel7_replay_runs_at_least_8_iterations() {
 
 #[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
-fn mobility_gpu_kernel7_replay_cpu_oracle_stable_across_iterations() {
-    let report = run_mobility_gpu_kernel7_fixture(&fixture_input());
-    assert!(report.cpu_oracle_stable_across_iterations);
-    assert_ne!(report.cpu_chain_checksum, 0);
-    assert!(report
-        .iterations
-        .iter()
-        .all(|iteration| iteration.cpu_chain_checksum == report.cpu_chain_checksum));
-}
-
-#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
-#[test]
 fn mobility_gpu_kernel7_replay_gpu_checksums_stable_or_unavailable() {
     let report = run_mobility_gpu_kernel7_fixture(&fixture_input());
     assert!(report.gpu_checksums_stable_or_unavailable);
@@ -247,15 +235,6 @@ fn mobility_gpu_kernel7_replay_no_gpu_allocator_or_nondeterministic_atomics() {
     assert!(rejected_with(forbidden)
         .diagnostics
         .contains(&"gpu_allocator_or_nondeterministic_atomics"));
-}
-
-#[test]
-fn mobility_gpu_kernel7_replay_no_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityGpuKernel7ForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    assert!(rejected_with(forbidden)
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]

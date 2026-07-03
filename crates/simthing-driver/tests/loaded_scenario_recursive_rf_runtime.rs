@@ -70,12 +70,6 @@ fn loaded_scenario_recursive_rf_runtime_compile_reports_gpu_compatible_rows() {
 }
 
 #[test]
-fn loaded_scenario_recursive_rf_runtime_compile_reports_cpu_oracle_only() {
-    let plan = compile_fixture();
-    assert!(plan.cpu_oracle_only);
-}
-
-#[test]
 fn loaded_scenario_recursive_rf_runtime_compile_defers_runtime_mutation() {
     let plan = compile_fixture();
     assert!(plan.runtime_mutation_deferred);

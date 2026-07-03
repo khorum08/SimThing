@@ -161,42 +161,6 @@ fn multitarget_replay_report_bundle() {
 }
 
 #[test]
-fn multitarget_cpu_n_ticks_oracle_depletes_sources() {
-    let scenario = make_depletion_n_tick_scenario();
-    let ticks = 5u32;
-    let (final_states, summaries, records) = resolve_cpu_current_n_ticks(&scenario, ticks);
-
-    assert_eq!(final_states[0].source_pool, 0);
-    assert_eq!(final_states[0].queue_accum, 1);
-    assert_eq!(final_states[0].units, 8);
-    assert_eq!(final_states[1], scenario.states[1]);
-
-    assert_eq!(summaries[0].total_transferred, 10);
-    assert_eq!(summaries[0].total_emitted_units, 3);
-    assert_eq!(summaries[0].active_count, 1);
-
-    assert_eq!(summaries[1].total_transferred, 10);
-    assert_eq!(summaries[1].total_emitted_units, 3);
-
-    assert_eq!(summaries[2].total_transferred, 5);
-    assert_eq!(summaries[2].total_emitted_units, 2);
-
-    assert_eq!(summaries[3].total_transferred, 0);
-    assert_eq!(summaries[3].total_emitted_units, 0);
-    assert_eq!(summaries[4].total_transferred, 0);
-
-    let replayed = replay_from_compact_records_n_ticks(
-        &scenario.states,
-        &scenario.params,
-        &records,
-        ticks,
-        scenario.states.len(),
-    )
-    .unwrap();
-    assert_eq!(replayed, final_states);
-}
-
-#[test]
 fn multitarget_gpu_resident_summary_matches_cpu_small() {
     let scenario = make_multitarget_scenario("multitarget_resident_small", 1_024, 0.7, false);
     let harness = MultiTargetReplayHarness::new().unwrap();

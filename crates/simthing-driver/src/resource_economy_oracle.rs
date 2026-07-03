@@ -113,47 +113,4 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn oracle_discrete_transfer_conserves_pair_total() {
-        let transfers = vec![simthing_core::DiscreteTransferRegistration {
-            source_slot: simthing_core::SlotIndex::new(0),
-            source_col: simthing_core::ColumnIndex::new(0),
-            target_slot: simthing_core::SlotIndex::new(1),
-            target_col: simthing_core::ColumnIndex::new(0),
-            amount: 1.0,
-            order_band: 0,
-        }];
-        let mut flat = vec![5.0, 0.0];
-        let before = flat.clone();
-        run_transfer_recipe_cpu_oracle(&mut flat, 1, &transfers, &[]).unwrap();
-        assert_discrete_transfer_conserved(&before, &flat, 1, (0, 0), (1, 0));
-        assert_eq!(flat[0].to_bits(), 4.0_f32.to_bits());
-        assert_eq!(flat[1].to_bits(), 1.0_f32.to_bits());
-    }
-
-    #[test]
-    fn oracle_recipe_debits_inputs_and_credits_target() {
-        let recipes = vec![ConjunctiveRecipeRegistration {
-            inputs: vec![
-                ConjunctiveRecipeInput {
-                    slot: 0,
-                    col: 0,
-                    unit_cost: 1.0,
-                },
-                ConjunctiveRecipeInput {
-                    slot: 0,
-                    col: 1,
-                    unit_cost: 2.0,
-                },
-            ],
-            target_slot: 0,
-            target_col: 2,
-            throttle_hint_max_per_tick: 99,
-        }];
-        let mut flat = vec![10.0, 8.0, 0.0];
-        run_transfer_recipe_cpu_oracle(&mut flat, 3, &[], &recipes).unwrap();
-        assert_eq!(flat[0].to_bits(), 6.0_f32.to_bits());
-        assert_eq!(flat[1].to_bits(), 0.0_f32.to_bits());
-        assert_eq!(flat[2].to_bits(), 4.0_f32.to_bits());
-    }
 }

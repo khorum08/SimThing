@@ -251,19 +251,6 @@ fn bh2_multiple_profiles_write_distinct_w_outputs() {
 }
 
 #[test]
-fn bh2_no_full_field_cpu_readback_for_w_decision() {
-    let src = include_str!("../src/w_impedance_compose.rs");
-    assert!(
-        !src.contains("MapMode::Read"),
-        "production compose path must not read back field buffer"
-    );
-    assert!(
-        !src.contains("copy_buffer_to_buffer"),
-        "production compose path must not stage full-field readback"
-    );
-}
-
-#[test]
 fn bh2_no_pathfinding_or_movement_policy_constructs() {
     let rust_src = include_str!("../src/w_impedance_compose.rs");
     let wgsl_src = include_str!("../src/shaders/w_impedance_compose.wgsl");

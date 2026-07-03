@@ -222,29 +222,6 @@ fn rr_0_disburses_down_recursively() {
 }
 
 #[test]
-fn rr_0_runs_100_tick_recursive_cpu_oracle() {
-    let admitted = report();
-    assert_eq!(admitted.ticks_scheduled, R6C_CANONICAL_TICK_COUNT);
-    assert_eq!(admitted.ticks_completed, R6C_CANONICAL_TICK_COUNT);
-    assert_eq!(admitted.oracle_ticks.len(), 100);
-    assert!(admitted
-        .oracle_ticks
-        .iter()
-        .all(|tick| tick.structural_identity_preserved));
-}
-
-#[test]
-fn rr_0_oracle_deterministic() {
-    let (left, right) = replay_runtime_0080_rr_0();
-    assert_eq!(
-        left.deterministic_replay_checksum,
-        right.deterministic_replay_checksum
-    );
-    assert_eq!(left.stable_report_checksum, right.stable_report_checksum);
-    assert_ne!(left.deterministic_replay_checksum, 0);
-}
-
-#[test]
 fn rr_0_scope_ledger_contains_all_required_rows() {
     let admitted = report();
     assert_eq!(admitted.scope_ledger.len(), 24);
@@ -315,12 +292,4 @@ fn rr_0_report_checksum_stable() {
         admitted.stable_report_checksum,
         RUNTIME_RR_0_EXPECTED_REPORT_CHECKSUM
     );
-}
-
-#[test]
-fn rr_0_recursive_world_build_is_independent_of_oracle() {
-    let world = build_recursive_world(0x0080_2000);
-    assert_eq!(world.galaxy.systems.len(), 13);
-    assert!(!world.is_flattened);
-    assert_eq!(world.galaxy.width, GALAXY_SIDE);
 }

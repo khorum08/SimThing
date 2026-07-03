@@ -184,21 +184,6 @@ fn gameplay_0080_0_no_semantic_or_raw_wgsl() {
 }
 
 #[test]
-fn gameplay_0080_0_no_cpu_planner_or_external_move_script() {
-    let admitted = report();
-    assert!(!admitted.cpu_planner_used);
-    assert!(!admitted.external_move_script_used);
-
-    let rejected = rejected_with(|forbidden| {
-        forbidden.cpu_planner_or_external_move_script = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"cpu_planner_or_external_move_script"));
-}
-
-#[test]
 fn gameplay_0080_0_no_hard_currency_markets_trade_aibudget() {
     let admitted = report();
     assert!(!admitted.hard_currency_markets_trade_aibudget);

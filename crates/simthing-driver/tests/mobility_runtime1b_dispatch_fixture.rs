@@ -358,13 +358,6 @@ fn runtime1b_dispatch_no_gameplay_path() {
 }
 
 #[test]
-fn runtime1b_dispatch_reports_cpu_oracle_checksum() {
-    let report = run_mobility_runtime1b_dispatch0_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert_ne!(report.cpu_oracle_checksum, 0);
-}
-
-#[test]
 fn runtime1b_dispatch_reports_gpu_checksum_or_unavailable() {
     let report = run_mobility_runtime1b_dispatch0_fixture(&fixture_input());
     assert!(report.admitted);

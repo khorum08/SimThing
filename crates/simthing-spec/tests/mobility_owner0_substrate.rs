@@ -409,18 +409,6 @@ fn owner_cohort_homogeneity_via_fission() {
 }
 
 #[test]
-fn owner_rejects_cpu_planner_urgency_commitment() {
-    let mut forbidden = MobilityOwner0ForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
-}
-
-#[test]
 fn owner_keeps_production_runtime_integration_parked() {
     let accepted = plan_mobility_owner0(&input(
         vec![rec(

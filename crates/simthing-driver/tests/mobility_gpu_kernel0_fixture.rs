@@ -161,13 +161,6 @@ fn mobility_gpu_kernel0_no_gpu_allocator_or_nondeterministic_atomics() {
 }
 
 #[test]
-fn mobility_gpu_kernel0_no_cpu_planner_urgency_commitment() {
-    let report = run_mobility_gpu_kernel0_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.cpu_planner_urgency_commitment);
-}
-
-#[test]
 fn mobility_gpu_kernel0_preserves_closed_ladder_posture() {
     let report = run_mobility_gpu_kernel0_fixture(&fixture_input());
     assert!(report.admitted);

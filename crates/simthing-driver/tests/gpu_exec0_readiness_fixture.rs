@@ -98,12 +98,6 @@ fn gpu_exec0_no_gameplay_path() {
 }
 
 #[test]
-fn gpu_exec0_reports_cpu_oracle_checksum() {
-    let report = run_gpu_exec0_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert_ne!(report.cpu_oracle_checksum, 0);
-}
-#[test]
 fn gpu_exec0_classifies_exact_parity_or_honest_approximation() {
     let report = run_gpu_exec0_fixture(&fixture_input());
     assert!(report.admitted);

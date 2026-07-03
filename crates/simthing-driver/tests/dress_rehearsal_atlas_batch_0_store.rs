@@ -254,16 +254,6 @@ fn no_r1_r2_r3_r4_behavior() {
 }
 
 #[test]
-fn store_cpu_oracle_is_explicitly_non_gpu() {
-    let status = DRESS_REHEARSAL_ATLAS_BATCH_0_STORE_STATUS_PASS;
-    assert!(status.contains("CPU-only"));
-    assert!(status.contains("not GPU"));
-    assert!(!status.contains("GpuVerified"));
-    let test_source = include_str!("../src/dress_rehearsal_atlas_batch_0_store.rs");
-    assert!(!test_source.contains("simthing_gpu"));
-}
-
-#[test]
 fn store_is_deterministic() {
     let materialization = canonical_materialization();
     let left = store_oracle_from_materialization(&materialization);

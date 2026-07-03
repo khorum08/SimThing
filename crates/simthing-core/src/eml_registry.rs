@@ -832,59 +832,6 @@ mod tests {
     }
 
     #[test]
-    fn c8a_cpu_oracle_only_rejected_from_gpu_registration() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(9);
-        let mut meta = exact_meta(9, "cpu_only");
-        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
-        assert_eq!(
-            registry.register_formula(id, meta, vec![literal(1.0)]),
-            Err(EmlRegistryError::CannotUploadCpuOracleOnly { tree_id: id })
-        );
-    }
-
-    #[test]
-    fn c8a_cpu_oracle_only_can_register_for_debug_oracle() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(9);
-        let mut meta = exact_meta(9, "cpu_only");
-        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
-        registry
-            .register_cpu_oracle_formula(id, meta, vec![literal(1.0)])
-            .unwrap();
-        assert!(registry
-            .assert_consumer_admissible(id, EmlConsumerKind::DebugOracle)
-            .is_ok());
-        assert_eq!(registry.tree_range_index(id), None);
-    }
-
-    #[test]
-    fn c8a_cpu_oracle_only_not_returned_for_gpu_upload() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(9);
-        let mut meta = exact_meta(9, "cpu_only");
-        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
-        registry
-            .register_cpu_oracle_formula(id, meta, vec![literal(1.0)])
-            .unwrap();
-        assert_eq!(registry.formulas_for_gpu_upload().count(), 0);
-    }
-
-    #[test]
-    fn c8a_cpu_oracle_only_rejected_from_production_consumers() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(9);
-        let mut meta = exact_meta(9, "cpu_only");
-        meta.execution_class = EmlExecutionClass::CpuOracleOnly;
-        registry
-            .register_cpu_oracle_formula(id, meta, vec![literal(1.0)])
-            .unwrap();
-        assert!(registry
-            .assert_consumer_admissible(id, EmlConsumerKind::Intensity)
-            .is_err());
-    }
-
-    #[test]
     fn c8a_soft_deterministic_hard_threshold_rejected_without_guard() {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(1);

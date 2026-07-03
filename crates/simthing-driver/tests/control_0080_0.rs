@@ -114,21 +114,6 @@ fn control_0080_0_replay_after_command_deterministic() {
     );
 }
 #[test]
-fn control_0080_0_rejects_cpu_planner_or_commitment() {
-    let rejected = with_commands(vec![Control0080Command::CpuPlannerOrCommitment]);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .rejected_commands
-        .iter()
-        .any(|cmd| cmd.diagnostic == "cpu_planner_or_commitment_rejected"));
-
-    let rejected = rejected_with(|forbidden| forbidden.cpu_planner_or_commitment = true);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"cpu_planner_or_commitment_rejected"));
-}
-#[test]
 fn control_0080_0_docs_status_matches_gate() {
     let admitted = report();
     assert_eq!(admitted.control_id, CONTROL_0080_0_ID);

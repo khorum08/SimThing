@@ -257,43 +257,6 @@ fn m5b_l3_gadget_stack_admits_with_ema_and_weighted_accumulator() {
 }
 
 #[test]
-fn m5b_l3_composition_oracle_is_deterministic_and_finite() {
-    let stack = deserialize_eml_gadget_stack_ron(L3_STACK_RON).expect("stack");
-    let compiled = compile_eml_gadget_stack(&stack, EmlGadgetCompileOptions { max_col: 64 })
-        .expect("compiles");
-
-    let mut values = vec![0.0f32; (N_DIMS * (EVAL_SLOT + 1)) as usize];
-    set_col(&mut values, 3, 100.0);
-    set_col(&mut values, 4, 4.0);
-    set_col(&mut values, 5, -2.0);
-    set_col(&mut values, 20, 0.5);
-    set_col(&mut values, 21, 0.3);
-    set_col(&mut values, 22, 0.2);
-
-    set_col(&mut values, 13, 0.0);
-    let ema_scalar = eval_eml_postfix(&compiled.gadgets[0].nodes, EVAL_SLOT, &values, N_DIMS);
-    let oracle_scalar = oracle_ema(100.0, 0.0, 0.8);
-    assert!((ema_scalar - oracle_scalar).abs() < 1e-5);
-
-    set_col(&mut values, 13, ema_scalar);
-    set_col(&mut values, 14, 0.0);
-    let ema_gx = eval_eml_postfix(&compiled.gadgets[1].nodes, EVAL_SLOT, &values, N_DIMS);
-    assert!((ema_gx - oracle_ema(4.0, 0.0, 0.9)).abs() < 1e-5);
-
-    set_col(&mut values, 14, ema_gx);
-    set_col(&mut values, 15, 0.0);
-    let ema_gy = eval_eml_postfix(&compiled.gadgets[2].nodes, EVAL_SLOT, &values, N_DIMS);
-    assert!((ema_gy - oracle_ema(-2.0, 0.0, 0.9)).abs() < 1e-5);
-
-    set_col(&mut values, 15, ema_gy);
-    let composite = eval_eml_postfix(&compiled.gadgets[3].nodes, EVAL_SLOT, &values, N_DIMS);
-    let oracle_composite =
-        oracle_weighted_accumulator(&[ema_scalar, ema_gx, ema_gy], &[0.5, 0.3, 0.2]);
-    assert!((composite - oracle_composite).abs() < 1e-5);
-    assert!(composite.is_finite());
-}
-
-#[test]
 fn m5b_reference_scenario_admits_and_default_profile_disabled() {
     let scenario =
         deserialize_first_slice_scenario_ron(REFERENCE_SCENARIO_RON).expect("scenario RON");

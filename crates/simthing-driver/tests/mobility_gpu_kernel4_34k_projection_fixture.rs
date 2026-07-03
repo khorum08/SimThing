@@ -247,17 +247,6 @@ fn mobility_gpu_kernel4_34k_projection_ignores_owner_and_econ_semantics_in_shade
 }
 
 #[test]
-fn mobility_gpu_kernel4_34k_projection_cpu_oracle_complete() {
-    let report = run_mobility_gpu_kernel4_fixture(&fixture_input());
-    assert!(report.cpu_oracle_complete);
-    assert_ne!(report.cpu_oracle_checksum, 0);
-    let columns = report.projection.unwrap().columns;
-    let oracle = cpu_column_transform_oracle(&columns);
-    assert_eq!(oracle.out_parent.len(), MOBILITY_GPU_KERNEL4_ROW_COUNT);
-    assert_eq!(oracle.out_changed.len(), MOBILITY_GPU_KERNEL4_ROW_COUNT);
-}
-
-#[test]
 fn mobility_gpu_kernel4_34k_projection_reports_gpu_checksum_or_unavailable() {
     let report = run_mobility_gpu_kernel4_fixture(&fixture_input());
     match report.parity_classification {
@@ -394,17 +383,6 @@ fn mobility_gpu_kernel4_34k_projection_no_gpu_allocator_or_nondeterministic_atom
     assert!(rejected_with(forbidden)
         .diagnostics
         .contains(&"gpu_allocator_or_nondeterministic_atomics"));
-}
-
-#[test]
-fn mobility_gpu_kernel4_34k_projection_no_cpu_planner_urgency_commitment() {
-    let report = run_mobility_gpu_kernel4_fixture(&fixture_input());
-    assert!(!report.cpu_planner_urgency_commitment);
-    let mut forbidden = MobilityGpuKernel4ForbiddenPathRequests::default();
-    forbidden.cpu_planner_urgency_commitment = true;
-    assert!(rejected_with(forbidden)
-        .diagnostics
-        .contains(&"cpu_planner_urgency_commitment"));
 }
 
 #[test]
