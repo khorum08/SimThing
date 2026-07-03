@@ -16,6 +16,42 @@
 
 ---
 
+## 0. The Rustification of SimThings — what this apparatus is and how to use it
+
+The three 0.0.8.4.x tracks are one system: **the Rustification of SimThings** — the migration of every
+project invariant to the highest rung of the admission ladder (core §1.2: **type boundary > admission
+hard-error > guard scan > prose**), so that rigor is *enforced by construction* instead of held in an
+agent's context window. Each pillar owns a rung-range:
+
+| Pillar | What it rustified | Enforcement form |
+|---|---|---|
+| **0.0.8.4 Admission Substrate** (AS-1–8B) | column access, channel/index identity, kind-free tick view, `SimulationFabric`, `StructuralCoord`, `PackedUpload` | **rung 1 — types.** The illegal state does not compile; one `compile_fail` per promoted invariant is its whole proof. |
+| **0.0.8.4.5 SimThing-Kernel** | the constitutional spine itself — "the sweep is the only authoritative path to mutate resolved state or emit a decision" | **rung 1 at architecture scale.** Sole owner of authoritative state, sole minter of effects; write/emission/participation seals; the cross-crate seal law; dependency-graph-enforced, zero-cost (ZST tokens, `#[repr(transparent)]`). |
+| **0.0.8.4.6 CI Scaffolding** (Tracks A/B/C/D) | everything types cannot yet or can never reach | **rungs 2–3, mechanized.** Allowlist/blocklist scans, the self-testing scanner, test-admission law, the digest/inner-loop carrot, and the clearance ladder below. |
+
+**How it is used — an admissions-based rigor and clearance system.** Nothing in this repo is *believed*;
+everything is *admitted*. A change flows through composed admission gates, each cheaper and more total than
+review: the **compiler** admits code (the seals make bypass uncompilable); **hydration/spec hard-errors**
+admit content (malformed authoring dies at import with a span); the **CI scans** admit the surface (a clean
+RELIABLE/allowlist verdict is DA-equivalent — the sanctioned surface is closed and unwidened); **test
+admission law** admits proof (a test exists only if it names the regression nothing higher on the ladder
+owns); and the **clearance ladder** admits the merge itself (SHA-bound verdicts → §1A triage →
+orchestrator merge authority for precedented classes → DA graduation routed by declared risk → owner
+supremacy above all). The scarce resources — DA judgment and owner attention — are spent exclusively on
+the **residue** the gates cannot reach: sanctioned-door logic, live ontological conformance, taste. That
+residue is a *named tripwire catalogue*, never a passive gap.
+
+**The standing directives that keep it alive:**
+- **Cite the gate, don't re-derive the rigor.** If an invariant is type-sealed, scanned, or
+  admission-error'd, the gate is the proof — re-proving it in tests or prose is kabuki (§H rule 1).
+- **New invariant → highest expressible rung**, and record why it could not climb higher.
+- **The apparatus is designed to shrink.** Every scan carries a `promotion-blocker`; every surviving test
+  carries a permanent-residue class or promotion target; promotion **retires** the lower-rung guard in the
+  same PR. A growing guard count is a regression signal, not rigor.
+- **Trust flows from admission, not authorship.** A green gate is trusted without re-verification
+  (DA-equivalence); a relayed claim is not (verify the tree). This is why cheap agents can build the
+  substrate safely: the gates, not the agents, carry the rigor.
+
 ## 1. Screening logic — how a change gets judged
 
 Every `pull_request` and every `push` runs the **Doctrine Scan** GitHub Actions workflow on `ubuntu-latest`
