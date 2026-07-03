@@ -294,6 +294,10 @@ simthing_ct2c_bad = {
 
 #[test]
 fn resource_flow_presence_without_opt_in_stays_disabled() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
     let mut hydrated = hydrate_category();
     hydrated
         .game_mode
@@ -312,6 +316,10 @@ fn resource_flow_presence_without_opt_in_stays_disabled() {
 
 #[test]
 fn installed_category_arena_participation_is_explicit_and_bounded() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
     let hydrated = hydrate_category();
     let session = open_ct2c_session(&hydrated);
     let registry = &session.spec_state.arena_registry;

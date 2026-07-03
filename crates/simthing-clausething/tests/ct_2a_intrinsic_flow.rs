@@ -116,6 +116,10 @@ fn clause_hydrated_game_mode_matches_ron_baseline() {
 
 #[test]
 fn resource_flow_presence_without_opt_in_stays_disabled() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
     let mut hydrated = hydrate_from_clause();
     hydrated
         .game_mode
@@ -134,6 +138,10 @@ fn resource_flow_presence_without_opt_in_stays_disabled() {
 
 #[test]
 fn installed_arena_participation_is_explicit_and_bounded() {
+    let Some(_gpu) = try_gpu() else {
+        eprintln!("skipping: no GPU");
+        return;
+    };
     let hydrated = hydrate_from_clause();
     let session = open_ct2a_session(&hydrated);
     let arena = &session.spec_state.arena_registry.arenas[0];
