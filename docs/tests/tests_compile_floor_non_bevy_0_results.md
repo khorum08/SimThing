@@ -75,7 +75,10 @@ Local (branch head):
 
 Process finding: an earlier attempt incorrectly probed `simthing-driver` on GHA and hit `alsa-sys`. That attempt is invalid proof and must not be repeated. The corrected profile excludes driver and records it as blocked by doctrine.
 
-Latest-head proof: pending after stale-proof/lint-hardening 0R push (replace with fresh run/job IDs on new head).
+Latest-head proof (head `944c13a5f25d4d54a2d390728beaecf8156622b2`):
+
+- Doctrine Scan: PASS `failures=0 inspect=0` (run `28679204863`, job `85059009987`)
+- Doctrine Exec targeted profile `tests-compile-floor-non-bevy`: compile floor `failures=0`; verdict `INSPECT inspect=1` from `doctrine_surface_truth.sh` only (run `28680184138`, job `85061925040`); all five `cargo check -p <crate> --tests` commands green; no driver/desktop/audio/GPU probe
 
 ## Known gaps / follow-ons
 
