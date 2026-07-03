@@ -32,7 +32,7 @@ Profile `tests-compile-floor-non-bevy` runs `cargo check -p <crate> --tests` for
 | simthing-core | PASS | yes | yes | CPU-only; no Bevy/desktop/typeface dev-deps | — | — |
 | simthing-kernel | PASS | yes | yes | authority crate; compile-only; no runtime GPU proof | — | — |
 | simthing-sim | PASS | yes | yes | CPU-oracle parity tests compile without desktop bootstrap | — | — |
-| simthing-driver | PASS | yes | yes | compile-only on GHA Linux; wgpu links at compile time but profile runs no `cargo test` or Atlas/Bevy runtime legs | GPU runtime integration binaries (not in this profile) | `TESTS-COMPILE-FLOOR-BLOCKED-DRIVER-0` if DA wants owner-deep driver test compile sweep |
+| simthing-driver | PASS locally; FAIL on GHA Linux (`alsa-sys` custom build) | no | no | test dependency chain pulls ALSA on ubuntu-latest even for compile-only `--tests` | ALSA/audio + GPU runtime integration surface | `TESTS-COMPILE-FLOOR-BLOCKED-DRIVER-0` |
 | simthing-workshop | PASS | yes | yes | CPU workshop tests compile without Bevy mapeditor/tools drag | — | — |
 | simthing-mapgenerator | PASS | yes | yes | CPU mapgenerator tests compile without Studio/Bevy | — | — |
 | simthing-spec | FAIL (ResourceFlowSpec `capacity_budget` drift in deferred admission tests) | n/a | no | non-compiling deferred admission-substrate test binaries on live master | Admission Substrate deferred corpus | `TEST-PARE-ADMISSION-SUBSTRATE-DEAD-BINARIES-0` |
@@ -50,7 +50,7 @@ profile_id: tests-compile-floor-non-bevy
 profile_class: targeted
 risk_class: gate-state/tests-compile-floor
 crate_checks: -
-tests: cargo check -p simthing-core --tests; cargo check -p simthing-kernel --tests; cargo check -p simthing-sim --tests; cargo check -p simthing-driver --tests; cargo check -p simthing-workshop --tests; cargo check -p simthing-mapgenerator --tests
+tests: cargo check -p simthing-core --tests; cargo check -p simthing-kernel --tests; cargo check -p simthing-sim --tests; cargo check -p simthing-workshop --tests; cargo check -p simthing-mapgenerator --tests
 doc_tests: -
 gpu_required: no
 expected_verdict_if_gpu_missing: PASS
@@ -66,13 +66,14 @@ Local (branch head):
 - `bash scripts/ci/gen_digest.sh --check`: PASS
 - `bash scripts/ci/doctrine_exec_profile_lint.sh`: PASS
 - `bash scripts/ci/doctrine_exec_plan.sh --profile tests-compile-floor-non-bevy`: PASS
-- Included `cargo check -p <crate> --tests` commands: all PASS locally for the six included crates
+- Included `cargo check -p <crate> --tests` commands: all PASS locally for the five included crates
 - `git diff --check origin/master...HEAD`: PASS
 
-Live (PR head — record run/job IDs after dispatch):
+Live (PR head):
 
-- Doctrine Scan: pending on PR head
-- Doctrine Exec profile `tests-compile-floor-non-bevy`: pending SHA-bound dispatch on PR head
+- Doctrine Scan: PASS run `28677453402` / job `85053735357` on head `d1882e25` (initial push)
+- Doctrine Exec profile `tests-compile-floor-non-bevy` initial dispatch: FAIL run `28677549095` / job `85054028905` — `cargo check -p simthing-driver --tests` failed on GHA Linux (`alsa-sys`); driver removed from profile in 0R
+- Doctrine Exec re-run: pending after 0R push
 
 ## Known gaps / follow-ons
 
@@ -88,6 +89,6 @@ Graduation routing:
   CI verdict:          pending SHA-bound Doctrine Exec on PR head
   Triage entries:      none expected (gate-state profile; compile-only commands)
   Risk class:          gate-state / tests-compile-floor
-  Falsification check: plan mode lists exactly six cargo check --tests commands; profile lint + GHA proof seal PASS; no Bevy/GPU/desktop strings in profile; excluded crates documented with reasons
+  Falsification check: plan mode lists exactly five cargo check --tests commands; profile lint + GHA proof seal PASS; no Bevy/GPU/desktop strings in profile; excluded crates documented with reasons including GHA `alsa-sys` driver block
   Recommended posture: PROBATION / DA REVIEW — not orchestrator-mergeable
 ```
