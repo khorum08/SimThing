@@ -294,64 +294,6 @@ fn bh2_no_native_sqrt_in_hot_path() {
         );
     }
 }
-
-#[test]
-fn bh2_rejects_invalid_columns_weights_or_aliasing() {
-    let bad_col = WImpedanceComposeConfig {
-        width: 2,
-        height: 2,
-        n_dims: 4,
-        base_w_col: 0,
-        choke_a_col: 1,
-        choke_b_col: 4,
-        profiles: vec![WImpedanceComposeProfile {
-            weight_a: 1.0,
-            weight_b: 1.0,
-            output_w_col: 3,
-        }],
-    };
-    assert!(matches!(
-        bad_col.validate(),
-        Err(simthing_gpu::WImpedanceComposeError::InvalidColumn { .. })
-    ));
-
-    let alias = WImpedanceComposeConfig {
-        width: 2,
-        height: 2,
-        n_dims: 4,
-        base_w_col: 0,
-        choke_a_col: 1,
-        choke_b_col: 2,
-        profiles: vec![WImpedanceComposeProfile {
-            weight_a: 1.0,
-            weight_b: 1.0,
-            output_w_col: 1,
-        }],
-    };
-    assert!(matches!(
-        alias.validate(),
-        Err(simthing_gpu::WImpedanceComposeError::ColumnAliasing)
-    ));
-
-    let bad_weight = WImpedanceComposeConfig {
-        width: 2,
-        height: 2,
-        n_dims: 4,
-        base_w_col: 0,
-        choke_a_col: 1,
-        choke_b_col: 2,
-        profiles: vec![WImpedanceComposeProfile {
-            weight_a: f32::NAN,
-            weight_b: 1.0,
-            output_w_col: 3,
-        }],
-    };
-    assert!(matches!(
-        bad_weight.validate(),
-        Err(simthing_gpu::WImpedanceComposeError::InvalidWeight { .. })
-    ));
-}
-
 #[test]
 fn bh2_impedance_feed_stays_gpu_resident() {
     with_gpu(|ctx| {

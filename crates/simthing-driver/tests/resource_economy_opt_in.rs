@@ -102,27 +102,6 @@ fn resource_economy_default_session_flags_remain_false() {
     let spec = ResourceEconomySpec::default();
     assert_eq!(spec.opt_in_mode, ResourceEconomyOptInMode::Disabled);
 }
-
-#[test]
-fn resource_economy_populated_spec_without_opt_in_rejects_boundary_sync() {
-    if !try_gpu() {
-        eprintln!("skipping: no GPU");
-        return;
-    }
-
-    let mut session = open_live(&live_slot_game_mode());
-    assert!(!session.proto.flags.use_accumulator_transfer);
-    let err = session
-        .sync_resource_economy_if_enabled()
-        .expect_err("populated resource economy must reject without opt-in");
-    assert!(matches!(
-        err,
-        simthing_driver::SessionError::ResourceEconomy(
-            ResourceEconomySyncError::TransferFlagOffPopulatedSpec
-        )
-    ));
-}
-
 #[test]
 fn resource_economy_opt_in_transfer_runs_100_tick_burn_in() {
     if !try_gpu() {

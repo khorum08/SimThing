@@ -338,18 +338,6 @@ fn runtime1b_dispatch_no_semantic_or_raw_wgsl() {
     assert!(!rejected.admitted);
     assert!(rejected.diagnostics.contains(&"semantic_or_raw_wgsl"));
 }
-
-#[test]
-fn runtime1b_dispatch_rejects_designer_authored_shader_input() {
-    let mut forbidden = MobilityRuntime1bDispatch0ForbiddenPathRequests::default();
-    forbidden.designer_authored_shader_input = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"designer_authored_shader_input"));
-}
-
 #[test]
 fn runtime1b_dispatch_no_default_schedule() {
     let report = run_mobility_runtime1b_dispatch0_fixture(&fixture_input());

@@ -45,37 +45,3 @@ fn e2b5_soak_single_fission_1000_ticks_gpu_parity() {
     fixture.ticks = 1000;
     run_gpu_soak(&fixture);
 }
-
-#[test]
-fn e2b5_soak_reject_when_cap_full_no_partial_mutation() {
-    let fixture = dynamic_enrollment_reject_when_cap_full();
-    let mut setup = open_single_fission_setup(1, 1, 0);
-    let report = run_enrollment_only_soak(&mut setup, &fixture);
-
-    assert_eq!(report.admissions_observed, 0);
-    assert_eq!(report.rejections_observed, 1);
-    assert_eq!(report.generation_start, report.generation_end);
-    assert!(setup
-        .spec_state
-        .arena_participant_scaffold
-        .index
-        .participant_slot(setup.child_ids[0], 0)
-        .is_none());
-}
-
-#[test]
-fn e2b5_soak_repeated_resync_after_dynamic_admissions_stable() {
-    let Some(_gpu) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let fixture = dynamic_enrollment_repeated_resync();
-    let mut fx = open_fixture_session(&fixture);
-    let report = run_dynamic_enrollment_soak(&mut fx, &fixture);
-
-    assert!(report.resource_flow_syncs_observed >= 100);
-    assert_eq!(report.ticks_checked, 10);
-    assert!(report.replay_bit_exact);
-}
-

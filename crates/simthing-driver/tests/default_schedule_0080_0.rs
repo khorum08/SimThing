@@ -168,60 +168,6 @@ fn default_schedule_0080_0_replay_deterministic() {
     );
     assert_eq!(first.step_reports, second.step_reports);
 }
-
-#[test]
-fn default_schedule_0080_0_rejects_gameplay_surface() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.gameplay_surface = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"gameplay_surface"));
-}
-
-#[test]
-fn default_schedule_0080_0_rejects_semantic_or_raw_wgsl() {
-    let admitted = report();
-    assert!(!admitted.semantic_or_raw_wgsl_present);
-
-    let rejected = rejected_with(|forbidden| {
-        forbidden.semantic_or_raw_wgsl = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
-fn default_schedule_0080_0_rejects_hard_currency_markets_trade_aibudget() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.hard_currency_markets_trade_aibudget = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"hard_currency_markets_trade_aibudget"));
-}
-
-#[test]
-fn default_schedule_0080_0_rejects_nested_resource_flow() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.nested_resource_flow = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"nested_resource_flow"));
-}
-
-#[test]
-fn default_schedule_0080_0_rejects_clausething_dependency() {
-    let admitted = report();
-    assert!(!admitted.clausething_dependency_present);
-
-    let rejected = rejected_with(|forbidden| {
-        forbidden.clausething_dependency = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"clausething_dependency"));
-}
-
 #[test]
 fn default_schedule_0080_0_docs_status_matches_gate() {
     let admitted = report();

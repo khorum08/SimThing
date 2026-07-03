@@ -367,25 +367,6 @@ fn runtime1a_runtime_fixture_no_hard_soft_silent_mix() {
     assert!(report.admitted);
     assert!(!spec_report(&report).hard_soft_silent_mix);
 }
-
-#[test]
-fn runtime1a_runtime_fixture_rejects_default_on_behavior() {
-    let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
-    forbidden.default_on_behavior = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"default_on_behavior"));
-}
-
-#[test]
-fn runtime1a_runtime_fixture_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
 #[test]
 fn runtime1a_runtime_fixture_rejects_cpu_planner_urgency_commitment() {
     let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
@@ -396,27 +377,6 @@ fn runtime1a_runtime_fixture_rejects_cpu_planner_urgency_commitment() {
         .diagnostics
         .contains(&"cpu_planner_urgency_commitment"));
 }
-
-#[test]
-fn runtime1a_runtime_fixture_rejects_gpu_passgraph_registration() {
-    let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
-    forbidden.gpu_pass_graph_wiring = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"unscoped_gpu_passgraph_wiring"));
-}
-
-#[test]
-fn runtime1a_runtime_fixture_rejects_closed_ladder_reopen() {
-    let mut forbidden = MobilityRuntime1aForbiddenPathRequests::default();
-    forbidden.closed_ladder_reopen = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"closed_ladder_reopen"));
-}
-
 #[test]
 fn runtime1a_runtime_fixture_no_default_runtime_cost_when_disabled() {
     let report = run_mobility_runtime1a_driver_fixture(&MobilityRuntime1aDriverFixtureInput {

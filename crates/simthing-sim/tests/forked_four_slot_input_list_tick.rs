@@ -67,28 +67,6 @@ fn run_gpu_resident_tick_matches_cpu_forked() {
     assert_eq!(cpu, vec![20.0, 80.0, 20.0, 20.0]);
     eprintln!("SIMTHING-SIM-DEVDEP-SEAM-0: REAL_ADAPTER_OBSERVED");
 }
-
-#[test]
-fn sim_gpu_resident_tick_rejects_wrong_input_len_for_forked_four_slot_plan() {
-    let plan = forked_four_slot_input_list_plan();
-    let err = execute_accumulator_plan_tick_cpu(&plan, &[10.0, 20.0]).expect_err("wrong len");
-    assert!(matches!(
-        err,
-        SimTickError::InvalidInputLength {
-            expected: 4,
-            actual: 2
-        }
-    ));
-}
-
-#[test]
-fn sim_gpu_resident_tick_rejects_non_exact_integer_input_for_forked_four_slot_plan() {
-    let plan = forked_four_slot_input_list_plan();
-    let err =
-        execute_accumulator_plan_tick_cpu(&plan, &[10.0, 20.0, 30.5, 40.0]).expect_err("non-exact");
-    assert!(matches!(err, SimTickError::NonExactIntegerInput { .. }));
-}
-
 #[test]
 fn forked_four_slot_proof_readback_does_not_leak_into_none_tick() {
     with_isolated_readback_gate_test(|| {

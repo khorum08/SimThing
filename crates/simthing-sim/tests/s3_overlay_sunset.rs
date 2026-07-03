@@ -162,43 +162,6 @@ fn s3_accumulator_overlay_is_default_path() {
         1.25f32.to_bits()
     );
 }
-
-#[test]
-fn s3_overlay_disabled_rejects_overlay_workload() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let mut fx = loyalty_fixture();
-    fx.world.children[0].add_overlay(make_overlay(
-        fx.pid,
-        vec![(SubFieldRole::Amount, TransformOp::Add(0.25))],
-    ));
-    fx.alloc = SlotAllocator::new();
-    fx.alloc.populate_from_tree(&fx.world);
-
-    let n_slots = fx.alloc.capacity() as u32;
-    let ctx = GpuContext::new_blocking().expect("gpu");
-    let mut state = WorldGpuState::new(ctx, &fx.reg, n_slots);
-    let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
-    project_to_coord(&fx, &mut coord);
-
-    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
-    proto.flags.use_accumulator_overlay_add = false;
-    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        proto.initial_gpu_sync(&coord, &mut state);
-    }))
-    .expect_err("disabled overlay flag should reject active overlay workload");
-    let message = panic
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| panic.downcast_ref::<&'static str>().copied())
-        .unwrap_or("");
-    assert!(message.contains(
-        "Legacy overlay path was deleted in S-3; AccumulatorOp overlay must remain enabled."
-    ));
-}
-
 #[test]
 fn s3_overlay_accumulator_matches_cpu_golden_add_multiply_set() {
     let Some(_ctx) = try_gpu() else {

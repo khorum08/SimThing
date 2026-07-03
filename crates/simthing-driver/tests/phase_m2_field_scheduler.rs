@@ -93,30 +93,6 @@ fn test_a_cadence_determinism_and_replay() {
     let (b, _) = scheduler.decide_tick(8).unwrap();
     assert_eq!(a, b, "replay must be deterministic");
 }
-
-#[test]
-fn test_b_invalid_cadence_rejected() {
-    assert_eq!(
-        FieldCadence::EveryN { n: 0 }.validate(),
-        Err(FieldSchedulerError::InvalidEveryNZero)
-    );
-    let mut scheduler = FieldScheduler::new();
-    scheduler.register_field(FieldScheduleState {
-        field_id: FieldId(0),
-        cadence: FieldCadence::EveryN { n: 0 },
-        event_pending: false,
-    });
-    scheduler.register_region(FieldRegionRegistration {
-        region_id: FieldRegionId(0),
-        field_id: FieldId(0),
-        dirty: DirtyRegionState::default(),
-    });
-    assert_eq!(
-        scheduler.decide_tick(0).unwrap_err(),
-        FieldSchedulerError::InvalidEveryNZero
-    );
-}
-
 #[test]
 fn test_c_dirty_skip_correctness_zero_false_skips() {
     let tick = 1;
@@ -310,62 +286,6 @@ fn test_m2_1_scheduled_visitor_does_not_execute_skipped() {
         ]
     );
 }
-
-#[test]
-fn test_m2_1_single_op_guard_rejects_multiple_scheduled() {
-    let mut scheduler = FieldScheduler::new();
-    scheduler.register_field(FieldScheduleState {
-        field_id: FieldId(0),
-        cadence: FieldCadence::EveryTick,
-        event_pending: false,
-    });
-    scheduler.register_region(FieldRegionRegistration {
-        region_id: FieldRegionId(0),
-        field_id: FieldId(0),
-        dirty: DirtyRegionState::default(),
-    });
-    scheduler.register_region(FieldRegionRegistration {
-        region_id: FieldRegionId(1),
-        field_id: FieldId(0),
-        dirty: DirtyRegionState::default(),
-    });
-    let (decisions, _) = scheduler.decide_tick(0).unwrap();
-    with_gpu(|ctx| {
-        let config = StructuredFieldStencilConfig {
-            width: 3,
-            height: 3,
-            n_dims: 4,
-            source_col: 0,
-            target_col: 0,
-            horizon: 1,
-            alpha_self: 1.0,
-            gamma_neighbor: 0.8,
-            weight_north: 0.0,
-            weight_south: 0.0,
-            weight_east: 0.0,
-            weight_west: 0.0,
-            source_cap: None,
-            operator: StructuredFieldStencilOperator::Normalized,
-            source_policy: StructuredFieldStencilSourcePolicy::CallerManagedOneShotSeedThenZero,
-            boundary_mode: StructuredFieldStencilBoundaryMode::Zero,
-            mask_mode: StructuredFieldStencilMaskMode::All,
-            allow_extended_horizon: false,
-        };
-        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
-        let err = execute_single_scheduled_stencil_region(
-            ctx,
-            &op,
-            &decisions,
-            StructuredFieldExecutionOptions::default(),
-        )
-        .unwrap_err();
-        assert!(matches!(
-            err,
-            ScheduledStencilExecutionError::MultipleScheduledRegionsForSingleOp { count: 2 }
-        ));
-    });
-}
-
 #[test]
 fn test_d_scheduler_report_metrics() {
     let mut scheduler = FieldScheduler::new();

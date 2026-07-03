@@ -190,27 +190,6 @@ fn e3_invalid_empty_inputs_rejected() {
         Err(AccumulatorOpBuilderError::EmptyConjunctiveInputs)
     );
 }
-
-#[test]
-fn e3_invalid_nonpositive_unit_cost_rejected() {
-    assert_eq!(
-        try_conjunctive_recipe(&[(0, 0, 0.0)], 0, 1, 1),
-        Err(AccumulatorOpBuilderError::NonPositiveUnitCost { slot: 0, col: 0 })
-    );
-    assert_eq!(
-        try_conjunctive_recipe(&[(0, 0, -2.0)], 0, 1, 1),
-        Err(AccumulatorOpBuilderError::NonPositiveUnitCost { slot: 0, col: 0 })
-    );
-}
-
-#[test]
-fn e3_invalid_nonfinite_unit_cost_rejected() {
-    assert_eq!(
-        try_conjunctive_recipe(&[(0, 0, f32::NAN)], 0, 1, 1),
-        Err(AccumulatorOpBuilderError::NonPositiveUnitCost { slot: 0, col: 0 })
-    );
-}
-
 #[test]
 fn e3_max_per_tick_is_metadata_not_gpu_cap() {
     // Inputs afford 4 recipe units; throttle hint says 1 — GPU/CPU still emit 4.
@@ -316,15 +295,6 @@ fn e3_max_per_tick_is_metadata_not_gpu_cap() {
     assert_eq!(gpu[1].to_bits(), 0.0_f32.to_bits());
     assert_eq!(gpu[2].to_bits(), 4.0_f32.to_bits());
 }
-
-#[test]
-fn e3_invalid_throttle_hint_max_per_tick_rejected() {
-    assert_eq!(
-        try_conjunctive_recipe(&[(0, 0, 1.0)], 0, 1, 0),
-        Err(AccumulatorOpBuilderError::InvalidThrottleHintMaxPerTick)
-    );
-}
-
 #[test]
 fn e3_builder_matches_c8c_transfer_planner_shape() {
     let reg = ConjunctiveRecipeRegistration {

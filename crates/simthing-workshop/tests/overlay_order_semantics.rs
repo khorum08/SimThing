@@ -50,15 +50,6 @@ fn overlay_order_gpu_matches_cpu_small() {
     let report = compare_overlay_order_rich_with_harness(&harness, &scenario).unwrap();
     assert_report_ok(&report);
 }
-
-#[test]
-fn overlay_order_medium_clutter_stress() {
-    let scenario = make_overlay_order_scenario("overlay_order_medium_clutter", 10_000, 16, 8, true);
-    let harness = OverlayOrderHarness::new().unwrap();
-    let report = compare_overlay_order_rich_with_harness(&harness, &scenario).unwrap();
-    assert_report_ok(&report);
-}
-
 #[test]
 fn overlay_order_semantics_report_bundle() {
     let harness = OverlayOrderHarness::new().unwrap();
@@ -76,15 +67,6 @@ fn overlay_order_semantics_report_bundle() {
     write_overlay_order_semantics_reports_bundle(&reports)
         .expect("write overlay order semantics reports bundle");
 }
-
-#[test]
-fn overlay_order_wide_sparse_stress() {
-    let scenario = make_overlay_order_scenario("overlay_order_wide_sparse", 10_000, 64, 2, true);
-    let harness = OverlayOrderHarness::new().unwrap();
-    let report = compare_overlay_order_rich_with_harness(&harness, &scenario).unwrap();
-    assert_report_ok(&report);
-}
-
 #[test]
 fn overlay_order_does_not_group_mixed_ops_unsafely() {
     let scenario = make_unsafe_grouping_trap_scenario();

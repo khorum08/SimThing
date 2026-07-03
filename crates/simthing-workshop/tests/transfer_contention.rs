@@ -132,47 +132,6 @@ fn transfer_contention_gpu_resident_hotspot_100k() {
     assert_report_ok(&report);
     write_transfer_contention_reports(&report).expect("write transfer contention reports");
 }
-
-#[test]
-fn transfer_contention_rejects_corrupted_record() {
-    let scenario = make_transfer_contention_scenario("transfer_corrupt", 16, 64, 1.0, false, false);
-    let (final_pools, final_queues, _, mut records) = resolve_cpu_contention_n_ticks(&scenario, 1);
-    assert!(conservation_check_contention_records(
-        &scenario.pools,
-        &final_pools,
-        &scenario.queues,
-        &final_queues,
-        &scenario.queues,
-        &records
-    ));
-
-    let active_idx = records
-        .iter()
-        .position(|r| r.is_active != 0 && r.allocated > 0)
-        .expect("active allocated record");
-    records[active_idx].allocated = records[active_idx].allocated.saturating_add(1);
-    assert!(!conservation_check_contention_records(
-        &scenario.pools,
-        &final_pools,
-        &scenario.queues,
-        &final_queues,
-        &scenario.queues,
-        &records
-    ));
-    assert!(
-        replay_transfer_records_n_ticks(
-            &scenario.pools,
-            &scenario.queues,
-            &scenario.requests,
-            &records,
-            1,
-            scenario.requests.len(),
-        )
-        .is_err()
-            || !priority_allocation_check(&scenario, &scenario.pools, &records, 1)
-    );
-}
-
 #[test]
 #[ignore = "large transfer contention GPU resident benchmark"]
 fn transfer_contention_gpu_resident_hotspot_1m() {

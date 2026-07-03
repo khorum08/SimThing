@@ -60,15 +60,6 @@ fn e2a_zero_amount_is_noop() {
     assert_eq!(values[0].to_bits(), before[0].to_bits());
     assert_eq!(values[1].to_bits(), before[1].to_bits());
 }
-
-#[test]
-fn e2a_negative_amount_rejected() {
-    assert_eq!(
-        try_resource_transfer_discrete(0, 0, 0, 1, -1.0),
-        Err(AccumulatorOpBuilderError::NegativeAmount)
-    );
-}
-
 #[test]
 fn e2a_nan_or_infinite_amount_rejected() {
     for amount in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {

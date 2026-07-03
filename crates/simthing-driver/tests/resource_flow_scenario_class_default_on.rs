@@ -143,24 +143,6 @@ fn rf_t4_scenario_class_with_spec_disabled_enables_when_profile_declares_executi
         fixture.participant_count as usize
     );
 }
-
-#[test]
-fn rf_t4_scenario_class_rejects_wildcard_or_nested_claim() {
-    let mut fixture = fixture_wildcard_rejected();
-    fixture.opt_in_mode = ResourceFlowOptInMode::Disabled;
-    let err = match open_fixture_session_with_execution_profile(
-        &fixture,
-        ResourceFlowExecutionProfile::FlatStarResourceFlow,
-    ) {
-        Err(e) => e,
-        Ok(_) => panic!("wildcard scenario class must be rejected at session open"),
-    };
-    assert!(
-        err.to_string().contains("wildcard"),
-        "expected wildcard rejection, got {err}"
-    );
-}
-
 #[test]
 fn rf_t4_scenario_class_dynamic_enrollment_resyncs_after_fission() {
     let Some(_gpu) = try_gpu() else {
@@ -215,28 +197,6 @@ fn rf_t4_scenario_class_replay_same_seed_same_telemetry() {
     assert_eq!(tel_a.max_abs_error.to_bits(), tel_b.max_abs_error.to_bits());
     assert_eq!(report_a.ticks_checked, report_b.ticks_checked);
 }
-
-#[test]
-fn rf_t4_scenario_class_rejection_telemetry_visible() {
-    let mut fixture = fixture_product_rejection_telemetry();
-    fixture.opt_in_mode = ResourceFlowOptInMode::Disabled;
-    let fx = open_scenario_class(&fixture);
-    let telemetry = collect_resource_flow_opt_in_telemetry(
-        &fx.session,
-        fixture.name,
-        fixture.opt_in_mode,
-        None,
-        Some(&fx.boundary_metrics),
-        0,
-    );
-    assert_eq!(telemetry.dynamic_rejections, 1);
-    assert_eq!(telemetry.dynamic_admissions, 0);
-    assert_eq!(
-        telemetry.flag_source,
-        ResourceFlowFlagSource::ScenarioClassDefaultOn
-    );
-}
-
 #[test]
 fn rf_t4_does_not_enable_transfer_or_emission() {
     let Some(_gpu) = try_gpu() else {

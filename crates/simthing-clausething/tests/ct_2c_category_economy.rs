@@ -7,9 +7,10 @@ use simthing_clausething::{
     EconomicAxis, EconomicOp, decode_economic_modifier_key, hydrate_category_economy_pack,
     hydrate_daily_economy_game_mode, parse_raw_document,
 };
-use simthing_core::{DimensionRegistry, SimThing, SimThingKind};
+use simthing_core::{DimensionRegistry, SimThing, SimThingKind, SlotIndex};
 use simthing_driver::{
-    Scenario, SimSession, build_execution_plan, resolve_node_columns, run_arena_allocation_oracle,
+    Scenario, SimSession, build_execution_plan_from_authoring,
+    resolve_node_columns, run_arena_allocation_oracle,
 };
 use simthing_gpu::{GpuContext, SlotAllocator};
 use simthing_spec::{
@@ -87,7 +88,7 @@ fn fill_explicit_participants(game_mode: &mut GameModeSpec, scenario: &Scenario)
         .root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
+        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw()))
         .collect();
     for arena in &mut game_mode.resource_flow.as_mut().unwrap().arenas {
         arena.explicit_participants = participants.clone();
@@ -106,11 +107,11 @@ fn try_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-fn idx(slot: u32, col: u32, n_dims: u32) -> usize {
-    (slot * n_dims + col) as usize
+fn idx(slot: SlotIndex, col: u32, n_dims: u32) -> usize {
+    (slot.raw() * n_dims + col) as usize
 }
 
-fn cell(values: &[f32], slot: u32, col: u32, n_dims: u32) -> f32 {
+fn cell(values: &[f32], slot: SlotIndex, col: u32, n_dims: u32) -> f32 {
     values[idx(slot, col, n_dims)]
 }
 
@@ -361,7 +362,7 @@ fn install_consumes_category_base_obligations_without_manual_side_channel() {
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
+        &session.scenario.root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -414,7 +415,7 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     let layout = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
+        &session.scenario.root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -426,7 +427,7 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     .expect("settlement_food arena");
 
     let root = layout.participant_roots[0].participant_slot;
-    let leaves: Vec<u32> = layout.participant_roots[0]
+    let leaves: Vec<SlotIndex> = layout.participant_roots[0]
         .children
         .iter()
         .map(|n| n.participant_slot)

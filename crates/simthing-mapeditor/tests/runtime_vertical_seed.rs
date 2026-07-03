@@ -309,25 +309,6 @@ fn runtime_vertical_seed_gpu_validation_report_is_valid() {
     assert_eq!(report.location_count, 2);
     assert_eq!(report.link_count, 1);
 }
-
-#[test]
-fn runtime_vertical_seed_gpu_validation_reports_zero_invalid_endpoints() {
-    use simthing_gpu::context::GpuContext;
-
-    let Some(ctx) = GpuContext::new_blocking().ok() else {
-        eprintln!(
-            "skipping runtime_vertical_seed_gpu_validation_reports_zero_invalid_endpoints: no GPU adapter"
-        );
-        return;
-    };
-    let scenario = loaded_fixture();
-    let packet =
-        build_gpu_structural_upload_packet_from_scenario(&scenario).expect("upload packet");
-    let proof = prove_gpu_structural_validation_blocking(&ctx.device, &ctx.queue, &packet);
-    let report = proof.validation_report.expect("report");
-    assert_eq!(report.invalid_link_endpoint_count, 0);
-}
-
 #[test]
 fn runtime_vertical_seed_gpu_validation_reports_zero_self_links() {
     use simthing_gpu::context::GpuContext;

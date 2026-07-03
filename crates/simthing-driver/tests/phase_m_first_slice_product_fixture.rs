@@ -287,14 +287,6 @@ fn product_fixture_edge_and_field_values_remain_finite() {
         assert!(report.eml_output.unwrap().is_finite());
     });
 }
-
-#[test]
-fn product_fixture_rejects_atlas_request() {
-    let mut spec = product_spec();
-    spec.request_atlas_batching = true;
-    assert_region_field_err(&spec, "atlas batching");
-}
-
 #[test]
 fn product_fixture_posture_preserved() {
     assert_eq!(

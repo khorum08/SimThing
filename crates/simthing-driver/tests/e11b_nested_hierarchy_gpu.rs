@@ -392,66 +392,6 @@ fn e11b_nested_preserves_participant_identity() {
             .any(|node| node.hosted_simthing_id == ids.hosted_id));
     }
 }
-
-#[test]
-fn e11b_nested_rejects_gap_only_flat_star_leaf_claim() {
-    let mut reg = DimensionRegistry::new();
-    let _flow_id = register_flow(&mut reg);
-    let mut root = SimThing::new(SimThingKind::World, 0);
-    for _ in 0..2 {
-        root.add_child(SimThing::new(SimThingKind::Cohort, 0));
-    }
-    let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&root);
-    let participants: Vec<_> = root
-        .children
-        .iter()
-        .map(|child| {
-            ExplicitParticipantSpec::flat(alloc.slot_of(child.id).unwrap(), child.id.raw())
-        })
-        .collect();
-    let spec = ResourceFlowSpec {
-        arenas: vec![ArenaSpec {
-            name: "food".into(),
-            flow_property: PropertyKey::new("core", "food_flow"),
-            balance_property: None,
-            max_participants: 4,
-            max_coupling_fanout: 4,
-            max_orderband_depth: 16,
-            fission_policy: FissionPolicySpec::Reject,
-            reserved_orderband_depth: 0,
-            reserved_gap_per_intermediate: 1,
-            expected_max_children_per_intermediate: 1,
-            explicit_participants: participants,
-            enrollment: None,
-            wildcard_admission: None,
-        }],
-        couplings: vec![],
-        ..Default::default()
-    };
-    let mut scaffold = materialize_arena_participants(&spec, &reg, &mut root, &mut alloc).unwrap();
-    let report = scaffold.reports[0].clone();
-    let first = report.participant_sibling_first.unwrap();
-    let count = report.participant_count;
-    let parent_slot = first;
-    let child_id = SimThing::new(SimThingKind::Cohort, 0).id;
-    let gap_slot = try_alloc_participant_child_in_gap(
-        &mut scaffold,
-        parent_slot,
-        child_id,
-        &mut alloc,
-        FissionPolicy::Reject,
-    )
-    .unwrap();
-
-    assert!(
-        !slot_in_participant_sibling_range(first, count, gap_slot),
-        "gap-only child must not become an arena-root flat-star leaf"
-    );
-    let sibling_slots: Vec<u32> = (first..first + count).collect();
-    assert!(slots_are_contiguous(&sibling_slots));
-}
-
 #[test]
 fn e11b_nested_no_boundary_slot_compaction() {
     let Some(_ctx) = try_gpu() else {

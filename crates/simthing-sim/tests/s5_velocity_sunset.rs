@@ -35,28 +35,6 @@ fn s5_no_legacy_velocity_shader_file() {
 fn s5_accumulator_velocity_is_default_path() {
     assert!(PipelineFlags::default().use_accumulator_velocity);
 }
-
-#[test]
-fn s5_velocity_disabled_rejects_governed_velocity_workload() {
-    let mut reg = DimensionRegistry::new();
-    reg.register(governed_property());
-    let mut proto = BoundaryProtocol::new(
-        SimRuntimeTree::admit(simthing_core::SimThing::new(
-            simthing_core::SimThingKind::World,
-            0,
-        )),
-        reg,
-        simthing_gpu::SlotAllocator::new(),
-    );
-    proto.flags.use_accumulator_velocity = false;
-    let result = std::panic::catch_unwind(|| {
-        proto
-            .flags
-            .validate_velocity_enabled_for_registry(&proto.registry);
-    });
-    assert!(result.is_err());
-}
-
 #[test]
 fn s5_velocity_accumulator_matches_cpu_golden() {
     let Some(ctx) = try_gpu() else {

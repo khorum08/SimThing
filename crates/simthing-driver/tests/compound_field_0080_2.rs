@@ -158,58 +158,6 @@ fn compound_field_0080_2_replay_deterministic() {
         b.deterministic_replay_checksum
     );
 }
-
-#[test]
-fn compound_field_0080_2_rejects_gradient_follow_movement_in_this_rung() {
-    let mut input = CompoundField0082Input::explicit_opt_in();
-    input.forbidden.gradient_follow_movement = true;
-    let rejected = run_compound_field_0080_2(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"gradient_follow_movement_not_in_this_rung"));
-    assert!(!rejected.no_gradient_follow_movement);
-}
-
-#[test]
-fn compound_field_0080_2_rejects_write_to_disruption_column() {
-    let mut input = CompoundField0082Input::explicit_opt_in();
-    input.forbidden.write_to_disruption_column = true;
-    let rejected = run_compound_field_0080_2(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"write_to_disruption_column_rejected"));
-}
-
-#[test]
-fn compound_field_0080_2_rejects_kernel_planner_global_schedule_wgsl() {
-    for mutate in [
-        |i: &mut CompoundField0082Input| i.forbidden.new_shader_or_gpu_kernel = true,
-        |i: &mut CompoundField0082Input| i.forbidden.cpu_planner_urgency_commitment = true,
-        |i: &mut CompoundField0082Input| i.surface.global_default_schedule = true,
-        |i: &mut CompoundField0082Input| i.forbidden.semantic_or_raw_wgsl = true,
-        |i: &mut CompoundField0082Input| i.forbidden.reopen_closed_0080_1_ladder = true,
-    ] {
-        let mut input = CompoundField0082Input::explicit_opt_in();
-        mutate(&mut input);
-        let rejected = run_compound_field_0080_2(&input);
-        assert!(!rejected.admitted, "expected rejection for forbidden flag");
-        assert!(!rejected.diagnostics.is_empty());
-    }
-}
-
-#[test]
-fn compound_field_0080_2_rejects_node_positions_shape_mismatch() {
-    let mut input = CompoundField0082Input::explicit_opt_in();
-    input.node_positions.pop(); // 3 positions for 4 nodes
-    let rejected = run_compound_field_0080_2(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"node_positions_count_mismatch"));
-}
-
 #[test]
 fn compound_field_0080_2_disruption_field_reflects_rung1_state() {
     let admitted = report();

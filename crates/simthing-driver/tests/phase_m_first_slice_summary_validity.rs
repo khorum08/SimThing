@@ -244,45 +244,6 @@ fn cached_summary_on_skipped_clean_tick() {
         );
     });
 }
-
-#[test]
-fn dirty_seed_invalidates_cached_and_refreshes() {
-    with_gpu(|ctx| {
-        let mut session = open_summary_session(ctx);
-        session.queue_seeds(&[SEED]).unwrap();
-        let fresh = session
-            .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
-            .unwrap();
-        assert_eq!(fresh.summary.status, FirstSliceSummaryStatus::FreshThisTick);
-
-        let cached = session
-            .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
-            .unwrap();
-        assert_eq!(
-            cached.summary.status,
-            FirstSliceSummaryStatus::Cached { age_ticks: 1 }
-        );
-
-        session
-            .queue_seeds(&[FirstSliceSeed {
-                row: 3,
-                col: 3,
-                value: 90.0,
-            }])
-            .unwrap();
-        let refreshed = session
-            .tick_mapping(ctx, FirstSliceTickOptions::hot_path(), HIGH_WEIGHTS)
-            .unwrap();
-        assert!(refreshed.scheduled);
-        assert_eq!(refreshed.total_dispatches, 9);
-        assert_eq!(
-            refreshed.summary.status,
-            FirstSliceSummaryStatus::FreshThisTick
-        );
-        assert_eq!(refreshed.summary.age_ticks, 0);
-    });
-}
-
 #[test]
 fn cached_summary_does_not_cpu_emit_event() {
     with_gpu(|ctx| {

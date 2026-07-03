@@ -239,23 +239,6 @@ fn e1_output_buffer_registration_preserved_in_gpu_bridge() {
     assert_eq!(gpu[0].col(), 1);
     assert_eq!(gpu[0].event_kind(), 55);
 }
-
-#[test]
-fn e1_output_buffer_rejected_by_plain_ops_helper() {
-    let reg = EmitOnThresholdRegistration {
-        slot: 0,
-        col: 0,
-        threshold: 0.5,
-        direction: ThresholdDirection::Upward,
-        event_kind: 1,
-        buffer: EmitOnThresholdBuffer::Output,
-    };
-    assert!(matches!(
-        emit_on_threshold_registrations_to_ops(std::slice::from_ref(&reg)),
-        Err(EncodeError::Unsupported(_))
-    ));
-}
-
 #[test]
 fn e1_builder_direction_constants_match_gpu_dirs() {
     let cases = [

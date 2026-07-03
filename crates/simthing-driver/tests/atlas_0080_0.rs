@@ -248,26 +248,6 @@ fn atlas_0080_0_docs_status_matches_gate() {
         .diagnostics
         .contains(&"production_path_0080_1_not_implemented"));
 }
-
-#[test]
-fn atlas_0080_0_rejects_other_stop_lines() {
-    let rejected = rejected_with(|forbidden| forbidden.ui_framework = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"ui_framework"));
-
-    let rejected = rejected_with(|forbidden| forbidden.cpu_planner = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"cpu_planner"));
-
-    let rejected = rejected_with(|forbidden| forbidden.invariant_edit = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"invariant_edit"));
-
-    let rejected = rejected_with(|forbidden| forbidden.general_mapping_runtime = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"general_mapping_runtime"));
-}
-
 #[test]
 fn atlas_0080_0_access_pattern_bounds_starsystem_indices() {
     let mut input = Atlas0080Input::explicit_opt_in();

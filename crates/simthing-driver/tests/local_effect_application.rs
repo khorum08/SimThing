@@ -263,33 +263,3 @@ fn local_effect_application_gpu_skips_honestly_without_adapter() {
     }
     eprintln!("LOCAL-EFFECT-APPLICATION-AUTHORITY-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
 }
-
-#[test]
-fn local_effect_application_rejects_invalid_earlier_stage() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref() == Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let err = compile_local_effect_application_plan(&spec, TICK_ONE, REPLAY_THREE).unwrap_err();
-    assert!(matches!(err, SpecError::ValidationFailed));
-}

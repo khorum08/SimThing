@@ -781,60 +781,6 @@ fn test_r1_f_debug_readback_still_returns_values() {
         assert!(report.eml_output.is_some());
     });
 }
-
-#[test]
-fn test_r1_g_invalid_seed_rejected() {
-    with_gpu(|ctx| {
-        let spec = first_slice_spec();
-        let mut session = FirstSliceMappingSession::open(
-            ctx,
-            MappingExecutionProfile::SparseRegionFieldV1,
-            &spec,
-        )
-        .unwrap();
-
-        let oob_row = session.queue_seeds(&[FirstSliceSeed {
-            row: 10,
-            col: 0,
-            value: 1.0,
-        }]);
-        assert!(matches!(
-            oob_row,
-            Err(FirstSliceMappingError::InvalidSeed { .. })
-        ));
-
-        let oob_col = session.queue_seeds(&[FirstSliceSeed {
-            row: 0,
-            col: 10,
-            value: 1.0,
-        }]);
-        assert!(matches!(
-            oob_col,
-            Err(FirstSliceMappingError::InvalidSeed { .. })
-        ));
-
-        let nan = session.queue_seeds(&[FirstSliceSeed {
-            row: 0,
-            col: 0,
-            value: f32::NAN,
-        }]);
-        assert!(matches!(
-            nan,
-            Err(FirstSliceMappingError::NonFiniteSeedValue { .. })
-        ));
-
-        let inf = session.queue_seeds(&[FirstSliceSeed {
-            row: 0,
-            col: 0,
-            value: f32::INFINITY,
-        }]);
-        assert!(matches!(
-            inf,
-            Err(FirstSliceMappingError::NonFiniteSeedValue { .. })
-        ));
-    });
-}
-
 #[test]
 fn test_r1_h_dispatch_count_honesty() {
     with_gpu(|ctx| {

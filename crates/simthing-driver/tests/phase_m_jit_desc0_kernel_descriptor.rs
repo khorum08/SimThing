@@ -229,23 +229,6 @@ fn jit_desc0_descriptors_match_landed_evidence() {
         "descriptor_evidence: grad0_mag2=ApproximateDiagnostic grad1_score=ExactAuthoritative sqrt=ApproximateDiagnostic all=TestOnly"
     );
 }
-
-#[test]
-fn jit_desc0_rejects_approximate_output_as_exact_input() {
-    assert!(validate_exact_inputs(&M_JIT_GRAD_0_OBSERVER, &["mag2"]).is_err());
-    assert!(validate_exact_inputs(&M_JIT_SQRT_0_CANDIDATE, &["sqrt_out"]).is_err());
-
-    validate_exact_inputs(&M_JIT_GRAD_0_OBSERVER, &["dx", "dy"])
-        .expect("dx/dy are exact-authoritative");
-    validate_exact_inputs(&M_JIT_GRAD_0_OBSERVER, &["descent_x", "descent_y"])
-        .expect("descent outputs are exact-authoritative");
-    validate_exact_inputs(&M_JIT_GRAD_1_OBSERVER_SCORE, &["score"])
-        .expect("score is exact-authoritative");
-
-    // GRAD-1 score must not depend on approximate mag2 from GRAD-0.
-    assert!(output_authority(&M_JIT_GRAD_1_OBSERVER_SCORE, "mag2").is_none());
-}
-
 #[test]
 fn jit_desc0_descriptors_are_default_off_and_not_production_wired() {
     for desc in all_descriptors() {

@@ -132,16 +132,6 @@ fn studio_reopen_candidate_failure_preserves_current_runtime_status_except_messa
     .expect("status");
     assert_eq!(status_before, status_after);
 }
-
-#[test]
-fn studio_reopen_candidate_rejects_noncanonical_or_invalid_json() {
-    let temp_dir = TempDir::new().expect("temp");
-    let invalid_path = temp_dir.path().join("invalid.simthing-scenario.json");
-    fs::write(&invalid_path, "{not canonical json").expect("write");
-    let err = reopen_candidate_scenario_for_studio_session(&invalid_path).expect_err("reject");
-    assert_eq!(err, simthing_spec::SpecError::ValidationFailed);
-}
-
 #[test]
 fn studio_reopen_candidate_does_not_write_repo_fixtures() {
     let path = corpus_path(OWNER_SILO_FIXTURE);

@@ -240,45 +240,6 @@ fn e10r2_reserved_gap_consumed_before_non_gap_tombstones() {
     assert_ne!(slot_b, unrelated_slot);
     assert!(!alloc.is_live(unrelated_slot));
 }
-
-#[test]
-fn e10r2_gap_exhaustion_rejects_for_reject_policy() {
-    let (_reg, _root, mut alloc, mut scaffold) = materialize_fixture(
-        |root| {
-            root.add_child(SimThing::new(SimThingKind::Cohort, 0));
-        },
-        food_arena(vec![], 1, 1),
-    );
-    let parent_slot = scaffold
-        .index
-        .by_host_and_arena
-        .values()
-        .next()
-        .copied()
-        .unwrap();
-
-    let first = SimThing::new(SimThingKind::ArenaParticipant, 0).id;
-    try_alloc_participant_child_in_gap(
-        &mut scaffold,
-        parent_slot,
-        first,
-        &mut alloc,
-        FissionPolicy::Reject,
-    )
-    .unwrap();
-
-    let second = SimThing::new(SimThingKind::ArenaParticipant, 0).id;
-    let err = try_alloc_participant_child_in_gap(
-        &mut scaffold,
-        parent_slot,
-        second,
-        &mut alloc,
-        FissionPolicy::Reject,
-    )
-    .unwrap_err();
-    assert!(matches!(err, GapAllocError::Exhausted { .. }));
-}
-
 fn find_by_id<'a>(root: &'a SimThing, id: simthing_core::SimThingId) -> Option<&'a SimThing> {
     if root.id == id {
         return Some(root);

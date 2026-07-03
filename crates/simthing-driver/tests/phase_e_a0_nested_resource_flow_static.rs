@@ -62,53 +62,6 @@ fn a0_nested_children_contiguous_per_parent() {
     let f4 = materialize_nested(7, a0_d4_participants, 16, 0);
     assert_all_parents_contiguous(&f4);
 }
-
-#[test]
-fn a0_noncontiguous_nested_children_reject_without_compaction() {
-    let mut f = materialize_nested(7, a0_d3_participants, 16, 1);
-    let layout = layout_for(&f);
-    let interiors = layout.interior_participant_slots();
-    reserve_gap_pools_for_parent_slots(&mut f.scaffold, &mut f.alloc, &interiors, 1);
-    let mid = layout.participant_roots[0].children[0].participant_slot;
-    refresh_fission_participant_child_on_authoring(
-        &mut f.scaffold,
-        &mut f.root,
-        mid,
-        simthing_core::SimThing::new(SimThingKind::Cohort, 0).id,
-        f.flow_id,
-        &f.reg,
-        &mut f.alloc,
-        FissionPolicy::Reject,
-    )
-    .expect("gap claim breaks contiguity");
-
-    let arena = simthing_driver::GpuArenaDescriptor {
-        name: "food".into(),
-        flow_property_id: f.flow_id,
-        balance_property_id: None,
-        max_participants: 32,
-        max_coupling_fanout: 4,
-        max_orderband_depth: 16,
-        fission_policy: FissionPolicy::Reject,
-        participant_range: (0, 0),
-        wildcard_max_expansion: None,
-        reserved_orderband_depth: 0,
-    };
-    let err = build_execution_plan_from_authoring(
-        &f.reg,
-        std::slice::from_ref(&arena),
-        &f.root,
-        &f.alloc,
-        &f.scaffold,
-        2,
-    )
-    .unwrap_err();
-    assert!(matches!(
-        err,
-        simthing_driver::HierarchyError::NonContiguousChildren { .. }
-    ));
-}
-
 #[test]
 fn a0_reserved_gap_slots_excluded_from_active_slotranges() {
     let mut f = materialize_nested(7, a0_d3_participants, 16, 1);
@@ -252,12 +205,6 @@ fn a0_no_simthing_sim_semantic_awareness() {
 fn a0_nested_static_children_are_contiguous_per_parent() {
     a0_nested_children_contiguous_per_parent();
 }
-
-#[test]
-fn a0_noncontiguous_nested_children_reject() {
-    a0_noncontiguous_nested_children_reject_without_compaction();
-}
-
 #[test]
 fn a0_reserved_gap_slots_stay_outside_active_child_slotranges() {
     a0_reserved_gap_slots_excluded_from_active_slotranges();

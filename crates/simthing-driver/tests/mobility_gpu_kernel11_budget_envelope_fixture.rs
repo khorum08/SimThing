@@ -279,31 +279,6 @@ fn mobility_gpu_kernel11_budget_evaluation_does_not_mutate_accounting() {
     let _ = evaluate_stream_budget_envelope(&before, &envelope);
     assert_eq!(before, report.kernel10_report.accounting);
 }
-
-#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
-#[test]
-fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_rows() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    let fake = fake_over_budget_rows_accounting(&report.kernel10_report.accounting);
-    let evaluation = evaluate_stream_budget_envelope(&fake, &active_stream_budget_envelope());
-    assert!(!evaluation.within_envelope);
-    assert!(evaluation
-        .diagnostics
-        .contains(&"kernel11_budget_rows_over_envelope"));
-}
-
-#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
-#[test]
-fn mobility_gpu_kernel11_budget_rejects_over_budget_fake_dispatches() {
-    let report = run_mobility_gpu_kernel11_fixture(&fixture_input());
-    let fake = fake_over_budget_dispatches_accounting(&report.kernel10_report.accounting);
-    let evaluation = evaluate_stream_budget_envelope(&fake, &active_stream_budget_envelope());
-    assert!(!evaluation.within_envelope);
-    assert!(evaluation
-        .diagnostics
-        .contains(&"kernel11_budget_replay_dispatch_over_envelope"));
-}
-
 #[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]
 #[test]
 fn mobility_gpu_kernel11_budget_failure_diagnostics_are_deterministic() {

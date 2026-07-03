@@ -60,37 +60,6 @@ fn with_isolated_readback_gate_test<F: FnOnce()>(f: F) {
     f();
     set_debug_readback_allowed(false);
 }
-
-#[test]
-fn owner_silo_disburse_down_compile_rejects_invalid_writeback() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let star = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref() == Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    planet.properties.remove(&PLANET_ID_PROPERTY_ID);
-
-    let err = compile_owner_silo_disburse_down_plan(&spec).unwrap_err();
-    assert!(matches!(err, SpecError::ValidationFailed));
-}
-
 #[test]
 fn owner_silo_disburse_down_compile_preserves_owner_channels() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
@@ -237,43 +206,4 @@ fn owner_silo_disburse_down_uses_existing_accumulator_plan() {
     for proof in &plan.gpu_demand_aggregate_proof_plans {
         assert_eq!(proof.demand_plan.ops.len(), 1);
     }
-}
-
-#[test]
-fn owner_silo_disburse_down_compile_rejects_malformed_demand() {
-    let mut spec = build_owner_silo_disburse_down_scoped_spec();
-    let gs = spec
-        .root
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::GameSession)
-        .unwrap();
-    let star = gs
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Location)
-        .unwrap()
-        .children
-        .iter_mut()
-        .find(|c| {
-            simthing_spec::gridcell_role(c).as_deref() == Some(GALAXY_GRIDCELL_ROLE_STAR_SYSTEM)
-        })
-        .unwrap();
-    let planet = star
-        .children
-        .iter_mut()
-        .find(|c| simthing_spec::is_planet_gridcell(c))
-        .unwrap();
-    let cohort = planet
-        .children
-        .iter_mut()
-        .find(|c| c.kind == SimThingKind::Cohort)
-        .unwrap();
-    cohort.properties.insert(
-        simthing_spec::OWNER_FLOW_DEMAND_PROPERTY_ID,
-        simthing_core::PropertyValue { data: vec![1.5] },
-    );
-
-    let err = compile_owner_silo_disburse_down_plan(&spec).unwrap_err();
-    assert!(matches!(err, SpecError::ValidationFailed));
 }

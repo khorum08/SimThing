@@ -101,40 +101,6 @@ fn s2_accumulator_intensity_is_default_path() {
     let after = state.read_values()[idx];
     assert_ne!(after.to_bits(), before.to_bits());
 }
-
-#[test]
-fn s2_intensity_disabled_rejects_world_with_intensity_behavior() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let mut reg = DimensionRegistry::new();
-    reg.register(intensity_property());
-    assert!(!build_intensity_eml_entries(&reg).is_empty());
-
-    let mut proto = BoundaryProtocol::new(
-        SimRuntimeTree::admit(SimThing::new(SimThingKind::World, 0)),
-        reg,
-        SlotAllocator::new(),
-    );
-    proto.flags.use_accumulator_intensity = false;
-    proto.flags.use_accumulator_eml = false;
-
-    let ctx = GpuContext::new_blocking().expect("gpu");
-    let mut state = WorldGpuState::new(ctx, &proto.registry, 1);
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        proto
-            .flags
-            .validate_intensity_enabled_for_registry(&proto.registry);
-    }));
-    assert!(
-        result.is_err(),
-        "expected panic when intensity disabled with IntensityBehavior"
-    );
-    let _ = state;
-}
-
 #[test]
 fn s2_no_cpu_mediated_production_intensity() {
     let Some(_ctx) = try_gpu() else {

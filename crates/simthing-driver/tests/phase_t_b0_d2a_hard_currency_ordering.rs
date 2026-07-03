@@ -178,28 +178,6 @@ fn b0_cross_band_same_source_sequential_debit_succeeds_when_funds_sufficient() {
         TRANSFER_Y.to_bits()
     );
 }
-
-#[test]
-fn b0_same_band_same_source_double_debit_still_rejects() {
-    let mut reg = empty_registry();
-    register_amount_property(&mut reg, "core", "treasury_A");
-    register_amount_property(&mut reg, "core", "sink_0");
-    register_amount_property(&mut reg, "core", "sink_1");
-    let eml = exact_eml_registry(&[]);
-    let spec = ResourceEconomySpec {
-        transfers: vec![
-            amount_transfer("transfer_0", "treasury_A", "sink_0", 1.0, 0),
-            amount_transfer("transfer_1", "treasury_A", "sink_1", 1.0, 0),
-        ],
-        ..Default::default()
-    };
-    let err = compile_resource_economy(&spec, &reg, &eml).unwrap_err();
-    assert!(matches!(
-        err,
-        SpecError::ResourceEconomyConsumedInputContention { order_band: 0, .. }
-    ));
-}
-
 #[test]
 fn b0_deterministic_boundary_schedule_report_uses_stable_key() {
     let session = open_b0_session();

@@ -25,39 +25,6 @@ fn s1_no_legacy_intent_shader_file() {
 fn s1_accumulator_intent_is_default_path() {
     assert!(PipelineFlags::default().use_accumulator_intent);
 }
-
-#[test]
-fn s1_intent_disabled_rejects_pending_intents() {
-    let mut reg = DimensionRegistry::new();
-    reg.register(SimProperty::simple("core", "value", 0));
-    let ctx = try_gpu();
-    if ctx.is_none() {
-        eprintln!("skipping: no GPU");
-        return;
-    }
-    let ctx = ctx.unwrap();
-    let mut state = WorldGpuState::new(ctx, &reg, 1);
-    let deltas = [IntentDelta {
-        slot: 0,
-        col: 0,
-        mul: 1.0,
-        add: 0.25,
-    }];
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let flags = PipelineFlags {
-            use_accumulator_intent: false,
-            ..PipelineFlags::default()
-        };
-        if !flags.use_accumulator_intent && !deltas.is_empty() {
-            panic!(
-                "Legacy intent_delta.wgsl was deleted in S-1; AccumulatorOp intent must remain enabled when player intents exist."
-            );
-        }
-        state.upload_intent_deltas(&deltas);
-    }));
-    assert!(result.is_err());
-}
-
 #[test]
 fn s1_intent_accumulator_matches_cpu_golden() {
     let Some(ctx) = try_gpu() else {

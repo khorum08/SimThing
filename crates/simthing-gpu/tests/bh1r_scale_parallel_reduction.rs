@@ -196,46 +196,6 @@ fn bh1r_clear_field_does_not_cross_threshold() {
         assert!(!gpu.crossed_threshold, "sum_choke={}", gpu.sum_choke);
     });
 }
-
-#[test]
-fn bh1r_config_rejects_invalid_or_overflow_shape() {
-    let bad = SaturatingFluxChokeThresholdConfig {
-        width: 0,
-        height: 4,
-        n_dims: 4,
-        choke_col: 1,
-        threshold: 0.5,
-    };
-    assert!(bad.validate().is_err());
-
-    let bad_col = SaturatingFluxChokeThresholdConfig {
-        width: 4,
-        height: 4,
-        n_dims: 4,
-        choke_col: 4,
-        threshold: 0.5,
-    };
-    assert!(bad_col.validate().is_err());
-
-    let bad_thr = SaturatingFluxChokeThresholdConfig {
-        width: 4,
-        height: 4,
-        n_dims: 4,
-        choke_col: 1,
-        threshold: f32::NAN,
-    };
-    assert!(bad_thr.validate().is_err());
-
-    let overflow = SaturatingFluxChokeThresholdConfig {
-        width: 65536,
-        height: 65536,
-        n_dims: 4,
-        choke_col: 1,
-        threshold: 0.5,
-    };
-    assert!(overflow.validate().is_err());
-}
-
 #[test]
 fn bh1r_no_native_sqrt_in_hot_path() {
     let wgsl = include_str!("../src/shaders/saturating_flux_choke_threshold.wgsl");

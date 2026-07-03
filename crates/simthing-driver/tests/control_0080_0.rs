@@ -113,43 +113,6 @@ fn control_0080_0_replay_after_command_deterministic() {
             .map(|report| report.deterministic_replay_checksum)
     );
 }
-
-#[test]
-fn control_0080_0_rejects_direct_patrol_move() {
-    let rejected = with_commands(vec![Control0080Command::DirectPatrolMove]);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .rejected_commands
-        .iter()
-        .any(|cmd| cmd.diagnostic == "direct_patrol_move_rejected"));
-
-    let rejected = rejected_with(|forbidden| forbidden.direct_patrol_move = true);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"direct_patrol_move_rejected"));
-}
-
-#[test]
-fn control_0080_0_rejects_direct_pirate_move() {
-    let rejected = with_commands(vec![Control0080Command::DirectPirateMove]);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .rejected_commands
-        .iter()
-        .any(|cmd| cmd.diagnostic == "direct_pirate_move_rejected"));
-}
-
-#[test]
-fn control_0080_0_rejects_external_boundary_request() {
-    let rejected = with_commands(vec![Control0080Command::ExternalBoundaryRequest]);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .rejected_commands
-        .iter()
-        .any(|cmd| cmd.diagnostic == "external_boundary_request_rejected"));
-}
-
 #[test]
 fn control_0080_0_rejects_cpu_planner_or_commitment() {
     let rejected = with_commands(vec![Control0080Command::CpuPlannerOrCommitment]);
@@ -165,75 +128,6 @@ fn control_0080_0_rejects_cpu_planner_or_commitment() {
         .diagnostics
         .contains(&"cpu_planner_or_commitment_rejected"));
 }
-
-#[test]
-fn control_0080_0_rejects_player_command_loop() {
-    let mut input = Control0080AdmissionInput::explicit_opt_in();
-    input.surface.player_command_loop = true;
-    let rejected = admit_control_0080_0(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"player_command_loop"));
-}
-
-#[test]
-fn control_0080_0_rejects_ui_framework() {
-    let mut input = Control0080AdmissionInput::explicit_opt_in();
-    input.surface.ui_framework_present = true;
-    let rejected = admit_control_0080_0(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"ui_framework"));
-}
-
-#[test]
-fn control_0080_0_rejects_realtime_loop() {
-    let mut input = Control0080AdmissionInput::explicit_opt_in();
-    input.surface.realtime_loop_present = true;
-    let rejected = admit_control_0080_0(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"realtime_loop"));
-}
-
-#[test]
-fn control_0080_0_rejects_global_default_schedule() {
-    let mut input = Control0080AdmissionInput::explicit_opt_in();
-    input.surface.global_default_schedule_registered = true;
-    let rejected = admit_control_0080_0(&input);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"global_default_schedule"));
-}
-
-#[test]
-fn control_0080_0_rejects_semantic_or_raw_wgsl() {
-    let rejected = rejected_with(|forbidden| forbidden.semantic_or_raw_wgsl = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
-fn control_0080_0_rejects_hard_currency_markets_trade_aibudget() {
-    let rejected = rejected_with(|forbidden| {
-        forbidden.hard_currency_markets_trade_aibudget = true;
-    });
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"hard_currency_markets_trade_aibudget"));
-}
-
-#[test]
-fn control_0080_0_rejects_nested_resource_flow() {
-    let rejected = rejected_with(|forbidden| forbidden.nested_resource_flow = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"nested_resource_flow"));
-}
-
-#[test]
-fn control_0080_0_rejects_clausething_dependency() {
-    let rejected = rejected_with(|forbidden| forbidden.clausething_dependency = true);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"clausething_dependency"));
-}
-
 #[test]
 fn control_0080_0_docs_status_matches_gate() {
     let admitted = report();

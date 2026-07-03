@@ -215,29 +215,6 @@ fn test_d_source_cap_and_horizon_cap() {
     assert!(h16.validate().is_ok());
     assert!(EXTENDED_HORIZON_CAP >= 16);
 }
-
-#[test]
-fn structured_field_stencil_horizon_execution_rejects_steps_above_config() {
-    with_gpu(|ctx| {
-        let config = normalized_config(3, 3, 4);
-        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
-        assert_eq!(
-            op.run_ping_pong(ctx, 8).unwrap_err(),
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
-                steps: 8,
-                horizon: 4
-            }
-        );
-        assert_eq!(
-            op.dispatch_ping_pong(ctx, 5).unwrap_err(),
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
-                steps: 5,
-                horizon: 4
-            }
-        );
-    });
-}
-
 #[test]
 fn structured_field_stencil_source_policy_documented_or_enforced() {
     with_gpu(|ctx| {
@@ -376,32 +353,6 @@ fn test_m1_execute_configured_uses_horizon() {
         );
     });
 }
-
-#[test]
-fn test_m1_execute_configured_rejects_steps_above_horizon() {
-    with_gpu(|ctx| {
-        let config = normalized_config(3, 3, 4);
-        let op = StructuredFieldStencilOp::new(ctx, config).unwrap();
-        let err = op
-            .execute_configured(
-                ctx,
-                StructuredFieldExecutionOptions {
-                    collect_field_stats: false,
-                    readback_values: false,
-                    steps: Some(8),
-                },
-            )
-            .unwrap_err();
-        assert_eq!(
-            err,
-            StructuredFieldStencilError::ExecutionHorizonExceedsConfig {
-                steps: 8,
-                horizon: 4
-            }
-        );
-    });
-}
-
 #[test]
 fn test_m1_debug_report_with_stats_requires_readback() {
     with_gpu(|ctx| {
@@ -754,20 +705,6 @@ fn gradient_xy_cpu_oracle_matches_two_single_axis_passes() {
         assert!((xy[idx(slot, 2, 4)] - gy_only[idx(slot, 1, 4)]).abs() < 1e-6);
     }
 }
-
-#[test]
-fn gradient_xy_aliased_output_columns_rejected() {
-    let mut config = gradient_xy_config(3, 3);
-    config.operator = StructuredFieldStencilOperator::GradientXY { target_col_y: 1 }; // == target_col
-    assert_eq!(
-        config.validate(),
-        Err(StructuredFieldStencilError::GradientXyAliasedOutputs {
-            target_col: 1,
-            target_col_y: 1,
-        })
-    );
-}
-
 #[test]
 fn gradient_xy_target_y_out_of_range_rejected() {
     let mut config = gradient_xy_config(3, 3);

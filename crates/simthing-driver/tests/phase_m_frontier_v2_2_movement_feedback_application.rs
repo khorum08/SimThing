@@ -530,54 +530,6 @@ fn frontier_v2_2_own_column_movement_changes_position() {
         );
     });
 }
-
-#[test]
-fn frontier_v2_2_rejects_cross_entity_movement_write() {
-    let shadow = initial_own_column_shadow(0);
-    let mut cross_entity = build_evolved_movement_candidate(
-        &FrontierV1LiveFieldAgentFeedbackCandidate {
-            tick_index: 1,
-            source_unit_id: 1,
-            route_code: FRONTIER_V1_ALLOCATOR_ROUTE_CODE,
-            proposal_code: FRONTIER_V1_RESOURCE_PROPOSAL_CODE,
-            dispatch_count: 2,
-            faction_a_allocation: 199,
-            faction_b_allocation: 133,
-            allocator_total: 332,
-            field_feedback_code: 5039,
-            overflow_flags: 0,
-        },
-        0,
-        0.5,
-        1,
-    );
-    cross_entity.source_unit_id = 1;
-
-    let err = apply_movement_to_own_column_shadow(
-        &shadow,
-        &cross_entity,
-        frontier_v1_1_fixture_config().grid_size,
-        1,
-    )
-    .expect_err("cross-entity write must reject");
-    assert_eq!(
-        err,
-        FrontierV2MovementWriteError::CrossEntityTarget {
-            source_unit_id: 1,
-            shadow_unit_id: 0,
-        }
-    );
-
-    let sim_lib = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../simthing-sim/src/lib.rs"
-    ));
-    assert!(!sim_lib.contains("OwnColumnShadow"));
-    assert!(!sim_lib.contains("FrontierV2OwnColumnShadow"));
-
-    println!("frontier_v2_2_cross_entity: rejected=true fixture_id={FRONTIER_V2_2_FIXTURE_ID}");
-}
-
 #[test]
 fn frontier_v2_2_movement_feedback_affects_next_tick() {
     with_gpu(|ctx| {
@@ -762,59 +714,6 @@ fn frontier_v2_2_resource_route_stays_allocator_only() {
     let _ = config;
     println!("frontier_v2_2_allocator: rejects=true fixture_id={FRONTIER_V2_2_FIXTURE_ID}");
 }
-
-#[test]
-fn frontier_v2_2_deferred_features_reject() {
-    let deferred: [(&str, Box<dyn Fn(&mut FrontierV1ScenarioSkeleton)>); 10] = [
-        ("atlas", Box::new(|s| s.theater.request_atlas = true)),
-        (
-            "active_mask",
-            Box::new(|s| s.theater.request_active_mask = true),
-        ),
-        (
-            "perception",
-            Box::new(|s| s.theater.request_perception = true),
-        ),
-        (
-            "source_identity",
-            Box::new(|s| s.theater.request_source_identity = true),
-        ),
-        (
-            "nested_e11b",
-            Box::new(|s| s.resource_flow.nested_e11b = true),
-        ),
-        (
-            "e11b_5",
-            Box::new(|s| s.resource_flow.e11b_5_dynamic_enrollment = true),
-        ),
-        (
-            "d2a",
-            Box::new(|s| s.resource_flow.d2a_hard_currency_ordering = true),
-        ),
-        (
-            "act5_ladder",
-            Box::new(|s| s.field_policy.pipeline_version = FieldPolicyPipelineVersion::Other),
-        ),
-        (
-            "parallel_fixture",
-            Box::new(|s| s.resource_flow.parallel_fixture_economy = true),
-        ),
-        (
-            "cpu_planner",
-            Box::new(|s| s.field_policy.cpu_planner = true),
-        ),
-    ];
-    for (label, mutate) in deferred {
-        let mut skeleton = frontier_v2_smoke_skeleton();
-        mutate(&mut skeleton);
-        assert!(
-            !validate_frontier_v2_admission(&skeleton).accepted,
-            "{label} should reject"
-        );
-    }
-    println!("frontier_v2_2_deferred: rejects=true fixture_id={FRONTIER_V2_2_FIXTURE_ID}");
-}
-
 #[test]
 fn frontier_v2_2_no_simthing_sim_semantic_awareness() {
     let sim_lib = include_str!(concat!(

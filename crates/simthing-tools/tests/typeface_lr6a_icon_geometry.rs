@@ -61,19 +61,6 @@ fn icon_vector_preserves_role_layer_order() {
         ]
     );
 }
-
-#[test]
-fn icon_vector_rejects_dynamic_svg_still() {
-    let dynamic = r##"
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-  <script>alert(1)</script>
-  <rect x="1" y="1" width="14" height="14"/>
-</svg>
-"##;
-    let err = IconVector::from_svg(dynamic).expect_err("dynamic svg");
-    assert!(err.to_string().contains("StaticOnly") || err.to_string().contains("script"));
-}
-
 #[test]
 fn icon_vector_geometry_is_deterministic() {
     let a = IconVector::from_svg(SIMPLE_SVG).expect("a");

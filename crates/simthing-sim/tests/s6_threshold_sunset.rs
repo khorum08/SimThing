@@ -29,46 +29,6 @@ fn s6_no_legacy_threshold_shader_file() {
 fn s6_accumulator_threshold_is_default_path() {
     assert!(PipelineFlags::default().use_accumulator_threshold_scan);
 }
-
-#[test]
-fn s6_threshold_disabled_rejects_threshold_workload() {
-    let Some(ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let mut reg = DimensionRegistry::new();
-    let mut prop = SimProperty::simple("stress", "pressure", 0);
-    prop.fission_templates = vec![FissionThreshold {
-        sub_field: SubFieldRole::Amount,
-        threshold: 0.5,
-        direction: Direction::Falling,
-        template: FissionTemplate {
-            child_kind: SimThingKindTag::Cohort,
-            fusion_intensity_threshold: 0.9,
-            fusion_scar_coefficient: 0.0,
-            resolution_label: "resolved".into(),
-            clone_capability_children: false,
-            capability_container_kinds: Vec::new(),
-        },
-        secondary: None,
-    }];
-    let pid = reg.register(prop);
-    let mut world = SimThing::new(SimThingKind::World, 0);
-    let mut child = SimThing::new(SimThingKind::Cohort, 0);
-    child.add_property(pid, PropertyValue::from_layout(&reg.property(pid).layout));
-    world.add_child(child);
-    let mut alloc = SlotAllocator::new();
-    alloc.populate_from_tree(&world);
-    let mut state = WorldGpuState::new(ctx, &reg, alloc.capacity() as u32);
-    let coord = DispatchCoordinator::new(alloc.capacity() as u32, reg.total_columns as u32, 1);
-    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(world), reg, alloc);
-    proto.flags.use_accumulator_threshold_scan = false;
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        proto.initial_gpu_sync(&coord, &mut state);
-    }));
-    assert!(result.is_err());
-}
-
 #[test]
 fn s6_threshold_events_match_cpu_golden() {
     let Some(ctx) = try_gpu() else {

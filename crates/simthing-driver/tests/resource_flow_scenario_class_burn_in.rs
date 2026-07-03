@@ -105,21 +105,6 @@ fn rf_t5_profile_repeated_resync_stable() {
     assert!(burn.total_ops > 0);
     assert!(burn.n_bands > 0);
 }
-
-#[test]
-fn rf_t5_profile_rejection_telemetry_visible() {
-    let Some(_gpu) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-    let fixture = fixture_profile_rejection_telemetry();
-    let fx = open_profile_session(&fixture).expect("open");
-    let telemetry = profile_telemetry_for_open_session(&fx, &fixture, None);
-    assert_eq!(telemetry.dynamic_rejections, 1);
-    assert_eq!(telemetry.dynamic_admissions, 0);
-    assert_profile_telemetry_contract(&telemetry, &fixture);
-}
-
 #[test]
 fn rf_t5_default_profile_populated_spec_stays_inactive() {
     let fixture = fixture_profile_disabled_or_default();

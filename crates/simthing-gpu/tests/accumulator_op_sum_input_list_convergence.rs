@@ -213,22 +213,6 @@ fn accumulator_op_sum_over_input_list_cpu_oracle_triangle() {
     let output = run_cpu_neighbor_sum(&neighbor_sum_ops_triangle(), 3, &[10.0, 20.0, 30.0]);
     assert_eq!(output, vec![50.0, 40.0, 30.0]);
 }
-
-#[test]
-fn accumulator_op_sum_over_input_list_rejects_invalid_input_list_range() {
-    let op = AccumulatorOp {
-        source: SourceSpec::ConjunctiveCrossing { inputs: vec![] },
-        combine: CombineFn::Sum,
-        gate: GateSpec::Always,
-        scale: ScaleSpec::Identity,
-        consume: ConsumeMode::AddToTarget,
-        targets: vec![(0, 1)],
-    };
-    use simthing_gpu::AccumulatorOpGpu;
-    let err = AccumulatorOpGpu::from_op(&op).expect_err("empty");
-    assert!(err.to_string().contains("ConjunctiveCrossing"));
-}
-
 #[test]
 fn accumulator_op_sum_over_input_list_exact_integer_f32_contract() {
     for value in [

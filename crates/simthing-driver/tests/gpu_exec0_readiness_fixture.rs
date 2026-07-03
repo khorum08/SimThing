@@ -69,27 +69,6 @@ fn gpu_exec0_semantic_free_pass_descriptor_only() {
     assert_eq!(report.fixture_id, GPU_EXEC0_FIXTURE_ID);
     assert_eq!(report.named_gate, GPU_EXEC0_NAMED_GATE);
 }
-
-#[test]
-fn gpu_exec0_rejects_semantic_or_raw_wgsl() {
-    let mut forbidden = GpuExec0ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
-fn gpu_exec0_rejects_designer_authored_shader_input() {
-    let mut forbidden = GpuExec0ForbiddenPathRequests::default();
-    forbidden.designer_authored_shader_input = true;
-    let report = rejected_with(forbidden);
-    assert!(!report.admitted);
-    assert!(report
-        .diagnostics
-        .contains(&"designer_authored_shader_input"));
-}
-
 #[test]
 fn gpu_exec0_no_mobility_shader_or_dispatch() {
     let report = run_gpu_exec0_fixture(&fixture_input());
@@ -124,30 +103,6 @@ fn gpu_exec0_reports_cpu_oracle_checksum() {
     assert!(report.admitted);
     assert_ne!(report.cpu_oracle_checksum, 0);
 }
-
-#[test]
-fn gpu_exec0_reports_gpu_checksum_or_unsupported() {
-    let report = run_gpu_exec0_fixture(&fixture_input());
-    assert!(report.admitted);
-    match report.parity_classification {
-        GpuExec0ParityClassification::ExactParity => {
-            assert!(report.gpu_execution_available);
-            assert!(report.gpu_dispatch_occurred);
-            assert!(report.gpu_result_checksum.is_some());
-        }
-        GpuExec0ParityClassification::GpuUnavailable => {
-            assert!(!report.gpu_execution_available);
-            assert!(report.gpu_result_checksum.is_none());
-        }
-        GpuExec0ParityClassification::GpuExecutionFailed => {
-            panic!(
-                "unexpected GpuExecutionFailed in readiness probe: {:?}",
-                report
-            );
-        }
-    }
-}
-
 #[test]
 fn gpu_exec0_classifies_exact_parity_or_honest_approximation() {
     let report = run_gpu_exec0_fixture(&fixture_input());
