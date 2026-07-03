@@ -382,4 +382,32 @@ The authoritative one-line verdict is:
 
 `DOCTRINE-EXEC-VERDICT: PASS|FAIL|INSPECT ...`
 
+---
+
+## 10. Deletion never licenses a desktop/GPU probe (owner ruling, 2026-07-03)
+
+**The insight (owner):** the *only* reason to run a Linux-side desktop/GPU/Bevy binary in CI is to check it
+still passes — and a test you are **deleting** never needs to pass anywhere. Therefore a deletion decision
+**never** justifies installing ALSA / X / Wayland / winit / wgpu / mapeditor / typeface dependencies or
+`apt-get` on a GHA runner. Any such probe during a paring wave is a confused instinct to "verify before
+deleting," and it is forbidden. (This is what produced the invalid `simthing-driver`/`alsa-sys` probe;
+`TESTS-COMPILE-FLOOR-NON-BEVY-0`'s forbidden-token lint now blocks it structurally, across the `tests`,
+`doc_tests`, **and `crate_checks`** columns — the last was the smuggling lane 0R2 closed.)
+
+**The doctrine — how a deletion is proven (all platform-portable; none requires the deleted thing to run):**
+1. **Coverage map** — the surface the deleted test claimed is owned by a *compiling* representative
+   (kernel-internal preferred). Platform-independent: it is a fact about the corpus, not an execution.
+2. **Compile floor** — the surviving code still compiles (`cargo check -p --tests`, the standing GHA floor
+   for non-Bevy crates; owner-deep local for Bevy/desktop crates). This is the only "does it build" check a
+   deletion needs, and it never runs the deleted binary.
+3. **Owner's local run (Windows) is authoritative for the delete decision.** If the owner's local machine
+   flags a test as fossil/redundant/dead, that determination is **sufficient** — there is **no** obligation
+   to re-verify it with a Linux-side run, and for a desktop/GPU-linked test such re-verification is exactly
+   the forbidden probe. Local-flags-for-deletion → delete; do not escalate to a Linux execution to "confirm."
+
+**Corollary:** a non-compiling or platform-unavailable binary is a *stronger* delete signal, never a
+preservation reason (this extends `OWNER-DEEP-RESIDUE-PARE`: "a stale test binary failing to compile is not
+a reason to preserve it"). The desktop/GPU dependency graph belongs to owner-deep local execution only; the
+non-owner-deep GHA floor proves *compilation of the survivors*, never *execution of the departed*.
+
 `doctrine_exec_report.json` is a generated mirror of the same run, not a second truth. The sticky PR comment and job summary must agree. Labels are not verdicts and must not be used as proof.

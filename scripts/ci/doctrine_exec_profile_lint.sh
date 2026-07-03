@@ -133,11 +133,33 @@ def lint_forbidden_desktop_deps(rows: list[dict[str, str]]) -> list[str]:
         for field in ("tests", "doc_tests"):
             for command in split_commands(row.get(field, "")):
                 out.extend(forbidden_desktop_dep_errors(profile_id, profile_class, field, command))
+        crate_checks = row.get("crate_checks", "").strip()
+        if crate_checks and crate_checks != "-":
+            for crate in crate_checks.split(","):
+                crate = crate.strip()
+                if crate in FORBIDDEN_GHA_CRATE_COMMANDS:
+                    out.append(
+                        "FORBIDDEN-GHA-DESKTOP-DEPS: owner_deep=false profile contains blocked crate "
+                        f"`{crate}` in crate_checks (the engine executes `cargo check -p` per entry). "
+                        f"Do not check driver/GPU/mapeditor/tools on non-owner-deep GHA. "
+                        f"(profile `{profile_id}` crate_checks: `{crate_checks}`)"
+                    )
     return out
 
 def prove_forbidden_desktop_dep_guard() -> list[str]:
     out: list[str] = []
     bad_cases = [
+        (
+            "blocked crate in crate_checks",
+            {
+                "profile_id": "prove-bad-crate-checks-mapeditor",
+                "profile_class": "targeted",
+                "crate_checks": "simthing-core,simthing-mapeditor",
+                "tests": "-",
+                "doc_tests": "-",
+            },
+            False,
+        ),
         (
             "apt-get libasound",
             {
