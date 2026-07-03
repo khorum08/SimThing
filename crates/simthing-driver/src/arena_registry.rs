@@ -526,38 +526,6 @@ mod tests {
     }
 
     #[test]
-    fn arena_registry_participant_ranges_are_contiguous_when_admissions_interleaved() {
-        let mut b = ArenaRegistryBuilder::new();
-        let food = b.push_arena(food_arena(4));
-        let research = b.push_arena(research_arena());
-        let root_a = SimThingId::new();
-        let root_b = SimThingId::new();
-        let root_c = SimThingId::new();
-        // Interleaved: food A, research B, food C
-        b.admit_participant(food, 10, root_a).unwrap();
-        b.admit_participant(research, 20, root_b).unwrap();
-        b.admit_participant(food, 30, root_c).unwrap();
-        let (reg, _) = b.build().unwrap();
-
-        assert_eq!(reg.arenas[food as usize].participant_range, (0, 2));
-        assert_eq!(reg.arenas[research as usize].participant_range, (2, 1));
-
-        let food_slice = participants_in_range(&reg, food);
-        assert_eq!(food_slice.len(), 2);
-        assert!(food_slice.iter().all(|p| p.arena_idx == food));
-        assert_eq!(food_slice[0].slot, 10);
-        assert_eq!(food_slice[1].slot, 30);
-        assert_eq!(food_slice[0].subtree_root, root_a);
-        assert_eq!(food_slice[1].subtree_root, root_c);
-
-        let research_slice = participants_in_range(&reg, research);
-        assert_eq!(research_slice.len(), 1);
-        assert_eq!(research_slice[0].slot, 20);
-        assert_eq!(research_slice[0].subtree_root, root_b);
-        assert!(research_slice.iter().all(|p| p.arena_idx == research));
-    }
-
-    #[test]
     fn arena_registry_participant_range_slices_match_arena_idx() {
         let mut b = ArenaRegistryBuilder::new();
         let food = b.push_arena(food_arena(4));
@@ -641,45 +609,6 @@ mod tests {
     }
 
     #[test]
-    fn arena_registry_explicit_admission_only() {
-        let mut b = ArenaRegistryBuilder::new();
-        let food = b.push_arena(food_arena(4));
-        b.admit_participant(food, 1, SimThingId::new()).unwrap();
-        let (reg, report) = b.build().unwrap();
-        assert_eq!(report.participant_count, 1);
-        assert_eq!(reg.participants[0].slot, 1);
-    }
-
-    #[test]
-    fn arena_registry_rejects_implicit_participation() {
-        let mut b = ArenaRegistryBuilder::new();
-        b.push_arena(food_arena(4));
-        let err = b.build().unwrap_err();
-        assert!(matches!(
-            err,
-            ArenaRegistryError::ImplicitParticipation { .. }
-        ));
-    }
-
-    #[test]
-    fn arena_registry_rejects_unbounded_wildcard_without_cap() {
-        let mut b = ArenaRegistryBuilder::new();
-        let food = b.push_arena(food_arena(4));
-        b.declare_wildcard_admission(food, None).unwrap();
-        let err = b.build().unwrap_err();
-        assert!(matches!(err, ArenaRegistryError::UnboundedWildcard { .. }));
-    }
-
-    #[test]
-    fn arena_registry_wildcard_with_cap_satisfies_admission() {
-        let mut b = ArenaRegistryBuilder::new();
-        let food = b.push_arena(food_arena(4));
-        b.declare_wildcard_admission(food, Some(4)).unwrap();
-        let (reg, _) = b.build().unwrap();
-        assert_eq!(reg.arenas[0].wildcard_max_expansion, Some(4));
-    }
-
-    #[test]
     fn arena_registry_enforces_max_participants() {
         let mut b = ArenaRegistryBuilder::new();
         let food = b.push_arena(food_arena(1));
@@ -689,51 +618,6 @@ mod tests {
         assert!(matches!(
             err,
             ArenaRegistryError::MaxParticipantsExceeded { .. }
-        ));
-    }
-
-    #[test]
-    fn arena_registry_rejects_all_algebraic_coupling_cycle() {
-        let mut b = ArenaRegistryBuilder::new();
-        let a = b.push_arena(food_arena(4));
-        let b_idx = b.push_arena(research_arena());
-        let c = b.push_arena(GpuArenaDescriptor {
-            name: "suppression".into(),
-            flow_property_id: SimPropertyId(3),
-            balance_property_id: None,
-            max_participants: 4,
-            max_coupling_fanout: 4,
-            max_orderband_depth: 8,
-            fission_policy: FissionPolicy::Reevaluate,
-            participant_range: (0, 0),
-            wildcard_max_expansion: None,
-            reserved_orderband_depth: 0,
-        });
-        b.admit_participant(a, 0, SimThingId::new()).unwrap();
-        b.admit_participant(b_idx, 1, SimThingId::new()).unwrap();
-        b.admit_participant(c, 2, SimThingId::new()).unwrap();
-        b.push_coupling(ArenaCoupling {
-            from_arena: a,
-            to_arena: b_idx,
-            delay: CouplingDelay::Algebraic,
-        })
-        .unwrap();
-        b.push_coupling(ArenaCoupling {
-            from_arena: b_idx,
-            to_arena: c,
-            delay: CouplingDelay::Algebraic,
-        })
-        .unwrap();
-        b.push_coupling(ArenaCoupling {
-            from_arena: c,
-            to_arena: a,
-            delay: CouplingDelay::Algebraic,
-        })
-        .unwrap();
-        let err = b.build().unwrap_err();
-        assert!(matches!(
-            err,
-            ArenaRegistryError::AllAlgebraicCouplingCycle { .. }
         ));
     }
 

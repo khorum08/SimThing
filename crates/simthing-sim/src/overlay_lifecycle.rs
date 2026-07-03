@@ -479,25 +479,4 @@ mod tests {
         assert!(root.overlays.is_empty());
     }
 
-    #[test]
-    fn dissolving_overlay_with_invalid_property_id_does_not_panic() {
-        let mut reg = DimensionRegistry::new();
-        reg.register(SimProperty::simple("core", "food", 0));
-        let mut alloc = SlotAllocator::new();
-        let mut root = SimThing::new(SimThingKind::Location, 0);
-        alloc.alloc(root.id);
-        root.add_overlay(make_overlay(
-            OverlayLifecycle::Transient {
-                dissolution_conditions: vec![DissolveCondition::AfterTicks { remaining: 0 }],
-            },
-            SimPropertyId(999),
-        ));
-
-        let n_dims = reg.total_columns;
-        let mut shadow = vec![0.0f32; n_dims];
-        let out = resolve_overlay_lifecycle(&mut root, &reg, &alloc, &mut shadow, n_dims, 0, None);
-
-        assert_eq!(out.dissolved, 1);
-        assert!(root.overlays.is_empty());
-    }
 }

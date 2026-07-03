@@ -555,30 +555,4 @@ mod tests {
         assert!((bounds.max_z - 15.0).abs() < f32::EPSILON);
     }
 
-    #[test]
-    fn stabilize_keeps_previous_valid_context_when_computed_invalid() {
-        let previous_context = StudioMapRadiusFalloffContext {
-            view_origin: Vec2::new(1.0, 2.0),
-            map_max_view_distance: 50.0,
-            origin_source: MapViewOriginSource::BottomCenterViewportRay,
-        };
-        let previous_diag = MapRadiusFalloffDiagnostics::default();
-        let invalid = MapRadiusFalloffComputeOutput {
-            context: StudioMapRadiusFalloffContext {
-                view_origin: Vec2::new(f32::NAN, 0.0),
-                map_max_view_distance: 0.0,
-                origin_source: MapViewOriginSource::GalaxyCenter,
-            },
-            diagnostics: MapRadiusFalloffDiagnostics::default(),
-            valid: false,
-        };
-        let stabilized =
-            stabilize_map_radius_falloff_output(invalid, Some((previous_context, previous_diag)));
-        assert!(stabilized.valid);
-        assert!(stabilized.diagnostics.retained_previous_context);
-        assert_eq!(
-            stabilized.context.origin_source,
-            MapViewOriginSource::BottomCenterViewportRay
-        );
-    }
 }

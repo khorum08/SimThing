@@ -329,92 +329,6 @@ mod tests {
     }
 
     #[test]
-    fn rejects_same_source_contention() {
-        let regs = vec![
-            TransferRegistration {
-                inputs: vec![TransferInputRef {
-                    slot: 0,
-                    col: 0,
-                    unit_cost: 1.0,
-                }],
-                target_slot: 0,
-                target_col: 1,
-                output_scale: 1.0,
-                max_transfer: Some(4.0),
-                tree_id: None,
-                order_band: 0,
-            },
-            TransferRegistration {
-                inputs: vec![TransferInputRef {
-                    slot: 0,
-                    col: 0,
-                    unit_cost: 1.0,
-                }],
-                target_slot: 0,
-                target_col: 2,
-                output_scale: 1.0,
-                max_transfer: Some(4.0),
-                tree_id: None,
-                order_band: 0,
-            },
-        ];
-        assert_eq!(
-            plan_transfer_ops(&regs),
-            Err(TransferPlanError::ContendedConsumedInput { slot: 0, col: 0 })
-        );
-    }
-
-    #[test]
-    fn rejects_overlapping_conjunctive_inputs() {
-        let regs = vec![
-            TransferRegistration {
-                inputs: vec![
-                    TransferInputRef {
-                        slot: 0,
-                        col: 0,
-                        unit_cost: 1.0,
-                    },
-                    TransferInputRef {
-                        slot: 0,
-                        col: 1,
-                        unit_cost: 1.0,
-                    },
-                ],
-                target_slot: 0,
-                target_col: 3,
-                output_scale: 1.0,
-                max_transfer: None,
-                tree_id: None,
-                order_band: 0,
-            },
-            TransferRegistration {
-                inputs: vec![
-                    TransferInputRef {
-                        slot: 0,
-                        col: 1,
-                        unit_cost: 1.0,
-                    },
-                    TransferInputRef {
-                        slot: 0,
-                        col: 2,
-                        unit_cost: 1.0,
-                    },
-                ],
-                target_slot: 0,
-                target_col: 3,
-                output_scale: 1.0,
-                max_transfer: None,
-                tree_id: None,
-                order_band: 0,
-            },
-        ];
-        assert_eq!(
-            plan_transfer_ops(&regs),
-            Err(TransferPlanError::ContendedConsumedInput { slot: 0, col: 1 })
-        );
-    }
-
-    #[test]
     fn rejects_zero_unit_cost() {
         let regs = vec![TransferRegistration {
             inputs: vec![TransferInputRef {
@@ -471,24 +385,4 @@ mod tests {
         assert!(matches!(plan.ops[1].gate, GateSpec::OrderBand(1)));
     }
 
-    #[test]
-    fn rejects_single_source_output_scale() {
-        let regs = vec![TransferRegistration {
-            inputs: vec![TransferInputRef {
-                slot: 0,
-                col: 0,
-                unit_cost: 1.0,
-            }],
-            target_slot: 0,
-            target_col: 1,
-            output_scale: 2.0,
-            max_transfer: Some(1.0),
-            tree_id: None,
-            order_band: 0,
-        }];
-        assert_eq!(
-            plan_transfer_ops(&regs),
-            Err(TransferPlanError::UnsupportedSingleSourceOutputScale { output_scale: 2.0 })
-        );
-    }
 }

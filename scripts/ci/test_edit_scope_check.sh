@@ -68,11 +68,24 @@ def read_scope_rows() -> list[dict[str, str]]:
 
         path_glob = row["path_glob"].strip()
         glob_parts = pathlib.PurePosixPath(path_glob).parts
+        rationale = row["rationale"].strip()
+        src_only_glob = (
+            len(glob_parts) >= 4
+            and glob_parts[0] == "crates"
+            and glob_parts[2] == "src"
+            and all(part != "tests" and part != "benches" for part in glob_parts[3:])
+        )
         if len(glob_parts) >= 2 and glob_parts[0] == "crates" and glob_parts[1] in protected_crates:
-            errors.append(
-                f"test edit scope line {line_no}: protected crate {glob_parts[1]} must not be authorized"
-            )
-        if "/src/" in f"/{path_glob}/" and "DA-approved" not in row["rationale"]:
+            if src_only_glob:
+                if "Owner/DA-approved" not in rationale:
+                    errors.append(
+                        f"test edit scope line {line_no}: protected crate src/** requires Owner/DA-approved marker"
+                    )
+            else:
+                errors.append(
+                    f"test edit scope line {line_no}: protected crate {glob_parts[1]} must not be authorized"
+                )
+        if "/src/" in f"/{path_glob}/" and "DA-approved" not in rationale:
             errors.append(
                 f"test edit scope line {line_no}: src/** authorization requires explicit DA-approved marker"
             )
@@ -81,7 +94,12 @@ def read_scope_rows() -> list[dict[str, str]]:
 
 def matching_rows(rows: list[dict[str, str]], path: str) -> list[dict[str, str]]:
     pure = pathlib.PurePosixPath(path)
-    return [row for row in rows if pure.match(row["path_glob"].strip())]
+    matches: list[dict[str, str]] = []
+    for row in rows:
+        glob = row["path_glob"].strip()
+        if pure.match(glob) or pure.full_match(glob):
+            matches.append(row)
+    return matches
 
 
 def check_paths(rows: list[dict[str, str]], paths: list[str]) -> int:

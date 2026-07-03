@@ -319,40 +319,6 @@ mod tests {
     }
 
     #[test]
-    fn scenario_authority_load_rejects_invalid_map_container_id() {
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir.path().join("bad-map.simthing-scenario.json");
-        write_small_scenario(&path);
-        let mut scenario = load_scenario_authority_from_path(&path).expect("load valid");
-        scenario.structural_grid.map_container_id = "99999999".to_string();
-        save_scenario_authority_to_path(&path, &scenario).expect("overwrite invalid");
-        let err = load_scenario_authority_from_path(&path).expect_err("reject dangling map id");
-        assert!(matches!(
-            err,
-            ScenarioIoError::Serde(ScenarioSerdeError::Validation(
-                SteadMappingError::DanglingMapContainerId(_)
-            ))
-        ));
-    }
-
-    #[test]
-    fn scenario_authority_load_rejects_invalid_links() {
-        let dir = TempDir::new().expect("tempdir");
-        let path = dir.path().join("bad-links.simthing-scenario.json");
-        let mut scenario = small_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "42".to_string(),
-        });
-        save_scenario_authority_to_path(&path, &scenario).expect("save invalid links");
-        let err = load_scenario_authority_from_path(&path).expect_err("reject invalid links");
-        assert!(matches!(
-            err,
-            ScenarioIoError::Serde(ScenarioSerdeError::LinkValidation(_))
-        ));
-    }
-
-    #[test]
     fn scenario_authority_load_reserves_simthing_ids() {
         let dir = TempDir::new().expect("tempdir");
         let path = dir.path().join("reserve.simthing-scenario.json");

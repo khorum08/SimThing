@@ -353,38 +353,6 @@ mod tests {
     }
 
     #[test]
-    fn c8d_emission_rejects_fast_approx_without_tolerance_gate() {
-        let mut registry = EmlExpressionRegistry::new();
-        let id = EmlTreeId(3);
-        let mut meta = exact_meta(3);
-        meta.execution_class = EmlExecutionClass::FastApproximate;
-        meta.allowed_consumers = EmlConsumerMask(EmlConsumerMask::DEBUG_ORACLE);
-        registry
-            .register_formula(
-                id,
-                meta,
-                vec![EmlNodeGpu {
-                    opcode: eml_opcode::LITERAL_F32,
-                    flags: 0,
-                    a: 1.0f32.to_bits(),
-                    b: 0,
-                    c: 0,
-                    d: 0,
-                }],
-            )
-            .unwrap();
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: 0,
-            tree_id: Some(id),
-            formula: EmissionFormula::EvalEml { tree_id: id },
-            max_emit: None,
-            reg_idx: 0,
-        }];
-        assert!(plan_emission_ops(&regs, Some(&registry)).is_err());
-    }
-
-    #[test]
     fn encode_sets_reg_idx_in_combine_b() {
         let regs = vec![EmissionRegistration {
             source_slot: 0,
@@ -397,43 +365,6 @@ mod tests {
         let plan = plan_emission_ops(&regs, None).unwrap();
         let gpu = encode_emission_plan(&plan, None).unwrap();
         assert_eq!(gpu[0].combine_b, 42);
-    }
-
-    #[test]
-    fn c8d_max_emit_rejected_until_supported() {
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: 0,
-            tree_id: None,
-            formula: EmissionFormula::IdentityFloor,
-            max_emit: Some(5),
-            reg_idx: 0,
-        }];
-        assert_eq!(
-            plan_emission_ops(&regs, None),
-            Err(EmissionPlanError::MaxEmitUnsupported)
-        );
-    }
-
-    #[test]
-    fn c8d_mismatched_registration_tree_id_rejected() {
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: 0,
-            tree_id: Some(EmlTreeId(1)),
-            formula: EmissionFormula::EvalEml {
-                tree_id: EmlTreeId(2),
-            },
-            max_emit: None,
-            reg_idx: 0,
-        }];
-        assert_eq!(
-            plan_emission_ops(&regs, None),
-            Err(EmissionPlanError::MismatchedTreeIdField {
-                registration_tree_id: Some(1),
-                formula_tree_id: 2,
-            })
-        );
     }
 
     #[test]

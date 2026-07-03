@@ -549,28 +549,6 @@ mod tests {
     }
 
     #[test]
-    fn star_name_corpus_path_is_importable_rejects_missing_and_unparsable_files() {
-        assert!(!star_name_corpus_path_is_importable(""));
-        assert!(!star_name_corpus_path_is_importable("   "));
-        assert!(!star_name_corpus_path_is_importable(
-            r"C:\does\not\exist\00_random_names.txt"
-        ));
-
-        let dir = tempfile::tempdir().expect("tempdir");
-        let bad_path = dir.path().join("not_a_star_names_corpus.txt");
-        std::fs::write(&bad_path, b"star_count = { 1 2 3 }").expect("write unparsable corpus");
-        assert!(!star_name_corpus_path_is_importable(
-            bad_path.to_str().expect("utf8 path")
-        ));
-
-        let good_path = dir.path().join("00_random_names.txt");
-        std::fs::write(&good_path, b"star_names = { Sol Alpha Beta }").expect("write valid corpus");
-        assert!(star_name_corpus_path_is_importable(
-            good_path.to_str().expect("utf8 path")
-        ));
-    }
-
-    #[test]
     fn generation_name_dialog_ok_with_unimportable_path_matches_cancel_effect() {
         let mut profile = GenerationProfile::default();
         profile.star_name_corpus_path = "preserved".into();

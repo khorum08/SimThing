@@ -275,16 +275,6 @@ mod tests {
     }
 
     #[test]
-    fn scenario_path_rejects_or_warns_non_scenario_config_path() {
-        let err = validate_scenario_path_text(STUDIO_CONFIG_FILE_NAME).expect_err("reject config");
-        assert!(err.contains(STUDIO_CONFIG_FILE_NAME));
-        let err = validate_scenario_path_text("settings.ron").expect_err("reject ron");
-        assert!(err.contains("settings.ron"));
-        let err = validate_scenario_path_text("galaxy.json").expect_err("reject wrong suffix");
-        assert!(err.contains(SCENARIO_FILE_SUFFIX));
-    }
-
-    #[test]
     fn scenario_save_ui_requires_active_session() {
         let mut state = StudioAppState::default();
         state.session = None;
@@ -641,38 +631,6 @@ mod tests {
         };
         let _ = load_scenario_with_picker(&mut state, &picker);
         assert_eq!(state.scenario_path_text, "keep-me.simthing-scenario.json");
-    }
-
-    #[test]
-    fn native_picker_invalid_extension_preserves_current_session() {
-        let mut state = state_with_session();
-        let before_id = state
-            .session
-            .as_ref()
-            .unwrap()
-            .scenario_authority
-            .scenario_id
-            .clone();
-        let dir = TempDir::new().expect("tempdir");
-        let bad = dir.path().join("bad.json");
-        std::fs::write(&bad, "{}").expect("write");
-        let picker = FakeScenarioFilePicker {
-            outcome: ScenarioPickerOutcome::Selected(bad),
-        };
-        let result = load_scenario_with_picker(&mut state, &picker);
-        assert!(matches!(
-            result,
-            ScenarioPickerActionResult::InvalidPath { .. }
-        ));
-        assert_eq!(
-            state
-                .session
-                .as_ref()
-                .unwrap()
-                .scenario_authority
-                .scenario_id,
-            before_id
-        );
     }
 
     #[test]

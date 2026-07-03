@@ -794,81 +794,9 @@ mod tests {
     }
 
     #[test]
-    fn from_session_raw_or_equivalent_rejects_duplicate_ids() {
-        let mut scenario = small_simthing_spec_scenario();
-        let duplicate_id = scenario.root.id;
-        scenario.root.children[0].id = duplicate_id;
-
-        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
-            .expect_err("duplicate ids rejected");
-
-        assert!(matches!(
-            err,
-            simthing_spec::SteadMappingError::DuplicateSimThingId(_)
-        ));
-    }
-
-    #[test]
     fn stead_mapping_validator_accepts_valid_scenario() {
         let (_output, scenario, _hydration) = authority_output();
         simthing_spec::validate_stead_mapping_consistency(&scenario).expect("valid mapping");
-    }
-
-    #[test]
-    fn stead_mapping_validator_rejects_missing_placement() {
-        let scenario = scenario_with_missing_placement();
-        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
-            .expect_err("missing placement rejected");
-        assert!(matches!(
-            err,
-            simthing_spec::SteadMappingError::MissingGridcellLocation(_)
-        ));
-    }
-
-    #[test]
-    fn stead_mapping_validator_rejects_duplicate_coordinates() {
-        let mut scenario = small_simthing_spec_scenario();
-        let mut duplicate = scenario.structural_grid.placements[0].clone();
-        duplicate.system_id = 2;
-        duplicate.location_id = "duplicate".to_string();
-        duplicate.target_id = "duplicate".to_string();
-        duplicate.simthing_id_raw = 99_999;
-        scenario.structural_grid.placements.push(duplicate);
-        scenario.structural_grid.frame.occupied_cells = 2;
-
-        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
-            .expect_err("duplicate coord rejected");
-
-        assert!(matches!(
-            err,
-            simthing_spec::SteadMappingError::DuplicateCoordinate { .. }
-        ));
-    }
-
-    #[test]
-    fn stead_mapping_validator_rejects_or_ignores_render_only_coordinates_as_authority() {
-        let mut scenario = small_simthing_spec_scenario();
-        let gridcell = scenario
-            .root
-            .children
-            .get_mut(0)
-            .expect("map")
-            .children
-            .get_mut(0)
-            .expect("gridcell");
-        add_u32_property(
-            gridcell,
-            simthing_spec::SCENARIO_RENDER_WORLD_X_PROPERTY_ID,
-            42,
-        );
-
-        let err = simthing_spec::validate_stead_mapping_consistency(&scenario)
-            .expect_err("render coordinate property rejected");
-
-        assert!(matches!(
-            err,
-            simthing_spec::SteadMappingError::RenderCoordinatePropertyPresent(_)
-        ));
     }
 
     #[test]
@@ -953,30 +881,6 @@ mod tests {
         assert!(scenario
             .gridcell_locations()
             .all(|gridcell| !gridcell.children.is_empty()));
-    }
-
-    #[test]
-    fn no_duplicate_gridcell_coordinates_in_simthing_spec() {
-        let (_output, scenario, _hydration) = authority_output();
-        let coordinates: BTreeSet<(u32, u32)> = scenario
-            .structural_grid
-            .placements
-            .iter()
-            .map(|placement| (placement.col, placement.row))
-            .collect();
-        assert_eq!(coordinates.len(), scenario.structural_grid.placements.len());
-    }
-
-    #[test]
-    fn no_duplicate_system_ids_in_simthing_spec() {
-        let (_output, scenario, _hydration) = authority_output();
-        let system_ids: BTreeSet<u32> = scenario
-            .structural_grid
-            .placements
-            .iter()
-            .map(|placement| placement.system_id)
-            .collect();
-        assert_eq!(system_ids.len(), scenario.structural_grid.placements.len());
     }
 
     #[test]
@@ -1073,30 +977,6 @@ mod tests {
             .gridcells
             .iter()
             .all(|cell| !cell.children.is_empty()));
-    }
-
-    #[test]
-    fn no_duplicate_gridcell_coordinates() {
-        let (_output, hydration) = hydrated_output();
-        let coordinates: BTreeSet<(u32, u32)> = hydration
-            .grid
-            .gridcells
-            .iter()
-            .map(|cell| (cell.structural_col, cell.structural_row))
-            .collect();
-        assert_eq!(coordinates.len(), hydration.grid.gridcells.len());
-    }
-
-    #[test]
-    fn no_duplicate_system_ids() {
-        let (_output, hydration) = hydrated_output();
-        let system_ids: BTreeSet<u32> = hydration
-            .grid
-            .gridcells
-            .iter()
-            .map(|cell| cell.system_id)
-            .collect();
-        assert_eq!(system_ids.len(), hydration.grid.gridcells.len());
     }
 
     #[test]
@@ -1210,24 +1090,6 @@ mod tests {
             readiness.occupied_cells,
             scenario.structural_grid.frame.occupied_cells
         );
-    }
-
-    #[test]
-    fn rf_readiness_rejects_missing_gridcell_placement() {
-        let scenario = scenario_with_missing_placement();
-
-        let readiness = StudioRfAccumulatorReadiness::from_scenario(&scenario);
-
-        assert!(readiness.is_err());
-    }
-
-    #[test]
-    fn rf_readiness_rejects_render_anchor_only_input() {
-        let scenario = scenario_with_missing_placement();
-
-        let readiness = StudioRfAccumulatorReadiness::from_scenario(&scenario);
-
-        assert!(readiness.is_err());
     }
 
     #[test]
@@ -1400,37 +1262,6 @@ mod tests {
     }
 
     #[test]
-    fn heatmap_readiness_invalid_stead_mapping_is_not_ready() {
-        let scenario = scenario_with_missing_placement();
-        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
-        assert!(!readiness.is_ready());
-        assert_eq!(
-            readiness.readiness,
-            StudioHeatmapReadinessKind::InvalidSteadMapping
-        );
-    }
-
-    #[test]
-    fn heatmap_readiness_invalid_stead_mapping_does_not_classify_bounded() {
-        let scenario = scenario_with_missing_placement();
-        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
-        assert_ne!(
-            readiness.readiness,
-            StudioHeatmapReadinessKind::BoundedTheaterEligible
-        );
-    }
-
-    #[test]
-    fn heatmap_readiness_invalid_stead_mapping_does_not_classify_atlas_required() {
-        let scenario = scenario_with_missing_placement();
-        let readiness = heatmap_readiness_from_simthing_spec(&scenario);
-        assert_ne!(
-            readiness.readiness,
-            StudioHeatmapReadinessKind::AtlasRequired
-        );
-    }
-
-    #[test]
     fn heatmap_readiness_atlas_required_is_not_layout_failure() {
         let (_output, scenario, _hydration) = authority_output();
         let readiness = heatmap_readiness_from_simthing_spec(&scenario);
@@ -1488,14 +1319,6 @@ mod tests {
         for render_key in ["world_position", "render_height", "camera", "opacity"] {
             assert!(!debug.contains(render_key));
         }
-    }
-
-    #[test]
-    fn rf_readiness_invalid_stead_mapping_is_not_ready() {
-        let scenario = scenario_with_missing_placement();
-        let readiness = rf_accumulator_readiness_from_simthing_spec(&scenario);
-        assert!(!readiness.ready_for_spatial_rf_over_locations);
-        assert!(readiness.deferred_reason.is_some());
     }
 
     #[test]

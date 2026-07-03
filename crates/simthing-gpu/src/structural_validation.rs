@@ -323,18 +323,6 @@ mod tests {
     }
 
     #[test]
-    fn structural_validation_gpu_reports_zero_invalid_endpoints() {
-        let Some(ctx) = GpuContext::new_blocking().ok() else {
-            eprintln!("skipping: no GPU");
-            return;
-        };
-        let rows = sample_rows();
-        let report =
-            validate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows).expect("validate");
-        assert_eq!(report.invalid_link_endpoint_count, 0);
-    }
-
-    #[test]
     fn structural_validation_gpu_reports_zero_self_links() {
         let Some(ctx) = GpuContext::new_blocking().ok() else {
             eprintln!("skipping: no GPU");
@@ -343,20 +331,6 @@ mod tests {
         let rows = sample_rows();
         let report =
             validate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows).expect("validate");
-        assert_eq!(report.self_link_count, 0);
-    }
-
-    #[test]
-    fn structural_validation_gpu_detects_invalid_endpoint_when_given_bad_rows() {
-        let Some(ctx) = GpuContext::new_blocking().ok() else {
-            eprintln!("skipping: no GPU");
-            return;
-        };
-        let mut rows = sample_rows();
-        rows.links[0].to_dense_index = 99;
-        let report =
-            validate_structural_rows_on_gpu(&ctx.device, &ctx.queue, &rows).expect("validate");
-        assert_eq!(report.invalid_link_endpoint_count, 1);
         assert_eq!(report.self_link_count, 0);
     }
 

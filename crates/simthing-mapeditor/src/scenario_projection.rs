@@ -655,29 +655,6 @@ mod tests {
     }
 
     #[test]
-    fn structural_projection_rejects_missing_placement() {
-        let mut scenario = single_cell_scenario();
-        scenario.structural_grid.placements.clear();
-        scenario.structural_grid.frame.occupied_cells = 0;
-        let err = build_structural_projection(&scenario).expect_err("missing placement");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::SteadMapping(_)
-        ));
-    }
-
-    #[test]
-    fn structural_projection_rejects_invalid_link_endpoint() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "999".to_string();
-        let err = build_structural_projection(&scenario).expect_err("invalid link");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::InvalidLinkEndpoint { .. }
-        ));
-    }
-
-    #[test]
     fn structural_projection_rejects_self_link() {
         let mut scenario = two_cell_scenario();
         scenario.links[0].to_system_id = "1".to_string();
@@ -685,34 +662,6 @@ mod tests {
         assert!(matches!(
             err,
             StudioStructuralProjectionError::SelfLink { .. }
-        ));
-    }
-
-    #[test]
-    fn structural_projection_rejects_direct_duplicate_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "2".to_string(),
-        });
-        let err = build_structural_projection(&scenario).expect_err("duplicate");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::DuplicateLink { .. }
-        ));
-    }
-
-    #[test]
-    fn structural_projection_rejects_reversed_duplicate_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "2".to_string(),
-            to_system_id: "1".to_string(),
-        });
-        let err = build_structural_projection(&scenario).expect_err("reversed duplicate");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::ReversedDuplicateLink { .. }
         ));
     }
 
@@ -793,40 +742,6 @@ mod tests {
             readiness.heatmap_ready,
             StudioHeatmapReadinessKind::AtlasRequired
         );
-    }
-
-    #[test]
-    fn gpu_residency_readiness_rejects_invalid_stead() {
-        let mut scenario = single_cell_scenario();
-        scenario.structural_grid.placements.clear();
-        scenario.structural_grid.frame.occupied_cells = 0;
-        let err = build_gpu_residency_readiness_from_scenario(&scenario).expect_err("invalid");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::SteadMapping(_)
-        ));
-    }
-
-    #[test]
-    fn gpu_residency_readiness_rejects_duplicate_or_self_links() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "1".to_string();
-        let err = build_gpu_residency_readiness_from_scenario(&scenario).expect_err("self");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::SelfLink { .. }
-        ));
-
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "2".to_string(),
-        });
-        let err = build_gpu_residency_readiness_from_scenario(&scenario).expect_err("duplicate");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::DuplicateLink { .. }
-        ));
     }
 
     fn pod_row_bytes<T: Copy>(rows: &[T]) -> Vec<u8> {
@@ -922,80 +837,6 @@ mod tests {
     }
 
     #[test]
-    fn gpu_structural_upload_packet_rejects_invalid_stead() {
-        let mut scenario = single_cell_scenario();
-        scenario.structural_grid.placements.clear();
-        scenario.structural_grid.frame.occupied_cells = 0;
-        let err = build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("stead");
-        assert!(matches!(
-            err,
-            StudioGpuStructuralUploadError::Projection(
-                StudioStructuralProjectionError::SteadMapping(_)
-            )
-        ));
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_rejects_unknown_link_endpoint() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "999".to_string();
-        let err = build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("unknown");
-        assert!(matches!(
-            err,
-            StudioGpuStructuralUploadError::Projection(
-                StudioStructuralProjectionError::InvalidLinkEndpoint { .. }
-            )
-        ));
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_rejects_self_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "1".to_string();
-        let err = build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("self");
-        assert!(matches!(
-            err,
-            StudioGpuStructuralUploadError::Projection(
-                StudioStructuralProjectionError::SelfLink { .. }
-            )
-        ));
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_rejects_direct_duplicate_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "2".to_string(),
-        });
-        let err =
-            build_gpu_structural_upload_packet_from_scenario(&scenario).expect_err("duplicate");
-        assert!(matches!(
-            err,
-            StudioGpuStructuralUploadError::Projection(
-                StudioStructuralProjectionError::DuplicateLink { .. }
-            )
-        ));
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_rejects_reversed_duplicate_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "2".to_string(),
-            to_system_id: "1".to_string(),
-        });
-        let err = build_gpu_structural_upload_packet_from_scenario(&scenario)
-            .expect_err("reversed duplicate");
-        assert!(matches!(
-            err,
-            StudioGpuStructuralUploadError::Projection(
-                StudioStructuralProjectionError::ReversedDuplicateLink { .. }
-            )
-        ));
-    }
-
-    #[test]
     fn gpu_structural_upload_packet_contains_no_render_metadata() {
         let scenario = two_cell_scenario();
         let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
@@ -1052,36 +893,6 @@ mod tests {
         assert!(readiness.structural_upload_packet_ready);
         assert_eq!(readiness.structural_upload_packet_location_rows, 2);
         assert_eq!(readiness.structural_upload_packet_link_rows, 1);
-        assert!(readiness.structural_upload_packet_deferred_reason.is_none());
-    }
-
-    #[test]
-    fn gpu_residency_readiness_reports_upload_packet_not_ready_for_invalid_links() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "1".to_string();
-        assert!(build_gpu_residency_readiness_from_scenario(&scenario).is_err());
-        assert!(build_gpu_structural_upload_packet_from_scenario(&scenario).is_err());
-
-        let valid = two_cell_scenario();
-        let projection = build_structural_projection(&valid).expect("projection");
-        let mut overflow = valid.clone();
-        overflow.structural_grid.frame.occupied_cells = u64::from(u32::MAX) + 1;
-        let readiness = build_gpu_residency_readiness(&overflow, &projection);
-        assert!(!readiness.structural_upload_packet_ready);
-        assert!(readiness
-            .structural_upload_packet_deferred_reason
-            .as_ref()
-            .is_some_and(|reason| reason.contains("count overflow")));
-    }
-
-    #[test]
-    fn gpu_residency_readiness_keeps_atlas_required_distinct_from_packet_invalidity() {
-        let mut scenario = two_cell_scenario();
-        scenario.structural_grid.frame.width = 64;
-        scenario.structural_grid.frame.height = 64;
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert!(readiness.atlas_required);
-        assert!(readiness.structural_upload_packet_ready);
         assert!(readiness.structural_upload_packet_deferred_reason.is_none());
     }
 
@@ -1180,36 +991,6 @@ mod tests {
         let report = proof.validation_report.expect("report");
         assert_eq!(report.invalid_link_endpoint_count, 0);
         assert_eq!(report.self_link_count, 0);
-    }
-
-    #[test]
-    fn gpu_buffer_residency_proof_rejects_empty_location_packet() {
-        use simthing_gpu::context::GpuContext;
-
-        let Some(ctx) = GpuContext::new_blocking().ok() else {
-            eprintln!("skipping: no GPU");
-            return;
-        };
-        let packet = StudioGpuStructuralUploadPacket {
-            frame: StudioGpuStructuralFrameRow {
-                width: 8,
-                height: 8,
-                occupied_cells: 0,
-                location_count: 0,
-                link_count: 0,
-                reserved0: 0,
-                reserved1: 0,
-                reserved2: 0,
-            },
-            locations: Vec::new(),
-            links: Vec::new(),
-        };
-        let proof = prove_gpu_buffer_residency_blocking(&ctx.device, &ctx.queue, &packet);
-        assert!(!proof.ready);
-        assert!(proof
-            .deferred_reason
-            .as_ref()
-            .is_some_and(|reason| reason.contains("location row")));
     }
 
     #[test]

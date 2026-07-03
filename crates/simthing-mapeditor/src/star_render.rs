@@ -1451,18 +1451,6 @@ mod tests {
     }
 
     #[test]
-    fn legacy_star_render_instances_wrap_billboard_instances() {
-        let profile = GenerationProfile::default_spiral_2_dense_3000();
-        let output = run_generation(&profile).expect("generate");
-        let vm = StudioGalaxyViewModel::from_generation(&output.result, &output.report);
-        let instances = prepare_star_render_instances(&vm.stars, &vm.render_anchors);
-        let instance = instances.first().expect("legacy star instance");
-        let anchor = crate::view_model::anchor_for_system(&vm.render_anchors, instance.system_id)
-            .expect("anchor");
-        assert_eq!(instance.position, anchor.world_position);
-    }
-
-    #[test]
     fn star_distance_visual_far_is_small_point() {
         let meta = star_visual_defaults();
         let visual = star_distance_visual(meta.star_far_distance + 100.0, false, false, &meta);

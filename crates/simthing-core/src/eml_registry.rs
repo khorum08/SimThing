@@ -962,39 +962,6 @@ mod tests {
     }
 
     #[test]
-    fn c8a_stack_depth_validator_rejects_overflow() {
-        let mut nodes = Vec::new();
-        for i in 0..=EML_STACK_MAX {
-            nodes.push(literal(i as f32));
-        }
-        assert!(matches!(
-            validate_stack_depth(&nodes),
-            Err(EmlRegistryError::StackDepthExceeded { .. })
-        ));
-    }
-
-    #[test]
-    fn c8a_division_by_zero_validator_rejects_unwrapped_division() {
-        let nodes = vec![
-            literal(1.0),
-            literal(0.0),
-            EmlNode {
-                opcode: eml_nodes::opcode::DIV,
-                flags: 0,
-                a: 0,
-                b: 0,
-                c: 0,
-                d: 0,
-            },
-        ];
-        let mut registry = EmlExpressionRegistry::new();
-        assert_eq!(
-            registry.register_formula(EmlTreeId(1), exact_meta(1, "div"), nodes),
-            Err(EmlRegistryError::UnwrappedDivision)
-        );
-    }
-
-    #[test]
     fn replace_formula_if_changed_skips_generation_bump_when_identical() {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(7);

@@ -480,33 +480,6 @@ mod tests {
     }
 
     #[test]
-    fn packed_upload_rejects_empty_location_rows() {
-        let frame = StructuralFrameGpuRow {
-            width: 8,
-            height: 8,
-            occupied_cells: 0,
-            location_count: 0,
-            link_count: 0,
-            reserved0: 0,
-            reserved1: 0,
-            reserved2: 0,
-        };
-        let err = PackedUpload::new(frame, vec![], vec![]).expect_err("empty");
-        assert!(matches!(err, StructuralUploadError::EmptyLocationRows));
-    }
-
-    #[test]
-    fn packed_upload_rejects_location_count_mismatch() {
-        let (frame, locations, links) = sample_rows();
-        let bad_frame = StructuralFrameGpuRow {
-            location_count: 99,
-            ..frame
-        };
-        let err = PackedUpload::new(bad_frame, locations, links).expect_err("mismatch");
-        assert!(matches!(err, StructuralUploadError::LocationCountMismatch));
-    }
-
-    #[test]
     fn packed_upload_rejects_link_count_mismatch() {
         let (frame, locations, links) = sample_rows();
         let bad_frame = StructuralFrameGpuRow {

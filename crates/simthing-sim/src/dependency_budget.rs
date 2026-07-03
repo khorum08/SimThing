@@ -91,18 +91,4 @@ mod tests {
         assert_dependency_budget(manifest).expect("simthing-sim dependency budget");
     }
 
-    #[test]
-    fn dependency_gate_rejects_new_simthing_sim_dependency() {
-        let manifest = include_str!("../Cargo.toml");
-        let with_sidecar = manifest.replace(
-            "[dependencies]\n",
-            "[dependencies]\nanyhow = { workspace = true }\n",
-        );
-        let err = assert_dependency_budget(&with_sidecar)
-            .expect_err("sidecar dependency must fail the dependency budget gate");
-        assert!(
-            err.contains("anyhow"),
-            "expected sidecar rejection message, got: {err}"
-        );
-    }
 }

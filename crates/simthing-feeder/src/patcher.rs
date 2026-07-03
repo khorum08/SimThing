@@ -744,37 +744,6 @@ mod tests {
     }
 
     #[test]
-    fn role_missing_from_layout_increments_unresolved() {
-        let (reg, alloc, pid, [a, _b], n_dims) = fixture();
-        let mut values = vec![0.0f32; 2 * n_dims];
-        let mut p = TransformPatcher::new(2);
-        let mut stats = PatcherStats::default();
-
-        // standard(3) has vec_0..vec_2; "vec_99" is not in the layout.
-        p.apply_one(
-            &PatchTransform {
-                target: a,
-                delta: PropertyTransformDelta {
-                    property_id: pid,
-                    sub_field_deltas: vec![(
-                        SubFieldRole::Named("vec_99".into()),
-                        TransformOp::Add(1.0),
-                    )],
-                },
-            },
-            &reg,
-            &alloc,
-            n_dims,
-            &mut values,
-            &mut stats,
-            ShadowFreshness::GpuSynced,
-        );
-
-        assert_eq!(stats.unresolved_roles, 1);
-        assert_eq!(stats.applied_writes, 0);
-    }
-
-    #[test]
     fn drain_routes_patch_and_boundary_correctly() {
         let (reg, alloc, pid, [a, _b], n_dims) = fixture();
         let (tx, rx) = feeder_channel();

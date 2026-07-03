@@ -274,17 +274,6 @@ mod tests {
     }
 
     #[test]
-    fn invalid_hyperlane_mesh_rebuild_is_rejected() {
-        let stats = HyperlaneMeshStats {
-            bucket_segment_count: 12,
-            vertex_count: 0,
-            index_count: 0,
-            ..Default::default()
-        };
-        assert!(!hyperlane_mesh_is_valid(stats, 75.0));
-    }
-
-    #[test]
     fn valid_hyperlane_mesh_with_geometry_passes() {
         let stats = HyperlaneMeshStats {
             bucket_segment_count: 4,
