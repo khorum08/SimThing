@@ -367,6 +367,24 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    **explicitly invited** — keeps a closure-seeking agent from *burying* a real insight. Gate-without-incentive
    is **sterile**; incentive-without-gate is a **loophole**. Owner-gated throughout via the Admission-Substrate
    Amendment Valve (kernel-track §3A): **surface, never self-grant.**
+7. **The orchestration contract and the CI screening surface.** *(Added 2026-07-03 by design authority on
+   owner mandate.)* **[`ci_screening_surface.md`](ci_screening_surface.md) is mandatory onboarding reading for
+   any orchestration session** — a new orchestration chat that has not read it (plus core §1.2/§1.2.1, this
+   §0.9, the kernel track §5.2 bypass catalogue, and [`handoff_template.md`](handoff_template.md)) is not yet
+   qualified to route work; its §5A carries the operational orchestrator contract. **Orchestrator merge
+   authority (owner-directed 2026-07-03):** with branch protection active (doctrine-scan required; no direct
+   pushes; owner bypass reserved), the orchestrator MAY authorize merge without DA escalation when ALL hold:
+   (1) declared risk class is `none` / `semantic` / `data-deliverable` AND the rung follows an
+   already-DA-approved pattern — a precedented wave class executing under a standing ruling; (2) it is NOT
+   gate-wiring, seal-residue, allowlist-edit, protected-corpus touch (kernel / Admission Substrate / CI
+   architecture), first-of-class, or anything a standing ruling reserves to DA/Owner; (3) all RELIABLE gates
+   are green on the PR head, with SHA-bound targeted proof where a profile exists; (4) the Graduation-routing
+   block PLUS a one-paragraph merge rationale is filed in the PR thread BEFORE merging; (5) confidence is
+   genuine — any doubt, novelty, or precedent-setting element escalates. The DA spot-audits a sample of
+   orchestrator-authorized merges against the tree; a wrong self-authorized merge is a FAIL-class process
+   finding and suspends this authority pending owner review. The absolute merge-hold rule stays in force for
+   the reserved classes. **Owner supremacy:** the owner may merge or bypass anything at any time,
+   platform-visible and recorded — a right of the owner, never a loophole for agents to cite.
 
 ---
 

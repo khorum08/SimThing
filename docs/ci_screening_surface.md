@@ -190,6 +190,56 @@ in seconds where CI already vouches, and reserve token-heavy investigation for e
 
 ---
 
+## 5A. Orchestrator guidance — the operational contract (constitution §0.9.7 is the authority)
+
+> **A NEW orchestration session is not qualified to route work until it has read:** this document
+> (whole), constitution `design_0_0_8_3.md` §0.9, core design §1.2/§1.2.1,
+> `design_0_0_8_4_5_simthing_kernel.md` §5.2 (the B1–B8 bypass catalogue), and `handoff_template.md`.
+> Skipping this list is how orchestration sessions miss standing rulings, re-derive settled decisions,
+> or route gate-state work to the wrong tier — each is a recorded, repeated failure mode.
+
+**Standing responsibilities (every session, every rung):**
+1. **Triage-log stewardship.** Every INSPECT routes through the §1A loop and lands a row in
+   `scripts/ci/triage_log.tsv` (delete/green/escalate + reason + commit) — never a silent pass, never a
+   straight-to-DA relay. The log is the promotion telemetry the corpus-maintenance cadence reads; an
+   unlogged clearance is invisible and therefore did not happen.
+2. **Closure hygiene.** Temporary `test_edit_scope.tsv` rows re-seal when their wave closes (their
+   retirement condition names the wave); stale scope rows left behind are a recurring audit finding.
+3. **Verify the tree, never the relayed report.** An implementer's transcript is a claim. Before relaying
+   a proof upward or authorizing a merge, confirm the branch state (SHA-bound verdicts exist for exactly
+   this — a report is stale unless `head_sha` equals the current PR head).
+4. **Never self-mark COMPLETE.** Rungs relay as PROBATION with the Graduation-routing block; graduation is
+   the DA's write (or your own merge authority where clause §0.9.7 applies — see below).
+
+**Handoffs:** every rung handoff fills `handoff_template.md` — context spine **verbatim**, recipient by the
+routing table (coding → Cursor/Grok; docs → Haiku/Sonnet; DA judgment → Opus/Owner), rung-local reading
+≤6 files, one load-bearing proof per regression class, and the §11 response format. A handoff violating §H
+(batteries, bespoke guards, triple-docs, inline implementations, inert scaffolding) is **rejected at
+review, not implemented** — rejecting it is your job, not the DA's.
+
+**Asserting merge authority (constitution §0.9.7 — the full contract governs; summary):** you MAY merge
+without DA escalation only when the rung is a **precedented wave class under a standing ruling** with risk
+class `none`/`semantic`/`data-deliverable`, is NOT gate-wiring / seal-residue / allowlist-edit /
+protected-corpus / first-of-class, all RELIABLE gates are green on the head with SHA-bound targeted proof
+where a profile exists, and you have filed the Graduation-routing block **plus a one-paragraph merge
+rationale in the PR thread before merging**. Any doubt, novelty, or precedent-setting element → escalate
+(the #1106 escalation is the calibration model: insisting on DA review when a stack smelled wrong was
+correct). The DA spot-audits self-authorized merges against the tree; one wrong self-merge suspends the
+authority. Owner supremacy sits above everything, visible and recorded.
+
+**Channeling DA token spend (the routing table above is the mechanism — feed it honestly):**
+- **Declare risk classes truthfully and completely** — under-declaring to earn a light review is the
+  laundering move the spot-audit exists to catch; over-declaring burns the DA turn the regime exists to save.
+- **Write the Falsification check as an executable instruction** ("run X, expect Y; perturb Z, expect FAIL")
+  — the DA should be able to spend tokens exactly there and nowhere else.
+- **Batch escalations** per review cycle; lead every relay with the verdict-relevant facts (what changed,
+  what proves it, what the DA must decide); never bury a HOLD-worthy fact mid-report.
+- **Never relay an unverified claim as fact** — verify against the tree first, or mark it explicitly
+  `unverified`. The DA reconstructing truth from git because a relay obscured it costs more than the
+  review it replaced.
+
+---
+
 ## 6. Track C — the live carrot (the scanner pulled forward)
 
 Track C (**CLOSED 2026-07-01**) slid this same artifact set into all three pipeline positions. It adds **no new
