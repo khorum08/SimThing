@@ -483,7 +483,7 @@ fn find_all_algebraic_cycle(couplings: &[ArenaCoupling]) -> Option<Vec<ArenaIdx>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simthing_core::SimPropertyId;
+    use simthing_core::{SimPropertyId, SlotIndex};
 
     fn food_arena(max_participants: u32) -> GpuArenaDescriptor {
         GpuArenaDescriptor {
@@ -542,11 +542,14 @@ mod tests {
             wildcard_max_expansion: None,
             reserved_orderband_depth: 0,
         });
-        b.admit_participant(research, 1, SimThingId::new()).unwrap();
-        b.admit_participant(food, 2, SimThingId::new()).unwrap();
-        b.admit_participant(suppression, 3, SimThingId::new())
+        b.admit_participant(research, SlotIndex::new(1), SimThingId::new())
             .unwrap();
-        b.admit_participant(food, 4, SimThingId::new()).unwrap();
+        b.admit_participant(food, SlotIndex::new(2), SimThingId::new())
+            .unwrap();
+        b.admit_participant(suppression, SlotIndex::new(3), SimThingId::new())
+            .unwrap();
+        b.admit_participant(food, SlotIndex::new(4), SimThingId::new())
+            .unwrap();
         let (reg, _) = b.build().unwrap();
 
         for (arena_idx, arena) in reg.arenas.iter().enumerate() {
@@ -565,10 +568,14 @@ mod tests {
             let mut b = ArenaRegistryBuilder::new();
             let food = b.push_arena(food_arena(4));
             let research = b.push_arena(research_arena());
-            b.admit_participant(research, 5, roots[0]).unwrap();
-            b.admit_participant(food, 1, roots[1]).unwrap();
-            b.admit_participant(food, 2, roots[2]).unwrap();
-            b.admit_participant(research, 6, roots[3]).unwrap();
+            b.admit_participant(research, SlotIndex::new(5), roots[0])
+                .unwrap();
+            b.admit_participant(food, SlotIndex::new(1), roots[1])
+                .unwrap();
+            b.admit_participant(food, SlotIndex::new(2), roots[2])
+                .unwrap();
+            b.admit_participant(research, SlotIndex::new(6), roots[3])
+                .unwrap();
             b.build().unwrap().0
         };
         let roots = [
@@ -599,9 +606,12 @@ mod tests {
         let research = b.push_arena(research_arena());
         let root_a = SimThingId::new();
         let root_b = SimThingId::new();
-        b.admit_participant(food, 10, root_a).unwrap();
-        b.admit_participant(research, 20, root_b).unwrap();
-        b.admit_participant(food, 30, root_a).unwrap();
+        b.admit_participant(food, SlotIndex::new(10), root_a)
+            .unwrap();
+        b.admit_participant(research, SlotIndex::new(20), root_b)
+            .unwrap();
+        b.admit_participant(food, SlotIndex::new(30), root_a)
+            .unwrap();
         let (mut reg, _) = b.build().unwrap();
         let report = reg.refresh_subtree(root_a);
         assert_eq!(report.participants_reevaluated, 2);
@@ -612,8 +622,10 @@ mod tests {
     fn arena_registry_enforces_max_participants() {
         let mut b = ArenaRegistryBuilder::new();
         let food = b.push_arena(food_arena(1));
-        b.admit_participant(food, 1, SimThingId::new()).unwrap();
-        b.admit_participant(food, 2, SimThingId::new()).unwrap();
+        b.admit_participant(food, SlotIndex::new(1), SimThingId::new())
+            .unwrap();
+        b.admit_participant(food, SlotIndex::new(2), SimThingId::new())
+            .unwrap();
         let err = b.build().unwrap_err();
         assert!(matches!(
             err,
@@ -626,8 +638,10 @@ mod tests {
         let mut b = ArenaRegistryBuilder::new();
         let a = b.push_arena(food_arena(4));
         let b_idx = b.push_arena(research_arena());
-        b.admit_participant(a, 0, SimThingId::new()).unwrap();
-        b.admit_participant(b_idx, 1, SimThingId::new()).unwrap();
+        b.admit_participant(a, SlotIndex::new(0), SimThingId::new())
+            .unwrap();
+        b.admit_participant(b_idx, SlotIndex::new(1), SimThingId::new())
+            .unwrap();
         b.declare_wildcard_admission(b_idx, Some(2)).unwrap();
         b.push_coupling(ArenaCoupling {
             from_arena: a,
@@ -658,9 +672,12 @@ mod tests {
         let research = b.push_arena(research_arena());
         let root_a = SimThingId::new();
         let root_b = SimThingId::new();
-        b.admit_participant(food, 1, root_a).unwrap();
-        b.admit_participant(food, 2, root_b).unwrap();
-        b.admit_participant(research, 3, root_a).unwrap();
+        b.admit_participant(food, SlotIndex::new(1), root_a)
+            .unwrap();
+        b.admit_participant(food, SlotIndex::new(2), root_b)
+            .unwrap();
+        b.admit_participant(research, SlotIndex::new(3), root_a)
+            .unwrap();
         let (mut reg, _) = b.build().unwrap();
         let gen0 = reg.generation;
         let report = reg.refresh_subtree(root_a);

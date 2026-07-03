@@ -961,7 +961,7 @@ mod tests {
         // real `world_id` (slot refresh would otherwise drop it).
         let mut spec_state = SpecSessionState::new();
         spec_state.set_session_root_owner(world_id);
-        spec_state.set_scripted_current_slot(slot);
+        spec_state.set_scripted_current_slot(slot.raw());
         spec_state.add_scripted_event(event);
         let mut hook = BoundaryHookContext {
             events: &[],

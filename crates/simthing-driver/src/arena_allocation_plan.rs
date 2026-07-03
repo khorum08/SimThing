@@ -302,7 +302,7 @@ mod tests {
     use super::*;
     use crate::arena_hierarchy::{build_custom_layout, HierarchyNode};
     use crate::arena_registry::GpuArenaDescriptor;
-    use simthing_core::SimPropertyId;
+    use simthing_core::{SimPropertyId, SlotIndex};
 
     fn cols() -> NodeColumnRefs {
         NodeColumnRefs {
@@ -322,11 +322,11 @@ mod tests {
     fn d2_layout() -> ArenaTreeLayout {
         let c = cols();
         let root = HierarchyNode {
-            participant_slot: 10,
+            participant_slot: SlotIndex::new(10),
             hosted_simthing_id: Default::default(),
             depth: 0,
             children: vec![HierarchyNode {
-                participant_slot: 11,
+                participant_slot: SlotIndex::new(11),
                 hosted_simthing_id: Default::default(),
                 depth: 1,
                 children: vec![],
@@ -352,7 +352,7 @@ mod tests {
             },
             c,
             Default::default(),
-            9,
+            SlotIndex::new(9),
             vec![root],
         )
         .unwrap()

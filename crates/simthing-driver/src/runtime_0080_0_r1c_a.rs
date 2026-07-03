@@ -668,13 +668,13 @@ mod fast_mark_sentinel_tests {
         let sources = vec![
             Runtime0080R1bFreeSlotMarkSource {
                 tick: 1,
-                slot: SlotIndex::new(4),
+                slot: 4,
                 reason: "zero_cohort_departure",
                 source_event_kind: "ZeroCohort",
             },
             Runtime0080R1bFreeSlotMarkSource {
                 tick: 2,
-                slot: SlotIndex::new(4),
+                slot: 4,
                 reason: "duplicate_slot_deduped",
                 source_event_kind: "ZeroCohort",
             },
