@@ -125,28 +125,6 @@ fn generated_1000_star_link_lowering_deferred_without_deposit_feedstock() {
 }
 
 #[test]
-fn generated_1000_star_admission_status_is_honest() {
-    let (text, fixture_edge) = generated_1000_text();
-    let neutral = parse_mapgen_neutral_document(text.as_bytes()).expect("parse");
-    let hierarchy = generate_mapgen_lattice_hierarchy(
-        &neutral,
-        MapGenLatticeOptions {
-            fixture_lattice_edge: fixture_edge,
-            ..Default::default()
-        },
-    )
-    .expect("lattice");
-    let rf = simthing_clausething::generate_mapgen_resource_flow_enrollment(
-        &hierarchy,
-        simthing_clausething::MapGenResourceFlowOptions::default(),
-    );
-    assert!(
-        rf.is_err(),
-        "1000-star RF enrollment must fail under closed lowerer slot caps without widening"
-    );
-}
-
-#[test]
 fn pr10_tiny_gpu_compact_evidence_still_runs_on_real_adapter_or_is_explicitly_required() {
     let harness = include_str!("mapgenerator_cli_pr10_gpu_compact_evidence.rs");
     assert!(

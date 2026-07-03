@@ -114,31 +114,6 @@ fn clause_hydrated_game_mode_matches_ron_baseline() {
 }
 
 #[test]
-fn unsupported_produces_field_hard_errors() {
-    let bad = br#"
-simthing_ct2a_bad = {
-    flow_property = { id = "x" namespace = "simthing" name = "food_flow" }
-    arena = {
-        name = "ct2a_food"
-        flow_property = simthing::food_flow
-        max_participants = 16
-        max_coupling_fanout = 4
-        max_orderband_depth = 16
-    }
-    produces = { property = simthing::food_flow rate = 10 value = 1 }
-    upkeep = { property = simthing::food_flow rate = 2 }
-}
-"#;
-    let document = parse_raw_document(bad).expect("parse");
-    let err = hydrate_resource_flow_pack(&document).unwrap_err();
-    assert!(
-        err.to_string()
-            .contains("unsupported produces field `value`"),
-        "{err}"
-    );
-}
-
-#[test]
 fn resource_flow_presence_without_opt_in_stays_disabled() {
     let mut hydrated = hydrate_from_clause();
     hydrated

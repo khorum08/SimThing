@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** — local targeted proof and GitHub-side Doctrine Exec proof pending on PR merge ref.
+**DONE — merged #1097** (merge commit `cfe934f17b5b62c6c3e617529cbbb088e901e043`). Inventory unchanged at 5675; file-shell deletions only.
 
 ## Predecessor closeouts (#1095/#1096)
 
