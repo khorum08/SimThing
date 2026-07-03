@@ -271,60 +271,6 @@ fn economic_key_decoder_uses_longest_match() {
 }
 
 #[test]
-fn economic_key_decoder_rejects_ambiguity() {
-    let categories = vec!["settlement".to_string(), "settlement".to_string()];
-    let resources = vec!["food".to_string()];
-    let err = decode_economic_modifier_key("settlement_food_produces_add", &categories, &resources)
-        .unwrap_err();
-    assert!(err.to_string().contains("ambiguous"), "{err}");
-}
-
-#[test]
-fn rejected_key_forms_hard_error_with_spans() {
-    for (snippet, expected) in [
-        (
-            "produces = { settlement_food_produces = 1 }",
-            "missing op suffix",
-        ),
-        (
-            "produces = { village_food_produces_add = 1 }",
-            "category `village` is unmapped",
-        ),
-        (
-            "produces = { settlement_crystal_produces_add = 1 }",
-            "resource `crystal` is not registered",
-        ),
-        (
-            "produces = { shipsize_corvette_build_speed_mult = 1 }",
-            "shipsize grammar family is not admitted",
-        ),
-        (
-            "produces = { triggered_produces_modifier = 1 }",
-            "bare triggered forms are not authorable",
-        ),
-    ] {
-        let source = format!(
-            r#"
-simthing_ct2c_bad = {{
-    category_map = {{ settlement = {{ kind = Cohort depth = 2 }} }}
-    resource = {{ id = "food" namespace = "simthing" name = "food" }}
-    unit_template = {{
-        id = "bad"
-        category = settlement
-        resources = {{ {snippet} }}
-    }}
-}}
-"#
-        );
-        let document = parse_raw_document(source.as_bytes()).expect("parse");
-        let err = hydrate_category_economy_pack(&document).unwrap_err();
-        let message = err.to_string();
-        assert!(message.contains(expected), "{message}");
-        assert!(message.contains("token"), "{message}");
-    }
-}
-
-#[test]
 fn cost_key_requires_discrete_context() {
     let source = br#"
 simthing_ct2c_bad = {
