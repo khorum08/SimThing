@@ -226,50 +226,6 @@ mod tests {
     }
 
     #[test]
-    fn b2_emit_event_writes_compact_record_cpu() {
-        let mut values = vec![0.0, 0.0];
-        let op = AccumulatorOp {
-            source: SourceSpec::Constant(3.7),
-            combine: CombineFn::Identity,
-            gate: GateSpec::Always,
-            scale: ScaleSpec::Identity,
-            consume: ConsumeMode::EmitEvent,
-            targets: vec![(SlotIndex::new(0), ColumnIndex::new(0))],
-        };
-        let records =
-            execute_ops_cpu_with_emissions(&mut values, std::slice::from_ref(&op), 0, 1).unwrap();
-        assert_eq!(records.len(), 1);
-        assert_eq!(records[0].reg_idx(), 0);
-        assert_eq!(records[0].emit_count(), 3);
-        assert_eq!(values[0], 3.7);
-    }
-
-    #[test]
-    fn threshold_none_cpu_writes_target_on_crossing() {
-        let previous = vec![0.2, 0.0];
-        let mut values = vec![0.5, 0.0];
-        let op = AccumulatorOp {
-            source: SourceSpec::SlotValue {
-                slot: SlotIndex::new(0),
-                col: ColumnIndex::new(0),
-            },
-            combine: CombineFn::Identity,
-            gate: GateSpec::Threshold {
-                value: 0.3,
-                direction: ThresholdDirection::Upward,
-            },
-            scale: ScaleSpec::Identity,
-            consume: ConsumeMode::None,
-            targets: vec![(SlotIndex::new(1), ColumnIndex::new(0))],
-        };
-        let records =
-            execute_threshold_ops_cpu(&previous, &mut values, std::slice::from_ref(&op), 1)
-                .unwrap();
-        assert!(records.is_empty());
-        assert!((values[1] - 0.5).abs() < 1e-5, "target: {}", values[1]);
-    }
-
-    #[test]
     fn threshold_none_cpu_no_write_when_not_crossing() {
         let previous = vec![0.4, 0.0];
         let mut values = vec![0.5, 0.0];

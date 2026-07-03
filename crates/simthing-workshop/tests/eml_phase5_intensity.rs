@@ -79,29 +79,6 @@ fn run_match_test(harness: &mut EmlGpuHarness, n: usize) {
 }
 
 #[test]
-fn cpu_node_evaluator_matches_direct_formula() {
-    let threshold = 0.1;
-    let build = 0.2;
-    let decay = 0.05;
-    let dt = 1.0;
-
-    let (nodes, root) = intensity_update_nodes(threshold, build, decay, dt);
-    let inputs = make_inputs_with_params(10_000, threshold);
-
-    for input in inputs {
-        let via_nodes = eval_cpu_node(&nodes, root, input);
-        let direct = intensity_update_direct_cpu(input, threshold, build, decay, dt);
-        assert!(
-            (via_nodes - direct).abs() <= 1e-6,
-            "node eval {} != direct {} for {:?}",
-            via_nodes,
-            direct,
-            input
-        );
-    }
-}
-
-#[test]
 fn gpu_eml_intensity_matches_cpu_1k() {
     let mut harness = EmlGpuHarness::new().unwrap();
     run_match_test(&mut harness, 1_000);

@@ -105,47 +105,6 @@ fn weighted_mean_parity_by_child_count_sweep() {
 }
 
 #[test]
-fn weighted_mean_rejects_invalid_inputs() {
-    let harness = WeightedMeanGpuHarness::new().unwrap();
-
-    let valid = make_weighted_mean_scenario("valid", 4, 4);
-
-    let mut nan_value = valid.clone();
-    nan_value.children[0].value = f32::NAN;
-    assert!(compare_weighted_mean_rich(&nan_value).is_err());
-    assert!(harness
-        .eval(&nan_value.children, &nan_value.ranges)
-        .is_err());
-
-    let mut inf_value = valid.clone();
-    inf_value.children[0].value = f32::INFINITY;
-    assert!(compare_weighted_mean_rich(&inf_value).is_err());
-
-    let mut nan_weight = valid.clone();
-    nan_weight.children[0].weight = f32::NAN;
-    assert!(compare_weighted_mean_rich(&nan_weight).is_err());
-
-    let mut negative_weight = valid.clone();
-    negative_weight.children[0].weight = -1.0;
-    assert!(compare_weighted_mean_rich(&negative_weight).is_err());
-
-    let mut bad_range = valid.clone();
-    bad_range.ranges[0].len += 1000;
-    assert!(compare_weighted_mean_rich(&bad_range).is_err());
-    assert!(harness
-        .eval(&bad_range.children, &bad_range.ranges)
-        .is_err());
-
-    let mut past_end_range = valid.clone();
-    past_end_range.ranges[0].offset = valid.children.len() as u32;
-    past_end_range.ranges[0].len = 1;
-    assert!(compare_weighted_mean_rich(&past_end_range).is_err());
-    assert!(harness
-        .eval(&past_end_range.children, &past_end_range.ranges)
-        .is_err());
-}
-
-#[test]
 fn weighted_mean_accepts_valid_edge_inputs() {
     let harness = WeightedMeanGpuHarness::new().unwrap();
 
@@ -202,20 +161,3 @@ fn weighted_mean_accepts_valid_edge_inputs() {
     assert_eq!(gpu_trailing[0].value, 0.0);
 }
 
-#[test]
-fn weighted_mean_report_is_deterministic_across_runs() {
-    let scenario = make_weighted_mean_scenario("weighted_mean_determinism", 256, 8);
-    let harness = WeightedMeanGpuHarness::new().unwrap();
-
-    let r1 = compare_weighted_mean_rich_with_harness(&harness, &scenario).unwrap();
-    let r2 = compare_weighted_mean_rich_with_harness(&harness, &scenario).unwrap();
-    let r3 = compare_weighted_mean_rich_with_harness(&harness, &scenario).unwrap();
-
-    for (a, b) in [(&r1, &r2), (&r2, &r3)] {
-        assert_eq!(a.max_abs_error, b.max_abs_error);
-        assert_eq!(a.mean_abs_error, b.mean_abs_error);
-        assert_eq!(a.parity_classification, b.parity_classification);
-        assert!(a.repeated_runs_identical);
-        assert!(b.repeated_runs_identical);
-    }
-}

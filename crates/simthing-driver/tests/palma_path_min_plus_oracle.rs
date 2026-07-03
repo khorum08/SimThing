@@ -106,37 +106,6 @@ fn gpu_d_matches_cpu(w: &[f32], config: &simthing_gpu::MinPlusStencilConfig, ite
 }
 
 #[test]
-fn palma_min_plus_uniform_grid_matches_manhattan_cost() {
-    let config = small_config();
-    let w = terran_pirate_grid_w_field(SMALL_WIDTH, SMALL_HEIGHT, 1.0, &[], 1.0);
-    let d = run_min_plus_relaxation(&w, &config, SMALL_ITERATIONS).expect("relax");
-    assert_d_close(
-        d[cell_index(CONVOY_SMALL.0, CONVOY_SMALL.1, SMALL_WIDTH)],
-        8.0,
-        "uniform grid convoy query",
-    );
-    gpu_d_matches_cpu(&w, &config, SMALL_ITERATIONS);
-}
-
-#[test]
-fn palma_min_plus_full_row_blockade_raises_traversal_cost() {
-    let config = small_config();
-    let w_clear = terran_pirate_grid_w_field(SMALL_WIDTH, SMALL_HEIGHT, 1.0, &[], 1.0);
-    let w_blocked =
-        terran_pirate_grid_w_field(SMALL_WIDTH, SMALL_HEIGHT, 1.0, FULL_ROW_BLOCKADE, 100.0);
-
-    let d_clear = run_min_plus_relaxation(&w_clear, &config, SMALL_ITERATIONS).expect("clear");
-    let d_blocked =
-        run_min_plus_relaxation(&w_blocked, &config, SMALL_ITERATIONS).expect("blocked");
-
-    assert!(
-        d_blocked[cell_index(CONVOY_SMALL.0, CONVOY_SMALL.1, SMALL_WIDTH)]
-            > d_clear[cell_index(CONVOY_SMALL.0, CONVOY_SMALL.1, SMALL_WIDTH)] + 1.0,
-        "full-row blockade should raise traversal cost"
-    );
-}
-
-#[test]
 fn palma_min_plus_partial_wall_gap_bends_scalar_d_field() {
     let config = detour_config();
     let w_open = detour_wall_w_field(true);

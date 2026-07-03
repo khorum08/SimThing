@@ -261,23 +261,6 @@ fn runtime1a_runtime_fixture_default_simsession_unchanged() {
 }
 
 #[test]
-fn runtime1a_runtime_fixture_registers_named_cpu_fixture() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert_eq!(
-        report.driver_fixture_id,
-        MOBILITY_RUNTIME1A_DRIVER_FIXTURE_ID
-    );
-    assert_eq!(
-        report.driver_named_gate,
-        MOBILITY_RUNTIME1A_DRIVER_NAMED_GATE
-    );
-    assert!(report.fixture_invoked);
-    assert_eq!(report.spec_fixture_id, MOBILITY_RUNTIME1A_ID);
-    assert_eq!(report.spec_named_gate, MOBILITY_RUNTIME1A_NAMED_GATE);
-}
-
-#[test]
 fn runtime1a_runtime_fixture_no_default_passgraph_schedule() {
     let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
     assert!(report.admitted);

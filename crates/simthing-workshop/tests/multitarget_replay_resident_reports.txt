@@ -22,31 +22,31 @@ determinism_gate: PASS
 resident_performance_gate: WEAK_PASS
 
 Timing:
-cpu_n_ticks_us: 49
-cpu_per_tick_us: 3.062
-gpu_resident_summary_submit_mean_us: 129
-gpu_resident_summary_submit_min_us: 68
-gpu_resident_summary_submit_max_us: 331
-gpu_resident_summary_total_mean_us: 5962
-gpu_resident_summary_total_min_us: 1065
-gpu_resident_summary_total_max_us: 19361
-gpu_resident_summary_total_per_tick_us: 372.625
-gpu_resident_records_submit_mean_us: 141
-gpu_resident_records_submit_min_us: 69
-gpu_resident_records_submit_max_us: 366
-gpu_resident_records_total_mean_us: 2209
-gpu_resident_records_total_min_us: 1410
-gpu_resident_records_total_max_us: 3082
-gpu_resident_records_total_per_tick_us: 138.062
-resident_summary_speedup_vs_cpu: 0.008x (total_validation)
-resident_records_speedup_vs_cpu: 0.023x (total_validation)
+cpu_n_ticks_us: 140
+cpu_per_tick_us: 8.750
+gpu_resident_summary_submit_mean_us: 137
+gpu_resident_summary_submit_min_us: 88
+gpu_resident_summary_submit_max_us: 241
+gpu_resident_summary_total_mean_us: 28896
+gpu_resident_summary_total_min_us: 8318
+gpu_resident_summary_total_max_us: 63207
+gpu_resident_summary_total_per_tick_us: 1806.000
+gpu_resident_records_submit_mean_us: 84
+gpu_resident_records_submit_min_us: 77
+gpu_resident_records_submit_max_us: 98
+gpu_resident_records_total_mean_us: 6966
+gpu_resident_records_total_min_us: 1929
+gpu_resident_records_total_max_us: 12358
+gpu_resident_records_total_per_tick_us: 435.375
+resident_summary_speedup_vs_cpu: 0.005x (total_validation)
+resident_records_speedup_vs_cpu: 0.014x (total_validation)
 
 Data movement:
 summary_bytes_total: 256
 compact_record_bytes_total: 262144
 
 Interpretation:
-WEAK_PASS: GPU-resident correctness passes but summary mode 0.01x vs CPU on total_validation timing; perf unresolved. Records mode slower (0.02x vs CPU on total_validation timing); log volume pressure. Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.
+WEAK_PASS: GPU-resident correctness passes but summary mode 0.00x vs CPU on total_validation timing; perf unresolved. Records mode slower (0.01x vs CPU on total_validation timing); log volume pressure. Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.
 note: Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final state/summary/records readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.
 
 Disclaimer: workshop-local; not production AccumulatorOp; no contention; not pure shader timestamp timing.
@@ -72,31 +72,31 @@ determinism_gate: PASS
 resident_performance_gate: WEAK_PASS
 
 Timing:
-cpu_n_ticks_us: 25821
-cpu_per_tick_us: 403.453
-gpu_resident_summary_submit_mean_us: 182
-gpu_resident_summary_submit_min_us: 135
-gpu_resident_summary_submit_max_us: 215
-gpu_resident_summary_total_mean_us: 13885
-gpu_resident_summary_total_min_us: 5625
-gpu_resident_summary_total_max_us: 27352
-gpu_resident_summary_total_per_tick_us: 216.953
-gpu_resident_records_submit_mean_us: 201
-gpu_resident_records_submit_min_us: 153
-gpu_resident_records_submit_max_us: 291
-gpu_resident_records_total_mean_us: 68875
-gpu_resident_records_total_min_us: 54487
-gpu_resident_records_total_max_us: 81080
-gpu_resident_records_total_per_tick_us: 1076.172
-resident_summary_speedup_vs_cpu: 1.860x (total_validation)
-resident_records_speedup_vs_cpu: 0.364x (total_validation)
+cpu_n_ticks_us: 38450
+cpu_per_tick_us: 600.781
+gpu_resident_summary_submit_mean_us: 242
+gpu_resident_summary_submit_min_us: 151
+gpu_resident_summary_submit_max_us: 349
+gpu_resident_summary_total_mean_us: 16478
+gpu_resident_summary_total_min_us: 11324
+gpu_resident_summary_total_max_us: 30093
+gpu_resident_summary_total_per_tick_us: 257.469
+gpu_resident_records_submit_mean_us: 221
+gpu_resident_records_submit_min_us: 158
+gpu_resident_records_submit_max_us: 324
+gpu_resident_records_total_mean_us: 79833
+gpu_resident_records_total_min_us: 58647
+gpu_resident_records_total_max_us: 111735
+gpu_resident_records_total_per_tick_us: 1247.391
+resident_summary_speedup_vs_cpu: 2.333x (total_validation)
+resident_records_speedup_vs_cpu: 0.465x (total_validation)
 
 Data movement:
 summary_bytes_total: 1024
 compact_record_bytes_total: 102400000
 
 Interpretation:
-STRONG_PASS: GPU-resident summary mode matches CPU over N ticks (1.86x vs CPU on total_validation timing). Semantic and summary gates pass. Records mode slower (0.36x vs CPU on total_validation timing); log volume pressure. Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.
+STRONG_PASS: GPU-resident summary mode matches CPU over N ticks (2.33x vs CPU on total_validation timing). Semantic and summary gates pass. Records mode slower (0.47x vs CPU on total_validation timing); log volume pressure. Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.
 note: Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final state/summary/records readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.
 
 Disclaimer: workshop-local; not production AccumulatorOp; no contention; not pure shader timestamp timing.
@@ -122,31 +122,31 @@ determinism_gate: PASS
 resident_performance_gate: WEAK_PASS
 
 Timing:
-cpu_n_ticks_us: 28248
-cpu_per_tick_us: 441.375
-gpu_resident_summary_submit_mean_us: 166
-gpu_resident_summary_submit_min_us: 144
-gpu_resident_summary_submit_max_us: 221
-gpu_resident_summary_total_mean_us: 5542
-gpu_resident_summary_total_min_us: 5483
-gpu_resident_summary_total_max_us: 5697
-gpu_resident_summary_total_per_tick_us: 86.594
-gpu_resident_records_submit_mean_us: 185
-gpu_resident_records_submit_min_us: 140
-gpu_resident_records_submit_max_us: 335
-gpu_resident_records_total_mean_us: 45369
-gpu_resident_records_total_min_us: 43951
-gpu_resident_records_total_max_us: 47459
-gpu_resident_records_total_per_tick_us: 708.891
-resident_summary_speedup_vs_cpu: 5.097x (total_validation)
-resident_records_speedup_vs_cpu: 0.623x (total_validation)
+cpu_n_ticks_us: 25181
+cpu_per_tick_us: 393.453
+gpu_resident_summary_submit_mean_us: 215
+gpu_resident_summary_submit_min_us: 137
+gpu_resident_summary_submit_max_us: 401
+gpu_resident_summary_total_mean_us: 6253
+gpu_resident_summary_total_min_us: 5398
+gpu_resident_summary_total_max_us: 8643
+gpu_resident_summary_total_per_tick_us: 97.703
+gpu_resident_records_submit_mean_us: 148
+gpu_resident_records_submit_min_us: 113
+gpu_resident_records_submit_max_us: 189
+gpu_resident_records_total_mean_us: 52446
+gpu_resident_records_total_min_us: 45242
+gpu_resident_records_total_max_us: 67886
+gpu_resident_records_total_per_tick_us: 819.469
+resident_summary_speedup_vs_cpu: 4.027x (total_validation)
+resident_records_speedup_vs_cpu: 0.523x (total_validation)
 
 Data movement:
 summary_bytes_total: 1024
 compact_record_bytes_total: 102400000
 
 Interpretation:
-STRONG_PASS: GPU-resident summary mode matches CPU over N ticks (5.10x vs CPU on total_validation timing). Semantic and summary gates pass. Records mode slower (0.62x vs CPU on total_validation timing); log volume pressure. Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.
+STRONG_PASS: GPU-resident summary mode matches CPU over N ticks (4.03x vs CPU on total_validation timing). Semantic and summary gates pass. Records mode slower (0.52x vs CPU on total_validation timing); log volume pressure. Workshop-local; not production AccumulatorOp; no contention; not pure shader timing.
 note: Resident total_validation timings include initial buffer upload, encode, submit, GPU wait, and final state/summary/records readback. submit timings cover encode+submit only. Neither is pure shader timestamp time.
 
 Disclaimer: workshop-local; not production AccumulatorOp; no contention; not pure shader timestamp timing.

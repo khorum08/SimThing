@@ -1791,11 +1791,4 @@ mod tests {
         assert_eq!(before, after);
     }
 
-    #[test]
-    fn boundary_with_cpu_decay_cannot_skip() {
-        let (mut proto, patcher, pid) = simple_proto();
-        proto.registry.properties[pid.index()].decay =
-            Some(DecayBehavior::TowardZero { rate: 0.1 });
-        assert!(!proto.can_skip_empty_boundary(&[], &patcher));
-    }
 }

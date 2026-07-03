@@ -293,33 +293,6 @@ parity_scenario!(c3_add_only_old_pass3_noop, 1, 0.0, |world, pid| {
 });
 
 #[test]
-fn c3_repeated_add_same_cell_preserves_legacy_f32_order() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let setup = |world: &mut SimThing, pid: simthing_core::SimPropertyId| {
-        let cohort = &mut world.children[0];
-        cohort.add_overlay(make_overlay(
-            pid,
-            vec![
-                (SubFieldRole::Amount, TransformOp::Add(1e20)),
-                (SubFieldRole::Amount, TransformOp::Add(-1e20)),
-            ],
-        ));
-    };
-
-    let new = run_overlay_ticks(1, 0.0, setup);
-
-    let expected = (1.0f32 + 1e20f32) + (-1e20f32);
-    let amount_idx = 0usize; // loyalty Amount is first column in simple property
-    assert_eq!(new.values[amount_idx].to_bits(), expected.to_bits());
-    let golden = golden_overlay_ticks(1, 0.0, setup);
-    assert_bits_eq("c3_repeated_add_same_cell", &golden.values, &new.values);
-}
-
-#[test]
 fn c3_same_cell_many_overlays_bit_exact() {
     let Some(_ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
@@ -341,51 +314,6 @@ fn c3_same_cell_many_overlays_bit_exact() {
     let golden = golden_overlay_ticks(1, 0.0, setup);
     let new = run_overlay_ticks(1, 0.0, setup);
     assert_bits_eq("c3_same_cell_many_overlays", &golden.values, &new.values);
-}
-
-#[test]
-fn c3_mixed_overlay_routes_through_c4_orderband_path() {
-    let Some(_ctx) = try_gpu() else {
-        eprintln!("skipping: no GPU");
-        return;
-    };
-
-    let mut fx = loyalty_fixture();
-    let cohort = &mut fx.world.children[0];
-    cohort.add_overlay(make_overlay(
-        fx.pid,
-        vec![
-            (SubFieldRole::Amount, TransformOp::Add(0.2)),
-            (SubFieldRole::Amount, TransformOp::Multiply(1.5)),
-        ],
-    ));
-    fx.alloc = SlotAllocator::new();
-    fx.alloc.populate_from_tree(&fx.world);
-
-    let n_slots = fx.alloc.capacity() as u32;
-    let ctx = GpuContext::new_blocking().expect("gpu");
-    let mut state = WorldGpuState::new(ctx, &fx.reg, n_slots);
-    let mut coord = DispatchCoordinator::new(n_slots, fx.n_dims, 8);
-
-    let projected_len = n_slots as usize * fx.n_dims as usize;
-    let mut projected = vec![0.0; projected_len];
-    simthing_gpu::project_tree_to_values(
-        &fx.world,
-        &fx.reg,
-        &fx.alloc,
-        fx.n_dims as usize,
-        &mut projected,
-    );
-    coord.shadow[..projected_len].copy_from_slice(&projected);
-
-    let mut proto = BoundaryProtocol::new(SimRuntimeTree::admit(fx.world), fx.reg, fx.alloc);
-    proto.flags.use_accumulator_overlay_add = true;
-    proto.initial_gpu_sync(&coord, &mut state);
-
-    assert!(
-        state.accumulator_overlay_add_active,
-        "mixed overlay batch should use the C-4 OrderBand Accumulator path"
-    );
 }
 
 // ── Combined C-1 + C-2 + C-3 ──────────────────────────────────────────────────

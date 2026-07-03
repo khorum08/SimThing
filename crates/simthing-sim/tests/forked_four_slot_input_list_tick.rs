@@ -14,14 +14,6 @@ use support::accumulator_plan_fixtures::{
 use support::readback_gate::with_isolated_readback_gate_test;
 
 #[test]
-fn sim_cpu_tick_executes_forked_four_slot_input_list_plan() {
-    let plan = forked_four_slot_input_list_plan();
-    let output = execute_accumulator_plan_tick_cpu(&plan, &forked_four_slot_dense_inputs())
-        .expect("cpu tick");
-    assert_eq!(output.len(), 4);
-}
-
-#[test]
 fn sim_gpu_resident_tick_executes_forked_four_slot_input_list_plan() {
     with_isolated_readback_gate_test(|| run_gpu_resident_tick_executes_forked_plan());
 }

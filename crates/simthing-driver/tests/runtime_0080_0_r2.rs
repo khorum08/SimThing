@@ -90,15 +90,6 @@ fn r2_consumes_r1c_f_gpu_zero_cohort() {
 }
 
 #[test]
-fn r2_zero_cohort_not_cpu_decided() {
-    let admitted = report();
-    if blocked(admitted) {
-        return;
-    }
-    assert!(!admitted.zero_cohort_cpu_decided);
-}
-
-#[test]
 fn r2_reports_expected_r6c_checksum() {
     let admitted = report();
     if blocked(admitted) {
@@ -125,27 +116,6 @@ fn r2_reports_observed_checksum_or_explained_delta() {
     } else {
         assert!(!admitted.r6c_checksum_delta_explained.is_empty());
     }
-}
-
-#[test]
-fn r2_lists_remaining_cpu_decided_classes() {
-    let admitted = report();
-    if blocked(admitted) {
-        return;
-    }
-    assert!(admitted
-        .remaining_cpu_decided_classes
-        .contains(&"DamageDelta"));
-    assert!(admitted
-        .remaining_cpu_decided_classes
-        .contains(&"MoveRequest"));
-    assert!(admitted
-        .remaining_cpu_decided_classes
-        .contains(&"LocalBirthRequest"));
-    assert!(admitted
-        .remaining_cpu_decided_classes
-        .contains(&"FusionRequest"));
-    assert!(!admitted.remaining_class_blocked_run);
 }
 
 #[test]

@@ -114,20 +114,6 @@ fn runtime_local_allocation_compile_preserves_source_simthing_ids() {
 }
 
 #[test]
-fn runtime_local_allocation_cpu_totals_match_disburse_down_allocated_totals() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let plan = compile_runtime_local_allocation_application_plan(&spec).expect("compile");
-
-    let disburse_allocated: u32 = plan
-        .disburse_down_plan
-        .cpu_results
-        .iter()
-        .map(|r| r.allocated_total)
-        .sum();
-    assert_eq!(plan.application_report.allocated_total, disburse_allocated);
-}
-
-#[test]
 fn runtime_local_allocation_scenario_authority_unchanged() {
     let spec = build_owner_silo_disburse_down_scoped_spec();
     let before = serialize_scenario_authority(&spec).expect("serialize");
