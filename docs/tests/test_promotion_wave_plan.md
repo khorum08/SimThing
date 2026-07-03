@@ -51,6 +51,8 @@ retained representatives that survive material paring waves.
 
 **`TEST-PARE-CPU-SAFE-BOUNDARY-SWEEP-0` (2026-07-02).** No promotion-target rows changed; inventory remains 5675. Three clausething admission duplicates (`ct_2a`/`ct_2c`) remain blocked for compile drift and GPU-residue follow-up; representatives above unchanged.
 
+**`TEST-PARE-PROTECTED-RESIDUE-0` (2026-07-03).** No inventory `promotion_target` rows changed; the 24-row promotion backlog above is unchanged. The #1102 protected-class audit's 112 `NEEDS_PROMOTION` oracle-parity rows lost protected status and now sit as AUDIT rows under `B-T6-PROTECTED-ORACLE-PROMOTION-REVIEW`, with `promotion-target:protected-oracle-review` recorded in the boundary ledger until an owner promotion wave proves or reclassifies them.
+
 The remaining promotion backlog populates as AUDIT rows classify through the paring waves: any
 AUDIT row that survives as KEEP must then name a permanent-residue class or a legal (non-never-pare)
 promotion target, and this plan regenerates from those rows.
