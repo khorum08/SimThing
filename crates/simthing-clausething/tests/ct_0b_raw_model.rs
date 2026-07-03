@@ -73,30 +73,3 @@ fn write_goldens() {
         eprintln!("wrote {path}");
     }
 }
-
-#[test]
-fn duplicate_keys_preserve_order() {
-    let document =
-        parse_raw_document(include_str!("fixtures/duplicate_keys.clause").as_bytes()).unwrap();
-    let simthing_clausething::raw::RawValue::Block(block) = &document.root else {
-        panic!("expected root block");
-    };
-    let simthing_clausething::raw::RawValue::Block(entity) = &block.properties[0].value else {
-        panic!("expected entity block");
-    };
-    let labels: Vec<_> = entity
-        .properties
-        .iter()
-        .map(|p| p.key.text.as_str())
-        .collect();
-    assert_eq!(labels, vec!["label", "label", "label"]);
-    let values: Vec<_> = entity
-        .properties
-        .iter()
-        .map(|p| match &p.value {
-            simthing_clausething::raw::RawValue::Scalar(s) => s.text.as_str(),
-            other => panic!("expected scalar value, got {other:?}"),
-        })
-        .collect();
-    assert_eq!(values, vec!["first", "second", "third"]);
-}

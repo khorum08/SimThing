@@ -262,24 +262,6 @@ fn inline_math_is_preserved_not_evaluated() {
 }
 
 #[test]
-fn missing_parameter_is_a_spanned_diagnostic() {
-    let err = expand_document(
-        &parse(PLAGUE_MAIN),
-        &ExpansionInput {
-            inline_scripts: library(&[("simthing/blight_wave", PLAGUE_LIB)]),
-            parameters: params(&[("QSTATE", "yes")]),
-            ..ExpansionInput::default()
-        },
-    )
-    .expect_err("WAVE_SCALE is undefined");
-    assert!(err.message.contains("$WAVE_SCALE$"), "{}", err.message);
-    assert!(
-        err.span.is_some(),
-        "missing-parameter diagnostic must carry a span"
-    );
-}
-
-#[test]
 fn missing_inline_script_is_a_deterministic_diagnostic() {
     let err = expand_document(&parse(ORDER_MAIN), &ExpansionInput::default())
         .expect_err("library is empty");

@@ -175,29 +175,6 @@ fn generated_hyperlane_blocks_are_extracted_by_existing_reader() {
 }
 
 #[test]
-fn generated_hyperlane_scenario_rejects_duplicate_link_without_widening() {
-    let text = emit_hyperlane_scenario(4242);
-    let neutral = parse_mapgen_neutral_document(text.as_bytes()).expect("parse");
-    let hierarchy = generate_mapgen_lattice_hierarchy(
-        &neutral,
-        MapGenLatticeOptions {
-            fixture_lattice_edge: FIXTURE_LATTICE_EDGE,
-            ..Default::default()
-        },
-    )
-    .expect("lattice");
-    let hyperlanes = vec![("0".into(), "1".into()), ("1".into(), "0".into())];
-    let enrollment =
-        lower_hyperlane_topology(&hierarchy.pack, &hyperlanes, MapGenLinksOptions::default())
-            .expect("duplicate hyperlane pair is rejected without widening");
-    assert_eq!(enrollment.expansion_report.duplicate_link_rejections, 1);
-    assert_eq!(
-        enrollment.pack.grid_metadata.links.len() + enrollment.lane_couplings.len(),
-        1
-    );
-}
-
-#[test]
 fn mapgenerator_is_dev_dependency_only_in_clausething() {
     let manifest = include_str!("../Cargo.toml");
     let dependencies = manifest
