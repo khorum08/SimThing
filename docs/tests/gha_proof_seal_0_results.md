@@ -2,7 +2,7 @@
 
 ## Status
 
-**DONE — pending merge** on branch `gha-proof-seal-0`.
+**DONE — merged #1101**. Merge commit `e49c8a258e`.
 
 ## Mission
 
