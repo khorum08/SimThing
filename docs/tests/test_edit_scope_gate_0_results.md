@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - implementation proof in progress for DA/orchestrator review. No test deletion is included in this PR.
+**DONE — merged #1095** (merge commit `b3da4f2b4928ae323e6757016a019ae88a71a036`). Data-driven Track D test-edit scope gate; no test deletion in that PR.
 
 ## Mission
 

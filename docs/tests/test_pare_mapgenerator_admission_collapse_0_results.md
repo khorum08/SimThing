@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION** - implementation, local targeted proof, and GitHub-side targeted Doctrine Exec proof complete; awaiting merge review.
+**DONE — merged #1096** (merge commit `5dc4c0d499ac7e87c60e02f1385f3161b4de2451`). Live inventory after merge: **5675**.
 
 ## Mission
 
@@ -80,11 +80,11 @@ Profile added: `test-pare-mapgenerator-admission-collapse`
 Live proof:
 
 - profile: `test-pare-mapgenerator-admission-collapse`
-- head_sha: `db874f721e64a705ddd30dbc06f603f8bef705d7`
+- head_sha: `88b793165a503642eb2dde8ec0d1a40e9d8fa12f`
 - tested_ref: `refs/pull/1096/merge`
 - merge_ref_status: PASS
-- run: `28630761735`
-- job: `84906953240 / doctrine-exec`
+- run: `28630985641`
+- job: `84907631106 / doctrine-exec`
 - verdict: `DOCTRINE-EXEC-VERDICT: PASS failures=0 inspect=0`
 - proof commands: exact edited `simthing-mapgenerator --test ...` binaries only
 - no `doctrine_surface_truth.sh`
@@ -102,4 +102,4 @@ Graduation routing (for DA/orchestrator - why PROBATION, not COMPLETE):
 
 ## Known Gaps / Next
 
-Await live GitHub Doctrine Exec on the PR merge ref before graduation.
+Graduated with merge #1096. Follow-on CPU-safe residue sweep: `TEST-PARE-CPU-SAFE-BOUNDARY-SWEEP-0`.

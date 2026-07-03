@@ -49,6 +49,8 @@ no `simthing-sim` hygiene-table row.
 The genuine promotion backlog now includes `TEST-PARE-SPEC-0` and `TEST-CONSOLIDATE-CLASSIFIER-FAMILIES-0`
 retained representatives that survive material paring waves.
 
+**`TEST-PARE-CPU-SAFE-BOUNDARY-SWEEP-0` (2026-07-02).** No promotion-target rows changed; inventory remains 5675. Three clausething admission duplicates (`ct_2a`/`ct_2c`) remain blocked for compile drift and GPU-residue follow-up; representatives above unchanged.
+
 The remaining promotion backlog populates as AUDIT rows classify through the paring waves: any
 AUDIT row that survives as KEEP must then name a permanent-residue class or a legal (non-never-pare)
 promotion target, and this plan regenerates from those rows.
