@@ -249,11 +249,21 @@ def owner_local_prerequisites_ok(commands: list[str]) -> tuple[bool, str]:
     return True, "desktop-local legs only"
 
 
+FOOTER_PATTERN = re.compile(
+    r"^DOCTRINE-TESTS-VERDICT: (PASS|FAIL|INSPECT) "
+    r"failures=\d+ inspect=\d+ profile=\S+ owner_local=true head_sha=\S+$"
+)
+
+
 def footer_line(verdict: str, failures: int, inspects: int, profile: str, head_sha: str) -> str:
     return (
         f"DOCTRINE-TESTS-VERDICT: {verdict} failures={failures} inspect={inspects} "
         f"profile={profile} owner_local=true head_sha={head_sha or 'unknown'}"
     )
+
+
+def footer_is_valid(line: str) -> bool:
+    return bool(FOOTER_PATTERN.match(line.strip()))
 
 
 def emit_report(
@@ -329,15 +339,20 @@ def prove_report() -> int:
     sample_commands = [
         "cargo test -p simthing-gpu --test bh1_choke_readout -- --nocapture bh1_choke_readout_gpu_matches_cpu_oracle"
     ]
-    footer = footer_line("PASS", 0, 0, "owner-local-gpu-bevy", "deadbeef")
-    if not footer.startswith("DOCTRINE-TESTS-VERDICT: PASS"):
-        errors.append("footer format check failed")
+    valid_footer = footer_line("PASS", 0, 0, "owner-local-gpu-bevy", "deadbeef")
+    if not footer_is_valid(valid_footer):
+        errors.append(f"valid footer rejected by parser: {valid_footer}")
 
-    bad_footer = "DOCTRINE-TESTS-VERDICT: PASS without counts"
-    if re.search(r"DOCTRINE-TESTS-VERDICT: (PASS|FAIL|INSPECT)", bad_footer):
-        pass
-    else:
-        errors.append("verdict regex failed on negative sample")
+    malformed_footers = [
+        "DOCTRINE-TESTS-VERDICT: PASS without counts",
+        "DOCTRINE-TESTS-VERDICT: PASS failures=0 profile=owner-local-gpu-bevy owner_local=true head_sha=deadbeef",
+        "DOCTRINE-TESTS-VERDICT: PASS failures=0 inspect=0 owner_local=true head_sha=deadbeef",
+        "DOCTRINE-TESTS-VERDICT: PASS failures=0 inspect=0 profile=owner-local-gpu-bevy head_sha=deadbeef",
+        "DOCTRINE-TESTS-VERDICT: PASS failures=0 inspect=0 profile=owner-local-gpu-bevy owner_local=true",
+    ]
+    for sample in malformed_footers:
+        if footer_is_valid(sample):
+            errors.append(f"malformed footer incorrectly accepted: {sample}")
 
     gha_cmds = load_gha_profile_commands()
     for cmd in sample_commands:

@@ -2,14 +2,14 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW** — owner-local Track B executable harness wired. Not self-mergeable; DA/Owner clearance required.
+**PROBATION / DA-OWNER REVIEW** — owner-local Track B executable harness wired. Remedial **0R** repairs proof freshness and strict footer self-proof. Not self-mergeable; DA/Owner clearance required.
 
 ## PR / branch / merge
 
 - Branch: `ci-b-local-harness-0`
 - PR: [#1129](https://github.com/khorum08/SimThing/pull/1129)
 - Base: `origin/master` @ `b738e76f586f5b0d86aa4fd2c923a74fdde1ab7f` (post-#1128)
-- Head: `a27d0fc5158f3b7a4a27158f4aeb3c2bced461f3`
+- Head: `e75e05f9b3d517c5b502953014f15e40ee09fdb9`
 
 ## Files changed
 
@@ -32,7 +32,7 @@ Resolver token: `RESOLVE:inventory-owner-local-gpu` reads `scripts/ci/test_inven
 
 ## Planned owner-local proof commands (49 binaries)
 
-Resolved from live inventory at head `b738e76f`:
+Resolved from live inventory in the PR tree:
 
 - **simthing-clausething** (4): `ct_2a_intrinsic_flow`, `ct_2c_category_economy`, `ct_3b_4a_gpu_projection`, `mapgen_constitution_guards`
 - **simthing-driver** (20): GPU/oracle integration binaries including `dress_rehearsal_atlas_batch_0_pack_gpu`, `gpu_exec0_readiness_fixture`, `gpu_measure_0080_0`, `mobility_gpu_kernel{0..11}_*`, `mobility_runtime1b_gpu_passgraph_fixture`, `owner_silo_gpu_tick`, `phase_m_frontier_v1_2_gpu_replay_acceptance`, `phase_m_jit_evaleml_wgsl_prototype`, `terran_pirate_skeleton_resident_tick`
@@ -51,7 +51,7 @@ Full plan transcript available via `bash scripts/ci/doctrine_tests.sh --plan --p
 | `bash -n scripts/ci/doctrine_tests.sh` | PASS |
 | `doctrine_tests.sh --list` | PASS — `owner-local-gpu-bevy` profile listed |
 | `doctrine_tests.sh --plan --profile owner-local-gpu-bevy` | PASS — 49 commands; footer `DOCTRINE-TESTS-VERDICT: INSPECT failures=0 inspect=1` (plan-only) |
-| `doctrine_tests.sh --prove-report` | PASS — `DOCTRINE-TESTS-PROVE-REPORT: PASS` (includes malformed TSV negative) |
+| `doctrine_tests.sh --prove-report` | PASS — `DOCTRINE-TESTS-PROVE-REPORT: PASS` (malformed TSV negative + strict footer negatives) |
 | `doctrine_scan.sh` | PASS — `DOCTRINE-SCAN-VERDICT: PASS failures=0 inspect=0` |
 | `gen_digest.sh --check` | PASS |
 | `doctrine_exec_profile_lint.sh` | PASS — `PROFILE-LINT: PASS profiles=6` |
@@ -94,8 +94,23 @@ Verdict: **INSPECT** — `owner-local GPU prerequisites not confirmed (set DOCTR
 - No Track-D `test-pare-*` / deletion profile resurrection
 - No test inventory / lifecycle / workflow edits
 
+## CI-B-LOCAL-HARNESS-0R remedial repairs
+
+| HOLD | Repair |
+|---|---|
+| HOLD-1 stale result-doc head SHA | `Head:` and plan wording now bind to live PR head after 0R commit |
+| HOLD-2 weak malformed-footer proof | `--prove-report` uses strict `FOOTER_PATTERN`; rejects footers missing `failures=`, `inspect=`, `profile=`, `owner_local=true`, or `head_sha=` |
+
+0R proof (at head `e75e05f9b3d517c5b502953014f15e40ee09fdb9`):
+
+- `bash -n scripts/ci/doctrine_tests.sh`: PASS
+- `--prove-report`: PASS (valid footer accepted; 5 malformed negatives rejected)
+- `doctrine_scan.sh`: see mechanical proof table above
+- Scope: only `scripts/ci/doctrine_tests.sh` and this results doc edited
+
 ## Graduation routing
 
-- **gate-state / PROBATION / DA-OWNER REVIEW**
-- Not self-mergeable
-- Next rung after DA/Owner clearance: **CI-B-TRIPWIRE-TAGS-0**
+- Return to orchestrator re-review
+- Then DA/Owner review if clean
+- **gate-state / PROBATION / DA-OWNER REVIEW** — not self-mergeable
+- Next rung after clearance: **CI-B-TRIPWIRE-TAGS-0**
