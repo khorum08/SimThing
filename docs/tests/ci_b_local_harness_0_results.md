@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW** — owner-local Track B executable harness wired. Remedial **0R** repairs proof freshness and strict footer self-proof. Not self-mergeable; DA/Owner clearance required.
+**DONE — DA-APPROVED (2026-07-04, executive DA deep review).** Owner-local Track B executable harness wired; DA-verified: single narrow inventory-resolved owner-local profile, `--prove-report` PASS (footer parser + malformed + GHA-overlap guard), correct `GITHUB_ACTIONS` refusal (owner_local + INSPECT, never silent PASS), gates green. Real GPU/Bevy proofs remain owner-invoked on seal-residue rungs. Merge-cleared.
 
 ## PR / branch / merge
 
