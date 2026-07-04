@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
-# TEST-PARE-STANDARD-DA-0: validate boundary-keyed Track D paring authority.
+# CI-LIFECYCLE-RESIDUE-DELETE-0: validate lifecycle boundary ownership for survivor KEEP rows.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-BOUNDARIES="${ROOT}/scripts/ci/test_pare_boundaries.tsv"
-BOUNDARY_ROWS="${ROOT}/scripts/ci/test_pare_boundary_rows.tsv"
+BOUNDARIES="${ROOT}/scripts/ci/test_lifecycle_boundaries.tsv"
+BOUNDARY_ROWS="${ROOT}/scripts/ci/test_lifecycle_boundary_rows.tsv"
 INVENTORY="${ROOT}/scripts/ci/test_inventory.tsv"
-AUDIT="${ROOT}/scripts/ci/test_pare_audit.tsv"
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   PYTHON_BIN="python"
 fi
 
-"$PYTHON_BIN" - <<'PY' "$BOUNDARIES" "$BOUNDARY_ROWS" "$INVENTORY" "$AUDIT"
+"$PYTHON_BIN" - <<'PY' "$BOUNDARIES" "$BOUNDARY_ROWS" "$INVENTORY"
 import csv
 import pathlib
 import sys
@@ -22,7 +21,6 @@ from collections import Counter
 boundaries_path = pathlib.Path(sys.argv[1])
 boundary_rows_path = pathlib.Path(sys.argv[2])
 inventory_path = pathlib.Path(sys.argv[3])
-audit_path = pathlib.Path(sys.argv[4])
 root = boundaries_path.resolve().parents[2]
 residue_classes_path = root / "scripts/ci/test_residue_classes.tsv"
 
@@ -141,13 +139,6 @@ inventory_keys = {
     for row in inventory
 }
 
-historical_pared_keys: set[tuple[str, str, str, str]] = set()
-if audit_path.exists():
-    with audit_path.open("r", encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f, delimiter="\t"):
-            if row.get("audit_verdict") == "PARED":
-                historical_pared_keys.add((row["crate"], row["file"], row["test_name"], row["kind"]))
-
 boundary_by_id: dict[str, dict[str, str]] = {}
 for line_no, row in enumerate(boundaries, start=2):
     bid = row["boundary_id"]
@@ -189,23 +180,21 @@ def is_active_tp(row: dict[str, str]) -> bool:
 for line_no, row in enumerate(rows, start=2):
     key = (row["crate"], row["file"], row["test_name"], row["kind"])
     inv = inventory_keys.get(key)
-    historical = key in historical_pared_keys
-    if inv is None and not historical:
-        errors.append(f"boundary-row line {line_no}: references neither live inventory nor historical PARED row {key}")
+    if inv is None:
+        errors.append(f"boundary-row line {line_no}: references non-inventory row {key}")
         continue
-    if inv is not None:
-        if key in row_seen:
-            errors.append(f"boundary-row line {line_no}: duplicate live inventory mapping {key}")
-        row_seen.add(key)
-        if row["current_class"] != inv["class"]:
-            errors.append(
-                f"boundary-row line {line_no}: current_class {row['current_class']} != inventory {inv['class']}"
-            )
-        if inv.get("superseding_boundary") != row["boundary_id"]:
-            errors.append(
-                f"boundary-row line {line_no}: inventory superseding_boundary {inv.get('superseding_boundary')} "
-                f"!= boundary_id {row['boundary_id']}"
-            )
+    if key in row_seen:
+        errors.append(f"boundary-row line {line_no}: duplicate live inventory mapping {key}")
+    row_seen.add(key)
+    if row["current_class"] != inv["class"]:
+        errors.append(
+            f"boundary-row line {line_no}: current_class {row['current_class']} != inventory {inv['class']}"
+        )
+    if inv.get("superseding_boundary") != row["boundary_id"]:
+        errors.append(
+            f"boundary-row line {line_no}: inventory superseding_boundary {inv.get('superseding_boundary')} "
+            f"!= boundary_id {row['boundary_id']}"
+        )
 
     bid = row["boundary_id"]
     boundary = boundary_by_id.get(bid)
@@ -244,10 +233,10 @@ for line_no, row in enumerate(rows, start=2):
     if disposition == "NEVER_PARE" and row["boundary_tier"] != "TIER7_NEVER_PARE":
         errors.append(f"boundary-row line {line_no}: NEVER_PARE row is not Tier 7")
 
-    if inv is not None and is_never_pare_inventory(inv) and disposition != "NEVER_PARE":
+    if is_never_pare_inventory(inv) and disposition != "NEVER_PARE":
         errors.append(f"boundary-row line {line_no}: never-pare inventory row is {disposition}: {key}")
 
-    if inv is not None and inv.get("verdict") == "KEEP":
+    if inv.get("verdict") == "KEEP":
         target = inv.get("promotion_target", "").strip()
         if target not in allowed_keep_targets and not target.startswith("promotion-target:"):
             errors.append(f"boundary-row line {line_no}: inventory KEEP row lacks legal promotion_target: {key}")
@@ -269,8 +258,7 @@ for line_no, row in enumerate(rows, start=2):
         else:
             errors.append(f"boundary-row line {line_no}: module-marker row is neither PROMOTION_REQUIRED nor NEVER_PARE")
 
-    active_ref = inv if inv is not None else row
-    if is_active_tp(active_ref):
+    if is_active_tp(inv):
         if disposition not in {"KEEP", "NEVER_PARE"}:
             errors.append(f"boundary-row line {line_no}: active TP row is not protected: {key} -> {disposition}")
         else:
@@ -282,17 +270,12 @@ if missing_live:
 
 rows_missing_owner = sum(1 for row in rows if not row["boundary_id"].strip())
 
-print("TEST-PARE-BOUNDARY-CHECK REPORT")
+print("TEST-LIFECYCLE-BOUNDARY-CHECK REPORT")
 print(f"  boundary rows: {len(boundaries)}")
 print(f"  boundary-row mappings: {len(rows)}")
 print(f"  live inventory rows: {len(inventory)}")
 print(f"  live rows with owning boundary: {len(row_seen)}")
 print(f"  live rows missing owning boundary: {len(missing_live) + rows_missing_owner}")
-print(f"  historical PARED rows mapped: {sum(1 for row in rows if (row['crate'], row['file'], row['test_name'], row['kind']) in historical_pared_keys)}")
-print(f"  Tier 1 DELETE candidates: {sum(1 for row in rows if row['boundary_tier'] == 'TIER1_TYPE_SEAL' and row['recommended_disposition'] == 'DELETE')}")
-print(f"  Tier 2 COLLAPSE candidates: {sum(1 for row in rows if row['recommended_disposition'] == 'COLLAPSE_TO_REPRESENTATIVE')}")
-print(f"  Tier 3 DELETE candidates: {sum(1 for row in rows if row['boundary_tier'] == 'TIER3_DOCTRINE_SCAN' and row['recommended_disposition'] == 'DELETE')}")
-print(f"  Tier 4 CONSOLIDATE candidates: {sum(1 for row in rows if row['recommended_disposition'] == 'CONSOLIDATE_TO_TABLE')}")
 print(f"  NEVER_PARE rows: {disposition_counts['NEVER_PARE']}")
 print(f"  PROMOTION_REQUIRED rows: {disposition_counts['PROMOTION_REQUIRED']}")
 print(f"  module-marker rows expanded/mapped: {module_mapped}")
@@ -302,10 +285,10 @@ print(f"  module-marker generic blockers remaining: {module_total - module_mappe
 print(f"  active TP rows protected: {active_tp_protected}")
 
 if errors:
-    print("TEST-PARE-BOUNDARY-CHECK-VERDICT: FAIL")
+    print("TEST-LIFECYCLE-BOUNDARY-CHECK-VERDICT: FAIL")
     for error in errors:
         print(f"  - {error}")
     sys.exit(1)
 
-print("TEST-PARE-BOUNDARY-CHECK-VERDICT: PASS")
+print("TEST-LIFECYCLE-BOUNDARY-CHECK-VERDICT: PASS")
 PY

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TEST-PARE-INVENTORY-0: validate the checked-in test corpus inventory.
+# Rustified Test Lifecycle: validate checked-in survivor inventory.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -21,10 +21,9 @@ import sys
 root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
 args = sys.argv[3:]
-audit = root / "scripts/ci/test_pare_audit.tsv"
-boundary_rows = root / "scripts/ci/test_pare_boundary_rows.tsv"
+boundary_rows = root / "scripts/ci/test_lifecycle_boundary_rows.tsv"
 residue_classes = root / "scripts/ci/test_residue_classes.tsv"
-edit_scope_check = root / "scripts/ci/test_edit_scope_check.sh"
+lifecycle_boundary_check = root / "scripts/ci/test_lifecycle_boundary_check.sh"
 
 required = [
     "crate",
@@ -131,38 +130,6 @@ def read_residue_classes(path: pathlib.Path) -> set[str]:
 
 allowed_keep_targets = read_residue_classes(residue_classes)
 collapse_re = re.compile(r"^COLLAPSE\([0-9]+(?:->|→)1\)$")
-candidate_classes = {
-    "admission-adjacent",
-    "hygiene-theater",
-    "usecase-superseded",
-    "unknown",
-    "duplicate-battery",
-}
-audit_required = [
-    "crate",
-    "file",
-    "test_name",
-    "kind",
-    "current_class",
-    "audit_class",
-    "audit_verdict",
-    "superseding_boundary",
-    "representative_to_keep",
-    "deletion_wave",
-    "confidence",
-    "note",
-]
-allowed_audit_verdict = {
-    "PARE",
-    "KEEP",
-    "KEPT",
-    "PARED",
-    "BLOCKED",
-    "AUDIT-BLOCKED",
-    "COLLAPSED-REPRESENTATIVE",
-}
-allowed_confidence = {"high", "medium", "low"}
-
 test_attr_re = re.compile(r"#\[\s*(?:(?:tokio|async_std)::)?test(?:\(|\])")
 fn_re = re.compile(r"\bfn\s+([A-Za-z_][A-Za-z0-9_]*)")
 cfg_test_re = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\]")
@@ -295,121 +262,29 @@ else:
     else:
         print("  inspect: none")
 
-    audit_rows: list[dict[str, str]] = []
-    if audit.exists():
-        with audit.open("r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f, delimiter="\t")
-            if reader.fieldnames != audit_required:
-                errors.append(f"bad audit header: {reader.fieldnames!r}")
-            else:
-                audit_rows = list(reader)
-
-        audit_seen: set[tuple[str, str, str, str]] = set()
-        for line_no, row in enumerate(audit_rows, start=2):
-            key = (row["crate"], row["file"], row["test_name"], row["kind"])
-            inv = inventory_by_key.get(key)
-            inv_missing = inv is None
-            verdict = row["audit_verdict"]
-            if inv is None:
-                if verdict == "PARED":
-                    inv = {"class": row["current_class"], "kind": row["kind"], "test_name": row["test_name"]}
-                else:
-                    errors.append(f"audit line {line_no}: row does not reference inventory key {key}")
-                    continue
-            if key in audit_seen:
-                errors.append(f"audit line {line_no}: duplicate audit key {key}")
-            audit_seen.add(key)
-            if row["current_class"] != inv["class"]:
-                errors.append(
-                    f"audit line {line_no}: current_class {row['current_class']} does not match inventory {inv['class']}"
-                )
-            if verdict == "PARED" and not inv_missing:
-                errors.append(f"audit line {line_no}: PARED row is still present in inventory {key}")
-            is_collapse = collapse_re.match(verdict) is not None
-            if verdict not in allowed_audit_verdict and not is_collapse:
-                errors.append(f"audit line {line_no}: invalid audit_verdict {verdict}")
-            if row["confidence"] not in allowed_confidence:
-                errors.append(f"audit line {line_no}: invalid confidence {row['confidence']}")
-            if verdict in {"PARE", "PARED"} and not row["superseding_boundary"].strip():
-                errors.append(f"audit line {line_no}: PARE lacks superseding_boundary")
-            if is_collapse or verdict == "COLLAPSED-REPRESENTATIVE":
-                if not row["superseding_boundary"].strip():
-                    errors.append(f"audit line {line_no}: COLLAPSE lacks superseding_boundary")
-                if not row["representative_to_keep"].strip():
-                    errors.append(f"audit line {line_no}: COLLAPSE lacks representative_to_keep")
-            if verdict in {"AUDIT-BLOCKED", "BLOCKED"} and not row["note"].strip():
-                errors.append(f"audit line {line_no}: AUDIT-BLOCKED lacks reason note")
-            never_pare = (
-                inv["kind"] in {"compile_fail", "trybuild"}
-                or inv["class"] in {"seal-proof", "oracle-parity", "golden-byte", "invariant-required", "stead-required"}
-                or inv["test_name"] == "custom_layout_ethics_axis"
-            )
-            if never_pare and verdict != "KEEP":
-                errors.append(f"audit line {line_no}: never-pare row is {verdict}: {key}")
-
-        candidate_keys = {key for key, row in inventory_by_key.items() if row["class"] in candidate_classes}
-        missing_audit = sorted(candidate_keys - audit_seen)
-        pared_keys = {
-            (row["crate"], row["file"], row["test_name"], row["kind"])
-            for row in audit_rows
-            if row["audit_verdict"] == "PARED"
-        }
-        extra_audit = sorted(audit_seen - candidate_keys - pared_keys)
-        if missing_audit:
-            errors.append(f"audit missing {len(missing_audit)} candidate rows; first={missing_audit[:5]}")
-        if extra_audit:
-            errors.append(f"audit has {len(extra_audit)} non-candidate rows; first={extra_audit[:5]}")
-        print("TEST-PARE-AUDIT LEGACY REPORT")
-        print(f"  audit rows: {len(audit_rows)}")
-        print(f"  candidate rows: {len(candidate_keys)}")
-        print(f"  missing audit rows: {len(missing_audit)}")
-        print(f"  extra audit rows: {len(extra_audit)}")
-    else:
-        print("TEST-PARE-AUDIT LEGACY REPORT")
-        print("  audit file: absent")
-
-    print("TEST-PARE-BOUNDARY AUTHORITY")
+    print("TEST-LIFECYCLE-BOUNDARY AUTHORITY")
     if boundary_rows.exists():
         print(f"  boundary rows file: {boundary_rows.relative_to(root)}")
-        print("  status: authoritative deletion/collapse ledger; validate with scripts/ci/test_pare_boundary_check.sh")
+        print("  status: survivor boundary ownership ledger; validate with scripts/ci/test_lifecycle_boundary_check.sh")
     else:
-        errors.append(f"missing boundary authority file {boundary_rows}")
+        errors.append(f"missing lifecycle boundary rows file {boundary_rows}")
 
-    try:
-        diff = subprocess.run(
-            ["git", "diff", "--name-only", "--diff-filter=ACDMRTUXB", "origin/master...HEAD"],
+    if lifecycle_boundary_check.exists():
+        boundary = subprocess.run(
+            bash_cmd(lifecycle_boundary_check),
             cwd=root,
             text=True,
             capture_output=True,
             check=False,
         )
-        changed = diff.stdout.splitlines() if diff.returncode == 0 else []
-    except OSError:
-        changed = []
-    crate_edits = [
-        path
-        for path in changed
-        if re.match(r"^crates/[^/]+/(src|tests|benches)/", path)
-    ]
-    if edit_scope_check.exists():
-        cmd = bash_cmd(edit_scope_check)
-        if crate_edits:
-            cmd.extend(["--paths", *crate_edits])
-        scope = subprocess.run(
-            cmd,
-            cwd=root,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if scope.stdout:
-            print(scope.stdout.rstrip())
-        if scope.stderr:
-            print(scope.stderr.rstrip())
-        if scope.returncode != 0:
-            errors.append("test edit scope check failed")
+        if boundary.stdout:
+            print(boundary.stdout.rstrip())
+        if boundary.stderr:
+            print(boundary.stderr.rstrip())
+        if boundary.returncode != 0:
+            errors.append("lifecycle boundary check failed")
     else:
-        errors.append(f"missing test edit scope checker {edit_scope_check}")
+        errors.append(f"missing lifecycle boundary checker {lifecycle_boundary_check}")
 
 if errors:
     print("TEST-INVENTORY-CHECK-VERDICT: FAIL")
