@@ -50,17 +50,23 @@ Exactly three reason strings:
 - `divergence`
 - `tooling-gap`
 
-Test-only synthetic probes (`synthetic-match`, `synthetic-divergence`, `synthetic-tooling-gap-*`) support offline proof without network or `cargo-public-api` install.
+Test-only synthetic probes (`synthetic-match`, `synthetic-divergence`, `synthetic-tooling-gap-*`) require `DOCTRINE_SURFACE_TRUTH_SYNTHETIC_ALLOWED=1` and run before the `cargo-public-api` availability check so offline reason-split proof does not depend on toolchain installs.
+
+## 0R remediation
+
+The initial implementation handled synthetic probes after the `cargo-public-api` availability check, so synthetic proof still depended on `cargo-public-api`. 0R moves/guards synthetic test modes so offline reason-split proof works without `cargo-public-api` while keeping production surface-truth behavior unchanged. Synthetic modes require `DOCTRINE_SURFACE_TRUTH_SYNTHETIC_ALLOWED=1` and are test-only.
 
 ## Proof
 
 Recorded on branch `grok/surface-truth-inspect-reason-split-0` (base `0df0be7e18`):
 
+- `bash scripts/ci/doctrine_surface_truth_reason_test.sh`: PASS (11 cases; guarded offline synthetic proof with `PATH` excluding `cargo-public-api`)
 - `bash scripts/ci/doctrine_scan.sh`: PASS `failures=0 inspect=0`
 - `bash scripts/ci/gen_digest.sh --check`: PASS
 - `git diff --check origin/master...HEAD`: PASS
-- `bash scripts/ci/doctrine_surface_truth_reason_test.sh`: PASS (9 cases + `SURFACE-TRUTH-REASON-TEST-VERDICT: PASS`)
 - `DOCTRINE_EXEC_MODE=plan DOCTRINE_EXEC_PROFILE=ci-b-webchat-smoke bash scripts/ci/doctrine_exec.sh`: PASS
+
+Initial implementation proof (pre-0R): Doctrine Scan PASS, reason-test PASS, plan smoke PASS.
 
 Forbidden proof avoided: no broad `cargo test`, no owner-deep profiles, no `workflow_dispatch`, no Bevy/desktop/GPU proof.
 
