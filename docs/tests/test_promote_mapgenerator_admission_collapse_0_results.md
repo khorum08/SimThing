@@ -46,6 +46,10 @@ All six replaced by `crates/simthing-mapgenerator/tests/admission_boundary.rs` l
 
 None of the six old integration representatives kept. Six new promoted representatives in `admission_boundary.rs` are the boundary KEEP rows (no `promotion-target:` residue).
 
+## 0R remediation
+
+The initial promotion pass incorrectly rewrote `COLLAPSE_TO_REPRESENTATIVE` row identities in `test_pare_boundary_rows.tsv` and `test_pare_audit.tsv`, pointing collapsed variants at `admission_boundary.rs` with old deleted test names. 0R restored original COLLAPSE_TO_REPRESENTATIVE row identities and updated only representative targets to the six promoted `admission_boundary.rs` KEEP names. Post-0R `grep admission_boundary.rs scripts/ci/test_pare_boundary_rows.tsv` shows only the six actual promoted representatives.
+
 ## Proof
 
 Recorded on branch `grok/test-promote-mapgenerator-admission-collapse-0` (base `dbb1cf158c`):
