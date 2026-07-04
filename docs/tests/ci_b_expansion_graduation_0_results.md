@@ -2,7 +2,11 @@
 
 ## Status
 
-PROBATION / DA-OWNER REVIEW
+**DA-CLOSED (2026-07-04)** — graduated by explicit DA/Owner directive after the triage-log-informed review below; merged to master via #1134. Track B is fully closed.
+
+### DA graduation verdict
+
+Both Track B lanes verified landed against merged evidence (#1129/#1132/#1133 local; #1083 GH/webchat). Rows 3–5 graduated DONE/DA-APPROVED on confirmed, in-tree, live-green machinery. Row 6 graduated honestly: (b)+(c) DONE/DA-APPROVED; part (a) doctrine-scan sticky comment DA-DESCOPED after falsifying the "all of row 6 shipped" claim (absent from `doctrine-scan.yml` and its history; a non-load-bearing convenience surface, never a proof gate). Docs-only; gates + live CI green. Production may resume at `TP-SHIPSIZE-DECODER-0`.
 
 ## Purpose
 
