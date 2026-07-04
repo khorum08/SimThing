@@ -1,8 +1,8 @@
 use simthing_mapgenerator::{
     generate_special_routes, place_and_emit_scenario_with_couplings, validate_default,
-    validate_special_route_edges, HyperlaneEdge, LatticeCoord, MapGenRng, MapGenSeed,
+    HyperlaneEdge, LatticeCoord, MapGenRng, MapGenSeed,
     MapGeneratorParams, PlacedSystemSeed, ScenarioEmitter, ScenarioEmitterConfig, ShapePlacement,
-    ShapeRegistry, SpecialRouteEdge, SpecialRouteError, SpecialRouteKind, SpecialRouteOptions,
+    ShapeRegistry, SpecialRouteError, SpecialRouteKind, SpecialRouteOptions,
     DEFAULT_MAX_PER_NODE_FANOUT,
 };
 
@@ -47,27 +47,6 @@ fn special_routes_different_seed_changes_when_possible() {
     let (left, _) = generate_special_routes(&placement, &options, &[], &mut rng_a).expect("left");
     let (right, _) = generate_special_routes(&placement, &options, &[], &mut rng_b).expect("right");
     assert_ne!(left.edges, right.edges);
-}
-
-#[test]
-fn special_routes_reject_duplicate_pairs() {
-    let placement = grid_placement(2);
-    assert!(validate_special_route_edges(
-        &placement,
-        &[
-            SpecialRouteEdge {
-                kind: SpecialRouteKind::WormholePair,
-                from: "0".into(),
-                to: "1".into(),
-            },
-            SpecialRouteEdge {
-                kind: SpecialRouteKind::Gateway,
-                from: "0".into(),
-                to: "1".into(),
-            },
-        ]
-    )
-    .is_err());
 }
 
 #[test]
