@@ -430,8 +430,6 @@ def closure_gate_scan(
 
     dsu_rows: list[dict[str, str]] = []
     for line_no, row in enumerate(rows, start=2):
-        if row.get("birth_track", "").strip() != track_id:
-            continue
         consumer = parse_dsu_consumer(row.get("note", ""))
         if consumer is None:
             continue
@@ -439,6 +437,7 @@ def closure_gate_scan(
         if survivals is None:
             errors.append(f"inventory line {line_no}: invalid dsu_survivals")
             continue
+        birth_track = row.get("birth_track", "").strip()
         tier, tier_verdict, action = tier_for_survivals(survivals, tiers)
         dsu_rows.append(
             {
@@ -446,7 +445,7 @@ def closure_gate_scan(
                 "file": row["file"],
                 "test_name": row["test_name"],
                 "kind": row["kind"],
-                "birth_track": track_id,
+                "birth_track": birth_track,
                 "dsu_survivals": str(survivals),
                 "tier": tier,
                 "required_action": action,
@@ -566,11 +565,12 @@ def prove_cases() -> int:
         note: str = "catches: synthetic proof fixture row for lifecycle expiry",
         promotion_target: str = "permanent-residue:behavior-regression",
         dsu_survivals: str = "0",
+        test_name: str | None = None,
     ) -> dict[str, str]:
         return {
             "crate": "proof-crate",
             "file": "crates/proof-crate/tests/proof.rs",
-            "test_name": f"proof_{birth_track}_{klass}_{dsu_survivals}",
+            "test_name": test_name or f"proof_{birth_track}_{klass}_{dsu_survivals}",
             "kind": kind,
             "class": klass,
             "superseding_boundary": "B-PROOF",
@@ -713,6 +713,59 @@ def prove_cases() -> int:
         expect_audit=1,
         expect_max_dsu_survivals=5,
     )
+
+    cross_track_out = run_case(
+        "closure-gate-cross-track",
+        [
+            row(
+                birth_track="pre-lifecycle",
+                note="downstream-utility: consumer A",
+                dsu_survivals="1",
+                test_name="proof_cross_pre_lifecycle",
+            ),
+            row(
+                birth_track="open-track",
+                note="downstream-utility: consumer B",
+                dsu_survivals="5",
+                test_name="proof_cross_open_track",
+            ),
+        ],
+        base_track_rows,
+        mode="closure-gate",
+        track_filter="pre-lifecycle",
+        expect_verdict="INSPECT",
+        expect_expired=0,
+        expect_audit=2,
+        expect_max_dsu_survivals=5,
+    )
+    if "proof_cross_open_track" not in cross_track_out:
+        failures.append("closure-gate-cross-track: missing open-track DSU row")
+    if "proof_cross_pre_lifecycle" not in cross_track_out:
+        failures.append("closure-gate-cross-track: missing pre-lifecycle DSU row")
+    open_pos = cross_track_out.find("proof_cross_open_track")
+    pre_pos = cross_track_out.find("proof_cross_pre_lifecycle")
+    if open_pos < 0 or pre_pos < 0 or open_pos > pre_pos:
+        failures.append("closure-gate-cross-track: expected dsu_survivals=5 row before dsu_survivals=1 row")
+
+    cross_track_meta = (
+        "LIFECYCLE-EXPIRY CLOSURE-GATE CHECK\n"
+        "  track: pre-lifecycle\n"
+        "  downstream-utility renewal audit: 1\n"
+        "LIFECYCLE-EXPIRY-VERDICT: INSPECT expired=0 audit=1 max_dsu_survivals=5 mode=closure-gate\n"
+    )
+    meta_cross_errors = assert_prove_expectations(
+        "meta-cross-track-audit-count",
+        cross_track_meta,
+        rc=0,
+        expect_verdict="INSPECT",
+        expect_expired=0,
+        expect_mode="closure-gate",
+        expect_exit=0,
+        expect_audit=2,
+        expect_max_dsu_survivals=5,
+    )
+    if not meta_cross_errors:
+        failures.append("meta-cross-track-audit-count: prove harness failed to reject audit=1 when audit=2 expected")
 
     simulated_survivals = 0
     for cycle in range(1, 6):

@@ -18,6 +18,12 @@ Track-A / ledger-layer text analysis only. No §3B executable proof, no workflow
 - Defect 2: downstream-utility immunity requires structured consumer justification and emits a DA audit surface.
 - Defect 3: downstream-utility is now a rising-cost lease via dsu_survivals and configurable audit tiers; closure-gate mode surfaces renewals and delete-or-promote pressure.
 
+### 0R3 repair
+
+- Closure-gate renewal audit now surfaces all structured downstream-utility rows across the inventory, not only rows born under the closing track.
+- Added cross-track prove case: closure-gate pre-lifecycle audits DSU rows from pre-lifecycle and open-track, sorted by dsu_survivals descending.
+- Design DoD row updated to reflect dsu_survivals, audit=N, closure-gate mode, rising-cost lease, and delete-or-promote pressure.
+
 ## Identity
 
 | Field | Value |
@@ -176,7 +182,7 @@ Handled via live-anchor durability rule (`invariants.md` / `stead_spatial_contra
 
 ## Graduation routing
 
-- **PROBATION / DA-OWNER REVIEW — R2 complete**
+- **PROBATION / DA-OWNER REVIEW — R3 complete**
 - gate-state + data-deliverable + lifecycle authority
 - DA deep review required
 - not self-mergeable
