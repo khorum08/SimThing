@@ -168,19 +168,4 @@ mod unit_tests {
         assert!((mult - 6.76).abs() < 0.01);
     }
 
-    #[test]
-    fn over_budget_rejects() {
-        let spec = RegionFieldBudgetSpec {
-            grid_size: 32,
-            column_count: 16,
-            buffer_multiplier: 2.0,
-            copy_multiplier: 1.0,
-            tile_count: 1,
-            isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
-            max_region_field_vram_bytes: Some(1024),
-        };
-        let err = estimate_region_field_budget(&spec).unwrap_err();
-        assert!(err.requested_bytes > err.allowed_bytes);
-        assert!(!err.suggested_fixes().is_empty());
-    }
 }

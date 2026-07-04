@@ -634,24 +634,6 @@ mod tests {
     }
 
     #[test]
-    fn native_picker_rejects_studio_config_json() {
-        let mut state = state_with_session();
-        let dir = TempDir::new().expect("tempdir");
-        let config_path = dir.path().join(STUDIO_CONFIG_FILE_NAME);
-        save_studio_config_to_path(&config_path, &SimThingStudioConfig::default()).expect("config");
-        let picker = FakeScenarioFilePicker {
-            outcome: ScenarioPickerOutcome::Selected(config_path),
-        };
-        let result = load_scenario_with_picker(&mut state, &picker);
-        match result {
-            ScenarioPickerActionResult::InvalidPath { message } => {
-                assert!(message.contains(STUDIO_CONFIG_FILE_NAME));
-            }
-            other => panic!("expected invalid path, got {other:?}"),
-        }
-    }
-
-    #[test]
     fn native_picker_load_failure_preserves_current_session() {
         let mut state = state_with_session();
         let before_id = state

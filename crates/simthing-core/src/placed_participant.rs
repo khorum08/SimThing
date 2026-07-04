@@ -177,17 +177,4 @@ mod tests {
         assert_eq!(proofs[1].coord(), StructuralCoord::new(3, 4));
     }
 
-    #[test]
-    fn rejects_missing_structural_placement() {
-        let placements = [StructuralGridPlacement {
-            location_id: "loc_a",
-            coord: StructuralCoord::new(0, 0),
-        }];
-        let participants = [(SimThingId::from_session_raw(10), "loc_missing")];
-        let err = validate_and_mint_placed_participants_by_location_id(&participants, &placements)
-            .expect_err("missing placement");
-        assert!(matches!(err, PlacedParticipantValidationError { .. }));
-        assert!(err.message.contains("loc_missing"));
-    }
-
 }

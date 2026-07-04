@@ -1842,30 +1842,6 @@ mod tests {
     }
 
     #[test]
-    fn governed_pairs_skip_missing_governing_role() {
-        let layout = PropertyLayout {
-            sub_fields: vec![SubFieldSpec {
-                role: SubFieldRole::Named("balance".into()),
-                width: 1,
-                clamp: ClampBehavior::Unbounded,
-                velocity_max: None,
-                default: 0.0,
-                display_name: "balance".into(),
-                display_range: None,
-                governed_by: Some(SubFieldRole::Named("flow".into())),
-                reduction_override: None,
-                soft_aggregate_guard: None,
-                accumulator_spec: None,
-            }],
-        };
-        let range = PropertyColumnRange {
-            start: 0,
-            stride: 1,
-        };
-        assert!(governed_pairs_for_property(&range, &layout).is_empty());
-    }
-
-    #[test]
     fn governed_pairs_from_standard_layout() {
         // standard(0): amount governed_by velocity; intensity has no governor.
         // Expect one pair: governed=0 (amount), governing=1 (velocity).

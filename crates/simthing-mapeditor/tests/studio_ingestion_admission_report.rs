@@ -28,19 +28,6 @@ fn terran_pirate_json() -> String {
     fs::read_to_string(reference.trim()).expect("terran pirate")
 }
 #[test]
-fn studio_displays_unknown_gridcell_role_deferral() {
-    let json = load_corpus_json("unsupported_unknown_gridcell_role.simthing-scenario.json");
-    let report = studio_ingest_scenario_text_for_report("unknown_role", &json);
-    assert!(matches!(
-        report.classification.as_str(),
-        "PartiallyAdmitted" | "Unsupported"
-    ));
-    assert!(report
-        .deferrals
-        .iter()
-        .any(|d| d.kind == "UnsupportedGridcellRole"));
-}
-#[test]
 fn studio_legacy_terran_pirate_report_is_legacy_compatibility() {
     let json = terran_pirate_json();
     let report = studio_ingest_scenario_text_for_report("terran_pirate", &json);

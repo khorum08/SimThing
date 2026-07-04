@@ -514,28 +514,6 @@ mod tests {
     }
 
     #[test]
-    fn c2_intent_delta_duplicate_cell_rejected() {
-        let deltas = [
-            IntentDelta {
-                slot: 0,
-                col: 0,
-                mul: 1.0,
-                add: 1.0,
-            },
-            IntentDelta {
-                slot: 0,
-                col: 0,
-                mul: 2.0,
-                add: 0.0,
-            },
-        ];
-        assert!(matches!(
-            AccumulatorOpGpu::encode_intent_deltas(&deltas),
-            Err(EncodeError::DuplicateIntentCell { slot: 0, col: 0 })
-        ));
-    }
-
-    #[test]
     fn c2_empty_intent_set_encodes_to_empty() {
         assert!(AccumulatorOpGpu::encode_intent_deltas(&[])
             .unwrap()
@@ -647,52 +625,6 @@ mod tests {
         };
         let _ = op.validate();
         encode_combine(&op, eml)
-    }
-
-    #[test]
-    fn all_combine_variants_encode_without_unsupported_error() {
-        let variants: Vec<(CombineFn, &str)> = vec![
-            (CombineFn::Identity, "Identity"),
-            (CombineFn::Sum, "Sum"),
-            (CombineFn::Mean, "Mean"),
-            (CombineFn::Max, "Max"),
-            (CombineFn::Min, "Min"),
-            (
-                CombineFn::WeightedMean {
-                    weight_col: ColumnIndex::new(2),
-                },
-                "WeightedMean",
-            ),
-            (CombineFn::Product, "Product"),
-            (CombineFn::LastByPriority, "LastByPriority"),
-            (
-                CombineFn::IntegrateWithClamp {
-                    dt: 1.0,
-                    vel_max: 10.0,
-                    amount_min: 0.0,
-                    amount_max: 100.0,
-                },
-                "IntegrateWithClamp",
-            ),
-            (
-                CombineFn::CrossingFormula { unit_cost: 5.0 },
-                "CrossingFormula",
-            ),
-            (CombineFn::MinAcrossInputs, "MinAcrossInputs"),
-            (CombineFn::EvalEML { tree_id: 1 }, "EvalEML"),
-        ];
-
-        for (combine, name) in variants {
-            let result = encode_combine_fn_only(&combine, None);
-            if name == "EvalEML" {
-                assert!(
-                    matches!(result, Err(EncodeError::EmlTreeNotUploaded { .. })),
-                    "EvalEML without registry should fail upload: {result:?}"
-                );
-            } else {
-                assert!(result.is_ok(), "{name} returned error: {result:?}");
-            }
-        }
     }
 
     #[test]

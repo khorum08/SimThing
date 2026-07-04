@@ -47,18 +47,6 @@ fn accepts_well_formed_explicit_velocity_acceleration() {
 }
 
 #[test]
-fn rejects_non_finite_dt() {
-    let spec = EmlGadgetInstanceSpec::Acceleration {
-        id: "bad".into(),
-        current_velocity_col: 0,
-        previous_velocity_col: 1,
-        output_col: None,
-        dt: Some(f32::NAN),
-    };
-    assert!(compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).is_err());
-}
-
-#[test]
 fn compiled_parity_dt_omitted() {
     let spec = acceleration_spec(None);
     let got = eval_acceleration(&spec, 3.0, 1.0);

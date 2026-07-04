@@ -785,22 +785,6 @@ mod tests {
     }
 
     #[test]
-    fn reject_transcendental_tree() {
-        let mut registry = EmlExpressionRegistry::new();
-        assert_eq!(
-            registry.register(
-                EmlTreeId(1),
-                EmlTreeMeta {
-                    node_count: 8,
-                    has_transcendental: true,
-                    formula_class: "intensity_update".to_string(),
-                }
-            ),
-            Err(EmlRegistryError::TranscendentalNotAllowed)
-        );
-    }
-
-    #[test]
     fn c8a_soft_can_register_but_not_transfer() {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(1);

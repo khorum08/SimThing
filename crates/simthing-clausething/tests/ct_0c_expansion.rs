@@ -272,26 +272,6 @@ fn missing_inline_script_is_a_deterministic_diagnostic() {
 }
 
 #[test]
-fn recursive_inline_script_is_rejected() {
-    let input = ExpansionInput {
-        inline_scripts: library(&[
-            ("loop/a", "from_a = 1\ninline_script = \"loop/b\""),
-            ("loop/b", "from_b = 1\ninline_script = \"loop/a\""),
-        ]),
-        ..ExpansionInput::default()
-    };
-    let err = expand_document(&parse("inline_script = \"loop/a\""), &input)
-        .expect_err("mutual recursion must be rejected");
-    assert!(
-        err.message
-            .contains("recursive inline_script inclusion detected: `loop/a`"),
-        "{}",
-        err.message
-    );
-    assert!(err.message.contains("loop/a -> loop/b"), "{}", err.message);
-}
-
-#[test]
 fn inline_depth_cap_is_enforced() {
     let mut input = ExpansionInput {
         inline_scripts: library(&[

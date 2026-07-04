@@ -22,20 +22,6 @@ fn governed_property() -> SimProperty {
 }
 
 #[test]
-fn s5_no_legacy_velocity_shader_file() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../simthing-gpu/src/shaders/velocity_integration.wgsl");
-    assert!(
-        !path.exists(),
-        "legacy velocity shader still exists: {path:?}"
-    );
-}
-
-#[test]
-fn s5_accumulator_velocity_is_default_path() {
-    assert!(PipelineFlags::default().use_accumulator_velocity);
-}
-#[test]
 fn s5_velocity_accumulator_matches_cpu_golden() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");

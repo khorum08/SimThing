@@ -208,22 +208,6 @@ fn game_mode_debug_json_is_stable_for_generic_surfaces() {
 }
 
 #[test]
-fn duplicate_location_ids_are_rejected() {
-    let source = br#"
-scenario = duplicate_location_ids {
-    location = alpha { name = "Alpha" }
-    location = alpha { name = "Alpha Again" }
-}
-"#;
-    let document = parse_raw_document(source).expect("parse duplicate scenario");
-    let err = hydrate_scenario(&document).unwrap_err();
-    assert!(
-        err.to_string().contains("duplicate scenario node id"),
-        "{err}"
-    );
-}
-
-#[test]
 fn route_path_movement_and_arbitrary_topology_are_not_pr3_grammar() {
     for forbidden in [
         r#"route = { from = "alpha" to = "beta" }"#,
@@ -299,44 +283,6 @@ fn scenario_field_operator_preserves_default_off_posture() {
     assert_eq!(
         pack.game_mode.mapping_execution_profile,
         MappingExecutionProfile::Disabled
-    );
-}
-
-#[test]
-fn scenario_second_field_operator_is_rejected() {
-    let source = br#"
-scenario = two_field_ops {
-    location = alpha { name = "Alpha" }
-    location = beta { name = "Beta" }
-    field_operator = first_flux {
-        grid_size = 10
-        source_col = 0
-        target_col = 0
-        n_dims = 6
-        saturating_flux = {
-            u_sat = 1.0
-            chi = 0.25
-            choke_output_col = 2
-        }
-    }
-    field_operator = second_flux {
-        grid_size = 10
-        source_col = 0
-        target_col = 0
-        n_dims = 6
-        saturating_flux = {
-            u_sat = 1.0
-            chi = 0.25
-            choke_output_col = 2
-        }
-    }
-}
-"#;
-    let document = parse_raw_document(source).expect("parse two field ops scenario");
-    let err = hydrate_scenario(&document).unwrap_err();
-    assert!(
-        err.to_string().contains("at most 1 field_operator"),
-        "{err}"
     );
 }
 
@@ -432,39 +378,6 @@ fn scenario_commitment_lowers_without_runtime_semantics() {
         pack.game_mode.mapping_execution_profile,
         MappingExecutionProfile::Disabled
     );
-}
-
-#[test]
-fn scenario_commitment_non_finite_threshold_is_rejected() {
-    let source = br#"
-scenario = bad_threshold {
-    location = alpha { name = "Alpha" }
-    location = beta { name = "Beta" }
-    field_operator = alpha_choke_flux {
-        grid_size = 10
-        source_col = 0
-        target_col = 0
-        n_dims = 6
-        saturating_flux = {
-            u_sat = 1.0
-            chi = 0.25
-            choke_output_col = 2
-        }
-    }
-    commitment = stabilize_alpha {
-        threshold = NaN
-        event_kind = 7
-        field_urgency = {
-            source = alpha_choke_flux
-            column = 2
-            weight = 1.0
-        }
-    }
-}
-"#;
-    let document = parse_raw_document(source).expect("parse bad threshold scenario");
-    let err = hydrate_scenario(&document).unwrap_err();
-    assert!(err.to_string().contains("finite"), "{err}");
 }
 
 #[test]

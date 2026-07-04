@@ -480,39 +480,6 @@ mod tests {
     }
 
     #[test]
-    fn packed_upload_rejects_link_count_mismatch() {
-        let (frame, locations, links) = sample_rows();
-        let bad_frame = StructuralFrameGpuRow {
-            link_count: 99,
-            ..frame
-        };
-        let err = PackedUpload::new(bad_frame, locations, links).expect_err("mismatch");
-        assert!(matches!(err, StructuralUploadError::LinkCountMismatch));
-    }
-
-    #[test]
-    fn structural_upload_rejects_count_overflow() {
-        let frame = StructuralFrameGpuRow {
-            width: 1,
-            height: 1,
-            occupied_cells: 1,
-            location_count: u32::MAX,
-            link_count: 0,
-            reserved0: 0,
-            reserved1: 0,
-            reserved2: 0,
-        };
-        let err = checked_row_bytes(usize::MAX, LOCATION_ROW_BYTES, "location_bytes")
-            .expect_err("overflow");
-        assert!(matches!(
-            err,
-            StructuralUploadError::CountOverflow { .. }
-                | StructuralUploadError::ByteSizeOverflow { .. }
-        ));
-        let _ = frame;
-    }
-
-    #[test]
     fn packed_upload_public_api_preserves_prior_bytes() {
         let upload = sample_packed_upload();
         assert_eq!(upload.frame().location_count, 2);

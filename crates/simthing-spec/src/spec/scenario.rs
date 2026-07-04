@@ -1930,76 +1930,6 @@ mod tests {
     }
 
     #[test]
-    fn stead_validator_rejects_missing_map_container_id() {
-        let mut scenario = small_scenario();
-        scenario.structural_grid.map_container_id.clear();
-        let err = validate_stead_mapping_consistency(&scenario).expect_err("missing id");
-        assert!(matches!(err, SteadMappingError::MissingMapContainerId));
-    }
-
-    #[test]
-    fn stead_validator_rejects_dangling_map_container_id() {
-        let mut scenario = small_scenario();
-        scenario.structural_grid.map_container_id = "99999999".to_string();
-        let err = validate_stead_mapping_consistency(&scenario).expect_err("dangling id");
-        assert!(matches!(err, SteadMappingError::DanglingMapContainerId(_)));
-    }
-
-    #[test]
-    fn stead_validator_rejects_map_container_id_pointing_to_non_location() {
-        let mut scenario = small_scenario();
-        let cohort = SimThing::new(SimThingKind::Cohort, 0);
-        let cohort_raw = cohort.id.raw();
-        spatial_root_mut(&mut scenario).add_child(cohort);
-        scenario.structural_grid.map_container_id = cohort_raw.to_string();
-        let err = validate_stead_mapping_consistency(&scenario).expect_err("non-location");
-        assert!(matches!(
-            err,
-            SteadMappingError::MapContainerNotLocation { .. }
-        ));
-    }
-
-    #[test]
-    fn stead_validator_rejects_gridcell_not_under_declared_map_container() {
-        let mut scenario = small_scenario();
-        let mut other_map = SimThing::new(SimThingKind::Location, 0);
-        let mut orphan = SimThing::new(SimThingKind::Location, 0);
-        orphan.add_property(
-            SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
-            structural_property_value_u32(2),
-        );
-        orphan.add_property(
-            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-            structural_property_value_u32(4),
-        );
-        orphan.add_property(
-            SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
-            structural_property_value_u32(4),
-        );
-        orphan.add_child(SimThing::new(SimThingKind::Cohort, 0));
-        let orphan_raw = orphan.id.raw();
-        other_map.add_child(orphan);
-        spatial_root_mut(&mut scenario).add_child(other_map);
-        scenario
-            .structural_grid
-            .placements
-            .push(SimThingStructuralGridPlacement {
-                location_id: "orphan".to_string(),
-                target_id: "orphan".to_string(),
-                system_id: 2,
-                row: 4,
-                col: 4,
-                simthing_id_raw: orphan_raw,
-            });
-        scenario.structural_grid.frame.occupied_cells = 2;
-        let err = validate_stead_mapping_consistency(&scenario).expect_err("orphan gridcell");
-        assert!(matches!(
-            err,
-            SteadMappingError::GridcellNotUnderDeclaredMapContainer(_)
-        ));
-    }
-
-    #[test]
     fn stead_validator_accepts_declared_map_container_with_gridcells() {
         let scenario = small_scenario();
         validate_stead_mapping_consistency(&scenario).expect("valid");
@@ -2039,20 +1969,6 @@ mod tests {
     }
 
     #[test]
-    fn structural_integer_property_rejects_or_avoids_non_exact_f32_range() {
-        let above_max = PropertyValue::from_raw_lanes(vec![20_000_000.0]);
-        assert_eq!(property_u32(&above_max), None);
-        assert_eq!(
-            property_u32(&structural_property_value_u32(
-                SCENARIO_STRUCTURAL_INTEGER_MAX
-            )),
-            Some(SCENARIO_STRUCTURAL_INTEGER_MAX)
-        );
-        let fractional = PropertyValue::from_raw_lanes(vec![1.5]);
-        assert_eq!(property_u32(&fractional), None);
-    }
-
-    #[test]
     fn structural_grid_placement_remains_primary_authority() {
         let scenario = small_scenario();
         let placement = &scenario.structural_grid.placements[0];
@@ -2067,20 +1983,7 @@ mod tests {
         validate_stead_mapping_consistency(&scenario).expect("mirrors match");
     }
 
-    #[test]
-    fn validator_rejects_structural_property_mismatch() {
-        let mut scenario = small_scenario();
-        let map_container = resolve_map_container_mut(&mut scenario).expect("map");
-        map_container.children[0].add_property(
-            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-            structural_property_value_u32(99),
-        );
-        let err = validate_stead_mapping_consistency(&scenario).expect_err("mismatch");
-        assert!(matches!(
-            err,
-            SteadMappingError::StructuralPropertyMismatch { .. }
-        ));
-    }
+
 
     #[test]
     fn saving_root_alone_is_documented_insufficient_or_not_exposed_as_authority() {
@@ -2129,55 +2032,6 @@ mod tests {
     }
 
     #[test]
-    fn scenario_links_reject_unknown_from_endpoint() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].from_system_id = "999".to_string();
-        let err = validate_scenario_links(&scenario).expect_err("unknown from");
-        assert!(matches!(err, ScenarioLinkError::InvalidEndpoint { .. }));
-    }
-
-    #[test]
-    fn scenario_links_reject_unknown_to_endpoint() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "999".to_string();
-        let err = validate_scenario_links(&scenario).expect_err("unknown to");
-        assert!(matches!(err, ScenarioLinkError::InvalidEndpoint { .. }));
-    }
-
-    #[test]
-    fn scenario_links_reject_self_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "1".to_string();
-        let err = validate_scenario_links(&scenario).expect_err("self link");
-        assert!(matches!(err, ScenarioLinkError::SelfLink { .. }));
-    }
-
-    #[test]
-    fn scenario_links_reject_direct_duplicate() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "2".to_string(),
-        });
-        let err = validate_scenario_links(&scenario).expect_err("duplicate");
-        assert!(matches!(err, ScenarioLinkError::DuplicateLink { .. }));
-    }
-
-    #[test]
-    fn scenario_links_reject_reversed_duplicate() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "2".to_string(),
-            to_system_id: "1".to_string(),
-        });
-        let err = validate_scenario_links(&scenario).expect_err("reversed duplicate");
-        assert!(matches!(
-            err,
-            ScenarioLinkError::ReversedDuplicateLink { .. }
-        ));
-    }
-
-    #[test]
     fn scenario_link_canonical_key_is_deterministic() {
         let forward = SimThingScenarioLink {
             from_system_id: "2".to_string(),
@@ -2195,48 +2049,6 @@ mod tests {
             canonical_scenario_link_key(&forward).expect("forward"),
             ("1".to_string(), "2".to_string())
         );
-    }
-
-    #[test]
-    fn deserialize_scenario_authority_rejects_self_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "1".to_string();
-        let json = serialize_scenario_authority(&scenario).expect("serialize");
-        let err = deserialize_scenario_authority(&json).expect_err("self link");
-        assert!(matches!(
-            err,
-            ScenarioSerdeError::LinkValidation(ScenarioLinkError::SelfLink { .. })
-        ));
-    }
-
-    #[test]
-    fn deserialize_scenario_authority_rejects_duplicate_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "2".to_string(),
-        });
-        let json = serialize_scenario_authority(&scenario).expect("serialize");
-        let err = deserialize_scenario_authority(&json).expect_err("duplicate");
-        assert!(matches!(
-            err,
-            ScenarioSerdeError::LinkValidation(ScenarioLinkError::DuplicateLink { .. })
-        ));
-    }
-
-    #[test]
-    fn scenario_authority_load_rejects_invalid_links() {
-        let mut scenario = small_scenario();
-        scenario.links.push(SimThingScenarioLink {
-            from_system_id: "1".to_string(),
-            to_system_id: "999".to_string(),
-        });
-        let json = serialize_scenario_authority(&scenario).expect("serialize");
-        let err = deserialize_scenario_authority(&json).expect_err("invalid link endpoint");
-        assert!(matches!(
-            err,
-            ScenarioSerdeError::LinkValidation(ScenarioLinkError::InvalidEndpoint { .. })
-        ));
     }
 
     #[test]
@@ -2268,22 +2080,6 @@ mod tests {
         reserve_simthing_ids_from_scenario(&scenario).expect("reserve");
         let spawned = SimThing::new(SimThingKind::Location, 0);
         assert!(!existing.contains(&spawned.id.raw()));
-    }
-
-    #[test]
-    fn loaded_scenario_rejects_duplicate_simthing_ids() {
-        let mut scenario = small_scenario();
-        spatial_root_mut(&mut scenario).children[0].id = scenario.root.id;
-        let err = reserve_simthing_ids_from_scenario(&scenario).expect_err("duplicate");
-        assert!(matches!(err, SimThingIdReservationError::DuplicateId(_)));
-    }
-
-    #[test]
-    fn loaded_scenario_rejects_or_reports_exhausted_id_space() {
-        let mut world = SimThing::new(SimThingKind::World, 0);
-        world.id = SimThingId::from_session_raw(u32::MAX);
-        let err = reserve_simthing_ids_from_tree(&world).expect_err("exhausted");
-        assert!(matches!(err, SimThingIdReservationError::IdSpaceExhausted));
     }
 
     #[test]

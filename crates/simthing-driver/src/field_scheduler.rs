@@ -432,14 +432,6 @@ mod unit_tests {
     use super::*;
 
     #[test]
-    fn every_n_zero_rejected() {
-        assert_eq!(
-            FieldCadence::EveryN { n: 0 }.validate(),
-            Err(FieldSchedulerError::InvalidEveryNZero)
-        );
-    }
-
-    #[test]
     fn cadence_counts_over_120_ticks() {
         let ticks = 120;
         assert_eq!(

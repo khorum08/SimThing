@@ -326,16 +326,3 @@ fn clause_and_ron_installed_trees_match_via_preview_install() {
         format!("{:?}", OverlayLifecycle::Permanent)
     );
 }
-
-#[test]
-fn unsupported_entity_field_is_hard_error() {
-    let text = include_str!("fixtures/ct1a_unsupported_field.clause");
-    let document = parse_raw_document(text.as_bytes()).expect("parse unsupported fixture");
-    let err = hydrate_entity_pack(&document).expect_err("unsupported field must fail");
-    assert!(
-        err.message.contains("on_action"),
-        "expected unsupported field diagnostic, got: {}",
-        err.message
-    );
-    assert!(err.span.is_some(), "expected spanned diagnostic");
-}

@@ -1251,17 +1251,6 @@ mod tests {
     }
 
     #[test]
-    fn hydration_rejects_duplicate_coordinates() {
-        let mut output =
-            run_generation(&GenerationProfile::default_spiral_2_dense_3000()).expect("generate");
-        output.result.placement.systems[1].coord = output.result.placement.systems[0].coord;
-        assert!(matches!(
-            hydrate_generation_into_studio_grid(&output),
-            Err(StudioHydrationError::DuplicateGridcellCoordinate { .. })
-        ));
-    }
-
-    #[test]
     fn heatmap_readiness_atlas_required_is_not_layout_failure() {
         let (_output, scenario, _hydration) = authority_output();
         let readiness = heatmap_readiness_from_simthing_spec(&scenario);

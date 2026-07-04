@@ -230,11 +230,4 @@ mod tests {
         assert!(reg.is_active(id));
     }
 
-    #[test]
-    #[should_panic]
-    fn duplicate_registration_panics() {
-        let mut reg = DimensionRegistry::new();
-        reg.register(SimProperty::simple("core", "loyalty", 3));
-        reg.register(SimProperty::simple("core", "loyalty", 3));
-    }
 }

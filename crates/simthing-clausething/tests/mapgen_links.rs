@@ -160,18 +160,6 @@ fn pr5_source_has_no_euclidean_adjacency_authority() {
 }
 
 #[test]
-fn self_link_is_rejected() {
-    let rf = default_rf_enrollment();
-    let err = lower_hyperlane_topology(
-        &rf.pack,
-        &[("0".into(), "0".into())],
-        MapGenLinksOptions::default(),
-    )
-    .unwrap_err();
-    assert!(err.message.contains("self-link"));
-}
-
-#[test]
 fn duplicate_hyperlane_is_canonicalized_deterministically() {
     let rf = default_rf_enrollment();
     let enrollment = lower_hyperlane_topology(

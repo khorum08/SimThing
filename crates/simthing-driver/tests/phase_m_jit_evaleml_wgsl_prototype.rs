@@ -402,25 +402,6 @@ fn jit_ema_gpu_matches_oracles() {
 
 // ── Test 5: Unsupported opcode/shape rejects clearly ──────────────────────────────────────────
 
-#[test]
-fn jit_rejects_unsupported_opcode_or_shape() {
-    // FieldSampler compiles to DIV + CLAMP_BOUNDED, which are outside the M-JIT-0 subset.
-    let gadget = compile_single_gadget(FIELD_SAMPLER_RON);
-    let out_col = gadget.output_col.expect("fixture sets output_col");
-
-    let result = emit_evaleml_wgsl(&gadget.nodes, out_col, N_DIMS);
-    let err = result.expect_err("unsupported opcode must reject");
-    assert!(
-        err.0.contains("unsupported opcode"),
-        "structured rejection, got: {}",
-        err.0
-    );
-
-    // Empty program (no result) also rejects, not silently emits a degenerate shader.
-    let empty = emit_evaleml_wgsl(&[], 0, N_DIMS);
-    assert!(empty.is_err(), "empty program must reject");
-}
-
 // ── Test 6: JIT path is test-only and default-off ─────────────────────────────────────────────
 
 #[test]

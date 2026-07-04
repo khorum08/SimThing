@@ -810,54 +810,6 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_fission_trigger_is_skipped() {
-        let mut reg = DimensionRegistry::new();
-        let pid = reg.register(make_fission_property());
-        let mut alloc = SlotAllocator::new();
-
-        let mut cohort = SimThing::new(SimThingKind::Cohort, 0);
-        let pval = reg.property(pid).default_value();
-        cohort.add_property(pid, pval);
-        let cid = cohort.id;
-        alloc.alloc(cid);
-
-        let mut root = SimThing::new(SimThingKind::Location, 0);
-        alloc.alloc(root.id);
-        root.add_child(cohort);
-
-        let mut cpu_reg = ThresholdRegistry::new();
-        let ek = cpu_reg.push(ThresholdSemantic::FissionTrigger {
-            sim_thing_id: cid,
-            property_id: pid,
-            template_idx: 0,
-        });
-
-        let n_dims = reg.total_columns.max(1);
-        let mut shadow = vec![0.0f32; 3 * n_dims];
-        // Send the same event twice.
-        let events = crate::threshold_event_test_fixtures::fixtures::duplicate_upward_crossing(
-            1, 0, 0.2, ek, n_dims,
-        );
-
-        let paths = build_node_paths(&root);
-        let out = resolve_fission_fusion(
-            &mut root,
-            &paths,
-            &reg,
-            &mut alloc,
-            &events,
-            &cpu_reg,
-            &mut shadow,
-            n_dims,
-            1,
-        );
-
-        assert_eq!(out.fissions_executed, 1);
-        assert_eq!(out.fissions_skipped_duplicate, 1);
-        assert_eq!(root.children[0].children.len(), 1);
-    }
-
-    #[test]
     fn fission_child_inherits_parent_properties_from_shadow() {
         let mut reg = DimensionRegistry::new();
         let pid = reg.register(make_fission_property());

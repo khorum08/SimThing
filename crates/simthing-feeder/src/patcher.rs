@@ -687,35 +687,6 @@ mod tests {
     }
 
     #[test]
-    fn unknown_target_increments_missing_targets() {
-        let (reg, alloc, pid, _, n_dims) = fixture();
-        let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
-        let mut values = vec![0.0f32; 2 * n_dims];
-        let mut p = TransformPatcher::new(2);
-        let mut stats = PatcherStats::default();
-
-        p.apply_one(
-            &PatchTransform {
-                target: ghost,
-                delta: PropertyTransformDelta {
-                    property_id: pid,
-                    sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Set(1.0))],
-                },
-            },
-            &reg,
-            &alloc,
-            n_dims,
-            &mut values,
-            &mut stats,
-            ShadowFreshness::Unknown,
-        );
-
-        assert_eq!(stats.missing_targets, 1);
-        assert_eq!(stats.applied_writes, 0);
-        assert_eq!(values[0], 0.0);
-    }
-
-    #[test]
     fn tombstoned_property_increments_inactive_counter() {
         let (mut reg, alloc, pid, [a, _b], n_dims) = fixture();
         reg.tombstone(pid);

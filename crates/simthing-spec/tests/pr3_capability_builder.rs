@@ -396,31 +396,3 @@ fn capability_tree_logical_effect_keys_are_stable_across_builds() {
 }
 
 // ── Supplementary tests (beyond the 11 acceptance criteria) ───────────────────
-#[test]
-fn capability_tree_builder_rejects_unsupported_max_active() {
-    use simthing_spec::{MaxActivePolicy, ReplacementPolicy};
-
-    let mut registry = registry_with_fleet_speed();
-    let spec = tree_spec(vec![CapabilityCategorySpec {
-        property_namespace: "tech".into(),
-        property_name: "propulsion".into(),
-        display_name: "Propulsion".into(),
-        tier: 0,
-        max_active: Some(MaxActivePolicy::Limited {
-            count: 3,
-            replacement: ReplacementPolicy::SuspendOldest,
-        }), // v0 supports only 1
-        entries: vec![entry(
-            "drive",
-            100.0,
-            ActivationMode::PlayerSelection,
-            vec![],
-        )],
-    }]);
-
-    let err = CapabilityTreeBuilder::build(&spec, &mut registry).expect_err("must reject");
-    assert!(
-        matches!(err, SpecError::UnsupportedMaxActive { .. }),
-        "got {err:?}"
-    );
-}

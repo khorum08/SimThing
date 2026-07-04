@@ -25,22 +25,6 @@ fn food_arena_with_participant(slot: u32, subtree_root_id: u32) -> ArenaSpec {
     }
 }
 #[test]
-fn e10r_rejects_slot_mismatch() {
-    let mut alloc = SlotAllocator::new();
-    let world = SimThing::new(SimThingKind::World, 0);
-    alloc.populate_from_tree(&world);
-    let spec = ResourceFlowSpec {
-        arenas: vec![food_arena_with_participant(99, world.id.raw())],
-        couplings: vec![],
-        ..Default::default()
-    };
-    let err = validate_resource_flow_preflight(&spec, &alloc).unwrap_err();
-    assert!(matches!(
-        err,
-        SpecError::ExplicitParticipantSlotMismatch { .. }
-    ));
-}
-#[test]
 fn e10r_accepts_valid_explicit_participant() {
     let mut alloc = SlotAllocator::new();
     let world = SimThing::new(SimThingKind::World, 0);

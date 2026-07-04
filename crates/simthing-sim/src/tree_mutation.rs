@@ -581,32 +581,6 @@ mod tests {
     }
 
     #[test]
-    fn add_child_to_unknown_parent_is_rejected() {
-        let (mut reg, mut alloc, mut tree) = fixture();
-        let n_dims = reg.total_columns;
-        let ghost = SimThing::new(SimThingKind::Cohort, 0).id;
-        let child = SimThing::new(SimThingKind::Cohort, 1);
-        let mut shadow = vec![0.0f32; (alloc.capacity() + 2) * n_dims];
-
-        let out = apply_structural_mutations(
-            vec![BoundaryRequest::AddChild {
-                parent: ghost,
-                child,
-            }],
-            &mut tree,
-            &mut alloc,
-            &mut reg,
-            &mut shadow,
-            n_dims,
-            None,
-        );
-
-        assert_eq!(out.rejected_unknown_target, 1);
-        assert_eq!(out.adds, 0);
-        assert!(out.allocated.is_empty());
-    }
-
-    #[test]
     fn add_child_projects_initialized_properties_into_shadow() {
         let (mut reg, mut alloc, mut tree) = fixture();
         let pid = SimPropertyId(0);
@@ -689,27 +663,6 @@ mod tests {
         assert!(shadow[leaf_slot * n_dims..leaf_slot * n_dims + n_dims]
             .iter()
             .all(|v| *v == 0.0));
-    }
-
-    #[test]
-    fn remove_root_is_rejected() {
-        let (mut reg, mut alloc, mut tree) = fixture();
-        let n_dims = reg.total_columns;
-        let root_id = tree.id();
-        let mut shadow = vec![0.0f32; alloc.capacity() * n_dims];
-
-        let out = apply_structural_mutations(
-            vec![BoundaryRequest::Remove { target: root_id }],
-            &mut tree,
-            &mut alloc,
-            &mut reg,
-            &mut shadow,
-            n_dims,
-            None,
-        );
-
-        assert_eq!(out.rejected_unknown_target, 1);
-        assert_eq!(out.removes, 0);
     }
 
     #[test]

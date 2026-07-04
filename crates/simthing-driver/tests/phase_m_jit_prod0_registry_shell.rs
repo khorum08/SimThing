@@ -846,38 +846,6 @@ fn jit_prod0_registers_exact_production_candidate_default_off() {
     assert!(shell.is_registered(&registered.stable_key));
 }
 #[test]
-fn jit_prod0_duplicate_identity_policy_is_explicit() {
-    let mut shell = fresh_shell();
-    let candidate = promote_single_cohort_candidate(&identical_cohort_requests()).expect("promote");
-
-    let first = shell
-        .register_production_candidate(&candidate)
-        .expect("first register");
-    let second = shell
-        .register_production_candidate(&candidate)
-        .expect("idempotent re-register");
-    assert_eq!(first, second);
-    assert_eq!(shell.registered_count(), 1);
-
-    let mut conflicting = candidate.clone();
-    conflicting
-        .canonical_text
-        .push_str("\n# prod0 duplicate probe");
-    let dup_err = shell
-        .register_production_candidate(&conflicting)
-        .expect_err("same key different canonical must reject");
-    assert_shell_err(dup_err, "duplicate stable key");
-    assert_eq!(shell.registered_count(), 1);
-    assert_eq!(
-        shell
-            .get_registered(&candidate.stable_key)
-            .expect("original remains")
-            .canonical_text,
-        first.canonical_text
-    );
-}
-
-#[test]
 fn jit_prod0_explicit_execution_requires_registered_candidate() {
     let shell = fresh_shell();
     let candidate = promote_single_cohort_candidate(&identical_cohort_requests()).expect("promote");

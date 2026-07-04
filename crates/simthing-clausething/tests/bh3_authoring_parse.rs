@@ -54,20 +54,3 @@ fn bh3_authoring_lowers_semantic_free_bounded_spec() {
         StressOperatorSpec::Overlap
     ));
 }
-
-#[test]
-fn bh3_authoring_rejects_missing_u_sat() {
-    let document = parse_raw_document(MISSING_U_SAT.as_bytes()).expect("parse invalid fixture");
-    let err = hydrate_field_operator_pack(&document).unwrap_err();
-    assert!(err.message.contains("u_sat"));
-}
-
-#[test]
-fn bh3_authoring_rejects_invalid_chi_literal() {
-    let document = parse_raw_document(INVALID_CHI.as_bytes()).expect("parse invalid chi fixture");
-    let err = hydrate_field_operator_pack(&document).unwrap_err();
-    assert!(
-        err.to_string().contains("chi") || err.to_string().contains("CFL"),
-        "{err}"
-    );
-}

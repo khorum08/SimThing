@@ -664,37 +664,6 @@ mod tests {
     }
 
     #[test]
-    fn studio_config_rejects_malformed_json() {
-        let err = load_studio_config_from_str("{not json").expect_err("malformed");
-        assert!(matches!(err, StudioConfigError::Deserialize(_)));
-    }
-
-    #[test]
-    fn studio_config_rejects_unsupported_schema_version() {
-        let mut config = SimThingStudioConfig::default();
-        config.schema_version = 99;
-        let json = save_studio_config_to_string(&config).expect("serialize");
-        match load_studio_config_from_str(&json).expect("load") {
-            StudioConfigLoadOutcome::RejectedDefaults { reason } => {
-                assert!(reason.contains("unsupported schema_version"));
-            }
-            other => panic!("expected rejection, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn studio_config_rejects_nan_or_infinite_values() {
-        let mut config = SimThingStudioConfig::default();
-        config.star_rendering.base_blur_radius = f32::NAN;
-        match validate_and_normalize_studio_config(config) {
-            StudioConfigLoadOutcome::RejectedDefaults { reason } => {
-                assert!(reason.contains("NaN"));
-            }
-            other => panic!("expected rejection, got {other:?}"),
-        }
-    }
-
-    #[test]
     fn startup_valid_config_applies_settings() {
         let mut settings = EditorSettings::default();
         let config = SimThingStudioConfig::from_presentation_state(

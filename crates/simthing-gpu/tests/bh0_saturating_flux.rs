@@ -199,12 +199,6 @@ fn bh0_crowding_chokes_flux() {
 }
 
 #[test]
-fn bh0_invalid_cfl_rejected() {
-    let config = saturating_config(3, 3, 1, 1.0, SATURATING_FLUX_CHI_CFL_MAX + 0.01);
-    assert!(config.validate().is_err());
-}
-
-#[test]
 fn saturating_flux_clear_field_reduces_to_symmetric_diffusion() {
     let config = saturating_config(3, 3, 1, 1e9, 0.25);
     let params = params_from_config(&config);

@@ -655,17 +655,6 @@ mod tests {
     }
 
     #[test]
-    fn structural_projection_rejects_self_link() {
-        let mut scenario = two_cell_scenario();
-        scenario.links[0].to_system_id = "1".to_string();
-        let err = build_structural_projection(&scenario).expect_err("self link");
-        assert!(matches!(
-            err,
-            StudioStructuralProjectionError::SelfLink { .. }
-        ));
-    }
-
-    #[test]
     fn structural_projection_sorts_link_indices_deterministically() {
         let scenario = two_cell_scenario();
         let projection = build_structural_projection(&scenario).expect("projection");

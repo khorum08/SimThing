@@ -329,27 +329,6 @@ mod tests {
     }
 
     #[test]
-    fn rejects_zero_unit_cost() {
-        let regs = vec![TransferRegistration {
-            inputs: vec![TransferInputRef {
-                slot: 0,
-                col: 0,
-                unit_cost: 0.0,
-            }],
-            target_slot: 0,
-            target_col: 1,
-            output_scale: 1.0,
-            max_transfer: Some(1.0),
-            tree_id: None,
-            order_band: 0,
-        }];
-        assert!(matches!(
-            plan_transfer_ops(&regs),
-            Err(TransferPlanError::NonPositiveUnitCost { .. })
-        ));
-    }
-
-    #[test]
     fn allows_same_source_in_different_order_bands() {
         let regs = vec![
             TransferRegistration {

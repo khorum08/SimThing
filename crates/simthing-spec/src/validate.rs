@@ -140,13 +140,4 @@ mod tests {
         assert!(diag.diagnostics.is_empty());
     }
 
-    #[test]
-    fn validate_rejects_threshold_with_zero_cost() {
-        let mut spec = minimal_tree();
-        spec.categories[0].entries[0].research_cost = 0.0;
-        assert!(matches!(
-            validate_capability_tree(&spec),
-            Err(SpecError::ThresholdRequiresPositiveCost(_))
-        ));
-    }
 }

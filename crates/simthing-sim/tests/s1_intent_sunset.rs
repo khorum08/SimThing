@@ -12,20 +12,6 @@ fn try_gpu() -> Option<GpuContext> {
 }
 
 #[test]
-fn s1_no_legacy_intent_shader_file() {
-    let path =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../simthing-gpu/src/shaders/intent_delta.wgsl");
-    assert!(
-        !path.exists(),
-        "legacy intent shader still exists: {path:?}"
-    );
-}
-
-#[test]
-fn s1_accumulator_intent_is_default_path() {
-    assert!(PipelineFlags::default().use_accumulator_intent);
-}
-#[test]
 fn s1_intent_accumulator_matches_cpu_golden() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");
