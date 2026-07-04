@@ -118,8 +118,53 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | `doctrine_selftest.sh` | the rot-guard: runs every RELIABLE scan against its known-bad (must FAIL) + the trap corpus + clean master (must NOT FAIL); tool-missing emits FAIL, never a false PASS |
 | `inspect_spam_check.sh` | the §1A hill-climbing bounds → `INSPECT-SPAM-CHECK: SPAM|OK` |
 | `audit_kernel_surface.py` / `verify_kernel_surface.py` | re-derive / diff `kernel_surface.txt` against `lib.rs` (both `pub use` forms) |
+| `gen_digest.sh` | regenerates / `--check`-verifies `docs/sanctioned_surface.md` (the global sanctioned-surface digest) against the live scans + allowlists — CI-enforced freshness |
 | `fixtures/` | known-bad inputs (one per RELIABLE scan) + false-positive traps + HEURISTIC production negative controls; `fixtures/README.md` maps fixture → scan → expected verdict |
 | `.github/workflows/doctrine-scan.yml` | the authoritative gate (runs entirely on GitHub) |
+
+### Test-corpus lifecycle & inventory tooling (the Rustified Test Lifecycle surface)
+
+The test corpus is governed as data, not by ad-hoc judgment. These files + checks are the operator surface of the
+Rustified Test Lifecycle (§11 is the cycle walk-through; CI-scaffolding design §4.1 is the doctrine). All are
+**ledger/text analysis only — no toolchain, no build, no cargo.**
+
+| File | Kind | What it holds / does |
+|---|---|---|
+| `test_inventory.tsv` | inventory ledger | one row per surviving test: `crate \| file \| test_name \| kind \| class \| superseding_boundary \| verdict \| note \| promotion_target \| birth_track \| dsu_survivals`. Every KEEP row must name a permanent-residue class or a promotion target |
+| `test_residue_classes.tsv` | data list | the closed set of `permanent-residue:*` classes (`oracle-parity`, `golden-byte`, `seal-proof`, `determinism`, `behavior-regression`, `escaped-bug`, `doc-named-invariant`, `stead-required`, `dependency-floor`) |
+| `test_lifecycle_tracks.tsv` | lifecycle ledger | `track_id \| status \| closed_at \| source \| note` — which birth tracks are open vs closed (a test whose birth track has closed is an expiry candidate) |
+| `test_lifecycle_dsu_tiers.tsv` | policy ladder | downstream-utility renewal tiers keyed on `dsu_survivals`: `1–2` advisory-audit (PASS), `3–4` rejustify (INSPECT), `5+` presumed-stale (INSPECT — delete-or-promote unless DA affirmatively renews) |
+| `test_lifecycle_expiry_check.sh` | lifecycle tripwire | flags tests surviving past their birth-track closure and applies the DSU ladder. Modes: `--schema`, `--scheduled`, `--track-closeout <track_id>`, `--closure-gate <track_id>`, `--prove`. Emits `LIFECYCLE-EXPIRY-VERDICT: PASS\|INSPECT\|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>` |
+| `test_inventory_check.sh` | inventory gate | validates the inventory schema + class/verdict grammar (allows the `dependency-floor` class for non-runnable helpers) |
+| `test_inventory_drift_check.sh` | drift gate | the `TEST-INVENTORY-DRIFT` stock gate body: inventory must match discovered tests and every KEEP row must be owned; unledgered runnable tests FAIL. `permanent-residue:dependency-floor` rows are exempt from the stale-drift check only |
+| `test_lifecycle_boundaries.tsv` / `test_lifecycle_boundary_rows.tsv` | boundary ledger | survivor boundary ownership (renamed from Track-D `test_pare_*` machinery at `CI-LIFECYCLE-RESIDUE-DELETE-0`) |
+| `test_lifecycle_boundary_check.sh` | boundary gate | validates that each survivor KEEP row maps to an owned lifecycle boundary |
+
+`TEST-INVENTORY-DRIFT` and `TEST-BUDGET` run as **stock gates inside `doctrine_scan.sh`** (they appear in the §1
+report), so the blocking Track A gate already enforces inventory truth and the ≤3-new-`#[test]`-per-file budget on
+every PR. `test_lifecycle_expiry_check.sh` is **not yet wired into any workflow** — it is run by the orchestrator at
+track closeout and by the corpus-maintenance cadence (§11); a scheduled workflow requires an explicit cadence rung.
+
+### Track B executable-proof tooling (Track B DA-CLOSED 2026-07-04)
+
+Track B is closed; both proof lanes landed. These are its scripts/data, surfaced here for completeness (operator
+quick-reference for the GitHub/webchat lane is §9; the owner-local lane is the citation contract in §9).
+
+| File | Lane | Role |
+|---|---|---|
+| `doctrine_tests.sh` | owner-local | GPU/Bevy/desktop executable harness; `--list` / `--plan` / `--profile <id>` / `--prove-report`; emits `DOCTRINE-TESTS-VERDICT` + `--- tripwire-tags ---`; skipped/unverified → INSPECT, never a silent PASS; refuses GHA execution |
+| `doctrine_tests_profiles.tsv` | owner-local | resolves owner-local profiles (e.g. `owner-local-gpu-bevy`) from the live inventory |
+| `doctrine_exec.sh` / `doctrine_exec_plan.sh` / `doctrine_exec_probes.sh` | GitHub CPU | the non-blocking CPU proof engine, plan-mode resolver, and known-bad guard-bite probes |
+| `doctrine_exec_stale_check.sh` | GitHub CPU | rejects a report whose `head_sha` ≠ current PR head (the verify-the-tree rule, mechanized) |
+| `doctrine_exec_comment.sh` | GitHub CPU | one sticky PR comment (`<!-- doctrine-exec-sticky -->`) carrying the verdict footer |
+| `doctrine_exec_commands.sh` / `doctrine_exec_triage.sh` | GitHub CPU | the `/seal-proof` + `/triage` command handlers (collaborator-only; `/triage` commits a §1A row to `triage_log.tsv`) |
+| `doctrine_exec_profiles.tsv` / `doctrine_exec_profile_lint.sh` | GitHub CPU | the profile taxonomy (`smoke\|targeted\|probe\|owner-deep`) + the lint that forbids casual full-crate `cargo test`, `test-pare-*` IDs, and enforces the GHA proof seal |
+| `doctrine_exec_gha_proof_seal.sh` | GitHub CPU | proves owner-local-only commands never appear in a GHA profile (GPU/Bevy/desktop stay off the runner) |
+| `doctrine_surface_truth.sh` (+ `_inspect` / `_reason_test`) | GitHub CPU | `cargo public-api` differential of `simthing-kernel` vs `kernel_public_api_baseline.txt` — divergence → `SURFACE-TRUTH: INSPECT` |
+| `mapeditor_linux_cargo_check.sh` | owner-local | Studio/`simthing-mapeditor` compile-floor helper |
+
+Workflows: `.github/workflows/doctrine-exec.yml` (`CI-B-GH-CPU-0`) + `.github/workflows/doctrine-exec-commands.yml`
+(`CI-B-GH-COMMENT-0` / `CI-B-GH-TRIAGE-0`), both **separate and non-blocking** — the blocking Track A gate is untouched.
 
 ---
 
@@ -281,6 +326,25 @@ authority. Owner supremacy sits above everything, visible and recorded.
   `unverified`. The DA reconstructing truth from git because a relay obscured it costs more than the
   review it replaced.
 
+**GHA-side triage tooling — the webchat orchestrator's remote §1A surface (Track B, `CI-B-GH-TRIAGE-0`).**
+A webchat orchestrator with the GitHub connector discharges its triage role **entirely GitHub-side**, no local
+relay, via `.github/workflows/doctrine-exec-commands.yml`:
+
+- **`/triage <scan-id> <delete|green|escalate> <reason>`** — appends a validated §1A row to
+  `scripts/ci/triage_log.tsv` on the PR branch (diff-visible), via `doctrine_exec_triage.sh`. A malformed command
+  is rejected with the required format printed (FAIL-as-teacher). This is how the orchestrator's triage-log
+  stewardship (responsibility 1 above) is done remotely — the row lands in the PR, not in a private transcript.
+- **`/seal-proof [plan] [profile=<id>] [probe=<probe-id>]`** — initiates / plans a non-blocking GitHub CPU proof
+  run and reads the SHA-bound verdict back in a **single sticky PR comment** (`doctrine_exec_comment.sh`); see §9
+  for profiles, probe mode, plan mode, and the freshness contract.
+- **Channels + trust:** both commands are accepted from `issue_comment` **and** `pull_request_review` /
+  review-comment events (the connector reliably submits PR reviews), **collaborator-only**, and **never** run
+  untrusted fork code under a write token.
+- **Descoped, by DA ruling (`CI-B-EXPANSION-GRADUATION-0`, 2026-07-04):** the doctrine-*scan* sticky comment
+  (a scan-side mirror of the verdict in the PR thread) was **not** built and is **not** required — it is a
+  convenience display, never a proof gate. The orchestrator reads the §1A picture from the **checks UI + the
+  scan's INSPECT lines/justifications + the `/triage` surface**; do not treat its absence as missing tooling.
+
 ---
 
 ## 6. Track C — the live carrot (the scanner pulled forward)
@@ -422,3 +486,57 @@ a reason to preserve it"). The desktop/GPU dependency graph belongs to owner-dee
 non-owner-deep GHA floor proves *compilation of the survivors*, never *execution of the departed*.
 
 `doctrine_exec_report.json` is a generated mirror of the same run, not a second truth. The sticky PR comment and job summary must agree. Labels are not verdicts and must not be used as proof.
+
+---
+
+## 11. Test-corpus lifecycle tooling cycle (Rustified Test Lifecycle — operator surface)
+
+The doctrine is in the CI-scaffolding design §4.1; this is the **operator walk-through** of the tooling that
+enforces it. The governing law (see §9 Track D note): **every test is assumed DELETED at its birth track's
+closure** unless it (a) carries a canonical notion — then promote it into a `simthing-kernel` type/seal or an EML
+opcode-stack construct and delete the test; (b) is a `TIER7` terminal-proof / permanent-residue class with a
+`catches:` note; or (c) is a non-runnable `dependency-floor` helper. All lifecycle tooling is **ledger/text
+analysis only — no toolchain, no build, no cargo** — so it is safe to run anywhere, including inside a docs rung.
+
+**The cycle:**
+
+1. **Birth.** A new test is added with its inventory row in `test_inventory.tsv`, naming its `class`, its
+   `birth_track`, a `promotion_target` (or a permanent-residue class), and `dsu_survivals=0`. `test_inventory_check.sh`
+   validates the schema; the `TEST-INVENTORY-DRIFT` stock gate (in `doctrine_scan.sh`) fails any unledgered runnable
+   test on the PR, and `TEST-BUDGET` flags a delta adding more than three `#[test]` fns to one file without
+   table-driven form. This is the blocking floor — it runs on every PR.
+
+2. **Track closure → expiry scan.** When a track closes, its row in `test_lifecycle_tracks.tsv` flips to
+   `closed`. The orchestrator then runs, at closeout:
+
+```bash
+bash scripts/ci/test_lifecycle_expiry_check.sh --track-closeout <track_id>   # candidates whose birth track just closed
+bash scripts/ci/test_lifecycle_expiry_check.sh --closure-gate <track_id>     # closure gate: DSU renewal audit for the track
+bash scripts/ci/test_lifecycle_expiry_check.sh --scheduled                   # corpus-wide sweep (maintenance cadence)
+bash scripts/ci/test_lifecycle_expiry_check.sh --schema                      # ledger schema integrity
+bash scripts/ci/test_lifecycle_expiry_check.sh --prove                       # synthetic self-proof of the tripwire
+```
+
+   Each emits `LIFECYCLE-EXPIRY-VERDICT: PASS|INSPECT|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>`.
+   A test whose birth track has closed and which is **not** promoted, permanent-residue, or a dependency-floor
+   helper is an **expired candidate** → delete-or-promote.
+
+3. **Downstream-utility renewal ladder.** A test that legitimately outlives its birth track earns a
+   `dsu_survivals` increment each time it is affirmatively renewed. `test_lifecycle_dsu_tiers.tsv` sets the
+   escalating burden: `1–2` = advisory-audit (PASS, renewal burden begins); `3–4` = rejustify (INSPECT — must
+   re-justify with a fresh, named, verified downstream consumer); `5+` = presumed-stale (INSPECT — mandatory
+   delete-or-promote candidate unless the DA affirmatively renews). **Promotion pressure is deliberate:** the
+   sanctioned exit from rising DSU debt is promotion into a kernel type / EML construct, **not** perpetual renewal.
+
+4. **Triage every INSPECT.** Lifecycle INSPECTs route through the §1A loop like any other: the orchestrator lands
+   a `delete/green/escalate` row via `/triage` (§5A) into `triage_log.tsv`. An unlogged clearance is invisible and
+   therefore did not happen.
+
+5. **Boundary ownership.** `test_lifecycle_boundary_check.sh` (over `test_lifecycle_boundaries.tsv` +
+   `test_lifecycle_boundary_rows.tsv`) validates that each survivor KEEP row maps to an owned lifecycle boundary —
+   the successor to the retired Track-D `test_pare_*` machinery.
+
+**Wiring status:** the inventory/budget gates are already blocking (inside `doctrine_scan.sh`). The
+`test_lifecycle_expiry_check.sh` tripwire is **operator/cadence-run, not yet a workflow** — a scheduled expiry
+workflow requires an explicit cadence rung (do not add scheduled workflow changes without one). Until a material
+reduction cadence lands, the expiry sweep is an orchestrator closeout duty, not an automated gate.
