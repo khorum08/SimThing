@@ -60,6 +60,7 @@ header = [
     "verdict",
     "note",
     "promotion_target",
+    "birth_track",
 ]
 
 def read_residue_classes(path: pathlib.Path) -> set[str]:
