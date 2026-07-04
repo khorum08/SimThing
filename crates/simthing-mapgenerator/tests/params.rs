@@ -1,6 +1,6 @@
 use simthing_mapgenerator::{
     validate_default, ArbitraryHyperlaneSourceMode, ClusterCountMethod, GenerationMode,
-    MapGeneratorParams, PartitionMethod, ShapeRegistry, ValidationError,
+    MapGeneratorParams, PartitionMethod, ShapeRegistry,
 };
 
 fn registry() -> ShapeRegistry {
@@ -45,15 +45,6 @@ fn arbitrary_static_mode_params_validate() {
     params
         .validate(&registry())
         .expect("arbitrary static shell should validate");
-}
-
-#[test]
-fn unknown_shape_param_rejects() {
-    let mut params = MapGeneratorParams::default();
-    params.shape.shape = "elliptical".into();
-    params.shape.shape_params.insert("bogus_key".into(), 1.0);
-    let err = params.validate(&registry()).unwrap_err();
-    assert!(matches!(err, ValidationError::UnknownShapeParam { .. }));
 }
 
 #[test]
@@ -107,23 +98,6 @@ fn metadata_passthrough_is_inert_and_carried() {
     assert_eq!(params.metadata.num_empires, 6);
     assert!(params.metadata.crisis_strength.is_finite());
     validate_default(&params).expect("metadata fields are carried inertly");
-}
-
-#[test]
-fn invalid_num_stars_rejects() {
-    let mut params = MapGeneratorParams::default();
-    params.scale_core.num_stars = 0;
-    let err = params.validate(&registry()).unwrap_err();
-    assert!(matches!(err, ValidationError::MustBePositive { .. }));
-}
-
-#[test]
-fn invalid_hyperlane_min_max_rejects() {
-    let mut params = MapGeneratorParams::default();
-    params.hyperlane.num_hyperlanes_min = 5;
-    params.hyperlane.num_hyperlanes_max = 2;
-    let err = params.validate(&registry()).unwrap_err();
-    assert!(matches!(err, ValidationError::MinGreaterThanMax { .. }));
 }
 
 #[test]

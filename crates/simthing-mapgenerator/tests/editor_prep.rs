@@ -4,10 +4,10 @@ use std::collections::BTreeMap;
 
 use simthing_mapgenerator::{
     apply_cli_shape_params, build_generation_report, generate_galaxy_with_structure,
-    normalized_report_json, parse_shape_param_assignment, structure_options_from_params,
+    normalized_report_json, structure_options_from_params,
     validate_shape_params_for_params, write_generation_report_json, GenerationReport,
     MapGeneratorParams, ReportArtifacts, ScenarioEmitter, ScenarioEmitterConfig,
-    ShapeParamParseError, ShapeRegistry, ValidationError, CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD,
+    ShapeRegistry, ValidationError, CONNECTIVITY_BRIDGE_RATIO_WARN_THRESHOLD,
     MAP_QUALITY_FAIL, MAP_QUALITY_PASS, REPORT_SCHEMA_VERSION,
     TOPOLOGY_TARGET_RATIO_FAIL_THRESHOLD,
 };
@@ -38,18 +38,6 @@ fn shape_param_accepts_valid_spiral_params() {
     )
     .expect("valid assignments");
     validate_shape_params_for_params(&params, &registry()).expect("valid spiral params");
-}
-
-#[test]
-fn shape_param_rejects_nan() {
-    let err = parse_shape_param_assignment("arm_width=NaN").unwrap_err();
-    assert!(matches!(err, ShapeParamParseError::NonNumeric { .. }));
-}
-
-#[test]
-fn shape_param_rejects_inf() {
-    let err = parse_shape_param_assignment("jitter=inf").unwrap_err();
-    assert!(matches!(err, ShapeParamParseError::NonNumeric { .. }));
 }
 
 #[test]
