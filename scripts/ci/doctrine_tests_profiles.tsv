@@ -1,0 +1,2 @@
+profile_id	profile_class	owner_local_only	proof_class	commands	expected_verdict_if_missing
+owner-local-gpu-bevy	targeted	yes	gpu-bevy-terminal	RESOLVE:inventory-owner-local-gpu	INSPECT
