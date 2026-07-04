@@ -13,8 +13,11 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
 fi
 
 "$PYTHON_BIN" - <<'PY' "$ROOT" "$INVENTORY" "$TRACKS" "$RESIDUE_CLASSES" "$@"
+import contextlib
 import csv
+import io
 import pathlib
+import re
 import sys
 import tempfile
 
@@ -110,8 +113,49 @@ def read_tracks(path: pathlib.Path) -> tuple[list[str] | None, dict[str, dict[st
     return fieldnames, tracks
 
 
+FOOTER_RE = re.compile(
+    r"^LIFECYCLE-EXPIRY-VERDICT: (PASS|INSPECT|FAIL) expired=(\d+) mode=(\S+)$",
+    re.MULTILINE,
+)
+
+
 def emit_footer(verdict: str, expired: int, mode: str) -> None:
     print(f"LIFECYCLE-EXPIRY-VERDICT: {verdict} expired={expired} mode={mode}")
+
+
+def parse_footer(output: str) -> tuple[str, int, str] | None:
+    matches = FOOTER_RE.findall(output)
+    if not matches:
+        return None
+    verdict, expired_s, mode = matches[-1]
+    return verdict, int(expired_s), mode
+
+
+def assert_prove_expectations(
+    label: str,
+    output: str,
+    rc: int,
+    *,
+    expect_verdict: str,
+    expect_expired: int,
+    expect_mode: str,
+    expect_exit: int,
+) -> list[str]:
+    errors: list[str] = []
+    if rc != expect_exit:
+        errors.append(f"{label}: expected exit {expect_exit} got {rc}")
+    parsed = parse_footer(output)
+    if parsed is None:
+        errors.append(f"{label}: missing footer")
+        return errors
+    verdict, expired, mode = parsed
+    if verdict != expect_verdict:
+        errors.append(f"{label}: expected verdict {expect_verdict} got {verdict}")
+    if expired != expect_expired:
+        errors.append(f"{label}: expected expired={expect_expired} got expired={expired}")
+    if mode != expect_mode:
+        errors.append(f"{label}: expected mode={expect_mode} got mode={mode}")
+    return errors
 
 
 def schema_check(inv_path: pathlib.Path, trk_path: pathlib.Path) -> int:
@@ -235,23 +279,31 @@ def prove_cases() -> int:
         mode: str,
         track_filter: str | None = None,
         expect_verdict: str,
-        expect_expired: int | None = None,
+        expect_expired: int,
     ) -> None:
+        expect_exit = 0 if expect_verdict in {"PASS", "INSPECT"} else 1
         with tempfile.TemporaryDirectory() as tmp:
             inv = pathlib.Path(tmp) / "inventory.tsv"
             trk = pathlib.Path(tmp) / "tracks.tsv"
             write_tsv(inv, inventory_header, inventory_rows)
             write_tsv(trk, tracks_header, track_rows)
-            if mode == "schema":
-                rc = schema_check(inv, trk)
-                expected_rc = 0 if expect_verdict == "PASS" else 1
-                if rc != expected_rc:
-                    failures.append(f"{label}: expected exit {expected_rc} got {rc}")
-                return
-            rc = scan_expiry(inv, trk, mode=mode, track_filter=track_filter)
-            expected_rc = 0 if expect_verdict in {"PASS", "INSPECT"} else 1
-            if rc != expected_rc:
-                failures.append(f"{label}: expected exit {expected_rc} got {rc}")
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                if mode == "schema":
+                    rc = schema_check(inv, trk)
+                else:
+                    rc = scan_expiry(inv, trk, mode=mode, track_filter=track_filter)
+            failures.extend(
+                assert_prove_expectations(
+                    label,
+                    buf.getvalue(),
+                    rc,
+                    expect_verdict=expect_verdict,
+                    expect_expired=expect_expired,
+                    expect_mode=mode,
+                    expect_exit=expect_exit,
+                )
+            )
 
     base_track_rows = [
         {
@@ -298,6 +350,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="scheduled",
         expect_verdict="INSPECT",
+        expect_expired=1,
     )
 
     # durable class on closed track -> PASS
@@ -307,6 +360,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="scheduled",
         expect_verdict="PASS",
+        expect_expired=0,
     )
 
     # downstream-utility on closed track non-durable -> PASS
@@ -316,6 +370,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="scheduled",
         expect_verdict="PASS",
+        expect_expired=0,
     )
 
     # open-track non-durable -> PASS
@@ -325,6 +380,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="scheduled",
         expect_verdict="PASS",
+        expect_expired=0,
     )
 
     # unknown birth_track -> FAIL (schema)
@@ -334,6 +390,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="schema",
         expect_verdict="FAIL",
+        expect_expired=0,
     )
 
     # empty birth_track -> FAIL (schema)
@@ -345,6 +402,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="schema",
         expect_verdict="FAIL",
+        expect_expired=0,
     )
 
     # compile_fail kind immune
@@ -354,6 +412,7 @@ def prove_cases() -> int:
         base_track_rows,
         mode="scheduled",
         expect_verdict="PASS",
+        expect_expired=0,
     )
 
     # track-closeout on closed track
@@ -364,7 +423,27 @@ def prove_cases() -> int:
         mode="track-closeout",
         track_filter="pre-lifecycle",
         expect_verdict="INSPECT",
+        expect_expired=1,
     )
+
+    # meta-proof: harness rejects PASS footer when INSPECT is expected
+    meta_output = (
+        "LIFECYCLE-EXPIRY SCHEDULED CHECK\n"
+        "  closed tracks: pre-lifecycle\n"
+        "  expired candidates: 0\n"
+        "LIFECYCLE-EXPIRY-VERDICT: PASS expired=0 mode=scheduled\n"
+    )
+    meta_errors = assert_prove_expectations(
+        "meta-false-green-lane",
+        meta_output,
+        rc=0,
+        expect_verdict="INSPECT",
+        expect_expired=1,
+        expect_mode="scheduled",
+        expect_exit=0,
+    )
+    if not meta_errors:
+        failures.append("meta-false-green-lane: prove harness failed to reject PASS when INSPECT expected")
 
     print("LIFECYCLE-EXPIRY PROVE REPORT")
     if failures:

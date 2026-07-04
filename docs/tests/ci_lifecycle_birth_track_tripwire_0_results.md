@@ -6,13 +6,19 @@
 
 Track-A / ledger-layer text analysis only. No §3B executable proof, no workflow, no cargo test, no auto-deletion, no semantic note-truth scan.
 
+### 0R repair
+
+- `--prove` now asserts footer verdict and expired count, not just exit code.
+- This closes the PASS-vs-INSPECT false-green lane.
+- Meta-proof `meta-false-green-lane` verifies the harness rejects a PASS footer when INSPECT is expected.
+
 ## Identity
 
 | Field | Value |
 |---|---|
 | PR | #1131 |
 | Branch | `ci-lifecycle-birth-track-tripwire-0` |
-| Head SHA | `324b236ee0e076c3e504c54f4c240924c0f142fe` |
+| Head SHA | Proof run: current branch tip at proof time; final PR head verified by orchestrator. |
 | Base SHA / base ref | `fc5dc16e1672b6e938ecc62620abf127b6477927` / `origin/master` |
 
 ## Files changed
@@ -59,6 +65,10 @@ LIFECYCLE-EXPIRY PROVE REPORT
 LIFECYCLE-EXPIRY-VERDICT: PASS expired=0 mode=prove
 ```
 
+(0R: each case asserts footer `LIFECYCLE-EXPIRY-VERDICT: <verdict> expired=<N> mode=<mode>` plus exit code; meta-false-green-lane rejects PASS when INSPECT expected.)
+
+Proof environment: Git Bash on Windows; `PYTHON_BIN=C:\Users\mvorm\AppData\Local\Programs\Python\Python313\python.exe` set explicitly because Python is not on default Git Bash PATH.
+
 ### test_inventory_check.sh
 
 ```
@@ -96,14 +106,16 @@ gen_digest --check: PASS
 (exit 0, no whitespace errors)
 ```
 
-## INSPECT behavior
+## INSPECT behavior (strict prove assertions)
 
-- **synthetic expired non-durable candidate:** closed `pre-lifecycle` + `behavior-regression` without `downstream-utility:` → `INSPECT` (prove `--scheduled` and `--track-closeout`).
-- **durable immunity:** `seal-proof` class on closed track → `PASS`.
-- **downstream-utility immunity:** non-durable with `downstream-utility:` note on closed track → `PASS`.
-- **open-track immunity:** non-durable on `open-track` → `PASS`.
-- **unknown birth_track:** schema → `FAIL`.
-- **empty birth_track:** schema → `FAIL`.
+- **synthetic expired non-durable candidate:** `INSPECT expired=1 mode=scheduled` (prove `expired-non-durable`).
+- **track-closeout:** `INSPECT expired=1 mode=track-closeout` (prove `track-closeout-inspect`).
+- **durable immunity:** `PASS expired=0` (prove `durable-immune`).
+- **downstream-utility immunity:** `PASS expired=0` (prove `downstream-utility-immune`).
+- **open-track immunity:** `PASS expired=0` (prove `open-track-immune`).
+- **compile_fail immunity:** `PASS expired=0` (prove `compile-fail-immune`).
+- **unknown birth_track:** `FAIL expired=0 mode=schema`, exit nonzero (prove `unknown-birth-track`).
+- **empty birth_track:** `FAIL expired=0 mode=schema`, exit nonzero (prove `empty-birth-track`).
 
 ## Scope ledger
 
