@@ -350,7 +350,17 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    row without a permanent-residue class or promotion target is illegal. In `simthing-kernel` and
    `simthing-sim`, KEEP-class tests are legal only for never-pare/permanent-residue classes; admission-rejection
    enumeration and hygiene tests are drift failures, not INSPECTs. A RELIABLE scan with no promotion-blocker is
-   a flagged anomaly. **The merge-hold rule:** no rung that
+   a flagged anomaly. **The Necessity Test *(added 2026-07-03 by design authority on owner mandate; retires the
+   "one representative per boundary" premise as a fossil compromise of the Rustification mission)*.** A test is
+   admissible **only if it catches a regression that neither (1) the compiler / a type boundary, (2) a
+   production admission hard-error on a live path, nor (3) an existing integration/canonical path already
+   catches.** Deletion rule: **if deleting a test cannot break production and it is not a downstream dependency
+   or required for canonical function, it is DELETED — never kept as a "representative."** The retired premise
+   assumed a boundary needs a test for coverage; the kernel admission substrate made that false (the type or the
+   production admission hard-error *is* the coverage). The floor is **zero** for any invariant a type or a live
+   admission hard-error enforces; the only legitimate keeps are tests that pass the Necessity Test — genuine
+   parser/format behavior a type cannot absorb, CPU-oracle/GPU parity, determinism/golden byte-exactness,
+   doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad fixtures. **The merge-hold rule:** no rung that
    changes PROBATION / authority / gate-state semantics merges before DA/Owner clearance; a truthful
    corrective self-report of a breach may be accepted on its merits, but it is never precedent for skipping
    clearance again. **The verification rule:** the DA (and any orchestrator relaying a proof) verifies the

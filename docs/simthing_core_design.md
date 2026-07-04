@@ -178,6 +178,23 @@ Tests are ladder residue, like scans. A KEEP-class test is admitted only when it
 
 A test is rung-3/4 ladder residue like a scan. Test admission requires naming the regression nothing higher on the ladder owns. Promotion retires redundant tests in the same PR.
 
+**The Necessity Test (permanent; supersedes the retired "one representative per boundary" premise).** A test
+is admissible **only if it catches a regression that none of the following already catch:** (1) the compiler
+(a type boundary), (2) a production admission hard-error on a live path, (3) an existing integration or
+canonical path that already exercises the invariant. Restated as the deletion rule: **if deleting a test
+cannot break production and it is not a downstream dependency or required for canonical function, it is
+DELETED** — never kept as a "representative." *"One representative per boundary" is a **retired fossil
+premise** — a pre-substrate assumption (tests are how a boundary gets coverage) that the kernel admission
+substrate made false: coverage is now the type boundary or the production admission hard-error, and a
+per-boundary test is a redundant witness to enforcement that already exists and already fires. Keeping one
+guaranteed the corpus could never shrink below (number of boundaries) regardless of redundancy — a
+compromise of the Rustification mission that admitted fossil reasoning into the kernel era. The correct floor
+is **zero** for any invariant a type or a live admission hard-error already enforces; a test survives only by
+passing the Necessity Test above.* The narrow legitimate keeps: genuine transformation/format behavior a type
+cannot absorb (e.g. a parser rejecting a non-finite string), CPU-oracle/GPU parity, determinism/golden
+byte-exactness, doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad
+fixtures — each of which catches a regression nothing higher on the ladder would.
+
 **A corollary on hygiene.** Because the compiler discharges the mechanical-correctness layer, the budget
 it frees must go **entirely** to the two rungs that still pay rent — type/admission boundaries and the
 semantic conformance the compiler cannot check — and **never** to process ceremony (status docs,
