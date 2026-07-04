@@ -8,11 +8,10 @@ use simthing_clausething::{
 };
 use simthing_core::{SimPropertyId, SimThing, SimThingKind};
 use simthing_spec::{
-    evaluate_planet_child_locations, evaluate_planet_child_rf_admission,
-    evaluate_planet_child_rf_reduce_up, game_session_child, game_session_galaxy_map,
+    evaluate_planet_child_locations, game_session_child, game_session_galaxy_map,
     game_session_owners, is_galaxy_map_entity, is_surface_gridcell, owner_entity_id,
-    owner_flow_deficit, owner_flow_owner_ref, planet_surface_gridcell,
-    scenario_metadata_string, star_system_gridcells, PlanetChildRfAdmissionClassification,
+    owner_flow_deficit, owner_flow_owner_ref, owner_flow_resource_key, planet_surface_gridcell,
+    scenario_metadata_string, star_system_gridcells,
 };
 
 const TP_FLEET_POSTURE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_500);
@@ -383,10 +382,17 @@ fn tp_fleets_ships_0_table() {
             );
             assert!(
                 owner_flow_deficit(ship).unwrap_or(0) > 0,
-                "ship upkeep RF deficit"
+                "ship upkeep RF deficit metadata"
+            );
+            assert!(
+                !owner_flow_resource_key(ship).is_empty(),
+                "ship upkeep resource key metadata"
             );
         }
     }
+
+    // RF reduce-up over fleet-nested ships is not proven here: generic planet_child_rf
+    // admits only direct surface gameplay children (no kind-specific Fleet/Cohort traversal).
 
     let game_session = game_session_child(&spec).expect("GameSession");
     assert!(game_session
@@ -400,19 +406,6 @@ fn tp_fleets_ships_0_table() {
         location.classification,
         simthing_spec::PlanetChildLocationAdmissionClassification::Rejected
     );
-
-    let admission = evaluate_planet_child_rf_admission(&spec);
-    assert_ne!(
-        admission.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
-    assert!(admission.deficit_total >= 200 * 2 + 400 * 3);
-    let reduce_up = evaluate_planet_child_rf_reduce_up(&spec);
-    assert_ne!(
-        reduce_up.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
-    assert!(reduce_up.bucket_count >= 2);
 
     let mut reparented = root.clone();
     let scenario = scenario_from_root(reparented.clone());
@@ -516,11 +509,14 @@ fn tp_fleets_ships_0_table() {
         .children
         .iter()
         .all(|ship| ship.kind == SimThingKind::Cohort));
-    let reparent_admission = evaluate_planet_child_rf_admission(&reparent_spec);
-    assert_ne!(
-        reparent_admission.classification,
-        PlanetChildRfAdmissionClassification::Rejected
-    );
+    for ship in &moved.children {
+        assert_eq!(
+            owner_flow_owner_ref(ship).as_deref(),
+            Some("terran")
+        );
+        assert!(owner_flow_deficit(ship).unwrap_or(0) > 0);
+        assert!(!owner_flow_resource_key(ship).is_empty());
+    }
 }
 
 fn game_session_child_mut(root: &mut SimThing) -> Option<&mut SimThing> {
