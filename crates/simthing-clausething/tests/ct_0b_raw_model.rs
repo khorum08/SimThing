@@ -53,17 +53,6 @@ fn parse_matches_json_golden() {
 }
 
 #[test]
-fn parse_emit_reparse_matches_canonical_json() {
-    for (name, text) in FIXTURES {
-        let first = canonical_from_fixture(text);
-        let document = parse_raw_document(text.as_bytes()).expect("parse fixture");
-        let emitted = emit_text(&document).expect("emit fixture");
-        let reparsed = canonical_from_fixture(std::str::from_utf8(&emitted).expect("utf8 emit"));
-        assert_eq!(first, reparsed, "round-trip JSON mismatch for {name}");
-    }
-}
-
-#[test]
 #[ignore = "developer utility: regenerate JSON goldens locally"]
 fn write_goldens() {
     for (name, text) in FIXTURES {

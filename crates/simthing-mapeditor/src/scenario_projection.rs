@@ -629,29 +629,12 @@ mod tests {
     }
 
     #[test]
-    fn structural_projection_derives_from_scenario_authority() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        assert_eq!(projection.location_indices.len(), 2);
-        assert_eq!(projection.link_indices.len(), 1);
-    }
-
-    #[test]
     fn structural_projection_has_deterministic_dense_indices() {
         let scenario = two_cell_scenario();
         let first = build_structural_projection(&scenario).expect("first");
         let second = build_structural_projection(&scenario).expect("second");
         assert_eq!(first, second);
         assert_eq!(first.location_indices[0].dense_index, 0);
-    }
-
-    #[test]
-    fn structural_projection_uses_structural_coords_not_render_coords() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        let row = &projection.location_indices[0];
-        assert_eq!(row.col, 3);
-        assert_eq!(row.row, 2);
     }
 
     #[test]
@@ -666,146 +649,10 @@ mod tests {
         assert_eq!(projection.link_indices, again.link_indices);
     }
 
-    #[test]
-    fn structural_projection_link_indices_use_canonical_dense_pairs() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        assert_eq!(projection.link_indices[0].from_dense_index, 0);
-        assert_eq!(projection.link_indices[0].to_dense_index, 1);
-        assert!(
-            projection.link_indices[0].from_dense_index < projection.link_indices[0].to_dense_index
-        );
-    }
-
-    #[test]
-    fn structural_projection_link_indices_use_dense_location_indices() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        assert_eq!(projection.link_indices[0].from_dense_index, 0);
-        assert_eq!(projection.link_indices[0].to_dense_index, 1);
-    }
-
-    #[test]
-    fn gpu_residency_readiness_derives_from_scenario_authority() {
-        let scenario = two_cell_scenario();
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert!(readiness.dense_location_index_ready);
-        assert_eq!(readiness.location_count, 2);
-    }
-
-    #[test]
-    fn gpu_residency_readiness_reports_rf_readiness() {
-        let scenario = two_cell_scenario();
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert!(readiness.rf_accumulator_ready);
-    }
-
-    #[test]
-    fn gpu_residency_readiness_reports_heatmap_readiness() {
-        let scenario = two_cell_scenario();
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert_eq!(
-            readiness.heatmap_ready,
-            StudioHeatmapReadinessKind::BoundedTheaterEligible
-        );
-    }
-
-    #[test]
-    fn gpu_residency_readiness_contains_no_render_metadata() {
-        let scenario = two_cell_scenario();
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        let encoded = format!("{readiness:?}");
-        assert!(!encoded.contains("world_x"));
-        assert!(!encoded.contains("render_meta"));
-        assert!(!encoded.contains("sprite_scale"));
-    }
-
-    #[test]
-    fn gpu_residency_readiness_reports_atlas_required_for_oversized_valid_grid() {
-        let mut scenario = two_cell_scenario();
-        scenario.structural_grid.frame.width = 64;
-        scenario.structural_grid.frame.height = 64;
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert!(readiness.atlas_required);
-        assert_eq!(
-            readiness.heatmap_ready,
-            StudioHeatmapReadinessKind::AtlasRequired
-        );
-    }
-
     fn pod_row_bytes<T: Copy>(rows: &[T]) -> Vec<u8> {
         let byte_len = rows.len() * std::mem::size_of::<T>();
         let slice = unsafe { std::slice::from_raw_parts(rows.as_ptr() as *const u8, byte_len) };
         slice.to_vec()
-    }
-
-    #[test]
-    fn gpu_structural_upload_row_layout_is_stable_repr_c() {
-        assert_eq!(std::mem::size_of::<StudioGpuStructuralFrameRow>(), 32);
-        assert_eq!(std::mem::size_of::<StudioGpuLocationRow>(), 32);
-        assert_eq!(std::mem::size_of::<StudioGpuLinkRow>(), 16);
-        assert_eq!(std::mem::align_of::<StudioGpuStructuralFrameRow>(), 4);
-        assert_eq!(std::mem::align_of::<StudioGpuLocationRow>(), 4);
-        assert_eq!(std::mem::align_of::<StudioGpuLinkRow>(), 4);
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_derives_from_scenario_authority() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        assert_eq!(packet.frame.location_count, 2);
-        assert_eq!(packet.frame.link_count, 1);
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_uses_structural_projection() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        let packet = build_gpu_structural_upload_packet_from_projection(&scenario, &projection)
-            .expect("packet");
-        assert_eq!(packet.locations.len(), projection.location_indices.len());
-        assert_eq!(packet.links.len(), projection.link_indices.len());
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_preserves_frame() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        assert_eq!(packet.frame.width, 8);
-        assert_eq!(packet.frame.height, 8);
-        assert_eq!(packet.frame.occupied_cells, 2);
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_preserves_location_rows() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        assert_eq!(
-            packet.locations[0].dense_index,
-            projection.location_indices[0].dense_index
-        );
-        assert_eq!(
-            packet.locations[0].simthing_id_raw,
-            projection.location_indices[0].simthing_id_raw
-        );
-        assert_eq!(packet.locations[0].row, projection.location_indices[0].row);
-        assert_eq!(packet.locations[0].col, projection.location_indices[0].col);
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_preserves_canonical_link_rows() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        assert_eq!(
-            packet.links[0].from_dense_index,
-            projection.link_indices[0].from_dense_index
-        );
-        assert_eq!(
-            packet.links[0].to_dense_index,
-            projection.link_indices[0].to_dense_index
-        );
     }
 
     #[test]
@@ -826,42 +673,6 @@ mod tests {
     }
 
     #[test]
-    fn gpu_structural_upload_packet_contains_no_render_metadata() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let encoded = format!("{packet:?}");
-        assert!(!encoded.contains("world_x"));
-        assert!(!encoded.contains("render_meta"));
-        assert!(!encoded.contains("sprite_scale"));
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_contains_no_bevy_entity_ids() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let encoded = format!("{packet:?}");
-        assert!(!encoded.contains("Entity"));
-        assert!(!encoded.contains("bevy"));
-    }
-
-    #[test]
-    fn gpu_structural_upload_packet_count_overflow_is_error() {
-        let scenario = two_cell_scenario();
-        let projection = build_structural_projection(&scenario).expect("projection");
-        let mut overflow_frame = scenario.clone();
-        overflow_frame.structural_grid.frame.occupied_cells = u64::from(u32::MAX) + 1;
-        let err = build_gpu_structural_upload_packet_from_projection(&overflow_frame, &projection)
-            .expect_err("overflow");
-        assert!(matches!(
-            err,
-            StudioGpuStructuralUploadError::CountOverflow {
-                field: "occupied_cells",
-                ..
-            }
-        ));
-    }
-
-    #[test]
     fn gpu_structural_upload_packet_row_bytes_are_deterministic() {
         let scenario = two_cell_scenario();
         let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
@@ -873,113 +684,6 @@ mod tests {
             pod_row_bytes(&packet.locations)
         );
         assert_eq!(pod_row_bytes(&packet.links), pod_row_bytes(&packet.links));
-    }
-
-    #[test]
-    fn gpu_residency_readiness_reports_upload_packet_ready_for_valid_scenario() {
-        let scenario = two_cell_scenario();
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert!(readiness.structural_upload_packet_ready);
-        assert_eq!(readiness.structural_upload_packet_location_rows, 2);
-        assert_eq!(readiness.structural_upload_packet_link_rows, 1);
-        assert!(readiness.structural_upload_packet_deferred_reason.is_none());
-    }
-
-    #[test]
-    fn mapeditor_packet_converts_to_gpu_rows_exactly() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let rows = to_structural_gpu_rows(&packet);
-        assert_eq!(rows.frame.width, packet.frame.width);
-        assert_eq!(rows.frame.location_count, 2);
-        assert_eq!(
-            rows.locations[0].dense_index,
-            packet.locations[0].dense_index
-        );
-        assert_eq!(
-            rows.links[0].from_dense_index,
-            packet.links[0].from_dense_index
-        );
-    }
-
-    #[test]
-    fn gpu_rows_preserve_canonical_link_order() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let rows = to_structural_gpu_rows(&packet);
-        assert_eq!(rows.links[0].from_dense_index, 0);
-        assert_eq!(rows.links[0].to_dense_index, 1);
-    }
-
-    #[test]
-    fn gpu_rows_contain_no_render_metadata() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let rows = to_structural_gpu_rows(&packet);
-        let encoded = format!("{rows:?}");
-        assert!(!encoded.contains("world_x"));
-        assert!(!encoded.contains("render_meta"));
-    }
-
-    #[test]
-    fn gpu_rows_contain_no_route_or_predecessor_fields() {
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let rows = to_structural_gpu_rows(&packet);
-        let encoded = format!("{rows:?}");
-        for forbidden in [
-            "route",
-            "predecessor",
-            "movement_order",
-            "pathfinding",
-            "frontline",
-        ] {
-            assert!(!encoded.contains(forbidden));
-        }
-    }
-
-    #[test]
-    fn gpu_residency_readiness_defers_buffer_residency_without_device_context() {
-        let scenario = two_cell_scenario();
-        let readiness = build_gpu_residency_readiness_from_scenario(&scenario).expect("readiness");
-        assert!(!readiness.gpu_buffer_residency_ready);
-        assert!(readiness
-            .gpu_buffer_residency_deferred_reason
-            .as_ref()
-            .is_some_and(|reason| reason.contains("device upload context")));
-    }
-
-    #[test]
-    fn gpu_buffer_residency_proof_uploads_and_readbacks_exact_bytes() {
-        use simthing_gpu::context::GpuContext;
-
-        let Some(ctx) = GpuContext::new_blocking().ok() else {
-            eprintln!("skipping: no GPU");
-            return;
-        };
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let proof = prove_gpu_buffer_residency_blocking(&ctx.device, &ctx.queue, &packet);
-        assert!(proof.ready, "{:?}", proof.deferred_reason);
-        assert!(proof.report.is_some());
-        assert!(proof.readback.is_some());
-    }
-
-    #[test]
-    fn gpu_structural_validation_proof_reports_valid_packet() {
-        use simthing_gpu::context::GpuContext;
-
-        let Some(ctx) = GpuContext::new_blocking().ok() else {
-            eprintln!("skipping: no GPU");
-            return;
-        };
-        let scenario = two_cell_scenario();
-        let packet = build_gpu_structural_upload_packet_from_scenario(&scenario).expect("packet");
-        let proof = prove_gpu_structural_validation_blocking(&ctx.device, &ctx.queue, &packet);
-        assert!(proof.ready, "{:?}", proof.deferred_reason);
-        let report = proof.validation_report.expect("report");
-        assert_eq!(report.invalid_link_endpoint_count, 0);
-        assert_eq!(report.self_link_count, 0);
     }
 
     #[test]

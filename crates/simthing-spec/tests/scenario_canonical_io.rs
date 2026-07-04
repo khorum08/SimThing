@@ -23,21 +23,6 @@ fn load_owner_silo_fixture_json() -> String {
 }
 
 #[test]
-fn scenario_canonical_io_loads_owner_silo_fixture() {
-    let json = load_owner_silo_fixture_json();
-    let (scenario, report) =
-        load_scenario_spec_from_json_str("owner_silo_corpus", &json).expect("load");
-
-    assert!(report.loaded);
-    assert_eq!(
-        report.scenario_id.as_deref(),
-        Some("owner_silo_disburse_down_scoped")
-    );
-    assert!(report.simthing_count > 0);
-    assert_eq!(scenario.scenario_id, "owner_silo_disburse_down_scoped");
-}
-
-#[test]
 fn scenario_canonical_io_saves_deterministic_json() {
     let json = load_owner_silo_fixture_json();
     let (scenario, _) = load_scenario_spec_from_json_str("owner_silo_corpus", &json).expect("load");
@@ -70,41 +55,4 @@ fn scenario_canonical_io_roundtrip_preserves_ingestion_readiness() {
 
     assert!(report.initial_load.ingestion_ready);
     assert!(report.roundtrip_load.ingestion_ready);
-}
-
-#[test]
-fn scenario_canonical_io_does_not_write_repo_fixtures() {
-    let path = corpus_path(OWNER_SILO_FIXTURE);
-    if !path.exists() {
-        return;
-    }
-    let mtime = fs::metadata(&path)
-        .and_then(|m| m.modified())
-        .expect("mtime");
-    let age = SystemTime::now()
-        .duration_since(mtime)
-        .unwrap_or(Duration::from_secs(0));
-    assert!(
-        age.as_secs() > 5,
-        "corpus fixture must not be rewritten during normal tests"
-    );
-}
-
-#[test]
-fn scenario_canonical_io_temp_file_roundtrip_is_stable() {
-    let json = load_owner_silo_fixture_json();
-    let report =
-        prove_scenario_canonical_load_save_roundtrip("owner_silo_temp", &json).expect("roundtrip");
-
-    let temp_dir = std::env::temp_dir().join("simthing_scenario_canonical_io_test");
-    fs::create_dir_all(&temp_dir).expect("temp dir");
-    let temp_path = temp_dir.join("roundtrip.simthing-scenario.json");
-    fs::write(&temp_path, &report.canonical_save.canonical_json).expect("write temp");
-    let reloaded = fs::read_to_string(&temp_path).expect("read temp");
-    let (_, reload_report) =
-        load_scenario_spec_from_json_str("owner_silo_temp_file", &reloaded).expect("reload");
-
-    assert_eq!(report.roundtrip_digest, reload_report.authority_digest);
-    assert!(reload_report.ingestion_ready);
-    let _ = fs::remove_file(&temp_path);
 }

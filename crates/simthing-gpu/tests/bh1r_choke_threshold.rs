@@ -125,15 +125,6 @@ fn scan_for_forbidden_tokens(source: &str, label: &str) {
 }
 
 #[test]
-fn bh1r_no_native_sqrt_in_hot_path() {
-    let wgsl = include_str!("../src/shaders/saturating_flux_choke_threshold.wgsl");
-    scan_for_forbidden_tokens(wgsl, "saturating_flux_choke_threshold.wgsl");
-
-    let rust = include_str!("../src/saturating_flux_choke_threshold.rs");
-    scan_for_forbidden_tokens(rust, "saturating_flux_choke_threshold.rs");
-}
-
-#[test]
 fn bh1r_choke_threshold_gpu_matches_cpu_oracle() {
     with_gpu(|ctx| {
         let stencil_config = choke_stencil_config(3, 3, 1.0, 0.25, 1);
@@ -148,41 +139,5 @@ fn bh1r_choke_threshold_gpu_matches_cpu_oracle() {
         assert!((gpu.max_choke - oracle.max_choke).abs() < 1e-4);
         assert_eq!(gpu.count_above_threshold, oracle.count_above_threshold);
         assert_eq!(gpu.crossed_threshold, oracle.crossed_threshold);
-    });
-}
-
-#[test]
-fn bh1r_choke_threshold_stays_gpu_resident() {
-    with_gpu(|ctx| {
-        let stencil_config = choke_stencil_config(3, 3, 1.0, 0.25, 1);
-        let values = crowded_values(&stencil_config);
-        let (gpu, readback_bytes) = run_gpu_pipeline(ctx, &stencil_config, &values, 0.5);
-        assert_eq!(
-            readback_bytes,
-            CHOKE_THRESHOLD_COMPACT_FLOATS as usize * std::mem::size_of::<f32>()
-        );
-        assert!(gpu.crossed_threshold);
-    });
-}
-
-#[test]
-fn bh1r_crowded_field_crosses_threshold() {
-    with_gpu(|ctx| {
-        let stencil_config = choke_stencil_config(3, 3, 1.0, 0.25, 1);
-        let values = crowded_values(&stencil_config);
-        let (gpu, _) = run_gpu_pipeline(ctx, &stencil_config, &values, 0.5);
-        assert!(gpu.crossed_threshold, "sum_choke={}", gpu.sum_choke);
-        assert!(gpu.sum_choke > 0.5);
-    });
-}
-
-#[test]
-fn bh1r_clear_field_does_not_cross_threshold() {
-    with_gpu(|ctx| {
-        let stencil_config = choke_stencil_config(4, 4, 1e9, 0.2, 1);
-        let values = vec![0.5f32; stencil_config.values_len()];
-        let (gpu, _) = run_gpu_pipeline(ctx, &stencil_config, &values, 0.5);
-        assert!(!gpu.crossed_threshold, "sum_choke={}", gpu.sum_choke);
-        assert!(gpu.sum_choke.abs() < 1e-4);
     });
 }

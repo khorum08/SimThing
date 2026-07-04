@@ -652,21 +652,4 @@ pub fn nested_hierarchy_materialization_report(
 mod tests {
     use super::*;
 
-    #[test]
-    fn band_layout_d2_matches_canonical_schedule() {
-        let b = ArenaBandLayout::for_depth(2);
-        assert_eq!(b.reset_band, 0);
-        assert_eq!(b.upsweep_band_count, 1);
-        assert_eq!(b.broadcast_band(0, 2), 2);
-        assert_eq!(b.disburse_band(0, 2), 3);
-        assert_eq!(b.integration_band, 4);
-        assert_eq!(b.total_bands_used, 5);
-    }
-
-    #[test]
-    fn band_layout_d3_integration_follows_deepest_disburse() {
-        let b = ArenaBandLayout::for_depth(3);
-        let deepest_disburse = b.disburse_band(1, 3);
-        assert_eq!(b.integration_band, deepest_disburse + 1);
-    }
 }

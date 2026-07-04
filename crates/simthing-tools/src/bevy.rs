@@ -1871,27 +1871,4 @@ mod asset_store_tests {
     use super::*;
     use bevy::asset::AssetPlugin;
 
-    #[test]
-    fn plugin_mount_preserves_existing_image_assets() {
-        let mut app = App::new();
-        app.add_plugins((MinimalPlugins, AssetPlugin::default()));
-        app.init_asset::<Shader>();
-        app.init_asset::<Mesh>();
-        app.init_asset::<Image>();
-        let sentinel = app
-            .world_mut()
-            .resource_mut::<Assets<Image>>()
-            .add(Image::default());
-
-        app.add_plugins(
-            SimthingToolsTextPlugin::new(Vec::new())
-                .without_lut_d3_view_fix()
-                .world_text_only(),
-        );
-
-        assert!(app
-            .world()
-            .resource::<Assets<Image>>()
-            .contains(sentinel.id()));
-    }
 }

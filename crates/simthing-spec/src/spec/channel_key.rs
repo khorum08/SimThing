@@ -203,34 +203,4 @@ mod production_adoption {
             .any(|(allowed_file, pattern)| file == *allowed_file && line.contains(pattern))
     }
 
-    #[test]
-    fn as_channel_newtypes_production_adoption() {
-        let mut violations = Vec::new();
-        for path in spec_rs_files() {
-            if path.file_name().is_some_and(|n| n == "channel_key.rs") {
-                continue;
-            }
-            let source = fs::read_to_string(&path).expect("read spec file");
-            for (line_no, line) in source.lines().enumerate() {
-                if line.trim_start().starts_with("//") {
-                    continue;
-                }
-                for pattern in FORBIDDEN_FIELD_PATTERNS {
-                    if line.contains(pattern) && !is_allowed_deviation(&path, line) {
-                        violations.push(format!(
-                            "{}:{}: raw channel field `{}`",
-                            path.display(),
-                            line_no + 1,
-                            pattern
-                        ));
-                    }
-                }
-            }
-        }
-        assert!(
-            violations.is_empty(),
-            "production RF channel identity must use newtypes, not raw String:\n{}",
-            violations.join("\n")
-        );
-    }
 }

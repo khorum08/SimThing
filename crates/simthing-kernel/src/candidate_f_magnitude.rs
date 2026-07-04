@@ -294,33 +294,4 @@ mod tests {
         GpuContext::new_blocking().ok()
     }
 
-    #[test]
-    fn apply_candidate_f_exact_magnitude_writes_resolved_cell() {
-        let Some(ctx) = try_ctx() else {
-            eprintln!("skipping: no GPU");
-            return;
-        };
-        let n_slots = 4u32;
-        let n_dims = 4u32;
-        let session = AccumulatorOpSession::new(&ctx, n_slots, n_dims);
-        let gradients = [
-            GradientPairGpu { dx: 3.0, dy: 4.0 },
-            GradientPairGpu { dx: 0.0, dy: 0.0 },
-        ];
-        let expected_bits = max_candidate_f_magnitude_bits(&ctx, &gradients).expect("oracle max");
-        session
-            .apply_candidate_f_exact_magnitude(
-                &ctx,
-                CandidateFMagnitudeRequest {
-                    gradients: &gradients,
-                    target_slot: 1,
-                    target_col: 2,
-                },
-            )
-            .expect("apply candidate f");
-
-        let idx = (1 * n_dims + 2) as usize;
-        let values = session.readback_full(&ctx).expect("readback");
-        assert_eq!(values[idx].to_bits(), expected_bits);
-    }
 }

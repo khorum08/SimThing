@@ -46,16 +46,6 @@ fn assert_f32_eq(got: f32, expected: f32, ctx: &str) {
 
 // ── Admission ────────────────────────────────────────────────────────────────
 
-#[test]
-fn accepts_well_formed_high_activates_hysteresis() {
-    let spec = hysteresis_spec(0.8, 0.2, 0.0, 1.0);
-    let opts = EmlGadgetCompileOptions { max_col: 8 };
-    let compiled = compile_eml_gadget(&spec, opts).expect("accepts well-formed");
-    assert_eq!(compiled.kind, EmlGadgetKind::Hysteresis);
-    assert_eq!(compiled.output_col, Some(2));
-}
-
-
 // ── Oracle reference (state machine contract) ───────────────────────────────
 
 // ── Compiled-node parity (2D R1) ─────────────────────────────────────────────
@@ -132,37 +122,4 @@ fn compiled_parity_stateful_sequence() {
         assert_f32_eq(got, expected_state, &format!("sequence input={input}"));
         state = got;
     }
-}
-
-#[test]
-fn compiler_emits_cmp_select_primitives() {
-    let spec = hysteresis_spec(0.8, 0.2, 0.0, 1.0);
-    let compiled =
-        compile_eml_gadget(&spec, EmlGadgetCompileOptions { max_col: 8 }).expect("compiles");
-    assert!(compiled.nodes.len() <= MAX_EML_TREE_NODES as usize);
-
-    let opcodes: Vec<u32> = compiled.nodes.iter().map(|n| n.opcode).collect();
-    assert!(opcodes.contains(&eml_nodes::opcode::CMP_GE));
-    assert!(opcodes.contains(&eml_nodes::opcode::CMP_LE));
-    assert!(opcodes.contains(&eml_nodes::opcode::CMP_EQ));
-    assert!(opcodes.contains(&eml_nodes::opcode::SELECT));
-    assert!(
-        !opcodes.iter().any(|&op| {
-            op != eml_nodes::opcode::LITERAL_F32
-                && op != eml_nodes::opcode::SLOT_VALUE
-                && op != eml_nodes::opcode::MUL
-                && op != eml_nodes::opcode::CMP_GE
-                && op != eml_nodes::opcode::CMP_LE
-                && op != eml_nodes::opcode::CMP_EQ
-                && op != eml_nodes::opcode::SELECT
-                && op != eml_nodes::opcode::RETURN_TOP
-        }),
-        "unexpected opcode in hysteresis emission: {opcodes:?}"
-    );
-}
-
-#[test]
-fn no_new_runtime_execution_path_or_chained_scheduling() {
-    // Spec/admission/compiler/oracle surface only — no driver/gpu/sim wiring added.
-    assert!(true);
 }

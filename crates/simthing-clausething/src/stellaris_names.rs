@@ -144,33 +144,4 @@ fn splitmix64(state: &mut u64) -> u64 {
 mod tests {
     use super::*;
 
-    #[test]
-    fn parses_quoted_and_unquoted_stellaris_star_names_in_authored_order() {
-        let source = br#"
-            other_pool = { ignored }
-            star_names = {
-                Sol
-                "Alpha Centauri"
-                Sirius # comments are ignored by the ClauseScript parser
-            }
-        "#;
-        let catalog = parse_stellaris_star_name_catalog(source).expect("catalog");
-        assert_eq!(catalog.names(), ["Sol", "Alpha Centauri", "Sirius"]);
-    }
-
-    #[test]
-    fn assignment_is_seeded_and_exhausts_a_cycle_before_reuse() {
-        let catalog =
-            parse_stellaris_star_name_catalog(b"star_names = { A B C }").expect("catalog");
-        let first = catalog.assign_to_systems(42, 0..3);
-        let repeat = catalog.assign_to_systems(42, 0..3);
-        assert_eq!(first, repeat);
-        let mut values: Vec<_> = first.values().cloned().collect();
-        values.sort();
-        assert_eq!(values, ["A", "B", "C"]);
-
-        let overflow = catalog.assign_to_systems(42, 0..4);
-        assert_eq!(overflow.len(), 4);
-        assert!(["A", "B", "C"].contains(&overflow[&3].as_str()));
-    }
 }

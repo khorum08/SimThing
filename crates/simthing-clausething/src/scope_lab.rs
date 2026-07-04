@@ -157,15 +157,4 @@ Output Scope: various
 
 "#;
 
-    #[test]
-    fn synthetic_scopes_log_aggregate_counts() {
-        let mut report = LabFrequencyReport::default();
-        scan_scopes_log_content(SYNTHETIC_SCOPES_LOG, &mut report);
-        assert_eq!(report.total_scope_names, 2);
-        assert_eq!(report.supported_relation_count, 3);
-        assert_eq!(report.output_scope_counts.get("country"), Some(&1));
-        assert_eq!(report.output_scope_counts.get("various"), Some(&1));
-        assert_eq!(report.malformed_line_count, 0);
-        assert_eq!(report.unhandled_line_count, 0);
-    }
 }

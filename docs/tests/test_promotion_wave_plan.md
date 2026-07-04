@@ -8,4 +8,3 @@ total promotion-target rows: 0
 |---|---|---:|---|---|---|
 
 **TEST-NECESSITY-SWEEP-0 (2026-07-03).** Admission promotion-target rows deleted where production admission hard-errors on live paths own coverage. `permanent-residue:promoted-admission-representative` retired. Per-boundary floor is zero.
-

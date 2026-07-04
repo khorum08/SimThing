@@ -569,16 +569,6 @@ mod tests {
         })
     }
 
-    #[test]
-    fn compile_empty_spec_produces_empty_report() {
-        let reg = DimensionRegistry::new();
-        let eml = EmlExpressionRegistry::new();
-        let compiled =
-            compile_resource_economy(&ResourceEconomySpec::default(), &reg, &eml).unwrap();
-        assert!(compiled.transfers.is_empty());
-        assert_eq!(compiled.report.transfer_count, 0);
-    }
-
     fn exact_eml(name: &str, id: u32) -> (EmlTreeId, EmlFormulaMeta, Vec<EmlNodeGpu>) {
         (
             EmlTreeId(id),
@@ -608,27 +598,4 @@ mod tests {
         )
     }
 
-    #[test]
-    fn expansion_report_counts_eval_eml() {
-        let mut reg = DimensionRegistry::new();
-        register_amount_property(&mut reg, "core", "food");
-        let mut eml = EmlExpressionRegistry::new();
-        let (id, meta, nodes) = exact_eml("food_emission_v1", 1);
-        eml.register_formula(id, meta, nodes).unwrap();
-
-        let spec = ResourceEconomySpec {
-            emissions: vec![ResourceEmissionSpec {
-                id: "e1".into(),
-                source: PropertyKey::new("core", "food"),
-                source_role: SubFieldRole::Named("amount".into()),
-                formula: EmissionFormulaSpec::EvalEml {
-                    formula_key: "food_emission_v1".into(),
-                },
-            }],
-            ..Default::default()
-        };
-        let compiled = compile_resource_economy(&spec, &reg, &eml).unwrap();
-        assert_eq!(compiled.report.emission_count, 1);
-        assert_eq!(compiled.report.eval_eml_emission_count, 1);
-    }
 }

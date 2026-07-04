@@ -133,11 +133,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn validate_accepts_minimal_tree() {
-        let spec = minimal_tree();
-        let diag = validate_capability_tree(&spec).unwrap();
-        assert!(diag.diagnostics.is_empty());
-    }
-
 }

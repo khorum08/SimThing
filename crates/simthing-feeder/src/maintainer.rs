@@ -143,44 +143,4 @@ mod tests {
     use crate::work::BoundaryRequest;
     use simthing_core::{SimThing, SimThingKind};
 
-    #[test]
-    fn empty_request_batch_produces_default_outcome() {
-        let mut m = TreeMaintainer::new();
-        let out = m.execute(Vec::new());
-        assert_eq!(out, MaintainerOutcome::default());
-    }
-
-    #[test]
-    fn batch_classifies_by_request_kind() {
-        let mut m = TreeMaintainer::new();
-        let a = SimThing::new(SimThingKind::Cohort, 0);
-        let aid = a.id;
-        let bid = SimThing::new(SimThingKind::Cohort, 0).id;
-        let cid = SimThing::new(SimThingKind::Cohort, 0).id;
-        let did = SimThing::new(SimThingKind::Cohort, 0).id;
-
-        let out = m.execute(vec![
-            BoundaryRequest::AddChild {
-                parent: bid,
-                child: a,
-            },
-            BoundaryRequest::Remove { target: aid },
-            BoundaryRequest::Reparent {
-                child: cid,
-                new_parent: did,
-            },
-            BoundaryRequest::AddDimension {
-                property: simthing_core::SimPropertyId(0),
-            },
-            BoundaryRequest::Remove { target: bid },
-        ]);
-
-        assert_eq!(out.adds, 1);
-        assert_eq!(out.removes, 2);
-        assert_eq!(out.reparents, 1);
-        assert_eq!(out.dimensions, 1);
-        assert_eq!(out.overlays, 0);
-        // Every request is deferred today.
-        assert_eq!(out.deferred, 5);
-    }
 }

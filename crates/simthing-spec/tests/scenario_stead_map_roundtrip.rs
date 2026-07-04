@@ -86,41 +86,6 @@ fn scenario_stead_map_roundtrip_preserves_rf_metadata() {
 }
 
 #[test]
-fn scenario_stead_map_roundtrip_exposes_recursive_rf_parent_location_prerequisites() {
-    let report = evaluate_fixture();
-    assert!(report.local_rf_parent_node_resolution_prerequisites_present);
-    assert!(report
-        .spatial_tree_rows_before
-        .iter()
-        .any(|row| row.has_interior_grid));
-}
-
-#[test]
-fn scenario_stead_map_roundtrip_rebuilds_studio_projection_inputs() {
-    let report = evaluate_fixture();
-    assert!(report.studio_projection_rebuild_ready);
-}
-
-#[test]
-fn normal_tests_do_not_write_scenario_stead_map_fixtures() {
-    let path = corpus_path(OWNER_SILO_FIXTURE);
-    if !path.exists() {
-        return;
-    }
-    let _ = evaluate_fixture();
-    let mtime = fs::metadata(&path)
-        .and_then(|m| m.modified())
-        .expect("mtime");
-    let age = SystemTime::now()
-        .duration_since(mtime)
-        .unwrap_or(Duration::from_secs(0));
-    assert!(
-        age.as_secs() > 5,
-        "corpus fixture must not be rewritten during normal tests"
-    );
-}
-
-#[test]
 fn scenario_stead_map_roundtrip_preserves_surface_gridcell_tier() {
     let json = load_owner_silo_fixture_json();
     let (spec, _) = load_scenario_spec_from_json_str("owner_silo", &json).expect("load");

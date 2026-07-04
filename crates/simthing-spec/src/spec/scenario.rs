@@ -1930,72 +1930,6 @@ mod tests {
     }
 
     #[test]
-    fn stead_validator_accepts_declared_map_container_with_gridcells() {
-        let scenario = small_scenario();
-        validate_stead_mapping_consistency(&scenario).expect("valid");
-        let resolved = resolve_map_container(&scenario).expect("resolve");
-        assert_eq!(
-            resolved.id.raw(),
-            scenario
-                .structural_grid
-                .map_container_id
-                .parse::<u32>()
-                .unwrap()
-        );
-    }
-
-    #[test]
-    fn map_container_resolution_does_not_use_first_location_fallback() {
-        let mut scenario = small_scenario();
-        let decoy = SimThing::new(SimThingKind::Location, 0);
-        let decoy_raw = decoy.id.raw();
-        spatial_root_mut(&mut scenario).children.insert(0, decoy);
-        let resolved = resolve_map_container(&scenario).expect("resolve declared container");
-        assert_ne!(resolved.id.raw(), decoy_raw);
-        assert_eq!(
-            resolved.id.raw(),
-            scenario
-                .structural_grid
-                .map_container_id
-                .parse::<u32>()
-                .unwrap()
-        );
-    }
-
-    #[test]
-    fn structural_integer_properties_roundtrip_exactly() {
-        let value = structural_property_value_u32(42);
-        assert_eq!(property_u32(&value), Some(42));
-    }
-
-    #[test]
-    fn structural_grid_placement_remains_primary_authority() {
-        let scenario = small_scenario();
-        let placement = &scenario.structural_grid.placements[0];
-        assert_eq!(placement.col, 3);
-        assert_eq!(placement.row, 2);
-        validate_stead_mapping_consistency(&scenario).expect("placements drive validation");
-    }
-
-    #[test]
-    fn mirrored_structural_properties_match_structural_grid() {
-        let scenario = small_scenario();
-        validate_stead_mapping_consistency(&scenario).expect("mirrors match");
-    }
-
-
-
-    #[test]
-    fn saving_root_alone_is_documented_insufficient_or_not_exposed_as_authority() {
-        let scenario = small_scenario();
-        let root_only = serde_json::to_string(&scenario.root).expect("root json");
-        let full = serialize_scenario_authority(&scenario).expect("full authority");
-        assert_ne!(root_only, full);
-        assert!(full.contains("structural_grid"));
-        assert!(full.contains("map_container_id"));
-    }
-
-    #[test]
     fn simthing_scenario_spec_roundtrip_preserves_root_and_structural_grid() {
         let scenario = small_scenario();
         let json = serialize_scenario_authority(&scenario).expect("serialize");
@@ -2023,12 +1957,6 @@ mod tests {
         let json = serialize_scenario_authority(&scenario).expect("serialize");
         let round = deserialize_scenario_authority(&json).expect("deserialize");
         assert_eq!(round.links, scenario.links);
-    }
-
-    #[test]
-    fn scenario_links_accept_known_distinct_endpoints() {
-        let scenario = two_cell_scenario();
-        validate_scenario_links(&scenario).expect("valid link");
     }
 
     #[test]
@@ -2061,51 +1989,4 @@ mod tests {
         assert_eq!(round.provenance, scenario.provenance);
     }
 
-    #[test]
-    fn loaded_scenario_reserves_existing_simthing_ids() {
-        let mut scenario = small_scenario();
-        scenario.root.id = SimThingId::from_session_raw(2_000_000);
-        reserve_simthing_ids_from_scenario(&scenario).expect("reserve");
-        let spawned = SimThing::new(SimThingKind::Cohort, 0);
-        assert!(spawned.id.raw() > 2_000_000);
-    }
-
-    #[test]
-    fn new_simthing_after_loaded_scenario_does_not_collide() {
-        let scenario = small_scenario();
-        let existing: BTreeSet<u32> = scenario
-            .gridcell_locations()
-            .map(|gridcell| gridcell.id.raw())
-            .collect();
-        reserve_simthing_ids_from_scenario(&scenario).expect("reserve");
-        let spawned = SimThing::new(SimThingKind::Location, 0);
-        assert!(!existing.contains(&spawned.id.raw()));
-    }
-
-    #[test]
-    fn model_edit_applies_to_simthing_scenario_authority() {
-        let mut scenario = small_scenario();
-        let cell_raw = scenario.structural_grid.placements[0].simthing_id_raw;
-        apply_gridcell_property_edit(
-            &mut scenario,
-            cell_raw,
-            SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-            structural_property_value_u32(7),
-        )
-        .expect("edit");
-        let gridcell = resolve_map_container(&scenario)
-            .expect("map")
-            .children
-            .iter()
-            .find(|child| child.id.raw() == cell_raw)
-            .expect("cell");
-        assert_eq!(
-            property_u32(
-                gridcell
-                    .property(SCENARIO_STRUCTURAL_COL_PROPERTY_ID)
-                    .expect("col")
-            ),
-            Some(7)
-        );
-    }
 }

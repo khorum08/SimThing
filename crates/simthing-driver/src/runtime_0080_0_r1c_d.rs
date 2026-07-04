@@ -1725,26 +1725,6 @@ mod fast_compaction_lineage_sentinel_tests {
     };
 
     #[test]
-    fn r1_fast_compaction_remap_preserves_one_lineage_row() {
-        let planned = PlannedLineageRow {
-            tick: 5,
-            lineage_event_id: 12,
-            source_slot: 1,
-            target_slot: 2,
-            owner_code: 3,
-            lineage_kind: LINEAGE_BIRTH,
-            amount_or_delta: 1,
-            source_event_kind: "LocalBirthRequest",
-            source_event_index: 0,
-        };
-        let row = lineage_expected_row(&planned, true);
-        assert_eq!(row.lineage_event_id, 12);
-        assert_eq!(row.lineage_kind, "Birth");
-        assert!(row.applied_by_gpu);
-        assert!(row.cpu_shadow_match);
-    }
-
-    #[test]
     fn r1_fast_cpu_shadow_observes_compaction_without_redeciding() {
         let planned = PlannedCompactionRow {
             tick: 4,

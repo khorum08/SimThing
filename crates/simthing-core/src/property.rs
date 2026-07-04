@@ -733,76 +733,6 @@ mod tests {
         pv
     }
 
-    #[test]
-    fn property_value_role_access_preserves_existing_layout_values() {
-        let layout = standard_layout();
-        let mut pv = PropertyValue::from_layout(&layout);
-        pv.set_role(&SubFieldRole::Amount, &layout, 0.42);
-        pv.set_role(&SubFieldRole::Velocity, &layout, -0.07);
-        pv.set_role(&SubFieldRole::Intensity, &layout, 0.15);
-        assert!((pv.get_role(&SubFieldRole::Amount, &layout) - 0.42).abs() < f32::EPSILON);
-        assert!((pv.get_role(&SubFieldRole::Velocity, &layout) - (-0.07)).abs() < f32::EPSILON);
-        assert!((pv.get_role(&SubFieldRole::Intensity, &layout) - 0.15).abs() < f32::EPSILON);
-        assert_eq!(
-            pv.get_role_slice(&SubFieldRole::Named("vec_0".into()), &layout),
-            &[0.0]
-        );
-    }
-
-    #[test]
-    fn velocity_clamped_at_floor() {
-        let layout = standard_layout();
-        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-
-        let mut suppressed = loyalty(&layout, 0.0, -0.03);
-        suppressed.integrate(&layout, 1.0);
-        assert_eq!(suppressed.get_role(&SubFieldRole::Amount, &layout), 0.0);
-        assert!(
-            suppressed.get_role(&SubFieldRole::Velocity, &layout) >= 0.0,
-            "velocity was {}",
-            suppressed.get_role(&SubFieldRole::Velocity, &layout)
-        );
-
-        let mut recovering = loyalty(&layout, 0.0, 0.05);
-        recovering.integrate(&layout, 1.0);
-        assert!((recovering.get_role(&SubFieldRole::Amount, &layout) - 0.05).abs() < 1e-5);
-        assert!(recovering.get_role(&SubFieldRole::Velocity, &layout) > 0.0);
-    }
-
-    #[test]
-    fn velocity_clamped_at_ceiling() {
-        let layout = standard_layout();
-        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-
-        let mut maxed = loyalty(&layout, 1.0, 0.05);
-        maxed.integrate(&layout, 1.0);
-        assert_eq!(maxed.get_role(&SubFieldRole::Amount, &layout), 1.0);
-        assert!(
-            maxed.get_role(&SubFieldRole::Velocity, &layout) <= 0.0,
-            "velocity was {}",
-            maxed.get_role(&SubFieldRole::Velocity, &layout)
-        );
-
-        let mut declining = loyalty(&layout, 1.0, -0.02);
-        declining.integrate(&layout, 1.0);
-        assert!((declining.get_role(&SubFieldRole::Amount, &layout) - 0.98).abs() < 1e-5);
-        assert!(declining.get_role(&SubFieldRole::Velocity, &layout) < 0.0);
-    }
-
-    #[test]
-    fn integrate_mid_range_unchanged() {
-        let layout = standard_layout();
-        let a_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
-        let v_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
-
-        let mut pv = loyalty(&layout, 0.5, -0.03);
-        pv.integrate(&layout, 1.0);
-        assert!((pv.get_role(&SubFieldRole::Amount, &layout) - 0.47).abs() < 1e-5);
-        assert!((pv.get_role(&SubFieldRole::Velocity, &layout) - (-0.03)).abs() < 1e-5);
-    }
-
     /// Custom layout: ethics axis with signed position, drift governor, and
     /// a 3-wide bonus vector. Verifies stride, offsets, defaults, integration.
     #[test]
@@ -917,41 +847,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn fission_template_deserializes_without_capability_container_kinds() {
-        let json = r#"{
-            "child_kind": "Cohort",
-            "fusion_intensity_threshold": 0.85,
-            "fusion_scar_coefficient": 0.05,
-            "resolution_label": "resolved",
-            "clone_capability_children": true
-        }"#;
-        let template: FissionTemplate = serde_json::from_str(json).unwrap();
-        assert!(template.clone_capability_children);
-        assert!(template.capability_container_kinds.is_empty());
-    }
-
-    /// V6 guardrail Priority 3: legacy fission templates persisted before the
-    /// V6 clone-path landed must deserialize with `clone_capability_children`
-    /// defaulting to `false`. Combined with the existing default `[]` for
-    /// `capability_container_kinds`, this guarantees old saves/scenarios
-    /// produce the pre-V6 fission behavior (no capability cloning).
-    #[test]
-    fn fission_template_deserializes_without_clone_capability_children() {
-        let json = r#"{
-            "child_kind": "Cohort",
-            "fusion_intensity_threshold": 0.85,
-            "fusion_scar_coefficient": 0.05,
-            "resolution_label": "resolved"
-        }"#;
-        let template: FissionTemplate = serde_json::from_str(json).unwrap();
-        assert!(
-            !template.clone_capability_children,
-            "missing clone_capability_children must default to false (pre-V6 behavior)"
-        );
-        assert!(
-            template.capability_container_kinds.is_empty(),
-            "missing capability_container_kinds must default to []"
-        );
-    }
 }

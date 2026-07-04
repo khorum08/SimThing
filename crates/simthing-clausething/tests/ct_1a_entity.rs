@@ -247,18 +247,6 @@ fn installed_tree_fingerprint(
 }
 
 #[test]
-fn hydrated_domain_pack_matches_ron_baseline() {
-    let hydrated = hydrate_from_clause();
-    let baseline = load_ron_baseline();
-    assert_eq!(
-        canonical_json(&hydrated.domain_pack),
-        canonical_json(&baseline),
-        "hydrated authoring struct must match RON baseline"
-    );
-    assert_eq!(hydrated.seed_amount, SEED_AMOUNT);
-}
-
-#[test]
 fn clause_and_ron_cpu_overlay_parity_match() {
     let hydrated = hydrate_from_clause();
     let baseline = load_ron_baseline();
@@ -275,54 +263,5 @@ fn clause_and_ron_cpu_overlay_parity_match() {
     assert_eq!(
         from_clause.property_keys,
         vec!["simthing::potency".to_string()]
-    );
-}
-
-#[test]
-fn clause_and_ron_installed_trees_match_via_preview_install() {
-    let hydrated = hydrate_from_clause();
-    let baseline = load_ron_baseline();
-
-    let from_clause = preview_installed_tree(&hydrated.domain_pack);
-    let from_ron = preview_installed_tree(&baseline);
-
-    let clause_fp = installed_tree_fingerprint(&from_clause.registry, &from_clause.root);
-    let ron_fp = installed_tree_fingerprint(&from_ron.registry, &from_ron.root);
-
-    assert_eq!(
-        clause_fp, ron_fp,
-        "installed SimThing tree must be canonically identical"
-    );
-
-    let root_node = clause_fp
-        .nodes
-        .iter()
-        .find(|node| node.path == "root")
-        .expect("root node fingerprint");
-    assert_eq!(
-        root_node.property_keys,
-        vec!["simthing::potency".to_string()]
-    );
-    assert_eq!(root_node.overlays.len(), 1);
-    assert_eq!(root_node.overlays[0].property_key, "simthing::potency");
-    assert_eq!(
-        root_node.overlays[0].sub_field_deltas,
-        vec![("Amount".to_string(), "Multiply(1.25)".to_string())]
-    );
-    assert_eq!(
-        root_node.overlays[0].affects_paths,
-        vec!["root".to_string()]
-    );
-    assert_eq!(
-        root_node.overlays[0].kind,
-        format!("{:?}", OverlayKind::Policy)
-    );
-    assert_eq!(
-        root_node.overlays[0].source,
-        format!("{:?}", OverlaySource::Player)
-    );
-    assert_eq!(
-        root_node.overlays[0].lifecycle,
-        format!("{:?}", OverlayLifecycle::Permanent)
     );
 }

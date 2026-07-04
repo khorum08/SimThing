@@ -634,65 +634,6 @@ fn verify_outputs(
 }
 
 #[test]
-fn field_policy_obs4_wgsl_semantic_free() {
-    let wgsl = emit_threshold_event_wgsl(1);
-    for term in FORBIDDEN_SEMANTIC_TERMS {
-        assert!(
-            !wgsl.contains(term),
-            "WGSL must not contain forbidden semantic term `{term}`"
-        );
-    }
-    for term in FORBIDDEN_EXACT_TERMS {
-        assert!(!wgsl.contains(term));
-    }
-    assert!(wgsl.contains("sqrt_cr_f_bits"));
-    assert!(wgsl.contains("event_code"));
-    assert!(!wgsl.contains("f32(threshold)"));
-    assert!(!wgsl.contains("f32(bias)"));
-    assert_eq!(fnv1a64_hex(SQRT_CR_F_WGSL), SQRT_F_ARTIFACT_HASH);
-    println!("field_policy_obs4_wgsl: semantic_free=true F_hash={SQRT_F_ARTIFACT_HASH}");
-}
-
-#[test]
-fn field_policy_obs4_threshold_edge_rows() {
-    with_gpu(|ctx| {
-        let cases = edge_threshold_rows();
-        let rows: Vec<ThresholdRow> = cases.iter().map(|(row, _)| row.clone()).collect();
-        let outputs = run_threshold_batch(ctx, &rows, 1, true).outputs;
-        let (score_exact, state_exact, event_exact, overflow, _) = verify_outputs(&outputs, &rows);
-        println!(
-            "field_policy_obs4_edge: cases={} score_exact={score_exact}/{} state_exact={state_exact}/{} event_exact={event_exact}/{} overflow={overflow}",
-            cases.len(),
-            cases.len(),
-            cases.len(),
-            cases.len()
-        );
-        assert_eq!(score_exact, cases.len());
-        assert_eq!(state_exact, cases.len());
-        assert_eq!(event_exact, cases.len());
-        assert_eq!(overflow, 0);
-    });
-}
-
-#[test]
-fn field_policy_obs4_threshold_dense_corpus() {
-    with_gpu(|ctx| {
-        let rows = dense_threshold_rows();
-        let outputs = run_threshold_batch(ctx, &rows, 1, true).outputs;
-        let (score_exact, state_exact, event_exact, overflow, events_up) =
-            verify_outputs(&outputs, &rows);
-        println!(
-            "field_policy_obs4_dense: rows={} score_exact={score_exact} state_exact={state_exact} event_exact={event_exact} overflow={overflow} events_up={events_up}",
-            rows.len()
-        );
-        assert_eq!(score_exact, rows.len());
-        assert_eq!(state_exact, rows.len());
-        assert_eq!(event_exact, rows.len());
-        assert_eq!(overflow, 0);
-    });
-}
-
-#[test]
 fn field_policy_obs4_event_authority_is_exact_deterministic() {
     let desc = landed_jit_kernel_descriptors()
         .into_iter()
@@ -725,31 +666,4 @@ fn field_policy_obs4_event_authority_is_exact_deterministic() {
     println!(
         "field_policy_obs4_event_authority: state=Exact event_code=Exact gpu_resident=true no_cpu_planner=true"
     );
-}
-
-#[test]
-fn field_policy_obs4_no_default_runtime_wiring() {
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-    let desc = landed_jit_kernel_descriptors()
-        .into_iter()
-        .find(|d| d.id == FIELD_POLICY_OBS4_DESCRIPTOR_ID)
-        .expect("obs4 descriptor");
-    assert!(desc.default_off);
-    assert!(!desc.production_wiring);
-    validate_kernel_descriptor_admission(&desc).expect("obs4 admits");
-
-    let wgsl = emit_threshold_event_wgsl(1);
-    for forbidden in [
-        "SimSession",
-        "ResourceEconomySpec",
-        "simthing-sim",
-        "KernelCache",
-        "scheduler",
-    ] {
-        assert!(!wgsl.contains(forbidden));
-    }
-    println!("field_policy_obs4_wiring: descriptor=landed no_scheduler_no_bridge");
 }

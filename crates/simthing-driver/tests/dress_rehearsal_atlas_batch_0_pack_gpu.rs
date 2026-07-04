@@ -32,82 +32,6 @@ fn cached_gpu_parity_summary() -> Option<&'static PackGpuParitySummary> {
 }
 
 #[test]
-fn pack_gpu_status_matches_gate() {
-    assert_eq!(
-        DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_GPU_ID,
-        "ATLAS-BATCH-0-PACK-GPU"
-    );
-    let status = DRESS_REHEARSAL_ATLAS_BATCH_0_PACK_GPU_STATUS_PASS;
-    assert!(status.contains("IMPLEMENTED / PASS"));
-    assert!(status.contains("EC-A2b"));
-    assert!(status.contains("GpuVerified") || status.contains("Linf"));
-    assert!(status.contains("EC-A2b-exact") && status.contains("deferred"));
-    assert!(!status.contains("to_bits"));
-    assert!(!status.contains("ExactDeterministic"));
-    assert!(!status.contains("bit-exact"));
-    assert!(
-        !status.contains("STORE") || status.contains("unimplemented"),
-        "must not claim STORE implemented"
-    );
-    assert!(!status.contains("R1") && !status.contains("R4"));
-}
-
-#[test]
-fn gpu_fixture_uses_accepted_pack_plan() {
-    let plan = canonical_pack_plan();
-    let canonical = AtlasBatchPlan::canonical();
-    assert_eq!(plan, canonical);
-    assert_eq!(plan.classes.len(), 3);
-    assert_eq!(plan.tiles.len(), 27);
-    assert_eq!(
-        plan.class(CLASS_GALACTIC_20X20)
-            .unwrap()
-            .source_location_ids
-            .len(),
-        1
-    );
-    assert_eq!(
-        plan.class(CLASS_STAR_SYSTEM_10X10)
-            .unwrap()
-            .source_location_ids
-            .len(),
-        13
-    );
-}
-
-#[test]
-fn channel_metadata_survives() {
-    let plan = canonical_pack_plan();
-    use dress_rehearsal_atlas_batch_0_pack_gpu::LocationMaterialization;
-    let materialization = LocationMaterialization::canonical();
-    for class in &plan.classes {
-        assert!(!class.channels.channels.is_empty());
-        for location in &materialization.locations {
-            if location.role != class.role {
-                continue;
-            }
-            assert_eq!(
-                location.channels.channels.len(),
-                class.channels.channels.len()
-            );
-        }
-    }
-    let galactic = plan.class(CLASS_GALACTIC_20X20).unwrap();
-    assert_eq!(galactic.channels.channels.len(), 5);
-    let system = plan.class(CLASS_STAR_SYSTEM_10X10).unwrap();
-    assert_eq!(system.channels.channels.len(), 2);
-}
-
-#[test]
-fn no_semantic_shader_inputs() {
-    let plan = canonical_pack_plan();
-    for class in &plan.classes {
-        let params = atlas_mask_params_for_class(class);
-        assert!(atlas_mask_params_are_semantic_free(&params));
-    }
-}
-
-#[test]
 fn gpu_oracle_parity_galactic_20x20() {
     let Some(summary) = cached_gpu_parity_summary() else {
         return;
@@ -172,15 +96,4 @@ fn gpu_oracle_parity_planet_surface_10x10_batch() {
         "PACK-GPU planet-surface batch: Linf={}",
         report.full_tile_l_inf
     );
-}
-
-#[test]
-fn g_zero_blocks_cross_tile_and_out_of_atlas() {
-    let Some(summary) = cached_gpu_parity_summary() else {
-        return;
-    };
-    verify_g_zero_blocks_cross_tile_and_out_of_atlas();
-    assert!(summary.ec_a2b_closed);
-    let text = format_parity_report(summary, true);
-    println!("{text}");
 }

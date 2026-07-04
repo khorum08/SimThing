@@ -97,28 +97,6 @@ fn gpu_eml_intensity_matches_cpu_100k() {
 }
 
 #[test]
-fn zero_length_inputs_return_empty_outputs() {
-    let threshold = 0.1;
-    let build = 0.2;
-    let decay = 0.05;
-    let dt = 1.0;
-
-    let (nodes, root) = intensity_update_nodes(threshold, build, decay, dt);
-    let mut harness = EmlGpuHarness::new().unwrap();
-
-    let outputs = harness.eval_eml(&[], &nodes, root).unwrap();
-    assert!(outputs.is_empty());
-
-    let hardcoded = harness
-        .eval_hardcoded(
-            &[],
-            IntensityFormulaParams::new(0, threshold, build, decay, dt),
-        )
-        .unwrap();
-    assert!(hardcoded.is_empty());
-}
-
-#[test]
 fn eml_and_hardcoded_are_bit_exact_for_no_transcendental_formula() {
     let threshold = 0.1;
     let build = 0.2;

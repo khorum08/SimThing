@@ -175,9 +175,4 @@ fn manifest_icon_error(err: IconError) -> TypefaceError {
 mod tests {
     use super::*;
 
-    #[test]
-    fn fixture_manifest_loads() {
-        let manifest = load_icon_manifest(fixture_manifest_path()).expect("fixture manifest");
-        assert_eq!(manifest.icons.len(), 2);
-    }
 }

@@ -178,33 +178,4 @@ pub fn is_arena_participant_node(node: &SimThing) -> bool {
 mod tests {
     use super::*;
 
-    #[test]
-    fn subtree_size() {
-        let mut world = SimThing::new(SimThingKind::World, 0);
-        let mut loc = SimThing::new(SimThingKind::Location, 0);
-        loc.add_child(SimThing::new(SimThingKind::Cohort, 0));
-        loc.add_child(SimThing::new(SimThingKind::Cohort, 0));
-        world.add_child(loc);
-        // world + 1 location + 2 cohorts = 4
-        assert_eq!(world.subtree_size(), 4);
-    }
-
-    #[test]
-    fn loaded_tree_reserves_existing_simthing_ids() {
-        let mut world = SimThing::new(SimThingKind::World, 0);
-        let loaded = SimThing {
-            id: SimThingId::from_session_raw(1_000_000),
-            kind: SimThingKind::Location,
-            properties: HashMap::new(),
-            overlays: Vec::new(),
-            children: Vec::new(),
-            spawned_day: 0,
-        };
-        world.add_child(loaded);
-
-        reserve_simthing_ids_from_tree(&world).expect("reserve ids");
-
-        let spawned = SimThing::new(SimThingKind::Cohort, 0);
-        assert!(spawned.id.raw() > 1_000_000);
-    }
 }

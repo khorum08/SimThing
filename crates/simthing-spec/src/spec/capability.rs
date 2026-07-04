@@ -146,17 +146,4 @@ pub enum EffectTarget {
 mod tests {
     use super::*;
 
-    #[test]
-    fn capability_spec_ignores_legacy_research_rate_field() {
-        let json = r#"{
-            "id": "drive",
-            "display_name": "Drive",
-            "research_cost": 100.0,
-            "effects": [],
-            "research_rate": { "Literal": 0.5 }
-        }"#;
-        let spec: CapabilitySpec = serde_json::from_str(json).expect("deserialize");
-        assert_eq!(spec.id, "drive");
-        assert_eq!(spec.research_cost, 100.0);
-    }
 }

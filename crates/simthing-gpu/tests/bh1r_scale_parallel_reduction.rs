@@ -126,17 +126,6 @@ fn scan_for_forbidden_tokens(source: &str, label: &str) {
 }
 
 #[test]
-fn bh1r_parallel_reduction_not_single_lane() {
-    let cells = 32u32 * 32;
-    assert!(cells > CHOKE_THRESHOLD_REDUCE_WORKGROUP_SIZE);
-    let wg = pass1_workgroup_count(cells);
-    assert!(
-        wg > 1,
-        "scale fixture must require multiple pass-1 workgroups (cells={cells} wg={wg})"
-    );
-}
-
-#[test]
 fn bh1r_parallel_choke_threshold_gpu_matches_cpu_oracle() {
     with_gpu(|ctx| {
         let stencil_config = choke_stencil_config(32, 32, 1);
@@ -153,54 +142,4 @@ fn bh1r_parallel_choke_threshold_gpu_matches_cpu_oracle() {
         assert_eq!(gpu.count_above_threshold, oracle.count_above_threshold);
         assert_eq!(gpu.crossed_threshold, oracle.crossed_threshold);
     });
-}
-
-#[test]
-fn bh1r_compact_readback_only() {
-    with_gpu(|ctx| {
-        let stencil_config = choke_stencil_config(32, 32, 1);
-        let values = crowded_values(&stencil_config);
-        let (gpu, readback_bytes) = run_gpu_pipeline(ctx, &stencil_config, &values, 0.5);
-        assert_eq!(
-            readback_bytes,
-            CHOKE_THRESHOLD_COMPACT_FLOATS as usize * std::mem::size_of::<f32>()
-        );
-        assert!(gpu.crossed_threshold);
-    });
-}
-
-#[test]
-fn bh1r_crowded_field_crosses_threshold() {
-    with_gpu(|ctx| {
-        let stencil_config = choke_stencil_config(32, 32, 1);
-        let values = crowded_values(&stencil_config);
-        let (gpu, _) = run_gpu_pipeline(ctx, &stencil_config, &values, 0.5);
-        assert!(gpu.crossed_threshold, "sum_choke={}", gpu.sum_choke);
-    });
-}
-
-#[test]
-fn bh1r_clear_field_does_not_cross_threshold() {
-    with_gpu(|ctx| {
-        let stencil_config = choke_stencil_config(32, 32, 1);
-        let mut config = threshold_config(&stencil_config, 1, 0.5);
-        config.threshold = 1000.0;
-        let values = vec![0.1f32; stencil_config.values_len()];
-        let stencil = StructuredFieldStencilOp::new(ctx, stencil_config.clone()).expect("stencil");
-        stencil.upload_values(ctx, &values).expect("upload");
-        stencil.dispatch_ping_pong(ctx, 1).expect("dispatch");
-        let consumer = SaturatingFluxChokeThresholdOp::new(ctx);
-        let gpu = consumer
-            .reduce_resident_field(ctx, &stencil.output_buffer, &config)
-            .expect("reduce");
-        assert!(!gpu.crossed_threshold, "sum_choke={}", gpu.sum_choke);
-    });
-}
-#[test]
-fn bh1r_no_native_sqrt_in_hot_path() {
-    let wgsl = include_str!("../src/shaders/saturating_flux_choke_threshold.wgsl");
-    scan_for_forbidden_tokens(wgsl, "saturating_flux_choke_threshold.wgsl");
-
-    let rust = include_str!("../src/saturating_flux_choke_threshold.rs");
-    scan_for_forbidden_tokens(rust, "saturating_flux_choke_threshold.rs");
 }

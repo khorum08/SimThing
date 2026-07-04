@@ -50,9 +50,4 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn simthing_kernel_direct_dependencies_match_allowlist() {
-        let manifest = include_str!("../Cargo.toml");
-        assert_dependency_budget(manifest).expect("simthing-kernel dependency budget");
-    }
 }

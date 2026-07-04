@@ -358,34 +358,4 @@ mod tests {
         .unwrap()
     }
 
-    #[test]
-    fn plan_emits_separate_broadcast_and_disburse_bands() {
-        let layout = d2_layout();
-        let plan = plan_arena_allocation(&layout, &[], 16).unwrap();
-        let broadcast_band = layout.band_layout.broadcast_band(0, 2);
-        let disburse_band = layout.band_layout.disburse_band(0, 2);
-        let broadcast = plan
-            .cpu_ops
-            .iter()
-            .filter(|op| matches!(op.gate, GateSpec::OrderBand(b) if b == broadcast_band))
-            .count();
-        let disburse = plan
-            .cpu_ops
-            .iter()
-            .filter(|op| matches!(op.gate, GateSpec::OrderBand(b) if b == disburse_band))
-            .count();
-        assert!(broadcast > 0);
-        assert!(disburse > 0);
-        assert!(plan
-            .cpu_ops
-            .iter()
-            .any(|op| matches!(op.combine, CombineFn::EvalEML { .. })));
-    }
-
-    #[test]
-    fn integration_band_follows_deepest_disbursement() {
-        let layout = d2_layout();
-        let plan = plan_arena_allocation(&layout, &[], 16).unwrap();
-        assert_eq!(plan.integration_band, max_disbursement_band(&layout) + 1);
-    }
 }

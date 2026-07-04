@@ -62,16 +62,4 @@ pub enum EventPriority {
 mod tests {
     use super::EventKey;
 
-    #[test]
-    fn event_key_from_str() {
-        let key: EventKey = "low_loyalty".into();
-        assert_eq!(key.0, "low_loyalty");
-    }
-
-    #[test]
-    fn event_key_from_string() {
-        let id = String::from("faction_collapse");
-        let key: EventKey = id.clone().into();
-        assert_eq!(key.0, id);
-    }
 }

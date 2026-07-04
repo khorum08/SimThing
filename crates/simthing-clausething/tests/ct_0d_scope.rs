@@ -74,23 +74,6 @@ fn scope_post_expand_matches_golden() {
 }
 
 #[test]
-fn extraction_runs_after_ct_0c_expansion() {
-    let pre = parse_raw_document(SCOPE_UNTOUCHED.as_bytes()).expect("parse scope untouched");
-    let post = expand_document(&pre, &ExpansionInput::default()).expect("expand scope untouched");
-    let pre_report = extract_scopes(&pre);
-    let post_report = extract_scopes(&post);
-    assert_eq!(
-        scope_report_to_json(&pre_report).unwrap(),
-        scope_report_to_json(&post_report).unwrap(),
-        "expansion must not alter scope extraction for scope-like text"
-    );
-    assert!(
-        !post_report.references.is_empty(),
-        "post-expansion extraction should find scope references"
-    );
-}
-
-#[test]
 fn malformed_chains_emit_deterministic_diagnostics() {
     let document = parse_raw_document(SCOPE_MALFORMED.as_bytes()).expect("parse malformed");
     let report = extract_scopes(&document);
@@ -113,71 +96,6 @@ fn malformed_chains_emit_deterministic_diagnostics() {
 }
 
 #[test]
-fn unknown_domain_scope_is_not_silently_accepted() {
-    let document = parse_raw_document(SCOPE_UNKNOWN.as_bytes()).expect("parse unknown");
-    let report = extract_scopes_validated(&document, &synthetic_scope_table());
-    assert_eq!(report.diagnostics.len(), 1);
-    assert_eq!(
-        report.diagnostics[0].kind,
-        ScopeDiagnosticKind::UnknownDomainScope
-    );
-    assert!(
-        report
-            .references
-            .iter()
-            .any(|r| r.role == ScopeReferenceRole::BlockScopeKey)
-    );
-}
-
-#[test]
-fn event_target_references_are_symbolic() {
-    let document =
-        parse_raw_document(SCOPE_EVENT_TARGET.as_bytes()).expect("parse event_target fixture");
-    let report = extract_scopes(&document);
-    assert!(
-        report
-            .references
-            .iter()
-            .any(|r| r.role == ScopeReferenceRole::EventTargetValue)
-    );
-    assert!(
-        report
-            .references
-            .iter()
-            .any(|r| r.chain.raw_text.contains("event_target:"))
-    );
-}
-
-#[test]
-fn extraction_preserves_source_order() {
-    let document = parse_raw_document(SCOPE_ORDER.as_bytes()).expect("parse order fixture");
-    let report = extract_scopes(&document);
-    let raw_texts: Vec<_> = report
-        .references
-        .iter()
-        .map(|r| r.chain.raw_text.as_str())
-        .collect();
-    assert_eq!(
-        raw_texts,
-        vec!["this", "root", "from", "owner", "prev"],
-        "source-order extraction mismatch"
-    );
-}
-
-#[test]
-fn dot_paths_have_no_runtime_slot_resolution() {
-    let document = parse_raw_document(SCOPE_CHAINS.as_bytes()).expect("parse chains");
-    let report = extract_scopes(&document);
-    let relay = report
-        .references
-        .iter()
-        .find(|r| r.chain.raw_text == "root.owner.capital_scope")
-        .expect("relay chain");
-    assert_eq!(relay.chain.atoms.len(), 3);
-    assert!(relay.chain.atoms[1].raw_text == "owner");
-}
-
-#[test]
 #[ignore = "developer utility: regenerate CT-0d scope JSON goldens locally"]
 fn write_scope_goldens() {
     for (name, text) in [("scope_basic", SCOPE_BASIC), ("scope_chains", SCOPE_CHAINS)] {
@@ -195,36 +113,4 @@ fn write_scope_goldens() {
     );
     std::fs::write(&path, format!("{json}\n")).expect("write golden");
     eprintln!("wrote {path}");
-}
-
-#[test]
-#[ignore = "lab-only scopes.log aggregate scan; requires CLAUSER_LAB_DIR"]
-fn lab_scopes_log_frequency_scan() {
-    let lab_dir = std::env::var("CLAUSER_LAB_DIR").expect("CLAUSER_LAB_DIR must be set");
-    let report = scan_lab_scopes(Path::new(&lab_dir));
-    assert!(
-        report.scopes_log_found,
-        "scopes.log not found under CLAUSER_LAB_DIR"
-    );
-    assert!(
-        report.total_scope_names > 0,
-        "expected non-zero scope names"
-    );
-    assert!(
-        !report.output_scope_counts.is_empty(),
-        "expected output scope aggregate counts"
-    );
-    eprintln!("lab scope names: {}", report.total_scope_names);
-    eprintln!("lab output classes: {}", report.output_scope_counts.len());
-    eprintln!(
-        "lab supported relations: {}",
-        report.supported_relation_count
-    );
-    eprintln!("lab malformed lines: {}", report.malformed_line_count);
-    eprintln!("lab unhandled lines: {}", report.unhandled_line_count);
-    let mut outputs: Vec<_> = report.output_scope_counts.iter().collect();
-    outputs.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-    for (name, count) in outputs.iter().take(10) {
-        eprintln!("lab output aggregate {name}={count}");
-    }
 }

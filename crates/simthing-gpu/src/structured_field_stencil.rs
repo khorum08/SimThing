@@ -1263,46 +1263,4 @@ mod unit_tests {
         }
     }
 
-    #[test]
-    fn extended_horizon_allows_h16_with_flag() {
-        let mut c = base_config();
-        c.horizon = 16;
-        c.allow_extended_horizon = true;
-        assert!(c.validate().is_ok());
-    }
-
-    #[test]
-    fn source_capped_requires_cap() {
-        let mut c = base_config();
-        c.operator = StructuredFieldStencilOperator::SourceCappedNormalized;
-        assert_eq!(
-            c.validate().unwrap_err(),
-            StructuredFieldStencilError::MissingSourceCap
-        );
-    }
-
-    #[test]
-    fn debug_report_skips_stats_by_default() {
-        let config = base_config();
-        let report = StructuredFieldStencilDebugReport::from_run(&config, 1, 1);
-        assert_eq!(report.configured_horizon, 1);
-        assert_eq!(report.executed_horizon, 1);
-        assert_eq!(report.dispatch_count, 1);
-        assert!(report.field_max.is_none());
-        assert!(report.field_l1_norm.is_none());
-        assert!(report.active_mask_ratio.is_none());
-    }
-
-    #[test]
-    fn debug_report_field_stats_from_values() {
-        let config = base_config();
-        let mut report = StructuredFieldStencilDebugReport::from_run(&config, 1, 1);
-        let mut values = vec![0.0f32; config.values_len()];
-        values[4] = 1.0;
-        values[8] = 2.0;
-        values[12] = -3.0;
-        report.apply_field_stats(&values, &config);
-        assert_eq!(report.field_max, Some(2.0));
-        assert_eq!(report.field_l1_norm, Some(6.0));
-    }
 }

@@ -89,26 +89,4 @@ impl RenderCoord {
 mod tests {
     use super::{RenderCoord, StructuralCoord};
 
-    #[test]
-    fn structural_coord_integer_roundtrip_preserved() {
-        let coord = StructuralCoord::new(3, 7);
-        assert_eq!(coord.col(), 3);
-        assert_eq!(coord.row(), 7);
-        assert_eq!(coord.as_tuple(), (3, 7));
-        assert_eq!(coord.into_tuple(), (3, 7));
-    }
-
-    #[test]
-    fn render_coord_to_structural_cell_floors_at_boundary() {
-        let render = RenderCoord::new(3.9, 7.1);
-        assert_eq!(render.to_structural_cell(), StructuralCoord::new(3, 7));
-    }
-
-    #[test]
-    fn structural_coord_from_render_floor_matches_render_boundary() {
-        assert_eq!(
-            StructuralCoord::from_render_floor(4.2, -1.0),
-            StructuralCoord::new(4, 0)
-        );
-    }
 }

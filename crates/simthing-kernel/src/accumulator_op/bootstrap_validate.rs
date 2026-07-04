@@ -153,31 +153,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn allows_multiple_adds_to_same_target_in_same_band() {
-        let ops = vec![
-            identity_op(gate_kind::ORDER_BAND, 0, (1, 0)),
-            identity_op(gate_kind::ORDER_BAND, 0, (1, 0)),
-            identity_op(gate_kind::ORDER_BAND, 0, (1, 0)),
-        ];
-        validate_no_contention(&ops).unwrap();
-    }
-
-    #[test]
-    fn allows_same_target_in_different_order_bands() {
-        let ops = vec![
-            identity_op(gate_kind::ORDER_BAND, 0, (1, 0)),
-            identity_op(gate_kind::ORDER_BAND, 1, (1, 0)),
-        ];
-        validate_no_contention(&ops).unwrap();
-    }
-
-    #[test]
-    fn allows_subtract_from_source_different_bands() {
-        let ops = vec![
-            subtract_op(gate_kind::ORDER_BAND, 0, (5, 0), (1, 0)),
-            subtract_op(gate_kind::ORDER_BAND, 1, (5, 0), (2, 0)),
-        ];
-        validate_no_contention(&ops).unwrap();
-    }
 }

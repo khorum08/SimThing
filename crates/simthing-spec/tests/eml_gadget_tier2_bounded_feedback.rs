@@ -31,26 +31,6 @@ fn assert_f32_eq(got: f32, expected: f32, ctx: &str) {
 
 // ── Test 1 — registry after 2C ───────────────────────────────────────────────
 
-#[test]
-fn tier2c_registry_contains_bounded_feedback() {
-    assert!(EmlGadgetKind::parse("BoundedFeedback").is_some());
-
-    let kind = EmlGadgetKind::parse("BoundedFeedback").unwrap();
-    assert_eq!(
-        kind.execution_class(),
-        EmlExecutionClass::ExactDeterministic
-    );
-    assert!(kind.requires_temporal_memory());
-
-    // Still-deferred items remain
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"Hysteresis"));
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
-    assert!(DEFERRED_GADGET_KINDS.is_empty());
-
-    // BoundedFeedback is no longer in the deferred list
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"BoundedFeedback"));
-}
-
 // ── Test 2 — BoundedFeedback compile + stateful sequence oracle parity ───────
 
 #[test]
@@ -92,38 +72,6 @@ fn bounded_feedback_oracle_parity() {
 
 // ── Test 3 — explicit upper and lower clamp behavior ─────────────────────────
 
-#[test]
-fn bounded_feedback_clamp_edges() {
-    let spec = EmlGadgetStackSpec {
-        gadgets: vec![EmlGadgetInstanceSpec::BoundedFeedback {
-            id: "bf".into(),
-            previous_col: 10,
-            input_col: 11,
-            output_col: None,
-            decay: 0.9,
-            gain: 0.5,
-            min: 0.0,
-            max: 1.0,
-        }],
-    };
-    let compiled =
-        compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default()).expect("compiles");
-
-    // Upper clamp
-    let mut values = vec![0.0; (N_DIMS * (EVAL_SLOT + 1)) as usize];
-    set_col(&mut values, 10, 0.9);
-    set_col(&mut values, 11, 1.0);
-    let got = eval_gadget(&compiled, 0, &values);
-    assert_f32_eq(got, 1.0, "upper clamp");
-
-    // Lower clamp
-    let mut values = vec![0.0; (N_DIMS * (EVAL_SLOT + 1)) as usize];
-    set_col(&mut values, 10, 0.1);
-    set_col(&mut values, 11, -1.0);
-    let got = eval_gadget(&compiled, 0, &values);
-    assert_f32_eq(got, 0.0, "lower clamp");
-}
-
 // ── Test 4 — invalid decay rejects ───────────────────────────────────────────
 
 // ── Test 5 — invalid gain rejects (NaN/inf) ──────────────────────────────────
@@ -134,49 +82,8 @@ fn bounded_feedback_clamp_edges() {
 
 // ── Test 8 — no unbounded recurrence form exists ─────────────────────────────
 
-#[test]
-fn bounded_feedback_no_unbounded_form() {
-    // The authoring type always carries min/max. There is no variant without clamp.
-    // Admission already enforces min < max and finite bounds.
-    // This test documents the intentional design decision.
-    let _ = EmlGadgetInstanceSpec::BoundedFeedback {
-        id: "example".into(),
-        previous_col: 1,
-        input_col: 2,
-        output_col: None,
-        decay: 0.5,
-        gain: 1.0,
-        min: 0.0,
-        max: 10.0,
-    };
-}
-
 // ── Test 9 — no runtime gadget execution posture ─────────────────────────────
-
-#[test]
-fn no_runtime_gadget_execution_posture_2c() {
-    // Posture is enforced at the architecture level (PerGadgetOnly, no driver consumption).
-    // We simply ensure the new kind does not introduce any forbidden strings.
-    let src = include_str!("../src/compile/eml_gadget.rs");
-    assert!(!src.contains("runtime gadget stack execution"));
-}
 
 // ── Test 10 — 2A + 2B regressions remain green (via required list) ───────────
 
-#[test]
-fn prior_slices_still_green() {
-    // Actual heavy tests are run in the required regression list.
-    // Touching DEFERRED and Kind here must not break prior 2B oracles.
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"BoundedFeedback"));
-}
-
 // ── Test 11 — posture preservation ───────────────────────────────────────────
-
-#[test]
-fn posture_preservation_2c() {
-    use simthing_spec::MappingExecutionProfile;
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-}

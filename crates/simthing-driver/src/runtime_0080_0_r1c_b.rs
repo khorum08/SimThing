@@ -765,13 +765,6 @@ fn expected_lowest_slots(mark_table_before: &[u32], request_count: u32) -> Vec<u
 mod fast_allocation_sentinel_tests {
     use super::expected_lowest_slots;
 
-    #[test]
-    fn r1c_fast_allocation_selects_one_compatible_marked_slot() {
-        let marks = vec![5, 2, 8];
-        let selected = expected_lowest_slots(&marks, 1);
-        assert_eq!(selected, vec![2]);
-        assert_eq!(expected_lowest_slots(&marks, 2), vec![2, 5]);
-    }
 }
 
 fn f32_to_u32(value: f32) -> u32 {

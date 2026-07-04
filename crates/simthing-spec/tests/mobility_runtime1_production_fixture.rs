@@ -206,68 +206,6 @@ fn rejected_with(
 }
 
 #[test]
-fn runtime1_explicit_opt_in_only() {
-    let default_surface = MobilityRuntime1aSimSessionSurface::default_simsession();
-    let disabled =
-        run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
-            surface: default_surface,
-            composition: composition_fixture(),
-            forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-        });
-    assert!(disabled.admitted);
-    assert!(disabled.disabled_no_op);
-    assert!(!disabled.explicit_opt_in);
-    assert!(!disabled.fixture_invoked);
-
-    let mut default_on_gate = fixture_input();
-    default_on_gate.surface.gate.enabled_by_default = true;
-    let rejected = run_mobility_runtime1a_production_fixture(&default_on_gate);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"runtime1_default_on_behavior_rejected"));
-
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.explicit_opt_in);
-    assert!(report.default_off);
-}
-
-#[test]
-fn runtime1_default_simsession_behavior_unchanged() {
-    let default = MobilityRuntime1aSimSessionSurface::default_simsession();
-    let report =
-        run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
-            surface: default.clone(),
-            composition: composition_fixture(),
-            forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-        });
-    assert!(report.default_simsession_behavior_unchanged);
-    assert_eq!(report.composition_invocations, 0);
-    assert_eq!(
-        default,
-        MobilityRuntime1aSimSessionSurface::default_simsession()
-    );
-}
-
-#[test]
-fn runtime1_registers_named_mobility_composition_fixture() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.fixture_id, MOBILITY_RUNTIME1A_ID);
-    assert_eq!(report.named_gate, MOBILITY_RUNTIME1A_NAMED_GATE);
-    assert!(report.named_fixture_registered);
-    assert!(report.production_fixture_wiring_authorized);
-}
-
-#[test]
-fn runtime1_no_default_passgraph_schedule() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(!report.passgraph_schedule_registered);
-}
-
-#[test]
 fn runtime1_cpu_only_no_gpu_passgraph() {
     let report = run_mobility_runtime1a_production_fixture(&fixture_input());
     assert!(report.admitted, "{:?}", report.diagnostics);
@@ -277,15 +215,6 @@ fn runtime1_cpu_only_no_gpu_passgraph() {
     assert!(!report.simsession_passgraph_wiring_present);
     assert!(!report.unscoped_gpu_passgraph_wiring);
     assert!(report.runtime1b_gpu_gate_closed);
-}
-
-#[test]
-fn runtime1_preserves_runtime0_composition_order() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.substrate_order, MOBILITY_RUNTIME0_ORDER);
-    assert!(report.runtime0_harness_delegated);
-    assert!(report.composition.as_ref().unwrap().admitted);
 }
 
 #[test]
@@ -318,90 +247,4 @@ fn runtime1_preserves_cpu_gpu_parity_proxy() {
         report.composed_gpu_proxy_checksum
     );
     assert!(report.cpu_gpu_parity_preserved);
-}
-
-#[test]
-fn runtime1_preserves_owner_overlay_isolated_unit() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.owner_overlay_reaches_isolated_owned_unit);
-}
-
-#[test]
-fn runtime1_preserves_econ_owner_separation() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.econ_resource_flow_separate_from_owner_modifier_overlay);
-}
-
-#[test]
-fn runtime1_no_hard_soft_silent_mix() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(!report.hard_soft_silent_mix);
-}
-
-#[test]
-fn runtime1_dirty_owner_modifier_steady_state_zero_redisperse() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.dirty_owner_modifier_steady_state_zero_redisperse);
-}
-
-#[test]
-fn runtime1_mobility_churn_with_owner_overlay_and_econ_clearinghouse() {
-    let mut input = fixture_input();
-    input.composition.reenroll.moves = vec![mv(100, 10, 20, 9), mv(101, 10, 30, 2)];
-    let a = run_mobility_runtime1a_production_fixture(&input);
-    input.composition.reenroll.moves.reverse();
-    input.composition.econ.records.reverse();
-    input.composition.owner.records.reverse();
-    let b = run_mobility_runtime1a_production_fixture(&input);
-
-    assert!(a.admitted, "{:?}", a.diagnostics);
-    assert!(b.admitted, "{:?}", b.diagnostics);
-    assert_eq!(a.composed_cpu_checksum, b.composed_cpu_checksum);
-    assert!(a.econ_resource_flow_separate_from_owner_modifier_overlay);
-    assert!(a.owner_overlay_reaches_isolated_owned_unit);
-}
-
-#[test]
-fn runtime1_no_default_runtime_cost_when_disabled() {
-    let default = MobilityRuntime1aSimSessionSurface::default_simsession();
-    let report =
-        run_mobility_runtime1a_production_fixture(&MobilityRuntime1aProductionFixtureInput {
-            surface: default,
-            composition: composition_fixture(),
-            forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-        });
-    assert!(report.admitted);
-    assert!(report.disabled_no_op);
-    assert!(!report.fixture_invoked);
-    assert_eq!(report.composition_invocations, 0);
-    assert!(report.composition.is_none());
-}
-
-#[test]
-fn runtime1a_declares_fixture_model_not_runtime_crate_wiring() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.simthing_spec_fixture_model_only);
-    assert!(!report.real_simsession_runtime_crate_wiring_present);
-    assert!(report.runtime_crate_fixture_gate_closed);
-    assert_eq!(
-        MOBILITY_RUNTIME1A_RUNTIME_FIXTURE_GATE,
-        "mobility_runtime1a_runtime_crate_fixture_closed"
-    );
-}
-
-#[test]
-fn runtime1a_real_simsession_runtime_wiring_remains_absent() {
-    let report = run_mobility_runtime1a_production_fixture(&fixture_input());
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(!report.simsession_passgraph_wiring_present);
-    assert!(!report.gpu_passgraph_registered);
-    assert!(!report.gpu_hook_or_pass_graph_present);
-    assert!(!report.real_simsession_runtime_crate_wiring_present);
-    assert!(report.runtime1b_gpu_gate_closed);
-    assert!(report.runtime_crate_fixture_gate_closed);
 }

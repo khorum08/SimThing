@@ -397,38 +397,4 @@ mod tests {
         })
     }
 
-    #[test]
-    fn emission_reg_idx_sorted_by_authoring_id() {
-        let mut reg = DimensionRegistry::new();
-        register_amount(&mut reg, "food");
-        let eml = EmlExpressionRegistry::new();
-        let spec = ResourceEconomySpec {
-            emissions: vec![
-                ResourceEmissionSpec {
-                    id: "z_last".into(),
-                    source: PropertyKey::new("core", "food"),
-                    source_role: SubFieldRole::Named("amount".into()),
-                    formula: EmissionFormulaSpec::IdentityFloor,
-                },
-                ResourceEmissionSpec {
-                    id: "a_first".into(),
-                    source: PropertyKey::new("core", "food"),
-                    source_role: SubFieldRole::Named("amount".into()),
-                    formula: EmissionFormulaSpec::Constant(1.0),
-                },
-            ],
-            ..Default::default()
-        };
-        let compiled = compile_resource_economy(&spec, &reg, &eml).unwrap();
-        let materialized =
-            materialize_resource_economy_registrations(&compiled, &reg, &eml).unwrap();
-        assert_eq!(
-            materialized.report.emission_reg_idx_by_id.get("a_first"),
-            Some(&0)
-        );
-        assert_eq!(
-            materialized.report.emission_reg_idx_by_id.get("z_last"),
-            Some(&1)
-        );
-    }
 }

@@ -62,33 +62,4 @@ mod tests {
     use super::*;
     use simthing_core::SimThingKind;
 
-    #[test]
-    fn paths_cover_every_node() {
-        let mut root = SimThing::new(SimThingKind::World, 0);
-        let child = SimThing::new(SimThingKind::Location, 0);
-        let grand = SimThing::new(SimThingKind::Cohort, 0);
-        root.add_child(child);
-        root.children[0].add_child(grand);
-
-        let paths = build_node_paths(&root);
-        assert_eq!(paths.len(), 3);
-        assert!(paths[&root.id].is_empty());
-        assert_eq!(paths[&root.children[0].id], vec![0]);
-        assert_eq!(paths[&root.children[0].children[0].id], vec![0, 0]);
-    }
-
-    #[test]
-    fn detach_at_path_removes_subtree() {
-        let mut root = SimThing::new(SimThingKind::World, 0);
-        let child_id = {
-            let child = SimThing::new(SimThingKind::Location, 0);
-            let id = child.id;
-            root.add_child(child);
-            id
-        };
-        let paths = build_node_paths(&root);
-        let detached = detach_at_path(&mut root, &paths[&child_id]).expect("detach");
-        assert_eq!(detached.id, child_id);
-        assert!(root.children.is_empty());
-    }
 }

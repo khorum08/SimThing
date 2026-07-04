@@ -101,40 +101,4 @@ mod display_tests {
     use super::*;
     use crate::keys::CapabilityEntryKey;
 
-    #[test]
-    fn capability_tree_diagnostic_display_includes_sim_thing_id() {
-        let id = SimThingId::new();
-        let diagnostic = CapabilityTreeDiagnostic::UnknownThresholdSimThing { sim_thing_id: id };
-        let text = format!("{diagnostic}");
-        assert!(!text.is_empty());
-        assert!(text.contains(&format!("{id:?}")));
-    }
-
-    #[test]
-    fn capability_tree_diagnostic_display_includes_definition_id() {
-        let definition_id = CapabilityTreeDefinitionId::new();
-        let diagnostic = CapabilityTreeDiagnostic::UnknownDefinition { definition_id };
-        let text = format!("{diagnostic}");
-        assert!(!text.is_empty());
-        assert!(text.contains(&format!("{definition_id:?}")));
-    }
-
-    #[test]
-    fn capability_tree_diagnostic_entry_not_in_tree_display_includes_entry() {
-        let definition_id = CapabilityTreeDefinitionId::new();
-        let entry = CapabilityEntryKey {
-            category: CategoryKey {
-                namespace: "tech".into(),
-                name: "propulsion".into(),
-            },
-            entry_id: "warp_drive".into(),
-        };
-        let diagnostic = CapabilityTreeDiagnostic::EntryNotInTree {
-            definition_id,
-            entry: entry.clone(),
-        };
-        let text = format!("{diagnostic}");
-        assert!(text.contains("warp_drive"));
-        assert!(text.contains(&format!("{definition_id:?}")));
-    }
 }

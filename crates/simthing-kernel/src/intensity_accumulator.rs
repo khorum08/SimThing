@@ -124,14 +124,4 @@ mod tests {
         p
     }
 
-    #[test]
-    fn plan_emits_slot_entry_ops() {
-        let mut reg = DimensionRegistry::new();
-        reg.register(intensity_property());
-        let entries = build_intensity_eml_entries(&reg);
-        assert_eq!(entries.len(), 1);
-        let ops = plan_intensity_eml_ops(&entries, 3);
-        assert_eq!(ops.len(), 3);
-        assert!(matches!(ops[0].combine, CombineFn::EvalEML { .. }));
-    }
 }

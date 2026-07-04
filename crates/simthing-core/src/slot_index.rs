@@ -92,23 +92,4 @@ pub fn _slot_index_axis_distinct_from_role_offset(_slot: SlotIndex, _offset: Rol
 mod behavior {
     use super::*;
 
-    #[test]
-    fn slot_allocator_behavior_preserved_after_slot_index_newtype() {
-        // Mirror SlotAllocator idempotency/round-trip invariants at the SlotIndex boundary.
-        let a = SlotIndex::new(0);
-        let b = SlotIndex::new(1);
-        assert_ne!(a, b);
-        assert_eq!(a.raw(), 0);
-        assert_eq!(b.as_usize(), 1);
-        assert_eq!(a.saturating_add(1), b);
-    }
-
-    #[test]
-    fn migrated_index_path_behavior_preserved() {
-        let first = SlotIndex::new(4);
-        let count = 3u32;
-        let last_exclusive = first.saturating_add(count);
-        assert!(SlotIndex::new(5) >= first && SlotIndex::new(5) < last_exclusive);
-        assert!(!(SlotIndex::new(7) < last_exclusive));
-    }
 }

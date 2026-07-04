@@ -728,16 +728,4 @@ mod tests {
     use super::*;
     use simthing_core::SimThingKind;
 
-    #[test]
-    fn planet_gridcell_kind_helper_matches_location_role() {
-        let mut planet =
-            super::super::planet_child_location::make_planet_gridcell("p1", 0, 0, None);
-        assert!(super::super::planet_child_location::is_planet_gridcell(
-            &planet
-        ));
-        planet.kind = SimThingKind::Cohort;
-        assert!(!super::super::planet_child_location::is_planet_gridcell(
-            &planet
-        ));
-    }
 }

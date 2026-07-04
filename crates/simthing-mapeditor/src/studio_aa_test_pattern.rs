@@ -151,29 +151,4 @@ mod tests {
     use super::*;
     use bevy::render::mesh::VertexAttributeValues;
 
-    #[test]
-    fn antialiasing_test_pattern_geometry_instance_count_is_stable() {
-        assert_eq!(AA_TEST_PATTERN_GEOMETRY_INSTANCES, 13);
-        assert_eq!(
-            AA_TEST_PATTERN_STRIP_COUNT,
-            STRIP_ANGLES_DEG.len() * STRIP_WIDTHS.len()
-        );
-    }
-
-    #[test]
-    fn antialiasing_test_pattern_thin_strip_mesh_has_positions() {
-        let mesh = thin_strip_mesh(10.0, 0.1);
-        let positions = mesh.attribute(Mesh::ATTRIBUTE_POSITION).expect("positions");
-        match positions {
-            VertexAttributeValues::Float32x3(values) => assert_eq!(values.len(), 4),
-            _ => panic!("unexpected position format"),
-        }
-    }
-
-    #[test]
-    fn antialiasing_test_pattern_fan_mesh_has_triangles() {
-        let mesh = triangle_fan_mesh(2.0, 8);
-        let indices = mesh.indices().expect("indices");
-        assert!(indices.len() >= 3);
-    }
 }

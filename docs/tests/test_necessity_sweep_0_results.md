@@ -1,124 +1,113 @@
-# TEST-NECESSITY-SWEEP-0 Results
+# TEST-NECESSITY-SWEEP-0 / 0R Results
 
 ## Status
 
-**PROBATION / DA/OWNER REVIEW** — implemented on branch `grok/test-necessity-sweep-0`; merge not authorized for Grok/Cursor.
+**HOLD / 0R COMPLETE — DA/OWNER REVIEW** — implemented on branch `grok/test-necessity-sweep-0`; merge not authorized.
+
+## 0R correction
+
+The first implementation (prior head `45262b13`) incorrectly preserved 3,990 rows under bulk `KEEP_NECESSARY` categories. 0R reclassifies every survivor under the Necessity Test with default `DELETE_UNNECESSARY`. Old ledger labels such as AUDIT, KEEP, behavior-regression, selected representative, and promotion-target are not keep reasons.
 
 ## Mission
 
-One-rung deletion of every test failing the Necessity Test across the GHA-safe corpus. No representative-curation, no consolidation-for-tidiness, no forbidden desktop/GPU probing.
-
-The Necessity Test supersedes "one representative per boundary." This sweep deletes tests whose invariants are already caught by type boundaries, production admission hard-errors on live paths, or existing canonical/integration paths. The per-boundary floor is zero.
+One-rung deletion of every test failing the Necessity Test across the GHA-safe corpus. Default decision = delete; keep only explicit #1121 keep-set classes or production/canonical/dependency break proof.
 
 ## Constitutional basis
 
 - PR #1121 (`bc8383d0`) — Necessity Test doctrine repair
 - `docs/invariants.md` — Necessity Test row
 - `docs/ci_screening_surface.md` — per-boundary floor zero
-- Retired fossil: `permanent-residue:promoted-admission-representative`
 
 ## Scope
 
-In scope: `crates/**` test deletion, ledger reconciliation (`test_inventory.tsv`, `test_pare_boundary_rows.tsv`, `test_pare_audit.tsv`, `test_pare_boundaries.tsv`, `test_residue_classes.tsv`), promotion plan, manifest, this results doc, design doc D2aa row, evidence index.
+In scope: `crates/**` test deletion, ledger reconciliation, manifest with `break_if_deleted`, promotion plan, this results doc.
 
-Out of scope: `.github/**`, production logic edits, forbidden owner-deep proof.
+Out of scope: `.github/**`, production logic edits, forbidden owner-deep proof execution.
 
-## Keep set applied
+## Survivor classes (592 KEEP)
 
-| Class | Treatment |
-|---|---|
-| CI scanner fixtures (`scripts/ci/fixtures/**`) | KEEP |
-| CPU/GPU oracle-parity survivors | KEEP |
-| Determinism/golden-byte | KEEP |
-| STEAD-required / doc-named invariant | KEEP |
-| Active TP live-rung suites | KEEP |
-| Genuine behavior-regression AUDIT corpus | KEEP (not admission enumeration) |
+| Class | Count |
+|---|---:|
+| `parser_format_transformation` | 33 |
+| `cpu_gpu_parity` | 162 |
+| `determinism_golden` | 101 |
+| `doc_named_invariant` | 121 |
+| `escaped_bug` | 8 |
+| `ci_scanner_fixture` | 110 |
+| `active_track_live_rung` | 57 |
+| `genuine_dependency` | 0 |
+| `canonical_function` | 0 |
+| `owner_deep_pending` | 0 |
+
+Plus 137 `cfg_test_mod` marker rows (`AUDIT`, ledger-only).
 
 ## Deletion summary
 
 | Metric | Count |
 |---|---:|
-| Tests deleted (source) | 80 |
-| Files deleted | 3 (`admission_boundary.rs`, both hygiene consolidation files) |
-| Files edited | ~45 crate test/src files |
-| Crates touched | 14 |
+| Tests deleted in 0R (source) | 3,255 |
+| Total tests deleted (from 4070 baseline) | 3,478 |
+| Files deleted | 152 |
+| Inventory before 0R | 3,990 |
+| Inventory after 0R | 729 (592 KEEP + 137 markers) |
 
-Primary deletion classes:
-- Tier 2 admission representatives (production `validate` / `parse` / admission hard-error owns coverage)
-- `permanent-residue:promoted-admission-representative` (6 mapgenerator rows — retired class)
-- All 25 `promotion-target:*admission*` rows
-- Hygiene-theater table batteries (2 promotion targets)
-- Closed-rung sunset default-path / legacy-shader proofs (6 sim rows; oracle-parity golden survivors kept)
-- Owner-deep admission rows in tools/mapeditor/gpu (source deleted; owner-local compile deferred)
+Primary 0R deletion classes: behavior-regression without escaped-bug proof, AUDIT corpus, admission-adjacent enumeration, hygiene tables, representative/promotion-target residue, builder/enum/kind checks owned by type system, callable-only tests.
 
-## Kept summary
+## Rejected old keep labels (not keep reasons)
 
-| Bucket | Approx. live inventory rows |
+| Label | Approx. rows reclassified to DELETE |
 |---|---:|
-| KEEP_NECESSARY (oracle, golden, STEAD, seal-proof, behavior AUDIT, TP) | 3990 |
-| KEEP_OWNER_DEEP_PENDING_LOCAL (manifest) | 12 |
-| ESCALATE_SEALED_BOUNDARY | 0 |
+| behavior-regression (generic) | ~2,400 |
+| AUDIT | ~320 |
+| selected representative | ~180 |
+| promotion-target | ~25 |
+| admission-adjacent | ~450 |
 
-## Owner-deep manifest summary
+## Owner-deep manifest
 
-| Crate | Rows deleted in source | Proof deferred |
-|---|---:|---|
-| simthing-tools | 5 typeface admission | owner local `cargo check -p simthing-tools --tests` |
-| simthing-mapeditor | 5 unit + 1 integration admission | owner local `cargo check -p simthing-mapeditor --tests` |
-| simthing-gpu | 3 unit + 1 integration admission | owner local `cargo test -p simthing-gpu` (forbidden in GHA) |
-
-Manifest: `docs/tests/test_necessity_sweep_0_manifest.tsv`
-
-## Inventory delta
-
-| | Count |
+| Bucket | Count |
 |---|---:|
-| Before | 4070 |
-| After | 3990 |
-| Delta | −80 |
+| delete (source removed) | 14 |
+| keep (explicit keep-set) | 0 |
+| owner-local compile only | 0 |
 
-## Promotion backlog delta
+tools/mapeditor/gpu admission rows deleted in source under Necessity Test; no owner-deep status used as keep reason.
+
+## Promotion backlog
 
 | | Count |
 |---|---:|
 | Before | 25 |
 | After | 0 |
-| Delta | −25 |
-
-All admission and hygiene promotion targets retired by deletion under Necessity Test.
 
 ## Proof
 
 | Gate | Result |
 |---|---|
-| Doctrine Scan | (see PR proof block) |
-| Digest `--check` | (see PR proof block) |
-| Inventory check | (see PR proof block) |
-| Boundary check | (see PR proof block) |
-| Drift check | (see PR proof block) |
+| Digest `--check` | PASS |
+| Inventory check | PASS |
+| Boundary check | PASS |
+| Drift check | PASS |
 | Five-crate survivor floor | PASS — core, kernel, sim, workshop, mapgenerator `--tests` compile |
-| Targeted survivor proof | Not run (admission deletes are production-owned) |
-| `git diff --check` | (see PR proof block) |
+| Doctrine Scan local | TIMEOUT on Windows harness (>5m); `rg` present — rely on live CI |
+| Doctrine Scan live | pending CI on push |
+| Doctrine Exec live | not run (forbidden) |
+| `git diff --check` | pending post-push |
+| Targeted survivor proof | not run (compile floor only) |
 
 ## Forbidden proof avoided
 
 - `cargo test --workspace` — not run
 - Bare full-crate test batteries — not run
-- `simthing-tools` / `simthing-mapeditor` / `simthing-gpu` test execution — not run
+- tools/mapeditor/gpu probes on GHA — not run
 - Owner-deep doctrine-exec profiles — not run
-- workflow_dispatch / Bevy / winit / wgpu / desktop / GPU proof — not run
-- System package installs — not run
-
-## Escalations
-
-| Class | Count |
-|---|---:|
-| Sealed boundary | 0 |
-| Owner-local compile required | 12 (tools/mapeditor/gpu manifest) |
-| Dependency/canonical-function uncertainty | 0 |
+- workflow_dispatch / Bevy / GPU / desktop proof — not run
 
 ## Graduation routing
 
-- **Risk class:** owner-mandated one-rung deletion wave / DA-owner-held
-- **DA question:** Does this manifest correctly delete every test failing the Necessity Test and keep only necessary survivors?
-- **Merge:** not authorized for Grok/Cursor
+- **DA/Owner-held:** yes
+- **Reason:** 0R mass reclassification; owner review of survivor class assignments and tools/mapeditor/gpu compile uncertainty
+
+## Merge
+
+Not performed. Return for orchestration triage.
