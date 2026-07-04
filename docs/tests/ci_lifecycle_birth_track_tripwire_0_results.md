@@ -2,7 +2,12 @@
 
 ## Status
 
-**DONE / DA-OWNER REVIEW**
+**DONE — DA-APPROVED (2026-07-04, executive DA deep review, R3).** All three defects from the R2 hold are
+verified fixed against the tree: (1) the 8 Necessity-Test survivor guards are immune (`survivor-set
+expired: 0`); (2) `downstream-utility:` is structured + auditable (not a bare-string silent skip); (3) the
+owner-mandated rising-cost DSU lease is present with DA-tunable tiers; R3's global closure-gate is proven by
+the cross-track meta-proof. The 137 expired `cfg_test_mod::tests` module markers are expected pre-lifecycle
+backlog (scheduled path only, never blocking a PR). Merge-cleared.
 
 Track-A / ledger-layer text analysis only. No §3B executable proof, no workflow, no cargo test, no auto-deletion, no semantic note-truth scan.
 
