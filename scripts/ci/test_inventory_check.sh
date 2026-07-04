@@ -24,6 +24,7 @@ args = sys.argv[3:]
 boundary_rows = root / "scripts/ci/test_lifecycle_boundary_rows.tsv"
 residue_classes = root / "scripts/ci/test_residue_classes.tsv"
 lifecycle_boundary_check = root / "scripts/ci/test_lifecycle_boundary_check.sh"
+lifecycle_expiry_check = root / "scripts/ci/test_lifecycle_expiry_check.sh"
 
 required = [
     "crate",
@@ -35,6 +36,8 @@ required = [
     "verdict",
     "note",
     "promotion_target",
+    "birth_track",
+    "dsu_survivals",
 ]
 allowed_kind = {"unit", "integration", "doc", "compile_fail", "trybuild", "fixture", "unknown"}
 allowed_class = {
@@ -285,6 +288,24 @@ else:
             errors.append("lifecycle boundary check failed")
     else:
         errors.append(f"missing lifecycle boundary checker {lifecycle_boundary_check}")
+
+    print("TEST-LIFECYCLE-EXPIRY AUTHORITY")
+    if lifecycle_expiry_check.exists():
+        expiry = subprocess.run(
+            bash_cmd(lifecycle_expiry_check) + ["--schema"],
+            cwd=root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if expiry.stdout:
+            print(expiry.stdout.rstrip())
+        if expiry.stderr:
+            print(expiry.stderr.rstrip())
+        if expiry.returncode != 0:
+            errors.append("lifecycle expiry schema check failed")
+    else:
+        errors.append(f"missing lifecycle expiry checker {lifecycle_expiry_check}")
 
 if errors:
     print("TEST-INVENTORY-CHECK-VERDICT: FAIL")
