@@ -8,8 +8,8 @@
 
 - Branch: `ci-b-local-harness-0`
 - PR: [#1129](https://github.com/khorum08/SimThing/pull/1129)
-- Base: `origin/master` @ `b738e76f586f5b0d86aa4fd2c923a74fdde1ab7f` (post-#1128)
-- Head: `e75e05f9b3d517c5b502953014f15e40ee09fdb9`
+- Base: `origin/master` @ `17196cb741b47911cbe261e48f027d6d08fea6ba` (post-#1131 merge)
+- Head: Proof run: current branch tip at proof time; final PR head verified by orchestrator.
 
 ## Files changed
 
@@ -93,6 +93,31 @@ Verdict: **INSPECT** — `owner-local GPU prerequisites not confirmed (set DOCTR
 - No `atlas_0080_0`, mapeditor_linux_cargo_check, studio_ingestion GHA probes, apt-get/x11/wayland/ALSA bootstrap
 - No Track-D `test-pare-*` / deletion profile resurrection
 - No test inventory / lifecycle / workflow edits
+
+### 0R2 refresh
+
+- Refreshed after #1131 lifecycle tripwire merge (`17196cb741`).
+- Verified local harness still reads post-lifecycle inventory schema with `birth_track` and `dsu_survivals`.
+- Verified no workflow/product/cargo/GHA-owner-local expansion.
+- Verified #1129 remains PROBATION / DA-OWNER REVIEW, not self-mergeable.
+- `--plan --profile owner-local-gpu-bevy` still resolves 49 batched commands from live post-#1131 inventory.
+- Proof run: current branch tip at proof time; final PR head verified by orchestrator.
+
+0R2 proof (PYTHON_BIN set explicitly on Windows Git Bash):
+
+- `bash -n scripts/ci/doctrine_tests.sh`: PASS
+- `--list`: PASS
+- `--plan --profile owner-local-gpu-bevy`: INSPECT inspect=1 (plan-only; 49 commands resolved)
+- `--prove-report`: PASS
+- `--profile owner-local-gpu-bevy`: INSPECT (GPU prerequisites not confirmed — intended on agent host)
+- `test_inventory_check.sh`: INSPECT (pre-existing dependency-floor fixtures; expiry schema PASS)
+- `test_inventory_drift_check.sh`: PASS
+- `test_lifecycle_expiry_check.sh --schema`: PASS
+- `doctrine_exec_profile_lint.sh`: PASS
+- `doctrine_exec_profile_lint.sh --prove-no-track-d-deletion-profiles`: PASS
+- `doctrine_scan.sh`: PASS failures=0 inspect=0
+- `gen_digest.sh --check`: PASS
+- `git diff --check origin/master...HEAD`: PASS
 
 ## CI-B-LOCAL-HARNESS-0R remedial repairs
 
