@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW** — fleet/ship authoring rung (0R applied). Not self-mergeable; DA/Owner clearance required.
+**DONE — DA-APPROVED (2026-07-04, executive DA deep review after 0R).** DA-verified: the Fleet/Cohort `planet_child_rf` special-case is removed (no net-new spec kind-reads vs master); fleet-nested RF reduce-up parked as a §0.6 Deviation (generic semantic-free depth-recursion candidate surfaced, not a kind traversal); fleet/ship counts + 60-40/80-20 + parentage + owner refs + HP/Damage/upkeep proven; `birth_track=0.0.8.5-terran-pirate`; scope clean; gates green. Merge-cleared.
 
 ## Identity
 
