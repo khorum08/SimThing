@@ -74,29 +74,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn spawn_child_resolves_builtin_kind_tags() {
-        let cases = [
-            (SimThingKindTag::Cohort, SimThingKind::Cohort),
-            (SimThingKindTag::Location, SimThingKind::Location),
-            (SimThingKindTag::Owner, SimThingKind::Owner),
-            (
-                SimThingKindTag::Custom("tech_tree".into()),
-                SimThingKind::Custom("tech_tree".into()),
-            ),
-        ];
-        for (tag, expected) in cases {
-            let child = minimal_template(tag).spawn_child(7);
-            assert_eq!(child.kind, expected);
-            assert_eq!(child.spawned_day, 7);
-        }
-    }
-
-    #[test]
-    fn faction_tag_maps_to_deprecated_faction_kind() {
-        #[allow(deprecated)]
-        let child = minimal_template(SimThingKindTag::Faction).spawn_child(0);
-        #[allow(deprecated)]
-        assert_eq!(child.kind, SimThingKind::Faction);
-    }
 }

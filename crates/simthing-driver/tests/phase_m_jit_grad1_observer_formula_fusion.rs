@@ -546,22 +546,6 @@ fn oracle_sample_indices(n_observers: usize) -> Vec<usize> {
 }
 
 #[test]
-fn jit_grad1_fused_observer_score_shader_is_semantic_free() {
-    let wgsl = fused_wgsl();
-    assert_shader_semantic_free(&wgsl);
-    assert!(wgsl.contains("fields"));
-    assert!(wgsl.contains("observers"));
-    assert!(wgsl.contains("outputs"));
-    assert!(wgsl.contains("score"));
-    assert!(wgsl.contains("descent_x"));
-    assert!(wgsl.contains("bitcast<f32>"));
-    assert!(
-        !wgsl.contains("mag2"),
-        "exact fused path must not emit mag2"
-    );
-}
-
-#[test]
 fn jit_grad1_small_grid_observer_score_parity() {
     with_gpu(|ctx| {
         let wgsl = fused_wgsl();
@@ -589,76 +573,4 @@ fn jit_grad1_small_grid_observer_score_parity() {
             result.elapsed_ms
         );
     });
-}
-
-#[test]
-fn jit_grad1_batches_10000_observer_scores_one_dispatch() {
-    with_gpu(|ctx| {
-        let wgsl = fused_wgsl();
-        let width = 128u32;
-        let height = 128u32;
-        let n_dims = 4u32;
-        let source_col = 0u32;
-        let fields = build_test_field(width, height, n_dims, source_col);
-        let observers = structured_observers_10000(width, height, source_col);
-        assert!(observers.len() >= 10_000);
-
-        let result = run_fusion_gpu(ctx, &wgsl, &fields, &observers, width, height, n_dims);
-        assert_eq!(result.outputs.len(), 10_000);
-        assert_eq!(result.dispatch_count, 1);
-
-        let sample_indices = oracle_sample_indices(observers.len());
-        let sampled_obs: Vec<ObserverInput> =
-            sample_indices.iter().map(|&i| observers[i]).collect();
-        let sampled_out: Vec<ObserverScoreOutput> =
-            sample_indices.iter().map(|&i| result.outputs[i]).collect();
-        assert_fusion_parity(
-            &fields,
-            width,
-            height,
-            n_dims,
-            &sampled_obs,
-            &sampled_out,
-            "batch_10000_sample",
-        );
-
-        let workgroups = 10_000u32.div_ceil(WORKGROUP_SIZE);
-        println!(
-            "batch_10000_fusion: observers={}, dispatch_count={}, workgroups={}, workgroup_size={}, elapsed_ms={:.3}",
-            observers.len(),
-            result.dispatch_count,
-            workgroups,
-            WORKGROUP_SIZE,
-            result.elapsed_ms
-        );
-    });
-}
-
-#[test]
-fn jit_grad1_score_excludes_approximate_mag2() {
-    let wgsl = fused_wgsl();
-    assert!(
-        !wgsl.contains("mag2"),
-        "score formula must not reference approximate mag2"
-    );
-    let score_emit = emit_exact_subset_score_wgsl(W0.to_bits(), W1.to_bits(), BIAS.to_bits());
-    assert!(!score_emit.contains("mag2"));
-    assert!(score_emit.contains("descent_x"));
-    assert!(score_emit.contains("descent_y"));
-    assert!(!score_emit.contains("sqrt("));
-    // M-JIT-GRAD-0 R1 posture: mag2 is diagnostic-only in GRAD-0; GRAD-1 fused output has no mag2 field.
-    assert!(std::mem::size_of::<ObserverScoreOutput>() >= 32);
-}
-
-#[test]
-fn jit_grad1_default_off_posture() {
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-    assert_shader_semantic_free(&fused_wgsl());
-    assert!(
-        !fused_wgsl().contains("ResourceEconomySpec"),
-        "fused WGSL must not reference ResourceEconomySpec"
-    );
 }

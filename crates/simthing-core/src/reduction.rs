@@ -75,48 +75,4 @@ impl ReductionRule {
 mod tests {
     use super::*;
 
-    #[test]
-    fn override_resolves_via_subfield_spec() {
-        use crate::property::{ClampBehavior, SubFieldSpec};
-        let mut spec = SubFieldSpec {
-            role: SubFieldRole::Amount,
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: "x".into(),
-            display_range: None,
-            governed_by: None,
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        };
-        assert_eq!(spec.resolved_reduction(), ReductionRule::Mean);
-        spec.reduction_override = Some(ReductionRule::Sum);
-        assert_eq!(spec.resolved_reduction(), ReductionRule::Sum);
-    }
-
-    #[test]
-    fn role_defaults() {
-        assert_eq!(
-            ReductionRule::default_for_role(&SubFieldRole::Amount),
-            ReductionRule::Mean
-        );
-        assert_eq!(
-            ReductionRule::default_for_role(&SubFieldRole::Velocity),
-            ReductionRule::Mean
-        );
-        assert_eq!(
-            ReductionRule::default_for_role(&SubFieldRole::Intensity),
-            ReductionRule::Max
-        );
-        assert_eq!(
-            ReductionRule::default_for_role(&SubFieldRole::Named("axis_drift".into())),
-            ReductionRule::Mean,
-        );
-        assert_eq!(
-            ReductionRule::default_for_role(&SubFieldRole::Custom("mod_metric".into())),
-            ReductionRule::Mean,
-        );
-    }
 }

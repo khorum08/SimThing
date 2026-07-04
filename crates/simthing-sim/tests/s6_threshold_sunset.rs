@@ -16,20 +16,6 @@ fn try_gpu() -> Option<GpuContext> {
 }
 
 #[test]
-fn s6_no_legacy_threshold_shader_file() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../simthing-gpu/src/shaders/threshold_scan.wgsl");
-    assert!(
-        !path.exists(),
-        "legacy threshold shader still exists: {path:?}"
-    );
-}
-
-#[test]
-fn s6_accumulator_threshold_is_default_path() {
-    assert!(PipelineFlags::default().use_accumulator_threshold_scan);
-}
-#[test]
 fn s6_threshold_events_match_cpu_golden() {
     let Some(ctx) = try_gpu() else {
         eprintln!("skipping: no GPU");

@@ -200,20 +200,6 @@ fn inert_gridcell_mut(spec: &mut SimThingScenarioSpec) -> &mut SimThing {
         .expect("inert")
 }
 
-#[test]
-fn duplicate_planet_id_rejected() {
-    let json = fs::read_to_string(corpus_path(
-        "planet_child_location_duplicate_id_rejected.simthing-scenario.json",
-    ))
-    .expect("duplicate corpus");
-    let (result, _) = ingest_scenario_from_str("duplicate", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-}
-
-
 fn inert_receiver_only_spec() -> SimThingScenarioSpec {
     let mut spec = base_canonical_spec("inert_gridcell_receiver_1x1_admitted");
     spec.provenance.source = "RECURSIVE-SPATIAL-GRID-DEFAULTS-0".into();

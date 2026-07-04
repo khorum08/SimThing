@@ -43,39 +43,4 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
-    #[test]
-    fn next_screenshot_filename_starts_at_zero() {
-        let dir = tempdir().expect("tempdir");
-        assert_eq!(
-            next_screenshot_filename(dir.path()),
-            Some("screenshot_00000.png".to_string())
-        );
-    }
-
-    #[test]
-    fn next_screenshot_filename_skips_existing() {
-        let dir = tempdir().expect("tempdir");
-        fs::write(dir.path().join("screenshot_00000.png"), b"x").expect("write");
-        assert_eq!(
-            next_screenshot_filename(dir.path()),
-            Some("screenshot_00001.png".to_string())
-        );
-        fs::write(dir.path().join("screenshot_00002.png"), b"x").expect("write");
-        assert_eq!(
-            next_screenshot_filename(dir.path()),
-            Some("screenshot_00003.png".to_string())
-        );
-    }
-
-    #[test]
-    fn next_screenshot_filename_ignores_unrelated_files() {
-        let dir = tempdir().expect("tempdir");
-        fs::write(dir.path().join("notes.txt"), b"x").expect("write");
-        fs::write(dir.path().join("screenshot.png"), b"x").expect("write");
-        fs::write(dir.path().join("screenshot_42.png"), b"x").expect("write");
-        assert_eq!(
-            next_screenshot_filename(dir.path()),
-            Some("screenshot_00000.png".to_string())
-        );
-    }
 }

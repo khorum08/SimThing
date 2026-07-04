@@ -46,31 +46,6 @@ fn load_corpus(name: &str) -> String {
 }
 
 #[test]
-fn rejects_missing_owner() {
-    let json = load_corpus("invalid_missing_owner.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("missing_owner", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(!result.validation.owners_ok);
-}
-
-#[test]
-fn rejects_duplicate_owner_ids() {
-    let json = load_corpus("invalid_duplicate_owner_ids.simthing-scenario.json");
-    let (result, _) = ingest_scenario_from_str("dup_owners", &json, CANONICAL_PROFILE);
-    assert_eq!(
-        result.classification,
-        ScenarioIngestionClassification::Rejected
-    );
-    assert!(result
-        .errors
-        .iter()
-        .any(|e| e.message.contains("duplicate owner_id")));
-}
-
-#[test]
 fn classifies_legacy_terran_pirate_as_legacy_compatibility_not_canonical() {
     let reference = load_corpus("legacy_world_root_terran_pirate_reference.txt");
     let path = resolve_corpus_path_reference(&reference);

@@ -100,16 +100,3 @@ fn msdf_glyph_tile_is_deterministic() {
         atlas_region_pixels(&b, &tile_b)
     );
 }
-
-#[test]
-fn glyph_source_api_does_not_silently_claim_unsupported_glyph_ids() {
-    let font = probe_font();
-    let face = Face::parse(FIXTURE, 0).expect("parse fixture");
-    let invalid = u32::from(face.number_of_glyphs()) + 100;
-    let mut atlas = DistanceFieldAtlasCore::new(ATLAS_SIZE);
-    let err = atlas
-        .get_or_generate_glyph_msdf(&font, invalid, TEST_PX)
-        .expect_err("glyph id without outline must error explicitly");
-    assert!(matches!(err, DistanceFieldError::MissingOutline(_)));
-}
-

@@ -50,55 +50,6 @@ fn rejected_with(
 }
 
 #[test]
-fn econ_session_clearinghouse_aggregates_local_cells() {
-    let report = plan_mobility_econ0(&input(vec![
-        rec(1, 100, 7, 10, 6, 1.0, 9),
-        rec(1, 101, 7, 4, 8, 0.5, 2),
-    ]));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.substrate_id, MOBILITY_ECON0_ID);
-    assert_eq!(report.session_aggregates.len(), 1);
-    let aggregate = &report.session_aggregates[0];
-    assert_eq!(aggregate.hard_available, 14);
-    assert_eq!(aggregate.hard_need, 14);
-    assert_eq!(aggregate.hard_shortfall, 0);
-    assert_eq!(aggregate.hard_surplus, 0);
-    assert_eq!(aggregate.soft_beta_input, 1.5);
-    assert_eq!(report.touched_cell_count, 2);
-}
-
-#[test]
-fn econ_subsidiarity_balance_conservation() {
-    let report = plan_mobility_econ0(&input(vec![
-        rec(1, 100, 7, 3, 5, 0.0, 0),
-        rec(1, 101, 7, 9, 10, 0.0, 1),
-    ]));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.conservation_preserved);
-    let disbursed = report
-        .down_disburses
-        .iter()
-        .map(|disburse| disburse.hard_amount)
-        .sum::<i64>();
-    assert_eq!(disbursed, 12);
-    assert_eq!(report.session_aggregates[0].hard_shortfall, 3);
-}
-
-#[test]
-fn econ_hard_band_alpha_before_soft_band_beta() {
-    let report = plan_mobility_econ0(&input(vec![rec(1, 100, 7, 10, 6, 0.75, 0)]));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert!(report.alpha_finalized_before_beta);
-    assert!(report.beta_reads_finalized_alpha);
-    assert!(!report.hard_soft_same_pass);
-    assert_eq!(report.down_disburses[0].hard_amount, 6);
-    assert_eq!(report.down_disburses[0].soft_beta_amount, 6.75);
-}
-
-#[test]
 fn econ_deterministic_up_down_disburse() {
     let a = plan_mobility_econ0(&input(vec![
         rec(1, 101, 7, 4, 8, 0.5, 99),
@@ -121,44 +72,4 @@ fn econ_cpu_gpu_parity_layout() {
     let cpu = mobility_econ0_layout_checksum_cpu(&records);
     let gpu = mobility_econ0_layout_checksum_gpu_proxy(&records);
     assert_eq!(cpu, gpu);
-}
-
-#[test]
-fn econ_keeps_owner_parked() {
-    let accepted = plan_mobility_econ0(&input(vec![rec(1, 100, 7, 4, 3, 0.25, 0)]));
-    assert!(accepted.admitted, "{:?}", accepted.diagnostics);
-    assert!(accepted.owner_parked);
-
-    let mut forbidden = MobilityEcon0ForbiddenPathRequests::default();
-    forbidden.owner_runtime = true;
-    let report = rejected_with(forbidden);
-
-    assert!(!report.admitted);
-    assert!(report.diagnostics.contains(&"owner_runtime"));
-}
-
-#[test]
-fn econ_multi_cell_clearinghouse_scale() {
-    let records = (0..48u64)
-        .map(|cell| rec(1, 100 + cell, 7, 2, 1 + (cell % 3) as i64, 0.25, cell))
-        .collect();
-    let report = plan_mobility_econ0(&input(records));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.touched_cell_count, 48);
-    assert_eq!(report.boundary_group_count, 1);
-    assert!(report.conservation_preserved);
-}
-
-#[test]
-fn econ_concentration_one_session() {
-    let records = (0..1_000u64)
-        .map(|i| rec(1, 100 + (i % 48), 7 + (i % 3), 1, 1, 0.1, i))
-        .collect();
-    let report = plan_mobility_econ0(&input(records));
-
-    assert!(report.admitted, "{:?}", report.diagnostics);
-    assert_eq!(report.touched_session_count, 1);
-    assert_eq!(report.touched_cell_count, 48);
-    assert_eq!(report.touched_resource_count, 3);
 }

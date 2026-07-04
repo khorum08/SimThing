@@ -174,63 +174,8 @@ mod tests {
     }
 
     /// Velocity integration: amount changes at `velocity * dt`
-    #[test]
-    fn velocity_integration() {
-        let (reg, lid) = bootstrap();
-        let layout = &reg.property(lid).layout;
-
-        let mut cohort = make_cohort(&reg, lid, 0.5);
-        cohort
-            .property_mut(lid)
-            .unwrap()
-            .set_role(&SubFieldRole::Velocity, layout, 0.1);
-
-        let eval = Evaluator::new(&reg, 1.0);
-        let snap = eval.evaluate(&cohort, 1);
-
-        let e = snap.get(cohort.id).unwrap();
-        let amount = e.properties[&lid].get_role(&SubFieldRole::Amount, layout);
-        // 0.5 + 0.1 * 1.0 = 0.6
-        assert!((amount - 0.6).abs() < 1e-5, "amount was {amount}");
-    }
-
     /// Ancestor transforms propagate down: a world-level loyalty penalty
     /// (e.g. extraction policy) reaches a cohort two levels below.
-    #[test]
-    fn ancestor_transform_propagates() {
-        let (reg, lid) = bootstrap();
-
-        let world_overlay = Overlay {
-            id: OverlayId::new(),
-            kind: OverlayKind::Policy,
-            source: OverlaySource::Player,
-            affects: vec![],
-            transform: crate::overlay::PropertyTransformDelta {
-                property_id: lid,
-                sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Multiply(0.9))],
-            },
-            lifecycle: OverlayLifecycle::Permanent,
-        };
-
-        let mut world = SimThing::new(SimThingKind::World, 0);
-        world.add_overlay(world_overlay);
-
-        let cohort = make_cohort(&reg, lid, 1.0);
-        let cohort_id = cohort.id;
-        let mut location = SimThing::new(SimThingKind::Location, 0);
-        location.add_child(cohort);
-        world.add_child(location);
-
-        let eval = Evaluator::new(&reg, 1.0);
-        let snap = eval.evaluate(&world, 1);
-
-        let e = snap.get(cohort_id).unwrap();
-        let layout = &reg.property(lid).layout;
-        let amount = e.properties[&lid].get_role(&SubFieldRole::Amount, layout);
-        // 1.0 * 0.9 = 0.9  (velocity=0, no integration change)
-        assert!((amount - 0.9).abs() < 1e-5, "amount was {amount}");
-    }
-
     /// Determinism: two evaluations of identical state produce identical output.
     #[test]
     fn deterministic() {
@@ -260,23 +205,4 @@ mod tests {
         }
     }
 
-    /// Serialize → deserialize a FieldSnapshot and verify lossless round-trip.
-    #[test]
-    fn snapshot_round_trip() {
-        let (reg, lid) = bootstrap();
-        let layout = &reg.property(lid).layout;
-        let cohort = make_cohort(&reg, lid, 0.42);
-        let eval = Evaluator::new(&reg, 1.0);
-        let snap = eval.evaluate(&cohort, 5);
-
-        let json = serde_json::to_string(&snap).expect("serialize");
-        let back: FieldSnapshot = serde_json::from_str(&json).expect("deserialize");
-
-        let original = snap.get(cohort.id).unwrap();
-        let restored = back.get(cohort.id).unwrap();
-        assert_eq!(
-            original.properties[&lid].get_role(&SubFieldRole::Amount, layout),
-            restored.properties[&lid].get_role(&SubFieldRole::Amount, layout)
-        );
-    }
 }

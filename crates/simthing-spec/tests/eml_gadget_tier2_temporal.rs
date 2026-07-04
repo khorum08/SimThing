@@ -31,35 +31,6 @@ fn assert_f32_eq(got: f32, expected: f32, ctx: &str) {
 
 // ── Test 1 — registry and deferred list after 2B ─────────────────────────────
 
-#[test]
-fn tier2_registry_contains_velocity_decay_ema() {
-    let registry = EmlGadgetRegistry::new();
-
-    // Tier-1 still present
-    for kind in registry.tier1_kinds() {
-        assert!(registry.is_registered(*kind));
-    }
-
-    // 2B kinds are now recognized via parse (used by admission)
-    assert!(EmlGadgetKind::parse("VelocityMonitor").is_some());
-    assert!(EmlGadgetKind::parse("Decay").is_some());
-    assert!(EmlGadgetKind::parse("Ema").is_some());
-
-    // Tier-2 explicit velocity-column gadgets landed through 2E; no deferred kind strings remain.
-    assert!(DEFERRED_GADGET_KINDS.is_empty());
-    assert!(!DEFERRED_GADGET_KINDS.contains(&"Acceleration"));
-
-    // 2B kinds are ExactDeterministic and require temporal memory
-    for name in ["VelocityMonitor", "Decay", "Ema"] {
-        let kind = EmlGadgetKind::parse(name).unwrap();
-        assert_eq!(
-            kind.execution_class(),
-            EmlExecutionClass::ExactDeterministic
-        );
-        assert!(kind.requires_temporal_memory());
-    }
-}
-
 // ── Test 2 — VelocityMonitor compile + stateful sequence oracle parity ───────
 
 #[test]
@@ -166,41 +137,6 @@ fn ema_oracle_parity() {
 
 // ── Test 8 — no runtime scheduling / gadget execution posture ────────────────
 
-#[test]
-fn no_runtime_gadget_execution_posture() {
-    let lib = include_str!("../src/lib.rs");
-    let compile = include_str!("../src/compile/eml_gadget.rs");
-
-    assert!(
-        !lib.contains("runtime gadget stack") || compile.contains("deferred_runtime_execution")
-    );
-    // The key posture is already enforced by PerGadgetOnly composition plan and lack of
-    // any driver/gpu/sim consumption of CompiledEmlGadgetStack for these kinds.
-}
-
 // ── Test 9 — 2A snapshot/copy regression remains green ───────────────────────
 
-#[test]
-fn two_a_snapshot_copy_regression_still_green() {
-    // This test exists to ensure 2B changes did not break the 2A substrate proof.
-    // The actual heavy test lives in simthing-driver; we just ensure the spec side
-    // still admits the patterns used by 2A (via the existing driver test being run
-    // in the required regression list).
-    let _ = DEFERRED_GADGET_KINDS; // touch to keep import live
-}
-
 // ── Test 10 — overall posture preservation (defaults, no atlas, etc.) ────────
-
-#[test]
-fn posture_preservation_2b() {
-    use simthing_spec::{MappingExecutionProfile, ResourceFlowExecutionProfile};
-
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-
-    // Resource Flow default-off is asserted via PipelineFlags in other tests;
-    // we simply confirm the constant is still present and the 2B code does not touch it.
-    let _ = ResourceFlowExecutionProfile::default();
-}

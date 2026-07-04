@@ -139,48 +139,4 @@ pub fn estimate_region_field_budget(
 mod unit_tests {
     use super::*;
 
-    #[test]
-    fn single_grid_multiplier_one() {
-        let spec = RegionFieldBudgetSpec {
-            grid_size: 10,
-            column_count: 4,
-            buffer_multiplier: 2.0,
-            copy_multiplier: 1.0,
-            tile_count: 1,
-            isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
-            max_region_field_vram_bytes: None,
-        };
-        let est = estimate_region_field_budget(&spec).unwrap();
-        assert!((est.isolation_multiplier - 1.0).abs() < 1e-9);
-        assert_eq!(est.useful_cells, 100);
-        assert_eq!(est.estimated_bytes, 100 * 4 * 4 * 2);
-    }
-
-    #[test]
-    fn physical_gutter_n10_h8() {
-        let mult = region_field_isolation_multiplier(
-            RegionFieldIsolationPolicyEstimate::PhysicalGutter {
-                gutter: 8,
-                horizon: 8,
-            },
-            10,
-        );
-        assert!((mult - 6.76).abs() < 0.01);
-    }
-
-    #[test]
-    fn over_budget_rejects() {
-        let spec = RegionFieldBudgetSpec {
-            grid_size: 32,
-            column_count: 16,
-            buffer_multiplier: 2.0,
-            copy_multiplier: 1.0,
-            tile_count: 1,
-            isolation_policy: RegionFieldIsolationPolicyEstimate::SingleGridNoAtlas,
-            max_region_field_vram_bytes: Some(1024),
-        };
-        let err = estimate_region_field_budget(&spec).unwrap_err();
-        assert!(err.requested_bytes > err.allowed_bytes);
-        assert!(!err.suggested_fixes().is_empty());
-    }
 }

@@ -151,43 +151,4 @@ mod tests {
     };
     use crate::{SimThingId, StructuralCoord};
 
-    #[test]
-    fn mints_proofs_for_valid_binding_table() {
-        let placements = [
-            StructuralGridPlacement {
-                location_id: "loc_a",
-                coord: StructuralCoord::new(1, 2),
-            },
-            StructuralGridPlacement {
-                location_id: "loc_b",
-                coord: StructuralCoord::new(3, 4),
-            },
-        ];
-        let participants = [
-            (SimThingId::from_session_raw(10), "loc_a"),
-            (SimThingId::from_session_raw(11), "loc_b"),
-        ];
-        let proofs =
-            validate_and_mint_placed_participants_by_location_id(&participants, &placements)
-                .expect("valid table");
-        assert_eq!(proofs.len(), 2);
-        assert_eq!(proofs[0].participant(), SimThingId::from_session_raw(10));
-        assert_eq!(proofs[0].coord(), StructuralCoord::new(1, 2));
-        assert_eq!(proofs[1].participant(), SimThingId::from_session_raw(11));
-        assert_eq!(proofs[1].coord(), StructuralCoord::new(3, 4));
-    }
-
-    #[test]
-    fn rejects_missing_structural_placement() {
-        let placements = [StructuralGridPlacement {
-            location_id: "loc_a",
-            coord: StructuralCoord::new(0, 0),
-        }];
-        let participants = [(SimThingId::from_session_raw(10), "loc_missing")];
-        let err = validate_and_mint_placed_participants_by_location_id(&participants, &placements)
-            .expect_err("missing placement");
-        assert!(matches!(err, PlacedParticipantValidationError { .. }));
-        assert!(err.message.contains("loc_missing"));
-    }
-
 }

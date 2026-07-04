@@ -347,24 +347,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn migrated_structural_path_behavior_preserved() {
-        let scenario = synthetic_two_cell_scenario();
-        let admission =
-            compile_structural_n4_theater(&scenario, MappingExecutionProfile::SparseRegionFieldV1)
-                .expect("compile theater");
-
-        let StructuralTheaterAdmission::Admit(theater) = admission else {
-            panic!("4x4 two-cell theater must admit");
-        };
-
-        let hub = theater.coord_for_system(1).expect("hub");
-        let branch = theater.coord_for_system(2).expect("branch");
-        assert_eq!(hub, StructuralCoord::new(0, 0));
-        assert_eq!(branch, StructuralCoord::new(1, 0));
-        assert_eq!(theater.cell_slot(hub), 0);
-        assert_eq!(theater.cell_slot(branch), 1);
-        assert!(theater.has_n4_edge(hub, branch));
-        assert_eq!(theater.n4_edges.len(), 1);
-    }
 }

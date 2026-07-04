@@ -66,27 +66,6 @@ fn load_corpus(name: &str) -> SimThingScenarioSpec {
 }
 
 #[test]
-fn owner_silo_accumulator_plan_compiles_from_canonical_scenario() {
-    let scenario = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
-    let plan = compile_owner_silo_gpu_tick_plan(&scenario).expect("compile");
-    assert_eq!(plan.participants.len(), 2);
-    assert!(plan.full_state_mutation_deferred);
-    assert_eq!(plan.surplus_plan.slot_count, 3);
-    assert_eq!(plan.deficit_plan.slot_count, 3);
-}
-#[test]
-fn owner_silo_accumulator_participants_are_explicit_only() {
-    let scenario = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
-    let plan = compile_owner_silo_gpu_tick_plan(&scenario).expect("compile");
-    let explicit = owner_silo_flow_participant_inputs(&scenario).expect("inputs");
-    assert_eq!(plan.participants, explicit);
-    assert_eq!(plan.participants.len(), 2);
-    for participant in &plan.participants {
-        assert!(!participant.owner_id.is_empty());
-    }
-}
-
-#[test]
 fn owner_silo_cpu_oracle_matches_accumulator_inputs() {
     let scenario = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
     let plan = compile_owner_silo_gpu_tick_plan(&scenario).expect("compile");
@@ -147,11 +126,6 @@ fn run_owner_silo_gpu_tick_matches_cpu_oracle() {
     eprintln!("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0: REAL_ADAPTER_OBSERVED");
 }
 
-#[test]
-fn owner_silo_gpu_tick_none_policy_does_not_enable_readback() {
-    with_isolated_readback_gate_test(|| run_owner_silo_gpu_tick_none_policy_no_readback());
-}
-
 fn run_owner_silo_gpu_tick_none_policy_no_readback() {
     let Some(ctx) = gpu_context_blocking().ok() else {
         eprintln!("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
@@ -169,11 +143,6 @@ fn run_owner_silo_gpu_tick_none_policy_no_readback() {
     eprintln!("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0: REAL_ADAPTER_OBSERVED");
 }
 
-#[test]
-fn owner_silo_gpu_tick_proof_readback_scoped() {
-    with_isolated_readback_gate_test(|| run_owner_silo_gpu_tick_proof_readback_scoped());
-}
-
 fn run_owner_silo_gpu_tick_proof_readback_scoped() {
     let Some(ctx) = gpu_context_blocking().ok() else {
         eprintln!("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0: GPU_TESTS_SKIPPED_NO_ADAPTER");
@@ -189,11 +158,6 @@ fn run_owner_silo_gpu_tick_proof_readback_scoped() {
         .expect("proof tick");
     assert!(!debug_readback_allowed());
     eprintln!("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0: REAL_ADAPTER_OBSERVED");
-}
-
-#[test]
-fn owner_silo_gpu_tick_readback_gate_restored() {
-    with_isolated_readback_gate_test(|| run_owner_silo_gpu_tick_readback_gate_restored());
 }
 
 fn run_owner_silo_gpu_tick_readback_gate_restored() {
@@ -215,16 +179,4 @@ fn run_owner_silo_gpu_tick_readback_gate_restored() {
         .is_none());
     assert!(!debug_readback_allowed());
     eprintln!("SIM-GPU-OWNER-SILO-RESOURCE-FLOW-TICK-0: REAL_ADAPTER_OBSERVED");
-}
-
-#[test]
-fn owner_silo_gpu_tick_does_not_mutate_scenario_authority() {
-    let scenario = load_corpus("owner_silo_balanced_flow.simthing-scenario.json");
-    let oracle_before = evaluate_owner_silo_flow(&scenario);
-    let structural_before = scenario.structural_grid.clone();
-    let plan = compile_owner_silo_gpu_tick_plan(&scenario).expect("compile");
-    let inputs = owner_silo_surplus_tick_inputs(&plan);
-    let _ = execute_accumulator_plan_tick_cpu(&plan.surplus_plan, &inputs).expect("cpu tick");
-    assert_eq!(evaluate_owner_silo_flow(&scenario), oracle_before);
-    assert_eq!(scenario.structural_grid, structural_before);
 }

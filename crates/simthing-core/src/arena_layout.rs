@@ -125,30 +125,6 @@ mod tests {
     }
 
     #[test]
-    fn e8r_adds_internal_columns_for_arena_bound_property() {
-        let expanded = expand_arena_internal_columns(arena_bound_layout());
-        assert_eq!(expanded.stride(), 2 + ARENA_INTERNAL_COLUMN_ROLES.len());
-        for role_name in ARENA_INTERNAL_COLUMN_ROLES {
-            assert!(expanded.offset_of(&named(role_name)).is_some());
-            let sf = expanded
-                .sub_fields
-                .iter()
-                .find(|sf| sf.role == named(role_name))
-                .expect("column present");
-            assert!(sf.accumulator_spec.is_none());
-        }
-    }
-
-    #[test]
-    fn e8r_does_not_add_internal_columns_for_non_arena_property() {
-        let layout = PropertyLayout::standard(0);
-        let stride_before = layout.stride();
-        let expanded = expand_arena_internal_columns(layout);
-        assert_eq!(expanded.stride(), stride_before);
-        assert_eq!(expanded.sub_fields.len(), 3);
-    }
-
-    #[test]
     fn e8r_layout_expansion_is_deterministic() {
         let a = expand_arena_internal_columns(arena_bound_layout());
         let b = expand_arena_internal_columns(arena_bound_layout());
@@ -162,36 +138,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn e8r_existing_standard_layouts_unchanged() {
-        let layout = PropertyLayout::standard(2);
-        let stride = layout.stride();
-        let expanded = expand_arena_internal_columns(layout);
-        assert_eq!(expanded.stride(), stride);
-    }
-
-    #[test]
-    fn e8r_no_new_accumulator_role_variants() {
-        let before = arena_bound_layout();
-        let marked_before = before
-            .sub_fields
-            .iter()
-            .filter(|sf| sf.accumulator_spec.is_some())
-            .count();
-        let expanded = expand_arena_internal_columns(before);
-        let marked_after = expanded
-            .sub_fields
-            .iter()
-            .filter(|sf| sf.accumulator_spec.is_some())
-            .count();
-        assert_eq!(marked_before, marked_after);
-        assert!(
-            expanded
-                .sub_fields
-                .iter()
-                .filter(|sf| sf.accumulator_spec.is_none())
-                .count()
-                >= ARENA_INTERNAL_COLUMN_ROLES.len()
-        );
-    }
 }

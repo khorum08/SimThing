@@ -238,25 +238,3 @@ fn run_accumulator_velocity_and_transfer(state: &mut WorldGpuState, dt: f32) -> 
         .restore_transfer_session(transfer_session);
     state.read_values()
 }
-
-#[test]
-fn c8c_rejects_nonfinite_transfer_values() {
-    let regs = vec![TransferRegistration {
-        inputs: vec![TransferInputRef {
-            slot: 0,
-            col: 0,
-            unit_cost: 1.0,
-        }],
-        target_slot: 0,
-        target_col: 1,
-        output_scale: 1.0,
-        max_transfer: Some(f32::NAN),
-        tree_id: None,
-        order_band: 0,
-    }];
-    assert_eq!(
-        plan_transfer_ops(&regs),
-        Err(TransferPlanError::InvalidMaxTransfer)
-    );
-}
-

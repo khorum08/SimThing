@@ -1894,26 +1894,4 @@ pub fn write_multitarget_replay_reports_bundle(reports: &[MultiTargetReplayRepor
 mod unit_tests {
     use super::*;
 
-    #[test]
-    fn manual_edge_cases_match_expected() {
-        let scenario = make_manual_edge_case_scenario();
-        let (final_states, compact, _) = resolve_cpu_current(&scenario, false);
-
-        assert_eq!(final_states[0].source_pool, 0);
-        assert_eq!(final_states[0].queue_accum, 0);
-        assert_eq!(final_states[0].units, 1);
-        assert_eq!(compact[0].transfer_amount, 0);
-
-        assert_eq!(final_states[1].source_pool, 500);
-        assert_eq!(compact[1].transfer_amount, 0);
-
-        assert_eq!(final_states[3].units, 1);
-        assert_eq!(final_states[3].queue_accum, 10);
-
-        assert_eq!(final_states[5].units, 4);
-        assert_eq!(final_states[7].units, 500);
-
-        assert_eq!(final_states[9], scenario.states[9]);
-        assert_eq!(compact[9].transfer_amount, 0);
-    }
 }

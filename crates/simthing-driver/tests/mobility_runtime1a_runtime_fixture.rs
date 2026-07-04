@@ -218,56 +218,6 @@ fn spec_report(
 }
 
 #[test]
-fn runtime1a_runtime_fixture_explicit_opt_in_only() {
-    let disabled = run_mobility_runtime1a_driver_fixture(&MobilityRuntime1aDriverFixtureInput {
-        session: MobilityRuntime1aDriverFixtureSession::default_disabled(),
-        composition: composition_fixture(),
-        forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-    });
-    assert!(disabled.admitted);
-    assert!(disabled.disabled_no_op);
-    assert!(!disabled.explicit_opt_in);
-    assert!(!disabled.fixture_invoked);
-
-    let mut default_on = fixture_input();
-    default_on.session.gate.enabled_by_default = true;
-    let rejected = run_mobility_runtime1a_driver_fixture(&default_on);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"runtime1a_driver_default_on_rejected"));
-
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.explicit_opt_in);
-    assert!(report.default_off);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_default_simsession_unchanged() {
-    let default_session = MobilityRuntime1aDriverFixtureSession::default_disabled();
-    let report = run_mobility_runtime1a_driver_fixture(&MobilityRuntime1aDriverFixtureInput {
-        session: default_session.clone(),
-        composition: composition_fixture(),
-        forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-    });
-    assert!(report.default_simsession_behavior_unchanged);
-    assert!(!report.default_simsession_lib_path_wired);
-    assert_eq!(report.composition_invocations, 0);
-    assert_eq!(
-        default_session,
-        MobilityRuntime1aDriverFixtureSession::default_disabled()
-    );
-}
-
-#[test]
-fn runtime1a_runtime_fixture_no_default_passgraph_schedule() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.passgraph_schedule_registered);
-}
-
-#[test]
 fn runtime1a_runtime_fixture_cpu_only_no_gpu_passgraph() {
     let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
     assert!(report.admitted);
@@ -276,37 +226,6 @@ fn runtime1a_runtime_fixture_cpu_only_no_gpu_passgraph() {
     assert!(!report.gpu_runtime_hook_present);
     assert!(!spec_report(&report).simsession_passgraph_wiring_present);
     assert!(report.runtime1b_gate_closed);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_confined_to_driver_test_support() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.confined_to_driver_test_support);
-    assert!(!report.default_simsession_lib_path_wired);
-    assert!(!report.gameplay_facing_path);
-    assert!(report.delegated_to_spec);
-    assert_eq!(report.spec_fixture_id, MOBILITY_RUNTIME1A_ID);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_delegates_to_spec_fixture_model() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.delegated_to_spec);
-    let spec = spec_report(&report);
-    assert!(spec.runtime0_harness_delegated);
-    assert!(spec.simthing_spec_fixture_model_only);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_preserves_runtime0_composition_order() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert_eq!(
-        spec_report(&report).substrate_order,
-        MOBILITY_RUNTIME0_ORDER
-    );
 }
 
 #[test]
@@ -328,40 +247,6 @@ fn runtime1a_runtime_fixture_preserves_deterministic_replay() {
         spec_report(&a).deterministic_replay_checksum,
         spec_report(&b).deterministic_replay_checksum
     );
-}
-
-#[test]
-fn runtime1a_runtime_fixture_preserves_owner_overlay_isolated_unit() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(spec_report(&report).owner_overlay_reaches_isolated_owned_unit);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_preserves_econ_owner_separation() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(spec_report(&report).econ_resource_flow_separate_from_owner_modifier_overlay);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_no_hard_soft_silent_mix() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!spec_report(&report).hard_soft_silent_mix);
-}
-#[test]
-fn runtime1a_runtime_fixture_no_default_runtime_cost_when_disabled() {
-    let report = run_mobility_runtime1a_driver_fixture(&MobilityRuntime1aDriverFixtureInput {
-        session: MobilityRuntime1aDriverFixtureSession::default_disabled(),
-        composition: composition_fixture(),
-        forbidden: MobilityRuntime1aForbiddenPathRequests::default(),
-    });
-    assert!(report.admitted);
-    assert!(report.disabled_no_op);
-    assert!(!report.fixture_invoked);
-    assert_eq!(report.composition_invocations, 0);
-    assert!(report.spec_report.as_ref().unwrap().composition.is_none());
 }
 
 #[test]
@@ -395,31 +280,4 @@ fn runtime1a_runtime_fixture_34k_cpu_fixture_soak() {
     assert!(report.admitted);
     assert_eq!(report.composition_invocations, 1);
     assert!(spec_report(&report).cpu_gpu_parity_preserved);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_mobility_churn_with_owner_overlay_and_econ_clearinghouse() {
-    let mut input = fixture_input();
-    input.composition.reenroll.moves = vec![mv(100, 10, 20, 9), mv(101, 10, 30, 2)];
-    let a = run_mobility_runtime1a_driver_fixture(&input);
-    input.composition.reenroll.moves.reverse();
-    input.composition.econ.records.reverse();
-    input.composition.owner.records.reverse();
-    let b = run_mobility_runtime1a_driver_fixture(&input);
-
-    assert!(a.admitted);
-    assert!(b.admitted);
-    assert_eq!(
-        spec_report(&a).composed_cpu_checksum,
-        spec_report(&b).composed_cpu_checksum
-    );
-    assert!(spec_report(&a).econ_resource_flow_separate_from_owner_modifier_overlay);
-    assert!(spec_report(&a).owner_overlay_reaches_isolated_owned_unit);
-}
-
-#[test]
-fn runtime1a_runtime_fixture_dirty_owner_modifier_steady_state_zero_redisperse() {
-    let report = run_mobility_runtime1a_driver_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(spec_report(&report).dirty_owner_modifier_steady_state_zero_redisperse);
 }

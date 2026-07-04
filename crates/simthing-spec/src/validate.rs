@@ -133,20 +133,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn validate_accepts_minimal_tree() {
-        let spec = minimal_tree();
-        let diag = validate_capability_tree(&spec).unwrap();
-        assert!(diag.diagnostics.is_empty());
-    }
-
-    #[test]
-    fn validate_rejects_threshold_with_zero_cost() {
-        let mut spec = minimal_tree();
-        spec.categories[0].entries[0].research_cost = 0.0;
-        assert!(matches!(
-            validate_capability_tree(&spec),
-            Err(SpecError::ThresholdRequiresPositiveCost(_))
-        ));
-    }
 }

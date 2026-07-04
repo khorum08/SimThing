@@ -1,7 +1,7 @@
 //! Shared disburse-down scoped fixture for spec/driver tests.
-
-use std::fs;
-use std::path::PathBuf;
+//!
+//! 0R2 dependency-floor helper: `build_owner_silo_disburse_down_scoped_spec` is required by
+//! surviving runtime/scenario boundary tests. Not a runnable test survivor.
 
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
@@ -9,23 +9,13 @@ use simthing_spec::{
     apply_participant_owner_flow_demand_metadata, apply_participant_owner_flow_metadata,
     apply_scenario_metadata_to_root, apply_star_system_local_grid_frame_metadata,
     is_surface_gridcell, make_galaxy_map, make_owner_entity, make_planet_gridcell,
-    save_scenario_spec_to_canonical_json, structural_property_value_u32, SimThingScenarioGrid,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
+    SimThingScenarioSpec, SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
+    GALAXY_GRIDCELL_ROLE_INERT, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
     SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS, STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
 };
-
-#[test]
-#[ignore = "manual corpus regeneration only"]
-fn regen_owner_silo_disburse_down_scoped_corpus_fixture() {
-    let spec = build_owner_silo_disburse_down_scoped_spec();
-    let save = save_scenario_spec_to_canonical_json(&spec).expect("save");
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../scenarios/corpus/owner_silo_disburse_down_scoped.simthing-scenario.json");
-    fs::write(path, save.canonical_json).expect("write corpus");
-}
 
 pub fn build_owner_silo_disburse_down_scoped_spec() -> SimThingScenarioSpec {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);

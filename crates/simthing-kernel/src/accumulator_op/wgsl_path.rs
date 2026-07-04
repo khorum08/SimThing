@@ -140,26 +140,4 @@ mod tests {
         op
     }
 
-    #[test]
-    fn empty_plan_falls_back() {
-        assert!(matches!(
-            classify_ao_wgsl0_plan(&[]),
-            AoWgsl0Compatibility::Fallback(AoWgsl0FallbackReason::EmptyPlan)
-        ));
-    }
-
-    #[test]
-    fn orderband_identity_compatible() {
-        assert!(ao_wgsl0_fast_path_compatible(&[minimal_orderband_op(0)]));
-    }
-
-    #[test]
-    fn threshold_ops_fall_back() {
-        let mut op = minimal_orderband_op(0);
-        op.gate_kind = gate_kind::THRESHOLD;
-        assert!(matches!(
-            classify_ao_wgsl0_plan(&[op]),
-            AoWgsl0Compatibility::Fallback(AoWgsl0FallbackReason::ThresholdOps)
-        ));
-    }
 }

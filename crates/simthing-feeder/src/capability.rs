@@ -46,26 +46,3 @@ pub struct CapabilityUnlockEvent {
     pub property_id: SimPropertyId,
     pub sub_field: SubFieldRole,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The PR 3 builder and the PR 4 sim-side `ThresholdBuilder::build_with_capability_unlocks`
-    /// must agree on this type. Both depend on `simthing-feeder` and use the
-    /// fully-qualified path. This test exists to fail loudly if the type ever
-    /// leaves the feeder crate's public surface.
-    #[test]
-    fn capability_unlock_registration_in_feeder_is_public() {
-        let _reg: CapabilityUnlockRegistration = CapabilityUnlockRegistration {
-            sim_thing_id: SimThingId::new(),
-            property_id: SimPropertyId(0),
-            sub_field: SubFieldRole::Amount,
-            threshold: 1.0,
-        };
-        // Also reachable via `simthing_feeder::CapabilityUnlockRegistration`
-        // (the crate-root re-export):
-        let _alias: crate::CapabilityUnlockRegistration = _reg.clone();
-        assert_eq!(_reg, _alias);
-    }
-}

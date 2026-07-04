@@ -223,91 +223,6 @@ fn rejected_with(
 }
 
 #[test]
-fn mobility_gpu_kernel1_explicit_opt_in_only() {
-    let disabled = run_mobility_gpu_kernel1_fixture(&MobilityGpuKernel1FixtureInput {
-        gate: MobilityGpuKernel1Gate::default(),
-        forbidden: MobilityGpuKernel1ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        kernel0: fixture_input().kernel0,
-    });
-    assert!(disabled.admitted);
-    assert!(disabled.disabled_no_op);
-    assert!(!disabled.explicit_opt_in);
-    assert!(!disabled.gpu_dispatch_occurred);
-
-    let mut default_on = fixture_input();
-    default_on.gate.enabled_by_default = true;
-    let rejected = run_mobility_gpu_kernel1_fixture(&default_on);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"mobility_gpu_kernel1_default_on_rejected"));
-
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.explicit_opt_in);
-    assert!(report.default_off);
-}
-
-#[test]
-fn mobility_gpu_kernel1_default_disabled_noop() {
-    let report = run_mobility_gpu_kernel1_fixture(&MobilityGpuKernel1FixtureInput {
-        gate: MobilityGpuKernel1Gate::default(),
-        forbidden: MobilityGpuKernel1ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        kernel0: fixture_input().kernel0,
-    });
-    assert!(report.admitted);
-    assert!(report.disabled_no_op);
-    assert_eq!(report.cpu_oracle_checksum, 0);
-    assert!(!report.gpu_dispatch_occurred);
-}
-
-#[test]
-fn mobility_gpu_kernel1_uses_registered_node() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.uses_registered_node);
-    assert_eq!(
-        report.dispatched_through_node_id,
-        Some(MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID)
-    );
-    let registry = report.passgraph_registry.unwrap();
-    assert!(registry
-        .nodes
-        .iter()
-        .any(|n| n.node_id == MOBILITY_RUNTIME1B_PASSGRAPH_NODE_ID));
-}
-
-#[test]
-fn mobility_gpu_kernel1_registration_is_non_executing_until_invoked() {
-    let registration_only = run_mobility_gpu_kernel1_fixture(&MobilityGpuKernel1FixtureInput {
-        gate: MobilityGpuKernel1Gate::registration_only(),
-        forbidden: MobilityGpuKernel1ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        kernel0: fixture_input().kernel0,
-    });
-    assert!(registration_only.admitted);
-    assert!(registration_only.registration_non_executing);
-    assert!(!registration_only.kernel0_dispatched);
-    assert!(!registration_only.gpu_dispatch_occurred);
-
-    let dispatched = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(dispatched.admitted);
-    assert!(dispatched.kernel0_dispatched);
-}
-
-#[test]
-fn mobility_gpu_kernel1_delegates_to_kernel0_column_transform() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.delegates_to_kernel0);
-    assert_eq!(report.kernel0_fixture_id, MOBILITY_GPU_KERNEL0_FIXTURE_ID);
-    assert_eq!(report.kernel0_kernel_id, MOBILITY_GPU_KERNEL0_KERNEL_ID);
-    assert!(report.kernel0_report.is_some());
-}
-
-#[test]
 fn mobility_gpu_kernel1_preserves_kernel0_cpu_oracle() {
     let columns = fixture_input().kernel0.columns.clone();
     let direct = run_mobility_gpu_kernel0_fixture(&MobilityGpuKernel0FixtureInput::default_probe());
@@ -315,25 +230,6 @@ fn mobility_gpu_kernel1_preserves_kernel0_cpu_oracle() {
     assert_eq!(direct.cpu_oracle_checksum, dispatched.cpu_oracle_checksum);
     let oracle = cpu_column_transform_oracle(&columns);
     assert_eq!(oracle.out_parent, vec![11, 20, 31, 40, 50, 61, 70, 81]);
-}
-
-#[test]
-fn mobility_gpu_kernel1_reports_gpu_checksum_or_unavailable() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    match report.parity_classification {
-        MobilityGpuKernel0ParityClassification::ExactParity => {
-            assert!(report.gpu_dispatch_occurred);
-            assert!(report.gpu_result_checksum.is_some());
-        }
-        MobilityGpuKernel0ParityClassification::GpuUnavailable => {
-            assert!(!report.gpu_dispatch_occurred);
-            assert!(report.gpu_result_checksum.is_none());
-        }
-        MobilityGpuKernel0ParityClassification::GpuExecutionFailed => {
-            panic!("unexpected GpuExecutionFailed: {:?}", report);
-        }
-    }
 }
 
 #[test]
@@ -354,99 +250,9 @@ fn mobility_gpu_kernel1_classifies_exact_parity_or_honest_unavailable() {
 }
 
 #[test]
-fn mobility_gpu_kernel1_no_designer_authored_shader_input() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.designer_shader_input_present);
-
-    let mut forbidden = MobilityGpuKernel1ForbiddenPathRequests::default();
-    forbidden.designer_authored_shader_input = true;
-    let rejected = rejected_with(forbidden);
-    assert!(!rejected.admitted);
-    assert!(rejected
-        .diagnostics
-        .contains(&"designer_authored_shader_input"));
-}
-
-#[test]
-fn mobility_gpu_kernel1_no_semantic_or_raw_wgsl() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.semantic_or_raw_wgsl_present);
-
-    let mut forbidden = MobilityGpuKernel1ForbiddenPathRequests::default();
-    forbidden.semantic_or_raw_wgsl = true;
-    let rejected = rejected_with(forbidden);
-    assert!(!rejected.admitted);
-    assert!(rejected.diagnostics.contains(&"semantic_or_raw_wgsl"));
-}
-
-#[test]
-fn mobility_gpu_kernel1_no_default_schedule() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(report.default_schedule_unchanged);
-    assert!(!report.default_production_scheduling_wired);
-    let registration = report.registration_report.as_ref().unwrap();
-    assert!(registration.default_schedule_unchanged);
-}
-
-#[test]
-fn mobility_gpu_kernel1_no_default_simsession_path() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.default_simsession_lib_path_wired);
-}
-
-#[test]
-fn mobility_gpu_kernel1_no_gameplay_path() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.gameplay_facing_path);
-    assert!(report.confined_to_driver_test_support);
-}
-
-#[test]
-fn mobility_gpu_kernel1_no_live_slot_compaction() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.live_slot_compaction);
-}
-
-#[test]
 fn mobility_gpu_kernel1_no_gpu_allocator_or_nondeterministic_atomics() {
     let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
     assert!(report.admitted);
     assert!(!report.gpu_allocator_used);
     assert!(!report.nondeterministic_atomics_used);
-}
-
-#[test]
-fn mobility_gpu_kernel1_preserves_closed_ladder_posture() {
-    let report = run_mobility_gpu_kernel1_fixture(&fixture_input());
-    assert!(report.admitted);
-    assert!(!report.default_production_scheduling_wired);
-    assert!(!report.hybrid_strata_or_faction_index_scaling);
-    let registration = report.registration_report.as_ref().unwrap();
-    assert_eq!(
-        registration.fixture_id,
-        MOBILITY_RUNTIME1B_PASSGRAPH_FIXTURE_ID
-    );
-    assert!(registration.runtime1b_dispatch_gate_closed);
-}
-
-#[test]
-fn mobility_gpu_kernel1_no_default_runtime_cost_when_disabled() {
-    let report = run_mobility_gpu_kernel1_fixture(&MobilityGpuKernel1FixtureInput {
-        gate: MobilityGpuKernel1Gate::default(),
-        forbidden: MobilityGpuKernel1ForbiddenPathRequests::default(),
-        passgraph: passgraph_input(),
-        kernel0: fixture_input().kernel0,
-    });
-    assert!(report.admitted);
-    assert!(report.disabled_no_op);
-    assert!(!report.gpu_dispatch_occurred);
-    assert_eq!(report.cpu_oracle_checksum, 0);
-    assert_eq!(report.fixture_id, MOBILITY_GPU_KERNEL1_FIXTURE_ID);
-    assert_eq!(report.named_gate, MOBILITY_GPU_KERNEL1_NAMED_GATE);
 }

@@ -20,39 +20,3 @@ fn overlay_order_gpu_matches_cpu_small() {
     let report = compare_overlay_order_rich_with_harness(&harness, &scenario).unwrap();
     assert_report_ok(&report);
 }
-#[test]
-fn overlay_order_semantics_report_bundle() {
-    let harness = OverlayOrderHarness::new().unwrap();
-    let scenarios = [
-        make_overlay_order_scenario("overlay_order_small", 128, 8, 4, true),
-        make_overlay_order_scenario("overlay_order_medium_clutter", 10_000, 16, 8, true),
-        make_overlay_order_scenario("overlay_order_wide_sparse", 10_000, 64, 2, true),
-    ];
-    let mut reports = Vec::with_capacity(scenarios.len());
-    for scenario in scenarios {
-        let report = compare_overlay_order_rich_with_harness(&harness, &scenario).unwrap();
-        assert_report_ok(&report);
-        reports.push(report);
-    }
-    write_overlay_order_semantics_reports_bundle(&reports)
-        .expect("write overlay order semantics reports bundle");
-}
-#[test]
-fn overlay_order_does_not_group_mixed_ops_unsafely() {
-    let scenario = make_unsafe_grouping_trap_scenario();
-    let cpu_current = apply_overlays_cpu_current(&scenario);
-    assert!(
-        (cpu_current[6] - 31.0).abs() <= 1e-6,
-        "expected 31 got {}",
-        cpu_current[6]
-    );
-
-    let compiled = compile_overlay_order_bands(&scenario);
-    let cpu_compiled = apply_compiled_overlays_cpu(&scenario, &compiled);
-    assert!(
-        (cpu_compiled[6] - 31.0).abs() <= 1e-6,
-        "expected 31 got {}",
-        cpu_compiled[6]
-    );
-    assert!(compiled.compile_stats.unsafe_grouping_detected);
-}

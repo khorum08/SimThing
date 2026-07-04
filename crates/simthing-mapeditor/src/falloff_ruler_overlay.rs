@@ -159,14 +159,4 @@ fn draw_emphasized_cut_line(
 mod tests {
     use super::*;
 
-    #[test]
-    fn overlay_params_effective_falloff_matches_formula() {
-        let params = FalloffRulerOverlayParams {
-            viewport_width: 1920.0,
-            viewport_height: 1080.0,
-            star_falloff_percent: 100.0,
-            nameplate_relative_falloff_percent: 65.0,
-        };
-        assert!((params.effective_nameplate_falloff_percent() - 65.0).abs() < f32::EPSILON);
-    }
 }

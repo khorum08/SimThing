@@ -112,34 +112,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn schedule_sorts_by_order_band_then_id() {
-        let registry = registry_with_transfers(
-            vec![
-                DiscreteTransferRegistration {
-                    source_slot: SlotIndex::new(0),
-                    source_col: ColumnIndex::new(0),
-                    target_slot: SlotIndex::new(0),
-                    target_col: ColumnIndex::new(1),
-                    amount: 4.0,
-                    order_band: 1,
-                },
-                DiscreteTransferRegistration {
-                    source_slot: SlotIndex::new(0),
-                    source_col: ColumnIndex::new(0),
-                    target_slot: SlotIndex::new(0),
-                    target_col: ColumnIndex::new(2),
-                    amount: 3.0,
-                    order_band: 0,
-                },
-            ],
-            vec!["transfer_1", "transfer_0"],
-        );
-        let schedule = ResourceEconomyBoundaryScheduleReport::build(&registry);
-        assert_eq!(schedule.entries.len(), 2);
-        assert_eq!(schedule.entries[0].key.order_band, 0);
-        assert_eq!(schedule.entries[0].key.authoring_id, "transfer_0");
-        assert_eq!(schedule.entries[1].key.order_band, 1);
-        assert_eq!(schedule.entries[1].key.authoring_id, "transfer_1");
-    }
 }

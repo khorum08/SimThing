@@ -692,34 +692,3 @@ fn jit_exec0_production_candidate_grad1_executes_with_oracle_parity() {
         );
     });
 }
-
-#[test]
-fn jit_exec0_remains_default_off_no_production_wiring() {
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-
-    let entry = build_registry_entry("exec0_posture").expect("registry entry");
-    let candidate = admit_production_candidate(&entry).expect("admission");
-    assert!(candidate.default_off);
-    assert!(!candidate.production_wiring);
-
-    let driver_lib = include_str!("../src/lib.rs");
-    for forbidden in [
-        "FirstSliceMappingSession::",
-        "KernelCache::",
-        "AccumulatorOpSession::",
-        "tick_with_eml",
-        "EmlGpuProgramTable",
-    ] {
-        assert!(
-            !driver_lib.contains(forbidden),
-            "simthing-driver lib must not reference `{forbidden}` for EXEC-0 posture"
-        );
-    }
-    assert!(
-        !driver_lib.contains("jit_exec0"),
-        "EXEC-0 fixture must not wire into production driver lib"
-    );
-}

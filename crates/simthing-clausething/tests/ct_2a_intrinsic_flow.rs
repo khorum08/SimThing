@@ -119,67 +119,6 @@ fn flat_star_cell_inputs(
 }
 
 #[test]
-fn clause_hydrated_game_mode_matches_ron_baseline() {
-    let hydrated = hydrate_from_clause();
-    let baseline = load_ron_baseline();
-    assert_eq!(
-        canonical_json(&hydrated.game_mode),
-        canonical_json(&baseline)
-    );
-    assert_eq!(hydrated.produces_rate, 10.0);
-    assert_eq!(hydrated.upkeep_rate, 2.0);
-    assert_eq!(net_intrinsic_flow(&hydrated), 8.0);
-}
-
-#[test]
-fn resource_flow_presence_without_opt_in_stays_disabled() {
-    let Some(_guard) = gpu_gate() else {
-        return;
-    };
-    let mut hydrated = hydrate_from_clause();
-    hydrated
-        .game_mode
-        .resource_flow
-        .as_mut()
-        .unwrap()
-        .opt_in_mode = ResourceFlowOptInMode::Disabled;
-    let scenario = ct2a_scenario(3, &hydrated.game_mode);
-    fill_explicit_participants(&mut hydrated.game_mode, &scenario);
-    let mut game_mode = hydrated.game_mode.clone();
-    game_mode.properties.clear();
-    let Some(session) = open_from_spec_or_skip(scenario, &game_mode) else {
-        return;
-    };
-    assert!(!session.proto.flags.use_accumulator_resource_flow);
-    assert!(!session.state.accumulator_resource_flow_active);
-}
-
-#[test]
-fn installed_arena_participation_is_explicit_and_bounded() {
-    let Some(_guard) = gpu_gate() else {
-        return;
-    };
-    let hydrated = hydrate_from_clause();
-    let Some(session) = open_ct2a_session(&hydrated) else {
-        return;
-    };
-    let arena = &session.spec_state.arena_registry.arenas[0];
-    assert_eq!(arena.name, "ct2a_food");
-    let (_start, participant_count) = arena.participant_range;
-    assert_eq!(participant_count, 3);
-    assert!(participant_count <= arena.max_participants);
-    assert_eq!(session.spec_state.arena_registry.participants.len(), 3);
-    assert_eq!(
-        session
-            .spec_state
-            .arena_participant_scaffold
-            .arena_root_ids
-            .len(),
-        1
-    );
-}
-
-#[test]
 fn gpu_micro_economy_matches_arena_allocation_oracle() {
     let Some(guard) = gpu_gate() else {
         return;

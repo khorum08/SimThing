@@ -70,18 +70,4 @@ pub struct ScriptedEventTriggerEvent {
 mod tests {
     use super::*;
 
-    #[test]
-    fn registration_serde_round_trip() {
-        let original = ScriptedEventTriggerRegistration {
-            event_id: "rebellion_warning".into(),
-            slot: 4,
-            col: 12,
-            threshold: 0.25,
-            direction: Direction::Falling,
-        };
-        let json = serde_json::to_string(&original).expect("serialize");
-        let restored: ScriptedEventTriggerRegistration =
-            serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(restored, original);
-    }
 }

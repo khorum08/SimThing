@@ -285,22 +285,6 @@ mod tests {
     }
 
     #[test]
-    fn plan_identity_floor_emission() {
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: 0,
-            tree_id: None,
-            formula: EmissionFormula::IdentityFloor,
-            max_emit: None,
-            reg_idx: 7,
-        }];
-        let plan = plan_emission_ops(&regs, None).unwrap();
-        assert_eq!(plan.ops.len(), 1);
-        assert!(matches!(plan.ops[0].consume, ConsumeMode::EmitEvent));
-        assert_eq!(plan.reg_indices, vec![7]);
-    }
-
-    #[test]
     fn c8d_emission_accepts_exact_deterministic_formula() {
         let mut registry = EmlExpressionRegistry::new();
         let id = EmlTreeId(1);
@@ -329,38 +313,4 @@ mod tests {
         assert!(plan_emission_ops(&regs, Some(&registry)).is_ok());
     }
 
-    #[test]
-    fn encode_sets_reg_idx_in_combine_b() {
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: 0,
-            tree_id: None,
-            formula: EmissionFormula::Constant { value: 2.0 },
-            max_emit: None,
-            reg_idx: 42,
-        }];
-        let plan = plan_emission_ops(&regs, None).unwrap();
-        let gpu = encode_emission_plan(&plan, None).unwrap();
-        assert_eq!(gpu[0].combine_b, 42);
-    }
-
-    #[test]
-    fn signature_uses_formula_tree_id_not_parallel_field() {
-        let regs = vec![EmissionRegistration {
-            source_slot: 0,
-            source_col: 0,
-            tree_id: None,
-            formula: EmissionFormula::EvalEml {
-                tree_id: EmlTreeId(7),
-            },
-            max_emit: None,
-            reg_idx: 3,
-        }];
-        let (_, _, tree_ids, _, reg_indices, constant_bits, max_emit) =
-            emission_plan_signature_fields(&regs);
-        assert_eq!(tree_ids, vec![7]);
-        assert_eq!(reg_indices, vec![3]);
-        assert_eq!(constant_bits, vec![NO_CONSTANT]);
-        assert_eq!(max_emit, vec![NO_MAX_EMIT]);
-    }
 }

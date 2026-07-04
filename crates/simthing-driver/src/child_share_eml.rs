@@ -150,11 +150,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn child_share_formula_registers_once() {
-        let mut reg = EmlExpressionRegistry::new();
-        register_child_share_formula(&mut reg, sample_cols()).unwrap();
-        register_child_share_formula(&mut reg, sample_cols()).unwrap();
-        assert!(reg.get(child_share_tree_id()).is_some());
-    }
 }

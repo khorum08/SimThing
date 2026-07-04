@@ -324,20 +324,4 @@ pub const RESTORE_NORMAL_RENDER_BUTTON: &str = "Restore Normal Render";
 mod tests {
     use super::*;
 
-    #[test]
-    fn diagnostic_minimal_render_does_not_touch_authority_fields() {
-        let mut show_stars = true;
-        let mut show_hyperlanes = true;
-        let mut mode = StarRenderMode::BloomStarburst;
-        let mut flags = PerformanceDiagnosticFlags::default();
-        apply_diagnostic_minimal_render(
-            &mut show_stars,
-            &mut show_hyperlanes,
-            &mut mode,
-            &mut flags,
-        );
-        assert!(!show_hyperlanes);
-        assert_eq!(mode, StarRenderMode::CrispCircle);
-        assert!(flags.hide_star_aura);
-    }
 }

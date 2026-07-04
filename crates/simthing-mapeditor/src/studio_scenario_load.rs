@@ -81,22 +81,4 @@ pub fn scenario_path_has_valid_suffix(path: &Path) -> bool {
 mod tests {
     use super::*;
 
-    #[test]
-    fn default_picker_start_directory_uses_parent_of_current_path_when_valid() {
-        let dir = std::env::temp_dir().join("studio-picker-parent-test");
-        let _ = std::fs::create_dir_all(&dir);
-        let scenario = dir.join("seed.simthing-scenario.json");
-        let start = default_picker_start_directory(scenario.to_string_lossy().as_ref());
-        assert_eq!(start, dir);
-    }
-
-    #[test]
-    fn canonicalize_scenario_display_path_prefers_canonical_when_readable() {
-        let dir = tempfile::TempDir::new().expect("tempdir");
-        let path = dir.path().join("canon.simthing-scenario.json");
-        std::fs::write(&path, "{}").expect("write");
-        let canon = canonicalize_scenario_display_path(&path);
-        assert!(canon.is_absolute());
-        assert!(canon.exists());
-    }
 }

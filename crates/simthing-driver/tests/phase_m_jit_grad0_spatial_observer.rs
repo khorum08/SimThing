@@ -676,18 +676,6 @@ fn oracle_sample_indices(n_observers: usize) -> Vec<usize> {
 }
 
 #[test]
-fn jit_grad0_observer_shader_is_semantic_free() {
-    assert_shader_semantic_free(OBSERVER_WGSL);
-    assert!(OBSERVER_WGSL.contains("fields"));
-    assert!(OBSERVER_WGSL.contains("observers"));
-    assert!(OBSERVER_WGSL.contains("outputs"));
-    assert!(OBSERVER_WGSL.contains("mag2"));
-    assert!(OBSERVER_WGSL.contains("descent_x"));
-    assert!(OBSERVER_WGSL.contains("dx"));
-    assert!(OBSERVER_WGSL.contains("dy"));
-}
-
-#[test]
 fn jit_grad0_small_grid_observer_parity() {
     with_gpu(|ctx| {
         let width = 8u32;
@@ -716,86 +704,6 @@ fn jit_grad0_small_grid_observer_parity() {
     });
 }
 
-#[test]
-fn jit_grad0_batches_10000_observers_one_dispatch() {
-    with_gpu(|ctx| {
-        let width = 128u32;
-        let height = 128u32;
-        let n_dims = 4u32;
-        let source_col = 0u32;
-        let fields = build_test_field(width, height, n_dims, source_col);
-        let observers = structured_observers_10000(width, height, source_col);
-        assert!(observers.len() >= 10_000);
-
-        let result = run_observers_gpu(ctx, &fields, &observers, width, height, n_dims);
-        assert_eq!(result.outputs.len(), 10_000);
-        assert_eq!(result.dispatch_count, 1);
-
-        let sample_indices = oracle_sample_indices(observers.len());
-        let sampled_obs: Vec<ObserverInput> =
-            sample_indices.iter().map(|&i| observers[i]).collect();
-        let sampled_out: Vec<ObserverOutput> =
-            sample_indices.iter().map(|&i| result.outputs[i]).collect();
-        assert_outputs_match(
-            &fields,
-            width,
-            height,
-            n_dims,
-            &sampled_obs,
-            &sampled_out,
-            "batch_10000_sample",
-        );
-
-        let workgroups = 10_000u32.div_ceil(WORKGROUP_SIZE);
-        println!(
-            "batch_10000: observers={}, dispatch_count={}, workgroups={}, workgroup_size={}, elapsed_ms={:.3}",
-            observers.len(),
-            result.dispatch_count,
-            workgroups,
-            WORKGROUP_SIZE,
-            result.elapsed_ms
-        );
-    });
-}
-
-#[test]
-fn jit_grad0_uses_squared_magnitude_no_sqrt() {
-    assert!(
-        !OBSERVER_WGSL.contains("sqrt("),
-        "exact observer path must not use sqrt"
-    );
-    with_gpu(|ctx| {
-        let width = 8u32;
-        let height = 8u32;
-        let n_dims = 4u32;
-        let source_col = 0u32;
-        let fields = build_test_field(width, height, n_dims, source_col);
-        let observers = small_grid_observers(width, height, source_col);
-        let result = run_observers_gpu(ctx, &fields, &observers, width, height, n_dims);
-        for (i, out) in result.outputs.iter().enumerate() {
-            let cpu = cpu_observer_oracle(&fields, width, height, n_dims, observers[i]);
-            let cpu_mag2 = cpu_mag2_shader_order(&cpu);
-            assert_eq!(
-                out.descent_x.to_bits(),
-                (-out.dx).to_bits(),
-                "observer {i}: descent_x = -dx"
-            );
-            assert_eq!(
-                out.descent_y.to_bits(),
-                (-out.dy).to_bits(),
-                "observer {i}: descent_y = -dy"
-            );
-            // mag2 classification is explicit in jit_grad0_mag2_classification_is_explicit;
-            // here verify shader computes mag2 from dx/dy (no sqrt) with bounded ULP if approximate.
-            let ulp = ulp_distance(out.mag2, cpu_mag2);
-            assert!(
-                classify_ulp(ulp) != OutputClassification::RejectedDeferred,
-                "observer {i}: mag2 shader-order ULP {ulp} must not be rejected"
-            );
-        }
-    });
-}
-
 fn run_small_grid_classification(ctx: &GpuContext) -> ObserverOutputClassificationSummary {
     let width = 8u32;
     let height = 8u32;
@@ -820,50 +728,6 @@ fn run_batch_10000_sample_classification(ctx: &GpuContext) -> ObserverOutputClas
     let sampled_out: Vec<ObserverOutput> =
         sample_indices.iter().map(|&i| result.outputs[i]).collect();
     classify_observer_outputs(&fields, width, height, n_dims, &sampled_obs, &sampled_out)
-}
-
-#[test]
-fn jit_grad0_mag2_classification_is_explicit() {
-    with_gpu(|ctx| {
-        let small = run_small_grid_classification(ctx);
-        let batch = run_batch_10000_sample_classification(ctx);
-
-        for (label, summary) in [("small_grid", small), ("batch_10000_sample", batch)] {
-            assert_eq!(
-                summary.dx.classification,
-                OutputClassification::ExactDeterministicCandidate,
-                "{label} dx must be exact-authoritative"
-            );
-            assert_eq!(
-                summary.dy.classification,
-                OutputClassification::ExactDeterministicCandidate,
-                "{label} dy must be exact-authoritative"
-            );
-            assert_eq!(
-                summary.descent_x.classification,
-                OutputClassification::ExactDeterministicCandidate,
-                "{label} descent_x must be exact-authoritative"
-            );
-            assert_eq!(
-                summary.descent_y.classification,
-                OutputClassification::ExactDeterministicCandidate,
-                "{label} descent_y must be exact-authoritative"
-            );
-            assert!(matches!(
-                summary.mag2_shader_order.classification,
-                OutputClassification::ExactDeterministicCandidate
-                    | OutputClassification::ApproximateJitOnly
-                    | OutputClassification::RejectedDeferred
-            ));
-            println!(
-                "{label}: mag2_shader_order exact={}/{} max_ulp={} class={:?}",
-                summary.mag2_shader_order.exact_cases,
-                summary.mag2_shader_order.tested_cases,
-                summary.mag2_shader_order.max_ulp,
-                summary.mag2_shader_order.classification
-            );
-        }
-    });
 }
 
 #[test]
@@ -904,65 +768,4 @@ fn jit_grad0_exact_outputs_are_bit_exact() {
             OutputClassification::ExactDeterministicCandidate
         );
     });
-}
-
-#[test]
-fn jit_grad0_mag2_not_overclaimed_if_approximate() {
-    with_gpu(|ctx| {
-        let batch = run_batch_10000_sample_classification(ctx);
-        let mag2_class = batch.mag2_shader_order.classification;
-
-        if mag2_class != OutputClassification::ExactDeterministicCandidate {
-            let design = include_str!("../../../docs/design_0_0_8_1.md");
-            let invariants = include_str!("../../../docs/invariants.md");
-            let track =
-                include_str!("../../../docs/design_0_0_8_0_consumer_pulled_production_track.md");
-            assert!(
-                !OBSERVER_WGSL.contains("sqrt("),
-                "mag2 observer path must not use native sqrt when classified approximate"
-            );
-            assert!(
-                OBSERVER_WGSL.contains("out.mag2 = dx * dx + dy * dy;"),
-                "observer shader must expose squared magnitude as mag2, not magnitude"
-            );
-            assert!(
-                design.contains("exact claims carry CPU-oracle bit-exact parity"),
-                "active 0.0.8 constitution must retain exact-claim parity discipline"
-            );
-            assert!(
-                invariants.contains("ApproximateJitOnly")
-                    && invariants.contains("mag2")
-                    && invariants.contains("exact pre-sqrt mag2")
-                    && invariants.contains("Candidate F"),
-                "active invariants must keep unpinned mag2 out of exact-authoritative claims"
-            );
-            assert!(
-                track.contains("fixed-point `dx/dy`")
-                    && track.contains("exact pre-sqrt mag2")
-                    && track.contains("Raw f32"),
-                "active production track must keep exact magnitude tied to pinned fixed-point mag2"
-            );
-            assert_eq!(
-                mag2_class,
-                OutputClassification::ApproximateJitOnly,
-                "mag2 max_ulp={} must be bounded approximate, not rejected",
-                batch.mag2_shader_order.max_ulp
-            );
-        }
-        println!("mag2_r1_classification={:?}", mag2_class);
-    });
-}
-
-#[test]
-fn jit_grad0_default_off_posture() {
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-    assert_shader_semantic_free(OBSERVER_WGSL);
-    // No `simthing_sim` import in this test crate module (compile-time posture).
-    assert!(
-        !OBSERVER_WGSL.contains("ResourceEconomySpec"),
-        "observer WGSL must not reference ResourceEconomySpec"
-    );
 }

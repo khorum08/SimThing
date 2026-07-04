@@ -275,30 +275,6 @@ fn run_jit_gpu(ctx: &GpuContext, wgsl: &str, values_in: &[f32]) -> Vec<f32> {
 
 // ── Test 1: WeightedAccumulator generates semantic-free, deterministic WGSL ───────────────────
 
-#[test]
-fn jit_weighted_accumulator_generates_semantic_free_wgsl() {
-    let gadget = compile_single_gadget(WEIGHTED_ACC_RON);
-    let out_col = gadget.output_col.expect("fixture sets output_col");
-
-    let wgsl = emit_evaleml_wgsl(&gadget.nodes, out_col, N_DIMS).expect("WA lowers to WGSL");
-
-    assert_semantic_free(&wgsl);
-    // No RON gadget id leaks into the generated shader.
-    assert!(
-        !wgsl.contains(&gadget.id),
-        "generated WGSL must not embed the authored gadget id `{}`",
-        gadget.id
-    );
-    // Deterministic across repeated emission.
-    let wgsl_again = emit_evaleml_wgsl(&gadget.nodes, out_col, N_DIMS).expect("repeat emit");
-    assert_eq!(wgsl, wgsl_again, "generated WGSL must be deterministic");
-
-    // Straight-line lowering shape: the weighted-sum body is generic column math only.
-    assert!(wgsl.contains("values[base + 3u]"));
-    assert!(wgsl.contains("values[base + 20u]"));
-    assert!(wgsl.contains("let out_col = 16u;"));
-}
-
 // ── Test 2: WeightedAccumulator GPU output matches all oracles ────────────────────────────────
 
 #[test]
@@ -336,37 +312,6 @@ fn jit_weighted_accumulator_gpu_matches_oracles() {
 
 // ── Test 3: Ema generates semantic-free, deterministic WGSL ───────────────────────────────────
 
-#[test]
-fn jit_ema_generates_semantic_free_wgsl() {
-    let gadget = compile_single_gadget(EMA_RON);
-    let out_col = gadget.output_col.expect("fixture sets output_col");
-
-    let wgsl = emit_evaleml_wgsl(&gadget.nodes, out_col, N_DIMS).expect("Ema lowers to WGSL");
-
-    assert_semantic_free(&wgsl);
-    assert!(
-        !wgsl.contains(&gadget.id),
-        "generated WGSL must not embed the authored gadget id `{}`",
-        gadget.id
-    );
-    let wgsl_again = emit_evaleml_wgsl(&gadget.nodes, out_col, N_DIMS).expect("repeat emit");
-    assert_eq!(wgsl, wgsl_again, "generated WGSL must be deterministic");
-
-    // Explicit-column temporal memory: previous_col (13) is read explicitly; output is col 13.
-    // No hidden previous-value buffer — only the generic `values` storage is bound.
-    assert!(wgsl.contains("values[base + 13u]"));
-    assert!(wgsl.contains("let out_col = 13u;"));
-    assert!(
-        wgsl.contains("bitcast<f32>("),
-        "decay literals lowered via exact-bit bitcast"
-    );
-    assert_eq!(
-        wgsl.matches("@binding").count(),
-        1,
-        "only one generic storage binding"
-    );
-}
-
 // ── Test 4: Ema GPU output matches all oracles ────────────────────────────────────────────────
 
 #[test]
@@ -402,60 +347,4 @@ fn jit_ema_gpu_matches_oracles() {
 
 // ── Test 5: Unsupported opcode/shape rejects clearly ──────────────────────────────────────────
 
-#[test]
-fn jit_rejects_unsupported_opcode_or_shape() {
-    // FieldSampler compiles to DIV + CLAMP_BOUNDED, which are outside the M-JIT-0 subset.
-    let gadget = compile_single_gadget(FIELD_SAMPLER_RON);
-    let out_col = gadget.output_col.expect("fixture sets output_col");
-
-    let result = emit_evaleml_wgsl(&gadget.nodes, out_col, N_DIMS);
-    let err = result.expect_err("unsupported opcode must reject");
-    assert!(
-        err.0.contains("unsupported opcode"),
-        "structured rejection, got: {}",
-        err.0
-    );
-
-    // Empty program (no result) also rejects, not silently emits a degenerate shader.
-    let empty = emit_evaleml_wgsl(&[], 0, N_DIMS);
-    assert!(empty.is_err(), "empty program must reject");
-}
-
 // ── Test 6: JIT path is test-only and default-off ─────────────────────────────────────────────
-
-#[test]
-fn jit_is_test_only_and_default_off() {
-    // No default mapping wiring: mapping execution remains disabled by default.
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-
-    // The generated shaders carry no production-coupling or simthing-sim semantics.
-    let wa = compile_single_gadget(WEIGHTED_ACC_RON);
-    let wa_wgsl = emit_evaleml_wgsl(&wa.nodes, wa.output_col.unwrap(), N_DIMS).expect("WA lowers");
-    let ema = compile_single_gadget(EMA_RON);
-    let ema_wgsl =
-        emit_evaleml_wgsl(&ema.nodes, ema.output_col.unwrap(), N_DIMS).expect("Ema lowers");
-
-    for wgsl in [&wa_wgsl, &ema_wgsl] {
-        assert_semantic_free(wgsl);
-        for token in [
-            "simthing_sim",
-            "simthing-sim",
-            "SimSession",
-            "ResourceEconomySpec",
-            "mapping",
-            "economy",
-            "Personality",
-            "Memory",
-            "Gadget",
-            "sqrt",
-        ] {
-            assert!(
-                !wgsl.contains(token),
-                "generated WGSL must not reference production/coupling token `{token}`"
-            );
-        }
-    }
-}

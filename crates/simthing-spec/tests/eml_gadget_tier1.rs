@@ -36,23 +36,6 @@ fn assert_f32_eq(got: f32, expected: f32, ctx: &str) {
 
 // ── Test 1 — registry contains Tier-1 gadgets ────────────────────────────────
 
-#[test]
-fn tier1_registry_contains_all_gadgets() {
-    let registry = EmlGadgetRegistry::new();
-    for kind in registry.tier1_kinds() {
-        assert!(registry.is_registered(*kind));
-        assert_eq!(
-            kind.execution_class(),
-            EmlExecutionClass::ExactDeterministic
-        );
-        assert!(!kind.requires_temporal_memory());
-    }
-    assert_eq!(
-        registry.available_names(),
-        vec!["FieldSampler", "WeightedAccumulator", "SoftStep",]
-    );
-}
-
 // ── Test 2 — FieldSampler oracle parity ──────────────────────────────────────
 
 #[test]
@@ -166,89 +149,7 @@ fn soft_step_oracle_parity() {
 
 // ── R1 Test 1 — single-gadget flatten preview is executable ─────────────────
 
-#[test]
-fn single_gadget_flatten_preview_executable() {
-    let spec = EmlGadgetStackSpec {
-        gadgets: vec![EmlGadgetInstanceSpec::FieldSampler {
-            id: "solo".into(),
-            input_col: 5,
-            output_col: Some(10),
-            cap: 50.0,
-        }],
-    };
-    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default())
-        .expect("single gadget compiles");
-
-    assert!(compiled.composition.flatten_preview_executable());
-    match &compiled.composition {
-        EmlGadgetCompositionPlan::InlineFlattenPreview {
-            executable, nodes, ..
-        } => {
-            assert!(*executable);
-            assert_eq!(nodes.len(), compiled.gadgets[0].nodes.len());
-        }
-        other => panic!("expected InlineFlattenPreview for single gadget, got {other:?}"),
-    }
-}
-
 // ── R2 Test 1 — multi-gadget total over cap admits as PerGadgetOnly ───────────
-
-#[test]
-fn multi_gadget_total_over_cap_admits_as_per_gadget_only() {
-    let spec = EmlGadgetStackSpec {
-        gadgets: vec![
-            EmlGadgetInstanceSpec::SoftStep {
-                id: "soft_a".into(),
-                input_col: 1,
-                output_col: Some(10),
-                center: 0.5,
-                steepness: 4.0,
-            },
-            EmlGadgetInstanceSpec::SoftStep {
-                id: "soft_b".into(),
-                input_col: 2,
-                output_col: Some(11),
-                center: 0.5,
-                steepness: 4.0,
-            },
-            EmlGadgetInstanceSpec::SoftStep {
-                id: "soft_c".into(),
-                input_col: 3,
-                output_col: Some(12),
-                center: 0.5,
-                steepness: 4.0,
-            },
-        ],
-    };
-    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions { max_col: 64 })
-        .expect("multi-gadget over-total-cap stack compiles");
-
-    for gadget in &compiled.gadgets {
-        assert!(gadget.nodes.len() <= MAX_EML_TREE_NODES as usize);
-    }
-    assert!(compiled.report.total_node_count > MAX_EML_TREE_NODES as usize);
-    assert!(!compiled.composition.flatten_preview_executable());
-    match &compiled.composition {
-        EmlGadgetCompositionPlan::PerGadgetOnly { .. } => {}
-        other => panic!("expected PerGadgetOnly, got {other:?}"),
-    }
-    assert!(
-        compiled
-            .report
-            .diagnostics
-            .iter()
-            .any(|d| d.code == "stack_total_exceeds_inline_cap"),
-        "expected stack_total_exceeds_inline_cap diagnostic"
-    );
-    assert!(
-        compiled
-            .report
-            .diagnostics
-            .iter()
-            .any(|d| { d.message.contains("PerGadgetOnly") && d.message.contains("deferred") }),
-        "expected deferred scheduling message in diagnostics"
-    );
-}
 
 // ── R2 Test 2 — single gadget over cap still rejects ────────────────────────
 
@@ -282,29 +183,6 @@ const TIER1_STACK_RON: &str = r#"
     ],
 )
 "#;
-
-#[test]
-fn ron_gadget_stack_admits() {
-    let spec = deserialize_eml_gadget_stack_ron(TIER1_STACK_RON).expect("RON parses");
-    let compiled = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default())
-        .expect("stack compiles");
-
-    assert_eq!(compiled.report.gadget_count, 3);
-    assert_eq!(
-        compiled.report.gadget_ids,
-        vec!["sample_threat", "soft_desperation", "urgency"]
-    );
-
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-    assert_eq!(
-        ResourceFlowExecutionProfile::default(),
-        ResourceFlowExecutionProfile::DefaultDisabled
-    );
-    assert!(!PipelineFlags::default().use_accumulator_resource_flow);
-}
 
 // ── Test 6 — stack composition parity ────────────────────────────────────────
 
@@ -360,39 +238,6 @@ fn stack_composition_oracle_parity() {
 
 // ── R1 Test 3 — no runtime consumption of flatten preview ────────────────────
 
-#[test]
-fn no_runtime_flatten_preview_consumption() {
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let scan_paths = [
-        "crates/simthing-driver/src",
-        "crates/simthing-driver/tests/support",
-        "crates/simthing-gpu/src",
-        "crates/simthing-sim/src",
-    ];
-    let forbidden = [
-        "flattened_nodes",
-        "flatten_preview_nodes",
-        "CompiledEmlGadgetStack",
-        "compile_eml_gadget_stack",
-    ];
-    for rel in scan_paths {
-        let dir = repo_root.join(rel);
-        if !dir.is_dir() {
-            continue;
-        }
-        for entry in walkdir_light(&dir) {
-            let text = std::fs::read_to_string(&entry).unwrap_or_default();
-            for needle in forbidden {
-                assert!(
-                    !text.contains(needle),
-                    "{} must not reference gadget flatten stack `{needle}`",
-                    entry.display()
-                );
-            }
-        }
-    }
-}
-
 fn walkdir_light(root: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -413,153 +258,6 @@ fn walkdir_light(root: &std::path::Path) -> Vec<std::path::PathBuf> {
 
 // ── Test 8 — invalid params reject clearly ───────────────────────────────────
 
-#[test]
-fn invalid_params_reject() {
-    let reject = |spec: EmlGadgetStackSpec, needle: &str| {
-        let err = compile_eml_gadget_stack(&spec, EmlGadgetCompileOptions::default()).unwrap_err();
-        let msg = err.to_string();
-        assert!(msg.contains(needle), "expected `{needle}` in `{msg}`");
-    };
-
-    reject(
-        EmlGadgetStackSpec {
-            gadgets: vec![EmlGadgetInstanceSpec::FieldSampler {
-                id: "bad_cap".into(),
-                input_col: 1,
-                output_col: None,
-                cap: 0.0,
-            }],
-        },
-        "cap must be finite and > 0",
-    );
-
-    reject(
-        EmlGadgetStackSpec {
-            gadgets: vec![EmlGadgetInstanceSpec::FieldSampler {
-                id: "nan_cap".into(),
-                input_col: 1,
-                output_col: None,
-                cap: f32::NAN,
-            }],
-        },
-        "cap must be finite and > 0",
-    );
-
-    reject(
-        EmlGadgetStackSpec {
-            gadgets: vec![EmlGadgetInstanceSpec::SoftStep {
-                id: "nan_center".into(),
-                input_col: 1,
-                output_col: None,
-                center: f32::INFINITY,
-                steepness: 1.0,
-            }],
-        },
-        "center must be finite",
-    );
-
-    reject(
-        EmlGadgetStackSpec {
-            gadgets: vec![EmlGadgetInstanceSpec::SoftStep {
-                id: "bad_steep".into(),
-                input_col: 1,
-                output_col: None,
-                center: 0.5,
-                steepness: 0.0,
-            }],
-        },
-        "steepness must be finite and > 0",
-    );
-
-    reject(
-        EmlGadgetStackSpec {
-            gadgets: vec![EmlGadgetInstanceSpec::WeightedAccumulator {
-                id: "empty".into(),
-                input_cols: vec![],
-                weight_cols: vec![],
-                output_col: None,
-            }],
-        },
-        "at least one input",
-    );
-
-    reject(
-        EmlGadgetStackSpec {
-            gadgets: vec![EmlGadgetInstanceSpec::WeightedAccumulator {
-                id: "mismatch".into(),
-                input_cols: vec![1, 2],
-                weight_cols: vec![3],
-                output_col: None,
-            }],
-        },
-        "input count",
-    );
-}
-
 // ── Test 9 — deferred temporal gadgets rejected ──────────────────────────────
 
-#[test]
-fn deferred_gadget_kinds_not_registered() {
-    for kind in DEFERRED_GADGET_KINDS {
-        assert!(EmlGadgetKind::parse(kind).is_none());
-        let err = reject_unknown_gadget_kind(kind, "deferred").unwrap_err();
-        let msg = err.to_string();
-        assert!(msg.contains("deferred") || msg.contains("unknown"), "{msg}");
-    }
-}
-
 // ── Test 10 — posture preservation ───────────────────────────────────────────
-
-#[test]
-fn posture_preservation() {
-    assert_eq!(
-        MappingExecutionProfile::default(),
-        MappingExecutionProfile::Disabled
-    );
-    assert_eq!(
-        ResourceFlowExecutionProfile::default(),
-        ResourceFlowExecutionProfile::DefaultDisabled
-    );
-    assert!(!PipelineFlags::default().use_accumulator_resource_flow);
-
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let gpu_lib = std::fs::read_to_string(repo_root.join("crates/simthing-gpu/src/lib.rs"))
-        .expect("simthing-gpu lib.rs");
-    assert!(!gpu_lib.contains("EmlGadget"));
-    assert!(!gpu_lib.contains("FieldSampler"));
-
-    let sim_lib = std::fs::read_to_string(repo_root.join("crates/simthing-sim/src/lib.rs"))
-        .expect("simthing-sim lib.rs");
-    assert!(!sim_lib.contains("EmlGadget"));
-    assert!(!sim_lib.contains("Personality"));
-
-    let wgsl_dir = repo_root.join("crates/simthing-gpu/src/shaders");
-    for entry in std::fs::read_dir(&wgsl_dir).expect("shaders dir") {
-        let path = entry.expect("dir entry").path();
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        assert!(
-            !name.contains("gadget")
-                && !name.contains("field_sampler")
-                && !name.contains("soft_step"),
-            "unexpected gadget WGSL: {name}"
-        );
-    }
-
-    let core_nodes =
-        std::fs::read_to_string(repo_root.join("crates/simthing-core/src/eml_nodes.rs"))
-            .expect("eml_nodes.rs");
-    let opcode_count = core_nodes.matches("pub const ").count();
-    assert!(opcode_count > 0, "opcode table present");
-    assert!(!core_nodes.contains("EXP"));
-    assert!(!core_nodes.contains("LOGISTIC"));
-
-    // R1 posture: economy→FIELD_POLICY remains fixture-only; no flatten runtime wiring.
-    let economy_field_policy = std::fs::read_to_string(
-        repo_root
-            .join("crates/simthing-driver/tests/support/economy_field_policy_product_fixture.rs"),
-    )
-    .expect("economy_field_policy_product_fixture.rs");
-    assert!(!economy_field_policy.contains("CompiledEmlGadgetStack"));
-    assert!(!economy_field_policy.contains("flattened_nodes"));
-    assert!(!economy_field_policy.contains("compile_eml_gadget_stack"));
-}

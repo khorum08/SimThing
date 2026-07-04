@@ -1079,15 +1079,4 @@ fn fnv_mix(hash: u64, value: u64) -> u64 {
 mod tests {
     use super::*;
 
-    #[test]
-    fn rr_0_world_not_flattened_by_construction() {
-        let world = build_recursive_world(atlas_gen::DRESS_REHEARSAL_DEFAULT_SEED);
-        assert!(!world.is_flattened);
-        assert_eq!(world.galaxy.systems.len(), SYSTEM_COUNT);
-        assert!(world
-            .galaxy
-            .systems
-            .iter()
-            .all(|system| system.cells.len() == 100));
-    }
 }

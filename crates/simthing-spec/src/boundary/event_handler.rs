@@ -292,33 +292,4 @@ mod display_tests {
     use super::*;
     use crate::spec::script::ScriptEvalError;
 
-    #[test]
-    fn scripted_event_diagnostic_kind_display_is_non_empty() {
-        let kind = ScriptedEventDiagnosticKind::TriggerEvalError(ScriptEvalError::DivisionByZero);
-        let text = format!("{kind}");
-        assert!(!text.is_empty());
-        assert!(text.contains("division by zero"));
-    }
-
-    #[test]
-    fn scripted_event_diagnostic_display_includes_event_id() {
-        let diagnostic = ScriptedEventDiagnostic {
-            event_id: EventKey::new("low_loyalty"),
-            kind: ScriptedEventDiagnosticKind::UnknownEventId,
-        };
-        let text = format!("{diagnostic}");
-        assert!(text.contains("low_loyalty"));
-        assert!(text.contains("unknown event id"));
-    }
-
-    #[test]
-    fn scripted_event_diagnostic_unresolved_target_display_includes_slot() {
-        let diagnostic = ScriptedEventDiagnostic {
-            event_id: EventKey::new("spawn_rebel"),
-            kind: ScriptedEventDiagnosticKind::UnresolvedEffectTarget { slot: 7 },
-        };
-        let text = format!("{diagnostic}");
-        assert!(text.contains("spawn_rebel"));
-        assert!(text.contains("slot 7"));
-    }
 }

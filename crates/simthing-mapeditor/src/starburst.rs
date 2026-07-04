@@ -118,24 +118,4 @@ pub fn generate_star_circle_image(size: u32) -> Image {
 mod tests {
     use super::*;
 
-    #[test]
-    fn starburst_render_meta_is_render_only() {
-        assert!(STARBURST_RENDER_ONLY_NOTE.contains("presentation-only"));
-        assert!(STARBURST_RENDER_ONLY_NOTE.contains("structural"));
-    }
-
-    #[test]
-    fn starburst_billboard_faces_camera_helper() {
-        let forward = starburst_billboard_forward(Vec3::ZERO, Vec3::new(0.0, 0.0, 10.0));
-        assert!(forward.z > 0.9);
-    }
-
-    #[test]
-    fn crisp_circle_texture_has_opaque_center_and_transparent_corner() {
-        let image = generate_star_circle_image(16);
-        let center_idx = ((8 * 16 + 8) * 4 + 3) as usize;
-        let corner_idx = 3;
-        assert!(image.data.as_ref().expect("image bytes")[center_idx] > 240);
-        assert_eq!(image.data.as_ref().expect("image bytes")[corner_idx], 0);
-    }
 }

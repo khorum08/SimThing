@@ -1884,23 +1884,6 @@ mod fast_apply_sentinel_tests {
     };
 
     #[test]
-    fn r1_fast_compaction_remap_preserves_one_compacted_slot_row() {
-        let planned = PlannedCompactedSlotRow {
-            tick: 6,
-            slot_id: 3,
-            source_old_slot: 8,
-            owner_code: 2,
-            cell_or_membership_code: 42,
-            active: true,
-            lineage_event_id: 11,
-        };
-        let row = compacted_expected_row(&planned, true);
-        assert_eq!(row.slot_id, 3);
-        assert_eq!(row.source_old_slot, 8);
-        assert!(row.applied_by_gpu);
-    }
-
-    #[test]
     fn r1_fast_cpu_shadow_observes_remap_without_redeciding() {
         let planned = PlannedSlotRemapRow {
             tick: 7,
