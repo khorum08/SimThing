@@ -540,3 +540,31 @@ bash scripts/ci/test_lifecycle_expiry_check.sh --prove                       # s
 `test_lifecycle_expiry_check.sh` tripwire is **operator/cadence-run, not yet a workflow** — a scheduled expiry
 workflow requires an explicit cadence rung (do not add scheduled workflow changes without one). Until a material
 reduction cadence lands, the expiry sweep is an orchestrator closeout duty, not an automated gate.
+
+## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)
+
+Feature-proofing *scenario* tracks (e.g. 0.0.8.5 Terran-Pirate) are exploratory expeditions that surface
+consumer-driven capability needs. Their candidate code (services/structs/fns/heuristics beyond authored data)
+lives in **`simthing-workshop`** — never in a sealed engine crate. The fence is structural, not prose:
+`simthing-workshop` is a **verified leaf** (nothing depends on it), so the seal law makes game-semantic
+candidate code there **unable to leak upward by linkage**, and workshop is already outside every fence-scan
+target — so it needs no carve-out. See `design_0_0_8_5…§0A.1` for the binding statement; this section is the
+operator surface.
+
+- **The exit is re-fenced.** Elevation = moving code `simthing-workshop` → an engine crate. The elevation PR's
+  diff **re-applies the full engine-crate scan battery to the outbound hunk** (which now covers `simthing-spec`
+  + lowerers — `CI-SCAN-SPEC-KIND-COVERAGE-0`): it must be generic-namespaced and game-semantic-free, or it does
+  not climb. The fence isn't removed by living in workshop; it is relocated to workshop's *exit*.
+- **Default-delete at closeout, no registry.** Scenario candidate code is expirable by default — deleted at
+  track close via the existing lifecycle expiry sweep (orchestrator closeout duty, §11). Keeping a candidate is
+  an explicit move into standing workshop code; there is **no registry and no lease** (the envelope's
+  default-delete disposition already expresses each asset's value). **Do not add a registry.**
+- **Orchestrator note.** A scenario rung that writes candidate engine-shaped code into `simthing-spec`,
+  `simthing-kernel`, `simthing-sim`, or a lowerer — instead of `simthing-workshop` — is **out of scope and
+  rejected at review**, and is the exact drift the sandbox exists to make impossible. Route it to workshop;
+  surface elevation candidates at closeout only.
+
+> **Deferred elaboration (not in force).** A per-production `simthing-workshop/src/testthing/<production>/`
+> sub-taxonomy with a scan carve-out and a mechanical `--track-closeout` emptiness gate is the natural next step
+> *when* workshop fills and needs per-expedition sub-organization. Deferred — until then, "candidate code in the
+> `simthing-workshop` leaf, default-delete at closeout" is the whole mechanism. Do not scaffold `testthing/` yet.

@@ -98,6 +98,42 @@ unreviewed is exactly the fossil-premise / test-propagation failure the test-lif
 end. The corpus stays small, typed, and inviolate; the scenario stays contained, expirable, and — only after
 it works and is reviewed — a *source* of admission candidates, never an author of doctrine.
 
+### 0A.1 The physical fence — scenario candidate code lives in the `simthing-workshop` leaf, not the sealed core (binding, DA 2026-07-04)
+
+The `birth_track` ledger above is *lifecycle bookkeeping*; it does not, by itself, stop scenario code from
+being written into a sealed crate. The **structural** fence is the crate dependency arrow, and it is
+enforced by `cargo`, not by prose or review vigilance.
+
+- **Home.** Every candidate *service / struct / function / heuristic* a proofing scenario needs beyond its
+  authored `.clause` data lives in **`simthing-workshop`**, never in a sealed engine crate.
+- **Why it contains.** `simthing-workshop` is a **verified leaf**: nothing in the tree depends on it (it
+  only depends *inward*). Game-semantic candidate code placed there therefore **cannot leak upward into the
+  sealed core by linkage** — the seal law (`simthing-kernel` authority; no inbound arrows to the sealed
+  core) makes the containment a compile-time fact, not a promise. Workshop is also already outside every
+  fence-scan target, so it needs no carve-out to be the sanctioned game-semantic zone. This is the guarantee
+  a dedicated per-scenario crate would give; the workshop leaf already gives it, so no new crate is minted.
+- **Elevation re-fences.** Moving code `simthing-workshop` → an engine crate is a reviewed, admission-gated
+  act: the outbound diff must be generic-namespaced and game-semantic-free, and passes the engine-crate fence
+  scans (which now cover `simthing-spec` + lowerers — see `design_0_0_8_4_6` / `CI-SCAN-SPEC-KIND-COVERAGE-0`).
+  The fence isn't removed by living in workshop; it is relocated to workshop's *exit*.
+- **Default-delete at closeout, no registry.** Scenario candidate code is expirable by default — deleted at
+  track close via the existing lifecycle expiry sweep (orchestrator closeout duty, `ci_screening_surface §11`)
+  unless explicitly kept. A candidate worth keeping is *moved by explicit decision* into standing
+  `simthing-workshop` code; its value is **decided, not tracked**. There is deliberately **no registry, no
+  `dsu` counter, and no re-justification tier** for kept candidates (considered and rejected as redundant with
+  default-delete).
+- **Consequence for the fleet-RF case.** The arbitrary-depth child-RF reduce-up the trial run needs is built
+  **in `simthing-workshop`**, consumed there by the trial run (no starvation, no shim, no mid-track mutation
+  of `simthing-spec`), and screened at closeout: semantic-free + generic-namespaced → elevate to
+  `simthing-spec`; kind-matched → deleted. The Fleet/Cohort drift that reached review would have had no
+  business in `simthing-spec` in the first place.
+
+> **Deferred elaboration (not yet in force).** A per-production `simthing-workshop/src/testthing/<production>/`
+> sub-taxonomy (unit-deletable subtree, a scan carve-out, and a mechanical `--track-closeout` emptiness gate)
+> is the natural next step *when* workshop begins to fill and needs per-expedition sub-organization. It is
+> **deferred** — until then the simple rule above (candidate code in the `simthing-workshop` leaf,
+> default-delete at closeout) is the whole mechanism.
+
 ---
 
 ## 1. Owner authorization & mandate (recorded verbatim by instruction)
