@@ -8,6 +8,7 @@
 //! CT-1a: literal entity hydration into existing `simthing-spec` authoring structs.
 //! CT-2a: literal `produces`/`upkeep` hydration into Resource Flow authoring.
 //! CT-2c: category economy hydration into Resource Flow and ResourceEconomy authoring.
+//! TP-SHIPSIZE-DECODER-0: shipsize / `ship_*` modifier decoder family.
 //! CT-PR2/3: scenario-container hydration into generic spec surfaces plus a SimThing tree and
 //! bounded grid-link metadata.
 //! MapGen PR2: neutral-AST parse-only adapter (M1) — no semantic mapping.
@@ -28,6 +29,7 @@ pub mod scope;
 mod emit;
 mod hydrate;
 mod hydrate_category_economy;
+mod hydrate_shipsize_decoder;
 mod hydrate_field_operator;
 mod hydrate_palma_feedstock;
 mod hydrate_resource_flow;
@@ -56,6 +58,11 @@ pub use hydrate_category_economy::{
     CategoryFlowContribution, DecodedEconomicKey, EconomicAxis, EconomicOp,
     HydratedCategoryEconomyPack, decode_economic_modifier_key, hydrate_category_economy_pack,
     hydrate_daily_economy_game_mode,
+};
+pub use hydrate_shipsize_decoder::{
+    DecodedShipModifierKey, HydratedShipsizeDecoderPack, ShipModifierFamily, ShipModifierOp,
+    SHIP_MODIFIER_ATTRIBUTES, MAX_SHIP_EML_NODES, compile_value_formula_eml,
+    decode_ship_modifier_key, decode_ship_modifier_key_spanned, hydrate_shipsize_decoder_pack,
 };
 pub use hydrate_field_operator::{
     BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES,

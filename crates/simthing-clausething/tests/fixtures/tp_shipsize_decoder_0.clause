@@ -1,0 +1,75 @@
+simthing_tp_shipsize_decoder_0 = {
+    display_name = "TP Shipsize Decoder 0"
+    ship_class_map = {
+        corvette = { custom_kind = "ship_hull_corvette" }
+        destroyer = { custom_kind = "ship_hull_destroyer" }
+        corvette_hull = { custom_kind = "ship_hull_corvette_hull_ambig" }
+    }
+    ship_property = {
+        id = "tp_hull"
+        namespace = "tp"
+        name = "hull"
+        display_name = "Hull"
+    }
+    ship_property = {
+        id = "tp_weapon_damage"
+        namespace = "tp"
+        name = "weapon_damage"
+        display_name = "Weapon Damage"
+    }
+    ship_property = {
+        id = "tp_fire_rate"
+        namespace = "tp"
+        name = "fire_rate"
+        display_name = "Fire Rate"
+    }
+    ship_property = {
+        id = "tp_upkeep"
+        namespace = "tp"
+        name = "upkeep"
+        display_name = "Upkeep"
+    }
+    ship_property = {
+        id = "tp_naval_cap"
+        namespace = "tp"
+        name = "naval_cap"
+        display_name = "Naval Cap"
+    }
+    trigger_property = {
+        id = "tp_is_at_war"
+        namespace = "tp"
+        name = "is_at_war"
+        display_name = "Is At War"
+    }
+    trigger_alias = {
+        is_at_war = { property = tp::is_at_war at_least = 0.5 }
+    }
+    script_value = {
+        id = damage_bonus
+        base = 1.0
+        add = { property = tp::is_at_war }
+        mult = 1.15
+        ceil_at = 8.0
+    }
+    modifier = {
+        id = baseline
+        shipsize_corvette_hull_add = 100
+        ship_weapon_damage_mult = 0.10
+        ship_fire_rate_mult = 0.05
+        ships_upkeep_mult = 0.08
+        country_naval_cap_add = 20
+        ship_weapon_damage_mult = value:damage_bonus
+    }
+    triggered_modifier = {
+        id = war_damage_boost
+        potential = {
+            is_at_war = yes
+        }
+        ship_weapon_damage_mult = 0.15
+    }
+    complex_trigger_modifier = {
+        id = war_fire_rate
+        trigger = { property = tp::is_at_war at_least = 0.5 }
+        ship_fire_rate_mult = 0.12
+    }
+}
