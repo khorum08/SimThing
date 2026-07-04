@@ -82,10 +82,10 @@ Local (0R):
 - Survivor compile floor (five non-desktop crates): PASS
 - `git diff --check origin/master...HEAD`: PASS
 
-Live (0R head — record after push):
+Live (0R head `311f2faccf88c0032c58046a2e876cd7a6d2f452`):
 
-- Doctrine Scan: pending
-- Doctrine Exec: not expected (ledger/docs-only; no `workflow_dispatch`)
+- Doctrine Scan: PASS `failures=0 inspect=0` (run `28689532283`, job `85088184033`)
+- Doctrine Exec: not auto-scheduled (ledger/docs-only; no `workflow_dispatch`)
 
 ## Graduation routing
 
