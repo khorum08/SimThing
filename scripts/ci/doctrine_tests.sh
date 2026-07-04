@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI-B-LOCAL-HARNESS-0: owner-local executable proof for GPU/Bevy/desktop-exclusive residue.
+# CI-B-LOCAL-HARNESS-0 + CI-B-TRIPWIRE-TAGS-0: owner-local executable proof with tripwire tags.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -266,6 +266,121 @@ def footer_is_valid(line: str) -> bool:
     return bool(FOOTER_PATTERN.match(line.strip()))
 
 
+PASS_TRIPWIRE_TAGS = ("COMPILE_FAIL_PROVEN", "PARITY_BIT_EXACT", "OWNER_LOCAL_PASS")
+INSPECT_TRIPWIRE_TAGS = (
+    "GPU_SKIPPED",
+    "BEVY_SKIPPED",
+    "DESKTOP_SKIPPED",
+    "OWNER_PREREQ_MISSING",
+    "PLAN_ONLY",
+    "GITHUB_ACTIONS_REFUSAL",
+    "NO_LIVE_LOCAL_PROOF_TARGET",
+    "FLAKY",
+    "PERF_VARIANCE",
+)
+
+
+def command_needs_gpu(command: str) -> bool:
+    lower = command.lower()
+    return "simthing-gpu" in lower or re.search(r"\bgpu\b", lower) is not None
+
+
+def command_needs_bevy(command: str) -> bool:
+    return "simthing-mapeditor" in command or re.search(r"\bbevy\b", command, re.I) is not None
+
+
+def command_needs_desktop(command: str) -> bool:
+    return "simthing-mapeditor" in command or "simthing-tools" in command
+
+
+def classify_command_success_tag(command: str) -> str:
+    lower = command.lower()
+    if "compile_fail" in lower or "--test compile_fail" in lower:
+        return "COMPILE_FAIL_PROVEN"
+    if any(token in lower for token in ("parity", "oracle", "bit_exact", "bit-exact", "golden")):
+        return "PARITY_BIT_EXACT"
+    return "OWNER_LOCAL_PASS"
+
+
+def derive_tripwire_tags(
+    *,
+    commands: list[str],
+    verdict: str,
+    plan_only: bool = False,
+    gha_refusal: bool = False,
+    gpu_prereq_missing: bool = False,
+    no_targets: bool = False,
+    run_band: list[str] | None = None,
+    synthetic_success_tag: str | None = None,
+) -> dict[str, str]:
+    tags: dict[str, str] = {}
+    has_gpu = any(command_needs_gpu(cmd) for cmd in commands)
+    has_bevy = any(command_needs_bevy(cmd) for cmd in commands)
+    has_desktop = any(command_needs_desktop(cmd) for cmd in commands)
+
+    if gha_refusal:
+        tags["GITHUB_ACTIONS_REFUSAL"] = "INSPECT"
+        tags["OWNER_PREREQ_MISSING"] = "INSPECT"
+    if plan_only:
+        tags["PLAN_ONLY"] = "INSPECT"
+        if has_gpu:
+            tags["GPU_SKIPPED"] = "INSPECT"
+    if no_targets:
+        tags["NO_LIVE_LOCAL_PROOF_TARGET"] = "INSPECT"
+    if gpu_prereq_missing:
+        tags["OWNER_PREREQ_MISSING"] = "INSPECT"
+        if has_gpu:
+            tags["GPU_SKIPPED"] = "INSPECT"
+    skipped_execution = plan_only or gpu_prereq_missing or gha_refusal
+    if skipped_execution:
+        if has_bevy:
+            tags["BEVY_SKIPPED"] = "INSPECT"
+        if has_desktop:
+            tags["DESKTOP_SKIPPED"] = "INSPECT"
+
+    if run_band:
+        normalized = [item.upper() for item in run_band]
+        if len(set(normalized)) > 1:
+            tags["FLAKY"] = "INSPECT"
+        timings = [item for item in run_band if item.endswith("ms")]
+        if len(timings) >= 2:
+            values = [int(item.removesuffix("ms")) for item in timings]
+            if max(values) - min(values) > min(values) * 0.2:
+                tags["PERF_VARIANCE"] = "INSPECT"
+
+    if verdict == "PASS":
+        if synthetic_success_tag:
+            tags[synthetic_success_tag] = "PASS"
+        elif commands:
+            tags[classify_command_success_tag(commands[0])] = "PASS"
+        else:
+            tags["OWNER_LOCAL_PASS"] = "PASS"
+
+    return tags
+
+
+def tripwire_tags_valid(tags: dict[str, str], verdict: str) -> tuple[bool, str]:
+    if not tags:
+        return False, "missing tripwire tags"
+    for name, value in tags.items():
+        if value not in {"PASS", "INSPECT"}:
+            return False, f"invalid tag value {name}={value}"
+    if verdict == "PASS":
+        if not any(tags.get(name) == "PASS" for name in PASS_TRIPWIRE_TAGS):
+            return False, "PASS verdict requires a PASS tripwire tag"
+    if verdict == "INSPECT":
+        if not any(value == "INSPECT" for value in tags.values()):
+            return False, "INSPECT verdict requires an INSPECT tripwire tag"
+    return True, ""
+
+
+def format_tripwire_tags(tags: dict[str, str]) -> list[str]:
+    lines = ["  --- tripwire-tags ---"]
+    for name in sorted(tags):
+        lines.append(f"  {name}: {tags[name]}")
+    return lines
+
+
 def emit_report(
     *,
     profile: str,
@@ -273,6 +388,8 @@ def emit_report(
     failures: list[str],
     inspects: list[str],
     verdict: str,
+    tripwire_tags: dict[str, str] | None = None,
+    run_band: list[str] | None = None,
 ) -> None:
     head_sha = git_value("rev-parse", "HEAD")
     tested_ref = git_value("symbolic-ref", "--short", "-q", "HEAD") or git_value(
@@ -307,6 +424,17 @@ def emit_report(
             print(f"  {item}")
     else:
         print("  none")
+    tags = tripwire_tags or {}
+    ok, reason = tripwire_tags_valid(tags, verdict)
+    if not ok:
+        failures = list(failures)
+        failures.append(f"tripwire contract: {reason}")
+        verdict = "FAIL"
+    for line in format_tripwire_tags(tags):
+        print(line)
+    if run_band:
+        print("  --- run-band ---")
+        print(f"  samples: {', '.join(run_band)}")
     print(footer_line(verdict, len(failures), len(inspects), profile, head_sha))
 
 
@@ -403,6 +531,105 @@ def prove_report() -> int:
             if command_is_forbidden_on_gha(cmd):
                 pass  # expected for owner-local legs
 
+    gpu_cmd = "cargo test -p simthing-gpu --test bh1_choke_readout -- --nocapture"
+    desktop_cmd = "cargo test -p simthing-mapeditor --test terran_pirate_skeleton -- --nocapture"
+    mixed_cmds = [gpu_cmd, desktop_cmd]
+
+    def expect_tag(case: str, tags: dict[str, str], name: str, value: str) -> None:
+        if tags.get(name) != value:
+            errors.append(f"{case}: expected {name}={value} got {tags.get(name)!r}")
+
+    gha_tags = derive_tripwire_tags(
+        commands=mixed_cmds, verdict="INSPECT", gha_refusal=True
+    )
+    expect_tag("gha-refusal", gha_tags, "GITHUB_ACTIONS_REFUSAL", "INSPECT")
+
+    gpu_missing_tags = derive_tripwire_tags(
+        commands=mixed_cmds,
+        verdict="INSPECT",
+        gpu_prereq_missing=True,
+    )
+    expect_tag("gpu-missing", gpu_missing_tags, "GPU_SKIPPED", "INSPECT")
+    expect_tag("gpu-missing", gpu_missing_tags, "OWNER_PREREQ_MISSING", "INSPECT")
+    expect_tag("gpu-missing", gpu_missing_tags, "DESKTOP_SKIPPED", "INSPECT")
+
+    plan_tags = derive_tripwire_tags(
+        commands=mixed_cmds, verdict="INSPECT", plan_only=True
+    )
+    expect_tag("plan-only", plan_tags, "PLAN_ONLY", "INSPECT")
+    expect_tag("plan-only", plan_tags, "GPU_SKIPPED", "INSPECT")
+
+    no_target_tags = derive_tripwire_tags(
+        commands=[], verdict="INSPECT", no_targets=True
+    )
+    expect_tag("no-target", no_target_tags, "NO_LIVE_LOCAL_PROOF_TARGET", "INSPECT")
+
+    compile_tags = derive_tripwire_tags(
+        commands=["cargo test -p x --test compile_fail_case -- --nocapture"],
+        verdict="PASS",
+        synthetic_success_tag="COMPILE_FAIL_PROVEN",
+    )
+    expect_tag("compile-fail", compile_tags, "COMPILE_FAIL_PROVEN", "PASS")
+
+    parity_tags = derive_tripwire_tags(
+        commands=["cargo test -p simthing-gpu --test oracle_parity -- --nocapture"],
+        verdict="PASS",
+        synthetic_success_tag="PARITY_BIT_EXACT",
+    )
+    expect_tag("parity", parity_tags, "PARITY_BIT_EXACT", "PASS")
+
+    owner_pass_tags = derive_tripwire_tags(
+        commands=["cargo test -p simthing-tools --test typeface_lr4 -- --nocapture"],
+        verdict="PASS",
+        synthetic_success_tag="OWNER_LOCAL_PASS",
+    )
+    expect_tag("owner-local-pass", owner_pass_tags, "OWNER_LOCAL_PASS", "PASS")
+
+    flaky_tags = derive_tripwire_tags(
+        commands=[gpu_cmd],
+        verdict="INSPECT",
+        run_band=["PASS", "FAIL", "PASS"],
+    )
+    expect_tag("flaky", flaky_tags, "FLAKY", "INSPECT")
+
+    perf_tags = derive_tripwire_tags(
+        commands=[gpu_cmd],
+        verdict="INSPECT",
+        run_band=["120ms", "180ms", "175ms"],
+    )
+    expect_tag("perf-variance", perf_tags, "PERF_VARIANCE", "INSPECT")
+
+    fake_pass_ok, fake_pass_reason = tripwire_tags_valid({}, "PASS")
+    if fake_pass_ok:
+        errors.append("fake PASS without tags should fail validation")
+
+    fake_inspect_ok, _ = tripwire_tags_valid({"PLAN_ONLY": "INSPECT"}, "INSPECT")
+    if not fake_inspect_ok:
+        errors.append("valid INSPECT tags rejected")
+
+    buf_tags = derive_tripwire_tags(
+        commands=mixed_cmds, verdict="INSPECT", plan_only=True
+    )
+    import io as _io
+
+    capture = _io.StringIO()
+    import contextlib as _ctx
+
+    with _ctx.redirect_stdout(capture):
+        emit_report(
+            profile="owner-local-gpu-bevy",
+            commands=mixed_cmds,
+            failures=[],
+            inspects=["plan-only; commands not executed"],
+            verdict="INSPECT",
+            tripwire_tags=buf_tags,
+        )
+    report_text = capture.getvalue()
+    if "--- tripwire-tags ---" not in report_text:
+        errors.append("emit_report missing tripwire-tags section")
+    if "PLAN_ONLY: INSPECT" not in report_text:
+        errors.append("emit_report missing PLAN_ONLY tag line")
+
     if errors:
         print("DOCTRINE-TESTS-PROVE-REPORT: FAIL")
         for err in errors:
@@ -441,12 +668,20 @@ def main() -> int:
     if args["plan"]:
         plan_inspects = list(inspects)
         plan_inspects.append("plan-only; commands not executed")
+        tags = derive_tripwire_tags(
+            commands=commands,
+            verdict="INSPECT",
+            plan_only=True,
+            gpu_prereq_missing=any(command_needs_gpu(c) for c in commands),
+            no_targets=not commands,
+        )
         emit_report(
             profile=profile_id,
             commands=commands,
             failures=failures,
             inspects=plan_inspects,
             verdict="INSPECT",
+            tripwire_tags=tags,
         )
         return 0
 
@@ -458,12 +693,19 @@ def main() -> int:
         inspects.append(
             "refusing owner-local GPU/Bevy/desktop execution on GitHub Actions"
         )
+        tags = derive_tripwire_tags(
+            commands=commands,
+            verdict="INSPECT",
+            gha_refusal=True,
+            no_targets=not commands,
+        )
         emit_report(
             profile=profile_id,
             commands=commands,
             failures=failures,
             inspects=inspects,
             verdict="INSPECT",
+            tripwire_tags=tags,
         )
         return 0
 
@@ -475,12 +717,19 @@ def main() -> int:
         inspects.append("no live local proof target resolved")
 
     if inspects:
+        tags = derive_tripwire_tags(
+            commands=commands,
+            verdict="INSPECT",
+            gpu_prereq_missing=not prereq_ok,
+            no_targets=not commands,
+        )
         emit_report(
             profile=profile_id,
             commands=commands,
             failures=failures,
             inspects=inspects,
             verdict="INSPECT",
+            tripwire_tags=tags,
         )
         return 0
 
@@ -495,12 +744,14 @@ def main() -> int:
     else:
         verdict = "PASS"
 
+    tags = derive_tripwire_tags(commands=commands, verdict=verdict)
     emit_report(
         profile=profile_id,
         commands=commands,
         failures=failures,
         inspects=inspects,
         verdict=verdict,
+        tripwire_tags=tags,
     )
     return 1 if verdict == "FAIL" else 0
 
