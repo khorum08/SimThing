@@ -148,6 +148,12 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 
 **Remaining non-blocking debt:** `doctrine_selftest.sh` runtime ~7 min (process-spawn bound) — optimize when convenient; it does not block close. **Track B (executable harness) remains deferred until a consumer needs executable seal-proof; Track C (the carrot) is DA-CLOSED.** *(Update 2026-07-02: that consumer arrived — Track B OPENED, §3.)*
 
+### Post–Track A scan extension (gate-state)
+
+| Rung | ID | Scope | State | Notes |
+|---|---|---|---|---|
+| A+ | `D-SCAN-SPEC-KIND-COVERAGE-0` (`CI-SCAN-SPEC-KIND-COVERAGE-0`) | Add `SPEC-LOWERER-KIND-READ` HEURISTIC scan over `simthing-spec` + `simthing-clausething` production `src/**`; fixtures + self-test + PR-delta prove; record pre-existing kind-read backlog; encode workshop candidate-home routing in scan doctrine. | **PROBATION / DA-OWNER REVIEW — gate-state, DA-held, not self-mergeable** | HEURISTIC / INSPECT-only; delta-scoped in PR CI; pre-existing baseline recorded as triage backlog (not per-PR noise); closed-lowerer hits higher suspicion in doctrine-ref; promotion blocker is role-keyed admission not “ban all kind reads”; workshop is candidate-code home. Evidence: `docs/tests/ci_scan_spec_kind_coverage_0_results.md`. |
+
 **Auditable screening-surface reference:** [`ci_screening_surface.md`](ci_screening_surface.md) — the single authoritative map of the screening logic, every scan/allow/block-list file, the strict rigor to add a `scans.tsv` or allowlist entry, and the triage agent's narrowing role. Built for auditability, maintenance, and Track C introspection/onboarding. Any change to the screening surface updates it in the same PR.
 
 ## 3. Track B — executable validation harness (DA-CLOSED 2026-07-04)

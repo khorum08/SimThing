@@ -24,6 +24,8 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `known_bad/sim_kind_read.rs` | `SIM-KIND-READ` | INSPECT — production `.kind` read |
 | `known_bad/semantic_words_production.rs` | `SEMANTIC-WORDS` | INSPECT — production semantic word |
 | `known_bad/spec_string_channel.rs` | `SPEC-STRING-CHANNEL` | INSPECT — stringly channel identity |
+| `known_bad/spec_fleet_cohort_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT — drift-shaped spec Fleet/Cohort `.kind` branch |
+| `known_bad/clausething_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT — closed-lowerer `match &node.kind` branch |
 | `known_bad/allow_sealed_producer.rs` | `ALLOW-SEALED-PRODUCERS` | FAIL — explicit sealed return |
 | `known_bad/allow_sealed_producer_split.rs` | `ALLOW-SEALED-PRODUCERS` | FAIL — split-declaration sealed return |
 | `known_bad/allow_sealed_producer_self.rs` | `ALLOW-SEALED-PRODUCERS` | FAIL — `-> Self` in sealed impl |
@@ -44,6 +46,7 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `traps/comment_semantic_words.rs` | semantic words in `//` comment | Excluded by comment filter |
 | `traps/cfg_test_semantic_words.rs` | semantic words in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
 | `traps/cfg_test_kind_read.rs` | `.kind` in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
+| `traps/role_resolution_kind_param_match.rs` | `match kind` role label (no `.kind` field branch) | Must not trip `SPEC-LOWERER-KIND-READ` |
 
 ## Self-test (`CI-A-SELF-TEST-0`)
 
