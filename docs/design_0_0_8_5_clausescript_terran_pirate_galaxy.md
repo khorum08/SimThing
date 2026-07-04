@@ -12,6 +12,12 @@
 > ingestion vertical**: a single authored `.clause` file that transpiles entirely to canonical
 > `SimThingScenarioSpec` and runs live, STEAD-driven, through indefinite ticks in SimThing Studio.
 >
+> **This is a TEST SCENARIO track (§0A, binding).** Everything it mints — tests, binaries, `.clause`
+> artifacts, decoder rules, heuristics — is contained within the scenario test envelope
+> (`birth_track = 0.0.8.5-terran-pirate`), **expirable and NOT canonical**. Nothing here becomes SimThing
+> corpus doctrine except by a **separate, specific DA admission review conducted AFTER the scenario is
+> completed and test-run.** No in-track canonization; surface for admission, never self-grant.
+>
 > Detailed per-rung evidence lands in `docs/tests/*_results.md` and
 > [`docs/tests/current_evidence_index.md`](tests/current_evidence_index.md).
 
@@ -45,6 +51,52 @@ A rung handoff may add ≤3 rung-local links it directly consumes; rung-local li
 - **Closed lowering layers are closed** (constitution §A): a producer/front-end change makes zero edits to closed `crates/simthing-clausething/src/` lowerers *except* under a DA-authorized amendment. **This track carries two such owner-authorized amendments — see §1.**
 - **No silent tier collapse; Deviation Record + Scope Ledger on every closure** (constitution §0.6). Parking a specified tier is a recorded, approved Deviation — never an implicit free pass.
 - **The CI carrot+stick layer (0.0.8.4.6, CLOSED) is live and applies to every PR here.** *Stick* — the GitHub `Doctrine Scan` gate screens every PR (clean **RELIABLE** = DA-equivalent; `FAIL` = HOLD; `INSPECT` → §1A triage); it now **mechanizes several of this track's own invariants** (the `SEMANTIC-WORDS`/`SIM-KIND-READ` scans enforce the "grep for terran/pirate comes up empty" rule above; the sealed-kernel scans enforce the one-authoritative-path rule). *Carrot* — **follow the onboarding procedure** ([`ci_screening_surface.md`](ci_screening_surface.md) §7): read the **sanctioned-surface digest** (`docs/sanctioned_surface.md`) *before* grepping the kernel surface, and run the **inner-loop self-scan** (`cargo check -p` + `doctrine_scan.sh`) during edits — the digest is your pre-computed grep answer. If a Terran-Pirate-specific anti-pattern chronically fires (triage log evidence), this track may author an **opt-in per-track CI addendum** (§8) — additive-only, never widening the global floor. Architectural insight a seal blocks routes through the **breakthrough valve** (gated + invited): surface a baseline-backed proposal, never self-grant.
+
+---
+
+## 0A. Scenario test envelope — this is a TEST SCENARIO track, nothing it mints is canonical (binding, DA 2026-07-04)
+
+> **0.0.8.5 is a test *scenario* track, not a corpus-defining track.** Its purpose is to *prove a
+> capability* — that a complete native ClauseScript file ingests, transpiles, and runs live under STEAD —
+> **through one scenario**. It is the engine's *first consumer*, never its definition (core §1: "the
+> substrate, not the game, is the product"). This section is the binding fence that keeps a scenario from
+> silently minting permanent doctrine.
+
+**The envelope.** Every test, test binary, fixture, `.clause` authored artifact, decoder rule, tuning
+constant, and heuristic that arises anywhere under this track is **contained within the Terran-Pirate
+scenario test envelope.** In the test-lifecycle ledger (0.0.8.4.6, live) every such row carries
+`birth_track = 0.0.8.5-terran-pirate`. By construction of the Necessity Test and the birth-track expiry
+tripwire, these are **scenario-scoped and expirable by default** — subject to deletion at track close unless
+each independently earns a durable class or a reviewed `downstream-utility:` lease. They are **NOT
+canonical, NOT inviolate, and NOT doctrine.**
+
+**Nothing surfaced here is corpus by default — admission is separate, specific, and post-completion.** A
+concept, code path, test, decoder heuristic, or tuning that appears worth abstracting *into* the SimThing
+corpus — a `simthing-kernel` type or EML opcode (core §1.2/§1.2.1), a core-design paradigm change, an
+`invariants.md`/STEAD contract line, a permanent-residue test class, or a doctrine-scan rule — **is admitted
+to the corpus only by a dedicated, explicit DA review and admission that (a) happens AFTER the scenario is
+completed and test-run, and (b) names the specific artifact and the rung by which it climbs the admission
+ladder.** During the track:
+
+- **No in-track canonization.** A TP rung may *use* an artifact within the scenario, but it may **not**
+  declare any TP-born concept/test/heuristic canonical, inviolate, or corpus doctrine. A handoff or PR that
+  writes a TP-surfaced heuristic into `simthing_core_design.md`, the constitution, `invariants.md`, the
+  kernel seals, or the durable-test classes **is out of scope and rejected at review** — it must instead be
+  *surfaced for the post-completion admission review*.
+- **Surface, never self-grant** (breakthrough valve, core §1.2.1 / constitution §0.9.6). A genuine
+  structural win the scenario reveals rides risk-free alongside the conformant rung and is **surfaced** to
+  the DA/Owner for admission; it never self-canonizes mid-track. The admission is the owner-gated door, not
+  a TP rung's prerogative.
+- **The closeout produces the admission candidate list, not the admission.** `TP-DA-CLOSEOUT-0` (§4, Phase 8)
+  additionally enumerates the concepts/code/tests/heuristics the scenario surfaced as *candidates for corpus
+  abstraction* — a list, with each item's proposed admission rung — handed to a **separate post-completion
+  admission review**. Closing the scenario does not admit any of them; it only nominates.
+
+**Why this fence exists.** A scenario is high-entropy, exploratory, and tuned to make *one* thing work; its
+tests and heuristics are proof-of-a-capability, not proof-of-a-paradigm. Absorbing them into the corpus
+unreviewed is exactly the fossil-premise / test-propagation failure the test-lifecycle regime was built to
+end. The corpus stays small, typed, and inviolate; the scenario stays contained, expirable, and — only after
+it works and is reviewed — a *source* of admission candidates, never an author of doctrine.
 
 ---
 
@@ -388,7 +440,7 @@ run**; each rung names its exact targeted tests.
 |---|---|---|---|---|
 | 8.0 | `TP-FULL-TRANSPILE-0` | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSON. **Semantic-free scan targets runtime/GPU/`simthing-sim` artifacts only** (§1A.1 #7) — authoring ids, provenance, display names, and star names legitimately persist on `Location` SimThings. Canonical save/load roundtrip stable digest. | Full file transpiles; semantic-free scan (below the spec boundary) passes; STEAD/link/tree/RF metadata survive roundtrip (reuse the closed save/load battery). | Tier-1 |
 | 8.1 | `TP-LIVE-RUN-0` | **Indefinite-tick live run** over **one deterministically-selected bounded theater = the contested Terran/Pirate border sub-volume** (§1A.1 #4), in Studio or headless driver with Studio load proven. Theater field state is **runtime cache, not ScenarioSpec writeback** unless a structural commitment fires via `BoundaryRequest`. **No atlas scheduler is built here**; full-galaxy tiling is a recorded Deviation. | Non-vacuous multi-tick run on a real adapter; border front measurably shifts; combat resolves; ≥1 STEAD commitment fires from a crossing; no per-tick device/buffer creation; no CPU planner. | Tier-1 |
-| 8.2 | `TP-DA-CLOSEOUT-0` | Scope Ledger over every §2 acceptance element; Deviation Records for anything proxied/deferred (e.g. galaxy-scale dense Movement-Front execution deferring to atlas scheduling is a bounded-theater Deviation, not a failure); DA review. | Complete Scope Ledger; DA sign-off (owner-channeled). | — |
+| 8.2 | `TP-DA-CLOSEOUT-0` | Scope Ledger over every §2 acceptance element; Deviation Records for anything proxied/deferred (e.g. galaxy-scale dense Movement-Front execution deferring to atlas scheduling is a bounded-theater Deviation, not a failure); DA review. **Per §0A: also emit the corpus-abstraction *candidate list*** — each TP-surfaced concept/code/test/heuristic worth admitting to the SimThing corpus, with its proposed admission rung — for the **separate post-completion admission review**. Closeout *nominates*; it does **not** admit. TP-born tests remain `birth_track=0.0.8.5-terran-pirate` (expirable) until each is individually promoted or leased. | Complete Scope Ledger; corpus-abstraction candidate list emitted (nominations only, zero in-track canonization); DA sign-off (owner-channeled). | — |
 
 ---
 
