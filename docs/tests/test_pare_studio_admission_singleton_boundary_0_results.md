@@ -29,10 +29,10 @@ Out of scope:
 
 | path | test | boundary | ledger disposition |
 |---|---|---|---|
-| `crates/simthing-mapeditor/src/studio_config.rs` | `studio_config_rejects_malformed_json` | `B-T2-SIMTHING_MAPEDITOR-PARSER_SPAN_ADMISSION` | `test_pare_boundary_rows.tsv`: **KEEP** (selected live representative) |
-| `crates/simthing-mapeditor/tests/studio_ingestion_admission_report.rs` | `studio_displays_unknown_gridcell_role_deferral` | `B-T2-SIMTHING_MAPEDITOR-MISSING_OR_UNKNOWN_REFERENCE_ADMISSION` | `test_pare_boundary_rows.tsv`: **KEEP** (selected live representative) |
+| `crates/simthing-mapeditor/src/studio_config.rs` | `studio_config_rejects_malformed_json` | `B-T2-SIMTHING_MAPEDITOR-PARSER_SPAN_ADMISSION` | boundary_rows **KEEP**; audit **KEEP** (`selected-admission-representative`); inventory **KEEP** |
+| `crates/simthing-mapeditor/tests/studio_ingestion_admission_report.rs` | `studio_displays_unknown_gridcell_role_deferral` | `B-T2-SIMTHING_MAPEDITOR-MISSING_OR_UNKNOWN_REFERENCE_ADMISSION` | boundary_rows **KEEP**; audit **KEEP** (`selected-admission-representative`); inventory **KEEP** |
 
-Both rows remain `AUDIT` in `test_inventory.tsv` pending graduation sync; `test_pare_audit.tsv` marks them `AUDIT-BLOCKED` singletons from Wave 4 — this rung resolves the escalation with explicit KEEP rulings aligned to the boundary ledger.
+**0R ledger sync:** `test_pare_audit.tsv` and `test_inventory.tsv` now record both rows as `selected-admission-representative` / `KEEP` (matching the #1116 pattern for selected admission representatives). `test_pare_boundary_rows.tsv` already marked both **KEEP**; unchanged. This 0R syncs the selected-representative KEEP decisions into the machine-readable audit ledger so the two Studio admission singletons are no longer reported as unresolved AUDIT-BLOCKED residue. The source rows remain unchanged and no mapeditor/tools/Bevy/desktop proof was executed.
 
 ## Method
 
@@ -72,20 +72,20 @@ None.
 
 ## Proof
 
-Local:
+Local (0R):
 
 - `bash scripts/ci/doctrine_scan.sh`: PASS `failures=0 inspect=0`
 - `bash scripts/ci/gen_digest.sh --check`: PASS
 - `bash scripts/ci/test_inventory_check.sh`: PASS (`rows=4070`)
 - `bash scripts/ci/test_pare_boundary_check.sh`: PASS
-- `bash scripts/ci/test_inventory_drift_check.sh`: PASS
+- `bash scripts/ci/test_inventory_drift_check.sh`: PASS (`promotion-target rows=31`)
 - Survivor compile floor (five non-desktop crates): PASS
 - `git diff --check origin/master...HEAD`: PASS
 
-Live (PR head `3ada6f60ef9169fce5b855ad02ff99787acbf188`):
+Live (0R head — record after push):
 
-- Doctrine Scan: PASS `failures=0 inspect=0` (run `28689019033`, job `85086755296`)
-- Doctrine Exec: not auto-scheduled (docs-only PR; path filters exclude `doctrine_exec*` changes; no `workflow_dispatch`)
+- Doctrine Scan: pending
+- Doctrine Exec: not expected (ledger/docs-only; no `workflow_dispatch`)
 
 ## Graduation routing
 
@@ -93,7 +93,7 @@ Live (PR head `3ada6f60ef9169fce5b855ad02ff99787acbf188`):
 Graduation routing:
   Risk class:          owner-deep boundary review / Studio admission singleton / DA-held
   Source edits:        none
-  Ledger edits:        none required (boundary_rows already KEEP; inventory AUDIT retained)
+  Ledger edits:        0R synced audit + inventory to KEEP; promotion_wave_plan +2 rows; boundary_rows unchanged (already KEEP)
   DA question:         Does Opus accept KEEP_SELECTED_REPRESENTATIVE for both singleton rows?
   Recommended posture: PROBATION / DA REVIEW — not orchestrator-mergeable
 ```
