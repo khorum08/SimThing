@@ -180,6 +180,35 @@ the evidence doc; it does not need a new approval rung. When the substrate alrea
 implementation PR. Exploration is bounded only by: it must lower through existing substrate (D2),
 hard-error at admission for malformed input (D8), and be provable by a load-bearing test (§6).
 
+### 5.1 Design-space sketch — OPTIONAL, DA-authored, PROBATIONARY (seal-residue-risk rungs only)
+
+> **Status: probationary convention (added 2026-07-04, DA). Governed by the Necessity Test** (core §1.2):
+> it survives only if it demonstrably improves first-pass implementation quality on seal-residue rungs that
+> nothing else provides. **Decision gate:** re-evaluated after the 0.0.8.5 seal-residue rungs generate an
+> evidence base; if no measurable benefit surfaces, this section is **deleted**, not kept as good-process
+> theater. It is **never mandatory** and adds **zero CI machinery** (no scan, no attribute, no gate).
+
+For a rung flagged `seal-residue-risk`, the DA (or whoever holds gate-authority over the *opening spec*)
+**may** add a short **Design-space sketch**: *"if the seal/type constraints did not exist, here is what the
+solution space would look like."* The rationale is the cross-agent analog of latent-exploration decoding
+(arXiv:2602.01698, verified — a decode-time single-model effect of ~0.61pp pass@1; the isomorphism, not the
+magnitude, is what is borrowed): the **higher-entropy author** — the one *not* under gate pressure — hands
+the implementing agent a richer prior *before* it collapses to the minimal gate-satisfying path. Binding
+constraints so it cannot become the pathologies the CI track already fenced:
+
+- **DA-authored, at the opening-spec stage — NEVER the implementing agent.** An implementer-authored sketch
+  is the gameable same-agent dual-pass (plausible prose that is just the compliant solution described, then
+  "hardened" into identical code — zero entropy preserved). Different-author-under-different-pressure is the
+  *entire* load-bearing property; without it the sketch is theater.
+- **No automated content check.** The sketch is *not* scanned for "genuine exploration" (that is §1A
+  hill-climbing bait). Its only reader is the DA at acceptance review, using it as referenceable evidence
+  that the design space was articulated before the implementation collapsed it.
+- **No new artifact class, attribute, or commit-ordering rule.** It is one optional section of the opening
+  spec that travels in the handoff context. It is not `SKETCH.md`, not `#[admitted(...)]`, not a gate.
+
+Omit it freely — silence is a valid, unpenalized outcome. This is a lightweight prior-enrichment device on a
+thin empirical thread, deliberately optional and self-deleting if it does not earn its keep.
+
 ## 6. Proof — minimal and load-bearing (the anti-battery rule)
 
 Every test must name the **regression it catches.** Apply this triage:
