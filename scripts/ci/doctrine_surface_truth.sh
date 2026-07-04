@@ -9,10 +9,24 @@ PROBE_MODE="${DOCTRINE_SURFACE_TRUTH_PROBE:-}"
 
 cd "$ROOT"
 
-if ! command -v cargo-public-api >/dev/null 2>&1; then
-  echo "SURFACE-TRUTH: INSPECT cargo-public-api not installed"
+emit_reason() {
+  echo "SURFACE-TRUTH-REASON: $1"
+}
+
+inspect_tooling_gap() {
+  echo "SURFACE-TRUTH: INSPECT $1"
+  emit_reason tooling-gap
   exit 0
-fi
+}
+
+inspect_divergence() {
+  echo "SURFACE-TRUTH: INSPECT public API diverges from baseline"
+  emit_reason divergence
+  if [[ -n "${2:-}" ]]; then
+    diff -u "$1" "$2" | head -n 80 || true
+  fi
+  exit 0
+}
 
 emit_public_api() {
   local dir="$1"
@@ -22,31 +36,41 @@ emit_public_api() {
   )
 }
 
+if ! command -v cargo-public-api >/dev/null 2>&1; then
+  inspect_tooling_gap "cargo-public-api not installed"
+fi
+
 if [[ "$PROBE_MODE" == "invisible-pub-use" ]]; then
   workdir="$(mktemp -d)"
   trap 'rm -rf "$workdir"' EXIT
   cp -r crates/simthing-kernel "$workdir/simthing-kernel"
   echo 'pub use crate::sealed::threshold_event::ThresholdEvent as InvisibleProbeExport;' >> "$workdir/simthing-kernel/src/lib.rs"
   emit_public_api "$workdir/simthing-kernel" > "$CURRENT"
+elif [[ "$PROBE_MODE" == "synthetic-match" ]]; then
+  cp "$BASELINE" "$CURRENT"
+elif [[ "$PROBE_MODE" == "synthetic-divergence" ]]; then
+  printf 'pub fn synthetic_divergence_probe(...)\n' > "$CURRENT"
+elif [[ "$PROBE_MODE" == "synthetic-tooling-gap-empty" ]]; then
+  : > "$CURRENT"
+elif [[ "$PROBE_MODE" == "synthetic-tooling-gap-missing-baseline" ]]; then
+  BASELINE="${ROOT}/scripts/ci/.synthetic_missing_baseline.txt"
+  emit_public_api "$ROOT" > "$CURRENT"
 else
   emit_public_api "$ROOT" > "$CURRENT"
 fi
 
 if [[ ! -f "$BASELINE" ]]; then
-  echo "SURFACE-TRUTH: INSPECT missing baseline $BASELINE"
-  exit 0
+  inspect_tooling_gap "missing baseline $BASELINE"
 fi
 
 if [[ ! -s "$CURRENT" ]]; then
-  echo "SURFACE-TRUTH: INSPECT empty current public API listing"
-  exit 0
+  inspect_tooling_gap "empty current public API listing"
 fi
 
 if diff -u "$BASELINE" "$CURRENT" >/dev/null 2>&1; then
   echo "SURFACE-TRUTH: PASS public API matches baseline"
+  emit_reason match
   exit 0
 fi
 
-echo "SURFACE-TRUTH: INSPECT public API diverges from baseline"
-diff -u "$BASELINE" "$CURRENT" | head -n 80 || true
-exit 0
+inspect_divergence "$BASELINE" "$CURRENT"

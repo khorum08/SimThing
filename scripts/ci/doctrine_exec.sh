@@ -352,15 +352,22 @@ if [[ "$PROFILE_CLASS" == "owner-deep" && "$STOP_LAUNCHING" -eq 0 ]]; then
 fi
 
 if [[ "$PROFILE_CLASS" != "smoke" && "$SURFACE_TRUTH_REQUIRED" == "yes" && "$STOP_LAUNCHING" -eq 0 ]]; then
+  # shellcheck source=doctrine_surface_truth_inspect.sh
+  source "${ROOT}/scripts/ci/doctrine_surface_truth_inspect.sh"
   log "+ bash scripts/ci/doctrine_surface_truth.sh"
   surface_out="$(bash "${ROOT}/scripts/ci/doctrine_surface_truth.sh" 2>&1 | tee -a "$REPORT_TXT")"
-  if echo "$surface_out" | grep -q 'SURFACE-TRUTH: PASS'; then
+  inspect_line=""
+  set +e
+  inspect_line="$(surface_truth_inspect_line_from_output "$surface_out")"
+  inspect_map_ec=$?
+  set -e
+  if [[ "$inspect_map_ec" -eq 0 && -z "$inspect_line" ]]; then
     :
-  elif echo "$surface_out" | grep -q 'SURFACE-TRUTH: INSPECT'; then
-    INSPECT_LINES+=("surface-truth divergence or tooling gap")
+  elif [[ "$inspect_map_ec" -eq 0 && -n "$inspect_line" ]]; then
+    INSPECT_LINES+=("$inspect_line")
     INSPECTS=$((INSPECTS + 1))
   else
-    record_failure "surface-truth unexpected output"
+    record_failure "${inspect_line:-surface-truth unexpected output}"
   fi
 fi
 

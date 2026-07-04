@@ -56,7 +56,7 @@ EOF
     ;;
   invisible-pub-use)
     export DOCTRINE_SURFACE_TRUTH_PROBE=invisible-pub-use
-    if bash "${ROOT}/scripts/ci/doctrine_surface_truth.sh" 2>&1 | tee "$workdir/out.txt" | grep -q 'INSPECT public API diverges'; then
+    if bash "${ROOT}/scripts/ci/doctrine_surface_truth.sh" 2>&1 | tee "$workdir/out.txt" | grep -q 'SURFACE-TRUTH-REASON: divergence'; then
       echo "PROBE $PROBE: PASS invisible export flagged"
     else
       echo "PROBE $PROBE: FAIL expected INSPECT divergence"
