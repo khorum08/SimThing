@@ -195,6 +195,22 @@ cannot absorb (e.g. a parser rejecting a non-finite string), CPU-oracle/GPU pari
 byte-exactness, doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad
 fixtures — each of which catches a regression nothing higher on the ladder would.
 
+**The Rustified test lifecycle (permanent; adopted at Track D closeout 2026-07-04, owner mandate).** A test is
+a **scoped borrow, not a permanent asset**: it is born owned by the PR ladder / track that creates it and is
+**assumed DELETED at that track's closure**. Deletion is free and requires no action — closure performs it.
+Keeping a test past its birth ladder requires a positive, recorded justification and is possible in exactly
+three ways: (1) it carries a **canonical heuristic/notion** with genuine downstream utility — in which case the
+notion is mis-housed as a test and should be **promoted to where canonical truth lives: a `simthing-kernel`
+type/seal (illegal state uncompilable) or an EML opcode-stack construct (the notion executed as production
+behavior)**, which *deletes* the test and drops inventory; (2) it is a **`TIER7` terminal proof class**
+(`compile_fail`/trybuild, CPU-oracle/GPU parity, golden-byte/determinism, seal-proof fixtures, doc-named
+invariants, STEAD-required §8, escaped-bug regressions, active-track live rungs) carrying a `catches:` note; or
+(3) it is a non-runnable **`dependency-floor` helper** imported by a survivor. There is no fourth way, and "it
+might be useful later" is not one of them. This is what prevents the corpus from re-accreting the way it did
+(6,301 → pared to 731). Enforcement is the standing Track D gate set (`test_inventory_check.sh`,
+`test_inventory_drift_check.sh`, `test_pare_boundary_check.sh`, `TEST-BUDGET`); the full-workspace test is a
+**one-time closure certificate** per PR ladder, not routine proof. Full regime: CI-scaffolding design §4.1.
+
 **A corollary on hygiene.** Because the compiler discharges the mechanical-correctness layer, the budget
 it frees must go **entirely** to the two rungs that still pay rent — type/admission boundaries and the
 semantic conformance the compiler cannot check — and **never** to process ceremony (status docs,

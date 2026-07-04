@@ -185,10 +185,10 @@ hard-error at admission for malformed input (D8), and be provable by a load-bear
 Every test must name the **regression it catches.** Apply this triage:
 
 - **Behavior that can actually regress** → test it (real lowering, GPU==CPU-oracle bit-exact, settle-then-bubble, determinism, no-panic-on-bad-input, cache-hit-no-recompute).
-- **A rejection class** (malformed input the admission layer hard-errors) → **one** representative negative test that the span-error fires. **Not** an enumeration of every malformed variant.
+- **A rejection class** (malformed input the admission layer hard-errors on a **live/canonical path**) → **zero tests** — the production hard-error *is* the coverage (Necessity Test; the old "one representative per boundary" is a **retired fossil premise**, floor is **zero** not one). A negative test survives only if it catches genuine parser/format behavior a type + the live hard-error cannot (e.g. a specific span/message contract nothing else exercises).
 - **Guaranteed by the type system / typestate / the firewall** → **zero tests.** You do not test that an enum cannot hold an illegal variant.
 - **Reuse existing oracles/guards** (the semantic-free guard, the arena-allocation oracle, the canonical save/load battery). **Never re-derive** a guard the repo already runs.
-- A new KEEP-class test names its promotion target or its permanent-residue class.
+- A new KEEP-class test names its promotion target or its permanent-residue class. **Lifecycle (standing law, §4.1 of CI-scaffolding design):** every test is **assumed DELETED at this track's closure** unless it (a) carries a canonical notion — then promote it into a `simthing-kernel` type/seal or EML opcode-stack construct and **delete the test**, (b) is a `TIER7` terminal proof class with a `catches:` note, or (c) is a non-runnable `dependency-floor` helper. "Might be useful later" is not a keep reason.
 
 List the load-bearing tests for this rung, each with its one-line justification:
 
@@ -197,7 +197,7 @@ List the load-bearing tests for this rung, each with its one-line justification:
 …
 ```
 
-> GPU legs skip cleanly without an adapter. `cargo test --workspace` is **never** run.
+> GPU legs skip cleanly without an adapter. `cargo test --workspace` is **never** run in routine proof — the sole exception is the **one-time PR-ladder closure certificate** (§4.1): a track/ladder closeout may run `cargo test --workspace --all-targets` once to certify the survivor set as a whole (or to satisfy a deferred DA review). It is a closure certificate, not a validation path.
 
 ## 7. Evidence — one doc, one line, one row (no ceremony triple-update)
 
