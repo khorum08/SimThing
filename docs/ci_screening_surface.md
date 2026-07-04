@@ -365,7 +365,7 @@ For webchat-driven executable proof and remote §1A triage commands, see §9.
 
 ## 9. Webchat orchestration with Track B executable proof
 
-Track B adds non-blocking executable proof surfaces for the webchat orchestrator. Track A remains the blocking no-toolchain grep gate.
+Track B is **DA-CLOSED (2026-07-04)** with both lanes landed and reconciled: the GitHub-side non-blocking CPU executable-proof surfaces for the webchat orchestrator (below), and the owner-local GPU/Bevy/desktop executable-proof lane (owner-local PASS citation rule above). Track A remains the blocking no-toolchain grep gate.
 
 Use `/seal-proof` to initiate a GitHub-side CPU proof run. Use `/seal-proof plan [profile=<id>]` to print resolved commands without spending runner time. Use `/seal-proof profile=<id>` for a rung-class proof battery. Use `/seal-proof probe=<probe-id>` for known-bad guard-bite probes; a green known-bad probe is FAIL.
 

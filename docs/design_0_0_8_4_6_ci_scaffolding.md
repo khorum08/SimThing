@@ -1,6 +1,6 @@
 # 0.0.8.4.6 — CI Scaffolding: the Doctrinal Tripwire Layer
 
-> **Status: Tracks A + C DA-CLOSED (2026-07-01); Track B OPEN (DA-OPENED 2026-07-02, consumer named — §3).** An infrastructure sub-track in the
+> **Status: Tracks A + B + C DA-CLOSED (A + C 2026-07-01; B closed 2026-07-04 — §3); Track D CLOSED under the Rustified Test Lifecycle (§4).** An infrastructure sub-track in the
 > 0.0.8.4.x lane (after the closed `simthing-kernel` track 0.0.8.4.5), sequenced **before** the 0.0.8.5
 > Terran-Pirate track. *(Owner said "0.0.8.5"; that number is held by Terran-Pirate, so this is numbered
 > 0.0.8.4.6 to avoid collision — bump TP to 0.0.8.6 and renumber this to 0.0.8.5 on owner request.)*
@@ -9,9 +9,10 @@
 > so that **agents and the orchestrator may treat a clean CI result as "the DA ran these scans"** — and a
 > flagged result routes to DA for the judgment a grep cannot make. The executable tests (builds, GPU parity,
 > Studio) stay **local**, by architecture. Completed CI scaffolding now has Track A closed as the grep-only
-> tripwire layer and Track C closed as the generation-time constraint layer; Track B is now OPEN as the
-> local executable harness for sanctioned-door logic proof (DA-OPENED 2026-07-02; consumer: the 0.0.8.5
-> seal-residue door-logic rungs — §3).
+> tripwire layer and Track C closed as the generation-time constraint layer; **Track B is now DA-CLOSED
+> (2026-07-04, §3)** — both lanes landed: the owner-local GPU/Bevy/desktop executable harness (#1129/#1132/#1133,
+> with the owner-local PASS citation rule) and the GitHub-side CPU webchat proof lane (#1083); its consumer was
+> the 0.0.8.5 seal-residue door-logic rungs.
 
 ---
 
@@ -149,7 +150,7 @@ SELFTEST  — validates the scanner + fixtures; tool-missing emits FAIL, never a
 
 **Auditable screening-surface reference:** [`ci_screening_surface.md`](ci_screening_surface.md) — the single authoritative map of the screening logic, every scan/allow/block-list file, the strict rigor to add a `scans.tsv` or allowlist entry, and the triage agent's narrowing role. Built for auditability, maintenance, and Track C introspection/onboarding. Any change to the screening surface updates it in the same PR.
 
-## 3. Track B — local executable validation harness (OPEN — DA-OPENED 2026-07-02)
+## 3. Track B — executable validation harness (DA-CLOSED 2026-07-04)
 
 > Opens after Track A lands and a consumer needs it (e.g., 0.0.8.5 rungs wanting seal-proof on every change).
 > **Revised execution split (owner-ratified 2026-07-02):** only **GPU/Bevy-exclusive** execution stays local
@@ -216,10 +217,10 @@ green report as evidence for a class GitHub is structurally unable or forbidden 
 
 | Rung | ID | Scope | Recipient | State | DoD |
 |---|---|---|---|---|---|
-| 3 | `CI-B-GH-CPU-0` | `.github/workflows/doctrine-exec.yml` — **separate, non-blocking** executable proof. Default PR execution is the bounded `ci-b-webchat-smoke` profile: script syntax, profile lint, and plan proof only. Exact targeted profiles may run named/doc/test-binary commands. Broad full-crate `cargo test -p <crate>` batteries are quarantined as `owner-deep-full-cpu-quarantined`, allowed only by `workflow_dispatch` with `owner_deep=true`. Emits the §1 report + a **`DOCTRINE-EXEC-VERDICT:`** footer to the job summary and `doctrine_exec_report.json`. | Cursor/Grok | **PROBATION** (`CI-B-WEBCHAT-PR1R`) | smoke default runs quickly; profile lint rejects casual full-crate tests; owner-deep is noisy and dispatch-only; timeout/fail/probe paths finalize with footer and artifact; Track A workflow is untouched. |
-| 4 | `CI-B-GH-COMMENT-0` | ChatOps initiation: a `/seal-proof` PR comment (**collaborator-only; never fork-triggered**) dispatches `doctrine-exec.yml` on the PR head and posts/updates **one sticky PR comment** carrying the report footer — the webchat orchestrator both *initiates* and *reads* executable verification in the PR thread, no local relay. | Cursor/Grok | **PROBATION** (`CI-B-WEBCHAT-PR1`) | comment triggers the run; sticky comment updates, never duplicates; non-collaborator comments are ignored. |
-| 5 | `CI-B-SURFACE-TRUTH-0` | **Candidate — owner-gated.** In `doctrine-exec.yml`: `cargo public-api` diff of `simthing-kernel` against a committed baseline — the **compiler-derived** public surface, auditing the grep allowlist's *enumeration completeness* (the single-line-`pub use` class of hole, §5). The fast grep stays the blocking gate; this is its periodic deep verifier — the "stricter reference implementation" differential the verifier-fuzzing literature prescribes (arXiv:2606.01066, verified). | Cursor/Grok | **PROBATION** (`CI-B-WEBCHAT-PR1`) | a surface item invisible to the grep enumeration but present in rustdoc output is reported. |
-| 6 | `CI-B-GH-TRIAGE-0` | **Triage/orchestration empowerment (owner-ratified 2026-07-02 — the high-leverage GH-side tooling).** (a) The doctrine-scan workflow posts/updates **one sticky PR comment** carrying the `DOCTRINE-SCAN-VERDICT` footer + any INSPECT lines + the spam-check verdict — the triage agent reads the whole §1A picture in the PR thread. (b) A **collaborator-only** `/triage <scan-id> <delete\|green\|escalate> <reason>` PR comment-command validates the §1A row format and **commits the row to `scripts/ci/triage_log.tsv`** on the PR branch — the webchat triage tier discharges the entire §1A loop GitHub-side, with the row visible in the PR diff. (c) A malformed `/triage` command is rejected with the required format printed (FAIL-as-teacher). No new engine logic; the §1A protocol is unchanged — this is its remote *surface*. | Cursor/Grok | **PROBATION** (`CI-B-WEBCHAT-PR1`) | `/triage` appends a valid row and rejects malformed ones; the sticky comment updates in place, never duplicates; non-collaborator comments are ignored; the log row is diff-visible. |
+| 3 | `CI-B-GH-CPU-0` | `.github/workflows/doctrine-exec.yml` — **separate, non-blocking** executable proof. Default PR execution is the bounded `ci-b-webchat-smoke` profile: script syntax, profile lint, and plan proof only. Exact targeted profiles may run named/doc/test-binary commands. Broad full-crate `cargo test -p <crate>` batteries are quarantined as `owner-deep-full-cpu-quarantined`, allowed only by `workflow_dispatch` with `owner_deep=true`. Emits the §1 report + a **`DOCTRINE-EXEC-VERDICT:`** footer to the job summary and `doctrine_exec_report.json`. | Cursor/Grok | **DONE — DA-APPROVED (graduated #1133-ladder via `CI-B-EXPANSION-GRADUATION-0`; landed #1083 @ `de02278f`)** | Delivered + **live-green** (doctrine-exec PASS run 28596787324 on head `346a7be7`, smoke default, footer + `doctrine_exec_report.json`, `doctrine-scan.yml` untouched). Evidence: `docs/tests/ci_b_webchat_pr1_results.md`. |
+| 4 | `CI-B-GH-COMMENT-0` | ChatOps initiation: a `/seal-proof` PR comment (**collaborator-only; never fork-triggered**) dispatches `doctrine-exec.yml` on the PR head and posts/updates **one sticky PR comment** carrying the report footer — the webchat orchestrator both *initiates* and *reads* executable verification in the PR thread, no local relay. | Cursor/Grok | **DONE — DA-APPROVED (landed #1083 @ `de02278f`)** | Delivered: `doctrine_exec_comment.sh` sticky-comment (create/PATCH, never duplicate) updated live on the repaired head; collaborator-only command channel across `issue_comment`/`pull_request_review(_comment)`; fork write-token paths refused. Evidence: `docs/tests/ci_b_webchat_pr1_results.md`. |
+| 5 | `CI-B-SURFACE-TRUTH-0` | **Candidate — owner-gated.** In `doctrine-exec.yml`: `cargo public-api` diff of `simthing-kernel` against a committed baseline — the **compiler-derived** public surface, auditing the grep allowlist's *enumeration completeness* (the single-line-`pub use` class of hole, §5). The fast grep stays the blocking gate; this is its periodic deep verifier — the "stricter reference implementation" differential the verifier-fuzzing literature prescribes (arXiv:2606.01066, verified). | Cursor/Grok | **DONE — DA-APPROVED (landed #1083 @ `de02278f`)** | Delivered: `doctrine_surface_truth.sh` diffs nightly `cargo public-api` pub-lines vs `scripts/ci/kernel_public_api_baseline.txt`; divergence → `SURFACE-TRUTH: INSPECT`; probe `invisible-pub-use` exercises a seeded invisible export; wired non-blocking into `doctrine-exec.yml`. Evidence: `docs/tests/ci_b_webchat_pr1_results.md`. |
+| 6 | `CI-B-GH-TRIAGE-0` | **Triage/orchestration empowerment (owner-ratified 2026-07-02 — the high-leverage GH-side tooling).** (a) The doctrine-scan workflow posts/updates **one sticky PR comment** carrying the `DOCTRINE-SCAN-VERDICT` footer + any INSPECT lines + the spam-check verdict — the triage agent reads the whole §1A picture in the PR thread. (b) A **collaborator-only** `/triage <scan-id> <delete\|green\|escalate> <reason>` PR comment-command validates the §1A row format and **commits the row to `scripts/ci/triage_log.tsv`** on the PR branch — the webchat triage tier discharges the entire §1A loop GitHub-side, with the row visible in the PR diff. (c) A malformed `/triage` command is rejected with the required format printed (FAIL-as-teacher). No new engine logic; the §1A protocol is unchanged — this is its remote *surface*. | Cursor/Grok | **DONE — parts (b)+(c) DA-APPROVED (landed #1083 @ `de02278f`); part (a) DA-DESCOPED (non-load-bearing)** | (b)/(c) delivered: `/triage` via `doctrine_exec_triage.sh` commits a validated §1A row to `scripts/ci/triage_log.tsv` on the PR branch and rejects malformed commands with the required format. **(a) doctrine-scan sticky comment DA-DESCOPED at graduation (2026-07-04):** never shipped (per `ci_b_webchat_pr1_results.md` "not in this PR") and is a *convenience display* surface, not a proof gate — the checks UI + INSPECT justifications + the `/triage` surface already give the orchestrator the whole §1A picture; not reopened as a Track B blocker. Evidence: `docs/tests/ci_b_webchat_pr1_results.md`, `docs/tests/ci_b_expansion_graduation_0_results.md`. |
 
 #### 3B.1 Webchat-orchestration contract (adopted from orchestrator review, DA-adjudicated 2026-07-02 — governs rungs 3–6)
 
@@ -257,6 +258,17 @@ green report as evidence for a class GitHub is structurally unable or forbidden 
   inert scaffolding (§0.6.6). The sticky comment + the checks UI are the display surface; do not re-derive.
 
 Operational orchestrator guide: [`ci_screening_surface.md`](ci_screening_surface.md) §9 is the quick-reference surface for webchat-triggered `/seal-proof`, `/triage`, stale-report checks, report artifacts, profiles, probes, and plan mode. §3B.1 remains the canonical contract; the surface doc is the operator-facing map.
+
+#### 3B.2 Track B full graduation log (`CI-B-EXPANSION-GRADUATION-0`, 2026-07-04)
+
+Track B is fully **DA-CLOSED**. Both proof lanes landed and are now reconciled with the canonical design state (this graduation was a docs/status-only reconciliation — no workflow/script/product/cargo edits):
+
+- **Local owner-only lane:** #1129 (`CI-B-LOCAL-HARNESS-0`) + #1132 (`CI-B-TRIPWIRE-TAGS-0`) + #1133 (`CI-B-CLOSEOUT-0`). The owner-local PASS citation rule (§3 above) is recorded; GHA GPU/Bevy/Desktop probes remain forbidden.
+- **GitHub/webchat CPU lane:** #1083 (`CI-B-WEBCHAT-PR1 / PR1R`, merged `de02278f`; PR1R repaired head `346a7be7`, doctrine-exec PASS run 28596787324 / job 84797076709, doctrine-scan PASS run 28597619502 / job 84797076107). Landed: the non-blocking `doctrine-exec.yml` workflow, the `/seal-proof` + `/triage` command surfaces, the SHA-bound sticky-footer + `doctrine_exec_report.json` artifact contract, plan/profile/probe modes, and the `cargo public-api` surface-truth verifier.
+- **Rung dispositions:** rows 3–5 → DONE / DA-APPROVED; row 6 parts (b)+(c) → DONE / DA-APPROVED, part (a) (doctrine-scan sticky comment) → **DA-DESCOPED** as a non-load-bearing convenience surface (never a proof gate).
+- No Track A weakening; the blocking no-toolchain grep gate is untouched.
+- No workflow/script/product/cargo changes in this graduation PR.
+- The 0.0.8.5 Terran-Pirate production queue may resume only after this graduation lands, at `TP-SHIPSIZE-DECODER-0`.
 
 ### 3C. DA re-evaluation log (2026-07-02, Fable 5 — full-structure review, owner-mandated)
 
