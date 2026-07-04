@@ -1,8 +1,8 @@
-# TEST-NECESSITY-SWEEP-0 / 0R Results
+# TEST-NECESSITY-SWEEP-0 / 0R / 0R1 Results
 
 ## Status
 
-**HOLD / 0R COMPLETE — DA/OWNER REVIEW** — implemented on branch `grok/test-necessity-sweep-0`; merge not authorized.
+**PROBATION / DA-OWNER REVIEW** — 0R substance `f21fdf54`; 0R1 reconciles closure docs and live proof at branch tip. Branch `grok/test-necessity-sweep-0`; merge not authorized.
 
 ## 0R correction
 
@@ -39,7 +39,7 @@ Out of scope: `.github/**`, production logic edits, forbidden owner-deep proof e
 | `canonical_function` | 0 |
 | `owner_deep_pending` | 0 |
 
-Plus 137 `cfg_test_mod` marker rows (`AUDIT`, ledger-only).
+Plus 137 ledger-only `cfg_test_mod` marker rows (`AUDIT`, non-runnable).
 
 ## Deletion summary
 
@@ -50,6 +50,7 @@ Plus 137 `cfg_test_mod` marker rows (`AUDIT`, ledger-only).
 | Files deleted | 152 |
 | Inventory before 0R | 3,990 |
 | Inventory after 0R | 729 (592 KEEP + 137 markers) |
+| Inventory from baseline | 4,070 → 729 |
 
 Primary 0R deletion classes: behavior-regression without escaped-bug proof, AUDIT corpus, admission-adjacent enumeration, hygiene tables, representative/promotion-target residue, builder/enum/kind checks owned by type system, callable-only tests.
 
@@ -80,6 +81,30 @@ tools/mapeditor/gpu admission rows deleted in source under Necessity Test; no ow
 | Before | 25 |
 | After | 0 |
 
+## Source-touch scope proof
+
+This PR touches `src/**` only to delete in-source `#[cfg(test)]` test bodies, test-only audit modules, compile-fail fixture seams, or ledger references to those test surfaces. It does not delete production runtime logic, production type definitions, public API, validators, parsers, or canonical functions.
+
+Sampled source categories:
+
+- in-source `mod tests` pruning
+- `#[cfg(test)]` audit module deletion
+- ledger-only cfg_test_mod marker preservation
+- test file deletion under `crates/**/tests`
+
+Mechanical diff check (`origin/master...HEAD`, 127 `src/**` files touched):
+
+```
+SOURCE-TOUCH-SCOPE REPORT
+  src files in diff: 127
+  deleted src files: 2
+  test-surface edits: 125
+  production-touch edits: 0
+SOURCE-TOUCH-SCOPE-VERDICT: PASS
+```
+
+Checked source edits for production-surface changes: **PASS**.
+
 ## Proof
 
 | Gate | Result |
@@ -89,11 +114,13 @@ tools/mapeditor/gpu admission rows deleted in source under Necessity Test; no ow
 | Boundary check | PASS |
 | Drift check | PASS |
 | Five-crate survivor floor | PASS — core, kernel, sim, workshop, mapgenerator `--tests` compile |
-| Doctrine Scan local | TIMEOUT on Windows harness (>5m); `rg` present — rely on live CI |
-| Doctrine Scan live | pending CI on push |
-| Doctrine Exec live | not run (forbidden) |
-| `git diff --check` | pending post-push |
+| Doctrine Scan local | PASS |
+| Doctrine Scan live | PASS on `f21fdf54d23aa61fffa8335dafcbc3f472e953a0` |
+| Doctrine Exec live | PASS, ci-b-webchat-smoke, non-owner-deep, merge_ref_status=PASS, head `f21fdf54d23aa61fffa8335dafcbc3f472e953a0` |
+| `git diff --check` | PASS (rerun post-push) |
 | Targeted survivor proof | not run (compile floor only) |
+
+Doctrine Exec smoke PASS proves the doctrine-exec surface is mechanically clean. It does not certify survivor necessity classification; DA/Owner review remains required for the 592 survivor assignments.
 
 ## Forbidden proof avoided
 
@@ -106,8 +133,8 @@ tools/mapeditor/gpu admission rows deleted in source under Necessity Test; no ow
 ## Graduation routing
 
 - **DA/Owner-held:** yes
-- **Reason:** 0R mass reclassification; owner review of survivor class assignments and tools/mapeditor/gpu compile uncertainty
+- **DA question:** Does #1122 at the reconciled 0R1 head correctly apply the #1121 Necessity Test, leaving only 592 explicit keep-set survivors plus 137 non-runnable marker rows, with no production logic deletion and no forbidden proof?
 
 ## Merge
 
-Not performed. Return for orchestration triage.
+Not performed. Ready for DA/Owner closure review, not orchestrator merge-clear.
