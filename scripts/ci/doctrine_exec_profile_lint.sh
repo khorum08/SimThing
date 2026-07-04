@@ -17,6 +17,53 @@ if [[ "${1:-}" == "--prove-gha-proof-seal" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "--prove-no-track-d-deletion-profiles" ]]; then
+  "$PYTHON_BIN" - <<'PY' "$PROFILES"
+import csv
+import pathlib
+import sys
+
+profiles_path = pathlib.Path(sys.argv[1])
+
+def lint_no_track_d_deletion_profiles(rows: list[dict[str, str]]) -> list[str]:
+    out: list[str] = []
+    for row in rows:
+        profile_id = row.get("profile_id", "")
+        risk_class = row.get("risk_class", "")
+        if profile_id.startswith("test-pare-") or risk_class.startswith("test-deletion-"):
+            out.append(
+                f"FORBIDDEN-TRACK-D-PROFILE: executable profile `{profile_id}` "
+                f"uses retired Track-D deletion taxonomy (risk_class `{risk_class}`)"
+            )
+    return out
+
+with profiles_path.open("r", encoding="utf-8", newline="") as f:
+    rows = list(csv.DictReader(f, delimiter="\t"))
+
+errors: list[str] = []
+bad_cases = [
+    ("test-pare profile_id", {"profile_id": "test-pare-spec", "risk_class": "test-deletion-spec"}, False),
+    ("test-deletion risk_class", {"profile_id": "prove-bad-deletion-risk", "risk_class": "test-deletion-spec"}, False),
+    ("current smoke", {"profile_id": "ci-b-webchat-smoke", "risk_class": "webchat-orchestration"}, True),
+]
+for label, row, should_pass in bad_cases:
+    hits = lint_no_track_d_deletion_profiles([row])
+    if should_pass and hits:
+        errors.append(f"no-track-d-profile prove `{label}` expected PASS got FAIL: {hits[0]}")
+    if not should_pass and not hits:
+        errors.append(f"no-track-d-profile prove `{label}` expected FAIL got PASS")
+
+if errors:
+    print("NO-TRACK-D-PROFILE-PROVE: FAIL")
+    for error in errors:
+        print(f"  - {error}")
+    sys.exit(1)
+
+print("NO-TRACK-D-PROFILE-PROVE: PASS")
+PY
+  exit 0
+fi
+
 "$PYTHON_BIN" - <<'PY' "$PROFILES" "$DEFAULT_PROFILE"
 import csv
 import pathlib
@@ -293,7 +340,21 @@ for row in rows:
                         f"profile `{profile_id}` ({profile_class}) uses broad `--lib` cargo test without an exact selector: `{command}`"
                     )
 
+def lint_no_track_d_deletion_profiles(rows: list[dict[str, str]]) -> list[str]:
+    out: list[str] = []
+    for row in rows:
+        profile_id = row.get("profile_id", "")
+        risk_class = row.get("risk_class", "")
+        if profile_id.startswith("test-pare-") or risk_class.startswith("test-deletion-"):
+            out.append(
+                "FORBIDDEN-TRACK-D-PROFILE: executable profile "
+                f"`{profile_id}` uses retired Track-D deletion taxonomy "
+                f"(risk_class `{risk_class}`)"
+            )
+    return out
+
 errors.extend(lint_forbidden_desktop_deps(rows))
+errors.extend(lint_no_track_d_deletion_profiles(rows))
 errors.extend(prove_forbidden_desktop_dep_guard())
 
 if errors:
