@@ -514,6 +514,44 @@ fn collect_planet_child_rf_participants(
                     report,
                     false,
                 )?;
+
+                if child.kind == simthing_core::SimThingKind::Fleet {
+                    for ship in &child.children {
+                        if ship.kind != simthing_core::SimThingKind::Cohort {
+                            if has_active_rf_metadata(ship) {
+                                push_error(
+                                    report,
+                                    PlanetChildRfAdmissionErrorKind::UnsupportedPlanetChildRfKind,
+                                    Some(format!("{child_path}/ship/{}", ship.id.raw())),
+                                    Some(ship.id.raw()),
+                                    format!(
+                                        "unsupported fleet child kind {:?} cannot contribute RF participants",
+                                        ship.kind
+                                    ),
+                                );
+                                return Err(());
+                            }
+                            continue;
+                        }
+                        let ship_path = format!(
+                            "{}/ship/{}",
+                            child_path,
+                            ship.id.raw()
+                        );
+                        collect_rf_participant_from_node(
+                            ship,
+                            planet.id.raw(),
+                            planet_id(planet).unwrap_or_default(),
+                            "ship",
+                            &ship_path,
+                            owner_refs,
+                            &mut seen_ids,
+                            &mut participants,
+                            report,
+                            false,
+                        )?;
+                    }
+                }
             }
         }
     }

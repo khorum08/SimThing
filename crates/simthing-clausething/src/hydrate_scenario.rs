@@ -10,8 +10,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    OverlayKind, OverlayLifecycle, OverlaySource, SimThing, SimThingId, SimThingKind, SubFieldRole,
-    TransformOp,
+    OverlayKind, OverlayLifecycle, OverlaySource, PropertyValue, SimPropertyId, SimThing,
+    SimThingId, SimThingKind, SubFieldRole, TransformOp,
 };
 use simthing_spec::spec::game_mode::GameModeSpec;
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -130,6 +130,49 @@ pub struct HydratedScenarioPack {
     /// TP-PLANET-SURFACE-PAYLOAD-0 owned/neutral planet/surface/factory/cohort authoring.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub planet_surface_payloads: Vec<HydratedPlanetSurfacePayload>,
+    /// TP-FLEETS-SHIPS-0 fleet/ship authoring over owned star-system surfaces.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fleet_ship_payloads: Vec<HydratedFleetShipPayload>,
+}
+
+/// Scenario-envelope property ids for fleet/ship authored columns (non-canonical).
+const TP_FLEET_POSTURE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_500);
+const TP_FLEET_HOME_SYSTEM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_501);
+const TP_SHIP_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_502);
+const TP_SHIP_HULL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_503);
+const TP_SHIP_WEAPON_DAMAGE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_504);
+const TP_SHIP_UPKEEP_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_505);
+
+/// Authored fleet placement resolved from ownership volumes and posture rules.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HydratedFleetPlacement {
+    pub payload_id: String,
+    pub owner: String,
+    pub fleet_index: u32,
+    pub posture: String,
+    pub target_id: String,
+    pub row: u32,
+    pub col: u32,
+    pub ships_per_fleet: u32,
+    pub ship_class: String,
+}
+
+/// TP-FLEETS-SHIPS-0 fleet/ship payload profile for one faction.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HydratedFleetShipPayload {
+    pub id: String,
+    pub owner: String,
+    pub ownership_volume: String,
+    pub enemy_ownership_volume: String,
+    pub fleet_count: u32,
+    pub ships_per_fleet: u32,
+    pub border_fleet_count: u32,
+    pub ship_class: String,
+    pub hull_seed: f32,
+    pub weapon_damage_seed: f32,
+    pub upkeep_per_ship: u32,
+    pub resource_key: String,
+    pub placements: Vec<HydratedFleetPlacement>,
 }
 
 /// Authored planet/surface payload profile for owned or neutral star systems.
@@ -281,6 +324,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut seen_ownership_volume_ids = BTreeSet::new();
     let mut planet_surface_payload_drafts = Vec::new();
     let mut seen_planet_surface_payload_ids = BTreeSet::new();
+    let mut fleet_ship_payload_drafts = Vec::new();
+    let mut seen_fleet_ship_payload_ids = BTreeSet::new();
     let mut embedded_static_galaxy_scenarios = Vec::new();
     let mut embedded_placements = Vec::new();
     let mut embedded_grid_size = None;
@@ -353,6 +398,16 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     ));
                 }
                 planet_surface_payload_drafts.push(payload);
+            }
+            "fleet_ship_payload" => {
+                let payload = parse_fleet_ship_payload(field)?;
+                if !seen_fleet_ship_payload_ids.insert(payload.id.clone()) {
+                    return Err(HydrateError::new_spanned(
+                        format!("duplicate fleet_ship_payload id `{}`", payload.id),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                fleet_ship_payload_drafts.push(payload);
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -520,6 +575,21 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         embedded_static_galaxy_scenarios.first(),
     )?;
     let planet_surface_payloads = finalize_planet_surface_payloads(planet_surface_payload_drafts)?;
+    let fleet_ship_payloads = finalize_fleet_ship_payloads(
+        fleet_ship_payload_drafts,
+        &ownership_volumes,
+        &owners,
+    )?;
+    for property in fleet_ship_game_mode_properties() {
+        if game_mode
+            .properties
+            .iter()
+            .any(|existing| existing.id == property.id)
+        {
+            continue;
+        }
+        game_mode.properties.push(property);
+    }
     for payload in &planet_surface_payloads {
         for overlay in payload_economy_overlays(payload, &scenario_id) {
             if !seen_overlay_ids.insert(overlay.id.clone()) {
@@ -541,6 +611,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
             embedded_static_galaxy_scenarios.first(),
             &ownership_volumes,
             &planet_surface_payloads,
+            &fleet_ship_payloads,
         ))
     };
     Ok(HydratedScenarioPack {
@@ -560,6 +631,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         owners,
         ownership_volumes,
         planet_surface_payloads,
+        fleet_ship_payloads,
     })
 }
 
@@ -654,6 +726,7 @@ fn build_authority_root(
     embedded: Option<&HydratedEmbeddedStaticGalaxyScenario>,
     ownership_volumes: &[HydratedOwnershipVolume],
     planet_surface_payloads: &[HydratedPlanetSurfacePayload],
+    fleet_ship_payloads: &[HydratedFleetShipPayload],
 ) -> SimThing {
     let mut root = SimThing::new(SimThingKind::Scenario, 0);
     let provenance = embedded
@@ -688,6 +761,7 @@ fn build_authority_root(
             embedded,
             ownership_volumes,
             planet_surface_payloads,
+            fleet_ship_payloads,
         );
     }
     session.add_child(galaxy_map);
@@ -700,6 +774,7 @@ fn attach_embedded_gridcells(
     embedded: &HydratedEmbeddedStaticGalaxyScenario,
     ownership_volumes: &[HydratedOwnershipVolume],
     planet_surface_payloads: &[HydratedPlanetSurfacePayload],
+    fleet_ship_payloads: &[HydratedFleetShipPayload],
 ) {
     let mut owner_by_target = BTreeMap::new();
     for volume in ownership_volumes {
@@ -748,6 +823,12 @@ fn attach_embedded_gridcells(
                 payload,
             );
         }
+        attach_fleet_ship_payloads_to_system(
+            &mut gridcell,
+            &placement.target_id,
+            owner_ref.as_deref(),
+            fleet_ship_payloads,
+        );
         galaxy_map.add_child(gridcell);
     }
 }
@@ -1093,6 +1174,480 @@ fn payload_economy_overlays(
             }
         })
         .collect()
+}
+
+#[derive(Debug, Clone)]
+struct ParsedFleetShipPayload {
+    id: String,
+    owner: Option<String>,
+    ownership_volume: Option<String>,
+    enemy_ownership_volume: Option<String>,
+    fleet_count: Option<u32>,
+    ships_per_fleet: Option<u32>,
+    border_fleet_count: Option<u32>,
+    ship_class: Option<String>,
+    hull_seed: Option<f32>,
+    weapon_damage_seed: Option<f32>,
+    upkeep_per_ship: Option<u32>,
+    resource_key: Option<String>,
+    span: RawSpan,
+}
+
+fn parse_fleet_ship_payload(property: &RawProperty) -> Result<ParsedFleetShipPayload, HydrateError> {
+    let (header_id, block) = header_or_block_body(property, "fleet_ship_payload")?;
+    let mut id = header_id;
+    let mut owner = None;
+    let mut ownership_volume = None;
+    let mut enemy_ownership_volume = None;
+    let mut fleet_count = None;
+    let mut ships_per_fleet = None;
+    let mut border_fleet_count = None;
+    let mut ship_class = None;
+    let mut hull_seed = None;
+    let mut weapon_damage_seed = None;
+    let mut upkeep_per_ship = None;
+    let mut resource_key = None;
+
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "id" => {
+                let explicit_id = read_scalar_text(field, "id")?;
+                if !id.is_empty() && id != explicit_id {
+                    return Err(HydrateError::new_spanned(
+                        format!("header id `{id}` does not match explicit id `{explicit_id}`"),
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                id = explicit_id;
+            }
+            "owner" => owner = Some(read_scalar_text(field, "owner")?),
+            "ownership_volume" => {
+                ownership_volume = Some(read_scalar_text(field, "ownership_volume")?);
+            }
+            "enemy_ownership_volume" => {
+                enemy_ownership_volume = Some(read_scalar_text(field, "enemy_ownership_volume")?);
+            }
+            "fleet_count" => fleet_count = Some(read_scalar_u32(field, "fleet_count")?),
+            "ships_per_fleet" => ships_per_fleet = Some(read_scalar_u32(field, "ships_per_fleet")?),
+            "border_fleet_count" => {
+                border_fleet_count = Some(read_scalar_u32(field, "border_fleet_count")?);
+            }
+            "ship_class" => ship_class = Some(read_scalar_text(field, "ship_class")?),
+            "hull_seed" => hull_seed = Some(read_scalar_f32(field, "hull_seed")?),
+            "weapon_damage_seed" => {
+                weapon_damage_seed = Some(read_scalar_f32(field, "weapon_damage_seed")?);
+            }
+            "upkeep_per_ship" => upkeep_per_ship = Some(read_scalar_u32(field, "upkeep_per_ship")?),
+            "resource" => {
+                let key = parse_fleet_ship_resource_key(field)?;
+                resource_key = Some(key);
+            }
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported fleet_ship_payload field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+
+    if id.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "`fleet_ship_payload` requires an id",
+            Some(property.key.span.clone()),
+        ));
+    }
+
+    Ok(ParsedFleetShipPayload {
+        id,
+        owner,
+        ownership_volume,
+        enemy_ownership_volume,
+        fleet_count,
+        ships_per_fleet,
+        border_fleet_count,
+        ship_class,
+        hull_seed,
+        weapon_damage_seed,
+        upkeep_per_ship,
+        resource_key,
+        span: property.key.span.clone(),
+    })
+}
+
+fn parse_fleet_ship_resource_key(property: &RawProperty) -> Result<String, HydrateError> {
+    let RawValue::Block(block) = &property.value else {
+        return Err(HydrateError::new_spanned(
+            "`fleet_ship_payload.resource` must be a block",
+            Some(property.key.span.clone()),
+        ));
+    };
+    let mut namespace = None;
+    let mut name = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "namespace" => namespace = Some(read_scalar_text(field, "namespace")?),
+            "name" => name = Some(read_scalar_text(field, "name")?),
+            "id" | "display_name" => {}
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported fleet_ship_payload.resource field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    let namespace = namespace.unwrap_or_else(|| "tp".to_string());
+    let name = name.ok_or_else(|| {
+        HydrateError::new_spanned(
+            "`fleet_ship_payload.resource.name` is required",
+            Some(property.key.span.clone()),
+        )
+    })?;
+    Ok(format!("{namespace}_{name}"))
+}
+
+fn fleet_ship_game_mode_properties() -> Vec<PropertySpec> {
+    [
+        ("hull", "Hull"),
+        ("weapon_damage", "Weapon Damage"),
+        ("upkeep", "Upkeep"),
+    ]
+    .into_iter()
+    .map(|(name, display_name)| PropertySpec {
+        id: format!("tp_{name}"),
+        namespace: "tp".into(),
+        name: name.into(),
+        display_name: display_name.into(),
+        description: String::new(),
+        sub_fields: vec![],
+    })
+    .collect()
+}
+
+fn finalize_fleet_ship_payloads(
+    drafts: Vec<ParsedFleetShipPayload>,
+    ownership_volumes: &[HydratedOwnershipVolume],
+    owners: &[HydratedScenarioOwner],
+) -> Result<Vec<HydratedFleetShipPayload>, HydrateError> {
+    let mut finalized = Vec::new();
+    for draft in drafts {
+        let owner = draft.owner.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`fleet_ship_payload.owner` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        if !owners.iter().any(|entry| entry.owner_key == owner) {
+            return Err(HydrateError::new_spanned(
+                format!("fleet_ship_payload `{}` references unknown owner `{owner}`", draft.id),
+                Some(draft.span.clone()),
+            ));
+        }
+        let ownership_volume = draft.ownership_volume.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`fleet_ship_payload.ownership_volume` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        let enemy_ownership_volume = draft.enemy_ownership_volume.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`fleet_ship_payload.enemy_ownership_volume` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        let fleet_count = draft.fleet_count.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`fleet_ship_payload.fleet_count` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        let ships_per_fleet = draft.ships_per_fleet.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`fleet_ship_payload.ships_per_fleet` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        let border_fleet_count = draft.border_fleet_count.ok_or_else(|| {
+            HydrateError::new_spanned(
+                "`fleet_ship_payload.border_fleet_count` is required",
+                Some(draft.span.clone()),
+            )
+        })?;
+        if fleet_count == 0 || ships_per_fleet == 0 {
+            return Err(HydrateError::new_spanned(
+                "`fleet_ship_payload.fleet_count` and `ships_per_fleet` must be greater than zero",
+                Some(draft.span.clone()),
+            ));
+        }
+        if border_fleet_count > fleet_count {
+            return Err(HydrateError::new_spanned(
+                "`fleet_ship_payload.border_fleet_count` cannot exceed `fleet_count`",
+                Some(draft.span.clone()),
+            ));
+        }
+        let ship_class = draft.ship_class.unwrap_or_else(|| "corvette".to_string());
+        let hull_seed = draft.hull_seed.unwrap_or(100.0);
+        let weapon_damage_seed = draft.weapon_damage_seed.unwrap_or(25.0);
+        let upkeep_per_ship = draft.upkeep_per_ship.unwrap_or(2);
+        let resource_key = draft
+            .resource_key
+            .unwrap_or_else(|| "tp_energy".to_string());
+
+        let own_volume = ownership_volumes
+            .iter()
+            .find(|volume| volume.id == ownership_volume)
+            .ok_or_else(|| {
+                HydrateError::new_spanned(
+                    format!(
+                        "fleet_ship_payload `{}` references unknown ownership_volume `{ownership_volume}`",
+                        draft.id
+                    ),
+                    Some(draft.span.clone()),
+                )
+            })?;
+        let enemy_volume = ownership_volumes
+            .iter()
+            .find(|volume| volume.id == enemy_ownership_volume)
+            .ok_or_else(|| {
+                HydrateError::new_spanned(
+                    format!(
+                        "fleet_ship_payload `{}` references unknown enemy_ownership_volume `{enemy_ownership_volume}`",
+                        draft.id
+                    ),
+                    Some(draft.span.clone()),
+                )
+            })?;
+        if own_volume.owner != owner {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "fleet_ship_payload `{}` owner `{owner}` does not match ownership_volume owner `{}`",
+                    draft.id, own_volume.owner
+                ),
+                Some(draft.span.clone()),
+            ));
+        }
+
+        let (border_systems, interior_systems) =
+            classify_fleet_home_systems(&own_volume.assigned_systems, &enemy_volume.assigned_systems);
+        let interior_fleet_count = fleet_count - border_fleet_count;
+        let border_posture = if owner == "pirate" {
+            "raid"
+        } else {
+            "border"
+        };
+        let interior_posture = if owner == "pirate" {
+            "garrison"
+        } else {
+            "interior"
+        };
+
+        let border_homes = pick_fleet_home_systems(&border_systems, border_fleet_count);
+        let interior_homes = pick_fleet_home_systems(&interior_systems, interior_fleet_count);
+        let mut placements = Vec::new();
+        for (fleet_index, system) in border_homes.into_iter().enumerate() {
+            placements.push(HydratedFleetPlacement {
+                payload_id: draft.id.clone(),
+                owner: owner.clone(),
+                fleet_index: fleet_index as u32,
+                posture: border_posture.into(),
+                target_id: system.target_id.clone(),
+                row: system.row,
+                col: system.col,
+                ships_per_fleet,
+                ship_class: ship_class.clone(),
+            });
+        }
+        let border_offset = placements.len() as u32;
+        for (fleet_index, system) in interior_homes.into_iter().enumerate() {
+            placements.push(HydratedFleetPlacement {
+                payload_id: draft.id.clone(),
+                owner: owner.clone(),
+                fleet_index: border_offset + fleet_index as u32,
+                posture: interior_posture.into(),
+                target_id: system.target_id.clone(),
+                row: system.row,
+                col: system.col,
+                ships_per_fleet,
+                ship_class: ship_class.clone(),
+            });
+        }
+        if placements.len() != fleet_count as usize {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "fleet_ship_payload `{}` resolved {} placements but requires {fleet_count}",
+                    draft.id,
+                    placements.len()
+                ),
+                Some(draft.span.clone()),
+            ));
+        }
+
+        finalized.push(HydratedFleetShipPayload {
+            id: draft.id,
+            owner,
+            ownership_volume,
+            enemy_ownership_volume,
+            fleet_count,
+            ships_per_fleet,
+            border_fleet_count,
+            ship_class,
+            hull_seed,
+            weapon_damage_seed,
+            upkeep_per_ship,
+            resource_key,
+            placements,
+        });
+    }
+    Ok(finalized)
+}
+
+fn classify_fleet_home_systems(
+    own_systems: &[HydratedOwnedSystem],
+    enemy_systems: &[HydratedOwnedSystem],
+) -> (Vec<HydratedOwnedSystem>, Vec<HydratedOwnedSystem>) {
+    let enemy_coords: BTreeSet<_> = enemy_systems
+        .iter()
+        .map(|system| (system.row, system.col))
+        .collect();
+    let mut border = Vec::new();
+    let mut interior = Vec::new();
+    for system in own_systems {
+        let adjacent = chebyshev_neighbors(system.row, system.col)
+            .into_iter()
+            .any(|coord| enemy_coords.contains(&coord));
+        if adjacent {
+            border.push(system.clone());
+        } else {
+            interior.push(system.clone());
+        }
+    }
+    border.sort_by_key(|system| (system.row, system.col, system.target_id.clone()));
+    interior.sort_by_key(|system| (system.row, system.col, system.target_id.clone()));
+    (border, interior)
+}
+
+fn pick_fleet_home_systems(systems: &[HydratedOwnedSystem], count: u32) -> Vec<HydratedOwnedSystem> {
+    if systems.is_empty() || count == 0 {
+        return Vec::new();
+    }
+    (0..count as usize)
+        .map(|index| systems[index % systems.len()].clone())
+        .collect()
+}
+
+fn chebyshev_neighbors(row: u32, col: u32) -> Vec<(u32, u32)> {
+    let mut neighbors = Vec::new();
+    for dr in -1_i32..=1 {
+        for dc in -1_i32..=1 {
+            if dr == 0 && dc == 0 {
+                continue;
+            }
+            let Some(next_row) = offset_u32(row, dr) else {
+                continue;
+            };
+            let Some(next_col) = offset_u32(col, dc) else {
+                continue;
+            };
+            neighbors.push((next_row, next_col));
+        }
+    }
+    neighbors
+}
+
+fn offset_u32(value: u32, delta: i32) -> Option<u32> {
+    if delta.is_negative() {
+        value.checked_sub(delta.unsigned_abs())
+    } else {
+        value.checked_add(delta as u32)
+    }
+}
+
+fn attach_fleet_ship_payloads_to_system(
+    star_system: &mut SimThing,
+    target_id: &str,
+    owner_ref: Option<&str>,
+    payloads: &[HydratedFleetShipPayload],
+) {
+    let Some(owner_ref) = owner_ref else {
+        return;
+    };
+    let mut placements: Vec<(HydratedFleetShipPayload, HydratedFleetPlacement)> = payloads
+        .iter()
+        .filter(|payload| payload.placements.iter().any(|placement| {
+            placement.target_id == target_id && placement.owner == payload.owner
+        }))
+        .flat_map(|payload| {
+            payload
+                .placements
+                .iter()
+                .filter(|placement| {
+                    placement.target_id == target_id && placement.owner == payload.owner
+                })
+                .map(|placement| (payload.clone(), placement.clone()))
+        })
+        .collect();
+    if placements.is_empty() {
+        return;
+    }
+    placements.sort_by_key(|(_, placement)| placement.fleet_index);
+
+    let Some(surface) = star_system.children.iter_mut().find_map(|planet| {
+        planet
+            .children
+            .iter_mut()
+            .find(|child| is_surface_gridcell(child))
+    }) else {
+        return;
+    };
+
+    for (payload, placement) in &placements {
+        let mut fleet = SimThing::new(SimThingKind::Fleet, 0);
+        fleet.add_property(
+            OWNER_FLOW_OWNER_REF_PROPERTY_ID,
+            scenario_metadata_string_value(owner_ref),
+        );
+        fleet.add_property(
+            TP_FLEET_POSTURE_PROPERTY_ID,
+            scenario_metadata_string_value(&placement.posture),
+        );
+        fleet.add_property(
+            TP_FLEET_HOME_SYSTEM_PROPERTY_ID,
+            scenario_metadata_string_value(target_id),
+        );
+        for ship_index in 0..placement.ships_per_fleet {
+            let mut ship = SimThing::new(SimThingKind::Cohort, 0);
+            apply_participant_owner_flow_metadata(
+                &mut ship,
+                owner_ref,
+                0,
+                payload.upkeep_per_ship,
+            );
+            apply_participant_owner_flow_resource_key_metadata(&mut ship, &payload.resource_key);
+            ship.add_property(
+                TP_SHIP_CLASS_PROPERTY_ID,
+                scenario_metadata_string_value(&placement.ship_class),
+            );
+            ship.add_property(
+                TP_SHIP_HULL_PROPERTY_ID,
+                scenario_property_f32_value(payload.hull_seed + ship_index as f32),
+            );
+            ship.add_property(
+                TP_SHIP_WEAPON_DAMAGE_PROPERTY_ID,
+                scenario_property_f32_value(payload.weapon_damage_seed + ship_index as f32 * 0.5),
+            );
+            ship.add_property(
+                TP_SHIP_UPKEEP_PROPERTY_ID,
+                scenario_property_f32_value(payload.upkeep_per_ship as f32),
+            );
+            fleet.add_child(ship);
+        }
+        surface.add_child(fleet);
+    }
+}
+
+fn scenario_property_f32_value(value: f32) -> PropertyValue {
+    PropertyValue::from_raw_lanes(vec![value])
 }
 
 fn parse_ownership_volume(property: &RawProperty) -> Result<ParsedOwnershipVolume, HydrateError> {
