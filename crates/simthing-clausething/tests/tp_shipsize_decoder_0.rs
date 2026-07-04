@@ -78,6 +78,17 @@ const DECODE_CASES: &[DecodeCase] = &[
         expect_err_contains: None,
     },
     DecodeCase {
+        label: "duplicate_registered_class_is_ambiguous",
+        classes: &["corvette", "corvette"],
+        key: "shipsize_corvette_hull_add",
+        expect_ok: false,
+        expect_shipsize_class: None,
+        expect_family_tag: None,
+        expect_attribute: None,
+        expect_op: None,
+        expect_err_contains: Some("ambiguous shipsize modifier key"),
+    },
+    DecodeCase {
         label: "unknown_shipsize_attribute",
         classes: &["corvette"],
         key: "shipsize_corvette_unknown_add",
