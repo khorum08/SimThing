@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TEST-PARE-INVENTORY-0: validate the checked-in test corpus inventory.
+# Rustified Test Lifecycle: validate checked-in survivor inventory.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

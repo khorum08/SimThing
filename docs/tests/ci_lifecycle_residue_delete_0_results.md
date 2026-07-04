@@ -6,7 +6,11 @@
 
 This rung removes or reframes Track-D-era CI artifacts only when they no longer bear live Rustified Test Lifecycle enforcement. It does not reopen Track D, delete tests, modify product code, edit workflows, or normalize full-workspace proof as routine.
 
-Branch: `ci-lifecycle-residue-delete-0` (pending PR).
+Branch: `ci-lifecycle-residue-delete-0` (PR #1126).
+
+### 0R remedial note
+
+0R corrected stale fossil wording in live lifecycle artifacts. In particular, live boundary notes no longer state "one representative per admission boundary"; they now state the Necessity Test floor-zero lifecycle rule. Historical Track-D references remain only where explicitly marked provenance.
 
 ## Baseline
 
@@ -89,6 +93,14 @@ Out of scope: `doctrine_exec_profiles.tsv` stale `test-pare-*` rows → `CI-PROO
 
 Renamed to lifecycle vocabulary. Script header and verdict strings now use `TEST-LIFECYCLE-BOUNDARY-CHECK`. No longer references `test_pare_audit.tsv` for historical PARED keys — all boundary rows must reference live inventory.
 
+## 0R fixes
+
+| Item | Action |
+|---|---|
+| `test_lifecycle_boundaries.tsv` notes | 60 Tier-2 rows scrubbed: fossil "collapse to one representative" → Necessity Test floor-zero lifecycle language |
+| `test_inventory_check.sh` header | Reframed from TEST-PARE-INVENTORY to Rustified lifecycle |
+| `B-T6-PROTECTED-ORACLE-PROMOTION-REVIEW` note | Marked TEST-PARE reference as historical provenance |
+
 ## Validation
 
 | Gate | Result |
@@ -100,6 +112,7 @@ Renamed to lifecycle vocabulary. Script header and verdict strings now use `TEST
 | `test_inventory_check.sh` | **INSPECT** (2 dependency-floor fixture rows not auto-enumerated; expected) |
 | `test_inventory_drift_check.sh` | **PASS** (unledgered=0, stale=0) |
 | `test_lifecycle_boundary_check.sh` | **PASS** (731/731 owned) |
+| fossil wording rg (live scripts/TSVs) | **PASS** (no matches) |
 | `git diff --check origin/master...HEAD` | **PASS** |
 | `cargo test --workspace --all-targets` | **not run** (forbidden) |
 
