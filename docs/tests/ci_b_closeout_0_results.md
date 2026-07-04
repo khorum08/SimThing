@@ -2,7 +2,11 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW** — Track B doctrine/status closeout. Docs-only. Not self-mergeable; DA/Owner clearance required. Track B is marked CLOSED only by DA/Owner in the merge/graduation action.
+**DA-CLOSED (2026-07-04)** — Track B doctrine/status closeout, **graduated by DA/Owner directive** after full acceptance-gate review; merged to master via #1133. Docs-only. The Track B local executable-proof ladder (`CI-B-TRACK-OPEN-0` → `CI-B-LOCAL-HARNESS-0` → `CI-B-TRIPWIRE-TAGS-0` → `CI-B-CLOSEOUT-0`) is closed; the owner-local executable-proof contract and citation rule are the standing authority.
+
+### DA graduation verdict
+
+All 12 acceptance gates met; diff is 4 docs only (no scripts/workflows/product/cargo); every proof gate green and live CI `doctrine-scan` PASS. #1129 and #1132 recorded DONE/DA-APPROVED; #1129 stale evidence-index line fixed; #1132 non-blocking refinements ledgered (§ below); result doc honest. Graduated at Owner's explicit "graduate-merge" directive, which is the DA/Owner clearance the closeout handoff reserved for this action.
 
 ## Identity
 
