@@ -316,6 +316,22 @@ enforcement, the admission-ladder move applied to the repository itself):**
   behavioral analog (explore-then-harden dual pass) is deliberately **inverted** by the breakthrough valve
   (conformant baseline FIRST; exploration rides risk-free alongside) — the GWM-correct order; a mandated
   unconstrained first pass on production rungs is a drift channel, not a carrot.
+  - **RE-ADJUDICATED 2026-07-04 (owner-relayed Sonnet refinement) — PARTIALLY ADMITTED as a probationary,
+    optional handoff convention (handoff_template.md §5.1); NOT a Track B rung, NOT a mandate.** The rejection
+    above stands for the *direct* application (decode-time, single-model, hidden-state access we lack). Sonnet's
+    **cross-agent isomorphism** dissolves all three original objections: the sketch is a prose artifact (no
+    hidden-state access), it is upstream *author* context not a mandated implementer first-pass (no valve
+    inversion), and it is authored by a **different agent under different pressure** (not the gameable same-agent
+    dual-pass). Empirically the paper (pass@1 +0.61pp / pass@16 +1.03pp, verified — modest, consistent,
+    robust-across-models) validates the **principle** — a richer prior from a higher-entropy source improves the
+    constrained downstream output — but **not this application** (analogous-but-not-identical structural
+    conditions), so it clears the bar to *try*, not to *mandate*. It is **not a Track B rung** (Track B is the
+    executable proof harness; a prose convention there is the inert-scaffolding pathology). It enters as
+    §5.1: optional, **DA-authored only** (implementer-authored = the gameable dual-pass), no content scan / no
+    attribute / no gate (avoids §1A + §0.6.6), Necessity-Test-governed (deleted if the 0.0.8.5 seal-residue
+    rungs show no measurable benefit). Gemini's over-engineered version (content-scan gate + `#[admitted(hash)]`
+    inert attribute + unenforceable commit-ordering) is **rejected** — Sonnet's own diagnosis of those three
+    pathologies is correct and recorded so they are not re-proposed.
 
 **Evaluated and REJECTED (do not re-derive):** Miri/sanitizers (the authority crates forbid `unsafe`; near-zero
 yield); consolidating the three thin Python engines (churn without dividend); a new track letter or central
