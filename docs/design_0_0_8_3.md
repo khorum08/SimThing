@@ -360,7 +360,16 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    production admission hard-error *is* the coverage). The floor is **zero** for any invariant a type or a live
    admission hard-error enforces; the only legitimate keeps are tests that pass the Necessity Test — genuine
    parser/format behavior a type cannot absorb, CPU-oracle/GPU parity, determinism/golden byte-exactness,
-   doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad fixtures. **The merge-hold rule:** no rung that
+   doc-named invariant proofs, escaped-bug regressions, and the CI scanner's own known-bad fixtures. **The
+   Rustified test lifecycle *(added 2026-07-04 at Track D closeout, owner mandate)*:** a test is a **scoped
+   borrow, not a permanent asset** — born owned by its birth PR ladder/track and **assumed DELETED at that
+   track's closure** (deletion is free; keeping needs a recorded reason). A test outlives its birth ladder only
+   by (a) carrying a canonical notion — which must then be **promoted into a `simthing-kernel` type/seal or an
+   EML opcode-stack construct** (deleting the test), (b) being a `TIER7` terminal proof class with a `catches:`
+   note, or (c) being a non-runnable `dependency-floor` helper. This is standing law for every future track so
+   the corpus can never re-propagate (Track D pared 6,301 → 731); the full-workspace `cargo test` is a one-time
+   PR-ladder **closure certificate**, not routine proof. Full regime: CI-scaffolding design §4.1. **The
+   merge-hold rule:** no rung that
    changes PROBATION / authority / gate-state semantics merges before DA/Owner clearance; a truthful
    corrective self-report of a breach may be accepted on its merits, but it is never precedent for skipping
    clearance again. **The verification rule:** the DA (and any orchestrator relaying a proof) verifies the

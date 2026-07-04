@@ -1,8 +1,12 @@
-# TEST-NECESSITY-SWEEP-0 / 0R / 0R1 Results
+# TEST-NECESSITY-SWEEP-0 / 0R / 0R1 / 0R2 Results
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW** — 0R substance `f21fdf54`; 0R1 reconciles closure docs and live proof at branch tip. Branch `grok/test-necessity-sweep-0`; merge not authorized.
+**DONE — DA-APPROVED / MERGED (#1122 @ `3ef232506f`, executive DA 2026-07-04).** 0R substance `f21fdf54`; 0R1 reconciled closure docs; **0R2** (`e3c39a5af0b4b202d2c39867f2ad648708da3043`) was the build-integrity repair (orphaned doc-comment/attribute cleanup + two non-runnable `dependency-floor` helpers restored + `ct_3b_4a_gpu_projection.rs` survivor aligned to live production API + `scenario_io` test-fixture `Default`). DA independently re-ran the binding proof **`cargo check --workspace --all-targets` → PASS** (zero errors, all targets, clean tree at head) and verified: production logic untouched (all src deletions are inline `#[cfg(test)] mod tests` removals), the `dependency-floor` residue class + drift exception are narrow and keyed to `permanent-residue:dependency-floor` (stale-only; the unledgered-runnable-test check is intact), both restored helpers contain no `#[test]` and are imported by surviving tests, and the full inventory-drift gate passes in CI on the head. Inventory 4,070 → 731. Track D closed by `TRACK-D-CLOSEOUT-0`.
+
+## DA adjudication (2026-07-04)
+
+Accept conditions all TRUE: (1) full-workspace all-targets compile PASS locally; (2) R2 source changes are compile-hygiene/test-surface only, not production behavior; (3) both restored dependency-floor fixtures are required by surviving files; (4) neither restored fixture contains a runnable `#[test]`; (5) inventory-script changes narrowly scoped to dependency-floor; (6) live Doctrine Scan + Doctrine Exec green on `e3c39a5a`; (7) no forbidden proof run. Zero bounce conditions triggered. Notable reconciliation: `ct_3b_4a_gpu_projection.rs` was a latently non-compiling survivor on master (stale API never caught because normal CI does not run `--all-targets`); R2 aligned it to the current production API — a legitimate build-integrity repair, not a semantic alteration.
 
 ## 0R correction
 
