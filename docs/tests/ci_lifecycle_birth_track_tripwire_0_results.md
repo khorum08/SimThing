@@ -10,9 +10,9 @@ Track-A / ledger-layer text analysis only. No §3B executable proof, no workflow
 
 | Field | Value |
 |---|---|
-| PR | *(opened on push)* |
+| PR | #1131 |
 | Branch | `ci-lifecycle-birth-track-tripwire-0` |
-| Head SHA | `a7451c1c26864a2f12f542776828199893838cfe` |
+| Head SHA | `324b236ee0e076c3e504c54f4c240924c0f142fe` |
 | Base SHA / base ref | `fc5dc16e1672b6e938ecc62620abf127b6477927` / `origin/master` |
 
 ## Files changed
