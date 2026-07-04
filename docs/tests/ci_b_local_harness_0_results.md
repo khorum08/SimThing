@@ -7,9 +7,9 @@
 ## PR / branch / merge
 
 - Branch: `ci-b-local-harness-0`
-- PR: pending (opened after push)
+- PR: [#1129](https://github.com/khorum08/SimThing/pull/1129)
 - Base: `origin/master` @ `b738e76f586f5b0d86aa4fd2c923a74fdde1ab7f` (post-#1128)
-- Head: pending commit on branch
+- Head: `a27d0fc5158f3b7a4a27158f4aeb3c2bced461f3`
 
 ## Files changed
 
