@@ -37,6 +37,7 @@ required = [
     "note",
     "promotion_target",
     "birth_track",
+    "dsu_survivals",
 ]
 allowed_kind = {"unit", "integration", "doc", "compile_fail", "trybuild", "fixture", "unknown"}
 allowed_class = {

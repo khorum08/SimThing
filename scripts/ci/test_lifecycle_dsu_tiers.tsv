@@ -1,0 +1,4 @@
+min_survivals	max_survivals	tier	verdict	note
+1	2	advisory-audit	PASS	visible DA audit; renewal burden begins
+3	4	rejustify	INSPECT	must re-justify with a fresh verified named consumer
+5		presumed-stale	INSPECT	mandatory delete-or-promote candidate unless DA affirmatively renews
