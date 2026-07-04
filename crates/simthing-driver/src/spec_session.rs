@@ -688,20 +688,4 @@ mod tests {
             .expect("crossing event")
     }
 
-    // ── B3: requires_boundary_tick classification ─────────────────────────
-
-    /// Empty state — no instances, no events — must skip cleanly.
-    /// Threshold-only scripted event with no triggering event and no
-    /// cooldown — skips. Regression guard for the B3 win.
-    /// Predicate-trigger scripted event — always ticks.
-    /// Active cooldown forces tick so the counter decrements. Skipping
-    /// would freeze cooldowns forever in a quiet game.
-    /// Queued player selection forces tick.
-    /// `OnPrereqMet` capability state forces tick (conservative — the
-    /// sweep re-checks prereqs every boundary).
-    /// Matching `ThresholdEvent` on a capability-unlock registration
-    /// forces a tick (handler must dispatch the unlock).
-    /// Matching `ThresholdEvent` on a scripted-event-trigger registration
-    /// forces a tick (handler must dispatch the fired event).
-    /// Non-matching `ThresholdEvent` (e.g., a fission/velocity arm) does
 }

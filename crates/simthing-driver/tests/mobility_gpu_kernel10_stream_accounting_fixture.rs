@@ -109,5 +109,3 @@ fn mobility_gpu_kernel10_accounting_no_gpu_allocator_or_nondeterministic_atomics
         .diagnostics
         .contains(&"gpu_allocator_or_nondeterministic_atomics"));
 }
-
-#[ignore = "expensive mobility GPU replay/conformance gate; run explicitly for mobility GPU replay/accounting/budget changes"]

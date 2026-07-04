@@ -12,8 +12,9 @@ use std::sync::Mutex;
 use simthing_clausething::{hydrate_category_economy_pack, parse_raw_document};
 use simthing_core::{DimensionRegistry, SimThing, SimThingId, SimThingKind};
 use simthing_driver::{
-    FirstSliceMappingSession, FirstSliceTickOptions, Scenario, SimSession, build_execution_plan,
-    compile_arena_pressure_scatter, project_arena_pressure_seeds,
+    FirstSliceMappingSession, FirstSliceTickOptions, Scenario, SimSession,
+    build_execution_plan_from_authoring, compile_arena_pressure_scatter,
+    project_arena_pressure_seeds,
 };
 use simthing_gpu::{IndexedScatterOp, SlotAllocator};
 use simthing_spec::{
@@ -91,7 +92,9 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
         .root
         .children
         .iter()
-        .map(|c| ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap(), c.id.raw()))
+        .map(|c| {
+            ExplicitParticipantSpec::flat(alloc.slot_of(c.id).unwrap().raw(), c.id.raw())
+        })
         .collect();
     for arena in &mut game_mode.resource_flow.as_mut().unwrap().arenas {
         arena.explicit_participants = participants.clone();
@@ -101,7 +104,7 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
     let plan = build_execution_plan_from_authoring(
         &session.proto.registry,
         &session.spec_state.arena_registry.arenas,
-        &session.proto.root,
+        &session.scenario.root,
         &session.proto.allocator,
         &session.spec_state.arena_participant_scaffold,
         session.spec_state.arena_registry.generation,
@@ -199,7 +202,7 @@ fn gpu_scatter_projection_matches_cpu_oracle_through_commitment() {
     );
     assert_eq!(report_gpu.threshold_events, report_cpu.threshold_events);
     assert_eq!(report_gpu.threshold_events.len(), 1, "commitment fired");
-    assert_eq!(report_gpu.threshold_events[0].event_kind, 7);
+    assert_eq!(report_gpu.threshold_events[0].event_kind(), 7);
 
     // ── The gadget composition hook: Named("flow") is the same column the
     //    IntrinsicFlow variant resolves — any named column a session EML or

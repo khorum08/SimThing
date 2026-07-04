@@ -165,7 +165,12 @@ def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], 
     }
 
     missing = sorted(discovered - set(inventory_keys))
-    stale = sorted(set(inventory_keys) - discovered)
+    stale = sorted(
+        key
+        for key in (set(inventory_keys) - discovered)
+        if inventory_keys[key].get("promotion_target", "").strip()
+        != "permanent-residue:dependency-floor"
+    )
     if missing:
         errors.append(
             f"unledgered test rows: {len(missing)}; remedy: add a classified ledger row or remove the test; first={missing[:5]}"

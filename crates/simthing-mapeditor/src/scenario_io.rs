@@ -157,6 +157,7 @@ mod tests {
                 source: "test".to_string(),
                 generator_seed: 42,
                 generator_shape: "spiral_2".to_string(),
+                ..Default::default()
             },
         }
     }

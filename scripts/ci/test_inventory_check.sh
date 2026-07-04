@@ -51,6 +51,7 @@ allowed_class = {
     "usecase-superseded",
     "duplicate-battery",
     "hygiene-theater",
+    "dependency-floor",
     "unknown",
 }
 allowed_verdict = {"KEEP", "PARE", "AUDIT"}

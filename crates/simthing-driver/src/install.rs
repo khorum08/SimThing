@@ -1155,19 +1155,4 @@ mod tests {
         allocator.populate_from_tree(&scenario.root);
         (scenario.registry.clone(), scenario.root.clone(), allocator)
     }
-
-    /// I1 acceptance: `install_atomic` with a failing spec leaves caller
-    /// state byte-equivalent to before. This is the contract the ADR
-    /// promises and the regression guard against the partial-mutation
-    /// footgun.
-    /// Contrast: `compile_and_install` (in-place worker) DOES leave caller
-    /// state partially mutated after the same failure. Documents the
-    /// behavioral difference between the worker and the wrappers.
-    /// `preview_install` with a failing spec leaves caller state
-    /// untouched (refs are immutable; the scratch clones absorb the
-    /// partial mutation and get dropped).
-    /// `preview_install` on a succeeding spec returns a fully-populated
-    /// `InstallPreview` that the caller can inspect without committing.
-    /// `install_atomic` on a succeeding spec commits the scratch state
-    /// back to the caller and returns the same `SpecSessionState` shape
 }

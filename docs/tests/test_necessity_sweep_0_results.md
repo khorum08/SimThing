@@ -135,6 +135,21 @@ Doctrine Exec smoke PASS proves the doctrine-exec surface is mechanically clean.
 - **DA/Owner-held:** yes
 - **DA question:** Does #1122 at the reconciled 0R1 head correctly apply the #1121 Necessity Test, leaving only 592 explicit keep-set survivors plus 137 non-runnable marker rows, with no production logic deletion and no forbidden proof?
 
+## 0R2 build-integrity repair
+
+DA/Owner accepted the #1122 deletion set and survivor classification. 0R2 does not relitigate test necessity. It fixes compile-only hygiene defects caused by the deletion wave: orphaned doc comments and deleted helper/fixture modules still imported by surviving files.
+
+The deletion set remains final. Restored dependency-floor helpers are not runnable test survivors; they are kept only because surviving tests depend on them.
+
+| Gate | Result |
+|---|---|
+| `cargo check --workspace --all-targets` | PASS (owner machine, §10.3 authorized) |
+| Runnable-test delta vs 0R1 | PASS — zero runnable-test additions/deletions; restored helpers only |
+| Dependency-floor helpers restored | 2 | `crates/simthing-spec/tests/disburse_down_fixture.rs`, `crates/simthing-driver/tests/mapgen_pr8_scheduled_concurrency.rs` |
+| Orphaned doc comments removed | 3 | `crates/simthing-driver/src/install.rs`, `crates/simthing-driver/src/spec_session.rs`, `crates/simthing-driver/tests/mobility_gpu_kernel10_stream_accounting_fixture.rs` |
+
+Additional compile hygiene (not production logic): `ct_3b_4a_gpu_projection.rs` import/slot API alignment; `scenario_io.rs` test fixture `..Default::default()` for struct fields added upstream.
+
 ## Merge
 
 Not performed. Ready for DA/Owner closure review, not orchestrator merge-clear.
