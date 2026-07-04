@@ -1,0 +1,40 @@
+# TP-FLEETS-SHIPS-0 compact fleet/ship payload stanza reference.
+# Combined scenario is assembled in tp_fleets_ships_0.rs over the embedded base disc.
+
+fleet_ship_payload = terran_fleets {
+    owner = "terran"
+    ownership_volume = "terran_core"
+    enemy_ownership_volume = "pirate_border"
+    fleet_count = 10
+    ships_per_fleet = 20
+    border_fleet_count = 6
+    ship_class = "corvette"
+    hull_seed = 100
+    weapon_damage_seed = 25
+    upkeep_per_ship = 2
+    resource = {
+        id = "tp_energy"
+        namespace = "tp"
+        name = "energy"
+        display_name = "Energy"
+    }
+}
+
+fleet_ship_payload = pirate_fleets {
+    owner = "pirate"
+    ownership_volume = "pirate_border"
+    enemy_ownership_volume = "terran_core"
+    fleet_count = 10
+    ships_per_fleet = 40
+    border_fleet_count = 8
+    ship_class = "corvette"
+    hull_seed = 80
+    weapon_damage_seed = 30
+    upkeep_per_ship = 3
+    resource = {
+        id = "tp_energy"
+        namespace = "tp"
+        name = "energy"
+        display_name = "Energy"
+    }
+}

@@ -9,6 +9,7 @@
 //! CT-2a: literal `produces`/`upkeep` hydration into Resource Flow authoring.
 //! CT-2c: category economy hydration into Resource Flow and ResourceEconomy authoring.
 //! TP-SHIPSIZE-DECODER-0: shipsize / `ship_*` modifier decoder family.
+//! TP-FLEETS-SHIPS-0: fleet/ship scenario-envelope authoring.
 //! CT-PR2/3: scenario-container hydration into generic spec surfaces plus a SimThing tree and
 //! bounded grid-link metadata.
 //! MapGen PR2: neutral-AST parse-only adapter (M1) — no semantic mapping.
@@ -77,10 +78,11 @@ pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
 };
 pub use hydrate_scenario::{
-    HydratedEmbeddedStaticGalaxyScenario, HydratedOwnedSystem, HydratedOwnershipVolume,
-    HydratedPlanetSurfacePayload, HydratedScenarioGridMetadata, HydratedScenarioGridPlacement,
-    HydratedScenarioLink, HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack,
-    PR3_MAX_LINK_FANOUT, PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
+    HydratedEmbeddedStaticGalaxyScenario, HydratedFleetPlacement, HydratedFleetShipPayload,
+    HydratedOwnedSystem, HydratedOwnershipVolume, HydratedPlanetSurfacePayload,
+    HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioLink,
+    HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
+    PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
 };
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};
