@@ -70,11 +70,13 @@ Proof environment: Windows Git Bash; `PYTHON_BIN` set explicitly to the local Py
 
 | Command | Result |
 |---|---|
-| `doctrine_scan.sh` | see recipient report |
-| `gen_digest.sh --check` | see recipient report (embedded and PASS in the green live `doctrine-scan` CI, which runs `gen_digest.sh --check`) |
-| `doctrine_exec_profile_lint.sh` | PROFILE-LINT PASS + GHA-PROOF-SEAL PASS |
-| `doctrine_exec_profile_lint.sh --prove-no-track-d-deletion-profiles` | PASS |
-| `git diff --check origin/master...HEAD` | clean |
+| `doctrine_scan.sh` | `DOCTRINE-SCAN-VERDICT: PASS failures=0 inspect=0 selftest=SKIPPED` |
+| `gen_digest.sh --check` | `gen_digest --check: PASS` (also re-run green by the live `doctrine-scan` CI check on PR #1133) |
+| `doctrine_exec_profile_lint.sh` | `PROFILE-LINT: PASS profiles=6 default=ci-b-webchat-smoke` + `GHA-PROOF-SEAL: PASS profiles=6` |
+| `doctrine_exec_profile_lint.sh --prove-no-track-d-deletion-profiles` | `NO-TRACK-D-PROFILE-PROVE: PASS` |
+| `git diff --check origin/master...HEAD` | clean (no output) |
+
+Live CI on PR #1133: `doctrine-scan` PASS (1m2s, run 28713981790).
 
 ## Scope ledger
 
