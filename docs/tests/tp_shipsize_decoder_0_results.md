@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW** — shipsize / `ship_*` modifier decoder family. Not self-mergeable; DA/Owner clearance required.
+**DONE — DA-APPROVED (2026-07-04, executive DA deep review + fix + lab waiver).** EML ≤32 bound + CPU-oracle parity + ambiguity rejection verified; lowers to existing substrate (no new AccumulatorRole/opcode/GPU); semantic-free below spec; scope clean. **DA fix:** the 2 new tests' `birth_track` was corrected from the rung id to the `0.0.8.5-terran-pirate` scenario envelope (§0A) and the rung-as-track registration removed. **Lab round-trip waived** (horizon generalization, not scenario acceptance; §0A). Merge-cleared.
 
 ## Identity
 
