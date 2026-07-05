@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW — not self-mergeable** until DA/Owner acts on the Homing Boundary classification below. HP/Damage RF combat arena proofs stand; evidence repaired in `TP-COMBAT-ARENA-0R`.
+**DA-GRADUATED (2026-07-05) — one-time, non-precedential Homing Boundary exception accepted.** The scenario-specific combat hydrator is homed in `simthing-clausething/src` by explicit owner clearance for this rung only (not precedent; Phase 5+ homes scenario candidate code in `simthing-workshop`). GPU==CPU bit-exact parity accepted on **owner attestation** (Owner ran the 3 `tp_combat_arena_0` tests on a real adapter), not a citable `DOCTRINE-TESTS-VERDICT` artifact. Evidence repaired in `TP-COMBAT-ARENA-0R`; classification table below is honest and complete. Superseded prior state: `PROBATION / DA-OWNER REVIEW`.
 
 ## Identity
 
@@ -147,9 +147,8 @@ None with hard-failure status. No new triage rows added to `inspect_justificatio
 
 ## Graduation routing
 
-- **CI verdict:** doctrine_scan expected INSPECT with `failures=0`; delta kind-read hits documented above
-- **Citable GPU proof:** owner-local `cargo test -p simthing-clausething --test tp_combat_arena_0` at PR head; formal `DOCTRINE-TESTS-VERDICT` report per owner-deep policy if DA requires
-- **Risk class:** Homing Boundary exception / semantic scenario-code-in-engine-crate
-- **Recommended posture:** DA targeted review. Owner may merge by explicit exception, request move-to-workshop, or require further 0R
-- **Phase 5:** `TP-DIPLOMACY-FLOW-0` blocked until DA/Owner clearance of #1145 Homing Boundary state
-- **Not self-marked COMPLETE**
+- **CI verdict:** doctrine_scan INSPECT with `failures=0`; delta kind-read hits documented above (accepted)
+- **GPU proof basis:** **owner attestation** — Owner ran `cargo test -p simthing-clausething --test tp_combat_arena_0` (3 passed, incl. `gpu_two_fleet_contact_matches_transfer_oracle`) on a real adapter and accepted the transcript per §6 waiver. No citable `DOCTRINE-TESTS-VERDICT` artifact; basis is attestation, recorded honestly.
+- **Risk class:** Homing Boundary exception / semantic scenario-code-in-engine-crate — **accepted one-time, non-precedential**
+- **DA disposition (2026-07-05):** **DA-GRADUATED.** `TP-COMBAT-ARENA-0` complete with the one-time exception. The exception is **not precedent**; the queued net-new-engine-symbol tripwire is the durable forward enforcement.
+- **Phase 5:** `TP-DIPLOMACY-FLOW-0` **authorized to proceed** — its scenario candidate code (diplomacy hydrator) homes in `simthing-workshop`, not `clausething`, with no exception.
