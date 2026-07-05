@@ -1,0 +1,4 @@
+rung	condition	set_by	status	promotion_blocker
+TP-FLEET-MOVEMENT-0	B1-7x7-horizon-3-minimum	DA-2026-07-05	open	TP-FLEET-MOVEMENT-0
+TP-FLEET-MOVEMENT-0	B2-multi-step-gradient-movement	DA-2026-07-05	open	TP-FLEET-MOVEMENT-0
+TP-FLEET-MOVEMENT-0	B3-larger-theater-gpu-cpu	DA-2026-07-05	open	TP-FLEET-MOVEMENT-0
