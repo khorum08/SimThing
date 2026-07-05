@@ -8,11 +8,11 @@
 
 | Field | Value |
 |---|---|
-| PR | (pending push) |
+| PR | [#1155](https://github.com/khorum08/SimThing/pull/1155) |
 | Branch | `tp-commitments-0` |
 | Base | `origin/master` @ `7d44037e1932ac225285ff8eb776f24de394b890` |
 | Tested code SHA | `ca19e956571d451d97d20c37f6cf0627f40b0fa9` |
-| Current PR head | (pending push) |
+| Current PR head | `3b1624877cebf92921e128d425c44fc8bc173b18` |
 | Rung | Phase 7.0 `TP-COMMITMENTS-0` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
 
@@ -127,7 +127,7 @@ Taxonomy also defines `attack`, `withdraw`, `fortify` event kind constants for f
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: ca19e956571d451d97d20c37f6cf0627f40b0fa9
-current_pr_head: (pending evidence commit)
+current_pr_head: 3b1624877cebf92921e128d425c44fc8bc173b18
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_commitments_0
 owner_local: true
