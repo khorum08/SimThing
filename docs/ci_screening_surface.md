@@ -576,8 +576,16 @@ section is the operator surface.
   in a sealed crate: any scenario-specific service/struct/fn/heuristic (HP/Damage resolver, fleet-contact logic,
   owner-bonus combat helper, zero-HP removal, RF-child-depth workaround, Terran/Pirate/Fleet/Cohort branching).
   *"Generic lowering, as prior TP rungs did it"* is **not** a licence — prior rungs predate this doctrine.
+- **Substrate widening is DA-authorized only — not an agent's escape hatch.** Genuine generic substrate widening
+  (a reusable, semantic-free API a crate needs) is admissible as future utility, but the route flows **top-down
+  from DA/Owner approval**. An agent may **propose/appeal** it to the orchestrator when it is the most
+  performant/logical path (*surface, never self-grant*, core §1.2.1). "Future utility" / "downstream value" is a
+  **request the DA adjudicates**, never a self-issued verdict — it is nearly unfalsifiable and self-serving, so
+  the burden is on the appeal and the **default is deny → workshop-home it**. A self-classified "generic
+  widening" landed in an engine crate is drift, rejected at review.
 - **Orchestrator note.** Every net-new `simthing-clausething/src` (or `spec`/`kernel`/`sim`/lowerer) symbol in a
-  scenario PR is **classify-before-merge**: the PR must state, per symbol, why it is generic-not-scenario. An
+  scenario PR is **classify-before-merge**: the PR must state, per symbol, why it is generic-not-scenario, and
+  any widening must cite the DA/Owner approval that authorized it (an appeal is not an approval). An
   unclassified engine-crate addition in a scenario PR is **escalated to DA, not landed silently**. Note the
   honest limit: `SPEC-LOWERER-KIND-READ` only tripwires *kind-branching*; non-kind scenario code in a lowerer
   trips nothing yet (broader net-new-engine-symbol tripwire queued), so this review step is the live control.
