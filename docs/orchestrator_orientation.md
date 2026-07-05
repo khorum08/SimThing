@@ -12,7 +12,7 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_7_orchestration_harness.md | 0ad0f7fa2af0c312ee539745a38639818293f0a47e7a3a234bb516b42e69304a |
+| design_0_0_8_4_7_orchestration_harness.md | 48428c50b5898450b5d280b2a56377c1f5e0f3e0f809b1df18b14df71ece2257 |
 | relay_lint.sh | 920c1c2b3c3ccf8cd409b826bb232f9529284b5cf640303a7aef6ce136718cf7 |
 
 ## OH Track / Rung Summary (0.0.8.4.7)
@@ -22,7 +22,7 @@
 | 0 | OH-CLEARANCE-ROUTER-0 | `clearance_check.sh` + `precedented_classes.tsv` + `binding_conditions.tsv` (bac | **DA-GRADUATED / merged [#1162](https://github.com/khorum08/SimThing/pull/1162) @ `39802af5`** — M1 router live; `/cl... |
 | 1 | OH-RELAY-LINT-0 | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | **DA-GRADUATED / merged [#1163](https://github.com/khorum08/SimThing/pull/1163) @ `d4969f1c8`** — M3 relay lint + `/r... |
 | 1R | OH-CLEARANCE-ROUTER-0R | empty-diff precision + local PR-number resolution in `clearance_check.sh` | **DA-GRADUATED / merged [#1164](https://github.com/khorum08/SimThing/pull/1164) @ `ad46a0be8`** — empty/unresolved ta... |
-| 2 | OH-ORIENTATION-DIGEST-0 | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshne | **PROBATION / proof-present / DA-review-pending** — PR pending @ head; generated `orchestrator_orientation.md` + fres... |
+| 2 | OH-ORIENTATION-DIGEST-0 | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshne | **PROBATION / proof-present / DA-review-pending** — PR [#1165](https://github.com/khorum08/SimThing/pull/1165) @ `d6e... |
 | 2b | OH-COLD-START-0` (after 2) | `orient.sh` (role-keyed, generated from the M2 TSVs, `--since` delta mode, `ORIE | Cold agent oriented by one command; receipt round-trips through a relay and validates; stale receipt → `RE-ORIENT` wi... |
 | 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | Digest quoting a mutated anchor sentence → freshness FAIL; a map-domain relay without `ANCHOR-ACK: movement-front@…` ... |
 | 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill row... |

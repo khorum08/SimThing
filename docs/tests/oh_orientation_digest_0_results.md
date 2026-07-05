@@ -8,8 +8,9 @@
 
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | [#1165](https://github.com/khorum08/SimThing/pull/1165) |
 | Branch | `oh-orientation-digest-0` |
+| Head | `d6efae1cc0a360d38d84e49c30c7d6b2df56ee18` |
 | Base | `master` @ `ad46a0be8` |
 | Rung | `OH-ORIENTATION-DIGEST-0` |
 
@@ -39,7 +40,7 @@
 - comment/run: [issuecomment-4888019870](https://github.com/khorum08/SimThing/pull/1164#issuecomment-4888019870) → workflow [28759107869](https://github.com/khorum08/SimThing/actions/runs/28759107869)
 - result: **workflow FAIL** — checkout could not resolve deleted head branch `oh-clearance-router-0r-empty-diff` (post-merge branch deletion; not relay-lint logic failure)
 - observed RELAY-LINT-VERDICT: n/a (workflow did not reach lint step)
-- follow-up: re-post `/relay-lint` on this PR (live branch) once open
+- follow-up: re-posted `/relay-lint` on [#1165](https://github.com/khorum08/SimThing/pull/1165) (live branch) — result pending GHA
 
 ### Owner-local proof output (2026-07-05)
 
