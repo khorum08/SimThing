@@ -37,6 +37,10 @@ FIXTURE_DIR=""
 PR_NUMBER=""
 RANGE_SPEC=""
 SELFTEST_FAILURES=0
+REQUESTED_TARGET=0
+CHANGED_FILES_RESOLVED=0
+CHANGED_FILES_LIST=""
+PR_RESOLUTION_FAILED=0
 
 usage() {
   cat <<'EOF'
@@ -179,33 +183,82 @@ read_fixture_file() {
   printf '%s' "$default"
 }
 
-changed_files() {
+mark_requested_target() {
+  if [[ -n "$PR_NUMBER" || -n "$RANGE_SPEC" ]]; then
+    REQUESTED_TARGET=1
+    return 0
+  fi
+  if [[ -n "$FIXTURE_DIR" && -f "${FIXTURE_DIR}/target_mode.txt" ]]; then
+    REQUESTED_TARGET=1
+    return 0
+  fi
+  return 1
+}
+
+resolve_pr_changed_files() {
+  local files repo
+  if ! command -v gh >/dev/null 2>&1; then
+    return 1
+  fi
+  files="$(gh pr diff "$PR_NUMBER" --name-only 2>/dev/null || true)"
+  if [[ -n "$files" ]]; then
+    CHANGED_FILES_LIST="$files"
+    return 0
+  fi
+  repo="${GITHUB_REPOSITORY:-}"
+  if [[ -z "$repo" ]]; then
+    repo="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)"
+  fi
+  if [[ -n "$repo" ]]; then
+    files="$(gh api "repos/${repo}/pulls/${PR_NUMBER}/files" --paginate \
+      --jq '.[].filename' 2>/dev/null || true)"
+    if [[ -n "$files" ]]; then
+      CHANGED_FILES_LIST="$files"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+resolve_changed_files_once() {
+  if [[ "$CHANGED_FILES_RESOLVED" -eq 1 ]]; then
+    return 0
+  fi
+  CHANGED_FILES_RESOLVED=1
+  mark_requested_target || true
+
   if [[ -n "$FIXTURE_DIR" && -f "${FIXTURE_DIR}/changed_files.txt" ]]; then
-    sed '/^[[:space:]]*$/d' "${FIXTURE_DIR}/changed_files.txt"
+    CHANGED_FILES_LIST="$(sed '/^[[:space:]]*$/d' "${FIXTURE_DIR}/changed_files.txt" || true)"
     return 0
   fi
   if [[ -n "$RANGE_SPEC" ]]; then
     local base="${RANGE_SPEC%%..*}"
     local head="${RANGE_SPEC##*..}"
-    git -C "$REPO_ROOT" diff --name-only "${base}" "${head}" 2>/dev/null || true
+    CHANGED_FILES_LIST="$(git -C "$REPO_ROOT" diff --name-only "${base}" "${head}" 2>/dev/null || true)"
     return 0
   fi
   if [[ -n "$PR_NUMBER" ]]; then
-    if command -v gh >/dev/null 2>&1 && [[ -n "${GITHUB_REPOSITORY:-}" || -n "${GH_TOKEN:-}" ]]; then
-      local repo="${GITHUB_REPOSITORY:-}"
-      if [[ -z "$repo" ]]; then
-        repo="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)"
-      fi
-      if [[ -n "$repo" ]]; then
-        gh api "repos/${repo}/pulls/${PR_NUMBER}/files" --paginate \
-          --jq '.[].filename' 2>/dev/null || true
-        return 0
-      fi
+    if resolve_pr_changed_files; then
+      return 0
     fi
-    emit_verdict reserve "harness-error" >/dev/null
+    PR_RESOLUTION_FAILED=1
     return 1
   fi
   return 1
+}
+
+changed_files_nonempty() {
+  resolve_changed_files_once || true
+  printf '%s\n' "$CHANGED_FILES_LIST" | sed '/^[[:space:]]*$/d' | grep -q .
+}
+
+changed_files() {
+  resolve_changed_files_once || true
+  printf '%s\n' "$CHANGED_FILES_LIST"
+}
+
+print_pr_resolution_remedy() {
+  printf 'Unable to resolve PR diff locally; pass --range <base>..<head> or run in GHA with PR metadata.\n' >&2
 }
 
 pr_body_text() {
@@ -482,11 +535,24 @@ route_clearance() {
   local binding_tsv="$2"
   local ledger_tsv="$3"
 
+  resolve_changed_files_once || true
+
   if ! load_tsv "$classes_tsv" 6 >/dev/null 2>&1; then
     emit_verdict reserve "harness-error"
     return 0
   fi
   if ! load_tsv "$binding_tsv" 5 >/dev/null 2>&1; then
+    emit_verdict reserve "harness-error"
+    return 0
+  fi
+
+  if [[ "$PR_RESOLUTION_FAILED" -eq 1 ]]; then
+    print_pr_resolution_remedy
+    emit_verdict reserve "harness-error"
+    return 0
+  fi
+
+  if [[ "$REQUESTED_TARGET" -eq 1 ]] && ! changed_files_nonempty; then
     emit_verdict reserve "harness-error"
     return 0
   fi
@@ -560,8 +626,16 @@ route_clearance() {
   emit_verdict clearable
 }
 
+reset_clearance_state() {
+  REQUESTED_TARGET=0
+  CHANGED_FILES_RESOLVED=0
+  CHANGED_FILES_LIST=""
+  PR_RESOLUTION_FAILED=0
+}
+
 run_fixture() {
   local name="$1"
+  reset_clearance_state
   FIXTURE_DIR="${FIXTURES_ROOT}/${name}"
   [[ -d "$FIXTURE_DIR" ]] || { echo "missing fixture: $name" >&2; return 1; }
   local expected got
@@ -595,6 +669,7 @@ run_selftest() {
     clearance_selftest_gate_wiring_self_application
     clearance_selftest_suspended_class
     clearance_selftest_missing_required_proof_fields
+    clearance_selftest_fail_closed_empty_requested_diff
   )
   local name
   for name in "${fixtures[@]}"; do
@@ -619,12 +694,14 @@ main() {
     exit $?
   fi
   if [[ "$FIXTURE_MODE" == "fixture" ]]; then
+    reset_clearance_state
     local paths
     paths="$(resolve_paths)"
     route_clearance "$(echo "$paths" | sed -n '1p')" "$(echo "$paths" | sed -n '2p')" "$(echo "$paths" | sed -n '3p')"
     exit 0
   fi
 
+  reset_clearance_state
   local paths
   paths="$(resolve_paths)"
   local classes_tsv binding_tsv ledger_tsv
