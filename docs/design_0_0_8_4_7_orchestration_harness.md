@@ -120,6 +120,23 @@ local-first-wire-later:
   constitution/core-design text, self-served into webchat context, zero courier cost, zero paraphrase
   (M6's quote-verbatim law applies to the command output).
 
+**M7 execution boundary (owner ruling, 2026-07-05 — "fullest exploitation" does NOT mean everything runs
+GHA-side).** GHA runners are headless Linux: **no GPU adapter, no X11/ALSA/winit desktop.** Therefore:
+
+- **GHA-executable:** scans, lints, router verdicts, digests, receipts, anchor serving, CPU-only checks —
+  and **validation of recorded proofs** (presence, `tested_code_sha` binding, coverage-basis freshness).
+- **Owner-local only, never GHA:** bevy-, GPU-resident-, and desktop-facing test execution. These route
+  through the existing Track B owner-local harness (`doctrine_tests.sh` owner-local profiles, which
+  already refuse under `GITHUB_ACTIONS` — INSPECT, never silent PASS), produce a citable
+  `DOCTRINE-TESTS-VERDICT: PASS` bound by `tested_code_sha + coverage_basis`, recorded **in-repo** (the
+  committed proof-doc pattern, e.g. `tp_combat_arena_0_gpu_proof.md`), and the GHA-side surfaces
+  **consume and verify the recorded verdict — never attempt execution.** The M1 router's GPU-proof check
+  is exactly this consumption: it verifies binding mechanically; it does not run the test.
+- **Forbidden proof, carried forward (§10 / Track B rulings):** adding a GPU/bevy/desktop execution leg to
+  any workflow — including apt-get/x11/wayland/ALSA bootstrap on a runner — is rejected at review, not
+  attempted. The flow is always: local GPU/desktop run → committed citable proof → GHA validates the
+  binding → merge.
+
 ## 4. Rungs
 
 | # | Rung | Deliverable | Exit proof |
