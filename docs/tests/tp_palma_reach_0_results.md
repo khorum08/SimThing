@@ -8,11 +8,11 @@
 
 | Field | Value |
 |---|---|
-| PR | (pending open) |
+| PR | [#1152](https://github.com/khorum08/SimThing/pull/1152) |
 | Branch | `tp-palma-reach-0` |
 | Base | `origin/master` @ `9f56794a4f20696d83d6098d7ea2263728a639de` |
 | Tested code SHA | `905fb35a0da5570564de747347e14b40a4f477df` |
-| Current PR head | (pending evidence commit) |
+| Current PR head | `1ce25e658ef157831f7e3763592b3c519d9b3e70` |
 | Rung | Phase 6.1 `TP-PALMA-REACH-0` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
 
@@ -119,7 +119,7 @@ PALMA min-plus uses tropical addition only (no sqrt). Exact-magnitude gate not l
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 905fb35a0da5570564de747347e14b40a4f477df
-current_pr_head: <pending evidence commit>
+current_pr_head: 1ce25e658ef157831f7e3763592b3c519d9b3e70
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_palma_reach_0
 owner_local: true
