@@ -92,6 +92,9 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415 selftest=SKIPPED
 | Falsification check | `bash scripts/ci/doctrine_selftest.sh` → `inventory drift proof: PASS`; remove one ledger row → drift gate FAIL |
 | Recommended posture | **deep** — gate-wiring audit unchanged; 0R confirms inventory discipline held |
 
-### GHA (post-0R push)
+### GHA (post-0R push @ `cdbc5985`)
 
-_(updated after push)_
+| Check | Result | Run |
+|---|---|---|
+| Doctrine Exec | **PASS** (12s) | [28755386815](https://github.com/khorum08/SimThing/actions/runs/28755386815) |
+| Doctrine Scan | **PASS** (53s) | [28755386808](https://github.com/khorum08/SimThing/actions/runs/28755386808) |
