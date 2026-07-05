@@ -95,13 +95,20 @@ coverage_basis: PASS — scripts-only gate-wiring rung; no binary-affecting path
 
 - Advisory-only default (`--mode advisory`); blocking mode deferred to post-one-clean-cycle per design M3.
 - No ORIENT-RECEIPT / ANCHOR-ACK enforcement (deferred rungs 2b/2c).
-- `/relay-lint` GHA result recorded after PR opens.
+- `/relay-lint` sticky comment: post on [#1163](https://github.com/khorum08/SimThing/pull/1163) by collaborator to exercise GHA path (gate-wiring self-application will FAIL lint on this PR by design).
+
+### GHA (@ `7e3d20d0`)
+
+| Check | Result | Run |
+|---|---|---|
+| Doctrine Exec | **PASS** (11s) | [28756858369](https://github.com/khorum08/SimThing/actions/runs/28756858369) |
+| Doctrine Scan | **PASS** (55s) | [28756858356](https://github.com/khorum08/SimThing/actions/runs/28756858356) |
 
 ## Graduation routing
 
 | Field | Value |
 |---|---|
-| CI verdict | _(GHA pending — update after push)_ |
+| CI verdict | PASS-RELIABLE — Doctrine Exec + Doctrine Scan green on GHA |
 | Triage entries | none expected |
 | Risk class | gate-wiring |
 | Falsification check | Mutate `coverage_basis` / classification / graduation routing in fixtures → named FAILs; post `/relay-lint` on PR |
