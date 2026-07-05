@@ -59,6 +59,29 @@ tests to the apparatus itself: (a) `rule_expiry_check.sh` — cadence sweep list
 displaces prose, enforced as a scan; (c) every prose paragraph superseded by a mechanism in this track is
 replaced by a one-line pointer to the enforcing surface. Tests expire, rules expire, prose expires.
 
+**M5 — Cold-start protocol: receipted orientation (owner-commissioned, 2026-07-05).** Kills the
+hand-regenerated orientation brief. Two landings, one forcing function:
+
+- **Coding agents (in-repo, have a shell):** `scripts/ci/orient.sh --role=coding|orchestrator|da` prints a
+  compact, role-keyed landing page **generated from the same TSVs as M2** (that tier's clearance contract,
+  active track/rung, tested-code-SHA proof rule, inner-loop commands) and ends with
+  `ORIENT-RECEIPT: <12-char content hash>` of the current orientation state.
+- **Webchat orchestrators (GitHub read-only):** the M2 `orchestrator_orientation.md` embeds the same
+  generated receipt line.
+- **Forcing function:** relay lint (M3) and the clearance router (M1) **require a valid receipt** in the
+  relay/PR body. Missing → lint FAIL; stale (governance moved since) → `RE-ORIENT` verdict naming the
+  delta. `orient.sh --since=<old-receipt>` prints only what changed, so long-running chats re-orient at
+  delta cost.
+- **Entry stubs:** auto-read agent files (`agents.md` / `CLAUDE.md`-class) are reduced to the one-line
+  pointer to `orient.sh` — restated guidance there is a recorded drift source and is deleted, not
+  maintained. A stub scan keeps them ≤5 lines.
+- **Handoff-template amendment (downstream compression):** once receipts are enforced, the verbatim
+  context-spine restatement in every handoff is replaced by the receipt requirement + a pointer — the
+  spine lives in one generated page instead of every handoff (~40–60 lines saved per handoff, forever).
+- **Honest limit (recorded):** a receipt proves the agent had the *current* contract available — currency,
+  not comprehension. Comprehension failures remain caught downstream by router/lint/scan gates; the
+  receipt closes the actual recurring vector, orientation-against-outdated-governance.
+
 ## 4. Rungs
 
 | # | Rung | Deliverable | Exit proof |
@@ -66,12 +89,13 @@ replaced by a one-line pointer to the enforcing surface. Tests expire, rules exp
 | 0 | `OH-CLEARANCE-ROUTER-0` | `clearance_check.sh` + `precedented_classes.tsv` + `binding_conditions.tsv` (backfill: PALMA→6.2 conditions as the first rows) + selftest fixtures (clearable / reserve / fail cases) | Router reproduces the four hand-run DA verdicts of 2026-07-05 (#1150–#1152 CLEARABLE-shaped, #1154 DA-RESERVE:binding-conditions); selftest PASS; doctrine_scan PASS |
 | 1 | `OH-RELAY-LINT-0` | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | Lints the #1154 relay PASS; three mutated relays (missing coverage_basis / classification / routing) FAIL with named block; selftest PASS |
 | 2 | `OH-ORIENTATION-DIGEST-0` | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshness gate | Digest regenerates byte-identical from TSVs; stale digest hard-FAILs like `sanctioned_surface.md`; orientation content covers the §5A operational contract |
+| 2b | `OH-COLD-START-0` (after 2) | `orient.sh` (role-keyed, generated from the M2 TSVs, `--since` delta mode, `ORIENT-RECEIPT` emission); receipt embedded in `orchestrator_orientation.md`; receipt validation in `relay_lint.sh` + router; entry-file stubification (≤5-line pointer stubs) + stub scan; handoff-template spine→receipt amendment | Cold agent oriented by one command; receipt round-trips through a relay and validates; stale receipt → `RE-ORIENT` with named delta; mutated/missing receipt FAILs lint; entry stubs pass the stub scan; handoff template carries receipt requirement in place of the verbatim spine |
 | 3 | `OH-TRIAGE-INDUCTION-0` | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctrine_exec_triage.sh` strictness (justification mandatory); backfill TP-COMBAT-ARENA-0 GameSession rows | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill rows landed |
 | 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned pointers |
 | 5 | `OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
-Rungs 0–3 are orchestrator-buildable under the standing handoff regime; rung 4 is DA-reviewed (it edits
-doctrine text). All new tests: `birth_track = 0.0.8.4.7-orchestration-harness` (register the track at
+Rungs 0–3 (incl. 2b) are orchestrator-buildable under the standing handoff regime; rung 4 is DA-reviewed
+(it edits doctrine text), and 2b's handoff-template amendment is DA-reviewed within the rung. All new tests: `birth_track = 0.0.8.4.7-orchestration-harness` (register the track at
 first test birth). The track's own tools are subject to its own law: every new TSV row carries a
 `promotion_blocker`; the router/lint/digest each ship with selftest fixtures or they do not merge.
 
