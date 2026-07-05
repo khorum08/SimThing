@@ -3,6 +3,10 @@
 //! Lowers co-located hostile ship contact into discrete `ResourceEconomySpec`
 //! transfers (`SubtractFromSource`), optional `governed_by` hull recovery,
 //! owner bonus overlays on weapon columns, and zero-HP threshold removal events.
+//!
+//! **Homing Boundary:** scenario-candidate combat hydrator landed in
+//! `simthing-clausething` under a one-time owner-cleared exception for this rung
+//! only. Not precedent for Phase 5+ or future engine-crate scenario services.
 
 use std::collections::BTreeMap;
 
