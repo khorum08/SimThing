@@ -1,5 +1,6 @@
 pub mod diplomacy_post_hydration;
 pub mod fronts_post_hydration;
+pub mod palma_reach_post_hydration;
 pub mod eml_phase5;
 pub mod multitarget_replay;
 mod multitarget_replay_report;
@@ -16,6 +17,16 @@ pub mod weighted_mean;
 pub use diplomacy_post_hydration::{
     apply_diplomacy_post_hydration, DiplomacyHydrationError, BASELINE_BORDER_DISTRUST_SURPLUS,
     HOSTILITY_COMMITMENT_EVENT_KIND, HOSTILITY_DISTRUST_THRESHOLD, TP_DISTRUST_RESOURCE_KEY,
+};
+pub use palma_reach_post_hydration::{
+    apply_base_w_floor, apply_palma_reach_post_hydration, build_tp_palma_w_compose,
+    impedance_w_composition_oracle, palma_front_choke_col, palma_front_n_dims,
+    palma_front_source_col, palma_reach_dest_cell, palma_reach_gradient_probe,
+    PalmaPressureSeed, PalmaReachGradientStep, PalmaReachHydrationError,
+    TpPalmaReachAuthoringReport, TP_PALMA_BASE_W_FLOOR, TP_PALMA_D_OUTPUT_COL,
+    TP_PALMA_FEEDSTOCK_ID, TP_PALMA_MIN_PLUS_ITERATIONS, TP_PALMA_SUPPRESSION_COL,
+    TP_PALMA_W_OUTPUT_COL, TP_PALMA_W_WEIGHT_SUPPRESSION, TP_PALMA_W_WEIGHT_THREAT_CHOKE,
+    write_pressure_seeds_to_column,
 };
 pub use fronts_post_hydration::{
     apply_fronts_post_hydration, contested_border_settling_oracle, fronts_l3_urgency_col,
