@@ -100,12 +100,27 @@ it works and is reviewed — a *source* of admission candidates, never an author
 
 ### 0A.1 The physical fence — scenario candidate code lives in the `simthing-workshop` leaf, not the sealed core (binding, DA 2026-07-04)
 
-The `birth_track` ledger above is *lifecycle bookkeeping*; it does not, by itself, stop scenario code from
-being written into a sealed crate. The **structural** fence is the crate dependency arrow, and it is
-enforced by `cargo`, not by prose or review vigilance.
+The `birth_track` ledger above is *lifecycle bookkeeping*. Two distinct properties are at work here, and
+only one is structural — **do not conflate them**:
+
+- **Containment** (code *in* workshop cannot leak *up* into the sealed core) is **structural, compile-time**:
+  the crate dependency arrow, enforced by `cargo`. Solid.
+- **Homing** (new scenario code must be *written into* workshop, not into a sealed crate) is **NOT** enforced
+  by the arrow — the arrow contains workshop, it places no fence around `simthing-clausething`/`spec`. Homing
+  is enforced by **classification-at-review** plus a delta-scoped tripwire (`SPEC-LOWERER-KIND-READ` today,
+  kind-branching only; a broader net-new-engine-symbol tripwire is queued). Until that lands, an engine-crate
+  addition in a scenario PR is **classify-before-merge**, never silently landed.
 
 - **Home.** Every candidate *service / struct / function / heuristic* a proofing scenario needs beyond its
   authored `.clause` data lives in **`simthing-workshop`**, never in a sealed engine crate.
+- **The Homing Boundary — one-line classifier: "would this code exist if this scenario didn't?"** If **no**,
+  it is scenario candidate code → `simthing-workshop`. If **yes** — a genuinely generic, semantic-free
+  ClauseScript language/lowering surface *any* scenario would want (e.g. extending a generic decoder family
+  with a new generic form, as `TP-SHIPSIZE-DECODER-0` did) — a sealed engine crate is fine. **Not** allowed in
+  a sealed crate: any scenario-specific service/struct/fn/heuristic — an HP/Damage resolver, fleet-contact
+  logic, owner-bonus combat helper, zero-HP removal, an RF-child-depth workaround, or Terran/Pirate/Fleet/Cohort
+  semantic branching. *"Generic lowering, as prior TP rungs did it"* is **not** a licence: prior rungs predate
+  this doctrine; the classifier, not precedent, governs.
 - **Why it contains.** `simthing-workshop` is a **verified leaf**: nothing in the tree depends on it (it
   only depends *inward*). Game-semantic candidate code placed there therefore **cannot leak upward into the
   sealed core by linkage** — the seal law (`simthing-kernel` authority; no inbound arrows to the sealed
