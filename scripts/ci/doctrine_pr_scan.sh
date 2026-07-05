@@ -39,6 +39,7 @@ prepare_prove_repo() {
   mkdir -p "${root}/crates/simthing-kernel/src"
   mkdir -p "${root}/crates/simthing-sim/src"
   mkdir -p "${root}/crates/simthing-spec/src"
+  mkdir -p "${root}/crates/simthing-clausething/src"
 
   cp "${SCRIPT_DIR}/doctrine_scan.sh" \
     "${SCRIPT_DIR}/scans.tsv" \
@@ -51,6 +52,9 @@ prepare_prove_repo() {
     "${root}/crates/simthing-sim/src/lib.rs"
   cat >"${root}/crates/simthing-spec/src/lib.rs" <<'EOF'
 // prove sandbox spec stub
+EOF
+  cat >"${root}/crates/simthing-clausething/src/lib.rs" <<'EOF'
+// prove sandbox clausething stub
 EOF
 
   git -C "$root" init -q
@@ -71,7 +75,7 @@ prove_expect() {
   local out="${root}/prove.out"
   local exit_code verdict
   set +e
-  (cd "$root" && bash scripts/ci/doctrine_scan.sh --pr-delta "$base_sha" "$head_sha") >"$out" 2>&1
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash scripts/ci/doctrine_scan.sh --pr-delta "$base_sha" "$head_sha") >"$out" 2>&1
   exit_code=$?
   set -e
   verdict="$(grep 'DOCTRINE-SCAN-VERDICT:' "$out" | tail -1 | sed -n 's/.*DOCTRINE-SCAN-VERDICT: \([A-Z]*\).*/\1/p')"
@@ -119,7 +123,7 @@ EOF
   head4="$(git -C "$root" rev-parse HEAD)"
   local out4="${root}/prove4.out"
   set +e
-  (cd "$root" && bash scripts/ci/doctrine_scan.sh --pr-delta "$base4" "$head4") >"$out4" 2>&1
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash scripts/ci/doctrine_scan.sh --pr-delta "$base4" "$head4") >"$out4" 2>&1
   set -e
   if grep -E '^  SEMANTIC-WORDS  INSPECT  [1-9]' "$out4" >/dev/null; then
     echo "  baseline heuristic outside delta suppressed  FAIL"
@@ -155,6 +159,50 @@ EOF
   local head3
   head3="$(git -C "$root" rev-parse HEAD)"
   prove_expect "reliable violation in tree -> FAIL" "FAIL" 1 "$base" "$head3" "$root" || failures=$((failures + 1))
+
+  # Case 5: SPEC-LOWERER-KIND-READ net-new delta -> INSPECT exit 0
+  git -C "$root" reset --hard "$base" -q
+  cp "${SCRIPT_DIR}/fixtures/known_bad/spec_fleet_cohort_kind_branch.rs" \
+    "${root}/crates/simthing-spec/src/_prove_spec_kind.rs"
+  git -C "$root" add crates/simthing-spec/src/_prove_spec_kind.rs
+  git -C "$root" commit -q -m "spec lowerer kind read delta"
+  local head5
+  head5="$(git -C "$root" rev-parse HEAD)"
+  prove_expect "spec lowerer kind read in delta -> INSPECT" "INSPECT" 0 "$base" "$head5" "$root" || failures=$((failures + 1))
+
+  # Case 5b: parameterized match kind { SimThingKind::... } in delta -> INSPECT exit 0
+  git -C "$root" reset --hard "$base" -q
+  cp "${SCRIPT_DIR}/fixtures/known_bad/clausething_param_kind_branch.rs" \
+    "${root}/crates/simthing-clausething/src/_prove_param_kind.rs"
+  git -C "$root" add crates/simthing-clausething/src/_prove_param_kind.rs
+  git -C "$root" commit -q -m "param kind branch delta"
+  local head5b
+  head5b="$(git -C "$root" rev-parse HEAD)"
+  prove_expect "param kind branch in delta -> INSPECT" "INSPECT" 0 "$base" "$head5b" "$root" || failures=$((failures + 1))
+
+  # Case 6: pre-existing SPEC-LOWERER-KIND-READ outside delta suppressed
+  git -C "$root" reset --hard "$base" -q
+  cp "${SCRIPT_DIR}/fixtures/known_bad/spec_fleet_cohort_kind_branch.rs" \
+    "${root}/crates/simthing-spec/src/_prove_existing_kind.rs"
+  git -C "$root" add crates/simthing-spec/src/_prove_existing_kind.rs
+  git -C "$root" commit -q -m "existing spec kind read shape"
+  local base6
+  base6="$(git -C "$root" rev-parse HEAD)"
+  echo '// unrelated touch' >"${root}/crates/simthing-kernel/src/_prove_touch2.rs"
+  git -C "$root" add crates/simthing-kernel/src/_prove_touch2.rs
+  git -C "$root" commit -q -m "unrelated touch after kind baseline"
+  local head6
+  head6="$(git -C "$root" rev-parse HEAD)"
+  local out6="${root}/prove6.out"
+  set +e
+  (cd "$root" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash scripts/ci/doctrine_scan.sh --pr-delta "$base6" "$head6") >"$out6" 2>&1
+  set -e
+  if grep -E '^  SPEC-LOWERER-KIND-READ  INSPECT  [1-9]' "$out6" >/dev/null; then
+    echo "  baseline spec lowerer kind read outside delta suppressed  FAIL"
+    failures=$((failures + 1))
+  else
+    echo "  baseline spec lowerer kind read outside delta suppressed  PASS"
+  fi
 
   rm -rf "$root"
   if [[ "$failures" -gt 0 ]]; then

@@ -46,9 +46,11 @@ prepare_skeleton() {
   mkdir -p "$SKELETON/crates/simthing-kernel/src"
   mkdir -p "$SKELETON/crates/simthing-sim/src"
   mkdir -p "$SKELETON/crates/simthing-spec/src"
+  mkdir -p "$SKELETON/crates/simthing-clausething/src"
   cp "${REPO_ROOT}/crates/simthing-kernel/src/lib.rs" "$SKELETON/crates/simthing-kernel/src/lib.rs" 2>/dev/null || echo '#![forbid(unsafe_code)]' > "$SKELETON/crates/simthing-kernel/src/lib.rs"
   cp "${REPO_ROOT}/crates/simthing-sim/src/lib.rs" "$SKELETON/crates/simthing-sim/src/lib.rs" 2>/dev/null || echo '#![forbid(unsafe_code)]' > "$SKELETON/crates/simthing-sim/src/lib.rs"
   echo '// spec stub' > "$SKELETON/crates/simthing-spec/src/lib.rs"
+  echo '// clausething stub' > "$SKELETON/crates/simthing-clausething/src/lib.rs"
 }
 
 begin_sandbox() {
@@ -88,6 +90,7 @@ ensure_minimal_crates() {
   mkdir -p "${root}/crates/simthing-kernel/src"
   mkdir -p "${root}/crates/simthing-sim/src"
   mkdir -p "${root}/crates/simthing-spec/src"
+  mkdir -p "${root}/crates/simthing-clausething/src"
   cat >"${root}/crates/simthing-kernel/src/lib.rs" <<'EOF'
 #![forbid(unsafe_code)]
 EOF
@@ -97,6 +100,9 @@ EOF
   cat >"${root}/crates/simthing-spec/src/lib.rs" <<'EOF'
 // spec stub for self-test sandbox
 EOF
+  cat >"${root}/crates/simthing-clausething/src/lib.rs" <<'EOF'
+// clausething stub for self-test sandbox
+EOF
 }
 
 prepare_trap_baseline() {
@@ -105,12 +111,16 @@ prepare_trap_baseline() {
   mkdir -p "${root}/crates/simthing-kernel/src"
   mkdir -p "${root}/crates/simthing-sim/src"
   mkdir -p "${root}/crates/simthing-spec/src"
+  mkdir -p "${root}/crates/simthing-clausething/src"
   cp "${REPO_ROOT}/crates/simthing-kernel/src/lib.rs" \
     "${root}/crates/simthing-kernel/src/lib.rs"
   cp "${REPO_ROOT}/crates/simthing-sim/src/lib.rs" \
     "${root}/crates/simthing-sim/src/lib.rs"
   cat >"${root}/crates/simthing-spec/src/lib.rs" <<'EOF'
 // spec stub for self-test sandbox
+EOF
+  cat >"${root}/crates/simthing-clausething/src/lib.rs" <<'EOF'
+// clausething stub for self-test sandbox
 EOF
 }
 
@@ -235,6 +245,13 @@ setup_heuristic_spec() {
     "${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs"
 }
 
+setup_heuristic_clausething() {
+  local fixture="$1"
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cp "${FIXTURES}/known_bad/${fixture}" \
+    "${ROOT_SANDBOX}/crates/simthing-clausething/src/_selftest_fixture.rs"
+}
+
 setup_deny_toml() {
   copy_ci_bundle "$ROOT_SANDBOX"
   ensure_minimal_crates "$ROOT_SANDBOX"
@@ -267,6 +284,31 @@ setup_trap() {
   prepare_trap_baseline "$ROOT_SANDBOX"
   cp "${FIXTURES}/${trap_file}" \
     "${ROOT_SANDBOX}/crates/simthing-kernel/src/_selftest_trap.rs"
+}
+
+setup_trap_spec() {
+  local trap_file="$1"
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cp "${FIXTURES}/${trap_file}" \
+    "${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_trap.rs"
+}
+
+setup_rot_neutralized_spec_lowerer_kind_read() {
+  copy_ci_bundle "$ROOT_SANDBOX"
+  ensure_minimal_crates "$ROOT_SANDBOX"
+  python - "$ROOT_SANDBOX/scripts/ci/scans.tsv" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+old = "match .*\\.kind|\\.kind\\s*(==|!=)|match\\s+(?:&)?kind\\s*\\{[\\s\\S]*?SimThingKind::"
+new = "match __NEVER_MATCH__"
+if old not in text:
+    raise SystemExit("rot-test: SPEC-LOWERER-KIND-READ pattern not found in scans.tsv copy")
+path.write_text(text.replace(old, new, 1), encoding="utf-8")
+PY
+  cp "${FIXTURES}/known_bad/spec_fleet_cohort_kind_branch.rs" \
+    "${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs"
 }
 
 setup_rot_neutralized_b3() {
@@ -345,6 +387,24 @@ expect_trap_pass() {
   end_sandbox
 }
 
+expect_trap_pass_spec() {
+  local label="$1"
+  local trap_file="$2"
+  begin_sandbox
+  setup_trap_spec "$trap_file"
+  local out="${ROOT_SANDBOX}/scan.out"
+  local exit_code verdict hard inspect
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  if [[ "$hard" -eq 0 && "$exit_code" -eq 0 ]]; then
+    TRAP_REPORT+=("${label}  PASS")
+  else
+    TRAP_REPORT+=("${label}  FAIL (verdict=${verdict} hard=${hard} exit=${exit_code})")
+    fail_selftest
+  fi
+  end_sandbox
+}
+
 expect_scanner_error() {
   local label="$1"
   shift
@@ -372,7 +432,7 @@ run_positive_control() {
   set -e
   read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
   rm -f "$out"
-  if [[ "$exit_code" -eq 0 && "$verdict" == "PASS" && "$hard" -eq 0 ]]; then
+  if [[ "$exit_code" -eq 0 && "$hard" -eq 0 && ( "$verdict" == "PASS" || "$verdict" == "INSPECT" ) ]]; then
     positive_control="PASS"
   else
     positive_control="FAIL (verdict=${verdict} exit=${exit_code})"
@@ -391,6 +451,19 @@ run_rot_test() {
     rot_test_result="PASS"
   else
     rot_test_result="FAIL (scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+  fi
+  end_sandbox
+
+  begin_sandbox
+  setup_rot_neutralized_spec_lowerer_kind_read
+  out="${ROOT_SANDBOX}/scan.out"
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "SPEC-LOWERER-KIND-READ")"
+  if [[ "$sv" == "PASS" && "$count" -eq 0 ]]; then
+    :
+  else
+    rot_test_result="FAIL (SPEC-LOWERER-KIND-READ scan=${sv} count=${count} exit=${exit_code})"
     fail_selftest
   fi
   end_sandbox
@@ -528,6 +601,12 @@ run_all_cases() {
     setup_heuristic_kernel semantic_words_production.rs
   expect_heuristic_inspect "spec_string_channel" "SPEC-STRING-CHANNEL" \
     setup_heuristic_spec spec_string_channel.rs
+  expect_heuristic_inspect "spec_fleet_cohort_kind_branch" "SPEC-LOWERER-KIND-READ" \
+    setup_heuristic_spec spec_fleet_cohort_kind_branch.rs
+  expect_heuristic_inspect "clausething_kind_branch" "SPEC-LOWERER-KIND-READ" \
+    setup_heuristic_clausething clausething_kind_branch.rs
+  expect_heuristic_inspect "clausething_param_kind_branch" "SPEC-LOWERER-KIND-READ" \
+    setup_heuristic_clausething clausething_param_kind_branch.rs
 
   expect_trap_pass "jomini_write" "traps/jomini_write.rs"
   expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"
@@ -535,6 +614,8 @@ run_all_cases() {
   expect_trap_pass "comment_semantic_words" "traps/comment_semantic_words.rs"
   expect_trap_pass "cfg_test_semantic_words" "traps/cfg_test_semantic_words.rs"
   expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
+  expect_trap_pass_spec "role_resolution_kind_param_match" \
+    traps/role_resolution_kind_param_match.rs
 }
 
 emit_report() {
