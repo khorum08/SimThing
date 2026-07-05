@@ -30,6 +30,8 @@ if [[ "$body" =~ ^/seal-proof([[:space:]]|$) ]] || [[ "$body" == /seal-proof* ]]
   cmd="seal-proof"
 elif [[ "$body" =~ ^/triage[[:space:]] ]]; then
   cmd="triage"
+elif [[ "$body" =~ ^/clearance([[:space:]]|$) ]] || [[ "$body" == /clearance* ]]; then
+  cmd="clearance"
 else
   echo "COMMAND: ignore"
   exit 0
@@ -59,4 +61,9 @@ if [[ "$cmd" == "triage" ]]; then
   echo "COMMAND: triage-invalid"
   echo "FORMAT: /triage <scan-id> <delete|green|escalate> <reason>"
   exit 1
+fi
+
+if [[ "$cmd" == "clearance" ]]; then
+  echo "COMMAND: clearance"
+  exit 0
 fi

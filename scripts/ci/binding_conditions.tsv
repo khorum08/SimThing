@@ -1,0 +1,5 @@
+rung	condition	set_by	status	promotion_blocker
+TP-PALMA-REACH-0	phase-6.2-fleet-movement-blocked-until-6.1-da-clearance	DA-2026-07-05	discharged	TP-PALMA-REACH-0
+TP-FLEET-MOVEMENT-0	B1-7x7-horizon-3-minimum	DA-2026-07-05	discharged	TP-FLEET-MOVEMENT-0
+TP-FLEET-MOVEMENT-0	B2-multi-step-gradient-movement	DA-2026-07-05	discharged	TP-FLEET-MOVEMENT-0
+TP-FLEET-MOVEMENT-0	B3-larger-theater-gpu-cpu	DA-2026-07-05	discharged	TP-FLEET-MOVEMENT-0

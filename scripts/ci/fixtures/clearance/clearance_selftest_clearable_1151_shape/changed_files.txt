@@ -1,0 +1,4 @@
+crates/simthing-workshop/src/fronts_post_hydration.rs
+crates/simthing-workshop/tests/tp_fronts_authoring_0.rs
+docs/tests/tp_fronts_authoring_0_results.md
+scripts/ci/test_inventory.tsv

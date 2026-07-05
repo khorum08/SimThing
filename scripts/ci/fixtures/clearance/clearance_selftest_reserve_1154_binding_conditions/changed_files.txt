@@ -1,0 +1,5 @@
+crates/simthing-workshop/src/fleet_movement_post_hydration.rs
+crates/simthing-workshop/src/fronts_post_hydration.rs
+crates/simthing-workshop/tests/tp_fleet_movement_0.rs
+docs/tests/tp_fleet_movement_0_results.md
+scripts/ci/test_inventory.tsv

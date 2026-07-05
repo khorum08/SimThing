@@ -141,6 +141,10 @@ jobs:
             echo "triage_reason=$(echo "$CMD" | sed -n 's/.*reason=\(.*\)/\1/p')" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [[ "$CMD" == clearance* ]]; then
+            echo "command=clearance" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "command=ignore" >> "$GITHUB_OUTPUT"
 
   dispatch-seal-proof:
@@ -247,3 +251,67 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr comment "${{ needs.parse-command.outputs.pr_number }}" --body "FORMAT: /triage <scan-id> <delete|green|escalate> <reason>"
+
+  clearance-run:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'clearance' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Run clearance router
+        id: clearance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CLEARANCE_LEDGER_APPEND: "0"
+        run: |
+          set -euo pipefail
+          bash scripts/ci/clearance_check.sh --pr "${{ needs.parse-command.outputs.pr_number }}" > clearance-report.txt
+          VERDICT="$(grep '^CLEARANCE-VERDICT:' clearance-report.txt | tail -n 1)"
+          CLASS="$(awk -F'\t' 'NR>1 && $1 ~ /tp-/ {print $1; exit}' scripts/ci/precedented_classes.tsv || echo unknown)"
+          {
+            echo "pr: ${{ needs.parse-command.outputs.pr_number }}"
+            echo "head_sha: ${{ needs.parse-command.outputs.head_sha }}"
+            echo "base_sha: ${{ needs.parse-command.outputs.base_sha }}"
+            echo "workflow_run_id: ${{ github.run_id }}"
+            echo "${VERDICT}"
+          } >> clearance-report.txt
+          echo "verdict=${VERDICT}" >> "$GITHUB_OUTPUT"
+
+      - name: Post clearance verdict comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/ci/doctrine_exec_clearance_comment.sh \
+            "${{ needs.parse-command.outputs.pr_number }}" clearance-report.txt
+
+      - name: Append clearance ledger row
+        run: |
+          VERDICT="$(grep '^CLEARANCE-VERDICT:' clearance-report.txt | tail -n 1)"
+          FILES="$(git diff --name-only "${{ needs.parse-command.outputs.base_sha }}" "${{ needs.parse-command.outputs.head_sha }}")"
+          CLASS="unknown"
+          if echo "$FILES" | grep -q 'tp_fleet_movement_0.rs'; then CLASS="tp-fleet-movement-rung"
+          elif echo "$FILES" | grep -q 'tp_palma_reach_0.rs'; then CLASS="tp-palma-reach-rung"
+          elif echo "$FILES" | grep -q 'tp_fronts_authoring_0.rs'; then CLASS="tp-fronts-authoring-rung"
+          elif echo "$FILES" | grep -q 'tp_diplomacy_flow_0.rs'; then CLASS="tp-diplomacy-flow-rung"
+          fi
+          bash scripts/ci/doctrine_exec_clearance.sh \
+            "$VERDICT" "$CLASS" \
+            "${{ needs.parse-command.outputs.pr_number }}" \
+            "${{ needs.parse-command.outputs.head_sha }}"
+
+      - name: Commit clearance ledger row to PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/ci/clearance_ledger.tsv
+          git commit -m "clearance: ledger row for PR ${{ needs.parse-command.outputs.pr_number }} (OH-CLEARANCE-ROUTER-0)"
+          git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"

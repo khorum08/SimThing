@@ -1,0 +1,6 @@
+suspended class fixture
+
+tested_code_sha: deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+coverage_basis: PASS
+
+DOCTRINE-TESTS-VERDICT: PASS

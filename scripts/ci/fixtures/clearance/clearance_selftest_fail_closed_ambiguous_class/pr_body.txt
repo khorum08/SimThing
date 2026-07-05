@@ -1,0 +1,6 @@
+ambiguous class fixture
+
+tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
+coverage_basis: PASS
+
+DOCTRINE-TESTS-VERDICT: PASS
