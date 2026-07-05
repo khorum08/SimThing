@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1164](https://github.com/khorum08/SimThing/pull/1164) |
 | Branch | `oh-clearance-router-0r-empty-diff` |
-| Head | `faba798141dda0d14784466706663977e3f9cc48` |
+| Head | `1ce659b335f5b818cb6ba3fa9c980621fa274a6c` (code proofs @ `faba7981`) |
 | Base | `master` @ `d4969f1c8` |
 | Rung | `OH-CLEARANCE-ROUTER-0R` |
 
@@ -94,11 +94,12 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415 selftest=SKIPPED
 - Pre-existing `SPEC-LOWERER-KIND-READ` INSPECT(415) unchanged — not introduced by this PR.
 - `OH-ORIENTATION-DIGEST-0` (rung 2) not started.
 
-### GHA (post-push @ `faba7981`)
+### GHA
 
-| Check | Result | Run |
-|---|---|---|
-| Doctrine Scan | **PASS** | [28758076398](https://github.com/khorum08/SimThing/actions/runs/28758076398) |
+| Check | Result | Run | Head |
+|---|---|---|---|
+| Doctrine Scan (code) | **PASS** | [28758076398](https://github.com/khorum08/SimThing/actions/runs/28758076398) | `faba7981` |
+| Doctrine Scan (docs refresh) | **PASS** | [28758489164](https://github.com/khorum08/SimThing/actions/runs/28758489164) | `1ce659b3` |
 
 Steps: digest freshness PASS; Doctrine self-test PASS; PR delta scan PASS; triage spam check PASS.
 
@@ -106,7 +107,7 @@ Steps: digest freshness PASS; Doctrine self-test PASS; PR delta scan PASS; triag
 
 | Field | Value |
 |---|---|
-| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS, run 28758076398 |
+| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS, runs 28758076398 + 28758489164 |
 | Triage entries | none |
 | Risk class | gate-wiring |
 | Falsification check | Remove `target_mode.txt` from empty-diff fixture → novelty regression; remove one ledger row → drift gate FAIL |
