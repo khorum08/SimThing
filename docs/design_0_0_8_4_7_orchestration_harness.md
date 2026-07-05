@@ -28,7 +28,7 @@ context dilution across relays, incentive gradient toward "quiet scanner," prose
   freshness-gated digest (`doctrine_scan.sh`/`scans.tsv`/`doctrine_selftest.sh`/`gen_digest.sh`) — and
   **consolidates** the existing ~20-script/10-TSV surface rather than adding a framework beside it.
 
-## 3. The four mechanisms
+## 3. The mechanisms
 
 **M1 — Clearance Router (the spine).** `scripts/ci/clearance_check.sh <PR|range>` emits
 `CLEARANCE-VERDICT: ORCHESTRATOR-CLEARABLE | DA-RESERVE(reason) | FAIL(remedy)`. Mechanizes the §5A
@@ -38,6 +38,18 @@ binding-conditions lookup). Data: `precedented_classes.tsv` (class_id | scope_gl
 requirements | status) and `binding_conditions.tsv` (rung | condition | set_by | status) — DA conditions
 become rows, not DA memory. Routing drift becomes impossible, not discouraged. Novelty always has an
 exit: DA-RESERVE and the breakthrough valve are verdicts, never blocks.
+
+*M1 harness laws (final-pass, 2026-07-05):* (a) **Fail-closed** — malformed TSV, script error, or
+ambiguous class resolution → `DA-RESERVE(harness-error)`, never a silent CLEARABLE; selftest fixtures
+must prove it. (b) **Self-application** — the harness's own TSVs and scripts are **gate-wiring**: edits
+to them are never orchestrator-clearable (§0.9.7 exclusion made explicit), and the router hard-refuses to
+clear a PR that touches its own surface. (c) **Kill-switch as data** — flipping a class row to
+`status=suspended` makes the router return `DA-RESERVE(class-suspended)`; revoking delegated authority is
+a one-row DA edit, not a code change. (d) **Condition-discharge symmetry** — the PR that discharges a
+binding condition flips its row `status` in that same PR (same law as rule expiry; the register never
+accretes stale rows). (e) **Verdict ledger** — every GHA-side verdict appends one machine-parseable row
+(`verdict | class | pr | sha | date | sketch?`) to `scripts/ci/clearance_ledger.tsv`: the DA spot-audit
+sampling surface, and the closeout telemetry that turns this track's claimed savings into measured ones.
 
 **M2 — Orientation Digest (kill the reading list).** `gen_orientation.sh` generates
 `docs/orchestrator_orientation.md` from the live TSVs (clearance ladder state, precedented classes, DA
@@ -51,6 +63,13 @@ schema that orchestration already converged on: identity block, `tested_code_sha
 Homing Boundary classification table, lifecycle posture, load-bearing proofs, graduation routing.
 Malformed relay → rejected with the missing block named (FAIL-as-teacher). Advisory first, blocking after
 one clean cycle. The anti-kabuki template becomes a gate, not a memory.
+
+*LED instrumentation (final-pass — the parked pass@1 study becomes measurable for free):* the lint
+**recognizes** the optional, DA/orchestrator-authored `§5.1 design-space sketch` block
+(`handoff_template.md §5.1`, probationary since the LED study, arXiv:2602.01698), and the M1 verdict
+ledger **tags** rungs that carried one (`sketch?` column). At closeout, 0R-rates with vs. without the
+sketch are a queryable comparison — the probationary practice is promoted or retired on **evidence**, not
+kept as unfalsifiable prose. Never mandated; instrumented.
 
 **M4 — Rule & prose expiry (the apparatus shrinks by one law).** Extend the lifecycle-expiry pattern from
 tests to the apparatus itself: (a) `rule_expiry_check.sh` — cadence sweep listing scan/standard rows whose
@@ -141,13 +160,13 @@ GHA-side).** GHA runners are headless Linux: **no GPU adapter, no X11/ALSA/winit
 
 | # | Rung | Deliverable | Exit proof |
 |---|---|---|---|
-| 0 | `OH-CLEARANCE-ROUTER-0` | `clearance_check.sh` + `precedented_classes.tsv` + `binding_conditions.tsv` (backfill: PALMA→6.2 conditions as the first rows) + selftest fixtures (clearable / reserve / fail cases) | Router reproduces the four hand-run DA verdicts of 2026-07-05 (#1150–#1152 CLEARABLE-shaped, #1154 DA-RESERVE:binding-conditions); selftest PASS; doctrine_scan PASS |
-| 1 | `OH-RELAY-LINT-0` | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | Lints the #1154 relay PASS; three mutated relays (missing coverage_basis / classification / routing) FAIL with named block; selftest PASS |
+| 0 | `OH-CLEARANCE-ROUTER-0` | `clearance_check.sh` + `precedented_classes.tsv` + `binding_conditions.tsv` (backfill: PALMA→6.2 conditions as the first rows) + `clearance_ledger.tsv` emission + selftest fixtures (clearable / reserve / fail-closed / self-application-refusal / suspended-class cases) | Router reproduces the four hand-run DA verdicts of 2026-07-05 (#1150–#1152 CLEARABLE-shaped, #1154 DA-RESERVE:binding-conditions); malformed-TSV fixture → DA-RESERVE(harness-error); PR touching harness surface → refused; suspended class → DA-RESERVE(class-suspended); ledger row appended per verdict; selftest PASS; doctrine_scan PASS |
+| 1 | `OH-RELAY-LINT-0` | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | Lints the #1154 relay PASS; three mutated relays (missing coverage_basis / classification / routing) FAIL with named block; optional §5.1 sketch block recognized + ledger-tagged (LED instrumentation); selftest PASS |
 | 2 | `OH-ORIENTATION-DIGEST-0` | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshness gate | Digest regenerates byte-identical from TSVs; stale digest hard-FAILs like `sanctioned_surface.md`; orientation content covers the §5A operational contract |
 | 2b | `OH-COLD-START-0` (after 2) | `orient.sh` (role-keyed, generated from the M2 TSVs, `--since` delta mode, `ORIENT-RECEIPT` emission); receipt embedded in `orchestrator_orientation.md`; receipt validation in `relay_lint.sh` + router; entry-file stubification (≤5-line pointer stubs) + stub scan; handoff-template spine→receipt amendment | Cold agent oriented by one command; receipt round-trips through a relay and validates; stale receipt → `RE-ORIENT` with named delta; mutated/missing receipt FAILs lint; entry stubs pass the stub scan; handoff template carries receipt requirement in place of the verbatim spine |
 | 2c | `OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key ADRs, incl. core §7 with map/movement trigger domain); quote-verbatim scan on generated docs; `ANCHOR-ACK` requirement in relay lint keyed to trigger domains; anchor hashes folded into `ORIENT-RECEIPT`; `/anchor` comment command | Digest quoting a mutated anchor sentence → freshness FAIL; a map-domain relay without `ANCHOR-ACK: movement-front@…` → lint FAIL; anchor edit → all receipts stale with the anchor named; `/anchor movement-front` posts core §7 verbatim into a PR thread |
 | 3 | `OH-TRIAGE-INDUCTION-0` | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctrine_exec_triage.sh` strictness (justification mandatory); backfill TP-COMBAT-ARENA-0 GameSession rows | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill rows landed |
-| 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned pointers |
+| 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned pointers; closeout telemetry readout from `clearance_ledger.tsv` (clears vs relays vs RE-ORIENTs; §5.1-sketch 0R comparison for the LED promotion/retirement call) |
 | 5 | `OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
 **Delivery law (M7, applies to every rung):** each rung's surface ships dual-mode — local script **and**
