@@ -8,11 +8,11 @@
 
 | Field | Value |
 |---|---|
-| PR | (pending push) |
+| PR | [#1154](https://github.com/khorum08/SimThing/pull/1154) |
 | Branch | `tp-fleet-movement-0` |
 | Base | `origin/master` @ `335f55c052920a721f18357dca2ce9a594db11db` |
 | Tested code SHA | `5b03bfb1948d315b49a14a97cbe38f60ef08112d` |
-| Current PR head | `267726282fd84c1052710b8d9abc0683844e2f7e` |
+| Current PR head | `c95ff92e0734c14372214baaa29031ac7d1baeef` |
 | Rung | Phase 6.2 `TP-FLEET-MOVEMENT-0` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
 
@@ -105,7 +105,7 @@ After each `fleet_movement_gradient_step`:
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
-current_pr_head: 267726282fd84c1052710b8d9abc0683844e2f7e
+current_pr_head: c95ff92e0734c14372214baaa29031ac7d1baeef
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_fleet_movement_0
 owner_local: true
