@@ -170,6 +170,16 @@ EOF
   head5="$(git -C "$root" rev-parse HEAD)"
   prove_expect "spec lowerer kind read in delta -> INSPECT" "INSPECT" 0 "$base" "$head5" "$root" || failures=$((failures + 1))
 
+  # Case 5b: parameterized match kind { SimThingKind::... } in delta -> INSPECT exit 0
+  git -C "$root" reset --hard "$base" -q
+  cp "${SCRIPT_DIR}/fixtures/known_bad/clausething_param_kind_branch.rs" \
+    "${root}/crates/simthing-clausething/src/_prove_param_kind.rs"
+  git -C "$root" add crates/simthing-clausething/src/_prove_param_kind.rs
+  git -C "$root" commit -q -m "param kind branch delta"
+  local head5b
+  head5b="$(git -C "$root" rev-parse HEAD)"
+  prove_expect "param kind branch in delta -> INSPECT" "INSPECT" 0 "$base" "$head5b" "$root" || failures=$((failures + 1))
+
   # Case 6: pre-existing SPEC-LOWERER-KIND-READ outside delta suppressed
   git -C "$root" reset --hard "$base" -q
   cp "${SCRIPT_DIR}/fixtures/known_bad/spec_fleet_cohort_kind_branch.rs" \

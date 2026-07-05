@@ -2,7 +2,7 @@
 use simthing_core::SimThingKind;
 
 pub fn planet_non_grid_child_kind_label(kind: &SimThingKind) -> String {
-    match kind {
+    match kind { // role-resolution-exclude-site
         SimThingKind::Cohort => "cohort".into(),
         SimThingKind::Fleet => "fleet".into(),
         SimThingKind::Station => "station".into(),

@@ -33,7 +33,7 @@ forbidden shape is scenario-specific gameplay branching in production spec/lower
 | Scan ID | `SPEC-LOWERER-KIND-READ` |
 | Severity | `HEURISTIC` |
 | Targets | `crates/simthing-{spec,clausething}/src/**` |
-| Pattern | `match .*\.kind` \| `\.kind\s*(==|!=)` |
+| Pattern | `match .*\.kind` \| `\.kind\s*(==|!=)` \| parameterized `match kind { … SimThingKind:: … }` (multiline) |
 | Verdict | `INSPECT` only (exit 0) |
 | Data home | `scripts/ci/scans.tsv` row 18 |
 
@@ -46,8 +46,8 @@ illegal**.
 ## Delta-scoping
 
 PR CI (`doctrine_pr_scan.sh` / `doctrine_scan.sh --pr-delta`) flags only diff-introduced/touched hits.
-Pre-existing baseline debt is **not** re-flagged per PR. Whole-tree mode remains for master positive control,
-baseline inventory, and self-test fixture validation.
+Pre-existing baseline debt is **not** re-flagged per PR. Whole-tree mode is for backlog audit / positive control
+only — **not** the PR-delta proof gate for this rung.
 
 ## Closed-lowerer weighting
 
@@ -81,13 +81,27 @@ git grep -nE "match .*\\.kind|\\.kind\\s*(==|!=)|SimThingKind::" -- crates/simth
 | Metric | Value |
 |---|---|
 | Label | pre-existing spec/lowering kind-read triage backlog |
-| Line count | **163** |
+| Line count | **163** (handoff grep inventory; not a PR-delta proof gate) |
 | Files | **16** |
 | Classification | spec admission/role-resolution (planet/grid, spatial root, RF runtime checks, designer mobility, ingestion diagnostics); clausething lowerer construction + structural lattice validation + jomini error kind matching |
 | Fixed here? | **no** — backlog only, not violations |
 
-Narrower scan pattern (`match .*\.kind|\.kind\s*(==|!=)`) matches **91** production lines across **14** files;
-recorded as the scan's whole-tree baseline surface (INSPECT on master push, not per-PR noise).
+Whole-tree baseline backlog **exists and was recorded**; exact whole-tree INSPECT count is **not** a PR-delta
+proof gate for this rung or 0R.
+
+## 0R repair (CI-SCAN-SPEC-KIND-COVERAGE-0R — short-scan revision)
+
+**Path A — branch-like `SimThingKind::` coverage implemented.**
+
+- Extended `SPEC-LOWERER-KIND-READ` pattern with multiline
+  `match\s+(?:&)?kind\s*\{[\s\S]*?SimThingKind::` (requires `SimThingKind::` inside the match block; avoids
+  false positives on non-`SimThingKind` `match kind` sites).
+- Added `known_bad/clausething_param_kind_branch.rs`, selftest case, and PR-delta prove case (5b).
+- Legitimate role-resolution trap uses `role-resolution-exclude-site` marker (data-driven exclude list entry in
+  `scans.tsv`; growable by triage).
+- Removed conflicting narrow whole-tree count claims; authoritative 0R proof is PR-delta prove, not
+  `doctrine_scan.sh` whole-tree ritual.
+- Scope ledger corrected (see below).
 
 ## Fixtures / self-test
 
@@ -95,57 +109,53 @@ recorded as the scan's whole-tree baseline surface (INSPECT on master push, not 
 |---|---|---|
 | `fixtures/known_bad/spec_fleet_cohort_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
 | `fixtures/known_bad/clausething_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
-| `fixtures/traps/role_resolution_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | PASS (no `.kind` field branch) |
+| `fixtures/known_bad/clausething_param_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
+| `fixtures/traps/role_resolution_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | PASS (`role-resolution-exclude-site`) |
 | Rot test | neutralized pattern → selftest FAIL | wired |
-| Positive control | whole-tree hard FAIL=0; INSPECT allowed when no hard failures | wired |
 
-## Proof commands
+## Proof commands (0R short path)
+
+**Authoritative 0R proof — PR-delta only; no whole-tree `doctrine_scan.sh`:**
+
+```bash
+bash scripts/ci/doctrine_pr_scan.sh --prove-delta
+bash scripts/ci/gen_digest.sh --check
+git diff --check origin/master...HEAD
+```
+
+**Selftest rerun (fixture/selftest wiring changed in 0R):**
 
 ```bash
 bash scripts/ci/doctrine_selftest.sh
-# DOCTRINE-SELFTEST-VERDICT: PASS (SPEC-LOWERER-KIND-READ fixtures + rot + role-resolution trap PASS)
-
-bash scripts/ci/doctrine_scan.sh
-# SPEC-LOWERER-KIND-READ  INSPECT  90  (whole-tree baseline backlog surface)
-# TEST-INVENTORY-DRIFT  PASS  0
-# DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=90 selftest=SKIPPED
-
-bash scripts/ci/gen_digest.sh --check
-# gen_digest --check: PASS
-
-bash scripts/ci/doctrine_pr_scan.sh --prove-delta
-# PR-delta proof: PASS (net-new spec kind branch -> INSPECT; baseline outside delta suppressed)
-
-git diff --check origin/master...HEAD
-# (recorded at commit — no conflict markers)
 ```
 
-`cargo run` / workspace cargo: **not run** (forbidden).
+**Explicitly not run for 0R:**
 
-**Stock-gate note:** three fixture ledger rows added to `scripts/ci/test_inventory.tsv` so
-`TEST-INVENTORY-DRIFT` remains PASS after new `scripts/ci/fixtures/**` files (required by the stock gate;
-not product/test corpus change).
+```bash
+bash scripts/ci/doctrine_scan.sh   # whole-tree — backlog audit only, not PR-delta proof gate
+cargo run / cargo check / cargo test
+```
+
+Raw terminal output pasted in commit message / PR body (no PowerShell stdout/stderr redirection).
 
 ## Scope ledger
+
+Docs + scan data + fixtures + scan harness proof extensions (`doctrine_pr_scan.sh`, `doctrine_selftest.sh`) +
+fixture inventory ledger rows (`test_inventory.tsv`) + regenerated sanctioned-surface digest only.
 
 | Path class | Touched? |
 |---|---|
 | `crates/**` | no |
-| TP files (`docs/tests/tp_*`, TP scenario code) | no |
+| TP files | no |
 | `.github/**` | no |
 | `doctrine_exec_profiles.tsv` | no |
 | `test_lifecycle_tracks.tsv` | no |
 | `simthing-workshop` code | no |
-| docs + scans + fixtures only | yes |
-
-Allowed edits: `scripts/ci/scans.tsv`, `scripts/ci/fixtures/**`, `scripts/ci/doctrine_selftest.sh`,
-`scripts/ci/doctrine_pr_scan.sh`, `docs/design_0_0_8_4_6_ci_scaffolding.md`, `docs/ci_screening_surface.md`,
-`docs/tests/current_evidence_index.md`, `docs/sanctioned_surface.md` (gen_digest output),
-`docs/tests/ci_scan_spec_kind_coverage_0_results.md`.
+| registry / `testthing/` scaffold | no |
 
 ## Graduation routing
 
-- `CI-SCAN-SPEC-KIND-COVERAGE-0` implementation complete pending DA review
+- `CI-SCAN-SPEC-KIND-COVERAGE-0` + `0R` implementation complete pending DA review
 - **PROBATION / DA-OWNER REVIEW**
 - Gate-state / DA-held
 - Not self-mergeable

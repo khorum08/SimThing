@@ -301,7 +301,7 @@ import sys
 from pathlib import Path
 path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
-old = "match .*\\.kind|\\.kind\\s*(==|!=)"
+old = "match .*\\.kind|\\.kind\\s*(==|!=)|match\\s+(?:&)?kind\\s*\\{[\\s\\S]*?SimThingKind::"
 new = "match __NEVER_MATCH__"
 if old not in text:
     raise SystemExit("rot-test: SPEC-LOWERER-KIND-READ pattern not found in scans.tsv copy")
@@ -605,6 +605,8 @@ run_all_cases() {
     setup_heuristic_spec spec_fleet_cohort_kind_branch.rs
   expect_heuristic_inspect "clausething_kind_branch" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_clausething clausething_kind_branch.rs
+  expect_heuristic_inspect "clausething_param_kind_branch" "SPEC-LOWERER-KIND-READ" \
+    setup_heuristic_clausething clausething_param_kind_branch.rs
 
   expect_trap_pass "jomini_write" "traps/jomini_write.rs"
   expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"

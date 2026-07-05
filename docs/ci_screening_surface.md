@@ -182,7 +182,8 @@ Workflows: `.github/workflows/doctrine-exec.yml` (`CI-B-GH-CPU-0`) + `.github/wo
   type/admission boundary is the §1.2 promotion path.
 - **`SPEC-LOWERER-KIND-READ` (CI-SCAN-SPEC-KIND-COVERAGE-0).** HEURISTIC tripwire over
   `crates/simthing-{spec,clausething}/src/**` for drift-shaped `.kind` branching (`match .*\.kind`,
-  `.kind ==/!=`). **Not** a ban on all spec/lowering kind reads — legitimate role-resolution may remain.
+  `.kind ==/!=`, parameterized `match kind { … SimThingKind:: … }`). **Not** a ban on all spec/lowering kind
+  reads — legitimate role-resolution may remain (`role-resolution-exclude-site` marker + triage exclude list).
   Closed-lowerer hits carry **higher suspicion** (lowerers are constitutionally closed unless a DA amendment
   names them). Delta-scoped in PR CI; whole-tree baseline is triage backlog only. Promotion blocker: retire when
   spec-layer role resolution is role-keyed by `SubFieldRole`/column admission boundaries, not `SimThingKind`
