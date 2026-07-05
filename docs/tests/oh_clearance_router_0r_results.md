@@ -8,8 +8,9 @@
 
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | [#1164](https://github.com/khorum08/SimThing/pull/1164) |
 | Branch | `oh-clearance-router-0r-empty-diff` |
+| Head | `6675354e` |
 | Base | `master` @ `d4969f1c8` |
 | Rung | `OH-CLEARANCE-ROUTER-0R` |
 
