@@ -42,7 +42,7 @@ load_justifications() {
     return
   fi
   while IFS= read -r line || [[ -n "$line" ]]; do
-    line="$(trim "$line")"
+    trimv "$line"; line="$_T"
     [[ -z "$line" || "$line" == \#* ]] && continue
     # key on scan-id for simplicity (first field)
     key="${line%% | *}"
@@ -60,6 +60,17 @@ trim() {
   s="${s#"${s%%[![:space:]]*}"}"
   s="${s%"${s##*[![:space:]]}"}"
   printf '%s' "$s"
+}
+
+# Fork-free trim: sets global _T instead of echoing, so callers avoid the
+# $(...) command-substitution subshell. On git-bash every $() forks an
+# emulated subshell (~15-30ms), which is negligible on Linux CI but turns
+# per-field parsing loops into minutes on Windows. Hot parse paths use this.
+trimv() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  _T="$s"
 }
 
 symbol_tail() {
@@ -135,7 +146,7 @@ validate_allow_file() {
   local line_num=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     line_num=$((line_num + 1))
-    line="$(trim "$line")"
+    trimv "$line"; line="$_T"
     [[ -z "$line" || "$line" == \#* ]] && continue
     local fields=()
     if ! parse_allow_fields "$line" fields; then
@@ -177,7 +188,7 @@ parse_fields() {
   local i part
   for ((i = 0; i < 7; i++)); do
     if [[ "$i" -eq 6 ]]; then
-      part="$(trim "$rest")"
+      trimv "$rest"; part="$_T"
       _out+=("$part")
       break
     fi
@@ -185,7 +196,7 @@ parse_fields() {
       return 1
     fi
     part="${rest%%"${FIELD_SEP}"*}"
-    _out+=("$(trim "$part")")
+    trimv "$part"; _out+=("$_T")
     rest="${rest#*"${FIELD_SEP}"}"
   done
   return 0
@@ -199,7 +210,7 @@ parse_allow_fields() {
   local i part
   for ((i = 0; i < 4; i++)); do
     if [[ "$i" -eq 3 ]]; then
-      part="$(trim "$rest")"
+      trimv "$rest"; part="$_T"
       _out+=("$part")
       break
     fi
@@ -207,7 +218,7 @@ parse_allow_fields() {
       return 1
     fi
     part="${rest%%"${FIELD_SEP}"*}"
-    _out+=("$(trim "$part")")
+    trimv "$part"; _out+=("$_T")
     rest="${rest#*"${FIELD_SEP}"}"
   done
   return 0
@@ -231,7 +242,7 @@ load_global_keys() {
   local line line_num=0 fields=()
   while IFS= read -r line || [[ -n "$line" ]]; do
     line_num=$((line_num + 1))
-    line="$(trim "$line")"
+    trimv "$line"; line="$_T"
     [[ -z "$line" || "$line" == \#* ]] && continue
     if ! parse_fields "$line" fields; then
       die_scanner "scans.tsv:${line_num}: malformed record (expected 7 fields)"
@@ -248,7 +259,7 @@ load_global_keys() {
     line_num=0
     while IFS= read -r line || [[ -n "$line" ]]; do
       line_num=$((line_num + 1))
-      line="$(trim "$line")"
+      trimv "$line"; line="$_T"
       [[ -z "$line" || "$line" == \#* ]] && continue
       if ! parse_allow_fields "$line" allow_fields; then
         die_scanner "${rel}:${line_num}: expected 4 fields (symbol | door-class | rationale | promotion-blocker)"
@@ -263,7 +274,7 @@ load_global_keys() {
     line_num=0
     while IFS= read -r line || [[ -n "$line" ]]; do
       line_num=$((line_num + 1))
-      line="$(trim "$line")"
+      trimv "$line"; line="$_T"
       [[ -z "$line" || "$line" == \#* ]] && continue
       GLOBAL_ALLOW_KEYS["sealed_types.txt:${line}"]=1
     done <"$f"
@@ -289,7 +300,7 @@ validate_track_scan_addendum() {
   local rel="${TRACK_DOC_REL}.ci.tsv"
   while IFS= read -r line || [[ -n "$line" ]]; do
     line_num=$((line_num + 1))
-    line="$(trim "$line")"
+    trimv "$line"; line="$_T"
     [[ -z "$line" || "$line" == \#* ]] && continue
     if ! parse_fields "$line" fields; then
       die_scanner "${rel}:${line_num}: malformed record (expected 7 fields)"
@@ -326,7 +337,7 @@ validate_track_allow_addendum() {
     line_num=0
     while IFS= read -r line || [[ -n "$line" ]]; do
       line_num=$((line_num + 1))
-      line="$(trim "$line")"
+      trimv "$line"; line="$_T"
       [[ -z "$line" || "$line" == \#* ]] && continue
       if [[ "$base" == "sealed_types.txt" ]]; then
         if [[ "$line" == *" | "* || "$line" == *" "* || "$line" == *$'\t'* ]]; then
@@ -370,7 +381,7 @@ line_matches_any_exclude() {
   local pat
   IFS=';' read -ra _ex_arr <<<"$excludes"
   for pat in "${_ex_arr[@]}"; do
-    pat="$(trim "$pat")"
+    trimv "$pat"; pat="$_T"
     [[ -z "$pat" ]] && continue
     if [[ "$pat" == ^* ]]; then
       # fast path for ^ excludes, avoid rg spawn
@@ -701,7 +712,7 @@ run_scan_file() {
   local line_num=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     line_num=$((line_num + 1))
-    line="$(trim "$line")"
+    trimv "$line"; line="$_T"
     [[ -z "$line" || "$line" == \#* ]] && continue
 
     local fields=()
@@ -871,7 +882,7 @@ run_addendum_proof() {
   local global_id=""
   local line fields=()
   while IFS= read -r line || [[ -n "$line" ]]; do
-    line="$(trim "$line")"
+    trimv "$line"; line="$_T"
     [[ -z "$line" || "$line" == \#* ]] && continue
     parse_fields "$line" fields || continue
     global_id="${fields[0]}"
