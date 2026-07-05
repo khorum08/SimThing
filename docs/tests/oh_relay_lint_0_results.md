@@ -33,6 +33,26 @@
 | Optional §5.1 sketch | `relay_lint_selftest_pass_optional_5_1_sketch` | LED sketch tagged, not required |
 | Empty kabuki sections | `relay_lint_selftest_fail_empty_kabuki_sections` | Template-shaped empty relays rejected |
 
+### Remediation proof output (owner-local)
+
+**doctrine_selftest.sh**
+```
+positive control: PASS
+inventory drift proof: PASS
+DOCTRINE-SELFTEST-VERDICT: PASS
+```
+
+**gen_digest.sh --check**
+```
+gen_digest --check: PASS
+```
+
+**doctrine_scan.sh**
+```
+TEST-INVENTORY-DRIFT  PASS  0
+DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415
+```
+
 ### Selftest output (owner-local)
 
 ```
@@ -47,15 +67,29 @@ RELAY-LINT-SELFTEST: PASS (6 fixtures)
 
 ## Scope Ledger
 
-| Path | Touched | Notes |
+| Path | Classification | Notes |
 |---|---|---|
-| `scripts/ci/relay_lint.sh` | yes | M3 linter |
-| `scripts/ci/doctrine_exec_relay_lint*.sh` | yes | GHA helpers |
-| `scripts/ci/doctrine_exec_commands.sh` | yes | `/relay-lint` parse |
-| `scripts/ci/fixtures/relay_lint/**` | yes | selftest fixtures |
-| `scripts/ci/test_inventory.tsv` | yes | +12 rows (mandatory drift-gate ledger) |
-| `.github/workflows/doctrine-exec-commands.yml` | yes | relay-lint job |
-| Engine crates | **no** | |
+| `scripts/ci/relay_lint.sh` | gate-wiring harness | M3 linter |
+| `scripts/ci/doctrine_exec_relay_lint*.sh` | gate-wiring harness | GHA helpers |
+| `scripts/ci/fixtures/relay_lint/**` | seal-proof fixtures | selftest corpus |
+| `scripts/ci/test_inventory.tsv` | inventory ledger | +12 rows (drift-gate discipline) |
+| Engine crates | untouched | no engine edits |
+
+## Conformance (spine/D-directives held)
+
+- Admission behavior, not governance artifact (D8): lint rejects missing blocks with named FAIL.
+- No engine-crate edits; no new Rust crate; no GPU/bevy/desktop GHA execution.
+- M7 dual-mode: local script + `/relay-lint` on existing doctrine-exec carrier.
+
+## Homing Boundary Classification
+
+| Surface | Classification | Action |
+|---|---|---|
+| `relay_lint.sh` | CI gate-wiring harness | keep in `scripts/ci/` |
+| engine crates | untouched | no engine edits |
+
+tested_code_sha: 39802af5f13d96476c2e228390e912f30de524cc
+coverage_basis: PASS — scripts-only gate-wiring rung; no binary-affecting paths touched
 
 ## Known gaps / next
 
