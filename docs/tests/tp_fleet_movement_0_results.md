@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / DA-OWNER REVIEW — not self-mergeable.** Phase 7 (`TP-COMMITMENTS-0`) blocked until DA clearance of Phase 6.2.
+**DA-GRADUATED / merged [#1154](https://github.com/khorum08/SimThing/pull/1154) @ `7d44037e`.** Phase 7 (`TP-COMMITMENTS-0`) unblocked.
 
 ## Identity
 
