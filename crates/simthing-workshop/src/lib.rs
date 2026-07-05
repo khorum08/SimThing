@@ -1,3 +1,4 @@
+pub mod commitments_post_hydration;
 pub mod diplomacy_post_hydration;
 pub mod fronts_post_hydration;
 pub mod fleet_movement_post_hydration;
@@ -15,6 +16,19 @@ mod transfer_contention_report;
 pub mod typeface;
 pub mod weighted_mean;
 
+pub use commitments_post_hydration::{
+    apply_commitments_post_hydration, commitment_property_key, compiled_faction_commitment,
+    default_fronts_eml_weights,
+    patch_personality_profile, personality_eml_weights, pirate_personality_profile,
+    terran_personality_profile, CommitmentsHydrationError, TpCommitmentsAuthoringReport,
+    TpFactionCommitmentSpec, TpPersonalityUrgencyProfile, TP_COMMITMENT_ATTACK_EVENT_KIND,
+    TP_COMMITMENT_FORTIFY_EVENT_KIND, TP_COMMITMENT_PROPERTY_NAMESPACE, TP_COMMITMENT_TYPE_ATTACK,
+    TP_COMMITMENT_TYPE_FORTIFY, TP_COMMITMENT_TYPE_RAID, TP_COMMITMENT_TYPE_REINFORCE,
+    TP_COMMITMENT_TYPE_WITHDRAW, TP_COMMITMENT_WITHDRAW_EVENT_KIND, TP_PIRATE_RAID_EVENT_KIND,
+    TP_PIRATE_RAID_THRESHOLD, TP_PIRATE_WEIGHT_PRESSURE, TP_PIRATE_WEIGHT_RESOURCE,
+    TP_TERRAN_REINFORCE_EVENT_KIND, TP_TERRAN_REINFORCE_THRESHOLD, TP_TERRAN_WEIGHT_PRESSURE,
+    TP_TERRAN_WEIGHT_RESOURCE,
+};
 pub use diplomacy_post_hydration::{
     apply_diplomacy_post_hydration, DiplomacyHydrationError, BASELINE_BORDER_DISTRUST_SURPLUS,
     HOSTILITY_COMMITMENT_EVENT_KIND, HOSTILITY_DISTRUST_THRESHOLD, TP_DISTRUST_RESOURCE_KEY,
