@@ -121,6 +121,18 @@ only one is structural — **do not conflate them**:
   logic, owner-bonus combat helper, zero-HP removal, an RF-child-depth workaround, or Terran/Pirate/Fleet/Cohort
   semantic branching. *"Generic lowering, as prior TP rungs did it"* is **not** a licence: prior rungs predate
   this doctrine; the classifier, not precedent, governs.
+- **Substrate widening (future utility) — DA/Owner-authorized only; agents surface, never self-grant.** A
+  genuinely generic capability a scenario *surfaces* — a reusable, semantic-free API a crate's use case needs —
+  is admissible in an engine crate as future utility (this is the "yes" branch; the test is *reusability*, not
+  scenario-neediness). **But this route flows only top-down from DA/Owner approval.** An agent may **propose /
+  appeal** it to the orchestrator when it is genuinely the most performant/logical path — *surface, never
+  self-grant* (breakthrough valve, core §1.2.1 / constitution §0.9.6). "Future utility" is a **request the DA
+  adjudicates**, never a verdict an agent issues to itself. An agent that self-classifies its code as "generic
+  widening" and lands it in an engine crate on its own authority is **drift, rejected at review** — because
+  "downstream value" is nearly unfalsifiable and self-serving (any scenario helper can be narrated as generic),
+  so the burden of proof sits on the appeal and the **default is deny → workshop-home it** (consumer-side). The
+  DA's adjudication question: *genuinely reusable and gameplay-concept-free, or scenario code in a generic
+  costume?*
 - **Why it contains.** `simthing-workshop` is a **verified leaf**: nothing in the tree depends on it (it
   only depends *inward*). Game-semantic candidate code placed there therefore **cannot leak upward into the
   sealed core by linkage** — the seal law (`simthing-kernel` authority; no inbound arrows to the sealed
