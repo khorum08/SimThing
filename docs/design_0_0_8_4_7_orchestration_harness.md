@@ -82,6 +82,44 @@ hand-regenerated orientation brief. Two landings, one forcing function:
   not comprehension. Comprehension failures remain caught downstream by router/lint/scan gates; the
   receipt closes the actual recurring vector, orientation-against-outdated-governance.
 
+**M6 — Doctrine-anchor integrity: anchors are routed, never compressed (owner caveat 1, binding).** The
+compression laws of this track (M2/M4/M5) apply to **operational guidance only**. The doctrine anchors —
+`simthing_core_design.md`, the constitution (`design_0_0_8_3.md`), `invariants.md`, and the key ADRs
+(`mapping_sparse_regioncell.md`, `resource_flow_substrate.md`, …) — are a different class: the paradigm,
+not the procedure. A generated digest must never become the de-facto constitution (summary-fidelity loss
+at paradigm altitude is a recorded, repeated failure mode — e.g. core §7 map-reasoning drift).
+
+- **Anchor register:** `scripts/ci/doctrine_anchors.tsv` — `anchor_id | doc | section | trigger_domains |
+  content_hash`. The anchors named above are the seed rows; tracks may add rows, never remove them without
+  owner sign-off.
+- **Quote-verbatim law (scannable):** the orientation digest and any generated surface may **quote** anchor
+  sentences byte-verbatim with citation, or **point** to sections — never paraphrase doctrine. Enforced
+  mechanically: every quoted anchor span in a generated doc must grep exactly in its source, or the
+  freshness gate FAILs.
+- **Domain-triggered ANCHOR-ACK:** when a rung's diff or declared domain hits an anchor's
+  `trigger_domains` (map/movement → core §7; engine-crate edits → §1.2 + seal law; RF work → the RF ADR),
+  the relay must carry `ANCHOR-ACK: <anchor_id>@<content_hash>` — an attestation that the **full section**
+  was evaluated this rung. Missing ack on a triggered domain → relay lint FAIL. Narrow quotes by default;
+  full-section evaluation forced exactly when drift risk is live — never blanket context flooding.
+- **Anchors version the receipts:** `ORIENT-RECEIPT` hashes **include** the anchor content hashes. An
+  anchor edit stales every receipt fleet-wide → `RE-ORIENT` names which anchor moved. Doctrine can never
+  silently version out from under a working agent.
+
+**M7 — GHA-side delivery law: every surface ships webchat-executable (owner caveat 2, binding).** Codex
+and webchat orchestrators execute GHA-hosted scripts via the proven comment-command surface
+(`doctrine_exec_commands.yml`: collaborator-only, no fork code under a write token). Therefore **every
+M1–M6 mechanism ships dual-mode — local script + GHA comment command — in its birth rung**, never
+local-first-wire-later:
+
+- `/clearance` — runs the M1 router against the PR GHA-side; posts `CLEARANCE-VERDICT` as the sticky
+  comment. The webchat orchestrator self-serves its routing verdict.
+- `/relay-lint` — validates the PR body / results doc against the M3 schema (incl. receipt + ANCHOR-ACK).
+- `/orient [role] [--since <receipt>]` — posts the role-keyed digest + current receipt (or the governance
+  delta) into the thread.
+- `/anchor <domain|anchor_id>` — posts the **verbatim** anchor section(s) into the PR thread: exact
+  constitution/core-design text, self-served into webchat context, zero courier cost, zero paraphrase
+  (M6's quote-verbatim law applies to the command output).
+
 ## 4. Rungs
 
 | # | Rung | Deliverable | Exit proof |
@@ -90,12 +128,19 @@ hand-regenerated orientation brief. Two landings, one forcing function:
 | 1 | `OH-RELAY-LINT-0` | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | Lints the #1154 relay PASS; three mutated relays (missing coverage_basis / classification / routing) FAIL with named block; selftest PASS |
 | 2 | `OH-ORIENTATION-DIGEST-0` | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshness gate | Digest regenerates byte-identical from TSVs; stale digest hard-FAILs like `sanctioned_surface.md`; orientation content covers the §5A operational contract |
 | 2b | `OH-COLD-START-0` (after 2) | `orient.sh` (role-keyed, generated from the M2 TSVs, `--since` delta mode, `ORIENT-RECEIPT` emission); receipt embedded in `orchestrator_orientation.md`; receipt validation in `relay_lint.sh` + router; entry-file stubification (≤5-line pointer stubs) + stub scan; handoff-template spine→receipt amendment | Cold agent oriented by one command; receipt round-trips through a relay and validates; stale receipt → `RE-ORIENT` with named delta; mutated/missing receipt FAILs lint; entry stubs pass the stub scan; handoff template carries receipt requirement in place of the verbatim spine |
+| 2c | `OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key ADRs, incl. core §7 with map/movement trigger domain); quote-verbatim scan on generated docs; `ANCHOR-ACK` requirement in relay lint keyed to trigger domains; anchor hashes folded into `ORIENT-RECEIPT`; `/anchor` comment command | Digest quoting a mutated anchor sentence → freshness FAIL; a map-domain relay without `ANCHOR-ACK: movement-front@…` → lint FAIL; anchor edit → all receipts stale with the anchor named; `/anchor movement-front` posts core §7 verbatim into a PR thread |
 | 3 | `OH-TRIAGE-INDUCTION-0` | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctrine_exec_triage.sh` strictness (justification mandatory); backfill TP-COMBAT-ARENA-0 GameSession rows | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill rows landed |
 | 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned pointers |
 | 5 | `OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
-Rungs 0–3 (incl. 2b) are orchestrator-buildable under the standing handoff regime; rung 4 is DA-reviewed
-(it edits doctrine text), and 2b's handoff-template amendment is DA-reviewed within the rung. All new tests: `birth_track = 0.0.8.4.7-orchestration-harness` (register the track at
+**Delivery law (M7, applies to every rung):** each rung's surface ships dual-mode — local script **and**
+GHA comment command — in the same PR (`/clearance` with rung 0, `/relay-lint` with rung 1, `/orient` with
+rung 2b, `/anchor` with rung 2c), on the existing `doctrine_exec_commands.yml` carrier with its trust
+constraints intact. A local-only surface does not exit its rung.
+
+Rungs 0–3 (incl. 2b/2c) are orchestrator-buildable under the standing handoff regime; rung 4 is
+DA-reviewed (it edits doctrine text), 2b's handoff-template amendment and 2c's anchor seed rows are
+DA-reviewed within their rungs. All new tests: `birth_track = 0.0.8.4.7-orchestration-harness` (register the track at
 first test birth). The track's own tools are subject to its own law: every new TSV row carries a
 `promotion_blocker`; the router/lint/digest each ship with selftest fixtures or they do not merge.
 
