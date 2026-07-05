@@ -10,8 +10,15 @@ bytemuck = { workspace = true }
 pollster = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+simthing-clausething = { path = "../simthing-clausething" }
+simthing-core = { path = "../simthing-core" }
+simthing-spec = { path = "../simthing-spec" }
 simthing-tools = { path = "../simthing-tools" }
 thiserror = { workspace = true }
 wgpu = { workspace = true }
 
 [dev-dependencies]
+simthing-driver = { path = "../simthing-driver" }
+simthing-feeder = { path = "../simthing-feeder" }
+simthing-gpu = { path = "../simthing-gpu" }
+simthing-sim = { path = "../simthing-sim" }
