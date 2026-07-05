@@ -8,7 +8,7 @@
 
 | Field | Value |
 |---|---|
-| PR | _(pending push)_ |
+| PR | [#1163](https://github.com/khorum08/SimThing/pull/1163) |
 | Branch | `oh-relay-lint-0` |
 | Base | `master` @ `39802af5` |
 | Rung | `OH-RELAY-LINT-0` |
