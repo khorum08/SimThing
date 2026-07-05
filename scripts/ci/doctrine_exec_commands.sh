@@ -32,6 +32,8 @@ elif [[ "$body" =~ ^/triage[[:space:]] ]]; then
   cmd="triage"
 elif [[ "$body" =~ ^/clearance([[:space:]]|$) ]] || [[ "$body" == /clearance* ]]; then
   cmd="clearance"
+elif [[ "$body" =~ ^/relay-lint([[:space:]]|$) ]] || [[ "$body" == /relay-lint* ]]; then
+  cmd="relay-lint"
 else
   echo "COMMAND: ignore"
   exit 0
@@ -65,5 +67,10 @@ fi
 
 if [[ "$cmd" == "clearance" ]]; then
   echo "COMMAND: clearance"
+  exit 0
+fi
+
+if [[ "$cmd" == "relay-lint" ]]; then
+  echo "COMMAND: relay-lint"
   exit 0
 fi
