@@ -11,7 +11,7 @@
 | PR | (pending open) |
 | Branch | `tp-diplomacy-flow-0` |
 | Base | `origin/master` @ `b8ed0500c4` |
-| Head | `c251e8ae` |
+| Head | `9b56c987` |
 | Rung | Phase 5 `TP-DIPLOMACY-FLOW-0` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
 
@@ -87,7 +87,7 @@ No symbol in this delta is classified as generic future-utility engine surface. 
 
 ```
 DOCTRINE-TESTS-VERDICT: PASS
-head_sha: c251e8ae
+head_sha: 9b56c987
 profile: owner-local GPU / tp_diplomacy_flow_0
 owner_local: true
 proof: trust_distrust_gpu_matches_cpu_oracle
