@@ -146,6 +146,24 @@ pub fn apply_fronts_post_hydration(
         .filter(|cell| cell.owner == "pirate")
         .count();
     let grid_size = theater_grid_size(terran_rows.max(pirate_rows))?;
+    apply_fronts_post_hydration_with_theater(pack, theater_cells, grid_size)
+}
+
+/// Apply Movement-Front surfaces over caller-authored theater cells and grid size.
+pub fn apply_fronts_post_hydration_with_theater(
+    pack: &mut HydratedScenarioPack,
+    theater_cells: Vec<TpFrontsTheaterCell>,
+    grid_size: u32,
+) -> Result<TpFrontsAuthoringReport, FrontsHydrationError> {
+    if theater_cells.is_empty() {
+        return Err(FrontsHydrationError::MissingContestedBorder);
+    }
+    if grid_size == 0 || grid_size > REGION_FIELD_STANDARD_MAX_GRID {
+        return Err(FrontsHydrationError::Message(format!(
+            "theater grid_size {grid_size} out of bounded theater range"
+        )));
+    }
+
     install_front_resource_flow(pack, &theater_cells)?;
     let surfaces = build_front_surfaces(&theater_cells, grid_size)?;
     compile_region_field_preview(&surfaces.region_field).map_err(|err| {
@@ -175,6 +193,43 @@ pub fn apply_fronts_post_hydration(
         suppression_binding: surfaces.suppression_binding,
         disruption_binding: surfaces.disruption_binding,
     })
+}
+
+/// Collect contested-border systems for workshop theater authoring (untruncated).
+pub fn collect_contested_border_systems(
+    root: &SimThing,
+    terran: &simthing_clausething::HydratedOwnershipVolume,
+    pirate: &simthing_clausething::HydratedOwnershipVolume,
+) -> Result<(Vec<simthing_clausething::HydratedOwnedSystem>, Vec<simthing_clausething::HydratedOwnedSystem>), FrontsHydrationError> {
+    let terran_coords: BTreeSet<_> = terran
+        .assigned_systems
+        .iter()
+        .map(|system| (system.row, system.col))
+        .collect();
+    let pirate_coords: BTreeSet<_> = pirate
+        .assigned_systems
+        .iter()
+        .map(|system| (system.row, system.col))
+        .collect();
+
+    let mut terran_border = Vec::new();
+    let mut pirate_border = Vec::new();
+    for system in &terran.assigned_systems {
+        if chebyshev_adjacent_to_any(system.row, system.col, &pirate_coords) {
+            terran_border.push(system.clone());
+        }
+    }
+    for system in &pirate.assigned_systems {
+        if chebyshev_adjacent_to_any(system.row, system.col, &terran_coords) {
+            pirate_border.push(system.clone());
+        }
+    }
+    terran_border.sort_by_key(|system| (system.row, system.col, system.target_id.clone()));
+    pirate_border.sort_by_key(|system| (system.row, system.col, system.target_id.clone()));
+    if terran_border.is_empty() || pirate_border.is_empty() {
+        return Err(FrontsHydrationError::MissingContestedBorder);
+    }
+    Ok((terran_border, pirate_border))
 }
 
 struct BuiltFrontSurfaces {
@@ -302,10 +357,16 @@ fn install_front_resource_flow(
         }
     }
 
+    let max_participants = theater_cells.len().max(2) as u32;
     let arenas = vec![
-        front_arena_spec(TP_THREAT_ARENA, threat_key, participants.clone()),
-        front_arena_spec(TP_SUPPRESSION_ARENA, suppression_key, participants.clone()),
-        front_arena_spec(TP_DISRUPTION_ARENA, disruption_key, participants),
+        front_arena_spec(TP_THREAT_ARENA, threat_key, participants.clone(), max_participants),
+        front_arena_spec(
+            TP_SUPPRESSION_ARENA,
+            suppression_key,
+            participants.clone(),
+            max_participants,
+        ),
+        front_arena_spec(TP_DISRUPTION_ARENA, disruption_key, participants, max_participants),
     ];
     for arena in &arenas {
         validate_front_arena_caps(arena)?;
@@ -511,12 +572,13 @@ fn front_arena_spec(
     arena_name: &str,
     flow_property: PropertyKey,
     participants: Vec<ExplicitParticipantSpec>,
+    max_participants: u32,
 ) -> ArenaSpec {
     ArenaSpec {
         name: arena_name.into(),
         flow_property,
         balance_property: None,
-        max_participants: (TP_FRONTS_MAX_SYSTEMS_PER_SIDE * 2) as u32,
+        max_participants,
         max_coupling_fanout: 4,
         max_orderband_depth: 8,
         fission_policy: FissionPolicySpec::Reject,
