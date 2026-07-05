@@ -8,7 +8,7 @@
 
 | Field | Value |
 |---|---|
-| PR | (pending push) |
+| PR | [#1145](https://github.com/khorum08/SimThing/pull/1145) |
 | Branch | `tp-combat-arena-0` |
 | Base | `origin/master` |
 | Rung | Phase 4.0 `TP-COMBAT-ARENA-0` |
@@ -75,9 +75,9 @@ Authoring/hydration + integration proofs only. No combat engine, movement solver
 | `bash scripts/ci/test_lifecycle_boundary_check.sh` | PASS |
 | `bash scripts/ci/test_lifecycle_expiry_check.sh --schema` | PASS |
 | `bash scripts/ci/test_lifecycle_expiry_check.sh --prove` | PASS |
-| `bash scripts/ci/doctrine_scan.sh` | (pending — whole-tree scan slow on Windows; use unbuffered bash, not `Select-Object -Last`) |
+| `bash scripts/ci/doctrine_scan.sh` | INSPECT failures=0 inspect=415 (whole-tree heuristic backlog; 0 hard failures) |
 | `bash scripts/ci/gen_digest.sh --check` | PASS |
-| `git diff --check origin/master...HEAD` | (pending until commit) |
+| `git diff --check origin/master...HEAD` | PASS |
 
 ## Scope ledger
 
