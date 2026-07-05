@@ -133,15 +133,18 @@ pub struct HydratedScenarioPack {
     /// TP-FLEETS-SHIPS-0 fleet/ship authoring over owned star-system surfaces.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub fleet_ship_payloads: Vec<HydratedFleetShipPayload>,
+    /// TP-COMBAT-ARENA-0 co-located hostile ship HP/Damage arena authoring.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub combat_arena_payload: Option<crate::hydrate_combat_arena::HydratedCombatArenaPayload>,
 }
 
 /// Scenario-envelope property ids for fleet/ship authored columns (non-canonical).
-const TP_FLEET_POSTURE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_500);
-const TP_FLEET_HOME_SYSTEM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_501);
-const TP_SHIP_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_502);
-const TP_SHIP_HULL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_503);
-const TP_SHIP_WEAPON_DAMAGE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_504);
-const TP_SHIP_UPKEEP_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_505);
+pub(crate) const TP_FLEET_POSTURE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_500);
+pub(crate) const TP_FLEET_HOME_SYSTEM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_501);
+pub(crate) const TP_SHIP_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_502);
+pub(crate) const TP_SHIP_HULL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_503);
+pub(crate) const TP_SHIP_WEAPON_DAMAGE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_504);
+pub(crate) const TP_SHIP_UPKEEP_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_505);
 
 /// Authored fleet placement resolved from ownership volumes and posture rules.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -326,6 +329,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
     let mut seen_planet_surface_payload_ids = BTreeSet::new();
     let mut fleet_ship_payload_drafts = Vec::new();
     let mut seen_fleet_ship_payload_ids = BTreeSet::new();
+    let mut combat_arena_payload_draft = None;
     let mut embedded_static_galaxy_scenarios = Vec::new();
     let mut embedded_placements = Vec::new();
     let mut embedded_grid_size = None;
@@ -408,6 +412,16 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                     ));
                 }
                 fleet_ship_payload_drafts.push(payload);
+            }
+            "combat_arena_payload" => {
+                if combat_arena_payload_draft.is_some() {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate scenario combat_arena_payload block",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                combat_arena_payload_draft =
+                    Some(crate::hydrate_combat_arena::parse_combat_arena_payload(field)?);
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -601,7 +615,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
             game_mode.overlays.push(overlay);
         }
     }
-    let authority_root = if owners.is_empty() {
+    let mut authority_root = if owners.is_empty() {
         None
     } else {
         Some(build_authority_root(
@@ -614,6 +628,40 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
             &fleet_ship_payloads,
         ))
     };
+    let mut combat_arena_payload = None;
+    if let (Some(draft), Some(root)) = (combat_arena_payload_draft, authority_root.as_mut()) {
+        let mut payload = crate::hydrate_combat_arena::finalize_combat_arena_payload(
+            draft,
+            &owners,
+            &fleet_ship_payloads,
+        )?;
+        payload = crate::hydrate_combat_arena::complete_combat_arena_payload(
+            payload,
+            root,
+            &fleet_ship_payloads,
+        )?;
+        crate::hydrate_combat_arena::apply_combat_arena_to_game_mode(
+            &mut game_mode,
+            &payload,
+            &scenario_id,
+            &mut install_targets,
+        )?;
+        {
+            let mut seed_registry = simthing_core::DimensionRegistry::new();
+            for prop in &game_mode.properties {
+                simthing_spec::compile_property(prop, &mut seed_registry).map_err(|err| {
+                    HydrateError::new(format!("combat seed registry compile failed: {err}"))
+                })?;
+            }
+            crate::hydrate_combat_arena::seed_combat_property_columns_on_tree(
+                root,
+                &seed_registry,
+                &payload.enrollments,
+            )?;
+        }
+        combat_arena_payload = Some(payload);
+    }
+    dedupe_property_specs_by_name(&mut game_mode.properties);
     Ok(HydratedScenarioPack {
         scenario_id,
         metadata,
@@ -632,6 +680,7 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         ownership_volumes,
         planet_surface_payloads,
         fleet_ship_payloads,
+        combat_arena_payload,
     })
 }
 
@@ -1646,7 +1695,7 @@ fn attach_fleet_ship_payloads_to_system(
     }
 }
 
-fn scenario_property_f32_value(value: f32) -> PropertyValue {
+pub(crate) fn scenario_property_f32_value(value: f32) -> PropertyValue {
     PropertyValue::from_raw_lanes(vec![value])
 }
 
@@ -2582,7 +2631,7 @@ fn parse_kind(property: &RawProperty) -> Result<SimThingKind, HydrateError> {
     }
 }
 
-fn header_or_block_body<'a>(
+pub(crate) fn header_or_block_body<'a>(
     property: &'a RawProperty,
     field: &str,
 ) -> Result<(String, &'a RawBlock), HydrateError> {
@@ -2620,7 +2669,7 @@ fn read_optional_id(block: &RawBlock) -> Result<String, HydrateError> {
     Ok(id)
 }
 
-fn require_block<'a>(property: &'a RawProperty, field: &str) -> Result<&'a RawBlock, HydrateError> {
+pub(crate) fn require_block<'a>(property: &'a RawProperty, field: &str) -> Result<&'a RawBlock, HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
             format!("`{field}` must be a block"),
@@ -2652,7 +2701,7 @@ fn reject_forbidden_node_field(property: &RawProperty) -> Result<(), HydrateErro
     Ok(())
 }
 
-fn read_scalar_text(property: &RawProperty, field: &str) -> Result<String, HydrateError> {
+pub(crate) fn read_scalar_text(property: &RawProperty, field: &str) -> Result<String, HydrateError> {
     match &property.value {
         RawValue::Scalar(scalar) => Ok(scalar.text.clone()),
         _ => Err(HydrateError::new_spanned(
@@ -2662,7 +2711,7 @@ fn read_scalar_text(property: &RawProperty, field: &str) -> Result<String, Hydra
     }
 }
 
-fn read_scalar_f32(property: &RawProperty, field: &str) -> Result<f32, HydrateError> {
+pub(crate) fn read_scalar_f32(property: &RawProperty, field: &str) -> Result<f32, HydrateError> {
     let text = read_scalar_text(property, field)?;
     let value = text.parse::<f32>().map_err(|_| {
         HydrateError::new_spanned(
@@ -2679,7 +2728,7 @@ fn read_scalar_f32(property: &RawProperty, field: &str) -> Result<f32, HydrateEr
     Ok(value)
 }
 
-fn read_scalar_u32(property: &RawProperty, field: &str) -> Result<u32, HydrateError> {
+pub(crate) fn read_scalar_u32(property: &RawProperty, field: &str) -> Result<u32, HydrateError> {
     let text = read_scalar_text(property, field)?;
     text.parse::<u32>().map_err(|_| {
         HydrateError::new_spanned(
@@ -2754,6 +2803,11 @@ fn resolve_commitment_effect(
             }))
         }
     }
+}
+
+fn dedupe_property_specs_by_name(properties: &mut Vec<PropertySpec>) {
+    let mut seen = std::collections::HashSet::new();
+    properties.retain(|prop| seen.insert((prop.namespace.clone(), prop.name.clone())));
 }
 
 fn find_node_by_id<'a>(
