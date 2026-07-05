@@ -12,7 +12,7 @@
 | Branch | `tp-diplomacy-flow-0` |
 | Base | `origin/master` @ `b8ed0500c4` |
 | Tested code SHA | `a2c6e942db531ff8a233d82a48d055a73cc864fe` |
-| Current PR head | `__CURRENT_PR_HEAD__` |
+| Current PR head | `058d4060ff30387d21fb3a579b4fe309358e0364` |
 | Rung | Phase 5 `TP-DIPLOMACY-FLOW-0` + remedial `TP-DIPLOMACY-FLOW-0R` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
 
@@ -23,7 +23,7 @@
 | Stale GPU proof SHA repaired | **yes** |
 | Old proof SHA (PR body / results) | `9b56c987` (short; inconsistent with prior PR heads) |
 | Tested code SHA | `a2c6e942db531ff8a233d82a48d055a73cc864fe` |
-| Current PR head | `__CURRENT_PR_HEAD__` |
+| Current PR head | `058d4060ff30387d21fb3a579b4fe309358e0364` |
 | Owner-local GPU test re-run at tested code SHA | **yes** — 2026-07-05 |
 
 ## Coverage basis (post-`tested_code_sha` commits)
@@ -111,7 +111,7 @@ No symbol in this delta is classified as generic future-utility engine surface. 
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
-current_pr_head: __CURRENT_PR_HEAD__
+current_pr_head: 058d4060ff30387d21fb3a579b4fe309358e0364
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_diplomacy_flow_0
 owner_local: true
