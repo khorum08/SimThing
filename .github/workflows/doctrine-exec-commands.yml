@@ -145,6 +145,10 @@ jobs:
             echo "command=clearance" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [[ "$CMD" == relay-lint* ]]; then
+            echo "command=relay-lint" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "command=ignore" >> "$GITHUB_OUTPUT"
 
   dispatch-seal-proof:
@@ -315,3 +319,39 @@ jobs:
           git add scripts/ci/clearance_ledger.tsv
           git commit -m "clearance: ledger row for PR ${{ needs.parse-command.outputs.pr_number }} (OH-CLEARANCE-ROUTER-0)"
           git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"
+
+  relay-lint-run:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'relay-lint' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Run relay lint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/doctrine_exec_relay_lint.sh \
+            "${{ needs.parse-command.outputs.pr_number }}" relay-lint-report.txt
+          {
+            echo "pr: ${{ needs.parse-command.outputs.pr_number }}"
+            echo "head_sha: ${{ needs.parse-command.outputs.head_sha }}"
+            echo "base_sha: ${{ needs.parse-command.outputs.base_sha }}"
+            echo "workflow_run_id: ${{ github.run_id }}"
+          } >> relay-lint-report.txt
+
+      - name: Post relay lint comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/ci/doctrine_exec_relay_lint_comment.sh \
+            "${{ needs.parse-command.outputs.pr_number }}" relay-lint-report.txt
