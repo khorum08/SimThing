@@ -40,7 +40,14 @@
 - comment/run: [issuecomment-4888019870](https://github.com/khorum08/SimThing/pull/1164#issuecomment-4888019870) → workflow [28759107869](https://github.com/khorum08/SimThing/actions/runs/28759107869)
 - result: **workflow FAIL** — checkout could not resolve deleted head branch `oh-clearance-router-0r-empty-diff` (post-merge branch deletion; not relay-lint logic failure)
 - observed RELAY-LINT-VERDICT: n/a (workflow did not reach lint step)
-- follow-up: re-posted `/relay-lint` on [#1165](https://github.com/khorum08/SimThing/pull/1165) (live branch) — result pending GHA
+- follow-up [#1165](https://github.com/khorum08/SimThing/pull/1165): workflow [28759244136](https://github.com/khorum08/SimThing/actions/runs/28759244136) **success** — `RELAY-LINT-VERDICT: FAIL(empty-required-block)` (expected on non-relay PR body; command surface exercised)
+
+### /orient GHA smoke
+
+- PR used: [#1165](https://github.com/khorum08/SimThing/pull/1165)
+- comment: [issuecomment-4888035708](https://github.com/khorum08/SimThing/pull/1165#issuecomment-4888035708) (`/orient role=orchestrator`)
+- result: **pending merge** — `orient-run` job ships in this PR; issue_comment workflows execute from `master` until merged (same pre-merge pattern as `/relay-lint` before #1163)
+- local proof: `bash scripts/ci/doctrine_exec_orient.sh orchestrator orient-report.txt` → `ORIENT-REPORT: OK`
 
 ### Owner-local proof output (2026-07-05)
 
@@ -72,7 +79,7 @@ gen_orientation --check: PASS
 
 ## Known gaps / next
 
-- GHA Doctrine Scan + `/orient` smoke recorded below once settled.
+- `/orient` GHA comment execution activates post-merge (workflow on master).
 - `OH-COLD-START-0` (rung 2b) not started — no ORIENT-RECEIPT, `--since`, or stubification in this rung.
 - Pre-existing `SPEC-LOWERER-KIND-READ` INSPECT(415) unchanged.
 
@@ -80,7 +87,7 @@ gen_orientation --check: PASS
 
 | Field | Value |
 |---|---|
-| CI verdict | pending GHA |
+| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS, run 28759253144 |
 | Triage entries | none |
 | Risk class | gate-wiring |
 | Falsification check | Hand-mutate `orchestrator_orientation.md` → `--check` FAIL; remove fixture ledger row → drift FAIL |
