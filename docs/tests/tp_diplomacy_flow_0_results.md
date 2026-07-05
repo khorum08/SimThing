@@ -1,4 +1,4 @@
-# TP-DIPLOMACY-FLOW-0 Results
+# TP-DIPLOMACY-FLOW-0 / 0R Results
 
 ## Status
 
@@ -8,12 +8,35 @@
 
 | Field | Value |
 |---|---|
-| PR | (pending open) |
+| PR | [#1150](https://github.com/khorum08/SimThing/pull/1150) |
 | Branch | `tp-diplomacy-flow-0` |
 | Base | `origin/master` @ `b8ed0500c4` |
-| Head | `9b56c987` |
-| Rung | Phase 5 `TP-DIPLOMACY-FLOW-0` |
+| Tested code SHA | `a2c6e942db531ff8a233d82a48d055a73cc864fe` |
+| Current PR head | `__CURRENT_PR_HEAD__` |
+| Rung | Phase 5 `TP-DIPLOMACY-FLOW-0` + remedial `TP-DIPLOMACY-FLOW-0R` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
+
+## TP-DIPLOMACY-FLOW-0R — stale GPU proof SHA repair
+
+| Item | Value |
+|---|---|
+| Stale GPU proof SHA repaired | **yes** |
+| Old proof SHA (PR body / results) | `9b56c987` (short; inconsistent with prior PR heads) |
+| Tested code SHA | `a2c6e942db531ff8a233d82a48d055a73cc864fe` |
+| Current PR head | `__CURRENT_PR_HEAD__` |
+| Owner-local GPU test re-run at tested code SHA | **yes** — 2026-07-05 |
+
+## Coverage basis (post-`tested_code_sha` commits)
+
+```bash
+git diff --name-only a2c6e942db531ff8a233d82a48d055a73cc864fe..HEAD
+```
+
+```
+docs/tests/tp_diplomacy_flow_0_results.md
+```
+
+**coverage_basis:** PASS — commits after `tested_code_sha` are docs/evidence-only and do not affect the tested binary.
 
 ## Mechanism B — consumer-side application
 
@@ -79,25 +102,63 @@ No symbol in this delta is classified as generic future-utility engine surface. 
 | Test | birth_track | class | verdict |
 |---|---|---|---|
 | `distrust_threshold_emits_hostility_commitment` | `0.0.8.5-terran-pirate` | oracle-parity | KEEP |
-| `trust_distrust_gpu_matches_cpu_oracle` | `0.0.8.5-terran-pirate` | oracle-parity | KEEP |
 | `influence_round_trip_reduces_to_owner` | `0.0.8.5-terran-pirate` | oracle-parity | KEEP |
+| `trust_distrust_gpu_matches_cpu_oracle` | `0.0.8.5-terran-pirate` | oracle-parity | KEEP |
 | `workshop_post_hydration_application_is_required` | `0.0.8.5-terran-pirate` | oracle-parity | KEEP |
 
-## Citable GPU proof
+## Citable GPU proof (0R)
 
 ```
 DOCTRINE-TESTS-VERDICT: PASS
-head_sha: 9b56c987
+tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
+current_pr_head: __CURRENT_PR_HEAD__
+coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_diplomacy_flow_0
 owner_local: true
 proof: trust_distrust_gpu_matches_cpu_oracle
 result: PASS
 ```
 
-Owner-local execution: 4/4 `tp_diplomacy_flow_0` tests PASS on real adapter (no silent GPU skip).
+| Field | Value |
+|---|---|
+| GPU adapter initialized | **yes** — `GpuContext::new_blocking()` succeeds (`require_gpu()` hard-fails without adapter) |
+| GPU path actually executed | **yes** — `trust_distrust_gpu_matches_cpu_oracle` + `distrust_threshold_emits_hostility_commitment` GPU threshold scan |
+| Any skip/ignore behavior | **no** — `0 ignored`; no `#[ignore]` on GPU proof tests |
+
+### Raw tail (`cargo test -p simthing-workshop --test tp_diplomacy_flow_0 -- --nocapture` @ `a2c6e942`)
+
+```
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.48s
+     Running tests\tp_diplomacy_flow_0.rs (target\debug\deps\tp_diplomacy_flow_0-4bd9e01c3139ff84.exe)
+
+running 4 tests
+test influence_round_trip_reduces_to_owner ... ok
+test workshop_post_hydration_application_is_required ... ok
+test distrust_threshold_emits_hostility_commitment ... ok
+test trust_distrust_gpu_matches_cpu_oracle ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+```
+
+## Load-bearing proofs (@ `tested_code_sha` / owner-local 2026-07-05)
+
+| Proof | Verdict |
+|---|---|
+| `cargo check -p simthing-workshop` | PASS |
+| `cargo check -p simthing-clausething` | PASS |
+| `cargo test -p simthing-workshop --test tp_diplomacy_flow_0` | PASS — 4/4 |
+| `test_inventory_check.sh` | INSPECT exit 0 (`failures=0`; 2 pre-existing extra fixture rows) |
+| `test_inventory_drift_check.sh` | PASS |
+| `test_lifecycle_boundary_check.sh` | PASS |
+| `test_lifecycle_expiry_check.sh --schema` | PASS |
+| `test_lifecycle_expiry_check.sh --prove` | PASS |
+| `gen_digest.sh --check` | PASS |
+| `doctrine_scan.sh` | INSPECT `failures=0 inspect=415` |
+| `git diff --check origin/master...HEAD` | PASS |
 
 ## Graduation routing
 
-- CI verdict: pending PR head proofs
+- Ready for DA relay: **no** — awaiting owner/orchestrator decision after 0R evidence repair (not self-mergeable)
+- CI verdict: owner-local proofs PASS at `tested_code_sha`; coverage_basis PASS; doctrine scan hard failures 0
 - Risk class: workshop-homed scenario semantics only; no engine widening
 - Phase 6 status: **blocked** pending DA clearance
