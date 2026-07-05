@@ -2,7 +2,7 @@
 
 ## Status
 
-**DA-GRADUATED (2026-07-05) — one-time, non-precedential Homing Boundary exception accepted.** The scenario-specific combat hydrator is homed in `simthing-clausething/src` by explicit owner clearance for this rung only (not precedent; Phase 5+ homes scenario candidate code in `simthing-workshop`). GPU==CPU bit-exact parity accepted on **owner attestation** (Owner ran the 3 `tp_combat_arena_0` tests on a real adapter), not a citable `DOCTRINE-TESTS-VERDICT` artifact. Evidence repaired in `TP-COMBAT-ARENA-0R`; classification table below is honest and complete. Superseded prior state: `PROBATION / DA-OWNER REVIEW`.
+**DA-GRADUATED (2026-07-05) — one-time, non-precedential Homing Boundary exception accepted.** The scenario-specific combat hydrator is homed in `simthing-clausething/src` by explicit owner clearance for this rung only (not precedent; Phase 5+ homes scenario candidate code in `simthing-workshop`). GPU==CPU bit-exact parity was accepted at graduation on **owner attestation**, and has since been **strengthened to a citable owner-local proof** — `docs/tests/tp_combat_arena_0_gpu_proof.md` (PR #1148), `DOCTRINE-TESTS-VERDICT: PASS`, all 3 tests on a real NVIDIA RTX 4080 adapter, no skip path, tested SHA `72dc4355` (DA-verified to contain byte-identical combat code to this merge). Evidence repaired in `TP-COMBAT-ARENA-0R`; classification table below is honest and complete. Superseded prior state: `PROBATION / DA-OWNER REVIEW`.
 
 ## Identity
 
@@ -148,7 +148,7 @@ None with hard-failure status. No new triage rows added to `inspect_justificatio
 ## Graduation routing
 
 - **CI verdict:** doctrine_scan INSPECT with `failures=0`; delta kind-read hits documented above (accepted)
-- **GPU proof basis:** **owner attestation** — Owner ran `cargo test -p simthing-clausething --test tp_combat_arena_0` (3 passed, incl. `gpu_two_fleet_contact_matches_transfer_oracle`) on a real adapter and accepted the transcript per §6 waiver. No citable `DOCTRINE-TESTS-VERDICT` artifact; basis is attestation, recorded honestly.
+- **GPU proof basis:** **citable owner-local proof** (strengthened post-graduation) — `docs/tests/tp_combat_arena_0_gpu_proof.md` (PR #1148), `DOCTRINE-TESTS-VERDICT: PASS`, 3/3 tests on a real NVIDIA RTX 4080 adapter, `require_gpu()` panics on no-adapter (no skip path), `0 ignored / 0 filtered`, tested SHA `72dc4355` (DA-verified `--is-ancestor` of graduation, combat code byte-identical). Graduation was originally accepted on owner attestation per §6 waiver; this artifact supersedes that weaker posture.
 - **Risk class:** Homing Boundary exception / semantic scenario-code-in-engine-crate — **accepted one-time, non-precedential**
 - **DA disposition (2026-07-05):** **DA-GRADUATED.** `TP-COMBAT-ARENA-0` complete with the one-time exception. The exception is **not precedent**; the queued net-new-engine-symbol tripwire is the durable forward enforcement.
 - **Phase 5:** `TP-DIPLOMACY-FLOW-0` **authorized to proceed** — its scenario candidate code (diplomacy hydrator) homes in `simthing-workshop`, not `clausething`, with no exception.
