@@ -553,11 +553,13 @@ reduction cadence lands, the expiry sweep is an orchestrator closeout duty, not 
 
 Feature-proofing *scenario* tracks (e.g. 0.0.8.5 Terran-Pirate) are exploratory expeditions that surface
 consumer-driven capability needs. Their candidate code (services/structs/fns/heuristics beyond authored data)
-lives in **`simthing-workshop`** — never in a sealed engine crate. The fence is structural, not prose:
-`simthing-workshop` is a **verified leaf** (nothing depends on it), so the seal law makes game-semantic
-candidate code there **unable to leak upward by linkage**, and workshop is already outside every fence-scan
-target — so it needs no carve-out. See `design_0_0_8_5…§0A.1` for the binding statement; this section is the
-operator surface.
+lives in **`simthing-workshop`** — never in a sealed engine crate. **Containment** (workshop code can't leak
+*up*) is structural: `simthing-workshop` is a **verified leaf** (nothing depends on it), so the seal law makes
+game-semantic candidate code there unable to leak upward by linkage, and workshop is already outside every
+fence-scan target. **Homing** (new scenario code must be *written into* workshop, not into a sealed crate) is
+**not** structural — the arrow does not fence `simthing-clausething`/`spec` — so it is enforced by
+classify-before-merge plus the scan tripwires below. See `design_0_0_8_5…§0A.1` for the binding statement; this
+section is the operator surface.
 
 - **The exit is re-fenced.** Elevation = moving code `simthing-workshop` → an engine crate. The elevation PR's
   diff **re-applies the full engine-crate scan battery to the outbound hunk** (which now covers `simthing-spec`
@@ -567,10 +569,19 @@ operator surface.
   track close via the existing lifecycle expiry sweep (orchestrator closeout duty, §11). Keeping a candidate is
   an explicit move into standing workshop code; there is **no registry and no lease** (the envelope's
   default-delete disposition already expresses each asset's value). **Do not add a registry.**
-- **Orchestrator note.** A scenario rung that writes candidate engine-shaped code into `simthing-spec`,
-  `simthing-kernel`, `simthing-sim`, or a lowerer — instead of `simthing-workshop` — is **out of scope and
-  rejected at review**, and is the exact drift the sandbox exists to make impossible. Route it to workshop;
-  surface elevation candidates at closeout only.
+- **The Homing Boundary — classify before merge.** The classifier for any engine-crate addition in a scenario
+  PR: *"would this code exist if this scenario didn't?"* If **no** → scenario candidate code → `simthing-workshop`.
+  If **yes** — a genuinely generic, semantic-free ClauseScript language/lowering surface any scenario would want
+  (e.g. extending a generic decoder family with a new generic form) — an engine crate is fine. **Not** allowed
+  in a sealed crate: any scenario-specific service/struct/fn/heuristic (HP/Damage resolver, fleet-contact logic,
+  owner-bonus combat helper, zero-HP removal, RF-child-depth workaround, Terran/Pirate/Fleet/Cohort branching).
+  *"Generic lowering, as prior TP rungs did it"* is **not** a licence — prior rungs predate this doctrine.
+- **Orchestrator note.** Every net-new `simthing-clausething/src` (or `spec`/`kernel`/`sim`/lowerer) symbol in a
+  scenario PR is **classify-before-merge**: the PR must state, per symbol, why it is generic-not-scenario. An
+  unclassified engine-crate addition in a scenario PR is **escalated to DA, not landed silently**. Note the
+  honest limit: `SPEC-LOWERER-KIND-READ` only tripwires *kind-branching*; non-kind scenario code in a lowerer
+  trips nothing yet (broader net-new-engine-symbol tripwire queued), so this review step is the live control.
+  Surface elevation candidates at closeout only.
 
 > **Deferred elaboration (not in force).** A per-production `simthing-workshop/src/testthing/<production>/`
 > sub-taxonomy with a scan carve-out and a mechanical `--track-closeout` emptiness gate is the natural next step
