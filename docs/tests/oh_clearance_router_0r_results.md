@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / gate-wiring — not self-mergeable.** Remedial router precision fix; DA clearance required before graduation.
+**PROBATION / proof-present / DA-review-pending — not self-mergeable.** Remedial router precision fix; evidence fresh; DA clearance required before graduation.
 
 ## PR / branch / merge
 
@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1164](https://github.com/khorum08/SimThing/pull/1164) |
 | Branch | `oh-clearance-router-0r-empty-diff` |
-| Head | `6675354e` |
+| Head | `faba798141dda0d14784466706663977e3f9cc48` |
 | Base | `master` @ `d4969f1c8` |
 | Rung | `OH-CLEARANCE-ROUTER-0R` |
 
@@ -90,15 +90,23 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415 selftest=SKIPPED
 
 ## Known gaps / next
 
-- GHA post-push results recorded below once settled.
+- DA clearance pending (gate-wiring).
 - Pre-existing `SPEC-LOWERER-KIND-READ` INSPECT(415) unchanged — not introduced by this PR.
 - `OH-ORIENTATION-DIGEST-0` (rung 2) not started.
+
+### GHA (post-push @ `faba7981`)
+
+| Check | Result | Run |
+|---|---|---|
+| Doctrine Scan | **PASS** | [28758076398](https://github.com/khorum08/SimThing/actions/runs/28758076398) |
+
+Steps: digest freshness PASS; Doctrine self-test PASS; PR delta scan PASS; triage spam check PASS.
 
 ## Graduation routing
 
 | Field | Value |
 |---|---|
-| CI verdict | pending GHA |
+| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS, run 28758076398 |
 | Triage entries | none |
 | Risk class | gate-wiring |
 | Falsification check | Remove `target_mode.txt` from empty-diff fixture → novelty regression; remove one ledger row → drift gate FAIL |
