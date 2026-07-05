@@ -1,0 +1,108 @@
+scenario = tp_combat_arena_0 {
+    metadata = {
+        display_name = "TP Combat Arena 0"
+        runtime_owner = "scenario-container"
+    }
+    static_galaxy_scenario = base_disc {
+        namespace = "tp_base"
+        source_json = "{{FIXTURE_JSON}}"
+        map_quality_status = PASS
+    }
+    owner = terran {
+        owner_key = "terran"
+        display_name = "Terran Compact"
+        archetype = "settler_policy"
+    }
+    owner = pirate {
+        owner_key = "pirate"
+        display_name = "Pirate Cartel"
+        archetype = "raider_policy"
+    }
+    ownership_volume = terran_core {
+        owner = "terran"
+        count = 200
+        selection = chebyshev_contiguous
+        seed = 770421
+        anchor_row = 199
+        anchor_col = 80
+    }
+    ownership_volume = pirate_border {
+        owner = "pirate"
+        count = 50
+        selection = chebyshev_contiguous
+        adjacent_to = "terran_core"
+        seed = 770421
+    }
+    planet_surface_payload = owned_system_payload {
+        applies_to = owned_systems
+        planets_per_system_min = 1
+        surface_grid = "1x1"
+        factory_min = 1
+        cohort_min = 1
+        category_map = {
+            pop_factory = { kind = Cohort depth = 3 }
+        }
+        resource = {
+            id = "tp_minerals"
+            namespace = "tp"
+            name = "minerals"
+            display_name = "Minerals"
+        }
+        modifier = {
+            pop_factory_minerals_produces_mult = 0.10
+            pop_factory_minerals_upkeep_add = 1
+        }
+    }
+    planet_surface_payload = neutral_system_payload {
+        applies_to = neutral_systems
+        planets_per_system_min = 1
+        surface_grid = "1x1"
+        factory_min = 0
+        cohort_min = 0
+    }
+    fleet_ship_payload = terran_fleets {
+        owner = "terran"
+        ownership_volume = "terran_core"
+        enemy_ownership_volume = "pirate_border"
+        fleet_count = 1
+        ships_per_fleet = 1
+        border_fleet_count = 0
+        ship_class = "corvette"
+        hull_seed = 100
+        weapon_damage_seed = 25
+        upkeep_per_ship = 2
+        resource = {
+            id = "tp_energy"
+            namespace = "tp"
+            name = "energy"
+            display_name = "Energy"
+        }
+    }
+    fleet_ship_payload = pirate_fleets {
+        owner = "pirate"
+        ownership_volume = "pirate_border"
+        enemy_ownership_volume = "terran_core"
+        fleet_count = 1
+        ships_per_fleet = 1
+        border_fleet_count = 0
+        ship_class = "corvette"
+        hull_seed = 80
+        weapon_damage_seed = 30
+        upkeep_per_ship = 3
+        resource = {
+            id = "tp_energy"
+            namespace = "tp"
+            name = "energy"
+            display_name = "Energy"
+        }
+    }
+    combat_arena_payload = contact_arena {
+        system_target = "row199_col80"
+        hull_capacity = 100
+        hp_recovery_per_tick = 0
+        ships_per_side = 1
+        terran_weapon_damage = 25
+        pirate_weapon_damage = 30
+        {{OWNER_BONUS_BLOCK}}
+    }
+}

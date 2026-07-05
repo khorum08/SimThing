@@ -30,6 +30,7 @@ pub mod scope;
 mod emit;
 mod hydrate;
 mod hydrate_category_economy;
+mod hydrate_combat_arena;
 mod hydrate_shipsize_decoder;
 mod hydrate_field_operator;
 mod hydrate_palma_feedstock;
@@ -76,6 +77,9 @@ pub use hydrate_palma_feedstock::{
 };
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
+};
+pub use hydrate_combat_arena::{
+    HydratedCombatArenaPayload, HydratedCombatShipEnrollment,
 };
 pub use hydrate_scenario::{
     HydratedEmbeddedStaticGalaxyScenario, HydratedFleetPlacement, HydratedFleetShipPayload,
