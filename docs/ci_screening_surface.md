@@ -302,8 +302,12 @@ in seconds where CI already vouches, and reserve token-heavy investigation for e
 2. **Closure hygiene.** Track-D edit-wave scope (`test_edit_scope*`) was deleted at `CI-LIFECYCLE-RESIDUE-DELETE-0`;
    future lifecycle work must use birth-track-scoped edit authorization, not spent wave replay.
 3. **Verify the tree, never the relayed report.** An implementer's transcript is a claim. Before relaying
-   a proof upward or authorizing a merge, confirm the branch state (SHA-bound verdicts exist for exactly
-   this — a report is stale unless `head_sha` equals the current PR head).
+   a proof upward or authorizing a merge, confirm the branch state. **Proof binding uses the tested-code-SHA
+   model (owner-corrected, 2026-07-05), not head equality:** a proof is valid when
+   `git diff <tested_code_sha> <head>` is empty on binary-affecting paths (code, tests, `Cargo.*`, fixtures,
+   GPU/sim/driver behavior). Docs/evidence/ledger-only commits after the tested SHA **never** invalidate a
+   proof — do not chase head equality (the self-referential SHA trap); require a rerun only when the tested
+   binary actually changed.
 4. **Never self-mark COMPLETE.** Rungs relay as PROBATION with the Graduation-routing block; graduation is
    the DA's write (or your own merge authority where clause §0.9.7 applies — see below).
 
@@ -322,6 +326,31 @@ rationale in the PR thread before merging**. Any doubt, novelty, or precedent-se
 (the #1106 escalation is the calibration model: insisting on DA review when a stack smelled wrong was
 correct). The DA spot-audits self-authorized merges against the tree; one wrong self-merge suspends the
 authority. Owner supremacy sits above everything, visible and recorded.
+
+**Standing ruling (DA, 2026-07-05): the workshop-homed scenario rung is a precedented class.** After
+`TP-DIPLOMACY-FLOW-0` (#1150), `TP-FRONTS-AUTHORING-0` (#1151), and `TP-PALMA-REACH-0` (#1152) graduated
+with zero defects found, per-rung DA review of this class is ceremony (a regression signal, §0). A scenario
+rung is **orchestrator-merge-clearable under §0.9.7** when ALL of the following mechanical checks pass:
+
+1. The diff touches **only** `crates/simthing-workshop/**`, `docs/tests/**`, `scripts/ci/test_inventory.tsv`,
+   and `scripts/ci/test_lifecycle_boundary_rows.tsv` — zero engine-crate edits.
+2. **No** Homing Boundary exception requested, **no** substrate-widening appeal, **no** new
+   opcode/WGSL/`AccumulatorRole`.
+3. Coverage basis clean under the tested-code-SHA model (responsibility 3 above).
+4. Lifecycle correct: new tests ledgered with `birth_track = 0.0.8.5-terran-pirate` (or the active scenario
+   envelope), `test_lifecycle_tracks.tsv` untouched, drift gate PASS.
+5. CI Doctrine Scan green at head — zero hard failures.
+6. Citable owner-local GPU proof (`DOCTRINE-TESTS-VERDICT: PASS` with `tested_code_sha` + `coverage_basis`)
+   for every GPU/parity acceptance item.
+7. Every INSPECT delta has a landed `/triage` row (responsibility 1 — relay prose is not a triage row).
+8. The rung carries **no binding DA conditions** from a prior graduation.
+
+All eight pass → the orchestrator merge-clears, posts the relay as the graduation record plus the
+one-paragraph merge rationale in the PR thread, and **notifies** the DA (no consultation). Any check fails
+→ normal DA escalation. **DA reserve (always escalate):** homing exceptions, widening appeals, any
+engine-crate edit, Tier-2 work, a new proof class, phase/track closeout, red gates or unclassified INSPECT
+deltas, and any rung carrying binding DA conditions (condition verification is DA residue). The DA
+spot-audits class-cleared merges against the tree on cadence; one wrong self-merge suspends the class.
 
 **Channeling DA token spend (the routing table above is the mechanism — feed it honestly):**
 - **Declare risk classes truthfully and completely** — under-declaring to earn a light review is the
