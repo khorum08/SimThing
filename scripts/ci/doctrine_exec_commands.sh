@@ -34,6 +34,8 @@ elif [[ "$body" =~ ^/clearance([[:space:]]|$) ]] || [[ "$body" == /clearance* ]]
   cmd="clearance"
 elif [[ "$body" =~ ^/relay-lint([[:space:]]|$) ]] || [[ "$body" == /relay-lint* ]]; then
   cmd="relay-lint"
+elif [[ "$body" =~ ^/orient([[:space:]]|$) ]] || [[ "$body" == /orient* ]]; then
+  cmd="orient"
 else
   echo "COMMAND: ignore"
   exit 0
@@ -72,5 +74,14 @@ fi
 
 if [[ "$cmd" == "relay-lint" ]]; then
   echo "COMMAND: relay-lint"
+  exit 0
+fi
+
+if [[ "$cmd" == "orient" ]]; then
+  role="orchestrator"
+  if [[ "$body" =~ role=([a-z]+) ]]; then
+    role="${BASH_REMATCH[1]}"
+  fi
+  echo "COMMAND: orient role=${role}"
   exit 0
 fi
