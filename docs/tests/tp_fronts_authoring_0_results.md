@@ -12,7 +12,7 @@
 | Branch | `tp-fronts-authoring-0` |
 | Base | `origin/master` @ `9aa66c39152c36c688fd66cf4eef723b1780c089` |
 | Tested code SHA | `862d06a41cdebd070b3ecccade2522620ef77aff` |
-| Current PR head | (pending evidence commit) |
+| Current PR head | `ebe2ce475c1d089dc6e2fbb1120c7002dc90f9bf` |
 | Rung | Phase 6.0 `TP-FRONTS-AUTHORING-0` |
 | Mechanism | **B — consumer-side application** from `simthing-workshop` |
 
@@ -111,7 +111,7 @@ Bounded theater: one terran + one pirate contested-border system pair, 3×3 grid
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 862d06a41cdebd070b3ecccade2522620ef77aff
-current_pr_head: <pending evidence commit>
+current_pr_head: ebe2ce475c1d089dc6e2fbb1120c7002dc90f9bf
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_fronts_authoring_0
 owner_local: true
