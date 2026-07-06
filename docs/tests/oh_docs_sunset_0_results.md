@@ -8,7 +8,7 @@
 
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | [#1173](https://github.com/khorum08/SimThing/pull/1173) |
 | Rung | `OH-DOCS-SUNSET-0` (rung 4 / closing) |
 | Risk | gate-wiring |
 
