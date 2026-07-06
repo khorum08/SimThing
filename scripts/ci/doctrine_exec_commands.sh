@@ -61,8 +61,16 @@ fi
 if [[ "$cmd" == "triage" ]]; then
   # /triage <scan-id> <delete|green|escalate> <reason>
   if [[ "$body" =~ ^/triage[[:space:]]+([^[:space:]]+)[[:space:]]+(delete|green|escalate)[[:space:]]+(.+)$ ]]; then
-    echo "COMMAND: triage scan=${BASH_REMATCH[1]} outcome=${BASH_REMATCH[2]} reason=${BASH_REMATCH[3]}"
-    exit 0
+    triage_scan="${BASH_REMATCH[1]}"
+    triage_outcome="${BASH_REMATCH[2]}"
+    triage_reason="${BASH_REMATCH[3]}"
+    triage_reason="${triage_reason#"${triage_reason%%[![:space:]]*}"}"
+    triage_reason="${triage_reason%"${triage_reason##*[![:space:]]}"}"
+    if bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/triage_log_check.sh" \
+        --validate-append "$triage_scan" "$triage_outcome" "$triage_reason" >/dev/null 2>&1; then
+      echo "COMMAND: triage scan=${triage_scan} outcome=${triage_outcome} reason=${triage_reason}"
+      exit 0
+    fi
   fi
   echo "COMMAND: triage-invalid"
   echo "FORMAT: /triage <scan-id> <delete|green|escalate> <reason>"
