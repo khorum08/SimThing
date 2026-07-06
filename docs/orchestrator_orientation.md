@@ -34,7 +34,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | a98fd62ffab180d62a4cc82f2fe5ac79d8afd62642b641a27d808366584b8117 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| design_0_0_8_4_8_corpus_clearance.md | 804780d9de0cbb64c2e58fea7263e0e45408a3c21ce3007aceb171f4a478bdb9 |
+| design_0_0_8_4_8_corpus_clearance.md | 34ace6a4966f0e8b6f90fb704b6b23c9c5099d3e1e86afd025949fd4de6245ac |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -45,7 +45,8 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | S | CC-HANDOFF-SPINE-0` (parallel; run early) | Compress the `handoff_template.md` context spine: for each spine line, if it is  | **GRADUATED / PR #1182** - `handoff_template.md` spine **line count decreases**; every removed line cites its enforci... |
 | G | CC-RELAY-CLEARANCE-GATE-0` (gate-wiring; DA-reviewed; high priority — run before further DA escalations) | Close the critical routing-bypass hole (§4C): make it **mechanically impossible  | **GRADUATED / PR #1184** - `relay_lint --selftest` proves a manually-written DA escalation lacking `CLEARANCE-VERDICT... |
 | R | CC-RECEIPT-REBIND-0` (gate-wiring; DA-reviewed; high priority — the orientation-receipt anti-kabuki fix, §4D) | The `ORIENT-RECEIPT` freshness check keys on the **rendered digest sha** (`relay | **ACTIVE / this PR** - `relay_lint --selftest` proves a prose-only digest regen **does not** stale a valid receipt, w... |
-| 0 | CC-BASELINE-0 | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to  | **NEXT** - 0 rows remain `unknown`-class; each reclassification cites its retention basis; drift gate PASS |
+| 0 | CC-BASELINE-0 | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to  | **DA-GRADUATED / merged [#1193](https://github.com/khorum08/SimThing/pull/1193) @ `276b48d99f`** — 0 `unknown` rows r... |
+| P | CC-SWEEP-PREFLIGHT-0` (gate-wiring; DA-reviewed; **must land before the first sweep** — §4E) | Two anticipated failures, one preflight, both fixes via existing machinery: **(a | coverage_basis\ |
 | 1..N | CC-SWEEP-<crate> | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the | **NOT STARTED** - crate compiles; remaining gates green; deleted rows leave no drift; **inventory row count decreases... |
 | C | CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified d | **NOT STARTED** - Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expir... |
 
