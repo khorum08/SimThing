@@ -1,7 +1,7 @@
-ORIENT-RECEIPT: c32eb2b8313c
+ORIENT-RECEIPT: 895312197548
 role: coding
 orientation_digest_sha: 0000000000000000000000000000000000000000000000000000000000000000
-source_stamp: d294e4224fa9121e
+orientation_rule_stamp: d294e4224fa9121e
 generated_at: source-bound
 
 ## Status

@@ -1,7 +1,7 @@
-ORIENT-RECEIPT: b292507b6b0b
+ORIENT-RECEIPT: 0165a0780b12
 role: coding
 orientation_digest_sha: 332f68d3404c7fda68b48f65d7b63b896c2a4874217dc94b3ba617c39273bcda
-source_stamp: 4a5da2361c04c981
+orientation_rule_stamp: 4a5da2361c04c981
 generated_at: source-bound
 
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864
@@ -33,7 +33,7 @@ ANCHOR-ACK: nonexistent-anchor@deadbeef0000
 |---|---|
 | `anchor_check.sh --selftest` | Hash drift, missing anchors, malformed table |
 | `relay_lint.sh --selftest` (anchor fixtures) | Missing/stale/unknown ANCHOR-ACK |
-| `orient.sh --role=coding` | ORIENT-RECEIPT folds anchor_stamp |
+| `orient.sh --role=coding` | ORIENT-RECEIPT folds orientation_rule_stamp |
 
 ```
 DOCTRINE-TESTS-VERDICT: PASS
