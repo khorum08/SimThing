@@ -293,6 +293,19 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
 
+      - name: Post PENDING clearance placeholder (head-bound; prevents stale-sticky misread)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "pr: ${{ needs.parse-command.outputs.pr_number }}"
+            echo "head_sha: ${{ needs.parse-command.outputs.head_sha }}"
+            echo "workflow_run_id: ${{ github.run_id }}"
+            echo "CLEARANCE-STATUS: PENDING - clearance running for this head; no CLEARANCE-VERDICT yet. Wait for the verdict; sticky lag is not a mismatch."
+          } > clearance-pending.txt
+          bash scripts/ci/doctrine_exec_clearance_comment.sh \
+            "${{ needs.parse-command.outputs.pr_number }}" clearance-pending.txt
+
       - name: Run clearance router
         id: clearance
         env:
