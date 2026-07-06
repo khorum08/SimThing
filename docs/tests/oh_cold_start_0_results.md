@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1166](https://github.com/khorum08/SimThing/pull/1166) |
 | Branch | `oh-cold-start-0` |
-| Head | `dbd8accf` |
+| Head | `f7c05304` |
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
 
@@ -113,11 +113,18 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415
 - Merge-hold active: DA/Owner clearance required before merge (gate-wiring).
 - ANCHOR-ACK / `/anchor` / `--since` delta receipt mode explicitly out of scope (rung 2c).
 
+### GHA (@ `f7c05304`)
+
+| Check | Result | Run |
+|---|---|---|
+| Doctrine Exec | **PASS** | [28761096368](https://github.com/khorum08/SimThing/actions/runs/28761096368) |
+| Doctrine Scan | **PASS** | [28761096373](https://github.com/khorum08/SimThing/actions/runs/28761096373) |
+
 ## Graduation routing
 
 | Field | Value |
 |---|---|
-| CI verdict | PASS-RELIABLE if Doctrine Scan and Doctrine Exec green on GHA |
+| CI verdict | PASS-RELIABLE — Doctrine Exec + Doctrine Scan green on GHA |
 | Triage entries | none unless new INSPECT delta appears |
 | Risk class | gate-wiring |
 | Falsification check | mutate receipt hash / remove receipt / wrong role / hand-edit orientation digest |
