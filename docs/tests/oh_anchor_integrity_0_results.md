@@ -2,7 +2,9 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — doctrine anchors + ANCHOR-ACK admission; DA clearance required (gate-wiring).
+**DA-GRADUATED / merged #1167 @ `131cf858a3`** — doctrine anchors live; anchor hash drift, missing/stale/unknown ANCHOR-ACK validation, anchor-bound receipts, and `/anchor` serving active. DA-cleared under the no-SHA-equality routing ruling (design §2): the proof-bearing scripts were unchanged after `295ebd6a` (later commits docs-only), CI was green on the merged tree, and `anchor_check.sh --resolve` gives anchor-id exact-match priority over trigger-domain collision (recorded below). Docs-row SHA citations to earlier heads are context, not a gate.
+
+> **Note on the head SHAs cited below:** they name the *implementation/proof* head (`295ebd6a`) and prior runs. Per the standing no-SHA-equality ruling they are retained as evidence context and are **not** chased to the merge SHA — the merge is recorded once here and in the design/evidence rows.
 
 ## PR / branch / merge
 
@@ -90,8 +92,23 @@ gen_orientation.sh --check: PASS
 
 ## Known gaps / next
 
-- Merge-hold active: DA/Owner clearance required (gate-wiring).
+- Merge-hold cleared: DA-GRADUATED under the no-SHA-equality routing ruling (design §2); merged #1167.
 - Quote-verbatim scan on generated docs beyond anchor table deferred to tightening pass if INSPECT deltas appear.
+
+### DA finding (pre-existing defect, routed to remedial rung 2cR)
+
+Verified at closure on clean master `131cf858a3` (before any closure edit): `relay_lint.sh --selftest` and
+`orient.sh --selftest` are **red** — 6 relay fixtures and 1 orient fixture `FAIL(stale-orient-receipt)`. Cause:
+those fixtures **hardcode the live `orientation_digest_sha`/`ORIENT-RECEIPT`**, which changes on every edit to
+a digest source (the design doc rung table included). Because CI's Doctrine Scan gates only `gen_orientation
+--check` (the *derived-freshness* gate) and **not** these selftests, the fixtures rot silently and have been
+merging red since the receipts were introduced. This is precisely the SHA-treadmill the standing ruling
+(design §2) condemns, embedded in the harness's own selftests. **Do not hand-sync the fixture hashes** — that
+resets the treadmill and re-breaks at the next design-doc edit. Substantive fix (rung `OH-SELFTEST-DECOUPLE-0`):
+make the receipt selftests validate against a **fixture-local orientation snapshot** (self-contained, per test
+doctrine — a test proves the mechanism, not the current live state), then the selftests can be CI-gated without
+turning every governance edit into a CI break. Closure of #1167 does not depend on these selftests; the
+CI-gated freshness/anchor/doctrine-selftest battery is green.
 
 ## Graduation routing
 
