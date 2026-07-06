@@ -33,7 +33,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 303d5ae539eaa34342a3575383360719e0911498b7dfa582548f8a915c88d7d5 |
-| design_0_0_8_4_8_corpus_clearance.md | 5a48cc70f1588796b6936d1e906d0abeef179a84b802b4d3492bf7fd6679bc25 |
+| design_0_0_8_4_8_corpus_clearance.md | 53173b3a29263782b3f018d862b2d80adb9bdd63fac90a66a18208bd3f00fe4b |
 | relay_lint.sh | 0188314d97d1663abc2022df28711dfab733dcdd4620d218828fd63fdb378791 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -43,6 +43,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | --- | --- | --- | --- |
 | S | CC-HANDOFF-SPINE-0` (parallel; run early) | Compress the `handoff_template.md` context spine: for each spine line, if it is  | `handoff_template.md` spine **line count decreases**; every removed line cites its enforcing mechanism; retained line... |
 | G | CC-RELAY-CLEARANCE-GATE-0` (gate-wiring; DA-reviewed; high priority — run before further DA escalations) | Close the critical routing-bypass hole (§4C): make it **mechanically impossible  | `relay_lint --selftest` proves a manually-written DA escalation lacking `CLEARANCE-VERDICT` **fails**; a relay with a... |
+| R | CC-RECEIPT-REBIND-0` (gate-wiring; DA-reviewed; high priority — the orientation-receipt anti-kabuki fix, §4D) | The `ORIENT-RECEIPT` freshness check keys on the **rendered digest sha** (`relay | `relay_lint --selftest` proves a prose-only digest regen **does not** stale a valid receipt, while a rule-source (`pr... |
 | 0 | CC-BASELINE-0 | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to  | 0 rows remain `unknown`-class; each reclassification cites its retention basis; drift gate PASS |
 | 1..N | CC-SWEEP-<crate> | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the | crate compiles; remaining gates green; deleted rows leave no drift; **inventory row count decreases**; each deletion ... |
 | C | CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified d | Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expiry + drift + doctri... |
