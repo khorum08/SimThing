@@ -8,8 +8,9 @@
 
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | [#1166](https://github.com/khorum08/SimThing/pull/1166) |
 | Branch | `oh-cold-start-0` |
+| Head | `1ef409da` |
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
 
@@ -45,11 +46,11 @@
 
 **orient.sh (all roles)**
 ```
-ORIENT-RECEIPT: c32eb2b8313c  role: coding
-ORIENT-RECEIPT: 8e90ecb077f1  role: orchestrator
-ORIENT-RECEIPT: 5e526a904225  role: da
-orientation_digest_sha: 0a992c63c51c79012c3807d82c35cde17f13e29c56f2050028bf105788060ba5
-source_stamp: d294e4224fa9121e
+ORIENT-RECEIPT: 831cb2d35fa7  role: coding
+ORIENT-RECEIPT: 66f5bb9def50  role: orchestrator
+ORIENT-RECEIPT: (da role at head)  role: da
+orientation_digest_sha: b139390d9bc7ad62d9ad8de286ffd8048e3afd47b097f97e16ced3d98914c52c
+source_stamp: b7e084213e8382c0
 ```
 
 **gen_orientation.sh --check**
@@ -85,10 +86,10 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415
 
 ## Post-merge /orient smoke
 
-- PR used: pending
-- comment/run: pending
-- result: pending
-- observed ORIENT-REPORT: pending
+- PR used: [#1166](https://github.com/khorum08/SimThing/pull/1166)
+- comment/run: `/orient role=orchestrator` posted; awaiting Doctrine Exec GHA sticky comment
+- result: pending GHA
+- observed ORIENT-REPORT: pending GHA
 - role: orchestrator
 
 ## Scope Ledger

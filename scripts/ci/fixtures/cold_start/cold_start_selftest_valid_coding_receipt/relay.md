@@ -1,7 +1,7 @@
-ORIENT-RECEIPT: c32eb2b8313c
+ORIENT-RECEIPT: 831cb2d35fa7
 role: coding
-orientation_digest_sha: 0a992c63c51c79012c3807d82c35cde17f13e29c56f2050028bf105788060ba5
-source_stamp: d294e4224fa9121e
+orientation_digest_sha: b139390d9bc7ad62d9ad8de286ffd8048e3afd47b097f97e16ced3d98914c52c
+source_stamp: b7e084213e8382c0
 generated_at: source-bound
 
 ## Status
