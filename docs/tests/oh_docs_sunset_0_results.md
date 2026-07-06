@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — mechanized prose compressed to enforcing-surface pointers; DOC-BUDGET, rule-expiry, AGENTS stub scan, Harness Extension Protocol §7, cold-start entrypoint, and closeout telemetry landed; DA clearance required (gate-wiring).
+**DA-GRADUATED / merged #1173 @ `c189349f9de47bffb0936d67b5c3723c6133e8da`** — mechanized prose retired; DOC-BUDGET and rule-expiry gates live; AGENTS.md pointer-only; Harness Extension Protocol retained as generative mechanism-builder prose; 0.0.8.4.7 DA-CLOSED; LED-VERDICT: hold — insufficient §5.1-sketch ledger rows for evidence-based promote/retire comparison.
 
 ## PR / branch / merge
 
