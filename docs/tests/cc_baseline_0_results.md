@@ -8,7 +8,7 @@ PROBATION / proof-present / orchestrator-routing-pending.
 
 - Branch: `codex/cc-baseline-0`
 - PR: (orchestrator to open after push)
-- tested_code_sha: b18764406760d189c85eda19845b39e695a23d42
+- tested_code_sha: 6262a305f4c870d5a936328753f1acbc29ae80f1
 - coverage_basis: PASS — inventory-classification rung only; no Rust crate touched; proofs are harness gates below.
 - ORIENT-RECEIPT: 0c419b2ecc07
 - role: coding
