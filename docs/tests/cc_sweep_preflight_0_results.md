@@ -4,6 +4,9 @@
 
 PROBATION / proof-present / orchestrator-routing-pending.
 
+tested_code_sha: `5079b4a32b9fe85f8c3c3f2023a9eac0c1738cd4`
+coverage_basis: PASS - committed implementation validated by the harness proofs below; final follow-up commits, if any, are proof-documentation only.
+
 ## ORIENT-RECEIPT
 
 - ORIENT-RECEIPT: `080cebaa64e8`
@@ -37,8 +40,19 @@ CLEARANCE-VERDICT: ORCHESTRATOR-CLEARABLE
 ```
 
 ```text
+bash scripts/ci/clearance_check.sh --range master..HEAD
+CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)
+```
+
+```text
 bash scripts/ci/lifecycle_schema_pr_gate.sh --selftest
 LIFECYCLE-SCHEMA-PR-GATE-SELFTEST: PASS (3 fixtures)
+```
+
+```text
+bash scripts/ci/lifecycle_schema_pr_gate.sh master HEAD
+LIFECYCLE-SCHEMA-PR-GATE: RUN
+LIFECYCLE-EXPIRY-VERDICT: PASS expired=0 audit=0 max_dsu_survivals=0 mode=schema
 ```
 
 ```text
