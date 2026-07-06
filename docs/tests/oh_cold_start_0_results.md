@@ -10,9 +10,12 @@
 |---|---|
 | PR | [#1166](https://github.com/khorum08/SimThing/pull/1166) |
 | Branch | `oh-cold-start-0` |
-| Head | `f7c05304` |
+| Head (live/docs refresh) | `ccaf8f6a5d0ce60bf9e4b038caef723aa5d94606` |
+| Implementation / proof head | `f7c05304` |
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
+
+> Evidence refreshed by docs-only commit `67a0dcf3`; implementation/proof head remains `f7c05304`.
 
 ## What changed
 
@@ -113,12 +116,16 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415
 - Merge-hold active: DA/Owner clearance required before merge (gate-wiring).
 - ANCHOR-ACK / `/anchor` / `--since` delta receipt mode explicitly out of scope (rung 2c).
 
-### GHA (@ `f7c05304`)
+### GHA (implementation/proof head `f7c05304`)
 
 | Check | Result | Run |
 |---|---|---|
-| Doctrine Exec | **PASS** | [28761096368](https://github.com/khorum08/SimThing/actions/runs/28761096368) |
-| Doctrine Scan | **PASS** | [28761096373](https://github.com/khorum08/SimThing/actions/runs/28761096373) |
+| Doctrine Exec | **PASS** | [28761158306](https://github.com/khorum08/SimThing/actions/runs/28761158306) |
+| Doctrine Scan | **PASS** | [28761158315](https://github.com/khorum08/SimThing/actions/runs/28761158315) |
+| Orientation digest freshness | **PASS** | `gen_orientation.sh --check` |
+| Doctrine self-test | **PASS** | `doctrine_selftest.sh` |
+| PR delta scan | **PASS** | doctrine-scan workflow |
+| Triage spam check | **PASS** | doctrine-scan workflow |
 
 ## Graduation routing
 
