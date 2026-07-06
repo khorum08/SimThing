@@ -4,9 +4,7 @@ orientation_digest_sha: 332f68d3404c7fda68b48f65d7b63b896c2a4874217dc94b3ba617c3
 source_stamp: 4a5da2361c04c981
 generated_at: source-bound
 
-ANCHOR-ACK: orientation-harness-core@8a365d1c0864
-ANCHOR-ACK: handoff-template-admission@4799682fba31
-ANCHOR-ACK: receipt-admission@deadbeef0000
+ANCHOR-ACK: orientation-harness-core@deadbeef0000
 
 ## Status
 

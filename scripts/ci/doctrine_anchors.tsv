@@ -1,6 +1,3 @@
 anchor_id	doc	section	trigger_domains	content_hash
 orientation-harness-core	docs/design_0_0_8_4_7_orchestration_harness.md	heading:## 1. Root cause this track closes	orientation,gate-wiring,receipt-admission	8a365d1c086487ee32150d457754df35becc4ad93465874253fc7d40baf2582f
-handoff-template-admission	docs/handoff_template.md	lines:43-44	admission,gate-wiring	4799682fba31a641769358b8b12b5c50f729ca4211e49e6eca76f3f230c1d799
-simthing-context-spine	docs/handoff_template.md	lines:25-69	handoff,spine,all	434e5ba062c980e245e3e08cd6c533f2be9825846d0058b0f2db6b5f700d3b76
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
-receipt-admission	docs/handoff_template.md	lines:276-283	receipt-admission,gate-wiring	7b886656d959d0bc2ec7bd4c9080b461b50afb9df8e4368b930fe650049a7c4f
