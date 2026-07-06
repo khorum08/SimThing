@@ -17,58 +17,37 @@
 
 ---
 
-## Context spine — restated verbatim in every handoff (the anti-drift anchor)
+## Context spine - enforced pointers + retained unmechanized norms
 
-> This block is **non-negotiable and never abbreviated away.** It is the cheapest insurance against the
-> core principles (STEAD, RF arenas, semantic-free sim) drifting out of a low-context agent's window.
+> Mandatory in every handoff. Mechanized doctrine is cited by enforcing surface; only unmechanized norms stay
+> explicit.
 
-- **Everything is a SimThing.** New behavior = SimThings + properties + overlays + `AccumulatorOp`
-  registrations on the one recursive tree — never a subsystem beside it, never a runtime `match kind`.
-- **All conflict / opportunity / ambition / diplomacy is resource flow:** `accumulate → reduce up →
-  settle → mask/disburse down → threshold crossings fire decisions`. No combat/economy/AI/pathfinding engine.
-  **There is one authoritative resolution path — this one.** Do not write resolved state or emit a decision
-  from a CPU side-computation; route it as an `AccumulatorOp` / overlay registration or a threshold→`EmitEvent`
-  crossing. If the compiler fights you trying to mutate state or emit from outside the kernel, **that is the
-  boundary, not a bug to work around** — escalate to the DA instead. (The write/emission/participation seals
-  that make this *uncompilable* rather than merely directed are the AS-9+ cluster; until they land this is a
-  binding directive, not yet a type guarantee.)
-- **Decisions are GPU-resident threshold crossings (FIELD_POLICY), never a CPU planner.**
-- **The map is the Movement-Front automaton (STEAD):** bounded-horizon falloff (P1), one shared stencil
-  (P2), attractor/threshold projection (P3). The front *is* the route; movement is gradient-following
-  reparenting. Exact-magnitude gates route through Candidate F.
-- **`simthing-sim` and WGSL are semantic-free.** Behavior is EML opcode-stack data over one interpreter;
-  semantics compile away at admission. Exact claims carry bit-exact CPU-oracle parity.
-- **Substrate ladder before any new primitive (D2):** (1) RF arena → (2) overlay on a column → (3) EML
-  gadget tree → (4) JIT EML→WGSL shader → (only then, Tier-2, with parity) a new opcode/kernel/role.
-- **Enforcement is admission *behavior*, not a governance *artifact* (D8).** "Validate X" means a spanful
-  hard error in the decoder/admission layer — never a new registry/preflight/validation doc that restates it.
-- **Doctrine as type, not prose (core §1.2 — the admission ladder).** Encode an invariant at the highest
-  rung that can express it: **type boundary** (illegal state uncompilable) > **admission hard-error** >
-  **guard scan** > **prose**. Do not narrate in prose or a guard test what a type should make
-  unrepresentable; a guard scan that exists only because a type didn't is a promotion target. Spend the
-  budget Rust frees on type/admission boundaries + semantic conformance — never on process ceremony.
-- **The kernel owns authority; seals don't cross crate boundaries (core §1.2.1, constitution §0.9).**
-  Authoritative state/effects live in `simthing-kernel`; consumers get a read-only view + sanctioned doors.
-  **Mint authoritative types in the crate that privately owns their source of truth; never re-seal across a
-  crate boundary with a token** (cross-crate `pub`/`#[doc(hidden)]` is capability-for-everyone). The
-  irreducible residue (CPU-oracle twin, WGSL, inert utilities) is a **named tripwire catalogue, not a gap** —
-  routing through it is deliberate circumvention; flag it (`seal-residue-risk`). An artifact that looks like a
-  gate but enforces nothing is deleted, not annotated.
-- **CI doctrine-scan is the automated DA scan layer (core §1.2.1, constitution §0.9.5).** A clean **RELIABLE**
-  scan is **DA-equivalent** for that scan — trust it, don't re-verify; `FAIL` is a **HOLD**; `INSPECT` routes
-  to §1A triage (bounded, cost-symmetric, spam-bounded), never a silent pass. An allowlist edit is a
-  **deliberate, reviewed widening of a sanctioned door**, never a scanner-edit dodge. A scan is itself
-  residue: promoting its invariant to a type/admission boundary **retires the now-redundant scan in the same
-  PR** (§1.2's promotion-target rule, mechanized).
-- **Inner loop (Track C §3A): run `cargo check -p <touched-crate>` and `bash scripts/ci/doctrine_scan.sh`
-  after small edits, not only at PR time** — the FAIL-with-remedy is a steering signal during generation,
-  not just an after-the-fact gate; full contract: [`ci_screening_surface.md`](ci_screening_surface.md).
-- **No rung touching PROBATION / authority / gate state merges before DA clearance.** A truthful corrective
-  self-report of a breach may be accepted on its merits; it is never precedent for skipping clearance again.
-  **Verify the tree, not the relayed report** — a clean CI check or a proof transcript pasted into a PR body
-  is a claim, not a substitute for the DA independently confirming the branch.
+### Enforced doctrine pointers
 
-If the change cannot be expressed within these lines, **stop and escalate to the DA** — do not special-case.
+- **Everything is a SimThing / no side subsystems:** cite the core-design, semantic-free scan, sanctioned-surface, type-boundary, or admission-hard-error surface that applies.
+- **Resource-flow authority path:** use existing RF / overlay / EML / admission substrate; no parallel planner or resolved-state side path.
+- **Movement-front / STEAD constraints:** cite STEAD/movement-front tests and design surfaces for map, movement, front propagation, or exact-magnitude routing.
+- **Semantic-free sim/WGSL:** cite semantic-free guards and CPU-oracle parity for `simthing-sim`, WGSL, opcode stacks, or exact claims.
+- **Substrate ladder before new primitives:** RF arena -> overlay column -> EML gadget tree -> JIT EML->WGSL shader -> only then Tier-2 opcode/kernel/role, with DA/Owner routing.
+- **Admission behavior over governance artifacts:** validation lands as type/admission behavior where possible; no registry, preflight artifact, or prose stand-in for a hard error.
+- **Doctrine as type, not prose:** type boundary > admission hard-error > guard scan > prose; retire guards made redundant by higher boundaries.
+- **Kernel authority and seal residue:** owning crate holds authority; declare cross-crate capability leakage, unsafe, sealed access, GPU readback/dispatch, and authority-boundary edits as `seal-residue-risk`.
+- **Doctrine scan as automated DA scan layer:** reliable green covers what it covers; FAIL holds; INSPECT routes through triage; allowlist edits widen sanctioned doors deliberately.
+- **Inner loop:** use the canonical entrypoints below instead of bespoke validation rituals.
+
+### Retained unmechanized norms
+
+- **No rung touching PROBATION / authority / gate state merges before DA clearance.** Verify the tree, not the relayed report; pasted proof is a claim until branch-confirmed.
+- **If the change cannot be expressed through the existing substrate and enforcement pointers above, stop and escalate to DA. Do not special-case around the boundary.**
+
+### Canonical Entrypoints
+
+- Session admission, once per fresh user / Owner / DA-opened session: `bash scripts/ci/orient.sh --role=<coding|orchestrator|da>`.
+- Handoffs carry the existing session `ORIENT-RECEIPT`; they do not require a new full orientation run every rung.
+- If a receipt is missing or stale, stop and report it to the operator / DA instead of reprinting full orientation by habit.
+- Routine local proof commands are conditional references, not a mandatory battery: `cargo check -p <crate>` only when crates changed; `bash scripts/ci/doctrine_scan.sh` for doctrine-screened diffs; `bash scripts/ci/doctrine_selftest.sh` only when scanner surface changed; `bash scripts/ci/relay_lint.sh --selftest` only when relay-lint surface changed; `bash scripts/ci/gen_orientation.sh --check` / `bash scripts/ci/gen_digest.sh --check` when relevant generated sources or docs are touched; `bash scripts/ci/test_inventory_drift_check.sh` only when tests or inventory rows changed.
+- If scanner surface is unchanged, record `scanner unchanged - selftest not required`.
+- GHA comment commands, when available: `/orient`; `/clearance`; `/relay-lint`; `/triage`; `/anchor`; `/seal-proof`.
 
 ---
 
@@ -273,14 +252,21 @@ PASS only if:
 
 ## 10b. Orientation receipt (gate-wiring rungs — enforced by relay-lint)
 
+A fresh agent session is oriented once at cold start by user / Owner / DA instruction.
+
+A handoff does not command a new full orientation run. It requires the agent to carry its session
+`ORIENT-RECEIPT` when the harness validates one, especially for gate-wiring / receipt-tracked work.
+
+If the receipt is missing or stale, stop and report that to the operator / DA. Do not re-run full orientation
+as a per-handoff habit.
+
+Required receipt fields when carried:
+
 ```
 ORIENT-RECEIPT:
 role:
 orientation_digest_sha:
 ```
-
-> Emit via `bash scripts/ci/orient.sh --role=coding|orchestrator|da`. Gate-wiring handoffs must carry a
-> fresh receipt matching the live `docs/orchestrator_orientation.md` digest.
 
 ## 10c. Anchor acknowledgement (trigger-domain rungs — enforced by relay-lint)
 
@@ -353,7 +339,8 @@ real, observed failure mode, not a hypothetical.
 6. **Adds a docs/closeout rung in front of a buildable feature.** Closeout rides with the impl PR (B).
 7. **Resolves a "validate/govern X" requirement into a new registry/table/preflight artifact** instead of
    an admission-layer hard error (D8, the noun-for-verb fence).
-8. **Drops or abbreviates the context spine.** The spine is the anti-drift anchor and is always verbatim (C).
+8. **Drops the context spine or removes its enforcing pointers / retained norms.** The compressed spine is the
+   anti-drift anchor; every handoff carries it, but it does not re-expand mechanically enforced doctrine (C).
 9. **Invents a new resolution mechanism** while an RF arena / overlay / EML gadget / JIT-EML shader
    suffices (D1, D2).
 10. **Pads the evidence doc with empty or mission-restating sections.** Sections carry signal or are cut.
