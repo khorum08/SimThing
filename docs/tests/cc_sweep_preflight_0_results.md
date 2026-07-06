@@ -4,7 +4,7 @@
 
 PROBATION / proof-present / orchestrator-routing-pending.
 
-tested_code_sha: `5079b4a32b9fe85f8c3c3f2023a9eac0c1738cd4`
+tested_code_sha: `3290337e441dc50d76b2a82f66db11d77d370175`
 coverage_basis: PASS - committed implementation validated by the harness proofs below; final follow-up commits, if any, are proof-documentation only.
 
 ## ORIENT-RECEIPT
@@ -20,6 +20,7 @@ coverage_basis: PASS - committed implementation validated by the harness proofs 
 - Retired the one-shot `corpus-baseline` clearance class.
 - Added repeatable `corpus-sweep` clearance ownership for sweep-shaped diffs.
 - Added clearance fixtures proving sweep-shape routing is unambiguous, retired baseline no longer matches, and engine-source changes are rejected.
+- Added a negative clearance fixture proving a sweep results artifact alone is not enough to match `corpus-sweep`.
 - Wired lifecycle schema check into Doctrine Scan for inventory/lifecycle TSV PR diffs.
 - Added lifecycle schema gate fixtures proving invalid birth_track failure, clean pass, and unrelated skip.
 
@@ -31,7 +32,7 @@ CC-BASELINE-0 left two preflight hazards before the first sweep. First, `corpus-
 
 ```text
 bash scripts/ci/clearance_check.sh --selftest
-CLEARANCE-SELFTEST: PASS (17 fixtures)
+CLEARANCE-SELFTEST: PASS (18 fixtures)
 ```
 
 ```text
