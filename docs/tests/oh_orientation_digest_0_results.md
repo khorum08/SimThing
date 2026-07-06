@@ -10,7 +10,8 @@
 |---|---|
 | PR | [#1165](https://github.com/khorum08/SimThing/pull/1165) |
 | Branch | `oh-orientation-digest-0` |
-| Head | `d6efae1cc0a360d38d84e49c30c7d6b2df56ee18` |
+| Head (live) | `fcdb194a0696ffb812ac5c2436dcae9237db023d` |
+| Implementation / proof head | `fcdb194a` (unchanged by docs-only refreshes) |
 | Base | `master` @ `ad46a0be8` |
 | Rung | `OH-ORIENTATION-DIGEST-0` |
 
@@ -63,6 +64,16 @@ ORIENTATION-DIGEST-SELFTEST: PASS (2 fixtures)
 gen_orientation --check: PASS
 ```
 
+### GHA (verified @ `fcdb194a`)
+
+| Check | Result | Run |
+|---|---|---|
+| Doctrine Scan | **PASS** | [28759316005](https://github.com/khorum08/SimThing/actions/runs/28759316005) |
+| Doctrine Exec | **PASS** | [28759316009](https://github.com/khorum08/SimThing/actions/runs/28759316009) |
+| Orientation digest freshness | **PASS** | (Doctrine Scan step) |
+
+Steps: digest freshness PASS; orientation digest freshness PASS; Doctrine self-test PASS; PR delta scan PASS; triage spam check PASS.
+
 ## Scope Ledger
 
 | Path | Touched | Notes |
@@ -79,6 +90,7 @@ gen_orientation --check: PASS
 
 ## Known gaps / next
 
+- Evidence refreshed by docs-only commits on live PR head; implementation/proof head remains `fcdb194a`.
 - `/orient` GHA comment execution activates post-merge (workflow on master).
 - `OH-COLD-START-0` (rung 2b) not started — no ORIENT-RECEIPT, `--since`, or stubification in this rung.
 - Pre-existing `SPEC-LOWERER-KIND-READ` INSPECT(415) unchanged.
@@ -87,7 +99,7 @@ gen_orientation --check: PASS
 
 | Field | Value |
 |---|---|
-| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS, run 28759253144 |
+| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS (28759316005) + Doctrine Exec PASS (28759316009); orientation digest freshness PASS |
 | Triage entries | none |
 | Risk class | gate-wiring |
 | Falsification check | Hand-mutate `orchestrator_orientation.md` → `--check` FAIL; remove fixture ledger row → drift FAIL |
