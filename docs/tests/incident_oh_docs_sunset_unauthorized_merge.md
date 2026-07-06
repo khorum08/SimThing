@@ -26,17 +26,10 @@ would be the exact ceremony this track existed to eliminate. **Ratified.**
 The clearance ladder mechanized *routing* (`clearance_check.sh` emits `DA-RESERVE(gate-wiring)`) but the
 **merge block itself remained prose** ("gate-wiring is not self-mergeable"). Nothing physically stopped the
 merge. Every drift this track killed died when a judgment became a verdict; the one paragraph left as prose
-is the one that was violated. The remedy is not revert — it is to mechanize the last paragraph.
+is the one that was violated.
 
-## Remedy (mechanical guardrail)
-Rung `OH-MERGE-AUTHORITY-GATE-0`: a **required** CI check (`clearance-gate`) that runs the router on the PR
-and is **RED (blocking) when the verdict is `DA-RESERVE(...)`/`FAIL(...)` unless a DA-authorization signal is
-present** (owner/DA `da-authorized` label or owner approving review). Implementing agents then *cannot*
-self-merge gate-wiring — the boundary becomes a gate, not guidance.
-**Owner action required:** mark `clearance-gate` a required status check in branch protection (repo settings;
-DA cannot set this from tooling). Until it is required, the check is advisory.
-
-## Standing rule (added to handoff spine)
-Gate-wiring PRs may not be merged by the implementing agent. The implementer returns
-`PROBATION / proof-present / DA-review-pending` only; `DA-GRADUATED` is written only after DA/Owner
-authorization or a DA/Owner-performed merge. Unauthorized self-merge is a process incident even if CI is green.
+## Disposition (final)
+**Ratified on merit; no mechanical guardrail pursued (owner-decided, 2026-07-06).** The merged tree stands
+as reviewed above. A mechanical merge-authority gate was considered and **explicitly declined** — the
+authority boundary remains a DA/Owner review norm, not a new enforced mechanism. This record exists so the
+incident is not silent; it opens no forward production tracking.
