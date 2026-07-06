@@ -5,11 +5,11 @@
 > Operational orientation generated from live harness TSVs. Not a doctrine anchor summary.
 > Regenerate: `bash scripts/ci/gen_orientation.sh`
 
-## MANDATORY: a `/clearance` verdict is REQUIRED before any DA-review relay
+## MANDATORY (ORCHESTRATOR burden): run `/clearance` before you relay for DA review
 
-**Do NOT produce, post, or relay a DA-review / graduation handoff without first running the clearance
-router and observing its verdict for the current PR.** This is not optional, and it is NOT satisfied by a
-verdict quoted in someone else's report.
+**This is the orchestrator's job, not the DA's.** Do NOT produce, post, or relay a DA-review /
+graduation handoff without first running the clearance router and observing its verdict for the current
+PR. It is not optional, and it is NOT satisfied by a verdict quoted in someone else's report.
 
 1. Run `/clearance` (GHA) or `bash scripts/ci/clearance_check.sh --pr <n>` / `--range <base>..<head>`,
    and read the emitted `CLEARANCE-VERDICT` yourself.
@@ -22,6 +22,10 @@ A handoff typed into chat is outside CI and cannot be linted -- it is on your ho
 Never SHA-match (`tested_code_sha` vs head) in place of running the router: that is the recurring kabuki
 that appears whenever the real mechanism is skipped. The router is the routing authority, run first-hand.
 
+**DA side:** the DA does NOT re-run `/clearance` as a required pass -- a green `relay_lint` is
+DA-equivalent for routing (the orchestrator already paid this cost). The DA runs the router only on
+spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C.
+
 ## Source Stamps
 
 | source | sha256 |
@@ -29,7 +33,7 @@ that appears whenever the real mechanism is skipped. The router is the routing a
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 303d5ae539eaa34342a3575383360719e0911498b7dfa582548f8a915c88d7d5 |
-| design_0_0_8_4_8_corpus_clearance.md | 32e1dbd12ebd06c4f719fe9a9dea23a989e815d4c28459733233af02872cca62 |
+| design_0_0_8_4_8_corpus_clearance.md | 5a48cc70f1588796b6936d1e906d0abeef179a84b802b4d3492bf7fd6679bc25 |
 | relay_lint.sh | 0188314d97d1663abc2022df28711dfab733dcdd4620d218828fd63fdb378791 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 

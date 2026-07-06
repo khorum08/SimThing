@@ -84,12 +84,16 @@ binding norms, not conveniences:
 - **Orchestrator:** before producing *any* DA-review handoff, run `/clearance` (or `clearance_check.sh
   --pr <n>` / `--range`) and **observe the emitted verdict**. If no verdict exists, do not produce the
   handoff — trigger clearance first. An `ORCHESTRATOR-CLEARABLE` result means *merge*, not escalate.
-- **DA:** do **not** engage a review until you have **independently run/observed the clearance verdict**
-  yourself. A `CLEARANCE-VERDICT` string quoted in a relay is a *claim*, not proof — verify the tree
-  (founding principle). And **do not SHA-match your way into or out of a review**: `tested_code_sha`
-  identifies the proof point, `coverage_basis` explains an evidence-only tail, and a docs-tail commit is not
-  a hold reason (Immutability Law / #1169). The routing authority is the clearance tool, run first-hand —
-  not a field-comparison ritual, which is the kabuki that recurs whenever the real mechanism is skipped.
+- **DA:** clearance is the **orchestrator's burden**, mechanically enforced by `relay_lint` (a DA relay
+  cannot lint without a fresh, head-bound `CLEARANCE-VERDICT`). **A green `relay_lint` is DA-equivalent for
+  the routing decision — do NOT re-run `/clearance` as a required pass**; the mechanism already paid that
+  cost, and re-running it every review is a token cost on the scarcest resource. Run the router first-hand
+  **only on spot-audit cadence or when a relay is genuinely suspect** — e.g. a chat handoff that never
+  passed `relay_lint`, or a verdict that contradicts the diff. The *substantive* review still verifies the
+  tree (does the code do what it claims); the *routing* is trusted-when-green (trust flows from admission,
+  not authorship). And **do not SHA-match into or out of a review**: `tested_code_sha` is the proof point,
+  `coverage_basis` explains an evidence-only tail, a docs-tail commit is not a hold reason (Immutability Law
+  / #1169) — the router, run when warranted, is the routing authority, never a field-comparison ritual.
 
 ## 5. Harness-driven, no new mechanism
 Every gate this track needs already exists: `test_inventory_drift_check.sh` (deletions must leave no drift),
