@@ -22,6 +22,12 @@ A handoff typed into chat is outside CI and cannot be linted -- it is on your ho
 Never SHA-match (`tested_code_sha` vs head) in place of running the router: that is the recurring kabuki
 that appears whenever the real mechanism is skipped. The router is the routing authority, run first-hand.
 
+**Sticky-comment lag is NOT a mismatch.** Right after you trigger `/clearance`, the sticky comment may
+still show a *prior* run's verdict/`head_sha` for a few seconds. That is `verdict not yet observed`
+(pending observability) -- NOT a SHA mismatch, NOT a proof failure, NOT grounds for a coding handoff. Wait
+for the workflow run to emit a fresh `CLEARANCE-VERDICT`, then route by its class. Never convert
+sticky-update latency into a SHA-matching ritual.
+
 **DA side:** the DA does NOT re-run `/clearance` as a required pass -- a green `relay_lint` is
 DA-equivalent for routing (the orchestrator already paid this cost). The DA runs the router only on
 spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C.
@@ -32,7 +38,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | --- | --- |
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
-| clearance_ledger.tsv | 303d5ae539eaa34342a3575383360719e0911498b7dfa582548f8a915c88d7d5 |
+| clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | design_0_0_8_4_8_corpus_clearance.md | 804780d9de0cbb64c2e58fea7263e0e45408a3c21ce3007aceb171f4a478bdb9 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
@@ -90,7 +96,9 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 
 ## Clearance Ledger (recent)
 
-> clearance ledger empty
+| verdict | class | pr | sha | date |
+| --- | --- | --- | --- | --- |
+| CLEARANCE-VERDICT: DA-RESERVE(gate-wiring) | unknown | 1189 | 6629ee1a659162d5baff7a31a0560b81f43816fa | 2026-07-06T16:04:25Z |
 
 ## Relay Lint Required Blocks
 
