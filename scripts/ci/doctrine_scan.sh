@@ -843,6 +843,63 @@ run_inventory_drift_gate() {
   REPORT_LINES+=("TEST-INVENTORY-DRIFT  PASS  0  stock gate: inventory matches discovered tests and KEEP rows are owned")
 }
 
+run_stock_gate_script() {
+  local scan_id="$1"
+  local script_rel="$2"
+  local script="${SCRIPT_DIR}/${script_rel}"
+  [[ -f "$script" ]] || {
+    die_scanner "missing stock gate: ${script_rel}"
+    return 1
+  }
+  local out status verdict
+  set +e
+  out="$(bash "$script" --check 2>&1)"
+  status=$?
+  set -e
+  verdict="$(printf '%s\n' "$out" | grep -E '^[A-Z0-9_-]+-VERDICT:' | tail -n 1 || true)"
+  if [[ -z "$verdict" ]]; then
+    die_scanner "${scan_id} gate produced no verdict"
+    REPORT_LINES+=("${scan_id}  FAIL  1  missing verdict footer")
+    hard_failures=$((hard_failures + 1))
+    return 1
+  fi
+  if [[ "$verdict" == *FAIL* ]]; then
+    REPORT_LINES+=("${scan_id}  FAIL  1  ${verdict}")
+    hard_failures=$((hard_failures + 1))
+    return 1
+  fi
+  if [[ "$verdict" == *INSPECT* ]]; then
+    local n
+    n="$(printf '%s' "$verdict" | sed -n 's/.*expiry-candidates=\([0-9]*\).*/\1/p')"
+    [[ -z "$n" ]] && n=1
+    REPORT_LINES+=("${scan_id}  INSPECT  ${n}  ${verdict}")
+    inspect_flags=$((inspect_flags + n))
+    return 0
+  fi
+  REPORT_LINES+=("${scan_id}  PASS  0  ${verdict}")
+  return 0
+}
+
+run_closing_rung_stock_gates() {
+  # Selftest sandboxes copy a minimal CI bundle and set DOCTRINE_SCAN_SKIP_DRIFT=1.
+  [[ "${DOCTRINE_SCAN_SKIP_DRIFT:-0}" == "1" ]] && return 0
+  run_doc_budget_gate
+  run_rule_expiry_gate
+  run_agents_stub_gate
+}
+
+run_doc_budget_gate() {
+  run_stock_gate_script "DOC-BUDGET" "doc_budget_check.sh"
+}
+
+run_rule_expiry_gate() {
+  run_stock_gate_script "RULE-EXPIRY" "rule_expiry_check.sh"
+}
+
+run_agents_stub_gate() {
+  run_stock_gate_script "AGENTS-STUB" "agents_stub_check.sh"
+}
+
 assert_contains() {
   local haystack="$1"
   local needle="$2"
@@ -1112,6 +1169,7 @@ main() {
   if [[ "$scanner_errors" -eq 0 ]]; then
     run_scans
     run_inventory_drift_gate
+    run_closing_rung_stock_gates
   fi
   emit_report
 

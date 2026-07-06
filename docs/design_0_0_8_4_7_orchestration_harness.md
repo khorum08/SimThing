@@ -1,6 +1,6 @@
 # 0.0.8.4.7 — Orchestration Harness & Guidance Compression
 
-> **Status: OPEN / DA-OPENED (2026-07-05).** Owner-commissioned (Grok/Gemini root-cause studies absorbed,
+> **Status: DA-CLOSED (closing rung pending DA graduation).** Owner-commissioned (Grok/Gemini root-cause studies absorbed,
 > DA-scrutinized, two proposals overruled — see §2). Sits inside the Rustification initiative
 > (`ci_screening_surface.md §0`): migrate orchestration guidance from **prose → data → verdict**, so
 > compliance is admission behavior and DA/Owner attention is spent only on residue.
@@ -79,12 +79,8 @@ ledger **tags** rungs that carried one (`sketch?` column). At closeout, 0R-rates
 sketch are a queryable comparison — the probationary practice is promoted or retired on **evidence**, not
 kept as unfalsifiable prose. Never mandated; instrumented.
 
-**M4 — Rule & prose expiry (the apparatus shrinks by one law).** Extend the lifecycle-expiry pattern from
-tests to the apparatus itself: (a) `rule_expiry_check.sh` — cadence sweep listing scan/standard rows whose
-`promotion_blocker` is satisfied → retire in the same PR that satisfies it; (b) **DOC-BUDGET tripwire** —
-`ci_screening_surface.md` (and this doc's operator sections) may not grow: new guidance lands as data or
-displaces prose, enforced as a scan; (c) every prose paragraph superseded by a mechanism in this track is
-replaced by a one-line pointer to the enforcing surface. Tests expire, rules expire, prose expires.
+**M4 — Rule & prose expiry:** `rule_expiry_check.sh` + `doc_budget_check.sh` + §6 sunset ledger; superseded
+prose compresses to one-line enforcing-surface pointers. Tests expire, rules expire, prose expires.
 
 **M5 — Cold-start protocol: receipted orientation (owner-commissioned, 2026-07-05).** Kills the
 hand-regenerated orientation brief. Two landings, one forcing function:
@@ -175,8 +171,8 @@ GHA-side).** GHA runners are headless Linux: **no GPU adapter, no X11/ALSA/winit
 | 2b | `OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipts live; relay-lint validates missing/stale/wrong-role receipts; router hook deferred as named future hook; evidence [`oh_cold_start_0_results.md`](tests/oh_cold_start_0_results.md) |
 | 2c | `OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key ADRs, incl. core §7 with map/movement trigger domain); quote-verbatim scan on generated docs; `ANCHOR-ACK` requirement in relay lint keyed to trigger domains; anchor hashes folded into `ORIENT-RECEIPT`; `/anchor` comment command | **DA-GRADUATED / merged [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `131cf858a3`** — doctrine anchors live; anchor hash drift, missing/stale/unknown ANCHOR-ACK validation, anchor-bound receipts, and `/anchor` serving active; `anchor_check.sh --resolve` gives anchor-id exact-match priority over trigger-domain collision; DA-cleared under the no-SHA-equality routing ruling (§2) — proof-to-tested-code binding + green CI on the merged tree, docs-row SHA drift is not a gate; evidence [`oh_anchor_integrity_0_results.md`](tests/oh_anchor_integrity_0_results.md). Post-merge `/anchor` GHA smoke reposted per rung caveat |
 | 2cR | `OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** orientation digest — fixture-local orientation snapshot per fixture (self-contained), then CI-gate both selftests in `doctrine-scan.yml`. **(b)** relay-lint rule `LIVE-POINTER` — FAIL (named field) on live-pointer fields in relay bodies and `docs/tests/**` results docs (`current_pr_head`, live/docs-refresh head, latest-run ids, self-referential as-of SHAs); one-time cleanup sweep strips the existing live-pointer fields from the ~5 TP/OH results docs (immutable rows stay). **(c)** Dead-pointer process fix: doctrine-exec command checkout uses a resolved `checkout_ref`; open PRs use `head_ref`, merged PRs use `merge_commit_sha` when the head ref is deleted, so commands work on the merged PR itself. **(d)** Hash-stability hardening: receipt/anchor content hashing normalizes line endings and strips BOM before hashing, so Windows-written bytes cannot fake drift | **DA-GRADUATED / merged [#1171](https://github.com/khorum08/SimThing/pull/1171) @ `af31f0caf9c841f4d1f26febf83c730627e8916d`** — live-pointer SHA churn mechanically impossible; SHA-hygiene prose retired to §6; fixture-local receipt selftests, LIVE-POINTER lint, merge-commit checkout fallback, and BOM/CRLF hash normalization live; evidence [`oh_immutable_evidence_0_results.md`](tests/oh_immutable_evidence_0_results.md) |
-| 3 | `OH-TRIAGE-INDUCTION-0` | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctrine_exec_triage.sh` strictness (justification mandatory); backfill TP-COMBAT-ARENA-0 GameSession rows | **PROBATION / proof-present / DA-review-pending** — PR [#1172](https://github.com/khorum08/SimThing/pull/1172); clearance router reserves INSPECT deltas without landed triage rows; `/triage` rejects malformed or empty-reason rows; TP-COMBAT-ARENA-0 GameSession residue backfilled; DA clearance required (gate-wiring); evidence [`oh_triage_induction_0_results.md`](tests/oh_triage_induction_0_results.md) |
-| 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned pointers; closeout telemetry readout from `clearance_ledger.tsv` (clears vs relays vs RE-ORIENTs; §5.1-sketch 0R comparison for the LED promotion/retirement call) |
+| 3 | `OH-TRIAGE-INDUCTION-0` | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctrine_exec_triage.sh` strictness (justification mandatory); backfill TP-COMBAT-ARENA-0 GameSession rows | **DA-GRADUATED / merged [#1172](https://github.com/khorum08/SimThing/pull/1172) @ `d81c7161cba7f6ceae9102933479345118f9879a`** — INSPECT deltas require landed triage rows; `/triage` reason strictness live; TP-COMBAT-ARENA-0 GameSession residue backfilled; evidence [`oh_triage_induction_0_results.md`](tests/oh_triage_induction_0_results.md) |
+| 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | **PROBATION / proof-present / DA-review-pending** — mechanized prose compressed; DOC-BUDGET, rule-expiry, AGENTS stub scan, Harness Extension Protocol §7, cold-start entrypoint, closeout telemetry; evidence [`oh_docs_sunset_0_results.md`](tests/oh_docs_sunset_0_results.md) |
 | 5 | `OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
 **Delivery law (M7, applies to every rung):** each rung's surface ships dual-mode — local script **and**
@@ -205,4 +201,31 @@ is the track's entire prose budget.
 | §2 Immutability Law mechanization argument | LIVE-POINTER relay_lint + immutable evidence fixtures | 2026-07-05 |
 | ci_screening_surface.md §5A SHA-hygiene paragraph | LIVE-POINTER relay_lint + tested-code-SHA binding in clearance_check | 2026-07-05 |
 | post-merge command-smoke-on-next-open-PR rule | doctrine-exec checkout_ref merge-commit fallback | 2026-07-05 |
-| _(populated at rung 4)_ | | |
+| ci_screening_surface.md §5A reading-list block | `orient.sh` + `gen_orientation.sh` freshness gate | 2026-07-05 |
+| ci_screening_surface.md §5A standing responsibilities prose | `clearance_check.sh`, `triage_log_check.sh`, `relay_lint.sh` LIVE-POINTER | 2026-07-05 |
+| ci_screening_surface.md §5A workshop 8-check enumeration | `clearance_check.sh` checks 1–8 | 2026-07-05 |
+| ci_screening_surface.md §5A GHA triage command prose | `doctrine_exec_triage.sh` + `triage_log_check.sh` | 2026-07-05 |
+| ci_screening_surface.md §5 triage four-fences prose | `inspect_spam_check.sh` + `triage_log_check.sh` + check 7 | 2026-07-05 |
+| ci_screening_surface.md §1 delta/whole-tree long argument | `doctrine_pr_scan.sh` / `doctrine_scan.sh` | 2026-07-05 |
+| ci_screening_surface.md §12 orchestrator scan-tripwire note | `scans.tsv` SPEC-LOWERER-KIND-READ | 2026-07-05 |
+| design §3 M4 long mechanization argument | `rule_expiry_check.sh` + `doc_budget_check.sh` | 2026-07-05 |
+| auto-read agent file guidance (M5) | `AGENTS.md` pointer stub + `agents_stub_check.sh` | 2026-07-05 |
+
+**Cold-start entrypoint:** run `bash scripts/ci/orient.sh --role=coding|orchestrator|da` and carry the emitted
+ORIENT-RECEIPT. `AGENTS.md` is a ≤5-line pointer stub only; guidance lives in generated
+`docs/orchestrator_orientation.md`. Update `AGENTS.md` only when the entrypoint script path or role set changes.
+
+## 7. Adding a codified harness function
+
+This is the only prose the track deliberately keeps because it builds mechanisms rather than substituting
+for one. New guidance must arrive as a mechanism through this protocol, not as another paragraph.
+
+1. **Thin engine:** `scripts/ci/<x>.sh` with `--selftest`.
+2. **Rule/data in TSV or data file**, never hardcoded prose.
+3. **Self-contained fixtures**; no live pointers.
+4. **Verdict output** with FAIL-as-teacher named remedy.
+5. **Freshness gate** if the mechanism generates a doc.
+6. **Dual-mode:** local command plus `/x` comment command on doctrine-exec carrier when user-facing.
+7. **CI-gate the selftest** in `doctrine-scan.yml`.
+8. **Carry `promotion_blocker` / retirement semantics.**
+9. **Gate-wiring self-application:** touching the mechanism routes `DA-RESERVE` / DA review.

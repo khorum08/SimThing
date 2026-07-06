@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — clearance router reserves INSPECT deltas without landed triage rows; `/triage` rejects malformed or empty-reason rows; TP-COMBAT-ARENA-0 GameSession residue backfilled; DA clearance required (gate-wiring).
+**DA-GRADUATED / merged #1172 @ `d81c7161cba7f6ceae9102933479345118f9879a`** — INSPECT deltas require landed triage rows; `/triage` reason strictness live; TP-COMBAT-ARENA-0 GameSession residue backfilled.
 
 ## PR / branch / merge
 

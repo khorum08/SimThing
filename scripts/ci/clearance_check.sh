@@ -22,6 +22,11 @@ GATE_WIRING_PATHS=(
   "scripts/ci/doctrine_exec_clearance_comment.sh"
   "scripts/ci/doctrine_exec_triage.sh"
   "scripts/ci/triage_log_check.sh"
+  "scripts/ci/doc_budget_check.sh"
+  "scripts/ci/doc_budget_baseline.tsv"
+  "scripts/ci/rule_expiry_check.sh"
+  "scripts/ci/agents_stub_check.sh"
+  "AGENTS.md"
 )
 
 ENGINE_CRATE_PREFIXES=(
@@ -287,7 +292,9 @@ check_self_application() {
         return 0
       fi
     done
-    if [[ "$file" == scripts/ci/fixtures/clearance/* ]]; then
+    if [[ "$file" == scripts/ci/fixtures/clearance/* ]] ||
+       [[ "$file" == scripts/ci/fixtures/doc_budget/* ]] ||
+       [[ "$file" == scripts/ci/fixtures/agents_stub/* ]]; then
       return 0
     fi
   done < <(changed_files 2>/dev/null || true)

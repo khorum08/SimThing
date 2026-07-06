@@ -46,6 +46,31 @@ jobs:
           set -o pipefail
           bash scripts/ci/relay_lint.sh --selftest 2>&1 | tee doctrine-relay-selftest-report.txt
 
+      - name: DOC-BUDGET check
+        run: |
+          set -o pipefail
+          bash scripts/ci/doc_budget_check.sh --check 2>&1 | tee doctrine-doc-budget-report.txt
+
+      - name: DOC-BUDGET selftest
+        run: |
+          set -o pipefail
+          bash scripts/ci/doc_budget_check.sh --selftest 2>&1 | tee doctrine-doc-budget-selftest-report.txt
+
+      - name: Rule expiry check
+        run: |
+          set -o pipefail
+          bash scripts/ci/rule_expiry_check.sh --check 2>&1 | tee doctrine-rule-expiry-report.txt
+
+      - name: AGENTS stub check
+        run: |
+          set -o pipefail
+          bash scripts/ci/agents_stub_check.sh --check 2>&1 | tee doctrine-agents-stub-report.txt
+
+      - name: AGENTS stub selftest
+        run: |
+          set -o pipefail
+          bash scripts/ci/agents_stub_check.sh --selftest 2>&1 | tee doctrine-agents-stub-selftest-report.txt
+
       - name: Doctrine self-test
         run: |
           set -o pipefail

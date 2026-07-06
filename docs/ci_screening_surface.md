@@ -85,11 +85,8 @@ checkout → ensure rg (preinstalled + apt fallback)
 The machine-parseable footer the orchestrator keys on:
 `DOCTRINE-SCAN-VERDICT: PASS|FAIL|INSPECT  failures=N inspect=M selftest=PASS|FAIL`.
 
-**Delta vs whole-tree (binding).** HEURISTIC scans are evaluated **on the PR diff only** in CI; RELIABLE
-scans stay **whole-tree** (you want zero of those anywhere, always). A whole-tree HEURISTIC scan re-flags the
-pre-existing baseline on every PR (~81 legitimate hits on master) and would drown triage — so per-PR HEURISTIC
-is delta-scoped, and the whole-tree run is only the master-push positive control. The §1A spam-bounds count
-**branch-introduced (delta)** INSPECTs, never baseline.
+**Delta vs whole-tree (binding).** Enforced by `doctrine_pr_scan.sh` / `doctrine_scan.sh`: HEURISTIC = PR diff;
+RELIABLE = whole-tree. §1A spam bounds count branch-introduced INSPECTs via `inspect_spam_check.sh`.
 
 ---
 
@@ -239,16 +236,9 @@ the coding agent) sits between the scanner and the scarce DA and resolves every 
 - **ESCALATE** — a real gray zone → the DA, with reasoning attached (the DA verifies a *claim*, not derives a
   finding from nothing).
 
-Four fences keep triage honest (full protocol: track §1A):
-1. **The agent pays first** — a one-line justification per INSPECT before it's triage-eligible.
-2. **Bounded loop** — hard cap of 3 attempts, then auto-ESCALATE.
-3. **Spam-bounds → FAIL-equivalent** — escalate immediately on any hill-climbing signature: >3 branch-introduced
-   INSPECTs; the same symbol tripping ≥2 different HEURISTIC scan-ids (symbol-walking); INSPECT rising while a
-   RELIABLE FAIL stays open.
-4. **Decorrelated reviewer + DA spot-audit** — the DA samples a % of DELETE/GREEN clearances against the tree
-   until triage accuracy is established (a clearance is named residue `triage-cleared-uninspected`).
-
-For webchat-driven executable proof and remote §1A triage commands, see §9.
+Four fences (mechanized): `triage_log_check.sh` reason strictness; `clearance_check.sh` check 7;
+`inspect_spam_check.sh` hill-climbing bounds; `triage_log.tsv` telemetry. Judgment-residue dispositions
+(DELETE/GREEN/ESCALATE) and DA spot-audit remain orchestrator/DA practice — see §9 for `/triage`.
 
 **Why the triage agent is the discipline mechanism, not just a filter:** its escalation log (`triage_log.tsv`)
 *is* the per-scan-id promotion telemetry. A HEURISTIC that keeps reaching ESCALATE is, by construction, a scan
@@ -288,75 +278,25 @@ in seconds where CI already vouches, and reserve token-heavy investigation for e
 
 ## 5A. Orchestrator guidance — the operational contract (constitution §0.9.7 is the authority)
 
-> **A NEW orchestration session is not qualified to route work until it has read:** this document
-> (whole), constitution `design_0_0_8_3.md` §0.9, core design §1.2/§1.2.1,
-> `design_0_0_8_4_5_simthing_kernel.md` §5.2 (the B1–B8 bypass catalogue), and `handoff_template.md`.
-> Skipping this list is how orchestration sessions miss standing rulings, re-derive settled decisions,
-> or route gate-state work to the wrong tier — each is a recorded, repeated failure mode.
+> **Cold-start:** run `bash scripts/ci/orient.sh --role=coding|orchestrator|da` and read generated
+> `docs/orchestrator_orientation.md` with ORIENT-RECEIPT — not a static reading list. Freshness:
+> `gen_orientation.sh --check`.
 
-**Standing responsibilities (every session, every rung):**
-1. **Triage-log stewardship.** Every INSPECT routes through the §1A loop and lands a row in
-   `scripts/ci/triage_log.tsv` (delete/green/escalate + reason + commit) — never a silent pass, never a
-   straight-to-DA relay. The log is the promotion telemetry the corpus-maintenance cadence reads; an
-   unlogged clearance is invisible and therefore did not happen.
-2. **Closure hygiene.** Track-D edit-wave scope (`test_edit_scope*`) was deleted at `CI-LIFECYCLE-RESIDUE-DELETE-0`;
-   future lifecycle work must use birth-track-scoped edit authorization, not spent wave replay.
-3. **Verify the tree, never the relayed report.** An implementer's transcript is a claim. Before relaying
-   a proof upward or authorizing a merge, confirm the branch state. **Proof binding uses the tested-code-SHA
-   model (owner-corrected, 2026-07-05), not head equality:** a proof is valid when
-   `git diff <tested_code_sha> <head>` is empty on binary-affecting paths (code, tests, `Cargo.*`, fixtures,
-   GPU/sim/driver behavior). Docs/evidence/ledger-only commits after the tested SHA **never** invalidate a
-   proof — do not chase head equality (the self-referential SHA trap); require a rerun only when the tested
-   binary actually changed.
-4. **Never self-mark COMPLETE.** Rungs relay as PROBATION with the Graduation-routing block; graduation is
-   the DA's write (or your own merge authority where clause §0.9.7 applies — see below).
+**Mechanized responsibilities (enforcing surfaces — do not re-derive from prose):**
+1. **Triage-log stewardship** — `clearance_check.sh` check 7 + `triage_log_check.sh` + `/triage`
+   (`doctrine_exec_triage.sh`) → `triage_log.tsv`.
+2. **Closure hygiene** — birth-track-scoped edit authorization; spent wave replay deleted.
+3. **Proof binding** — `relay_lint.sh` tested-code-SHA + `LIVE-POINTER`; design §6 sunset ledger.
+4. **Graduation** — `relay_lint.sh` graduation-routing block; never self-mark COMPLETE.
 
-**Standing ruling — no SHA-equality routing (owner-commissioned, DA-ruled 2026-07-05).** Superseded —
-enforced by `LIVE-POINTER` in `relay_lint.sh` plus tested-code-SHA binding in `clearance_check.sh`; see
-`design_0_0_8_4_7_orchestration_harness.md` §6 sunset ledger.
+**Handoffs:** `relay_lint.sh` + `handoff_template.md`; §H violations rejected at review.
 
-**Handoffs:** every rung handoff fills `handoff_template.md` — context spine **verbatim**, recipient by the
-routing table (coding → Cursor/Grok; docs → Haiku/Sonnet; DA judgment → Opus/Owner), rung-local reading
-≤6 files, one load-bearing proof per regression class, and the §11 response format. A handoff violating §H
-(batteries, bespoke guards, triple-docs, inline implementations, inert scaffolding) is **rejected at
-review, not implemented** — rejecting it is your job, not the DA's.
+**Merge authority (judgment-residue — constitution §0.9.7 governs):** precedented-class clearance is
+mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Doubt, novelty, gate-wiring,
+or binding conditions → `DA-RESERVE`. DA spot-audits self-authorized merges; one wrong self-merge
+suspends authority. Owner supremacy above all.
 
-**Asserting merge authority (constitution §0.9.7 — the full contract governs; summary):** you MAY merge
-without DA escalation only when the rung is a **precedented wave class under a standing ruling** with risk
-class `none`/`semantic`/`data-deliverable`, is NOT gate-wiring / seal-residue / allowlist-edit /
-protected-corpus / first-of-class, all RELIABLE gates are green on the head with SHA-bound targeted proof
-where a profile exists, and you have filed the Graduation-routing block **plus a one-paragraph merge
-rationale in the PR thread before merging**. Any doubt, novelty, or precedent-setting element → escalate
-(the #1106 escalation is the calibration model: insisting on DA review when a stack smelled wrong was
-correct). The DA spot-audits self-authorized merges against the tree; one wrong self-merge suspends the
-authority. Owner supremacy sits above everything, visible and recorded.
-
-**Standing ruling (DA, 2026-07-05): the workshop-homed scenario rung is a precedented class.** After
-`TP-DIPLOMACY-FLOW-0` (#1150), `TP-FRONTS-AUTHORING-0` (#1151), and `TP-PALMA-REACH-0` (#1152) graduated
-with zero defects found, per-rung DA review of this class is ceremony (a regression signal, §0). A scenario
-rung is **orchestrator-merge-clearable under §0.9.7** when ALL of the following mechanical checks pass:
-
-1. The diff touches **only** `crates/simthing-workshop/**`, `docs/tests/**`, `scripts/ci/test_inventory.tsv`,
-   and `scripts/ci/test_lifecycle_boundary_rows.tsv` — zero engine-crate edits.
-2. **No** Homing Boundary exception requested, **no** substrate-widening appeal, **no** new
-   opcode/WGSL/`AccumulatorRole`.
-3. Coverage basis clean under the tested-code-SHA model (responsibility 3 above).
-4. Lifecycle correct: new tests ledgered with `birth_track = 0.0.8.5-terran-pirate` (or the active scenario
-   envelope), `test_lifecycle_tracks.tsv` untouched, drift gate PASS.
-5. CI Doctrine Scan green at head — zero hard failures.
-6. Citable owner-local GPU proof (`DOCTRINE-TESTS-VERDICT: PASS` with `tested_code_sha` + `coverage_basis`)
-   for every GPU/parity acceptance item.
-7. Every INSPECT delta has a landed `/triage` row (responsibility 1 — relay prose is not a triage row).
-8. The rung carries **no binding DA conditions** from a prior graduation.
-
-All eight pass → the orchestrator merge-clears, posts the relay as the graduation record plus the
-one-paragraph merge rationale in the PR thread, and **notifies** the DA (no consultation). Any check fails
-→ normal DA escalation. **DA reserve (always escalate):** homing exceptions, widening appeals, any
-engine-crate edit, Tier-2 work, a new proof class, phase/track closeout, red gates or unclassified INSPECT
-deltas, and any rung carrying binding DA conditions (condition verification is DA residue). The DA
-spot-audits class-cleared merges against the tree on cadence; one wrong self-merge suspends the class.
-
-**Channeling DA token spend (the routing table above is the mechanism — feed it honestly):**
+**Channeling DA token spend (judgment-residue — feed the routing table honestly):**
 - **Declare risk classes truthfully and completely** — under-declaring to earn a light review is the
   laundering move the spot-audit exists to catch; over-declaring burns the DA turn the regime exists to save.
 - **Write the Falsification check as an executable instruction** ("run X, expect Y; perturb Z, expect FAIL")
@@ -367,24 +307,9 @@ spot-audits class-cleared merges against the tree on cadence; one wrong self-mer
   `unverified`. The DA reconstructing truth from git because a relay obscured it costs more than the
   review it replaced.
 
-**GHA-side triage tooling — the webchat orchestrator's remote §1A surface (Track B, `CI-B-GH-TRIAGE-0`).**
-A webchat orchestrator with the GitHub connector discharges its triage role **entirely GitHub-side**, no local
-relay, via `.github/workflows/doctrine-exec-commands.yml`:
-
-- **`/triage <scan-id> <delete|green|escalate> <reason>`** — appends a validated §1A row to
-  `scripts/ci/triage_log.tsv` on the PR branch (diff-visible), via `doctrine_exec_triage.sh`. A malformed command
-  is rejected with the required format printed (FAIL-as-teacher). This is how the orchestrator's triage-log
-  stewardship (responsibility 1 above) is done remotely — the row lands in the PR, not in a private transcript.
-- **`/seal-proof [plan] [profile=<id>] [probe=<probe-id>]`** — initiates / plans a non-blocking GitHub CPU proof
-  run and reads the SHA-bound verdict back in a **single sticky PR comment** (`doctrine_exec_comment.sh`); see §9
-  for profiles, probe mode, plan mode, and the freshness contract.
-- **Channels + trust:** both commands are accepted from `issue_comment` **and** `pull_request_review` /
-  review-comment events (the connector reliably submits PR reviews), **collaborator-only**, and **never** run
-  untrusted fork code under a write token.
-- **Descoped, by DA ruling (`CI-B-EXPANSION-GRADUATION-0`, 2026-07-04):** the doctrine-*scan* sticky comment
-  (a scan-side mirror of the verdict in the PR thread) was **not** built and is **not** required — it is a
-  convenience display, never a proof gate. The orchestrator reads the §1A picture from the **checks UI + the
-  scan's INSPECT lines/justifications + the `/triage` surface**; do not treat its absence as missing tooling.
+**GHA-side commands:** `doctrine-exec-commands.yml` — `/triage` (`doctrine_exec_triage.sh` +
+`triage_log_check.sh`), `/seal-proof`, collaborator-only. Scan picture from checks UI + INSPECT lines +
+`/triage`; descoped scan sticky comment is not a proof gate (§9).
 
 ---
 
@@ -616,15 +541,11 @@ section is the operator surface.
   **request the DA adjudicates**, never a self-issued verdict — it is nearly unfalsifiable and self-serving, so
   the burden is on the appeal and the **default is deny → workshop-home it**. A self-classified "generic
   widening" landed in an engine crate is drift, rejected at review.
-- **Orchestrator note.** Every net-new `simthing-clausething/src` (or `spec`/`kernel`/`sim`/lowerer) symbol in a
-  scenario PR is **classify-before-merge**: the PR must state, per symbol, why it is generic-not-scenario, and
-  any widening must cite the DA/Owner approval that authorized it (an appeal is not an approval). An
-  unclassified engine-crate addition in a scenario PR is **escalated to DA, not landed silently**. Note the
-  honest limit: `SPEC-LOWERER-KIND-READ` only tripwires *kind-branching*; non-kind scenario code in a lowerer
-  trips nothing yet (broader net-new-engine-symbol tripwire queued), so this review step is the live control.
-  Surface elevation candidates at closeout only.
+- **Orchestrator note (judgment-residue).** Classify-before-merge per symbol; widening requires DA/Owner approval.
+  Tripwire: `SPEC-LOWERER-KIND-READ` in `scans.tsv` (kind-branching); non-kind residue is live review control.
 
 > **Deferred elaboration (not in force).** A per-production `simthing-workshop/src/testthing/<production>/`
 > sub-taxonomy with a scan carve-out and a mechanical `--track-closeout` emptiness gate is the natural next step
 > *when* workshop fills and needs per-expedition sub-organization. Deferred — until then, "candidate code in the
 > `simthing-workshop` leaf, default-delete at closeout" is the whole mechanism. Do not scaffold `testthing/` yet.
+EXTRA GROWTH LINE

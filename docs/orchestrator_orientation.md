@@ -12,7 +12,7 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_7_orchestration_harness.md | 63721eb8b20f226e2ef82f398e6f2407ccbcd1a74e9481eb5e0f72c2181beaeb |
+| design_0_0_8_4_7_orchestration_harness.md | e336a087476b2848929e88c148369bef7855da7092caa2bb787d77553547683a |
 | relay_lint.sh | af4ea00ba2bb0e96f6c53f4ce89ac16749ead385fc5f3e284d1f5392ba3b9f8a |
 | doctrine_anchors.tsv | 7f0bdaf5f0b85355f11272cceff01315ffe9f0f8480e1670487adf2e53b3eaef |
 
@@ -27,13 +27,17 @@
 | 2b | OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipt... |
 | 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | **DA-GRADUATED / merged [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `131cf858a3`** — doctrine anchors l... |
 | 2cR | OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** | **DA-GRADUATED / merged [#1171](https://github.com/khorum08/SimThing/pull/1171) @ `af31f0caf9c841f4d1f26febf83c730627... |
-| 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | **PROBATION / proof-present / DA-review-pending** — PR [#1172](https://github.com/khorum08/SimThing/pull/1172); clear... |
-| 4 | OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced wi | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned... |
+| 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | **DA-GRADUATED / merged [#1172](https://github.com/khorum08/SimThing/pull/1172) @ `d81c7161cba7f6ceae9102933479345118... |
+| 4 | OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced wi | **PROBATION / proof-present / DA-review-pending** — mechanized prose compressed; DOC-BUDGET, rule-expiry, AGENTS stub... |
 | 5 | OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
 ## Next Rung Pointer
 
-Active pointer: `OH-TRIAGE-INDUCTION-0`
+Active pointer: `OH-DOCS-SUNSET-0` (closing rung)`
+
+## Cold-Start Entrypoint
+
+Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator|da` and carry the emitted ORIENT-RECEIPT.
 
 ## Clearance Router Verdict Meanings
 
