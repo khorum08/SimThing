@@ -1,0 +1,2 @@
+crate	file	test_name	kind	class	superseding_boundary	verdict	note	promotion_target	birth_track	dsu_survivals
+fixture-crate	crates/fixture/tests/example.rs	example	unit	oracle-parity	B-T7-CPU-ORACLE-PARITY	KEEP	fixture row	permanent-residue:oracle-parity	pre-lifecycle	0

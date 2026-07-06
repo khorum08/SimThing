@@ -61,6 +61,14 @@ jobs:
           set -o pipefail
           bash scripts/ci/rule_expiry_check.sh --check 2>&1 | tee doctrine-rule-expiry-report.txt
 
+      - name: Lifecycle schema gate (PR inventory/lifecycle TSV)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -o pipefail
+          bash scripts/ci/lifecycle_schema_pr_gate.sh \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.sha }}" 2>&1 | tee doctrine-lifecycle-schema-gate-report.txt
+
       - name: AGENTS stub check
         run: |
           set -o pipefail
@@ -116,6 +124,11 @@ jobs:
             cat doctrine-orientation-report.txt 2>/dev/null || true
             echo '```'
             echo
+            echo "## Lifecycle schema gate"
+            echo '```'
+            cat doctrine-lifecycle-schema-gate-report.txt 2>/dev/null || true
+            echo '```'
+            echo
             echo "## Doctrine scan"
             echo '```'
             cat doctrine-scan-report.txt 2>/dev/null || true
@@ -135,6 +148,7 @@ jobs:
           path: |
             doctrine-digest-report.txt
             doctrine-orientation-report.txt
+            doctrine-lifecycle-schema-gate-report.txt
             doctrine-selftest-report.txt
             doctrine-scan-report.txt
             doctrine-triage-report.txt
