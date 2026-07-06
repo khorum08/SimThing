@@ -11,10 +11,10 @@
 | PR | [#1167](https://github.com/khorum08/SimThing/pull/1167) |
 | Branch | `oh-anchor-integrity-0` |
 | Head (implementation/proof) | `295ebd6afa5c865680df800611ad5dc83d5261e3` |
-| Evidence docs head | pending docs-only commit (see note below) |
+| Evidence docs head | `38b386e15a5c865680df800611ad5dc83d5261e3` |
 | Base | `master` @ `d5c76215e` (#1166 merge) |
 
-> Evidence lifecycle rows refreshed by docs-only commit (implementation/proof head remains `295ebd6a`).
+> Evidence refreshed by docs-only commit `38b386e1`; implementation/proof head remains `295ebd6a`.
 | Rung | `OH-ANCHOR-INTEGRITY-0` |
 
 ## Exit-proof columns
