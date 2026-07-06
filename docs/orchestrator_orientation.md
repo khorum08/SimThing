@@ -12,7 +12,7 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_8_corpus_clearance.md | 87be84775d09e0ee898b5134ed335b5d1d418f1d2fa8879a08680ed95f9ff41a |
+| design_0_0_8_4_8_corpus_clearance.md | 1408dbdc53b07bc1a7797c8338ff6980127830184b30104eb8d7f3b3001009d3 |
 | relay_lint.sh | af4ea00ba2bb0e96f6c53f4ce89ac16749ead385fc5f3e284d1f5392ba3b9f8a |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -21,6 +21,7 @@
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | S | CC-HANDOFF-SPINE-0` (parallel; run early) | Compress the `handoff_template.md` context spine: for each spine line, if it is  | `handoff_template.md` spine **line count decreases**; every removed line cites its enforcing mechanism; retained line... |
+| G | CC-RELAY-CLEARANCE-GATE-0` (gate-wiring; DA-reviewed; high priority — run before further DA escalations) | Close the critical routing-bypass hole (§4C): make it **mechanically impossible  | `relay_lint --selftest` proves a manually-written DA escalation lacking `CLEARANCE-VERDICT` **fails**; a relay with a... |
 | 0 | CC-BASELINE-0 | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to  | 0 rows remain `unknown`-class; each reclassification cites its retention basis; drift gate PASS |
 | 1..N | CC-SWEEP-<crate> | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the | crate compiles; remaining gates green; deleted rows leave no drift; **inventory row count decreases**; each deletion ... |
 | C | CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified d | Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expiry + drift + doctri... |
