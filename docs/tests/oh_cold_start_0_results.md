@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1166](https://github.com/khorum08/SimThing/pull/1166) |
 | Branch | `oh-cold-start-0` |
-| Head | `1ef409da` |
+| Head | `a70450e7` |
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
 
@@ -48,7 +48,7 @@
 ```
 ORIENT-RECEIPT: 831cb2d35fa7  role: coding
 ORIENT-RECEIPT: 66f5bb9def50  role: orchestrator
-ORIENT-RECEIPT: (da role at head)  role: da
+ORIENT-RECEIPT: b99a1ee80f51  role: da
 orientation_digest_sha: b139390d9bc7ad62d9ad8de286ffd8048e3afd47b097f97e16ced3d98914c52c
 source_stamp: b7e084213e8382c0
 ```
@@ -87,9 +87,9 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415
 ## Post-merge /orient smoke
 
 - PR used: [#1166](https://github.com/khorum08/SimThing/pull/1166)
-- comment/run: `/orient role=orchestrator` posted; awaiting Doctrine Exec GHA sticky comment
-- result: pending GHA
-- observed ORIENT-REPORT: pending GHA
+- comment/run: `/orient role=orchestrator` → workflow [28760980506](https://github.com/khorum08/SimThing/actions/runs/28760980506)
+- result: **PASS** — sticky comment posted with receipt-bearing output
+- observed ORIENT-REPORT: `ORIENT-REPORT: OK`; `ORIENT-RECEIPT: 8e90ecb077f1`; `role: orchestrator`; `orientation_digest_sha: 0a992c63…`; `head_sha: 1ef409da`; `base_sha: eee9d4714`
 - role: orchestrator
 
 ## Scope Ledger
