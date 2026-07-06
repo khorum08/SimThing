@@ -75,4 +75,4 @@ Not run:
 
 CLEARANCE-VERDICT: ORCHESTRATOR-TO-RUN
 
-Final posture: PROBATION / proof-present / DA-review-pending.
+Final posture: PROBATION / proof-present / orchestrator-routing-pending.
