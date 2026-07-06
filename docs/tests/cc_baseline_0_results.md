@@ -107,7 +107,17 @@ Explicit omissions:
 - `doctrine_scan.sh selftest=SKIPPED expected`
 - `no Rust crate touched — cargo check not required`
 - `relay_lint surface unchanged — relay_lint selftest not required`
-- `clearance router unchanged — clearance_check selftest not required`
+- `clearance class surface changed - clearance_check selftest required and run`
+
+## Clearance harness-error remedy
+
+- Problem: local and orchestrator clearance routed PR #1193 to `DA-RESERVE(harness-error)`.
+- Root cause: `scripts/ci/test_inventory.tsv` was listed in every active TP precedented-class scope, so this inventory-only baseline PR matched multiple TP classes at once without any TP source/test file to trigger the router's primary-rung narrowing.
+- Matching precedented classes before fix: `tp-diplomacy-flow-rung`, `tp-fronts-authoring-rung`, `tp-palma-reach-rung`, and `tp-fleet-movement-rung`.
+- Chosen class / binding after fix: `corpus-baseline`, scoped to `docs/tests/cc_baseline_0_results.md|scripts/ci/test_inventory.tsv`, with requirements `tested_code_sha|coverage_basis`.
+- Why this routes deterministically: TP classes no longer claim bare `scripts/ci/test_inventory.tsv`; TP PRs still match their TP source/test/results paths, while CC-BASELINE-0 inventory classification is owned by the single `corpus-baseline` class.
+- Local clearance result after fix: `DA-RESERVE(gate-wiring)` once the remedy is included, because the remedy necessarily edits `scripts/ci/precedented_classes.tsv`; the prior ambiguous-class `DA-RESERVE(harness-error)` is removed.
+- Remaining routing posture: `PROBATION / proof-present / orchestrator-routing-pending`.
 
 ## Unknown-row resolution ledger
 
@@ -135,7 +145,7 @@ Explicit omissions:
 | test files | not deleted | no deletion in this rung |
 | Rust production code | not touched | |
 | scanner surface | not touched | doctrine_selftest.sh not run |
-| clearance routing | not touched | orchestrator owns clearance |
+| clearance class surface | changed | `corpus-baseline` class added; TP class scopes stop claiming bare inventory-only diffs |
 | relay lint | not touched | |
 
 ## Conformance
