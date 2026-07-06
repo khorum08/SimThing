@@ -271,6 +271,17 @@ PASS only if:
 <the adjacent rungs / systems explicitly NOT in scope — one list, no rationale essays>
 ```
 
+## 10b. Orientation receipt (gate-wiring rungs — enforced by relay-lint)
+
+```
+ORIENT-RECEIPT:
+role:
+orientation_digest_sha:
+```
+
+> Emit via `bash scripts/ci/orient.sh --role=coding|orchestrator|da`. Gate-wiring handoffs must carry a
+> fresh receipt matching the live `docs/orchestrator_orientation.md` digest.
+
 ## 11. Response format
 
 ```
