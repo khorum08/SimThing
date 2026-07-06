@@ -36,6 +36,8 @@ elif [[ "$body" =~ ^/relay-lint([[:space:]]|$) ]] || [[ "$body" == /relay-lint* 
   cmd="relay-lint"
 elif [[ "$body" =~ ^/orient([[:space:]]|$) ]] || [[ "$body" == /orient* ]]; then
   cmd="orient"
+elif [[ "$body" =~ ^/anchor([[:space:]]|$) ]] || [[ "$body" == /anchor* ]]; then
+  cmd="anchor"
 else
   echo "COMMAND: ignore"
   exit 0
@@ -83,5 +85,15 @@ if [[ "$cmd" == "orient" ]]; then
     role="${BASH_REMATCH[1]}"
   fi
   echo "COMMAND: orient role=${role}"
+  exit 0
+fi
+
+if [[ "$cmd" == "anchor" ]]; then
+  target=""
+  if [[ "$body" =~ ^/anchor[[:space:]]+([^[:space:]]+) ]]; then
+    target="${BASH_REMATCH[1]}"
+  fi
+  [[ -n "$target" ]] || { echo "COMMAND: anchor-invalid"; exit 1; }
+  echo "COMMAND: anchor target=${target}"
   exit 0
 fi

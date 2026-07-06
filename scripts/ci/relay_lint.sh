@@ -6,6 +6,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly FIXTURES_ROOT="${SCRIPT_DIR}/fixtures/relay_lint"
 readonly COLD_START_FIXTURES_ROOT="${SCRIPT_DIR}/fixtures/cold_start"
+readonly ANCHOR_FIXTURES_ROOT="${SCRIPT_DIR}/fixtures/anchor_integrity"
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
@@ -172,11 +173,70 @@ if fixture_dir:
     if req_path.is_file():
         required_role = req_path.read_text(encoding="utf-8").strip().lower()
 
+def lines_slice(path, spec):
+    import re as _re
+    m = _re.match(r"lines:(\d+)-(\d+)$", spec)
+    start, end = int(m.group(1)), int(m.group(2))
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return "\n".join(lines[start - 1 : end]) + "\n"
+
+def heading_section(path, heading):
+    h = heading.removeprefix("heading:")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == h or line.strip().startswith(h):
+            start = i
+            break
+    if start is None:
+        raise KeyError(heading)
+    out = [lines[start]]
+    for line in lines[start + 1 :]:
+        if line.startswith("## ") and not line.startswith("###"):
+            break
+        out.append(line)
+    return "\n".join(out).rstrip() + "\n"
+
+def extract_anchor_text(doc_rel, section):
+    path = repo_root / doc_rel
+    if section.startswith("heading:"):
+        return heading_section(path, section)
+    if section.startswith("lines:"):
+        return lines_slice(path, section)
+    raise ValueError(section)
+
+def load_anchor_state():
+    import csv
+    tsv = repo_root / "scripts" / "ci" / "doctrine_anchors.tsv"
+    if fixture_dir:
+        alt = pathlib.Path(fixture_dir) / "doctrine_anchors.tsv"
+        if alt.is_file():
+            tsv = alt
+    if not tsv.is_file():
+        return {}
+    state = {}
+    with tsv.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh, delimiter="\t"):
+            if not row.get("anchor_id"):
+                continue
+            text = extract_anchor_text(row["doc"], row["section"])
+            live = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            state[row["anchor_id"]] = {
+                "live_hash": live,
+                "short": live[:12],
+                "domains": [d.strip() for d in row["trigger_domains"].split(",") if d.strip()],
+            }
+    return state
+
+def anchor_stamp(state):
+    joined = "|".join(f"{k}:{state[k]['live_hash']}" for k in sorted(state))
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:16]
+
 def current_orientation_state():
     orient_doc = repo_root / "docs" / "orchestrator_orientation.md"
     script_dir = repo_root / "scripts" / "ci"
     if not orient_doc.is_file():
-        return None, None, None
+        return None, None, None, None
     digest_sha = hashlib.sha256(orient_doc.read_bytes()).hexdigest()
     sources = [
         script_dir / "precedented_classes.tsv",
@@ -184,15 +244,18 @@ def current_orientation_state():
         script_dir / "clearance_ledger.tsv",
         repo_root / "docs" / "design_0_0_8_4_7_orchestration_harness.md",
         script_dir / "relay_lint.sh",
+        script_dir / "doctrine_anchors.tsv",
     ]
     source_stamp = hashlib.sha256(
         "|".join(hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.is_file()).encode()
     ).hexdigest()[:16]
-    return digest_sha, source_stamp, orient_doc
+    anchors = load_anchor_state()
+    stamp = anchor_stamp(anchors) if anchors else ""
+    return digest_sha, source_stamp, stamp, orient_doc
 
-def expected_receipt(role, digest_sha, source_stamp):
+def expected_receipt(role, digest_sha, source_stamp, anchor_stamp_val):
     return hashlib.sha256(
-        f"ORIENT-RECEIPT|{role}|{digest_sha}|{source_stamp}".encode("utf-8")
+        f"ORIENT-RECEIPT|{role}|{digest_sha}|{source_stamp}|{anchor_stamp_val}".encode("utf-8")
     ).hexdigest()[:12]
 
 def validate_receipt():
@@ -211,21 +274,70 @@ def validate_receipt():
         return "missing-orient-receipt"
     role = role_m.group(1).lower()
     digest_claim = digest_m.group(1).lower()
-    live_digest, live_stamp, _ = current_orientation_state()
+    live_digest, live_stamp, live_anchor, _ = current_orientation_state()
     if live_digest is None:
         return "missing-orient-receipt"
     if role != required_role:
         return "wrong-orient-role"
     if digest_claim != live_digest:
         return "stale-orient-receipt"
-    expected = expected_receipt(role, live_digest, live_stamp)
+    expected = expected_receipt(role, live_digest, live_stamp, live_anchor)
     if receipt_m.group(1).lower() != expected:
         return "stale-orient-receipt"
+    return None
+
+def required_trigger_domains():
+    domains = set()
+    if fixture_dir:
+        req = pathlib.Path(fixture_dir) / "required_trigger_domains.txt"
+        if req.is_file():
+            for line in req.read_text(encoding="utf-8").splitlines():
+                line = line.strip().lower()
+                if line:
+                    domains.add(line)
+            return domains
+        return domains
+    if re.search(r"gate-wiring", text, re.IGNORECASE):
+        domains.update({"gate-wiring", "receipt-admission"})
+    if re.search(r"movement-front|Movement-Front|map-domain|PALMA", text, re.IGNORECASE):
+        domains.add("movement-front")
+    return domains
+
+def validate_anchor_ack():
+    domains = required_trigger_domains()
+    if not domains:
+        return None
+    state = load_anchor_state()
+    if not state:
+        return "missing-anchor-ack"
+    required_ids = set()
+    for domain in domains:
+        for aid, meta in state.items():
+            if domain in meta["domains"]:
+                required_ids.add(aid)
+    if not required_ids:
+        return None
+    acks = {}
+    for m in re.finditer(r"ANCHOR-ACK:\s*([a-z0-9-]+)@([0-9a-f]{12})", text, re.IGNORECASE):
+        acks[m.group(1).lower()] = m.group(2).lower()
+    for ack_id, short in acks.items():
+        if ack_id not in state:
+            return "unknown-anchor"
+    for aid in sorted(required_ids):
+        if aid not in acks:
+            return "missing-anchor-ack"
+        if acks[aid] != state[aid]["short"]:
+            return "stale-anchor-ack"
     return None
 
 receipt_fail = validate_receipt()
 if receipt_fail:
     print(f"FAIL:{receipt_fail}")
+    sys.exit(0)
+
+anchor_fail = validate_anchor_ack()
+if anchor_fail:
+    print(f"FAIL:{anchor_fail}")
     sys.exit(0)
 
 print(f"PASS:sketch={sketch}")
@@ -332,8 +444,14 @@ run_selftest() {
     cold_start_selftest_fail_stale_receipt
     cold_start_selftest_fail_wrong_role
   )
+  local anchor_fixtures=(
+    anchor_integrity_selftest_pass_gate_wiring_ack
+    anchor_integrity_selftest_fail_missing_ack
+    anchor_integrity_selftest_fail_stale_ack
+    anchor_integrity_selftest_fail_unknown_anchor
+  )
   local name total
-  total=$((${#relay_fixtures[@]} + ${#cold_fixtures[@]}))
+  total=$((${#relay_fixtures[@]} + ${#cold_fixtures[@]} + ${#anchor_fixtures[@]}))
   for name in "${relay_fixtures[@]}"; do
     FIXTURE_DIR=""
     if ! run_fixture "$FIXTURES_ROOT" "$name"; then
@@ -343,6 +461,12 @@ run_selftest() {
   for name in "${cold_fixtures[@]}"; do
     FIXTURE_DIR=""
     if ! run_fixture "$COLD_START_FIXTURES_ROOT" "$name"; then
+      SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+    fi
+  done
+  for name in "${anchor_fixtures[@]}"; do
+    FIXTURE_DIR=""
+    if ! run_fixture "$ANCHOR_FIXTURES_ROOT" "$name"; then
       SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
     fi
   done

@@ -12,8 +12,9 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_7_orchestration_harness.md | 89ac46439f6a57eb4fbb8a979901ec361b640c290d6d4656762fca5ee00c205a |
-| relay_lint.sh | 4858d18fe808b06aef4fa7500443ad0835118f5ef0f3eeb6ddbaec342543f22b |
+| design_0_0_8_4_7_orchestration_harness.md | 0b38b4ffb182f3b4750e0f7a2523083f05970eafb7c3b75f78382bc20226324f |
+| relay_lint.sh | c7bce278b0f59f389fbe10af76aa7f8be0f8454f1334626d941d4f6b9ad7fd58 |
+| doctrine_anchors.tsv | 591219cd67443283c55acb168968c2988757bd0d5bbf397559f0ec0b8bd8c12d |
 
 ## OH Track / Rung Summary (0.0.8.4.7)
 
@@ -23,15 +24,15 @@
 | 1 | OH-RELAY-LINT-0 | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | **DA-GRADUATED / merged [#1163](https://github.com/khorum08/SimThing/pull/1163) @ `d4969f1c8`** — M3 relay lint + `/r... |
 | 1R | OH-CLEARANCE-ROUTER-0R | empty-diff precision + local PR-number resolution in `clearance_check.sh` | **DA-GRADUATED / merged [#1164](https://github.com/khorum08/SimThing/pull/1164) @ `ad46a0be8`** — empty/unresolved ta... |
 | 2 | OH-ORIENTATION-DIGEST-0 | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshne | **DA-GRADUATED / merged [#1165](https://github.com/khorum08/SimThing/pull/1165) @ `eee9d4714`** — generated orientati... |
-| 2b | OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **PROBATION / proof-present / DA-review-pending** — PR [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `cca... |
-| 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | Digest quoting a mutated anchor sentence → freshness FAIL; a map-domain relay without `ANCHOR-ACK: movement-front@…` ... |
+| 2b | OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipt... |
+| 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | **PROBATION / proof-present / DA-review-pending** — PR pending @ head; `doctrine_anchors.tsv` + `anchor_check.sh` + A... |
 | 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill row... |
 | 4 | OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced wi | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned... |
 | 5 | OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
 ## Next Rung Pointer
 
-Active pointer: `OH-COLD-START-0` (after 2)`
+Active pointer: `OH-ANCHOR-INTEGRITY-0` (after 2b)`
 
 ## Clearance Router Verdict Meanings
 
@@ -79,7 +80,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `4858d18fe808`
+relay_lint.sh schema stamp: `c7bce278b0f5`
 
 ## tested_code_sha + coverage_basis Rule
 
@@ -111,11 +112,25 @@ Role meanings:
 
 Receipt freshness: relay-lint compares claimed `orientation_digest_sha` to live digest; mismatch → `FAIL(stale-orient-receipt)`.
 Relay-lint receipt rule: gate-wiring handoffs require a valid receipt for the declared role.
+Anchor edits change `anchor_stamp` and stale all `ORIENT-RECEIPT` values.
+
+## Doctrine Anchors (ANCHOR-ACK)
+
+Table: `scripts/ci/doctrine_anchors.tsv` (`anchor_id | doc | section | trigger_domains | content_hash`).
+
+ANCHOR-ACK schema: `ANCHOR-ACK: <anchor_id>@<12-char content_hash>`
+
+Trigger-domain rule: relays touching a domain must ack anchors listing that domain (e.g. `movement-front`, `gate-wiring`).
+
+Relay-lint failures: `missing-anchor-ack`, `stale-anchor-ack`, `unknown-anchor`.
+
+Run `bash scripts/ci/anchor_check.sh --check` after anchor table edits.
 
 ## Inner Loop (coding agent)
 
 ```bash
 bash scripts/ci/orient.sh --role=coding
+bash scripts/ci/anchor_check.sh --check
 bash scripts/ci/clearance_check.sh --selftest
 bash scripts/ci/relay_lint.sh --selftest
 bash scripts/ci/gen_orientation.sh --check
@@ -129,4 +144,5 @@ bash scripts/ci/doctrine_scan.sh
 - `/relay-lint` — M3 relay lint verdict
 - `/orient` — M2 orientation digest (this page)
 - `/orient role=orchestrator|coding|da` — role-filtered subset
+- `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text
 

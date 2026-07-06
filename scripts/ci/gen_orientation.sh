@@ -146,6 +146,7 @@ main() {
   export ORIENTATION_LEDGER_TSV="${ORIENTATION_LEDGER_TSV:-${SCRIPT_DIR}/clearance_ledger.tsv}"
   export ORIENTATION_DESIGN_DOC="${ORIENTATION_DESIGN_DOC:-${REPO_ROOT}/docs/design_0_0_8_4_7_orchestration_harness.md}"
   export ORIENTATION_RELAY_LINT="${ORIENTATION_RELAY_LINT:-${SCRIPT_DIR}/relay_lint.sh}"
+  export ORIENTATION_ANCHORS_TSV="${ORIENTATION_ANCHORS_TSV:-${SCRIPT_DIR}/doctrine_anchors.tsv}"
   export ORIENTATION_OUTPUT="${ORIENTATION_OUTPUT:-${OUTPUT_PATH}}"
   export ORIENTATION_MODE="$MODE"
 
@@ -245,12 +246,15 @@ design_text = DESIGN_DOC.read_text(encoding="utf-8")
 rungs = parse_rungs(design_text)
 next_rung = next_rung_pointer(rungs)
 
+ANCHORS_TSV = pathlib.Path(os.environ["ORIENTATION_ANCHORS_TSV"])
+
 sources = [
     ("precedented_classes.tsv", CLASSES_TSV),
     ("binding_conditions.tsv", BINDING_TSV),
     ("clearance_ledger.tsv", LEDGER_TSV),
     ("design_0_0_8_4_7_orchestration_harness.md", DESIGN_DOC),
     ("relay_lint.sh", RELAY_LINT),
+    ("doctrine_anchors.tsv", ANCHORS_TSV),
 ]
 manifest = [(name, sha256_file(path)) for name, path in sources]
 
@@ -370,11 +374,25 @@ lines.extend([
     "",
     "Receipt freshness: relay-lint compares claimed `orientation_digest_sha` to live digest; mismatch → `FAIL(stale-orient-receipt)`.",
     "Relay-lint receipt rule: gate-wiring handoffs require a valid receipt for the declared role.",
+    "Anchor edits change `anchor_stamp` and stale all `ORIENT-RECEIPT` values.",
+    "",
+    "## Doctrine Anchors (ANCHOR-ACK)",
+    "",
+    "Table: `scripts/ci/doctrine_anchors.tsv` (`anchor_id | doc | section | trigger_domains | content_hash`).",
+    "",
+    "ANCHOR-ACK schema: `ANCHOR-ACK: <anchor_id>@<12-char content_hash>`",
+    "",
+    "Trigger-domain rule: relays touching a domain must ack anchors listing that domain (e.g. `movement-front`, `gate-wiring`).",
+    "",
+    "Relay-lint failures: `missing-anchor-ack`, `stale-anchor-ack`, `unknown-anchor`.",
+    "",
+    "Run `bash scripts/ci/anchor_check.sh --check` after anchor table edits.",
     "",
     "## Inner Loop (coding agent)",
     "",
     "```bash",
     "bash scripts/ci/orient.sh --role=coding",
+    "bash scripts/ci/anchor_check.sh --check",
     "bash scripts/ci/clearance_check.sh --selftest",
     "bash scripts/ci/relay_lint.sh --selftest",
     "bash scripts/ci/gen_orientation.sh --check",
@@ -388,6 +406,7 @@ lines.extend([
     "- `/relay-lint` — M3 relay lint verdict",
     "- `/orient` — M2 orientation digest (this page)",
     "- `/orient role=orchestrator|coding|da` — role-filtered subset",
+    "- `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text",
     "",
 ])
 generated = "\n".join(lines) + "\n"
