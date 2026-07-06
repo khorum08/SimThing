@@ -122,6 +122,13 @@ re-accrete during the very track that exists to pay hygiene debt down. Rule of t
 graduation review predicts a failure mode in the next rung's path, the prediction is *scheduled as
 preflight*, never left as a surprise for the sweep agent to burn tokens rediscovering.
 
+There are two corpus sweep shapes after the module-marker preflight:
+
+1. Test-file deletion sweeps delete redundant files under `crates/<crate>/tests/**` and remove the matching
+   inventory rows.
+2. Module-marker ledger sweeps remove only `cfg(test)` module-marker inventory rows, with no source file,
+   test file, or Rust edit.
+
 ## 5. Harness-driven, no new mechanism
 Every gate this track needs already exists: `test_inventory_drift_check.sh` (deletions must leave no drift),
 `test_lifecycle_expiry_check.sh` (survivor classes/leases), `test_lifecycle_dsu_tiers.tsv` (rising-cost lease

@@ -1,0 +1,1 @@
+simthing-mapgenerator	crates/simthing-mapgenerator/tests/connectivity.rs	connect_components_is_deterministic	integration	golden-byte	B-T7-GOLDEN-BYTE-DETERMINISM	KEEP	never-pare golden/exact-determinism proof	permanent-residue:golden-byte	pre-lifecycle	0

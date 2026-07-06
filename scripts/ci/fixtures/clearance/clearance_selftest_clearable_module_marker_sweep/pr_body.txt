@@ -1,0 +1,2 @@
+tested_code_sha: 123456789abc
+coverage_basis: PASS - module-marker ledger-only sweep fixture

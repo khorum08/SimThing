@@ -1,0 +1,2 @@
+scripts/ci/test_inventory.tsv
+docs/tests/cc_sweep_simthing_mapgenerator_module_markers_results.md

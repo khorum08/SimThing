@@ -1,0 +1,1 @@
+simthing-mapgenerator	crates/simthing-mapgenerator/src/report.rs	cfg_test_mod::tests	unit	deletion-candidate	B-T6-MODULE-MARKER-EXPANSION	AUDIT	deletion-candidate: cfg(test) mod marker captured for drift-gate completeness; not a runnable test; defer ledger-row removal to CC-SWEEP-simthing-mapgenerator	ledger-only	pre-lifecycle	0

@@ -362,6 +362,14 @@ has_corpus_sweep_inventory = any(
 has_corpus_sweep_test = any(
     f.startswith("crates/") and "/tests/" in f and f.endswith(".rs") for f in files
 )
+has_module_marker_sweep_result = any(
+    f.startswith("docs/tests/cc_sweep_") and f.endswith("_module_markers_results.md")
+    for f in files
+)
+has_module_marker_sweep_inventory = "scripts/ci/test_inventory.tsv" in files
+has_crate_src_or_tests_edit = any(
+    f.startswith("crates/") and ("/src/" in f or "/tests/" in f) for f in files
+)
 has_corpus_baseline_result = "docs/tests/cc_baseline_0_results.md" in files
 for row in rows:
     if len(row) < 6:
@@ -371,6 +379,12 @@ for row in rows:
         continue
     if class_id == "corpus-sweep" and not (
         has_corpus_sweep_result and has_corpus_sweep_inventory and has_corpus_sweep_test
+    ):
+        continue
+    if class_id == "corpus-module-marker-sweep" and not (
+        has_module_marker_sweep_result
+        and has_module_marker_sweep_inventory
+        and not has_crate_src_or_tests_edit
     ):
         continue
     if class_id == "corpus-baseline" and not has_corpus_baseline_result:
@@ -499,6 +513,70 @@ check_no_engine_crate() {
 
 check_no_engine_src() {
   check_no_engine_crate
+}
+
+inventory_removed_rows() {
+  if [[ -n "$FIXTURE_DIR" && -f "${FIXTURE_DIR}/inventory_removed_rows.tsv" ]]; then
+    cat "${FIXTURE_DIR}/inventory_removed_rows.tsv"
+    return 0
+  fi
+  if [[ -n "$RANGE_SPEC" ]]; then
+    local base="${RANGE_SPEC%%..*}"
+    local head="${RANGE_SPEC##*..}"
+    git -C "$REPO_ROOT" diff --unified=0 "$base" "$head" -- scripts/ci/test_inventory.tsv 2>/dev/null \
+      | sed -n '/^-[^-]/s/^-//p'
+    return 0
+  fi
+  if [[ -n "$PR_NUMBER" ]] && command -v gh >/dev/null 2>&1; then
+    gh pr diff "$PR_NUMBER" --patch 2>/dev/null \
+      | awk '
+          /^diff --git a\/scripts\/ci\/test_inventory.tsv b\/scripts\/ci\/test_inventory.tsv$/ { in_file=1; next }
+          /^diff --git / { in_file=0 }
+          in_file && /^-[^-]/ { sub(/^-/, ""); print }
+        '
+    return 0
+  fi
+  return 0
+}
+
+check_module_marker_inventory_deletions() {
+  local removed
+  removed="$(inventory_removed_rows | sed '/^[[:space:]]*$/d' || true)"
+  if [[ -z "$removed" ]]; then
+    return 1
+  fi
+  MODULE_MARKER_REMOVED_ROWS="$removed" "$PYTHON_BIN" - <<'PY'
+import csv
+import os
+import sys
+
+rows = [row for row in csv.reader(os.environ.get("MODULE_MARKER_REMOVED_ROWS", "").splitlines(), delimiter="\t") if row]
+if not rows:
+    sys.exit(1)
+
+for row in rows:
+    if row[0] == "crate":
+        sys.exit(1)
+    if len(row) < 10:
+        sys.exit(1)
+    crate, file_path, test_name, kind, class_id, _boundary, verdict, note, promotion_target = row[:9]
+    if not crate or not file_path.startswith(f"crates/{crate}/src/"):
+        sys.exit(1)
+    if not test_name.startswith("cfg_test_mod::"):
+        sys.exit(1)
+    if kind != "unit" or class_id != "deletion-candidate" or verdict != "AUDIT":
+        sys.exit(1)
+    text = f"{note}\t{promotion_target}".lower()
+    if not (
+        "module-marker" in text
+        or "module marker" in text
+        or "mod marker" in text
+    ):
+        sys.exit(1)
+    if "ledger-only" not in text:
+        sys.exit(1)
+sys.exit(0)
+PY
 }
 
 check_required_pr_body_fields() {
@@ -758,6 +836,10 @@ route_clearance() {
     emit_verdict reserve "novelty"
     return 0
   fi
+  if [[ "$class_id" == "corpus-module-marker-sweep" ]] && ! check_module_marker_inventory_deletions; then
+    emit_verdict reserve "novelty"
+    return 0
+  fi
 
   if [[ "$reqs" == *tested_code_sha* || "$reqs" == *coverage_basis* ]]; then
     if ! check_required_pr_body_fields "$body"; then
@@ -837,6 +919,10 @@ run_selftest() {
     clearance_selftest_corpus_sweep_doc_only_no_match
     clearance_selftest_retired_corpus_baseline_no_match
     clearance_selftest_corpus_sweep_rejects_engine_src
+    clearance_selftest_clearable_module_marker_sweep
+    clearance_selftest_module_marker_without_result_no_match
+    clearance_selftest_module_marker_bad_inventory_no_match
+    clearance_selftest_module_marker_source_edit_rejected
   )
   local name
   for name in "${fixtures[@]}"; do
