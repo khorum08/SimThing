@@ -8,7 +8,7 @@
 
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | [#1172](https://github.com/khorum08/SimThing/pull/1172) |
 | Rung | `OH-TRIAGE-INDUCTION-0` (rung 3) |
 | Risk | gate-wiring |
 
