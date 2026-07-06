@@ -15,7 +15,7 @@
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
 
-> Evidence refreshed by docs-only commit `67a0dcf3`; implementation/proof head remains `f7c05304`.
+> Evidence refreshed by docs-only commit `36861fcc`; implementation/proof head remains `f7c05304`.
 
 ## What changed
 
