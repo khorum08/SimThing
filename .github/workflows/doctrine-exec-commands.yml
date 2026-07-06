@@ -28,6 +28,7 @@ jobs:
       triage_scan: ${{ steps.parse.outputs.triage_scan }}
       triage_outcome: ${{ steps.parse.outputs.triage_outcome }}
       triage_reason: ${{ steps.parse.outputs.triage_reason }}
+      orient_role: ${{ steps.parse.outputs.orient_role }}
       pr_number: ${{ steps.context.outputs.pr_number }}
       head_sha: ${{ steps.context.outputs.head_sha }}
       base_sha: ${{ steps.context.outputs.base_sha }}
@@ -147,6 +148,13 @@ jobs:
           fi
           if [[ "$CMD" == relay-lint* ]]; then
             echo "command=relay-lint" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == orient* ]]; then
+            echo "command=orient" >> "$GITHUB_OUTPUT"
+            ROLE="$(echo "$CMD" | sed -n 's/.*role=\([^ ]*\).*/\1/p')"
+            [[ -n "$ROLE" ]] || ROLE="orchestrator"
+            echo "orient_role=${ROLE}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           echo "command=ignore" >> "$GITHUB_OUTPUT"
@@ -355,3 +363,40 @@ jobs:
         run: |
           bash scripts/ci/doctrine_exec_relay_lint_comment.sh \
             "${{ needs.parse-command.outputs.pr_number }}" relay-lint-report.txt
+
+  orient-run:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'orient' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Run orientation digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/doctrine_exec_orient.sh \
+            "${{ needs.parse-command.outputs.orient_role }}" \
+            orient-report.txt \
+            "${{ needs.parse-command.outputs.head_sha }}" \
+            "${{ needs.parse-command.outputs.base_sha }}" \
+            "${{ needs.parse-command.outputs.pr_number }}"
+          {
+            echo "workflow_run_id: ${{ github.run_id }}"
+          } >> orient-report.txt
+
+      - name: Post orientation comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bash scripts/ci/doctrine_exec_orient_comment.sh \
+            "${{ needs.parse-command.outputs.pr_number }}" orient-report.txt
