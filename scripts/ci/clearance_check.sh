@@ -26,6 +26,8 @@ GATE_WIRING_PATHS=(
   "scripts/ci/doc_budget_baseline.tsv"
   "scripts/ci/rule_expiry_check.sh"
   "scripts/ci/agents_stub_check.sh"
+  "docs/handoff_template.md"
+  "docs/agent_onboarding.md"
   "AGENTS.md"
 )
 
@@ -804,6 +806,8 @@ run_selftest() {
     clearance_selftest_fail_closed_empty_requested_diff
     clearance_selftest_fail_triage_missing
     clearance_selftest_pass_triage_present
+    clearance_selftest_gate_wiring_handoff_template
+    clearance_selftest_gate_wiring_agent_onboarding
   )
   local name
   for name in "${fixtures[@]}"; do

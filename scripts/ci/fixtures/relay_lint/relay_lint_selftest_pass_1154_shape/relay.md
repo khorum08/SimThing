@@ -27,6 +27,8 @@
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
+clearance_pr_head: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
+CLEARANCE-VERDICT: DA-RESERVE(semantic)
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 ```
 

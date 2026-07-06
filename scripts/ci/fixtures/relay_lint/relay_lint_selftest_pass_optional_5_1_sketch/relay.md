@@ -19,6 +19,8 @@
 | movement | gradient |
 
 tested_code_sha: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
+clearance_pr_head: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
+CLEARANCE-VERDICT: DA-RESERVE(semantic)
 coverage_basis: PASS — docs-only after tested SHA
 
 ## Scope Ledger

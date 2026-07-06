@@ -13,7 +13,7 @@
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
 | design_0_0_8_4_8_corpus_clearance.md | 1408dbdc53b07bc1a7797c8338ff6980127830184b30104eb8d7f3b3001009d3 |
-| relay_lint.sh | af4ea00ba2bb0e96f6c53f4ce89ac16749ead385fc5f3e284d1f5392ba3b9f8a |
+| relay_lint.sh | 0188314d97d1663abc2022df28711dfab733dcdd4620d218828fd63fdb378791 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
 ## Active Track / Rung Summary (`design_0_0_8_4_8_corpus_clearance.md`)
@@ -80,7 +80,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `af4ea00ba2bb`
+relay_lint.sh schema stamp: `0188314d97d1`
 
 ## tested_code_sha + coverage_basis Rule
 

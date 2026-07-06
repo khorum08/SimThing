@@ -22,6 +22,7 @@ FIXTURE_DIR=""
 PR_NUMBER=""
 INPUT_FILE=""
 MODE="advisory"
+PR_HEAD_SHA=""
 
 usage() {
   cat <<'EOF'
@@ -54,6 +55,7 @@ lint_text() {
   local result
   export RELAY_LINT_FIXTURE_DIR="${FIXTURE_DIR:-}"
   export RELAY_LINT_REPO_ROOT="$REPO_ROOT"
+  export RELAY_LINT_PR_HEAD_SHA="${PR_HEAD_SHA:-}"
   result="$("$PYTHON_BIN" - <<'PY' "$text"
 import hashlib
 import os
@@ -410,6 +412,66 @@ if anchor_fail:
     print(f"FAIL:{anchor_fail}")
     sys.exit(0)
 
+def clearance_gate_required():
+    patterns = [
+        r"\bDA-review\b",
+        r"\bDA review\b",
+        r"\bDA-review-pending\b",
+        r"\bDA-RESERVE\b",
+        r"(?im)^\s*\|?\s*Recommended posture\s*\|?\s*deep\b",
+        r"(?im)^\s*\|?\s*Risk class\s*\|?[^\n]*\bgate-wiring\b",
+        r"(?im)^\s*Risk class\s*:[^\n]*\bgate-wiring\b",
+    ]
+    return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+
+
+def short_matches(longer, shorter):
+    longer = (longer or "").lower()
+    shorter = (shorter or "").lower()
+    if len(longer) < len(shorter):
+        longer, shorter = shorter, longer
+    return len(shorter) >= 8 and longer.startswith(shorter)
+
+
+def validate_clearance_verdict():
+    if not clearance_gate_required():
+        return None
+    m = re.search(
+        r"(?im)^\s*CLEARANCE-VERDICT:\s*(ORCHESTRATOR-CLEARABLE|DA-RESERVE\([^)]+\)|FAIL\([^)]+\))\s*$",
+        text,
+    )
+    if not m:
+        return "missing-clearance-verdict"
+    verdict = m.group(1)
+    if verdict.upper().startswith("ORCHESTRATOR-CLEARABLE"):
+        return "clearable-not-da-relay"
+    if verdict.upper().startswith("FAIL("):
+        return "clearance-fail-remedy"
+    if not verdict.upper().startswith("DA-RESERVE("):
+        return "missing-clearance-verdict"
+
+    tested = re.search(r"(?im)^\s*tested_code_sha\s*[:=]\s*([0-9a-f]{8,})\s*$", text)
+    clearance_head = re.search(r"(?im)^\s*clearance_pr_head\s*[:=]\s*([0-9a-f]{8,})\s*$", text)
+    tested_sha = tested.group(1).lower() if tested else ""
+    clearance_sha = clearance_head.group(1).lower() if clearance_head else ""
+    pr_head = os.environ.get("RELAY_LINT_PR_HEAD_SHA", "").lower()
+
+    if pr_head:
+        if short_matches(pr_head, clearance_sha) or short_matches(pr_head, tested_sha):
+            return None
+        return "missing-clearance-verdict"
+    if clearance_sha and tested_sha and not short_matches(clearance_sha, tested_sha):
+        return "missing-clearance-verdict"
+    if clearance_sha or tested_sha:
+        return None
+    return "missing-clearance-verdict"
+
+
+clearance_fail = validate_clearance_verdict()
+if clearance_fail:
+    print(f"FAIL:{clearance_fail}")
+    sys.exit(0)
+
 print(f"PASS:sketch={sketch}")
 PY
 )"
@@ -444,6 +506,7 @@ read_input() {
     fi
     local body evidence combined
     body="$(gh pr view "$PR_NUMBER" --json body -q .body 2>/dev/null || true)"
+    PR_HEAD_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid -q .headRefOid 2>/dev/null || true)"
     evidence=""
     local files
     files="$(gh pr view "$PR_NUMBER" --json files -q '.files[].path' 2>/dev/null || true)"
@@ -483,7 +546,11 @@ run_fixture() {
   local root="$1"
   local name="$2"
   FIXTURE_DIR="${root}/${name}"
+  PR_HEAD_SHA=""
   [[ -d "$FIXTURE_DIR" ]] || { echo "missing fixture: $name" >&2; return 1; }
+  if [[ -f "${FIXTURE_DIR}/current_pr_head.txt" ]]; then
+    PR_HEAD_SHA="$(tr -d '\r\n' < "${FIXTURE_DIR}/current_pr_head.txt")"
+  fi
   local expected got text
   expected="$(tr -d '\r' < "${FIXTURE_DIR}/expected_verdict.txt" | head -n 1)"
   text="$(read_input)"
@@ -509,6 +576,11 @@ run_selftest() {
     relay_lint_selftest_fail_live_pointer_current_pr_head
     relay_lint_selftest_fail_live_pointer_docs_refresh_head
     relay_lint_selftest_fail_live_pointer_latest_run
+    relay_lint_selftest_fail_missing_clearance_verdict
+    relay_lint_selftest_fail_stale_clearance_verdict
+    relay_lint_selftest_pass_fresh_da_reserve_clearance
+    relay_lint_selftest_fail_clearable_da_relay
+    relay_lint_selftest_pass_non_da_without_clearance
   )
   local cold_fixtures=(
     cold_start_selftest_valid_coding_receipt
