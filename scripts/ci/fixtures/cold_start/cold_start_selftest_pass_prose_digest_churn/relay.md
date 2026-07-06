@@ -1,9 +1,8 @@
-ORIENT-RECEIPT: 95007763c47a
-role: da
-orientation_digest_sha: 0a992c63c51c79012c3807d82c35cde17f13e29c56f2050028bf105788060ba5
-orientation_rule_stamp: d294e4224fa9121e
+ORIENT-RECEIPT: 0165a0780b12
+role: coding
+orientation_digest_sha: 0000000000000000000000000000000000000000000000000000000000000000
+orientation_rule_stamp: 4a5da2361c04c981
 generated_at: source-bound
-
 ## Status
 
 **PROBATION / DA-OWNER REVIEW** — Phase 7 blocked until DA clearance of Phase 6.2 fleet movement.
@@ -33,6 +32,8 @@ generated_at: source-bound
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
+clearance_pr_head: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
+CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 ```
 

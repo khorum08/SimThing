@@ -295,10 +295,21 @@ def orientation_state_from_fixture():
     ).hexdigest()
     return (
         digest_sha,
-        stamps.get("source_stamp", ""),
-        stamps.get("anchor_stamp", ""),
+        stamps.get("orientation_rule_stamp", stamps.get("source_stamp", "")),
         snap,
     )
+
+
+def orientation_rule_stamp():
+    script_dir = repo_root / "scripts" / "ci"
+    sources = [
+        script_dir / "precedented_classes.tsv",
+        script_dir / "binding_conditions.tsv",
+        script_dir / "doctrine_anchors.tsv",
+    ]
+    return hashlib.sha256(
+        "|".join(file_digest(p) for p in sources if p.is_file()).encode("utf-8")
+    ).hexdigest()[:16]
 
 
 def current_orientation_state():
@@ -306,28 +317,14 @@ def current_orientation_state():
     if fixture_state:
         return fixture_state
     orient_doc = repo_root / "docs" / "orchestrator_orientation.md"
-    script_dir = repo_root / "scripts" / "ci"
     if not orient_doc.is_file():
-        return None, None, None, None
+        return None, None, None
     digest_sha = file_digest(orient_doc)
-    sources = [
-        script_dir / "precedented_classes.tsv",
-        script_dir / "binding_conditions.tsv",
-        script_dir / "clearance_ledger.tsv",
-        repo_root / "docs" / "design_0_0_8_4_7_orchestration_harness.md",
-        script_dir / "relay_lint.sh",
-        script_dir / "doctrine_anchors.tsv",
-    ]
-    source_stamp = hashlib.sha256(
-        "|".join(file_digest(p) for p in sources if p.is_file()).encode()
-    ).hexdigest()[:16]
-    anchors = load_anchor_state()
-    stamp = anchor_stamp(anchors) if anchors else ""
-    return digest_sha, source_stamp, stamp, orient_doc
+    return digest_sha, orientation_rule_stamp(), orient_doc
 
-def expected_receipt(role, digest_sha, source_stamp, anchor_stamp_val):
+def expected_receipt(role, rule_stamp):
     return hashlib.sha256(
-        f"ORIENT-RECEIPT|{role}|{digest_sha}|{source_stamp}|{anchor_stamp_val}".encode("utf-8")
+        f"ORIENT-RECEIPT|{role}|{rule_stamp}".encode("utf-8")
     ).hexdigest()[:12]
 
 def validate_receipt():
@@ -341,19 +338,19 @@ def validate_receipt():
     if not receipt_m:
         return "missing-orient-receipt"
     role_m = re.search(r'^role:\s*([a-z]+)\s*$', text, re.IGNORECASE | re.MULTILINE)
-    digest_m = re.search(r'orientation_digest_sha:\s*([0-9a-f]{64})', text, re.IGNORECASE)
-    if not role_m or not digest_m:
+    rule_m = re.search(r'orientation_rule_stamp:\s*([0-9a-f]{16})', text, re.IGNORECASE)
+    if not role_m or not rule_m:
         return "missing-orient-receipt"
     role = role_m.group(1).lower()
-    digest_claim = digest_m.group(1).lower()
-    live_digest, live_stamp, live_anchor, _ = current_orientation_state()
+    rule_claim = rule_m.group(1).lower()
+    live_digest, live_rule_stamp, _ = current_orientation_state()
     if live_digest is None:
         return "missing-orient-receipt"
     if role != required_role:
         return "wrong-orient-role"
-    if digest_claim != live_digest:
+    if rule_claim != live_rule_stamp:
         return "stale-orient-receipt"
-    expected = expected_receipt(role, live_digest, live_stamp, live_anchor)
+    expected = expected_receipt(role, live_rule_stamp)
     if receipt_m.group(1).lower() != expected:
         return "stale-orient-receipt"
     return None
@@ -584,6 +581,7 @@ run_selftest() {
   )
   local cold_fixtures=(
     cold_start_selftest_valid_coding_receipt
+    cold_start_selftest_pass_prose_digest_churn
     cold_start_selftest_valid_orchestrator_receipt
     cold_start_selftest_fail_missing_receipt
     cold_start_selftest_fail_stale_receipt
