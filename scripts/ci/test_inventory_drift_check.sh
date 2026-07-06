@@ -135,8 +135,6 @@ def discovered_items(base: pathlib.Path) -> set[tuple[str, str, str, str]]:
                     if m:
                         name = f"cfg_test_mod::{m.group(1)}"
                         break
-                if name:
-                    items.add((crate_for(rel), norm(rel), name, "unit"))
             if "```compile_fail" in line:
                 items.add((crate_for(rel), norm(rel), f"compile_fail_line_{index + 1}", "compile_fail"))
             if "trybuild::TestCases" in line or ".compile_fail(" in line:
@@ -158,6 +156,13 @@ def read_inventory(path: pathlib.Path) -> tuple[list[dict[str, str]], list[str]]
             return [], [f"bad inventory header: {reader.fieldnames!r}"]
         return list(reader), errors
 
+def is_cfg_module_marker_deletion_candidate(row: dict[str, str]) -> bool:
+    return (
+        row.get("test_name", "").startswith("cfg_test_mod::")
+        and row.get("class", "").strip() == "deletion-candidate"
+        and row.get("verdict", "").strip() != "KEEP"
+    )
+
 def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], dict[str, int]]:
     rows, errors = read_inventory(inv_path)
     discovered = discovered_items(base)
@@ -172,6 +177,7 @@ def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], 
         for key in (set(inventory_keys) - discovered)
         if inventory_keys[key].get("promotion_target", "").strip()
         != "permanent-residue:dependency-floor"
+        and not is_cfg_module_marker_deletion_candidate(inventory_keys[key])
     )
     if missing:
         errors.append(
@@ -235,11 +241,70 @@ def prove_case(name: str, setup) -> bool:
         print(f"  {name}: PASS ({errors[0]})")
         return True
 
+def prove_pass_case(name: str, setup) -> bool:
+    with tempfile.TemporaryDirectory(prefix=f"test-drift-{name}-") as tmp:
+        base = pathlib.Path(tmp)
+        setup(base)
+        ok, errors, _stats = check(base, base / "scripts/ci/test_inventory.tsv")
+        if ok:
+            print(f"  {name}: PASS")
+            return True
+        print(f"  {name}: FAIL expected drift pass, got {errors[0]}")
+        return False
+
 def setup_unledgered(base: pathlib.Path) -> None:
     dst = base / "crates/simthing-spec/tests/unledgered_test.rs"
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(root / "scripts/ci/fixtures/test_drift/unledgered_test.rs", dst)
     write_inventory(base / "scripts/ci/test_inventory.tsv", [])
+
+def setup_cfg_marker_unledgered_ok(base: pathlib.Path) -> None:
+    src = base / "crates/simthing-spec/src/module_marker_only.rs"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_text("#[cfg(test)]\nmod tests {}\n", encoding="utf-8")
+    write_inventory(base / "scripts/ci/test_inventory.tsv", [])
+
+def setup_cfg_marker_removed_ok(base: pathlib.Path) -> None:
+    src = base / "crates/simthing-mapgenerator/src/report.rs"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_text("#[cfg(test)]\nmod tests {}\n", encoding="utf-8")
+    write_inventory(base / "scripts/ci/test_inventory.tsv", [])
+
+def setup_cfg_marker_deletion_candidate_stale_ok(base: pathlib.Path) -> None:
+    write_inventory(
+        base / "scripts/ci/test_inventory.tsv",
+        [{
+            "crate": "simthing-mapgenerator",
+            "file": "crates/simthing-mapgenerator/src/report.rs",
+            "test_name": "cfg_test_mod::tests",
+            "kind": "unit",
+            "class": "deletion-candidate",
+            "superseding_boundary": "B-T6-MODULE-MARKER-EXPANSION",
+            "verdict": "AUDIT",
+            "note": "deletion-candidate: cfg(test) mod marker captured for drift-gate completeness",
+            "promotion_target": "ledger-only",
+            "birth_track": "pre-lifecycle",
+            "dsu_survivals": "0",
+        }],
+    )
+
+def setup_cfg_marker_keep_stale_fails(base: pathlib.Path) -> None:
+    write_inventory(
+        base / "scripts/ci/test_inventory.tsv",
+        [{
+            "crate": "simthing-mapgenerator",
+            "file": "crates/simthing-mapgenerator/src/report.rs",
+            "test_name": "cfg_test_mod::tests",
+            "kind": "unit",
+            "class": "golden-byte",
+            "superseding_boundary": "B-T7-GOLDEN-BYTE-DETERMINISM",
+            "verdict": "KEEP",
+            "note": "stale cfg module KEEP fixture",
+            "promotion_target": "permanent-residue:golden-byte",
+            "birth_track": "pre-lifecycle",
+            "dsu_survivals": "0",
+        }],
+    )
 
 def setup_stale(base: pathlib.Path) -> None:
     write_inventory(
@@ -277,6 +342,10 @@ if prove:
     print("TEST-INVENTORY-DRIFT-PROVE REPORT")
     results = [
         prove_case("unledgered-test", setup_unledgered),
+        prove_pass_case("cfg-marker-unledgered-ok", setup_cfg_marker_unledgered_ok),
+        prove_pass_case("cfg-marker-removed-ok", setup_cfg_marker_removed_ok),
+        prove_pass_case("cfg-marker-deletion-candidate-stale-ok", setup_cfg_marker_deletion_candidate_stale_ok),
+        prove_case("cfg-marker-KEEP-stale", setup_cfg_marker_keep_stale_fails),
         prove_case("stale-ledger", setup_stale),
         prove_case("unowned-KEEP", setup_unowned_keep),
         prove_case("kernel-sim-strict-tier", setup_kernel_non_never),
