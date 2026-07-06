@@ -86,13 +86,31 @@ sources = [
     script_dir / "clearance_ledger.tsv",
     repo_root / "docs" / "design_0_0_8_4_7_orchestration_harness.md",
     script_dir / "relay_lint.sh",
+    script_dir / "doctrine_anchors.tsv",
 ]
 source_stamp = hashlib.sha256(
     "|".join(hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.is_file()).encode()
 ).hexdigest()[:16]
 
+anchor_stamp = ""
+anchor_script = script_dir / "anchor_check.sh"
+if anchor_script.is_file():
+    import shutil
+    import subprocess
+    bash_bin = shutil.which("bash") or "bash"
+    try:
+        anchor_stamp = subprocess.check_output(
+            [bash_bin, str(anchor_script), "--anchor-stamp"],
+            cwd=str(repo_root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("orient.sh: anchor_check --anchor-stamp failed", file=sys.stderr)
+        sys.exit(1)
+
 receipt = hashlib.sha256(
-    f"ORIENT-RECEIPT|{role}|{digest_sha}|{source_stamp}".encode("utf-8")
+    f"ORIENT-RECEIPT|{role}|{digest_sha}|{source_stamp}|{anchor_stamp}".encode("utf-8")
 ).hexdigest()[:12]
 
 SECTIONS_CODING = {
@@ -138,6 +156,7 @@ print(f"ORIENT-RECEIPT: {receipt}")
 print(f"role: {role}")
 print(f"orientation_digest_sha: {digest_sha}")
 print(f"source_stamp: {source_stamp}")
+print(f"anchor_stamp: {anchor_stamp}")
 print("generated_at: source-bound")
 print("--- orientation ---")
 print(body_out.rstrip())

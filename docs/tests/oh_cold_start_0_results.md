@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — orientation receipts + cold-agent admission; DA clearance required (gate-wiring).
+**DA-GRADUATED** — merged #1166 @ `d5c76215e0a80ac54c4d1e79d8d4165a39f1e94c`.
 
 ## PR / branch / merge
 
@@ -10,12 +10,14 @@
 |---|---|
 | PR | [#1166](https://github.com/khorum08/SimThing/pull/1166) |
 | Branch | `oh-cold-start-0` |
-| Head (live/docs refresh) | `ccaf8f6a5d0ce60bf9e4b038caef723aa5d94606` |
-| Implementation / proof head | `f7c05304` |
+| Merge | `d5c76215e0a80ac54c4d1e79d8d4165a39f1e94c` |
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
 
-> Evidence refreshed by docs-only commit `36861fcc`; implementation/proof head remains `f7c05304`.
+## Closure
+
+OH-COLD-START-0 DA-GRADUATED / merged #1166 @ `d5c76215e0a80ac54c4d1e79d8d4165a39f1e94c`.
+Orientation receipts live; relay-lint validates missing/stale/wrong-role receipts; router hook deferred as named future hook.
 
 ## What changed
 

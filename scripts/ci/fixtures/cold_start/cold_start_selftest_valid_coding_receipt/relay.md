@@ -1,9 +1,8 @@
-ORIENT-RECEIPT: 801a7df90fb1
+ORIENT-RECEIPT: ca67540d6dd8
 role: coding
-orientation_digest_sha: e211ddb7068b2354e83221e0a07519d5010423037c1e7af910c33a3911cf0e05
-source_stamp: e1735b94a298c6c9
+orientation_digest_sha: 0f7757380d11d20c40d4e98cb6ed6a91ede2b7eb7c2bb08775dc9cc2eae39ae2
+source_stamp: 8f710cc846ee1ab1
 generated_at: source-bound
-
 ## Status
 
 **PROBATION / DA-OWNER REVIEW** — Phase 7 blocked until DA clearance of Phase 6.2 fleet movement.

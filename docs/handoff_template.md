@@ -282,6 +282,14 @@ orientation_digest_sha:
 > Emit via `bash scripts/ci/orient.sh --role=coding|orchestrator|da`. Gate-wiring handoffs must carry a
 > fresh receipt matching the live `docs/orchestrator_orientation.md` digest.
 
+## 10c. Anchor acknowledgement (trigger-domain rungs — enforced by relay-lint)
+
+```
+ANCHOR-ACK:
+```
+
+> One line per required anchor: `ANCHOR-ACK: <anchor_id>@<12-char hash>` from `bash scripts/ci/anchor_check.sh --resolve <anchor_id>`.
+
 ## 11. Response format
 
 ```
