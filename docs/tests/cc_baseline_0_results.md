@@ -8,7 +8,7 @@ PROBATION / proof-present / orchestrator-routing-pending.
 
 - Branch: `codex/cc-baseline-0`
 - PR: https://github.com/khorum08/SimThing/pull/1193
-- tested_code_sha: 6262a305f4c870d5a936328753f1acbc29ae80f1
+- tested_code_sha: d0c64f55dc6a099a36c2a380a365d70bcb61d93f
 - coverage_basis: PASS — inventory-classification rung only; no Rust crate touched; proofs are harness gates below.
 - ORIENT-RECEIPT: 0c419b2ecc07
 - role: coding
@@ -94,6 +94,16 @@ gen_orientation --check: PASS
 ```text
 bash scripts/ci/gen_digest.sh --check
 gen_digest --check: PASS
+```
+
+```text
+bash scripts/ci/clearance_check.sh --selftest
+CLEARANCE-SELFTEST: PASS (14 fixtures)
+```
+
+```text
+bash scripts/ci/clearance_check.sh --range master..HEAD
+CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)
 ```
 
 ```text
