@@ -3,10 +3,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-INVENTORY="${ROOT}/scripts/ci/test_inventory.tsv"
-TRACKS="${ROOT}/scripts/ci/test_lifecycle_tracks.tsv"
-RESIDUE_CLASSES="${ROOT}/scripts/ci/test_residue_classes.tsv"
-DSU_TIERS="${ROOT}/scripts/ci/test_lifecycle_dsu_tiers.tsv"
+INVENTORY="${TEST_LIFECYCLE_INVENTORY:-${ROOT}/scripts/ci/test_inventory.tsv}"
+TRACKS="${TEST_LIFECYCLE_TRACKS:-${ROOT}/scripts/ci/test_lifecycle_tracks.tsv}"
+RESIDUE_CLASSES="${TEST_LIFECYCLE_RESIDUE_CLASSES:-${ROOT}/scripts/ci/test_residue_classes.tsv}"
+DSU_TIERS="${TEST_LIFECYCLE_DSU_TIERS:-${ROOT}/scripts/ci/test_lifecycle_dsu_tiers.tsv}"
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then

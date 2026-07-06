@@ -352,11 +352,28 @@ with open(classes_tsv, encoding="utf-8", newline="") as fh:
         rows.append(row)
 
 class_ids = set()
+has_corpus_sweep_result = any(
+    f.startswith("docs/tests/cc_sweep_") and f.endswith("_results.md") for f in files
+)
+has_corpus_sweep_inventory = any(
+    f in ("scripts/ci/test_inventory.tsv", "scripts/ci/test_lifecycle_boundary_rows.tsv")
+    for f in files
+)
+has_corpus_sweep_test = any(
+    f.startswith("crates/") and "/tests/" in f and f.endswith(".rs") for f in files
+)
+has_corpus_baseline_result = "docs/tests/cc_baseline_0_results.md" in files
 for row in rows:
     if len(row) < 6:
         continue
     class_id, scope_globs, _env, _reqs, status, _blocker = row[:6]
     if status == "retired":
+        continue
+    if class_id == "corpus-sweep" and not (
+        has_corpus_sweep_result and has_corpus_sweep_inventory and has_corpus_sweep_test
+    ):
+        continue
+    if class_id == "corpus-baseline" and not has_corpus_baseline_result:
         continue
     if primary and class_id != primary:
         continue
@@ -478,6 +495,10 @@ check_no_engine_crate() {
     done
   done < <(changed_files 2>/dev/null || true)
   return 0
+}
+
+check_no_engine_src() {
+  check_no_engine_crate
 }
 
 check_required_pr_body_fields() {
@@ -733,6 +754,10 @@ route_clearance() {
     emit_verdict reserve "novelty"
     return 0
   fi
+  if [[ "$reqs" == *no_engine_src* ]] && ! check_no_engine_src; then
+    emit_verdict reserve "novelty"
+    return 0
+  fi
 
   if [[ "$reqs" == *tested_code_sha* || "$reqs" == *coverage_basis* ]]; then
     if ! check_required_pr_body_fields "$body"; then
@@ -808,6 +833,10 @@ run_selftest() {
     clearance_selftest_pass_triage_present
     clearance_selftest_gate_wiring_handoff_template
     clearance_selftest_gate_wiring_agent_onboarding
+    clearance_selftest_clearable_corpus_sweep_shape
+    clearance_selftest_corpus_sweep_doc_only_no_match
+    clearance_selftest_retired_corpus_baseline_no_match
+    clearance_selftest_corpus_sweep_rejects_engine_src
   )
   local name
   for name in "${fixtures[@]}"; do

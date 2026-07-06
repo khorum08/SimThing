@@ -1,0 +1,2 @@
+docs/tests/cc_baseline_0_results.md
+scripts/ci/test_inventory.tsv
