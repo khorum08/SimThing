@@ -176,8 +176,15 @@ def fail(msg):
     sys.exit(1)
 
 
+def normalize_text(raw: bytes) -> str:
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    text = raw.decode("utf-8")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def sha256_file(path: pathlib.Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(normalize_text(path.read_bytes()).encode("utf-8")).hexdigest()
 
 
 def read_tsv(path: pathlib.Path):

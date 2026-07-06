@@ -4,19 +4,12 @@
 
 **DA-GRADUATED / merged #1167 @ `131cf858a3`** — doctrine anchors live; anchor hash drift, missing/stale/unknown ANCHOR-ACK validation, anchor-bound receipts, and `/anchor` serving active. DA-cleared under the no-SHA-equality routing ruling (design §2): the proof-bearing scripts were unchanged after `295ebd6a` (later commits docs-only), CI was green on the merged tree, and `anchor_check.sh --resolve` gives anchor-id exact-match priority over trigger-domain collision (recorded below). Docs-row SHA citations to earlier heads are context, not a gate.
 
-> **Note on the head SHAs cited below:** they name the *implementation/proof* head (`295ebd6a`) and prior runs. Per the standing no-SHA-equality ruling they are retained as evidence context and are **not** chased to the merge SHA — the merge is recorded once here and in the design/evidence rows.
-
 ## PR / branch / merge
 
 | Field | Value |
 |---|---|
 | PR | [#1167](https://github.com/khorum08/SimThing/pull/1167) |
-| Branch | `oh-anchor-integrity-0` |
-| Head (implementation/proof) | `295ebd6afa5c865680df800611ad5dc83d5261e3` |
-| Evidence docs head | `38b386e15a5c865680df800611ad5dc83d5261e3` |
-| Base | `master` @ `d5c76215e` (#1166 merge) |
-
-> Evidence refreshed by docs-only commit `38b386e1`; implementation/proof head remains `295ebd6a`.
+| Merge | `131cf858a3` |
 | Rung | `OH-ANCHOR-INTEGRITY-0` |
 
 ## Exit-proof columns
@@ -71,12 +64,9 @@ gen_orientation.sh --check: PASS
 - Pre-merge `/anchor` GHA smoke is blocked because `issue_comment` workflows execute master's `doctrine-exec-commands.yml`, which lacks `/anchor` until #1167 merges. Owner-local `/anchor` proof substitutes pre-merge. Re-post `/anchor movement-front` and `/anchor receipt-admission` after merge.
 - owner-local smoke: `doctrine_exec_anchor.sh movement-front` → `ANCHOR-REPORT: OK` (`movement-front@a0592b2f37ca`); `doctrine_exec_anchor.sh receipt-admission` → `ANCHOR-REPORT: OK` (`receipt-admission@7b886656d959`; anchor_id exact-match priority over trigger-domain collision)
 
-## GHA CI (implementation/proof head `295ebd6a`)
+## GHA CI
 
-| Check | Run | Verdict |
-|---|---|---|
-| Doctrine Exec | [28762948547](https://github.com/khorum08/SimThing/actions/runs/28762948547) | PASS (`DOCTRINE-EXEC-VERDICT: PASS`) |
-| Doctrine Scan | [28762948587](https://github.com/khorum08/SimThing/actions/runs/28762948587) | PASS (incl. doctrine anchor integrity: PASS; orientation digest freshness: PASS; doctrine self-test: PASS; PR delta scan: PASS; triage spam check: PASS) |
+coverage_basis: GHA green on proof-bearing work at merge; later docs/generated commits do not alter implementation proof.
 
 ## Scope Ledger
 

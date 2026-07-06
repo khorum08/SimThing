@@ -9,7 +9,7 @@
 - Branch: `ci-b-local-harness-0`
 - PR: [#1129](https://github.com/khorum08/SimThing/pull/1129)
 - Base: `origin/master` @ `17196cb741b47911cbe261e48f027d6d08fea6ba` (post-#1131 merge)
-- Head: Proof run: current branch tip at proof time; final PR head verified by orchestrator.
+- Proof: tested_code_sha binding per coverage_basis.
 
 ## Files changed
 
@@ -101,7 +101,7 @@ Verdict: **INSPECT** — `owner-local GPU prerequisites not confirmed (set DOCTR
 - Verified no workflow/product/cargo/GHA-owner-local expansion.
 - Verified #1129 remains PROBATION / DA-OWNER REVIEW, not self-mergeable.
 - `--plan --profile owner-local-gpu-bevy` still resolves 49 batched commands from live post-#1131 inventory.
-- Proof run: current branch tip at proof time; final PR head verified by orchestrator.
+- Proof: tested_code_sha binding per coverage_basis.
 
 0R2 proof (PYTHON_BIN set explicitly on Windows Git Bash):
 

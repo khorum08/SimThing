@@ -73,6 +73,17 @@ fixture_dir = os.environ.get("ANCHOR_FIXTURE_DIR", "")
 resolve_arg = os.environ.get("ANCHOR_RESOLVE_ARG", "")
 
 
+def normalize_text(raw: bytes) -> str:
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    text = raw.decode("utf-8")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def read_normalized(path: pathlib.Path) -> str:
+    return normalize_text(path.read_bytes())
+
+
 def fail(msg):
     print(f"ANCHOR-CHECK-VERDICT: FAIL({msg})")
     sys.exit(1 if mode == "check" else 0)
@@ -91,13 +102,13 @@ def lines_slice(path: pathlib.Path, spec: str) -> str:
     if not m:
         raise ValueError(f"bad lines spec: {spec}")
     start, end = int(m.group(1)), int(m.group(2))
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = read_normalized(path).splitlines()
     return "\n".join(lines[start - 1 : end]) + "\n"
 
 
 def heading_section(path: pathlib.Path, heading: str) -> str:
     h = heading.removeprefix("heading:")
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = read_normalized(path).splitlines()
     start = None
     for i, line in enumerate(lines):
         if line.strip() == h or line.strip().startswith(h):

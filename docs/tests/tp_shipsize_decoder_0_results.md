@@ -11,7 +11,7 @@
 | PR | [#1136](https://github.com/khorum08/SimThing/pull/1136) |
 | Branch | `tp-shipsize-decoder-0` |
 | Base | `origin/master` @ `71065ae4528dce879ac631465e235ac4252bb26e` (post-#1135 merge) |
-| Head | Proof run: current branch tip at proof time; final PR head verified by orchestrator. |
+| Proof | tested_code_sha binding per coverage_basis |
 
 ## Scope
 

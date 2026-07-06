@@ -111,7 +111,7 @@ Bounded theater: one terran + one pirate contested-border system pair, 3×3 grid
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 862d06a41cdebd070b3ecccade2522620ef77aff
-current_pr_head: 3ee822da3a0ec295638e17802681010304a10edd
+
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_fronts_authoring_0
 owner_local: true

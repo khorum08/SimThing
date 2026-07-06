@@ -118,7 +118,7 @@ DOCTRINE-SCAN-VERDICT: INSPECT  failures=0 inspect=415
 - Merge-hold active: DA/Owner clearance required before merge (gate-wiring).
 - ANCHOR-ACK / `/anchor` / `--since` delta receipt mode explicitly out of scope (rung 2c).
 
-### GHA (implementation/proof head `f7c05304`)
+### GHA CI
 
 | Check | Result | Run |
 |---|---|---|

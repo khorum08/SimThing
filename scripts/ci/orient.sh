@@ -56,7 +56,11 @@ parse_args() {
 
 emit_orientation() {
   local role="$1"
-  ORIENT_ROLE="$role" ORIENT_DOC_PATH="$ORIENT_DOC" ORIENT_REPO_ROOT="$REPO_ROOT" \
+  local fixture_dir="${2:-}"
+  ORIENT_ROLE="$role" \
+  ORIENT_DOC_PATH="$ORIENT_DOC" \
+  ORIENT_REPO_ROOT="$REPO_ROOT" \
+  ORIENT_FIXTURE_DIR="$fixture_dir" \
     exec "$PYTHON_BIN" - <<'PY'
 import hashlib
 import os
@@ -68,46 +72,78 @@ role = os.environ["ORIENT_ROLE"].lower()
 orient_doc = pathlib.Path(os.environ["ORIENT_DOC_PATH"])
 repo_root = pathlib.Path(os.environ["ORIENT_REPO_ROOT"])
 script_dir = repo_root / "scripts" / "ci"
+fixture_dir = os.environ.get("ORIENT_FIXTURE_DIR", "")
 
 if role not in ("coding", "orchestrator", "da"):
     print(f"orient.sh: invalid role: {role}", file=sys.stderr)
     sys.exit(2)
 
-if not orient_doc.is_file():
-    print(f"orient.sh: missing {orient_doc}", file=sys.stderr)
-    sys.exit(1)
 
-text = orient_doc.read_text(encoding="utf-8")
-digest_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+def normalize_text(raw: bytes) -> str:
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    text = raw.decode("utf-8")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
-sources = [
-    script_dir / "precedented_classes.tsv",
-    script_dir / "binding_conditions.tsv",
-    script_dir / "clearance_ledger.tsv",
-    repo_root / "docs" / "design_0_0_8_4_7_orchestration_harness.md",
-    script_dir / "relay_lint.sh",
-    script_dir / "doctrine_anchors.tsv",
-]
-source_stamp = hashlib.sha256(
-    "|".join(hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.is_file()).encode()
-).hexdigest()[:16]
 
-anchor_stamp = ""
-anchor_script = script_dir / "anchor_check.sh"
-if anchor_script.is_file():
-    import shutil
-    import subprocess
-    bash_bin = shutil.which("bash") or "bash"
-    try:
-        anchor_stamp = subprocess.check_output(
-            [bash_bin, str(anchor_script), "--anchor-stamp"],
-            cwd=str(repo_root),
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("orient.sh: anchor_check --anchor-stamp failed", file=sys.stderr)
+def file_digest(path: pathlib.Path) -> str:
+    return hashlib.sha256(normalize_text(path.read_bytes()).encode("utf-8")).hexdigest()
+
+
+def load_fixture_state():
+    if not fixture_dir:
+        return None
+    fix = pathlib.Path(fixture_dir)
+    snap = fix / "orientation_snapshot.md"
+    state = fix / "orientation_state.txt"
+    if not snap.is_file() or not state.is_file():
+        return None
+    text = normalize_text(snap.read_bytes())
+    digest_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    stamps = {}
+    for line in state.read_text(encoding="utf-8").splitlines():
+        if "=" in line:
+            key, val = line.split("=", 1)
+            stamps[key.strip()] = val.strip()
+    return text, digest_sha, stamps.get("source_stamp", ""), stamps.get("anchor_stamp", "")
+
+
+fixture = load_fixture_state()
+if fixture:
+    text, digest_sha, source_stamp, anchor_stamp = fixture
+else:
+    if not orient_doc.is_file():
+        print(f"orient.sh: missing {orient_doc}", file=sys.stderr)
         sys.exit(1)
+    text = normalize_text(orient_doc.read_bytes())
+    digest_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    sources = [
+        script_dir / "precedented_classes.tsv",
+        script_dir / "binding_conditions.tsv",
+        script_dir / "clearance_ledger.tsv",
+        repo_root / "docs" / "design_0_0_8_4_7_orchestration_harness.md",
+        script_dir / "relay_lint.sh",
+        script_dir / "doctrine_anchors.tsv",
+    ]
+    source_stamp = hashlib.sha256(
+        "|".join(file_digest(p) for p in sources if p.is_file()).encode()
+    ).hexdigest()[:16]
+    anchor_stamp = ""
+    anchor_script = script_dir / "anchor_check.sh"
+    if anchor_script.is_file():
+        import shutil
+        import subprocess
+        bash_bin = shutil.which("bash") or "bash"
+        try:
+            anchor_stamp = subprocess.check_output(
+                [bash_bin, str(anchor_script), "--anchor-stamp"],
+                cwd=str(repo_root),
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            print("orient.sh: anchor_check --anchor-stamp failed", file=sys.stderr)
+            sys.exit(1)
 
 receipt = hashlib.sha256(
     f"ORIENT-RECEIPT|{role}|{digest_sha}|{source_stamp}|{anchor_stamp}".encode("utf-8")
@@ -190,7 +226,7 @@ run_orient_selftest_fixture() {
   local role
   role="$(tr -d '\r' <"${fix}/role.txt" | head -n 1)"
   local got
-  got="$(emit_orientation "$role" | head -n 1)"
+  got="$(emit_orientation "$role" "$fix" | head -n 1)"
   if [[ "$got" == "$expected" ]]; then
     echo "PASS ${name}"
     return 0

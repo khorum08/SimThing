@@ -105,7 +105,7 @@ After each `fleet_movement_gradient_step`:
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: 5b03bfb1948d315b49a14a97cbe38f60ef08112d
-current_pr_head: c95ff92e0734c14372214baaa29031ac7d1baeef
+
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_fleet_movement_0
 owner_local: true

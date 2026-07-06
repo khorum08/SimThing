@@ -111,7 +111,7 @@ No symbol in this delta is classified as generic future-utility engine surface. 
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
-current_pr_head: 058d4060ff30387d21fb3a579b4fe309358e0364
+
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_diplomacy_flow_0
 owner_local: true

@@ -11,7 +11,7 @@
 | PR | [#1138](https://github.com/khorum08/SimThing/pull/1138) |
 | Branch | `tp-fleets-ships-0` |
 | Base | `origin/master` @ `e46cd55f3fe5df74d14419409c6f03868cef3c07` |
-| Head | Proof run: current branch tip at proof time |
+| Proof | tested_code_sha binding per coverage_basis |
 
 ## 0R remedial fix (TP-FLEETS-SHIPS-0R)
 
