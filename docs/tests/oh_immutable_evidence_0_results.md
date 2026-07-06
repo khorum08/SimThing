@@ -2,14 +2,14 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — LIVE-POINTER lint, selftest decouple, merge-commit checkout fallback, hash normalization, and prose retirement; DA clearance required (gate-wiring).
+**DA-GRADUATED / merged #1171 @ `af31f0caf9c841f4d1f26febf83c730627e8916d`** — live-pointer SHA churn mechanically impossible; SHA-hygiene prose retired to §6; fixture-local receipt selftests, LIVE-POINTER lint, merge-commit checkout fallback, and BOM/CRLF hash normalization live.
 
 ## PR / branch / merge
 
 | Field | Value |
 |---|---|
 | PR | [#1171](https://github.com/khorum08/SimThing/pull/1171) |
-| State | PROBATION / proof-present / DA-review-pending |
+| Merge | `af31f0caf9c841f4d1f26febf83c730627e8916d` |
 | Rung | `OH-IMMUTABLE-EVIDENCE-0` (2cR) |
 
 ## What changed
@@ -76,7 +76,6 @@ doctrine_scan.sh: INSPECT failures=0
 
 ## Known gaps / next
 
-- Merge-hold active: DA/Owner clearance required (gate-wiring).
 - Next after DA clearance: `OH-TRIAGE-INDUCTION-0`.
 
 ## Graduation routing

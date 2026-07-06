@@ -1,0 +1,3 @@
+SPEC-LOWERER-KIND-READ
+maybe
+concrete owner-cleared navigation rationale

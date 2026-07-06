@@ -20,6 +20,8 @@ GATE_WIRING_PATHS=(
   "scripts/ci/doctrine_exec_commands.sh"
   "scripts/ci/doctrine_exec_clearance.sh"
   "scripts/ci/doctrine_exec_clearance_comment.sh"
+  "scripts/ci/doctrine_exec_triage.sh"
+  "scripts/ci/triage_log_check.sh"
 )
 
 ENGINE_CRATE_PREFIXES=(
@@ -166,11 +168,13 @@ resolve_paths() {
   local classes="${SCRIPT_DIR}/precedented_classes.tsv"
   local binding="${SCRIPT_DIR}/binding_conditions.tsv"
   local ledger="${SCRIPT_DIR}/clearance_ledger.tsv"
+  local triage="${SCRIPT_DIR}/triage_log.tsv"
   if [[ -n "$FIXTURE_DIR" && -d "$FIXTURE_DIR" ]]; then
     [[ -f "${FIXTURE_DIR}/precedented_classes.tsv" ]] && classes="${FIXTURE_DIR}/precedented_classes.tsv"
     [[ -f "${FIXTURE_DIR}/binding_conditions.tsv" ]] && binding="${FIXTURE_DIR}/binding_conditions.tsv"
+    [[ -f "${FIXTURE_DIR}/triage_log.tsv" ]] && triage="${FIXTURE_DIR}/triage_log.tsv"
   fi
-  printf '%s\n%s\n%s' "$classes" "$binding" "$ledger"
+  printf '%s\n%s\n%s\n%s' "$classes" "$binding" "$ledger" "$triage"
 }
 
 read_fixture_file() {
@@ -493,6 +497,121 @@ check_recorded_gpu_proof() {
   return 1
 }
 
+inspect_delta_scan_ids() {
+  if [[ -n "$FIXTURE_DIR" && -f "${FIXTURE_DIR}/inspect_delta_scan_ids.txt" ]]; then
+    sed '/^[[:space:]]*$/d' "${FIXTURE_DIR}/inspect_delta_scan_ids.txt"
+    return 0
+  fi
+
+  local base_sha="" head_sha=""
+  if [[ -n "$RANGE_SPEC" ]]; then
+    base_sha="${RANGE_SPEC%%..*}"
+    head_sha="${RANGE_SPEC##*..}"
+  elif [[ -n "$PR_NUMBER" ]] && command -v gh >/dev/null 2>&1; then
+    local pr_json
+    pr_json="$(gh pr view "$PR_NUMBER" --json baseRefOid,headRefOid 2>/dev/null || true)"
+    if [[ -n "$pr_json" ]]; then
+      base_sha="$("$PYTHON_BIN" - <<'PY' "$pr_json"
+import json, sys
+data = json.loads(sys.argv[1])
+print(data.get("baseRefOid", ""))
+PY
+)"
+      head_sha="$("$PYTHON_BIN" - <<'PY' "$pr_json"
+import json, sys
+data = json.loads(sys.argv[1])
+print(data.get("headRefOid", ""))
+PY
+)"
+    fi
+  fi
+
+  if [[ -z "$base_sha" || -z "$head_sha" ]]; then
+    return 0
+  fi
+
+  local scan_out
+  scan_out="$(DOCTRINE_SCAN_SKIP_DRIFT=1 bash "${SCRIPT_DIR}/doctrine_scan.sh" --pr-delta "$base_sha" "$head_sha" 2>/dev/null || true)"
+  printf '%s\n' "$scan_out" | awk '$2 == "INSPECT" && $3 ~ /^[1-9]/ { print $1 }' | sed '/^$/d'
+}
+
+triage_covered_scan_ids() {
+  local triage_tsv="$1"
+  TRIAGE_TSV_PATH="$triage_tsv" "$PYTHON_BIN" - <<'PY'
+import os
+import re
+import sys
+
+path = os.environ.get("TRIAGE_TSV_PATH", "")
+PLACEHOLDER_RE = re.compile(
+    r"^(?:tbd|todo|n/?a|none|pending|fixme|wip|placeholder|\.{1,3}|-+)$",
+    re.IGNORECASE,
+)
+VALID = {"delete", "green", "escalate"}
+covered = set()
+
+def reason_valid(text: str) -> bool:
+    text = (text or "").strip()
+    return bool(text) and not PLACEHOLDER_RE.match(text)
+
+if not path or not os.path.isfile(path):
+    sys.exit(0)
+
+with open(path, encoding="utf-8-sig", newline="") as fh:
+    for i, line in enumerate(fh, 1):
+        line = line.rstrip("\n\r")
+        if not line.strip():
+            continue
+        if i == 1 and "scan-id" in line.lower():
+            continue
+        if "|" in line:
+            parts = [p.strip() for p in line.split("|")]
+        else:
+            parts = [p.strip() for p in line.split("\t")]
+        if len(parts) < 5:
+            print(f"MALFORMED:{path}:{i}", file=sys.stderr)
+            sys.exit(2)
+        scan_id, _branch, outcome, reason, _commit = parts[:5]
+        if outcome in VALID and reason_valid(reason) and scan_id:
+            covered.add(scan_id)
+
+for scan_id in sorted(covered):
+    print(scan_id)
+PY
+}
+
+check_triage_requirement() {
+  local triage_tsv="$1"
+  local delta_ids covered_ids missing
+  delta_ids="$(inspect_delta_scan_ids | sed '/^$/d' || true)"
+  if [[ -z "$delta_ids" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$triage_tsv" ]]; then
+    emit_verdict reserve "triage-missing"
+    return 1
+  fi
+
+  local covered_status
+  covered_status=0
+  covered_ids="$(triage_covered_scan_ids "$triage_tsv" 2>/dev/null)" || covered_status=$?
+  if [[ "$covered_status" -eq 2 ]]; then
+    emit_verdict fail "triage-table"
+    return 1
+  fi
+
+  local scan_id
+  while IFS= read -r scan_id; do
+    [[ -z "$scan_id" ]] && continue
+    if ! printf '%s\n' "$covered_ids" | grep -Fxq "$scan_id"; then
+      emit_verdict reserve "triage-missing"
+      return 1
+    fi
+  done <<<"$delta_ids"
+  return 0
+}
+
 check_ci_status() {
   if [[ -n "$FIXTURE_DIR" ]]; then
     local status
@@ -534,6 +653,7 @@ route_clearance() {
   local classes_tsv="$1"
   local binding_tsv="$2"
   local ledger_tsv="$3"
+  local triage_tsv="$4"
 
   resolve_changed_files_once || true
 
@@ -623,6 +743,10 @@ route_clearance() {
     fi
   fi
 
+  if ! check_triage_requirement "$triage_tsv"; then
+    return 0
+  fi
+
   emit_verdict clearable
 }
 
@@ -642,12 +766,13 @@ run_fixture() {
   expected="$(cat "${FIXTURE_DIR}/expected_verdict.txt" | tr -d '\r' | head -n 1)"
   local paths
   paths="$(resolve_paths)"
-  local classes_tsv binding_tsv ledger_tsv
+  local classes_tsv binding_tsv ledger_tsv triage_tsv
   classes_tsv="$(echo "$paths" | sed -n '1p')"
   binding_tsv="$(echo "$paths" | sed -n '2p')"
   ledger_tsv="$(mktemp "${TMPDIR:-/tmp}/clearance-ledger-XXXXXX")"
+  triage_tsv="$(echo "$paths" | sed -n '4p')"
   printf 'verdict\tclass\tpr\tsha\tdate\tsketch\n' >"$ledger_tsv"
-  got="$(route_clearance "$classes_tsv" "$binding_tsv" "$ledger_tsv" | tail -n 1)"
+  got="$(route_clearance "$classes_tsv" "$binding_tsv" "$ledger_tsv" "$triage_tsv" | tail -n 1)"
   if [[ "$got" == "$expected" ]]; then
     echo "PASS ${name}"
     return 0
@@ -670,6 +795,8 @@ run_selftest() {
     clearance_selftest_suspended_class
     clearance_selftest_missing_required_proof_fields
     clearance_selftest_fail_closed_empty_requested_diff
+    clearance_selftest_fail_triage_missing
+    clearance_selftest_pass_triage_present
   )
   local name
   for name in "${fixtures[@]}"; do
@@ -697,18 +824,19 @@ main() {
     reset_clearance_state
     local paths
     paths="$(resolve_paths)"
-    route_clearance "$(echo "$paths" | sed -n '1p')" "$(echo "$paths" | sed -n '2p')" "$(echo "$paths" | sed -n '3p')"
+    route_clearance "$(echo "$paths" | sed -n '1p')" "$(echo "$paths" | sed -n '2p')" "$(echo "$paths" | sed -n '3p')" "$(echo "$paths" | sed -n '4p')"
     exit 0
   fi
 
   reset_clearance_state
   local paths
   paths="$(resolve_paths)"
-  local classes_tsv binding_tsv ledger_tsv
+  local classes_tsv binding_tsv ledger_tsv triage_tsv
   classes_tsv="$(echo "$paths" | sed -n '1p')"
   binding_tsv="$(echo "$paths" | sed -n '2p')"
   ledger_tsv="$(echo "$paths" | sed -n '3p')"
-  route_clearance "$classes_tsv" "$binding_tsv" "$ledger_tsv"
+  triage_tsv="$(echo "$paths" | sed -n '4p')"
+  route_clearance "$classes_tsv" "$binding_tsv" "$ledger_tsv" "$triage_tsv"
 
   if [[ "${CLEARANCE_LEDGER_APPEND:-}" == "1" && -n "$PR_NUMBER" ]]; then
     local sha class_id

@@ -12,7 +12,7 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_7_orchestration_harness.md | db1d41492f9489e88549f6b802a3e5dde9626e6fb2d4621874d14b468c11497f |
+| design_0_0_8_4_7_orchestration_harness.md | 5eb39d58fb80cebd5cd4443c02d2f5b2938a151ef73a809008a7ac84c6ff4866 |
 | relay_lint.sh | af4ea00ba2bb0e96f6c53f4ce89ac16749ead385fc5f3e284d1f5392ba3b9f8a |
 | doctrine_anchors.tsv | 7f0bdaf5f0b85355f11272cceff01315ffe9f0f8480e1670487adf2e53b3eaef |
 
@@ -26,14 +26,14 @@
 | 2 | OH-ORIENTATION-DIGEST-0 | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshne | **DA-GRADUATED / merged [#1165](https://github.com/khorum08/SimThing/pull/1165) @ `eee9d4714`** — generated orientati... |
 | 2b | OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipt... |
 | 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | **DA-GRADUATED / merged [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `131cf858a3`** — doctrine anchors l... |
-| 2cR | OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** | **PROBATION / proof-present / DA-review-pending** — PR [#1171](https://github.com/khorum08/SimThing/pull/1171); LIVE-... |
-| 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill row... |
+| 2cR | OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** | **DA-GRADUATED / merged [#1171](https://github.com/khorum08/SimThing/pull/1171) @ `af31f0caf9c841f4d1f26febf83c730627... |
+| 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | **PROBATION / proof-present / DA-review-pending** — clearance router reserves INSPECT deltas without landed triage ro... |
 | 4 | OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced wi | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned... |
 | 5 | OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
 ## Next Rung Pointer
 
-Active pointer: `OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law)`
+Active pointer: `OH-TRIAGE-INDUCTION-0`
 
 ## Clearance Router Verdict Meanings
 
@@ -45,7 +45,7 @@ Active pointer: `OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUP
 | `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` | PR touches router/lint/harness gate surfaces (self-application refusal) |
 | `CLEARANCE-VERDICT: DA-RESERVE(binding-conditions)` | open binding condition blocks clearance for matched class |
 | `CLEARANCE-VERDICT: DA-RESERVE(class-suspended)` | precedented class row status=suspended |
-| `CLEARANCE-VERDICT: DA-RESERVE(triage-missing)` | INSPECT delta without landed /triage row (future M4 gate) |
+| `CLEARANCE-VERDICT: DA-RESERVE(triage-missing)` | INSPECT delta without landed /triage row (check 7 live) |
 | `CLEARANCE-VERDICT: FAIL(remedy)` | named fix required before re-attempt (CI not green, missing proof fields, etc.) |
 
 ## Precedented Classes (active)

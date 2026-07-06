@@ -1,0 +1,2 @@
+scan-id | branch | outcome | reason | commit
+SPEC-LOWERER-KIND-READ | clearance-fixture | green | fixture discharge: closed-lowerer GameSession tree-walk is owner-cleared navigation for scenario envelope hydration only | fixture01

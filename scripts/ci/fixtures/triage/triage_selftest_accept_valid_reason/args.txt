@@ -1,0 +1,3 @@
+SPEC-LOWERER-KIND-READ
+green
+TP-COMBAT-ARENA-0 owner-cleared Homing Boundary: GameSession tree-walk navigates canonical envelope only
