@@ -10,8 +10,11 @@
 |---|---|
 | PR | [#1167](https://github.com/khorum08/SimThing/pull/1167) |
 | Branch | `oh-anchor-integrity-0` |
-| Head | `f8a9c303` |
+| Head (implementation/proof) | `295ebd6afa5c865680df800611ad5dc83d5261e3` |
+| Evidence docs head | pending docs-only commit (see note below) |
 | Base | `master` @ `d5c76215e` (#1166 merge) |
+
+> Evidence lifecycle rows refreshed by docs-only commit (implementation/proof head remains `295ebd6a`).
 | Rung | `OH-ANCHOR-INTEGRITY-0` |
 
 ## Exit-proof columns
@@ -63,15 +66,15 @@ gen_orientation.sh --check: PASS
 
 - PR used: [#1167](https://github.com/khorum08/SimThing/pull/1167)
 - comment/run: `/anchor movement-front` and `/anchor receipt-admission` posted on PR (comments [#4888440640](https://github.com/khorum08/SimThing/pull/1167#issuecomment-4888440640), [#4888440700](https://github.com/khorum08/SimThing/pull/1167#issuecomment-4888440700))
-- GHA result: **pre-merge blocked** — `issue_comment` workflow uses master's `doctrine-exec-commands.yml` (no `/anchor` handler until merge); parse-command emitted `COMMAND: ignore` (runs `28762645960`, `28762646472`)
+- Pre-merge `/anchor` GHA smoke is blocked because `issue_comment` workflows execute master's `doctrine-exec-commands.yml`, which lacks `/anchor` until #1167 merges. Owner-local `/anchor` proof substitutes pre-merge. Re-post `/anchor movement-front` and `/anchor receipt-admission` after merge.
 - owner-local smoke: `doctrine_exec_anchor.sh movement-front` → `ANCHOR-REPORT: OK` (`movement-front@a0592b2f37ca`); `doctrine_exec_anchor.sh receipt-admission` → `ANCHOR-REPORT: OK` (`receipt-admission@7b886656d959`; anchor_id exact-match priority over trigger-domain collision)
 
-## GHA CI (PR head)
+## GHA CI (implementation/proof head `295ebd6a`)
 
 | Check | Run | Verdict |
 |---|---|---|
-| doctrine-scan | [28762656134](https://github.com/khorum08/SimThing/actions/runs/28762656134) | success (incl. `anchor_check.sh --check`) |
-| doctrine-exec | [28762656135](https://github.com/khorum08/SimThing/actions/runs/28762656135) | success (`DOCTRINE-EXEC-VERDICT: PASS`) |
+| Doctrine Exec | [28762948547](https://github.com/khorum08/SimThing/actions/runs/28762948547) | PASS (`DOCTRINE-EXEC-VERDICT: PASS`) |
+| Doctrine Scan | [28762948587](https://github.com/khorum08/SimThing/actions/runs/28762948587) | PASS (incl. doctrine anchor integrity: PASS; orientation digest freshness: PASS; doctrine self-test: PASS; PR delta scan: PASS; triage spam check: PASS) |
 
 ## Scope Ledger
 
@@ -94,7 +97,7 @@ gen_orientation.sh --check: PASS
 
 | Field | Value |
 |---|---|
-| CI verdict | PASS-RELIABLE if Doctrine Scan and Doctrine Exec green on GHA |
+| CI verdict | PASS-RELIABLE — Doctrine Scan and Doctrine Exec green on implementation head `295ebd6a` (runs 28762948547 / 28762948587) |
 | Triage entries | none unless new INSPECT delta appears |
 | Risk class | gate-wiring |
 | Falsification check | edit anchored text / remove ack / wrong ack hash / unknown anchor id / anchor edit stale receipt |
