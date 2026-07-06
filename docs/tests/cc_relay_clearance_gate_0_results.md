@@ -7,7 +7,7 @@ PROBATION / proof-present / DA-review-pending.
 ## PR / branch / merge
 
 - Branch: `codex/cc-relay-clearance-gate-0`
-- PR: not opened yet
+- PR: https://github.com/khorum08/SimThing/pull/1184
 - tested_code_sha: b9d83eef72
 - coverage_basis: PASS - harness implementation and fixture ledger validated at `b9d83eef72`; this results doc is evidence-only.
 - ORIENT-RECEIPT: 3f856e32d5d7
