@@ -1,7 +1,7 @@
-ORIENT-RECEIPT: 5db4a3c6b666
+ORIENT-RECEIPT: 9492b81c325e
 role: orchestrator
-orientation_digest_sha: 98aca33cc2f0fe3d49e8c93899b3d7c74b60e8d93d92e796e835dd99d6114dbe
-source_stamp: 4845f9f87f727322
+orientation_digest_sha: 0f7757380d11d20c40d4e98cb6ed6a91ede2b7eb7c2bb08775dc9cc2eae39ae2
+source_stamp: 8f710cc846ee1ab1
 generated_at: source-bound
 ## Status
 
