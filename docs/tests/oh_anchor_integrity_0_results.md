@@ -8,8 +8,9 @@
 
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | [#1167](https://github.com/khorum08/SimThing/pull/1167) |
 | Branch | `oh-anchor-integrity-0` |
+| Head | `4602d889` |
 | Base | `master` @ `d5c76215e` (#1166 merge) |
 | Rung | `OH-ANCHOR-INTEGRITY-0` |
 
@@ -60,9 +61,9 @@ gen_orientation.sh --check: PASS
 
 ## Post-open /anchor smoke
 
-- PR used: pending
-- comment/run: `/anchor movement-front` and `/anchor receipt-admission` pending
-- result: pending GHA
+- PR used: [#1167](https://github.com/khorum08/SimThing/pull/1167)
+- comment/run: `/anchor movement-front` and `/anchor receipt-admission` posted on PR
+- result: pending GHA (Doctrine Exec anchor-run)
 
 ## Scope Ledger
 
