@@ -320,29 +320,6 @@ jobs:
           bash scripts/ci/doctrine_exec_clearance_comment.sh \
             "${{ needs.parse-command.outputs.pr_number }}" clearance-report.txt
 
-      - name: Append clearance ledger row
-        run: |
-          VERDICT="$(grep '^CLEARANCE-VERDICT:' clearance-report.txt | tail -n 1)"
-          FILES="$(git diff --name-only "${{ needs.parse-command.outputs.base_sha }}" "${{ needs.parse-command.outputs.head_sha }}")"
-          CLASS="unknown"
-          if echo "$FILES" | grep -q 'tp_fleet_movement_0.rs'; then CLASS="tp-fleet-movement-rung"
-          elif echo "$FILES" | grep -q 'tp_palma_reach_0.rs'; then CLASS="tp-palma-reach-rung"
-          elif echo "$FILES" | grep -q 'tp_fronts_authoring_0.rs'; then CLASS="tp-fronts-authoring-rung"
-          elif echo "$FILES" | grep -q 'tp_diplomacy_flow_0.rs'; then CLASS="tp-diplomacy-flow-rung"
-          fi
-          bash scripts/ci/doctrine_exec_clearance.sh \
-            "$VERDICT" "$CLASS" \
-            "${{ needs.parse-command.outputs.pr_number }}" \
-            "${{ needs.parse-command.outputs.head_sha }}"
-
-      - name: Commit clearance ledger row to PR branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add scripts/ci/clearance_ledger.tsv
-          git commit -m "clearance: ledger row for PR ${{ needs.parse-command.outputs.pr_number }} (OH-CLEARANCE-ROUTER-0)"
-          git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"
-
   relay-lint-run:
     needs: parse-command
     if: |

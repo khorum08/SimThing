@@ -76,3 +76,13 @@ Not run:
 CLEARANCE-VERDICT: ORCHESTRATOR-TO-RUN
 
 Final posture: PROBATION / proof-present / orchestrator-routing-pending.
+
+## Clearance self-contamination remedy
+
+- Problem: `/clearance` on PR #1189 appended a row to `scripts/ci/clearance_ledger.tsv` and pushed that commit onto the PR branch (`clearance: ledger row for PR 1189`). That put a gate-wiring surface into the PR diff, so subsequent `/clearance` runs saw harness contamination instead of routing the receipt-rebind work.
+- Root cause: `.github/workflows/doctrine-exec-commands.yml` `clearance-run` had post-verdict steps that called `doctrine_exec_clearance.sh` to mutate the checked-out ledger and then `git commit` + `git push` back to `head_ref`. `clearance_check.sh` already ran with `CLEARANCE_LEDGER_APPEND=0`; the branch mutation came entirely from those workflow steps.
+- Fix: removed the `Append clearance ledger row` and `Commit clearance ledger row to PR branch` steps from `clearance-run`. `/clearance` still runs `clearance_check.sh`, emits the sticky PR comment via `doctrine_exec_clearance_comment.sh`, and records verdict metadata in `clearance-report.txt` / workflow output only.
+- Proof that `/clearance` no longer leaves `scripts/ci/clearance_ledger.tsv` in the PR diff: workflow no longer commits or pushes ledger rows; local `git diff master...HEAD -- scripts/ci/clearance_ledger.tsv` is empty after reverting the accidental GHA ledger commits; `clearance_check.sh --selftest` still passes with ledger writes confined to fixture temp files.
+- Remaining routing posture: orchestrator should rerun `/clearance` on the branch containing this remedy. Expected routing is substantive (`gate-wiring` or `novelty` for this rung), not `DA-RESERVE(harness-error)` from ledger self-contamination.
+
+Final posture: PROBATION / proof-present / orchestrator-routing-pending.
