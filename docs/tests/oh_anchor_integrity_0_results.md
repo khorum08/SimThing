@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1167](https://github.com/khorum08/SimThing/pull/1167) |
 | Branch | `oh-anchor-integrity-0` |
-| Head | `4602d889` |
+| Head | `89f3ae31` |
 | Base | `master` @ `d5c76215e` (#1166 merge) |
 | Rung | `OH-ANCHOR-INTEGRITY-0` |
 
