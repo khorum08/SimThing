@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1166](https://github.com/khorum08/SimThing/pull/1166) |
 | Branch | `oh-cold-start-0` |
-| Head | `a70450e7` |
+| Head | `dbd8accf` |
 | Base | `master` @ `eee9d4714` (#1165 merge) |
 | Rung | `OH-COLD-START-0` |
 

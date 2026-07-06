@@ -1,7 +1,7 @@
-ORIENT-RECEIPT: 20a077053dbb
+ORIENT-RECEIPT: f419292de0e0
 role: orchestrator
-orientation_digest_sha: acd660c0278cf0d3f89b0b4907cd55a12d1e3bc1401297cd1b8249b2944eaccd
-source_stamp: 81f59bb1b4aeee04
+orientation_digest_sha: f69d75f00e80144c9515c484edcf2a1ea34a4f2eaf5bd543eba16c35cdb2ff4b
+source_stamp: 5b5cfca4a667f8fb
 generated_at: source-bound
 
 ## Status
