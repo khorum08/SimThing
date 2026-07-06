@@ -31,7 +31,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
+| precedented_classes.tsv | a98fd62ffab180d62a4cc82f2fe5ac79d8afd62642b641a27d808366584b8117 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | design_0_0_8_4_8_corpus_clearance.md | 804780d9de0cbb64c2e58fea7263e0e45408a3c21ce3007aceb171f4a478bdb9 |
@@ -74,10 +74,11 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 
 | class_id | envelope | requirements | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
-| tp-diplomacy-flow-rung | crates/simthing-workshop/src/diplomacy_post_hydration.rs\|crates/simthing-workshop/tests/tp_diplomacy_flow_0.rs\|docs/tests/tp_diplomacy_flow_0_results.md\|scripts/ci/test_inventory.tsv | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-fronts-authoring-rung | crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fronts_authoring_0.rs\|docs/tests/tp_fronts_authoring_0_results.md\|scripts/ci/test_inventory.tsv | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-palma-reach-rung | crates/simthing-workshop/src/palma_reach_post_hydration.rs\|crates/simthing-workshop/tests/tp_palma_reach_0.rs\|docs/tests/tp_palma_reach_0_results.md\|scripts/ci/test_inventory.tsv | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-fleet-movement-rung | crates/simthing-workshop/src/fleet_movement_post_hydration.rs\|crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fleet_movement_0.rs\|docs/tests/tp_fleet_movement_0_results.md\|scripts/ci/test_inventory.tsv | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
+| corpus-baseline | docs/tests/cc_baseline_0_results.md\|scripts/ci/test_inventory.tsv | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis | active |
+| tp-diplomacy-flow-rung | crates/simthing-workshop/src/diplomacy_post_hydration.rs\|crates/simthing-workshop/tests/tp_diplomacy_flow_0.rs\|docs/tests/tp_diplomacy_flow_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
+| tp-fronts-authoring-rung | crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fronts_authoring_0.rs\|docs/tests/tp_fronts_authoring_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
+| tp-palma-reach-rung | crates/simthing-workshop/src/palma_reach_post_hydration.rs\|crates/simthing-workshop/tests/tp_palma_reach_0.rs\|docs/tests/tp_palma_reach_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
+| tp-fleet-movement-rung | crates/simthing-workshop/src/fleet_movement_post_hydration.rs\|crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fleet_movement_0.rs\|docs/tests/tp_fleet_movement_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
 
 ## Binding Conditions
