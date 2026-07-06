@@ -7,7 +7,7 @@ PROBATION / proof-present / DA-review-pending.
 ## PR / branch / merge
 
 - Branch: `codex/cc-handoff-spine-0`
-- PR: not opened
+- PR: https://github.com/khorum08/SimThing/pull/1182
 - tested_code_sha: b076bcac3e
 - coverage_basis: PASS - docs/template-only gate-wiring update; targeted proof commands recorded below; scanner and relay-lint implementation surfaces unchanged, so their selftests are not required by the handoff.
 - ORIENT-RECEIPT: 3f856e32d5d7
