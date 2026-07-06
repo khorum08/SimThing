@@ -29,12 +29,15 @@ representative-curation waves** — this track removes redundant witnesses; it d
 ## 4. Rungs
 | # | Rung | Deliverable | Exit proof |
 |---|---|---|---|
+| S | `CC-HANDOFF-SPINE-0` (parallel; run early) | Compress the `handoff_template.md` context spine: for each spine line, if it is now enforced **mechanically** (a scan/verdict) or by the **admission substrate** (type boundary / hard-error), replace the verbatim restatement with a one-line pointer to the enforcing surface; **keep** only lines no mechanism enforces (e.g. the gate-wiring merge-authority norm). Add a compact **Canonical Entrypoints** block naming the CI utilities every handoff exercises — `orient.sh --role=<role>` (cold-start + receipt), `cargo check -p <crate>` + `doctrine_scan.sh` (inner loop), `clearance_check.sh` / `relay_lint.sh` (routing/relay), `gen_orientation.sh --check` / `gen_digest.sh --check` (freshness when docs touched), `test_inventory_drift_check.sh` (when tests change), and the GHA comment commands (`/orient /clearance /relay-lint /triage /anchor /seal-proof`) — so handoffs *reference* them instead of re-deriving them | `handoff_template.md` spine **line count decreases**; every removed line cites its enforcing mechanism; retained lines are only the unmechanized ones; Canonical Entrypoints block present; a template-shaped handoff still passes `relay_lint.sh`; net effect is **less restated doctrine per handoff** → reduced input-token churn |
 | 0 | `CC-BASELINE-0` | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to a durable class or mark it a deletion candidate; no deletions yet | 0 rows remain `unknown`-class; each reclassification cites its retention basis; drift gate PASS |
 | 1..N | `CC-SWEEP-<crate>` | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the higher-rung owner (type/admission/scan/integration path) that makes the test redundant, delete it + its inventory row, prove production intact | crate compiles; remaining gates green; deleted rows leave no drift; **inventory row count decreases**; each deletion cites the superseding boundary |
 | C | `CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified downstream-utility lease; zero `unknown`; zero un-owned `pre-lifecycle` | Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expiry + drift + doctrine scan green; DA sign-off |
 
 Waves are orchestrator-buildable (they delete tests + rows and prove, a precedented shape); `CC-BASELINE-0`'s
-reclassification and `CC-CLOSEOUT-0` are DA-reviewed (they set retention doctrine on rows).
+reclassification, `CC-HANDOFF-SPINE-0` (it edits the binding handoff template), and `CC-CLOSEOUT-0` are
+DA-reviewed (they set retention/authoring doctrine). `CC-HANDOFF-SPINE-0` has no dependency on the sweep and
+should land first so every subsequent handoff carries the leaner spine.
 
 ## 5. Harness-driven, no new mechanism
 Every gate this track needs already exists: `test_inventory_drift_check.sh` (deletions must leave no drift),
