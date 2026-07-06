@@ -31,10 +31,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | 47b4874915a77450a01f684a72d01f378e9665525470480c5bfb9a81bb985435 |
+| precedented_classes.tsv | cc06a72a8d72773c3fad32d4e9fd45ccc565f57c1bc6266949442cb5bc0de3c7 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| design_0_0_8_4_8_corpus_clearance.md | 34ace6a4966f0e8b6f90fb704b6b23c9c5099d3e1e86afd025949fd4de6245ac |
+| design_0_0_8_4_8_corpus_clearance.md | 0751c11334f4cf3852f1bca3dc8d00ba3bc5dc48671dec87d95ccf3bb1b12dde |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -76,6 +76,7 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 | class_id | envelope | requirements | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
 | corpus-sweep | crates/*/tests/*.rs\|crates/*/tests/**/*.rs\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/tests/cc_sweep_*_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
+| corpus-module-marker-sweep | scripts/ci/test_inventory.tsv\|docs/tests/cc_sweep_*_module_markers_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
 | tp-diplomacy-flow-rung | crates/simthing-workshop/src/diplomacy_post_hydration.rs\|crates/simthing-workshop/tests/tp_diplomacy_flow_0.rs\|docs/tests/tp_diplomacy_flow_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-fronts-authoring-rung | crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fronts_authoring_0.rs\|docs/tests/tp_fronts_authoring_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-palma-reach-rung | crates/simthing-workshop/src/palma_reach_post_hydration.rs\|crates/simthing-workshop/tests/tp_palma_reach_0.rs\|docs/tests/tp_palma_reach_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
