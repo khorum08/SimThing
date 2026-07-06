@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending — not self-mergeable.** M2 orientation digest; DA clearance required before graduation.
+**DA-GRADUATED** — merged #1165 @ `eee9d4714ebcb64f6b581564ef352e78c5b1bc31`.
 
 ## PR / branch / merge
 
@@ -10,19 +10,21 @@
 |---|---|
 | PR | [#1165](https://github.com/khorum08/SimThing/pull/1165) |
 | Branch | `oh-orientation-digest-0` |
-| Head (live) | `fcdb194a0696ffb812ac5c2436dcae9237db023d` |
-| Implementation / proof head | `fcdb194a` (unchanged by docs-only refreshes) |
+| Merge | `eee9d4714ebcb64f6b581564ef352e78c5b1bc31` |
 | Base | `master` @ `ad46a0be8` |
 | Rung | `OH-ORIENTATION-DIGEST-0` |
+
+## Closure
+
+OH-ORIENTATION-DIGEST-0 DA-GRADUATED / merged #1165 @ `eee9d4714ebcb64f6b581564ef352e78c5b1bc31`.
+Generated orientation digest + freshness gate + `/orient` are live on master.
 
 ## What changed
 
 - Added `scripts/ci/gen_orientation.sh` — generates `docs/orchestrator_orientation.md` from live harness TSVs/design state; `--check` freshness gate; `--selftest` with two fixtures.
 - Added generated `docs/orchestrator_orientation.md` with source stamps and operational contract sections.
 - Wired orientation freshness into `.github/workflows/doctrine-scan.yml`.
-- Added `/orient` (+ `role=orchestrator|coding|da`) on `doctrine-exec-commands.yml` via `doctrine_exec_orient.sh` + `doctrine_exec_orient_comment.sh`.
-- Closure: flipped #1164 rows to DA-GRADUATED @ `ad46a0be8`.
-- Ledgered three orientation fixture files in `test_inventory.tsv`.
+- Added `/orient` (+ `role=orchestrator|coding|da`) on `doctrine-exec-commands.yml`.
 
 ## Load-bearing proofs
 
@@ -30,77 +32,14 @@
 |---|---|---|
 | Generator | `bash scripts/ci/gen_orientation.sh` | Live TSV → digest |
 | Freshness | `bash scripts/ci/gen_orientation.sh --check` | Stale hand-edit fails |
-| Stale digest fixture | `orientation_digest_selftest_stale_digest` | Hand-edited digest fails --check |
-| Live TSV change fixture | `orientation_digest_selftest_live_tsv_change` | Source drift requires regen |
-| Doctrine self-test | `bash scripts/ci/doctrine_selftest.sh` | Inventory drift + positive control |
-| Doctrine scan | `bash scripts/ci/doctrine_scan.sh` | CI integration |
-
-### Post-merge /relay-lint smoke
-
-- PR used: [#1164](https://github.com/khorum08/SimThing/pull/1164) (merged; head branch deleted)
-- comment/run: [issuecomment-4888019870](https://github.com/khorum08/SimThing/pull/1164#issuecomment-4888019870) → workflow [28759107869](https://github.com/khorum08/SimThing/actions/runs/28759107869)
-- result: **workflow FAIL** — checkout could not resolve deleted head branch `oh-clearance-router-0r-empty-diff` (post-merge branch deletion; not relay-lint logic failure)
-- observed RELAY-LINT-VERDICT: n/a (workflow did not reach lint step)
-- follow-up [#1165](https://github.com/khorum08/SimThing/pull/1165): workflow [28759244136](https://github.com/khorum08/SimThing/actions/runs/28759244136) **success** — `RELAY-LINT-VERDICT: FAIL(empty-required-block)` (expected on non-relay PR body; command surface exercised)
-
-### /orient GHA smoke
-
-- PR used: [#1165](https://github.com/khorum08/SimThing/pull/1165)
-- comment: [issuecomment-4888035708](https://github.com/khorum08/SimThing/pull/1165#issuecomment-4888035708) (`/orient role=orchestrator`)
-- result: **pending merge** — `orient-run` job ships in this PR; issue_comment workflows execute from `master` until merged (same pre-merge pattern as `/relay-lint` before #1163)
-- local proof: `bash scripts/ci/doctrine_exec_orient.sh orchestrator orient-report.txt` → `ORIENT-REPORT: OK`
-
-### Owner-local proof output (2026-07-05)
-
-**gen_orientation.sh --selftest**
-```
-PASS orientation_digest_selftest_stale_digest
-PASS orientation_digest_selftest_live_tsv_change
-ORIENTATION-DIGEST-SELFTEST: PASS (2 fixtures)
-```
-
-**gen_orientation.sh --check**
-```
-gen_orientation --check: PASS
-```
-
-### GHA (verified @ `fcdb194a`)
-
-| Check | Result | Run |
-|---|---|---|
-| Doctrine Scan | **PASS** | [28759316005](https://github.com/khorum08/SimThing/actions/runs/28759316005) |
-| Doctrine Exec | **PASS** | [28759316009](https://github.com/khorum08/SimThing/actions/runs/28759316009) |
-| Orientation digest freshness | **PASS** | (Doctrine Scan step) |
-
-Steps: digest freshness PASS; orientation digest freshness PASS; Doctrine self-test PASS; PR delta scan PASS; triage spam check PASS.
-
-## Scope Ledger
-
-| Path | Touched | Notes |
-|---|---|---|
-| `scripts/ci/gen_orientation.sh` | yes | M2 generator |
-| `scripts/ci/doctrine_exec_orient*.sh` | yes | GHA helpers |
-| `docs/orchestrator_orientation.md` | yes | generated digest |
-| `scripts/ci/fixtures/orientation_digest/**` | yes | 2 selftest fixtures |
-| `scripts/ci/test_inventory.tsv` | yes | +3 fixture rows |
-| `.github/workflows/doctrine-scan.yml` | yes | freshness gate |
-| `.github/workflows/doctrine-exec-commands.yml` | yes | `/orient` |
-| `docs/tests/oh_clearance_router_0r_results.md` | yes | #1164 graduation |
-| Engine crates | **no** | |
-
-## Known gaps / next
-
-- Evidence refreshed by docs-only commits on live PR head; implementation/proof head remains `fcdb194a`.
-- `/orient` GHA comment execution activates post-merge (workflow on master).
-- `OH-COLD-START-0` (rung 2b) not started — no ORIENT-RECEIPT, `--since`, or stubification in this rung.
-- Pre-existing `SPEC-LOWERER-KIND-READ` INSPECT(415) unchanged.
+| Selftest | `bash scripts/ci/gen_orientation.sh --selftest` | Stale digest + TSV drift fixtures |
+| GHA | Doctrine Scan + Exec PASS on merge head | CI integration |
 
 ## Graduation routing
 
 | Field | Value |
 |---|---|
-| CI verdict | PASS-RELIABLE — GHA Doctrine Scan PASS (28759316005) + Doctrine Exec PASS (28759316009); orientation digest freshness PASS |
+| CI verdict | PASS-RELIABLE |
 | Triage entries | none |
 | Risk class | gate-wiring |
-| Falsification check | Hand-mutate `orchestrator_orientation.md` → `--check` FAIL; remove fixture ledger row → drift FAIL |
-| Recommended posture | **deep** — generated governance surface + command wiring |
+| Recommended posture | **deep** — closed |
