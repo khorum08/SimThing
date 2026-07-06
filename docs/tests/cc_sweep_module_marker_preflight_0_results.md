@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION / proof-present / orchestrator-routing-pending.
+DA-GRADUATED / merged #1196 @ `8036795394`.
 
 tested_code_sha: `89e6b57ce95d9f562a8d20cdd6e8a3e7489cdf3f`
 coverage_basis: PASS - committed implementation validated by the harness proofs below; final follow-up commits, if any, are proof-documentation only.
@@ -158,11 +158,11 @@ Omissions:
 
 ## Known gaps / next
 
-After this lands, run the first module-marker ledger-only sweep on the smallest confirmed crate, likely `simthing-mapgenerator`, removing the single deletion-candidate module-marker inventory row and adding a crate-specific results doc.
+This preflight has landed. The corpus-clearance sweep track is now parked after #1197 until Opus/Fable is available again. After parking lifts, run the first module-marker ledger-only sweep on `simthing-mapgenerator`.
 
 ## Graduation routing
 
-- CLEARANCE-VERDICT: ORCHESTRATOR-TO-RUN
+- Final status: DA-GRADUATED / merged #1196 @ `8036795394`
 - CI verdict: proof-present; local checks pass with doctrine scan INSPECT-only
 - Triage entries: none
 - Risk class: gate-wiring, corpus-clearance-preflight, inventory-ledger-sweep
@@ -171,4 +171,4 @@ After this lands, run the first module-marker ledger-only sweep on the smallest 
   - arbitrary inventory edit does not match
   - source edit is not accepted
   - no tests/source/corpus inventory rows deleted in preflight
-- Recommended posture: orchestrator-routing-pending
+- Recommended posture: graduated/merged

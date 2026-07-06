@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION / proof-present / orchestrator-routing-pending.
+DA-GRADUATED / merged #1195 @ `689efe5418`.
 
 tested_code_sha: `3290337e441dc50d76b2a82f66db11d77d370175`
 coverage_basis: PASS - committed implementation validated by the harness proofs below; final follow-up commits, if any, are proof-documentation only.
@@ -154,11 +154,11 @@ DA-RESERVE(harness-error)
 
 ## Known gaps / next
 
-After this lands, the orchestrator may start the first `CC-SWEEP-<crate>` wave. Prefer a small crate first to calibrate wave shape.
+This preflight has landed. The corpus-clearance sweep track is now parked after #1197 until Opus/Fable is available again; no sweep is authorized by this status document.
 
 ## Graduation routing
 
-- CLEARANCE-VERDICT: ORCHESTRATOR-TO-RUN
+- Final status: DA-GRADUATED / merged #1195 @ `689efe5418`
 - CI verdict: proof-present; local checks pass with doctrine scan INSPECT-only
 - Triage entries: none
 - Risk class: gate-wiring, harness-enforcement, corpus-sweep-preflight
@@ -170,4 +170,4 @@ After this lands, the orchestrator may start the first `CC-SWEEP-<crate>` wave. 
   - lifecycle schema gate passes clean inventory/lifecycle diff
   - unrelated diff skips schema gate
   - no test or inventory deletion happened
-- Recommended posture: orchestrator-routing-pending
+- Recommended posture: graduated/merged

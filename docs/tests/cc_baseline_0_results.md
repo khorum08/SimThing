@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION / proof-present / orchestrator-routing-pending.
+DA-GRADUATED / merged #1193 @ `276b48d99f`.
 
 ## PR / branch / head
 
@@ -127,7 +127,7 @@ Explicit omissions:
 - Chosen class / binding after fix: `corpus-baseline`, scoped to `docs/tests/cc_baseline_0_results.md|scripts/ci/test_inventory.tsv`, with requirements `tested_code_sha|coverage_basis`.
 - Why this routes deterministically: TP classes no longer claim bare `scripts/ci/test_inventory.tsv`; TP PRs still match their TP source/test/results paths, while CC-BASELINE-0 inventory classification is owned by the single `corpus-baseline` class.
 - Local clearance result after fix: `DA-RESERVE(gate-wiring)` once the remedy is included, because the remedy necessarily edits `scripts/ci/precedented_classes.tsv`; the prior ambiguous-class `DA-RESERVE(harness-error)` is removed.
-- Remaining routing posture: `PROBATION / proof-present / orchestrator-routing-pending`.
+- Final routing posture: `DA-GRADUATED / merged #1193 @ 276b48d99f`.
 
 ## Unknown-row resolution ledger
 
@@ -171,14 +171,13 @@ Explicit omissions:
 
 ## Known gaps / next
 
-- Orchestrator must run `/clearance` after PR creation.
-- Later `CC-SWEEP-<crate>` rungs may delete `deletion-candidate` module-marker ledger rows, one crate/surface at a time.
+- Later `CC-SWEEP-<crate>` rungs may delete `deletion-candidate` module-marker ledger rows, one crate/surface at a time after the current park order lifts.
 - CC-BASELINE-0 itself performs no deletions.
 - Adding missing lifecycle track ids for harness rungs remains a separate DA/schema decision if birth tracks should reflect rung provenance instead of `0.0.8.4.6-ci-scaffolding`.
 
 ## Graduation routing
 
-- CLEARANCE-VERDICT: ORCHESTRATOR-TO-RUN
+- Final status: DA-GRADUATED / merged #1193 @ `276b48d99f`
 - CI verdict: drift PASS; lifecycle schema PASS; doctrine scan INSPECT failures=0
 - Triage entries: none
 - Risk class: corpus-baseline, inventory-classification, retention-doctrine
@@ -187,4 +186,4 @@ Explicit omissions:
   - inspect sample reclassifications for concrete retention basis
   - verify no test files deleted
   - verify drift/lifecycle/doctrine outputs
-- Recommended posture: orchestrator-routing-pending
+- Recommended posture: graduated/merged

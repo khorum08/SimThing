@@ -34,7 +34,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | cc06a72a8d72773c3fad32d4e9fd45ccc565f57c1bc6266949442cb5bc0de3c7 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| design_0_0_8_4_8_corpus_clearance.md | 0751c11334f4cf3852f1bca3dc8d00ba3bc5dc48671dec87d95ccf3bb1b12dde |
+| design_0_0_8_4_8_corpus_clearance.md | c3f46f9a18e01806635fa0dfad7a934c7fd166165bfdbd3ad84a05e81dbccbe8 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -44,10 +44,12 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | --- | --- | --- | --- |
 | S | CC-HANDOFF-SPINE-0` (parallel; run early) | Compress the `handoff_template.md` context spine: for each spine line, if it is  | **GRADUATED / PR #1182** - `handoff_template.md` spine **line count decreases**; every removed line cites its enforci... |
 | G | CC-RELAY-CLEARANCE-GATE-0` (gate-wiring; DA-reviewed; high priority — run before further DA escalations) | Close the critical routing-bypass hole (§4C): make it **mechanically impossible  | **GRADUATED / PR #1184** - `relay_lint --selftest` proves a manually-written DA escalation lacking `CLEARANCE-VERDICT... |
-| R | CC-RECEIPT-REBIND-0` (gate-wiring; DA-reviewed; high priority — the orientation-receipt anti-kabuki fix, §4D) | The `ORIENT-RECEIPT` freshness check keys on the **rendered digest sha** (`relay | **ACTIVE / this PR** - `relay_lint --selftest` proves a prose-only digest regen **does not** stale a valid receipt, w... |
+| R | CC-RECEIPT-REBIND-0` (gate-wiring; DA-reviewed; high priority — the orientation-receipt anti-kabuki fix, §4D) | The `ORIENT-RECEIPT` freshness check keys on the **rendered digest sha** (`relay | **GRADUATED / PR #1189** - `relay_lint --selftest` proves a prose-only digest regen **does not** stale a valid receip... |
 | 0 | CC-BASELINE-0 | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to  | **DA-GRADUATED / merged [#1193](https://github.com/khorum08/SimThing/pull/1193) @ `276b48d99f`** — 0 `unknown` rows r... |
-| P | CC-SWEEP-PREFLIGHT-0` (gate-wiring; DA-reviewed; **must land before the first sweep** — §4E) | Two anticipated failures, one preflight, both fixes via existing machinery: **(a | coverage_basis\ |
-| 1..N | CC-SWEEP-<crate> | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the | **NOT STARTED** - crate compiles; remaining gates green; deleted rows leave no drift; **inventory row count decreases... |
+| P | CC-SWEEP-PREFLIGHT-0` (gate-wiring; DA-reviewed; **must land before the first sweep** - §4E) | Two anticipated failures, one preflight: retire the completed `corpus-baseline`  | **DA-GRADUATED / merged [#1195](https://github.com/khorum08/SimThing/pull/1195) @ `689efe5418`** - sweep-shaped fixtu... |
+| P2 | CC-SWEEP-MODULE-MARKER-PREFLIGHT-0` (gate-wiring; DA-reviewed; module-marker sweep route) | Add a lawful route for ledger-only `cfg(test)` module-marker sweeps: `corpus-mod | **DA-GRADUATED / merged [#1196](https://github.com/khorum08/SimThing/pull/1196) @ `8036795394`** - clearable module-m... |
+| P3 | CC-DRIFT-MODULE-MARKER-EXCLUSION-0` (gate-wiring; DA-reviewed; drift-gate compatibility) | Stop the drift gate from rediscovering `cfg_test_mod::*` module markers as manda | **DA-GRADUATED / merged [#1197](https://github.com/khorum08/SimThing/pull/1197) @ `6add3c772307bebe8953a6dec05909701f... |
+| 1..N | CC-SWEEP-<crate> | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the | **NOT STARTED / PARKED** - parked after #1197 until Opus/Fable is available again; first intended action after parkin... |
 | C | CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified d | **NOT STARTED** - Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expir... |
 
 ## Next Rung Pointer

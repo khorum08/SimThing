@@ -2,7 +2,7 @@
 
 ## Status
 
-PROBATION / proof-present / orchestrator-routing-pending.
+DA-GRADUATED / merged #1197 @ `6add3c772307bebe8953a6dec05909701f90d767`.
 
 tested_code_sha: `92393b5efc40d18bfca99a15a8aab6a2584ac5ee`
 coverage_basis: PASS - committed drift-gate implementation validated by the proofs below; final follow-up commits, if any, are proof-documentation only.
@@ -134,11 +134,11 @@ Omissions:
 
 ## Known gaps / next
 
-After this lands, rerun the actual first module-marker ledger sweep for `simthing-mapgenerator` and remove the single `cfg_test_mod::tests` deletion-candidate row.
+This drift-gate fix has landed. The corpus-clearance sweep track is parked until Opus/Fable is available again. After parking lifts, rerun the actual first module-marker ledger sweep for `simthing-mapgenerator` and remove the single `cfg_test_mod::tests` deletion-candidate row.
 
 ## Graduation routing
 
-- CLEARANCE-VERDICT: ORCHESTRATOR-TO-RUN
+- Final status: DA-GRADUATED / merged #1197 @ `6add3c772307bebe8953a6dec05909701f90d767`
 - CI verdict: proof-present; local checks pass with doctrine scan INSPECT-only
 - Triage entries: none
 - Risk class: gate-wiring, drift-gate, corpus-module-marker-sweep
@@ -147,4 +147,4 @@ After this lands, rerun the actual first module-marker ledger sweep for `simthin
   - real-test unledgered fixture still fails
   - existing drift prove cases still pass
   - no inventory/source/test deletion in this PR
-- Recommended posture: orchestrator-routing-pending
+- Recommended posture: graduated/merged
