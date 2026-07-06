@@ -76,6 +76,21 @@ prose→verdict law as the rest of the initiative. `CC-RELAY-CLEARANCE-GATE-0` (
 priority: until it merges, orchestrators can and will over-escalate. (PR #1182 was correctly reserved to DA,
 but by *manual* routing, not the router — the exact bypass this rung forecloses.)
 
+**Two enforcement boundaries — the harness cannot gate chat (binding).** `CC-RELAY-CLEARANCE-GATE-0`
+mechanizes the clearance requirement for **repo artifacts** (PR bodies / results docs that pass through
+`relay_lint`). It **cannot** gate a DA-review handoff an orchestrator simply *types into chat* — that prose
+never touches the harness. The chat path therefore has two human/agent-discipline backstops, and they are
+binding norms, not conveniences:
+- **Orchestrator:** before producing *any* DA-review handoff, run `/clearance` (or `clearance_check.sh
+  --pr <n>` / `--range`) and **observe the emitted verdict**. If no verdict exists, do not produce the
+  handoff — trigger clearance first. An `ORCHESTRATOR-CLEARABLE` result means *merge*, not escalate.
+- **DA:** do **not** engage a review until you have **independently run/observed the clearance verdict**
+  yourself. A `CLEARANCE-VERDICT` string quoted in a relay is a *claim*, not proof — verify the tree
+  (founding principle). And **do not SHA-match your way into or out of a review**: `tested_code_sha`
+  identifies the proof point, `coverage_basis` explains an evidence-only tail, and a docs-tail commit is not
+  a hold reason (Immutability Law / #1169). The routing authority is the clearance tool, run first-hand —
+  not a field-comparison ritual, which is the kabuki that recurs whenever the real mechanism is skipped.
+
 ## 5. Harness-driven, no new mechanism
 Every gate this track needs already exists: `test_inventory_drift_check.sh` (deletions must leave no drift),
 `test_lifecycle_expiry_check.sh` (survivor classes/leases), `test_lifecycle_dsu_tiers.tsv` (rising-cost lease
