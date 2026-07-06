@@ -185,14 +185,15 @@ if mode == "anchor-stamp":
 
 if mode == "resolve":
     arg = resolve_arg.lower().strip()
-    matches = []
-    for aid, meta in state.items():
-        if aid.lower() == arg or arg in meta["domains"]:
-            matches.append((aid, meta))
-    if not matches:
-        print("ANCHOR-RESOLVE-VERDICT: FAIL(unknown-anchor)")
-        sys.exit(1)
-    aid, meta = matches[0]
+    exact = [(aid, meta) for aid, meta in state.items() if aid.lower() == arg]
+    if exact:
+        aid, meta = exact[0]
+    else:
+        domain = [(aid, meta) for aid, meta in state.items() if arg in meta["domains"]]
+        if not domain:
+            print("ANCHOR-RESOLVE-VERDICT: FAIL(unknown-anchor)")
+            sys.exit(1)
+        aid, meta = domain[0]
     print("ANCHOR-REPORT: OK")
     print(f"anchor_id: {aid}")
     print(f"doc: {meta['doc']}")

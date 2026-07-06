@@ -10,7 +10,7 @@
 |---|---|
 | PR | [#1167](https://github.com/khorum08/SimThing/pull/1167) |
 | Branch | `oh-anchor-integrity-0` |
-| Head | `89f3ae31` |
+| Head | pending final push |
 | Base | `master` @ `d5c76215e` (#1166 merge) |
 | Rung | `OH-ANCHOR-INTEGRITY-0` |
 
@@ -62,8 +62,16 @@ gen_orientation.sh --check: PASS
 ## Post-open /anchor smoke
 
 - PR used: [#1167](https://github.com/khorum08/SimThing/pull/1167)
-- comment/run: `/anchor movement-front` and `/anchor receipt-admission` posted on PR
-- result: pending GHA (Doctrine Exec anchor-run)
+- comment/run: `/anchor movement-front` and `/anchor receipt-admission` posted on PR (comments [#4888440640](https://github.com/khorum08/SimThing/pull/1167#issuecomment-4888440640), [#4888440700](https://github.com/khorum08/SimThing/pull/1167#issuecomment-4888440700))
+- GHA result: **pre-merge blocked** — `issue_comment` workflow uses master's `doctrine-exec-commands.yml` (no `/anchor` handler until merge); parse-command emitted `COMMAND: ignore` (runs `28762645960`, `28762646472`)
+- owner-local smoke: `doctrine_exec_anchor.sh movement-front` → `ANCHOR-REPORT: OK` (`movement-front@a0592b2f37ca`); `doctrine_exec_anchor.sh receipt-admission` → `ANCHOR-REPORT: OK` (`receipt-admission@7b886656d959`; anchor_id exact-match priority over trigger-domain collision)
+
+## GHA CI (PR head)
+
+| Check | Run | Verdict |
+|---|---|---|
+| doctrine-scan | [28762656134](https://github.com/khorum08/SimThing/actions/runs/28762656134) | success (incl. `anchor_check.sh --check`) |
+| doctrine-exec | [28762656135](https://github.com/khorum08/SimThing/actions/runs/28762656135) | success (`DOCTRINE-EXEC-VERDICT: PASS`) |
 
 ## Scope Ledger
 
