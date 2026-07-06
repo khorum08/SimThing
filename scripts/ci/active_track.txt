@@ -1,0 +1,2 @@
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+docs/design_0_0_8_4_8_corpus_clearance.md

@@ -144,7 +144,15 @@ main() {
   export ORIENTATION_CLASSES_TSV="${ORIENTATION_CLASSES_TSV:-${SCRIPT_DIR}/precedented_classes.tsv}"
   export ORIENTATION_BINDING_TSV="${ORIENTATION_BINDING_TSV:-${SCRIPT_DIR}/binding_conditions.tsv}"
   export ORIENTATION_LEDGER_TSV="${ORIENTATION_LEDGER_TSV:-${SCRIPT_DIR}/clearance_ledger.tsv}"
-  export ORIENTATION_DESIGN_DOC="${ORIENTATION_DESIGN_DOC:-${REPO_ROOT}/docs/design_0_0_8_4_7_orchestration_harness.md}"
+  # Active-track pointer: which design doc the Next-Rung / rung-summary is drawn from.
+  # A closed track must not keep pointing agents at its own leftover deferred rung —
+  # opening a track updates active_track.txt (one line), not this script.
+  _default_design="${REPO_ROOT}/docs/design_0_0_8_4_7_orchestration_harness.md"
+  if [[ -f "${SCRIPT_DIR}/active_track.txt" ]]; then
+    _at_rel="$(tr -d '\r' <"${SCRIPT_DIR}/active_track.txt" | grep -v '^[[:space:]]*#' | grep -v '^[[:space:]]*$' | head -n 1)"
+    [[ -n "$_at_rel" && -f "${REPO_ROOT}/${_at_rel}" ]] && _default_design="${REPO_ROOT}/${_at_rel}"
+  fi
+  export ORIENTATION_DESIGN_DOC="${ORIENTATION_DESIGN_DOC:-${_default_design}}"
   export ORIENTATION_RELAY_LINT="${ORIENTATION_RELAY_LINT:-${SCRIPT_DIR}/relay_lint.sh}"
   export ORIENTATION_ANCHORS_TSV="${ORIENTATION_ANCHORS_TSV:-${SCRIPT_DIR}/doctrine_anchors.tsv}"
   export ORIENTATION_OUTPUT="${ORIENTATION_OUTPUT:-${OUTPUT_PATH}}"
@@ -234,7 +242,8 @@ def next_rung_pointer(rungs):
             continue
         if "deferred" in low:
             continue
-        return rung.strip("`")
+        parts = rung.split("`")
+        return parts[1] if len(parts) >= 3 else rung.strip("`").strip()
     return "none"
 
 
@@ -259,7 +268,7 @@ sources = [
     ("precedented_classes.tsv", CLASSES_TSV),
     ("binding_conditions.tsv", BINDING_TSV),
     ("clearance_ledger.tsv", LEDGER_TSV),
-    ("design_0_0_8_4_7_orchestration_harness.md", DESIGN_DOC),
+    (DESIGN_DOC.name, DESIGN_DOC),
     ("relay_lint.sh", RELAY_LINT),
     ("doctrine_anchors.tsv", ANCHORS_TSV),
 ]
@@ -291,7 +300,7 @@ lines = [
 lines.extend(table(["source", "sha256"], manifest))
 lines.extend([
     "",
-    "## OH Track / Rung Summary (0.0.8.4.7)",
+    f"## Active Track / Rung Summary (`{DESIGN_DOC.name}`)",
     "",
 ])
 rung_table = []

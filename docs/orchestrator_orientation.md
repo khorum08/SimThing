@@ -12,28 +12,22 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_7_orchestration_harness.md | 6a714d938116f066c33c2d3a8f3419b4a7066e206de61fb93774ca3868869ea7 |
+| design_0_0_8_4_8_corpus_clearance.md | 5b38da85e3f8c62e01c744cddb8f6c061e8492faeffe45440c73695d5f1f29a5 |
 | relay_lint.sh | af4ea00ba2bb0e96f6c53f4ce89ac16749ead385fc5f3e284d1f5392ba3b9f8a |
 | doctrine_anchors.tsv | 7f0bdaf5f0b85355f11272cceff01315ffe9f0f8480e1670487adf2e53b3eaef |
 
-## OH Track / Rung Summary (0.0.8.4.7)
+## Active Track / Rung Summary (`design_0_0_8_4_8_corpus_clearance.md`)
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 0 | OH-CLEARANCE-ROUTER-0 | `clearance_check.sh` + `precedented_classes.tsv` + `binding_conditions.tsv` (bac | **DA-GRADUATED / merged [#1162](https://github.com/khorum08/SimThing/pull/1162) @ `39802af5`** — M1 router live; `/cl... |
-| 1 | OH-RELAY-LINT-0 | `relay_lint.sh` + schema doc block; advisory mode wired to the comment surface | **DA-GRADUATED / merged [#1163](https://github.com/khorum08/SimThing/pull/1163) @ `d4969f1c8`** — M3 relay lint + `/r... |
-| 1R | OH-CLEARANCE-ROUTER-0R | empty-diff precision + local PR-number resolution in `clearance_check.sh` | **DA-GRADUATED / merged [#1164](https://github.com/khorum08/SimThing/pull/1164) @ `ad46a0be8`** — empty/unresolved ta... |
-| 2 | OH-ORIENTATION-DIGEST-0 | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshne | **DA-GRADUATED / merged [#1165](https://github.com/khorum08/SimThing/pull/1165) @ `eee9d4714`** — generated orientati... |
-| 2b | OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipt... |
-| 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | **DA-GRADUATED / merged [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `131cf858a3`** — doctrine anchors l... |
-| 2cR | OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** | **DA-GRADUATED / merged [#1171](https://github.com/khorum08/SimThing/pull/1171) @ `af31f0caf9c841f4d1f26febf83c730627... |
-| 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | **DA-GRADUATED / merged [#1172](https://github.com/khorum08/SimThing/pull/1172) @ `d81c7161cba7f6ceae9102933479345118... |
-| 4 | OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced wi | **DA-GRADUATED / merged [#1173](https://github.com/khorum08/SimThing/pull/1173) @ `c189349f9de47bffb0936d67b5c3723c61... |
-| 5 | OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
+| S | CC-HANDOFF-SPINE-0` (parallel; run early) | Compress the `handoff_template.md` context spine: for each spine line, if it is  | `handoff_template.md` spine **line count decreases**; every removed line cites its enforcing mechanism; retained line... |
+| 0 | CC-BASELINE-0 | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to  | 0 rows remain `unknown`-class; each reclassification cites its retention basis; drift gate PASS |
+| 1..N | CC-SWEEP-<crate> | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the | crate compiles; remaining gates green; deleted rows leave no drift; **inventory row count decreases**; each deletion ... |
+| C | CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified d | Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expiry + drift + doctri... |
 
 ## Next Rung Pointer
 
-Active pointer: `OH-HARNESS-CRATE-0` (**DEFERRED**)`
+Active pointer: `CC-HANDOFF-SPINE-0`
 
 ## Cold-Start Entrypoint
 
