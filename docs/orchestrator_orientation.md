@@ -12,7 +12,7 @@
 | precedented_classes.tsv | ba97aaf552b3e98ca2a84d0b341d8dab4cd3738ca7a96f81d5a3a22923a25cad |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 454f47a2b18b06555a2afeb430bafa97d2849146d5c8bd936263175e6a85166b |
-| design_0_0_8_4_7_orchestration_harness.md | 8b4ab8d5c8d33586974ae97e18553fbfc2dc343559135d938cf95dae248c322e |
+| design_0_0_8_4_7_orchestration_harness.md | d54d6ad34689d221004ec4d01c92efe2d747f74a376c96f93a2aacba10019307 |
 | relay_lint.sh | c7bce278b0f59f389fbe10af76aa7f8be0f8454f1334626d941d4f6b9ad7fd58 |
 | doctrine_anchors.tsv | 591219cd67443283c55acb168968c2988757bd0d5bbf397559f0ec0b8bd8c12d |
 
@@ -25,14 +25,15 @@
 | 1R | OH-CLEARANCE-ROUTER-0R | empty-diff precision + local PR-number resolution in `clearance_check.sh` | **DA-GRADUATED / merged [#1164](https://github.com/khorum08/SimThing/pull/1164) @ `ad46a0be8`** — empty/unresolved ta... |
 | 2 | OH-ORIENTATION-DIGEST-0 | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshne | **DA-GRADUATED / merged [#1165](https://github.com/khorum08/SimThing/pull/1165) @ `eee9d4714`** — generated orientati... |
 | 2b | OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipt... |
-| 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | **PROBATION / proof-present / DA-review-pending** — PR [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `295... |
+| 2c | OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key AD | **DA-GRADUATED / merged [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `131cf858a3`** — doctrine anchors l... |
+| 2cR | OH-SELFTEST-DECOUPLE-0` (remedial, DA-found at #1167 closure) | Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** orienta | `relay_lint --selftest` + `orient --selftest` green **and** invariant under an unrelated design-doc edit (regenerate ... |
 | 3 | OH-TRIAGE-INDUCTION-0 | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctri | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill row... |
 | 4 | OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced wi | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned... |
 | 5 | OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
 
 ## Next Rung Pointer
 
-Active pointer: `OH-ANCHOR-INTEGRITY-0` (after 2b)`
+Active pointer: `OH-SELFTEST-DECOUPLE-0` (remedial, DA-found at #1167 closure)`
 
 ## Clearance Router Verdict Meanings
 
