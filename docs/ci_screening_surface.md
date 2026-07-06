@@ -548,4 +548,3 @@ section is the operator surface.
 > sub-taxonomy with a scan carve-out and a mechanical `--track-closeout` emptiness gate is the natural next step
 > *when* workshop fills and needs per-expedition sub-organization. Deferred — until then, "candidate code in the
 > `simthing-workshop` leaf, default-delete at closeout" is the whole mechanism. Do not scaffold `testthing/` yet.
-EXTRA GROWTH LINE
