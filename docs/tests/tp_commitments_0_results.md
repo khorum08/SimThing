@@ -127,7 +127,7 @@ Taxonomy also defines `attack`, `withdraw`, `fortify` event kind constants for f
 ```
 DOCTRINE-TESTS-VERDICT: PASS
 tested_code_sha: ca19e956571d451d97d20c37f6cf0627f40b0fa9
-current_pr_head: 3b1624877cebf92921e128d425c44fc8bc173b18
+
 coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
 profile: owner-local GPU / tp_commitments_0
 owner_local: true

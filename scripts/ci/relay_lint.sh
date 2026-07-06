@@ -65,6 +65,49 @@ text = sys.argv[1]
 repo_root = pathlib.Path(os.environ.get("RELAY_LINT_REPO_ROOT", "."))
 fixture_dir = os.environ.get("RELAY_LINT_FIXTURE_DIR", "")
 
+
+def normalize_text(raw: bytes) -> str:
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    body = raw.decode("utf-8")
+    return body.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def read_normalized(path: pathlib.Path) -> str:
+    return normalize_text(path.read_bytes())
+
+
+def file_digest(path: pathlib.Path) -> str:
+    return hashlib.sha256(read_normalized(path).encode("utf-8")).hexdigest()
+
+
+def validate_live_pointer():
+    patterns = [
+        (r"(?im)^\s*current_pr_head\s*:", "current_pr_head"),
+        (r"(?im)^\s*current\s+pr\s+head\s*:", "current_pr_head"),
+        (r"(?i)live/docs-refresh\s+head", "live/docs-refresh head"),
+        (r"(?im)^\s*docs-refresh\s+head\s*:", "docs-refresh head"),
+        (r"(?im)^\s*docs-only\s+head\s*:", "docs-only head"),
+        (r"(?im)^\s*evidence\s+docs\s+head\s*:", "evidence docs head"),
+        (r"(?im)^\s*latest[- ]run\s*:", "latest-run"),
+        (r"(?i)latest[- ]run\s+as\s+current", "latest-run"),
+        (r"(?i)current\s+branch\s+tip", "current branch tip"),
+        (r"(?im)^\s*branch\s+tip\s*:", "branch tip"),
+        (r"(?i)as[-_]?of\s+sha", "as-of sha"),
+        (r"(?i)self-referential\s+sha", "self-referential sha"),
+    ]
+    for pat, field in patterns:
+        if re.search(pat, text):
+            return field
+    return None
+
+
+live_pointer = validate_live_pointer()
+if live_pointer:
+    print(f"FAIL:live-pointer:{live_pointer}")
+    sys.exit(0)
+
+
 def has_section(patterns):
     for pat in patterns:
         if re.search(pat, text, re.IGNORECASE | re.MULTILINE):
@@ -177,12 +220,12 @@ def lines_slice(path, spec):
     import re as _re
     m = _re.match(r"lines:(\d+)-(\d+)$", spec)
     start, end = int(m.group(1)), int(m.group(2))
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = read_normalized(path).splitlines()
     return "\n".join(lines[start - 1 : end]) + "\n"
 
 def heading_section(path, heading):
     h = heading.removeprefix("heading:")
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = read_normalized(path).splitlines()
     start = None
     for i, line in enumerate(lines):
         if line.strip() == h or line.strip().startswith(h):
@@ -232,12 +275,39 @@ def anchor_stamp(state):
     joined = "|".join(f"{k}:{state[k]['live_hash']}" for k in sorted(state))
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:16]
 
+def orientation_state_from_fixture():
+    if not fixture_dir:
+        return None
+    fix = pathlib.Path(fixture_dir)
+    snap = fix / "orientation_snapshot.md"
+    state = fix / "orientation_state.txt"
+    if not snap.is_file() or not state.is_file():
+        return None
+    stamps = {}
+    for line in state.read_text(encoding="utf-8").splitlines():
+        if "=" in line:
+            key, val = line.split("=", 1)
+            stamps[key.strip()] = val.strip()
+    digest_sha = stamps.get("digest_sha") or hashlib.sha256(
+        read_normalized(snap).encode("utf-8")
+    ).hexdigest()
+    return (
+        digest_sha,
+        stamps.get("source_stamp", ""),
+        stamps.get("anchor_stamp", ""),
+        snap,
+    )
+
+
 def current_orientation_state():
+    fixture_state = orientation_state_from_fixture()
+    if fixture_state:
+        return fixture_state
     orient_doc = repo_root / "docs" / "orchestrator_orientation.md"
     script_dir = repo_root / "scripts" / "ci"
     if not orient_doc.is_file():
         return None, None, None, None
-    digest_sha = hashlib.sha256(orient_doc.read_bytes()).hexdigest()
+    digest_sha = file_digest(orient_doc)
     sources = [
         script_dir / "precedented_classes.tsv",
         script_dir / "binding_conditions.tsv",
@@ -247,7 +317,7 @@ def current_orientation_state():
         script_dir / "doctrine_anchors.tsv",
     ]
     source_stamp = hashlib.sha256(
-        "|".join(hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.is_file()).encode()
+        "|".join(file_digest(p) for p in sources if p.is_file()).encode()
     ).hexdigest()[:16]
     anchors = load_anchor_state()
     stamp = anchor_stamp(anchors) if anchors else ""
@@ -436,6 +506,9 @@ run_selftest() {
     relay_lint_selftest_fail_missing_graduation_routing
     relay_lint_selftest_pass_optional_5_1_sketch
     relay_lint_selftest_fail_empty_kabuki_sections
+    relay_lint_selftest_fail_live_pointer_current_pr_head
+    relay_lint_selftest_fail_live_pointer_docs_refresh_head
+    relay_lint_selftest_fail_live_pointer_latest_run
   )
   local cold_fixtures=(
     cold_start_selftest_valid_coding_receipt

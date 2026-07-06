@@ -36,6 +36,16 @@ jobs:
           set -o pipefail
           bash scripts/ci/anchor_check.sh --check 2>&1 | tee doctrine-anchor-report.txt
 
+      - name: Orientation receipt selftest
+        run: |
+          set -o pipefail
+          bash scripts/ci/orient.sh --selftest 2>&1 | tee doctrine-orient-selftest-report.txt
+
+      - name: Relay lint selftest
+        run: |
+          set -o pipefail
+          bash scripts/ci/relay_lint.sh --selftest 2>&1 | tee doctrine-relay-selftest-report.txt
+
       - name: Doctrine self-test
         run: |
           set -o pipefail

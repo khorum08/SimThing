@@ -311,16 +311,9 @@ in seconds where CI already vouches, and reserve token-heavy investigation for e
 4. **Never self-mark COMPLETE.** Rungs relay as PROBATION with the Graduation-routing block; graduation is
    the DA's write (or your own merge authority where clause §0.9.7 applies — see below).
 
-**Standing ruling — SHA equality is not a clearance gate (owner-commissioned, DA-ruled 2026-07-05;
-`design_0_0_8_4_7_orchestration_harness.md §2`).** Extends responsibility 3 beyond proof binding to *all*
-routing. Do **not** block a PR because a lifecycle/evidence/result-doc row cites an earlier head, a docs-only
-commit moved the head, or a GHA run is not the newest run — that enforcement is the self-rewriting kabuki loop
-(each docs "fix" re-stales the SHA it recorded). A **newer compatible head with green CI satisfies proof**
-even when a docs row cites an older head; record the merge SHA **once** and do not chase it with follow-up
-"record head" commits. Block only on a **substantive** problem — code-under-review ≠ code-tested (the
-tested-code-SHA binding above), failing/absent CI on proof-bearing changes, freshness-gate failure, fixture
-inventory drift, a prior merged rung still marked PROBATION, or evidence omitting a real implementation
-behavior — and then request the substantive proof/evidence fix, **never** "update the SHA."
+**Standing ruling — no SHA-equality routing (owner-commissioned, DA-ruled 2026-07-05).** Superseded —
+enforced by `LIVE-POINTER` in `relay_lint.sh` plus tested-code-SHA binding in `clearance_check.sh`; see
+`design_0_0_8_4_7_orchestration_harness.md` §6 sunset ledger.
 
 **Handoffs:** every rung handoff fills `handoff_template.md` — context spine **verbatim**, recipient by the
 routing table (coding → Cursor/Grok; docs → Haiku/Sonnet; DA judgment → Opus/Owner), rung-local reading

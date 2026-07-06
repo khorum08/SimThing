@@ -1,7 +1,7 @@
-ORIENT-RECEIPT: ca67540d6dd8
+ORIENT-RECEIPT: b292507b6b0b
 role: coding
-orientation_digest_sha: 0f7757380d11d20c40d4e98cb6ed6a91ede2b7eb7c2bb08775dc9cc2eae39ae2
-source_stamp: 8f710cc846ee1ab1
+orientation_digest_sha: 332f68d3404c7fda68b48f65d7b63b896c2a4874217dc94b3ba617c39273bcda
+source_stamp: 4a5da2361c04c981
 generated_at: source-bound
 
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864

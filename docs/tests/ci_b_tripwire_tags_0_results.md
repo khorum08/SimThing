@@ -11,7 +11,7 @@
 | PR | [#1132](https://github.com/khorum08/SimThing/pull/1132) |
 | Branch | `ci-b-tripwire-tags-0` |
 | Base | `origin/master` @ `16845b7a6104b860042775a2456aef053770d08a` (post-#1129 merge) |
-| Head | Proof run: current branch tip at proof time; final PR head verified by orchestrator. |
+| Proof | tested_code_sha binding per coverage_basis |
 
 ## Files changed
 

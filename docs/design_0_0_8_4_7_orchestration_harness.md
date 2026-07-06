@@ -27,34 +27,14 @@ context dilution across relays, incentive gradient toward "quiet scanner," prose
   uniform. This track **extends the proven spine** — one thin engine + one rule surface + self-test +
   freshness-gated digest (`doctrine_scan.sh`/`scans.tsv`/`doctrine_selftest.sh`/`gen_digest.sh`) — and
   **consolidates** the existing ~20-script/10-TSV surface rather than adding a framework beside it.
-- **STANDING RULING — SHA equality is NOT a clearance gate (owner-commissioned, DA-ruled 2026-07-05).**
-  Orchestration must **not** block a PR solely because a lifecycle/evidence/result-doc row cites an earlier
-  head, because a docs-only commit moved the head, or because a GHA run is not the newest. That enforcement
-  produced a self-rewriting loop — a docs "fix" changes the head, re-staling the SHA it just recorded — which
-  is hygiene kabuki, not proof. Route on **state + proof + freshness + substantive coverage**, never SHA
-  equality. **The one legitimate SHA use survives and is not weakened:** proof-to-tested-code binding — a
-  *proof report* (GHA green, GPU/owner-local `DOCTRINE-TESTS-VERDICT`) is valid only for the code it tested,
-  so *"the code under review is not the code tested"* remains a real block (this is what catches an old green
-  after a force-push, and what `tested_code_sha`/`coverage_basis` and the M6 anchor `content_hash` /
-  `ORIENT-RECEIPT` exist to prove). A **newer compatible head with green CI satisfies the proof rule** even
-  when a docs row cites an older head. Block only on a substantive gap — failing/absent CI on proof-bearing
-  changes, freshness-gate failure, inventory drift, a prior merged rung still marked PROBATION, or evidence
-  omitting a real behavior — and then request the **substantive** fix, never "update the SHA." Operator
-  surface: `ci_screening_surface.md §5A`.
-- **THE IMMUTABILITY LAW — the mechanized form of the ruling above (DA first-principles pass, 2026-07-05).**
-  The routing ruling treats the symptom (don't chase mismatches); this law removes the cause: the treadmill
-  exists only because committed prose recorded **live pointers** — a doc citing *its own PR's current head*
-  is self-referential by construction (writing the record moves the head). Therefore: **committed evidence
-  (results docs, design rows) and selftest fixtures may record only immutable facts** — PR number,
-  `tested_code_sha` + `coverage_basis`, a merge SHA written once at graduation, content hashes of *other*
-  artifacts, and state rows that transition once (PROBATION → DA-GRADUATED). **Live pointers are forbidden**:
-  current/live PR head, "docs-refresh head," latest-run ids, any self-referential as-of SHA, and fixtures
-  hardcoding the *live* orientation digest/receipt. Mutable state lives where it is already owned — git
-  history, the GitHub PR object, and the generated freshness-gated digests (M2). Enforced as a **verdict,
-  not judgment**: relay-lint rule `LIVE-POINTER` (FAIL, named field; rung 2cR). With the mutable field
-  unwritable, SHA-equality blocking has no object; the one real gate — proof-to-tested-code binding —
-  remains mechanized in the router. Everything the churn tried to preserve survives in its mechanized homes
-  (`tested_code_sha` in `clearance_check`, `content_hash` in `anchor_check`, receipts, freshness gates).
+- **STANDING RULING — no SHA-equality routing (owner-commissioned, DA-ruled 2026-07-05).** Superseded —
+  enforced by `LIVE-POINTER` in `relay_lint.sh` plus tested-code-SHA binding in `clearance_check.sh`; see §6
+  sunset ledger.
+- **THE IMMUTABILITY LAW (DA first-principles pass, 2026-07-05).** Committed evidence and selftest fixtures
+  record immutable facts only (PR number, `tested_code_sha` + `coverage_basis`, merge SHA at graduation,
+  content hashes, state transitions). Live pointers are forbidden and enforced as
+  `RELAY-LINT-VERDICT: FAIL(live-pointer: <field>)`; receipt selftests use fixture-local orientation
+  snapshots. See rung 2cR and §6 sunset ledger.
 
 ## 3. The mechanisms
 
@@ -194,7 +174,7 @@ GHA-side).** GHA runners are headless Linux: **no GPU adapter, no X11/ALSA/winit
 | 2 | `OH-ORIENTATION-DIGEST-0` | `gen_orientation.sh` + generated `docs/orchestrator_orientation.md` + CI freshness gate + `/orient` | **DA-GRADUATED / merged [#1165](https://github.com/khorum08/SimThing/pull/1165) @ `eee9d4714`** — generated orientation digest + freshness gate + `/orient` live on master; freshness gate verified derived; evidence [`oh_orientation_digest_0_results.md`](tests/oh_orientation_digest_0_results.md) |
 | 2b | `OH-COLD-START-0` (after 2) | `orient.sh` + `ORIENT-RECEIPT` emission; receipt validation in `relay_lint.sh` | **DA-GRADUATED / merged [#1166](https://github.com/khorum08/SimThing/pull/1166) @ `d5c76215e`** — orientation receipts live; relay-lint validates missing/stale/wrong-role receipts; router hook deferred as named future hook; evidence [`oh_cold_start_0_results.md`](tests/oh_cold_start_0_results.md) |
 | 2c | `OH-ANCHOR-INTEGRITY-0` (after 2b) | `doctrine_anchors.tsv` (seed rows: core design, constitution, invariants, key ADRs, incl. core §7 with map/movement trigger domain); quote-verbatim scan on generated docs; `ANCHOR-ACK` requirement in relay lint keyed to trigger domains; anchor hashes folded into `ORIENT-RECEIPT`; `/anchor` comment command | **DA-GRADUATED / merged [#1167](https://github.com/khorum08/SimThing/pull/1167) @ `131cf858a3`** — doctrine anchors live; anchor hash drift, missing/stale/unknown ANCHOR-ACK validation, anchor-bound receipts, and `/anchor` serving active; `anchor_check.sh --resolve` gives anchor-id exact-match priority over trigger-domain collision; DA-cleared under the no-SHA-equality routing ruling (§2) — proof-to-tested-code binding + green CI on the merged tree, docs-row SHA drift is not a gate; evidence [`oh_anchor_integrity_0_results.md`](tests/oh_anchor_integrity_0_results.md). Post-merge `/anchor` GHA smoke reposted per rung caveat |
-| 2cR | `OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** orientation digest — fixture-local orientation snapshot per fixture (self-contained), then CI-gate both selftests in `doctrine-scan.yml`. **(b)** relay-lint rule `LIVE-POINTER` — FAIL (named field) on live-pointer fields in relay bodies and `docs/tests/**` results docs (`current_pr_head`, live/docs-refresh head, latest-run ids, self-referential as-of SHAs); one-time cleanup sweep strips the existing live-pointer fields from the ~5 TP/OH results docs (immutable rows stay). **(c)** Dead-pointer process fix: `doctrine-exec-commands.yml` checkout falls back to the PR **merge-commit SHA** when `head_ref` is deleted (merged PR), and the standing closure rule becomes *post-merge command smokes run on the next open PR, never the merged one*. **(d)** Hash-stability hardening: receipt/anchor content hashing normalizes line endings and strips BOM before hashing, so Windows-written bytes cannot fake drift | `relay_lint --selftest` + `orient --selftest` green and **invariant under an unrelated design-doc edit** (regenerate digest → still PASS); both CI-gated; a fixture with `current_pr_head:` → `FAIL(live-pointer: current_pr_head)`; swept results docs pass the lint; a CRLF/BOM re-encoding of an anchor produces an **identical** content hash; `/anchor` (or any command) on a merged PR checks out the merge commit instead of failing |
+| 2cR | `OH-IMMUTABLE-EVIDENCE-0` (remedial; absorbs `OH-SELFTEST-DECOUPLE-0`; implements the §2 Immutability Law) | **(a)** Decouple `relay_lint.sh`/`orient.sh` receipt selftests from the **live** orientation digest — fixture-local orientation snapshot per fixture (self-contained), then CI-gate both selftests in `doctrine-scan.yml`. **(b)** relay-lint rule `LIVE-POINTER` — FAIL (named field) on live-pointer fields in relay bodies and `docs/tests/**` results docs (`current_pr_head`, live/docs-refresh head, latest-run ids, self-referential as-of SHAs); one-time cleanup sweep strips the existing live-pointer fields from the ~5 TP/OH results docs (immutable rows stay). **(c)** Dead-pointer process fix: doctrine-exec command checkout uses a resolved `checkout_ref`; open PRs use `head_ref`, merged PRs use `merge_commit_sha` when the head ref is deleted, so commands work on the merged PR itself. **(d)** Hash-stability hardening: receipt/anchor content hashing normalizes line endings and strips BOM before hashing, so Windows-written bytes cannot fake drift | **PROBATION / proof-present / DA-review-pending** — PR [#1171](https://github.com/khorum08/SimThing/pull/1171); LIVE-POINTER lint, selftest decouple, merge-commit checkout fallback, hash normalization, and prose retirement landed; DA clearance required (gate-wiring); evidence [`oh_immutable_evidence_0_results.md`](tests/oh_immutable_evidence_0_results.md) |
 | 3 | `OH-TRIAGE-INDUCTION-0` | Router requires landed `/triage` rows for INSPECT deltas (check 7 live); `doctrine_exec_triage.sh` strictness (justification mandatory); backfill TP-COMBAT-ARENA-0 GameSession rows | Un-triaged INSPECT delta → DA-RESERVE(triage-missing); malformed `/triage` rejected with format printed; backfill rows landed |
 | 4 | `OH-DOCS-SUNSET-0` (closing rung) | Prose compression: every §5A/§1A/§12 paragraph now enforced by M1–M3 replaced with a pointer line; DOC-BUDGET scan row; `rule_expiry_check.sh`; sunset ledger in this doc listing each retired paragraph → enforcing surface | `ci_screening_surface.md` net line count **decreases**; DOC-BUDGET green; rule-expiry sweep runs clean; zero orphaned pointers; closeout telemetry readout from `clearance_ledger.tsv` (clears vs relays vs RE-ORIENTs; §5.1-sketch 0R comparison for the LED promotion/retirement call) |
 | 5 | `OH-HARNESS-CRATE-0` (**DEFERRED**) | The Rust harness crate — only on a named trigger (§2) | Trigger recorded + DA/Owner authorization; not before |
@@ -221,4 +201,8 @@ is the track's entire prose budget.
 
 | Retired prose | Superseded by | Date |
 |---|---|---|
+| §2 no-SHA-equality routing prose | LIVE-POINTER relay_lint + tested-code-SHA binding in clearance_check | 2026-07-05 |
+| §2 Immutability Law mechanization argument | LIVE-POINTER relay_lint + immutable evidence fixtures | 2026-07-05 |
+| ci_screening_surface.md §5A SHA-hygiene paragraph | LIVE-POINTER relay_lint + tested-code-SHA binding in clearance_check | 2026-07-05 |
+| post-merge command-smoke-on-next-open-PR rule | doctrine-exec checkout_ref merge-commit fallback | 2026-07-05 |
 | _(populated at rung 4)_ | | |

@@ -34,6 +34,7 @@ jobs:
       head_sha: ${{ steps.context.outputs.head_sha }}
       base_sha: ${{ steps.context.outputs.base_sha }}
       head_ref: ${{ steps.context.outputs.head_ref }}
+      checkout_ref: ${{ steps.context.outputs.checkout_ref }}
       is_collaborator: ${{ steps.auth.outputs.is_collaborator }}
       is_fork: ${{ steps.auth.outputs.is_fork }}
     steps:
@@ -56,11 +57,18 @@ jobs:
           HEAD="$(echo "$JSON" | jq -r '.head.sha')"
           BASE="$(echo "$JSON" | jq -r '.base.sha')"
           HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
+          MERGED="$(echo "$JSON" | jq -r '.merged')"
+          MERGE_SHA="$(echo "$JSON" | jq -r '.merge_commit_sha // empty')"
+          CHECKOUT_REF="${HEAD_REF}"
+          if [[ "$MERGED" == "true" && -n "$MERGE_SHA" ]]; then
+            CHECKOUT_REF="${MERGE_SHA}"
+          fi
           {
             echo "pr_number=${PR}"
             echo "head_sha=${HEAD}"
             echo "base_sha=${BASE}"
             echo "head_ref=${HEAD_REF}"
+            echo "checkout_ref=${CHECKOUT_REF}"
           } >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
@@ -281,7 +289,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.parse-command.outputs.head_ref }}
+          ref: ${{ needs.parse-command.outputs.checkout_ref }}
           fetch-depth: 0
           token: ${{ github.token }}
 
@@ -345,7 +353,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.parse-command.outputs.head_ref }}
+          ref: ${{ needs.parse-command.outputs.checkout_ref }}
           fetch-depth: 0
           token: ${{ github.token }}
 
@@ -381,7 +389,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.parse-command.outputs.head_ref }}
+          ref: ${{ needs.parse-command.outputs.checkout_ref }}
           fetch-depth: 0
           token: ${{ github.token }}
 
@@ -418,7 +426,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.parse-command.outputs.head_ref }}
+          ref: ${{ needs.parse-command.outputs.checkout_ref }}
           fetch-depth: 0
           token: ${{ github.token }}
 

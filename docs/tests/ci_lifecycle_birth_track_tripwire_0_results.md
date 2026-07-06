@@ -35,7 +35,7 @@ Track-A / ledger-layer text analysis only. No §3B executable proof, no workflow
 |---|---|
 | PR | #1131 |
 | Branch | `ci-lifecycle-birth-track-tripwire-0` |
-| Head SHA | Proof run: current branch tip at proof time; final PR head verified by orchestrator. |
+| Proof | tested_code_sha binding per coverage_basis |
 | Base SHA / base ref | `fc5dc16e1672b6e938ecc62620abf127b6477927` / `origin/master` |
 
 ## Files changed
