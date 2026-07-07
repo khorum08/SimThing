@@ -293,9 +293,32 @@ def discover_track_docs(track: str, source: str) -> list:
             continue
         rel = path.relative_to(ROOT).as_posix()
         name = path.name.lower()
+        if name.endswith("_closeout_manifest.tsv"):
+            continue
         if any(name.startswith(p) for p in prefixes) and is_reapable_doc(rel):
             out.append(rel)
     return out
+
+
+def auto_doc_scope(track: str, track_rows: list) -> set:
+    source = next((t.get("source", "") for t in track_rows if t["track_id"] == track), "")
+    doc_paths = set()
+    if source and (ROOT / source).is_file() and not doc_validation_error(source):
+        doc_paths.add(clean_repo_relpath(source))
+    doc_paths.update(discover_track_docs(track, source))
+    return doc_paths
+
+
+def is_auto_doc_candidate(track: str, source: str, path: str) -> bool:
+    rel = clean_repo_relpath(path)
+    if not is_doc_path(rel):
+        return False
+    if source and rel == clean_repo_relpath(source):
+        return True
+    if not (rel.startswith("docs/tests/") and is_reapable_doc(rel)):
+        return False
+    name = pathlib.PurePosixPath(rel).name.lower()
+    return any(name.startswith(p) for p in track_doc_prefixes(track, source))
 
 
 def doc_validation_error(path: str) -> str:
@@ -498,13 +521,7 @@ def cmd_build_manifest():
     # what clutters low-context agents. The track's design doc (tracks.source) is
     # auto-included; rung result docs come in via --docs globs.
     _, track_rows = read_tsv(TRACKS)
-    doc_paths = []
-    src = next((t.get("source", "") for t in track_rows if t["track_id"] == track), "")
-    if src and (ROOT / src).is_file() and not doc_validation_error(src):
-        doc_paths.append(src)
-    for h in discover_track_docs(track, src):
-        if h not in doc_paths:
-            doc_paths.append(h)
+    doc_paths = sorted(auto_doc_scope(track, track_rows))
     for g in doc_globs:
         hits = sorted(p.relative_to(ROOT).as_posix() for p in ROOT.glob(g) if p.is_file())
         if not hits:
@@ -629,8 +646,6 @@ def validate_dispositions(rows):
                                   f"a .md/.tsv path under {DOC_ARCHIVE_PREFIX}")
                 elif target == doc_path:
                     errors.append(f"row {i} ({r.get('ref','?')}): doc elevate-code target matches source")
-            if disp in {"delete", "elevate-code", "keep-durable", "lease"} and not (ROOT / doc_path).exists():
-                errors.append(f"row {i} ({r.get('ref','?')}): doc source missing: {doc_path}")
             if disp == "elevate-class":
                 errors.append(f"row {i} ({r.get('ref','?')}): elevate-class is invalid for doc rows "
                               f"(use elevate-code with an archive target)")
@@ -734,6 +749,28 @@ def cmd_apply():
             print(f"  - manifest row no longer live: {k}", file=sys.stderr)
         print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(stale-manifest) unscoped={len(unscoped)} "
               f"vanished={len(vanished)}; re-run --build-manifest", file=sys.stderr)
+        sys.exit(1)
+
+    # P0-1 also covers auto-scoped docs: source doc plus track-shaped docs/tests
+    # artifacts. Explicit --docs additions outside that auto shape remain governed
+    # by direct path validation, not by this freshness set.
+    track_source = next((t.get("source", "") for t in tracks if t["track_id"] == track), "")
+    live_doc_paths = auto_doc_scope(track, tracks)
+    manifest_doc_paths = {
+        clean_repo_relpath(r.get("file", ""))
+        for r in rows
+        if (r.get("asset_kind") or "").strip() == "doc"
+        and is_auto_doc_candidate(track, track_source, r.get("file", ""))
+    }
+    doc_unscoped = live_doc_paths - manifest_doc_paths
+    doc_vanished = manifest_doc_paths - live_doc_paths
+    if doc_unscoped or doc_vanished:
+        for p in sorted(doc_unscoped)[:10]:
+            print(f"  - live doc not in manifest: {p}", file=sys.stderr)
+        for p in sorted(doc_vanished)[:10]:
+            print(f"  - manifest doc no longer live: {p}", file=sys.stderr)
+        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(stale-manifest) doc_unscoped={len(doc_unscoped)} "
+              f"doc_vanished={len(doc_vanished)}; re-run --build-manifest", file=sys.stderr)
         sys.exit(1)
 
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
@@ -1224,7 +1261,7 @@ def cmd_deletion_guard():
     removed = [r for r in base_rows if inv_key(r) not in head_keys]
 
     # P0-2: closure must PREDATE the PR (status at base), or the PR must itself be a
-    # lawful closeout (track closed at head AND the closeout report is in the diff).
+    # lawful closeout (track closed at head AND closeout report+manifest are in the diff).
     # Otherwise an agent could hand-flip status=closed and delete rows in one PR,
     # bypassing the whole protocol.
     trk_rel = "scripts/ci/test_lifecycle_tracks.tsv"
@@ -1245,7 +1282,8 @@ def cmd_deletion_guard():
         if base_status.get(bt) == "closed":
             continue
         if (head_status.get(bt) == "closed"
-                and f"docs/tests/{bt}_closeout_report.md" in changed_files):
+                and f"docs/tests/{bt}_closeout_report.md" in changed_files
+                and f"docs/tests/{bt}_closeout_manifest.tsv" in changed_files):
             continue  # this PR IS the closeout apply
         violations.append((inv_key(r), bt))
 
@@ -1429,6 +1467,22 @@ def cmd_prove():
               r_stale.returncode != 0 and "FAIL(stale-manifest)" in r_stale.stderr)
         write_tsv(sb / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv_rows)
 
+        # P0-1: auto-scoped docs get the same build->apply freshness guard.
+        (sb / "docs/tests/sb_extra_results.md").write_text("# late doc\n", encoding="utf-8")
+        r_doc_born = run("--apply", manifest_rel)
+        check("apply-stale-doc-born-fail",
+              r_doc_born.returncode != 0
+              and "FAIL(stale-manifest)" in r_doc_born.stderr
+              and "doc_unscoped=1" in r_doc_born.stderr)
+        (sb / "docs/tests/sb_extra_results.md").unlink()
+        (sb / "docs/tests/sb_results.md").unlink()
+        r_doc_vanished = run("--apply", manifest_rel)
+        check("apply-stale-doc-vanished-fail",
+              r_doc_vanished.returncode != 0
+              and "FAIL(stale-manifest)" in r_doc_vanished.stderr
+              and "doc_vanished=1" in r_doc_vanished.stderr)
+        (sb / "docs/tests/sb_results.md").write_text("# sb results\n", encoding="utf-8")
+
         r_apply = run("--apply", manifest_rel)
         check("apply-ok", "APPLY-VERDICT: OK" in r_apply.stdout or "APPLY-VERDICT: INSPECT" in r_apply.stdout
               or "APPLY-VERDICT:" in r_apply.stdout)
@@ -1558,7 +1612,7 @@ def cmd_prove():
               "DELETION-GUARD-VERDICT: PASS" in r_guard2.stdout)
 
         # P0-2: hand-closing the track IN THE SAME PR as the deletion is a bypass -> FAIL;
-        # it becomes lawful only when the closeout report is part of the same diff.
+        # it becomes lawful only when the closeout report and manifest are part of the same diff.
         for t in trk:
             if t["track_id"] == "open-track":
                 t["status"] = "open"; t["closed_at"] = "-"
@@ -1581,9 +1635,16 @@ def cmd_prove():
         (gr / "docs/tests/open-track_closeout_report.md").write_text("# closeout\n", encoding="utf-8")
         grun("add", "-A"); grun("commit", "-q", "-m", "add-closeout-report")
         head4 = grun("rev-parse", "HEAD").stdout.strip()
-        r_lawful = subprocess.run([BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base3, head4],
+        r_report_only = subprocess.run([BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base3, head4],
+                                       capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-blocks-report-only-closeout-pr",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_report_only.stdout)
+        (gr / "docs/tests/open-track_closeout_manifest.tsv").write_text("# manifest\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "add-closeout-manifest")
+        head5 = grun("rev-parse", "HEAD").stdout.strip()
+        r_lawful = subprocess.run([BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base3, head5],
                                   capture_output=True, text=True, cwd=str(gr), env={**os.environ})
-        check("deletion-guard-allows-closeout-pr",
+        check("deletion-guard-allows-closeout-pr-with-manifest",
               "DELETION-GUARD-VERDICT: PASS" in r_lawful.stdout)
 
     # decommission reaper: deletes only unambiguously-safe expired assets; refuses the rest.
