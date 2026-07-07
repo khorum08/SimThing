@@ -1,8 +1,8 @@
 # 0.0.8.4.8 — First Post-Rustification Corpus Clearance
 
-> **Status: PARKED after #1197 (2026-07-06).** The first corpus-wide Necessity-Test sweep of the Rustification
-> era is blocked until Opus/Fable is available again. The 0.0.8.4.x tracks built the gates and corrected the
-> module-marker ledger path; no sweep or new intervention rung is authorized while parked.
+> **Status: PARKED after #1205 (2026-07-07).** The module-marker residue subtrack is complete and the
+> repository is at a safe closeout point. No further corpus-clearance production rung is active until explicitly
+> opened after orientation and current-doc review.
 
 ## 1. Why now
 The Rustification initiative migrated invariants to types/admission/scans and built the test-lifecycle
@@ -35,8 +35,8 @@ representative-curation waves** — this track removes redundant witnesses; it d
 | 0 | `CC-BASELINE-0` | Freeze the §2 baseline as an artifact; resolve every **`unknown`-class** row to a durable class or mark it a deletion candidate; no deletions yet | **DA-GRADUATED / merged [#1193](https://github.com/khorum08/SimThing/pull/1193) @ `276b48d99f`** — 0 `unknown` rows remain; 137 `cfg_test_mod::*` module markers → `deletion-candidate` (not deleted); 169 birth_track hygiene fixes; dedicated `corpus-baseline` clearance class added |
 | P | `CC-SWEEP-PREFLIGHT-0` (gate-wiring; DA-reviewed; **must land before the first sweep** - §4E) | Two anticipated failures, one preflight: retire the completed `corpus-baseline` class, register repeatable `corpus-sweep` for test-file deletion sweep shape, and make lifecycle schema validation a blocking PR gate for inventory/lifecycle TSV diffs. | **DA-GRADUATED / merged [#1195](https://github.com/khorum08/SimThing/pull/1195) @ `689efe5418`** - sweep-shaped fixture routes to `corpus-sweep`; retired baseline no longer matches; lifecycle schema gate blocks invalid inventory/lifecycle TSV diffs |
 | P2 | `CC-SWEEP-MODULE-MARKER-PREFLIGHT-0` (gate-wiring; DA-reviewed; module-marker sweep route) | Add a lawful route for ledger-only `cfg(test)` module-marker sweeps: `corpus-module-marker-sweep` owns `scripts/ci/test_inventory.tsv` plus `docs/tests/cc_sweep_*_module_markers_results.md`, validates removed rows as `cfg_test_mod::*` `deletion-candidate` / `ledger-only`, and rejects source edits or arbitrary inventory edits. | **DA-GRADUATED / merged [#1196](https://github.com/khorum08/SimThing/pull/1196) @ `8036795394`** - clearable module-marker fixture routes to `ORCHESTRATOR-CLEARABLE`; missing result docs, bad inventory deletions, and source edits reserve to novelty; no sweep performed |
-| P3 | `CC-DRIFT-MODULE-MARKER-EXCLUSION-0` (gate-wiring; DA-reviewed; drift-gate compatibility) | Stop the drift gate from rediscovering `cfg_test_mod::*` module markers as mandatory test rows while preserving discovery for real `#[test]` functions, compile_fail, trybuild, and CI fixtures. Non-KEEP `deletion-candidate` module-marker rows can remain temporarily without stale-ledger failure. | **DA-GRADUATED / merged [#1197](https://github.com/khorum08/SimThing/pull/1197) @ `6add3c772307bebe8953a6dec05909701f90d767`** - drift prove cases pass for cfg-marker exclusion/removal and still fail real unledgered tests and stale KEEP rows |
-| 1..N | `CC-SWEEP-<crate>` | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the higher-rung owner (type/admission/scan/integration path) that makes the test redundant, delete it + its inventory row, prove production intact | **NOT STARTED / PARKED** - parked after #1197 until Opus/Fable is available again; first intended action after parking lifts is the `simthing-mapgenerator` module-marker ledger sweep |
+| P3 | `CC-DRIFT-MODULE-MARKER-EXCLUSION-0` (gate-wiring; DA-reviewed; drift-gate compatibility) | Stop the drift gate from rediscovering `cfg_test_mod::*` module markers as mandatory test rows while preserving discovery for real `#[test]` functions, compile_fail, trybuild, and CI fixtures. Non-KEEP `deletion-candidate` module-marker rows can remain temporarily without stale-ledger failure. | **DA-GRADUATED / merged [#1197](https://github.com/khorum08/SimThing/pull/1197) @ `6add3c772307bebe8953a6dec05909701f90d767`** - drift prove cases pass for cfg-marker exclusion/removal and still fail real unledgered tests and stale KEEP rows; resolved predecessor, not the current park point |
+| 1..N | `CC-SWEEP-<crate>` | Per-crate necessity-deletion waves over `pre-lifecycle` rows: for each, name the higher-rung owner (type/admission/scan/integration path) that makes the test redundant, delete it + its inventory row, prove production intact | **MODULE-MARKER SUBTRACK CLOSED / PARKED after #1205** - #1197 is a resolved predecessor; module-marker ledger-only sweeps graduated/merged through #1205: #1199 `simthing-mapgenerator` ORCHESTRATOR-CLEARABLE @ `418d35e4ef`; #1200-#1202 `simthing-clausething` ORCHESTRATOR-CLEARABLE @ `8ca5cb06fd`, `776acdfbfd`, `bb736434be`; #1203-#1204 `simthing-core` ORCHESTRATOR-CLEARABLE @ `5b7c1bce10`, `b4ff1c54d9`; #1205 aggregate all-remaining module markers DA-GRADUATED / DA-merged @ `c28a184c4d`. Final module-marker state: inventory 836 rows, lifecycle boundary 629 rows, 0 `cfg_test_mod` deletion-candidate ledger-only rows, 0 orphaned boundary rows, drift PASS, lifecycle schema PASS, scheduled lifecycle PASS expired=0. Non-module-marker necessity-deletion waves are not opened by this status repair. |
 | C | `CC-CLOSEOUT-0` (closing) | Corpus-reduction report; every survivor carries a durable class or a justified downstream-utility lease; zero `unknown`; zero un-owned `pre-lifecycle` | **NOT STARTED** - Net `test_inventory.tsv` row count **decreased** vs baseline; reduction quantified; lifecycle expiry + drift + doctrine scan green; DA sign-off |
 
 Waves are orchestrator-buildable (they delete tests + rows and prove, a precedented shape); `CC-BASELINE-0`'s
@@ -44,17 +44,13 @@ reclassification, `CC-HANDOFF-SPINE-0` (it edits the binding handoff template), 
 DA-reviewed (they set retention/authoring doctrine). `CC-HANDOFF-SPINE-0` has no dependency on the sweep and
 should land first so every subsequent handoff carries the leaner spine.
 
-Sequencing is now: `CC-SWEEP-PREFLIGHT-0` -> `CC-SWEEP-MODULE-MARKER-PREFLIGHT-0` ->
-`CC-DRIFT-MODULE-MARKER-EXCLUSION-0` -> **PARKED pending Opus/Fable** -> first actual
-module-marker ledger sweep after parking lifts.
+Sequencing reached #1205. #1197 is resolved as the drift-exclusion predecessor, and the module-marker lane is
+closed and parked after #1205. Current parked state after #1205: module-marker residue subtrack complete;
+inventory 836 rows; lifecycle boundary 629 rows; 0 `cfg_test_mod` deletion-candidate ledger-only rows;
+scheduled lifecycle PASS expired=0.
 
-After #1197, the corpus-clearance sweep track is **PARKED** until Opus/Fable is available again. Do not
-start the `simthing-mapgenerator` module-marker ledger sweep, any other module-marker ledger sweep, any
-test-file deletion sweep, new preflight/intervention rungs, or opportunistic drift/router/lifecycle edits.
-
-Next intended action after parking lifts: run the first actual module-marker ledger sweep for
-`simthing-mapgenerator`, removing the single confirmed `cfg_test_mod::tests` deletion-candidate inventory row
-from `scripts/ci/test_inventory.tsv` with no source edits and no test deletions.
+Do not start another module-marker ledger sweep, `cfg_test_mod` residue sweep, test-file deletion sweep, or new
+corpus-clearance production rung unless the orchestrator explicitly opens a new rung after current-doc review.
 
 ### 4A. Orientation is session-scoped, not per-handoff (binding)
 Orientation is performed **once, at the start of a new agent session, invoked by the user/owner/DA** (per
