@@ -472,18 +472,18 @@ analysis only — no toolchain, no build, no cargo** — so it is safe to run an
    test on the PR, and `TEST-BUDGET` flags a delta adding more than three `#[test]` fns to one file without
    table-driven form. This is the blocking floor — it runs on every PR.
 
-2. **Track closure → expiry scan.** When a track closes, its row in `test_lifecycle_tracks.tsv` flips to
-   `closed`. The orchestrator then runs, at closeout:
+2. **Track closure → scripted closeout.** Use `track_closeout.sh`: build manifest, resolve every
+   test/doc disposition, `--check-eval`, then `--apply`. Apply flips the track to `closed`, mutates
+   inventory/boundary rows in lockstep, leases artifacts, and runs gates. Same-PR closeout deletions
+   require both report and manifest; closeout-substrate changes also need a disposable two-row sample.
 
 ```bash
-bash scripts/ci/test_lifecycle_expiry_check.sh --track-closeout <track_id>   # candidates whose birth track just closed
-bash scripts/ci/test_lifecycle_expiry_check.sh --closure-gate <track_id>     # closure gate: DSU renewal audit for the track
-bash scripts/ci/test_lifecycle_expiry_check.sh --scheduled                   # corpus-wide sweep (maintenance cadence)
-bash scripts/ci/test_lifecycle_expiry_check.sh --schema                      # ledger schema integrity
-bash scripts/ci/test_lifecycle_expiry_check.sh --prove                       # synthetic self-proof of the tripwire
+bash scripts/ci/track_closeout.sh --build-manifest <workplan|--track <track_id>> [--docs <glob>]...
+bash scripts/ci/track_closeout.sh --check-eval <manifest>
+bash scripts/ci/track_closeout.sh --apply <manifest>
 ```
 
-   Each emits `LIFECYCLE-EXPIRY-VERDICT: PASS|INSPECT|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>`.
+   The expiry commands emit `LIFECYCLE-EXPIRY-VERDICT: PASS|INSPECT|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>`.
    A test whose birth track has closed and which is **not** promoted, permanent-residue, or a dependency-floor
    helper is an **expired candidate** → delete-or-promote.
 
