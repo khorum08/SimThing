@@ -69,6 +69,24 @@ jobs:
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.sha }}" 2>&1 | tee doctrine-lifecycle-schema-gate-report.txt
 
+      - name: Track-closeout selftest
+        run: |
+          set -o pipefail
+          bash scripts/ci/track_closeout.sh --prove 2>&1 | tee doctrine-track-closeout-selftest-report.txt
+
+      - name: Closeout artifact expiry (wall-clock)
+        run: |
+          set -o pipefail
+          bash scripts/ci/track_closeout.sh --artifact-expiry 2>&1 | tee doctrine-closeout-artifact-expiry-report.txt
+
+      - name: Track-closeout deletion guard (PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -o pipefail
+          bash scripts/ci/track_closeout.sh --deletion-guard \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.sha }}" 2>&1 | tee doctrine-track-closeout-deletion-guard-report.txt
+
       - name: AGENTS stub check
         run: |
           set -o pipefail
