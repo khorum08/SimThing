@@ -751,9 +751,9 @@ def cmd_apply():
               f"vanished={len(vanished)}; re-run --build-manifest", file=sys.stderr)
         sys.exit(1)
 
-    # P0-1 also covers auto-scoped docs: source doc plus track-shaped docs/tests
-    # artifacts. Explicit --docs additions outside that auto shape remain governed
-    # by direct path validation, not by this freshness set.
+    # P0-1 also covers docs. Auto scope catches source docs plus track-shaped
+    # docs/tests artifacts; explicit --docs rows outside that shape must still
+    # exist at apply time so delete/lease cannot silently no-op on a missing path.
     track_source = next((t.get("source", "") for t in tracks if t["track_id"] == track), "")
     live_doc_paths = auto_doc_scope(track, tracks)
     manifest_doc_paths = {
@@ -771,6 +771,20 @@ def cmd_apply():
             print(f"  - manifest doc no longer live: {p}", file=sys.stderr)
         print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(stale-manifest) doc_unscoped={len(doc_unscoped)} "
               f"doc_vanished={len(doc_vanished)}; re-run --build-manifest", file=sys.stderr)
+        sys.exit(1)
+    explicit_doc_vanished = {
+        clean_repo_relpath(r.get("file", ""))
+        for r in rows
+        if (r.get("asset_kind") or "").strip() == "doc"
+        and not is_auto_doc_candidate(track, track_source, r.get("file", ""))
+        and not (ROOT / clean_repo_relpath(r.get("file", ""))).exists()
+    }
+    if explicit_doc_vanished:
+        for p in sorted(explicit_doc_vanished)[:10]:
+            print(f"  - explicit manifest doc missing: {p}", file=sys.stderr)
+        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(stale-manifest) "
+              f"explicit_doc_vanished={len(explicit_doc_vanished)}; re-run --build-manifest",
+              file=sys.stderr)
         sys.exit(1)
 
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
@@ -1360,6 +1374,7 @@ def cmd_prove():
         (sb / "docs" / "tests").mkdir(parents=True)
         (sb / "docs" / "sb.md").write_text("# sb design\n", encoding="utf-8")
         (sb / "docs" / "tests" / "sb_results.md").write_text("# sb results\n", encoding="utf-8")
+        (sb / "docs" / "tests" / "manual_results.md").write_text("# manual\n", encoding="utf-8")
         # minimal fixtures
         inv_rows = [
             {"crate": "c", "file": "crates/c/src/a.rs", "test_name": "cfg_test_mod::tests",
@@ -1410,7 +1425,7 @@ def cmd_prove():
             )
 
         manifest_rel = "docs/tests/sb-track_closeout_manifest.tsv"
-        r_build = run("--build-manifest", "--track", "sb-track")
+        r_build = run("--build-manifest", "--track", "sb-track", "--docs", "docs/tests/manual_results.md")
         check("build-manifest-ok", "BUILD-MANIFEST-VERDICT: OK" in r_build.stdout)
         man_path = sb / manifest_rel
         man = norm_bytes(man_path.read_bytes())
@@ -1420,6 +1435,7 @@ def cmd_prove():
         check("build-flags-needs-disposition", "\tneeds-disposition\t" in man)
         check("build-includes-source-doc", "doc::docs/sb.md" in man)
         check("build-auto-discovers-result-doc", "doc::docs/tests/sb_results.md" in man)
+        check("build-includes-explicit-doc", "doc::docs/tests/manual_results.md" in man)
 
         # check-eval must REFUSE the unresolved needs-disposition
         r_eval_bad = run("--check-eval", manifest_rel)
@@ -1437,6 +1453,9 @@ def cmd_prove():
             elif row["asset_kind"] == "doc" and row["file"] == "docs/tests/sb_results.md":
                 row["disposition"] = "lease"
                 row["target"] = "result-doc-audit"
+            elif row["asset_kind"] == "doc" and row["file"] == "docs/tests/manual_results.md":
+                row["disposition"] = "lease"
+                row["target"] = "explicit-doc-audit"
         body = io.StringIO()
         w = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
         w.writeheader()
@@ -1482,6 +1501,13 @@ def cmd_prove():
               and "FAIL(stale-manifest)" in r_doc_vanished.stderr
               and "doc_vanished=1" in r_doc_vanished.stderr)
         (sb / "docs/tests/sb_results.md").write_text("# sb results\n", encoding="utf-8")
+        (sb / "docs/tests/manual_results.md").unlink()
+        r_explicit_doc_vanished = run("--apply", manifest_rel)
+        check("apply-stale-explicit-doc-vanished-fail",
+              r_explicit_doc_vanished.returncode != 0
+              and "FAIL(stale-manifest)" in r_explicit_doc_vanished.stderr
+              and "explicit_doc_vanished=1" in r_explicit_doc_vanished.stderr)
+        (sb / "docs/tests/manual_results.md").write_text("# manual\n", encoding="utf-8")
 
         r_apply = run("--apply", manifest_rel)
         check("apply-ok", "APPLY-VERDICT: OK" in r_apply.stdout or "APPLY-VERDICT: INSPECT" in r_apply.stdout
@@ -1507,6 +1533,8 @@ def cmd_prove():
         _, art_apply = read_tsv(sb / "scripts/ci/closeout_artifacts.tsv")
         check("apply-result-doc-leased",
               any(r["path"] == "docs/tests/sb_results.md" and r["disposition"] == "lease" for r in art_apply))
+        check("apply-explicit-doc-leased",
+              any(r["path"] == "docs/tests/manual_results.md" and r["disposition"] == "lease" for r in art_apply))
         check("apply-manifest-self-leased",
               any(r["path"] == manifest_rel and r["disposition"] == "lease" for r in art_apply))
 

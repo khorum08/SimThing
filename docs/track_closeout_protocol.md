@@ -39,7 +39,8 @@ Docs/artifacts are scoped too. `--build-manifest` includes the track source doc 
 `docs/tests/`, and accepts explicit `--docs <glob>` additions. Source/design docs may be
 `keep-durable` or `elevate-code` into `docs/archive/`; automatic delete/lease is reserved for narrow
 `docs/tests/*_results.md`, `*_review.tsv`, and `*_manifest.tsv` artifacts. Closeout reports stay durable;
-closeout manifests are leased for later reaping.
+closeout manifests are leased for later reaping. Explicit `--docs` additions must still exist at apply
+time; vanished explicit docs fail as stale manifests before mutation.
 
 ## Stages (same script, staged subcommands)
 
