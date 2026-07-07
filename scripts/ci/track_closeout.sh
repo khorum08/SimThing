@@ -534,6 +534,34 @@ def cmd_apply():
     inv_hdr, inv = read_tsv(INVENTORY)
     b_hdr, b_rows = read_tsv(BOUNDARY_ROWS)
     trk_hdr, tracks = read_tsv(TRACKS)
+
+    # P0-3: the birth_track close-stamp is the rubber-stamp everything downstream
+    # keys on; an unknown track must be a hard harness-error, never a silent no-stamp.
+    if not any(t.get("track_id") == track for t in tracks):
+        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(harness-error) unknown track {track!r} "
+              f"in {TRACKS.name}", file=sys.stderr)
+        sys.exit(1)
+
+    # P0-1: scope-freshness — the manifest must cover exactly the live rows carrying
+    # this birth_track. A row born or removed between --build-manifest and --apply
+    # would otherwise be silently undisposed under a closed track. Set comparison,
+    # no SHA-matching.
+    live_keys = {inv_key(r) for r in inv if r.get("birth_track", "").strip() == track}
+    manifest_keys = {
+        (r["crate"], r["file"], r["test_name"], r["kind"])
+        for r in rows if r.get("asset_kind", "inventory-row") == "inventory-row"
+    }
+    unscoped = live_keys - manifest_keys
+    vanished = manifest_keys - live_keys
+    if unscoped or vanished:
+        for k in sorted(unscoped)[:10]:
+            print(f"  - live row not in manifest: {k}", file=sys.stderr)
+        for k in sorted(vanished)[:10]:
+            print(f"  - manifest row no longer live: {k}", file=sys.stderr)
+        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(stale-manifest) unscoped={len(unscoped)} "
+              f"vanished={len(vanished)}; re-run --build-manifest", file=sys.stderr)
+        sys.exit(1)
+
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
     if art_hdr is None:
         art_rows = []
@@ -920,17 +948,31 @@ def cmd_deletion_guard():
     head_keys = {inv_key(r) for r in head_rows}
     removed = [r for r in base_rows if inv_key(r) not in head_keys]
 
-    # birth_track statuses at head
-    head_tracks_rows = git_show_tsv(head, "scripts/ci/test_lifecycle_tracks.tsv") or []
-    status = {t["track_id"]: t["status"] for t in head_tracks_rows}
+    # P0-2: closure must PREDATE the PR (status at base), or the PR must itself be a
+    # lawful closeout (track closed at head AND the closeout report is in the diff).
+    # Otherwise an agent could hand-flip status=closed and delete rows in one PR,
+    # bypassing the whole protocol.
+    trk_rel = "scripts/ci/test_lifecycle_tracks.tsv"
+    base_status = {t["track_id"]: t["status"] for t in (git_show_tsv(base, trk_rel) or [])}
+    head_status = {t["track_id"]: t["status"] for t in (git_show_tsv(head, trk_rel) or [])}
+    try:
+        diff_out = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", base, head],
+                                  capture_output=True, check=True)
+        changed_files = set(norm_bytes(diff_out.stdout).splitlines())
+    except subprocess.CalledProcessError:
+        changed_files = set()
 
     violations = []
     for r in removed:
         bt = r.get("birth_track", "").strip()
         if is_cfg_marker_deletion_candidate(r):
             continue  # ledger-only residue has its own sanctioned sweep route
-        if status.get(bt) != "closed":
-            violations.append((inv_key(r), bt))
+        if base_status.get(bt) == "closed":
+            continue
+        if (head_status.get(bt) == "closed"
+                and f"docs/tests/{bt}_closeout_report.md" in changed_files):
+            continue  # this PR IS the closeout apply
+        violations.append((inv_key(r), bt))
 
     print("TRACK-CLOSEOUT DELETION-GUARD")
     print(f"  removed inventory rows: {len(removed)}")
@@ -1047,6 +1089,19 @@ def cmd_prove():
         r_eval = run("--check-eval", "m.tsv")
         check("check-eval-pass", "CHECK-EVAL-VERDICT: PASS" in r_eval.stdout)
 
+        # P0-1: a row born into the track after --build-manifest must refuse apply
+        write_tsv(sb / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv_rows + [
+            {"crate": "c", "file": "crates/c/tests/late.rs", "test_name": "late_arrival",
+             "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
+             "verdict": "AUDIT", "note": "born after manifest",
+             "promotion_target": "permanent-residue:behavior-regression",
+             "birth_track": "sb-track", "dsu_survivals": "0"},
+        ])
+        r_stale = run("--apply", "m.tsv")
+        check("apply-stale-manifest-fail",
+              r_stale.returncode != 0 and "FAIL(stale-manifest)" in r_stale.stderr)
+        write_tsv(sb / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv_rows)
+
         r_apply = run("--apply", "m.tsv")
         check("apply-ok", "APPLY-VERDICT: OK" in r_apply.stdout or "APPLY-VERDICT: INSPECT" in r_apply.stdout
               or "APPLY-VERDICT:" in r_apply.stdout)
@@ -1081,6 +1136,15 @@ def cmd_prove():
         r_park_exp = run("--artifact-expiry", now="2026-07-20")
         check("parked-pen-wall-clock-fail",
               "ARTIFACT-EXPIRY-VERDICT: FAIL" in r_park_exp.stdout and "parked:" in r_park_exp.stdout)
+
+        # P0-3: apply against a track missing from tracks.tsv is a hard harness-error
+        r_b2 = run("--build-manifest", "--track", "sb-track", "--out", "m2.tsv")
+        check("build-manifest-2-ok", "BUILD-MANIFEST-VERDICT: OK" in r_b2.stdout)
+        run("--check-eval", "m2.tsv")
+        write_tsv(sb / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [])
+        r_unk = run("--apply", "m2.tsv")
+        check("apply-unknown-track-harness-error",
+              r_unk.returncode != 0 and "FAIL(harness-error)" in r_unk.stderr)
 
     # deletion-guard: a git-backed repo where an OPEN-track row is removed must FAIL,
     # and a removal whose birth_track is closed (or a cfg-marker) must PASS.
@@ -1139,6 +1203,35 @@ def cmd_prove():
                                   env={**os.environ})
         check("deletion-guard-allows-closed-track",
               "DELETION-GUARD-VERDICT: PASS" in r_guard2.stdout)
+
+        # P0-2: hand-closing the track IN THE SAME PR as the deletion is a bypass -> FAIL;
+        # it becomes lawful only when the closeout report is part of the same diff.
+        for t in trk:
+            if t["track_id"] == "open-track":
+                t["status"] = "open"; t["closed_at"] = "-"
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv0)
+        write_tsv(gr / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, trk)
+        grun("add", "-A"); grun("commit", "-q", "-m", "base3-open")
+        base3 = grun("rev-parse", "HEAD").stdout.strip()
+        for t in trk:
+            if t["track_id"] == "open-track":
+                t["status"] = "closed"; t["closed_at"] = "2026-07-07"
+        write_tsv(gr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [])
+        write_tsv(gr / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, trk)
+        grun("add", "-A"); grun("commit", "-q", "-m", "same-pr-close-no-report")
+        head3 = grun("rev-parse", "HEAD").stdout.strip()
+        r_bypass = subprocess.run([BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base3, head3],
+                                  capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-blocks-same-pr-close",
+              "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_bypass.stdout)
+        (gr / "docs" / "tests").mkdir(parents=True, exist_ok=True)
+        (gr / "docs/tests/open-track_closeout_report.md").write_text("# closeout\n", encoding="utf-8")
+        grun("add", "-A"); grun("commit", "-q", "-m", "add-closeout-report")
+        head4 = grun("rev-parse", "HEAD").stdout.strip()
+        r_lawful = subprocess.run([BASH, "scripts/ci/track_closeout.sh", "--deletion-guard", base3, head4],
+                                  capture_output=True, text=True, cwd=str(gr), env={**os.environ})
+        check("deletion-guard-allows-closeout-pr",
+              "DELETION-GUARD-VERDICT: PASS" in r_lawful.stdout)
 
     # decommission reaper: deletes only unambiguously-safe expired assets; refuses the rest.
     with tempfile.TemporaryDirectory() as rtmp:

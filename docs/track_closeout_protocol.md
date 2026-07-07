@@ -43,7 +43,7 @@ accounted-for (not "unledgered") so quarantine does not break the ledger.
 | apply | `--apply <manifest>` | one batched mutation: deletes (both TSVs), class stamps, code moves, **parks (rows relocated to the pen)**; stamps the `birth_track` **closed**; runs the gate battery; emits a compact, size-first report. |
 | clock | `--artifact-expiry` | wall-clock gate over the parking pen (`test_lifecycle_parked.tsv`) and staged-file leases (`closeout_artifacts.tsv`): INSPECT at ≥3d, FAIL at ≥7d. Standing CI gate — detects, does not delete. |
 | reap | `--decommission [--dry-run] [--all]` | actually deletes expired parked/leased assets — but **only the unambiguously safe ones**: ledger-only `cfg_test_mod::*` markers (drop the pen row) and dedicated, unshared test files under `crates/*/tests/**` (delete file + drop row). Refuses and reports anything risky — inline/src unit tests, shared test files, code awaiting rehome — for manual handling. `--all` reaps every parked row, not just past-the-wall ones. |
-| guard | `--deletion-guard <base> <head>` | a removed inventory row whose `birth_track` is not `closed` → FAIL. Deletion authority flows only through a closed track (cfg-marker ledger sweeps exempt). |
+| guard | `--deletion-guard <base> <head>` | a removed inventory row is lawful only if its `birth_track` was `closed` **at base**, or this PR is itself the closeout (closed at head **and** the diff carries `docs/tests/<track>_closeout_report.md`) → otherwise FAIL. Hand-flipping `status=closed` in the same PR as the deletion is a bypass and is blocked. cfg-marker ledger sweeps exempt. |
 | prove | `--prove` | self-tests all of the above. |
 
 ## Anti-divergence: receipts, not SHA-matching
