@@ -163,6 +163,23 @@ def is_cfg_module_marker_deletion_candidate(row: dict[str, str]) -> bool:
         and row.get("verdict", "").strip() != "KEEP"
     )
 
+def read_parked_keys(base: pathlib.Path) -> set:
+    """Rows relocated to the track_closeout parking pen are accounted-for, not unledgered.
+
+    The pen (scripts/ci/test_lifecycle_parked.tsv) holds full inventory rows moved OUT of
+    the live tables on a wall-clock lease; their underlying test may still exist in the tree,
+    so drift must treat a discovered test that matches a parked key as ledgered."""
+    path = base / "scripts/ci/test_lifecycle_parked.tsv"
+    if not path.exists():
+        return set()
+    with path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        need = {"crate", "file", "test_name", "kind"}
+        if not reader.fieldnames or not need.issubset(reader.fieldnames):
+            return set()
+        return {(r["crate"], r["file"], r["test_name"], r["kind"]) for r in reader}
+
+
 def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], dict[str, int]]:
     rows, errors = read_inventory(inv_path)
     discovered = discovered_items(base)
@@ -170,8 +187,9 @@ def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], 
         (row["crate"], row["file"], row["test_name"], row["kind"]): row
         for row in rows
     }
+    parked_keys = read_parked_keys(base)
 
-    missing = sorted(discovered - set(inventory_keys))
+    missing = sorted(discovered - set(inventory_keys) - parked_keys)
     stale = sorted(
         key
         for key in (set(inventory_keys) - discovered)
@@ -220,6 +238,7 @@ def check(base: pathlib.Path, inv_path: pathlib.Path) -> tuple[bool, list[str], 
         "missing": len(missing),
         "stale": len(stale),
         "promotion_target_rows": promotion_count,
+        "parked": len(parked_keys),
     }
     return not errors, errors, stats
 
@@ -338,6 +357,27 @@ def setup_kernel_non_never(base: pathlib.Path) -> None:
     inv.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(root / "scripts/ci/fixtures/test_drift/kernel_non_never_pare.tsv", inv)
 
+def setup_parked_test_ok(base: pathlib.Path) -> None:
+    # a discovered test with NO inventory row but a track_closeout parking-pen entry
+    # must NOT be flagged unledgered (it is accounted-for, on a wall-clock lease)
+    src = base / "crates/simthing-spec/tests/parked_test.rs"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    src.write_text("#[test]\nfn parked_regression() {}\n", encoding="utf-8")
+    write_inventory(base / "scripts/ci/test_inventory.tsv", [])
+    pen = base / "scripts/ci/test_lifecycle_parked.tsv"
+    pen_header = header + ["parked_at", "closeout_track", "park_reason"]
+    with pen.open("w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=pen_header, delimiter="\t", lineterminator="\n")
+        w.writeheader()
+        w.writerow({
+            "crate": "simthing-spec", "file": "crates/simthing-spec/tests/parked_test.rs",
+            "test_name": "parked_regression", "kind": "integration", "class": "behavior-regression",
+            "superseding_boundary": "B-T5", "verdict": "AUDIT", "note": "undecided",
+            "promotion_target": "permanent-residue:behavior-regression", "birth_track": "pre-lifecycle",
+            "dsu_survivals": "0", "parked_at": "2026-07-07", "closeout_track": "pre-lifecycle",
+            "park_reason": "undecided-audit",
+        })
+
 if prove:
     print("TEST-INVENTORY-DRIFT-PROVE REPORT")
     results = [
@@ -345,6 +385,7 @@ if prove:
         prove_pass_case("cfg-marker-unledgered-ok", setup_cfg_marker_unledgered_ok),
         prove_pass_case("cfg-marker-removed-ok", setup_cfg_marker_removed_ok),
         prove_pass_case("cfg-marker-deletion-candidate-stale-ok", setup_cfg_marker_deletion_candidate_stale_ok),
+        prove_pass_case("parked-test-accounted-ok", setup_parked_test_ok),
         prove_case("cfg-marker-KEEP-stale", setup_cfg_marker_keep_stale_fails),
         prove_case("stale-ledger", setup_stale),
         prove_case("unowned-KEEP", setup_unowned_keep),
@@ -361,6 +402,7 @@ print("TEST-INVENTORY-DRIFT-CHECK REPORT")
 print(f"  rows: {stats.get('rows', 0)}")
 print(f"  discovered: {stats.get('discovered', 0)}")
 print(f"  unledgered: {stats.get('missing', 0)}")
+print(f"  parked (pen, accounted): {stats.get('parked', 0)}")
 print(f"  stale: {stats.get('stale', 0)}")
 print(f"  promotion-target rows: {stats.get('promotion_target_rows', 0)}")
 if errors:

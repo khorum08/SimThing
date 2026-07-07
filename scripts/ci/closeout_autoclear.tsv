@@ -1,0 +1,2 @@
+test_name_prefix	class	owner
+cfg_test_mod::	deletion-candidate	B-T6 cfg(test) module marker; ledger-only, not a runnable test (drift-gate exclusion #1197)
