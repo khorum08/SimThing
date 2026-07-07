@@ -41,7 +41,7 @@ usage() {
   cat <<'EOF'
 usage:
   bash scripts/ci/track_closeout.sh --discover [--track <id>]
-  bash scripts/ci/track_closeout.sh --build-manifest <workplan.md|--track <id>> [--out <path>]
+  bash scripts/ci/track_closeout.sh --build-manifest <workplan.md|--track <id>> [--out <path>] [--docs <glob>]...
   bash scripts/ci/track_closeout.sh --check-eval <manifest>
   bash scripts/ci/track_closeout.sh --apply <manifest>
   bash scripts/ci/track_closeout.sh --artifact-expiry
@@ -109,6 +109,10 @@ ARTIFACT_LEDGER_HEADER = ["path", "leased_at", "disposition", "closeout_track", 
 # A parked row is a full inventory row relocated OUT of the live tables into the
 # quarantine pen so test_inventory.tsv / boundary_rows only ever hold decided assets.
 PARKED_HEADER = INVENTORY_HEADER + ["parked_at", "closeout_track", "park_reason"]
+# Boundary rows removed by a park are preserved alongside, so an un-park can be
+# lossless (P1-6a). Keyed by the same (crate, file, test_name, kind) quadruple.
+PARKED_BOUNDARY = SCRIPT_DIR / "test_lifecycle_parked_boundary.tsv"
+PARKED_BOUNDARY_HEADER = BOUNDARY_ROWS_HEADER + ["parked_at", "closeout_track"]
 MANIFEST_HEADER = [
     "asset_kind", "ref", "crate", "file", "test_name", "kind",
     "current_class", "birth_track", "disposition", "target", "owner", "note",
@@ -133,6 +137,15 @@ DISPOSITIONS = {
 # Wall-clock lease policy (real-time, not survival-count).
 LEASE_CRUFT_DAYS = 3
 LEASE_HARD_DAYS = 7
+
+DOC_EXTENSIONS = {".md", ".tsv"}
+DOC_ARCHIVE_PREFIX = "docs/archive/"
+REAPABLE_DOC_SUFFIXES = (
+    "_results.md",
+    "_review.tsv",
+    "_manifest.tsv",
+    "_closeout_manifest.tsv",
+)
 
 
 # ---------- normalization / io ----------
@@ -200,6 +213,112 @@ def is_cfg_marker_deletion_candidate(row: dict) -> bool:
 
 def inv_key(row: dict):
     return (row["crate"], row["file"], row["test_name"], row["kind"])
+
+
+def clean_repo_relpath(path: str) -> str:
+    rel = (path or "").replace("\\", "/").strip()
+    if not rel or rel.startswith("/") or ":" in rel:
+        return ""
+    parts = pathlib.PurePosixPath(rel).parts
+    if not parts or any(p in ("", ".", "..") for p in parts):
+        return ""
+    return rel
+
+
+def is_doc_path(path: str) -> bool:
+    rel = clean_repo_relpath(path)
+    return (
+        bool(rel)
+        and rel.startswith("docs/")
+        and pathlib.PurePosixPath(rel).suffix in DOC_EXTENSIONS
+    )
+
+
+def is_reapable_doc(path: str) -> bool:
+    """Only narrow result/review/manifest artifacts are safe for automatic reaping."""
+    rel = clean_repo_relpath(path)
+    if not (is_doc_path(rel) and rel.startswith("docs/tests/")):
+        return False
+    name = pathlib.PurePosixPath(rel).name
+    if name.endswith("_closeout_report.md"):
+        return False
+    return any(name.endswith(suffix) for suffix in REAPABLE_DOC_SUFFIXES)
+
+
+def is_archive_doc_target(path: str) -> bool:
+    rel = clean_repo_relpath(path)
+    return is_doc_path(rel) and rel.startswith(DOC_ARCHIVE_PREFIX)
+
+
+def track_doc_prefixes(track: str, source: str = "") -> list:
+    def words_from(value: str) -> list:
+        value = value.lower().replace("\\", "/")
+        stem = pathlib.PurePosixPath(value).stem
+        for prefix in ("design_", "docs_", "test_", "tests_"):
+            if stem.startswith(prefix):
+                stem = stem[len(prefix):]
+        stem = stem.replace(".", "_").replace("-", "_")
+        return [w for w in stem.split("_") if w and not w.isdigit()]
+
+    words = words_from(track)
+    if not words and source:
+        words = words_from(source)
+    prefixes = []
+    if words:
+        acronym = "".join(w[0] for w in words if w)
+        if len(acronym) >= 2:
+            prefixes.extend([f"{acronym}_", f"{acronym}-"])
+        if len(words[0]) <= 4:
+            prefixes.extend([f"{words[0]}_", f"{words[0]}-"])
+        prefixes.append("_".join(words) + "_")
+    seen = set()
+    out = []
+    for p in prefixes:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
+def discover_track_docs(track: str, source: str) -> list:
+    prefixes = track_doc_prefixes(track, source)
+    if not prefixes:
+        return []
+    tests_dir = ROOT / "docs" / "tests"
+    if not tests_dir.exists():
+        return []
+    out = []
+    for path in sorted(tests_dir.iterdir()):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        name = path.name.lower()
+        if any(name.startswith(p) for p in prefixes) and is_reapable_doc(rel):
+            out.append(rel)
+    return out
+
+
+def doc_validation_error(path: str) -> str:
+    rel = clean_repo_relpath(path)
+    if not rel:
+        return "path must be repo-relative and may not contain drive letters or '..'"
+    if not rel.startswith("docs/"):
+        return "path must live under docs/"
+    if pathlib.PurePosixPath(rel).suffix not in DOC_EXTENSIONS:
+        return "path must be a .md or .tsv document"
+    return ""
+
+
+def doc_manifest_row(track: str, rel_path: str, disp: str = "needs-disposition",
+                     note: str = "") -> dict:
+    return {
+        "asset_kind": "doc",
+        "ref": f"doc::{rel_path}",
+        "crate": "-", "file": rel_path,
+        "test_name": pathlib.PurePosixPath(rel_path).name, "kind": "doc",
+        "current_class": "-", "birth_track": track,
+        "disposition": disp, "target": "", "owner": "", "note": note,
+    }
 
 
 def read_autoclear_rules():
@@ -354,11 +473,14 @@ def cmd_build_manifest():
     track = None
     out_path = None
     positional = None
+    doc_globs = []
     while a:
         if a[0] == "--track" and len(a) >= 2:
             track = resolve_track(a[1]); a = a[2:]
         elif a[0] == "--out" and len(a) >= 2:
             out_path = pathlib.Path(a[1]); a = a[2:]
+        elif a[0] == "--docs" and len(a) >= 2:
+            doc_globs.append(a[1]); a = a[2:]
         elif not a[0].startswith("--"):
             positional = a[0]; a = a[1:]
         else:
@@ -371,6 +493,28 @@ def cmd_build_manifest():
     _, inv = read_tsv(INVENTORY)
     rules = read_autoclear_rules()
     scoped = [r for r in inv if r.get("birth_track", "").strip() == track]
+
+    # P1-4: docs are scoped assets too — result docs and the design doc are exactly
+    # what clutters low-context agents. The track's design doc (tracks.source) is
+    # auto-included; rung result docs come in via --docs globs.
+    _, track_rows = read_tsv(TRACKS)
+    doc_paths = []
+    src = next((t.get("source", "") for t in track_rows if t["track_id"] == track), "")
+    if src and (ROOT / src).is_file() and not doc_validation_error(src):
+        doc_paths.append(src)
+    for h in discover_track_docs(track, src):
+        if h not in doc_paths:
+            doc_paths.append(h)
+    for g in doc_globs:
+        hits = sorted(p.relative_to(ROOT).as_posix() for p in ROOT.glob(g) if p.is_file())
+        if not hits:
+            die(f"--docs glob matched nothing: {g}")
+        for h in hits:
+            err = doc_validation_error(h)
+            if err:
+                die(f"--docs matched unsupported document {h!r}: {err}")
+            if h not in doc_paths:
+                doc_paths.append(h)
 
     manifest_rows = []
     for row in scoped:
@@ -392,6 +536,8 @@ def cmd_build_manifest():
             "birth_track": track,
             "disposition": disp, "target": target, "owner": owner, "note": note,
         })
+    for dp in doc_paths:
+        manifest_rows.append(doc_manifest_row(track, dp))
 
     body = io.StringIO()
     w = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
@@ -407,6 +553,8 @@ def cmd_build_manifest():
         f"# role: {ROLE}\n"
         "# dispositions: delete | elevate-code | elevate-class | keep-durable | lease\n"
         "# delete rows REQUIRE a named higher-rung owner (Necessity Test).\n"
+        "# doc rows: delete=git rm | elevate-code=git mv to target (e.g. docs/archive/...) |\n"
+        "#   lease=wall-clock ledger entry | keep-durable=stays. elevate-class is invalid for docs.\n"
         "# resolve every needs-disposition, then run --check-eval.\n"
     )
     text = header + body.getvalue()
@@ -422,7 +570,7 @@ def cmd_build_manifest():
     keep = sum(1 for r in manifest_rows if r["disposition"] == "keep-durable")
     print("TRACK-CLOSEOUT BUILD-MANIFEST")
     print(f"  track: {track}")
-    print(f"  scoped assets: {len(manifest_rows)}")
+    print(f"  scoped assets: {len(manifest_rows)} (docs: {len(doc_paths)})")
     print(f"  auto-cleared (delete): {auto}")
     print(f"  keep-durable: {keep}")
     print(f"  needs-disposition (agent must resolve): {need}")
@@ -453,6 +601,10 @@ def load_manifest(path: pathlib.Path):
 def validate_dispositions(rows):
     errors = []
     for i, r in enumerate(rows, start=1):
+        asset_kind = (r.get("asset_kind") or "inventory-row").strip()
+        if asset_kind not in {"inventory-row", "doc"}:
+            errors.append(f"row {i} ({r.get('ref','?')}): unknown asset_kind {asset_kind!r}")
+            continue
         disp = (r.get("disposition") or "").strip()
         if disp not in DISPOSITIONS:
             errors.append(f"row {i} ({r.get('ref','?')}): unknown disposition {disp!r}")
@@ -461,6 +613,28 @@ def validate_dispositions(rows):
             errors.append(f"row {i} ({r.get('ref','?')}): unresolved needs-disposition")
         if disp == "delete" and not (r.get("owner") or "").strip():
             errors.append(f"row {i} ({r.get('ref','?')}): delete lacks a named Necessity-Test owner")
+        if asset_kind == "doc":
+            doc_path = clean_repo_relpath(r.get("file", ""))
+            doc_err = doc_validation_error(doc_path)
+            if doc_err:
+                errors.append(f"row {i} ({r.get('ref','?')}): doc {doc_err}")
+                continue
+            if disp in {"delete", "lease"} and not is_reapable_doc(doc_path):
+                errors.append(f"row {i} ({r.get('ref','?')}): {disp} is only allowed for "
+                              f"docs/tests result/review/manifest artifacts; keep or archive this doc")
+            if disp == "elevate-code":
+                target = clean_repo_relpath(r.get("target", ""))
+                if not is_archive_doc_target(target):
+                    errors.append(f"row {i} ({r.get('ref','?')}): doc elevate-code target must be "
+                                  f"a .md/.tsv path under {DOC_ARCHIVE_PREFIX}")
+                elif target == doc_path:
+                    errors.append(f"row {i} ({r.get('ref','?')}): doc elevate-code target matches source")
+            if disp in {"delete", "elevate-code", "keep-durable", "lease"} and not (ROOT / doc_path).exists():
+                errors.append(f"row {i} ({r.get('ref','?')}): doc source missing: {doc_path}")
+            if disp == "elevate-class":
+                errors.append(f"row {i} ({r.get('ref','?')}): elevate-class is invalid for doc rows "
+                              f"(use elevate-code with an archive target)")
+            continue
         if disp == "elevate-code" and not (r.get("target") or "").strip():
             errors.append(f"row {i} ({r.get('ref','?')}): elevate-code lacks a target destination path")
         if disp == "elevate-class":
@@ -576,13 +750,33 @@ def cmd_apply():
     park_reason = {}
     class_updates = {}
     code_moves = []
+    doc_deletes, doc_moves, doc_leases = [], [], []
     tally = {"delete": 0, "elevate-code": 0, "elevate-class": 0, "keep-durable": 0, "lease": 0}
     survivors = []
 
     today = now_date()
+    wall = (today + _dt.timedelta(days=LEASE_HARD_DAYS)).isoformat()
     for r in rows:
         disp = r["disposition"].strip()
         tally[disp] = tally.get(disp, 0) + 1
+        if (r.get("asset_kind") or "").strip() == "doc":
+            doc_path = clean_repo_relpath(r["file"])
+            # P1-4: docs follow the same law — delete, relocate (archive), lease, or stay
+            if disp == "delete":
+                doc_deletes.append(doc_path)
+            elif disp == "elevate-code":
+                r["file"] = doc_path
+                r["target"] = clean_repo_relpath(r["target"])
+                doc_moves.append(r)
+                survivors.append((r, f"moved -> {r['target'].strip()}"))
+            elif disp == "lease":
+                r["file"] = doc_path
+                doc_leases.append(r)
+                survivors.append((r, f"lease (ledger, delete/relocate by {wall})"))
+            elif disp == "keep-durable":
+                r["file"] = doc_path
+                survivors.append((r, "keep-durable"))
+            continue
         if disp == "delete":
             delete_keys.add((r["crate"], r["file"], r["test_name"], r["kind"]))
         elif disp == "elevate-class":
@@ -595,8 +789,7 @@ def cmd_apply():
             key = (r["crate"], r["file"], r["test_name"], r["kind"])
             park_keys.add(key)
             park_reason[key] = (r.get("target") or r.get("note") or "").strip()
-            survivors.append((r, f"PARKED -> pen (delete/elevate by "
-                                 f"{(today + _dt.timedelta(days=LEASE_HARD_DAYS)).isoformat()})"))
+            survivors.append((r, f"PARKED -> pen (delete/elevate by {wall})"))
         elif disp == "keep-durable":
             survivors.append((r, "keep-durable"))
 
@@ -604,7 +797,11 @@ def cmd_apply():
     # 1. delete + park: relocate rows OUT of both live tables in lockstep
     new_inv = [row for row in inv if inv_key(row) not in removed_keys]
     new_b = [row for row in b_rows if inv_key(row) not in removed_keys]
-    # 1b. parked rows move (full row) into the quarantine pen with a wall-clock stamp
+    # 1b. parked rows move (full row) into the quarantine pen with a wall-clock stamp;
+    # their boundary rows are preserved alongside so an un-park is lossless (P1-6a)
+    pb_hdr, parked_b_rows = read_tsv(PARKED_BOUNDARY)
+    if pb_hdr is None:
+        parked_b_rows = []
     for key in park_keys:
         src_row = inv_by_key.get(key)
         if src_row is None:
@@ -614,6 +811,12 @@ def cmd_apply():
         entry["closeout_track"] = track
         entry["park_reason"] = park_reason.get(key, "")
         parked_rows.append(entry)
+    for row in b_rows:
+        if inv_key(row) in park_keys:
+            b_entry = dict(row)
+            b_entry["parked_at"] = today.isoformat()
+            b_entry["closeout_track"] = track
+            parked_b_rows.append(b_entry)
     # 2. elevate-class: stamp durable class on the surviving inventory row
     for row in new_inv:
         key = inv_key(row)
@@ -623,25 +826,77 @@ def cmd_apply():
             row["verdict"] = "KEEP"
             row["promotion_target"] = class_updates[key]
 
-    moved_notes = []
-    for r in code_moves:
-        src = ROOT / r["file"]
-        dst = ROOT / r["target"].strip()
+    def repo_move(src_rel, dst_rel):
+        src = ROOT / src_rel
+        dst = ROOT / dst_rel
         if not src.exists():
-            die(f"elevate-code source missing: {r['file']}", 1)
+            die(f"elevate-code source missing: {src_rel}", 1)
         dst.parent.mkdir(parents=True, exist_ok=True)
         try:
-            subprocess.run(["git", "-C", str(ROOT), "mv", r["file"], r["target"].strip()],
+            subprocess.run(["git", "-C", str(ROOT), "mv", src_rel, dst_rel],
                            check=True, capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             src.replace(dst)
+
+    moved_notes = []
+    dest_crates = set()
+    for r in code_moves:
+        tgt = r["target"].strip()
+        repo_move(r["file"], tgt)
+        parts = pathlib.PurePosixPath(tgt).parts
+        new_crate = parts[1] if len(parts) >= 2 and parts[0] == "crates" else r["crate"]
+        if len(parts) >= 2 and parts[0] == "crates":
+            dest_crates.add(parts[1])
+        # the ledger follows the code: retarget the surviving inventory + boundary
+        # rows to the new path so the drift gate stays coherent
+        moved_key = (r["crate"], r["file"], r["test_name"], r["kind"])
+        for row in new_inv:
+            if inv_key(row) == moved_key:
+                row["file"] = tgt
+                row["crate"] = new_crate
+        for row in new_b:
+            if inv_key(row) == moved_key:
+                row["file"] = tgt
+                row["crate"] = new_crate
         art_rows.append({
-            "path": r["target"].strip(), "leased_at": today.isoformat(),
+            "path": tgt, "leased_at": today.isoformat(),
             "disposition": "elevate-code-rehome-pending",
             "closeout_track": track,
             "note": f"moved from {r['file']}; add mod decl + confirm cargo check, then delete this ledger row",
         })
+        moved_notes.append(f"{r['file']} -> {tgt}")
+
+    # 2b. doc mutations (P1-4): delete, relocate, or lease the track's documents
+    for f in doc_deletes:
+        try:
+            subprocess.run(["git", "-C", str(ROOT), "rm", "-q", "--", f],
+                           check=True, capture_output=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            p = ROOT / f
+            if p.exists():
+                p.unlink()
+    for r in doc_moves:
+        repo_move(r["file"], r["target"].strip())
         moved_notes.append(f"{r['file']} -> {r['target'].strip()}")
+    for r in doc_leases:
+        art_rows.append({
+            "path": r["file"], "leased_at": today.isoformat(), "disposition": "lease",
+            "closeout_track": track,
+            "note": (r.get("target") or r.get("note") or "").strip(),
+        })
+
+    # 2c. the closeout manifest itself is track residue (P1-5): lease it so the
+    # reaper clears it after the audit window. The report is the durable record.
+    try:
+        man_rel = path.resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        man_rel = ""
+    if is_reapable_doc(man_rel) and not any(a.get("path") == man_rel for a in art_rows):
+        art_rows.append({
+            "path": man_rel, "leased_at": today.isoformat(), "disposition": "lease",
+            "closeout_track": track,
+            "note": "closeout manifest; audit window then reap via --decommission",
+        })
 
     # 3. write mutated tables
     write_tsv(INVENTORY, INVENTORY_HEADER, new_inv)
@@ -650,6 +905,8 @@ def cmd_apply():
         write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, art_rows)
     if park_keys or PARKED.exists():
         write_tsv(PARKED, PARKED_HEADER, parked_rows)
+    if parked_b_rows or PARKED_BOUNDARY.exists():
+        write_tsv(PARKED_BOUNDARY, PARKED_BOUNDARY_HEADER, parked_b_rows)
 
     # 4. close the birth_track (rubber-stamp) unless nothing was actually closed out
     closed = False
@@ -662,8 +919,8 @@ def cmd_apply():
     if closed:
         write_tsv(TRACKS, TRACKS_HEADER, tracks)
 
-    # 5. gate battery
-    gates = run_gate_battery(track)
+    # 5. gate battery (incl. cargo check of elevate-code destination crates, P1-6b)
+    gates = run_gate_battery(track, dest_crates)
 
     # 6. compact, size-first report
     inv_after, b_after = len(new_inv), len(new_b)
@@ -695,7 +952,7 @@ def cmd_apply():
     return 1 if verdict == "FAIL" else 0
 
 
-def run_gate_battery(track: str) -> dict:
+def run_gate_battery(track: str, dest_crates=()) -> dict:
     gates = {}
     checks = [
         ("drift", [BASH, str(SCRIPT_DIR / "test_inventory_drift_check.sh")]),
@@ -703,6 +960,14 @@ def run_gate_battery(track: str) -> dict:
         ("track-expiry", [BASH, str(SCRIPT_DIR / "test_lifecycle_expiry_check.sh"),
                           "--track-closeout", track]),
     ]
+    # P1-6b: an elevate-code move that doesn't compile must surface in the closeout
+    # verdict, not days later. Escape hatch for environments without a toolchain.
+    if os.environ.get("TRACK_CLOSEOUT_SKIP_CARGO", "") == "1":
+        for crate in sorted(dest_crates):
+            gates[f"cargo-check-{crate}"] = "SKIP"
+    else:
+        for crate in sorted(dest_crates):
+            checks.append((f"cargo-check-{crate}", ["cargo", "check", "-q", "-p", crate]))
     for name, cmd in checks:
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT))
@@ -886,8 +1151,11 @@ def cmd_decommission():
         if due and disp == "elevate-code-rehome-pending":
             manual.append((p, "code awaiting rehome — reaping would lose elevated code; rehome or delete by hand"))
             new_art.append(r)
-        elif due and disp == "lease" and is_dedicated_test_file(p):
+        elif due and disp == "lease" and (is_dedicated_test_file(p) or is_reapable_doc(p)):
             art_rm.append(p)
+        elif due and disp == "lease":
+            manual.append((p, "expired lease on a non-reapable path — delete or relocate by hand"))
+            new_art.append(r)
         else:
             new_art.append(r)
 
@@ -903,6 +1171,13 @@ def cmd_decommission():
             r for r in parked
             if "::".join((r["crate"], r["file"], r["test_name"], r["kind"])) not in reaped_ids
         ])
+        # reaped pen rows take their preserved boundary rows with them (P1-6a)
+        pb_hdr, parked_b = read_tsv(PARKED_BOUNDARY)
+        if pb_hdr is not None:
+            write_tsv(PARKED_BOUNDARY, PARKED_BOUNDARY_HEADER, [
+                r for r in parked_b
+                if "::".join((r["crate"], r["file"], r["test_name"], r["kind"])) not in reaped_ids
+            ])
         if art_rm:
             write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, new_art)
 
@@ -1019,12 +1294,34 @@ def cmd_prove():
         [{"ref": "r", "disposition": "elevate-class", "owner": "", "target": "golden-byte"}])))
     check("elevate-class-residue-ok", not validate_dispositions(
         [{"ref": "r", "disposition": "elevate-class", "owner": "", "target": "permanent-residue:golden-byte"}]))
+    check("doc-lease-design-rejected", bool(validate_dispositions(
+        [{"asset_kind": "doc", "ref": "d", "file": "docs/track_closeout_protocol.md",
+          "disposition": "lease", "owner": "", "target": ""}])))
+    check("doc-archive-target-ok", not validate_dispositions(
+        [{"asset_kind": "doc", "ref": "d", "file": "docs/track_closeout_protocol.md",
+          "disposition": "elevate-code", "owner": "", "target": "docs/archive/track_closeout_protocol.md"}]))
+    check("doc-bad-archive-target", bool(validate_dispositions(
+        [{"asset_kind": "doc", "ref": "d", "file": "docs/track_closeout_protocol.md",
+          "disposition": "elevate-code", "owner": "", "target": "docs/tests/track_closeout_protocol.md"}])))
+    old_skip = os.environ.get("TRACK_CLOSEOUT_SKIP_CARGO")
+    os.environ["TRACK_CLOSEOUT_SKIP_CARGO"] = "1"
+    try:
+        cargo_skip_gates = run_gate_battery("pre-lifecycle", {"simthing-core"})
+    finally:
+        if old_skip is None:
+            os.environ.pop("TRACK_CLOSEOUT_SKIP_CARGO", None)
+        else:
+            os.environ["TRACK_CLOSEOUT_SKIP_CARGO"] = old_skip
+    check("cargo-gate-skip-recorded",
+          cargo_skip_gates.get("cargo-check-simthing-core") == "SKIP")
 
     # full build -> check -> apply roundtrip in a sandbox
     with tempfile.TemporaryDirectory() as tmp:
         sb = pathlib.Path(tmp)
         (sb / "scripts" / "ci").mkdir(parents=True)
         (sb / "docs" / "tests").mkdir(parents=True)
+        (sb / "docs" / "sb.md").write_text("# sb design\n", encoding="utf-8")
+        (sb / "docs" / "tests" / "sb_results.md").write_text("# sb results\n", encoding="utf-8")
         # minimal fixtures
         inv_rows = [
             {"crate": "c", "file": "crates/c/src/a.rs", "test_name": "cfg_test_mod::tests",
@@ -1045,6 +1342,10 @@ def cmd_prove():
              "kind": "unit", "current_class": "deletion-candidate", "boundary_id": "B-T6-MODULE-MARKER-EXPANSION",
              "boundary_tier": "TIER6_PROMOTION_REQUIRED", "recommended_disposition": "", "representative_to_keep": "",
              "consolidation_target": "", "promotion_required": "", "confidence": "high", "note": "marker"},
+            {"crate": "c", "file": "crates/c/tests/park.rs", "test_name": "park_me",
+             "kind": "integration", "current_class": "behavior-regression", "boundary_id": "B-T5",
+             "boundary_tier": "TIER5_BEHAVIOR", "recommended_disposition": "", "representative_to_keep": "",
+             "consolidation_target": "", "promotion_required": "", "confidence": "medium", "note": "park"},
         ]
         write_tsv(sb / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv_rows)
         write_tsv(sb / "scripts/ci/test_lifecycle_boundary_rows.tsv", BOUNDARY_ROWS_HEADER, b_rows)
@@ -1070,23 +1371,49 @@ def cmd_prove():
                 env={**os.environ, "TRACK_CLOSEOUT_NOW": now},
             )
 
-        r_build = run("--build-manifest", "--track", "sb-track", "--out", "m.tsv")
+        manifest_rel = "docs/tests/sb-track_closeout_manifest.tsv"
+        r_build = run("--build-manifest", "--track", "sb-track")
         check("build-manifest-ok", "BUILD-MANIFEST-VERDICT: OK" in r_build.stdout)
-        man = norm_bytes((sb / "m.tsv").read_bytes())
+        man_path = sb / manifest_rel
+        man = norm_bytes(man_path.read_bytes())
         # marker auto-deletes; golden is keep-durable; the non-durable row => needs-disposition
         check("build-auto-clears-marker", "\tdelete\t" in man)
         check("build-keeps-durable", "keep-durable" in man)
         check("build-flags-needs-disposition", "\tneeds-disposition\t" in man)
+        check("build-includes-source-doc", "doc::docs/sb.md" in man)
+        check("build-auto-discovers-result-doc", "doc::docs/tests/sb_results.md" in man)
 
         # check-eval must REFUSE the unresolved needs-disposition
-        r_eval_bad = run("--check-eval", "m.tsv")
+        r_eval_bad = run("--check-eval", manifest_rel)
         check("check-eval-refuses-unresolved", "CHECK-EVAL-VERDICT: FAIL" in r_eval_bad.stdout)
 
-        # resolve the undecided row to a lease (park it)
-        man = man.replace("\tneeds-disposition\t\t\t", "\tlease\tundecided-audit\t\t")
-        (sb / "m.tsv").write_bytes(man.encode("utf-8"))
+        # resolve inventory and doc rows independently.
+        _, _, fields, manifest_rows = load_manifest(man_path)
+        for row in manifest_rows:
+            if row["asset_kind"] == "inventory-row" and row["test_name"] == "park_me":
+                row["disposition"] = "lease"
+                row["target"] = "undecided-audit"
+            elif row["asset_kind"] == "doc" and row["file"] == "docs/sb.md":
+                row["disposition"] = "elevate-code"
+                row["target"] = "docs/archive/sb.md"
+            elif row["asset_kind"] == "doc" and row["file"] == "docs/tests/sb_results.md":
+                row["disposition"] = "lease"
+                row["target"] = "result-doc-audit"
+        body = io.StringIO()
+        w = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
+        w.writeheader()
+        for row in manifest_rows:
+            w.writerow(row)
+        receipt = closeout_receipt(body.getvalue())
+        man_path.write_bytes((
+            "# track_closeout manifest\n"
+            "# track: sb-track\n"
+            f"# CLOSEOUT-RECEIPT: {receipt}\n"
+            "# role: prove\n"
+            + body.getvalue()
+        ).encode("utf-8"))
 
-        r_eval = run("--check-eval", "m.tsv")
+        r_eval = run("--check-eval", manifest_rel)
         check("check-eval-pass", "CHECK-EVAL-VERDICT: PASS" in r_eval.stdout)
 
         # P0-1: a row born into the track after --build-manifest must refuse apply
@@ -1097,12 +1424,12 @@ def cmd_prove():
              "promotion_target": "permanent-residue:behavior-regression",
              "birth_track": "sb-track", "dsu_survivals": "0"},
         ])
-        r_stale = run("--apply", "m.tsv")
+        r_stale = run("--apply", manifest_rel)
         check("apply-stale-manifest-fail",
               r_stale.returncode != 0 and "FAIL(stale-manifest)" in r_stale.stderr)
         write_tsv(sb / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, inv_rows)
 
-        r_apply = run("--apply", "m.tsv")
+        r_apply = run("--apply", manifest_rel)
         check("apply-ok", "APPLY-VERDICT: OK" in r_apply.stdout or "APPLY-VERDICT: INSPECT" in r_apply.stdout
               or "APPLY-VERDICT:" in r_apply.stdout)
         _, inv_after = read_tsv(sb / "scripts/ci/test_inventory.tsv")
@@ -1116,9 +1443,18 @@ def cmd_prove():
         check("apply-parked-row-stamped", bool(park_hit) and park_hit.get("parked_at") == "2026-07-07")
         _, b_after = read_tsv(sb / "scripts/ci/test_lifecycle_boundary_rows.tsv")
         check("apply-deleted-boundary-lockstep", len(b_after) == 0)
+        _, parked_b_after = read_tsv(sb / "scripts/ci/test_lifecycle_parked_boundary.tsv")
+        check("apply-parked-boundary-preserved",
+              any(r["test_name"] == "park_me" for r in parked_b_after))
         _, trk_after = read_tsv(sb / "scripts/ci/test_lifecycle_tracks.tsv")
         check("apply-closed-birth-track", any(t["track_id"] == "sb-track" and t["status"] == "closed" for t in trk_after))
         check("apply-report-written", (sb / "docs/tests/sb-track_closeout_report.md").exists())
+        check("apply-source-doc-archived", (sb / "docs/archive/sb.md").exists())
+        _, art_apply = read_tsv(sb / "scripts/ci/closeout_artifacts.tsv")
+        check("apply-result-doc-leased",
+              any(r["path"] == "docs/tests/sb_results.md" and r["disposition"] == "lease" for r in art_apply))
+        check("apply-manifest-self-leased",
+              any(r["path"] == manifest_rel and r["disposition"] == "lease" for r in art_apply))
 
         # artifact-expiry clock
         write_tsv(sb / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [
@@ -1140,6 +1476,23 @@ def cmd_prove():
         # P0-3: apply against a track missing from tracks.tsv is a hard harness-error
         r_b2 = run("--build-manifest", "--track", "sb-track", "--out", "m2.tsv")
         check("build-manifest-2-ok", "BUILD-MANIFEST-VERDICT: OK" in r_b2.stdout)
+        _, _, _, m2_rows = load_manifest(sb / "m2.tsv")
+        for row in m2_rows:
+            if row["asset_kind"] == "doc":
+                row["disposition"] = "keep-durable"
+        body2 = io.StringIO()
+        w2 = csv.DictWriter(body2, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
+        w2.writeheader()
+        for row in m2_rows:
+            w2.writerow(row)
+        receipt2 = closeout_receipt(body2.getvalue())
+        (sb / "m2.tsv").write_bytes((
+            "# track_closeout manifest\n"
+            "# track: sb-track\n"
+            f"# CLOSEOUT-RECEIPT: {receipt2}\n"
+            "# role: prove\n"
+            + body2.getvalue()
+        ).encode("utf-8"))
         run("--check-eval", "m2.tsv")
         write_tsv(sb / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [])
         r_unk = run("--apply", "m2.tsv")
@@ -1239,9 +1592,12 @@ def cmd_prove():
         (rr / "scripts/ci").mkdir(parents=True)
         (rr / "crates/c/tests").mkdir(parents=True)
         (rr / "crates/c/src").mkdir(parents=True)
+        (rr / "docs/tests").mkdir(parents=True)
         shutil.copy(SCRIPT_DIR / "track_closeout.sh", rr / "scripts/ci/track_closeout.sh")
         (rr / "crates/c/tests/dead.rs").write_text("#[test]\nfn dead() {}\n", encoding="utf-8")
         (rr / "crates/c/src/live.rs").write_text("#[cfg(test)]\nmod t { #[test] fn u() {} }\n", encoding="utf-8")
+        (rr / "docs/tests/old_results.md").write_text("# old\n", encoding="utf-8")
+        (rr / "docs/tests/current_evidence_index.md").write_text("# durable\n", encoding="utf-8")
         write_tsv(rr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [])
 
         def parked(file, test_name, kind, at):
@@ -1256,9 +1612,30 @@ def cmd_prove():
             parked("crates/c/src/live.rs", "u", "unit", "2026-07-01"),               # expired inline src -> manual
             parked("crates/c/tests/fresh.rs", "fresh", "integration", "2026-07-18"), # fresh -> kept
         ])
+        write_tsv(rr / "scripts/ci/test_lifecycle_parked_boundary.tsv", PARKED_BOUNDARY_HEADER, [
+            {"crate": "c", "file": "crates/c/tests/dead.rs", "test_name": "dead", "kind": "integration",
+             "current_class": "behavior-regression", "boundary_id": "B", "boundary_tier": "T",
+             "recommended_disposition": "", "representative_to_keep": "", "consolidation_target": "",
+             "promotion_required": "", "confidence": "high", "note": "",
+             "parked_at": "2026-07-01", "closeout_track": "pre-lifecycle"},
+            {"crate": "c", "file": "crates/c/src/marker.rs", "test_name": "cfg_test_mod::tests", "kind": "unit",
+             "current_class": "deletion-candidate", "boundary_id": "B", "boundary_tier": "T",
+             "recommended_disposition": "", "representative_to_keep": "", "consolidation_target": "",
+             "promotion_required": "", "confidence": "high", "note": "",
+             "parked_at": "2026-07-01", "closeout_track": "pre-lifecycle"},
+            {"crate": "c", "file": "crates/c/src/live.rs", "test_name": "u", "kind": "unit",
+             "current_class": "behavior-regression", "boundary_id": "B", "boundary_tier": "T",
+             "recommended_disposition": "", "representative_to_keep": "", "consolidation_target": "",
+             "promotion_required": "", "confidence": "high", "note": "",
+             "parked_at": "2026-07-01", "closeout_track": "pre-lifecycle"},
+        ])
         write_tsv(rr / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [
             {"path": "crates/c/src/moved.rs", "leased_at": "2026-07-01",
              "disposition": "elevate-code-rehome-pending", "closeout_track": "t", "note": "rehome"},
+            {"path": "docs/tests/old_results.md", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "result doc"},
+            {"path": "docs/tests/current_evidence_index.md", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "not auto-reapable"},
         ])
 
         def drun(*a, now="2026-07-20"):
@@ -1272,6 +1649,8 @@ def cmd_prove():
 
         r_reap = drun("--decommission")
         check("decommission-reaps-dedicated-file", not (rr / "crates/c/tests/dead.rs").exists())
+        check("decommission-reaps-result-doc", not (rr / "docs/tests/old_results.md").exists())
+        check("decommission-spares-nonreapable-doc", (rr / "docs/tests/current_evidence_index.md").exists())
         check("decommission-spares-src", (rr / "crates/c/src/live.rs").exists())
         _, pen_after = read_tsv(rr / "scripts/ci/test_lifecycle_parked.tsv")
         names = {r["test_name"] for r in pen_after}
@@ -1279,11 +1658,18 @@ def cmd_prove():
         check("decommission-drops-reaped-row", "dead" not in names)
         check("decommission-keeps-inline-manual", "u" in names)
         check("decommission-keeps-fresh", "fresh" in names)
+        _, pen_b_after = read_tsv(rr / "scripts/ci/test_lifecycle_parked_boundary.tsv")
+        b_names = {r["test_name"] for r in pen_b_after}
+        check("decommission-drops-reaped-boundary-rows",
+              "dead" not in b_names and "cfg_test_mod::tests" not in b_names and "u" in b_names)
         _, art_after = read_tsv(rr / "scripts/ci/closeout_artifacts.tsv")
         check("decommission-refuses-rehome-pending",
               any(r["path"] == "crates/c/src/moved.rs" for r in art_after)
               and "moved.rs" in r_reap.stdout)
-        check("decommission-verdict", "DECOMMISSION-VERDICT: OK reaped=2 files=1 manual=2" in r_reap.stdout)
+        check("decommission-refuses-nonreapable-doc",
+              any(r["path"] == "docs/tests/current_evidence_index.md" for r in art_after)
+              and "current_evidence_index.md" in r_reap.stdout)
+        check("decommission-verdict", "DECOMMISSION-VERDICT: OK reaped=2 files=2 manual=3" in r_reap.stdout)
 
     if failures:
         print(f"TRACK-CLOSEOUT-PROVE-VERDICT: FAIL ({len(failures)})")
