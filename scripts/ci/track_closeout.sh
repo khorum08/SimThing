@@ -45,6 +45,7 @@ usage:
   bash scripts/ci/track_closeout.sh --check-eval <manifest>
   bash scripts/ci/track_closeout.sh --apply <manifest>
   bash scripts/ci/track_closeout.sh --artifact-expiry
+  bash scripts/ci/track_closeout.sh --decommission [--dry-run] [--all]
   bash scripts/ci/track_closeout.sh --deletion-guard <base> <head>
   bash scripts/ci/track_closeout.sh --prove
 EOF
@@ -56,7 +57,7 @@ EOF
 MODE="$1"; shift || true
 
 case "$MODE" in
-  --discover|--build-manifest|--check-eval|--apply|--artifact-expiry|--deletion-guard|--prove) ;;
+  --discover|--build-manifest|--check-eval|--apply|--artifact-expiry|--decommission|--deletion-guard|--prove) ;;
   -h|--help) usage ;;
   *) echo "track_closeout.sh: unknown mode: $MODE" >&2; usage ;;
 esac
@@ -792,12 +793,103 @@ def cmd_artifact_expiry():
     for path in bad:
         print(f"  - MALFORMED leased_at: {path}")
     if expired or bad:
+        print(f"  remedy: run `track_closeout.sh --decommission` to reap the safe expired assets, "
+              f"or elevate/delete the rest by hand")
         print(f"ARTIFACT-EXPIRY-VERDICT: FAIL expired={len(expired)} cruft={len(cruft)} malformed={len(bad)}")
         return 1
     if cruft:
         print(f"ARTIFACT-EXPIRY-VERDICT: INSPECT expired=0 cruft={len(cruft)} malformed=0")
         return 0
     print(f"ARTIFACT-EXPIRY-VERDICT: PASS expired=0 cruft=0 malformed=0")
+    return 0
+
+
+# ---------- decommission (reaper) ----------
+
+def cmd_decommission():
+    """Actually delete expired parked/leased assets — but only the unambiguously safe
+    ones. Refuses (and reports) anything whose deletion could bulldoze a live asset:
+    inline/src unit tests, shared test files, and code awaiting rehome."""
+    dry = "--dry-run" in argv
+    reap_all = "--all" in argv  # reap every parked/leased row, not just those past the wall
+    today = now_date()
+
+    _, parked = read_tsv(PARKED)
+    _, art_rows = read_tsv(ARTIFACT_LEDGER)
+    art_rows = art_rows or []
+    _, inv = read_tsv(INVENTORY)
+
+    live_file_refs = {}
+    for r in inv:
+        live_file_refs[r["file"]] = live_file_refs.get(r["file"], 0) + 1
+    parked_file_refs = {}
+    for r in parked:
+        parked_file_refs[r["file"]] = parked_file_refs.get(r["file"], 0) + 1
+
+    def past_wall(date_str):
+        try:
+            return (today - _dt.date.fromisoformat(date_str)).days >= LEASE_HARD_DAYS
+        except ValueError:
+            return False
+
+    def is_dedicated_test_file(path):
+        return path.startswith("crates/") and "/tests/" in path and path.endswith(".rs")
+
+    reaped_ids, rm_files, manual, kept = set(), [], [], []
+    for r in parked:
+        ident = "::".join((r["crate"], r["file"], r["test_name"], r["kind"]))
+        if not (reap_all or past_wall(r.get("parked_at", ""))):
+            kept.append(r)
+            continue
+        tn, f = r.get("test_name", ""), r.get("file", "")
+        if tn.startswith("cfg_test_mod::"):
+            reaped_ids.add(ident)  # ledger-only marker: drop the row, touch no source
+        elif is_dedicated_test_file(f) and live_file_refs.get(f, 0) == 0 and parked_file_refs.get(f, 0) == 1:
+            rm_files.append(f)
+            reaped_ids.add(ident)
+        else:
+            manual.append((ident, "inline/src or shared file — remove the test by hand, then drop the pen row"))
+            kept.append(r)
+
+    new_art, art_rm = [], []
+    for r in art_rows:
+        due = reap_all or past_wall(r.get("leased_at", ""))
+        disp, p = r.get("disposition", ""), r.get("path", "")
+        if due and disp == "elevate-code-rehome-pending":
+            manual.append((p, "code awaiting rehome — reaping would lose elevated code; rehome or delete by hand"))
+            new_art.append(r)
+        elif due and disp == "lease" and is_dedicated_test_file(p):
+            art_rm.append(p)
+        else:
+            new_art.append(r)
+
+    if not dry:
+        for f in rm_files + art_rm:
+            try:
+                subprocess.run(["git", "-C", str(ROOT), "rm", "-q", "--", f], check=True, capture_output=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                p = ROOT / f
+                if p.exists():
+                    p.unlink()
+        write_tsv(PARKED, PARKED_HEADER, [
+            r for r in parked
+            if "::".join((r["crate"], r["file"], r["test_name"], r["kind"])) not in reaped_ids
+        ])
+        if art_rm:
+            write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, new_art)
+
+    print("TRACK-CLOSEOUT DECOMMISSION" + (" (dry-run)" if dry else ""))
+    print(f"  now: {today.isoformat()}  wall: {LEASE_HARD_DAYS}d  "
+          f"mode: {'all-parked' if reap_all else 'expired-only'}")
+    print(f"  parked rows reaped: {len(reaped_ids)}")
+    print(f"  files deleted: {len(rm_files) + len(art_rm)}")
+    for f in rm_files + art_rm:
+        print(f"    - rm {f}")
+    for ident, reason in manual:
+        print(f"    ! manual: {ident} — {reason}")
+    verdict = "DRY" if dry else "OK"
+    print(f"TRACK-CLOSEOUT-DECOMMISSION-VERDICT: {verdict} "
+          f"reaped={len(reaped_ids)} files={len(rm_files) + len(art_rm)} manual={len(manual)}")
     return 0
 
 
@@ -1048,6 +1140,58 @@ def cmd_prove():
         check("deletion-guard-allows-closed-track",
               "DELETION-GUARD-VERDICT: PASS" in r_guard2.stdout)
 
+    # decommission reaper: deletes only unambiguously-safe expired assets; refuses the rest.
+    with tempfile.TemporaryDirectory() as rtmp:
+        rr = pathlib.Path(rtmp)
+        (rr / "scripts/ci").mkdir(parents=True)
+        (rr / "crates/c/tests").mkdir(parents=True)
+        (rr / "crates/c/src").mkdir(parents=True)
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", rr / "scripts/ci/track_closeout.sh")
+        (rr / "crates/c/tests/dead.rs").write_text("#[test]\nfn dead() {}\n", encoding="utf-8")
+        (rr / "crates/c/src/live.rs").write_text("#[cfg(test)]\nmod t { #[test] fn u() {} }\n", encoding="utf-8")
+        write_tsv(rr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [])
+
+        def parked(file, test_name, kind, at):
+            return {"crate": "c", "file": file, "test_name": test_name, "kind": kind,
+                    "class": "behavior-regression", "superseding_boundary": "B-T5", "verdict": "AUDIT",
+                    "note": "u", "promotion_target": "permanent-residue:behavior-regression",
+                    "birth_track": "pre-lifecycle", "dsu_survivals": "0",
+                    "parked_at": at, "closeout_track": "pre-lifecycle", "park_reason": "undecided"}
+        write_tsv(rr / "scripts/ci/test_lifecycle_parked.tsv", PARKED_HEADER, [
+            parked("crates/c/tests/dead.rs", "dead", "integration", "2026-07-01"),   # expired dedicated -> reap
+            parked("crates/c/src/marker.rs", "cfg_test_mod::tests", "unit", "2026-07-01"),  # expired marker -> drop row
+            parked("crates/c/src/live.rs", "u", "unit", "2026-07-01"),               # expired inline src -> manual
+            parked("crates/c/tests/fresh.rs", "fresh", "integration", "2026-07-18"), # fresh -> kept
+        ])
+        write_tsv(rr / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [
+            {"path": "crates/c/src/moved.rs", "leased_at": "2026-07-01",
+             "disposition": "elevate-code-rehome-pending", "closeout_track": "t", "note": "rehome"},
+        ])
+
+        def drun(*a, now="2026-07-20"):
+            return subprocess.run([BASH, "scripts/ci/track_closeout.sh", *a],
+                                  capture_output=True, text=True, cwd=str(rr),
+                                  env={**os.environ, "TRACK_CLOSEOUT_NOW": now})
+
+        r_dry = drun("--decommission", "--dry-run")
+        check("decommission-dry-verdict", "DECOMMISSION-VERDICT: DRY" in r_dry.stdout)
+        check("decommission-dry-noop", (rr / "crates/c/tests/dead.rs").exists())
+
+        r_reap = drun("--decommission")
+        check("decommission-reaps-dedicated-file", not (rr / "crates/c/tests/dead.rs").exists())
+        check("decommission-spares-src", (rr / "crates/c/src/live.rs").exists())
+        _, pen_after = read_tsv(rr / "scripts/ci/test_lifecycle_parked.tsv")
+        names = {r["test_name"] for r in pen_after}
+        check("decommission-drops-marker-row", "cfg_test_mod::tests" not in names)
+        check("decommission-drops-reaped-row", "dead" not in names)
+        check("decommission-keeps-inline-manual", "u" in names)
+        check("decommission-keeps-fresh", "fresh" in names)
+        _, art_after = read_tsv(rr / "scripts/ci/closeout_artifacts.tsv")
+        check("decommission-refuses-rehome-pending",
+              any(r["path"] == "crates/c/src/moved.rs" for r in art_after)
+              and "moved.rs" in r_reap.stdout)
+        check("decommission-verdict", "DECOMMISSION-VERDICT: OK reaped=2 files=1 manual=2" in r_reap.stdout)
+
     if failures:
         print(f"TRACK-CLOSEOUT-PROVE-VERDICT: FAIL ({len(failures)})")
         return 1
@@ -1061,6 +1205,7 @@ DISPATCH = {
     "--check-eval": cmd_check_eval,
     "--apply": cmd_apply,
     "--artifact-expiry": cmd_artifact_expiry,
+    "--decommission": cmd_decommission,
     "--deletion-guard": cmd_deletion_guard,
     "--prove": cmd_prove,
 }
