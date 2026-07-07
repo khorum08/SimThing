@@ -92,6 +92,7 @@ RESIDUE_CLASSES = SCRIPT_DIR / "test_residue_classes.tsv"
 DSU_TIERS = SCRIPT_DIR / "test_lifecycle_dsu_tiers.tsv"
 AUTOCLEAR = SCRIPT_DIR / "closeout_autoclear.tsv"
 ARTIFACT_LEDGER = SCRIPT_DIR / "closeout_artifacts.tsv"
+PARKED = SCRIPT_DIR / "test_lifecycle_parked.tsv"
 
 INVENTORY_HEADER = [
     "crate", "file", "test_name", "kind", "class", "superseding_boundary",
@@ -104,6 +105,9 @@ BOUNDARY_ROWS_HEADER = [
 ]
 TRACKS_HEADER = ["track_id", "status", "closed_at", "source", "note"]
 ARTIFACT_LEDGER_HEADER = ["path", "leased_at", "disposition", "closeout_track", "note"]
+# A parked row is a full inventory row relocated OUT of the live tables into the
+# quarantine pen so test_inventory.tsv / boundary_rows only ever hold decided assets.
+PARKED_HEADER = INVENTORY_HEADER + ["parked_at", "closeout_track", "park_reason"]
 MANIFEST_HEADER = [
     "asset_kind", "ref", "crate", "file", "test_name", "kind",
     "current_class", "birth_track", "disposition", "target", "owner", "note",
@@ -120,7 +124,8 @@ DISPOSITIONS = {
     "elevate-code",   # relocate source file into a destination crate (target = dest path)
     "elevate-class",  # promote a proof into a permanent-residue class (target = class)
     "keep-durable",   # already durable; retained, no mutation
-    "lease",          # undecided; wall-clock expiry clock (target = optional reason)
+    "lease",          # undecided; row is PARKED out of the live tables into the pen,
+                      # on a wall-clock clock (target = optional reason)
     "needs-disposition",  # build-manifest placeholder; --check-eval refuses these
 }
 
@@ -305,6 +310,7 @@ def cmd_discover():
             die(f"discover: unexpected arg {a[0]!r}")
     ripe, _ = scan_ripe(track_filter)
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
+    _, parked_rows = read_tsv(PARKED)
     today = now_date()
 
     print("TRACK-CLOSEOUT DISCOVER")
@@ -321,16 +327,22 @@ def cmd_discover():
     if len(ripe) > 15:
         print(f"    ... (+{len(ripe) - 15} more)")
 
-    aging = 0
-    for row in art_rows:
-        try:
-            age = (today - _dt.date.fromisoformat(row["leased_at"])).days
-        except (ValueError, KeyError):
-            continue
-        if age >= LEASE_CRUFT_DAYS:
-            aging += 1
-    print(f"  leased artifacts: {len(art_rows)} (aging >= {LEASE_CRUFT_DAYS}d: {aging})")
-    print(f"TRACK-CLOSEOUT-DISCOVER-VERDICT: OK ripe={len(ripe)} leased={len(art_rows)}")
+    def aging_count(rows, field):
+        n = 0
+        for row in rows:
+            try:
+                if (today - _dt.date.fromisoformat(row[field])).days >= LEASE_CRUFT_DAYS:
+                    n += 1
+            except (ValueError, KeyError):
+                continue
+        return n
+
+    art_aging = aging_count(art_rows, "leased_at")
+    park_aging = aging_count(parked_rows, "parked_at")
+    print(f"  leased artifacts: {len(art_rows)} (aging >= {LEASE_CRUFT_DAYS}d: {art_aging})")
+    print(f"  parked rows (pen): {len(parked_rows)} (aging >= {LEASE_CRUFT_DAYS}d: {park_aging})")
+    print(f"TRACK-CLOSEOUT-DISCOVER-VERDICT: OK ripe={len(ripe)} "
+          f"leased={len(art_rows)} parked={len(parked_rows)}")
     return 0
 
 
@@ -524,15 +536,21 @@ def cmd_apply():
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
     if art_hdr is None:
         art_rows = []
+    parked_hdr, parked_rows = read_tsv(PARKED)
+    if parked_hdr is None:
+        parked_rows = []
     inv_before, b_before = len(inv), len(b_rows)
+    inv_by_key = {inv_key(row): row for row in inv}
 
     delete_keys = set()
+    park_keys = set()
+    park_reason = {}
     class_updates = {}
-    lease_entries = []
     code_moves = []
     tally = {"delete": 0, "elevate-code": 0, "elevate-class": 0, "keep-durable": 0, "lease": 0}
     survivors = []
 
+    today = now_date()
     for r in rows:
         disp = r["disposition"].strip()
         tally[disp] = tally.get(disp, 0) + 1
@@ -545,14 +563,28 @@ def cmd_apply():
             code_moves.append(r)
             survivors.append((r, f"code -> {r['target'].strip()}"))
         elif disp == "lease":
-            lease_entries.append(r)
-            survivors.append((r, f"lease (expires {(now_date() + _dt.timedelta(days=LEASE_HARD_DAYS)).isoformat()})"))
+            key = (r["crate"], r["file"], r["test_name"], r["kind"])
+            park_keys.add(key)
+            park_reason[key] = (r.get("target") or r.get("note") or "").strip()
+            survivors.append((r, f"PARKED -> pen (delete/elevate by "
+                                 f"{(today + _dt.timedelta(days=LEASE_HARD_DAYS)).isoformat()})"))
         elif disp == "keep-durable":
             survivors.append((r, "keep-durable"))
 
-    # 1. delete: inventory + boundary rows in lockstep
-    new_inv = [row for row in inv if inv_key(row) not in delete_keys]
-    new_b = [row for row in b_rows if inv_key(row) not in delete_keys]
+    removed_keys = delete_keys | park_keys
+    # 1. delete + park: relocate rows OUT of both live tables in lockstep
+    new_inv = [row for row in inv if inv_key(row) not in removed_keys]
+    new_b = [row for row in b_rows if inv_key(row) not in removed_keys]
+    # 1b. parked rows move (full row) into the quarantine pen with a wall-clock stamp
+    for key in park_keys:
+        src_row = inv_by_key.get(key)
+        if src_row is None:
+            continue
+        entry = dict(src_row)
+        entry["parked_at"] = today.isoformat()
+        entry["closeout_track"] = track
+        entry["park_reason"] = park_reason.get(key, "")
+        parked_rows.append(entry)
     # 2. elevate-class: stamp durable class on the surviving inventory row
     for row in new_inv:
         key = inv_key(row)
@@ -562,7 +594,6 @@ def cmd_apply():
             row["verdict"] = "KEEP"
             row["promotion_target"] = class_updates[key]
 
-    today = now_date()
     moved_notes = []
     for r in code_moves:
         src = ROOT / r["file"]
@@ -583,17 +614,13 @@ def cmd_apply():
         })
         moved_notes.append(f"{r['file']} -> {r['target'].strip()}")
 
-    for r in lease_entries:
-        art_rows.append({
-            "path": r["ref"], "leased_at": today.isoformat(), "disposition": "lease",
-            "closeout_track": track, "note": (r.get("target") or r.get("note") or "").strip(),
-        })
-
     # 3. write mutated tables
     write_tsv(INVENTORY, INVENTORY_HEADER, new_inv)
     write_tsv(BOUNDARY_ROWS, BOUNDARY_ROWS_HEADER, new_b)
     if art_rows:
         write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, art_rows)
+    if park_keys or PARKED.exists():
+        write_tsv(PARKED, PARKED_HEADER, parked_rows)
 
     # 4. close the birth_track (rubber-stamp) unless nothing was actually closed out
     closed = False
@@ -682,6 +709,11 @@ def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gate
     lines.append(f"| test_inventory.tsv | {inv_b} | {inv_a} | {inv_a - inv_b} |")
     lines.append(f"| test_lifecycle_boundary_rows.tsv | {b_b} | {b_a} | {b_a - b_b} |")
     lines.append("")
+    if tally.get("lease"):
+        lines.append(f"_{tally['lease']} row(s) relocated to the parking pen "
+                     f"(`test_lifecycle_parked.tsv`) — out of the live tables, on a "
+                     f"{LEASE_HARD_DAYS}-day wall-clock to delete-or-elevate._")
+        lines.append("")
     if grew:
         lines.append("> **FAIL — a TSV table grew at closeout.** TSV growth is the primary fail "
                      "state of the rustification harness. Anything worth keeping is either elevated "
@@ -728,22 +760,31 @@ def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gate
 
 def cmd_artifact_expiry():
     _, rows = read_tsv(ARTIFACT_LEDGER)
+    _, parked = read_tsv(PARKED)
     today = now_date()
     cruft, expired, bad = [], [], []
-    for row in rows:
+
+    def account(ident, date_str):
         try:
-            leased = _dt.date.fromisoformat(row.get("leased_at", ""))
+            leased = _dt.date.fromisoformat(date_str)
         except ValueError:
-            bad.append(row.get("path", "?"))
-            continue
+            bad.append(ident)
+            return
         age = (today - leased).days
         if age >= LEASE_HARD_DAYS:
-            expired.append((row.get("path", "?"), age))
+            expired.append((ident, age))
         elif age >= LEASE_CRUFT_DAYS:
-            cruft.append((row.get("path", "?"), age))
+            cruft.append((ident, age))
+
+    for row in rows:
+        account(row.get("path", "?"), row.get("leased_at", ""))
+    for row in parked:
+        ident = "::".join((row.get("crate", ""), row.get("file", ""),
+                           row.get("test_name", ""), row.get("kind", "")))
+        account(f"parked:{ident}", row.get("parked_at", ""))
 
     print("TRACK-CLOSEOUT ARTIFACT-EXPIRY (wall-clock)")
-    print(f"  leased artifacts: {len(rows)}  now: {today.isoformat()}")
+    print(f"  leased artifacts: {len(rows)}  parked rows: {len(parked)}  now: {today.isoformat()}")
     for path, age in expired:
         print(f"  - EXPIRED ({age}d >= {LEASE_HARD_DAYS}d, must delete or elevate): {path}")
     for path, age in cruft:
@@ -860,6 +901,10 @@ def cmd_prove():
              "kind": "integration", "class": "golden-byte", "superseding_boundary": "B-T7-GOLDEN-BYTE-DETERMINISM",
              "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
              "birth_track": "sb-track", "dsu_survivals": "0"},
+            {"crate": "c", "file": "crates/c/tests/park.rs", "test_name": "park_me",
+             "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
+             "verdict": "AUDIT", "note": "undecided", "promotion_target": "permanent-residue:behavior-regression",
+             "birth_track": "sb-track", "dsu_survivals": "0"},
         ]
         b_rows = [
             {"crate": "c", "file": "crates/c/src/a.rs", "test_name": "cfg_test_mod::tests",
@@ -894,10 +939,18 @@ def cmd_prove():
         r_build = run("--build-manifest", "--track", "sb-track", "--out", "m.tsv")
         check("build-manifest-ok", "BUILD-MANIFEST-VERDICT: OK" in r_build.stdout)
         man = norm_bytes((sb / "m.tsv").read_bytes())
-        # the golden keep row is keep-durable; the cfg marker auto-deletes; no needs-disposition
+        # marker auto-deletes; golden is keep-durable; the non-durable row => needs-disposition
         check("build-auto-clears-marker", "\tdelete\t" in man)
         check("build-keeps-durable", "keep-durable" in man)
-        check("build-no-needs-disposition", "\tneeds-disposition\t" not in man)
+        check("build-flags-needs-disposition", "\tneeds-disposition\t" in man)
+
+        # check-eval must REFUSE the unresolved needs-disposition
+        r_eval_bad = run("--check-eval", "m.tsv")
+        check("check-eval-refuses-unresolved", "CHECK-EVAL-VERDICT: FAIL" in r_eval_bad.stdout)
+
+        # resolve the undecided row to a lease (park it)
+        man = man.replace("\tneeds-disposition\t\t\t", "\tlease\tundecided-audit\t\t")
+        (sb / "m.tsv").write_bytes(man.encode("utf-8"))
 
         r_eval = run("--check-eval", "m.tsv")
         check("check-eval-pass", "CHECK-EVAL-VERDICT: PASS" in r_eval.stdout)
@@ -908,6 +961,12 @@ def cmd_prove():
         _, inv_after = read_tsv(sb / "scripts/ci/test_inventory.tsv")
         check("apply-deleted-marker-row", all(r["test_name"] != "cfg_test_mod::tests" for r in inv_after))
         check("apply-kept-golden-row", any(r["test_name"] == "golden" for r in inv_after))
+        # parked row left the live inventory and landed in the pen with a wall-clock stamp
+        check("apply-parked-row-left-inventory", all(r["test_name"] != "park_me" for r in inv_after))
+        _, parked_after = read_tsv(sb / "scripts/ci/test_lifecycle_parked.tsv")
+        park_hit = next((r for r in parked_after if r["test_name"] == "park_me"), None)
+        check("apply-parked-row-in-pen", park_hit is not None)
+        check("apply-parked-row-stamped", bool(park_hit) and park_hit.get("parked_at") == "2026-07-07")
         _, b_after = read_tsv(sb / "scripts/ci/test_lifecycle_boundary_rows.tsv")
         check("apply-deleted-boundary-lockstep", len(b_after) == 0)
         _, trk_after = read_tsv(sb / "scripts/ci/test_lifecycle_tracks.tsv")
@@ -924,6 +983,12 @@ def cmd_prove():
         check("artifact-cruft-inspect", "ARTIFACT-EXPIRY-VERDICT: INSPECT" in r_exp_cruft.stdout)
         r_exp_dead = run("--artifact-expiry", now="2026-07-09")
         check("artifact-expired-fail", "ARTIFACT-EXPIRY-VERDICT: FAIL" in r_exp_dead.stdout)
+
+        # the parking pen is on the same wall-clock: isolate it and push past the hard wall
+        write_tsv(sb / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [])
+        r_park_exp = run("--artifact-expiry", now="2026-07-20")
+        check("parked-pen-wall-clock-fail",
+              "ARTIFACT-EXPIRY-VERDICT: FAIL" in r_park_exp.stdout and "parked:" in r_park_exp.stdout)
 
     # deletion-guard: a git-backed repo where an OPEN-track row is removed must FAIL,
     # and a removal whose birth_track is closed (or a cfg-marker) must PASS.
