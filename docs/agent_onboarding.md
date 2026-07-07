@@ -38,6 +38,9 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
   **merge-clear conforming precedented-class rungs itself**, **escalate the DA reserve** (gate-wiring,
   exceptions, widening, Tier-2, new proof classes, closeout, binding conditions); land a `/triage` row for
   every INSPECT delta.
+- **Closeout-substrate PRs:** before merge/DA handback, require a disposable end-to-end
+  `track_closeout.sh` rehearsal (build manifest -> resolve -> check-eval -> apply) using a tiny fixture
+  with previously expunged rows plus source/auto/explicit doc artifacts, and report the sample verdict.
 - **Authority:** merges *conforming* precedented-class work; **routes gate-wiring/reserve to the DA.** An
   unauthorized gate-wiring merge is a process incident (see `docs/tests/incident_oh_docs_sunset_unauthorized_merge.md`).
 

@@ -23,8 +23,9 @@ therefore only ever one of:
   (promote a genuine proof into a `permanent-residue:*` class in `test_residue_classes.tsv`).
 - **`keep-durable`** — already carries a durable class; retained, no mutation.
 - **`lease`** — undecided. The row is **relocated out of the live tables into the parking pen**
-  (`test_lifecycle_parked.tsv`), so `test_inventory.tsv` / `test_lifecycle_boundary_rows.tsv` only ever
-  hold decided assets — undecided rows never clog the primary tables or confuse agents. The pen is on a
+  (`test_lifecycle_parked.tsv`, with any matching boundary row preserved in
+  `test_lifecycle_parked_boundary.tsv`), so `test_inventory.tsv` / `test_lifecycle_boundary_rows.tsv`
+  only ever hold decided assets — undecided rows never clog the primary tables or confuse agents. The pen is on a
   **wall-clock clock** (not a survival count): cruft-flag at **3 days**, hard delete/elevate wall at
   **7 days** (`--artifact-expiry` detects; `--decommission` reaps). A lease is a grace period, never a
   resting state.
@@ -33,17 +34,25 @@ If an asset is worth keeping it is elevated; if it is not, it is deleted; if it 
 out of sight on a 7-day fuse. Nothing accretes in the live tables. The drift gate treats a parked test as
 accounted-for (not "unledgered") so quarantine does not break the ledger.
 
+Docs/artifacts are scoped too. `--build-manifest` includes the track source doc when it is a repo-local
+`docs/*.md` / `docs/*.tsv` file, auto-discovers track-shaped result/review/manifest artifacts under
+`docs/tests/`, and accepts explicit `--docs <glob>` additions. Source/design docs may be
+`keep-durable` or `elevate-code` into `docs/archive/`; automatic delete/lease is reserved for narrow
+`docs/tests/*_results.md`, `*_review.tsv`, and `*_manifest.tsv` artifacts. Closeout reports stay durable;
+closeout manifests are leased for later reaping. Explicit `--docs` additions must still exist at apply
+time; vanished explicit docs fail as stale manifests before mutation.
+
 ## Stages (same script, staged subcommands)
 
 | stage | command | does |
 | --- | --- | --- |
 | discover | `--discover [--track <id>]` | read-only: lists rows at end-of-lifecycle not yet dispositioned + aging leased artifacts. "What's ripe for closeout." |
-| build | `--build-manifest <workplan.md \| --track <id>> [--out <path>]` | deterministic scope discovery → one disposition manifest TSV + a **CLOSEOUT-RECEIPT**. Auto-clears known-shape residue (rules table); marks durable rows `keep-durable`; everything else `needs-disposition`. |
+| build | `--build-manifest <workplan.md \| --track <id>> [--out <path>] [--docs <glob>]...` | deterministic scope discovery → one disposition manifest TSV + a **CLOSEOUT-RECEIPT**. Auto-clears known-shape residue (rules table); marks durable rows `keep-durable`; includes track docs/artifacts; everything else `needs-disposition`. |
 | eval | `--check-eval <manifest>` | validates every disposition is resolved and every `delete` has a named owner; refuses `needs-disposition`; rewrites the header receipt to the resolved value. |
-| apply | `--apply <manifest>` | one batched mutation: deletes (both TSVs), class stamps, code moves, **parks (rows relocated to the pen)**; stamps the `birth_track` **closed**; runs the gate battery; emits a compact, size-first report. |
+| apply | `--apply <manifest>` | one batched mutation: deletes (both TSVs), class stamps, code/doc moves, doc leases, **parks (rows relocated to the pen)**; stamps the `birth_track` **closed**; runs the gate battery, including `cargo check -p <crate>` for code move targets; emits a compact, size-first report. |
 | clock | `--artifact-expiry` | wall-clock gate over the parking pen (`test_lifecycle_parked.tsv`) and staged-file leases (`closeout_artifacts.tsv`): INSPECT at ≥3d, FAIL at ≥7d. Standing CI gate — detects, does not delete. |
-| reap | `--decommission [--dry-run] [--all]` | actually deletes expired parked/leased assets — but **only the unambiguously safe ones**: ledger-only `cfg_test_mod::*` markers (drop the pen row) and dedicated, unshared test files under `crates/*/tests/**` (delete file + drop row). Refuses and reports anything risky — inline/src unit tests, shared test files, code awaiting rehome — for manual handling. `--all` reaps every parked row, not just past-the-wall ones. |
-| guard | `--deletion-guard <base> <head>` | a removed inventory row whose `birth_track` is not `closed` → FAIL. Deletion authority flows only through a closed track (cfg-marker ledger sweeps exempt). |
+| reap | `--decommission [--dry-run] [--all]` | actually deletes expired parked/leased assets — but **only the unambiguously safe ones**: ledger-only `cfg_test_mod::*` markers (drop the pen row), dedicated unshared test files under `crates/*/tests/**`, and narrow result/review/manifest docs under `docs/tests/`. Refuses and reports anything risky — inline/src unit tests, shared test files, non-reapable docs, code awaiting rehome — for manual handling. `--all` reaps every parked row, not just past-the-wall ones. |
+| guard | `--deletion-guard <base> <head>` | a removed inventory row is lawful only if its `birth_track` was `closed` **at base**, or this PR is itself the closeout (closed at head **and** the diff carries both `docs/tests/<track>_closeout_report.md` and `docs/tests/<track>_closeout_manifest.tsv`) → otherwise FAIL. Hand-flipping `status=closed` in the same PR as the deletion is a bypass and is blocked. cfg-marker ledger sweeps exempt. |
 | prove | `--prove` | self-tests all of the above. |
 
 ## Anti-divergence: receipts, not SHA-matching
