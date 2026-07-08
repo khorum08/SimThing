@@ -34,21 +34,42 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | cc06a72a8d72773c3fad32d4e9fd45ccc565f57c1bc6266949442cb5bc0de3c7 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | cfebaf81c170f10d5d9d395f308c4fa57faadcbd9a40675b876463b531efc59e |
-| current_evidence_index.md | 87034828d2e3249fd4e4e51bee79723fa0d88460d46239b2021b326dd6fba5ff |
+| active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | e69b849ed3722a48a4d5c14022725a8b6fcbdd8a42ed1148f3d6c138e168764f |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
-## Active Track / Rung Summary (`current_evidence_index.md`)
+## Active Track / Rung Summary (`design_0_0_8_5_clausescript_terran_pirate_galaxy.md`)
 
 Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
+| 0.0 | TP-TRACK-OPEN-0 | This document + evidence-index row + harness. Docs only. | **DONE — DA-OPENED** (2026-07-01): doc lands; ledger row honest (impl not started). |
+| 0.1 | TP-RF-CAPACITY-AMENDMENT-0 | **COMPLETE — DA/Owner-cleared** (2026-07-01, PR #1071 `4a7b8d028d`; independent  | DA-verified against the tree: `e10_resource_flow_admission` 19/19 (incl. checked-totals + cap-scaling); galaxy-scale ... |
+| 0.2 | TP-SCALE-ENVELOPE-0 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)** after 0R2. The gen | 0R repaired the false-green reduction-topology failure; 0R2 repaired the velocity upload scale failure and proved CPU... |
+| 0.2r | TP-SCALE-ENVELOPE-0R | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)**. Removed catch_unw | Scale test no longer swallows panics; `upload_reduction_topology` no longer overruns 24-byte `column_rules`. |
+| 0.2r2 | TP-SCALE-ENVELOPE-0R2 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)**. Compact C-7 veloc | Local real-adapter scale test reaches `SimSession::open_from_spec` success and asserts `session.mapping.is_none()`; c... |
+| 1.0 | TP-BASE-DISC-GEN-0 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)**. Emits the canonic | Byte-identical regeneration from recorded seed/params PASS; `map_quality_status = PASS`; names assigned deterministic... |
+| 1.1 | TP-BASE-EMBED-0 | **DONE — DA-APPROVED (2026-07-02, executive DA review)**. Scenario-container fro | Combined `.clause` parses; embedded base lattice round-trips identical to rung 1.0; base ids are namespaced into over... |
+| 2.0 | TP-OWNER-SIBLINGS-0 | **DONE — DA-APPROVED (2026-07-02, executive DA targeted review)**. ClauseScript  | Hydrated tree has Terran/Pirate owners as direct GameSession children; GalaxyMap remains a GameSession sibling; canon... |
+| 2.1 | TP-OWNERSHIP-COLUMNS-0 | **DONE — DA-APPROVED (2026-07-02, executive DA full review)**. Ownership = owner | Combined embedded base + owner siblings + ownership volumes parses; exactly 200 Terran + 50 Pirate + 1250 neutral sys... |
+| 2.2 | TP-PLANET-SURFACE-PAYLOAD-0 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review post-merge; merge-hol | Combined embedded base + owner siblings + ownership columns + planet/surface payload parses; all 250 owned systems ha... |
+| 3.0 | TP-SHIPSIZE-DECODER-0 | **§1.2 amendment.** Extend the CT-2c longest-match modifier decoder with the **s | **DONE — DA-APPROVED (2026-07-04, deep review + DA fix + lab waiver)** — DA-verified: EML ≤32-node bound proven (`MAX... |
+| 3.1 | TP-FLEETS-SHIPS-0 | Author **fleets as mobile star-system-grid occupants** and **ships as cohort-sty | **DONE — DA-APPROVED (2026-07-04, deep review after 0R)** — DA-verified against the tree: Fleet/Cohort `planet_child_... |
+| 4.0 | TP-COMBAT-ARENA-0 | Author the **HP/Damage RF arena**: damage = `SubtractFromSource` transfer betwee | **DA-GRADUATED / merged [#1145](https://github.com/khorum08/SimThing/pull/1145) @ `a54695ec`** — one-time Homing Boun... |
+| 5.0 | TP-DIPLOMACY-FLOW-0 | Author **influence/trust/distrust as RF lanes** (core §2.1, §5.3): each owner em | **DA-GRADUATED / merged [#1150](https://github.com/khorum08/SimThing/pull/1150) @ `9aa66c39`** — workshop-homed Mecha... |
+| 6.0 | TP-FRONTS-AUTHORING-0 | Author the **Movement-Front L1/L2/L3** over the galaxy lattice: **threat front** | **DA-GRADUATED / merged [#1151](https://github.com/khorum08/SimThing/pull/1151) @ `9f56794a`** — workshop-homed Mecha... |
+| 6.1 | TP-PALMA-REACH-0 | **PALMA reach/impedance** over the fronts: impedance `W` composed from choke/thr | **DA-GRADUATED / merged [#1152](https://github.com/khorum08/SimThing/pull/1152) @ `335f55c0`** — workshop-homed W com... |
+| 6.2 | TP-FLEET-MOVEMENT-0 | **Fleet movement = gradient-following reparenting.** A fleet steers proportional | **DA-GRADUATED / merged [#1154](https://github.com/khorum08/SimThing/pull/1154) @ `7d44037e`** — 7×7 / horizon-3 thea... |
+| 7.0 | TP-COMMITMENTS-0 | Author each faction's **personality `ai_will_do`/`ai_weight` EML weight profiles | **ORCHESTRATOR-GRADUATED / merged [#1155](https://github.com/khorum08/SimThing/pull/1155) @ `6547b90c`** — §5A orches... |
+| 8.0 | TP-FULL-TRANSPILE-0 | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSO | Full file transpiles; semantic-free scan (below the spec boundary) passes; STEAD/link/tree/RF metadata survive roundt... |
+| 8.1 | TP-LIVE-RUN-0 | **Indefinite-tick live run** over **one deterministically-selected bounded theat | Non-vacuous multi-tick run on a real adapter; border front measurably shifts; combat resolves; ≥1 STEAD commitment fi... |
+| 8.2 | TP-DA-CLOSEOUT-0 | Scope Ledger over every §2 acceptance element; Deviation Records for anything pr | Complete Scope Ledger; corpus-abstraction candidate list emitted (nominations only, zero in-track canonization); DA s... |
 
 ## Next Rung Pointer
 
-Active pointer: `none`
+Active pointer: `TP-FULL-TRANSPILE-0`
 
 
 ## Cold-Start Entrypoint
