@@ -2,6 +2,7 @@ pub mod commitments_post_hydration;
 pub mod diplomacy_post_hydration;
 pub mod fronts_post_hydration;
 pub mod fleet_movement_post_hydration;
+pub mod live_run_post_hydration;
 pub mod palma_reach_post_hydration;
 pub mod eml_phase5;
 pub mod multitarget_replay;
@@ -61,6 +62,11 @@ pub use fronts_post_hydration::{
     TP_FRONTS_CHOKE_OUTPUT_COL, TP_FRONTS_DEFAULT_HORIZON, TP_FRONTS_FIELD_OPERATOR_ID,
     TP_FRONTS_N_DIMS, TP_FRONTS_SOURCE_COL, TP_FRONTS_WEIGHT_PRESSURE, TP_FRONTS_WEIGHT_RESOURCE,
     TP_SUPPRESSION_ARENA, TP_THREAT_ARENA,
+};
+pub use live_run_post_hydration::{
+    apply_live_run_post_hydration, validate_rebind_table, LiveRunHydrationError,
+    TpLiveRunAuthoringReport, TpPlacementRebindEntry, TP_LIVE_RUN_MIN_TICKS,
+    TP_LIVE_RUN_THEATER_GRID,
 };
 pub mod weighted_mean_perf;
 mod weighted_mean_perf_report;
