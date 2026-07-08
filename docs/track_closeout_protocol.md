@@ -49,7 +49,7 @@ time; vanished explicit docs fail as stale manifests before mutation.
 | discover | `--discover [--track <id>]` | read-only: lists rows at end-of-lifecycle not yet dispositioned + aging leased artifacts. "What's ripe for closeout." |
 | build | `--build-manifest <workplan.md \| --track <id>> [--out <path>] [--docs <glob>]...` | deterministic scope discovery → one disposition manifest TSV + a **CLOSEOUT-RECEIPT**. Auto-clears known-shape residue (rules table); marks durable rows `keep-durable`; includes track docs/artifacts; everything else `needs-disposition`. |
 | eval | `--check-eval <manifest>` | validates every disposition is resolved and every `delete` has a named owner; refuses `needs-disposition`; rewrites the header receipt to the resolved value. |
-| apply | `--apply <manifest>` | one batched mutation: deletes (both TSVs), class stamps, code/doc moves, doc leases, **parks (rows relocated to the pen)**; stamps the `birth_track` **closed**; runs the gate battery, including `cargo check -p <crate>` for code move targets; emits a compact, size-first report. |
+| apply | `--apply <manifest>` | one batched mutation: deletes (both TSVs), class stamps, code/doc moves, doc leases, **parks (rows relocated to the pen)**; stamps the `birth_track` **closed**; if `scripts/ci/active_track.txt` still points at the closing source/doc scope, retires it to `none` and regenerates orientation; runs the gate battery, including `cargo check -p <crate>` for code move targets; emits a compact, size-first report. |
 | clock | `--artifact-expiry` | wall-clock gate over the parking pen (`test_lifecycle_parked.tsv`) and staged-file leases (`closeout_artifacts.tsv`): INSPECT at ≥3d, FAIL at ≥7d. Standing CI gate — detects, does not delete. |
 | reap | `--decommission [--dry-run] [--all]` | actually deletes expired parked/leased assets — but **only the unambiguously safe ones**: ledger-only `cfg_test_mod::*` markers (drop the pen row), dedicated unshared test files under `crates/*/tests/**`, and narrow result/review/manifest docs under `docs/tests/`. Refuses and reports anything risky — inline/src unit tests, shared test files, non-reapable docs, code awaiting rehome — for manual handling. `--all` reaps every parked row, not just past-the-wall ones. |
 | guard | `--deletion-guard <base> <head>` | a removed inventory row is lawful only if its `birth_track` was `closed` **at base**, or this PR is itself the closeout (closed at head **and** the diff carries both `docs/tests/<track>_closeout_report.md` and `docs/tests/<track>_closeout_manifest.tsv`) → otherwise FAIL. Hand-flipping `status=closed` in the same PR as the deletion is a bypass and is blocked. cfg-marker ledger sweeps exempt. |
@@ -70,6 +70,10 @@ Not every PR ladder needs closeout. But **every rung that declares a definitive 
 `--apply` to rubber-stamp it** (the `birth_track` → `closed` transition is that stamp), and any PR that
 deletes existing tests is checked by `--deletion-guard`. Invoke `--discover` any time to surface
 closure debt without opening a track. Windows/CRLF-safe: all TSV I/O is BOM/`\r\n`-normalized.
+
+Active orientation is local-agent-owned: `--apply` mutates `active_track.txt` only when the current pointer
+belongs to the closing track's source/doc scope; unrelated active tracks are left alone. GHA/webchat verify the
+committed result with `gen_orientation.sh --check`; choosing the next active production mission remains DA/operator work.
 
 ## Report shape
 
