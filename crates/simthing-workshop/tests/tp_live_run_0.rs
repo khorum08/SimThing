@@ -639,14 +639,18 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
         other => panic!("expected BoundaryRequest::AttachOverlay, got {other:?}"),
     }
 
-    // --- RF combat economics (primary = real-adapter accumulator transfer) ---
+    // --- RF combat economics (0R2: precise, non-overclaimed) ---
+    // Accounting: num_ships is per combat enrollment (seeded 1.0), not fleet-level aggregation.
     assert!(!report.rf_combat.transfer_ids.is_empty());
     assert!(report.rf_combat.ships.len() >= 2);
     for ship in &report.rf_combat.ships {
         assert!(!ship.incoming_damage_property.is_empty());
         assert!(!ship.hull_deficit_band_property.is_empty());
         assert!(ship.damage_to_kill_1_hull > 0.0);
-        assert_eq!(ship.num_ships_seed, 1.0);
+        assert_eq!(
+            ship.num_ships_seed, 1.0,
+            "num_ships is per-enrollment ship-object count in this proof"
+        );
     }
 
     let mut combat_session = open_combat_session(&pack, &report);
@@ -706,24 +710,57 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
         property_amount_col(&registry, "tp", &terran_flow.hull_deficit_band_property);
     let pirate_hull_col =
         property_amount_col(&registry, "tp", &pirate_flow.hull_deficit_band_property);
-    let terran_num_ships_col = property_amount_col(
+    let num_ships_col = property_amount_col(
         &registry,
         TP_RF_COMBAT_PROPERTY_NAMESPACE,
         TP_RF_COMBAT_NUM_SHIPS_PROPERTY,
     );
-    let pirate_num_ships_col = terran_num_ships_col; // same property id on both ships
-    let terran_destroyed_col = property_amount_col(
+    let destroyed_col = property_amount_col(
         &registry,
         TP_RF_COMBAT_PROPERTY_NAMESPACE,
         TP_RF_COMBAT_DESTROYED_SHIPS_PROPERTY,
     );
-    let pirate_destroyed_col = terran_destroyed_col;
-    let terran_dtk_col = property_amount_col(
+    let dtk_col = property_amount_col(
         &registry,
         TP_RF_COMBAT_PROPERTY_NAMESPACE,
         TP_RF_COMBAT_DTK_PROPERTY,
     );
-    let pirate_dtk_col = terran_dtk_col;
+
+    // Cross-opponent RF transfer proof (slot + column identity, not name-only).
+    let mut has_t_to_p = false;
+    let mut has_p_to_t = false;
+    for reg in &transfers {
+        let src = reg.source_slot.raw();
+        let dst = reg.target_slot.raw();
+        assert_ne!(
+            (src, reg.source_col.raw()),
+            (dst, reg.target_col.raw()),
+            "RF transfer must not be same-cell identity"
+        );
+        assert_ne!(src, dst, "cross-opponent combat requires source_slot != target_slot");
+        if src == terran_slot && dst == pirate_slot {
+            assert_eq!(
+                reg.source_col.raw() as u32,
+                terran_weapon_col,
+                "Terran→Pirate source must be Terran weapon/incoming_damage"
+            );
+            assert_eq!(
+                reg.target_col.raw() as u32,
+                pirate_hull_col,
+                "Terran→Pirate target must be Pirate hull-deficit/DTK band"
+            );
+            has_t_to_p = true;
+        }
+        if src == pirate_slot && dst == terran_slot {
+            assert_eq!(reg.source_col.raw() as u32, pirate_weapon_col);
+            assert_eq!(reg.target_col.raw() as u32, terran_hull_col);
+            has_p_to_t = true;
+        }
+    }
+    assert!(
+        has_t_to_p && has_p_to_t,
+        "must have Terran damage→Pirate hull and Pirate damage→Terran hull RF transfers"
+    );
 
     let flat0 = combat_session.state.read_values();
     let terran_weapon_seed = pack
@@ -753,23 +790,26 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
         pirate_weapon_seed.to_bits()
     );
     assert_eq!(
-        flat0[cell_index(terran_slot, terran_num_ships_col, n_dims)].to_bits(),
+        flat0[cell_index(terran_slot, num_ships_col, n_dims)].to_bits(),
         1.0f32.to_bits()
     );
     assert_eq!(
-        flat0[cell_index(pirate_slot, pirate_num_ships_col, n_dims)].to_bits(),
+        flat0[cell_index(pirate_slot, num_ships_col, n_dims)].to_bits(),
         1.0f32.to_bits()
     );
     assert_eq!(
-        flat0[cell_index(terran_slot, terran_dtk_col, n_dims)].to_bits(),
+        flat0[cell_index(terran_slot, dtk_col, n_dims)].to_bits(),
         terran_flow.damage_to_kill_1_hull.to_bits()
     );
     assert_eq!(
-        flat0[cell_index(pirate_slot, pirate_dtk_col, n_dims)].to_bits(),
+        flat0[cell_index(pirate_slot, dtk_col, n_dims)].to_bits(),
         pirate_flow.damage_to_kill_1_hull.to_bits()
     );
 
-    // PRIMARY: multi-tick real-adapter RF accumulator transfer (weapon → hull deficit band).
+    // Weapon semantics: stored damage budget drained by SubtractFromSource.
+    // Test harness reinstalls per-tick production equal to DTK so multi-tick RF
+    // can fill the kill band without claiming a permanent RF production opcode.
+    // PRIMARY: real-adapter RF accumulator transfer (weapon → hull deficit band).
     let gpu_regs = discrete_transfer_registrations_to_transfer(&transfers);
     let mut isolated = WorldGpuState::new(
         GpuContext::new_blocking().expect("gpu for RF combat"),
@@ -783,6 +823,11 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
     let pipelines = Pipelines::new(&isolated.ctx);
     let mut gpu_flat = flat0.clone();
     for _tick in 0..TP_LIVE_RUN_MIN_TICKS {
+        // Harness reinstall: per-tick damage production into weapon source (not RF engine).
+        gpu_flat[cell_index(terran_slot, terran_weapon_col, n_dims)] =
+            terran_flow.damage_to_kill_1_hull;
+        gpu_flat[cell_index(pirate_slot, pirate_weapon_col, n_dims)] =
+            pirate_flow.damage_to_kill_1_hull;
         isolated.install_resolved_values_at_boundary(&gpu_flat);
         let mut transfer_session = isolated
             .accumulator_runtime
@@ -815,11 +860,12 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
     let hull_t = gpu_flat[cell_index(terran_slot, terran_hull_col, n_dims)];
     let hull_p = gpu_flat[cell_index(pirate_slot, pirate_hull_col, n_dims)];
     assert!(
-        hull_t > 0.0 || hull_p > 0.0,
-        "RF transfer must fill hull-deficit / damage-to-kill band: terran={hull_t} pirate={hull_p}"
+        hull_t > 0.0 && hull_p > 0.0,
+        "RF damage-band fill PASS both sides: terran={hull_t} pirate={hull_p}"
     );
 
-    // RF emission-band law over transfer-filled columns (not a combat subsystem).
+    // SECONDARY: workshop-homed emission-band settlement over transfer-filled columns.
+    // Not claimed as generic on-device RF emission of destroyed_ships.
     let destroyed_t = rf_emission_band_destroyed_ships(
         hull_t,
         terran_flow.damage_to_kill_1_hull,
@@ -830,52 +876,87 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
         pirate_flow.damage_to_kill_1_hull,
         pirate_flow.num_ships_seed,
     );
-    // With multi-tick damage accumulation, at least one side's band must emit a kill when
-    // filled to dtk (weapon_damage * ticks can exceed capacity).
     let num_ships_t = rf_num_ships_after_emission(terran_flow.num_ships_seed, destroyed_t);
     let num_ships_p = rf_num_ships_after_emission(pirate_flow.num_ships_seed, destroyed_p);
     assert!(
-        destroyed_t > 0.0 || destroyed_p > 0.0 || hull_t > 0.0 || hull_p > 0.0,
-        "RF combat flow must produce damage-band fill and/or destroyed_ships emission"
+        destroyed_t > 0.0 || destroyed_p > 0.0,
+        "non-vacuous destroyed_ships emission required after DTK-fill: t={destroyed_t} p={destroyed_p} hull=({hull_t},{hull_p}) dtk=({},{})",
+        terran_flow.damage_to_kill_1_hull,
+        pirate_flow.damage_to_kill_1_hull
     );
-    // Write emission-band outputs into RF casualty columns (flow-derived settlement).
-    gpu_flat[cell_index(terran_slot, terran_destroyed_col, n_dims)] = destroyed_t;
-    gpu_flat[cell_index(pirate_slot, pirate_destroyed_col, n_dims)] = destroyed_p;
-    gpu_flat[cell_index(terran_slot, terran_num_ships_col, n_dims)] = num_ships_t;
-    gpu_flat[cell_index(pirate_slot, pirate_num_ships_col, n_dims)] = num_ships_p;
     assert!(
-        num_ships_t <= terran_flow.num_ships_seed && num_ships_p <= pirate_flow.num_ships_seed,
-        "destroyed_ships emission must not increase num_ships"
+        num_ships_t < terran_flow.num_ships_seed || num_ships_p < pirate_flow.num_ships_seed,
+        "destroyed_ships must deplete per-enrollment num_ships: t {num_ships_t} p {num_ships_p}"
     );
+    // Flow-derived workshop settlement writeback (not generic RF accumulator emission).
+    gpu_flat[cell_index(terran_slot, destroyed_col, n_dims)] = destroyed_t;
+    gpu_flat[cell_index(pirate_slot, destroyed_col, n_dims)] = destroyed_p;
+    gpu_flat[cell_index(terran_slot, num_ships_col, n_dims)] = num_ships_t;
+    gpu_flat[cell_index(pirate_slot, num_ships_col, n_dims)] = num_ships_p;
 
-    // CPU oracle is parity-only against the same RF transfer registrations.
-    let mut cpu_flat = flat0.clone();
-    for _tick in 0..TP_LIVE_RUN_MIN_TICKS {
-        run_transfer_recipe_cpu_oracle(&mut cpu_flat, n_dims, &transfers, &[])
-            .expect("cpu RF transfer oracle tick");
-    }
+    // CPU oracle parity-only against the same RF transfer registrations (one step, same seed).
+    let mut cpu_one = flat0.clone();
+    cpu_one[cell_index(terran_slot, terran_weapon_col, n_dims)] = terran_flow.damage_to_kill_1_hull;
+    cpu_one[cell_index(pirate_slot, pirate_weapon_col, n_dims)] = pirate_flow.damage_to_kill_1_hull;
+    run_transfer_recipe_cpu_oracle(&mut cpu_one, n_dims, &transfers, &[])
+        .expect("cpu RF transfer oracle one-step");
+    let mut gpu_one = flat0.clone();
+    gpu_one[cell_index(terran_slot, terran_weapon_col, n_dims)] = terran_flow.damage_to_kill_1_hull;
+    gpu_one[cell_index(pirate_slot, pirate_weapon_col, n_dims)] = pirate_flow.damage_to_kill_1_hull;
+    isolated.install_resolved_values_at_boundary(&gpu_one);
+    let mut transfer_session = isolated
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .take_transfer_session();
+    pipelines.run_tick_pipeline_with_accumulators(
+        &mut isolated,
+        1.0,
+        AccumulatorPipelineSessions {
+            intent: None,
+            threshold: None,
+            overlay_add: None,
+            reduction_soft: None,
+            velocity: None,
+            intensity_eml: None,
+            transfer: transfer_session.as_mut(),
+            emission: None,
+            encode_world_summary: false,
+        },
+    );
+    isolated
+        .accumulator_runtime
+        .as_mut()
+        .unwrap()
+        .restore_transfer_session(transfer_session);
+    let gpu_one_out = isolated.read_values();
     for &(slot, col) in &[
         (terran_slot, terran_hull_col),
         (pirate_slot, pirate_hull_col),
     ] {
         assert_eq!(
-            cpu_flat[cell_index(slot, col, n_dims)].to_bits(),
-            gpu_flat[cell_index(slot, col, n_dims)].to_bits(),
+            cpu_one[cell_index(slot, col, n_dims)].to_bits(),
+            gpu_one_out[cell_index(slot, col, n_dims)].to_bits(),
             "CPU oracle parity-only on RF transfer hull-band slot={slot} col={col}"
         );
     }
 
-    // Overlay filters: combat modifiers only as OverlaySpec on weapon/hull (if present).
-    for overlay_id in &report.rf_combat.overlay_filter_ids {
-        assert!(
-            pack.game_mode
-                .overlays
-                .iter()
-                .any(|o| o.id == *overlay_id
-                    && (o.targets_property.contains("weapon")
-                        || o.targets_property.contains("hull"))),
-            "overlay filter {overlay_id} must target weapon/hull RF columns"
-        );
+    // Overlay-filter boundary: no combat modifier overlay authored on this path → structural only.
+    // Non-vacuous modifier effect is not claimed when inventory is empty.
+    if report.rf_combat.overlay_filter_ids.is_empty() {
+        // Structural restriction still holds: any future combat overlays must target RF columns.
+        // Proven by composition filter; no non-vacuous effect asserted here.
+    } else {
+        for overlay_id in &report.rf_combat.overlay_filter_ids {
+            assert!(
+                pack.game_mode.overlays.iter().any(|o| {
+                    o.id == *overlay_id
+                        && (o.targets_property.contains("weapon")
+                            || o.targets_property.contains("hull"))
+                }),
+                "overlay filter {overlay_id} must target weapon/hull RF columns"
+            );
+        }
     }
     let _ = combat_session;
 }

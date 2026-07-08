@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present / clearance-pending (0R).** STEAD/RF combat refactor applied; orchestrator/DA review required before merge.
+**PROBATION / proof-present / clearance-pending (0R2).** RF combat semantics tightened; orchestrator/DA review required before merge.
 
 ## Identity
 
@@ -65,20 +65,34 @@ D1/D2 ingested: all conflict is RF accumulator economics and overlay filters. Co
 
 ## Combat-resolution proof
 
-Combat is proven as RF accumulator economics over admitted ship SimThings. The primary mutation is produced by real-adapter accumulator execution of damage flow into a hull-deficit / damage-to-kill emission band, which emits destroyed_ships and affects num_ships. CPU oracle is parity-only.
+TP-LIVE-RUN-0R2 proves RF-shaped combat inside the scenario envelope: real-adapter RF transfer fills the hull-deficit / damage-to-kill band, and workshop-homed emission-band settlement computes destroyed_ships and num_ships from that RF output. Generic on-device RF emission of destroyed_ships remains a named substrate opportunity, not claimed as completed substrate.
 
 RF shape asserted:
 
-- weapon / incoming damage column
+- weapon / incoming damage column (stored damage budget; SubtractFromSource drains it)
 - hull deficit / damage-to-kill band column
 - `damage_to_kill_1_hull` price column
-- `num_ships` column
-- `destroyed_ships` emission column
-- RF transfer registrations connect admitted ship slots (weapon→hull)
+- `num_ships` column (per-enrollment)
+- `destroyed_ships` column (workshop settlement writeback after RF fill)
+- cross-opponent RF transfers: Terran weapon slot→Pirate hull slot and reverse (`source_slot != target_slot`)
 
-## Overlay-filter proof
+Weapon multi-tick semantics: harness reinstalls per-tick damage production equal to DTK into the weapon source so multi-tick RF can fill the kill band. That reinstall is **test-harness production input**, not a claimed permanent RF production opcode.
 
-Combat modifiers are represented as overlay / EML filters on the RF flow, not branch logic. No owner-specific combat branch, CPU planner, manual HP resolver, or zero-HP removal subsystem is introduced. Overlay filter ids targeting weapon/hull are inventoried when present.
+## Overlay-filter proof / boundary
+
+No combat modifier overlay is authored on the `terran_pirate_galaxy` combat path. Overlay-filter proof is **structural only**: composition restricts discovered combat-related overlays to weapon/hull RF columns, but non-vacuous modifier effect is **not** claimed.
+
+## 0R2 semantic tightening
+
+This PR proves RF-shaped combat in the scenario envelope. Real-adapter RF transfer fills the hull-deficit / damage-to-kill band. Workshop-homed emission-band settlement computes destroyed_ships and num_ships from that RF output. Generic on-device RF emission of destroyed_ships is not claimed and remains a named substrate opportunity.
+
+## Accounting boundary
+
+`num_ships` is the per combat enrollment ship-object count, seeded to 1.0. Fleet/cohort-scale aggregation of ship counts is not claimed unless the test asserts that aggregation (it does not).
+
+## RF → STEAD coupling boundary
+
+Combat RF and theater front RF are both derived from the full TP fixture and authority tree, but exercised in focused sessions. This PR does **not** prove casualty output reduces up into ArenaPressureBinding on the next STEAD tick. That coupling remains DA-accepted TP-LIVE-RUN-0 scope residue / closeout Deviation candidate.
 
 ## STEAD commitment proof
 
@@ -105,9 +119,11 @@ Source scan of live-run helper + test forbids:
 - Workshop-only Mechanism B composition (scenario envelope).
 - No kernel / WGSL / orientation / atlas scheduler / new AccumulatorRole.
 
-## 0R note
+## 0R / 0R2 notes
 
-0R: refactored combat proof from CPU hull-change oracle into STEAD/RF conflict economics. Hull HP is treated as the damage-to-kill band; incoming damage fills that deficit; destroyed_ships is emitted and applied through RF/overlay structure. BoundaryRequest proof tightened and tautological fallback removed.
+0R: refactored combat proof from CPU hull-change oracle into STEAD/RF conflict economics. Hull HP is treated as the damage-to-kill band; incoming damage fills that deficit; destroyed_ships is workshop-settled from RF output. BoundaryRequest proof tightened.
+
+0R2: cross-opponent slot proof; non-vacuous destroyed_ships + num_ships depletion; accounting/overlay/RF→STEAD boundaries explicit; weapon source = budget + harness per-tick production reinstall documented; no overclaim of generic GPU emission.
 
 ## Rustification / lifecycle
 
