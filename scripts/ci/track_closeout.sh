@@ -95,7 +95,7 @@ AUTOCLEAR = SCRIPT_DIR / "closeout_autoclear.tsv"
 ARTIFACT_LEDGER = SCRIPT_DIR / "closeout_artifacts.tsv"
 PARKED = SCRIPT_DIR / "test_lifecycle_parked.tsv"
 ACTIVE_TRACK = SCRIPT_DIR / "active_track.txt"
-DEFAULT_ACTIVE_TRACK = "docs/design_0_0_8_4_7_orchestration_harness.md"
+NO_ACTIVE_TRACK = "none"
 ACTIVE_TRACK_COMMENT = "# Active track design doc for orientation Next-Rung pointer. Update on track open/close."
 
 INVENTORY_HEADER = [
@@ -320,6 +320,13 @@ def read_active_track_pointer() -> dict:
         raw = line.strip()
         if not raw or raw.startswith("#"):
             continue
+        if raw == NO_ACTIVE_TRACK:
+            return {
+                "exists": True,
+                "path": NO_ACTIVE_TRACK,
+                "raw": raw,
+                "reason": "no-active-track",
+            }
         rel = clean_repo_relpath(raw)
         return {
             "exists": True,
@@ -334,6 +341,8 @@ def active_track_validation_error(info: dict) -> str:
     if not info.get("exists"):
         return ""
     rel = info.get("path", "")
+    if rel == NO_ACTIVE_TRACK:
+        return ""
     if not rel:
         return info.get("reason") or "empty"
     if not rel.startswith("docs/"):
@@ -383,6 +392,9 @@ def plan_active_track_retirement(track: str, track_source: str, rows: list, live
     if not info.get("exists"):
         result["reason"] = "missing"
         return result
+    if info.get("path") == NO_ACTIVE_TRACK:
+        result["reason"] = "no-active-track"
+        return result
 
     owned = set()
     source_rel = clean_repo_relpath(track_source)
@@ -401,24 +413,20 @@ def plan_active_track_retirement(track: str, track_source: str, rows: list, live
         result.update({
             "retired": "yes",
             "from": current,
-            "to": DEFAULT_ACTIVE_TRACK,
+            "to": NO_ACTIVE_TRACK,
             "reason": "owned-by-closing-track",
         })
     else:
-        result["reason"] = "not-owned-by-closing-track"
+        result["reason"] = "current pointer not owned by closing track"
     return result
 
 
 def apply_active_track_retirement(plan: dict) -> None:
     if plan.get("retired") != "yes":
         return
-    target = plan.get("to", DEFAULT_ACTIVE_TRACK)
-    if not clean_repo_relpath(target) or not target.startswith("docs/") or pathlib.PurePosixPath(target).suffix != ".md":
+    target = plan.get("to", NO_ACTIVE_TRACK)
+    if target != NO_ACTIVE_TRACK:
         print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(harness-error) active_track_target_invalid={target!r}",
-              file=sys.stderr)
-        sys.exit(1)
-    if not (ROOT / target).is_file():
-        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(harness-error) active_track_target_missing={target!r}",
               file=sys.stderr)
         sys.exit(1)
     write_active_track_pointer(target)
@@ -923,10 +931,6 @@ def cmd_apply():
               f"active_track_reason={active_err}", file=sys.stderr)
         sys.exit(1)
     active_track_plan = plan_active_track_retirement(track, track_source, rows, live_doc_paths)
-    if active_track_plan.get("retired") == "yes" and not (ROOT / DEFAULT_ACTIVE_TRACK).is_file():
-        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(harness-error) "
-              f"active_track_target_missing={DEFAULT_ACTIVE_TRACK!r}", file=sys.stderr)
-        sys.exit(1)
 
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
     if art_hdr is None:
@@ -1485,6 +1489,13 @@ def cmd_prove():
         else:
             print(f"  PASS {label}")
 
+    def first_payload_line(path: pathlib.Path) -> str:
+        for line in norm_bytes(path.read_bytes()).splitlines():
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                return stripped
+        return ""
+
     print("TRACK-CLOSEOUT PROVE")
 
     # receipt determinism + body-only sensitivity
@@ -1532,7 +1543,6 @@ def cmd_prove():
         (sb / "scripts" / "ci").mkdir(parents=True)
         (sb / "docs" / "tests").mkdir(parents=True)
         (sb / "docs" / "sb.md").write_text("# sb design\n", encoding="utf-8")
-        (sb / "docs" / "design_0_0_8_4_7_orchestration_harness.md").write_text("# fallback\n", encoding="utf-8")
         (sb / "docs" / "tests" / "sb_results.md").write_text("# sb results\n", encoding="utf-8")
         (sb / "docs" / "tests" / "manual_results.md").write_text("# manual\n", encoding="utf-8")
         # minimal fixtures
@@ -1679,13 +1689,17 @@ def cmd_prove():
         active_path = sb / "scripts/ci/active_track.txt"
         active_path.write_text(f"{ACTIVE_TRACK_COMMENT}\nC:/not/repo.md\n", encoding="utf-8")
         inv_before_bad_active = norm_bytes((sb / "scripts/ci/test_inventory.tsv").read_bytes())
+        tracks_before_bad_active = norm_bytes((sb / "scripts/ci/test_lifecycle_tracks.tsv").read_bytes())
+        active_before_bad_active = norm_bytes(active_path.read_bytes())
         r_bad_active = run("--apply", manifest_rel)
         check("apply-invalid-active-track-harness-error",
               r_bad_active.returncode != 0
               and "FAIL(harness-error)" in r_bad_active.stderr
               and "active_track_reason=invalid-path" in r_bad_active.stderr)
         check("apply-invalid-active-track-pre-mutation",
-              norm_bytes((sb / "scripts/ci/test_inventory.tsv").read_bytes()) == inv_before_bad_active)
+              norm_bytes((sb / "scripts/ci/test_inventory.tsv").read_bytes()) == inv_before_bad_active
+              and norm_bytes((sb / "scripts/ci/test_lifecycle_tracks.tsv").read_bytes()) == tracks_before_bad_active
+              and norm_bytes(active_path.read_bytes()) == active_before_bad_active)
         active_path.write_text(f"{ACTIVE_TRACK_COMMENT}\ndocs/sb.md\n", encoding="utf-8")
 
         r_apply = run("--apply", manifest_rel)
@@ -1710,8 +1724,9 @@ def cmd_prove():
         check("apply-report-written", (sb / "docs/tests/sb-track_closeout_report.md").exists())
         report_text = norm_bytes((sb / "docs/tests/sb-track_closeout_report.md").read_bytes())
         check("apply-active-track-retired",
-              DEFAULT_ACTIVE_TRACK in norm_bytes(active_path.read_bytes())
-              and "active_track_retired: **yes**" in report_text)
+              first_payload_line(active_path) == NO_ACTIVE_TRACK
+              and "active_track_retired: **yes**" in report_text
+              and f"active_track_to: `{NO_ACTIVE_TRACK}`" in report_text)
         check("apply-active-track-regenerated-orientation",
               (sb / "docs/orchestrator_orientation.md").exists())
         check("apply-source-doc-archived", (sb / "docs/archive/sb.md").exists())
@@ -1766,6 +1781,68 @@ def cmd_prove():
         check("apply-unknown-track-harness-error",
               r_unk.returncode != 0 and "FAIL(harness-error)" in r_unk.stderr)
 
+    # active pointer already unset is a valid successful no-op.
+    with tempfile.TemporaryDirectory() as ntmp:
+        nr = pathlib.Path(ntmp)
+        (nr / "scripts/ci").mkdir(parents=True)
+        (nr / "docs/tests").mkdir(parents=True)
+        (nr / "docs/none_track.md").write_text("# none track\n", encoding="utf-8")
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", nr / "scripts/ci/track_closeout.sh")
+        write_tsv(nr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
+            {"crate": "c", "file": "crates/c/tests/none.rs", "test_name": "golden",
+             "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "birth_track": "none-track", "dsu_survivals": "0"},
+        ])
+        write_tsv(nr / "scripts/ci/test_lifecycle_boundary_rows.tsv", BOUNDARY_ROWS_HEADER, [])
+        write_tsv(nr / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
+            {"track_id": "none-track", "status": "open", "closed_at": "-", "source": "docs/none_track.md", "note": "x"},
+        ])
+        write_tsv(nr / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
+            {"promotion_target": "permanent-residue:golden-byte"},
+        ])
+        (nr / "scripts/ci/active_track.txt").write_text(
+            f"{ACTIVE_TRACK_COMMENT}\n{NO_ACTIVE_TRACK}\n", encoding="utf-8")
+        n_rows = [
+            {"asset_kind": "inventory-row", "ref": "c::crates/c/tests/none.rs::golden::integration",
+             "crate": "c", "file": "crates/c/tests/none.rs", "test_name": "golden", "kind": "integration",
+             "current_class": "golden-byte", "birth_track": "none-track", "disposition": "keep-durable",
+             "target": "", "owner": "", "note": "keep"},
+            doc_manifest_row("none-track", "docs/none_track.md", "keep-durable", "source"),
+        ]
+        body = io.StringIO()
+        w = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
+        w.writeheader()
+        for row in n_rows:
+            w.writerow(row)
+        n_receipt = closeout_receipt(body.getvalue())
+        n_manifest = nr / "docs/tests/none-track_closeout_manifest.tsv"
+        n_manifest.write_bytes((
+            "# track_closeout manifest\n"
+            "# track: none-track\n"
+            f"# CLOSEOUT-RECEIPT: {n_receipt}\n"
+            "# role: prove\n"
+            + body.getvalue()
+        ).encode("utf-8"))
+
+        def nrun(*a):
+            return subprocess.run([BASH, "scripts/ci/track_closeout.sh", *a],
+                                  capture_output=True, text=True, cwd=str(nr),
+                                  env={**os.environ, "TRACK_CLOSEOUT_NOW": "2026-07-07"})
+
+        nrun("--check-eval", "docs/tests/none-track_closeout_manifest.tsv")
+        r_none = nrun("--apply", "docs/tests/none-track_closeout_manifest.tsv")
+        n_report = nr / "docs/tests/none-track_closeout_report.md"
+        n_report_text = norm_bytes(n_report.read_bytes()) if n_report.exists() else ""
+        _, n_tracks_after = read_tsv(nr / "scripts/ci/test_lifecycle_tracks.tsv")
+        check("apply-none-active-track-noop",
+              "APPLY-VERDICT:" in r_none.stdout
+              and first_payload_line(nr / "scripts/ci/active_track.txt") == NO_ACTIVE_TRACK
+              and any(t["track_id"] == "none-track" and t["status"] == "closed" for t in n_tracks_after))
+        check("apply-none-active-track-report",
+              "active_track_retired: **no**" in n_report_text
+              and "active_track_reason: `no-active-track`" in n_report_text)
+
     # active pointer not owned by the closing manifest must not be hijacked.
     with tempfile.TemporaryDirectory() as atmp:
         ar = pathlib.Path(atmp)
@@ -1773,7 +1850,6 @@ def cmd_prove():
         (ar / "docs/tests").mkdir(parents=True)
         (ar / "docs/quiet.md").write_text("# quiet\n", encoding="utf-8")
         (ar / "docs/other_active.md").write_text("# other\n", encoding="utf-8")
-        (ar / "docs/design_0_0_8_4_7_orchestration_harness.md").write_text("# fallback\n", encoding="utf-8")
         shutil.copy(SCRIPT_DIR / "track_closeout.sh", ar / "scripts/ci/track_closeout.sh")
         write_tsv(ar / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
             {"crate": "c", "file": "crates/c/tests/quiet.rs", "test_name": "golden",
@@ -1826,7 +1902,7 @@ def cmd_prove():
         check("apply-unowned-active-track-report",
               q_report.exists()
               and "active_track_retired: **no**" in norm_bytes(q_report.read_bytes())
-              and "not-owned-by-closing-track" in norm_bytes(q_report.read_bytes())
+              and "current pointer not owned by closing track" in norm_bytes(q_report.read_bytes())
               and "APPLY-VERDICT:" in r_unowned.stdout)
 
     # deletion-guard: a git-backed repo where an OPEN-track row is removed must FAIL,
