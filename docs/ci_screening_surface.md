@@ -67,13 +67,13 @@ Every `pull_request` and every `push` runs the **Doctrine Scan** GitHub Actions 
 ```
 checkout → ensure rg (preinstalled + apt fallback)
   → digest freshness (gen_digest.sh --check)  # stale sanctioned_surface.md hard-FAILs with regenerate remedy
+  → orientation freshness (gen_orientation.sh --check)  # stale orchestrator_orientation.md hard-FAILs with regenerate/open remedy
   → self-test        (doctrine_selftest.sh)      # prove the scanner still catches its known-bads, or the whole run FAILs
   → PR-delta scan    (doctrine_pr_scan.sh)        # on pull_request: RELIABLE whole-tree, HEURISTIC on the diff only
   → spam check       (inspect_spam_check.sh)      # §1A hill-climbing bounds
   → whole-tree scan  (doctrine_scan.sh)           # on push to master: the positive control
   → publish report   (job summary + artifact)
 ```
-
 **Three verdicts, never two** (residue-as-tripwire applied to the scanner):
 
 | Verdict | Meaning | Blocks? | Routes to |
@@ -116,9 +116,9 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | `inspect_spam_check.sh` | the §1A hill-climbing bounds → `INSPECT-SPAM-CHECK: SPAM|OK` |
 | `audit_kernel_surface.py` / `verify_kernel_surface.py` | re-derive / diff `kernel_surface.txt` against `lib.rs` (both `pub use` forms) |
 | `gen_digest.sh` | regenerates / `--check`-verifies `docs/sanctioned_surface.md` (the global sanctioned-surface digest) against the live scans + allowlists — CI-enforced freshness |
+| `gen_orientation.sh` | regenerates / `--check`-verifies `docs/orchestrator_orientation.md` from `active_track.txt`, the active design doc, clearance data, relay lint, and anchors; `--open <track.md>` is the local/operator entrypoint for setting or creating the active orchestration track |
 | `fixtures/` | known-bad inputs (one per RELIABLE scan) + false-positive traps + HEURISTIC production negative controls; `fixtures/README.md` maps fixture → scan → expected verdict |
 | `.github/workflows/doctrine-scan.yml` | the authoritative gate (runs entirely on GitHub) |
-
 ### Test-corpus lifecycle & inventory tooling (the Rustified Test Lifecycle surface)
 
 The test corpus is governed as data, not by ad-hoc judgment. These files + checks are the operator surface of the
