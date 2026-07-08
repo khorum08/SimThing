@@ -2,14 +2,17 @@
 
 ## Status
 
-**PROBATION / proof-present / clearance-pending (0R2).** RF combat semantics tightened; orchestrator/DA review required before merge.
+**DA-GRADUATED / COMPLETE (0R2)** — merged [#1217](https://github.com/khorum08/SimThing/pull/1217) @ `f42b4d28d713f3cf3ce752dcd7671889fcd658d3` (head `3a3eba9b7f2a3682eb300c0635efe9ebb87ced31`). DA acceptance 2026-07-08 (Option A).
 
 ## Identity
 
 | Field | Value |
 |---|---|
-| Rung | `TP-LIVE-RUN-0` (+ 0R RF combat) |
+| Rung | `TP-LIVE-RUN-0` (+ 0R / 0R2 RF combat) |
+| PR | [#1217](https://github.com/khorum08/SimThing/pull/1217) |
 | Branch | `codex/tp-live-run-0` |
+| Merge SHA | `f42b4d28d713f3cf3ce752dcd7671889fcd658d3` |
+| tested_code_sha | `3a3eba9b7f2a3682eb300c0635efe9ebb87ced31` |
 | Source scenario | `terran_pirate_galaxy.clause` (TP-FULL-TRANSPILE-0 fixture) |
 | Helper | `crates/simthing-workshop/src/live_run_post_hydration.rs` |
 | Test | `crates/simthing-workshop/tests/tp_live_run_0.rs` |
@@ -155,5 +158,15 @@ Generic RF emission primitive that writes destroyed_ships directly from floor(hu
 | Field | Value |
 |---|---|
 | Risk class | semantic + gpu (real adapter) + RF doctrine |
-| Recommended posture | PROBATION → clearance router |
+| CI | doctrine-scan PASS at head `3a3eba9b7f` |
+| Clearance | `DA-RESERVE(novelty)` → **DA graduated (Option A)** |
+| Recommended posture | COMPLETE — next `TP-DA-CLOSEOUT-0` |
 | Falsification | drop rebind / zero pressure change / no commitment BoundaryRequest / no RF hull-band fill / CPU-primary combat → FAIL |
+
+## Closeout residue (mandatory ledger inputs for TP-DA-CLOSEOUT-0)
+
+- Generic GPU `destroyed_ships` emission primitive (substrate opportunity; not claimed)
+- Casualty → next STEAD `ArenaPressureBinding` coupling (composed-session boundary; Deviation candidate)
+- Non-vacuous authored combat overlay effect (structural-only on this path)
+- Dense full-galaxy Movement-Front atlas Deviation
+- Workshop emission-band settlement as scenario-envelope residue (default-delete / nominate, not auto-canonize)
