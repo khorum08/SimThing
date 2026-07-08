@@ -2,14 +2,17 @@
 
 ## Status
 
-**PROBATION / proof-present / clearance-pending.** Implementation complete; orchestrator/DA review required before merge.
+**DA-GRADUATED / COMPLETE** — merged [#1215](https://github.com/khorum08/SimThing/pull/1215) @ `f8eb38154430a9e0c03ee1fc734ab77ee57b41f4` (head `3a59b9c5af1cd7ef671d15b0ab4de75a2d21a98d`). DA acceptance 2026-07-08 (Option A: placement/link re-bind deferred to TP-LIVE-RUN-0).
 
 ## Identity
 
 | Field | Value |
 |---|---|
 | Rung | `TP-FULL-TRANSPILE-0` |
+| PR | [#1215](https://github.com/khorum08/SimThing/pull/1215) |
 | Branch | `codex/tp-full-transpile-0` |
+| Merge SHA | `f8eb38154430a9e0c03ee1fc734ab77ee57b41f4` |
+| tested_code_sha | `3a59b9c5af1cd7ef671d15b0ab4de75a2d21a98d` |
 | Fixture | `crates/simthing-clausething/tests/fixtures/scenario/terran_pirate_galaxy.clause` |
 | Test | `crates/simthing-clausething/tests/tp_full_transpile_0.rs` |
 | birth_track | `0.0.8.5-terran-pirate` |
@@ -106,6 +109,7 @@ TP-DA-CLOSEOUT-0 remains after live-run evidence.
 | Field | Value |
 |---|---|
 | Risk class | data-deliverable / scenario-envelope integration |
-| CI | Doctrine Scan required green |
-| Recommended posture | PROBATION → orchestrator clearance or DA as router emits |
+| CI | doctrine-scan PASS; doctrine-exec PASS at head `3a59b9c5af` |
+| Clearance | `DA-RESERVE(novelty)` → **DA graduated (Option A)** |
+| Recommended posture | COMPLETE — next `TP-LIVE-RUN-0` |
 | Falsification | delete fixture or break hydrate → test FAIL |
