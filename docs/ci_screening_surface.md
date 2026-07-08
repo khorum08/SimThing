@@ -122,8 +122,8 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 ### Test-corpus lifecycle & inventory tooling (the Rustified Test Lifecycle surface)
 
 The test corpus is governed as data, not by ad-hoc judgment. These files + checks are the operator surface of the
-Rustified Test Lifecycle (§11 is the cycle walk-through; CI-scaffolding design §4.1 is the doctrine). All are
-**ledger/text analysis only — no toolchain, no build, no cargo.**
+Rustified Test Lifecycle (§11; CI-scaffolding design §4.1). Most checks are **ledger/text analysis only**; `track_closeout.sh --apply`
+mutates and may run `cargo check -p <crate>` for `elevate-code`; GHA runs proof/guard modes unless a PR author has committed the apply result.
 
 | File | Kind | What it holds / does |
 |---|---|---|
