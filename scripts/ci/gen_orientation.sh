@@ -259,6 +259,8 @@ run_selftest_existing_open() {
   cat >"${sandbox}/docs/existing_open.md" <<'EOF'
 # Existing Open
 
+This is a production track / PR ladder workplan.
+
 | # | Rung | Deliverable | Exit proof |
 |---|---|---|---|
 | 1 | `OPEN-RUNG` | Build it. | TODO: not complete. |
@@ -287,6 +289,8 @@ run_selftest_existing_closed_warns() {
   cat >"${sandbox}/docs/existing_closed.md" <<'EOF'
 # Existing Closed
 
+This is a closed production track / design track PR ladder.
+
 | # | Rung | Deliverable | Exit proof |
 |---|---|---|---|
 | 1 | `DONE-RUNG` | Built. | merged and closed. |
@@ -307,6 +311,113 @@ EOF
     return 1
   fi
   echo "PASS orientation_open_existing_closed"
+  rm -rf "$sandbox"
+  return 0
+}
+
+# A. --open rejects evidence index under docs/tests (non-workplan; no mutation)
+run_selftest_reject_evidence_index_open() {
+  local sandbox
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-open-evidence-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  mkdir -p "${sandbox}/docs/tests"
+  cat >"${sandbox}/docs/tests/current_evidence_index.md" <<'EOF'
+# Current Evidence Index
+
+This is a LIVE LEDGER of current evidence. Not a production workplan.
+
+| Guardrail | Live test | What it proves |
+|---|---|---|
+| example | crates/x/tests/y.rs | proves something |
+EOF
+  run_gen_sandbox "$sandbox" >/dev/null
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/active.before"
+  cp "${sandbox}/docs/orchestrator_orientation.md" "${sandbox}/orientation.before"
+  set +e
+  run_gen_sandbox "$sandbox" --open docs/tests/current_evidence_index.md >"${sandbox}/open.out" 2>"${sandbox}/open.err"
+  local rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -Eqi "non-workplan|FAIL\(non-workplan\)" "${sandbox}/open.out" "${sandbox}/open.err" \
+    || ! cmp -s "${sandbox}/active.before" "${sandbox}/scripts/ci/active_track.txt" \
+    || ! cmp -s "${sandbox}/orientation.before" "${sandbox}/docs/orchestrator_orientation.md"; then
+    echo "FAIL orientation_open_reject_evidence_index"
+    cat "${sandbox}/open.out" 2>/dev/null || true
+    cat "${sandbox}/open.err" 2>/dev/null || true
+    rm -rf "$sandbox"
+    return 1
+  fi
+  echo "PASS orientation_open_reject_evidence_index"
+  rm -rf "$sandbox"
+  return 0
+}
+
+# B. active_track already points at evidence index → --check fails
+run_selftest_active_evidence_index_check_fails() {
+  local sandbox
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-active-evidence-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  mkdir -p "${sandbox}/docs/tests"
+  cat >"${sandbox}/docs/tests/current_evidence_index.md" <<'EOF'
+# Current Evidence Index
+
+This is a LIVE LEDGER of current evidence.
+
+| Guardrail | Live test | What it proves |
+|---|---|---|
+| example | crates/x/tests/y.rs | proves something |
+EOF
+  cat >"${sandbox}/scripts/ci/active_track.txt" <<'EOF'
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+docs/tests/current_evidence_index.md
+EOF
+  set +e
+  run_gen_sandbox "$sandbox" --check >"${sandbox}/check.out" 2>"${sandbox}/check.err"
+  local rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -Eqi "invalid-active-track|non-workplan" "${sandbox}/check.out" "${sandbox}/check.err"; then
+    echo "FAIL orientation_active_evidence_index_check"
+    cat "${sandbox}/check.out" 2>/dev/null || true
+    cat "${sandbox}/check.err" 2>/dev/null || true
+    rm -rf "$sandbox"
+    return 1
+  fi
+  echo "PASS orientation_active_evidence_index_check"
+  rm -rf "$sandbox"
+  return 0
+}
+
+# C. real workplan opens and check passes with next rung parsed
+run_selftest_valid_workplan_opens() {
+  local sandbox
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-valid-workplan-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  cat >"${sandbox}/docs/design_valid_track.md" <<'EOF'
+# Valid Design Track
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `DONE-RUNG` | Done deliverable. | DA-GRADUATED / merged #1. |
+| 2 | `NEXT-RUNG` | Next deliverable. | TODO: still open. |
+EOF
+  if ! run_gen_sandbox "$sandbox" --open docs/design_valid_track.md >"${sandbox}/open.out"; then
+    echo "FAIL orientation_valid_workplan_open"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  if [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/design_valid_track.md" ]] \
+    || ! grep -q "ORIENTATION-OPEN-VERDICT: OPENED" "${sandbox}/open.out" \
+    || ! grep -q "Active pointer: \`NEXT-RUNG\`" "${sandbox}/docs/orchestrator_orientation.md" \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null; then
+    echo "FAIL orientation_valid_workplan_open"
+    cat "${sandbox}/open.out" 2>/dev/null || true
+    rm -rf "$sandbox"
+    return 1
+  fi
+  echo "PASS orientation_valid_workplan_open"
   rm -rf "$sandbox"
   return 0
 }
@@ -341,12 +452,16 @@ run_selftest_active_pointer_stale_check() {
   cat >"${sandbox}/docs/track_a.md" <<'EOF'
 # Track A
 
+This is a production track / PR ladder.
+
 | # | Rung | Deliverable | Exit proof |
 |---|---|---|---|
 | 1 | `A-RUNG` | A. | TODO. |
 EOF
   cat >"${sandbox}/docs/track_b.md" <<'EOF'
 # Track B
+
+This is a production track / PR ladder.
 
 | # | Rung | Deliverable | Exit proof |
 |---|---|---|---|
@@ -382,21 +497,26 @@ run_selftest() {
       SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
     fi
   done
-  local fn
-  for fn in \
-    run_selftest_active_none \
-    run_selftest_open_new_track \
-    run_selftest_existing_open \
-    run_selftest_existing_closed_warns \
-    run_selftest_invalid_open_path \
+  local open_fns=(
+    run_selftest_active_none
+    run_selftest_open_new_track
+    run_selftest_existing_open
+    run_selftest_existing_closed_warns
+    run_selftest_invalid_open_path
     run_selftest_active_pointer_stale_check
-  do
+    run_selftest_reject_evidence_index_open
+    run_selftest_active_evidence_index_check_fails
+    run_selftest_valid_workplan_opens
+  )
+  local fn
+  for fn in "${open_fns[@]}"; do
     if ! "$fn"; then
       SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
     fi
   done
+  local total=$(( ${#fixtures[@]} + ${#open_fns[@]} ))
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
-    echo "ORIENTATION-DIGEST-SELFTEST: PASS ($(( ${#fixtures[@]} + 6 )) fixtures)"
+    echo "ORIENTATION-DIGEST-SELFTEST: PASS (${total} fixtures)"
     return 0
   fi
   echo "ORIENTATION-DIGEST-SELFTEST: FAIL (${SELFTEST_FAILURES} fixtures)"
@@ -451,20 +571,86 @@ OPEN_TARGET = os.environ.get("ORIENTATION_OPEN_TARGET", "").strip()
 GENERATED_MARKER = "<!-- GENERATED by scripts/ci/gen_orientation.sh; do not edit by hand. -->"
 NO_ACTIVE_TRACK = "none"
 ACTIVE_TRACK_COMMENT = "# Active track design doc for orientation Next-Rung pointer. Update on track open/close."
-COMPLETED_EXIT_MARKERS = (
-    "graduated",
-    "da-graduated",
-    "orchestrator-graduated",
-    "merged",
-    "closed",
-    "parked",
-    "resolved predecessor",
-    "deferred",
+# Leading / status-shaped completion phrases only.
+# Do NOT use bare substrings like "closed" or "merged" — they false-positive on
+# incomplete exit proofs that say e.g. "reuse the closed save/load battery".
+COMPLETED_EXIT_PREFIX_RE = re.compile(
+    r"^[\*\s_]*(?:"
+    r"done\b|"
+    r"complete\b|"
+    r"da-graduated\b|"
+    r"orchestrator-graduated\b|"
+    r"da-approved\b|"
+    r"da-opened\b|"
+    r"da/owner-cleared\b|"
+    r"owner-cleared\b|"
+    r"graduated\b|"
+    r"merged\b|"
+    r"closed\b|"
+    r"parked\b|"
+    r"deferred\b|"
+    r"resolved predecessor\b"
+    r")",
+    re.IGNORECASE,
+)
+COMPLETED_EXIT_STATUS_RE = re.compile(
+    r"(?:"
+    r"\bda-graduated\b|"
+    r"\borchestrator-graduated\b|"
+    r"\bda-approved\b|"
+    r"\bda-opened\b|"
+    r"\bda/owner-cleared\b|"
+    r"\bowner-cleared\b|"
+    r"\bda-equivalent\b|"
+    r"merged\s+and\s+closed|"
+    r"\bgraduated\s*/\s*merged\b|"
+    r"\bmerged\s*\[#\d+"
+    r")",
+    re.IGNORECASE,
+)
+# Path prefixes that are never production workplans (evidence, archive, workshop).
+FORBIDDEN_WORKPLAN_PREFIXES = (
+    "docs/tests/",
+    "docs/archive/",
+    "docs/workshop/",
+)
+WORKPLAN_LANGUAGE_RE = re.compile(
+    r"production\s+track|PR\s+ladder|workplan|design\s+track",
+    re.IGNORECASE,
+)
+# Skeleton created by --open; must still classify as a workplan.
+WORKPLAN_SKELETON_RE = re.compile(
+    r"OWNER POPULATION REQUIRED|TODO-RUNG-\d+|populate the production ladder",
+    re.IGNORECASE,
+)
+NON_WORKPLAN_REMEDY = (
+    "Use a production workplan/design ladder, e.g. "
+    "docs/design_0_0_8_5_clausescript_terran_pirate_galaxy.md, "
+    "or set active_track.txt to none."
 )
 
 
 def fail(msg):
     print(f"gen_orientation: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def fail_non_workplan(detail: str) -> None:
+    """Hard-fail before mutating active_track / orientation for non-workplan docs."""
+    print(f"ORIENTATION-OPEN-VERDICT: FAIL(non-workplan)", file=sys.stderr)
+    print(
+        f"gen_orientation: FAIL(non-workplan): {detail}; remedy: {NON_WORKPLAN_REMEDY}",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
+def fail_invalid_active_track(detail: str) -> None:
+    print(
+        f"gen_orientation: FAIL(invalid-active-track: non-workplan): {detail}; "
+        f"remedy: {NON_WORKPLAN_REMEDY}",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 
@@ -531,6 +717,92 @@ def normalize_track_doc_arg(value: str, must_exist: bool = False) -> str:
     return rel
 
 
+def is_forbidden_workplan_path(rel: str) -> bool:
+    """Evidence/archive/workshop paths are never production workplans."""
+    rel_norm = (rel or "").replace("\\", "/").strip()
+    if not rel_norm.startswith("docs/"):
+        return True
+    for prefix in FORBIDDEN_WORKPLAN_PREFIXES:
+        if rel_norm.startswith(prefix):
+            return True
+    parts = pathlib.PurePosixPath(rel_norm).parts
+    # docs/<tests|archive|workshop>/...
+    if len(parts) >= 2 and parts[1] in ("tests", "archive", "workshop"):
+        return True
+    return False
+
+
+def is_ladder_header(line: str) -> bool:
+    """Recognize production ladder tables in both skeleton and design-track layouts."""
+    norm = re.sub(r"\s+", " ", (line or "").strip().lower())
+    if not norm.startswith("|"):
+        return False
+    # Skeleton / orientation harness: | # | Rung | Deliverable | Exit proof |
+    if norm.startswith("| # | rung |"):
+        return True
+    # Production design tracks: | Rung | ID | Scope | Exit proof | Tier |
+    if norm.startswith("| rung | id |"):
+        return True
+    return False
+
+
+def parse_rungs(design_text: str):
+    """Parse all PR-ladder / rung tables from a design workplan.
+
+    Supports:
+      | # | Rung | Deliverable | Exit proof |
+      | Rung | ID | Scope | Exit proof | Tier |
+
+    Collects rows from every matching table in the document (multi-phase ladders).
+    Returns list of (num_or_index, rung_id, deliverable_or_scope, exit_proof).
+    """
+    rows = []
+    in_table = False
+    for line in design_text.splitlines():
+        stripped = line.strip()
+        if is_ladder_header(stripped):
+            in_table = True
+            continue
+        if not in_table:
+            continue
+        if not stripped.startswith("|"):
+            in_table = False
+            continue
+        if stripped.startswith("|---") or re.match(r"^\|[\s\-:|]+\|$", stripped):
+            continue
+        parts = [p.strip() for p in stripped.strip("|").split("|")]
+        if len(parts) < 4:
+            continue
+        # Skip accidental re-header rows mid-scan.
+        c0 = parts[0].lower()
+        c1 = parts[1].lower()
+        if c0 in ("#", "rung") and c1 in ("rung", "id", "deliverable"):
+            continue
+        rows.append((parts[0], parts[1], parts[2], parts[3]))
+    return rows
+
+
+def has_workplan_language(text: str) -> bool:
+    return bool(WORKPLAN_LANGUAGE_RE.search(text) or WORKPLAN_SKELETON_RE.search(text))
+
+
+def classify_workplan(rel: str, text: str) -> tuple:
+    """Return (ok: bool, reason: str) for whether rel/text is a production workplan."""
+    rel_norm = (rel or "").replace("\\", "/").strip()
+    if not rel_norm.startswith("docs/"):
+        return False, "not-under-docs"
+    if pathlib.PurePosixPath(rel_norm).suffix != ".md":
+        return False, "not-markdown"
+    if is_forbidden_workplan_path(rel_norm):
+        return False, f"forbidden-path ({rel_norm})"
+    rungs = parse_rungs(text)
+    if not rungs:
+        return False, "no-rung-table (parse_rungs returned empty)"
+    if not has_workplan_language(text):
+        return False, "missing-workplan-language (need production track / PR ladder / workplan / design track)"
+    return True, ""
+
+
 def read_active_track_pointer() -> dict:
     if not ACTIVE_TRACK.exists():
         return {"state": "missing", "path": "", "raw": "", "reason": "missing"}
@@ -548,6 +820,16 @@ def read_active_track_pointer() -> dict:
         return {"state": "invalid", "path": rel, "raw": raw, "reason": "not-markdown"}
     if not (REPO_ROOT / rel).is_file():
         return {"state": "invalid", "path": rel, "raw": raw, "reason": "missing-target"}
+    # Existing pointer at a non-workplan (e.g. evidence index) is invalid-active-track.
+    text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+    ok, reason = classify_workplan(rel, text)
+    if not ok:
+        return {
+            "state": "invalid",
+            "path": rel,
+            "raw": raw,
+            "reason": f"non-workplan ({reason})",
+        }
     return {"state": "doc", "path": rel, "raw": raw, "reason": ""}
 
 
@@ -574,6 +856,11 @@ def active_pointer_for_render(strict: bool = False) -> dict:
         return {"state": "doc", "path": docs_relpath(design) if design.is_relative_to(REPO_ROOT) else design.name,
                 "raw": str(design), "reason": "", "design_doc": design}
     info = read_active_track_pointer()
+    if info["state"] == "invalid" and str(info.get("reason", "")).startswith("non-workplan"):
+        # Preferred: hard-fail for both generate and check (safer for CI / operators).
+        fail_invalid_active_track(
+            f"active_track.txt points at {info.get('path') or info.get('raw')!r}: {info['reason']}"
+        )
     if strict and info["state"] in {"missing", "empty", "invalid"}:
         fail(f"active_track.txt is {info['reason']}; remedy: "
              "run `bash scripts/ci/gen_orientation.sh --open docs/<track>.md` "
@@ -611,28 +898,40 @@ def table(headers, rows):
     return lines
 
 
-def parse_rungs(design_text: str):
-    rows = []
-    in_table = False
-    for line in design_text.splitlines():
-        if line.strip().startswith("| # | Rung |"):
-            in_table = True
-            continue
-        if in_table:
-            if not line.strip().startswith("|"):
-                break
-            if line.strip().startswith("|---"):
-                continue
-            parts = [p.strip() for p in line.strip().strip("|").split("|")]
-            if len(parts) >= 4:
-                rows.append((parts[0], parts[1], parts[2], parts[3]))
-    return rows
+def is_completed_exit(text: str) -> bool:
+    """True when a ladder cell marks the rung complete (status language).
+
+    Production design ladders put DONE/COMPLETE/DA-GRADUATED in Scope and/or Exit-proof.
+    Require status-shaped markers so narrative phrases like "closed save/load battery"
+    do not false-complete an open rung.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return False
+    if COMPLETED_EXIT_PREFIX_RE.search(raw):
+        # Leading DONE/COMPLETE still requires a clearance/graduation cue nearby,
+        # so narrative "Complete Scope Ledger…" alone does not graduate a closeout row.
+        head = raw[:160]
+        if re.match(r"^[\*\s_]*(done|complete)\b", head, re.IGNORECASE):
+            return bool(
+                re.search(
+                    r"\b(da|owner|orchestrator|approved|cleared|opened|graduated|merged)\b",
+                    head,
+                    re.IGNORECASE,
+                )
+            )
+        return True
+    if COMPLETED_EXIT_STATUS_RE.search(raw[:200]):
+        return True
+    return False
 
 
 def next_rung_pointer(rungs):
-    for num, rung, _deliv, exit_proof in rungs:
-        low = exit_proof.lower()
-        if any(marker in low for marker in COMPLETED_EXIT_MARKERS):
+    for num, rung, deliv, exit_proof in rungs:
+        # Production design ladders put DONE/COMPLETE status in either Scope (deliv)
+        # or Exit-proof cells; treat either as completion so the first incomplete
+        # rung is selected (e.g. TP-FULL-TRANSPILE-0 after graduated phases).
+        if is_completed_exit(exit_proof) or is_completed_exit(deliv):
             continue
         parts = rung.split("`")
         return parts[1] if len(parts) >= 3 else rung.strip("`").strip()
@@ -1000,11 +1299,19 @@ def open_track() -> int:
     if not OPEN_TARGET:
         fail("--open requires exactly one track doc")
     rel = normalize_track_doc_arg(OPEN_TARGET)
+    # Reject forbidden paths before any create/mutate (evidence index under docs/tests/, etc.).
+    if is_forbidden_workplan_path(rel):
+        fail_non_workplan(
+            f"{rel} is under a forbidden non-workplan path "
+            f"(docs/tests|docs/archive|docs/workshop)"
+        )
     target = REPO_ROOT / rel
     old_info = read_active_track_pointer()
-    old = old_info.get("raw") or old_info.get("reason") or "missing"
+    # When old pointer is non-workplan invalid, still report its raw path for diagnostics.
+    old = old_info.get("raw") or old_info.get("path") or old_info.get("reason") or "missing"
     created = False
     if not target.exists():
+        # New skeleton may not be created under forbidden paths (already rejected above).
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(skeleton_doc(rel), encoding="utf-8", newline="\n")
         created = True
@@ -1012,14 +1319,20 @@ def open_track() -> int:
         fail(f"track doc target is not a file: {rel}")
 
     design_text = target.read_text(encoding="utf-8")
+    # Existing non-workplan markdown must FAIL before mutating active_track or orientation.
+    ok, reason = classify_workplan(rel, design_text)
+    if not ok:
+        fail_non_workplan(f"{rel}: {reason}")
+
     rungs = parse_rungs(design_text)
     track_state = track_state_for_doc(rel, design_text, rungs)
 
     changed_pointer = old_info.get("path") != rel
     if changed_pointer:
         write_active_track_pointer(rel)
+    # Re-read after pointer write; must now classify as a real workplan.
     active_info = active_pointer_for_render(strict=True)
-    generated, track_state, _next_rung = render_orientation(active_info)
+    generated, track_state, next_rung = render_orientation(active_info)
     regenerated = write_orientation(generated)
 
     if created:
@@ -1037,6 +1350,7 @@ def open_track() -> int:
     print(f"active_track_to: {rel}")
     print(f"orientation_regenerated: {'yes' if regenerated else 'no'}")
     print(f"track_state: {'new' if created else track_state}")
+    print(f"next_rung: {next_rung}")
     print(f"next_action: {next_action}")
     return 0
 
