@@ -33,6 +33,8 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 
 - **Cold start:** read `docs/orchestrator_orientation.md` at head (generated, freshness-gated — it cannot be
   stale) and carry its embedded receipt. GHA-side, it can also `/orient role=orchestrator` on any open PR.
+- **Track selection:** local operators use `bash scripts/ci/gen_orientation.sh --open <track.md>` to open/create
+  or realign the active orchestration track; `/orient` and `orient.sh` emit orientation only.
 - **You hand it:** the DA's authorization/handoff for a track or rung.
 - **It does:** verify the tree (never the relayed report); route each rung via the clearance ladder —
   **merge-clear conforming precedented-class rungs itself**, **escalate the DA reserve** (gate-wiring,
