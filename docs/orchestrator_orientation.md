@@ -35,7 +35,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | e69b849ed3722a48a4d5c14022725a8b6fcbdd8a42ed1148f3d6c138e168764f |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | a3fa5b6add7e28b8de1cb6668044835a2db51807773db4cd5a259387ac906358 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -63,13 +63,13 @@ Track state: `open`
 | 6.1 | TP-PALMA-REACH-0 | **PALMA reach/impedance** over the fronts: impedance `W` composed from choke/thr | **DA-GRADUATED / merged [#1152](https://github.com/khorum08/SimThing/pull/1152) @ `335f55c0`** — workshop-homed W com... |
 | 6.2 | TP-FLEET-MOVEMENT-0 | **Fleet movement = gradient-following reparenting.** A fleet steers proportional | **DA-GRADUATED / merged [#1154](https://github.com/khorum08/SimThing/pull/1154) @ `7d44037e`** — 7×7 / horizon-3 thea... |
 | 7.0 | TP-COMMITMENTS-0 | Author each faction's **personality `ai_will_do`/`ai_weight` EML weight profiles | **ORCHESTRATOR-GRADUATED / merged [#1155](https://github.com/khorum08/SimThing/pull/1155) @ `6547b90c`** — §5A orches... |
-| 8.0 | TP-FULL-TRANSPILE-0 | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSO | Full file transpiles; semantic-free scan (below the spec boundary) passes; STEAD/link/tree/RF metadata survive roundt... |
+| 8.0 | TP-FULL-TRANSPILE-0 | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSO | **DA-GRADUATED / merged [#1215](https://github.com/khorum08/SimThing/pull/1215) @ `f8eb3815`** (head `3a59b9c5af`) — ... |
 | 8.1 | TP-LIVE-RUN-0 | **Indefinite-tick live run** over **one deterministically-selected bounded theat | Non-vacuous multi-tick run on a real adapter; border front measurably shifts; combat resolves; ≥1 STEAD commitment fi... |
 | 8.2 | TP-DA-CLOSEOUT-0 | Scope Ledger over every §2 acceptance element; Deviation Records for anything pr | Complete Scope Ledger; corpus-abstraction candidate list emitted (nominations only, zero in-track canonization); DA s... |
 
 ## Next Rung Pointer
 
-Active pointer: `TP-FULL-TRANSPILE-0`
+Active pointer: `TP-LIVE-RUN-0`
 
 
 ## Cold-Start Entrypoint
