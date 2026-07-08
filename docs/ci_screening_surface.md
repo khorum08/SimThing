@@ -131,16 +131,16 @@ Rustified Test Lifecycle (§11 is the cycle walk-through; CI-scaffolding design 
 | `test_residue_classes.tsv` | data list | the closed set of `permanent-residue:*` classes (`oracle-parity`, `golden-byte`, `seal-proof`, `determinism`, `behavior-regression`, `escaped-bug`, `doc-named-invariant`, `stead-required`, `dependency-floor`) |
 | `test_lifecycle_tracks.tsv` | lifecycle ledger | `track_id \| status \| closed_at \| source \| note` — which birth tracks are open vs closed (a test whose birth track has closed is an expiry candidate) |
 | `test_lifecycle_dsu_tiers.tsv` | policy ladder | downstream-utility renewal tiers keyed on `dsu_survivals`: `1–2` advisory-audit (PASS), `3–4` rejustify (INSPECT), `5+` presumed-stale (INSPECT — delete-or-promote unless DA affirmatively renews) |
+| `track_closeout.sh` / `closeout_autoclear.tsv` / `closeout_artifacts.tsv` | closeout substrate | owns closure: builds/applies manifests, checks freshness, stamps tracks closed, leases artifacts, runs gates; autoclear names safe delete owners; artifact ledger carries the wall-clock reaper queue |
+| `test_lifecycle_parked.tsv` / `test_lifecycle_parked_boundary.tsv` | parking ledgers | undecided rows parked out of live inventory/boundary tables with enough data for lossless restore or later decommission |
 | `test_lifecycle_expiry_check.sh` | lifecycle tripwire | flags tests surviving past their birth-track closure and applies the DSU ladder. Modes: `--schema`, `--scheduled`, `--track-closeout <track_id>`, `--closure-gate <track_id>`, `--prove`. Emits `LIFECYCLE-EXPIRY-VERDICT: PASS\|INSPECT\|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>` |
 | `test_inventory_check.sh` | inventory gate | validates the inventory schema + class/verdict grammar (allows the `dependency-floor` class for non-runnable helpers) |
 | `test_inventory_drift_check.sh` | drift gate | the `TEST-INVENTORY-DRIFT` stock gate body: inventory must match discovered tests and every KEEP row must be owned; unledgered runnable tests FAIL. `permanent-residue:dependency-floor` rows are exempt from the stale-drift check only |
 | `test_lifecycle_boundaries.tsv` / `test_lifecycle_boundary_rows.tsv` | boundary ledger | survivor boundary ownership (renamed from Track-D `test_pare_*` machinery at `CI-LIFECYCLE-RESIDUE-DELETE-0`) |
 | `test_lifecycle_boundary_check.sh` | boundary gate | validates that each survivor KEEP row maps to an owned lifecycle boundary |
 
-`TEST-INVENTORY-DRIFT` and `TEST-BUDGET` run as **stock gates inside `doctrine_scan.sh`** (they appear in the §1
-report), so the blocking Track A gate already enforces inventory truth and the ≤3-new-`#[test]`-per-file budget on
-every PR. `test_lifecycle_expiry_check.sh` is **not yet wired into any workflow** — it is run by the orchestrator at
-track closeout and by the corpus-maintenance cadence (§11); a scheduled workflow requires an explicit cadence rung.
+`TEST-INVENTORY-DRIFT` and `TEST-BUDGET` run as **stock gates inside `doctrine_scan.sh`**, enforcing inventory truth
+and the ≤3-new-`#[test]` budget. `track_closeout.sh` owns closure; expiry checks remain operator/cadence diagnostics (§11).
 
 ### Track B executable-proof tooling (Track B DA-CLOSED 2026-07-04)
 
