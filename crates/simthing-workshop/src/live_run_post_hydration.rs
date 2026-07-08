@@ -307,7 +307,7 @@ fn install_rf_combat_columns(pack: &mut HydratedScenarioPack) -> Result<(), Live
     Ok(())
 }
 
-/// RF emission-band law (R6 / constitution §0.3):  
+/// RF emission-band law (R6 / constitution §0.3):
 /// `destroyed_ships = floor(hull_deficit_band / damage_to_kill_1_hull)` clamped to `num_ships`.
 ///
 /// This is the economic emission identity over RF transfer-filled columns — not a combat
