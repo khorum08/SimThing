@@ -34,21 +34,17 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | cc06a72a8d72773c3fad32d4e9fd45ccc565f57c1bc6266949442cb5bc0de3c7 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | 17fb2e1e3b331fb68580e486431596c9f111b99f4b9de9699d57bf604f37a20c |
+| active_track.txt | cfebaf81c170f10d5d9d395f308c4fa57faadcbd9a40675b876463b531efc59e |
+| current_evidence_index.md | 87034828d2e3249fd4e4e51bee79723fa0d88460d46239b2021b326dd6fba5ff |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
-## Active Track / Rung Summary
+## Active Track / Rung Summary (`current_evidence_index.md`)
 
-No active production track is set.
+Track state: `open`
 
-Run:
-
-```bash
-bash scripts/ci/gen_orientation.sh --open docs/<track>.md
-```
-
-to open or create a production track before assigning coding work.
+| # | rung | deliverable | exit proof |
+| --- | --- | --- | --- |
 
 ## Next Rung Pointer
 
