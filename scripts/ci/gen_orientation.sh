@@ -946,7 +946,7 @@ def render_orientation(active_info: dict) -> tuple:
     "- `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text",
     "",
     ])
-    return "\n".join(lines) + "\n", track_state, next_rung
+    return "\n".join(lines).rstrip() + "\n", track_state, next_rung
 
 
 def write_orientation(generated: str) -> bool:
