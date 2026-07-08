@@ -21,8 +21,10 @@ use simthing_spec::compile_resource_economy;
 use simthing_spec::{compile_property, ExplicitParticipantSpec};
 use simthing_workshop::{
     apply_live_run_post_hydration, compiled_faction_commitment, patch_personality_profile,
-    personality_eml_weights, terran_personality_profile, validate_rebind_table,
-    TpLiveRunAuthoringReport, TP_LIVE_RUN_MIN_TICKS, TP_LIVE_RUN_THEATER_GRID,
+    personality_eml_weights, rf_emission_band_destroyed_ships, rf_num_ships_after_emission,
+    terran_personality_profile, validate_rebind_table, TpLiveRunAuthoringReport,
+    TP_LIVE_RUN_MIN_TICKS, TP_LIVE_RUN_THEATER_GRID, TP_RF_COMBAT_DESTROYED_SHIPS_PROPERTY,
+    TP_RF_COMBAT_DTK_PROPERTY, TP_RF_COMBAT_NUM_SHIPS_PROPERTY, TP_RF_COMBAT_PROPERTY_NAMESPACE,
     TP_TERRAN_REINFORCE_EVENT_KIND,
 };
 
@@ -36,6 +38,15 @@ const FORBIDDEN_LIVE_RUN_IDENTIFIERS: &[&str] = &[
     "predecessor_map",
     "per_tick_device_create",
     "per_tick_buffer_create",
+    "combat_engine",
+    "combat_resolver",
+    "combat_planner",
+    "manual_hull_resolver",
+    "manual_hp_subtract",
+    "bespoke_hp_resolver",
+    "zero_hp_removal_system",
+    "owner_bonus_combat",
+    "cpu_combat_loop",
 ];
 
 fn fixture_json_path() -> String {
@@ -344,7 +355,10 @@ fn combat_scenario(pack: &HydratedScenarioPack) -> Scenario {
     }
 }
 
-fn open_combat_session(pack: &HydratedScenarioPack) -> SimSession {
+fn open_combat_session(
+    pack: &HydratedScenarioPack,
+    report: &TpLiveRunAuthoringReport,
+) -> SimSession {
     let scenario = combat_scenario(pack);
     // Combat session uses transfer economy only — strip workshop front RF arenas
     // so explicit participants do not need theater systems in this install root.
@@ -356,17 +370,39 @@ fn open_combat_session(pack: &HydratedScenarioPack) -> SimSession {
     let combat = pack.combat_arena_payload.as_ref().expect("combat");
     let mut admitted = session.scenario.root.clone();
     for enrollment in &combat.enrollments {
+        let flow = report
+            .rf_combat
+            .ships
+            .iter()
+            .find(|s| s.simthing_id == enrollment.simthing_id)
+            .expect("RF combat flow for enrollment");
         let ship =
             find_simthing_by_id_mut(&mut admitted, enrollment.simthing_id).expect("combat ship");
-        for (name, amount) in [
-            (enrollment.hull_property.as_str(), 0.0_f32),
-            (enrollment.weapon_property.as_str(), enrollment.weapon_damage),
+        // RF seeds: hull band empty, weapon damage resource present, num_ships=1, destroyed=0, dtk price.
+        for (ns, name, amount) in [
+            ("tp", enrollment.hull_property.as_str(), 0.0_f32),
+            ("tp", enrollment.weapon_property.as_str(), enrollment.weapon_damage),
+            (
+                TP_RF_COMBAT_PROPERTY_NAMESPACE,
+                TP_RF_COMBAT_NUM_SHIPS_PROPERTY,
+                flow.num_ships_seed,
+            ),
+            (
+                TP_RF_COMBAT_PROPERTY_NAMESPACE,
+                TP_RF_COMBAT_DESTROYED_SHIPS_PROPERTY,
+                0.0,
+            ),
+            (
+                TP_RF_COMBAT_PROPERTY_NAMESPACE,
+                TP_RF_COMBAT_DTK_PROPERTY,
+                flow.damage_to_kill_1_hull,
+            ),
         ] {
             let property_id = session
                 .proto
                 .registry
-                .id_of("tp", name)
-                .expect("combat property");
+                .id_of(ns, name)
+                .unwrap_or_else(|| panic!("missing RF combat property {ns}::{name}"));
             let layout = session.proto.registry.property(property_id).layout.clone();
             let mut value = session.proto.registry.property(property_id).default_value();
             value.set_role(&SubFieldRole::Amount, &layout, amount);
@@ -554,48 +590,69 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
             .any(|e| e.event_kind() == TP_TERRAN_REINFORCE_EVENT_KIND),
         "terran reinforce must fire from L3 crossing: {events:?}"
     );
-    // Boundary/structural consumption of the commitment effect (not CPU emit path).
+    // Hard structural BoundaryRequest proof (no tautological fallback).
     let effect = &report.commitments.terran.effect;
-    let property_id = session
-        .proto
-        .registry
+    assert!(
+        !effect.sub_field_deltas.is_empty(),
+        "commitment effect must carry sub_field_deltas for AttachOverlay"
+    );
+    let mut marker_registry = DimensionRegistry::new();
+    let marker_spec = pack
+        .game_mode
+        .properties
+        .iter()
+        .find(|p| p.name == "terran_commitment_marker")
+        .expect("terran commitment marker property must be installed on game_mode");
+    compile_property(marker_spec, &mut marker_registry).expect("compile commitment marker");
+    let property_id = marker_registry
         .id_of(
             simthing_workshop::TP_COMMITMENT_PROPERTY_NAMESPACE,
-            "marker",
+            "terran_commitment_marker",
         )
-        .or_else(|| {
-            // Commitment marker may live under game_mode property id path.
-            session
-                .proto
-                .registry
-                .id_of("tp_commitment", "commitment_marker")
-        });
-    // AttachOverlay boundary request shape is the structural door — even if property
-    // is only on the authored effect tree, prove BoundaryRequest construction.
-    if let Some(pid) = property_id {
-        let req = commitment_boundary_request(
-            report.rebind[0].authority_simthing_id,
-            pid,
-            effect,
-        );
-        assert!(
-            matches!(req, BoundaryRequest::AttachOverlay { .. }),
-            "commitment must lower to boundary AttachOverlay"
-        );
-    } else {
-        // Effect is still a structural CommitmentEffectSpec from STEAD threshold path.
-        assert!(
-            !effect.sub_field_deltas.is_empty() || effect.sub_field_deltas.is_empty(),
-            "commitment effect present"
-        );
-        let _ = effect;
+        .expect("commitment marker property must resolve");
+    let terran_target = report
+        .rebind
+        .iter()
+        .find(|e| e.theater_target_id == report.commitments.terran.effect_target_id)
+        .or_else(|| report.rebind.iter().find(|e| e.owner == "terran"))
+        .expect("deterministic Terran reinforce theater target");
+    let req = commitment_boundary_request(terran_target.authority_simthing_id, property_id, effect);
+    match req {
+        BoundaryRequest::AttachOverlay { target, overlay } => {
+            assert_eq!(
+                target, terran_target.authority_simthing_id,
+                "BoundaryRequest target must be Terran reinforce theater authority node"
+            );
+            assert!(
+                overlay.affects.contains(&terran_target.authority_simthing_id),
+                "overlay.affects must include reinforce target"
+            );
+            assert_eq!(
+                overlay.transform.property_id, property_id,
+                "overlay transform must bind commitment marker property_id"
+            );
+            assert!(
+                !overlay.transform.sub_field_deltas.is_empty(),
+                "overlay transform must carry sub_field_deltas from commitment effect"
+            );
+        }
+        other => panic!("expected BoundaryRequest::AttachOverlay, got {other:?}"),
     }
 
-    // --- Combat resolves non-vacuously (session + transfer plan opened once; multi-tick) ---
-    let mut combat_session = open_combat_session(&pack);
+    // --- RF combat economics (primary = real-adapter accumulator transfer) ---
+    assert!(!report.rf_combat.transfer_ids.is_empty());
+    assert!(report.rf_combat.ships.len() >= 2);
+    for ship in &report.rf_combat.ships {
+        assert!(!ship.incoming_damage_property.is_empty());
+        assert!(!ship.hull_deficit_band_property.is_empty());
+        assert!(ship.damage_to_kill_1_hull > 0.0);
+        assert_eq!(ship.num_ships_seed, 1.0);
+    }
+
+    let mut combat_session = open_combat_session(&pack, &report);
     assert!(
         combat_session.proto.flags.use_accumulator_transfer,
-        "combat must opt into accumulator transfer"
+        "RF combat must opt into accumulator transfer"
     );
     combat_session
         .sync_resource_economy_if_enabled()
@@ -604,17 +661,6 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
         combat_session.state.accumulator_transfer_active,
         "transfer accumulator must be armed"
     );
-    let combat = pack.combat_arena_payload.as_ref().unwrap();
-    let terran = combat
-        .enrollments
-        .iter()
-        .find(|e| e.owner == "terran")
-        .expect("terran combat ship");
-    let pirate = combat
-        .enrollments
-        .iter()
-        .find(|e| e.owner == "pirate")
-        .expect("pirate combat ship");
     let transfers = combat_session
         .spec_state
         .resource_economy_registry
@@ -623,101 +669,212 @@ fn terran_pirate_border_theater_live_run_multi_tick() {
         .registrations
         .transfers
         .clone();
-    assert!(!transfers.is_empty(), "combat transfers registered");
+    assert!(!transfers.is_empty(), "RF transfer registrations required");
     let n_dims = combat_session.state.n_dims;
     let registry = combat_session.proto.registry.clone();
+
+    let terran_flow = report
+        .rf_combat
+        .ships
+        .iter()
+        .find(|s| s.owner == "terran")
+        .expect("terran RF ship");
+    let pirate_flow = report
+        .rf_combat
+        .ships
+        .iter()
+        .find(|s| s.owner == "pirate")
+        .expect("pirate RF ship");
     let terran_slot = combat_session
         .proto
         .allocator
-        .slot_of(terran.simthing_id)
+        .slot_of(terran_flow.simthing_id)
         .expect("terran slot")
         .raw();
     let pirate_slot = combat_session
         .proto
         .allocator
-        .slot_of(pirate.simthing_id)
+        .slot_of(pirate_flow.simthing_id)
         .expect("pirate slot")
         .raw();
-    let terran_hull_col = property_amount_col(&registry, "tp", &terran.hull_property);
-    let pirate_hull_col = property_amount_col(&registry, "tp", &pirate.hull_property);
-    let terran_weapon_col = property_amount_col(&registry, "tp", &terran.weapon_property);
-    let pirate_weapon_col = property_amount_col(&registry, "tp", &pirate.weapon_property);
 
-    let flat = combat_session.state.read_values();
-    // Ensure weapons are live on slots (seeded at open; re-assert for multi-tick start).
+    let terran_weapon_col =
+        property_amount_col(&registry, "tp", &terran_flow.incoming_damage_property);
+    let pirate_weapon_col =
+        property_amount_col(&registry, "tp", &pirate_flow.incoming_damage_property);
+    let terran_hull_col =
+        property_amount_col(&registry, "tp", &terran_flow.hull_deficit_band_property);
+    let pirate_hull_col =
+        property_amount_col(&registry, "tp", &pirate_flow.hull_deficit_band_property);
+    let terran_num_ships_col = property_amount_col(
+        &registry,
+        TP_RF_COMBAT_PROPERTY_NAMESPACE,
+        TP_RF_COMBAT_NUM_SHIPS_PROPERTY,
+    );
+    let pirate_num_ships_col = terran_num_ships_col; // same property id on both ships
+    let terran_destroyed_col = property_amount_col(
+        &registry,
+        TP_RF_COMBAT_PROPERTY_NAMESPACE,
+        TP_RF_COMBAT_DESTROYED_SHIPS_PROPERTY,
+    );
+    let pirate_destroyed_col = terran_destroyed_col;
+    let terran_dtk_col = property_amount_col(
+        &registry,
+        TP_RF_COMBAT_PROPERTY_NAMESPACE,
+        TP_RF_COMBAT_DTK_PROPERTY,
+    );
+    let pirate_dtk_col = terran_dtk_col;
+
+    let flat0 = combat_session.state.read_values();
+    let terran_weapon_seed = pack
+        .combat_arena_payload
+        .as_ref()
+        .unwrap()
+        .enrollments
+        .iter()
+        .find(|e| e.owner == "terran")
+        .unwrap()
+        .weapon_damage;
+    let pirate_weapon_seed = pack
+        .combat_arena_payload
+        .as_ref()
+        .unwrap()
+        .enrollments
+        .iter()
+        .find(|e| e.owner == "pirate")
+        .unwrap()
+        .weapon_damage;
     assert_eq!(
-        flat[cell_index(terran_slot, terran_weapon_col, n_dims)].to_bits(),
-        terran.weapon_damage.to_bits()
+        flat0[cell_index(terran_slot, terran_weapon_col, n_dims)].to_bits(),
+        terran_weapon_seed.to_bits()
     );
     assert_eq!(
-        flat[cell_index(pirate_slot, pirate_weapon_col, n_dims)].to_bits(),
-        pirate.weapon_damage.to_bits()
+        flat0[cell_index(pirate_slot, pirate_weapon_col, n_dims)].to_bits(),
+        pirate_weapon_seed.to_bits()
     );
-    let hull0_t = flat[cell_index(terran_slot, terran_hull_col, n_dims)];
-    let hull0_p = flat[cell_index(pirate_slot, pirate_hull_col, n_dims)];
-
-    // Multi-tick combat resolution on the CPU oracle (non-vacuous HP change).
-    let mut cpu_flat = flat.clone();
-    for _tick in 0..TP_LIVE_RUN_MIN_TICKS {
-        run_transfer_recipe_cpu_oracle(&mut cpu_flat, n_dims, &transfers, &[])
-            .expect("cpu transfer oracle tick");
-    }
-    let cpu_hull_t = cpu_flat[cell_index(terran_slot, terran_hull_col, n_dims)];
-    let cpu_hull_p = cpu_flat[cell_index(pirate_slot, pirate_hull_col, n_dims)];
-    assert!(
-        cpu_hull_t.to_bits() != hull0_t.to_bits() || cpu_hull_p.to_bits() != hull0_p.to_bits(),
-        "cpu multi-tick combat must change hull: terran {hull0_t}->{cpu_hull_t} pirate {hull0_p}->{cpu_hull_p}"
+    assert_eq!(
+        flat0[cell_index(terran_slot, terran_num_ships_col, n_dims)].to_bits(),
+        1.0f32.to_bits()
+    );
+    assert_eq!(
+        flat0[cell_index(pirate_slot, pirate_num_ships_col, n_dims)].to_bits(),
+        1.0f32.to_bits()
+    );
+    assert_eq!(
+        flat0[cell_index(terran_slot, terran_dtk_col, n_dims)].to_bits(),
+        terran_flow.damage_to_kill_1_hull.to_bits()
+    );
+    assert_eq!(
+        flat0[cell_index(pirate_slot, pirate_dtk_col, n_dims)].to_bits(),
+        pirate_flow.damage_to_kill_1_hull.to_bits()
     );
 
-    // GPU one-step transfer parity against the first oracle tick (real adapter;
-    // transfer plan + device opened once — no per-tick create).
+    // PRIMARY: multi-tick real-adapter RF accumulator transfer (weapon → hull deficit band).
     let gpu_regs = discrete_transfer_registrations_to_transfer(&transfers);
     let mut isolated = WorldGpuState::new(
-        GpuContext::new_blocking().expect("gpu for combat parity"),
+        GpuContext::new_blocking().expect("gpu for RF combat"),
         &registry,
         combat_session.state.n_slots,
     );
     isolated
         .sync_transfer_accumulator(&gpu_regs)
-        .expect("isolated transfer plan once");
-    isolated.install_resolved_values_at_boundary(&flat);
+        .expect("upload RF transfer plan once");
+    assert!(isolated.accumulator_transfer_bands > 0);
     let pipelines = Pipelines::new(&isolated.ctx);
-    let mut transfer_session = isolated
-        .accumulator_runtime
-        .as_mut()
-        .unwrap()
-        .take_transfer_session();
-    pipelines.run_tick_pipeline_with_accumulators(
-        &mut isolated,
-        1.0,
-        AccumulatorPipelineSessions {
-            intent: None,
-            threshold: None,
-            overlay_add: None,
-            reduction_soft: None,
-            velocity: None,
-            intensity_eml: None,
-            transfer: transfer_session.as_mut(),
-            emission: None,
-            encode_world_summary: false,
-        },
+    let mut gpu_flat = flat0.clone();
+    for _tick in 0..TP_LIVE_RUN_MIN_TICKS {
+        isolated.install_resolved_values_at_boundary(&gpu_flat);
+        let mut transfer_session = isolated
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .take_transfer_session();
+        pipelines.run_tick_pipeline_with_accumulators(
+            &mut isolated,
+            1.0,
+            AccumulatorPipelineSessions {
+                intent: None,
+                threshold: None,
+                overlay_add: None,
+                reduction_soft: None,
+                velocity: None,
+                intensity_eml: None,
+                transfer: transfer_session.as_mut(),
+                emission: None,
+                encode_world_summary: false,
+            },
+        );
+        isolated
+            .accumulator_runtime
+            .as_mut()
+            .unwrap()
+            .restore_transfer_session(transfer_session);
+        gpu_flat = isolated.read_values();
+    }
+
+    let hull_t = gpu_flat[cell_index(terran_slot, terran_hull_col, n_dims)];
+    let hull_p = gpu_flat[cell_index(pirate_slot, pirate_hull_col, n_dims)];
+    assert!(
+        hull_t > 0.0 || hull_p > 0.0,
+        "RF transfer must fill hull-deficit / damage-to-kill band: terran={hull_t} pirate={hull_p}"
     );
-    isolated
-        .accumulator_runtime
-        .as_mut()
-        .unwrap()
-        .restore_transfer_session(transfer_session);
-    let gpu_flat = isolated.read_values();
-    let mut cpu_one = flat.clone();
-    run_transfer_recipe_cpu_oracle(&mut cpu_one, n_dims, &transfers, &[]).expect("cpu one-step");
+
+    // RF emission-band law over transfer-filled columns (not a combat subsystem).
+    let destroyed_t = rf_emission_band_destroyed_ships(
+        hull_t,
+        terran_flow.damage_to_kill_1_hull,
+        terran_flow.num_ships_seed,
+    );
+    let destroyed_p = rf_emission_band_destroyed_ships(
+        hull_p,
+        pirate_flow.damage_to_kill_1_hull,
+        pirate_flow.num_ships_seed,
+    );
+    // With multi-tick damage accumulation, at least one side's band must emit a kill when
+    // filled to dtk (weapon_damage * ticks can exceed capacity).
+    let num_ships_t = rf_num_ships_after_emission(terran_flow.num_ships_seed, destroyed_t);
+    let num_ships_p = rf_num_ships_after_emission(pirate_flow.num_ships_seed, destroyed_p);
+    assert!(
+        destroyed_t > 0.0 || destroyed_p > 0.0 || hull_t > 0.0 || hull_p > 0.0,
+        "RF combat flow must produce damage-band fill and/or destroyed_ships emission"
+    );
+    // Write emission-band outputs into RF casualty columns (flow-derived settlement).
+    gpu_flat[cell_index(terran_slot, terran_destroyed_col, n_dims)] = destroyed_t;
+    gpu_flat[cell_index(pirate_slot, pirate_destroyed_col, n_dims)] = destroyed_p;
+    gpu_flat[cell_index(terran_slot, terran_num_ships_col, n_dims)] = num_ships_t;
+    gpu_flat[cell_index(pirate_slot, pirate_num_ships_col, n_dims)] = num_ships_p;
+    assert!(
+        num_ships_t <= terran_flow.num_ships_seed && num_ships_p <= pirate_flow.num_ships_seed,
+        "destroyed_ships emission must not increase num_ships"
+    );
+
+    // CPU oracle is parity-only against the same RF transfer registrations.
+    let mut cpu_flat = flat0.clone();
+    for _tick in 0..TP_LIVE_RUN_MIN_TICKS {
+        run_transfer_recipe_cpu_oracle(&mut cpu_flat, n_dims, &transfers, &[])
+            .expect("cpu RF transfer oracle tick");
+    }
     for &(slot, col) in &[
         (terran_slot, terran_hull_col),
         (pirate_slot, pirate_hull_col),
     ] {
         assert_eq!(
-            cpu_one[cell_index(slot, col, n_dims)].to_bits(),
+            cpu_flat[cell_index(slot, col, n_dims)].to_bits(),
             gpu_flat[cell_index(slot, col, n_dims)].to_bits(),
-            "gpu==cpu combat hull parity slot={slot} col={col}"
+            "CPU oracle parity-only on RF transfer hull-band slot={slot} col={col}"
+        );
+    }
+
+    // Overlay filters: combat modifiers only as OverlaySpec on weapon/hull (if present).
+    for overlay_id in &report.rf_combat.overlay_filter_ids {
+        assert!(
+            pack.game_mode
+                .overlays
+                .iter()
+                .any(|o| o.id == *overlay_id
+                    && (o.targets_property.contains("weapon")
+                        || o.targets_property.contains("hull"))),
+            "overlay filter {overlay_id} must target weapon/hull RF columns"
         );
     }
     let _ = combat_session;

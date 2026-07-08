@@ -64,9 +64,11 @@ pub use fronts_post_hydration::{
     TP_SUPPRESSION_ARENA, TP_THREAT_ARENA,
 };
 pub use live_run_post_hydration::{
-    apply_live_run_post_hydration, validate_rebind_table, LiveRunHydrationError,
-    TpLiveRunAuthoringReport, TpPlacementRebindEntry, TP_LIVE_RUN_MIN_TICKS,
-    TP_LIVE_RUN_THEATER_GRID,
+    apply_live_run_post_hydration, rf_emission_band_destroyed_ships, rf_num_ships_after_emission,
+    validate_rebind_table, LiveRunHydrationError, TpLiveRunAuthoringReport,
+    TpPlacementRebindEntry, TpRfCombatEconomicsReport, TpRfCombatShipFlow, TP_LIVE_RUN_MIN_TICKS,
+    TP_LIVE_RUN_THEATER_GRID, TP_RF_COMBAT_DESTROYED_SHIPS_PROPERTY, TP_RF_COMBAT_DTK_PROPERTY,
+    TP_RF_COMBAT_NUM_SHIPS_PROPERTY, TP_RF_COMBAT_PROPERTY_NAMESPACE,
 };
 pub mod weighted_mean_perf;
 mod weighted_mean_perf_report;
