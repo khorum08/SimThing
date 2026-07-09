@@ -9,3 +9,4 @@ scripts/ci/test_inventory.tsv
 scripts/ci/test_lifecycle_boundary_rows.tsv
 docs/design_0_0_8_5_clausescript_terran_pirate_galaxy.md
 docs/orchestrator_orientation.md
+scripts/ci/track_closeout.sh
