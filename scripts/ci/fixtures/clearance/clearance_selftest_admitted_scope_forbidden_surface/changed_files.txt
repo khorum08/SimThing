@@ -1,0 +1,3 @@
+crates/simthing-mapeditor/src/synthetic_admitted_forbidden_claim_surface.rs
+crates/simthing-sim/src/engine_source_change.rs
+docs/tests/admitted_scope_forbidden_surface_fixture_results.md

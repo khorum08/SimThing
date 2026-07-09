@@ -1,0 +1,7 @@
+admitted_envelope: YES
+admitting_pr: #1229
+admitted_surfaces: limited production ClauseScript composition API
+forbidden_surfaces: TP defaults, UI picker, GameMode/RF/live-run, closeout, runtime/GPU/kernel
+tested_code_sha: feedface87654321
+coverage_basis: PASS - forbidden surface must not clear
+ci_green: PASS

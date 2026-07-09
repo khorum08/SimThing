@@ -1,0 +1,2 @@
+crates/simthing-mapeditor/src/synthetic_admitted_novelty_surface.rs
+docs/tests/admitted_scope_novelty_preserved_fixture_results.md
