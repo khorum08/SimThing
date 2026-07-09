@@ -40,11 +40,11 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | f3d5fe6f89cf7c74a5dce3bd1ac7804c2f24fc69787d583967ce068879691100 |
+| precedented_classes.tsv | 979c4666ce62d622766525fc781adf11497d8ec9f2e2c10770f8bfe9bf5b451f |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | d0e4d17e23ebe3e996bda3c87e5230cbc2125e9659013bc30465c840c1dd3fcb |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 7e4c10ec57666b37904f80b41f7379e718cdb5bf1a66e3afddb56c0fd5769374 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -87,7 +87,7 @@ Track state: `open`
 | 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **DA-GRADUATED / merged [#1239](https://github.com/khorum08/SimThing/pull/1239) @ `0183883767`** (head `d9bd5c4054`) ... |
 | 8.10g | CLEARANCE-UNCLASSIFIED-SCOPE-REDUCTION-0 | **Owner/DA process ruling.** Reduce over-broad `DA-RESERVE(unclassified-scope)`: | **DONE — DA-ADOPTED (2026-07-09, Option A).** Adopt `DA-RESERVE(admitted-scope-router-gap)` vocabulary + orchestratio... |
 | 8.10r | CLEARANCE-ADMITTED-SCOPE-GAP-0 | **Harness (gate-wiring).** Implement `DA-RESERVE(admitted-scope-router-gap)` in  | **DA-GRADUATED / merged [#1243](https://github.com/khorum08/SimThing/pull/1243) @ `becb07fdd9`** (head `f7b184e994`) ... |
-| 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency.** Register a precedented class for admitted narrow UI picke | **OPEN — next production pointer.** Exit: clearance selftests clearable + reject fixtures. |
+| 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency.** Register a precedented class for admitted narrow UI picke | **DONE** — class `tp-studio-clause-picker`; #1239-shaped clearable; reject fixtures for missing fields / API-only / T... |
 
 ## Next Rung Pointer
 
@@ -139,6 +139,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
 | tp-workshop-candidate-proof | crates/simthing-workshop/src/tp_*.rs\|crates/simthing-workshop/tests/tp_*.rs\|docs/tests/tp_*_0_results.md\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-admitted-clause-api-composition | crates/simthing-clausething/src/clause_scenario_projection.rs\|crates/simthing-clausething/src/lib.rs\|crates/simthing-mapeditor/src/clause_scenario_ingest.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|crates/simthing-workshop/src/tp_studio_clause_ingest.rs\|crates/simthing-workshop/src/tp_studio_stead_rebind.rs\|docs/tests/tp_studio_clause_api_*_results.md\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|admitted_api\|no_ui_picker\|no_tp_defaults\|session_hydrate | active |
+| tp-studio-clause-picker | crates/simthing-mapeditor/src/clause_scenario_picker.rs\|crates/simthing-mapeditor/src/app/scenario_io.rs\|crates/simthing-mapeditor/src/app/ui.rs\|crates/simthing-mapeditor/src/app/mod.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_picker_*.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|docs/tests/tp_studio_clause_picker_*_results.md\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|studio_clause_picker\|production_api_only\|ui_file_picker_yes\|no_tp_defaults\|session_hydrate\|no_duplicate_parse_rebind\|no_gamemode_rf_live_closeout\|picker_only | active |
 
 ## Binding Conditions
 
@@ -181,6 +182,7 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 - `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
 - `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).
 - `tp-admitted-clause-api-composition` → DA-admitted limited ClauseScript composition (StructuralRebindReady) only; not picker/runtime/GameMode/RF/closeout.
+- `tp-studio-clause-picker` → DA-admitted narrow Studio/mapeditor `.clause` picker UI (#1239 shape); production API only; not TP defaults / dual parse-rebind / GameMode-RF-live-run-closeout / runtime-GPU-kernel.
 - binding-conditions, class-suspended, triage-missing → DA review routing.
 - gate-wiring → deep audit; harness surfaces are never self-mergeable.
 - harness-error → fix data/target resolution before re-run.

@@ -1,0 +1,13 @@
+tested_code_sha: d9bd5c4054abcdef0123456789abcdef01234567
+coverage_basis: PASS - admitted narrow Studio/mapeditor .clause picker class fixture
+ci_green: PASS
+studio_clause_picker: ADMITTED_NARROW_UI
+production_api_only: YES
+ui_file_picker: YES
+tp_defaults_in_production: NO
+session_hydrate: PASS
+duplicate_parse_rebind_path: NO
+gamemode_rf_attach: NO
+live_run_state: NO
+closeout_run: YES
+track_closeout_apply: NO

@@ -1,0 +1,7 @@
+admitted_envelope: YES
+admitting_pr: #1235
+admitted_surfaces: narrow Studio/mapeditor .clause picker
+forbidden_surfaces: TP defaults, API bypass, GameMode/RF/live-run, closeout
+tested_code_sha: deadbeefcafe1234
+coverage_basis: PASS - picker-adjacent unclassed admitted shape
+ci_green: PASS

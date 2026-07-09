@@ -1217,6 +1217,7 @@ def render_orientation(active_info: dict) -> tuple:
     "- `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.",
     "- `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).",
     "- `tp-admitted-clause-api-composition` → DA-admitted limited ClauseScript composition (StructuralRebindReady) only; not picker/runtime/GameMode/RF/closeout.",
+    "- `tp-studio-clause-picker` → DA-admitted narrow Studio/mapeditor `.clause` picker UI (#1239 shape); production API only; not TP defaults / dual parse-rebind / GameMode-RF-live-run-closeout / runtime-GPU-kernel.",
     "- binding-conditions, class-suspended, triage-missing → DA review routing.",
     "- gate-wiring → deep audit; harness surfaces are never self-mergeable.",
     "- harness-error → fix data/target resolution before re-run.",
