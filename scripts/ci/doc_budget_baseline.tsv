@@ -1,3 +1,7 @@
 path	max_lines
-docs/ci_screening_surface.md	550
-docs/design_0_0_8_4_7_orchestration_harness.md	231
+docs/ci_screening_surface.md	548
+docs/design_0_0_8_4_7_orchestration_harness.md	239
+docs/orchestrator_orientation.md	226
+docs/handoff_template.md	364
+docs/agent_onboarding.md	105
+docs/agents.md	188
