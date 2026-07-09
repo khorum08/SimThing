@@ -2,7 +2,8 @@
 
 ## Status
 
-**DA-DENIED / KEEP WORKSHOP (Option B)** — 2026-07-09 executive DA admission decision.
+**DONE — DA-DENIED / KEEP WORKSHOP (Option B)** — 2026-07-09 executive DA admission decision;
+status stamp merged [#1224](https://github.com/khorum08/SimThing/pull/1224) @ `72a29193cdb48f8e446a5a79547429d9966ef9c6`.
 No production `simthing-mapeditor` ClauseScript ingest API admitted during 0.0.8.5.
 
 ## Identity
@@ -10,6 +11,8 @@ No production `simthing-mapeditor` ClauseScript ingest API admitted during 0.0.8
 | Field | Value |
 |---|---|
 | Rung | `TP-STUDIO-CLAUSE-API-ADMISSION-0` |
+| PR (status stamp) | [#1224](https://github.com/khorum08/SimThing/pull/1224) |
+| Merge SHA | `72a29193cdb48f8e446a5a79547429d9966ef9c6` |
 | Kind | Owner/DA admission decision (no implementation) |
 | Prior | #1222 workshop candidate @ `bcbc2f4389`; status stamp #1223 |
 | Decision | **Option B — Deny / keep workshop** |

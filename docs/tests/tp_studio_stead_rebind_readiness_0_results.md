@@ -2,11 +2,22 @@
 
 ## Status
 
-**OPEN / report-only production evaluation.** Gap ledger from the accepted workshop-homed
+**DA-GRADUATED / COMPLETE** — merged [#1225](https://github.com/khorum08/SimThing/pull/1225) @ `8696f1f2ca7ea99203494225ad2f60118e27b355` (head `017db4c24c2605ce408c589f03047707c5f86d81`). DA exit-proof stamp 2026-07-09.
+
+Report-only production evaluation: gap ledger from the accepted workshop-homed
 candidate `SimThingScenarioSpec` projection to full Studio session hydrate.
 
 **No implementation** in this rung: no production mapeditor `.clause` API, no UI picker,
 no rebind code, no closeout.
+
+## Identity
+
+| Field | Value |
+|---|---|
+| Rung | `TP-STUDIO-STEAD-REBIND-READINESS-0` |
+| PR | [#1225](https://github.com/khorum08/SimThing/pull/1225) |
+| Merge SHA | `8696f1f2ca7ea99203494225ad2f60118e27b355` |
+| tested_code_sha | `017db4c24c2605ce408c589f03047707c5f86d81` |
 
 ## Decision context
 
