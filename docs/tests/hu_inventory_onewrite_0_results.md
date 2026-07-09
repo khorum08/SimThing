@@ -1,22 +1,22 @@
 # HU-INVENTORY-ONEWRITE-0 Results
 
-**PROOF-PRESENT / PROBATION** â€” boundary audit ledger **retired**; one table.
+**PROOF-PRESENT / PROBATION** — boundary audit ledger **retired**; one table.
 Gate-wiring; not self-merged (Fable).
 
-ORIENT-RECEIPT: `deddcda875b6` Â· stamp `efe10e9d0c84cc7d`.
+ORIENT-RECEIPT: `deddcda875b6` · stamp `efe10e9d0c84cc7d`.
 
-## Justification (STOP â†’ retire)
+## Justification (STOP to retire)
 
 Pure regen of 651-row boundary table impossible: +93 policy gaps, 167 free-text
 rewrites, 293 non-policy `superseding_boundary` IDs. DA: delete ledger, not derive.
 
 ## Deleted
 
-| Asset | Î” |
+| Asset | Delta |
 |---|---|
-| `test_lifecycle_boundary_rows.tsv` | âˆ’651 data rows |
+| `test_lifecycle_boundary_rows.tsv` | -651 data rows |
 | `test_lifecycle_parked_boundary.tsv` | empty pen |
-| `test_lifecycle_boundary_check.sh` | âˆ’1 script (~293 lines; was red/unwired) |
+| `test_lifecycle_boundary_check.sh` | -1 script (~293 lines; was red/unwired) |
 
 Policy `test_lifecycle_boundaries.tsv` **kept**. Inventory schema + drift FAIL unchanged.
 
@@ -33,12 +33,12 @@ Policy `test_lifecycle_boundaries.tsv` **kept**. Inventory schema + drift FAIL u
 ## Exit proof
 
 ```text
-track_closeout.sh --prove â†’ PASS (legacy present + boundary-absent)
-clearance_check.sh --selftest â†’ PASS (61)
-lifecycle_schema_pr_gate.sh --selftest â†’ PASS (3)
-gen_orientation.sh --check â†’ PASS
-agent_scan.sh â†’ AGENT-SCAN-VERDICT: PASS delta_inspect=0
+track_closeout.sh --prove -> PASS (legacy present + boundary-absent)
+clearance_check.sh --selftest -> PASS (61)
+lifecycle_schema_pr_gate.sh --selftest -> PASS (3)
+gen_orientation.sh --check -> PASS
+agent_scan.sh -> AGENT-SCAN-VERDICT: PASS delta_inspect=0
 ```
 
-tested_code_sha: 3f85acdcf309f2e4a4acddc5180872a34c3816b5
-coverage_basis: PASS â€” prove + clearance + schema + orientation + agent_scan
+tested_code_sha: ab2e1f6c53f46cc6d468bb5d45631abcf7cfb1bf
+coverage_basis: PASS - prove + clearance + schema + orientation + agent_scan
