@@ -1,0 +1,13 @@
+crates/simthing-clausething/src/clause_scenario_projection.rs
+crates/simthing-clausething/src/lib.rs
+crates/simthing-mapeditor/src/clause_scenario_ingest.rs
+crates/simthing-mapeditor/src/lib.rs
+crates/simthing-mapeditor/tests/tp_studio_clause_api_1.rs
+crates/simthing-workshop/src/tp_studio_clause_ingest.rs
+crates/simthing-workshop/src/tp_studio_stead_rebind.rs
+docs/tests/tp_studio_clause_api_1_results.md
+scripts/ci/test_inventory.tsv
+scripts/ci/test_lifecycle_boundary_rows.tsv
+docs/design_0_0_8_5_clausescript_terran_pirate_galaxy.md
+docs/orchestrator_orientation.mdcrates/simthing-sim/src/engine_source_change.rs
+

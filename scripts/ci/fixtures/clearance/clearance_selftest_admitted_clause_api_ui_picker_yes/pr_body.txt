@@ -1,0 +1,10 @@
+tested_code_sha: b18d19ac130ee816fc9a4fb1061792ce19f9d1ac
+coverage_basis: PASS - admitted ClauseScript API composition fixture
+admitted_api: YES
+studio_clause_api: LIMITED_PRODUCTION_STRUCTURAL_REBIND_READY
+ui_file_picker: YES
+tp_defaults_in_production: NO
+session_hydrate: PASS
+projection_mode: StructuralRebindReady
+closeout_run: NO
+track_closeout_apply: NO

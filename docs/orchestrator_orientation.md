@@ -31,7 +31,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | 886c26f38b08a1beaf97e5b9e54a88791c261bbe8df5ca49315aa1e4178712fd |
+| precedented_classes.tsv | f3d5fe6f89cf7c74a5dce3bd1ac7804c2f24fc69787d583967ce068879691100 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
@@ -121,6 +121,7 @@ Without `novelty_basis`, clearance fails. Unclassified diffs without `novelty_cl
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
 | tp-workshop-candidate-proof | crates/simthing-workshop/src/tp_*.rs\|crates/simthing-workshop/tests/tp_*.rs\|docs/tests/tp_*_0_results.md\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|workshop_only\|no_engine_crate | active |
+| tp-admitted-clause-api-composition | crates/simthing-clausething/src/clause_scenario_projection.rs\|crates/simthing-clausething/src/lib.rs\|crates/simthing-mapeditor/src/clause_scenario_ingest.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|crates/simthing-workshop/src/tp_studio_clause_ingest.rs\|crates/simthing-workshop/src/tp_studio_stead_rebind.rs\|docs/tests/tp_studio_clause_api_*_results.md\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|admitted_api\|no_ui_picker\|no_tp_defaults\|session_hydrate | active |
 
 ## Binding Conditions
 
@@ -160,6 +161,7 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 - Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.
 - `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
 - `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).
+- `tp-admitted-clause-api-composition` → DA-admitted limited ClauseScript composition (StructuralRebindReady) only; not picker/runtime/GameMode/RF/closeout.
 - binding-conditions, class-suspended, triage-missing → DA review routing.
 - gate-wiring → deep audit; harness surfaces are never self-mergeable.
 - harness-error → fix data/target resolution before re-run.
