@@ -1201,6 +1201,7 @@ def render_orientation(active_info: dict) -> tuple:
     "- unclassified-scope, class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).",
     "- Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.",
     "- `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.",
+    "- `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).",
     "- binding-conditions, class-suspended, triage-missing → DA review routing.",
     "- gate-wiring → deep audit; harness surfaces are never self-mergeable.",
     "- harness-error → fix data/target resolution before re-run.",

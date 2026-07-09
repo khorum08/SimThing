@@ -293,7 +293,7 @@ in seconds where CI already vouches, and reserve token-heavy investigation for e
 
 **Merge authority (judgment-residue — constitution §0.9.7 governs):** precedented-class clearance is
 mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Unclassified-scope /
-envelope → precise `DA-RESERVE`; novelty is claim-only, overrides clearable, needs `novelty_basis`.
+envelope → precise `DA-RESERVE`; novelty claim-only; `tp-workshop-candidate-proof` is workshop-TP-only.
 DA spot-audits self-authorized merges; one wrong self-merge suspends authority. Owner supremacy above all.
 
 **Channeling DA token spend (judgment-residue — feed the routing table honestly):**

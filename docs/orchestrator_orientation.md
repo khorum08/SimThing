@@ -31,7 +31,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | 1078e23166ff7ad9b74340dc34d621ff7bbd5e9aa2e0da66489ee31df8dde676 |
+| precedented_classes.tsv | 886c26f38b08a1beaf97e5b9e54a88791c261bbe8df5ca49315aa1e4178712fd |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
@@ -117,6 +117,7 @@ Without `novelty_basis`, clearance fails. Unclassified diffs without `novelty_cl
 | tp-fleet-movement-rung | crates/simthing-workshop/src/fleet_movement_post_hydration.rs\|crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fleet_movement_0.rs\|docs/tests/tp_fleet_movement_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
+| tp-workshop-candidate-proof | crates/simthing-workshop/src/tp_*.rs\|crates/simthing-workshop/tests/tp_*.rs\|docs/tests/tp_*_0_results.md\|scripts/ci/test_inventory.tsv\|scripts/ci/test_lifecycle_boundary_rows.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|workshop_only\|no_engine_crate | active |
 
 ## Binding Conditions
 
@@ -155,6 +156,7 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 - unclassified-scope, class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
 - Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.
 - `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
+- `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).
 - binding-conditions, class-suspended, triage-missing → DA review routing.
 - gate-wiring → deep audit; harness surfaces are never self-mergeable.
 - harness-error → fix data/target resolution before re-run.
