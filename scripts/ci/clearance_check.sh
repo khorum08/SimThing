@@ -14,6 +14,7 @@ fi
 GATE_WIRING_PATHS=(
   "scripts/ci/clearance_check.sh"
   "scripts/ci/precedented_classes.tsv"
+  "scripts/ci/class_predicates.tsv"
   "scripts/ci/binding_conditions.tsv"
   "scripts/ci/clearance_ledger.tsv"
   ".github/workflows/doctrine-exec-commands.yml"
@@ -67,6 +68,31 @@ EOF
   exit 1
 }
 
+emit_treeverify_profile_line() {
+  # Advisory fold: same changed-file list → da_treeverify_lib (no router duplication).
+  # Only called for DA-RESERVE; never for CLEARABLE/FAIL.
+  local files_tmp body_tmp profile_tsv
+  profile_tsv="${SCRIPT_DIR}/da_review_profile.tsv"
+  [[ -f "$profile_tsv" ]] || {
+    printf 'DA-TREEVERIFY-PROFILE: DEEP-TREE\n'
+    return 0
+  }
+  files_tmp="$(mktemp "${TMPDIR:-/tmp}/clearance-tv-files-XXXXXX")"
+  body_tmp="$(mktemp "${TMPDIR:-/tmp}/clearance-tv-body-XXXXXX")"
+  changed_files 2>/dev/null >"$files_tmp" || true
+  pr_body_text >"$body_tmp" 2>/dev/null || true
+  local out line
+  out="$("$PYTHON_BIN" "${SCRIPT_DIR}/da_treeverify_lib.py" profile \
+    --profile "$profile_tsv" --files "$files_tmp" --body "$body_tmp" 2>/dev/null || true)"
+  rm -f "$files_tmp" "$body_tmp"
+  line="$(printf '%s\n' "$out" | grep -E '^DA-TREEVERIFY-PROFILE:' | head -n 1 || true)"
+  if [[ -n "$line" ]]; then
+    printf '%s\n' "$line"
+  else
+    printf 'DA-TREEVERIFY-PROFILE: DEEP-TREE\n'
+  fi
+}
+
 emit_verdict() {
   local kind="$1"
   local detail="${2:-}"
@@ -81,10 +107,15 @@ emit_verdict() {
       VERDICT="CLEARANCE-VERDICT: FAIL(${detail})"
       ;;
     *)
+      kind="reserve"
+      detail="harness-error"
       VERDICT="CLEARANCE-VERDICT: DA-RESERVE(harness-error)"
       ;;
   esac
   printf '%s\n' "$VERDICT"
+  if [[ "$kind" == "reserve" ]]; then
+    emit_treeverify_profile_line
+  fi
 }
 
 glob_matches_any() {
@@ -180,12 +211,22 @@ resolve_paths() {
   local binding="${SCRIPT_DIR}/binding_conditions.tsv"
   local ledger="${SCRIPT_DIR}/clearance_ledger.tsv"
   local triage="${SCRIPT_DIR}/triage_log.tsv"
+  local predicates="${SCRIPT_DIR}/class_predicates.tsv"
   if [[ -n "$FIXTURE_DIR" && -d "$FIXTURE_DIR" ]]; then
     [[ -f "${FIXTURE_DIR}/precedented_classes.tsv" ]] && classes="${FIXTURE_DIR}/precedented_classes.tsv"
     [[ -f "${FIXTURE_DIR}/binding_conditions.tsv" ]] && binding="${FIXTURE_DIR}/binding_conditions.tsv"
     [[ -f "${FIXTURE_DIR}/triage_log.tsv" ]] && triage="${FIXTURE_DIR}/triage_log.tsv"
+    [[ -f "${FIXTURE_DIR}/class_predicates.tsv" ]] && predicates="${FIXTURE_DIR}/class_predicates.tsv"
   fi
-  printf '%s\n%s\n%s\n%s' "$classes" "$binding" "$ledger" "$triage"
+  printf '%s\n%s\n%s\n%s\n%s' "$classes" "$binding" "$ledger" "$triage" "$predicates"
+}
+
+class_predicates_path() {
+  local predicates="${SCRIPT_DIR}/class_predicates.tsv"
+  if [[ -n "$FIXTURE_DIR" && -f "${FIXTURE_DIR}/class_predicates.tsv" ]]; then
+    predicates="${FIXTURE_DIR}/class_predicates.tsv"
+  fi
+  printf '%s' "$predicates"
 }
 
 read_fixture_file() {
@@ -309,16 +350,83 @@ check_self_application() {
 
 detect_classes() {
   local classes_tsv="$1"
+  local predicates_tsv
+  predicates_tsv="$(class_predicates_path)"
   local files
   files="$(changed_files 2>/dev/null || true)"
-  "$PYTHON_BIN" - "$classes_tsv" "$files" <<'PY'
+  "$PYTHON_BIN" - "$classes_tsv" "$predicates_tsv" "$files" <<'PY'
 import csv
 import fnmatch
 import sys
 from pathlib import PurePosixPath
 
-classes_tsv, files_blob = sys.argv[1], sys.argv[2]
+classes_tsv, predicates_tsv, files_blob = sys.argv[1], sys.argv[2], sys.argv[3]
 files = [f.strip().replace("\\", "/") for f in files_blob.splitlines() if f.strip()]
+
+def glob_match(path: str, pattern: str) -> bool:
+    p = PurePosixPath(path)
+    if p.match(pattern):
+        return True
+    if "**" in pattern:
+        prefix = pattern.split("**", 1)[0]
+        if prefix and path.startswith(prefix):
+            return True
+    return fnmatch.fnmatch(path, pattern.replace("**", "*"))
+
+def any_match(path_list, globs_blob):
+    globs = [g.strip() for g in globs_blob.split("|") if g.strip()]
+    if not globs:
+        return False
+    return any(any(glob_match(path, g) for g in globs) for path in path_list)
+
+def all_match(path_list, globs_blob):
+    globs = [g.strip() for g in globs_blob.split("|") if g.strip()]
+    if not globs or not path_list:
+        return False
+    return all(any(glob_match(path, g) for g in globs) for path in path_list)
+
+# Data-driven class predicates (HU-CLEARANCE-DSL-0): match_any + detect_mode.
+predicates = {}
+try:
+    with open(predicates_tsv, encoding="utf-8", newline="") as fh:
+        for row in csv.reader(fh, delimiter="\t"):
+            if not row or row[0] == "class_id":
+                continue
+            if len(row) < 6:
+                continue
+            cid, match_any, scope, forbidden, mode, prio = row[:6]
+            predicates[cid] = {
+                "match_any": match_any,
+                "scope": scope,
+                "forbidden": forbidden,
+                "mode": mode.strip(),
+                "priority": int(prio) if str(prio).strip().isdigit() else 0,
+            }
+except FileNotFoundError:
+    predicates = {}
+
+def dsl_detect(cid, pred):
+    if not any_match(files, pred["match_any"]):
+        return False
+    mode = pred["mode"]
+    if mode == "all_in_scope":
+        return all_match(files, pred["scope"])
+    if mode == "any_then_envelope":
+        return any_match(files, pred["scope"])
+    return False
+
+# Shape signal (match_any only): blocks workshop-candidate collision even when
+# all_in_scope detect fails (out-of-envelope files → unclassified, not workshop).
+dsl_shape_ids = {
+    cid for cid, pred in predicates.items() if any_match(files, pred["match_any"])
+}
+dsl_hits = []
+for cid, pred in predicates.items():
+    if dsl_detect(cid, pred):
+        dsl_hits.append((pred["priority"], cid))
+dsl_hits.sort(reverse=True)
+dsl_primary = dsl_hits[0][1] if dsl_hits else ""
+dsl_matched_ids = {cid for _, cid in dsl_hits}
 
 primary = ""
 for f in files:
@@ -337,42 +445,8 @@ for f in files:
     if "suspended_demo" in f:
         primary = "tp-suspended-demo"
         break
-
-# Admitted ClauseScript API composition owns the #1230-shaped surface so it is
-# not stolen by tp-workshop-candidate-proof (which would engine-scope-reject clausething).
-has_admitted_clause_api_shape = any(
-    f == "crates/simthing-clausething/src/clause_scenario_projection.rs"
-    or f == "crates/simthing-mapeditor/src/clause_scenario_ingest.rs"
-    or (
-        f.startswith("crates/simthing-mapeditor/tests/tp_studio_clause_api_")
-        and f.endswith(".rs")
-    )
-    for f in files
-)
-# Admitted narrow Studio/mapeditor .clause picker owns #1239-shaped UI surfaces.
-has_studio_clause_picker_shape = any(
-    f == "crates/simthing-mapeditor/src/clause_scenario_picker.rs"
-    or (
-        f.startswith("crates/simthing-mapeditor/tests/tp_studio_clause_picker_")
-        and f.endswith(".rs")
-    )
-    for f in files
-)
-# Picker primary beats API composition when both shapes appear; pure API keeps API class.
-if not primary and has_studio_clause_picker_shape:
-    primary = "tp-studio-clause-picker"
-if not primary and has_admitted_clause_api_shape:
-    primary = "tp-admitted-clause-api-composition"
-
-def glob_match(path: str, pattern: str) -> bool:
-    p = PurePosixPath(path)
-    if p.match(pattern):
-        return True
-    if "**" in pattern:
-        prefix = pattern.split("**", 1)[0]
-        if prefix and path.startswith(prefix):
-            return True
-    return fnmatch.fnmatch(path, pattern.replace("**", "*"))
+if not primary and dsl_primary:
+    primary = dsl_primary
 
 rows = []
 with open(classes_tsv, encoding="utf-8", newline="") as fh:
@@ -410,8 +484,6 @@ has_docs_ladder_shape = any(
     )
     for f in files
 )
-# Require workshop source/test (not results-doc alone) so docs-ladder readiness
-# reports do not multi-match this class.
 has_tp_workshop_candidate_shape = any(
     (
         f.startswith("crates/simthing-workshop/src/tp_")
@@ -429,6 +501,14 @@ for row in rows:
     class_id, scope_globs, _env, _reqs, status, _blocker = row[:6]
     if status == "retired":
         continue
+    # DSL classes: match only via class_predicates.tsv engine (not legacy scope loop).
+    if class_id in predicates:
+        if class_id not in dsl_matched_ids:
+            continue
+        if primary and class_id != primary:
+            continue
+        class_ids.add(class_id)
+        continue
     if class_id == "corpus-sweep" and not (
         has_corpus_sweep_result and has_corpus_sweep_inventory and has_corpus_sweep_test
     ):
@@ -442,39 +522,16 @@ for row in rows:
     if class_id == "corpus-baseline" and not has_corpus_baseline_result:
         continue
     if class_id == "docs-ladder-pointer-correction":
-        # All files must stay inside the docs-ladder envelope; mixed runtime diffs do not match.
         if not has_docs_ladder_shape or not files:
             continue
         globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
         if not all(any(glob_match(path, g) for g in globs) for path in files):
             continue
     if class_id == "tp-workshop-candidate-proof":
-        # Require at least one TP workshop candidate surface; envelope extras still
-        # hit workshop_only / no_engine_crate (mapeditor → class-envelope-violation).
         if not has_tp_workshop_candidate_shape:
             continue
-        # Do not collide with admitted production ClauseScript API composition.
-        if has_admitted_clause_api_shape:
-            continue
-        # Do not collide with admitted narrow Studio/mapeditor picker UI.
-        if has_studio_clause_picker_shape:
-            continue
-    if class_id == "tp-admitted-clause-api-composition":
-        if not has_admitted_clause_api_shape:
-            continue
-        # Picker-shaped diffs are owned by tp-studio-clause-picker (primary).
-        if has_studio_clause_picker_shape:
-            continue
-        globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
-        # All changed files must stay inside the admitted composition envelope.
-        if not files or not all(any(glob_match(path, g) for g in globs) for path in files):
-            continue
-    if class_id == "tp-studio-clause-picker":
-        if not has_studio_clause_picker_shape:
-            continue
-        globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
-        # Match when picker surface present; out-of-envelope files fail picker_only later.
-        if not files or not any(any(glob_match(path, g) for g in globs) for path in files):
+        # Do not collide with data-driven TP admitted class shapes.
+        if dsl_shape_ids:
             continue
     if primary and class_id != primary:
         continue
@@ -488,6 +545,73 @@ for row in rows:
 for cid in sorted(class_ids):
     print(cid)
 PY
+}
+
+# Generic engine: scope_globs / forbidden_globs from class_predicates.tsv.
+# Returns 0 when envelope ok; on violation emits reserve and returns 1.
+# No-op (return 0) when class has no predicate row.
+check_class_predicate_envelope() {
+  local class_id="$1"
+  local predicates_tsv
+  predicates_tsv="$(class_predicates_path)"
+  [[ -f "$predicates_tsv" ]] || return 0
+  local files
+  files="$(changed_files 2>/dev/null || true)"
+  local result
+  result="$("$PYTHON_BIN" - "$predicates_tsv" "$class_id" "$files" <<'PY'
+import csv
+import fnmatch
+import sys
+from pathlib import PurePosixPath
+
+predicates_tsv, class_id, files_blob = sys.argv[1], sys.argv[2], sys.argv[3]
+files = [f.strip().replace("\\", "/") for f in files_blob.splitlines() if f.strip()]
+
+def glob_match(path: str, pattern: str) -> bool:
+    p = PurePosixPath(path)
+    if p.match(pattern):
+        return True
+    if "**" in pattern:
+        prefix = pattern.split("**", 1)[0]
+        if prefix and path.startswith(prefix):
+            return True
+    return fnmatch.fnmatch(path, pattern.replace("**", "*"))
+
+def any_glob(path, globs):
+    return any(glob_match(path, g) for g in globs)
+
+pred = None
+with open(predicates_tsv, encoding="utf-8", newline="") as fh:
+    for row in csv.reader(fh, delimiter="\t"):
+        if not row or row[0] == "class_id":
+            continue
+        if row[0] == class_id and len(row) >= 6:
+            pred = {
+                "scope": [g.strip() for g in row[2].split("|") if g.strip()],
+                "forbidden": [g.strip() for g in row[3].split("|") if g.strip()],
+                "mode": row[4].strip(),
+            }
+            break
+if pred is None:
+    print("ok")
+    sys.exit(0)
+
+for path in files:
+    if pred["forbidden"] and any_glob(path, pred["forbidden"]):
+        print("envelope")
+        sys.exit(0)
+    if pred["mode"] == "any_then_envelope" and pred["scope"]:
+        if not any_glob(path, pred["scope"]):
+            print("envelope")
+            sys.exit(0)
+print("ok")
+PY
+)"
+  if [[ "$result" == "envelope" ]]; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  return 0
 }
 
 class_for_rung() {
@@ -680,179 +804,6 @@ check_required_pr_body_fields() {
     emit_verdict fail "missing-tested-code-sha: add tested_code_sha and coverage_basis"
     return 1
   fi
-  return 0
-}
-
-# Admitted limited ClauseScript API composition body gates.
-check_admitted_api_field() {
-  local body="$1"
-  if ! echo "$body" | grep -qiE 'admitted_api:[[:space:]]*YES'; then
-    emit_verdict fail "missing-admitted-api-fields: add admitted_api: YES"
-    return 1
-  fi
-  return 0
-}
-
-check_no_ui_picker_field() {
-  local body="$1"
-  local file
-  if echo "$body" | grep -qiE 'ui_file_picker:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if ! echo "$body" | grep -qiE 'ui_file_picker:[[:space:]]*NO'; then
-    emit_verdict fail "missing-admitted-api-fields: ui_file_picker: NO required"
-    return 1
-  fi
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    case "$file" in
-      *picker*|*FileDialog*|*file_dialog*|*rfd*|*clause_menu*)
-        emit_verdict reserve "class-envelope-violation"
-        return 1
-        ;;
-    esac
-  done < <(changed_files 2>/dev/null || true)
-  return 0
-}
-
-check_no_tp_defaults_field() {
-  local body="$1"
-  if echo "$body" | grep -qiE 'tp_defaults_in_production:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if ! echo "$body" | grep -qiE 'tp_defaults_in_production:[[:space:]]*NO'; then
-    emit_verdict fail "missing-admitted-api-fields: tp_defaults_in_production: NO required"
-    return 1
-  fi
-  return 0
-}
-
-check_session_hydrate_field() {
-  local body="$1"
-  if ! echo "$body" | grep -qiE 'session_hydrate:[[:space:]]*PASS'; then
-    emit_verdict fail "missing-admitted-api-fields: session_hydrate: PASS required"
-    return 1
-  fi
-  return 0
-}
-
-# Admitted narrow Studio/mapeditor .clause picker body gates (TP-STUDIO-CLAUSE-PICKER-CLASS-0).
-check_studio_clause_picker_field() {
-  local body="$1"
-  if ! echo "$body" | grep -qiE 'studio_clause_picker:[[:space:]]*ADMITTED_NARROW_UI'; then
-    emit_verdict fail "missing-picker-proof-fields: studio_clause_picker: ADMITTED_NARROW_UI required"
-    return 1
-  fi
-  return 0
-}
-
-check_production_api_only_field() {
-  local body="$1"
-  if echo "$body" | grep -qiE 'production_api_only:[[:space:]]*NO'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if ! echo "$body" | grep -qiE 'production_api_only:[[:space:]]*YES'; then
-    emit_verdict fail "missing-picker-proof-fields: production_api_only: YES required"
-    return 1
-  fi
-  return 0
-}
-
-check_ui_file_picker_yes_field() {
-  local body="$1"
-  if ! echo "$body" | grep -qiE 'ui_file_picker:[[:space:]]*YES'; then
-    emit_verdict fail "missing-picker-proof-fields: ui_file_picker: YES required"
-    return 1
-  fi
-  return 0
-}
-
-check_no_duplicate_parse_rebind_field() {
-  local body="$1"
-  if echo "$body" | grep -qiE 'duplicate_parse_rebind_path:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if ! echo "$body" | grep -qiE 'duplicate_parse_rebind_path:[[:space:]]*NO'; then
-    emit_verdict fail "missing-picker-proof-fields: duplicate_parse_rebind_path: NO required"
-    return 1
-  fi
-  return 0
-}
-
-check_no_gamemode_rf_live_closeout_fields() {
-  local body="$1"
-  local missing=()
-
-  if echo "$body" | grep -qiE 'gamemode_rf_attach:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if echo "$body" | grep -qiE 'live_run_state:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if echo "$body" | grep -qiE 'closeout_run:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-  if echo "$body" | grep -qiE 'track_closeout_apply:[[:space:]]*YES'; then
-    emit_verdict reserve "class-envelope-violation"
-    return 1
-  fi
-
-  if ! echo "$body" | grep -qiE 'gamemode_rf_attach:[[:space:]]*NO'; then
-    missing+=("gamemode_rf_attach")
-  fi
-  if ! echo "$body" | grep -qiE 'live_run_state:[[:space:]]*NO'; then
-    missing+=("live_run_state")
-  fi
-  if ! echo "$body" | grep -qiE 'closeout_run:[[:space:]]*NO'; then
-    missing+=("closeout_run")
-  fi
-  if ! echo "$body" | grep -qiE 'track_closeout_apply:[[:space:]]*NO'; then
-    missing+=("track_closeout_apply")
-  fi
-  if [[ "${#missing[@]}" -gt 0 ]]; then
-    local joined="" m
-    for m in "${missing[@]}"; do
-      if [[ -z "$joined" ]]; then joined="$m"; else joined="${joined}, ${m}"; fi
-    done
-    emit_verdict fail "missing-picker-proof-fields: ${joined}"
-    return 1
-  fi
-  return 0
-}
-
-# Picker class path envelope — runtime/GPU/kernel/sim/workshop/closeout must not clear.
-check_picker_only() {
-  local file
-  while IFS= read -r file; do
-    [[ -z "$file" ]] && continue
-    file="${file//\\//}"
-    case "$file" in
-      crates/simthing-mapeditor/src/clause_scenario_picker.rs|\
-      crates/simthing-mapeditor/src/app/scenario_io.rs|\
-      crates/simthing-mapeditor/src/app/ui.rs|\
-      crates/simthing-mapeditor/src/app/mod.rs|\
-      crates/simthing-mapeditor/src/lib.rs|\
-      crates/simthing-mapeditor/tests/tp_studio_clause_picker_*.rs|\
-      crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs|\
-      docs/tests/tp_studio_clause_picker_*_results.md|\
-      scripts/ci/test_inventory.tsv|\
-      scripts/ci/test_lifecycle_boundary_rows.tsv|\
-      docs/design_0_0_8_5_*.md|\
-      docs/orchestrator_orientation.md)
-        ;;
-      *)
-        emit_verdict reserve "class-envelope-violation"
-        return 1
-        ;;
-    esac
-  done < <(changed_files 2>/dev/null || true)
   return 0
 }
 
@@ -1268,42 +1219,15 @@ route_clearance() {
     return 0
   fi
 
+  # Data-driven path envelope (scope_all / forbidden) for DSL-migrated classes.
+  if ! check_class_predicate_envelope "$class_id"; then
+    return 0
+  fi
+
   if [[ "$reqs" == *tested_code_sha* || "$reqs" == *coverage_basis* ]]; then
     if ! check_required_pr_body_fields "$body"; then
       return 0
     fi
-  fi
-
-  if [[ "$reqs" == *picker_only* ]] && ! check_picker_only; then
-    return 0
-  fi
-
-  if [[ "$reqs" == *admitted_api* ]] && ! check_admitted_api_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *no_ui_picker* ]] && ! check_no_ui_picker_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *no_tp_defaults* ]] && ! check_no_tp_defaults_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *session_hydrate* ]] && ! check_session_hydrate_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *studio_clause_picker* ]] && ! check_studio_clause_picker_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *production_api_only* ]] && ! check_production_api_only_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *ui_file_picker_yes* ]] && ! check_ui_file_picker_yes_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *no_duplicate_parse_rebind* ]] && ! check_no_duplicate_parse_rebind_field "$body"; then
-    return 0
-  fi
-  if [[ "$reqs" == *no_gamemode_rf_live_closeout* ]] && ! check_no_gamemode_rf_live_closeout_fields "$body"; then
-    return 0
   fi
 
   if [[ "$reqs" == *gpu_proof* ]]; then
@@ -1347,15 +1271,33 @@ run_fixture() {
   ledger_tsv="$(mktemp "${TMPDIR:-/tmp}/clearance-ledger-XXXXXX")"
   triage_tsv="$(echo "$paths" | sed -n '4p')"
   printf 'verdict\tclass\tpr\tsha\tdate\tsketch\n' >"$ledger_tsv"
-  got="$(route_clearance "$classes_tsv" "$binding_tsv" "$ledger_tsv" "$triage_tsv" | tail -n 1)"
-  if [[ "$got" == "$expected" ]]; then
-    echo "PASS ${name}"
-    return 0
+  local out
+  out="$(route_clearance "$classes_tsv" "$binding_tsv" "$ledger_tsv" "$triage_tsv" || true)"
+  got="$(printf '%s\n' "$out" | grep -E '^CLEARANCE-VERDICT:' | head -n 1 || true)"
+  if [[ "$got" != "$expected" ]]; then
+    echo "FAIL ${name}"
+    echo "  expected: ${expected}"
+    echo "  got:      ${got}"
+    return 1
   fi
-  echo "FAIL ${name}"
-  echo "  expected: ${expected}"
-  echo "  got:      ${got}"
-  return 1
+  # DA-RESERVE must also fold treeverify profile; CLEARABLE/FAIL must not.
+  if [[ "$got" == CLEARANCE-VERDICT:\ DA-RESERVE* ]]; then
+    if ! printf '%s\n' "$out" | grep -qE '^DA-TREEVERIFY-PROFILE:'; then
+      echo "FAIL ${name}"
+      echo "  expected: DA-TREEVERIFY-PROFILE on DA-RESERVE"
+      echo "  got:      (missing)"
+      return 1
+    fi
+  else
+    if printf '%s\n' "$out" | grep -qE '^DA-TREEVERIFY-PROFILE:'; then
+      echo "FAIL ${name}"
+      echo "  expected: no DA-TREEVERIFY-PROFILE on non-reserve"
+      echo "  got:      $(printf '%s\n' "$out" | grep -E '^DA-TREEVERIFY-PROFILE:' | head -n 1)"
+      return 1
+    fi
+  fi
+  echo "PASS ${name}"
+  return 0
 }
 
 run_selftest() {
@@ -1419,6 +1361,8 @@ run_selftest() {
     clearance_selftest_picker_class_admitted_scope_gap
     clearance_selftest_picker_class_api_nonregression
     clearance_selftest_picker_class_gate_wiring
+    clearance_selftest_dsl_forbidden_glob_hit
+    clearance_selftest_dsl_treeverify_profile_on_reserve
   )
   local name
   for name in "${fixtures[@]}"; do
