@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | d9217c013a0e24de0b45445812ab564345e8d2258e1186ae8b0254781c2202aa |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | d0e4d17e23ebe3e996bda3c87e5230cbc2125e9659013bc30465c840c1dd3fcb |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -86,7 +86,7 @@ Track state: `open`
 | 8.9 | TP-STUDIO-CLAUSE-PICKER-ADMISSION-0 | **Owner/DA-gated.** Admit UI `.clause` file picker / menu surface only after API | **DONE — DA-ADMITTED (2026-07-09, Option A) / narrow UI picker.** Production API + session hydrate proven (#1230); re... |
 | 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **DA-GRADUATED / merged [#1239](https://github.com/khorum08/SimThing/pull/1239) @ `0183883767`** (head `d9bd5c4054`) ... |
 | 8.10g | CLEARANCE-UNCLASSIFIED-SCOPE-REDUCTION-0 | **Owner/DA process ruling.** Reduce over-broad `DA-RESERVE(unclassified-scope)`: | **DONE — DA-ADOPTED (2026-07-09, Option A).** Adopt `DA-RESERVE(admitted-scope-router-gap)` vocabulary + orchestratio... |
-| 8.10r | CLEARANCE-ADMITTED-SCOPE-GAP-0 | **Harness (gate-wiring).** Implement `DA-RESERVE(admitted-scope-router-gap)` in  | **DONE** — machine verdict + 7 DA-required selftests; empty-class split novelty → admitted-scope-router-gap → unclass... |
+| 8.10r | CLEARANCE-ADMITTED-SCOPE-GAP-0 | **Harness (gate-wiring).** Implement `DA-RESERVE(admitted-scope-router-gap)` in  | **DA-GRADUATED / merged [#1243](https://github.com/khorum08/SimThing/pull/1243) @ `becb07fdd9`** (head `f7b184e994`) ... |
 | 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency.** Register a precedented class for admitted narrow UI picke | **OPEN — next production pointer.** Exit: clearance selftests clearable + reject fixtures. |
 
 ## Next Rung Pointer

@@ -2,7 +2,9 @@
 
 ## Status
 
-**DONE** — machine `DA-RESERVE(admitted-scope-router-gap)` live in `clearance_check.sh`; 7/7 DA-required selftests PASS; full clearance selftest **49/49 PASS**.
+**DA-GRADUATED / COMPLETE** — merged [#1243](https://github.com/khorum08/SimThing/pull/1243) @ `becb07fdd92b65c292b7719d0867bd185eb1289b` (head `f7b184e994ca62b67f86c96be2832bb524041d75`). DA stamp 2026-07-09.
+
+Machine `DA-RESERVE(admitted-scope-router-gap)` live in `clearance_check.sh`; 7/7 DA-required selftests PASS; full clearance selftest **49/49 PASS**.
 
 ## Policy source
 
