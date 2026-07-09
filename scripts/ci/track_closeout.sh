@@ -109,11 +109,11 @@ BOUNDARY_ROWS_HEADER = [
 ]
 TRACKS_HEADER = ["track_id", "status", "closed_at", "source", "note"]
 ARTIFACT_LEDGER_HEADER = ["path", "leased_at", "disposition", "closeout_track", "note"]
-# A parked row is a full inventory row relocated OUT of the live tables into the
-# quarantine pen so test_inventory.tsv / boundary_rows only ever hold decided assets.
+# A parked row is a full inventory row relocated OUT of the live inventory into the
+# quarantine pen so test_inventory.tsv only ever holds decided assets.
 PARKED_HEADER = INVENTORY_HEADER + ["parked_at", "closeout_track", "park_reason"]
-# Boundary rows removed by a park are preserved alongside, so an un-park can be
-# lossless (P1-6a). Keyed by the same (crate, file, test_name, kind) quadruple.
+# Legacy (pre-HU-INVENTORY-ONEWRITE-0): if a repo still carries a boundary-row table,
+# park/lockstep preserves matching rows. Absent table is the normal post-retirement state.
 PARKED_BOUNDARY = SCRIPT_DIR / "test_lifecycle_parked_boundary.tsv"
 PARKED_BOUNDARY_HEADER = BOUNDARY_ROWS_HEADER + ["parked_at", "closeout_track"]
 MANIFEST_HEADER = [
@@ -128,7 +128,7 @@ DURABLE_CLASSES = {
 DURABLE_KINDS = {"compile_fail", "trybuild"}
 
 DISPOSITIONS = {
-    "delete",         # remove inventory + boundary row now (Necessity Test: owner required)
+    "delete",         # remove inventory row now (Necessity Test: owner required)
     "elevate-code",   # relocate source file into a destination crate (target = dest path)
     "elevate-class",  # promote a proof into a permanent-residue class (target = class)
     "keep-durable",   # already durable; retained, no mutation
@@ -858,7 +858,12 @@ def cmd_apply():
         die("manifest has no track", 1)
 
     inv_hdr, inv = read_tsv(INVENTORY)
+    # Boundary audit ledger retired (HU-INVENTORY-ONEWRITE-0). Tolerate absence;
+    # if a legacy table is present, keep park/lockstep correct without recreating it.
+    boundary_present = BOUNDARY_ROWS.exists()
     b_hdr, b_rows = read_tsv(BOUNDARY_ROWS)
+    if not boundary_present:
+        b_rows = []
     trk_hdr, tracks = read_tsv(TRACKS)
 
     # P0-3: the birth_track close-stamp is the rubber-stamp everything downstream
@@ -990,11 +995,11 @@ def cmd_apply():
             survivors.append((r, "keep-durable"))
 
     removed_keys = delete_keys | park_keys
-    # 1. delete + park: relocate rows OUT of both live tables in lockstep
+    # 1. delete + park: relocate rows OUT of live inventory (and legacy boundary table if present)
     new_inv = [row for row in inv if inv_key(row) not in removed_keys]
-    new_b = [row for row in b_rows if inv_key(row) not in removed_keys]
-    # 1b. parked rows move (full row) into the quarantine pen with a wall-clock stamp;
-    # their boundary rows are preserved alongside so an un-park is lossless (P1-6a)
+    new_b = [row for row in b_rows if inv_key(row) not in removed_keys] if boundary_present else []
+    # 1b. parked inventory rows move into the quarantine pen with a wall-clock stamp.
+    # Legacy boundary rows (if any) are preserved in parked_boundary for lossless un-park.
     pb_hdr, parked_b_rows = read_tsv(PARKED_BOUNDARY)
     if pb_hdr is None:
         parked_b_rows = []
@@ -1007,12 +1012,13 @@ def cmd_apply():
         entry["closeout_track"] = track
         entry["park_reason"] = park_reason.get(key, "")
         parked_rows.append(entry)
-    for row in b_rows:
-        if inv_key(row) in park_keys:
-            b_entry = dict(row)
-            b_entry["parked_at"] = today.isoformat()
-            b_entry["closeout_track"] = track
-            parked_b_rows.append(b_entry)
+    if boundary_present:
+        for row in b_rows:
+            if inv_key(row) in park_keys:
+                b_entry = dict(row)
+                b_entry["parked_at"] = today.isoformat()
+                b_entry["closeout_track"] = track
+                parked_b_rows.append(b_entry)
     # 2. elevate-class: stamp durable class on the surviving inventory row
     for row in new_inv:
         key = inv_key(row)
@@ -1043,17 +1049,17 @@ def cmd_apply():
         new_crate = parts[1] if len(parts) >= 2 and parts[0] == "crates" else r["crate"]
         if len(parts) >= 2 and parts[0] == "crates":
             dest_crates.add(parts[1])
-        # the ledger follows the code: retarget the surviving inventory + boundary
-        # rows to the new path so the drift gate stays coherent
+        # the ledger follows the code: retarget surviving inventory (+ legacy boundary) rows
         moved_key = (r["crate"], r["file"], r["test_name"], r["kind"])
         for row in new_inv:
             if inv_key(row) == moved_key:
                 row["file"] = tgt
                 row["crate"] = new_crate
-        for row in new_b:
-            if inv_key(row) == moved_key:
-                row["file"] = tgt
-                row["crate"] = new_crate
+        if boundary_present:
+            for row in new_b:
+                if inv_key(row) == moved_key:
+                    row["file"] = tgt
+                    row["crate"] = new_crate
         art_rows.append({
             "path": tgt, "leased_at": today.isoformat(),
             "disposition": "elevate-code-rehome-pending",
@@ -1094,14 +1100,15 @@ def cmd_apply():
             "note": "closeout manifest; audit window then reap via --decommission",
         })
 
-    # 3. write mutated tables
+    # 3. write mutated tables — never recreate a retired boundary ledger
     write_tsv(INVENTORY, INVENTORY_HEADER, new_inv)
-    write_tsv(BOUNDARY_ROWS, BOUNDARY_ROWS_HEADER, new_b)
+    if boundary_present:
+        write_tsv(BOUNDARY_ROWS, BOUNDARY_ROWS_HEADER, new_b)
     if art_rows:
         write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, art_rows)
     if park_keys or PARKED.exists():
         write_tsv(PARKED, PARKED_HEADER, parked_rows)
-    if parked_b_rows or PARKED_BOUNDARY.exists():
+    if PARKED_BOUNDARY.exists() or (boundary_present and parked_b_rows):
         write_tsv(PARKED_BOUNDARY, PARKED_BOUNDARY_HEADER, parked_b_rows)
 
     # 4. close the birth_track (rubber-stamp) unless nothing was actually closed out
@@ -1122,8 +1129,9 @@ def cmd_apply():
     gates = run_gate_battery(track, dest_crates)
 
     # 7. compact, size-first report
-    inv_after, b_after = len(new_inv), len(new_b)
-    grew = inv_after > inv_before or b_after > b_before
+    inv_after = len(new_inv)
+    b_after = len(new_b) if boundary_present else 0
+    grew = inv_after > inv_before or (boundary_present and b_after > b_before)
     report = render_report(track, live_receipt, tally, survivors,
                            inv_before, inv_after, b_before, b_after, gates, closed, moved_notes,
                            active_track_plan)
@@ -1139,7 +1147,10 @@ def cmd_apply():
         print(f"  active_track_retired: no "
               f"({active_track_plan.get('current') or '-'}; {active_track_plan.get('reason') or '-'})")
     print(f"  inventory rows: {inv_before} -> {inv_after} (delta {inv_after - inv_before})")
-    print(f"  boundary rows:  {b_before} -> {b_after} (delta {b_after - b_before})")
+    if boundary_present:
+        print(f"  boundary rows:  {b_before} -> {b_after} (delta {b_after - b_before})")
+    else:
+        print("  boundary rows:  (ledger retired / absent — not written)")
     for d in sorted(tally):
         if tally[d]:
             print(f"    {d}: {tally[d]}")
@@ -1193,7 +1204,8 @@ def run_gate_battery(track: str, dest_crates=()) -> dict:
 
 def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gates, closed, moved,
                   active_track):
-    grew = inv_a > inv_b or b_a > b_b
+    # Boundary table growth only counts when a legacy table is still in play (non-zero side).
+    grew = inv_a > inv_b or (b_a > b_b and (b_b > 0 or b_a > 0))
     lines = []
     lines.append(f"# {track} — Track Closeout Report")
     lines.append("")
@@ -1215,11 +1227,14 @@ def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gate
     lines.append("| table | before | after | delta |")
     lines.append("| --- | --- | --- | --- |")
     lines.append(f"| test_inventory.tsv | {inv_b} | {inv_a} | {inv_a - inv_b} |")
-    lines.append(f"| test_lifecycle_boundary_rows.tsv | {b_b} | {b_a} | {b_a - b_b} |")
+    if b_b or b_a:
+        lines.append(f"| test_lifecycle_boundary_rows.tsv | {b_b} | {b_a} | {b_a - b_b} |")
+    else:
+        lines.append("| test_lifecycle_boundary_rows.tsv | retired | retired | 0 |")
     lines.append("")
     if tally.get("lease"):
         lines.append(f"_{tally['lease']} row(s) relocated to the parking pen "
-                     f"(`test_lifecycle_parked.tsv`) — out of the live tables, on a "
+                     f"(`test_lifecycle_parked.tsv`) — out of the live inventory, on a "
                      f"{LEASE_HARD_DAYS}-day wall-clock to delete-or-elevate._")
         lines.append("")
     if grew:
@@ -1719,6 +1734,8 @@ def cmd_prove():
         _, parked_b_after = read_tsv(sb / "scripts/ci/test_lifecycle_parked_boundary.tsv")
         check("apply-parked-boundary-preserved",
               any(r["test_name"] == "park_me" for r in parked_b_after))
+        check("apply-legacy-boundary-table-present",
+              (sb / "scripts/ci/test_lifecycle_boundary_rows.tsv").exists())
         _, trk_after = read_tsv(sb / "scripts/ci/test_lifecycle_tracks.tsv")
         check("apply-closed-birth-track", any(t["track_id"] == "sb-track" and t["status"] == "closed" for t in trk_after))
         check("apply-report-written", (sb / "docs/tests/sb-track_closeout_report.md").exists())
@@ -1781,6 +1798,95 @@ def cmd_prove():
         check("apply-unknown-track-harness-error",
               r_unk.returncode != 0 and "FAIL(harness-error)" in r_unk.stderr)
 
+    # HU-INVENTORY-ONEWRITE-0: apply with boundary ledger ABSENT — must not recreate it.
+    with tempfile.TemporaryDirectory() as btmp:
+        br = pathlib.Path(btmp)
+        (br / "scripts/ci").mkdir(parents=True)
+        (br / "docs/tests").mkdir(parents=True)
+        (br / "docs/ba.md").write_text("# ba design\n", encoding="utf-8")
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", br / "scripts/ci/track_closeout.sh")
+        (br / "scripts/ci/gen_orientation.sh").write_text(
+            "#!/usr/bin/env bash\nset -euo pipefail\nmkdir -p docs\n"
+            "printf '# generated\\n' > docs/orchestrator_orientation.md\n",
+            encoding="utf-8",
+        )
+        write_tsv(br / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
+            {"crate": "c", "file": "crates/c/tests/keep.rs", "test_name": "golden",
+             "kind": "integration", "class": "golden-byte", "superseding_boundary": "B-T7",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "birth_track": "ba-track", "dsu_survivals": "0"},
+            {"crate": "c", "file": "crates/c/tests/gone.rs", "test_name": "delete_me",
+             "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
+             "verdict": "AUDIT", "note": "x", "promotion_target": "permanent-residue:behavior-regression",
+             "birth_track": "ba-track", "dsu_survivals": "0"},
+            {"crate": "c", "file": "crates/c/tests/park.rs", "test_name": "park_me",
+             "kind": "integration", "class": "behavior-regression", "superseding_boundary": "B-T5",
+             "verdict": "AUDIT", "note": "u", "promotion_target": "permanent-residue:behavior-regression",
+             "birth_track": "ba-track", "dsu_survivals": "0"},
+        ])
+        # intentionally NO test_lifecycle_boundary_rows.tsv
+        write_tsv(br / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
+            {"track_id": "ba-track", "status": "open", "closed_at": "-", "source": "docs/ba.md", "note": "x"},
+        ])
+        write_tsv(br / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
+            {"promotion_target": "permanent-residue:golden-byte"},
+        ])
+        (br / "scripts/ci/active_track.txt").write_text(
+            f"{ACTIVE_TRACK_COMMENT}\ndocs/ba.md\n", encoding="utf-8")
+
+        def brun(*a, now="2026-07-07"):
+            return subprocess.run(
+                [BASH, "scripts/ci/track_closeout.sh", *a],
+                capture_output=True, text=True, cwd=str(br),
+                env={**os.environ, "TRACK_CLOSEOUT_NOW": now},
+            )
+
+        man_rel = "docs/tests/ba-track_closeout_manifest.tsv"
+        r_bbuild = brun("--build-manifest", "--track", "ba-track")
+        check("boundary-absent-build-ok", "BUILD-MANIFEST-VERDICT: OK" in r_bbuild.stdout)
+        man_path = br / man_rel
+        if not man_path.exists():
+            check("boundary-absent-manifest-written", False)
+        else:
+            _, _, _, mrows = load_manifest(man_path)
+            for row in mrows:
+                if row["asset_kind"] == "inventory-row" and row["test_name"] == "delete_me":
+                    row["disposition"] = "delete"
+                    row["owner"] = "prove-boundary-absent: necessity delete sample"
+                elif row["asset_kind"] == "inventory-row" and row["test_name"] == "park_me":
+                    row["disposition"] = "lease"
+                    row["target"] = "undecided"
+                elif row["asset_kind"] == "doc":
+                    row["disposition"] = "keep-durable"
+            body = io.StringIO()
+            w = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
+            w.writeheader()
+            for row in mrows:
+                w.writerow(row)
+            receipt = closeout_receipt(body.getvalue())
+            man_path.write_bytes((
+                "# track_closeout manifest\n# track: ba-track\n"
+                f"# CLOSEOUT-RECEIPT: {receipt}\n# role: prove\n" + body.getvalue()
+            ).encode("utf-8"))
+            r_beval = brun("--check-eval", man_rel)
+            check("boundary-absent-check-eval", "CHECK-EVAL-VERDICT: PASS" in r_beval.stdout)
+            r_ba = brun("--apply", man_rel)
+            check("apply-boundary-absent-ok", "APPLY-VERDICT:" in r_ba.stdout)
+            check("apply-boundary-absent-no-recreate",
+                  not (br / "scripts/ci/test_lifecycle_boundary_rows.tsv").exists())
+            check("apply-boundary-absent-no-parked-boundary",
+                  not (br / "scripts/ci/test_lifecycle_parked_boundary.tsv").exists())
+            _, inv_ba = read_tsv(br / "scripts/ci/test_inventory.tsv")
+            check("apply-boundary-absent-deleted-row",
+                  all(r["test_name"] != "delete_me" for r in inv_ba))
+            _, parked_ba = read_tsv(br / "scripts/ci/test_lifecycle_parked.tsv")
+            check("apply-boundary-absent-parked-inventory",
+                  all(r["test_name"] != "park_me" for r in inv_ba)
+                  and any(r["test_name"] == "park_me" for r in parked_ba))
+            rep_path = br / "docs/tests/ba-track_closeout_report.md"
+            report_ba = norm_bytes(rep_path.read_bytes()) if rep_path.exists() else ""
+            check("apply-boundary-absent-report-retired",
+                  "retired" in report_ba)
     # active pointer already unset is a valid successful no-op.
     with tempfile.TemporaryDirectory() as ntmp:
         nr = pathlib.Path(ntmp)
@@ -1794,7 +1900,7 @@ def cmd_prove():
              "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
              "birth_track": "none-track", "dsu_survivals": "0"},
         ])
-        write_tsv(nr / "scripts/ci/test_lifecycle_boundary_rows.tsv", BOUNDARY_ROWS_HEADER, [])
+        # boundary ledger absent (post-retirement path)
         write_tsv(nr / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
             {"track_id": "none-track", "status": "open", "closed_at": "-", "source": "docs/none_track.md", "note": "x"},
         ])
@@ -1857,7 +1963,6 @@ def cmd_prove():
              "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
              "birth_track": "quiet-track", "dsu_survivals": "0"},
         ])
-        write_tsv(ar / "scripts/ci/test_lifecycle_boundary_rows.tsv", BOUNDARY_ROWS_HEADER, [])
         write_tsv(ar / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
             {"track_id": "quiet-track", "status": "open", "closed_at": "-", "source": "docs/quiet.md", "note": "x"},
         ])

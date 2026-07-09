@@ -208,7 +208,7 @@ invariants, STEAD-required §8, escaped-bug regressions, active-track live rungs
 (3) it is a non-runnable **`dependency-floor` helper** imported by a survivor. There is no fourth way, and "it
 might be useful later" is not one of them. This is what prevents the corpus from re-accreting the way it did
 (6,301 → pared to 731). Enforcement is the standing Track D gate set (`test_inventory_check.sh`,
-`test_inventory_drift_check.sh`, `test_lifecycle_boundary_check.sh`, `TEST-BUDGET`); the full-workspace test is a
+`test_inventory_drift_check.sh`, `TEST-BUDGET`); the full-workspace test is a
 **one-time closure certificate** per PR ladder, not routine proof. Full regime: CI-scaffolding design §4.1.
 
 **A corollary on hygiene.** Because the compiler discharges the mechanical-correctness layer, the budget

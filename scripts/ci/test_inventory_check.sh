@@ -21,9 +21,7 @@ import sys
 root = pathlib.Path(sys.argv[1])
 inventory = pathlib.Path(sys.argv[2])
 args = sys.argv[3:]
-boundary_rows = root / "scripts/ci/test_lifecycle_boundary_rows.tsv"
 residue_classes = root / "scripts/ci/test_residue_classes.tsv"
-lifecycle_boundary_check = root / "scripts/ci/test_lifecycle_boundary_check.sh"
 lifecycle_expiry_check = root / "scripts/ci/test_lifecycle_expiry_check.sh"
 
 required = [
@@ -265,29 +263,10 @@ else:
     else:
         print("  inspect: none")
 
+    # HU-INVENTORY-ONEWRITE-0: boundary-row audit ledger retired; inventory is the
+    # sole survivor table. Policy doctrine remains in test_lifecycle_boundaries.tsv.
     print("TEST-LIFECYCLE-BOUNDARY AUTHORITY")
-    if boundary_rows.exists():
-        print(f"  boundary rows file: {boundary_rows.relative_to(root)}")
-        print("  status: survivor boundary ownership ledger; validate with scripts/ci/test_lifecycle_boundary_check.sh")
-    else:
-        errors.append(f"missing lifecycle boundary rows file {boundary_rows}")
-
-    if lifecycle_boundary_check.exists():
-        boundary = subprocess.run(
-            bash_cmd(lifecycle_boundary_check),
-            cwd=root,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if boundary.stdout:
-            print(boundary.stdout.rstrip())
-        if boundary.stderr:
-            print(boundary.stderr.rstrip())
-        if boundary.returncode != 0:
-            errors.append("lifecycle boundary check failed")
-    else:
-        errors.append(f"missing lifecycle boundary checker {lifecycle_boundary_check}")
+    print("  status: boundary audit ledger RETIRED (HU-INVENTORY-ONEWRITE-0); one table = test_inventory.tsv")
 
     print("TEST-LIFECYCLE-EXPIRY AUTHORITY")
     if lifecycle_expiry_check.exists():

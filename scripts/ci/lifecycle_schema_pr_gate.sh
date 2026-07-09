@@ -21,7 +21,7 @@ schema_relevant() {
   local file
   while IFS= read -r file; do
     case "$file" in
-      scripts/ci/test_inventory.tsv|scripts/ci/test_lifecycle_*.tsv|scripts/ci/test_lifecycle_boundary_rows.tsv)
+      scripts/ci/test_inventory.tsv|scripts/ci/test_lifecycle_*.tsv)
         return 0
         ;;
     esac

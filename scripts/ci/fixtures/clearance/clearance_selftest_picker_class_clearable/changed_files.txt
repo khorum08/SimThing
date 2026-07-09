@@ -6,6 +6,5 @@ crates/simthing-mapeditor/src/lib.rs
 crates/simthing-mapeditor/tests/tp_studio_clause_picker_0.rs
 docs/tests/tp_studio_clause_picker_0_results.md
 scripts/ci/test_inventory.tsv
-scripts/ci/test_lifecycle_boundary_rows.tsv
 docs/design_0_0_8_5_clausescript_terran_pirate_galaxy.md
 docs/orchestrator_orientation.md
