@@ -25,6 +25,7 @@ pub mod starburst;
 pub mod studio_aa_test_pattern;
 pub mod studio_admission_report;
 pub mod studio_antialiasing;
+pub mod studio_clause_ingest;
 pub mod studio_config;
 pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_performance_telemetry;
@@ -119,6 +120,11 @@ pub use studio_admission_report::{
     studio_ingest_scenario_text_for_report, studio_scenario_authority_snapshot,
     StudioCompileReadinessSummary, StudioOwnerSiloSummary, StudioScenarioAdmissionSummary,
     StudioScenarioDeferralSummary, StudioScenarioErrorSummary,
+};
+pub use studio_clause_ingest::{
+    default_tp_base_disc_json_path, ingest_clause_scenario_path, load_studio_session_from_clause_path,
+    project_hydrated_pack_to_scenario_spec, StudioClauseIngestError, StudioClauseIngestOptions,
+    StudioClauseIngestResult, CLAUSE_FIXTURE_JSON_PLACEHOLDER,
 };
 pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
