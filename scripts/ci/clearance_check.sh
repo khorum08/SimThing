@@ -380,6 +380,19 @@ has_docs_ladder_shape = any(
     )
     for f in files
 )
+# Require workshop source/test (not results-doc alone) so docs-ladder readiness
+# reports do not multi-match this class.
+has_tp_workshop_candidate_shape = any(
+    (
+        f.startswith("crates/simthing-workshop/src/tp_")
+        and f.endswith(".rs")
+    )
+    or (
+        f.startswith("crates/simthing-workshop/tests/tp_")
+        and f.endswith(".rs")
+    )
+    for f in files
+)
 for row in rows:
     if len(row) < 6:
         continue
@@ -405,6 +418,11 @@ for row in rows:
         globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
         if not all(any(glob_match(path, g) for g in globs) for path in files):
             continue
+    if class_id == "tp-workshop-candidate-proof":
+        # Require at least one TP workshop candidate surface; envelope extras still
+        # hit workshop_only / no_engine_crate (mapeditor → class-envelope-violation).
+        if not has_tp_workshop_candidate_shape:
+            continue
     if primary and class_id != primary:
         continue
     for path in files:
@@ -426,6 +444,7 @@ class_for_rung() {
     tp-palma-reach-rung) printf 'TP-PALMA-REACH-0' ;;
     tp-fronts-authoring-rung) printf 'TP-FRONTS-AUTHORING-0' ;;
     tp-diplomacy-flow-rung) printf 'TP-DIPLOMACY-FLOW-0' ;;
+    tp-workshop-candidate-proof) printf 'TP-WORKSHOP-CANDIDATE-CLASS-0' ;;
     tp-workshop-scenario-rung)
       local files
       files="$(changed_files 2>/dev/null || true)"
@@ -504,7 +523,8 @@ check_workshop_only() {
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     case "$file" in
-      crates/simthing-workshop/*|docs/tests/*|scripts/ci/test_inventory.tsv|scripts/ci/test_lifecycle_boundary_rows.tsv)
+      # workshop candidate + results/inventory; design/orientation stamps for TP ladder
+      crates/simthing-workshop/*|docs/tests/*|scripts/ci/test_inventory.tsv|scripts/ci/test_lifecycle_boundary_rows.tsv|docs/design_*|docs/orchestrator_orientation.md)
         ;;
       *)
         return 1
@@ -970,6 +990,12 @@ run_selftest() {
     clearance_selftest_explicit_novelty_claim_reserved
     clearance_selftest_matched_class_explicit_novelty_reserved
     clearance_selftest_explicit_novelty_missing_basis_fails
+    clearance_selftest_tp_workshop_candidate_clearable
+    clearance_selftest_tp_workshop_candidate_rejects_mapeditor_src
+    clearance_selftest_tp_workshop_candidate_rejects_engine_src
+    clearance_selftest_tp_workshop_candidate_missing_tested_sha
+    clearance_selftest_tp_workshop_candidate_missing_coverage
+    clearance_selftest_tp_workshop_candidate_missing_ci_green
   )
   local name
   for name in "${fixtures[@]}"; do

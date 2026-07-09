@@ -1,0 +1,8 @@
+crates/simthing-workshop/src/tp_studio_stead_rebind.rs
+crates/simthing-workshop/tests/tp_studio_stead_rebind_0.rs
+docs/tests/tp_studio_stead_rebind_0_results.md
+scripts/ci/test_inventory.tsv
+scripts/ci/test_lifecycle_boundary_rows.tsv
+docs/design_0_0_8_5_clausescript_terran_pirate_galaxy.md
+docs/orchestrator_orientation.md
+

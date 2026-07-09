@@ -46,7 +46,9 @@ binding-conditions lookup). Data: `precedented_classes.tsv` (class_id | scope_gl
 requirements | status) and `binding_conditions.tsv` (rung | condition | set_by | status) — DA conditions
 become rows, not DA memory. Routing drift becomes impossible, not discouraged. Unmatched scope and
 envelope violations reserve under precise reasons (`unclassified-scope`, `class-envelope-violation`,
-`engine-scope-violation`, `module-marker-shape-mismatch`). `DA-RESERVE(novelty)` is explicit-claim-only
+`engine-scope-violation`, `module-marker-shape-mismatch`). `tp-workshop-candidate-proof` covers
+workshop-homed 0.0.8.5 Terran-Pirate candidate implementation proofs only — not production mapeditor
+APIs, sealed crates, runtime/GPU, UI picker, or closeout. `DA-RESERVE(novelty)` is explicit-claim-only
 and overrides matched-class clearance: `novelty_claim: YES` requires `novelty_basis`; without basis,
 clearance fails. The breakthrough valve remains a verdict, never a block.
 
