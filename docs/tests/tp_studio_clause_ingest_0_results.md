@@ -2,19 +2,22 @@
 
 ## Status
 
-**PROOF-PRESENT / workshop-homed candidate / 0R homing corrected.**
+**DA-GRADUATED / COMPLETE (0R)** — merged [#1222](https://github.com/khorum08/SimThing/pull/1222) @ `bcbc2f4389417a0a4aa12b9e0e71a13414d94981` (head `ee0480c438f7215e49dca8309a920a0f0f957a00`). DA acceptance 2026-07-09: workshop-homed Studio-ingest **candidate** proof; no production mapeditor ClauseScript API.
 
 The ingest helper is **workshop-homed candidate code**.
 The proof uses existing Studio/mapeditor ScenarioSpec **authority** IO (via production
 `simthing-spec` serialize/deserialize — the same layer `simthing-mapeditor::scenario_io` wraps).
 **No production Studio API is admitted by this rung.**
-Production-crate elevation is a future DA/Owner admission decision.
+Production-crate elevation is a future DA/Owner admission decision (`TP-STUDIO-CLAUSE-API-ADMISSION-0`).
 
 ## Identity
 
 | Field | Value |
 |---|---|
 | Rung | `TP-STUDIO-CLAUSE-INGEST-0R` (homing boundary) |
+| PR | [#1222](https://github.com/khorum08/SimThing/pull/1222) |
+| Merge SHA | `bcbc2f4389417a0a4aa12b9e0e71a13414d94981` |
+| tested_code_sha | `ee0480c438f7215e49dca8309a920a0f0f957a00` |
 | Kind | workshop-homed scenario-candidate service + proof |
 | Home | `crates/simthing-workshop/src/tp_studio_clause_ingest.rs` |
 | Approved source | `crates/simthing-clausething/tests/fixtures/scenario/terran_pirate_galaxy.clause` |
