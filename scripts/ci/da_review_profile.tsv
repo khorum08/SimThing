@@ -1,0 +1,19 @@
+rule_id	match_kind	match	weight	trigger	focus_hint	core	status	expires_on	owner_track	note
+core-docs-results	glob	docs/tests/*_results.md	relax	docs-results	results docs only	YES	active		global	Core: results/admission stamp surface
+core-docs-design-stamp	glob	docs/design_*.md	light	design-ladder	design ladder exit-proof cells	YES	active		global	Core: design ladder prose
+core-orientation	path_prefix	docs/orchestrator_orientation.md	relax	orientation-digest	generated orientation only	YES	active		global	Core: generated digest
+core-workshop-src	path_prefix	crates/simthing-workshop/	light	workshop-code	workshop birth_track code	YES	active		global	Core: workshop not production elevation
+core-mapeditor	path_prefix	crates/simthing-mapeditor/	deep	production-crate	mapeditor production/UI surface	YES	active		global	Core: Studio/mapeditor
+core-clausething	path_prefix	crates/simthing-clausething/	deep	production-crate	clausething parse/project	YES	active		global	Core: clause production
+core-kernel	path_prefix	crates/simthing-kernel/	deep	engine-crate	kernel authority	YES	active		global	Core: sealed kernel
+core-sim	path_prefix	crates/simthing-sim/	deep	engine-crate	sim runtime	YES	active		global	Core: sim
+core-spec	path_prefix	crates/simthing-spec/	deep	engine-crate	scenario authority types	YES	active		global	Core: spec
+core-gpu	path_prefix	crates/simthing-gpu/	deep	engine-crate	GPU path	YES	active		global	Core: gpu
+core-driver	path_prefix	crates/simthing-driver/	deep	engine-crate	driver path	YES	active		global	Core: driver
+core-ci-scripts	path_prefix	scripts/ci/	deep	long-lifecycle	harness scripts/TSVs	YES	active		global	Core: CI harness long-lifecycle
+core-gha-workflows	path_prefix	.github/workflows/	deep	long-lifecycle	GHA workflows	YES	active		global	Core: workflow long-lifecycle
+core-agents-onboarding	path_exact	docs/agent_onboarding.md	deep	horizontal-process	DA/orchestrator onboarding	YES	active		global	Core: tier rituals
+core-handoff-template	path_exact	docs/handoff_template.md	deep	horizontal-process	handoff spine	YES	active		global	Core: handoff
+core-agents-md	path_exact	docs/agents.md	deep	horizontal-process	agents doctrine	YES	active		global	Core: agents.md
+core-agents-root	path_exact	AGENTS.md	deep	horizontal-process	root pointer	YES	active		global	Core: AGENTS.md
+core-ci-surface	path_exact	docs/ci_screening_surface.md	deep	long-lifecycle	CI screening constitution	YES	active		global	Core: screening surface

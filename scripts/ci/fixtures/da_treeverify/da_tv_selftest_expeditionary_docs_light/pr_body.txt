@@ -1,0 +1,3 @@
+expeditionary: YES
+expedition_charter: exploring new lattice authoring track
+expeditionary_until: 2099-12-31

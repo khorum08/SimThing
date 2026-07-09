@@ -170,6 +170,8 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 - FAIL(remedy) → apply named remedy and re-run clearance.
 - DA exit-proof stamp (binding): after DA pass (graduate-merge / formal admission / denial), DA updates active workplan Exit proof + results COMPLETE + orientation regen and merges the stamp PR; not orchestrator residual (see agent_onboarding).
 - DA verify-the-tree (weighted): require for code-facing / long-lifecycle / horizontally impactful load-bearing; relaxed for pure policy, stamps, light residual (see agent_onboarding).
+- DA treeverify advisor (advisory): `bash scripts/ci/da_treeverify.sh --pr <n>|--range <base>..<head>` emits `DA-TREEVERIFY-PROFILE: RELAX|LIGHT-TREE|DEEP-TREE` + focus paths — not CLEARANCE-VERDICT; table `scripts/ci/da_review_profile.tsv` (core rows permanent; non-core require expires_on and default-delete after expiry).
+- Expeditionary escape (anti-abuse): body may set `expeditionary: YES` + `expedition_charter` + `expeditionary_until: YYYY-MM-DD`; never silent RELAX; cannot downgrade production/engine/long-lifecycle to RELAX.
 
 ## Orientation Receipt (ORIENT-RECEIPT)
 
@@ -185,7 +187,7 @@ Schema:
 Role meanings:
 - `coding` — clearance contract, inner-loop commands, precedented classes
 - `orchestrator` — full orientation digest; ORCHESTRATOR-GRADUATED status-stamp residual only
-- `da` — rung table, binding conditions, escalation posture; after a passed verdict, exit-proof stamp + merge is DA duty (agent_onboarding)
+- `da` — rung table, binding conditions, escalation posture; run da_treeverify on load-bearing escalations; after pass, exit-proof stamp + merge (agent_onboarding)
 
 Receipt freshness: relay-lint compares claimed `orientation_rule_stamp` to the live rule stamp; mismatch -> `FAIL(stale-orient-receipt)`.
 Relay-lint receipt rule: gate-wiring handoffs require a valid receipt for the declared role.
@@ -209,6 +211,7 @@ Run `bash scripts/ci/anchor_check.sh --check` after anchor table edits.
 bash scripts/ci/orient.sh --role=coding
 bash scripts/ci/anchor_check.sh --check
 bash scripts/ci/clearance_check.sh --selftest
+bash scripts/ci/da_treeverify.sh --selftest
 bash scripts/ci/relay_lint.sh --selftest
 bash scripts/ci/gen_orientation.sh --check
 bash scripts/ci/doctrine_selftest.sh
@@ -222,3 +225,4 @@ bash scripts/ci/doctrine_scan.sh
 - `/orient` — M2 orientation digest (this page)
 - `/orient role=orchestrator|coding|da` — role-filtered subset
 - `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text
+- DA treeverify is **local/on-demand** (`da_treeverify.sh`); not a required PR gate or merge authority

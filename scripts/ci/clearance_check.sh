@@ -26,6 +26,9 @@ GATE_WIRING_PATHS=(
   "scripts/ci/doc_budget_baseline.tsv"
   "scripts/ci/rule_expiry_check.sh"
   "scripts/ci/agents_stub_check.sh"
+  "scripts/ci/da_treeverify.sh"
+  "scripts/ci/da_treeverify_lib.py"
+  "scripts/ci/da_review_profile.tsv"
   "docs/handoff_template.md"
   "docs/agent_onboarding.md"
   "AGENTS.md"
@@ -1069,6 +1072,7 @@ run_selftest() {
     clearance_selftest_pass_triage_present
     clearance_selftest_gate_wiring_handoff_template
     clearance_selftest_gate_wiring_agent_onboarding
+    clearance_selftest_gate_wiring_da_treeverify
     clearance_selftest_clearable_corpus_sweep_shape
     clearance_selftest_corpus_sweep_doc_only_no_match
     clearance_selftest_retired_corpus_baseline_no_match

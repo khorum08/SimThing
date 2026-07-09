@@ -10,6 +10,10 @@ pass costs.
 This is **operational tooling, not a doctrine anchor.** It consumes the existing lifecycle harness; it
 adds no new invariant surface.
 
+**DA review profile rows:** track-local rows in `scripts/ci/da_review_profile.tsv` must set `core=NO` and
+`expires_on`. On track closeout, **delete or retire** those rows (lifecycle gate fails if expired `active`
+non-core rows remain). Core rows (`core=YES`) are permanent global surface weights — never closeout-delete.
+
 ## The one rule that governs everything
 
 **TSV row growth is the primary fail state of the rustification harness.** A track-scoped asset is

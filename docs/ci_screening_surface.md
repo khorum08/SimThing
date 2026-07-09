@@ -270,7 +270,7 @@ and the DA applies:
 | `seal-residue` / `allowlist-edit` | **deep** | tree / legitimacy audit (door-class, no laundering) |
 | triage `ESCALATE` present | **deep** | the escalation was already headed to the DA |
 
-**Verify-the-tree is weighted** (`agent_onboarding` DA): **require** for code-facing / long-lifecycle / horizontally impactful load-bearing; **relax** for pure policy, stamps, light residual. Light/deep still sets depth when engaged. Falsification check names *where* to spend — never "re-verify everything."
+**Verify-the-tree is weighted** (`agent_onboarding` DA): **require** for code-facing / long-lifecycle / horizontally impactful load-bearing; **relax** for pure policy, stamps, light residual. Advisor: `da_treeverify.sh` + `da_review_profile.tsv` (advisory profile only; non-core rows expire/delete). Falsification check names *where* to spend.
 
 ---
 

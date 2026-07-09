@@ -1,0 +1,2 @@
+rule_id	match_kind	match	weight	trigger	focus_hint	core	status	expires_on	owner_track	note
+core-docs-results	glob	docs/tests/*_results.md	relax	docs-results	results	YES	active		global	core

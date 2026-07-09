@@ -1,0 +1,3 @@
+rule_id	match_kind	match	weight	trigger	focus_hint	core	status	expires_on	owner_track	note
+core-docs-results	glob	docs/tests/*_results.md	relax	docs-results	results	YES	active		global	core
+temp-track-rule	path_prefix	crates/temp/	light	temp	temp	NO	active	2020-01-01	0.0.9-temp	must delete

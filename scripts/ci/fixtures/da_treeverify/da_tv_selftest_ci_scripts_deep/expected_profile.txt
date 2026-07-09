@@ -1,0 +1,3 @@
+DA-TREEVERIFY-PROFILE: DEEP-TREE
+exit_code: 0
+must_contain: long-lifecycle

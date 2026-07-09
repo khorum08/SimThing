@@ -1,0 +1,2 @@
+expeditionary: YES
+expedition_charter: exploring new lattice authoring track
