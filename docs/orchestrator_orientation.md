@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 6f61be159f87b7e68a0a39d66df0fd8ea49370cb04d867e59cc3d08fc2811766 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 6b5228104597e85dfce8a502917d905515d741290501128d729963aba38e4efa |
+| design_0_0_8_6_studio_live_ops.md | d2e2290689d5ea6f2c89cd5b50ffa06109ce7b3588fe6280abadaf31ae40da02 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 7af9486ab782242d512f627a4e65a29cdbede8420a2981e098c79c9c36c01c47 |
 
@@ -54,8 +54,8 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 9.0 | STUDIO-LIVE-OPS-READINESS-0 | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownersh | Readiness report in `docs/tests/studio_live_ops_readiness_0_results.md`; Owner/DA may admit clock+library as producti... |
-| 9.1 | STUDIO-SIM-CLOCK-0 | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4 | Targeted tests: pause freezes; rate ratios; TPS cap |
+| 9.0 | STUDIO-LIVE-OPS-READINESS-0 | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownersh | **ORCHESTRATOR-GRADUATED / merged [#1257](https://github.com/khorum08/SimThing/pull/1257) @ `4f8c250c`** — readiness ... |
+| 9.1 | STUDIO-SIM-CLOCK-0 | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4 | **ORCHESTRATOR-GRADUATED** — `StudioSimClock` headless substrate; pause freeze / 2×·4× ratios / max_tps cap / no Spec... |
 | 9.2 | STUDIO-SIM-CLOCK-UI-0 | **Transport UI:** Pause, Play, 2×, 4×, TPS selector; readout (tick index, effect | UI drives clock; programmatic hooks for CI |
 | 9.3 | STUDIO-LIVE-SESSION-BRIDGE-0 | **Wire loaded StudioSession → live tick path** (elevate workshop live-run policy | Loaded clause/JSON multi-tick under Play; STEAD/session identity held |
 | 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | Values update while running; freeze on pause |
@@ -66,7 +66,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-LIVE-OPS-READINESS-0`
+Active pointer: `STUDIO-SIM-CLOCK-UI-0`
 
 
 ## Cold-Start Entrypoint

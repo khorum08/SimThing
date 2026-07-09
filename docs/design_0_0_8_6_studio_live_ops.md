@@ -96,8 +96,8 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 9.0 | `STUDIO-LIVE-OPS-READINESS-0` | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownership, pause semantics, modal pause contract, observation surfaces, whether GameMode/RF attach is still a production blocker for “live” vs structural. Non-goals explicit. | Readiness report in `docs/tests/studio_live_ops_readiness_0_results.md`; Owner/DA may admit clock+library as production UI after this | Tier-1 |
-| 9.1 | `STUDIO-SIM-CLOCK-0` | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4×; **max ticks per second**; deterministic ordering under accel; clock does not invent decisions. | Targeted tests: pause freezes; rate ratios; TPS cap | Tier-2 |
+| 9.0 | `STUDIO-LIVE-OPS-READINESS-0` | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownership, pause semantics, modal pause contract, observation surfaces, whether GameMode/RF attach is still a production blocker for “live” vs structural. Non-goals explicit. | **ORCHESTRATOR-GRADUATED / merged [#1257](https://github.com/khorum08/SimThing/pull/1257) @ `4f8c250c`** — readiness report [`studio_live_ops_readiness_0_results.md`](tests/studio_live_ops_readiness_0_results.md); `READY_FOR_9_1: YES`; GameMode/RF not a 9.1 blocker. | Tier-1 |
+| 9.1 | `STUDIO-SIM-CLOCK-0` | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4×; **max ticks per second**; deterministic ordering under accel; clock does not invent decisions. | **ORCHESTRATOR-GRADUATED** — `StudioSimClock` headless substrate; pause freeze / 2×·4× ratios / max_tps cap / no Spec mutation; evidence [`studio_sim_clock_0_results.md`](tests/studio_sim_clock_0_results.md). **Next:** `STUDIO-SIM-CLOCK-UI-0` (∥ `STUDIO-LIVE-SESSION-BRIDGE-0`). | Tier-2 |
 | 9.2 | `STUDIO-SIM-CLOCK-UI-0` | **Transport UI:** Pause, Play, 2×, 4×, TPS selector; readout (tick index, effective rate, paused). | UI drives clock; programmatic hooks for CI | Tier-2 |
 | 9.3 | `STUDIO-LIVE-SESSION-BRIDGE-0` | **Wire loaded StudioSession → live tick path** (elevate workshop live-run policy only as needed). Prefer production driver/session. Bounded theater policy from readiness if required. No new gameplay systems. | Loaded clause/JSON multi-tick under Play; STEAD/session identity held | Tier-2 |
 | 9.4 | `STUDIO-LIVE-OBSERVE-0` | **Observation surfaces:** tick, pause, optional tree-local summaries already available — no CPU planner. | Values update while running; freeze on pause | Tier-1 |
@@ -134,8 +134,8 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| First open rung | `STUDIO-LIVE-OPS-READINESS-0` |
+| Active open rung | `STUDIO-SIM-CLOCK-UI-0` (after 9.0+9.1 graduated) |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Production picker + API (explicit resolver if `{{…}}`) |
 
-**Park instruction for agents:** do not implement 9.1+ until 9.0 readiness is landed (or Owner explicitly parallelizes). Do not treat orientation pointer as closeout of 0.0.8.5.
+**Park instruction for agents:** 9.0 readiness and 9.1 clock substrate are landed. Implement 9.2 UI and/or 9.3 live bridge next; do not treat orientation pointer as closeout of 0.0.8.5.
