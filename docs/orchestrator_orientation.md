@@ -16,8 +16,17 @@ it -- the router already codifies freshness/routing, so there is nothing for you
 | --- | --- |
 | no `CLEARANCE-VERDICT` line / `CLEARANCE-STATUS: PENDING` | run in flight -- **WAIT and re-read.** Not a mismatch, not a failure, not a handoff. |
 | `ORCHESTRATOR-CLEARABLE` | **merge it yourself. Do NOT escalate to DA.** |
-| `DA-RESERVE(<reason>)` | the ONLY valid basis for a DA relay -- quote it verbatim. |
 | `DA-RESERVE(harness-error)` / `FAIL(<remedy>)` | remedy the harness/PR; **not** a DA review. |
+| `DA-RESERVE(unclassified-scope)` | **classify before DA relay** (below) — not automatic design escalation. |
+| `DA-RESERVE(admitted-scope-router-gap)` | router debt inside admitted envelope — **class-hardening**, not fresh DA design (policy; machine follow-on). |
+| other `DA-RESERVE(<reason>)` | quote verbatim; escalate only for true DA residue (novelty, gate-wiring, seal, binding, …). |
+
+**Classify `unclassified-scope` before any DA design relay** (CLEARANCE-UNCLASSIFIED-SCOPE-REDUCTION-0):
+1) **Genuinely unadmitted / novel** → DA design/admission question.
+2) **Already admitted (cite admitting PR/rung) but no class** → admitted-scope **router gap** — open class-hardening;
+   do **not** re-open the admission as a design relay.
+3) **Hygiene / missing proof fields / checklist** → fix or `FAIL(remedy)`; not DA design.
+Until `CLEARANCE-ADMITTED-SCOPE-GAP-0` lands the machine reason, still classify (2) by hand and cite the admitting PR.
 
 `relay_lint` FAILs a DA relay lacking a fresh PR-head-bound verdict (`FAIL(missing-clearance-verdict)`); a
 chat handoff is outside CI, same rule on your honor. **Never SHA-match** (`tested_code_sha`, or a stale
@@ -35,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 06d7a0d0e03df64dda61c1f646926ccdb249c0a71c6b144cd27659ff5d54f829 |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 9758290346177cab16323c8c926b69460e5b511922e1a6a74f3a24c3e1d0f9cf |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -76,11 +85,13 @@ Track state: `open`
 | 8.8h | TP-ADMITTED-CLAUSE-API-CLASS-0 | **Harness adjacency.** Register `tp-admitted-clause-api-composition` so #1230-sh | **DA-GRADUATED / merged [#1232](https://github.com/khorum08/SimThing/pull/1232) @ `5227f08000`** (head `2163667dab`) ... |
 | 8.9 | TP-STUDIO-CLAUSE-PICKER-ADMISSION-0 | **Owner/DA-gated.** Admit UI `.clause` file picker / menu surface only after API | **DONE — DA-ADMITTED (2026-07-09, Option A) / narrow UI picker.** Production API + session hydrate proven (#1230); re... |
 | 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **DA-GRADUATED / merged [#1239](https://github.com/khorum08/SimThing/pull/1239) @ `0183883767`** (head `d9bd5c4054`) ... |
-| 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency (optional).** Register a precedented class for admitted narr | **OPEN — next production pointer (optional gate-wiring).** Exit: clearance selftests clearable + reject fixtures; not... |
+| 8.10g | CLEARANCE-UNCLASSIFIED-SCOPE-REDUCTION-0 | **Owner/DA process ruling.** Reduce over-broad `DA-RESERVE(unclassified-scope)`: | **DONE — DA-ADOPTED (2026-07-09, Option A).** Adopt `DA-RESERVE(admitted-scope-router-gap)` vocabulary + orchestratio... |
+| 8.10r | CLEARANCE-ADMITTED-SCOPE-GAP-0 | **Harness (gate-wiring).** Implement `DA-RESERVE(admitted-scope-router-gap)` in  | **OPEN — next production pointer.** Exit: selftests named in ruling results; not a Phase 8 product feature. |
+| 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency.** Register a precedented class for admitted narrow UI picke | **OPEN — after or parallel to 8.10r.** Exit: clearance selftests clearable + reject fixtures. |
 
 ## Next Rung Pointer
 
-Active pointer: `TP-STUDIO-CLAUSE-PICKER-CLASS-0`
+Active pointer: `CLEARANCE-ADMITTED-SCOPE-GAP-0`
 
 
 ## Cold-Start Entrypoint
@@ -160,7 +171,9 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 
 ## Escalation / DA-RESERVE Posture
 
-- unclassified-scope, class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
+- `unclassified-scope` → **only** true unadmitted/novel residue after classification (not automatic DA ceremony).
+- `admitted-scope-router-gap` (policy; machine in CLEARANCE-ADMITTED-SCOPE-GAP-0) → class-hardening follow-up; cite admitting PR/rung; not a fresh admission ruling.
+- class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
 - Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.
 - `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
 - `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).

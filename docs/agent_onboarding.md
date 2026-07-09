@@ -38,11 +38,14 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **You hand it:** the DA's authorization/handoff for a track or rung.
 - **It does:** verify the tree when merge-clearing (prefer branch confirmation over the relayed report);
   route each rung via the clearance ladder — **merge-clear conforming precedented-class rungs itself**,
-  **escalate the DA reserve** (gate-wiring, exceptions, widening, Tier-2, new proof classes, closeout,
-  binding conditions); land a `/triage` row for every INSPECT delta. **Exit-proof residual only:** for
-  **ORCHESTRATOR-GRADUATED** self-clears where the design row cannot hold the final merge SHA pre-merge,
-  land the docs-only status-stamp before the next rung. **DA-passed** rungs are stamped and stamp-merged
-  by the DA (see DA section) — do not reassign.
+  **escalate true DA residue** (gate-wiring, novelty, seal, binding, genuine unclassified — not router debt
+  alone); land a `/triage` row for every INSPECT delta. **Classify `DA-RESERVE(unclassified-scope)` before
+  any DA design relay:** (1) unadmitted/novel → DA; (2) already-admitted proof-present but no class →
+  **admitted-scope router gap** — open class-hardening, do not re-open admission; (3) hygiene/proof-field →
+  fix/`FAIL`. See `docs/tests/clearance_unclassified_scope_reduction_0_results.md`. **Exit-proof residual
+  only:** for **ORCHESTRATOR-GRADUATED** self-clears where the design row cannot hold the final merge SHA
+  pre-merge, land the docs-only status-stamp before the next rung. **DA-passed** rungs are stamped and
+  stamp-merged by the DA (see DA section) — do not reassign.
 - **Closeout-substrate PRs:** before merge/DA handback, require a disposable end-to-end
   `track_closeout.sh` rehearsal (build manifest -> resolve -> check-eval -> apply) using a tiny fixture
   with previously expunged rows plus source/auto/explicit doc artifacts, and report the sample verdict.
