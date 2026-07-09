@@ -1,0 +1,9 @@
+novelty_claim: YES
+novelty_basis: unanticipated implementation discovery that improves outcomes beyond the planned diplomacy rung
+
+TP-DIPLOMACY-FLOW-0 relay
+tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
+coverage_basis: PASS - matched class with explicit novelty must reserve, not clear
+DOCTRINE-TESTS-VERDICT: PASS
+tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
+owner_local: true

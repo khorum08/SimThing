@@ -46,8 +46,9 @@ binding-conditions lookup). Data: `precedented_classes.tsv` (class_id | scope_gl
 requirements | status) and `binding_conditions.tsv` (rung | condition | set_by | status) — DA conditions
 become rows, not DA memory. Routing drift becomes impossible, not discouraged. Unmatched scope and
 envelope violations reserve under precise reasons (`unclassified-scope`, `class-envelope-violation`,
-`engine-scope-violation`, `module-marker-shape-mismatch`). `DA-RESERVE(novelty)` is claim-gated only
-(`novelty_claim: YES`); the breakthrough valve remains a verdict, never a block.
+`engine-scope-violation`, `module-marker-shape-mismatch`). `DA-RESERVE(novelty)` is explicit-claim-only
+and overrides matched-class clearance: `novelty_claim: YES` requires `novelty_basis`; without basis,
+clearance fails. The breakthrough valve remains a verdict, never a block.
 
 *M1 harness laws (final-pass, 2026-07-05):* (a) **Fail-closed** — malformed TSV, script error, or
 ambiguous class resolution → `DA-RESERVE(harness-error)`, never a silent CLEARABLE; selftest fixtures

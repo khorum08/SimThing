@@ -82,7 +82,7 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 | --- | --- |
 | `CLEARANCE-VERDICT: ORCHESTRATOR-CLEARABLE` | precedented class matched; binding conditions discharged; required proof fields present |
 | `CLEARANCE-VERDICT: DA-RESERVE(unclassified-scope)` | resolved non-empty diff with no precedented class match (not novelty) |
-| `CLEARANCE-VERDICT: DA-RESERVE(novelty)` | explicit `novelty_claim: YES` for unanticipated implementation discovery; **not** a generic unmatched-diff fallback |
+| `CLEARANCE-VERDICT: DA-RESERVE(novelty)` | explicit `novelty_claim: YES` + `novelty_basis`; **overrides** matched-class clearance; not a generic unmatched-diff fallback |
 | `CLEARANCE-VERDICT: DA-RESERVE(class-envelope-violation)` | matched class but diff violates workshop_only / class path envelope |
 | `CLEARANCE-VERDICT: DA-RESERVE(engine-scope-violation)` | matched class forbids engine crate/src and the diff touches engine scope |
 | `CLEARANCE-VERDICT: DA-RESERVE(module-marker-shape-mismatch)` | corpus-module-marker-sweep shape fails inventory deletion rules |
@@ -91,12 +91,14 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 | `CLEARANCE-VERDICT: DA-RESERVE(binding-conditions)` | open binding condition blocks clearance for matched class |
 | `CLEARANCE-VERDICT: DA-RESERVE(class-suspended)` | precedented class row status=suspended |
 | `CLEARANCE-VERDICT: DA-RESERVE(triage-missing)` | INSPECT delta without landed /triage row (check 7 live) |
+| `CLEARANCE-VERDICT: FAIL(missing-novelty-basis...)` | `novelty_claim: YES` without valid `novelty_basis` |
 | `CLEARANCE-VERDICT: FAIL(remedy)` | named fix required before re-attempt (CI not green, missing proof fields, etc.) |
 
-`DA-RESERVE(novelty)` is not a generic fallback. It requires an explicit novelty claim: an unanticipated
-implementation discovery or substrate improvement that improves outcomes beyond the planned rung.
-Unclassified diffs route to `DA-RESERVE(unclassified-scope)`. Scope-envelope violations route to their
-specific reason (`class-envelope-violation`, `engine-scope-violation`, `module-marker-shape-mismatch`).
+`DA-RESERVE(novelty)` is explicit-claim-only and overrides matched-class clearance. A novelty claim must
+include `novelty_basis` naming the unanticipated implementation discovery or substrate improvement.
+Without `novelty_basis`, clearance fails. Unclassified diffs without `novelty_claim` route to
+`DA-RESERVE(unclassified-scope)`. Scope-envelope violations route to their specific reason
+(`class-envelope-violation`, `engine-scope-violation`, `module-marker-shape-mismatch`).
 
 ## Precedented Classes (active)
 
@@ -146,7 +148,8 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 ## Escalation / DA-RESERVE Posture
 
 - unclassified-scope, class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
-- Novelty only when `novelty_claim: YES` (explicit unanticipated implementation discovery) → DA review routing.
+- Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.
+- `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
 - binding-conditions, class-suspended, triage-missing → DA review routing.
 - gate-wiring → deep audit; harness surfaces are never self-mergeable.
 - harness-error → fix data/target resolution before re-run.

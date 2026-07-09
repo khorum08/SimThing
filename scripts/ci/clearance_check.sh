@@ -609,9 +609,15 @@ check_required_pr_body_fields() {
 }
 
 # Explicit novelty claim only — never a generic unmatched-diff fallback.
+# When claimed, novelty overrides matched-class clearable routing.
 check_explicit_novelty_claim() {
   local body="$1"
   echo "$body" | grep -qiE 'novelty_claim:[[:space:]]*YES'
+}
+
+check_explicit_novelty_basis() {
+  local body="$1"
+  echo "$body" | grep -qiE 'novelty_basis:[[:space:]]*[^[:space:]].+'
 }
 
 check_recorded_gpu_proof() {
@@ -812,16 +818,23 @@ route_clearance() {
     return 0
   fi
 
-  local classes body
+  local body
   body="$(pr_body_text)"
+
+  # Explicit novelty overrides matched-class clearance; requires novelty_basis.
+  if check_explicit_novelty_claim "$body"; then
+    if ! check_explicit_novelty_basis "$body"; then
+      emit_verdict fail "missing-novelty-basis: add novelty_basis explaining the unanticipated implementation discovery"
+      return 0
+    fi
+    emit_verdict reserve "novelty"
+    return 0
+  fi
+
+  local classes
   classes="$(detect_classes "$classes_tsv")"
   if [[ -z "$classes" ]]; then
-    # novelty is explicit-claim only; unmatched scope is not implementation novelty
-    if check_explicit_novelty_claim "$body"; then
-      emit_verdict reserve "novelty"
-    else
-      emit_verdict reserve "unclassified-scope"
-    fi
+    emit_verdict reserve "unclassified-scope"
     return 0
   fi
 
@@ -955,6 +968,8 @@ run_selftest() {
     clearance_selftest_docs_ladder_pointer_clearable
     clearance_selftest_engine_scope_violation_not_novelty
     clearance_selftest_explicit_novelty_claim_reserved
+    clearance_selftest_matched_class_explicit_novelty_reserved
+    clearance_selftest_explicit_novelty_missing_basis_fails
   )
   local name
   for name in "${fixtures[@]}"; do

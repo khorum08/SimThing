@@ -292,9 +292,9 @@ in seconds where CI already vouches, and reserve token-heavy investigation for e
 **Handoffs:** `relay_lint.sh` + `handoff_template.md`; §H violations rejected at review.
 
 **Merge authority (judgment-residue — constitution §0.9.7 governs):** precedented-class clearance is
-mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Unclassified-scope and
-envelope violations get precise `DA-RESERVE` reasons; novelty requires `novelty_claim: YES`. DA
-spot-audits self-authorized merges; one wrong self-merge suspends authority. Owner supremacy above all.
+mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Unclassified-scope /
+envelope → precise `DA-RESERVE`; novelty is claim-only, overrides clearable, needs `novelty_basis`.
+DA spot-audits self-authorized merges; one wrong self-merge suspends authority. Owner supremacy above all.
 
 **Channeling DA token spend (judgment-residue — feed the routing table honestly):**
 - **Declare risk classes truthfully and completely** — under-declaring to earn a light review is the
