@@ -141,11 +141,6 @@ mutates and may run `cargo check -p <crate>` for `elevate-code`; GHA runs proof/
 `TEST-INVENTORY-DRIFT` and `TEST-BUDGET` run as **stock gates inside `doctrine_scan.sh`**, enforcing inventory truth
 and the ≤3-new-`#[test]` budget. `track_closeout.sh` owns closure; expiry checks remain operator/cadence diagnostics (§11).
 
-**`harness-fixture` birth_track (HU-FIXTURE-LIFECYCLE-0).** A CI fixture *family* under `scripts/ci/fixtures/<family>/`
-lives exactly as long as its **owning surface** (the gate/selftest script that exercises it). Retiring that surface
-deletes the family in the same PR; families no selftest exercises route to the parking pen. Inventory `note` holds a
-one-line family necessity naming the surface (not per-file prose).
-
 ### Track B executable-proof tooling (Track B DA-CLOSED 2026-07-04)
 
 Track B is closed; both proof lanes landed. These are its scripts/data, surfaced here for completeness (operator
