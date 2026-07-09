@@ -1,6 +1,6 @@
 # 0.0.8.5 — ClauseScript Terran-Pirate Galaxy Production Track
 
-> **Status: OPEN (scenario envelope) / Phase 8 product spine complete (2026-07-09).** Phase 8 open/hydrate
+> **Status: CLOSED (2026-07-09)** via `track_closeout.sh` (post-completion admission review complete; 31 workshop rows + candidate files deleted, 6 authoring modules on wall-clock lease, 76 production proof rows durable). Formerly: OPEN envelope / Phase 8 spine complete. Phase 8 open/hydrate
 > (transpile → API → picker → clearance classes) is graduated; **active product pointer for Studio live ops is
 > [`design_0_0_8_6_studio_live_ops.md`](design_0_0_8_6_studio_live_ops.md)** — this track is **not closed**
 > (closeout remains Owner-triggered). Resequenced 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed).
