@@ -1,0 +1,5 @@
+tested_code_sha: b18d19ac130ee816fc9a4fb1061792ce19f9d1ac
+coverage_basis: PASS - missing session_hydrate
+admitted_api: YES
+ui_file_picker: NO
+tp_defaults_in_production: NO

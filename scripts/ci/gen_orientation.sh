@@ -1202,6 +1202,7 @@ def render_orientation(active_info: dict) -> tuple:
     "- Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.",
     "- `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.",
     "- `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).",
+    "- `tp-admitted-clause-api-composition` → DA-admitted limited ClauseScript composition (StructuralRebindReady) only; not picker/runtime/GameMode/RF/closeout.",
     "- binding-conditions, class-suspended, triage-missing → DA review routing.",
     "- gate-wiring → deep audit; harness surfaces are never self-mergeable.",
     "- harness-error → fix data/target resolution before re-run.",

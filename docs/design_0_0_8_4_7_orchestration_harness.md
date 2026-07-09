@@ -47,10 +47,11 @@ requirements | status) and `binding_conditions.tsv` (rung | condition | set_by |
 become rows, not DA memory. Routing drift becomes impossible, not discouraged. Unmatched scope and
 envelope violations reserve under precise reasons (`unclassified-scope`, `class-envelope-violation`,
 `engine-scope-violation`, `module-marker-shape-mismatch`). `tp-workshop-candidate-proof` covers
-workshop-homed 0.0.8.5 Terran-Pirate candidate implementation proofs only — not production mapeditor
-APIs, sealed crates, runtime/GPU, UI picker, or closeout. `DA-RESERVE(novelty)` is explicit-claim-only
-and overrides matched-class clearance: `novelty_claim: YES` requires `novelty_basis`; without basis,
-clearance fails. The breakthrough valve remains a verdict, never a block.
+workshop-homed 0.0.8.5 TP candidate proofs only. `tp-admitted-clause-api-composition` covers only
+DA-admitted limited production ClauseScript composition under StructuralRebindReady — not UI picker,
+runtime/GPU, GameMode/RF, live-run, closeout, or lowerer expansion. `DA-RESERVE(novelty)` is
+explicit-claim-only and overrides matched-class clearance: `novelty_claim: YES` requires
+`novelty_basis`; without basis, clearance fails. The breakthrough valve remains a verdict, never a block.
 
 *M1 harness laws (final-pass, 2026-07-05):* (a) **Fail-closed** — malformed TSV, script error, or
 ambiguous class resolution → `DA-RESERVE(harness-error)`, never a silent CLEARABLE; selftest fixtures

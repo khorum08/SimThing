@@ -334,6 +334,20 @@ for f in files:
         primary = "tp-suspended-demo"
         break
 
+# Admitted ClauseScript API composition owns the #1230-shaped surface so it is
+# not stolen by tp-workshop-candidate-proof (which would engine-scope-reject clausething).
+has_admitted_clause_api_shape = any(
+    f == "crates/simthing-clausething/src/clause_scenario_projection.rs"
+    or f == "crates/simthing-mapeditor/src/clause_scenario_ingest.rs"
+    or (
+        f.startswith("crates/simthing-mapeditor/tests/tp_studio_clause_api_")
+        and f.endswith(".rs")
+    )
+    for f in files
+)
+if not primary and has_admitted_clause_api_shape:
+    primary = "tp-admitted-clause-api-composition"
+
 def glob_match(path: str, pattern: str) -> bool:
     p = PurePosixPath(path)
     if p.match(pattern):
@@ -423,6 +437,16 @@ for row in rows:
         # hit workshop_only / no_engine_crate (mapeditor → class-envelope-violation).
         if not has_tp_workshop_candidate_shape:
             continue
+        # Do not collide with admitted production ClauseScript API composition.
+        if has_admitted_clause_api_shape:
+            continue
+    if class_id == "tp-admitted-clause-api-composition":
+        if not has_admitted_clause_api_shape:
+            continue
+        globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
+        # All changed files must stay inside the admitted composition envelope.
+        if not files or not all(any(glob_match(path, g) for g in globs) for path in files):
+            continue
     if primary and class_id != primary:
         continue
     for path in files:
@@ -445,6 +469,7 @@ class_for_rung() {
     tp-fronts-authoring-rung) printf 'TP-FRONTS-AUTHORING-0' ;;
     tp-diplomacy-flow-rung) printf 'TP-DIPLOMACY-FLOW-0' ;;
     tp-workshop-candidate-proof) printf 'TP-WORKSHOP-CANDIDATE-CLASS-0' ;;
+    tp-admitted-clause-api-composition) printf 'TP-ADMITTED-CLAUSE-API-CLASS-0' ;;
     tp-workshop-scenario-rung)
       local files
       files="$(changed_files 2>/dev/null || true)"
@@ -623,6 +648,61 @@ check_required_pr_body_fields() {
   fi
   if ! echo "$body" | grep -qiE 'coverage_basis:[[:space:]]*PASS'; then
     emit_verdict fail "missing-tested-code-sha: add tested_code_sha and coverage_basis"
+    return 1
+  fi
+  return 0
+}
+
+# Admitted limited ClauseScript API composition body gates.
+check_admitted_api_field() {
+  local body="$1"
+  if ! echo "$body" | grep -qiE 'admitted_api:[[:space:]]*YES'; then
+    emit_verdict fail "missing-admitted-api-fields: add admitted_api: YES"
+    return 1
+  fi
+  return 0
+}
+
+check_no_ui_picker_field() {
+  local body="$1"
+  local file
+  if echo "$body" | grep -qiE 'ui_file_picker:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if ! echo "$body" | grep -qiE 'ui_file_picker:[[:space:]]*NO'; then
+    emit_verdict fail "missing-admitted-api-fields: ui_file_picker: NO required"
+    return 1
+  fi
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    case "$file" in
+      *picker*|*FileDialog*|*file_dialog*|*rfd*|*clause_menu*)
+        emit_verdict reserve "class-envelope-violation"
+        return 1
+        ;;
+    esac
+  done < <(changed_files 2>/dev/null || true)
+  return 0
+}
+
+check_no_tp_defaults_field() {
+  local body="$1"
+  if echo "$body" | grep -qiE 'tp_defaults_in_production:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if ! echo "$body" | grep -qiE 'tp_defaults_in_production:[[:space:]]*NO'; then
+    emit_verdict fail "missing-admitted-api-fields: tp_defaults_in_production: NO required"
+    return 1
+  fi
+  return 0
+}
+
+check_session_hydrate_field() {
+  local body="$1"
+  if ! echo "$body" | grep -qiE 'session_hydrate:[[:space:]]*PASS'; then
+    emit_verdict fail "missing-admitted-api-fields: session_hydrate: PASS required"
     return 1
   fi
   return 0
@@ -908,6 +988,19 @@ route_clearance() {
     fi
   fi
 
+  if [[ "$reqs" == *admitted_api* ]] && ! check_admitted_api_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *no_ui_picker* ]] && ! check_no_ui_picker_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *no_tp_defaults* ]] && ! check_no_tp_defaults_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *session_hydrate* ]] && ! check_session_hydrate_field "$body"; then
+    return 0
+  fi
+
   if [[ "$reqs" == *gpu_proof* ]]; then
     if ! check_recorded_gpu_proof "$body"; then
       return 0
@@ -996,6 +1089,13 @@ run_selftest() {
     clearance_selftest_tp_workshop_candidate_missing_tested_sha
     clearance_selftest_tp_workshop_candidate_missing_coverage
     clearance_selftest_tp_workshop_candidate_missing_ci_green
+    clearance_selftest_admitted_clause_api_clearable
+    clearance_selftest_admitted_clause_api_missing_admitted_flag
+    clearance_selftest_admitted_clause_api_ui_picker_yes
+    clearance_selftest_admitted_clause_api_tp_defaults_yes
+    clearance_selftest_admitted_clause_api_session_hydrate_missing
+    clearance_selftest_admitted_clause_api_rejects_runtime_src
+    clearance_selftest_workshop_candidate_not_stolen_by_admitted_api
   )
   local name
   for name in "${fixtures[@]}"; do
