@@ -1,0 +1,11 @@
+metric	open_baseline_2026_07_09	close_measured	unit	notes
+coding_default_local_screen	whole-tree ~70s; ~415 ambient HEURISTIC INSPECT	agent_scan: selftest p50~2s; live light elapsed=10–11s; delta_inspect=0 (ambient excluded)	s / inspects	HU-DELTA-SCAN-0 #1249 e3e42c66
+unconditional_coding_checklist_steps	6–10	4 (orient-once → cargo check -p → agent_scan → focused test)	steps	orientation checklist + handoff_template
+writes_per_new_test	2 tables (inventory + boundary_rows)	1 table (test_inventory.tsv only)	tables	HU-INVENTORY-ONEWRITE-0 #1251 e3e84a25
+newest_class_body_attestations	11 fields (picker class)	3 proof-identity only (tested_code_sha|coverage_basis|ci_green)	fields	HU-CLEARANCE-DSL-0 #1250 a801ffe0
+new_class_implementation_cost	~250 lines bespoke bash per class	data rows in class_predicates.tsv (generic engine)	impl style	HU-CLEARANCE-DSL-0
+inventory_open_forever_harness_track_rows	415 @ 0.0.8.4.6 (open since birth; 423 at closeout)	0 on 0.0.8.4.6 (closed); 423 on harness-fixture	rows	HU-FIXTURE-LIFECYCLE-0 #1252 f069b392
+clearance_check_sh_lines	1470	1415	lines	net −55 (DSL fold + attestation delete)
+generated_orientation_lines	247 (baseline target tracking)	226 (post-track; re-measured at close)	lines	gen_orientation output
+scripts_ci_sh_count	— (open not snapshotted)	43	files	meta-gauge at close
+scripts_ci_sh_total_lines	— (open not snapshotted)	14797	lines	meta-gauge at close (wc -l scripts/ci/*.sh)
