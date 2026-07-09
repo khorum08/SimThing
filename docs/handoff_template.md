@@ -303,6 +303,9 @@ Graduation routing (for DA — why this is PROBATION, not self-marked COMPLETE):
 > **light** (confirm the deliverables exist, graduate); **data-deliverable / gate-wiring / seal-residue /
 > allowlist-edit / triage-ESCALATE** → **deep** (byte-faithfulness, prove-the-guard-bites, tree/legitimacy audit).
 > The **Falsification check** names exactly where a deep review should spend — never "re-verify everything."
+> **After a DA pass**, the DA stamps the active workplan Exit proof (`DA-GRADUATED / merged #<PR> @ <sha>` or
+> equivalent DONE), results COMPLETE, regenerates orientation, and **merges the stamp PR** as part of the
+> graduation conclusion (`docs/agent_onboarding.md` DA section) — not an orchestrator follow-up.
 
 ---
 

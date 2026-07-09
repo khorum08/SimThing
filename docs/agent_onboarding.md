@@ -39,7 +39,9 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **It does:** verify the tree (never the relayed report); route each rung via the clearance ladder —
   **merge-clear conforming precedented-class rungs itself**, **escalate the DA reserve** (gate-wiring,
   exceptions, widening, Tier-2, new proof classes, closeout, binding conditions); land a `/triage` row for
-  every INSPECT delta.
+  every INSPECT delta. **Exit-proof residual only:** for **ORCHESTRATOR-GRADUATED** self-clears where the
+  design row cannot hold the final merge SHA pre-merge, land the docs-only status-stamp before the next
+  rung. **DA-passed** rungs are stamped and stamp-merged by the DA (see DA section) — do not reassign.
 - **Closeout-substrate PRs:** before merge/DA handback, require a disposable end-to-end
   `track_closeout.sh` rehearsal (build manifest -> resolve -> check-eval -> apply) using a tiny fixture
   with previously expunged rows plus source/auto/explicit doc artifacts, and report the sample verdict.
@@ -55,8 +57,15 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 - **You hand it:** the escalation relay (or a strategic question).
 - **It does:** verify the tree; **graduate-merge or produce a remedial handoff**; author doctrine as
   data/verdict, never sprawling prose; spend owner attention only on residue.
-- **Authority:** merges gate-wiring and DA-reserve work after review. Above the DA sits the **Owner**, whose
-  authorization is required for gate-wiring closeouts and whose supremacy is visible and recorded.
+- **Exit-proof stamp (binding after a passed verdict):** a DA pass is incomplete until the DA updates the
+  active workplan/design-ladder **Exit proof** cell (`DA-GRADUATED / merged #<PR> @ <merge-sha>`, or
+  equivalent DONE wording for formal admission/denial), marks the results doc COMPLETE where applicable,
+  regenerates orientation (`bash scripts/ci/gen_orientation.sh`), and **lands and merges** that docs-only
+  stamp PR. Do not leave the stamp as orchestrator residual after a DA pass — the stamp is part of the
+  graduation conclusion, not a follow-up chore.
+- **Authority:** merges gate-wiring and DA-reserve work after review; also merges the post-verdict
+  exit-proof stamp PR. Above the DA sits the **Owner**, whose authorization is required for gate-wiring
+  closeouts and whose supremacy is visible and recorded.
 
 ---
 
@@ -66,7 +75,7 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 |---|---|---|---|
 | Coding (Grok/Cursor) | `bash scripts/ci/orient.sh --role=coding` once per fresh session | PROBATION / proof-present | nothing |
 | Orchestration (Codex/webchat) | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
-| DA (Opus/Fable) | `bash scripts/ci/orient.sh --role=da` | graduation or remedial handoff | gate-wiring / DA-reserve, after review |
+| DA (Opus/Fable) | `bash scripts/ci/orient.sh --role=da` | graduation or remedial handoff **+ exit-proof stamp merge** | gate-wiring / DA-reserve / exit-proof stamps, after review |
 
 **When to update this file:** only when a *tier's session-admission ritual* changes (a new entrypoint command
 or a new agent tier). Per-rung governance is not here — it lives in the generated orientation digest, which
