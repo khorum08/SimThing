@@ -1,0 +1,2 @@
+tested_code_sha: fe9df503f94de12eeb32cc50e5c8bb9d0a792c3f
+coverage_basis: PASS - docs-only ladder/orientation pointer correction fixture

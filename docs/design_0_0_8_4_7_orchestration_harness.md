@@ -44,8 +44,11 @@ precedented-class checks 1–8 exactly as the DA ran them by hand (diff-scope gl
 coverage basis, lifecycle/drift verdicts, CI status, citable GPU-proof presence, triage-row presence,
 binding-conditions lookup). Data: `precedented_classes.tsv` (class_id | scope_globs | envelope |
 requirements | status) and `binding_conditions.tsv` (rung | condition | set_by | status) — DA conditions
-become rows, not DA memory. Routing drift becomes impossible, not discouraged. Novelty always has an
-exit: DA-RESERVE and the breakthrough valve are verdicts, never blocks.
+become rows, not DA memory. Routing drift becomes impossible, not discouraged. Unmatched scope and
+envelope violations reserve under precise reasons (`unclassified-scope`, `class-envelope-violation`,
+`engine-scope-violation`, `module-marker-shape-mismatch`). `DA-RESERVE(novelty)` is explicit-claim-only
+and overrides matched-class clearance: `novelty_claim: YES` requires `novelty_basis`; without basis,
+clearance fails. The breakthrough valve remains a verdict, never a block.
 
 *M1 harness laws (final-pass, 2026-07-05):* (a) **Fail-closed** — malformed TSV, script error, or
 ambiguous class resolution → `DA-RESERVE(harness-error)`, never a silent CLEARABLE; selftest fixtures

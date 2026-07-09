@@ -31,7 +31,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | cc06a72a8d72773c3fad32d4e9fd45ccc565f57c1bc6266949442cb5bc0de3c7 |
+| precedented_classes.tsv | 1078e23166ff7ad9b74340dc34d621ff7bbd5e9aa2e0da66489ee31df8dde676 |
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
@@ -81,13 +81,24 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 | verdict | meaning |
 | --- | --- |
 | `CLEARANCE-VERDICT: ORCHESTRATOR-CLEARABLE` | precedented class matched; binding conditions discharged; required proof fields present |
-| `CLEARANCE-VERDICT: DA-RESERVE(novelty)` | resolved non-empty diff with no precedented class match |
+| `CLEARANCE-VERDICT: DA-RESERVE(unclassified-scope)` | resolved non-empty diff with no precedented class match (not novelty) |
+| `CLEARANCE-VERDICT: DA-RESERVE(novelty)` | explicit `novelty_claim: YES` + `novelty_basis`; **overrides** matched-class clearance; not a generic unmatched-diff fallback |
+| `CLEARANCE-VERDICT: DA-RESERVE(class-envelope-violation)` | matched class but diff violates workshop_only / class path envelope |
+| `CLEARANCE-VERDICT: DA-RESERVE(engine-scope-violation)` | matched class forbids engine crate/src and the diff touches engine scope |
+| `CLEARANCE-VERDICT: DA-RESERVE(module-marker-shape-mismatch)` | corpus-module-marker-sweep shape fails inventory deletion rules |
 | `CLEARANCE-VERDICT: DA-RESERVE(harness-error)` | malformed data, ambiguous class, empty/unresolved requested target, or script error |
 | `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` | PR touches router/lint/harness gate surfaces (self-application refusal) |
 | `CLEARANCE-VERDICT: DA-RESERVE(binding-conditions)` | open binding condition blocks clearance for matched class |
 | `CLEARANCE-VERDICT: DA-RESERVE(class-suspended)` | precedented class row status=suspended |
 | `CLEARANCE-VERDICT: DA-RESERVE(triage-missing)` | INSPECT delta without landed /triage row (check 7 live) |
+| `CLEARANCE-VERDICT: FAIL(missing-novelty-basis...)` | `novelty_claim: YES` without valid `novelty_basis` |
 | `CLEARANCE-VERDICT: FAIL(remedy)` | named fix required before re-attempt (CI not green, missing proof fields, etc.) |
+
+`DA-RESERVE(novelty)` is explicit-claim-only and overrides matched-class clearance. A novelty claim must
+include `novelty_basis` naming the unanticipated implementation discovery or substrate improvement.
+Without `novelty_basis`, clearance fails. Unclassified diffs without `novelty_claim` route to
+`DA-RESERVE(unclassified-scope)`. Scope-envelope violations route to their specific reason
+(`class-envelope-violation`, `engine-scope-violation`, `module-marker-shape-mismatch`).
 
 ## Precedented Classes (active)
 
@@ -100,6 +111,7 @@ Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator
 | tp-palma-reach-rung | crates/simthing-workshop/src/palma_reach_post_hydration.rs\|crates/simthing-workshop/tests/tp_palma_reach_0.rs\|docs/tests/tp_palma_reach_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-fleet-movement-rung | crates/simthing-workshop/src/fleet_movement_post_hydration.rs\|crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fleet_movement_0.rs\|docs/tests/tp_fleet_movement_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
+| docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
 
 ## Binding Conditions
 
@@ -135,7 +147,10 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 
 ## Escalation / DA-RESERVE Posture
 
-- Novelty, binding-conditions, class-suspended, triage-missing → DA review routing.
+- unclassified-scope, class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
+- Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.
+- `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
+- binding-conditions, class-suspended, triage-missing → DA review routing.
 - gate-wiring → deep audit; harness surfaces are never self-mergeable.
 - harness-error → fix data/target resolution before re-run.
 - FAIL(remedy) → apply named remedy and re-run clearance.
