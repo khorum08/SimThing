@@ -207,6 +207,10 @@ pub struct StudioAppState {
     pub scenario_path_text: String,
     /// Last scenario IO status message (presentation only; not persisted in scenario authority).
     pub last_scenario_io_status: String,
+    /// Last selected / displayed `.clause` path (presentation only).
+    pub clause_path_text: String,
+    /// Explicit resolver entries for ClauseScript open: `TOKEN=path` lines (presentation only).
+    pub clause_resolver_text: String,
     /// Editable candidate artifact path for Save/Reopen Candidate UI (presentation only).
     pub candidate_path_text: String,
     /// Loaded scenario runtime/candidate status (presentation only; not authority).
@@ -284,6 +288,8 @@ impl StudioAppState {
             config_view_mode: StudioViewModeSetting::ThreeD,
             scenario_path_text: scenario_io::DEFAULT_SCENARIO_PATH.to_string(),
             last_scenario_io_status: String::new(),
+            clause_path_text: String::new(),
+            clause_resolver_text: String::new(),
             candidate_path_text: "candidate.simthing-scenario.json".to_string(),
             runtime_saveload_status: None,
             last_runtime_saveload_status: String::new(),
