@@ -264,15 +264,20 @@ and the DA applies:
 
 | Declared risk class | Posture | What the DA actually does |
 |---|---|---|
-| `none` + green RELIABLE + no escalation | **light** | confirm the named deliverables exist; graduate |
-| `semantic` | targeted | one judgment check (e.g. call-site analysis of a new accessor) |
+| `none` + green RELIABLE + no escalation | **light** | confirm the named deliverables exist **on the tree** (not only in the relay); graduate |
+| `semantic` | targeted | one judgment check on the tree (e.g. call-site analysis of a new accessor) |
 | `data-deliverable` / `gate-wiring` | **deep** | byte-faithfulness against the source; *prove the guard bites* (perturb → FAIL) |
 | `seal-residue` / `allowlist-edit` | **deep** | tree / legitimacy audit (door-class, no laundering) |
 | triage `ESCALATE` present | **deep** | the escalation was already headed to the DA |
 
-The **Falsification check** in the block tells the DA *where* to spend on a deep review — never "re-verify
+**Verify-the-tree is non-discretionary.** Light vs deep chooses *how much* review spend, never *whether*
+the branch is confirmed. A relayed claim, PR body, results summary, or prior stamp is not evidence until
+checked against the actual tree (or a pure decision-only surface with no code/proof claim). Graduating on
+the relay alone is a process failure (`docs/agent_onboarding.md` DA section).
+
+The **Falsification check** in the block tells the DA *where* to spend on review — never "re-verify
 everything." This is what makes graduation cost *decay*: a well-declared PROBATION lets the DA confirm-deliverables
-in seconds where CI already vouches, and reserve token-heavy investigation for exactly the residue CI cannot see.
+on the tree in seconds where CI already vouches, and reserve token-heavy investigation for exactly the residue CI cannot see.
 
 ---
 
