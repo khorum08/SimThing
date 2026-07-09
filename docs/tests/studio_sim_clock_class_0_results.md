@@ -23,6 +23,7 @@
 | `scripts/ci/clearance_check.sh` | Register 11 new selftest fixtures |
 | `scripts/ci/fixtures/clearance/clearance_selftest_studio_clock_class_*` | Pos/neg/non-regression fixtures |
 | `scripts/ci/test_inventory.tsv` | Fixture ledger rows |
+| `scripts/ci/doc_budget_baseline.tsv` | Orientation line budget 226→228 (new class + 9.1h row) |
 | `docs/tests/studio_sim_clock_class_0_results.md` | This evidence |
 | `docs/design_0_0_8_6_studio_live_ops.md` | 9.1h adjacency rung |
 | `docs/orchestrator_orientation.md` | Regenerated |
