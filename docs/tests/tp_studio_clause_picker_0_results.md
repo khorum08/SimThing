@@ -2,7 +2,9 @@
 
 ## Status
 
-**PROOF-PRESENT / PROBATION** — admitted narrow Studio/mapeditor `.clause` picker/menu as a **caller of production `clause_scenario_ingest` only**. Session hydrate PASS. No TP defaults, no dual parse/rebind, no GameMode/RF/live-run/closeout.
+**DA-GRADUATED / COMPLETE** — merged [#1239](https://github.com/khorum08/SimThing/pull/1239) @ `0183883767c529b43a1be68c10631e3c09ab7dd7` (head `d9bd5c4054dc892efe9ca951d65f7ec300f6a1a4`). DA stamp 2026-07-09.
+
+Admitted narrow Studio/mapeditor `.clause` picker/menu as a **caller of production `clause_scenario_ingest` only**. Session hydrate PASS. No TP defaults, no dual parse/rebind, no GameMode/RF/live-run/closeout.
 
 ## Admitted scope
 
@@ -85,7 +87,7 @@ cargo test -p simthing-mapeditor --test tp_studio_clause_api_1 -- --nocapture
 
 ## Clearance routing
 
-Expect `DA-RESERVE(unclassified-scope)` or class-envelope against `tp-admitted-clause-api-composition` (`no_ui_picker`) unless a picker class is added (gate-wiring). Not a proof failure if constraints hold.
+`CLEARANCE-VERDICT: DA-RESERVE(unclassified-scope)` on #1239 — accepted by DA as router coverage friction (no picker class; admitted API class carries `no_ui_picker`). Not a proof failure.
 
 ## Known gaps
 
@@ -99,4 +101,4 @@ Expect `DA-RESERVE(unclassified-scope)` or class-envelope against `tp-admitted-c
 TP-STUDIO-CLAUSE-PICKER-CLASS-0
 ```
 
-if router friction warrants a clearable class; else Owner/DA decision on Phase 8 completeness / readiness. **Not** closeout unless Owner declares workplan complete.
+Optional gate-wiring so #1239-shaped follow-ups are ORCHESTRATOR-CLEARABLE. **Not** closeout unless Owner declares workplan complete.
