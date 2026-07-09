@@ -4,6 +4,7 @@ pub mod fronts_post_hydration;
 pub mod fleet_movement_post_hydration;
 pub mod live_run_post_hydration;
 pub mod palma_reach_post_hydration;
+pub mod tp_studio_clause_ingest;
 pub mod eml_phase5;
 pub mod multitarget_replay;
 mod multitarget_replay_report;
@@ -69,6 +70,12 @@ pub use live_run_post_hydration::{
     TpPlacementRebindEntry, TpRfCombatEconomicsReport, TpRfCombatShipFlow, TP_LIVE_RUN_MIN_TICKS,
     TP_LIVE_RUN_THEATER_GRID, TP_RF_COMBAT_DESTROYED_SHIPS_PROPERTY, TP_RF_COMBAT_DTK_PROPERTY,
     TP_RF_COMBAT_NUM_SHIPS_PROPERTY, TP_RF_COMBAT_PROPERTY_NAMESPACE,
+};
+pub use tp_studio_clause_ingest::{
+    default_tp_base_disc_json_path, ingest_tp_clause_scenario_path,
+    load_scenario_authority_json_from_path, project_tp_pack_to_scenario_spec,
+    save_scenario_authority_json_to_path, TpStudioClauseIngestError, TpStudioClauseIngestOptions,
+    TpStudioClauseIngestResult, CLAUSE_FIXTURE_JSON_PLACEHOLDER,
 };
 pub mod weighted_mean_perf;
 mod weighted_mean_perf_report;
