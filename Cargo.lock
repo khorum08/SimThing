@@ -5468,6 +5468,7 @@ dependencies = [
  "simthing-sim",
  "simthing-spec",
  "simthing-tools",
+ "tempfile",
  "thiserror 2.0.18",
  "wgpu 22.1.0",
 ]

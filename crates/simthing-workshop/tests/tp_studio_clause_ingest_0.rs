@@ -1,12 +1,13 @@
-//! TP-STUDIO-CLAUSE-INGEST-0 — Studio-facing ClauseScript → ScenarioSpec load/save.
+//! TP-STUDIO-CLAUSE-INGEST-0R — workshop-homed candidate: clause → ScenarioSpec save/reload.
 
 use std::path::PathBuf;
 
-use simthing_mapeditor::{
-    default_tp_base_disc_json_path, ingest_clause_scenario_path, load_scenario_authority_from_path,
-    save_scenario_authority_to_path, StudioClauseIngestOptions,
-};
 use simthing_spec::save_scenario_spec_to_canonical_json;
+use simthing_workshop::{
+    default_tp_base_disc_json_path, ingest_tp_clause_scenario_path,
+    load_scenario_authority_json_from_path, save_scenario_authority_json_to_path,
+    TpStudioClauseIngestOptions,
+};
 use tempfile::TempDir;
 
 const TERRAN_PIRATE_SCENARIO_ID: &str = "terran_pirate_galaxy";
@@ -17,13 +18,13 @@ fn approved_clause_path() -> PathBuf {
     )
 }
 
-fn default_options() -> StudioClauseIngestOptions {
-    StudioClauseIngestOptions {
+fn default_options() -> TpStudioClauseIngestOptions {
+    TpStudioClauseIngestOptions {
         embedded_source_json_path: Some(default_tp_base_disc_json_path()),
     }
 }
 
-/// Studio-facing ingest: open approved .clause, project to ScenarioSpec, Studio save/reload.
+/// Workshop-homed candidate ingest + production ScenarioSpec authority save/reload.
 #[test]
 fn tp_studio_clause_ingest_0_load_save_roundtrip() {
     let clause_path = approved_clause_path();
@@ -37,29 +38,25 @@ fn tp_studio_clause_ingest_0_load_save_roundtrip() {
         "embedded base-disc JSON missing"
     );
 
-    // 1–4: Studio-facing ingest service (not test-only clausething helpers).
-    let ingest =
-        ingest_clause_scenario_path(&clause_path, &default_options()).expect("studio clause ingest");
+    // Workshop-homed candidate service (not a production mapeditor API).
+    let ingest = ingest_tp_clause_scenario_path(&clause_path, &default_options())
+        .expect("workshop TP clause ingest");
     assert_eq!(ingest.scenario.scenario_id, TERRAN_PIRATE_SCENARIO_ID);
     assert_eq!(ingest.pack.scenario_id, TERRAN_PIRATE_SCENARIO_ID);
     assert!(
         ingest.pack.authority_root.is_some(),
-        "authority_root required for Studio ScenarioSpec projection"
+        "authority_root required for ScenarioSpec projection"
     );
-    assert_eq!(
-        ingest.pack.owners.len(),
-        2,
-        "Terran + Pirate owners expected"
-    );
-    // FULL-TRANSPILE authority projection: empty placements / map_container until install rebind.
-    // Studio session STEAD rebuild is out of scope for this wiring rung (see report Boundary).
+    assert_eq!(ingest.pack.owners.len(), 2, "Terran + Pirate owners expected");
 
-    // 5–7: existing Studio ScenarioSpec save/load authority path + digest/byte parity.
+    // Production ScenarioSpec authority serde (same layer mapeditor scenario_io uses).
     let tmp = TempDir::new().expect("tempdir");
-    let save_path = tmp.path().join("terran_pirate_from_clause.simthing-scenario.json");
-    save_scenario_authority_to_path(&save_path, &ingest.scenario).expect("studio save");
+    let save_path = tmp
+        .path()
+        .join("terran_pirate_from_clause.simthing-scenario.json");
+    save_scenario_authority_json_to_path(&save_path, &ingest.scenario).expect("authority save");
 
-    let reloaded = load_scenario_authority_from_path(&save_path).expect("studio load path");
+    let reloaded = load_scenario_authority_json_from_path(&save_path).expect("authority load");
     assert_eq!(reloaded.scenario_id, TERRAN_PIRATE_SCENARIO_ID);
 
     let save_a = save_scenario_spec_to_canonical_json(&ingest.scenario).expect("canonical a");
@@ -71,31 +68,27 @@ fn tp_studio_clause_ingest_0_load_save_roundtrip() {
     assert_eq!(save_a.authority_digest, save_b.authority_digest);
 }
 
-/// Spanned/source-context error plumbing for Studio status display.
+/// Error plumbing for workshop-homed candidate status display.
 #[test]
 fn tp_studio_clause_ingest_0_malformed_clause_error_context() {
     let tmp = TempDir::new().expect("tempdir");
     let bad_path = tmp.path().join("malformed_scenario.clause");
-    // Intentionally invalid ClauseScript (unbalanced / incomplete scenario block).
     std::fs::write(
         &bad_path,
         "scenario = broken_tp {\n    metadata = {\n        display_name = \"broken\"\n",
     )
     .expect("write malformed");
 
-    let err = ingest_clause_scenario_path(&bad_path, &StudioClauseIngestOptions::default())
-        .expect_err("malformed clause must fail Studio ingest");
+    let err = ingest_tp_clause_scenario_path(&bad_path, &TpStudioClauseIngestOptions::default())
+        .expect_err("malformed clause must fail workshop ingest");
     let status = err.status_message();
-    assert!(
-        !status.is_empty(),
-        "status message must be non-empty for UI/status display"
-    );
-    // Parse or hydrate path should surface ClauseThing context in the Display string.
+    assert!(!status.is_empty(), "status message must be non-empty");
     assert!(
         status.contains("ClauseThing")
             || status.contains("parse")
             || status.contains("hydrat")
-            || status.contains("error"),
-        "error should carry source context suitable for UI: {status}"
+            || status.contains("error")
+            || status.contains("TP clause"),
+        "error should carry source context: {status}"
     );
 }

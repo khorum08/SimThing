@@ -1,10 +1,12 @@
-//! Studio-facing ClauseScript scenario ingest.
+//! Workshop-homed TP candidate: ClauseScript scenario → ScenarioSpec ingest proof.
 //!
-//! TP-STUDIO-CLAUSE-INGEST-0 — open a native `.clause` scenario path, invoke
-//! `simthing-clausething` parse/hydrate, project to canonical
-//! `SimThingScenarioSpec`, and hand off to existing Studio ScenarioSpec IO.
+//! TP-STUDIO-CLAUSE-INGEST-0R — scenario-candidate service. Exists only because the
+//! 0.0.8.5 Terran-Pirate track needs a Studio wiring candidate. Not a production
+//! Studio API; elevation to `simthing-mapeditor` requires DA/Owner admission.
 //!
-//! Does not duplicate parser logic. Does not create a second scenario authority.
+//! Reuses production parse/hydrate (`simthing-clausething`) and ScenarioSpec
+//! authority serde (`simthing-spec` — the same layer mapeditor `scenario_io` wraps).
+//! Does not mint a second authority model.
 
 use std::path::{Path, PathBuf};
 
@@ -12,31 +14,30 @@ use simthing_clausething::{
     hydrate_scenario, parse_raw_document, HydrateError, HydratedScenarioPack, ParseError,
 };
 use simthing_spec::{
-    SimThingScenarioGrid, SimThingScenarioProvenance, SimThingScenarioSpec,
-    SimThingStructuralGridFrame,
+    deserialize_scenario_authority, serialize_scenario_authority, SimThingScenarioGrid,
+    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
 };
 use thiserror::Error;
-
-use crate::generation::GenerationProfile;
-use crate::scenario_io::ScenarioIoError;
-use crate::session::StudioSession;
 
 /// Placeholder embedded in approved TP clause fixtures for `source_json`.
 pub const CLAUSE_FIXTURE_JSON_PLACEHOLDER: &str = "{{FIXTURE_JSON}}";
 
-/// Default embedded base-disc JSON used when resolving TP clause placeholders.
+/// Workshop-default embedded base-disc JSON for the approved TP clause fixture.
+///
+/// Candidate/default only — not a production Studio default.
 pub fn default_tp_base_disc_json_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
+        .join("../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
 }
 
+/// Options for the workshop-homed TP clause ingest candidate.
 #[derive(Debug, Clone)]
-pub struct StudioClauseIngestOptions {
-    /// Absolute or workspace path substituted for `{{FIXTURE_JSON}}` in clause text.
+pub struct TpStudioClauseIngestOptions {
+    /// Path substituted for `{{FIXTURE_JSON}}` in clause text.
     pub embedded_source_json_path: Option<PathBuf>,
 }
 
-impl Default for StudioClauseIngestOptions {
+impl Default for TpStudioClauseIngestOptions {
     fn default() -> Self {
         Self {
             embedded_source_json_path: Some(default_tp_base_disc_json_path()),
@@ -45,26 +46,25 @@ impl Default for StudioClauseIngestOptions {
 }
 
 #[derive(Debug, Error)]
-pub enum StudioClauseIngestError {
-    #[error("clause scenario file IO error: {0}")]
+pub enum TpStudioClauseIngestError {
+    #[error("TP clause ingest IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("clause scenario parse error: {0}")]
+    #[error("TP clause parse error: {0}")]
     Parse(#[from] ParseError),
-    #[error("clause scenario hydrate error: {0}")]
+    #[error("TP clause hydrate error: {0}")]
     Hydrate(#[from] HydrateError),
-    #[error("clause scenario projection error: {0}")]
+    #[error("TP clause projection error: {0}")]
     Projection(String),
-    #[error("studio scenario IO after clause ingest: {0}")]
-    ScenarioIo(#[from] ScenarioIoError),
+    #[error("TP clause scenario authority serde error: {0}")]
+    Serde(String),
 }
 
-impl StudioClauseIngestError {
-    /// Human-readable status text suitable for Studio status/UI surfaces.
+impl TpStudioClauseIngestError {
+    /// Status text suitable for logs / candidate UI surfaces.
     pub fn status_message(&self) -> String {
         self.to_string()
     }
 
-    /// Optional hydrate token index when the underlying error is spanned.
     pub fn hydrate_token_index(&self) -> Option<usize> {
         match self {
             Self::Hydrate(err) => err.span.as_ref().map(|s| s.token_index),
@@ -73,44 +73,43 @@ impl StudioClauseIngestError {
     }
 }
 
-/// Result of Studio-facing ClauseScript scenario ingest.
+/// Result of workshop-homed TP ClauseScript scenario ingest.
 #[derive(Debug, Clone)]
-pub struct StudioClauseIngestResult {
+pub struct TpStudioClauseIngestResult {
     pub source_path: PathBuf,
     pub pack: HydratedScenarioPack,
     pub scenario: SimThingScenarioSpec,
 }
 
-/// Open a native `.clause` path through the Studio-facing ingest service.
+/// Workshop-homed candidate: open a native `.clause` path for the TP track.
 ///
-/// Flow: read file → optional `{{FIXTURE_JSON}}` substitute → `parse_raw_document`
-/// → `hydrate_scenario` → project to `SimThingScenarioSpec` (authority_root).
-pub fn ingest_clause_scenario_path(
+/// Flow: read → optional `{{FIXTURE_JSON}}` substitute → `parse_raw_document`
+/// → `hydrate_scenario` → project to `SimThingScenarioSpec` candidate shape.
+pub fn ingest_tp_clause_scenario_path(
     path: &Path,
-    options: &StudioClauseIngestOptions,
-) -> Result<StudioClauseIngestResult, StudioClauseIngestError> {
+    options: &TpStudioClauseIngestOptions,
+) -> Result<TpStudioClauseIngestResult, TpStudioClauseIngestError> {
     let raw = std::fs::read_to_string(path)?;
     let source = resolve_clause_source_text(&raw, options)?;
     let document = parse_raw_document(source.as_bytes())?;
     let pack = hydrate_scenario(&document)?;
-    let scenario = project_hydrated_pack_to_scenario_spec(&pack)?;
-    Ok(StudioClauseIngestResult {
+    let scenario = project_tp_pack_to_scenario_spec(&pack)?;
+    Ok(TpStudioClauseIngestResult {
         source_path: path.to_path_buf(),
         pack,
         scenario,
     })
 }
 
-/// Project a hydrated pack to the canonical Studio ScenarioSpec authority shape.
+/// Project a hydrated TP pack to ScenarioSpec candidate authority shape.
 ///
-/// Matches the TP-FULL-TRANSPILE-0 authority projection: `authority_root` is the
-/// ScenarioSpec root; STEAD lattice/frame metadata is taken from the embedded base
-/// disc; placement rebind onto authority nodes is out of scope for this rung.
-pub fn project_hydrated_pack_to_scenario_spec(
+/// Matches the FULL-TRANSPILE candidate projection: `authority_root` is root;
+/// STEAD frame/provenance from embedded base; placements left empty until install rebind.
+pub fn project_tp_pack_to_scenario_spec(
     pack: &HydratedScenarioPack,
-) -> Result<SimThingScenarioSpec, StudioClauseIngestError> {
+) -> Result<SimThingScenarioSpec, TpStudioClauseIngestError> {
     let authority_root = pack.authority_root.clone().ok_or_else(|| {
-        StudioClauseIngestError::Projection(
+        TpStudioClauseIngestError::Projection(
             "hydrated pack is missing authority_root; cannot project to SimThingScenarioSpec"
                 .to_string(),
         )
@@ -157,47 +156,44 @@ pub fn project_hydrated_pack_to_scenario_spec(
     })
 }
 
-/// Ingest a `.clause` path and adopt it as a Studio session when STEAD mapping allows.
-///
-/// TP authority projections from FULL-TRANSPILE intentionally leave placements /
-/// `map_container_id` empty until install rebind; those specs may fail session
-/// hydrate with `SteadMappingInconsistent`. Prefer `ingest_clause_scenario_path`
-/// + `save_scenario_authority_to_path` for the wiring proof path.
-pub fn load_studio_session_from_clause_path(
+/// Save ScenarioSpec via production authority serde (same layer mapeditor scenario_io uses).
+pub fn save_scenario_authority_json_to_path(
     path: &Path,
-    options: &StudioClauseIngestOptions,
-    profile_hint: Option<GenerationProfile>,
-) -> Result<(StudioClauseIngestResult, StudioSession), StudioClauseIngestError> {
-    let ingest = ingest_clause_scenario_path(path, options)?;
-    let session = StudioSession::from_loaded_scenario(
-        ingest.scenario.clone(),
-        path.to_path_buf(),
-        profile_hint,
-    )
-    .map_err(ScenarioIoError::from)?;
-    Ok((ingest, session))
+    scenario: &SimThingScenarioSpec,
+) -> Result<(), TpStudioClauseIngestError> {
+    let json = serialize_scenario_authority(scenario)
+        .map_err(|e| TpStudioClauseIngestError::Serde(e.to_string()))?;
+    std::fs::write(path, json)?;
+    Ok(())
+}
+
+/// Load ScenarioSpec via production authority serde (same layer mapeditor scenario_io uses).
+pub fn load_scenario_authority_json_from_path(
+    path: &Path,
+) -> Result<SimThingScenarioSpec, TpStudioClauseIngestError> {
+    let text = std::fs::read_to_string(path)?;
+    deserialize_scenario_authority(&text)
+        .map_err(|e| TpStudioClauseIngestError::Serde(e.to_string()))
 }
 
 fn resolve_clause_source_text(
     raw: &str,
-    options: &StudioClauseIngestOptions,
-) -> Result<String, StudioClauseIngestError> {
+    options: &TpStudioClauseIngestOptions,
+) -> Result<String, TpStudioClauseIngestError> {
     if !raw.contains(CLAUSE_FIXTURE_JSON_PLACEHOLDER) {
         return Ok(raw.to_string());
     }
     let fixture = options.embedded_source_json_path.as_ref().ok_or_else(|| {
-        StudioClauseIngestError::Projection(format!(
+        TpStudioClauseIngestError::Projection(format!(
             "clause contains {CLAUSE_FIXTURE_JSON_PLACEHOLDER} but no embedded_source_json_path was provided"
         ))
     })?;
     if !fixture.is_file() {
-        return Err(StudioClauseIngestError::Projection(format!(
+        return Err(TpStudioClauseIngestError::Projection(format!(
             "embedded source_json path does not exist: {}",
             fixture.display()
         )));
     }
-    let fixture_path = fixture
-        .to_string_lossy()
-        .replace('\\', "/");
+    let fixture_path = fixture.to_string_lossy().replace('\\', "/");
     Ok(raw.replace(CLAUSE_FIXTURE_JSON_PLACEHOLDER, &fixture_path))
 }

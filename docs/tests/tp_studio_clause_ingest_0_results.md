@@ -1,37 +1,49 @@
-# TP-STUDIO-CLAUSE-INGEST-0 Results
+# TP-STUDIO-CLAUSE-INGEST-0 / 0R Results
 
 ## Status
 
-**PROOF-PRESENT / Studio wiring.** Studio-facing ClauseScript scenario ingest opens the approved
-`terran_pirate_galaxy.clause`, routes through `simthing-clausething` parse/hydrate, projects to
-canonical `SimThingScenarioSpec`, and proves save/reload via existing Studio ScenarioSpec authority
-IO without semantic drift.
+**PROOF-PRESENT / workshop-homed candidate / 0R homing corrected.**
+
+The ingest helper is **workshop-homed candidate code**.
+The proof uses existing Studio/mapeditor ScenarioSpec **authority** IO (via production
+`simthing-spec` serialize/deserialize — the same layer `simthing-mapeditor::scenario_io` wraps).
+**No production Studio API is admitted by this rung.**
+Production-crate elevation is a future DA/Owner admission decision.
 
 ## Identity
 
 | Field | Value |
 |---|---|
-| Rung | `TP-STUDIO-CLAUSE-INGEST-0` |
-| Kind | Studio / mapeditor wiring (minimal service path) |
+| Rung | `TP-STUDIO-CLAUSE-INGEST-0R` (homing boundary) |
+| Kind | workshop-homed scenario-candidate service + proof |
+| Home | `crates/simthing-workshop/src/tp_studio_clause_ingest.rs` |
 | Approved source | `crates/simthing-clausething/tests/fixtures/scenario/terran_pirate_galaxy.clause` |
-| Embedded base | `crates/simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json` (`{{FIXTURE_JSON}}`) |
-| Prior proofs | `TP-FULL-TRANSPILE-0` (#1215), `TP-LIVE-RUN-0R2` (#1217), readiness report `tp_studio_ingest_readiness_0_results.md` |
-| Closeout | **Not** this rung — Owner-triggered only |
+| Embedded base | `crates/simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json` (`{{FIXTURE_JSON}}`) — **caller/test default, not production Studio default** |
+| Prior proofs | FULL-TRANSPILE-0, LIVE-RUN-0R2 (cited only), readiness report |
+| Homing test | Would this code exist if this scenario didn't? → **no** → workshop |
 
 ## Implemented path
 
 ```text
-.clause file path
-  → Studio-facing ingest_clause_scenario_path
-  → resolve {{FIXTURE_JSON}} → embedded base-disc JSON
-  → parse_raw_document (simthing-clausething)
-  → hydrate_scenario (simthing-clausething)
-  → project_hydrated_pack_to_scenario_spec (authority_root + embedded frame/provenance)
-  → SimThingScenarioSpec
-  → save_scenario_authority_to_path (.simthing-scenario.json)
-  → load_scenario_authority_from_path
+approved terran_pirate_galaxy.clause
+  → workshop-homed ingest_tp_clause_scenario_path
+  → parse_raw_document + hydrate_scenario (simthing-clausething production)
+  → project_tp_pack_to_scenario_spec (candidate authority_root shape)
+  → save via production ScenarioSpec authority serde (simthing-spec;
+      same authority layer as mapeditor scenario_io)
+  → reload via production ScenarioSpec authority serde
   → canonical digest / byte parity
 ```
+
+## Dependency note (mapeditor)
+
+`simthing-workshop` does **not** depend on `simthing-mapeditor` (Bevy shell). Pulling mapeditor
+into workshop would force a heavy GUI/runtime dependency for a candidate proof.
+
+Instead the proof calls production `serialize_scenario_authority` /
+`deserialize_scenario_authority` / `save_scenario_spec_to_canonical_json` from
+`simthing-spec`, which is exactly what mapeditor `scenario_io` wraps. The integration
+shape is proven without elevating a production Studio API.
 
 ## Approved source file
 
@@ -43,67 +55,60 @@ crates/simthing-clausething/tests/fixtures/scenario/terran_pirate_galaxy.clause
 
 | Surface | Reuse |
 |---|---|
-| Parse + hydrate full TP clause | `simthing-clausething` (same path as FULL-TRANSPILE) |
-| Authority projection shape | FULL-TRANSPILE `authority_spec` (empty placements until install rebind) |
-| Canonical JSON save/load | Studio `scenario_io` + `save_scenario_spec_to_canonical_json` |
-| LIVE-RUN | **Cited only** for runtime liveness boundary; not re-proven |
+| Parse + hydrate full TP clause | production `simthing-clausething` |
+| Authority projection shape | FULL-TRANSPILE candidate shape (empty placements until rebind) |
+| Canonical JSON save/load | production `simthing-spec` authority serde |
+| LIVE-RUN | cited only; not re-proven |
 
-## Studio-facing ingest API
+## Workshop-facing candidate API
 
 | API | Role |
 |---|---|
-| `ingest_clause_scenario_path` | Primary Studio-facing open path |
-| `project_hydrated_pack_to_scenario_spec` | Pack → ScenarioSpec (no second authority) |
-| `load_studio_session_from_clause_path` | Optional session adopt when STEAD allows |
-| `StudioClauseIngestError::status_message` | UI/status Display string |
-| `StudioClauseIngestError::hydrate_token_index` | Spanned hydrate token when present |
-
-Module: `crates/simthing-mapeditor/src/studio_clause_ingest.rs`
-
-UI file picker: **DEFERRED** — service path and save/load parity are proven; native `.clause` picker remains future work.
+| `ingest_tp_clause_scenario_path` | Workshop-homed open path |
+| `project_tp_pack_to_scenario_spec` | Pack → ScenarioSpec candidate |
+| `save_scenario_authority_json_to_path` | Authority save via production serde |
+| `load_scenario_authority_json_from_path` | Authority load via production serde |
+| `TpStudioClauseIngestError::status_message` | Status/Display string |
 
 ## Load/save roundtrip proof
 
-Test: `tp_studio_clause_ingest_0_load_save_roundtrip`
+Test: `tp_studio_clause_ingest_0_load_save_roundtrip` (workshop)
 
-- Opens approved `.clause` via Studio-facing ingest (not a test-only clausething helper).
+- Opens approved `.clause` via workshop-homed helper.
 - Scenario id: `terran_pirate_galaxy`.
-- Saves via `save_scenario_authority_to_path`.
-- Reloads via `load_scenario_authority_from_path`.
-- Canonical JSON bytes and `authority_digest` match (no semantic drift).
+- Saves/reloads via production ScenarioSpec authority serde.
+- Canonical JSON bytes and `authority_digest` match.
 
 ## Error-path proof
 
-Test: `tp_studio_clause_ingest_0_malformed_clause_error_context`
+Test: `tp_studio_clause_ingest_0_malformed_clause_error_context` (workshop)
 
-- Malformed clause snippet fails ingest.
-- `status_message()` is non-empty and carries ClauseThing parse/hydrate context for UI/status display.
-- Full span-to-UI panel mapping is **follow-on** if richer diagnostics are required.
+- Malformed clause fails ingest.
+- `status_message()` non-empty with ClauseThing/TP context.
 
 ## Non-goals
 
-- track closeout / `TP-DA-CLOSEOUT-0`
-- full Studio UI panels for RF/combat/front metadata
-- full-galaxy Movement-Front atlas / 1000-tick soak
-- generic GPU `destroyed_ships` emission
-- casualty → next STEAD `ArenaPressureBinding` coupling
-- new parser semantics / grammar
-- new runtime/GPU/kernel code
-- UI `.clause` file picker (deferred)
+- production `simthing-mapeditor` ClauseScript ingest API
+- UI file picker
+- track closeout
+- full Studio session STEAD rebind
+- live run / GPU / kernel / new grammar
+- self-granted substrate widening
 
 ## Boundary / future work
 
 | Item | Notes |
 |---|---|
-| Placement/link rebind onto authority nodes | FULL-TRANSPILE residue; empty placements intentional |
-| Studio session STEAD hydrate for TP pack | Fails until map_container/placements rebind; authority IO path is the 0 proof |
-| UI Open ClauseScript menu / extension filter | Deferred |
-| Richer spanned error UI | Token index available on hydrate errors; panel wiring deferred |
+| Homing | Workshop until DA/Owner admits generic Studio API |
+| Production elevation | Requires explicit DA/Owner authorization |
+| STEAD session hydrate | Needs placement/map_container rebind (FULL-TRANSPILE residue) |
+| UI Open ClauseScript | Deferred |
 
 ## Commands
 
 ```bash
-cargo test -p simthing-mapeditor --test tp_studio_clause_ingest_0 -- --nocapture
+cargo test -p simthing-workshop --test tp_studio_clause_ingest_0 -- --nocapture
+cargo check -p simthing-workshop
 cargo check -p simthing-mapeditor
 cargo check -p simthing-clausething
 bash scripts/ci/gen_orientation.sh --check
@@ -116,5 +121,6 @@ git diff --check
 
 ## Clearance routing
 
-Studio/mapeditor service + integration test + inventory/lifecycle + results report.
-Expect router verdict under hardened clearance (not novelty). Gate-wiring only if harness surfaces touched.
+Workshop-homed TP candidate + inventory/lifecycle + report.
+Expect `ORCHESTRATOR-CLEARABLE` if a workshop class matches, else precise reserve
+(`unclassified-scope` / envelope) — **not novelty**.

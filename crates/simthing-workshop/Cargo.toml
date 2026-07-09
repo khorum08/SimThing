@@ -18,6 +18,7 @@ thiserror = { workspace = true }
 wgpu = { workspace = true }
 
 [dev-dependencies]
+tempfile = "3"
 simthing-driver = { path = "../simthing-driver" }
 simthing-feeder = { path = "../simthing-feeder" }
 simthing-gpu = { path = "../simthing-gpu" }
