@@ -1,7 +1,10 @@
 # 0.0.8.5 — ClauseScript Terran-Pirate Galaxy Production Track
 
-> **Status: OPEN / DA-OPENED (production track, Phase 0; execution opened 2026-07-01 at `TP-TRACK-OPEN-0`).** Resequenced
-> 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed). Prerequisite ladder landed in the tree:
+> **Status: OPEN (scenario envelope) / Phase 8 product spine complete (2026-07-09).** Phase 8 open/hydrate
+> (transpile → API → picker → clearance classes) is graduated; **active product pointer for Studio live ops is
+> [`design_0_0_8_6_studio_live_ops.md`](design_0_0_8_6_studio_live_ops.md)** — this track is **not closed**
+> (closeout remains Owner-triggered). Resequenced 0.0.8.4 → 0.0.8.5 (2026-06-28, owner-directed).
+> Prerequisite ladder landed in the tree:
 > [`0.0.8.4 Admission Substrate`](design_0_0_8_4_admission_substrate.md) (`AS-CLOSEOUT-0` CLOSED),
 > [`0.0.8.4.5 simthing-kernel`](design_0_0_8_4_5_simthing_kernel.md) (`KERNEL-CLOSEOUT-0` CLOSED),
 > [`0.0.8.4.6 CI scaffolding`](design_0_0_8_4_6_ci_scaffolding.md) (Track A + Track C DA-CLOSED).
