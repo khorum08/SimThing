@@ -348,6 +348,18 @@ has_admitted_clause_api_shape = any(
     )
     for f in files
 )
+# Admitted narrow Studio/mapeditor .clause picker owns #1239-shaped UI surfaces.
+has_studio_clause_picker_shape = any(
+    f == "crates/simthing-mapeditor/src/clause_scenario_picker.rs"
+    or (
+        f.startswith("crates/simthing-mapeditor/tests/tp_studio_clause_picker_")
+        and f.endswith(".rs")
+    )
+    for f in files
+)
+# Picker primary beats API composition when both shapes appear; pure API keeps API class.
+if not primary and has_studio_clause_picker_shape:
+    primary = "tp-studio-clause-picker"
 if not primary and has_admitted_clause_api_shape:
     primary = "tp-admitted-clause-api-composition"
 
@@ -443,12 +455,25 @@ for row in rows:
         # Do not collide with admitted production ClauseScript API composition.
         if has_admitted_clause_api_shape:
             continue
+        # Do not collide with admitted narrow Studio/mapeditor picker UI.
+        if has_studio_clause_picker_shape:
+            continue
     if class_id == "tp-admitted-clause-api-composition":
         if not has_admitted_clause_api_shape:
+            continue
+        # Picker-shaped diffs are owned by tp-studio-clause-picker (primary).
+        if has_studio_clause_picker_shape:
             continue
         globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
         # All changed files must stay inside the admitted composition envelope.
         if not files or not all(any(glob_match(path, g) for g in globs) for path in files):
+            continue
+    if class_id == "tp-studio-clause-picker":
+        if not has_studio_clause_picker_shape:
+            continue
+        globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
+        # Match when picker surface present; out-of-envelope files fail picker_only later.
+        if not files or not any(any(glob_match(path, g) for g in globs) for path in files):
             continue
     if primary and class_id != primary:
         continue
@@ -473,6 +498,7 @@ class_for_rung() {
     tp-diplomacy-flow-rung) printf 'TP-DIPLOMACY-FLOW-0' ;;
     tp-workshop-candidate-proof) printf 'TP-WORKSHOP-CANDIDATE-CLASS-0' ;;
     tp-admitted-clause-api-composition) printf 'TP-ADMITTED-CLAUSE-API-CLASS-0' ;;
+    tp-studio-clause-picker) printf 'TP-STUDIO-CLAUSE-PICKER-CLASS-0' ;;
     tp-workshop-scenario-rung)
       local files
       files="$(changed_files 2>/dev/null || true)"
@@ -708,6 +734,124 @@ check_session_hydrate_field() {
     emit_verdict fail "missing-admitted-api-fields: session_hydrate: PASS required"
     return 1
   fi
+  return 0
+}
+
+# Admitted narrow Studio/mapeditor .clause picker body gates (TP-STUDIO-CLAUSE-PICKER-CLASS-0).
+check_studio_clause_picker_field() {
+  local body="$1"
+  if ! echo "$body" | grep -qiE 'studio_clause_picker:[[:space:]]*ADMITTED_NARROW_UI'; then
+    emit_verdict fail "missing-picker-proof-fields: studio_clause_picker: ADMITTED_NARROW_UI required"
+    return 1
+  fi
+  return 0
+}
+
+check_production_api_only_field() {
+  local body="$1"
+  if echo "$body" | grep -qiE 'production_api_only:[[:space:]]*NO'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if ! echo "$body" | grep -qiE 'production_api_only:[[:space:]]*YES'; then
+    emit_verdict fail "missing-picker-proof-fields: production_api_only: YES required"
+    return 1
+  fi
+  return 0
+}
+
+check_ui_file_picker_yes_field() {
+  local body="$1"
+  if ! echo "$body" | grep -qiE 'ui_file_picker:[[:space:]]*YES'; then
+    emit_verdict fail "missing-picker-proof-fields: ui_file_picker: YES required"
+    return 1
+  fi
+  return 0
+}
+
+check_no_duplicate_parse_rebind_field() {
+  local body="$1"
+  if echo "$body" | grep -qiE 'duplicate_parse_rebind_path:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if ! echo "$body" | grep -qiE 'duplicate_parse_rebind_path:[[:space:]]*NO'; then
+    emit_verdict fail "missing-picker-proof-fields: duplicate_parse_rebind_path: NO required"
+    return 1
+  fi
+  return 0
+}
+
+check_no_gamemode_rf_live_closeout_fields() {
+  local body="$1"
+  local missing=()
+
+  if echo "$body" | grep -qiE 'gamemode_rf_attach:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if echo "$body" | grep -qiE 'live_run_state:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if echo "$body" | grep -qiE 'closeout_run:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+  if echo "$body" | grep -qiE 'track_closeout_apply:[[:space:]]*YES'; then
+    emit_verdict reserve "class-envelope-violation"
+    return 1
+  fi
+
+  if ! echo "$body" | grep -qiE 'gamemode_rf_attach:[[:space:]]*NO'; then
+    missing+=("gamemode_rf_attach")
+  fi
+  if ! echo "$body" | grep -qiE 'live_run_state:[[:space:]]*NO'; then
+    missing+=("live_run_state")
+  fi
+  if ! echo "$body" | grep -qiE 'closeout_run:[[:space:]]*NO'; then
+    missing+=("closeout_run")
+  fi
+  if ! echo "$body" | grep -qiE 'track_closeout_apply:[[:space:]]*NO'; then
+    missing+=("track_closeout_apply")
+  fi
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    local joined="" m
+    for m in "${missing[@]}"; do
+      if [[ -z "$joined" ]]; then joined="$m"; else joined="${joined}, ${m}"; fi
+    done
+    emit_verdict fail "missing-picker-proof-fields: ${joined}"
+    return 1
+  fi
+  return 0
+}
+
+# Picker class path envelope — runtime/GPU/kernel/sim/workshop/closeout must not clear.
+check_picker_only() {
+  local file
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    file="${file//\\//}"
+    case "$file" in
+      crates/simthing-mapeditor/src/clause_scenario_picker.rs|\
+      crates/simthing-mapeditor/src/app/scenario_io.rs|\
+      crates/simthing-mapeditor/src/app/ui.rs|\
+      crates/simthing-mapeditor/src/app/mod.rs|\
+      crates/simthing-mapeditor/src/lib.rs|\
+      crates/simthing-mapeditor/tests/tp_studio_clause_picker_*.rs|\
+      crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs|\
+      docs/tests/tp_studio_clause_picker_*_results.md|\
+      scripts/ci/test_inventory.tsv|\
+      scripts/ci/test_lifecycle_boundary_rows.tsv|\
+      docs/design_0_0_8_5_*.md|\
+      docs/orchestrator_orientation.md)
+        ;;
+      *)
+        emit_verdict reserve "class-envelope-violation"
+        return 1
+        ;;
+    esac
+  done < <(changed_files 2>/dev/null || true)
   return 0
 }
 
@@ -1129,6 +1273,10 @@ route_clearance() {
     fi
   fi
 
+  if [[ "$reqs" == *picker_only* ]] && ! check_picker_only; then
+    return 0
+  fi
+
   if [[ "$reqs" == *admitted_api* ]] && ! check_admitted_api_field "$body"; then
     return 0
   fi
@@ -1139,6 +1287,21 @@ route_clearance() {
     return 0
   fi
   if [[ "$reqs" == *session_hydrate* ]] && ! check_session_hydrate_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *studio_clause_picker* ]] && ! check_studio_clause_picker_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *production_api_only* ]] && ! check_production_api_only_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *ui_file_picker_yes* ]] && ! check_ui_file_picker_yes_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *no_duplicate_parse_rebind* ]] && ! check_no_duplicate_parse_rebind_field "$body"; then
+    return 0
+  fi
+  if [[ "$reqs" == *no_gamemode_rf_live_closeout* ]] && ! check_no_gamemode_rf_live_closeout_fields "$body"; then
     return 0
   fi
 
@@ -1245,6 +1408,16 @@ run_selftest() {
     clearance_selftest_admitted_scope_forbidden_surface
     clearance_selftest_admitted_scope_novelty_preserved
     clearance_selftest_admitted_scope_gate_wiring
+    clearance_selftest_picker_class_clearable
+    clearance_selftest_picker_class_missing_fields
+    clearance_selftest_picker_class_production_api_only_no
+    clearance_selftest_picker_class_tp_defaults_yes
+    clearance_selftest_picker_class_duplicate_parse_rebind_yes
+    clearance_selftest_picker_class_closeout_yes
+    clearance_selftest_picker_class_rejects_runtime_src
+    clearance_selftest_picker_class_admitted_scope_gap
+    clearance_selftest_picker_class_api_nonregression
+    clearance_selftest_picker_class_gate_wiring
   )
   local name
   for name in "${fixtures[@]}"; do

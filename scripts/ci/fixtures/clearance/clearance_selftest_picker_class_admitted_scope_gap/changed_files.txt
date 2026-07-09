@@ -1,0 +1,2 @@
+crates/simthing-mapeditor/src/future_picker_adjacent_extension.rs
+docs/tests/admitted_picker_gap_extension_results.md

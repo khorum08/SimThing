@@ -49,9 +49,11 @@ envelope violations reserve under precise reasons (`unclassified-scope`, `class-
 `engine-scope-violation`, `module-marker-shape-mismatch`). `tp-workshop-candidate-proof` covers
 workshop-homed 0.0.8.5 TP candidate proofs only. `tp-admitted-clause-api-composition` covers only
 DA-admitted limited production ClauseScript composition under StructuralRebindReady — not UI picker,
-runtime/GPU, GameMode/RF, live-run, closeout, or lowerer expansion. `DA-RESERVE(novelty)` is
-explicit-claim-only and overrides matched-class clearance: `novelty_claim: YES` requires
-`novelty_basis`; without basis, clearance fails. The breakthrough valve remains a verdict, never a block.
+runtime/GPU, GameMode/RF, live-run, closeout, or lowerer expansion. `tp-studio-clause-picker` covers
+only the DA-admitted narrow Studio/mapeditor `.clause` picker UI (#1239 shape): production API only;
+rejects TP defaults, dual parse/rebind, GameMode/RF/live-run/closeout, and runtime/GPU/kernel.
+`DA-RESERVE(novelty)` is explicit-claim-only and overrides matched-class clearance: `novelty_claim: YES`
+requires `novelty_basis`; without basis, clearance fails. The breakthrough valve remains a verdict, never a block.
 
 *M1 harness laws (final-pass, 2026-07-05):* (a) **Fail-closed** — malformed TSV, script error, or
 ambiguous class resolution → `DA-RESERVE(harness-error)`, never a silent CLEARABLE; selftest fixtures
