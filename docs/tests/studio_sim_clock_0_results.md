@@ -69,6 +69,10 @@ test rate_2x_4x_ratios ... ok
 test result: ok. 4 passed; 0 failed
 ```
 
+## Doctrine INSPECT triage
+
+`TEST-BUDGET` HEURISTIC INSPECT (4 named `#[test]`s) triaged **green** in `scripts/ci/triage_log.tsv` on branch `studio-sim-clock-0`: distinct load-bearing semantics required by the handoff, not malformed-input enumeration theater.
+
 ## Known gaps
 
 - Transport UI (Pause/Play/2×/4×/TPS readout) — **9.2**
