@@ -50,5 +50,5 @@ agent_scan.sh → PASS footer on this diff
 Rider: unused `AGENT_SCAN_BASH` export removed from `agent_scan.sh`.
 No new class · no scans.tsv · lexicon unchanged · no self-merge.
 
-tested_code_sha: a17f420a607f271ff979576a306157206390a3cb
+tested_code_sha: e17664d2d87da0836ccad1f6218ed85b6d6c2f99
 coverage_basis: PASS - clearance_check 61 fixtures + da_treeverify + relay_lint + agent_scan PASS
