@@ -37,5 +37,5 @@ gen_orientation.sh --check -> PASS
 agent_scan.sh -> PASS delta_inspect=0 elapsed=11s
 ```
 
-tested_code_sha: 81642e212577d58a1c895fe518051cb5a41ca0a6
+tested_code_sha: 883cacb9f21749b4b0811173cf376405db56989c
 coverage_basis: PASS - closeout dogfood + caps battery
