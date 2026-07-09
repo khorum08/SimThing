@@ -723,6 +723,129 @@ check_explicit_novelty_basis() {
   echo "$body" | grep -qiE 'novelty_basis:[[:space:]]*[^[:space:]].+'
 }
 
+# Admitted-scope router gap (CLEARANCE-ADMITTED-SCOPE-GAP-0): no class match,
+# but PR claims proof-present work inside a prior Owner/DA admission envelope.
+check_admitted_envelope_claim() {
+  local body="$1"
+  echo "$body" | grep -qiE 'admitted_envelope:[[:space:]]*YES'
+}
+
+# Returns 0 when all required admitted-scope-gap body fields are present.
+# On missing fields emits FAIL(missing-admitted-scope-router-gap-fields: ...) and returns 1.
+check_admitted_scope_gap_fields() {
+  local body="$1"
+  local missing=()
+
+  if ! echo "$body" | grep -qiE 'admitting_pr:[[:space:]]*#?[0-9]+' \
+    && ! echo "$body" | grep -qiE 'admitting_rung:[[:space:]]*[^[:space:]].+'; then
+    missing+=("admitting_pr|admitting_rung")
+  fi
+  if ! echo "$body" | grep -qiE 'admitted_surfaces:[[:space:]]*[^[:space:]].+'; then
+    missing+=("admitted_surfaces")
+  fi
+  if ! echo "$body" | grep -qiE 'forbidden_surfaces:[[:space:]]*[^[:space:]].+'; then
+    missing+=("forbidden_surfaces")
+  fi
+  if ! echo "$body" | grep -qiE 'tested_code_sha:[[:space:]]*[0-9a-f]{8,}'; then
+    missing+=("tested_code_sha")
+  fi
+  if ! echo "$body" | grep -qiE 'coverage_basis:[[:space:]]*PASS'; then
+    missing+=("coverage_basis")
+  fi
+  if ! echo "$body" | grep -qiE 'ci_green:[[:space:]]*PASS'; then
+    missing+=("ci_green")
+  fi
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    local joined="" m
+    for m in "${missing[@]}"; do
+      if [[ -z "$joined" ]]; then
+        joined="$m"
+      else
+        joined="${joined}, ${m}"
+      fi
+    done
+    emit_verdict fail "missing-admitted-scope-router-gap-fields: ${joined}"
+    return 1
+  fi
+  return 0
+}
+
+# Textual forbidden-surface checks for admitted-scope claims.
+# Does not clear or bypass forbidden surfaces; never returns clearable.
+# Returns 0 when no forbidden surface appears in the changed-file set.
+check_admitted_scope_forbidden_surfaces() {
+  local body="$1"
+  local forbidden_line file
+  forbidden_line="$(echo "$body" | grep -iE '^[[:space:]]*forbidden_surfaces:[[:space:]]*' | head -n 1 || true)"
+  forbidden_line="$(printf '%s' "$forbidden_line" | sed -E 's/^[[:space:]]*forbidden_surfaces:[[:space:]]*//I')"
+
+  local check_engine=0
+  local check_gamemode_rf=0
+  local check_closeout=0
+  local check_picker=0
+  local fl_lower
+  fl_lower="$(printf '%s' "$forbidden_line" | tr '[:upper:]' '[:lower:]')"
+
+  # Keyword hints from the body claim.
+  if echo "$fl_lower" | grep -qE 'runtime|gpu|kernel|engine'; then
+    check_engine=1
+  fi
+  if echo "$fl_lower" | grep -qE 'gamemode|game.?mode|\brf\b|live[-_ ]?run'; then
+    check_gamemode_rf=1
+  fi
+  if echo "$fl_lower" | grep -qE 'closeout'; then
+    check_closeout=1
+  fi
+  if echo "$fl_lower" | grep -qE 'picker|ui picker|file.?dialog'; then
+    check_picker=1
+  fi
+
+  # Always apply high-risk denylist for admitted-envelope claims so forbidden
+  # runtime/closeout/GameMode surfaces cannot silently route as router-gap only.
+  check_engine=1
+  check_gamemode_rf=1
+  check_closeout=1
+
+  while IFS= read -r file; do
+    [[ -z "$file" ]] && continue
+    file="${file//\\//}"
+    if [[ "$check_engine" -eq 1 ]]; then
+      case "$file" in
+        crates/simthing-kernel/*|crates/simthing-sim/src/*|crates/simthing-gpu/*|crates/simthing-driver/*|crates/simthing-spec/src/*)
+          emit_verdict reserve "class-envelope-violation"
+          return 1
+          ;;
+      esac
+    fi
+    if [[ "$check_gamemode_rf" -eq 1 ]]; then
+      case "$file" in
+        *[Gg]ame[Mm]ode*|*gamemode*|*live_run*|*live-run*|*LiveRun*|*rf_attach*|*RFAttach*)
+          emit_verdict reserve "class-envelope-violation"
+          return 1
+          ;;
+      esac
+    fi
+    if [[ "$check_closeout" -eq 1 ]]; then
+      case "$file" in
+        *closeout*|*track_closeout*)
+          emit_verdict reserve "class-envelope-violation"
+          return 1
+          ;;
+      esac
+    fi
+    if [[ "$check_picker" -eq 1 ]]; then
+      case "$file" in
+        *picker*|*FileDialog*|*file_dialog*)
+          emit_verdict reserve "class-envelope-violation"
+          return 1
+          ;;
+      esac
+    fi
+  done < <(changed_files 2>/dev/null || true)
+  return 0
+}
+
 check_recorded_gpu_proof() {
   local body="$1"
   if echo "$body" | grep -q 'DOCTRINE-TESTS-VERDICT:[[:space:]]*PASS'; then
@@ -937,6 +1060,21 @@ route_clearance() {
   local classes
   classes="$(detect_classes "$classes_tsv")"
   if [[ -z "$classes" ]]; then
+    # Empty-class split (CLEARANCE-ADMITTED-SCOPE-GAP-0 / #1242 Option A):
+    # novelty already handled above; gate-wiring already handled above.
+    # 1) admitted_envelope claim + required fields → admitted-scope-router-gap
+    #    (missing fields → FAIL; forbidden surfaces → class-envelope-violation)
+    # 2) else → unclassified-scope (narrowed: no class + no valid admitted claim)
+    if check_admitted_envelope_claim "$body"; then
+      if ! check_admitted_scope_gap_fields "$body"; then
+        return 0
+      fi
+      if ! check_admitted_scope_forbidden_surfaces "$body"; then
+        return 0
+      fi
+      emit_verdict reserve "admitted-scope-router-gap"
+      return 0
+    fi
     emit_verdict reserve "unclassified-scope"
     return 0
   fi
@@ -1100,6 +1238,13 @@ run_selftest() {
     clearance_selftest_admitted_clause_api_session_hydrate_missing
     clearance_selftest_admitted_clause_api_rejects_runtime_src
     clearance_selftest_workshop_candidate_not_stolen_by_admitted_api
+    clearance_selftest_admitted_scope_true_unknown
+    clearance_selftest_admitted_scope_api_gap
+    clearance_selftest_admitted_scope_picker_gap
+    clearance_selftest_admitted_scope_missing_proof_fields
+    clearance_selftest_admitted_scope_forbidden_surface
+    clearance_selftest_admitted_scope_novelty_preserved
+    clearance_selftest_admitted_scope_gate_wiring
   )
   local name
   for name in "${fixtures[@]}"; do

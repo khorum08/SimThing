@@ -1,0 +1,2 @@
+tested_code_sha: abcdef1234567890
+coverage_basis: PASS - true unknown fixture (no admitted_envelope, no novelty)

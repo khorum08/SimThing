@@ -1,0 +1,8 @@
+admitted_envelope: YES
+admitting_pr: #1242
+admitted_surfaces: clearance router admitted-scope gap
+forbidden_surfaces: product runtime, closeout
+tested_code_sha: deadbeefcafe1234
+coverage_basis: PASS - gate-wiring must win over admitted-scope claim
+ci_green: PASS
+gate_wiring: YES

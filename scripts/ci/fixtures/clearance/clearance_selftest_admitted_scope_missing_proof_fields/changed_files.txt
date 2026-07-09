@@ -1,0 +1,2 @@
+crates/simthing-mapeditor/src/synthetic_admitted_missing_proof_surface.rs
+docs/tests/admitted_scope_missing_proof_fixture_results.md

@@ -290,8 +290,9 @@ and the DA applies:
 **Handoffs:** `relay_lint.sh` + `handoff_template.md`; §H violations rejected at review.
 
 **Merge authority (judgment-residue — constitution §0.9.7 governs):** precedented-class clearance is
-mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Unclassified-scope /
-envelope → precise `DA-RESERVE`; novelty claim-only; workshop-TP vs admitted ClauseScript API classes.
+mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Empty-class split:
+`admitted-scope-router-gap` (admitted envelope + proof, missing class — class-harden) vs narrowed
+`unclassified-scope`; novelty claim-only; workshop-TP vs admitted ClauseScript API classes.
 DA spot-audits self-authorized merges; one wrong self-merge suspends authority. Owner supremacy above all.
 
 **Channeling DA token spend (judgment-residue — feed the routing table honestly):**

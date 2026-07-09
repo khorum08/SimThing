@@ -39,10 +39,12 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **It does:** verify the tree when merge-clearing (prefer branch confirmation over the relayed report);
   route each rung via the clearance ladder — **merge-clear conforming precedented-class rungs itself**,
   **escalate true DA residue** (gate-wiring, novelty, seal, binding, genuine unclassified — not router debt
-  alone); land a `/triage` row for every INSPECT delta. **Classify `DA-RESERVE(unclassified-scope)` before
-  any DA design relay:** (1) unadmitted/novel → DA; (2) already-admitted proof-present but no class →
-  **admitted-scope router gap** — open class-hardening, do not re-open admission; (3) hygiene/proof-field →
-  fix/`FAIL`. See `docs/tests/clearance_unclassified_scope_reduction_0_results.md`. **Exit-proof residual
+  alone); land a `/triage` row for every INSPECT delta. Empty-class machine split
+  (`CLEARANCE-ADMITTED-SCOPE-GAP-0`): novelty claim → `DA-RESERVE(novelty)`; valid
+  `admitted_envelope` + proofs → `DA-RESERVE(admitted-scope-router-gap)` (router debt — class-harden, not
+  fresh DA design); else → `DA-RESERVE(unclassified-scope)`. Missing admitted-scope fields →
+  `FAIL(missing-admitted-scope-router-gap-fields...)`. See
+  `docs/tests/clearance_admitted_scope_gap_0_results.md`. **Exit-proof residual
   only:** for **ORCHESTRATOR-GRADUATED** self-clears where the design row cannot hold the final merge SHA
   pre-merge, land the docs-only status-stamp before the next rung. **DA-passed** rungs are stamped and
   stamp-merged by the DA (see DA section) — do not reassign.

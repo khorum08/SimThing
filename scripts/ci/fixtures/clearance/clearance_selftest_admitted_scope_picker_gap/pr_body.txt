@@ -1,0 +1,7 @@
+admitted_envelope: YES
+admitting_pr: #1235
+admitted_surfaces: narrow Studio/mapeditor .clause picker
+forbidden_surfaces: TP defaults, API bypass, GameMode/RF/live-run, closeout
+tested_code_sha: cafebabe01234567
+coverage_basis: PASS - admitted picker-shaped proof
+ci_green: PASS

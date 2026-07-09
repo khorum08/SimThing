@@ -1,0 +1,4 @@
+admitted_envelope: YES
+admitting_pr: #1229
+admitted_surfaces: limited production ClauseScript composition API
+forbidden_surfaces: TP defaults, UI picker, GameMode/RF/live-run, closeout
