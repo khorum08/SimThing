@@ -2,11 +2,22 @@
 
 ## Status
 
-**PROOF-PRESENT / limited production ClauseScript composition API.**
+**DA-GRADUATED / COMPLETE** — merged [#1230](https://github.com/khorum08/SimThing/pull/1230) @ `820a9a2ef6730507d31c97a0eaecec0c4ad20e18` (head `b18d19ac130ee816fc9a4fb1061792ce19f9d1ac`). DA stamp 2026-07-09.
 
-Implements admitted Option A surface: caller-supplied clause path/bytes + source resolver →
-clausething parse/hydrate → StructuralRebindReady rebind → STEAD validate → authority serde →
-Studio session hydrate. **No** UI picker, TP production defaults, GameMode/RF attach, or closeout.
+Limited production ClauseScript composition API under #1229 Option A admission. Caller-supplied
+clause path/bytes + source resolver → clausething parse/hydrate → StructuralRebindReady rebind →
+STEAD validate → authority serde → Studio session hydrate. **No** UI picker, TP production defaults,
+GameMode/RF attach, or closeout.
+
+## Identity
+
+| Field | Value |
+|---|---|
+| Rung | `TP-STUDIO-CLAUSE-API-1` |
+| PR | [#1230](https://github.com/khorum08/SimThing/pull/1230) |
+| Merge SHA | `820a9a2ef6730507d31c97a0eaecec0c4ad20e18` |
+| tested_code_sha | `b18d19ac130ee816fc9a4fb1061792ce19f9d1ac` |
+| Production homes | `simthing-mapeditor::clause_scenario_ingest`, `simthing-clausething::clause_scenario_projection` |
 
 ## Admitted scope
 
