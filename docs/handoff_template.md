@@ -64,7 +64,7 @@
 - **`seal-residue-risk:` `none` (default) | `<B#…>` | `authority boundary touched` | `scan-retirement candidate`** — does this rung touch the kernel **authority surface** (sealed types, authoritative buffers, GPU dispatch/encode/readback, derives on sealed types, `unsafe`, or kernel dependencies)? If yes, **name the bypass-state(s) it could produce** (the catalogue `B1–B8`, kernel track §5.2) so review runs the bypass scan and treats a hit as a **red flag** requiring DA sign-off. Use `scan-retirement candidate` when the rung promotes a scanned invariant to a type boundary or admission hard-error — see the **retirement obligation** below. The residue is unenforceable by types *by nature*; routing through it is always **deliberate**, so it must be **declared and scanned**, never silent.
 - **`ci-doctrine-scan:`** — expected commands (`doctrine_scan.sh` / `doctrine_pr_scan.sh` / `doctrine_selftest.sh`); whether RELIABLE, HEURISTIC, or INSPECT paths are touched by this rung's diff; whether an `allow/*.txt` edit is expected (if so, name the file — an allowlist edit is a **deliberate, reviewed widening of a sanctioned door**, never a scanner-logic dodge to avoid a valid finding).
 - **Retirement obligation** — if this rung promotes a scanned invariant to a type boundary or admission hard-error, it **deletes or narrows the now-redundant scan in the same PR** (`scripts/ci/scans.tsv` / `allow/*.txt`); a guard scan kept alive after its type boundary lands is residue, not a fixture.
-- **Merge-hold rule** — a rung whose handoff or diff touches PROBATION status, kernel/CI authority, or gate-state semantics **does not merge before DA/Owner clearance**, full stop. **Do not trust relayed proof — verify the tree (non-discretionary)**: the implementer's pasted transcript is a claim; the DA (or any reviewer standing in) confirms it against the actual branch before treating the rung as cleared. Light vs deep only scales review spend; neither posture permits graduating on the relay alone.
+- **Merge-hold rule** — a rung whose handoff or diff touches PROBATION status, kernel/CI authority, or gate-state semantics **does not merge before DA/Owner clearance**, full stop. **Do not trust relayed proof blindly — prefer verify-the-tree**, and **require** it for code-facing / long-lifecycle / horizontally impactful (load-bearing) escalations: the implementer's pasted transcript is a claim; the DA (or reviewer) confirms against the branch when the surface is load-bearing. Light residual and pure policy/stamp stages may stay lighter (see `agent_onboarding` DA).
 
 **The Admission-Substrate Amendment Valve (owner-gated; do not work around seals).** The kernel/admission
 seals (AS-1–8B + the kernel track) are owner-gated. If you hit a seal that genuinely blocks the rung, you
@@ -300,12 +300,12 @@ Graduation routing (for DA — why this is PROBATION, not self-marked COMPLETE):
 > block above so the DA routes graduation *cost* by declared risk, not by re-deriving it from scratch. The
 > triage log says *what fired*; this block says *what the scanner can't see* (the structural risk class) — the DA
 > needs both. Routing rule (`ci_screening_surface.md` §5): `Risk class: none` + green RELIABLE + no escalation →
-> **light** (confirm the named deliverables exist **on the tree**, then graduate); **data-deliverable /
+> **light** (confirm named deliverables; tree dig optional unless load-bearing); **data-deliverable /
 > gate-wiring / seal-residue / allowlist-edit / triage-ESCALATE** → **deep** (byte-faithfulness, prove-the-guard-bites,
 > tree/legitimacy audit). The **Falsification check** names exactly where review should spend — never
-> "re-verify everything." **Verify-the-tree is non-discretionary at every posture:** light and deep both
-> require branch confirmation; light never means "trust the relay." A prior stamp, PR narrative, or pasted
-> transcript is a claim until tree-confirmed (`docs/agent_onboarding.md` DA section).
+> "re-verify everything." **Verify-the-tree is weighted, not universal:** required for code-facing /
+> long-lifecycle / horizontally impactful load-bearing work; relaxed for pure policy, stamps, and light residual
+> (`docs/agent_onboarding.md` DA section).
 > **After a DA pass**, the DA stamps the active workplan Exit proof (`DA-GRADUATED / merged #<PR> @ <sha>` or
 > equivalent DONE), results COMPLETE, regenerates orientation, and **merges the stamp PR** as part of the
 > graduation conclusion (`docs/agent_onboarding.md` DA section) — not an orchestrator follow-up.

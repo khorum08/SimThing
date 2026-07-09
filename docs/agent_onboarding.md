@@ -36,13 +36,13 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **Track selection:** local operators use `bash scripts/ci/gen_orientation.sh --open <track.md>` to open/create
   or realign the active orchestration track; `/orient` and `orient.sh` emit orientation only.
 - **You hand it:** the DA's authorization/handoff for a track or rung.
-- **It does:** **verify the tree (non-discretionary — never the relayed report)**; route each rung via the
-  clearance ladder — **merge-clear conforming precedented-class rungs itself**, **escalate the DA reserve**
-  (gate-wiring, exceptions, widening, Tier-2, new proof classes, closeout, binding conditions); land a
-  `/triage` row for every INSPECT delta. **Exit-proof residual only:** for **ORCHESTRATOR-GRADUATED**
-  self-clears where the design row cannot hold the final merge SHA pre-merge, land the docs-only
-  status-stamp before the next rung. **DA-passed** rungs are stamped and stamp-merged by the DA (see DA
-  section) — do not reassign.
+- **It does:** verify the tree when merge-clearing (prefer branch confirmation over the relayed report);
+  route each rung via the clearance ladder — **merge-clear conforming precedented-class rungs itself**,
+  **escalate the DA reserve** (gate-wiring, exceptions, widening, Tier-2, new proof classes, closeout,
+  binding conditions); land a `/triage` row for every INSPECT delta. **Exit-proof residual only:** for
+  **ORCHESTRATOR-GRADUATED** self-clears where the design row cannot hold the final merge SHA pre-merge,
+  land the docs-only status-stamp before the next rung. **DA-passed** rungs are stamped and stamp-merged
+  by the DA (see DA section) — do not reassign.
 - **Closeout-substrate PRs:** before merge/DA handback, require a disposable end-to-end
   `track_closeout.sh` rehearsal (build manifest -> resolve -> check-eval -> apply) using a tiny fixture
   with previously expunged rows plus source/auto/explicit doc artifacts, and report the sample verdict.
@@ -56,16 +56,18 @@ The executive design authority. Reviews escalations, graduates or remands, autho
   doctrine sections (core design, constitution, invariants, key ADRs) when a rung's domain triggers them
   (`/anchor <domain>` serves them verbatim), never a summary.
 - **You hand it:** the escalation relay (or a strategic question).
-- **It does:** **verify the tree (non-discretionary), then** graduate-merge or produce a remedial handoff;
-  author doctrine as data/verdict, never sprawling prose; spend owner attention only on residue.
-- **Verify the tree (binding — never discretionary):** a relayed claim, PR body, results summary, or
-  prior stamp is **not** evidence. Before any ACCEPT / graduate / admit / deny that rests on code or
-  proof, the DA must confirm against the actual branch (or documented decision-only surface): read the
-  escalated diff/paths, run the named **Falsification check**(s) from Graduation routing (targeted tests
-  or tree inspections — not casual full-crate batteries), and only then pass or remand. **Light vs deep
-  chooses depth of spend, not whether the tree is verified.** Light still means confirm named deliverables
-  *on the tree*; it never means “trust the relay and stamp.” Graduating on relay alone is a process
-  failure.
+- **It does:** graduate-merge or produce a remedial handoff; author doctrine as data/verdict, never
+  sprawling prose; spend owner attention only on residue. Weight **verify-the-tree** by load-bearing impact
+  (below) — not as a fixed tax on every stage.
+- **Verify the tree (weighted — load-bearing first):** a relayed claim is still a claim, not proof. Prefer
+  branch confirmation; **require** it when the escalation is **code-facing**, **long-lifecycle**, or
+  **horizontally impactful** — e.g. production/elevatable crate surfaces, gate-wiring/harness, clearance
+  classes, kernel/admission, or risk classes `data-deliverable` / `gate-wiring` / `seal-residue` /
+  `allowlist-edit` / elevation-shaped semantic change. Then: read the escalated paths, run the named
+  **Falsification check**(s) (targeted — not full-crate batteries), and only then pass or remand.
+  **Relaxed / optional** for pure policy admissions, exit-proof stamps, and light residual where CI already
+  vouches and no long-lifecycle or horizontal surface moves — light posture may confirm deliverables from
+  the relay + CI without a full tree dig. Light vs deep still sets *depth* when tree review is engaged.
 - **Exit-proof stamp (binding after a passed verdict):** a DA pass is incomplete until the DA updates the
   active workplan/design-ladder **Exit proof** cell (`DA-GRADUATED / merged #<PR> @ <merge-sha>`, or
   equivalent DONE wording for formal admission/denial), marks the results doc COMPLETE where applicable,
@@ -84,7 +86,7 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 |---|---|---|---|
 | Coding (Grok/Cursor) | `bash scripts/ci/orient.sh --role=coding` once per fresh session | PROBATION / proof-present | nothing |
 | Orchestration (Codex/webchat) | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
-| DA (Opus/Fable) | `bash scripts/ci/orient.sh --role=da` | tree-verified graduation or remedial handoff **+ exit-proof stamp merge** | gate-wiring / DA-reserve / exit-proof stamps, after tree review |
+| DA (Opus/Fable) | `bash scripts/ci/orient.sh --role=da` | graduation or remedial handoff **+ exit-proof stamp merge** (tree-verify weighted) | gate-wiring / DA-reserve / exit-proof stamps, after review |
 
 **When to update this file:** only when a *tier's session-admission ritual* changes (a new entrypoint command
 or a new agent tier). Per-rung governance is not here — it lives in the generated orientation digest, which

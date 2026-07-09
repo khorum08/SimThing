@@ -264,13 +264,13 @@ and the DA applies:
 
 | Declared risk class | Posture | What the DA actually does |
 |---|---|---|
-| `none` + green RELIABLE + no escalation | **light** | confirm named deliverables **on the tree** (not the relay alone); graduate |
-| `semantic` | targeted | one tree judgment check (e.g. call-site analysis of a new accessor) |
-| `data-deliverable` / `gate-wiring` | **deep** | byte-faithfulness against the source; *prove the guard bites* (perturb → FAIL) |
+| `none` + green RELIABLE + no escalation | **light** | confirm named deliverables (relay+CI OK unless load-bearing); graduate |
+| `semantic` | targeted | judgment check; tree dig if code-facing / elevatable |
+| `data-deliverable` / `gate-wiring` | **deep** | byte-faithfulness on the tree; *prove the guard bites* (perturb → FAIL) |
 | `seal-residue` / `allowlist-edit` | **deep** | tree / legitimacy audit (door-class, no laundering) |
 | triage `ESCALATE` present | **deep** | the escalation was already headed to the DA |
 
-**Verify-the-tree is non-discretionary** (light/deep sets *depth only*): relay/PR/results/stamp are claims until branch-confirmed; graduating on the relay alone is a process failure (`agent_onboarding` DA). The **Falsification check** names *where* to spend — never "re-verify everything." Cost decays: light confirms deliverables on the tree in seconds where CI vouches; deep spends only on residue CI cannot see.
+**Verify-the-tree is weighted** (`agent_onboarding` DA): **require** for code-facing / long-lifecycle / horizontally impactful load-bearing; **relax** for pure policy, stamps, light residual. Light/deep still sets depth when engaged. Falsification check names *where* to spend — never "re-verify everything."
 
 ---
 
