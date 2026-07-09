@@ -127,10 +127,19 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
 - **The floor the CI cannot enforce, so you must:** run the check and **paste real output — never assert or
   fabricate**; **verify the tree, not the relayed report**; **no merge before DA clearance** on any authority /
   gate / PROBATION rung. Anti-kabuki guidance cuts ceremony, never this floor — see the handoff template §H
-  (the binding authority; do not restate or dilute it elsewhere).
-- **DA load-bearing review depth (advisory):** `bash scripts/ci/da_treeverify.sh --pr <n>` profiles
-  RELAX / LIGHT-TREE / DEEP-TREE from `scripts/ci/da_review_profile.tsv` — token routing for DA, not
-  clearance and not merge authority. See `docs/agent_onboarding.md` DA section.
+  (the binding authority; do not restate or dilute it elsewhere). A clean doctrine-scan **RELIABLE** is
+  DA-equivalent for *what the scanner covers*; it does **not** replace weighted tree verification when the DA
+  graduates code-facing / long-lifecycle / horizontally impactful work.
+- **DA treeverify (current process):** before a load-bearing DA graduate/admit, run
+  `bash scripts/ci/da_treeverify.sh --pr <n>` (or `--range`). It emits advisory
+  `DA-TREEVERIFY-PROFILE: RELAX|LIGHT-TREE|DEEP-TREE` + focus paths from `scripts/ci/da_review_profile.tsv`
+  for token routing — **not** a `CLEARANCE-VERDICT` and **not** a graduation stamp. **Weight:** require
+  tree confirmation for production/elevatable crates, gate-wiring/harness, kernel/admission, and related risk
+  classes; **relax** for pure policy, exit-proof stamps, and light residual when CI already vouches. Core
+  profile TSV rows are permanent; non-core rows need `expires_on` and **must be deleted/retired after expiry**
+  (doctrine-scan lifecycle gate). Expeditionary escape: `expeditionary: YES` + charter + `expeditionary_until`
+  — cannot RELAX production/engine/long-lifecycle. Full DA ritual (including exit-proof stamp after pass):
+  [`agent_onboarding.md`](agent_onboarding.md) DA section.
 - **Inner loop (Track C):** run `cargo check -p <touched-crate>` and `bash scripts/ci/doctrine_scan.sh` after
   small edits, before PR-time cleanup — the same scanner, consulted earlier, so a doomed path is pruned in
   your own loop instead of at CI/triage/DA.
