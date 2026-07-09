@@ -33,5 +33,5 @@ gen_orientation.sh --check -> PASS (untouched)
 agent_scan.sh -> PASS footer
 ```
 
-tested_code_sha: bdcb30750f5c7ca577965b7c357c2c893a1a47bf
+tested_code_sha: 389c3445d26153ac5e80397522eaf437dcbbbd50
 coverage_basis: PASS - docs catch-up + budget + agent_scan
