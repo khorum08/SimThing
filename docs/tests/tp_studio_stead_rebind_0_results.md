@@ -2,11 +2,22 @@
 
 ## Status
 
-**PROOF-PRESENT / workshop-homed StructuralRebindReady candidate.**
+**DA-GRADUATED / COMPLETE** — merged [#1226](https://github.com/khorum08/SimThing/pull/1226) @ `03afe3d15234f51ca4a221757226b3bf3902f9af` (head `1c41c2372c562a9a7a9a1d1699b5aba4ee66353a`). DA light stamp 2026-07-09.
 
 Converts `AuthorityTreeCandidate` Spec (empty STEAD grid) into `StructuralRebindReady`
 for the approved Terran-Pirate clause path. **No** production mapeditor `.clause` API,
 **no** UI picker, **no** closeout.
+
+## Identity
+
+| Field | Value |
+|---|---|
+| Rung | `TP-STUDIO-STEAD-REBIND-0` |
+| PR | [#1226](https://github.com/khorum08/SimThing/pull/1226) |
+| Merge SHA | `03afe3d15234f51ca4a221757226b3bf3902f9af` |
+| tested_code_sha | `1c41c2372c562a9a7a9a1d1699b5aba4ee66353a` |
+| Home | `crates/simthing-workshop/src/tp_studio_stead_rebind.rs` |
+| birth_track | `0.0.8.5-terran-pirate` |
 
 ## Implemented path
 

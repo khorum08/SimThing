@@ -2,13 +2,17 @@
 
 ## Status
 
-**OPEN / report-only production pointer.** Docs ladder correction landed the rung id and this evaluation report. **No Studio implementation** in this PR. Graduation of *this evaluation* is complete when DA accepts the gap ledger; *implementation* of Studio ingest is a follow-on production rung (recommended below), not closeout.
+**DA-GRADUATED / COMPLETE** — merged [#1219](https://github.com/khorum08/SimThing/pull/1219) @ `54a5a5e445468b134aee9b124658a6cdb02999aa` (head `d149e6cce1384e703b83552a9b32b076aa470f4f`). DA exit-proof stamp 2026-07-09.
+
+Report-only evaluation. **No Studio implementation** in this PR. Implementation of Studio ingest is a follow-on production rung, not closeout.
 
 ## Identity
 
 | Field | Value |
 |---|---|
 | Rung | `TP-STUDIO-INGEST-READINESS-0` |
+| PR | [#1219](https://github.com/khorum08/SimThing/pull/1219) |
+| Merge SHA | `54a5a5e445468b134aee9b124658a6cdb02999aa` |
 | Kind | evaluation / report only |
 | Approved source | `crates/simthing-clausething/tests/fixtures/scenario/terran_pirate_galaxy.clause` |
 | Prior proofs | `TP-FULL-TRANSPILE-0` (#1215), `TP-LIVE-RUN-0R2` (#1217) |
