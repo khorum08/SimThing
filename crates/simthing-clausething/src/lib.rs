@@ -88,6 +88,12 @@ pub use hydrate_scenario::{
     HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
     PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
 };
+pub mod clause_scenario_projection;
+pub use clause_scenario_projection::{
+    project_pack_to_authority_tree_candidate, rebind_authority_tree_candidate,
+    rebind_pack_to_structural_rebind_ready, ClauseScenarioProjectionError,
+    ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
+};
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;

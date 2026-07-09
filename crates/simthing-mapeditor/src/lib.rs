@@ -4,6 +4,7 @@
 //! render/UI metatable. Bevy transforms and visual z-height are render-only — never structural truth.
 
 pub mod camera_control;
+pub mod clause_scenario_ingest;
 pub mod dialog;
 pub mod falloff_metric;
 pub mod falloff_ruler_overlay;
@@ -67,8 +68,18 @@ pub use falloff_metric::{
     StudioMapRadiusFalloffContext, FALLOFF_MODE_CAMERA_DISTANCE, FALLOFF_MODE_MAP_RADIUS,
     FALLOFF_MODE_VISUAL_HORIZON,
 };
+pub use clause_scenario_ingest::{
+    ingest_clause_scenario_bytes, ingest_clause_scenario_path,
+    load_clause_studio_session_from_path, load_studio_session_from_clause_ingest_result,
+    save_clause_scenario_authority_to_path, ClauseScenarioIngestError, ClauseScenarioIngestOptions,
+    ClauseScenarioIngestResult, ClauseScenarioSourceResolver,
+};
 pub use falloff_ruler_overlay::{draw_falloff_ruler_overlay, FalloffRulerOverlayParams};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
+// Re-export projection mode from clausething for callers.
+pub use simthing_clausething::{
+    ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
+};
 pub use hydration::{
     generate_simthing_spec_scenario, heatmap_readiness_from_simthing_spec,
     hydrate_generation_into_studio_grid, rf_accumulator_readiness_from_simthing_spec,

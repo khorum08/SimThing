@@ -1,21 +1,16 @@
-//! Workshop-homed TP candidate: ClauseScript scenario → ScenarioSpec ingest proof.
+//! Workshop-homed TP candidate wrapper around production clausething projection.
 //!
-//! TP-STUDIO-CLAUSE-INGEST-0R — scenario-candidate service. Exists only because the
-//! 0.0.8.5 Terran-Pirate track needs a Studio wiring candidate. Not a production
-//! Studio API; elevation to `simthing-mapeditor` requires DA/Owner admission.
-//!
-//! Reuses production parse/hydrate (`simthing-clausething`) and ScenarioSpec
-//! authority serde (`simthing-spec` — the same layer mapeditor `scenario_io` wraps).
-//! Does not mint a second authority model.
+//! Keeps TP fixture defaults for expirable track tests only. Production mapeditor API
+//! has no TP defaults (see simthing-mapeditor::clause_scenario_ingest).
 
 use std::path::{Path, PathBuf};
 
 use simthing_clausething::{
-    hydrate_scenario, parse_raw_document, HydrateError, HydratedScenarioPack, ParseError,
+    hydrate_scenario, parse_raw_document, project_pack_to_authority_tree_candidate, HydrateError,
+    HydratedScenarioPack, ParseError,
 };
 use simthing_spec::{
-    deserialize_scenario_authority, serialize_scenario_authority, SimThingScenarioGrid,
-    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
+    deserialize_scenario_authority, serialize_scenario_authority, SimThingScenarioSpec,
 };
 use thiserror::Error;
 
@@ -23,17 +18,13 @@ use thiserror::Error;
 pub const CLAUSE_FIXTURE_JSON_PLACEHOLDER: &str = "{{FIXTURE_JSON}}";
 
 /// Workshop-default embedded base-disc JSON for the approved TP clause fixture.
-///
-/// Candidate/default only — not a production Studio default.
 pub fn default_tp_base_disc_json_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../simthing-mapeditor/tests/fixtures/tp_base_disc_1500.simthing-scenario.json")
 }
 
-/// Options for the workshop-homed TP clause ingest candidate.
 #[derive(Debug, Clone)]
 pub struct TpStudioClauseIngestOptions {
-    /// Path substituted for `{{FIXTURE_JSON}}` in clause text.
     pub embedded_source_json_path: Option<PathBuf>,
 }
 
@@ -60,7 +51,6 @@ pub enum TpStudioClauseIngestError {
 }
 
 impl TpStudioClauseIngestError {
-    /// Status text suitable for logs / candidate UI surfaces.
     pub fn status_message(&self) -> String {
         self.to_string()
     }
@@ -73,7 +63,6 @@ impl TpStudioClauseIngestError {
     }
 }
 
-/// Result of workshop-homed TP ClauseScript scenario ingest.
 #[derive(Debug, Clone)]
 pub struct TpStudioClauseIngestResult {
     pub source_path: PathBuf,
@@ -81,10 +70,6 @@ pub struct TpStudioClauseIngestResult {
     pub scenario: SimThingScenarioSpec,
 }
 
-/// Workshop-homed candidate: open a native `.clause` path for the TP track.
-///
-/// Flow: read → optional `{{FIXTURE_JSON}}` substitute → `parse_raw_document`
-/// → `hydrate_scenario` → project to `SimThingScenarioSpec` candidate shape.
 pub fn ingest_tp_clause_scenario_path(
     path: &Path,
     options: &TpStudioClauseIngestOptions,
@@ -101,62 +86,13 @@ pub fn ingest_tp_clause_scenario_path(
     })
 }
 
-/// Project a hydrated TP pack to ScenarioSpec candidate authority shape.
-///
-/// Matches the FULL-TRANSPILE candidate projection: `authority_root` is root;
-/// STEAD frame/provenance from embedded base; placements left empty until install rebind.
 pub fn project_tp_pack_to_scenario_spec(
     pack: &HydratedScenarioPack,
 ) -> Result<SimThingScenarioSpec, TpStudioClauseIngestError> {
-    let authority_root = pack.authority_root.clone().ok_or_else(|| {
-        TpStudioClauseIngestError::Projection(
-            "hydrated pack is missing authority_root; cannot project to SimThingScenarioSpec"
-                .to_string(),
-        )
-    })?;
-
-    let (frame, provenance) = if let Some(embedded) = pack.embedded_static_galaxy_scenarios.first()
-    {
-        (
-            embedded.source_structural_grid.frame,
-            SimThingScenarioProvenance {
-                source: embedded.provenance.source.clone(),
-                generator_seed: embedded.provenance.generator_seed,
-                generator_shape: embedded.provenance.generator_shape.clone(),
-                generator_profile_id: embedded.provenance.generator_profile_id.clone(),
-                generator_params_json: embedded.provenance.generator_params_json.clone(),
-                name_corpus_source: embedded.provenance.name_corpus_source.clone(),
-                name_assignment_mode: embedded.provenance.name_assignment_mode.clone(),
-            },
-        )
-    } else {
-        (
-            SimThingStructuralGridFrame {
-                width: 0,
-                height: 0,
-                occupied_cells: 0,
-            },
-            SimThingScenarioProvenance {
-                source: format!("clause:{}", pack.scenario_id),
-                ..SimThingScenarioProvenance::default()
-            },
-        )
-    };
-
-    Ok(SimThingScenarioSpec {
-        scenario_id: pack.scenario_id.clone(),
-        root: authority_root,
-        structural_grid: SimThingScenarioGrid {
-            frame,
-            map_container_id: String::new(),
-            placements: Vec::new(),
-        },
-        links: Vec::new(),
-        provenance,
-    })
+    project_pack_to_authority_tree_candidate(pack)
+        .map_err(|e| TpStudioClauseIngestError::Projection(e.message))
 }
 
-/// Save ScenarioSpec via production authority serde (same layer mapeditor scenario_io uses).
 pub fn save_scenario_authority_json_to_path(
     path: &Path,
     scenario: &SimThingScenarioSpec,
@@ -167,7 +103,6 @@ pub fn save_scenario_authority_json_to_path(
     Ok(())
 }
 
-/// Load ScenarioSpec via production authority serde (same layer mapeditor scenario_io uses).
 pub fn load_scenario_authority_json_from_path(
     path: &Path,
 ) -> Result<SimThingScenarioSpec, TpStudioClauseIngestError> {
