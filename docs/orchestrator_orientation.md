@@ -35,7 +35,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | a11f81b7b497a381c6995ac882c8901db0ba40ee3c473a4ba70fdbbbcc26c0ba |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 373f2ea8796170432c4702146d57eb0543cce68ddb0930c8d3e5652b634d719c |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -65,11 +65,11 @@ Track state: `open`
 | 7.0 | TP-COMMITMENTS-0 | Author each faction's **personality `ai_will_do`/`ai_weight` EML weight profiles | **ORCHESTRATOR-GRADUATED / merged [#1155](https://github.com/khorum08/SimThing/pull/1155) @ `6547b90c`** — §5A orches... |
 | 8.0 | TP-FULL-TRANSPILE-0 | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSO | **DA-GRADUATED / merged [#1215](https://github.com/khorum08/SimThing/pull/1215) @ `f8eb3815`** (head `3a59b9c5af`) — ... |
 | 8.1 | TP-LIVE-RUN-0 | **Indefinite-tick live run** over **one deterministically-selected bounded theat | **DA-GRADUATED / merged [#1217](https://github.com/khorum08/SimThing/pull/1217) @ `f42b4d28d7`** (head `3a3eba9b7f`, ... |
-| 8.2 | TP-DA-CLOSEOUT-0 | Scope Ledger over every §2 acceptance element; Deviation Records for anything pr | **OPEN — next production pointer.** Required exit: Scope Ledger for every §2 element; Deviation Records (incl. dense ... |
+| 8.2 | TP-STUDIO-INGEST-READINESS-0 | Evaluate the approved `terran_pirate_galaxy.clause` file and current transpile a | **OPEN — next production pointer.** Exit proof: [`tp_studio_ingest_readiness_0_results.md`](tests/tp_studio_ingest_re... |
 
 ## Next Rung Pointer
 
-Active pointer: `TP-DA-CLOSEOUT-0`
+Active pointer: `TP-STUDIO-INGEST-READINESS-0`
 
 
 ## Cold-Start Entrypoint
