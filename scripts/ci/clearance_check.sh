@@ -29,6 +29,7 @@ GATE_WIRING_PATHS=(
   "scripts/ci/da_treeverify.sh"
   "scripts/ci/da_treeverify_lib.py"
   "scripts/ci/da_review_profile.tsv"
+  "scripts/ci/agent_scan.sh"
   "docs/handoff_template.md"
   "docs/agent_onboarding.md"
   "AGENTS.md"

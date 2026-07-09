@@ -203,16 +203,18 @@ Run `bash scripts/ci/anchor_check.sh --check` after anchor table edits.
 
 ## Inner Loop (coding agent)
 
+Unconditional steps (HU-DELTA-SCAN-0) — ≤4:
+
 ```bash
-bash scripts/ci/orient.sh --role=coding
-bash scripts/ci/anchor_check.sh --check
-bash scripts/ci/clearance_check.sh --selftest
-bash scripts/ci/da_treeverify.sh --selftest
-bash scripts/ci/relay_lint.sh --selftest
-bash scripts/ci/gen_orientation.sh --check
-bash scripts/ci/doctrine_selftest.sh
-bash scripts/ci/doctrine_scan.sh
+bash scripts/ci/orient.sh --role=coding   # once per fresh session
+cargo check -p <touched-crate>
+bash scripts/ci/agent_scan.sh             # delta HEURISTIC + RELIABLE hard FAIL
+cargo test -p <crate> --test <focused>   # when tests changed / named by handoff
 ```
+
+Maintainer/CI only (not coding default): whole-tree `doctrine_scan.sh`, clearance/relay/da_treeverify selftests,
+`doctrine_selftest.sh` (scanner surface only).
+
 
 ## GHA Comment Commands
 
