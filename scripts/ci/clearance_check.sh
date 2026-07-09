@@ -1361,6 +1361,8 @@ run_selftest() {
     clearance_selftest_picker_class_admitted_scope_gap
     clearance_selftest_picker_class_api_nonregression
     clearance_selftest_picker_class_gate_wiring
+    clearance_selftest_dsl_forbidden_glob_hit
+    clearance_selftest_dsl_treeverify_profile_on_reserve
   )
   local name
   for name in "${fixtures[@]}"; do

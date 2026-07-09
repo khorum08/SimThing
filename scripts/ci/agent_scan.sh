@@ -10,14 +10,6 @@ readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly SCAN_SH="${SCRIPT_DIR}/doctrine_scan.sh"
 readonly FIXTURES_ROOT="${SCRIPT_DIR}/fixtures/agent_scan"
 
-# Prefer the same bash that invoked us (Windows git-bash-safe for nested python/subprocess later).
-if command -v cygpath >/dev/null 2>&1; then
-  AGENT_SCAN_BASH="$(cygpath -w "$(command -v bash)" 2>/dev/null || command -v bash)"
-else
-  AGENT_SCAN_BASH="$(command -v bash)"
-fi
-export AGENT_SCAN_BASH
-
 usage() {
   cat <<'EOF'
 usage:

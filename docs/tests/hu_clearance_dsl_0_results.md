@@ -1,50 +1,54 @@
 # HU-CLEARANCE-DSL-0 Results
 
-## Status
-
-**PROOF-PRESENT / PROBATION** — data-driven class predicates + treeverify fold. Gate-wiring; not self-merged.
-
-ORIENT-RECEIPT: `4921e84c2b89` · rule stamp `27baba147e3f156c` (coding).
+**PROOF-PRESENT / PROBATION** — gate-wiring; not self-merged (Fable).
+ORIENT-RECEIPT: `4921e84c2b89` · stamp `27baba147e3f156c`.
 
 ## A. Requirement DSL
 
-Sibling **`scripts/ci/class_predicates.tsv`** (not extra columns on `precedented_classes.tsv`):
-scope + detection would overload the 6-col class registry and fixture TSV copies.
+Sibling `scripts/ci/class_predicates.tsv` (not extra cols on `precedented_classes.tsv` —
+would overload 6-col registry + fixture TSV copies).
 
 | Column | Meaning |
 |---|---|
 | `match_any_globs` | detection signal (≥1 path) |
-| `scope_globs` | envelope paths |
-| `forbidden_globs` | none may match → `class-envelope-violation` |
+| `scope_globs` | envelope |
+| `forbidden_globs` | none may match → envelope reserve |
 | `detect_mode` | `all_in_scope` \| `any_then_envelope` |
-| `priority` | multi-shape winner (picker 20 > API 10) |
+| `priority` | picker 20 > API 10 |
 
-Generic engine in `clearance_check.sh` interprets rows. Migrated:
+Migrated both TP admitted classes; deleted `has_*_shape` + all TP `check_*_field` / `check_picker_only`.
+Body reqs: only `tested_code_sha|coverage_basis|ci_green`. DA owns banned attestations.
 
-- `tp-admitted-clause-api-composition` (`all_in_scope`)
-- `tp-studio-clause-picker` (`any_then_envelope` + post-match scope)
-
-Deleted: `has_*_shape` detectors, all TP `check_*_field` / `check_picker_only`.
-
-`requirements` for both classes: **only** `tested_code_sha|coverage_basis|ci_green`.
-Banned attestations (DA review owns): `admitted_api`, `ui_file_picker`, `tp_defaults_in_production`,
-`session_hydrate`, `studio_clause_picker`, `production_api_only`, `duplicate_parse_rebind`, closeout flags.
-
-Body-only selftest fixtures → CLEARABLE (attestations no longer machine-gated).
-Path envelope fixtures unchanged (reserve/unclassified). `closeout_yes` remapped to out-of-scope path.
+| Metric | Before | After |
+|---|---|---|
+| `clearance_check.sh` (`wc -l`) | 1470 | 1415 |
+| picker `requirements` fields | 11 | 3 (proof-identity only) |
 
 ## B. Treeverify fold
 
-Every `DA-RESERVE(...)` also emits `DA-TREEVERIFY-PROFILE:` via `da_treeverify_lib.py profile`
-on the same changed-file list. CLEARABLE/FAIL never emit it. CLI + lifecycle gate untouched.
+Every `DA-RESERVE` emits `DA-TREEVERIFY-PROFILE:` via `da_treeverify_lib.py`.
+CLEARABLE/FAIL never emit. CLI + lifecycle + `da_review_profile.tsv` untouched.
+
+## New fixtures
+
+| Fixture | Half |
+|---|---|
+| `clearance_selftest_dsl_forbidden_glob_hit` | (a) forbidden-glob → reserve |
+| `clearance_selftest_dsl_treeverify_profile_on_reserve` | (b) reserve carries profile |
+
+Migrated TP fixtures retained; body-only attestation cases → CLEARABLE; path envelopes unchanged.
 
 ## Exit proof
 
 ```text
-bash scripts/ci/clearance_check.sh --selftest
-→ CLEARANCE-SELFTEST: PASS (59 fixtures)
-
-clearance_check.sh line count: 1413 (baseline 1470; net −57)
+clearance_check.sh --selftest → PASS (61 fixtures)
+da_treeverify.sh --selftest → PASS
+relay_lint.sh --selftest → green (logic untouched; §4B)
+agent_scan.sh → PASS footer on this diff
 ```
 
-No new class rows · no scans.tsv · verdict lexicon unchanged · no self-merge.
+Rider: unused `AGENT_SCAN_BASH` export removed from `agent_scan.sh`.
+No new class · no scans.tsv · lexicon unchanged · no self-merge.
+
+tested_code_sha: c7ce525653887a8c127b158699f270f7de14d796
+coverage_basis: PASS - clearance_check 61 fixtures + da_treeverify + relay_lint + agent_scan PASS
