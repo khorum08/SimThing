@@ -129,7 +129,7 @@ mutates and may run `cargo check -p <crate>` for `elevate-code`; GHA runs proof/
 |---|---|---|
 | `test_inventory.tsv` | inventory ledger | one row per surviving test: `crate \| file \| test_name \| kind \| class \| superseding_boundary \| verdict \| note \| promotion_target \| birth_track \| dsu_survivals`. Every KEEP row must name a permanent-residue class or a promotion target |
 | `test_residue_classes.tsv` | data list | the closed set of `permanent-residue:*` classes (`oracle-parity`, `golden-byte`, `seal-proof`, `determinism`, `behavior-regression`, `escaped-bug`, `doc-named-invariant`, `stead-required`, `dependency-floor`) |
-| `test_lifecycle_tracks.tsv` | lifecycle ledger | `track_id \| status \| closed_at \| source \| note` — which birth tracks are open vs closed (a test whose birth track has closed is an expiry candidate) |
+| `test_lifecycle_tracks.tsv` | lifecycle ledger | `track_id \| status \| closed_at \| source \| note` — which birth tracks are open vs closed (a test whose birth track has closed is an expiry candidate). Includes **`harness-fixture`**: fused birth_track for CI selftest fixture families |
 | `test_lifecycle_dsu_tiers.tsv` | policy ladder | downstream-utility renewal tiers keyed on `dsu_survivals`: `1–2` advisory-audit (PASS), `3–4` rejustify (INSPECT), `5+` presumed-stale (INSPECT — delete-or-promote unless DA affirmatively renews) |
 | `track_closeout.sh` / `active_track.txt` / `closeout_autoclear.tsv` / `closeout_artifacts.tsv` | closeout substrate | owns closure: builds/applies manifests, checks freshness, stamps tracks closed, retires the orientation pointer when closing its active source/doc scope, leases artifacts, runs gates; autoclear names safe delete owners; artifact ledger carries the wall-clock reaper queue |
 | `test_lifecycle_parked.tsv` | parking pen | undecided rows parked out of live inventory with enough data for restore or later decommission (boundary parked pen retired with HU-INVENTORY-ONEWRITE-0) |
@@ -140,6 +140,11 @@ mutates and may run `cargo check -p <crate>` for `elevate-code`; GHA runs proof/
 
 `TEST-INVENTORY-DRIFT` and `TEST-BUDGET` run as **stock gates inside `doctrine_scan.sh`**, enforcing inventory truth
 and the ≤3-new-`#[test]` budget. `track_closeout.sh` owns closure; expiry checks remain operator/cadence diagnostics (§11).
+
+**`harness-fixture` birth_track (HU-FIXTURE-LIFECYCLE-0).** A CI fixture *family* under `scripts/ci/fixtures/<family>/`
+lives exactly as long as its **owning surface** (the gate/selftest script that exercises it). Retiring that surface
+deletes the family in the same PR; families no selftest exercises route to the parking pen. Inventory `note` holds a
+one-line family necessity naming the surface (not per-file prose).
 
 ### Track B executable-proof tooling (Track B DA-CLOSED 2026-07-04)
 
