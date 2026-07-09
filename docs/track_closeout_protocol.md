@@ -26,13 +26,11 @@ therefore only ever one of:
   `elevate-code` (relocate the source/capability into a destination crate) or `elevate-class`
   (promote a genuine proof into a `permanent-residue:*` class in `test_residue_classes.tsv`).
 - **`keep-durable`** — already carries a durable class; retained, no mutation.
-- **`lease`** — undecided. The row is **relocated out of the live tables into the parking pen**
-  (`test_lifecycle_parked.tsv`, with any matching boundary row preserved in
-  `test_lifecycle_parked_boundary.tsv`), so `test_inventory.tsv` / `test_lifecycle_boundary_rows.tsv`
-  only ever hold decided assets — undecided rows never clog the primary tables or confuse agents. The pen is on a
-  **wall-clock clock** (not a survival count): cruft-flag at **3 days**, hard delete/elevate wall at
-  **7 days** (`--artifact-expiry` detects; `--decommission` reaps). A lease is a grace period, never a
-  resting state.
+- **`lease`** — undecided. The row is **relocated out of live `test_inventory.tsv` into the parking pen**
+  (`test_lifecycle_parked.tsv`). Boundary-row audit ledger retired (HU-INVENTORY-ONEWRITE-0); inventory is the sole
+  survivor table. The pen is on a **wall-clock clock** (not a survival count): cruft-flag at **3 days**, hard
+  delete/elevate wall at **7 days** (`--artifact-expiry` detects; `--decommission` reaps). A lease is a grace
+  period, never a resting state.
 
 If an asset is worth keeping it is elevated; if it is not, it is deleted; if it is undecided it is parked
 out of sight on a 7-day fuse. Nothing accretes in the live tables. The drift gate treats a parked test as

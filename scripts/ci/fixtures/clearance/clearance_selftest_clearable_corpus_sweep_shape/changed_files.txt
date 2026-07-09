@@ -1,4 +1,3 @@
 crates/simthing-sim/tests/example_sweep_target.rs
 scripts/ci/test_inventory.tsv
-scripts/ci/test_lifecycle_boundary_rows.tsv
 docs/tests/cc_sweep_simthing_sim_results.md

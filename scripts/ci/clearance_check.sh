@@ -460,7 +460,7 @@ has_corpus_sweep_result = any(
     f.startswith("docs/tests/cc_sweep_") and f.endswith("_results.md") for f in files
 )
 has_corpus_sweep_inventory = any(
-    f in ("scripts/ci/test_inventory.tsv", "scripts/ci/test_lifecycle_boundary_rows.tsv")
+    f == "scripts/ci/test_inventory.tsv"
     for f in files
 )
 has_corpus_sweep_test = any(
@@ -703,7 +703,7 @@ check_workshop_only() {
     [[ -z "$file" ]] && continue
     case "$file" in
       # workshop candidate + results/inventory; design/orientation stamps for TP ladder
-      crates/simthing-workshop/*|docs/tests/*|scripts/ci/test_inventory.tsv|scripts/ci/test_lifecycle_boundary_rows.tsv|docs/design_*|docs/orchestrator_orientation.md)
+      crates/simthing-workshop/*|docs/tests/*|scripts/ci/test_inventory.tsv|docs/design_*|docs/orchestrator_orientation.md)
         ;;
       *)
         return 1

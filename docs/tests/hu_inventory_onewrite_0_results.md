@@ -1,54 +1,44 @@
-# HU-INVENTORY-ONEWRITE-0 — STOP (no-op regen impossible)
+# HU-INVENTORY-ONEWRITE-0 Results
 
-**STOPPED.** Did not force-fit policy or rewrite `test_lifecycle_boundary_rows.tsv`. No green merge candidate.
+**PROOF-PRESENT / PROBATION** â€” boundary audit ledger **retired**; one table.
+Gate-wiring; not self-merged (Fable).
 
-ORIENT-RECEIPT: `4921e84c2b89` · stamp `27baba147e3f156c`.
+ORIENT-RECEIPT: `deddcda875b6` Â· stamp `efe10e9d0c84cc7d`.
 
-## Pure derivation rule tried
+## Justification (STOP â†’ retire)
 
-Inventory row → boundary row **iff** `superseding_boundary` ∈ `test_lifecycle_boundaries.tsv` (B-T*).
-Fields from inventory+policy only (no free-text carry from committed boundary table).
+Pure regen of 651-row boundary table impossible: +93 policy gaps, 167 free-text
+rewrites, 293 non-policy `superseding_boundary` IDs. DA: delete ledger, not derive.
 
-## Live counts
+## Deleted
 
-| Surface | N |
+| Asset | Î” |
 |---|---|
-| inventory | 1037 |
-| committed boundary_rows | **651** (not 629) |
-| policy B-T* | 78 |
-| inv ∩ policy | 744 |
-| inv with **non-policy** boundary id | **293** |
-| pure-derived | 744 |
+| `test_lifecycle_boundary_rows.tsv` | âˆ’651 data rows |
+| `test_lifecycle_parked_boundary.tsv` | empty pen |
+| `test_lifecycle_boundary_check.sh` | âˆ’1 script (~293 lines; was red/unwired) |
 
-## Delta (regen ≠ no-op)
+Policy `test_lifecycle_boundaries.tsv` **kept**. Inventory schema + drift FAIL unchanged.
 
-| Bucket | N |
-|---|---|
-| pure-derived **ADD** vs committed | **93** (all `B-T7-SEAL-PROOF-FIXTURES` fixtures) |
-| committed only | 0 |
-| intersection field rewrites | **167** (`note` 167, `confidence` 46, `promotion_required` 9) |
-| structural class/tier key mismatches | **0** |
+## Consumers
 
-### Non-policy `superseding_boundary` (293) — no B-T* join
+- `track_closeout.sh`: absent OK, never recreates; legacy-present lockstep kept; prove +boundary-absent
+- `lifecycle_schema_pr_gate.sh`: drop boundary_rows glob
+- `test_inventory_check.sh`: **was** FAIL-missing-file + shell red checker; now retired status only
+- Class/predicate scopes + clearance fixtures: drop dead envelope paths
+- Docs + design rung-3 cell + orientation regen
 
-TP-STUDIO-CLAUSE-PICKER-CLASS-0 (40), TP-ADMITTED-CLAUSE-API-CLASS-0 (28), CLEARANCE-ADMITTED-SCOPE-GAP-0 (28), DA-TREEVERIFY-0 (27), OH-IMMUTABLE-EVIDENCE-0 (26), OH-TRIAGE / OH-CLEARANCE-ROUTER / TP-WORKSHOP-CANDIDATE (24 each), CC-SWEEP-* / CC-RELAY / OH-DOCS-SUNSET / HU-CLEARANCE-DSL-0 (remainder).
+**Rung-4 deferred:** boundary-check fixture families stay inventory-ledgered under open `0.0.8.4.6`.
 
-### Free-text not policy-keyed
+## Exit proof
 
-Distinct notes per (class, boundary_id) in committed table: oracle-parity/**48**, behavior-regression/**8**, golden-byte/**5**, seal-proof/**4**. Only 10/651 notes equal inventory `note`.
+```text
+track_closeout.sh --prove â†’ PASS (legacy present + boundary-absent)
+clearance_check.sh --selftest â†’ PASS (61)
+lifecycle_schema_pr_gate.sh --selftest â†’ PASS (3)
+gen_orientation.sh --check â†’ PASS
+agent_scan.sh â†’ AGENT-SCAN-VERDICT: PASS delta_inspect=0
+```
 
-### Pre-existing
-
-`test_lifecycle_boundary_check.sh` already **FAIL**: missing 386 inv→boundary maps (= 93 + 293).
-
-## Not done
-
-No boundary_rows rewrite · no invented OH/TP policy rows · no drift weaken · no “green” one-write PR.
-
-## DA decisions to unstick
-
-1. **293 non-policy:** remap inv → B-T*, or mint policy rows, or change who needs a boundary_row (fence).
-2. **93 seal-proof gaps:** accept derive-ADD once note policy fixed.
-3. **notes/confidence/promo:** (a) inventory owns free text 1:1, (b) keep hand boundary (blocks pure one-write), or (c) modal canned notes (lossy).
-
-Reproduce: `python scripts/ci/_tmp_onewrite_delta.py` (scratch analyzer, not a gate).
+tested_code_sha: 3f85acdcf309f2e4a4acddc5180872a34c3816b5
+coverage_basis: PASS â€” prove + clearance + schema + orientation + agent_scan
