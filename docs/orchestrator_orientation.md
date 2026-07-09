@@ -40,11 +40,11 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | bcfd4ba8f0efcf6d22e6d1ebbd51765505c1acfcc1ab1ccd22fd1f6f491852e1 |
+| precedented_classes.tsv | f2f6126148ae493c0c81f8f07f75e3d425c1ca8359b26c11b87f6b78df409835 |
 | binding_conditions.tsv | 6f61be159f87b7e68a0a39d66df0fd8ea49370cb04d867e59cc3d08fc2811766 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | d2e2290689d5ea6f2c89cd5b50ffa06109ce7b3588fe6280abadaf31ae40da02 |
+| design_0_0_8_6_studio_live_ops.md | 54fffd5d108ee4f156505b752b2f35a082a343a7f3a7bdd335533990e3ba3079 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 7af9486ab782242d512f627a4e65a29cdbede8420a2981e098c79c9c36c01c47 |
 
@@ -55,7 +55,8 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 9.0 | STUDIO-LIVE-OPS-READINESS-0 | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownersh | **ORCHESTRATOR-GRADUATED / merged [#1257](https://github.com/khorum08/SimThing/pull/1257) @ `4f8c250c`** — readiness ... |
-| 9.1 | STUDIO-SIM-CLOCK-0 | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4 | **ORCHESTRATOR-GRADUATED** — `StudioSimClock` headless substrate; pause freeze / 2×·4× ratios / max_tps cap / no Spec... |
+| 9.1 | STUDIO-SIM-CLOCK-0 | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4 | **DA-GRADUATED / merged [#1258](https://github.com/khorum08/SimThing/pull/1258)** — `StudioSimClock` headless substra... |
+| 9.1h | STUDIO-SIM-CLOCK-CLASS-0 | **Harness adjacency (clearance router).** Register precedented class `studio-sim | **DA-GRADUATED / merged [#1259](https://github.com/khorum08/SimThing/pull/1259) @ `d7ceb754`** — selftests clearable ... |
 | 9.2 | STUDIO-SIM-CLOCK-UI-0 | **Transport UI:** Pause, Play, 2×, 4×, TPS selector; readout (tick index, effect | UI drives clock; programmatic hooks for CI |
 | 9.3 | STUDIO-LIVE-SESSION-BRIDGE-0 | **Wire loaded StudioSession → live tick path** (elevate workshop live-run policy | Loaded clause/JSON multi-tick under Play; STEAD/session identity held |
 | 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | Values update while running; freeze on pause |
@@ -115,6 +116,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | tp-workshop-candidate-proof | crates/simthing-workshop/src/tp_*.rs\|crates/simthing-workshop/tests/tp_*.rs\|docs/tests/tp_*_0_results.md\|scripts/ci/test_inventory.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-admitted-clause-api-composition | crates/simthing-clausething/src/clause_scenario_projection.rs\|crates/simthing-clausething/src/lib.rs\|crates/simthing-mapeditor/src/clause_scenario_ingest.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|crates/simthing-workshop/src/tp_studio_clause_ingest.rs\|crates/simthing-workshop/src/tp_studio_stead_rebind.rs\|docs/tests/tp_studio_clause_api_*_results.md\|scripts/ci/test_inventory.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green | active |
 | tp-studio-clause-picker | crates/simthing-mapeditor/src/clause_scenario_picker.rs\|crates/simthing-mapeditor/src/app/scenario_io.rs\|crates/simthing-mapeditor/src/app/ui.rs\|crates/simthing-mapeditor/src/app/mod.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_picker_*.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|docs/tests/tp_studio_clause_picker_*_results.md\|scripts/ci/test_inventory.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green | active |
+| studio-sim-clock-substrate | crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|docs/tests/studio_sim_clock_*_results.md\|docs/tests/studio_live_ops_readiness_0_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
 
 ## Binding Conditions
 

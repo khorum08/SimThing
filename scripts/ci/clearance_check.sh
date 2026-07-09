@@ -1363,6 +1363,17 @@ run_selftest() {
     clearance_selftest_picker_class_gate_wiring
     clearance_selftest_dsl_forbidden_glob_hit
     clearance_selftest_dsl_treeverify_profile_on_reserve
+    clearance_selftest_studio_clock_class_clearable
+    clearance_selftest_studio_clock_class_missing_tested_sha
+    clearance_selftest_studio_clock_class_missing_coverage
+    clearance_selftest_studio_clock_class_missing_ci_green
+    clearance_selftest_studio_clock_class_rejects_transport_ui
+    clearance_selftest_studio_clock_class_rejects_live_bridge
+    clearance_selftest_studio_clock_class_rejects_library_ui
+    clearance_selftest_studio_clock_class_rejects_runtime_src
+    clearance_selftest_studio_clock_class_api_nonregression
+    clearance_selftest_studio_clock_class_picker_nonregression
+    clearance_selftest_studio_clock_class_gate_wiring
   )
   local name
   for name in "${fixtures[@]}"; do

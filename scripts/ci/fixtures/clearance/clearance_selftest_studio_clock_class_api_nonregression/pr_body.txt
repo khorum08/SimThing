@@ -1,0 +1,7 @@
+tested_code_sha: b18d19ac13abcdef0123456789abcdef01234567
+coverage_basis: PASS - admitted clause API nonregression under studio clock class
+ci_green: PASS
+admitted_api: YES
+no_ui_picker: YES
+no_tp_defaults: YES
+session_hydrate: PASS
