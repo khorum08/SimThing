@@ -5,6 +5,7 @@ pub mod fleet_movement_post_hydration;
 pub mod live_run_post_hydration;
 pub mod palma_reach_post_hydration;
 pub mod tp_studio_clause_ingest;
+pub mod tp_studio_stead_rebind;
 pub mod eml_phase5;
 pub mod multitarget_replay;
 mod multitarget_replay_report;
@@ -76,6 +77,11 @@ pub use tp_studio_clause_ingest::{
     load_scenario_authority_json_from_path, project_tp_pack_to_scenario_spec,
     save_scenario_authority_json_to_path, TpStudioClauseIngestError, TpStudioClauseIngestOptions,
     TpStudioClauseIngestResult, CLAUSE_FIXTURE_JSON_PLACEHOLDER,
+};
+pub use tp_studio_stead_rebind::{
+    rebind_authority_tree_candidate, rebind_pack_to_structural_rebind_ready,
+    TpStudioSteadRebindError, TpStudioSteadRebindReport, TpStudioSteadRebindResult,
+    PROJECTION_MODE_AUTHORITY_TREE_CANDIDATE, PROJECTION_MODE_STRUCTURAL_REBIND_READY,
 };
 pub mod weighted_mean_perf;
 mod weighted_mean_perf_report;
