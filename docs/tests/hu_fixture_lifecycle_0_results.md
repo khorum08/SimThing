@@ -44,5 +44,5 @@ agent_scan.sh -> PASS footer
 doctrine_scan / drift green via apply gate battery
 ```
 
-tested_code_sha: 5111f01514a096205c3107259de8bb1509c75a0b
+tested_code_sha: 13d11220b48a473a27c5199db2cc2c5e31fd5748
 coverage_basis: PASS - closeout apply OK + drift/schema/agent_scan
