@@ -143,14 +143,11 @@ fn api_1_missing_resolver_or_source_returns_structured_error() {
 
 #[test]
 fn api_1_no_ui_picker_surface() {
-    // Changed-file / surface proof: API-1 does not introduce picker modules or menu hooks.
+    // API-1 production ingest module remains free of UI dialog hooks (picker is a separate module).
     let api_src = include_str!("../src/clause_scenario_ingest.rs");
     assert!(!api_src.contains("rfd::"));
     assert!(!api_src.contains("FileDialog"));
     assert!(!api_src.contains("open_native"));
     assert!(!api_src.contains("file_picker"));
-    // lib does not re-export a clause picker action.
-    let lib_src = include_str!("../src/lib.rs");
-    assert!(!lib_src.contains("open_clause_picker"));
-    assert!(!lib_src.contains("clause_file_picker"));
+    assert!(!api_src.contains("Open ClauseScript"));
 }

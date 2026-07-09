@@ -34,9 +34,11 @@ use super::galaxy_render::{
     mark_hyperlane_render_dirty, mark_star_visual_render_dirty, StarVisualAssets,
 };
 use super::scenario_io::{
-    load_scenario_manual_path_action, open_native_scenario_load_picker, save_scenario_action,
-    ScenarioActionResult, ScenarioPickerActionResult,
+    load_scenario_manual_path_action, open_native_clause_scenario_picker,
+    open_native_scenario_load_picker, save_scenario_action, ScenarioActionResult,
+    ScenarioPickerActionResult,
 };
+use crate::clause_scenario_picker::{clause_picker_menu_label, ClausePickerActionResult};
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
 use crate::scenario_runtime_saveload_ui::{
@@ -372,6 +374,31 @@ pub fn studio_ui_system(
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_load_scenario_picker")));
         match open_native_scenario_load_picker(&mut state) {
             ScenarioPickerActionResult::Loaded { session, message } => {
+                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                state.refresh_runtime_saveload_status_if_needed(false);
+                super::rebuild_session_scene(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &assets,
+                    &mut scene_root,
+                    &mut state,
+                    &mut render_caches,
+                );
+                reset_camera_after_generation(&mut camera);
+                perf_telemetry.vram_dirty = true;
+            }
+            _ => {}
+        }
+    }
+
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_open_clause_scenario_picker"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_open_clause_scenario_picker")));
+        match open_native_clause_scenario_picker(&mut state) {
+            ClausePickerActionResult::Loaded { session, message, .. } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
@@ -1424,6 +1451,26 @@ fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_manual"), true));
         }
     });
+    ui.separator();
+    ui.label(egui::RichText::new("ClauseScript (admitted StructuralRebindReady)").strong());
+    ui.label(
+        egui::RichText::new("Calls production clause_scenario_ingest only; no TP defaults")
+            .small()
+            .weak(),
+    );
+    ui.horizontal(|ui| {
+        ui.label("Clause path:");
+        ui.text_edit_singleline(&mut state.clause_path_text);
+    });
+    ui.label("Resolver entries (TOKEN=path per line; required for {{…}} placeholders):");
+    ui.add(
+        egui::TextEdit::multiline(&mut state.clause_resolver_text)
+            .desired_rows(2)
+            .desired_width(f32::INFINITY),
+    );
+    if ui.button(clause_picker_menu_label()).clicked() {
+        ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_open_clause_scenario_picker"), true));
+    }
     ui.separator();
     draw_runtime_candidate_saveload_controls(ctx, ui, state);
 }

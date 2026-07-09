@@ -153,6 +153,110 @@ pub fn open_native_scenario_load_picker(state: &mut StudioAppState) -> ScenarioP
     load_scenario_with_picker(state, &NativeScenarioFilePicker)
 }
 
+/// Open ClauseScript Scenario... — native dialog + explicit resolver field → production API only.
+pub fn open_native_clause_scenario_picker(
+    state: &mut StudioAppState,
+) -> crate::clause_scenario_picker::ClausePickerActionResult {
+    open_clause_scenario_with_picker_state(state, &crate::clause_scenario_picker::NativeClauseFilePicker)
+}
+
+pub fn open_clause_scenario_with_picker_state<P: crate::clause_scenario_picker::ClauseFilePicker>(
+    state: &mut StudioAppState,
+    picker: &P,
+) -> crate::clause_scenario_picker::ClausePickerActionResult {
+    use crate::clause_scenario_picker::{
+        open_clause_scenario_with_picker, parse_clause_resolver_entries, ClausePickerActionResult,
+    };
+
+    let resolver_entries = match parse_clause_resolver_entries(&state.clause_resolver_text) {
+        Ok(m) => m,
+        Err(reason) => {
+            let message = format!("ClauseScript open failed: {reason}");
+            record_scenario_io_status(state, message.clone());
+            return ClausePickerActionResult::InvalidPath { message };
+        }
+    };
+
+    let result = open_clause_scenario_with_picker(
+        picker,
+        if state.clause_path_text.trim().is_empty() {
+            &state.scenario_path_text
+        } else {
+            &state.clause_path_text
+        },
+        resolver_entries,
+        None,
+        Some(state.profile.clone()),
+    );
+
+    match &result {
+        ClausePickerActionResult::Loaded {
+            session,
+            ingest,
+            message,
+            ..
+        } => {
+            if let Some(src) = ingest.source_path.as_ref() {
+                state.clause_path_text = src.display().to_string();
+            }
+            if let Some(path) = session.scenario_path.as_ref() {
+                state.scenario_path_text = path.display().to_string();
+            }
+            record_scenario_io_status(state, message.clone());
+        }
+        ClausePickerActionResult::Failed { message }
+        | ClausePickerActionResult::InvalidPath { message } => {
+            record_scenario_io_status(state, message.clone());
+        }
+        ClausePickerActionResult::Cancelled => {}
+    }
+    result
+}
+
+/// Programmatic clause open (tests / agents): path + resolver text → production API.
+pub fn open_clause_scenario_programmatic(
+    state: &mut StudioAppState,
+    clause_path: impl AsRef<Path>,
+) -> crate::clause_scenario_picker::ClausePickerActionResult {
+    use crate::clause_scenario_picker::{
+        parse_clause_resolver_entries, run_clause_picker_action, ClausePickerActionResult,
+        ClausePickerSelection,
+    };
+
+    let resolver_entries = match parse_clause_resolver_entries(&state.clause_resolver_text) {
+        Ok(m) => m,
+        Err(reason) => {
+            let message = format!("ClauseScript open failed: {reason}");
+            record_scenario_io_status(state, message.clone());
+            return ClausePickerActionResult::InvalidPath { message };
+        }
+    };
+    let clause_path = clause_path.as_ref().to_path_buf();
+    state.clause_path_text = clause_path.display().to_string();
+    let selection = ClausePickerSelection {
+        clause_path,
+        resolver_entries,
+        scenario_json_path: None,
+    };
+    let result = run_clause_picker_action(&selection, Some(state.profile.clone()));
+    match &result {
+        ClausePickerActionResult::Loaded {
+            session, message, ..
+        } => {
+            if let Some(path) = session.scenario_path.as_ref() {
+                state.scenario_path_text = path.display().to_string();
+            }
+            record_scenario_io_status(state, message.clone());
+        }
+        ClausePickerActionResult::Failed { message }
+        | ClausePickerActionResult::InvalidPath { message } => {
+            record_scenario_io_status(state, message.clone());
+        }
+        ClausePickerActionResult::Cancelled => {}
+    }
+    result
+}
+
 pub fn load_scenario_with_picker<P: ScenarioFilePicker>(
     state: &mut StudioAppState,
     picker: &P,

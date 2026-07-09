@@ -35,7 +35,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | ccc715a11c2786ba4e4730b57ba2b7072cc8157d3085adc8cfc2ce9d65548b33 |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 12cf033169d386512ca1d298cf54bee96dfcacef88493b9c8373648bbd229587 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -75,7 +75,7 @@ Track state: `open`
 | 8.8 | TP-STUDIO-CLAUSE-API-1 | **Implement** admitted production surface: generic mapeditor (or elevated clause | **DA-GRADUATED / merged [#1230](https://github.com/khorum08/SimThing/pull/1230) @ `820a9a2ef6`** (head `b18d19ac13`) ... |
 | 8.8h | TP-ADMITTED-CLAUSE-API-CLASS-0 | **Harness adjacency.** Register `tp-admitted-clause-api-composition` so #1230-sh | **DA-GRADUATED / merged [#1232](https://github.com/khorum08/SimThing/pull/1232) @ `5227f08000`** (head `2163667dab`) ... |
 | 8.9 | TP-STUDIO-CLAUSE-PICKER-ADMISSION-0 | **Owner/DA-gated.** Admit UI `.clause` file picker / menu surface only after API | **DONE — DA-ADMITTED (2026-07-09, Option A) / narrow UI picker.** Production API + session hydrate proven (#1230); re... |
-| 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **OPEN — next production pointer.** Exit: picker invokes production API only; no dual parse/rebind; no TP defaults; e... |
+| 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **PROOF-PRESENT / PROBATION** — mapeditor `clause_scenario_picker` + Studio menu **Open ClauseScript Scenario...**; p... |
 
 ## Next Rung Pointer
 
