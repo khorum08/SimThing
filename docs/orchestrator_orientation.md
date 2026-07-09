@@ -35,7 +35,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 17789373abceae50b278488c87ba64db35f97a432ec44bfbdd38bb9eea6d17df |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 1ba706f1c01b40438ab259340959ba3c2d0acade0ba6311a0efa43adff3d855f |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -72,7 +72,7 @@ Track state: `open`
 | 8.6 | TP-STUDIO-STEAD-REBIND-0 | Workshop-homed (default): project `AuthorityTreeCandidate` → `StructuralRebindRe | **DA-GRADUATED / merged [#1226](https://github.com/khorum08/SimThing/pull/1226) @ `03afe3d152`** (head `1c41c2372c`) ... |
 | 8.6h | TP-WORKSHOP-CANDIDATE-CLASS-0 | **Harness adjacency (clearance router).** Register precedented class `tp-worksho | **DA-GRADUATED / merged [#1227](https://github.com/khorum08/SimThing/pull/1227) @ `0141f03c62`** (head `597cf030a7`) ... |
 | 8.7 | TP-STUDIO-CLAUSE-API-ADMISSION-1 | **Owner/DA-gated.** Re-open production mapeditor ClauseScript API admission only | **DONE — DA-ADMITTED (2026-07-09, Option A) / limited production surface.** StructuralRebindReady (#1226) closed the ... |
-| 8.8 | TP-STUDIO-CLAUSE-API-1 | **Implement** admitted production surface: generic mapeditor (or elevated clause | **DONE — DA-facing proof present** in [`tp_studio_clause_api_1_results.md`](tests/tp_studio_clause_api_1_results.md):... |
+| 8.8 | TP-STUDIO-CLAUSE-API-1 | **Implement** admitted production surface: generic mapeditor (or elevated clause | **DA-GRADUATED / merged [#1230](https://github.com/khorum08/SimThing/pull/1230) @ `820a9a2ef6`** (head `b18d19ac13`) ... |
 | 8.9 | TP-STUDIO-CLAUSE-PICKER-ADMISSION-0 | **Owner/DA-gated.** Admit UI `.clause` file picker / menu surface only after API | **OPEN — next production pointer.** Exit: DA/Owner decision; no picker implementation in this rung. |
 
 ## Next Rung Pointer
