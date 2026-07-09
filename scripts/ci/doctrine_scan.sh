@@ -886,6 +886,7 @@ run_closing_rung_stock_gates() {
   run_doc_budget_gate
   run_rule_expiry_gate
   run_agents_stub_gate
+  run_da_treeverify_lifecycle_gate
 }
 
 run_doc_budget_gate() {
@@ -898,6 +899,21 @@ run_rule_expiry_gate() {
 
 run_agents_stub_gate() {
   run_stock_gate_script "AGENTS-STUB" "agents_stub_check.sh"
+}
+
+run_da_treeverify_lifecycle_gate() {
+  # Non-core da_review_profile.tsv rows must carry expires_on and be deleted/retired after expiry.
+  local out rc
+  set +e
+  out="$(bash "${SCRIPT_DIR}/da_treeverify.sh" --check-lifecycle 2>&1)"
+  rc=$?
+  set -e
+  printf '%s\n' "$out"
+  if [[ $rc -ne 0 ]]; then
+    echo "DA-TREEVERIFY-LIFECYCLE gate failed" >&2
+    return 1
+  fi
+  return 0
 }
 
 assert_contains() {

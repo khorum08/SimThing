@@ -68,6 +68,13 @@ The executive design authority. Reviews escalations, graduates or remands, autho
   **Relaxed / optional** for pure policy admissions, exit-proof stamps, and light residual where CI already
   vouches and no long-lifecycle or horizontal surface moves — light posture may confirm deliverables from
   the relay + CI without a full tree dig. Light vs deep still sets *depth* when tree review is engaged.
+- **DA treeverify advisor (token routing):** before a load-bearing graduate/admit, run
+  `bash scripts/ci/da_treeverify.sh --pr <n>` (or `--range`). It emits advisory
+  `DA-TREEVERIFY-PROFILE: RELAX|LIGHT-TREE|DEEP-TREE` + focus paths from `scripts/ci/da_review_profile.tsv`.
+  **Not** a clearance verdict and **not** a graduation stamp. Core TSV rows are permanent; non-core rows
+  require `expires_on` and **must be deleted/retired after expiry** (lifecycle gate in doctrine-scan).
+  Expeditionary escape needs `expeditionary: YES` + charter + `expeditionary_until` and cannot RELAX
+  production/engine/long-lifecycle surfaces.
 - **Exit-proof stamp (binding after a passed verdict):** a DA pass is incomplete until the DA updates the
   active workplan/design-ladder **Exit proof** cell (`DA-GRADUATED / merged #<PR> @ <merge-sha>`, or
   equivalent DONE wording for formal admission/denial), marks the results doc COMPLETE where applicable,

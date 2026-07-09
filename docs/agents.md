@@ -128,6 +128,9 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
   fabricate**; **verify the tree, not the relayed report**; **no merge before DA clearance** on any authority /
   gate / PROBATION rung. Anti-kabuki guidance cuts ceremony, never this floor — see the handoff template §H
   (the binding authority; do not restate or dilute it elsewhere).
+- **DA load-bearing review depth (advisory):** `bash scripts/ci/da_treeverify.sh --pr <n>` profiles
+  RELAX / LIGHT-TREE / DEEP-TREE from `scripts/ci/da_review_profile.tsv` — token routing for DA, not
+  clearance and not merge authority. See `docs/agent_onboarding.md` DA section.
 - **Inner loop (Track C):** run `cargo check -p <touched-crate>` and `bash scripts/ci/doctrine_scan.sh` after
   small edits, before PR-time cleanup — the same scanner, consulted earlier, so a doomed path is pruned in
   your own loop instead of at CI/triage/DA.

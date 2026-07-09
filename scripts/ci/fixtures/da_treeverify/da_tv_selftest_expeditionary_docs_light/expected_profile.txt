@@ -1,0 +1,3 @@
+DA-TREEVERIFY-PROFILE: LIGHT-TREE
+exit_code: 0
+must_contain: expeditionary-light-floor
