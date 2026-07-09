@@ -44,13 +44,13 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 7e4c10ec57666b37904f80b41f7379e718cdb5bf1a66e3afddb56c0fd5769374 |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 7b2405c0fedc48795808dd3d25d31ccafd9636d43e96a576259c8862fd9d339d |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
 ## Active Track / Rung Summary (`design_0_0_8_5_clausescript_terran_pirate_galaxy.md`)
 
-Track state: `open`
+Track state: `end-state`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
@@ -87,11 +87,11 @@ Track state: `open`
 | 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **DA-GRADUATED / merged [#1239](https://github.com/khorum08/SimThing/pull/1239) @ `0183883767`** (head `d9bd5c4054`) ... |
 | 8.10g | CLEARANCE-UNCLASSIFIED-SCOPE-REDUCTION-0 | **Owner/DA process ruling.** Reduce over-broad `DA-RESERVE(unclassified-scope)`: | **DONE — DA-ADOPTED (2026-07-09, Option A).** Adopt `DA-RESERVE(admitted-scope-router-gap)` vocabulary + orchestratio... |
 | 8.10r | CLEARANCE-ADMITTED-SCOPE-GAP-0 | **Harness (gate-wiring).** Implement `DA-RESERVE(admitted-scope-router-gap)` in  | **DA-GRADUATED / merged [#1243](https://github.com/khorum08/SimThing/pull/1243) @ `becb07fdd9`** (head `f7b184e994`) ... |
-| 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency.** Register a precedented class for admitted narrow UI picke | **DONE** — class `tp-studio-clause-picker`; #1239-shaped clearable; reject fixtures for missing fields / API-only / T... |
+| 8.10h | TP-STUDIO-CLAUSE-PICKER-CLASS-0 | **Harness adjacency.** Register a precedented class for admitted narrow UI picke | **DA-GRADUATED / merged [#1245](https://github.com/khorum08/SimThing/pull/1245) @ `bc041884b4`** (head `53d47a2151`) ... |
 
 ## Next Rung Pointer
 
-Active pointer: `TP-STUDIO-CLAUSE-PICKER-CLASS-0`
+Active pointer: `none`
 
 
 ## Cold-Start Entrypoint

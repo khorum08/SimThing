@@ -2,7 +2,9 @@
 
 ## Status
 
-**DONE** — registered precedented class `tp-studio-clause-picker` so #1239-shaped admitted picker UI diffs are `ORCHESTRATOR-CLEARABLE` when proof fields pass and the envelope holds.
+**DA-GRADUATED / COMPLETE** — merged [#1245](https://github.com/khorum08/SimThing/pull/1245) @ `bc041884b46b21ea073137406bc5899706156d43` (head `53d47a21512ec66770003bed2aa841afaa872a73`). DA stamp 2026-07-09.
+
+Registered precedented class `tp-studio-clause-picker` so #1239-shaped admitted picker UI diffs are `ORCHESTRATOR-CLEARABLE` when proof fields pass and the envelope holds.
 
 ## Class row
 
