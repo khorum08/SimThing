@@ -35,7 +35,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 10441cb9921b945e56ec1a83a054c6f68e29e3b75a2b65ea1ab23bce82468df9 |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | 1cdde656f74ebe6b65edf52b8cfeb64303bfd662a7cc585549979c675e0d36a0 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -69,11 +69,12 @@ Track state: `open`
 | 8.3 | TP-STUDIO-CLAUSE-INGEST-0 | Workshop-homed TP candidate: `.clause` → parse/hydrate → ScenarioSpec candidate  | **DA-GRADUATED / merged [#1222](https://github.com/khorum08/SimThing/pull/1222) @ `bcbc2f4389`** (head `ee0480c438`, ... |
 | 8.4 | TP-STUDIO-CLAUSE-API-ADMISSION-0 | **Owner/DA-gated.** Admit a generic, non-TP-default `simthing-mapeditor` ClauseS | **DONE — DA-DENIED / KEEP WORKSHOP (2026-07-09, Option B).** No production mapeditor ClauseScript ingest API admitted... |
 | 8.5 | TP-STUDIO-STEAD-REBIND-READINESS-0 | Evaluate the gap from candidate `SimThingScenarioSpec` (authority tree, empty pl | **DONE — DA-facing evaluation report present** in [`tp_studio_stead_rebind_readiness_0_results.md`](tests/tp_studio_s... |
-| 8.6 | TP-STUDIO-STEAD-REBIND-0 | Workshop-homed (default): project `AuthorityTreeCandidate` → `StructuralRebindRe | **OPEN — next production pointer.** Exit: workshop rebind helper + tests + results; still no production mapeditor Cla... |
+| 8.6 | TP-STUDIO-STEAD-REBIND-0 | Workshop-homed (default): project `AuthorityTreeCandidate` → `StructuralRebindRe | **DONE — DA-facing proof present** in [`tp_studio_stead_rebind_0_results.md`](tests/tp_studio_stead_rebind_0_results.... |
+| 8.7 | TP-STUDIO-CLAUSE-API-ADMISSION-1 | **Owner/DA-gated.** Re-open production mapeditor ClauseScript API admission only | **OPEN — next production pointer.** Exit: DA/Owner decision record; still no UI picker until API admitted. |
 
 ## Next Rung Pointer
 
-Active pointer: `TP-STUDIO-STEAD-REBIND-0`
+Active pointer: `TP-STUDIO-CLAUSE-API-ADMISSION-1`
 
 
 ## Cold-Start Entrypoint
