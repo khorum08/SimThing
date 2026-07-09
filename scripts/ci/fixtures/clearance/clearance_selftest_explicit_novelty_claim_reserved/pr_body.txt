@@ -1,0 +1,4 @@
+novelty_claim: YES
+novelty_basis: unanticipated substrate discovery that improves the track beyond the planned rung
+tested_code_sha: deadbeefcafe1234
+coverage_basis: PASS - explicit novelty claim fixture

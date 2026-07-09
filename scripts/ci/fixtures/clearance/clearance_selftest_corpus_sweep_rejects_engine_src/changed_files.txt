@@ -1,3 +1,4 @@
+crates/simthing-sim/tests/cc_sweep_simthing_sim.rs
 crates/simthing-sim/src/engine_source_change.rs
 scripts/ci/test_inventory.tsv
 docs/tests/cc_sweep_simthing_sim_results.md

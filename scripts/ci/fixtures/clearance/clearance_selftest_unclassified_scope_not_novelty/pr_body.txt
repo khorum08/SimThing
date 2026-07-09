@@ -1,0 +1,2 @@
+tested_code_sha: abcdef1234567890
+coverage_basis: PASS - unclassified fixture (must not be labeled novelty)

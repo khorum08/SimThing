@@ -371,6 +371,15 @@ has_crate_src_or_tests_edit = any(
     f.startswith("crates/") and ("/src/" in f or "/tests/" in f) for f in files
 )
 has_corpus_baseline_result = "docs/tests/cc_baseline_0_results.md" in files
+has_docs_ladder_shape = any(
+    f.startswith("docs/design_") and f.endswith(".md")
+    or f == "docs/orchestrator_orientation.md"
+    or (
+        f.startswith("docs/tests/")
+        and f.endswith("_readiness_0_results.md")
+    )
+    for f in files
+)
 for row in rows:
     if len(row) < 6:
         continue
@@ -389,6 +398,13 @@ for row in rows:
         continue
     if class_id == "corpus-baseline" and not has_corpus_baseline_result:
         continue
+    if class_id == "docs-ladder-pointer-correction":
+        # All files must stay inside the docs-ladder envelope; mixed runtime diffs do not match.
+        if not has_docs_ladder_shape or not files:
+            continue
+        globs = [g.strip() for g in scope_globs.split("|") if g.strip()]
+        if not all(any(glob_match(path, g) for g in globs) for path in files):
+            continue
     if primary and class_id != primary:
         continue
     for path in files:
@@ -592,6 +608,12 @@ check_required_pr_body_fields() {
   return 0
 }
 
+# Explicit novelty claim only — never a generic unmatched-diff fallback.
+check_explicit_novelty_claim() {
+  local body="$1"
+  echo "$body" | grep -qiE 'novelty_claim:[[:space:]]*YES'
+}
+
 check_recorded_gpu_proof() {
   local body="$1"
   if echo "$body" | grep -q 'DOCTRINE-TESTS-VERDICT:[[:space:]]*PASS'; then
@@ -790,10 +812,16 @@ route_clearance() {
     return 0
   fi
 
-  local classes
+  local classes body
+  body="$(pr_body_text)"
   classes="$(detect_classes "$classes_tsv")"
   if [[ -z "$classes" ]]; then
-    emit_verdict reserve "novelty"
+    # novelty is explicit-claim only; unmatched scope is not implementation novelty
+    if check_explicit_novelty_claim "$body"; then
+      emit_verdict reserve "novelty"
+    else
+      emit_verdict reserve "unclassified-scope"
+    fi
     return 0
   fi
 
@@ -820,24 +848,24 @@ route_clearance() {
     return 0
   fi
 
-  local reqs body
+  local reqs
   reqs="$(class_requirements "$classes_tsv" "$class_id")"
-  body="$(pr_body_text)"
 
-  if [[ "$reqs" == *workshop_only* ]] && ! check_workshop_only; then
-    emit_verdict reserve "novelty"
-    return 0
-  fi
+  # Engine-scope before workshop envelope so engine touches name the precise reason.
   if [[ "$reqs" == *no_engine_crate* ]] && ! check_no_engine_crate; then
-    emit_verdict reserve "novelty"
+    emit_verdict reserve "engine-scope-violation"
     return 0
   fi
   if [[ "$reqs" == *no_engine_src* ]] && ! check_no_engine_src; then
-    emit_verdict reserve "novelty"
+    emit_verdict reserve "engine-scope-violation"
+    return 0
+  fi
+  if [[ "$reqs" == *workshop_only* ]] && ! check_workshop_only; then
+    emit_verdict reserve "class-envelope-violation"
     return 0
   fi
   if [[ "$class_id" == "corpus-module-marker-sweep" ]] && ! check_module_marker_inventory_deletions; then
-    emit_verdict reserve "novelty"
+    emit_verdict reserve "module-marker-shape-mismatch"
     return 0
   fi
 
@@ -923,6 +951,10 @@ run_selftest() {
     clearance_selftest_module_marker_without_result_no_match
     clearance_selftest_module_marker_bad_inventory_no_match
     clearance_selftest_module_marker_source_edit_rejected
+    clearance_selftest_unclassified_scope_not_novelty
+    clearance_selftest_docs_ladder_pointer_clearable
+    clearance_selftest_engine_scope_violation_not_novelty
+    clearance_selftest_explicit_novelty_claim_reserved
   )
   local name
   for name in "${fixtures[@]}"; do
