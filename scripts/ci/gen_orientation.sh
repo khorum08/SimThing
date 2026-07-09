@@ -1208,6 +1208,7 @@ def render_orientation(active_info: dict) -> tuple:
     "- harness-error → fix data/target resolution before re-run.",
     "- FAIL(remedy) → apply named remedy and re-run clearance.",
     "- DA exit-proof stamp (binding): after DA pass (graduate-merge / formal admission / denial), DA updates active workplan Exit proof + results COMPLETE + orientation regen and merges the stamp PR; not orchestrator residual (see agent_onboarding).",
+    "- DA verify-the-tree (non-discretionary): before ACCEPT/graduate/admit on code or proof, confirm against the actual branch; light vs deep sets depth only — never graduate on the relay alone (see agent_onboarding).",
     "",
     "## Orientation Receipt (ORIENT-RECEIPT)",
     "",
