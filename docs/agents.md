@@ -140,9 +140,11 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
   (doctrine-scan lifecycle gate). Expeditionary escape: `expeditionary: YES` + charter + `expeditionary_until`
   — cannot RELAX production/engine/long-lifecycle. Full DA ritual (including exit-proof stamp after pass):
   [`agent_onboarding.md`](agent_onboarding.md) DA section.
-- **Inner loop (Track C):** run `cargo check -p <touched-crate>` and `bash scripts/ci/doctrine_scan.sh` after
-  small edits, before PR-time cleanup — the same scanner, consulted earlier, so a doomed path is pruned in
-  your own loop instead of at CI/triage/DA.
+- **Inner loop (coding default):** `cargo check -p <touched-crate>` then `bash scripts/ci/agent_scan.sh`
+  (delta-first HEURISTIC + RELIABLE hard FAIL; ambient whole-tree INSPECT excluded). Whole-tree
+  `doctrine_scan.sh` remains CI/maintainer control, not the coding default.
+- **Track closeout:** `bash scripts/ci/track_closeout.sh` is the sole birth_track closure authority
+  (build-manifest → check-eval → apply); never hand-delete inventory rows for open tracks.
 - **Onboarding standard (follow it every rung):** [`ci_screening_surface.md`](ci_screening_surface.md) **§7**
   is the ordered agent onboarding procedure (read the digest `docs/sanctioned_surface.md` *before* grepping for
   the kernel surface → run the inner loop → handle FAIL/INSPECT → regenerate the digest if you touch

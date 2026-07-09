@@ -20,6 +20,10 @@ Builds one rung from a handoff. Cannot see the whole governance picture and does
 
 - **Cold start:** when the user / Owner / DA opens a fresh coding-agent session, the agent runs
   `bash scripts/ci/orient.sh --role=coding` once and carries the emitted `ORIENT-RECEIPT`.
+- **Inner loop (unconditional, ≤4 steps — HU-DELTA-SCAN-0):** after orient-once,
+  `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh` (delta-first doctrine screen;
+  ambient whole-tree HEURISTIC never shown) → focused `cargo test` when tests/handoff require it.
+  Whole-tree `doctrine_scan.sh` is CI/maintainer, not the coding default.
 - **You hand it:** the rung's production handoff (from the orchestrator or DA) plus the instruction to carry
   its existing session receipt. Do not make each handoff re-run full orientation.
 - **Mid-session governance movement:** if the receipt is stale or missing, stop and report that to the
@@ -94,12 +98,25 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 
 ## Quick reference
 
-| Tier | Cold-start command | Returns | Merges |
+| Tier | Cold-start / default loop | Returns | Merges |
 |---|---|---|---|
-| Coding (Grok/Cursor) | `bash scripts/ci/orient.sh --role=coding` once per fresh session | PROBATION / proof-present | nothing |
+| Coding (Grok/Cursor) | `orient.sh --role=coding` once → `cargo check -p` → `agent_scan.sh` → focused test | PROBATION / proof-present | nothing |
 | Orchestration (Codex/webchat) | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
-| DA (Opus/Fable) | `bash scripts/ci/orient.sh --role=da` | graduation or remedial handoff **+ exit-proof stamp merge** (tree-verify weighted) | gate-wiring / DA-reserve / exit-proof stamps, after review |
+| DA (Opus/Fable) | `orient.sh --role=da` (+ weighted treeverify) | graduation or remedial handoff **+ exit-proof stamp merge** | gate-wiring / DA-reserve / exit-proof stamps, after review |
 
-**When to update this file:** only when a *tier's session-admission ritual* changes (a new entrypoint command
-or a new agent tier). Per-rung governance is not here — it lives in the generated orientation digest, which
-cannot drift. This file is a stable operator manual, not a changelog.
+## Harness maintenance & sprawl observation (operator / DA)
+
+Pointer-only — mechanics in `docs/track_closeout_protocol.md` and the named scripts:
+
+| Instrument | One-line role |
+|---|---|
+| `track_closeout.sh --discover` | list end-of-lifecycle assets for a track before building a manifest |
+| `track_closeout.sh --artifact-expiry` | wall-clock check on leased closeout artifacts + parking pen |
+| `track_closeout.sh --decommission --dry-run` | preview reaping expired parked rows / leased docs |
+| `doc_budget_check.sh --check` | DOC-BUDGET prose caps (`doc_budget_baseline.tsv`) |
+| `da_treeverify.sh --check-lifecycle` | non-core `da_review_profile.tsv` rows must not be past `expires_on` |
+| `docs/tests/hu_throughput_snapshot.tsv` | harness meta-gauges (scan tax, checklist steps, table counts) |
+
+**When to update this file:** when a *tier's session-admission ritual* or coding default loop changes (e.g. a
+new entrypoint command). Per-rung governance lives in the generated orientation digest. This file is a
+stable operator manual, not a changelog.

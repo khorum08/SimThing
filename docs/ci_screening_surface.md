@@ -110,14 +110,17 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | File | Role |
 |---|---|
 | `doctrine_scan.sh` | reads `scans.tsv` + `allow/`, applies each scan (`rg -U`), emits the report + footer; every FAIL prints its sanctioned remedy |
+| `agent_scan.sh` | **delta-first coding screen**: RELIABLE hard FAIL + HEURISTIC changed-files only; footer `AGENT-SCAN-VERDICT: PASS\|FAIL\|INSPECT delta_inspect=N elapsed=Ns` (no ambient whole-tree HEURISTIC). Whole-tree scan = CI/maintainer |
 | `scan_allowlists.py` | the closed-set allowlist scans (producers / buffer-handles / kernel-surface); loads `sealed_types.txt` from data |
 | `doctrine_pr_scan.sh` | PR-delta wrapper: RELIABLE whole-tree + HEURISTIC on the diff |
 | `doctrine_selftest.sh` | the rot-guard: runs every RELIABLE scan against its known-bad (must FAIL) + the trap corpus + clean master (must NOT FAIL); tool-missing emits FAIL, never a false PASS |
 | `inspect_spam_check.sh` | the §1A hill-climbing bounds → `INSPECT-SPAM-CHECK: SPAM|OK` |
 | `audit_kernel_surface.py` / `verify_kernel_surface.py` | re-derive / diff `kernel_surface.txt` against `lib.rs` (both `pub use` forms) |
-| `gen_digest.sh` | regenerates / `--check`-verifies `docs/sanctioned_surface.md` (the global sanctioned-surface digest) against the live scans + allowlists — CI-enforced freshness |
-| `gen_orientation.sh` | regenerates / `--check`-verifies `docs/orchestrator_orientation.md` from `active_track.txt`, the active design doc, clearance data, relay lint, and anchors; `--open <track.md>` is the local/operator entrypoint for setting or creating the active orchestration track. **Workplan classifier (binding):** `--open` accepts only production workplans under `docs/` that are *not* under `docs/tests/`, `docs/archive/`, or `docs/workshop/`, that parse ≥1 PR-ladder/rung table, and that carry workplan language (`production track` / `PR ladder` / `workplan` / `design track`). Evidence indexes and other non-workplan markdown hard-fail with `ORIENTATION-OPEN-VERDICT: FAIL(non-workplan)` *before* mutating `active_track.txt` or the orientation digest; an existing invalid `active_track` pointer likewise fails generate/`--check` as `FAIL(invalid-active-track: non-workplan)`. |
-| `fixtures/` | known-bad inputs (one per RELIABLE scan) + false-positive traps + HEURISTIC production negative controls; `fixtures/README.md` maps fixture → scan → expected verdict |
+| `gen_digest.sh` | regenerates / `--check`-verifies `docs/sanctioned_surface.md` against live scans + allowlists — CI-enforced freshness |
+| `gen_orientation.sh` | regenerates / `--check`-verifies `docs/orchestrator_orientation.md`; `--open <track.md>` sets active track (workplans only under `docs/`, not `docs/tests|archive|workshop`) |
+| `clearance_check.sh` | M1 router: `ORCHESTRATOR-CLEARABLE` / `DA-RESERVE(...)` / `FAIL(...)`. **`DA-RESERVE` also emits `DA-TREEVERIFY-PROFILE:`** (via `da_treeverify_lib.py`); **CLEARABLE never**. CLI: `da_treeverify.sh` |
+| `class_predicates.tsv` | data-driven predicates: scope/forbidden globs + detect_mode; **no bespoke per-class bash**; requirements = proof-identity only (`tested_code_sha\|coverage_basis\|ci_green`) |
+| `fixtures/` | known-bads + traps; families on `harness-fixture` birth_track |
 | `.github/workflows/doctrine-scan.yml` | the authoritative gate (runs entirely on GitHub) |
 ### Test-corpus lifecycle & inventory tooling (the Rustified Test Lifecycle surface)
 
@@ -136,15 +139,13 @@ mutates and may run `cargo check -p <crate>` for `elevate-code`; GHA runs proof/
 | `test_lifecycle_expiry_check.sh` | lifecycle tripwire | flags tests surviving past their birth-track closure and applies the DSU ladder. Modes: `--schema`, `--scheduled`, `--track-closeout <track_id>`, `--closure-gate <track_id>`, `--prove`. Emits `LIFECYCLE-EXPIRY-VERDICT: PASS\|INSPECT\|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>` |
 | `test_inventory_check.sh` | inventory gate | validates the inventory schema + class/verdict grammar (allows the `dependency-floor` class for non-runnable helpers) |
 | `test_inventory_drift_check.sh` | drift gate | the `TEST-INVENTORY-DRIFT` stock gate body: inventory must match discovered tests and every KEEP row must be owned; unledgered runnable tests FAIL. `permanent-residue:dependency-floor` rows are exempt from the stale-drift check only |
-| `test_lifecycle_boundaries.tsv` | boundary **policy** (B-T1..T7) | doctrine for superseding_boundary IDs — not a per-test audit ledger (per-row boundary audit table retired HU-INVENTORY-ONEWRITE-0) |
+| `test_lifecycle_boundaries.tsv` | boundary **policy** (B-T1..T7) | superseding_boundary doctrine (per-row audit ledger retired) |
 
-`TEST-INVENTORY-DRIFT` and `TEST-BUDGET` run as **stock gates inside `doctrine_scan.sh`**, enforcing inventory truth
-and the ≤3-new-`#[test]` budget. `track_closeout.sh` owns closure; expiry checks remain operator/cadence diagnostics (§11).
+`TEST-INVENTORY-DRIFT` + `TEST-BUDGET` stock gates live in `doctrine_scan.sh`. `track_closeout.sh` owns closure (§11).
 
 ### Track B executable-proof tooling (Track B DA-CLOSED 2026-07-04)
 
-Track B is closed; both proof lanes landed. These are its scripts/data, surfaced here for completeness (operator
-quick-reference for the GitHub/webchat lane is §9; the owner-local lane is the citation contract in §9).
+Track B closed; both proof lanes landed (operator quick-ref §9; owner-local citation contract in §9).
 
 | File | Lane | Role |
 |---|---|---|
@@ -289,10 +290,10 @@ and the DA applies:
 **Handoffs:** `relay_lint.sh` + `handoff_template.md`; §H violations rejected at review.
 
 **Merge authority (judgment-residue — constitution §0.9.7 governs):** precedented-class clearance is
-mechanical via `clearance_check.sh` checks 1–8 (`precedented_classes.tsv`). Empty-class split:
-`admitted-scope-router-gap` (admitted envelope + proof, missing class — class-harden) vs narrowed
-`unclassified-scope`; novelty claim-only; workshop-TP vs admitted ClauseScript API vs admitted picker classes.
-DA spot-audits self-authorized merges; one wrong self-merge suspends authority. Owner supremacy above all.
+mechanical via `clearance_check.sh` + `precedented_classes.tsv` / `class_predicates.tsv`. Empty-class split:
+`admitted-scope-router-gap` vs narrowed `unclassified-scope`; novelty claim-only. **`DA-RESERVE(...)` always
+emits `DA-TREEVERIFY-PROFILE:`** (advisory fold); **`ORCHESTRATOR-CLEARABLE` never does.** Body requirements
+are proof-identity only (no non-diff attestations). DA spot-audits self-authorized merges; Owner supremacy above all.
 
 **Channeling DA token spend (judgment-residue — feed the routing table honestly):**
 - **Declare risk classes truthfully and completely** — under-declaring to earn a light review is the
@@ -322,11 +323,11 @@ source of truth** — it consumes the data in §2, so the discipline that keeps 
   patterns — read it instead of grepping `lib.rs` to rediscover the surface. **Freshness is CI-enforced:** the
   workflow runs `gen_digest.sh --check` (under `set -o pipefail`), so a stale digest hard-FAILs with a
   regenerate remedy — the digest can never silently lie.
-- **DURING generation — the inner-loop self-scan.** After each small edit, run `cargo check -p <touched-crate>`
-  and `bash scripts/ci/doctrine_scan.sh`. The FAIL-with-remedy is a steering signal that prunes a doomed path in
-  your own loop before it reaches a PR / CI / triage / DA. Replaces the *"did I violate a rule"* greps.
-- **AFTER generation — the CI gate.** The GitHub `Doctrine Scan` (§1). FAIL-as-teacher prints `file:line` + the
-  remedy, so you don't grep to *locate* a violation.
+- **DURING generation — coding default screen.** After each small edit: `cargo check -p <touched-crate>` then
+  `bash scripts/ci/agent_scan.sh` (delta HEURISTIC + RELIABLE hard FAIL). Whole-tree `doctrine_scan.sh` is
+  CI/maintainer. FAIL-with-remedy prunes doomed paths before PR/CI/triage/DA.
+- **AFTER generation — the CI gate.** GitHub Doctrine Scan whole-tree (§1). FAIL prints `file:line` + remedy.
+
 - **Introspection — the data is the interface.** The `DOCTRINE-SCAN-VERDICT:` footer, `triage_log.tsv`, and the
   closed-set `allow/*.txt` answer *"what is screened / fire-rate per scan / retirement candidates / how wide is
   the surface"* — greppable/parseable, no dashboard.
@@ -342,8 +343,8 @@ three trustworthy.
 1. **Read the digest first; don't grep for the surface.** If your rung touches `simthing-kernel` or a consumer of
    it, read `docs/sanctioned_surface.md` — the authoritative, freshness-gated list of doors you may call. It is
    the pre-computed answer; do not rediscover the surface by grepping `lib.rs`.
-2. **Run the inner loop as you edit.** After each small edit: `cargo check -p <touched-crate>`, then
-   `bash scripts/ci/doctrine_scan.sh`. Fix a FAIL immediately from its printed remedy; do not accumulate.
+2. **Run the coding loop as you edit.** After each small edit: `cargo check -p <touched-crate>`, then
+   `bash scripts/ci/agent_scan.sh`. Fix a FAIL immediately from its printed remedy; do not accumulate.
 3. **On a FAIL:** fix the violation, **or** — only if it is a legitimately new sanctioned door — add a conforming
    `allow/*.txt` record per §4. **Never edit the scanner to dodge a valid finding.** Match repair posture to
    failure class (error-adaptive repair, arXiv:2606.31706): a scanner/allowlist FAIL is token-cheap — apply the
@@ -455,55 +456,34 @@ non-owner-deep GHA floor proves *compilation of the survivors*, never *execution
 
 ## 11. Test-corpus lifecycle tooling cycle (Rustified Test Lifecycle — operator surface)
 
-The doctrine is in the CI-scaffolding design §4.1; this is the **operator walk-through** of the tooling that
-enforces it. The governing law (see §9 Track D note): **every test is assumed DELETED at its birth track's
-closure** unless it (a) carries a canonical notion — then promote it into a `simthing-kernel` type/seal or an EML
-opcode-stack construct and delete the test; (b) is a `TIER7` terminal-proof / permanent-residue class with a
-`catches:` note; or (c) is a non-runnable `dependency-floor` helper. All lifecycle tooling is **ledger/text
-analysis only — no toolchain, no build, no cargo** — so it is safe to run anywhere, including inside a docs rung.
+Doctrine: CI-scaffolding design §4.1. Law (see §9 Track D note): **every test is assumed DELETED at birth-track
+closure** unless (a) promoted to a kernel type/EML construct, (b) TIER7 permanent-residue with `catches:`, or
+(c) non-runnable `dependency-floor`. Lifecycle tooling is **ledger/text only** (no cargo).
 
 **The cycle:**
 
-1. **Birth.** A new test is added with its inventory row in `test_inventory.tsv`, naming its `class`, its
-   `birth_track`, a `promotion_target` (or a permanent-residue class), and `dsu_survivals=0`. `test_inventory_check.sh`
-   validates the schema; the `TEST-INVENTORY-DRIFT` stock gate (in `doctrine_scan.sh`) fails any unledgered runnable
-   test on the PR, and `TEST-BUDGET` flags a delta adding more than three `#[test]` fns to one file without
-   table-driven form. This is the blocking floor — it runs on every PR.
+1. **Birth.** Inventory row in `test_inventory.tsv` (`class`, `birth_track`, `promotion_target`, `dsu_survivals=0`).
+   Drift fails unledgered runnables; `TEST-BUDGET` flags >3 new `#[test]`s without table-driven form.
 
-2. **Track closure → scripted closeout.** Use `track_closeout.sh`: build manifest, resolve every
-   test/doc disposition, `--check-eval`, then `--apply`. Apply flips the track to `closed`, mutates
-   inventory/boundary rows in lockstep, leases artifacts, and runs gates. Same-PR closeout deletions
-   require both report and manifest; closeout-substrate changes also need a disposable two-row sample.
+2. **Track closure.** `track_closeout.sh --build-manifest` → resolve → `--check-eval` → `--apply` (closes track,
+   mutates inventory only, leases artifacts). Same-PR deletions need report+manifest.
 
 ```bash
-bash scripts/ci/track_closeout.sh --build-manifest <workplan|--track <track_id>> [--docs <glob>]...
+bash scripts/ci/track_closeout.sh --build-manifest <workplan|--track <id>> [--docs <glob>]...
 bash scripts/ci/track_closeout.sh --check-eval <manifest>
 bash scripts/ci/track_closeout.sh --apply <manifest>
 ```
 
-   The expiry commands emit `LIFECYCLE-EXPIRY-VERDICT: PASS|INSPECT|FAIL expired=N audit=N [max_dsu_survivals=N] mode=<mode>`.
-   A test whose birth track has closed and which is **not** promoted, permanent-residue, or a dependency-floor
-   helper is an **expired candidate** → delete-or-promote.
+3. **DSU ladder.** `dsu_survivals` tiers in `test_lifecycle_dsu_tiers.tsv` (1–2 audit → 3–4 rejustify → 5+ presumed-stale).
+   Exit is promotion to a type, not perpetual renewal. Closed-track non-residue rows are expire candidates.
 
-3. **Downstream-utility renewal ladder.** A test that legitimately outlives its birth track earns a
-   `dsu_survivals` increment each time it is affirmatively renewed. `test_lifecycle_dsu_tiers.tsv` sets the
-   escalating burden: `1–2` = advisory-audit (PASS, renewal burden begins); `3–4` = rejustify (INSPECT — must
-   re-justify with a fresh, named, verified downstream consumer); `5+` = presumed-stale (INSPECT — mandatory
-   delete-or-promote candidate unless the DA affirmatively renews). **Promotion pressure is deliberate:** the
-   sanctioned exit from rising DSU debt is promotion into a kernel type / EML construct, **not** perpetual renewal.
+4. **Triage INSPECTs** via `/triage` into `triage_log.tsv` (§5A).
 
-4. **Triage every INSPECT.** Lifecycle INSPECTs route through the §1A loop like any other: the orchestrator lands
-   a `delete/green/escalate` row via `/triage` (§5A) into `triage_log.tsv`. An unlogged clearance is invisible and
-   therefore did not happen.
+5. **Boundary policy only.** `test_lifecycle_boundaries.tsv` is B-T1..T7 doctrine; per-row audit ledger retired;
+   inventory is the sole survivor table.
 
-5. **Boundary policy (not per-row audit).** `test_lifecycle_boundaries.tsv` remains B-T1..T7 doctrine.
-   The per-test boundary audit ledger and checker were **retired** (HU-INVENTORY-ONEWRITE-0); `test_inventory.tsv`
-   is the sole survivor table (drift gate unchanged).
-
-**Wiring status:** the inventory/budget gates are already blocking (inside `doctrine_scan.sh`). The
-`test_lifecycle_expiry_check.sh` tripwire is **operator/cadence-run, not yet a workflow** — a scheduled expiry
-workflow requires an explicit cadence rung (do not add scheduled workflow changes without one). Until a material
-reduction cadence lands, the expiry sweep is an orchestrator closeout duty, not an automated gate.
+**Wiring:** inventory/budget gates block in `doctrine_scan.sh`. Expiry is operator/cadence (not a PR workflow)
+until a material-reduction cadence lands.
 
 ## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)
 
@@ -542,7 +522,4 @@ section is the operator surface.
 - **Orchestrator note (judgment-residue).** Classify-before-merge per symbol; widening requires DA/Owner approval.
   Tripwire: `SPEC-LOWERER-KIND-READ` in `scans.tsv` (kind-branching); non-kind residue is live review control.
 
-> **Deferred elaboration (not in force).** A per-production `simthing-workshop/src/testthing/<production>/`
-> sub-taxonomy with a scan carve-out and a mechanical `--track-closeout` emptiness gate is the natural next step
-> *when* workshop fills and needs per-expedition sub-organization. Deferred — until then, "candidate code in the
-> `simthing-workshop` leaf, default-delete at closeout" is the whole mechanism. Do not scaffold `testthing/` yet.
+> **Deferred:** per-production `testthing/<production>/` sub-taxonomy + emptiness gate — not in force. Do not scaffold.
