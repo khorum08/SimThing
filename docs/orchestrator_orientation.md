@@ -35,7 +35,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 8560901132d235dce830afff0940552022be78cf6c93599cf6570aedbee22bb1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | bb56659ee61851b6a6ebf7a33b284b7f97b975d184220df7cbc387220d86d190 |
-| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | cf6c091bba65fc3629113176d16897b5940f61993175bf2e278d12a32dea4680 |
+| design_0_0_8_5_clausescript_terran_pirate_galaxy.md | da2c5f61282f3dcf057e60c316b867509f0f9c1f5ed46a4cc5e3826bacd94076 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 28fae74603d1917f1cde78d51c43cd2de1f0a1ec1004fa2463fb932de9159fb2 |
 
@@ -167,6 +167,7 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 - gate-wiring → deep audit; harness surfaces are never self-mergeable.
 - harness-error → fix data/target resolution before re-run.
 - FAIL(remedy) → apply named remedy and re-run clearance.
+- DA exit-proof stamp (binding): after DA pass (graduate-merge / formal admission / denial), DA updates active workplan Exit proof + results COMPLETE + orientation regen and merges the stamp PR; not orchestrator residual (see agent_onboarding).
 
 ## Orientation Receipt (ORIENT-RECEIPT)
 
@@ -181,8 +182,8 @@ Schema:
 
 Role meanings:
 - `coding` — clearance contract, inner-loop commands, precedented classes
-- `orchestrator` — full orientation digest
-- `da` — rung table, binding conditions, escalation posture
+- `orchestrator` — full orientation digest; ORCHESTRATOR-GRADUATED status-stamp residual only
+- `da` — rung table, binding conditions, escalation posture; after a passed verdict, exit-proof stamp + merge is DA duty (agent_onboarding)
 
 Receipt freshness: relay-lint compares claimed `orientation_rule_stamp` to the live rule stamp; mismatch -> `FAIL(stale-orient-receipt)`.
 Relay-lint receipt rule: gate-wiring handoffs require a valid receipt for the declared role.
