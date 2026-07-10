@@ -41,7 +41,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | 6a1431e76900b7e1c5ed619f8f2b47caca31bb1c803750c665f9a013c4c08ede |
-| binding_conditions.tsv | 1bc29185ebf0a42176731251954f269168226e96c50e9f32ca3ea555ef65ffa1 |
+| binding_conditions.tsv | f4187fcda67ca9cc5c20006ffff2a1d139514a881368a545be0237e7acaab972 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
 | design_0_0_8_4_8_3_orientation_curation.md | d87e642d9181c96b1b43a5e801ac67d33ee4bf70a277abb1b4bc255b2abd4bbc |
@@ -130,7 +130,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | TP-FLEET-MOVEMENT-0 | B3-larger-theater-gpu-cpu | DA-2026-07-05 | discharged | TP-FLEET-MOVEMENT-0 |
 | HU-TRACK-OPEN-0 | 0.0.8.5-park-gate-superseded-by-owner-carveout-authorization | Owner-2026-07-09 | discharged | HU-TRACK-OPEN-0 |
 | HU-CLOSEOUT-0 | no-new-clearance-class-registration-without-retirement-pairing-during-track | DA-2026-07-09 | discharged | HU-CLOSEOUT-0 |
-| OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | open | OC-CLOSEOUT-0 |
+| OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | discharged | OC-KERNEL-LANE |
 | OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | open | OC-CLOSEOUT-0 |
 
 ## Clearance Ledger (recent)
