@@ -2,7 +2,9 @@
 
 ## Status
 
-**PROBATION / proof-present** — readiness map only. No production clock, transport UI, live bridge, library modal, scenario create, clearance class, or hardening in this PR.
+**ORCHESTRATOR-GRADUATED / COMPLETE** — merged [#1257](https://github.com/khorum08/SimThing/pull/1257) @ `4f8c250c448a548383df039cbf640bc06b35112b` (head `67d9e0e0918db00f0ad05894ad32f8da728b547b`). Status hygiene rolled into `STUDIO-SIM-CLOCK-0`.
+
+Readiness map only (no clock/UI/bridge in #1257). Follow-on: `STUDIO-SIM-CLOCK-0`.
 
 ## Identity
 
@@ -12,6 +14,8 @@
 | Track | `0.0.8.6-studio-live-ops` (`docs/design_0_0_8_6_studio_live_ops.md`) |
 | Kind | readiness / docs-report (repo inspection) |
 | Canonical design | `docs/design_0_0_8_6_studio_live_ops.md` §4 rung 9.0 |
+| PR | [#1257](https://github.com/khorum08/SimThing/pull/1257) |
+| Merge SHA | `4f8c250c448a548383df039cbf640bc06b35112b` |
 | Inspected HEAD (pre-PR) | `1a3f6b86820838b7c5026f4686fe79d086310de9` |
 
 ## Inspection spine (kept tight)
