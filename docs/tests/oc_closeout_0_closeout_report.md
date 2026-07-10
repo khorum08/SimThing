@@ -5,7 +5,7 @@
 `docs/tests/0.0.8.4.8.3-orientation-curation_closeout_report.md`
 
 ## Status
-birth_track **closed** · active_track retired from OC design → `none` → re-opened to
+birth_track **closed** · CLOSEOUT-RECEIPT `d6c469df75d1` · **DA-GRADUATED / merged [#1278](https://github.com/khorum08/SimThing/pull/1278) @ `129b0a34`** · active_track retired from OC design → re-opened to
 `docs/design_0_0_8_6_studio_live_ops.md` · **no product implementation**
 
 ## TSV / meta-gauges (before → after)
