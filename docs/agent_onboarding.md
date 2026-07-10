@@ -21,9 +21,9 @@ Builds one rung from a handoff. Cannot see the whole governance picture and does
 - **Cold start:** when the user / Owner / DA opens a fresh coding-agent session, the agent runs
   `bash scripts/ci/orient.sh --role=coding` once and carries the emitted `ORIENT-RECEIPT`.
 - **Inner loop (unconditional, ≤4 steps — HU-DELTA-SCAN-0):** after orient-once,
-  `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh` (delta-first doctrine screen;
-  ambient whole-tree HEURISTIC never shown) → focused `cargo test` when tests/handoff require it.
-  Whole-tree `doctrine_scan.sh` is CI/maintainer, not the coding default.
+  `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh` → focused `cargo test` when required.
+  Doctrine-adjacent paths: use `bash scripts/ci/anchor_query.sh` (not raw doctrine greps). Whole-tree
+  `doctrine_scan.sh` is CI/maintainer, not the coding default.
 - **You hand it:** the rung's production handoff (from the orchestrator or DA) plus the instruction to carry
   its existing session receipt. Do not make each handoff re-run full orientation.
 - **Mid-session governance movement:** if the receipt is stale or missing, stop and report that to the
@@ -116,7 +116,7 @@ Pointer-only — mechanics in `docs/track_closeout_protocol.md` and the named sc
 | `doc_budget_check.sh --check` | DOC-BUDGET prose caps (`doc_budget_baseline.tsv`) |
 | `da_treeverify.sh --check-lifecycle` | non-core `da_review_profile.tsv` rows must not be past `expires_on` |
 | `docs/tests/hu_throughput_snapshot.tsv` | harness meta-gauges (scan tax, checklist steps, table counts) |
+| `anchor_reach_log.tsv` | records what agents query via `anchor_query.sh` (and misses); observability only — **not a gate**; prune with `--prune 30` at closeout |
 
-**When to update this file:** when a *tier's session-admission ritual* or coding default loop changes (e.g. a
-new entrypoint command). Per-rung governance lives in the generated orientation digest. This file is a
-stable operator manual, not a changelog.
+**When to update this file:** when a *tier's session-admission ritual* or coding default loop changes.
+Per-rung governance lives in the generated orientation digest — this file is a stable operator manual.

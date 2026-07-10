@@ -14,6 +14,9 @@ adds no new invariant surface.
 `expires_on`. On track closeout, **delete or retire** those rows (lifecycle gate fails if expired `active`
 non-core rows remain). Core rows (`core=YES`) are permanent global surface weights — never closeout-delete.
 
+**Reach-log decay:** during closeout, prune or report `scripts/ci/anchor_reach_log.tsv` entries older than
+30 days via `bash scripts/ci/anchor_query.sh --prune 30` (observability only — never a clearance gate).
+
 ## The one rule that governs everything
 
 **TSV row growth is the primary fail state of the rustification harness.** A track-scoped asset is

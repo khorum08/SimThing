@@ -105,6 +105,9 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | `allow/sealed_types.txt` | data list | the closed set of sealed authority **type names** (bare names). Loaded by `scan_allowlists.py`; missing/empty fails loudly |
 | `inspect_justifications.tsv` | triage telemetry | per-INSPECT author justification (an INSPECT with none is `unresolved`) |
 | `triage_log.tsv` | triage telemetry | append-only `scan-id \| branch \| outcome(delete/green/escalate) \| reason \| commit` — **also the per-scan promotion telemetry** |
+| `doctrine_anchors.tsv` | anchor library | thin pointers (`anchor_id`, doc, section, domains, hash) — served verbatim |
+| `anchor_triggers.tsv` | path→domain map | `glob` → `trigger_domains` (mechanical adjacency; union with relay prose regex) |
+| `anchor_reach_log.tsv` | reach telemetry | append-only query log; observability only — **not a gate**; `--prune 30` at closeout |
 
 ### Engines (thin — change only when the *format/report* changes, never for an invariant)
 | File | Role |
@@ -118,7 +121,10 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | `audit_kernel_surface.py` / `verify_kernel_surface.py` | re-derive / diff `kernel_surface.txt` against `lib.rs` (both `pub use` forms) |
 | `gen_digest.sh` | regenerates / `--check`-verifies `docs/sanctioned_surface.md` against live scans + allowlists — CI-enforced freshness |
 | `gen_orientation.sh` | regenerates / `--check`-verifies `docs/orchestrator_orientation.md`; `--open <track.md>` sets active track (workplans only under `docs/`, not `docs/tests|archive|workshop`) |
-| `clearance_check.sh` | M1 router: `ORCHESTRATOR-CLEARABLE` / `DA-RESERVE(...)` / `FAIL(...)`. **`DA-RESERVE` also emits `DA-TREEVERIFY-PROFILE:`** (via `da_treeverify_lib.py`); **CLEARABLE never**. CLI: `da_treeverify.sh` |
+| `anchor_query.sh` | doctrine lookup (`--domain` / `--paths` / `--grep`); appends reach-log; `--prune <days>` decays rows |
+| `anchor_check.sh` | `--check` / `--resolve` / `--resync` — re-hash after anchored-doc edits; orphans exit nonzero |
+| `orient.sh` | cold-start spine + `ORIENT-RECEIPT`; role-scoped routing over generated orientation |
+| `clearance_check.sh` | M1 router: `ORCHESTRATOR-CLEARABLE` / `DA-RESERVE(...)` / `FAIL(...)` + `REQUIRED-ANCHORS:` on DA-RESERVE. **Every PR:** sticky **Clearance Report** via `.github/workflows/clearance.yml` + `clearance_comment.sh`. CLI: `da_treeverify.sh` |
 | `class_predicates.tsv` | data-driven predicates: scope/forbidden globs + detect_mode; **no bespoke per-class bash**; requirements = proof-identity only (`tested_code_sha\|coverage_basis\|ci_green`) |
 | `fixtures/` | known-bads + traps; families on `harness-fixture` birth_track |
 | `.github/workflows/doctrine-scan.yml` | the authoritative gate (runs entirely on GitHub) |
@@ -276,9 +282,9 @@ and the DA applies:
 
 ## 5A. Orchestrator guidance — the operational contract (constitution §0.9.7 is the authority)
 
-> **Cold-start:** run `bash scripts/ci/orient.sh --role=coding|orchestrator|da` and read generated
-> `docs/orchestrator_orientation.md` with ORIENT-RECEIPT — not a static reading list. Freshness:
-> `gen_orientation.sh --check`.
+> **Cold-start:** `bash scripts/ci/orient.sh --role=coding|orchestrator|da` → generated
+> `docs/orchestrator_orientation.md` + `ORIENT-RECEIPT` (role-scoped spine + `anchor_query.sh` entrypoint).
+> Orchestrator: read auto-posted Clearance Report sticky; `/clearance` is exceptional. Freshness: `gen_orientation.sh --check`.
 
 **Mechanized responsibilities (enforcing surfaces — do not re-derive from prose):**
 1. **Triage-log stewardship** — `clearance_check.sh` check 7 + `triage_log_check.sh` + `/triage`
@@ -328,13 +334,10 @@ source of truth** — it consumes the data in §2, so the discipline that keeps 
   CI/maintainer. FAIL-with-remedy prunes doomed paths before PR/CI/triage/DA.
 - **AFTER generation — the CI gate.** GitHub Doctrine Scan whole-tree (§1). FAIL prints `file:line` + remedy.
 
-- **Introspection — the data is the interface.** The `DOCTRINE-SCAN-VERDICT:` footer, `triage_log.tsv`, and the
-  closed-set `allow/*.txt` answer *"what is screened / fire-rate per scan / retirement candidates / how wide is
-  the surface"* — greppable/parseable, no dashboard.
+- **Introspection — the data is the interface.** `DOCTRINE-SCAN-VERDICT:`, `triage_log.tsv`, and `allow/*.txt`
+  answer what is screened / fire-rate / retirement candidates — greppable, no dashboard.
 
-**The through-line:** one artifact set (`scans.tsv` + `allow/*.txt` + `triage_log`) serves three positions
-(digest **before**, inner-loop **during**, CI gate **after**). Keeping it narrow and honest is what makes all
-three trustworthy.
+**The through-line:** one artifact set (`scans.tsv` + `allow/*.txt` + `triage_log`) serves digest / inner-loop / CI gate.
 
 ---
 
@@ -343,6 +346,8 @@ three trustworthy.
 1. **Read the digest first; don't grep for the surface.** If your rung touches `simthing-kernel` or a consumer of
    it, read `docs/sanctioned_surface.md` — the authoritative, freshness-gated list of doors you may call. It is
    the pre-computed answer; do not rediscover the surface by grepping `lib.rs`.
+1b. **Doctrine on trigger:** `bash scripts/ci/anchor_query.sh` — not raw doctrine greps. Editing an anchored doc:
+   `bash scripts/ci/anchor_check.sh --resync`, then commit updated `doctrine_anchors.tsv`.
 2. **Run the coding loop as you edit.** After each small edit: `cargo check -p <touched-crate>`, then
    `bash scripts/ci/agent_scan.sh`. Fix a FAIL immediately from its printed remedy; do not accumulate.
 3. **On a FAIL:** fix the violation, **or** — only if it is a legitimately new sanctioned door — add a conforming
@@ -406,7 +411,7 @@ The orchestrator must reject any doctrine-exec report whose default or comment-t
 
 **Executable Doctrine Exec profiles (`CI-PROOF-PROFILE-TAXONOMY-0`):** Track-D `test-pare-*` / `test-deletion-*` profiles are retired from `scripts/ci/doctrine_exec_profiles.tsv`. Executable profiles must reference current proof surfaces only — not historical deletion batteries. `doctrine_exec_profile_lint.sh` forbids `test-pare-*` profile IDs and `test-deletion-*` risk classes. Closure-certificate `cargo test --workspace --all-targets` is not a profile-default proof path.
 
-Track D note: owner-deep full batteries remain quarantined artillery. Smoke PASS is mechanics-only and not seal-proof. Seal-residue rungs still require targeted profile/probe proof. Boundary **policy** remains in `scripts/ci/test_lifecycle_boundaries.tsv` (B-T1..T7); the per-row audit ledger and checker were retired at HU-INVENTORY-ONEWRITE-0 (Track-D `test_pare_*` rename era at `CI-LIFECYCLE-RESIDUE-DELETE-0`; historical `test_pare_audit.tsv` deleted). **The Necessity Test (2026-07-03) supersedes "one representative per boundary," which is retired as a fossil premise:** a test is admissible ONLY if it catches a regression that neither the compiler/a type boundary, a production admission hard-error on a live path, nor an existing integration path already catches. If deleting it cannot break production and it is not a downstream dependency or required for canonical function, **delete it** — the per-boundary floor is **zero**, not one, for invariants the substrate already enforces. Keeping one per boundary guaranteed the corpus never shrinks below (number of boundaries) regardless of redundancy; that is the compromise that stalled paring, now removed. `TEST-ADMISSION-REGIME-0` makes this standing admission law: every KEEP inventory row names a permanent-residue class or promotion target, unledgered tests fail `test_inventory_drift_check.sh`, kernel/sim non-permanent KEEP rows fail, and `TEST-BUDGET` flags delta PRs that add more than three `#[test]` functions to one file without table-driven form. Until material reduction lands, weekly scheduled sentinel means sentinel-core only, and full quarantined battery remains workflow_dispatch-only. Do not implement scheduled workflow changes from Track D without an explicit cadence rung. **Track D is CLOSED (2026-07-04, `TRACK-D-CLOSEOUT-0`):** `TEST-NECESSITY-SWEEP-0` (merged #1122 @ `3ef232506f`) deleted 3,478 tests in one default-DELETE pass, inventory 4,070 → 731 (592 explicit keep + 137 `cfg_test_mod` markers + 2 non-runnable `dependency-floor` helpers), binding proof `cargo check --workspace --all-targets` PASS (DA-re-run). The **Rustified Test Lifecycle** (CI-scaffolding design §4.1) is now standing law: every test is **assumed DELETED at its birth track's closure** unless it (a) carries a canonical notion — then promote it into a `simthing-kernel` type/seal or an EML opcode-stack construct and delete the test, (b) is a `TIER7` terminal proof class with a `catches:` note, or (c) is a non-runnable `dependency-floor` helper. This is how the corpus can never re-propagate. **Closure-certificate exception to the full-battery ban:** a track/PR-ladder closeout may run `cargo test --workspace --all-targets` **once** as a closure certificate (or to satisfy a deferred DA review) — it certifies the survivor set as a whole and is never a routine or comment-triggered validation path; the `dependency-floor` residue class (`permanent-residue:dependency-floor`) is exempt from the stale-drift check only, never from the unledgered-runnable-test check.
+Track D note: Necessity Test / `TEST-ADMISSION-REGIME-0` is standing admission law; Track D CLOSED (`TRACK-D-CLOSEOUT-0` / #1122). Rustified Test Lifecycle = default-DELETE at birth-track close unless permanent-residue / TIER7 / dependency-floor. Closure-certificate workspace test is once-per-closeout only.
 
 Use `/triage <scan-id> <delete|green|escalate> <reason>` to append a §1A row to `scripts/ci/triage_log.tsv` on the PR branch. Malformed commands must be rejected with the expected format. Commands are collaborator-only and accepted from issue comments and PR review/review-comment events. Never run untrusted fork code under a write token.
 
@@ -512,14 +517,8 @@ section is the operator surface.
   in a sealed crate: any scenario-specific service/struct/fn/heuristic (HP/Damage resolver, fleet-contact logic,
   owner-bonus combat helper, zero-HP removal, RF-child-depth workaround, Terran/Pirate/Fleet/Cohort branching).
   *"Generic lowering, as prior TP rungs did it"* is **not** a licence — prior rungs predate this doctrine.
-- **Substrate widening is DA-authorized only — not an agent's escape hatch.** Genuine generic substrate widening
-  (a reusable, semantic-free API a crate needs) is admissible as future utility, but the route flows **top-down
-  from DA/Owner approval**. An agent may **propose/appeal** it to the orchestrator when it is the most
-  performant/logical path (*surface, never self-grant*, core §1.2.1). "Future utility" / "downstream value" is a
-  **request the DA adjudicates**, never a self-issued verdict — it is nearly unfalsifiable and self-serving, so
-  the burden is on the appeal and the **default is deny → workshop-home it**. A self-classified "generic
-  widening" landed in an engine crate is drift, rejected at review.
-- **Orchestrator note (judgment-residue).** Classify-before-merge per symbol; widening requires DA/Owner approval.
-  Tripwire: `SPEC-LOWERER-KIND-READ` in `scans.tsv` (kind-branching); non-kind residue is live review control.
+- **Substrate widening is DA-authorized only.** Agents may propose/appeal; default is deny → workshop-home.
+  Self-classified "generic widening" in an engine crate is drift. Orchestrator: classify-before-merge;
+  tripwire `SPEC-LOWERER-KIND-READ` (kind-branching); non-kind residue is live review control.
 
 > **Deferred:** per-production `testthing/<production>/` sub-taxonomy + emptiness gate — not in force. Do not scaffold.
