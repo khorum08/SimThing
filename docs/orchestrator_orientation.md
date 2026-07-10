@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 1bc29185ebf0a42176731251954f269168226e96c50e9f32ca3ea555ef65ffa1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
-| design_0_0_8_4_8_3_orientation_curation.md | 1194812b2cfd045c56b3f99c0b267583895697b8d77f90c57d8a19864d8b87f0 |
+| design_0_0_8_4_8_3_orientation_curation.md | 63042ca3a61c785cbc35fc40ce6020ce2c9c6214baa9b69b561e218cd3b030f6 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 7af9486ab782242d512f627a4e65a29cdbede8420a2981e098c79c9c36c01c47 |
 
@@ -58,6 +58,7 @@ Track state: `open`
 | 2 | OC-PATH-TRIGGER-0 | **Mechanical adjacency.** New data table `anchor_triggers.tsv` (`glob \ | trigger_domains`) mapping repo paths → domains (kernel/**→seal; sim/**+*.wgsl→field-policy; map/spatial paths→stead; ... |
 | 3 | OC-QUERY-0 | **Queryable + observable curation.** `scripts/ci/anchor_query.sh --domain <d> \ | --paths <files...> \ |
 | 4 | OC-ORIENT-SLICE-0 | **Cold-start spine in orientation** (generated, budgeted): the §1 always-on line | NOT STARTED |
+| 5 | OC-DOCS-CASCADE-0 | **Docs cascade once A1–A4 are live** (the HU-DOCS-CONSOLIDATION pattern, in-trac | NOT STARTED |
 | K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | NOT STARTED |
 | K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | NOT STARTED |
 | K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | NOT STARTED |
