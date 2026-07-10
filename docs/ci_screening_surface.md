@@ -26,7 +26,7 @@ agent's context window. Each pillar owns a rung-range:
 | Pillar | What it rustified | Enforcement form |
 |---|---|---|
 | **0.0.8.4 Admission Substrate** (AS-1–8B) | column access, channel/index identity, kind-free tick view, `SimulationFabric`, `StructuralCoord`, `PackedUpload` | **rung 1 — types.** The illegal state does not compile; one `compile_fail` per promoted invariant is its whole proof. |
-| **0.0.8.4.5 SimThing-Kernel** | the constitutional spine itself — "the sweep is the only authoritative path to mutate resolved state or emit a decision" | **rung 1 at architecture scale.** Sole owner of authoritative state, sole minter of effects; write/emission/participation seals; the cross-crate seal law; dependency-graph-enforced, zero-cost (ZST tokens, `#[repr(transparent)]`). |
+| **0.0.8.4.5 SimThing-Kernel** | constitutional spine — sole authoritative mutate/emit path | **rung 1 at architecture scale.** Seals + cross-crate seal law. **OC-K\*:** `ExactMagnitudeProof`, decision ingress, `OpcodeRegistrationGate`, role→`ColumnIndex` (residual `COLUMN-INDEX-MINT`). |
 | **0.0.8.4.6 CI Scaffolding** (Tracks A/B/C/D) | everything types cannot yet or can never reach | **rungs 2–3, mechanized.** Allowlist/blocklist scans, the self-testing scanner, test-admission law, the digest/inner-loop carrot, and the clearance ladder below. |
 
 **How it is used — an admissions-based rigor and clearance system.** Nothing in this repo is *believed*;
@@ -100,7 +100,7 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 |---|---|---|
 | `scans.tsv` | scan definitions | one scan per line, 7 fields: `id \| severity \| target-glob \| pattern \| exclude \| doctrine-ref \| promotion-blocker` |
 | `allow/sealed_producers.txt` | **allowlist** | the sanctioned producer doors for sealed types (`read_*`/`readback_*`/`dispatch_*`/`apply_*`/`cpu_oracle_*`) — anything else that produces a sealed type FAILs |
-| `allow/kernel_surface.txt` | **allowlist** | the closed set of `simthing-kernel` `lib.rs` exports, classed `surface-inert` / `authority-export` / `sealed-export` (never the wildcard `inert-util`) |
+| `allow/kernel_surface.txt` | **allowlist** | closed kernel `lib.rs` exports (`surface-inert` / `authority-export` / `sealed-export`); includes K doors (`ExactMagnitudeProof`, ingress tokens, `AdmittedEvalEml*`) |
 | `allow/inert_buffer_handles.txt` | **allowlist** | provably-inert public buffer utilities (`inert-util` only) |
 | `allow/sealed_types.txt` | data list | the closed set of sealed authority **type names** (bare names). Loaded by `scan_allowlists.py`; missing/empty fails loudly |
 | `inspect_justifications.tsv` | triage telemetry | per-INSPECT author justification (an INSPECT with none is `unresolved`) |
@@ -108,6 +108,7 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | `doctrine_anchors.tsv` | anchor library | thin pointers (`anchor_id`, doc, section, domains, hash) — served verbatim |
 | `anchor_triggers.tsv` | path→domain map | `glob` → `trigger_domains` (mechanical adjacency; union with relay prose regex) |
 | `anchor_reach_log.tsv` | reach telemetry | append-only query log; observability only — **not a gate**; `--prune 30` at closeout |
+| `docs/eml_gadget_library.md` | EML authoring | constitutional gadget surface (K4); pairs with `OpcodeRegistrationGate` |
 
 ### Engines (thin — change only when the *format/report* changes, never for an invariant)
 | File | Role |
@@ -201,8 +202,9 @@ layer is **designed to shrink**, and a growing scan count is a regression signal
 
 1. **All seven fields present.** Malformed rows are a scanner/data error (loud FAIL), never skipped.
 2. **A RELIABLE scan MUST carry a real `promotion-blocker`** — the type/admission boundary that would make it
-   redundant (e.g. *"retire when `ColumnIndex` is a kernel-wide newtype"*). An empty promotion-blocker on a
-   RELIABLE scan is a flagged anomaly: *why is this prose-guarded instead of typed?*
+   redundant (e.g. *"retire when `ColumnIndex::new` is admission-gated — layout-derived constructors only"* /
+   OC-K2.1). An empty promotion-blocker on a RELIABLE scan is a flagged anomaly: *why is this prose-guarded
+   instead of typed?*
 3. **First ask "should this be a type, not a scan?"** A grep scan is rung 3 of the admission ladder; it exists
    only because the invariant isn't yet a type boundary (rung 1). Prefer promotion. When an invariant *does*
    get promoted, **the same PR deletes the now-redundant scan** (the retirement contract).
@@ -283,8 +285,9 @@ and the DA applies:
 ## 5A. Orchestrator guidance — the operational contract (constitution §0.9.7 is the authority)
 
 > **Cold-start:** `bash scripts/ci/orient.sh --role=coding|orchestrator|da` → generated
-> `docs/orchestrator_orientation.md` + `ORIENT-RECEIPT` (role-scoped spine + `anchor_query.sh` entrypoint).
-> Orchestrator: read auto-posted Clearance Report sticky; `/clearance` is exceptional. Freshness: `gen_orientation.sh --check`.
+> `docs/orchestrator_orientation.md` + `ORIENT-RECEIPT` (Cold-Start Spine + `anchor_query.sh`).
+> Orchestrator: Clearance sticky (`REQUIRED-ANCHORS` on DA-RESERVE); `/clearance` exceptional.
+> Freshness: `gen_orientation.sh --check`.
 
 **Mechanized responsibilities (enforcing surfaces — do not re-derive from prose):**
 1. **Triage-log stewardship** — `clearance_check.sh` check 7 + `triage_log_check.sh` + `/triage`
@@ -325,10 +328,9 @@ source of truth** — it consumes the data in §2, so the discipline that keeps 
 
 - **BEFORE generation — the sanctioned-surface digest.** `docs/sanctioned_surface.md`, generated by
   `scripts/ci/gen_digest.sh` from `allow/*.txt` + `scans.tsv`. It is the agent's **pre-computed grep answer**:
-  the only kernel doors an agent may call (with door-class + rationale), the sealed types, and the forbidden
-  patterns — read it instead of grepping `lib.rs` to rediscover the surface. **Freshness is CI-enforced:** the
-  workflow runs `gen_digest.sh --check` (under `set -o pipefail`), so a stale digest hard-FAILs with a
-  regenerate remedy — the digest can never silently lie.
+  the only kernel doors an agent may call (with door-class + rationale), including graduated K-track gates,
+  the sealed types, and the forbidden patterns — read it instead of grepping `lib.rs`. **Freshness is
+  CI-enforced:** `gen_digest.sh --check` hard-FAILs a stale digest with a regenerate remedy.
 - **DURING generation — coding default screen.** After each small edit: `cargo check -p <touched-crate>` then
   `bash scripts/ci/agent_scan.sh` (delta HEURISTIC + RELIABLE hard FAIL). Whole-tree `doctrine_scan.sh` is
   CI/maintainer. FAIL-with-remedy prunes doomed paths before PR/CI/triage/DA.
@@ -343,11 +345,8 @@ source of truth** — it consumes the data in §2, so the discipline that keeps 
 
 ## 7. Agent onboarding procedure — do this, in order, every rung (the standard)
 
-1. **Read the digest first; don't grep for the surface.** If your rung touches `simthing-kernel` or a consumer of
-   it, read `docs/sanctioned_surface.md` — the authoritative, freshness-gated list of doors you may call. It is
-   the pre-computed answer; do not rediscover the surface by grepping `lib.rs`.
-1b. **Doctrine on trigger:** `bash scripts/ci/anchor_query.sh` — not raw doctrine greps. Editing an anchored doc:
-   `bash scripts/ci/anchor_check.sh --resync`, then commit updated `doctrine_anchors.tsv`.
+1. **Read the digest first.** Kernel: `docs/sanctioned_surface.md` + `docs/eml_gadget_library.md`. Residual `COLUMN-INDEX-MINT` (retired: `RAW-DATA-INDEX` / `AS5-COLUMN-ALIAS`). No `lib.rs` rediscovery.
+1b. **Doctrine on trigger:** `bash scripts/ci/anchor_query.sh` — not raw greps. Anchored-doc edits: `anchor_check.sh --resync` + commit `doctrine_anchors.tsv`.
 2. **Run the coding loop as you edit.** After each small edit: `cargo check -p <touched-crate>`, then
    `bash scripts/ci/agent_scan.sh`. Fix a FAIL immediately from its printed remedy; do not accumulate.
 3. **On a FAIL:** fix the violation, **or** — only if it is a legitimately new sanctioned door — add a conforming
@@ -521,4 +520,4 @@ section is the operator surface.
   Self-classified "generic widening" in an engine crate is drift. Orchestrator: classify-before-merge;
   tripwire `SPEC-LOWERER-KIND-READ` (kind-branching); non-kind residue is live review control.
 
-> **Deferred:** per-production `testthing/<production>/` sub-taxonomy + emptiness gate — not in force. Do not scaffold.
+> **Deferred:** per-production `testthing/<production>/` — not in force. Do not scaffold.

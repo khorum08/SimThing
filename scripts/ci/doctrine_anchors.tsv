@@ -1,14 +1,14 @@
 anchor_id	doc	section	trigger_domains	content_hash
 field-policy-time-decisions	docs/simthing_core_design.md	heading:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock,field-policy	ae2d4c2c0c7d9d29a93eb4041aa31d5dd107a9da8da68e66344aaf5f1c2c7d8b
-admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)	none-ci-owned,seal	887d2a3c9540b66d748edb0ba7e55e35c3530566d067965369e7baf2e42d38d7
+admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)	none-ci-owned,seal	4bedf826f6f77b675a6080dc3289c17849fb825026d449472d44df324e2062dd
 seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent,seal	49ee7c4ba6f40dd4c5254e895ba0c9b1ff12d44ab148f18ea82a7e9d83345f1c
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	c88002b728986a33cd8fbb2537c40658df9268798e50f6aa605bb592d130ead2
-property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver,property-value	7454775897c6cb5201aa21d0dbefa9a3c30bbaae1b67fb28ab3edc6946c14ee5
+property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver,property-value	084ee935326b75b2272c9dd9289f9f074b3cde7cb108bc14a4746c9d78915688
 eml-extension-ladder	docs/eml_gadget_library.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
-spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	7569c5524475a7f815e80a998c3d15f9f452c4ad96f70200a8d73f9992af25a5
-exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	677cd71cf5a09e40bddfbb1a942d3b30473a906b3b35b0888e35d6a12bec6edd
-drift-detectors-six-line	docs/simthing_core_design.md	heading:## 9. The drift detectors — litmus tests for every change	retain-set,drift-detectors	1f3bfc9659dfb289d6de24cb3d97b620f6f8e7ff5651e8ace52d320168de01d0
+spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	add4dbbc267ac54c2ecc317b8a792321f2bbb51ca64f9c58ccd69e10ef175745
+exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	6938a2efadb5f939b8e655700a02f6789e5806ac8792efeee06f6ca4d1e6506e
+drift-detectors-six-line	docs/simthing_core_design.md	heading:## 9. The drift detectors — litmus tests for every change	retain-set,drift-detectors	af20f8122501575b30b61cf06fbfe9cc278c516e97cda886111fbb05236cd003
 clausething-closed-vertical	docs/design_0_0_8_3.md	heading:## A. Closeout addendum — the ClauseThing vertical (ratified 2026-06-15)	clausething,mapgenerator	beb30ffaba500f7823222ed31b1fd81cf3a02d0fb6fd3f9825b0f3f54f32c1fe
 structural-execution-convergence	docs/stead_spatial_contract.md	heading:## 10. Structural execution convergence (Studio → GPU horizon)	gpu,driver,mapeditor-gpu,studio,structural-execution	17fa0732f44d2e630a7d353e8c257ffedae2469d12d0eaa15f83ddb77b529687
 session-lifecycle-adr-family	docs/adr/README.md	heading:# Architecture Decision Records	driver-session,feeder-session,mapeditor-session	d73fe5a83f25055d741a542c270d40849cbda207d6417983b000f9f068a7f844

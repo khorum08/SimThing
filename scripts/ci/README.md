@@ -31,6 +31,18 @@ GitHub Actions gate: `.github/workflows/doctrine-scan.yml` (**`CI-A-WORKFLOW-0`*
 
 Track B executable proof (non-blocking): `.github/workflows/doctrine-exec.yml` (**`CI-B-GH-CPU-0`**) + `.github/workflows/doctrine-exec-commands.yml` (**`CI-B-GH-COMMENT-0` / `CI-B-GH-TRIAGE-0`**). Operator quick-reference: `docs/ci_screening_surface.md` §9.
 
+## Orientation + doctrine query (0.0.8.4.8.3)
+
+| Path | Role |
+|---|---|
+| `doctrine_anchors.tsv` / `anchor_triggers.tsv` | Thin doctrine pointers + path→domain triggers |
+| `anchor_query.sh` | **THE** doctrine lookup (`--domain` / `--paths` / `--grep`); appends `anchor_reach_log.tsv` |
+| `anchor_check.sh` | `--check` / `--resolve` / `--resync` after anchored-doc edits |
+| `gen_orientation.sh` | Regenerates `docs/orchestrator_orientation.md` (Cold-Start Spine + live TSV corpus); `--check` / `--open` |
+| `orient.sh` | Role-scoped cold-start + `ORIENT-RECEIPT` |
+
+Do not raw-grep doctrine docs — query. Full map: `docs/ci_screening_surface.md` §2 / §5A / §7.
+
 Field separator in all data files: ` | ` (space-pipe-space). Lines starting with `#` are comments.
 
 ## Fixture corpus (`fixtures/`)

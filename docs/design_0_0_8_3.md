@@ -422,6 +422,20 @@ constitution that drops this clause or the pointer is **defective** (§0 preambl
    finding and suspends this authority pending owner review. The absolute merge-hold rule stays in force for
    the reserved classes. **Owner supremacy:** the owner may merge or bypass anything at any time,
    platform-visible and recorded — a right of the owner, never a loophole for agents to cite.
+8. **Orientation curation + graduated kernel gates (0.0.8.4.8.3 CLOSED).** *(Added 2026-07-10 by design
+   authority on owner mandate.)* **Doctrine reaches agents as thin anchors + path triggers + query — not
+   digest essays.** Live surfaces: `scripts/ci/doctrine_anchors.tsv`, `anchor_triggers.tsv`,
+   `anchor_query.sh` (THE doctrine lookup; appends `anchor_reach_log.tsv`), `anchor_check.sh --resync` after
+   anchored-doc edits, and the Cold-Start Spine emitted by `gen_orientation.sh` / `orient.sh` (pointers only;
+   resolve verbatim via query). Clearance sticky emits `REQUIRED-ANCHORS:` on `DA-RESERVE`; handoffs ACK with
+   `ANCHOR-ACK`. **Graduated kernel doors (Lane B / OC-K\*):** (K2) role pathway → `ColumnIndex` via
+   `col_for_role` — residual tripwire `COLUMN-INDEX-MINT` (OC-K2.1); (K3) exact registrations require
+   `ExactMagnitudeProof` minted from Candidate F — `ApproximateDiagnostic` cannot mint; (K1) sealed decision
+   ingress `ThresholdCrossingToken → EmissionToken → BoundaryEmissionToken → StructuralCommitment` — CPU /
+   approximate diagnostics cannot mint commitments; (K4) closed EvalEML vocab via `OpcodeRegistrationGate` /
+   `AdmittedEvalEmlOpcode|Combine` — semantic ops rejected; authoring surface
+   [`eml_gadget_library.md`](eml_gadget_library.md). Door catalogue: generated
+   [`sanctioned_surface.md`](sanctioned_surface.md) from `allow/*.txt`.
 
 ---
 
