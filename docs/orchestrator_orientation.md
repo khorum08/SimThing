@@ -226,7 +226,7 @@ Maintainer/CI only (not coding default): whole-tree `doctrine_scan.sh`, clearanc
 
 - `/clearance` — M1 router verdict
 - `/relay-lint` — M3 relay lint verdict
-- `/orient` — M2 orientation digest
+- `/orient` — M2 orientation digest (this page)
 - `/orient role=orchestrator|coding|da` — role-filtered subset
 - `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text
 - DA treeverify is **local/on-demand** (`da_treeverify.sh`); not a required PR gate or merge authority
