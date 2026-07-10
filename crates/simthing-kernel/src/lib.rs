@@ -9,6 +9,7 @@
 pub mod accumulator_op;
 pub mod candidate_f_magnitude;
 pub mod context;
+pub mod decision_ingress;
 pub mod exact_magnitude_gate;
 pub mod cpu_oracle;
 pub mod emission_accumulator;
@@ -51,6 +52,10 @@ pub use accumulator_op::{
 pub use candidate_f_magnitude::{
     max_candidate_f_magnitude_bits, CandidateFMagnitudeError, CandidateFMagnitudeReport,
     CandidateFMagnitudeRequest, GradientPairGpu,
+};
+pub use decision_ingress::{
+    ApproximateDecisionDiagnostic, BoundaryEmissionToken, CpuDiagnosticDecision,
+    DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
 };
 pub use exact_magnitude_gate::{
     exact_mag2_bits_q16, mint_exact_magnitude_proof_candidate_f,
