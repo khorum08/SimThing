@@ -143,14 +143,13 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
 - **Inner loop (coding default):** `cargo check -p <touched-crate>` then `bash scripts/ci/agent_scan.sh`
   (delta-first HEURISTIC + RELIABLE hard FAIL; ambient whole-tree INSPECT excluded). Whole-tree
   `doctrine_scan.sh` remains CI/maintainer control, not the coding default.
+- **Cold start:** `bash scripts/ci/orient.sh --role=coding` once; carry `ORIENT-RECEIPT`.
+- **Doctrine lookup:** `bash scripts/ci/anchor_query.sh` — verbatim anchors; **do not raw-grep doctrine docs**.
+- **Clearance intake:** read the auto-posted **Clearance Report** sticky; do not invoke `/clearance` for normal intake.
 - **Track closeout:** `bash scripts/ci/track_closeout.sh` is the sole birth_track closure authority
   (build-manifest → check-eval → apply); never hand-delete inventory rows for open tracks.
-- **Onboarding standard (follow it every rung):** [`ci_screening_surface.md`](ci_screening_surface.md) **§7**
-  is the ordered agent onboarding procedure (read the digest `docs/sanctioned_surface.md` *before* grepping for
-  the kernel surface → run the inner loop → handle FAIL/INSPECT → regenerate the digest if you touch
-  `allow/*.txt`/`scans.tsv`). §6 is the live carrot (digest / inner-loop / CI gate); §8 is how a production
-  track authors an opt-in per-track addendum. The digest is your pre-computed grep answer — read it, don't
-  re-derive the surface.
+- **Onboarding standard:** [`ci_screening_surface.md`](ci_screening_surface.md) §7 (digest → inner loop →
+  FAIL/INSPECT); §6 carrot; §8 per-track addendum. Digest is the pre-computed surface answer.
 
 ## Agent completion discipline (mandatory for implementation rungs)
 

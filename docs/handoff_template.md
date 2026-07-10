@@ -42,14 +42,14 @@
 
 ### Canonical Entrypoints
 
-- Session admission, once per fresh user / Owner / DA-opened session: `bash scripts/ci/orient.sh --role=<coding|orchestrator|da>`.
-- Handoffs carry the existing session `ORIENT-RECEIPT`; they do not require a new full orientation run every rung.
-- If a receipt is missing or stale, stop and report it to the operator / DA instead of reprinting full orientation by habit.
-- Active orchestration track mutation is local/operator work: `bash scripts/ci/gen_orientation.sh --open <track.md>`. Coding agents do not use it unless explicitly instructed; `gen_orientation.sh --check` is the read-only freshness gate.
-- Routine local proof for coding diffs: `cargo check -p <crate>` when crates changed; **`bash scripts/ci/agent_scan.sh`** (delta-first doctrine screen; ambient whole-tree HEURISTIC never shown). Whole-tree `bash scripts/ci/doctrine_scan.sh` remains CI/master + maintainer control, not the coding default. Conditional only when those surfaces change: `bash scripts/ci/doctrine_selftest.sh` (scanner surface); `bash scripts/ci/relay_lint.sh --selftest` (relay-lint); `bash scripts/ci/gen_orientation.sh --check` / `bash scripts/ci/gen_digest.sh --check` (generated docs); `bash scripts/ci/test_inventory_drift_check.sh` (tests/inventory — one table; boundary-row ledger retired).
-- If scanner surface is unchanged, record `scanner unchanged - selftest not required`.
-- Track closure, at any rung that declares a definitive closure point: `bash scripts/ci/track_closeout.sh --build-manifest <workplan|--track <id>> [--docs <glob>]...` → resolve every disposition, including source/auto/explicit doc artifacts → `--check-eval <manifest>` → `--apply <manifest>` (one batched pass: deletes + parks + elevations, closes the birth_track, leases closeout artifacts, emits a size-first report). Never hand-delete inventory rows piecemeal — `--deletion-guard` blocks a removed row whose birth_track was not closed by closeout, and same-PR deletion authority requires both the closeout report and manifest. For changes to the closeout substrate itself, prove a tiny disposable closeout sample before merge. See `docs/track_closeout_protocol.md`.
-- GHA comment commands, when available: `/orient`; `/clearance`; `/relay-lint`; `/triage`; `/anchor`; `/seal-proof`.
+- Session admission: `bash scripts/ci/orient.sh --role=<coding|orchestrator|da>`; handoffs carry existing `ORIENT-RECEIPT` (stop if missing/stale).
+- Track mutation (operator): `bash scripts/ci/gen_orientation.sh --open <track.md>`; `--check` is the freshness gate.
+- **Doctrine lookup (THE entrypoint):** `bash scripts/ci/anchor_query.sh --domain <d> --paths <files...> --grep <term>` — verbatim anchors; **do not raw-grep doctrine docs**.
+- **Anchored-doc edits:** run `bash scripts/ci/anchor_check.sh --resync` and commit updated `doctrine_anchors.tsv`.
+- **Clearance intake:** read auto-posted **Clearance Report** sticky; do not invoke `/clearance` for normal intake; `ANCHOR-ACKS` match sticky `REQUIRED-ANCHORS`.
+- Routine local proof: `cargo check -p <crate>` when crates changed; **`bash scripts/ci/agent_scan.sh`**. Whole-tree `doctrine_scan.sh` is CI/maintainer. Conditional selftests when those surfaces change; else `scanner unchanged - selftest not required`.
+- Track closure: `track_closeout.sh --build-manifest …` → `--check-eval` → `--apply` (`docs/track_closeout_protocol.md`). Never hand-delete inventory rows.
+- GHA comment commands: `/orient`; `/clearance`; `/relay-lint`; `/triage`; `/anchor`; `/seal-proof`.
 
 ---
 
@@ -277,7 +277,7 @@ orientation_digest_sha:
 ANCHOR-ACK:
 ```
 
-> One line per required anchor: `ANCHOR-ACK: <anchor_id>@<12-char hash>` from `bash scripts/ci/anchor_check.sh --resolve <anchor_id>`.
+> One line per required anchor: `ANCHOR-ACK: <anchor_id>@<12-char hash>` (from `anchor_check.sh --resolve` or after `anchor_query.sh`). Match sticky `REQUIRED-ANCHORS`.
 
 ## 11. Response format
 
