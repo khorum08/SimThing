@@ -17,11 +17,15 @@ GATE_WIRING_PATHS=(
   "scripts/ci/class_predicates.tsv"
   "scripts/ci/binding_conditions.tsv"
   "scripts/ci/clearance_ledger.tsv"
+  "scripts/ci/doctrine_anchors.tsv"
+  "scripts/ci/anchor_triggers.tsv"
   ".github/workflows/doctrine-exec-commands.yml"
+  ".github/workflows/clearance.yml"
   "scripts/ci/doctrine_exec_commands.sh"
   "scripts/ci/doctrine_exec_clearance.sh"
   "scripts/ci/doctrine_exec_clearance_comment.sh"
   "scripts/ci/doctrine_exec_triage.sh"
+  "scripts/ci/clearance_comment.sh"
   "scripts/ci/triage_log_check.sh"
   "scripts/ci/doc_budget_check.sh"
   "scripts/ci/doc_budget_baseline.tsv"
@@ -31,6 +35,7 @@ GATE_WIRING_PATHS=(
   "scripts/ci/da_treeverify_lib.py"
   "scripts/ci/da_review_profile.tsv"
   "scripts/ci/agent_scan.sh"
+  "scripts/ci/relay_lint.sh"
   "docs/handoff_template.md"
   "docs/agent_onboarding.md"
   "AGENTS.md"
@@ -93,6 +98,80 @@ emit_treeverify_profile_line() {
   fi
 }
 
+required_anchor_ids_for_changed_files() {
+  local anchors_tsv="${SCRIPT_DIR}/doctrine_anchors.tsv"
+  local triggers_tsv="${SCRIPT_DIR}/anchor_triggers.tsv"
+  if [[ -n "${FIXTURE_DIR:-}" && -f "${FIXTURE_DIR}/doctrine_anchors.tsv" ]]; then
+    anchors_tsv="${FIXTURE_DIR}/doctrine_anchors.tsv"
+  fi
+  if [[ -n "${FIXTURE_DIR:-}" && -f "${FIXTURE_DIR}/anchor_triggers.tsv" ]]; then
+    triggers_tsv="${FIXTURE_DIR}/anchor_triggers.tsv"
+  fi
+  local files
+  files="$(changed_files 2>/dev/null || true)"
+  "$PYTHON_BIN" - "$anchors_tsv" "$triggers_tsv" "$files" <<'PY'
+import csv
+import fnmatch
+import sys
+from pathlib import PurePosixPath
+
+anchors_tsv, triggers_tsv, files_blob = sys.argv[1], sys.argv[2], sys.argv[3]
+files = [ln.strip().replace("\\", "/") for ln in files_blob.splitlines() if ln.strip()]
+
+def glob_match(path: str, pattern: str) -> bool:
+    g = pattern.strip().replace("\\", "/")
+    if not g:
+        return False
+    p = PurePosixPath(path)
+    if p.match(g):
+        return True
+    if "**" in g:
+        prefix = g.split("**", 1)[0]
+        if prefix and path.startswith(prefix):
+            return True
+    return fnmatch.fnmatch(path, g.replace("**", "*"))
+
+domains = set()
+try:
+    with open(triggers_tsv, encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh, delimiter="\t"):
+            glob_pat = (row.get("glob") or "").strip()
+            if not glob_pat:
+                continue
+            if any(glob_match(path, glob_pat) for path in files):
+                for d in (row.get("trigger_domains") or "").split(","):
+                    d = d.strip()
+                    if d:
+                        domains.add(d)
+except FileNotFoundError:
+    pass
+
+ids = []
+try:
+    with open(anchors_tsv, encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh, delimiter="\t"):
+            aid = (row.get("anchor_id") or "").strip()
+            if not aid:
+                continue
+            row_domains = {d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip()}
+            if domains & row_domains:
+                ids.append(aid)
+except FileNotFoundError:
+    pass
+print(",".join(sorted(ids)))
+PY
+}
+
+emit_required_anchors_line() {
+  local ids
+  ids="$(required_anchor_ids_for_changed_files || true)"
+  if [[ -n "$ids" ]]; then
+    printf 'REQUIRED-ANCHORS: %s\n' "$ids"
+  else
+    printf 'REQUIRED-ANCHORS: none\n'
+  fi
+}
+
 emit_verdict() {
   local kind="$1"
   local detail="${2:-}"
@@ -115,6 +194,7 @@ emit_verdict() {
   printf '%s\n' "$VERDICT"
   if [[ "$kind" == "reserve" ]]; then
     emit_treeverify_profile_line
+    emit_required_anchors_line
   fi
 }
 
@@ -1444,6 +1524,31 @@ run_fixture() {
       echo "  got:      (missing)"
       return 1
     fi
+    if ! printf '%s\n' "$out" | grep -qE '^REQUIRED-ANCHORS:'; then
+      echo "FAIL ${name}"
+      echo "  expected: REQUIRED-ANCHORS on DA-RESERVE"
+      echo "  got:      (missing)"
+      return 1
+    fi
+    if [[ -f "${FIXTURE_DIR}/expected_required_anchors.txt" ]]; then
+      local want got_req
+      want="$(tr -d '\r' <"${FIXTURE_DIR}/expected_required_anchors.txt" | head -n 1)"
+      got_req="$(printf '%s\n' "$out" | grep -E '^REQUIRED-ANCHORS:' | head -n 1 || true)"
+      if [[ "$want" == contains:* ]]; then
+        local needle="${want#contains:}"
+        if ! printf '%s\n' "$got_req" | grep -qF "$needle"; then
+          echo "FAIL ${name}"
+          echo "  expected REQUIRED-ANCHORS to contain: ${needle}"
+          echo "  got:      ${got_req}"
+          return 1
+        fi
+      elif [[ "$got_req" != "REQUIRED-ANCHORS: ${want}" && "$got_req" != "$want" ]]; then
+        echo "FAIL ${name}"
+        echo "  expected: REQUIRED-ANCHORS: ${want}"
+        echo "  got:      ${got_req}"
+        return 1
+      fi
+    fi
   else
     if printf '%s\n' "$out" | grep -qE '^DA-TREEVERIFY-PROFILE:'; then
       echo "FAIL ${name}"
@@ -1465,6 +1570,9 @@ run_selftest() {
     clearance_selftest_fail_closed_malformed_tsv
     clearance_selftest_fail_closed_ambiguous_class
     clearance_selftest_gate_wiring_self_application
+    clearance_selftest_gate_wiring_doctrine_anchors_tsv
+    clearance_selftest_gate_wiring_anchor_triggers_tsv
+    clearance_selftest_required_anchors_kernel_path
     clearance_selftest_suspended_class
     clearance_selftest_missing_required_proof_fields
     clearance_selftest_fail_closed_empty_requested_diff

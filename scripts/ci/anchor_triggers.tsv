@@ -1,0 +1,15 @@
+glob	trigger_domains
+crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude
+crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution
+crates/simthing-sim/**	sim,field-policy
+**/*.wgsl	wgsl,field-policy,sim
+crates/simthing-driver/**	driver,field-policy,overlay,structural-execution
+crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session
+crates/simthing-mapgenerator/**	mapgenerator,map,clausething-spatial,clausething
+crates/simthing-clausething/**	spatial,clausething-spatial,clausething,map
+docs/stead_spatial_contract.md	stead,spatial,structural-execution
+docs/adr/**	driver-session,feeder-session,mapeditor-session,feeder,capability-paths
+docs/design_0_0_8_3.md	spec-fidelity,exact-numeric,founding-ontology,clausething
+docs/simthing_core_design.md	field-policy,one-tree,property-value,drift-detectors,movement-front
+scripts/ci/doctrine_anchors.tsv	gate-wiring,orientation
+scripts/ci/anchor_triggers.tsv	gate-wiring,orientation

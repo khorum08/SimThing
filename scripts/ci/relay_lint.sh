@@ -56,6 +56,7 @@ lint_text() {
   export RELAY_LINT_FIXTURE_DIR="${FIXTURE_DIR:-}"
   export RELAY_LINT_REPO_ROOT="$REPO_ROOT"
   export RELAY_LINT_PR_HEAD_SHA="${PR_HEAD_SHA:-}"
+  export RELAY_LINT_CHANGED_FILES="${RELAY_LINT_CHANGED_FILES:-}"
   result="$("$PYTHON_BIN" - <<'PY' "$text"
 import hashlib
 import os
@@ -66,6 +67,7 @@ import sys
 text = sys.argv[1]
 repo_root = pathlib.Path(os.environ.get("RELAY_LINT_REPO_ROOT", "."))
 fixture_dir = os.environ.get("RELAY_LINT_FIXTURE_DIR", "")
+changed_files_env = os.environ.get("RELAY_LINT_CHANGED_FILES", "")
 
 
 def normalize_text(raw: bytes) -> str:
@@ -356,6 +358,10 @@ def validate_receipt():
     return None
 
 def required_trigger_domains():
+    import csv
+    import fnmatch
+    from pathlib import PurePosixPath
+
     domains = set()
     if fixture_dir:
         req = pathlib.Path(fixture_dir) / "required_trigger_domains.txt"
@@ -365,7 +371,47 @@ def required_trigger_domains():
                 if line:
                     domains.add(line)
             return domains
-        return domains
+        cf = pathlib.Path(fixture_dir) / "changed_files.txt"
+        if not cf.is_file():
+            # Legacy fixtures without path/domain overrides keep empty domain set.
+            return domains
+        files = [ln.strip().replace("\\", "/") for ln in cf.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    else:
+        files = []
+        if changed_files_env.strip():
+            files = [ln.strip().replace("\\", "/") for ln in changed_files_env.splitlines() if ln.strip()]
+
+    def glob_match(path: str, pattern: str) -> bool:
+        g = pattern.strip().replace("\\", "/")
+        if not g:
+            return False
+        p = PurePosixPath(path)
+        if p.match(g):
+            return True
+        if "**" in g:
+            prefix = g.split("**", 1)[0]
+            if prefix and path.startswith(prefix):
+                return True
+        return fnmatch.fnmatch(path, g.replace("**", "*"))
+
+    triggers = repo_root / "scripts" / "ci" / "anchor_triggers.tsv"
+    if fixture_dir:
+        alt = pathlib.Path(fixture_dir) / "anchor_triggers.tsv"
+        if alt.is_file():
+            triggers = alt
+    if files and triggers.is_file():
+        with triggers.open(encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh, delimiter="\t"):
+                glob_pat = (row.get("glob") or "").strip()
+                if not glob_pat:
+                    continue
+                if any(glob_match(path, glob_pat) for path in files):
+                    for d in (row.get("trigger_domains") or "").split(","):
+                        d = d.strip()
+                        if d:
+                            domains.add(d)
+
+    # Legacy prose regex remains secondary only.
     if re.search(r"gate-wiring", text, re.IGNORECASE):
         domains.update({"gate-wiring", "receipt-admission"})
     if re.search(r"movement-front|Movement-Front|map-domain|PALMA", text, re.IGNORECASE):
@@ -578,6 +624,11 @@ run_selftest() {
     relay_lint_selftest_pass_fresh_da_reserve_clearance
     relay_lint_selftest_fail_clearable_da_relay
     relay_lint_selftest_pass_non_da_without_clearance
+    relay_lint_selftest_path_kernel_missing_ack
+    relay_lint_selftest_path_docs_only_no_anchors
+    relay_lint_selftest_path_sim_field_policy_missing_ack
+    relay_lint_selftest_path_map_stead_missing_ack
+    relay_lint_selftest_path_gpu_driver_convergence_missing_ack
   )
   local cold_fixtures=(
     cold_start_selftest_valid_coding_receipt

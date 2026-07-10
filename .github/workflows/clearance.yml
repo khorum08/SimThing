@@ -1,0 +1,58 @@
+name: Clearance
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to clear
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+  actions: read
+
+jobs:
+  clearance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run clearance_check
+        id: clearance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          bash scripts/ci/clearance_check.sh --pr "${{ inputs.pr_number }}" | tee clearance-report.txt
+
+      - name: Write step summary
+        if: always()
+        run: |
+          {
+            echo "## Clearance Report (PR #${{ inputs.pr_number }})"
+            echo ""
+            echo '```'
+            cat clearance-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Sticky PR comment
+        if: always() && hashFiles('clearance-report.txt') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          bash scripts/ci/clearance_comment.sh "${{ inputs.pr_number }}" clearance-report.txt
+
+      - name: Upload clearance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clearance-report-pr-${{ inputs.pr_number }}
+          path: clearance-report.txt
+          if-no-files-found: ignore
