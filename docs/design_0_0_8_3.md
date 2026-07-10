@@ -266,6 +266,24 @@ Historical R4 ledger detail remains in
 [`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md);
 §0.7 is the carry-forward constitutional rule.
 
+**Token API (OC-K-EXACT-GATE-0).** Magnitude-sensitive threshold / commitment registration accepts
+only an `ExactMagnitudeProof` minted from Candidate F. `ApproximateDiagnostic` (native sqrt /
+telemetry) cannot construct, convert into, or feed that proof. Sanctioned mint path:
+
+```text
+GradientPairGpu { dx, dy }
+  → mint_exact_magnitude_proof_candidate_f(_cpu)  // Candidate F CR-F + Q16 mag2
+  → ExactMagnitudeProof { bits }                  // private field; not forgeable from f32
+  → ThresholdRegistration::register_exact_magnitude_sensitive(...)
+  → CommitmentRegistration::register_exact(...)
+```
+
+**Worked bit-exact sqrt example (3-4-5).** Fixed-point Q16 mag² of `(dx=3, dy=4)` is exactly
+`25.0` (`f32::to_bits()` identity). Candidate F CR-F (`sqrt_cr_f_bits`) on those mag² bits yields
+the exact Euclidean magnitude bit pattern used as the proof token; the same bits must appear in the
+threshold registration field. Native `f32::sqrt` may match for this triangle but is still
+`ApproximateDiagnostic` only — it cannot mint `ExactMagnitudeProof`.
+
 ### 0.8 STEAD/Mapping spatial substrate carry-forward (STEAD-CONTRACT-0)
 
 > **STEAD/Mapping is a load-bearing pillar of SimThing, not an optional feature. This clause and its
