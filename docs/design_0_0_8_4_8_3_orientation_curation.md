@@ -91,7 +91,7 @@ same PR). `admission-amendment-request: allowed`; `seal-residue-risk` declared p
 
 | # | Rung | Deliverable | Exit proof | Tier |
 |---|---|---|---|---|
-| C | `OC-CLOSEOUT-0` | First reach-log report (what agents queried; misses → catalogue updates or explicit declines); §1 table stamped with anchor ids; meta-gauges snapshot; un-opened K rungs re-parked to backlog with Deviation Records (never left dangling); binding conditions discharged; close via `track_closeout.sh`. | **GRADUATED / PR pending** — reach-log report, anchor decay rule, closeout manifest, binding discharged, track closed, pointer re-opened to 0.0.8.6 | T2 |
+| C | `OC-CLOSEOUT-0` | First reach-log report (what agents queried; misses → catalogue updates or explicit declines); §1 table stamped with anchor ids; meta-gauges snapshot; un-opened K rungs re-parked to backlog with Deviation Records (never left dangling); binding conditions discharged; close via `track_closeout.sh`. | **GRADUATED / PR #1278** — reach-log report, anchor decay rule, closeout manifest, binding discharged, track closed, pointer re-opened to 0.0.8.6 | T2 |
 
 **Sequencing:** A1 → A2 → (A3 ∥ A4) → A5 (cascade) → C. Lane B rungs slot anywhere after A1, each
 on Owner authorization; C does not wait for unauthorized K rungs, but never precedes A5 — the
