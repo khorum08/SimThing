@@ -895,6 +895,28 @@ Full adjudication lives in `workshop/field_world_model_horizon.md` §1.4 — lin
 - Structural change is boundary work: fission/fusion from property thresholds, slot scrubbing on
   add/remove, tombstoning whole-tree-scoped. The evaluator never mutates the tree.
 
+**SANCTIONED minting walkthrough (OC-K-DECISION-INGRESS-0) — how you DO mint a decision.**
+
+```text
+1. GPU Pass B: AccumulatorOp Threshold + EmitEvent crosses a registered gate
+   → sealed ThresholdEvent (kernel Pass-7 / CPU-oracle twin only; not POD-forgeable)
+
+2. Emission stream records the same locus
+   → sealed ThresholdEmission
+
+3. Tokens (public constructors accept only sealed records):
+   ThresholdCrossingToken::from_sealed_threshold_event(&event)
+   EmissionToken::from_sealed_threshold_emission(&emission)
+   BoundaryEmissionToken::bind(threshold_tok, emission_tok)?   // locus must match
+
+4. StructuralCommitment::mint_from_sealed_path(threshold_tok, emission_tok, boundary_tok)?
+   → authoritative commitment ingress (private fields; no raw POD construction)
+
+Forbidden: CpuDiagnosticDecision / ApproximateDecisionDiagnostic → StructuralCommitment
+(type system; compile_fail). Free BoundaryRequest construction for non-decision structural
+work remains B4 residual (see OC-K-DECISION-INGRESS-0 results).
+```
+
 ---
 
 ## 9. The drift detectors — litmus tests for every change
