@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present** — docs cascade entrypoints. Sticky controls routing. Do not self-merge on DA-RESERVE.
+**DA-GRADUATED / COMPLETE** — merged [#1270](https://github.com/khorum08/SimThing/pull/1270) @ `2a2c501c74da03c1c02c39d7c772f94ae9ff89f2`.
 
 ## Changed files
 
@@ -13,7 +13,7 @@
 | `docs/agents.md` | orient / query / sticky one-liners |
 | `docs/handoff_template.md` | Canonical Entrypoints + ANCHOR-ACK remedy |
 | `docs/track_closeout_protocol.md` | reach-log `--prune 30` decay sentence |
-| `docs/design_0_0_8_4_8_3_orientation_curation.md` | A5 IN PROGRESS stamp |
+| `docs/design_0_0_8_4_8_3_orientation_curation.md` | A5 exit-proof stamp |
 | `docs/orchestrator_orientation.md` | Regenerated |
 | `docs/tests/oc_docs_cascade_0_results.md` | This evidence |
 
@@ -21,7 +21,7 @@
 
 A4 closed via [#1268](https://github.com/khorum08/SimThing/pull/1268) @ `9888a07e`,
 exit-proof [#1269](https://github.com/khorum08/SimThing/pull/1269) @ `82938b9b`.
-A5 active; pointer `OC-DOCS-CASCADE-0` until merge.
+A5 graduated [#1270](https://github.com/khorum08/SimThing/pull/1270) @ `2a2c501c`; next pointer `OC-CLOSEOUT-0`.
 
 ## Cap table (post-edit)
 
@@ -54,7 +54,3 @@ No baseline raise — restructure paid growth.
 ## Known gaps
 
 Closeout not implemented · Lane B not opened · no 0.0.8.6 product.
-
-## Expected routing
-
-Sticky controls (`expected_clearance: sticky controls`).
