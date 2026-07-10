@@ -36,6 +36,7 @@ pub mod studio_scenario_document;
 pub mod studio_scenario_load;
 pub mod studio_screenshot;
 pub mod studio_sim_clock;
+pub mod studio_sim_clock_ui;
 pub mod studio_structural_edit;
 pub mod studio_typeface_shell;
 pub mod terran_pirate_skeleton;
@@ -186,6 +187,9 @@ pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
 pub use studio_sim_clock::{
     StudioSimClock, StudioSimClockError, StudioSimClockRate, STUDIO_SIM_CLOCK_DEFAULT_MAX_TPS,
     STUDIO_SIM_CLOCK_RATE_RATIO_TOLERANCE,
+};
+pub use studio_sim_clock_ui::{
+    rate_label, StudioSimClockReadout, StudioSimClockTransport, StudioSimClockTransportCommand,
 };
 pub use studio_structural_edit::{
     studio_apply_structural_placement_command, StudioStructuralEditError,

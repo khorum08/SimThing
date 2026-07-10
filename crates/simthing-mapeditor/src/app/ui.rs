@@ -56,6 +56,9 @@ use crate::studio_performance_telemetry::{
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
+use crate::{
+    StudioSimClockRate, StudioSimClockTransportCommand,
+};
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 
@@ -1384,6 +1387,12 @@ fn draw_left_panel(
                             .show(ui, |ui| {
                                 draw_scenario_io_controls(ctx, ui, state);
                             });
+                        egui::CollapsingHeader::new("Sim clock transport")
+                            .id_salt("left_panel_sim_clock")
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                draw_sim_clock_transport(ui, state);
+                            });
                         ui.separator();
                         render_debug_controls(ui, state);
                         ui.separator();
@@ -1413,6 +1422,70 @@ fn draw_left_panel(
             });
         });
     state.left_panel_hovered = area.response.hovered();
+}
+
+/// Compact operator transport over [`crate::StudioSimClockTransport`].
+/// Presentation only — does not advance a live SimSession (9.3 bridge).
+fn draw_sim_clock_transport(ui: &mut egui::Ui, state: &mut StudioAppState) {
+    let transport = &mut state.sim_clock_transport;
+    let readout = transport.readout();
+
+    ui.label(egui::RichText::new("Sim clock (transport only)").strong());
+    ui.label(
+        egui::RichText::new("Schedules ticks later via bridge; does not invent decisions.")
+            .small()
+            .weak(),
+    );
+
+    ui.horizontal(|ui| {
+        if ui
+            .add_enabled(readout.playing, egui::Button::new("Pause"))
+            .clicked()
+        {
+            let _ = transport.apply(StudioSimClockTransportCommand::Pause);
+        }
+        if ui
+            .add_enabled(readout.paused, egui::Button::new("Play"))
+            .clicked()
+        {
+            let _ = transport.apply(StudioSimClockTransportCommand::Play);
+        }
+    });
+
+    ui.horizontal(|ui| {
+        for (label, rate, cmd) in [
+            ("1×", StudioSimClockRate::Rate1x, StudioSimClockTransportCommand::Rate1x),
+            ("2×", StudioSimClockRate::Rate2x, StudioSimClockTransportCommand::Rate2x),
+            ("4×", StudioSimClockRate::Rate4x, StudioSimClockTransportCommand::Rate4x),
+        ] {
+            let selected = readout.rate == rate;
+            if ui.selectable_label(selected, label).clicked() {
+                let _ = transport.apply(cmd);
+            }
+        }
+    });
+
+    ui.horizontal(|ui| {
+        ui.label("Max TPS");
+        let response = ui.text_edit_singleline(transport.max_tps_draft_mut());
+        if response.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+            let _ = transport.apply_max_tps_draft();
+        }
+        if ui.button("Apply TPS").clicked() {
+            let _ = transport.apply_max_tps_draft();
+        }
+    });
+
+    // Refresh readout after any control mutations above.
+    let readout = transport.readout();
+    let state_label = if readout.paused { "paused" } else { "playing" };
+    ui.label(format!(
+        "State: {state_label}  ·  Rate: {}  ·  Max TPS: {:.3}  ·  Effective: {:.3}/s  ·  Tick: {}",
+        readout.rate_label, readout.max_tps, readout.effective_tps, readout.tick_index
+    ));
+    if let Some(err) = transport.last_error() {
+        ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
+    }
 }
 
 fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut StudioAppState) {

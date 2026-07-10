@@ -15,3 +15,5 @@ date	role	query	anchors_served	hit
 2026-07-10T15:21:32Z	coding	--grep branching	none	none
 2026-07-10T15:24:54Z	coding	--domain kernel-eml	eml-extension-ladder	hit
 2026-07-10T15:24:54Z	coding	--grep branching	eml-extension-ladder	hit
+2026-07-10T20:13:51Z	coding	--domain studio-ui	none	none
+2026-07-10T20:13:51Z	coding	--domain sim-clock	field-policy-time-decisions	hit
