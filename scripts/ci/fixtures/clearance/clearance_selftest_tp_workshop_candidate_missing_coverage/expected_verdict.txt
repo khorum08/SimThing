@@ -1,1 +1,1 @@
-CLEARANCE-VERDICT: FAIL(missing-tested-code-sha: add tested_code_sha and coverage_basis)
+CLEARANCE-VERDICT: DA-RESERVE(unclassified-scope)

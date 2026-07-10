@@ -1,0 +1,4 @@
+Immutability Law #1169 / OH-IMMUTABLE-EVIDENCE-0: committed triage evidence records immutable facts.
+A triage row whose sha is an ancestor of current head remains VALID when git diff <triage_sha>..head
+touches only evidence-tail paths (docs/tests/**, scripts/ci/triage_log.tsv, *_results.md).
+Live head SHA equality must not become the invariant.

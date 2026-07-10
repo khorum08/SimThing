@@ -1,5 +1,5 @@
 tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
-coverage_basis: PASS - workshop class touching engine must not emit novelty
+coverage_basis: PASS - corpus-sweep class touching engine must not emit novelty
+ci_green: PASS
 DOCTRINE-TESTS-VERDICT: PASS
-tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
 owner_local: true
