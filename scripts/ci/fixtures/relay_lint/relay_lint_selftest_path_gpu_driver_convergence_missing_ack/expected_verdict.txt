@@ -1,1 +1,1 @@
-RELAY-LINT-VERDICT: FAIL(missing-anchor-ack)
+RELAY-LINT-VERDICT: FAIL(missing-anchor-ack: remedy=bash scripts/ci/anchor_query.sh --paths <files...>)

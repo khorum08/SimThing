@@ -424,7 +424,7 @@ def validate_anchor_ack():
         return None
     state = load_anchor_state()
     if not state:
-        return "missing-anchor-ack"
+        return "missing-anchor-ack: remedy=bash scripts/ci/anchor_query.sh --paths <files...>"
     required_ids = set()
     for domain in domains:
         for aid, meta in state.items():
@@ -437,12 +437,12 @@ def validate_anchor_ack():
         acks[m.group(1).lower()] = m.group(2).lower()
     for ack_id, short in acks.items():
         if ack_id not in state:
-            return "unknown-anchor"
+            return "unknown-anchor: remedy=bash scripts/ci/anchor_query.sh --domain <domain> or --grep <term>"
     for aid in sorted(required_ids):
         if aid not in acks:
-            return "missing-anchor-ack"
+            return "missing-anchor-ack: remedy=bash scripts/ci/anchor_query.sh --paths <files...>"
         if acks[aid] != state[aid]["short"]:
-            return "stale-anchor-ack"
+            return "stale-anchor-ack: remedy=bash scripts/ci/anchor_check.sh --resync then re-ack"
     return None
 
 receipt_fail = validate_receipt()

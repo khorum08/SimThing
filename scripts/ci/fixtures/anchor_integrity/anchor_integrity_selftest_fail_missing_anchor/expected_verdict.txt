@@ -1,1 +1,1 @@
-ANCHOR-CHECK-VERDICT: FAIL(missing-anchor)
+ANCHOR-CHECK-VERDICT: FAIL(missing-anchor) remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync

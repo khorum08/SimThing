@@ -1,1 +1,1 @@
-ANCHOR-CHECK-VERDICT: FAIL(anchor-hash-drift)
+ANCHOR-CHECK-VERDICT: FAIL(anchor-hash-drift) remedy=bash scripts/ci/anchor_check.sh --resync

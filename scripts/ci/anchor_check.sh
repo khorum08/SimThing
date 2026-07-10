@@ -23,6 +23,7 @@ usage:
   bash scripts/ci/anchor_check.sh --check
   bash scripts/ci/anchor_check.sh --anchor-stamp
   bash scripts/ci/anchor_check.sh --resolve <anchor_id|trigger_domain>
+  bash scripts/ci/anchor_check.sh --resync
   bash scripts/ci/anchor_check.sh --selftest
 EOF
   exit 2
@@ -33,6 +34,7 @@ parse_args() {
     case "$1" in
       --check) MODE="check"; shift ;;
       --anchor-stamp) MODE="anchor-stamp"; shift ;;
+      --resync) MODE="resync"; shift ;;
       --resolve)
         MODE="resolve"
         RESOLVE_ARG="${2:-}"
@@ -85,8 +87,13 @@ def read_normalized(path: pathlib.Path) -> str:
 
 
 def fail(msg):
-    print(f"ANCHOR-CHECK-VERDICT: FAIL({msg})")
-    sys.exit(1 if mode == "check" else 0)
+    remedy = ""
+    if msg == "anchor-hash-drift":
+        remedy = " remedy=bash scripts/ci/anchor_check.sh --resync"
+    elif msg in ("missing-anchor", "orphaned-anchor"):
+        remedy = " remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync"
+    print(f"ANCHOR-CHECK-VERDICT: FAIL({msg}){remedy}")
+    sys.exit(1 if mode in ("check", "resync") else 0)
 
 
 def pass_ok(detail=""):
@@ -124,8 +131,16 @@ def heading_section(path: pathlib.Path, heading: str) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
+def resolve_doc(doc_rel: str) -> pathlib.Path:
+    if fixture_dir:
+        alt = pathlib.Path(fixture_dir) / doc_rel
+        if alt.is_file():
+            return alt
+    return repo / doc_rel
+
+
 def extract_text(doc_rel: str, section: str) -> str:
-    path = repo / doc_rel
+    path = resolve_doc(doc_rel)
     if not path.is_file():
         raise FileNotFoundError(doc_rel)
     if section.startswith("heading:"):
@@ -182,12 +197,93 @@ def live_hashes(rows):
     return out
 
 
+def list_headings(doc_rel: str):
+    path = resolve_doc(doc_rel)
+    if not path.is_file():
+        return []
+    out = []
+    for line in read_normalized(path).splitlines():
+        if line.startswith("#"):
+            out.append(line.strip())
+    return out
+
+
+def nearest_headings(doc_rel: str, wanted: str, limit=5):
+    wanted_l = wanted.lower()
+    heads = list_headings(doc_rel)
+    scored = []
+    for h in heads:
+        hl = h.lower()
+        score = 0
+        if wanted_l in hl or hl in wanted_l:
+            score += 10
+        score += sum(1 for tok in re.split(r"\W+", wanted_l) if tok and tok in hl)
+        scored.append((score, h))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    return [h for s, h in scored if s > 0][:limit] or heads[:limit]
+
+
+def cmd_resync(rows):
+    # Rewrite table in place; never drop rows.
+    use = tsv_path
+    if fixture_dir:
+        alt = pathlib.Path(fixture_dir) / "doctrine_anchors.tsv"
+        if alt.is_file():
+            use = alt
+    orphans = 0
+    resynced = 0
+    out_rows = []
+    for row in rows:
+        aid = row["anchor_id"]
+        try:
+            text = extract_text(row["doc"], row["section"])
+            live = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            if live != row["content_hash"].lower():
+                print(f"RESYNCED {aid}")
+                row = dict(row)
+                row["content_hash"] = live
+                resynced += 1
+            else:
+                print(f"UNCHANGED {aid}")
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            orphans += 1
+            print(f"ORPHANED {aid}")
+            wanted = row["section"]
+            if wanted.startswith("heading:"):
+                wanted = wanted[len("heading:"):]
+            suggestions = nearest_headings(row["doc"], wanted)
+            if suggestions:
+                print(f"  suggestions: {' | '.join(suggestions)}")
+            else:
+                print(f"  suggestions: (none) reason={exc}")
+        out_rows.append(row)
+
+    with use.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(
+            fh,
+            fieldnames=["anchor_id", "doc", "section", "trigger_domains", "content_hash"],
+            delimiter="\t",
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerows(out_rows)
+
+    if orphans:
+        fail("orphaned-anchor")
+    print(f"ANCHOR-RESYNC-VERDICT: PASS resynced={resynced} orphans=0")
+    sys.exit(0)
+
+
 def anchor_stamp(state):
     joined = "|".join(f"{k}:{state[k]['live_hash']}" for k in sorted(state))
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:16]
 
 
 rows = load_rows()
+
+if mode == "resync":
+    cmd_resync(rows)
+
 state = live_hashes(rows)
 
 if mode == "anchor-stamp":
@@ -202,7 +298,7 @@ if mode == "resolve":
     else:
         domain = [(aid, meta) for aid, meta in state.items() if arg in meta["domains"]]
         if not domain:
-            print("ANCHOR-RESOLVE-VERDICT: FAIL(unknown-anchor)")
+            print("ANCHOR-RESOLVE-VERDICT: FAIL(unknown-anchor) remedy=bash scripts/ci/anchor_query.sh --domain <domain> or --grep <term>")
             sys.exit(1)
         aid, meta = domain[0]
     print("ANCHOR-REPORT: OK")
@@ -222,6 +318,51 @@ sys.exit(1)
 PY
 }
 
+run_resync_selftests() {
+  local tmp out
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-resync-XXXXXX")"
+  mkdir -p "$tmp/docs"
+  cat >"$tmp/docs/sample.md" <<'EOF'
+# Architecture Decision Records
+
+Body line one.
+
+## Other heading
+
+Other body.
+EOF
+  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\n' >"$tmp/doctrine_anchors.tsv"
+  printf 'sample-anchor\tdocs/sample.md\theading:# Architecture Decision Records\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\n' >>"$tmp/doctrine_anchors.tsv"
+  FIXTURE_DIR="$tmp"
+  export FIXTURE_DIR
+  out="$(run_python resync 2>&1 || true)"
+  if ! printf '%s\n' "$out" | grep -q "RESYNCED sample-anchor"; then
+    echo "FAIL resync_edited_section"
+    echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  else
+    echo "PASS resync_edited_section"
+  fi
+
+  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\n' >"$tmp/doctrine_anchors.tsv"
+  printf 'sample-anchor\tdocs/sample.md\theading:# Missing Title That Moved\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\n' >>"$tmp/doctrine_anchors.tsv"
+  out="$(run_python resync 2>&1 || true)"
+  if ! printf '%s\n' "$out" | grep -q "ORPHANED sample-anchor"; then
+    echo "FAIL resync_orphaned_heading"
+    echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  elif ! printf '%s\n' "$out" | grep -qi "Architecture Decision Records"; then
+    echo "FAIL resync_orphan_suggestion"
+    echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  else
+    echo "PASS resync_orphaned_heading"
+  fi
+  FIXTURE_DIR=""
+  unset FIXTURE_DIR
+  rm -rf "$tmp"
+}
+
 run_selftest() {
   local fixtures=(
     anchor_integrity_selftest_pass_valid_table
@@ -236,8 +377,10 @@ run_selftest() {
       SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
     fi
   done
+  run_resync_selftests
+  local total=$((${#fixtures[@]} + 2))
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
-    echo "ANCHOR-CHECK-SELFTEST: PASS (${#fixtures[@]} fixtures)"
+    echo "ANCHOR-CHECK-SELFTEST: PASS (${total} fixtures)"
     return 0
   fi
   echo "ANCHOR-CHECK-SELFTEST: FAIL (${SELFTEST_FAILURES} fixtures)"
