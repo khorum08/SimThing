@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f4187fcda67ca9cc5c20006ffff2a1d139514a881368a545be0237e7acaab972 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
-| design_0_0_8_4_8_3_orientation_curation.md | 6a79d72e823f9ba5ddd30a004573a63773af04f4a16e2e731cbe82e8e368316d |
+| design_0_0_8_4_8_3_orientation_curation.md | e39829beddd5c555fd946f2a20aff7d5993b2b987568e862ec33d6375b5ca342 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 45d83ea5bb65bdcb3e39a7bc82c37fa0a6fdfb7528e8aff5eab1d7069e3c591c |
 
@@ -61,7 +61,7 @@ Track state: `open`
 | 5 | OC-DOCS-CASCADE-0 | **Docs cascade once A1–A4 are live** (the HU-DOCS-CONSOLIDATION pattern, in-trac | **DA-GRADUATED / merged [#1270](https://github.com/khorum08/SimThing/pull/1270) @ `2a2c501c`** — entrypoint cascade w... |
 | K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | **GRADUATED / merged [#1273](https://github.com/khorum08/SimThing/pull/1273) @ `25e6ed47`** — `col_for_role` → `Colum... |
 | K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | **GRADUATED / merged [#1274](https://github.com/khorum08/SimThing/pull/1274) @ `c418ffad`** — `ExactMagnitudeProof` t... |
-| K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | **GRADUATED / PR pending** — sealed threshold→emission→boundary decision ingress; CPU diagnostics blocked; sanctioned... |
+| K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | **GRADUATED / PR #1276** — sealed threshold→emission→boundary decision ingress; CPU diagnostics blocked; sanctioned m... |
 | K4 | OC-K-EML-OPCODE-GATE-0 | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tr | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rul... |
 | C | OC-CLOSEOUT-0 | First reach-log report (what agents queried; misses → catalogue updates or expli | NOT STARTED |
 
