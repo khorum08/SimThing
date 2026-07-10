@@ -1,0 +1,2 @@
+scan-id | branch | outcome | reason | commit
+TEST-BUDGET | clearance-fixture | green | ancestor triage invalidated by code delta after SHA | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

@@ -1,0 +1,2 @@
+scan-id | branch | outcome | reason | commit
+TEST-BUDGET | clearance-fixture | green | ancestor triage with evidence-tail-only delta after SHA; Immutability Law #1169 | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

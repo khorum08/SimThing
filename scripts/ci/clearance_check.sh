@@ -796,15 +796,27 @@ PY
 
 check_required_pr_body_fields() {
   local body="$1"
+  local missing=()
   if ! echo "$body" | grep -qiE 'tested_code_sha:[[:space:]]*[0-9a-f]{8,}'; then
-    emit_verdict fail "missing-tested-code-sha: add tested_code_sha and coverage_basis"
-    return 1
+    missing+=("tested_code_sha")
   fi
   if ! echo "$body" | grep -qiE 'coverage_basis:[[:space:]]*PASS'; then
-    emit_verdict fail "missing-tested-code-sha: add tested_code_sha and coverage_basis"
-    return 1
+    missing+=("coverage_basis")
   fi
-  return 0
+  if [[ "${#missing[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  local joined="" m token
+  for m in "${missing[@]}"; do
+    token="${m//_/-}"
+    if [[ -z "$joined" ]]; then
+      joined="$token"
+    else
+      joined="${joined},${token}"
+    fi
+  done
+  emit_verdict fail "missing-${joined}: add tested_code_sha and coverage_basis"
+  return 1
 }
 
 # Explicit novelty claim only — never a generic unmatched-diff fallback.
@@ -993,28 +1005,170 @@ PY
   printf '%s\n' "$scan_out" | awk '$2 == "INSPECT" && $3 ~ /^[1-9]/ { print $1 }' | sed '/^$/d'
 }
 
+# Evidence-tail paths after a triage SHA (Immutability Law #1169 / OH-IMMUTABLE-EVIDENCE-0):
+# docs/tests/**, scripts/ci/triage_log.tsv, *_results.md — not code.
+is_evidence_tail_path() {
+  local path="$1"
+  path="${path//\\//}"
+  [[ "$path" == docs/tests/* ]] && return 0
+  [[ "$path" == "scripts/ci/triage_log.tsv" ]] && return 0
+  [[ "$path" == *_results.md ]] && return 0
+  return 1
+}
+
+# Returns 0 when triage_sha..head touches only evidence-tail paths (or empty).
+# Fixture mode: optional evidence_tail_paths.txt / code_delta_paths.txt override git.
+triage_delta_is_evidence_tail_only() {
+  local triage_sha="$1"
+  local head_sha="$2"
+  if [[ -n "$FIXTURE_DIR" ]]; then
+    if [[ -f "${FIXTURE_DIR}/code_delta_paths.txt" ]]; then
+      return 1
+    fi
+    if [[ -f "${FIXTURE_DIR}/evidence_tail_paths.txt" ]]; then
+      local p
+      while IFS= read -r p; do
+        p="$(printf '%s' "$p" | tr -d '\r' | sed '/^[[:space:]]*$/d')"
+        [[ -z "$p" ]] && continue
+        if ! is_evidence_tail_path "$p"; then
+          return 1
+        fi
+      done <"${FIXTURE_DIR}/evidence_tail_paths.txt"
+      return 0
+    fi
+    # Fixture without override: treat non-hex / fixture commits as unbound (valid).
+    if [[ ! "$triage_sha" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+      return 0
+    fi
+  fi
+  if [[ -z "$triage_sha" || -z "$head_sha" ]]; then
+    return 0
+  fi
+  if [[ "$triage_sha" == "$head_sha" ]]; then
+    return 0
+  fi
+  # Require ancestor relationship when both look like SHAs.
+  if [[ "$triage_sha" =~ ^[0-9a-fA-F]{7,40}$ && "$head_sha" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+    if ! git merge-base --is-ancestor "$triage_sha" "$head_sha" 2>/dev/null; then
+      return 1
+    fi
+    local paths
+    paths="$(git diff --name-only "${triage_sha}..${head_sha}" 2>/dev/null || true)"
+    local p
+    while IFS= read -r p; do
+      [[ -z "$p" ]] && continue
+      if ! is_evidence_tail_path "$p"; then
+        return 1
+      fi
+    done <<<"$paths"
+    return 0
+  fi
+  # Non-SHA fixture commits (e.g. fixture01) remain valid without git ancestry.
+  return 0
+}
+
+resolve_pr_head_sha() {
+  if [[ -n "$FIXTURE_DIR" && -f "${FIXTURE_DIR}/head_sha.txt" ]]; then
+    tr -d '\r' <"${FIXTURE_DIR}/head_sha.txt" | head -n 1
+    return 0
+  fi
+  if [[ -n "$RANGE_SPEC" && "$RANGE_SPEC" == *..* ]]; then
+    printf '%s\n' "${RANGE_SPEC##*..}"
+    return 0
+  fi
+  if [[ -n "$PR_NUMBER" ]] && command -v gh >/dev/null 2>&1; then
+    local pr_json
+    pr_json="$(gh pr view "$PR_NUMBER" --json headRefOid 2>/dev/null || true)"
+    if [[ -n "$pr_json" ]]; then
+      "$PYTHON_BIN" - <<'PY' "$pr_json"
+import json, sys
+print(json.loads(sys.argv[1]).get("headRefOid", ""))
+PY
+      return 0
+    fi
+  fi
+  git rev-parse HEAD 2>/dev/null || true
+}
+
+# Emit covered scan_ids whose triage commit is head, an ancestor with evidence-tail-only
+# delta, or a non-SHA fixture token. Code deltas after triage SHA invalidate coverage.
 triage_covered_scan_ids() {
   local triage_tsv="$1"
-  TRIAGE_TSV_PATH="$triage_tsv" "$PYTHON_BIN" - <<'PY'
+  local head_sha
+  head_sha="$(resolve_pr_head_sha | tr -d '\r' | head -n 1)"
+  TRIAGE_TSV_PATH="$triage_tsv" HEAD_SHA="$head_sha" FIXTURE_DIR_ENV="${FIXTURE_DIR:-}" \
+    "$PYTHON_BIN" - <<'PY'
 import os
 import re
+import subprocess
 import sys
 
 path = os.environ.get("TRIAGE_TSV_PATH", "")
+head_sha = (os.environ.get("HEAD_SHA") or "").strip()
+fixture_dir = (os.environ.get("FIXTURE_DIR_ENV") or "").strip()
 PLACEHOLDER_RE = re.compile(
     r"^(?:tbd|todo|n/?a|none|pending|fixme|wip|placeholder|\.{1,3}|-+)$",
     re.IGNORECASE,
 )
 VALID = {"delete", "green", "escalate"}
-covered = set()
+SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 
 def reason_valid(text: str) -> bool:
     text = (text or "").strip()
     return bool(text) and not PLACEHOLDER_RE.match(text)
 
+def is_evidence_tail(p: str) -> bool:
+    p = p.replace("\\", "/")
+    if p.startswith("docs/tests/"):
+        return True
+    if p == "scripts/ci/triage_log.tsv":
+        return True
+    if p.endswith("_results.md"):
+        return True
+    return False
+
+def evidence_tail_only(triage_sha: str) -> bool:
+    if fixture_dir:
+        code = os.path.join(fixture_dir, "code_delta_paths.txt")
+        if os.path.isfile(code):
+            return False
+        evid = os.path.join(fixture_dir, "evidence_tail_paths.txt")
+        if os.path.isfile(evid):
+            with open(evid, encoding="utf-8") as fh:
+                for line in fh:
+                    p = line.strip()
+                    if p and not is_evidence_tail(p):
+                        return False
+            return True
+        if not SHA_RE.match(triage_sha):
+            return True
+    if not triage_sha or not head_sha:
+        return True
+    if triage_sha == head_sha:
+        return True
+    if SHA_RE.match(triage_sha) and SHA_RE.match(head_sha):
+        r = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", triage_sha, head_sha],
+            capture_output=True,
+        )
+        if r.returncode != 0:
+            return False
+        r2 = subprocess.run(
+            ["git", "diff", "--name-only", f"{triage_sha}..{head_sha}"],
+            capture_output=True,
+            text=True,
+        )
+        for p in (r2.stdout or "").splitlines():
+            p = p.strip()
+            if p and not is_evidence_tail(p):
+                return False
+        return True
+    return True
+
 if not path or not os.path.isfile(path):
     sys.exit(0)
 
+covered = set()
 with open(path, encoding="utf-8-sig", newline="") as fh:
     for i, line in enumerate(fh, 1):
         line = line.rstrip("\n\r")
@@ -1029,8 +1183,10 @@ with open(path, encoding="utf-8-sig", newline="") as fh:
         if len(parts) < 5:
             print(f"MALFORMED:{path}:{i}", file=sys.stderr)
             sys.exit(2)
-        scan_id, _branch, outcome, reason, _commit = parts[:5]
-        if outcome in VALID and reason_valid(reason) and scan_id:
+        scan_id, _branch, outcome, reason, commit = parts[:5]
+        if outcome not in VALID or not reason_valid(reason) or not scan_id:
+            continue
+        if evidence_tail_only(commit):
             covered.add(scan_id)
 
 for scan_id in sorted(covered):
@@ -1040,7 +1196,7 @@ PY
 
 check_triage_requirement() {
   local triage_tsv="$1"
-  local delta_ids covered_ids missing
+  local delta_ids covered_ids
   delta_ids="$(inspect_delta_scan_ids | sed '/^$/d' || true)"
   if [[ -z "$delta_ids" ]]; then
     return 0
@@ -1374,6 +1530,9 @@ run_selftest() {
     clearance_selftest_studio_clock_class_api_nonregression
     clearance_selftest_studio_clock_class_picker_nonregression
     clearance_selftest_studio_clock_class_gate_wiring
+    clearance_selftest_tp_closed_track_no_longer_clearable
+    clearance_selftest_triage_ancestor_evidence_tail_ok
+    clearance_selftest_triage_ancestor_code_delta_missing
   )
   local name
   for name in "${fixtures[@]}"; do

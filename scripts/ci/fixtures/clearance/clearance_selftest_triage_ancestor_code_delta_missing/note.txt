@@ -1,0 +1,2 @@
+Immutability Law #1169 / OH-IMMUTABLE-EVIDENCE-0: ancestor triage sha + code delta after that sha
+must still emit DA-RESERVE(triage-missing). Evidence-tail-only is the sole allowed post-triage delta.

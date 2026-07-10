@@ -1,0 +1,4 @@
+crates/simthing-workshop/src/diplomacy_post_hydration.rs
+crates/simthing-workshop/tests/tp_diplomacy_flow_0.rs
+docs/tests/tp_diplomacy_flow_0_results.md
+scripts/ci/test_inventory.tsv

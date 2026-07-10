@@ -40,7 +40,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | f2f6126148ae493c0c81f8f07f75e3d425c1ca8359b26c11b87f6b78df409835 |
+| precedented_classes.tsv | 6a1431e76900b7e1c5ed619f8f2b47caca31bb1c803750c665f9a013c4c08ede |
 | binding_conditions.tsv | 6f61be159f87b7e68a0a39d66df0fd8ea49370cb04d867e59cc3d08fc2811766 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
@@ -107,15 +107,8 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | --- | --- | --- | --- | --- |
 | corpus-sweep | crates/*/tests/*.rs\|crates/*/tests/**/*.rs\|scripts/ci/test_inventory.tsv\|docs/tests/cc_sweep_*_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
 | corpus-module-marker-sweep | scripts/ci/test_inventory.tsv\|docs/tests/cc_sweep_*_module_markers_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
-| tp-diplomacy-flow-rung | crates/simthing-workshop/src/diplomacy_post_hydration.rs\|crates/simthing-workshop/tests/tp_diplomacy_flow_0.rs\|docs/tests/tp_diplomacy_flow_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-fronts-authoring-rung | crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fronts_authoring_0.rs\|docs/tests/tp_fronts_authoring_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-palma-reach-rung | crates/simthing-workshop/src/palma_reach_post_hydration.rs\|crates/simthing-workshop/tests/tp_palma_reach_0.rs\|docs/tests/tp_palma_reach_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-fleet-movement-rung | crates/simthing-workshop/src/fleet_movement_post_hydration.rs\|crates/simthing-workshop/src/fronts_post_hydration.rs\|crates/simthing-workshop/tests/tp_fleet_movement_0.rs\|docs/tests/tp_fleet_movement_0_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | active |
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
-| tp-workshop-candidate-proof | crates/simthing-workshop/src/tp_*.rs\|crates/simthing-workshop/tests/tp_*.rs\|docs/tests/tp_*_0_results.md\|scripts/ci/test_inventory.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green\|workshop_only\|no_engine_crate | active |
-| tp-admitted-clause-api-composition | crates/simthing-clausething/src/clause_scenario_projection.rs\|crates/simthing-clausething/src/lib.rs\|crates/simthing-mapeditor/src/clause_scenario_ingest.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|crates/simthing-workshop/src/tp_studio_clause_ingest.rs\|crates/simthing-workshop/src/tp_studio_stead_rebind.rs\|docs/tests/tp_studio_clause_api_*_results.md\|scripts/ci/test_inventory.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green | active |
-| tp-studio-clause-picker | crates/simthing-mapeditor/src/clause_scenario_picker.rs\|crates/simthing-mapeditor/src/app/scenario_io.rs\|crates/simthing-mapeditor/src/app/ui.rs\|crates/simthing-mapeditor/src/app/mod.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_picker_*.rs\|crates/simthing-mapeditor/tests/tp_studio_clause_api_*.rs\|docs/tests/tp_studio_clause_picker_*_results.md\|scripts/ci/test_inventory.tsv\|docs/design_0_0_8_5_*.md\|docs/orchestrator_orientation.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|ci_green | active |
 | studio-sim-clock-substrate | crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|docs/tests/studio_sim_clock_*_results.md\|docs/tests/studio_live_ops_readiness_0_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
 
 ## Binding Conditions

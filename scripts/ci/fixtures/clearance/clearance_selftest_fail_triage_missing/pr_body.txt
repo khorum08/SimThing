@@ -1,8 +1,3 @@
-TP-DIPLOMACY-FLOW-0 relay
-
-tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
-coverage_basis: PASS — commits after tested_code_sha are docs/evidence-only and do not affect the tested binary
-
-DOCTRINE-TESTS-VERDICT: PASS
-tested_code_sha: a2c6e942db531ff8a233d82a48d055a73cc864fe
-owner_local: true
+tested_code_sha: d4cea0d005aa979368837adc69b48592f1650897
+coverage_basis: PASS - triage missing fixture
+ci_green: PASS
