@@ -74,8 +74,8 @@ pub fn governed_pairs_for_property(
         let (clamp_kind, clamp_min, clamp_max) = GovernedPair::encode_clamp(&sf.clamp);
         let vel_max = sf.velocity_max.unwrap_or(f32::INFINITY);
         pairs.push(GovernedPair {
-            governed_col: governed_col as u32,
-            governing_col: governing_col as u32,
+            governed_col: governed_col.raw_u32(),
+            governing_col: governing_col.raw_u32(),
             clamp_min,
             clamp_max,
             vel_max,

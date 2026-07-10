@@ -41,8 +41,8 @@ pub fn build_intensity_eml_entries(registry: &DimensionRegistry) -> Vec<Intensit
         };
         entries.push(IntensityEmlEntry {
             tree_id: intensity_tree_id(idx as u32),
-            velocity_col: velocity_col as u32,
-            intensity_col: intensity_col as u32,
+            velocity_col: velocity_col.raw_u32(),
+            intensity_col: intensity_col.raw_u32(),
         });
     }
     entries

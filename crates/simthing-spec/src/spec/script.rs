@@ -175,9 +175,9 @@ fn read_value(
             property_id,
             role: role.clone(),
         })?;
-    if col >= ctx.n_dims {
+    if col.raw() >= ctx.n_dims {
         return Err(ScriptEvalError::ColumnOutOfBounds {
-            col,
+            col: col.raw(),
             n_dims: ctx.n_dims,
         });
     }
@@ -195,5 +195,5 @@ fn read_value(
         return Err(ScriptEvalError::SlotOutOfBounds { slot, slots });
     }
 
-    Ok(ctx.shadow[slot as usize * ctx.n_dims + col])
+    Ok(ctx.shadow[slot as usize * ctx.n_dims + col.raw()])
 }

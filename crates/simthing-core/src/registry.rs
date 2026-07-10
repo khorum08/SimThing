@@ -3,6 +3,7 @@
 //! Rule: the only place column arithmetic lives. No external code computes
 //! `slot * N_DIMS + dim`. The registry translates semantic intent → column index.
 
+use crate::column_index::ColumnIndex;
 use crate::ids::SimPropertyId;
 use crate::property::{PropertyLayout, SimProperty, SubFieldRole};
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,7 @@ use std::collections::HashMap;
 
 /// The contiguous GPU column range assigned to a registered property.
 /// Column arithmetic: global_col = range.start + layout.offset_of(role)
+/// (minted only as [`ColumnIndex`] — never a bare `usize` on sealed paths).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyColumnRange {
     pub start: usize,
@@ -21,11 +23,16 @@ pub struct PropertyColumnRange {
 
 impl PropertyColumnRange {
     /// Global GPU column index for a given sub-field role.
-    /// Delegates to PropertyLayout for offset arithmetic.
-    pub fn col_for_role(&self, role: &SubFieldRole, layout: &PropertyLayout) -> Option<usize> {
+    /// Delegates to PropertyLayout for offset arithmetic; returns a sealed
+    /// [`ColumnIndex`] (OC-K-COLUMN-ROLE-0).
+    pub fn col_for_role(
+        &self,
+        role: &SubFieldRole,
+        layout: &PropertyLayout,
+    ) -> Option<ColumnIndex> {
         layout
             .offset_of(role)
-            .map(|local| self.start + local.lane())
+            .map(|local| ColumnIndex::new(self.start + local.lane()))
     }
 
     /// Global GPU column range (start, len) for a multi-width sub-field.
@@ -33,10 +40,10 @@ impl PropertyColumnRange {
         &self,
         role: &SubFieldRole,
         layout: &PropertyLayout,
-    ) -> Option<(usize, usize)> {
+    ) -> Option<(ColumnIndex, usize)> {
         let local = layout.offset_of(role)?;
         let width = layout.width_of(role)?;
-        Some((self.start + local.lane(), width))
+        Some((ColumnIndex::new(self.start + local.lane()), width))
     }
 }
 
@@ -159,6 +166,60 @@ impl Default for DimensionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::property::SubFieldRole;
+    use crate::column_index::ColumnIndex;
+    use crate::property::{ClampBehavior, PropertyLayout, SubFieldRole, SubFieldSpec};
 
+    /// OC-K-COLUMN-ROLE-0: col_for_role mints ColumnIndex, not bare usize.
+    #[test]
+    fn oc_k_column_role_0_col_for_role_returns_column_index() {
+        let layout = PropertyLayout {
+            sub_fields: vec![
+                SubFieldSpec {
+                    role: SubFieldRole::Amount,
+                    width: 1,
+                    clamp: ClampBehavior::Unbounded,
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: "amount".into(),
+                    display_range: None,
+                    governed_by: None,
+                    reduction_override: None,
+                    soft_aggregate_guard: None,
+                    accumulator_spec: None,
+                },
+                SubFieldSpec {
+                    role: SubFieldRole::Velocity,
+                    width: 1,
+                    clamp: ClampBehavior::Unbounded,
+                    velocity_max: None,
+                    default: 0.0,
+                    display_name: "velocity".into(),
+                    display_range: None,
+                    governed_by: None,
+                    reduction_override: None,
+                    soft_aggregate_guard: None,
+                    accumulator_spec: None,
+                },
+            ],
+        };
+        let range = PropertyColumnRange {
+            start: 7,
+            stride: layout.stride(),
+        };
+        let amount = range.col_for_role(&SubFieldRole::Amount, &layout).unwrap();
+        let velocity = range
+            .col_for_role(&SubFieldRole::Velocity, &layout)
+            .unwrap();
+        assert_eq!(amount, ColumnIndex::new(7));
+        assert_eq!(velocity, ColumnIndex::new(8));
+        // Global column bits match start + layout lane (prior raw-lane arithmetic).
+        assert_eq!(
+            amount.raw(),
+            range.start + layout.offset_of(&SubFieldRole::Amount).unwrap().lane()
+        );
+        assert_eq!(
+            velocity.raw(),
+            range.start + layout.offset_of(&SubFieldRole::Velocity).unwrap().lane()
+        );
+    }
 }

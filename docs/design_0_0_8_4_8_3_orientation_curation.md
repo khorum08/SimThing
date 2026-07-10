@@ -30,7 +30,7 @@ router cannot diff-verify stay banned; meta-objects face the Necessity Test.
 
 | rung | condition | status |
 |---|---|---|
-| OC-KERNEL-LANE | each `OC-K*` rung blocked-until-owner-amendment-valve-authorization (per rung, not per lane) | open |
+| OC-KERNEL-LANE | each `OC-K*` rung blocked-until-owner-amendment-valve-authorization (per rung, not per lane) | discharged (#1272) |
 | OC-CLOSEOUT-0 | reach-log and anchor tables must carry decay rules before close (no unbounded growth surfaces) | open |
 
 ---
@@ -81,10 +81,10 @@ same PR). `admission-amendment-request: allowed`; `seal-residue-risk` declared p
 
 | # | Rung | Deliverable | Exit proof | Tier |
 |---|---|---|---|---|
-| K1 | `OC-K-DECISION-INGRESS-0` | Structural/commitment effects mintable **only** via sealed threshold→emission→boundary doors; CPU diagnostic/approximate types cannot construct commitment ingress (FIELD_POLICY remainder + core §8). | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence | T2/Owner |
-| K2 | `OC-K-COLUMN-ROLE-0` | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed paths; retires the .data[N] HEURISTIC where baseline-zero. | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence | T2/Owner |
-| K3 | `OC-K-EXACT-GATE-0` | Magnitude-sensitive threshold/commitment registration requires exact-magnitude proof type (Candidate F); `ApproximateDiagnostic` cannot feed those registrations (constitution §0.7). | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence | T2/Owner |
-| K4 | `OC-K-EML-OPCODE-GATE-0` | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tree first" stays anchor prose — the gate types only the door. | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence | T2/Owner |
+| K2 | `OC-K-COLUMN-ROLE-0` | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed paths; retires the .data[N] HEURISTIC where baseline-zero. | **GRADUATED / PR #1273** — `col_for_role` → `ColumnIndex`; role pathway in core §3; RAW-DATA-INDEX + AS5-COLUMN-ALIAS retired; COLUMN-INDEX-MINT tripwire tracks residual public mints (OC-K2.1 backlog); CPU-oracle bit-exact parity. Evidence: [`oc_k_column_role_0_results.md`](tests/oc_k_column_role_0_results.md). **Next:** `OC-K-EXACT-GATE-0`. | T2/Owner |
+| K3 | `OC-K-EXACT-GATE-0` | Magnitude-sensitive threshold/commitment registration requires exact-magnitude proof type (Candidate F); `ApproximateDiagnostic` cannot feed those registrations (constitution §0.7). | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rule applies where noted | T2/Owner |
+| K1 | `OC-K-DECISION-INGRESS-0` | Structural/commitment effects mintable **only** via sealed threshold→emission→boundary doors; CPU diagnostic/approximate types cannot construct commitment ingress (FIELD_POLICY remainder + core §8). | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rule applies where noted | T2/Owner |
+| K4 | `OC-K-EML-OPCODE-GATE-0` | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tree first" stays anchor prose — the gate types only the door. | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rule applies where noted | T2/Owner |
 
 ### Lane C — close
 

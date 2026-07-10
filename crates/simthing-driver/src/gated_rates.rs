@@ -134,7 +134,8 @@ pub fn resolve_gated_rates(
                     .ok_or_else(|| InstallError::GatedRateUnknownTriggerProperty {
                         gated: gated.id.clone(),
                         property: format!("{what} Amount sub-field"),
-                    })? as u32)
+                    })?
+                    .raw_u32())
             };
 
         let trigger = match &gated.trigger {

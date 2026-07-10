@@ -112,7 +112,7 @@ pub fn observe(
                 let col = range.col_for_role(&spec.role, layout)?;
                 Some(SubFieldObservation {
                     role: spec.role.clone(),
-                    value: target_row.get(col).copied().unwrap_or(0.0),
+                    value: target_row.get(col.raw()).copied().unwrap_or(0.0),
                 })
             })
             .collect();

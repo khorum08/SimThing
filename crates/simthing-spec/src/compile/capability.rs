@@ -163,7 +163,8 @@ impl CapabilityTreeBuilder {
                 let cat_range = registry.column_range(cat_prop_id);
                 let progress_col = cat_range
                     .col_for_role(&entry_role, cat_layout)
-                    .expect("builder-created capability role must resolve");
+                    .expect("builder-created capability role must resolve")
+                    .raw();
 
                 // ── 4. Effects → suspended overlays ───────────────────────────
                 let mut overlay_ids: Vec<OverlayId> = Vec::new();
@@ -247,14 +248,15 @@ impl CapabilityTreeBuilder {
                     let pre_role = SubFieldRole::Named(pre.entry_id.clone());
                     let pre_layout = &registry.property(pre_prop_id).layout;
                     let range = registry.column_range(pre_prop_id);
-                    let col = range.col_for_role(&pre_role, pre_layout).ok_or_else(|| {
-                        SpecError::UnknownPrereqEntry {
+                    let col = range
+                        .col_for_role(&pre_role, pre_layout)
+                        .ok_or_else(|| SpecError::UnknownPrereqEntry {
                             in_tree: spec.tree_id.clone(),
                             entry_id: entry.id.clone(),
                             category: pre.category.clone(),
                             prereq_entry_id: pre.entry_id.clone(),
-                        }
-                    })?;
+                        })?
+                        .raw();
 
                     let min_value = entry_cost
                         .get(&(pre_cat_key.clone(), pre.entry_id.clone()))

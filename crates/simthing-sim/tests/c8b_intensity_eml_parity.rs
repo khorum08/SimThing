@@ -83,6 +83,7 @@ fn intensity_col(reg: &DimensionRegistry) -> usize {
     reg.column_range(SimPropertyId(0))
         .col_for_role(&simthing_core::SubFieldRole::Intensity, layout)
         .unwrap()
+        .raw()
 }
 
 fn cpu_golden_intensity(

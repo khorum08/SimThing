@@ -57,7 +57,7 @@ fn push_hard_output_registration(
     let event_kind = cpu_reg.push(semantic);
     gpu_regs.push(ThresholdRegistration {
         slot: 0,
-        col: col as u32,
+        col: col.raw_u32(),
         threshold: 0.75,
         direction: DIR_UPWARD,
         event_kind,

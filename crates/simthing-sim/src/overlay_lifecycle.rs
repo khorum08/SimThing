@@ -220,7 +220,7 @@ fn read_sub_field(
     let range = registry.try_column_range(pid)?;
     let layout = &registry.try_property(pid)?.layout;
     let col = range.col_for_role(role, layout)?;
-    shadow.get(base + col).copied()
+    shadow.get(base + col.raw()).copied()
 }
 
 fn apply_expire_effects(
@@ -248,7 +248,7 @@ fn apply_expire_effects(
                 };
                 let layout = &prop.layout;
                 if let Some(col) = range.col_for_role(sub_field, layout) {
-                    if let Some(v) = shadow.get_mut(base + col) {
+                    if let Some(v) = shadow.get_mut(base + col.raw()) {
                         *v += delta;
                     }
                 }
@@ -265,7 +265,7 @@ fn apply_expire_effects(
                 };
                 let layout = &prop.layout;
                 if let Some(col) = range.col_for_role(&SubFieldRole::Intensity, layout) {
-                    if let Some(v) = shadow.get_mut(base + col) {
+                    if let Some(v) = shadow.get_mut(base + col.raw()) {
                         *v = *value;
                     }
                 }

@@ -44,9 +44,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f4187fcda67ca9cc5c20006ffff2a1d139514a881368a545be0237e7acaab972 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
-| design_0_0_8_4_8_3_orientation_curation.md | d87e642d9181c96b1b43a5e801ac67d33ee4bf70a277abb1b4bc255b2abd4bbc |
+| design_0_0_8_4_8_3_orientation_curation.md | c84d7764d1bc7228e190743de7ede06d99763862e4d5da7117db72ca889b2289 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
-| doctrine_anchors.tsv | 66acc6881a979c8baa2634a75c1d1b3c4fef3f2b389efb150689b567bef1772c |
+| doctrine_anchors.tsv | b45b535545a11af2aa4a19b1f6030e9b0096cba8a87f42ee1f64538898e84400 |
 
 ## Active Track / Rung Summary (`design_0_0_8_4_8_3_orientation_curation.md`)
 
@@ -59,15 +59,15 @@ Track state: `open`
 | 3 | OC-QUERY-0 | **Queryable + observable curation.** `scripts/ci/anchor_query.sh` (`--domain <d> | **GRADUATED / merged [#1267](https://github.com/khorum08/SimThing/pull/1267)** — query/reach-log/resync live; DA ride... |
 | 4 | OC-ORIENT-SLICE-0 | **Cold-start spine in orientation** (generated, budgeted): the §1 always-on line | **DA-GRADUATED / merged [#1268](https://github.com/khorum08/SimThing/pull/1268) @ `9888a07e`** — cold-start spine poi... |
 | 5 | OC-DOCS-CASCADE-0 | **Docs cascade once A1–A4 are live** (the HU-DOCS-CONSOLIDATION pattern, in-trac | **DA-GRADUATED / merged [#1270](https://github.com/khorum08/SimThing/pull/1270) @ `2a2c501c`** — entrypoint cascade w... |
-| K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence |
-| K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence |
-| K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence |
-| K4 | OC-K-EML-OPCODE-GATE-0 | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tr | **PARKED** — blocked by open `OC-KERNEL-LANE` until Owner amendment-valve authorization + forgeability evidence |
+| K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | **GRADUATED / PR #1273** — `col_for_role` → `ColumnIndex`; role pathway in core §3; RAW-DATA-INDEX + AS5-COLUMN-ALIAS... |
+| K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rul... |
+| K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rul... |
+| K4 | OC-K-EML-OPCODE-GATE-0 | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tr | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rul... |
 | C | OC-CLOSEOUT-0 | First reach-log report (what agents queried; misses → catalogue updates or expli | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `OC-CLOSEOUT-0`
+Active pointer: `OC-K-EXACT-GATE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
