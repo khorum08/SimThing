@@ -44,8 +44,8 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 1bc29185ebf0a42176731251954f269168226e96c50e9f32ca3ea555ef65ffa1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
-| design_0_0_8_4_8_3_orientation_curation.md | b97384e4a5c121736980053b93e2d0575fdfadc5180bb08f194f7ee53a74bed2 |
-| relay_lint.sh | e405867a5943a96a0af37fa6f54be4c3fb5b47d9025f70a2110b91ed889e82e8 |
+| design_0_0_8_4_8_3_orientation_curation.md | 44d6ca0143f7a0644081f41cbdaa2a43df99eb552f50d77fcb4a69bf2b604690 |
+| relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 66acc6881a979c8baa2634a75c1d1b3c4fef3f2b389efb150689b567bef1772c |
 
 ## Active Track / Rung Summary (`design_0_0_8_4_8_3_orientation_curation.md`)
@@ -56,7 +56,7 @@ Track state: `open`
 | --- | --- | --- | --- |
 | 1 | OC-ANCHOR-CATALOG-0 | Populate `doctrine_anchors.tsv` to the §1 catalogue: one row per surface (§-prec | **GRADUATED / merged [#1264](https://github.com/khorum08/SimThing/pull/1264) @ `b680d2e1`** — 4→17 rows, 1:1 to §1 + ... |
 | 2 | OC-PATH-TRIGGER-0 | **Mechanical adjacency.** New data table `anchor_triggers.tsv` (`glob` -> `trigg | **GRADUATED / merged [#1266](https://github.com/khorum08/SimThing/pull/1266)** — 16 trigger globs (DA riders: +spec/+... |
-| 3 | OC-QUERY-0 | **Queryable + observable curation.** `scripts/ci/anchor_query.sh` (`--domain <d> | NOT STARTED |
+| 3 | OC-QUERY-0 | **Queryable + observable curation.** `scripts/ci/anchor_query.sh` (`--domain <d> | **GRADUATED / merged [#1267](https://github.com/khorum08/SimThing/pull/1267)** — query/reach-log/resync live; DA ride... |
 | 4 | OC-ORIENT-SLICE-0 | **Cold-start spine in orientation** (generated, budgeted): the §1 always-on line | NOT STARTED |
 | 5 | OC-DOCS-CASCADE-0 | **Docs cascade once A1–A4 are live** (the HU-DOCS-CONSOLIDATION pattern, in-trac | NOT STARTED |
 | K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | NOT STARTED |
@@ -67,7 +67,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `OC-QUERY-0`
+Active pointer: `OC-ORIENT-SLICE-0`
 
 
 ## Cold-Start Entrypoint
@@ -140,7 +140,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `e405867a5943`
+relay_lint.sh schema stamp: `c553dd175314`
 
 ## tested_code_sha + coverage_basis Rule
 

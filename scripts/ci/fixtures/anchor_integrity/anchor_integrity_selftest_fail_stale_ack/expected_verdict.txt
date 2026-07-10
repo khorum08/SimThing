@@ -1,1 +1,1 @@
-RELAY-LINT-VERDICT: FAIL(stale-anchor-ack)
+RELAY-LINT-VERDICT: FAIL(stale-anchor-ack: remedy=bash scripts/ci/anchor_check.sh --resync then re-ack)

@@ -1,1 +1,1 @@
-RELAY-LINT-VERDICT: FAIL(unknown-anchor)
+RELAY-LINT-VERDICT: FAIL(unknown-anchor: remedy=bash scripts/ci/anchor_query.sh --domain <domain> or --grep <term>)
