@@ -79,6 +79,7 @@
 
 use simthing_core::{AccumulatorOp, EmlExpressionRegistry, InputSpec, SourceSpec};
 
+use crate::eml_opcode_gate::{combine_in_closed_vocabulary, OpcodeGateError};
 use crate::registration::ThresholdRegistration;
 
 use crate::world_state::IntentDelta;
@@ -160,6 +161,16 @@ impl PackedAccumulatorUpload {
     }
 
     pub fn from_gpu_ops(ops: Vec<AccumulatorOpGpu>) -> Result<Self, EncodeError> {
+        // OC-K-EML-OPCODE-GATE-0: closed combine vocabulary at packed registration.
+        for op in &ops {
+            if !combine_in_closed_vocabulary(op.combine_kind) {
+                return Err(EncodeError::OpcodeGate(
+                    OpcodeGateError::UnwhitelistedCombine {
+                        combine_kind: op.combine_kind,
+                    },
+                ));
+            }
+        }
         Ok(Self {
             ops,
             input_list: Vec::new(),

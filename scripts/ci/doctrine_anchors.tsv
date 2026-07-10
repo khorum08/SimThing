@@ -5,7 +5,7 @@ seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kern
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	c88002b728986a33cd8fbb2537c40658df9268798e50f6aa605bb592d130ead2
 property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver,property-value	7454775897c6cb5201aa21d0dbefa9a3c30bbaae1b67fb28ab3edc6946c14ee5
-eml-extension-ladder	docs/workshop/eml_gadget_library_design_note.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7b185b66d58bde48258935e2d1de1cf190d958210016279d0ab02dbd2e44179d
+eml-extension-ladder	docs/workshop/eml_gadget_library_design_note.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7755bc72ffbe73411916f1d8aca76156ad45dcfd9570d345b1aec3adc26765a9
 spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	7569c5524475a7f815e80a998c3d15f9f452c4ad96f70200a8d73f9992af25a5
 exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	677cd71cf5a09e40bddfbb1a942d3b30473a906b3b35b0888e35d6a12bec6edd
 drift-detectors-six-line	docs/simthing_core_design.md	heading:## 9. The drift detectors — litmus tests for every change	retain-set,drift-detectors	1f3bfc9659dfb289d6de24cb3d97b620f6f8e7ff5651e8ace52d320168de01d0

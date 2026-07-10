@@ -139,6 +139,39 @@ the no-semantic-WGSL constitution intact.
   `ExactDeterministic` policy and execution-class taxonomy.
 - **Bounded-feedback admission guardrail (new — §7).**
 
+### 2.1 Extension ladder (OC-K-EML-OPCODE-GATE-0 / `eml-extension-ladder`)
+
+**Anchor B** — Andrzej Odrzywołek, *All elementary functions from a single operator*
+(arXiv:2603.21852); core design §1.1. One fixed generic interpreter (`EvalEML`) encodes any
+scripted interaction as postfix data — never a new semantic kernel, opcode, or subsystem.
+
+**Core §4.1 three-step extension ladder** (agents hunting “how do I add branching?” land here
+before any WGSL path):
+
+1. **EML gadget tree** over the existing interpreter (default; branchless column dataflow).
+2. **New generic primitive** only by Tier-2 gate with bit-exact CPU-oracle parity
+   (`CpuOracleParityProof` + `OpcodeRegistrationGate`); vocabulary stays closed until DA-scoped
+   expansion lands the opcode in the closed set.
+3. **Semantic / scenario-specific op is never admissible**
+   (`SemanticOpcodeRegistration` hard-rejects at the gate).
+
+**Gadget catalogue** (sanctioned macros; no new WGSL): FieldSampler, WeightedAccumulator,
+SoftStep, Decay / EMA, VelocityMonitor, Acceleration, BoundedFeedback, Hysteresis, Desperation
+(composer over the above; not a new opcode).
+
+**Worked SoftStep policy conditional** (branchless branching as column data):
+
+```text
+input columns → SoftStep predicate → weighted branch A/B contribution → accumulator column
+out = B + softstep(x) * (A - B)
+```
+
+No if/else WGSL. No semantic opcode. No scenario-specific combine. Kernel proof:
+`SoftStepPolicyConditional` / `oc_k_eml_opcode_gate_0_softstep_policy_conditional_compiles_as_gadget`.
+
+Closed registration door: `OpcodeRegistrationGate` + closed opcode/combine vocabulary on
+`EmlGpuProgramTable::upload_trees` and packed combine admission.
+
 ---
 
 ## 3. Composition model
