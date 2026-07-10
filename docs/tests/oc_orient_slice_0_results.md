@@ -2,8 +2,7 @@
 
 ## Status
 
-**PROBATION / proof-present / DA-review-pending** — gate-wiring cold-start spine.
-Expected clearance: `DA-RESERVE(gate-wiring)`. Do not self-merge.
+**DA-GRADUATED / COMPLETE** — merged [#1268](https://github.com/khorum08/SimThing/pull/1268) @ `9888a07ebc3d628f39016c3d52e1cad1647f9254`.
 
 ## Changed files
 
@@ -20,7 +19,7 @@ Expected clearance: `DA-RESERVE(gate-wiring)`. Do not self-merge.
 ## A3 graduation / A4 stamp
 
 A3 graduated [#1267](https://github.com/khorum08/SimThing/pull/1267) @ `ddcf8864`.
-A4 active in this PR; pointer `OC-ORIENT-SLICE-0` until merge.
+A4 graduated [#1268](https://github.com/khorum08/SimThing/pull/1268) @ `9888a07e`; next pointer `OC-DOCS-CASCADE-0`.
 
 ## Cold-start spine (pointers only)
 
@@ -49,7 +48,3 @@ pointer lines and anchor_query entrypoint. Pointers only; no doctrine prose dige
 
 A5 docs cascade · closeout — not implemented. No Lane B / no 0.0.8.6 product.
 No reach-log gating · no new verdicts · no §3–§7 doctrine prose in digest.
-
-## Expected clearance
-
-`DA-RESERVE(gate-wiring)` · expected REQUIRED-ANCHORS: `orientation-harness-core`
