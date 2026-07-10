@@ -6,7 +6,7 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | pending |
+| PR | #1285 |
 | branch | `studio-live-session-bridge-0` |
 | base | `master` |
 | merge | NOT MERGED |
