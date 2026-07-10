@@ -35,6 +35,7 @@ pub mod studio_render_loop_dirty_gate;
 pub mod studio_scenario_document;
 pub mod studio_scenario_load;
 pub mod studio_screenshot;
+pub mod studio_live_session_bridge;
 pub mod studio_sim_clock;
 pub mod studio_sim_clock_ui;
 pub mod studio_structural_edit;
@@ -184,6 +185,12 @@ pub use studio_scenario_document::{
     StudioScenarioDocument, StudioScenarioDocumentError,
 };
 pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
+pub use studio_live_session_bridge::{
+    bridge_module_source_forbids_workshop_residue, driver_scenario_from_authority,
+    revalidate_authority_stead, studio_summary_identity_eq, BridgeOpenIdentity,
+    StudioLiveSessionBridge, StudioLiveSessionBridgeError, StudioLiveSessionBridgeReadout,
+    StudioLiveSessionBridgeStatus,
+};
 pub use studio_sim_clock::{
     StudioSimClock, StudioSimClockError, StudioSimClockRate, STUDIO_SIM_CLOCK_DEFAULT_MAX_TPS,
     STUDIO_SIM_CLOCK_RATE_RATIO_TOLERANCE,

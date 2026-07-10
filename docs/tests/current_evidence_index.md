@@ -412,6 +412,8 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 
 ## 0.0.8.6 Studio Live Ops
 - [`studio_sim_clock_ui_0_results.md`](studio_sim_clock_ui_0_results.md) — `STUDIO-SIM-CLOCK-UI-0` **PROBATION / PR #1283** — transport UI + headless hooks over `StudioSimClock` (Pause/Play/1×/2×/4×/max TPS/readout); no live session bridge.
+- [`studio_live_session_bridge_0_results.md`](studio_live_session_bridge_0_results.md) — `STUDIO-LIVE-SESSION-BRIDGE-0` **PROBATION** — production clock→SimSession multi-tick bridge; STEAD/session identity held; no workshop post-hydration import.
+
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
