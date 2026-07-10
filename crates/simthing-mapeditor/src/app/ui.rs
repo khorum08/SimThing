@@ -38,9 +38,9 @@ use super::scenario_io::{
     open_native_scenario_load_picker, save_scenario_action, ScenarioActionResult,
     ScenarioPickerActionResult,
 };
-use crate::clause_scenario_picker::{clause_picker_menu_label, ClausePickerActionResult};
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
+use crate::clause_scenario_picker::{clause_picker_menu_label, ClausePickerActionResult};
 use crate::scenario_runtime_saveload_ui::{
     reopen_candidate_scenario_for_studio_session, save_candidate_scenario_for_studio_create_new,
 };
@@ -56,9 +56,7 @@ use crate::studio_performance_telemetry::{
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
-use crate::{
-    StudioSimClockRate, StudioSimClockTransportCommand,
-};
+use crate::{StudioSimClockRate, StudioSimClockTransportCommand};
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 
@@ -401,7 +399,9 @@ pub fn studio_ui_system(
     }) {
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_open_clause_scenario_picker")));
         match open_native_clause_scenario_picker(&mut state) {
-            ClausePickerActionResult::Loaded { session, message, .. } => {
+            ClausePickerActionResult::Loaded {
+                session, message, ..
+            } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
@@ -495,7 +495,6 @@ fn draw_window_controls(
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }
 
 fn draw_settings_dialog(
@@ -1454,9 +1453,21 @@ fn draw_sim_clock_transport(ui: &mut egui::Ui, state: &mut StudioAppState) {
 
     ui.horizontal(|ui| {
         for (label, rate, cmd) in [
-            ("1×", StudioSimClockRate::Rate1x, StudioSimClockTransportCommand::Rate1x),
-            ("2×", StudioSimClockRate::Rate2x, StudioSimClockTransportCommand::Rate2x),
-            ("4×", StudioSimClockRate::Rate4x, StudioSimClockTransportCommand::Rate4x),
+            (
+                "1×",
+                StudioSimClockRate::Rate1x,
+                StudioSimClockTransportCommand::Rate1x,
+            ),
+            (
+                "2×",
+                StudioSimClockRate::Rate2x,
+                StudioSimClockTransportCommand::Rate2x,
+            ),
+            (
+                "4×",
+                StudioSimClockRate::Rate4x,
+                StudioSimClockTransportCommand::Rate4x,
+            ),
         ] {
             let selected = readout.rate == rate;
             if ui.selectable_label(selected, label).clicked() {

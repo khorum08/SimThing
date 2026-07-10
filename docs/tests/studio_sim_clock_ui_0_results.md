@@ -1,39 +1,47 @@
 # STUDIO-SIM-CLOCK-UI-0 Results
 
 ## Status
-**PROBATION / proof-present** — Studio sim clock transport UI + headless hooks over `StudioSimClock`. No live session bridge (9.3).
+**PROBATION** — transport UI + headless hooks over landed `StudioSimClock`. Not graduated.
 
-## Identity
+## PR / branch / merge
 | Field | Value |
 |---|---|
-| Rung | `STUDIO-SIM-CLOCK-UI-0` (9.2) |
-| Track | `0.0.8.6-studio-live-ops` |
-| ORIENT-RECEIPT | see PR body |
+| PR | #1283 |
+| branch | `studio-sim-clock-ui-0` |
+| base | `master` |
+| merge | NOT MERGED (DA-RESERVE / PROBATION) |
 
 ## What changed
-| Path | Role |
+- `studio_sim_clock_ui.rs` — `StudioSimClockTransport` / commands / readout (same path as UI)
+- `app/ui.rs` — left-panel Sim clock transport (Pause, Play, 1×/2×/4×, max TPS, readout)
+- `app/mod.rs` — `StudioAppState.sim_clock_transport`
+- Headless tests: `studio_sim_clock_ui_0.rs` (6 load-bearing proofs)
+- Design 9.2 PROBATION stamp; evidence index line
+
+## Load-bearing proofs
+| test | catches |
 |---|---|
-| `crates/simthing-mapeditor/src/studio_sim_clock_ui.rs` | Headless transport façade + readout |
-| `crates/simthing-mapeditor/src/lib.rs` | Module + re-exports |
-| `crates/simthing-mapeditor/src/app/mod.rs` | `StudioAppState.sim_clock_transport` |
-| `crates/simthing-mapeditor/src/app/ui.rs` | Left-panel "Sim clock transport" controls |
-| `crates/simthing-mapeditor/tests/studio_sim_clock_ui_0.rs` | Headless CI proofs |
-| design + inventory + triage | Status stamp / ledger |
+| `pause_action_freezes_clock` | Pause only flips UI while clock still schedules |
+| `play_action_enables_clock` | Play fails to run underlying clock |
+| `rate_actions_select_landed_clock_rates` | Wrong/divergent rate mapping |
+| `invalid_max_tps_preserves_last_valid_value` | Bypass validation / corrupt prior TPS |
+| `clock_readout_tracks_underlying_state` | Stale/duplicated presentation readout |
+| `transport_actions_do_not_mutate_scenario_spec` | Accidental model-authority path |
 
-## Contract
-UI is a projection over `StudioSimClockTransport` → `StudioSimClock`.
-Commands: Pause, Play, 1×/2×/4×, max TPS draft applied via `set_max_tps` (clock validation).
-Readout: paused/playing, rate, max TPS, effective TPS, tick index.
-No second scheduler. No ScenarioSpec mutation. No SimSession bridge.
+## Scope Ledger
+| | |
+|---|---|
+| Specified | Transport UI + programmatic hooks over StudioSimClock |
+| Implemented | As above |
+| Proxied | — |
+| Deferred | 9.3 live bridge; 9.5 library modal pause; live observation |
+| Out of scope | Kernel/sim/GPU/RF/EML/driver; clearance class; auto-Play |
 
-## Proofs
-```text
-cargo test -p simthing-mapeditor --test studio_sim_clock_ui_0
-4 passed (pause/play, rates, max-tps validation, readout)
-```
+## Conformance
+Studio/Bevy presentation-only · existing clock reused · ScenarioSpec unchanged · no second scheduler · invalid TPS via clock API · no bridge
 
-## Scope ledger
-Implemented: transport UI + headless hooks. Deferred: 9.3 live bridge, 9.5 library modal pause. No product kernel/GPU/RF.
+## Known gaps / next
+`STUDIO-LIVE-SESSION-BRIDGE-0` wires scheduled ticks into loaded session. No desktop smoke claimed unless run.
 
-## seal_residue_risk
-none
+## Graduation routing
+PROBATION — DA/Owner; sticky DA-RESERVE(gate-wiring) expected (ui.rs/mod.rs outside substrate class).

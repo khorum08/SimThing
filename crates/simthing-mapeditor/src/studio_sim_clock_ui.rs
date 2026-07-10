@@ -104,7 +104,10 @@ impl StudioSimClockTransport {
     }
 
     /// Apply a transport command. Max-TPS paths use the clock's validation.
-    pub fn apply(&mut self, command: StudioSimClockTransportCommand) -> Result<(), StudioSimClockError> {
+    pub fn apply(
+        &mut self,
+        command: StudioSimClockTransportCommand,
+    ) -> Result<(), StudioSimClockError> {
         match command {
             StudioSimClockTransportCommand::Pause => {
                 self.clock.pause();
@@ -131,9 +134,7 @@ impl StudioSimClockTransport {
                 self.last_error = None;
                 Ok(())
             }
-            StudioSimClockTransportCommand::SetMaxTps(max_tps) => {
-                self.apply_max_tps(max_tps)
-            }
+            StudioSimClockTransportCommand::SetMaxTps(max_tps) => self.apply_max_tps(max_tps),
             StudioSimClockTransportCommand::SetMaxTpsText(text) => {
                 self.max_tps_draft = text;
                 self.apply_max_tps_draft()
