@@ -46,6 +46,17 @@ pub enum SessionError {
     ResourceFlowOptIn(String),
 }
 
+/// Outcome of a single [`SimSession::step_once`] production hot-cycle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StepOnceOutcome {
+    /// Hot ticks advanced this step (normally 1 when successful).
+    pub ticks_run: u64,
+    /// Boundaries completed this step (0 or 1).
+    pub boundaries_run: u64,
+    /// Whether a day boundary was reached on this hot cycle.
+    pub boundary_reached: bool,
+}
+
 pub struct RunSummary {
     pub ticks_run: u64,
     pub boundaries_run: u64,
@@ -686,76 +697,100 @@ impl SimSession {
         Ok(true)
     }
 
+    /// Execute one admitted production hot-cycle (and its boundary if reached).
+    ///
+    /// Studio live-session bridge / headless multi-tick proofs use this instead of
+    /// coarse `run(max_days)`. Reuses the same fabric hot-cycle + boundary machinery
+    /// as [`Self::run`]; does not invent a parallel tick path.
+    pub fn step_once(&mut self) -> Result<StepOnceOutcome, SessionError> {
+        let mut summary = RunSummary::new();
+        let boundary = self.step_once_into_summary(&mut summary)?;
+        Ok(StepOnceOutcome {
+            ticks_run: summary.ticks_run,
+            boundaries_run: summary.boundaries_run,
+            boundary_reached: boundary,
+        })
+    }
+
     /// Run until `max_days` boundaries complete (or scenario max if smaller).
     pub fn run(&mut self, max_days: u32) -> Result<RunSummary, SessionError> {
         let cap = max_days.min(self.scenario.max_days);
         let mut summary = RunSummary::new();
 
         while summary.boundaries_run < cap as u64 {
-            let cycle = self.run_hot_cycle()?;
-            summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
-            accumulate_tick_outcome(&mut summary, &cycle.hot, cycle.hot_step_ms);
-            if let Some(mapping) = &cycle.hot.mapping {
-                journal_mapping_commitments(
-                    &mut self.mapping_commitments,
-                    summary.ticks_run,
-                    mapping,
-                );
-            }
-
-            let tick = cycle.hot.tick;
-            if tick.boundary_reached {
-                let day = tick.day_index;
-                let commitment_effect_submitted = self.submit_commitment_effects(&mut summary)?;
-                if !commitment_effect_submitted
-                    && !self
-                        .spec_state
-                        .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
-                    && self
-                        .proto
-                        .can_skip_empty_boundary(&tick.events, &self.patcher)
-                {
-                    summary.boundaries_skipped += 1;
-                    summary.boundaries_run += 1;
-                    continue;
-                }
-                summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
-                let boundary_started = Instant::now();
-                let spec_state = &mut self.spec_state;
-                let outcome = self.proto.execute_with_boundary_hook(
-                    tick.events,
-                    &mut self.patcher,
-                    &mut self.coord,
-                    &mut self.state,
-                    day,
-                    |ctx| spec_state.run_boundary_handlers(ctx),
-                );
-                summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
-                summary.fission_events += outcome.fission.fissions_executed;
-                accumulate_boundary_timing(&mut summary, outcome.timing);
-                summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
-                summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
-                if outcome.gpu_sync.full_value_upload {
-                    summary.boundary_full_value_uploads += 1;
-                }
-                summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
-                summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
-                summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
-                summary.reduction_slots_uploaded += outcome.gpu_sync.reduction_slots as u64;
-                summary.reduction_depths_total += outcome.gpu_sync.reduction_depths as u64;
-                summary.reduction_depths_max = summary
-                    .reduction_depths_max
-                    .max(outcome.gpu_sync.reduction_depths);
-                summary.boundaries_run += 1;
-                // S5 follow-up: register capability instances + threshold
-                // registrations for any fission-cloned capability subtrees.
-                self.react_to_fission_clones(&outcome);
-                self.react_to_fission_resource_flow_enrollment(&outcome)?;
-                self.sync_resource_economy_if_enabled()?;
-            }
+            let _ = self.step_once_into_summary(&mut summary)?;
         }
 
         Ok(summary)
+    }
+
+    /// Shared hot-cycle + optional boundary body for [`Self::run`] / [`Self::step_once`].
+    fn step_once_into_summary(
+        &mut self,
+        summary: &mut RunSummary,
+    ) -> Result<bool, SessionError> {
+        let cycle = self.run_hot_cycle()?;
+        summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
+        accumulate_tick_outcome(summary, &cycle.hot, cycle.hot_step_ms);
+        if let Some(mapping) = &cycle.hot.mapping {
+            journal_mapping_commitments(
+                &mut self.mapping_commitments,
+                summary.ticks_run,
+                mapping,
+            );
+        }
+
+        let tick = cycle.hot.tick;
+        if !tick.boundary_reached {
+            return Ok(false);
+        }
+
+        let day = tick.day_index;
+        let commitment_effect_submitted = self.submit_commitment_effects(summary)?;
+        if !commitment_effect_submitted
+            && !self
+                .spec_state
+                .requires_boundary_tick(&tick.events, self.proto.threshold_registry())
+            && self
+                .proto
+                .can_skip_empty_boundary(&tick.events, &self.patcher)
+        {
+            summary.boundaries_skipped += 1;
+            summary.boundaries_run += 1;
+            return Ok(true);
+        }
+        summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
+        let boundary_started = Instant::now();
+        let spec_state = &mut self.spec_state;
+        let outcome = self.proto.execute_with_boundary_hook(
+            tick.events,
+            &mut self.patcher,
+            &mut self.coord,
+            &mut self.state,
+            day,
+            |ctx| spec_state.run_boundary_handlers(ctx),
+        );
+        summary.boundary_total_ms += boundary_started.elapsed().as_secs_f64() * 1000.0;
+        summary.fission_events += outcome.fission.fissions_executed;
+        accumulate_boundary_timing(summary, outcome.timing);
+        summary.boundary_upload_bytes += outcome.gpu_sync.boundary_upload_bytes;
+        summary.boundary_value_rows_uploaded += outcome.gpu_sync.value_rows_uploaded as u64;
+        if outcome.gpu_sync.full_value_upload {
+            summary.boundary_full_value_uploads += 1;
+        }
+        summary.overlay_deltas_uploaded += outcome.gpu_sync.overlay_deltas_uploaded as u64;
+        summary.threshold_regs_uploaded += outcome.gpu_sync.threshold_regs_uploaded as u64;
+        summary.reduction_edges_uploaded += outcome.gpu_sync.reduction_edges as u64;
+        summary.reduction_slots_uploaded += outcome.gpu_sync.reduction_slots as u64;
+        summary.reduction_depths_total += outcome.gpu_sync.reduction_depths as u64;
+        summary.reduction_depths_max = summary
+            .reduction_depths_max
+            .max(outcome.gpu_sync.reduction_depths);
+        summary.boundaries_run += 1;
+        self.react_to_fission_clones(&outcome);
+        self.react_to_fission_resource_flow_enrollment(&outcome)?;
+        self.sync_resource_economy_if_enabled()?;
+        Ok(true)
     }
 
     /// Run a session and write LDJSON replay (snapshot + one frame per boundary).

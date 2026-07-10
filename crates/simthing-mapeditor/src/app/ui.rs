@@ -1423,78 +1423,93 @@ fn draw_left_panel(
     state.left_panel_hovered = area.response.hovered();
 }
 
-/// Compact operator transport over [`crate::StudioSimClockTransport`].
-/// Presentation only — does not advance a live SimSession (9.3 bridge).
+/// Compact operator transport over [`crate::StudioSimClockTransport`] + live bridge readout.
 fn draw_sim_clock_transport(ui: &mut egui::Ui, state: &mut StudioAppState) {
-    let transport = &mut state.sim_clock_transport;
-    let readout = transport.readout();
+    {
+        let transport = &mut state.sim_clock_transport;
+        let readout = transport.readout();
 
-    ui.label(egui::RichText::new("Sim clock (transport only)").strong());
+        ui.label(egui::RichText::new("Sim clock (transport only)").strong());
+        ui.label(
+            egui::RichText::new("Schedules admitted ticks; bridge executes via SimSession.")
+                .small()
+                .weak(),
+        );
+
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(readout.playing, egui::Button::new("Pause"))
+                .clicked()
+            {
+                let _ = transport.apply(StudioSimClockTransportCommand::Pause);
+            }
+            if ui
+                .add_enabled(readout.paused, egui::Button::new("Play"))
+                .clicked()
+            {
+                let _ = transport.apply(StudioSimClockTransportCommand::Play);
+            }
+        });
+
+        ui.horizontal(|ui| {
+            for (label, rate, cmd) in [
+                (
+                    "1×",
+                    StudioSimClockRate::Rate1x,
+                    StudioSimClockTransportCommand::Rate1x,
+                ),
+                (
+                    "2×",
+                    StudioSimClockRate::Rate2x,
+                    StudioSimClockTransportCommand::Rate2x,
+                ),
+                (
+                    "4×",
+                    StudioSimClockRate::Rate4x,
+                    StudioSimClockTransportCommand::Rate4x,
+                ),
+            ] {
+                let selected = readout.rate == rate;
+                if ui.selectable_label(selected, label).clicked() {
+                    let _ = transport.apply(cmd);
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Max TPS");
+            let response = ui.text_edit_singleline(transport.max_tps_draft_mut());
+            if response.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                let _ = transport.apply_max_tps_draft();
+            }
+            if ui.button("Apply TPS").clicked() {
+                let _ = transport.apply_max_tps_draft();
+            }
+        });
+
+        let readout = transport.readout();
+        let state_label = if readout.paused { "paused" } else { "playing" };
+        ui.label(format!(
+            "State: {state_label}  ·  Rate: {}  ·  Max TPS: {:.3}  ·  Effective: {:.3}/s  ·  Tick: {}",
+            readout.rate_label, readout.max_tps, readout.effective_tps, readout.tick_index
+        ));
+        if let Some(err) = transport.last_error() {
+            ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
+        }
+    }
+
+    // Live session bridge status (9.3) — snapshot from NonSend bridge system.
+    let bridge = &state.live_bridge_readout;
+    ui.label(format!(
+        "Live bridge: {}  ·  Executed: {}  ·  Last batch: {}",
+        bridge.status_label, bridge.executed_ticks, bridge.last_scheduled_batch
+    ));
     ui.label(
-        egui::RichText::new("Schedules ticks later via bridge; does not invent decisions.")
+        egui::RichText::new(bridge.production_path)
             .small()
             .weak(),
     );
-
-    ui.horizontal(|ui| {
-        if ui
-            .add_enabled(readout.playing, egui::Button::new("Pause"))
-            .clicked()
-        {
-            let _ = transport.apply(StudioSimClockTransportCommand::Pause);
-        }
-        if ui
-            .add_enabled(readout.paused, egui::Button::new("Play"))
-            .clicked()
-        {
-            let _ = transport.apply(StudioSimClockTransportCommand::Play);
-        }
-    });
-
-    ui.horizontal(|ui| {
-        for (label, rate, cmd) in [
-            (
-                "1×",
-                StudioSimClockRate::Rate1x,
-                StudioSimClockTransportCommand::Rate1x,
-            ),
-            (
-                "2×",
-                StudioSimClockRate::Rate2x,
-                StudioSimClockTransportCommand::Rate2x,
-            ),
-            (
-                "4×",
-                StudioSimClockRate::Rate4x,
-                StudioSimClockTransportCommand::Rate4x,
-            ),
-        ] {
-            let selected = readout.rate == rate;
-            if ui.selectable_label(selected, label).clicked() {
-                let _ = transport.apply(cmd);
-            }
-        }
-    });
-
-    ui.horizontal(|ui| {
-        ui.label("Max TPS");
-        let response = ui.text_edit_singleline(transport.max_tps_draft_mut());
-        if response.lost_focus() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-            let _ = transport.apply_max_tps_draft();
-        }
-        if ui.button("Apply TPS").clicked() {
-            let _ = transport.apply_max_tps_draft();
-        }
-    });
-
-    // Refresh readout after any control mutations above.
-    let readout = transport.readout();
-    let state_label = if readout.paused { "paused" } else { "playing" };
-    ui.label(format!(
-        "State: {state_label}  ·  Rate: {}  ·  Max TPS: {:.3}  ·  Effective: {:.3}/s  ·  Tick: {}",
-        readout.rate_label, readout.max_tps, readout.effective_tps, readout.tick_index
-    ));
-    if let Some(err) = transport.last_error() {
+    if let Some(err) = bridge.last_error.as_deref() {
         ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
     }
 }

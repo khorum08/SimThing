@@ -82,6 +82,7 @@ pub fn run_studio() {
     app.insert_resource(ClearColor(Color::BLACK))
         .insert_resource(StudioSettings(settings.clone()))
         .insert_resource(app_state)
+        .insert_non_send_resource(crate::StudioLiveSessionBridge::new())
         .insert_resource(StudioDialog::default())
         .insert_resource(GalaxySceneRoot::default())
         .add_plugins(
@@ -121,6 +122,7 @@ pub fn run_studio() {
             ),
         )
         .add_systems(EguiPrimaryContextPass, ui::studio_ui_system)
+        .add_systems(Update, live_session_bridge_system)
         .add_systems(
             Update,
             (
@@ -249,8 +251,11 @@ pub struct StudioAppState {
     /// Where [`Self::antialiasing_mode`] was last set (telemetry/debug).
     pub antialiasing_mode_source: crate::studio_antialiasing::StudioAntialiasingModeSource,
     /// Studio sim clock transport (presentation projection over [`crate::StudioSimClock`]).
-    /// Does not execute gameplay or mutate ScenarioSpec; 9.3 bridges scheduled ticks later.
+    /// Does not execute gameplay or mutate ScenarioSpec.
     pub sim_clock_transport: crate::StudioSimClockTransport,
+    /// Send-safe snapshot of the live bridge (updated by NonSend bridge system).
+    /// Full [`crate::StudioLiveSessionBridge`] is NonSend (holds SimSession).
+    pub live_bridge_readout: crate::StudioLiveSessionBridgeReadout,
 }
 
 impl StudioAppState {
@@ -313,6 +318,7 @@ impl StudioAppState {
             antialiasing_mode_source:
                 crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
             sim_clock_transport: crate::StudioSimClockTransport::new(),
+            live_bridge_readout: crate::StudioLiveSessionBridgeReadout::default_unattached(),
         }
     }
 
@@ -473,6 +479,31 @@ fn init_aa_test_pattern_runtime(mut commands: Commands) {
 
 fn init_studio_map_radius_falloff_state(mut commands: Commands) {
     commands.init_resource::<StudioMapRadiusFalloffState>();
+}
+
+/// Drive production live bridge from wall elapsed + StudioSimClock (not frame-count authority).
+///
+/// Bevy `Time` supplies wall `delta_secs` for schedule demand only; tick count authority is
+/// [`crate::StudioSimClock::advance`]. Bridge is NonSend because `SimSession` is !Sync.
+fn live_session_bridge_system(
+    mut bridge: NonSendMut<crate::StudioLiveSessionBridge>,
+    mut state: ResMut<StudioAppState>,
+    time: Res<Time>,
+) {
+    let elapsed = time.delta_secs_f64();
+    if !elapsed.is_finite() || elapsed <= 0.0 {
+        state.live_bridge_readout = bridge.readout();
+        return;
+    }
+    let StudioAppState {
+        session,
+        sim_clock_transport,
+        live_bridge_readout,
+        ..
+    } = &mut *state;
+    let clock = sim_clock_transport.clock_mut();
+    let _ = bridge.tick_from_clock(clock, session.as_ref(), elapsed);
+    *live_bridge_readout = bridge.readout();
 }
 
 fn setup_scene(
