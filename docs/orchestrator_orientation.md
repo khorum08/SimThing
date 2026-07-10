@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f4187fcda67ca9cc5c20006ffff2a1d139514a881368a545be0237e7acaab972 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
-| design_0_0_8_4_8_3_orientation_curation.md | 0edd4b16786a2f7339d06c12eff7d91035e95773b4698f7d8d0060118bcde935 |
+| design_0_0_8_4_8_3_orientation_curation.md | c239548f3dc1051c978d0f089f1481973b1c7bd683c88fc9c1342c0900443d6b |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | a80fca9295d38edcf3df2c6f318e228c257163e846a6f11039f42a02ccfa2c2a |
 
@@ -60,7 +60,7 @@ Track state: `open`
 | 4 | OC-ORIENT-SLICE-0 | **Cold-start spine in orientation** (generated, budgeted): the §1 always-on line | **DA-GRADUATED / merged [#1268](https://github.com/khorum08/SimThing/pull/1268) @ `9888a07e`** — cold-start spine poi... |
 | 5 | OC-DOCS-CASCADE-0 | **Docs cascade once A1–A4 are live** (the HU-DOCS-CONSOLIDATION pattern, in-trac | **DA-GRADUATED / merged [#1270](https://github.com/khorum08/SimThing/pull/1270) @ `2a2c501c`** — entrypoint cascade w... |
 | K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | **GRADUATED / PR #1273** — `col_for_role` → `ColumnIndex`; role pathway in core §3; RAW-DATA-INDEX + AS5-COLUMN-ALIAS... |
-| K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | **GRADUATED / PR pending** — `ExactMagnitudeProof` token; Candidate F mint; ApproximateDiagnostic blocked from regist... |
+| K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | **GRADUATED / PR #1274** — `ExactMagnitudeProof` token; Candidate F mint; ApproximateDiagnostic blocked from register... |
 | K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rul... |
 | K4 | OC-K-EML-OPCODE-GATE-0 | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tr | **NOT STARTED** — Owner valve discharged [#1272](https://github.com/khorum08/SimThing/pull/1272); demo-first STOP rul... |
 | C | OC-CLOSEOUT-0 | First reach-log report (what agents queried; misses → catalogue updates or expli | NOT STARTED |
