@@ -52,37 +52,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 Track state: `end-state`
 
+> Compact view: showing last 5 of 34 rungs (track `end-state`); full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 0.0 | TP-TRACK-OPEN-0 | This document + evidence-index row + harness. Docs only. | **DONE — DA-OPENED** (2026-07-01): doc lands; ledger row honest (impl not started). |
-| 0.1 | TP-RF-CAPACITY-AMENDMENT-0 | **COMPLETE — DA/Owner-cleared** (2026-07-01, PR #1071 `4a7b8d028d`; independent  | DA-verified against the tree: `e10_resource_flow_admission` 19/19 (incl. checked-totals + cap-scaling); galaxy-scale ... |
-| 0.2 | TP-SCALE-ENVELOPE-0 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)** after 0R2. The gen | 0R repaired the false-green reduction-topology failure; 0R2 repaired the velocity upload scale failure and proved CPU... |
-| 0.2r | TP-SCALE-ENVELOPE-0R | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)**. Removed catch_unw | Scale test no longer swallows panics; `upload_reduction_topology` no longer overruns 24-byte `column_rules`. |
-| 0.2r2 | TP-SCALE-ENVELOPE-0R2 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)**. Compact C-7 veloc | Local real-adapter scale test reaches `SimSession::open_from_spec` success and asserts `session.mapping.is_none()`; c... |
-| 1.0 | TP-BASE-DISC-GEN-0 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review)**. Emits the canonic | Byte-identical regeneration from recorded seed/params PASS; `map_quality_status = PASS`; names assigned deterministic... |
-| 1.1 | TP-BASE-EMBED-0 | **DONE — DA-APPROVED (2026-07-02, executive DA review)**. Scenario-container fro | Combined `.clause` parses; embedded base lattice round-trips identical to rung 1.0; base ids are namespaced into over... |
-| 2.0 | TP-OWNER-SIBLINGS-0 | **DONE — DA-APPROVED (2026-07-02, executive DA targeted review)**. ClauseScript  | Hydrated tree has Terran/Pirate owners as direct GameSession children; GalaxyMap remains a GameSession sibling; canon... |
-| 2.1 | TP-OWNERSHIP-COLUMNS-0 | **DONE — DA-APPROVED (2026-07-02, executive DA full review)**. Ownership = owner | Combined embedded base + owner siblings + ownership volumes parses; exactly 200 Terran + 50 Pirate + 1250 neutral sys... |
-| 2.2 | TP-PLANET-SURFACE-PAYLOAD-0 | **DONE — DA-APPROVED (2026-07-02, executive DA deep review post-merge; merge-hol | Combined embedded base + owner siblings + ownership columns + planet/surface payload parses; all 250 owned systems ha... |
-| 3.0 | TP-SHIPSIZE-DECODER-0 | **§1.2 amendment.** Extend the CT-2c longest-match modifier decoder with the **s | **DONE — DA-APPROVED (2026-07-04, deep review + DA fix + lab waiver)** — DA-verified: EML ≤32-node bound proven (`MAX... |
-| 3.1 | TP-FLEETS-SHIPS-0 | Author **fleets as mobile star-system-grid occupants** and **ships as cohort-sty | **DONE — DA-APPROVED (2026-07-04, deep review after 0R)** — DA-verified against the tree: Fleet/Cohort `planet_child_... |
-| 4.0 | TP-COMBAT-ARENA-0 | Author the **HP/Damage RF arena**: damage = `SubtractFromSource` transfer betwee | **DA-GRADUATED / merged [#1145](https://github.com/khorum08/SimThing/pull/1145) @ `a54695ec`** — one-time Homing Boun... |
-| 5.0 | TP-DIPLOMACY-FLOW-0 | Author **influence/trust/distrust as RF lanes** (core §2.1, §5.3): each owner em | **DA-GRADUATED / merged [#1150](https://github.com/khorum08/SimThing/pull/1150) @ `9aa66c39`** — workshop-homed Mecha... |
-| 6.0 | TP-FRONTS-AUTHORING-0 | Author the **Movement-Front L1/L2/L3** over the galaxy lattice: **threat front** | **DA-GRADUATED / merged [#1151](https://github.com/khorum08/SimThing/pull/1151) @ `9f56794a`** — workshop-homed Mecha... |
-| 6.1 | TP-PALMA-REACH-0 | **PALMA reach/impedance** over the fronts: impedance `W` composed from choke/thr | **DA-GRADUATED / merged [#1152](https://github.com/khorum08/SimThing/pull/1152) @ `335f55c0`** — workshop-homed W com... |
-| 6.2 | TP-FLEET-MOVEMENT-0 | **Fleet movement = gradient-following reparenting.** A fleet steers proportional | **DA-GRADUATED / merged [#1154](https://github.com/khorum08/SimThing/pull/1154) @ `7d44037e`** — 7×7 / horizon-3 thea... |
-| 7.0 | TP-COMMITMENTS-0 | Author each faction's **personality `ai_will_do`/`ai_weight` EML weight profiles | **ORCHESTRATOR-GRADUATED / merged [#1155](https://github.com/khorum08/SimThing/pull/1155) @ `6547b90c`** — §5A orches... |
-| 8.0 | TP-FULL-TRANSPILE-0 | Ingest the **complete single `.clause`** end-to-end → `SimThingScenarioSpec` JSO | **DA-GRADUATED / merged [#1215](https://github.com/khorum08/SimThing/pull/1215) @ `f8eb3815`** (head `3a59b9c5af`) — ... |
-| 8.1 | TP-LIVE-RUN-0 | **Indefinite-tick live run** over **one deterministically-selected bounded theat | **DA-GRADUATED / merged [#1217](https://github.com/khorum08/SimThing/pull/1217) @ `f42b4d28d7`** (head `3a3eba9b7f`, ... |
-| 8.2 | TP-STUDIO-INGEST-READINESS-0 | Evaluate the approved `terran_pirate_galaxy.clause` file and current transpile a | **DA-GRADUATED / merged [#1219](https://github.com/khorum08/SimThing/pull/1219) @ `54a5a5e445`** (head `d149e6cce1`) ... |
-| 8.3 | TP-STUDIO-CLAUSE-INGEST-0 | Workshop-homed TP candidate: `.clause` → parse/hydrate → ScenarioSpec candidate  | **DA-GRADUATED / merged [#1222](https://github.com/khorum08/SimThing/pull/1222) @ `bcbc2f4389`** (head `ee0480c438`, ... |
-| 8.4 | TP-STUDIO-CLAUSE-API-ADMISSION-0 | **Owner/DA-gated.** Admit a generic, non-TP-default `simthing-mapeditor` ClauseS | **DONE — DA-DENIED / KEEP WORKSHOP (2026-07-09, Option B) / status stamp [#1224](https://github.com/khorum08/SimThing... |
-| 8.5 | TP-STUDIO-STEAD-REBIND-READINESS-0 | Evaluate the gap from candidate `SimThingScenarioSpec` (authority tree, empty pl | **DA-GRADUATED / merged [#1225](https://github.com/khorum08/SimThing/pull/1225) @ `8696f1f2ca`** (head `017db4c24c`) ... |
-| 8.6 | TP-STUDIO-STEAD-REBIND-0 | Workshop-homed (default): project `AuthorityTreeCandidate` → `StructuralRebindRe | **DA-GRADUATED / merged [#1226](https://github.com/khorum08/SimThing/pull/1226) @ `03afe3d152`** (head `1c41c2372c`) ... |
-| 8.6h | TP-WORKSHOP-CANDIDATE-CLASS-0 | **Harness adjacency (clearance router).** Register precedented class `tp-worksho | **DA-GRADUATED / merged [#1227](https://github.com/khorum08/SimThing/pull/1227) @ `0141f03c62`** (head `597cf030a7`) ... |
-| 8.7 | TP-STUDIO-CLAUSE-API-ADMISSION-1 | **Owner/DA-gated.** Re-open production mapeditor ClauseScript API admission only | **DONE — DA-ADMITTED (2026-07-09, Option A) / limited production surface.** StructuralRebindReady (#1226) closed the ... |
-| 8.8 | TP-STUDIO-CLAUSE-API-1 | **Implement** admitted production surface: generic mapeditor (or elevated clause | **DA-GRADUATED / merged [#1230](https://github.com/khorum08/SimThing/pull/1230) @ `820a9a2ef6`** (head `b18d19ac13`) ... |
-| 8.8h | TP-ADMITTED-CLAUSE-API-CLASS-0 | **Harness adjacency.** Register `tp-admitted-clause-api-composition` so #1230-sh | **DA-GRADUATED / merged [#1232](https://github.com/khorum08/SimThing/pull/1232) @ `5227f08000`** (head `2163667dab`) ... |
 | 8.9 | TP-STUDIO-CLAUSE-PICKER-ADMISSION-0 | **Owner/DA-gated.** Admit UI `.clause` file picker / menu surface only after API | **DONE — DA-ADMITTED (2026-07-09, Option A) / narrow UI picker.** Production API + session hydrate proven (#1230); re... |
 | 8.10 | TP-STUDIO-CLAUSE-PICKER-0 | **Implement** admitted narrow UI `.clause` picker/menu: user selects path + expl | **DA-GRADUATED / merged [#1239](https://github.com/khorum08/SimThing/pull/1239) @ `0183883767`** (head `d9bd5c4054`) ... |
 | 8.10g | CLEARANCE-UNCLASSIFIED-SCOPE-REDUCTION-0 | **Owner/DA process ruling.** Reduce over-broad `DA-RESERVE(unclassified-scope)`: | **DONE — DA-ADOPTED (2026-07-09, Option A).** Adopt `DA-RESERVE(admitted-scope-router-gap)` vocabulary + orchestratio... |

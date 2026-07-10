@@ -1175,7 +1175,29 @@ def render_orientation(active_info: dict) -> tuple:
             "",
         ])
         rung_table = []
-        for num, rung, deliverable, exit_proof in rungs:
+        # End-state / fully-complete ladders: keep the digest thin — last few rows only.
+        # Open ladders: show from one completed predecessor through remaining incomplete rungs.
+        indexed = list(enumerate(rungs))
+        if next_rung == NO_ACTIVE_TRACK or track_state in {"closed", "parked", "end-state"}:
+            selected = indexed[-5:] if len(indexed) > 5 else indexed
+            if len(indexed) > 5:
+                lines.append(
+                    f"> Compact view: showing last {len(selected)} of {len(indexed)} rungs "
+                    f"(track `{track_state}`); full ladder in the design doc."
+                )
+                lines.append("")
+        else:
+            first_open = next(
+                (
+                    i
+                    for i, (_n, _r, deliv, exit_proof) in indexed
+                    if not (is_completed_exit(exit_proof) or is_completed_exit(deliv))
+                ),
+                0,
+            )
+            start = max(0, first_open - 1)
+            selected = indexed[start:]
+        for _i, (num, rung, deliverable, exit_proof) in selected:
             short = exit_proof
             if len(short) > 120:
                 short = short[:117] + "..."
