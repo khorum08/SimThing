@@ -9,7 +9,7 @@
 | PR | [#1287](https://github.com/khorum08/SimThing/pull/1287) |
 | branch | `studio-live-observe-0` |
 | base | `master` |
-| head_sha | `6bb75a1b76e7f36f0290d6ff5c4572d55f301a0b` |
+| head_sha | `2920b1d996c2afaf523e79d9a4c080d21f529b7b` |
 | merge | NOT MERGED |
 
 ## What changed
