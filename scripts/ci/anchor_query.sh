@@ -230,14 +230,15 @@ def domains_from_paths(files):
 def ensure_reach_log():
     if not reach_log.is_file():
         reach_log.parent.mkdir(parents=True, exist_ok=True)
-        reach_log.write_text("date\trole\tquery\tanchors_served\thit\n", encoding="utf-8")
+        with reach_log.open("w", encoding="utf-8", newline="\n") as fh:
+            fh.write("date\trole\tquery\tanchors_served\thit\n")
 
 
 def append_reach(query: str, ids, hit: str):
     ensure_reach_log()
     served = ",".join(ids) if ids else "none"
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    with reach_log.open("a", encoding="utf-8", newline="") as fh:
+    with reach_log.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(f"{stamp}\t{role}\t{query}\t{served}\t{hit}\n")
 
 
@@ -288,7 +289,7 @@ if mode == "prune":
                 ]))
             else:
                 removed += 1
-    reach_log.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    reach_log.write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
     print(f"ANCHOR-QUERY-PRUNE: PASS removed={removed} kept={len(kept)-1}")
     sys.exit(0)
 
@@ -395,10 +396,34 @@ run_selftest() {
     echo "PASS reach_log_header"
   fi
 
+  # DA rider r1: LF-clean reach-log writes (no CR bytes)
+  local lf_tmp
+  lf_tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-query-lf-XXXXXX")"
+  cp "$ANCHORS_TSV" "$lf_tmp/doctrine_anchors.tsv"
+  cp "$TRIGGERS_TSV" "$lf_tmp/anchor_triggers.tsv"
+  FIXTURE_DIR="$lf_tmp"
+  DOMAIN_ARG=gate-wiring run_query_python domain >/dev/null || true
+  GREP_ARG="zzznomatchterm999"
+  run_query_python grep >/dev/null || true
+  printf '2020-01-01T00:00:00Z\tcoding\t--grep old\tnone\tnone\n' >>"$lf_tmp/anchor_reach_log.tsv"
+  PRUNE_DAYS="30"
+  run_query_python prune >/dev/null || true
+  if "$PYTHON_BIN" -c '
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+raw = p.read_bytes()
+sys.exit(0 if (b"\r" not in raw and raw.startswith(b"date\trole\tquery\tanchors_served\thit\n")) else 1)
+' "$lf_tmp/anchor_reach_log.tsv"; then
+    echo "PASS reach_log_lf_clean"
+  else
+    echo "FAIL reach_log_lf_clean"; failures=$((failures+1))
+  fi
+  rm -rf "$lf_tmp"
+
   rm -rf "$tmp"
   FIXTURE_DIR=""
   if [[ "$failures" -eq 0 ]]; then
-    echo "ANCHOR-QUERY-SELFTEST: PASS (8 fixtures)"
+    echo "ANCHOR-QUERY-SELFTEST: PASS (9 fixtures)"
     return 0
   fi
   echo "ANCHOR-QUERY-SELFTEST: FAIL (${failures} fixtures)"
