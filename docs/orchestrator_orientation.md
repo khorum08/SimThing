@@ -41,33 +41,33 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | 6a1431e76900b7e1c5ed619f8f2b47caca31bb1c803750c665f9a013c4c08ede |
-| binding_conditions.tsv | f4187fcda67ca9cc5c20006ffff2a1d139514a881368a545be0237e7acaab972 |
+| binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
-| design_0_0_8_4_8_3_orientation_curation.md | 90d5fd8e4b0efae784412bf81358b02b5b4f484616a488e6be69693b83c92330 |
+| active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
+| design_0_0_8_6_studio_live_ops.md | 54fffd5d108ee4f156505b752b2f35a082a343a7f3a7bdd335533990e3ba3079 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 6cb28e11b1ff78d1ec1c3c493d5a7921836acba644e18eaac3c18ea7982a641d |
 
-## Active Track / Rung Summary (`design_0_0_8_4_8_3_orientation_curation.md`)
+## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
 
 Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 1 | OC-ANCHOR-CATALOG-0 | Populate `doctrine_anchors.tsv` to the §1 catalogue: one row per surface (§-prec | **GRADUATED / merged [#1264](https://github.com/khorum08/SimThing/pull/1264) @ `b680d2e1`** — 4→17 rows, 1:1 to §1 + ... |
-| 2 | OC-PATH-TRIGGER-0 | **Mechanical adjacency.** New data table `anchor_triggers.tsv` (`glob` -> `trigg | **GRADUATED / merged [#1266](https://github.com/khorum08/SimThing/pull/1266)** — 16 trigger globs (DA riders: +spec/+... |
-| 3 | OC-QUERY-0 | **Queryable + observable curation.** `scripts/ci/anchor_query.sh` (`--domain <d> | **GRADUATED / merged [#1267](https://github.com/khorum08/SimThing/pull/1267)** — query/reach-log/resync live; DA ride... |
-| 4 | OC-ORIENT-SLICE-0 | **Cold-start spine in orientation** (generated, budgeted): the §1 always-on line | **DA-GRADUATED / merged [#1268](https://github.com/khorum08/SimThing/pull/1268) @ `9888a07e`** — cold-start spine poi... |
-| 5 | OC-DOCS-CASCADE-0 | **Docs cascade once A1–A4 are live** (the HU-DOCS-CONSOLIDATION pattern, in-trac | **DA-GRADUATED / merged [#1270](https://github.com/khorum08/SimThing/pull/1270) @ `2a2c501c`** — entrypoint cascade w... |
-| K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | **GRADUATED / merged [#1273](https://github.com/khorum08/SimThing/pull/1273) @ `25e6ed47`** — `col_for_role` → `Colum... |
-| K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | **GRADUATED / merged [#1274](https://github.com/khorum08/SimThing/pull/1274) @ `c418ffad`** — `ExactMagnitudeProof` t... |
-| K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | **GRADUATED / PR #1276** — sealed threshold→emission→boundary decision ingress; CPU diagnostics blocked; sanctioned m... |
-| K4 | OC-K-EML-OPCODE-GATE-0 | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tr | **GRADUATED / PR #1277** — closed EvalEML opcode vocabulary; generic primitive Tier-2 parity gate; semantic op reject... |
-| C | OC-CLOSEOUT-0 | First reach-log report (what agents queried; misses → catalogue updates or expli | NOT STARTED |
+| 9.0 | STUDIO-LIVE-OPS-READINESS-0 | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownersh | **ORCHESTRATOR-GRADUATED / merged [#1257](https://github.com/khorum08/SimThing/pull/1257) @ `4f8c250c`** — readiness ... |
+| 9.1 | STUDIO-SIM-CLOCK-0 | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4 | **DA-GRADUATED / merged [#1258](https://github.com/khorum08/SimThing/pull/1258)** — `StudioSimClock` headless substra... |
+| 9.1h | STUDIO-SIM-CLOCK-CLASS-0 | **Harness adjacency (clearance router).** Register precedented class `studio-sim | **DA-GRADUATED / merged [#1259](https://github.com/khorum08/SimThing/pull/1259) @ `d7ceb754`** — selftests clearable ... |
+| 9.2 | STUDIO-SIM-CLOCK-UI-0 | **Transport UI:** Pause, Play, 2×, 4×, TPS selector; readout (tick index, effect | UI drives clock; programmatic hooks for CI |
+| 9.3 | STUDIO-LIVE-SESSION-BRIDGE-0 | **Wire loaded StudioSession → live tick path** (elevate workshop live-run policy | Loaded clause/JSON multi-tick under Play; STEAD/session identity held |
+| 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | Values update while running; freeze on pause |
+| 9.5 | STUDIO-SCENARIO-LIBRARY-UI-0 | **Toggled/hidden library window:** load / create / save (JSON authority + clause | Modal open → paused; I/O through existing APIs |
+| 9.6 | STUDIO-SCENARIO-LIBRARY-CREATE-0 | Create-new / blank or template from library (scope from readiness). | Create → loadable session; no TP hardcodes |
+| 9.7 | STUDIO-LIVE-OPS-CLASS-0 | **Gate-wiring.** Precedented class for live-ops UI + clock shape. | Clearance selftests clearable + envelope rejects |
+| 9.8 | STUDIO-LIVE-OPS-HARDENING-0 | Polish: cancel modal, double-open, rapid rate change, save-while-paused, no tick | Regression battery |
 
 ## Next Rung Pointer
 
-Active pointer: `OC-CLOSEOUT-0`
+Active pointer: `STUDIO-SIM-CLOCK-UI-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -131,7 +131,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | HU-TRACK-OPEN-0 | 0.0.8.5-park-gate-superseded-by-owner-carveout-authorization | Owner-2026-07-09 | discharged | HU-TRACK-OPEN-0 |
 | HU-CLOSEOUT-0 | no-new-clearance-class-registration-without-retirement-pairing-during-track | DA-2026-07-09 | discharged | HU-CLOSEOUT-0 |
 | OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | discharged | OC-KERNEL-LANE |
-| OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | open | OC-CLOSEOUT-0 |
+| OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | discharged | OC-CLOSEOUT-0 |
 
 ## Clearance Ledger (recent)
 

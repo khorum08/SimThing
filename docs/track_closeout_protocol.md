@@ -17,6 +17,12 @@ non-core rows remain). Core rows (`core=YES`) are permanent global surface weigh
 **Reach-log decay:** during closeout, prune or report `scripts/ci/anchor_reach_log.tsv` entries older than
 30 days via `bash scripts/ci/anchor_query.sh --prune 30` (observability only — never a clearance gate).
 
+**Anchor/trigger table decay (OC-CLOSEOUT-0 durable rule):** future growth of
+`scripts/ci/doctrine_anchors.tsv` or `scripts/ci/anchor_triggers.tsv` must be **(1)** trigger-backed
+(path/domain adjacency that agents hit), **(2)** explicitly declined in a reach-log / closeout report
+with a greppable reason, or **(3)** paired with retirement or elevation of another row so live-table
+growth is not unpaired. Unbounded catalogue accretion without one of those three is a fail state.
+
 ## The one rule that governs everything
 
 **TSV row growth is the primary fail state of the rustification harness.** A track-scoped asset is

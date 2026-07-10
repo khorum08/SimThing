@@ -1,11 +1,10 @@
 # 0.0.8.4.8.3 — Orientation Curation: Constitutional Coverage without Context Bloat
 
-> **Status: OPEN (2026-07-10, Owner-directed).** Corrects the curation deficit found in the
+> **Status: CLOSED (2026-07-10, OC-CLOSEOUT-0).** Corrected the curation deficit found in the
 > temp-DA orientation review (2026-07-09): the designated doctrine carrier (`doctrine_anchors.tsv`)
-> held **4 rows** against ~15 constitutional surfaces, and its trigger fired on **relay prose
-> keywords** — circular (only agents who already speak the doctrine trigger it) and covering only
-> 2 of 4 existing anchors' domains. The orientation Next-Rung pointer moves here; the 0.0.8.6
-> production lane is **parked** at 9.1h/9.2 boundary until this track closes (Owner ruling).
+> held **4 rows** against ~15 constitutional surfaces; Lane A populated the library + path triggers
+> + query/reach-log; Lane B graduated K2–K4 under Owner valve; closeout re-opens the production
+> pointer to `0.0.8.6 Studio Live Ops` with no product implementation in the closeout PR.
 >
 > **Roles:** Fable = DA + orchestrator. Codex/Grok = implementers per handoff.
 > **Shape mandate:** few rungs, narrow handoffs, results docs ≤60 lines, close via
@@ -31,7 +30,7 @@ router cannot diff-verify stay banned; meta-objects face the Necessity Test.
 | rung | condition | status |
 |---|---|---|
 | OC-KERNEL-LANE | each `OC-K*` rung blocked-until-owner-amendment-valve-authorization (per rung, not per lane) | discharged (#1272) |
-| OC-CLOSEOUT-0 | reach-log and anchor tables must carry decay rules before close (no unbounded growth surfaces) | open |
+| OC-CLOSEOUT-0 | reach-log and anchor tables must carry decay rules before close (no unbounded growth surfaces) | discharged (OC-CLOSEOUT-0: `--prune 30` + anchor/trigger decay rule in `track_closeout_protocol.md`) |
 
 ---
 
@@ -41,23 +40,25 @@ Grok's 11 risks, refined by DA survey of core design, constitution, STEAD contra
 ADRs, and the kernel crate. `always-on` = one-line cold-start spine in orientation; everything
 else is trigger-served. **Trigger domains bind to diff paths (rung OC-2), not prose.**
 
-| # | Surface | Source | trigger_domains (path-derived) | always-on line? | kernel lane |
-|---|---|---|---|---|---|
-| 1 | FIELD_POLICY + time/decisions (CPU's only job) | core §8 + FIELD_POLICY | sim, driver, wgsl, sim-clock | YES (six-line) | OC-K1 |
-| 2 | Admission ladder / Necessity Test | constitution §0.9, CI | (none — CI-owned) | pointer only | — |
-| 3 | Seal / residue-as-tripwire / cross-crate seal law | constitution §0.9 | kernel, gpu, unsafe-adjacent | — | ongoing |
-| 4 | STEAD contract §1–§4, §8, §9 (layout vs execution admission; ambient/sparse; required tests; withdrawn phrases) | stead_spatial_contract | map, spatial, mapgenerator, clausething-spatial | — | narrow (done) |
-| 5 | Tree / owners-never-spatial / one-tree | core §2 | spec, hydration | — | — |
-| 6 | Property→Value model; RF arenas/channels; Balance; **overlays/orderband**; sparse RegionCell + RF substrate ADRs | core §3, §5, §6 + 2 ADRs | kernel-columns, rf, overlay, driver | — | OC-K2 |
-| 7 | EML extension ladder (gadget tree before opcode) | core §5/EML docs | kernel-eml, wgsl | — | OC-K4 |
-| 8 | Spec fidelity / anti-ceremony / Deviation Record | constitution §0.6 | (closure surfaces) | YES (one line) | — |
-| 9 | Exact numeric authority / Candidate F | constitution §0.7 | kernel-magnitude, threshold paths | — | OC-K3 |
-| 10 | Drift detectors / six-line harness | core §9 | (retain set) | YES (pointer) | — |
-| 11 | ClauseThing closed vertical | constitution §A, ClauseThingADR | clausething, mapgenerator | — | — |
-| 12 | **Structural Execution Convergence Contract** (Studio→GPU: existing ops via driver/sim, never bespoke kernels) | stead §10 | gpu, driver, mapeditor-gpu, studio | — | — |
-| 13 | **Session lifecycle ADR family** (game-mode install, clone-then-commit, session assembly, state replay) | 4 ADRs | driver-session, feeder-session, mapeditor-session | — | — |
-| 14 | **Peripheral scope ADRs** (scripted-event scope; capability effect target scope) | 2 ADRs | feeder, capability paths | — | — |
-| 15 | **Founding ontology** (§0.2 allocation always recursive; §0.3 all conflict is resource flow) + `invariants.md` registry pointer | constitution §0.2/§0.3 | — | YES (two lines) | — |
+| # | Surface | Source | trigger_domains (path-derived) | always-on line? | kernel lane | anchor_id |
+|---|---|---|---|---|---|---|
+| 1 | FIELD_POLICY + time/decisions (CPU's only job) | core §8 + FIELD_POLICY | sim, driver, wgsl, sim-clock | YES (six-line) | OC-K1 | `field-policy-time-decisions` |
+| 2 | Admission ladder / Necessity Test | constitution §0.9, CI | (none — CI-owned) | pointer only | — | `admission-ladder-necessity-test` |
+| 3 | Seal / residue-as-tripwire / cross-crate seal law | constitution §0.9 | kernel, gpu, unsafe-adjacent | — | ongoing | `seal-residue-cross-crate` |
+| 4 | STEAD contract §1–§4, §8, §9 (layout vs execution admission; ambient/sparse; required tests; withdrawn phrases) | stead_spatial_contract | map, spatial, mapgenerator, clausething-spatial | — | narrow (done) | `stead-spatial-contract-core` |
+| 5 | Tree / owners-never-spatial / one-tree | core §2 | spec, hydration | — | — | `one-tree-owners-never-spatial` |
+| 6 | Property→Value model; RF arenas/channels; Balance; **overlays/orderband**; sparse RegionCell + RF substrate ADRs | core §3, §5, §6 + 2 ADRs | kernel-columns, rf, overlay, driver | — | OC-K2 | `property-value-rf-overlays` |
+| 7 | EML extension ladder (gadget tree before opcode) | core §5/EML docs | kernel-eml, wgsl | — | OC-K4 | `eml-extension-ladder` |
+| 8 | Spec fidelity / anti-ceremony / Deviation Record | constitution §0.6 | (closure surfaces) | YES (one line) | — | `spec-fidelity-anti-ceremony` |
+| 9 | Exact numeric authority / Candidate F | constitution §0.7 | kernel-magnitude, threshold paths | — | OC-K3 | `exact-numeric-candidate-f` |
+| 10 | Drift detectors / six-line harness | core §9 | (retain set) | YES (pointer) | — | `drift-detectors-six-line` |
+| 11 | ClauseThing closed vertical | constitution §A, ClauseThingADR | clausething, mapgenerator | — | — | `clausething-closed-vertical` |
+| 12 | **Structural Execution Convergence Contract** (Studio→GPU: existing ops via driver/sim, never bespoke kernels) | stead §10 | gpu, driver, mapeditor-gpu, studio | — | — | `structural-execution-convergence` |
+| 13 | **Session lifecycle ADR family** (game-mode install, clone-then-commit, session assembly, state replay) | 4 ADRs | driver-session, feeder-session, mapeditor-session | — | — | `session-lifecycle-adr-family` |
+| 14 | **Peripheral scope ADRs** (scripted-event scope; capability effect target scope) | 2 ADRs | feeder, capability paths | — | — | `peripheral-scope-adrs` |
+| 15 | **Founding ontology** (§0.2 allocation always recursive; §0.3 all conflict is resource flow) + `invariants.md` registry pointer | constitution §0.2/§0.3 | — | YES (two lines) | — | `founding-ontology-invariants` |
+
+**Legacy relay-keepers (not in the 15-row catalogue, retained):** `orientation-harness-core`, `movement-front`.
 
 ---
 
@@ -90,7 +91,7 @@ same PR). `admission-amendment-request: allowed`; `seal-residue-risk` declared p
 
 | # | Rung | Deliverable | Exit proof | Tier |
 |---|---|---|---|---|
-| C | `OC-CLOSEOUT-0` | First reach-log report (what agents queried; misses → catalogue updates or explicit declines); §1 table stamped with anchor ids; meta-gauges snapshot; un-opened K rungs re-parked to backlog with Deviation Records (never left dangling); binding conditions discharged; close via `track_closeout.sh`. | NOT STARTED | DA |
+| C | `OC-CLOSEOUT-0` | First reach-log report (what agents queried; misses → catalogue updates or explicit declines); §1 table stamped with anchor ids; meta-gauges snapshot; un-opened K rungs re-parked to backlog with Deviation Records (never left dangling); binding conditions discharged; close via `track_closeout.sh`. | **GRADUATED / PR pending** — reach-log report, anchor decay rule, closeout manifest, binding discharged, track closed, pointer re-opened to 0.0.8.6 | T2 |
 
 **Sequencing:** A1 → A2 → (A3 ∥ A4) → A5 (cascade) → C. Lane B rungs slot anywhere after A1, each
 on Owner authorization; C does not wait for unauthorized K rungs, but never precedes A5 — the
