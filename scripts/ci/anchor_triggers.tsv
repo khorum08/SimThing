@@ -13,3 +13,5 @@ docs/design_0_0_8_3.md	spec-fidelity,exact-numeric,founding-ontology,clausething
 docs/simthing_core_design.md	field-policy,one-tree,property-value,drift-detectors,movement-front
 scripts/ci/doctrine_anchors.tsv	gate-wiring,orientation
 scripts/ci/anchor_triggers.tsv	gate-wiring,orientation
+crates/simthing-spec/**	spec,hydration
+crates/simthing-feeder/**	feeder,capability-paths
