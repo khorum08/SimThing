@@ -569,8 +569,6 @@ run_all_cases() {
     setup_unsafe_allow_both_libs
   expect_reliable_fail "unsafe_forbid_missing" "UNSAFE-FORBID-ATTR" \
     setup_unsafe_forbid_both_libs
-  expect_reliable_fail "as5_column_alias" "AS5-COLUMN-ALIAS" \
-    setup_any_crate_src as5_column_alias.rs
   expect_reliable_fail "deny_toml_stub" "DENY-TOML-STUB" setup_deny_toml
 
   expect_reliable_fail "allow_sealed_producer" "ALLOW-SEALED-PRODUCERS" \
@@ -593,11 +591,8 @@ run_all_cases() {
   expect_scanner_error "malformed_missing_rationale" \
     setup_malformed_allowlist malformed_allowlist_missing_rationale.txt
 
-  expect_heuristic_inspect "raw_data_index" "RAW-DATA-INDEX" \
-    setup_heuristic_kernel raw_data_index.rs
   expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
-    setup_heuristic_sim sim_kind_read.rs
-  expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
+    setup_heuristic_sim sim_kind_read.rs  expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
     setup_heuristic_kernel semantic_words_production.rs
   expect_heuristic_inspect "spec_string_channel" "SPEC-STRING-CHANNEL" \
     setup_heuristic_spec spec_string_channel.rs

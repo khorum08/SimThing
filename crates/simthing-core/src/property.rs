@@ -847,4 +847,68 @@ mod tests {
         );
     }
 
+    /// OC-K-COLUMN-ROLE-0: role-keyed access is bit-exact vs layout-resolved lanes
+    /// (the pre-seal "raw lane" meaning after offset_of, never bare `.data[N]`).
+    #[test]
+    fn oc_k_column_role_0_role_access_bit_exact_vs_layout_lane() {
+        let layout = standard_layout();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+        let velocity_off = layout.offset_of(&SubFieldRole::Velocity).unwrap();
+
+        let mut by_role = PropertyValue::from_layout(&layout);
+        by_role.set_role(&SubFieldRole::Amount, &layout, 0.42);
+        by_role.set_role(&SubFieldRole::Velocity, &layout, -0.17);
+
+        let mut by_lane = PropertyValue::from_layout(&layout);
+        by_lane.set_lane_at_offset(amount_off, 0.42);
+        by_lane.set_lane_at_offset(velocity_off, -0.17);
+
+        assert_eq!(
+            by_role.get_role(&SubFieldRole::Amount, &layout).to_bits(),
+            by_lane.lane_at_offset(amount_off).to_bits()
+        );
+        assert_eq!(
+            by_role
+                .get_role(&SubFieldRole::Velocity, &layout)
+                .to_bits(),
+            by_lane.lane_at_offset(velocity_off).to_bits()
+        );
+        assert_eq!(
+            by_role.raw_lanes().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+            by_lane.raw_lanes().iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+        );
+    }
+
+    /// OC-K-COLUMN-ROLE-0: overlay transform by role writes identical f32 bits as
+    /// an explicit RoleOffset write of the same op.
+    #[test]
+    fn oc_k_column_role_0_overlay_role_transform_bit_exact() {
+        use crate::overlay::PropertyTransformDelta;
+        use crate::ids::SimPropertyId;
+
+        let layout = standard_layout();
+        let amount_off = layout.offset_of(&SubFieldRole::Amount).unwrap();
+
+        let mut via_role = PropertyValue::from_layout(&layout);
+        via_role.set_role(&SubFieldRole::Amount, &layout, 0.25);
+        let delta = PropertyTransformDelta {
+            property_id: SimPropertyId(0),
+            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(0.5))],
+        };
+        let mut lanes = via_role.raw_lanes().to_vec();
+        delta.apply_to_data(&mut lanes, &layout);
+
+        let mut via_offset = PropertyValue::from_layout(&layout);
+        via_offset.set_lane_at_offset(amount_off, 0.25);
+        via_offset.set_lane_at_offset(
+            amount_off,
+            TransformOp::Add(0.5).apply(via_offset.lane_at_offset(amount_off)),
+        );
+
+        assert_eq!(
+            lanes[amount_off.lane()].to_bits(),
+            via_offset.lane_at_offset(amount_off).to_bits()
+        );
+    }
+
 }

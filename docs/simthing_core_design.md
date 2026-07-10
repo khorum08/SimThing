@@ -439,6 +439,17 @@ The binding rules that make this safe at GPU scale:
   only. **No hardcoded `data[N]` anywhere, ever.** Overlays and transforms reference sub-fields
   **by role, not by column index**; the CPU prep pass resolves roles → columns; the GPU receives
   only resolved indices.
+- **Role vocabulary pathway (OC-K-COLUMN-ROLE-0 lit path).** Sealed access is always:
+
+  ```text
+  SubFieldRole::Amount | Velocity | Intensity | Named(_)
+       → PropertyLayout::offset_of(role) → RoleOffset
+       → PropertyValue::{get,set}_role / set_lane_at_offset(RoleOffset)
+       → PropertyColumnRange::col_for_role(role, layout) → ColumnIndex
+  ```
+
+  Forbidden on sealed paths: `property.data[0]`, `property.data[1]`, `type ColumnIndex = usize`.
+  Serialization may use `raw_lanes()` only as an explicit escape hatch.
 - **Integration is declarative.** `governed_by` is the only rate-of-change mechanism: Amount governed
   by Velocity, position governed by drift, HP governed by regeneration. Saturated values pin the
   governing rate to zero (no hidden velocity debt). The `Balance` carryforward pattern (below) is

@@ -514,7 +514,8 @@ fn resolve_property_col(
             format!("{}::{}", key.namespace, key.name),
             format_role(role),
         )
-    })? as u32;
+    })?
+    .raw_u32();
     Ok((property_id, col))
 }
 

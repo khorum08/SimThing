@@ -4,7 +4,7 @@ admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-
 seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent,seal	49ee7c4ba6f40dd4c5254e895ba0c9b1ff12d44ab148f18ea82a7e9d83345f1c
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
 one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration,one-tree	c88002b728986a33cd8fbb2537c40658df9268798e50f6aa605bb592d130ead2
-property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver,property-value	7c706a1840212fa59c61c482abfe6f4d0229296cc4bc57c7867d34959b1d54a5
+property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver,property-value	7454775897c6cb5201aa21d0dbefa9a3c30bbaae1b67fb28ab3edc6946c14ee5
 eml-extension-ladder	docs/workshop/eml_gadget_library_design_note.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7b185b66d58bde48258935e2d1de1cf190d958210016279d0ab02dbd2e44179d
 spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces,spec-fidelity	758514cefff349703e1bface14eae4e542d36776de6786c42f7eb11cdabe16d9
 exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths,exact-numeric	2d562c8dcb8c75be1d412d47aaafe965ed0a3a6f8c85978a6d8f6e7a45d92e3d

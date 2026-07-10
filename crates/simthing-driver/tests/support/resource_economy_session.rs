@@ -129,7 +129,8 @@ pub fn amount_col(reg: &DimensionRegistry, ns: &str, name: &str) -> u32 {
             &SubFieldRole::Named("amount".into()),
             &reg.property(pid).layout,
         )
-        .expect("amount column") as u32
+        .expect("amount column")
+        .raw_u32()
 }
 
 pub fn open_live_transfer_session() -> simthing_driver::SimSession {

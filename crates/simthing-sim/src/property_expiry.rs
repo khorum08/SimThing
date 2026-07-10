@@ -248,7 +248,7 @@ fn cpu_decay_collect_node(
                     if let Some(col) =
                         range.col_for_role(&simthing_core::SubFieldRole::Amount, layout)
                     {
-                        let addr = slot.as_usize() * n_dims + col;
+                        let addr = slot.as_usize() * n_dims + col.raw();
                         if values_shadow
                             .get(addr)
                             .map(|v| v.abs() < 1e-4)

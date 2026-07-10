@@ -100,7 +100,8 @@ pub fn producer_amount(session: &SimSession) -> f32 {
             &simthing_core::SubFieldRole::Named("amount".into()),
             &reg.property(pid).layout,
         )
-        .expect("producer amount column") as usize;
+        .expect("producer amount column")
+        .raw();
     session.state.read_values()[col]
 }
 pub fn treasury_col(session: &SimSession) -> u32 {
@@ -111,7 +112,8 @@ pub fn treasury_col(session: &SimSession) -> u32 {
             &simthing_core::SubFieldRole::Named("amount".into()),
             &reg.property(pid).layout,
         )
-        .expect("treasury amount column") as u32
+        .expect("treasury amount column")
+        .raw_u32()
 }
 
 pub fn treasury_amount(session: &SimSession) -> f32 {

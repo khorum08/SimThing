@@ -687,7 +687,7 @@ impl ThresholdBuilder {
             let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
-                col: col as u32,
+                col: col.raw_u32(),
                 threshold: unlock.threshold,
                 direction: DIR_UPWARD,
                 event_kind,
@@ -796,7 +796,7 @@ impl ThresholdBuilder {
             let event_kind = cpu_reg.push(semantic);
             gpu_regs.push(ThresholdRegistration {
                 slot: child_slot.raw(),
-                col: col as u32,
+                col: col.raw_u32(),
                 threshold: ft.template.fusion_intensity_threshold,
                 direction: DIR_UPWARD,
                 event_kind,
@@ -843,7 +843,7 @@ impl ThresholdBuilder {
                         let event_kind = cpu_reg.push(semantic);
                         gpu_regs.push(ThresholdRegistration {
                             slot: slot.raw(),
-                            col: col as u32,
+                            col: col.raw_u32(),
                             threshold: ft.threshold,
                             direction: direction_to_u32(&ft.direction),
                             event_kind,
@@ -967,7 +967,7 @@ impl ThresholdBuilder {
                     let event_kind = cpu_reg.push(semantic);
                     gpu_regs.push(ThresholdRegistration {
                         slot,
-                        col: col as u32,
+                        col: col.raw_u32(),
                         threshold: *threshold,
                         direction: DIR_EITHER,
                         event_kind,
@@ -1009,7 +1009,7 @@ impl ThresholdBuilder {
             });
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
-                col: col as u32,
+                col: col.raw_u32(),
                 threshold: alert.threshold,
                 direction: direction_to_u32(&alert.direction),
                 event_kind,
@@ -1045,7 +1045,7 @@ impl ThresholdBuilder {
             });
             gpu_regs.push(ThresholdRegistration {
                 slot: slot.raw(),
-                col: col as u32,
+                col: col.raw_u32(),
                 threshold: alert.threshold,
                 direction: direction_to_u32(&alert.direction),
                 event_kind,

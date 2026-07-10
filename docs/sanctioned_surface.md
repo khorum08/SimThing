@@ -268,9 +268,9 @@ This digest is a derived context artifact for low-context agents. If it disagree
 | UNSAFE-FN | RELIABLE | design §5 unsafe fn | crates/simthing-{kernel,sim}/src/** | \\bunsafe fn\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire when unsafe is unrepresentable at kernel/sim type boundary | scans.tsv |
 | UNSAFE-ALLOW-ATTR | RELIABLE | design §5 allow unsafe attr | crates/simthing-{kernel,sim}/src/lib.rs | #!\\[allow\\(unsafe_code\\)\\] | (none) | retire when crate attributes are admission-typed not prose | scans.tsv |
 | UNSAFE-FORBID-ATTR | RELIABLE | design §5 forbid unsafe attr | crates/simthing-{kernel,sim}/src/lib.rs | @REQUIRE:#!\\[forbid\\(unsafe_code\\)\\] | (none) | retire when semantic-free crate template enforces forbid at type boundary | scans.tsv |
-| AS5-COLUMN-ALIAS | RELIABLE | design §5 AS-5 ColumnIndex alias | crates/**/src/** | type ColumnIndex *= *usize | compile_fail;^\\s*//!;^\\s*///;^\\s*// | retire when ColumnIndex is a kernel-wide newtype everywhere | scans.tsv |
+
 | DENY-TOML-STUB | RELIABLE | design §0.6.6 deny.toml stub | deny.toml | . | (none) | retire when dependency policy is compile-time typed not file-shaped | scans.tsv |
-| RAW-DATA-INDEX | HEURISTIC | design §5 raw data[N] index | crates/**/src/** | \\.data\\[[0-9]+\\] | raw_lanes;serialization;compile_fail;^\\s*//!;^\\s*///;^\\s*// | promote when lane indices are newtyped at all serialization sites | scans.tsv |
+
 | SIM-KIND-READ | HEURISTIC | design §5 sim .kind read | crates/simthing-sim/src/** | match .*\\.kind\|\\.kind\\b | compile_fail;^\\s*//!;^\\s*///;^\\s*//;delta_log;sim_runtime_tree;kind_production_audit;^\\s*assert_\|^\\s*#\\[test\\] | promote when runtime tree view is kind-free at type boundary | scans.tsv |
 | SEMANTIC-WORDS | HEURISTIC | design §5 semantic words below spec | crates/simthing-{sim,kernel}/src/** | faction\|combat\|terran\|pirate\|diplomacy | compile_fail;^\\s*//!;^\\s*///;^\\s*//;^\\s*assert_\|^\\s*#\\[test\\]\|SimThingKind:: | promote when game semantics are spec-boundary typed only | scans.tsv |
 | SPEC-STRING-CHANNEL | HEURISTIC | design §5 stringly channel identity | crates/simthing-spec/src/** | owner_ref *: *(Option<)?String\|resource_key *: *(Option<)?String | compile_fail;^\\s*//!;^\\s*///;^\\s*//;channel_key\\.rs | promote when channel identity is newtyped in spec admission | scans.tsv |

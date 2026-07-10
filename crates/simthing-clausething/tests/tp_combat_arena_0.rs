@@ -187,7 +187,8 @@ fn property_amount_col(registry: &DimensionRegistry, ns: &str, name: &str) -> u3
     registry
         .column_range(property_id)
         .col_for_role(&SubFieldRole::Amount, &registry.property(property_id).layout)
-        .expect("amount column") as u32
+        .expect("amount column")
+        .raw_u32()
 }
 
 fn slot_for_ship(session: &SimSession, ship_id: SimThingId) -> SlotIndex {

@@ -79,7 +79,7 @@ pub fn preview_capability_effect(
             let Some(col) = range.col_for_role(role, layout) else {
                 continue;
             };
-            let idx = source_slot as usize * input.n_dims + col;
+            let idx = source_slot as usize * input.n_dims + col.raw();
             let Some(current) = input.shadow.get(idx).copied() else {
                 continue;
             };

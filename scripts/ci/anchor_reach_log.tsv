@@ -1,1 +1,7 @@
 date	role	query	anchors_served	hit
+2026-07-10T06:17:44Z	coding	--domain kernel-eml	eml-extension-ladder	hit
+2026-07-10T06:17:45Z	coding	--grep EML	admission-ladder-necessity-test,drift-detectors-six-line,eml-extension-ladder,exact-numeric-candidate-f,movement-front,property-value-rf-overlays,seal-residue-cross-crate,spec-fidelity-anti-ceremony	hit
+2026-07-10T06:17:45Z	coding	--grep EvalEML	drift-detectors-six-line,movement-front,property-value-rf-overlays	hit
+2026-07-10T06:17:56Z	coding	--grep EvalEML	drift-detectors-six-line,movement-front,property-value-rf-overlays	hit
+2026-07-10T06:32:56Z	coding	--domain kernel-columns	property-value-rf-overlays	hit
+2026-07-10T06:32:56Z	coding	--paths crates/simthing-kernel crates/simthing-driver docs/simthing_core_design.md	drift-detectors-six-line,field-policy-time-decisions,movement-front,one-tree-owners-never-spatial,property-value-rf-overlays	hit

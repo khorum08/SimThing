@@ -25,13 +25,13 @@ pub fn compile_trigger(
                 })?;
             let layout = &registry.property(property_id).layout;
             let range = registry.column_range(property_id);
-            let col =
-                range
-                    .col_for_role(role, layout)
-                    .ok_or_else(|| SpecError::InvalidTriggerRole {
-                        property: format!("{}::{}", property.namespace, property.name),
-                        role: format!("{role:?}"),
-                    })?;
+            let col = range
+                .col_for_role(role, layout)
+                .ok_or_else(|| SpecError::InvalidTriggerRole {
+                    property: format!("{}::{}", property.namespace, property.name),
+                    role: format!("{role:?}"),
+                })?
+                .raw();
             CompiledTrigger::Threshold(CompiledThresholdTrigger {
                 target: *target,
                 property: property_id,

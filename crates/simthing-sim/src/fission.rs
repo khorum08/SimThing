@@ -567,7 +567,7 @@ fn apply_fusion_scar(
     let Some(amount_col) = range.col_for_role(&SubFieldRole::Amount, layout) else {
         return false;
     };
-    let idx = parent_slot.as_usize() * n_dims + amount_col;
+    let idx = parent_slot.as_usize() * n_dims + amount_col.raw();
     if idx >= values_shadow.len() {
         return false;
     }
@@ -594,7 +594,7 @@ fn check_secondary(
         let range = registry.column_range(pid);
         let layout = &registry.property(pid).layout;
         let col = range.col_for_role(role, layout)?;
-        values_shadow.get(base + col).copied()
+        values_shadow.get(base + col.raw()).copied()
     };
 
     match cond {

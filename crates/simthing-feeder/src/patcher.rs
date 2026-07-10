@@ -354,7 +354,7 @@ impl TransformPatcher {
                 stats.unresolved_roles += 1;
                 continue;
             };
-            let addr = base + col;
+            let addr = base + col.raw();
             // Defensive: a malformed shadow length would be a caller bug, but
             // bounds-checking here keeps a misuse from corrupting unrelated
             // memory in release builds.
@@ -493,7 +493,7 @@ fn fold_patch_as_intents(
             stats.unresolved_roles += 1;
             continue;
         };
-        let key = (slot.raw(), col as u32);
+        let key = (slot.raw(), col.raw_u32());
         let entry = folded.entry(key).or_insert_with(|| {
             order.push(key);
             (1.0, 0.0)

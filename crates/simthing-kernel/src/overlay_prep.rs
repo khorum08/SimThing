@@ -84,7 +84,7 @@ fn build_node(
                     TransformOp::Set(v) => (OP_SET, *v),
                 };
                 deltas.push(OverlayDelta {
-                    col: col as u32,
+                    col: col.raw_u32(),
                     op_kind,
                     value,
                     _pad: 0,
