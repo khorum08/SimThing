@@ -486,6 +486,54 @@ EOF
   return 0
 }
 
+run_selftest_cold_start_spine() {
+  local sandbox out
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-spine-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  if ! run_gen_sandbox "$sandbox" >/dev/null 2>&1; then
+    echo "FAIL cold_start_spine_generate"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  out="${sandbox}/docs/orchestrator_orientation.md"
+  local failures=0
+  for needle in \
+    "## Cold-Start Spine (constitutional pointers)" \
+    "field-policy-time-decisions" \
+    "spec-fidelity-anti-ceremony" \
+    "founding-ontology-invariants" \
+    "docs/invariants.md" \
+    "drift-detectors-six-line" \
+    "anchor_query.sh" \
+    "Doctrine lookup entrypoint"
+  do
+    if ! grep -qF "$needle" "$out"; then
+      echo "FAIL cold_start_spine_missing:${needle}"
+      failures=$((failures + 1))
+    fi
+  done
+  # Forbidden: raw doctrine prose blocks / §3–§7 paste
+  if grep -qE '## 8\. Time, decisions|### 0\.6 Specification Fidelity|## 9\. The drift detectors' "$out"; then
+    echo "FAIL cold_start_spine_forbidden_prose"
+    failures=$((failures + 1))
+  fi
+  # Deterministic regen
+  local first second
+  first="$(tr -d '\r' <"$out")"
+  run_gen_sandbox "$sandbox" >/dev/null 2>&1 || true
+  second="$(tr -d '\r' <"$out")"
+  if [[ "$first" != "$second" ]]; then
+    echo "FAIL cold_start_spine_nondeterministic"
+    failures=$((failures + 1))
+  fi
+  rm -rf "$sandbox"
+  if [[ "$failures" -eq 0 ]]; then
+    echo "PASS cold_start_spine"
+    return 0
+  fi
+  return 1
+}
+
 run_selftest() {
   local fixtures=(
     orientation_digest_selftest_stale_digest
@@ -507,6 +555,7 @@ run_selftest() {
     run_selftest_reject_evidence_index_open
     run_selftest_active_evidence_index_check_fails
     run_selftest_valid_workplan_opens
+    run_selftest_cold_start_spine
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -1141,9 +1190,18 @@ def render_orientation(active_info: dict) -> tuple:
         ])
     lines.extend([
     "",
-    "## Cold-Start Entrypoint",
+    "## Cold-Start Spine (constitutional pointers)",
     "",
-    "Cold-start entrypoint: run `bash scripts/ci/orient.sh --role=coding|orchestrator|da` and carry the emitted ORIENT-RECEIPT.",
+    "Pointers only — resolve verbatim doctrine via `anchor_query.sh`; do not raw-grep doctrine docs.",
+    "",
+    "- FIELD_POLICY / CPU-only job → `field-policy-time-decisions` (`bash scripts/ci/anchor_query.sh --domain field-policy`)",
+    "- Spec fidelity §0.6 → `spec-fidelity-anti-ceremony` (`bash scripts/ci/anchor_query.sh --grep spec-fidelity`)",
+    "- Founding ontology §0.2 (allocation is recursive) → `founding-ontology-invariants`",
+    "- Founding ontology §0.3 (all conflict is resource flow) → `founding-ontology-invariants`",
+    "- Invariants registry → `docs/invariants.md` (via `founding-ontology-invariants`)",
+    "- Drift detectors §9 → `drift-detectors-six-line` (`bash scripts/ci/anchor_query.sh --domain drift-detectors`)",
+    "- Doctrine lookup entrypoint: `bash scripts/ci/anchor_query.sh --domain <d> --paths <files...> --grep <term>`",
+    "- Cold-start receipt: `bash scripts/ci/orient.sh --role=coding|orchestrator|da` → carry `ORIENT-RECEIPT`",
     "",
     "## Clearance Router Verdict Meanings",
     "",

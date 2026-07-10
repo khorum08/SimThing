@@ -164,14 +164,47 @@ receipt = hashlib.sha256(
 ).hexdigest()[:12]
 
 SECTIONS_CODING = {
-    "Source Stamps", "Next Rung Pointer", "Clearance Router Verdict Meanings",
+    "Source Stamps", "Next Rung Pointer", "Cold-Start Spine (constitutional pointers)",
+    "Clearance Router Verdict Meanings",
     "Precedented Classes (active)", "tested_code_sha + coverage_basis Rule",
     "Inner Loop (coding agent)", "GHA Comment Commands", "Orientation Receipt (ORIENT-RECEIPT)",
 }
 SECTIONS_DA = {
-    "Source Stamps", "OH Track / Rung Summary (0.0.8.4.7)", "Binding Conditions",
+    "Source Stamps", "Next Rung Pointer", "Cold-Start Spine (constitutional pointers)",
+    "Binding Conditions",
     "Clearance Ledger (recent)", "Escalation / DA-RESERVE Posture",
     "Relay Lint Required Blocks", "Orientation Receipt (ORIENT-RECEIPT)",
+}
+
+def section_wanted(name, wanted):
+    if name in wanted:
+        return True
+    # Active track heading is dynamic: Active Track / Rung Summary (`design_...`)
+    if name.startswith("Active Track / Rung Summary") and role == "da":
+        return True
+    return False
+
+ROLE_EXTRAS = {
+    "coding": [
+        "## Role routing (coding)",
+        "",
+        "- Use the cold-start spine pointers; doctrine lookup via `anchor_query.sh` (not raw doctrine greps).",
+        "",
+    ],
+    "orchestrator": [
+        "## Role routing (orchestrator)",
+        "",
+        "- Read the auto-posted Clearance Report sticky; do not invoke `/clearance` for normal intake.",
+        "- `ORCHESTRATOR-CLEARABLE` + CI green → merge; `DA-RESERVE` → relay to DA with ANCHOR-ACKs.",
+        "",
+    ],
+    "da": [
+        "## Role routing (da)",
+        "",
+        "- Audit/review routing: gate-wiring → deep audit; load-bearing escalations → `da_treeverify.sh`.",
+        "- After DA pass: exit-proof stamp + orientation regen + merge (not orchestrator residual).",
+        "",
+    ],
 }
 
 def split_sections(body):
@@ -190,16 +223,17 @@ sections = split_sections(text)
 header = "\n".join(sections.get("_header", [])).strip()
 
 if role == "orchestrator":
-    body_out = text
+    body_out = text.rstrip() + "\n\n" + "\n".join(ROLE_EXTRAS["orchestrator"])
 else:
     wanted = SECTIONS_CODING if role == "coding" else SECTIONS_DA
     parts = [header, ""]
     for name, content in sections.items():
         if name == "_header":
             continue
-        if name in wanted:
+        if section_wanted(name, wanted):
             parts.append("\n".join(content).rstrip())
             parts.append("")
+    parts.extend(ROLE_EXTRAS.get(role, []))
     body_out = "\n".join(parts).rstrip() + "\n"
 
 print(f"ORIENT-RECEIPT: {receipt}")
@@ -283,11 +317,72 @@ run_selftest() {
   if ! run_since_selftest; then
     SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
   fi
+  if ! run_cold_start_spine_role_selftest; then
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
-    echo "ORIENT-SELFTEST: PASS ($((${#fixtures[@]} + 2)) fixtures)"
+    echo "ORIENT-SELFTEST: PASS ($((${#fixtures[@]} + 3)) fixtures)"
     return 0
   fi
   echo "ORIENT-SELFTEST: FAIL (${SELFTEST_FAILURES} fixtures)"
+  return 1
+}
+
+run_cold_start_spine_role_selftest() {
+  local failures=0
+  local out
+  local role
+  for role in coding orchestrator da; do
+    out="$(emit_orientation "$role" || true)"
+    if ! printf '%s\n' "$out" | grep -qF "## Cold-Start Spine (constitutional pointers)"; then
+      echo "FAIL cold_start_spine_role_${role}_missing_section"
+      failures=$((failures + 1))
+      continue
+    fi
+    if ! printf '%s\n' "$out" | grep -qF "anchor_query.sh"; then
+      echo "FAIL cold_start_spine_role_${role}_missing_entrypoint"
+      failures=$((failures + 1))
+    fi
+    if ! printf '%s\n' "$out" | grep -qF "field-policy-time-decisions"; then
+      echo "FAIL cold_start_spine_role_${role}_missing_field_policy"
+      failures=$((failures + 1))
+    fi
+    if ! printf '%s\n' "$out" | grep -qF "spec-fidelity-anti-ceremony"; then
+      echo "FAIL cold_start_spine_role_${role}_missing_spec_fidelity"
+      failures=$((failures + 1))
+    fi
+    if ! printf '%s\n' "$out" | grep -qF "founding-ontology-invariants"; then
+      echo "FAIL cold_start_spine_role_${role}_missing_ontology"
+      failures=$((failures + 1))
+    fi
+    if ! printf '%s\n' "$out" | grep -qF "drift-detectors-six-line"; then
+      echo "FAIL cold_start_spine_role_${role}_missing_drift"
+      failures=$((failures + 1))
+    fi
+    if printf '%s\n' "$out" | grep -qE '## 8\. Time, decisions|### 0\.6 Specification Fidelity|## 9\. The drift detectors'; then
+      echo "FAIL cold_start_spine_role_${role}_forbidden_prose"
+      failures=$((failures + 1))
+    fi
+  done
+  out="$(emit_orientation coding || true)"
+  if ! printf '%s\n' "$out" | grep -qF "Role routing (coding)"; then
+    echo "FAIL cold_start_spine_coding_routing"
+    failures=$((failures + 1))
+  fi
+  out="$(emit_orientation orchestrator || true)"
+  if ! printf '%s\n' "$out" | grep -qF "Clearance Report sticky"; then
+    echo "FAIL cold_start_spine_orchestrator_sticky"
+    failures=$((failures + 1))
+  fi
+  out="$(emit_orientation da || true)"
+  if ! printf '%s\n' "$out" | grep -qF "da_treeverify"; then
+    echo "FAIL cold_start_spine_da_audit"
+    failures=$((failures + 1))
+  fi
+  if [[ "$failures" -eq 0 ]]; then
+    echo "PASS cold_start_spine_roles"
+    return 0
+  fi
   return 1
 }
 
