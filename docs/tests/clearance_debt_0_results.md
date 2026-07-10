@@ -24,6 +24,7 @@ No product implementation files changed. No 0.0.8.6 product rungs implemented.
 - After: **−7** retired; `tp-suspended-demo` **kept suspended** for `clearance_selftest_suspended_class`
 - Predicates removed: `tp-studio-clause-picker`, `tp-admitted-clause-api-composition`
 - Fixture families: TP clearable expectations → `DA-RESERVE(unclassified-scope)`; new `tp_closed_track_no_longer_clearable`
+- Deletion-guard: no live inventory rows removed; `fail_triage_missing/triage_log.tsv` retained (empty header)
 
 ## Triage head-binding (#1169)
 
