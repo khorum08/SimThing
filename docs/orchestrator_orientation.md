@@ -46,7 +46,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
 | design_0_0_8_4_8_3_orientation_curation.md | 90d5fd8e4b0efae784412bf81358b02b5b4f484616a488e6be69693b83c92330 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
-| doctrine_anchors.tsv | 49f68f0c2fe21dee916ae16d92aceecb2e8fa906702d6668f5f80bc32319028c |
+| doctrine_anchors.tsv | 6cb28e11b1ff78d1ec1c3c493d5a7921836acba644e18eaac3c18ea7982a641d |
 
 ## Active Track / Rung Summary (`design_0_0_8_4_8_3_orientation_curation.md`)
 
@@ -118,7 +118,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | corpus-module-marker-sweep | scripts/ci/test_inventory.tsv\|docs/tests/cc_sweep_*_module_markers_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
-| studio-sim-clock-substrate | crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|docs/tests/studio_sim_clock_*_results.md\|docs/tests/studio_live_ops_readiness_0_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
+| studio-sim-clock-substrate | crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|docs/tests/studio_sim_clock_*_rs\|docs/tests/studio_live_ops_readiness_0_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
 
 ## Binding Conditions
 
@@ -226,7 +226,7 @@ Maintainer/CI only (not coding default): whole-tree `doctrine_scan.sh`, clearanc
 
 - `/clearance` — M1 router verdict
 - `/relay-lint` — M3 relay lint verdict
-- `/orient` — M2 orientation digest (this page)
+- `/orient` — M2 orientation digest
 - `/orient role=orchestrator|coding|da` — role-filtered subset
 - `/anchor <anchor_id|trigger_domain>` — verbatim anchored doctrine text
 - DA treeverify is **local/on-demand** (`da_treeverify.sh`); not a required PR gate or merge authority
