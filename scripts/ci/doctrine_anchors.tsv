@@ -1,5 +1,18 @@
 anchor_id	doc	section	trigger_domains	content_hash
+field-policy-time-decisions	docs/simthing_core_design.md	heading:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock	379415f0df536f475108dd61583c155ffb2631c4b12464054a72f1428d2a9ab3
+admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)	none-ci-owned	887d2a3c9540b66d748edb0ba7e55e35c3530566d067965369e7baf2e42d38d7
+seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent	49ee7c4ba6f40dd4c5254e895ba0c9b1ff12d44ab148f18ea82a7e9d83345f1c
+stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial	b4a112cd02e8ad453df1f2414a59a035aadff7c9ae1e965a3ba10b4d1f2b52f9
+one-tree-owners-never-spatial	docs/simthing_core_design.md	heading:## 2. The one tree: Scenario wrapper, GameSession root, owners, and spatial containment	spec,hydration	c88002b728986a33cd8fbb2537c40658df9268798e50f6aa605bb592d130ead2
+property-value-rf-overlays	docs/simthing_core_design.md	lines:411-644	kernel-columns,rf,overlay,driver	7c706a1840212fa59c61c482abfe6f4d0229296cc4bc57c7867d34959b1d54a5
+eml-extension-ladder	docs/workshop/eml_gadget_library_design_note.md	heading:## 2. Constitutional placement / guardrails	kernel-eml,wgsl	7b185b66d58bde48258935e2d1de1cf190d958210016279d0ab02dbd2e44179d
+spec-fidelity-anti-ceremony	docs/design_0_0_8_3.md	heading:### 0.6 Specification Fidelity — no silent flattening (the anti-drift law)	closure-surfaces	758514cefff349703e1bface14eae4e542d36776de6786c42f7eb11cdabe16d9
+exact-numeric-candidate-f	docs/design_0_0_8_3.md	heading:### 0.7 Exact numeric authority for decision gates	kernel-magnitude,threshold-paths	2d562c8dcb8c75be1d412d47aaafe965ed0a3a6f8c85978a6d8f6e7a45d92e3d
+drift-detectors-six-line	docs/simthing_core_design.md	heading:## 9. The drift detectors — litmus tests for every change	retain-set	1f3bfc9659dfb289d6de24cb3d97b620f6f8e7ff5651e8ace52d320168de01d0
+clausething-closed-vertical	docs/design_0_0_8_3.md	heading:## A. Closeout addendum — the ClauseThing vertical (ratified 2026-06-15)	clausething,mapgenerator	beb30ffaba500f7823222ed31b1fd81cf3a02d0fb6fd3f9825b0f3f54f32c1fe
+structural-execution-convergence	docs/stead_spatial_contract.md	heading:## 10. Structural execution convergence (Studio → GPU horizon)	gpu,driver,mapeditor-gpu,studio	17fa0732f44d2e630a7d353e8c257ffedae2469d12d0eaa15f83ddb77b529687
+session-lifecycle-adr-family	docs/adr/README.md	lines:1-11	driver-session,feeder-session,mapeditor-session	eecbca368a506e53ec18ccf58ce9bc033679bb8358b5a4f78da70a629cb67161
+peripheral-scope-adrs	docs/adr/capability_effect_target_scope.md	heading:## Context	feeder,capability-paths	7c85dbf18e48f6fa43d57bf2d3641c577d71227f8b15d64d134490b8fdb4dfab
+founding-ontology-invariants	docs/design_0_0_8_3.md	lines:100-129	founding-ontology	b960ed2d493d0073af656b1b2fd06bd60a0262926e97005ec0dfa316296f0bbf
 orientation-harness-core	docs/design_0_0_8_4_7_orchestration_harness.md	heading:## 1. Root cause this track closes	orientation,gate-wiring,receipt-admission	8a365d1c086487ee32150d457754df35becc4ad93465874253fc7d40baf2582f
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
-bevy-presentation-non-authority	docs/design_0_0_8_6_studio_live_ops.md	heading:## 2.1 Bevy and Studio UI are non-authority	bevy-presentation,studio-ui,sim-clock	7647872cf2fea714538da872ff6f2c71588abd3c74571a38775fa556b988ef35
-studio-modal-library-pause	docs/design_0_0_8_6_studio_live_ops.md	heading:## 2.2 Modal library pause law	studio-ui,sim-clock,scenario-library	357fbee527dbae325e55c625ca17d108ed4a874a70d6c6ca7d1b15ff784e17f8
