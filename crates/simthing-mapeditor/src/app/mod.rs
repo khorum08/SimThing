@@ -248,6 +248,9 @@ pub struct StudioAppState {
     pub antialiasing_mode: crate::studio_antialiasing::StudioAntialiasingMode,
     /// Where [`Self::antialiasing_mode`] was last set (telemetry/debug).
     pub antialiasing_mode_source: crate::studio_antialiasing::StudioAntialiasingModeSource,
+    /// Studio sim clock transport (presentation projection over [`crate::StudioSimClock`]).
+    /// Does not execute gameplay or mutate ScenarioSpec; 9.3 bridges scheduled ticks later.
+    pub sim_clock_transport: crate::StudioSimClockTransport,
 }
 
 impl StudioAppState {
@@ -309,6 +312,7 @@ impl StudioAppState {
             antialiasing_mode: settings.antialiasing_mode(),
             antialiasing_mode_source:
                 crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
+            sim_clock_transport: crate::StudioSimClockTransport::new(),
         }
     }
 
