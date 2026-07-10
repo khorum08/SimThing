@@ -1,0 +1,1 @@
+scripts/ci/doctrine_anchors.tsv
