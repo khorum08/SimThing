@@ -1,7 +1,7 @@
 # STUDIO-LIVE-SESSION-BRIDGE-0 Results
 
 ## Status
-**PROBATION** — production clock→SimSession bridge. Not graduated.
+**DA-GRADUATED / COMPLETE** — merged [#1285](https://github.com/khorum08/SimThing/pull/1285) @ `ab238657`.
 
 ## PR / branch / merge
 | Field | Value |
@@ -9,7 +9,7 @@
 | PR | #1285 |
 | branch | `studio-live-session-bridge-0` |
 | base | `master` |
-| merge | NOT MERGED |
+| merge | `ab238657` |
 
 ## What changed
 - `simthing-driver::SimSession::step_once` — one production hot-cycle (shared with `run`)
@@ -49,4 +49,4 @@ Presentation-only UI · StudioSimClock schedules · SimSession::open+step_once e
 STUDIO-LIVE-OBSERVE-0 for broader tree-local summaries. Structural shell strips product property maps for dense registry projection (Spec authority unchanged on StudioSession).
 
 ## Graduation routing
-PROBATION — DA review; authority-adjacent driver step_once + mapeditor bridge.
+**DA PASS** — `DA-RESERVE(class-envelope-violation)` expected (narrow `step_once` outside clock class). DEEP-TREE confirmed shared hot-cycle with `run`, clock authority via `StudioSimClock::advance`, production `SimSession::open`+`step_once`, no workshop import, Spec non-mutation. Pointer → `STUDIO-LIVE-OBSERVE-0`.
