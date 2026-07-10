@@ -6,3 +6,4 @@ crates/simthing-workshop/src/fronts_post_hydration.rs	2026-07-09	lease	0.0.8.5-t
 crates/simthing-workshop/src/fleet_movement_post_hydration.rs	2026-07-09	lease	0.0.8.5-terran-pirate	superseded scenario-authoring candidate (clause data path is production); delete or elevate within wall
 crates/simthing-workshop/src/live_run_post_hydration.rs	2026-07-09	lease	0.0.8.5-terran-pirate	superseded scenario-authoring candidate (clause data path is production); delete or elevate within wall
 crates/simthing-workshop/src/palma_reach_post_hydration.rs	2026-07-09	lease	0.0.8.5-terran-pirate	superseded scenario-authoring candidate (clause data path is production); delete or elevate within wall
+docs/tests/oc_closeout_0_manifest.tsv	2026-07-10	lease	0.0.8.4.8.3-orientation-curation	closeout manifest wall-clock lease
