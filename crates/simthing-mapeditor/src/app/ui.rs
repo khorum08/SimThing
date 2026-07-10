@@ -1504,13 +1504,79 @@ fn draw_sim_clock_transport(ui: &mut egui::Ui, state: &mut StudioAppState) {
         "Live bridge: {}  ·  Executed: {}  ·  Last batch: {}",
         bridge.status_label, bridge.executed_ticks, bridge.last_scheduled_batch
     ));
+    ui.label(egui::RichText::new(bridge.production_path).small().weak());
+    if let Some(err) = bridge.last_error.as_deref() {
+        ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
+    }
+
+    // Live observation (9.4) — pure projection; does not tick or mutate Spec.
+    draw_live_observation(ui, state);
+}
+
+/// Compact observation panel over clock + bridge + session (presentation only).
+fn draw_live_observation(ui: &mut egui::Ui, state: &StudioAppState) {
+    let clock = state.sim_clock_transport.readout();
+    let obs = crate::build_studio_live_observation_readout(
+        &clock,
+        &state.live_bridge_readout,
+        state.session.as_ref(),
+    );
+
+    ui.separator();
+    ui.label(egui::RichText::new("Live observation").strong());
     ui.label(
-        egui::RichText::new(bridge.production_path)
+        egui::RichText::new("Read-only projection; freezes with pause; never steps the sim.")
             .small()
             .weak(),
     );
-    if let Some(err) = bridge.last_error.as_deref() {
-        ui.colored_label(egui::Color32::from_rgb(220, 80, 80), err);
+
+    let clock_state = if obs.clock_paused {
+        "paused"
+    } else {
+        "playing"
+    };
+    ui.label(format!(
+        "Clock: {clock_state}  ·  Rate: {}  ·  Max TPS: {:.3}  ·  Eff: {:.3}/s  ·  Scheduled tick: {}",
+        obs.clock_rate_label, obs.max_tps, obs.effective_tps, obs.scheduled_tick_index
+    ));
+    ui.label(format!(
+        "Live bridge: {}  ·  Executed: {}  ·  Last batch: {}",
+        obs.bridge_status_label, obs.bridge_executed_ticks, obs.bridge_last_scheduled_batch
+    ));
+    if let Some(err) = obs.bridge_last_error.as_deref() {
+        ui.colored_label(
+            egui::Color32::from_rgb(220, 80, 80),
+            format!("Bridge status: {err}"),
+        );
+    }
+
+    if obs.session_loaded {
+        let scenario = obs.scenario_id.as_deref().unwrap_or("(unknown)");
+        let systems = obs.system_count.unwrap_or(0);
+        let links = obs.link_count.unwrap_or(0);
+        let stead = match obs.stead_valid {
+            Some(true) => "STEAD valid",
+            Some(false) => "STEAD invalid",
+            None => "STEAD n/a",
+        };
+        let rf = match obs.rf_ready {
+            Some(true) => "RF ready",
+            Some(false) => "RF not ready",
+            None => "RF n/a",
+        };
+        let occupied = obs.occupied_cells.unwrap_or(0);
+        ui.label(format!(
+            "Session: {scenario}  ·  {}  ·  systems: {systems}  ·  links: {links}",
+            obs.source_kind_label
+        ));
+        ui.label(format!(
+            "Summary: {stead}  ·  {rf}  ·  occupied cells: {occupied}"
+        ));
+        if let Some(msg) = obs.session_status_message.as_deref() {
+            ui.label(egui::RichText::new(msg).small().weak());
+        }
+    } else {
+        ui.label("Session: no loaded session  ·  bridge unattached/idle");
     }
 }
 
