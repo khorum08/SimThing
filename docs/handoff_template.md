@@ -43,9 +43,10 @@
 ### Canonical Entrypoints
 
 - Session admission: `bash scripts/ci/orient.sh --role=<coding|orchestrator|da>`; handoffs carry existing `ORIENT-RECEIPT` (stop if missing/stale).
-- Track mutation (operator): `bash scripts/ci/gen_orientation.sh --open <track.md>`; `--check` is the freshness gate.
+- Track mutation (operator): `bash scripts/ci/gen_orientation.sh --open <track.md>`; `--check` is the freshness gate (Cold-Start Spine + corpus from live TSVs).
 - **Doctrine lookup (THE entrypoint):** `bash scripts/ci/anchor_query.sh --domain <d> --paths <files...> --grep <term>` — verbatim anchors; **do not raw-grep doctrine docs**.
 - **Anchored-doc edits:** run `bash scripts/ci/anchor_check.sh --resync` and commit updated `doctrine_anchors.tsv`.
+- **Kernel doors:** read `docs/sanctioned_surface.md` first (generated from `allow/*.txt`). Graduated gates: `ExactMagnitudeProof` / Candidate F; decision ingress tokens → `StructuralCommitment`; `OpcodeRegistrationGate` / closed EvalEML; `ColumnIndex` via `col_for_role` (not `ColumnIndex::new`). EML authoring: `docs/eml_gadget_library.md`.
 - **Clearance intake:** read auto-posted **Clearance Report** sticky; do not invoke `/clearance` for normal intake; `ANCHOR-ACKS` match sticky `REQUIRED-ANCHORS`.
 - Routine local proof: `cargo check -p <crate>` when crates changed; **`bash scripts/ci/agent_scan.sh`**. Whole-tree `doctrine_scan.sh` is CI/maintainer. Conditional selftests when those surfaces change; else `scanner unchanged - selftest not required`.
 - Track closure: `track_closeout.sh --build-manifest …` → `--check-eval` → `--apply` (`docs/track_closeout_protocol.md`). Never hand-delete inventory rows.
@@ -353,12 +354,7 @@ real, observed failure mode, not a hypothetical.
 9. **Invents a new resolution mechanism** while an RF arena / overlay / EML gadget / JIT-EML shader
    suffices (D1, D2).
 10. **Pads the evidence doc with empty or mission-restating sections.** Sections carry signal or are cut.
-11. **Produces inert scaffolding** — a file/module/config that *looks like* a gate/capability/completed
-    structure but enforces or does nothing (unwired config, empty placeholder, uncalled stub, dead
-    allowlist, a scaffold for a feature that never landed). These aggregate into a false appearance of
-    completeness and become **handwave vectors** (a later agent cites the file's existence as compliance
-    that isn't there). The real thing is created when *wired*; an artifact that looks like a gate but isn't
-    one is **removed, not annotated** (constitution §0.6 binding 6). Delete inert scaffolding you encounter.
+11. **Produces inert scaffolding** — a file that *looks like* a gate but enforces nothing (unwired config,
+    empty placeholder, dead allowlist). Remove, don't annotate (constitution §0.6 binding 6).
 
-> The litmus, every time: **does this line prove or build the feature, or does it produce a governance
-> artifact about the feature?** If the latter, cut it.
+> Litmus: **does this line prove or build the feature, or produce a governance artifact about it?** If the latter, cut it.

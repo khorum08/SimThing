@@ -21,9 +21,11 @@
    transient constitution §0 + the ClauseThing-vertical closeout addendum §A). It supersedes
    `design_0_0_8_1.md`; that predecessor stays in place and §B of 0.0.8.3 incorporates its
    operating mechanics (§2), parked inventory (§3), and closed questions (§4) by reference.
-4. The live status ledger row for your track
+4. The live status ledger
    ([`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md))
-   and **the one test report for the slice you are touching.**
+   + the one test report for your slice. **Active track:**
+   [`design_0_0_8_6_studio_live_ops.md`](design_0_0_8_6_studio_live_ops.md)
+   (`STUDIO-SIM-CLOCK-UI-0`). No live `docs/todo.md` (archived workshop todos are not authority).
 5. **If your task is in the ClauseScript / MapThing / MapGenerator vertical** (now CLOSED):
    start at [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md) (clearinghouse:
    concepts/practices/APIs) and [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) (decisions).
@@ -45,19 +47,16 @@ too. If something seems missing, search the repo before re-deriving from priors 
 
 ```
 crates/
-  simthing-core/      Core types: SimThing {properties, overlays, children}, SimProperty,
-                      PropertyLayout/SubFieldSpec, PropertyValue, Overlay, ids. No GPU, no IO.
-  simthing-gpu/       wgpu device/queue, persistent buffers, the AccumulatorOp WGSL kernel,
-                      StructuredFieldStencilOp, EvalEML interpreter. Semantic-free.
-  simthing-sim/       Tick/boundary orchestration, BoundaryProtocol, structural mutation,
-                      threshold registry, replay. Semantic-/map-/arena-/gadget-free, permanently.
-  simthing-driver/    Session assembly and execution paths; compiles specs/registries into
-                      flat AccumulatorOp registrations before upload. Production-path tests.
-  simthing-spec/      Designer/RON admission layer: scenario specs, guardrail diagnostics,
-                      gadget registry/compiler, CLAUSE-SPEC. Semantics live HERE and compile away.
-  simthing-feeder/    Bridge between authoritative gameplay state and the GPU pipeline.
-  simthing-workshop/  Sandbox probes and measurement harnesses. Never a production dependency.
-docs/                 Active docs (this folder). docs/archive/ = historical record only.
+  simthing-core/      Core types + role pathway → ColumnIndex (col_for_role; not ColumnIndex::new).
+  simthing-kernel/    Sole runtime authority (ExactMagnitudeProof, decision ingress,
+                      OpcodeRegistrationGate). Read sanctioned_surface.md + eml_gadget_library.md first.
+  simthing-gpu/       wgpu, AccumulatorOp WGSL, EvalEML interpreter. Semantic-free.
+  simthing-sim/       Tick/boundary orchestration. Semantic-/map-/arena-/gadget-free.
+  simthing-driver/    Session assembly; production-path tests.
+  simthing-spec/      Designer/RON admission; gadget registry. Semantics live HERE.
+  simthing-feeder/    Bridge gameplay state ↔ GPU pipeline.
+  simthing-workshop/  Sandbox probes. Never a production dependency.
+docs/                 Active docs. docs/archive/ = historical only.
 scenarios/            Authored RON scenarios.
 ```
 
@@ -130,26 +129,17 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
   (the binding authority; do not restate or dilute it elsewhere). A clean doctrine-scan **RELIABLE** is
   DA-equivalent for *what the scanner covers*; it does **not** replace weighted tree verification when the DA
   graduates code-facing / long-lifecycle / horizontally impactful work.
-- **DA treeverify (current process):** before a load-bearing DA graduate/admit, run
-  `bash scripts/ci/da_treeverify.sh --pr <n>` (or `--range`). It emits advisory
-  `DA-TREEVERIFY-PROFILE: RELAX|LIGHT-TREE|DEEP-TREE` + focus paths from `scripts/ci/da_review_profile.tsv`
-  for token routing — **not** a `CLEARANCE-VERDICT` and **not** a graduation stamp. **Weight:** require
-  tree confirmation for production/elevatable crates, gate-wiring/harness, kernel/admission, and related risk
-  classes; **relax** for pure policy, exit-proof stamps, and light residual when CI already vouches. Core
-  profile TSV rows are permanent; non-core rows need `expires_on` and **must be deleted/retired after expiry**
-  (doctrine-scan lifecycle gate). Expeditionary escape: `expeditionary: YES` + charter + `expeditionary_until`
-  — cannot RELAX production/engine/long-lifecycle. Full DA ritual (including exit-proof stamp after pass):
-  [`agent_onboarding.md`](agent_onboarding.md) DA section.
-- **Inner loop (coding default):** `cargo check -p <touched-crate>` then `bash scripts/ci/agent_scan.sh`
-  (delta-first HEURISTIC + RELIABLE hard FAIL; ambient whole-tree INSPECT excluded). Whole-tree
-  `doctrine_scan.sh` remains CI/maintainer control, not the coding default.
+- **DA treeverify:** before load-bearing graduate/admit, `bash scripts/ci/da_treeverify.sh --pr <n>`
+  → advisory `DA-TREEVERIFY-PROFILE` (not a clearance verdict). Require tree confirm for
+  production/kernel/gate-wiring; relax for policy/stamps. Full ritual: [`agent_onboarding.md`](agent_onboarding.md).
+- **Inner loop:** `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh`. Whole-tree
+  `doctrine_scan.sh` = CI/maintainer only.
 - **Cold start:** `bash scripts/ci/orient.sh --role=coding` once; carry `ORIENT-RECEIPT`.
-- **Doctrine lookup:** `bash scripts/ci/anchor_query.sh` — verbatim anchors; **do not raw-grep doctrine docs**.
-- **Clearance intake:** read the auto-posted **Clearance Report** sticky; do not invoke `/clearance` for normal intake.
-- **Track closeout:** `bash scripts/ci/track_closeout.sh` is the sole birth_track closure authority
-  (build-manifest → check-eval → apply); never hand-delete inventory rows for open tracks.
-- **Onboarding standard:** [`ci_screening_surface.md`](ci_screening_surface.md) §7 (digest → inner loop →
-  FAIL/INSPECT); §6 carrot; §8 per-track addendum. Digest is the pre-computed surface answer.
+- **Doctrine lookup:** `bash scripts/ci/anchor_query.sh` (not raw greps); anchored edits →
+  `anchor_check.sh --resync`.
+- **Clearance intake:** auto-posted **Clearance Report** sticky; `/clearance` exceptional.
+- **Track closeout:** `bash scripts/ci/track_closeout.sh` sole birth_track closure authority.
+- **Onboarding standard:** [`ci_screening_surface.md`](ci_screening_surface.md) §7 / §6 / §8.
 
 ## Agent completion discipline (mandatory for implementation rungs)
 

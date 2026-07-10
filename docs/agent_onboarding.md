@@ -22,8 +22,8 @@ Builds one rung from a handoff. Cannot see the whole governance picture and does
   `bash scripts/ci/orient.sh --role=coding` once and carries the emitted `ORIENT-RECEIPT`.
 - **Inner loop (unconditional, ≤4 steps — HU-DELTA-SCAN-0):** after orient-once,
   `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh` → focused `cargo test` when required.
-  Doctrine-adjacent paths: use `bash scripts/ci/anchor_query.sh` (not raw doctrine greps). Whole-tree
-  `doctrine_scan.sh` is CI/maintainer, not the coding default.
+  Doctrine: `anchor_query.sh` (not raw greps); after anchored-doc edits, `anchor_check.sh --resync`.
+  Whole-tree `doctrine_scan.sh` is CI/maintainer, not the coding default.
 - **You hand it:** the rung's production handoff (from the orchestrator or DA) plus the instruction to carry
   its existing session receipt. Do not make each handoff re-run full orientation.
 - **Mid-session governance movement:** if the receipt is stale or missing, stop and report that to the
@@ -43,15 +43,16 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **It does:** verify the tree when merge-clearing (prefer branch confirmation over the relayed report);
   route each rung via the clearance ladder — **merge-clear conforming precedented-class rungs itself**,
   **escalate true DA residue** (gate-wiring, novelty, seal, binding, genuine unclassified — not router debt
-  alone); land a `/triage` row for every INSPECT delta. Empty-class machine split
-  (`CLEARANCE-ADMITTED-SCOPE-GAP-0`): novelty claim → `DA-RESERVE(novelty)`; valid
-  `admitted_envelope` + proofs → `DA-RESERVE(admitted-scope-router-gap)` (router debt — class-harden, not
-  fresh DA design); else → `DA-RESERVE(unclassified-scope)`. Missing admitted-scope fields →
+  alone); on `DA-RESERVE`, sticky emits `REQUIRED-ANCHORS:` — handoffs ACK with `ANCHOR-ACK`. Land a
+  `/triage` row for every INSPECT delta. Empty-class machine split (`CLEARANCE-ADMITTED-SCOPE-GAP-0`):
+  novelty claim → `DA-RESERVE(novelty)`; valid `admitted_envelope` + proofs →
+  `DA-RESERVE(admitted-scope-router-gap)` (router debt — class-harden, not fresh DA design); else →
+  `DA-RESERVE(unclassified-scope)`. Missing admitted-scope fields →
   `FAIL(missing-admitted-scope-router-gap-fields...)`. See
-  `docs/tests/clearance_admitted_scope_gap_0_results.md`. **Exit-proof residual
-  only:** for **ORCHESTRATOR-GRADUATED** self-clears where the design row cannot hold the final merge SHA
-  pre-merge, land the docs-only status-stamp before the next rung. **DA-passed** rungs are stamped and
-  stamp-merged by the DA (see DA section) — do not reassign.
+  `docs/tests/clearance_admitted_scope_gap_0_results.md`. **Exit-proof residual only:** for
+  **ORCHESTRATOR-GRADUATED** self-clears where the design row cannot hold the final merge SHA pre-merge,
+  land the docs-only status-stamp before the next rung. **DA-passed** rungs are stamped and stamp-merged
+  by the DA (see DA section) — do not reassign.
 - **Closeout-substrate PRs:** before merge/DA handback, require a disposable end-to-end
   `track_closeout.sh` rehearsal (build manifest -> resolve -> check-eval -> apply) using a tiny fixture
   with previously expunged rows plus source/auto/explicit doc artifacts, and report the sample verdict.
@@ -100,9 +101,9 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 
 | Tier | Cold-start / default loop | Returns | Merges |
 |---|---|---|---|
-| Coding (Grok/Cursor) | `orient.sh --role=coding` once → `cargo check -p` → `agent_scan.sh` → focused test | PROBATION / proof-present | nothing |
+| Coding (Grok/Cursor) | `orient.sh --role=coding` → check → `agent_scan` → focused test | PROBATION / proof-present | nothing |
 | Orchestration (Codex/webchat) | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
-| DA (Opus/Fable) | `orient.sh --role=da` (+ weighted treeverify) | graduation or remedial handoff **+ exit-proof stamp merge** | gate-wiring / DA-reserve / exit-proof stamps, after review |
+| DA (Opus/Fable) | `orient.sh --role=da` (+ weighted treeverify) | graduation + exit-proof stamp merge | gate-wiring / DA-reserve / stamps |
 
 ## Harness maintenance & sprawl observation (operator / DA)
 
@@ -113,10 +114,9 @@ Pointer-only — mechanics in `docs/track_closeout_protocol.md` and the named sc
 | `track_closeout.sh --discover` | list end-of-lifecycle assets for a track before building a manifest |
 | `track_closeout.sh --artifact-expiry` | wall-clock check on leased closeout artifacts + parking pen |
 | `track_closeout.sh --decommission --dry-run` | preview reaping expired parked rows / leased docs |
-| `doc_budget_check.sh --check` | DOC-BUDGET prose caps (`doc_budget_baseline.tsv`) |
-| `da_treeverify.sh --check-lifecycle` | non-core `da_review_profile.tsv` rows must not be past `expires_on` |
+| `doc_budget_check.sh --check` / `da_treeverify.sh --check-lifecycle` | DOC-BUDGET caps; non-core profile rows must not be past `expires_on` |
+| `anchor_reach_log.tsv` / `anchor_check.sh` | query observability (`--prune 30` at closeout); `--resync` after anchored-doc edits |
 | `docs/tests/hu_throughput_snapshot.tsv` | harness meta-gauges (scan tax, checklist steps, table counts) |
-| `anchor_reach_log.tsv` | records what agents query via `anchor_query.sh` (and misses); observability only — **not a gate**; prune with `--prune 30` at closeout |
 
-**When to update this file:** when a *tier's session-admission ritual* or coding default loop changes.
+**When to update this file:** when a tier's session-admission ritual or coding default loop changes.
 Per-rung governance lives in the generated orientation digest — this file is a stable operator manual.

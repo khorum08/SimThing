@@ -228,9 +228,11 @@ binding 6 and `invariants.md` → "The CI doctrine-scan is the primary automated
 **Horizon.** The standing goal is to express ever more SimThing core objects as **type signatures that
 carry this rigor intrinsically** — runtime node types that cannot name a kind or a game concept; channel
 identity, owner reference, scope, and order-band as distinct newtypes (not bare integers); role-indexed
-column access that makes a hardcoded `data[N]` unrepresentable; a semantic-free marker on `simthing-sim`'s
-public surface. Each such move **deletes a guard test, shortens the prose constitution, and makes a class
-of drift impossible rather than merely against the rules.**
+column access that makes a hardcoded `data[N]` unrepresentable (K2 lit path landed: role → `RoleOffset` →
+`ColumnIndex` via `col_for_role`; residual HEURISTIC `COLUMN-INDEX-MINT` / OC-K2.1 until `ColumnIndex::new`
+is admission-gated); a semantic-free marker on `simthing-sim`'s public surface. Each such move **deletes a
+guard test, shortens the prose constitution, and makes a class of drift impossible rather than merely against
+the rules.**
 
 ### 1.2.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire
 
@@ -525,10 +527,11 @@ is **the first tool every agent must reach for** when a feature seems to demand 
   exact-authoritative state.
 
 **The extension ladder for future agents, in order:** (1) express it as an EML gadget tree over the
-existing interpreter; (2) if a genuinely new *generic* primitive is unavoidable, a semantic-free
-`EvalEML` opcode / combine fn / kernel is a Tier-2 gate with bit-exact CPU-oracle parity; (3) a
-scenario-specific or semantic op is **never** admissible. Reaching for a new subsystem before
-exhausting (1) is the canonical drift this section exists to prevent.
+existing interpreter (authoring surface: [`eml_gadget_library.md`](eml_gadget_library.md)); (2) if a
+genuinely new *generic* primitive is unavoidable, register it only through `OpcodeRegistrationGate` →
+`AdmittedEvalEmlOpcode` / `AdmittedEvalEmlCombine` (closed vocab; bit-exact CPU-oracle parity) — never a
+raw semantic opcode; (3) a scenario-specific or semantic op is **never** admissible (type-rejected).
+Reaching for a new subsystem before exhausting (1) is the canonical drift this section exists to prevent.
 
 Guardrails are two-layered: the designer/spec admission layer rejects unsafe *authoring* at import
 with good diagnostics; the runtime enforces hard safety unconditionally as the last line. Guardrails
@@ -935,23 +938,27 @@ do not rationalize.
    should resolve as a threshold crossing?
 5. Am I putting **gameplay semantics into WGSL or `simthing-sim`** (any map/faction/AI/scenario word
    below the spec layer)?
-6. Am I creating a **second ledger** beside `Balance`, or hardcoding a column index outside
-   `PropertyLayout`?
+6. Am I creating a **second ledger** beside `Balance`, or hardcoding a column index / calling
+   `ColumnIndex::new` outside the role pathway (`col_for_role` / layout-derived constructors only)?
 7. Am I adding a **new policy enum** where an overlay on a weight column is the answer?
 8. Am I violating a **Movement-Front postulate**: widening a stencil horizon or adding global/
    same-band action-at-a-distance for awareness (P1 — use hierarchy reduction); writing per-cell or
    coordinate-dependent rules instead of the one shared kernel (P2); or authoring unbounded
    accumulation/recurrence without decay, clamp, and the bounded-feedback contract (P3)?
 9. Am I proposing a **new opcode, kernel, or scripted-event subsystem** before expressing the
-   behavior as an **EML gadget tree** over the existing `EvalEML` interpreter (§4.1's extension
-   ladder)?
-10. Am I claiming exactness **without bit-exact CPU-oracle parity**, wiring something **default-on
-    without a gate**, or allocating GPU resources **per tick**?
+   behavior as an **EML gadget tree** (§4.1 / `eml_gadget_library.md`), or registering a semantic
+   EvalEML op outside `OpcodeRegistrationGate`?
+10. Am I claiming exactness **without bit-exact CPU-oracle parity**, feeding `ApproximateDiagnostic` /
+    native sqrt into an exact registration (needs `ExactMagnitudeProof` / Candidate F), wiring something
+    **default-on without a gate**, or allocating GPU resources **per tick**?
 11. Am I about to ship a **flattened proxy** for a specified recursive structure without an approved
     Deviation Record — or claim progress through documents instead of a real reduction under test?
 12. Am I adding a **rebellion / civil-war / coup system, flag, or special entity type** — instead of
     an influence flow + aggregate threshold + owner-entity fission with an intensity-vector column
     partition (§2.1)?
+13. Am I minting a **StructuralCommitment** (or other decision effect) outside the sealed ingress
+    `ThresholdCrossingToken → EmissionToken → BoundaryEmissionToken`, or from a CPU/approximate
+    diagnostic?
 
 **Promotion over repetition.** When a detector above keeps firing across rungs, the remedy is **not louder
 prose** — it is to lift the invariant to a higher admission rung: a type boundary that makes the drift
