@@ -8,6 +8,7 @@ use simthing_core::{
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoderDescriptor};
 
 use crate::context::GpuContext;
+use crate::eml_opcode_gate::{opcode_in_closed_vocabulary, OpcodeGateError};
 
 use super::types::EmlTreeRangeGpu;
 
@@ -28,6 +29,9 @@ pub enum EmlUploadError {
         meta_count: u32,
         actual_count: u32,
     },
+    /// OC-K-EML-OPCODE-GATE-0: closed vocabulary check on GPU tree upload.
+    #[error("EML tree upload rejected by opcode gate: {0}")]
+    OpcodeGate(#[from] OpcodeGateError),
 }
 
 /// Persistent GPU-resident EML program storage (shared across AccumulatorOp sessions).
@@ -197,6 +201,16 @@ impl EmlGpuProgramTable {
                     meta_count: meta.node_count,
                     actual_count: nodes.len() as u32,
                 });
+            }
+            // OC-K-EML-OPCODE-GATE-0: hard-gate closed vocabulary at GPU registration.
+            for node in nodes.iter() {
+                if !opcode_in_closed_vocabulary(node.opcode) {
+                    return Err(EmlUploadError::OpcodeGate(
+                        OpcodeGateError::UnwhitelistedOpcode {
+                            opcode: node.opcode,
+                        },
+                    ));
+                }
             }
             let range = EmlTreeRangeGpu {
                 node_offset,

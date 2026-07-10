@@ -1,1 +1,2 @@
-﻿scan-id | location-or-symbol | rationale | promotion-blocker
+scan-id | location-or-symbol | rationale | promotion-blocker
+TEST-BUDGET | crates/simthing-kernel/src/eml_opcode_gate.rs | OC-K-EML-OPCODE-GATE-0: 6 named unit tests are distinct door semantics (forge residual, opcode blocked, combine blocked, Tier-2 parity, semantic never, SoftStep pathway); table-driven collapse would obscure the named regression each catches; triage_log.tsv row present | permanent-residue:seal-proof; delete-at-closeout no

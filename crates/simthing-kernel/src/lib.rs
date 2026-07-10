@@ -10,6 +10,7 @@ pub mod accumulator_op;
 pub mod candidate_f_magnitude;
 pub mod context;
 pub mod decision_ingress;
+pub mod eml_opcode_gate;
 pub mod exact_magnitude_gate;
 pub mod cpu_oracle;
 pub mod emission_accumulator;
@@ -56,6 +57,13 @@ pub use candidate_f_magnitude::{
 pub use decision_ingress::{
     ApproximateDecisionDiagnostic, BoundaryEmissionToken, CpuDiagnosticDecision,
     DecisionIngressError, EmissionToken, StructuralCommitment, ThresholdCrossingToken,
+};
+pub use eml_opcode_gate::{
+    combine_in_closed_vocabulary, opcode_in_closed_vocabulary, AdmittedEvalEmlCombine,
+    AdmittedEvalEmlOpcode, CombineRegistrationRequest, CpuOracleParityProof, EvalEmlCombine,
+    EvalEmlOpcode, EvalEmlVocabulary, GenericPrimitiveRegistration, OpcodeGateError,
+    OpcodeRegistrationGate, OpcodeRegistrationRequest, SemanticOpcodeRegistration,
+    SoftStepPolicyConditional,
 };
 pub use exact_magnitude_gate::{
     exact_mag2_bits_q16, mint_exact_magnitude_proof_candidate_f,

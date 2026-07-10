@@ -9,3 +9,9 @@ date	role	query	anchors_served	hit
 2026-07-10T14:22:36Z	coding	--grep Candidate	clausething-closed-vertical,exact-numeric-candidate-f,property-value-rf-overlays,spec-fidelity-anti-ceremony	hit
 2026-07-10T14:59:07Z	coding	--grep decision	clausething-closed-vertical,drift-detectors-six-line,exact-numeric-candidate-f,field-policy-time-decisions,orientation-harness-core,peripheral-scope-adrs,seal-residue-cross-crate,session-lifecycle-adr-family,spec-fidelity-anti-ceremony	hit
 2026-07-10T14:59:07Z	coding	--paths docs/simthing_core_design.md crates/simthing-kernel	drift-detectors-six-line,field-policy-time-decisions,movement-front,one-tree-owners-never-spatial,property-value-rf-overlays	hit
+2026-07-10T15:18:44Z	coding	--grep eml	admission-ladder-necessity-test,drift-detectors-six-line,eml-extension-ladder,exact-numeric-candidate-f,movement-front,property-value-rf-overlays,seal-residue-cross-crate,spec-fidelity-anti-ceremony	hit
+2026-07-10T15:18:45Z	coding	--grep branching	none	none
+2026-07-10T15:21:32Z	coding	--grep eml	admission-ladder-necessity-test,drift-detectors-six-line,eml-extension-ladder,exact-numeric-candidate-f,movement-front,property-value-rf-overlays,seal-residue-cross-crate,spec-fidelity-anti-ceremony	hit
+2026-07-10T15:21:32Z	coding	--grep branching	none	none
+2026-07-10T15:24:54Z	coding	--domain kernel-eml	eml-extension-ladder	hit
+2026-07-10T15:24:54Z	coding	--grep branching	eml-extension-ladder	hit

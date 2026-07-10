@@ -6,6 +6,7 @@ use simthing_core::{
     EmlTreeId, GateSpec, ScaleSpec, SlotIndex, SourceSpec, ThresholdDirection,
 };
 
+use crate::eml_opcode_gate::OpcodeGateError;
 use crate::registration::{
     ThresholdRegistration, DIR_DOWNWARD, DIR_EITHER, DIR_UPWARD, THRESH_BUF_OUTPUT,
     THRESH_BUF_VALUES,
@@ -42,6 +43,9 @@ pub enum EncodeError {
     },
     #[error("EML registry error: {0}")]
     EmlRegistry(#[from] simthing_core::EmlRegistryError),
+    /// OC-K-EML-OPCODE-GATE-0: closed combine/opcode vocabulary at encode/pack.
+    #[error("EvalEML opcode/combine gate: {0}")]
+    OpcodeGate(#[from] OpcodeGateError),
 }
 
 impl From<BootstrapContention> for EncodeError {
