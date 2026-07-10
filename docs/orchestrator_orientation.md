@@ -41,33 +41,32 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | 6a1431e76900b7e1c5ed619f8f2b47caca31bb1c803750c665f9a013c4c08ede |
-| binding_conditions.tsv | 6f61be159f87b7e68a0a39d66df0fd8ea49370cb04d867e59cc3d08fc2811766 |
+| binding_conditions.tsv | 1bc29185ebf0a42176731251954f269168226e96c50e9f32ca3ea555ef65ffa1 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 54fffd5d108ee4f156505b752b2f35a082a343a7f3a7bdd335533990e3ba3079 |
+| active_track.txt | a4cd15a63d96c1dfa35db1bed184e3b0ef8a84f30e84323941f1c4d455dc723f |
+| design_0_0_8_4_8_3_orientation_curation.md | 1194812b2cfd045c56b3f99c0b267583895697b8d77f90c57d8a19864d8b87f0 |
 | relay_lint.sh | 56ed5e74c360f3919d8a5208e3753e23067970f20bcb794405125b519e8308d0 |
 | doctrine_anchors.tsv | 7af9486ab782242d512f627a4e65a29cdbede8420a2981e098c79c9c36c01c47 |
 
-## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
+## Active Track / Rung Summary (`design_0_0_8_4_8_3_orientation_curation.md`)
 
 Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 9.0 | STUDIO-LIVE-OPS-READINESS-0 | **Docs only.** Map: tick path today (render vs SimSession/driver), clock ownersh | **ORCHESTRATOR-GRADUATED / merged [#1257](https://github.com/khorum08/SimThing/pull/1257) @ `4f8c250c`** — readiness ... |
-| 9.1 | STUDIO-SIM-CLOCK-0 | **Sim clock substrate** (presentation + driver bind): pause / play / 1× / 2× / 4 | **DA-GRADUATED / merged [#1258](https://github.com/khorum08/SimThing/pull/1258)** — `StudioSimClock` headless substra... |
-| 9.1h | STUDIO-SIM-CLOCK-CLASS-0 | **Harness adjacency (clearance router).** Register precedented class `studio-sim | **DA-GRADUATED / merged [#1259](https://github.com/khorum08/SimThing/pull/1259) @ `d7ceb754`** — selftests clearable ... |
-| 9.2 | STUDIO-SIM-CLOCK-UI-0 | **Transport UI:** Pause, Play, 2×, 4×, TPS selector; readout (tick index, effect | UI drives clock; programmatic hooks for CI |
-| 9.3 | STUDIO-LIVE-SESSION-BRIDGE-0 | **Wire loaded StudioSession → live tick path** (elevate workshop live-run policy | Loaded clause/JSON multi-tick under Play; STEAD/session identity held |
-| 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | Values update while running; freeze on pause |
-| 9.5 | STUDIO-SCENARIO-LIBRARY-UI-0 | **Toggled/hidden library window:** load / create / save (JSON authority + clause | Modal open → paused; I/O through existing APIs |
-| 9.6 | STUDIO-SCENARIO-LIBRARY-CREATE-0 | Create-new / blank or template from library (scope from readiness). | Create → loadable session; no TP hardcodes |
-| 9.7 | STUDIO-LIVE-OPS-CLASS-0 | **Gate-wiring.** Precedented class for live-ops UI + clock shape. | Clearance selftests clearable + envelope rejects |
-| 9.8 | STUDIO-LIVE-OPS-HARDENING-0 | Polish: cancel modal, double-open, rapid rate change, save-while-paused, no tick | Regression battery |
+| 1 | OC-ANCHOR-CATALOG-0 | Populate `doctrine_anchors.tsv` to the §1 catalogue: one row per surface (§-prec | NOT STARTED |
+| 2 | OC-PATH-TRIGGER-0 | **Mechanical adjacency.** New data table `anchor_triggers.tsv` (`glob \ | trigger_domains`) mapping repo paths → domains (kernel/**→seal; sim/**+*.wgsl→field-policy; map/spatial paths→stead; ... |
+| 3 | OC-QUERY-0 | **Queryable + observable curation.** `scripts/ci/anchor_query.sh --domain <d> \ | --paths <files...> \ |
+| 4 | OC-ORIENT-SLICE-0 | **Cold-start spine in orientation** (generated, budgeted): the §1 always-on line | NOT STARTED |
+| K1 | OC-K-DECISION-INGRESS-0 | Structural/commitment effects mintable **only** via sealed threshold→emission→bo | NOT STARTED |
+| K2 | OC-K-COLUMN-ROLE-0 | `ColumnIndex`/role-keyed column access; raw `.data[N]` unrepresentable on sealed | NOT STARTED |
+| K3 | OC-K-EXACT-GATE-0 | Magnitude-sensitive threshold/commitment registration requires exact-magnitude p | NOT STARTED |
+| K4 | OC-K-EML-OPCODE-GATE-0 | Opcode/combine admission hard-gate at registration (no semantic ops); "gadget tr | NOT STARTED |
+| C | OC-CLOSEOUT-0 | First reach-log report (what agents queried; misses → catalogue updates or expli | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-SIM-CLOCK-UI-0`
+Active pointer: `OC-ANCHOR-CATALOG-0`
 
 
 ## Cold-Start Entrypoint
@@ -121,6 +120,8 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | TP-FLEET-MOVEMENT-0 | B3-larger-theater-gpu-cpu | DA-2026-07-05 | discharged | TP-FLEET-MOVEMENT-0 |
 | HU-TRACK-OPEN-0 | 0.0.8.5-park-gate-superseded-by-owner-carveout-authorization | Owner-2026-07-09 | discharged | HU-TRACK-OPEN-0 |
 | HU-CLOSEOUT-0 | no-new-clearance-class-registration-without-retirement-pairing-during-track | DA-2026-07-09 | discharged | HU-CLOSEOUT-0 |
+| OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | open | OC-CLOSEOUT-0 |
+| OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | open | OC-CLOSEOUT-0 |
 
 ## Clearance Ledger (recent)
 
