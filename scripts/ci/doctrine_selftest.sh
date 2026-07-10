@@ -591,6 +591,8 @@ run_all_cases() {
   expect_scanner_error "malformed_missing_rationale" \
     setup_malformed_allowlist malformed_allowlist_missing_rationale.txt
 
+  expect_heuristic_inspect "column_index_mint" "COLUMN-INDEX-MINT" \
+    setup_heuristic_kernel column_index_mint.rs
   expect_heuristic_inspect "sim_kind_read" "SIM-KIND-READ" \
     setup_heuristic_sim sim_kind_read.rs  expect_heuristic_inspect "semantic_words_production" "SEMANTIC-WORDS" \
     setup_heuristic_kernel semantic_words_production.rs
