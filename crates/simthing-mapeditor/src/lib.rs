@@ -36,6 +36,7 @@ pub mod studio_scenario_document;
 pub mod studio_scenario_library_ui;
 pub mod studio_scenario_load;
 pub mod studio_screenshot;
+pub mod studio_faction_nameplates;
 pub mod studio_live_observe;
 pub mod studio_live_session_bridge;
 pub mod studio_sim_clock;
@@ -193,6 +194,11 @@ pub use studio_scenario_library_ui::{
     STUDIO_SCENARIO_LIBRARY_CREATE_PROVENANCE, STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID,
 };
 pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
+pub use studio_faction_nameplates::{
+    fallback_simthing_nameplate_id, nameplate_rgba_from_color_rgb, owner_color_rgb_map_from_authority,
+    star_nameplate_presentations, star_nameplate_rgba_for_gridcell,
+    star_nameplate_rgba_for_placement, NEUTRAL_NAMEPLATE_RGBA,
+};
 pub use studio_live_observe::{
     build_studio_live_observation_readout, observe_module_source_forbids_workshop_residue,
     StudioLiveObservationReadout, StudioLiveObservationSourceKind,
