@@ -9,7 +9,7 @@
 | PR | [#1309](https://github.com/khorum08/SimThing/pull/1309) |
 | branch | `studio-faction-nameplates-0` |
 | base | `master` |
-| head_sha | `aa412094ba6f63aa1a550392d0ebd2c0dc0e1533` |
+| head_sha | `f0b92b932e19a4b91288e6bb4dd927b4b6ac25ad` |
 | merge | NOT MERGED |
 
 ## What changed
