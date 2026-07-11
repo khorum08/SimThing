@@ -1,0 +1,10 @@
+crates/simthing-mapeditor/src/studio_sim_clock_ui.rs
+crates/simthing-mapeditor/src/studio_live_observe.rs
+crates/simthing-mapeditor/src/app/ui.rs
+crates/simthing-mapeditor/tests/studio_transport_observe_refine_0.rs
+docs/tests/studio_transport_observe_refine_0_results.md
+docs/tests/current_evidence_index.md
+scripts/ci/test_inventory.tsv
+scripts/ci/triage_log.tsv
+scripts/ci/inspect_justifications.tsv
+docs/orchestrator_orientation.md

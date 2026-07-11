@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 0b110208699cff9a5513a11b36b72ed0fe3d7619d75a65069077f6b285ccaf4f |
+| design_0_0_8_6_studio_live_ops.md | 16c6b9e97c8e8957581a5d1966c9976d59c2f0867c553ab3ddaeec6e25e8ae7c |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -52,19 +52,14 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 Track state: `open`
 
-> Compact view: showing last 5 of 10 rungs (track `open`); full ladder in the design doc.
-
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | **DA-GRADUATED / merged [#1287](https://github.com/khorum08/SimThing/pull/1287) @ `5d3ed74c`** — pure `StudioLiveObse... |
-| 9.5 | STUDIO-SCENARIO-LIBRARY-UI-0 | **Toggled/hidden library window:** load / create / save (JSON authority + clause | **DA-GRADUATED / merged [#1289](https://github.com/khorum08/SimThing/pull/1289) @ `d2493dc2`** — modal open pauses vi... |
-| 9.6 | STUDIO-SCENARIO-LIBRARY-CREATE-0 | Create-new / blank or template from library (scope from readiness). | **DA-GRADUATED / merged [#1291](https://github.com/khorum08/SimThing/pull/1291) @ `e42a248f`** — blank one-cell `SimT... |
-| 9.7 | STUDIO-LIVE-OPS-CLASS-0 | **Gate-wiring.** Precedented class for live-ops UI + clock shape. | **DA-GRADUATED / merged [#1293](https://github.com/khorum08/SimThing/pull/1293) @ `9a3c42eb`** — class `studio-live-o... |
 | 9.8 | STUDIO-LIVE-OPS-HARDENING-0 | Polish: cancel modal, double-open, rapid rate change, save-while-paused, no tick | **DA-GRADUATED / merged [#1295](https://github.com/khorum08/SimThing/pull/1295)** — 13-proof hardening battery (bridg... |
+| 10.0 | STUDIO-TRANSPORT-OBSERVE-REFINE-0 | **Presentation polish** of the sim-clock transport + live-observe surface: contr | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `none`
+Active pointer: `STUDIO-TRANSPORT-OBSERVE-REFINE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
