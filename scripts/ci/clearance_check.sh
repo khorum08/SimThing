@@ -565,6 +565,11 @@ has_docs_ladder_shape = any(
         f.startswith("docs/tests/")
         and f.endswith("_readiness_0_results.md")
     )
+    or (
+        # Studio live-ops docs-only exit stamps (CLEARANCE-DOCS-LADDER-STUDIO-STAMPS-0)
+        f.startswith("docs/tests/studio_")
+        and f.endswith("_results.md")
+    )
     for f in files
 )
 has_tp_workshop_candidate_shape = any(
@@ -1594,6 +1599,9 @@ run_selftest() {
     clearance_selftest_module_marker_source_edit_rejected
     clearance_selftest_unclassified_scope_not_novelty
     clearance_selftest_docs_ladder_pointer_clearable
+    clearance_selftest_docs_ladder_studio_stamp_clearable
+    clearance_selftest_docs_ladder_studio_stamp_rejects_crates
+    clearance_selftest_docs_ladder_studio_stamp_rejects_workflows
     clearance_selftest_engine_scope_violation_not_novelty
     clearance_selftest_explicit_novelty_claim_reserved
     clearance_selftest_matched_class_explicit_novelty_reserved
