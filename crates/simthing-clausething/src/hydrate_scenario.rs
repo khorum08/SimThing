@@ -247,6 +247,16 @@ pub struct HydratedScenarioOwner {
     pub display_name: String,
     pub archetype: String,
     pub color_index: Option<u32>,
+    /// Faction identity color (R,G,B). Required when any faction identity field is authored.
+    pub color_rgb: Option<(u8, u8, u8)>,
+    /// Faction identity display name (authority); falls back to `display_name` in helpers.
+    pub faction_name: Option<String>,
+    /// Alliance placeholder only — no diplomacy/gameplay semantics.
+    pub faction_alliance: Option<String>,
+    /// Reserved forward identity slot (string).
+    pub faction_identity_reserved_0: Option<String>,
+    /// Reserved forward identity slot (string).
+    pub faction_identity_reserved_1: Option<String>,
     pub stockpile_seed: Option<u32>,
     pub stockpile_capacity: Option<u32>,
     pub policy_profile: Option<String>,
@@ -711,6 +721,12 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
     let mut stockpile_seed = None;
     let mut stockpile_capacity = None;
     let mut color_index = None;
+    let mut color_rgb = None;
+    let mut color_rgb_span = None;
+    let mut faction_name = None;
+    let mut faction_alliance = None;
+    let mut faction_identity_reserved_0 = None;
+    let mut faction_identity_reserved_1 = None;
     let mut policy_profile = None;
     let mut personality_profile = None;
     let mut capability_profile = None;
@@ -739,6 +755,31 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
                 stockpile_capacity = Some(read_scalar_u32(field, "stockpile_capacity")?);
             }
             "color_index" => color_index = Some(read_scalar_u32(field, "color_index")?),
+            "color_rgb" => {
+                let raw = read_scalar_text(field, "color_rgb")?;
+                color_rgb_span = Some(field.key.span.clone());
+                match simthing_spec::parse_color_rgb_text(&raw) {
+                    Ok(rgb) => color_rgb = Some(rgb),
+                    Err(msg) => {
+                        return Err(HydrateError::new_spanned(
+                            format!("owner.color_rgb: {msg}"),
+                            Some(field.key.span.clone()),
+                        ));
+                    }
+                }
+            }
+            "faction_name" => faction_name = Some(read_scalar_text(field, "faction_name")?),
+            "faction_alliance" => {
+                faction_alliance = Some(read_scalar_text(field, "faction_alliance")?)
+            }
+            "faction_identity_reserved_0" | "identity_reserved_0" => {
+                faction_identity_reserved_0 =
+                    Some(read_scalar_text(field, &field.key.text)?)
+            }
+            "faction_identity_reserved_1" | "identity_reserved_1" => {
+                faction_identity_reserved_1 =
+                    Some(read_scalar_text(field, &field.key.text)?)
+            }
             "policy_profile" => policy_profile = Some(read_scalar_text(field, "policy_profile")?),
             "personality_profile" => {
                 personality_profile = Some(read_scalar_text(field, "personality_profile")?);
@@ -770,12 +811,31 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
     }
     let display_name = display_name.unwrap_or_else(|| id.clone());
     let archetype = archetype.unwrap_or_else(|| owner_key.clone());
+
+    // When any faction-identity field is authored, color_rgb is required (fail-loud).
+    let identity_engaged = color_rgb.is_some()
+        || faction_name.is_some()
+        || faction_alliance.is_some()
+        || faction_identity_reserved_0.is_some()
+        || faction_identity_reserved_1.is_some();
+    if identity_engaged && color_rgb.is_none() {
+        return Err(HydrateError::new_spanned(
+            "`owner.color_rgb` is required when faction identity fields are authored",
+            color_rgb_span.or_else(|| Some(property.key.span.clone())),
+        ));
+    }
+
     let owner = HydratedScenarioOwner {
         id,
         owner_key,
         display_name,
         archetype,
         color_index,
+        color_rgb,
+        faction_name,
+        faction_alliance,
+        faction_identity_reserved_0,
+        faction_identity_reserved_1,
         stockpile_seed,
         stockpile_capacity,
         policy_profile,
@@ -949,6 +1009,35 @@ fn owner_simthing(owner: &HydratedScenarioOwner) -> SimThing {
             OWNER_COLOR_INDEX_PROPERTY_ID,
             scenario_metadata_u32_value(color_index),
         );
+    }
+    if let Some(rgb) = owner.color_rgb {
+        let faction_name = owner
+            .faction_name
+            .as_deref()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or(owner.display_name.as_str());
+        let alliance = owner
+            .faction_alliance
+            .as_deref()
+            .unwrap_or(simthing_spec::OWNER_FACTION_ALLIANCE_NONE);
+        simthing_spec::apply_owner_faction_identity_metadata(
+            &mut simthing,
+            rgb,
+            faction_name,
+            alliance,
+        );
+        if let Some(res0) = owner.faction_identity_reserved_0.as_deref() {
+            simthing.add_property(
+                simthing_spec::OWNER_FACTION_IDENTITY_RESERVED_0_PROPERTY_ID,
+                scenario_metadata_string_value(res0),
+            );
+        }
+        if let Some(res1) = owner.faction_identity_reserved_1.as_deref() {
+            simthing.add_property(
+                simthing_spec::OWNER_FACTION_IDENTITY_RESERVED_1_PROPERTY_ID,
+                scenario_metadata_string_value(res1),
+            );
+        }
     }
     if let Some(stockpile_seed) = owner.stockpile_seed {
         apply_owner_silo_metadata(&mut simthing, stockpile_seed, owner.stockpile_capacity);
