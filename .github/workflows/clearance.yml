@@ -1,3 +1,8 @@
+# Sticky CLEARANCE-VERDICT is emitted by scripts/ci/clearance_check.sh (class
+# predicates / admitted-envelope routing). This workflow does not default to DA:
+# ORCHESTRATOR-CLEARABLE stickies are mergeable by orchestrator; DA-RESERVE is
+# only for unmatched/forbidden/novelty/gate-wiring shapes. Widen class envelopes
+# (class_predicates.tsv) when design already marks a rung clearable.
 name: Clearance
 
 on:

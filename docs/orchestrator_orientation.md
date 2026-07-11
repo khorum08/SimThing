@@ -19,6 +19,7 @@ it -- the router already codifies freshness/routing, so there is nothing for you
 | `DA-RESERVE(harness-error)` / `FAIL(<remedy>)` | remedy the harness/PR; **not** a DA review. |
 | `DA-RESERVE(unclassified-scope)` | **classify before DA relay** (below) — not automatic design escalation. |
 | `DA-RESERVE(admitted-scope-router-gap)` | router debt inside admitted envelope — **class-hardening**, not fresh DA design. |
+| `DA-RESERVE(class-envelope-violation)` | if design already marks the rung clearable → **class-harden** `class_predicates.tsv` (under-width); escalate only when forbidden surfaces (spec/clausething/driver/gpu/wgsl/gate) are real. |
 | other `DA-RESERVE(<reason>)` | quote verbatim; escalate only for true DA residue (novelty, gate-wiring, seal, binding, …). |
 
 **Empty-class split** (CLEARANCE-ADMITTED-SCOPE-GAP-0 / #1242 Option A):
@@ -40,11 +41,11 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | 4e34c9834d4671dc75c3dfe91a24998be09079820ee783b723cf1dfdc4fd88bc |
+| precedented_classes.tsv | 42f8792ca386811741d8f88d0f7f42d4f32438acef674007cc06e248c4153d1f |
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 4de3400070643a0684b9f6741022cb121523a0d11c6ad013d1167e9036d49455 |
+| design_0_0_8_6_studio_live_ops.md | 19c51cabd11a2d7cea18c10e533d458e04bfbf0625b6f437716e00f0882ac943 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -85,7 +86,7 @@ Pointers only — resolve verbatim doctrine via `anchor_query.sh`; do not raw-gr
 | `CLEARANCE-VERDICT: DA-RESERVE(unclassified-scope)` | no class match and no valid admitted-envelope claim (narrowed; not novelty) |
 | `CLEARANCE-VERDICT: DA-RESERVE(admitted-scope-router-gap)` | admitted envelope + proof-present + missing class — router debt; class-harden, not fresh DA design |
 | `CLEARANCE-VERDICT: DA-RESERVE(novelty)` | explicit `novelty_claim: YES` + `novelty_basis`; **overrides** matched-class clearance; not a generic unmatched-diff fallback |
-| `CLEARANCE-VERDICT: DA-RESERVE(class-envelope-violation)` | matched class but diff violates workshop_only / class path envelope |
+| `CLEARANCE-VERDICT: DA-RESERVE(class-envelope-violation)` | matched class but diff leaves path envelope — under-width when design says clearable → class-harden; forbidden-surface hit → DA |
 | `CLEARANCE-VERDICT: DA-RESERVE(engine-scope-violation)` | matched class forbids engine crate/src and the diff touches engine scope |
 | `CLEARANCE-VERDICT: DA-RESERVE(module-marker-shape-mismatch)` | corpus-module-marker-sweep shape fails inventory deletion rules |
 | `CLEARANCE-VERDICT: DA-RESERVE(harness-error)` | malformed data, ambiguous class, empty/unresolved requested target, or script error |
@@ -113,7 +114,7 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
 | docs-ladder-pointer-correction | docs/design_*.md\|docs/orchestrator_orientation.md\|docs/tests/*_readiness_0_results.md | track-governance | tested_code_sha\|coverage_basis\|ci_green | active |
 | studio-sim-clock-substrate | crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|docs/tests/studio_sim_clock_*_results.md\|docs/tests/studio_live_ops_readiness_0_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
-| studio-live-ops-ui-clock | crates/simthing-mapeditor/src/app/ui.rs\|crates/simthing-mapeditor/src/app/mod.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/studio_sim_clock_ui.rs\|crates/simthing-mapeditor/src/studio_live_observe.rs\|crates/simthing-mapeditor/src/studio_live_session_bridge.rs\|crates/simthing-mapeditor/src/studio_scenario_library_ui.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|crates/simthing-mapeditor/tests/studio_live_observe_0.rs\|crates/simthing-mapeditor/tests/studio_live_session_bridge_0.rs\|crates/simthing-mapeditor/tests/studio_scenario_library_*_0.rs\|docs/tests/studio_*_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
+| studio-live-ops-ui-clock | crates/simthing-mapeditor/src/app/ui.rs\|crates/simthing-mapeditor/src/app/mod.rs\|crates/simthing-mapeditor/src/lib.rs\|crates/simthing-mapeditor/src/studio_sim_clock.rs\|crates/simthing-mapeditor/src/studio_sim_clock_ui.rs\|crates/simthing-mapeditor/src/studio_live_observe.rs\|crates/simthing-mapeditor/src/studio_live_session_bridge.rs\|crates/simthing-mapeditor/src/studio_scenario_library_ui.rs\|crates/simthing-mapeditor/tests/studio_sim_clock_*.rs\|crates/simthing-mapeditor/tests/studio_live_observe_0.rs\|crates/simthing-mapeditor/tests/studio_live_session_bridge_0.rs\|crates/simthing-mapeditor/tests/studio_scenario_library_*_0.rs\|docs/tests/studio_*_results.md\|docs/design_0_0_8_6_studio_live_ops.md\|docs/orchestrator_orientation.md\|scripts/ci/test_inventory.tsv\|scripts/ci/triage_log.tsv\|crates/simthing-mapeditor/src/clause_scenario_ingest.rs\|crates/simthing-mapeditor/src/clause_scenario_picker.rs\|crates/simthing-mapeditor/src/app/scenario_io.rs\|crates/simthing-mapeditor/src/star_render.rs\|crates/simthing-mapeditor/src/app/galaxy_render.rs\|crates/simthing-mapeditor/tests/studio_*_0.rs\|crates/simthing-mapeditor/src/studio_*.rs\|docs/tests/current_evidence_index.md\|scripts/ci/inspect_justifications.tsv | 0.0.8.6-studio-live-ops | tested_code_sha\|coverage_basis\|ci_green | active |
 
 ## Binding Conditions
 
@@ -155,7 +156,8 @@ GPU/desktop/bevy proof is owner-local execution with recorded `DOCTRINE-TESTS-VE
 
 - `unclassified-scope` → **only** no class match and no valid admitted-envelope claim (not automatic DA ceremony).
 - `admitted-scope-router-gap` → admitted envelope + proof-present + missing class; class-hardening follow-up; not a fresh DA design question.
-- class-envelope-violation, engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
+- `class-envelope-violation` → if design already marks clearable, treat as class-hardening (widen scope/`match_any`); escalate to DA only for real forbidden surfaces (spec/clausething/driver/kernel/sim/gpu/wgsl/gate) or workshop_only breach.
+- engine-scope-violation, module-marker-shape-mismatch → DA review (precise reason; not novelty rhetoric).
 - Novelty (`novelty_claim: YES` + `novelty_basis`) overrides matched-class clearance → DA review routing.
 - `novelty_claim: YES` without `novelty_basis` → FAIL(missing-novelty-basis); not clearable.
 - `tp-workshop-candidate-proof` → workshop-homed 0.0.8.5 TP candidate proofs only (not mapeditor API / sealed crates / GPU / picker / closeout).
