@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 3ff91d765bf2256c70215d988aa9be1b399d84ffc484e521c02cc2e5d2d76d30 |
+| design_0_0_8_6_studio_live_ops.md | 00759c12f033d1706add1ab54cc7575f3a8273861146f6b25ec9dc5e3dfe992f |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -54,8 +54,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 10.0 | STUDIO-TRANSPORT-OBSERVE-REFINE-0 | Presentation polish of transport + live-observe surface (affordances/layout/shor | **PARKED** — superseded by Phase 11 (concrete UI scope landed 2026-07-11); reopen only if a transport-specific tweak ... |
-| 11.1 | STUDIO-CANONICAL-SCENARIO-0 | **Foundation.** Resolve clause `source_json`/includes **relative to the clause f | **PROBATION** [#1300](https://github.com/khorum08/SimThing/pull/1300) @ `94471cab` — clause-dir path resolution + por... |
+| 11.1 | STUDIO-CANONICAL-SCENARIO-0 | **Foundation.** Resolve clause `source_json`/includes **relative to the clause f | **DA-GRADUATED / merged [#1300](https://github.com/khorum08/SimThing/pull/1300) @ `46f6151e`** — `hydrate_scenario_wi... |
 | 11.2 | STUDIO-FACTION-IDENTITY-FIELDS-0 | Owner/faction identity fields on the scenario spec + clause grammar + hydrate: * | NOT STARTED |
 | 11.3 | STUDIO-STAR-NAMING-PASS-0 | Galaxy generation runs the **star-naming pass** so every star system carries a d | NOT STARTED |
 | 11.4 | STUDIO-CLAUSE-LOADER-SIMPLIFY-0` (needs 11.1) | Scenario Library shows **only the ClauseScript loader**; the resolver/source fie | NOT STARTED |
@@ -65,7 +64,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-CANONICAL-SCENARIO-0`
+Active pointer: `STUDIO-FACTION-IDENTITY-FIELDS-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

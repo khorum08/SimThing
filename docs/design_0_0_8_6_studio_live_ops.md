@@ -158,7 +158,7 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 11.1 | `STUDIO-CANONICAL-SCENARIO-0` | **Foundation.** Resolve clause `source_json`/includes **relative to the clause file's directory** (not process cwd) in `simthing-clausething::hydrate_scenario`; commit a self-contained `scenarios/terran_pirate_galaxy.clause` + sibling base-disc JSON that loads with an **empty resolver from any cwd**. Removes the `{{FIXTURE_JSON}}` test-harness leak from the operator path. | **PROBATION** [#1300](https://github.com/khorum08/SimThing/pull/1300) @ `94471cab` — clause-dir path resolution + portable scenarios + 4 proofs; evidence [studio_canonical_scenario_0_results.md](tests/studio_canonical_scenario_0_results.md). Not graduated. | DA-reserve · Std |
+| 11.1 | `STUDIO-CANONICAL-SCENARIO-0` | **Foundation.** Resolve clause `source_json`/includes **relative to the clause file's directory** (not process cwd) in `simthing-clausething::hydrate_scenario`; commit a self-contained `scenarios/terran_pirate_galaxy.clause` + sibling base-disc JSON that loads with an **empty resolver from any cwd**. Removes the `{{FIXTURE_JSON}}` test-harness leak from the operator path. | **DA-GRADUATED / merged [#1300](https://github.com/khorum08/SimThing/pull/1300) @ `46f6151e`** — `hydrate_scenario_with_source_base` + clause-dir resolve; portable scenarios pair; 4 proofs; token back-compat; no sibling output; evidence [studio_canonical_scenario_0_results.md](tests/studio_canonical_scenario_0_results.md). **Next:** `STUDIO-FACTION-IDENTITY-FIELDS-0`. | DA-reserve · Std |
 | 11.2 | `STUDIO-FACTION-IDENTITY-FIELDS-0` | Owner/faction identity fields on the scenario spec + clause grammar + hydrate: **`color_rgb`** (required; drives UI), **`faction_name`**, **`faction_alliance`** (placeholder), reserved forward placeholders. TP owners (Terran/Pirate) carry distinct colors in the canonical scenario. Authority + admission only; no UI. | NOT STARTED | DA-reserve · Std |
 | 11.3 | `STUDIO-STAR-NAMING-PASS-0` | Galaxy generation runs the **star-naming pass** so every star system carries a display name; the committed TP base-disc is regenerated/repaired so `simthing_spec::star_system_display_name` resolves for all systems. Generator + data; deterministic naming (seed-stable). | NOT STARTED | DA-reserve · **Frontier** |
 
@@ -197,8 +197,8 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | `STUDIO-CANONICAL-SCENARIO-0` (Phase 11 active; Phase 10 parked/superseded) |
+| Active open rung | `STUDIO-FACTION-IDENTITY-FIELDS-0` (Phase 11; 11.1 graduated) |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
-| Clause load baseline | Production picker + API (explicit resolver if `{{…}}`) |
+| Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via `hydrate_scenario_with_source_base`; production ingest still bare-hydrate until 11.4 wires source_base |
 
-**Park instruction for agents:** 9.0–9.7 landed (live-ops UI/clock + class `studio-live-ops-ui-clock`). Next: `STUDIO-LIVE-OPS-HARDENING-0` (incl. JSON/Clause bridge-reset residual). Do not treat orientation pointer as closeout of 0.0.8.5.
+**Park instruction for agents:** Phase 9 complete; Phase 10 parked. Phase 11 active at `STUDIO-FACTION-IDENTITY-FIELDS-0` (11.2). Do not reopen 0.0.8.5.
