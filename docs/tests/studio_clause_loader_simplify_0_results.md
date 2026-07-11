@@ -6,10 +6,10 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | (pending) |
+| PR | [#1306](https://github.com/khorum08/SimThing/pull/1306) |
 | branch | `studio-clause-loader-simplify-0` |
 | base | `master` |
-| head_sha | (pending) |
+| head_sha | `8bfba01b590322935b9e9d0a6dcf0f834fd4a938` |
 | merge | NOT MERGED |
 
 ## What changed
