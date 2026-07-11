@@ -419,6 +419,7 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [`studio_live_ops_class_0_results.md`](studio_live_ops_class_0_results.md) — `STUDIO-LIVE-OPS-CLASS-0` **PROBATION** — precedented class `studio-live-ops-ui-clock` + envelope rejects; clearance selftests clearable + reject; no production Studio behavior change.
 - [`studio_canonical_scenario_0_results.md`](studio_canonical_scenario_0_results.md) — `STUDIO-CANONICAL-SCENARIO-0` **PROBATION** — clause-relative `source_json` + portable `scenarios/terran_pirate_galaxy.clause` empty-resolver load; multi-tick identity; token back-compat; no sibling output.
 - [`studio_faction_identity_fields_0_results.md`](studio_faction_identity_fields_0_results.md) — `STUDIO-FACTION-IDENTITY-FIELDS-0` **PROBATION** — owner color_rgb/faction_name/alliance authority + clause hydrate + distinct Terran/Pirate colors; no UI/gameplay.
+- [`studio_star_naming_pass_0_results.md`](studio_star_naming_pass_0_results.md) — `STUDIO-STAR-NAMING-PASS-0` **PROBATION / PR #1304** — isolated seed-stable mapgenerator naming pass, non-blank emitter output, 1,500-name canonical TP golden, structure and 11.1/11.2 regressions held.
 - [`studio_live_ops_hardening_0_results.md`](studio_live_ops_hardening_0_results.md) — `STUDIO-LIVE-OPS-HARDENING-0` **PROBATION** — bridge reset on every session replacement, cancel/action purge, repeated-open preservation, deterministic rapid rates, paused-save safety, and modal zero-tick regression battery.
 
 ## Notes
