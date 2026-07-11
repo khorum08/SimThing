@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | e70798b5dbcf83f51e382232bd6621389d7dc53a44c1823b82efb00bcf6a02a5 |
+| design_0_0_8_6_studio_live_ops.md | fbf7f7cc797172569dc3551c86c2338c2e95fd1c8f815ee0799ef054a7a1149e |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -55,7 +55,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 9.6 | STUDIO-SCENARIO-LIBRARY-CREATE-0 | Create-new / blank or template from library (scope from readiness). | **DA-GRADUATED / merged [#1291](https://github.com/khorum08/SimThing/pull/1291) @ `e42a248f`** — blank one-cell `SimT... |
-| 9.7 | STUDIO-LIVE-OPS-CLASS-0 | **Gate-wiring.** Precedented class for live-ops UI + clock shape. | **PROBATION** — class `studio-live-ops-ui-clock` + predicate (priority 40); 12 fixtures clearable + envelope rejects;... |
+| 9.7 | STUDIO-LIVE-OPS-CLASS-0 | **Gate-wiring.** Precedented class for live-ops UI + clock shape. | **PROBATION** — [#1293](https://github.com/khorum08/SimThing/pull/1293) @ `7897f650`; class `studio-live-ops-ui-clock... |
 | 9.8 | STUDIO-LIVE-OPS-HARDENING-0 | Polish: cancel modal, double-open, rapid rate change, save-while-paused, no tick | Regression battery |
 
 ## Next Rung Pointer

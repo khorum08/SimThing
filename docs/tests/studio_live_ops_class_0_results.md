@@ -6,9 +6,10 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | (pending) |
+| PR | [#1293](https://github.com/khorum08/SimThing/pull/1293) |
 | branch | `studio-live-ops-class-0` |
 | base | `master` |
+| head_sha | `7897f650a8906981629d8f1a91554942a799a157` |
 | merge | NOT MERGED |
 
 ## What changed
