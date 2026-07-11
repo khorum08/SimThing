@@ -68,7 +68,7 @@ Authority surfaces: driver NO; kernel/sim/WGSL NO; workshop NO; clearance/gate/c
 
 ## Graduation routing
 
-PROBATION. Risk class: model-authority-create + modal-pause-control. No forbidden surfaces touched. Medium DA review posture; final clearance sticky controls routing.
+PROBATION. Clearance sticky on PR #1291: `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` with `DA-TREEVERIFY-PROFILE: DEEP-TREE`. Risk class: model-authority-create + modal-pause-control; no driver/kernel/sim/WGSL/workshop surface touched. Clearance and Doctrine Scan are green. Route to DA; coding agent must not merge.
 
 ## Orientation / anchors
 
