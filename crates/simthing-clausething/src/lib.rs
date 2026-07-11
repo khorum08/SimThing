@@ -82,11 +82,12 @@ pub use hydrate_combat_arena::{
     HydratedCombatArenaPayload, HydratedCombatShipEnrollment,
 };
 pub use hydrate_scenario::{
+    hydrate_scenario, hydrate_scenario_with_source_base, resolve_clause_source_path,
     HydratedEmbeddedStaticGalaxyScenario, HydratedFleetPlacement, HydratedFleetShipPayload,
     HydratedOwnedSystem, HydratedOwnershipVolume, HydratedPlanetSurfacePayload,
     HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioLink,
     HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
-    PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario,
+    PR4_MAX_SCENARIO_FIELD_OPERATORS,
 };
 pub mod clause_scenario_projection;
 pub use clause_scenario_projection::{
