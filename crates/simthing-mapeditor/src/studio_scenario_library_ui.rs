@@ -62,6 +62,12 @@ impl StudioScenarioLibraryModel {
         self.visible = false;
     }
 
+    /// Cancel the modal without restoring Play, even if called after other UI input.
+    pub fn cancel(&mut self, transport: &mut StudioSimClockTransport) {
+        self.enforce_pause(transport);
+        self.close();
+    }
+
     /// A visible library owns a pause gate. Closing deliberately does not restore Play.
     pub fn enforce_pause(&self, transport: &mut StudioSimClockTransport) {
         if self.visible {

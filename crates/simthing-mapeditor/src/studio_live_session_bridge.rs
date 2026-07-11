@@ -16,6 +16,24 @@ use simthing_spec::{
 use crate::session::{StudioScenarioSummary, StudioSession};
 use crate::studio_sim_clock::StudioSimClock;
 
+/// Request that a bridge attached to replaced Studio authority be detached before ticking.
+pub fn request_live_bridge_reset_after_session_replacement(reset_requested: &mut bool) {
+    *reset_requested = true;
+}
+
+/// Consume a replacement reset before the caller can advance the live clock.
+pub fn apply_live_bridge_reset_before_tick(
+    reset_requested: &mut bool,
+    bridge: &mut StudioLiveSessionBridge,
+) -> bool {
+    if !*reset_requested {
+        return false;
+    }
+    bridge.detach();
+    *reset_requested = false;
+    true
+}
+
 /// Operator-visible bridge lifecycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioLiveSessionBridgeStatus {

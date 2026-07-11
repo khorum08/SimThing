@@ -331,6 +331,7 @@ pub fn studio_ui_system(
                     &mut state,
                     adoption.message.clone(),
                 );
+                request_live_bridge_reset_after_session_replacement(&mut state);
                 state.apply_refreshed_runtime_saveload_status(status, None);
                 state.last_runtime_saveload_status = adoption.message;
                 super::rebuild_session_scene(
@@ -356,6 +357,7 @@ pub fn studio_ui_system(
         match load_scenario_manual_path_action(&mut state) {
             ScenarioActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                request_live_bridge_reset_after_session_replacement(&mut state);
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
                     &mut commands,
@@ -381,6 +383,7 @@ pub fn studio_ui_system(
         match open_native_scenario_load_picker(&mut state) {
             ScenarioPickerActionResult::Loaded { session, message } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                request_live_bridge_reset_after_session_replacement(&mut state);
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
                     &mut commands,
@@ -408,6 +411,7 @@ pub fn studio_ui_system(
                 session, message, ..
             } => {
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                request_live_bridge_reset_after_session_replacement(&mut state);
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
                     &mut commands,
@@ -436,10 +440,10 @@ pub fn studio_ui_system(
                 let save_path = session.scenario_path.clone();
                 let message = format!("Created blank scenario: {}", session.galaxy_name());
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                request_live_bridge_reset_after_session_replacement(&mut state);
                 if let Some(path) = save_path {
                     state.scenario_path_text = path.display().to_string();
                 }
-                state.live_bridge_reset_requested = true;
                 enforce_scenario_library_pause(&mut state);
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
@@ -1769,8 +1773,19 @@ fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState)
     });
 
     if response.inner || response.should_close() {
-        state.scenario_library.close();
+        cancel_scenario_library(state);
+        clear_scenario_library_pending_actions(ctx);
     }
+}
+
+fn clear_scenario_library_pending_actions(ctx: &egui::Context) {
+    ctx.data_mut(|data| {
+        data.remove::<std::path::PathBuf>(egui::Id::new("do_save_scenario"));
+        data.remove::<bool>(egui::Id::new("do_load_scenario_manual"));
+        data.remove::<bool>(egui::Id::new("do_load_scenario_picker"));
+        data.remove::<bool>(egui::Id::new("do_open_clause_scenario_picker"));
+        data.remove::<bool>(egui::Id::new("do_create_blank_scenario"));
+    });
 }
 
 fn open_scenario_library(state: &mut StudioAppState) {
@@ -1789,6 +1804,21 @@ fn enforce_scenario_library_pause(state: &mut StudioAppState) {
         ..
     } = state;
     scenario_library.enforce_pause(sim_clock_transport);
+}
+
+fn cancel_scenario_library(state: &mut StudioAppState) {
+    let StudioAppState {
+        scenario_library,
+        sim_clock_transport,
+        ..
+    } = state;
+    scenario_library.cancel(sim_clock_transport);
+}
+
+fn request_live_bridge_reset_after_session_replacement(state: &mut StudioAppState) {
+    crate::request_live_bridge_reset_after_session_replacement(
+        &mut state.live_bridge_reset_requested,
+    );
 }
 
 fn execute_save_candidate_action(state: &mut StudioAppState) {
