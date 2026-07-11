@@ -1,42 +1,64 @@
 # STUDIO-STAR-NAMING-PASS-0 Results
 
 ## Status
-**PROBATION / PR [#1304](https://github.com/khorum08/SimThing/pull/1304)** - DA review required.
+**DA-GRADUATED / COMPLETE** — merged [#1304](https://github.com/khorum08/SimThing/pull/1304) @ `052cc192`.
 
-## PR / Merge
+## PR / branch / merge
 | Field | Value |
 |---|---|
+| PR | [#1304](https://github.com/khorum08/SimThing/pull/1304) |
 | branch | `codex/studio-star-naming-pass-0` |
 | base | `master` |
-| tested implementation SHA | `4b544b0645d1d324131f1e6eab2b4b4a8383a1c2` |
-| merge | **NOT MERGED** |
+| head_sha | `3c3cbee75dea7e3bfb168acd3e5458f0672f7526` |
+| merge | `052cc192` (squash) |
 
-## What Changed
-- Added an isolated 4,096-entry syllabic catalogue shuffled by a domain-separated `MapGenRng`.
-- Assignment sorts system IDs, is seed-stable, and remains unique across catalogue cycles.
-- `ScenarioEmitter` now writes assigned names instead of `name = ""`.
-- Regenerated the canonical TP base-disc: 1,500 unique names; placement and links unchanged.
-- Existing Spec metadata writer/`star_system_display_name` were sufficient; no Spec source change.
+## What changed
+- Isolated 4,096-entry syllabic catalogue shuffled by domain-separated `MapGenRng` (`seed ^ NAMING_SEED_DOMAIN`)
+- Assignment sorts/dedups system IDs; uniqueness across catalogue cycles via cycle suffix
+- `ScenarioEmitter` writes assigned names (no blank `name = ""`)
+- Canonical TP base-disc repaired: 1,500 unique names; placements/links unchanged
+- Existing Spec `star_system_display_name` sufficient; no Spec source change
+- 9 inventoried proofs + TEST-BUDGET triage
 
-## Proof Matrix
-| Proof | Result / regression caught |
+## Proof matrix
+| test | catches |
 |---|---|
-| mapgenerator check + full tests | PASS - blank output, seed drift, structural drift, duplicate names |
-| Spec check + full tests | PASS - authority/helper regressions |
-| clausething check | PASS |
-| 11.3 target | PASS 4/4 - golden, helper, 11.1, 11.2 |
-| 11.1 canonical target | PASS 4/4 - empty-resolver portability |
-| 11.2 identity target | PASS 8/8 - Terran/Pirate names and colors |
-| mapeditor check | PASS - downstream compile only; no mapeditor changes |
-| agent scan / inventory drift / orientation | INSPECT 2 TEST-BUDGET triaged / PASS / PASS |
+| assigns_non_empty_names | blank naming |
+| is_seed_stable | seed drift / input-order sensitivity |
+| preserves_structure | naming mutating placement/topology text |
+| names_are_unique_within_galaxy | duplicates across catalogue cycles |
+| emitter_writes_names_not_blank | ScenarioEmitter blank names |
+| canonical_tp_all_systems_have_display_names | stale golden / missing names |
+| spec_helper_resolves_all_canonical_systems | Spec helper gaps |
+| 11_1_empty_resolver_still_loads | portable load regression |
+| 11_2_faction_identity_retained | Terran/Pirate identity loss |
 
-## Rustified Lifecycle
-Nine `behavior-regression` KEEP rows use birth track `0.0.8.6-studio-live-ops`.
-`scripts/ci/triage_log.tsv` carries the required `TEST-BUDGET` rationale.
+## Scope Ledger
+| | |
+|---|---|
+| Specified | Seed-stable naming + emitter + canonical repair + 11.1/11.2 hold |
+| Implemented | mapgenerator star_names + emitter + canonical golden + proofs |
+| Proxied | none |
+| Deferred | 11.4 loader + source_base wire; 11.5–11.7 |
+| Out of scope | mapeditor UI, driver/kernel/GPU, gameplay, Spec source |
 
-## Scope
-Mapgenerator and canonical scenario data changed. Clausething changed only by a test target.
-No Spec source, mapeditor, driver, kernel, sim, GPU, WGSL, workflow, clearance, or class edits.
+## Conformance
+deterministic YES · isolated naming RNG YES · sorted IDs YES · catalogue uniqueness YES · emitter non-blank YES · 1500 unique canonical YES · structure preserved YES · Spec helper YES · 11.1/11.2 YES · triage YES
 
-## Orientation
-`ORIENT-RECEIPT: 6482c5a6e7ac` - return posture **PROBATION**.
+## Sticky disposition
+Auto-posted sticky may have shown `unclassified-scope` on an earlier body; current head clears as `DA-RESERVE(admitted-scope-router-gap)` — expected Phase-11 Tier-A router debt (no mapgenerator class). Not remedial.
+
+## Known residuals
+- 11.4 owns production Studio ingest `source_base` wire + ClauseScript-only loader UI
+- Next: `STUDIO-CLAUSE-LOADER-SIMPLIFY-0` (11.4, Std)
+
+## Graduation routing
+**DA PASS**. Pointer → `STUDIO-CLAUSE-LOADER-SIMPLIFY-0`.
+
+## DA ACK
+```text
+ANCHOR-ACK: clausething-closed-vertical@beb30ffaba50
+ANCHOR-ACK: movement-front@a0592b2f37ca
+ANCHOR-ACK: orientation-harness-core@8a365d1c0864
+ANCHOR-ACK: stead-spatial-contract-core@b4a112cd02e8
+```
