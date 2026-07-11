@@ -422,6 +422,8 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [`studio_star_naming_pass_0_results.md`](studio_star_naming_pass_0_results.md) — `STUDIO-STAR-NAMING-PASS-0` **PROBATION / PR #1304** — isolated seed-stable mapgenerator naming pass, non-blank emitter output, 1,500-name canonical TP golden, structure and 11.1/11.2 regressions held.
 - [`studio_live_ops_hardening_0_results.md`](studio_live_ops_hardening_0_results.md) — `STUDIO-LIVE-OPS-HARDENING-0` **PROBATION** — bridge reset on every session replacement, cancel/action purge, repeated-open preservation, deterministic rapid rates, paused-save safety, and modal zero-tick regression battery.
 
+- [studio_clause_loader_simplify_0_results.md](studio_clause_loader_simplify_0_results.md) — STUDIO-CLAUSE-LOADER-SIMPLIFY-0 **PROBATION** — ClauseScript-only Scenario Library; source_base wire; read-only Scenario telemetry; no Spec mutation.
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."

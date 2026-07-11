@@ -4,25 +4,93 @@ use std::path::PathBuf;
 
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
-    structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
-    SimThingScenarioSpec, SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
-    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    game_session_owners, structural_property_value_u32, SimThingScenarioGrid,
+    SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
+    SimThingStructuralGridPlacement, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
 use thiserror::Error;
 
 use crate::scenario_io::scenario_file_name;
+use crate::studio_sim_clock_ui::StudioSimClockReadout;
 use crate::{
     StudioHydrationError, StudioSession, StudioSimClockTransport, StudioSimClockTransportCommand,
 };
 
+/// Read-only Scenario telemetry projection for Telemetry dialog (11.4). Presentation only.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioScenarioTelemetryReadout {
+    pub scenario_id: String,
+    pub clause_path: String,
+    pub source_path: String,
+    pub source_resolution: String,
+    pub resolver_state: String,
+    pub system_count: u32,
+    pub owner_count: u32,
+    pub stead_label: String,
+    pub tick_index: u64,
+    pub paused: bool,
+}
+
+/// Pure projection from loaded session + clause path + clock readout. Never mutates Spec.
+pub fn build_studio_scenario_telemetry_readout(
+    session: Option<&StudioSession>,
+    clause_path: &str,
+    clock: &StudioSimClockReadout,
+) -> StudioScenarioTelemetryReadout {
+    match session {
+        None => StudioScenarioTelemetryReadout {
+            scenario_id: "(none)".into(),
+            clause_path: clause_path.to_string(),
+            source_path: "(no loaded session)".into(),
+            source_resolution: "n/a".into(),
+            resolver_state: "empty operator resolver".into(),
+            system_count: 0,
+            owner_count: 0,
+            stead_label: "n/a".into(),
+            tick_index: clock.tick_index,
+            paused: clock.paused,
+        },
+        Some(session) => {
+            let summary = &session.scenario_summary;
+            let owner_count = game_session_owners(&session.scenario_authority)
+                .map(|o| o.len() as u32)
+                .unwrap_or(0);
+            let source_path = session
+                .scenario_path
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| "(in-memory)".into());
+            let stead_label = if summary.stead_valid {
+                "STEAD valid"
+            } else {
+                "STEAD invalid"
+            };
+            StudioScenarioTelemetryReadout {
+                scenario_id: summary.scenario_id.clone(),
+                clause_path: clause_path.to_string(),
+                source_path,
+                source_resolution: "sibling/canonical source_base".into(),
+                resolver_state: "empty operator resolver".into(),
+                system_count: summary.system_count,
+                owner_count,
+                stead_label: stead_label.into(),
+                tick_index: clock.tick_index,
+                paused: clock.paused,
+            }
+        }
+    }
+}
+
 pub const STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID: &str = "new_scenario";
 pub const STUDIO_SCENARIO_LIBRARY_CREATE_PROVENANCE: &str = "STUDIO-SCENARIO-LIBRARY-CREATE-0";
 
+/// Scenario Library tabs. Operator load path is **ClauseScript-only** (11.4).
+/// `Json` remains as a non-default enum variant for legacy tests only — not shown in UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StudioScenarioLibraryTab {
-    #[default]
     Json,
+    #[default]
     Clause,
     Create,
 }
@@ -38,7 +106,8 @@ impl Default for StudioScenarioLibraryModel {
     fn default() -> Self {
         Self {
             visible: false,
-            selected_tab: StudioScenarioLibraryTab::Json,
+            // Operator default: ClauseScript load (STUDIO-CLAUSE-LOADER-SIMPLIFY-0).
+            selected_tab: StudioScenarioLibraryTab::Clause,
             create_scenario_id: STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID.to_string(),
         }
     }
