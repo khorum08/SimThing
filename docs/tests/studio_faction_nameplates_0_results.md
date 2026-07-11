@@ -1,7 +1,7 @@
 # STUDIO-FACTION-NAMEPLATES-0 Results
 
 ## Status
-**PROBATION** — not complete; not graduated.
+**ORCHESTRATOR-GRADUATED / COMPLETE** — merged [#1309](https://github.com/khorum08/SimThing/pull/1309) @ `9ee45b3f`.
 
 ## PR / branch / merge
 | Field | Value |
@@ -9,8 +9,8 @@
 | PR | [#1309](https://github.com/khorum08/SimThing/pull/1309) |
 | branch | `studio-faction-nameplates-0` |
 | base | `master` |
-| head_sha | `836d645e46f13d953e7563ad877b7044c91ce89b` |
-| merge | NOT MERGED |
+| head_sha | `c32e4c0d4948b727350c5f62c58f69d6af9e6126` |
+| merge | `9ee45b3f8957ae82b2c0784441a24fb65bc2d4c1` |
 
 ## What changed
 - `studio_faction_nameplates.rs`: owner color map + star nameplate RGBA from authority `color_rgb` / `owner_flow_owner_ref`; unowned = neutral
@@ -31,8 +31,23 @@
 | unknown_owner_ref_is_neutral | silent wrong color |
 | no_authority_crate_imports | scope leak |
 
+## Scope Ledger
+| | |
+|---|---|
+| Specified | Star nameplates: authority display names + owner color_rgb; unowned neutral |
+| Implemented | mapeditor presentation helpers + galaxy_render wire + 10 proofs + docs/inventory |
+| Proxied | none |
+| Deferred | planet labels (no subsystem); 11.6 owned-star brighten; 11.7 frosted glass |
+| Out of scope | Spec mutation; selection-model authority; WGSL; kernel/sim/driver |
+
 ## Conformance
 authority names YES · color_rgb YES · unowned neutral YES · no Spec mutation YES · no 11.6/11.7 YES · mapeditor presentation only YES
 
+## Sticky disposition
+`ORCHESTRATOR-CLEARABLE` on #1309 after CI green (Clearance + Doctrine Scan + Doctrine Exec). Orchestrator merge.
+
+## Known residuals
+- Next: `STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0` (11.6, Std)
+
 ## Graduation routing
-**PROBATION** — expected class `studio-live-ops-ui-clock` → ORCHESTRATOR-CLEARABLE. Do not self-merge.
+**ORCHESTRATOR-GRADUATED**. Pointer → `STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0`.
