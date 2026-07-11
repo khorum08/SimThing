@@ -298,11 +298,11 @@ and the DA applies:
 
 **Handoffs:** `relay_lint.sh` + `handoff_template.md`; §H violations rejected at review.
 
-**Merge authority (judgment-residue — constitution §0.9.7 governs):** precedented-class clearance is
-mechanical via `clearance_check.sh` + `precedented_classes.tsv` / `class_predicates.tsv`. Empty-class split:
-`admitted-scope-router-gap` vs narrowed `unclassified-scope`; novelty claim-only. **`DA-RESERVE(...)` always
-emits `DA-TREEVERIFY-PROFILE:`** (advisory fold); **`ORCHESTRATOR-CLEARABLE` never does.** Body requirements
-are proof-identity only (no non-diff attestations). DA spot-audits self-authorized merges; Owner supremacy above all.
+**Merge authority (§0.9.7):** clearance is mechanical via `clearance_check.sh` + class TSVs. Empty-class:
+`admitted-scope-router-gap` vs `unclassified-scope`; novelty claim-only. Sticky (`clearance.yml`) publishes
+the router only — **no DA default.** `ORCHESTRATOR-CLEARABLE` → orch merges. When design already marks
+clearable, `class-envelope-violation` / `admitted-scope-router-gap` → **class-harden** predicates, not DA.
+`DA-RESERVE` emits advisory `DA-TREEVERIFY-PROFILE:`; proof-identity fields only. DA spot-audits; Owner wins.
 
 **Channeling DA token spend (judgment-residue — feed the routing table honestly):**
 - **Declare risk classes truthfully and completely** — under-declaring to earn a light review is the

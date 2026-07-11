@@ -1,0 +1,12 @@
+crates/simthing-mapeditor/src/app/ui.rs
+crates/simthing-mapeditor/src/studio_scenario_library_ui.rs
+crates/simthing-mapeditor/src/clause_scenario_ingest.rs
+crates/simthing-mapeditor/src/lib.rs
+crates/simthing-mapeditor/tests/studio_clause_loader_simplify_0.rs
+docs/tests/studio_clause_loader_simplify_0_results.md
+docs/tests/current_evidence_index.md
+docs/design_0_0_8_6_studio_live_ops.md
+docs/orchestrator_orientation.md
+scripts/ci/test_inventory.tsv
+scripts/ci/triage_log.tsv
+scripts/ci/inspect_justifications.tsv

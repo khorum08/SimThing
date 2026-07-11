@@ -120,15 +120,21 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 > **All Phase-9 doctrine holds unchanged:** ScenarioSpec is sole authority; Bevy/egui/clock are
 > presentation; no CPU planner; modal library ⇒ paused; no Auto-Play; no new gameplay/RF/GameMode.
 > Phase-10 diffs are **`studio-live-ops-ui-clock`-clearable** (class scope widened at #1296 to the
-> `studio_*_0.rs` test shape + evidence ledgers; forbidden globs still hard-reject
-> driver/kernel/sim/gpu/spec/clause/wgsl/gate). A rung that must touch an authority crate falls
-> outside the envelope and reserves to DA by design.
+> `studio_*_0.rs` test shape + evidence ledgers; Phase-11 widen adds clause ingest/picker/scenario_io
+> + star/galaxy render so Tier-B presentation stays orch-mergeable). Forbidden globs still hard-reject
+> driver/kernel/sim/gpu/spec/clause/**src**/wgsl/gate. A rung that must touch an authority crate
+> (`simthing-spec` / `simthing-clausething` / `simthing-mapgenerator`) falls outside the envelope and
+> reserves to DA by design.
 >
 > **Extensible.** This ladder grows on Owner direction; the DA scopes each rung from a stated tweak.
-> Additional Phase ladders (11+) append to this file, never fork it. **Authoring rule:** Phase-10 UI
-> rungs touch an already-enumerated live-ops src file (`studio_sim_clock_ui.rs` / `studio_live_observe.rs`
-> / `studio_scenario_library_ui.rs` / `app/ui.rs`) so the class detector fires; a brand-new UI module
-> is added to the class `match_any` as part of its own rung.
+> Additional Phase ladders (11+) append to this file, never fork it. **Authoring rule:** Phase-10/11 UI
+> rungs touch an already-enumerated live-ops detector path (`studio_*` live-ops modules, `app/ui` together
+> with those modules, `star_render.rs` / `galaxy_render.rs`, or matching `studio_clause_*` /
+> `studio_faction_*` / `studio_owned_*` / `studio_frosted_*` / `studio_live_ops_*` tests) so the class
+> detector fires. Production ingest (`clause_scenario_ingest.rs` / picker / `scenario_io`) is
+> **scope-admitted** once a live-ops detector fires — do not open a DA relay for envelope under-width
+> alone; widen `class_predicates.tsv` scope instead. A brand-new UI module is added to class
+> `match_any` as part of its own rung.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
@@ -149,8 +155,12 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 >
 > **Doctrine unchanged:** ScenarioSpec is authority; Bevy/egui/clock are presentation; no CPU planner.
 > **Tiering:** data-model / generator rungs touch authority crates (spec/clausething/mapgenerator) and
-> are **DA-reserve**; pure-mapeditor presentation rungs are **`studio-live-ops-ui-clock`-clearable**.
-> UI rungs depend on their data rung landing first (colors need the field; named nameplates need the pass).
+> are **DA-reserve**; pure-mapeditor presentation rungs are **`studio-live-ops-ui-clock`-clearable**
+> (including production ingest `source_base` wire in `clause_scenario_ingest.rs`, and nameplate /
+> owned-star presentation in `star_render.rs` / `galaxy_render.rs`). **Do not escalate Tier-B to DA**
+> solely for `class-envelope-violation` / `admitted-scope-router-gap` — that is class-hardening debt;
+> widen `class_predicates.tsv` and re-run clearance. UI rungs depend on their data rung landing first
+> (colors need the field; named nameplates need the pass).
 >
 > **Model tier (coding-agent selection):** **Std** = regular coding model (mechanical / precedented / presentation; the handoff is prescriptive). **Frontier** = fable/codex-class required — reserved for load-bearing subtlety only: **11.3** (seed-stable deterministic naming + golden base-disc regen) and **11.7** (frame-budget GPU blur / shader correctness). Everything else is Std; DA review is the safety net on all Tier-A regardless of model.
 
@@ -171,7 +181,7 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 | 11.6 | `STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0` | **Needs 11.2.** Selecting a faction-owned star **brightens all stars that faction owns** to reflect the owned/selected set; deselect restores. Presentation-only render state; no Spec mutation, no selection-model authority. | NOT STARTED | Tier-2 · Std |
 | 11.7 | `STUDIO-FROSTED-GLASS-0` | Window backgrounds get a real **frosted-glass** effect: slight darkening tint + backdrop **blur** of content behind the panel. **Performance is a hard exit criterion** — frame-budget-bound (e.g. one downsampled/low-radius separable blur target, not a full-res per-frame gaussian); record before/after frame-time. May add a presentation `*.wgsl` blur pass → **DA-reserve** (benign presentation shader, not kernel authority). | NOT STARTED | Tier-2 / DA-reserve if wgsl · **Frontier** |
 
-**Dependency order:** 11.1 → (11.2 ∥ 11.3) → (11.4 needs 11.1 ; 11.5 needs 11.2+11.3 ; 11.6 needs 11.2) ; 11.7 independent. Tier-A rungs reserve to DA by envelope; Tier-B UI rungs self-clear once their data dep lands.
+**Dependency order:** 11.1 → (11.2 ∥ 11.3) → (11.4 needs 11.1 ; 11.5 needs 11.2+11.3 ; 11.6 needs 11.2) ; 11.7 independent. Tier-A rungs reserve to DA by envelope; Tier-B UI rungs are orchestrator-mergeable once sticky is `ORCHESTRATOR-CLEARABLE` (class envelope admits mapeditor presentation + ingest wire; WGSL on 11.7 still DA-reserve).
 
 ---
 

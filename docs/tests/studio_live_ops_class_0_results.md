@@ -31,18 +31,12 @@ status: active
 priority: 40
 ```
 
-**match_any:** live-ops modules/tests/results (not bare substrate alone).
-**scope:** app/ui, app/mod, lib, clock substrate, live-ops modules, tests, studio results, design, orientation, inventory, triage.
+**match_any:** live-ops modules/tests/results + Phase-11 presentation detectors (`star_render` / `galaxy_render`, `studio_clause_*` / `studio_faction_*` / `studio_owned_*` / `studio_frosted_*` / `studio_live_ops_*` proofs). Clause ingest/picker/`scenario_io` are **scope-only** (avoids stealing retired TP fixtures).
+**scope:** app/ui, app/mod, lib, clock substrate, live-ops modules, clause ingest/picker/scenario_io, star/galaxy render, tests, studio results, design, orientation, inventory, triage, evidence index, inspect justifications.
 **forbidden:** driver, kernel, sim, gpu, workshop, spec/src, clausething/src, wgsl, workflows, clearance_check, binding/ledger/anchors/anchor scripts, allow/**
 
 ## Load-bearing proofs
-`bash scripts/ci/clearance_check.sh --selftest` → `CLEARANCE-SELFTEST: PASS (90 fixtures)` including:
-- clearable live-ops shape
-- rejects driver / kernel-sim-wgsl / workshop / spec-clause / gate-wiring
-- missing required fields
-- explicit novelty → DA-RESERVE(novelty)
-- admitted-scope gap
-- clock substrate nonregression
+`bash scripts/ci/clearance_check.sh --selftest` → includes live-ops clearable shapes + Phase-11 clause-loader / nameplates clearable fixtures + envelope rejects (driver / kernel-sim-wgsl / workshop / spec-clause / gate-wiring).
 
 ## Scope Ledger
 | | |
@@ -63,8 +57,9 @@ priority: 40
 - No production Studio behavior change: YES
 
 ## Known gaps / next
-- JSON/Clause load still omit `live_bridge_reset_requested` (create sets it) — 9.8
-- Next: `STUDIO-LIVE-OPS-HARDENING-0`
+- Phase-11 Tier-B (11.5–11.6) expected `ORCHESTRATOR-CLEARABLE` after class widen (ingest + render detectors).
+- 11.7 remains DA-reserve if it adds `*.wgsl`.
+- Next active product pointer: `STUDIO-FACTION-NAMEPLATES-0`
 
 ## Graduation routing
-**DA PASS** — real gate/class work; fixtures + selftest credible; envelope tight; substrate preserved. Pointer → `STUDIO-LIVE-OPS-HARDENING-0`.
+**DA PASS** — real gate/class work; fixtures + selftest credible; envelope tight; substrate preserved. Class widened for Phase-11 orch delegation (ingest + nameplate render) without admitting authority crates.
