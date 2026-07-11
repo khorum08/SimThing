@@ -71,7 +71,7 @@ PROBATION. Risk class: presentation + modal-pause-control + authority-adjacent I
 
 ## Orientation / anchors
 
-`ORIENT-RECEIPT: a1c8c3f9683d` (role: coding; orientation digest `f9b6688a0ea099c8437ff25157f84bd5d664c47040c158d19f800fe2dfc43862`).
+`ORIENT-RECEIPT: a1c8c3f9683d` (role: coding; regenerated orientation digest `ce03dc8537b6a710040e25ad3fe39e9e5432ca66de2b860b55d0b84738a21af6`).
 
 - `ANCHOR-ACK: movement-front@a0592b2f37ca`
 - `ANCHOR-ACK: orientation-harness-core@8a365d1c0864`
