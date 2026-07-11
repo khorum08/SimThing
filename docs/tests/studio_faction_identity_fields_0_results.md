@@ -6,10 +6,10 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | (pending) |
+| PR | [#1302](https://github.com/khorum08/SimThing/pull/1302) |
 | branch | `studio-faction-identity-fields-0` |
 | base | `master` |
-| head_sha | (pending) |
+| head_sha | `cb4c5fbb0f027e7fe9cabe57e68e4a1558771cbe` |
 | merge | NOT MERGED |
 
 ## What changed
