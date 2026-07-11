@@ -56,7 +56,10 @@ use crate::studio_performance_telemetry::{
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
-use crate::{StudioSimClockRate, StudioSimClockTransportCommand};
+use crate::{
+    StudioScenarioLibraryTab, StudioSimClockRate, StudioSimClockTransportCommand,
+    STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE,
+};
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 
@@ -183,6 +186,7 @@ pub fn studio_ui_system(
     if should_auto_collapse_panel(screen_w) {
         state.left_panel_collapsed = true;
     }
+    enforce_scenario_library_pause(&mut state);
 
     if !state.performance_diagnostic_hide_panels {
         draw_window_controls(ctx, &mut state, &mut settings, &mut windows, &mut exit);
@@ -250,6 +254,7 @@ pub fn studio_ui_system(
     if !state.performance_diagnostic_hide_panels {
         draw_warning_dialog(ctx, &mut dialog);
     }
+    draw_scenario_library_dialog(ctx, &mut state);
     draw_generation_name_corpus_dialog(ctx, &mut state);
     record_egui_pass_timing(
         &mut perf_telemetry,
@@ -1333,11 +1338,8 @@ fn draw_left_panel(
                             if inactive_button(ui, "New").clicked() {
                                 *dialog = unimplemented_action_response(StudioAction::New);
                             }
-                            if inactive_button(ui, "Load").clicked() {
-                                *dialog = unimplemented_action_response(StudioAction::Load);
-                            }
-                            if inactive_button(ui, "Save").clicked() {
-                                *dialog = unimplemented_action_response(StudioAction::Save);
+                            if ui.button("Library...").clicked() {
+                                open_scenario_library(state);
                             }
                             if ui.button("Generate").clicked() {
                                 state.generation_name_corpus_path =
@@ -1380,11 +1382,11 @@ fn draw_left_panel(
                             .show(ui, |ui| {
                                 generation_fields(ui, &mut state.profile, dialog);
                             });
-                        egui::CollapsingHeader::new("Scenario / runtime save-load")
+                        egui::CollapsingHeader::new("Runtime candidate save-load")
                             .id_salt("left_panel_scenario")
                             .default_open(false)
                             .show(ui, |ui| {
-                                draw_scenario_io_controls(ctx, ui, state);
+                                draw_runtime_candidate_saveload_controls(ctx, ui, state);
                             });
                         egui::CollapsingHeader::new("Sim clock transport")
                             .id_salt("left_panel_sim_clock")
@@ -1580,7 +1582,11 @@ fn draw_live_observation(ui: &mut egui::Ui, state: &StudioAppState) {
     }
 }
 
-fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut StudioAppState) {
+fn draw_scenario_library_json_controls(
+    ctx: &egui::Context,
+    ui: &mut egui::Ui,
+    state: &mut StudioAppState,
+) {
     ui.label(egui::RichText::new("Scenario (model authority)").strong());
     ui.label(
         egui::RichText::new("Separate from simthing-studio-config.json")
@@ -1616,7 +1622,13 @@ fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_manual"), true));
         }
     });
-    ui.separator();
+}
+
+fn draw_scenario_library_clause_controls(
+    ctx: &egui::Context,
+    ui: &mut egui::Ui,
+    state: &mut StudioAppState,
+) {
     ui.label(egui::RichText::new("ClauseScript (admitted StructuralRebindReady)").strong());
     ui.label(
         egui::RichText::new("Calls production clause_scenario_ingest only; no TP defaults")
@@ -1636,8 +1648,103 @@ fn draw_scenario_io_controls(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut
     if ui.button(clause_picker_menu_label()).clicked() {
         ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_open_clause_scenario_picker"), true));
     }
-    ui.separator();
-    draw_runtime_candidate_saveload_controls(ctx, ui, state);
+}
+
+fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState) {
+    if !state.scenario_library.visible {
+        return;
+    }
+
+    enforce_scenario_library_pause(state);
+    let response = egui::Modal::new(egui::Id::new("scenario_library_modal")).show(ctx, |ui| {
+        ui.set_min_width(560.0);
+        ui.heading("Scenario Library");
+        ui.label(
+            egui::RichText::new("Simulation paused while this library is open")
+                .small()
+                .weak(),
+        );
+
+        if let Some(session) = state.session.as_ref() {
+            let summary = &session.scenario_summary;
+            let stead = if summary.stead_valid {
+                "STEAD valid"
+            } else {
+                "STEAD invalid"
+            };
+            ui.label(format!(
+                "Current: {} | {} systems | {}",
+                summary.scenario_id, summary.system_count, stead
+            ));
+        } else {
+            ui.label("Current: no loaded session");
+        }
+
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.selectable_value(
+                &mut state.scenario_library.selected_tab,
+                StudioScenarioLibraryTab::Json,
+                "JSON",
+            );
+            ui.selectable_value(
+                &mut state.scenario_library.selected_tab,
+                StudioScenarioLibraryTab::Clause,
+                "ClauseScript",
+            );
+            ui.selectable_value(
+                &mut state.scenario_library.selected_tab,
+                StudioScenarioLibraryTab::CreateDeferred,
+                "Create",
+            );
+        });
+        ui.separator();
+
+        match state.scenario_library.selected_tab {
+            StudioScenarioLibraryTab::Json => {
+                draw_scenario_library_json_controls(ctx, ui, state);
+            }
+            StudioScenarioLibraryTab::Clause => {
+                draw_scenario_library_clause_controls(ctx, ui, state);
+            }
+            StudioScenarioLibraryTab::CreateDeferred => {
+                ui.add_enabled(false, egui::Button::new("Create scenario"));
+                ui.label(STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE);
+            }
+        }
+
+        if !state.last_scenario_io_status.is_empty() {
+            ui.separator();
+            ui.label(&state.last_scenario_io_status);
+        }
+        ui.separator();
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.button("Close").clicked()
+        })
+        .inner
+    });
+
+    if response.inner || response.should_close() {
+        state.scenario_library.close();
+    }
+}
+
+fn open_scenario_library(state: &mut StudioAppState) {
+    let StudioAppState {
+        scenario_library,
+        sim_clock_transport,
+        ..
+    } = state;
+    scenario_library.open(sim_clock_transport);
+}
+
+fn enforce_scenario_library_pause(state: &mut StudioAppState) {
+    let StudioAppState {
+        scenario_library,
+        sim_clock_transport,
+        ..
+    } = state;
+    scenario_library.enforce_pause(sim_clock_transport);
 }
 
 fn execute_save_candidate_action(state: &mut StudioAppState) {

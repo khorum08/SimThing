@@ -17,3 +17,8 @@ date	role	query	anchors_served	hit
 2026-07-10T15:24:54Z	coding	--grep branching	eml-extension-ladder	hit
 2026-07-10T20:13:51Z	coding	--domain studio-ui	none	none
 2026-07-10T20:13:51Z	coding	--domain sim-clock	field-policy-time-decisions	hit
+2026-07-11T08:42:37Z	coding	--domain bevy-presentation	none	none
+2026-07-11T08:42:37Z	coding	--domain sim-clock	field-policy-time-decisions	hit
+2026-07-11T08:54:22Z	coding	--domain field-policy	field-policy-time-decisions	hit
+2026-07-11T09:06:30Z	coding	--paths crates/simthing-mapeditor/src/app/mod.rs crates/simthing-mapeditor/src/app/ui.rs crates/simthing-mapeditor/src/lib.rs crates/simthing-mapeditor/src/studio_scenario_library_ui.rs crates/simthing-mapeditor/tests/studio_scenario_library_ui_0.rs docs/design_0_0_8_6_studio_live_ops.md docs/tests/current_evidence_index.md docs/tests/studio_scenario_library_ui_0_results.md scripts/ci/anchor_reach_log.tsv scripts/ci/test_inventory.tsv scripts/ci/triage_log.tsv	movement-front,orientation-harness-core,session-lifecycle-adr-family,structural-execution-convergence	hit
+2026-07-11T09:09:02Z	coding	--paths crates/simthing-mapeditor/src/app/mod.rs crates/simthing-mapeditor/src/app/ui.rs crates/simthing-mapeditor/src/lib.rs crates/simthing-mapeditor/src/studio_scenario_library_ui.rs crates/simthing-mapeditor/tests/studio_scenario_library_ui_0.rs docs/design_0_0_8_6_studio_live_ops.md docs/tests/current_evidence_index.md docs/tests/studio_scenario_library_ui_0_results.md scripts/ci/anchor_reach_log.tsv scripts/ci/inspect_justifications.tsv scripts/ci/test_inventory.tsv scripts/ci/triage_log.tsv	movement-front,orientation-harness-core,session-lifecycle-adr-family,structural-execution-convergence	hit
