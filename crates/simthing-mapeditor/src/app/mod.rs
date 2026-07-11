@@ -258,6 +258,8 @@ pub struct StudioAppState {
     /// Send-safe snapshot of the live bridge (updated by NonSend bridge system).
     /// Full [`crate::StudioLiveSessionBridge`] is NonSend (holds SimSession).
     pub live_bridge_readout: crate::StudioLiveSessionBridgeReadout,
+    /// One-frame request to detach live execution after replacing ScenarioSpec authority.
+    pub live_bridge_reset_requested: bool,
 }
 
 impl StudioAppState {
@@ -322,6 +324,7 @@ impl StudioAppState {
                 crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
             sim_clock_transport: crate::StudioSimClockTransport::new(),
             live_bridge_readout: crate::StudioLiveSessionBridgeReadout::default_unattached(),
+            live_bridge_reset_requested: false,
         }
     }
 
@@ -493,6 +496,11 @@ fn live_session_bridge_system(
     mut state: ResMut<StudioAppState>,
     time: Res<Time>,
 ) {
+    if state.live_bridge_reset_requested {
+        bridge.detach();
+        state.live_bridge_reset_requested = false;
+        state.live_bridge_readout = bridge.readout();
+    }
     let StudioAppState {
         scenario_library,
         sim_clock_transport,

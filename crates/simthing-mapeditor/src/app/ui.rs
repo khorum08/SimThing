@@ -57,8 +57,8 @@ use crate::studio_performance_telemetry::{
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
 use crate::studio_screenshot::next_screenshot_filename;
 use crate::{
-    StudioScenarioLibraryTab, StudioSimClockRate, StudioSimClockTransportCommand,
-    STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE,
+    create_blank_studio_session, StudioScenarioLibraryTab, StudioSimClockRate,
+    StudioSimClockTransportCommand,
 };
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
@@ -422,6 +422,42 @@ pub fn studio_ui_system(
                 perf_telemetry.vram_dirty = true;
             }
             _ => {}
+        }
+    }
+
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_create_blank_scenario"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_create_blank_scenario")));
+        let requested_id = state.scenario_library.create_scenario_id.clone();
+        match create_blank_studio_session(&requested_id) {
+            Ok(session) => {
+                let save_path = session.scenario_path.clone();
+                let message = format!("Created blank scenario: {}", session.galaxy_name());
+                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
+                if let Some(path) = save_path {
+                    state.scenario_path_text = path.display().to_string();
+                }
+                state.live_bridge_reset_requested = true;
+                enforce_scenario_library_pause(&mut state);
+                state.refresh_runtime_saveload_status_if_needed(false);
+                super::rebuild_session_scene(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &assets,
+                    &mut scene_root,
+                    &mut state,
+                    &mut render_caches,
+                );
+                reset_camera_after_generation(&mut camera);
+                perf_telemetry.vram_dirty = true;
+            }
+            Err(err) => {
+                state.last_scenario_io_status = format!("Scenario create failed: {err}");
+                state.status_message = state.last_scenario_io_status.clone();
+            }
         }
     }
 }
@@ -1694,7 +1730,7 @@ fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState)
             );
             ui.selectable_value(
                 &mut state.scenario_library.selected_tab,
-                StudioScenarioLibraryTab::CreateDeferred,
+                StudioScenarioLibraryTab::Create,
                 "Create",
             );
         });
@@ -1707,9 +1743,17 @@ fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState)
             StudioScenarioLibraryTab::Clause => {
                 draw_scenario_library_clause_controls(ctx, ui, state);
             }
-            StudioScenarioLibraryTab::CreateDeferred => {
-                ui.add_enabled(false, egui::Button::new("Create scenario"));
-                ui.label(STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE);
+            StudioScenarioLibraryTab::Create => {
+                ui.label(egui::RichText::new("Blank scenario").strong());
+                ui.horizontal(|ui| {
+                    ui.label("Scenario ID:");
+                    ui.text_edit_singleline(&mut state.scenario_library.create_scenario_id);
+                });
+                if ui.button("Create blank scenario").clicked() {
+                    ctx.data_mut(|d| {
+                        d.insert_temp(egui::Id::new("do_create_blank_scenario"), true)
+                    });
+                }
             }
         }
 
