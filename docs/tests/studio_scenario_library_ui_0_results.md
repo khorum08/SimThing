@@ -67,7 +67,7 @@ Authority surfaces: driver NO; kernel/sim/WGSL NO; workshop NO; clearance/gate/c
 
 ## Graduation routing
 
-PROBATION. Risk class: presentation + modal-pause-control + authority-adjacent I/O reuse. No forbidden surfaces touched. `DA-RESERVE(admitted-scope-router-gap)` is expected if no live-ops library class matches; this is router debt pending 9.7, not a novelty claim.
+PROBATION. Clearance sticky on PR #1289: `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` with `DA-TREEVERIFY-PROFILE: DEEP-TREE`. Risk class: presentation + modal-pause-control + authority-adjacent I/O reuse; no driver/kernel/sim/WGSL/workshop surface touched. Clearance and Doctrine Scan are green. Route to DA; coding agent must not merge.
 
 ## Orientation / anchors
 
