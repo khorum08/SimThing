@@ -496,9 +496,10 @@ fn live_session_bridge_system(
     mut state: ResMut<StudioAppState>,
     time: Res<Time>,
 ) {
-    if state.live_bridge_reset_requested {
-        bridge.detach();
-        state.live_bridge_reset_requested = false;
+    if crate::apply_live_bridge_reset_before_tick(
+        &mut state.live_bridge_reset_requested,
+        &mut bridge,
+    ) {
         state.live_bridge_readout = bridge.readout();
     }
     let StudioAppState {

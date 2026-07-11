@@ -197,7 +197,8 @@ pub use studio_live_observe::{
     StudioLiveObservationReadout, StudioLiveObservationSourceKind,
 };
 pub use studio_live_session_bridge::{
-    bridge_module_source_forbids_workshop_residue, driver_scenario_from_authority,
+    apply_live_bridge_reset_before_tick, bridge_module_source_forbids_workshop_residue,
+    driver_scenario_from_authority, request_live_bridge_reset_after_session_replacement,
     revalidate_authority_stead, studio_summary_identity_eq, BridgeOpenIdentity,
     StudioLiveSessionBridge, StudioLiveSessionBridgeError, StudioLiveSessionBridgeReadout,
     StudioLiveSessionBridgeStatus,
