@@ -1,44 +1,44 @@
 # STUDIO-SCENARIO-LIBRARY-UI-0 Results
 
 ## Status
-
-**PROBATION / proof-present / DA-review-pending.** Not graduated and not merged.
+**DA-GRADUATED / COMPLETE** — merged [#1289](https://github.com/khorum08/SimThing/pull/1289) @ `d2493dc2`.
 
 ## PR / branch / merge
-
 | Field | Value |
 |---|---|
 | PR | [#1289](https://github.com/khorum08/SimThing/pull/1289) |
 | branch | `codex/studio-scenario-library-ui-0` |
 | base | `master` |
-| merge | NOT MERGED |
+| head_sha | `bba7504d0cf3a49009b9e6b805bac644a7deac2d` |
+| merge | `d2493dc2` |
 
 ## What changed
-
-- Added `StudioScenarioLibraryModel` with JSON, ClauseScript, and deferred-Create modes.
-- Replaced the inactive top-row Load/Save controls with a primary `Library...` action.
-- Added a blocking egui modal showing current session identity and STEAD status.
-- Reused existing scenario action flags and `app::scenario_io` handlers for JSON load/save and ClauseScript picker/open.
-- Enforced modal pause in both the UI pass and the live bridge update; close does not restore Play.
-- Kept runtime candidate save/reopen controls separate from model-authority library I/O.
+- `studio_scenario_library_ui.rs` — presentation-only `StudioScenarioLibraryModel` (JSON / Clause / deferred Create)
+- Blocking egui Scenario Library modal; top-row `Library...` affordance
+- Modal pause via `StudioSimClockTransport` in UI pass + live-bridge update; close/I/O never autoplay
+- JSON load/save and Clause open reuse existing production scenario_io / picker paths
+- Headless proofs: `crates/simthing-mapeditor/tests/studio_scenario_library_ui_0.rs` (12 tests)
 
 ## Load-bearing proofs
-
-| Proof | Result / catches |
+| test | catches |
 |---|---|
-| `cargo check -p simthing-mapeditor` | PASS; production modal and bridge guard type-check |
-| `cargo test -p simthing-mapeditor --test studio_scenario_library_ui_0` | PASS, 12/12; modal pause/no-autoplay, production JSON and Clause I/O, explicit resolver, authority-only save, identity/STEAD, deferred Create, non-mutation, no workshop/gameplay dependency, error surface |
-| `cargo test -p simthing-mapeditor --test studio_live_observe_0` | PASS, 10/10; observation behavior retained |
-| `cargo test -p simthing-mapeditor --test studio_live_session_bridge_0` | PASS, 8/8; live bridge behavior retained |
-| `cargo test -p simthing-mapeditor --test studio_sim_clock_ui_0` | PASS, 6/6; transport behavior retained |
-| `cargo test -p simthing-mapeditor --test studio_sim_clock_0` | PASS, 4/4; clock substrate retained |
-| `cargo build -p simthing-mapeditor --bin simthing-studio` | PASS; Studio binary builds |
-| `cargo fmt -p simthing-mapeditor -- --check` | BASELINE FAIL in untouched pre-existing files (for example `tp_studio_clause_picker_0.rs`); scoped rustfmt check for the changed implementation/test files PASS |
-| `bash scripts/ci/agent_scan.sh` | `INSPECT(1)`, no reliable failures; `TEST-BUDGET` is explicitly justified and triaged green. There are 12 runtime tests, with the status proof expressed as two mutually exclusive platform-gated source functions |
+| scenario_library_open_pauses_clock | open without pausing transport |
+| scenario_library_visible_freezes_live_bridge_execution | bridge ticks while modal visible |
+| scenario_library_close_does_not_autoplay | close restoring Play |
+| scenario_library_load_uses_existing_scenario_io | parallel JSON parser / serde in library model |
+| scenario_library_save_writes_scenario_authority_only | save writing view model / Bevy / telemetry |
+| scenario_library_load_preserves_stead_and_session_identity | identity / STEAD loss on load |
+| scenario_library_clause_open_reuses_production_ingest_path | alternate Clause ingest path |
+| scenario_library_clause_open_requires_explicit_resolver_when_needed | silent TP/default resolver |
+| scenario_library_create_is_deferred_to_9_6 | Create implementing blank/template early |
+| scenario_library_does_not_mutate_spec_without_load_or_save | modal tab/path mutating Spec |
+| scenario_library_has_no_workshop_or_gameplay_dependency | workshop / gameplay residue |
+| scenario_library_status_reports_io_errors_without_silent_fallback | silent I/O failure |
+
+Regressions kept green: `studio_live_observe_0`, `studio_live_session_bridge_0`, `studio_sim_clock_ui_0`, `studio_sim_clock_0`.
 
 ## Scope Ledger
-
-| Scope | Result |
+| | |
 |---|---|
 | Specified | Scenario library modal, current identity/status, JSON load/save, Clause open, modal pause, deferred Create |
 | Implemented | Presentation model + egui modal + existing I/O action wiring + bridge-side pause guard + focused proofs |
@@ -46,10 +46,7 @@
 | Deferred | Blank/template creation (9.6), live-ops clearance class (9.7), hardening/polish battery (9.8) |
 | Out of scope | Driver/session API changes, kernel/sim/WGSL, workshop, gameplay/RF attach, CPU planner, gate/workflow/class wiring |
 
-Authority surfaces: driver NO; kernel/sim/WGSL NO; workshop NO; clearance/gate/class NO.
-
 ## Conformance
-
 - Studio modal state is presentation-only; `StudioSession.scenario_authority` remains authority.
 - JSON save calls existing authority-only save; JSON load calls existing session rebuild path.
 - ClauseScript open calls the existing production picker/ingest path with explicit resolver entries.
@@ -60,20 +57,9 @@ Authority surfaces: driver NO; kernel/sim/WGSL NO; workshop NO; clearance/gate/c
 - No TP defaults, alternate Clause parser, workshop dependency, CPU planner, or gameplay system.
 
 ## Known gaps / next
-
 - No blank/template creation; next rung is `STUDIO-SCENARIO-LIBRARY-CREATE-0` (9.6).
 - No dedicated live-ops clearance class until 9.7.
 - No desktop interaction smoke claimed; headless modal model/action boundaries and Windows Studio build are proven.
 
 ## Graduation routing
-
-PROBATION. Clearance sticky on PR #1289: `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` with `DA-TREEVERIFY-PROFILE: DEEP-TREE`. Risk class: presentation + modal-pause-control + authority-adjacent I/O reuse; no driver/kernel/sim/WGSL/workshop surface touched. Clearance and Doctrine Scan are green. Route to DA; coding agent must not merge.
-
-## Orientation / anchors
-
-`ORIENT-RECEIPT: a1c8c3f9683d` (role: coding; regenerated orientation digest `ce03dc8537b6a710040e25ad3fe39e9e5432ca66de2b860b55d0b84738a21af6`).
-
-- `ANCHOR-ACK: movement-front@a0592b2f37ca`
-- `ANCHOR-ACK: orientation-harness-core@8a365d1c0864`
-- `ANCHOR-ACK: session-lifecycle-adr-family@d73fe5a83f25`
-- `ANCHOR-ACK: structural-execution-convergence@17fa0732f44d`
+**DA PASS** — `DA-RESERVE(gate-wiring)` from append-only `scripts/ci/anchor_reach_log.tsv` (+ inventory/triage) on GATE_WIRING_PATHS; not router/class/predicate edits. Modal pause law + authority I/O boundaries hold. Pointer → `STUDIO-SCENARIO-LIBRARY-CREATE-0`.
