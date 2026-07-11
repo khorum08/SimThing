@@ -1,0 +1,2 @@
+crates/simthing-mapeditor/src/synthetic_admitted_live_ops_gap_surface.rs
+docs/tests/admitted_scope_live_ops_gap_fixture_results.md

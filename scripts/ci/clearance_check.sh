@@ -1641,6 +1641,18 @@ run_selftest() {
     clearance_selftest_studio_clock_class_api_nonregression
     clearance_selftest_studio_clock_class_picker_nonregression
     clearance_selftest_studio_clock_class_gate_wiring
+    clearance_selftest_live_ops_class_clearable
+    clearance_selftest_live_ops_class_rejects_driver
+    clearance_selftest_live_ops_class_rejects_kernel_sim_wgsl
+    clearance_selftest_live_ops_class_rejects_workshop
+    clearance_selftest_live_ops_class_rejects_gate_wiring
+    clearance_selftest_live_ops_class_rejects_spec_clause
+    clearance_selftest_live_ops_class_missing_tested_sha
+    clearance_selftest_live_ops_class_missing_coverage
+    clearance_selftest_live_ops_class_missing_ci_green
+    clearance_selftest_live_ops_class_explicit_novelty
+    clearance_selftest_live_ops_class_admitted_scope_gap
+    clearance_selftest_live_ops_class_clock_substrate_nonregression
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing

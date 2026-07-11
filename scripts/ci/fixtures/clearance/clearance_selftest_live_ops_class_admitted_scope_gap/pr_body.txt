@@ -1,0 +1,8 @@
+admitted_envelope: YES
+admitting_pr: #1287
+admitting_rung: STUDIO-LIVE-OBSERVE-0
+admitted_surfaces: mapeditor presentation observation only
+forbidden_surfaces: crates/simthing-driver/**; crates/simthing-kernel/**; crates/simthing-sim/**; crates/simthing-workshop/**
+tested_code_sha: deadbeefcafe1234567890abcdef1234567890ab
+coverage_basis: PASS - admitted envelope without live-ops class match remains router-gap
+ci_green: PASS

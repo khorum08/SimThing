@@ -1,0 +1,5 @@
+novelty_claim: YES
+novelty_basis: unanticipated implementation discovery that improves live-ops beyond the planned class rung
+tested_code_sha: d4cea0d005aa979368837adc69b48592f1650897
+coverage_basis: PASS - matched live-ops class with explicit novelty must reserve
+ci_green: PASS
