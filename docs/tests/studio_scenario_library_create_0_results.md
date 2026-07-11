@@ -1,80 +1,65 @@
 # STUDIO-SCENARIO-LIBRARY-CREATE-0 Results
 
 ## Status
-
-**PROBATION / proof-present / DA-review-pending.** Not graduated and not merged.
+**DA-GRADUATED / COMPLETE** — merged [#1291](https://github.com/khorum08/SimThing/pull/1291) @ `e42a248f`.
 
 ## PR / branch / merge
-
 | Field | Value |
 |---|---|
 | PR | [#1291](https://github.com/khorum08/SimThing/pull/1291) |
 | branch | `codex/studio-scenario-library-create-0` |
 | base | `master` |
-| merge | NOT MERGED |
+| head_sha | `1b0640688c7db460a3af13eccf4b1c9c622103aa` |
+| merge | `e42a248f` |
 
 ## What changed
-
-- Activated the existing Scenario Library Create tab with scenario ID input and a blank-create action.
-- Added a neutral one-cell structural authority builder: World root, map Location, one gridcell Location, one neutral Cohort payload, no links, and `blank_minimal` provenance.
-- Hydrated the created authority through `StudioSession::from_loaded_scenario`; no parallel session store or generator template.
-- Adopted successful creates through the existing Studio adoption/scene rebuild path.
-- Requested live-bridge detach on successful authority replacement, retained modal pause, and never restored Play.
-- Kept failed creation atomic: status is fail-loud and the prior session remains current.
+- Activated Scenario Library Create tab with scenario ID input and blank-create action
+- Neutral one-cell structural authority builder (`blank_minimal` provenance)
+- Hydrate via `StudioSession::from_loaded_scenario`; adopt + scene rebuild on success only
+- `live_bridge_reset_requested` → `bridge.detach()` on successful replacement
+- Modal pause / no-autoplay preserved; fail-loud atomic create
+- Headless proofs: `crates/simthing-mapeditor/tests/studio_scenario_library_create_0.rs` (12 tests)
 
 ## Load-bearing proofs
-
-| Proof | Result / catches |
+| test | catches |
 |---|---|
-| `cargo check -p simthing-mapeditor` | PASS; create builder, UI action, adoption, and reset request type-check |
-| `cargo test -p simthing-mapeditor --test studio_scenario_library_create_0` | PASS, 12/12; loadable session, STEAD/links, authority boundary, save/load identity, failure atomicity, pause/no-autoplay, zero bridge tick, activated affordance, no TP/workshop/gameplay, fail-loud errors |
-| `cargo test -p simthing-mapeditor --test studio_scenario_library_ui_0` | PASS, 12/12; 9.5 modal/I/O behavior retained with active Create affordance |
-| `cargo test -p simthing-mapeditor --test studio_live_observe_0` | PASS, 10/10 |
-| `cargo test -p simthing-mapeditor --test studio_live_session_bridge_0` | PASS, 8/8 |
-| `cargo test -p simthing-mapeditor --test studio_sim_clock_ui_0` | PASS, 6/6 |
-| `cargo test -p simthing-mapeditor --test studio_sim_clock_0` | PASS, 4/4 |
-| `cargo build -p simthing-mapeditor --bin simthing-studio` | PASS |
-| `cargo fmt -p simthing-mapeditor -- --check` | BASELINE FAIL in untouched pre-existing files such as `tp_studio_clause_picker_0.rs`; scoped rustfmt for changed implementation/test files PASS |
-| `bash scripts/ci/test_inventory_drift_check.sh` | PASS; 0 unledgered and 0 stale rows |
-| `bash scripts/ci/agent_scan.sh` | `INSPECT(1)`, no reliable failures; 12 distinct load-bearing tests explicitly justified and triaged green |
+| scenario_library_create_blank_produces_loadable_session | UI-only / non-authority create |
+| scenario_library_create_session_has_valid_stead_and_links | broken STEAD / links on blank shell |
+| scenario_library_create_preserves_scenario_authority_boundary | serializing view/bridge/Bevy state |
+| scenario_library_create_save_load_roundtrip_preserves_identity | parallel I/O path / identity loss |
+| scenario_library_create_failure_leaves_prior_session_intact | mutating prior session on invalid ID |
+| scenario_library_create_keeps_modal_pause | create restoring Play |
+| scenario_library_create_close_does_not_autoplay | close autoplay after create |
+| scenario_library_create_does_not_tick_live_bridge | create scheduling live ticks |
+| scenario_library_create_replaces_deferred_create_affordance | Create still deferred/disabled |
+| scenario_library_create_has_no_tp_hardcodes | TP fixture/seed defaults |
+| scenario_library_create_has_no_workshop_or_gameplay_dependency | workshop / gameplay residue |
+| scenario_library_create_reports_errors_without_silent_fallback | silent empty-ID success |
+
+Regressions kept green: `studio_scenario_library_ui_0`, `studio_live_observe_0`, `studio_live_session_bridge_0`, `studio_sim_clock_ui_0`, `studio_sim_clock_0`.
 
 ## Scope Ledger
-
-| Scope | Result |
+| | |
 |---|---|
 | Specified | Minimal blank create, loadable session, authority roundtrip, modal pause/no-autoplay, fail-loud atomic replacement |
-| Implemented | One-cell structural shell builder + session helper + Create UI + existing adoption/rebuild + bridge reset request |
-| Proxied | `StudioSession::from_loaded_scenario` rebuilds document, admission summary, projections, hydration, summary, and view model from authority |
-| Deferred | Rich templates/marketplace; live-ops clearance class (9.7); polish/hardening (9.8) |
-| Out of scope | Generator templates, driver/session execution APIs, kernel/sim/WGSL, workshop, gameplay/RF, CPU planner, gate/workflow/class changes |
-
-Authority surfaces: driver NO; kernel/sim/WGSL NO; workshop NO; clearance/gate/class NO.
+| Implemented | One-cell structural shell + session helper + Create UI + adoption/rebuild + bridge reset request |
+| Proxied | `StudioSession::from_loaded_scenario` rebuilds document, admission, projections, hydration |
+| Deferred | Rich templates; live-ops clearance class (9.7); polish/hardening (9.8) |
+| Out of scope | Generator templates, driver/session APIs, kernel/sim/WGSL, workshop, gameplay/RF, CPU planner, gate/class |
 
 ## Conformance
-
-- `SimThingScenarioSpec` remains sole model authority; presentation state is never serialized.
-- Created session is loadable and has valid STEAD mapping, links, structural projection, summary, and document.
-- Existing scenario I/O saves and reloads the created authority with identity preserved.
-- Create failure does not receive or mutate the prior session; UI adopts only the success branch.
-- Successful replacement requests bridge detach before the next live bridge update.
-- Modal visibility pauses the clock; Create and close never autoplay or execute live ticks.
-- No TP fixture/test seed, workshop dependency, generator template, CPU planner, or gameplay semantics.
+- `SimThingScenarioSpec` sole authority; presentation never serialized
+- Created session loadable with valid STEAD/links/structural projection
+- Existing scenario I/O save/load identity holds
+- Failed create leaves prior session intact; UI adopts success only
+- Successful replace requests bridge detach before next live update
+- Modal pause; create/close never autoplay or execute live ticks
+- No TP/workshop/generator/gameplay residue
 
 ## Known gaps / next
-
-- Blank creation uses the smallest Studio-admitted legacy World structural shell because canonical Scenario authority requires authored GameSession/Owner/GalaxyMap semantics that are not blank.
-- No template selector; the handoff requires one minimal mode and template work remains optional.
-- Next rung is `STUDIO-LIVE-OPS-CLASS-0` (9.7, gate-wiring/DA-reserve).
+- Blank uses minimal World structural shell (STEAD-valid); no template selector
+- JSON/Clause load paths do not yet set `live_bridge_reset_requested` (create does; consider in 9.8)
+- Next: `STUDIO-LIVE-OPS-CLASS-0` (9.7)
 
 ## Graduation routing
-
-PROBATION. Clearance sticky on PR #1291: `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` with `DA-TREEVERIFY-PROFILE: DEEP-TREE`. Risk class: model-authority-create + modal-pause-control; no driver/kernel/sim/WGSL/workshop surface touched. Clearance and Doctrine Scan are green. Route to DA; coding agent must not merge.
-
-## Orientation / anchors
-
-`ORIENT-RECEIPT: a1c8c3f9683d` (role: coding; orientation digest `7a7bd4782a8f84976a7aaaeecddc0eaec87dfbfc9a17993aed0c31d67456d201`).
-
-- `ANCHOR-ACK: movement-front@a0592b2f37ca`
-- `ANCHOR-ACK: orientation-harness-core@8a365d1c0864`
-- `ANCHOR-ACK: session-lifecycle-adr-family@d73fe5a83f25`
-- `ANCHOR-ACK: structural-execution-convergence@17fa0732f44d`
+**DA PASS** — `DA-RESERVE(gate-wiring)` from append-only harness TSVs on `GATE_WIRING_PATHS`, not router/class edits. Blank authority + hydrate + atomic adopt + bridge detach + pause law hold. Pointer → `STUDIO-LIVE-OPS-CLASS-0`.
