@@ -1,7 +1,7 @@
 # STUDIO-LIVE-OBSERVE-0 Results
 
 ## Status
-**PROBATION** — not complete; not graduated. Awaiting Owner/DA review.
+**DA-GRADUATED / COMPLETE** — merged [#1287](https://github.com/khorum08/SimThing/pull/1287) @ `5d3ed74c`.
 
 ## PR / branch / merge
 | Field | Value |
@@ -9,8 +9,8 @@
 | PR | [#1287](https://github.com/khorum08/SimThing/pull/1287) |
 | branch | `studio-live-observe-0` |
 | base | `master` |
-| head_sha | `2920b1d996c2afaf523e79d9a4c080d21f529b7b` |
-| merge | NOT MERGED |
+| head_sha | `453e7886206f886871ade4607923ba6d6b91586c` |
+| merge | `5d3ed74c` |
 
 ## What changed
 - `studio_live_observe.rs` — pure `StudioLiveObservationReadout` + `build_studio_live_observation_readout` over existing clock transport readout, live bridge readout, and `StudioSession` summary
@@ -59,4 +59,4 @@ Regressions kept green: `studio_live_session_bridge_0`, `studio_sim_clock_ui_0`,
 - Next: `STUDIO-SCENARIO-LIBRARY-UI-0` (9.5)
 
 ## Graduation routing
-**PROBATION** — mapeditor presentation only; recommended light posture. Do not self-mark complete.
+**DA PASS** — `DA-RESERVE(admitted-scope-router-gap)` is router debt (no live-ops observe class yet; 9.7). Presentation-only projection over clock/bridge/session; no driver/workshop/gate widening. Pointer → `STUDIO-SCENARIO-LIBRARY-UI-0`.
