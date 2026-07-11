@@ -6,10 +6,10 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | (pending) |
+| PR | [#1300](https://github.com/khorum08/SimThing/pull/1300) |
 | branch | `studio-canonical-scenario-0` |
 | base | `master` |
-| head_sha | (pending) |
+| head_sha | `94471cabc27de750e35c75aee5b9714d14beb955` |
 | merge | NOT MERGED |
 
 ## What changed
