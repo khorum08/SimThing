@@ -1,0 +1,1 @@
+CLEARANCE-VERDICT: FAIL(missing-coverage-basis: add tested_code_sha and coverage_basis)

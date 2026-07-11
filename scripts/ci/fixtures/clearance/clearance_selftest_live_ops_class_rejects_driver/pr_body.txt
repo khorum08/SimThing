@@ -1,6 +1,7 @@
 tested_code_sha: d4cea0d005aa979368837adc69b48592f1650897
-coverage_basis: PASS - live-ops class supersedes clock-substrate when live bridge path present
+coverage_basis: PASS - Studio live-ops UI/clock class fixture
 ci_green: PASS
+novelty_claim: NO
 runtime_changes: NO
 gate_wiring: NO
 closeout_run: NO

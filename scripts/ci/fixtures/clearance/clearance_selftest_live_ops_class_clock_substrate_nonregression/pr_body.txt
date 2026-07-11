@@ -1,5 +1,5 @@
 tested_code_sha: d4cea0d005aa979368837adc69b48592f1650897
-coverage_basis: PASS - live-ops class supersedes clock-substrate when live bridge path present
+coverage_basis: PASS - studio-sim-clock-substrate still clearable under live-ops class presence
 ci_green: PASS
 runtime_changes: NO
 gate_wiring: NO
