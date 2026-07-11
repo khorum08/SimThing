@@ -30,6 +30,7 @@ pub mod rng;
 pub mod shape_param_spec;
 pub mod shape_registry;
 pub mod special_routes;
+pub mod star_names;
 pub mod strategies;
 pub mod strategy;
 pub mod success_galaxy;
@@ -98,6 +99,9 @@ pub use special_routes::{
     generate_special_routes, validate_special_route_edges, validate_special_route_options,
     SpecialRouteEdge, SpecialRouteError, SpecialRouteKind, SpecialRouteOptions, SpecialRouteReport,
     SpecialRouteTopology,
+};
+pub use star_names::{
+    assign_star_names, star_name_for_index_or_seed, StarNameAssignment,
 };
 pub use strategy::{
     PlacedSystemSeed, ShapePlacement, ShapePlacementError, ShapeStrategy, ShapeStrategyContext,

@@ -4,7 +4,7 @@
 //! 0.0.8.2.5 `mapgen_lattice` / `mapgen_links` readers. Emitted integer positions are **structural**
 //! gridcell coordinates — the closed lowerer honors them as the authoritative `(col,row)` layout (STEAD).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use thiserror::Error;
 
@@ -13,6 +13,7 @@ use crate::lattice::SquareLattice;
 use crate::nebula::NebulaField;
 use crate::params::MapGeneratorParams;
 use crate::strategy::{PlacedSystemSeed, ShapePlacement};
+use crate::star_names::assign_star_names;
 use crate::topology::HyperlaneTopology;
 
 pub const DEFAULT_INITIALIZER_REF: &str = "example_rim_initializer";
@@ -70,6 +71,8 @@ pub enum ScenarioEmitError {
     DuplicateSystemId { id: String },
     #[error("invalid initializer bareword '{name}'")]
     InvalidInitializerBareword { name: String },
+    #[error("star naming pass did not assign system id '{id}'")]
+    MissingStarName { id: u32 },
 }
 
 /// Deterministic scenario text emitter (producer-side only).
@@ -99,7 +102,6 @@ impl ScenarioEmitter {
         hyperlanes: Option<&HyperlaneTopology>,
         nebulas: Option<&[NebulaField]>,
     ) -> Result<ScenarioText, ScenarioEmitError> {
-        let _ = params;
         if placement.systems.is_empty() {
             return Err(ScenarioEmitError::EmptyPlacement);
         }
@@ -114,6 +116,13 @@ impl ScenarioEmitter {
             let initializer = initializer_bareword(system, &self.config.default_initializer_ref)?;
             initializer_refs.insert(initializer);
         }
+        let star_names: BTreeMap<u32, String> = assign_star_names(
+            params.seed,
+            placement.systems.iter().map(|system| system.id),
+        )
+        .into_iter()
+        .map(|assignment| (assignment.system_id, assignment.display_name))
+        .collect();
 
         let mut out = String::new();
         write_line(&mut out, &format!("{} = {{", self.config.scenario_id));
@@ -121,6 +130,7 @@ impl ScenarioEmitter {
             &mut out,
             &self.config,
             placement,
+            &star_names,
             hyperlanes,
             nebulas.unwrap_or(&[]),
         )?;
@@ -136,6 +146,7 @@ fn write_static_galaxy_block(
     out: &mut String,
     config: &ScenarioEmitterConfig,
     placement: &ShapePlacement,
+    star_names: &BTreeMap<u32, String>,
     hyperlanes: Option<&HyperlaneTopology>,
     nebulas: &[NebulaField],
 ) -> Result<(), ScenarioEmitError> {
@@ -150,7 +161,15 @@ fn write_static_galaxy_block(
     write_line(out, "        random_hyperlanes = no");
     out.push('\n');
     for system in &placement.systems {
-        write_system_block(out, system, &config.default_initializer_ref)?;
+        let display_name = star_names
+            .get(&system.id)
+            .ok_or(ScenarioEmitError::MissingStarName { id: system.id })?;
+        write_system_block(
+            out,
+            system,
+            display_name,
+            &config.default_initializer_ref,
+        )?;
         out.push('\n');
     }
     if let Some(topology) = hyperlanes {
@@ -174,6 +193,7 @@ fn write_hyperlane_block(out: &mut String, from: &str, to: &str) {
 fn write_system_block(
     out: &mut String,
     system: &PlacedSystemSeed,
+    display_name: &str,
     default_initializer_ref: &str,
 ) -> Result<(), ScenarioEmitError> {
     let initializer = initializer_bareword(system, default_initializer_ref)?;
@@ -182,7 +202,13 @@ fn write_system_block(
         out,
         &format!("            id = \"{}\"", system_id_scalar(system)),
     );
-    write_line(out, "            name = \"\"");
+    write_line(
+        out,
+        &format!(
+            "            name = \"{}\"",
+            escape_clause_string(display_name)
+        ),
+    );
     write_line(
         out,
         &format!(
