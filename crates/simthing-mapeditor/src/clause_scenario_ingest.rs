@@ -7,10 +7,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use simthing_clausething::{
-    hydrate_scenario, parse_raw_document, project_pack_to_authority_tree_candidate,
-    rebind_pack_to_structural_rebind_ready, ClauseScenarioProjectionError,
-    ClauseScenarioProjectionMode, ClauseScenarioProjectionReport, HydrateError,
-    HydratedScenarioPack, ParseError,
+    hydrate_scenario_with_source_base, parse_raw_document,
+    project_pack_to_authority_tree_candidate, rebind_pack_to_structural_rebind_ready,
+    ClauseScenarioProjectionError, ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
+    HydrateError, HydratedScenarioPack, ParseError,
 };
 use simthing_spec::SimThingScenarioSpec;
 use thiserror::Error;
@@ -93,17 +93,21 @@ pub struct ClauseScenarioIngestResult {
 }
 
 /// Ingest a `.clause` path with caller-supplied resolver; emit StructuralRebindReady Spec.
+///
+/// Relative `source_json` / `include_json` paths resolve against the **clause file directory**
+/// (`source_base`), not process CWD (STUDIO-CLAUSE-LOADER-SIMPLIFY-0 / 11.1 residual).
 pub fn ingest_clause_scenario_path(
     path: &Path,
     options: &ClauseScenarioIngestOptions,
 ) -> Result<ClauseScenarioIngestResult, ClauseScenarioIngestError> {
     let raw = std::fs::read_to_string(path)?;
-    let mut result = ingest_clause_scenario_text(&raw, options)?;
+    let source_base = path.parent();
+    let mut result = ingest_clause_scenario_text(&raw, options, source_base)?;
     result.source_path = Some(path.to_path_buf());
     Ok(result)
 }
 
-/// Ingest clause source bytes with caller-supplied resolver.
+/// Ingest clause source bytes with caller-supplied resolver (no clause path → no source_base).
 pub fn ingest_clause_scenario_bytes(
     bytes: &[u8],
     options: &ClauseScenarioIngestOptions,
@@ -111,19 +115,20 @@ pub fn ingest_clause_scenario_bytes(
     let raw = std::str::from_utf8(bytes).map_err(|e| {
         ClauseScenarioIngestError::SourceResolution(format!("clause source is not UTF-8: {e}"))
     })?;
-    ingest_clause_scenario_text(raw, options)
+    ingest_clause_scenario_text(raw, options, None)
 }
 
 fn ingest_clause_scenario_text(
     raw: &str,
     options: &ClauseScenarioIngestOptions,
+    source_base: Option<&Path>,
 ) -> Result<ClauseScenarioIngestResult, ClauseScenarioIngestError> {
     if options.projection_mode != ClauseScenarioProjectionMode::StructuralRebindReady {
         return Err(ClauseScenarioIngestError::UnsupportedProjectionMode);
     }
     let source = apply_source_resolver(raw, &options.source_resolver)?;
     let document = parse_raw_document(source.as_bytes())?;
-    let pack = hydrate_scenario(&document)?;
+    let pack = hydrate_scenario_with_source_base(&document, source_base)?;
     let (scenario, report) = rebind_pack_to_structural_rebind_ready(&pack)?;
     Ok(ClauseScenarioIngestResult {
         source_path: None,

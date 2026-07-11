@@ -872,6 +872,8 @@ fn draw_telemetry_dialog(
                     state.telemetry_dialog.position = [clamped_moved.min.x, clamped_moved.min.y];
                 }
                 ui.separator();
+                draw_telemetry_scenario_section(ui, state);
+                ui.separator();
                 egui::CollapsingHeader::new("Nameplate debug")
                     .default_open(true)
                     .show(ui, |ui| {
@@ -1622,46 +1624,39 @@ fn draw_live_observation(ui: &mut egui::Ui, state: &StudioAppState) {
     }
 }
 
-fn draw_scenario_library_json_controls(
-    ctx: &egui::Context,
-    ui: &mut egui::Ui,
-    state: &mut StudioAppState,
-) {
-    ui.label(egui::RichText::new("Scenario (model authority)").strong());
-    ui.label(
-        egui::RichText::new("Separate from simthing-studio-config.json")
-            .small()
-            .weak(),
+/// Read-only Scenario section in Telemetry (11.4). Does not mutate ScenarioSpec.
+fn draw_telemetry_scenario_section(ui: &mut egui::Ui, state: &StudioAppState) {
+    let clock = state.sim_clock_transport.readout();
+    let telemetry = crate::build_studio_scenario_telemetry_readout(
+        state.session.as_ref(),
+        &state.clause_path_text,
+        &clock,
     );
-    ui.horizontal(|ui| {
-        ui.label("Scenario path:");
-        ui.text_edit_singleline(&mut state.scenario_path_text);
-    });
-    ui.horizontal(|ui| {
-        let save_enabled = state.session.is_some();
-        if save_enabled {
-            if ui.button("Save Scenario").clicked() {
-                if let Ok(path) = super::scenario_io::scenario_path_from_state(state) {
-                    ctx.data_mut(|d| {
-                        d.insert_temp(egui::Id::new("do_save_scenario"), path);
-                    });
-                } else {
-                    state.last_scenario_io_status =
-                        "Scenario save failed: invalid scenario path".into();
-                    state.status_message = state.last_scenario_io_status.clone();
-                }
-            }
-        } else if inactive_button(ui, "Save Scenario").clicked() {
-            state.last_scenario_io_status = "Scenario save failed: no active session".into();
-            state.status_message = state.last_scenario_io_status.clone();
-        }
-        if ui.button("Load Scenario...").clicked() {
-            ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_picker"), true));
-        }
-        if ui.button("Manual Load Path").clicked() {
-            ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_load_scenario_manual"), true));
-        }
-    });
+    egui::CollapsingHeader::new("Scenario")
+        .default_open(true)
+        .show(ui, |ui| {
+            ui.label(format!("Scenario id: {}", telemetry.scenario_id));
+            ui.label(format!("Clause path: {}", telemetry.clause_path));
+            ui.label(format!("Source path: {}", telemetry.source_path));
+            ui.label(format!(
+                "Source resolution: {}",
+                telemetry.source_resolution
+            ));
+            ui.label(format!("Resolver: {}", telemetry.resolver_state));
+            ui.label(format!(
+                "Systems: {}  ·  Owners: {}  ·  {}",
+                telemetry.system_count, telemetry.owner_count, telemetry.stead_label
+            ));
+            let play = if telemetry.paused {
+                "paused"
+            } else {
+                "playing"
+            };
+            ui.label(format!(
+                "Clock: {play}  ·  Tick: {}",
+                telemetry.tick_index
+            ));
+        });
 }
 
 fn draw_scenario_library_clause_controls(
@@ -1671,20 +1666,18 @@ fn draw_scenario_library_clause_controls(
 ) {
     ui.label(egui::RichText::new("ClauseScript (admitted StructuralRebindReady)").strong());
     ui.label(
-        egui::RichText::new("Calls production clause_scenario_ingest only; no TP defaults")
-            .small()
-            .weak(),
+        egui::RichText::new(
+            "Sibling source_json resolves from the .clause directory (empty operator resolver).",
+        )
+        .small()
+        .weak(),
     );
     ui.horizontal(|ui| {
         ui.label("Clause path:");
         ui.text_edit_singleline(&mut state.clause_path_text);
     });
-    ui.label("Resolver entries (TOKEN=path per line; required for {{…}} placeholders):");
-    ui.add(
-        egui::TextEdit::multiline(&mut state.clause_resolver_text)
-            .desired_rows(2)
-            .desired_width(f32::INFINITY),
-    );
+    // Resolver textbox intentionally removed (11.4): tokens fail-loud if present;
+    // portable clauses use clause-relative source_base (no TOKEN=path UI).
     if ui.button(clause_picker_menu_label()).clicked() {
         ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_open_clause_scenario_picker"), true));
     }
@@ -1721,12 +1714,12 @@ fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState)
         }
 
         ui.separator();
+        // Operator load path is ClauseScript-only (11.4). JSON load affordances removed.
+        // Create remains for blank-scenario authoring (9.6); not a JSON authority load path.
+        if state.scenario_library.selected_tab == StudioScenarioLibraryTab::Json {
+            state.scenario_library.selected_tab = StudioScenarioLibraryTab::Clause;
+        }
         ui.horizontal(|ui| {
-            ui.selectable_value(
-                &mut state.scenario_library.selected_tab,
-                StudioScenarioLibraryTab::Json,
-                "JSON",
-            );
             ui.selectable_value(
                 &mut state.scenario_library.selected_tab,
                 StudioScenarioLibraryTab::Clause,
@@ -1741,10 +1734,7 @@ fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState)
         ui.separator();
 
         match state.scenario_library.selected_tab {
-            StudioScenarioLibraryTab::Json => {
-                draw_scenario_library_json_controls(ctx, ui, state);
-            }
-            StudioScenarioLibraryTab::Clause => {
+            StudioScenarioLibraryTab::Json | StudioScenarioLibraryTab::Clause => {
                 draw_scenario_library_clause_controls(ctx, ui, state);
             }
             StudioScenarioLibraryTab::Create => {
