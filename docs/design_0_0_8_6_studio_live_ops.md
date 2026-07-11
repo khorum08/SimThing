@@ -132,9 +132,44 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 10.0 | `STUDIO-TRANSPORT-OBSERVE-REFINE-0` | **Presentation polish** of the sim-clock transport + live-observe surface: control affordances/layout, clearer paused/playing/rate/effective-TPS readout, keyboard shortcuts for pause/play/rate where safe. No scheduling-semantics change; no Spec mutation. | NOT STARTED | Tier-1 |
+| 10.0 | `STUDIO-TRANSPORT-OBSERVE-REFINE-0` | Presentation polish of transport + live-observe surface (affordances/layout/shortcuts). | **PARKED** — superseded by Phase 11 (concrete UI scope landed 2026-07-11); reopen only if a transport-specific tweak is requested that Phase 11 doesn't cover. | Tier-1 |
 
 **Dependency order:** 10.0 → (further UI rungs appended on Owner direction).
+
+---
+
+## 4c. Phase 11 PR ladder — Scenario Presentation & Faction Identity (OPEN, ACTIVE)
+
+> **Owner-directed (2026-07-11)** from live debug-client review. Four concerns: (1) ClauseScript-only
+> loader with the source-JSON resolver auto-selected off-screen and surfaced as read-only scenario
+> telemetry; (2) stars are unnamed — the galaxy was generated without the star-naming pass; (3) owning
+> factions gain identity fields (RGB color + faction name + alliance, placeholders for later) reflected
+> in nameplates and an owned-star selection highlight; (4) window frosted-glass backgrounds need a real
+> **performant** darken+blur.
+>
+> **Doctrine unchanged:** ScenarioSpec is authority; Bevy/egui/clock are presentation; no CPU planner.
+> **Tiering:** data-model / generator rungs touch authority crates (spec/clausething/mapgenerator) and
+> are **DA-reserve**; pure-mapeditor presentation rungs are **`studio-live-ops-ui-clock`-clearable**.
+> UI rungs depend on their data rung landing first (colors need the field; named nameplates need the pass).
+
+### Tier A — data / authority (DA-reserve)
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| 11.1 | `STUDIO-CANONICAL-SCENARIO-0` | **Foundation.** Resolve clause `source_json`/includes **relative to the clause file's directory** (not process cwd) in `simthing-clausething::hydrate_scenario`; commit a self-contained `scenarios/terran_pirate_galaxy.clause` + sibling base-disc JSON that loads with an **empty resolver from any cwd**. Removes the `{{FIXTURE_JSON}}` test-harness leak from the operator path. | NOT STARTED | DA-reserve |
+| 11.2 | `STUDIO-FACTION-IDENTITY-FIELDS-0` | Owner/faction identity fields on the scenario spec + clause grammar + hydrate: **`color_rgb`** (required; drives UI), **`faction_name`**, **`faction_alliance`** (placeholder), reserved forward placeholders. TP owners (Terran/Pirate) carry distinct colors in the canonical scenario. Authority + admission only; no UI. | NOT STARTED | DA-reserve |
+| 11.3 | `STUDIO-STAR-NAMING-PASS-0` | Galaxy generation runs the **star-naming pass** so every star system carries a display name; the committed TP base-disc is regenerated/repaired so `simthing_spec::star_system_display_name` resolves for all systems. Generator + data; deterministic naming (seed-stable). | NOT STARTED | DA-reserve |
+
+### Tier B — presentation (`studio-live-ops-ui-clock`-clearable unless noted)
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| 11.4 | `STUDIO-CLAUSE-LOADER-SIMPLIFY-0` (needs 11.1) | Scenario Library shows **only the ClauseScript loader**; the resolver/source field is removed from the load panel and **auto-populated off-screen** (sibling-file / canonical convention). The resolved source path + resolver state move to a **new "Scenario" dropdown in the Telemetry window**, alongside scenario telemetry (scenario id, star/owner counts, STEAD status, tick index, paused). Read-only; no Spec mutation. | NOT STARTED | Tier-2 |
+| 11.5 | `STUDIO-FACTION-NAMEPLATES-0` (needs 11.2 + 11.3) | Star + planet nameplates render the **star/system name** (from 11.3) in the **owning faction's `color_rgb`** (from 11.2); unowned = neutral. Presentation only over existing `GalaxyStarNameplate` path. | NOT STARTED | Tier-2 |
+| 11.6 | `STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0` (needs 11.2) | Selecting a faction-owned star **brightens all stars that faction owns** to reflect the owned/selected set; deselect restores. Presentation-only render state; no Spec mutation, no selection-model authority. | NOT STARTED | Tier-2 |
+| 11.7 | `STUDIO-FROSTED-GLASS-0` | Window backgrounds get a real **frosted-glass** effect: slight darkening tint + backdrop **blur** of content behind the panel. **Performance is a hard exit criterion** — frame-budget-bound (e.g. one downsampled/low-radius separable blur target, not a full-res per-frame gaussian); record before/after frame-time. May add a presentation `*.wgsl` blur pass → **DA-reserve** (benign presentation shader, not kernel authority). | NOT STARTED | Tier-2 / DA-reserve if wgsl |
+
+**Dependency order:** 11.1 → (11.2 ∥ 11.3) → (11.4 needs 11.1 ; 11.5 needs 11.2+11.3 ; 11.6 needs 11.2) ; 11.7 independent. Tier-A rungs reserve to DA by envelope; Tier-B UI rungs self-clear once their data dep lands.
 
 ---
 
@@ -160,7 +195,7 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | `STUDIO-TRANSPORT-OBSERVE-REFINE-0` (Phase 9 complete; Phase 10 open) |
+| Active open rung | `STUDIO-CANONICAL-SCENARIO-0` (Phase 11 active; Phase 10 parked/superseded) |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Production picker + API (explicit resolver if `{{…}}`) |
 
