@@ -1642,6 +1642,7 @@ run_selftest() {
     clearance_selftest_studio_clock_class_picker_nonregression
     clearance_selftest_studio_clock_class_gate_wiring
     clearance_selftest_live_ops_class_clearable
+    clearance_selftest_live_ops_class_phase10_refine_clearable
     clearance_selftest_live_ops_class_rejects_driver
     clearance_selftest_live_ops_class_rejects_kernel_sim_wgsl
     clearance_selftest_live_ops_class_rejects_workshop

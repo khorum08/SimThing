@@ -108,14 +108,39 @@ Trigger domains for anchors: `bevy-presentation`, `studio-ui`, `sim-clock`.
 | 9.8 | `STUDIO-LIVE-OPS-HARDENING-0` | Polish: cancel modal, double-open, rapid rate change, save-while-paused, no tick on modal. | **DA-GRADUATED / merged [#1295](https://github.com/khorum08/SimThing/pull/1295)** — 13-proof hardening battery (bridge-reset on all session-replacement paths, modal cancel keeps Pause + purges pending, double-open idempotent, save-while-paused no-tick, fail-loud save-error); presentation-only, zero forbidden surfaces; evidence [`studio_live_ops_hardening_0_results.md`](tests/studio_live_ops_hardening_0_results.md) | Tier-1 |
 
 **Dependency order:** 9.0 → 9.1 → 9.1h (class for 9.1 merge) → (9.2 ∥ 9.3) → 9.4 / 9.5 → 9.6 → 9.7 → 9.8.
+**Phase 9 status: COMPLETE (2026-07-10).** All 10 rungs graduated; the operator live-ops path
+(clock → transport UI → production-session bridge → observe → scenario library → hardening) is landed.
 
-**Admission:** After 9.0, Owner/DA may issue a short admission stamp for “Studio live clock + library UI” before 9.1/9.5 if required by process; default is to treat 9.0 report as the gate.
+---
+
+## 4b. Phase 10 PR ladder — Studio UI / Control Refinement (OPEN)
+
+> **Scope.** Presentation-only refinement of the landed Studio live-ops surface: transport controls,
+> live readouts, scenario-library ergonomics, keyboard/mouse affordances, layout and state clarity.
+> **All Phase-9 doctrine holds unchanged:** ScenarioSpec is sole authority; Bevy/egui/clock are
+> presentation; no CPU planner; modal library ⇒ paused; no Auto-Play; no new gameplay/RF/GameMode.
+> Phase-10 diffs are **`studio-live-ops-ui-clock`-clearable** (class scope widened at #1296 to the
+> `studio_*_0.rs` test shape + evidence ledgers; forbidden globs still hard-reject
+> driver/kernel/sim/gpu/spec/clause/wgsl/gate). A rung that must touch an authority crate falls
+> outside the envelope and reserves to DA by design.
+>
+> **Extensible.** This ladder grows on Owner direction; the DA scopes each rung from a stated tweak.
+> Additional Phase ladders (11+) append to this file, never fork it. **Authoring rule:** Phase-10 UI
+> rungs touch an already-enumerated live-ops src file (`studio_sim_clock_ui.rs` / `studio_live_observe.rs`
+> / `studio_scenario_library_ui.rs` / `app/ui.rs`) so the class detector fires; a brand-new UI module
+> is added to the class `match_any` as part of its own rung.
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| 10.0 | `STUDIO-TRANSPORT-OBSERVE-REFINE-0` | **Presentation polish** of the sim-clock transport + live-observe surface: control affordances/layout, clearer paused/playing/rate/effective-TPS readout, keyboard shortcuts for pause/play/rate where safe. No scheduling-semantics change; no Spec mutation. | NOT STARTED | Tier-1 |
+
+**Dependency order:** 10.0 → (further UI rungs appended on Owner direction).
 
 ---
 
 ## 5. Explicit non-goals
 
-- Closing 0.0.8.5 Terran-Pirate / `TP-DA-CLOSEOUT-0` without Owner declaration  
+- Reopening 0.0.8.5 Terran-Pirate (CLOSED 2026-07-09, #1256; consume its landed hydration, never re-derive)  
 - Atlas full-galaxy scheduler  
 - New combat/diplomacy/AI subsystems  
 - Auto-Play on load or on library close  
@@ -135,7 +160,7 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | `STUDIO-LIVE-OPS-HARDENING-0` (after 9.0–9.7 graduated) |
+| Active open rung | `STUDIO-TRANSPORT-OBSERVE-REFINE-0` (Phase 9 complete; Phase 10 open) |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Production picker + API (explicit resolver if `{{…}}`) |
 
