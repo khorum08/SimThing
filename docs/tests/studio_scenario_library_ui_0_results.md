@@ -8,7 +8,7 @@
 
 | Field | Value |
 |---|---|
-| PR | pending publication |
+| PR | [#1289](https://github.com/khorum08/SimThing/pull/1289) |
 | branch | `codex/studio-scenario-library-ui-0` |
 | base | `master` |
 | merge | NOT MERGED |
