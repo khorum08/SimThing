@@ -200,6 +200,8 @@ pub struct StudioAppState {
     pub show_hyperlanes: bool,
     pub settings_dialog: SettingsDialogModel,
     pub telemetry_dialog: TelemetryDialogModel,
+    /// Modal scenario library state (presentation only; never scenario authority).
+    pub scenario_library: crate::StudioScenarioLibraryModel,
     pub star_falloff_settings: StarFalloffSettings,
     pub star_render_mode: StarRenderMode,
     pub hyperlane_render_settings: HyperlaneRenderSettings,
@@ -289,6 +291,7 @@ impl StudioAppState {
                 hyperlane_render_settings,
             ),
             telemetry_dialog: TelemetryDialogModel::new(false, [480.0, 96.0]),
+            scenario_library: crate::StudioScenarioLibraryModel::default(),
             star_falloff_settings,
             star_render_mode,
             hyperlane_render_settings,
@@ -490,6 +493,12 @@ fn live_session_bridge_system(
     mut state: ResMut<StudioAppState>,
     time: Res<Time>,
 ) {
+    let StudioAppState {
+        scenario_library,
+        sim_clock_transport,
+        ..
+    } = &mut *state;
+    scenario_library.enforce_pause(sim_clock_transport);
     let elapsed = time.delta_secs_f64();
     if !elapsed.is_finite() || elapsed <= 0.0 {
         state.live_bridge_readout = bridge.readout();

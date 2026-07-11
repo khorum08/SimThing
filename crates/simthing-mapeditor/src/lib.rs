@@ -33,6 +33,7 @@ pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
 pub mod studio_render_loop_dirty_gate;
 pub mod studio_scenario_document;
+pub mod studio_scenario_library_ui;
 pub mod studio_scenario_load;
 pub mod studio_screenshot;
 pub mod studio_live_observe;
@@ -184,6 +185,10 @@ pub use studio_scenario_document::{
     StudioGridcellRole, StudioGridcellView, StudioOwnerView, StudioPlanetChildView,
     StudioPlanetNonGridChildView, StudioReceiverCellView, StudioScenarioAuthorityKind,
     StudioScenarioDocument, StudioScenarioDocumentError,
+};
+pub use studio_scenario_library_ui::{
+    StudioScenarioLibraryModel, StudioScenarioLibraryTab,
+    STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE,
 };
 pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
 pub use studio_live_observe::{
