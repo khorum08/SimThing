@@ -8,7 +8,7 @@ use simthing_mapeditor::{
     save_current_session_scenario_to_path, save_scenario_authority_to_path,
     ClausePickerActionResult, ClausePickerSelection, StudioLiveSessionBridge,
     StudioScenarioLibraryModel, StudioScenarioLibraryTab, StudioSession, StudioSimClockTransport,
-    StudioSimClockTransportCommand, STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE,
+    StudioSimClockTransportCommand,
 };
 use simthing_spec::{serialize_scenario_authority, validate_stead_mapping_consistency};
 use tempfile::TempDir;
@@ -213,17 +213,14 @@ fn scenario_library_clause_open_requires_explicit_resolver_when_needed() {
 #[test]
 fn scenario_library_create_is_deferred_to_9_6() {
     let mut library = StudioScenarioLibraryModel {
-        selected_tab: StudioScenarioLibraryTab::CreateDeferred,
+        selected_tab: StudioScenarioLibraryTab::Create,
         ..Default::default()
     };
     let mut transport = StudioSimClockTransport::new();
     library.open(&mut transport);
 
-    assert!(library.create_is_deferred());
-    assert!(STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE.contains("CREATE-0"));
-    let library_src = include_str!("../src/studio_scenario_library_ui.rs");
-    assert!(!library_src.contains("from_generation"));
-    assert!(!library_src.contains("blank scenario"));
+    assert!(library.create_is_available());
+    assert!(!library.create_scenario_id.is_empty());
 }
 
 #[test]

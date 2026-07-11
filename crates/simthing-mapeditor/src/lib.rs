@@ -187,8 +187,9 @@ pub use studio_scenario_document::{
     StudioScenarioDocument, StudioScenarioDocumentError,
 };
 pub use studio_scenario_library_ui::{
-    StudioScenarioLibraryModel, StudioScenarioLibraryTab,
-    STUDIO_SCENARIO_LIBRARY_CREATE_DEFERRED_MESSAGE,
+    build_blank_studio_scenario_spec, create_blank_studio_session,
+    StudioScenarioLibraryCreateError, StudioScenarioLibraryModel, StudioScenarioLibraryTab,
+    STUDIO_SCENARIO_LIBRARY_CREATE_PROVENANCE, STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID,
 };
 pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
 pub use studio_live_observe::{
