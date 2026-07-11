@@ -44,7 +44,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 359a5167dde44f6af0ae3964d515fb0462e3504e5df581ae524db36179698eef |
+| design_0_0_8_6_studio_live_ops.md | 8d80d22703f393bbfdfb137661458a91b38ac2f5853ed877d30781f9443d8a0e |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -55,7 +55,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 9.3 | STUDIO-LIVE-SESSION-BRIDGE-0 | **Wire loaded StudioSession → live tick path** (elevate workshop live-run policy | **DA-GRADUATED / merged [#1285](https://github.com/khorum08/SimThing/pull/1285) @ `ab238657`** — `SimSession::step_on... |
-| 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | Values update while running; freeze on pause |
+| 9.4 | STUDIO-LIVE-OBSERVE-0 | **Observation surfaces:** tick, pause, optional tree-local summaries already ava | **PROBATION** — [#1287](https://github.com/khorum08/SimThing/pull/1287) @ `2920b1d9`; pure `StudioLiveObservationRead... |
 | 9.5 | STUDIO-SCENARIO-LIBRARY-UI-0 | **Toggled/hidden library window:** load / create / save (JSON authority + clause | Modal open → paused; I/O through existing APIs |
 | 9.6 | STUDIO-SCENARIO-LIBRARY-CREATE-0 | Create-new / blank or template from library (scope from readiness). | Create → loadable session; no TP hardcodes |
 | 9.7 | STUDIO-LIVE-OPS-CLASS-0 | **Gate-wiring.** Precedented class for live-ops UI + clock shape. | Clearance selftests clearable + envelope rejects |
