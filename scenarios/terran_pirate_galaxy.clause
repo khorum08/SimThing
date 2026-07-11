@@ -1,0 +1,167 @@
+# TP-FULL-TRANSPILE-0 â€” complete Terran-Pirate scenario as a single native ClauseScript file.
+# Portable operator payload: source_json is a sibling relative path (clause-directory resolution; empty resolver).
+scenario = terran_pirate_galaxy {
+    metadata = {
+        display_name = "Terran-Pirate Galaxy"
+        runtime_owner = "scenario-container"
+        description = "0.0.8.5 full-scenario native ClauseScript ingestion vertical"
+        # Mechanism-B workshop surfaces (diplomacy RF, live MF execution, fleet movement)
+        # remain post-hydration consumers of this transpile; declared here as authoring
+        # posture for TP-LIVE-RUN-0 without embedding workshop semantics in clausething.
+        diplomacy_lane_profile = "influence_distrust_rf"
+        fleet_movement_profile = "palma_d_gradient_reparent"
+        fronts_profile = "threat_suppression_disruption_l1_l3"
+    }
+
+    static_galaxy_scenario = base_disc {
+        namespace = "tp_base"
+        source_json = "terran_pirate_galaxy.base_disc.json"
+        map_quality_status = PASS
+    }
+
+    owner = terran {
+        owner_key = "terran"
+        display_name = "Terran Compact"
+        archetype = "settler_policy"
+        personality_profile = "terran_reinforce"
+        capability_profile = "patrol_suppression"
+    }
+    owner = pirate {
+        owner_key = "pirate"
+        display_name = "Pirate Cartel"
+        archetype = "raider_policy"
+        personality_profile = "pirate_raid"
+        capability_profile = "raid_disruption"
+    }
+
+    ownership_volume = terran_core {
+        owner = "terran"
+        count = 200
+        selection = chebyshev_contiguous
+        seed = 770421
+        anchor_row = 199
+        anchor_col = 80
+    }
+    ownership_volume = pirate_border {
+        owner = "pirate"
+        count = 50
+        selection = chebyshev_contiguous
+        adjacent_to = "terran_core"
+        seed = 770421
+    }
+
+    planet_surface_payload = owned_system_payload {
+        applies_to = owned_systems
+        planets_per_system_min = 1
+        surface_grid = "1x1"
+        factory_min = 1
+        cohort_min = 1
+        category_map = {
+            pop_factory = { kind = Cohort depth = 3 }
+        }
+        resource = {
+            id = "tp_minerals"
+            namespace = "tp"
+            name = "minerals"
+            display_name = "Minerals"
+        }
+        modifier = {
+            pop_factory_minerals_produces_mult = 0.10
+            pop_factory_minerals_upkeep_add = 1
+        }
+    }
+    planet_surface_payload = neutral_system_payload {
+        applies_to = neutral_systems
+        planets_per_system_min = 1
+        surface_grid = "1x1"
+        factory_min = 0
+        cohort_min = 0
+    }
+
+    fleet_ship_payload = terran_fleets {
+        owner = "terran"
+        ownership_volume = "terran_core"
+        enemy_ownership_volume = "pirate_border"
+        fleet_count = 10
+        ships_per_fleet = 20
+        border_fleet_count = 6
+        ship_class = "corvette"
+        hull_seed = 100
+        weapon_damage_seed = 25
+        upkeep_per_ship = 2
+        resource = {
+            id = "tp_energy"
+            namespace = "tp"
+            name = "energy"
+            display_name = "Energy"
+        }
+    }
+    fleet_ship_payload = pirate_fleets {
+        owner = "pirate"
+        ownership_volume = "pirate_border"
+        enemy_ownership_volume = "terran_core"
+        fleet_count = 10
+        ships_per_fleet = 40
+        border_fleet_count = 8
+        ship_class = "corvette"
+        hull_seed = 80
+        weapon_damage_seed = 30
+        upkeep_per_ship = 3
+        resource = {
+            id = "tp_energy"
+            namespace = "tp"
+            name = "energy"
+            display_name = "Energy"
+        }
+    }
+
+    combat_arena_payload = contact_arena {
+        system_target = "row199_col80"
+        hull_capacity = 100
+        hp_recovery_per_tick = 0
+        ships_per_side = 1
+        terran_weapon_damage = 25
+        pirate_weapon_damage = 30
+    }
+
+    # Movement-Front L1 feedstock (SaturatingFlux) â€” bounded theater grid for STEAD
+    # authoring; full-galaxy dense MF remains atlas Deviation for TP-LIVE-RUN-0.
+    field_operator = contested_border_flux {
+        display_name = "Contested Border SaturatingFlux"
+        grid_size = 16
+        source_col = 0
+        target_col = 0
+        n_dims = 6
+        alpha_self = 0.5
+        gamma_neighbor = 0.125
+        horizon = 3
+
+        saturating_flux = {
+            u_sat = 1.0
+            chi = 0.25
+            choke_output_col = 2
+        }
+    }
+
+    # PALMA W/D reach/impedance feedstock over the border field.
+    palma_feedstock = border_reach {
+        w_source = contested_border_flux
+        w_output_col = 3
+        d_output_col = 4
+        enabled = false
+    }
+
+    # FIELD_POLICY commitment feedstock (ai_will_do urgency over L3 pressure column).
+    # Default-off; live threshold fire belongs to TP-LIVE-RUN-0 / TP-COMMITMENTS path.
+    commitment = frontier_commitment {
+        threshold = 0.75
+        event_kind = 7
+        field_urgency = {
+            source = contested_border_flux
+            column = 2
+            weight = 1.0
+            weight_pressure = 1.0
+            weight_resource = 0.25
+        }
+    }
+}

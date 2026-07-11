@@ -7,6 +7,7 @@
 //! routes, or pathfinding.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
@@ -19,32 +20,32 @@ use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
 use simthing_spec::spec::scenario::{
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
-    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SimThingScenarioGrid, SimThingScenarioProvenance,
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
-    deserialize_scenario_authority, make_galaxy_map, make_owner_entity, scenario_metadata_string_value,
-    scenario_metadata_u32_value, structural_property_value_u32,
+    deserialize_scenario_authority, make_galaxy_map, make_owner_entity,
+    scenario_metadata_string_value, scenario_metadata_u32_value, structural_property_value_u32,
+    SimThingScenarioGrid, SimThingScenarioProvenance, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    OWNER_COLOR_INDEX_PROPERTY_ID, OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
+use simthing_spec::spec::stress_compose::StressComposeSpec;
+use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 use simthing_spec::{
     apply_star_system_local_grid_frame_metadata, is_surface_gridcell, make_planet_gridcell,
     PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
 };
-use simthing_spec::spec::stress_compose::StressComposeSpec;
-use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 
 use crate::error::HydrateError;
 use crate::hydrate_category_economy::{decode_economic_modifier_key, DecodedEconomicKey};
 use crate::hydrate_field_operator::hydrate_field_operator_property;
 use crate::hydrate_palma_feedstock::{
-    HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK, finalize_palma_feedstock,
-    parse_palma_feedstock_property,
+    finalize_palma_feedstock, parse_palma_feedstock_property, HydratedScenarioPalmaFeedstock,
+    PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
 };
 use crate::hydrate_scenario_commitment::{
-    HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT, ParsedCommitmentEffectDraft,
-    finalize_scenario_commitment, parse_commitment_property,
+    finalize_scenario_commitment, parse_commitment_property, HydratedScenarioCommitment,
+    ParsedCommitmentEffectDraft, PR6_MAX_SCENARIO_COMMITMENT,
 };
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
@@ -289,7 +290,25 @@ struct ParsedOwnershipVolume {
     span: RawSpan,
 }
 
+/// Hydrate a scenario document.
+///
+/// Bare relative `source_json` / `include_json` paths resolve against process CWD when no
+/// clause-file base is provided (legacy). Prefer [`hydrate_scenario_with_source_base`] when
+/// the ClauseScript path is known so relatives resolve against the `.clause` directory.
 pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, HydrateError> {
+    hydrate_scenario_with_source_base(document, None)
+}
+
+/// Hydrate with an optional source base directory (typically the directory of the `.clause` file).
+///
+/// Path resolution for `static_galaxy_scenario.source_json` / `include_json`:
+/// - absolute paths pass through unchanged
+/// - bare relative paths resolve against `source_base` when provided, else process CWD
+/// - `{{token}}` placeholders are not rewritten here (callers substitute via resolver before parse)
+pub fn hydrate_scenario_with_source_base(
+    document: &RawDocument,
+    source_base: Option<&Path>,
+) -> Result<HydratedScenarioPack, HydrateError> {
     let RawValue::Block(root) = &document.root else {
         return Err(HydrateError::new("document root must be a property block"));
     };
@@ -363,7 +382,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                 locations.push(node);
             }
             "static_galaxy_scenario" => {
-                let embedded = parse_static_galaxy_scenario(field, &mut seen_location_targets)?;
+                let embedded =
+                    parse_static_galaxy_scenario(field, &mut seen_location_targets, source_base)?;
                 let frame_edge = embedded
                     .source_structural_grid
                     .frame
@@ -420,8 +440,9 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
                         Some(field.key.span.clone()),
                     ));
                 }
-                combat_arena_payload_draft =
-                    Some(crate::hydrate_combat_arena::parse_combat_arena_payload(field)?);
+                combat_arena_payload_draft = Some(
+                    crate::hydrate_combat_arena::parse_combat_arena_payload(field)?,
+                );
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -589,11 +610,8 @@ pub fn hydrate_scenario(document: &RawDocument) -> Result<HydratedScenarioPack, 
         embedded_static_galaxy_scenarios.first(),
     )?;
     let planet_surface_payloads = finalize_planet_surface_payloads(planet_surface_payload_drafts)?;
-    let fleet_ship_payloads = finalize_fleet_ship_payloads(
-        fleet_ship_payload_drafts,
-        &ownership_volumes,
-        &owners,
-    )?;
+    let fleet_ship_payloads =
+        finalize_fleet_ship_payloads(fleet_ship_payload_drafts, &ownership_volumes, &owners)?;
     for property in fleet_ship_game_mode_properties() {
         if game_mode
             .properties
@@ -903,8 +921,7 @@ fn attach_planet_surface_payload_to_system(
                 .find(|child| is_surface_gridcell(child))
                 .expect("planet gridcell carries mandated 1x1 surface");
             for factory_index in 0..payload.factory_min {
-                let mut factory =
-                    SimThing::new(SimThingKind::Custom("Infrastructure".into()), 0);
+                let mut factory = SimThing::new(SimThingKind::Custom("Infrastructure".into()), 0);
                 apply_participant_owner_flow_metadata(&mut factory, owner, 5 + factory_index, 0);
                 if let Some(resource) = payload.resources.first() {
                     apply_participant_owner_flow_resource_key_metadata(&mut factory, resource);
@@ -1154,13 +1171,14 @@ fn finalize_planet_surface_payloads(
                 ));
             }
             for (key, amount, span) in &draft.modifier_entries {
-                let decoded = decode_economic_modifier_key(key, &draft.categories, &draft.resources)
-                    .map_err(|mut err| {
-                        if err.span.is_none() {
-                            err.span = Some(span.clone());
-                        }
-                        err
-                    })?;
+                let decoded =
+                    decode_economic_modifier_key(key, &draft.categories, &draft.resources)
+                        .map_err(|mut err| {
+                            if err.span.is_none() {
+                                err.span = Some(span.clone());
+                            }
+                            err
+                        })?;
                 decoded_modifier_keys.push(decoded);
                 modifier_amounts.push(*amount);
             }
@@ -1242,7 +1260,9 @@ struct ParsedFleetShipPayload {
     span: RawSpan,
 }
 
-fn parse_fleet_ship_payload(property: &RawProperty) -> Result<ParsedFleetShipPayload, HydrateError> {
+fn parse_fleet_ship_payload(
+    property: &RawProperty,
+) -> Result<ParsedFleetShipPayload, HydrateError> {
     let (header_id, block) = header_or_block_body(property, "fleet_ship_payload")?;
     let mut id = header_id;
     let mut owner = None;
@@ -1389,7 +1409,10 @@ fn finalize_fleet_ship_payloads(
         })?;
         if !owners.iter().any(|entry| entry.owner_key == owner) {
             return Err(HydrateError::new_spanned(
-                format!("fleet_ship_payload `{}` references unknown owner `{owner}`", draft.id),
+                format!(
+                    "fleet_ship_payload `{}` references unknown owner `{owner}`",
+                    draft.id
+                ),
                 Some(draft.span.clone()),
             ));
         }
@@ -1477,14 +1500,12 @@ fn finalize_fleet_ship_payloads(
             ));
         }
 
-        let (border_systems, interior_systems) =
-            classify_fleet_home_systems(&own_volume.assigned_systems, &enemy_volume.assigned_systems);
+        let (border_systems, interior_systems) = classify_fleet_home_systems(
+            &own_volume.assigned_systems,
+            &enemy_volume.assigned_systems,
+        );
         let interior_fleet_count = fleet_count - border_fleet_count;
-        let border_posture = if owner == "pirate" {
-            "raid"
-        } else {
-            "border"
-        };
+        let border_posture = if owner == "pirate" { "raid" } else { "border" };
         let interior_posture = if owner == "pirate" {
             "garrison"
         } else {
@@ -1576,7 +1597,10 @@ fn classify_fleet_home_systems(
     (border, interior)
 }
 
-fn pick_fleet_home_systems(systems: &[HydratedOwnedSystem], count: u32) -> Vec<HydratedOwnedSystem> {
+fn pick_fleet_home_systems(
+    systems: &[HydratedOwnedSystem],
+    count: u32,
+) -> Vec<HydratedOwnedSystem> {
     if systems.is_empty() || count == 0 {
         return Vec::new();
     }
@@ -1623,9 +1647,11 @@ fn attach_fleet_ship_payloads_to_system(
     };
     let mut placements: Vec<(HydratedFleetShipPayload, HydratedFleetPlacement)> = payloads
         .iter()
-        .filter(|payload| payload.placements.iter().any(|placement| {
-            placement.target_id == target_id && placement.owner == payload.owner
-        }))
+        .filter(|payload| {
+            payload.placements.iter().any(|placement| {
+                placement.target_id == target_id && placement.owner == payload.owner
+            })
+        })
         .flat_map(|payload| {
             payload
                 .placements
@@ -1666,12 +1692,7 @@ fn attach_fleet_ship_payloads_to_system(
         );
         for ship_index in 0..placement.ships_per_fleet {
             let mut ship = SimThing::new(SimThingKind::Cohort, 0);
-            apply_participant_owner_flow_metadata(
-                &mut ship,
-                owner_ref,
-                0,
-                payload.upkeep_per_ship,
-            );
+            apply_participant_owner_flow_metadata(&mut ship, owner_ref, 0, payload.upkeep_per_ship);
             apply_participant_owner_flow_resource_key_metadata(&mut ship, &payload.resource_key);
             ship.add_property(
                 TP_SHIP_CLASS_PROPERTY_ID,
@@ -2004,9 +2025,25 @@ fn chebyshev_distance(left: (u32, u32), right: (u32, u32)) -> u32 {
     left.0.abs_diff(right.0).max(left.1.abs_diff(right.1))
 }
 
+/// Resolve a `source_json` / `include_json` path for embedded static galaxy scenarios.
+///
+/// Absolute paths are unchanged. Relative paths join `source_base` when provided
+/// (clause-file directory), otherwise process CWD (legacy).
+pub fn resolve_clause_source_path(raw: &str, source_base: Option<&Path>) -> PathBuf {
+    let path = Path::new(raw);
+    if path.is_absolute() {
+        return path.to_path_buf();
+    }
+    match source_base {
+        Some(base) => base.join(path),
+        None => path.to_path_buf(),
+    }
+}
+
 fn parse_static_galaxy_scenario(
     property: &RawProperty,
     seen_location_targets: &mut BTreeSet<String>,
+    source_base: Option<&Path>,
 ) -> Result<HydratedEmbeddedStaticGalaxyScenario, HydrateError> {
     let (header_id, block) = header_or_block_body(property, "static_galaxy_scenario")?;
     let mut id = header_id;
@@ -2065,15 +2102,24 @@ fn parse_static_galaxy_scenario(
         ));
     }
     let source_json = require_field(source_json, "source_json", property)?;
-    let source = std::fs::read_to_string(&source_json).map_err(|err| {
+    let resolved_path = resolve_clause_source_path(&source_json, source_base);
+    let source = std::fs::read_to_string(&resolved_path).map_err(|err| {
         HydrateError::new_spanned(
-            format!("failed to read static_galaxy_scenario source `{source_json}`: {err}"),
+            format!(
+                "failed to read static_galaxy_scenario source `{}` (resolved `{}`): {err}",
+                source_json,
+                resolved_path.display()
+            ),
             Some(property.key.span.clone()),
         )
     })?;
     let scenario = deserialize_scenario_authority(&source).map_err(|err| {
         HydrateError::new_spanned(
-            format!("failed to parse static_galaxy_scenario source `{source_json}`: {err}"),
+            format!(
+                "failed to parse static_galaxy_scenario source `{}` (resolved `{}`): {err}",
+                source_json,
+                resolved_path.display()
+            ),
             Some(property.key.span.clone()),
         )
     })?;
@@ -2669,7 +2715,10 @@ fn read_optional_id(block: &RawBlock) -> Result<String, HydrateError> {
     Ok(id)
 }
 
-pub(crate) fn require_block<'a>(property: &'a RawProperty, field: &str) -> Result<&'a RawBlock, HydrateError> {
+pub(crate) fn require_block<'a>(
+    property: &'a RawProperty,
+    field: &str,
+) -> Result<&'a RawBlock, HydrateError> {
     let RawValue::Block(block) = &property.value else {
         return Err(HydrateError::new_spanned(
             format!("`{field}` must be a block"),
@@ -2701,7 +2750,10 @@ fn reject_forbidden_node_field(property: &RawProperty) -> Result<(), HydrateErro
     Ok(())
 }
 
-pub(crate) fn read_scalar_text(property: &RawProperty, field: &str) -> Result<String, HydrateError> {
+pub(crate) fn read_scalar_text(
+    property: &RawProperty,
+    field: &str,
+) -> Result<String, HydrateError> {
     match &property.value {
         RawValue::Scalar(scalar) => Ok(scalar.text.clone()),
         _ => Err(HydrateError::new_spanned(
