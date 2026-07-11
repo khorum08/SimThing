@@ -6,10 +6,10 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | (pending) |
+| PR | [#1309](https://github.com/khorum08/SimThing/pull/1309) |
 | branch | `studio-faction-nameplates-0` |
 | base | `master` |
-| head_sha | (pending) |
+| head_sha | `aa412094ba6f63aa1a550392d0ebd2c0dc0e1533` |
 | merge | NOT MERGED |
 
 ## What changed
