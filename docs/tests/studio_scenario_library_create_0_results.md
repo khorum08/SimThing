@@ -8,7 +8,7 @@
 
 | Field | Value |
 |---|---|
-| PR | pending publication |
+| PR | [#1291](https://github.com/khorum08/SimThing/pull/1291) |
 | branch | `codex/studio-scenario-library-create-0` |
 | base | `master` |
 | merge | NOT MERGED |
@@ -72,7 +72,7 @@ PROBATION. Risk class: model-authority-create + modal-pause-control. No forbidde
 
 ## Orientation / anchors
 
-`ORIENT-RECEIPT: a1c8c3f9683d` (role: coding; orientation digest `1de88b7aa142580efd0e18e696db1fddcc40f860883113c5fa2b1b9400c8f35f`).
+`ORIENT-RECEIPT: a1c8c3f9683d` (role: coding; orientation digest `7a7bd4782a8f84976a7aaaeecddc0eaec87dfbfc9a17993aed0c31d67456d201`).
 
 - `ANCHOR-ACK: movement-front@a0592b2f37ca`
 - `ANCHOR-ACK: orientation-harness-core@8a365d1c0864`
