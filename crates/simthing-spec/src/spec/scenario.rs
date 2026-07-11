@@ -60,6 +60,21 @@ pub const OWNER_FLOW_PRIORITY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_3
 /// Explicit resource channel key on owner-referenced spatial participants.
 pub const OWNER_FLOW_RESOURCE_KEY_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_312);
 
+/// Faction presentation color as UTF-8 `"R,G,B"` with each channel in 0..=255 (string metadata).
+/// Required for faction identity when any identity field is authored (STUDIO-FACTION-IDENTITY-FIELDS-0).
+pub const OWNER_COLOR_RGB_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_313);
+/// Human-readable faction name (string metadata). Distinct from operator `display_name` chrome.
+pub const OWNER_FACTION_NAME_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_314);
+/// Alliance grouping placeholder only — no diplomacy/gameplay semantics in 11.2.
+pub const OWNER_FACTION_ALLIANCE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_315);
+/// Reserved forward faction-identity slot (string; unused by 11.2 consumers).
+pub const OWNER_FACTION_IDENTITY_RESERVED_0_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_316);
+/// Reserved forward faction-identity slot (string; unused by 11.2 consumers).
+pub const OWNER_FACTION_IDENTITY_RESERVED_1_PROPERTY_ID: SimPropertyId = SimPropertyId(8_300_317);
+
+/// Canonical alliance placeholder when no alliance is authored.
+pub const OWNER_FACTION_ALLIANCE_NONE: &str = "none";
+
 /// Reserved candidate ScenarioSpec property slots for runtime preview applied amount.
 pub const RUNTIME_PREVIEW_APPLIED_SIM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_302_010);
 /// Reserved candidate ScenarioSpec property slots for runtime preview satisfied delta.
@@ -829,6 +844,108 @@ pub fn owner_archetype(thing: &SimThing) -> Option<String> {
 
 pub fn owner_color_index(thing: &SimThing) -> Option<u32> {
     scenario_metadata_u32(thing, OWNER_COLOR_INDEX_PROPERTY_ID)
+}
+
+/// Parse authority `color_rgb` metadata (`"R,G,B"` channels in 0..=255).
+pub fn parse_color_rgb_text(text: &str) -> Result<(u8, u8, u8), String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("color_rgb is empty".into());
+    }
+    let body = if let Some(hex) = trimmed.strip_prefix('#') {
+        if hex.len() != 6 {
+            return Err(format!(
+                "color_rgb hex must be #RRGGBB, got `{trimmed}`"
+            ));
+        }
+        let r = u8::from_str_radix(&hex[0..2], 16)
+            .map_err(|_| format!("color_rgb hex invalid R in `{trimmed}`"))?;
+        let g = u8::from_str_radix(&hex[2..4], 16)
+            .map_err(|_| format!("color_rgb hex invalid G in `{trimmed}`"))?;
+        let b = u8::from_str_radix(&hex[4..6], 16)
+            .map_err(|_| format!("color_rgb hex invalid B in `{trimmed}`"))?;
+        return Ok((r, g, b));
+    } else {
+        trimmed
+    };
+    let parts: Vec<&str> = body
+        .split(|c: char| c == ',' || c.is_whitespace())
+        .filter(|p| !p.is_empty())
+        .collect();
+    if parts.len() != 3 {
+        return Err(format!(
+            "color_rgb must be `R,G,B` or `#RRGGBB`, got `{trimmed}`"
+        ));
+    }
+    let parse_ch = |s: &str, label: &str| -> Result<u8, String> {
+        let v: u32 = s
+            .parse()
+            .map_err(|_| format!("color_rgb {label} is not an integer in `{trimmed}`"))?;
+        if v > 255 {
+            return Err(format!(
+                "color_rgb {label} must be 0..=255, got {v} in `{trimmed}`"
+            ));
+        }
+        Ok(v as u8)
+    };
+    Ok((
+        parse_ch(parts[0], "R")?,
+        parse_ch(parts[1], "G")?,
+        parse_ch(parts[2], "B")?,
+    ))
+}
+
+/// Canonical string form for `color_rgb` authority (`R,G,B`).
+pub fn format_color_rgb(rgb: (u8, u8, u8)) -> String {
+    format!("{},{},{}", rgb.0, rgb.1, rgb.2)
+}
+
+/// Apply faction identity metadata on an Owner SimThing (presentation authority only).
+pub fn apply_owner_faction_identity_metadata(
+    owner: &mut SimThing,
+    color_rgb: (u8, u8, u8),
+    faction_name: &str,
+    faction_alliance: &str,
+) {
+    debug_assert!(is_owner_entity_kind(&owner.kind));
+    owner.add_property(
+        OWNER_COLOR_RGB_PROPERTY_ID,
+        scenario_metadata_string_value(&format_color_rgb(color_rgb)),
+    );
+    owner.add_property(
+        OWNER_FACTION_NAME_PROPERTY_ID,
+        scenario_metadata_string_value(faction_name),
+    );
+    let alliance = if faction_alliance.trim().is_empty() {
+        OWNER_FACTION_ALLIANCE_NONE
+    } else {
+        faction_alliance
+    };
+    owner.add_property(
+        OWNER_FACTION_ALLIANCE_PROPERTY_ID,
+        scenario_metadata_string_value(alliance),
+    );
+}
+
+/// Read owner faction color from authority (`color_rgb` property).
+pub fn owner_faction_color_rgb(thing: &SimThing) -> Option<(u8, u8, u8)> {
+    let text = scenario_metadata_string(thing, OWNER_COLOR_RGB_PROPERTY_ID)?;
+    parse_color_rgb_text(&text).ok()
+}
+
+/// Read owner faction display name: prefers `faction_name`, then `display_name`.
+pub fn owner_faction_display_name(thing: &SimThing) -> Option<String> {
+    if let Some(name) = scenario_metadata_string(thing, OWNER_FACTION_NAME_PROPERTY_ID) {
+        if !name.trim().is_empty() {
+            return Some(name);
+        }
+    }
+    owner_display_name(thing)
+}
+
+/// Read owner faction alliance placeholder from authority.
+pub fn owner_faction_alliance(thing: &SimThing) -> Option<String> {
+    scenario_metadata_string(thing, OWNER_FACTION_ALLIANCE_PROPERTY_ID)
 }
 
 pub fn owner_silo_marker(thing: &SimThing) -> Option<u32> {
