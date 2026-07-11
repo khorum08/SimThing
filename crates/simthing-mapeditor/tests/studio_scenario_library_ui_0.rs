@@ -211,7 +211,7 @@ fn scenario_library_clause_open_requires_explicit_resolver_when_needed() {
 }
 
 #[test]
-fn scenario_library_create_affordance_is_available() {
+fn scenario_library_create_is_deferred_to_9_6() {
     let mut library = StudioScenarioLibraryModel {
         selected_tab: StudioScenarioLibraryTab::Create,
         ..Default::default()
