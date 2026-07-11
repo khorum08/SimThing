@@ -98,27 +98,10 @@ pub fn rebuild_galaxy_scene(
 ) {
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
-    let map_container = simthing_spec::resolve_map_container(&session.scenario_authority).ok();
-    let nameplates: std::collections::HashMap<u32, String> = session
-        .scenario_authority
-        .structural_grid
-        .placements
-        .iter()
-        .map(|placement| {
-            let semantic_name = map_container
-                .and_then(|map| {
-                    map.children
-                        .iter()
-                        .find(|child| child.id.raw() == placement.simthing_id_raw)
-                })
-                .and_then(simthing_spec::star_system_display_name);
-            (
-                placement.system_id,
-                semantic_name
-                    .unwrap_or_else(|| format_simthing_nameplate_id(placement.simthing_id_raw)),
-            )
-        })
-        .collect();
+    // 11.5: display name + owner faction color_rgb (unowned = neutral). Presentation only.
+    let nameplates = crate::studio_faction_nameplates::star_nameplate_presentations(
+        &session.scenario_authority,
+    );
     let billboard_settings = StarBillboardRenderSettings::from_meta(&vm.render_meta);
     for star in prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None) {
         for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
@@ -160,15 +143,11 @@ pub fn rebuild_galaxy_scene(
                 .id();
             root.stars.push((star.system_id, entity));
         }
-        if let Some(display_name) = nameplates.get(&star.system_id) {
+        if let Some((display_name, rgba)) = nameplates.get(&star.system_id) {
             let entity = commands
                 .spawn((
-                    StudioTypefaceLabel::entity_name(
-                        display_name.clone(),
-                        48.0,
-                        [0.92, 0.96, 1.0, 1.0],
-                    )
-                    .with_render_mode(TextLabelRenderMode::Raster),
+                    StudioTypefaceLabel::entity_name(display_name.clone(), 48.0, *rgba)
+                        .with_render_mode(TextLabelRenderMode::Raster),
                     star_nameplate_gpu_screen_label(
                         star,
                         &billboard_settings,
@@ -309,7 +288,7 @@ fn despawn_galaxy(commands: &mut Commands, root: &mut GalaxySceneRoot) {
 }
 
 pub fn format_simthing_nameplate_id(raw_id: u32) -> String {
-    format!("SIM-{raw_id:06}")
+    crate::studio_faction_nameplates::fallback_simthing_nameplate_id(raw_id)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

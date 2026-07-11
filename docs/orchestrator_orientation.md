@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 19c51cabd11a2d7cea18c10e533d458e04bfbf0625b6f437716e00f0882ac943 |
+| design_0_0_8_6_studio_live_ops.md | 804985a79ece5d60b6d68c907896463e735772556be65af96ca5d4686b6dd1c2 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 11.4 | STUDIO-CLAUSE-LOADER-SIMPLIFY-0 | **Needs 11.1.** Scenario Library shows **only the ClauseScript loader**; the res | **DA-GRADUATED / merged [#1306](https://github.com/khorum08/SimThing/pull/1306) @ `786c6c0b`** — ClauseScript-only lo... |
-| 11.5 | STUDIO-FACTION-NAMEPLATES-0 | **Needs 11.2 + 11.3.** Star + planet nameplates render the **star/system name**  | NOT STARTED |
+| 11.5 | STUDIO-FACTION-NAMEPLATES-0 | **Needs 11.2 + 11.3.** Star + planet nameplates render the **star/system name**  | **PROBATION** PR pending — faction-colored star nameplates from owner color_rgb; evidence studio_faction_nameplates_0... |
 | 11.6 | STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0 | **Needs 11.2.** Selecting a faction-owned star **brightens all stars that factio | NOT STARTED |
 | 11.7 | STUDIO-FROSTED-GLASS-0 | Window backgrounds get a real **frosted-glass** effect: slight darkening tint +  | NOT STARTED |
 

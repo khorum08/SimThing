@@ -8,3 +8,4 @@ TEST-BUDGET | crates/simthing-mapeditor/tests/studio_scenario_library_create_0.r
 TEST-BUDGET | crates/simthing-clausething/tests/studio_canonical_scenario_0.rs | STUDIO-CANONICAL-SCENARIO-0: 4 named distinct proofs (cwd leak, multi-tick identity, token back-compat, sibling output hygiene); triage_log present | permanent-residue:behavior-regression
 TEST-BUDGET | crates/simthing-clausething/tests/studio_faction_identity_fields_0.rs | STUDIO-FACTION-IDENTITY-FIELDS-0: 8 named distinct proofs; triage_log present | permanent-residue:behavior-regression
 TEST-BUDGET | crates/simthing-mapeditor/tests/studio_clause_loader_simplify_0.rs | STUDIO-CLAUSE-LOADER-SIMPLIFY-0: 10 named distinct proofs; triage_log present | permanent-residue:behavior-regression
+TEST-BUDGET | crates/simthing-mapeditor/tests/studio_faction_nameplates_0.rs | STUDIO-FACTION-NAMEPLATES-0: 10 named distinct proofs; triage_log present | permanent-residue:behavior-regression
