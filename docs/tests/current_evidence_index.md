@@ -430,6 +430,9 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [studio_frosted_glass_0_results.md](studio_frosted_glass_0_results.md) - STUDIO-FROSTED-GLASS-0 **DA-GRADUATED / merged #1314 @ `26327900`** - shared eighth-resolution two-pass WGSL backdrop blur + retained dark tint; Settings, Telemetry, side panels, and Scenario Library covered; loader repair and local frame-time/visual proof retained.
 - [studio_star_naming_repair_0_results.md](studio_star_naming_repair_0_results.md) - STUDIO-STAR-NAMING-REPAIR-0 **DA-GRADUATED / merged #1317 @ `1bdc1297`** - transported the DA-passed #1316 repair onto master; preserves all 1,500 canonical display names through embedded ClauseScript hydration; canonical golden byte-current; structure, ownership, loader, identity, and no-render-change proofs re-run by DA. Phase 11 COMPLETE; track stays open under `STUDIO-OWNER-CLOSURE-0` (Owner-gated closure).
 
+## 0.0.8.4.8.4 HD Board
+- [hd_truth_guards_0_results.md](hd_truth_guards_0_results.md) - HD-TRUTH-GUARDS-0 **PROBATION / PR #1328** - master-ancestry relay guard, clearance `body_sha` line, self-rung stamp-in-diff guard; relay-lint 34 fixtures PASS; clearance 99 fixtures PASS; DA gate-wiring review required.
+
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).
 - **Execution-profile limits are separate** (`simthing-spec` `REGION_FIELD_STANDARD/EXTENDED_MAX_GRID` ≤10/32 per edge bounded local theater). A vast layout may pass structurally while a dense execution profile **defers to atlas** — that is not "the map is too large."
