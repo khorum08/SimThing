@@ -42,34 +42,29 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | c1a904a986fe8f0ed1dedb41612c5d1ceb2a7f1dfdb0a51974c9065b7a58d614 |
-| binding_conditions.tsv | 4f805038313e957c9c7fecf7c92d92359831acdab113f845c5219e42fdecc3fa |
+| binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | c1c33199e3ee9d06c281e787387fac787b5c09fd31a0ce4ba1c43989b47558c2 |
+| active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
+| design_0_0_8_4_8_4_hd_board.md | e1a30bfbb689b11d5c3dffc48a5fb46c57a012fa5b228dd5f85b632780c0e6ee |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
-## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
+## Active Track / Rung Summary (`design_0_0_8_4_8_4_hd_board.md`)
 
 Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **DA-GRADUATED / merged [#1317](https://github.com/khorum08/SimThing/pull/1317) @ `1bdc1297`** — transport of the DA-... |
-| 12.2 | STUDIO-DISRUPTION-READOUT-0 | **Needs 12.8 for live values.** **Read-only per-system disruption snapshot from  | TODO |
-| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | TODO |
-| 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | TODO |
-| 12.7 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galax | TODO |
-| 12.8 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path**  | TODO |
-| 12.9 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.8.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
-| 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **PROBATION / [PR #1324](https://github.com/khorum08/SimThing/pull/1324) / OVL PASS @ `827fcbe0`** — asynchronous rea... |
-| 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
-| 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |
-| OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
+| HD-1 | HD-TRUTH-GUARDS-0 | **Mechanical truth guards** (the #1316 class dies): (a) master-ancestry gate — n | evidence-tail\ |
+| HD-2 | HD-DISPATCH-SUBSTRATE-0 | **The object + projections + receipt (§1.1–§1.2, §1.4–§1.5):** `handoffs/` dir,  | NOT STARTED |
+| HD-3 | HD-OWNER-INTERFACE-0 | **Prompt-native Owner/collaborator door (§1.3):** `/handoff approve\ | amend\ |
+| HD-4 | HD-LIBRARIAN-0 | **Stewardship verbs (Owner: "check library staleness", "cull dead tsv rows"):**  | orchestrator\ |
+| HD-5 | HD-DOCS-CASCADE-0 | **Loud onboarding visibility + the payoff compression.** Entry-point docs update | NOT STARTED |
+| HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-LOADER-DIALOG-REPAIR-0`
+Active pointer: `HD-TRUTH-GUARDS-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -136,6 +131,8 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | discharged | OC-KERNEL-LANE |
 | OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | discharged | OC-CLOSEOUT-0 |
 | STUDIO-OWNER-CLOSURE-0 | track-closeout-blocked-until-explicit-owner-authorization | Owner-2026-07-12 | active | STUDIO-OWNER-CLOSURE-0 |
+| HD-TRACK-OPEN-0 | blocked-until-owner-parks-0.0.8.6-and-directs-regeneration | Owner-2026-07-12 | discharged | HD-TRACK-OPEN-0 |
+| HD-CLOSEOUT-0 | net-corpus-prose-must-decrease-at-close | DA-2026-07-12 | active | HD-CLOSEOUT-0 |
 
 ## Clearance Ledger (recent)
 

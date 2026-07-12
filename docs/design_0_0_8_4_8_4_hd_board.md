@@ -1,8 +1,8 @@
 # 0.0.8.4.8.4 — HD Board: Handoff Dispatch, Owner Interface & Library Stewardship
 
-> **Status: AUTHORED / NOT OPENED (2026-07-12, Owner-directed).** Do **not** point
-> `active_track.txt` here and do **not** open rungs until the Owner parks the current 0.0.8.6 work
-> and directs regeneration. This document is the production plan only.
+> **Status: OPEN / Owner-directed (2026-07-12).** Owner parked 0.0.8.6 and directed regeneration;
+> `active_track.txt` points here. Entry rung: HD-1 `HD-TRUTH-GUARDS-0`. 0.0.8.6 remains parked
+> (its closeout is still gated by `STUDIO-OWNER-CLOSURE-0`) — this track does not touch Studio UI.
 >
 > **Why.** The harness rustified verification (types, scans, router, anchors) but doctrine still
 > travels between agents as retyped prose billed to metered models: long handoffs, required-reading
@@ -30,8 +30,8 @@ Necessity Test; every new table carries a decay rule at birth; machine state ove
 
 | rung | condition | status |
 |---|---|---|
-| HD-TRACK-OPEN-0 | blocked-until-owner-parks-0.0.8.6-and-directs-regeneration | open (authored parked) |
-| HD-CLOSEOUT-0 | net corpus prose must DECREASE at close (template + reading-list deletions ≥ additions) | open |
+| HD-TRACK-OPEN-0 | blocked-until-owner-parks-0.0.8.6-and-directs-regeneration | discharged (Owner 2026-07-12) |
+| HD-CLOSEOUT-0 | net corpus prose must DECREASE at close (template + reading-list deletions ≥ additions) | active |
 
 ---
 
