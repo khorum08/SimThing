@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use simthing_clausething::{
     hydrate_scenario_with_source_base, parse_raw_document,
@@ -92,6 +93,54 @@ pub struct ClauseScenarioIngestResult {
     pub report: ClauseScenarioProjectionReport,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClauseScenarioIngestStage {
+    Resolve,
+    Parse,
+    Hydrate,
+    Rebind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClauseScenarioIngestStageEvent {
+    Running(ClauseScenarioIngestStage),
+    Passed {
+        stage: ClauseScenarioIngestStage,
+        elapsed: Duration,
+    },
+    Failed {
+        stage: ClauseScenarioIngestStage,
+        elapsed: Duration,
+        message: String,
+    },
+}
+
+fn observe_ingest_stage<T>(
+    stage: ClauseScenarioIngestStage,
+    observer: &mut impl FnMut(ClauseScenarioIngestStageEvent),
+    action: impl FnOnce() -> Result<T, ClauseScenarioIngestError>,
+) -> Result<T, ClauseScenarioIngestError> {
+    observer(ClauseScenarioIngestStageEvent::Running(stage));
+    let started = Instant::now();
+    match action() {
+        Ok(value) => {
+            observer(ClauseScenarioIngestStageEvent::Passed {
+                stage,
+                elapsed: started.elapsed(),
+            });
+            Ok(value)
+        }
+        Err(error) => {
+            observer(ClauseScenarioIngestStageEvent::Failed {
+                stage,
+                elapsed: started.elapsed(),
+                message: error.status_message(),
+            });
+            Err(error)
+        }
+    }
+}
+
 /// Ingest a `.clause` path with caller-supplied resolver; emit StructuralRebindReady Spec.
 ///
 /// Relative `source_json` / `include_json` paths resolve against the **clause file directory**
@@ -100,11 +149,42 @@ pub fn ingest_clause_scenario_path(
     path: &Path,
     options: &ClauseScenarioIngestOptions,
 ) -> Result<ClauseScenarioIngestResult, ClauseScenarioIngestError> {
-    let raw = std::fs::read_to_string(path)?;
-    let source_base = path.parent();
-    let mut result = ingest_clause_scenario_text(&raw, options, source_base)?;
-    result.source_path = Some(path.to_path_buf());
-    Ok(result)
+    ingest_clause_scenario_path_staged(path, options, &mut |_| {})
+}
+
+/// Production path with presentation-only observation at the existing real call boundaries.
+pub fn ingest_clause_scenario_path_staged(
+    path: &Path,
+    options: &ClauseScenarioIngestOptions,
+    observer: &mut impl FnMut(ClauseScenarioIngestStageEvent),
+) -> Result<ClauseScenarioIngestResult, ClauseScenarioIngestError> {
+    let source_base = path.parent().map(Path::to_path_buf);
+    let source = observe_ingest_stage(ClauseScenarioIngestStage::Resolve, observer, || {
+        if options.projection_mode != ClauseScenarioProjectionMode::StructuralRebindReady {
+            return Err(ClauseScenarioIngestError::UnsupportedProjectionMode);
+        }
+        let raw = std::fs::read_to_string(path)?;
+        apply_source_resolver(&raw, &options.source_resolver)
+    })?;
+    let document = observe_ingest_stage(ClauseScenarioIngestStage::Parse, observer, || {
+        Ok(parse_raw_document(source.as_bytes())?)
+    })?;
+    let pack = observe_ingest_stage(ClauseScenarioIngestStage::Hydrate, observer, || {
+        Ok(hydrate_scenario_with_source_base(
+            &document,
+            source_base.as_deref(),
+        )?)
+    })?;
+    let (scenario, report) =
+        observe_ingest_stage(ClauseScenarioIngestStage::Rebind, observer, || {
+            Ok(rebind_pack_to_structural_rebind_ready(&pack)?)
+        })?;
+    Ok(ClauseScenarioIngestResult {
+        source_path: Some(path.to_path_buf()),
+        pack,
+        scenario,
+        report,
+    })
 }
 
 /// Ingest clause source bytes with caller-supplied resolver (no clause path → no source_base).

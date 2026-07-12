@@ -157,10 +157,39 @@ pub fn open_native_scenario_load_picker(state: &mut StudioAppState) -> ScenarioP
 pub fn open_native_clause_scenario_picker(
     state: &mut StudioAppState,
 ) -> crate::clause_scenario_picker::ClausePickerActionResult {
-    open_clause_scenario_with_picker_state(state, &crate::clause_scenario_picker::NativeClauseFilePicker)
+    open_clause_scenario_with_picker_state(
+        state,
+        &crate::clause_scenario_picker::NativeClauseFilePicker,
+    )
 }
 
-pub fn open_clause_scenario_with_picker_state<P: crate::clause_scenario_picker::ClauseFilePicker>(
+pub fn select_native_clause_scenario_path(state: &mut StudioAppState) -> ScenarioPickerOutcome {
+    select_clause_scenario_path_with_picker_state(
+        state,
+        &crate::clause_scenario_picker::NativeClauseFilePicker,
+    )
+}
+
+pub fn select_clause_scenario_path_with_picker_state<
+    P: crate::clause_scenario_picker::ClauseFilePicker,
+>(
+    state: &mut StudioAppState,
+    picker: &P,
+) -> ScenarioPickerOutcome {
+    let path_before = state.scenario_library.path_text.clone();
+    let outcome =
+        crate::clause_scenario_picker::select_clause_path_with_picker(picker, &path_before);
+    if let ScenarioPickerOutcome::Selected(path) = &outcome {
+        let path = canonicalize_scenario_display_path(path);
+        state.scenario_library.select_path(path.clone());
+        state.clause_path_text = path.display().to_string();
+    }
+    outcome
+}
+
+pub fn open_clause_scenario_with_picker_state<
+    P: crate::clause_scenario_picker::ClauseFilePicker,
+>(
     state: &mut StudioAppState,
     picker: &P,
 ) -> crate::clause_scenario_picker::ClausePickerActionResult {
@@ -394,5 +423,4 @@ mod tests {
         .expect("seed");
         (dir, path)
     }
-
 }

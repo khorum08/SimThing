@@ -34,13 +34,14 @@ use super::galaxy_render::{
     mark_hyperlane_render_dirty, mark_star_visual_render_dirty, StarVisualAssets,
 };
 use super::scenario_io::{
-    load_scenario_manual_path_action, open_native_clause_scenario_picker,
-    open_native_scenario_load_picker, save_scenario_action, ScenarioActionResult,
-    ScenarioPickerActionResult,
+    load_scenario_manual_path_action, open_native_scenario_load_picker, save_scenario_action,
+    select_native_clause_scenario_path, ScenarioActionResult, ScenarioPickerActionResult,
 };
 use super::window::{minimize_window, set_window_mode};
 use super::{adopt_loaded_scenario_session, adopt_session, GalaxySceneRoot, StudioAppState};
-use crate::clause_scenario_picker::{clause_picker_menu_label, ClausePickerActionResult};
+use crate::clause_scenario_picker::{
+    run_clause_picker_action_staged, ClausePickerActionResult, ClausePickerSelection,
+};
 use crate::scenario_runtime_saveload_ui::{
     reopen_candidate_scenario_for_studio_session, save_candidate_scenario_for_studio_create_new,
 };
@@ -55,11 +56,11 @@ use crate::studio_performance_telemetry::{
     render_loop_gpu_vram_lines, video_options_debug_lines,
 };
 use crate::studio_render_loop_dirty_gate::StudioRenderLoopCaches;
-use crate::studio_screenshot::next_screenshot_filename;
-use crate::{
-    create_blank_studio_session, StudioScenarioLibraryTab, StudioSimClockRate,
-    StudioSimClockTransportCommand,
+use crate::studio_scenario_library_ui::{
+    StudioLoaderStage, StudioLoaderStageEvent, StudioLoaderStageStatus,
 };
+use crate::studio_screenshot::next_screenshot_filename;
+use crate::{create_blank_studio_session, StudioSimClockRate, StudioSimClockTransportCommand};
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
 use bevy::ecs::system::SystemParam;
@@ -217,7 +218,13 @@ pub fn studio_ui_system(
         }
         if state.session.is_some() {
             let panel_started = std::time::Instant::now();
-            draw_right_panel(ctx, &mut state, screen_w, screen_h, &mut presentation.frosted);
+            draw_right_panel(
+                ctx,
+                &mut state,
+                screen_w,
+                screen_h,
+                &mut presentation.frosted,
+            );
             right_panel_ms = panel_started.elapsed().as_secs_f64() * 1000.0;
         }
     }
@@ -246,6 +253,7 @@ pub fn studio_ui_system(
         screen_h,
         &mut presentation.frosted,
     );
+    draw_studio_ops_telemetry(ctx, &mut state);
     let telemetry_ms = telemetry_started.elapsed().as_secs_f64() * 1000.0;
     if state.show_falloff_ruler
         && state.star_falloff_metric == crate::star_render::StarFalloffMetric::VisualHorizon
@@ -419,14 +427,46 @@ pub fn studio_ui_system(
     }
 
     if ctx.data(|d| {
-        d.get_temp::<bool>(egui::Id::new("do_open_clause_scenario_picker"))
+        d.get_temp::<bool>(egui::Id::new("do_select_clause_scenario"))
             .unwrap_or(false)
     }) {
-        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_open_clause_scenario_picker")));
-        match open_native_clause_scenario_picker(&mut state) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_select_clause_scenario")));
+        let _ = select_native_clause_scenario_path(&mut state);
+    }
+
+    if ctx.data(|d| {
+        d.get_temp::<bool>(egui::Id::new("do_load_clause_scenario"))
+            .unwrap_or(false)
+    }) {
+        ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_load_clause_scenario")));
+        enforce_scenario_library_pause(&mut state);
+        state.scenario_library.load_progress.begin_attempt();
+        let selection = ClausePickerSelection {
+            clause_path: state.scenario_library.path_text.trim().into(),
+            resolver_entries: Default::default(),
+            scenario_json_path: None,
+        };
+        let profile = Some(state.profile.clone());
+        let result = {
+            let progress = &mut state.scenario_library.load_progress;
+            run_clause_picker_action_staged(&selection, profile, &mut |event| {
+                progress.observe(event);
+                ctx.request_repaint();
+            })
+        };
+        match result {
             ClausePickerActionResult::Loaded {
-                session, message, ..
+                session,
+                ingest,
+                message,
             } => {
+                state
+                    .scenario_library
+                    .load_progress
+                    .observe(StudioLoaderStageEvent::Running(
+                        StudioLoaderStage::SceneAdopt,
+                    ));
+                let adopt_started = std::time::Instant::now();
                 adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
                 request_live_bridge_reset_after_session_replacement(&mut state);
                 state.refresh_runtime_saveload_status_if_needed(false);
@@ -441,8 +481,24 @@ pub fn studio_ui_system(
                 );
                 reset_camera_after_generation(&mut camera);
                 presentation.perf.vram_dirty = true;
+                state
+                    .scenario_library
+                    .load_progress
+                    .observe(StudioLoaderStageEvent::Passed {
+                        stage: StudioLoaderStage::SceneAdopt,
+                        elapsed: adopt_started.elapsed(),
+                    });
+                if let Some(source) = ingest.source_path {
+                    state.clause_path_text = source.display().to_string();
+                }
+                state.scenario_library.close();
             }
-            _ => {}
+            ClausePickerActionResult::Failed { message }
+            | ClausePickerActionResult::InvalidPath { message } => {
+                state.last_scenario_io_status = message.clone();
+                state.status_message = message;
+            }
+            ClausePickerActionResult::Cancelled => {}
         }
     }
 
@@ -905,7 +961,10 @@ fn draw_telemetry_dialog(
                     state.telemetry_dialog.position = [clamped_moved.min.x, clamped_moved.min.y];
                 }
                 ui.separator();
-                draw_telemetry_scenario_section(ui, state);
+                draw_telemetry_scenario_section(ctx, ui, state);
+                if ui.button("Show Studio_ops Telemetry").clicked() {
+                    state.scenario_library.toggle_studio_ops_telemetry();
+                }
                 ui.separator();
                 egui::CollapsingHeader::new("Nameplate debug")
                     .default_open(true)
@@ -1459,12 +1518,6 @@ fn draw_left_panel(
                             .show(ui, |ui| {
                                 generation_fields(ui, &mut state.profile, dialog);
                             });
-                        egui::CollapsingHeader::new("Runtime candidate save-load")
-                            .id_salt("left_panel_scenario")
-                            .default_open(false)
-                            .show(ui, |ui| {
-                                draw_runtime_candidate_saveload_controls(ctx, ui, state);
-                            });
                         egui::CollapsingHeader::new("Sim clock transport")
                             .id_salt("left_panel_sim_clock")
                             .default_open(true)
@@ -1660,8 +1713,12 @@ fn draw_live_observation(ui: &mut egui::Ui, state: &StudioAppState) {
     }
 }
 
-/// Read-only Scenario section in Telemetry (11.4). Does not mutate ScenarioSpec.
-fn draw_telemetry_scenario_section(ui: &mut egui::Ui, state: &StudioAppState) {
+/// Read-only Scenario section plus existing debug/operator actions rehomed from the load modal.
+fn draw_telemetry_scenario_section(
+    ctx: &egui::Context,
+    ui: &mut egui::Ui,
+    state: &mut StudioAppState,
+) {
     let clock = state.sim_clock_transport.readout();
     let telemetry = crate::build_studio_scenario_telemetry_readout(
         state.session.as_ref(),
@@ -1688,35 +1745,90 @@ fn draw_telemetry_scenario_section(ui: &mut egui::Ui, state: &StudioAppState) {
             } else {
                 "playing"
             };
-            ui.label(format!(
-                "Clock: {play}  ·  Tick: {}",
-                telemetry.tick_index
-            ));
+            ui.label(format!("Clock: {play}  ·  Tick: {}", telemetry.tick_index));
+            ui.separator();
+            ui.label(egui::RichText::new("Debug scenario actions").strong());
+            ui.horizontal(|ui| {
+                ui.label("Scenario path:");
+                ui.text_edit_singleline(&mut state.scenario_path_text);
+            });
+            ui.horizontal(|ui| {
+                if ui.button("Load JSON path").clicked() {
+                    let _ = state
+                        .sim_clock_transport
+                        .apply(StudioSimClockTransportCommand::Pause);
+                    ctx.data_mut(|data| {
+                        data.insert_temp(egui::Id::new("do_load_scenario_manual"), true)
+                    });
+                }
+                if ui.button("Select JSON file").clicked() {
+                    let _ = state
+                        .sim_clock_transport
+                        .apply(StudioSimClockTransportCommand::Pause);
+                    ctx.data_mut(|data| {
+                        data.insert_temp(egui::Id::new("do_load_scenario_picker"), true)
+                    });
+                }
+                if ui.button("Save JSON").clicked() {
+                    ctx.data_mut(|data| {
+                        data.insert_temp(
+                            egui::Id::new("do_save_scenario"),
+                            std::path::PathBuf::from(&state.scenario_path_text),
+                        )
+                    });
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Blank scenario id:");
+                ui.text_edit_singleline(&mut state.scenario_library.create_scenario_id);
+                if ui.button("Create blank scenario").clicked() {
+                    let _ = state
+                        .sim_clock_transport
+                        .apply(StudioSimClockTransportCommand::Pause);
+                    ctx.data_mut(|data| {
+                        data.insert_temp(egui::Id::new("do_create_blank_scenario"), true)
+                    });
+                }
+            });
+            ui.separator();
+            draw_runtime_candidate_saveload_controls(ctx, ui, state);
         });
 }
 
-fn draw_scenario_library_clause_controls(
-    ctx: &egui::Context,
-    ui: &mut egui::Ui,
-    state: &mut StudioAppState,
-) {
-    ui.label(egui::RichText::new("ClauseScript (admitted StructuralRebindReady)").strong());
-    ui.label(
-        egui::RichText::new(
-            "Sibling source_json resolves from the .clause directory (empty operator resolver).",
-        )
-        .small()
-        .weak(),
-    );
-    ui.horizontal(|ui| {
-        ui.label("Clause path:");
-        ui.text_edit_singleline(&mut state.clause_path_text);
-    });
-    // Resolver textbox intentionally removed (11.4): tokens fail-loud if present;
-    // portable clauses use clause-relative source_base (no TOKEN=path UI).
-    if ui.button(clause_picker_menu_label()).clicked() {
-        ctx.data_mut(|d| d.insert_temp(egui::Id::new("do_open_clause_scenario_picker"), true));
+fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
+    if !state.scenario_library.studio_ops_telemetry_visible {
+        return;
     }
+    let mut visible = true;
+    egui::Window::new("Studio_ops Telemetry")
+        .open(&mut visible)
+        .resizable(true)
+        .show(ctx, |ui| {
+            egui::Grid::new("studio_ops_loader_stages")
+                .num_columns(3)
+                .striped(true)
+                .show(ui, |ui| {
+                    for stage in StudioLoaderStage::ALL {
+                        let record = state.scenario_library.load_progress.record(stage);
+                        ui.label(stage.label());
+                        ui.label(record.status.label());
+                        ui.label(
+                            record
+                                .elapsed
+                                .map(|elapsed| format!("{:.3} ms", elapsed.as_secs_f64() * 1000.0))
+                                .unwrap_or_else(|| "-- ms".into()),
+                        );
+                        ui.end_row();
+                        if let Some(failure) = record.failure.as_deref() {
+                            ui.colored_label(egui::Color32::RED, "Failure");
+                            ui.colored_label(egui::Color32::RED, failure);
+                            ui.label("");
+                            ui.end_row();
+                        }
+                    }
+                });
+        });
+    state.scenario_library.studio_ops_telemetry_visible = visible;
 }
 
 fn draw_scenario_library_dialog(
@@ -1734,76 +1846,56 @@ fn draw_scenario_library_dialog(
     let response = egui::Modal::new(egui::Id::new("scenario_library_modal"))
         .frame(studio_panel_frame(0.88, 10.0))
         .show(ctx, |ui| {
-        ui.set_min_width(560.0);
-        ui.heading("Scenario Library");
-        ui.label(
-            egui::RichText::new("Simulation paused while this library is open")
-                .small()
-                .weak(),
-        );
-
-        if let Some(session) = state.session.as_ref() {
-            let summary = &session.scenario_summary;
-            let stead = if summary.stead_valid {
-                "STEAD valid"
-            } else {
-                "STEAD invalid"
-            };
-            ui.label(format!(
-                "Current: {} | {} systems | {}",
-                summary.scenario_id, summary.system_count, stead
-            ));
-        } else {
-            ui.label("Current: no loaded session");
-        }
-
-        ui.separator();
-        // Operator load path is ClauseScript-only (11.4). JSON load affordances removed.
-        // Create remains for blank-scenario authoring (9.6); not a JSON authority load path.
-        if state.scenario_library.selected_tab == StudioScenarioLibraryTab::Json {
-            state.scenario_library.selected_tab = StudioScenarioLibraryTab::Clause;
-        }
-        ui.horizontal(|ui| {
-            ui.selectable_value(
-                &mut state.scenario_library.selected_tab,
-                StudioScenarioLibraryTab::Clause,
-                "ClauseScript",
-            );
-            ui.selectable_value(
-                &mut state.scenario_library.selected_tab,
-                StudioScenarioLibraryTab::Create,
-                "Create",
-            );
-        });
-        ui.separator();
-
-        match state.scenario_library.selected_tab {
-            StudioScenarioLibraryTab::Json | StudioScenarioLibraryTab::Clause => {
-                draw_scenario_library_clause_controls(ctx, ui, state);
-            }
-            StudioScenarioLibraryTab::Create => {
-                ui.label(egui::RichText::new("Blank scenario").strong());
-                ui.horizontal(|ui| {
-                    ui.label("Scenario ID:");
-                    ui.text_edit_singleline(&mut state.scenario_library.create_scenario_id);
-                });
-                if ui.button("Create blank scenario").clicked() {
-                    ctx.data_mut(|d| {
-                        d.insert_temp(egui::Id::new("do_create_blank_scenario"), true)
+            ui.set_min_width(520.0);
+            ui.heading("Load ClauseScript Scenario");
+            ui.horizontal(|ui| {
+                ui.label("Scenario path:");
+                ui.text_edit_singleline(&mut state.scenario_library.path_text);
+            });
+            let cancel = ui
+                .horizontal(|ui| {
+                    if ui.button("Select File…").clicked() {
+                        ctx.data_mut(|data| {
+                            data.insert_temp(egui::Id::new("do_select_clause_scenario"), true)
+                        });
+                    }
+                    if ui.button("Load").clicked() {
+                        ctx.data_mut(|data| {
+                            data.insert_temp(egui::Id::new("do_load_clause_scenario"), true)
+                        });
+                    }
+                    ui.button("Cancel").clicked()
+                })
+                .inner;
+            if state.scenario_library.load_progress.visible {
+                ui.separator();
+                let progress = &state.scenario_library.load_progress;
+                let active = StudioLoaderStage::ALL
+                    .into_iter()
+                    .find(|stage| {
+                        matches!(
+                            progress.record(*stage).status,
+                            StudioLoaderStageStatus::Running | StudioLoaderStageStatus::Failed
+                        )
+                    })
+                    .or_else(|| {
+                        StudioLoaderStage::ALL.into_iter().rev().find(|stage| {
+                            progress.record(*stage).status == StudioLoaderStageStatus::Passed
+                        })
                     });
-                }
+                let text = active
+                    .map(|stage| {
+                        let record = progress.record(stage);
+                        let mut text = format!("{}: {}", stage.label(), record.status.label());
+                        if let Some(failure) = record.failure.as_deref() {
+                            text.push_str(&format!(" - {failure}"));
+                        }
+                        text
+                    })
+                    .unwrap_or_else(|| "Preparing load".into());
+                ui.add(egui::ProgressBar::new(progress.completed_fraction()).text(text));
             }
-        }
-
-        if !state.last_scenario_io_status.is_empty() {
-            ui.separator();
-            ui.label(&state.last_scenario_io_status);
-        }
-        ui.separator();
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.button("Close").clicked()
-        })
-        .inner
+            cancel
         });
 
     register_frosted_rect(frosted_panels, response.response.rect, screen_w, screen_h);
@@ -1820,6 +1912,8 @@ fn clear_scenario_library_pending_actions(ctx: &egui::Context) {
         data.remove::<bool>(egui::Id::new("do_load_scenario_manual"));
         data.remove::<bool>(egui::Id::new("do_load_scenario_picker"));
         data.remove::<bool>(egui::Id::new("do_open_clause_scenario_picker"));
+        data.remove::<bool>(egui::Id::new("do_select_clause_scenario"));
+        data.remove::<bool>(egui::Id::new("do_load_clause_scenario"));
         data.remove::<bool>(egui::Id::new("do_create_blank_scenario"));
     });
 }

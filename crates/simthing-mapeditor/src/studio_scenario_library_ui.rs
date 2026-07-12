@@ -1,6 +1,7 @@
 //! Presentation state and minimal authority creation for the Studio scenario library.
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
@@ -85,6 +86,169 @@ pub fn build_studio_scenario_telemetry_readout(
 pub const STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID: &str = "new_scenario";
 pub const STUDIO_SCENARIO_LIBRARY_CREATE_PROVENANCE: &str = "STUDIO-SCENARIO-LIBRARY-CREATE-0";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioLoaderStage {
+    Resolve,
+    Parse,
+    Hydrate,
+    Rebind,
+    Persist,
+    SessionBuild,
+    Projection,
+    SceneAdopt,
+}
+
+impl StudioLoaderStage {
+    pub const ALL: [Self; 8] = [
+        Self::Resolve,
+        Self::Parse,
+        Self::Hydrate,
+        Self::Rebind,
+        Self::Persist,
+        Self::SessionBuild,
+        Self::Projection,
+        Self::SceneAdopt,
+    ];
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Resolve => "Resolve",
+            Self::Parse => "Parse",
+            Self::Hydrate => "Hydrate",
+            Self::Rebind => "Rebind",
+            Self::Persist => "Persist",
+            Self::SessionBuild => "Session build",
+            Self::Projection => "Projection",
+            Self::SceneAdopt => "Scene adopt",
+        }
+    }
+
+    const fn index(self) -> usize {
+        match self {
+            Self::Resolve => 0,
+            Self::Parse => 1,
+            Self::Hydrate => 2,
+            Self::Rebind => 3,
+            Self::Persist => 4,
+            Self::SessionBuild => 5,
+            Self::Projection => 6,
+            Self::SceneAdopt => 7,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum StudioLoaderStageStatus {
+    #[default]
+    NotRun,
+    Running,
+    Passed,
+    Failed,
+}
+
+impl StudioLoaderStageStatus {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::NotRun => "not run",
+            Self::Running => "running",
+            Self::Passed => "passed",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StudioLoaderStageRecord {
+    pub status: StudioLoaderStageStatus,
+    pub elapsed: Option<Duration>,
+    pub failure: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StudioLoaderStageEvent {
+    Running(StudioLoaderStage),
+    Passed {
+        stage: StudioLoaderStage,
+        elapsed: Duration,
+    },
+    Failed {
+        stage: StudioLoaderStage,
+        elapsed: Duration,
+        message: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioLoaderProgress {
+    pub visible: bool,
+    records: [StudioLoaderStageRecord; 8],
+}
+
+impl Default for StudioLoaderProgress {
+    fn default() -> Self {
+        Self {
+            visible: false,
+            records: std::array::from_fn(|_| StudioLoaderStageRecord::default()),
+        }
+    }
+}
+
+impl StudioLoaderProgress {
+    pub fn begin_attempt(&mut self) {
+        self.visible = true;
+        self.records = std::array::from_fn(|_| StudioLoaderStageRecord::default());
+    }
+
+    pub fn reset_hidden(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn observe(&mut self, event: StudioLoaderStageEvent) {
+        match event {
+            StudioLoaderStageEvent::Running(stage) => {
+                let record = &mut self.records[stage.index()];
+                record.status = StudioLoaderStageStatus::Running;
+                record.elapsed = None;
+                record.failure = None;
+            }
+            StudioLoaderStageEvent::Passed { stage, elapsed } => {
+                let record = &mut self.records[stage.index()];
+                record.status = StudioLoaderStageStatus::Passed;
+                record.elapsed = Some(elapsed);
+                record.failure = None;
+            }
+            StudioLoaderStageEvent::Failed {
+                stage,
+                elapsed,
+                message,
+            } => {
+                let record = &mut self.records[stage.index()];
+                record.status = StudioLoaderStageStatus::Failed;
+                record.elapsed = Some(elapsed);
+                record.failure = Some(message);
+            }
+        }
+    }
+
+    pub fn record(&self, stage: StudioLoaderStage) -> &StudioLoaderStageRecord {
+        &self.records[stage.index()]
+    }
+
+    pub fn completed_fraction(&self) -> f32 {
+        let completed = self
+            .records
+            .iter()
+            .filter(|record| {
+                matches!(
+                    record.status,
+                    StudioLoaderStageStatus::Passed | StudioLoaderStageStatus::Failed
+                )
+            })
+            .count();
+        completed as f32 / self.records.len() as f32
+    }
+}
+
 /// Scenario Library tabs. Operator load path is **ClauseScript-only** (11.4).
 /// `Json` remains as a non-default enum variant for legacy tests only — not shown in UI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -100,6 +264,9 @@ pub struct StudioScenarioLibraryModel {
     pub visible: bool,
     pub selected_tab: StudioScenarioLibraryTab,
     pub create_scenario_id: String,
+    pub path_text: String,
+    pub load_progress: StudioLoaderProgress,
+    pub studio_ops_telemetry_visible: bool,
 }
 
 impl Default for StudioScenarioLibraryModel {
@@ -109,6 +276,9 @@ impl Default for StudioScenarioLibraryModel {
             // Operator default: ClauseScript load (STUDIO-CLAUSE-LOADER-SIMPLIFY-0).
             selected_tab: StudioScenarioLibraryTab::Clause,
             create_scenario_id: STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID.to_string(),
+            path_text: String::new(),
+            load_progress: StudioLoaderProgress::default(),
+            studio_ops_telemetry_visible: false,
         }
     }
 }
@@ -116,6 +286,8 @@ impl Default for StudioScenarioLibraryModel {
 impl StudioScenarioLibraryModel {
     pub fn open(&mut self, transport: &mut StudioSimClockTransport) {
         self.visible = true;
+        self.path_text.clear();
+        self.load_progress.reset_hidden();
         self.enforce_pause(transport);
     }
 
@@ -147,6 +319,14 @@ impl StudioScenarioLibraryModel {
 
     pub fn create_is_available(&self) -> bool {
         true
+    }
+
+    pub fn select_path(&mut self, path: PathBuf) {
+        self.path_text = path.display().to_string();
+    }
+
+    pub fn toggle_studio_ops_telemetry(&mut self) {
+        self.studio_ops_telemetry_visible = !self.studio_ops_telemetry_visible;
     }
 }
 

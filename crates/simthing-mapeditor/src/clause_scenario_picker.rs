@@ -5,14 +5,18 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use crate::clause_scenario_ingest::{
-    load_clause_studio_session_from_path, load_studio_session_from_clause_ingest_result,
-    ClauseScenarioIngestError, ClauseScenarioIngestOptions, ClauseScenarioIngestResult,
+    ingest_clause_scenario_path_staged, load_studio_session_from_clause_ingest_result,
+    save_clause_scenario_authority_to_path, ClauseScenarioIngestError, ClauseScenarioIngestOptions,
+    ClauseScenarioIngestResult, ClauseScenarioIngestStage, ClauseScenarioIngestStageEvent,
     ClauseScenarioSourceResolver,
 };
 use crate::generation::GenerationProfile;
+use crate::scenario_io::{load_scenario_authority_from_path, ScenarioIoError};
 use crate::session::StudioSession;
+use crate::studio_scenario_library_ui::{StudioLoaderStage, StudioLoaderStageEvent};
 use crate::studio_scenario_load::{
     canonicalize_scenario_display_path, default_picker_start_directory, ScenarioPickerOutcome,
 };
@@ -200,6 +204,64 @@ fn options_from_selection(selection: &ClausePickerSelection) -> ClauseScenarioIn
     }
 }
 
+fn map_ingest_stage(stage: ClauseScenarioIngestStage) -> StudioLoaderStage {
+    match stage {
+        ClauseScenarioIngestStage::Resolve => StudioLoaderStage::Resolve,
+        ClauseScenarioIngestStage::Parse => StudioLoaderStage::Parse,
+        ClauseScenarioIngestStage::Hydrate => StudioLoaderStage::Hydrate,
+        ClauseScenarioIngestStage::Rebind => StudioLoaderStage::Rebind,
+    }
+}
+
+fn map_ingest_event(event: ClauseScenarioIngestStageEvent) -> StudioLoaderStageEvent {
+    match event {
+        ClauseScenarioIngestStageEvent::Running(stage) => {
+            StudioLoaderStageEvent::Running(map_ingest_stage(stage))
+        }
+        ClauseScenarioIngestStageEvent::Passed { stage, elapsed } => {
+            StudioLoaderStageEvent::Passed {
+                stage: map_ingest_stage(stage),
+                elapsed,
+            }
+        }
+        ClauseScenarioIngestStageEvent::Failed {
+            stage,
+            elapsed,
+            message,
+        } => StudioLoaderStageEvent::Failed {
+            stage: map_ingest_stage(stage),
+            elapsed,
+            message,
+        },
+    }
+}
+
+fn observe_loader_stage<T>(
+    stage: StudioLoaderStage,
+    observer: &mut impl FnMut(StudioLoaderStageEvent),
+    action: impl FnOnce() -> Result<T, ClauseScenarioIngestError>,
+) -> Result<T, ClauseScenarioIngestError> {
+    observer(StudioLoaderStageEvent::Running(stage));
+    let started = Instant::now();
+    match action() {
+        Ok(value) => {
+            observer(StudioLoaderStageEvent::Passed {
+                stage,
+                elapsed: started.elapsed(),
+            });
+            Ok(value)
+        }
+        Err(error) => {
+            observer(StudioLoaderStageEvent::Failed {
+                stage,
+                elapsed: started.elapsed(),
+                message: error.status_message(),
+            });
+            Err(error)
+        }
+    }
+}
+
 /// Core picker action: user-selected clause path + explicit resolver → production API → session.
 ///
 /// This is the CI-testable controller boundary. Native dialog is a thin caller that builds
@@ -208,9 +270,25 @@ pub fn run_clause_picker_action(
     selection: &ClausePickerSelection,
     profile_hint: Option<GenerationProfile>,
 ) -> ClausePickerActionResult {
+    run_clause_picker_action_staged(selection, profile_hint, &mut |_| {})
+}
+
+/// Execute the existing production composition while exposing real stage boundaries to presentation.
+pub fn run_clause_picker_action_staged(
+    selection: &ClausePickerSelection,
+    profile_hint: Option<GenerationProfile>,
+    observer: &mut impl FnMut(StudioLoaderStageEvent),
+) -> ClausePickerActionResult {
+    let validation_started = Instant::now();
     let clause_path = match validate_clause_path(&selection.clause_path) {
         Ok(p) => p,
         Err(reason) => {
+            observer(StudioLoaderStageEvent::Running(StudioLoaderStage::Resolve));
+            observer(StudioLoaderStageEvent::Failed {
+                stage: StudioLoaderStage::Resolve,
+                elapsed: validation_started.elapsed(),
+                message: reason.clone(),
+            });
             return ClausePickerActionResult::InvalidPath {
                 message: format!("ClauseScript open failed: {reason}"),
             };
@@ -222,8 +300,25 @@ pub fn run_clause_picker_action(
         .clone()
         .unwrap_or_else(|| default_scenario_json_path(&clause_path));
     let options = options_from_selection(selection);
+    let result = (|| {
+        let mut ingest_observer = |event| observer(map_ingest_event(event));
+        let ingest =
+            ingest_clause_scenario_path_staged(&clause_path, &options, &mut ingest_observer)?;
+        observe_loader_stage(StudioLoaderStage::Persist, observer, || {
+            save_clause_scenario_authority_to_path(&json_path, &ingest.scenario)
+        })?;
+        let scenario = observe_loader_stage(StudioLoaderStage::SessionBuild, observer, || {
+            Ok(load_scenario_authority_from_path(&json_path)?)
+        })?;
+        let session = observe_loader_stage(StudioLoaderStage::Projection, observer, || {
+            StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
+                .map_err(ScenarioIoError::from)
+                .map_err(ClauseScenarioIngestError::from)
+        })?;
+        Ok::<_, ClauseScenarioIngestError>((ingest, session))
+    })();
 
-    match load_clause_studio_session_from_path(&clause_path, &options, &json_path, profile_hint) {
+    match result {
         Ok((ingest, session)) => {
             let message = format!(
                 "ClauseScript scenario opened: {} (StructuralRebindReady session hydrate PASS)",
@@ -245,15 +340,22 @@ pub fn run_clause_picker_action(
     }
 }
 
+/// Native/injectable selection only. No ingest, persistence, or session construction occurs.
+pub fn select_clause_path_with_picker<P: ClauseFilePicker>(
+    picker: &P,
+    start_path_hint: &str,
+) -> ScenarioPickerOutcome {
+    picker.pick_open_clause(&default_clause_picker_start_directory(start_path_hint))
+}
+
 /// Ingest-only path (session via existing `from_loaded_scenario` helper) — used by proofs/tests.
 pub fn run_clause_picker_ingest_then_session(
     selection: &ClausePickerSelection,
     scenario_path_label: PathBuf,
     profile_hint: Option<GenerationProfile>,
 ) -> Result<(ClauseScenarioIngestResult, StudioSession), ClauseScenarioIngestError> {
-    let clause_path = validate_clause_path(&selection.clause_path).map_err(|e| {
-        ClauseScenarioIngestError::SourceResolution(e)
-    })?;
+    let clause_path = validate_clause_path(&selection.clause_path)
+        .map_err(|e| ClauseScenarioIngestError::SourceResolution(e))?;
     let options = options_from_selection(selection);
     let ingest =
         crate::clause_scenario_ingest::ingest_clause_scenario_path(&clause_path, &options)?;
