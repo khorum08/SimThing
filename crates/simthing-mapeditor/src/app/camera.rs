@@ -174,6 +174,7 @@ fn spawn_camera(mut commands: Commands) {
         Transform::from_xyz(40.0, 35.0, 40.0).looking_at(Vec3::ZERO, Vec3::Y),
         Msaa::Off,
         MainCamera,
+        crate::FrostedGlassSettings::default(),
     ));
 }
 

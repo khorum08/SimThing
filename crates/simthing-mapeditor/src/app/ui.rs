@@ -62,6 +62,13 @@ use crate::{
 };
 
 use super::performance_telemetry::{record_egui_pass_timing, StudioPerformanceTelemetryState};
+use bevy::ecs::system::SystemParam;
+
+#[derive(SystemParam)]
+pub(super) struct StudioUiPresentationParams<'w> {
+    perf: ResMut<'w, StudioPerformanceTelemetryState>,
+    frosted: ResMut<'w, crate::FrostedGlassPanelRegistry>,
+}
 
 const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 720.0);
 const TELEMETRY_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 760.0);
@@ -163,7 +170,7 @@ pub fn studio_ui_system(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut scene_root: ResMut<GalaxySceneRoot>,
     assets: Res<StarVisualAssets>,
-    mut perf_telemetry: ResMut<StudioPerformanceTelemetryState>,
+    mut presentation: StudioUiPresentationParams,
     mut render_caches: ResMut<StudioRenderLoopCaches>,
     mut ctx_unavailable_logged: Local<bool>,
     main_camera: Query<Entity, With<MainCamera>>,
@@ -182,6 +189,7 @@ pub fn studio_ui_system(
     let screen = ctx.screen_rect();
     let screen_w = screen.width();
     let screen_h = screen.height();
+    presentation.frosted.begin_frame();
 
     if should_auto_collapse_panel(screen_w) {
         state.left_panel_collapsed = true;
@@ -199,6 +207,7 @@ pub fn studio_ui_system(
                 &mut camera,
                 screen_w,
                 screen_h,
+                &mut presentation.frosted,
             );
             left_panel_ms = panel_started.elapsed().as_secs_f64() * 1000.0;
         } else {
@@ -208,7 +217,7 @@ pub fn studio_ui_system(
         }
         if state.session.is_some() {
             let panel_started = std::time::Instant::now();
-            draw_right_panel(ctx, &mut state, screen_w, screen_h);
+            draw_right_panel(ctx, &mut state, screen_w, screen_h, &mut presentation.frosted);
             right_panel_ms = panel_started.elapsed().as_secs_f64() * 1000.0;
         }
     }
@@ -222,6 +231,7 @@ pub fn studio_ui_system(
         &main_camera,
         screen_w,
         screen_h,
+        &mut presentation.frosted,
     );
     let settings_ms = settings_started.elapsed().as_secs_f64() * 1000.0;
     let telemetry_started = std::time::Instant::now();
@@ -230,10 +240,11 @@ pub fn studio_ui_system(
         &mut state,
         &mut settings,
         &mut commands,
-        &perf_telemetry.telemetry,
+        &presentation.perf.telemetry,
         &mut render_caches,
         screen_w,
         screen_h,
+        &mut presentation.frosted,
     );
     let telemetry_ms = telemetry_started.elapsed().as_secs_f64() * 1000.0;
     if state.show_falloff_ruler
@@ -254,10 +265,16 @@ pub fn studio_ui_system(
     if !state.performance_diagnostic_hide_panels {
         draw_warning_dialog(ctx, &mut dialog);
     }
-    draw_scenario_library_dialog(ctx, &mut state);
+    draw_scenario_library_dialog(
+        ctx,
+        &mut state,
+        screen_w,
+        screen_h,
+        &mut presentation.frosted,
+    );
     draw_generation_name_corpus_dialog(ctx, &mut state);
     record_egui_pass_timing(
-        &mut perf_telemetry,
+        &mut presentation.perf,
         egui_started.elapsed().as_secs_f64() * 1000.0,
         settings_ms + telemetry_ms,
         left_panel_ms,
@@ -289,7 +306,7 @@ pub fn studio_ui_system(
                         &mut render_caches,
                     );
                     reset_camera_after_generation(&mut camera);
-                    perf_telemetry.vram_dirty = true;
+                    presentation.perf.vram_dirty = true;
                     let _ = settings.save();
                 }
                 Err(err) => {
@@ -344,7 +361,7 @@ pub fn studio_ui_system(
                     &mut render_caches,
                 );
                 reset_camera_after_generation(&mut camera);
-                perf_telemetry.vram_dirty = true;
+                presentation.perf.vram_dirty = true;
             }
         }
     }
@@ -369,7 +386,7 @@ pub fn studio_ui_system(
                     &mut render_caches,
                 );
                 reset_camera_after_generation(&mut camera);
-                perf_telemetry.vram_dirty = true;
+                presentation.perf.vram_dirty = true;
             }
             _ => {}
         }
@@ -395,7 +412,7 @@ pub fn studio_ui_system(
                     &mut render_caches,
                 );
                 reset_camera_after_generation(&mut camera);
-                perf_telemetry.vram_dirty = true;
+                presentation.perf.vram_dirty = true;
             }
             _ => {}
         }
@@ -423,7 +440,7 @@ pub fn studio_ui_system(
                     &mut render_caches,
                 );
                 reset_camera_after_generation(&mut camera);
-                perf_telemetry.vram_dirty = true;
+                presentation.perf.vram_dirty = true;
             }
             _ => {}
         }
@@ -456,7 +473,7 @@ pub fn studio_ui_system(
                     &mut render_caches,
                 );
                 reset_camera_after_generation(&mut camera);
-                perf_telemetry.vram_dirty = true;
+                presentation.perf.vram_dirty = true;
             }
             Err(err) => {
                 state.last_scenario_io_status = format!("Scenario create failed: {err}");
@@ -480,6 +497,19 @@ fn studio_panel_frame(opacity: f32, corner_radius: f32) -> egui::Frame {
         ))
         .inner_margin(12.0)
         .corner_radius(corner_radius)
+}
+
+fn register_frosted_rect(
+    registry: &mut crate::FrostedGlassPanelRegistry,
+    rect: egui::Rect,
+    screen_w: f32,
+    screen_h: f32,
+) {
+    registry.register_logical_rect(
+        [rect.min.x, rect.min.y],
+        [rect.max.x, rect.max.y],
+        [screen_w, screen_h],
+    );
 }
 
 fn inactive_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
@@ -551,6 +581,7 @@ fn draw_settings_dialog(
     main_camera: &Query<Entity, With<MainCamera>>,
     screen_w: f32,
     screen_h: f32,
+    frosted_panels: &mut crate::FrostedGlassPanelRegistry,
 ) {
     if !state.settings_dialog.visible {
         return;
@@ -568,7 +599,7 @@ fn draw_settings_dialog(
     state.settings_dialog.position = [clamped.min.x, clamped.min.y];
     settings.settings_dialog_position = state.settings_dialog.position;
 
-    egui::Area::new(egui::Id::new("settings_dialog"))
+    let area = egui::Area::new(egui::Id::new("settings_dialog"))
         .order(egui::Order::Foreground)
         .fixed_pos(clamped.min)
         .show(ctx, |ui| {
@@ -804,6 +835,7 @@ fn draw_settings_dialog(
                 });
             });
         });
+    register_frosted_rect(frosted_panels, area.response.rect, screen_w, screen_h);
 }
 
 fn draw_telemetry_dialog(
@@ -815,6 +847,7 @@ fn draw_telemetry_dialog(
     render_caches: &mut StudioRenderLoopCaches,
     screen_w: f32,
     screen_h: f32,
+    frosted_panels: &mut crate::FrostedGlassPanelRegistry,
 ) {
     if !state.telemetry_dialog.visible {
         return;
@@ -831,7 +864,7 @@ fn draw_telemetry_dialog(
     let clamped = clamp_dialog_rect_away_from_panels(desired, &bounds);
     state.telemetry_dialog.position = [clamped.min.x, clamped.min.y];
 
-    egui::Area::new(egui::Id::new("telemetry_dialog"))
+    let area = egui::Area::new(egui::Id::new("telemetry_dialog"))
         .order(egui::Order::Foreground)
         .fixed_pos(clamped.min)
         .show(ctx, |ui| {
@@ -1055,6 +1088,7 @@ fn draw_telemetry_dialog(
                 });
             });
         });
+    register_frosted_rect(frosted_panels, area.response.rect, screen_w, screen_h);
 }
 
 fn close_settings_dialog_from_icon(
@@ -1347,6 +1381,7 @@ fn draw_left_panel(
     camera: &mut StudioCamera,
     screen_w: f32,
     screen_h: f32,
+    frosted_panels: &mut crate::FrostedGlassPanelRegistry,
 ) {
     let layout = compute_floating_panel_layout(screen_w, screen_h, false);
     let opacity = state.left_panel_opacity;
@@ -1465,6 +1500,7 @@ fn draw_left_panel(
             });
         });
     state.left_panel_hovered = area.response.hovered();
+    register_frosted_rect(frosted_panels, area.response.rect, screen_w, screen_h);
 }
 
 /// Compact operator transport over [`crate::StudioSimClockTransport`] + live bridge readout.
@@ -1683,13 +1719,21 @@ fn draw_scenario_library_clause_controls(
     }
 }
 
-fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState) {
+fn draw_scenario_library_dialog(
+    ctx: &egui::Context,
+    state: &mut StudioAppState,
+    screen_w: f32,
+    screen_h: f32,
+    frosted_panels: &mut crate::FrostedGlassPanelRegistry,
+) {
     if !state.scenario_library.visible {
         return;
     }
 
     enforce_scenario_library_pause(state);
-    let response = egui::Modal::new(egui::Id::new("scenario_library_modal")).show(ctx, |ui| {
+    let response = egui::Modal::new(egui::Id::new("scenario_library_modal"))
+        .frame(studio_panel_frame(0.88, 10.0))
+        .show(ctx, |ui| {
         ui.set_min_width(560.0);
         ui.heading("Scenario Library");
         ui.label(
@@ -1760,7 +1804,9 @@ fn draw_scenario_library_dialog(ctx: &egui::Context, state: &mut StudioAppState)
             ui.button("Close").clicked()
         })
         .inner
-    });
+        });
+
+    register_frosted_rect(frosted_panels, response.response.rect, screen_w, screen_h);
 
     if response.inner || response.should_close() {
         cancel_scenario_library(state);
@@ -2116,13 +2162,19 @@ fn generation_fields(
     }
 }
 
-fn draw_right_panel(ctx: &egui::Context, state: &mut StudioAppState, screen_w: f32, screen_h: f32) {
+fn draw_right_panel(
+    ctx: &egui::Context,
+    state: &mut StudioAppState,
+    screen_w: f32,
+    screen_h: f32,
+    frosted_panels: &mut crate::FrostedGlassPanelRegistry,
+) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
     let width = 320.0;
     let (_, margin_y) = crate::panel_layout::panel_margin(screen_w, screen_h);
-    egui::Area::new(egui::Id::new("right_panel"))
+    let area = egui::Area::new(egui::Id::new("right_panel"))
         .fixed_pos(egui::pos2(
             screen_w - width - screen_w * 0.03,
             margin_y.max(48.0),
@@ -2247,6 +2299,7 @@ fn draw_right_panel(ctx: &egui::Context, state: &mut StudioAppState, screen_w: f
                 }
             });
         });
+    register_frosted_rect(frosted_panels, area.response.rect, screen_w, screen_h);
 }
 
 fn draw_warning_dialog(ctx: &egui::Context, dialog: &mut WarningDialogModel) {

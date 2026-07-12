@@ -103,6 +103,7 @@ pub fn run_studio() {
         // the camera stays at the known-good default. The plugin-internal variant of that fix is now
         // gated off for live windows via SimthingToolsTextPlugin::without_lut_d3_view_fix().
         .add_plugins(EguiPlugin::default())
+        .add_plugins(crate::StudioFrostedGlassPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
         .add_plugins(camera::StudioCameraPlugin);
