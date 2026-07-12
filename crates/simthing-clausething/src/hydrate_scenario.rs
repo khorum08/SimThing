@@ -22,10 +22,12 @@ use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionPr
 use simthing_spec::spec::scenario::{
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
-    deserialize_scenario_authority, make_galaxy_map, make_owner_entity,
-    scenario_metadata_string_value, scenario_metadata_u32_value, structural_property_value_u32,
-    SimThingScenarioGrid, SimThingScenarioProvenance, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
-    OWNER_COLOR_INDEX_PROPERTY_ID, OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
+    apply_star_system_display_name_metadata, deserialize_scenario_authority,
+    gridcell_generated_system_id, make_galaxy_map, make_owner_entity,
+    scenario_metadata_string_value, scenario_metadata_u32_value, star_system_display_name,
+    structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
+    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
     SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
 use simthing_spec::spec::stress_compose::StressComposeSpec;
@@ -238,6 +240,9 @@ pub struct HydratedEmbeddedStaticGalaxyScenario {
     pub source_structural_grid: SimThingScenarioGrid,
     pub namespaced_placements: Vec<HydratedScenarioGridPlacement>,
     pub namespaced_links: Vec<HydratedScenarioLink>,
+    /// Source-authority star names keyed by namespaced target id.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub namespaced_display_names: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -918,6 +923,9 @@ fn attach_embedded_gridcells(
     for placement in &embedded.namespaced_placements {
         let mut gridcell = SimThing::new(SimThingKind::Location, 0);
         apply_gridcell_role_metadata(&mut gridcell, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM);
+        if let Some(display_name) = embedded.namespaced_display_names.get(&placement.target_id) {
+            apply_star_system_display_name_metadata(&mut gridcell, display_name);
+        }
         apply_star_system_local_grid_frame_metadata(
             &mut gridcell,
             STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
@@ -2213,7 +2221,17 @@ fn parse_static_galaxy_scenario(
         )
     })?;
 
+    let source_display_names: BTreeMap<u32, String> = scenario
+        .gridcell_locations()
+        .filter_map(|system| {
+            Some((
+                gridcell_generated_system_id(system)?,
+                star_system_display_name(system)?,
+            ))
+        })
+        .collect();
     let mut target_by_system_id = BTreeMap::new();
+    let mut namespaced_display_names = BTreeMap::new();
     let mut namespaced_placements = Vec::with_capacity(scenario.structural_grid.placements.len());
     for placement in &scenario.structural_grid.placements {
         let namespaced_location_id = namespace_id(&namespace, &placement.location_id);
@@ -2230,6 +2248,9 @@ fn parse_static_galaxy_scenario(
             placement.system_id.to_string(),
             namespaced_target_id.clone(),
         );
+        if let Some(display_name) = source_display_names.get(&placement.system_id) {
+            namespaced_display_names.insert(namespaced_target_id.clone(), display_name.clone());
+        }
         namespaced_placements.push(HydratedScenarioGridPlacement {
             location_id: namespaced_location_id,
             target_id: namespaced_target_id,
@@ -2272,6 +2293,7 @@ fn parse_static_galaxy_scenario(
         source_structural_grid: scenario.structural_grid,
         namespaced_placements,
         namespaced_links: namespaced_links.into_iter().collect(),
+        namespaced_display_names,
     })
 }
 

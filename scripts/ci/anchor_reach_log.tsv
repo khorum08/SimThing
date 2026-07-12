@@ -36,3 +36,6 @@ date	role	query	anchors_served	hit
 2026-07-12T03:44:09Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-07-12T03:44:09Z	coding	--grep session-lifecycle-adr-family	session-lifecycle-adr-family	hit
 2026-07-12T03:44:09Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
+2026-07-12T10:43:59Z	coding	--grep clausething-closed-vertical	clausething-closed-vertical	hit
+2026-07-12T10:43:59Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-07-12T10:43:59Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
