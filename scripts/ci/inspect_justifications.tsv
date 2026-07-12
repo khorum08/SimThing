@@ -9,3 +9,4 @@ TEST-BUDGET | crates/simthing-clausething/tests/studio_canonical_scenario_0.rs |
 TEST-BUDGET | crates/simthing-clausething/tests/studio_faction_identity_fields_0.rs | STUDIO-FACTION-IDENTITY-FIELDS-0: 8 named distinct proofs; triage_log present | permanent-residue:behavior-regression
 TEST-BUDGET | crates/simthing-mapeditor/tests/studio_clause_loader_simplify_0.rs | STUDIO-CLAUSE-LOADER-SIMPLIFY-0: 10 named distinct proofs; triage_log present | permanent-residue:behavior-regression
 TEST-BUDGET | crates/simthing-mapeditor/tests/studio_faction_nameplates_0.rs | STUDIO-FACTION-NAMEPLATES-0: 10 named distinct proofs; triage_log present | permanent-residue:behavior-regression
+TEST-BUDGET | crates/simthing-mapeditor/tests/studio_owned_star_select_brighten_0.rs | STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0: 11 named distinct proofs; triage_log present | permanent-residue:behavior-regression

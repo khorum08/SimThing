@@ -331,6 +331,7 @@ pub(super) fn sync_star_nameplate_focus_system(
     mut nameplates: Query<(&mut GalaxyStarNameplate, &mut WorldTextBillboard)>,
     mut last_selection: Local<(Option<u32>, Option<u32>)>,
 ) {
+    // Nameplate focus stays actual selected/hovered only — not the 11.6 owned-set brighten group.
     let current = (
         state.selection.selected_system_id,
         state.selection.hovered_system_id,
