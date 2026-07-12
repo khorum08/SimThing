@@ -9,7 +9,7 @@ use simthing_mapeditor::clause_scenario_picker::{
 };
 use simthing_mapeditor::studio_scenario_library_ui::{
     StudioLoaderProgress, StudioLoaderStage, StudioLoaderStageEvent, StudioLoaderStageStatus,
-    StudioScenarioLibraryModel,
+    StudioScenarioLibraryModel, StudioSceneBatchCursor,
 };
 use simthing_mapeditor::studio_scenario_load::ScenarioPickerOutcome;
 use simthing_mapeditor::{
@@ -201,7 +201,96 @@ fn failed_stage_keeps_dialog_open_and_preserves_path_and_session() {
     assert_eq!(before, after);
 }
 
-/// catches: successful load restoring Play, omitting bridge reset, or skipping scene-adopt staging.
+/// catches: the Load command regressing to inline ingest or scene adoption on the egui call stack.
+#[test]
+fn load_dispatches_worker_and_returns_before_ingest_finishes() {
+    let source = include_str!("../src/app/ui.rs");
+    let action = &source[source.find("do_load_clause_scenario").unwrap()
+        ..source.find("do_create_blank_scenario").unwrap()];
+    assert!(action.contains("start_clause_loader_job(&mut state)"));
+    assert!(!action.contains("run_clause_picker_action_staged"));
+    assert!(!action.contains("rebuild_session_scene"));
+
+    let start = source.find("fn start_clause_loader_job").unwrap();
+    let end = source[start..]
+        .find("fn poll_clause_loader_jobs")
+        .map(|offset| start + offset)
+        .unwrap();
+    assert!(source[start..end].contains("std::thread::spawn"));
+}
+
+/// catches: worker callbacks mutating presentation directly instead of frame polling events.
+#[test]
+fn polled_events_update_progress_incrementally() {
+    let mut model = StudioScenarioLibraryModel::default();
+    let token = model.begin_load_attempt();
+    assert!(model.observe_load_attempt(
+        token,
+        StudioLoaderStageEvent::Running(StudioLoaderStage::Resolve)
+    ));
+    assert_eq!(
+        model
+            .load_progress
+            .record(StudioLoaderStage::Resolve)
+            .status,
+        StudioLoaderStageStatus::Running
+    );
+    assert_eq!(
+        model.load_progress.record(StudioLoaderStage::Parse).status,
+        StudioLoaderStageStatus::NotRun
+    );
+    assert!(model.observe_load_attempt(
+        token,
+        StudioLoaderStageEvent::Passed {
+            stage: StudioLoaderStage::Resolve,
+            elapsed: std::time::Duration::from_millis(2),
+        }
+    ));
+    assert_eq!(
+        model
+            .load_progress
+            .record(StudioLoaderStage::Resolve)
+            .status,
+        StudioLoaderStageStatus::Passed
+    );
+}
+
+/// catches: a late worker result from a cancelled or superseded attempt adopting unexpectedly.
+#[test]
+fn stale_attempt_events_are_ignored_after_cancel_or_supersession() {
+    let mut model = StudioScenarioLibraryModel::default();
+    let stale = model.begin_load_attempt();
+    model.cancel_load_attempt();
+    assert!(!model.observe_load_attempt(
+        stale,
+        StudioLoaderStageEvent::Running(StudioLoaderStage::Parse)
+    ));
+
+    let current = model.begin_load_attempt();
+    assert_ne!(stale, current);
+    assert!(!model.observe_load_attempt(
+        stale,
+        StudioLoaderStageEvent::Running(StudioLoaderStage::Hydrate)
+    ));
+    assert!(model.is_current_load_attempt(current));
+}
+
+/// catches: scene adoption collapsing back into one unbounded main-thread pass.
+#[test]
+fn forced_small_scene_batch_requires_multiple_polls() {
+    let mut cursor = StudioSceneBatchCursor::new(10, 3);
+    let mut ranges = Vec::new();
+    while !cursor.is_complete() {
+        ranges.push(cursor.take_next());
+    }
+    assert_eq!(ranges, vec![0..3, 3..6, 6..9, 9..10]);
+
+    let source = include_str!("../src/app/galaxy_render.rs");
+    assert!(source.contains("SCENARIO_SCENE_STAR_BATCH_SIZE"));
+    assert!(source.contains("apply_batched_galaxy_scene"));
+}
+
+/// catches: successful load restoring Play, omitting bridge reset, or closing before final batch.
 #[test]
 fn successful_load_closes_without_autoplay_and_requests_bridge_reset() {
     let mut transport = StudioSimClockTransport::new();
@@ -217,13 +306,17 @@ fn successful_load_closes_without_autoplay_and_requests_bridge_reset() {
     assert!(transport.clock().is_paused());
     assert!(bridge_reset);
     let source = include_str!("../src/app/ui.rs");
-    let action = &source[source.find("do_load_clause_scenario").unwrap()
-        ..source.find("do_create_blank_scenario").unwrap()];
+    let start = source.find("fn poll_clause_loader_jobs").unwrap();
+    let end = source[start..]
+        .find("pub fn studio_ui_system")
+        .map(|offset| start + offset)
+        .unwrap();
+    let action = &source[start..end];
     for required in [
         "StudioLoaderStage::SceneAdopt",
         "adopt_loaded_scenario_session",
         "request_live_bridge_reset_after_session_replacement",
-        "rebuild_session_scene",
+        "finish_batched_galaxy_scene",
         "scenario_library.close",
     ] {
         assert!(

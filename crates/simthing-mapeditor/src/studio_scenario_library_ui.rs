@@ -184,6 +184,33 @@ pub struct StudioLoaderProgress {
     records: [StudioLoaderStageRecord; 8],
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioSceneBatchCursor {
+    next: usize,
+    total: usize,
+    batch_size: usize,
+}
+
+impl StudioSceneBatchCursor {
+    pub fn new(total: usize, batch_size: usize) -> Self {
+        Self {
+            next: 0,
+            total,
+            batch_size: batch_size.max(1),
+        }
+    }
+
+    pub fn take_next(&mut self) -> std::ops::Range<usize> {
+        let start = self.next;
+        self.next = self.next.saturating_add(self.batch_size).min(self.total);
+        start..self.next
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.next >= self.total
+    }
+}
+
 impl Default for StudioLoaderProgress {
     fn default() -> Self {
         Self {
@@ -267,6 +294,10 @@ pub struct StudioScenarioLibraryModel {
     pub path_text: String,
     pub load_progress: StudioLoaderProgress,
     pub studio_ops_telemetry_visible: bool,
+    #[doc(hidden)]
+    pub next_load_attempt_token: u64,
+    #[doc(hidden)]
+    pub active_load_attempt_token: Option<u64>,
 }
 
 impl Default for StudioScenarioLibraryModel {
@@ -279,6 +310,8 @@ impl Default for StudioScenarioLibraryModel {
             path_text: String::new(),
             load_progress: StudioLoaderProgress::default(),
             studio_ops_telemetry_visible: false,
+            next_load_attempt_token: 0,
+            active_load_attempt_token: None,
         }
     }
 }
@@ -287,6 +320,7 @@ impl StudioScenarioLibraryModel {
     pub fn open(&mut self, transport: &mut StudioSimClockTransport) {
         self.visible = true;
         self.path_text.clear();
+        self.cancel_load_attempt();
         self.load_progress.reset_hidden();
         self.enforce_pause(transport);
     }
@@ -300,6 +334,7 @@ impl StudioScenarioLibraryModel {
     }
 
     pub fn close(&mut self) {
+        self.cancel_load_attempt();
         self.visible = false;
     }
 
@@ -327,6 +362,41 @@ impl StudioScenarioLibraryModel {
 
     pub fn toggle_studio_ops_telemetry(&mut self) {
         self.studio_ops_telemetry_visible = !self.studio_ops_telemetry_visible;
+    }
+
+    pub fn begin_load_attempt(&mut self) -> u64 {
+        self.next_load_attempt_token = self.next_load_attempt_token.saturating_add(1);
+        self.active_load_attempt_token = Some(self.next_load_attempt_token);
+        self.load_progress.begin_attempt();
+        self.next_load_attempt_token
+    }
+
+    pub fn observe_load_attempt(&mut self, token: u64, event: StudioLoaderStageEvent) -> bool {
+        if self.active_load_attempt_token != Some(token) {
+            return false;
+        }
+        self.load_progress.observe(event);
+        true
+    }
+
+    pub fn finish_load_attempt(&mut self, token: u64) -> bool {
+        if self.active_load_attempt_token != Some(token) {
+            return false;
+        }
+        self.active_load_attempt_token = None;
+        true
+    }
+
+    pub fn cancel_load_attempt(&mut self) {
+        self.active_load_attempt_token = None;
+    }
+
+    pub fn is_loading(&self) -> bool {
+        self.active_load_attempt_token.is_some()
+    }
+
+    pub fn is_current_load_attempt(&self, token: u64) -> bool {
+        self.active_load_attempt_token == Some(token)
     }
 }
 

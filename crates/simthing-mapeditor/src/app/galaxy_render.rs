@@ -1,11 +1,12 @@
 #![cfg(windows)]
 
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 use bevy::render::mesh::Indices;
 use bevy::render::mesh::PrimitiveTopology;
 use bevy::render::render_asset::RenderAssetUsages;
+use bevy::window::PrimaryWindow;
 use simthing_tools::{StudioTypefaceLabel, TextLabelRenderMode, WorldTextBillboard};
+use std::collections::HashMap;
 
 use crate::hyperlane_buckets::{
     bucket_base_rgba, classify_hyperlane_camera_depth_bucket, compute_hyperlane_visual,
@@ -21,9 +22,10 @@ use crate::hyperlane_ribbon::{
 use crate::selection::incident_hyperlanes_for_system;
 use crate::session::StudioSession;
 use crate::star_render::{
-    compute_star_distance_visual, nearest_camera_star_disc_width_world, prepare_star_billboard_instances,
-    star_emissive_strength, star_falloff_progress_percent, star_nameplate_gpu_screen_label,
-    StarBillboardInstance, StarBillboardRenderSettings, StarNameplateSettings, StarRenderMode,
+    compute_star_distance_visual, nearest_camera_star_disc_width_world,
+    prepare_star_billboard_instances, star_emissive_strength, star_falloff_progress_percent,
+    star_nameplate_gpu_screen_label, StarBillboardInstance, StarBillboardRenderSettings,
+    StarNameplateSettings, StarRenderMode,
 };
 use crate::starburst::{
     generate_star_aura_image, generate_star_circle_image, generate_starburst_image,
@@ -74,6 +76,137 @@ pub struct StarVisualAssets {
     pub quad: Handle<Mesh>,
 }
 
+pub(super) const SCENARIO_SCENE_STAR_BATCH_SIZE: usize = 8;
+pub(super) const SCENARIO_SCENE_DESPAWN_BATCH_SIZE: usize = 64;
+
+pub(super) struct PreparedGalaxyScene {
+    stars: Vec<StarBillboardInstance>,
+    nameplates: HashMap<u32, (String, [f32; 4])>,
+    billboard_settings: StarBillboardRenderSettings,
+    hyperlane_segments: Vec<HyperlaneRenderSegment>,
+    render_meta: crate::view_model::StudioGalaxyRenderMeta,
+}
+
+pub(super) fn prepare_galaxy_scene(session: &StudioSession) -> PreparedGalaxyScene {
+    let vm = &session.view_model;
+    PreparedGalaxyScene {
+        stars: prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None),
+        nameplates: crate::studio_faction_nameplates::star_nameplate_presentations(
+            &session.scenario_authority,
+        ),
+        billboard_settings: StarBillboardRenderSettings::from_meta(&vm.render_meta),
+        hyperlane_segments: vm.hyperlane_render_segments(),
+        render_meta: vm.render_meta.clone(),
+    }
+}
+
+pub(super) struct BatchedGalaxySceneBuild {
+    prepared: PreparedGalaxyScene,
+    star_cursor: crate::studio_scenario_library_ui::StudioSceneBatchCursor,
+    next_hyperlane_bucket: usize,
+    next_root: GalaxySceneRoot,
+}
+
+pub(super) fn begin_batched_galaxy_scene(prepared: PreparedGalaxyScene) -> BatchedGalaxySceneBuild {
+    let star_cursor = crate::studio_scenario_library_ui::StudioSceneBatchCursor::new(
+        prepared.stars.len(),
+        SCENARIO_SCENE_STAR_BATCH_SIZE,
+    );
+    BatchedGalaxySceneBuild {
+        prepared,
+        star_cursor,
+        next_hyperlane_bucket: 0,
+        next_root: GalaxySceneRoot::default(),
+    }
+}
+
+pub(super) fn apply_batched_galaxy_scene(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    assets: &StarVisualAssets,
+    build: &mut BatchedGalaxySceneBuild,
+) -> bool {
+    if !build.star_cursor.is_complete() {
+        for index in build.star_cursor.take_next() {
+            spawn_prepared_star(
+                commands,
+                materials,
+                assets,
+                &mut build.next_root,
+                build.prepared.stars[index],
+                &build.prepared.nameplates,
+                &build.prepared.billboard_settings,
+            );
+        }
+        return false;
+    }
+
+    if build.next_hyperlane_bucket < HyperlaneDepthBucket::ALL.len() {
+        if !build.prepared.hyperlane_segments.is_empty() {
+            let bucket = HyperlaneDepthBucket::ALL[build.next_hyperlane_bucket];
+            spawn_hyperlane_bucket(
+                commands,
+                meshes,
+                materials,
+                &mut build.next_root,
+                &build.prepared.hyperlane_segments,
+                &build.prepared.render_meta,
+                bucket,
+            );
+        }
+        build.next_hyperlane_bucket += 1;
+        return false;
+    }
+
+    true
+}
+
+pub(super) struct BatchedGalaxySceneCleanup {
+    entities: Vec<Entity>,
+    cursor: crate::studio_scenario_library_ui::StudioSceneBatchCursor,
+}
+
+fn scene_cleanup(root: GalaxySceneRoot) -> BatchedGalaxySceneCleanup {
+    let mut entities = Vec::with_capacity(
+        root.stars.len() + root.nameplates.len() + root.hyperlane_buckets.len() + 2,
+    );
+    entities.extend(root.stars.into_iter().map(|(_, entity)| entity));
+    entities.extend(root.nameplates);
+    entities.extend(root.hyperlane_buckets.into_iter().flatten());
+    entities.extend(root.highlight_hyperlanes);
+    entities.extend(root.core_glow);
+    let cursor = crate::studio_scenario_library_ui::StudioSceneBatchCursor::new(
+        entities.len(),
+        SCENARIO_SCENE_DESPAWN_BATCH_SIZE,
+    );
+    BatchedGalaxySceneCleanup { entities, cursor }
+}
+
+pub(super) fn finish_batched_galaxy_scene(
+    root: &mut GalaxySceneRoot,
+    mut build: BatchedGalaxySceneBuild,
+) -> BatchedGalaxySceneCleanup {
+    let old_root = std::mem::replace(root, std::mem::take(&mut build.next_root));
+    scene_cleanup(old_root)
+}
+
+pub(super) fn cancel_batched_galaxy_scene(
+    mut build: BatchedGalaxySceneBuild,
+) -> BatchedGalaxySceneCleanup {
+    scene_cleanup(std::mem::take(&mut build.next_root))
+}
+
+pub(super) fn apply_batched_galaxy_scene_cleanup(
+    commands: &mut Commands,
+    cleanup: &mut BatchedGalaxySceneCleanup,
+) -> bool {
+    for index in cleanup.cursor.take_next() {
+        commands.entity(cleanup.entities[index]).despawn();
+    }
+    cleanup.cursor.is_complete()
+}
+
 pub fn init_star_visual_assets(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
@@ -102,74 +235,102 @@ pub fn rebuild_galaxy_scene(
     despawn_galaxy(commands, root);
     let vm = &session.view_model;
     // 11.5: display name + owner faction color_rgb (unowned = neutral). Presentation only.
-    let nameplates = crate::studio_faction_nameplates::star_nameplate_presentations(
-        &session.scenario_authority,
-    );
+    let nameplates =
+        crate::studio_faction_nameplates::star_nameplate_presentations(&session.scenario_authority);
     let billboard_settings = StarBillboardRenderSettings::from_meta(&vm.render_meta);
     for star in prepare_star_billboard_instances(&vm.stars, &vm.render_anchors, None, None) {
-        for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
-            let texture = match layer {
-                StarVisualLayer::Core => assets.core_texture.clone(),
-                StarVisualLayer::Aura => assets.aura_texture.clone(),
-            };
-            let (base_color, emissive_factor) = match layer {
-                StarVisualLayer::Core => (Color::srgba(0.88, 0.95, 1.0, 0.9), 1.0),
-                StarVisualLayer::Aura => (Color::srgba(0.34, 0.66, 1.0, 0.08), 0.22),
-            };
-            let material = materials.add(StandardMaterial {
-                base_color,
-                base_color_texture: Some(texture.clone()),
-                emissive: LinearRgba::new(
-                    star.base_intensity_variation * 1.25 * emissive_factor,
-                    star.base_intensity_variation * 1.32 * emissive_factor,
-                    star.base_intensity_variation * 1.45 * emissive_factor,
-                    1.0,
-                ),
-                emissive_texture: Some(texture),
-                unlit: true,
-                alpha_mode: AlphaMode::Add,
-                cull_mode: None,
-                ..default()
-            });
-            let entity = commands
-                .spawn((
-                    Mesh3d(assets.quad.clone()),
-                    MeshMaterial3d(material),
-                    Transform::from_translation(star.anchor_position)
-                        .with_scale(Vec3::splat(star.base_scale_variation)),
-                    GalaxyStar {
-                        instance: star,
-                        layer,
-                    },
-                    StarVisualAppliedKey::default(),
-                ))
-                .id();
-            root.stars.push((star.system_id, entity));
-        }
-        if let Some((display_name, rgba)) = nameplates.get(&star.system_id) {
-            let entity = commands
-                .spawn((
-                    StudioTypefaceLabel::entity_name(display_name.clone(), 48.0, *rgba)
-                        .with_render_mode(TextLabelRenderMode::Raster),
-                    star_nameplate_gpu_screen_label(
-                        star,
-                        &billboard_settings,
-                        StarNameplateSettings::default(),
-                    ),
-                    GalaxyStarNameplate { instance: star },
-                    Visibility::Visible,
-                ))
-                .id();
-            root.nameplates.push(entity);
-        }
+        spawn_prepared_star(
+            commands,
+            materials,
+            assets,
+            root,
+            star,
+            &nameplates,
+            &billboard_settings,
+        );
     }
 
     if vm.hyperlanes.is_empty() {
         return;
     }
 
+    let segments = vm.hyperlane_render_segments();
     for bucket in HyperlaneDepthBucket::ALL {
-        spawn_hyperlane_bucket(commands, meshes, materials, root, vm, bucket);
+        spawn_hyperlane_bucket(
+            commands,
+            meshes,
+            materials,
+            root,
+            &segments,
+            &vm.render_meta,
+            bucket,
+        );
+    }
+}
+
+fn spawn_prepared_star(
+    commands: &mut Commands,
+    materials: &mut Assets<StandardMaterial>,
+    assets: &StarVisualAssets,
+    root: &mut GalaxySceneRoot,
+    star: StarBillboardInstance,
+    nameplates: &HashMap<u32, (String, [f32; 4])>,
+    billboard_settings: &StarBillboardRenderSettings,
+) {
+    for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
+        let texture = match layer {
+            StarVisualLayer::Core => assets.core_texture.clone(),
+            StarVisualLayer::Aura => assets.aura_texture.clone(),
+        };
+        let (base_color, emissive_factor) = match layer {
+            StarVisualLayer::Core => (Color::srgba(0.88, 0.95, 1.0, 0.9), 1.0),
+            StarVisualLayer::Aura => (Color::srgba(0.34, 0.66, 1.0, 0.08), 0.22),
+        };
+        let material = materials.add(StandardMaterial {
+            base_color,
+            base_color_texture: Some(texture.clone()),
+            emissive: LinearRgba::new(
+                star.base_intensity_variation * 1.25 * emissive_factor,
+                star.base_intensity_variation * 1.32 * emissive_factor,
+                star.base_intensity_variation * 1.45 * emissive_factor,
+                1.0,
+            ),
+            emissive_texture: Some(texture),
+            unlit: true,
+            alpha_mode: AlphaMode::Add,
+            cull_mode: None,
+            ..default()
+        });
+        let entity = commands
+            .spawn((
+                Mesh3d(assets.quad.clone()),
+                MeshMaterial3d(material),
+                Transform::from_translation(star.anchor_position)
+                    .with_scale(Vec3::splat(star.base_scale_variation)),
+                GalaxyStar {
+                    instance: star,
+                    layer,
+                },
+                StarVisualAppliedKey::default(),
+            ))
+            .id();
+        root.stars.push((star.system_id, entity));
+    }
+    if let Some((display_name, rgba)) = nameplates.get(&star.system_id) {
+        let entity = commands
+            .spawn((
+                StudioTypefaceLabel::entity_name(display_name.clone(), 48.0, *rgba)
+                    .with_render_mode(TextLabelRenderMode::Raster),
+                star_nameplate_gpu_screen_label(
+                    star,
+                    billboard_settings,
+                    StarNameplateSettings::default(),
+                ),
+                GalaxyStarNameplate { instance: star },
+                Visibility::Visible,
+            ))
+            .id();
+        root.nameplates.push(entity);
     }
 }
 
@@ -178,14 +339,15 @@ fn spawn_hyperlane_bucket(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
     root: &mut GalaxySceneRoot,
-    vm: &crate::view_model::StudioGalaxyViewModel,
+    segments: &[HyperlaneRenderSegment],
+    render_meta: &crate::view_model::StudioGalaxyRenderMeta,
     bucket: HyperlaneDepthBucket,
 ) {
     let (mesh, _) = build_hyperlane_bucket_mesh(
-        &vm.hyperlane_render_segments(),
+        segments,
         bucket,
         HyperlaneRibbonCamera::default(),
-        &vm.render_meta,
+        render_meta,
         true,
         None,
     );
@@ -850,7 +1012,6 @@ pub fn sync_render_debug_visibility_system(
 mod tests {
     use super::*;
     use crate::compute_camera_facing_width_dir;
-
 }
 
 // STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0: star visual sync (admitted galaxy_render surface)
@@ -996,11 +1157,8 @@ pub fn sync_star_visuals_system(
         transform.translation = instance.anchor_position;
         transform.scale = Vec3::splat(instance.base_scale_variation * layer_scale);
         if let Some(material) = materials.get_mut(&material_handle.0) {
-            let emissive = star_emissive_strength(
-                instance.base_intensity_variation,
-                visual_selected,
-                hovered,
-            );
+            let emissive =
+                star_emissive_strength(instance.base_intensity_variation, visual_selected, hovered);
             let base_color = Color::srgba(color.0, color.1, color.2, alpha);
             let emissive_color = LinearRgba::new(
                 emissive * 1.25 * alpha * emissive_factor,
