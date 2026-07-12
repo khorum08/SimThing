@@ -427,7 +427,7 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [studio_clause_loader_simplify_0_results.md](studio_clause_loader_simplify_0_results.md) — STUDIO-CLAUSE-LOADER-SIMPLIFY-0 **PROBATION** — ClauseScript-only Scenario Library; source_base wire; read-only Scenario telemetry; no Spec mutation.
 
 - [studio_frosted_glass_0_results.md](studio_frosted_glass_0_results.md) - STUDIO-FROSTED-GLASS-0 **DA-GRADUATED / merged #1314 @ `26327900`** - shared eighth-resolution two-pass WGSL backdrop blur + retained dark tint; Settings, Telemetry, side panels, and Scenario Library covered; loader repair and local frame-time/visual proof retained.
-- [studio_star_naming_repair_0_results.md](studio_star_naming_repair_0_results.md) - STUDIO-STAR-NAMING-REPAIR-0 **PROBATION / PR #1316 / DA-RESERVE** - preserves all 1,500 existing canonical display names through embedded ClauseScript hydration; canonical golden byte-current; structure, ownership, loader, identity, and no-render-change proofs green.
+- [studio_star_naming_repair_0_results.md](studio_star_naming_repair_0_results.md) - STUDIO-STAR-NAMING-REPAIR-0 **PROBATION / transport PR #1317 / DA-RESERVE** - transports the DA-passed #1316 repair onto master; preserves all 1,500 existing canonical display names through embedded ClauseScript hydration; canonical golden byte-current; structure, ownership, loader, identity, and no-render-change proofs green.
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

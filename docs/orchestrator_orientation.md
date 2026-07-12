@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f20eaa722f995f8318cc559517fc2b6a1b085261b4d1ee88996c519d6dc26ef8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | b57c25179bbb3c69d9058ebbc271761ce19f2f93069d9363de5e7c5006e8620f |
+| design_0_0_8_6_studio_live_ops.md | eee1010ff5f70840f01291ef99fba3a283f25a717144c2540dfac8487620afaf |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -61,7 +61,7 @@ Track state: `open`
 | 11.5 | STUDIO-FACTION-NAMEPLATES-0 | **Needs 11.2 + 11.3.** Star + planet nameplates render the **star/system name**  | **ORCHESTRATOR-GRADUATED / merged [#1309](https://github.com/khorum08/SimThing/pull/1309) @ `9ee45b3f`** — faction-co... |
 | 11.6 | STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0 | **Needs 11.2.** Selecting a faction-owned star **brightens all stars that factio | **ORCHESTRATOR-GRADUATED / merged [#1312](https://github.com/khorum08/SimThing/pull/1312) @ `d8484d66`** — selecting ... |
 | 11.7 | STUDIO-FROSTED-GLASS-0 | Window backgrounds get a real **frosted-glass** effect: slight darkening tint +  | **DA-GRADUATED / merged [#1314](https://github.com/khorum08/SimThing/pull/1314) @ `26327900`** — real WGSL frosted-gl... |
-| REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **PROBATION / [PR #1316](https://github.com/khorum08/SimThing/pull/1316) @ `a130caca` / DA-RESERVE** — carries all 1,... |
+| REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **PROBATION / [transport PR #1317](https://github.com/khorum08/SimThing/pull/1317) @ `847e21be` / DA-RESERVE** — tran... |
 
 ## Next Rung Pointer
 

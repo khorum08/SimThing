@@ -1,14 +1,15 @@
 # STUDIO-STAR-NAMING-REPAIR-0 Results
 
 ## Status
-**PROBATION / DA-RESERVE** - [PR #1316](https://github.com/khorum08/SimThing/pull/1316); merge: **NOT MERGED**.
+**PROBATION / DA-RESERVE** - transport [PR #1317](https://github.com/khorum08/SimThing/pull/1317); tested code head `847e21be25cacbfac3203dd7528f3f3bea7c331d`; merge: **NOT MERGED**.
 
 ## Identity
 | Field | Value |
 |---|---|
-| branch | `codex/studio-star-naming-repair-0` |
-| stacked base | `codex/studio-frosted-glass-exit-stamp` ([#1315](https://github.com/khorum08/SimThing/pull/1315)) |
-| tested code SHA | `a130cacab88e9501c9902c5a9b3279d818a957df` |
+| branch | `codex/studio-star-naming-repair-0-transport` |
+| base | `master` at merged #1315 (`7bd50475`) |
+| source | DA-passed #1316 merge `409d9024` |
+| tested code SHA | `847e21be25cacbfac3203dd7528f3f3bea7c331d` |
 | route | DA-reserve; no self-merge |
 
 ## Corrected Diagnosis / Repair
@@ -38,7 +39,7 @@
 - TEST-BUDGET green triage and inspect justification recorded.
 
 ## Seal
-`scenarios/terran_pirate_galaxy.base_disc.json` carries 1,500 per-system display names. The file was already correct on merged master; this rung repairs retention through production hydration and does not fabricate a canonical data diff.
+`scenarios/terran_pirate_galaxy.base_disc.json` carries 1,500 per-system display names. The file was already correct on master; this transport repairs retention through production hydration and does not fabricate a canonical data diff. The generated from-clause sibling remains untracked and excluded.
 
 ## Graduation Routing
 DA review required. Self-merge is not permitted.
