@@ -6,7 +6,7 @@
 ## PR / branch / merge
 | Field | Value |
 |---|---|
-| PR | (pending open) |
+| PR | [#1312](https://github.com/khorum08/SimThing/pull/1312) |
 | branch | `studio-owned-star-select-brighten-0` |
 | base | `master` |
 | head_sha | 488961a1aa6c99a49bc7af99f9992d6a6a2fdea9 |
