@@ -85,6 +85,38 @@ impl ClauseFilePicker for NativeClauseFilePicker {
     }
 }
 
+/// Prefer the repository/project `scenarios` directory when no prior ClauseScript path exists.
+/// This keeps operator browsing away from similarly named integration fixtures without baking in
+/// a scenario name or changing explicit path hints.
+pub fn default_clause_picker_start_directory(start_path_hint: &str) -> PathBuf {
+    let trimmed = start_path_hint.trim();
+    if !trimmed.is_empty() {
+        let candidate = PathBuf::from(trimmed);
+        if candidate.is_dir() {
+            return candidate;
+        }
+        if let Some(parent) = candidate.parent() {
+            if !parent.as_os_str().is_empty() && parent.is_dir() {
+                return parent.to_path_buf();
+            }
+        }
+    }
+
+    let cwd = std::env::current_dir().ok();
+    let executable_dir = std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf));
+    for root in cwd.iter().chain(executable_dir.iter()) {
+        for ancestor in root.ancestors() {
+            let scenarios = ancestor.join("scenarios");
+            if scenarios.is_dir() {
+                return scenarios;
+            }
+        }
+    }
+    default_picker_start_directory(start_path_hint)
+}
+
 #[derive(Debug, Clone)]
 pub struct FakeClauseFilePicker {
     pub outcome: ScenarioPickerOutcome,
@@ -204,7 +236,11 @@ pub fn run_clause_picker_action(
             }
         }
         Err(err) => ClausePickerActionResult::Failed {
-            message: format_clause_picker_error(&err),
+            message: format!(
+                "ClauseScript open failed for {}: {}",
+                clause_path.display(),
+                err.status_message()
+            ),
         },
     }
 }
@@ -238,7 +274,7 @@ pub fn open_clause_scenario_with_picker<P: ClauseFilePicker>(
     scenario_json_path: Option<PathBuf>,
     profile_hint: Option<GenerationProfile>,
 ) -> ClausePickerActionResult {
-    let start_dir = default_picker_start_directory(start_path_hint);
+    let start_dir = default_clause_picker_start_directory(start_path_hint);
     match picker.pick_open_clause(&start_dir) {
         ScenarioPickerOutcome::Cancelled => ClausePickerActionResult::Cancelled,
         ScenarioPickerOutcome::Selected(path) => {

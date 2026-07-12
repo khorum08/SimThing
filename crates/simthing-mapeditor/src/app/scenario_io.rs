@@ -165,7 +165,8 @@ pub fn open_clause_scenario_with_picker_state<P: crate::clause_scenario_picker::
     picker: &P,
 ) -> crate::clause_scenario_picker::ClausePickerActionResult {
     use crate::clause_scenario_picker::{
-        open_clause_scenario_with_picker, parse_clause_resolver_entries, ClausePickerActionResult,
+        default_clause_picker_start_directory, parse_clause_resolver_entries,
+        run_clause_picker_action, ClausePickerActionResult, ClausePickerSelection,
     };
 
     let resolver_entries = match parse_clause_resolver_entries(&state.clause_resolver_text) {
@@ -177,17 +178,27 @@ pub fn open_clause_scenario_with_picker_state<P: crate::clause_scenario_picker::
         }
     };
 
-    let result = open_clause_scenario_with_picker(
-        picker,
-        if state.clause_path_text.trim().is_empty() {
-            &state.scenario_path_text
-        } else {
-            &state.clause_path_text
-        },
-        resolver_entries,
-        None,
-        Some(state.profile.clone()),
-    );
+    let start_hint = if state.clause_path_text.trim().is_empty() {
+        &state.scenario_path_text
+    } else {
+        &state.clause_path_text
+    };
+    let start_dir = default_clause_picker_start_directory(start_hint);
+    let result = match picker.pick_open_clause(&start_dir) {
+        ScenarioPickerOutcome::Cancelled => ClausePickerActionResult::Cancelled,
+        ScenarioPickerOutcome::Selected(path) => {
+            let path = canonicalize_scenario_display_path(&path);
+            state.clause_path_text = path.display().to_string();
+            run_clause_picker_action(
+                &ClausePickerSelection {
+                    clause_path: path,
+                    resolver_entries,
+                    scenario_json_path: None,
+                },
+                Some(state.profile.clone()),
+            )
+        }
+    };
 
     match &result {
         ClausePickerActionResult::Loaded {

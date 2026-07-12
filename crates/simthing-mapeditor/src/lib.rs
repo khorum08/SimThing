@@ -83,10 +83,11 @@ pub use clause_scenario_ingest::{
     ClauseScenarioIngestResult, ClauseScenarioSourceResolver,
 };
 pub use clause_scenario_picker::{
-    clause_picker_menu_label, format_clause_picker_error, open_clause_scenario_with_picker,
-    parse_clause_resolver_entries, run_clause_picker_action, run_clause_picker_ingest_then_session,
-    validate_clause_path, ClauseFilePicker, ClausePickerActionResult, ClausePickerSelection,
-    FakeClauseFilePicker, NativeClauseFilePicker, OPEN_CLAUSE_SCENARIO_ACTION_LABEL,
+    clause_picker_menu_label, default_clause_picker_start_directory, format_clause_picker_error,
+    open_clause_scenario_with_picker, parse_clause_resolver_entries, run_clause_picker_action,
+    run_clause_picker_ingest_then_session, validate_clause_path, ClauseFilePicker,
+    ClausePickerActionResult, ClausePickerSelection, FakeClauseFilePicker, NativeClauseFilePicker,
+    OPEN_CLAUSE_SCENARIO_ACTION_LABEL,
 };
 pub use falloff_ruler_overlay::{draw_falloff_ruler_overlay, FalloffRulerOverlayParams};
 pub use generation::{GenerationPreset, GenerationProfile, GenerationRunOutput};
