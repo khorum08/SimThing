@@ -25,3 +25,14 @@ date	role	query	anchors_served	hit
 2026-07-11T09:11:58Z	coding	--paths crates/simthing-mapeditor/src/app/mod.rs crates/simthing-mapeditor/src/app/ui.rs crates/simthing-mapeditor/src/lib.rs crates/simthing-mapeditor/src/studio_scenario_library_ui.rs crates/simthing-mapeditor/tests/studio_scenario_library_ui_0.rs docs/design_0_0_8_6_studio_live_ops.md docs/orchestrator_orientation.md docs/tests/current_evidence_index.md docs/tests/studio_scenario_library_ui_0_results.md scripts/ci/anchor_reach_log.tsv scripts/ci/inspect_justifications.tsv scripts/ci/test_inventory.tsv scripts/ci/triage_log.tsv	movement-front,orientation-harness-core,session-lifecycle-adr-family,structural-execution-convergence	hit
 2026-07-11T10:23:30Z	coding	--domain field-policy	field-policy-time-decisions	hit
 2026-07-11T10:33:02Z	coding	--paths crates/simthing-mapeditor/src/app/mod.rs crates/simthing-mapeditor/src/app/ui.rs crates/simthing-mapeditor/src/lib.rs crates/simthing-mapeditor/src/studio_scenario_library_ui.rs crates/simthing-mapeditor/tests/studio_scenario_library_ui_0.rs crates/simthing-mapeditor/tests/studio_scenario_library_create_0.rs docs/design_0_0_8_6_studio_live_ops.md docs/orchestrator_orientation.md docs/tests/current_evidence_index.md docs/tests/studio_scenario_library_create_0_results.md scripts/ci/anchor_reach_log.tsv scripts/ci/inspect_justifications.tsv scripts/ci/test_inventory.tsv scripts/ci/triage_log.tsv	movement-front,orientation-harness-core,session-lifecycle-adr-family,structural-execution-convergence	hit
+2026-07-12T03:44:02Z	coding	--domain eml-extension-ladder	none	none
+2026-07-12T03:44:02Z	coding	--domain field-policy-time-decisions	none	none
+2026-07-12T03:44:03Z	coding	--domain movement-front	movement-front	hit
+2026-07-12T03:44:03Z	coding	--domain orientation-harness-core	none	none
+2026-07-12T03:44:03Z	coding	--domain session-lifecycle-adr-family	none	none
+2026-07-12T03:44:03Z	coding	--domain structural-execution-convergence	none	none
+2026-07-12T03:44:09Z	coding	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-07-12T03:44:09Z	coding	--grep field-policy-time-decisions	field-policy-time-decisions	hit
+2026-07-12T03:44:09Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-07-12T03:44:09Z	coding	--grep session-lifecycle-adr-family	session-lifecycle-adr-family	hit
+2026-07-12T03:44:09Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
