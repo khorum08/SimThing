@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 4f805038313e957c9c7fecf7c92d92359831acdab113f845c5219e42fdecc3fa |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 2fefb0e1a366a700a178c33303b7b13bbbc19dbf8a094ac31b204ef57033f0fd |
+| design_0_0_8_6_studio_live_ops.md | 21849a5c41f8b924932c1e7ab89e5a28c1c48e7c9ad52dafb4c1efa04295b5a0 |
 | relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -53,19 +53,19 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 Track state: `open`
 
-> Compact view: showing last 5 of 20 rungs (track `open`); full ladder in the design doc.
-
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 11.5 | STUDIO-FACTION-NAMEPLATES-0 | **Needs 11.2 + 11.3.** Star + planet nameplates render the **star/system name**  | **ORCHESTRATOR-GRADUATED / merged [#1309](https://github.com/khorum08/SimThing/pull/1309) @ `9ee45b3f`** — faction-co... |
-| 11.6 | STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0 | **Needs 11.2.** Selecting a faction-owned star **brightens all stars that factio | **ORCHESTRATOR-GRADUATED / merged [#1312](https://github.com/khorum08/SimThing/pull/1312) @ `d8484d66`** — selecting ... |
-| 11.7 | STUDIO-FROSTED-GLASS-0 | Window backgrounds get a real **frosted-glass** effect: slight darkening tint +  | **DA-GRADUATED / merged [#1314](https://github.com/khorum08/SimThing/pull/1314) @ `26327900`** — real WGSL frosted-gl... |
 | REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **DA-GRADUATED / merged [#1317](https://github.com/khorum08/SimThing/pull/1317) @ `1bdc1297`** — transport of the DA-... |
+| 12.2 | STUDIO-DISRUPTION-READOUT-0 | **Read-only per-system disruption snapshot from the live session.** Default `Sim | TODO |
+| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | TODO |
+| 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | TODO |
+| 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
+| 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |
 | OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: none — awaiting Owner direction for the next UI/UX ladder
+Active pointer: `STUDIO-LOADER-DIALOG-REPAIR-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
