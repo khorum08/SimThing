@@ -174,8 +174,9 @@ fn faction_nameplates_do_not_mutate_scenario_spec() {
 }
 
 /// catches: nameplate color path becoming selection-driven (11.5 purity; 11.6 uses separate highlight helpers).
+/// Inventory name retained (deletion-guard): was a 11.6-creep fence; now asserts color purity.
 #[test]
-fn faction_nameplates_colors_independent_of_selection_state() {
+fn faction_nameplates_no_selection_brighten_semantics() {
     let spec = mini_spec_with_owners_and_cells();
     let pres = star_nameplate_presentations(&spec);
     // Colors derive from owner_flow_owner_ref + color_rgb only — no selection argument.
