@@ -63,6 +63,7 @@ REQUESTED_TARGET=0
 CHANGED_FILES_RESOLVED=0
 CHANGED_FILES_LIST=""
 PR_RESOLUTION_FAILED=0
+BODY_SHA_EMITTED=0
 
 usage() {
   cat <<'EOF'
@@ -195,6 +196,7 @@ emit_verdict() {
       ;;
   esac
   printf '%s\n' "$VERDICT"
+  emit_body_sha_line
   if [[ "$kind" == "reserve" ]]; then
     emit_treeverify_profile_line
     emit_required_anchors_line
@@ -1099,6 +1101,8 @@ is_evidence_tail_path() {
   local path="$1"
   path="${path//\\//}"
   [[ "$path" == docs/tests/* ]] && return 0
+  [[ "$path" == docs/design_*.md ]] && return 0
+  [[ "$path" == "docs/orchestrator_orientation.md" ]] && return 0
   [[ "$path" == "scripts/ci/triage_log.tsv" ]] && return 0
   [[ "$path" == *_results.md ]] && return 0
   return 1
@@ -1178,6 +1182,64 @@ PY
   git rev-parse HEAD 2>/dev/null || true
 }
 
+extract_tested_code_sha() {
+  local body="$1"
+  printf '%s\n' "$body" |
+    sed -nE 's/^[[:space:]]*tested_code_sha:[[:space:]]*([0-9a-fA-F]{8,40})[[:space:]]*$/\1/Ip' |
+    head -n 1
+}
+
+classify_body_sha() {
+  local body="$1"
+  local tested head resolved_tested resolved_head
+  tested="$(extract_tested_code_sha "$body" | tr '[:upper:]' '[:lower:]')"
+  head="$(resolve_pr_head_sha | tr -d '\r' | head -n 1 | tr '[:upper:]' '[:lower:]')"
+  if [[ -z "$tested" || -z "$head" ]]; then
+    printf 'STALE'
+    return 0
+  fi
+
+  if [[ -n "$FIXTURE_DIR" ]]; then
+    if [[ "$tested" == "$head" ]]; then
+      printf 'fresh'
+      return 0
+    fi
+    if triage_delta_is_evidence_tail_only "$tested" "$head"; then
+      printf 'evidence-tail'
+      return 0
+    fi
+    printf 'STALE'
+    return 0
+  fi
+
+  resolved_tested="$(git rev-parse --verify "${tested}^{commit}" 2>/dev/null || true)"
+  resolved_head="$(git rev-parse --verify "${head}^{commit}" 2>/dev/null || true)"
+  if [[ -z "$resolved_tested" || -z "$resolved_head" ]]; then
+    printf 'STALE'
+    return 0
+  fi
+  if [[ "$resolved_tested" == "$resolved_head" ]]; then
+    printf 'fresh'
+    return 0
+  fi
+  if git merge-base --is-ancestor "$resolved_tested" "$resolved_head" 2>/dev/null &&
+     triage_delta_is_evidence_tail_only "$resolved_tested" "$resolved_head"; then
+    printf 'evidence-tail'
+    return 0
+  fi
+  printf 'STALE'
+}
+
+emit_body_sha_line() {
+  if [[ "$BODY_SHA_EMITTED" -eq 1 ]]; then
+    return 0
+  fi
+  BODY_SHA_EMITTED=1
+  local body
+  body="$(pr_body_text)"
+  printf 'body_sha: %s\n' "$(classify_body_sha "$body")"
+}
+
 # Emit covered scan_ids whose triage commit is head, an ancestor with evidence-tail-only
 # delta, or a non-SHA fixture token. Code deltas after triage SHA invalidate coverage.
 triage_covered_scan_ids() {
@@ -1208,6 +1270,10 @@ def reason_valid(text: str) -> bool:
 def is_evidence_tail(p: str) -> bool:
     p = p.replace("\\", "/")
     if p.startswith("docs/tests/"):
+        return True
+    if p.startswith("docs/design_") and p.endswith(".md"):
+        return True
+    if p == "docs/orchestrator_orientation.md":
         return True
     if p == "scripts/ci/triage_log.tsv":
         return True
@@ -1498,6 +1564,7 @@ reset_clearance_state() {
   CHANGED_FILES_RESOLVED=0
   CHANGED_FILES_LIST=""
   PR_RESOLUTION_FAILED=0
+  BODY_SHA_EMITTED=0
 }
 
 run_fixture() {
@@ -1523,6 +1590,17 @@ run_fixture() {
     echo "  expected: ${expected}"
     echo "  got:      ${got}"
     return 1
+  fi
+  if [[ -f "${FIXTURE_DIR}/expected_body_sha.txt" ]]; then
+    local want_body got_body
+    want_body="$(tr -d '\r' <"${FIXTURE_DIR}/expected_body_sha.txt" | head -n 1)"
+    got_body="$(printf '%s\n' "$out" | grep -E '^body_sha:' | head -n 1 || true)"
+    if [[ "$got_body" != "$want_body" ]]; then
+      echo "FAIL ${name}"
+      echo "  expected: ${want_body}"
+      echo "  got:      ${got_body}"
+      return 1
+    fi
   fi
   # DA-RESERVE must also fold treeverify profile; CLEARABLE/FAIL must not.
   if [[ "$got" == CLEARANCE-VERDICT:\ DA-RESERVE* ]]; then
@@ -1667,6 +1745,9 @@ run_selftest() {
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing
+    clearance_selftest_body_sha_fresh
+    clearance_selftest_body_sha_evidence_tail
+    clearance_selftest_body_sha_stale_code_delta
   )
   local name
   for name in "${fixtures[@]}"; do

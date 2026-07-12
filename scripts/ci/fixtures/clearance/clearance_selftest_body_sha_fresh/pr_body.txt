@@ -1,0 +1,3 @@
+tested_code_sha: aaaaaaaa11111111222222223333333344444444
+coverage_basis: PASS - exact head fixture
+ci_green: PASS

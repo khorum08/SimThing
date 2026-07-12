@@ -62,12 +62,14 @@ import hashlib
 import os
 import pathlib
 import re
+import subprocess
 import sys
 
 text = sys.argv[1]
 repo_root = pathlib.Path(os.environ.get("RELAY_LINT_REPO_ROOT", "."))
 fixture_dir = os.environ.get("RELAY_LINT_FIXTURE_DIR", "")
 changed_files_env = os.environ.get("RELAY_LINT_CHANGED_FILES", "")
+diff_env = os.environ.get("RELAY_LINT_DIFF", "")
 
 
 def normalize_text(raw: bytes) -> str:
@@ -515,6 +517,152 @@ if clearance_fail:
     print(f"FAIL:{clearance_fail}")
     sys.exit(0)
 
+SHA_RE = re.compile(r"\b[0-9a-fA-F]{8,40}\b")
+GRADUATION_RE = re.compile(
+    r"\b(DA-GRADUATED|ORCHESTRATOR-GRADUATED|graduated|graduation|exit[- ]stamp|closed as graduated|merge commit|merged\s+#\d+\s+@)\b",
+    re.IGNORECASE,
+)
+NON_CLAIM_SHA_FIELDS = re.compile(
+    r"\b(tested_code_sha|clearance_pr_head|current_pr_head|base sha|base:|branch head|head sha|current head)\b",
+    re.IGNORECASE,
+)
+
+
+def fixture_claimed_merge_state(commit: str):
+    if not fixture_dir:
+        return None
+    path = pathlib.Path(fixture_dir) / "claimed_merge_commits.tsv"
+    if not path.is_file():
+        return None
+    wanted = commit.lower()
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        raw = raw.strip()
+        if not raw or raw.startswith("#") or "\t" not in raw:
+            continue
+        sha, state = raw.split("\t", 1)
+        if sha.lower() == wanted:
+            return state.strip().lower()
+    return None
+
+
+def claimed_graduation_merge_commits():
+    commits = []
+    for line in text.splitlines():
+        if NON_CLAIM_SHA_FIELDS.search(line):
+            continue
+        if not GRADUATION_RE.search(line):
+            continue
+        for m in SHA_RE.finditer(line):
+            token = m.group(0).lower()
+            if token not in commits:
+                commits.append(token)
+    return commits
+
+
+def claimed_merge_is_on_master(commit: str):
+    state = fixture_claimed_merge_state(commit)
+    if state == "ancestor":
+        return None
+    if state == "not-ancestor":
+        return "claimed-merge-not-on-master"
+    if state == "unresolvable":
+        return "unresolvable-claimed-merge"
+
+    origin_master = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--verify", "origin/master^{commit}"],
+        capture_output=True,
+        text=True,
+    )
+    if origin_master.returncode != 0:
+        return "unresolvable-origin-master"
+    resolved = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--verify", f"{commit}^{{commit}}"],
+        capture_output=True,
+        text=True,
+    )
+    if resolved.returncode != 0:
+        return "unresolvable-claimed-merge"
+    ancestry = subprocess.run(
+        ["git", "-C", str(repo_root), "merge-base", "--is-ancestor", resolved.stdout.strip(), "origin/master"],
+        capture_output=True,
+        text=True,
+    )
+    if ancestry.returncode != 0:
+        return "claimed-merge-not-on-master"
+    return None
+
+
+for claimed_commit in claimed_graduation_merge_commits():
+    claimed_merge_fail = claimed_merge_is_on_master(claimed_commit)
+    if claimed_merge_fail:
+        print(f"FAIL:{claimed_merge_fail}")
+        sys.exit(0)
+
+
+def explicit_rung_id():
+    patterns = [
+        r"(?im)^\s*(?:[-*]\s*)?Rung\s*:\s*`?([A-Z0-9][A-Z0-9_-]+)`?",
+        r"(?im)^\s*Rung ID\s*/\s*title\s*:\s*`?([A-Z0-9][A-Z0-9_-]+)`?",
+        r"(?im)^\s*\|\s*Rung\s*\|\s*`?([A-Z0-9][A-Z0-9_-]+)`?\s*\|",
+    ]
+    for pat in patterns:
+        m = re.search(pat, text)
+        if m:
+            return m.group(1)
+    return ""
+
+
+def claims_self_graduation(rung_id: str):
+    if not rung_id:
+        return False
+    status_body = section_body([r'^##\s+Status\b', r'^Status:\s*$', r'^Status:\s*\S'])
+    if re.search(r"\b(DA-GRADUATED|ORCHESTRATOR-GRADUATED|COMPLETE)\b", status_body):
+        return True
+    claim_patterns = [
+        rf"(?is)\b{re.escape(rung_id)}\b[^\n]{{0,240}}\b(DA-GRADUATED|ORCHESTRATOR-GRADUATED|COMPLETE|graduated)\b",
+        rf"(?is)\b(DA-GRADUATED|ORCHESTRATOR-GRADUATED|COMPLETE|graduated)\b[^\n]{{0,240}}\b{re.escape(rung_id)}\b",
+        r"(?im)^\s*Status\s*:\s*(DA-GRADUATED|ORCHESTRATOR-GRADUATED|COMPLETE)\b",
+    ]
+    return any(re.search(p, text) for p in claim_patterns)
+
+
+def relay_diff_text():
+    if diff_env:
+        return diff_env
+    if fixture_dir:
+        patch = pathlib.Path(fixture_dir) / "diff.patch"
+        if patch.is_file():
+            return patch.read_text(encoding="utf-8")
+    return ""
+
+
+def diff_contains_own_rung_stamp(rung_id: str):
+    patch = relay_diff_text()
+    if not patch:
+        return False
+    in_design = False
+    for raw in patch.splitlines():
+        if raw.startswith("diff --git "):
+            in_design = "docs/design_" in raw and raw.endswith(".md")
+            continue
+        if not in_design or not raw.startswith("+") or raw.startswith("+++"):
+            continue
+        line = raw[1:]
+        if rung_id not in line:
+            continue
+        if not re.search(r"\b(DA-GRADUATED|ORCHESTRATOR-GRADUATED|COMPLETE|merged\s+#\d+\s+@\s*[0-9a-fA-F]{8,40})\b", line):
+            continue
+        if re.search(r"\b(NOT STARTED|TBD|TODO|PLACEHOLDER|DA review pending|PROBATION)\b", line, re.IGNORECASE):
+            continue
+        return True
+    return False
+
+
+self_rung = explicit_rung_id()
+if claims_self_graduation(self_rung) and not diff_contains_own_rung_stamp(self_rung):
+    print("FAIL:self-rung-stamp-missing")
+    sys.exit(0)
+
 print(f"PASS:sketch={sketch}")
 PY
 )"
@@ -553,6 +701,8 @@ read_input() {
     evidence=""
     local files
     files="$(gh pr view "$PR_NUMBER" --json files -q '.files[].path' 2>/dev/null || true)"
+    export RELAY_LINT_CHANGED_FILES="$files"
+    export RELAY_LINT_DIFF="$(gh pr diff "$PR_NUMBER" 2>/dev/null || true)"
     local f
     for f in $files; do
       if [[ "$f" == docs/tests/*_results.md ]]; then
@@ -624,6 +774,11 @@ run_selftest() {
     relay_lint_selftest_pass_fresh_da_reserve_clearance
     relay_lint_selftest_fail_clearable_da_relay
     relay_lint_selftest_pass_non_da_without_clearance
+    relay_lint_selftest_fail_claimed_merge_not_master
+    relay_lint_selftest_fail_unresolvable_claimed_merge
+    relay_lint_selftest_fail_self_graduation_stampless
+    relay_lint_selftest_pass_ancestral_merge_self_stamp
+    relay_lint_selftest_pass_transport_stamp_record
     relay_lint_selftest_path_kernel_missing_ack
     relay_lint_selftest_path_docs_only_no_anchors
     relay_lint_selftest_path_sim_field_policy_missing_ack

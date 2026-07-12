@@ -1,0 +1,5 @@
+diff --git a/docs/design_0_0_8_4_8_4_hd_board.md b/docs/design_0_0_8_4_8_4_hd_board.md
+--- a/docs/design_0_0_8_4_8_4_hd_board.md
++++ b/docs/design_0_0_8_4_8_4_hd_board.md
+@@ -84,1 +84,1 @@
++| HD-1 | `HD-TRUTH-GUARDS-0` | fixture row | DA-GRADUATED / merged #47 @ 4444444444444444444444444444444444444444 | Std |
