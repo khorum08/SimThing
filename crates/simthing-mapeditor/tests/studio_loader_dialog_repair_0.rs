@@ -2,7 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-use simthing_mapeditor::app::{scenario_io, StudioAppState};
+use simthing_mapeditor::app::{
+    loading_cover_active_for_phase, pending_parent_is_hidden, phase_after_final_batch_complete,
+    phase_after_parent_revealed, scenario_io, SceneAdoptionVisibilityPhase, StudioAppState,
+};
 use simthing_mapeditor::clause_scenario_picker::{
     run_clause_picker_action_staged, ClausePickerActionResult, ClausePickerSelection,
     FakeClauseFilePicker,
@@ -345,4 +348,139 @@ fn studio_ops_telemetry_is_hidden_by_default_toggleable_and_read_only() {
     let source = include_str!("../src/app/ui.rs");
     assert!(source.contains("Show Studio_ops Telemetry"));
     assert!(source.contains("egui::Window::new(\"Studio_ops Telemetry\")"));
+}
+
+/// catches: pending entities rendering before final commit.
+#[test]
+fn pending_scene_root_is_hidden_during_every_build_batch() {
+    assert!(pending_parent_is_hidden(
+        SceneAdoptionVisibilityPhase::BuildingHidden
+    ));
+    assert!(pending_parent_is_hidden(
+        SceneAdoptionVisibilityPhase::CommittedAwaitingReveal
+    ));
+    assert!(!pending_parent_is_hidden(
+        SceneAdoptionVisibilityPhase::Revealed
+    ));
+    let source = include_str!("../src/app/galaxy_render.rs");
+    assert!(source.contains("PendingGalaxySceneRoot"));
+    assert!(source.contains("Visibility::Hidden"));
+    assert!(source.contains("begin_batched_galaxy_scene"));
+}
+
+/// catches: stars/nameplates/hyperlanes spawned outside the hidden root or forcing Visible.
+#[test]
+fn pending_scene_entities_inherit_hidden_root_visibility() {
+    let source = include_str!("../src/app/galaxy_render.rs");
+    assert!(source.contains("PendingSceneMember"));
+    assert!(source.contains("Visibility::Inherited"));
+    assert!(source.contains("ChildOf(parent)"));
+    assert!(source.contains("Without<PendingSceneMember>"));
+    let spawn = source
+        .split("fn spawn_prepared_star")
+        .nth(1)
+        .expect("spawn_prepared_star");
+    let spawn_body = spawn.split("fn spawn_hyperlane_bucket").next().unwrap();
+    assert!(
+        spawn_body.contains("Visibility::Inherited"),
+        "pending star/nameplate path must use Inherited visibility"
+    );
+}
+
+/// catches: old scene exposure while worker or adoption remains active.
+#[test]
+fn loading_cover_is_active_for_entire_attempt() {
+    assert!(loading_cover_active_for_phase(
+        SceneAdoptionVisibilityPhase::BuildingHidden
+    ));
+    assert!(loading_cover_active_for_phase(
+        SceneAdoptionVisibilityPhase::CommittedAwaitingReveal
+    ));
+    assert!(!loading_cover_active_for_phase(
+        SceneAdoptionVisibilityPhase::Revealed
+    ));
+    let source = include_str!("../src/app/ui.rs");
+    assert!(source.contains("draw_studio_loading_cover"));
+    assert!(source.contains("loading_cover_active"));
+    assert!(source.contains("studio_loading_cover"));
+}
+
+/// catches: progressive reveal or early root visibility.
+#[test]
+fn scene_reveal_occurs_only_after_final_batch() {
+    let next = phase_after_final_batch_complete(SceneAdoptionVisibilityPhase::BuildingHidden);
+    assert_eq!(next, SceneAdoptionVisibilityPhase::CommittedAwaitingReveal);
+    assert!(pending_parent_is_hidden(next));
+    let source = include_str!("../src/app/ui.rs");
+    let poll = source
+        .split("fn poll_clause_loader_jobs")
+        .nth(1)
+        .expect("poll");
+    let poll = poll.split("pub fn studio_ui_system").next().unwrap();
+    assert!(poll.contains("CommittedAwaitingReveal"));
+    assert!(poll.contains("finish_batched_galaxy_scene"));
+    assert!(poll.contains("reveal_pending_galaxy_scene_parent"));
+}
+
+/// catches: per-entity reveal or partial commit.
+#[test]
+fn commit_reveals_scene_as_one_parent_visibility_transition() {
+    let revealed =
+        phase_after_parent_revealed(SceneAdoptionVisibilityPhase::CommittedAwaitingReveal);
+    assert_eq!(revealed, SceneAdoptionVisibilityPhase::Revealed);
+    let source = include_str!("../src/app/galaxy_render.rs");
+    assert!(source.contains("fn reveal_pending_galaxy_scene_parent"));
+    let reveal = source
+        .split("fn reveal_pending_galaxy_scene_parent")
+        .nth(1)
+        .expect("reveal");
+    let reveal = reveal.split("pub(super) fn cancel_batched").next().unwrap();
+    assert!(reveal.contains("entity(pending_parent)"));
+    assert!(reveal.contains("Visibility::Visible"));
+    assert!(reveal.contains("remove::<PendingSceneMember>"));
+}
+
+/// catches: late worker/adoption visibility after cancellation.
+#[test]
+fn cancelled_or_stale_attempt_never_reveals_pending_scene() {
+    let mut model = StudioScenarioLibraryModel::default();
+    let stale = model.begin_load_attempt();
+    model.cancel_load_attempt();
+    assert!(!model.is_current_load_attempt(stale));
+    let source = include_str!("../src/app/ui.rs");
+    let poll = source
+        .split("fn poll_clause_loader_jobs")
+        .nth(1)
+        .expect("poll");
+    let poll = poll.split("pub fn studio_ui_system").next().unwrap();
+    assert!(poll.contains("cancel_batched_galaxy_scene") || poll.contains("despawn()"));
+    assert!(poll.contains("is_current_load_attempt"));
+    assert!(poll.contains("loading_cover_active = false"));
+}
+
+/// catches: leaked hidden entities or permanently blank client after failure.
+#[test]
+fn failure_cleans_hidden_pending_scene_and_restores_prior_presentation() {
+    let source = include_str!("../src/app/ui.rs");
+    assert!(source.contains("loading_cover_active = false"));
+    let galaxy = include_str!("../src/app/galaxy_render.rs");
+    assert!(galaxy.contains("fn cancel_batched_galaxy_scene"));
+    assert!(galaxy.contains("recursive_roots"));
+    let poll = source
+        .split("fn poll_clause_loader_jobs")
+        .nth(1)
+        .expect("poll");
+    let poll = poll.split("pub fn studio_ui_system").next().unwrap();
+    assert!(poll.contains("ClausePickerActionResult::Failed"));
+    assert!(poll.contains("finish_load_attempt"));
+}
+
+/// catches: the cover hiding the required OVL controls.
+#[test]
+fn loading_cover_does_not_obscure_modal_or_studio_ops_telemetry() {
+    let source = include_str!("../src/app/ui.rs");
+    assert!(source.contains("Order::Middle"));
+    assert!(source.contains("draw_studio_loading_cover"));
+    assert!(source.contains("egui::Modal::new"));
+    assert!(source.contains("Studio_ops Telemetry"));
 }

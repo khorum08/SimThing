@@ -32,9 +32,10 @@ use crate::studio_antialiasing::{apply_studio_antialiasing_mode, StudioAntialias
 use super::camera::{reset_camera_after_generation, snap_overhead, MainCamera, StudioCamera};
 use super::galaxy_render::{
     apply_batched_galaxy_scene, apply_batched_galaxy_scene_cleanup, begin_batched_galaxy_scene,
-    cancel_batched_galaxy_scene, finish_batched_galaxy_scene, mark_hyperlane_render_dirty,
-    mark_star_visual_render_dirty, prepare_galaxy_scene, BatchedGalaxySceneBuild,
-    PreparedGalaxyScene, StarVisualAssets,
+    cancel_batched_galaxy_scene, finish_batched_galaxy_scene, loading_cover_active_for_phase,
+    mark_hyperlane_render_dirty, mark_star_visual_render_dirty, phase_after_final_batch_complete,
+    phase_after_parent_revealed, prepare_galaxy_scene, reveal_pending_galaxy_scene_parent,
+    BatchedGalaxySceneBuild, PreparedGalaxyScene, SceneAdoptionVisibilityPhase, StarVisualAssets,
 };
 use super::scenario_io::{
     load_scenario_manual_path_action, open_native_scenario_load_picker, save_scenario_action,
@@ -98,13 +99,16 @@ pub(super) struct PendingClauseLoaderJob {
 
 pub(super) struct PendingClauseSceneAdoption {
     token: u64,
-    session: StudioSession,
+    session: Option<StudioSession>,
     source_path: Option<std::path::PathBuf>,
     message: String,
     runtime_status: Option<crate::StudioScenarioRuntimeSaveLoadStatus>,
-    build: BatchedGalaxySceneBuild,
+    build: Option<BatchedGalaxySceneBuild>,
     elapsed_before_batches: Duration,
     batch_started: Instant,
+    /// After resource swap; parent still Hidden until reveal frame.
+    pending_parent_awaiting_reveal: Option<Entity>,
+    phase: SceneAdoptionVisibilityPhase,
 }
 
 const SETTINGS_DIALOG_SIZE: egui::Vec2 = egui::vec2(420.0, 720.0);
@@ -209,6 +213,8 @@ fn start_clause_loader_job(state: &mut StudioAppState) {
         return;
     }
     enforce_scenario_library_pause(state);
+    // Opaque cover for the entire attempt (worker + hidden adopt + reveal frame).
+    state.loading_cover_active = true;
     let token = state.scenario_library.begin_load_attempt();
     let selection = ClausePickerSelection {
         clause_path: state.scenario_library.path_text.trim().into(),
@@ -336,17 +342,20 @@ fn poll_clause_loader_jobs(
                                 state.last_scenario_io_status = message.clone();
                                 state.status_message = message;
                                 state.scenario_library.finish_load_attempt(token);
+                                state.loading_cover_active = false;
                                 continue;
                             };
                             state.clause_scene_adoption = Some(PendingClauseSceneAdoption {
                                 token,
-                                session,
+                                session: Some(session),
                                 source_path: ingest.source_path,
                                 message,
                                 runtime_status,
-                                build: begin_batched_galaxy_scene(prepared_scene),
+                                build: Some(begin_batched_galaxy_scene(commands, prepared_scene)),
                                 elapsed_before_batches: scene_prepare_elapsed,
                                 batch_started: Instant::now(),
+                                pending_parent_awaiting_reveal: None,
+                                phase: SceneAdoptionVisibilityPhase::BuildingHidden,
                             });
                         }
                         ClausePickerActionResult::Failed { message }
@@ -354,9 +363,11 @@ fn poll_clause_loader_jobs(
                             state.last_scenario_io_status = message.clone();
                             state.status_message = message;
                             state.scenario_library.finish_load_attempt(token);
+                            state.loading_cover_active = false;
                         }
                         ClausePickerActionResult::Cancelled => {
                             state.scenario_library.finish_load_attempt(token);
+                            state.loading_cover_active = false;
                         }
                     }
                 }
@@ -377,50 +388,77 @@ fn poll_clause_loader_jobs(
             .scenario_library
             .is_current_load_attempt(adoption.token)
         {
-            state
-                .clause_scene_cleanup
-                .push(cancel_batched_galaxy_scene(adoption.build));
-        } else if apply_batched_galaxy_scene(
-            commands,
-            meshes,
-            materials,
-            assets,
-            &mut adoption.build,
-        ) {
-            let elapsed = adoption.elapsed_before_batches + adoption.batch_started.elapsed();
-            state
-                .clause_scene_cleanup
-                .push(finish_batched_galaxy_scene(scene_root, adoption.build));
-            adopt_loaded_scenario_session(adoption.session, settings, state, adoption.message);
-            request_live_bridge_reset_after_session_replacement(state);
-            if let Some(status) = adoption.runtime_status {
-                state.apply_refreshed_runtime_saveload_status(status, Some(elapsed.as_millis()));
+            // Stale/cancelled: never reveal pending geometry.
+            if let Some(parent) = adoption.pending_parent_awaiting_reveal.take() {
+                commands.entity(parent).despawn();
+            } else if let Some(build) = adoption.build.take() {
+                state
+                    .clause_scene_cleanup
+                    .push(cancel_batched_galaxy_scene(build));
             }
-            if let Some(source) = adoption.source_path {
-                state.clause_path_text = source.display().to_string();
+            state.loading_cover_active = false;
+        } else if adoption.phase == SceneAdoptionVisibilityPhase::CommittedAwaitingReveal {
+            // Reveal frame: one parent Visibility write; then drop cover and close modal.
+            if let Some(parent) = adoption.pending_parent_awaiting_reveal.take() {
+                reveal_pending_galaxy_scene_parent(
+                    commands,
+                    parent,
+                    scene_root,
+                    state.show_stars,
+                    state.show_hyperlanes,
+                );
             }
-            mark_hyperlane_render_dirty(&mut render_caches.hyperlane);
-            mark_star_visual_render_dirty(&mut render_caches.star_visual);
-            render_caches.picking.last_key = None;
-            render_caches.picking.cached_projections.clear();
-            render_caches.billboard.last_camera_key = None;
-            reset_camera_after_generation(camera);
-            presentation.perf.vram_dirty = true;
-            state.scenario_library.observe_load_attempt(
-                adoption.token,
-                StudioLoaderStageEvent::Passed {
-                    stage: StudioLoaderStage::SceneAdopt,
-                    elapsed,
-                },
-            );
+            adoption.phase = phase_after_parent_revealed(adoption.phase);
+            state.loading_cover_active = false;
             state.scenario_library.finish_load_attempt(adoption.token);
             state.scenario_library.close();
-        } else {
-            state.clause_scene_adoption = Some(adoption);
+            // Old committed scene cleanup already queued at commit step.
+        } else if let Some(build) = adoption.build.as_mut() {
+            if apply_batched_galaxy_scene(commands, meshes, materials, assets, build) {
+                // Final batch complete: swap resource + adopt while parent stays Hidden.
+                let elapsed = adoption.elapsed_before_batches + adoption.batch_started.elapsed();
+                let build = adoption.build.take().expect("build present after complete");
+                let (old_cleanup, pending_parent) = finish_batched_galaxy_scene(scene_root, build);
+                state.clause_scene_cleanup.push(old_cleanup);
+                let session = adoption.session.take().expect("session present for commit");
+                adopt_loaded_scenario_session(session, settings, state, adoption.message.clone());
+                request_live_bridge_reset_after_session_replacement(state);
+                if let Some(status) = adoption.runtime_status.take() {
+                    state
+                        .apply_refreshed_runtime_saveload_status(status, Some(elapsed.as_millis()));
+                }
+                if let Some(source) = adoption.source_path.clone() {
+                    state.clause_path_text = source.display().to_string();
+                }
+                mark_hyperlane_render_dirty(&mut render_caches.hyperlane);
+                mark_star_visual_render_dirty(&mut render_caches.star_visual);
+                render_caches.picking.last_key = None;
+                render_caches.picking.cached_projections.clear();
+                render_caches.billboard.last_camera_key = None;
+                reset_camera_after_generation(camera);
+                presentation.perf.vram_dirty = true;
+                state.scenario_library.observe_load_attempt(
+                    adoption.token,
+                    StudioLoaderStageEvent::Passed {
+                        stage: StudioLoaderStage::SceneAdopt,
+                        elapsed,
+                    },
+                );
+                adoption.pending_parent_awaiting_reveal = Some(pending_parent);
+                adoption.phase = phase_after_final_batch_complete(adoption.phase);
+                debug_assert!(loading_cover_active_for_phase(adoption.phase));
+                // Keep cover + hold adoption for one reveal frame (modal still open / paused).
+                state.clause_scene_adoption = Some(adoption);
+            } else {
+                state.clause_scene_adoption = Some(adoption);
+            }
         }
     }
 
-    if state.scenario_library.is_loading() || !state.clause_scene_cleanup.is_empty() {
+    if state.scenario_library.is_loading()
+        || state.clause_scene_adoption.is_some()
+        || !state.clause_scene_cleanup.is_empty()
+    {
         ctx.request_repaint();
     }
 }
@@ -471,6 +509,14 @@ pub fn studio_ui_system(
     let screen_w = screen.width();
     let screen_h = screen.height();
     presentation.frosted.begin_frame();
+
+    // Opaque world cover behind modal/telemetry, above 3D scene (OVL: no starmap while loading).
+    if state.loading_cover_active
+        || state.scenario_library.is_loading()
+        || state.clause_scene_adoption.is_some()
+    {
+        draw_studio_loading_cover(ctx, screen);
+    }
 
     if should_auto_collapse_panel(screen_w) {
         state.left_panel_collapsed = true;
@@ -2051,6 +2097,20 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
     state.scenario_library.studio_ops_telemetry_visible = visible;
 }
 
+/// Fully opaque world-area cover while a load attempt is active.
+/// Drawn under modal/telemetry layers so progress UI remains visible (source-shape OVL proof).
+fn draw_studio_loading_cover(ctx: &egui::Context, screen: egui::Rect) {
+    // Order::Middle sits above the central panel / 3D view but below Foreground modals.
+    egui::Area::new(egui::Id::new("studio_loading_cover"))
+        .order(egui::Order::Middle)
+        .fixed_pos(screen.min)
+        .interactable(false)
+        .show(ctx, |ui| {
+            ui.painter()
+                .rect_filled(screen, 0.0, egui::Color32::from_rgb(6, 8, 12));
+        });
+}
+
 fn draw_scenario_library_dialog(
     ctx: &egui::Context,
     state: &mut StudioAppState,
@@ -2170,9 +2230,13 @@ fn cancel_scenario_library(state: &mut StudioAppState) {
     let StudioAppState {
         scenario_library,
         sim_clock_transport,
+        loading_cover_active,
         ..
     } = state;
     scenario_library.cancel(sim_clock_transport);
+    // Cover clears once the poller sees the invalidated token and despawns pending geometry.
+    // Keep true until that cleanup runs so a partial tree cannot flash.
+    let _ = loading_cover_active;
 }
 
 fn request_live_bridge_reset_after_session_replacement(state: &mut StudioAppState) {

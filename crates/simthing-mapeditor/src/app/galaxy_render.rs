@@ -79,6 +79,67 @@ pub struct StarVisualAssets {
 pub(super) const SCENARIO_SCENE_STAR_BATCH_SIZE: usize = 8;
 pub(super) const SCENARIO_SCENE_DESPAWN_BATCH_SIZE: usize = 64;
 
+/// Marker on the hidden parent entity for an in-flight clause-load scene adopt.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct PendingGalaxySceneRoot;
+
+/// Marker on entities under the hidden pending root (skipped by debug visibility forcing).
+#[derive(Component, Debug, Clone, Copy)]
+pub struct PendingSceneMember;
+
+/// Visibility phase for atomic pending-scene reveal (presentation only).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneAdoptionVisibilityPhase {
+    /// Batches spawn under a Hidden parent; cover active.
+    BuildingHidden,
+    /// Resource swapped / session adopted; parent still Hidden; cover still active.
+    CommittedAwaitingReveal,
+    /// Parent revealed; cover removed.
+    Revealed,
+}
+
+/// Pure helper: cover remains while building or awaiting the one-frame reveal.
+pub fn loading_cover_active_for_phase(phase: SceneAdoptionVisibilityPhase) -> bool {
+    matches!(
+        phase,
+        SceneAdoptionVisibilityPhase::BuildingHidden
+            | SceneAdoptionVisibilityPhase::CommittedAwaitingReveal
+    )
+}
+
+/// Pure helper: pending parent stays Hidden until the reveal frame.
+pub fn pending_parent_is_hidden(phase: SceneAdoptionVisibilityPhase) -> bool {
+    matches!(
+        phase,
+        SceneAdoptionVisibilityPhase::BuildingHidden
+            | SceneAdoptionVisibilityPhase::CommittedAwaitingReveal
+    )
+}
+
+/// Pure helper: advance phase when the final batch completes (still pre-reveal).
+pub fn phase_after_final_batch_complete(
+    phase: SceneAdoptionVisibilityPhase,
+) -> SceneAdoptionVisibilityPhase {
+    match phase {
+        SceneAdoptionVisibilityPhase::BuildingHidden => {
+            SceneAdoptionVisibilityPhase::CommittedAwaitingReveal
+        }
+        other => other,
+    }
+}
+
+/// Pure helper: advance phase after parent Visibility::Visible is applied.
+pub fn phase_after_parent_revealed(
+    phase: SceneAdoptionVisibilityPhase,
+) -> SceneAdoptionVisibilityPhase {
+    match phase {
+        SceneAdoptionVisibilityPhase::CommittedAwaitingReveal => {
+            SceneAdoptionVisibilityPhase::Revealed
+        }
+        other => other,
+    }
+}
+
 pub(super) struct PreparedGalaxyScene {
     stars: Vec<StarBillboardInstance>,
     nameplates: HashMap<u32, (String, [f32; 4])>,
@@ -105,18 +166,34 @@ pub(super) struct BatchedGalaxySceneBuild {
     star_cursor: crate::studio_scenario_library_ui::StudioSceneBatchCursor,
     next_hyperlane_bucket: usize,
     next_root: GalaxySceneRoot,
+    /// Hidden parent; all pending scene entities are children of this entity.
+    pub(super) pending_parent: Entity,
+    pub(super) phase: SceneAdoptionVisibilityPhase,
 }
 
-pub(super) fn begin_batched_galaxy_scene(prepared: PreparedGalaxyScene) -> BatchedGalaxySceneBuild {
+pub(super) fn begin_batched_galaxy_scene(
+    commands: &mut Commands,
+    prepared: PreparedGalaxyScene,
+) -> BatchedGalaxySceneBuild {
     let star_cursor = crate::studio_scenario_library_ui::StudioSceneBatchCursor::new(
         prepared.stars.len(),
         SCENARIO_SCENE_STAR_BATCH_SIZE,
     );
+    let pending_parent = commands
+        .spawn((
+            PendingGalaxySceneRoot,
+            Transform::default(),
+            Visibility::Hidden,
+            Name::new("PendingGalaxySceneRoot"),
+        ))
+        .id();
     BatchedGalaxySceneBuild {
         prepared,
         star_cursor,
         next_hyperlane_bucket: 0,
         next_root: GalaxySceneRoot::default(),
+        pending_parent,
+        phase: SceneAdoptionVisibilityPhase::BuildingHidden,
     }
 }
 
@@ -137,6 +214,7 @@ pub(super) fn apply_batched_galaxy_scene(
                 build.prepared.stars[index],
                 &build.prepared.nameplates,
                 &build.prepared.billboard_settings,
+                Some(build.pending_parent),
             );
         }
         return false;
@@ -153,6 +231,7 @@ pub(super) fn apply_batched_galaxy_scene(
                 &build.prepared.hyperlane_segments,
                 &build.prepared.render_meta,
                 bucket,
+                Some(build.pending_parent),
             );
         }
         build.next_hyperlane_bucket += 1;
@@ -165,6 +244,8 @@ pub(super) fn apply_batched_galaxy_scene(
 pub(super) struct BatchedGalaxySceneCleanup {
     entities: Vec<Entity>,
     cursor: crate::studio_scenario_library_ui::StudioSceneBatchCursor,
+    /// When set, despawn the pending parent recursively (children included).
+    recursive_roots: Vec<Entity>,
 }
 
 fn scene_cleanup(root: GalaxySceneRoot) -> BatchedGalaxySceneCleanup {
@@ -180,31 +261,79 @@ fn scene_cleanup(root: GalaxySceneRoot) -> BatchedGalaxySceneCleanup {
         entities.len(),
         SCENARIO_SCENE_DESPAWN_BATCH_SIZE,
     );
-    BatchedGalaxySceneCleanup { entities, cursor }
+    BatchedGalaxySceneCleanup {
+        entities,
+        cursor,
+        recursive_roots: Vec::new(),
+    }
 }
 
+/// Swap committed scene resource to the finished pending tree; keep parent Hidden until reveal.
 pub(super) fn finish_batched_galaxy_scene(
     root: &mut GalaxySceneRoot,
     mut build: BatchedGalaxySceneBuild,
-) -> BatchedGalaxySceneCleanup {
+) -> (BatchedGalaxySceneCleanup, Entity) {
+    let pending_parent = build.pending_parent;
     let old_root = std::mem::replace(root, std::mem::take(&mut build.next_root));
-    scene_cleanup(old_root)
+    (scene_cleanup(old_root), pending_parent)
+}
+
+/// Reveal the pending parent in one parent-level visibility write.
+pub(super) fn reveal_pending_galaxy_scene_parent(
+    commands: &mut Commands,
+    pending_parent: Entity,
+    root: &GalaxySceneRoot,
+    show_stars: bool,
+    show_hyperlanes: bool,
+) {
+    commands
+        .entity(pending_parent)
+        .insert(Visibility::Visible)
+        .remove::<PendingGalaxySceneRoot>();
+    // Strip pending markers so debug visibility can manage committed entities.
+    for (_, entity) in &root.stars {
+        commands.entity(*entity).remove::<PendingSceneMember>();
+    }
+    for entity in &root.nameplates {
+        commands.entity(*entity).remove::<PendingSceneMember>();
+    }
+    for entity in root.hyperlane_buckets.iter().flatten() {
+        commands.entity(*entity).remove::<PendingSceneMember>();
+    }
+    if let Some(entity) = root.highlight_hyperlanes {
+        commands.entity(entity).remove::<PendingSceneMember>();
+    }
+    if let Some(entity) = root.core_glow {
+        commands.entity(entity).remove::<PendingSceneMember>();
+    }
+    // Apply operator show_* flags immediately on reveal.
+    let _ = (show_stars, show_hyperlanes);
 }
 
 pub(super) fn cancel_batched_galaxy_scene(
     mut build: BatchedGalaxySceneBuild,
 ) -> BatchedGalaxySceneCleanup {
-    scene_cleanup(std::mem::take(&mut build.next_root))
+    // Prefer recursive despawn of the pending parent so partial children never remain.
+    let parent = build.pending_parent;
+    let mut cleanup = scene_cleanup(std::mem::take(&mut build.next_root));
+    cleanup.entities.clear();
+    cleanup.cursor = crate::studio_scenario_library_ui::StudioSceneBatchCursor::new(0, 1);
+    cleanup.recursive_roots = vec![parent];
+    cleanup
 }
 
 pub(super) fn apply_batched_galaxy_scene_cleanup(
     commands: &mut Commands,
     cleanup: &mut BatchedGalaxySceneCleanup,
 ) -> bool {
+    // Bevy 0.16: despawn() removes the entity and its descendants in the hierarchy.
+    for parent in cleanup.recursive_roots.drain(..) {
+        commands.entity(parent).despawn();
+    }
     for index in cleanup.cursor.take_next() {
         commands.entity(cleanup.entities[index]).despawn();
     }
-    cleanup.cursor.is_complete()
+    cleanup.cursor.is_complete() && cleanup.recursive_roots.is_empty()
 }
 
 pub fn init_star_visual_assets(
@@ -247,6 +376,7 @@ pub fn rebuild_galaxy_scene(
             star,
             &nameplates,
             &billboard_settings,
+            None,
         );
     }
 
@@ -264,6 +394,7 @@ pub fn rebuild_galaxy_scene(
             &segments,
             &vm.render_meta,
             bucket,
+            None,
         );
     }
 }
@@ -276,6 +407,7 @@ fn spawn_prepared_star(
     star: StarBillboardInstance,
     nameplates: &HashMap<u32, (String, [f32; 4])>,
     billboard_settings: &StarBillboardRenderSettings,
+    pending_parent: Option<Entity>,
 ) {
     for layer in [StarVisualLayer::Aura, StarVisualLayer::Core] {
         let texture = match layer {
@@ -301,35 +433,41 @@ fn spawn_prepared_star(
             cull_mode: None,
             ..default()
         });
-        let entity = commands
-            .spawn((
-                Mesh3d(assets.quad.clone()),
-                MeshMaterial3d(material),
-                Transform::from_translation(star.anchor_position)
-                    .with_scale(Vec3::splat(star.base_scale_variation)),
-                GalaxyStar {
-                    instance: star,
-                    layer,
-                },
-                StarVisualAppliedKey::default(),
-            ))
-            .id();
+        let mut entity_cmds = commands.spawn((
+            Mesh3d(assets.quad.clone()),
+            MeshMaterial3d(material),
+            Transform::from_translation(star.anchor_position)
+                .with_scale(Vec3::splat(star.base_scale_variation)),
+            GalaxyStar {
+                instance: star,
+                layer,
+            },
+            StarVisualAppliedKey::default(),
+        ));
+        if let Some(parent) = pending_parent {
+            // Inherited visibility under Hidden pending root — do not force Visible.
+            entity_cmds.insert((Visibility::Inherited, PendingSceneMember, ChildOf(parent)));
+        }
+        let entity = entity_cmds.id();
         root.stars.push((star.system_id, entity));
     }
     if let Some((display_name, rgba)) = nameplates.get(&star.system_id) {
-        let entity = commands
-            .spawn((
-                StudioTypefaceLabel::entity_name(display_name.clone(), 48.0, *rgba)
-                    .with_render_mode(TextLabelRenderMode::Raster),
-                star_nameplate_gpu_screen_label(
-                    star,
-                    billboard_settings,
-                    StarNameplateSettings::default(),
-                ),
-                GalaxyStarNameplate { instance: star },
-                Visibility::Visible,
-            ))
-            .id();
+        let mut entity_cmds = commands.spawn((
+            StudioTypefaceLabel::entity_name(display_name.clone(), 48.0, *rgba)
+                .with_render_mode(TextLabelRenderMode::Raster),
+            star_nameplate_gpu_screen_label(
+                star,
+                billboard_settings,
+                StarNameplateSettings::default(),
+            ),
+            GalaxyStarNameplate { instance: star },
+        ));
+        if let Some(parent) = pending_parent {
+            entity_cmds.insert((Visibility::Inherited, PendingSceneMember, ChildOf(parent)));
+        } else {
+            entity_cmds.insert(Visibility::Visible);
+        }
+        let entity = entity_cmds.id();
         root.nameplates.push(entity);
     }
 }
@@ -342,6 +480,7 @@ fn spawn_hyperlane_bucket(
     segments: &[HyperlaneRenderSegment],
     render_meta: &crate::view_model::StudioGalaxyRenderMeta,
     bucket: HyperlaneDepthBucket,
+    pending_parent: Option<Entity>,
 ) {
     let (mesh, _) = build_hyperlane_bucket_mesh(
         segments,
@@ -360,15 +499,15 @@ fn spawn_hyperlane_bucket(
         ..default()
     });
     let idx = bucket_index(bucket);
-    root.hyperlane_buckets[idx] = Some(
-        commands
-            .spawn((
-                Mesh3d(mesh_handle),
-                MeshMaterial3d(material),
-                GalaxyHyperlanes(bucket),
-            ))
-            .id(),
-    );
+    let mut entity_cmds = commands.spawn((
+        Mesh3d(mesh_handle),
+        MeshMaterial3d(material),
+        GalaxyHyperlanes(bucket),
+    ));
+    if let Some(parent) = pending_parent {
+        entity_cmds.insert((Visibility::Inherited, PendingSceneMember, ChildOf(parent)));
+    }
+    root.hyperlane_buckets[idx] = Some(entity_cmds.id());
 }
 
 pub fn rebuild_highlight_hyperlanes(
@@ -957,10 +1096,17 @@ fn push_hyperlane_visual_strip(
 pub fn sync_render_debug_visibility_system(
     state: Res<super::StudioAppState>,
     mut visibility_queries: ParamSet<(
-        Query<(&GalaxyStar, &mut Visibility)>,
-        Query<&mut Visibility, With<GalaxyHyperlanes>>,
-        Query<&mut Visibility, With<SelectedHyperlaneHighlight>>,
-        Query<&mut Visibility, With<GalaxyStarNameplate>>,
+        // Skip pending-adopt members so Forced Visible cannot override Hidden parent.
+        Query<(&GalaxyStar, &mut Visibility), Without<PendingSceneMember>>,
+        Query<&mut Visibility, (With<GalaxyHyperlanes>, Without<PendingSceneMember>)>,
+        Query<
+            &mut Visibility,
+            (
+                With<SelectedHyperlaneHighlight>,
+                Without<PendingSceneMember>,
+            ),
+        >,
+        Query<&mut Visibility, (With<GalaxyStarNameplate>, Without<PendingSceneMember>)>,
     )>,
 ) {
     for (star, mut visibility) in &mut visibility_queries.p0() {
