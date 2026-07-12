@@ -1,0 +1,1 @@
+scripts/ci/relay_lint.sh

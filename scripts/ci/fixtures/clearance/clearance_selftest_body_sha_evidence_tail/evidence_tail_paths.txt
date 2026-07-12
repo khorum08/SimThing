@@ -1,0 +1,5 @@
+docs/tests/hd_truth_guards_0_results.md
+docs/design_0_0_8_4_8_4_hd_board.md
+docs/orchestrator_orientation.md
+scripts/ci/triage_log.tsv
+scripts/ci/test_inventory.tsv

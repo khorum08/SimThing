@@ -45,8 +45,8 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | e1a30bfbb689b11d5c3dffc48a5fb46c57a012fa5b228dd5f85b632780c0e6ee |
-| relay_lint.sh | c553dd1753142f6f459185cd170accecec2836ed0703b3a9be134a9fd2093c7b |
+| design_0_0_8_4_8_4_hd_board.md | 088c73b4f2bf82770628642cf30d33e1673ec55fb0f3cbe30f142f2491388841 |
+| relay_lint.sh | e1947c2698143435d6b4d88666146be2ad611b61febc7e7b0115378f79b23c3f |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
 ## Active Track / Rung Summary (`design_0_0_8_4_8_4_hd_board.md`)
@@ -55,16 +55,16 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HD-1 | HD-TRUTH-GUARDS-0 | **Mechanical truth guards** (the #1316 class dies): (a) master-ancestry gate — n | evidence-tail\ |
+| HD-1 | HD-TRUTH-GUARDS-0 | **Mechanical truth guards** (the #1316 class dies): (a) master-ancestry gate — n | **DA-GRADUATED / merged [#1328](https://github.com/khorum08/SimThing/pull/1328)** — DA deep pass 2026-07-12: on-branc... |
 | HD-2 | HD-DISPATCH-SUBSTRATE-0 | **The object + projections + receipt (§1.1–§1.2, §1.4–§1.5):** `handoffs/` dir,  | NOT STARTED |
-| HD-3 | HD-OWNER-INTERFACE-0 | **Prompt-native Owner/collaborator door (§1.3):** `/handoff approve\ | amend\ |
-| HD-4 | HD-LIBRARIAN-0 | **Stewardship verbs (Owner: "check library staleness", "cull dead tsv rows"):**  | orchestrator\ |
+| HD-3 | HD-OWNER-INTERFACE-0 | **Prompt-native Owner/collaborator door (§1.3):** `/handoff approve/amend/hold/s | NOT STARTED |
+| HD-4 | HD-LIBRARIAN-0 | **Stewardship verbs (Owner: "check library staleness", "cull dead tsv rows"):**  | NOT STARTED |
 | HD-5 | HD-DOCS-CASCADE-0 | **Loud onboarding visibility + the payoff compression.** Entry-point docs update | NOT STARTED |
 | HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `HD-TRUTH-GUARDS-0`
+Active pointer: `HD-DISPATCH-SUBSTRATE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -150,7 +150,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `c553dd175314`
+relay_lint.sh schema stamp: `e1947c269814`
 
 ## tested_code_sha + coverage_basis Rule
 
