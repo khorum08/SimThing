@@ -1,7 +1,7 @@
 # STUDIO-FROSTED-GLASS-0 Results
 
 ## Status
-**PROBATION / DA-RESERVE** - PR [#1314](https://github.com/khorum08/SimThing/pull/1314), tested code head `de3666f32312ef7041516e3f6b445c373401f91c`; merge **NOT MERGED**.
+**PROBATION / DA-RESERVE** - PR [#1314](https://github.com/khorum08/SimThing/pull/1314), tested code head `7d49599ae109ec2c55c70cbebec6e7e77f2956fd`; merge **NOT MERGED**.
 
 ## Implementation
 - Presentation WGSL touched: **YES**; Bevy render graph/pipeline/target surfaces touched: **YES**.
@@ -11,6 +11,7 @@
 - Existing dark translucent `studio_panel_frame` tint remains above the blurred scene.
 - Covered: left panel, right panel, Settings, Telemetry, and Scenario Library modal.
 - Scenario Library pause, cancel, pending-action purge, and no-autoplay behavior is unchanged.
+- Repair: ClauseScript picker defaults to the portable operator `scenarios` directory and retains the selected path on failure, preventing the legacy `tests/fixtures` placeholder file from masquerading as the operator scenario.
 
 ## Performance / Visual Proof
 - Local Windows debug build, Vulkan, 1920x1080: baseline `33.818 ms`; frosted `32.346 ms` (delta `-1.472 ms`, below run noise).
