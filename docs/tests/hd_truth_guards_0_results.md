@@ -44,7 +44,7 @@ Status: PROBATION
 ## Sticky Body SHA
 
 - Local fixture proof covers `fresh`, `evidence-tail`, and `STALE`.
-- Live PR #1328 sticky is expected to route `DA-RESERVE(gate-wiring)` and show `body_sha: evidence-tail` after this evidence-tail commit.
+- Live PR #1328 sticky rendered `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` and `body_sha: evidence-tail`.
 
 ## Known Gaps
 
