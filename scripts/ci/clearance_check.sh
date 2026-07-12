@@ -1104,6 +1104,7 @@ is_evidence_tail_path() {
   [[ "$path" == docs/design_*.md ]] && return 0
   [[ "$path" == "docs/orchestrator_orientation.md" ]] && return 0
   [[ "$path" == "scripts/ci/triage_log.tsv" ]] && return 0
+  [[ "$path" == "scripts/ci/test_inventory.tsv" ]] && return 0
   [[ "$path" == *_results.md ]] && return 0
   return 1
 }
@@ -1276,6 +1277,8 @@ def is_evidence_tail(p: str) -> bool:
     if p == "docs/orchestrator_orientation.md":
         return True
     if p == "scripts/ci/triage_log.tsv":
+        return True
+    if p == "scripts/ci/test_inventory.tsv":
         return True
     if p.endswith("_results.md"):
         return True
