@@ -1,7 +1,7 @@
 # STUDIO-LOADER-DIALOG-REPAIR-0 Results
 
 ## Status
-**PROBATION** - [PR #1324](https://github.com/khorum08/SimThing/pull/1324); branch `codex/studio-loader-dialog-repair-0`; tested code `(pending stamp)`; NOT MERGED.
+**PROBATION** - [PR #1324](https://github.com/khorum08/SimThing/pull/1324); branch `codex/studio-loader-dialog-repair-0`; tested code `6220d41ab7d761388f2f07165d819a34c037c4a6`; NOT MERGED.
 
 ## What Changed
 - Scenario Library is a minimal path / `Select File…` / `Load` / `Cancel` modal; fresh path empty and progress hidden.
