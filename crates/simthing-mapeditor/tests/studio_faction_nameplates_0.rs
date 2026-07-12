@@ -173,22 +173,26 @@ fn faction_nameplates_do_not_mutate_scenario_spec() {
     assert_eq!(before, after);
 }
 
-/// catches: 11.6 selection brighten landing in this rung.
+/// catches: nameplate color path becoming selection-driven (11.5 purity; 11.6 uses separate highlight helpers).
+/// Inventory name retained (deletion-guard): was a 11.6-creep fence; now asserts color purity.
 #[test]
 fn faction_nameplates_no_selection_brighten_semantics() {
+    let spec = mini_spec_with_owners_and_cells();
+    let pres = star_nameplate_presentations(&spec);
+    // Colors derive from owner_flow_owner_ref + color_rgb only — no selection argument.
+    assert_eq!(
+        pres.get(&1).map(|(_, c)| *c),
+        Some(nameplate_rgba_from_color_rgb((64, 160, 255)))
+    );
+    assert_eq!(pres.get(&2).map(|(_, c)| *c), Some(NEUTRAL_NAMEPLATE_RGBA));
+    // Nameplate color map is selection-free: presentations have no Selection type / StudioAppState.
     let src = include_str!("../src/studio_faction_nameplates.rs");
-    let render = include_str!("../src/app/galaxy_render.rs");
-    for banned in [
-        "selection_brighten",
-        "owned_star_brighten",
-        "brighten_owned",
-        "SELECTED_OWNED",
-    ] {
-        assert!(
-            !src.contains(banned) && !render.contains(banned),
-            "11.6 brighten token must not appear: {banned}"
-        );
-    }
+    assert!(!src.contains("StudioAppState"));
+    assert!(!src.contains("struct Selection"));
+    assert!(
+        src.contains("star_nameplate_presentations"),
+        "11.5 color path retained"
+    );
 }
 
 /// catches: frosted glass / WGSL creep.

@@ -196,8 +196,10 @@ pub use studio_scenario_library_ui::{
 pub use studio_screenshot::{next_screenshot_filename, parse_screenshot_index};
 pub use studio_faction_nameplates::{
     fallback_simthing_nameplate_id, nameplate_rgba_from_color_rgb, owner_color_rgb_map_from_authority,
-    star_nameplate_presentations, star_nameplate_rgba_for_gridcell,
-    star_nameplate_rgba_for_placement, NEUTRAL_NAMEPLATE_RGBA,
+    owned_star_highlight_system_ids, selected_owner_id_for_system, star_nameplate_presentations,
+    star_nameplate_rgba_for_gridcell, star_nameplate_rgba_for_placement, star_owner_id_by_system_id,
+    star_owner_id_for_placement, star_ownership_presentations, star_visual_selected_for_owned_set,
+    StarOwnershipPresentation, NEUTRAL_NAMEPLATE_RGBA,
 };
 pub use studio_live_observe::{
     build_studio_live_observation_readout, observe_module_source_forbids_workshop_residue,

@@ -138,7 +138,7 @@ pub fn run_studio() {
                     picking::selection_keyboard_system,
                     picking::star_pick_system,
                     picking::sync_selection_highlight_system,
-                    picking::sync_star_visuals_system,
+                    galaxy_render::sync_star_visuals_system,
                     picking::billboard_stars_system,
                     galaxy_render::sync_star_nameplate_settings_system,
                     galaxy_render::sync_star_nameplate_focus_system,

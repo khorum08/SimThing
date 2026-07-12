@@ -422,7 +422,8 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 - [`studio_star_naming_pass_0_results.md`](studio_star_naming_pass_0_results.md) — `STUDIO-STAR-NAMING-PASS-0` **PROBATION / PR #1304** — isolated seed-stable mapgenerator naming pass, non-blank emitter output, 1,500-name canonical TP golden, structure and 11.1/11.2 regressions held.
 - [`studio_live_ops_hardening_0_results.md`](studio_live_ops_hardening_0_results.md) — `STUDIO-LIVE-OPS-HARDENING-0` **PROBATION** — bridge reset on every session replacement, cancel/action purge, repeated-open preservation, deterministic rapid rates, paused-save safety, and modal zero-tick regression battery.
 
-- [studio_faction_nameplates_0_results.md](studio_faction_nameplates_0_results.md) — STUDIO-FACTION-NAMEPLATES-0 **PROBATION** — star nameplates use authority display names + owner color_rgb; unowned neutral; presentation only.
+- [studio_faction_nameplates_0_results.md](studio_faction_nameplates_0_results.md) — STUDIO-FACTION-NAMEPLATES-0 **ORCHESTRATOR-GRADUATED** — star nameplates use authority display names + owner color_rgb; unowned neutral; presentation only.
+- [studio_owned_star_select_brighten_0_results.md](studio_owned_star_select_brighten_0_results.md) — STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0 **PROBATION** — selected owned star brightens same-owner set; unowned no group; deselect clears; actual selection preserved.
 - [studio_clause_loader_simplify_0_results.md](studio_clause_loader_simplify_0_results.md) — STUDIO-CLAUSE-LOADER-SIMPLIFY-0 **PROBATION** — ClauseScript-only Scenario Library; source_base wire; read-only Scenario telemetry; no Spec mutation.
 
 ## Notes
