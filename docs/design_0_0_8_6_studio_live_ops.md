@@ -189,6 +189,43 @@ Completion of a phase ladder does **not** close the track — see §8 Owner-Clos
 
 ---
 
+## 4d. Phase 12 PR ladder — Loader UX & Live Sim-State Projection (OPEN, ACTIVE)
+
+> **Owner-directed (2026-07-12).** Three concerns: (1) the scenario load dialog is repaired to a
+> minimal operator surface — everything except the load-path flow hides behind the existing debug
+> Telemetry surface; (2) selecting any star screens the selected star's blur size and red tint by the
+> **max disruption accreted** on that system — a read-only projection of STEAD-field data into live
+> presentation; (3) fleets become visible on the sim map as tiny ship icons anchored beside stars or
+> placed along hyperlanes while in transit.
+>
+> **Doctrine unchanged:** ScenarioSpec is authority; Bevy/egui/clock are presentation; no CPU planner;
+> icons and screening effects are **read-only display expressions** — they never mutate Spec, never
+> command movement, and never become a decision surface. **Tiering:** the two *readout* rungs touch
+> authority crates (driver / spec / clausething) and are **DA-reserve**; the three presentation rungs
+> are **`studio-live-ops-ui-clock`-clearable** (class-hardening, not DA relay, if the router
+> under-widths — same rule as Phase 11). A new presentation `*.wgsl` pass, if any, is DA-reserve
+> (11.7 precedent).
+
+### Tier A — data readouts (DA-reserve)
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| 12.2 | `STUDIO-DISRUPTION-READOUT-0` | **Read-only per-system disruption snapshot from the live session.** Default `SimSession` exposes no field readback and the Studio bridge (`studio_live_session_bridge.rs`) strips properties; disruption lives in opt-in 0080-2 runtime modules (`runtime_0080_0_r1a.rs`, `disruption_decay_0080_2.rs`). Add a **read-only** accessor surface: max-disruption-accreted per star-system gridcell, snapshot-consistent per tick, `0.0` when the field is absent (fail-soft to neutral, fail-loud on readback error). Wire through the bridge to a mapeditor-consumable map keyed by generated system id. **No writes to field state; no scheduling changes; no kernel/WGSL semantics.** | TODO | DA-reserve · **Frontier** |
+| 12.4 | `STUDIO-FLEET-PRESENCE-READOUT-0` | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helpers to walk loaded authority for `SimThingKind::Fleet`: owner ref, posture, and **anchor system id**; snapshot contract `Anchored(system_id)` or `InTransit { source_system_id, dest_system_id }` (transit expressed only when the sim/STEAD movement state says so; the default session may express none — the contract must still carry it). Property-id authority stays in spec/clausething (TP fleet property ids currently live in `hydrate_scenario.rs`); mapeditor consumes the helper, never raw ids. Read-only; no movement authority, no new gameplay semantics. | TODO | DA-reserve · Std |
+
+### Tier B — presentation (`studio-live-ops-ui-clock`-clearable)
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| 12.1 | `STUDIO-LOADER-DIALOG-REPAIR-0` | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box (starts empty; populated by the file dialog), **Select File…** button (native `rfd` picker, `.clause` filter), **Load**, **Cancel**, and a **loading status bar at the bottom, initially invisible**. Clicking Load reveals the bar and advances it through the **real ingest stages** (resolve → parse → hydrate → rebind → persist → session build → projection → scene adopt — the stage seams already exist in `ingest_clause_scenario_text` / `load_clause_studio_session_from_path` / adopt); on completion the dialog hides. **No fake/animated-only progress**; on failure the bar shows the failing stage fail-loud and the dialog stays. Every other affordance (Create tab, session summary, legacy JSON handlers) moves behind the existing debug Telemetry surface (11.4 Scenario section). Modal-pause and no-autoplay laws hold. | TODO | Tier-2 · Std |
+| 12.3 | `STUDIO-DISRUPTION-SELECT-SCREEN-0` | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **selected star's** blur and tint by its max accreted disruption, piecewise-linear and clamped: disruption 0 → 100% blur / 0% red; **50 → 200% blur / 50% red; 100 → 500% blur / 100% red**; >100 clamps. Attach via the existing per-star visual path (`compute_star_radius_visual` scale-mul / `sync_star_visuals_system` color branch, 11.6 pattern). Deselect restores defaults. Read-only display expression; no Spec mutation; coexists with 11.6 owned-set brighten. | TODO | Tier-2 · Std |
+| 12.5 | `STUDIO-FLEET-ICONS-0` | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base max star blur size**) marks fleet presence. At rest/anchor: fleets owned by the **currently selected owner** sit **right** of the star pointing at it; all other fleets (hostile/neutral, or when no owner is selected) sit **left**, mirror-symmetric, pointing at the star. In transit: icon placed **~30% along the hyperlane** from source toward destination, pointing at the destination; on arrival it snaps to the new star's anchor slot. Existing presentation mechanisms only (billboard/`TypefaceIconSet` glyph or small mesh; hyperlane geometry from `build_hyperlane_bucket_mesh` path). Read-only projection of the 12.4 snapshot; no movement authority. | TODO | Tier-2 · Std |
+
+**Dependency order:** 12.1 independent → land first; 12.2 → 12.3; 12.4 → 12.5 (12.2∥12.4 may run in parallel).
+**Phase-12 non-goals:** fleet movement *authority* or new movement semantics (icons project existing state); disruption field *writes* or scheduling changes; combat/diplomacy; Auto-Play; new WGSL kernel semantics (presentation shader, if unavoidable, is DA-reserve).
+
+---
+
 ## 5. Explicit non-goals
 
 - Reopening 0.0.8.5 Terran-Pirate (CLOSED 2026-07-09, #1256; consume its landed hydration, never re-derive)  
@@ -223,8 +260,8 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | none — Phase 11 COMPLETE; awaiting Owner direction for the next UI/UX ladder (Phase 12+) |
+| Active open rung | `STUDIO-LOADER-DIALOG-REPAIR-0` (Phase 12 opened 2026-07-12; 12.2/12.4 readouts DA-reserve) |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
-**Park instruction for agents:** Phase 9 complete; Phase 10 parked; Phase 11 complete (2026-07-12). Track stays **OPEN** as the standing UI/UX lane; next ladders arrive on Owner direction. Track closeout lives only in `STUDIO-OWNER-CLOSURE-0` (§5b) and is deferred until explicit Owner authorization. Do not reopen 0.0.8.5.
+**Park instruction for agents:** Phase 9 complete; Phase 10 parked; Phase 11 complete (2026-07-12); Phase 12 **ACTIVE** at `STUDIO-LOADER-DIALOG-REPAIR-0` (§4d). Track closeout lives only in `STUDIO-OWNER-CLOSURE-0` (§5b) and is deferred until explicit Owner authorization. Do not reopen 0.0.8.5.
