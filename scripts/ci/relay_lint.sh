@@ -867,6 +867,9 @@ main() {
   fi
   local text
   text="$(read_input)" || exit $?
+  if [[ -n "$PR_NUMBER" && -z "${PR_HEAD_SHA:-}" ]] && command -v gh >/dev/null 2>&1; then
+    PR_HEAD_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid -q .headRefOid 2>/dev/null || true)"
+  fi
   lint_text "$text"
 }
 
