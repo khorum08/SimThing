@@ -5,10 +5,11 @@ use std::path::{Path, PathBuf};
 
 use simthing_mapeditor::{
     build_studio_scenario_telemetry_readout, ingest_clause_scenario_path,
-    request_live_bridge_reset_after_session_replacement, run_clause_picker_action,
-    runtime_vertical_seed_scenario_spec, ClausePickerActionResult, ClausePickerSelection,
-    ClauseScenarioIngestOptions, StudioScenarioLibraryModel, StudioScenarioLibraryTab,
-    StudioSession, StudioSimClockTransport, StudioSimClockTransportCommand,
+    default_clause_picker_start_directory, request_live_bridge_reset_after_session_replacement,
+    run_clause_picker_action, runtime_vertical_seed_scenario_spec, ClausePickerActionResult,
+    ClausePickerSelection, ClauseScenarioIngestOptions, StudioScenarioLibraryModel,
+    StudioScenarioLibraryTab, StudioSession, StudioSimClockTransport,
+    StudioSimClockTransportCommand,
 };
 use simthing_spec::{serialize_scenario_authority, validate_stead_mapping_consistency};
 use tempfile::TempDir;
@@ -97,6 +98,11 @@ fn clause_loader_canonical_clause_loads_from_alien_cwd() {
     let alien = repo_root().join("crates").join("simthing-mapeditor");
     env::set_current_dir(&alien).expect("chdir alien");
     let result = std::panic::catch_unwind(|| {
+        assert_eq!(
+            default_clause_picker_start_directory(""),
+            repo_root().join("scenarios"),
+            "empty ClauseScript picker must open on portable operator scenarios"
+        );
         let clause = canonical_clause_path();
         let options = ClauseScenarioIngestOptions::default();
         let result =
