@@ -1,6 +1,9 @@
 # 0.0.8.6 — Studio Live Ops (Phase 9)
 
-> **Status: OPEN / Owner-directed (2026-07-09).** Production Studio track for **realtime observation and
+> **Status: PARKED / Owner-directed (2026-07-12; opened 2026-07-09).** Pointer moved to
+> [`design_0_0_8_4_8_4_hd_board.md`](design_0_0_8_4_8_4_hd_board.md); further UI/UX phase ladders land
+> here when the Owner resumes. Closeout remains Owner-gated (`STUDIO-OWNER-CLOSURE-0`, active).
+> Production Studio track for **realtime observation and
 > control** of loaded scenarios (including clause-ingested StructuralRebindReady sessions). Sits **after**
 > 0.0.8.5 Phase 8 open/hydrate spine (transpile → API → picker) and **beside** (does not close) the
 > Terran-Pirate scenario envelope. **Not closeout of 0.0.8.5.**
