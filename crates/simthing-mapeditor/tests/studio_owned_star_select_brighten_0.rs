@@ -265,10 +265,10 @@ fn owned_star_select_brighten_no_spec_mutation() {
 #[test]
 fn owned_star_select_brighten_no_wgsl_or_gpu_pipeline() {
     let src = include_str!("../src/studio_faction_nameplates.rs");
-    let pick = include_str!("../src/app/picking.rs");
+    let render = include_str!("../src/app/galaxy_render.rs");
     for banned in [".wgsl", "frosted", "simthing_gpu", "simthing-gpu"] {
         assert!(!src.contains(banned), "nameplates module: {banned}");
-        assert!(!pick.contains(banned), "picking: {banned}");
+        assert!(!render.contains(banned), "galaxy_render: {banned}");
     }
 }
 
@@ -294,13 +294,18 @@ fn owned_star_select_brighten_11_4_loader_regression() {
 /// catches: star visual sync not wiring owned highlight (render path bypass).
 #[test]
 fn owned_star_select_brighten_star_visual_sync_uses_owned_highlight() {
-    let pick = include_str!("../src/app/picking.rs");
+    let render = include_str!("../src/app/galaxy_render.rs");
     assert!(
-        pick.contains("owned_star_highlight_system_ids"),
+        render.contains("owned_star_highlight_system_ids"),
         "sync_star_visuals_system must compute owned highlight set"
     );
     assert!(
-        pick.contains("star_visual_selected_for_owned_set"),
+        render.contains("star_visual_selected_for_owned_set"),
         "sync must use visual_selected for co-owned brightness"
+    );
+    // Keep wire on admitted galaxy_render surface (not app/picking.rs class gap).
+    assert!(
+        render.contains("fn sync_star_visuals_system"),
+        "star visual sync lives on galaxy_render admitted surface"
     );
 }

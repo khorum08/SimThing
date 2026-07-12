@@ -188,12 +188,6 @@ pub fn sync_star_visuals_system(
     let viewport_height = window.resolution.height();
     let falloff_metric = state.star_falloff_metric;
     let settings = StarBillboardRenderSettings::from_meta(&session.view_model.render_meta);
-    // 11.6: render-only owned-set highlight from selected star's owner_flow_owner_ref.
-    // Does not alter selection.selected_system_id or nameplate focus semantics.
-    let owned_highlight = crate::studio_faction_nameplates::owned_star_highlight_system_ids(
-        &session.scenario_authority,
-        state.selection.selected_system_id,
-    );
     let sync_key = StarVisualSyncKey {
         camera_position: quantize_billboard_camera_key(camera_pos.to_array()).position,
         selected_system_id: state.selection.selected_system_id,
@@ -223,14 +217,9 @@ pub fn sync_star_visuals_system(
     let mut entity_count = 0usize;
     for (star, mut transform, material_handle, mut applied_key) in &mut stars {
         entity_count += 1;
-        // visual_selected = actual selected OR co-owned set highlight (render-only; not selection model).
-        let visual_selected = crate::studio_faction_nameplates::star_visual_selected_for_owned_set(
-            star.instance.system_id,
-            state.selection.selected_system_id,
-            &owned_highlight,
-        );
+        let selected = state.selection.selected_system_id == Some(star.instance.system_id);
         let hovered = state.selection.hovered_system_id == Some(star.instance.system_id);
-        let instance = star.instance.with_view_state(visual_selected, hovered);
+        let instance = star.instance.with_view_state(selected, hovered);
         let distance = camera_pos.distance(instance.anchor_position);
         let depth_percent = star_falloff_progress_percent(
             falloff_metric,
@@ -248,7 +237,7 @@ pub fn sync_star_visuals_system(
             StarVisualLayer::Aura => 1,
         };
         let visual_key = StarVisualAppliedKey {
-            selected: visual_selected,
+            selected,
             hovered,
             render_mode: settings.render_mode,
             depth_bucket_or_quantized_percent: quantize_star_depth_percent(depth_percent),
@@ -258,13 +247,8 @@ pub fn sync_star_visuals_system(
             continue;
         }
 
-        let visual = compute_star_distance_visual(
-            depth_percent,
-            visual_selected,
-            hovered,
-            &settings,
-            use_plateau,
-        );
+        let visual =
+            compute_star_distance_visual(depth_percent, selected, hovered, &settings, use_plateau);
         let (layer_scale, alpha, emissive_factor, color, texture) =
             match (settings.render_mode, star.layer) {
                 (StarRenderMode::BloomStarburst, StarVisualLayer::Core) => (
@@ -299,11 +283,8 @@ pub fn sync_star_visuals_system(
         transform.translation = instance.anchor_position;
         transform.scale = Vec3::splat(instance.base_scale_variation * layer_scale);
         if let Some(material) = materials.get_mut(&material_handle.0) {
-            let emissive = star_emissive_strength(
-                instance.base_intensity_variation,
-                visual_selected,
-                hovered,
-            );
+            let emissive =
+                star_emissive_strength(instance.base_intensity_variation, selected, hovered);
             let base_color = Color::srgba(color.0, color.1, color.2, alpha);
             let emissive_color = LinearRgba::new(
                 emissive * 1.25 * alpha * emissive_factor,
