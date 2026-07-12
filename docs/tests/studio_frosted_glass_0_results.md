@@ -1,7 +1,7 @@
 # STUDIO-FROSTED-GLASS-0 Results
 
 ## Status
-**PROBATION / DA-RESERVE** - PR [#1314](https://github.com/khorum08/SimThing/pull/1314), tested code head `7d49599ae109ec2c55c70cbebec6e7e77f2956fd`; merge **NOT MERGED**.
+**DA-GRADUATED / COMPLETE** — merged [#1314](https://github.com/khorum08/SimThing/pull/1314) @ `26327900b0eda84e0796f7744c589cc4e75a480b`; tested code head `7d49599ae109ec2c55c70cbebec6e7e77f2956fd`.
 
 ## Implementation
 - Presentation WGSL touched: **YES**; Bevy render graph/pipeline/target surfaces touched: **YES**.
@@ -32,4 +32,4 @@
 Specified/implemented: mapeditor presentation blur, tint, panel masks, timing, tests/evidence. Proxied/deferred: none. Out of scope and untouched: spec, clausething, mapgenerator, driver, kernel, sim, authority GPU, workflows, clearance/class/gate.
 
 ## Graduation Routing
-WGSL/render pipeline requires DA review. Recommended posture: hold merge at **DA-RESERVE** until CI green and DA verifies presentation shader safety/performance; Phase 11 is not closed by this rung.
+**DA PASS / merged.** Active pointer advances to `STUDIO-STAR-NAMING-REPAIR-0`; Phase 11 remains open.
