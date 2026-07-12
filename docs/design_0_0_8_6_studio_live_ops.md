@@ -200,18 +200,52 @@ Completion of a phase ladder does **not** close the track — see §8 Owner-Clos
 >
 > **Doctrine unchanged:** ScenarioSpec is authority; Bevy/egui/clock are presentation; no CPU planner;
 > icons and screening effects are **read-only display expressions** — they never mutate Spec, never
-> command movement, and never become a decision surface. **Tiering:** the two *readout* rungs touch
+> command movement, and never become a decision surface. **Tiering:** the *readout* rungs touch
 > authority crates (driver / spec / clausething) and are **DA-reserve**; the three presentation rungs
 > are **`studio-live-ops-ui-clock`-clearable** (class-hardening, not DA relay, if the router
 > under-widths — same rule as Phase 11). A new presentation `*.wgsl` pass, if any, is DA-reserve
 > (11.7 precedent).
+>
+> **Owner amendment (2026-07-12) — field-emergent TP economy (Tier A′).** The manufacturing-vs-
+> disruption tension is the sim's founding motivator and it must **emerge from the fields** (Wei's
+> STEAD cellular-automata mechanism), never run as a programmatic loop. Three binding laws for every
+> A′ rung and every agent working them:
+>
+> 1. **Emergence law.** Production, need, opportunity, and disruption are **field quantities**
+>    advanced only by the generic `accumulate → reduce up → settle → mask/disburse down → threshold`
+>    pipeline (`field-policy-time-decisions`). "Need" (for disruption, for expansion, for
+>    manufacturing) is expressed as **weight values on overlay fields — policy overlays at the
+>    Owner** — disbursed down (TP-COMMITMENTS-0 `ai_will_do`/`ai_weight` precedent). Decisions fire
+>    only as GPU threshold crossings → sealed `BoundaryRequest`. The 0080-2 rehearsal chain
+>    (R2/R6B/R6C) is a **falsification oracle only** — transplanting its CPU loop (fixed recipes,
+>    `if disruption >= threshold` branches, per-tick orchestration code) into production is a
+>    remand-on-sight violation.
+> 2. **Clause authorship law.** The substantial economic resources, buildings, fleets, and **owner
+>    policies live in `scenarios/terran_pirate_galaxy.clause` as human-authored ClauseScript.**
+>    **NO direct JSON/RON scenario scripting** — the sibling base-disc JSON is transpiler output
+>    only, regenerated through the production hydration path.
+> 3. **Adverse-prepared transpiler law.** The ClauseScript→ScenarioSpec translation must hydrate
+>    this content **blind**: no scenario-specific special-casing, no TP tokens in clausething, no
+>    streamlining the transpiler "to make it work" for this one file. Falsifiers are mandatory:
+>    adversarial paired fixtures (same semantics, different authoring shapes → equivalent hydrated
+>    Spec) and a second synthetic scenario exercising the same grammar. DA deep-tree on every A′
+>    rung.
 
 ### Tier A — data readouts (DA-reserve)
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 12.2 | `STUDIO-DISRUPTION-READOUT-0` | **Read-only per-system disruption snapshot from the live session.** Default `SimSession` exposes no field readback and the Studio bridge (`studio_live_session_bridge.rs`) strips properties; disruption lives in opt-in 0080-2 runtime modules (`runtime_0080_0_r1a.rs`, `disruption_decay_0080_2.rs`). Add a **read-only** accessor surface: max-disruption-accreted per star-system gridcell, snapshot-consistent per tick, `0.0` when the field is absent (fail-soft to neutral, fail-loud on readback error). Wire through the bridge to a mapeditor-consumable map keyed by generated system id. **No writes to field state; no scheduling changes; no kernel/WGSL semantics.** | TODO | DA-reserve · **Frontier** |
+| 12.2 | `STUDIO-DISRUPTION-READOUT-0` | **Needs 12.8 for live values.** **Read-only per-system disruption snapshot from the live session.** Read-only accessor surface over the field-bearing session (12.8): max-disruption-accreted per star-system gridcell, snapshot-consistent per tick, `0.0` when the field is absent (fail-soft to neutral, fail-loud on readback error) — so it also holds over the structural-shell fallback. Wire through the bridge to a mapeditor-consumable map keyed by generated system id. **No writes to field state; no scheduling changes; no kernel/WGSL semantics.** | TODO | DA-reserve · **Frontier** |
 | 12.4 | `STUDIO-FLEET-PRESENCE-READOUT-0` | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helpers to walk loaded authority for `SimThingKind::Fleet`: owner ref, posture, and **anchor system id**; snapshot contract `Anchored(system_id)` or `InTransit { source_system_id, dest_system_id }` (transit expressed only when the sim/STEAD movement state says so; the default session may express none — the contract must still carry it). Property-id authority stays in spec/clausething (TP fleet property ids currently live in `hydrate_scenario.rs`); mapeditor consumes the helper, never raw ids. Read-only; no movement authority, no new gameplay semantics. | TODO | DA-reserve · Std |
+
+### Tier A′ — field-emergent TP economy (Owner-authorized 2026-07-12; DA-reserve; laws 1–3 above bind)
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| 12.6 | `TP-FIELD-ECONOMY-GRAMMAR-0` | **Generic ClauseScript grammar + hydration** for field-enrolled economics: production buildings (factory/starport chains), stockpile silos, field-enrolled resource quantities, disruption-emitting presence, and **owner policy overlay blocks** — need/opportunity **weight profiles** (expansion-need, disruption-need, manufacturing-need) lowering onto existing overlay/RF/FIELD_POLICY surfaces (`OverlaySpec`, `ResourceEconomySpec`, EML weight profiles per TP-COMMITMENTS-0). Grammar is scenario-agnostic — **zero TP tokens in clausething**; spatial enrollment obeys STEAD §5 (Location participants carry `StructuralGridPlacement`). Falsifiers: adversarial paired fixtures + a second synthetic scenario through the same grammar. | TODO | DA-reserve · **Frontier** |
+| 12.7 | `TP-CLAUSE-ECONOMY-AUTHOR-0` | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galaxy.clause`** as human-authored ClauseScript: Terran manufacturing base (factories → production fields → ship-construction need), Pirate disruption emitters, fleets, and **owner policy overlays** (Terran expansion/manufacturing-need weights; Pirate disruption/raid-need weights). Sibling base-disc regenerated **only** through production hydration; blind hydrate from alien cwd; deterministic regeneration; no hand-edited JSON/RON anywhere. | TODO | DA-reserve · **Frontier** |
+| 12.8 | `STUDIO-FIELD-SESSION-ELEVATE-0` | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path** (`open_from_spec` + authored profile — elevating the TP-LIVE-RUN-0 workshop residue to production) so the authored fields accumulate under live ticks: disruption accretes from authored emitters, production/need accrete from authored buildings and policy overlays, decisions fire only as threshold crossings (sealed ingress per OC-K-DECISION-INGRESS-0). **No bespoke economy code in the tick** — generic RF/STEAD pipeline only; the structural-shell path remains available as fallback. Replaces the property-strip posture for field-bearing scenarios. | TODO | DA-reserve · **Frontier** |
+| 12.9 | `TP-EMERGENT-TENSION-PROOF-0` | **Needs 12.8.** Falsification battery for **emergence, not scripting**: (a) multi-tick canonical TP session — Terran production fields accrete and construction thresholds fire from field state; (b) Pirate presence accretes disruption that suppresses local flows **through field coupling** (an authored coupling term, never a code branch); (c) **policy-sensitivity proof** — changing *only* the clause-authored owner overlay weights (e.g. Pirate disruption-need up, Terran manufacturing-need down) produces materially different macro outcomes with **zero code change**; (d) R6C oracle cited as reference behavior where comparable, never as implementation. | TODO | DA-reserve · **Frontier** |
 
 ### Tier B — presentation (`studio-live-ops-ui-clock`-clearable)
 
@@ -221,8 +255,8 @@ Completion of a phase ladder does **not** close the track — see §8 Owner-Clos
 | 12.3 | `STUDIO-DISRUPTION-SELECT-SCREEN-0` | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **selected star's** blur and tint by its max accreted disruption, piecewise-linear and clamped: disruption 0 → 100% blur / 0% red; **50 → 200% blur / 50% red; 100 → 500% blur / 100% red**; >100 clamps. Attach via the existing per-star visual path (`compute_star_radius_visual` scale-mul / `sync_star_visuals_system` color branch, 11.6 pattern). Deselect restores defaults. Read-only display expression; no Spec mutation; coexists with 11.6 owned-set brighten. | TODO | Tier-2 · Std |
 | 12.5 | `STUDIO-FLEET-ICONS-0` | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base max star blur size**) marks fleet presence. At rest/anchor: fleets owned by the **currently selected owner** sit **right** of the star pointing at it; all other fleets (hostile/neutral, or when no owner is selected) sit **left**, mirror-symmetric, pointing at the star. In transit: icon placed **~30% along the hyperlane** from source toward destination, pointing at the destination; on arrival it snaps to the new star's anchor slot. Existing presentation mechanisms only (billboard/`TypefaceIconSet` glyph or small mesh; hyperlane geometry from `build_hyperlane_bucket_mesh` path). Read-only projection of the 12.4 snapshot; no movement authority. | TODO | Tier-2 · Std |
 
-**Dependency order:** 12.1 independent → land first; 12.2 → 12.3; 12.4 → 12.5 (12.2∥12.4 may run in parallel).
-**Phase-12 non-goals:** fleet movement *authority* or new movement semantics (icons project existing state); disruption field *writes* or scheduling changes; combat/diplomacy; Auto-Play; new WGSL kernel semantics (presentation shader, if unavoidable, is DA-reserve).
+**Dependency order:** 12.1 independent → land first. A′ spine: 12.6 → 12.7 → 12.8 → 12.9. Readout/presentation: 12.2 (needs 12.8 for live values) → 12.3; 12.4 → 12.5. 12.4 and the A′ spine may run in parallel; 12.3/12.5 may land against fail-soft readouts and light up as A′ rungs graduate.
+**Phase-12 non-goals:** any programmatic economy/combat loop in the production tick (emergence law 1); hand-authored JSON/RON scenario data (law 2); TP special-casing in clausething (law 3); fleet movement *authority* beyond what the fields fire; Auto-Play; new WGSL kernel semantics (presentation shader, if unavoidable, is DA-reserve).
 
 ---
 
