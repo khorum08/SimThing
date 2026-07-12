@@ -35,6 +35,12 @@ use galaxy_render::{
     init_star_visual_assets, mark_hyperlane_render_dirty, mark_star_visual_render_dirty,
     rebuild_galaxy_scene, StarVisualAssets,
 };
+
+// Pure visibility helpers for STUDIO-LOADER-DIALOG-REPAIR-0 atomic-reveal proofs.
+pub use galaxy_render::{
+    loading_cover_active_for_phase, pending_parent_is_hidden, phase_after_final_batch_complete,
+    phase_after_parent_revealed, SceneAdoptionVisibilityPhase,
+};
 use resources::{StudioDialog, StudioSettings};
 
 use crate::panel_layout;
@@ -203,6 +209,11 @@ pub struct StudioAppState {
     pub telemetry_dialog: TelemetryDialogModel,
     /// Modal scenario library state (presentation only; never scenario authority).
     pub scenario_library: crate::StudioScenarioLibraryModel,
+    clause_loader_job: Option<ui::PendingClauseLoaderJob>,
+    clause_scene_adoption: Option<ui::PendingClauseSceneAdoption>,
+    clause_scene_cleanup: Vec<galaxy_render::BatchedGalaxySceneCleanup>,
+    /// Opaque world-area cover while a load attempt is active (presentation only).
+    pub loading_cover_active: bool,
     pub star_falloff_settings: StarFalloffSettings,
     pub star_render_mode: StarRenderMode,
     pub hyperlane_render_settings: HyperlaneRenderSettings,
@@ -295,6 +306,10 @@ impl StudioAppState {
             ),
             telemetry_dialog: TelemetryDialogModel::new(false, [480.0, 96.0]),
             scenario_library: crate::StudioScenarioLibraryModel::default(),
+            clause_loader_job: None,
+            clause_scene_adoption: None,
+            clause_scene_cleanup: Vec::new(),
+            loading_cover_active: false,
             star_falloff_settings,
             star_render_mode,
             hyperlane_render_settings,

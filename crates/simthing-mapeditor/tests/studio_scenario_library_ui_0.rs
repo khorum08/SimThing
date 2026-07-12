@@ -185,8 +185,8 @@ fn scenario_library_clause_open_reuses_production_ingest_path() {
     }
 
     let ui_src = include_str!("../src/app/ui.rs");
-    assert!(ui_src.contains("open_native_clause_scenario_picker"));
-    assert!(ui_src.contains("clause_picker_menu_label"));
+    assert!(ui_src.contains("select_native_clause_scenario_path"));
+    assert!(ui_src.contains("run_clause_picker_action_staged"));
 }
 
 #[test]
