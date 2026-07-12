@@ -53,11 +53,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 Track state: `open`
 
+> Compact view: showing last 5 of 20 rungs (track `open`); full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 11.2 | STUDIO-FACTION-IDENTITY-FIELDS-0 | Owner/faction identity fields on the scenario spec + clause grammar + hydrate: * | **DA-GRADUATED / merged [#1302](https://github.com/khorum08/SimThing/pull/1302) @ `f18efd1b`** — Spec identity props ... |
-| 11.3 | STUDIO-STAR-NAMING-PASS-0 | Galaxy generation runs the **star-naming pass** so every star system carries a d | **REMEDIAL-SUPERSEDED** — #1304 correctly committed 1,500 deterministic names in the canonical base-disc, but the lat... |
-| 11.4 | STUDIO-CLAUSE-LOADER-SIMPLIFY-0 | **Needs 11.1.** Scenario Library shows **only the ClauseScript loader**; the res | **DA-GRADUATED / merged [#1306](https://github.com/khorum08/SimThing/pull/1306) @ `786c6c0b`** — ClauseScript-only lo... |
 | 11.5 | STUDIO-FACTION-NAMEPLATES-0 | **Needs 11.2 + 11.3.** Star + planet nameplates render the **star/system name**  | **ORCHESTRATOR-GRADUATED / merged [#1309](https://github.com/khorum08/SimThing/pull/1309) @ `9ee45b3f`** — faction-co... |
 | 11.6 | STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0 | **Needs 11.2.** Selecting a faction-owned star **brightens all stars that factio | **ORCHESTRATOR-GRADUATED / merged [#1312](https://github.com/khorum08/SimThing/pull/1312) @ `d8484d66`** — selecting ... |
 | 11.7 | STUDIO-FROSTED-GLASS-0 | Window backgrounds get a real **frosted-glass** effect: slight darkening tint +  | **DA-GRADUATED / merged [#1314](https://github.com/khorum08/SimThing/pull/1314) @ `26327900`** — real WGSL frosted-gl... |
@@ -66,7 +65,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-STAR-NAMING-PASS-0`
+Active pointer: none — awaiting Owner direction for the next UI/UX ladder
 
 
 ## Cold-Start Spine (constitutional pointers)

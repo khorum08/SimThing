@@ -422,6 +422,50 @@ EOF
   return 0
 }
 
+run_selftest_authoritative_park_pointer() {
+  local sandbox out
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-park-pointer-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  cat >"${sandbox}/docs/design_owner_gated_track.md" <<'EOF'
+# Owner-Gated Design Track
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `ORIGINAL-RUNG` | Original work. | REMEDIAL-SUPERSEDED by the repair. |
+| REMEDIAL | `REPAIR-RUNG` | Repair. | DA-GRADUATED / merged #2. |
+| OWNER | `OWNER-CLOSURE-RUNG` | Owner-only closure. | DEFERRED / Owner-gated. |
+
+| Item | State |
+|---|---|
+| Active open rung | none — Phase 1 COMPLETE; awaiting Owner direction for the next UI/UX ladder (Phase 2+) |
+EOF
+  cat >"${sandbox}/scripts/ci/binding_conditions.tsv" <<'EOF'
+rung	condition	set_by	status	promotion_blocker
+OWNER-CLOSURE-RUNG	track-closeout-blocked-until-explicit-owner-authorization	Owner-fixture	active	OWNER-CLOSURE-RUNG
+EOF
+  if ! run_gen_sandbox "$sandbox" --open docs/design_owner_gated_track.md >/dev/null; then
+    echo "FAIL orientation_authoritative_park_pointer"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  out="${sandbox}/docs/orchestrator_orientation.md"
+  if ! grep -qF "Active pointer: none — awaiting Owner direction for the next UI/UX ladder" "$out" \
+    || grep -qF 'Active pointer: `ORIGINAL-RUNG`' "$out" \
+    || grep -qF 'Active pointer: `OWNER-CLOSURE-RUNG`' "$out" \
+    || ! grep -qF 'track-closeout-blocked-until-explicit-owner-authorization' "$out" \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null; then
+    echo "FAIL orientation_authoritative_park_pointer"
+    cat "$out" 2>/dev/null || true
+    rm -rf "$sandbox"
+    return 1
+  fi
+  echo "PASS orientation_authoritative_park_pointer"
+  rm -rf "$sandbox"
+  return 0
+}
+
 run_selftest_invalid_open_path() {
   local sandbox
   sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-open-invalid-XXXXXX")"
@@ -555,6 +599,7 @@ run_selftest() {
     run_selftest_reject_evidence_index_open
     run_selftest_active_evidence_index_check_fails
     run_selftest_valid_workplan_opens
+    run_selftest_authoritative_park_pointer
     run_selftest_cold_start_spine
   )
   local fn
@@ -638,6 +683,7 @@ COMPLETED_EXIT_PREFIX_RE = re.compile(
     r"closed\b|"
     r"parked\b|"
     r"deferred\b|"
+    r"remedial-superseded\b|"
     r"resolved predecessor\b"
     r")",
     re.IGNORECASE,
@@ -987,6 +1033,38 @@ def next_rung_pointer(rungs):
     return "none"
 
 
+def authoritative_active_pointer(design_text: str):
+    """Read the explicit park/open posture when the design publishes one."""
+    match = re.search(
+        r"^\|\s*Active open rung\s*\|\s*(.*?)\s*\|\s*$",
+        design_text,
+        re.IGNORECASE | re.MULTILINE,
+    )
+    if not match:
+        return None
+    state = match.group(1).strip()
+    if re.match(r"^none\b", state, re.IGNORECASE):
+        if re.search(
+            r"awaiting Owner direction for the next UI/UX ladder",
+            state,
+            re.IGNORECASE,
+        ):
+            return "none — awaiting Owner direction for the next UI/UX ladder"
+        return NO_ACTIVE_TRACK
+    rung = re.search(r"`([^`]+)`", state)
+    return rung.group(1) if rung else None
+
+
+def active_pointer_line(pointer: str) -> str:
+    if pointer.startswith(f"{NO_ACTIVE_TRACK} "):
+        return f"Active pointer: {pointer}"
+    return f"Active pointer: `{pointer}`"
+
+
+def is_no_active_pointer(pointer: str) -> bool:
+    return pointer == NO_ACTIVE_TRACK or pointer.startswith(f"{NO_ACTIVE_TRACK} ")
+
+
 def ledger_summary(rows, limit=5):
     if not rows:
         return ["> clearance ledger empty"]
@@ -1072,7 +1150,7 @@ def render_orientation(active_info: dict) -> tuple:
     if design_doc is not None:
         design_text = design_doc.read_text(encoding="utf-8")
         rungs = parse_rungs(design_text)
-        next_rung = next_rung_pointer(rungs)
+        next_rung = authoritative_active_pointer(design_text) or next_rung_pointer(rungs)
         track_state = track_state_for_doc(active_info.get("path", ""), design_text, rungs)
 
     sources = [
@@ -1179,7 +1257,7 @@ def render_orientation(active_info: dict) -> tuple:
         # End-state / fully-complete ladders: keep the digest thin — last few rows only.
         # Open ladders: show from one completed predecessor through remaining incomplete rungs.
         indexed = list(enumerate(rungs))
-        if next_rung == NO_ACTIVE_TRACK or track_state in {"closed", "parked", "end-state"}:
+        if is_no_active_pointer(next_rung) or track_state in {"closed", "parked", "end-state"}:
             selected = indexed[-5:] if len(indexed) > 5 else indexed
             if len(indexed) > 5:
                 lines.append(
@@ -1208,7 +1286,7 @@ def render_orientation(active_info: dict) -> tuple:
             "",
             "## Next Rung Pointer",
             "",
-            f"Active pointer: `{next_rung}`",
+            active_pointer_line(next_rung),
             "",
         ])
     lines.extend([
