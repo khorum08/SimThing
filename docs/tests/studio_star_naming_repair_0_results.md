@@ -1,7 +1,7 @@
 # STUDIO-STAR-NAMING-REPAIR-0 Results
 
 ## Status
-**PROBATION / DA-RESERVE** - transport [PR #1317](https://github.com/khorum08/SimThing/pull/1317); tested code head `847e21be25cacbfac3203dd7528f3f3bea7c331d`; merge: **NOT MERGED**.
+**DA-GRADUATED / COMPLETE** - transport [PR #1317](https://github.com/khorum08/SimThing/pull/1317) merged @ `1bdc1297`; tested code head `847e21be25cacbfac3203dd7528f3f3bea7c331d`. DA re-ran the repair target (8/8), regressions (11.2 identity 8/8, naming pass 4/4, nameplates 10/10), and canonical scenario 4/4 in an isolated clean worktree; transport diff verified byte-identical to the DA-passed #1316 change.
 
 ## Identity
 | Field | Value |
