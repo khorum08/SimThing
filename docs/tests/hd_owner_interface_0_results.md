@@ -8,7 +8,7 @@ Status: PROBATION
 - Branch: `codex/hd-owner-interface-0`
 - Handoff: `handoffs/HD-OWNER-INTERFACE-0.hd.md`
 - `HD-RECEIPT: 6062840cdf00`
-- Tested code SHA: pending current head after remediation push
+- Tested code SHA: see PR body `tested_code_sha` for the current head-bound value
 - Merge: NOT MERGED
 
 ## What Changed
