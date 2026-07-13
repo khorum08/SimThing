@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Parse /seal-proof and /triage webchat commands from GitHub event payloads.
+# Parse doctrine-exec and handoff webchat commands from GitHub event payloads.
 set -euo pipefail
 
 EVENT_NAME="${GITHUB_EVENT_NAME:?}"
@@ -28,6 +28,8 @@ body="${body//$'\r'/}"
 
 if [[ "$body" =~ ^/seal-proof([[:space:]]|$) ]] || [[ "$body" == /seal-proof* ]]; then
   cmd="seal-proof"
+elif [[ "$body" =~ ^/handoff([[:space:]]|$) ]] || [[ "$body" == /handoff* ]]; then
+  cmd="handoff"
 elif [[ "$body" =~ ^/triage[[:space:]] ]]; then
   cmd="triage"
 elif [[ "$body" =~ ^/clearance([[:space:]]|$) ]] || [[ "$body" == /clearance* ]]; then
@@ -41,6 +43,49 @@ elif [[ "$body" =~ ^/anchor([[:space:]]|$) ]] || [[ "$body" == /anchor* ]]; then
 else
   echo "COMMAND: ignore"
   exit 0
+fi
+
+if [[ "$cmd" == "handoff" ]]; then
+  body_b64="$(printf '%s' "$body" | base64 | tr -d '\n')"
+  COMMAND_BODY_B64="$body_b64" "$PYTHON_BIN" - <<'PY'
+import base64
+import os
+import sys
+
+body = base64.b64decode(os.environ.get("COMMAND_BODY_B64", "").encode("ascii")).decode("utf-8").strip()
+if not body.lower().startswith("/handoff"):
+    print("COMMAND: handoff-invalid")
+    print("FORMAT: /handoff approve | /handoff amend: <text> | /handoff hold | /handoff status")
+    sys.exit(1)
+rest = body[len("/handoff"):].strip()
+if not rest:
+    print("COMMAND: handoff-invalid")
+    print("FORMAT: /handoff approve | /handoff amend: <text> | /handoff hold | /handoff status")
+    sys.exit(1)
+head, sep, tail = rest.partition(" ")
+action = head.rstrip(":").lower()
+text = ""
+if action == "amend":
+    if head.endswith(":"):
+        text = tail.strip()
+    elif sep:
+        text = tail.strip()
+    else:
+        text = ""
+    if not text:
+        print("COMMAND: handoff-invalid")
+        print("FORMAT: /handoff amend: <text>")
+        sys.exit(1)
+else:
+    if action not in {"approve", "hold", "status"} or sep or tail.strip():
+        print("COMMAND: handoff-invalid")
+        print("FORMAT: /handoff approve | /handoff amend: <text> | /handoff hold | /handoff status")
+        sys.exit(1)
+encoded = base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii")
+print(f"COMMAND: handoff action={action}")
+print(f"HANDOFF_TEXT_B64: {encoded}")
+PY
+  exit $?
 fi
 
 if [[ "$cmd" == "seal-proof" ]]; then

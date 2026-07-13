@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | 991ca806e69164fa9e6c59ac659638a14977cc5d5f9633f203edd07035b4d5e4 |
+| design_0_0_8_4_8_4_hd_board.md | 944e88779f48da2d45b624cd7bd39b27fe92e24027adcee1a707a789dfc38315 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -55,15 +55,14 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HD-2 | HD-DISPATCH-SUBSTRATE-0 | **The object + projections + receipt (§1.1–§1.2, §1.4–§1.5):** `handoffs/` dir,  | **DA-GRADUATED / merged [#1331](https://github.com/khorum08/SimThing/pull/1331)** — DA deep pass 2026-07-12: dispatch... |
-| HD-3 | HD-OWNER-INTERFACE-0 | **Prompt-native Owner/collaborator door (§1.3):** `/handoff approve/amend/hold/s | HANDOFF DISPATCHED as `handoffs/HD-OWNER-INTERFACE-0.hd.md` (DA 2026-07-12, Owner "proceed"; `HD-RECEIPT: 6062840cdf0... |
+| HD-3 | HD-OWNER-INTERFACE-0 | **Prompt-native Owner/collaborator door (§1.3):** `/handoff approve/amend/hold/s | **DA-GRADUATED / merged [#1336](https://github.com/khorum08/SimThing/pull/1336)** — DA deep pass 2026-07-13: dispatch... |
 | HD-4 | HD-LIBRARIAN-0 | **Stewardship verbs (Owner: "check library staleness", "cull dead tsv rows"):**  | HANDOFF DISPATCHED as `handoffs/HD-LIBRARIAN-0.hd.md` (DA 2026-07-12, Owner "proceed"; `HD-RECEIPT: 561129af1c70`; Co... |
 | HD-5 | HD-DOCS-CASCADE-0 | **Loud onboarding visibility + the payoff compression.** Entry-point docs update | NOT STARTED — note (DA 2026-07-12, Owner-directed): operator HD-protocol section pre-landed in `agent_onboarding.md` ... |
 | HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `HD-OWNER-INTERFACE-0`
+Active pointer: `HD-LIBRARIAN-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -221,6 +220,10 @@ cargo test -p <crate> --test <focused>   # when tests changed / named by handoff
 
 Maintainer/CI only (not coding default): whole-tree `doctrine_scan.sh`, clearance/relay/da_treeverify selftests,
 `doctrine_selftest.sh` (scanner surface only).
+
+## HD Owner Interface
+
+- Scribe Owner prose into `.hd.md`, echo the exact diff before push; "current handoff approved, implement" means resolve active `.hd.md`, render your projection, verify `owner_approved: true`; `/handoff approve|amend: <text>|hold` is OWNER-only, collaborator attempts route to owner-review, `/handoff status` is read-only, and `owner_notes` must render verbatim.
 
 
 ## GHA Comment Commands
