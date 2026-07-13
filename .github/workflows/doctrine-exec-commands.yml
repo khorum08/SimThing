@@ -394,6 +394,9 @@ jobs:
         run: |
           set -euo pipefail
           handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff)"
+          gh pr list --state open --json number,title,headRefName,url,isDraft,body > open-prs.raw.json
+          bash scripts/ci/handoff_dispatch.sh --normalize-open-prs open-prs.raw.json > open-prs.json
+          export HD_OPEN_PRS_JSON="$(cat open-prs.json)"
           bash scripts/ci/handoff_dispatch.sh --owner-status "$handoff" > handoff-status.md
           gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file handoff-status.md
 
@@ -462,6 +465,9 @@ jobs:
           } > handoff-command-reply.md
           gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file handoff-command-reply.md
 
+          gh pr list --state open --json number,title,headRefName,url,isDraft,body > open-prs.raw.json
+          bash scripts/ci/handoff_dispatch.sh --normalize-open-prs open-prs.raw.json > open-prs.json
+          export HD_OPEN_PRS_JSON="$(cat open-prs.json)"
           bash scripts/ci/handoff_dispatch.sh --board-json "${handoff_path}" > simthing-board.json
           bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md
           python3 - <<'PY' > board_payload.json

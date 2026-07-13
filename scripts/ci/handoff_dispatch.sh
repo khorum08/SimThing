@@ -959,6 +959,18 @@ stop_conditions: ["scope-widening"]
         amended_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])
         check("owner-notes-render-after-amend", amend.returncode == 0 and "Owner note after amend must render." in amended_projection.stdout)
 
+        owner_open_prs = '[{"number":42,"title":"owner status fixture","headRefName":"owner-head","url":"u","isDraft":true,"body":"expected_route: DA-RESERVE(fixture)"}]'
+        status_md = run_cmd([bash_cmd, script_arg, "--owner-status", str(owner_cmd)], env={"HD_OPEN_PRS_JSON": owner_open_prs})
+        open_pr_line = "#42 `owner-head` draft=true route=`DA-RESERVE(fixture)`"
+        check("owner-status-retains-open-pr-state", status_md.returncode == 0 and open_pr_line in status_md.stdout)
+
+        mutate_again = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "approve"])
+        post_mutation_board = run_cmd([bash_cmd, script_arg, "--board-json", str(owner_cmd)], env={"HD_OPEN_PRS_JSON": owner_open_prs})
+        post_mutation_board_path = Path(tmp) / "post-mutation-board.json"
+        write(post_mutation_board_path, post_mutation_board.stdout)
+        post_mutation_md = run_cmd([bash_cmd, script_arg, "--render-board", str(post_mutation_board_path)])
+        check("owner-mutation-board-retains-open-pr-state", mutate_again.returncode == 0 and post_mutation_md.returncode == 0 and open_pr_line in post_mutation_md.stdout)
+
         hold = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "hold"])
         held_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])
         check("owner-command-hold-freezes-dispatch", hold.returncode == 0 and "owner_approved: false" in hold.stdout and "HD-LINT-VERDICT: FAIL(owner-approval-required)" in held_projection.stdout)

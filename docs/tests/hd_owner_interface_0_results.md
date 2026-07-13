@@ -8,7 +8,7 @@ Status: PROBATION
 - Branch: `codex/hd-owner-interface-0`
 - Handoff: `handoffs/HD-OWNER-INTERFACE-0.hd.md`
 - `HD-RECEIPT: 6062840cdf00`
-- Tested code SHA: `c095e218dc85fcc2bb268978c57cc23657170a1e`
+- Tested code SHA: pending current head after remediation push
 - Merge: NOT MERGED
 
 ## What Changed
@@ -17,6 +17,7 @@ Status: PROBATION
 - Extended doctrine-exec command workflow to accept board issue handoff commands, gate mutations to GitHub `OWNER`, route collaborator mutation attempts to owner-review, post status digests, and commit OWNER mutations to the active handoff.
 - Added handoff dispatcher helpers for active handoff resolution, owner mutation, owner-review replies, and owner status rendering.
 - Corrected handoff ingress resolution for implementation PRs that name a rung but do not modify the `.hd.md` object: they now resolve the existing handoff; PRs that do modify a handoff still require an exact rung/path match.
+- Remedial pass: `/handoff status` and owner mutation mirror refresh now reuse HD-2 open-PR state composition, normalizing live open PRs into `HD_OPEN_PRS_JSON` before board rendering.
 - Regenerated orientation with the scribe protocol and "current handoff approved, implement" ingress protocol.
 
 ## Load-Bearing Proofs
@@ -33,6 +34,7 @@ Status: PROBATION
 - YAML parse PASS for `.github/workflows/doctrine-exec-commands.yml` and `.github/workflows/clearance.yml`.
 - `bash -n` PASS for edited shell scripts.
 - Owner-command fixtures bite: approve flips `owner_approved: true`; hold makes coding render fail with `owner-approval-required`; amend text renders in projection; non-owner amend emits owner-review with no mutation.
+- Remedial fixtures bite: owner status digest retains an open PR's branch, draft flag, and route; post-mutation board rendering retains the same open PR state.
 - Resolver fixture bites: an implementation PR with `Rung: HD-DISPATCH-SUBSTRATE-0` and no `.hd.md` diff resolves the existing handoff, while mismatched changed handoffs still fail.
 - Handoff ingress proof: PR #1336 ingress for `HD-OWNER-INTERFACE-0` renders at exactly 60 lines after compacting the wrapper; oversize ingress fixture still fails `ingress-line-cap`.
 
