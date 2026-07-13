@@ -17,6 +17,8 @@ Status: PROBATION
 - Added `owner_directives.tsv`; active directives render into every projection, retired rows do not.
 - Extended `relay_lint.sh` to enforce `HD-RECEIPT` drift checks and first-handoff bootstrap.
 - Extended clearance workflow with handoff ingress sticky and exact-title `SimThing Board` issue sync.
+- Remedial pass: workflow resolves handoff from explicit `Rung:` identity, fails duplicate boards,
+  normalizes open PR branch/draft/route, and renders each open PR route.
 
 ## Load-Bearing Proofs
 
@@ -27,6 +29,9 @@ Status: PROBATION
 - `DOC-BUDGET-VERDICT: PASS`.
 - `YAML-OK` for `.github/workflows/clearance.yml`.
 - `git diff --check` PASS.
+- Live clearance sticky on #1331: `DA-RESERVE(gate-wiring)`, `body_sha: evidence-tail`.
+- Live handoff sticky on #1331: `HD-LINT-VERDICT: PASS`, coding projection receipt matches.
+- Live board issue: #1332; remedial helper targets it for update, not duplicate creation.
 
 ## Falsifiers
 
@@ -34,6 +39,9 @@ Status: PROBATION
 - Missing/unknown frontmatter keys and 81-line body fixtures fail.
 - Relay bootstrap fixture passes only when the added `.hd.md` receipt matches.
 - Relay drift fixture fails when a claimed receipt differs from the base object.
+- Explicit-rung resolver fails when changed `.hd.md` does not match the PR body rung.
+- Duplicate `SimThing Board` issue fixture fails instead of selecting one with `head -n 1`.
+- Board render fixture proves `head`, `draft`, and `route` appear on open PR lines.
 
 ## Scope Ledger
 
@@ -44,4 +52,4 @@ Status: PROBATION
 
 ## Known Gaps
 
-- Live GitHub clearance sticky, handoff sticky, and board issue must be observed on #1331.
+- Current-head GitHub workflow refresh and live `/relay-lint` must be rerun after this remedial push.

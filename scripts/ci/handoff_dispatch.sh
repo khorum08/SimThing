@@ -17,6 +17,10 @@ usage:
   bash scripts/ci/handoff_dispatch.sh --render coding|orchestrator|da <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --receipt <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --board-json [<handoff-file>]
+  bash scripts/ci/handoff_dispatch.sh --render-board <board-json-file>
+  bash scripts/ci/handoff_dispatch.sh --resolve-handoff <pr-body-file> <changed-files-file>
+  bash scripts/ci/handoff_dispatch.sh --normalize-open-prs <prs-json-file>
+  bash scripts/ci/handoff_dispatch.sh --board-issue-target <issues-json-file>
   bash scripts/ci/handoff_dispatch.sh --selftest
 EOF
   exit 2
@@ -27,6 +31,8 @@ EOF
 MODE="$1"; shift || true
 case "$MODE" in
   --lint|--receipt|--board-json|--selftest) ;;
+  --render-board|--normalize-open-prs|--board-issue-target) [[ $# -ge 1 ]] || usage ;;
+  --resolve-handoff) [[ $# -ge 2 ]] || usage ;;
   --render) [[ $# -ge 1 ]] || usage ;;
   -h|--help) usage ;;
   *) usage ;;
@@ -105,6 +111,13 @@ def normalize_bytes(raw: bytes) -> str:
 
 def read_norm(path: Path) -> str:
     return normalize_bytes(path.read_bytes())
+
+
+def read_json_file(path: Path):
+    raw = path.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    return json.loads(raw.decode("utf-8"))
 
 
 def repo_rel(path: Path) -> str:
@@ -376,6 +389,43 @@ def master_head():
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
+def expected_route_from_body(body: str) -> str:
+    patterns = [
+        r"(?im)^\s*expected_route\s*:\s*`?([^`\n|]+?)`?\s*$",
+        r"(?im)^\s*CLEARANCE-VERDICT:\s*(ORCHESTRATOR-CLEARABLE|DA-RESERVE\([^)]+\)|FAIL\([^)]+\))\s*$",
+        r"(?im)^\s*\|\s*Recommended posture\s*\|\s*`?([^`|\n]+?)`?\s*\|",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, body or "")
+        if not m:
+            continue
+        route = m.group(1).strip()
+        if re.fullmatch(r"(ORCHESTRATOR-CLEARABLE|DA-RESERVE\([^)]+\)|FAIL\([^)]+\))", route):
+            return route
+        return f"MALFORMED_ROUTE:{route}"
+    return "MISSING_ROUTE"
+
+
+def normalize_open_prs(data):
+    out = []
+    for item in data:
+        draft = item.get("draft")
+        if draft is None:
+            draft = item.get("isDraft", False)
+        route = (item.get("route") or "").strip()
+        if not route:
+            route = expected_route_from_body(item.get("body", ""))
+        out.append({
+            "number": item.get("number"),
+            "title": item.get("title", ""),
+            "head": item.get("head", item.get("headRefName", "")),
+            "url": item.get("url", ""),
+            "route": route,
+            "draft": bool(draft),
+        })
+    return sorted(out, key=lambda x: x.get("number") or 0)
+
+
 def open_prs():
     raw = os.environ.get("HD_OPEN_PRS_JSON", "").strip()
     if not raw:
@@ -384,17 +434,7 @@ def open_prs():
         data = json.loads(raw)
     except json.JSONDecodeError:
         return []
-    out = []
-    for item in data:
-        out.append({
-            "number": item.get("number"),
-            "title": item.get("title", ""),
-            "head": item.get("headRefName", item.get("head", "")),
-            "url": item.get("url", ""),
-            "route": item.get("route", ""),
-            "draft": bool(item.get("isDraft", False)),
-        })
-    return sorted(out, key=lambda x: x.get("number") or 0)
+    return normalize_open_prs(data)
 
 
 def active_bindings():
@@ -510,6 +550,140 @@ def command_board(path=None):
     return 0
 
 
+def clip(value, limit=160):
+    text = str(value)
+    return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def render_board_markdown(data):
+    lines = ["<!-- simthing-board -->", "## SimThing Board", ""]
+    lines.append(f"- track: `{data.get('track', '')}`")
+    lines.append(f"- active_pointer: `{data.get('active_pointer', '')}`")
+    lines.append(f"- master_head: `{str(data.get('master_head', ''))[:12]}`")
+    handoff = data.get("current_handoff") or {}
+    if handoff:
+        lines.append(f"- current_handoff: `{handoff.get('rung', '')}` `{handoff.get('hd_receipt', '')}`")
+        lines.append(f"- expected_route: `{handoff.get('expected_route', '')}`")
+    else:
+        lines.append("- current_handoff: none")
+    lines.extend(["", "### Open PRs"])
+    prs = data.get("open_prs") or []
+    if prs:
+        for pr in prs[:8]:
+            lines.append(
+                f"- #{pr.get('number')} `{pr.get('head', '')}` "
+                f"draft={str(bool(pr.get('draft'))).lower()} "
+                f"route=`{pr.get('route', 'MISSING_ROUTE')}` "
+                f"{clip(pr.get('title', ''), 90)}"
+            )
+    else:
+        lines.append("- none")
+    lines.extend(["", "### Binding Conditions"])
+    bindings = data.get("binding_conditions") or []
+    if bindings:
+        for item in bindings[:8]:
+            lines.append(f"- `{item.get('rung', '')}` {clip(item.get('condition', ''), 100)}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "### Owner Directives"])
+    directives = data.get("owner_directives") or []
+    if directives:
+        for item in directives[:8]:
+            lines.append(f"- `{item.get('scope', '')}` {clip(item.get('directive', ''), 100)}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "### Leases"])
+    leases = (data.get("leases") or {}).get("leases") or []
+    if leases:
+        for item in leases[:8]:
+            lines.append(f"- `{item.get('path', '')}` age_days={item.get('age_days')}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "### Ladder"])
+    for item in (data.get("ladder") or [])[:12]:
+        lines.append(f"- `{item.get('rung', '')}` {clip(item.get('exit_proof', ''), 150)}")
+    return "\n".join(lines[:60]).rstrip() + "\n"
+
+
+def command_render_board(path):
+    try:
+        data = read_json_file(Path(path))
+    except Exception:
+        return fail("board-json-read")
+    sys.stdout.write(render_board_markdown(data))
+    return 0
+
+
+def explicit_rung_from_pr_body(body: str):
+    matches = re.findall(r"(?im)^\s*(?:[-*]\s*)?Rung\s*:\s*`?([A-Z0-9][A-Z0-9_-]+)`?\s*$", body)
+    if not matches:
+        raise HDError("missing-rung-identity")
+    if len(matches) != 1:
+        raise HDError("multiple-rung-identities")
+    return matches[0]
+
+
+def changed_handoff_files(path):
+    lines = Path(path).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n").splitlines()
+    out = []
+    for line in lines:
+        rel = line.strip().replace("\\", "/")
+        if re.fullmatch(r"handoffs/[^/]+\.hd\.md", rel):
+            out.append(rel)
+    return sorted(set(out))
+
+
+def command_resolve_handoff(body_file, changed_files):
+    try:
+        body = Path(body_file).read_text(encoding="utf-8")
+        rung = explicit_rung_from_pr_body(body)
+        rel = f"handoffs/{rung}.hd.md"
+        changed = changed_handoff_files(changed_files)
+        if not changed:
+            raise HDError("missing-changed-handoff")
+        if len(changed) > 1:
+            raise HDError("multiple-changed-handoffs")
+        if changed[0] != rel:
+            raise HDError("rung-handoff-mismatch")
+        path = ROOT / rel
+        if not path.is_file():
+            raise HDError("missing-handoff-file")
+        obj = parse_handoff(path)
+        if obj["frontmatter"]["rung"] != rung:
+            raise HDError("frontmatter-rung-mismatch")
+    except HDError as exc:
+        return fail(exc.detail)
+    print(rel)
+    return 0
+
+
+def command_normalize_open_prs(path):
+    try:
+        data = read_json_file(Path(path))
+    except Exception:
+        return fail("open-pr-json-read")
+    print(json.dumps(normalize_open_prs(data), sort_keys=True, separators=(",", ":")))
+    return 0
+
+
+def command_board_issue_target(path):
+    try:
+        data = read_json_file(Path(path))
+    except Exception:
+        return fail("board-issues-json-read")
+    matches = [
+        item for item in data
+        if item.get("title") == "SimThing Board" and not item.get("pull_request")
+    ]
+    if len(matches) == 0:
+        print("create")
+        return 0
+    if len(matches) == 1:
+        print(f"update {matches[0].get('number')}")
+        return 0
+    return fail("duplicate-board-issues")
+
+
 def write(path: Path, text: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="\n")
@@ -602,11 +776,42 @@ def command_selftest():
         write(ledger, "path\tleased_at\tdisposition\tcloseout_track\tnote\nhandoffs/OLD.hd.md\t2026-07-01\tlease\thd-fixture\tfixture lease\n")
         board = run_cmd(
             [bash_cmd, script_arg, "--board-json", valid_arg],
-            env={"HD_CLOSEOUT_ARTIFACTS": str(ledger), "HD_TODAY": "2026-07-12", "HD_OPEN_PRS_JSON": '[{"number":1,"title":"fixture","headRefName":"h","url":"u","isDraft":true}]'},
+            env={
+                "HD_CLOSEOUT_ARTIFACTS": str(ledger),
+                "HD_TODAY": "2026-07-12",
+                "HD_OPEN_PRS_JSON": '[{"number":1,"title":"fixture","headRefName":"h","url":"u","isDraft":true,"body":"expected_route: DA-RESERVE(fixture)"}]',
+            },
         )
         data = json.loads(board.stdout)
         check("board-json-valid", data["current_handoff"]["rung"] == "VALID-HANDOFF-DISPATCH-FIXTURE-0")
         check("board-json-lease", data["leases"]["count"] == 1 and data["leases"]["leases"][0]["age_days"] == 11)
+        check("board-json-open-pr-normalized", data["open_prs"][0]["head"] == "h" and data["open_prs"][0]["draft"] is True and data["open_prs"][0]["route"] == "DA-RESERVE(fixture)")
+
+        board_json_path = Path(tmp) / "board.json"
+        write(board_json_path, json.dumps(data))
+        board_md = run_cmd([bash_cmd, script_arg, "--render-board", str(board_json_path)])
+        check("board-render-open-pr-route", "#1 `h` draft=true route=`DA-RESERVE(fixture)`" in board_md.stdout)
+
+        body = Path(tmp) / "pr_body.md"
+        changed = Path(tmp) / "changed_files.txt"
+        live_handoff_arg = "handoffs/HD-DISPATCH-SUBSTRATE-0.hd.md"
+        write(body, "## Status\n\nRung: HD-DISPATCH-SUBSTRATE-0\n")
+        write(changed, f"{live_handoff_arg}\n")
+        resolve = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        check("resolve-handoff-explicit-rung", resolve.returncode == 0 and resolve.stdout.strip() == live_handoff_arg)
+
+        write(changed, "handoffs/OTHER-HANDOFF.hd.md\n")
+        mismatch = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        check("resolve-handoff-mismatch-fails", "HD-LINT-VERDICT: FAIL(rung-handoff-mismatch)" in mismatch.stdout)
+
+        issues = Path(tmp) / "issues.json"
+        write(issues, '[{"number":7,"title":"SimThing Board"}]\n')
+        target = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check("board-issue-single-update", target.returncode == 0 and target.stdout.strip() == "update 7")
+
+        write(issues, '[{"number":7,"title":"SimThing Board"},{"number":8,"title":"SimThing Board"}]\n')
+        dup = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check("board-issue-duplicate-fails", "HD-LINT-VERDICT: FAIL(duplicate-board-issues)" in dup.stdout)
 
     if failures:
         print(f"HANDOFF-DISPATCH-SELFTEST: FAIL ({len(failures)})")
@@ -633,5 +838,21 @@ if MODE == "--board-json":
     if len(ARGS) > 1:
         sys.exit(2)
     sys.exit(command_board(ARGS[0] if ARGS else None))
+if MODE == "--render-board":
+    if len(ARGS) != 1:
+        sys.exit(2)
+    sys.exit(command_render_board(ARGS[0]))
+if MODE == "--resolve-handoff":
+    if len(ARGS) != 2:
+        sys.exit(2)
+    sys.exit(command_resolve_handoff(ARGS[0], ARGS[1]))
+if MODE == "--normalize-open-prs":
+    if len(ARGS) != 1:
+        sys.exit(2)
+    sys.exit(command_normalize_open_prs(ARGS[0]))
+if MODE == "--board-issue-target":
+    if len(ARGS) != 1:
+        sys.exit(2)
+    sys.exit(command_board_issue_target(ARGS[0]))
 sys.exit(2)
 PY
