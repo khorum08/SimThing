@@ -180,6 +180,21 @@ def orphan_items(text: str):
     return items
 
 
+def anchor_preview_ok(result):
+    if owner_ok(result):
+        return True, []
+    evidence = [
+        line for line in clean_lines(result.stdout)
+        if line.startswith("ORPHANED ") or line.startswith("RESYNCED ")
+    ]
+    if evidence:
+        return True, []
+    detail = verdict_line(result.stdout, "ANCHOR-RESYNC-VERDICT")
+    if "MISSING" in detail:
+        detail = verdict_line(result.stdout, "ANCHOR-CHECK-VERDICT")
+    return False, [f"cull-item: ERROR source=anchor_check reason=anchor-preview-failed detail={detail}"]
+
+
 def cmd_cull():
     confirm = False
     for arg in argv:
@@ -201,7 +216,9 @@ def cmd_cull():
     anchor = run_script(ANCHOR_CHECK, "--resync", "--dry-run")
     lines.extend(orphan_items(anchor.stdout))
     lines.append("orphan-anchor-preview: " + verdict_line(anchor.stdout, "ANCHOR-RESYNC-VERDICT"))
-    ok = all(owner_ok(r) for r in (discover, decommission_plan, prune_plan)) and anchor.returncode in (0, 1)
+    anchor_ok, anchor_errors = anchor_preview_ok(anchor)
+    lines.extend(anchor_errors)
+    ok = all(owner_ok(r) for r in (discover, decommission_plan, prune_plan)) and anchor_ok
     preflight_verdict = ("OK" if confirm else "DRY") if ok else "ERROR"
     mutation_tail = []
     if confirm and ok:
@@ -221,13 +238,24 @@ def cmd_cull():
         ok = ok and owner_ok(decommission_apply) and owner_ok(prune_apply)
     verdict = ("OK" if confirm else "DRY") if ok else "ERROR"
     lines.append(f"LIBRARIAN-CULL-VERDICT: {verdict} lines={len(lines) + 1}")
-    return emit(lines, "LIBRARIAN-CULL-VERDICT")
+    rc = emit(lines, "LIBRARIAN-CULL-VERDICT")
+    if rc != 0:
+        return rc
+    return 0 if ok else 1
 
 
 def role_catalog(role: str):
     handoff = run_script(HANDOFF_DISPATCH, "--render", role, HANDOFF_PATH)
     orient = run_script(ORIENT, f"--role={role}")
-    anchors = run_script(ANCHOR_QUERY, "--paths", "scripts/ci/librarian.sh", "scripts/ci/handoff_dispatch.sh")
+    with tempfile.TemporaryDirectory(prefix="librarian-catalog-reach-") as raw:
+        reach_log = str(pathlib.Path(raw) / "anchor_reach_log.tsv")
+        anchors = run_script(
+            ANCHOR_QUERY,
+            "--paths",
+            "scripts/ci/librarian.sh",
+            "scripts/ci/handoff_dispatch.sh",
+            env={"ANCHOR_REACH_LOG_PATH": reach_log},
+        )
     payload = []
     for line in clean_lines(handoff.stdout):
         if line.startswith(("REQUIRED-ANCHORS:", "stop_conditions:", "required_checks:", "forbidden_surfaces:", "## ")):
@@ -330,6 +358,10 @@ case "${1:-}" in
     fi
     ;;
   --paths)
+    log="${ANCHOR_REACH_LOG_PATH:-${FAKE_LIVE_REACH_LOG:-}}"
+    if [[ -n "${log}" ]]; then
+      printf 'catalog path touched\n' >>"${log}"
+    fi
     echo "ANCHOR-QUERY-VERDICT: PASS ids=1"
     echo "anchors: orientation-harness-core ${FAKE_CATALOG_MARKER:-one}"
     ;;
@@ -337,6 +369,10 @@ esac
 ''')
     write_exe(fake_dir / "anchor_check.sh", r'''#!/usr/bin/env bash
 set -euo pipefail
+if [[ "${FAKE_ANCHOR_VERDICT:-orphan}" == "harness-fail" ]]; then
+  echo "ANCHOR-CHECK-VERDICT: FAIL(malformed-authority)"
+  exit 1
+fi
 echo "ORPHANED sample-anchor"
 echo "ANCHOR-CHECK-VERDICT: FAIL(orphaned-anchor) remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync"
 ''')
@@ -450,6 +486,40 @@ def run_selftest():
             print("FAIL catalog-no-silent-slice")
             failures.append("catalog-no-silent-slice")
 
+        live_log = tmp / "live-anchor-reach-log.tsv"
+        live_log.write_text("live\n", encoding="utf-8")
+        missing_log = tmp / "missing-anchor-reach-log.tsv"
+        catalog_live = run_self_with(fake_dir, "--catalog", env={"FAKE_LIVE_REACH_LOG": str(live_log)})
+        catalog_missing = run_self_with(fake_dir, "--catalog", env={"FAKE_LIVE_REACH_LOG": str(missing_log)})
+        if (
+            catalog_live.returncode == 0
+            and catalog_missing.returncode == 0
+            and live_log.read_text(encoding="utf-8") == "live\n"
+            and not missing_log.exists()
+        ):
+            print("PASS catalog-readonly-reach-log")
+        else:
+            print("FAIL catalog-readonly-reach-log")
+            failures.append("catalog-readonly-reach-log")
+
+        anchor_guard = tmp / "anchor-guard.tsv"
+        anchor_guard.write_text("unchanged\n", encoding="utf-8")
+        anchor_fail = run_self_with(
+            fake_dir,
+            "--cull",
+            "--confirm",
+            env={"FAKE_ANCHOR_VERDICT": "harness-fail", "FAKE_GUARD_FILE": str(anchor_guard)},
+        )
+        if (
+            anchor_fail.returncode != 0
+            and anchor_guard.read_text(encoding="utf-8") == "unchanged\n"
+            and "cull-item: ERROR source=anchor_check reason=anchor-preview-failed" in anchor_fail.stdout
+        ):
+            print("PASS anchor-harness-failure-no-mutation")
+        else:
+            print("FAIL anchor-harness-failure-no-mutation")
+            failures.append("anchor-harness-failure-no-mutation")
+
         workflow = (ROOT / ".github" / "workflows" / "doctrine-exec-commands.yml").read_text(encoding="utf-8")
         if (
             "id: librarian" in workflow
@@ -460,6 +530,28 @@ def run_selftest():
         else:
             print("FAIL failed-confirm-no-commit")
             failures.append("failed-confirm-no-commit")
+
+        if (
+            "LIBRARIAN-OWNER-REVIEW:" in workflow
+            and "requested_by=@${requester}" in workflow
+            and "action=/librarian cull --confirm" in workflow
+            and "needs.parse-command.outputs.librarian_action != 'cull' ||" in workflow
+        ):
+            print("PASS non-owner-confirm-routes-to-owner-review")
+        else:
+            print("FAIL non-owner-confirm-routes-to-owner-review")
+            failures.append("non-owner-confirm-routes-to-owner-review")
+
+        if (
+            "COMMENT_ID=\"issue_comment-${{ github.event.comment.id }}\"" in workflow
+            and "COMMENT_ID=\"pull_request_review-${{ github.event.review.id }}\"" in workflow
+            and "COMMENT_ID=\"pull_request_review_comment-${{ github.event.comment.id }}\"" in workflow
+            and "<!-- librarian-report:${{ needs.parse-command.outputs.comment_id }} -->" in workflow
+        ):
+            print("PASS librarian-report-identity-per-event")
+        else:
+            print("FAIL librarian-report-identity-per-event")
+            failures.append("librarian-report-identity-per-event")
 
     if failures:
         print(f"LIBRARIAN-SELFTEST-VERDICT: FAIL count={len(failures)}")

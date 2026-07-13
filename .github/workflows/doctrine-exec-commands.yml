@@ -61,7 +61,7 @@ jobs:
           COMMENT_ID=""
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
             ISSUE_NUMBER="${{ github.event.issue.number }}"
-            COMMENT_ID="${{ github.event.comment.id }}"
+            COMMENT_ID="issue_comment-${{ github.event.comment.id }}"
             if [[ "${{ github.event.issue.pull_request != null }}" == "true" ]]; then
               PR="${{ github.event.issue.number }}"
               JSON="$(gh api "repos/${{ github.repository }}/pulls/${PR}")"
@@ -85,6 +85,7 @@ jobs:
           elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
             PR="${{ github.event.pull_request.number }}"
             ISSUE_NUMBER="${PR}"
+            COMMENT_ID="pull_request_review-${{ github.event.review.id }}"
             JSON='${{ toJson(github.event.pull_request) }}'
             HEAD="$(echo "$JSON" | jq -r '.head.sha')"
             BASE="$(echo "$JSON" | jq -r '.base.sha')"
@@ -98,6 +99,7 @@ jobs:
           else
             PR="${{ github.event.pull_request.number }}"
             ISSUE_NUMBER="${PR}"
+            COMMENT_ID="pull_request_review_comment-${{ github.event.comment.id }}"
             JSON='${{ toJson(github.event.pull_request) }}'
             HEAD="$(echo "$JSON" | jq -r '.head.sha')"
             BASE="$(echo "$JSON" | jq -r '.base.sha')"
@@ -391,12 +393,43 @@ jobs:
         run: |
           gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]"
 
+  librarian-owner-review:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'librarian' &&
+      needs.parse-command.outputs.librarian_action == 'cull' &&
+      needs.parse-command.outputs.librarian_confirm == 'true' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_owner != 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Route non-owner librarian confirm to owner review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          requester="${{ needs.parse-command.outputs.requester }}"
+          requester="${requester#@}"
+          if [[ ! "${requester}" =~ ^[A-Za-z0-9-]+$ ]]; then
+            requester="unknown"
+          fi
+          {
+            echo "LIBRARIAN-OWNER-REVIEW: requested_by=@${requester} action=/librarian cull --confirm; OWNER action required. No mutation performed."
+          } > librarian-owner-review.txt
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file librarian-owner-review.txt
+
   librarian-run:
     needs: parse-command
     if: |
       needs.parse-command.outputs.command == 'librarian' &&
       needs.parse-command.outputs.is_collaborator == 'true' &&
-      needs.parse-command.outputs.is_fork == 'false'
+      needs.parse-command.outputs.is_fork == 'false' &&
+      (
+        needs.parse-command.outputs.librarian_action != 'cull' ||
+        needs.parse-command.outputs.librarian_confirm != 'true' ||
+        needs.parse-command.outputs.is_owner == 'true'
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
