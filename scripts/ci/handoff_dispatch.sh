@@ -19,6 +19,10 @@ usage:
   bash scripts/ci/handoff_dispatch.sh --receipt <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --board-json [<handoff-file>]
   bash scripts/ci/handoff_dispatch.sh --render-board <board-json-file>
+  bash scripts/ci/handoff_dispatch.sh --current-handoff
+  bash scripts/ci/handoff_dispatch.sh --owner-status <handoff-file>
+  bash scripts/ci/handoff_dispatch.sh --owner-command <handoff-file> approve|amend|hold [<text-file>]
+  bash scripts/ci/handoff_dispatch.sh --owner-review-reply <requester-login> approve|amend|hold
   bash scripts/ci/handoff_dispatch.sh --resolve-handoff <pr-body-file> <changed-files-file>
   bash scripts/ci/handoff_dispatch.sh --normalize-open-prs <prs-json-file>
   bash scripts/ci/handoff_dispatch.sh --board-issue-target <issues-json-file>
@@ -31,8 +35,10 @@ EOF
 
 MODE="$1"; shift || true
 case "$MODE" in
-  --lint|--receipt|--board-json|--selftest) ;;
-  --render-board|--normalize-open-prs|--board-issue-target) [[ $# -ge 1 ]] || usage ;;
+  --lint|--receipt|--board-json|--current-handoff|--selftest) ;;
+  --render-board|--normalize-open-prs|--board-issue-target|--owner-status) [[ $# -ge 1 ]] || usage ;;
+  --owner-command) [[ $# -ge 2 ]] || usage ;;
+  --owner-review-reply) [[ $# -ge 2 ]] || usage ;;
   --render-ingress) [[ $# -ge 2 ]] || usage ;;
   --resolve-handoff) [[ $# -ge 2 ]] || usage ;;
   --render) [[ $# -ge 1 ]] || usage ;;
@@ -383,6 +389,18 @@ def active_pointer():
     return ""
 
 
+def current_handoff_path():
+    pointer = active_pointer()
+    if not pointer:
+        raise HDError("active-pointer-missing")
+    if not re.fullmatch(r"[A-Z0-9][A-Z0-9_-]+", pointer):
+        raise HDError("active-pointer-invalid")
+    path = ROOT / "handoffs" / f"{pointer}.hd.md"
+    if not path.is_file():
+        raise HDError("current-handoff-missing")
+    return path
+
+
 def master_head():
     env = os.environ.get("HD_MASTER_HEAD", "").strip()
     if env:
@@ -552,14 +570,8 @@ def command_render_ingress(pr_number, path):
     lines = [
         "<!-- handoff-ingress-sticky -->",
         "## Handoff Ingress",
-        "",
         f"- PR: #{pr_number}",
         f"- handoff: `{rel}`",
-        "",
-        "```",
-        "HD-LINT-VERDICT: PASS",
-        "```",
-        "",
         "```",
     ]
     lines.extend(projection.rstrip().splitlines())
@@ -594,6 +606,7 @@ def render_board_markdown(data):
     if handoff:
         lines.append(f"- current_handoff: `{handoff.get('rung', '')}` `{handoff.get('hd_receipt', '')}`")
         lines.append(f"- expected_route: `{handoff.get('expected_route', '')}`")
+        lines.append(f"- owner_approved: `{str(bool(handoff.get('owner_approved'))).lower()}`")
     else:
         lines.append("- current_handoff: none")
     lines.extend(["", "### Open PRs"])
@@ -682,7 +695,14 @@ def command_resolve_handoff(body_file, changed_files):
         rel = f"handoffs/{rung}.hd.md"
         changed = changed_handoff_files(changed_files)
         if not changed:
-            raise HDError("missing-changed-handoff")
+            path = ROOT / rel
+            if not path.is_file():
+                raise HDError("missing-handoff-file")
+            obj = parse_handoff(path)
+            if obj["frontmatter"]["rung"] != rung:
+                raise HDError("frontmatter-rung-mismatch")
+            print(rel)
+            return 0
         if len(changed) > 1:
             raise HDError("multiple-changed-handoffs")
         if changed[0] != rel:
@@ -737,6 +757,98 @@ def command_board_issue_target(path):
 def write(path: Path, text: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="\n")
+
+
+def replace_frontmatter_value(text: str, key: str, value: str) -> str:
+    lines = text.splitlines()
+    try:
+        close = lines.index("---", 1)
+    except ValueError as exc:
+        raise HDError("frontmatter-unclosed") from exc
+    prefix = f"{key}:"
+    for idx in range(1, close):
+        if lines[idx].startswith(prefix):
+            lines[idx] = f"{key}: {value}"
+            return "\n".join(lines).rstrip() + "\n"
+    raise HDError("missing-key")
+
+
+def rendered_owner_notes_ok(path: Path):
+    obj = parse_handoff(path)
+    notes = obj["frontmatter"]["owner_notes"]
+    if not notes:
+        return True
+    roles = ["orchestrator", "da"]
+    if obj["frontmatter"]["owner_approved"] == "true":
+        roles.append("coding")
+    return all(notes in render_projection(role, obj) for role in roles)
+
+
+def command_current_handoff():
+    try:
+        print(repo_rel(current_handoff_path()))
+    except HDError as exc:
+        return fail(exc.detail)
+    return 0
+
+
+def command_owner_status(path):
+    try:
+        data = board_json(path)
+        sys.stdout.write(render_board_markdown(data))
+    except HDError as exc:
+        return fail(exc.detail)
+    except Exception:
+        return fail("owner-status-render")
+    return 0
+
+
+def command_owner_review_reply(requester, action):
+    action = (action or "").strip()
+    if action not in {"approve", "amend", "hold"}:
+        return fail("invalid-owner-action")
+    login = (requester or "unknown").strip().lstrip("@")
+    if not re.fullmatch(r"[A-Za-z0-9-]+", login):
+        login = "unknown"
+    print(f"HANDOFF-OWNER-REVIEW: requested_by=@{login} action={action}; OWNER action required. No mutation performed.")
+    return 0
+
+
+def command_owner_command(path, action, text_file=None):
+    action = (action or "").strip()
+    try:
+        if action not in {"approve", "amend", "hold"}:
+            raise HDError("invalid-owner-action")
+        target = Path(path)
+        obj = parse_handoff(target)
+        text = obj["text"]
+        if action == "approve":
+            text = replace_frontmatter_value(text, "owner_approved", "true")
+        elif action == "hold":
+            text = replace_frontmatter_value(text, "owner_approved", "false")
+        else:
+            if not text_file:
+                raise HDError("missing-owner-note")
+            note = Path(text_file).read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n").strip()
+            if not note:
+                raise HDError("missing-owner-note")
+            old = obj["frontmatter"]["owner_notes"]
+            combined = f"{old}\n{note}" if old else note
+            text = replace_frontmatter_value(text, "owner_notes", json.dumps(combined))
+        write(target, text)
+        updated = parse_handoff(target)
+        if not rendered_owner_notes_ok(target):
+            raise HDError("owner-notes-render")
+    except HDError as exc:
+        return fail(exc.detail)
+    except OSError:
+        return fail("owner-command-io")
+    print(f"HD-OWNER-COMMAND: {action}")
+    print(f"handoff: {repo_rel(target)}")
+    print(f"rung: {updated['frontmatter']['rung']}")
+    print(f"owner_approved: {updated['frontmatter']['owner_approved']}")
+    print("owner_notes_rendered: true")
+    return 0
 
 
 def run_cmd(args, env=None):
@@ -814,6 +926,46 @@ def command_selftest():
     check("retired-directives-hidden", all(retired not in out for out in owner_outputs))
 
     with tempfile.TemporaryDirectory() as tmp:
+        owner_cmd = Path(tmp) / "OWNER-COMMAND-FIXTURE-0.hd.md"
+        owner_note = Path(tmp) / "owner-note.txt"
+        write(owner_cmd, """---
+rung: OWNER-COMMAND-FIXTURE-0
+kind: rung
+track: 0.0.8.4.8.4
+base_sha: fd022256b82c30c42da7d51e041128494bf3dd0a
+audience: coding
+model_tier: std
+expected_route: DA-RESERVE(gate-wiring)
+owner_approved: false
+owner_notes: ""
+surfaces: ["scripts/ci/handoff_dispatch.sh"]
+forbidden: ["crates/**"]
+required_checks: ["handoff-dispatch-selftest"]
+stop_conditions: ["scope-widening"]
+---
+## BUILD
+- Fixture only.
+## FENCES
+- Fixture only.
+## EXIT-PROOF
+- Fixture only.
+""")
+        approve = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "approve"])
+        approved_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])
+        check("owner-command-approve-flips-gate", approve.returncode == 0 and "owner_approved: true" in approve.stdout and approved_projection.returncode == 0)
+
+        write(owner_note, "Owner note after amend must render.")
+        amend = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "amend", str(owner_note)])
+        amended_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])
+        check("owner-notes-render-after-amend", amend.returncode == 0 and "Owner note after amend must render." in amended_projection.stdout)
+
+        hold = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "hold"])
+        held_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])
+        check("owner-command-hold-freezes-dispatch", hold.returncode == 0 and "owner_approved: false" in hold.stdout and "HD-LINT-VERDICT: FAIL(owner-approval-required)" in held_projection.stdout)
+
+        review = run_cmd([bash_cmd, script_arg, "--owner-review-reply", "future-collab", "amend"])
+        check("non-owner-amend-routes-to-owner-review", review.returncode == 0 and "requested_by=@future-collab action=amend" in review.stdout and "No mutation performed" in review.stdout)
+
         ledger = Path(tmp) / "closeout_artifacts.tsv"
         write(ledger, "path\tleased_at\tdisposition\tcloseout_track\tnote\nhandoffs/OLD.hd.md\t2026-07-01\tlease\thd-fixture\tfixture lease\n")
         board = run_cmd(
@@ -851,6 +1003,10 @@ def command_selftest():
         resolve = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
         check("resolve-handoff-explicit-rung", resolve.returncode == 0 and resolve.stdout.strip() == live_handoff_arg)
 
+        write(changed, "scripts/ci/handoff_dispatch.sh\n")
+        existing = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        check("resolve-existing-handoff-without-handoff-diff", existing.returncode == 0 and existing.stdout.strip() == live_handoff_arg)
+
         write(changed, "handoffs/OTHER-HANDOFF.hd.md\n")
         mismatch = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
         check("resolve-handoff-mismatch-fails", "HD-LINT-VERDICT: FAIL(rung-handoff-mismatch)" in mismatch.stdout)
@@ -878,7 +1034,7 @@ def command_selftest():
         check("board-issue-paginated-update", paged.returncode == 0 and paged.stdout.strip() == "update 7")
 
         ingress_handoff = Path(tmp) / "INGRESS-CAP-FIXTURE-0.hd.md"
-        build_lines = "\n".join(f"- wrapper cap line {i}" for i in range(1, 23))
+        build_lines = "\n".join(f"- wrapper cap line {i}" for i in range(1, 30))
         write(ingress_handoff, f"""---
 rung: INGRESS-CAP-FIXTURE-0
 kind: rung
@@ -921,6 +1077,10 @@ if MODE == "--receipt":
     if len(ARGS) != 1:
         sys.exit(2)
     sys.exit(command_receipt(ARGS[0]))
+if MODE == "--current-handoff":
+    if len(ARGS) != 0:
+        sys.exit(2)
+    sys.exit(command_current_handoff())
 if MODE == "--render":
     if len(ARGS) != 2:
         sys.exit(2)
@@ -937,6 +1097,18 @@ if MODE == "--render-board":
     if len(ARGS) != 1:
         sys.exit(2)
     sys.exit(command_render_board(ARGS[0]))
+if MODE == "--owner-status":
+    if len(ARGS) != 1:
+        sys.exit(2)
+    sys.exit(command_owner_status(ARGS[0]))
+if MODE == "--owner-command":
+    if len(ARGS) not in (2, 3):
+        sys.exit(2)
+    sys.exit(command_owner_command(ARGS[0], ARGS[1], ARGS[2] if len(ARGS) == 3 else None))
+if MODE == "--owner-review-reply":
+    if len(ARGS) != 2:
+        sys.exit(2)
+    sys.exit(command_owner_review_reply(ARGS[0], ARGS[1]))
 if MODE == "--resolve-handoff":
     if len(ARGS) != 2:
         sys.exit(2)

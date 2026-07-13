@@ -11,12 +11,14 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
   actions: write
 
 jobs:
   parse-command:
     if: |
       (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) ||
+      (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/handoff')) ||
       github.event_name == 'pull_request_review' ||
       github.event_name == 'pull_request_review_comment'
     runs-on: ubuntu-latest
@@ -30,13 +32,18 @@ jobs:
       triage_reason: ${{ steps.parse.outputs.triage_reason }}
       orient_role: ${{ steps.parse.outputs.orient_role }}
       anchor_target: ${{ steps.parse.outputs.anchor_target }}
+      handoff_action: ${{ steps.parse.outputs.handoff_action }}
+      handoff_text_b64: ${{ steps.parse.outputs.handoff_text_b64 }}
+      issue_number: ${{ steps.context.outputs.issue_number }}
       pr_number: ${{ steps.context.outputs.pr_number }}
       head_sha: ${{ steps.context.outputs.head_sha }}
       base_sha: ${{ steps.context.outputs.base_sha }}
       head_ref: ${{ steps.context.outputs.head_ref }}
       checkout_ref: ${{ steps.context.outputs.checkout_ref }}
       is_collaborator: ${{ steps.auth.outputs.is_collaborator }}
+      is_owner: ${{ steps.auth.outputs.is_owner }}
       is_fork: ${{ steps.auth.outputs.is_fork }}
+      requester: ${{ steps.auth.outputs.requester }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,26 +51,59 @@ jobs:
         id: context
         run: |
           set -euo pipefail
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+          ISSUE_NUMBER=""
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
-            PR="${{ github.event.issue.number }}"
-            JSON="$(gh api "repos/${{ github.repository }}/pulls/${PR}")"
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+            if [[ "${{ github.event.issue.pull_request != null }}" == "true" ]]; then
+              PR="${{ github.event.issue.number }}"
+              JSON="$(gh api "repos/${{ github.repository }}/pulls/${PR}")"
+              HEAD="$(echo "$JSON" | jq -r '.head.sha')"
+              BASE="$(echo "$JSON" | jq -r '.base.sha')"
+              HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
+              MERGED="$(echo "$JSON" | jq -r '.merged')"
+              MERGE_SHA="$(echo "$JSON" | jq -r '.merge_commit_sha // empty')"
+              CHECKOUT_REF="${HEAD_REF}"
+              if [[ "$MERGED" == "true" && -n "$MERGE_SHA" ]]; then
+                CHECKOUT_REF="${MERGE_SHA}"
+              fi
+            else
+              PR=""
+              BRANCH_JSON="$(gh api "repos/${{ github.repository }}/branches/${DEFAULT_BRANCH}")"
+              HEAD="$(echo "$BRANCH_JSON" | jq -r '.commit.sha')"
+              BASE="${HEAD}"
+              HEAD_REF="${DEFAULT_BRANCH}"
+              CHECKOUT_REF="${DEFAULT_BRANCH}"
+            fi
           elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
             PR="${{ github.event.pull_request.number }}"
+            ISSUE_NUMBER="${PR}"
             JSON='${{ toJson(github.event.pull_request) }}'
+            HEAD="$(echo "$JSON" | jq -r '.head.sha')"
+            BASE="$(echo "$JSON" | jq -r '.base.sha')"
+            HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
+            MERGED="$(echo "$JSON" | jq -r '.merged')"
+            MERGE_SHA="$(echo "$JSON" | jq -r '.merge_commit_sha // empty')"
+            CHECKOUT_REF="${HEAD_REF}"
+            if [[ "$MERGED" == "true" && -n "$MERGE_SHA" ]]; then
+              CHECKOUT_REF="${MERGE_SHA}"
+            fi
           else
             PR="${{ github.event.pull_request.number }}"
+            ISSUE_NUMBER="${PR}"
             JSON='${{ toJson(github.event.pull_request) }}'
-          fi
-          HEAD="$(echo "$JSON" | jq -r '.head.sha')"
-          BASE="$(echo "$JSON" | jq -r '.base.sha')"
-          HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
-          MERGED="$(echo "$JSON" | jq -r '.merged')"
-          MERGE_SHA="$(echo "$JSON" | jq -r '.merge_commit_sha // empty')"
-          CHECKOUT_REF="${HEAD_REF}"
-          if [[ "$MERGED" == "true" && -n "$MERGE_SHA" ]]; then
-            CHECKOUT_REF="${MERGE_SHA}"
+            HEAD="$(echo "$JSON" | jq -r '.head.sha')"
+            BASE="$(echo "$JSON" | jq -r '.base.sha')"
+            HEAD_REF="$(echo "$JSON" | jq -r '.head.ref')"
+            MERGED="$(echo "$JSON" | jq -r '.merged')"
+            MERGE_SHA="$(echo "$JSON" | jq -r '.merge_commit_sha // empty')"
+            CHECKOUT_REF="${HEAD_REF}"
+            if [[ "$MERGED" == "true" && -n "$MERGE_SHA" ]]; then
+              CHECKOUT_REF="${MERGE_SHA}"
+            fi
           fi
           {
+            echo "issue_number=${ISSUE_NUMBER}"
             echo "pr_number=${PR}"
             echo "head_sha=${HEAD}"
             echo "base_sha=${BASE}"
@@ -78,17 +118,25 @@ jobs:
         run: |
           set -euo pipefail
           ASSOC=""
+          REQUESTER=""
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
             ASSOC="${{ github.event.comment.author_association }}"
+            REQUESTER="${{ github.event.comment.user.login }}"
           elif [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
             ASSOC="${{ github.event.review.author_association }}"
+            REQUESTER="${{ github.event.review.user.login }}"
           else
             ASSOC="${{ github.event.comment.author_association }}"
+            REQUESTER="${{ github.event.comment.user.login }}"
           fi
           IS_COLLAB="false"
           case "$ASSOC" in
             OWNER|MEMBER|COLLABORATOR) IS_COLLAB="true" ;;
           esac
+          IS_OWNER="false"
+          if [[ "$ASSOC" == "OWNER" ]]; then
+            IS_OWNER="true"
+          fi
           IS_FORK="false"
           if [[ "${{ github.event_name }}" == "pull_request_review" ]]; then
             if [[ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
@@ -99,13 +147,17 @@ jobs:
               IS_FORK="true"
             fi
           else
-            PR_JSON="$(gh api "repos/${{ github.repository }}/pulls/${{ steps.context.outputs.pr_number }}")"
-            if [[ "$(echo "$PR_JSON" | jq -r '.head.repo.full_name')" != "${{ github.repository }}" ]]; then
-              IS_FORK="true"
+            if [[ -n "${{ steps.context.outputs.pr_number }}" ]]; then
+              PR_JSON="$(gh api "repos/${{ github.repository }}/pulls/${{ steps.context.outputs.pr_number }}")"
+              if [[ "$(echo "$PR_JSON" | jq -r '.head.repo.full_name')" != "${{ github.repository }}" ]]; then
+                IS_FORK="true"
+              fi
             fi
           fi
           echo "is_collaborator=${IS_COLLAB}" >> "$GITHUB_OUTPUT"
+          echo "is_owner=${IS_OWNER}" >> "$GITHUB_OUTPUT"
           echo "is_fork=${IS_FORK}" >> "$GITHUB_OUTPUT"
+          echo "requester=${REQUESTER}" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -125,6 +177,18 @@ jobs:
           fi
           if [[ "$CMD" == "triage-invalid" ]]; then
             echo "command=triage-invalid" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == "handoff-invalid" ]]; then
+            echo "command=handoff-invalid" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == handoff* ]]; then
+            echo "command=handoff" >> "$GITHUB_OUTPUT"
+            ACTION="$(echo "$CMD" | sed -n 's/.*action=\([^ ]*\).*/\1/p')"
+            TEXT_B64="$(echo "$OUT" | awk -F': ' '/^HANDOFF_TEXT_B64: /{print $2; exit}')"
+            echo "handoff_action=${ACTION}" >> "$GITHUB_OUTPUT"
+            echo "handoff_text_b64=${TEXT_B64}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ "$CMD" == seal-proof-rejected* ]]; then
@@ -278,6 +342,158 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr comment "${{ needs.parse-command.outputs.pr_number }}" --body "FORMAT: /triage <scan-id> <delete|green|escalate> <reason>"
+
+  reject-malformed-handoff:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'handoff-invalid' &&
+      needs.parse-command.outputs.is_collaborator == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post malformed handoff format
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /handoff approve | /handoff amend: <text> | /handoff hold | /handoff status"
+
+  handoff-owner-review:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'handoff' &&
+      needs.parse-command.outputs.handoff_action != 'status' &&
+      needs.parse-command.outputs.is_owner != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Route non-owner mutation to owner review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/handoff_dispatch.sh \
+            --owner-review-reply \
+            "${{ needs.parse-command.outputs.requester }}" \
+            "${{ needs.parse-command.outputs.handoff_action }}" > handoff-owner-review.txt
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file handoff-owner-review.txt
+
+  handoff-status:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'handoff' &&
+      needs.parse-command.outputs.handoff_action == 'status' &&
+      needs.parse-command.outputs.is_collaborator == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.checkout_ref }}
+          fetch-depth: 0
+      - name: Post current handoff board digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff)"
+          bash scripts/ci/handoff_dispatch.sh --owner-status "$handoff" > handoff-status.md
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file handoff-status.md
+
+  handoff-owner-mutate:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'handoff' &&
+      needs.parse-command.outputs.handoff_action != 'status' &&
+      needs.parse-command.outputs.is_owner == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Apply owner handoff command
+        env:
+          HANDOFF_TEXT_B64: ${{ needs.parse-command.outputs.handoff_text_b64 }}
+        run: |
+          set -euo pipefail
+          handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff)"
+          python3 - <<'PY' > handoff-note.txt
+          import base64
+          import os
+          raw = os.environ.get("HANDOFF_TEXT_B64", "")
+          print(base64.urlsafe_b64decode(raw.encode("ascii")).decode("utf-8"), end="")
+          PY
+          if [[ "${{ needs.parse-command.outputs.handoff_action }}" == "amend" ]]; then
+            bash scripts/ci/handoff_dispatch.sh \
+              --owner-command "$handoff" amend handoff-note.txt > handoff-command-report.txt
+          else
+            bash scripts/ci/handoff_dispatch.sh \
+              --owner-command "$handoff" "${{ needs.parse-command.outputs.handoff_action }}" > handoff-command-report.txt
+          fi
+          echo "handoff_path=${handoff}" >> "$GITHUB_ENV"
+
+      - name: Commit owner handoff mutation
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- "${handoff_path}"; then
+            echo "No handoff mutation to commit."
+            exit 0
+          fi
+          rung="$(sed -n 's/^rung: //p' "${handoff_path}" | head -n 1)"
+          git add "${handoff_path}"
+          git commit -m "handoff: ${{ needs.parse-command.outputs.handoff_action }} ${rung} (HD-OWNER-INTERFACE-0)"
+          git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"
+
+      - name: Re-render handoff mirrors and reply
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Handoff Command"
+            echo ""
+            echo '```'
+            cat handoff-command-report.txt
+            echo '```'
+          } > handoff-command-reply.md
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body-file handoff-command-reply.md
+
+          bash scripts/ci/handoff_dispatch.sh --board-json "${handoff_path}" > simthing-board.json
+          bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md
+          python3 - <<'PY' > board_payload.json
+          import json
+          body = open("simthing-board.md", encoding="utf-8").read()
+          print(json.dumps({"title": "SimThing Board", "body": body}))
+          PY
+          gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" --paginate --slurp > board-issues.json
+          board_target="$(bash scripts/ci/handoff_dispatch.sh --board-issue-target board-issues.json)"
+          if [ "$board_target" = "create" ]; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues" --input board_payload.json >/dev/null
+          else
+            issue_num="${board_target#update }"
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${issue_num}" --input board_payload.json >/dev/null
+          fi
+
+          if [[ -n "${{ needs.parse-command.outputs.pr_number }}" ]]; then
+            if bash scripts/ci/handoff_dispatch.sh --render-ingress "${{ needs.parse-command.outputs.pr_number }}" "${handoff_path}" > handoff-ingress.md; then
+              python3 - <<'PY' > sticky_payload.json
+              import json
+              body = open("handoff-ingress.md", encoding="utf-8").read()
+              print(json.dumps({"body": body}))
+              PY
+              comment_id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${{ needs.parse-command.outputs.pr_number }}/comments" --paginate \
+                --jq '.[] | select(.body | contains("<!-- handoff-ingress-sticky -->")) | .id' | head -n 1)"
+              if [ -n "$comment_id" ]; then
+                gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input sticky_payload.json >/dev/null
+              else
+                gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${{ needs.parse-command.outputs.pr_number }}/comments" --input sticky_payload.json >/dev/null
+              fi
+            fi
+          fi
 
   clearance-run:
     needs: parse-command
