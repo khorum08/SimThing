@@ -88,7 +88,7 @@ run_query_python() {
   ANCHOR_REPO_ROOT="$REPO_ROOT" \
   ANCHOR_TSV_PATH="${FIXTURE_DIR:+$FIXTURE_DIR/doctrine_anchors.tsv}" \
   ANCHOR_TRIGGERS_PATH="${FIXTURE_DIR:+$FIXTURE_DIR/anchor_triggers.tsv}" \
-  ANCHOR_REACH_LOG_PATH="${FIXTURE_DIR:+$FIXTURE_DIR/anchor_reach_log.tsv}" \
+  ANCHOR_REACH_LOG_PATH="${ANCHOR_REACH_LOG_PATH:-${FIXTURE_DIR:+$FIXTURE_DIR/anchor_reach_log.tsv}}" \
   ANCHOR_QUERY_MODE="$1" \
   ANCHOR_QUERY_DOMAIN="${DOMAIN_ARG:-}" \
   ANCHOR_QUERY_GREP="${GREP_ARG:-}" \

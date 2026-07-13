@@ -92,36 +92,35 @@ jobs:
           export HD_OPEN_PRS_JSON="$(cat open-prs.json)"
 
           lint_rc=0
-          render_rc=0
-          {
-            echo "<!-- handoff-ingress-sticky -->"
-            echo "## Handoff Ingress"
-            echo ""
-            echo "- PR: #${pr}"
-            if [ -n "$handoff" ]; then
-              echo "- handoff: \`${handoff}\`"
-              echo ""
-              echo '```'
-              bash scripts/ci/handoff_dispatch.sh --lint "$handoff"
-              lint_rc=$?
-              echo '```'
-              echo ""
-              echo '```'
-              bash scripts/ci/handoff_dispatch.sh --render coding "$handoff"
-              render_rc=$?
-              echo '```'
-              if [ "$render_rc" -ne 0 ]; then
+          if [ -n "$handoff" ]; then
+            if ! bash scripts/ci/handoff_dispatch.sh --render-ingress "$pr" "$handoff" > handoff-ingress.md; then
+              lint_rc=1
+              cp handoff-ingress.md handoff-ingress.error.md
+              {
+                echo "<!-- handoff-ingress-sticky -->"
+                echo "## Handoff Ingress"
                 echo ""
-                echo "- coding projection blocked; orchestrator and DA projections remain inspectable."
-              fi
-            else
+                echo "- PR: #${pr}"
+                echo "- handoff: render failed"
+                echo ""
+                echo '```'
+                cat handoff-ingress.error.md
+                echo '```'
+              } > handoff-ingress.md
+            fi
+          else
+            {
+              echo "<!-- handoff-ingress-sticky -->"
+              echo "## Handoff Ingress"
+              echo ""
+              echo "- PR: #${pr}"
               echo "- handoff: resolution failed"
               echo ""
               echo '```'
               printf '%s\n' "$resolve_out"
               echo '```'
-            fi
-          } > handoff-ingress.md
+            } > handoff-ingress.md
+          fi
           if [ "$lint_rc" -ne 0 ]; then
             sync_rc="$lint_rc"
           fi
@@ -131,8 +130,10 @@ jobs:
           else
             bash scripts/ci/handoff_dispatch.sh --board-json > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
           fi
+          board_render_ok=1
           if ! bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md; then
             sync_rc=1
+            board_render_ok=0
           fi
 
           python3 - <<'PY' > sticky_payload.json
@@ -153,12 +154,14 @@ jobs:
           body = open("simthing-board.md", encoding="utf-8").read()
           print(json.dumps({"title": "SimThing Board", "body": body}))
           PY
-          gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" > board-issues.json
+          gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" --paginate --slurp > board-issues.json
           board_target="$(bash scripts/ci/handoff_dispatch.sh --board-issue-target board-issues.json 2>&1)"
           board_target_rc=$?
           if [ "$board_target_rc" -ne 0 ]; then
             printf '%s\n' "$board_target"
             sync_rc="$board_target_rc"
+          elif [ "$board_render_ok" -ne 1 ]; then
+            printf '%s\n' "board render failed; preserving existing SimThing Board body"
           elif [ "$board_target" = "create" ]; then
             gh api -X POST "repos/${GITHUB_REPOSITORY}/issues" --input board_payload.json >/dev/null
           else

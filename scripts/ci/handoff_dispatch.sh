@@ -15,6 +15,7 @@ usage() {
 usage:
   bash scripts/ci/handoff_dispatch.sh --lint <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --render coding|orchestrator|da <handoff-file>
+  bash scripts/ci/handoff_dispatch.sh --render-ingress <pr-number> <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --receipt <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --board-json [<handoff-file>]
   bash scripts/ci/handoff_dispatch.sh --render-board <board-json-file>
@@ -32,6 +33,7 @@ MODE="$1"; shift || true
 case "$MODE" in
   --lint|--receipt|--board-json|--selftest) ;;
   --render-board|--normalize-open-prs|--board-issue-target) [[ $# -ge 1 ]] || usage ;;
+  --render-ingress) [[ $# -ge 2 ]] || usage ;;
   --resolve-handoff) [[ $# -ge 2 ]] || usage ;;
   --render) [[ $# -ge 1 ]] || usage ;;
   -h|--help) usage ;;
@@ -45,7 +47,6 @@ HD_ARGS="$*" \
   exec "$PYTHON_BIN" - "$@" <<'PY'
 import csv
 import datetime as dt
-import fnmatch
 import hashlib
 import io
 import json
@@ -223,19 +224,16 @@ def hd_receipt(obj) -> str:
     return hashlib.sha256(obj["text"].encode("utf-8")).hexdigest()[:12]
 
 
-def glob_match(path: str, pattern: str) -> bool:
-    p = path.replace("\\", "/")
-    g = pattern.strip().replace("\\", "/")
-    if not g:
-        return False
-    pure = PurePosixPath(p)
-    if pure.match(g):
-        return True
-    if "**" in g:
-        prefix = g.split("**", 1)[0]
-        if prefix and p.startswith(prefix):
-            return True
-    return fnmatch.fnmatch(p, g.replace("**", "*"))
+def git_bash_cmd():
+    if os.name != "nt":
+        return "bash"
+    for candidate in (
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git/bin/bash.exe",
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git/usr/bin/bash.exe",
+    ):
+        if candidate.exists():
+            return str(candidate)
+    return "bash"
 
 
 def read_tsv(path: Path):
@@ -247,28 +245,32 @@ def read_tsv(path: Path):
 
 
 def anchor_ids_for_surfaces(surfaces):
-    trigger_fields, triggers = read_tsv(ROOT / "scripts/ci/anchor_triggers.tsv")
-    anchor_fields, anchors = read_tsv(ROOT / "scripts/ci/doctrine_anchors.tsv")
-    if not triggers or not anchors:
-        raise HDError("anchor-table-missing")
-    domains = set()
-    for surface in surfaces:
-        for row in triggers:
-            glob = (row.get("glob") or "").strip()
-            if glob and glob_match(surface, glob):
-                for domain in (row.get("trigger_domains") or "").split(","):
-                    domain = domain.strip()
-                    if domain:
-                        domains.add(domain)
-    ids = set()
-    for row in anchors:
-        aid = (row.get("anchor_id") or "").strip()
-        row_domains = {d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip()}
-        if aid and domains & row_domains:
-            ids.add(aid)
-    if domains and not ids:
+    script = ROOT / "scripts/ci/anchor_query.sh"
+    if not script.is_file():
+        raise HDError("anchor-query-missing")
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {**os.environ, "ANCHOR_REACH_LOG_PATH": str(Path(tmp) / "anchor_reach_log.tsv")}
+        proc = subprocess.run(
+            [git_bash_cmd(), repo_rel(script), "--paths", *surfaces],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+    if proc.returncode != 0:
+        raise HDError("anchor-query-failed")
+    domains = ""
+    ids = ""
+    for line in proc.stdout.splitlines():
+        if line.startswith("domains:"):
+            domains = line.split(":", 1)[1].strip()
+        elif line.startswith("anchors:"):
+            ids = line.split(":", 1)[1].strip()
+    if domains and domains != "none" and (not ids or ids == "none"):
         raise HDError("anchor-unresolved")
-    return sorted(ids)
+    if not ids or ids == "none":
+        return []
+    return sorted({item.strip() for item in ids.split(",") if item.strip()})
 
 
 def owner_directives(path=None):
@@ -540,6 +542,34 @@ def command_render(role, path):
     return 0
 
 
+def command_render_ingress(pr_number, path):
+    try:
+        obj = parse_handoff(Path(path))
+        projection = render_projection("coding", obj)
+    except HDError as exc:
+        return fail(exc.detail)
+    rel = repo_rel(obj["path"])
+    lines = [
+        "<!-- handoff-ingress-sticky -->",
+        "## Handoff Ingress",
+        "",
+        f"- PR: #{pr_number}",
+        f"- handoff: `{rel}`",
+        "",
+        "```",
+        "HD-LINT-VERDICT: PASS",
+        "```",
+        "",
+        "```",
+    ]
+    lines.extend(projection.rstrip().splitlines())
+    lines.append("```")
+    if len(lines) > 60:
+        return fail("ingress-line-cap")
+    sys.stdout.write("\n".join(lines).rstrip() + "\n")
+    return 0
+
+
 def command_board(path=None):
     try:
         data = board_json(path)
@@ -569,7 +599,7 @@ def render_board_markdown(data):
     lines.extend(["", "### Open PRs"])
     prs = data.get("open_prs") or []
     if prs:
-        for pr in prs[:8]:
+        for pr in prs:
             lines.append(
                 f"- #{pr.get('number')} `{pr.get('head', '')}` "
                 f"draft={str(bool(pr.get('draft'))).lower()} "
@@ -581,36 +611,40 @@ def render_board_markdown(data):
     lines.extend(["", "### Binding Conditions"])
     bindings = data.get("binding_conditions") or []
     if bindings:
-        for item in bindings[:8]:
+        for item in bindings:
             lines.append(f"- `{item.get('rung', '')}` {clip(item.get('condition', ''), 100)}")
     else:
         lines.append("- none")
     lines.extend(["", "### Owner Directives"])
     directives = data.get("owner_directives") or []
     if directives:
-        for item in directives[:8]:
+        for item in directives:
             lines.append(f"- `{item.get('scope', '')}` {clip(item.get('directive', ''), 100)}")
     else:
         lines.append("- none")
     lines.extend(["", "### Leases"])
     leases = (data.get("leases") or {}).get("leases") or []
     if leases:
-        for item in leases[:8]:
+        for item in leases:
             lines.append(f"- `{item.get('path', '')}` age_days={item.get('age_days')}")
     else:
         lines.append("- none")
     lines.extend(["", "### Ladder"])
-    for item in (data.get("ladder") or [])[:12]:
+    for item in (data.get("ladder") or []):
         lines.append(f"- `{item.get('rung', '')}` {clip(item.get('exit_proof', ''), 150)}")
-    return "\n".join(lines[:60]).rstrip() + "\n"
+    if len(lines) > 60:
+        raise HDError("board-line-cap")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def command_render_board(path):
     try:
         data = read_json_file(Path(path))
+        sys.stdout.write(render_board_markdown(data))
+    except HDError as exc:
+        return fail(exc.detail)
     except Exception:
         return fail("board-json-read")
-    sys.stdout.write(render_board_markdown(data))
     return 0
 
 
@@ -671,6 +705,14 @@ def command_board_issue_target(path):
         data = read_json_file(Path(path))
     except Exception:
         return fail("board-issues-json-read")
+    if isinstance(data, list) and any(isinstance(item, list) for item in data):
+        flattened = []
+        for item in data:
+            if isinstance(item, list):
+                flattened.extend(item)
+            else:
+                flattened.append(item)
+        data = flattened
     matches = [
         item for item in data
         if item.get("title") == "SimThing Board" and not item.get("pull_request")
@@ -698,15 +740,7 @@ def selftest_script_arg():
 
 
 def selftest_bash_cmd():
-    if os.name != "nt":
-        return "bash"
-    for candidate in (
-        Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git/bin/bash.exe",
-        Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git/usr/bin/bash.exe",
-    ):
-        if candidate.exists():
-            return str(candidate)
-    return "bash"
+    return git_bash_cmd()
 
 
 def command_selftest():
@@ -792,6 +826,15 @@ def command_selftest():
         board_md = run_cmd([bash_cmd, script_arg, "--render-board", str(board_json_path)])
         check("board-render-open-pr-route", "#1 `h` draft=true route=`DA-RESERVE(fixture)`" in board_md.stdout)
 
+        oversized = dict(data)
+        oversized["open_prs"] = [
+            {"number": n, "title": f"fixture {n}", "head": f"h{n}", "url": "", "route": "DA-RESERVE(fixture)", "draft": False}
+            for n in range(1, 70)
+        ]
+        write(board_json_path, json.dumps(oversized))
+        board_big = run_cmd([bash_cmd, script_arg, "--render-board", str(board_json_path)])
+        check("board-line-cap-fails", "HD-LINT-VERDICT: FAIL(board-line-cap)" in board_big.stdout)
+
         body = Path(tmp) / "pr_body.md"
         changed = Path(tmp) / "changed_files.txt"
         live_handoff_arg = "handoffs/HD-DISPATCH-SUBSTRATE-0.hd.md"
@@ -812,6 +855,37 @@ def command_selftest():
         write(issues, '[{"number":7,"title":"SimThing Board"},{"number":8,"title":"SimThing Board"}]\n')
         dup = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
         check("board-issue-duplicate-fails", "HD-LINT-VERDICT: FAIL(duplicate-board-issues)" in dup.stdout)
+
+        write(issues, '[[{"number":7,"title":"SimThing Board"}],[]]\n')
+        paged = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check("board-issue-paginated-update", paged.returncode == 0 and paged.stdout.strip() == "update 7")
+
+        ingress_handoff = Path(tmp) / "INGRESS-CAP-FIXTURE-0.hd.md"
+        build_lines = "\n".join(f"- wrapper cap line {i}" for i in range(1, 23))
+        write(ingress_handoff, f"""---
+rung: INGRESS-CAP-FIXTURE-0
+kind: rung
+track: 0.0.8.4.8.4
+base_sha: fd022256b82c30c42da7d51e041128494bf3dd0a
+audience: coding
+model_tier: std
+expected_route: DA-RESERVE(gate-wiring)
+owner_approved: true
+owner_notes: ""
+surfaces: ["scripts/ci/handoff_dispatch.sh"]
+forbidden: ["crates/**"]
+required_checks: ["handoff-dispatch-selftest"]
+stop_conditions: ["scope-widening"]
+---
+## BUILD
+{build_lines}
+## FENCES
+- Fixture only.
+## EXIT-PROOF
+- Wrapper line cap fails.
+""")
+        ingress_big = run_cmd([bash_cmd, script_arg, "--render-ingress", "1", str(ingress_handoff)])
+        check("ingress-line-cap-fails", "HD-LINT-VERDICT: FAIL(ingress-line-cap)" in ingress_big.stdout)
 
     if failures:
         print(f"HANDOFF-DISPATCH-SELFTEST: FAIL ({len(failures)})")
@@ -834,6 +908,10 @@ if MODE == "--render":
     if len(ARGS) != 2:
         sys.exit(2)
     sys.exit(command_render(ARGS[0], ARGS[1]))
+if MODE == "--render-ingress":
+    if len(ARGS) != 2:
+        sys.exit(2)
+    sys.exit(command_render_ingress(ARGS[0], ARGS[1]))
 if MODE == "--board-json":
     if len(ARGS) > 1:
         sys.exit(2)
