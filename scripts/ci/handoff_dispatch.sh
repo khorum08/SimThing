@@ -570,12 +570,9 @@ def command_render_ingress(pr_number, path):
     lines = [
         "<!-- handoff-ingress-sticky -->",
         "## Handoff Ingress",
-        f"- PR: #{pr_number}",
-        f"- handoff: `{rel}`",
-        "```",
+        f"- PR: #{pr_number} handoff: `{rel}`",
     ]
     lines.extend(projection.rstrip().splitlines())
-    lines.append("```")
     if len(lines) > 60:
         return fail("ingress-line-cap")
     sys.stdout.write("\n".join(lines).rstrip() + "\n")
@@ -1046,7 +1043,7 @@ stop_conditions: ["scope-widening"]
         check("board-issue-paginated-update", paged.returncode == 0 and paged.stdout.strip() == "update 7")
 
         ingress_handoff = Path(tmp) / "INGRESS-CAP-FIXTURE-0.hd.md"
-        build_lines = "\n".join(f"- wrapper cap line {i}" for i in range(1, 30))
+        build_lines = "\n".join(f"- wrapper cap line {i}" for i in range(1, 34))
         write(ingress_handoff, f"""---
 rung: INGRESS-CAP-FIXTURE-0
 kind: rung

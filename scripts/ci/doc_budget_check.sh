@@ -15,6 +15,7 @@ usage() {
   cat <<'EOF'
 usage:
   bash scripts/ci/doc_budget_check.sh --check
+  bash scripts/ci/doc_budget_check.sh --headroom
   bash scripts/ci/doc_budget_check.sh --selftest
   bash scripts/ci/doc_budget_check.sh --fixture <name>
 EOF
@@ -58,6 +59,32 @@ run_check() {
     return 1
   fi
   emit_verdict pass
+  return 0
+}
+
+run_headroom() {
+  local baseline="$1"
+  local root="$2"
+  local path max current room
+  local failures=0
+  local count=0
+  while IFS=$'\t' read -r path max; do
+    path="${path//$'\r'/}"
+    max="${max//$'\r'/}"
+    [[ -z "${path:-}" || "$path" == "path" ]] && continue
+    current="$(count_lines "${root}/${path}")"
+    room=$((max - current))
+    if [[ "$room" -lt 0 ]]; then
+      failures=$((failures + 1))
+    fi
+    count=$((count + 1))
+    echo "DOC-BUDGET-HEADROOM-ITEM: path=${path} lines=${current}/${max} headroom=${room}"
+  done <"$baseline"
+  if [[ "$failures" -gt 0 ]]; then
+    echo "DOC-BUDGET-HEADROOM-VERDICT: FAIL over=${failures} rows=${count}"
+    return 1
+  fi
+  echo "DOC-BUDGET-HEADROOM-VERDICT: PASS over=0 rows=${count}"
   return 0
 }
 
@@ -119,6 +146,9 @@ main() {
   case "${1:-}" in
     --check)
       run_check "$BASELINE_TSV" "$REPO_ROOT"
+      ;;
+    --headroom)
+      run_headroom "$BASELINE_TSV" "$REPO_ROOT"
       ;;
     --selftest)
       run_selftest

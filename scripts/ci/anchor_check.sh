@@ -23,7 +23,7 @@ usage:
   bash scripts/ci/anchor_check.sh --check
   bash scripts/ci/anchor_check.sh --anchor-stamp
   bash scripts/ci/anchor_check.sh --resolve <anchor_id|trigger_domain>
-  bash scripts/ci/anchor_check.sh --resync
+  bash scripts/ci/anchor_check.sh --resync [--dry-run]
   bash scripts/ci/anchor_check.sh --selftest
 EOF
   exit 2
@@ -35,6 +35,7 @@ parse_args() {
       --check) MODE="check"; shift ;;
       --anchor-stamp) MODE="anchor-stamp"; shift ;;
       --resync) MODE="resync"; shift ;;
+      --dry-run) ANCHOR_RESYNC_DRY_RUN=1; shift ;;
       --resolve)
         MODE="resolve"
         RESOLVE_ARG="${2:-}"
@@ -60,6 +61,7 @@ run_python() {
   ANCHOR_FIXTURE_DIR="${FIXTURE_DIR:-}" \
   ANCHOR_MODE="$1" \
   ANCHOR_RESOLVE_ARG="${RESOLVE_ARG:-}" \
+  ANCHOR_RESYNC_DRY_RUN="${ANCHOR_RESYNC_DRY_RUN:-0}" \
     "$PYTHON_BIN" - <<'PY'
 import csv
 import hashlib
@@ -73,6 +75,7 @@ tsv_path = pathlib.Path(os.environ["ANCHOR_TSV_PATH"])
 mode = os.environ["ANCHOR_MODE"]
 fixture_dir = os.environ.get("ANCHOR_FIXTURE_DIR", "")
 resolve_arg = os.environ.get("ANCHOR_RESOLVE_ARG", "")
+resync_dry_run = os.environ.get("ANCHOR_RESYNC_DRY_RUN", "0") == "1"
 
 
 def normalize_text(raw: bytes) -> str:
@@ -258,19 +261,21 @@ def cmd_resync(rows):
                 print(f"  suggestions: (none) reason={exc}")
         out_rows.append(row)
 
-    with use.open("w", encoding="utf-8", newline="") as fh:
-        writer = csv.DictWriter(
-            fh,
-            fieldnames=["anchor_id", "doc", "section", "trigger_domains", "content_hash"],
-            delimiter="\t",
-            lineterminator="\n",
-        )
-        writer.writeheader()
-        writer.writerows(out_rows)
+    if not resync_dry_run:
+        with use.open("w", encoding="utf-8", newline="") as fh:
+            writer = csv.DictWriter(
+                fh,
+                fieldnames=["anchor_id", "doc", "section", "trigger_domains", "content_hash"],
+                delimiter="\t",
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerows(out_rows)
 
     if orphans:
         fail("orphaned-anchor")
-    print(f"ANCHOR-RESYNC-VERDICT: PASS resynced={resynced} orphans=0")
+    mode_name = "DRY" if resync_dry_run else "PASS"
+    print(f"ANCHOR-RESYNC-VERDICT: {mode_name} resynced={resynced} orphans=0")
     sys.exit(0)
 
 
@@ -335,6 +340,16 @@ EOF
   printf 'sample-anchor\tdocs/sample.md\theading:# Architecture Decision Records\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\n' >>"$tmp/doctrine_anchors.tsv"
   FIXTURE_DIR="$tmp"
   export FIXTURE_DIR
+  before="$(cat "$tmp/doctrine_anchors.tsv")"
+  out="$(ANCHOR_RESYNC_DRY_RUN=1 run_python resync 2>&1 || true)"
+  after="$(cat "$tmp/doctrine_anchors.tsv")"
+  if [[ "$before" != "$after" ]] || ! printf '%s\n' "$out" | grep -q "ANCHOR-RESYNC-VERDICT: DRY"; then
+    echo "FAIL resync_dry_run_no_write"
+    echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  else
+    echo "PASS resync_dry_run_no_write"
+  fi
   out="$(run_python resync 2>&1 || true)"
   if ! printf '%s\n' "$out" | grep -q "RESYNCED sample-anchor"; then
     echo "FAIL resync_edited_section"

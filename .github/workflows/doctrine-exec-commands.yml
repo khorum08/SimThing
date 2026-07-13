@@ -19,6 +19,7 @@ jobs:
     if: |
       (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) ||
       (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/handoff')) ||
+      (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/librarian')) ||
       github.event_name == 'pull_request_review' ||
       github.event_name == 'pull_request_review_comment'
     runs-on: ubuntu-latest
@@ -34,6 +35,10 @@ jobs:
       anchor_target: ${{ steps.parse.outputs.anchor_target }}
       handoff_action: ${{ steps.parse.outputs.handoff_action }}
       handoff_text_b64: ${{ steps.parse.outputs.handoff_text_b64 }}
+      librarian_action: ${{ steps.parse.outputs.librarian_action }}
+      librarian_confirm: ${{ steps.parse.outputs.librarian_confirm }}
+      librarian_role: ${{ steps.parse.outputs.librarian_role }}
+      comment_id: ${{ steps.context.outputs.comment_id }}
       issue_number: ${{ steps.context.outputs.issue_number }}
       pr_number: ${{ steps.context.outputs.pr_number }}
       head_sha: ${{ steps.context.outputs.head_sha }}
@@ -53,8 +58,10 @@ jobs:
           set -euo pipefail
           DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
           ISSUE_NUMBER=""
+          COMMENT_ID=""
           if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
             ISSUE_NUMBER="${{ github.event.issue.number }}"
+            COMMENT_ID="${{ github.event.comment.id }}"
             if [[ "${{ github.event.issue.pull_request != null }}" == "true" ]]; then
               PR="${{ github.event.issue.number }}"
               JSON="$(gh api "repos/${{ github.repository }}/pulls/${PR}")"
@@ -104,6 +111,7 @@ jobs:
           fi
           {
             echo "issue_number=${ISSUE_NUMBER}"
+            echo "comment_id=${COMMENT_ID}"
             echo "pr_number=${PR}"
             echo "head_sha=${HEAD}"
             echo "base_sha=${BASE}"
@@ -183,6 +191,10 @@ jobs:
             echo "command=handoff-invalid" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [[ "$CMD" == "librarian-invalid" ]]; then
+            echo "command=librarian-invalid" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [[ "$CMD" == handoff* ]]; then
             echo "command=handoff" >> "$GITHUB_OUTPUT"
             ACTION="$(echo "$CMD" | sed -n 's/.*action=\([^ ]*\).*/\1/p')"
@@ -228,6 +240,16 @@ jobs:
             ROLE="$(echo "$CMD" | sed -n 's/.*role=\([^ ]*\).*/\1/p')"
             [[ -n "$ROLE" ]] || ROLE="orchestrator"
             echo "orient_role=${ROLE}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == librarian* ]]; then
+            echo "command=librarian" >> "$GITHUB_OUTPUT"
+            ACTION="$(echo "$CMD" | sed -n 's/.*action=\([^ ]*\).*/\1/p')"
+            CONFIRM="$(echo "$CMD" | sed -n 's/.*confirm=\([^ ]*\).*/\1/p')"
+            ROLE="$(echo "$CMD" | sed -n 's/.*role=\([^ ]*\).*/\1/p')"
+            echo "librarian_action=${ACTION}" >> "$GITHUB_OUTPUT"
+            echo "librarian_confirm=${CONFIRM:-false}" >> "$GITHUB_OUTPUT"
+            echo "librarian_role=${ROLE}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ "$CMD" == anchor* ]]; then
@@ -355,6 +377,132 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /handoff approve | /handoff amend: <text> | /handoff hold | /handoff status"
+
+  reject-malformed-librarian:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'librarian-invalid' &&
+      needs.parse-command.outputs.is_collaborator == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post malformed librarian format
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]"
+
+  librarian-run:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'librarian' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.head_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Run librarian command
+        id: librarian
+        run: |
+          set -euo pipefail
+          action="${{ needs.parse-command.outputs.librarian_action }}"
+          confirm="${{ needs.parse-command.outputs.librarian_confirm }}"
+          role="${{ needs.parse-command.outputs.librarian_role }}"
+          {
+            echo "<!-- librarian-report:${{ needs.parse-command.outputs.comment_id }} -->"
+            echo "## Librarian action=${action} confirm=${confirm} head=${{ needs.parse-command.outputs.head_sha }}"
+          } > librarian-report.txt
+          set +e
+          case "${action}" in
+            staleness)
+              bash scripts/ci/librarian.sh --staleness >> librarian-report.txt
+              rc=$?
+              ;;
+            cull)
+              if [[ "${confirm}" == "true" ]]; then
+                if [[ "${{ needs.parse-command.outputs.is_owner }}" != "true" ]]; then
+                  echo "LIBRARIAN-CULL-VERDICT: FAIL(owner-required-for-confirm)" >> librarian-report.txt
+                  rc=1
+                elif [[ -z "${{ needs.parse-command.outputs.pr_number }}" ]]; then
+                  echo "LIBRARIAN-CULL-VERDICT: FAIL(pr-branch-required-for-confirm)" >> librarian-report.txt
+                  rc=1
+                else
+                  bash scripts/ci/librarian.sh --cull --confirm >> librarian-report.txt
+                  rc=$?
+                fi
+              else
+                bash scripts/ci/librarian.sh --cull >> librarian-report.txt
+                rc=$?
+              fi
+              ;;
+            catalog)
+              if [[ -n "${role}" ]]; then
+                bash scripts/ci/librarian.sh --catalog --role "${role}" >> librarian-report.txt
+                rc=$?
+              else
+                bash scripts/ci/librarian.sh --catalog >> librarian-report.txt
+                rc=$?
+              fi
+              ;;
+            *)
+              echo "LIBRARIAN-VERDICT: FAIL(unknown-action ${action})" >> librarian-report.txt
+              rc=1
+              ;;
+          esac
+          set -e
+          lines="$(wc -l < librarian-report.txt | tr -d ' ')"
+          if [[ "${lines}" -gt 60 ]]; then
+            {
+              echo "<!-- librarian-report:${{ needs.parse-command.outputs.comment_id }} -->"
+              echo "## Librarian action=${action} confirm=${confirm} head=${{ needs.parse-command.outputs.head_sha }}"
+              echo "LIBRARIAN-VERDICT: FAIL(reply-line-cap lines=${lines} max=60)"
+            } > librarian-report.txt
+            rc=1
+          fi
+          echo "result=${rc}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit confirmed cull mutation
+        if: |
+          needs.parse-command.outputs.librarian_action == 'cull' &&
+          needs.parse-command.outputs.librarian_confirm == 'true' &&
+          needs.parse-command.outputs.is_owner == 'true' &&
+          needs.parse-command.outputs.pr_number != '' &&
+          steps.librarian.outputs.result == '0'
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No librarian cull mutation to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "librarian: cull stale rows (HD-LIBRARIAN-0)"
+          git push origin "HEAD:${{ needs.parse-command.outputs.head_ref }}"
+
+      - name: Post librarian report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          marker="<!-- librarian-report:${{ needs.parse-command.outputs.comment_id }} -->"
+          python3 - <<'PY' > librarian_payload.json
+          import json
+          body = open("librarian-report.txt", encoding="utf-8").read()
+          print(json.dumps({"body": body}))
+          PY
+          comment_id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${{ needs.parse-command.outputs.issue_number }}/comments" --paginate \
+            --jq ".[] | select(.body | contains(\"${marker}\")) | .id" | head -n 1)"
+          if [[ -n "${comment_id}" ]]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input librarian_payload.json >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${{ needs.parse-command.outputs.issue_number }}/comments" --input librarian_payload.json >/dev/null
+          fi
 
   handoff-owner-review:
     needs: parse-command
