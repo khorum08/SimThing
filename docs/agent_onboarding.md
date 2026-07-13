@@ -105,6 +105,31 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 | Orchestration (Codex/webchat) | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
 | DA (Opus/Fable) | `orient.sh --role=da` (+ weighted treeverify) | graduation + exit-proof stamp merge | gate-wiring / DA-reserve / stamps |
 
+## HD Board — dispatch prompting & handoff lifecycle (operator protocol)
+
+Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The live view is the
+**SimThing Board issue** (auto-synced every clearance run: pointer, current handoff + receipt, open
+PRs with routes, every rung's exit-proof state). Check the board, not a local file.
+
+- **Prompt protocol (per handoff) — pointers, not payloads:** the orchestrator (your scribe) authors
+  and merges the `.hd` with `owner_approved` set on your word; then each agent pulls its own view:
+  - coding: *"Implement handoff `<RUNG>`. Render your projection:
+    `bash scripts/ci/handoff_dispatch.sh --render coding handoffs/<RUNG>.hd.md`"*
+  - orchestrator: *"Current handoff approved, implement `<RUNG>`"* (renders `--render orchestrator`, routes coding)
+  - DA: *"Relay posted on PR #n — rule and graduate-merge or remand"*
+- **Orientation sequence:** orientation is per-**session** (once; receipt carried); dispatch is
+  per-**handoff**. Never re-orient for a new handoff — a stale receipt FAILs mechanically
+  (`body_sha:` sticky line + relay-lint) and the agent must stop and report, not re-print orientation.
+- **Lifecycle:** author → dispatch (`owner_approved` + exit-proof cell stamped by DA with `HD-RECEIPT`)
+  → implement → PROBATION relay (implementer stamps PROBATION in-diff; ruling 6) → DA deep pass →
+  DA graduation stamp at merge → graduated `.hd` leased into `closeout_artifacts.tsv` → wall-clock reap.
+- **Owner verbs, in prose to any agent:** `approve` · `amend: <text>` · `hold` · `status` — the scribe
+  mutates the `.hd` and echoes the diff back before pushing. After HD-3: same verbs as `/handoff …`
+  GitHub comments. After HD-4: *"check library staleness"* → `librarian.sh --staleness`; *"cull dead
+  tsv rows"* → `--cull` (dry-run default, `--confirm` to act); *"what can role X reach"* → `--catalog --role <r>`.
+- **Trust anchor:** every projection, relay, and PR quotes `HD-RECEIPT: <12-hex>`; a mismatch is a
+  relay-lint FAIL. Same receipt ⇒ provably the same handoff — transcription drift is dead.
+
 ## Harness maintenance & sprawl observation (operator / DA)
 
 Pointer-only — mechanics in `docs/track_closeout_protocol.md` and the named scripts:
