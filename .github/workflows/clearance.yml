@@ -64,6 +64,144 @@ jobs:
         run: |
           bash scripts/ci/clearance_comment.sh "${{ steps.pr.outputs.num }}" clearance-report.txt
 
+      - name: Handoff ingress and board sync
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -u
+          pr="${{ steps.pr.outputs.num }}"
+          files="$(gh pr view "$pr" --json files -q '.files[].path' 2>/dev/null || true)"
+          handoff=""
+          for f in $files; do
+            case "$f" in
+              handoffs/*.hd.md)
+                if [ -f "$f" ]; then
+                  handoff="$f"
+                  break
+                fi
+                ;;
+            esac
+          done
+
+          open_prs="$(gh pr list --state open --json number,title,headRefName,url,isDraft 2>/dev/null || echo '[]')"
+          export HD_OPEN_PRS_JSON="$open_prs"
+
+          lint_rc=0
+          render_rc=0
+          {
+            echo "<!-- handoff-ingress-sticky -->"
+            echo "## Handoff Ingress"
+            echo ""
+            echo "- PR: #${pr}"
+            if [ -n "$handoff" ]; then
+              echo "- handoff: \`${handoff}\`"
+              echo ""
+              echo '```'
+              bash scripts/ci/handoff_dispatch.sh --lint "$handoff"
+              lint_rc=$?
+              echo '```'
+              echo ""
+              echo '```'
+              bash scripts/ci/handoff_dispatch.sh --render coding "$handoff"
+              render_rc=$?
+              echo '```'
+              if [ "$render_rc" -ne 0 ]; then
+                echo ""
+                echo "- coding projection blocked; orchestrator and DA projections remain inspectable."
+              fi
+            else
+              echo "- handoff: none changed on this PR"
+            fi
+          } > handoff-ingress.md
+
+          if [ -n "$handoff" ]; then
+            bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
+          else
+            bash scripts/ci/handoff_dispatch.sh --board-json > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
+          fi
+
+          python3 - <<'PY' > simthing-board.md
+          import json
+
+          def clip(value, limit=160):
+              text = str(value)
+              return text if len(text) <= limit else text[: limit - 3] + "..."
+
+          data = json.load(open("simthing-board.json", encoding="utf-8"))
+          lines = ["<!-- simthing-board -->", "## SimThing Board", ""]
+          lines.append(f"- track: `{data.get('track', '')}`")
+          lines.append(f"- active_pointer: `{data.get('active_pointer', '')}`")
+          lines.append(f"- master_head: `{str(data.get('master_head', ''))[:12]}`")
+          handoff = data.get("current_handoff") or {}
+          if handoff:
+              lines.append(f"- current_handoff: `{handoff.get('rung', '')}` `{handoff.get('hd_receipt', '')}`")
+              lines.append(f"- expected_route: `{handoff.get('expected_route', '')}`")
+          else:
+              lines.append("- current_handoff: none")
+          lines.extend(["", "### Open PRs"])
+          open_prs = data.get("open_prs") or []
+          if open_prs:
+              for pr in open_prs[:8]:
+                  lines.append(f"- #{pr.get('number')} `{pr.get('headRefName', '')}` draft={pr.get('isDraft')} {clip(pr.get('title', ''), 90)}")
+          else:
+              lines.append("- none")
+          lines.extend(["", "### Binding Conditions"])
+          bindings = data.get("binding_conditions") or []
+          if bindings:
+              for item in bindings[:8]:
+                  lines.append(f"- `{item.get('rung', '')}` {clip(item.get('condition', ''), 100)}")
+          else:
+              lines.append("- none")
+          lines.extend(["", "### Owner Directives"])
+          directives = data.get("owner_directives") or []
+          if directives:
+              for item in directives[:8]:
+                  lines.append(f"- `{item.get('scope', '')}` {clip(item.get('directive', ''), 100)}")
+          else:
+              lines.append("- none")
+          lines.extend(["", "### Leases"])
+          leases = (data.get("leases") or {}).get("leases") or []
+          if leases:
+              for item in leases[:8]:
+                  lines.append(f"- `{item.get('path', '')}` age_days={item.get('age_days')}")
+          else:
+              lines.append("- none")
+          lines.extend(["", "### Ladder"])
+          for item in (data.get("ladder") or [])[:12]:
+              lines.append(f"- `{item.get('rung', '')}` {clip(item.get('exit_proof', ''), 150)}")
+          print("\n".join(lines[:60]))
+          PY
+
+          python3 - <<'PY' > sticky_payload.json
+          import json
+          body = open("handoff-ingress.md", encoding="utf-8").read()
+          print(json.dumps({"body": body}))
+          PY
+          comment_id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
+            --jq '.[] | select(.body | contains("<!-- handoff-ingress-sticky -->")) | .id' | head -n 1)"
+          if [ -n "$comment_id" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input sticky_payload.json >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --input sticky_payload.json >/dev/null
+          fi
+
+          python3 - <<'PY' > board_payload.json
+          import json
+          body = open("simthing-board.md", encoding="utf-8").read()
+          print(json.dumps({"title": "SimThing Board", "body": body}))
+          PY
+          issue_num="$(gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request | not) | select(.title == "SimThing Board") | .number' | head -n 1)"
+          if [ -n "$issue_num" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${issue_num}" --input board_payload.json >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues" --input board_payload.json >/dev/null
+          fi
+
+          exit "$lint_rc"
+
       - name: Upload clearance report
         if: always()
         uses: actions/upload-artifact@v4

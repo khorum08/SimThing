@@ -432,6 +432,7 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 
 ## 0.0.8.4.8.4 HD Board
 - [hd_truth_guards_0_results.md](hd_truth_guards_0_results.md) - HD-TRUTH-GUARDS-0 **PROBATION / PR #1328** - master-ancestry relay guard, clearance `body_sha` line, self-rung stamp-in-diff guard; relay-lint 34 fixtures PASS; clearance 99 fixtures PASS; DA gate-wiring review required.
+- [hd_dispatch_substrate_0_results.md](hd_dispatch_substrate_0_results.md) - HD-DISPATCH-SUBSTRATE-0 **PROBATION / PR pending** - strict `.hd.md` object, projection/receipt/board JSON substrate, owner directives, clearance handoff sticky + SimThing Board sync; dispatch selftest PASS; relay-lint 36 fixtures PASS; DA gate-wiring review required.
 
 ## Notes
 - **No global structural lattice edge cap exists.** Structural scale is governed by `MapgenStructuralGridBudget` (default unbounded) + checked-`u128` math. `200×200` is a *small reference*; `65,535` was a temporary arithmetic ceiling and is **not doctrine** (removed in STEAD-SCALE-1).

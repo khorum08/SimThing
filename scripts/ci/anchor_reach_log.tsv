@@ -42,3 +42,4 @@ date	role	query	anchors_served	hit
 2026-07-12T13:09:04Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-07-12T13:58:39Z	coding	--domain field-policy	field-policy-time-decisions	hit
 2026-07-12T13:58:39Z	coding	--grep stead-spatial	stead-spatial-contract-core	hit
+2026-07-12T23:55:21Z	coding	--paths scripts/ci/handoff_dispatch.sh scripts/ci/relay_lint.sh .github/workflows/clearance.yml	orientation-harness-core	hit

@@ -23,6 +23,7 @@ PR_NUMBER=""
 INPUT_FILE=""
 MODE="advisory"
 PR_HEAD_SHA=""
+PR_BASE_SHA=""
 
 usage() {
   cat <<'EOF'
@@ -56,6 +57,7 @@ lint_text() {
   export RELAY_LINT_FIXTURE_DIR="${FIXTURE_DIR:-}"
   export RELAY_LINT_REPO_ROOT="$REPO_ROOT"
   export RELAY_LINT_PR_HEAD_SHA="${PR_HEAD_SHA:-}"
+  export RELAY_LINT_PR_BASE_SHA="${PR_BASE_SHA:-}"
   export RELAY_LINT_CHANGED_FILES="${RELAY_LINT_CHANGED_FILES:-}"
   result="$("$PYTHON_BIN" - <<'PY' "$text"
 import hashlib
@@ -612,6 +614,154 @@ def explicit_rung_id():
     return ""
 
 
+def hd_claimed_receipt():
+    m = re.search(r'(?im)^\s*HD-RECEIPT:\s*([0-9a-f]{12})\s*$', text)
+    return m.group(1).lower() if m else ""
+
+
+def changed_files_for_hd():
+    if fixture_dir:
+        cf = pathlib.Path(fixture_dir) / "changed_files.txt"
+        if cf.is_file():
+            return [ln.strip().replace("\\", "/") for ln in cf.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if changed_files_env.strip():
+        return [ln.strip().replace("\\", "/") for ln in changed_files_env.splitlines() if ln.strip()]
+    base = os.environ.get("RELAY_LINT_PR_BASE_SHA", "").strip()
+    if not base:
+        mb = subprocess.run(
+            ["git", "-C", str(repo_root), "merge-base", "HEAD", "origin/master"],
+            capture_output=True,
+            text=True,
+        )
+        base = mb.stdout.strip() if mb.returncode == 0 else ""
+    if not base:
+        return []
+    files = []
+    for args in (
+        ["git", "-C", str(repo_root), "diff", "--name-only", f"{base}...HEAD"],
+        ["git", "-C", str(repo_root), "diff", "--name-only"],
+    ):
+        proc = subprocess.run(args, capture_output=True, text=True)
+        if proc.returncode == 0:
+            for line in proc.stdout.splitlines():
+                rel = line.strip().replace("\\", "/")
+                if rel and rel not in files:
+                    files.append(rel)
+    return files
+
+
+def hd_normalized_receipt(raw: bytes):
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    body = raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    if not body.endswith("\n"):
+        body += "\n"
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()[:12], body
+
+
+def fixture_file_bytes(root_name: str, rel: str):
+    if not fixture_dir:
+        return None
+    candidate = pathlib.Path(fixture_dir) / root_name / rel
+    if candidate.is_file():
+        return candidate.read_bytes()
+    return None
+
+
+def hd_base_bytes(rel: str):
+    fixture_bytes = fixture_file_bytes("base", rel)
+    if fixture_bytes is not None:
+        return fixture_bytes
+    if fixture_dir:
+        return None
+    base = os.environ.get("RELAY_LINT_PR_BASE_SHA", "").strip()
+    if not base:
+        mb = subprocess.run(
+            ["git", "-C", str(repo_root), "merge-base", "HEAD", "origin/master"],
+            capture_output=True,
+            text=True,
+        )
+        base = mb.stdout.strip() if mb.returncode == 0 else ""
+    if not base:
+        return None
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "show", f"{base}:{rel}"],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def hd_head_bytes(rel: str):
+    fixture_bytes = fixture_file_bytes("head", rel)
+    if fixture_bytes is not None:
+        return fixture_bytes
+    candidate = repo_root / rel
+    if candidate.is_file():
+        return candidate.read_bytes()
+    return None
+
+
+def hd_frontmatter_rung(source: str):
+    lines = source.splitlines()
+    if not lines or lines[0] != "---":
+        return ""
+    for line in lines[1:]:
+        if line == "---":
+            return ""
+        if line.startswith("rung:"):
+            return line.split(":", 1)[1].strip().strip('"')
+    return ""
+
+
+def diff_marks_new_file(rel: str):
+    patch = relay_diff_text()
+    if not patch:
+        return True
+    marker = f"diff --git a/{rel} b/{rel}"
+    start = patch.find(marker)
+    if start < 0:
+        return False
+    nxt = patch.find("\ndiff --git ", start + 1)
+    block = patch[start:] if nxt < 0 else patch[start:nxt]
+    return "new file mode" in block or f"--- /dev/null" in block
+
+
+def validate_hd_receipt():
+    claimed = hd_claimed_receipt()
+    if not claimed:
+        return None
+    rung_id = explicit_rung_id()
+    if not rung_id:
+        return "hd-receipt-missing-rung"
+    rel = f"handoffs/{rung_id}.hd.md"
+    base = hd_base_bytes(rel)
+    if base is not None:
+        base_receipt, _ = hd_normalized_receipt(base)
+        if claimed != base_receipt:
+            return "hd-receipt-drift"
+        return None
+
+    changed_handoffs = [
+        path for path in changed_files_for_hd()
+        if re.match(r"^handoffs/[^/]+\.hd\.md$", path)
+    ]
+    if changed_handoffs != [rel] or not diff_marks_new_file(rel):
+        return "hd-bootstrap-shape"
+    head = hd_head_bytes(rel)
+    if head is None:
+        return "hd-bootstrap-shape"
+    head_receipt, head_text = hd_normalized_receipt(head)
+    if pathlib.PurePosixPath(rel).name != f"{rung_id}.hd.md":
+        return "hd-bootstrap-shape"
+    if hd_frontmatter_rung(head_text) != rung_id:
+        return "hd-bootstrap-shape"
+    if claimed != head_receipt:
+        return "hd-receipt-drift"
+    return None
+
+
 def claims_self_graduation(rung_id: str):
     if not rung_id:
         return False
@@ -659,6 +809,11 @@ def diff_contains_own_rung_stamp(rung_id: str):
 
 
 self_rung = explicit_rung_id()
+hd_receipt_fail = validate_hd_receipt()
+if hd_receipt_fail:
+    print(f"FAIL:{hd_receipt_fail}")
+    sys.exit(0)
+
 if claims_self_graduation(self_rung) and not diff_contains_own_rung_stamp(self_rung):
     print("FAIL:self-rung-stamp-missing")
     sys.exit(0)
@@ -698,6 +853,7 @@ read_input() {
     local body evidence combined
     body="$(gh pr view "$PR_NUMBER" --json body -q .body 2>/dev/null || true)"
     PR_HEAD_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid -q .headRefOid 2>/dev/null || true)"
+    PR_BASE_SHA="$(gh pr view "$PR_NUMBER" --json baseRefOid -q .baseRefOid 2>/dev/null || true)"
     evidence=""
     local files
     files="$(gh pr view "$PR_NUMBER" --json files -q '.files[].path' 2>/dev/null || true)"
@@ -740,9 +896,13 @@ run_fixture() {
   local name="$2"
   FIXTURE_DIR="${root}/${name}"
   PR_HEAD_SHA=""
+  PR_BASE_SHA=""
   [[ -d "$FIXTURE_DIR" ]] || { echo "missing fixture: $name" >&2; return 1; }
   if [[ -f "${FIXTURE_DIR}/current_pr_head.txt" ]]; then
     PR_HEAD_SHA="$(tr -d '\r\n' < "${FIXTURE_DIR}/current_pr_head.txt")"
+  fi
+  if [[ -f "${FIXTURE_DIR}/base_sha.txt" ]]; then
+    PR_BASE_SHA="$(tr -d '\r\n' < "${FIXTURE_DIR}/base_sha.txt")"
   fi
   local expected got text
   expected="$(tr -d '\r' < "${FIXTURE_DIR}/expected_verdict.txt" | head -n 1)"
@@ -779,6 +939,8 @@ run_selftest() {
     relay_lint_selftest_fail_self_graduation_stampless
     relay_lint_selftest_pass_ancestral_merge_self_stamp
     relay_lint_selftest_pass_transport_stamp_record
+    relay_lint_selftest_pass_hd_bootstrap
+    relay_lint_selftest_fail_hd_receipt_drift
     relay_lint_selftest_path_kernel_missing_ack
     relay_lint_selftest_path_docs_only_no_anchors
     relay_lint_selftest_path_sim_field_policy_missing_ack
@@ -869,6 +1031,9 @@ main() {
   text="$(read_input)" || exit $?
   if [[ -n "$PR_NUMBER" && -z "${PR_HEAD_SHA:-}" ]] && command -v gh >/dev/null 2>&1; then
     PR_HEAD_SHA="$(gh pr view "$PR_NUMBER" --json headRefOid -q .headRefOid 2>/dev/null || true)"
+  fi
+  if [[ -n "$PR_NUMBER" && -z "${PR_BASE_SHA:-}" ]] && command -v gh >/dev/null 2>&1; then
+    PR_BASE_SHA="$(gh pr view "$PR_NUMBER" --json baseRefOid -q .baseRefOid 2>/dev/null || true)"
   fi
   lint_text "$text"
 }
