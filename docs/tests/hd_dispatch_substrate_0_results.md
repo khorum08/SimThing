@@ -8,7 +8,7 @@ Status: PROBATION
 - Branch: `codex/hd-dispatch-substrate-0`
 - Base: `c46a6e8cda35f956516895bf2482f0abe009dd2f`
 - Required handoff base ancestor: `fd022256b82c30c42da7d51e041128494bf3dd0a`
-- Tested code head: `1045d0982139d8264afb3d8d6dfb41df715bc59b`
+- Tested code head: `4c432a920585d335aa0ffac8454ce6a6bc743741`
 - Merge: NOT MERGED
 
 ## What Changed
@@ -29,7 +29,8 @@ Status: PROBATION
 - `DOC-BUDGET-VERDICT: PASS`.
 - `YAML-OK` for `.github/workflows/clearance.yml`.
 - `git diff --check` PASS.
-- Live clearance sticky on #1331: `DA-RESERVE(gate-wiring)`, `body_sha: evidence-tail`.
+- Live clearance sticky on #1331 corrected earlier to `DA-RESERVE(gate-wiring)`,
+  `body_sha: evidence-tail`; remand evidence-tail refresh follows this docs commit.
 - Live handoff sticky on #1331: `HD-LINT-VERDICT: PASS`, coding projection receipt matches.
 - Live board issue: #1332; remedial helper targets it for update, not duplicate creation.
 
@@ -52,4 +53,4 @@ Status: PROBATION
 
 ## Known Gaps
 
-- Current-head GitHub workflow refresh and live `/relay-lint` must be rerun after this remedial push.
+- DA deep audit, final graduation stamp, and merge remain blocked.
