@@ -670,7 +670,15 @@ def changed_handoff_files(path):
 def command_resolve_handoff(body_file, changed_files):
     try:
         body = Path(body_file).read_text(encoding="utf-8")
-        rung = explicit_rung_from_pr_body(body)
+        try:
+            rung = explicit_rung_from_pr_body(body)
+        except HDError as exc:
+            if exc.detail == "missing-rung-identity":
+                # No rung claim: dispatch cargo or an ordinary non-handoff PR.
+                # No ingress to render; never a sync failure. Ambiguous claims
+                # (multiple-rung-identities) stay hard FAILs.
+                return 0
+            raise
         rel = f"handoffs/{rung}.hd.md"
         changed = changed_handoff_files(changed_files)
         if not changed:
@@ -846,6 +854,15 @@ def command_selftest():
         write(changed, "handoffs/OTHER-HANDOFF.hd.md\n")
         mismatch = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
         check("resolve-handoff-mismatch-fails", "HD-LINT-VERDICT: FAIL(rung-handoff-mismatch)" in mismatch.stdout)
+
+        write(body, "## Status\n\nDA dispatch PR adding handoff objects; no rung claim.\n")
+        write(changed, "handoffs/HD-OWNER-INTERFACE-0.hd.md\nhandoffs/HD-LIBRARIAN-0.hd.md\n")
+        dispatch_pr = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        check("resolve-no-rung-dispatch-pr-no-ingress", dispatch_pr.returncode == 0 and dispatch_pr.stdout.strip() == "")
+
+        write(changed, "docs/design_0_0_8_6_studio_live_ops.md\n")
+        plain_pr = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        check("resolve-no-rung-plain-pr-no-ingress", plain_pr.returncode == 0 and plain_pr.stdout.strip() == "")
 
         issues = Path(tmp) / "issues.json"
         write(issues, '[{"number":7,"title":"SimThing Board"}]\n')
