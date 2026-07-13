@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | 7273185cb0779344c9af7dd04692a46a3be880963a21c4358e2695d6078a8ad8 |
+| design_0_0_8_4_8_4_hd_board.md | a9a22c45ecd70a1003b621f2807af696cba12ee14181216c481c680f16e12c8e |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | HD-1 | HD-TRUTH-GUARDS-0 | **Mechanical truth guards** (the #1316 class dies): (a) master-ancestry gate — n | **DA-GRADUATED / merged [#1328](https://github.com/khorum08/SimThing/pull/1328)** — DA deep pass 2026-07-12: on-branc... |
-| HD-2 | HD-DISPATCH-SUBSTRATE-0 | **The object + projections + receipt (§1.1–§1.2, §1.4–§1.5):** `handoffs/` dir,  | **PROBATION / PR pending** — implementer relay for HD handoff substrate. `HD-RECEIPT: 990cb20dee0b`; dispatch selftes... |
+| HD-2 | HD-DISPATCH-SUBSTRATE-0 | **The object + projections + receipt (§1.1–§1.2, §1.4–§1.5):** `handoffs/` dir,  | **PROBATION / PR #1331** — implementer relay for HD handoff substrate. `HD-RECEIPT: 990cb20dee0b`; dispatch selftest ... |
 | HD-3 | HD-OWNER-INTERFACE-0 | **Prompt-native Owner/collaborator door (§1.3):** `/handoff approve/amend/hold/s | NOT STARTED |
 | HD-4 | HD-LIBRARIAN-0 | **Stewardship verbs (Owner: "check library staleness", "cull dead tsv rows"):**  | NOT STARTED |
 | HD-5 | HD-DOCS-CASCADE-0 | **Loud onboarding visibility + the payoff compression.** Entry-point docs update | NOT STARTED |

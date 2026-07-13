@@ -4,11 +4,11 @@ Status: PROBATION
 
 ## PR / Branch / Tested Head
 
-- PR: pending draft
+- PR: #1331
 - Branch: `codex/hd-dispatch-substrate-0`
 - Base: `c46a6e8cda35f956516895bf2482f0abe009dd2f`
 - Required handoff base ancestor: `fd022256b82c30c42da7d51e041128494bf3dd0a`
-- Tested code head: pending commit
+- Tested code head: `1045d0982139d8264afb3d8d6dfb41df715bc59b`
 - Merge: NOT MERGED
 
 ## What Changed
@@ -44,4 +44,4 @@ Status: PROBATION
 
 ## Known Gaps
 
-- Live GitHub sticky and board issue must be observed after the draft PR is opened.
+- Live GitHub clearance sticky, handoff sticky, and board issue must be observed on #1331.
