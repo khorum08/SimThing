@@ -1,7 +1,7 @@
 # HD-DOCS-CASCADE-0 — results
 
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
-**PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR <pending>; merge <pending>.
+**PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR [#1340](https://github.com/khorum08/SimThing/pull/1340); merge <pending, DA>.
 **HD-RECEIPT:** ed12c8f71f66 · **ORIENT-RECEIPT:** ada87881548c (role coding)
 **tested_code_sha:** `5878031a46ea61e271eda0855fb0a4dd8059ed08` (battery-validated tree; branch head advances by this sha-binding commit)
 
