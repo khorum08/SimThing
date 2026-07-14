@@ -3,12 +3,13 @@
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR [#1340](https://github.com/khorum08/SimThing/pull/1340); merge <pending, DA>.
 **HD-RECEIPT:** ed12c8f71f66 · **ORIENT-RECEIPT:** ada87881548c (role coding)
-**tested_code_sha:** `5878031a46ea61e271eda0855fb0a4dd8059ed08` (battery-validated tree; branch head advances by this sha-binding commit)
+**tested_code_sha:** `TESTEDSHA` (battery-validated repaired head)
 
 ## What changed (docs-only; no crates/**, no script-logic)
-- `agent_onboarding.md`: each tier section now LEADS with its HD ingress line ("handoffs arrive as HD
-  projections — render yours; 'approved, implement'"); the pre-landed HD Board per-tier prompt-protocol
-  bullets folded into those tiers — one operator-protocol home, zero duplication.
+- `agent_onboarding.md`: each tier section (coding / orchestrator / DA) now **leads** — first line under
+  the heading — with its HD ingress paragraph ("handoffs arrive as HD projections — render yours;
+  'approved, implement'"); the pre-landed HD Board per-tier prompt-protocol bullets stay **folded** into
+  those tiers (one operator-protocol home; the removed duplicate three-bullet block is not restored).
 - `agents.md`: router gains a **Handoffs (HD)** entry (render-per-role + `HD-RECEIPT`; pointers to schema/board).
 - `ci_screening_surface.md`: §2 engines table gains `handoff_dispatch.sh` + `librarian.sh` HD rows
   (handoff lint · `HD-RECEIPT` drift · sticky ingress/board sync · stewardship), within the 525 cap.
@@ -17,17 +18,24 @@
   schema matches `handoff_dispatch.sh` required keys; `§10b/§10c/§11/§H` labels preserved for external pointers.
 - `doc_budget_baseline.tsv`: `handoff_template.md` cap `364 → 112` (hard anti-reaccretion tripwire).
 
-## Prose-delta (git numstat vs master; touched guidance docs)
+## Prose-delta (git numstat vs master; all nine changed files at the repaired head)
 
 | file | added | deleted | net |
 |---|---|---|---|
-| docs/agent_onboarding.md | 7 | 6 | +1 |
+| docs/handoff_template.md | 77 | 325 | −248 |
+| docs/agent_onboarding.md | 8 | 6 | +2 |
 | docs/agents.md | 3 | 0 | +3 |
 | docs/ci_screening_surface.md | 2 | 0 | +2 |
-| docs/handoff_template.md | 77 | 325 | −248 |
-| **total** | **89** | **331** | **−242** |
+| docs/design_0_0_8_4_8_4_hd_board.md | 1 | 1 | 0 |
+| docs/orchestrator_orientation.md | 2 | 2 | 0 |
+| docs/tests/current_evidence_index.md | 1 | 0 | +1 |
+| scripts/ci/doc_budget_baseline.tsv | 1 | 1 | 0 |
+| docs/tests/hd_docs_cascade_0_results.md | 59 | 0 | +59 |
+| **total (all nine files)** | **154** | **335** | **−181** |
 
-`doc_budget_baseline.tsv` is data (1/1, net 0). HD-CLOSEOUT-0 net-decrease binding is satisfied on this rung alone.
+**Guidance-corpus subtotal** (the four onboarding/router/screening/template docs only): 90 added /
+331 deleted / **−241 subtotal** — this is a subtotal, not the rung's total proof. The full nine-file
+total above is also net-negative; HD-CLOSEOUT-0's net-decrease binding is satisfied on this rung alone.
 
 ## Load-bearing proofs (+ what each catches)
 - `doc_budget_check.sh --check` — template cap 112 live + all caps held (catches re-fattening / cap regression).
@@ -40,6 +48,12 @@
 Specified = implemented. No `crates/**`, Studio/UI, script-logic, or new tables touched. `§10b/§10c/§11/§H`
 external pointers preserved; older design-doc pointers to the deleted template essays resolve to the
 anchored doctrine they cited.
+
+## Cloud env note (reported here, not AGENTS.md — envelope discipline)
+The `agent_scan.sh` allowlist scans require `python` on `PATH`; the cloud VM ships only `python3`. Installing
+`python-is-python3` fixes it (persists in the VM snapshot). Not appended to AGENTS.md: this rung's declared
+`surfaces` do not include `AGENTS.md`, and adding it would widen the otherwise-narrow docs-cascade changed-file
+envelope — so the durable note lives on the setup branch's `## Cursor Cloud specific instructions` instead.
 
 ## Known gaps / next
 DA deep pass → graduation stamp at merge; then HD-C closeout measures median ingress and confirms net decrease.
