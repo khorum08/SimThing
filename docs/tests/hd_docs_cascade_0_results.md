@@ -3,7 +3,7 @@
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR [#1340](https://github.com/khorum08/SimThing/pull/1340); merge <pending, DA>.
 **HD-RECEIPT:** eaf1e09dc42e (supersedes ed12c8f71f66 via DA remedial #1341 @ c5cdfb41) · **ORIENT-RECEIPT:** ada87881548c (coding)
-**tested_code_sha:** `TESTEDSHA` · **coverage_basis:** PASS · **ci_green:** PASS
+**tested_code_sha:** `14fa02fa661ef7e502e6e49c520ccdfd92378276` · **coverage_basis:** PASS · **ci_green:** PASS
 
 ## What changed (docs-only; no crates/**, no script-logic)
 - `agent_onboarding.md`: each tier (coding/orchestrator/DA) leads — first line under its heading — with its HD ingress paragraph; HD Board per-tier prompt bullets folded (zero duplication).
