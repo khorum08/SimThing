@@ -3,7 +3,7 @@
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR <pending>; merge <pending>.
 **HD-RECEIPT:** ed12c8f71f66 · **ORIENT-RECEIPT:** ada87881548c (role coding)
-**tested_code_sha:** <branch head — bound in the relay/PR body>
+**tested_code_sha:** `5878031a46ea61e271eda0855fb0a4dd8059ed08` (battery-validated tree; branch head advances by this sha-binding commit)
 
 ## What changed (docs-only; no crates/**, no script-logic)
 - `agent_onboarding.md`: each tier section now LEADS with its HD ingress line ("handoffs arrive as HD
