@@ -3,3 +3,4 @@ docs/tests/0.0.8.5-terran-pirate_closeout_manifest.tsv	2026-07-09	lease	0.0.8.5-
 docs/tests/oc_closeout_0_manifest.tsv	2026-07-10	lease	0.0.8.4.8.3-orientation-curation	closeout manifest wall-clock lease
 handoffs/HD-DISPATCH-SUBSTRATE-0.hd.md	2026-07-12	lease	0.0.8.4.8.4-hd-board	graduated .hd operational artifact (design 1.5 lease-on-graduation); reap via --decommission
 handoffs/HD-OWNER-INTERFACE-0.hd.md	2026-07-13	lease	0.0.8.4.8.4-hd-board	graduated .hd operational artifact (design 1.5 lease-on-graduation); reap via --decommission
+handoffs/HD-LIBRARIAN-0.hd.md	2026-07-13	lease	0.0.8.4.8.4-hd-board	graduated .hd operational artifact (design 1.5 lease-on-graduation); reap via --decommission
