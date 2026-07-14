@@ -30,8 +30,8 @@
 | docs/orchestrator_orientation.md | 2 | 2 | 0 |
 | docs/tests/current_evidence_index.md | 1 | 0 | +1 |
 | scripts/ci/doc_budget_baseline.tsv | 1 | 1 | 0 |
-| docs/tests/hd_docs_cascade_0_results.md | 59 | 0 | +59 |
-| **total (all nine files)** | **154** | **335** | **−181** |
+| docs/tests/hd_docs_cascade_0_results.md | 69 | 0 | +69 |
+| **total (all nine files)** | **164** | **335** | **−171** |
 
 **Guidance-corpus subtotal** (the four onboarding/router/screening/template docs only): 90 added /
 331 deleted / **−241 subtotal** — this is a subtotal, not the rung's total proof. The full nine-file
@@ -54,6 +54,16 @@ The `agent_scan.sh` allowlist scans require `python` on `PATH`; the cloud VM shi
 `python-is-python3` fixes it (persists in the VM snapshot). Not appended to AGENTS.md: this rung's declared
 `surfaces` do not include `AGENTS.md`, and adding it would widen the otherwise-narrow docs-cascade changed-file
 envelope — so the durable note lives on the setup branch's `## Cursor Cloud specific instructions` instead.
+
+## Escalation — ingress sticky render blocked by handoff-object length (orchestrator/DA)
+Adding `Rung: HD-DOCS-CASCADE-0` (remand defect 1) makes the resolver **resolve** the handoff
+(`handoff_dispatch.sh --resolve-handoff` → `handoffs/HD-DOCS-CASCADE-0.hd.md`, exit 0). But the sticky
+**render** then fails `HD-LINT-VERDICT: FAIL(ingress-line-cap)`: the dispatched `.hd` renders a **60-line**
+coding projection and `command_render_ingress` prepends 3 header lines (63 > the 60-line sticky cap). Both
+levers are **outside this rung's envelope** — `handoffs/**` is not a declared `surface` (editing it re-hashes
+`HD-RECEIPT: ed12c8f71f66`) and `scripts/ci/*.sh` logic is a forbidden surface. Escalated to orchestrator/DA:
+trim the dispatched `.hd` body/`owner_notes` (re-dispatch → new receipt) or adjust the sticky renderer/cap so
+an 80-line-body handoff fits the 60-line sticky. Not fixable by the coding rung without breaching the fence.
 
 ## Known gaps / next
 DA deep pass → graduation stamp at merge; then HD-C closeout measures median ingress and confirms net decrease.
