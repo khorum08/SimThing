@@ -577,6 +577,17 @@ def run_self_with(fake_dir: pathlib.Path, mode: str, *extra, env=None):
 
 def run_selftest():
     failures = []
+
+    def catalog_report_lines(text: str, role: str):
+        for line in clean_lines(text):
+            marker = f"LIBRARIAN-CATALOG-VERDICT: PASS role={role} lines="
+            if line.startswith(marker):
+                try:
+                    return int(line.removeprefix(marker).strip())
+                except ValueError:
+                    return None
+        return None
+
     with tempfile.TemporaryDirectory(prefix="librarian-selftest-") as raw:
         tmp = pathlib.Path(raw)
         fake_dir = fake_suite(tmp)
@@ -652,12 +663,38 @@ def run_selftest():
             print("FAIL per-role-catalogs-differ")
             failures.append("per-role-catalogs-differ")
 
-        catalog_many = run_self_with(fake_dir, "--catalog", "--role", "coding", env={"FAKE_MANY_PAYLOAD": "1"})
-        if "PAYLOAD-11" in catalog_many.stdout or "LIBRARIAN-CATALOG-VERDICT: FAIL(report-line-cap" in catalog_many.stdout:
-            print("PASS catalog-no-silent-slice")
+        catalog_boundary = run_self_with(fake_dir, "--catalog", "--role", "coding")
+        boundary_lines = catalog_report_lines(catalog_boundary.stdout, "coding")
+        catalog_at_cap = run_self_with(
+            fake_dir,
+            "--catalog",
+            "--role",
+            "coding",
+            env={"LIBRARIAN_LINE_CAP": str(boundary_lines or 0)},
+        )
+        catalog_over_cap = run_self_with(
+            fake_dir,
+            "--catalog",
+            "--role",
+            "coding",
+            env={"LIBRARIAN_LINE_CAP": str((boundary_lines or 1) - 1)},
+        )
+        over_cap_single_fail = clean_lines(catalog_over_cap.stdout) == [
+            f"LIBRARIAN-CATALOG-VERDICT: FAIL(report-line-cap role=coding lines={boundary_lines} max={(boundary_lines or 1) - 1})"
+        ]
+        if (
+            boundary_lines
+            and catalog_at_cap.returncode == 0
+            and f"LIBRARIAN-CATALOG-VERDICT: PASS role=coding lines={boundary_lines}" in catalog_at_cap.stdout
+            and catalog_over_cap.returncode != 0
+            and over_cap_single_fail
+            and "LIBRARIAN CATALOG role=coding" not in catalog_over_cap.stdout
+            and "PASS role=coding" not in catalog_over_cap.stdout
+        ):
+            print("PASS catalog-cap-complete-or-fail")
         else:
-            print("FAIL catalog-no-silent-slice")
-            failures.append("catalog-no-silent-slice")
+            print("FAIL catalog-cap-complete-or-fail")
+            failures.append("catalog-cap-complete-or-fail")
 
         live_log = tmp / "live-anchor-reach-log.tsv"
         live_log.write_text("live\n", encoding="utf-8")
