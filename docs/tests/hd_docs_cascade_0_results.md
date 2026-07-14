@@ -27,11 +27,11 @@
 | docs/agents.md | 3 | 0 | +3 |
 | docs/ci_screening_surface.md | 2 | 0 | +2 |
 | docs/design_0_0_8_4_8_4_hd_board.md | 1 | 1 | 0 |
-| docs/orchestrator_orientation.md | 2 | 2 | 0 |
+| docs/orchestrator_orientation.md | 1 | 1 | 0 |
 | docs/tests/current_evidence_index.md | 1 | 0 | +1 |
 | scripts/ci/doc_budget_baseline.tsv | 1 | 1 | 0 |
-| docs/tests/hd_docs_cascade_0_results.md | 69 | 0 | +69 |
-| **total (all nine files)** | **164** | **335** | **−171** |
+| docs/tests/hd_docs_cascade_0_results.md | 68 | 0 | +68 |
+| **total (all nine files)** | **162** | **334** | **−172** |
 
 **Guidance-corpus subtotal** (the four onboarding/router/screening/template docs only): 90 added /
 331 deleted / **−241 subtotal** — this is a subtotal, not the rung's total proof. The full nine-file
