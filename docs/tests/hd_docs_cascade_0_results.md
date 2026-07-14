@@ -3,7 +3,7 @@
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR [#1340](https://github.com/khorum08/SimThing/pull/1340); merge <pending, DA>.
 **HD-RECEIPT:** eaf1e09dc42e (supersedes ed12c8f71f66 via DA remedial #1341 @ c5cdfb41) · **ORIENT-RECEIPT:** ada87881548c (role coding)
-**tested_code_sha:** `09594a4b1cef4c5b734f80330c30dfed1cec6c37` (battery-validated tree; head advances by this sha-binding commit)
+**tested_code_sha:** `f7e3b5a33e00de68715ec3bc3eaac24ec803b8e3` (battery-validated post-merge tree; head advances by this sha-binding commit)
 
 ## What changed (docs-only; no crates/**, no script-logic)
 - `agent_onboarding.md`: each tier section (coding / orchestrator / DA) now **leads** — first line under
