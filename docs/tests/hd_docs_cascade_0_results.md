@@ -2,23 +2,16 @@
 
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR [#1340](https://github.com/khorum08/SimThing/pull/1340); merge <pending, DA>.
-**HD-RECEIPT:** eaf1e09dc42e (supersedes ed12c8f71f66 via DA remedial #1341 @ c5cdfb41) · **ORIENT-RECEIPT:** ada87881548c (role coding)
-**tested_code_sha:** `f7e3b5a33e00de68715ec3bc3eaac24ec803b8e3` (battery-validated post-merge tree; head advances by this sha-binding commit)
+**HD-RECEIPT:** eaf1e09dc42e (supersedes ed12c8f71f66 via DA remedial #1341 @ c5cdfb41) · **ORIENT-RECEIPT:** ada87881548c (coding)
+**tested_code_sha:** `TESTEDSHA` · **coverage_basis:** PASS · **ci_green:** PASS
 
 ## What changed (docs-only; no crates/**, no script-logic)
-- `agent_onboarding.md`: each tier section (coding / orchestrator / DA) now **leads** — first line under
-  the heading — with its HD ingress paragraph ("handoffs arrive as HD projections — render yours;
-  'approved, implement'"); the pre-landed HD Board per-tier prompt-protocol bullets stay **folded** into
-  those tiers (one operator-protocol home; the removed duplicate three-bullet block is not restored).
-- `agents.md`: router gains a **Handoffs (HD)** entry (render-per-role + `HD-RECEIPT`; pointers to schema/board).
-- `ci_screening_surface.md`: §2 engines table gains `handoff_dispatch.sh` + `librarian.sh` HD rows
-  (handoff lint · `HD-RECEIPT` drift · sticky ingress/board sync · stewardship), within the 525 cap.
-- `handoff_template.md`: compressed **360 → 112** to schema + authoring rules; required-reading blocks and
-  restated-doctrine essays deleted (anchors carry doctrine); anti-reaccretion header prepended; frontmatter
-  schema matches `handoff_dispatch.sh` required keys; `§10b/§10c/§11/§H` labels preserved for external pointers.
-- `doc_budget_baseline.tsv`: `handoff_template.md` cap `364 → 112` (hard anti-reaccretion tripwire).
+- `agent_onboarding.md`: each tier (coding/orchestrator/DA) leads — first line under its heading — with its HD ingress paragraph; HD Board per-tier prompt bullets folded (zero duplication).
+- `agents.md`: router gains a Handoffs (HD) entry. `ci_screening_surface.md`: §2 engines table gains `handoff_dispatch.sh` + `librarian.sh` HD rows (within the 525 cap).
+- `handoff_template.md`: compressed 360→112 to schema + authoring rules (required-reading/restated-doctrine deleted); anti-reaccretion header; schema matches `handoff_dispatch.sh` keys; `§10b/§10c/§11/§H` labels kept.
+- `doc_budget_baseline.tsv`: template cap 364→112. HD-5 ladder PROBATION-stamped in-diff; evidence-index line; orientation regenerated (generator, not hand-edited).
 
-## Prose-delta (git numstat vs master; all nine changed files at the repaired head)
+## Prose-delta (git numstat vs origin/master; all nine changed files, final tree)
 
 | file | added | deleted | net |
 |---|---|---|---|
@@ -30,39 +23,20 @@
 | docs/orchestrator_orientation.md | 1 | 1 | 0 |
 | docs/tests/current_evidence_index.md | 1 | 0 | +1 |
 | scripts/ci/doc_budget_baseline.tsv | 1 | 1 | 0 |
-| docs/tests/hd_docs_cascade_0_results.md | 68 | 0 | +68 |
-| **total (all nine files)** | **162** | **334** | **−172** |
+| docs/tests/hd_docs_cascade_0_results.md | 42 | 0 | +42 |
+| **total (all nine files)** | **136** | **334** | **−198** |
 
-**Guidance-corpus subtotal** (the four onboarding/router/screening/template docs only): 90 added /
-331 deleted / **−241 subtotal** — this is a subtotal, not the rung's total proof. The full nine-file
-total above is also net-negative; HD-CLOSEOUT-0's net-decrease binding is satisfied on this rung alone.
+Guidance-corpus subtotal (four onboarding/router/screening/template docs): 90 / 331 / **−241** (subtotal, not the rung total). Net-negative; HD-CLOSEOUT-0 binding satisfied on this rung.
 
 ## Load-bearing proofs (+ what each catches)
-- `doc_budget_check.sh --check` — template cap 112 live + all caps held (catches re-fattening / cap regression).
-- `gen_orientation.sh --check` — generated orientation fresh after the ladder stamp (catches hand-edit drift).
-- `relay_lint.sh --selftest` (36 fixtures) — relay/receipt/anchor-ack grammar intact (catches routing drift).
-- `agent_scan.sh` — RELIABLE clean on the delta (catches doctrinal scan violations).
-- `anchor_check.sh --check` — no touched doc is anchored; the `ORIENT-RECEIPT` rule stamp is unchanged.
+- `doc_budget_check.sh --check` — template cap 112 live + all caps held (re-fattening / cap regression).
+- `gen_orientation.sh --check` — generated orientation fresh after the ladder stamp (hand-edit drift).
+- `relay_lint.sh --selftest` (36 fixtures) — relay/receipt/anchor-ack grammar intact (routing drift).
+- `agent_scan.sh` — RELIABLE clean on the delta (doctrinal scan violations).
+- `handoff_dispatch.sh --render-ingress` — exit 0, 50 lines, `HD-RECEIPT: eaf1e09dc42e` (ingress-line-cap resolved).
 
 ## Scope Ledger
-Specified = implemented. No `crates/**`, Studio/UI, script-logic, or new tables touched. `§10b/§10c/§11/§H`
-external pointers preserved; older design-doc pointers to the deleted template essays resolve to the
-anchored doctrine they cited.
-
-## Cloud env note (reported here, not AGENTS.md — envelope discipline)
-The `agent_scan.sh` allowlist scans require `python` on `PATH`; the cloud VM ships only `python3`. Installing
-`python-is-python3` fixes it (persists in the VM snapshot). Not appended to AGENTS.md: this rung's declared
-`surfaces` do not include `AGENTS.md`, and adding it would widen the otherwise-narrow docs-cascade changed-file
-envelope — so the durable note lives on the setup branch's `## Cursor Cloud specific instructions` instead.
-
-## Escalation — ingress sticky render (RESOLVED by DA remedial #1341)
-The first repaired head resolved the handoff (`--resolve-handoff` exit 0) but the sticky **render** failed
-`HD-LINT-VERDICT: FAIL(ingress-line-cap)`: the dispatched `.hd` rendered a 60-line coding projection and
-`command_render_ingress` prepends 3 header lines (63 > the 60-line sticky cap). Both levers were outside this
-rung's envelope (`handoffs/**` not a declared `surface`; `scripts/ci/*.sh` logic forbidden), so it was escalated
-— correctly: the DA authored the fix. **Resolved:** DA remedial #1341 (@ c5cdfb41) compacted the dispatched
-object; `HD-RECEIPT: eaf1e09dc42e` supersedes `ed12c8f71f66`. Merged to this branch; the coding projection is
-now 47 lines → 50 ingress lines, and `--render-ingress` returns **exit 0** (sticky renders PASS with the new receipt).
+Classification: gate-wiring. Specified = implemented. No `crates/**`, Studio/UI, `scripts/ci/*.sh` logic, or new tables touched. `§10b/§10c/§11/§H` external pointers preserved; anchor `orientation-harness-core` ACKed.
 
 ## Known gaps / next
-DA deep pass → graduation stamp at merge; then HD-C closeout measures median ingress and confirms net decrease.
+Ingress-line-cap escalation **RESOLVED** by DA remedial #1341 (compacted `.hd`; `HD-RECEIPT: eaf1e09dc42e`; render now 50 ingress lines, exit 0). Next: DA deep pass → DA-authored graduation stamp → merge; then HD-C closeout measures median ingress and confirms net decrease.
