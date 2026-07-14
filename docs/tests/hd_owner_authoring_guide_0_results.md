@@ -3,40 +3,45 @@
 Status: PROBATION / proof-present / DA-review-pending
 
 ## Identity
-- PR: pending.
-- Branch: `coder/hd-owner-authoring-guide-0`
-- Handoff: `handoffs/HD-OWNER-AUTHORING-GUIDE-0.hd.md`
-- `HD-RECEIPT: 91fa0e4a034b`
-- `ORIENT-RECEIPT: ada87881548c`
+- PR: #1349; branch `coder/hd-owner-authoring-guide-0`; handoff `handoffs/HD-OWNER-AUTHORING-GUIDE-0.hd.md`.
+- `HD-RECEIPT: 91fa0e4a034b`; `ORIENT-RECEIPT: ada87881548c`.
 - `tested_code_sha`: final PR head is mirrored in the PR body after push; this committed file cannot contain its own hash.
 - `coverage_basis: PASS`; `ci_green: PASS` for local required battery.
 
 ## What Changed
-- Added `docs/owner_authoring_guide.md`: author, revise, open/park/close, regenerate, progression modes, browser-stack pointer protocol, and coder surfaces.
-- Added a DOC-BUDGET row capping that companion guide at 40 lines; current guide is 38 lines.
-- Swept onboarding/template wording to role-first headings and role-slot routing, with tools/vendors as examples only.
-- Added the Cursor cloud `python-is-python3` caveat while compressing adjacent VM caveat prose.
-- Stamped HD-8 PROBATION in the board and regenerated orientation.
+- Added capped Owner guide: author/revise/park/reopen/close, regenerate, progression modes, board-pointer browser flow, coder surfaces.
+- Role-slot sweep: onboarding headings and template routing are role/capability first; vendor/tool names are examples only.
+- Added Cursor cloud `python-is-python3` caveat with compression; HD-8 PROBATION stamp + orientation regen + evidence row.
 
-## Prose Delta
-| file | add | del | net |
-|---|---:|---:|---:|
-| `docs/owner_authoring_guide.md` | 38 | 0 | +38 |
-| `docs/agent_onboarding.md` | 9 | 10 | -1 |
-| `docs/handoff_template.md` | 3 | 3 | 0 |
-| `docs/agents.md` | 2 | 2 | 0 |
-| `docs/design_0_0_8_4_8_4_hd_board.md` | 1 | 1 | 0 |
-| `docs/orchestrator_orientation.md` | 2 | 2 | 0 |
-| `docs/tests/current_evidence_index.md` | 1 | 0 | +1 |
-| `scripts/ci/doc_budget_baseline.tsv` | 1 | 0 | +1 |
-| `docs/tests/hd_owner_authoring_guide_0_results.md` | 51 | 0 | +51 |
+## Cold-Reader Walkthrough
+| step | from guide | live cross-check |
+|---|---|---|
+| author | set `OPEN/PARKED/CLOSED`; ladder cells lead with stamps; no escaped pipes; bindings at open | HD board row uses lead stamp; table cells avoid escaped pipes |
+| revise | use `approve/hold/status/amend` or `/handoff ...`; orchestrator scribes `.hd`; no projection hand edits | handoff_dispatch renders projections; owner verbs exist from HD-3 |
+| park/reopen | scribe sets outgoing status `PARKED` or `CLOSED`; regenerate; run `gen_orientation.sh --open <next>` | HD-6 gate admits PARKED/CLOSED and refuses OPEN unless forced |
+| force | `--force-owner "<directive>"` only for deliberate override | owner_directives.tsv records the escape |
+| regenerate/library | `gen_orientation.sh`; `anchor_check.sh --resync`; `librarian.sh --catalog/--staleness` | HD-7 catalog + staleness machinery green |
+| progress | manual = Owner prompts from board; automated = DA/orchestrator advances unattended | board pointer/receipt prompt used for this rung |
 
-Net +90 including evidence; justified by the Owner-facing guide requested by the rung and capped at birth.
+## Role-First Audit
+| surface | evidence |
+|---|---|
+| onboarding headings | `Coding role`, `Orchestration role`, `DA role` |
+| template routing | `coding role`, `docs-capable role`, `DA role`; no vendor-conditioned recipient |
+| search hits | `rg "Grok|Cursor|Codex|Fable|Claude|vendor|model|worktree|python-is-python3"`: examples/caveats only |
+| dispositions | coder surface examples retained; no workflow, script, doc heading, or `.hd` field conditions on a vendor |
 
-## Load-Bearing Proofs
-- Cold-reader path: the guide gives explicit author/revise/lifecycle/regenerate/progression/browser-stack steps without requiring hand-editing `.hd` projections.
-- Role-slot sweep: onboarding headings are `Coding role`, `Orchestration role`, `DA role`; template routes by role, not vendor.
-- Cap proof: `doc_budget_check.sh --check` covers existing caps plus `docs/owner_authoring_guide.md` at 40 lines.
+## Prose And Cap Accounting
+| file | add | del | net | cap before | cap after | compression |
+|---|---:|---:|---:|---:|---:|---|
+| `docs/owner_authoring_guide.md` | 39 | 0 | +39 | new | 40 | capped at birth |
+| `docs/agent_onboarding.md` | 9 | 10 | -1 | 150 | 150 | examples folded to one line |
+| `docs/handoff_template.md` | 3 | 3 | 0 | 112 | 112 | routing bullet folded |
+| `docs/agents.md` | 2 | 2 | 0 | 190 | 190 | VM caveats merged |
+| board/orientation/index/budget | 5 | 3 | +2 | live | live | generated/status rows |
+| this result | 56 | 0 | +56 | none | <=60 | compact tables |
+
+Net +96 including evidence; justified by the requested Owner guide and capped at birth.
 
 ## Battery
 - `bash scripts/ci/agent_scan.sh` PASS.

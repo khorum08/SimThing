@@ -12,13 +12,14 @@ Ask an orchestrator to act as scribe, edit the track doc, regenerate orientation
 
 ## Revise A Workplan
 Use plain verbs: `approve`, `hold`, `status`, or `amend: <change>`. After HD-3, the same verbs work as `/handoff approve|hold|status|amend` comments.
-Nobody hand-edits generated projections or asks an implementer to invent a handoff from chat prose.
+Humans do not hand-edit `handoffs/<RUNG>.hd.md` or generated projections; the orchestrator is scribe for `.hd` edits, and implementers render projections from repo state.
 Ruling 6: amendments and implementer proof stamp the exit-proof cell as `PROBATION`; DA graduation stamps are DA-authored at merge.
 
 ## Open, Park, Or Close
 - Open or realign with `bash scripts/ci/gen_orientation.sh --open <track-doc>`.
-- HD-6 blocks a new active pointer while the outgoing track is still `OPEN`.
-- A forced escape uses `--force-owner "<directive>"` and records the owner directive.
+- To park/reopen: ask the scribe to change the outgoing status header to `PARKED` or `CLOSED`, regenerate, then run `--open <next-track>`.
+- `PARKED` or `CLOSED` is the normal admission state for `--open`; HD-6 refuses while outgoing status is `OPEN`.
+- Use `--force-owner "<directive>"` only to deliberately override refusal; the directive is recorded.
 - Closing uses `track_closeout.sh`; it leases handoffs and result docs before reaping.
 
 ## Regenerate The Library
