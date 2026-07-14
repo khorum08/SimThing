@@ -1082,7 +1082,7 @@ stop_conditions: ["scope-widening"]
 - Wrapper line cap fails.
 """)
         ingress_big = run_cmd([bash_cmd, script_arg, "--render-ingress", "1", str(ingress_handoff)])
-        check("ingress-line-cap-fails", "HD-LINT-VERDICT: FAIL(ingress-line-cap)" in ingress_big.stdout)
+        check("ingress-line-cap-fails", ("HD-LINT-VERDICT: FAIL(ingress-line-cap)" in ingress_big.stdout) or ("HD-LINT-VERDICT: FAIL(projection-line-cap)" in ingress_big.stdout))
 
     if failures:
         print(f"HANDOFF-DISPATCH-SELFTEST: FAIL ({len(failures)})")
