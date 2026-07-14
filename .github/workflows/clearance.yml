@@ -13,6 +13,8 @@ on:
         required: true
         type: string
   pull_request:
+  push:
+    branches: [master]
 
 permissions:
   contents: read
@@ -39,6 +41,7 @@ jobs:
 
       - name: Run clearance_check
         id: clearance
+        if: github.event_name != 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -46,7 +49,7 @@ jobs:
           bash scripts/ci/clearance_check.sh --pr "${{ steps.pr.outputs.num }}" | tee clearance-report.txt
 
       - name: Write step summary
-        if: always()
+        if: always() && github.event_name != 'push'
         run: |
           {
             echo "## Clearance Report (PR #${{ steps.pr.outputs.num }})"
@@ -57,7 +60,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Sticky PR comment
-        if: always() && hashFiles('clearance-report.txt') != ''
+        if: always() && github.event_name != 'push' && hashFiles('clearance-report.txt') != ''
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -73,15 +76,21 @@ jobs:
           set -u
           pr="${{ steps.pr.outputs.num }}"
           sync_rc=0
-          gh pr view "$pr" --json body -q .body > pr-body.md
-          gh pr view "$pr" --json files -q '.files[].path' > changed-files.txt
           handoff=""
-          resolve_out="$(bash scripts/ci/handoff_dispatch.sh --resolve-handoff pr-body.md changed-files.txt 2>&1)"
-          resolve_rc=$?
-          if [ "$resolve_rc" -eq 0 ]; then
-            handoff="$resolve_out"
-          else
-            sync_rc="$resolve_rc"
+          resolve_out=""
+
+          # PR-ingress: resolve the handoff and refresh the ingress sticky. PR/dispatch events only;
+          # skipped on push to master (no PR to attach a sticky to). Board sync below runs regardless.
+          if [ -n "$pr" ]; then
+            gh pr view "$pr" --json body -q .body > pr-body.md
+            gh pr view "$pr" --json files -q '.files[].path' > changed-files.txt
+            resolve_out="$(bash scripts/ci/handoff_dispatch.sh --resolve-handoff pr-body.md changed-files.txt 2>&1)"
+            resolve_rc=$?
+            if [ "$resolve_rc" -eq 0 ]; then
+              handoff="$resolve_out"
+            else
+              sync_rc="$resolve_rc"
+            fi
           fi
 
           gh pr list --state open --json number,title,headRefName,url,isDraft,body > open-prs.raw.json
@@ -91,40 +100,29 @@ jobs:
           fi
           export HD_OPEN_PRS_JSON="$(cat open-prs.json)"
 
-          lint_rc=0
-          if [ -n "$handoff" ]; then
-            if ! bash scripts/ci/handoff_dispatch.sh --render-ingress "$pr" "$handoff" > handoff-ingress.md; then
-              lint_rc=1
-              cp handoff-ingress.md handoff-ingress.error.md
-              {
-                echo "<!-- handoff-ingress-sticky -->"
-                echo "## Handoff Ingress"
-                echo ""
-                echo "- PR: #${pr}"
-                echo "- handoff: render failed"
-                echo ""
-                echo '```'
-                cat handoff-ingress.error.md
-                echo '```'
-              } > handoff-ingress.md
+          if [ -n "$pr" ]; then
+            lint_rc=0
+            if [ -n "$handoff" ]; then
+              if ! bash scripts/ci/handoff_dispatch.sh --render-ingress "$pr" "$handoff" > handoff-ingress.md; then
+                lint_rc=1
+                cp handoff-ingress.md handoff-ingress.error.md
+                { echo "<!-- handoff-ingress-sticky -->"; echo "## Handoff Ingress"; echo ""; echo "- PR: #${pr}"; echo "- handoff: render failed"; echo ""; echo '```'; cat handoff-ingress.error.md; echo '```'; } > handoff-ingress.md
+              fi
+            else
+              { echo "<!-- handoff-ingress-sticky -->"; echo "## Handoff Ingress"; echo ""; echo "- PR: #${pr}"; echo "- handoff: resolution failed"; echo ""; echo '```'; printf '%s\n' "$resolve_out"; echo '```'; } > handoff-ingress.md
             fi
-          else
-            {
-              echo "<!-- handoff-ingress-sticky -->"
-              echo "## Handoff Ingress"
-              echo ""
-              echo "- PR: #${pr}"
-              echo "- handoff: resolution failed"
-              echo ""
-              echo '```'
-              printf '%s\n' "$resolve_out"
-              echo '```'
-            } > handoff-ingress.md
-          fi
-          if [ "$lint_rc" -ne 0 ]; then
-            sync_rc="$lint_rc"
+            if [ "$lint_rc" -ne 0 ]; then sync_rc="$lint_rc"; fi
+            python3 -c 'import json; print(json.dumps({"body": open("handoff-ingress.md", encoding="utf-8").read()}))' > sticky_payload.json
+            comment_id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate --jq '.[] | select(.body | contains("<!-- handoff-ingress-sticky -->")) | .id' | head -n 1)"
+            if [ -n "$comment_id" ]; then
+              gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input sticky_payload.json >/dev/null
+            else
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --input sticky_payload.json >/dev/null
+            fi
           fi
 
+          # Board sync: fires for PR/dispatch AND push-to-master. With no current handoff (push, or a
+          # PR with no rung claim) the board renders `current_handoff: none` (#1342 class).
           if [ -n "$handoff" ]; then
             bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
           else
@@ -136,24 +134,7 @@ jobs:
             board_render_ok=0
           fi
 
-          python3 - <<'PY' > sticky_payload.json
-          import json
-          body = open("handoff-ingress.md", encoding="utf-8").read()
-          print(json.dumps({"body": body}))
-          PY
-          comment_id="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
-            --jq '.[] | select(.body | contains("<!-- handoff-ingress-sticky -->")) | .id' | head -n 1)"
-          if [ -n "$comment_id" ]; then
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input sticky_payload.json >/dev/null
-          else
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --input sticky_payload.json >/dev/null
-          fi
-
-          python3 - <<'PY' > board_payload.json
-          import json
-          body = open("simthing-board.md", encoding="utf-8").read()
-          print(json.dumps({"title": "SimThing Board", "body": body}))
-          PY
+          python3 -c 'import json; print(json.dumps({"title": "SimThing Board", "body": open("simthing-board.md", encoding="utf-8").read()}))' > board_payload.json
           gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" --paginate --slurp > board-issues.json
           board_target="$(bash scripts/ci/handoff_dispatch.sh --board-issue-target board-issues.json 2>&1)"
           board_target_rc=$?

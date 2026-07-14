@@ -14,6 +14,7 @@ fi
 
 MODE="generate"
 OPEN_TARGET=""
+FORCE_OWNER=""
 FIXTURE_MODE=""
 FIXTURE_DIR=""
 SELFTEST_FAILURES=0
@@ -24,6 +25,7 @@ usage:
   bash scripts/ci/gen_orientation.sh
   bash scripts/ci/gen_orientation.sh --check
   bash scripts/ci/gen_orientation.sh --open <track-md>
+  bash scripts/ci/gen_orientation.sh --open <track-md> --force-owner "<directive text>"
   bash scripts/ci/gen_orientation.sh --selftest
   bash scripts/ci/gen_orientation.sh --fixture <name>
 EOF
@@ -38,6 +40,11 @@ parse_args() {
         [[ $# -ge 2 ]] || usage
         MODE="open"
         OPEN_TARGET="$2"
+        shift 2
+        ;;
+      --force-owner)
+        [[ $# -ge 2 ]] || usage
+        FORCE_OWNER="$2"
         shift 2
         ;;
       --selftest) FIXTURE_MODE="selftest"; shift ;;
@@ -144,6 +151,9 @@ EOF
 #!/usr/bin/env bash
 exit 0
 EOF
+  cat >"${sb}/scripts/ci/owner_directives.tsv" <<'EOF'
+directive	scope	status	set_by
+EOF
   cat >"${sb}/scripts/ci/active_track.txt" <<'EOF'
 # Active track design doc for orientation Next-Rung pointer. Update on track open/close.
 none
@@ -160,6 +170,7 @@ run_gen_sandbox() {
   local tracks="${sb}/scripts/ci/test_lifecycle_tracks.tsv"
   local relay="${sb}/scripts/ci/relay_lint.sh"
   local anchors="${sb}/scripts/ci/doctrine_anchors.tsv"
+  local owner_directives="${sb}/scripts/ci/owner_directives.tsv"
   local output="${sb}/docs/orchestrator_orientation.md"
   if command -v cygpath >/dev/null 2>&1; then
     root="$(cygpath -w "$root")"
@@ -170,6 +181,7 @@ run_gen_sandbox() {
     tracks="$(cygpath -w "$tracks")"
     relay="$(cygpath -w "$relay")"
     anchors="$(cygpath -w "$anchors")"
+    owner_directives="$(cygpath -w "$owner_directives")"
     output="$(cygpath -w "$output")"
   fi
   ORIENTATION_REPO_ROOT="$root" \
@@ -180,6 +192,7 @@ run_gen_sandbox() {
   ORIENTATION_TRACKS_TSV="$tracks" \
   ORIENTATION_RELAY_LINT="$relay" \
   ORIENTATION_ANCHORS_TSV="$anchors" \
+  ORIENTATION_OWNER_DIRECTIVES="$owner_directives" \
   ORIENTATION_OUTPUT="$output" \
   ORIENTATION_DESIGN_DOC= \
     bash "${SCRIPT_DIR}/gen_orientation.sh" "$@"
@@ -313,6 +326,97 @@ EOF
   echo "PASS orientation_open_existing_closed"
   rm -rf "$sandbox"
   return 0
+}
+
+# HD-POINTER-LIFECYCLE-GATE-0: fixtures for the outgoing-track lifecycle gate.
+seed_gate_outgoing_track() {
+  # $1=sandbox $2=doc-relpath $3=STATUS-word
+  local sb="$1" rel="$2" status="$3"
+  cat >"${sb}/${rel}" <<EOF
+# Outgoing Track
+
+> **Status: ${status} (fixture).** gate fixture.
+
+This is a production track / PR ladder workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | \`GATE-RUNG\` | Build it. | fixture state. |
+EOF
+  cat >"${sb}/scripts/ci/active_track.txt" <<EOF
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+${rel}
+EOF
+}
+
+# Flipping the pointer off a still-OPEN outgoing track is refused, with no writes.
+run_selftest_gate_open_refused() {
+  local sandbox rc
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-open-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  seed_gate_outgoing_track "$sandbox" "docs/outgoing.md" "OPEN"
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/active.before"
+  set +e
+  run_gen_sandbox "$sandbox" --open docs/successor.md >"${sandbox}/open.out" 2>"${sandbox}/open.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "ORIENTATION-OPEN-VERDICT: FAIL(outgoing-track-open)" "${sandbox}/open.err" \
+    || ! cmp -s "${sandbox}/active.before" "${sandbox}/scripts/ci/active_track.txt" \
+    || [[ -e "${sandbox}/docs/successor.md" ]]; then
+    echo "FAIL orientation_gate_open_refused"
+    cat "${sandbox}/open.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_open_refused"
+  rm -rf "$sandbox"; return 0
+}
+
+# Flipping off a PARKED or CLOSED outgoing track proceeds (pointer moves).
+run_selftest_gate_parked_closed_allowed() {
+  local sandbox rc state
+  for state in PARKED CLOSED; do
+    sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-${state}-XXXXXX")"
+    seed_orientation_sandbox "$sandbox"
+    seed_gate_outgoing_track "$sandbox" "docs/outgoing.md" "$state"
+    set +e
+    run_gen_sandbox "$sandbox" --open docs/successor.md >"${sandbox}/open.out" 2>"${sandbox}/open.err"
+    rc=$?
+    set -e
+    if [[ "$rc" -ne 0 ]] \
+      || ! grep -q "ORIENTATION-OPEN-VERDICT: CREATED" "${sandbox}/open.out" \
+      || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/successor.md" ]]; then
+      echo "FAIL orientation_gate_${state}_allowed"
+      cat "${sandbox}/open.out" "${sandbox}/open.err" 2>/dev/null || true
+      rm -rf "$sandbox"; return 1
+    fi
+    rm -rf "$sandbox"
+  done
+  echo "PASS orientation_gate_parked_closed_allowed"
+  return 0
+}
+
+# --force-owner overrides the OPEN refusal AND records an owner_directives.tsv row (no silent force).
+run_selftest_gate_force_owner_records() {
+  local sandbox rc
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-force-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  seed_gate_outgoing_track "$sandbox" "docs/outgoing.md" "OPEN"
+  set +e
+  run_gen_sandbox "$sandbox" --open docs/successor.md --force-owner "Owner override: successor authorized" >"${sandbox}/open.out" 2>"${sandbox}/open.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -ne 0 ]] \
+    || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/successor.md" ]] \
+    || ! grep -q "ORIENTATION-OPEN-FORCE-OWNER: recorded scope=outgoing" "${sandbox}/open.err" \
+    || ! grep -qE "Owner override: successor authorized[[:space:]]+outgoing[[:space:]]+active[[:space:]]+Owner-" "${sandbox}/scripts/ci/owner_directives.tsv"; then
+    echo "FAIL orientation_gate_force_owner_records"
+    cat "${sandbox}/open.out" "${sandbox}/open.err" 2>/dev/null || true
+    cat "${sandbox}/scripts/ci/owner_directives.tsv" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_force_owner_records"
+  rm -rf "$sandbox"; return 0
 }
 
 # A. --open rejects evidence index under docs/tests (non-workplan; no mutation)
@@ -601,6 +705,9 @@ run_selftest() {
     run_selftest_valid_workplan_opens
     run_selftest_authoritative_park_pointer
     run_selftest_cold_start_spine
+    run_selftest_gate_open_refused
+    run_selftest_gate_parked_closed_allowed
+    run_selftest_gate_force_owner_records
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -640,6 +747,8 @@ main() {
   export ORIENTATION_OUTPUT="${ORIENTATION_OUTPUT:-${OUTPUT_PATH}}"
   export ORIENTATION_MODE="$MODE"
   export ORIENTATION_OPEN_TARGET="$OPEN_TARGET"
+  export ORIENTATION_FORCE_OWNER="$FORCE_OWNER"
+  export ORIENTATION_OWNER_DIRECTIVES="${ORIENTATION_OWNER_DIRECTIVES:-${SCRIPT_DIR}/owner_directives.tsv}"
 
   exec "$PYTHON_BIN" - <<'PY'
 import hashlib
@@ -661,6 +770,10 @@ RELAY_LINT = pathlib.Path(os.environ["ORIENTATION_RELAY_LINT"])
 OUTPUT = pathlib.Path(os.environ["ORIENTATION_OUTPUT"])
 MODE = os.environ.get("ORIENTATION_MODE", "generate")
 OPEN_TARGET = os.environ.get("ORIENTATION_OPEN_TARGET", "").strip()
+FORCE_OWNER = os.environ.get("ORIENTATION_FORCE_OWNER", "").strip()
+OWNER_DIRECTIVES = pathlib.Path(
+    os.environ.get("ORIENTATION_OWNER_DIRECTIVES", str(REPO_ROOT / "scripts/ci/owner_directives.tsv"))
+)
 
 GENERATED_MARKER = "<!-- GENERATED by scripts/ci/gen_orientation.sh; do not edit by hand. -->"
 NO_ACTIVE_TRACK = "none"
@@ -1498,6 +1611,51 @@ def generate_orientation() -> int:
     return 0
 
 
+def status_header_closed_or_parked(design_text: str) -> bool:
+    """The outgoing track's status header must declare CLOSED or PARKED for a pointer flip to be
+    allowed. Inspect only the STATE token immediately after `Status:` (up to the first delimiter),
+    never the trailing prose — a status line may mention another track being 'parked' in prose
+    (e.g. HD board: `Status: OPEN / ... Owner parked 0.0.8.6 ...`) without itself being parked.
+    Absence of a status header is treated as still-open (refuse)."""
+    for line in design_text.splitlines()[:60]:
+        stripped = line.strip().lstrip(">").strip()
+        m = re.match(r"\**status\s*:\s*([A-Za-z0-9 +\-]+)", stripped, re.IGNORECASE)
+        if m:
+            return bool(re.search(r"\b(CLOSED|PARKED)\b", m.group(1), re.IGNORECASE))
+    return False
+
+
+def outgoing_track_id(rel: str) -> str:
+    """Derive the dotted track id from a track doc path (design_0_0_8_4_8_4_... -> 0.0.8.4.8.4);
+    fall back to the file stem when the numeric prefix is absent."""
+    stem = pathlib.PurePosixPath(rel).stem
+    m = re.match(r"design_(\d+(?:_\d+)*)", stem)
+    if m:
+        return m.group(1).replace("_", ".")
+    return stem
+
+
+def append_owner_directive_row(directive_text: str, outgoing_rel: str) -> str:
+    """--force-owner escape: record the override as an active owner_directives.tsv row so no force is
+    silent. scope = outgoing track id; set_by = Owner-<date>."""
+    import datetime
+
+    scope = outgoing_track_id(outgoing_rel)
+    set_by = f"Owner-{datetime.date.today().isoformat()}"
+    directive_clean = directive_text.replace("\t", " ").replace("\n", " ").strip()
+    row = f"{directive_clean}\t{scope}\tactive\t{set_by}\n"
+    existing = ""
+    if OWNER_DIRECTIVES.exists():
+        existing = OWNER_DIRECTIVES.read_text(encoding="utf-8")
+        if existing and not existing.endswith("\n"):
+            existing += "\n"
+    if not existing:
+        existing = "directive\tscope\tstatus\tset_by\n"
+    OWNER_DIRECTIVES.parent.mkdir(parents=True, exist_ok=True)
+    OWNER_DIRECTIVES.write_text(existing + row, encoding="utf-8", newline="\n")
+    return scope
+
+
 def open_track() -> int:
     if not OPEN_TARGET:
         fail("--open requires exactly one track doc")
@@ -1512,6 +1670,27 @@ def open_track() -> int:
     old_info = read_active_track_pointer()
     # When old pointer is non-workplan invalid, still report its raw path for diagnostics.
     old = old_info.get("raw") or old_info.get("path") or old_info.get("reason") or "missing"
+
+    # Pointer-lifecycle gate (HD-POINTER-LIFECYCLE-GATE-0): refuse abandoning a still-open outgoing
+    # track. Only fires when the pointer actually moves off a live workplan doc whose status header
+    # does not declare CLOSED/PARKED. `--force-owner "<text>"` proceeds AND records the override.
+    if old_info.get("state") == "doc" and old_info.get("path") != rel:
+        outgoing_rel = old_info["path"]
+        outgoing_text = (REPO_ROOT / outgoing_rel).read_text(encoding="utf-8")
+        if not status_header_closed_or_parked(outgoing_text):
+            if FORCE_OWNER:
+                scope = append_owner_directive_row(FORCE_OWNER, outgoing_rel)
+                print(f"ORIENTATION-OPEN-FORCE-OWNER: recorded scope={scope}", file=sys.stderr)
+            else:
+                print("ORIENTATION-OPEN-VERDICT: FAIL(outgoing-track-open)", file=sys.stderr)
+                print(
+                    f"gen_orientation: FAIL(outgoing-track-open): outgoing active track "
+                    f"{outgoing_rel} status header lacks CLOSED/PARKED; close or park it first, "
+                    f'or pass --force-owner "<directive text>" to override.',
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
     created = False
     if not target.exists():
         # New skeleton may not be created under forbidden paths (already rejected above).
