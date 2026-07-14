@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | 25e38b71c84c4bb04f08fc16a812859edf2d723ede394b149dfee14003b64363 |
+| design_0_0_8_4_8_4_hd_board.md | fa74c099295fc2a21e9f7a63a4f6c95c6b45a7839018ee9af5e19108495f359b |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | HD-4 | HD-LIBRARIAN-0 | **Stewardship verbs (Owner: "check library staleness", "cull dead tsv rows"):**  | **DA-GRADUATED / merged [#1337](https://github.com/khorum08/SimThing/pull/1337)** — DA deep pass 2026-07-13: libraria... |
-| HD-5 | HD-DOCS-CASCADE-0 | **Loud onboarding visibility + the payoff compression.** Entry-point docs update | NOT STARTED — note (DA 2026-07-12, Owner-directed): operator HD-protocol section pre-landed in `agent_onboarding.md` ... |
+| HD-5 | HD-DOCS-CASCADE-0 | **Loud onboarding visibility + the payoff compression.** Entry-point docs update | HANDOFF DISPATCHED as `handoffs/HD-DOCS-CASCADE-0.hd.md` (DA 2026-07-13, Owner override-dispatch; `HD-RECEIPT: ed12c8... |
 | HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
 
 ## Next Rung Pointer
