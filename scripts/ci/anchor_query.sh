@@ -29,7 +29,8 @@ usage:
   bash scripts/ci/anchor_query.sh --domain <domain>
   bash scripts/ci/anchor_query.sh --paths <files...>
   bash scripts/ci/anchor_query.sh --grep <term>
-  bash scripts/ci/anchor_query.sh --prune <days>
+  bash scripts/ci/anchor_query.sh --dead-listeners
+  bash scripts/ci/anchor_query.sh --prune [days] [--dry-run]
   bash scripts/ci/anchor_query.sh --selftest
 EOF
   exit 2
@@ -59,11 +60,23 @@ parse_args() {
         [[ -n "$GREP_ARG" ]] || usage
         shift 2
         ;;
+      --dead-listeners)
+        MODE="dead-listeners"
+        shift
+        ;;
       --prune)
         MODE="prune"
-        PRUNE_DAYS="${2:-}"
-        [[ -n "$PRUNE_DAYS" ]] || usage
-        shift 2
+        if [[ -n "${2:-}" && "$2" != --* ]]; then
+          PRUNE_DAYS="$2"
+          shift 2
+        else
+          PRUNE_DAYS="${ANCHOR_QUERY_PRUNE_DAYS:-30}"
+          shift
+        fi
+        ;;
+      --dry-run)
+        ANCHOR_QUERY_DRY_RUN=1
+        shift
         ;;
       --role)
         ROLE_ARG="${2:-}"
@@ -93,6 +106,7 @@ run_query_python() {
   ANCHOR_QUERY_DOMAIN="${DOMAIN_ARG:-}" \
   ANCHOR_QUERY_GREP="${GREP_ARG:-}" \
   ANCHOR_QUERY_PRUNE="${PRUNE_DAYS:-}" \
+  ANCHOR_QUERY_DRY_RUN="${ANCHOR_QUERY_DRY_RUN:-0}" \
   ANCHOR_QUERY_ROLE="$ROLE_ARG" \
   ANCHOR_QUERY_PATHS="$(printf '%s\n' "${PATH_ARGS[@]:-}")" \
     "$PYTHON_BIN" - <<'PY'
@@ -112,6 +126,7 @@ role = os.environ.get("ANCHOR_QUERY_ROLE", "coding")
 domain_arg = os.environ.get("ANCHOR_QUERY_DOMAIN", "").strip()
 grep_arg = os.environ.get("ANCHOR_QUERY_GREP", "").strip()
 prune_days = os.environ.get("ANCHOR_QUERY_PRUNE", "").strip()
+dry_run = os.environ.get("ANCHOR_QUERY_DRY_RUN", "0") == "1"
 paths_blob = os.environ.get("ANCHOR_QUERY_PATHS", "")
 
 def pick(env_key, default_rel):
@@ -227,6 +242,35 @@ def domains_from_paths(files):
     return domains
 
 
+def repo_files():
+    out = []
+    for path in repo.rglob("*"):
+        if path.is_file():
+            try:
+                rel = path.relative_to(repo).as_posix()
+            except ValueError:
+                continue
+            if rel.startswith(".git/"):
+                continue
+            out.append(rel)
+    return out
+
+
+def dead_listener_rows():
+    rows = []
+    if not triggers_tsv.is_file():
+        return rows
+    files = repo_files()
+    with triggers_tsv.open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh, delimiter="\t"):
+            glob_pat = (row.get("glob") or "").strip()
+            if not glob_pat:
+                continue
+            if not any(glob_match(path, glob_pat) for path in files):
+                rows.append(row)
+    return rows
+
+
 def ensure_reach_log():
     if not reach_log.is_file():
         reach_log.parent.mkdir(parents=True, exist_ok=True)
@@ -258,12 +302,23 @@ def emit_hits(ids, rows_by_id):
 anchors = load_anchors()
 by_id = {r["anchor_id"]: r for r in anchors}
 
+if mode == "dead-listeners":
+    rows = dead_listener_rows()
+    for row in rows:
+        domains = ",".join(d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip())
+        print(f"ANCHOR-QUERY-DEAD-LISTENER-ITEM: DA-ROUTE glob={row.get('glob','')} domains={domains}")
+    print(f"ANCHOR-QUERY-DEAD-LISTENERS-VERDICT: PASS count={len(rows)}")
+    sys.exit(0)
+
 if mode == "prune":
     days = int(prune_days)
+    if dry_run and not reach_log.is_file():
+        print(f"ANCHOR-QUERY-PRUNE: DRY removed=0 kept=0 days={days}")
+        sys.exit(0)
     ensure_reach_log()
     cutoff = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - dt.timedelta(days=days)
     kept = ["date\trole\tquery\tanchors_served\thit"]
-    removed = 0
+    removed = []
     with reach_log.open(encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh, delimiter="\t")
         for row in reader:
@@ -288,9 +343,17 @@ if mode == "prune":
                     row.get("hit", ""),
                 ]))
             else:
-                removed += 1
-    reach_log.write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
-    print(f"ANCHOR-QUERY-PRUNE: PASS removed={removed} kept={len(kept)-1}")
+                removed.append(row)
+    for row in removed:
+        print(
+            "ANCHOR-QUERY-PRUNE-ITEM: REAP "
+            f"date={row.get('date','')} role={row.get('role','')} "
+            f"query={row.get('query','')} anchors={row.get('anchors_served','')} hit={row.get('hit','')}"
+        )
+    if not dry_run:
+        reach_log.write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
+    verdict = "DRY" if dry_run else "PASS"
+    print(f"ANCHOR-QUERY-PRUNE: {verdict} removed={len(removed)} kept={len(kept)-1} days={days}")
     sys.exit(0)
 
 if mode == "domain":
@@ -384,6 +447,14 @@ run_selftest() {
     echo "PASS reach_log_append"
   fi
   PRUNE_DAYS="30"
+  before="$(cat "$tmp/anchor_reach_log.tsv")"
+  out="$(ANCHOR_QUERY_DRY_RUN=1 run_query_python prune || true)"
+  after="$(cat "$tmp/anchor_reach_log.tsv")"
+  if [[ "$before" != "$after" ]] || ! printf '%s\n' "$out" | grep -q "ANCHOR-QUERY-PRUNE: DRY"; then
+    echo "FAIL reach_log_prune_dry_run"; failures=$((failures+1))
+  else
+    echo "PASS reach_log_prune_dry_run"
+  fi
   run_query_python prune >/dev/null || true
   if grep -q "2020-01-01T00:00:00Z" "$tmp/anchor_reach_log.tsv"; then
     echo "FAIL reach_log_prune"; failures=$((failures+1))
@@ -394,6 +465,29 @@ run_selftest() {
     echo "FAIL reach_log_header"; failures=$((failures+1))
   else
     echo "PASS reach_log_header"
+  fi
+
+  local missing_log_tmp
+  missing_log_tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-query-missing-log-XXXXXX")"
+  cp "$ANCHORS_TSV" "$missing_log_tmp/doctrine_anchors.tsv"
+  cp "$TRIGGERS_TSV" "$missing_log_tmp/anchor_triggers.tsv"
+  FIXTURE_DIR="$missing_log_tmp"
+  PRUNE_DAYS="30"
+  out="$(ANCHOR_QUERY_DRY_RUN=1 run_query_python prune || true)"
+  if [[ -e "$missing_log_tmp/anchor_reach_log.tsv" ]] || ! printf '%s\n' "$out" | grep -q "ANCHOR-QUERY-PRUNE: DRY removed=0 kept=0"; then
+    echo "FAIL prune_dry_missing_log_no_create"; failures=$((failures+1))
+  else
+    echo "PASS prune_dry_missing_log_no_create"
+  fi
+  rm -rf "$missing_log_tmp"
+  FIXTURE_DIR="$tmp"
+
+  printf 'missing/anchor/query/**\tdead-test-domain\n' >>"$tmp/anchor_triggers.tsv"
+  out="$(run_query_python dead-listeners || true)"
+  if ! printf '%s\n' "$out" | grep -q "ANCHOR-QUERY-DEAD-LISTENER-ITEM: DA-ROUTE glob=missing/anchor/query/"; then
+    echo "FAIL dead_listener_report"; failures=$((failures+1))
+  else
+    echo "PASS dead_listener_report"
   fi
 
   # DA rider r1: LF-clean reach-log writes (no CR bytes)
@@ -423,7 +517,7 @@ sys.exit(0 if (b"\r" not in raw and raw.startswith(b"date\trole\tquery\tanchors_
   rm -rf "$tmp"
   FIXTURE_DIR=""
   if [[ "$failures" -eq 0 ]]; then
-    echo "ANCHOR-QUERY-SELFTEST: PASS (9 fixtures)"
+    echo "ANCHOR-QUERY-SELFTEST: PASS (12 fixtures)"
     return 0
   fi
   echo "ANCHOR-QUERY-SELFTEST: FAIL (${failures} fixtures)"
@@ -440,6 +534,7 @@ main() {
     domain) run_query_python domain ;;
     paths) run_query_python paths ;;
     grep) run_query_python grep ;;
+    dead-listeners) run_query_python dead-listeners ;;
     prune) run_query_python prune ;;
     *) usage ;;
   esac

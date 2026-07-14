@@ -38,6 +38,8 @@ elif [[ "$body" =~ ^/relay-lint([[:space:]]|$) ]] || [[ "$body" == /relay-lint* 
   cmd="relay-lint"
 elif [[ "$body" =~ ^/orient([[:space:]]|$) ]] || [[ "$body" == /orient* ]]; then
   cmd="orient"
+elif [[ "$body" =~ ^/librarian([[:space:]]|$) ]] || [[ "$body" == /librarian* ]]; then
+  cmd="librarian"
 elif [[ "$body" =~ ^/anchor([[:space:]]|$) ]] || [[ "$body" == /anchor* ]]; then
   cmd="anchor"
 else
@@ -139,6 +141,59 @@ if [[ "$cmd" == "orient" ]]; then
   fi
   echo "COMMAND: orient role=${role}"
   exit 0
+fi
+
+if [[ "$cmd" == "librarian" ]]; then
+  body_b64="$(printf '%s' "$body" | base64 | tr -d '\n')"
+  COMMAND_BODY_B64="$body_b64" "$PYTHON_BIN" - <<'PY'
+import base64
+import os
+import shlex
+import sys
+
+body = base64.b64decode(os.environ.get("COMMAND_BODY_B64", "").encode("ascii")).decode("utf-8").strip()
+try:
+    parts = shlex.split(body)
+except ValueError:
+    print("COMMAND: librarian-invalid")
+    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
+    sys.exit(1)
+if not parts or parts[0].lower() != "/librarian" or len(parts) < 2:
+    print("COMMAND: librarian-invalid")
+    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
+    sys.exit(1)
+action = parts[1].lower()
+confirm = "false"
+role = ""
+rest = parts[2:]
+if action == "staleness":
+    if rest:
+        print("COMMAND: librarian-invalid")
+        print("FORMAT: /librarian staleness")
+        sys.exit(1)
+elif action == "cull":
+    if rest == ["--confirm"]:
+        confirm = "true"
+    elif rest:
+        print("COMMAND: librarian-invalid")
+        print("FORMAT: /librarian cull [--confirm]")
+        sys.exit(1)
+elif action == "catalog":
+    if not rest:
+        role = ""
+    elif len(rest) == 2 and rest[0] == "--role" and rest[1] in {"coding", "orchestrator", "da"}:
+        role = rest[1]
+    else:
+        print("COMMAND: librarian-invalid")
+        print("FORMAT: /librarian catalog [--role coding|orchestrator|da]")
+        sys.exit(1)
+else:
+    print("COMMAND: librarian-invalid")
+    print("FORMAT: /librarian staleness | /librarian cull [--confirm] | /librarian catalog [--role coding|orchestrator|da]")
+    sys.exit(1)
+print(f"COMMAND: librarian action={action} confirm={confirm} role={role}")
+PY
+  exit $?
 fi
 
 if [[ "$cmd" == "anchor" ]]; then
