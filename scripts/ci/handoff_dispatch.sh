@@ -380,7 +380,8 @@ def render_projection(role, obj):
 
 
 def active_pointer():
-    orientation = ROOT / "docs/orchestrator_orientation.md"
+    override = os.environ.get("HD_ORIENTATION_PATH", "").strip()
+    orientation = Path(override) if override else ROOT / "docs/orchestrator_orientation.md"
     if orientation.exists():
         text = normalize_bytes(orientation.read_bytes())
         m = re.search(r"Active pointer:\s*`([^`]+)`", text)
@@ -785,13 +786,18 @@ def command_current_handoff():
     try:
         print(repo_rel(current_handoff_path()))
     except HDError as exc:
+        if exc.detail == "current-handoff-missing":
+            # Pointer rung not yet dispatched: lawful between dispatches.
+            # Empty output, success — read paths are graceful; mutation
+            # paths still hard-fail upstream on a missing object.
+            return 0
         return fail(exc.detail)
     return 0
 
 
 def command_owner_status(path):
     try:
-        data = board_json(path)
+        data = board_json(path if (path or "").strip() else None)
         sys.stdout.write(render_board_markdown(data))
     except HDError as exc:
         return fail(exc.detail)
@@ -967,6 +973,15 @@ stop_conditions: ["scope-widening"]
         write(post_mutation_board_path, post_mutation_board.stdout)
         post_mutation_md = run_cmd([bash_cmd, script_arg, "--render-board", str(post_mutation_board_path)])
         check("owner-mutation-board-retains-open-pr-state", mutate_again.returncode == 0 and post_mutation_md.returncode == 0 and open_pr_line in post_mutation_md.stdout)
+
+        undispatched_orientation = Path(tmp) / "orientation-undispatched.md"
+        write(undispatched_orientation, "Active pointer: " + chr(96) + "HD-UNDISPATCHED-FIXTURE-0" + chr(96) + chr(10))
+        none_env = {"HD_ORIENTATION_PATH": str(undispatched_orientation)}
+        none_current = run_cmd([bash_cmd, script_arg, "--current-handoff"], env=none_env)
+        check("current-handoff-none-exits-zero", none_current.returncode == 0 and none_current.stdout.strip() == "")
+
+        none_status = run_cmd([bash_cmd, script_arg, "--owner-status", ""], env={**none_env, "HD_OPEN_PRS_JSON": "[]"})
+        check("owner-status-none-renders-board", none_status.returncode == 0 and "SimThing Board" in none_status.stdout)
 
         hold = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "hold"])
         held_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])
