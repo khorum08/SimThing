@@ -419,6 +419,103 @@ run_selftest_gate_force_owner_records() {
   rm -rf "$sandbox"; return 0
 }
 
+# Cross-root env-seam bypass: a FAKE repo root (PARKED outgoing) must not authorize writes to a
+# VICTIM checkout's pointer/orientation/directives via the ORIENTATION_* seams. Refuse before any write.
+run_selftest_gate_incoherent_root_refused() {
+  local victim fake rc
+  victim="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-victim-XXXXXX")"
+  fake="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-fake-XXXXXX")"
+  seed_orientation_sandbox "$victim"
+  seed_gate_outgoing_track "$victim" "docs/outgoing.md" "OPEN"
+  seed_orientation_sandbox "$fake"
+  seed_gate_outgoing_track "$fake" "docs/outgoing.md" "PARKED"
+  cp "${victim}/scripts/ci/active_track.txt" "${victim}/active.before"
+  cp "${victim}/scripts/ci/owner_directives.tsv" "${victim}/owner.before"
+  set +e
+  ORIENTATION_REPO_ROOT="$fake" \
+  ORIENTATION_CLASSES_TSV="${fake}/scripts/ci/precedented_classes.tsv" \
+  ORIENTATION_BINDING_TSV="${fake}/scripts/ci/binding_conditions.tsv" \
+  ORIENTATION_LEDGER_TSV="${fake}/scripts/ci/clearance_ledger.tsv" \
+  ORIENTATION_ACTIVE_TRACK_FILE="${victim}/scripts/ci/active_track.txt" \
+  ORIENTATION_TRACKS_TSV="${fake}/scripts/ci/test_lifecycle_tracks.tsv" \
+  ORIENTATION_RELAY_LINT="${fake}/scripts/ci/relay_lint.sh" \
+  ORIENTATION_ANCHORS_TSV="${fake}/scripts/ci/doctrine_anchors.tsv" \
+  ORIENTATION_OWNER_DIRECTIVES="${victim}/scripts/ci/owner_directives.tsv" \
+  ORIENTATION_OUTPUT="${victim}/docs/orchestrator_orientation.md" \
+  ORIENTATION_DESIGN_DOC= \
+    bash "${SCRIPT_DIR}/gen_orientation.sh" --open docs/successor.md >"${victim}/open.out" 2>"${victim}/open.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "ORIENTATION-OPEN-VERDICT: FAIL(incoherent-root)" "${victim}/open.err" \
+    || ! cmp -s "${victim}/active.before" "${victim}/scripts/ci/active_track.txt" \
+    || ! cmp -s "${victim}/owner.before" "${victim}/scripts/ci/owner_directives.tsv" \
+    || [[ -e "${victim}/docs/orchestrator_orientation.md" ]] \
+    || [[ -e "${victim}/docs/successor.md" ]]; then
+    echo "FAIL orientation_gate_incoherent_root"
+    cat "${victim}/open.err" 2>/dev/null || true
+    rm -rf "$victim" "$fake"; return 1
+  fi
+  echo "PASS orientation_gate_incoherent_root"
+  rm -rf "$victim" "$fake"; return 0
+}
+
+# Two-phase --force-owner: a forced open to an existing non-workplan target must fail with ZERO
+# writes — no stray Owner directive, no pointer/orientation change, target untouched.
+run_selftest_gate_force_owner_invalid_target_no_write() {
+  local sandbox rc tgt_before tgt_after
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-forceinvalid-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  seed_gate_outgoing_track "$sandbox" "docs/outgoing.md" "OPEN"
+  cat >"${sandbox}/docs/not_a_workplan.md" <<'EOF'
+# Not A Workplan
+
+Just prose. No rung table, no ladder, no workplan language.
+EOF
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/active.before"
+  cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
+  tgt_before="$(sha256sum "${sandbox}/docs/not_a_workplan.md" | awk '{print $1}')"
+  set +e
+  run_gen_sandbox "$sandbox" --open docs/not_a_workplan.md --force-owner "force to invalid target" >"${sandbox}/open.out" 2>"${sandbox}/open.err"
+  rc=$?
+  set -e
+  tgt_after="$(sha256sum "${sandbox}/docs/not_a_workplan.md" | awk '{print $1}')"
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -Eqi "non-workplan|FAIL" "${sandbox}/open.err" \
+    || ! cmp -s "${sandbox}/active.before" "${sandbox}/scripts/ci/active_track.txt" \
+    || ! cmp -s "${sandbox}/owner.before" "${sandbox}/scripts/ci/owner_directives.tsv" \
+    || [[ "$tgt_before" != "$tgt_after" ]] \
+    || [[ -e "${sandbox}/docs/orchestrator_orientation.md" ]]; then
+    echo "FAIL orientation_gate_force_owner_invalid_target"
+    cat "${sandbox}/open.err" 2>/dev/null || true
+    cat "${sandbox}/scripts/ci/owner_directives.tsv" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_force_owner_invalid_target"
+  rm -rf "$sandbox"; return 0
+}
+
+# --force-owner without --open is rejected (no silent, unused Owner directive).
+run_selftest_gate_force_owner_requires_open() {
+  local sandbox rc
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-forcenoopen-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
+  set +e
+  run_gen_sandbox "$sandbox" --force-owner "force with no open" >"${sandbox}/out" 2>"${sandbox}/err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "force-owner requires --open" "${sandbox}/err" \
+    || ! cmp -s "${sandbox}/owner.before" "${sandbox}/scripts/ci/owner_directives.tsv"; then
+    echo "FAIL orientation_gate_force_owner_requires_open"
+    cat "${sandbox}/err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_force_owner_requires_open"
+  rm -rf "$sandbox"; return 0
+}
+
 # A. --open rejects evidence index under docs/tests (non-workplan; no mutation)
 run_selftest_reject_evidence_index_open() {
   local sandbox
@@ -708,6 +805,9 @@ run_selftest() {
     run_selftest_gate_open_refused
     run_selftest_gate_parked_closed_allowed
     run_selftest_gate_force_owner_records
+    run_selftest_gate_incoherent_root_refused
+    run_selftest_gate_force_owner_invalid_target_no_write
+    run_selftest_gate_force_owner_requires_open
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -726,6 +826,10 @@ run_selftest() {
 
 main() {
   parse_args "$@"
+  if [[ -n "$FORCE_OWNER" && "$MODE" != "open" ]]; then
+    echo "gen_orientation: --force-owner requires --open" >&2
+    usage
+  fi
   if [[ "$FIXTURE_MODE" == "selftest" ]]; then
     run_selftest
     exit $?
@@ -1656,9 +1760,35 @@ def append_owner_directive_row(directive_text: str, outgoing_rel: str) -> str:
     return scope
 
 
+def assert_coherent_open_root() -> None:
+    """`--open` mutates ONE coherent root. The active-pointer file, generated orientation, and
+    owner-directives table must all resolve under `ORIENTATION_REPO_ROOT` — the same root whose
+    documents supply the outgoing/target tracks the gate validates. This closes the cross-root
+    env-seam bypass: a fake root's PARKED outgoing doc must never authorize a write to a *victim*
+    checkout's pointer/orientation. No new bypass flag; sandbox tests stay valid because every
+    sandbox mutation path is under its sandbox root."""
+    root = REPO_ROOT.resolve()
+    for label, p in (
+        ("ORIENTATION_ACTIVE_TRACK_FILE", ACTIVE_TRACK),
+        ("ORIENTATION_OUTPUT", OUTPUT),
+        ("ORIENTATION_OWNER_DIRECTIVES", OWNER_DIRECTIVES),
+    ):
+        try:
+            p.resolve().relative_to(root)
+        except ValueError:
+            print("ORIENTATION-OPEN-VERDICT: FAIL(incoherent-root)", file=sys.stderr)
+            print(
+                f"gen_orientation: FAIL(incoherent-root): {label}={p} is not under "
+                f"ORIENTATION_REPO_ROOT={root}; --open requires one coherent mutation root.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+
 def open_track() -> int:
     if not OPEN_TARGET:
         fail("--open requires exactly one track doc")
+    assert_coherent_open_root()
     rel = normalize_track_doc_arg(OPEN_TARGET)
     # Reject forbidden paths before any create/mutate (evidence index under docs/tests/, etc.).
     if is_forbidden_workplan_path(rel):
@@ -1673,14 +1803,18 @@ def open_track() -> int:
 
     # Pointer-lifecycle gate (HD-POINTER-LIFECYCLE-GATE-0): refuse abandoning a still-open outgoing
     # track. Only fires when the pointer actually moves off a live workplan doc whose status header
-    # does not declare CLOSED/PARKED. `--force-owner "<text>"` proceeds AND records the override.
+    # does not declare CLOSED/PARKED. `--force-owner "<text>"` proceeds AND records the override —
+    # but the directive row is DEFERRED until the transition is admitted (two-phase; see below), so a
+    # forced open that later fails classification leaves no stray Owner directive.
+    force_needed = False
+    force_outgoing_rel = ""
     if old_info.get("state") == "doc" and old_info.get("path") != rel:
         outgoing_rel = old_info["path"]
         outgoing_text = (REPO_ROOT / outgoing_rel).read_text(encoding="utf-8")
         if not status_header_closed_or_parked(outgoing_text):
             if FORCE_OWNER:
-                scope = append_owner_directive_row(FORCE_OWNER, outgoing_rel)
-                print(f"ORIENTATION-OPEN-FORCE-OWNER: recorded scope={scope}", file=sys.stderr)
+                force_needed = True
+                force_outgoing_rel = outgoing_rel
             else:
                 print("ORIENTATION-OPEN-VERDICT: FAIL(outgoing-track-open)", file=sys.stderr)
                 print(
@@ -1716,6 +1850,12 @@ def open_track() -> int:
     active_info = active_pointer_for_render(strict=True)
     generated, track_state, next_rung = render_orientation(active_info)
     regenerated = write_orientation(generated)
+
+    # Two-phase --force-owner: the directive is recorded only now that the pointer/orientation
+    # transition has succeeded, so a forced open that failed admission above left no stray row.
+    if force_needed:
+        scope = append_owner_directive_row(FORCE_OWNER, force_outgoing_rel)
+        print(f"ORIENTATION-OPEN-FORCE-OWNER: recorded scope={scope}", file=sys.stderr)
 
     if created:
         verdict = "CREATED"
