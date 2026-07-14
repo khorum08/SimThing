@@ -41,9 +41,9 @@ IDs; resolve on demand with `anchor_query.sh`, and after editing an anchored doc
 
 - **Doctrine as pointer, not prose.** Cite the enforcing surface or anchor id; never restate a
   mechanized rule. Type boundary > admission hard-error > guard scan > prose.
-- **Recipient by Type.** Mechanical impl / refactor / test → coding (Cursor/Grok); bounded writing →
-  docs tier; acceptance / sign-off / ontology conformance → DA (Opus/Owner). Mis-route ⇒ fix the Type
-  or split the rung — do not burn a DA turn on mechanical edits or route judgment to a coding agent.
+- **Recipient by Type.** Mechanical impl / refactor / test → coding role; bounded writing →
+  docs-capable role; acceptance / sign-off / ontology conformance → DA role. Tool/vendor names are
+  per-run examples only; mis-route ⇒ fix the Type or split the rung, not a DA turn on mechanical edits.
 - **Proof minimal + load-bearing.** Each test names the regression it catches; a condition guaranteed
   by a type or hard-errored at admission gets **zero** tests (Necessity Test). Reuse existing
   oracles/guards; never re-derive one the repo already runs.

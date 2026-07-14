@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | 8fc86082bab6f62080e3b05b7a4b225b54be01292d8bc52e554aa430297e0bc4 |
+| design_0_0_8_4_8_4_hd_board.md | e1031fa73dd627b254c7f8d3b8293f42cc0500ae1484228a11635f72cb1cbfe5 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | HD-7 | HD-CATALOG-LIBRARY-0 | **Per-role library catalog (the original vision).** `librarian.sh --catalog` v2  | DA-GRADUATED / merged [#1347](https://github.com/khorum08/SimThing/pull/1347) — merged 2026-07-14T22:0xZ (dispatched_... |
-| HD-8 | HD-OWNER-AUTHORING-GUIDE-0 | **Owner authoring guide + role-slot sweep (cap-budgeted).** Human-facing intro:  | HANDOFF DISPATCHED as `handoffs/HD-OWNER-AUTHORING-GUIDE-0.hd.md` (dispatched_at 2026-07-14T22:35Z; `HD-RECEIPT: 91fa... |
+| HD-8 | HD-OWNER-AUTHORING-GUIDE-0 | **Owner authoring guide + role-slot sweep (cap-budgeted).** Human-facing intro:  | PROBATION / proof-present / DA-review-pending — owner authoring guide added as capped companion doc; onboarding/templ... |
 | HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
 
 ## Next Rung Pointer

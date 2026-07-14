@@ -4,7 +4,8 @@
 (`orient.sh` / `orchestrator_orientation.md`). It answers one question: *I am starting a fresh agent of
 type X — what do I do?* `AGENTS.md` points here.
 
-There are three agent tiers. Each has one cold-start ritual and one authority boundary. Do not mix them.
+There are three role slots. Each has one cold-start ritual and one authority boundary. Do not mix them.
+Example surfaces: coding = Grok CLI / Cursor cloud; orchestration = Codex/webchat; DA = Fable / Claude / Codex.
 
 ---
 
@@ -15,10 +16,8 @@ that same session carry the existing receipt unless governance moved.
 
 ---
 
-## Coding agent (Grok / Cursor — in-repo, has a shell)
+## Coding role — in-repo shell
 **Handoffs arrive as HD projections — render yours:** `handoff_dispatch.sh --render coding handoffs/<RUNG>.hd.md` on "Implement handoff `<RUNG>`"; obey its BUILD/FENCES/EXIT-PROOF + `owner_notes`, quote its `HD-RECEIPT` (the "approved, implement" protocol).
-
-Builds one rung from a handoff. Cannot see the whole governance picture and does not need to.
 
 - **Cold start:** when the user / Owner / DA opens a fresh coding-agent session, the agent runs
   `bash scripts/ci/orient.sh --role=coding` once and carries the emitted `ORIENT-RECEIPT`.
@@ -34,7 +33,7 @@ Builds one rung from a handoff. Cannot see the whole governance picture and does
 - **Authority:** it **does not merge.** Gate-wiring, exceptions, and anything reserved go back up. It builds,
   proves, and hands back.
 
-## Orchestration agent (Codex / webchat — GitHub connector, no shell)
+## Orchestration role — GitHub connector, no shell
 **Handoffs arrive as HD projections — render yours** (`--render orchestrator`) on "Current handoff approved, implement"; route coding and quote the `HD-RECEIPT`.
 
 Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, routes clearance, runs triage.
@@ -63,7 +62,7 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 - **Authority:** merges *conforming* precedented-class work; **routes gate-wiring/reserve to the DA.** An
   unauthorized gate-wiring merge is a process incident (see `docs/tests/incident_oh_docs_sunset_unauthorized_merge.md`).
 
-## DA agent (Opus / Fable — the frontier reviewer)
+## DA role — frontier reviewer
 **Handoffs arrive as HD projections — render yours** (`--render da`) on "Relay posted on PR #n"; rule and graduate-merge or remand, carrying the `HD-RECEIPT`.
 
 The executive design authority. Reviews escalations, graduates or remands, authors doctrine and handoffs.
@@ -107,13 +106,13 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 
 | Tier | Cold-start / default loop | Returns | Merges |
 |---|---|---|---|
-| Coding (Grok/Cursor) | `orient.sh --role=coding` → check → `agent_scan` → focused test | PROBATION / proof-present | nothing |
-| Orchestration (Codex/webchat) | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
-| DA (Opus/Fable) | `orient.sh --role=da` (+ weighted treeverify) | graduation + exit-proof stamp merge | gate-wiring / DA-reserve / stamps |
+| Coding role | `orient.sh --role=coding` → check → `agent_scan` → focused test | PROBATION / proof-present | nothing |
+| Orchestration role | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
+| DA role | `orient.sh --role=da` (+ weighted treeverify) | graduation + exit-proof stamp merge | gate-wiring / DA-reserve / stamps |
 
 ## HD Board — dispatch prompting & handoff lifecycle (operator protocol)
 
-Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The live view is the
+Owner workplan authoring/revision is in [`owner_authoring_guide.md`](owner_authoring_guide.md). Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The live view is the
 **SimThing Board issue** (auto-synced every clearance run: pointer, current handoff + receipt, open
 PRs with routes, every rung's exit-proof state). Check the board, not a local file.
 

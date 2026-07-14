@@ -182,8 +182,8 @@ Operational requirements:
 - No `unwrap()` in non-test code without a comment explaining why the None case is impossible.
 
 ## Cursor Cloud VM caveats (non-obvious only)
+- Install `python-is-python3` or otherwise ensure `python` resolves; `agent_scan.sh` invokes `python`.
 - Toolchain ≥1.85 required (`simthing-clausething` is edition 2024); VM rustup stable is fine, cargo 1.83 cannot parse the workspace.
 - No physical GPU (`/dev/dri` absent): before `simthing record`/`bench` or GPU-backed tests, `export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json` and `unset DISPLAY` (stale `DISPLAY=:1` breaks wgpu adapter enumeration). Replay and pure-CPU tests need neither.
 - Linux-runnable binaries: `mapgen` and `simthing` only; `simthing-studio` is Windows-only (exits on non-Windows; its lib still builds/tests here).
-- `cargo fmt --all -- --check` reports pre-existing rustfmt-version drift on committed files — not caused by your change; do not reformat untouched files.
-- `scripts/ci/` is the governance harness, not the product build.
+- `cargo fmt --all -- --check` may show pre-existing rustfmt drift; do not reformat untouched files. `scripts/ci/` is governance harness, not product build.
