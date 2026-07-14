@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | d25e1e847c4d6cad8789b1a7fdfe9997fc2a6a8b745ab7920ae3d2e1b369e478 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | 53689544436d95b783a8173e9d80a0ccc3fca7c58c8a1c6e80990f97ccdee12a |
+| design_0_0_8_4_8_4_hd_board.md | 305c55d0e9c447fcd37014caf27026248e313cf8cb9aedd5191ed85a115bd40c |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -55,14 +55,13 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HD-6 | HD-POINTER-LIFECYCLE-GATE-0 | **Pointer lifecycle gate + board freshness.** `gen_orientation.sh --open` REFUSE | **DA-GRADUATED / merged [#1344](https://github.com/khorum08/SimThing/pull/1344)** — merged 2026-07-14T19:55Z (dispatc... |
-| HD-7 | HD-CATALOG-LIBRARY-0 | **Per-role library catalog (the original vision).** `librarian.sh --catalog` v2  | HANDOFF DISPATCHED as `handoffs/HD-CATALOG-LIBRARY-0.hd.md` (dispatched_at 2026-07-14T20:35Z; `HD-RECEIPT: 5508925449... |
+| HD-7 | HD-CATALOG-LIBRARY-0 | **Per-role library catalog (the original vision).** `librarian.sh --catalog` v2  | DA-GRADUATED / merged [#1347](https://github.com/khorum08/SimThing/pull/1347) — merged 2026-07-14T22:0xZ (dispatched_... |
 | HD-8 | HD-OWNER-AUTHORING-GUIDE-0 | **Owner authoring guide + role-slot sweep (cap-budgeted).** Human-facing intro:  | NOT STARTED |
 | HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
 
 ## Next Rung Pointer
 
-Active pointer: `HD-CATALOG-LIBRARY-0`
+Active pointer: `HD-OWNER-AUTHORING-GUIDE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)

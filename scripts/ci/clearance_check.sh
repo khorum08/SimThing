@@ -13,6 +13,7 @@ fi
 
 GATE_WIRING_PATHS=(
   "scripts/ci/clearance_check.sh"
+  "scripts/ci/librarian.sh"
   "scripts/ci/precedented_classes.tsv"
   "scripts/ci/class_predicates.tsv"
   "scripts/ci/binding_conditions.tsv"

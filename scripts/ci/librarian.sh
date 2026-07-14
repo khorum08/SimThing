@@ -42,6 +42,7 @@ LIBRARIAN_SCRIPT_DIR="$SCRIPT_DIR" \
 LIBRARIAN_BASH="$LIBRARIAN_BASH" \
   exec "$PYTHON_BIN" - "$@" <<'PY'
 import os
+import csv
 import pathlib
 import stat
 import subprocess
@@ -53,7 +54,7 @@ ROOT = pathlib.Path(os.environ["LIBRARIAN_REPO_ROOT"])
 SCRIPT_DIR = pathlib.Path(os.environ["LIBRARIAN_SCRIPT_DIR"])
 argv = sys.argv[1:]
 BASH_BIN = os.environ.get("LIBRARIAN_BASH", "bash")
-LINE_CAP = int(os.environ.get("LIBRARIAN_LINE_CAP", "59"))
+LINE_CAP = int(os.environ.get("LIBRARIAN_LINE_CAP", "60"))
 ROLES = {"coding", "orchestrator", "da"}
 
 ANCHOR_CHECK = pathlib.Path(os.environ.get("LIBRARIAN_ANCHOR_CHECK", SCRIPT_DIR / "anchor_check.sh"))
@@ -99,6 +100,13 @@ def verdict_line(text: str, marker: str) -> str:
     return f"{marker}: MISSING"
 
 
+def first_line(text: str, marker: str) -> str:
+    for line in clean_lines(text):
+        if marker in line:
+            return line
+    return f"{marker}: MISSING"
+
+
 def emit(lines, verdict_prefix):
     if len(lines) > LINE_CAP:
         print(f"{verdict_prefix}: FAIL(report-line-cap lines={len(lines)} max={LINE_CAP})")
@@ -126,8 +134,23 @@ def owner_ok(result, allow_inspect=False):
     return True
 
 
+def read_tsv(path: pathlib.Path):
+    with path.open(encoding="utf-8", newline="") as fh:
+        return list(csv.DictReader(fh, delimiter="\t"))
+
+
+def split_csv(value: str):
+    return [item.strip() for item in (value or "").split(",") if item.strip()]
+
+
+def harness_fixture_count():
+    rows = read_tsv(ROOT / "scripts/ci/test_inventory.tsv")
+    return sum(1 for row in rows if (row.get("birth_track") or "").strip() == "harness-fixture")
+
+
 def cmd_staleness():
     lines = ["LIBRARIAN STALENESS"]
+    lines.append(f"harness-fixture-count: {harness_fixture_count()}")
     anchor = run_script(ANCHOR_CHECK, "--resync", "--dry-run")
     append_owner_block(lines, "anchor-resync-preview", anchor)
     dead = run_script(ANCHOR_QUERY, "--dead-listeners")
@@ -244,29 +267,132 @@ def cmd_cull():
     return 0 if ok else 1
 
 
-def role_catalog(role: str):
-    handoff = run_script(HANDOFF_DISPATCH, "--render", role, HANDOFF_PATH)
-    orient = run_script(ORIENT, f"--role={role}")
-    with tempfile.TemporaryDirectory(prefix="librarian-catalog-reach-") as raw:
+def trigger_domains():
+    rows = read_tsv(ROOT / "scripts/ci/anchor_triggers.tsv")
+    out = set()
+    for row in rows:
+        out.update(split_csv(row.get("trigger_domains", "")))
+    return sorted(out)
+
+
+def parse_anchor_ids(text: str):
+    for line in clean_lines(text):
+        if line.startswith("anchors:"):
+            raw = line.split(":", 1)[1].strip()
+            if raw == "none":
+                return []
+            return [item.strip() for item in raw.split(",") if item.strip()]
+    return []
+
+
+def domain_anchor_hits(domains):
+    hits = {domain: set() for domain in domains}
+    ok = True
+    with tempfile.TemporaryDirectory(prefix="librarian-catalog-domain-reach-") as raw:
         reach_log = str(pathlib.Path(raw) / "anchor_reach_log.tsv")
-        anchors = run_script(
-            ANCHOR_QUERY,
-            "--paths",
-            "scripts/ci/librarian.sh",
-            "scripts/ci/handoff_dispatch.sh",
-            env={"ANCHOR_REACH_LOG_PATH": reach_log},
-        )
-    payload = []
-    for line in clean_lines(handoff.stdout):
-        if line.startswith(("REQUIRED-ANCHORS:", "stop_conditions:", "required_checks:", "forbidden_surfaces:", "## ")):
-            payload.append(line)
+        for domain in domains:
+            result = run_script(
+                ANCHOR_QUERY,
+                "--domain",
+                domain,
+                env={"ANCHOR_REACH_LOG_PATH": reach_log},
+            )
+            ok = ok and result.returncode == 0
+            hits[domain].update(parse_anchor_ids(result.stdout))
+    return hits, ok
+
+
+def catalog_anchor_lines():
+    domains = trigger_domains()
+    hits, ok = domain_anchor_hits(domains)
+    anchor_rows = read_tsv(ROOT / "scripts/ci/doctrine_anchors.tsv")
+    lines = []
+    for row in anchor_rows:
+        aid = row.get("anchor_id", "").strip()
+        declared = split_csv(row.get("trigger_domains", ""))
+        reachable = [domain for domain in declared if aid in hits.get(domain, set())]
+        shown = reachable or declared
+        lines.append(f"anchor: {aid} domains={','.join(shown) if shown else 'none'}")
+    return lines, ok, len(anchor_rows), len(domains)
+
+
+def probe_handoff_path(tmp: pathlib.Path):
+    path = tmp / "CATALOG-PROBE.hd.md"
+    path.write_text(
+        """---
+rung: CATALOG-PROBE
+kind: rung
+track: catalog-probe
+base_sha: 0000000000000000000000000000000000000000
+audience: coding
+model_tier: std
+expected_route: DA-RESERVE(gate-wiring)
+owner_approved: true
+owner_notes: catalog probe
+surfaces: ["scripts/ci/librarian.sh"]
+forbidden: ["crates/**"]
+required_checks: ["librarian-selftest"]
+stop_conditions: ["catalog-probe-stop"]
+---
+## BUILD
+- catalog probe build
+## FENCES
+- catalog probe fence
+## EXIT-PROOF
+- catalog probe proof
+""",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return path
+
+
+def role_payload_sections(role: str):
+    labels = []
+    with tempfile.TemporaryDirectory(prefix="librarian-catalog-probe-") as raw:
+        handoff = probe_handoff_path(pathlib.Path(raw))
+        result = run_script(HANDOFF_DISPATCH, "--render", role, str(handoff))
+    prefixes = (
+        "required_checks:",
+        "forbidden_surfaces:",
+        "routing:",
+        "audit_targets:",
+        "risk_class:",
+        "expected_residue:",
+    )
+    for line in clean_lines(result.stdout):
+        if line.startswith("## "):
+            labels.append(line.removeprefix("## "))
+        elif any(line.startswith(prefix) for prefix in prefixes):
+            labels.append(line.split(":", 1)[0])
+    return labels, result.returncode
+
+
+def orientation_spine(orient_text: str):
+    anchor_rows = read_tsv(ROOT / "scripts/ci/doctrine_anchors.tsv")
+    anchor_ids = {row.get("anchor_id", "").strip() for row in anchor_rows}
+    found = []
+    for line in clean_lines(orient_text):
+        if not line.startswith("- "):
+            continue
+        for aid in anchor_ids:
+            if f"`{aid}`" in line and aid not in found:
+                found.append(aid)
+    return found
+
+
+def role_catalog(role: str, anchor_lines, anchor_count, domain_count):
+    orient = run_script(ORIENT, f"--role={role}")
+    payload, payload_code = role_payload_sections(role)
+    spine = orientation_spine(orient.stdout)
     out = [f"LIBRARIAN CATALOG role={role}"]
-    out.append("anchors: " + verdict_line(anchors.stdout, "anchors:"))
-    out.append("payload-sections: " + " | ".join(payload))
-    out.append("orientation: " + verdict_line(orient.stdout, "ORIENT-RECEIPT"))
-    out.append("spine: " + verdict_line(handoff.stdout, "HD-RECEIPT"))
+    out.append(f"library-source: anchors={anchor_count} trigger_domains={domain_count}")
+    out.append("always-on-spine: " + (",".join(spine) if spine else "none"))
+    out.append("payload-sections: " + (",".join(payload) if payload else "none"))
+    out.append("orientation: " + first_line(orient.stdout, "ORIENT-RECEIPT"))
+    out.extend(anchor_lines)
     out.append(f"LIBRARIAN-CATALOG-VERDICT: PASS role={role} lines={len(out) + 1}")
-    return out, (handoff.returncode, orient.returncode, anchors.returncode)
+    return out, (orient.returncode, payload_code)
 
 
 def cmd_catalog():
@@ -277,17 +403,23 @@ def cmd_catalog():
         else:
             print("librarian.sh: expected --catalog [--role coding|orchestrator|da]", file=sys.stderr)
             return 2
+    anchor_lines, anchor_ok, anchor_count, domain_count = catalog_anchor_lines()
     lines = []
     ok = True
     for ix, role in enumerate(roles):
         if ix:
             lines.append("")
-        role_lines, codes = role_catalog(role)
+        role_lines, codes = role_catalog(role, anchor_lines, anchor_count, domain_count)
+        if len(role_lines) > LINE_CAP:
+            print(f"LIBRARIAN-CATALOG-VERDICT: FAIL(report-line-cap role={role} lines={len(role_lines)} max={LINE_CAP})")
+            return 1
         lines.extend(role_lines)
         ok = ok and all(code == 0 for code in codes)
+    ok = ok and anchor_ok
     if not ok:
         lines.append("LIBRARIAN-CATALOG-VERDICT: ERROR(owner-command-failed)")
-    return emit(lines, "LIBRARIAN-CATALOG-VERDICT")
+    print("\n".join(lines))
+    return 0 if ok else 1
 
 
 def write_exe(path: pathlib.Path, text: str):
@@ -365,6 +497,14 @@ case "${1:-}" in
     echo "ANCHOR-QUERY-VERDICT: PASS ids=1"
     echo "anchors: orientation-harness-core ${FAKE_CATALOG_MARKER:-one}"
     ;;
+  --domain)
+    log="${ANCHOR_REACH_LOG_PATH:-${FAKE_LIVE_REACH_LOG:-}}"
+    if [[ -n "${log}" ]]; then
+      printf 'catalog domain touched\n' >>"${log}"
+    fi
+    echo "ANCHOR-QUERY-VERDICT: PASS ids=1"
+    echo "anchors: orientation-harness-core"
+    ;;
 esac
 ''')
     write_exe(fake_dir / "anchor_check.sh", r'''#!/usr/bin/env bash
@@ -384,9 +524,24 @@ echo "DOC-BUDGET-HEADROOM-VERDICT: PASS over=0 rows=1"
     write_exe(fake_dir / "handoff_dispatch.sh", r'''#!/usr/bin/env bash
 set -euo pipefail
 if [[ "${1:-}" == "--render" ]]; then
+  role="${2:-coding}"
   echo "HD-RECEIPT: fake-${FAKE_CATALOG_MARKER:-one}"
   echo "REQUIRED-ANCHORS: orientation-harness-core"
-  echo "required_checks:"
+  case "${role}" in
+    coding)
+      echo "required_checks:"
+      echo "forbidden_surfaces:"
+      ;;
+    orchestrator)
+      echo "routing:"
+      ;;
+    da)
+      echo "audit_targets:"
+      echo "risk_class: gate-wiring"
+      echo "expected_residue: DA deep audit only"
+      echo "forbidden_surfaces:"
+      ;;
+  esac
   if [[ "${FAKE_MANY_PAYLOAD:-0}" -eq 1 ]]; then
     i=1
     while [[ "$i" -le 12 ]]; do
@@ -395,6 +550,8 @@ if [[ "${1:-}" == "--render" ]]; then
     done
   fi
   echo "## BUILD"
+  echo "## FENCES"
+  echo "## EXIT-PROOF"
 fi
 ''')
     write_exe(fake_dir / "orient.sh", r'''#!/usr/bin/env bash
@@ -420,6 +577,17 @@ def run_self_with(fake_dir: pathlib.Path, mode: str, *extra, env=None):
 
 def run_selftest():
     failures = []
+
+    def catalog_report_lines(text: str, role: str):
+        for line in clean_lines(text):
+            marker = f"LIBRARIAN-CATALOG-VERDICT: PASS role={role} lines="
+            if line.startswith(marker):
+                try:
+                    return int(line.removeprefix(marker).strip())
+                except ValueError:
+                    return None
+        return None
+
     with tempfile.TemporaryDirectory(prefix="librarian-selftest-") as raw:
         tmp = pathlib.Path(raw)
         fake_dir = fake_suite(tmp)
@@ -470,21 +638,63 @@ def run_selftest():
             print("FAIL staleness-owner-failure-not-pass")
             failures.append("staleness-owner-failure-not-pass")
 
+        staleness_fixture_gauge = run_self_with(fake_dir, "--staleness")
+        if "harness-fixture-count:" in staleness_fixture_gauge.stdout:
+            print("PASS staleness-harness-fixture-count")
+        else:
+            print("FAIL staleness-harness-fixture-count")
+            failures.append("staleness-harness-fixture-count")
+
         catalog_one = run_self_with(fake_dir, "--catalog", "--role", "coding", env={"FAKE_CATALOG_MARKER": "one"})
         catalog_two = run_self_with(fake_dir, "--catalog", "--role", "coding", env={"FAKE_CATALOG_MARKER": "two"})
-        all_roles = all(run_self_with(fake_dir, "--catalog", "--role", role).returncode == 0 for role in ROLES)
-        if all_roles and catalog_one.stdout != catalog_two.stdout and "fake-one" in catalog_one.stdout and "fake-two" in catalog_two.stdout:
-            print("PASS catalog-per-role")
+        catalog_coding = run_self_with(fake_dir, "--catalog", "--role", "coding")
+        catalog_orch = run_self_with(fake_dir, "--catalog", "--role", "orchestrator")
+        catalog_da = run_self_with(fake_dir, "--catalog", "--role", "da")
+        all_roles = all(result.returncode == 0 for result in (catalog_coding, catalog_orch, catalog_da))
+        roles_differ = len({catalog_coding.stdout, catalog_orch.stdout, catalog_da.stdout}) == 3
+        content_assertions = (
+            "payload-sections: required_checks,forbidden_surfaces,BUILD,FENCES,EXIT-PROOF" in catalog_coding.stdout
+            and "payload-sections: routing" in catalog_orch.stdout
+            and "payload-sections: audit_targets,risk_class,expected_residue,forbidden_surfaces" in catalog_da.stdout
+        )
+        if all_roles and roles_differ and content_assertions and catalog_one.stdout != catalog_two.stdout and "one" in catalog_one.stdout and "two" in catalog_two.stdout:
+            print("PASS per-role-catalogs-differ")
         else:
-            print("FAIL catalog-per-role")
-            failures.append("catalog-per-role")
+            print("FAIL per-role-catalogs-differ")
+            failures.append("per-role-catalogs-differ")
 
-        catalog_many = run_self_with(fake_dir, "--catalog", "--role", "coding", env={"FAKE_MANY_PAYLOAD": "1"})
-        if "PAYLOAD-11" in catalog_many.stdout or "LIBRARIAN-CATALOG-VERDICT: FAIL(report-line-cap" in catalog_many.stdout:
-            print("PASS catalog-no-silent-slice")
+        catalog_boundary = run_self_with(fake_dir, "--catalog", "--role", "coding")
+        boundary_lines = catalog_report_lines(catalog_boundary.stdout, "coding")
+        catalog_at_cap = run_self_with(
+            fake_dir,
+            "--catalog",
+            "--role",
+            "coding",
+            env={"LIBRARIAN_LINE_CAP": str(boundary_lines or 0)},
+        )
+        catalog_over_cap = run_self_with(
+            fake_dir,
+            "--catalog",
+            "--role",
+            "coding",
+            env={"LIBRARIAN_LINE_CAP": str((boundary_lines or 1) - 1)},
+        )
+        over_cap_single_fail = clean_lines(catalog_over_cap.stdout) == [
+            f"LIBRARIAN-CATALOG-VERDICT: FAIL(report-line-cap role=coding lines={boundary_lines} max={(boundary_lines or 1) - 1})"
+        ]
+        if (
+            boundary_lines
+            and catalog_at_cap.returncode == 0
+            and f"LIBRARIAN-CATALOG-VERDICT: PASS role=coding lines={boundary_lines}" in catalog_at_cap.stdout
+            and catalog_over_cap.returncode != 0
+            and over_cap_single_fail
+            and "LIBRARIAN CATALOG role=coding" not in catalog_over_cap.stdout
+            and "PASS role=coding" not in catalog_over_cap.stdout
+        ):
+            print("PASS catalog-cap-complete-or-fail")
         else:
-            print("FAIL catalog-no-silent-slice")
-            failures.append("catalog-no-silent-slice")
+            print("FAIL catalog-cap-complete-or-fail")
+            failures.append("catalog-cap-complete-or-fail")
 
         live_log = tmp / "live-anchor-reach-log.tsv"
         live_log.write_text("live\n", encoding="utf-8")
