@@ -135,6 +135,9 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
 - **Inner loop:** `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh`. Whole-tree
   `doctrine_scan.sh` = CI/maintainer only.
 - **Cold start:** `bash scripts/ci/orient.sh --role=coding` once; carry `ORIENT-RECEIPT`.
+- **Handoffs (HD):** work arrives as a repo object rendered per role —
+  `bash scripts/ci/handoff_dispatch.sh --render <coding|orchestrator|da> handoffs/<RUNG>.hd.md`; obey
+  BUILD/FENCES/EXIT-PROOF, quote `HD-RECEIPT`. Schema: `handoff_template.md`; protocol/board: `agent_onboarding.md`.
 - **Doctrine lookup:** `bash scripts/ci/anchor_query.sh` (not raw greps); anchored edits →
   `anchor_check.sh --resync`.
 - **Clearance intake:** auto-posted **Clearance Report** sticky; `/clearance` exceptional.
