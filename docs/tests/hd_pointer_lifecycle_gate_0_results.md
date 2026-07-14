@@ -1,7 +1,8 @@
 # HD-POINTER-LIFECYCLE-GATE-0 — results
 
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
-**PR / branch / merge:** branch `cursor/hd-pointer-lifecycle-gate-0`; PR <pending>; merge <pending, DA>.
+**PR / branch / merge:** branch `cursor/hd-pointer-lifecycle-gate-0`; PR [#1344](https://github.com/khorum08/SimThing/pull/1344); merge <pending, DA>.
+**Clearance:** `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` · `body_sha: evidence-tail` · `DA-TREEVERIFY-PROFILE: DEEP-TREE` · `REQUIRED-ANCHORS: orientation-harness-core`.
 **HD-RECEIPT:** caab38a976d2 · **ORIENT-RECEIPT:** ada87881548c (coding)
 **tested_code_sha:** `8104f2c682f1e5e287fc083dbcb3b6cf60cb100a` · **coverage_basis:** PASS · **ci_green:** PASS
 
