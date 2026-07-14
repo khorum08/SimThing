@@ -16,24 +16,27 @@
   and owner-directives table to all resolve under `ORIENTATION_REPO_ROOT` — else `FAIL(incoherent-root)` before
   any write. Closes the cross-root env-seam bypass (a fake root's PARKED outgoing must not authorize a write to
   a victim checkout's pointer/orientation). No new bypass flag; sandbox paths stay coherent under their root.
-- `--force-owner "<directive>"`: **two-phase (remand 2)** — the outgoing/target/classification are admitted with
-  ZERO writes first; only after the pointer+orientation transition succeeds is the `owner_directives.tsv` row
-  (`<directive>` / outgoing track id / active / Owner-<date>) recorded (`ORIENTATION-OPEN-FORCE-OWNER: recorded`).
-  A forced open that fails classification leaves no stray directive. `--force-owner` without `--open` is rejected.
+- `--force-owner "<directive>"`: **one transactional operation (remand 2, follow-up)** — `commit_forced_open`
+  runs a zero-write **preflight** (target/outgoing state, directive-table schema+header, planned row, and the
+  writability/type of every mutation target), stages `active_track.txt`/orientation/`owner_directives.tsv`/skeleton,
+  then commits; **any failure rolls back to original bytes/existence** and returns nonzero. Pointer transition and
+  the Owner authority row succeed or fail together — no half-applied transition, no stray directive.
+  `--force-owner` without `--open` is rejected. Normal (non-force) `--open` behavior is unchanged.
 - `clearance.yml`: board sync also fires on **push to master** (renders board-json + updates the SimThing Board
   issue); PR-ingress steps (clearance_check, sticky, ingress) are skipped on push. Kills the post-merge stale
   window. Board render with `current_handoff: none` is the #1342 class (already supported).
-- Selftest harness: sandbox now seeds + overrides `owner_directives.tsv` (`ORIENTATION_OWNER_DIRECTIVES`) so the
-  force-owner fixture never touches the real file.
+- Selftest harness: sandbox seeds + overrides `owner_directives.tsv` (`ORIENTATION_OWNER_DIRECTIVES`) so force fixtures never touch the real file.
 
 ## Load-bearing proofs (+ what each catches)
-- `gen_orientation.sh --selftest` → PASS (19) incl. 6 gate fixtures: `gate_open_refused` (flip-from-OPEN FAILs,
-  no write), `gate_parked_closed_allowed` (PARKED+CLOSED proceed — catches over-blocking), `gate_force_owner_records`
-  (override proceeds AND records the row), `gate_incoherent_root` (cross-root attack FAILs, victim untouched —
-  remand 1), `gate_force_owner_invalid_target` (forced open to a non-workplan target FAILs with zero writes /
-  no stray directive — remand 2), `gate_force_owner_requires_open` (force without `--open` rejected).
-- Falsifiers bite (rot test): with the coherence guard removed, the cross-root attack succeeds (victim pointer
-  MUTATED, orientation WRITTEN, `CREATED`) — the guard is load-bearing.
+- `gen_orientation.sh --selftest` → PASS (20) incl. 7 gate fixtures: `gate_open_refused` (flip-from-OPEN FAILs,
+  no write), `gate_parked_closed_allowed`, `gate_force_owner_records` (success records the row), `gate_incoherent_root`
+  (cross-root attack FAILs, victim untouched — remand 1), `gate_force_owner_invalid_target` (non-workplan target,
+  zero writes), `gate_force_owner_requires_open`, and `gate_force_owner_unwritable_directive` (VALID target but an
+  invalid directive-table target — a directory under the same coherent root — aborts atomically; pointer/orientation/
+  directive-path/target all unchanged — remand 2 follow-up, reaches beyond classification).
+- Falsifiers bite (rot tests): (1) remove `assert_coherent_open_root` → cross-root attack mutates the victim;
+  (2) remove the forced preflight + rollback → the bad-directive forced open leaves a **half-applied** transition
+  (pointer MUTATED, orientation WRITTEN, rc=1). Both guards are load-bearing.
 - Live gate: outgoing = `docs/design_0_0_8_4_8_4_hd_board.md` (OPEN) → `--open <other>` FAILs, `active_track.txt`
   unchanged; same-doc realign still `OPENED`.
 - Board render `current_handoff: none`: `--board-json` (no handoff) → `--render-board` exit 0 (post-merge push
