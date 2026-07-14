@@ -4,7 +4,7 @@
 **PR / branch / merge:** branch `cursor/hd-pointer-lifecycle-gate-0`; PR [#1344](https://github.com/khorum08/SimThing/pull/1344); merge <pending, DA>.
 **Clearance:** `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` · `body_sha: evidence-tail` · `DA-TREEVERIFY-PROFILE: DEEP-TREE` · `REQUIRED-ANCHORS: orientation-harness-core`.
 **HD-RECEIPT:** caab38a976d2 · **ORIENT-RECEIPT:** ada87881548c (coding)
-**tested_code_sha:** `TESTEDSHA` · **coverage_basis:** PASS · **ci_green:** PASS
+**tested_code_sha:** `0410c1a34430ac19e2714448a5b9dcd96c3b3eed` · **coverage_basis:** PASS · **ci_green:** PASS
 
 ## What changed (gate-wiring; no crates/**, no dispatch/lint logic, no new tables/verdict lexicon)
 - `gen_orientation.sh --open`: **refuses** the pointer flip (`FAIL(outgoing-track-open)`, no writes) unless the
