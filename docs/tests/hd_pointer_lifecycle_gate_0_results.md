@@ -3,7 +3,7 @@
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-pointer-lifecycle-gate-0`; PR <pending>; merge <pending, DA>.
 **HD-RECEIPT:** caab38a976d2 · **ORIENT-RECEIPT:** ada87881548c (coding)
-**tested_code_sha:** `TESTEDSHA` · **coverage_basis:** PASS · **ci_green:** PASS
+**tested_code_sha:** `8104f2c682f1e5e287fc083dbcb3b6cf60cb100a` · **coverage_basis:** PASS · **ci_green:** PASS
 
 ## What changed (gate-wiring; no crates/**, no dispatch/lint logic changes, no new tables/verdict lexicon)
 - `gen_orientation.sh --open`: **refuses** the pointer flip (`ORIENTATION-OPEN-VERDICT: FAIL(outgoing-track-open)`,
