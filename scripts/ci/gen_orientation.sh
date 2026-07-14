@@ -558,6 +558,113 @@ EOF
   rm -rf "$sandbox"; return 0
 }
 
+# Shared helper: seed a forced-open scenario (OPEN outgoing + a valid target) and snapshot surfaces.
+seed_gate_force_scenario() {
+  local sb="$1"
+  seed_orientation_sandbox "$sb"
+  seed_gate_outgoing_track "$sb" "docs/outgoing.md" "OPEN"
+  cat >"${sb}/docs/valid_target.md" <<'EOF'
+# Valid Target
+
+production track / PR ladder workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `R` | build it | TODO: not complete. |
+EOF
+}
+
+# Assert all four forced-open surfaces are unchanged (pointer, owner-directives, target, orientation).
+assert_gate_surfaces_unchanged() {
+  local sb="$1" tgt_before="$2"
+  cmp -s "${sb}/active.before" "${sb}/scripts/ci/active_track.txt" || return 1
+  cmp -s "${sb}/owner.before" "${sb}/scripts/ci/owner_directives.tsv" || return 1
+  [[ "$tgt_before" == "$(sha256sum "${sb}/docs/valid_target.md" | awk '{print $1}')" ]] || return 1
+  [[ ! -e "${sb}/docs/orchestrator_orientation.md" ]] || return 1
+  return 0
+}
+
+# Preflight semantic falsifier: an existing 4-column directive row with an invalid status must fail
+# the planned-bytes validation before any write.
+run_selftest_gate_force_owner_invalid_status_row() {
+  local sandbox rc tgt_before
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-badstatus-XXXXXX")"
+  seed_gate_force_scenario "$sandbox"
+  printf 'directive\tscope\tstatus\tset_by\nsome directive\t0.0.0\tbogus\tOwner-2026-07-14\n' \
+    >"${sandbox}/scripts/ci/owner_directives.tsv"
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/active.before"
+  cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
+  tgt_before="$(sha256sum "${sandbox}/docs/valid_target.md" | awk '{print $1}')"
+  set +e
+  run_gen_sandbox "$sandbox" --open docs/valid_target.md --force-owner "new directive" >"${sandbox}/out" 2>"${sandbox}/err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "ORIENTATION-OPEN-VERDICT: FAIL(forced-preflight)" "${sandbox}/err" \
+    || ! assert_gate_surfaces_unchanged "$sandbox" "$tgt_before"; then
+    echo "FAIL orientation_gate_force_owner_invalid_status_row"
+    cat "${sandbox}/err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_force_owner_invalid_status_row"
+  rm -rf "$sandbox"; return 0
+}
+
+# Preflight semantic falsifier: a planned (directive, outgoing-scope) that duplicates an existing
+# ACTIVE pair must fail before any write.
+run_selftest_gate_force_owner_duplicate_active_pair() {
+  local sandbox rc tgt_before
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-dup-XXXXXX")"
+  seed_gate_force_scenario "$sandbox"
+  # outgoing_track_id("docs/outgoing.md") == "outgoing"; pre-seed the identical active pair.
+  printf 'directive\tscope\tstatus\tset_by\ndup directive\toutgoing\tactive\tOwner-2026-07-14\n' \
+    >"${sandbox}/scripts/ci/owner_directives.tsv"
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/active.before"
+  cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
+  tgt_before="$(sha256sum "${sandbox}/docs/valid_target.md" | awk '{print $1}')"
+  set +e
+  run_gen_sandbox "$sandbox" --open docs/valid_target.md --force-owner "dup directive" >"${sandbox}/out" 2>"${sandbox}/err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "ORIENTATION-OPEN-VERDICT: FAIL(forced-preflight)" "${sandbox}/err" \
+    || ! assert_gate_surfaces_unchanged "$sandbox" "$tgt_before"; then
+    echo "FAIL orientation_gate_force_owner_duplicate_active_pair"
+    cat "${sandbox}/err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_force_owner_duplicate_active_pair"
+  rm -rf "$sandbox"; return 0
+}
+
+# Automated rollback proof: a deterministic selftest-only fault fires on the real commit_forced_open
+# path AFTER the pointer + orientation writes; the abort must roll back all four surfaces.
+run_selftest_gate_force_owner_rollback_after_writes() {
+  local sandbox rc tgt_before
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-gate-rollback-XXXXXX")"
+  seed_gate_force_scenario "$sandbox"
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/active.before"
+  cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
+  tgt_before="$(sha256sum "${sandbox}/docs/valid_target.md" | awk '{print $1}')"
+  if [[ -e "${sandbox}/docs/orchestrator_orientation.md" ]]; then
+    echo "FAIL orientation_gate_force_owner_rollback_after_writes (precondition: orientation exists)"
+    rm -rf "$sandbox"; return 1
+  fi
+  set +e
+  ORIENTATION_FORCE_FAULT_AFTER_WRITES=1 run_gen_sandbox "$sandbox" --open docs/valid_target.md --force-owner "rollback proof" >"${sandbox}/out" 2>"${sandbox}/err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "ORIENTATION-OPEN-VERDICT: FAIL(forced-transition-aborted)" "${sandbox}/err" \
+    || ! assert_gate_surfaces_unchanged "$sandbox" "$tgt_before"; then
+    echo "FAIL orientation_gate_force_owner_rollback_after_writes"
+    cat "${sandbox}/err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_gate_force_owner_rollback_after_writes"
+  rm -rf "$sandbox"; return 0
+}
+
 # A. --open rejects evidence index under docs/tests (non-workplan; no mutation)
 run_selftest_reject_evidence_index_open() {
   local sandbox
@@ -851,6 +958,9 @@ run_selftest() {
     run_selftest_gate_force_owner_invalid_target_no_write
     run_selftest_gate_force_owner_requires_open
     run_selftest_gate_force_owner_unwritable_directive_no_write
+    run_selftest_gate_force_owner_invalid_status_row
+    run_selftest_gate_force_owner_duplicate_active_pair
+    run_selftest_gate_force_owner_rollback_after_writes
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -1782,25 +1892,57 @@ def outgoing_track_id(rel: str) -> str:
     return stem
 
 
-def append_owner_directive_row(directive_text: str, outgoing_rel: str) -> str:
-    """--force-owner escape: record the override as an active owner_directives.tsv row so no force is
-    silent. scope = outgoing track id; set_by = Owner-<date>."""
+_OWNER_DIRECTIVE_HEADER = ["directive", "scope", "status", "set_by"]
+_VALID_DIRECTIVE_STATUS = {"active", "retired"}
+
+
+def plan_owner_directives_bytes(directive_text: str, outgoing_rel: str) -> str:
+    """Plan + fully validate the COMPLETE post-operation `owner_directives.tsv` content during the
+    forced-open preflight. Enforces the authority-table semantics on both the existing rows AND the
+    normalized planned row — 4 tab fields; status exactly active/retired; nonempty directive/scope/
+    set_by; no duplicate active (directive, scope) pair. Returns the exact bytes the commit must
+    write verbatim (no reconstruct-at-commit); raises ValueError with a reason on any violation.
+    Performs no writes."""
     import datetime
 
-    scope = outgoing_track_id(outgoing_rel)
-    set_by = f"Owner-{datetime.date.today().isoformat()}"
     directive_clean = directive_text.replace("\t", " ").replace("\n", " ").strip()
-    row = f"{directive_clean}\t{scope}\tactive\t{set_by}\n"
-    existing = ""
-    if OWNER_DIRECTIVES.exists():
-        existing = OWNER_DIRECTIVES.read_text(encoding="utf-8")
-        if existing and not existing.endswith("\n"):
-            existing += "\n"
-    if not existing:
-        existing = "directive\tscope\tstatus\tset_by\n"
-    OWNER_DIRECTIVES.parent.mkdir(parents=True, exist_ok=True)
-    OWNER_DIRECTIVES.write_text(existing + row, encoding="utf-8", newline="\n")
-    return scope
+    if not directive_clean:
+        raise ValueError("--force-owner directive text is empty")
+    scope = outgoing_track_id(outgoing_rel).strip()
+    if not scope:
+        raise ValueError("could not derive a nonempty outgoing track scope")
+    set_by = f"Owner-{datetime.date.today().isoformat()}"
+
+    existing_rows = []
+    active_pairs = set()
+    if OWNER_DIRECTIVES.is_file():
+        dtext = OWNER_DIRECTIVES.read_text(encoding="utf-8")
+        lines = [ln for ln in dtext.splitlines() if ln.strip() != ""]
+        if lines:
+            if lines[0].split("\t") != _OWNER_DIRECTIVE_HEADER:
+                raise ValueError("owner_directives header schema mismatch (want directive/scope/status/set_by)")
+            for row in lines[1:]:
+                fields = row.split("\t")
+                if len(fields) != 4:
+                    raise ValueError("owner_directives row is not 4 tab-separated fields")
+                d, s, st, sb = fields
+                if st not in _VALID_DIRECTIVE_STATUS:
+                    raise ValueError(f"owner_directives row has invalid status {st!r} (want active/retired)")
+                if not d.strip() or not s.strip() or not sb.strip():
+                    raise ValueError("owner_directives row has an empty directive/scope/set_by field")
+                if st == "active":
+                    pair = (d, s)
+                    if pair in active_pairs:
+                        raise ValueError(f"owner_directives has a duplicate active (directive, scope) pair {pair!r}")
+                    active_pairs.add(pair)
+                existing_rows.append(row)
+
+    if (directive_clean, scope) in active_pairs:
+        raise ValueError(
+            f"planned directive duplicates an active (directive, scope) pair {(directive_clean, scope)!r}"
+        )
+    planned_row = "\t".join([directive_clean, scope, "active", set_by])
+    return "\n".join(["\t".join(_OWNER_DIRECTIVE_HEADER)] + existing_rows + [planned_row]) + "\n"
 
 
 def assert_coherent_open_root() -> None:
@@ -1862,12 +2004,11 @@ def _fail_forced_preflight(detail: str):
     sys.exit(1)
 
 
-def preflight_forced_open(target: pathlib.Path, created_planned: bool) -> None:
-    """Zero-write admission of a forced open: the directive text, the mutation targets' type +
-    writability, the directive-table schema/rows, and target creatability are all validated before
-    any byte is written, so an unwritable/directory/malformed target aborts atomically."""
-    if not FORCE_OWNER.replace("\t", " ").replace("\n", " ").strip():
-        _fail_forced_preflight("--force-owner directive text is empty")
+def preflight_forced_open(target: pathlib.Path, created_planned: bool, outgoing_rel: str) -> str:
+    """Zero-write admission of a forced open: validates the mutation targets' type/writability, the
+    target's creatability, and (via `plan_owner_directives_bytes`) the FULL directive-table semantics
+    plus the normalized planned row. Returns the exact directive-table bytes the commit must write.
+    No byte is written; any violation aborts before mutation."""
     for label, p in (
         ("active_track", ACTIVE_TRACK),
         ("orientation", OUTPUT),
@@ -1881,41 +2022,48 @@ def preflight_forced_open(target: pathlib.Path, created_planned: bool) -> None:
         else:
             if not p.parent.exists() or not os.access(p.parent, os.W_OK):
                 _fail_forced_preflight(f"{label} parent {p.parent} is not writable")
-    if OWNER_DIRECTIVES.is_file():
-        try:
-            dtext = OWNER_DIRECTIVES.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
-            _fail_forced_preflight(f"owner_directives is unreadable/malformed: {exc}")
-        rows = [ln for ln in dtext.splitlines() if ln.strip()]
-        if rows:
-            if rows[0].split("\t") != ["directive", "scope", "status", "set_by"]:
-                _fail_forced_preflight(
-                    "owner_directives header schema mismatch (want: directive/scope/status/set_by)"
-                )
-            for row in rows[1:]:
-                if len(row.split("\t")) != 4:
-                    _fail_forced_preflight("owner_directives row is not 4 tab-separated fields")
     if created_planned:
         anc = target.parent
         while not anc.exists():
             anc = anc.parent
         if not os.access(anc, os.W_OK):
             _fail_forced_preflight(f"target parent {target.parent} is not creatable")
+    try:
+        return plan_owner_directives_bytes(FORCE_OWNER, outgoing_rel)
+    except (ValueError, OSError, UnicodeDecodeError) as exc:
+        _fail_forced_preflight(str(exc))
+        raise  # unreachable (sys.exit above); satisfies static "always returns"
+
+
+def _forced_fault_after_writes() -> None:
+    """Deterministic selftest-only fault injected AFTER the pointer + orientation writes to prove the
+    rollback path restores all four surfaces. Fail-only by construction: it can only RAISE (forcing an
+    abort + rollback), never grant or bypass admission — so it is useless as a production gate bypass
+    and weakens neither normal nor forced admission."""
+    if os.environ.get("ORIENTATION_FORCE_FAULT_AFTER_WRITES") == "1":
+        raise RuntimeError("selftest fault injection: forced post-write failure (rollback proof)")
 
 
 def commit_forced_open(rel: str, target: pathlib.Path, created_planned: bool, old_info: dict,
                        changed_pointer: bool):
-    """One admitted operation: preflight (zero writes) -> stage every mutation target -> apply the
-    skeleton/pointer/orientation/directive writes -> roll back to original bytes/existence on any
-    failure. The pointer transition and the Owner authority row succeed or fail together."""
-    preflight_forced_open(target, created_planned)
+    """One admitted operation: preflight (zero writes; plans the exact directive bytes) -> stage all
+    four mutation targets up front -> apply skeleton/pointer/orientation writes then the admitted
+    directive bytes -> roll back to original bytes/existence on ANY failure. The pointer transition
+    and the Owner authority row succeed or fail together."""
+    outgoing_rel = old_info["path"]
+    planned_directive_bytes = preflight_forced_open(target, created_planned, outgoing_rel)
+    scope = outgoing_track_id(outgoing_rel)
     txn = _FileTxn()
+    # Stage every mutation target BEFORE any write so rollback covers all four regardless of where a
+    # failure occurs.
+    txn.stage(target)
+    txn.stage(ACTIVE_TRACK)
+    txn.stage(OUTPUT)
+    txn.stage(OWNER_DIRECTIVES)
     try:
         if created_planned:
-            txn.stage(target)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(skeleton_doc(rel), encoding="utf-8", newline="\n")
-        txn.stage(ACTIVE_TRACK)
         if changed_pointer:
             write_active_track_pointer(rel)
         active_info = {
@@ -1923,10 +2071,11 @@ def commit_forced_open(rel: str, target: pathlib.Path, created_planned: bool, ol
             "design_doc": REPO_ROOT / rel,
         }
         generated, track_state, next_rung = render_orientation(active_info)
-        txn.stage(OUTPUT)
         regenerated = write_orientation(generated)
-        txn.stage(OWNER_DIRECTIVES)
-        scope = append_owner_directive_row(FORCE_OWNER, old_info["path"])
+        _forced_fault_after_writes()
+        # Write exactly the preflight-admitted directive-table bytes (no reconstruct-at-commit).
+        OWNER_DIRECTIVES.parent.mkdir(parents=True, exist_ok=True)
+        OWNER_DIRECTIVES.write_text(planned_directive_bytes, encoding="utf-8", newline="\n")
     except BaseException:
         txn.rollback()
         print("ORIENTATION-OPEN-VERDICT: FAIL(forced-transition-aborted)", file=sys.stderr)
