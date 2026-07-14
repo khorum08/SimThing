@@ -2,7 +2,7 @@
 
 **Status:** PROBATION (implementer). DA authors the graduation stamp at merge (HD ruling 6).
 **PR / branch / merge:** branch `cursor/hd-docs-cascade-0`; PR [#1340](https://github.com/khorum08/SimThing/pull/1340); merge <pending, DA>.
-**HD-RECEIPT:** ed12c8f71f66 · **ORIENT-RECEIPT:** ada87881548c (role coding)
+**HD-RECEIPT:** eaf1e09dc42e (supersedes ed12c8f71f66 via DA remedial #1341 @ c5cdfb41) · **ORIENT-RECEIPT:** ada87881548c (role coding)
 **tested_code_sha:** `09594a4b1cef4c5b734f80330c30dfed1cec6c37` (battery-validated tree; head advances by this sha-binding commit)
 
 ## What changed (docs-only; no crates/**, no script-logic)
@@ -55,15 +55,14 @@ The `agent_scan.sh` allowlist scans require `python` on `PATH`; the cloud VM shi
 `surfaces` do not include `AGENTS.md`, and adding it would widen the otherwise-narrow docs-cascade changed-file
 envelope — so the durable note lives on the setup branch's `## Cursor Cloud specific instructions` instead.
 
-## Escalation — ingress sticky render blocked by handoff-object length (orchestrator/DA)
-Adding `Rung: HD-DOCS-CASCADE-0` (remand defect 1) makes the resolver **resolve** the handoff
-(`handoff_dispatch.sh --resolve-handoff` → `handoffs/HD-DOCS-CASCADE-0.hd.md`, exit 0). But the sticky
-**render** then fails `HD-LINT-VERDICT: FAIL(ingress-line-cap)`: the dispatched `.hd` renders a **60-line**
-coding projection and `command_render_ingress` prepends 3 header lines (63 > the 60-line sticky cap). Both
-levers are **outside this rung's envelope** — `handoffs/**` is not a declared `surface` (editing it re-hashes
-`HD-RECEIPT: ed12c8f71f66`) and `scripts/ci/*.sh` logic is a forbidden surface. Escalated to orchestrator/DA:
-trim the dispatched `.hd` body/`owner_notes` (re-dispatch → new receipt) or adjust the sticky renderer/cap so
-an 80-line-body handoff fits the 60-line sticky. Not fixable by the coding rung without breaching the fence.
+## Escalation — ingress sticky render (RESOLVED by DA remedial #1341)
+The first repaired head resolved the handoff (`--resolve-handoff` exit 0) but the sticky **render** failed
+`HD-LINT-VERDICT: FAIL(ingress-line-cap)`: the dispatched `.hd` rendered a 60-line coding projection and
+`command_render_ingress` prepends 3 header lines (63 > the 60-line sticky cap). Both levers were outside this
+rung's envelope (`handoffs/**` not a declared `surface`; `scripts/ci/*.sh` logic forbidden), so it was escalated
+— correctly: the DA authored the fix. **Resolved:** DA remedial #1341 (@ c5cdfb41) compacted the dispatched
+object; `HD-RECEIPT: eaf1e09dc42e` supersedes `ed12c8f71f66`. Merged to this branch; the coding projection is
+now 47 lines → 50 ingress lines, and `--render-ingress` returns **exit 0** (sticky renders PASS with the new receipt).
 
 ## Known gaps / next
 DA deep pass → graduation stamp at merge; then HD-C closeout measures median ingress and confirms net decrease.
