@@ -126,6 +126,8 @@ Everything lives under `scripts/ci/`. Heuristics and allowlists are **data**; th
 | `anchor_check.sh` | `--check` / `--resolve` / `--resync` — re-hash after anchored-doc edits; orphans exit nonzero |
 | `orient.sh` | cold-start spine + `ORIENT-RECEIPT`; role-scoped routing over generated orientation |
 | `clearance_check.sh` | M1 router: `ORCHESTRATOR-CLEARABLE` / `DA-RESERVE(...)` / `FAIL(...)` + `REQUIRED-ANCHORS:` on DA-RESERVE. **Every PR:** sticky **Clearance Report** via `.github/workflows/clearance.yml` + `clearance_comment.sh`. CLI: `da_treeverify.sh` |
+| `handoff_dispatch.sh` | HD layer: lint the `.hd`, render role projections, mint `HD-RECEIPT` (drift → relay-lint FAIL), sync sticky ingress + board issue; `owner_approved:false` blocks dispatch. Schema doc: `handoff_template.md` |
+| `librarian.sh` | HD stewardship: `--staleness` (anchor/lease/reach/doc-budget report), `--cull` (dry-run default; src/authority → DA), `--catalog [--role]` (per-role reach) — observability + reaping, no new gate |
 | `class_predicates.tsv` | data-driven predicates: scope/forbidden globs + detect_mode; **no bespoke per-class bash**; requirements = proof-identity only (`tested_code_sha\|coverage_basis\|ci_green`) |
 | `fixtures/` | known-bads + traps; families on `harness-fixture` birth_track |
 | `.github/workflows/doctrine-scan.yml` | the authoritative gate (runs entirely on GitHub) |

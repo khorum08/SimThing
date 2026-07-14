@@ -18,6 +18,8 @@ that same session carry the existing receipt unless governance moved.
 ## Coding agent (Grok / Cursor — in-repo, has a shell)
 Builds one rung from a handoff. Cannot see the whole governance picture and does not need to.
 
+- **Handoffs arrive as HD projections — render yours:** `handoff_dispatch.sh --render coding
+  handoffs/<RUNG>.hd.md` on "Implement handoff `<RUNG>`"; obey its BUILD/FENCES/EXIT-PROOF + `owner_notes` and quote its `HD-RECEIPT` (the "approved, implement" protocol).
 - **Cold start:** when the user / Owner / DA opens a fresh coding-agent session, the agent runs
   `bash scripts/ci/orient.sh --role=coding` once and carries the emitted `ORIENT-RECEIPT`.
 - **Inner loop (unconditional, ≤4 steps — HU-DELTA-SCAN-0):** after orient-once,
@@ -35,6 +37,7 @@ Builds one rung from a handoff. Cannot see the whole governance picture and does
 ## Orchestration agent (Codex / webchat — GitHub connector, no shell)
 Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, routes clearance, runs triage.
 
+- **Handoffs arrive as HD projections — render yours** (`--render orchestrator`) on "Current handoff approved, implement"; route coding and quote the `HD-RECEIPT`.
 - **Cold start:** read `docs/orchestrator_orientation.md` at head (generated, freshness-gated — it cannot be
   stale) and carry its embedded receipt. GHA-side, it can also `/orient role=orchestrator` on any open PR.
 - **Track selection:** local operators use `bash scripts/ci/gen_orientation.sh --open <track.md>` to open/create
@@ -62,6 +65,7 @@ Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, 
 ## DA agent (Opus / Fable — the frontier reviewer)
 The executive design authority. Reviews escalations, graduates or remands, authors doctrine and handoffs.
 
+- **Handoffs arrive as HD projections — render yours** (`--render da`) on "Relay posted on PR #n"; rule and graduate-merge or remand, carrying the `HD-RECEIPT`.
 - **Cold start:** `bash scripts/ci/orient.sh --role=da`, and read the anchors on demand — the DA reads full
   doctrine sections (core design, constitution, invariants, key ADRs) when a rung's domain triggers them
   (`/anchor <domain>` serves them verbatim), never a summary.
@@ -111,12 +115,9 @@ Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The li
 **SimThing Board issue** (auto-synced every clearance run: pointer, current handoff + receipt, open
 PRs with routes, every rung's exit-proof state). Check the board, not a local file.
 
-- **Prompt protocol (per handoff) — pointers, not payloads:** the orchestrator (your scribe) authors
-  and merges the `.hd` with `owner_approved` set on your word; then each agent pulls its own view:
-  - coding: *"Implement handoff `<RUNG>`. Render your projection:
-    `bash scripts/ci/handoff_dispatch.sh --render coding handoffs/<RUNG>.hd.md`"*
-  - orchestrator: *"Current handoff approved, implement `<RUNG>`"* (renders `--render orchestrator`, routes coding)
-  - DA: *"Relay posted on PR #n — rule and graduate-merge or remand"*
+- **Prompt protocol (per handoff) — pointers, not payloads:** each tier's ingress line lives in its
+  section above (render-your-projection + "approved, implement"); the orchestrator (your scribe)
+  authors and merges the `.hd` with `owner_approved` set on your word, then each agent renders its own.
 - **Orientation sequence:** orientation is per-**session** (once; receipt carried); dispatch is
   per-**handoff**. Never re-orient for a new handoff — a stale receipt FAILs mechanically
   (`body_sha:` sticky line + relay-lint) and the agent must stop and report, not re-print orientation.
