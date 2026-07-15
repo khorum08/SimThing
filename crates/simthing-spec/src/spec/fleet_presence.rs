@@ -1,6 +1,6 @@
 //! Read-only fleet presence snapshot over ScenarioSpec authority.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use simthing_core::{SimPropertyId, SimThing, SimThingKind};
 use thiserror::Error;
@@ -47,10 +47,14 @@ pub struct FleetPresenceRecord {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FleetPresenceSnapshot {
-    pub records: Vec<FleetPresenceRecord>,
+    records: Vec<FleetPresenceRecord>,
 }
 
 impl FleetPresenceSnapshot {
+    pub fn records(&self) -> &[FleetPresenceRecord] {
+        &self.records
+    }
+
     pub fn by_system_id(&self) -> BTreeMap<u32, Vec<FleetPresenceRecord>> {
         let mut by_system = BTreeMap::new();
         for record in &self.records {
@@ -63,70 +67,17 @@ impl FleetPresenceSnapshot {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FleetPresenceTransitOverride {
-    pub fleet_simthing_id_raw: u32,
-    pub source_system_id: u32,
-    pub dest_system_id: u32,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum FleetPresenceSnapshotError {
     #[error("fleet presence snapshot could not read scenario authority: {0}")]
     ScenarioRoot(#[from] ScenarioRootError),
     #[error("fleet {fleet_simthing_id_raw} is under a star-system without generated system id")]
     MissingAnchorSystemId { fleet_simthing_id_raw: u32 },
-    #[error("duplicate transit state for fleet {0}")]
-    DuplicateTransitFleet(u32),
-    #[error("transit state references unknown fleet {0}")]
-    UnknownTransitFleet(u32),
-    #[error("transit state references unknown source system {0}")]
-    UnknownTransitSourceSystem(u32),
-    #[error("transit state references unknown destination system {0}")]
-    UnknownTransitDestSystem(u32),
 }
 
 pub fn fleet_presence_snapshot(
     spec: &SimThingScenarioSpec,
 ) -> Result<FleetPresenceSnapshot, FleetPresenceSnapshotError> {
-    fleet_presence_snapshot_with_transit(spec, [])
-}
-
-pub fn fleet_presence_snapshot_with_transit(
-    spec: &SimThingScenarioSpec,
-    transit: impl IntoIterator<Item = FleetPresenceTransitOverride>,
-) -> Result<FleetPresenceSnapshot, FleetPresenceSnapshotError> {
-    let mut transit_by_fleet = BTreeMap::new();
-    for state in transit {
-        if transit_by_fleet
-            .insert(state.fleet_simthing_id_raw, state)
-            .is_some()
-        {
-            return Err(FleetPresenceSnapshotError::DuplicateTransitFleet(
-                state.fleet_simthing_id_raw,
-            ));
-        }
-    }
-
-    let known_system_ids: BTreeSet<u32> = spec
-        .structural_grid
-        .placements
-        .iter()
-        .map(|placement| placement.system_id)
-        .collect();
-    for state in transit_by_fleet.values() {
-        if !known_system_ids.contains(&state.source_system_id) {
-            return Err(FleetPresenceSnapshotError::UnknownTransitSourceSystem(
-                state.source_system_id,
-            ));
-        }
-        if !known_system_ids.contains(&state.dest_system_id) {
-            return Err(FleetPresenceSnapshotError::UnknownTransitDestSystem(
-                state.dest_system_id,
-            ));
-        }
-    }
-
     let systems = match star_system_gridcells(spec) {
         Ok(systems) => systems,
         Err(
@@ -158,18 +109,9 @@ pub fn fleet_presence_snapshot_with_transit(
             }
             continue;
         };
-        collect_fleet_records(system, system_id, &transit_by_fleet, &mut records)?;
+        collect_fleet_records(system, system_id, &mut records)?;
     }
     records.sort_by_key(|record| record.fleet_simthing_id_raw);
-
-    for fleet_id in transit_by_fleet.keys() {
-        if !records
-            .iter()
-            .any(|record| record.fleet_simthing_id_raw == *fleet_id)
-        {
-            return Err(FleetPresenceSnapshotError::UnknownTransitFleet(*fleet_id));
-        }
-    }
 
     Ok(FleetPresenceSnapshot { records })
 }
@@ -184,30 +126,52 @@ fn first_fleet_under(node: &SimThing) -> Option<&SimThing> {
 fn collect_fleet_records(
     node: &SimThing,
     system_id: u32,
-    transit_by_fleet: &BTreeMap<u32, FleetPresenceTransitOverride>,
     records: &mut Vec<FleetPresenceRecord>,
 ) -> Result<(), FleetPresenceSnapshotError> {
     if node.kind == SimThingKind::Fleet { // role-resolution-exclude-site: read-only fleet presence readout.
         let raw = node.id.raw();
-        let location = match transit_by_fleet.get(&raw) {
-            Some(state) => FleetPresenceLocation::InTransit {
-                source_system_id: state.source_system_id,
-                dest_system_id: state.dest_system_id,
-            },
-            None => FleetPresenceLocation::Anchored(system_id),
-        };
         records.push(FleetPresenceRecord {
             fleet_simthing_id_raw: raw,
             owner_ref: owner_flow_owner_ref(node).map(OwnerRef::new),
             posture: scenario_metadata_string(node, TP_FLEET_POSTURE_PROPERTY_ID)
                 .filter(|value| !value.trim().is_empty()),
-            location,
+            location: FleetPresenceLocation::Anchored(system_id),
         });
         return Ok(());
     }
 
     for child in &node.children {
-        collect_fleet_records(child, system_id, transit_by_fleet, records)?;
+        collect_fleet_records(child, system_id, records)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transit_contract_is_test_private_until_authoritative_state_exists() {
+        let snapshot = FleetPresenceSnapshot {
+            records: vec![FleetPresenceRecord {
+                fleet_simthing_id_raw: 42,
+                owner_ref: None,
+                posture: None,
+                location: FleetPresenceLocation::InTransit {
+                    source_system_id: 7,
+                    dest_system_id: 8,
+                },
+            }],
+        };
+
+        let by_system = snapshot.by_system_id();
+        assert_eq!(by_system.keys().copied().collect::<Vec<_>>(), vec![7]);
+        assert!(matches!(
+            by_system[&7][0].location,
+            FleetPresenceLocation::InTransit {
+                source_system_id: 7,
+                dest_system_id: 8,
+            }
+        ));
+    }
 }

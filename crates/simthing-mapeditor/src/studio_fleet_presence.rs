@@ -31,7 +31,7 @@ pub fn studio_fleet_presence_map_from_snapshot(
 ) -> StudioFleetPresenceMap {
     let mut by_system_id = BTreeMap::new();
     let mut transit_fleets = 0usize;
-    for record in &snapshot.records {
+    for record in snapshot.records() {
         if matches!(record.location, FleetPresenceLocation::InTransit { .. }) {
             transit_fleets = transit_fleets.saturating_add(1);
         }
@@ -42,7 +42,7 @@ pub fn studio_fleet_presence_map_from_snapshot(
     }
     StudioFleetPresenceMap {
         by_system_id,
-        total_fleets: snapshot.records.len(),
+        total_fleets: snapshot.records().len(),
         transit_fleets,
     }
 }

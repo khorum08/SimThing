@@ -4,14 +4,13 @@ use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
     apply_galaxy_map_metadata, apply_gridcell_role_metadata, apply_owner_entity_metadata,
     apply_participant_owner_flow_metadata, apply_scenario_metadata_to_root,
-    fleet_presence_snapshot, fleet_presence_snapshot_with_transit, make_planet_gridcell,
-    scenario_metadata_string_value, structural_property_value_u32, FleetPresenceLocation,
-    FleetPresenceSnapshotError, FleetPresenceTransitOverride, SimThingScenarioGrid,
+    fleet_presence_snapshot, make_planet_gridcell, scenario_metadata_string_value,
+    structural_property_value_u32, FleetPresenceLocation, SimThingScenarioGrid,
     SimThingScenarioProvenance, SimThingScenarioSpec, SimThingStructuralGridFrame,
-    SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, SCENARIO_SCHEMA_VERSION,
-    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
-    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, TP_FLEET_HOME_SYSTEM_PROPERTY_ID,
-    TP_FLEET_POSTURE_PROPERTY_ID,
+    SimThingStructuralGridPlacement, GALAXY_GRIDCELL_ROLE_STAR_SYSTEM,
+    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
+    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
 };
 
 fn compact_fleet_spec() -> (SimThingScenarioSpec, u32) {
@@ -80,12 +79,7 @@ fn compact_fleet_spec() -> (SimThingScenarioSpec, u32) {
         structural_property_value_u32(2),
     );
     let destination_raw = destination.id.raw();
-    destination.add_child(make_planet_gridcell(
-        "planet_b",
-        0,
-        0,
-        Some("Planet B"),
-    ));
+    destination.add_child(make_planet_gridcell("planet_b", 0, 0, Some("Planet B")));
     galaxy_map.add_child(destination);
     game_session.add_child(galaxy_map);
     scenario.add_child(game_session);
@@ -125,50 +119,29 @@ fn compact_fleet_spec() -> (SimThingScenarioSpec, u32) {
     (spec, fleet_raw)
 }
 
-/// catches: fleet readout flattening to raw ids, dropping transit contract, or mutating authority.
+/// catches: fleet readout flattening to raw ids, manufacturing transit, or mutating authority.
 #[test]
-fn studio_fleet_presence_snapshot_is_typed_read_only_and_transit_capable() {
+fn studio_fleet_presence_snapshot_is_typed_read_only_and_authority_anchored() {
     let (spec, fleet_raw) = compact_fleet_spec();
-    let before = spec.clone();
+    let before_root = format!("{:?}", spec.root);
 
     let anchored = fleet_presence_snapshot(&spec).expect("anchored snapshot");
-    assert_eq!(anchored.records.len(), 1);
-    let record = &anchored.records[0];
+    assert_eq!(anchored.records().len(), 1);
+    let record = &anchored.records()[0];
     assert_eq!(record.fleet_simthing_id_raw, fleet_raw);
-    assert_eq!(record.owner_ref.as_ref().map(|owner| owner.as_str()), Some("owner_a"));
+    assert_eq!(
+        record.owner_ref.as_ref().map(|owner| owner.as_str()),
+        Some("owner_a")
+    );
     assert_eq!(record.posture.as_deref(), Some("border"));
     assert_eq!(record.location, FleetPresenceLocation::Anchored(7));
-    assert_eq!(anchored.by_system_id().keys().copied().collect::<Vec<_>>(), vec![7]);
-    assert_eq!(spec.root, before.root, "snapshot must not mutate ScenarioSpec authority");
-
-    let transit = fleet_presence_snapshot_with_transit(
-        &spec,
-        [FleetPresenceTransitOverride {
-            fleet_simthing_id_raw: fleet_raw,
-            source_system_id: 7,
-            dest_system_id: 8,
-        }],
-    )
-    .expect("typed transit fixture");
     assert_eq!(
-        transit.records[0].location,
-        FleetPresenceLocation::InTransit {
-            source_system_id: 7,
-            dest_system_id: 8,
-        }
+        anchored.by_system_id().keys().copied().collect::<Vec<_>>(),
+        vec![7]
     );
-
-    let err = fleet_presence_snapshot_with_transit(
-        &spec,
-        [FleetPresenceTransitOverride {
-            fleet_simthing_id_raw: fleet_raw + 1000,
-            source_system_id: 7,
-            dest_system_id: 8,
-        }],
-    )
-    .expect_err("unknown transit fleet must fail loud");
-    assert!(matches!(
-        err,
-        FleetPresenceSnapshotError::UnknownTransitFleet(_)
-    ));
+    assert_eq!(
+        format!("{:?}", spec.root),
+        before_root,
+        "snapshot must not mutate ScenarioSpec authority"
+    );
 }

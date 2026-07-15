@@ -377,9 +377,8 @@ pub use spec::effect::EffectSpec;
 pub use spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use spec::event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use spec::fleet_presence::{
-    fleet_presence_snapshot, fleet_presence_snapshot_with_transit, FleetPresenceLocation,
-    FleetPresenceRecord, FleetPresenceSnapshot, FleetPresenceSnapshotError,
-    FleetPresenceTransitOverride, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
+    fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,
+    FleetPresenceSnapshotError, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
 };
 pub use spec::first_slice_scenario::FirstSliceScenarioSpec;
 pub use spec::game_mode::GameModeSpec;

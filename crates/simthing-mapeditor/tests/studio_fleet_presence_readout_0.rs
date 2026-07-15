@@ -12,8 +12,8 @@ use simthing_spec::{
     apply_participant_owner_flow_metadata, apply_scenario_metadata_to_root, make_planet_gridcell,
     structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
     SimThingScenarioSpec, SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, SCENARIO_SCHEMA_VERSION,
-    SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, SCENARIO_GENERATED_SYSTEM_ID_PROPERTY_ID,
+    SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
     SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
 };
 
@@ -95,7 +95,10 @@ fn mapeditor_consumes_typed_fleet_snapshot_by_generated_system_id() {
     assert_eq!(map.transit_fleets, 0);
     let fleets = map.by_system_id.get(&3).expect("system key");
     assert_eq!(fleets.len(), 1);
-    assert_eq!(fleets[0].owner_ref.as_ref().map(|owner| owner.as_str()), Some("owner_a"));
+    assert_eq!(
+        fleets[0].owner_ref.as_ref().map(|owner| owner.as_str()),
+        Some("owner_a")
+    );
     assert!(fleets[0].posture.is_none());
 
     let source = include_str!("../src/studio_fleet_presence.rs");

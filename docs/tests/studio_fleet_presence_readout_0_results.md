@@ -7,7 +7,7 @@ PROBATION / proof-present / DA-review-pending.
 ## PR / Branch / Merge
 
 - Branch: `coder/studio-fleet-presence-readout-0`
-- PR: PENDING
+- PR: #1355
 - Merge: not merged
 
 ## Current Defect Or Mission
@@ -16,10 +16,11 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 
 ## Implemented Changes
 
-- Added `simthing_spec::fleet_presence_snapshot` and `fleet_presence_snapshot_with_transit`, returning typed `FleetPresenceRecord` rows with `OwnerRef`, optional posture, and `FleetPresenceLocation::{Anchored, InTransit}`.
+- Added `simthing_spec::fleet_presence_snapshot`, returning typed anchored `FleetPresenceRecord` rows with `OwnerRef`, optional posture, and `FleetPresenceLocation`.
 - Moved TP fleet posture/home-system property-id authority from Clausething-private constants to `simthing-spec`, with Clausething hydration importing the shared constants.
 - Added a mapeditor-only `StudioFleetPresenceMap` projection keyed by generated system id, wired into `StudioLiveSessionBridgeReadout`.
 - Added focused regression tests for the typed spec contract, canonical TP ClauseThing hydrate, and mapeditor consumption without raw fleet property ids.
+- Remediation: removed the public caller-supplied transit override path. `InTransit` remains a readout contract variant with a spec-private unit fixture until authoritative sim/STEAD movement state exists.
 
 ## Boundary / Constitution Checks
 
@@ -29,15 +30,18 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 - ANCHOR-ACK working set: `field-policy-time-decisions@ae2d4c2c0c7d`, `spec-fidelity-anti-ceremony@add4dbbc267a`, `founding-ontology-invariants@b960ed2d493d`, `drift-detectors-six-line@af20f8122501`
 - Read-only: helper walks `ScenarioSpec` authority and constructs cloned readout rows only; tests assert the source spec root is unchanged.
 - No raw property ids in mapeditor: production mapeditor source imports the typed helper and includes no TP fleet property-id constants or literals.
-- No movement authority / CPU planner / Spec mutation: transit is an explicit typed readback override for the snapshot contract only; no scheduling, movement write, driver, kernel, or WGSL code changed.
+- No movement authority / CPU planner / Spec mutation: production snapshot remains anchored-only and exposes no caller-facing API to manufacture transit; no scheduling, movement write, driver, kernel, or WGSL code changed.
 
 ## Validation Commands
 
-- BLOCKED locally: `cargo check -p simthing-spec` (`cargo` not found in PATH)
-- BLOCKED locally: `cargo check -p simthing-clausething` (`cargo` not found in PATH)
-- BLOCKED locally: `cargo check -p simthing-mapeditor` (`cargo` not found in PATH)
+- PASS: `cargo check -p simthing-spec`
+- PASS: `cargo check -p simthing-clausething`
+- PASS: `cargo check -p simthing-mapeditor`
+- PASS: `cargo test -p simthing-spec --test studio_fleet_presence_readout_0`
+- PASS: `cargo test -p simthing-spec transit_contract_is_test_private_until_authoritative_state_exists`
+- PASS: `cargo test -p simthing-clausething --test studio_fleet_presence_readout_0`
+- PASS: `cargo test -p simthing-mapeditor --test studio_fleet_presence_readout_0`
 - PASS: `bash scripts/ci/agent_scan.sh`
-- BLOCKED locally: focused `cargo test` (`cargo` not found in PATH)
 
 ## Files Changed
 
@@ -65,8 +69,7 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 ## Known Gaps
 
 - Studio GUI is Windows-only; no local GUI proof in this headless Linux rung.
-- This local environment has no Rust toolchain on PATH, so cargo validation is deferred to CI or a Rust-equipped reviewer environment.
-- Default structural-shell live session may emit no in-transit fleets; typed transit fixture covers the contract variant.
+- Default structural-shell live session may emit no in-transit fleets; typed transit fixture is private to the spec crate until authoritative movement state exists.
 
 ## Deferred Next Rung
 
@@ -74,4 +77,4 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 
 ## DA Status
 
-Expected route remains `DA-RESERVE(gate-wiring)` per handoff. This relay must not self-graduate.
+Expected route remains `DA-RESERVE(class-envelope-violation)` per remand. This relay must not self-graduate.

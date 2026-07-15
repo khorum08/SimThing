@@ -63,9 +63,8 @@ pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use fleet_presence::{
-    fleet_presence_snapshot, fleet_presence_snapshot_with_transit, FleetPresenceLocation,
-    FleetPresenceRecord, FleetPresenceSnapshot, FleetPresenceSnapshotError,
-    FleetPresenceTransitOverride, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
+    fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,
+    FleetPresenceSnapshotError, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
 };
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
