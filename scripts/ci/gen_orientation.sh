@@ -964,16 +964,21 @@ This is a production track / PR ladder workplan.
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
 | OWNER | `STUDIO-OWNER-CLOSURE-0` | owner close | TODO | DA |
+| 2 | `STUDIO-SECOND-0` | second close | TODO | DA |
 EOF
   cat >"${sb}/scripts/ci/binding_conditions.tsv" <<'EOF'
 rung	condition	set_by	status	promotion_blocker
 STUDIO-OWNER-CLOSURE-0	owner-close	Owner	active	STUDIO-OWNER-CLOSURE-0
 other	keep	Owner	active	other
+STUDIO-SECOND-0	second-close	Owner	active	STUDIO-SECOND-0
+other-2	keep2	Owner	active	other-2
 EOF
   cat >"${sb}/scripts/ci/owner_directives.tsv" <<'EOF'
 directive	scope	status	set_by
 Studio remains parked	1.2.3	active	Owner
 Keep me	9.9.9	active	Owner
+Second studio directive	1.2.3-addon	active	Owner
+Keep me too	9.9.9	active	Owner
 EOF
   cat >"${sb}/scripts/ci/test_lifecycle_tracks.tsv" <<'EOF'
 track_id	status	closed_at	source	note
@@ -982,12 +987,20 @@ track_id	status	closed_at	source	note
 EOF
   cat >"${sb}/scripts/ci/closeout_artifacts.tsv" <<'EOF'
 path	leased_at	disposition	closeout_track	note
+docs/tests/studio_manifest.tsv	2026-07-01	lease	1.2.3-studio	moved-a
 docs/tests/other_manifest.tsv	2026-07-01	lease	9.9.9-other	keep
+docs/tests/studio_second_manifest.tsv	2026-07-01	lease	1.2.3-addon	moved-b
+docs/tests/other_second_manifest.tsv	2026-07-01	lease	9.9.9-other	keep-b
 EOF
   cat >"${sb}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" <<'EOF'
 rung: STUDIO-OWNER-CLOSURE-0
 track: 1.2.3
 HD-RECEIPT: fixture
+EOF
+  cat >"${sb}/handoffs/STUDIO-SECOND-0.hd.md" <<'EOF'
+rung: STUDIO-SECOND-0
+track: 1.2.3
+HD-RECEIPT: fixture-second
 EOF
   cat >"${sb}/scripts/ci/active_track.txt" <<'EOF'
 # Active track design doc for orientation Next-Rung pointer. Update on track open/close.
@@ -1003,6 +1016,7 @@ run_selftest_park_unpark_lifecycle() {
   cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
   cp "${sandbox}/scripts/ci/test_lifecycle_tracks.tsv" "${sandbox}/tracks.before"
   cp "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" "${sandbox}/handoff.before"
+  cp "${sandbox}/handoffs/STUDIO-SECOND-0.hd.md" "${sandbox}/handoff_second.before"
   if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/park.out" 2>"${sandbox}/park.err"; then
     echo "FAIL orientation_park_unpark_lifecycle"
     cat "${sandbox}/park.err" 2>/dev/null || true
@@ -1012,6 +1026,7 @@ run_selftest_park_unpark_lifecycle() {
   if grep -q "STUDIO-OWNER-CLOSURE-0" "${sandbox}/scripts/ci/binding_conditions.tsv"; then ok=1; fi
   if grep -q "Studio remains parked" "${sandbox}/scripts/ci/owner_directives.tsv"; then ok=1; fi
   if [[ -e "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" ]]; then ok=1; fi
+  if [[ -e "${sandbox}/handoffs/STUDIO-SECOND-0.hd.md" ]]; then ok=1; fi
   if ! grep -q "SIMTHING-PARKED-TRACK:BEGIN" "${sandbox}/docs/design_1_2_3_studio.md"; then ok=1; fi
   if [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "none" ]]; then ok=1; fi
   if [[ "$ok" -ne 0 ]]; then
@@ -1030,6 +1045,7 @@ run_selftest_park_unpark_lifecycle() {
     || ! cmp -s "${sandbox}/owner.before" "${sandbox}/scripts/ci/owner_directives.tsv" \
     || ! cmp -s "${sandbox}/tracks.before" "${sandbox}/scripts/ci/test_lifecycle_tracks.tsv" \
     || ! cmp -s "${sandbox}/handoff.before" "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" \
+    || ! cmp -s "${sandbox}/handoff_second.before" "${sandbox}/handoffs/STUDIO-SECOND-0.hd.md" \
     || grep -q "SIMTHING-PARKED-TRACK:BEGIN" "${sandbox}/docs/design_1_2_3_studio.md" \
     || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/design_1_2_3_studio.md" ]]; then
     echo "FAIL orientation_unpark_restores_byte_exact"
@@ -1048,20 +1064,53 @@ run_selftest_park_unpark_lifecycle() {
   fi
   echo "PASS orientation_park_open_pr_blocks"
 
+  set +e
+  ORIENTATION_OPEN_PR_FIXTURE='[{"number":2,"title":"generic maintenance","headRefName":"generic-maintenance","body":"Rung: STUDIO-SECOND-0"}]' run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/blocked_body.out" 2>"${sandbox}/blocked_body.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] || ! grep -q "FAIL(open-prs-for-track)" "${sandbox}/blocked_body.err"; then
+    echo "FAIL orientation_park_open_pr_body_blocks"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_park_open_pr_body_blocks"
+
   if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >/dev/null 2>&1; then
     echo "FAIL orientation_repark_first"
     rm -rf "$sandbox"; return 1
   fi
   cat >>"${sandbox}/scripts/ci/owner_directives.tsv" <<'EOF'
+Studio remains parked	1.2.3	active	Owner
 Fresh directive	1.2.3	active	Owner
 EOF
+  awk '
+    /SIMTHING-PARKED-TRACK:BEGIN/ { in_block=1 }
+    !in_block && index($0, "STUDIO-SECOND-0") { next }
+    { print }
+  ' "${sandbox}/docs/design_1_2_3_studio.md" >"${sandbox}/docs/design_1_2_3_studio.md.tmp"
+  mv "${sandbox}/docs/design_1_2_3_studio.md.tmp" "${sandbox}/docs/design_1_2_3_studio.md"
   if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/repark.out" 2>&1 \
     || ! grep -q "Fresh directive" "${sandbox}/docs/design_1_2_3_studio.md" \
-    || ! grep -q "Studio remains parked" "${sandbox}/docs/design_1_2_3_studio.md"; then
+    || ! grep -q "Studio remains parked" "${sandbox}/docs/design_1_2_3_studio.md" \
+    || ! grep -q "drop_superseded_table_rows: 1" "${sandbox}/repark.out" \
+    || ! grep -q "drop_vanished_table_rows: 1" "${sandbox}/repark.out" \
+    || ! grep -q "drop_stale_handoffs: 1" "${sandbox}/repark.out"; then
     echo "FAIL orientation_repark_supersede"
     rm -rf "$sandbox"; return 1
   fi
   echo "PASS orientation_repark_supersede"
+
+  if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --unpark docs/design_1_2_3_studio.md >"${sandbox}/stale_unpark.out" 2>&1 \
+    || grep -q "STUDIO-SECOND-0" "${sandbox}/scripts/ci/binding_conditions.tsv" \
+    || [[ -e "${sandbox}/handoffs/STUDIO-SECOND-0.hd.md" ]]; then
+    echo "FAIL orientation_stale_referents_not_resurrected"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_stale_referents_not_resurrected"
+
+  if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >/dev/null 2>&1; then
+    echo "FAIL orientation_repark_for_tamper"
+    rm -rf "$sandbox"; return 1
+  fi
 
   perl -0pi -e 's/"park_receipt": "[0-9a-f]{12}"/"park_receipt": "000000000000"/' "${sandbox}/docs/design_1_2_3_studio.md"
   set +e
@@ -1092,9 +1141,28 @@ run_selftest_park_rollback_and_virgin_unpark() {
     rm -rf "$sandbox"; return 1
   fi
   echo "PASS orientation_park_post_write_rollback"
+  perl -0pi -e 's#> \*\*Status: OPEN / fixture\.\*\*#> **Status: PARKED / fixture.**#' "${sandbox}/docs/design_1_2_3_studio.md"
+  run_gen_sandbox "$sandbox" >/dev/null
+  cp "${sandbox}/docs/design_1_2_3_studio.md" "${sandbox}/virgin.doc.before"
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/virgin.active.before"
+  cp "${sandbox}/docs/orchestrator_orientation.md" "${sandbox}/virgin.orientation.before"
+  set +e
+  ORIENTATION_FORCE_FAULT_AFTER_WRITES=1 run_gen_sandbox "$sandbox" --unpark docs/design_1_2_3_studio.md >"${sandbox}/virgin_fault.out" 2>"${sandbox}/virgin_fault.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! cmp -s "${sandbox}/virgin.doc.before" "${sandbox}/docs/design_1_2_3_studio.md" \
+    || ! cmp -s "${sandbox}/virgin.active.before" "${sandbox}/scripts/ci/active_track.txt" \
+    || ! cmp -s "${sandbox}/virgin.orientation.before" "${sandbox}/docs/orchestrator_orientation.md" \
+    || ! grep -q "transaction-rolled-back" "${sandbox}/virgin_fault.err"; then
+    echo "FAIL orientation_virgin_unpark_post_write_rollback"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_virgin_unpark_post_write_rollback"
   if ! run_gen_sandbox "$sandbox" --unpark docs/design_1_2_3_studio.md >"${sandbox}/virgin.out" 2>&1 \
     || ! grep -q "OPENED(virgin)" "${sandbox}/virgin.out" \
-    || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/design_1_2_3_studio.md" ]]; then
+    || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/design_1_2_3_studio.md" ]] \
+    || ! grep -q "Status: PARKED / fixture" "${sandbox}/docs/design_1_2_3_studio.md"; then
     echo "FAIL orientation_virgin_unpark_unchanged"
     rm -rf "$sandbox"; return 1
   fi
@@ -2339,11 +2407,20 @@ def _track_handoff_match(path: pathlib.Path, text: str, track_id: str, rung_ids:
 def _open_pr_hits_for_track(track_id: str, rung_ids: set) -> list:
     fixture = os.environ.get("ORIENTATION_OPEN_PR_FIXTURE", "")
     if fixture:
-        lines = [ln for ln in fixture.splitlines() if ln.strip()]
-        return [
-            ln for ln in lines
-            if track_id in ln or any(rung and rung in ln for rung in rung_ids)
-        ]
+        try:
+            prs = json.loads(fixture)
+            hits = []
+            for pr in prs:
+                blob = "\n".join(str(pr.get(k, "")) for k in ("number", "title", "headRefName", "body"))
+                if track_id in blob or any(rung and rung in blob for rung in rung_ids):
+                    hits.append(f"#{pr.get('number')} {pr.get('title', '')}".strip())
+            return hits
+        except json.JSONDecodeError:
+            lines = [ln for ln in fixture.splitlines() if ln.strip()]
+            return [
+                ln for ln in lines
+                if track_id in ln or any(rung and rung in ln for rung in rung_ids)
+            ]
     if os.environ.get("ORIENTATION_SKIP_OPEN_PR_CHECK") == "1":
         return []
     try:
@@ -2359,7 +2436,7 @@ def _open_pr_hits_for_track(track_id: str, rung_ids: set) -> list:
         fail(f"ORIENTATION-PARK-VERDICT: FAIL(open-pr-check-unavailable): {exc}")
     hits = []
     for pr in prs:
-        blob = "\n".join(str(pr.get(k, "")) for k in ("number", "title", "headRefName"))
+        blob = "\n".join(str(pr.get(k, "")) for k in ("number", "title", "headRefName", "body"))
         if track_id in blob or any(rung and rung in blob for rung in rung_ids):
             hits.append(f"#{pr.get('number')} {pr.get('title', '')}".strip())
     return hits
@@ -2389,14 +2466,90 @@ def _append_unique(existing: list, incoming: list, header: list) -> list:
     return out
 
 
+def _row_key(row: dict, header: list) -> tuple:
+    return tuple(row.get(k, "") for k in header if k != "__park_index")
+
+
+def _indexed_row(row: dict, default: int = 1000000) -> int:
+    try:
+        return int(row.get("__park_index", default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _filter_superseded_old_rows(old_rows: list, moved_rows: list, header: list, drops: dict) -> list:
+    moved_keys = {_row_key(row, header) for row in moved_rows}
+    kept = []
+    for row in old_rows:
+        if _row_key(row, header) in moved_keys:
+            drops["superseded_table_rows"] = drops.get("superseded_table_rows", 0) + 1
+            continue
+        kept.append(row)
+    return kept
+
+
+def _merge_at_original_positions(live_rows: list, parked_rows: list, header: list) -> list:
+    by_index = {}
+    for row in parked_rows:
+        idx = _indexed_row(row)
+        by_index.setdefault(idx, []).append(row)
+    total = len(live_rows) + len(parked_rows)
+    restored = []
+    live_idx = 0
+    for idx in range(total):
+        bucket = by_index.get(idx)
+        if bucket:
+            for row in bucket:
+                restored.append({k: row.get(k, "") for k in header})
+            continue
+        if live_idx < len(live_rows):
+            restored.append({k: live_rows[live_idx].get(k, "") for k in header})
+            live_idx += 1
+    while live_idx < len(live_rows):
+        restored.append({k: live_rows[live_idx].get(k, "") for k in header})
+        live_idx += 1
+    return restored
+
+
+def _handoff_referent_live(handoff: dict, rung_ids: set) -> bool:
+    path = clean_repo_relpath(handoff.get("path", ""))
+    if not path:
+        return False
+    content = handoff.get("content", "")
+    stem = pathlib.PurePosixPath(path).stem
+    if stem in rung_ids:
+        return True
+    return any(rung and re.search(rf"(?m)^rung:\s*{re.escape(rung)}(?:\b|$)", content) for rung in rung_ids)
+
+
+def _filter_table_referents(name: str, rows: list, header: list, track_id: str,
+                            rung_ids: set, handoff_paths: set, drops: dict) -> list:
+    kept = []
+    for row in rows:
+        ok = True
+        if name == "binding_conditions.tsv":
+            ok = row.get("rung", "") in rung_ids or row.get("promotion_blocker", "") in rung_ids
+        elif name == "owner_directives.tsv":
+            scope = row.get("scope", "")
+            ok = scope == track_id or scope.startswith(f"{track_id}-")
+        elif name == "closeout_artifacts.tsv":
+            ct = row.get("closeout_track", "")
+            p = row.get("path", "").replace("\\", "/")
+            ok = ct == track_id or ct.startswith(f"{track_id}-")
+            if ok and p.startswith("handoffs/"):
+                ok = p in handoff_paths or (REPO_ROOT / p).exists()
+        if not ok:
+            drops["vanished_table_rows"] = drops.get("vanished_table_rows", 0) + 1
+            continue
+        kept.append(row)
+    return kept
+
+
 def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
     track_id = outgoing_track_id(rel)
     rung_ids = {rung for _num, rung, _scope, _exit in parse_rungs(base_text)}
     rung_ids = {r.split("`")[1] if "`" in r and len(r.split("`")) >= 3 else r.strip("`").strip()
                 for r in rung_ids}
-    if payload_old:
-        rung_ids.update(payload_old.get("rung_ids", []))
-
     hits = _open_pr_hits_for_track(track_id, rung_ids)
     if hits:
         print("ORIENTATION-PARK-VERDICT: FAIL(open-prs-for-track)", file=sys.stderr)
@@ -2449,15 +2602,28 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
                     hrel = f"handoffs/{path.name}"
                 handoffs.append({"path": hrel, "content": text})
 
+    drop_counts = {}
     old_tables = (payload_old or {}).get("tables", {})
     def carried(name, header, moved):
         old = old_tables.get(name, {})
         old_rows = old.get("rows", []) if isinstance(old, dict) else []
         old_header = old.get("header", header) if isinstance(old, dict) else header
-        return {"header": old_header or header, "rows": _append_unique(old_rows, moved, old_header or header)}
+        effective_header = old_header or header
+        old_handoff_paths = {h.get("path", "") for h in (payload_old or {}).get("handoffs", [])}
+        filtered_old = _filter_table_referents(
+            name, old_rows, effective_header, track_id, rung_ids, old_handoff_paths, drop_counts
+        )
+        filtered_old = _filter_superseded_old_rows(filtered_old, moved, effective_header, drop_counts)
+        return {"header": effective_header, "rows": _append_unique(filtered_old, moved, effective_header)}
 
     old_handoffs = (payload_old or {}).get("handoffs", [])
-    handoffs = _append_unique(old_handoffs, handoffs, ["path", "content"])
+    kept_old_handoffs = []
+    for h in old_handoffs:
+        if _handoff_referent_live(h, rung_ids):
+            kept_old_handoffs.append(h)
+        else:
+            drop_counts["stale_handoffs"] = drop_counts.get("stale_handoffs", 0) + 1
+    handoffs = _append_unique(kept_old_handoffs, handoffs, ["path", "content"])
 
     payload = {
         "schema": "simthing.parked-track.v1",
@@ -2473,6 +2639,7 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
             "closeout_artifacts.tsv": carried("closeout_artifacts.tsv", a_hdr, moved_artifacts),
         },
         "handoffs": handoffs,
+        "drop_counts": drop_counts,
     }
     tables_after = {
         BINDING_TSV: (b_hdr, remaining_binding),
@@ -2521,6 +2688,8 @@ def park_track() -> int:
     print(f"track_id: {payload['track_id']}")
     print(f"moved_rows: {sum(len(v['rows']) for v in payload['tables'].values())}")
     print(f"folded_handoffs: {len(payload['handoffs'])}")
+    for name, count in sorted(payload.get("drop_counts", {}).items()):
+        print(f"drop_{name}: {count}")
     return 0
 
 
@@ -2533,10 +2702,40 @@ def unpark_track() -> int:
     original_text = target.read_text(encoding="utf-8")
     base_text, payload = split_park_block(original_text)
     if payload is None:
-        target.write_text(_replace_status_header(base_text, "OPEN"), encoding="utf-8", newline="\n")
-        write_active_track_pointer(rel)
-        generated, _track_state, _next_rung = render_orientation(active_pointer_for_render(strict=True))
-        regenerated = write_orientation(generated)
+        ok, reason = classify_workplan(rel, base_text)
+        if not ok:
+            fail_non_workplan(f"{rel}: {reason}")
+        old_info = read_active_track_pointer()
+        changed_pointer = old_info.get("path") != rel
+        if old_info.get("state") == "doc" and changed_pointer:
+            outgoing_rel = old_info["path"]
+            outgoing_text = (REPO_ROOT / outgoing_rel).read_text(encoding="utf-8")
+            if not status_header_closed_or_parked(outgoing_text):
+                print("ORIENTATION-UNPARK-VERDICT: FAIL(outgoing-track-open)", file=sys.stderr)
+                print(
+                    f"gen_orientation: FAIL(outgoing-track-open): outgoing active track "
+                    f"{outgoing_rel} status header lacks CLOSED/PARKED; close or park it first.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        txn = _FileTxn()
+        for path in (target, ACTIVE_TRACK, OUTPUT):
+            txn.stage(path)
+        try:
+            if changed_pointer:
+                write_active_track_pointer(rel)
+            active_info = {
+                "state": "doc", "path": rel, "raw": rel, "reason": "",
+                "design_doc": target,
+            }
+            generated, _track_state, _next_rung = render_orientation(active_info)
+            regenerated = write_orientation(generated)
+            if os.environ.get("ORIENTATION_FORCE_FAULT_AFTER_WRITES") == "1":
+                raise RuntimeError("selftest fault injection: virgin unpark post-write failure")
+        except BaseException:
+            txn.rollback()
+            print("ORIENTATION-UNPARK-VERDICT: FAIL(transaction-rolled-back)", file=sys.stderr)
+            sys.exit(1)
         print("ORIENTATION-UNPARK-VERDICT: OPENED(virgin)")
         print(f"active_track_to: {rel}")
         print(f"orientation_regenerated: {'yes' if regenerated else 'no'}")
@@ -2551,7 +2750,17 @@ def unpark_track() -> int:
     }
     for path in [target, ACTIVE_TRACK, OUTPUT, *table_paths.values()]:
         txn.stage(path)
-    handoffs = payload.get("handoffs", [])
+    track_id = payload.get("track_id", outgoing_track_id(rel))
+    rung_ids = {rung for _num, rung, _scope, _exit in parse_rungs(base_text)}
+    rung_ids = {r.split("`")[1] if "`" in r and len(r.split("`")) >= 3 else r.strip("`").strip()
+                for r in rung_ids}
+    drop_counts = {}
+    handoffs = []
+    for h in payload.get("handoffs", []):
+        if _handoff_referent_live(h, rung_ids):
+            handoffs.append(h)
+        else:
+            drop_counts["stale_handoffs"] = drop_counts.get("stale_handoffs", 0) + 1
     for h in handoffs:
         txn.stage(REPO_ROOT / h.get("path", ""))
     dropped = []
@@ -2561,14 +2770,11 @@ def unpark_track() -> int:
             hdr = table.get("header") or []
             rows = table.get("rows") or []
             live_hdr, live_rows = read_tsv_dict(path, hdr)
-            combined = []
-            for idx, row in enumerate(live_rows):
-                entry = dict(row)
-                entry["__park_index"] = str(1000000 + idx)
-                combined.append(entry)
-            combined = _append_unique(combined, rows, live_hdr)
-            combined.sort(key=lambda r: int(r.get("__park_index", "1000000") or "1000000"))
-            restored = [{k: row.get(k, "") for k in live_hdr} for row in combined]
+            handoff_paths = {h.get("path", "") for h in handoffs}
+            rows = _filter_table_referents(
+                name, rows, live_hdr or hdr, track_id, rung_ids, handoff_paths, drop_counts
+            )
+            restored = _merge_at_original_positions(live_rows, rows, live_hdr)
             write_tsv_dict(path, live_hdr, restored)
         for h in handoffs:
             hrel = clean_repo_relpath(h.get("path", ""))
@@ -2592,6 +2798,8 @@ def unpark_track() -> int:
     print(f"track_doc: {rel}")
     print(f"restored_rows: {sum(len(v.get('rows', [])) for v in payload.get('tables', {}).values())}")
     print(f"restored_handoffs: {len(handoffs) - len(dropped)}")
+    for name, count in sorted(drop_counts.items()):
+        print(f"drop_{name}: {count}")
     if dropped:
         print(f"dropped_stale_referents: {len(dropped)}")
     return 0
