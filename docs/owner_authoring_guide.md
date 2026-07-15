@@ -17,10 +17,11 @@ Ruling 6: amendments and implementer proof stamp the exit-proof cell as `PROBATI
 
 ## Open, Park, Or Close
 - Open or realign with `bash scripts/ci/gen_orientation.sh --open <track-doc>`.
-- To park/reopen: ask the scribe to change the outgoing status header to `PARKED` or `CLOSED`, regenerate, then run `--open <next-track>`.
-- `PARKED` or `CLOSED` is the normal admission state for `--open`; HD-6 refuses while outgoing status is `OPEN`.
+- Park with `bash scripts/ci/gen_orientation.sh --park <track-doc>`; it moves that track's live rows and in-flight `.hd` files into one receipt-stamped EOF block.
+- Reopen with `bash scripts/ci/gen_orientation.sh --unpark <track-doc>`; it validates the receipt, restores rows and folded handoffs, removes the block, and flips the pointer back.
+- `PARKED` or `CLOSED` is the normal admission state for `--open`; HD-6 refuses while outgoing status is `OPEN` and points to `--park` for ordinary redirection.
 - Use `--force-owner "<directive>"` only to deliberately override refusal; the directive is recorded.
-- Closing uses `track_closeout.sh`; it leases handoffs and result docs before reaping.
+- Closing uses `track_closeout.sh`; unpark first, then closeout leases handoffs and result docs before reaping.
 
 ## Regenerate The Library
 - After ladder edits: `bash scripts/ci/gen_orientation.sh`.

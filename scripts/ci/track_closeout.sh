@@ -75,6 +75,7 @@ import hashlib
 import io
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -97,6 +98,8 @@ PARKED = SCRIPT_DIR / "test_lifecycle_parked.tsv"
 ACTIVE_TRACK = SCRIPT_DIR / "active_track.txt"
 NO_ACTIVE_TRACK = "none"
 ACTIVE_TRACK_COMMENT = "# Active track design doc for orientation Next-Rung pointer. Update on track open/close."
+PARK_BEGIN = "<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->"
+PARK_END = "<!-- SIMTHING-PARKED-TRACK:END -->"
 
 INVENTORY_HEADER = [
     "crate", "file", "test_name", "kind", "class", "superseding_boundary",
@@ -467,6 +470,30 @@ def doc_validation_error(path: str) -> str:
     if pathlib.PurePosixPath(rel).suffix not in DOC_EXTENSIONS:
         return "path must be a .md or .tsv document"
     return ""
+
+
+def split_park_block_text(text: str):
+    begin_count = text.count(PARK_BEGIN)
+    end_count = text.count(PARK_END)
+    if begin_count == 0 and end_count == 0:
+        return text, False
+    if begin_count != 1 or end_count != 1:
+        die("track doc has malformed parked block; run gen_orientation.sh --unpark/--park repair", 1)
+    begin = text.index(PARK_BEGIN)
+    end = text.index(PARK_END) + len(PARK_END)
+    suffix = text[end:]
+    if suffix not in ("", "\n"):
+        die("track doc parked block is not absolute EOF; run gen_orientation.sh --park repair", 1)
+    return text[:begin].rstrip() + "\n", True
+
+
+def status_header_is_parked(text: str) -> bool:
+    for line in text.splitlines()[:80]:
+        stripped = line.strip().lstrip(">").strip()
+        m = re.match(r"\**status\s*:\s*([A-Za-z0-9 +/\-]+)", stripped, re.IGNORECASE)
+        if m:
+            return bool(re.search(r"\bPARKED\b", m.group(1), re.IGNORECASE))
+    return False
 
 
 def doc_manifest_row(track: str, rel_path: str, disp: str = "needs-disposition",
@@ -897,6 +924,18 @@ def cmd_apply():
     # docs/tests artifacts; explicit --docs rows outside that shape must still
     # exist at apply time so delete/lease cannot silently no-op on a missing path.
     track_source = next((t.get("source", "") for t in tracks if t["track_id"] == track), "")
+    strip_park_block_on_close = None
+    source_rel = clean_repo_relpath(track_source)
+    if source_rel and (ROOT / source_rel).is_file():
+        source_text = norm_bytes((ROOT / source_rel).read_bytes())
+        source_without_park, has_park_block = split_park_block_text(source_text)
+        if has_park_block and status_header_is_parked(source_text):
+            print("TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(track-parked-unpark-first) "
+                  f"track={track} source={source_rel}; run `bash scripts/ci/gen_orientation.sh --unpark {source_rel}` first",
+                  file=sys.stderr)
+            sys.exit(1)
+        if has_park_block:
+            strip_park_block_on_close = (ROOT / source_rel, source_without_park)
     live_doc_paths = auto_doc_scope(track, tracks)
     manifest_doc_paths = {
         clean_repo_relpath(r.get("file", ""))
@@ -1121,6 +1160,8 @@ def cmd_apply():
             closed = True
     if closed:
         write_tsv(TRACKS, TRACKS_HEADER, tracks)
+    if strip_park_block_on_close is not None:
+        strip_park_block_on_close[0].write_bytes(strip_park_block_on_close[1].encode("utf-8"))
 
     # 5. Retire the orientation pointer if it still points at this closing track.
     apply_active_track_retirement(active_track_plan)
@@ -1551,6 +1592,83 @@ def cmd_prove():
             os.environ["TRACK_CLOSEOUT_SKIP_CARGO"] = old_skip
     check("cargo-gate-skip-recorded",
           cargo_skip_gates.get("cargo-check-simthing-core") == "SKIP")
+
+    def write_min_closeout_sandbox(root: pathlib.Path, parked_status: bool):
+        (root / "scripts/ci").mkdir(parents=True)
+        (root / "docs/tests").mkdir(parents=True)
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", root / "scripts/ci/track_closeout.sh")
+        status = "PARKED" if parked_status else "OPEN"
+        block = (
+            "\n<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->\n"
+            "```json\n"
+            "{\"park_receipt\":\"000000000000\"}\n"
+            "```\n"
+            "<!-- SIMTHING-PARKED-TRACK:END -->\n"
+        )
+        (root / "docs/min_track.md").write_text(
+            f"# min\n\n> **Status: {status} / fixture.**\n\nworkplan\n" + block,
+            encoding="utf-8",
+        )
+        write_tsv(root / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
+            {"crate": "c", "file": "crates/c/tests/min.rs", "test_name": "golden",
+             "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "birth_track": "min-track", "dsu_survivals": "0"},
+        ])
+        write_tsv(root / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
+            {"track_id": "min-track", "status": "open", "closed_at": "-",
+             "source": "docs/min_track.md", "note": "fixture"},
+        ])
+        write_tsv(root / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
+            {"promotion_target": "permanent-residue:golden-byte"},
+        ])
+        write_tsv(root / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [])
+        (root / "scripts/ci/active_track.txt").write_text(
+            f"{ACTIVE_TRACK_COMMENT}\nnone\n", encoding="utf-8")
+        rows = [
+            {"asset_kind": "inventory-row", "ref": "c::crates/c/tests/min.rs::golden::integration",
+             "crate": "c", "file": "crates/c/tests/min.rs", "test_name": "golden",
+             "kind": "integration", "current_class": "golden-byte", "birth_track": "min-track",
+             "disposition": "keep-durable", "target": "", "owner": "", "note": "keep"},
+            doc_manifest_row("min-track", "docs/min_track.md", "keep-durable", "source"),
+        ]
+        body = io.StringIO()
+        writer = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+        receipt = closeout_receipt(body.getvalue())
+        (root / "docs/tests/min-track_closeout_manifest.tsv").write_text(
+            "# track_closeout manifest\n"
+            "# track: min-track\n"
+            f"# CLOSEOUT-RECEIPT: {receipt}\n"
+            "# role: prove\n"
+            + body.getvalue(),
+            encoding="utf-8",
+        )
+
+    with tempfile.TemporaryDirectory() as ptmp:
+        pr = pathlib.Path(ptmp)
+        write_min_closeout_sandbox(pr, parked_status=True)
+        r_parked = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--apply", "docs/tests/min-track_closeout_manifest.tsv"],
+            cwd=str(pr), capture_output=True, text=True,
+            env={**os.environ, "TRACK_CLOSEOUT_NOW": "2026-07-20", "TRACK_CLOSEOUT_SKIP_CARGO": "1"},
+        )
+        check("closeout-refuses-while-parked",
+              r_parked.returncode != 0 and "FAIL(track-parked-unpark-first)" in r_parked.stderr)
+
+    with tempfile.TemporaryDirectory() as ctmp:
+        cr = pathlib.Path(ctmp)
+        write_min_closeout_sandbox(cr, parked_status=False)
+        r_close = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--apply", "docs/tests/min-track_closeout_manifest.tsv"],
+            cwd=str(cr), capture_output=True, text=True,
+            env={**os.environ, "TRACK_CLOSEOUT_NOW": "2026-07-20", "TRACK_CLOSEOUT_SKIP_CARGO": "1"},
+        )
+        check("closeout-deletes-block",
+              "TRACK-CLOSEOUT-APPLY-VERDICT:" in r_close.stdout
+              and PARK_BEGIN not in norm_bytes((cr / "docs/min_track.md").read_bytes()))
 
     # full build -> check -> apply roundtrip in a sandbox
     with tempfile.TemporaryDirectory() as tmp:

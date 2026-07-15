@@ -25,6 +25,8 @@ usage:
   bash scripts/ci/gen_orientation.sh
   bash scripts/ci/gen_orientation.sh --check
   bash scripts/ci/gen_orientation.sh --open <track-md>
+  bash scripts/ci/gen_orientation.sh --park <track-md>
+  bash scripts/ci/gen_orientation.sh --unpark <track-md>
   bash scripts/ci/gen_orientation.sh --open <track-md> --force-owner "<directive text>"
   bash scripts/ci/gen_orientation.sh --selftest
   bash scripts/ci/gen_orientation.sh --fixture <name>
@@ -39,6 +41,18 @@ parse_args() {
       --open)
         [[ $# -ge 2 ]] || usage
         MODE="open"
+        OPEN_TARGET="$2"
+        shift 2
+        ;;
+      --park)
+        [[ $# -ge 2 ]] || usage
+        MODE="park"
+        OPEN_TARGET="$2"
+        shift 2
+        ;;
+      --unpark)
+        [[ $# -ge 2 ]] || usage
+        MODE="unpark"
         OPEN_TARGET="$2"
         shift 2
         ;;
@@ -127,7 +141,7 @@ run_selftest_fixture() {
 
 seed_orientation_sandbox() {
   local sb="$1"
-  mkdir -p "${sb}/scripts/ci" "${sb}/docs"
+  mkdir -p "${sb}/scripts/ci" "${sb}/docs" "${sb}/handoffs"
   cat >"${sb}/scripts/ci/precedented_classes.tsv" <<'EOF'
 class_id	envelope	requirements	status	promotion_blocker	note
 demo-class	docs/demo.md	tested_code_sha|coverage_basis	active	none	fixture
@@ -154,6 +168,9 @@ EOF
   cat >"${sb}/scripts/ci/owner_directives.tsv" <<'EOF'
 directive	scope	status	set_by
 EOF
+  cat >"${sb}/scripts/ci/closeout_artifacts.tsv" <<'EOF'
+path	leased_at	disposition	closeout_track	note
+EOF
   cat >"${sb}/scripts/ci/active_track.txt" <<'EOF'
 # Active track design doc for orientation Next-Rung pointer. Update on track open/close.
 none
@@ -171,6 +188,8 @@ run_gen_sandbox() {
   local relay="${sb}/scripts/ci/relay_lint.sh"
   local anchors="${sb}/scripts/ci/doctrine_anchors.tsv"
   local owner_directives="${sb}/scripts/ci/owner_directives.tsv"
+  local closeout_artifacts="${sb}/scripts/ci/closeout_artifacts.tsv"
+  local handoffs="${sb}/handoffs"
   local output="${sb}/docs/orchestrator_orientation.md"
   if command -v cygpath >/dev/null 2>&1; then
     root="$(cygpath -w "$root")"
@@ -182,6 +201,8 @@ run_gen_sandbox() {
     relay="$(cygpath -w "$relay")"
     anchors="$(cygpath -w "$anchors")"
     owner_directives="$(cygpath -w "$owner_directives")"
+    closeout_artifacts="$(cygpath -w "$closeout_artifacts")"
+    handoffs="$(cygpath -w "$handoffs")"
     output="$(cygpath -w "$output")"
   fi
   ORIENTATION_REPO_ROOT="$root" \
@@ -193,6 +214,8 @@ run_gen_sandbox() {
   ORIENTATION_RELAY_LINT="$relay" \
   ORIENTATION_ANCHORS_TSV="$anchors" \
   ORIENTATION_OWNER_DIRECTIVES="$owner_directives" \
+  ORIENTATION_CLOSEOUT_ARTIFACTS="$closeout_artifacts" \
+  ORIENTATION_HANDOFFS_DIR="$handoffs" \
   ORIENTATION_OUTPUT="$output" \
   ORIENTATION_DESIGN_DOC= \
     bash "${SCRIPT_DIR}/gen_orientation.sh" "$@"
@@ -928,6 +951,158 @@ run_selftest_cold_start_spine() {
   return 1
 }
 
+seed_park_track_sandbox() {
+  local sb="$1"
+  seed_orientation_sandbox "$sb"
+  cat >"${sb}/docs/design_1_2_3_studio.md" <<'EOF'
+# Studio Fixture
+
+> **Status: OPEN / fixture.**
+
+This is a production track / PR ladder workplan.
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| OWNER | `STUDIO-OWNER-CLOSURE-0` | owner close | TODO | DA |
+EOF
+  cat >"${sb}/scripts/ci/binding_conditions.tsv" <<'EOF'
+rung	condition	set_by	status	promotion_blocker
+STUDIO-OWNER-CLOSURE-0	owner-close	Owner	active	STUDIO-OWNER-CLOSURE-0
+other	keep	Owner	active	other
+EOF
+  cat >"${sb}/scripts/ci/owner_directives.tsv" <<'EOF'
+directive	scope	status	set_by
+Studio remains parked	1.2.3	active	Owner
+Keep me	9.9.9	active	Owner
+EOF
+  cat >"${sb}/scripts/ci/test_lifecycle_tracks.tsv" <<'EOF'
+track_id	status	closed_at	source	note
+1.2.3-studio	open	-	docs/design_1_2_3_studio.md	fixture
+9.9.9-other	open	-	docs/other.md	fixture
+EOF
+  cat >"${sb}/scripts/ci/closeout_artifacts.tsv" <<'EOF'
+path	leased_at	disposition	closeout_track	note
+docs/tests/other_manifest.tsv	2026-07-01	lease	9.9.9-other	keep
+EOF
+  cat >"${sb}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" <<'EOF'
+rung: STUDIO-OWNER-CLOSURE-0
+track: 1.2.3
+HD-RECEIPT: fixture
+EOF
+  cat >"${sb}/scripts/ci/active_track.txt" <<'EOF'
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+docs/design_1_2_3_studio.md
+EOF
+}
+
+run_selftest_park_unpark_lifecycle() {
+  local sandbox rc
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-park-life-XXXXXX")"
+  seed_park_track_sandbox "$sandbox"
+  cp "${sandbox}/scripts/ci/binding_conditions.tsv" "${sandbox}/binding.before"
+  cp "${sandbox}/scripts/ci/owner_directives.tsv" "${sandbox}/owner.before"
+  cp "${sandbox}/scripts/ci/test_lifecycle_tracks.tsv" "${sandbox}/tracks.before"
+  cp "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" "${sandbox}/handoff.before"
+  if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/park.out" 2>"${sandbox}/park.err"; then
+    echo "FAIL orientation_park_unpark_lifecycle"
+    cat "${sandbox}/park.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  local ok=0
+  if grep -q "STUDIO-OWNER-CLOSURE-0" "${sandbox}/scripts/ci/binding_conditions.tsv"; then ok=1; fi
+  if grep -q "Studio remains parked" "${sandbox}/scripts/ci/owner_directives.tsv"; then ok=1; fi
+  if grep -q "1.2.3-studio" "${sandbox}/scripts/ci/test_lifecycle_tracks.tsv"; then ok=1; fi
+  if [[ -e "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" ]]; then ok=1; fi
+  if ! grep -q "SIMTHING-PARKED-TRACK:BEGIN" "${sandbox}/docs/design_1_2_3_studio.md"; then ok=1; fi
+  if [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "none" ]]; then ok=1; fi
+  if [[ "$ok" -ne 0 ]]; then
+    echo "FAIL orientation_park_moves_rows_out"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_park_moves_rows_out"
+  echo "PASS orientation_hd_fold"
+
+  if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --unpark docs/design_1_2_3_studio.md >"${sandbox}/unpark.out" 2>"${sandbox}/unpark.err"; then
+    echo "FAIL orientation_unpark_restores"
+    cat "${sandbox}/unpark.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  if ! cmp -s "${sandbox}/binding.before" "${sandbox}/scripts/ci/binding_conditions.tsv" \
+    || ! cmp -s "${sandbox}/owner.before" "${sandbox}/scripts/ci/owner_directives.tsv" \
+    || ! cmp -s "${sandbox}/tracks.before" "${sandbox}/scripts/ci/test_lifecycle_tracks.tsv" \
+    || ! cmp -s "${sandbox}/handoff.before" "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" \
+    || grep -q "SIMTHING-PARKED-TRACK:BEGIN" "${sandbox}/docs/design_1_2_3_studio.md" \
+    || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/design_1_2_3_studio.md" ]]; then
+    echo "FAIL orientation_unpark_restores_byte_exact"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_unpark_restores_byte_exact"
+  echo "PASS orientation_hd_restore"
+
+  set +e
+  ORIENTATION_OPEN_PR_FIXTURE="#1 STUDIO-OWNER-CLOSURE-0 still open" run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/blocked.out" 2>"${sandbox}/blocked.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] || ! grep -q "FAIL(open-prs-for-track)" "${sandbox}/blocked.err"; then
+    echo "FAIL orientation_park_open_pr_blocks"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_park_open_pr_blocks"
+
+  if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >/dev/null 2>&1; then
+    echo "FAIL orientation_repark_first"
+    rm -rf "$sandbox"; return 1
+  fi
+  cat >>"${sandbox}/scripts/ci/owner_directives.tsv" <<'EOF'
+Fresh directive	1.2.3	active	Owner
+EOF
+  if ! ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/repark.out" 2>&1 \
+    || ! grep -q "Fresh directive" "${sandbox}/docs/design_1_2_3_studio.md" \
+    || ! grep -q "Studio remains parked" "${sandbox}/docs/design_1_2_3_studio.md"; then
+    echo "FAIL orientation_repark_supersede"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_repark_supersede"
+
+  perl -0pi -e 's/"park_receipt": "[0-9a-f]{12}"/"park_receipt": "000000000000"/' "${sandbox}/docs/design_1_2_3_studio.md"
+  set +e
+  run_gen_sandbox "$sandbox" --unpark docs/design_1_2_3_studio.md >"${sandbox}/tamper.out" 2>"${sandbox}/tamper.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] || ! grep -q "receipt drift" "${sandbox}/tamper.err"; then
+    echo "FAIL orientation_tampered_receipt_fails"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_tampered_receipt_fails"
+  rm -rf "$sandbox"; return 0
+}
+
+run_selftest_park_rollback_and_virgin_unpark() {
+  local sandbox rc before
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-park-rollback-XXXXXX")"
+  seed_park_track_sandbox "$sandbox"
+  before="$(sha256sum "${sandbox}/scripts/ci/binding_conditions.tsv" "${sandbox}/docs/design_1_2_3_studio.md" | sha256sum | awk '{print $1}')"
+  set +e
+  ORIENTATION_SKIP_OPEN_PR_CHECK=1 ORIENTATION_FORCE_FAULT_AFTER_WRITES=1 run_gen_sandbox "$sandbox" --park docs/design_1_2_3_studio.md >"${sandbox}/fault.out" 2>"${sandbox}/fault.err"
+  rc=$?
+  set -e
+  local after
+  after="$(sha256sum "${sandbox}/scripts/ci/binding_conditions.tsv" "${sandbox}/docs/design_1_2_3_studio.md" | sha256sum | awk '{print $1}')"
+  if [[ "$rc" -eq 0 ]] || [[ "$before" != "$after" ]] || ! grep -q "transaction-rolled-back" "${sandbox}/fault.err"; then
+    echo "FAIL orientation_park_post_write_rollback"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_park_post_write_rollback"
+  if ! run_gen_sandbox "$sandbox" --unpark docs/design_1_2_3_studio.md >"${sandbox}/virgin.out" 2>&1 \
+    || ! grep -q "OPENED(virgin)" "${sandbox}/virgin.out" \
+    || [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "docs/design_1_2_3_studio.md" ]]; then
+    echo "FAIL orientation_virgin_unpark_unchanged"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_virgin_unpark_unchanged"
+  rm -rf "$sandbox"; return 0
+}
+
 run_selftest() {
   local fixtures=(
     orientation_digest_selftest_stale_digest
@@ -961,6 +1136,8 @@ run_selftest() {
     run_selftest_gate_force_owner_invalid_status_row
     run_selftest_gate_force_owner_duplicate_active_pair
     run_selftest_gate_force_owner_rollback_after_writes
+    run_selftest_park_unpark_lifecycle
+    run_selftest_park_rollback_and_virgin_unpark
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -1006,13 +1183,18 @@ main() {
   export ORIENTATION_OPEN_TARGET="$OPEN_TARGET"
   export ORIENTATION_FORCE_OWNER="$FORCE_OWNER"
   export ORIENTATION_OWNER_DIRECTIVES="${ORIENTATION_OWNER_DIRECTIVES:-${SCRIPT_DIR}/owner_directives.tsv}"
+  export ORIENTATION_CLOSEOUT_ARTIFACTS="${ORIENTATION_CLOSEOUT_ARTIFACTS:-${SCRIPT_DIR}/closeout_artifacts.tsv}"
+  export ORIENTATION_HANDOFFS_DIR="${ORIENTATION_HANDOFFS_DIR:-${REPO_ROOT}/handoffs}"
 
   exec "$PYTHON_BIN" - <<'PY'
-import hashlib
 import csv
+import datetime
+import hashlib
+import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import tempfile
 
@@ -1031,6 +1213,10 @@ FORCE_OWNER = os.environ.get("ORIENTATION_FORCE_OWNER", "").strip()
 OWNER_DIRECTIVES = pathlib.Path(
     os.environ.get("ORIENTATION_OWNER_DIRECTIVES", str(REPO_ROOT / "scripts/ci/owner_directives.tsv"))
 )
+CLOSEOUT_ARTIFACTS = pathlib.Path(
+    os.environ.get("ORIENTATION_CLOSEOUT_ARTIFACTS", str(REPO_ROOT / "scripts/ci/closeout_artifacts.tsv"))
+)
+HANDOFFS_DIR = pathlib.Path(os.environ.get("ORIENTATION_HANDOFFS_DIR", str(REPO_ROOT / "handoffs")))
 
 GENERATED_MARKER = "<!-- GENERATED by scripts/ci/gen_orientation.sh; do not edit by hand. -->"
 NO_ACTIVE_TRACK = "none"
@@ -1093,6 +1279,9 @@ NON_WORKPLAN_REMEDY = (
     "docs/design_0_0_8_5_clausescript_terran_pirate_galaxy.md, "
     "or set active_track.txt to none."
 )
+PARK_BEGIN = "<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->"
+PARK_END = "<!-- SIMTHING-PARKED-TRACK:END -->"
+PARK_FENCE = "```json"
 
 
 def fail(msg):
@@ -1353,6 +1542,24 @@ def read_tsv(path: pathlib.Path):
     return rows
 
 
+def read_tsv_dict(path: pathlib.Path, header: list):
+    if not path.is_file():
+        return header, []
+    with path.open(encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        fields = reader.fieldnames or header
+        return fields, list(reader)
+
+
+def write_tsv_dict(path: pathlib.Path, header: list, rows: list) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=header, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({k: row.get(k, "") for k in header})
+
+
 def md_row(values):
     return "| " + " | ".join(v.replace("|", "\\|") for v in values) + " |"
 
@@ -1506,6 +1713,59 @@ def skeleton_doc(rel: str) -> str:
     ]) + "\n"
 
 
+def park_payload_receipt(payload: dict) -> str:
+    body = dict(payload)
+    body.pop("park_receipt", None)
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def park_block_for_payload(payload: dict) -> str:
+    payload = dict(payload)
+    payload["park_receipt"] = park_payload_receipt(payload)
+    return (
+        f"{PARK_BEGIN}\n"
+        f"{PARK_FENCE}\n"
+        f"{json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False)}\n"
+        "```\n"
+        f"{PARK_END}\n"
+    )
+
+
+def split_park_block(text: str):
+    begin_count = text.count(PARK_BEGIN)
+    end_count = text.count(PARK_END)
+    if begin_count == 0 and end_count == 0:
+        return text, None
+    if begin_count != 1 or end_count != 1:
+        fail("parked track block must appear exactly once")
+    begin = text.index(PARK_BEGIN)
+    end = text.index(PARK_END) + len(PARK_END)
+    suffix = text[end:]
+    if suffix not in ("", "\n"):
+        fail("parked track block must be the absolute EOF block")
+    block = text[begin:end]
+    fence_start = block.find(PARK_FENCE)
+    fence_end = block.rfind("```")
+    if fence_start < 0 or fence_end <= fence_start:
+        fail("parked track block missing json fence")
+    raw_json = block[fence_start + len(PARK_FENCE):fence_end].strip()
+    try:
+        payload = json.loads(raw_json)
+    except json.JSONDecodeError as exc:
+        fail(f"parked track block has invalid json: {exc}")
+    receipt = payload.get("park_receipt", "")
+    if not re.fullmatch(r"[0-9a-f]{12}", receipt):
+        fail("parked track block has invalid PARK-RECEIPT")
+    if receipt != park_payload_receipt(payload):
+        fail("parked track block receipt drift; refuse tampered block")
+    return text[:begin].rstrip() + "\n", payload
+
+
+def validate_park_block_shape(text: str) -> None:
+    split_park_block(text)
+
+
 def render_orientation(active_info: dict) -> tuple:
     classes = read_tsv(CLASSES_TSV)
     binding = read_tsv(BINDING_TSV)
@@ -1519,6 +1779,7 @@ def render_orientation(active_info: dict) -> tuple:
     track_state = active_info.get("reason", "")
     if design_doc is not None:
         design_text = design_doc.read_text(encoding="utf-8")
+        validate_park_block_shape(design_text)
         rungs = parse_rungs(design_text)
         next_rung = authoritative_active_pointer(design_text) or next_rung_pointer(rungs)
         track_state = track_state_for_doc(active_info.get("path", ""), design_text, rungs)
@@ -1957,6 +2218,8 @@ def assert_coherent_open_root() -> None:
         ("ORIENTATION_ACTIVE_TRACK_FILE", ACTIVE_TRACK),
         ("ORIENTATION_OUTPUT", OUTPUT),
         ("ORIENTATION_OWNER_DIRECTIVES", OWNER_DIRECTIVES),
+        ("ORIENTATION_CLOSEOUT_ARTIFACTS", CLOSEOUT_ARTIFACTS),
+        ("ORIENTATION_HANDOFFS_DIR", HANDOFFS_DIR),
     ):
         try:
             p.resolve().relative_to(root)
@@ -2042,6 +2305,309 @@ def _forced_fault_after_writes() -> None:
     and weakens neither normal nor forced admission."""
     if os.environ.get("ORIENTATION_FORCE_FAULT_AFTER_WRITES") == "1":
         raise RuntimeError("selftest fault injection: forced post-write failure (rollback proof)")
+
+
+_BINDING_HEADER = ["rung", "condition", "set_by", "status", "promotion_blocker"]
+_OWNER_HEADER = ["directive", "scope", "status", "set_by"]
+_TRACKS_HEADER = ["track_id", "status", "closed_at", "source", "note"]
+_ARTIFACT_HEADER = ["path", "leased_at", "disposition", "closeout_track", "note"]
+
+
+def _repo_head_short() -> str:
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "rev-parse", "--short=12", "HEAD"],
+            capture_output=True, text=True, check=True,
+        )
+        return proc.stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def _today() -> str:
+    override = os.environ.get("ORIENTATION_PARKED_AT", "").strip()
+    if override:
+        return override
+    return datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+
+
+def _track_handoff_match(path: pathlib.Path, text: str, track_id: str, rung_ids: set) -> bool:
+    if re.search(rf"(?m)^track:\s*{re.escape(track_id)}(?:\b|$)", text):
+        return True
+    stem = path.stem
+    return stem in rung_ids
+
+
+def _open_pr_hits_for_track(track_id: str, rung_ids: set) -> list:
+    fixture = os.environ.get("ORIENTATION_OPEN_PR_FIXTURE", "")
+    if fixture:
+        lines = [ln for ln in fixture.splitlines() if ln.strip()]
+        return [
+            ln for ln in lines
+            if track_id in ln or any(rung and rung in ln for rung in rung_ids)
+        ]
+    if os.environ.get("ORIENTATION_SKIP_OPEN_PR_CHECK") == "1":
+        return []
+    try:
+        proc = subprocess.run(
+            [
+                "gh", "pr", "list", "--repo", "khorum08/SimThing", "--state", "open",
+                "--limit", "100", "--json", "number,title,headRefName,body",
+            ],
+            capture_output=True, text=True, check=True,
+        )
+        prs = json.loads(proc.stdout or "[]")
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+        fail(f"ORIENTATION-PARK-VERDICT: FAIL(open-pr-check-unavailable): {exc}")
+    hits = []
+    for pr in prs:
+        blob = "\n".join(str(pr.get(k, "")) for k in ("number", "title", "headRefName", "body"))
+        if track_id in blob or any(rung and rung in blob for rung in rung_ids):
+            hits.append(f"#{pr.get('number')} {pr.get('title', '')}".strip())
+    return hits
+
+
+def _replace_status_header(text: str, state: str) -> str:
+    replacement = f"> **Status: {state} / harness lifecycle.**"
+    lines = text.splitlines()
+    for idx, line in enumerate(lines[:80]):
+        stripped = line.strip().lstrip(">").strip()
+        if re.match(r"\**status\s*:", stripped, re.IGNORECASE):
+            lines[idx] = replacement
+            return "\n".join(lines).rstrip() + "\n"
+    insert_at = 1 if lines else 0
+    lines.insert(insert_at, replacement)
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _append_unique(existing: list, incoming: list, header: list) -> list:
+    seen = {tuple((row.get(k, "") for k in header)) for row in existing}
+    out = list(existing)
+    for row in incoming:
+        key = tuple(row.get(k, "") for k in header)
+        if key not in seen:
+            seen.add(key)
+            out.append(row)
+    return out
+
+
+def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
+    track_id = outgoing_track_id(rel)
+    rung_ids = {rung for _num, rung, _scope, _exit in parse_rungs(base_text)}
+    rung_ids = {r.split("`")[1] if "`" in r and len(r.split("`")) >= 3 else r.strip("`").strip()
+                for r in rung_ids}
+    if payload_old:
+        rung_ids.update(payload_old.get("rung_ids", []))
+
+    hits = _open_pr_hits_for_track(track_id, rung_ids)
+    if hits:
+        print("ORIENTATION-PARK-VERDICT: FAIL(open-prs-for-track)", file=sys.stderr)
+        for hit in hits[:10]:
+            print(f"  - {hit}", file=sys.stderr)
+        sys.exit(1)
+
+    b_hdr, binding = read_tsv_dict(BINDING_TSV, _BINDING_HEADER)
+    o_hdr, owners = read_tsv_dict(OWNER_DIRECTIVES, _OWNER_HEADER)
+    t_hdr, tracks = read_tsv_dict(TRACKS_TSV, _TRACKS_HEADER)
+    a_hdr, artifacts = read_tsv_dict(CLOSEOUT_ARTIFACTS, _ARTIFACT_HEADER)
+
+    def binding_match(row):
+        return row.get("rung", "") in rung_ids or row.get("promotion_blocker", "") in rung_ids
+
+    def owner_match(row):
+        scope = row.get("scope", "")
+        return scope == track_id or scope.startswith(f"{track_id}-")
+
+    def track_match(row):
+        tid = row.get("track_id", "")
+        source = row.get("source", "").replace("\\", "/")
+        return source == rel or tid == track_id or tid.startswith(f"{track_id}-")
+
+    def artifact_match(row):
+        ct = row.get("closeout_track", "")
+        p = row.get("path", "").replace("\\", "/")
+        return ct == track_id or ct.startswith(f"{track_id}-") or (
+            p.startswith("handoffs/") and any(rung and rung in p for rung in rung_ids)
+        )
+
+    def moved_with_index(rows, pred):
+        out = []
+        for idx, row in enumerate(rows):
+            if pred(row):
+                entry = dict(row)
+                entry["__park_index"] = str(idx)
+                out.append(entry)
+        return out
+
+    moved_binding = moved_with_index(binding, binding_match)
+    moved_owners = moved_with_index(owners, owner_match)
+    moved_tracks = moved_with_index(tracks, track_match)
+    moved_artifacts = moved_with_index(artifacts, artifact_match)
+    remaining_binding = [r for r in binding if not binding_match(r)]
+    remaining_owners = [r for r in owners if not owner_match(r)]
+    remaining_tracks = [r for r in tracks if not track_match(r)]
+    remaining_artifacts = [r for r in artifacts if not artifact_match(r)]
+
+    handoffs = []
+    if HANDOFFS_DIR.is_dir():
+        for path in sorted(HANDOFFS_DIR.glob("*.hd.md")):
+            text = path.read_text(encoding="utf-8")
+            if _track_handoff_match(path, text, track_id, rung_ids):
+                try:
+                    hrel = path.relative_to(REPO_ROOT).as_posix()
+                except ValueError:
+                    hrel = f"handoffs/{path.name}"
+                handoffs.append({"path": hrel, "content": text})
+
+    old_tables = (payload_old or {}).get("tables", {})
+    def carried(name, header, moved):
+        old = old_tables.get(name, {})
+        old_rows = old.get("rows", []) if isinstance(old, dict) else []
+        old_header = old.get("header", header) if isinstance(old, dict) else header
+        return {"header": old_header or header, "rows": _append_unique(old_rows, moved, old_header or header)}
+
+    old_handoffs = (payload_old or {}).get("handoffs", [])
+    handoffs = _append_unique(old_handoffs, handoffs, ["path", "content"])
+
+    payload = {
+        "schema": "simthing.parked-track.v1",
+        "track_doc": rel,
+        "track_id": track_id,
+        "rung_ids": sorted(rung_ids),
+        "parked_at": _today(),
+        "parked_from_head": _repo_head_short(),
+        "pointer": first_payload_line(ACTIVE_TRACK),
+        "tables": {
+            "binding_conditions.tsv": carried("binding_conditions.tsv", b_hdr, moved_binding),
+            "owner_directives.tsv": carried("owner_directives.tsv", o_hdr, moved_owners),
+            "test_lifecycle_tracks.tsv": carried("test_lifecycle_tracks.tsv", t_hdr, moved_tracks),
+            "closeout_artifacts.tsv": carried("closeout_artifacts.tsv", a_hdr, moved_artifacts),
+        },
+        "handoffs": handoffs,
+    }
+    tables_after = {
+        BINDING_TSV: (b_hdr, remaining_binding),
+        OWNER_DIRECTIVES: (o_hdr, remaining_owners),
+        TRACKS_TSV: (t_hdr, remaining_tracks),
+        CLOSEOUT_ARTIFACTS: (a_hdr, remaining_artifacts),
+    }
+    return payload, tables_after, [REPO_ROOT / h["path"] for h in handoffs]
+
+
+def park_track() -> int:
+    if not OPEN_TARGET:
+        fail("--park requires exactly one track doc")
+    assert_coherent_open_root()
+    rel = normalize_track_doc_arg(OPEN_TARGET, must_exist=True)
+    target = REPO_ROOT / rel
+    original_text = target.read_text(encoding="utf-8")
+    base_text, old_payload = split_park_block(original_text)
+    ok, reason = classify_workplan(rel, base_text)
+    if not ok:
+        fail_non_workplan(f"{rel}: {reason}")
+    payload, tables_after, handoff_paths = _collect_park_payload(rel, base_text, old_payload)
+    parked_text = _replace_status_header(base_text, "PARKED").rstrip() + "\n\n" + park_block_for_payload(payload)
+    txn = _FileTxn()
+    for path in [target, ACTIVE_TRACK, OUTPUT, BINDING_TSV, OWNER_DIRECTIVES, TRACKS_TSV, CLOSEOUT_ARTIFACTS, *handoff_paths]:
+        txn.stage(path)
+    try:
+        for path, (hdr, rows) in tables_after.items():
+            write_tsv_dict(path, hdr, rows)
+        for path in handoff_paths:
+            if path.exists():
+                path.unlink()
+        target.write_text(parked_text, encoding="utf-8", newline="\n")
+        current = read_active_track_pointer()
+        if current.get("path") == rel:
+            write_active_track_pointer(NO_ACTIVE_TRACK)
+        generated, _track_state, _next_rung = render_orientation(active_pointer_for_render(strict=False))
+        write_orientation(generated)
+        if os.environ.get("ORIENTATION_FORCE_FAULT_AFTER_WRITES") == "1":
+            raise RuntimeError("selftest fault injection: park post-write failure")
+    except BaseException:
+        txn.rollback()
+        print("ORIENTATION-PARK-VERDICT: FAIL(transaction-rolled-back)", file=sys.stderr)
+        sys.exit(1)
+    print(f"ORIENTATION-PARK-VERDICT: PARKED receipt={payload['park_receipt'] if 'park_receipt' in payload else park_payload_receipt(payload)}")
+    print(f"track_doc: {rel}")
+    print(f"track_id: {payload['track_id']}")
+    print(f"moved_rows: {sum(len(v['rows']) for v in payload['tables'].values())}")
+    print(f"folded_handoffs: {len(payload['handoffs'])}")
+    return 0
+
+
+def unpark_track() -> int:
+    if not OPEN_TARGET:
+        fail("--unpark requires exactly one track doc")
+    assert_coherent_open_root()
+    rel = normalize_track_doc_arg(OPEN_TARGET, must_exist=True)
+    target = REPO_ROOT / rel
+    original_text = target.read_text(encoding="utf-8")
+    base_text, payload = split_park_block(original_text)
+    if payload is None:
+        target.write_text(_replace_status_header(base_text, "OPEN"), encoding="utf-8", newline="\n")
+        write_active_track_pointer(rel)
+        generated, _track_state, _next_rung = render_orientation(active_pointer_for_render(strict=True))
+        regenerated = write_orientation(generated)
+        print("ORIENTATION-UNPARK-VERDICT: OPENED(virgin)")
+        print(f"active_track_to: {rel}")
+        print(f"orientation_regenerated: {'yes' if regenerated else 'no'}")
+        return 0
+    if payload.get("track_doc") != rel:
+        fail(f"parked block is for {payload.get('track_doc')!r}, not {rel!r}")
+    txn = _FileTxn()
+    table_paths = {
+        "binding_conditions.tsv": BINDING_TSV,
+        "owner_directives.tsv": OWNER_DIRECTIVES,
+        "test_lifecycle_tracks.tsv": TRACKS_TSV,
+        "closeout_artifacts.tsv": CLOSEOUT_ARTIFACTS,
+    }
+    for path in [target, ACTIVE_TRACK, OUTPUT, *table_paths.values()]:
+        txn.stage(path)
+    handoffs = payload.get("handoffs", [])
+    for h in handoffs:
+        txn.stage(REPO_ROOT / h.get("path", ""))
+    dropped = []
+    try:
+        for name, path in table_paths.items():
+            table = payload.get("tables", {}).get(name, {})
+            hdr = table.get("header") or []
+            rows = table.get("rows") or []
+            live_hdr, live_rows = read_tsv_dict(path, hdr)
+            combined = []
+            for idx, row in enumerate(live_rows):
+                entry = dict(row)
+                entry["__park_index"] = str(1000000 + idx)
+                combined.append(entry)
+            combined = _append_unique(combined, rows, live_hdr)
+            combined.sort(key=lambda r: int(r.get("__park_index", "1000000") or "1000000"))
+            restored = [{k: row.get(k, "") for k in live_hdr} for row in combined]
+            write_tsv_dict(path, live_hdr, restored)
+        for h in handoffs:
+            hrel = clean_repo_relpath(h.get("path", ""))
+            if not hrel:
+                dropped.append(h.get("path", ""))
+                continue
+            hpath = REPO_ROOT / hrel
+            hpath.parent.mkdir(parents=True, exist_ok=True)
+            hpath.write_text(h.get("content", ""), encoding="utf-8", newline="\n")
+        target.write_text(_replace_status_header(base_text, "OPEN"), encoding="utf-8", newline="\n")
+        write_active_track_pointer(rel)
+        generated, _track_state, _next_rung = render_orientation(active_pointer_for_render(strict=True))
+        write_orientation(generated)
+        if os.environ.get("ORIENTATION_FORCE_FAULT_AFTER_WRITES") == "1":
+            raise RuntimeError("selftest fault injection: unpark post-write failure")
+    except BaseException:
+        txn.rollback()
+        print("ORIENTATION-UNPARK-VERDICT: FAIL(transaction-rolled-back)", file=sys.stderr)
+        sys.exit(1)
+    print(f"ORIENTATION-UNPARK-VERDICT: UNPARKED receipt={payload.get('park_receipt')}")
+    print(f"track_doc: {rel}")
+    print(f"restored_rows: {sum(len(v.get('rows', [])) for v in payload.get('tables', {}).values())}")
+    print(f"restored_handoffs: {len(handoffs) - len(dropped)}")
+    if dropped:
+        print(f"dropped_stale_referents: {len(dropped)}")
+    return 0
 
 
 def commit_forced_open(rel: str, target: pathlib.Path, created_planned: bool, old_info: dict,
@@ -2192,6 +2758,10 @@ if MODE == "check":
     sys.exit(check_orientation())
 if MODE == "open":
     sys.exit(open_track())
+if MODE == "park":
+    sys.exit(park_track())
+if MODE == "unpark":
+    sys.exit(unpark_track())
 sys.exit(generate_orientation())
 PY
 }
