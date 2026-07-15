@@ -42,25 +42,34 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | c1a904a986fe8f0ed1dedb41612c5d1ceb2a7f1dfdb0a51974c9065b7a58d614 |
-| binding_conditions.tsv | 0944b358a14a6cb004de58a938cb18e92751e2202e696e24fab22ca0419163e6 |
+| binding_conditions.tsv | 262193cd63fe50a3418f62fc09dea54c2c9b4d54ed40fefaf9879f209ecb5ad5 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | 79f9d8b60cca7ea92234e8df6494ceab727a66af6bb0587d498b36c45e6b4b69 |
-| design_0_0_8_4_8_4_hd_board.md | 0010e2701a5cef0ec8c310be842c5615623d4ef8ad49d6d58caac46bc7be869a |
+| active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
+| design_0_0_8_6_studio_live_ops.md | d12db57b2903ebefe68eb3f3a95e41e76be82419f2ea03ad55819fcd35ba5838 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
-## Active Track / Rung Summary (`design_0_0_8_4_8_4_hd_board.md`)
+## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
 
 Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HD-9 | HD-PARK-REDIRECT-0 | **Corrective (Owner-directed 2026-07-15): parked-for-redirection state.** `--par | DA-GRADUATED / merged [#1351](https://github.com/khorum08/SimThing/pull/1351) — merged 2026-07-15T01:0xZ (dispatched_... |
-| HD-C | HD-CLOSEOUT-0 | Measured close: median metered-agent ingress (prose lines per handoff) before/af | NOT STARTED |
+| REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **DA-GRADUATED / merged [#1317](https://github.com/khorum08/SimThing/pull/1317) @ `1bdc1297`** — transport of the DA-... |
+| 12.2 | STUDIO-DISRUPTION-READOUT-0 | **Needs 12.8 for live values.** **Read-only per-system disruption snapshot from  | TODO |
+| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | TODO |
+| 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | TODO |
+| 12.7 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galax | TODO |
+| 12.8 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path**  | TODO |
+| 12.9 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.8.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
+| 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
+| 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
+| 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |
+| OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: `HD-CLOSEOUT-0`
+Active pointer: `STUDIO-FLEET-PRESENCE-READOUT-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -126,8 +135,9 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 | HU-CLOSEOUT-0 | no-new-clearance-class-registration-without-retirement-pairing-during-track | DA-2026-07-09 | discharged | HU-CLOSEOUT-0 |
 | OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | discharged | OC-KERNEL-LANE |
 | OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | discharged | OC-CLOSEOUT-0 |
+| STUDIO-OWNER-CLOSURE-0 | track-closeout-blocked-until-explicit-owner-authorization | Owner-2026-07-12 | active | STUDIO-OWNER-CLOSURE-0 |
 | HD-TRACK-OPEN-0 | blocked-until-owner-parks-0.0.8.6-and-directs-regeneration | Owner-2026-07-12 | discharged | HD-TRACK-OPEN-0 |
-| HD-CLOSEOUT-0 | net-corpus-prose-must-decrease-at-close | DA-2026-07-12 | active | HD-CLOSEOUT-0 |
+| HD-CLOSEOUT-0 | net-corpus-prose-must-decrease-at-close | DA-2026-07-12 | discharged | HD-CLOSEOUT-0 |
 
 ## Clearance Ledger (recent)
 

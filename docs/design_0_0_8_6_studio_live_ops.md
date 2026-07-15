@@ -1,6 +1,6 @@
 # 0.0.8.6 — Studio Live Ops (Phase 9)
 
-> **Status: PARKED / harness lifecycle.**
+> **Status: OPEN / harness lifecycle.**
 > [`design_0_0_8_4_8_4_hd_board.md`](design_0_0_8_4_8_4_hd_board.md); further UI/UX phase ladders land
 > here when the Owner resumes. Closeout remains Owner-gated (`STUDIO-OWNER-CLOSURE-0`, active).
 > Production Studio track for **realtime observation and
@@ -269,7 +269,7 @@ Completion of a phase ladder does **not** close the track — see §8 Owner-Clos
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| 12.1 | `STUDIO-LOADER-DIALOG-REPAIR-0` | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box (starts empty; populated by the file dialog), **Select File…** button (native `rfd` picker, `.clause` filter), **Load**, **Cancel**, and a **loading status bar at the bottom, initially invisible**. Clicking Load reveals the bar and advances it through the **real ingest stages** (resolve → parse → hydrate → rebind → persist → session build → projection → scene adopt — the stage seams already exist in `ingest_clause_scenario_text` / `load_clause_studio_session_from_path` / adopt); on completion the dialog hides. **No fake/animated-only progress**; on failure the bar shows the failing stage fail-loud and the dialog stays. Every other affordance (Create tab, session summary, legacy JSON handlers) moves behind the existing debug Telemetry surface (11.4 Scenario section). Modal-pause and no-autoplay laws hold. **[OVL]** — ops-telemetry rows: per-stage status/timing of the last load; Owner screenshot verifies bar staging. | **PROBATION / [PR #1324](https://github.com/khorum08/SimThing/pull/1324) / OVL PASS @ `827fcbe0`** — asynchronous real-stage loading; bounded hidden scene adoption; atomic reveal; Owner OVL PASS; focused 18/18 + named regressions 12/12, 10/10, 10/10. Evidence [studio_loader_dialog_repair_0_results.md](tests/studio_loader_dialog_repair_0_results.md). | Tier-2 · Std |
+| 12.1 | `STUDIO-LOADER-DIALOG-REPAIR-0` | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box (starts empty; populated by the file dialog), **Select File…** button (native `rfd` picker, `.clause` filter), **Load**, **Cancel**, and a **loading status bar at the bottom, initially invisible**. Clicking Load reveals the bar and advances it through the **real ingest stages** (resolve → parse → hydrate → rebind → persist → session build → projection → scene adopt — the stage seams already exist in `ingest_clause_scenario_text` / `load_clause_studio_session_from_path` / adopt); on completion the dialog hides. **No fake/animated-only progress**; on failure the bar shows the failing stage fail-loud and the dialog stays. Every other affordance (Create tab, session summary, legacy JSON handlers) moves behind the existing debug Telemetry surface (11.4 Scenario section). Modal-pause and no-autoplay laws hold. **[OVL]** — ops-telemetry rows: per-stage status/timing of the last load; Owner screenshot verifies bar staging. | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + merged 2026-07-12; graduation stamp reconciled at 0.0.8.6 unpark 2026-07-15 (parked before stamp landed). Focused 18/18 + named regressions 12/12, 10/10, 10/10. Evidence [studio_loader_dialog_repair_0_results.md](tests/studio_loader_dialog_repair_0_results.md). | Tier-2 · Std |
 | 12.3 | `STUDIO-DISRUPTION-SELECT-SCREEN-0` | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **selected star's** blur and tint by its max accreted disruption, piecewise-linear and clamped: disruption 0 → 100% blur / 0% red; **50 → 200% blur / 50% red; 100 → 500% blur / 100% red**; >100 clamps. Attach via the existing per-star visual path (`compute_star_radius_visual` scale-mul / `sync_star_visuals_system` color branch, 11.6 pattern). Deselect restores defaults. Read-only display expression; no Spec mutation; coexists with 11.6 owned-set brighten. **[OVL]** — ops-telemetry rows: selected system id, raw disruption, computed blur-scale/red-fraction; Owner screenshot verifies the screen effect against the numbers. | TODO | Tier-2 · Std |
 | 12.5 | `STUDIO-FLEET-ICONS-0` | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base max star blur size**) marks fleet presence. At rest/anchor: fleets owned by the **currently selected owner** sit **right** of the star pointing at it; all other fleets (hostile/neutral, or when no owner is selected) sit **left**, mirror-symmetric, pointing at the star. In transit: icon placed **~30% along the hyperlane** from source toward destination, pointing at the destination; on arrival it snaps to the new star's anchor slot. Existing presentation mechanisms only (billboard/`TypefaceIconSet` glyph or small mesh; hyperlane geometry from `build_hyperlane_bucket_mesh` path). Read-only projection of the 12.4 snapshot; no movement authority. **[OVL]** — ops-telemetry rows: fleet snapshot table (owner / anchor-or-transit / placement side); Owner screenshot verifies icon placement against the rows. | TODO | Tier-2 · Std |
 
@@ -312,102 +312,8 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | `STUDIO-LOADER-DIALOG-REPAIR-0` (Phase 12 opened 2026-07-12; 12.2/12.4 readouts DA-reserve) |
+| Active open rung | `STUDIO-FLEET-PRESENCE-READOUT-0` (12.4; resumed 2026-07-15 at 0.0.8.6 unpark — 12.1 loader graduated. Std read-only re-entry; queue: 12.2 disruption readout (Frontier), then field-economy chain 12.6→12.7→12.8→12.9) |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
 **Park instruction for agents:** Phase 9 complete; Phase 10 parked; Phase 11 complete (2026-07-12); Phase 12 **ACTIVE** at `STUDIO-LOADER-DIALOG-REPAIR-0` (§4d). Track closeout lives only in `STUDIO-OWNER-CLOSURE-0` (§5b) and is deferred until explicit Owner authorization. Do not reopen 0.0.8.5.
-
-<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->
-```json
-{
-  "handoffs": [],
-  "park_receipt": "cf7fce95781a",
-  "parked_at": "2026-07-15",
-  "parked_from_head": "3a35f1a4afd9",
-  "pointer": "docs/design_0_0_8_4_8_4_hd_board.md",
-  "rung_ids": [
-    "STUDIO-CANONICAL-SCENARIO-0",
-    "STUDIO-CLAUSE-LOADER-SIMPLIFY-0",
-    "STUDIO-DISRUPTION-READOUT-0",
-    "STUDIO-DISRUPTION-SELECT-SCREEN-0",
-    "STUDIO-FACTION-IDENTITY-FIELDS-0",
-    "STUDIO-FACTION-NAMEPLATES-0",
-    "STUDIO-FIELD-SESSION-ELEVATE-0",
-    "STUDIO-FLEET-ICONS-0",
-    "STUDIO-FLEET-PRESENCE-READOUT-0",
-    "STUDIO-FROSTED-GLASS-0",
-    "STUDIO-LIVE-OBSERVE-0",
-    "STUDIO-LIVE-OPS-CLASS-0",
-    "STUDIO-LIVE-OPS-HARDENING-0",
-    "STUDIO-LIVE-OPS-READINESS-0",
-    "STUDIO-LIVE-SESSION-BRIDGE-0",
-    "STUDIO-LOADER-DIALOG-REPAIR-0",
-    "STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0",
-    "STUDIO-OWNER-CLOSURE-0",
-    "STUDIO-SCENARIO-LIBRARY-CREATE-0",
-    "STUDIO-SCENARIO-LIBRARY-UI-0",
-    "STUDIO-SIM-CLOCK-0",
-    "STUDIO-SIM-CLOCK-CLASS-0",
-    "STUDIO-SIM-CLOCK-UI-0",
-    "STUDIO-STAR-NAMING-PASS-0",
-    "STUDIO-STAR-NAMING-REPAIR-0",
-    "STUDIO-TRANSPORT-OBSERVE-REFINE-0",
-    "TP-CLAUSE-ECONOMY-AUTHOR-0",
-    "TP-EMERGENT-TENSION-PROOF-0",
-    "TP-FIELD-ECONOMY-GRAMMAR-0"
-  ],
-  "schema": "simthing.parked-track.v1",
-  "tables": {
-    "binding_conditions.tsv": {
-      "header": [
-        "rung",
-        "condition",
-        "set_by",
-        "status",
-        "promotion_blocker"
-      ],
-      "rows": [
-        {
-          "__park_index": "8",
-          "condition": "track-closeout-blocked-until-explicit-owner-authorization",
-          "promotion_blocker": "STUDIO-OWNER-CLOSURE-0",
-          "rung": "STUDIO-OWNER-CLOSURE-0",
-          "set_by": "Owner-2026-07-12",
-          "status": "active"
-        }
-      ]
-    },
-    "closeout_artifacts.tsv": {
-      "header": [
-        "path",
-        "leased_at",
-        "disposition",
-        "closeout_track",
-        "note"
-      ],
-      "rows": []
-    },
-    "owner_directives.tsv": {
-      "header": [
-        "directive",
-        "scope",
-        "status",
-        "set_by"
-      ],
-      "rows": [
-        {
-          "__park_index": "0",
-          "directive": "Studio remains parked until Owner resumption",
-          "scope": "0.0.8.6",
-          "set_by": "Owner-2026-07-12",
-          "status": "active"
-        }
-      ]
-    }
-  },
-  "track_doc": "docs/design_0_0_8_6_studio_live_ops.md",
-  "track_id": "0.0.8.6"
-}
-```
-<!-- SIMTHING-PARKED-TRACK:END -->

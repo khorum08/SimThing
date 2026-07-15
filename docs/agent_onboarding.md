@@ -112,7 +112,7 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 
 ## HD Board — dispatch prompting & handoff lifecycle (operator protocol)
 
-Owner workplan authoring/revision is in [`owner_authoring_guide.md`](owner_authoring_guide.md). Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The live view is the
+Owner workplan authoring/revision, the open/park/close lifecycle (`--park`/`--unpark`, HD-6 pointer gate), and the manual-vs-automated progression modes are in [`owner_authoring_guide.md`](owner_authoring_guide.md). Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The live view is the
 **SimThing Board issue** (auto-synced every clearance run: pointer, current handoff + receipt, open
 PRs with routes, every rung's exit-proof state). Check the board, not a local file.
 
@@ -124,10 +124,10 @@ PRs with routes, every rung's exit-proof state). Check the board, not a local fi
 - **Lifecycle:** author → dispatch (`owner_approved` + exit-proof cell stamped by DA with `HD-RECEIPT`)
   → implement → PROBATION relay (implementer stamps PROBATION in-diff; ruling 6) → DA deep pass →
   DA graduation stamp at merge → graduated `.hd` leased into `closeout_artifacts.tsv` → wall-clock reap.
-- **Owner verbs, in prose to any agent:** `approve` · `amend: <text>` · `hold` · `status` — the scribe
-  mutates the `.hd` and echoes the diff back before pushing. After HD-3: same verbs as `/handoff …`
-  GitHub comments. After HD-4: *"check library staleness"* → `librarian.sh --staleness`; *"cull dead
-  tsv rows"* → `--cull` (dry-run default, `--confirm` to act); *"what can role X reach"* → `--catalog --role <r>`.
+- **Owner verbs, in prose to any agent or as `/handoff …` GitHub comments:** `approve` · `amend: <text>`
+  · `hold` · `status` — the scribe mutates the `.hd` and echoes the diff back before pushing. Stewardship
+  verbs: *"check library staleness"* → `librarian.sh --staleness`; *"cull dead tsv rows"* → `--cull`
+  (dry-run default, `--confirm` to act); *"what can role X reach"* → `--catalog --role <r>`.
 - **Trust anchor:** every projection, relay, and PR quotes `HD-RECEIPT: <12-hex>`; a mismatch is a
   relay-lint FAIL. Same receipt ⇒ provably the same handoff — transcription drift is dead.
 
