@@ -65,6 +65,11 @@ import tempfile
 
 MODE = os.environ["HD_MODE"]
 ROOT = Path(os.environ["HD_REPO_ROOT"])
+
+
+def handoffs_dir():
+    override = os.environ.get("HD_HANDOFFS_DIR", "").strip()
+    return Path(override) if override else ROOT / "handoffs"
 SCRIPT = Path(os.environ["HD_SCRIPT_PATH"])
 ARGS = sys.argv[1:]
 
@@ -691,9 +696,10 @@ def command_resolve_handoff(body_file, changed_files):
                 return 0
             raise
         rel = f"handoffs/{rung}.hd.md"
+        base = handoffs_dir()
         changed = changed_handoff_files(changed_files)
         if not changed:
-            path = ROOT / rel
+            path = base / f"{rung}.hd.md"
             if not path.is_file():
                 raise HDError("missing-handoff-file")
             obj = parse_handoff(path)
@@ -705,7 +711,7 @@ def command_resolve_handoff(body_file, changed_files):
             raise HDError("multiple-changed-handoffs")
         if changed[0] != rel:
             raise HDError("rung-handoff-mismatch")
-        path = ROOT / rel
+        path = base / f"{rung}.hd.md"
         if not path.is_file():
             raise HDError("missing-handoff-file")
         obj = parse_handoff(path)
@@ -1031,16 +1037,25 @@ stop_conditions: ["scope-widening"]
         board_big = run_cmd([bash_cmd, script_arg, "--render-board", str(board_json_path)])
         check("board-line-cap-fails", "HD-LINT-VERDICT: FAIL(board-line-cap)" in board_big.stdout)
 
+        # Resolve fixtures are self-contained via HD_HANDOFFS_DIR: they must not
+        # depend on any specific live handoffs/*.hd.md existing in the repo (those
+        # are reaped at track closeout). A temp handoffs dir holds the fixture.
         body = Path(tmp) / "pr_body.md"
         changed = Path(tmp) / "changed_files.txt"
-        live_handoff_arg = "handoffs/HD-DISPATCH-SUBSTRATE-0.hd.md"
-        write(body, "## Status\n\nRung: HD-DISPATCH-SUBSTRATE-0\n")
+        hoff_dir = Path(tmp) / "handoffs"
+        hoff_dir.mkdir(exist_ok=True)
+        resolve_fixture = valid.read_text(encoding="utf-8").replace(
+            "VALID-HANDOFF-DISPATCH-FIXTURE-0", "RESOLVE-FIXTURE-RUNG-0")
+        write(hoff_dir / "RESOLVE-FIXTURE-RUNG-0.hd.md", resolve_fixture)
+        hoff_env = {"HD_HANDOFFS_DIR": str(hoff_dir)}
+        live_handoff_arg = "handoffs/RESOLVE-FIXTURE-RUNG-0.hd.md"
+        write(body, "## Status\n\nRung: RESOLVE-FIXTURE-RUNG-0\n")
         write(changed, f"{live_handoff_arg}\n")
-        resolve = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        resolve = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)], env=hoff_env)
         check("resolve-handoff-explicit-rung", resolve.returncode == 0 and resolve.stdout.strip() == live_handoff_arg)
 
         write(changed, "scripts/ci/handoff_dispatch.sh\n")
-        existing = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)])
+        existing = run_cmd([bash_cmd, script_arg, "--resolve-handoff", str(body), str(changed)], env=hoff_env)
         check("resolve-existing-handoff-without-handoff-diff", existing.returncode == 0 and existing.stdout.strip() == live_handoff_arg)
 
         write(changed, "handoffs/OTHER-HANDOFF.hd.md\n")
