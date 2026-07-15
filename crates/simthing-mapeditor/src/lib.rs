@@ -161,7 +161,7 @@ pub use studio_frame_phase_gpu_telemetry::{
 };
 pub use studio_fleet_presence::{
     studio_fleet_presence_map_from_session, studio_fleet_presence_map_from_snapshot,
-    studio_fleet_presence_source_forbids_raw_property_ids, StudioFleetPresenceMap,
+    StudioFleetPresenceMap,
 };
 pub use studio_frosted_glass::{
     FrostedGlassFrameTelemetry, FrostedGlassPanelRegistry, FrostedGlassRenderPlan,

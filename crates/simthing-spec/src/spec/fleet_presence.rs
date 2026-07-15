@@ -117,7 +117,7 @@ pub fn fleet_presence_snapshot(
 }
 
 fn first_fleet_under(node: &SimThing) -> Option<&SimThing> {
-    if node.kind == SimThingKind::Fleet { // role-resolution-exclude-site: read-only fleet presence readout.
+    if node.kind == SimThingKind::Fleet {
         return Some(node);
     }
     node.children.iter().find_map(first_fleet_under)
@@ -128,7 +128,7 @@ fn collect_fleet_records(
     system_id: u32,
     records: &mut Vec<FleetPresenceRecord>,
 ) -> Result<(), FleetPresenceSnapshotError> {
-    if node.kind == SimThingKind::Fleet { // role-resolution-exclude-site: read-only fleet presence readout.
+    if node.kind == SimThingKind::Fleet {
         let raw = node.id.raw();
         records.push(FleetPresenceRecord {
             fleet_simthing_id_raw: raw,

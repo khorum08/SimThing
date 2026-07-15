@@ -21,6 +21,7 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 - Added a mapeditor-only `StudioFleetPresenceMap` projection keyed by generated system id, wired into `StudioLiveSessionBridgeReadout`.
 - Added focused regression tests for the typed spec contract, canonical TP ClauseThing hydrate, and mapeditor consumption without raw fleet property ids.
 - Remediation: removed the public caller-supplied transit override path. `InTransit` remains a readout contract variant with a spec-private unit fixture until authoritative sim/STEAD movement state exists.
+- DA remand: removed local scan-suppression markers from the two fleet kind reads, recorded both as accounted `SPEC-LOWERER-KIND-READ` inspect sites, and deleted the bespoke mapeditor source-guard helper in favor of diff plus grep proof.
 
 ## Boundary / Constitution Checks
 
@@ -29,7 +30,8 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 - REQUIRED-ANCHORS: none
 - ANCHOR-ACK working set: `field-policy-time-decisions@ae2d4c2c0c7d`, `spec-fidelity-anti-ceremony@add4dbbc267a`, `founding-ontology-invariants@b960ed2d493d`, `drift-detectors-six-line@af20f8122501`
 - Read-only: helper walks `ScenarioSpec` authority and constructs cloned readout rows only; tests assert the source spec root is unchanged.
-- No raw property ids in mapeditor: production mapeditor source imports the typed helper and includes no TP fleet property-id constants or literals.
+- Accounted scan inspect: `AGENT-SCAN-VERDICT: INSPECT delta_inspect=2`; both sites are `fleet_presence.rs` read-only `Fleet` enumeration, with matching `inspect_justifications.tsv` and `triage_log.tsv` rows.
+- No raw property ids in mapeditor: production mapeditor source imports the typed helper and includes no TP fleet property-id constants or literals; grep proof covers `crates/simthing-mapeditor/src/`.
 - No movement authority / CPU planner / Spec mutation: production snapshot remains anchored-only and exposes no caller-facing API to manufacture transit; no scheduling, movement write, driver, kernel, or WGSL code changed.
 
 ## Validation Commands
@@ -43,7 +45,8 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 - PASS: `cargo test -p simthing-mapeditor --test studio_fleet_presence_readout_0`
 - PASS: `bash scripts/ci/test_inventory_drift_check.sh`
 - PASS: `bash scripts/ci/doctrine_selftest.sh`
-- PASS: `bash scripts/ci/agent_scan.sh`
+- INSPECT accounted: `bash scripts/ci/agent_scan.sh` (`AGENT-SCAN-VERDICT: INSPECT delta_inspect=2`)
+- PASS: `rg -n "TP_FLEET_POSTURE_PROPERTY_ID|TP_FLEET_HOME_SYSTEM_PROPERTY_ID|8_301_500|8_301_501" crates/simthing-mapeditor/src` returned no matches
 
 ## Files Changed
 
@@ -60,6 +63,8 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 - `docs/design_0_0_8_6_studio_live_ops.md`
 - `docs/tests/current_evidence_index.md`
 - `scripts/ci/test_inventory.tsv`
+- `scripts/ci/inspect_justifications.tsv`
+- `scripts/ci/triage_log.tsv`
 
 ## Evidence Lifecycle
 

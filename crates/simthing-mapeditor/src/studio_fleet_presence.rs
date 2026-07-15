@@ -46,28 +46,3 @@ pub fn studio_fleet_presence_map_from_snapshot(
         transit_fleets,
     }
 }
-
-pub fn studio_fleet_presence_source_forbids_raw_property_ids(source: &str) -> Result<(), String> {
-    let posture = format!("{}{}", "TP_FLEET_", "POSTURE_PROPERTY_ID");
-    let home = format!("{}{}", "TP_FLEET_", "HOME_SYSTEM_PROPERTY_ID");
-    let posture_raw = format!("{}_{}", "8_301", "500");
-    let home_raw = format!("{}_{}", "8_301", "501");
-
-    for line in source.lines() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("//") || trimmed.starts_with("//!") || trimmed.starts_with("///") {
-            continue;
-        }
-        if trimmed.contains("studio_fleet_presence_source_forbids_raw_property_ids") {
-            continue;
-        }
-        for token in [&posture, &home, &posture_raw, &home_raw] {
-            if trimmed.contains(token) {
-                return Err(format!(
-                    "studio_fleet_presence forbids raw fleet property id token in: {trimmed}"
-                ));
-            }
-        }
-    }
-    Ok(())
-}

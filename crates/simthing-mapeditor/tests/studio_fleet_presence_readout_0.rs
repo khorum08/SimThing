@@ -3,10 +3,7 @@
 use std::path::PathBuf;
 
 use simthing_core::{SimThing, SimThingKind};
-use simthing_mapeditor::{
-    studio_fleet_presence_map_from_session, studio_fleet_presence_source_forbids_raw_property_ids,
-    StudioSession,
-};
+use simthing_mapeditor::{studio_fleet_presence_map_from_session, StudioSession};
 use simthing_spec::{
     apply_galaxy_map_metadata, apply_gridcell_role_metadata, apply_owner_entity_metadata,
     apply_participant_owner_flow_metadata, apply_scenario_metadata_to_root, make_planet_gridcell,
@@ -100,8 +97,4 @@ fn mapeditor_consumes_typed_fleet_snapshot_by_generated_system_id() {
         Some("owner_a")
     );
     assert!(fleets[0].posture.is_none());
-
-    let source = include_str!("../src/studio_fleet_presence.rs");
-    studio_fleet_presence_source_forbids_raw_property_ids(source)
-        .expect("mapeditor module must not name raw fleet property ids");
 }
