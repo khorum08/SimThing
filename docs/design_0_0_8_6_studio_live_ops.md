@@ -1,6 +1,6 @@
 # 0.0.8.6 — Studio Live Ops (Phase 9)
 
-> **Status: PARKED / Owner-directed (2026-07-12; opened 2026-07-09).** Pointer moved to
+> **Status: PARKED / harness lifecycle.**
 > [`design_0_0_8_4_8_4_hd_board.md`](design_0_0_8_4_8_4_hd_board.md); further UI/UX phase ladders land
 > here when the Owner resumes. Closeout remains Owner-gated (`STUDIO-OWNER-CLOSURE-0`, active).
 > Production Studio track for **realtime observation and
@@ -317,3 +317,97 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
 **Park instruction for agents:** Phase 9 complete; Phase 10 parked; Phase 11 complete (2026-07-12); Phase 12 **ACTIVE** at `STUDIO-LOADER-DIALOG-REPAIR-0` (§4d). Track closeout lives only in `STUDIO-OWNER-CLOSURE-0` (§5b) and is deferred until explicit Owner authorization. Do not reopen 0.0.8.5.
+
+<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->
+```json
+{
+  "handoffs": [],
+  "park_receipt": "cf7fce95781a",
+  "parked_at": "2026-07-15",
+  "parked_from_head": "3a35f1a4afd9",
+  "pointer": "docs/design_0_0_8_4_8_4_hd_board.md",
+  "rung_ids": [
+    "STUDIO-CANONICAL-SCENARIO-0",
+    "STUDIO-CLAUSE-LOADER-SIMPLIFY-0",
+    "STUDIO-DISRUPTION-READOUT-0",
+    "STUDIO-DISRUPTION-SELECT-SCREEN-0",
+    "STUDIO-FACTION-IDENTITY-FIELDS-0",
+    "STUDIO-FACTION-NAMEPLATES-0",
+    "STUDIO-FIELD-SESSION-ELEVATE-0",
+    "STUDIO-FLEET-ICONS-0",
+    "STUDIO-FLEET-PRESENCE-READOUT-0",
+    "STUDIO-FROSTED-GLASS-0",
+    "STUDIO-LIVE-OBSERVE-0",
+    "STUDIO-LIVE-OPS-CLASS-0",
+    "STUDIO-LIVE-OPS-HARDENING-0",
+    "STUDIO-LIVE-OPS-READINESS-0",
+    "STUDIO-LIVE-SESSION-BRIDGE-0",
+    "STUDIO-LOADER-DIALOG-REPAIR-0",
+    "STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0",
+    "STUDIO-OWNER-CLOSURE-0",
+    "STUDIO-SCENARIO-LIBRARY-CREATE-0",
+    "STUDIO-SCENARIO-LIBRARY-UI-0",
+    "STUDIO-SIM-CLOCK-0",
+    "STUDIO-SIM-CLOCK-CLASS-0",
+    "STUDIO-SIM-CLOCK-UI-0",
+    "STUDIO-STAR-NAMING-PASS-0",
+    "STUDIO-STAR-NAMING-REPAIR-0",
+    "STUDIO-TRANSPORT-OBSERVE-REFINE-0",
+    "TP-CLAUSE-ECONOMY-AUTHOR-0",
+    "TP-EMERGENT-TENSION-PROOF-0",
+    "TP-FIELD-ECONOMY-GRAMMAR-0"
+  ],
+  "schema": "simthing.parked-track.v1",
+  "tables": {
+    "binding_conditions.tsv": {
+      "header": [
+        "rung",
+        "condition",
+        "set_by",
+        "status",
+        "promotion_blocker"
+      ],
+      "rows": [
+        {
+          "__park_index": "8",
+          "condition": "track-closeout-blocked-until-explicit-owner-authorization",
+          "promotion_blocker": "STUDIO-OWNER-CLOSURE-0",
+          "rung": "STUDIO-OWNER-CLOSURE-0",
+          "set_by": "Owner-2026-07-12",
+          "status": "active"
+        }
+      ]
+    },
+    "closeout_artifacts.tsv": {
+      "header": [
+        "path",
+        "leased_at",
+        "disposition",
+        "closeout_track",
+        "note"
+      ],
+      "rows": []
+    },
+    "owner_directives.tsv": {
+      "header": [
+        "directive",
+        "scope",
+        "status",
+        "set_by"
+      ],
+      "rows": [
+        {
+          "__park_index": "0",
+          "directive": "Studio remains parked until Owner resumption",
+          "scope": "0.0.8.6",
+          "set_by": "Owner-2026-07-12",
+          "status": "active"
+        }
+      ]
+    }
+  },
+  "track_doc": "docs/design_0_0_8_6_studio_live_ops.md",
+  "track_id": "0.0.8.6"
+}
+```
+<!-- SIMTHING-PARKED-TRACK:END -->
