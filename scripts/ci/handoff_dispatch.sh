@@ -920,10 +920,22 @@ def command_selftest():
     check("projections-byte-stable", stable)
     check("projection-receipt-equality", len(set(receipts)) == 1 and receipts[0])
 
-    owner_outputs = [run_cmd([bash_cmd, script_arg, "--render", role, owner_arg]).stdout for role in ("coding", "orchestrator", "da")]
-    active = "Studio remains parked until Owner resumption"
-    retired = "Retired fixture directive must stay hidden"
+    # Directive render is proven against a FIXTURE table via HD_OWNER_DIRECTIVES,
+    # not the live owner_directives.tsv: live directives legitimately move in and
+    # out (HD-9 park/redirect relocates track-scoped rows), so asserting live text
+    # couples the test to repo state. The fixture pins active/retired semantics.
+    active = "Fixture active directive must render"
+    retired = "Fixture retired directive must stay hidden"
     note = "Owner note exact words: do not paraphrase."
+    with tempfile.TemporaryDirectory() as dir_tmp:
+        directives_fixture = Path(dir_tmp) / "owner_directives.tsv"
+        write(directives_fixture, (
+            "directive\tscope\tstatus\tset_by\n"
+            f"{active}\tfixture\tactive\tDA-selftest\n"
+            f"{retired}\tfixture\tretired\tDA-selftest\n"
+        ))
+        dir_env = {"HD_OWNER_DIRECTIVES": str(directives_fixture)}
+        owner_outputs = [run_cmd([bash_cmd, script_arg, "--render", role, owner_arg], env=dir_env).stdout for role in ("coding", "orchestrator", "da")]
     check("owner-notes-render", all(note in out for out in owner_outputs))
     check("active-directives-render", all(active in out for out in owner_outputs))
     check("retired-directives-hidden", all(retired not in out for out in owner_outputs))
