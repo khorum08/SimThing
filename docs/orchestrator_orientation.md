@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 262193cd63fe50a3418f62fc09dea54c2c9b4d54ed40fefaf9879f209ecb5ad5 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | b733fad63b21344004cc2e1d9983f2bda080de724813fbfcbfbedf43bc739d07 |
+| design_0_0_8_6_studio_live_ops.md | 13141e7afa6eb3815381add66ded76b3d368519bb577d18fb38f9bcf3249037c |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -57,7 +57,7 @@ Track state: `open`
 | --- | --- | --- | --- |
 | REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **DA-GRADUATED / merged [#1317](https://github.com/khorum08/SimThing/pull/1317) @ `1bdc1297`** — transport of the DA-... |
 | 12.2 | STUDIO-DISRUPTION-READOUT-0 | **Needs 12.8 for live values.** **Read-only per-system disruption snapshot from  | TODO |
-| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | HANDOFF DISPATCHED as `handoffs/STUDIO-FLEET-PRESENCE-READOUT-0.hd.md` (dispatched_at 2026-07-15T04:16Z; `HD-RECEIPT:... |
+| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | **PROBATION / proof-present / DA-review-pending** — branch `coder/studio-fleet-presence-readout-0`; `HD-RECEIPT: 7404... |
 | 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | TODO |
 | 12.7 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galax | TODO |
 | 12.8 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path**  | TODO |

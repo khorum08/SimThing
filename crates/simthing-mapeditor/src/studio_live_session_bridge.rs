@@ -14,6 +14,9 @@ use simthing_spec::{
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
+use crate::studio_fleet_presence::{
+    studio_fleet_presence_map_from_session, StudioFleetPresenceMap,
+};
 use crate::studio_sim_clock::StudioSimClock;
 
 /// Request that a bridge attached to replaced Studio authority be detached before ticking.
@@ -62,6 +65,7 @@ pub struct StudioLiveSessionBridgeReadout {
     pub scenario_id: Option<String>,
     pub stead_valid: Option<bool>,
     pub production_path: &'static str,
+    pub fleet_presence: StudioFleetPresenceMap,
 }
 
 impl StudioLiveSessionBridgeReadout {
@@ -75,6 +79,7 @@ impl StudioLiveSessionBridgeReadout {
             scenario_id: None,
             stead_valid: None,
             production_path: StudioLiveSessionBridge::production_path_label(),
+            fleet_presence: StudioFleetPresenceMap::default(),
         }
     }
 }
@@ -92,6 +97,8 @@ pub enum StudioLiveSessionBridgeError {
     Unsupported(String),
     #[error("scenario conversion failed: {0}")]
     ScenarioConversion(String),
+    #[error("fleet presence readback failed: {0}")]
+    FleetPresenceReadback(String),
 }
 
 /// Production live handle over a loaded StudioSession authority.
@@ -109,6 +116,7 @@ pub struct StudioLiveSessionBridge {
     open_stead_valid: Option<bool>,
     open_links_valid: Option<bool>,
     open_source_path: Option<PathBuf>,
+    fleet_presence: StudioFleetPresenceMap,
     /// True if we attempted open and failed for non-GPU reasons.
     open_failed: bool,
 }
@@ -131,6 +139,7 @@ impl StudioLiveSessionBridge {
             open_stead_valid: None,
             open_links_valid: None,
             open_source_path: None,
+            fleet_presence: StudioFleetPresenceMap::default(),
             open_failed: false,
         }
     }
@@ -166,6 +175,7 @@ impl StudioLiveSessionBridge {
         self.open_stead_valid = None;
         self.open_links_valid = None;
         self.open_source_path = None;
+        self.fleet_presence = StudioFleetPresenceMap::default();
         self.open_failed = false;
     }
 
@@ -182,6 +192,8 @@ impl StudioLiveSessionBridge {
         let scenario = driver_scenario_from_authority(&studio.scenario_authority).map_err(
             |e| StudioLiveSessionBridgeError::ScenarioConversion(e),
         )?;
+        let fleet_presence = studio_fleet_presence_map_from_session(studio)
+            .map_err(|e| StudioLiveSessionBridgeError::FleetPresenceReadback(e.to_string()))?;
 
         match SimSession::open(scenario) {
             Ok(sim) => {
@@ -192,6 +204,7 @@ impl StudioLiveSessionBridge {
                 self.open_stead_valid = Some(studio.scenario_summary.stead_valid);
                 self.open_links_valid = Some(studio.scenario_summary.links_valid);
                 self.open_source_path = studio.scenario_path.clone();
+                self.fleet_presence = fleet_presence;
                 Ok(())
             }
             Err(SessionError::Gpu(e)) => {
@@ -309,6 +322,7 @@ impl StudioLiveSessionBridge {
             scenario_id: self.open_scenario_id.clone(),
             stead_valid: self.open_stead_valid,
             production_path: Self::production_path_label(),
+            fleet_presence: self.fleet_presence.clone(),
         }
     }
 
