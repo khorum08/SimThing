@@ -1011,7 +1011,6 @@ run_selftest_park_unpark_lifecycle() {
   local ok=0
   if grep -q "STUDIO-OWNER-CLOSURE-0" "${sandbox}/scripts/ci/binding_conditions.tsv"; then ok=1; fi
   if grep -q "Studio remains parked" "${sandbox}/scripts/ci/owner_directives.tsv"; then ok=1; fi
-  if grep -q "1.2.3-studio" "${sandbox}/scripts/ci/test_lifecycle_tracks.tsv"; then ok=1; fi
   if [[ -e "${sandbox}/handoffs/STUDIO-OWNER-CLOSURE-0.hd.md" ]]; then ok=1; fi
   if ! grep -q "SIMTHING-PARKED-TRACK:BEGIN" "${sandbox}/docs/design_1_2_3_studio.md"; then ok=1; fi
   if [[ "$(active_payload_line "${sandbox}/scripts/ci/active_track.txt")" != "none" ]]; then ok=1; fi
@@ -2309,7 +2308,6 @@ def _forced_fault_after_writes() -> None:
 
 _BINDING_HEADER = ["rung", "condition", "set_by", "status", "promotion_blocker"]
 _OWNER_HEADER = ["directive", "scope", "status", "set_by"]
-_TRACKS_HEADER = ["track_id", "status", "closed_at", "source", "note"]
 _ARTIFACT_HEADER = ["path", "leased_at", "disposition", "closeout_track", "note"]
 
 
@@ -2361,7 +2359,7 @@ def _open_pr_hits_for_track(track_id: str, rung_ids: set) -> list:
         fail(f"ORIENTATION-PARK-VERDICT: FAIL(open-pr-check-unavailable): {exc}")
     hits = []
     for pr in prs:
-        blob = "\n".join(str(pr.get(k, "")) for k in ("number", "title", "headRefName", "body"))
+        blob = "\n".join(str(pr.get(k, "")) for k in ("number", "title", "headRefName"))
         if track_id in blob or any(rung and rung in blob for rung in rung_ids):
             hits.append(f"#{pr.get('number')} {pr.get('title', '')}".strip())
     return hits
@@ -2408,7 +2406,6 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
 
     b_hdr, binding = read_tsv_dict(BINDING_TSV, _BINDING_HEADER)
     o_hdr, owners = read_tsv_dict(OWNER_DIRECTIVES, _OWNER_HEADER)
-    t_hdr, tracks = read_tsv_dict(TRACKS_TSV, _TRACKS_HEADER)
     a_hdr, artifacts = read_tsv_dict(CLOSEOUT_ARTIFACTS, _ARTIFACT_HEADER)
 
     def binding_match(row):
@@ -2417,11 +2414,6 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
     def owner_match(row):
         scope = row.get("scope", "")
         return scope == track_id or scope.startswith(f"{track_id}-")
-
-    def track_match(row):
-        tid = row.get("track_id", "")
-        source = row.get("source", "").replace("\\", "/")
-        return source == rel or tid == track_id or tid.startswith(f"{track_id}-")
 
     def artifact_match(row):
         ct = row.get("closeout_track", "")
@@ -2441,11 +2433,9 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
 
     moved_binding = moved_with_index(binding, binding_match)
     moved_owners = moved_with_index(owners, owner_match)
-    moved_tracks = moved_with_index(tracks, track_match)
     moved_artifacts = moved_with_index(artifacts, artifact_match)
     remaining_binding = [r for r in binding if not binding_match(r)]
     remaining_owners = [r for r in owners if not owner_match(r)]
-    remaining_tracks = [r for r in tracks if not track_match(r)]
     remaining_artifacts = [r for r in artifacts if not artifact_match(r)]
 
     handoffs = []
@@ -2480,7 +2470,6 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
         "tables": {
             "binding_conditions.tsv": carried("binding_conditions.tsv", b_hdr, moved_binding),
             "owner_directives.tsv": carried("owner_directives.tsv", o_hdr, moved_owners),
-            "test_lifecycle_tracks.tsv": carried("test_lifecycle_tracks.tsv", t_hdr, moved_tracks),
             "closeout_artifacts.tsv": carried("closeout_artifacts.tsv", a_hdr, moved_artifacts),
         },
         "handoffs": handoffs,
@@ -2488,7 +2477,6 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
     tables_after = {
         BINDING_TSV: (b_hdr, remaining_binding),
         OWNER_DIRECTIVES: (o_hdr, remaining_owners),
-        TRACKS_TSV: (t_hdr, remaining_tracks),
         CLOSEOUT_ARTIFACTS: (a_hdr, remaining_artifacts),
     }
     return payload, tables_after, [REPO_ROOT / h["path"] for h in handoffs]
@@ -2508,7 +2496,7 @@ def park_track() -> int:
     payload, tables_after, handoff_paths = _collect_park_payload(rel, base_text, old_payload)
     parked_text = _replace_status_header(base_text, "PARKED").rstrip() + "\n\n" + park_block_for_payload(payload)
     txn = _FileTxn()
-    for path in [target, ACTIVE_TRACK, OUTPUT, BINDING_TSV, OWNER_DIRECTIVES, TRACKS_TSV, CLOSEOUT_ARTIFACTS, *handoff_paths]:
+    for path in [target, ACTIVE_TRACK, OUTPUT, BINDING_TSV, OWNER_DIRECTIVES, CLOSEOUT_ARTIFACTS, *handoff_paths]:
         txn.stage(path)
     try:
         for path, (hdr, rows) in tables_after.items():
@@ -2559,7 +2547,6 @@ def unpark_track() -> int:
     table_paths = {
         "binding_conditions.tsv": BINDING_TSV,
         "owner_directives.tsv": OWNER_DIRECTIVES,
-        "test_lifecycle_tracks.tsv": TRACKS_TSV,
         "closeout_artifacts.tsv": CLOSEOUT_ARTIFACTS,
     }
     for path in [target, ACTIVE_TRACK, OUTPUT, *table_paths.values()]:

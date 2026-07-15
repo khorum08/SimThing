@@ -322,9 +322,9 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 ```json
 {
   "handoffs": [],
-  "park_receipt": "3c45b807ce6b",
+  "park_receipt": "cf7fce95781a",
   "parked_at": "2026-07-15",
-  "parked_from_head": "6e2536b32b53",
+  "parked_from_head": "3a35f1a4afd9",
   "pointer": "docs/design_0_0_8_4_8_4_hd_board.md",
   "rung_ids": [
     "STUDIO-CANONICAL-SCENARIO-0",
@@ -402,25 +402,6 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
           "scope": "0.0.8.6",
           "set_by": "Owner-2026-07-12",
           "status": "active"
-        }
-      ]
-    },
-    "test_lifecycle_tracks.tsv": {
-      "header": [
-        "track_id",
-        "status",
-        "closed_at",
-        "source",
-        "note"
-      ],
-      "rows": [
-        {
-          "__park_index": "3",
-          "closed_at": "-",
-          "note": "Studio live ops Phase 9 (clock/library/operator)",
-          "source": "docs/design_0_0_8_6_studio_live_ops.md",
-          "status": "open",
-          "track_id": "0.0.8.6-studio-live-ops"
         }
       ]
     }
