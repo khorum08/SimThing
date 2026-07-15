@@ -19,9 +19,9 @@ tested_code_sha: dddddddd11111111222222223333333344444444
 clearance_pr_head: dddddddd11111111222222223333333344444444
 CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)
 coverage_basis: PASS - fixture proof only
-ORIENT-RECEIPT: ada87881548c
+ORIENT-RECEIPT: 66529762ada3
 role: coding
-orientation_rule_stamp: 6e08f7360d0467f9
+orientation_rule_stamp: 180916564d4455a2
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864
 
 ## Scope Ledger
