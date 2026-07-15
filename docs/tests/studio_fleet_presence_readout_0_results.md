@@ -41,6 +41,8 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 - PASS: `cargo test -p simthing-spec transit_contract_is_test_private_until_authoritative_state_exists`
 - PASS: `cargo test -p simthing-clausething --test studio_fleet_presence_readout_0`
 - PASS: `cargo test -p simthing-mapeditor --test studio_fleet_presence_readout_0`
+- PASS: `bash scripts/ci/test_inventory_drift_check.sh`
+- PASS: `bash scripts/ci/doctrine_selftest.sh`
 - PASS: `bash scripts/ci/agent_scan.sh`
 
 ## Files Changed
@@ -63,7 +65,7 @@ Implement a read-only fleet presence/transit snapshot for loaded Studio authorit
 
 - Results doc: `docs/tests/studio_fleet_presence_readout_0_results.md`
 - Evidence index: updated under `0.0.8.6 Studio Live Ops`
-- Test inventory: added 3 permanent behavior-regression rows
+- Test inventory: added 3 permanent integration behavior-regression rows plus the private `transit_contract_is_test_private_until_authoritative_state_exists` unit behavior-regression row
 - Design ladder row: `12.4` stamped `PROBATION / proof-present / DA-review-pending`
 
 ## Known Gaps
