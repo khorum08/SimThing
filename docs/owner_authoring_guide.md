@@ -23,6 +23,9 @@ Stamping a ladder Exit-proof cell does **not** move an authoritative `Active ope
 - `PARKED`/`CLOSED` is the normal admission state for `--open`; HD-6 refuses while outgoing status is `OPEN` and points to `--park`.
 - `--force-owner "<directive>"` only for deliberate override; directive is recorded. Closing uses `track_closeout.sh` (unpark first).
 
+## Horizon-Entry Marker (future API, not kabuki)
+Future-facing consumerless API carries `HORIZON-ENTRY(<YYYY-MM-DD>): <intended consumer / design ref>` on the symbol. Fresh markers exempt `GUARD-KABUKI-TRIPWIRE`; stale/unmarked stay FLAGGED (INSPECT). Park/unpark assess stale markers as deletion candidates — never auto-delete, never a bare forever-pass token.
+
 ## Regenerate The Library
 After ladder edits: `bash scripts/ci/gen_orientation.sh`. After anchor edits: `bash scripts/ci/anchor_check.sh --resync`. Catalog: `bash scripts/ci/librarian.sh --catalog --role <coding|orchestrator|da>`. Staleness: `bash scripts/ci/librarian.sh --staleness` (culls need `--confirm`).
 

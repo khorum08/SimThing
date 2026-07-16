@@ -98,15 +98,13 @@ Graduation routing (for DA — why this is PROBATION, not self-marked COMPLETE):
 
 ## §H. Anti-kabuki floor (binding; the authority — do not dilute or cite to skip proof)
 
-Litmus for every line: **does it prove or build the feature, or produce a governance artifact about
-it?** If the latter, cut it. Rejected at review, both directions:
+Litmus: does the line prove/build the feature, or produce governance about it? If the latter, cut it.
 
-- **Over-production (kabuki):** batteries for type/admission-guaranteed conditions; `GUARD-KABUKI-TRIPWIRE`
-  owns bespoke source-scan guard review; triple
-  doc ceremony; inline hand-authored implementation; reading lists longer than the rung touches;
-  a docs/closeout rung in front of a buildable feature; a noun (registry/table/preflight) standing in
-  for an admission hard-error; inert scaffolding that enforces nothing.
-- **Under-proof (worse):** run the check and paste its **real** output — never assert, summarize, or
-  fabricate; verify the tree, not the relayed report; no merge before DA clearance on any
-  authority/gate/PROBATION rung. Citing an anti-kabuki rule to skip proof is itself the non-conformant
-  route this floor exists to catch.
+- **Over-production (kabuki):** batteries for type-guaranteed conditions; `GUARD-KABUKI-TRIPWIRE` owns
+  source-scan guards; triple doc ceremony; inert scaffolding. Unmarked consumerless API is kabuki — delete.
+- **Horizon entry (not kabuki):** future API laid ahead of a consumer carries greppable dated
+  `HORIZON-ENTRY(<YYYY-MM-DD>): <intended consumer / design ref>` on the symbol. Fresh markers exempt the
+  tripwire; stale/unmarked stay FLAGGED (INSPECT; human decides; never auto-delete; never silent forever-pass
+  or bare void token). Lifecycle assess via park/unpark/staleness — deletion candidate only, never auto-cull.
+- **Under-proof (worse):** paste real check output; verify the tree; no merge before DA on PROBATION.
+  Citing anti-kabuki to skip proof is itself non-conformant.

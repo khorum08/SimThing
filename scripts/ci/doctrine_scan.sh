@@ -533,6 +533,149 @@ heuristic_target_includes_tests() {
   [[ "$target_glob" == *tests* || "$target_glob" == *test* || "$target_glob" == *"_tests.rs"* ]]
 }
 
+# HC-HORIZON-ENTRY-CONVENTION-0: greppable dated marker exempts GUARD-KABUKI only while fresh.
+# Shape: HORIZON-ENTRY(<YYYY-MM-DD>): <intended consumer / design ref>
+# Never a bare token forever-pass; stale/malformed/missing keep the finding (INSPECT).
+# Window days: HORIZON_ENTRY_STALE_DAYS (default 90). Override only for selftest.
+HORIZON_ENTRY_STALE_DAYS="${HORIZON_ENTRY_STALE_DAYS:-90}"
+
+# Filter kabuki matches: drop only those whose preceding symbol block carries a well-formed
+# FRESH HORIZON-ENTRY marker. Returns filtered list via nameref.
+filter_guard_kabuki_horizon_exemptions() {
+  local -n _kabuki_matches="$1"
+  local filtered=()
+  if [[ "${#_kabuki_matches[@]}" -eq 0 ]]; then
+    return 0
+  fi
+  if ! command -v python >/dev/null 2>&1; then
+    # Without python, cannot assess dates — keep all findings (fail-closed for exemption).
+    return 0
+  fi
+  # Program on argv (-c); matches on stdin. A heredoc would steal stdin and
+  # silently drop every finding (false forever-pass) — never do that here.
+  local py_prog
+  py_prog='
+import os, re, sys
+from datetime import date, datetime
+from pathlib import Path
+
+repo = Path(os.environ.get("REPO_ROOT", "."))
+stale_days = int(os.environ.get("HORIZON_ENTRY_STALE_DAYS", "90"))
+today = date.today()
+pin = os.environ.get("HORIZON_ENTRY_TODAY", "").strip()
+if pin:
+    today = datetime.strptime(pin, "%Y-%m-%d").date()
+
+MARKER_RE = re.compile(r"HORIZON-ENTRY\((\d{4}-\d{2}-\d{2})\):\s*(\S.+?)\s*$")
+COMMENT_RE = re.compile(r"^\s*(?:///?|/\*+|\*+)\s*(.*?)(?:\*/)?\s*$")
+ATTR_RE = re.compile(r"^\s*#\[")
+MATCH_RE = re.compile(r"^(.+):(\d+):(.*)$")
+FN_RE = re.compile(r"^\s*pub\s+fn\s+")
+
+def parse_marker(text):
+    m = MARKER_RE.search(text)
+    if not m:
+        return None
+    try:
+        d = datetime.strptime(m.group(1), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    ref = m.group(2).strip()
+    if not ref:
+        return None
+    return d, ref
+
+def fresh(d):
+    age = (today - d).days
+    return 0 <= age <= stale_days
+
+def enclosing_symbol_line(lines, line_num):
+    if line_num < 1 or line_num > len(lines):
+        return line_num
+    for i in range(line_num - 1, -1, -1):
+        if FN_RE.match(lines[i]):
+            return i + 1
+    return line_num
+
+def symbol_has_fresh_marker(path, line_num):
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return False
+    if line_num < 1 or line_num > len(lines):
+        return False
+    anchor = enclosing_symbol_line(lines, line_num)
+    i = anchor - 2
+    while i >= 0:
+        raw = lines[i]
+        if raw.strip() == "":
+            i -= 1
+            continue
+        if ATTR_RE.match(raw):
+            i -= 1
+            continue
+        cm = COMMENT_RE.match(raw)
+        if cm:
+            parsed = parse_marker(cm.group(1))
+            if parsed is None:
+                parsed = parse_marker(raw)
+            if parsed is not None:
+                d, _ref = parsed
+                return fresh(d)
+            i -= 1
+            continue
+        break
+    if 0 <= anchor - 1 < len(lines):
+        parsed = parse_marker(lines[anchor - 1])
+        if parsed is not None:
+            return fresh(parsed[0])
+    return False
+
+for match in sys.stdin.read().splitlines():
+    if not match.strip():
+        continue
+    m = MATCH_RE.match(match)
+    if not m:
+        print(match)
+        continue
+    rel = m.group(1).replace("\\", "/")
+    if rel.startswith("./"):
+        rel = rel[2:]
+    try:
+        line_num = int(m.group(2))
+    except ValueError:
+        print(match)
+        continue
+    path = Path(rel)
+    if not path.is_absolute():
+        path = repo / rel
+    if not path.is_file():
+        path = repo / rel.lstrip("/")
+    if symbol_has_fresh_marker(path, line_num):
+        continue
+    print(match)
+'
+  local kept
+  kept="$(
+    printf '%s\n' "${_kabuki_matches[@]}" | \
+    HORIZON_ENTRY_STALE_DAYS="$HORIZON_ENTRY_STALE_DAYS" \
+    HORIZON_ENTRY_TODAY="${HORIZON_ENTRY_TODAY:-}" \
+    REPO_ROOT="$REPO_ROOT" \
+    python -c "$py_prog"
+  )"
+  if [[ -n "$kept" ]]; then
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      filtered+=("$line")
+    done <<<"$kept"
+  fi
+  if [[ "${#filtered[@]}" -eq 0 ]]; then
+    _kabuki_matches=()
+  else
+    _kabuki_matches=("${filtered[@]}")
+  fi
+}
+
 run_rg_scan() {
   local pattern="$1"
   local target_glob="$2"
@@ -793,6 +936,13 @@ run_scan_file() {
     fi
     if [[ "$run_status" -eq 2 ]]; then
       continue
+    fi
+
+    # HC-6: GUARD-KABUKI-TRIPWIRE exempts only a symbol bearing a well-formed FRESH
+    # HORIZON-ENTRY(<iso-date>): <consumer/ref> marker. Unmarked, bare-token, malformed,
+    # or stale-dated sites stay FLAGGED (never a silent forever-pass).
+    if [[ "$scan_id" == "GUARD-KABUKI-TRIPWIRE" && "${#matches[@]}" -gt 0 ]]; then
+      filter_guard_kabuki_horizon_exemptions matches
     fi
 
     local count="${#matches[@]}"
