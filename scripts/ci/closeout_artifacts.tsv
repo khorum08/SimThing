@@ -1,2 +1,3 @@
 path	leased_at	disposition	closeout_track	note
 handoffs/HC-EXCLUSION-REVIEW-GATE-0.hd.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	graduated .hd operational artifact (HD design 1.5 lease-on-graduation); reap via --decommission
+handoffs/HC-GUARD-KABUKI-TRIPWIRE-0.hd.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	graduated .hd operational artifact (design 1.5); reap via --decommission
