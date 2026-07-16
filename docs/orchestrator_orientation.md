@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f8d31d822314ba07a1b5037188bbda57940aecb8519d96431d02c6f56e93eaf9 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | b9d3658c67bb5872aab9b20c53678c78de93823976b1879107cf2de823414f92 |
+| design_0_0_8_4_8_4_1_harness_corrections.md | da2633164b7966c7ae14b79c915aad62377e706d9fcf4235ab106aa21bf1092f |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -55,8 +55,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HC-3 | HC-CLOSEOUT-BINDING-REAP-0 | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the cl | **DA-GRADUATED / merged [#1368](https://github.com/khorum08/SimThing/pull/1368)** — merged 2026-07-16T15:0xZ (dispatc... |
-| HC-4 | HC-POINTER-DIVERGENCE-LINT-0 | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs whe | **PROBATION / proof-present / DA-review-pending** — implementer proof on branch `coder/hc-pointer-divergence-lint-0` ... |
+| HC-4 | HC-POINTER-DIVERGENCE-LINT-0 | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs whe | **DA-GRADUATED / merged [#1370](https://github.com/khorum08/SimThing/pull/1370)** — 2026-07-16 (orch=Codex coder=Grok... |
 | HC-5 | HC-LADDER-COLUMN-INTEGRITY-0 | **Assert the parser's own invariant (defect 5: silent column shift).** `parse_ru | `, skips rows with *too few* columns, and **never bounds too many** — so any cell containing an escaped pipe (the onl... |
 | HC-6 | HC-HORIZON-ENTRY-CONVENTION-0 | **Distinguish future-facing parked API from kabuki (Owner-directed 2026-07-16).* | NOT STARTED |
 | HC-7 | HC-KABUKI-GUARD-REMEDIATE-0 | **Delete the two flagged kabuki guards (Owner-directed 2026-07-16; DA-assessed a | NOT STARTED |
@@ -64,7 +63,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `HC-POINTER-DIVERGENCE-LINT-0`
+Active pointer: `HC-LADDER-COLUMN-INTEGRITY-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
