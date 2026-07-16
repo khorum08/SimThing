@@ -359,6 +359,25 @@ resolve_pr_changed_files() {
       return 0
     fi
   fi
+  # Local-git fallback (robust to gh PR-files API flakiness in CI, which returns an
+  # empty file list intermittently even in-runner). SHAs from env or gh baseRefOid/
+  # headRefOid (reliable when --json files is not); then diff locally.
+  local base head pair
+  base="${CLEARANCE_BASE_SHA:-}"; head="${CLEARANCE_HEAD_SHA:-}"
+  if [[ -z "$base" || -z "$head" ]]; then
+    pair="$(gh pr view "$PR_NUMBER" --json baseRefOid,headRefOid -q '.baseRefOid + " " + .headRefOid' 2>/dev/null || true)"
+    [[ -z "$base" ]] && base="${pair%% *}"
+    [[ -z "$head" ]] && head="${pair##* }"
+  fi
+  if [[ -n "$base" && -n "$head" && "$base" != "$head" ]]; then
+    git -C "$REPO_ROOT" fetch --no-tags --quiet origin "$base" "$head" 2>/dev/null || true
+    files="$(git -C "$REPO_ROOT" diff --name-only "${base}...${head}" 2>/dev/null || true)"
+    [[ -z "$files" ]] && files="$(git -C "$REPO_ROOT" diff --name-only "${base}" "${head}" 2>/dev/null || true)"
+    if [[ -n "$files" ]]; then
+      CHANGED_FILES_LIST="$files"
+      return 0
+    fi
+  fi
   return 1
 }
 

@@ -84,6 +84,23 @@ jobs:
           if [ -n "$pr" ]; then
             gh pr view "$pr" --json body -q .body > pr-body.md
             gh pr view "$pr" --json files -q '.files[].path' > changed-files.txt
+            # Local-git fallback: the runner's gh --json files intermittently returns an empty
+            # list even in-runner (same defect fixed in clearance_check.sh). When empty, resolve
+            # the changed set from base...head SHAs (event context; no gh call) via a local diff.
+            if [ ! -s changed-files.txt ]; then
+              b="${{ github.event.pull_request.base.sha }}"
+              h="${{ github.event.pull_request.head.sha }}"
+              if [ -z "$b" ] || [ -z "$h" ]; then
+                pair="$(gh pr view "$pr" --json baseRefOid,headRefOid -q '.baseRefOid + " " + .headRefOid' 2>/dev/null || true)"
+                [ -z "$b" ] && b="${pair%% *}"
+                [ -z "$h" ] && h="${pair##* }"
+              fi
+              if [ -n "$b" ] && [ -n "$h" ] && [ "$b" != "$h" ]; then
+                git fetch --no-tags --quiet origin "$b" "$h" 2>/dev/null || true
+                git diff --name-only "${b}...${h}" > changed-files.txt 2>/dev/null || true
+                [ ! -s changed-files.txt ] && git diff --name-only "$b" "$h" > changed-files.txt 2>/dev/null || true
+              fi
+            fi
             resolve_out="$(bash scripts/ci/handoff_dispatch.sh --resolve-handoff pr-body.md changed-files.txt 2>&1)"
             resolve_rc=$?
             if [ "$resolve_rc" -eq 0 ]; then
