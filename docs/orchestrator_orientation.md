@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 091d3b90f87109179a054fd10061d604a28561949b9be8c382f258486254d9d8 |
+| design_0_0_8_6_studio_live_ops.md | 6b4adebfe4a0cd68ce32779fd9ee4b9955417384ffb96fc490b903cfff534dfe |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | **DA-GRADUATED / merged [#1355](https://github.com/khorum08/SimThing/pull/1355)** — merged 2026-07-16T00:0xZ (dispatc... |
-| 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | HANDOFF DISPATCHED as `handoffs/TP-FIELD-ECONOMY-GRAMMAR-0.hd.md` (dispatched_at 2026-07-16; `HD-RECEIPT: 1fb80d5713d... |
+| 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | **PROBATION / proof-present / DA-review-pending** — implemented generic `field_economy` ClauseScript hydration in cla... |
 | 12.7 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galax | TODO |
 | 12.8 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path**  | TODO |
 | 12.9 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.8.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
