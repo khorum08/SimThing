@@ -1,8 +1,8 @@
 # 0.0.8.4.8.4.1 — Harness Corrections
 
-> **Status: AUTHORED / NOT OPENED (2026-07-16, Owner-directed).** Short corrective track off the HD
-> Board substrate (0.0.8.4.8.4, CLOSED). Opens by `gen_orientation.sh --open` once the Owner directs;
-> 0.0.8.6 is PARKED (receipt `19e0e85c8d3f`) and resumes via `--unpark`.
+> **Status: OPEN / Owner-directed (2026-07-16).** Short corrective track off the HD Board substrate
+> (0.0.8.4.8.4, CLOSED). Opened via `gen_orientation.sh --open` (verdict OPENED, entry rung HC-1);
+> 0.0.8.6 is PARKED (receipt `19e0e85c8d3f`) and resumes via `--unpark` when this track parks/closes.
 >
 > **Why.** Four harness defects surfaced in the first post-HD production rung
 > (`STUDIO-FLEET-PRESENCE-READOUT-0`, #1355) and in the HD closeout. Each one lets a **false green**
@@ -35,8 +35,8 @@ guard scan > prose) · `design_0_0_8_3.md` §0 · this file · `ci_screening_sur
 
 | rung | condition | status |
 |---|---|---|
-| HC-TRACK-OPEN-0 | blocked-until-owner-directs-open-and-0.0.8.6-parked | open (authored parked) |
-| HC-CLOSEOUT-0 | every rung lands a falsifier that FAILS on the pre-fix tree (prove-the-guard-bites) | open |
+| HC-TRACK-OPEN-0 | blocked-until-owner-directs-open-and-0.0.8.6-parked | discharged (Owner 2026-07-16; 0.0.8.6 parked receipt 19e0e85c8d3f) |
+| HC-CLOSEOUT-0 | every rung lands a falsifier that FAILS on the pre-fix tree (prove-the-guard-bites) | active |
 
 ---
 
