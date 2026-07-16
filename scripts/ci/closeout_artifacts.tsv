@@ -7,3 +7,12 @@ handoffs/HC-LADDER-COLUMN-INTEGRITY-0.hd.md	2026-07-16	lease	0.0.8.4.8.4.1-harne
 handoffs/HC-HORIZON-ENTRY-CONVENTION-0.hd.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	graduated .hd; reap via --decommission
 handoffs/HC-KABUKI-GUARD-REMEDIATE-0.hd.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	graduated .hd; reap via --decommission
 handoffs/HC-AUDIT-POLISH-0.hd.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	graduated .hd; reap via --decommission
+docs/tests/hc_audit_polish_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_closeout_0_manifest.tsv	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_closeout_binding_reap_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_exclusion_review_gate_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_guard_kabuki_tripwire_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_horizon_entry_convention_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_kabuki_guard_remediate_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_ladder_column_integrity_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+docs/tests/hc_pointer_divergence_lint_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap

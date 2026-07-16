@@ -42,25 +42,34 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | c1a904a986fe8f0ed1dedb41612c5d1ceb2a7f1dfdb0a51974c9065b7a58d614 |
-| binding_conditions.tsv | f8d31d822314ba07a1b5037188bbda57940aecb8519d96431d02c6f56e93eaf9 |
+| binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | 5d3539b22e3d2b6a99bb5128ec03b4ecb34e4d86b179f1529ddac629e4447349 |
+| active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
+| design_0_0_8_6_studio_live_ops.md | f215eabc22eb979fa5650f43dbb922f4da4535aa1bb367a436a1ab70cd7abe66 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
-## Active Track / Rung Summary (`design_0_0_8_4_8_4_1_harness_corrections.md`)
+## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
 
 Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HC-8 | HC-AUDIT-POLISH-0 | **Fable pre-closeout audit findings (2026-07-16; no serious flaws in HC-1..7 — t | **DA-GRADUATED / merged [#1379](https://github.com/khorum08/SimThing/pull/1379)** — 2026-07-16 (orch=Codex coder=Grok... |
-| HC-C | HC-CLOSEOUT-0 | Measured close + DOCS CASCADE (Fable audit 2026-07-16). Cascade: fix stale heade | NOT STARTED |
+| REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **DA-GRADUATED / merged [#1317](https://github.com/khorum08/SimThing/pull/1317) @ `1bdc1297`** — transport of the DA-... |
+| 12.2 | STUDIO-DISRUPTION-READOUT-0 | **Needs 12.8 for live values.** **Read-only per-system disruption snapshot from  | TODO |
+| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | **DA-GRADUATED / merged [#1355](https://github.com/khorum08/SimThing/pull/1355)** — merged 2026-07-16T00:0xZ (dispatc... |
+| 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | TODO |
+| 12.7 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galax | TODO |
+| 12.8 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path**  | TODO |
+| 12.9 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.8.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
+| 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
+| 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
+| 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |
+| OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: `HC-CLOSEOUT-0`
+Active pointer: `STUDIO-DISRUPTION-READOUT-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
@@ -118,8 +127,6 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 
 | rung | condition | set_by | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
-| HC-TRACK-OPEN-0 | blocked-until-owner-directs-open-and-0.0.8.6-parked | Owner-2026-07-16 | discharged | HC-TRACK-OPEN-0 |
-| HC-CLOSEOUT-0 | every-rung-falsifier-must-fail-on-pre-fix-tree | DA-2026-07-16 | active | HC-CLOSEOUT-0 |
 
 ## Clearance Ledger (recent)
 
