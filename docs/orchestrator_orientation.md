@@ -42,10 +42,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | source | sha256 |
 | --- | --- |
 | precedented_classes.tsv | c1a904a986fe8f0ed1dedb41612c5d1ceb2a7f1dfdb0a51974c9065b7a58d614 |
-| binding_conditions.tsv | bc0c19adc3d242d3c0f8e72b02552c2980cea5877e6bc17b83e11c3d00d2fdba |
+| binding_conditions.tsv | f8d31d822314ba07a1b5037188bbda57940aecb8519d96431d02c6f56e93eaf9 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | aadb1d179854cbf562766b278fe33ccbf65f6b5e44a1677da625069d0938dc54 |
+| design_0_0_8_4_8_4_1_harness_corrections.md | 610814893b774a0e6b26b424b1aff18e57ae4f6cf42adbe1861e85c521e1bfa7 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | HC-2 | HC-GUARD-KABUKI-TRIPWIRE-0 | **Mechanize anti-kabuki rule 2 (defect 2).** Add a HEURISTIC scan (`scans.tsv` r | **DA-GRADUATED / merged [#1365](https://github.com/khorum08/SimThing/pull/1365)** — merged 2026-07-16T13:3xZ (dispatc... |
-| HC-3 | HC-CLOSEOUT-BINDING-REAP-0 | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the cl | HANDOFF DISPATCHED as `handoffs/HC-CLOSEOUT-BINDING-REAP-0.hd.md` (dispatched_at 2026-07-16T14:24Z; `HD-RECEIPT: ff0e... |
+| HC-3 | HC-CLOSEOUT-BINDING-REAP-0 | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the cl | **PROBATION / proof-present / DA-review-pending.** `--apply` reaps the closing track's discharged binding rows (count... |
 | HC-4 | HC-POINTER-DIVERGENCE-LINT-0 | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs whe | NOT STARTED |
 | HC-5 | HC-LADDER-COLUMN-INTEGRITY-0 | **Assert the parser's own invariant (defect 5: silent column shift).** `parse_ru | `, skips rows with *too few* columns, and **never bounds too many** — so any cell containing an escaped pipe (the onl... |
 | HC-6 | HC-HORIZON-ENTRY-CONVENTION-0 | **Distinguish future-facing parked API from kabuki (Owner-directed 2026-07-16).* | NOT STARTED |
@@ -123,16 +123,6 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 
 | rung | condition | set_by | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
-| TP-PALMA-REACH-0 | phase-6.2-fleet-movement-blocked-until-6.1-da-clearance | DA-2026-07-05 | discharged | TP-PALMA-REACH-0 |
-| TP-FLEET-MOVEMENT-0 | B1-7x7-horizon-3-minimum | DA-2026-07-05 | discharged | TP-FLEET-MOVEMENT-0 |
-| TP-FLEET-MOVEMENT-0 | B2-multi-step-gradient-movement | DA-2026-07-05 | discharged | TP-FLEET-MOVEMENT-0 |
-| TP-FLEET-MOVEMENT-0 | B3-larger-theater-gpu-cpu | DA-2026-07-05 | discharged | TP-FLEET-MOVEMENT-0 |
-| HU-TRACK-OPEN-0 | 0.0.8.5-park-gate-superseded-by-owner-carveout-authorization | Owner-2026-07-09 | discharged | HU-TRACK-OPEN-0 |
-| HU-CLOSEOUT-0 | no-new-clearance-class-registration-without-retirement-pairing-during-track | DA-2026-07-09 | discharged | HU-CLOSEOUT-0 |
-| OC-KERNEL-LANE | each-OC-K-rung-blocked-until-owner-amendment-valve-authorization | Owner-2026-07-10 | discharged | OC-KERNEL-LANE |
-| OC-CLOSEOUT-0 | reach-log-and-anchor-tables-carry-decay-rules-before-close | DA-2026-07-10 | discharged | OC-CLOSEOUT-0 |
-| HD-TRACK-OPEN-0 | blocked-until-owner-parks-0.0.8.6-and-directs-regeneration | Owner-2026-07-12 | discharged | HD-TRACK-OPEN-0 |
-| HD-CLOSEOUT-0 | net-corpus-prose-must-decrease-at-close | DA-2026-07-12 | discharged | HD-CLOSEOUT-0 |
 | HC-TRACK-OPEN-0 | blocked-until-owner-directs-open-and-0.0.8.6-parked | Owner-2026-07-16 | discharged | HC-TRACK-OPEN-0 |
 | HC-CLOSEOUT-0 | every-rung-falsifier-must-fail-on-pre-fix-tree | DA-2026-07-16 | active | HC-CLOSEOUT-0 |
 
