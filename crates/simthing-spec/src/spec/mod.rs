@@ -1,5 +1,6 @@
 pub mod capability;
 pub mod channel_key;
+pub mod disruption_readout;
 pub mod domain_pack;
 pub mod effect;
 pub mod eml_gadget;
@@ -58,6 +59,12 @@ pub use capability::{
     CapabilitySpec, CapabilityTreeSpec, MaxActivePolicy,
 };
 pub use channel_key::{OwnerRef, ResourceKey, ScopeId};
+pub use disruption_readout::{
+    disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
+    AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
+    DisruptionAuthorityReadbackError, DisruptionReadoutRecord, DisruptionReadoutSnapshot,
+    DisruptionReadoutSnapshotError,
+};
 pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};

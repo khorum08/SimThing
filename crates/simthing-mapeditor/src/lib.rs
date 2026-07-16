@@ -28,6 +28,7 @@ pub mod studio_aa_test_pattern;
 pub mod studio_admission_report;
 pub mod studio_antialiasing;
 pub mod studio_config;
+pub mod studio_disruption_readout;
 pub mod studio_frame_phase_gpu_telemetry;
 pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
@@ -150,6 +151,10 @@ pub use studio_admission_report::{
 pub use studio_config::{
     SimThingStudioConfig, StudioConfigError, StudioConfigLoadOutcome, STUDIO_CONFIG_FILE_NAME,
     STUDIO_CONFIG_SCHEMA_VERSION,
+};
+pub use studio_disruption_readout::{
+    studio_disruption_readout_map_from_session, studio_disruption_readout_map_from_snapshot,
+    StudioDisruptionReadoutMap,
 };
 pub use studio_frame_phase_gpu_telemetry::{
     apply_diagnostic_minimal_render, capture_normal_render_snapshot, format_present_mode_label,
