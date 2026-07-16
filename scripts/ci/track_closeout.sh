@@ -95,6 +95,7 @@ DSU_TIERS = SCRIPT_DIR / "test_lifecycle_dsu_tiers.tsv"
 AUTOCLEAR = SCRIPT_DIR / "closeout_autoclear.tsv"
 ARTIFACT_LEDGER = SCRIPT_DIR / "closeout_artifacts.tsv"
 PARKED = SCRIPT_DIR / "test_lifecycle_parked.tsv"
+BINDING = SCRIPT_DIR / "binding_conditions.tsv"
 ACTIVE_TRACK = SCRIPT_DIR / "active_track.txt"
 NO_ACTIVE_TRACK = "none"
 ACTIVE_TRACK_COMMENT = "# Active track design doc for orientation Next-Rung pointer. Update on track open/close."
@@ -112,6 +113,7 @@ BOUNDARY_ROWS_HEADER = [
 ]
 TRACKS_HEADER = ["track_id", "status", "closed_at", "source", "note"]
 ARTIFACT_LEDGER_HEADER = ["path", "leased_at", "disposition", "closeout_track", "note"]
+BINDING_HEADER = ["rung", "condition", "set_by", "status", "promotion_blocker"]
 # A parked row is a full inventory row relocated OUT of the live inventory into the
 # quarantine pen so test_inventory.tsv only ever holds decided assets.
 PARKED_HEADER = INVENTORY_HEADER + ["parked_at", "closeout_track", "park_reason"]
@@ -177,6 +179,145 @@ def write_tsv(path: pathlib.Path, header, rows) -> None:
     for row in rows:
         writer.writerow({k: row.get(k, "") for k in header})
     path.write_bytes(buf.getvalue().encode("utf-8"))
+
+
+class FileTxn:
+    """HD-6 preflight/staged/rollback: snapshot mutation targets before first write."""
+
+    def __init__(self):
+        self._snap = {}
+
+    def stage(self, path) -> None:
+        path = pathlib.Path(path)
+        key = str(path)
+        if key in self._snap:
+            return
+        existed = path.exists()
+        data = path.read_bytes() if path.is_file() else None
+        self._snap[key] = (path, existed, data)
+
+    def rollback(self) -> None:
+        for _, (path, existed, data) in self._snap.items():
+            try:
+                if existed and data is not None:
+                    path.write_bytes(data)
+                elif not existed and path.exists():
+                    path.unlink()
+            except OSError:
+                pass
+
+
+def _clean_rung_token(tok: str) -> str:
+    tok = (tok or "").strip()
+    if "`" in tok:
+        parts = tok.split("`")
+        if len(parts) >= 3:
+            return parts[1].strip()
+    return tok.strip("`").strip()
+
+
+def _is_ladder_header(line: str) -> bool:
+    norm = re.sub(r"\s+", " ", (line or "").strip().lower())
+    if not norm.startswith("|"):
+        return False
+    if norm.startswith("| # | rung |"):
+        return True
+    if norm.startswith("| rung | id |"):
+        return True
+    return False
+
+
+def _is_binding_table_header(parts) -> bool:
+    low = [p.strip().lower() for p in parts]
+    if not low:
+        return False
+    return low[0] == "rung" and any("condition" in p for p in low)
+
+
+def parse_closing_rung_ids(text: str) -> set:
+    """Rung IDs owned by the closing track's source doc.
+
+    Same identity surface as gen_orientation --park (ladder IDs), plus the track's
+    Binding conditions markdown table so TRACK-OPEN / CLOSEOUT rows are covered.
+    """
+    ids = set()
+    in_ladder = False
+    in_binding = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            in_ladder = False
+            in_binding = False
+            continue
+        if stripped.startswith("|---") or re.match(r"^\|[\s\-:|]+\|$", stripped):
+            continue
+        parts = [p.strip() for p in stripped.strip("|").split("|")]
+        if not parts:
+            continue
+        if _is_ladder_header(stripped):
+            in_ladder = True
+            in_binding = False
+            continue
+        if _is_binding_table_header(parts):
+            in_binding = True
+            in_ladder = False
+            continue
+        c0 = parts[0].lower()
+        c1 = parts[1].lower() if len(parts) > 1 else ""
+        if c0 in ("#", "rung") and c1 in ("rung", "id", "deliverable", "condition"):
+            continue
+        if in_ladder and len(parts) >= 2:
+            cand = _clean_rung_token(parts[1])
+            if cand and re.match(r"^[A-Za-z0-9][A-Za-z0-9._\-]*$", cand):
+                ids.add(cand)
+        elif in_binding and len(parts) >= 1:
+            cand = _clean_rung_token(parts[0])
+            if cand and re.match(r"^[A-Za-z0-9][A-Za-z0-9._\-]*$", cand):
+                ids.add(cand)
+    return ids
+
+
+def plan_binding_reap(track_source: str) -> dict:
+    """Plan reaping of the CLOSING track's discharged binding_conditions rows.
+
+    Membership is by rung_ids from the track source (ladder + binding table), matching
+    --park identity. Only status=discharged rows are reaped. Active rows and rows that
+    do not belong to this track (including other open tracks' discharged rows) stay.
+    Parked-track rows live in the park block and are out of scope of this reaper.
+    """
+    empty = {
+        "present": False, "header": list(BINDING_HEADER), "kept": [], "reaped": [],
+        "rungs": [], "count": 0,
+    }
+    if not BINDING.exists():
+        return empty
+    hdr, rows = read_tsv(BINDING)
+    header = list(hdr) if hdr else list(BINDING_HEADER)
+    source_rel = clean_repo_relpath(track_source)
+    rung_ids = set()
+    if source_rel and (ROOT / source_rel).is_file():
+        source_text = norm_bytes((ROOT / source_rel).read_bytes())
+        source_without_park, _ = split_park_block_text(source_text)
+        rung_ids = parse_closing_rung_ids(source_without_park)
+    reaped, kept = [], []
+    for row in rows:
+        status = (row.get("status") or "").strip().lower()
+        rid = (row.get("rung") or "").strip()
+        pb = (row.get("promotion_blocker") or "").strip()
+        belongs = rid in rung_ids or pb in rung_ids
+        if belongs and status == "discharged":
+            reaped.append(row)
+        else:
+            kept.append(row)
+    rungs = sorted({(r.get("rung") or "").strip() for r in reaped if (r.get("rung") or "").strip()})
+    return {
+        "present": True,
+        "header": header,
+        "kept": kept,
+        "reaped": reaped,
+        "rungs": rungs,
+        "count": len(reaped),
+    }
 
 
 def now_date() -> _dt.date:
@@ -976,6 +1117,10 @@ def cmd_apply():
         sys.exit(1)
     active_track_plan = plan_active_track_retirement(track, track_source, rows, live_doc_paths)
 
+    # HC-CLOSEOUT-BINDING-REAP-0: plan discharged binding-row retirement for THIS
+    # closing track only (preflight; zero writes). Other open/parked tracks' rows stay.
+    binding_plan = plan_binding_reap(track_source)
+
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
     if art_hdr is None:
         art_rows = []
@@ -1139,32 +1284,54 @@ def cmd_apply():
             "note": "closeout manifest; audit window then reap via --decommission",
         })
 
-    # 3. write mutated tables — never recreate a retired boundary ledger
-    write_tsv(INVENTORY, INVENTORY_HEADER, new_inv)
-    if boundary_present:
-        write_tsv(BOUNDARY_ROWS, BOUNDARY_ROWS_HEADER, new_b)
-    if art_rows:
-        write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, art_rows)
-    if park_keys or PARKED.exists():
-        write_tsv(PARKED, PARKED_HEADER, parked_rows)
-    if PARKED_BOUNDARY.exists() or (boundary_present and parked_b_rows):
-        write_tsv(PARKED_BOUNDARY, PARKED_BOUNDARY_HEADER, parked_b_rows)
-
-    # 4. close the birth_track (rubber-stamp) unless nothing was actually closed out
-    closed = False
-    for t in tracks:
-        if t["track_id"] == track:
-            if t["status"] != "closed":
-                t["status"] = "closed"
-                t["closed_at"] = today.isoformat()
-            closed = True
-    if closed:
-        write_tsv(TRACKS, TRACKS_HEADER, tracks)
+    # 3. write mutated tables — never recreate a retired boundary ledger.
+    # HD-6: stage TSV mutation targets before first write so a mid-apply fault rolls back.
+    txn = FileTxn()
+    for p in (INVENTORY, BOUNDARY_ROWS, ARTIFACT_LEDGER, PARKED, PARKED_BOUNDARY, TRACKS, BINDING):
+        if p.exists() or p == BINDING:
+            txn.stage(p)
     if strip_park_block_on_close is not None:
-        strip_park_block_on_close[0].write_bytes(strip_park_block_on_close[1].encode("utf-8"))
+        txn.stage(strip_park_block_on_close[0])
+    if active_track_plan.get("retired") == "yes":
+        txn.stage(ACTIVE_TRACK)
 
-    # 5. Retire the orientation pointer if it still points at this closing track.
-    apply_active_track_retirement(active_track_plan)
+    try:
+        write_tsv(INVENTORY, INVENTORY_HEADER, new_inv)
+        if boundary_present:
+            write_tsv(BOUNDARY_ROWS, BOUNDARY_ROWS_HEADER, new_b)
+        if art_rows:
+            write_tsv(ARTIFACT_LEDGER, ARTIFACT_LEDGER_HEADER, art_rows)
+        if park_keys or PARKED.exists():
+            write_tsv(PARKED, PARKED_HEADER, parked_rows)
+        if PARKED_BOUNDARY.exists() or (boundary_present and parked_b_rows):
+            write_tsv(PARKED_BOUNDARY, PARKED_BOUNDARY_HEADER, parked_b_rows)
+
+        # 3b. reap the CLOSING track's discharged binding_conditions rows (HC-3).
+        if binding_plan["present"]:
+            write_tsv(BINDING, binding_plan["header"], binding_plan["kept"])
+        if os.environ.get("TRACK_CLOSEOUT_FAULT_AFTER_BINDING_WRITE") == "1":
+            raise RuntimeError("selftest fault injection: binding write rollback proof")
+
+        # 4. close the birth_track (rubber-stamp) unless nothing was actually closed out
+        closed = False
+        for t in tracks:
+            if t["track_id"] == track:
+                if t["status"] != "closed":
+                    t["status"] = "closed"
+                    t["closed_at"] = today.isoformat()
+                closed = True
+        if closed:
+            write_tsv(TRACKS, TRACKS_HEADER, tracks)
+        if strip_park_block_on_close is not None:
+            strip_park_block_on_close[0].write_bytes(strip_park_block_on_close[1].encode("utf-8"))
+
+        # 5. Retire the orientation pointer if it still points at this closing track.
+        apply_active_track_retirement(active_track_plan)
+    except BaseException as exc:
+        txn.rollback()
+        print(f"TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(transaction-rolled-back) {exc}",
+              file=sys.stderr)
+        return 1
 
     # 6. gate battery (incl. cargo check of elevate-code destination crates, P1-6b)
     gates = run_gate_battery(track, dest_crates)
@@ -1175,7 +1342,7 @@ def cmd_apply():
     grew = inv_after > inv_before or (boundary_present and b_after > b_before)
     report = render_report(track, live_receipt, tally, survivors,
                            inv_before, inv_after, b_before, b_after, gates, closed, moved_notes,
-                           active_track_plan)
+                           active_track_plan, binding_plan)
     report_path = ROOT / "docs" / "tests" / f"{track}_closeout_report.md"
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_bytes(report.encode("utf-8"))
@@ -1192,10 +1359,14 @@ def cmd_apply():
         print(f"  boundary rows:  {b_before} -> {b_after} (delta {b_after - b_before})")
     else:
         print("  boundary rows:  (ledger retired / absent — not written)")
+    print(f"  binding_conditions_reaped: {binding_plan['count']}"
+          + (f" rungs={','.join(binding_plan['rungs'])}" if binding_plan["rungs"] else ""))
     for d in sorted(tally):
         if tally[d]:
             print(f"    {d}: {tally[d]}")
     print(f"  report: {report_path.relative_to(ROOT)}")
+    print(f"  CLOSEOUT-RECEIPT: {live_receipt} binding_reaped={binding_plan['count']}"
+          + (f" rungs={','.join(binding_plan['rungs'])}" if binding_plan["rungs"] else ""))
     gate_fail = any(v == "FAIL" for v in gates.values())
     if grew:
         print("  - PRIMARY FAIL STATE: a TSV table GREW at closeout")
@@ -1205,7 +1376,7 @@ def cmd_apply():
                 print(f"  - gate FAIL: {g}")
     verdict = "FAIL" if (grew or gate_fail) else "OK"
     print(f"TRACK-CLOSEOUT-APPLY-VERDICT: {verdict} receipt={live_receipt} "
-          f"inv_delta={inv_after - inv_before}")
+          f"inv_delta={inv_after - inv_before} binding_reaped={binding_plan['count']}")
     return 1 if verdict == "FAIL" else 0
 
 
@@ -1244,8 +1415,9 @@ def run_gate_battery(track: str, dest_crates=()) -> dict:
 
 
 def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gates, closed, moved,
-                  active_track):
+                  active_track, binding_plan=None):
     # Boundary table growth only counts when a legacy table is still in play (non-zero side).
+    binding_plan = binding_plan or {"count": 0, "rungs": []}
     grew = inv_a > inv_b or (b_a > b_b and (b_b > 0 or b_a > 0))
     lines = []
     lines.append(f"# {track} — Track Closeout Report")
@@ -1254,6 +1426,8 @@ def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gate
     lines.append("")
     lines.append(f"birth_track closed: **{'yes' if closed else 'no'}**  ·  "
                  f"CLOSEOUT-RECEIPT: `{receipt}`  ·  role: {ROLE}")
+    lines.append(f"binding_conditions_reaped: **{binding_plan.get('count', 0)}**  ·  "
+                 f"rungs: `{','.join(binding_plan.get('rungs') or []) or '-'}`")
     if active_track.get("retired") == "yes":
         lines.append(f"active_track_retired: **yes**  ·  active_track_from: "
                      f"`{active_track.get('from', '')}`  ·  active_track_to: "
@@ -1272,6 +1446,10 @@ def render_report(track, receipt, tally, survivors, inv_b, inv_a, b_b, b_a, gate
         lines.append(f"| test_lifecycle_boundary_rows.tsv | {b_b} | {b_a} | {b_a - b_b} |")
     else:
         lines.append("| test_lifecycle_boundary_rows.tsv | retired | retired | 0 |")
+    if binding_plan.get("present"):
+        before_b = binding_plan["count"] + len(binding_plan.get("kept") or [])
+        after_b = len(binding_plan.get("kept") or [])
+        lines.append(f"| binding_conditions.tsv | {before_b} | {after_b} | {after_b - before_b} |")
     lines.append("")
     if tally.get("lease"):
         lines.append(f"_{tally['lease']} row(s) relocated to the parking pen "
@@ -2306,6 +2484,161 @@ def cmd_prove():
               any(r["path"] == "docs/tests/current_evidence_index.md" for r in art_after)
               and "current_evidence_index.md" in r_reap.stdout)
         check("decommission-verdict", "DECOMMISSION-VERDICT: OK reaped=2 files=2 manual=3" in r_reap.stdout)
+
+    # HC-CLOSEOUT-BINDING-REAP-0: closing-track discharged binding rows are reaped;
+    # open-track discharged rows are the negative control; pre-fix leaves them (bites).
+    # Rollback fixture: fault after binding write restores the pre-apply table.
+    with tempfile.TemporaryDirectory() as btmp:
+        br = pathlib.Path(btmp)
+        (br / "scripts/ci").mkdir(parents=True)
+        (br / "docs/tests").mkdir(parents=True)
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", br / "scripts/ci/track_closeout.sh")
+        (br / "scripts/ci/gen_orientation.sh").write_text(
+            "#!/usr/bin/env bash\nset -euo pipefail\nmkdir -p docs\n"
+            "printf '# generated\\n' > docs/orchestrator_orientation.md\n",
+            encoding="utf-8",
+        )
+        # Closing track owns CLOSE-ME-0 via ladder + binding table; OPEN-STAY-0 is
+        # another open track's discharged row and must survive.
+        (br / "docs/close_me.md").write_text(
+            "# close-me\n\n"
+            "> **Status: OPEN / fixture.**\n\n"
+            "## Binding conditions\n\n"
+            "| rung | condition | status |\n"
+            "|---|---|---|\n"
+            "| CLOSE-ME-0 | fixture-discharged-closing | discharged |\n"
+            "| CLOSE-ME-ACTIVE-0 | fixture-active-stay | active |\n\n"
+            "## PR ladder\n\n"
+            "| Rung | ID | Scope | Exit proof | Tier |\n"
+            "|---|---|---|---|---|\n"
+            "| C1 | `CLOSE-ME-0` | fixture close target | NOT STARTED | Std |\n"
+            "| C2 | `CLOSE-ME-ACTIVE-0` | active binding stays | NOT STARTED | Std |\n",
+            encoding="utf-8",
+        )
+        write_tsv(br / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [
+            {"crate": "c", "file": "crates/c/tests/close.rs", "test_name": "golden",
+             "kind": "integration", "class": "golden-byte", "superseding_boundary": "B",
+             "verdict": "KEEP", "note": "keep", "promotion_target": "permanent-residue:golden-byte",
+             "birth_track": "close-me", "dsu_survivals": "0"},
+        ])
+        write_tsv(br / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
+            {"track_id": "close-me", "status": "open", "closed_at": "-",
+             "source": "docs/close_me.md", "note": "closing fixture"},
+            {"track_id": "other-open", "status": "open", "closed_at": "-",
+             "source": "docs/other_open.md", "note": "open-track negative control"},
+        ])
+        write_tsv(br / "scripts/ci/test_residue_classes.tsv", ["promotion_target"], [
+            {"promotion_target": "permanent-residue:golden-byte"},
+        ])
+        binding_rows = [
+            {"rung": "CLOSE-ME-0", "condition": "fixture-discharged-closing",
+             "set_by": "prove", "status": "discharged", "promotion_blocker": "CLOSE-ME-0"},
+            {"rung": "CLOSE-ME-ACTIVE-0", "condition": "fixture-active-stay",
+             "set_by": "prove", "status": "active", "promotion_blocker": "CLOSE-ME-ACTIVE-0"},
+            {"rung": "OPEN-STAY-0", "condition": "open-track-discharged-negative-control",
+             "set_by": "prove", "status": "discharged", "promotion_blocker": "OPEN-STAY-0"},
+        ]
+        write_tsv(br / "scripts/ci/binding_conditions.tsv", BINDING_HEADER, binding_rows)
+        (br / "scripts/ci/active_track.txt").write_text(
+            f"{ACTIVE_TRACK_COMMENT}\ndocs/close_me.md\n", encoding="utf-8")
+        m_rows = [
+            {"asset_kind": "inventory-row",
+             "ref": "c::crates/c/tests/close.rs::golden::integration",
+             "crate": "c", "file": "crates/c/tests/close.rs", "test_name": "golden",
+             "kind": "integration", "current_class": "golden-byte", "birth_track": "close-me",
+             "disposition": "keep-durable", "target": "", "owner": "", "note": "keep"},
+            doc_manifest_row("close-me", "docs/close_me.md", "keep-durable", "source"),
+        ]
+        body = io.StringIO()
+        w = csv.DictWriter(body, fieldnames=MANIFEST_HEADER, delimiter="\t", lineterminator="\n")
+        w.writeheader()
+        for row in m_rows:
+            w.writerow(row)
+        receipt = closeout_receipt(body.getvalue())
+        man_rel = "docs/tests/close-me_closeout_manifest.tsv"
+        (br / man_rel).write_bytes((
+            "# track_closeout manifest\n"
+            "# track: close-me\n"
+            f"# CLOSEOUT-RECEIPT: {receipt}\n"
+            "# role: prove\n"
+            + body.getvalue()
+        ).encode("utf-8"))
+
+        binding_before = norm_bytes((br / "scripts/ci/binding_conditions.tsv").read_bytes())
+        check("binding-reap-pre-apply-present",
+              "CLOSE-ME-0" in binding_before and "OPEN-STAY-0" in binding_before)
+
+        def brun(*a, env_extra=None):
+            env = {**os.environ, "TRACK_CLOSEOUT_NOW": "2026-07-16", "TRACK_CLOSEOUT_SKIP_CARGO": "1"}
+            if env_extra:
+                env.update(env_extra)
+            return subprocess.run(
+                [BASH, "scripts/ci/track_closeout.sh", *a],
+                capture_output=True, text=True, cwd=str(br), env=env,
+            )
+
+        # Rollback fixture: fault after binding write restores pre-apply table.
+        r_roll = brun("--apply", man_rel,
+                      env_extra={"TRACK_CLOSEOUT_FAULT_AFTER_BINDING_WRITE": "1"})
+        binding_after_roll = norm_bytes((br / "scripts/ci/binding_conditions.tsv").read_bytes())
+        check("binding-reap-rollback-restores",
+              r_roll.returncode != 0
+              and "FAIL(transaction-rolled-back)" in r_roll.stderr
+              and binding_after_roll == binding_before
+              and "CLOSE-ME-0" in binding_after_roll)
+
+        # Happy path: closing-track discharged row reaped; open-track + active stay.
+        r_ok = brun("--apply", man_rel)
+        _, bind_after = read_tsv(br / "scripts/ci/binding_conditions.tsv")
+        after_rungs = {r.get("rung") for r in bind_after}
+        report_text = norm_bytes((br / "docs/tests/close-me_closeout_report.md").read_bytes()) \
+            if (br / "docs/tests/close-me_closeout_report.md").exists() else ""
+        check("binding-reap-closed-track-removed",
+              "CLOSE-ME-0" not in after_rungs
+              and "APPLY-VERDICT:" in r_ok.stdout
+              and "binding_reaped=1" in r_ok.stdout
+              and "rungs=CLOSE-ME-0" in r_ok.stdout)
+        check("binding-reap-open-track-negative-control",
+              "OPEN-STAY-0" in after_rungs)
+        check("binding-reap-active-row-spared",
+              "CLOSE-ME-ACTIVE-0" in after_rungs)
+        check("binding-reap-receipt-shape",
+              "binding_conditions_reaped: **1**" in report_text
+              and "rungs: `CLOSE-ME-0`" in report_text
+              and "CLOSEOUT-RECEIPT:" in r_ok.stdout
+              and "binding_reaped=1" in r_ok.stdout)
+
+        # Falsifier that BITES: the pre-fix apply path (no reaper) leaves the row.
+        # Reconstruct the pre-apply binding table and run a stripped script that has
+        # plan_binding_reap forced empty — equivalent to pre-fix leave-it behavior.
+        write_tsv(br / "scripts/ci/binding_conditions.tsv", BINDING_HEADER, binding_rows)
+        write_tsv(br / "scripts/ci/test_lifecycle_tracks.tsv", TRACKS_HEADER, [
+            {"track_id": "close-me", "status": "open", "closed_at": "-",
+             "source": "docs/close_me.md", "note": "closing fixture"},
+            {"track_id": "other-open", "status": "open", "closed_at": "-",
+             "source": "docs/other_open.md", "note": "open-track negative control"},
+        ])
+        (br / "scripts/ci/active_track.txt").write_text(
+            f"{ACTIVE_TRACK_COMMENT}\ndocs/close_me.md\n", encoding="utf-8")
+        pre_fix = norm_bytes((br / "scripts/ci/track_closeout.sh").read_bytes())
+        # Force reaper plan to empty (pre-fix leave-it behavior) without editing the
+        # real tree — sandbox-only mutation of the copied script.
+        patched = pre_fix.replace(
+            "binding_plan = plan_binding_reap(track_source)",
+            "binding_plan = {'present': True, 'header': list(BINDING_HEADER), "
+            "'kept': (read_tsv(BINDING)[1] if BINDING.exists() else []), "
+            "'reaped': [], 'rungs': [], 'count': 0}",
+            1,
+        )
+        check("binding-reap-pre-fix-patch-applied", patched != pre_fix)
+        (br / "scripts/ci/track_closeout.sh").write_text(patched, encoding="utf-8", newline="\n")
+        r_pre = brun("--apply", man_rel)
+        _, bind_pre = read_tsv(br / "scripts/ci/binding_conditions.tsv")
+        pre_rungs = {r.get("rung") for r in bind_pre}
+        check("binding-reap-pre-fix-leaves-closed-row",
+              "CLOSE-ME-0" in pre_rungs
+              and "APPLY-VERDICT:" in r_pre.stdout
+              and "binding_reaped=0" in r_pre.stdout)
 
     if failures:
         print(f"TRACK-CLOSEOUT-PROVE-VERDICT: FAIL ({len(failures)})")

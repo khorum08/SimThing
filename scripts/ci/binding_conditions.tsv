@@ -1,13 +1,3 @@
 rung	condition	set_by	status	promotion_blocker
-TP-PALMA-REACH-0	phase-6.2-fleet-movement-blocked-until-6.1-da-clearance	DA-2026-07-05	discharged	TP-PALMA-REACH-0
-TP-FLEET-MOVEMENT-0	B1-7x7-horizon-3-minimum	DA-2026-07-05	discharged	TP-FLEET-MOVEMENT-0
-TP-FLEET-MOVEMENT-0	B2-multi-step-gradient-movement	DA-2026-07-05	discharged	TP-FLEET-MOVEMENT-0
-TP-FLEET-MOVEMENT-0	B3-larger-theater-gpu-cpu	DA-2026-07-05	discharged	TP-FLEET-MOVEMENT-0
-HU-TRACK-OPEN-0	0.0.8.5-park-gate-superseded-by-owner-carveout-authorization	Owner-2026-07-09	discharged	HU-TRACK-OPEN-0
-HU-CLOSEOUT-0	no-new-clearance-class-registration-without-retirement-pairing-during-track	DA-2026-07-09	discharged	HU-CLOSEOUT-0
-OC-KERNEL-LANE	each-OC-K-rung-blocked-until-owner-amendment-valve-authorization	Owner-2026-07-10	discharged	OC-KERNEL-LANE
-OC-CLOSEOUT-0	reach-log-and-anchor-tables-carry-decay-rules-before-close	DA-2026-07-10	discharged	OC-CLOSEOUT-0
-HD-TRACK-OPEN-0	blocked-until-owner-parks-0.0.8.6-and-directs-regeneration	Owner-2026-07-12	discharged	HD-TRACK-OPEN-0
-HD-CLOSEOUT-0	net-corpus-prose-must-decrease-at-close	DA-2026-07-12	discharged	HD-CLOSEOUT-0
 HC-TRACK-OPEN-0	blocked-until-owner-directs-open-and-0.0.8.6-parked	Owner-2026-07-16	discharged	HC-TRACK-OPEN-0
 HC-CLOSEOUT-0	every-rung-falsifier-must-fail-on-pre-fix-tree	DA-2026-07-16	active	HC-CLOSEOUT-0
