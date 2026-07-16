@@ -245,6 +245,18 @@ setup_heuristic_spec() {
     "${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs"
 }
 
+setup_heuristic_role_resolution_exclude_site_spec() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<'EOF'
+// CI selftest: deleted generic marker must not suppress SPEC-LOWERER-KIND-READ.
+use simthing_core::SimThingKind;
+
+pub fn generic_role_resolution_label(kind: &SimThingKind) -> String {
+    match kind { SimThingKind::Fleet => "fleet".into(), other => format!("{other:?}") } // role-resolution-exclude-site
+}
+EOF
+}
+
 setup_heuristic_clausething() {
   local fixture="$1"
   prepare_trap_baseline "$ROOT_SANDBOX"
@@ -604,6 +616,8 @@ run_all_cases() {
     setup_heuristic_clausething clausething_kind_branch.rs
   expect_heuristic_inspect "clausething_param_kind_branch" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_clausething clausething_param_kind_branch.rs
+  expect_heuristic_inspect "role_resolution_exclude_site_kind_param_match" "SPEC-LOWERER-KIND-READ" \
+    setup_heuristic_role_resolution_exclude_site_spec
 
   expect_trap_pass "jomini_write" "traps/jomini_write.rs"
   expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"

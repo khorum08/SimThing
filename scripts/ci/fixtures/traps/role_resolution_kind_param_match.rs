@@ -1,12 +1,4 @@
-// CI trap: role-resolution via kind-parameter match (not drift-shaped .kind field branching).
+// CI trap: role-resolution via DA-authored named symbol, not a generic self-service marker.
 use simthing_core::SimThingKind;
 
-pub fn planet_non_grid_child_kind_label(kind: &SimThingKind) -> String {
-    match kind { // role-resolution-exclude-site
-        SimThingKind::Cohort => "cohort".into(),
-        SimThingKind::Fleet => "fleet".into(),
-        SimThingKind::Station => "station".into(),
-        SimThingKind::Custom(name) => name.clone(),
-        other => format!("{other:?}"),
-    }
-}
+pub fn planet_non_grid_child_kind_label(kind: &SimThingKind) -> String { match kind { SimThingKind::Fleet => "fleet".into(), other => format!("{other:?}") } }

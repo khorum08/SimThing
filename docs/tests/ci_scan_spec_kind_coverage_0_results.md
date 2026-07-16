@@ -97,8 +97,8 @@ proof gate for this rung or 0R.
   `match\s+(?:&)?kind\s*\{[\s\S]*?SimThingKind::` (requires `SimThingKind::` inside the match block; avoids
   false positives on non-`SimThingKind` `match kind` sites).
 - Added `known_bad/clausething_param_kind_branch.rs`, selftest case, and PR-delta prove case (5b).
-- Legitimate role-resolution trap uses `role-resolution-exclude-site` marker (data-driven exclude list entry in
-  `scans.tsv`; growable by triage).
+- HC-EXCLUSION-REVIEW-GATE-0 later deleted the generic role-resolution marker from `scans.tsv`; role-resolution
+  exclusions are now reviewed named symbols or accounted INSPECT rows.
 - Removed conflicting narrow whole-tree count claims; authoritative 0R proof is PR-delta prove, not
   `doctrine_scan.sh` whole-tree ritual.
 - Scope ledger corrected (see below).
@@ -110,7 +110,8 @@ proof gate for this rung or 0R.
 | `fixtures/known_bad/spec_fleet_cohort_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
 | `fixtures/known_bad/clausething_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
 | `fixtures/known_bad/clausething_param_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
-| `fixtures/traps/role_resolution_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | PASS (`role-resolution-exclude-site`) |
+| selftest-generated `role_resolution_exclude_site_kind_param_match` sample | `SPEC-LOWERER-KIND-READ` | INSPECT |
+| `fixtures/traps/role_resolution_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | PASS (DA-authored named symbol) |
 | Rot test | neutralized pattern → selftest FAIL | wired |
 
 ## Proof commands (0R short path)
