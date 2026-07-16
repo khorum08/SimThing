@@ -1647,6 +1647,119 @@ EOF
   rm -rf "$sandbox"; return 0
 }
 
+run_selftest_horizon_entry_assessment() {
+  # HC-6: lifecycle assess flags stale markers to INSPECT (never auto-delete);
+  # fresh markers tally as fresh; bare tokens are malformed INSPECT residue.
+  local sandbox today stale_day
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-horizon-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  today="$(python -c "from datetime import date; print(date.today().isoformat())")"
+  stale_day="$(python -c "from datetime import date,timedelta; print((date.today()-timedelta(days=120)).isoformat())")"
+  mkdir -p "${sandbox}/crates/simthing-spec/src"
+  cat >"${sandbox}/crates/simthing-spec/src/horizon_fixture.rs" <<EOF
+/// HORIZON-ENTRY(${today}): intended consumer design_fresh_ref
+pub fn fresh_horizon_api() {}
+
+/// HORIZON-ENTRY(${stale_day}): intended consumer design_stale_ref
+pub fn stale_horizon_api() {}
+
+/// HORIZON-ENTRY
+pub fn bare_token_residue() {}
+EOF
+  local out
+  out="$(
+    HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+      ORIENTATION_REPO_ROOT="$sandbox" \
+      "$PYTHON_BIN" - <<'PY'
+import datetime, os, pathlib, re, sys
+REPO_ROOT = pathlib.Path(os.environ["ORIENTATION_REPO_ROOT"])
+HORIZON_ENTRY_STALE_DAYS = int(os.environ.get("HORIZON_ENTRY_STALE_DAYS", "90"))
+HORIZON_ENTRY_MARKER_RE = re.compile(
+    r"HORIZON-ENTRY\((\d{4}-\d{2}-\d{2})\):\s*(\S.+?)\s*$"
+)
+
+def _horizon_entry_today():
+    pin = os.environ.get("HORIZON_ENTRY_TODAY", "").strip()
+    if pin:
+        return datetime.datetime.strptime(pin, "%Y-%m-%d").date()
+    return datetime.date.today()
+
+def assess_horizon_entries(repo_root=None):
+    root = repo_root or REPO_ROOT
+    crates = root / "crates"
+    today = _horizon_entry_today()
+    stale_days = HORIZON_ENTRY_STALE_DAYS
+    fresh, stale, malformed = [], [], []
+    if not crates.is_dir():
+        return {"fresh": fresh, "stale": stale, "malformed": malformed, "stale_days": stale_days}
+    for path in sorted(crates.rglob("*.rs")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        rel = path.relative_to(root).as_posix()
+        for i, line in enumerate(text.splitlines(), start=1):
+            if "HORIZON-ENTRY" not in line:
+                continue
+            m = HORIZON_ENTRY_MARKER_RE.search(line)
+            if not m:
+                if re.search(r"HORIZON-ENTRY\b", line):
+                    malformed.append({"path": rel, "line": i})
+                continue
+            d = datetime.datetime.strptime(m.group(1), "%Y-%m-%d").date()
+            age = (today - d).days
+            entry = {"path": rel, "line": i, "age_days": age, "date": m.group(1), "ref": m.group(2).strip()}
+            if age > stale_days:
+                stale.append(entry)
+            else:
+                fresh.append(entry)
+    return {"fresh": fresh, "stale": stale, "malformed": malformed, "stale_days": stale_days}
+
+def emit_horizon_entry_assessment(repo_root=None):
+    report = assess_horizon_entries(repo_root)
+    for ent in report["stale"]:
+        print(
+            f"HORIZON-ENTRY-ASSESS: INSPECT {ent['path']}:{ent['line']} "
+            f"age={ent['age_days']}d date={ent['date']} "
+            f"deletion-candidate (stale; no auto-delete; human decides) ref={ent['ref']!r}"
+        )
+    for ent in report["malformed"]:
+        print(f"HORIZON-ENTRY-ASSESS: INSPECT {ent['path']}:{ent['line']} malformed-marker")
+    verdict = "INSPECT" if (len(report["stale"]) + len(report["malformed"])) > 0 else "PASS"
+    print(
+        f"HORIZON-ENTRY-ASSESS-VERDICT: {verdict} "
+        f"stale={len(report['stale'])} fresh={len(report['fresh'])} "
+        f"malformed={len(report['malformed'])} window_days={report['stale_days']}"
+    )
+    # Never auto-delete: fixture file must still exist after assessment.
+    fixture = REPO_ROOT / "crates/simthing-spec/src/horizon_fixture.rs"
+    if not fixture.is_file():
+        print("FAIL auto-deleted fixture", file=sys.stderr)
+        sys.exit(2)
+    return 0
+
+sys.exit(emit_horizon_entry_assessment(REPO_ROOT))
+PY
+  )"
+  if ! printf '%s\n' "$out" | grep -q 'HORIZON-ENTRY-ASSESS-VERDICT: INSPECT stale=1 fresh=1 malformed=1'; then
+    echo "FAIL orientation_horizon_entry_assessment"
+    echo "$out"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  if ! printf '%s\n' "$out" | grep -q 'deletion-candidate'; then
+    echo "FAIL orientation_horizon_entry_assessment (missing deletion-candidate)"
+    echo "$out"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  if [[ ! -f "${sandbox}/crates/simthing-spec/src/horizon_fixture.rs" ]]; then
+    echo "FAIL orientation_horizon_entry_assessment (auto-deleted fixture)"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  echo "PASS orientation_horizon_entry_assessment"
+  rm -rf "$sandbox"
+  return 0
+}
+
 run_selftest() {
   local fixtures=(
     orientation_digest_selftest_stale_digest
@@ -1685,6 +1798,7 @@ run_selftest() {
     run_selftest_pointer_divergence_lint
     run_selftest_scope_cell_not_false_complete
     run_selftest_ladder_column_integrity
+    run_selftest_horizon_entry_assessment
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -1827,6 +1941,11 @@ NON_WORKPLAN_REMEDY = (
     "or set active_track.txt to none."
 )
 PARK_BEGIN = "<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->"
+# HC-6: horizon-entry staleness window (days). Overridable for selftest.
+HORIZON_ENTRY_STALE_DAYS = int(os.environ.get("HORIZON_ENTRY_STALE_DAYS", "90"))
+HORIZON_ENTRY_MARKER_RE = re.compile(
+    r"HORIZON-ENTRY\((\d{4}-\d{2}-\d{2})\):\s*(\S.+?)\s*$"
+)
 PARK_END = "<!-- SIMTHING-PARKED-TRACK:END -->"
 PARK_FENCE = "```json"
 
@@ -3281,6 +3400,94 @@ def _collect_park_payload(rel: str, base_text: str, payload_old=None) -> tuple:
     return payload, tables_after, [REPO_ROOT / h["path"] for h in handoffs]
 
 
+def _horizon_entry_today():
+    pin = os.environ.get("HORIZON_ENTRY_TODAY", "").strip()
+    if pin:
+        return datetime.datetime.strptime(pin, "%Y-%m-%d").date()
+    return datetime.date.today()
+
+
+def assess_horizon_entries(repo_root=None):
+    """Lifecycle assess HORIZON-ENTRY markers under crates/**.
+
+    Well-formed markers older than HORIZON_ENTRY_STALE_DAYS with still no
+    consumer are FLAGGED as INSPECT deletion candidates. Never auto-delete.
+    Fresh markers are reported for greppability only (PASS tally).
+    """
+    root = repo_root or REPO_ROOT
+    crates = root / "crates"
+    today = _horizon_entry_today()
+    stale_days = HORIZON_ENTRY_STALE_DAYS
+    fresh = []
+    stale = []
+    malformed = []
+    if not crates.is_dir():
+        return {"fresh": fresh, "stale": stale, "malformed": malformed, "stale_days": stale_days}
+    for path in sorted(crates.rglob("*.rs")):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = path.relative_to(root).as_posix()
+        for i, line in enumerate(text.splitlines(), start=1):
+            if "HORIZON-ENTRY" not in line:
+                continue
+            m = HORIZON_ENTRY_MARKER_RE.search(line)
+            if not m:
+                # Bare or malformed token present — assessable, not an exemption.
+                if re.search(r"HORIZON-ENTRY\b", line):
+                    malformed.append({"path": rel, "line": i, "text": line.strip()[:160]})
+                continue
+            try:
+                d = datetime.datetime.strptime(m.group(1), "%Y-%m-%d").date()
+            except ValueError:
+                malformed.append({"path": rel, "line": i, "text": line.strip()[:160]})
+                continue
+            ref = m.group(2).strip()
+            age = (today - d).days
+            entry = {
+                "path": rel,
+                "line": i,
+                "date": m.group(1),
+                "age_days": age,
+                "ref": ref,
+            }
+            if age < 0:
+                # Future-dated: treat as fresh (clock skew) but still greppable.
+                fresh.append(entry)
+            elif age > stale_days:
+                stale.append(entry)
+            else:
+                fresh.append(entry)
+    return {"fresh": fresh, "stale": stale, "malformed": malformed, "stale_days": stale_days}
+
+
+def emit_horizon_entry_assessment(repo_root=None):
+    """Print assess report. Returns number of stale (INSPECT) markers. Never deletes."""
+    report = assess_horizon_entries(repo_root)
+    stale_n = len(report["stale"])
+    fresh_n = len(report["fresh"])
+    mal_n = len(report["malformed"])
+    for ent in report["stale"]:
+        print(
+            f"HORIZON-ENTRY-ASSESS: INSPECT {ent['path']}:{ent['line']} "
+            f"age={ent['age_days']}d date={ent['date']} "
+            f"deletion-candidate (stale; no auto-delete; human decides) ref={ent['ref']!r}"
+        )
+    for ent in report["malformed"]:
+        print(
+            f"HORIZON-ENTRY-ASSESS: INSPECT {ent['path']}:{ent['line']} "
+            f"malformed-marker (not an exemption; greppable residue)"
+        )
+    verdict = "INSPECT" if (stale_n + mal_n) > 0 else "PASS"
+    print(
+        f"HORIZON-ENTRY-ASSESS-VERDICT: {verdict} "
+        f"stale={stale_n} fresh={fresh_n} malformed={mal_n} "
+        f"window_days={report['stale_days']}"
+    )
+    return stale_n + mal_n
+
+
 def park_track() -> int:
     if not OPEN_TARGET:
         fail("--park requires exactly one track doc")
@@ -3330,6 +3537,8 @@ def park_track() -> int:
     print(f"folded_handoffs: {len(payload['handoffs'])}")
     for name, count in sorted(payload.get("drop_counts", {}).items()):
         print(f"drop_{name}: {count}")
+    # HC-6 lifecycle: assess horizon markers (never auto-delete).
+    emit_horizon_entry_assessment()
     return 0
 
 
@@ -3408,6 +3617,8 @@ def unpark_track() -> int:
         print(f"drop_{name}: {count}")
     if dropped:
         print(f"dropped_stale_referents: {len(dropped)}")
+    # HC-6 lifecycle: assess horizon markers (never auto-delete).
+    emit_horizon_entry_assessment()
     return 0
 
 

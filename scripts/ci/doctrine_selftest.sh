@@ -13,6 +13,7 @@ selftest_failures=0
 positive_control="FAIL"
 rot_test_result="FAIL"
 guard_kabuki_falsifier_result="FAIL"
+horizon_entry_falsifier_result="FAIL"
 test_budget_result="FAIL"
 drift_proof_result="FAIL"
 
@@ -610,6 +611,157 @@ PY
   end_sandbox
 }
 
+# HC-6: same consumerless source-scan fn — fresh-marked EXEMPT; unmarked/stale FLAGGED.
+# Pre-fix (exemption stripped) flags the fresh-marked site too — proves pre/post difference.
+run_horizon_entry_falsifier_test() {
+  local out exit_code sv count today stale_day
+  today="$(python -c "from datetime import date; print(date.today().isoformat())")"
+  stale_day="$(python -c "from datetime import date,timedelta; print((date.today()-timedelta(days=120)).isoformat())")"
+
+  # --- unmarked: FLAGGED ---
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<'EOF'
+pub fn horizon_candidate_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+  out="${ROOT_SANDBOX}/scan-unmarked.out"
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "INSPECT" || "$count" -le 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (unmarked expected INSPECT got scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  end_sandbox
+
+  # --- stale-dated well-formed marker: FLAGGED (not exempt) ---
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<EOF
+/// HORIZON-ENTRY(${stale_day}): intended consumer design_stale_ref
+pub fn horizon_candidate_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+  out="${ROOT_SANDBOX}/scan-stale.out"
+  exit_code="$(
+    HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+      run_scan_in_sandbox "$ROOT_SANDBOX" "$out"
+  )"
+  # run_scan_in_sandbox doesn't forward env into subshell cleanly — re-run explicitly
+  set +e
+  (
+    cd "$ROOT_SANDBOX" &&
+      HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+        DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh"
+  ) >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "INSPECT" || "$count" -le 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (stale expected INSPECT got scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  end_sandbox
+
+  # --- bare token (no date/ref): FLAGGED (never a void-token forever-pass) ---
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<'EOF'
+/// HORIZON-ENTRY
+pub fn horizon_candidate_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+  out="${ROOT_SANDBOX}/scan-bare.out"
+  set +e
+  (cd "$ROOT_SANDBOX" && DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh") >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "INSPECT" || "$count" -le 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (bare token expected INSPECT got scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  end_sandbox
+
+  # --- fresh well-formed marker: EXEMPT (PASS count 0 for this site) ---
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<EOF
+/// HORIZON-ENTRY(${today}): intended consumer design_fresh_ref
+pub fn horizon_candidate_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+  out="${ROOT_SANDBOX}/scan-fresh.out"
+  set +e
+  (
+    cd "$ROOT_SANDBOX" &&
+      HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+        DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh"
+  ) >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "PASS" || "$count" -ne 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (fresh expected PASS/0 got scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+
+  # --- pre-fix difference: strip exemption filter → same fresh site is FLAGGED ---
+  if ! python - "$ROOT_SANDBOX/scripts/ci/doctrine_scan.sh" <<'PY'
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+needle = 'if [[ "$scan_id" == "GUARD-KABUKI-TRIPWIRE" && "${#matches[@]}" -gt 0 ]]; then'
+if needle not in text:
+    raise SystemExit("horizon pre-fix: exemption call site missing")
+# Comment out the exemption block (3 lines) to restore pre-fix behavior.
+old = '''    if [[ "$scan_id" == "GUARD-KABUKI-TRIPWIRE" && "${#matches[@]}" -gt 0 ]]; then
+      filter_guard_kabuki_horizon_exemptions matches
+    fi
+'''
+if old not in text:
+    raise SystemExit("horizon pre-fix: exemption block not found for strip")
+path.write_text(text.replace(old, "    # pre-fix: horizon exemption stripped\n", 1), encoding="utf-8")
+PY
+  then
+    horizon_entry_falsifier_result="FAIL (could not strip exemption for pre-fix proof)"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  out="${ROOT_SANDBOX}/scan-fresh-pre-fix.out"
+  set +e
+  (
+    cd "$ROOT_SANDBOX" &&
+      HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+        DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh"
+  ) >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "INSPECT" || "$count" -le 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (pre-fix fresh should FLAG got scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  horizon_entry_falsifier_result="PASS (unmarked=INSPECT stale=INSPECT bare=INSPECT fresh=PASS pre_fix_fresh=INSPECT)"
+  end_sandbox
+}
+
 run_test_budget_proof() {
   local root out base head exit_code verdict hard inspect sv count
   root="$(mktemp -d "${TMPDIR:-/tmp}/test-budget-proof-XXXXXX")"
@@ -788,6 +940,7 @@ emit_report() {
   done
   echo "  rot test: ${rot_test_result}"
   echo "  guard kabuki falsifier: ${guard_kabuki_falsifier_result}"
+  echo "  horizon entry falsifier: ${horizon_entry_falsifier_result}"
   echo "  test budget proof: ${test_budget_result}"
   echo "  inventory drift proof: ${drift_proof_result}"
   if [[ "$selftest_failures" -eq 0 ]]; then
@@ -821,6 +974,7 @@ main() {
   run_all_cases
   run_rot_test
   run_guard_kabuki_falsifier_test
+  run_horizon_entry_falsifier_test
   run_test_budget_proof
   run_drift_proof
   emit_report

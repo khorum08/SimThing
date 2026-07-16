@@ -194,7 +194,7 @@ Workflows: `.github/workflows/doctrine-exec.yml` (`CI-B-GH-CPU-0`) + `.github/wo
   names them). Delta-scoped in PR CI; whole-tree baseline is triage backlog only. Promotion blocker: retire when
   spec-layer role resolution is role-keyed by `SubFieldRole`/column admission boundaries, not `SimThingKind`
   branching. Scenario-born candidate engine-shaped code routes to **`simthing-workshop`** (§12), not spec/lowerers.
-- **`GUARD-KABUKI-TRIPWIRE` (HC-GUARD-KABUKI-TRIPWIRE-0).** HEURISTIC over targeted `src`/`tests` Rust files for bespoke source/path guards and test-side `include_str!("../src/")` source greps; INSPECT only, accounted through `inspect_justifications.tsv` + `triage_log.tsv`, retired when admission-typed or empty.
+- **`GUARD-KABUKI-TRIPWIRE` (HC-2/HC-6).** HEURISTIC source/path guards + `include_str!("../src/")` greps; INSPECT only. HC-6: well-formed FRESH `HORIZON-ENTRY(iso): ref` on the symbol is EXEMPT (dated+assessable); unmarked/stale stay FLAGGED — never bare-token forever-pass. Retired when admission-typed or empty.
 ---
 
 ## 4. Strict rigor to add or change a `scans.tsv` entry
