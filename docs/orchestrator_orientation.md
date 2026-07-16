@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | bc0c19adc3d242d3c0f8e72b02552c2980cea5877e6bc17b83e11c3d00d2fdba |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | e91f065e7aad979c3a935296133bfe6d86af3a72e5a6c762575e673286fb7ca9 |
+| design_0_0_8_4_8_4_1_harness_corrections.md | 8bf33d00b1f3c287a5b65d26db59e08193094e8640bd39b444e09595efb810c7 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -59,6 +59,7 @@ Track state: `open`
 | HC-2 | HC-GUARD-KABUKI-TRIPWIRE-0 | **Mechanize anti-kabuki rule 2 (defect 2).** Add a HEURISTIC scan (`scans.tsv` r | NOT STARTED |
 | HC-3 | HC-CLOSEOUT-BINDING-REAP-0 | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the cl | NOT STARTED |
 | HC-4 | HC-POINTER-DIVERGENCE-LINT-0 | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs whe | NOT STARTED |
+| HC-5 | HC-LADDER-COLUMN-INTEGRITY-0 | **Assert the parser's own invariant (defect 5: silent column shift).** `parse_ru | `, skips rows with *too few* columns, and **never bounds too many** — so any cell containing an escaped pipe (the onl... |
 | HC-C | HC-CLOSEOUT-0 | Measured close: each rung's falsifier demonstrated to FAIL on the pre-fix tree;  | NOT STARTED |
 
 ## Next Rung Pointer
