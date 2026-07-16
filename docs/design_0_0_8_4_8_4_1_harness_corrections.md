@@ -4,7 +4,7 @@
 > (0.0.8.4.8.4, CLOSED). Opened via `gen_orientation.sh --open` (verdict OPENED, entry rung HC-1);
 > 0.0.8.6 is PARKED (receipt `19e0e85c8d3f`) and resumes via `--unpark` when this track parks/closes.
 >
-> **Why.** Four harness defects surfaced in the first post-HD production rung
+> **Why.** Five harness defects surfaced in the first post-HD production rung
 > (`STUDIO-FLEET-PRESENCE-READOUT-0`, #1355) and in the HD closeout. Each one lets a **false green**
 > or **silent cruft** through gates whose entire promise is that green means proven. All four are
 > mechanical, share two surfaces (`scans.tsv` + `gen_orientation.sh`/`track_closeout.sh`), and were
@@ -42,7 +42,7 @@ guard scan > prose) · `design_0_0_8_3.md` §0 · this file · `ci_screening_sur
 
 ## 1. Root cause this track closes
 
-The rustification moved verification from prose to machines. These four holes let the machine layer
+The rustification moved verification from prose to machines. These five holes let the machine layer
 report green on unproven work — the exact class the harness exists to kill.
 
 | # | Defect | How it produced false state | Evidence |
@@ -50,6 +50,7 @@ report green on unproven work — the exact class the harness exists to kill.
 | 1 | Generic in-code scan-exclusion token | `role-resolution-exclude-site` voids a `SPEC-LOWERER-KIND-READ` HEURISTIC finding with no DA review, no ledger row, no trace | #1355: 2 findings silenced; stripping the 2 comments flips `agent_scan` `PASS delta_inspect=0` → `INSPECT delta_inspect=2`. Named exclusions beside it (`planet_non_grid_child_kind_label`…) require a gate-wiring `scans.tsv` edit — the asymmetry is the hole |
 | 2 | Anti-kabuki §H rule 2 is prose-only | A source-scanning guard `pub fn` shipped in a crate's **public API**, self-evading via `format!("{}{}", "TP_FLEET_", …)`, inspecting only its own file — passed every gate green | #1355: caught by DA read alone; no scan detects the shape |
 | 3 | Closeout never reaps discharged binding rows | Closed tracks' conditions accrete forever | Post-HD-C: **10/10** rows in `binding_conditions.tsv` are `discharged` from CLOSED tracks (TP×4, HU×2, OC×2, HD×2) — the table is 100% dead rows |
+| 5 | Ladder rows silently column-shift | `parse_rungs()` bounds too-few columns but never too-many; an escaped or bare pipe in any cell shifts `parts[3]` off the Exit proof, so stamps never register and the pointer sticks — `--check` stays green | Hit 3× by the DA (HD-1 `body_sha` cell, OC ladder, and this very workplan while documenting the `Active open rung` row); caught by human memory each time, never by a gate |
 | 4 | No pointer-divergence lint | The authoritative `Active open rung` row can name a rung whose exit-proof is `DA-GRADUATED`; `--check` passes | 12.4 (#1355): ladder stamped DA-GRADUATED while the pointer row still named it — `gen_orientation --check: PASS`. Two pointer sources (authoritative row vs ladder scan) with no agreement check |
 
 ---
@@ -62,10 +63,12 @@ report green on unproven work — the exact class the harness exists to kill.
 | HC-2 | `HC-GUARD-KABUKI-TRIPWIRE-0` | **Mechanize anti-kabuki rule 2 (defect 2).** Add a HEURISTIC scan (`scans.tsv` row + selftest) catching bespoke source-scanning guards: production `pub fn` taking `source: &str`/`&Path` that string-scans, and `include_str!("../src/` in tests. Routes to INSPECT + triage (not FAIL) — legitimate cases exist and must be justifiable, not silenced. Prose rule stays; the tripwire is its mechanized rung-3. | NOT STARTED | Std |
 | HC-3 | `HC-CLOSEOUT-BINDING-REAP-0` | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the closing track's discharged `binding_conditions.tsv` rows as part of `--apply`, reported in the CLOSEOUT-RECEIPT. Retire the 10 existing dead rows from closed tracks in the same PR (evidence: the table is currently 100% discharged). Must not touch rows of open/parked tracks — the 0.0.8.6 park block round-trip (`--unpark`) stays byte-exact. | NOT STARTED | Std |
 | HC-4 | `HC-POINTER-DIVERGENCE-LINT-0` | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs when the authoritative `Active open rung` row names a rung whose exit-proof cell is completed (DA-GRADUATED/COMPLETE/DONE), or names a rung absent from the ladder. Fixtures: graduated-rung-named-as-pointer FAILs; unknown-rung FAILs; legitimate not-yet-dispatched next rung passes; `none`-form passes. Document the two-source rule in `owner_authoring_guide.md` (stamping a cell does not move an authoritative pointer). | NOT STARTED | Std |
+| HC-5 | `HC-LADDER-COLUMN-INTEGRITY-0` | **Assert the parser's own invariant (defect 5: silent column shift).** `parse_rungs()` splits ladder rows on `|`, skips rows with *too few* columns, and **never bounds too many** — so any cell containing an escaped pipe (the only way markdown renders a literal pipe) or a bare pipe silently shifts every column right: `parts[3]` reads the Scope tail while the real Exit proof lands at `parts[4]` and is discarded. Stamps then never register and the pointer sticks on finished work, with `--check` green. **Fix inside the existing pass — no new script, no new workflow (Owner, 2026-07-16):** `is_ladder_header` already identifies each table's shape; capture its declared column count and FAIL in `gen_orientation.sh --check` when any data row of that table does not match it exactly, naming the row and the remedy (say it without a pipe — backticks do not help; a bare pipe splits too). Same surface as HC-4. Falsifier (ruling 3): a fixture ladder row bearing an escaped pipe in its Scope cell parses to the WRONG exit proof with `--check` PASS on the pre-fix tree, and FAILs after. | NOT STARTED | Std |
 | HC-C | `HC-CLOSEOUT-0` | Measured close: each rung's falsifier demonstrated to FAIL on the pre-fix tree; `binding_conditions.tsv` row count strictly decreased; no new tables; net scan ledger ≤ 0 with retirement pairing; discharge bindings; close via `track_closeout.sh`. | NOT STARTED | DA |
 
-**Sequencing:** HC-1 → HC-2 (∥ HC-3) → HC-4 → HC-C. HC-1 and HC-2 share `scans.tsv`; HC-3 and HC-4
-share the lifecycle scripts. Each rung is independently valuable and may re-park.
+**Sequencing:** HC-1 → HC-2 (∥ HC-3) → HC-4 → HC-5 → HC-C. HC-1 and HC-2 share `scans.tsv`; HC-3,
+HC-4 and HC-5 share the lifecycle scripts (HC-4 and HC-5 both extend `gen_orientation.sh --check`, so
+they run sequentially, not in parallel). Each rung is independently valuable and may re-park.
 
 ---
 
