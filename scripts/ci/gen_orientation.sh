@@ -1420,6 +1420,150 @@ PY
   return 0
 }
 
+run_selftest_ladder_column_integrity() {
+  # HC-5: escaped/bare pipe in a cell shifts columns so parts[3] is not Exit-proof.
+  # Pre-fix parse takes the shifted parts[3] and --check stays green; fixed path
+  # FAILs(ladder-column-count) naming the row + remedy. Clean row still passes.
+  local sandbox pre_exit pre_ncols
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-col-integrity-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+
+  # --- Falsifier fixture: escaped pipe in Scope cell ---
+  cat >"${sandbox}/docs/design_col_integrity.md" <<'EOF'
+# Ladder Column Integrity Fixture
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `PIPE-ROW` | Scope has an escaped pipe here \| still scope | REAL-EXIT-PROOF-MARKER |
+| 2 | `NEXT-ROW` | Later work. | TODO |
+EOF
+  cat >"${sandbox}/scripts/ci/active_track.txt" <<'EOF'
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+docs/design_col_integrity.md
+EOF
+
+  # Pre-fix bite: naive split (no column-count assert) mis-assigns Exit-proof and
+  # would accept the row because it only bounds too-few columns.
+  pre_exit="$(
+    python - <<'PY'
+row = "| 1 | `PIPE-ROW` | Scope has an escaped pipe here \\| still scope | REAL-EXIT-PROOF-MARKER |"
+parts = [p.strip() for p in row.strip().strip("|").split("|")]
+# Old parse_rungs: skip only if len(parts) < 4, then take parts[3] as exit_proof.
+assert len(parts) >= 4, parts
+print(parts[3])
+PY
+  )"
+  pre_ncols="$(
+    python - <<'PY'
+row = "| 1 | `PIPE-ROW` | Scope has an escaped pipe here \\| still scope | REAL-EXIT-PROOF-MARKER |"
+parts = [p.strip() for p in row.strip().strip("|").split("|")]
+print(len(parts))
+PY
+  )"
+  if [[ "$pre_exit" == "REAL-EXIT-PROOF-MARKER" ]]; then
+    echo "FAIL orientation_ladder_column_pre_fix_would_misread (exit still correct: ${pre_exit})"
+    rm -rf "$sandbox"; return 1
+  fi
+  if [[ "$pre_ncols" -le 4 ]]; then
+    echo "FAIL orientation_ladder_column_pre_fix_would_misread (ncols=${pre_ncols}, need >4)"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_ladder_column_pre_fix_misreads_exit (got exit='${pre_exit}' ncols=${pre_ncols})"
+
+  # Fixed path: generate and --check both FAIL(ladder-column-count), name the row.
+  set +e
+  run_gen_sandbox "$sandbox" >"${sandbox}/pipe_gen.out" 2>"${sandbox}/pipe_gen.err"
+  local gen_rc=$?
+  run_gen_sandbox "$sandbox" --check >"${sandbox}/pipe_check.out" 2>"${sandbox}/pipe_check.err"
+  local check_rc=$?
+  set -e
+  if [[ "$gen_rc" -eq 0 ]] || [[ "$check_rc" -eq 0 ]] \
+    || ! grep -q "FAIL(ladder-column-count)" "${sandbox}/pipe_gen.err" \
+    || ! grep -q "PIPE-ROW" "${sandbox}/pipe_gen.err" \
+    || ! grep -q "say it without a pipe" "${sandbox}/pipe_gen.err" \
+    || ! grep -q "FAIL(ladder-column-count)" "${sandbox}/pipe_check.err"; then
+    echo "FAIL orientation_ladder_column_escaped_pipe_fails"
+    cat "${sandbox}/pipe_gen.err" 2>/dev/null || true
+    cat "${sandbox}/pipe_check.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_ladder_column_escaped_pipe_fails"
+
+  # Clean row: exact header column count → generate + --check PASS; exit-proof correct.
+  cat >"${sandbox}/docs/design_col_integrity.md" <<'EOF'
+# Ladder Column Integrity Fixture
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `CLEAN-ROW` | Scope has no pipe character at all. | REAL-EXIT-PROOF-MARKER |
+| 2 | `NEXT-ROW` | Later work. | TODO |
+
+| Item | State |
+|---|---|
+| Active open rung | `CLEAN-ROW` |
+EOF
+  if ! run_gen_sandbox "$sandbox" >/dev/null 2>&1 \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null 2>&1 \
+    || ! grep -qF 'Active pointer: `CLEAN-ROW`' "${sandbox}/docs/orchestrator_orientation.md" \
+    || ! grep -qF 'REAL-EXIT-PROOF-MARKER' "${sandbox}/docs/orchestrator_orientation.md"; then
+    echo "FAIL orientation_ladder_column_clean_row_passes"
+    cat "${sandbox}/docs/orchestrator_orientation.md" 2>/dev/null | head -n 50 || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_ladder_column_clean_row_passes"
+
+  # 5-column production shape: bare pipe in Scope also fails; clean 5-col passes.
+  cat >"${sandbox}/docs/design_col_integrity.md" <<'EOF'
+# Ladder Column Integrity Fixture (5-col)
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| R1 | `BARE-PIPE-ROW` | Mentions a bare | pipe in scope | NOT STARTED | Std |
+EOF
+  set +e
+  run_gen_sandbox "$sandbox" --check >"${sandbox}/bare_check.out" 2>"${sandbox}/bare_check.err"
+  check_rc=$?
+  set -e
+  if [[ "$check_rc" -eq 0 ]] \
+    || ! grep -q "FAIL(ladder-column-count)" "${sandbox}/bare_check.err" \
+    || ! grep -q "BARE-PIPE-ROW" "${sandbox}/bare_check.err"; then
+    echo "FAIL orientation_ladder_column_bare_pipe_5col_fails"
+    cat "${sandbox}/bare_check.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_ladder_column_bare_pipe_5col_fails"
+
+  cat >"${sandbox}/docs/design_col_integrity.md" <<'EOF'
+# Ladder Column Integrity Fixture (5-col clean)
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| R1 | `FIVE-COL-CLEAN` | Scope without any pipe character. | NOT STARTED | Std |
+
+| Item | State |
+|---|---|
+| Active open rung | `FIVE-COL-CLEAN` |
+EOF
+  if ! run_gen_sandbox "$sandbox" >/dev/null 2>&1 \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null 2>&1 \
+    || ! grep -qF 'Active pointer: `FIVE-COL-CLEAN`' "${sandbox}/docs/orchestrator_orientation.md"; then
+    echo "FAIL orientation_ladder_column_5col_clean_passes"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_ladder_column_5col_clean_passes"
+
+  rm -rf "$sandbox"
+  return 0
+}
+
 run_selftest_park_rollback_and_virgin_unpark() {
   local sandbox rc before
   sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-park-rollback-XXXXXX")"
@@ -1540,6 +1684,7 @@ run_selftest() {
     run_selftest_park_rollback_and_virgin_unpark
     run_selftest_pointer_divergence_lint
     run_selftest_scope_cell_not_false_complete
+    run_selftest_ladder_column_integrity
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -1802,6 +1947,32 @@ def is_ladder_header(line: str) -> bool:
     return False
 
 
+def ladder_row_parts(line: str) -> list:
+    """Split a markdown table row on bare pipes (no escape awareness)."""
+    return [p.strip() for p in (line or "").strip().strip("|").split("|")]
+
+
+def ladder_header_column_count(line: str):
+    """Declared column count for a ladder header line, or None if not a header."""
+    if not is_ladder_header(line):
+        return None
+    return len(ladder_row_parts(line))
+
+
+def ladder_row_label(parts: list) -> str:
+    """Human-readable row name for column-count FAIL messages."""
+    if not parts:
+        return "<empty-row>"
+    if len(parts) == 1:
+        return parts[0] or "<empty-row>"
+    # Prefer `#`/`Rung` + id cell so HC-5 / `PIPE-ROW` both name cleanly.
+    left = (parts[0] or "").strip()
+    right = (parts[1] or "").strip()
+    if left and right:
+        return f"{left} {right}"
+    return left or right or "<empty-row>"
+
+
 def parse_rungs(design_text: str):
     """Parse all PR-ladder / rung tables from a design workplan.
 
@@ -1811,28 +1982,47 @@ def parse_rungs(design_text: str):
 
     Collects rows from every matching table in the document (multi-phase ladders).
     Returns list of (num_or_index, rung_id, deliverable_or_scope, exit_proof).
+
+    Column-count invariant (HC-LADDER-COLUMN-INTEGRITY-0): every data row must have
+    exactly the column count its own table header declares. A bare or escaped pipe
+    inside a cell shifts columns so parts[3] is no longer Exit-proof; FAIL loud at
+    this choke point (active gen/--check, --park, --unpark) rather than silent misread.
     """
     rows = []
     in_table = False
+    expected_cols = None
     for line in design_text.splitlines():
         stripped = line.strip()
         if is_ladder_header(stripped):
             in_table = True
+            expected_cols = ladder_header_column_count(stripped)
             continue
         if not in_table:
             continue
         if not stripped.startswith("|"):
             in_table = False
+            expected_cols = None
             continue
         if stripped.startswith("|---") or re.match(r"^\|[\s\-:|]+\|$", stripped):
             continue
-        parts = [p.strip() for p in stripped.strip("|").split("|")]
+        parts = ladder_row_parts(stripped)
+        # Skip accidental re-header rows mid-scan (before column-count assert so a
+        # repeated header with matching shape does not trip the data-row rule).
+        if len(parts) >= 2:
+            c0 = parts[0].lower()
+            c1 = parts[1].lower()
+            if c0 in ("#", "rung") and c1 in ("rung", "id", "deliverable"):
+                if expected_cols is not None:
+                    expected_cols = len(parts)
+                continue
+        if expected_cols is not None and len(parts) != expected_cols:
+            label = ladder_row_label(parts)
+            fail(
+                f"FAIL(ladder-column-count): ladder data row {label!r} has "
+                f"{len(parts)} columns but the table header declares {expected_cols}; "
+                f"remedy: say it without a pipe — backticks do not help; a bare pipe splits too"
+            )
         if len(parts) < 4:
-            continue
-        # Skip accidental re-header rows mid-scan.
-        c0 = parts[0].lower()
-        c1 = parts[1].lower()
-        if c0 in ("#", "rung") and c1 in ("rung", "id", "deliverable"):
             continue
         rows.append((parts[0], parts[1], parts[2], parts[3]))
     return rows
