@@ -1647,32 +1647,12 @@ EOF
   rm -rf "$sandbox"; return 0
 }
 
-run_selftest_horizon_entry_assessment() {
-  # HC-6: lifecycle assess flags stale markers to INSPECT (never auto-delete);
-  # fresh markers tally as fresh; bare tokens are malformed INSPECT residue.
-  local sandbox today stale_day
-  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-horizon-XXXXXX")"
-  seed_orientation_sandbox "$sandbox"
-  today="$(python -c "from datetime import date; print(date.today().isoformat())")"
-  stale_day="$(python -c "from datetime import date,timedelta; print((date.today()-timedelta(days=120)).isoformat())")"
-  mkdir -p "${sandbox}/crates/simthing-spec/src"
-  cat >"${sandbox}/crates/simthing-spec/src/horizon_fixture.rs" <<EOF
-/// HORIZON-ENTRY(${today}): intended consumer design_fresh_ref
-pub fn fresh_horizon_api() {}
-
-/// HORIZON-ENTRY(${stale_day}): intended consumer design_stale_ref
-pub fn stale_horizon_api() {}
-
-/// HORIZON-ENTRY
-pub fn bare_token_residue() {}
-EOF
-  local out
-  out="$(
-    HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
-      ORIENTATION_REPO_ROOT="$sandbox" \
-      "$PYTHON_BIN" - <<'PY'
+# Shared assess snippet for horizon lifecycle selftests (mirrors production assess_horizon_entries).
+_horizon_assess_py() {
+  "$PYTHON_BIN" - <<'PY'
 import datetime, os, pathlib, re, sys
 REPO_ROOT = pathlib.Path(os.environ["ORIENTATION_REPO_ROOT"])
+# Honor env the same way production + doctrine_scan do (default 90).
 HORIZON_ENTRY_STALE_DAYS = int(os.environ.get("HORIZON_ENTRY_STALE_DAYS", "90"))
 HORIZON_ENTRY_MARKER_RE = re.compile(
     r"HORIZON-ENTRY\((\d{4}-\d{2}-\d{2})\):\s*(\S.+?)\s*$"
@@ -1728,7 +1708,6 @@ def emit_horizon_entry_assessment(repo_root=None):
         f"stale={len(report['stale'])} fresh={len(report['fresh'])} "
         f"malformed={len(report['malformed'])} window_days={report['stale_days']}"
     )
-    # Never auto-delete: fixture file must still exist after assessment.
     fixture = REPO_ROOT / "crates/simthing-spec/src/horizon_fixture.rs"
     if not fixture.is_file():
         print("FAIL auto-deleted fixture", file=sys.stderr)
@@ -1737,6 +1716,33 @@ def emit_horizon_entry_assessment(repo_root=None):
 
 sys.exit(emit_horizon_entry_assessment(REPO_ROOT))
 PY
+}
+
+run_selftest_horizon_entry_assessment() {
+  # HC-6: lifecycle assess flags stale markers to INSPECT (never auto-delete);
+  # fresh markers tally as fresh; bare tokens are malformed INSPECT residue.
+  # HC-8: window honors HORIZON_ENTRY_STALE_DAYS env (default 90), same as doctrine_scan.
+  local sandbox today stale_day mid_day out
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-horizon-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  today="$(python -c "from datetime import date; print(date.today().isoformat())")"
+  stale_day="$(python -c "from datetime import date,timedelta; print((date.today()-timedelta(days=120)).isoformat())")"
+  mid_day="$(python -c "from datetime import date,timedelta; print((date.today()-timedelta(days=30)).isoformat())")"
+  mkdir -p "${sandbox}/crates/simthing-spec/src"
+  cat >"${sandbox}/crates/simthing-spec/src/horizon_fixture.rs" <<EOF
+/// HORIZON-ENTRY(${today}): intended consumer design_fresh_ref
+pub fn fresh_horizon_api() {}
+
+/// HORIZON-ENTRY(${stale_day}): intended consumer design_stale_ref
+pub fn stale_horizon_api() {}
+
+/// HORIZON-ENTRY
+pub fn bare_token_residue() {}
+EOF
+  out="$(
+    HORIZON_ENTRY_STALE_DAYS="${HORIZON_ENTRY_STALE_DAYS:-90}" HORIZON_ENTRY_TODAY="$today" \
+      ORIENTATION_REPO_ROOT="$sandbox" \
+      _horizon_assess_py
   )"
   if ! printf '%s\n' "$out" | grep -q 'HORIZON-ENTRY-ASSESS-VERDICT: INSPECT stale=1 fresh=1 malformed=1'; then
     echo "FAIL orientation_horizon_entry_assessment"
@@ -1752,6 +1758,65 @@ PY
   fi
   if [[ ! -f "${sandbox}/crates/simthing-spec/src/horizon_fixture.rs" ]]; then
     echo "FAIL orientation_horizon_entry_assessment (auto-deleted fixture)"
+    rm -rf "$sandbox"
+    return 1
+  fi
+
+  # HC-8 single-source: mid-age marker (30d) is FRESH under default 90, STALE under override 10.
+  # Pre-fix hardcode HORIZON_ENTRY_STALE_DAYS=90 in the call site ignored an outer override → diverge.
+  cat >"${sandbox}/crates/simthing-spec/src/horizon_fixture.rs" <<EOF
+/// HORIZON-ENTRY(${mid_day}): intended consumer design_mid_ref
+pub fn mid_horizon_api() {}
+EOF
+  # Pre-fix bite: hardcode 90 while caller intends override 10 → mid stays fresh (diverges from override).
+  out="$(
+    HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+      ORIENTATION_REPO_ROOT="$sandbox" \
+      _horizon_assess_py
+  )"
+  if ! printf '%s\n' "$out" | grep -q 'window_days=90'; then
+    echo "FAIL orientation_horizon_entry_assessment (pre-fix hardcode window)"
+    echo "$out"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  if ! printf '%s\n' "$out" | grep -q 'stale=0 fresh=1'; then
+    echo "FAIL orientation_horizon_entry_assessment (pre-fix mid should be fresh under hardcode 90)"
+    echo "$out"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  # Fixed path: honor env override → mid is stale under window=10.
+  out="$(
+    HORIZON_ENTRY_STALE_DAYS=10 HORIZON_ENTRY_TODAY="$today" \
+      ORIENTATION_REPO_ROOT="$sandbox" \
+      _horizon_assess_py
+  )"
+  if ! printf '%s\n' "$out" | grep -q 'window_days=10'; then
+    echo "FAIL orientation_horizon_entry_assessment (override window not honored)"
+    echo "$out"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  if ! printf '%s\n' "$out" | grep -q 'stale=1 fresh=0'; then
+    echo "FAIL orientation_horizon_entry_assessment (override should stale mid-age marker)"
+    echo "$out"
+    rm -rf "$sandbox"
+    return 1
+  fi
+  # Default when unset is 90 (same as doctrine_scan "${HORIZON_ENTRY_STALE_DAYS:-90}").
+  out="$(
+    (
+      unset HORIZON_ENTRY_STALE_DAYS || true
+      export HORIZON_ENTRY_TODAY="$today"
+      export ORIENTATION_REPO_ROOT="$sandbox"
+      _horizon_assess_py
+    )
+  )"
+  if ! printf '%s\n' "$out" | grep -q 'window_days=90' \
+    || ! printf '%s\n' "$out" | grep -q 'stale=0 fresh=1'; then
+    echo "FAIL orientation_horizon_entry_assessment (default window should be 90)"
+    echo "$out"
     rm -rf "$sandbox"
     return 1
   fi
@@ -1846,6 +1911,8 @@ main() {
   export ORIENTATION_OWNER_DIRECTIVES="${ORIENTATION_OWNER_DIRECTIVES:-${SCRIPT_DIR}/owner_directives.tsv}"
   export ORIENTATION_CLOSEOUT_ARTIFACTS="${ORIENTATION_CLOSEOUT_ARTIFACTS:-${SCRIPT_DIR}/closeout_artifacts.tsv}"
   export ORIENTATION_HANDOFFS_DIR="${ORIENTATION_HANDOFFS_DIR:-${REPO_ROOT}/handoffs}"
+  # HC-8 / HC-AUDIT-POLISH-0: single-source with doctrine_scan.sh (default 90; env override for selftest).
+  export HORIZON_ENTRY_STALE_DAYS="${HORIZON_ENTRY_STALE_DAYS:-90}"
 
   exec "$PYTHON_BIN" - <<'PY'
 import csv

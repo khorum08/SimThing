@@ -121,8 +121,12 @@ jobs:
             fi
           fi
 
-          # Board sync: fires for PR/dispatch AND push-to-master. With no current handoff (push, or a
-          # PR with no rung claim) the board renders `current_handoff: none` (#1342 class).
+          # Board sync: fires for PR/dispatch AND push-to-master.
+          # Push-to-master has no PR ingress, so resolve the live dispatch via graceful
+          # --current-handoff (#1342: empty output = none). Keep `none` only when genuinely none.
+          if [ -z "$pr" ] && [ -z "$handoff" ]; then
+            handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff)"
+          fi
           if [ -n "$handoff" ]; then
             bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
           else

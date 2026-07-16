@@ -194,7 +194,7 @@ Workflows: `.github/workflows/doctrine-exec.yml` (`CI-B-GH-CPU-0`) + `.github/wo
   names them). Delta-scoped in PR CI; whole-tree baseline is triage backlog only. Promotion blocker: retire when
   spec-layer role resolution is role-keyed by `SubFieldRole`/column admission boundaries, not `SimThingKind`
   branching. Scenario-born candidate engine-shaped code routes to **`simthing-workshop`** (§12), not spec/lowerers.
-- **`GUARD-KABUKI-TRIPWIRE` (HC-2/HC-6).** HEURISTIC source/path guards + `include_str!("../src/")` greps; INSPECT only. HC-6: well-formed FRESH `HORIZON-ENTRY(iso): ref` on the symbol is EXEMPT (dated+assessable); unmarked/stale stay FLAGGED — never bare-token forever-pass. Retired when admission-typed or empty.
+- **`GUARD-KABUKI-TRIPWIRE` (HC-2/HC-6/HC-8).** HEURISTIC source/path guards + `include_str!("../src/")` greps; INSPECT only. HC-6: FRESH `HORIZON-ENTRY(iso): ref` EXEMPT (dated+assessable); unmarked/stale FLAGGED. HC-8 accepted residue: private fn / var-bound `include_str!` evade pub-fn arms (DA backstop; regex not widened). Retired when admission-typed or empty.
 ---
 
 ## 4. Strict rigor to add or change a `scans.tsv` entry
