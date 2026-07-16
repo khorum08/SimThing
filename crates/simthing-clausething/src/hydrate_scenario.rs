@@ -20,35 +20,36 @@ use simthing_spec::spec::overlay::OverlaySpec;
 use simthing_spec::spec::property::PropertySpec;
 use simthing_spec::spec::region_field::{CommitmentEffectSpec, MappingExecutionProfile};
 use simthing_spec::spec::scenario::{
+    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
+    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION, SCENARIO_STRUCTURAL_COL_PROPERTY_ID,
+    SCENARIO_STRUCTURAL_ROW_PROPERTY_ID, SimThingScenarioGrid, SimThingScenarioProvenance,
     apply_gridcell_role_metadata, apply_owner_silo_metadata, apply_participant_owner_flow_metadata,
     apply_participant_owner_flow_resource_key_metadata, apply_scenario_metadata_to_root,
     apply_star_system_display_name_metadata, deserialize_scenario_authority,
     gridcell_generated_system_id, make_galaxy_map, make_owner_entity,
     scenario_metadata_string_value, scenario_metadata_u32_value, star_system_display_name,
-    structural_property_value_u32, SimThingScenarioGrid, SimThingScenarioProvenance,
-    GALAXY_GRIDCELL_ROLE_STAR_SYSTEM, OWNER_COLOR_INDEX_PROPERTY_ID,
-    OWNER_FLOW_OWNER_REF_PROPERTY_ID, SCENARIO_SCHEMA_VERSION,
-    SCENARIO_STRUCTURAL_COL_PROPERTY_ID, SCENARIO_STRUCTURAL_ROW_PROPERTY_ID,
+    structural_property_value_u32,
 };
 use simthing_spec::spec::stress_compose::StressComposeSpec;
 use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 use simthing_spec::{
-    apply_star_system_local_grid_frame_metadata, is_surface_gridcell, make_planet_gridcell,
     PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
     STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, TP_FLEET_HOME_SYSTEM_PROPERTY_ID,
-    TP_FLEET_POSTURE_PROPERTY_ID,
+    TP_FLEET_POSTURE_PROPERTY_ID, apply_star_system_local_grid_frame_metadata, is_surface_gridcell,
+    make_planet_gridcell,
 };
 
 use crate::error::HydrateError;
-use crate::hydrate_category_economy::{decode_economic_modifier_key, DecodedEconomicKey};
+use crate::hydrate_category_economy::{DecodedEconomicKey, decode_economic_modifier_key};
+use crate::hydrate_field_economy::{HydratedFieldEconomy, hydrate_field_economy_property};
 use crate::hydrate_field_operator::hydrate_field_operator_property;
 use crate::hydrate_palma_feedstock::{
-    finalize_palma_feedstock, parse_palma_feedstock_property, HydratedScenarioPalmaFeedstock,
-    PR5_MAX_SCENARIO_PALMA_FEEDSTOCK,
+    HydratedScenarioPalmaFeedstock, PR5_MAX_SCENARIO_PALMA_FEEDSTOCK, finalize_palma_feedstock,
+    parse_palma_feedstock_property,
 };
 use crate::hydrate_scenario_commitment::{
-    finalize_scenario_commitment, parse_commitment_property, HydratedScenarioCommitment,
-    ParsedCommitmentEffectDraft, PR6_MAX_SCENARIO_COMMITMENT,
+    HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT, ParsedCommitmentEffectDraft,
+    finalize_scenario_commitment, parse_commitment_property,
 };
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
@@ -140,6 +141,10 @@ pub struct HydratedScenarioPack {
     /// TP-COMBAT-ARENA-0 co-located hostile ship HP/Damage arena authoring.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub combat_arena_payload: Option<crate::hydrate_combat_arena::HydratedCombatArenaPayload>,
+    /// Scenario-agnostic field-economy authoring lowered onto existing OverlaySpec,
+    /// ResourceEconomySpec, and EML gadget weight-profile surfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub field_economy: Option<HydratedFieldEconomy>,
 }
 
 /// Scenario-envelope property ids for ship authored columns (non-canonical).
@@ -363,6 +368,8 @@ pub fn hydrate_scenario_with_source_base(
     let mut fleet_ship_payload_drafts = Vec::new();
     let mut seen_fleet_ship_payload_ids = BTreeSet::new();
     let mut combat_arena_payload_draft = None;
+    let mut field_economy_count = 0_usize;
+    let mut field_economy_draft = None;
     let mut embedded_static_galaxy_scenarios = Vec::new();
     let mut embedded_placements = Vec::new();
     let mut embedded_grid_size = None;
@@ -457,6 +464,16 @@ pub fn hydrate_scenario_with_source_base(
                 combat_arena_payload_draft = Some(
                     crate::hydrate_combat_arena::parse_combat_arena_payload(field)?,
                 );
+            }
+            "field_economy" => {
+                field_economy_count += 1;
+                if field_economy_count > 1 {
+                    return Err(HydrateError::new_spanned(
+                        "duplicate scenario field_economy block",
+                        Some(field.key.span.clone()),
+                    ));
+                }
+                field_economy_draft = Some(field.clone());
             }
             "link" => raw_links.push(parse_link(field)?),
             "field_operator" => {
@@ -693,6 +710,42 @@ pub fn hydrate_scenario_with_source_base(
         }
         combat_arena_payload = Some(payload);
     }
+    let mut field_economy = None;
+    if let Some(draft) = field_economy_draft.as_ref() {
+        let lowering = hydrate_field_economy_property(draft, &root_node, &owners, &grid_metadata)?;
+        for property in lowering.properties {
+            if !seen_property_ids.insert(property.id.clone()) {
+                return Err(HydrateError::new_spanned(
+                    format!("duplicate property id `{}` from field_economy", property.id),
+                    Some(draft.key.span.clone()),
+                ));
+            }
+            game_mode.properties.push(property);
+        }
+        for overlay in lowering.overlays {
+            if !seen_overlay_ids.insert(overlay.id.clone()) {
+                return Err(HydrateError::new_spanned(
+                    format!("duplicate overlay id `{}` from field_economy", overlay.id),
+                    Some(draft.key.span.clone()),
+                ));
+            }
+            game_mode.overlays.push(overlay);
+        }
+        let mut economy = game_mode.resource_economy.take().unwrap_or_default();
+        economy.opt_in_mode = simthing_spec::ResourceEconomyOptInMode::TransferAndEmission;
+        economy
+            .transfers
+            .extend(lowering.resource_economy.transfers);
+        economy.recipes.extend(lowering.resource_economy.recipes);
+        economy
+            .emissions
+            .extend(lowering.resource_economy.emissions);
+        economy
+            .emit_on_threshold
+            .extend(lowering.resource_economy.emit_on_threshold);
+        game_mode.resource_economy = Some(economy);
+        field_economy = Some(lowering.hydrated);
+    }
     dedupe_property_specs_by_name(&mut game_mode.properties);
     Ok(HydratedScenarioPack {
         scenario_id,
@@ -713,6 +766,7 @@ pub fn hydrate_scenario_with_source_base(
         planet_surface_payloads,
         fleet_ship_payloads,
         combat_arena_payload,
+        field_economy,
     })
 }
 
@@ -777,12 +831,10 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
                 faction_alliance = Some(read_scalar_text(field, "faction_alliance")?)
             }
             "faction_identity_reserved_0" | "identity_reserved_0" => {
-                faction_identity_reserved_0 =
-                    Some(read_scalar_text(field, &field.key.text)?)
+                faction_identity_reserved_0 = Some(read_scalar_text(field, &field.key.text)?)
             }
             "faction_identity_reserved_1" | "identity_reserved_1" => {
-                faction_identity_reserved_1 =
-                    Some(read_scalar_text(field, &field.key.text)?)
+                faction_identity_reserved_1 = Some(read_scalar_text(field, &field.key.text)?)
             }
             "policy_profile" => policy_profile = Some(read_scalar_text(field, "policy_profile")?),
             "personality_profile" => {

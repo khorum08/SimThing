@@ -31,12 +31,13 @@ mod emit;
 mod hydrate;
 mod hydrate_category_economy;
 mod hydrate_combat_arena;
-mod hydrate_shipsize_decoder;
+mod hydrate_field_economy;
 mod hydrate_field_operator;
 mod hydrate_palma_feedstock;
 mod hydrate_resource_flow;
 mod hydrate_scenario;
 mod hydrate_scenario_commitment;
+mod hydrate_shipsize_decoder;
 mod json;
 mod literal_install;
 mod mapgen_lattice;
@@ -61,10 +62,11 @@ pub use hydrate_category_economy::{
     HydratedCategoryEconomyPack, decode_economic_modifier_key, hydrate_category_economy_pack,
     hydrate_daily_economy_game_mode,
 };
-pub use hydrate_shipsize_decoder::{
-    DecodedShipModifierKey, HydratedShipsizeDecoderPack, ShipModifierFamily, ShipModifierOp,
-    SHIP_MODIFIER_ATTRIBUTES, MAX_SHIP_EML_NODES, compile_value_formula_eml,
-    decode_ship_modifier_key, decode_ship_modifier_key_spanned, hydrate_shipsize_decoder_pack,
+pub use hydrate_combat_arena::{HydratedCombatArenaPayload, HydratedCombatShipEnrollment};
+pub use hydrate_field_economy::{
+    HydratedDisruptionPresence, HydratedFieldEconomy, HydratedFieldEconomyWeightProfile,
+    HydratedFieldResourceQuantity, HydratedOwnerPolicyOverlay, HydratedOwnerPolicyTransform,
+    HydratedProductionBuilding, HydratedStockpileSilo,
 };
 pub use hydrate_field_operator::{
     BH3_MAX_FIELD_IMPEDANCE_PROFILES, BH3_MAX_FIELD_STRESS_PROFILES,
@@ -78,22 +80,24 @@ pub use hydrate_palma_feedstock::{
 pub use hydrate_resource_flow::{
     HydratedResourceFlowPack, hydrate_resource_flow_pack, net_intrinsic_flow,
 };
-pub use hydrate_combat_arena::{
-    HydratedCombatArenaPayload, HydratedCombatShipEnrollment,
-};
 pub use hydrate_scenario::{
-    hydrate_scenario, hydrate_scenario_with_source_base, resolve_clause_source_path,
     HydratedEmbeddedStaticGalaxyScenario, HydratedFleetPlacement, HydratedFleetShipPayload,
     HydratedOwnedSystem, HydratedOwnershipVolume, HydratedPlanetSurfacePayload,
     HydratedScenarioGridMetadata, HydratedScenarioGridPlacement, HydratedScenarioLink,
     HydratedScenarioNode, HydratedScenarioOwner, HydratedScenarioPack, PR3_MAX_LINK_FANOUT,
-    PR4_MAX_SCENARIO_FIELD_OPERATORS,
+    PR4_MAX_SCENARIO_FIELD_OPERATORS, hydrate_scenario, hydrate_scenario_with_source_base,
+    resolve_clause_source_path,
+};
+pub use hydrate_shipsize_decoder::{
+    DecodedShipModifierKey, HydratedShipsizeDecoderPack, MAX_SHIP_EML_NODES,
+    SHIP_MODIFIER_ATTRIBUTES, ShipModifierFamily, ShipModifierOp, compile_value_formula_eml,
+    decode_ship_modifier_key, decode_ship_modifier_key_spanned, hydrate_shipsize_decoder_pack,
 };
 pub mod clause_scenario_projection;
 pub use clause_scenario_projection::{
+    ClauseScenarioProjectionError, ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
     project_pack_to_authority_tree_candidate, rebind_authority_tree_candidate,
-    rebind_pack_to_structural_rebind_ready, ClauseScenarioProjectionError,
-    ClauseScenarioProjectionMode, ClauseScenarioProjectionReport,
+    rebind_pack_to_structural_rebind_ready,
 };
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};

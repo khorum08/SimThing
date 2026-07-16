@@ -45,3 +45,7 @@ date	role	query	anchors_served	hit
 2026-07-12T23:55:21Z	coding	--paths scripts/ci/handoff_dispatch.sh scripts/ci/relay_lint.sh .github/workflows/clearance.yml	orientation-harness-core	hit
 2026-07-16T00:55:56Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
 2026-07-16T03:20:38Z	coding	--domain gate-wiring	orientation-harness-core	hit
+2026-07-16T21:28:00Z	coding	--grep spec-fidelity	spec-fidelity-anti-ceremony	hit
+2026-07-16T21:28:00Z	coding	--domain field-policy	field-policy-time-decisions	hit
+2026-07-16T22:22:12Z	coding	--grep spec-fidelity	spec-fidelity-anti-ceremony	hit
+2026-07-16T22:22:12Z	coding	--domain field-policy	field-policy-time-decisions	hit
