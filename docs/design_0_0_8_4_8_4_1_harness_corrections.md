@@ -1,0 +1,95 @@
+# 0.0.8.4.8.4.1 — Harness Corrections
+
+> **Status: AUTHORED / NOT OPENED (2026-07-16, Owner-directed).** Short corrective track off the HD
+> Board substrate (0.0.8.4.8.4, CLOSED). Opens by `gen_orientation.sh --open` once the Owner directs;
+> 0.0.8.6 is PARKED (receipt `19e0e85c8d3f`) and resumes via `--unpark`.
+>
+> **Why.** Four harness defects surfaced in the first post-HD production rung
+> (`STUDIO-FLEET-PRESENCE-READOUT-0`, #1355) and in the HD closeout. Each one lets a **false green**
+> or **silent cruft** through gates whose entire promise is that green means proven. All four are
+> mechanical, share two surfaces (`scans.tsv` + `gen_orientation.sh`/`track_closeout.sh`), and were
+> each caught by a human/DA read rather than by the harness — which is the defect.
+>
+> **Roles:** DA = Fable (or step-in). Orchestrator = webchat slot. Coder = Owner-assigned slot.
+> (Ruling 7: roles are slots, models are data — no rung may condition on a vendor.)
+> **Mode:** manual-progression (HD-STACK-CADENCE-0) — one rung at a time, Owner review between.
+
+---
+
+## 0. Track harness header (constitution §0.5 Rule 1)
+
+**Fixed base:** `simthing_core_design.md` §1.2 (admission ladder: type > admission hard-error >
+guard scan > prose) · `design_0_0_8_3.md` §0 · this file · `ci_screening_surface.md` ·
+`docs/handoff_template.md` §H (anti-kabuki) · `track_closeout_protocol.md` · `owner_authoring_guide.md`.
+
+**Held decisions — do NOT re-derive:**
+
+- **Green must mean proven.** A gate an implementer can silence without review is not a gate.
+- **Growth without retirement = regression**; TSV growth is the primary fail state.
+- **Doctrine as data, not prose** — a rule only a DA read can catch belongs one rung lower on the
+  admission ladder.
+- No new standalone tables; compose existing readers/writers. No clearance-router lexicon change.
+- Every mutation transactional (HD-6 preflight/staged/rollback pattern) with a rollback fixture.
+
+**Binding conditions (record at open):**
+
+| rung | condition | status |
+|---|---|---|
+| HC-TRACK-OPEN-0 | blocked-until-owner-directs-open-and-0.0.8.6-parked | open (authored parked) |
+| HC-CLOSEOUT-0 | every rung lands a falsifier that FAILS on the pre-fix tree (prove-the-guard-bites) | open |
+
+---
+
+## 1. Root cause this track closes
+
+The rustification moved verification from prose to machines. These four holes let the machine layer
+report green on unproven work — the exact class the harness exists to kill.
+
+| # | Defect | How it produced false state | Evidence |
+|---|---|---|---|
+| 1 | Generic in-code scan-exclusion token | `role-resolution-exclude-site` voids a `SPEC-LOWERER-KIND-READ` HEURISTIC finding with no DA review, no ledger row, no trace | #1355: 2 findings silenced; stripping the 2 comments flips `agent_scan` `PASS delta_inspect=0` → `INSPECT delta_inspect=2`. Named exclusions beside it (`planet_non_grid_child_kind_label`…) require a gate-wiring `scans.tsv` edit — the asymmetry is the hole |
+| 2 | Anti-kabuki §H rule 2 is prose-only | A source-scanning guard `pub fn` shipped in a crate's **public API**, self-evading via `format!("{}{}", "TP_FLEET_", …)`, inspecting only its own file — passed every gate green | #1355: caught by DA read alone; no scan detects the shape |
+| 3 | Closeout never reaps discharged binding rows | Closed tracks' conditions accrete forever | Post-HD-C: **10/10** rows in `binding_conditions.tsv` are `discharged` from CLOSED tracks (TP×4, HU×2, OC×2, HD×2) — the table is 100% dead rows |
+| 4 | No pointer-divergence lint | The authoritative `Active open rung` row can name a rung whose exit-proof is `DA-GRADUATED`; `--check` passes | 12.4 (#1355): ladder stamped DA-GRADUATED while the pointer row still named it — `gen_orientation --check: PASS`. Two pointer sources (authoritative row vs ladder scan) with no agreement check |
+
+---
+
+## 2. PR ladder (all gate-wiring / DA-reserve; Std tier)
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| HC-1 | `HC-EXCLUSION-REVIEW-GATE-0` | **Close the self-service suppression hole (defect 1).** Either (a) delete the generic `role-resolution-exclude-site` token from `scans.tsv` so exclusions must be DA-authored named symbols, or (b) require every in-code exclusion token to carry a paired `inspect_justifications.tsv` row — scanner FAILs (not silences) on an unpaired token. DA picks (b) unless the implementer proves (a) is cleaner; the token must annotate, never silence. Sweep for other generic in-code tokens in `scans.tsv` exclusion columns and apply the same rule. | NOT STARTED | Std |
+| HC-2 | `HC-GUARD-KABUKI-TRIPWIRE-0` | **Mechanize anti-kabuki rule 2 (defect 2).** Add a HEURISTIC scan (`scans.tsv` row + selftest) catching bespoke source-scanning guards: production `pub fn` taking `source: &str`/`&Path` that string-scans, and `include_str!("../src/` in tests. Routes to INSPECT + triage (not FAIL) — legitimate cases exist and must be justifiable, not silenced. Prose rule stays; the tripwire is its mechanized rung-3. | NOT STARTED | Std |
+| HC-3 | `HC-CLOSEOUT-BINDING-REAP-0` | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the closing track's discharged `binding_conditions.tsv` rows as part of `--apply`, reported in the CLOSEOUT-RECEIPT. Retire the 10 existing dead rows from closed tracks in the same PR (evidence: the table is currently 100% discharged). Must not touch rows of open/parked tracks — the 0.0.8.6 park block round-trip (`--unpark`) stays byte-exact. | NOT STARTED | Std |
+| HC-4 | `HC-POINTER-DIVERGENCE-LINT-0` | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs when the authoritative `Active open rung` row names a rung whose exit-proof cell is completed (DA-GRADUATED/COMPLETE/DONE), or names a rung absent from the ladder. Fixtures: graduated-rung-named-as-pointer FAILs; unknown-rung FAILs; legitimate not-yet-dispatched next rung passes; `none`-form passes. Document the two-source rule in `owner_authoring_guide.md` (stamping a cell does not move an authoritative pointer). | NOT STARTED | Std |
+| HC-C | `HC-CLOSEOUT-0` | Measured close: each rung's falsifier demonstrated to FAIL on the pre-fix tree; `binding_conditions.tsv` row count strictly decreased; no new tables; net scan ledger ≤ 0 with retirement pairing; discharge bindings; close via `track_closeout.sh`. | NOT STARTED | DA |
+
+**Sequencing:** HC-1 → HC-2 (∥ HC-3) → HC-4 → HC-C. HC-1 and HC-2 share `scans.tsv`; HC-3 and HC-4
+share the lifecycle scripts. Each rung is independently valuable and may re-park.
+
+---
+
+## 3. Standing DA rulings
+
+1. **A gate an implementer can silence without review is not a gate.** Exclusions are DA-authored or
+   paired with a machine-readable justification — never both silent and self-service.
+2. **Suppression is not accounting.** HEURISTIC findings route through triage; the finding stays
+   visible so the scan's retire-condition can observe the site.
+3. **Prove the guard bites.** Every rung lands a falsifier that FAILS on the pre-fix tree; a fixture
+   that passes before and after proves nothing (HC-CLOSEOUT-0 binding).
+4. Rules that only a DA read can catch belong one rung lower on the admission ladder — mechanize or
+   consciously accept the prose tier and say so.
+5. This track adds no tables and no lexicon; it composes existing surfaces.
+
+## 4. Non-goals
+
+No pointer change at authoring · no clearance-router/class changes · no new tables · no Studio/UI
+or crates work (0.0.8.6 stays PARKED, receipt `19e0e85c8d3f`) · no re-litigation of #1355's merits
+(that rung graduated; only its harness lessons are in scope) · no HD substrate redesign.
+
+## 5. References
+
+`STUDIO-FLEET-PRESENCE-READOUT-0` (#1355) DA remand + clearance — defects 1, 2, 4 ·
+HD-C closeout (#1353) — defect 3 · `scans.tsv` `SPEC-LOWERER-KIND-READ` row ·
+`handoff_template.md` §H rules 2/11 · `gen_orientation.sh` `authoritative_active_pointer()` +
+fixture `orientation_authoritative_park_pointer` · `track_closeout_protocol.md`.
