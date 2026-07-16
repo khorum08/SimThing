@@ -2,14 +2,19 @@
 //!
 //! This lowers authoring blocks onto existing spec surfaces only: `PropertySpec`,
 //! `OverlaySpec`, `ResourceEconomySpec`, and `EmlGadgetStackSpec`.
+//!
+//! HORIZON-ENTRY(2026-07-16): 12.7+ may author production output coefficients
+//! and stockpile clamps only after an execution-bearing recipe-yield/storage-capacity
+//! surface exists; this rung rejects those fields instead of lowering them to
+//! event-shaped emissions or permanent overlays.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    validate_location_ids_have_structural_placements, OverlayKind, OverlayLifecycle, OverlaySource,
-    PlacedParticipantValidationError, SimThingKind, StructuralCoord, StructuralGridPlacement,
-    SubFieldRole, TransformOp,
+    OverlayKind, OverlayLifecycle, OverlaySource, PlacedParticipantValidationError, SimThingKind,
+    StructuralCoord, StructuralGridPlacement, SubFieldRole, TransformOp,
+    validate_location_ids_have_structural_placements,
 };
 use simthing_spec::spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -25,8 +30,8 @@ use simthing_spec::spec::trigger::TriggerDirection;
 
 use crate::error::HydrateError;
 use crate::hydrate_scenario::{
-    header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32, require_block,
     HydratedScenarioGridMetadata, HydratedScenarioNode, HydratedScenarioOwner,
+    header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32, require_block,
 };
 use crate::raw::{RawProperty, RawSpan};
 
@@ -57,7 +62,6 @@ pub struct HydratedProductionBuilding {
     pub input_resource: String,
     pub input_amount: f32,
     pub output_resource: String,
-    pub output_amount: f32,
     pub throttle_hint_max_per_tick: u32,
 }
 
@@ -66,7 +70,6 @@ pub struct HydratedStockpileSilo {
     pub id: String,
     pub owner: String,
     pub resource: String,
-    pub capacity: f32,
     pub current: f32,
 }
 
@@ -135,6 +138,11 @@ struct ParsedFieldEconomy {
 struct ResourceAmount {
     resource: String,
     amount: f32,
+}
+
+#[derive(Debug, Clone)]
+struct ResourceRef {
+    resource: String,
 }
 
 #[derive(Debug, Clone)]
@@ -280,7 +288,7 @@ fn parse_production_building(
             "id" => id = read_checked_id(field, &id)?,
             "location" => location = Some(read_scalar_text(field, "location")?),
             "input" => input = Some(parse_resource_amount(field, "input")?),
-            "output" => output = Some(parse_resource_amount(field, "output")?),
+            "output" => output = Some(parse_resource_ref(field, "output")?),
             "throttle_hint_max_per_tick" => {
                 throttle_hint_max_per_tick =
                     Some(read_scalar_u32(field, "throttle_hint_max_per_tick")?)
@@ -301,7 +309,6 @@ fn parse_production_building(
         input_resource: input.resource,
         input_amount: input.amount,
         output_resource: output.resource,
-        output_amount: output.amount,
         throttle_hint_max_per_tick: require_local(
             throttle_hint_max_per_tick,
             "throttle_hint_max_per_tick",
@@ -315,7 +322,6 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
     let mut id = header_id;
     let mut owner = None;
     let mut resource = None;
-    let mut capacity = None;
     let mut current = None;
 
     for field in &block.properties {
@@ -323,7 +329,6 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
             "id" => id = read_checked_id(field, &id)?,
             "owner" => owner = Some(read_scalar_text(field, "owner")?),
             "resource" => resource = Some(read_scalar_text(field, "resource")?),
-            "capacity" => capacity = Some(read_scalar_f32(field, "capacity")?),
             "current" => current = Some(read_scalar_f32(field, "current")?),
             other => {
                 return Err(HydrateError::new_spanned(
@@ -337,7 +342,6 @@ fn parse_stockpile_silo(property: &RawProperty) -> Result<HydratedStockpileSilo,
         id: require_id(id, "stockpile_silo", property)?,
         owner: require_local(owner, "owner", property)?,
         resource: require_local(resource, "resource", property)?,
-        capacity: require_local(capacity, "capacity", property)?,
         current: require_local(current, "current", property)?,
     })
 }
@@ -537,6 +541,28 @@ fn parse_resource_amount(
     })
 }
 
+fn parse_resource_ref(
+    property: &RawProperty,
+    field_name: &str,
+) -> Result<ResourceRef, HydrateError> {
+    let block = require_block(property, field_name)?;
+    let mut resource = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "resource" => resource = Some(read_scalar_text(field, "resource")?),
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported {field_name} field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    Ok(ResourceRef {
+        resource: require_local(resource, "resource", property)?,
+    })
+}
+
 fn parse_weight_input(property: &RawProperty) -> Result<WeightInput, HydrateError> {
     let block = require_block(property, "input")?;
     let mut input_col = None;
@@ -597,11 +623,6 @@ fn validate_field_economy(
             "production_building.input.amount",
             &parsed.span,
         )?;
-        validate_positive_amount(
-            building.output_amount,
-            "production_building.output.amount",
-            &parsed.span,
-        )?;
         if building.throttle_hint_max_per_tick == 0 {
             return Err(HydrateError::new_spanned(
                 "production_building.throttle_hint_max_per_tick must be greater than zero",
@@ -633,17 +654,7 @@ fn validate_field_economy(
 
     for silo in &parsed.stockpile_silos {
         validate_owner_ref(&silo.owner, owners, &parsed.span)?;
-        validate_positive_amount(silo.capacity, "stockpile_silo.capacity", &parsed.span)?;
         validate_non_negative_amount(silo.current, "stockpile_silo.current", &parsed.span)?;
-        if silo.current > silo.capacity {
-            return Err(HydrateError::new_spanned(
-                format!(
-                    "stockpile_silo `{}` current {} exceeds capacity {}",
-                    silo.id, silo.current, silo.capacity
-                ),
-                Some(parsed.span.clone()),
-            ));
-        }
     }
     for overlay in &parsed.owner_policy_overlays {
         validate_owner_ref(&overlay.owner, owners, &parsed.span)?;
@@ -679,12 +690,6 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
             &silo.owner,
             &silo.resource,
             "stockpile",
-        ));
-        properties.push(owner_resource_property(
-            &parsed.namespace,
-            &silo.owner,
-            &silo.resource,
-            "capacity",
         ));
     }
     for quantity in &parsed.field_resource_quantities {
@@ -747,31 +752,12 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         .collect();
 
     let mut emissions = Vec::new();
-    for building in &parsed.production_buildings {
-        emissions.push(ResourceEmissionSpec {
-            id: format!("{}_production_yield_{}", parsed.id, building.id),
-            source: located_resource_key(
-                &parsed.namespace,
-                &building.location,
-                &building.output_resource,
-                "quantity",
-            ),
-            source_role: SubFieldRole::Amount,
-            formula: EmissionFormulaSpec::Constant(building.output_amount),
-        });
-    }
     for silo in &parsed.stockpile_silos {
         emissions.push(ResourceEmissionSpec {
             id: format!("{}_silo_current_{}", parsed.id, silo.id),
             source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "current"),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(silo.current),
-        });
-        emissions.push(ResourceEmissionSpec {
-            id: format!("{}_silo_capacity_{}", parsed.id, silo.id),
-            source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "capacity"),
-            source_role: SubFieldRole::Amount,
-            formula: EmissionFormulaSpec::Constant(silo.capacity),
         });
     }
     for quantity in &parsed.field_resource_quantities {
@@ -811,22 +797,6 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         .collect();
 
     let mut overlays = Vec::new();
-    overlays.extend(parsed.production_buildings.iter().map(|building| {
-        location_overlay(
-            &parsed.id,
-            "production",
-            &building.id,
-            &property_ref(&located_resource_key(
-                &parsed.namespace,
-                &building.location,
-                &building.output_resource,
-                "quantity",
-            )),
-            building.output_amount,
-            &building.location,
-            OverlayKind::Infrastructure,
-        )
-    }));
     overlays.extend(parsed.field_resource_quantities.iter().map(|quantity| {
         location_overlay(
             &parsed.id,

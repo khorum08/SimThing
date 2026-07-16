@@ -9,9 +9,10 @@ use simthing_spec::{
 const FIELD_ECONOMY_SEMANTIC_CASES: &[&str] = &[
     "well-formed-existing-surfaces",
     "second-synthetic-vocabulary",
-    "output-yield",
+    "unsupported-output-yield",
     "location-enrollment",
-    "silo-owner-capacity",
+    "unsupported-silo-capacity",
+    "silo-owner-current",
     "malformed-spanned-admission",
 ];
 
@@ -85,13 +86,12 @@ scenario = foundry_valley {
         production_building = ridge_foundry {
             location = "ridge"
             input = { resource = "ore" amount = 2 }
-            output = { resource = "tools" amount = 1 }
+            output = { resource = "tools" }
             throttle_hint_max_per_tick = 3
         }
         stockpile_silo = guild_ore {
             owner = "guild"
             resource = "ore"
-            capacity = 100
             current = 20
         }
         disruption_presence = basin_smoke {
@@ -137,7 +137,7 @@ scenario = aqueduct_delta {
         production_building = pump_house {
             location = "spring"
             input = { resource = "water" amount = 5 }
-            output = { resource = "pressure" amount = 2 }
+            output = { resource = "pressure" }
             throttle_hint_max_per_tick = 1
         }
         weight_profile = manufacturing_need {
@@ -152,7 +152,7 @@ scenario = aqueduct_delta {
 /// catches: lowering drift away from existing ResourceEconomySpec, OverlaySpec, and EML profile surfaces.
 #[test]
 fn field_economy_well_formed_hydrates_to_existing_surfaces() {
-    assert_eq!(FIELD_ECONOMY_SEMANTIC_CASES.len(), 6);
+    assert_eq!(FIELD_ECONOMY_SEMANTIC_CASES.len(), 7);
     let pack = hydrate(FOUNDRY_SCENARIO);
     let economy = pack.field_economy.as_ref().expect("field economy");
     assert_eq!(economy.id, "valley_economy");
@@ -198,35 +198,39 @@ fn field_economy_well_formed_hydrates_to_existing_surfaces() {
         resource_economy.transfers[0].target.name,
         "guild_ore_stockpile"
     );
-    assert_eq!(resource_economy.emissions.len(), 5);
+    assert_eq!(resource_economy.emissions.len(), 3);
     assert_eq!(resource_economy.emit_on_threshold.len(), 1);
     assert_eq!(
         resource_economy.emit_on_threshold[0].source.name,
         "basin_smoke_presence"
     );
     assert_eq!(resource_economy.emit_on_threshold[0].event_kind, 77);
-    assert_eq!(
-        constant_emission(&pack, "valley_economy_production_yield_ridge_foundry"),
-        1.0
+    assert!(
+        resource_economy
+            .emissions
+            .iter()
+            .all(|entry| !entry.id.contains("production_yield"))
     );
-    assert_eq!(
-        constant_emission(&pack, "valley_economy_silo_capacity_guild_ore"),
-        100.0
+    assert!(
+        resource_economy
+            .emissions
+            .iter()
+            .all(|entry| !entry.id.contains("silo_capacity"))
     );
 
-    assert!(pack
-        .game_mode
-        .properties
-        .iter()
-        .any(|property| property.namespace == "forge" && property.name == "ridge_tools_quantity"));
-    assert!(pack
-        .game_mode
-        .properties
-        .iter()
-        .any(|property| property.namespace == "forge" && property.name == "basin_smoke_presence"));
-    assert_eq!(pack.game_mode.overlays.len(), 4);
+    assert!(
+        pack.game_mode.properties.iter().any(
+            |property| property.namespace == "forge" && property.name == "ridge_tools_quantity"
+        )
+    );
+    assert!(
+        pack.game_mode.properties.iter().any(
+            |property| property.namespace == "forge" && property.name == "basin_smoke_presence"
+        )
+    );
+    assert_eq!(pack.game_mode.overlays.len(), 3);
     assert_eq!(
-        pack.game_mode.overlays[3].targets_property,
+        pack.game_mode.overlays[2].targets_property,
         "forge::ridge_tools_quantity"
     );
 }
@@ -255,37 +259,28 @@ fn second_synthetic_scenario_uses_same_field_economy_grammar() {
             .name,
         "spring_water_quantity"
     );
-    assert_eq!(
-        constant_emission(&pack, "waterworks_production_yield_pump_house"),
-        2.0
+    assert_eq!(resource_economy.emissions.len(), 1);
+    assert!(
+        resource_economy
+            .emissions
+            .iter()
+            .all(|entry| !entry.id.contains("production_yield"))
     );
 }
 
-/// catches: authored production yield being parsed but flattened out of existing lowering surfaces.
+/// catches: unsupported authored production yield being flattened onto unrelated runtime records.
 #[test]
-fn production_output_yield_changes_existing_lowered_surfaces() {
-    let low_yield = AQUEDUCT_SCENARIO.replace(
+fn production_output_amount_is_spanned_unsupported_authoring_error() {
+    let unsupported = AQUEDUCT_SCENARIO.replace(
+        "output = { resource = \"pressure\" }",
         "output = { resource = \"pressure\" amount = 2 }",
-        "output = { resource = \"pressure\" amount = 1 }",
     );
-    let low = hydrate(&low_yield);
-    let high = hydrate(AQUEDUCT_SCENARIO);
-
-    assert_eq!(
-        constant_emission(&low, "waterworks_production_yield_pump_house"),
-        1.0
-    );
-    assert_eq!(
-        constant_emission(&high, "waterworks_production_yield_pump_house"),
-        2.0
-    );
-    assert_eq!(
-        overlay_add_install(&low, "waterworks_production_location_pump_house"),
-        (1.0, "spring".to_string())
-    );
-    assert_eq!(
-        overlay_add_install(&high, "waterworks_production_location_pump_house"),
-        (2.0, "spring".to_string())
+    let document = parse_raw_document(unsupported.as_bytes()).expect("parse ClauseScript");
+    let err = hydrate_scenario(&document).expect_err("must reject unsupported output amount");
+    assert!(err.message.contains("unsupported output field `amount`"));
+    assert!(
+        err.span.is_some(),
+        "unsupported output amount must carry a source span"
     );
 }
 
@@ -353,24 +348,41 @@ fn location_authoring_changes_resource_targets_and_installs() {
         "ridge_smoke_presence"
     );
     assert_eq!(
-        overlay_add_install(&ridge, "valley_economy_production_location_ridge_foundry").1,
+        overlay_add_install(&ridge, "valley_economy_quantity_location_ridge_ore").1,
         "ridge"
     );
     assert_eq!(
-        overlay_add_install(&basin, "valley_economy_production_location_ridge_foundry").1,
+        overlay_add_install(&basin, "valley_economy_quantity_location_ridge_ore").1,
         "basin"
     );
 }
 
-/// catches: silo owner/capacity surviving only in the hydrated sidecar.
+/// catches: unsupported silo capacity being flattened onto unrelated runtime records.
 #[test]
-fn silo_owner_and_capacity_change_existing_lowered_surfaces() {
+fn stockpile_capacity_is_spanned_unsupported_authoring_error() {
+    let unsupported =
+        FOUNDRY_SCENARIO.replace("current = 20", "capacity = 100\n            current = 20");
+    let document = parse_raw_document(unsupported.as_bytes()).expect("parse ClauseScript");
+    let err = hydrate_scenario(&document).expect_err("must reject unsupported silo capacity");
+    assert!(
+        err.message
+            .contains("unsupported stockpile_silo field `capacity`")
+    );
+    assert!(
+        err.span.is_some(),
+        "unsupported silo capacity must carry a source span"
+    );
+}
+
+/// catches: silo owner/current surviving only in the hydrated sidecar.
+#[test]
+fn silo_owner_and_current_change_existing_lowered_surfaces() {
     let changed = FOUNDRY_SCENARIO
         .replace(
             "owner = \"guild\"\n            resource = \"ore\"",
             "owner = \"union\"\n            resource = \"ore\"",
         )
-        .replace("capacity = 100", "capacity = 125");
+        .replace("current = 20", "current = 25");
     let guild = hydrate(FOUNDRY_SCENARIO);
     let union = hydrate(&changed);
     let guild_economy = guild.game_mode.resource_economy.as_ref().unwrap();
@@ -390,39 +402,42 @@ fn silo_owner_and_capacity_change_existing_lowered_surfaces() {
         guild_economy
             .emissions
             .iter()
-            .find(|entry| entry.id == "valley_economy_silo_capacity_guild_ore")
+            .find(|entry| entry.id == "valley_economy_silo_current_guild_ore")
             .unwrap()
             .source
             .name,
-        "guild_ore_capacity"
+        "guild_ore_current"
     );
     assert_eq!(
         union_economy
             .emissions
             .iter()
-            .find(|entry| entry.id == "valley_economy_silo_capacity_guild_ore")
+            .find(|entry| entry.id == "valley_economy_silo_current_guild_ore")
             .unwrap()
             .source
             .name,
-        "union_ore_capacity"
+        "union_ore_current"
     );
     assert_eq!(
-        constant_emission(&guild, "valley_economy_silo_capacity_guild_ore"),
-        100.0
+        constant_emission(&guild, "valley_economy_silo_current_guild_ore"),
+        20.0
     );
     assert_eq!(
-        constant_emission(&union, "valley_economy_silo_capacity_guild_ore"),
-        125.0
+        constant_emission(&union, "valley_economy_silo_current_guild_ore"),
+        25.0
     );
 }
 
 /// catches: malformed field-economy authoring becoming a runtime branch instead of admission error.
 #[test]
 fn malformed_field_economy_is_spanned_hard_error_at_admission() {
-    let malformed = FOUNDRY_SCENARIO.replace("current = 20", "current = 120");
+    let malformed = FOUNDRY_SCENARIO.replace("current = 20", "current = -1");
     let document = parse_raw_document(malformed.as_bytes()).expect("parse ClauseScript");
     let err = hydrate_scenario(&document).expect_err("must reject at admission");
-    assert!(err.message.contains("current 120 exceeds capacity 100"));
+    assert!(
+        err.message
+            .contains("`stockpile_silo.current` must be non-negative")
+    );
     assert!(
         err.span.is_some(),
         "admission error must carry a source span"
