@@ -6,3 +6,5 @@ pre-lifecycle	closed	2026-07-04	legacy-before-birth-track	default backfill for r
 harness-fixture	open	-	docs/ci_screening_surface.md	Fused fixture birth_track: family lives with owning gate/selftest surface; retire surface + family together; unused families -> pen (HU-FIXTURE-LIFECYCLE-0)
 0.0.8.4.8.2-harness-update	closed	2026-07-09	docs/design_0_0_8_4_8_2_harness_update.md	Harness update 0.0.8.4.8.2 (HU track); closes via HU-CLOSEOUT-0 dogfood
 0.0.8.4.8.3-orientation-curation	closed	2026-07-10	docs/design_0_0_8_4_8_3_orientation_curation.md	Owner-directed curation-deficit correction; fixtures birth here
+0.0.8.4.8.4-hd-board	closed	2026-07-15	docs/design_0_0_8_4_8_4_hd_board.md	HD Board substrate; closed via HD-CLOSEOUT-0 (#1353); registered retroactively at HC closeout
+0.0.8.4.8.4.1-harness-corrections	closed	2026-07-16	docs/design_0_0_8_4_8_4_1_harness_corrections.md	Harness corrections (HC track); closes via HC-CLOSEOUT-0

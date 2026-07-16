@@ -1,6 +1,6 @@
 # 0.0.8.6 — Studio Live Ops (Phase 9)
 
-> **Status: PARKED / harness lifecycle.**
+> **Status: OPEN / harness lifecycle.**
 > [`design_0_0_8_4_8_4_hd_board.md`](design_0_0_8_4_8_4_hd_board.md); further UI/UX phase ladders land
 > here when the Owner resumes. Closeout remains Owner-gated (`STUDIO-OWNER-CLOSURE-0`, active).
 > Production Studio track for **realtime observation and
@@ -317,95 +317,3 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
 **Park instruction for agents:** Phase 9 complete; Phase 10 parked; Phase 11 complete (2026-07-12); Phase 12 **ACTIVE**; 12.1 loader + 12.4 fleet-presence graduated; next rung awaits Owner direction (§4d). Track closeout lives only in `STUDIO-OWNER-CLOSURE-0` (§5b) and is deferred until explicit Owner authorization. Do not reopen 0.0.8.5.
-
-<!-- SIMTHING-PARKED-TRACK:BEGIN agents: read only when executing --unpark -->
-```json
-{
-  "drop_counts": {},
-  "handoffs": [
-    {
-      "content": "---\nrung: STUDIO-FLEET-PRESENCE-READOUT-0\nkind: rung\ntrack: 0.0.8.6\nbase_sha: 4d3f4467f57377478c5dda999518da5dded1b117\naudience: coding\nmodel_tier: std\nexpected_route: DA-RESERVE(gate-wiring)\nowner_approved: true\nowner_notes: \"Owner-directed 2026-07-15 resumption of 0.0.8.6 (Phase 12) after HD-track detour; manual-progression, fresh cold-start coder. Read-only re-entry rung — NO movement/gameplay authority. Studio GUI is Windows-only; build/tests are headless CLI on Linux (see docs/agents.md cloud caveats).\"\nsurfaces: [\"crates/simthing-spec\", \"crates/simthing-clausething\", \"crates/simthing-mapeditor\", \"docs/design_0_0_8_6_studio_live_ops.md\"]\nforbidden: [\"movement authority\", \"new gameplay semantics\", \"raw property-ids in mapeditor\", \"kernel/WGSL changes\", \"CPU planner\", \"Spec mutation\"]\nrequired_checks: [\"cargo check -p simthing-spec\", \"cargo check -p simthing-clausething\", \"cargo check -p simthing-mapeditor\", \"agent-scan\", \"focused cargo test\"]\nstop_conditions: [\"stale-orient-receipt\", \"scope-widening\", \"movement-or-write-authority-touched\", \"raw-property-id-leak-to-mapeditor\"]\n---\n## BUILD\n- Canonical spec/clausething helper that walks loaded authority for `SimThingKind::Fleet` and returns,\n  per fleet: owner ref, posture, and **anchor system id**. Snapshot contract:\n  `Anchored(system_id)` OR `InTransit { source_system_id, dest_system_id }`.\n- Transit is expressed **only** when the sim/STEAD movement state says so; the default TP session may\n  express none — the contract must still carry the InTransit variant.\n- Property-id authority stays in spec/clausething (TP fleet property ids live in\n  `hydrate_scenario.rs`); mapeditor consumes the helper's typed snapshot, **never raw ids**.\n- Wire the helper through the existing Studio bridge to a mapeditor-consumable presence map keyed by\n  generated system id (mirror the 9.x observe/bridge pattern; no new bridge surface).\n## FENCES\n- **Read-only**: no writes to fleet/movement/field state; no scheduling or tick changes; no new\n  gameplay systems; no Spec mutation. Snapshot-consistent per tick.\n- No raw property ids cross into `simthing-mapeditor` — the helper owns id→snapshot translation.\n- Holds over the structural-shell fallback session (fail-soft to empty/None, fail-loud on readback error).\n## EXIT-PROOF\n- Headless proofs: fleet snapshot returns owner/posture/anchor for the canonical TP session;\n  InTransit variant round-trips through a fixture even if the default session emits none;\n  mapeditor consumes typed snapshot (compile-enforced: no raw-id path); read-only (no state mutation\n  under snapshot calls). Name each regression the test catches.\n- `cargo check` on the three crates + `agent_scan` green; focused `cargo test` (GPU legs skip cleanly).\n- PROBATION stamp LEADS the 12.4 exit-proof cell in-diff; Active open rung advanced on graduation.\n- DA authors the graduation stamp at merge (ruling 6); relay quotes this HD-RECEIPT.\n",
-      "path": "handoffs/STUDIO-FLEET-PRESENCE-READOUT-0.hd.md"
-    }
-  ],
-  "park_receipt": "19e0e85c8d3f",
-  "parked_at": "2026-07-16",
-  "parked_from_head": "9a9705c4d38e",
-  "pointer": "docs/design_0_0_8_6_studio_live_ops.md",
-  "rung_ids": [
-    "STUDIO-CANONICAL-SCENARIO-0",
-    "STUDIO-CLAUSE-LOADER-SIMPLIFY-0",
-    "STUDIO-DISRUPTION-READOUT-0",
-    "STUDIO-DISRUPTION-SELECT-SCREEN-0",
-    "STUDIO-FACTION-IDENTITY-FIELDS-0",
-    "STUDIO-FACTION-NAMEPLATES-0",
-    "STUDIO-FIELD-SESSION-ELEVATE-0",
-    "STUDIO-FLEET-ICONS-0",
-    "STUDIO-FLEET-PRESENCE-READOUT-0",
-    "STUDIO-FROSTED-GLASS-0",
-    "STUDIO-LIVE-OBSERVE-0",
-    "STUDIO-LIVE-OPS-CLASS-0",
-    "STUDIO-LIVE-OPS-HARDENING-0",
-    "STUDIO-LIVE-OPS-READINESS-0",
-    "STUDIO-LIVE-SESSION-BRIDGE-0",
-    "STUDIO-LOADER-DIALOG-REPAIR-0",
-    "STUDIO-OWNED-STAR-SELECT-BRIGHTEN-0",
-    "STUDIO-OWNER-CLOSURE-0",
-    "STUDIO-SCENARIO-LIBRARY-CREATE-0",
-    "STUDIO-SCENARIO-LIBRARY-UI-0",
-    "STUDIO-SIM-CLOCK-0",
-    "STUDIO-SIM-CLOCK-CLASS-0",
-    "STUDIO-SIM-CLOCK-UI-0",
-    "STUDIO-STAR-NAMING-PASS-0",
-    "STUDIO-STAR-NAMING-REPAIR-0",
-    "STUDIO-TRANSPORT-OBSERVE-REFINE-0",
-    "TP-CLAUSE-ECONOMY-AUTHOR-0",
-    "TP-EMERGENT-TENSION-PROOF-0",
-    "TP-FIELD-ECONOMY-GRAMMAR-0"
-  ],
-  "schema": "simthing.parked-track.v1",
-  "tables": {
-    "binding_conditions.tsv": {
-      "header": [
-        "rung",
-        "condition",
-        "set_by",
-        "status",
-        "promotion_blocker"
-      ],
-      "rows": [
-        {
-          "__park_index": "8",
-          "condition": "track-closeout-blocked-until-explicit-owner-authorization",
-          "promotion_blocker": "STUDIO-OWNER-CLOSURE-0",
-          "rung": "STUDIO-OWNER-CLOSURE-0",
-          "set_by": "Owner-2026-07-12",
-          "status": "active"
-        }
-      ]
-    },
-    "closeout_artifacts.tsv": {
-      "header": [
-        "path",
-        "leased_at",
-        "disposition",
-        "closeout_track",
-        "note"
-      ],
-      "rows": []
-    },
-    "owner_directives.tsv": {
-      "header": [
-        "directive",
-        "scope",
-        "status",
-        "set_by"
-      ],
-      "rows": []
-    }
-  },
-  "track_doc": "docs/design_0_0_8_6_studio_live_ops.md",
-  "track_id": "0.0.8.6"
-}
-```
-<!-- SIMTHING-PARKED-TRACK:END -->
