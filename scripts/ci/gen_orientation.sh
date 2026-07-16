@@ -1157,6 +1157,269 @@ EOF
   rm -rf "$sandbox"; return 0
 }
 
+seed_pointer_divergence_sandbox() {
+  # Shared ladder for HC-4 pointer-divergence fixtures.
+  # R1 graduated, R2 open (not dispatched), R3 open.
+  local sb="$1"
+  seed_orientation_sandbox "$sb"
+  cat >"${sb}/docs/design_pointer_div.md" <<'EOF'
+# Pointer Divergence Fixture Track
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `GRAD-RUNG` | Graduated work. | DA-GRADUATED / merged #99. |
+| 2 | `OPEN-RUNG` | Legitimate next work. | NOT STARTED |
+| 3 | `LATER-RUNG` | Later work. | TODO |
+
+| Item | State |
+|---|---|
+| Active open rung | `OPEN-RUNG` |
+EOF
+  cat >"${sb}/scripts/ci/active_track.txt" <<'EOF'
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+docs/design_pointer_div.md
+EOF
+}
+
+run_selftest_pointer_divergence_lint() {
+  local sandbox rc out
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-ptr-div-XXXXXX")"
+  seed_pointer_divergence_sandbox "$sandbox"
+
+  # Positive control: legitimate not-yet-dispatched next rung + regenerated digest → --check PASS
+  if ! run_gen_sandbox "$sandbox" >/dev/null 2>&1 \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null 2>&1 \
+    || ! grep -qF 'Active pointer: `OPEN-RUNG`' "${sandbox}/docs/orchestrator_orientation.md"; then
+    echo "FAIL orientation_pointer_divergence_open_passes"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_pointer_divergence_open_passes"
+
+  # none-form still coherent (authoritative row may say none while ladder has open rungs)
+  cat >"${sandbox}/docs/design_pointer_div.md" <<'EOF'
+# Pointer Divergence Fixture Track
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `GRAD-RUNG` | Graduated work. | DA-GRADUATED / merged #99. |
+| 2 | `OPEN-RUNG` | Legitimate next work. | NOT STARTED |
+
+| Item | State |
+|---|---|
+| Active open rung | none — Phase 1 COMPLETE; awaiting Owner direction for the next UI/UX ladder (Phase 2+) |
+EOF
+  if ! run_gen_sandbox "$sandbox" >/dev/null 2>&1 \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null 2>&1 \
+    || ! grep -qF "Active pointer: none — awaiting Owner direction for the next UI/UX ladder" \
+         "${sandbox}/docs/orchestrator_orientation.md"; then
+    echo "FAIL orientation_pointer_divergence_none_form_passes"
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_pointer_divergence_none_form_passes"
+
+  # graduated-rung-named-as-pointer: orientation is byte-fresh after generate attempt
+  # fails, so build a coherent open pointer first, then mutate only the Active row
+  # to name the graduated rung while keeping orientation from the prior generate —
+  # WITHOUT the lint, --check would only compare bytes and stay green; WITH the lint
+  # it FAILs even when we re-sync orientation (generate itself refuses).
+  cat >"${sandbox}/docs/design_pointer_div.md" <<'EOF'
+# Pointer Divergence Fixture Track
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `GRAD-RUNG` | Graduated work. | DA-GRADUATED / merged #99. |
+| 2 | `OPEN-RUNG` | Legitimate next work. | NOT STARTED |
+
+| Item | State |
+|---|---|
+| Active open rung | `OPEN-RUNG` |
+EOF
+  run_gen_sandbox "$sandbox" >/dev/null 2>&1 || true
+  # Mutate Active open rung → graduated; orientation still names OPEN-RUNG (stale vs would-be generate)
+  # Force the divergent authoring state and re-generate: pre-fix generate would succeed and
+  # write Active pointer: GRAD-RUNG; fixed generate FAILs pointer-divergence.
+  perl -0pi -e 's/Active open rung \| `OPEN-RUNG`/Active open rung | `GRAD-RUNG`/' \
+    "${sandbox}/docs/design_pointer_div.md"
+  set +e
+  run_gen_sandbox "$sandbox" >"${sandbox}/grad_gen.out" 2>"${sandbox}/grad_gen.err"
+  local gen_rc=$?
+  run_gen_sandbox "$sandbox" --check >"${sandbox}/grad_check.out" 2>"${sandbox}/grad_check.err"
+  local check_rc=$?
+  set -e
+  if [[ "$gen_rc" -eq 0 ]] || [[ "$check_rc" -eq 0 ]] \
+    || ! grep -q "FAIL(pointer-divergence)" "${sandbox}/grad_gen.err" \
+    || ! grep -q "GRAD-RUNG" "${sandbox}/grad_gen.err"; then
+    echo "FAIL orientation_pointer_divergence_graduated_fails"
+    cat "${sandbox}/grad_gen.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_pointer_divergence_graduated_fails"
+
+  # unknown-rung: Active open rung names a rung absent from the ladder
+  cat >"${sandbox}/docs/design_pointer_div.md" <<'EOF'
+# Pointer Divergence Fixture Track
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `GRAD-RUNG` | Graduated work. | DA-GRADUATED / merged #99. |
+| 2 | `OPEN-RUNG` | Legitimate next work. | NOT STARTED |
+
+| Item | State |
+|---|---|
+| Active open rung | `GHOST-RUNG` |
+EOF
+  set +e
+  run_gen_sandbox "$sandbox" >"${sandbox}/ghost_gen.out" 2>"${sandbox}/ghost_gen.err"
+  gen_rc=$?
+  run_gen_sandbox "$sandbox" --check >"${sandbox}/ghost_check.out" 2>"${sandbox}/ghost_check.err"
+  check_rc=$?
+  set -e
+  if [[ "$gen_rc" -eq 0 ]] || [[ "$check_rc" -eq 0 ]] \
+    || ! grep -q "FAIL(pointer-divergence)" "${sandbox}/ghost_gen.err" \
+    || ! grep -q "GHOST-RUNG" "${sandbox}/ghost_gen.err" \
+    || ! grep -q "absent from the ladder" "${sandbox}/ghost_gen.err"; then
+    echo "FAIL orientation_pointer_divergence_unknown_fails"
+    cat "${sandbox}/ghost_gen.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_pointer_divergence_unknown_fails"
+
+  # --park refuses divergent pointer (no mutation; same family as open-PR refusal)
+  cat >"${sandbox}/docs/design_pointer_div.md" <<'EOF'
+# Pointer Divergence Fixture Track
+
+> **Status: OPEN / fixture.**
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `GRAD-RUNG` | Graduated work. | DA-GRADUATED / merged #99. |
+| 2 | `OPEN-RUNG` | Legitimate next work. | NOT STARTED |
+
+| Item | State |
+|---|---|
+| Active open rung | `GRAD-RUNG` |
+EOF
+  cp "${sandbox}/docs/design_pointer_div.md" "${sandbox}/park_doc.before"
+  cp "${sandbox}/scripts/ci/active_track.txt" "${sandbox}/park_active.before"
+  set +e
+  ORIENTATION_SKIP_OPEN_PR_CHECK=1 run_gen_sandbox "$sandbox" --park docs/design_pointer_div.md \
+    >"${sandbox}/park_div.out" 2>"${sandbox}/park_div.err"
+  rc=$?
+  set -e
+  if [[ "$rc" -eq 0 ]] \
+    || ! grep -q "FAIL(divergent-pointer)" "${sandbox}/park_div.err" \
+    || ! cmp -s "${sandbox}/park_doc.before" "${sandbox}/docs/design_pointer_div.md" \
+    || ! cmp -s "${sandbox}/park_active.before" "${sandbox}/scripts/ci/active_track.txt"; then
+    echo "FAIL orientation_park_refuses_divergent_pointer"
+    cat "${sandbox}/park_div.err" 2>/dev/null || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_park_refuses_divergent_pointer"
+
+  rm -rf "$sandbox"
+  return 0
+}
+
+run_selftest_scope_cell_not_false_complete() {
+  # HC-3/HC-4 case: Scope cell *describes* completion words (DA-GRADUATED / merged [#N])
+  # while Exit-proof is still open. Pre-fix next_rung_pointer treated is_completed_exit(deliv)
+  # as completion and skipped the rung; fixed path must select it.
+  local sandbox
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-scope-false-XXXXXX")"
+  seed_orientation_sandbox "$sandbox"
+  cat >"${sandbox}/docs/design_scope_false.md" <<'EOF'
+# Scope False-Complete Fixture
+
+This document is the authoritative production track and PR ladder / workplan.
+
+| # | Rung | Deliverable | Exit proof |
+|---|---|---|---|
+| 1 | `SCOPE-NARRATIVE-RUNG` | Names a rung whose exit-proof is DA-GRADUATED / merged [#1355] — narrative only. | NOT STARTED — awaiting implementer. |
+| 2 | `NEXT-AFTER-SCOPE` | Should not be selected while SCOPE-NARRATIVE-RUNG is open. | TODO |
+EOF
+  cat >"${sandbox}/scripts/ci/active_track.txt" <<'EOF'
+# Active track design doc for orientation Next-Rung pointer. Update on track open/close.
+docs/design_scope_false.md
+EOF
+  # Pre-fix bite: old rule (exit OR deliv) would skip SCOPE-NARRATIVE-RUNG.
+  local pre_fix
+  pre_fix="$(
+    python - <<'PY'
+import re
+COMPLETED_EXIT_STATUS_RE = re.compile(
+    r"(?:"
+    r"\bda-graduated\b|"
+    r"\borchestrator-graduated\b|"
+    r"\bda-approved\b|"
+    r"\bda-opened\b|"
+    r"\bda/owner-cleared\b|"
+    r"\bowner-cleared\b|"
+    r"\bda-equivalent\b|"
+    r"merged\s+and\s+closed|"
+    r"\bgraduated\s*/\s*merged\b|"
+    r"\bmerged\s*\[#\d+"
+    r")",
+    re.IGNORECASE,
+)
+COMPLETED_EXIT_PREFIX_RE = re.compile(
+    r"^[\*\s_]*(?:"
+    r"done\b|complete\b|da-graduated\b|orchestrator-graduated\b|da-approved\b|"
+    r"da-opened\b|da/owner-cleared\b|owner-cleared\b|graduated\b|merged\b|"
+    r"closed\b|parked\b|deferred\b|remedial-superseded\b|resolved predecessor\b"
+    r")",
+    re.IGNORECASE,
+)
+def is_completed_exit(text):
+    raw = (text or "").strip()
+    if not raw:
+        return False
+    if COMPLETED_EXIT_PREFIX_RE.search(raw):
+        head = raw[:160]
+        if re.match(r"^[\*\s_]*(done|complete)\b", head, re.IGNORECASE):
+            return bool(re.search(
+                r"\b(da|owner|orchestrator|approved|cleared|opened|graduated|merged)\b",
+                head, re.IGNORECASE,
+            ))
+        return True
+    if COMPLETED_EXIT_STATUS_RE.search(raw[:200]):
+        return True
+    return False
+deliv = "Names a rung whose exit-proof is DA-GRADUATED / merged [#1355] — narrative only."
+exit_proof = "NOT STARTED — awaiting implementer."
+# old rule
+if is_completed_exit(exit_proof) or is_completed_exit(deliv):
+    print("NEXT-AFTER-SCOPE")
+else:
+    print("SCOPE-NARRATIVE-RUNG")
+PY
+  )"
+  if [[ "$pre_fix" != "NEXT-AFTER-SCOPE" ]]; then
+    echo "FAIL orientation_scope_cell_pre_fix_would_false_complete (got ${pre_fix})"
+    rm -rf "$sandbox"; return 1
+  fi
+  if ! run_gen_sandbox "$sandbox" >/dev/null 2>&1 \
+    || ! grep -qF 'Active pointer: `SCOPE-NARRATIVE-RUNG`' "${sandbox}/docs/orchestrator_orientation.md" \
+    || grep -qF 'Active pointer: `NEXT-AFTER-SCOPE`' "${sandbox}/docs/orchestrator_orientation.md" \
+    || ! run_gen_sandbox "$sandbox" --check >/dev/null 2>&1; then
+    echo "FAIL orientation_scope_cell_not_false_complete"
+    cat "${sandbox}/docs/orchestrator_orientation.md" 2>/dev/null | head -n 40 || true
+    rm -rf "$sandbox"; return 1
+  fi
+  echo "PASS orientation_scope_cell_not_false_complete"
+  rm -rf "$sandbox"
+  return 0
+}
+
 run_selftest_park_rollback_and_virgin_unpark() {
   local sandbox rc before
   sandbox="$(mktemp -d "${TMPDIR:-/tmp}/orient-park-rollback-XXXXXX")"
@@ -1275,6 +1538,8 @@ run_selftest() {
     run_selftest_gate_force_owner_rollback_after_writes
     run_selftest_park_unpark_lifecycle
     run_selftest_park_rollback_and_virgin_unpark
+    run_selftest_pointer_divergence_lint
+    run_selftest_scope_cell_not_false_complete
   )
   local fn
   for fn in "${open_fns[@]}"; do
@@ -1708,9 +1973,11 @@ def table(headers, rows):
 
 
 def is_completed_exit(text: str) -> bool:
-    """True when a ladder cell marks the rung complete (status language).
+    """True when an Exit-proof cell marks the rung complete (status language).
 
-    Production design ladders put DONE/COMPLETE/DA-GRADUATED in Scope and/or Exit-proof.
+    Completion stamps live in the Exit-proof cell only (owner_authoring_guide).
+    Scope/deliverable narrative that merely describes completion words must not
+    false-complete a rung — see next_rung_pointer.
     Require status-shaped markers so narrative phrases like "closed save/load battery"
     do not false-complete an open rung.
     """
@@ -1735,15 +2002,21 @@ def is_completed_exit(text: str) -> bool:
     return False
 
 
+def rung_id_from_cell(rung_cell: str) -> str:
+    parts = (rung_cell or "").split("`")
+    return parts[1] if len(parts) >= 3 else (rung_cell or "").strip("`").strip()
+
+
 def next_rung_pointer(rungs):
     for num, rung, deliv, exit_proof in rungs:
-        # Production design ladders put DONE/COMPLETE status in either Scope (deliv)
-        # or Exit-proof cells; treat either as completion so the first incomplete
-        # rung is selected (e.g. TP-FULL-TRANSPILE-0 after graduated phases).
-        if is_completed_exit(exit_proof) or is_completed_exit(deliv):
+        # Completion stamp lives ONLY in the Exit-proof cell. A Scope/deliverable
+        # cell that describes completion words (e.g. "names a rung whose exit-proof
+        # is DA-GRADUATED / merged [#N]") must not false-complete the rung.
+        if is_completed_exit(exit_proof):
             continue
-        parts = rung.split("`")
-        return parts[1] if len(parts) >= 3 else rung.strip("`").strip()
+        rid = rung_id_from_cell(rung)
+        if rid:
+            return rid
     return "none"
 
 
@@ -1777,6 +2050,55 @@ def active_pointer_line(pointer: str) -> str:
 
 def is_no_active_pointer(pointer: str) -> bool:
     return pointer == NO_ACTIVE_TRACK or pointer.startswith(f"{NO_ACTIVE_TRACK} ")
+
+
+def ladder_exit_proof_by_rung(rungs) -> dict:
+    """Map rung_id -> exit_proof cell text (first occurrence wins)."""
+    out = {}
+    for _num, rung, _deliv, exit_proof in rungs:
+        rid = rung_id_from_cell(rung)
+        if rid and rid not in out:
+            out[rid] = exit_proof
+    return out
+
+
+def divergent_pointer_reason(design_text: str, rungs: list):
+    """Return a FAIL reason when the authoritative Active open rung row diverges.
+
+    Coherent cases (no reason):
+      - no Active open rung row (ladder scan is the sole source)
+      - none-form / awaiting-Owner-direction form
+      - named rung present on the ladder with a non-completed Exit-proof cell
+
+    Divergent cases:
+      - named rung absent from the ladder
+      - named rung whose Exit-proof already carries a graduation/finished stamp
+    """
+    pointer = authoritative_active_pointer(design_text)
+    if pointer is None or is_no_active_pointer(pointer):
+        return None
+    by_rung = ladder_exit_proof_by_rung(rungs)
+    if pointer not in by_rung:
+        return (
+            f"FAIL(pointer-divergence): authoritative Active open rung names "
+            f"{pointer!r} which is absent from the ladder; "
+            f"remedy: set Active open rung to a live ladder rung id (or `none`), "
+            f"then `bash scripts/ci/gen_orientation.sh`"
+        )
+    if is_completed_exit(by_rung[pointer]):
+        return (
+            f"FAIL(pointer-divergence): authoritative Active open rung names "
+            f"{pointer!r} whose Exit-proof cell is already graduation/finished-stamped; "
+            f"remedy: advance Active open rung to the next open ladder rung (or `none`) "
+            f"when stamping graduation, then `bash scripts/ci/gen_orientation.sh`"
+        )
+    return None
+
+
+def assert_authoritative_pointer_coherent(design_text: str, rungs: list) -> None:
+    reason = divergent_pointer_reason(design_text, rungs)
+    if reason:
+        fail(reason)
 
 
 def ledger_summary(rows, limit=5):
@@ -1918,6 +2240,7 @@ def render_orientation(active_info: dict) -> tuple:
         design_text = design_doc.read_text(encoding="utf-8")
         validate_park_block_shape(design_text)
         rungs = parse_rungs(design_text)
+        assert_authoritative_pointer_coherent(design_text, rungs)
         next_rung = authoritative_active_pointer(design_text) or next_rung_pointer(rungs)
         track_state = track_state_for_doc(active_info.get("path", ""), design_text, rungs)
 
@@ -2037,8 +2360,8 @@ def render_orientation(active_info: dict) -> tuple:
             first_open = next(
                 (
                     i
-                    for i, (_n, _r, deliv, exit_proof) in indexed
-                    if not (is_completed_exit(exit_proof) or is_completed_exit(deliv))
+                    for i, (_n, _r, _deliv, exit_proof) in indexed
+                    if not is_completed_exit(exit_proof)
                 ),
                 0,
             )
@@ -2779,6 +3102,14 @@ def park_track() -> int:
     ok, reason = classify_workplan(rel, base_text)
     if not ok:
         fail_non_workplan(f"{rel}: {reason}")
+    # §3a cascade: refuse a divergent authoritative pointer so --unpark can never
+    # restore one (same family as open-PR refusal; zero writes before exit).
+    rungs = parse_rungs(base_text)
+    diverged = divergent_pointer_reason(base_text, rungs)
+    if diverged:
+        print("ORIENTATION-PARK-VERDICT: FAIL(divergent-pointer)", file=sys.stderr)
+        print(f"gen_orientation: {diverged}", file=sys.stderr)
+        sys.exit(1)
     payload, tables_after, handoff_paths = _collect_park_payload(rel, base_text, old_payload)
     parked_text = _replace_status_header(base_text, "PARKED").rstrip() + "\n\n" + park_block_for_payload(payload)
     txn = _FileTxn()
