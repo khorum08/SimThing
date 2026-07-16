@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | f8d31d822314ba07a1b5037188bbda57940aecb8519d96431d02c6f56e93eaf9 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | 766b8ff75bd5882f2c45f1dc6eb9142daf91131869c7dea2233a79218048fa7b |
+| design_0_0_8_4_8_4_1_harness_corrections.md | 78af70364849e9a1bca115f82c827f1f363e2a0263f1604aec69c2cf2f29c03c |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -56,7 +56,7 @@ Track state: `open`
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
 | HC-6 | HC-HORIZON-ENTRY-CONVENTION-0 | **Distinguish future-facing parked API from kabuki (Owner-directed 2026-07-16).* | **DA-GRADUATED / merged [#1374](https://github.com/khorum08/SimThing/pull/1374)** — 2026-07-16 (orch=Codex coder=Grok... |
-| HC-7 | HC-KABUKI-GUARD-REMEDIATE-0 | **Delete the two flagged kabuki guards (Owner-directed 2026-07-16; DA-assessed a | HANDOFF DISPATCHED as `handoffs/HC-KABUKI-GUARD-REMEDIATE-0.hd.md` (dispatched_at 2026-07-16; `HD-RECEIPT: 2367edab6b... |
+| HC-7 | HC-KABUKI-GUARD-REMEDIATE-0 | **Delete the two flagged kabuki guards (Owner-directed 2026-07-16; DA-assessed a | **PROBATION / proof-present / DA-review-pending** — implementer proof on branch `coder/hc-kabuki-guard-remediate-0` (... |
 | HC-C | HC-CLOSEOUT-0 | Measured close: each rung's falsifier demonstrated to FAIL on the pre-fix tree;  | NOT STARTED |
 
 ## Next Rung Pointer
