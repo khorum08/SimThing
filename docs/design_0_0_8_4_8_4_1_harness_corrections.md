@@ -29,6 +29,10 @@ guard scan > prose) · `design_0_0_8_3.md` §0 · this file · `ci_screening_sur
 - **Doctrine as data, not prose** — a rule only a DA read can catch belongs one rung lower on the
   admission ladder.
 - No new standalone tables; compose existing readers/writers. No clearance-router lexicon change.
+- **Net scan ledger ≤ 0 — with one carve-out (DA, 2026-07-16):** promoting a *prose* rule down to a
+  guard scan is the admission ladder's intended direction and retires nothing, so HC-2 may add its
+  scan without a pairing. The obligation it does carry: the prose rule stops being the enforcement
+  and becomes a pointer to the scan. Ledger growth by any other means still needs retirement.
 - Every mutation transactional (HD-6 preflight/staged/rollback pattern) with a rollback fixture.
 
 **Binding conditions (record at open):**
@@ -85,6 +89,32 @@ they run sequentially, not in parallel). Each rung is independently valuable and
 4. Rules that only a DA read can catch belong one rung lower on the admission ladder — mechanize or
    consciously accept the prose tier and say so.
 5. This track adds no tables and no lexicon; it composes existing surfaces.
+
+## 3a. Cascade contract (binding — each rung owns its own blast radius)
+
+Verified before dispatch (2026-07-16): `parse_rungs()` is the single choke point, consumed by exactly
+three paths — active-track generation/`--check`, `--park`, and `--unpark`. It is **not** a repo-wide doc
+walk. Consequences, established so no rung re-derives them:
+
+- **HC-4/HC-5 land green on history.** The one known pre-existing ladder violation
+  (`design_0_0_8_4_6_ci_scaffolding.md`, escaped pipe in a ladder row) belongs to a CLOSED track that is
+  never active/parked/unparked. `design_0_0_8_6_studio_live_ops.md` is pipe-clean, so the unpark that
+  resumes Phase 12 stays safe. **Assert at the `parse_rungs` choke point** so all three consumers are
+  covered at once; do **not** widen to a repo-wide scan (that reddens closed history for no gain).
+- **HC-4 must close the park round-trip.** `--park` stores pointer state and `--unpark` restores it, so a
+  track parked while its authoritative row names a graduated rung would resurrect divergence and fail
+  `--check` after unpark. Guard: **`--park` refuses a divergent pointer** (same family as its existing
+  open-PR refusal), so unpark can never restore one. Round-trip fixture required.
+- **HC-2 must ledger its own fixtures.** New scan ⇒ new selftest fixture files ⇒ `test_inventory.tsv` rows
+  in the same PR, or the drift gate crashes `doctrine_scan` outright (observed live 2026-07-15, cost a CI
+  cycle). Any `ci_screening_surface.md` row lands within the existing cap. Net-ledger carve-out per §0.
+- **HC-3 owns the receipt shape.** Reaping changes CLOSEOUT-RECEIPT content; update the receipt fixtures in
+  the same PR. Parked tracks' rows live in their block and are out of scope — `--unpark` byte-exactness is
+  the falsifier.
+- **HC-1 is inert on landing.** Zero live users of the token remain (#1355's remand removed both), so
+  deletion changes no verdict; the census is for *other* generic tokens, not this one.
+- **Every rung** re-proves the 0.0.8.6 park round-trip (`--unpark` in a sandbox) before relay — the parked
+  track is live state and no harness change may strand it.
 
 ## 4. Non-goals
 
