@@ -48,6 +48,7 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `traps/comment_semantic_words.rs` | semantic words in `//` comment | Excluded by comment filter |
 | `traps/cfg_test_semantic_words.rs` | semantic words in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
 | `traps/cfg_test_kind_read.rs` | `.kind` in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
+| `traps/role_resolution_kind_param_match.rs` | `match kind { SimThingKind::... }` in DA-authored named symbol | Must not trip `SPEC-LOWERER-KIND-READ` |
 
 ## Self-test (`CI-A-SELF-TEST-0`)
 

@@ -13,7 +13,7 @@ ANCHOR-ACK: orientation-harness-core@8a365d1c0864
 ## What changed
 
 - Deleted `role-resolution-exclude-site` from the `SPEC-LOWERER-KIND-READ` exclusion column in `scripts/ci/scans.tsv`.
-- Moved the marker-bearing fixture from trap to known-bad coverage so it must scan as `SPEC-LOWERER-KIND-READ`.
+- Preserved the existing trap fixture identity and added a separate marker-bearing known-bad fixture that must scan as `SPEC-LOWERER-KIND-READ`.
 - Updated fixture inventory and scan docs so the generic marker is no longer documented as a valid suppression path.
 - Stamped the HC-1 ladder row with PROBATION leading the exit-proof cell and regenerated orientation.
 
@@ -43,8 +43,13 @@ The fixture `scripts/ci/fixtures/known_bad/role_resolution_exclude_site_kind_par
 - PASS: `bash scripts/ci/doctrine_selftest.sh`
 - PASS: `bash scripts/ci/gen_orientation.sh --check`
 - PASS: `bash scripts/ci/doc_budget_check.sh --check`
-- PASS: `bash scripts/ci/gen_orientation.sh --selftest`
+- PASS: live 0.0.8.6 parked-track round-trip in a disposable worktree:
+  `ORIENTATION-UNPARK-VERDICT: UNPARKED receipt=19e0e85c8d3f`,
+  `restored_rows: 1`, `restored_handoffs: 1`, and
+  `LIVE-0086-UNPARK-PROOF: PASS receipt=19e0e85c8d3f restored_rows=1 restored_handoffs=1 active_pointer=docs/design_0_0_8_6_studio_live_ops.md`.
 - PASS: `bash scripts/ci/test_inventory_drift_check.sh`
+- PASS: `bash scripts/ci/track_closeout.sh --deletion-guard origin/master HEAD`
+  (`TRACK-CLOSEOUT-DELETION-GUARD-VERDICT: PASS removed=0`).
 - PASS: `git diff --check`
 - PASS: explicit falsifier sandbox: pre-fix `scans.tsv` reports `PREFIX-FALSIFIER scan=PASS count=0`, current `scans.tsv` reports `POSTFIX-FALSIFIER scan=INSPECT count=1`, followed by `HC-FALSIFIER-PROOF: PASS pre_fix_failed_expectation=true post_fix_scanned=true`.
 - PASS: `bash scripts/ci/agent_scan.sh` (`AGENT-SCAN-VERDICT: PASS delta_inspect=0` at committed head)
@@ -52,8 +57,8 @@ The fixture `scripts/ci/fixtures/known_bad/role_resolution_exclude_site_kind_par
 ## Scope Ledger
 
 - `scripts/ci/scans.tsv`: deleted the generic exclusion token only.
-- `scripts/ci/doctrine_selftest.sh` and fixtures: inverted the marker-bearing fixture from trap to known-bad.
-- `scripts/ci/test_inventory.tsv`: kept fixture ledger exact after the move.
+- `scripts/ci/doctrine_selftest.sh` and fixtures: preserved the existing trap identity and added the marker-bearing known-bad fixture separately.
+- `scripts/ci/test_inventory.tsv`: retained the original trap row and added a new row for the known-bad falsifier fixture.
 - `docs/design_0_0_8_4_8_4_1_harness_corrections.md`: PROBATION stamp in HC-1 exit-proof cell.
 - `docs/orchestrator_orientation.md` and `docs/sanctioned_surface.md`: generated refreshes.
 - `docs/ci_screening_surface.md`, `docs/tests/ci_scan_spec_kind_coverage_0_results.md`, this results doc: documentation of the closed hole.

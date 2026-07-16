@@ -613,6 +613,8 @@ run_all_cases() {
   expect_trap_pass "comment_semantic_words" "traps/comment_semantic_words.rs"
   expect_trap_pass "cfg_test_semantic_words" "traps/cfg_test_semantic_words.rs"
   expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
+  expect_trap_pass_spec "role_resolution_kind_param_match" \
+    traps/role_resolution_kind_param_match.rs
 }
 
 emit_report() {
