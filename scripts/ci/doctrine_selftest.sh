@@ -604,6 +604,8 @@ run_all_cases() {
     setup_heuristic_clausething clausething_kind_branch.rs
   expect_heuristic_inspect "clausething_param_kind_branch" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_clausething clausething_param_kind_branch.rs
+  expect_heuristic_inspect "role_resolution_exclude_site_kind_param_match" "SPEC-LOWERER-KIND-READ" \
+    setup_heuristic_spec role_resolution_exclude_site_kind_param_match.rs
 
   expect_trap_pass "jomini_write" "traps/jomini_write.rs"
   expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"
@@ -611,8 +613,6 @@ run_all_cases() {
   expect_trap_pass "comment_semantic_words" "traps/comment_semantic_words.rs"
   expect_trap_pass "cfg_test_semantic_words" "traps/cfg_test_semantic_words.rs"
   expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
-  expect_trap_pass_spec "role_resolution_kind_param_match" \
-    traps/role_resolution_kind_param_match.rs
 }
 
 emit_report() {
