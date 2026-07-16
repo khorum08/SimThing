@@ -58,7 +58,7 @@ report green on unproven work — the exact class the harness exists to kill.
 
 | Rung | ID | Scope | Exit proof | Tier |
 |---|---|---|---|---|
-| HC-1 | `HC-EXCLUSION-REVIEW-GATE-0` | **Close the self-service suppression hole (defect 1).** Either (a) delete the generic `role-resolution-exclude-site` token from `scans.tsv` so exclusions must be DA-authored named symbols, or (b) require every in-code exclusion token to carry a paired `inspect_justifications.tsv` row — scanner FAILs (not silences) on an unpaired token. DA picks (b) unless the implementer proves (a) is cleaner; the token must annotate, never silence. Sweep for other generic in-code tokens in `scans.tsv` exclusion columns and apply the same rule. | NOT STARTED | Std |
+| HC-1 | `HC-EXCLUSION-REVIEW-GATE-0` | **Close the self-service suppression hole (defect 1). Owner ruling 2026-07-16: DELETE the generic token outright — no pairing option, no either/or.** Remove `role-resolution-exclude-site` from the `SPEC-LOWERER-KIND-READ` exclusion column in `scans.tsv`; exclusions become DA-authored named symbols only, so every exclusion costs a reviewed gate-wiring edit. Sweep every `scans.tsv` exclusion column for other generic (non-symbol) tokens and delete those too, reporting the census. The two `fleet_presence.rs` kind reads stay as accounted INSPECTs (already justified via #1355) — deletion must not silently re-suppress them. Falsifier: a fixture site bearing the token is scanned, not excluded. | NOT STARTED | Std |
 | HC-2 | `HC-GUARD-KABUKI-TRIPWIRE-0` | **Mechanize anti-kabuki rule 2 (defect 2).** Add a HEURISTIC scan (`scans.tsv` row + selftest) catching bespoke source-scanning guards: production `pub fn` taking `source: &str`/`&Path` that string-scans, and `include_str!("../src/` in tests. Routes to INSPECT + triage (not FAIL) — legitimate cases exist and must be justifiable, not silenced. Prose rule stays; the tripwire is its mechanized rung-3. | NOT STARTED | Std |
 | HC-3 | `HC-CLOSEOUT-BINDING-REAP-0` | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the closing track's discharged `binding_conditions.tsv` rows as part of `--apply`, reported in the CLOSEOUT-RECEIPT. Retire the 10 existing dead rows from closed tracks in the same PR (evidence: the table is currently 100% discharged). Must not touch rows of open/parked tracks — the 0.0.8.6 park block round-trip (`--unpark`) stays byte-exact. | NOT STARTED | Std |
 | HC-4 | `HC-POINTER-DIVERGENCE-LINT-0` | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs when the authoritative `Active open rung` row names a rung whose exit-proof cell is completed (DA-GRADUATED/COMPLETE/DONE), or names a rung absent from the ladder. Fixtures: graduated-rung-named-as-pointer FAILs; unknown-rung FAILs; legitimate not-yet-dispatched next rung passes; `none`-form passes. Document the two-source rule in `owner_authoring_guide.md` (stamping a cell does not move an authoritative pointer). | NOT STARTED | Std |
@@ -71,8 +71,10 @@ share the lifecycle scripts. Each rung is independently valuable and may re-park
 
 ## 3. Standing DA rulings
 
-1. **A gate an implementer can silence without review is not a gate.** Exclusions are DA-authored or
-   paired with a machine-readable justification — never both silent and self-service.
+1. **A gate an implementer can silence without review is not a gate.** (Owner, 2026-07-16.) Exclusions
+   are **DA-authored named symbols in `scans.tsv`** — one path, always gate-wired. There is no
+   self-service exclusion door and no in-code token that voids a finding; an implementer who believes
+   a site is legitimate accounts for it as an INSPECT and lets the DA rule.
 2. **Suppression is not accounting.** HEURISTIC findings route through triage; the finding stays
    visible so the scan's retire-condition can observe the site.
 3. **Prove the guard bites.** Every rung lands a falsifier that FAILS on the pre-fix tree; a fixture

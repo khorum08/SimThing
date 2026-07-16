@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | bc0c19adc3d242d3c0f8e72b02552c2980cea5877e6bc17b83e11c3d00d2fdba |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | d8092c25012122cec3d9395203cddc50ee1776cbe2243b5fbdd0bb69dd829dc0 |
+| design_0_0_8_4_8_4_1_harness_corrections.md | e91f065e7aad979c3a935296133bfe6d86af3a72e5a6c762575e673286fb7ca9 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -55,7 +55,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| HC-1 | HC-EXCLUSION-REVIEW-GATE-0 | **Close the self-service suppression hole (defect 1).** Either (a) delete the ge | NOT STARTED |
+| HC-1 | HC-EXCLUSION-REVIEW-GATE-0 | **Close the self-service suppression hole (defect 1). Owner ruling 2026-07-16: D | NOT STARTED |
 | HC-2 | HC-GUARD-KABUKI-TRIPWIRE-0 | **Mechanize anti-kabuki rule 2 (defect 2).** Add a HEURISTIC scan (`scans.tsv` r | NOT STARTED |
 | HC-3 | HC-CLOSEOUT-BINDING-REAP-0 | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the cl | NOT STARTED |
 | HC-4 | HC-POINTER-DIVERGENCE-LINT-0 | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs whe | NOT STARTED |
