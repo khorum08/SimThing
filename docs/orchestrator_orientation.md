@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | bc0c19adc3d242d3c0f8e72b02552c2980cea5877e6bc17b83e11c3d00d2fdba |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | d4fb423b28d88c32471fe90684eb9728ba916deedec288cdaaaf96b0bbc3cb6c |
-| design_0_0_8_4_8_4_1_harness_corrections.md | ef17b3ebbd1cc5a294ef1c6e45a2038fa847d79d840b6baa0ae6c4cf2f936c3d |
+| design_0_0_8_4_8_4_1_harness_corrections.md | 6b1ed42e4d7c8d3bcb74cd66f8d5dcd952cc873ee75e5b929cd3cd465a594b6a |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -59,6 +59,8 @@ Track state: `open`
 | HC-3 | HC-CLOSEOUT-BINDING-REAP-0 | **Reap discharged rows at close (defect 3).** `track_closeout.sh` removes the cl | NOT STARTED |
 | HC-4 | HC-POINTER-DIVERGENCE-LINT-0 | **One truth for the pointer (defect 4).** `gen_orientation.sh --check` FAILs whe | NOT STARTED |
 | HC-5 | HC-LADDER-COLUMN-INTEGRITY-0 | **Assert the parser's own invariant (defect 5: silent column shift).** `parse_ru | `, skips rows with *too few* columns, and **never bounds too many** — so any cell containing an escaped pipe (the onl... |
+| HC-6 | HC-HORIZON-ENTRY-CONVENTION-0 | **Distinguish future-facing parked API from kabuki (Owner-directed 2026-07-16).* | NOT STARTED |
+| HC-7 | HC-KABUKI-GUARD-REMEDIATE-0 | **Delete the two flagged kabuki guards (Owner-directed 2026-07-16; DA-assessed a | NOT STARTED |
 | HC-C | HC-CLOSEOUT-0 | Measured close: each rung's falsifier demonstrated to FAIL on the pre-fix tree;  | NOT STARTED |
 
 ## Next Rung Pointer
