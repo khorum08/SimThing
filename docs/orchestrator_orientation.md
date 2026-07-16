@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 60ef23a621a9482fc502f3de491b5c01ce4a3e164311b600055af3d556902a38 |
+| design_0_0_8_6_studio_live_ops.md | 4fee9003ee1ba0d99cf1a71ed0b5cbf4878c81d09d28f22b119d60fb76e9e34f |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 4c98d82722d05de28683086f2845da9388ab4ce9286b6d80a9131d12d50157db |
 
@@ -53,14 +53,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 Track state: `open`
 
+> Compact view: showing last 5 of 29 rungs (track `open`); full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| REMEDIAL | STUDIO-STAR-NAMING-REPAIR-0 | **Needs 11.3 + canonical TP data.** Preserve deterministic, seed-stable canonica | **DA-GRADUATED / merged [#1317](https://github.com/khorum08/SimThing/pull/1317) @ `1bdc1297`** — transport of the DA-... |
-| 12.2 | STUDIO-DISRUPTION-READOUT-0 | **Needs 12.8 for live values.** **Read-only per-system disruption snapshot from  | **PROBATION / proof-present / DA-review-pending.** Coder implementation on branch `coder/studio-disruption-readout-0`... |
-| 12.4 | STUDIO-FLEET-PRESENCE-READOUT-0 | **Read-only fleet presence/transit snapshot.** Canonical spec/clausething helper | **DA-GRADUATED / merged [#1355](https://github.com/khorum08/SimThing/pull/1355)** — merged 2026-07-16T00:0xZ (dispatc... |
-| 12.6 | TP-FIELD-ECONOMY-GRAMMAR-0 | **Generic ClauseScript grammar + hydration** for field-enrolled economics: produ | TODO |
-| 12.7 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6.** Author the canonical economy **in `scenarios/terran_pirate_galax | TODO |
-| 12.8 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.7.** The Studio live bridge opens the **field-bearing session path**  | TODO |
 | 12.9 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.8.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
 | 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
 | 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
@@ -69,7 +65,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-DISRUPTION-READOUT-0`
+Active pointer: `none`
 
 
 ## Cold-Start Spine (constitutional pointers)
