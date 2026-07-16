@@ -401,7 +401,9 @@ def current_handoff_path():
         raise HDError("active-pointer-missing")
     if not re.fullmatch(r"[A-Z0-9][A-Z0-9_-]+", pointer):
         raise HDError("active-pointer-invalid")
-    path = ROOT / "handoffs" / f"{pointer}.hd.md"
+    # Honor HD_HANDOFFS_DIR (same as resolve/board paths) so push-sync selftests
+    # and operators can point at a leased/fixture set without mutating live handoffs/.
+    path = handoffs_dir() / f"{pointer}.hd.md"
     if not path.is_file():
         raise HDError("current-handoff-missing")
     return path
@@ -1000,6 +1002,72 @@ stop_conditions: ["scope-widening"]
 
         none_status = run_cmd([bash_cmd, script_arg, "--owner-status", ""], env={**none_env, "HD_OPEN_PRS_JSON": "[]"})
         check("owner-status-none-renders-board", none_status.returncode == 0 and "SimThing Board" in none_status.stdout)
+
+        # HC-8 / clearance.yml push-to-master board-sync resolution branch (mirrored shell logic):
+        # pre-fix: handoff stays empty on push → --board-json with no arg → current_handoff none
+        # fixed:   handoff="$(--current-handoff)" on push; empty output = none (#1342); live .hd renders.
+        # Fixture set is self-contained under HD_HANDOFFS_DIR (no live handoffs/ dependency).
+        def push_sync_resolve(pr_num: str, env_map: dict) -> str:
+            """Mirror clearance.yml: PR path skipped when pr empty; push resolves via --current-handoff."""
+            handoff = ""
+            if pr_num:
+                pass
+            if not pr_num and not handoff:
+                cur = run_cmd([bash_cmd, script_arg, "--current-handoff"], env=env_map)
+                if cur.returncode == 0:
+                    handoff = cur.stdout.strip()
+            return handoff
+
+        push_hoff = Path(tmp) / "push-handoffs"
+        push_hoff.mkdir(exist_ok=True)
+        write(push_hoff / "VALID-HANDOFF-DISPATCH-FIXTURE-0.hd.md", valid.read_text(encoding="utf-8"))
+        live_orient = Path(tmp) / "orientation-live-push.md"
+        write(live_orient, "Active pointer: " + chr(96) + "VALID-HANDOFF-DISPATCH-FIXTURE-0" + chr(96) + chr(10))
+        live_env = {
+            "HD_ORIENTATION_PATH": str(live_orient),
+            "HD_HANDOFFS_DIR": str(push_hoff),
+            "HD_OPEN_PRS_JSON": "[]",
+        }
+        # Pre-fix bite: push path never called --current-handoff → handoff stays "" → board none.
+        pre_fix_board = run_cmd(
+            [bash_cmd, script_arg, "--board-json"],
+            env=live_env,
+        )
+        pre_fix_data = json.loads(pre_fix_board.stdout) if pre_fix_board.returncode == 0 else {}
+        check(
+            "push-sync-pre-fix-renders-none",
+            pre_fix_board.returncode == 0 and pre_fix_data.get("current_handoff") in ({}, None),
+        )
+        # Fixed path: resolve via --current-handoff on push; live .hd is rendered.
+        fixed_handoff = push_sync_resolve("", live_env)
+        check(
+            "push-sync-resolves-live-current-handoff",
+            fixed_handoff.replace("\\", "/").endswith("VALID-HANDOFF-DISPATCH-FIXTURE-0.hd.md"),
+        )
+        fixed_board = run_cmd(
+            [bash_cmd, script_arg, "--board-json", fixed_handoff],
+            env=live_env,
+        )
+        fixed_data = json.loads(fixed_board.stdout) if fixed_board.returncode == 0 else {}
+        check(
+            "push-sync-live-handoff-renders-on-board",
+            fixed_board.returncode == 0
+            and (fixed_data.get("current_handoff") or {}).get("rung") == "VALID-HANDOFF-DISPATCH-FIXTURE-0",
+        )
+        # Genuinely none: --current-handoff empty → keep none.
+        none_push_env = {**none_env, "HD_HANDOFFS_DIR": str(push_hoff), "HD_OPEN_PRS_JSON": "[]"}
+        none_push = push_sync_resolve("", none_push_env)
+        none_push_board = run_cmd(
+            [bash_cmd, script_arg, "--board-json"] + ([none_push] if none_push else []),
+            env=none_push_env,
+        )
+        none_push_data = json.loads(none_push_board.stdout) if none_push_board.returncode == 0 else {}
+        check(
+            "push-sync-genuine-none-stays-none",
+            none_push == ""
+            and none_push_board.returncode == 0
+            and none_push_data.get("current_handoff") in ({}, None),
+        )
 
         hold = run_cmd([bash_cmd, script_arg, "--owner-command", str(owner_cmd), "hold"])
         held_projection = run_cmd([bash_cmd, script_arg, "--render", "coding", str(owner_cmd)])

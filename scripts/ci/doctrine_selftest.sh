@@ -758,7 +758,111 @@ PY
     end_sandbox
     return
   fi
-  horizon_entry_falsifier_result="PASS (unmarked=INSPECT stale=INSPECT bare=INSPECT fresh=PASS pre_fix_fresh=INSPECT)"
+  end_sandbox
+
+  # --- HC-8 single-source: env override changes scan exemption AND lifecycle assess consistently ---
+  # Mid-age marker (30d): under window=10 both treat as STALE; under hardcode-90 lifecycle would stay FRESH
+  # while scan honors override → pre-fix diverge. Fixed path: both honor HORIZON_ENTRY_STALE_DAYS.
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mid_day="$(python -c "from datetime import date,timedelta; print((date.today()-timedelta(days=30)).isoformat())")"
+  today="$(python -c "from datetime import date; print(date.today().isoformat())")"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<EOF
+/// HORIZON-ENTRY(${mid_day}): intended consumer design_mid_ref
+pub fn horizon_candidate_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+  out="${ROOT_SANDBOX}/scan-mid-override.out"
+  set +e
+  (
+    cd "$ROOT_SANDBOX" &&
+      HORIZON_ENTRY_STALE_DAYS=10 HORIZON_ENTRY_TODAY="$today" \
+        DOCTRINE_SCAN_SKIP_DRIFT=1 bash "scripts/ci/doctrine_scan.sh"
+  ) >"$out" 2>&1
+  exit_code=$?
+  set -e
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "INSPECT" || "$count" -le 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (mid-age override scan expected INSPECT got scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  # Lifecycle assess (production-shaped: honors env) under same override → mid is stale.
+  local assess_out
+  assess_out="$(
+    HORIZON_ENTRY_STALE_DAYS=10 HORIZON_ENTRY_TODAY="$today" \
+      ORIENTATION_REPO_ROOT="$ROOT_SANDBOX" \
+      python - <<'PY'
+import datetime, os, pathlib, re, sys
+REPO_ROOT = pathlib.Path(os.environ["ORIENTATION_REPO_ROOT"])
+HORIZON_ENTRY_STALE_DAYS = int(os.environ.get("HORIZON_ENTRY_STALE_DAYS", "90"))
+MARKER = re.compile(r"HORIZON-ENTRY\((\d{4}-\d{2}-\d{2})\):\s*(\S.+?)\s*$")
+pin = os.environ.get("HORIZON_ENTRY_TODAY", "").strip()
+today = datetime.datetime.strptime(pin, "%Y-%m-%d").date() if pin else datetime.date.today()
+stale = fresh = mal = 0
+for path in sorted((REPO_ROOT / "crates").rglob("*.rs")):
+    for i, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        if "HORIZON-ENTRY" not in line:
+            continue
+        m = MARKER.search(line)
+        if not m:
+            if re.search(r"HORIZON-ENTRY\b", line):
+                mal += 1
+            continue
+        age = (today - datetime.datetime.strptime(m.group(1), "%Y-%m-%d").date()).days
+        if age > HORIZON_ENTRY_STALE_DAYS:
+            stale += 1
+        else:
+            fresh += 1
+print(f"HORIZON-ENTRY-ASSESS-VERDICT: stale={stale} fresh={fresh} malformed={mal} window_days={HORIZON_ENTRY_STALE_DAYS}")
+sys.exit(0 if stale >= 1 and fresh == 0 and HORIZON_ENTRY_STALE_DAYS == 10 else 2)
+PY
+  )"
+  assess_rc=$?
+  if [[ "$assess_rc" -ne 0 ]] || ! printf '%s\n' "$assess_out" | grep -q 'window_days=10'; then
+    horizon_entry_falsifier_result="FAIL (lifecycle override not honored: ${assess_out})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  # Pre-fix diverge: lifecycle hardcodes 90 while scan uses override 10 → mid fresh vs INSPECT.
+  pre_fix_assess="$(
+    HORIZON_ENTRY_STALE_DAYS=90 HORIZON_ENTRY_TODAY="$today" \
+      ORIENTATION_REPO_ROOT="$ROOT_SANDBOX" \
+      python - <<'PY'
+import datetime, os, pathlib, re, sys
+REPO_ROOT = pathlib.Path(os.environ["ORIENTATION_REPO_ROOT"])
+# Pre-fix call site hard-coded 90 (ignores intended override of 10).
+HORIZON_ENTRY_STALE_DAYS = 90
+MARKER = re.compile(r"HORIZON-ENTRY\((\d{4}-\d{2}-\d{2})\):\s*(\S.+?)\s*$")
+pin = os.environ.get("HORIZON_ENTRY_TODAY", "").strip()
+today = datetime.datetime.strptime(pin, "%Y-%m-%d").date() if pin else datetime.date.today()
+stale = fresh = 0
+for path in sorted((REPO_ROOT / "crates").rglob("*.rs")):
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        m = MARKER.search(line)
+        if not m:
+            continue
+        age = (today - datetime.datetime.strptime(m.group(1), "%Y-%m-%d").date()).days
+        if age > HORIZON_ENTRY_STALE_DAYS:
+            stale += 1
+        else:
+            fresh += 1
+print(f"PRE-FIX-ASSESS: stale={stale} fresh={fresh} window_days={HORIZON_ENTRY_STALE_DAYS}")
+# Diverge proof: hardcode keeps mid fresh while scan (above) flagged INSPECT under override 10.
+sys.exit(0 if stale == 0 and fresh >= 1 else 2)
+PY
+  )"
+  pre_fix_rc=$?
+  if [[ "$pre_fix_rc" -ne 0 ]]; then
+    horizon_entry_falsifier_result="FAIL (pre-fix hardcode should leave mid fresh: ${pre_fix_assess})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  horizon_entry_falsifier_result="PASS (unmarked=INSPECT stale=INSPECT bare=INSPECT fresh=PASS pre_fix_fresh=INSPECT single_source_override=scan+lifecycle agree pre_fix_hardcode_diverges)"
   end_sandbox
 }
 
