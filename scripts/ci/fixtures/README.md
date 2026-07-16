@@ -27,7 +27,6 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `known_bad/spec_fleet_cohort_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT - drift-shaped spec Fleet/Cohort `.kind` branch |
 | `known_bad/clausething_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT - closed-lowerer `match &node.kind` branch |
 | `known_bad/clausething_param_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT - parameterized `match kind { SimThingKind::... }` branch |
-| `known_bad/role_resolution_exclude_site_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT - deleted generic marker no longer suppresses scanning |
 | `known_bad/allow_sealed_producer.rs` | `ALLOW-SEALED-PRODUCERS` | FAIL — explicit sealed return |
 | `known_bad/allow_sealed_producer_split.rs` | `ALLOW-SEALED-PRODUCERS` | FAIL — split-declaration sealed return |
 | `known_bad/allow_sealed_producer_self.rs` | `ALLOW-SEALED-PRODUCERS` | FAIL — `-> Self` in sealed impl |
@@ -49,6 +48,9 @@ Do **not** point `doctrine_scan.sh` at this directory as production input.
 | `traps/cfg_test_semantic_words.rs` | semantic words in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
 | `traps/cfg_test_kind_read.rs` | `.kind` in `#[cfg(test)]` | Excluded by cfg(test) heuristic filter |
 | `traps/role_resolution_kind_param_match.rs` | `match kind { SimThingKind::... }` in DA-authored named symbol | Must not trip `SPEC-LOWERER-KIND-READ` |
+
+`doctrine_selftest.sh` also synthesizes a temporary `role_resolution_exclude_site_kind_param_match`
+sample in its sandbox to prove the deleted generic marker no longer suppresses `SPEC-LOWERER-KIND-READ`.
 
 ## Self-test (`CI-A-SELF-TEST-0`)
 

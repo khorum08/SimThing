@@ -110,7 +110,7 @@ proof gate for this rung or 0R.
 | `fixtures/known_bad/spec_fleet_cohort_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
 | `fixtures/known_bad/clausething_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
 | `fixtures/known_bad/clausething_param_kind_branch.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
-| `fixtures/known_bad/role_resolution_exclude_site_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | INSPECT |
+| selftest-generated `role_resolution_exclude_site_kind_param_match` sample | `SPEC-LOWERER-KIND-READ` | INSPECT |
 | `fixtures/traps/role_resolution_kind_param_match.rs` | `SPEC-LOWERER-KIND-READ` | PASS (DA-authored named symbol) |
 | Rot test | neutralized pattern → selftest FAIL | wired |
 

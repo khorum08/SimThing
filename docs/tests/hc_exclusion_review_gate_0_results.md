@@ -13,7 +13,7 @@ ANCHOR-ACK: orientation-harness-core@8a365d1c0864
 ## What changed
 
 - Deleted `role-resolution-exclude-site` from the `SPEC-LOWERER-KIND-READ` exclusion column in `scripts/ci/scans.tsv`.
-- Preserved the existing trap fixture identity and added a separate marker-bearing known-bad fixture that must scan as `SPEC-LOWERER-KIND-READ`.
+- Preserved the existing trap fixture identity and changed `doctrine_selftest.sh` to synthesize a marker-bearing sample in its temporary sandbox, avoiding durable fixture-ledger growth.
 - Updated fixture inventory and scan docs so the generic marker is no longer documented as a valid suppression path.
 - Stamped the HC-1 ladder row with PROBATION leading the exit-proof cell and regenerated orientation.
 
@@ -32,11 +32,11 @@ ANCHOR-ACK: orientation-harness-core@8a365d1c0864
 | `SPEC-LOWERER-KIND-READ` | `planet_non_grid_child_kind_label`, `is_admitted_planet_non_grid_child`, `scenario_deferral_kind_label`, `planet_child_location_error_kind_label`, `simthing_kind_label`, `location_participant_kind_label`, `non_location_participant_kind_label` | DA-authored named symbols | kept |
 | `SPEC-LOWERER-KIND-READ` | `compile_fail`, doc/comment filters, assert/test filters | scanner hygiene, not role-resolution self-service | kept |
 
-No live crate users of `role-resolution-exclude-site` were present; only the handoff, historical docs, and the intentional selftest fixture carry the text after this diff.
+No live crate users of `role-resolution-exclude-site` were present; only the handoff, historical docs, and the selftest-generated sample carry the text after this diff.
 
 ## Falsifier
 
-The fixture `scripts/ci/fixtures/known_bad/role_resolution_exclude_site_kind_param_match.rs` still bears `role-resolution-exclude-site`. Current `doctrine_selftest.sh` expects it to produce `SPEC-LOWERER-KIND-READ` INSPECT. Applied to the pre-fix `scans.tsv`, the fixture is excluded and the new selftest expectation fails; applied after this diff, it passes. Green-both-ways is avoided.
+The selftest-generated `role_resolution_exclude_site_kind_param_match` sample still bears `role-resolution-exclude-site`. Current `doctrine_selftest.sh` expects it to produce `SPEC-LOWERER-KIND-READ` INSPECT. Applied to the pre-fix `scans.tsv`, the sample is excluded and the new selftest expectation fails; applied after this diff, it passes. Green-both-ways is avoided without adding a durable fixture row.
 
 ## Validation
 
@@ -57,8 +57,8 @@ The fixture `scripts/ci/fixtures/known_bad/role_resolution_exclude_site_kind_par
 ## Scope Ledger
 
 - `scripts/ci/scans.tsv`: deleted the generic exclusion token only.
-- `scripts/ci/doctrine_selftest.sh` and fixtures: preserved the existing trap identity and added the marker-bearing known-bad fixture separately.
-- `scripts/ci/test_inventory.tsv`: retained the original trap row and added a new row for the known-bad falsifier fixture.
+- `scripts/ci/doctrine_selftest.sh` and fixtures: preserved the existing trap identity and synthesized the marker-bearing falsifier in the selftest sandbox.
+- `scripts/ci/test_inventory.tsv`: retained the original trap row without adding a durable falsifier row.
 - `docs/design_0_0_8_4_8_4_1_harness_corrections.md`: PROBATION stamp in HC-1 exit-proof cell.
 - `docs/orchestrator_orientation.md` and `docs/sanctioned_surface.md`: generated refreshes.
 - `docs/ci_screening_surface.md`, `docs/tests/ci_scan_spec_kind_coverage_0_results.md`, this results doc: documentation of the closed hole.
