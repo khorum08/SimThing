@@ -7,9 +7,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
-    OverlayKind, OverlayLifecycle, OverlaySource, PlacedParticipantValidationError, SimThingKind,
-    StructuralCoord, StructuralGridPlacement, SubFieldRole, TransformOp,
-    validate_location_ids_have_structural_placements,
+    validate_location_ids_have_structural_placements, OverlayKind, OverlayLifecycle, OverlaySource,
+    PlacedParticipantValidationError, SimThingKind, StructuralCoord, StructuralGridPlacement,
+    SubFieldRole, TransformOp,
 };
 use simthing_spec::spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -25,8 +25,8 @@ use simthing_spec::spec::trigger::TriggerDirection;
 
 use crate::error::HydrateError;
 use crate::hydrate_scenario::{
-    HydratedScenarioGridMetadata, HydratedScenarioNode, HydratedScenarioOwner,
     header_or_block_body, read_scalar_f32, read_scalar_text, read_scalar_u32, require_block,
+    HydratedScenarioGridMetadata, HydratedScenarioNode, HydratedScenarioOwner,
 };
 use crate::raw::{RawProperty, RawSpan};
 
@@ -652,38 +652,56 @@ fn validate_field_economy(
 }
 
 fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowering, HydrateError> {
-    let mut resources = BTreeSet::new();
+    let mut properties = Vec::new();
     for building in &parsed.production_buildings {
-        resources.insert(building.input_resource.clone());
-        resources.insert(building.output_resource.clone());
+        properties.push(located_resource_property(
+            &parsed.namespace,
+            &building.location,
+            &building.input_resource,
+            "quantity",
+        ));
+        properties.push(located_resource_property(
+            &parsed.namespace,
+            &building.location,
+            &building.output_resource,
+            "quantity",
+        ));
     }
     for silo in &parsed.stockpile_silos {
-        resources.insert(silo.resource.clone());
+        properties.push(owner_resource_property(
+            &parsed.namespace,
+            &silo.owner,
+            &silo.resource,
+            "current",
+        ));
+        properties.push(owner_resource_property(
+            &parsed.namespace,
+            &silo.owner,
+            &silo.resource,
+            "stockpile",
+        ));
+        properties.push(owner_resource_property(
+            &parsed.namespace,
+            &silo.owner,
+            &silo.resource,
+            "capacity",
+        ));
     }
     for quantity in &parsed.field_resource_quantities {
-        resources.insert(quantity.resource.clone());
+        properties.push(located_resource_property(
+            &parsed.namespace,
+            &quantity.location,
+            &quantity.resource,
+            "quantity",
+        ));
     }
     for presence in &parsed.disruption_presences {
-        resources.insert(presence.resource.clone());
-    }
-
-    let mut properties = Vec::new();
-    for resource in &resources {
-        properties.push(resource_property(&parsed.namespace, resource, "quantity"));
-        properties.push(resource_property(&parsed.namespace, resource, "stockpile"));
-    }
-    for presence in &parsed.disruption_presences {
-        properties.push(PropertySpec {
-            id: format!("{}_{}_presence", parsed.id, presence.id),
-            namespace: parsed.namespace.clone(),
-            name: format!("{}_presence", presence.resource),
-            display_name: format!("{} presence", presence.resource),
-            description: format!(
-                "field economy disruption presence authored by `{}`",
-                presence.id
-            ),
-            sub_fields: Vec::new(),
-        });
+        properties.push(presence_property(
+            &parsed.namespace,
+            &presence.location,
+            &presence.resource,
+            &presence.id,
+        ));
     }
     dedupe_properties(&mut properties);
 
@@ -693,11 +711,21 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         .map(|building| ResourceRecipeSpec {
             id: format!("{}_recipe_{}", parsed.id, building.id),
             inputs: vec![RecipeInputSpec {
-                property: resource_key(&parsed.namespace, &building.input_resource, "quantity"),
+                property: located_resource_key(
+                    &parsed.namespace,
+                    &building.location,
+                    &building.input_resource,
+                    "quantity",
+                ),
                 role: SubFieldRole::Amount,
                 unit_cost: building.input_amount,
             }],
-            target: resource_key(&parsed.namespace, &building.output_resource, "quantity"),
+            target: located_resource_key(
+                &parsed.namespace,
+                &building.location,
+                &building.output_resource,
+                "quantity",
+            ),
             target_role: SubFieldRole::Amount,
             throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
         })
@@ -709,9 +737,9 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         .enumerate()
         .map(|(index, silo)| ResourceTransferSpec {
             id: format!("{}_silo_transfer_{}", parsed.id, silo.id),
-            source: resource_key(&parsed.namespace, &silo.resource, "quantity"),
+            source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "current"),
             source_role: SubFieldRole::Amount,
-            target: resource_key(&parsed.namespace, &silo.resource, "stockpile"),
+            target: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "stockpile"),
             target_role: SubFieldRole::Amount,
             amount: silo.current,
             order_band: index as u32,
@@ -719,10 +747,42 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         .collect();
 
     let mut emissions = Vec::new();
+    for building in &parsed.production_buildings {
+        emissions.push(ResourceEmissionSpec {
+            id: format!("{}_production_yield_{}", parsed.id, building.id),
+            source: located_resource_key(
+                &parsed.namespace,
+                &building.location,
+                &building.output_resource,
+                "quantity",
+            ),
+            source_role: SubFieldRole::Amount,
+            formula: EmissionFormulaSpec::Constant(building.output_amount),
+        });
+    }
+    for silo in &parsed.stockpile_silos {
+        emissions.push(ResourceEmissionSpec {
+            id: format!("{}_silo_current_{}", parsed.id, silo.id),
+            source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "current"),
+            source_role: SubFieldRole::Amount,
+            formula: EmissionFormulaSpec::Constant(silo.current),
+        });
+        emissions.push(ResourceEmissionSpec {
+            id: format!("{}_silo_capacity_{}", parsed.id, silo.id),
+            source: owner_resource_key(&parsed.namespace, &silo.owner, &silo.resource, "capacity"),
+            source_role: SubFieldRole::Amount,
+            formula: EmissionFormulaSpec::Constant(silo.capacity),
+        });
+    }
     for quantity in &parsed.field_resource_quantities {
         emissions.push(ResourceEmissionSpec {
             id: format!("{}_quantity_emission_{}", parsed.id, quantity.id),
-            source: resource_key(&parsed.namespace, &quantity.resource, "quantity"),
+            source: located_resource_key(
+                &parsed.namespace,
+                &quantity.location,
+                &quantity.resource,
+                "quantity",
+            ),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(quantity.amount),
         });
@@ -730,10 +790,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
     for presence in &parsed.disruption_presences {
         emissions.push(ResourceEmissionSpec {
             id: format!("{}_presence_emission_{}", parsed.id, presence.id),
-            source: PropertyKey::new(
-                &parsed.namespace,
-                &format!("{}_presence", presence.resource),
-            ),
+            source: presence_key(&parsed.namespace, &presence.location, &presence.resource),
             source_role: SubFieldRole::Amount,
             formula: EmissionFormulaSpec::Constant(presence.amount),
         });
@@ -744,10 +801,7 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         .iter()
         .map(|presence| EmitOnThresholdSpec {
             id: format!("{}_presence_threshold_{}", parsed.id, presence.id),
-            source: PropertyKey::new(
-                &parsed.namespace,
-                &format!("{}_presence", presence.resource),
-            ),
+            source: presence_key(&parsed.namespace, &presence.location, &presence.resource),
             source_role: SubFieldRole::Amount,
             threshold: presence.threshold,
             direction: presence.direction,
@@ -756,28 +810,79 @@ fn lower_field_economy(parsed: ParsedFieldEconomy) -> Result<FieldEconomyLowerin
         })
         .collect();
 
-    let overlays = parsed
-        .owner_policy_overlays
-        .iter()
-        .map(|overlay| OverlaySpec {
-            id: format!("{}_owner_policy_{}", parsed.id, overlay.id),
-            display_name: overlay.id.clone(),
-            targets_property: overlay.targets_property.clone(),
-            sub_field_deltas: vec![(
-                SubFieldRole::Amount,
-                match overlay.transform {
-                    HydratedOwnerPolicyTransform::Add(amount) => TransformOp::Add(amount),
-                    HydratedOwnerPolicyTransform::Multiply(amount) => TransformOp::Multiply(amount),
+    let mut overlays = Vec::new();
+    overlays.extend(parsed.production_buildings.iter().map(|building| {
+        location_overlay(
+            &parsed.id,
+            "production",
+            &building.id,
+            &property_ref(&located_resource_key(
+                &parsed.namespace,
+                &building.location,
+                &building.output_resource,
+                "quantity",
+            )),
+            building.output_amount,
+            &building.location,
+            OverlayKind::Infrastructure,
+        )
+    }));
+    overlays.extend(parsed.field_resource_quantities.iter().map(|quantity| {
+        location_overlay(
+            &parsed.id,
+            "quantity",
+            &quantity.id,
+            &property_ref(&located_resource_key(
+                &parsed.namespace,
+                &quantity.location,
+                &quantity.resource,
+                "quantity",
+            )),
+            quantity.amount,
+            &quantity.location,
+            OverlayKind::Infrastructure,
+        )
+    }));
+    overlays.extend(parsed.disruption_presences.iter().map(|presence| {
+        location_overlay(
+            &parsed.id,
+            "presence",
+            &presence.id,
+            &property_ref(&presence_key(
+                &parsed.namespace,
+                &presence.location,
+                &presence.resource,
+            )),
+            presence.amount,
+            &presence.location,
+            OverlayKind::Crisis,
+        )
+    }));
+    overlays.extend(
+        parsed
+            .owner_policy_overlays
+            .iter()
+            .map(|overlay| OverlaySpec {
+                id: format!("{}_owner_policy_{}", parsed.id, overlay.id),
+                display_name: overlay.id.clone(),
+                targets_property: overlay.targets_property.clone(),
+                sub_field_deltas: vec![(
+                    SubFieldRole::Amount,
+                    match overlay.transform {
+                        HydratedOwnerPolicyTransform::Add(amount) => TransformOp::Add(amount),
+                        HydratedOwnerPolicyTransform::Multiply(amount) => {
+                            TransformOp::Multiply(amount)
+                        }
+                    },
+                )],
+                lifecycle: OverlayLifecycle::Permanent,
+                kind: OverlayKind::Policy,
+                source: OverlaySource::Player,
+                install: InstallTargetSpec::ScenarioListed {
+                    target_id: overlay.owner.clone(),
                 },
-            )],
-            lifecycle: OverlayLifecycle::Permanent,
-            kind: OverlayKind::Policy,
-            source: OverlaySource::Player,
-            install: InstallTargetSpec::ScenarioListed {
-                target_id: overlay.owner.clone(),
-            },
-        })
-        .collect();
+            }),
+    );
 
     let hydrated = HydratedFieldEconomy {
         id: parsed.id,
@@ -814,8 +919,81 @@ fn resource_property(namespace: &str, resource: &str, suffix: &str) -> PropertyS
     }
 }
 
+fn located_resource_property(
+    namespace: &str,
+    location: &str,
+    resource: &str,
+    suffix: &str,
+) -> PropertySpec {
+    resource_property(namespace, &format!("{location}_{resource}"), suffix)
+}
+
+fn owner_resource_property(
+    namespace: &str,
+    owner: &str,
+    resource: &str,
+    suffix: &str,
+) -> PropertySpec {
+    resource_property(namespace, &format!("{owner}_{resource}"), suffix)
+}
+
+fn presence_property(namespace: &str, location: &str, resource: &str, id: &str) -> PropertySpec {
+    PropertySpec {
+        id: format!("{namespace}_{location}_{resource}_presence"),
+        namespace: namespace.to_string(),
+        name: format!("{location}_{resource}_presence"),
+        display_name: format!("{location} {resource} presence"),
+        description: format!("field economy disruption presence authored by `{id}`"),
+        sub_fields: Vec::new(),
+    }
+}
+
 fn resource_key(namespace: &str, resource: &str, suffix: &str) -> PropertyKey {
     PropertyKey::new(namespace, &format!("{resource}_{suffix}"))
+}
+
+fn located_resource_key(
+    namespace: &str,
+    location: &str,
+    resource: &str,
+    suffix: &str,
+) -> PropertyKey {
+    resource_key(namespace, &format!("{location}_{resource}"), suffix)
+}
+
+fn owner_resource_key(namespace: &str, owner: &str, resource: &str, suffix: &str) -> PropertyKey {
+    resource_key(namespace, &format!("{owner}_{resource}"), suffix)
+}
+
+fn presence_key(namespace: &str, location: &str, resource: &str) -> PropertyKey {
+    PropertyKey::new(namespace, &format!("{location}_{resource}_presence"))
+}
+
+fn property_ref(key: &PropertyKey) -> String {
+    format!("{}::{}", key.namespace, key.name)
+}
+
+fn location_overlay(
+    economy_id: &str,
+    kind: &str,
+    id: &str,
+    targets_property: &str,
+    amount: f32,
+    location: &str,
+    overlay_kind: OverlayKind,
+) -> OverlaySpec {
+    OverlaySpec {
+        id: format!("{economy_id}_{kind}_location_{id}"),
+        display_name: id.to_string(),
+        targets_property: targets_property.to_string(),
+        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::Add(amount))],
+        lifecycle: OverlayLifecycle::Permanent,
+        kind: overlay_kind,
+        source: OverlaySource::System,
+        install: InstallTargetSpec::ScenarioListed {
+            target_id: location.to_string(),
+        },
+    }
 }
 
 fn dedupe_properties(properties: &mut Vec<PropertySpec>) {
@@ -839,13 +1017,21 @@ fn validate_location_ref(
             Some(span.clone()),
         )
     })?;
-    if node.kind != SimThingKind::Location {
+    if location_participant_kind_label(&node.kind) != "Location" {
         return Err(HydrateError::new_spanned(
             format!("field_economy target `{location}` is not a Location"),
             Some(span.clone()),
         ));
     }
     Ok(())
+}
+
+fn location_participant_kind_label(kind: &SimThingKind) -> &'static str {
+    if std::mem::discriminant(kind) == std::mem::discriminant(&SimThingKind::Location) {
+        "Location"
+    } else {
+        "non-Location"
+    }
 }
 
 fn validate_owner_ref(
