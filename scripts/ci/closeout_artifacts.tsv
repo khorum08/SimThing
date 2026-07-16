@@ -16,3 +16,4 @@ docs/tests/hc_horizon_entry_convention_0_results.md	2026-07-16	lease	0.0.8.4.8.4
 docs/tests/hc_kabuki_guard_remediate_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
 docs/tests/hc_ladder_column_integrity_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
 docs/tests/hc_pointer_divergence_lint_0_results.md	2026-07-16	lease	0.0.8.4.8.4.1-harness-corrections	HC-C: lease, audit window then reap
+handoffs/TP-FIELD-ECONOMY-GRAMMAR-0.hd.md	2026-07-16	lease	0.0.8.6-studio-live-ops	graduated .hd; reap via --decommission
