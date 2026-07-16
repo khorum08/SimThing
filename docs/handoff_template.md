@@ -101,8 +101,8 @@ Graduation routing (for DA — why this is PROBATION, not self-marked COMPLETE):
 Litmus for every line: **does it prove or build the feature, or produce a governance artifact about
 it?** If the latter, cut it. Rejected at review, both directions:
 
-- **Over-production (kabuki):** batteries for type/admission-guaranteed conditions; bespoke greps that
-  restate the scope diff (one forbidden-path `git diff` + the existing guard is the ceiling); triple
+- **Over-production (kabuki):** batteries for type/admission-guaranteed conditions; `GUARD-KABUKI-TRIPWIRE`
+  owns bespoke source-scan guard review; triple
   doc ceremony; inline hand-authored implementation; reading lists longer than the rung touches;
   a docs/closeout rung in front of a buildable feature; a noun (registry/table/preflight) standing in
   for an admission hard-error; inert scaffolding that enforces nothing.

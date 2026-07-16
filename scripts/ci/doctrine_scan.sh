@@ -528,6 +528,11 @@ match_line_in_pr_delta() {
   fi
 }
 
+heuristic_target_includes_tests() {
+  local target_glob="$1"
+  [[ "$target_glob" == *tests* || "$target_glob" == *test* || "$target_glob" == *"_tests.rs"* ]]
+}
+
 run_rg_scan() {
   local pattern="$1"
   local target_glob="$2"
@@ -549,11 +554,15 @@ run_rg_scan() {
       return 0
     fi
     use_relative_paths=1
-    rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+    if ! heuristic_target_includes_tests "$target_glob"; then
+      rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+    fi
   else
     rg_args+=(-g "$target_glob")
     if [[ "$severity" == "HEURISTIC" ]]; then
-      rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+      if ! heuristic_target_includes_tests "$target_glob"; then
+        rg_args+=(-g '!**/tests/**' -g '!**/test/**' -g '!**/*_tests.rs')
+      fi
     fi
     search_paths=(".")
   fi
