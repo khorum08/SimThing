@@ -109,9 +109,8 @@ pub use structural_upload::{
     LOCATION_ROW_BYTES,
 };
 pub use structural_validation::{
-    initial_validation_report, scan_for_forbidden_validation_tokens,
-    validate_structural_rows_on_gpu, validate_structural_upload_on_gpu, StructuralValidationError,
-    StructuralValidationReportGpu, VALIDATION_REPORT_BYTES,
+    initial_validation_report, validate_structural_rows_on_gpu, validate_structural_upload_on_gpu,
+    StructuralValidationError, StructuralValidationReportGpu, VALIDATION_REPORT_BYTES,
 };
 pub use structured_field_stencil::{
     cpu_compute_c_at, cpu_compute_choke_at, cpu_compute_choke_readout_at, cpu_horizon,

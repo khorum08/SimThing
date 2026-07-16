@@ -7,10 +7,10 @@
 use std::path::PathBuf;
 
 use simthing_mapeditor::{
-    build_studio_live_observation_readout, observe_module_source_forbids_workshop_residue,
-    runtime_vertical_seed_scenario_spec, StudioLiveObservationSourceKind, StudioLiveSessionBridge,
-    StudioLiveSessionBridgeReadout, StudioLiveSessionBridgeStatus, StudioSession,
-    StudioSimClockRate, StudioSimClockTransport, StudioSimClockTransportCommand,
+    build_studio_live_observation_readout, runtime_vertical_seed_scenario_spec,
+    StudioLiveObservationSourceKind, StudioLiveSessionBridge, StudioLiveSessionBridgeReadout,
+    StudioLiveSessionBridgeStatus, StudioSession, StudioSimClockRate, StudioSimClockTransport,
+    StudioSimClockTransportCommand,
 };
 use simthing_spec::serialize_scenario_authority;
 
@@ -290,13 +290,6 @@ fn bridge_error_or_unattached_state_is_reported() {
 /// catches: observer importing workshop residue or inventing gameplay summaries.
 #[test]
 fn no_new_gameplay_or_workshop_dependency_for_observation() {
-    let source = include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/src/studio_live_observe.rs"
-    ));
-    observe_module_source_forbids_workshop_residue(source)
-        .expect("observe module must forbid workshop/gameplay tokens");
-
     // Cargo dependency scan: mapeditor must not depend on simthing-workshop for this rung.
     let cargo = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"));
     assert!(

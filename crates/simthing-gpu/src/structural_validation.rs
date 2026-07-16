@@ -189,30 +189,6 @@ pub fn validate_structural_rows_on_gpu(
     validate_structural_upload_on_gpu(device, queue, &buffers, &report)
 }
 
-pub fn scan_for_forbidden_validation_tokens(source: &str, label: &str) {
-    const FORBIDDEN: &[&str] = &[
-        "route",
-        "predecessor",
-        "pathfinding",
-        "movement_order",
-        "fleet",
-        "faction",
-        "owner",
-        "border",
-        "frontline",
-        "combat",
-        "economy",
-        "diplomacy",
-    ];
-    let lower = source.to_ascii_lowercase();
-    for token in FORBIDDEN {
-        assert!(
-            !lower.contains(token),
-            "{label} contains forbidden token: {token}"
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

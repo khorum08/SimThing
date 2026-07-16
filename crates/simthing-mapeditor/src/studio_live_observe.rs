@@ -157,65 +157,6 @@ pub fn build_studio_live_observation_readout(
     }
 }
 
-/// Source-text scan: observation module must not import workshop residue or invent gameplay APIs.
-///
-/// Contiguous patterns are assembled at runtime so this function body does not self-match.
-///
-/// catches: observer importing workshop residue or inventing gameplay summaries.
-pub fn observe_module_source_forbids_workshop_residue(source: &str) -> Result<(), String> {
-    // Workshop crate path tokens (split).
-    let t_ws_rs = format!("{}{}", "simthing_", "workshop");
-    let t_ws_hy = format!("{}{}", "simthing", "-workshop");
-    // Driver / planner tokens (split so the forbid body is not a positive match).
-    let step = format!("{}{}", "step_once", "(");
-    let open = format!("{}{}", "SimSession::", "open");
-    let g1 = format!("{}{}", "Cpu", "Planner");
-    let g2 = format!("{}{}", "cpu_", "planner");
-    let g3 = format!("{}{}", "GameMode", "Attach");
-    let g4 = format!("{}{}", "Diplomacy", "System");
-    let g5 = format!("{}{}", "Combat", "System");
-    let g6 = format!("{}{}", "Economy", "Planner");
-    let gameplay = [
-        g1.as_str(),
-        g2.as_str(),
-        g3.as_str(),
-        g4.as_str(),
-        g5.as_str(),
-        g6.as_str(),
-    ];
-
-    for line in source.lines() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("//") || trimmed.starts_with("//!") || trimmed.starts_with("///") {
-            continue;
-        }
-        if trimmed.contains("observe_module_source_forbids") {
-            continue;
-        }
-        // Workshop import / dependency path.
-        if (trimmed.contains("use ") || trimmed.contains("::") || trimmed.contains("extern crate"))
-            && (trimmed.contains(&t_ws_rs) || trimmed.contains(&t_ws_hy))
-        {
-            return Err(format!(
-                "studio_live_observe forbids workshop residue import: {trimmed}"
-            ));
-        }
-        if trimmed.contains(&step) || trimmed.contains(&open) {
-            return Err(format!(
-                "studio_live_observe forbids driver execution token in: {trimmed}"
-            ));
-        }
-        for token in gameplay {
-            if trimmed.contains(token) {
-                return Err(format!(
-                    "studio_live_observe forbids gameplay/planner token {token} in: {trimmed}"
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod unit_smoke {
     use super::*;

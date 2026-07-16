@@ -215,8 +215,8 @@ pub use studio_faction_nameplates::{
     StarOwnershipPresentation, NEUTRAL_NAMEPLATE_RGBA,
 };
 pub use studio_live_observe::{
-    build_studio_live_observation_readout, observe_module_source_forbids_workshop_residue,
-    StudioLiveObservationReadout, StudioLiveObservationSourceKind,
+    build_studio_live_observation_readout, StudioLiveObservationReadout,
+    StudioLiveObservationSourceKind,
 };
 pub use studio_live_session_bridge::{
     apply_live_bridge_reset_before_tick, bridge_module_source_forbids_workshop_residue,
