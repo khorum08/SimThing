@@ -35,7 +35,8 @@ use simthing_spec::spec::w_impedance_compose::WImpedanceComposeSpec;
 use simthing_spec::{
     apply_star_system_local_grid_frame_metadata, is_surface_gridcell, make_planet_gridcell,
     PLANET_OWNER_REF_PROPERTY_ID, STAR_SYSTEM_LOCAL_GRID_DEFAULT_COLS,
-    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS,
+    STAR_SYSTEM_LOCAL_GRID_DEFAULT_ROWS, TP_FLEET_HOME_SYSTEM_PROPERTY_ID,
+    TP_FLEET_POSTURE_PROPERTY_ID,
 };
 
 use crate::error::HydrateError;
@@ -141,9 +142,7 @@ pub struct HydratedScenarioPack {
     pub combat_arena_payload: Option<crate::hydrate_combat_arena::HydratedCombatArenaPayload>,
 }
 
-/// Scenario-envelope property ids for fleet/ship authored columns (non-canonical).
-pub(crate) const TP_FLEET_POSTURE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_500);
-pub(crate) const TP_FLEET_HOME_SYSTEM_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_501);
+/// Scenario-envelope property ids for ship authored columns (non-canonical).
 pub(crate) const TP_SHIP_CLASS_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_502);
 pub(crate) const TP_SHIP_HULL_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_503);
 pub(crate) const TP_SHIP_WEAPON_DAMAGE_PROPERTY_ID: SimPropertyId = SimPropertyId(8_301_504);

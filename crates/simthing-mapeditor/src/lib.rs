@@ -29,6 +29,7 @@ pub mod studio_admission_report;
 pub mod studio_antialiasing;
 pub mod studio_config;
 pub mod studio_frame_phase_gpu_telemetry;
+pub mod studio_fleet_presence;
 pub mod studio_frosted_glass;
 pub mod studio_performance_telemetry;
 pub mod studio_planet_child_location;
@@ -157,6 +158,10 @@ pub use studio_frame_phase_gpu_telemetry::{
     restore_normal_render_from_snapshot, studio_build_profile_label, unexplained_frame_ms,
     vram_tracked_asset_lines, PerformanceDiagnosticFlags, PerformanceNormalRenderSnapshot,
     DIAGNOSTIC_MINIMAL_RENDER_BUTTON, RESTORE_NORMAL_RENDER_BUTTON,
+};
+pub use studio_fleet_presence::{
+    studio_fleet_presence_map_from_session, studio_fleet_presence_map_from_snapshot,
+    StudioFleetPresenceMap,
 };
 pub use studio_frosted_glass::{
     FrostedGlassFrameTelemetry, FrostedGlassPanelRegistry, FrostedGlassRenderPlan,

@@ -4,6 +4,7 @@ pub mod domain_pack;
 pub mod effect;
 pub mod eml_gadget;
 pub mod event;
+pub mod fleet_presence;
 pub mod first_slice_scenario;
 pub mod game_mode;
 pub mod install_target;
@@ -61,6 +62,10 @@ pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
+pub use fleet_presence::{
+    fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,
+    FleetPresenceSnapshotError, TP_FLEET_HOME_SYSTEM_PROPERTY_ID, TP_FLEET_POSTURE_PROPERTY_ID,
+};
 pub use first_slice_scenario::FirstSliceScenarioSpec;
 pub use game_mode::GameModeSpec;
 pub use install_target::InstallTargetSpec;
