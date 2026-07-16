@@ -12,6 +12,7 @@ ROOT_SANDBOX=""
 selftest_failures=0
 positive_control="FAIL"
 rot_test_result="FAIL"
+guard_kabuki_falsifier_result="FAIL"
 test_budget_result="FAIL"
 drift_proof_result="FAIL"
 
@@ -257,6 +258,38 @@ pub fn generic_role_resolution_label(kind: &SimThingKind) -> String {
 EOF
 }
 
+setup_heuristic_guard_kabuki_source_scan() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<'EOF'
+pub fn bespoke_source_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+}
+
+setup_heuristic_guard_kabuki_include_str_test() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  mkdir -p "${ROOT_SANDBOX}/crates/simthing-spec/tests"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/tests/_selftest_guard.rs" <<'EOF'
+#[test]
+fn bespoke_source_guard_reads_src_text() {
+    assert!(!include_str!("../src/lib.rs").contains("forbidden_token"));
+}
+EOF
+}
+
+setup_heuristic_guard_kabuki_path_scan() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_path_fixture.rs" <<'EOF'
+use std::path::Path;
+
+pub fn bespoke_path_guard(path: &Path) -> Result<bool, std::io::Error> {
+    let source = std::fs::read_to_string(path)?;
+    Ok(source.lines().any(|line| line.contains("forbidden_token")))
+}
+EOF
+}
+
 setup_heuristic_clausething() {
   local fixture="$1"
   prepare_trap_baseline "$ROOT_SANDBOX"
@@ -303,6 +336,37 @@ setup_trap_spec() {
   prepare_trap_baseline "$ROOT_SANDBOX"
   cp "${FIXTURES}/${trap_file}" \
     "${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_trap.rs"
+}
+
+setup_trap_guard_kabuki_ordinary_source_param() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_trap.rs" <<'EOF'
+pub fn ordinary_source_param(source: &str) -> usize {
+    source.len()
+}
+EOF
+}
+
+setup_trap_guard_kabuki_ordinary_path_param() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_path_trap.rs" <<'EOF'
+use std::path::Path;
+
+pub fn ordinary_path_param(path: &Path) -> bool {
+    path.exists()
+}
+EOF
+}
+
+setup_trap_guard_kabuki_path_read_no_scan() {
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_path_read_trap.rs" <<'EOF'
+use std::path::Path;
+
+pub fn load_source_without_scanning(path: &Path) -> Result<String, std::io::Error> {
+    std::fs::read_to_string(path)
+}
+EOF
 }
 
 setup_rot_neutralized_spec_lowerer_kind_read() {
@@ -417,6 +481,24 @@ expect_trap_pass_spec() {
   end_sandbox
 }
 
+expect_generated_trap_pass() {
+  local label="$1"
+  shift
+  begin_sandbox
+  "$@"
+  local out="${ROOT_SANDBOX}/scan.out"
+  local exit_code verdict hard inspect
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r verdict hard inspect <<<"$(parse_footer_verdict "$out")"
+  if [[ "$hard" -eq 0 && "$exit_code" -eq 0 ]]; then
+    TRAP_REPORT+=("${label}  PASS")
+  else
+    TRAP_REPORT+=("${label}  FAIL (verdict=${verdict} hard=${hard} exit=${exit_code})")
+    fail_selftest
+  fi
+  end_sandbox
+}
+
 expect_scanner_error() {
   local label="$1"
   shift
@@ -476,6 +558,53 @@ run_rot_test() {
     :
   else
     rot_test_result="FAIL (SPEC-LOWERER-KIND-READ scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+  fi
+  end_sandbox
+}
+
+run_guard_kabuki_falsifier_test() {
+  begin_sandbox
+  prepare_trap_baseline "$ROOT_SANDBOX"
+  cat >"${ROOT_SANDBOX}/crates/simthing-spec/src/_selftest_fixture.rs" <<'EOF'
+pub fn bespoke_source_guard(source: &str) -> bool {
+    source.lines().any(|line| line.contains("forbidden_token"))
+}
+EOF
+  local out="${ROOT_SANDBOX}/scan-head.out"
+  local exit_code sv count
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" != "INSPECT" || "$count" -le 0 || "$exit_code" -ne 0 ]]; then
+    guard_kabuki_falsifier_result="FAIL (head scan=${sv} count=${count} exit=${exit_code})"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  if ! python - "$ROOT_SANDBOX/scripts/ci/scans.tsv" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+kept = [line for line in lines if not line.startswith("GUARD-KABUKI-TRIPWIRE |")]
+if len(kept) == len(lines):
+    raise SystemExit("rot-test: GUARD-KABUKI-TRIPWIRE row not found")
+path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+PY
+  then
+    guard_kabuki_falsifier_result="FAIL (GUARD-KABUKI-TRIPWIRE row missing)"
+    fail_selftest
+    end_sandbox
+    return
+  fi
+  out="${ROOT_SANDBOX}/scan-row-removed.out"
+  exit_code="$(run_scan_in_sandbox "$ROOT_SANDBOX" "$out")"
+  read -r sv count <<<"$(scan_line_verdict "$out" "GUARD-KABUKI-TRIPWIRE")"
+  if [[ "$sv" == "MISSING" && "$count" -eq 0 ]]; then
+    guard_kabuki_falsifier_result="PASS (head=INSPECT row_removed_expected_FAIL scan=MISSING count=0 exit=${exit_code})"
+  else
+    guard_kabuki_falsifier_result="FAIL (row-removed unexpectedly scan=${sv} count=${count} exit=${exit_code})"
     fail_selftest
   fi
   end_sandbox
@@ -618,6 +747,12 @@ run_all_cases() {
     setup_heuristic_clausething clausething_param_kind_branch.rs
   expect_heuristic_inspect "role_resolution_exclude_site_kind_param_match" "SPEC-LOWERER-KIND-READ" \
     setup_heuristic_role_resolution_exclude_site_spec
+  expect_heuristic_inspect "guard_kabuki_source_scan" "GUARD-KABUKI-TRIPWIRE" \
+    setup_heuristic_guard_kabuki_source_scan
+  expect_heuristic_inspect "guard_kabuki_include_str_test" "GUARD-KABUKI-TRIPWIRE" \
+    setup_heuristic_guard_kabuki_include_str_test
+  expect_heuristic_inspect "guard_kabuki_path_scan" "GUARD-KABUKI-TRIPWIRE" \
+    setup_heuristic_guard_kabuki_path_scan
 
   expect_trap_pass "jomini_write" "traps/jomini_write.rs"
   expect_trap_pass "studio_antialiasing" "traps/studio_antialiasing.rs"
@@ -627,6 +762,12 @@ run_all_cases() {
   expect_trap_pass "cfg_test_kind_read" "traps/cfg_test_kind_read.rs"
   expect_trap_pass_spec "role_resolution_kind_param_match" \
     traps/role_resolution_kind_param_match.rs
+  expect_generated_trap_pass "guard_kabuki_ordinary_source_param" \
+    setup_trap_guard_kabuki_ordinary_source_param
+  expect_generated_trap_pass "guard_kabuki_ordinary_path_param" \
+    setup_trap_guard_kabuki_ordinary_path_param
+  expect_generated_trap_pass "guard_kabuki_path_read_no_scan" \
+    setup_trap_guard_kabuki_path_read_no_scan
 }
 
 emit_report() {
@@ -646,6 +787,7 @@ emit_report() {
     echo "    ${line}"
   done
   echo "  rot test: ${rot_test_result}"
+  echo "  guard kabuki falsifier: ${guard_kabuki_falsifier_result}"
   echo "  test budget proof: ${test_budget_result}"
   echo "  inventory drift proof: ${drift_proof_result}"
   if [[ "$selftest_failures" -eq 0 ]]; then
@@ -678,6 +820,7 @@ main() {
   run_positive_control
   run_all_cases
   run_rot_test
+  run_guard_kabuki_falsifier_test
   run_test_budget_proof
   run_drift_proof
   emit_report

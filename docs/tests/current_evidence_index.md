@@ -410,6 +410,9 @@ in `crates/simthing-mapeditor` + `crates/simthing-tools` code and their live tes
 ## 0.0.8.4.6 CI Scaffolding — Track A (CLOSED 2026-07-01)
 - [`ci-a-closeout_results.md`](ci-a-closeout_results.md) — Track A **DA-CLOSED**: doctrine landed at three altitudes (#1043), `SEALED_TYPES` migrated to `allow/sealed_types.txt` (data, fail-loud), reliability legend published, full command battery PASS on master (self-test/scan/PR-delta/spam-prove/195-surface). Non-blocking debt: self-test ~7 min. Track B OPEN (2026-07-02); Track C DA-CLOSED.
 
+## 0.0.8.4.8.4.1 Harness Corrections
+- [hc_guard_kabuki_tripwire_0_results.md](hc_guard_kabuki_tripwire_0_results.md) - HC-GUARD-KABUKI-TRIPWIRE-0 **PROBATION / PR pending** - INSPECT-only `GUARD-KABUKI-TRIPWIRE` catches bespoke source-scanning guard shapes; generated selftest controls prove row removal bites without durable fixture growth; DA gate-wiring review required.
+
 ## 0.0.8.6 Studio Live Ops
 - [studio_loader_dialog_repair_0_results.md](studio_loader_dialog_repair_0_results.md) - STUDIO-LOADER-DIALOG-REPAIR-0 **PROBATION / PR #1324 / OVL PASS @ `827fcbe0`** - async real-stage load; bounded hidden scene adoption; atomic reveal; Owner OVL PASS; paused success.
 - [studio_fleet_presence_readout_0_results.md](studio_fleet_presence_readout_0_results.md) - STUDIO-FLEET-PRESENCE-READOUT-0 **PROBATION / PR #1355** - typed read-only fleet presence snapshot over ScenarioSpec authority; canonical TP owner/posture/anchor proof; private typed transit contract fixture with no public caller override; mapeditor bridge/readout consumes typed map by generated system id without raw property ids.
