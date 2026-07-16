@@ -14,6 +14,9 @@ use simthing_spec::{
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
+use crate::studio_disruption_readout::{
+    studio_disruption_readout_map_from_session, StudioDisruptionReadoutMap,
+};
 use crate::studio_fleet_presence::{
     studio_fleet_presence_map_from_session, StudioFleetPresenceMap,
 };
@@ -66,6 +69,7 @@ pub struct StudioLiveSessionBridgeReadout {
     pub stead_valid: Option<bool>,
     pub production_path: &'static str,
     pub fleet_presence: StudioFleetPresenceMap,
+    pub disruption_readout: StudioDisruptionReadoutMap,
 }
 
 impl StudioLiveSessionBridgeReadout {
@@ -80,6 +84,7 @@ impl StudioLiveSessionBridgeReadout {
             stead_valid: None,
             production_path: StudioLiveSessionBridge::production_path_label(),
             fleet_presence: StudioFleetPresenceMap::default(),
+            disruption_readout: StudioDisruptionReadoutMap::default(),
         }
     }
 }
@@ -99,6 +104,8 @@ pub enum StudioLiveSessionBridgeError {
     ScenarioConversion(String),
     #[error("fleet presence readback failed: {0}")]
     FleetPresenceReadback(String),
+    #[error("disruption readout failed: {0}")]
+    DisruptionReadback(String),
 }
 
 /// Production live handle over a loaded StudioSession authority.
@@ -117,6 +124,7 @@ pub struct StudioLiveSessionBridge {
     open_links_valid: Option<bool>,
     open_source_path: Option<PathBuf>,
     fleet_presence: StudioFleetPresenceMap,
+    disruption_readout: StudioDisruptionReadoutMap,
     /// True if we attempted open and failed for non-GPU reasons.
     open_failed: bool,
 }
@@ -140,6 +148,7 @@ impl StudioLiveSessionBridge {
             open_links_valid: None,
             open_source_path: None,
             fleet_presence: StudioFleetPresenceMap::default(),
+            disruption_readout: StudioDisruptionReadoutMap::default(),
             open_failed: false,
         }
     }
@@ -176,6 +185,7 @@ impl StudioLiveSessionBridge {
         self.open_links_valid = None;
         self.open_source_path = None;
         self.fleet_presence = StudioFleetPresenceMap::default();
+        self.disruption_readout = StudioDisruptionReadoutMap::default();
         self.open_failed = false;
     }
 
@@ -189,11 +199,12 @@ impl StudioLiveSessionBridge {
         self.last_scheduled_batch = 0;
         self.open_failed = false;
 
-        let scenario = driver_scenario_from_authority(&studio.scenario_authority).map_err(
-            |e| StudioLiveSessionBridgeError::ScenarioConversion(e),
-        )?;
+        let scenario = driver_scenario_from_authority(&studio.scenario_authority)
+            .map_err(|e| StudioLiveSessionBridgeError::ScenarioConversion(e))?;
         let fleet_presence = studio_fleet_presence_map_from_session(studio)
             .map_err(|e| StudioLiveSessionBridgeError::FleetPresenceReadback(e.to_string()))?;
+        let disruption_readout = studio_disruption_readout_map_from_session(studio)
+            .map_err(|e| StudioLiveSessionBridgeError::DisruptionReadback(e.to_string()))?;
 
         match SimSession::open(scenario) {
             Ok(sim) => {
@@ -205,6 +216,7 @@ impl StudioLiveSessionBridge {
                 self.open_links_valid = Some(studio.scenario_summary.links_valid);
                 self.open_source_path = studio.scenario_path.clone();
                 self.fleet_presence = fleet_presence;
+                self.disruption_readout = disruption_readout;
                 Ok(())
             }
             Err(SessionError::Gpu(e)) => {
@@ -323,6 +335,7 @@ impl StudioLiveSessionBridge {
             stead_valid: self.open_stead_valid,
             production_path: Self::production_path_label(),
             fleet_presence: self.fleet_presence.clone(),
+            disruption_readout: self.disruption_readout.clone(),
         }
     }
 
@@ -362,9 +375,7 @@ fn status_label(s: StudioLiveSessionBridgeStatus) -> &'static str {
 /// registry indices. For structural live ticks we clone the tree and **strip property maps**
 /// so GPU projection does not index sparse product IDs into a dense registry. Structure
 /// (kind / id / children) is preserved; Spec authority remains on StudioSession unchanged.
-pub fn driver_scenario_from_authority(
-    spec: &SimThingScenarioSpec,
-) -> Result<Scenario, String> {
+pub fn driver_scenario_from_authority(spec: &SimThingScenarioSpec) -> Result<Scenario, String> {
     let mut registry = DimensionRegistry::new();
     // Seed column so total_columns >= 1 for GPU buffer shape (structural shell).
     let _ = registry.register(SimProperty::simple("_studio_live_bridge", "seed", 0));

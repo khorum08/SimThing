@@ -372,6 +372,12 @@ pub use spec::capability::{
     CapabilitySpec, CapabilityTreeSpec, EffectTarget, MaxActivePolicy, ReplacementPolicy,
 };
 pub use spec::channel_key::{OwnerRef, ParentLocationId, ResourceKey, ScopeId};
+pub use spec::disruption_readout::{
+    disruption_readout_snapshot, disruption_readout_snapshot_with_readback,
+    AbsentDisruptionAuthorityReadback, DisruptionAuthorityReadback,
+    DisruptionAuthorityReadbackError, DisruptionReadoutRecord, DisruptionReadoutSnapshot,
+    DisruptionReadoutSnapshotError,
+};
 pub use spec::domain_pack::DomainPackSpec;
 pub use spec::effect::EffectSpec;
 pub use spec::eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
