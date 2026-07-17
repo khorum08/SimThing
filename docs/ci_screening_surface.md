@@ -521,5 +521,15 @@ section is the operator surface.
 - **Substrate widening is DA-authorized only.** Agents may propose/appeal; default is deny → workshop-home.
   Self-classified "generic widening" in an engine crate is drift. Orchestrator: classify-before-merge;
   tripwire `SPEC-LOWERER-KIND-READ` (kind-branching); non-kind residue is live review control.
+- **Homing check-in is mandatory and mechanized (not handoff-dependent).** Any PR that alters *any*
+  production crate — every workspace crate except the `simthing-workshop` sandbox — must carry
+  `ANCHOR-ACK: workshop-candidate-homing@<hash>` in its relay; resolve the live hash with
+  `anchor_query.sh` / `anchor_check.sh --resolve scenario-candidate-home`. `relay_lint` hard-fails
+  `missing-anchor-ack` otherwise, and clearance surfaces `REQUIRED-ANCHORS` from the diff itself — so
+  this rule reaches you even when a handoff omits it. The ack is an *attestation* that you classified
+  the change; it is not a substitute for actually homing scenario code to workshop. Scenario-named code
+  or tests that reach a sealed crate regardless hard-FAIL the `WORKSHOP-HOMING-DETECTION-0` scan
+  (game-semantic vocabulary across every production `src/**` **and** `tests/**`) → move them to
+  `simthing-workshop`.
 
 > **Deferred:** per-production `testthing/<production>/` — not in force. Do not scaffold.
