@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | c2e53c731c2bc58a75f922971e6edf2c98bb1472c50518c8862f417f060d04b1 |
+| design_0_0_8_6_studio_live_ops.md | a0db4f24e3b00307070e4449b00d551407fa706f6d639beef37a9db3b7bf6738 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 25de4317faa8f0c4bd0a3d3a18ee4500ad945fc2858915d4e8564644101fd5b5 |
 
@@ -62,11 +62,15 @@ Track state: `open`
 | 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
 | 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
 | 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |
+| RF-1 | RF-CONSERVATION-ORACLE-0 | **Oracle-first.** Independent closed-form conservation oracle (ADR three invaria | TODO |
+| RF-2 | RF-EXECUTE-RECURSIVE-DEFAULT-0 | Flip `resource_flow_execution_profile` default to recursive executed source; wir | TODO |
+| RF-3 | RF-LEGACY-RETIRE-REANCHOR-0 | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle | TODO |
+| RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0 | Studio field-bearing consumes the now-executing RF; telemetry binds to the real  | BLOCKED→RF-2 |
 | OWNER | STUDIO-OWNER-CLOSURE-0 | **Track closeout (docs + harness lifecycle only).** Runs the `track_closeout.sh` | **DEFERRED / Owner-gated** — binding condition `track-closeout-blocked-until-explicit-owner-authorization` (Owner-202... |
 
 ## Next Rung Pointer
 
-Active pointer: `STUDIO-FIELD-SESSION-ELEVATE-0`
+Active pointer: `RF-CONSERVATION-ORACLE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
