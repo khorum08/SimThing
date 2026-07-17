@@ -8,12 +8,16 @@ use std::path::PathBuf;
 
 use simthing_clausething::{hydrate_scenario, parse_raw_document, HydratedScenarioPack};
 use simthing_core::SubFieldRole;
+use simthing_mapeditor::clause_scenario_picker::{
+    run_clause_picker_action_staged, ClausePickerActionResult, ClausePickerSelection,
+};
 use simthing_mapeditor::{
     authored_live_profile_from_pack, runtime_vertical_seed_scenario_spec, StudioLiveSessionBridge,
     StudioLiveSessionBridgeError, StudioLiveSessionPath, StudioLiveSessionPathPreference,
     StudioSession,
 };
 use simthing_spec::serialize_scenario_authority;
+use tempfile::TempDir;
 
 /// Synthetic field-economy: disruption seeds **below** threshold so a Rising
 /// crossing can only fire after live tick overlay/RF evolution (not at open).
@@ -460,5 +464,90 @@ fn field_bearing_readout_samples_show_live_accretion_delta() {
     assert!(
         changed,
         "Studio_ops field_accretion_samples must show a real value delta across ticks (sampler slot/col bug if static): {series:?}"
+    );
+}
+
+/// catches: staged Studio UI loader drops authored_live_profile → Auto falls to structural-shell (OVL FAIL).
+///
+/// Production route only: `run_clause_picker_action_staged` (not ingest helper, not test-side profile inject).
+/// Uses the operator-admitted clause under `scenarios/` so rebind/lattice join matches Studio UI load.
+#[test]
+fn staged_clause_picker_preserves_profile_into_auto_field_bearing_live_bridge() {
+    let dir = TempDir::new().expect("tempdir");
+    let clause_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scenarios/terran_pirate_galaxy.clause");
+    let json_path = dir
+        .path()
+        .join("staged_field_session.from-clause.simthing-scenario.json");
+    let selection = ClausePickerSelection {
+        clause_path,
+        resolver_entries: Default::default(),
+        scenario_json_path: Some(json_path),
+    };
+
+    let result = run_clause_picker_action_staged(&selection, None, &mut |_| {});
+    let session = match result {
+        ClausePickerActionResult::Loaded { session, .. } => session,
+        other => panic!("staged picker must Loaded; got: {}", other.message()),
+    };
+    assert!(
+        session.authored_live_profile.is_some(),
+        "staged UI path must attach authored_live_profile from hydrate pack (deleting attach must fail)"
+    );
+    assert!(
+        session
+            .authored_live_profile
+            .as_ref()
+            .is_some_and(|p| p.supports_field_bearing()),
+        "authored profile must support field-bearing (field_economy present)"
+    );
+
+    let mut bridge = StudioLiveSessionBridge::new();
+    bridge.set_path_preference(StudioLiveSessionPathPreference::Auto);
+    open_fail_closed(&mut bridge, &session).expect("Auto open from staged session");
+    assert_eq!(
+        bridge.session_path(),
+        StudioLiveSessionPath::FieldBearing,
+        "Auto + staged profile must open field-bearing (not structural-shell)"
+    );
+    assert_eq!(
+        bridge.readout().production_path,
+        "simthing_driver::SimSession::open_from_spec + step_once"
+    );
+
+    bridge.consume_scheduled_ticks(4).expect("ticks");
+    let samples = bridge.readout().field_accretion_samples;
+    assert!(
+        !samples.is_empty(),
+        "field-bearing staged path must produce field_accretion_samples; got empty"
+    );
+    fn series_changes(series: &[(u64, f32)]) -> bool {
+        if series.len() < 2 {
+            return false;
+        }
+        let first = series.first().map(|x| x.1).unwrap_or(0.0);
+        let last = series.last().map(|x| x.1).unwrap_or(0.0);
+        (first - last).abs() > 1e-4 || series.windows(2).any(|w| (w[0].1 - w[1].1).abs() > 1e-4)
+    }
+    let mut by_key: std::collections::BTreeMap<String, Vec<(u64, f32)>> =
+        std::collections::BTreeMap::new();
+    for s in &samples {
+        by_key
+            .entry(s.property_key.clone())
+            .or_default()
+            .push((s.tick_index, s.amount));
+    }
+    let series = by_key
+        .into_iter()
+        .map(|(_, v)| v)
+        .find(|v| series_changes(v))
+        .unwrap_or_else(|| {
+            panic!(
+                "expected multi-tick field property delta from staged→Auto bridge; samples={samples:?}"
+            )
+        });
+    assert!(
+        series_changes(&series),
+        "staged→Auto field-bearing samples must show amount delta across ticks: {series:?}"
     );
 }

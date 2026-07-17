@@ -16,6 +16,7 @@ use crate::clause_scenario_ingest::{
 use crate::generation::GenerationProfile;
 use crate::scenario_io::{load_scenario_authority_from_path, ScenarioIoError};
 use crate::session::StudioSession;
+use crate::studio_live_session_bridge::authored_live_profile_from_pack;
 use crate::studio_scenario_library_ui::{StudioLoaderStage, StudioLoaderStageEvent};
 use crate::studio_scenario_load::{
     canonicalize_scenario_display_path, default_picker_start_directory, ScenarioPickerOutcome,
@@ -310,10 +311,13 @@ pub fn run_clause_picker_action_staged(
         let scenario = observe_loader_stage(StudioLoaderStage::SessionBuild, observer, || {
             Ok(load_scenario_authority_from_path(&json_path)?)
         })?;
+        // Persist/reload remains the authority source; attach authored live profile from the
+        // same hydrate pack so Auto can open field-bearing (OVL: staged UI must not drop it).
         let session = observe_loader_stage(StudioLoaderStage::Projection, observer, || {
-            StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
+            Ok(StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
                 .map_err(ScenarioIoError::from)
-                .map_err(ClauseScenarioIngestError::from)
+                .map_err(ClauseScenarioIngestError::from)?
+                .with_authored_live_profile(authored_live_profile_from_pack(&ingest.pack)))
         })?;
         Ok::<_, ClauseScenarioIngestError>((ingest, session))
     })();
