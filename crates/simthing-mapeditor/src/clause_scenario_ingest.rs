@@ -21,6 +21,7 @@ use crate::scenario_io::{
     load_studio_session_from_scenario_path, save_scenario_authority_to_path, ScenarioIoError,
 };
 use crate::session::StudioSession;
+use crate::studio_live_session_bridge::authored_live_profile_from_pack;
 
 /// Caller-supplied placeholder → filesystem path map for clause source rewrite before parse.
 ///
@@ -227,6 +228,9 @@ pub fn save_clause_scenario_authority_to_path(
 }
 
 /// Ingest clause path, save Spec JSON, then load Studio session via existing session path.
+///
+/// Attaches an authored live profile from the hydrate pack so the live bridge can open
+/// the field-bearing `open_from_spec` path without workshop residue.
 pub fn load_clause_studio_session_from_path(
     clause_path: &Path,
     options: &ClauseScenarioIngestOptions,
@@ -235,11 +239,14 @@ pub fn load_clause_studio_session_from_path(
 ) -> Result<(ClauseScenarioIngestResult, StudioSession), ClauseScenarioIngestError> {
     let ingest = ingest_clause_scenario_path(clause_path, options)?;
     save_clause_scenario_authority_to_path(scenario_json_path, &ingest.scenario)?;
-    let session = load_studio_session_from_scenario_path(scenario_json_path, profile_hint)?;
+    let mut session = load_studio_session_from_scenario_path(scenario_json_path, profile_hint)?;
+    session.set_authored_live_profile(Some(authored_live_profile_from_pack(&ingest.pack)));
     Ok((ingest, session))
 }
 
 /// Load Studio session from an already-produced StructuralRebindReady Spec authority.
+///
+/// Retains the hydrate pack as an authored live profile for field-bearing open.
 pub fn load_studio_session_from_clause_ingest_result(
     result: &ClauseScenarioIngestResult,
     scenario_path_label: PathBuf,
@@ -250,7 +257,8 @@ pub fn load_studio_session_from_clause_ingest_result(
         scenario_path_label,
         profile_hint,
     )
-    .map_err(ScenarioIoError::from)?)
+    .map_err(ScenarioIoError::from)?
+    .with_authored_live_profile(authored_live_profile_from_pack(&result.pack)))
 }
 
 fn apply_source_resolver(

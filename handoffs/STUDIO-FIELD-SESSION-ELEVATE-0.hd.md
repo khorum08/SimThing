@@ -7,37 +7,19 @@ audience: coding
 model_tier: frontier
 owner_approved: true
 expected_route: DA-RESERVE(unclassified-scope)
-owner_notes: "Fully-automated: coder = Grok CLI (grok-4.5, full write access). Orchestrator owns CI/clearance/tree-review/remands AND delegated merge. Escalations route to the orchestrator, never straight to DA. [OVL] rung: Owner screenshot verifies live accretion — code reaches PROBATION, Owner closes the visual gate."
+owner_notes: "Fully-automated: coder=Grok CLI. Orchestrator owns CI/clearance/tree-review/remands + delegated merge. Escalations→orchestrator not DA. [OVL] Owner screenshots close visual gate. Windows debug Studio build only after adjudication-clean final SHA (not committed)."
 surfaces: ["crates/simthing-mapeditor", "crates/simthing-workshop", "docs/design_0_0_8_6_studio_live_ops.md"]
 forbidden: ["bespoke economy code in the tick", "CPU planner / AI-tick / decisions outside threshold crossings", "ScenarioSpec mutation from render/camera/UI", "new grammar/primitives in clausething or spec", "TP-specific code in a sealed crate (home to simthing-workshop)", "kernel/WGSL semantics"]
 required_checks: ["cargo-check", "focused-tests", "doctrine-scan", "orientation-check", "doc-budget"]
 stop_conditions: ["stale-orient-receipt", "scope-widening", "tick-needs-bespoke-economy-code", "decision-fires-outside-threshold-crossing"]
 ---
 ## BUILD
-- Open the Studio live bridge's **field-bearing session path** (`open_from_spec` + authored profile),
-  elevating the TP-LIVE-RUN-0 workshop residue to production, so authored fields accumulate under
-  live ticks: disruption accretes from authored emitters; production/need accrete from authored
-  buildings + policy overlays; decisions fire ONLY as threshold crossings (sealed ingress per
-  OC-K-DECISION-INGRESS-0). Replaces the property-strip posture for field-bearing scenarios.
-- Keep the structural-shell path available as fallback (selectable, not deleted).
-- **[OVL]** ops-telemetry rows: session path (structural-shell vs field-bearing) and per-tick field
-  accretion samples, so the Owner can verify live accretion from the running Studio.
+- Open Studio live bridge **field-bearing** path (`open_from_spec` + authored profile); elevate residue so authored fields accrete under live ticks (disruption emitters; production/**need** + policy overlays; decisions only as threshold crossings). Keep structural-shell fallback.
+- **[OVL]** ops-telemetry (session path + per-tick field accretion samples bound to resolved emission slot/col). Windows **debug** `simthing-studio` at exact final source SHA for Owner screenshots (runbook in results; exe not committed) — build only after need-seam adjudication clean.
 ## FENCES
-- Generic RF/STEAD pipeline ONLY — **no bespoke economy code in the tick**. If the tick appears to
-  need economy-specific logic, STOP and report; do not special-case.
-- Decisions stay FIELD_POLICY threshold crossings; no CPU planner / AI-tick. ScenarioSpec stays the
-  sole authority — Bevy/egui/camera/telemetry are presentation and must not mutate it.
-- No new grammar/primitives in clausething/spec (12.6 grammar + 12.8 authored data are the inputs).
-- §12 homing (anchor `workshop-candidate-homing`, ack it): scenario-specific code/tests home to
-  `simthing-workshop`; the `WORKSHOP-HOMING-DETECTION` scan must stay PASS 0 on the PR delta — never
-  add an exclusion or weaken the scan.
+- Generic RF/STEAD only — **no bespoke economy in the tick**. Decisions = FIELD_POLICY threshold crossings only; ScenarioSpec sole authority.
+- No new clausething/spec grammar. §12 `workshop-candidate-homing`; WORKSHOP-HOMING-DETECTION PASS 0. Do not invent need/weight-profile install APIs in this PR.
 ## EXIT-PROOF
-- Multi-tick headless proof on the 12.8-authored canonical scenario: disruption accretes from the
-  authored emitter; production/need accrete from authored buildings + policy overlays; a threshold
-  crossing fires a decision and NOTHING fires absent a crossing. Each named test catches a real
-  regression and BITES (deleting the accretion coupling or the threshold must fail it).
-- Structural-shell fallback still selectable and green. `cargo check` green; doctrine-scan (PR delta)
-  clean; orientation-check / doc-budget green; new tests ledgered (birth_track 0.0.8.6-studio-live-ops)
-  with an inspect_justifications row + SHA-bound triage if TEST-BUDGET INSPECTs.
-- PROBATION LEADS the 12.9 cell + the authoritative Active-open-rung row updated; orientation
-  regenerated. **[OVL] stays open** until the Owner's screenshot confirms live accretion.
+- Multi-tick headless: disruption accretes; **production/need accrete from authored buildings and policy overlays** (design 12.9); threshold fires under live ticks (zero at open / zero without threshold). Tests BITE. Studio readout samples show multi-tick value deltas.
+- **BLOCKED (need half):** no admitted GameMode/open_from_spec seam for field-economy `weight_profile` EML stacks — need live output not proven; not self-narrowed to production/policy. Owner/orchestrator adjudicate (e.g. 12.9a seam rung) before full 12.9 PROBATION.
+- cargo/doctrine-scan/orient/doc-budget green; tests ledgered. **[OVL] open** until Owner screenshots (identity + live accretion + progression).

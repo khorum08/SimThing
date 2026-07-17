@@ -224,11 +224,14 @@ pub use studio_live_observe::{
     StudioLiveObservationSourceKind,
 };
 pub use studio_live_session_bridge::{
-    apply_live_bridge_reset_before_tick, bridge_module_source_forbids_workshop_residue,
-    driver_scenario_from_authority, request_live_bridge_reset_after_session_replacement,
-    revalidate_authority_stead, studio_summary_identity_eq, BridgeOpenIdentity,
-    StudioLiveSessionBridge, StudioLiveSessionBridgeError, StudioLiveSessionBridgeReadout,
-    StudioLiveSessionBridgeStatus,
+    apply_live_bridge_reset_before_tick, authored_live_profile_from_pack,
+    bridge_module_source_forbids_workshop_residue, driver_scenario_field_bearing_from_profile,
+    driver_scenario_from_authority, field_bearing_game_mode,
+    request_live_bridge_reset_after_session_replacement, revalidate_authority_stead,
+    studio_summary_identity_eq, BridgeOpenIdentity, StudioAuthoredLiveProfile,
+    StudioFieldAccretionSample, StudioLiveSessionBridge, StudioLiveSessionBridgeError,
+    StudioLiveSessionBridgeReadout, StudioLiveSessionBridgeStatus, StudioLiveSessionPath,
+    StudioLiveSessionPathPreference,
 };
 pub use studio_sim_clock::{
     StudioSimClock, StudioSimClockError, StudioSimClockRate, STUDIO_SIM_CLOCK_DEFAULT_MAX_TPS,

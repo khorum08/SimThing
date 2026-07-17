@@ -5465,6 +5465,7 @@ dependencies = [
  "simthing-driver",
  "simthing-feeder",
  "simthing-gpu",
+ "simthing-mapeditor",
  "simthing-sim",
  "simthing-spec",
  "simthing-tools",

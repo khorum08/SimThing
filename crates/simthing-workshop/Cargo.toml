@@ -22,4 +22,5 @@ tempfile = "3"
 simthing-driver = { path = "../simthing-driver" }
 simthing-feeder = { path = "../simthing-feeder" }
 simthing-gpu = { path = "../simthing-gpu" }
+simthing-mapeditor = { path = "../simthing-mapeditor" }
 simthing-sim = { path = "../simthing-sim" }
