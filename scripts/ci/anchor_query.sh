@@ -203,6 +203,12 @@ def glob_match(path: str, pattern: str) -> bool:
         prefix = g.split("**", 1)[0]
         if prefix and path.startswith(prefix):
             return True
+        # A bare directory surface (e.g. handoff `surfaces: [crates/simthing-mapeditor]`,
+        # no trailing slash) names the directory itself and must match `dir/**`. Without
+        # this, dir-shaped surfaces resolve to zero anchors and the projection silently
+        # under-curates (the RF-spine miss that hid founding-ontology from mapeditor rungs).
+        if prefix and path + "/" == prefix:
+            return True
     return fnmatch.fnmatch(path, g.replace("**", "*"))
 
 

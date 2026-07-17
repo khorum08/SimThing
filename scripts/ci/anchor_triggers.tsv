@@ -3,8 +3,8 @@ crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,
 crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home
 crates/simthing-sim/**	sim,field-policy,scenario-candidate-home
 **/*.wgsl	wgsl,field-policy,sim
-crates/simthing-driver/**	driver,field-policy,overlay,structural-execution,scenario-candidate-home
-crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain,scenario-candidate-home
+crates/simthing-driver/**	driver,field-policy,overlay,structural-execution,scenario-candidate-home,founding-ontology,stead
+crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain,scenario-candidate-home,field-policy,founding-ontology,stead
 crates/simthing-mapgenerator/**	mapgenerator,map,map-domain,movement-front,clausething-spatial,clausething,scenario-candidate-home
 crates/simthing-clausething/**	spatial,clausething-spatial,clausething,map,scenario-candidate-home
 docs/stead_spatial_contract.md	stead,spatial,structural-execution
