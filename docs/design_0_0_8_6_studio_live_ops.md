@@ -280,6 +280,27 @@ Completion of a phase ladder does **not** close the track — see §8 Owner-Clos
 
 ---
 
+## 4e. RF Production Integration (engine sub-track — Owner ruling 2026-07-17)
+
+Root cause of the 12.9 [OVL] FAIL (orchestrator Remand-7 STOP): the recursive child→ancestor Arena RF
+(`docs/adr/resource_flow_substrate.md`) is built but **preview/oracle/report-only**; the ordinary
+`SimSession::step_once` runs the legacy non-recursive planet-child/owner-silo RF, so authored resources
+populate but do not **reduce up** into an ancestor/Owner aggregate. **Owner ruling:** recursive Arena RF
+becomes the **default executed** tick source for all admitted sessions, **legacy is retired**, and a
+**fresh independent oracle** is built (the recursive source can no longer be its own oracle once executed).
+"Field-bearing/populated" ≠ resource flow: the load-bearing proof is one named child source causally
+contributing to one named ancestor/Owner **sibling aggregate** under admitted Arena RF, with a control
+where removing that child removes the increase. No Studio-side arithmetic, no RR rehearsal transplant.
+
+| Rung | ID | Scope | Exit proof | Tier |
+|---|---|---|---|---|
+| RF-1 | `RF-CONSERVATION-ORACLE-0` | **Oracle-first.** Independent closed-form conservation oracle (ADR three invariants); validated live vs current flat-opt-in RF; canonical TP reduce-up golden (RF-4 target) in workshop. Does NOT touch execution. | TODO | DA-reserve |
+| RF-2 | `RF-EXECUTE-RECURSIVE-DEFAULT-0` | Flip `resource_flow_execution_profile` default to recursive executed source; wire executed reduce-up + disburse-down + `runtime_local_allocation` writeback in ordinary `step_once`; retire legacy default tick source. RF-1 oracle proves it. **Needs RF-1.** | TODO | DA-reserve |
+| RF-3 | `RF-LEGACY-RETIRE-REANCHOR-0` | Repoint existing RF tests + `runtime_0080_*` rehearsal + recursive-source oracle framing to the new default + RF-1 oracle; retire dead legacy; re-anchor the ADR/anchors so recursive-executed-by-default is the doctrine future agents ingest. **Needs RF-2.** | TODO | DA-reserve |
+| RF-4 | (12.9 resumes) `STUDIO-FIELD-SESSION-ELEVATE-0` | Studio field-bearing consumes the now-executing RF; telemetry binds to the real ancestor aggregate; Owner OVL closes. Need/weight-profile install seam resolves here or splits to RF-5. **Needs RF-2.** | BLOCKED→RF-2 | DA-reserve |
+
+---
+
 ## 5. Explicit non-goals
 
 - Reopening 0.0.8.5 Terran-Pirate (CLOSED 2026-07-09, #1256; consume its landed hydration, never re-derive)  
@@ -314,7 +335,7 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | `STUDIO-FIELD-SESSION-ELEVATE-0` — 12.9 **PROBATION (proof-present, DA-review-pending)** 2026-07-17 (AUTONOMOUS; coder=Grok-CLI). [OVL] still open until Owner screenshot confirms live accretion. Queue after: 12.10 TP-EMERGENT-TENSION-PROOF-0. |
+| Active open rung | `RF-CONSERVATION-ORACLE-0` — RF-1 DISPATCHED 2026-07-17 (HD-RECEIPT 9772abd8fcac, base 6500c0cd); RF-INTEGRATION engine sub-track (§4e). 12.9 STUDIO-FIELD-SESSION-ELEVATE-0 is [OVL] FAIL, BLOCKED→RF-2 (resumes as RF-4). Coder=Grok-CLI; orchestrator-led + delegated merge. Sub-track queue: RF-1 → RF-2 → RF-3 → RF-4(=12.9). |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
