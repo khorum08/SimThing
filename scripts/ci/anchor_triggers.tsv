@@ -1,11 +1,11 @@
 glob	trigger_domains
-crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude
-crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution
-crates/simthing-sim/**	sim,field-policy
+crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude,scenario-candidate-home
+crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home
+crates/simthing-sim/**	sim,field-policy,scenario-candidate-home
 **/*.wgsl	wgsl,field-policy,sim
-crates/simthing-driver/**	driver,field-policy,overlay,structural-execution
-crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain
-crates/simthing-mapgenerator/**	mapgenerator,map,map-domain,movement-front,clausething-spatial,clausething
+crates/simthing-driver/**	driver,field-policy,overlay,structural-execution,scenario-candidate-home
+crates/simthing-mapeditor/**	studio,mapeditor-gpu,mapeditor-session,map-domain,scenario-candidate-home
+crates/simthing-mapgenerator/**	mapgenerator,map,map-domain,movement-front,clausething-spatial,clausething,scenario-candidate-home
 crates/simthing-clausething/**	spatial,clausething-spatial,clausething,map,scenario-candidate-home
 docs/stead_spatial_contract.md	stead,spatial,structural-execution
 docs/adr/**	driver-session,feeder-session,mapeditor-session,feeder,capability-paths
@@ -14,6 +14,8 @@ docs/simthing_core_design.md	field-policy,one-tree,property-value,drift-detector
 scripts/ci/doctrine_anchors.tsv	gate-wiring,orientation
 scripts/ci/anchor_triggers.tsv	gate-wiring,orientation
 crates/simthing-spec/**	spec,hydration,scenario-candidate-home
-crates/simthing-feeder/**	feeder,capability-paths
+crates/simthing-feeder/**	feeder,capability-paths,scenario-candidate-home
+crates/simthing-core/**	scenario-candidate-home
+crates/simthing-tools/**	scenario-candidate-home
 scripts/ci/**	gate-wiring,orientation
 .github/workflows/**	gate-wiring
