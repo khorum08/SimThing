@@ -14,28 +14,14 @@ required_checks: ["cargo-check", "focused-tests", "doctrine-scan", "orientation-
 stop_conditions: ["stale-orient-receipt", "scope-widening", "grammar-gap-needs-new-primitive", "scenario-code-would-land-in-sealed-crate"]
 ---
 ## BUILD
-- Author the canonical TP economy as human-authored ClauseScript in
-  `scenarios/terran_pirate_galaxy.clause`: Terran manufacturing base (factories -> production
-  fields -> ship-construction need), Pirate disruption emitters, fleets, and owner policy
-  overlays (Terran expansion/manufacturing-need weights; Pirate disruption/raid-need weights).
-- Use ONLY the generic field-economy grammar landed by 12.6 (`hydrate_field_economy`) and the
-  existing overlay/RF/EML surfaces. Author DATA, not code.
-- The sibling base-disc regenerates ONLY through production hydration — no hand-edited JSON/RON
-  anywhere. Regeneration must be deterministic and must hydrate blind from an alien cwd.
+- Author the canonical TP economy as human-authored ClauseScript in `scenarios/terran_pirate_galaxy.clause`: Terran manufacturing base (factories -> production fields -> ship-construction need), Pirate disruption emitters, fleets, and owner policy overlays (Terran expansion/manufacturing-need weights; Pirate disruption/raid-need weights).
+- Use ONLY the generic field-economy grammar landed by 12.6 (`hydrate_field_economy`) and the existing overlay/RF/EML surfaces. Author DATA, not code.
+- Sibling base-disc regenerates ONLY through production hydration — no hand-edited JSON/RON; regeneration must be deterministic and must hydrate blind from an alien cwd.
 ## FENCES
-- §12 homing (anchor `workshop-candidate-homing`, ack it): scenario-specific service/struct/fn/
-  heuristic/test does NOT go in a sealed crate — it homes to `simthing-workshop`. The
-  `WORKSHOP-HOMING-DETECTION` scan flags net-new TP vocabulary in production crates; any hit must
-  be workshop-homed, not excluded. Scenario DATA in `scenarios/**` is the correct home for the economy.
-- If the 12.6 grammar genuinely cannot express something, STOP and report — do NOT invent a
-  primitive or widen clausething/spec. A `HORIZON-ENTRY(2026-07-16)` seam exists in
-  `hydrate_field_economy.rs` for production output coefficients; use it as documented, do not extend it.
+- §12 homing (anchor `workshop-candidate-homing`, ack it): scenario-specific service/struct/fn/heuristic/test does NOT go in a sealed crate — homes to `simthing-workshop`. `WORKSHOP-HOMING-DETECTION` flags net-new TP vocabulary in production crates; any hit must be workshop-homed, not excluded. Scenario DATA in `scenarios/**` is the correct economy home.
+- If the 12.6 grammar cannot express something, STOP and report — do NOT invent a primitive or widen clausething/spec. A `HORIZON-ENTRY(2026-07-16)` seam exists in `hydrate_field_economy.rs` for production output coefficients; use it as documented, do not extend it.
 - No hand-edited JSON/RON; decisions stay FIELD_POLICY threshold crossings (no CPU planner).
 ## EXIT-PROOF
-- The authored `.clause` hydrates through production hydration to the expected economy spec;
-  regeneration is deterministic (same input -> byte-identical output) and hydrates blind from an
-  alien cwd. Named tests each catch a real regression.
-- Zero net-new TP vocabulary in any sealed production crate (doctrine-scan clean, or every hit
-  workshop-homed); `cargo check` green; doctrine-scan / orientation-check / doc-budget green; new
-  tests ledgered (birth_track 0.0.8.6-studio-live-ops).
+- Authored `.clause` hydrates through production hydration to the expected economy spec; regeneration is deterministic (same input -> byte-identical output) and hydrates blind from an alien cwd. Named tests each catch a real regression.
+- Zero net-new TP vocabulary in sealed production crates (doctrine-scan clean or every hit workshop-homed); cargo check + doctrine-scan + orientation-check + doc-budget green; new tests ledgered (birth_track 0.0.8.6-studio-live-ops).
 - PROBATION LEADS the 12.8 cell + the authoritative Active-open-rung row updated; orientation regenerated.

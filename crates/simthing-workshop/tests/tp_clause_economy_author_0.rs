@@ -10,8 +10,10 @@ use simthing_clausething::{
     hydrate_scenario_with_source_base, parse_raw_document, resolve_clause_source_path,
     HydratedScenarioPack,
 };
+use simthing_core::{SubFieldRole, TransformOp};
 use simthing_spec::{
-    EmissionFormulaSpec, EmlGadgetInstanceSpec, ResourceEconomyOptInMode, save_scenario_spec_to_canonical_json,
+    save_scenario_spec_to_canonical_json, EmissionFormulaSpec, EmlGadgetInstanceSpec,
+    InstallTargetSpec, ResourceEconomyOptInMode, TriggerDirection,
 };
 
 fn repo_root() -> PathBuf {
@@ -94,27 +96,61 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
     assert_eq!(economy.disruption_presences[0].location, "pirate_outpost");
     assert_eq!(economy.owner_policy_overlays.len(), 3);
     assert_eq!(economy.weight_profiles.len(), 3);
-    assert!(
-        economy
-            .weight_profiles
-            .iter()
-            .any(|profile| profile.profile == "expansion-need")
-    );
-    assert!(
-        economy
-            .weight_profiles
-            .iter()
-            .any(|profile| profile.profile == "manufacturing-need")
-    );
-    assert!(
-        economy
-            .weight_profiles
-            .iter()
-            .any(|profile| profile.profile == "disruption-need")
-    );
-    match &economy.weight_profiles[0].stack.gadgets[0] {
-        EmlGadgetInstanceSpec::WeightedAccumulator { .. } => {}
-        other => panic!("expected WeightedAccumulator, got {other:?}"),
+
+    // All three EML weighted-accumulator profiles with exact input/weight/output columns.
+    let expansion = economy
+        .weight_profiles
+        .iter()
+        .find(|profile| profile.profile == "expansion-need")
+        .expect("expansion-need profile");
+    match &expansion.stack.gadgets[0] {
+        EmlGadgetInstanceSpec::WeightedAccumulator {
+            input_cols,
+            weight_cols,
+            output_col,
+            ..
+        } => {
+            assert_eq!(input_cols, &vec![0, 1]);
+            assert_eq!(weight_cols, &vec![10, 11]);
+            assert_eq!(*output_col, Some(12));
+        }
+        other => panic!("expected WeightedAccumulator expansion-need, got {other:?}"),
+    }
+    let manufacturing = economy
+        .weight_profiles
+        .iter()
+        .find(|profile| profile.profile == "manufacturing-need")
+        .expect("manufacturing-need profile");
+    match &manufacturing.stack.gadgets[0] {
+        EmlGadgetInstanceSpec::WeightedAccumulator {
+            input_cols,
+            weight_cols,
+            output_col,
+            ..
+        } => {
+            assert_eq!(input_cols, &vec![2]);
+            assert_eq!(weight_cols, &vec![13]);
+            assert_eq!(*output_col, Some(14));
+        }
+        other => panic!("expected WeightedAccumulator manufacturing-need, got {other:?}"),
+    }
+    let disruption = economy
+        .weight_profiles
+        .iter()
+        .find(|profile| profile.profile == "disruption-need")
+        .expect("disruption-need profile");
+    match &disruption.stack.gadgets[0] {
+        EmlGadgetInstanceSpec::WeightedAccumulator {
+            input_cols,
+            weight_cols,
+            output_col,
+            ..
+        } => {
+            assert_eq!(input_cols, &vec![3]);
+            assert_eq!(weight_cols, &vec![15]);
+            assert_eq!(*output_col, Some(16));
+        }
+        other => panic!("expected WeightedAccumulator disruption-need, got {other:?}"),
     }
 
     let resource_economy = pack
@@ -126,28 +162,67 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
         resource_economy.opt_in_mode,
         ResourceEconomyOptInMode::TransferAndEmission
     );
-    assert!(
-        resource_economy
-            .recipes
-            .iter()
-            .any(|recipe| recipe.id == "tp_economy_recipe_shipyard_factory")
-    );
+
+    // Silo terran_minerals: one owner-qualified current→stockpile transfer amount 40 + current emission 40.
+    let silo_transfers: Vec<_> = resource_economy
+        .transfers
+        .iter()
+        .filter(|transfer| transfer.id == "tp_economy_silo_transfer_terran_minerals")
+        .collect();
     assert_eq!(
-        resource_economy
-            .recipes
-            .iter()
-            .find(|recipe| recipe.id == "tp_economy_recipe_shipyard_factory")
-            .unwrap()
-            .target
-            .name,
-        "terran_shipyard_hulls_quantity"
+        silo_transfers.len(),
+        1,
+        "exactly one terran_minerals silo transfer must lower"
     );
-    assert!(
-        resource_economy
-            .emit_on_threshold
-            .iter()
-            .any(|entry| entry.source.name == "pirate_outpost_disruption_presence")
+    let silo_transfer = silo_transfers[0];
+    assert_eq!(silo_transfer.source.namespace, "tp_economy");
+    assert_eq!(silo_transfer.source.name, "terran_minerals_current");
+    assert_eq!(silo_transfer.source_role, SubFieldRole::Amount);
+    assert_eq!(silo_transfer.target.namespace, "tp_economy");
+    assert_eq!(silo_transfer.target.name, "terran_minerals_stockpile");
+    assert_eq!(silo_transfer.target_role, SubFieldRole::Amount);
+    assert_eq!(silo_transfer.amount, 40.0);
+    assert_eq!(
+        constant_emission(&pack, "tp_economy_silo_current_terran_minerals"),
+        40.0
     );
+
+    // Recipe: input key/unit cost 5, target hull key, throttle 4.
+    let recipe = resource_economy
+        .recipes
+        .iter()
+        .find(|recipe| recipe.id == "tp_economy_recipe_shipyard_factory")
+        .expect("shipyard recipe");
+    assert_eq!(recipe.inputs.len(), 1);
+    assert_eq!(recipe.inputs[0].property.namespace, "tp_economy");
+    assert_eq!(
+        recipe.inputs[0].property.name,
+        "terran_shipyard_minerals_quantity"
+    );
+    assert_eq!(recipe.inputs[0].role, SubFieldRole::Amount);
+    assert_eq!(recipe.inputs[0].unit_cost, 5.0);
+    assert_eq!(recipe.target.namespace, "tp_economy");
+    assert_eq!(recipe.target.name, "terran_shipyard_hulls_quantity");
+    assert_eq!(recipe.target_role, SubFieldRole::Amount);
+    assert_eq!(recipe.throttle_hint_max_per_tick, 4);
+
+    // Disruption presence emission 8 + threshold record (3, Rising, event 71).
+    assert_eq!(
+        constant_emission(&pack, "tp_economy_presence_emission_pirate_raid_presence"),
+        8.0
+    );
+    let threshold = resource_economy
+        .emit_on_threshold
+        .iter()
+        .find(|entry| entry.id == "tp_economy_presence_threshold_pirate_raid_presence")
+        .expect("disruption threshold");
+    assert_eq!(threshold.source.namespace, "tp_economy");
+    assert_eq!(threshold.source.name, "pirate_outpost_disruption_presence");
+    assert_eq!(threshold.source_role, SubFieldRole::Amount);
+    assert_eq!(threshold.threshold, 3.0);
+    assert_eq!(threshold.direction, TriggerDirection::Rising);
+    assert_eq!(threshold.event_kind, 71);
+
     assert_eq!(
         constant_emission(&pack, "tp_economy_quantity_emission_shipyard_minerals"),
         100.0
@@ -157,6 +232,110 @@ fn canonical_tp_clause_hydrates_field_economy_to_existing_surfaces() {
             .emissions
             .iter()
             .all(|entry| !entry.id.contains("production_yield"))
+    );
+
+    // Five tp_economy_* overlays: quantity@shipyard, presence@outpost, three owner policies.
+    let overlays: Vec<_> = pack
+        .game_mode
+        .overlays
+        .iter()
+        .filter(|overlay| overlay.id.starts_with("tp_economy_"))
+        .collect();
+    assert_eq!(overlays.len(), 5, "expected five tp_economy_* overlays");
+
+    let quantity = overlays
+        .iter()
+        .find(|overlay| overlay.id == "tp_economy_quantity_location_shipyard_minerals")
+        .expect("quantity overlay");
+    assert_eq!(
+        quantity.targets_property,
+        "tp_economy::terran_shipyard_minerals_quantity"
+    );
+    assert_eq!(
+        quantity.sub_field_deltas,
+        vec![(SubFieldRole::Amount, TransformOp::Add(100.0))]
+    );
+    assert_eq!(
+        quantity.install,
+        InstallTargetSpec::ScenarioListed {
+            target_id: "terran_shipyard".into()
+        }
+    );
+
+    let presence = overlays
+        .iter()
+        .find(|overlay| overlay.id == "tp_economy_presence_location_pirate_raid_presence")
+        .expect("presence overlay");
+    assert_eq!(
+        presence.targets_property,
+        "tp_economy::pirate_outpost_disruption_presence"
+    );
+    assert_eq!(
+        presence.sub_field_deltas,
+        vec![(SubFieldRole::Amount, TransformOp::Add(8.0))]
+    );
+    assert_eq!(
+        presence.install,
+        InstallTargetSpec::ScenarioListed {
+            target_id: "pirate_outpost".into()
+        }
+    );
+
+    let terran_expansion = overlays
+        .iter()
+        .find(|overlay| overlay.id == "tp_economy_owner_policy_terran_expansion_policy")
+        .expect("terran expansion policy");
+    assert_eq!(
+        terran_expansion.targets_property,
+        "tp_economy::terran_shipyard_hulls_quantity"
+    );
+    assert_eq!(
+        terran_expansion.sub_field_deltas,
+        vec![(SubFieldRole::Amount, TransformOp::Multiply(1.15))]
+    );
+    assert_eq!(
+        terran_expansion.install,
+        InstallTargetSpec::ScenarioListed {
+            target_id: "terran".into()
+        }
+    );
+
+    let terran_manufacturing = overlays
+        .iter()
+        .find(|overlay| overlay.id == "tp_economy_owner_policy_terran_manufacturing_policy")
+        .expect("terran manufacturing policy");
+    assert_eq!(
+        terran_manufacturing.targets_property,
+        "tp_economy::terran_shipyard_hulls_quantity"
+    );
+    assert_eq!(
+        terran_manufacturing.sub_field_deltas,
+        vec![(SubFieldRole::Amount, TransformOp::Add(0.25))]
+    );
+    assert_eq!(
+        terran_manufacturing.install,
+        InstallTargetSpec::ScenarioListed {
+            target_id: "terran".into()
+        }
+    );
+
+    let pirate_disruption = overlays
+        .iter()
+        .find(|overlay| overlay.id == "tp_economy_owner_policy_pirate_disruption_policy")
+        .expect("pirate disruption policy");
+    assert_eq!(
+        pirate_disruption.targets_property,
+        "tp_economy::pirate_outpost_disruption_presence"
+    );
+    assert_eq!(
+        pirate_disruption.sub_field_deltas,
+        vec![(SubFieldRole::Amount, TransformOp::Multiply(1.35))]
+    );
+    assert_eq!(
+        pirate_disruption.install,
+        InstallTargetSpec::ScenarioListed {
+            target_id: "pirate".into()
+        }
     );
 
     // Fleets and base disc remain production-hydrated siblings of the authored economy.
