@@ -313,7 +313,7 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | none — 12.6 DA-GRADUATED (#1384, 2026-07-16); awaiting Owner direction per HD-STACK-CADENCE-0 (queue: 12.7 WORKSHOP-HOMING-DETECTION-0 → 12.8 TP-CLAUSE-ECONOMY-AUTHOR-0 → 12.9 → 12.10) |
+| Active open rung | `WORKSHOP-HOMING-DETECTION-0` — 12.7 DISPATCHED 2026-07-17 (HD-RECEIPT 7a1e25327ab1, base 997bf066); fully-automated (coder=Codex-CLI gpt-5.5-high, orchestrator-led). Queue after: 12.8 TP-CLAUSE-ECONOMY-AUTHOR-0 → 12.9 → 12.10. |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
