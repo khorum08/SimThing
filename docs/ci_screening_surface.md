@@ -496,11 +496,10 @@ until a material-reduction cadence lands.
 Feature-proofing *scenario* tracks (e.g. 0.0.8.5 Terran-Pirate) are exploratory expeditions that surface
 consumer-driven capability needs. Their candidate code (services/structs/fns/heuristics beyond authored data)
 lives in **`simthing-workshop`** — never in a sealed engine crate. **Containment** (workshop code can't leak
-*up*) is structural: `simthing-workshop` is a **verified leaf** (nothing depends on it), so the seal law makes
-game-semantic candidate code there unable to leak upward by linkage, and workshop is already outside every
-fence-scan target. **Homing** (new scenario code must be *written into* workshop, not into a sealed crate) is
-**not** structural — the arrow does not fence `simthing-clausething`/`spec` — so it is enforced by
-classify-before-merge plus the scan tripwires below. See `design_0_0_8_5…§0A.1` for the binding statement; this
+*up*) is structural: `simthing-workshop` is a **verified leaf** (nothing depends on it), so game-semantic
+candidate code there can't leak up by linkage and is outside every fence-scan target. **Homing** (scenario code
+must be *written into* workshop) is **not** structural — the arrow doesn't fence sealed crates — so it is
+enforced by classify-before-merge plus the tripwires below. Binding statement: `design_0_0_8_5…§0A.1`; this
 section is the operator surface.
 
 - **The exit is re-fenced.** Elevation = moving code `simthing-workshop` → an engine crate. The elevation PR's
@@ -509,27 +508,18 @@ section is the operator surface.
   not climb. The fence isn't removed by living in workshop; it is relocated to workshop's *exit*.
 - **Default-delete at closeout, no registry.** Scenario candidate code is expirable by default — deleted at
   track close via the existing lifecycle expiry sweep (orchestrator closeout duty, §11). Keeping a candidate is
-  an explicit move into standing workshop code; there is **no registry and no lease** (the envelope's
-  default-delete disposition already expresses each asset's value). **Do not add a registry.**
+  an explicit move into standing workshop code; **no registry, no lease** — do not add one.
 - **The Homing Boundary — classify before merge.** The classifier for any engine-crate addition in a scenario
   PR: *"would this code exist if this scenario didn't?"* If **no** → scenario candidate code → `simthing-workshop`.
   If **yes** — a genuinely generic, semantic-free ClauseScript language/lowering surface any scenario would want
   (e.g. extending a generic decoder family with a new generic form) — an engine crate is fine. **Not** allowed
   in a sealed crate: any scenario-specific service/struct/fn/heuristic (HP/Damage resolver, fleet-contact logic,
-  owner-bonus combat helper, zero-HP removal, RF-child-depth workaround, Terran/Pirate/Fleet/Cohort branching).
-  *"Generic lowering, as prior TP rungs did it"* is **not** a licence — prior rungs predate this doctrine.
-- **Substrate widening is DA-authorized only.** Agents may propose/appeal; default is deny → workshop-home.
-  Self-classified "generic widening" in an engine crate is drift. Orchestrator: classify-before-merge;
-  tripwire `SPEC-LOWERER-KIND-READ` (kind-branching); non-kind residue is live review control.
-- **Homing check-in is mandatory and mechanized (not handoff-dependent).** Any PR that alters *any*
-  production crate — every workspace crate except the `simthing-workshop` sandbox — must carry
-  `ANCHOR-ACK: workshop-candidate-homing@<hash>` in its relay; resolve the live hash with
-  `anchor_query.sh` / `anchor_check.sh --resolve scenario-candidate-home`. `relay_lint` hard-fails
-  `missing-anchor-ack` otherwise, and clearance surfaces `REQUIRED-ANCHORS` from the diff itself — so
-  this rule reaches you even when a handoff omits it. The ack is an *attestation* that you classified
-  the change; it is not a substitute for actually homing scenario code to workshop. Scenario-named code
-  or tests that reach a sealed crate regardless hard-FAIL the `WORKSHOP-HOMING-DETECTION-0` scan
-  (game-semantic vocabulary across every production `src/**` **and** `tests/**`) → move them to
-  `simthing-workshop`.
+  owner-bonus combat helper, Terran/Pirate/Fleet/Cohort branching). *"Generic lowering, as prior TP rungs did
+  it"* is **not** a licence — prior rungs predate this doctrine.
+- **Substrate widening is DA-authorized only; homing is check-in enforced.** Widening: propose/appeal, default
+  deny → workshop-home (self-classified "generic widening" is drift; `SPEC-LOWERER-KIND-READ` flags kind-branching).
+  Check-in (handoff-independent): altering *any* production crate (all but `simthing-workshop`) requires
+  `ANCHOR-ACK: workshop-candidate-homing` (`relay_lint` hard-fails `missing-anchor-ack`; clearance surfaces it from
+  the diff) — attestation only; scenario-named code/tests in a sealed crate hard-FAIL `WORKSHOP-HOMING-DETECTION-0`.
 
 > **Deferred:** per-production `testthing/<production>/` — not in force. Do not scaffold.
