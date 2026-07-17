@@ -2093,6 +2093,62 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                         }
                     }
                 });
+
+            // [OVL] STUDIO-FIELD-SESSION-ELEVATE-0 — session path + field accretion samples.
+            ui.separator();
+            ui.heading("Live session path");
+            let bridge = &state.live_bridge_readout;
+            egui::Grid::new("studio_ops_session_path")
+                .num_columns(2)
+                .striped(true)
+                .show(ui, |ui| {
+                    ui.label("session path");
+                    ui.label(bridge.session_path_label);
+                    ui.end_row();
+                    ui.label("path preference");
+                    ui.label(bridge.path_preference_label);
+                    ui.end_row();
+                    ui.label("production path");
+                    ui.label(bridge.production_path);
+                    ui.end_row();
+                    ui.label("executed ticks");
+                    ui.label(format!("{}", bridge.executed_ticks));
+                    ui.end_row();
+                    ui.label("decision events (last / cumulative)");
+                    ui.label(format!(
+                        "{} / {}",
+                        bridge.last_decision_event_count, bridge.cumulative_decision_events
+                    ));
+                    ui.end_row();
+                });
+
+            ui.separator();
+            ui.heading("Field accretion samples");
+            if bridge.field_accretion_samples.is_empty() {
+                ui.label(
+                    egui::RichText::new("(no field-bearing samples yet)")
+                        .small()
+                        .weak(),
+                );
+            } else {
+                egui::Grid::new("studio_ops_field_accretion")
+                    .num_columns(4)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("tick");
+                        ui.label("property");
+                        ui.label("amount");
+                        ui.label("decisions");
+                        ui.end_row();
+                        for sample in &bridge.field_accretion_samples {
+                            ui.label(format!("{}", sample.tick_index));
+                            ui.label(&sample.property_key);
+                            ui.label(format!("{:.3}", sample.amount));
+                            ui.label(format!("{}", sample.decision_events));
+                            ui.end_row();
+                        }
+                    });
+            }
         });
     state.scenario_library.studio_ops_telemetry_visible = visible;
 }

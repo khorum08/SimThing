@@ -25,6 +25,7 @@ use crate::studio_scenario_document::{
     build_studio_scenario_document_with_admission, StudioScenarioDocument,
     StudioScenarioDocumentError,
 };
+use crate::studio_live_session_bridge::StudioAuthoredLiveProfile;
 use crate::view_model::StudioGalaxyViewModel;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -92,6 +93,9 @@ pub struct StudioSession {
     pub view_model: StudioGalaxyViewModel,
     pub report_path: Option<PathBuf>,
     pub scenario_path: Option<PathBuf>,
+    /// Optional authored live profile from clause hydrate (`open_from_spec` feedstock).
+    /// Presentation Spec remains sole authority for map/UI; this profile is never mutated by Bevy.
+    pub authored_live_profile: Option<StudioAuthoredLiveProfile>,
 }
 
 impl StudioSession {
@@ -157,6 +161,7 @@ impl StudioSession {
             view_model,
             report_path: None,
             scenario_path: None,
+            authored_live_profile: None,
         })
     }
 
@@ -198,7 +203,18 @@ impl StudioSession {
             view_model,
             report_path: None,
             scenario_path: Some(scenario_path),
+            authored_live_profile: None,
         })
+    }
+
+    /// Attach an authored live profile (clause hydrate residue elevation). Spec unchanged.
+    pub fn with_authored_live_profile(mut self, profile: StudioAuthoredLiveProfile) -> Self {
+        self.authored_live_profile = Some(profile);
+        self
+    }
+
+    pub fn set_authored_live_profile(&mut self, profile: Option<StudioAuthoredLiveProfile>) {
+        self.authored_live_profile = profile;
     }
 
     pub fn profile(&self) -> GenerationProfile {
