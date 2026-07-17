@@ -576,17 +576,33 @@ def board_json(path_arg=None):
             "hd_receipt": hd_receipt(obj),
             "expected_route": fm["expected_route"],
         }
-    return {
-        "track": active_track_id(),
-        "active_pointer": active_pointer(),
-        "master_head": master_head(),
+    # Per-field resilience: this is a status MIRROR, so one field's source hiccuping in an
+    # odd environment (a git/fs/parse quirk that only bites in the CI runner) must NOT blank
+    # the whole board — the useful fields must still render, and the board must name which
+    # field degraded so the failure is diagnosable from the board itself.
+    degraded = []
+
+    def _safe(name, fn, default):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001 — status board degrades, never crashes
+            degraded.append(f"{name}:{type(exc).__name__}")
+            return default
+
+    data = {
+        "track": _safe("track", active_track_id, ""),
+        "active_pointer": _safe("active_pointer", active_pointer, ""),
+        "master_head": _safe("master_head", master_head, ""),
         "current_handoff": handoff,
-        "open_prs": open_prs(),
-        "binding_conditions": active_bindings(),
-        "owner_directives": owner_directives(),
-        "leases": lease_summary(),
-        "ladder": ladder_states(),
+        "open_prs": _safe("open_prs", open_prs, []),
+        "binding_conditions": _safe("binding_conditions", active_bindings, []),
+        "owner_directives": _safe("owner_directives", owner_directives, []),
+        "leases": _safe("leases", lease_summary, {}),
+        "ladder": _safe("ladder", ladder_states, []),
     }
+    if degraded:
+        data["_degraded"] = degraded
+    return data
 
 
 def command_lint(path):
@@ -654,6 +670,10 @@ def clip(value, limit=160):
 
 def render_board_markdown(data):
     lines = ["<!-- simthing-board -->", "## SimThing Board", ""]
+    degraded = data.get("_degraded") or []
+    if degraded:
+        lines.append(f"> :warning: degraded fields (source error this run): `{', '.join(degraded)}`")
+        lines.append("")
     lines.append(f"- track: `{data.get('track', '')}`")
     lines.append(f"- active_pointer: `{data.get('active_pointer', '')}`")
     lines.append(f"- master_head: `{str(data.get('master_head', ''))[:12]}`")
