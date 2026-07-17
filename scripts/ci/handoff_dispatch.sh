@@ -874,10 +874,12 @@ def command_current_handoff():
     try:
         print(repo_rel(current_handoff_path()))
     except HDError as exc:
-        if exc.detail == "current-handoff-missing":
-            # Pointer rung not yet dispatched: lawful between dispatches.
-            # Empty output, success — read paths are graceful; mutation
-            # paths still hard-fail upstream on a missing object.
+        if exc.detail in ("current-handoff-missing", "active-pointer-invalid", "active-pointer-missing"):
+            # No resolvable current handoff — pointer is `none` (awaiting Owner), not yet
+            # dispatched, or absent: all lawful between dispatches. Read path is graceful
+            # (empty output, success) so callers capturing stdout never ingest a verdict
+            # string as a handoff path; mutation paths still hard-fail upstream on an
+            # unresolvable pointer.
             return 0
         return fail(exc.detail)
     return 0
@@ -1082,6 +1084,14 @@ stop_conditions: ["scope-widening"]
 
         none_status = run_cmd([bash_cmd, script_arg, "--owner-status", ""], env={**none_env, "HD_OPEN_PRS_JSON": "[]"})
         check("owner-status-none-renders-board", none_status.returncode == 0 and "SimThing Board" in none_status.stdout)
+
+        # Literal `none` pointer (awaiting-Owner state): must be graceful, NOT a verdict on
+        # stdout — else the push-sync captures "HD-LINT-VERDICT: FAIL(...)" as a handoff path
+        # and crashes the whole board build (the real #1332 freeze cause).
+        none_literal_orientation = Path(tmp) / "orientation-none.md"
+        write(none_literal_orientation, "Active pointer: " + chr(96) + "none" + chr(96) + chr(10))
+        none_literal = run_cmd([bash_cmd, script_arg, "--current-handoff"], env={"HD_ORIENTATION_PATH": str(none_literal_orientation)})
+        check("current-handoff-literal-none-graceful", none_literal.returncode == 0 and none_literal.stdout.strip() == "")
 
         # HC-8 / clearance.yml push-to-master board-sync resolution branch (mirrored shell logic):
         # pre-fix: handoff stays empty on push → --board-json with no arg → current_handoff none
