@@ -432,3 +432,33 @@ fn field_bearing_ticks_do_not_mutate_scenario_spec() {
     let mutated = serialize_scenario_authority(&studio.scenario_authority).expect("ser");
     assert_ne!(before, mutated);
 }
+
+/// catches: Studio_ops telemetry sampler still hard-codes slot 0 / wrong locus (OVL hollow table).
+#[test]
+fn field_bearing_readout_samples_show_live_accretion_delta() {
+    let studio = field_bearing_studio_session();
+    let mut bridge = StudioLiveSessionBridge::new();
+    bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
+    open_fail_closed(&mut bridge, &studio).expect("open");
+    bridge.consume_scheduled_ticks(4).expect("ticks");
+    let samples = bridge.readout().field_accretion_samples;
+    let series: Vec<(u64, f32)> = samples
+        .iter()
+        .filter(|s| s.property_key.contains("basin_smoke_presence"))
+        .map(|s| (s.tick_index, s.amount))
+        .collect();
+    assert!(
+        series.len() >= 2,
+        "readout must retain ≥2 tick samples for disruption property; got {series:?}"
+    );
+    let amounts: Vec<f32> = series.iter().map(|(_, a)| *a).collect();
+    let changed = amounts
+        .windows(2)
+        .any(|w| (w[0] - w[1]).abs() > 1e-4)
+        || (amounts.first().copied().unwrap_or(0.0) - amounts.last().copied().unwrap_or(0.0)).abs()
+            > 1e-4;
+    assert!(
+        changed,
+        "Studio_ops field_accretion_samples must show a real value delta across ticks (sampler slot/col bug if static): {series:?}"
+    );
+}

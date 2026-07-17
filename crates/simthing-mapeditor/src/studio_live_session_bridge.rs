@@ -266,8 +266,16 @@ pub struct StudioLiveSessionBridge {
     field_accretion_samples: Vec<StudioFieldAccretionSample>,
     last_decision_event_count: u32,
     cumulative_decision_events: u64,
-    /// Emission source keys sampled after each tick (field-bearing only).
-    sample_keys: Vec<(String, String)>,
+    /// Resolved emission loci (slot/col) sampled after each tick (field-bearing only).
+    sample_loci: Vec<FieldAccretionSampleLocus>,
+}
+
+/// Exact GPU locus for one economy emission sample (authoritative materialization).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FieldAccretionSampleLocus {
+    property_key: String,
+    source_slot: u32,
+    source_col: u32,
 }
 
 impl Default for StudioLiveSessionBridge {
@@ -296,7 +304,7 @@ impl StudioLiveSessionBridge {
             field_accretion_samples: Vec::new(),
             last_decision_event_count: 0,
             cumulative_decision_events: 0,
-            sample_keys: Vec::new(),
+            sample_loci: Vec::new(),
         }
     }
 
@@ -352,7 +360,7 @@ impl StudioLiveSessionBridge {
         self.field_accretion_samples.clear();
         self.last_decision_event_count = 0;
         self.cumulative_decision_events = 0;
-        self.sample_keys.clear();
+        self.sample_loci.clear();
     }
 
     /// Resolve which path to open given preference + optional authored profile.
@@ -393,7 +401,7 @@ impl StudioLiveSessionBridge {
         self.field_accretion_samples.clear();
         self.last_decision_event_count = 0;
         self.cumulative_decision_events = 0;
-        self.sample_keys.clear();
+        self.sample_loci.clear();
 
         let path = Self::resolve_session_path(
             self.path_preference,
@@ -429,7 +437,12 @@ impl StudioLiveSessionBridge {
                         }
                         // Authored Constant seeds are initial state only — not a time-zero
                         // decision. Decision counts accumulate from live step_once only.
-                        self.sample_keys = emission_sample_keys(&field_mode);
+                        // Bind telemetry to materialized emission source_slot/source_col.
+                        self.sample_loci = emission_sample_loci_from_session(&sim);
+                        // Tick-0 sample: open-time field state before the first step_once so
+                        // the OVL table can show open→live deltas (not only post-tick plateaus).
+                        self.field_accretion_samples =
+                            collect_field_accretion_sample(&sim, &self.sample_loci, 0);
                         Ok(sim)
                     }
                     Err(e) => Err(e),
@@ -504,7 +517,7 @@ impl StudioLiveSessionBridge {
         }
 
         let field_bearing = self.session_path == StudioLiveSessionPath::FieldBearing;
-        let sample_keys = self.sample_keys.clone();
+        let sample_loci = self.sample_loci.clone();
         let mut ran = 0u64;
         for _ in 0..scheduled {
             let step_result = self
@@ -530,7 +543,7 @@ impl StudioLiveSessionBridge {
                     if field_bearing {
                         let mut sample = {
                             let sim = self.sim.as_ref().expect("sim present");
-                            collect_field_accretion_sample(sim, &sample_keys, self.executed_ticks)
+                            collect_field_accretion_sample(sim, &sample_loci, self.executed_ticks)
                         };
                         if let Some(first) = sample.first_mut() {
                             first.decision_events = threshold_event_count;
@@ -852,59 +865,58 @@ fn materialize_authored_constant_emission_seeds(session: &mut SimSession) -> Res
     Ok(())
 }
 
-fn emission_sample_keys(game_mode: &GameModeSpec) -> Vec<(String, String)> {
-    let Some(economy) = game_mode.resource_economy.as_ref() else {
+/// Build telemetry loci from **materialized** emission registrations (slot/col authority).
+fn emission_sample_loci_from_session(sim: &SimSession) -> Vec<FieldAccretionSampleLocus> {
+    let Some(registry) = sim.spec_state.resource_economy_registry.as_ref() else {
         return Vec::new();
     };
-    let mut keys = Vec::new();
-    for emission in &economy.emissions {
-        keys.push((emission.source.namespace.clone(), emission.source.name.clone()));
+    let reg = &sim.proto.registry;
+    let mut out = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    for emission in &registry.registrations.emissions {
+        let key = (emission.source_slot, emission.source_col);
+        if !seen.insert(key) {
+            continue;
+        }
+        let property_key = property_key_for_col(reg, emission.source_col)
+            .unwrap_or_else(|| format!("col:{}", emission.source_col));
+        out.push(FieldAccretionSampleLocus {
+            property_key,
+            source_slot: emission.source_slot,
+            source_col: emission.source_col,
+        });
     }
-    keys.sort();
-    keys.dedup();
-    keys
+    out
+}
+
+fn property_key_for_col(reg: &DimensionRegistry, col: u32) -> Option<String> {
+    let (pid, _) = reg.column_owners.get(col as usize).copied()?;
+    let prop = reg.try_property(pid)?;
+    Some(format!("{}::{}", prop.namespace, prop.name))
 }
 
 fn collect_field_accretion_sample(
     sim: &SimSession,
-    sample_keys: &[(String, String)],
+    sample_loci: &[FieldAccretionSampleLocus],
     tick_index: u64,
 ) -> Vec<StudioFieldAccretionSample> {
     let values = sim.state.read_values();
     let n_dims = sim.state.n_dims as usize;
     let mut samples = Vec::new();
-    for (namespace, name) in sample_keys {
-        if let Some(amount) = read_amount_column(sim, namespace, name, &values, n_dims) {
-            samples.push(StudioFieldAccretionSample {
-                tick_index,
-                property_key: format!("{namespace}::{name}"),
-                amount,
-                // Filled by the caller from StepOnceOutcome.threshold_event_count.
-                decision_events: 0,
-            });
-        }
+    for locus in sample_loci {
+        let idx = locus.source_slot as usize * n_dims + locus.source_col as usize;
+        let Some(&amount) = values.get(idx) else {
+            continue;
+        };
+        samples.push(StudioFieldAccretionSample {
+            tick_index,
+            property_key: locus.property_key.clone(),
+            amount,
+            // Filled by the caller from last-tick sealed threshold count.
+            decision_events: 0,
+        });
     }
     samples
-}
-
-fn read_amount_column(
-    sim: &SimSession,
-    namespace: &str,
-    name: &str,
-    values: &[f32],
-    n_dims: usize,
-) -> Option<f32> {
-    let reg = &sim.proto.registry;
-    let pid = reg.id_of(namespace, name)?;
-    let layout = &reg.property(pid).layout;
-    let col = reg
-        .column_range(pid)
-        .col_for_role(&SubFieldRole::Amount, layout)?
-        .raw_u32() as usize;
-    // Prefer root slot 0 for economy properties installed on session root.
-    let slot = 0usize;
-    let idx = slot * n_dims + col;
-    values.get(idx).copied()
 }
 
 fn strip_property_maps(node: &mut simthing_core::SimThing) {
