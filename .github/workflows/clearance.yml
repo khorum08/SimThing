@@ -214,7 +214,15 @@ jobs:
               || echo "::warning::SimThing Board update failed after retries (transient GitHub write-path); self-heals next run"
           fi
 
-          exit "$sync_rc"
+          # This entire step is COSMETIC — the handoff-ingress sticky + the SimThing Board
+          # mirror. The load-bearing clearance gate is the verdict step (and doctrine-scan /
+          # relay-lint run as their own checks). A cosmetic ingress-resolution / sticky-render /
+          # board-sync hiccup must NOT red the clearance check (it was falsely blocking merges
+          # while the verdict was green). Surface it as a warning; never fail the gate here.
+          if [ "$sync_rc" -ne 0 ]; then
+            echo "::warning::handoff-ingress/board-sync had a non-fatal issue (rc=${sync_rc}); the clearance verdict is the gate, not this cosmetic step"
+          fi
+          exit 0
 
       - name: Upload clearance report
         if: always()
