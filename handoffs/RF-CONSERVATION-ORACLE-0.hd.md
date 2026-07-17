@@ -70,6 +70,7 @@ stop_conditions: ["stale-orient-receipt", "scope-widening-into-execution-flip", 
 - HD-RECEIPT: 9772abd8fcac
 - ORIENT-RECEIPT: 46d89a04fc85
 - WORKSHOP-HOMING-DETECTION: PASS 0.
+- Relay transport: the PR body mirrors the canonical relay headings consumed by `/relay-lint`.
 
 ## Known gaps
 
