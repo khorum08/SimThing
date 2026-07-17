@@ -422,11 +422,20 @@ impl StudioLiveSessionBridge {
                 let field_mode = field_bearing_game_mode(&profile.game_mode);
                 match SimSession::open_from_spec(scenario, &field_mode) {
                     Ok(mut sim) => {
-                        if let Err(e) = ensure_resource_economy_threshold_ops(&mut sim) {
-                            return Err(StudioLiveSessionBridgeError::FieldBearingOpenFailed(
-                                e,
-                            ));
-                        }
+                        let open_edge_events = match ensure_resource_economy_threshold_ops(&mut sim)
+                        {
+                            Ok(n) => n,
+                            Err(e) => {
+                                return Err(StudioLiveSessionBridgeError::FieldBearingOpenFailed(
+                                    e,
+                                ));
+                            }
+                        };
+                        // Open-edge Rising crossings (Constant seed vs previous=0) count as
+                        // sealed decision events observed at field-bearing open — before the
+                        // first step_once snapshot would erase the edge.
+                        self.cumulative_decision_events = open_edge_events as u64;
+                        self.last_decision_event_count = open_edge_events;
                         self.sample_keys = emission_sample_keys(&field_mode);
                         Ok(sim)
                     }
@@ -511,23 +520,35 @@ impl StudioLiveSessionBridge {
                 .expect("sim present")
                 .step_once();
             match step_result {
-                Ok(StepOnceOutcome { ticks_run, .. }) => {
+                Ok(StepOnceOutcome {
+                    ticks_run,
+                    threshold_event_count,
+                    ..
+                }) => {
                     let step_ticks = ticks_run.max(1);
                     ran = ran.saturating_add(step_ticks);
                     self.executed_ticks = self.executed_ticks.saturating_add(step_ticks);
+                    // Decision events come from the sealed AccumulatorOp threshold
+                    // path on step_once (not legacy Pass-7 read_event_count).
+                    self.last_decision_event_count = threshold_event_count;
+                    self.cumulative_decision_events = self
+                        .cumulative_decision_events
+                        .saturating_add(threshold_event_count as u64);
                     if field_bearing {
-                        let sample = {
+                        let mut sample = {
                             let sim = self.sim.as_ref().expect("sim present");
                             collect_field_accretion_sample(sim, &sample_keys, self.executed_ticks)
                         };
-                        self.last_decision_event_count = sample
-                            .iter()
-                            .map(|s| s.decision_events)
-                            .max()
-                            .unwrap_or(0);
-                        self.cumulative_decision_events = self
-                            .cumulative_decision_events
-                            .saturating_add(self.last_decision_event_count as u64);
+                        if let Some(first) = sample.first_mut() {
+                            first.decision_events = threshold_event_count;
+                        } else if threshold_event_count > 0 {
+                            sample.push(StudioFieldAccretionSample {
+                                tick_index: self.executed_ticks,
+                                property_key: "decision".into(),
+                                amount: 0.0,
+                                decision_events: threshold_event_count,
+                            });
+                        }
                         self.field_accretion_samples.extend(sample);
                         const MAX_SAMPLES: usize = 16;
                         if self.field_accretion_samples.len() > MAX_SAMPLES {
@@ -737,16 +758,20 @@ pub fn driver_scenario_field_bearing_from_profile(
 /// Open-time wiring for field-bearing sessions:
 /// 1. Seed property columns from authored Constant emission formulas (profile materialization)
 /// 2. Upload authored `emit_on_threshold` registrations through the generic GPU threshold bridge
+/// 3. Dispatch one open-edge threshold scan (no tick snapshot) so Rising gates observe
+///    `previous=0 → values=seed` before the first `step_once` snapshot erases the edge
 ///
 /// Not per-tick economy logic — install/profile residue elevation only. Without Constant seeds,
 /// RF transfers/thresholds have vacant columns even though the authored emitters lowered.
-fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<(), String> {
+///
+/// Returns sealed open-edge decision event count (for [OVL] / proof readout).
+fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<u32, String> {
     materialize_authored_constant_emission_seeds(session)?;
     let Some(registry) = session.spec_state.resource_economy_registry.as_ref() else {
-        return Ok(());
+        return Ok(0);
     };
     if registry.registrations.emit_on_threshold.is_empty() {
-        return Ok(());
+        return Ok(0);
     }
     let gpu_regs =
         emit_on_threshold_registrations_to_gpu(&registry.registrations.emit_on_threshold);
@@ -757,7 +782,10 @@ fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<(),
         .state
         .upload_accumulator_threshold_ops(&gpu_regs)
         .map_err(|e| format!("upload emit_on_threshold: {e}"))?;
-    Ok(())
+    session
+        .state
+        .dispatch_accumulator_threshold_scan_open_edge_count()
+        .map_err(|e| format!("open-edge threshold scan: {e}"))
 }
 
 fn materialize_authored_constant_emission_seeds(session: &mut SimSession) -> Result<(), String> {
@@ -818,7 +846,6 @@ fn collect_field_accretion_sample(
 ) -> Vec<StudioFieldAccretionSample> {
     let values = sim.state.read_values();
     let n_dims = sim.state.n_dims as usize;
-    let decision_events = read_decision_event_count(sim);
     let mut samples = Vec::new();
     for (namespace, name) in sample_keys {
         if let Some(amount) = read_amount_column(sim, namespace, name, &values, n_dims) {
@@ -826,19 +853,10 @@ fn collect_field_accretion_sample(
                 tick_index,
                 property_key: format!("{namespace}::{name}"),
                 amount,
+                // Filled by the caller from StepOnceOutcome.threshold_event_count.
                 decision_events: 0,
             });
         }
-    }
-    if let Some(first) = samples.first_mut() {
-        first.decision_events = decision_events;
-    } else if decision_events > 0 {
-        samples.push(StudioFieldAccretionSample {
-            tick_index,
-            property_key: "decision".into(),
-            amount: 0.0,
-            decision_events,
-        });
     }
     samples
 }
@@ -861,16 +879,6 @@ fn read_amount_column(
     let slot = 0usize;
     let idx = slot * n_dims + col;
     values.get(idx).copied()
-}
-
-fn read_decision_event_count(sim: &SimSession) -> u32 {
-    // Pass-7 candidates from the most recent tick (fail-soft when absent).
-    let count = sim.state.read_event_count();
-    if count == 0 {
-        return 0;
-    }
-    let events = sim.state.read_event_candidates(count);
-    events.len() as u32
 }
 
 fn strip_property_maps(node: &mut simthing_core::SimThing) {

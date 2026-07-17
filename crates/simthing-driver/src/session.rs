@@ -55,6 +55,10 @@ pub struct StepOnceOutcome {
     pub boundaries_run: u64,
     /// Whether a day boundary was reached on this hot cycle.
     pub boundary_reached: bool,
+    /// Sealed AccumulatorOp threshold/decision events observed on this hot cycle.
+    pub threshold_event_count: u32,
+    /// First event_kind when `threshold_event_count > 0` (presentation/proof only).
+    pub first_threshold_event_kind: Option<u32>,
 }
 
 pub struct RunSummary {
@@ -704,11 +708,14 @@ impl SimSession {
     /// as [`Self::run`]; does not invent a parallel tick path.
     pub fn step_once(&mut self) -> Result<StepOnceOutcome, SessionError> {
         let mut summary = RunSummary::new();
-        let boundary = self.step_once_into_summary(&mut summary)?;
+        let (boundary, threshold_event_count, first_threshold_event_kind) =
+            self.step_once_into_summary(&mut summary)?;
         Ok(StepOnceOutcome {
             ticks_run: summary.ticks_run,
             boundaries_run: summary.boundaries_run,
             boundary_reached: boundary,
+            threshold_event_count,
+            first_threshold_event_kind,
         })
     }
 
@@ -725,10 +732,12 @@ impl SimSession {
     }
 
     /// Shared hot-cycle + optional boundary body for [`Self::run`] / [`Self::step_once`].
+    ///
+    /// Returns `(boundary_reached, threshold_event_count, first_threshold_event_kind)`.
     fn step_once_into_summary(
         &mut self,
         summary: &mut RunSummary,
-    ) -> Result<bool, SessionError> {
+    ) -> Result<(bool, u32, Option<u32>), SessionError> {
         let cycle = self.run_hot_cycle()?;
         summary.submit_tick_patches_ms += cycle.pre_tick_enqueue_ms;
         accumulate_tick_outcome(summary, &cycle.hot, cycle.hot_step_ms);
@@ -741,8 +750,10 @@ impl SimSession {
         }
 
         let tick = cycle.hot.tick;
+        let threshold_event_count = tick.events.len() as u32;
+        let first_threshold_event_kind = tick.events.first().map(|e| e.event_kind());
         if !tick.boundary_reached {
-            return Ok(false);
+            return Ok((false, threshold_event_count, first_threshold_event_kind));
         }
 
         let day = tick.day_index;
@@ -757,7 +768,7 @@ impl SimSession {
         {
             summary.boundaries_skipped += 1;
             summary.boundaries_run += 1;
-            return Ok(true);
+            return Ok((true, threshold_event_count, first_threshold_event_kind));
         }
         summary.boundary_readback_bytes += self.state.values_len() as u64 * 4;
         let boundary_started = Instant::now();
@@ -790,7 +801,7 @@ impl SimSession {
         self.react_to_fission_clones(&outcome);
         self.react_to_fission_resource_flow_enrollment(&outcome)?;
         self.sync_resource_economy_if_enabled()?;
-        Ok(true)
+        Ok((true, threshold_event_count, first_threshold_event_kind))
     }
 
     /// Run a session and write LDJSON replay (snapshot + one frame per boundary).
