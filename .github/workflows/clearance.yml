@@ -155,11 +155,11 @@ jobs:
           gh_retry() { local a rc; for a in 1 2 3; do "$@" && return 0; rc=$?; [ "$a" -lt 3 ] && sleep $((a * 2)); done; return "$rc"; }
 
           if [ -n "$handoff" ]; then
-            bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json 2>/dev/null \
-              || { echo '{"error":"board-json"}' > simthing-board.json; mark_stale "board-json build"; }
+            bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json 2>board-json.err \
+              || { echo '{"error":"board-json"}' > simthing-board.json; mark_stale "board-json build [$(tail -n1 board-json.err 2>/dev/null | tr -d '\r' | cut -c1-160)]"; }
           else
-            bash scripts/ci/handoff_dispatch.sh --board-json > simthing-board.json 2>/dev/null \
-              || { echo '{"error":"board-json"}' > simthing-board.json; mark_stale "board-json build"; }
+            bash scripts/ci/handoff_dispatch.sh --board-json > simthing-board.json 2>board-json.err \
+              || { echo '{"error":"board-json"}' > simthing-board.json; mark_stale "board-json build [$(tail -n1 board-json.err 2>/dev/null | tr -d '\r' | cut -c1-160)]"; }
           fi
           board_render_ok=1
           if ! bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md 2>/dev/null; then

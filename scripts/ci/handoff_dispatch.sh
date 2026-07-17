@@ -659,6 +659,12 @@ def command_board(path=None):
     except HDError as exc:
         print(json.dumps({"error": exc.detail}, sort_keys=True))
         return 1
+    except Exception as exc:  # never emit a raw traceback; make the cause diagnosable
+        import traceback
+        sys.stderr.write(traceback.format_exc())
+        print(json.dumps({"error": "board-json-exception",
+                          "detail": f"{type(exc).__name__}: {exc}"}, sort_keys=True))
+        return 1
     print(json.dumps(data, sort_keys=True, separators=(",", ":")))
     return 0
 
