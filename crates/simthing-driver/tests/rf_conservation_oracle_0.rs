@@ -208,12 +208,19 @@ fn cell(values: &[f32], slot: SlotIndex, col: u32, n_dims: u32) -> f32 {
     values[idx(slot, col, n_dims)]
 }
 
-/// Oracle agrees with admitted flat-opt-in RF (ct_2a posture): zero false positives.
-#[test]
-fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
-    let guard = gpu_gate_fail_closed();
+#[derive(Debug)]
+struct LiveFlatStarObservation {
+    root: SlotIndex,
+    leaves: Vec<SlotIndex>,
+    root_intrinsic: f32,
+    leaf_alloc: Vec<f32>,
+    measured_root_balance_rate: f32,
+    measured_root_balance_delta: f32,
+    measured_leaf_balance_deltas: Vec<Option<f32>>,
+}
 
-    let scenario = flat_star_scenario(3);
+fn execute_live_flat_star(connect_root_balance: bool) -> LiveFlatStarObservation {
+    let scenario = flat_star_scenario(8);
     let mut game_mode = flat_star_game_mode();
     fill_explicit_participants(&mut game_mode, &scenario);
     // Mirror ct_2a: scenario registry carries columns; game-mode properties cleared
@@ -275,10 +282,10 @@ fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
         .iter()
         .map(|n| n.participant_slot)
         .collect();
-    assert_eq!(leaves.len(), 2, "flat-star D=2 expects two leaves");
+    assert_eq!(leaves.len(), 7, "flat-star D=2 expects seven leaves");
 
     let root_intrinsic = 10.0_f32;
-    let leaf_weights = [1.0_f32, 3.0];
+    let leaf_weights = [1.0_f32; 7];
     let mut inputs = HashMap::from([
         ((root, cols.intrinsic_flow_col), root_intrinsic),
         // The live residual path begins with the measured allocator budget and
@@ -303,43 +310,73 @@ fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
 
     let mut oracle_cells = inputs.clone();
     let trace = run_arena_allocation_oracle(&layout, &mut oracle_cells, 1.0);
-    assert_eq!(trace.disbursements.len(), 2, "two leaf disbursements");
+    assert_eq!(trace.disbursements.len(), 7, "seven leaf disbursements");
 
-    // Execute the admitted flat RF plan (current path — not recursive). The
-    // fixture composes one existing Sum/AddToTarget op that measures
-    // `budget - Σ executed disbursements` into balance_rate, then moves the
-    // ordinary governed_by integration one band later. No new primitive and no
-    // recursive source-under-test is involved.
+    // Execute the admitted flat RF plan (current path — not recursive). Seven
+    // existing scaled SlotValue/AddToTarget ops subtract the seven executed
+    // child disbursements from the seeded budget on distinct bands. The
+    // ordinary governed_by integration is dispatched once, after those
+    // subtractions. The negative fixture omits only that final root dispatch;
+    // allocation, weights, topology, and balance-rate arithmetic are identical.
     let mut plan = plan_arena_allocation(
         &layout,
         &build_governed_pairs(&session.proto.registry),
         session.state.n_slots,
     )
     .expect("flat allocation plan");
-    for op in &mut plan.cpu_ops {
-        if op.gate == GateSpec::OrderBand(plan.integration_band) {
-            op.gate = GateSpec::OrderBand(plan.integration_band + 1);
+    let root_balance_target = (root, ColumnIndex::new(balance_col as usize));
+    let root_balance_rate_target = (root, ColumnIndex::new(balance_rate_col as usize));
+    let mut root_governed_op = None;
+    for op in &plan.cpu_ops {
+        if matches!(&op.combine, CombineFn::IntegrateWithClamp { .. })
+            && op.targets.contains(&root_balance_target)
+        {
+            assert_eq!(
+                op.source,
+                SourceSpec::SlotValue {
+                    slot: root,
+                    col: root_balance_rate_target.1,
+                }
+            );
+            let mut governed = op.clone();
+            governed.targets.push(root_balance_rate_target);
+            governed.gate = GateSpec::OrderBand(0);
+            assert!(root_governed_op.replace(governed).is_none());
         }
     }
-    plan.cpu_ops.push(AccumulatorOp {
-        source: SourceSpec::SlotRange {
-            start: leaves[0],
-            count: leaves.len() as u32,
-            col: ColumnIndex::new(cols.allocated_flow_col as usize),
-        },
-        combine: CombineFn::Sum,
-        gate: GateSpec::OrderBand(plan.integration_band),
-        scale: ScaleSpec::Constant(-1.0),
-        consume: ConsumeMode::AddToTarget,
-        targets: vec![(root, ColumnIndex::new(balance_rate_col as usize))],
-    });
+    let root_governed_op =
+        root_governed_op.expect("fixture must expose exactly one root governed Balance pair");
+    plan.cpu_ops
+        .retain(|op| !matches!(&op.combine, CombineFn::IntegrateWithClamp { .. }));
+    let residual_band_start = plan.integration_band;
+    for (offset, &leaf) in leaves.iter().enumerate() {
+        plan.cpu_ops.push(AccumulatorOp {
+            source: SourceSpec::SlotValue {
+                slot: leaf,
+                col: ColumnIndex::new(cols.allocated_flow_col as usize),
+            },
+            combine: CombineFn::Identity,
+            gate: GateSpec::OrderBand(residual_band_start + offset as u32),
+            scale: ScaleSpec::Constant(-1.0),
+            consume: ConsumeMode::AddToTarget,
+            targets: vec![(root, ColumnIndex::new(balance_rate_col as usize))],
+        });
+    }
+    let n_bands = plan.n_bands.max(residual_band_start + leaves.len() as u32);
     let mut eml = EmlExpressionRegistry::new();
     register_child_share_formula(&mut eml, cols).expect("child-share EML");
     session
         .state
-        .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, plan.n_bands + 1, &eml)
-        .expect("flat RF + measured Balance upload");
-    session.state.run_resource_flow_bands(plan.n_bands + 1, 1.0);
+        .sync_resource_flow_ops_from_cpu(&plan.cpu_ops, n_bands, &eml)
+        .expect("flat RF + residual arithmetic upload");
+    session.state.run_resource_flow_bands(n_bands, 1.0);
+    if connect_root_balance {
+        session
+            .state
+            .sync_resource_flow_ops_from_cpu(&[root_governed_op], 1, &eml)
+            .expect("root governed Balance upload");
+        session.state.run_resource_flow_bands(1, 1.0);
+    }
     let gpu_out = session.state.read_values();
 
     // GPU leaf allocated must match CPU allocation oracle (admitted RF).
@@ -356,46 +393,91 @@ fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
         );
     }
 
-    // Conservation oracle over the admitted allocation — must PASS (no false positive).
     let leaf_alloc: Vec<f32> = leaves
         .iter()
         .map(|&leaf| cell(&gpu_out, leaf, cols.allocated_flow_col, n_dims))
         .collect();
-    let sum_alloc: f32 = leaf_alloc.iter().sum();
     let measured_root_balance_delta =
         cell(&gpu_out, root, balance_col, n_dims) - root_balance_before;
+    let measured_root_balance_rate = cell(&gpu_out, root, balance_rate_col, n_dims);
     let measured_leaf_balance_deltas: Vec<Option<f32>> = leaves
         .iter()
         .zip(leaf_balance_before.iter())
         .map(|(&leaf, &before)| Some(cell(&gpu_out, leaf, balance_col, n_dims) - before))
         .collect();
-    let reported_root_balance_delta = if std::env::var_os("SIMTHING_RF_BALANCE_DRIFT").is_some() {
-        measured_root_balance_delta + 1.0
-    } else {
-        measured_root_balance_delta
-    };
-    eprintln!(
-        "RF-MEASURED-BALANCE: budget={root_intrinsic} sum_disbursed={sum_alloc} root_delta={measured_root_balance_delta} leaf_deltas={measured_leaf_balance_deltas:?}"
-    );
-    let alloc_obs = allocator_from_disbursements(
+    drop(session);
+
+    LiveFlatStarObservation {
+        root,
+        leaves,
         root_intrinsic,
-        leaf_alloc.clone(),
+        leaf_alloc,
+        measured_root_balance_rate,
+        measured_root_balance_delta,
+        measured_leaf_balance_deltas,
+    }
+}
+
+/// Oracle agrees with admitted flat-opt-in RF (ct_2a posture): zero false positives.
+#[test]
+fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
+    let guard = gpu_gate_fail_closed();
+
+    let connected = execute_live_flat_star(true);
+    let sum_alloc: f32 = connected.leaf_alloc.iter().sum();
+    let arithmetic_residual = connected.root_intrinsic - sum_alloc;
+    let bound =
+        simthing_driver::allocator_eps_bound(connected.leaf_alloc.len(), connected.root_intrinsic);
+    eprintln!(
+        "RF-MEASURED-BALANCE: budget={} sum_disbursed={sum_alloc} residual={arithmetic_residual} bound={bound} root_rate={} root_delta={} leaf_deltas={:?}",
+        connected.root_intrinsic,
+        connected.measured_root_balance_rate,
+        connected.measured_root_balance_delta,
+        connected.measured_leaf_balance_deltas
+    );
+    assert_ne!(
+        arithmetic_residual.to_bits(),
+        0.0_f32.to_bits(),
+        "live governed-Balance proof requires a deterministic non-zero f32 residual"
+    );
+    assert_ne!(
+        connected.measured_root_balance_delta, 0.0,
+        "executed governed_by must write the non-zero residual into root Balance"
+    );
+    assert!(
+        (connected.measured_root_balance_delta - arithmetic_residual).abs() <= bound,
+        "actual root Balance delta must match arithmetic residual within bound: residual={arithmetic_residual} measured={} bound={bound}",
+        connected.measured_root_balance_delta
+    );
+    let reported_root_balance_delta = if std::env::var_os("SIMTHING_RF_BALANCE_DRIFT").is_some() {
+        connected.measured_root_balance_delta + 1.0
+    } else {
+        connected.measured_root_balance_delta
+    };
+    let alloc_obs = allocator_from_disbursements(
+        connected.root_intrinsic,
+        connected.leaf_alloc.clone(),
         Some(reported_root_balance_delta),
     );
     let allocator_result = check_allocator_step(&alloc_obs);
     assert!(
         allocator_result.is_ok(),
-        "allocator conservation must hold on admitted flat RF: budget={root_intrinsic} sum={sum_alloc} residual={} result={allocator_result:?}",
-        root_intrinsic - sum_alloc
+        "allocator conservation must hold on admitted flat RF: budget={} sum={sum_alloc} residual={} result={allocator_result:?}",
+        connected.root_intrinsic,
+        arithmetic_residual
     );
 
     let (a, mut arena) = flat_star_observations(
-        root.raw() as u64,
-        &leaves.iter().map(|s| s.raw() as u64).collect::<Vec<_>>(),
-        root_intrinsic,
-        &leaf_alloc,
+        connected.root.raw() as u64,
+        &connected
+            .leaves
+            .iter()
+            .map(|s| s.raw() as u64)
+            .collect::<Vec<_>>(),
+        connected.root_intrinsic,
+        &connected.leaf_alloc,
         Some(reported_root_balance_delta),
-        &measured_leaf_balance_deltas,
+        &connected.measured_leaf_balance_deltas,
         0.0,
         0.0,
     );
@@ -412,11 +494,63 @@ fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
         report
     );
 
-    // Paired negative: disbursements remain conservative, but the measured
-    // Balance residual is corrupted or omitted. Both must bite specifically as
-    // ResidualNotIntegrated; arithmetic reconstruction is forbidden.
-    for measured in [Some(measured_root_balance_delta + 1.0), None] {
-        let corrupted = allocator_from_disbursements(root_intrinsic, leaf_alloc.clone(), measured);
+    // Load-bearing paired runtime negative: execute the identical admitted
+    // allocation and residual arithmetic with only the root governed Balance
+    // integration removed. The actual GPU readout remains zero and must bite.
+    let disconnected = execute_live_flat_star(false);
+    assert_eq!(disconnected.root, connected.root);
+    assert_eq!(disconnected.leaves, connected.leaves);
+    assert_eq!(
+        disconnected.root_intrinsic.to_bits(),
+        connected.root_intrinsic.to_bits()
+    );
+    assert_eq!(disconnected.leaf_alloc.len(), connected.leaf_alloc.len());
+    for (actual, expected) in disconnected.leaf_alloc.iter().zip(&connected.leaf_alloc) {
+        assert_eq!(actual.to_bits(), expected.to_bits());
+    }
+    assert_eq!(
+        disconnected.measured_root_balance_rate.to_bits(),
+        connected.measured_root_balance_rate.to_bits(),
+        "positive and negative fixtures must execute identical residual arithmetic"
+    );
+    assert_ne!(
+        disconnected.measured_root_balance_rate, 0.0,
+        "negative must preserve the executed non-zero residual rate"
+    );
+    assert_eq!(
+        disconnected.measured_root_balance_delta.to_bits(),
+        0.0_f32.to_bits(),
+        "disconnected governed path must leave the observed Balance cell unchanged"
+    );
+    let disconnected_observation = allocator_from_disbursements(
+        disconnected.root_intrinsic,
+        disconnected.leaf_alloc.clone(),
+        Some(disconnected.measured_root_balance_delta),
+    );
+    let disconnected_error = check_allocator_step(&disconnected_observation)
+        .expect_err("actual GPU Balance readout must expose disconnected governed integration");
+    assert!(matches!(
+        disconnected_error,
+        AllocatorConservationViolation::ResidualNotIntegrated { .. }
+    ));
+    eprintln!(
+        "RF-RUNTIME-BALANCE-REMOVED: budget={} sum_disbursed={} residual={} root_rate={} actual_root_delta={} result={disconnected_error:?}",
+        disconnected.root_intrinsic,
+        disconnected.leaf_alloc.iter().sum::<f32>(),
+        disconnected.root_intrinsic - disconnected.leaf_alloc.iter().sum::<f32>(),
+        disconnected.measured_root_balance_rate,
+        disconnected.measured_root_balance_delta
+    );
+
+    // Secondary observation negatives remain: corruption after readout and a
+    // missing observation both fail, but neither substitutes for the runtime
+    // path falsifier above.
+    for measured in [Some(connected.measured_root_balance_delta + 1.0), None] {
+        let corrupted = allocator_from_disbursements(
+            connected.root_intrinsic,
+            connected.leaf_alloc.clone(),
+            measured,
+        );
         assert!(matches!(
             check_allocator_step(&corrupted),
             Err(AllocatorConservationViolation::ResidualNotIntegrated { .. })
@@ -431,7 +565,6 @@ fn oracle_agrees_with_flat_star_opt_in_executed_rf() {
     };
     assert!(check_recipe_exact(&recipe).is_ok());
 
-    drop(session);
     drop(guard);
 }
 

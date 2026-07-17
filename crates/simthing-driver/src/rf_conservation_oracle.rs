@@ -149,7 +149,16 @@ pub fn check_allocator_step(
         });
     };
     let integrate_err = (measured_balance_residual - arithmetic_residual).abs();
-    if !measured_balance_residual.is_finite() || integrate_err > bound {
+    // A non-zero arithmetic residual cannot be "matched" by an observed zero:
+    // that is the exact signature of a missing/disconnected governed Balance
+    // integration path, even though both values individually fit inside the
+    // allocator's O(epsilon * n) conservation envelope.
+    let missing_nonzero_integration =
+        arithmetic_residual != 0.0 && measured_balance_residual == 0.0;
+    if !measured_balance_residual.is_finite()
+        || missing_nonzero_integration
+        || integrate_err > bound
+    {
         return Err(AllocatorConservationViolation::ResidualNotIntegrated {
             arithmetic_residual,
             reported_balance_residual: Some(measured_balance_residual),
