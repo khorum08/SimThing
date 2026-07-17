@@ -1,8 +1,8 @@
 # STUDIO-FIELD-SESSION-ELEVATE-0 Results
 
 ## Status
-**BLOCKED — dual residue:** (1) need-profile install seam; (2) **child→ancestor RF production seam missing** (Remand 7 STOP).  
-**[OVL] FAIL/OPEN** — second Owner capture falsified live RF accumulation. Do **not** claim 12.9 PROBATION or live accretion proven. No replacement exe while RF seam unresolved.
+**BLOCKED — dual residue:** (1) **production child→ancestor RF seam** missing (Remand 7 STOP accepted); (2) need/weight-profile install seam.  
+**[OVL] FAIL/OPEN** — Owner B=85/C=1817 plateau falsified live RF accumulation. Emission/`source_slot`/`source_col` rows are **diagnostic only** and cannot close RF OVL. No 12.9 PROBATION. No replacement exe until dedicated RF production repair accepted and landed.
 
 ## Identity
 | Field | Value |
@@ -10,8 +10,9 @@
 | Rung | `STUDIO-FIELD-SESSION-ELEVATE-0` (12.9) |
 | Branch | `coder/studio-field-session-elevate-0` |
 | birth_track | `0.0.8.6-studio-live-ops` |
-| HD-RECEIPT | `aed2a0dbc147` (PR-body continuity base `5edbc7cbc863`) |
+| HD-RECEIPT | `dcf1845b97ce` (PR-body continuity base `5edbc7cbc863`) |
 | RF axiom | ALL THINGS ARE SIMTHINGS. ALL CONFLICT IS RESOURCE FLOW. Populated tables ≠ RF reduce-up. |
+| Handoff sync | Remand-7 STOP accepted; `.hd.md` synchronized (emission diagnostic only; dual blockers; RF exit = child→ancestor sibling aggregate) |
 
 ## RF re-indoctrination (Remand 7)
 Ingested before code disposition:
