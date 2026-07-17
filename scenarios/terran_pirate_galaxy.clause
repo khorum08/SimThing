@@ -40,6 +40,16 @@ scenario = terran_pirate_galaxy {
         capability_profile = "raid_disruption"
     }
 
+    # Field-economy STEAD locations (12.6 grammar): explicit Location participants
+    # with structural placements. Base disc remains the galaxy lattice; these enroll
+    # production/disruption fields without hand-editing sibling JSON.
+    location = terran_shipyard {
+        display_name = "Terran Shipyard"
+    }
+    location = pirate_outpost {
+        display_name = "Pirate Outpost"
+    }
+
     ownership_volume = terran_core {
         owner = "terran"
         count = 200
@@ -118,6 +128,70 @@ scenario = terran_pirate_galaxy {
             namespace = "tp"
             name = "energy"
             display_name = "Energy"
+        }
+    }
+
+    # 12.8 — canonical TP field economy (12.6 grammar only; DATA, not code).
+    # Terran: minerals field -> shipyard factory -> hulls (ship-construction need).
+    # Pirate: disruption emitters + raid/disruption-need weight profile.
+    # Owner policy overlays weight expansion/manufacturing vs disruption.
+    # Production output coefficients: HORIZON-ENTRY(2026-07-16) — not authored here.
+    field_economy = tp_economy {
+        namespace = "tp_economy"
+        field_resource_quantity = shipyard_minerals {
+            location = "terran_shipyard"
+            resource = "minerals"
+            amount = 100
+        }
+        production_building = shipyard_factory {
+            location = "terran_shipyard"
+            input = { resource = "minerals" amount = 5 }
+            output = { resource = "hulls" }
+            throttle_hint_max_per_tick = 4
+        }
+        stockpile_silo = terran_minerals {
+            owner = "terran"
+            resource = "minerals"
+            current = 40
+        }
+        disruption_presence = pirate_raid_presence {
+            location = "pirate_outpost"
+            resource = "disruption"
+            amount = 8
+            threshold = 3
+            direction = Rising
+            event_kind = 71
+        }
+        owner_policy_overlay = terran_expansion_policy {
+            owner = "terran"
+            targets_property = "tp_economy::terran_shipyard_hulls_quantity"
+            amount_mult = 1.15
+        }
+        owner_policy_overlay = terran_manufacturing_policy {
+            owner = "terran"
+            targets_property = "tp_economy::terran_shipyard_hulls_quantity"
+            amount_add = 0.25
+        }
+        owner_policy_overlay = pirate_disruption_policy {
+            owner = "pirate"
+            targets_property = "tp_economy::pirate_outpost_disruption_presence"
+            amount_mult = 1.35
+        }
+        weight_profile = terran_expansion_need {
+            profile = "expansion-need"
+            input = { input_col = 0 weight_col = 10 }
+            input = { input_col = 1 weight_col = 11 }
+            output_col = 12
+        }
+        weight_profile = terran_manufacturing_need {
+            profile = "manufacturing-need"
+            input = { input_col = 2 weight_col = 13 }
+            output_col = 14
+        }
+        weight_profile = pirate_disruption_need {
+            profile = "disruption-need"
+            input = { input_col = 3 weight_col = 15 }
+            output_col = 16
         }
     }
 

@@ -49,3 +49,4 @@ date	role	query	anchors_served	hit
 2026-07-16T21:28:00Z	coding	--domain field-policy	field-policy-time-decisions	hit
 2026-07-16T22:22:12Z	coding	--grep spec-fidelity	spec-fidelity-anti-ceremony	hit
 2026-07-16T22:22:12Z	coding	--domain field-policy	field-policy-time-decisions	hit
+2026-07-17T11:36:12Z	coding	--paths crates/simthing-workshop/tests/tp_clause_economy_author_0.rs scenarios/terran_pirate_galaxy.clause handoffs/TP-CLAUSE-ECONOMY-AUTHOR-0.hd.md scripts/ci/inspect_justifications.tsv scripts/ci/triage_log.tsv scripts/ci/anchor_reach_log.tsv scripts/ci/test_inventory.tsv docs/design_0_0_8_6_studio_live_ops.md docs/orchestrator_orientation.md	orientation-harness-core,scanner-selftest-delta-gate	hit
