@@ -5,6 +5,7 @@ orientation_rule_stamp: 4a5da2361c04c981
 generated_at: source-bound
 
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864
+ANCHOR-ACK: scanner-selftest-delta-gate@34fb2662baae
 
 ## Status
 

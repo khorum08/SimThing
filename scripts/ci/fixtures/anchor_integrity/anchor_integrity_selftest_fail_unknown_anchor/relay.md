@@ -5,6 +5,7 @@ orientation_rule_stamp: 4a5da2361c04c981
 generated_at: source-bound
 
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864
+ANCHOR-ACK: scanner-selftest-delta-gate@34fb2662baae
 ANCHOR-ACK: handoff-template-admission@4799682fba31
 ANCHOR-ACK: receipt-admission@7b886656d959
 ANCHOR-ACK: nonexistent-anchor@deadbeef0000
