@@ -16,3 +16,4 @@ peripheral-scope-adrs	docs/adr/capability_effect_target_scope.md	heading:## Cont
 founding-ontology-invariants	docs/design_0_0_8_3.md	lines:100-129	founding-ontology	b960ed2d493d0073af656b1b2fd06bd60a0262926e97005ec0dfa316296f0bbf
 orientation-harness-core	docs/design_0_0_8_4_7_orchestration_harness.md	heading:## 1. Root cause this track closes	orientation,gate-wiring,receipt-admission	8a365d1c086487ee32150d457754df35becc4ad93465874253fc7d40baf2582f
 movement-front	docs/simthing_core_design.md	heading:## 7. Mapping — the Movement-Front automaton over gridcell SimThings	movement-front,map-domain	a0592b2f37caf3c3e13a5012c91fdcb981e15db634bcac593cbfd7f42f068b37
+workshop-candidate-homing	docs/ci_screening_surface.md	heading:## 12. Workshop is the scenario candidate-code sandbox (owner ruling, 2026-07-04)	scenario-candidate-home	5e6cf3cdbd00578cc6b001f1b2dc844f6b1a710cd74de974ca6bdf52a5b2f00c
