@@ -498,18 +498,68 @@ def lease_summary():
     return {"count": len(leases), "leases": leases}
 
 
+def active_workplan_doc():
+    # Single source of truth for "which track is live" — written by gen_orientation.sh
+    # on --open/--park/--unpark. Board track id + ladder derive from THIS, never a
+    # hardcoded doc path (that was the migration-debt bug that froze the board on the
+    # closed HD track after the 0.0.8.6 redirect).
+    at = ROOT / "scripts/ci/active_track.txt"
+    if at.exists():
+        for line in normalize_bytes(at.read_bytes()).splitlines():
+            s = line.strip()
+            if s and not s.startswith("#"):
+                return s
+    return ""
+
+
+def active_track_id():
+    base = os.path.basename(active_workplan_doc())
+    if base.startswith("design_") and base.endswith(".md"):
+        nums = []
+        for tok in base[len("design_"):-len(".md")].split("_"):
+            if tok.isdigit():
+                nums.append(tok)
+            else:
+                break
+        if nums:
+            return ".".join(nums)
+    return ""
+
+
 def ladder_states():
-    design = ROOT / "docs/design_0_0_8_4_8_4_hd_board.md"
-    if not design.exists():
+    doc = active_workplan_doc()
+    design = ROOT / doc if doc else None
+    if not design or not design.exists():
         return []
     text = normalize_bytes(design.read_bytes())
     out = []
     for line in text.splitlines():
-        if not line.startswith("| HD-"):
+        if not line.startswith("|"):
             continue
-        cells = [c.strip() for c in line.strip("|").split("|")]
-        if len(cells) >= 4 and cells[1] != "ID":
-            out.append({"rung": cells[1].strip("`"), "exit_proof": cells[3]})
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3:
+            continue
+        first = cells[0].strip("`").strip()
+        # Ladder rows only: a dotted phase id (12.1), an HD-/OWNER/OVL rung slot.
+        # Format-agnostic across track eras; separator/header/state rows fall through.
+        if not re.fullmatch(r"\d+\.\d+|OWNER|OVL|HD-[A-Z0-9-]+", first):
+            continue
+        rung = ""
+        for c in cells:
+            m = re.search(r"`([^`]+)`", c)
+            if m:
+                rung = m.group(1)
+                break
+        if not rung and first.startswith("HD-"):
+            rung = first
+        if not rung:
+            continue
+        exit_proof = ""
+        for c in cells:
+            if re.search(r"DA-GRADUATED|DA-CLOSED|DEFERRED|\bTODO\b|merged|amend|--cull|PARKED", c):
+                exit_proof = c
+                break
+        out.append({"rung": rung, "exit_proof": exit_proof})
     return out
 
 
@@ -527,7 +577,7 @@ def board_json(path_arg=None):
             "expected_route": fm["expected_route"],
         }
     return {
-        "track": "0.0.8.4.8.4",
+        "track": active_track_id(),
         "active_pointer": active_pointer(),
         "master_head": master_head(),
         "current_handoff": handoff,
@@ -648,7 +698,11 @@ def render_board_markdown(data):
     else:
         lines.append("- none")
     lines.extend(["", "### Ladder"])
-    for item in (data.get("ladder") or []):
+    ladder = data.get("ladder") or []
+    tail = ladder[-8:]
+    if len(ladder) > len(tail):
+        lines.append(f"_showing last {len(tail)} of {len(ladder)} rungs; full ladder in the design doc._")
+    for item in tail:
         lines.append(f"- `{item.get('rung', '')}` {clip(item.get('exit_proof', ''), 150)}")
     if len(lines) > 60:
         raise HDError("board-line-cap")
