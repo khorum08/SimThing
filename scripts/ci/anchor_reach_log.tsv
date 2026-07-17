@@ -50,3 +50,11 @@ date	role	query	anchors_served	hit
 2026-07-16T22:22:12Z	coding	--grep spec-fidelity	spec-fidelity-anti-ceremony	hit
 2026-07-16T22:22:12Z	coding	--domain field-policy	field-policy-time-decisions	hit
 2026-07-17T11:36:12Z	coding	--paths crates/simthing-workshop/tests/tp_clause_economy_author_0.rs scenarios/terran_pirate_galaxy.clause handoffs/TP-CLAUSE-ECONOMY-AUTHOR-0.hd.md scripts/ci/inspect_justifications.tsv scripts/ci/triage_log.tsv scripts/ci/anchor_reach_log.tsv scripts/ci/test_inventory.tsv docs/design_0_0_8_6_studio_live_ops.md docs/orchestrator_orientation.md	orientation-harness-core,scanner-selftest-delta-gate	hit
+2026-07-17T20:34:17Z	coding	--paths crates/simthing-driver crates/simthing-spec	field-policy-time-decisions,founding-ontology-invariants,one-tree-owners-never-spatial,property-value-rf-overlays,stead-spatial-contract-core,structural-execution-convergence,workshop-candidate-homing	hit
+2026-07-17T20:42:04Z	coding	--grep founding-ontology-invariants	founding-ontology-invariants	hit
+2026-07-17T20:42:04Z	coding	--grep field-policy-time-decisions	field-policy-time-decisions	hit
+2026-07-17T20:42:04Z	coding	--grep stead-spatial-contract-core	stead-spatial-contract-core	hit
+2026-07-17T20:42:09Z	coding	--grep one-tree-owners-never-spatial	one-tree-owners-never-spatial	hit
+2026-07-17T20:42:10Z	coding	--grep property-value-rf-overlays	property-value-rf-overlays	hit
+2026-07-17T20:42:10Z	coding	--grep structural-execution-convergence	structural-execution-convergence	hit
+2026-07-17T20:42:10Z	coding	--grep workshop-candidate-homing	workshop-candidate-homing	hit
