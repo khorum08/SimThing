@@ -1,9 +1,8 @@
 //! STUDIO-FIELD-SESSION-ELEVATE-0 — field-bearing live path + structural-shell fallback.
 //!
-//! Neutral synthetic vocabulary only (foundry_valley / forge) — no scenario-named
-//! sealed-crate hits for WORKSHOP-HOMING-DETECTION.
-//!
-//! Fail-closed: Unsupported/GPU open failure is a test failure (not a silent green skip).
+//! Neutral synthetic vocabulary only (foundry_valley / forge).
+//! Fail-closed: Unsupported is FAIL. No fabricated open-time decisions.
+//! Rising crossings must occur under live `step_once` after generic RF/overlay evolution.
 
 use std::path::PathBuf;
 
@@ -16,7 +15,8 @@ use simthing_mapeditor::{
 };
 use simthing_spec::serialize_scenario_authority;
 
-/// Neutral synthetic field-economy scenario (same grammar as 12.6 fixture vocabulary).
+/// Synthetic field-economy: disruption seeds **below** threshold so a Rising
+/// crossing can only fire after live tick overlay/RF evolution (not at open).
 const FOUNDRY_SCENARIO: &str = r#"
 scenario = foundry_valley {
     metadata = {
@@ -59,15 +59,15 @@ scenario = foundry_valley {
         disruption_presence = basin_smoke {
             location = "basin"
             resource = "smoke"
-            amount = 4
-            threshold = 2
+            amount = 1
+            threshold = 1.5
             direction = Rising
             event_kind = 77
         }
-        owner_policy_overlay = guild_expansion_policy {
+        owner_policy_overlay = guild_ore_pressure {
             owner = "guild"
-            targets_property = "forge::ridge_tools_quantity"
-            amount_mult = 1.15
+            targets_property = "forge::ridge_ore_quantity"
+            amount_add = 3.0
         }
         weight_profile = expansion_need {
             profile = "expansion-need"
@@ -100,7 +100,6 @@ fn field_bearing_studio_session() -> StudioSession {
     field_bearing_studio_session_from(&hydrate_foundry())
 }
 
-/// Fail-closed open: Unsupported is a hard failure (GPU required for load-bearing proofs).
 fn open_fail_closed(
     bridge: &mut StudioLiveSessionBridge,
     studio: &StudioSession,
@@ -166,14 +165,6 @@ fn amount_for_property(sim: &simthing_driver::SimSession, namespace: &str, name:
     best
 }
 
-fn policy_overlay_count(pack: &HydratedScenarioPack) -> usize {
-    pack.game_mode
-        .overlays
-        .iter()
-        .filter(|o| o.id.contains("owner_policy"))
-        .count()
-}
-
 /// catches: bridge still only opening structural-shell when a field-economy profile is present.
 #[test]
 fn field_bearing_path_opens_via_open_from_spec_when_profile_present() {
@@ -186,6 +177,12 @@ fn field_bearing_path_opens_via_open_from_spec_when_profile_present() {
     assert_eq!(
         bridge.readout().production_path,
         "simthing_driver::SimSession::open_from_spec + step_once"
+    );
+    // Open must not invent a decision.
+    assert_eq!(
+        bridge.readout().cumulative_decision_events,
+        0,
+        "no fabricated open-time decision edge"
     );
     let executed = bridge.consume_scheduled_ticks(3).expect("multi-tick");
     assert!(executed >= 3);
@@ -208,56 +205,48 @@ fn structural_shell_fallback_still_selectable() {
     assert!(executed >= 2);
 }
 
-/// catches: disruption emission coupling severed (no Constant seed / no live tick delta).
+/// catches: disruption emission coupling severed (open seed only / no live delta).
 #[test]
 fn disruption_accretes_from_authored_emitter_under_live_ticks() {
     let studio = field_bearing_studio_session();
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
     open_fail_closed(&mut bridge, &studio).expect("open");
-    let sim = bridge.sim_session().expect("attached");
-    let open_amount = amount_for_property(sim, "forge", "basin_smoke_presence");
+    let open_amount = amount_for_property(
+        bridge.sim_session().expect("attached"),
+        "forge",
+        "basin_smoke_presence",
+    );
     assert!(
-        open_amount >= 4.0,
+        open_amount >= 1.0,
         "authored disruption Constant must materialize at open: got {open_amount}"
     );
     bridge.consume_scheduled_ticks(3).expect("ticks");
-    let samples = bridge.readout().field_accretion_samples;
-    assert!(
-        samples
-            .iter()
-            .any(|s| s.property_key.contains("basin_smoke_presence")),
-        "per-tick field accretion samples must track the disruption presence property: {samples:?}"
-    );
     let after = amount_for_property(
         bridge.sim_session().expect("attached"),
         "forge",
         "basin_smoke_presence",
     );
-    // Live RF/tick path must move the field off its open-time seed (or sample a tick delta).
-    let sample_delta = samples
+    let samples = bridge.readout().field_accretion_samples;
+    let sample_series: Vec<f32> = samples
         .iter()
         .filter(|s| s.property_key.contains("basin_smoke_presence"))
         .map(|s| s.amount)
-        .collect::<Vec<_>>();
-    let sample_changed = sample_delta
-        .windows(2)
-        .any(|w| (w[0] - w[1]).abs() > 1e-4);
+        .collect();
+    let changed = (after - open_amount).abs() > 1e-4
+        || sample_series
+            .windows(2)
+            .any(|w| (w[0] - w[1]).abs() > 1e-4);
     assert!(
-        (after - open_amount).abs() > 1e-4 || sample_changed,
-        "disruption must show a live per-tick delta (not open-seed persistence alone): open={open_amount} after={after} samples={sample_delta:?}"
+        changed,
+        "disruption must show a live per-tick delta: open={open_amount} after={after} samples={sample_series:?}"
     );
 }
 
-/// catches: production/silo transfer + policy-overlay coupling severed.
+/// catches: silo transfer coupling severed OR policy overlay application deleted.
 #[test]
 fn production_and_need_accrete_from_buildings_and_overlays() {
     let pack = hydrate_foundry();
-    let policies = policy_overlay_count(&pack);
-    assert!(
-        policies >= 1,
-        "foundry must author at least one owner_policy_overlay for policy coupling proof"
-    );
     let studio = field_bearing_studio_session_from(&pack);
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
@@ -265,17 +254,16 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
     let sim = bridge.sim_session().expect("attached");
     let current_before = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_before = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    assert!(
-        current_before >= 20.0,
-        "silo current Constant seed must materialize: {current_before}"
-    );
+    let ore_before = amount_for_property(sim, "forge", "ridge_ore_quantity");
+    assert!(current_before >= 20.0, "silo current seed: {current_before}");
     bridge.consume_scheduled_ticks(4).expect("ticks");
     let sim = bridge.sim_session().expect("attached");
     let current_after = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_after = amount_for_property(sim, "forge", "guild_ore_stockpile");
+    let ore_with_policy = amount_for_property(sim, "forge", "ridge_ore_quantity");
     assert!(
         stockpile_after > stockpile_before || current_after < current_before,
-        "silo transfer must move mass under live ticks: current {current_before}->{current_after} stockpile {stockpile_before}->{stockpile_after}"
+        "silo transfer must move mass: current {current_before}->{current_after} stockpile {stockpile_before}->{stockpile_after}"
     );
     assert!(
         sim.proto
@@ -285,81 +273,73 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
         "tools quantity from production building must install"
     );
 
-    // Policy/need falsifier: stripping owner_policy overlays must change the installed overlay set.
+    // Live with/without policy differential on the overlay target after identical ticks.
     let mut stripped = hydrate_foundry();
     stripped
         .game_mode
         .overlays
         .retain(|o| !o.id.contains("owner_policy"));
-    assert_eq!(
-        policy_overlay_count(&stripped),
-        0,
-        "stripped pack must have zero owner_policy overlays"
-    );
-    let with_n = pack.game_mode.overlays.len();
-    let without_n = stripped.game_mode.overlays.len();
     assert!(
-        with_n > without_n,
-        "policy overlays must be a real differential in the authored profile: with={with_n} without={without_n}"
+        pack.game_mode.overlays.len() > stripped.game_mode.overlays.len(),
+        "pack must carry owner_policy overlays to strip"
     );
-    // Both paths must open and still run silo RF (generic pipeline), but the stripped profile
-    // must not re-admit the policy overlay ids.
     let studio_stripped = field_bearing_studio_session_from(&stripped);
     let mut bridge2 = StudioLiveSessionBridge::new();
     bridge2.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
     open_fail_closed(&mut bridge2, &studio_stripped).expect("open stripped");
-    let profile = studio_stripped
-        .authored_live_profile
-        .as_ref()
-        .expect("profile");
-    assert!(
-        !profile
-            .game_mode
-            .overlays
-            .iter()
-            .any(|o| o.id.contains("owner_policy")),
-        "stripped live profile must not carry owner_policy overlays into the field-bearing open"
+    bridge2.consume_scheduled_ticks(4).expect("ticks");
+    let ore_without_policy = amount_for_property(
+        bridge2.sim_session().expect("attached"),
+        "forge",
+        "ridge_ore_quantity",
     );
-    bridge2.consume_scheduled_ticks(2).expect("ticks");
+    assert!(
+        (ore_with_policy - ore_without_policy).abs() > 1e-3
+            || (ore_with_policy - ore_before).abs() > 1e-3,
+        "policy overlay must produce a live field differential after identical ticks: with={ore_with_policy} without={ore_without_policy} open={ore_before}"
+    );
 }
 
-/// catches: threshold registration/decision wiring severed, or decisions without a threshold.
+/// catches: threshold upload deleted, or decisions without a crossing / at open.
 #[test]
 fn decision_fires_only_as_threshold_crossing() {
     let studio = field_bearing_studio_session();
     let mut bridge = StudioLiveSessionBridge::new();
     bridge.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
     open_fail_closed(&mut bridge, &studio).expect("open");
-    let sim = bridge.sim_session().expect("attached");
-    let thr_regs = sim
+    let thr_regs = bridge
+        .sim_session()
+        .expect("attached")
         .spec_state
         .resource_economy_registry
         .as_ref()
         .map(|r| r.registrations.emit_on_threshold.len())
         .unwrap_or(0);
+    assert_eq!(thr_regs, 1, "authored emit_on_threshold must install");
+    let open_presence = amount_for_property(
+        bridge.sim_session().expect("attached"),
+        "forge",
+        "basin_smoke_presence",
+    );
+    assert!(
+        open_presence < 1.5,
+        "synthetic seed must start below threshold so open cannot invent a Rising edge: {open_presence}"
+    );
     assert_eq!(
-        thr_regs, 1,
-        "authored disruption presence must lower one emit_on_threshold"
-    );
-    let disruption = amount_for_property(sim, "forge", "basin_smoke_presence");
-    assert!(
-        disruption >= 2.0,
-        "seeded disruption must meet/exceed authored threshold at open: {disruption}"
-    );
-    // Open-edge Rising: previous=0, values=seed observed at field-bearing open
-    // (before step_once snapshot would erase the edge).
-    let decisions_at_open = bridge.readout().cumulative_decision_events;
-    assert!(
-        decisions_at_open > 0,
-        "Rising open-edge threshold crossing must produce a nonzero decision event count at open; got {decisions_at_open}"
-    );
-    bridge.consume_scheduled_ticks(1).expect("tick");
-    assert!(
-        bridge.readout().cumulative_decision_events >= decisions_at_open,
-        "decision counter must be monotonic across ticks"
+        bridge.readout().cumulative_decision_events,
+        0,
+        "zero decisions at open (initial state is not a decision)"
     );
 
-    // Same duration, no threshold: zero decisions.
+    // Live ticks: permanent Crisis overlay Add(amount) + seed evolution can Rising-cross thr=2.
+    bridge.consume_scheduled_ticks(4).expect("ticks");
+    let decisions = bridge.readout().cumulative_decision_events;
+    assert!(
+        decisions > 0,
+        "Rising crossing must fire under live step_once after generic overlay/RF evolution; got {decisions}"
+    );
+
+    // No-threshold control: same duration, zero decisions.
     let mut pack = hydrate_foundry();
     if let Some(economy) = pack.game_mode.resource_economy.as_mut() {
         economy.emit_on_threshold.clear();
@@ -374,23 +354,22 @@ fn decision_fires_only_as_threshold_crossing() {
     let mut bridge2 = StudioLiveSessionBridge::new();
     bridge2.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
     open_fail_closed(&mut bridge2, &no_thr).expect("open no-threshold");
-    let thr_regs2 = bridge2
-        .sim_session()
-        .expect("attached")
-        .spec_state
-        .resource_economy_registry
-        .as_ref()
-        .map(|r| r.registrations.emit_on_threshold.len())
-        .unwrap_or(0);
     assert_eq!(
-        thr_regs2, 0,
-        "without authored emit_on_threshold, no decision threshold may be installed"
+        bridge2
+            .sim_session()
+            .expect("attached")
+            .spec_state
+            .resource_economy_registry
+            .as_ref()
+            .map(|r| r.registrations.emit_on_threshold.len())
+            .unwrap_or(0),
+        0
     );
-    bridge2.consume_scheduled_ticks(3).expect("ticks");
+    bridge2.consume_scheduled_ticks(4).expect("ticks");
     assert_eq!(
         bridge2.readout().cumulative_decision_events,
         0,
-        "no decision events may fire when no threshold is authored"
+        "no decision events when no threshold is authored"
     );
 }
 

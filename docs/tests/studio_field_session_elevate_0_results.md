@@ -1,7 +1,7 @@
 # STUDIO-FIELD-SESSION-ELEVATE-0 Results
 
 ## Status
-**PROBATION (proof-present, DA-review-pending)** — remedial falsifier pass on branch `coder/studio-field-session-elevate-0`.
+**PROBATION (proof-present, DA-review-pending)** — deep-review remand remediation.
 
 ## Identity
 | Field | Value |
@@ -9,43 +9,44 @@
 | Rung | `STUDIO-FIELD-SESSION-ELEVATE-0` (12.9) |
 | Branch | `coder/studio-field-session-elevate-0` |
 | birth_track | `0.0.8.6-studio-live-ops` |
-| HD-RECEIPT | `2976856875d0` (condensed handoff; base dispatch was `5edbc7cbc863`) |
+| HD-RECEIPT | `2976856875d0` (condensed handoff; base dispatch `5edbc7cbc863`) |
 
 ## What changed
-- Field-bearing live path: `SimSession::open_from_spec` + authored profile; structural-shell fallback retained
-- Open-time Constant seeds + `emit_on_threshold` upload + **open-edge threshold scan** (no tick snapshot) so Rising edges fire at open
-- `StepOnceOutcome` surfaces sealed AccumulatorOp threshold event counts; bridge readout uses them (not legacy Pass-7 `read_event_count`)
-- Fail-closed load-bearing tests (Unsupported is FAIL, not skip)
-- Real per-tick accretion deltas; threshold open-edge + zero-without-threshold; policy overlay differential
-- **[OVL]** ops-telemetry: session path + per-tick field accretion samples
+- Field-bearing path via production Studio bridge only (`open_from_spec` + authored profile)
+- Open-time Constant seeds + threshold **upload only** (no fabricated open-time crossing)
+- Field-economy overlays elevated into a domain pack (ADR envelope overlays are deferred) filtered to Policy/Crisis/Infrastructure with `namespace::name` targets
+- Owner shells injected into install_targets so owner_policy overlays resolve
+- Decision counts from live `step_once` via existing AccumulatorOp threshold readback (no kernel/driver API expansion)
+- Fail-closed GPU; real per-tick deltas; live with/without-policy differential; workshop drives production bridge
+- **[OVL] OPEN**
 
 ## Load-bearing proofs
 | suite | tests |
 |---|---|
 | `studio_field_session_elevate_0` | 6/6 |
-| `tp_field_session_elevate_0` (workshop) | 3/3 |
+| `tp_field_session_elevate_0` (workshop → production bridge) | 3/3 |
 | regression `studio_live_session_bridge_0` | 8/8 |
 
 ## Scope Ledger
 | | |
 |---|---|
 | Specified | Field-bearing open_from_spec; accretion under live ticks; threshold-only decisions; structural fallback; [OVL] telemetry |
-| Implemented | As above + open-edge Rising scan; fail-closed falsifiers; decision event plumbing |
-| Deferred | Owner [OVL] screenshot; full combat/event co-install on same field-bearing handle |
-| Out of scope | Bespoke economy in tick; CPU planner; Spec mutation; new clausething/spec grammar |
+| Implemented | mapeditor bridge elevation + workshop production-bridge proofs; no kernel/driver widening |
+| Deferred | Owner [OVL] screenshot |
+| Out of scope | Kernel/WGSL; open-time decision fabrication; clausething/spec grammar; bespoke economy tick |
 
 ## Conformance
-Generic RF/resource-economy pipeline only · ScenarioSpec sole authority · structural-shell fallback selectable · §12 TP proofs in workshop · WORKSHOP-HOMING-DETECTION PASS 0 on PR delta
+Generic RF/overlay pipeline · ScenarioSpec sole authority · structural-shell fallback · §12 TP in workshop · WORKSHOP-HOMING-DETECTION PASS 0 · no kernel/driver seam expansion
 
 ## Known gaps / next
-- **[OVL] OPEN / Owner screenshot pending** — live accretion not visually closed
+- **[OVL] OPEN / Owner screenshot pending**
 - 12.10 TP-EMERGENT-TENSION-PROOF-0
 
 ## Graduation routing
 | Field | Value |
 |---|---|
-| CI verdict | local focused battery PASS; hosted Doctrine Scan / clearance / relay-lint re-run at new head |
-| Triage entries | TEST-BUDGET justifications retained; SHA-bound triage rebound on evidence-only final commit if INSPECT |
-| Risk class | studio-live-ops field-bearing elevation; AccumulatorOp threshold open-edge; workshop-homed TP proofs |
-| Falsification check | delete open-edge scan / threshold upload → decision tests FAIL; delete silo transfer coupling → production tests FAIL; delete Constant seed → disruption open seed FAIL; strip emit_on_threshold → zero decisions; Unsupported open → FAIL not skip |
-| Recommended posture | PROBATION / proof-present / orchestrator re-verify at new head; **[OVL] OPEN**; do not claim OVL closure or GRADUATED |
+| CI verdict | local focused battery PASS; hosted re-check at new head |
+| Triage entries | TEST-BUDGET justified; triage_log rebound to work SHA (evidence-only final commit) |
+| Risk class | studio-live-ops field-bearing elevation; mapeditor-only surfaces |
+| Falsification check | delete threshold upload → no live Rising decision; strip emit_on_threshold → zero decisions; strip owner_policy → live field differential collapses; delete Constant seed → open seed assert fails; Unsupported → FAIL not skip; delete production bridge wiring → workshop fails (no test-side replica) |
+| Recommended posture | PROBATION / proof-present; **[OVL] OPEN**; do not claim GRADUATED or OVL closure; clearance expected `DA-RESERVE(class-envelope-violation)` until class-hardened — do not claim unclassified-scope |

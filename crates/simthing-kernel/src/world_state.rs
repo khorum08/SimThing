@@ -1112,55 +1112,6 @@ impl WorldGpuState {
         }
     }
 
-    /// Dispatch AccumulatorOp threshold scan against the current values/previous
-    /// buffers **without** the per-tick snapshot copy.
-    ///
-    /// Used by field-bearing open-time materialization: Constant seeds install
-    /// `previous=0` / `values=seed` so Rising gates can observe the open-time
-    /// edge. A full `step_once` snapshots `values → previous` before the scan
-    /// and would erase that edge.
-    ///
-    /// Returns the sealed event **count** only (not the sealed `ThresholdEvent`
-    /// records) so this is not a sealed-type public producer.
-    pub fn dispatch_accumulator_threshold_scan_open_edge_count(
-        &mut self,
-    ) -> Result<u32, crate::AccumulatorOpSessionError> {
-        let Some(runtime) = self.accumulator_runtime.as_mut() else {
-            return Ok(0);
-        };
-        let Some(mut session) = runtime.take_threshold_session() else {
-            return Ok(0);
-        };
-        let result = (|| {
-            if session.n_ops() == 0 {
-                return Ok(0);
-            }
-            session.prepare_threshold_scan(&self.ctx);
-            let mut encoder = self
-                .ctx
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("open_edge_threshold_scan_encoder"),
-                });
-            session.encode_threshold_scan_with_outputs_into(
-                &self.ctx,
-                &mut encoder,
-                self.resolved.values(),
-                self.resolved.previous_values(),
-                self.resolved.output_vectors(),
-                self.resolved.previous_output_vectors(),
-            );
-            self.ctx.queue.submit(Some(encoder.finish()));
-            session.finish_threshold_scan(&self.ctx);
-            let events = session.readback_threshold_events(&self.ctx)?;
-            Ok(events.len() as u32)
-        })();
-        if let Some(runtime) = self.accumulator_runtime.as_mut() {
-            runtime.restore_threshold_session(Some(session));
-        }
-        result
-    }
-
     pub fn append_accumulator_threshold_ops(
         &mut self,
         regs: &[ThresholdRegistration],

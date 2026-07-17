@@ -13,7 +13,9 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use simthing_core::{DimensionRegistry, SimProperty, SimThing, SimThingId, SubFieldRole};
+use simthing_core::{
+    DimensionRegistry, OverlayKind, SimProperty, SimThing, SimThingId, SimThingKind, SubFieldRole,
+};
 use simthing_driver::{Scenario, SessionError, SimSession, StepOnceOutcome};
 use simthing_gpu::{
     emit_on_threshold_registrations_to_gpu, EmissionFormula, DEFAULT_THRESHOLD_EMISSION_CAPACITY,
@@ -422,20 +424,11 @@ impl StudioLiveSessionBridge {
                 let field_mode = field_bearing_game_mode(&profile.game_mode);
                 match SimSession::open_from_spec(scenario, &field_mode) {
                     Ok(mut sim) => {
-                        let open_edge_events = match ensure_resource_economy_threshold_ops(&mut sim)
-                        {
-                            Ok(n) => n,
-                            Err(e) => {
-                                return Err(StudioLiveSessionBridgeError::FieldBearingOpenFailed(
-                                    e,
-                                ));
-                            }
-                        };
-                        // Open-edge Rising crossings (Constant seed vs previous=0) count as
-                        // sealed decision events observed at field-bearing open — before the
-                        // first step_once snapshot would erase the edge.
-                        self.cumulative_decision_events = open_edge_events as u64;
-                        self.last_decision_event_count = open_edge_events;
+                        if let Err(e) = ensure_resource_economy_threshold_ops(&mut sim) {
+                            return Err(StudioLiveSessionBridgeError::FieldBearingOpenFailed(e));
+                        }
+                        // Authored Constant seeds are initial state only — not a time-zero
+                        // decision. Decision counts accumulate from live step_once only.
                         self.sample_keys = emission_sample_keys(&field_mode);
                         Ok(sim)
                     }
@@ -520,16 +513,16 @@ impl StudioLiveSessionBridge {
                 .expect("sim present")
                 .step_once();
             match step_result {
-                Ok(StepOnceOutcome {
-                    ticks_run,
-                    threshold_event_count,
-                    ..
-                }) => {
+                Ok(StepOnceOutcome { ticks_run, .. }) => {
                     let step_ticks = ticks_run.max(1);
                     ran = ran.saturating_add(step_ticks);
                     self.executed_ticks = self.executed_ticks.saturating_add(step_ticks);
-                    // Decision events come from the sealed AccumulatorOp threshold
-                    // path on step_once (not legacy Pass-7 read_event_count).
+                    // Re-read AccumulatorOp threshold emissions left by the production tick
+                    // (existing public runtime API — no driver/kernel seam widening).
+                    let threshold_event_count = {
+                        let sim = self.sim.as_mut().expect("sim present");
+                        last_tick_threshold_event_count(sim)
+                    };
                     self.last_decision_event_count = threshold_event_count;
                     self.cumulative_decision_events = self
                         .cumulative_decision_events
@@ -713,7 +706,35 @@ pub fn field_bearing_game_mode(mode: &GameModeSpec) -> GameModeSpec {
     let mut field = mode.clone();
     field.events.clear();
     field.capability_trees.clear();
+    // Drop non-field domain packs (combat/etc.). Field-economy overlays live on
+    // game_mode.overlays, but install only applies DomainPackSpec::overlays
+    // (envelope overlays are ADR-deferred). Elevate only field-economy overlay
+    // kinds (Policy/Crisis/Infrastructure) so payload/combat overlays with
+    // non-namespace targets stay out of the field-bearing install path.
+    let field_overlays: Vec<_> = std::mem::take(&mut field.overlays)
+        .into_iter()
+        .filter(|o| {
+            // Field-economy overlays always use `namespace::name` targets and the
+            // Policy/Crisis/Infrastructure kinds from the 12.6 lowerer.
+            o.targets_property.contains("::")
+                && matches!(
+                    o.kind,
+                    OverlayKind::Policy | OverlayKind::Crisis | OverlayKind::Infrastructure
+                )
+        })
+        .collect();
     field.domain_packs.clear();
+    if !field_overlays.is_empty() {
+        field.domain_packs.push(simthing_spec::DomainPackSpec {
+            id: "field_bearing_overlays".into(),
+            display_name: "Field-bearing overlays".into(),
+            metadata: Default::default(),
+            properties: Vec::new(),
+            overlays: field_overlays,
+            capability_trees: Vec::new(),
+            events: Vec::new(),
+        });
+    }
     field.resource_flow = None;
     field.region_fields.clear();
     field
@@ -756,22 +777,18 @@ pub fn driver_scenario_field_bearing_from_profile(
 }
 
 /// Open-time wiring for field-bearing sessions:
-/// 1. Seed property columns from authored Constant emission formulas (profile materialization)
+/// 1. Seed property columns from authored Constant emission formulas (initial state only)
 /// 2. Upload authored `emit_on_threshold` registrations through the generic GPU threshold bridge
-/// 3. Dispatch one open-edge threshold scan (no tick snapshot) so Rising gates observe
-///    `previous=0 → values=seed` before the first `step_once` snapshot erases the edge
 ///
-/// Not per-tick economy logic — install/profile residue elevation only. Without Constant seeds,
-/// RF transfers/thresholds have vacant columns even though the authored emitters lowered.
-///
-/// Returns sealed open-edge decision event count (for [OVL] / proof readout).
-fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<u32, String> {
+/// Not per-tick economy logic — install/profile residue elevation only. Does **not**
+/// fabricate an open-time decision edge; decisions are observed only after live `step_once`.
+fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<(), String> {
     materialize_authored_constant_emission_seeds(session)?;
     let Some(registry) = session.spec_state.resource_economy_registry.as_ref() else {
-        return Ok(0);
+        return Ok(());
     };
     if registry.registrations.emit_on_threshold.is_empty() {
-        return Ok(0);
+        return Ok(());
     }
     let gpu_regs =
         emit_on_threshold_registrations_to_gpu(&registry.registrations.emit_on_threshold);
@@ -782,10 +799,19 @@ fn ensure_resource_economy_threshold_ops(session: &mut SimSession) -> Result<u32
         .state
         .upload_accumulator_threshold_ops(&gpu_regs)
         .map_err(|e| format!("upload emit_on_threshold: {e}"))?;
-    session
-        .state
-        .dispatch_accumulator_threshold_scan_open_edge_count()
-        .map_err(|e| format!("open-edge threshold scan: {e}"))
+    Ok(())
+}
+
+/// Count sealed AccumulatorOp threshold events from the most recent production tick.
+/// Uses the existing public runtime readback (events remain until the next prepare).
+fn last_tick_threshold_event_count(sim: &mut SimSession) -> u32 {
+    let Some(runtime) = sim.state.accumulator_runtime.as_mut() else {
+        return 0;
+    };
+    runtime
+        .readback_threshold_events(&sim.state.ctx)
+        .map(|events| events.len() as u32)
+        .unwrap_or(0)
 }
 
 fn materialize_authored_constant_emission_seeds(session: &mut SimSession) -> Result<(), String> {
@@ -941,15 +967,37 @@ pub fn bridge_module_source_forbids_workshop_residue() -> bool {
 }
 
 /// Build an authored live profile from a hydrated scenario pack (production elevates this).
+///
+/// Field-economy owner_policy overlays install via `ScenarioListed { owner_key }`.
+/// Hydrate location trees alone do not always register owner keys on
+/// `install_targets`; inject owner shells so the existing domain-pack overlay
+/// install path can resolve them without bespoke tick logic.
 pub fn authored_live_profile_from_pack(
     pack: &simthing_clausething::HydratedScenarioPack,
 ) -> StudioAuthoredLiveProfile {
+    let mut root = pack.root.clone();
+    let mut install_targets: HashMap<String, Vec<SimThingId>> = pack
+        .install_targets
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    for owner in &pack.owners {
+        if install_targets.contains_key(&owner.owner_key) {
+            continue;
+        }
+        let mut shell = SimThing::new(SimThingKind::Custom("Owner".into()), 0);
+        // Prefer hydrate's stable owner id when present so later joins stay coherent.
+        if owner.simthing_id.raw() != 0 {
+            shell.id = owner.simthing_id;
+        }
+        let id = shell.id;
+        root.add_child(shell);
+        install_targets.insert(owner.owner_key.clone(), vec![id]);
+    }
     StudioAuthoredLiveProfile::from_hydrated_pack(
         pack.game_mode.clone(),
-        pack.install_targets
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone())),
-        pack.root.clone(),
+        install_targets,
+        root,
         pack.field_economy.is_some(),
     )
 }
