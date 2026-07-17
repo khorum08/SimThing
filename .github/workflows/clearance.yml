@@ -142,33 +142,70 @@ jobs:
           # Push-to-master has no PR ingress, so resolve the live dispatch via graceful
           # --current-handoff (#1342: empty output = none). Keep `none` only when genuinely none.
           if [ -z "$pr" ] && [ -z "$handoff" ]; then
-            handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff)"
-          fi
-          if [ -n "$handoff" ]; then
-            bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
-          else
-            bash scripts/ci/handoff_dispatch.sh --board-json > simthing-board.json || echo '{"error":"board-json"}' > simthing-board.json
-          fi
-          board_render_ok=1
-          if ! bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md; then
-            sync_rc=1
-            board_render_ok=0
+            handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff 2>/dev/null || true)"
           fi
 
-          python3 -c 'import json; print(json.dumps({"title": "SimThing Board", "body": open("simthing-board.md", encoding="utf-8").read()}))' > board_payload.json
-          gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" --paginate --slurp > board-issues.json
-          board_target="$(bash scripts/ci/handoff_dispatch.sh --board-issue-target board-issues.json 2>&1)"
-          board_target_rc=$?
-          if [ "$board_target_rc" -ne 0 ]; then
-            printf '%s\n' "$board_target"
-            sync_rc="$board_target_rc"
-          elif [ "$board_render_ok" -ne 1 ]; then
-            printf '%s\n' "board render failed; preserving existing SimThing Board body"
-          elif [ "$board_target" = "create" ]; then
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues" --input board_payload.json >/dev/null
+          # Board freshness contract: the board MUST be written on EVERY run (especially
+          # push-to-master, which is the only sync after a merge), and when any gh input is
+          # flaky it MUST self-declare `<STALE DUE TO ...>` rather than silently freeze at a
+          # prior snapshot. stale_reasons accumulates flaky-input notes; gh_retry rides out the
+          # in-runner 5xx/empty flakiness that previously froze the board.
+          stale_reasons=""
+          mark_stale() { stale_reasons="${stale_reasons:+${stale_reasons}; }$1"; }
+          gh_retry() { local a rc; for a in 1 2 3; do "$@" && return 0; rc=$?; [ "$a" -lt 3 ] && sleep $((a * 2)); done; return "$rc"; }
+
+          if [ -n "$handoff" ]; then
+            bash scripts/ci/handoff_dispatch.sh --board-json "$handoff" > simthing-board.json 2>/dev/null \
+              || { echo '{"error":"board-json"}' > simthing-board.json; mark_stale "board-json build"; }
           else
-            issue_num="${board_target#update }"
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${issue_num}" --input board_payload.json >/dev/null
+            bash scripts/ci/handoff_dispatch.sh --board-json > simthing-board.json 2>/dev/null \
+              || { echo '{"error":"board-json"}' > simthing-board.json; mark_stale "board-json build"; }
+          fi
+          board_render_ok=1
+          if ! bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md 2>/dev/null; then
+            board_render_ok=0
+            mark_stale "board render"
+          fi
+
+          # Resolve the board issue number (retry the open-issues read — the flakiest input).
+          board_target=""
+          if gh_retry gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" --paginate --slurp > board-issues.json 2>/dev/null; then
+            board_target="$(bash scripts/ci/handoff_dispatch.sh --board-issue-target board-issues.json 2>/dev/null || true)"
+          fi
+          [ -z "$board_target" ] && mark_stale "board-issue-target read"
+
+          # Assemble the body. Always write SOMETHING so the board proves it is live: a good
+          # render if we have one, else the existing body carried forward (never clobbered with
+          # garbage) — either way prefixed with the STALE banner when inputs were flaky.
+          if [ "$board_render_ok" -eq 1 ]; then
+            cp simthing-board.md board-body.md
+          else
+            read_issue="${board_target#update }"
+            if [ -n "$read_issue" ] && [ "$board_target" != "create" ] \
+               && gh_retry gh api "repos/${GITHUB_REPOSITORY}/issues/${read_issue}" --jq .body > board-body.md 2>/dev/null \
+               && [ -s board-body.md ]; then
+              :
+            else
+              printf '# SimThing Board\n\n_(render unavailable this run)_\n' > board-body.md
+            fi
+          fi
+          if [ -n "$stale_reasons" ]; then
+            { printf '> :warning: `<STALE DUE TO: %s>` — board sync ran at %s but some gh inputs were flaky; time-varying fields (master_head, current_handoff, leases) may lag master. Self-heals on the next clean run.\n\n' \
+                "$stale_reasons" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; cat board-body.md; } > board-body.stamped.md
+            mv board-body.stamped.md board-body.md
+          fi
+          python3 -c 'import json; print(json.dumps({"title": "SimThing Board", "body": open("board-body.md", encoding="utf-8").read()}))' > board_payload.json
+
+          # Write. Always attempt; retry transient write-path 5xx. A final write failure is a
+          # ::warning:: (self-heals next run), never a silent no-op and never a red gate.
+          if [ -z "$board_target" ]; then
+            echo "::warning::SimThing Board not written (could not resolve target issue after retries); ${stale_reasons}"
+          elif [ "$board_target" = "create" ]; then
+            gh_retry gh api -X POST "repos/${GITHUB_REPOSITORY}/issues" --input board_payload.json >/dev/null 2>&1 \
+              || echo "::warning::SimThing Board create failed after retries (transient GitHub write-path); self-heals next run"
+          else
+            gh_retry gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${board_target#update }" --input board_payload.json >/dev/null 2>&1 \
+              || echo "::warning::SimThing Board update failed after retries (transient GitHub write-path); self-heals next run"
           fi
 
           exit "$sync_rc"
