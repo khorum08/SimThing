@@ -119,11 +119,11 @@ pub mod w_impedance_compose_bridge;
 pub use arena_allocation_oracle::{run_arena_allocation_oracle, ArenaAllocationOracleTrace};
 pub use rf_conservation_oracle::{
     allocator_eps_bound, allocator_from_disbursements, check_allocator_step, check_arena_structural,
-    check_conservation, check_recipe_exact, flat_star_lineage, flat_star_observations,
+    check_conservation, check_recipe_exact, flat_star_observations,
     leaf_allocated_from_cells, orphan_ids, AllocatorConservationViolation,
     AllocatorStepObservation, ArenaConservationSnapshot, ArenaParticipantObservation,
-    ConservationReport, RecipeConservationViolation, RecipeInvocationObservation,
-    StructuralConservationViolation,
+    ArenaStructuralEvidence, ConservationReport, RecipeConservationViolation,
+    RecipeInvocationObservation, StructuralConservationViolation,
 };
 pub use arena_allocation_plan::{
     max_disbursement_band, plan_arena_allocation, AllocationPlanError, ArenaAllocationPlan,

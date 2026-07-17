@@ -101,7 +101,7 @@ pub struct AllocatorStepObservation {
     /// Residual observed integrating into parent Balance via `governed_by`
     /// (signed: budget − Σ disbursed). Required so the residual is accounted
     /// rather than silently tolerated.
-    pub balance_residual: f32,
+    pub balance_residual: Option<f32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -115,7 +115,7 @@ pub enum AllocatorConservationViolation {
     },
     ResidualNotIntegrated {
         arithmetic_residual: f32,
-        reported_balance_residual: f32,
+        reported_balance_residual: Option<f32>,
     },
 }
 
@@ -142,11 +142,17 @@ pub fn check_allocator_step(
         });
     }
     // Residual must be accounted in Balance (same O(ε) slack; not an open-ended pass).
-    let integrate_err = (obs.balance_residual - arithmetic_residual).abs();
-    if integrate_err > bound {
+    let Some(measured_balance_residual) = obs.balance_residual else {
         return Err(AllocatorConservationViolation::ResidualNotIntegrated {
             arithmetic_residual,
-            reported_balance_residual: obs.balance_residual,
+            reported_balance_residual: None,
+        });
+    };
+    let integrate_err = (measured_balance_residual - arithmetic_residual).abs();
+    if !measured_balance_residual.is_finite() || integrate_err > bound {
+        return Err(AllocatorConservationViolation::ResidualNotIntegrated {
+            arithmetic_residual,
+            reported_balance_residual: Some(measured_balance_residual),
         });
     }
     Ok(())
@@ -167,16 +173,23 @@ pub struct ArenaParticipantObservation {
     /// Allocated flow received this tick (leaves; 0 for pure intermediates if unused).
     pub allocated_flow: f32,
     /// Balance column change this tick (via `governed_by` / residual integration).
-    pub balance_delta: f32,
-    /// True if this participant is admitted via a declared intrinsic source,
-    /// an inbound coupling, or a parent disburse path (i.e. not an orphan).
-    pub has_declared_lineage: bool,
+    pub balance_delta: Option<f32>,
+}
+
+/// Explicit topology evidence from which the oracle independently derives
+/// participant lineage. Callers provide facts, never an `is_orphan` verdict.
+#[derive(Clone, Debug, Default)]
+pub struct ArenaStructuralEvidence {
+    pub declared_intrinsic_source_ids: Vec<u64>,
+    pub inbound_coupling_endpoint_ids: Vec<u64>,
+    pub parent_disbursement_recipient_ids: Vec<u64>,
 }
 
 /// Full arena observation for structural conservation.
 #[derive(Clone, Debug)]
 pub struct ArenaConservationSnapshot {
     pub participants: Vec<ArenaParticipantObservation>,
+    pub structural_evidence: ArenaStructuralEvidence,
     /// Inbound coupling contributions into this arena this tick.
     pub inbound_coupling: f32,
     /// Emission consumption (recipe/transfer emit-side debit of arena mass) this tick.
@@ -194,6 +207,9 @@ pub enum StructuralConservationViolation {
     OrphanParticipants {
         orphan_ids: Vec<u64>,
     },
+    MissingBalanceObservations {
+        participant_ids: Vec<u64>,
+    },
 }
 
 /// Structural per-arena conservation + orphan ban (ADR).
@@ -203,16 +219,26 @@ pub enum StructuralConservationViolation {
 pub fn check_arena_structural(
     snap: &ArenaConservationSnapshot,
 ) -> Result<(), StructuralConservationViolation> {
-    let orphans: Vec<u64> = snap
-        .participants
-        .iter()
-        .filter(|p| !p.has_declared_lineage)
-        .map(|p| p.id)
-        .collect();
+    let participant_ids: Vec<u64> = snap.participants.iter().map(|p| p.id).collect();
+    let orphans = orphan_ids(&participant_ids, &snap.structural_evidence);
     if !orphans.is_empty() {
         return Err(StructuralConservationViolation::OrphanParticipants {
             orphan_ids: orphans,
         });
+    }
+
+    let missing_balance: Vec<u64> = snap
+        .participants
+        .iter()
+        .filter(|participant| participant.balance_delta.is_none())
+        .map(|participant| participant.id)
+        .collect();
+    if !missing_balance.is_empty() {
+        return Err(
+            StructuralConservationViolation::MissingBalanceObservations {
+                participant_ids: missing_balance,
+            },
+        );
     }
 
     let intrinsic: f32 = snap.participants.iter().map(|p| p.intrinsic_flow).sum();
@@ -222,7 +248,11 @@ pub fn check_arena_structural(
         .filter(|p| p.is_leaf)
         .map(|p| p.allocated_flow)
         .sum();
-    let balance: f32 = snap.participants.iter().map(|p| p.balance_delta).sum();
+    let balance: f32 = snap
+        .participants
+        .iter()
+        .filter_map(|participant| participant.balance_delta)
+        .sum();
 
     let sources = intrinsic + snap.inbound_coupling;
     let sinks = leaf_alloc + balance + snap.emission_consumption;
@@ -313,36 +343,18 @@ pub fn flat_star_observations(
     leaf_slots: &[u64],
     root_intrinsic: f32,
     leaf_allocated: &[f32],
-    root_balance_delta: f32,
-    leaf_balance_deltas: &[f32],
+    root_balance_delta: Option<f32>,
+    leaf_balance_deltas: &[Option<f32>],
     inbound_coupling: f32,
     emission_consumption: f32,
 ) -> (AllocatorStepObservation, ArenaConservationSnapshot) {
     assert_eq!(leaf_slots.len(), leaf_allocated.len());
     assert_eq!(leaf_slots.len(), leaf_balance_deltas.len());
-    let sum_disbursed: f32 = leaf_allocated.iter().copied().sum();
-    let arithmetic_residual = root_intrinsic - sum_disbursed;
     let allocator = AllocatorStepObservation {
         budget: root_intrinsic,
         disbursed: leaf_allocated.to_vec(),
-        // Residual integrates into parent Balance; caller may pass measured
-        // root_balance_delta. When the measured balance path only records the
-        // residual (not the full flow integration), pass that residual here.
-        balance_residual: if root_balance_delta.abs() > 0.0
-            || arithmetic_residual.abs() == 0.0
-        {
-            // Prefer measured residual when it matches the arithmetic residual
-            // closely; otherwise use the arithmetic residual (Balance path).
-            if (root_balance_delta - arithmetic_residual).abs()
-                <= allocator_eps_bound(leaf_slots.len(), root_intrinsic)
-            {
-                root_balance_delta
-            } else {
-                arithmetic_residual
-            }
-        } else {
-            arithmetic_residual
-        },
+        // Never substitute arithmetic truth for the executed Balance readout.
+        balance_residual: root_balance_delta,
     };
 
     let mut participants = Vec::with_capacity(1 + leaf_slots.len());
@@ -351,12 +363,7 @@ pub fn flat_star_observations(
         is_leaf: false,
         intrinsic_flow: root_intrinsic,
         allocated_flow: 0.0,
-        // For structural mass: only the residual (undisbursed budget) counts as
-        // Balance sink at the intermediate; leaf balances carry their allocated
-        // mass when the caller integrates full (i_f+a_f). Structural equality
-        // uses residual + leaf_alloc = intrinsic when residual = budget−Σdisbursed.
-        balance_delta: arithmetic_residual,
-        has_declared_lineage: true, // root is the declared intrinsic source
+        balance_delta: root_balance_delta,
     });
     for (i, &slot) in leaf_slots.iter().enumerate() {
         participants.push(ArenaParticipantObservation {
@@ -364,48 +371,55 @@ pub fn flat_star_observations(
             is_leaf: true,
             intrinsic_flow: 0.0,
             allocated_flow: leaf_allocated[i],
-            balance_delta: 0.0, // leaf mass already counted as allocated_flow sink
-            has_declared_lineage: true, // parent disburse path
+            balance_delta: leaf_balance_deltas[i],
         });
-        let _ = leaf_balance_deltas[i]; // reserved for full-integration variants
     }
     let arena = ArenaConservationSnapshot {
         participants,
+        structural_evidence: ArenaStructuralEvidence {
+            declared_intrinsic_source_ids: vec![root_slot],
+            inbound_coupling_endpoint_ids: Vec::new(),
+            parent_disbursement_recipient_ids: leaf_slots.to_vec(),
+        },
         inbound_coupling,
         emission_consumption,
     };
     (allocator, arena)
 }
 
-/// Construct an allocator observation from a budget and measured child shares,
-/// with residual integrated into Balance by construction (ADR path).
-pub fn allocator_from_disbursements(budget: f32, disbursed: Vec<f32>) -> AllocatorStepObservation {
-    let sum: f32 = disbursed.iter().copied().sum();
+/// Construct an allocator observation from measured child shares and a measured
+/// Balance residual. The observation is intentionally incomplete when the
+/// Balance readout is absent; the checker then returns `ResidualNotIntegrated`.
+pub fn allocator_from_disbursements(
+    budget: f32,
+    disbursed: Vec<f32>,
+    measured_balance_residual: Option<f32>,
+) -> AllocatorStepObservation {
     AllocatorStepObservation {
         budget,
-        balance_residual: budget - sum,
+        balance_residual: measured_balance_residual,
         disbursed,
     }
 }
 
-/// Detect orphan ids given the set of declared lineage ids (intrinsic sources
-/// ∪ coupling endpoints ∪ disburse recipients). Pure set arithmetic.
-pub fn orphan_ids(all_participant_ids: &[u64], declared_lineage: &HashSet<u64>) -> Vec<u64> {
-    all_participant_ids
+/// Detect orphan ids from explicit topology evidence: intrinsic sources ∪
+/// inbound-coupling endpoints ∪ parent-disbursement recipients.
+pub fn orphan_ids(all_participant_ids: &[u64], evidence: &ArenaStructuralEvidence) -> Vec<u64> {
+    let declared_lineage: HashSet<u64> = evidence
+        .declared_intrinsic_source_ids
+        .iter()
+        .chain(evidence.inbound_coupling_endpoint_ids.iter())
+        .chain(evidence.parent_disbursement_recipient_ids.iter())
+        .copied()
+        .collect();
+    let mut orphans: Vec<u64> = all_participant_ids
         .iter()
         .copied()
         .filter(|id| !declared_lineage.contains(id))
-        .collect()
-}
-
-/// Helper: build a declared-lineage set from root + leaves (flat star).
-pub fn flat_star_lineage(root: u64, leaves: &[u64]) -> HashSet<u64> {
-    let mut s = HashSet::with_capacity(1 + leaves.len());
-    s.insert(root);
-    for &l in leaves {
-        s.insert(l);
-    }
-    s
+        .collect();
+    orphans.sort_unstable();
+    orphans.dedup();
+    orphans
 }
 
 /// Extract leaf allocated flows from a cell map `(slot, col) → value`.
@@ -446,19 +460,25 @@ mod tests {
         assert!(check_recipe_exact(&bad_recipe).is_err());
 
         // Allocator proportional (1:3 of 10) within O(ε·n).
-        let good_alloc = allocator_from_disbursements(10.0, vec![2.5, 7.5]);
+        let good_alloc = allocator_from_disbursements(10.0, vec![2.5, 7.5], Some(0.0));
         assert!(check_allocator_step(&good_alloc).is_ok());
         // f32 three-way split residual still within bound when integrated.
         let budget = 1.0_f32;
         let w = [1.0_f32, 1.0, 1.0];
         let wsum: f32 = w.iter().sum();
         let three_way: Vec<f32> = w.iter().map(|wi| budget * wi / wsum).collect();
-        assert!(check_allocator_step(&allocator_from_disbursements(budget, three_way)).is_ok());
+        let three_way_residual = budget - three_way.iter().copied().sum::<f32>();
+        assert!(check_allocator_step(&allocator_from_disbursements(
+            budget,
+            three_way,
+            Some(three_way_residual),
+        ))
+        .is_ok());
 
         let bad_alloc = AllocatorStepObservation {
             budget: 10.0,
             disbursed: vec![1.0, 1.0],
-            balance_residual: 8.0,
+            balance_residual: Some(8.0),
         };
         let fail = check_conservation(&[good_recipe.clone()], &[bad_alloc], &[]);
         assert!(!fail.all_pass(), "non-conservative must fail");
@@ -469,8 +489,8 @@ mod tests {
             &[2, 3],
             10.0,
             &[2.5, 7.5],
-            0.0,
-            &[0.0, 0.0],
+            Some(0.0),
+            &[Some(0.0), Some(0.0)],
             0.0,
             0.0,
         );
@@ -484,11 +504,15 @@ mod tests {
         let obs = AllocatorStepObservation {
             budget: 10.0,
             disbursed: vec![2.0, 7.0], // residual 1.0 >> O(ε·n)
-            balance_residual: 1.0,
+            balance_residual: Some(1.0),
         };
         let err = check_allocator_step(&obs).expect_err("must bite on O(ε·n) breach");
         match err {
-            AllocatorConservationViolation::ResidualExceedsBound { abs_residual, bound, .. } => {
+            AllocatorConservationViolation::ResidualExceedsBound {
+                abs_residual,
+                bound,
+                ..
+            } => {
                 assert!(abs_residual > bound);
                 assert!(abs_residual > 0.5);
             }
@@ -498,11 +522,23 @@ mod tests {
         let unintegrated = AllocatorStepObservation {
             budget: 10.0,
             disbursed: vec![2.5, 7.5],
-            balance_residual: 5.0,
+            balance_residual: Some(5.0),
         };
         assert!(matches!(
             check_allocator_step(&unintegrated),
             Err(AllocatorConservationViolation::ResidualNotIntegrated { .. })
+        ));
+        let missing = AllocatorStepObservation {
+            budget: 10.0,
+            disbursed: vec![2.5, 7.5],
+            balance_residual: None,
+        };
+        assert!(matches!(
+            check_allocator_step(&missing),
+            Err(AllocatorConservationViolation::ResidualNotIntegrated {
+                reported_balance_residual: None,
+                ..
+            })
         ));
     }
 
@@ -516,18 +552,21 @@ mod tests {
                     is_leaf: false,
                     intrinsic_flow: 5.0,
                     allocated_flow: 0.0,
-                    balance_delta: 0.0,
-                    has_declared_lineage: true,
+                    balance_delta: Some(0.0),
                 },
                 ArenaParticipantObservation {
                     id: 99,
                     is_leaf: true,
                     intrinsic_flow: 0.0,
                     allocated_flow: 5.0,
-                    balance_delta: 0.0,
-                    has_declared_lineage: false,
+                    balance_delta: Some(0.0),
                 },
             ],
+            structural_evidence: ArenaStructuralEvidence {
+                declared_intrinsic_source_ids: vec![1],
+                inbound_coupling_endpoint_ids: Vec::new(),
+                parent_disbursement_recipient_ids: Vec::new(),
+            },
             inbound_coupling: 0.0,
             emission_consumption: 0.0,
         };
@@ -545,18 +584,21 @@ mod tests {
                     is_leaf: false,
                     intrinsic_flow: 10.0,
                     allocated_flow: 0.0,
-                    balance_delta: 0.0,
-                    has_declared_lineage: true,
+                    balance_delta: Some(0.0),
                 },
                 ArenaParticipantObservation {
                     id: 2,
                     is_leaf: true,
                     intrinsic_flow: 0.0,
                     allocated_flow: 3.0,
-                    balance_delta: 0.0,
-                    has_declared_lineage: true,
+                    balance_delta: Some(0.0),
                 },
             ],
+            structural_evidence: ArenaStructuralEvidence {
+                declared_intrinsic_source_ids: vec![1],
+                inbound_coupling_endpoint_ids: Vec::new(),
+                parent_disbursement_recipient_ids: vec![2],
+            },
             inbound_coupling: 0.0,
             emission_consumption: 0.0,
         };

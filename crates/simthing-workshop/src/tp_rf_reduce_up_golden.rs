@@ -1,115 +1,173 @@
 //! Canonical TP child→ancestor reduce-up golden (RF-1 → RF-4 OVL target).
 //!
-//! Scenario-flavored (Terran-Pirate field economy) — lives in workshop per §12
-//! workshop-candidate-homing. The generic conservation oracle lives in
-//! `simthing-driver::rf_conservation_oracle`; this golden is the **expected
-//! ancestor/Owner aggregate** computed analytically from the ADR conservation
-//! policy + the authored TP economy in `scenarios/terran_pirate_galaxy.clause`.
-//!
-//! It does **not** call `owner_silo_recursive_rf_source` or the recursive
-//! `runtime_rf_tick_source` branch. RF-2 will execute recursive reduce-up; RF-4
-//! closes Owner OVL by matching this golden.
+//! The golden is scenario-flavored and therefore workshop-homed. It ingests
+//! the authoritative ClauseScript pack and derives an Owner-channel aggregate
+//! from every authored fleet participant; it does not copy scenario constants
+//! into Rust and does not call the RF-2 recursive execution source.
 
-/// Authored TP field-economy constants (12.8 clause data — not invented rates).
-///
-/// From `scenarios/terran_pirate_galaxy.clause` `field_economy = tp_economy`:
-/// - `shipyard_minerals.amount = 100`
-/// - `shipyard_factory`: input minerals unit_cost 5, output hulls, throttle 4
-/// - `terran_minerals` silo: current 40 → stockpile transfer amount 40
-/// - `pirate_raid_presence.amount = 8`
-/// - owner policy overlays: terran expansion mult 1.15, manufacturing add 0.25,
-///   pirate disruption mult 1.35
-pub mod authored {
-    pub const SHIPYARD_MINERALS_AMOUNT: f32 = 100.0;
-    pub const FACTORY_MINERALS_UNIT_COST: f32 = 5.0;
-    pub const FACTORY_THROTTLE_MAX_PER_TICK: u32 = 4;
-    pub const TERRAN_SILO_CURRENT: f32 = 40.0;
-    pub const TERRAN_SILO_STOCKPILE_TRANSFER: f32 = 40.0;
-    pub const PIRATE_DISRUPTION_PRESENCE: f32 = 8.0;
-    pub const TERRAN_EXPANSION_POLICY_MULT: f32 = 1.15;
-    pub const TERRAN_MANUFACTURING_POLICY_ADD: f32 = 0.25;
-    pub const PIRATE_DISRUPTION_POLICY_MULT: f32 = 1.35;
+use std::path::Path;
+
+use anyhow::{anyhow, bail, Context, Result};
+use simthing_clausething::{hydrate_scenario_with_source_base, parse_raw_document};
+use simthing_spec::EmissionFormulaSpec;
+
+/// One descendant contribution in the selected Owner RF channel.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TpDescendantContribution {
+    pub participant_id: String,
+    pub target_location_id: String,
+    pub fleet_index: u32,
+    pub ships: u32,
+    pub per_ship_flow: f32,
+    pub contribution: f32,
 }
 
-/// Expected ancestor/Owner aggregates after one recursive reduce-up tick of the
-/// authored TP economy, derived closed-form from the ADR (not from RF-2).
+/// Authored-pack-bound RF-4 reduce-up target.
+///
+/// Owner entities remain GameSession siblings, never spatial parents. The
+/// `owner_arena` field names the RF owner channel; descendant locations remain
+/// those authored by each placement in `participant_contributions`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TpReduceUpGolden {
-    /// Owner terran minerals stockpile after the silo current→stockpile transfer.
-    pub terran_owner_minerals_stockpile: f32,
-    /// Hulls produced at terran_shipyard this tick (recipe emit under throttle).
-    pub terran_shipyard_hulls_emitted: f32,
-    /// Minerals remaining at shipyard after recipe debit (exact recipe conservation).
-    pub terran_shipyard_minerals_after_recipe: f32,
-    /// Pirate disruption presence after owner-policy Multiply overlay on the field.
-    pub pirate_owner_disruption_aggregate: f32,
-    /// Recipe emit_count used (ADR per-recipe exact identity).
+    pub owner_arena: String,
+    pub resource_key: String,
+    pub participant_contributions: Vec<TpDescendantContribution>,
+    pub selected_child_id: String,
+    pub selected_child_marginal: f32,
+    pub sibling_contributions_preserved: f32,
+    pub expected_owner_aggregate: f32,
+    pub factory_need_deltas: Vec<f32>,
+    pub factory_unit_costs: Vec<f32>,
     pub factory_emit_count: u32,
 }
 
-/// Analytically compute the RF-4 reduce-up golden from authored TP economy.
+/// Ingest the canonical authored pack and derive the TP reduce-up target.
 ///
-/// Derivation (ADR + clause):
-/// 1. **Recipe exact** (`MinAcrossInputs + SubtractFromAllInputs`):
-///    `emit_count = min(floor(minerals / unit_cost), throttle) = min(floor(100/5), 4) = 4`
-///    `ΔNeed_minerals = −emit_count × 5 = −20`
-///    remaining minerals = 100 − 20 = 80
-///    hulls emitted = emit_count = 4 (target Amount += emit_count)
-/// 2. **Owner silo transfer** (discrete source-debit, exact):
-///    stockpile += 40; current provides the transfer mass.
-/// 3. **Owner aggregate / policy overlay** (overlay Multiply on pirate disruption):
-///    pirate disruption field 8 × 1.35 policy mult → 10.8 aggregate observed at
-///    the owner-policy-weighted readout (overlay stack, not a new primitive).
-///
-/// Continuous hierarchical allocator residual is O(ε·n) and integrates into
-/// Balance; this golden records the exact discrete + recipe faces that RF-4
-/// telemetry must show on the Owner/ancestor side once RF-2 executes reduce-up.
-pub fn compute_tp_reduce_up_golden() -> TpReduceUpGolden {
-    use authored::*;
+/// The exact selected arena is the `terran` Owner energy/upkeep RF channel. All
+/// authored `terran_fleets` placements contribute; fleet zero is the selected
+/// child and every other fleet is retained as sibling mass. Any drift in fleet
+/// count, placement path, ships-per-fleet, upkeep, resource key, or recipe
+/// inputs changes this result and therefore breaks the canonical golden test.
+pub fn compute_tp_reduce_up_golden_from_clause(
+    clause_source: &[u8],
+    source_base: Option<&Path>,
+) -> Result<TpReduceUpGolden> {
+    let document = parse_raw_document(clause_source).context("parse canonical TP ClauseScript")?;
+    let pack = hydrate_scenario_with_source_base(&document, source_base)
+        .context("hydrate canonical TP authored pack")?;
 
-    let max_by_input = (SHIPYARD_MINERALS_AMOUNT / FACTORY_MINERALS_UNIT_COST).floor() as u32;
-    let emit_count = max_by_input.min(FACTORY_THROTTLE_MAX_PER_TICK);
-    let minerals_debit = (emit_count as f32) * FACTORY_MINERALS_UNIT_COST;
-    // Per-recipe exact: Σ ΔNeed + emit × Σ c = −minerals_debit + emit × unit_cost = 0
-    debug_assert!(((-minerals_debit) + (emit_count as f32) * FACTORY_MINERALS_UNIT_COST).abs() == 0.0);
-
-    TpReduceUpGolden {
-        terran_owner_minerals_stockpile: TERRAN_SILO_STOCKPILE_TRANSFER,
-        terran_shipyard_hulls_emitted: emit_count as f32,
-        terran_shipyard_minerals_after_recipe: SHIPYARD_MINERALS_AMOUNT - minerals_debit,
-        pirate_owner_disruption_aggregate: PIRATE_DISRUPTION_PRESENCE * PIRATE_DISRUPTION_POLICY_MULT,
-        factory_emit_count: emit_count,
+    let fleet = pack
+        .fleet_ship_payloads
+        .iter()
+        .find(|payload| payload.id == "terran_fleets")
+        .ok_or_else(|| anyhow!("canonical pack is missing terran_fleets"))?;
+    if fleet.owner != "terran" {
+        bail!("terran_fleets owner drifted to {}", fleet.owner);
     }
-}
-
-/// Recipe observation that the conservation oracle must accept as exact fo
-/// the canonical TP factory tick (pairs with `check_recipe_exact`).
-pub fn tp_factory_recipe_observation() -> (Vec<f32>, Vec<f32>, u32) {
-    let g = compute_tp_reduce_up_golden();
-    let unit_cost = authored::FACTORY_MINERALS_UNIT_COST;
-    let need_delta = -(g.factory_emit_count as f32) * unit_cost;
-    (vec![need_delta], vec![unit_cost], g.factory_emit_count)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn golden_matches_authored_clause_rates() {
-        let g = compute_tp_reduce_up_golden();
-        assert_eq!(g.factory_emit_count, 4);
-        assert_eq!(g.terran_shipyard_hulls_emitted, 4.0);
-        assert_eq!(g.terran_shipyard_minerals_after_recipe, 80.0);
-        assert_eq!(g.terran_owner_minerals_stockpile, 40.0);
-        assert_eq!(g.pirate_owner_disruption_aggregate, 8.0 * 1.35);
+    if fleet.placements.len() != fleet.fleet_count as usize {
+        bail!(
+            "terran_fleets placement count {} does not match authored fleet_count {}",
+            fleet.placements.len(),
+            fleet.fleet_count
+        );
     }
 
-    #[test]
-    fn golden_recipe_satisfies_adr_exact_identity() {
-        let (need, costs, emit) = tp_factory_recipe_observation();
-        let sum_need: f32 = need.iter().sum();
-        let sum_c: f32 = costs.iter().sum();
-        assert_eq!(sum_need + (emit as f32) * sum_c, 0.0);
+    let mut participant_contributions: Vec<TpDescendantContribution> = fleet
+        .placements
+        .iter()
+        .map(|placement| {
+            if placement.owner != fleet.owner || placement.ships_per_fleet != fleet.ships_per_fleet
+            {
+                bail!(
+                    "fleet {} path/profile drift: owner={} ships={}",
+                    placement.fleet_index,
+                    placement.owner,
+                    placement.ships_per_fleet
+                );
+            }
+            let contribution = (placement.ships_per_fleet as f32) * (fleet.upkeep_per_ship as f32);
+            Ok(TpDescendantContribution {
+                participant_id: format!("{}#{}", fleet.id, placement.fleet_index),
+                target_location_id: placement.target_id.clone(),
+                fleet_index: placement.fleet_index,
+                ships: placement.ships_per_fleet,
+                per_ship_flow: fleet.upkeep_per_ship as f32,
+                contribution,
+            })
+        })
+        .collect::<Result<_>>()?;
+    participant_contributions.sort_by_key(|contribution| contribution.fleet_index);
+
+    let selected = participant_contributions
+        .first()
+        .ok_or_else(|| anyhow!("terran_fleets has no participating descendants"))?;
+    let expected_owner_aggregate: f32 = participant_contributions
+        .iter()
+        .map(|contribution| contribution.contribution)
+        .sum();
+    let sibling_contributions_preserved = expected_owner_aggregate - selected.contribution;
+
+    let economy = pack
+        .field_economy
+        .as_ref()
+        .ok_or_else(|| anyhow!("canonical pack is missing field_economy"))?;
+    let quantity = economy
+        .field_resource_quantities
+        .iter()
+        .find(|quantity| quantity.id == "shipyard_minerals")
+        .ok_or_else(|| anyhow!("canonical pack is missing shipyard_minerals"))?;
+    let resource_economy = pack
+        .game_mode
+        .resource_economy
+        .as_ref()
+        .ok_or_else(|| anyhow!("canonical pack is missing lowered resource economy"))?;
+    let recipe = resource_economy
+        .recipes
+        .iter()
+        .find(|recipe| recipe.id == "tp_economy_recipe_shipyard_factory")
+        .ok_or_else(|| anyhow!("canonical pack is missing shipyard_factory recipe"))?;
+    if recipe.inputs.is_empty() {
+        bail!("shipyard_factory recipe has no inputs");
     }
+    let max_by_inputs = recipe
+        .inputs
+        .iter()
+        .map(|input| (quantity.amount / input.unit_cost).floor() as u32)
+        .min()
+        .ok_or_else(|| anyhow!("shipyard_factory recipe has no bounded input"))?;
+    let factory_emit_count = max_by_inputs.min(recipe.throttle_hint_max_per_tick);
+    let factory_unit_costs: Vec<f32> = recipe.inputs.iter().map(|input| input.unit_cost).collect();
+    let factory_need_deltas: Vec<f32> = factory_unit_costs
+        .iter()
+        .map(|cost| -(factory_emit_count as f32) * cost)
+        .collect();
+
+    // Bind the quantity to the executed lowered surface as well as the hydrated
+    // authoring record; a missing/drifted emission is not silently accepted.
+    let quantity_emission = resource_economy
+        .emissions
+        .iter()
+        .find(|emission| emission.id == "tp_economy_quantity_emission_shipyard_minerals")
+        .ok_or_else(|| anyhow!("canonical pack is missing shipyard_minerals emission"))?;
+    match quantity_emission.formula {
+        EmissionFormulaSpec::Constant(value) if value.to_bits() == quantity.amount.to_bits() => {}
+        ref other => bail!(
+            "shipyard_minerals lowered emission {:?} disagrees with authored amount {}",
+            other,
+            quantity.amount
+        ),
+    }
+
+    Ok(TpReduceUpGolden {
+        owner_arena: fleet.owner.clone(),
+        resource_key: fleet.resource_key.clone(),
+        selected_child_id: selected.participant_id.clone(),
+        selected_child_marginal: selected.contribution,
+        sibling_contributions_preserved,
+        expected_owner_aggregate,
+        participant_contributions,
+        factory_need_deltas,
+        factory_unit_costs,
+        factory_emit_count,
+    })
 }
