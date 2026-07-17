@@ -115,17 +115,49 @@ fn open_fail_closed(
     }
 }
 
-fn amount_for_property(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> f32 {
+fn amount_col(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> usize {
     let reg = &sim.proto.registry;
     let pid = reg
         .id_of(namespace, name)
         .unwrap_or_else(|| panic!("missing property {namespace}::{name}"));
     let layout = &reg.property(pid).layout;
-    let col = reg
-        .column_range(pid)
+    reg.column_range(pid)
         .col_for_role(&SubFieldRole::Amount, layout)
         .expect("amount role")
-        .raw_u32() as usize;
+        .raw_u32() as usize
+}
+
+/// Read Amount at an exact install-target host slot (owner/location shell).
+fn amount_at_install_target(
+    sim: &simthing_driver::SimSession,
+    target_id: &str,
+    namespace: &str,
+    name: &str,
+) -> f32 {
+    let thing_id = sim
+        .scenario
+        .install_targets
+        .get(target_id)
+        .and_then(|ids| ids.first().copied())
+        .unwrap_or_else(|| panic!("missing install_targets key `{target_id}`"));
+    let slot = usize::from(
+        sim.proto
+            .allocator
+            .slot_of(thing_id)
+            .unwrap_or_else(|| panic!("no GPU slot for install target `{target_id}`")),
+    );
+    let col = amount_col(sim, namespace, name);
+    let n_dims = sim.state.n_dims as usize;
+    let idx = slot * n_dims + col;
+    sim.state
+        .read_values()
+        .get(idx)
+        .copied()
+        .unwrap_or_else(|| panic!("OOB read slot={slot} col={col} idx={idx}"))
+}
+
+fn amount_for_property(sim: &simthing_driver::SimSession, namespace: &str, name: &str) -> f32 {
+    let col = amount_col(sim, namespace, name);
     let n_dims = sim.state.n_dims as usize;
     let values = sim.state.read_values();
     if let Some(economy) = sim.spec_state.resource_economy_registry.as_ref() {
@@ -243,9 +275,13 @@ fn disruption_accretes_from_authored_emitter_under_live_ticks() {
     );
 }
 
-/// catches: silo transfer coupling severed OR policy overlay application deleted.
+/// catches: silo transfer coupling severed OR owner-policy overlay application deleted.
 #[test]
 fn production_and_need_accrete_from_buildings_and_overlays() {
+    const TICKS: u64 = 4;
+    // Authored amount_add = 3.0 on guild → forge::ridge_ore_quantity.
+    const POLICY_AMOUNT_ADD: f32 = 3.0;
+
     let pack = hydrate_foundry();
     let studio = field_bearing_studio_session_from(&pack);
     let mut bridge = StudioLiveSessionBridge::new();
@@ -254,13 +290,13 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
     let sim = bridge.sim_session().expect("attached");
     let current_before = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_before = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    let ore_before = amount_for_property(sim, "forge", "ridge_ore_quantity");
     assert!(current_before >= 20.0, "silo current seed: {current_before}");
-    bridge.consume_scheduled_ticks(4).expect("ticks");
+    bridge.consume_scheduled_ticks(TICKS).expect("ticks");
     let sim = bridge.sim_session().expect("attached");
     let current_after = amount_for_property(sim, "forge", "guild_ore_current");
     let stockpile_after = amount_for_property(sim, "forge", "guild_ore_stockpile");
-    let ore_with_policy = amount_for_property(sim, "forge", "ridge_ore_quantity");
+    let ore_with_policy =
+        amount_at_install_target(sim, "guild", "forge", "ridge_ore_quantity");
     assert!(
         stockpile_after > stockpile_before || current_after < current_before,
         "silo transfer must move mass: current {current_before}->{current_after} stockpile {stockpile_before}->{stockpile_after}"
@@ -273,7 +309,7 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
         "tools quantity from production building must install"
     );
 
-    // Live with/without policy differential on the overlay target after identical ticks.
+    // Strict with-vs-without on the owner host slot — no open→after escape hatch.
     let mut stripped = hydrate_foundry();
     stripped
         .game_mode
@@ -287,16 +323,24 @@ fn production_and_need_accrete_from_buildings_and_overlays() {
     let mut bridge2 = StudioLiveSessionBridge::new();
     bridge2.set_path_preference(StudioLiveSessionPathPreference::FieldBearing);
     open_fail_closed(&mut bridge2, &studio_stripped).expect("open stripped");
-    bridge2.consume_scheduled_ticks(4).expect("ticks");
-    let ore_without_policy = amount_for_property(
+    bridge2.consume_scheduled_ticks(TICKS).expect("ticks");
+    let ore_without_policy = amount_at_install_target(
         bridge2.sim_session().expect("attached"),
+        "guild",
         "forge",
         "ridge_ore_quantity",
     );
+    let delta = ore_with_policy - ore_without_policy;
     assert!(
-        (ore_with_policy - ore_without_policy).abs() > 1e-3
-            || (ore_with_policy - ore_before).abs() > 1e-3,
-        "policy overlay must produce a live field differential after identical ticks: with={ore_with_policy} without={ore_without_policy} open={ore_before}"
+        delta > 1e-3,
+        "owner-policy must raise guild-slot forge::ridge_ore_quantity vs stripped after identical ticks: with={ore_with_policy} without={ore_without_policy}"
+    );
+    // Direction/delta attributable to amount_add=3.0 (permanent Add applies each tick).
+    assert!(
+        (delta - POLICY_AMOUNT_ADD * TICKS as f32).abs() < 1e-2
+            || (delta - POLICY_AMOUNT_ADD).abs() < 1e-2
+            || delta >= POLICY_AMOUNT_ADD - 1e-2,
+        "policy delta must be attributable to amount_add={POLICY_AMOUNT_ADD} (got delta={delta} after {TICKS} ticks)"
     );
 }
 
