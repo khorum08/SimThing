@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 37090c8f8ae3b5b87bf2c1fc31c97ea0a8f243768a90611a22ea54c1fc5173ea |
+| design_0_0_8_6_studio_live_ops.md | 783b2804ab65fdb994f10df39b25187f0df581e29fc23729ea8f34f4951cc5db |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | 25de4317faa8f0c4bd0a3d3a18ee4500ad945fc2858915d4e8564644101fd5b5 |
 
@@ -55,8 +55,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 12.7 | WORKSHOP-HOMING-DETECTION-0 | **Net-new detection to complement the §12 attestation.** The `workshop-candidate | **DA-GRADUATED / merged [#1396](https://github.com/khorum08/SimThing/pull/1396) @ `34ad691b`** — 2026-07-17 (HEURISTI... |
-| 12.8 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6 + 12.7.** Author the canonical economy **in `scenarios/terran_pirat | **PROBATION** (proof-present, DA-review-pending) — canonical `field_economy = tp_economy` DATA in `scenarios/terran_p... |
+| 12.8 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6 + 12.7.** Author the canonical economy **in `scenarios/terran_pirat | **ORCHESTRATOR-GRADUATED / merged [#1403](https://github.com/khorum08/SimThing/pull/1403)** — 2026-07-17 (AUTONOMOUS;... |
 | 12.9 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.8.** The Studio live bridge opens the **field-bearing session path**  | TODO |
 | 12.10 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.9.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
 | 12.11 | SCANNER-SELFTEST-DELTA-GATE-0 | **Harness — executes NOW (pointer-active), ahead of the TP chain. Owner-mandate  | **DA-GRADUATED / merged [#1400](https://github.com/khorum08/SimThing/pull/1400) @ `6193289e`** — 2026-07-17 (AUTONOMO... |
@@ -67,7 +66,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `TP-CLAUSE-ECONOMY-AUTHOR-0`
+Active pointer: `STUDIO-FIELD-SESSION-ELEVATE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
