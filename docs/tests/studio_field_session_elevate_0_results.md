@@ -17,8 +17,9 @@
 - Owner-slot policy with-vs-without; live Rising threshold; fail-closed GPU
 - Workshop drives production bridge only
 - **Remand 5:** staged UI loader (`run_clause_picker_action_staged`) attaches `authored_live_profile_from_pack` after reloaded Spec authority
+- **Remand 6:** staged-picker falsifier uses **neutral foundry** TempDir `.clause` (no sealed-crate `terran`/`pirate` path tokens); WORKSHOP-HOMING-DETECTION must report **PASS 0** on exact-head scan
 - **Need/weight_profile:** still STOP / scope gap (not silent relabel)
-- **[OVL]** FAIL recorded below; replacement debug build after fix
+- **[OVL]** FAIL recorded below; replacement debug build after Remand 5 (exe source `f3bdd632`; test-only Remand 6 does not supersede)
 
 ## Owner OVL FAIL (Remand 5) — do not treat as success
 | Field | Value |

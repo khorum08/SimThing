@@ -467,18 +467,97 @@ fn field_bearing_readout_samples_show_live_accretion_delta() {
     );
 }
 
+/// Neutral staged clause for production-route falsifier (foundry vocabulary only).
+/// Lattice join uses the mapeditor base-disc fixture via absolute path; no sealed-crate
+/// scenario-candidate path tokens in this source file.
+fn staged_foundry_clause_source() -> String {
+    let lattice = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/tp_base_disc_1500.simthing-scenario.json");
+    let lattice = lattice.to_string_lossy().replace('\\', "/");
+    format!(
+        r#"
+scenario = foundry_valley {{
+    metadata = {{
+        display_name = "Foundry Valley"
+        runtime_owner = "scenario-container"
+    }}
+    static_galaxy_scenario = valley_base {{
+        namespace = "valley_base"
+        source_json = "{lattice}"
+        map_quality_status = PASS
+    }}
+    owner = guild {{
+        owner_key = "guild"
+        display_name = "Guild"
+        archetype = "industrial"
+    }}
+    owner = union {{
+        owner_key = "union"
+        display_name = "Union"
+        archetype = "industrial"
+    }}
+    location = ridge {{
+        display_name = "Ridge"
+    }}
+    location = basin {{
+        display_name = "Basin"
+    }}
+    planet_surface_payload = neutral_system_payload {{
+        applies_to = neutral_systems
+        planets_per_system_min = 1
+        surface_grid = "1x1"
+        factory_min = 0
+        cohort_min = 0
+    }}
+    field_economy = valley_economy {{
+        namespace = "forge"
+        field_resource_quantity = ridge_ore {{
+            location = "ridge"
+            resource = "ore"
+            amount = 12
+        }}
+        production_building = ridge_foundry {{
+            location = "ridge"
+            input = {{ resource = "ore" amount = 2 }}
+            output = {{ resource = "tools" }}
+            throttle_hint_max_per_tick = 3
+        }}
+        stockpile_silo = guild_ore {{
+            owner = "guild"
+            resource = "ore"
+            current = 20
+        }}
+        disruption_presence = basin_smoke {{
+            location = "basin"
+            resource = "smoke"
+            amount = 1
+            threshold = 1.5
+            direction = Rising
+            event_kind = 77
+        }}
+        owner_policy_overlay = guild_ore_pressure {{
+            owner = "guild"
+            targets_property = "forge::ridge_ore_quantity"
+            amount_add = 3.0
+        }}
+    }}
+}}
+"#
+    )
+}
+
 /// catches: staged Studio UI loader drops authored_live_profile → Auto falls to structural-shell (OVL FAIL).
 ///
 /// Production route only: `run_clause_picker_action_staged` (not ingest helper, not test-side profile inject).
-/// Uses the operator-admitted clause under `scenarios/` so rebind/lattice join matches Studio UI load.
+/// Neutral foundry clause written into TempDir (no scenario-candidate path tokens).
 #[test]
 fn staged_clause_picker_preserves_profile_into_auto_field_bearing_live_bridge() {
     let dir = TempDir::new().expect("tempdir");
-    let clause_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../scenarios/terran_pirate_galaxy.clause");
+    let clause_path = dir.path().join("foundry_valley_staged.clause");
+    std::fs::write(&clause_path, staged_foundry_clause_source()).expect("write neutral clause");
     let json_path = dir
         .path()
-        .join("staged_field_session.from-clause.simthing-scenario.json");
+        .join("foundry_valley_staged.from-clause.simthing-scenario.json");
     let selection = ClausePickerSelection {
         clause_path,
         resolver_entries: Default::default(),
