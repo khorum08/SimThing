@@ -70,17 +70,17 @@ Need half of 12.9 remains **blocked** pending Owner/orchestrator adjudication (s
 | Falsification check | strip staged profile attach → Auto structural-shell / empty samples; corrupt sampler → readout delta fails; Unsupported fails closed |
 | Recommended posture | **BLOCKED** need-seam; **[OVL] FAIL/OPEN** until replacement A/B/C; not GRADUATED |
 
-## [OVL] Windows debug build evidence (replacement — fill after rebuild)
+## [OVL] Windows debug build evidence (replacement after Remand 5)
 
 | Field | Value |
 |---|---|
-| Source SHA | *(set after final code head build)* |
+| Source SHA | `f3bdd632a471bbba074c05a823b0391157399e97` |
 | Build command | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Executable | `C:\Users\mvorm\SimThing\target\debug\simthing-studio.exe` |
-| Size (bytes) | *(set after rebuild)* |
-| SHA-256 | *(set after rebuild)* |
-| Launch | *(set after rebuild)* |
-| Committed? | **No** |
+| Size (bytes) | `86725632` |
+| SHA-256 | `A1F050B41390678E3ECC36ECB66B0985F3510DC261660732044E8125DD709AF6` |
+| Launch | **OK** — process Responding=True; terminated after verify |
+| Committed? | **No** — do not use superseded hash `98A9807E…` |
 
 ### Rebuild recipe (from repo root)
 ```powershell
