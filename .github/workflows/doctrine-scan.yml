@@ -1,6 +1,7 @@
 name: Doctrine Scan
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches:
@@ -14,12 +15,59 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Determine scanner selftest gate
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_selftests=true
+          event_name="${{ github.event_name }}"
+          base_sha=""
+          head_sha="${{ github.sha }}"
+
+          if [[ "$event_name" == "workflow_dispatch" ]]; then
+            run_selftests=true
+          elif [[ "$event_name" == "pull_request" ]]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          elif [[ "$event_name" == "push" ]]; then
+            base_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+          fi
+
+          if [[ "$event_name" != "workflow_dispatch" ]]; then
+            if [[ -z "$base_sha" || -z "$head_sha" || "$base_sha" =~ ^0+$ ]]; then
+              run_selftests=true
+            elif git cat-file -e "${base_sha}^{commit}" && git cat-file -e "${head_sha}^{commit}"; then
+              changed_files="$(mktemp)"
+              if git diff --name-only "${base_sha}..${head_sha}" >"$changed_files"; then
+                if grep -Eq '^(scripts/ci/|\.github/workflows/)' "$changed_files"; then
+                  run_selftests=true
+                else
+                  run_selftests=false
+                fi
+              else
+                run_selftests=true
+              fi
+            else
+              run_selftests=true
+            fi
+          fi
+
+          echo "run_selftests=${run_selftests}" >>"$GITHUB_OUTPUT"
+          echo "scanner selftests: ${run_selftests}"
+
       - name: Ensure ripgrep
         run: |
           if ! command -v rg >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y ripgrep
           fi
+
+      - name: Scanner selftest gate guard
+        run: |
+          set -o pipefail
+          bash scripts/ci/selftest_gate_guard.sh 2>&1 | tee doctrine-selftest-gate-guard-report.txt
 
       - name: Sanctioned surface digest freshness
         run: |
@@ -37,11 +85,13 @@ jobs:
           bash scripts/ci/anchor_check.sh --check 2>&1 | tee doctrine-anchor-report.txt
 
       - name: Orientation receipt selftest
+        if: steps.gate.outputs.run_selftests == 'true'
         run: |
           set -o pipefail
           bash scripts/ci/orient.sh --selftest 2>&1 | tee doctrine-orient-selftest-report.txt
 
       - name: Relay lint selftest
+        if: steps.gate.outputs.run_selftests == 'true'
         run: |
           set -o pipefail
           bash scripts/ci/relay_lint.sh --selftest 2>&1 | tee doctrine-relay-selftest-report.txt
@@ -52,6 +102,7 @@ jobs:
           bash scripts/ci/doc_budget_check.sh --check 2>&1 | tee doctrine-doc-budget-report.txt
 
       - name: DOC-BUDGET selftest
+        if: steps.gate.outputs.run_selftests == 'true'
         run: |
           set -o pipefail
           bash scripts/ci/doc_budget_check.sh --selftest 2>&1 | tee doctrine-doc-budget-selftest-report.txt
@@ -70,6 +121,7 @@ jobs:
             "${{ github.sha }}" 2>&1 | tee doctrine-lifecycle-schema-gate-report.txt
 
       - name: Track-closeout selftest
+        if: steps.gate.outputs.run_selftests == 'true'
         run: |
           set -o pipefail
           bash scripts/ci/track_closeout.sh --prove 2>&1 | tee doctrine-track-closeout-selftest-report.txt
@@ -93,11 +145,13 @@ jobs:
           bash scripts/ci/agents_stub_check.sh --check 2>&1 | tee doctrine-agents-stub-report.txt
 
       - name: AGENTS stub selftest
+        if: steps.gate.outputs.run_selftests == 'true'
         run: |
           set -o pipefail
           bash scripts/ci/agents_stub_check.sh --selftest 2>&1 | tee doctrine-agents-stub-selftest-report.txt
 
       - name: Doctrine self-test
+        if: steps.gate.outputs.run_selftests == 'true'
         run: |
           set -o pipefail
           bash scripts/ci/doctrine_selftest.sh | tee doctrine-selftest-report.txt

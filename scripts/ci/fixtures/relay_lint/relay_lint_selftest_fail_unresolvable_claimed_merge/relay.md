@@ -22,6 +22,7 @@ ORIENT-RECEIPT: 66529762ada3
 role: coding
 orientation_rule_stamp: 180916564d4455a2
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864
+ANCHOR-ACK: scanner-selftest-delta-gate@34fb2662baae
 
 ## Scope Ledger
 

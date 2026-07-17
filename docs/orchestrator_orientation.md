@@ -45,9 +45,9 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 57ef4018ae9f212a292071e15ac0b76598884b078996de257d62e19bc3881a65 |
+| design_0_0_8_6_studio_live_ops.md | a1ca2181e60955c7135eeb74ac85404134a4b2b896f2424639bdbd5183b67738 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
-| doctrine_anchors.tsv | 6182e271ed5030f625c78b38bd81f9f096fee6bd7002a64283bebee97483737b |
+| doctrine_anchors.tsv | 25de4317faa8f0c4bd0a3d3a18ee4500ad945fc2858915d4e8564644101fd5b5 |
 
 ## Active Track / Rung Summary (`design_0_0_8_6_studio_live_ops.md`)
 
@@ -59,7 +59,7 @@ Track state: `open`
 | 12.8 | TP-CLAUSE-ECONOMY-AUTHOR-0 | **Needs 12.6 + 12.7.** Author the canonical economy **in `scenarios/terran_pirat | TODO |
 | 12.9 | STUDIO-FIELD-SESSION-ELEVATE-0 | **Needs 12.8.** The Studio live bridge opens the **field-bearing session path**  | TODO |
 | 12.10 | TP-EMERGENT-TENSION-PROOF-0 | **Needs 12.9.** Falsification battery for **emergence, not scripting**: (a) mult | TODO |
-| 12.11 | SCANNER-SELFTEST-DELTA-GATE-0 | **Harness — executes NOW (pointer-active), ahead of the TP chain. Owner-mandate  | TODO |
+| 12.11 | SCANNER-SELFTEST-DELTA-GATE-0 | **Harness — executes NOW (pointer-active), ahead of the TP chain. Owner-mandate  | **PROBATION (proof-present, DA-review-pending)** |
 | 12.1 | STUDIO-LOADER-DIALOG-REPAIR-0 | **Minimal load dialog.** The load dialog shows **only**: scenario-path text box  | **DA-GRADUATED / merged [PR #1324](https://github.com/khorum08/SimThing/pull/1324) @ `827fcbe0`** — Owner OVL PASS + ... |
 | 12.3 | STUDIO-DISRUPTION-SELECT-SCREEN-0 | **Needs 12.2.** Selecting **any** star (owned, neutral, hostile) screens the **s | TODO |
 | 12.5 | STUDIO-FLEET-ICONS-0 | **Needs 12.4.** Tiny ship icon (rocket/destroyer silhouette; **≤75% of the base  | TODO |

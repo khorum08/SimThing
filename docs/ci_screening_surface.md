@@ -66,13 +66,10 @@ Every `pull_request` and every `push` runs the **Doctrine Scan** GitHub Actions 
 
 ```
 checkout → ensure rg (preinstalled + apt fallback)
-  → digest freshness (gen_digest.sh --check)  # stale sanctioned_surface.md hard-FAILs with regenerate remedy
-  → orientation freshness (gen_orientation.sh --check)  # stale orchestrator_orientation.md hard-FAILs with regenerate/open remedy
-  → self-test        (doctrine_selftest.sh)      # prove the scanner still catches its known-bads, or the whole run FAILs
-  → PR-delta scan    (doctrine_pr_scan.sh)        # on pull_request: RELIABLE whole-tree, HEURISTIC on the diff only
-  → spam check       (inspect_spam_check.sh)      # §1A hill-climbing bounds
-  → whole-tree scan  (doctrine_scan.sh)           # on push to master: the positive control
-  → publish report   (job summary + artifact)
+  → digest/orientation freshness (gen_digest.sh --check / gen_orientation.sh --check)
+  → selftest gate guard (selftest_gate_guard.sh)  # cheap anti-drift check, always run
+  → scanner self-proof batteries when the diff touches scripts/ci or workflows
+  → PR-delta scan / spam check / whole-tree scan on push → publish report
 ```
 **Three verdicts, never two** (residue-as-tripwire applied to the scanner):
 
@@ -87,6 +84,9 @@ The machine-parseable footer the orchestrator keys on:
 
 **Delta vs whole-tree (binding).** Enforced by `doctrine_pr_scan.sh` / `doctrine_scan.sh`: HEURISTIC = PR diff;
 RELIABLE = whole-tree. §1A spam bounds count branch-introduced INSPECTs via `inspect_spam_check.sh`.
+
+### Scanner selftest delta gate
+Scanner self-tests are delta-gated per the R1-TEST-PURGE / whole-tree-is-maintainer mandate: proof batteries are not default per-PR gates, while scan and freshness/integrity/check gates still run every PR. `selftest_gate_guard.sh` enforces this by failing any workflow selftest step lacking `steps.gate.outputs.run_selftests`.
 
 ---
 
