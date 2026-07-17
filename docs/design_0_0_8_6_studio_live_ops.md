@@ -314,7 +314,7 @@ New tests under this track use `birth_track = 0.0.8.6-studio-live-ops` once the 
 | Item | State |
 |---|---|
 | Active track | This file (after `--open`) |
-| Active open rung | none — 12.11 SCANNER-SELFTEST-DELTA-GATE-0 DA-GRADUATED (#1400, 2026-07-17); awaiting Owner direction per HD-STACK-CADENCE-0. Queue: 12.8 TP-CLAUSE-ECONOMY-AUTHOR-0 → 12.9 STUDIO-FIELD-SESSION-ELEVATE-0 → 12.10 TP-EMERGENT-TENSION-PROOF-0. |
+| Active open rung | `TP-CLAUSE-ECONOMY-AUTHOR-0` — 12.8 DISPATCHED 2026-07-17 (HD-RECEIPT 71627fb4fdfd, base 5912e609); AUTONOMOUS (coder=Grok-CLI visible console; orchestrator-led + DELEGATED MERGE). Queue after: 12.9 STUDIO-FIELD-SESSION-ELEVATE-0 → 12.10 TP-EMERGENT-TENSION-PROOF-0. |
 | Debug baseline | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Clause load baseline | Canonical `scenarios/terran_pirate_galaxy.clause` via production ingest `hydrate_scenario_with_source_base` (clause parent dir) |
 
