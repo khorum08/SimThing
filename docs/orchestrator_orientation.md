@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | be04669f2dfb66096af019ad61f225de91bf4433c22d46fbdeff42578634da49 |
-| design_0_0_8_6_studio_live_ops.md | 2191291b2e4bed4c974535d26123967440be86791f4f3fafa4b6392d3e47f1b6 |
+| design_0_0_8_6_studio_live_ops.md | 8e5dd9c7921874c86e9e64e9cb6357a7ee400396fb14edf141996a8de312baa4 |
 | relay_lint.sh | 4163f715cdc3b549dbf57c1744aff61ea96b9f9f0a2237376665fbdb24e986c8 |
 | doctrine_anchors.tsv | acddc6ad84d6dcefcbc8942f603186ae82e47e6495833b29aafbb5805d49aa0f |
 
