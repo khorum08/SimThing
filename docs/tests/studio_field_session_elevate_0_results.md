@@ -2,7 +2,7 @@
 
 ## Status
 
-**PROBATION — recursive RF implementation and headless GPU proof PASS; bounded RF-5 split approval required for need/`weight_profile`; Owner [OVL] OPEN.** Codex does not close [OVL].
+**PROBATION / OWNER [OVL] PASS / RF-5 SPLIT APPROVED / DA-review-pending.** Owner supplied and ruled the screenshots; Codex did not self-close [OVL].
 
 ## Identity
 
@@ -14,7 +14,10 @@
 | RF-3 graduation | merged PR #1412 @ `d42b9109c032f96a66784a9274b5812107a32e45` |
 | HD-RECEIPT | `a8e70c897f36` |
 | Handoff head | `7cd17c7e9a9666b2e20ed54b7f4627ce6e163c13` |
-| Salvage source | PR #1405 @ `34bb730fb24b550eeac520e83fbf5e2408a0f7c4` (read-only provenance; remains open) |
+| Salvage source | PR #1405 @ `34bb730fb24b550eeac520e83fbf5e2408a0f7c4` (read-only provenance; salvage complete; closed unmerged) |
+| Owner [OVL] verdict | **PASS**, [comment `5012128000`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012128000) |
+| RF-5 split approval | **APPROVED**, [comment `5012077482`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012077482) |
+| Evidence-amendment ruling | [comment `5012132787`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012132787) |
 
 ## Implemented path
 
@@ -41,44 +44,35 @@ RF4_RUNTIME_NEGATIVE governed_balance=disconnected actual_gpu_balance_delta=0 vi
 
 The named child contributes exactly `5`; disabling only that child changes the real Owner aggregate from `15` to `10` while its two real siblings remain. The Owner is therefore neither a one-to-one copy nor a synthetic parent. The independently recomputed f32 residual is non-zero, inside the RF-1 bound, and equals the measured governed Balance delta. Removing `governed_by` from the runtime path leaves the actual GPU Balance delta at zero and unchanged RF-1 rejects it with `ResidualNotIntegrated`.
 
-## Need / `weight_profile` stop and bounded RF-5 proposal
+## Approved RF-5 split for need / `weight_profile`
 
 Canonical ClauseScript hydrates three `HydratedFieldEconomyWeightProfile` EML gadget stacks, but those stacks remain hydrate-pack data. `GameModeSpec`/`open_from_spec` has no admitted install/consumer contract that binds them to recursive Arena participant weights or a live need cell. Existing overlays target hosted authority nodes, while RF execution reads materialized Arena-participant wrapper cells; copying or patching those cells in Studio would violate the no-feeder/no-direct-mutation fence.
 
-RF-4 therefore stops at the handoff's explicit contract boundary. Proposed bounded RF-5:
+RF-4 therefore stopped at the handoff's explicit contract boundary. Orchestration approved this bounded RF-5 split in comment `5012077482`:
 
 1. define one generic spec-owned binding from an existing hydrated EML gadget stack to an existing Arena participant role/cell;
 2. install it through the ordinary GameMode/session-open compiler and existing EML/Accumulator machinery;
 3. add live need/threshold and below-threshold controls without new ClauseScript syntax, kernel/WGSL, Studio arithmetic, or synthetic hierarchy;
 4. expose the admitted readout in the existing Studio telemetry projection.
 
-Until orchestration approves that split, the UI states `not admitted in RF-4; bounded RF-5 split required`; no need screenshot is claimed.
+The UI honestly states `not admitted in RF-4; bounded RF-5 split required`. Screenshot C is **not required for RF-4** because orchestration approved the split; no need execution is claimed or counterfeited.
 
 ## Salvage disposition
 
 The accepted/rejected file-and-hunk audit is recorded in [`studio_field_session_elevate_0_salvage_manifest.md`](studio_field_session_elevate_0_salvage_manifest.md). No merge, rebase, or wholesale cherry-pick from PR #1405 was performed.
 
-## Owner [OVL] capture runbook
+## Owner [OVL] evidence
 
-Owner alone posts screenshots to PR #1413 and rules [OVL]. Required filenames:
+Owner supplied the two artifacts below and ruled [OVL] PASS in [comment `5012128000`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012128000). The GitHub connector could not upload the binary images, so that comment records their filenames and binds the directly reviewed Owner submission; orchestration independently accepted them in [comment `5012132787`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012132787).
 
-- `RF4_OVL_A_loaded_baseline.png`
-- `RF4_OVL_B_recursive_accretion.png`
-- `RF4_OVL_C_need_threshold.png` only after an admitted need seam lands; otherwise record an approved RF-5 split
-- `RF4_OVL_P_exe_provenance.png`
+| Owner artifact | Durable GitHub binding | Observed proof |
+|---|---|---|
+| `RF4_OVL_P_exe_provenance.png` | [Owner verdict and exact identity](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012128000) | Source SHA, executable SHA-256, full path, `86773760`-byte size, and `2026-07-18T16:34:03.1221258Z` build time match the frozen executable. |
+| `RF4_OVL_AB_recursive_transition.png` | [Owner verdict and visual observations](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012128000) | Canonical `terran_pirate_galaxy`, tick `9` paused, `field-bearing`, ordinary `open_from_spec + step_once`, `RecursiveArenaResourceFlow / active`, arena `studio_recursive_owner_flow`, child `Infrastructure SIM-003042`, real `Owner terran / 3 siblings`, aggregate loaded/live `0.000000 / 15.000000`. |
 
-Capture steps:
+The combined AB image is sufficient because the UI retains the frozen loaded baseline and live post-step value in one readout. Emission rows are diagnostic only and do not carry the RF proof. The headless bite remains enabled Owner aggregate `15`, child-disabled aggregate `10`, exact marginal `5`, and governed-Balance disconnect → `ResidualNotIntegrated`.
 
-1. Verify the reported executable SHA-256 matches the file being launched.
-2. Launch the debug executable and use **Open ClauseScript Scenario…** to select `scenarios\terran_pirate_galaxy.clause`.
-3. Keep the session paused after load. Arrange the window so scenario identity, tick, session path, RF activity, named child, and named ancestor aggregate are all visible.
-4. Capture **A — loaded baseline** at tick 0 or the earliest stable paused tick.
-5. Press Play at 1×. Let ordinary `SimSession::step_once` advance until the named ancestor aggregate visibly changes. Pause without changing scenario, profile, child enrollment, or layout.
-6. Capture **B — recursive accretion** showing the later tick and the same child/ancestor rows. The ancestor value must differ from A in the direction predicted by the accepted headless proof.
-7. When an admitted need seam is present, capture **C — need/threshold** with the authored need/`weight_profile` live state, threshold crossing, and below-threshold/no-fire control. If orchestration approved RF-5, state that explicitly and do not counterfeit this screenshot.
-8. Capture **P — provenance** showing `git rev-parse HEAD`, executable SHA-256, file size, and build time for the binary used.
-
-Owner PASS requires the same canonical scenario and executable, a later tick, field-bearing path, recursive RF active, the same named child and real Owner aggregate, and an aggregate change between A and B. Structural-shell, RF inactive, a flat/zero or one-to-one aggregate, emission-only proof, mismatched executable identity, or missing need evidence without an approved split is FAIL/remand.
+Owner—not Codex—supplied and ruled the screenshots. Screenshot C is deferred to the approved bounded RF-5 split and is not an RF-4 requirement.
 
 ## Windows debug executable identity
 
@@ -89,7 +83,7 @@ The executable was built from a clean detached worktree at the frozen implementa
 | `ovl_exe_source_sha` | `7df4319d6f24b0ae68c85817ca93238f4cb1c4da` |
 | `ovl_exe_sha256` | `da39bd3c4da799698e8e72d01ff95b37e2cf112b96e31ffcbb967778388112a5` |
 | Full path | `C:\Users\mvorm\SimThing\target\rf4-ovl-clean\target\debug\simthing-studio.exe` |
-| Byte size / UTC build time | `86773760` bytes / `2026-07-18T16:34:03Z` |
+| Byte size / UTC build time | `86773760` bytes / `2026-07-18T16:34:03.1221258Z` |
 | Build command | `cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Working tree clean | YES; detached worktree was clean immediately before and after the build |
 
@@ -111,4 +105,4 @@ The executable was built from a clean detached worktree at the frozen implementa
 
 ## Graduation routing
 
-Recommended posture is **PROBATION / RF-5 split approval required / Owner [OVL] OPEN**. This ledger does not claim graduation, merge authorization, PR-body clearance, need transport, or [OVL] closure.
+Recommended posture is **PROBATION / OWNER [OVL] PASS / RF-5 SPLIT APPROVED / DA-review-pending**. This ledger does not claim graduation, merge authorization, RF-5 need transport, or DA approval.
