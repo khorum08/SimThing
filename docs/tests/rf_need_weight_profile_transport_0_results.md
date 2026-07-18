@@ -17,8 +17,8 @@ Remand `5013106236` + ontology addendum `5013140700` landed. Owner alone closes 
 | HD-RECEIPT | `9132665903e6` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 | Expected route | `DA-RESERVE(gate-wiring)` |
-| tested_code_sha | *(bound after implementation commit)* |
-| implementation_sha | *(bound after implementation commit)* |
+| tested_code_sha | `37188055f54a17fad26b20023458cc937c3b8fa9` |
+| implementation_sha | `37188055f54a17fad26b20023458cc937c3b8fa9` |
 | evidence_sha | *(bound after results commit)* |
 | coverage_basis | PASS (workshop RF-5 8/8 + mapeditor RF-4 elevate 8/8 + AGENT-SCAN INSPECT justified) |
 
