@@ -2,9 +2,12 @@
 
 ## Status and binding
 
-**IMPLEMENTED — ready for orchestrator review** (2026-07-18).
+**DA-GRADUATED / merged [#1412](https://github.com/khorum08/SimThing/pull/1412) @ `d42b9109c032f96a66784a9274b5812107a32e45`** — 2026-07-18.
 
 Tested code SHA: `63d89ff9d4994f390f6bfede08f0d5b0823c7d66`.
+Evidence head SHA: `267e0b2c1fe05fc6c7e98fc163dd59dd78a9996a`.
+
+DA returned merge authority to orchestration with expected-head protection. RF-4 (`STUDIO-FIELD-SESSION-ELEVATE-0`, 12.9) resumes on the executing recursive RF substrate; #1405 remains open as salvage provenance until RF-4 mines it. Owner retains [OVL] screenshot closure.
 
 Coverage basis: live-adapter ct_2a and ct_2c execution through ordinary recursive-default
 `SimSession::step_once`; unchanged independent RF-1 conservation judgment over measured GPU Balance;
@@ -24,7 +27,8 @@ scans. No new test was added.
 - The Resource Flow ADR and founding allocation anchor now state recursive-default execution plus
   independent RF-1 judgment. RR-3/RR-4 module framing identifies those modules as falsification
   rehearsals, never `step_once` authority.
-- RF-2A and RF-2 remain DA-graduated and merged in `#1411` at `c206b0ef`; RF-3 remains the active rung.
+- RF-2A and RF-2 remain DA-graduated and merged in `#1411` at `c206b0ef`; RF-3 is DA-graduated and
+  merged in `#1412` at `d42b9109`; RF-4 is the active resumed rung.
 
 ## ct_2a / ct_2c fail-then-pass
 
