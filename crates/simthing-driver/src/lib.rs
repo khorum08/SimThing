@@ -377,8 +377,8 @@ pub use gated_rates::{
 };
 pub use need_weight_profile::{
     binding_from_hydrated_stack, build_need_weight_profile_ops, extract_weighted_accumulator,
-    need_weight_threshold_registrations, resolve_need_weight_profiles, seed_need_weight_profiles,
-    ResolvedNeedWeightProfile, NEED_AMOUNT_ROLE, NEED_PROPERTY_NAMESPACE,
+    inject_need_threshold_into_economy, resolve_need_weight_profiles,
+    seed_need_weight_property_values_on_participants, ResolvedNeedWeightProfile,
 };
 pub use gpu_measure_0080_0::{
     render_gpu_measure_0080_0_report, replay_gpu_measure_0080_0, run_gpu_measure_0080_0,

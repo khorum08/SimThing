@@ -1,61 +1,60 @@
 //! RF-5: install + EvalEML transport for need / weight_profile bindings.
 //!
-//! Pattern mirrors CT-RF-EML-RATE-0 (`gated_rates`): resolve at session open,
-//! seed authored weights onto the participant, register an ExactDeterministic
-//! EvalEML WeightedAccumulator band writing the live need cell, and optionally
-//! mirror need into AllocatorWeight. Threshold events use the existing
-//! Accumulator Threshold + EmitEvent substrate.
+//! - Inputs and weights are live Amount columns of **existing** properties.
+//! - Need is written to the existing Arena participant **AllocatorWeight** cell.
+//! - Thresholds inject into `resource_economy.emit_on_threshold` and ride the
+//!   same sealed AccumulatorOp event path as field-economy disruption.
+//! - No synthetic need host, no default weight seeds, no Studio feeder values.
 
 use simthing_core::{
-    eml_nodes, AccumulatorOp, ClampBehavior, ColumnIndex, CombineFn, ConsumeMode, DimensionRegistry,
-    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlNodeGpu, EmlTreeId,
-    GateSpec, ScaleSpec, SimPropertyId, SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole,
-    SubFieldSpec,
+    eml_nodes, rebuild_emit_on_threshold_ops, AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode,
+    DimensionRegistry, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta,
+    EmlNodeGpu, EmlTreeId, EmitOnThresholdBuffer, EmitOnThresholdRegistration, GateSpec, ScaleSpec,
+    SimThing, SimThingId, SlotIndex, SourceSpec, SubFieldRole, ThresholdDirection,
 };
 use simthing_spec::{
-    compile_property, EmlGadgetInstanceSpec, InstallTargetSpec, NeedWeightProfileBindingSpec,
-    NeedWeightProfileInputSpec, NeedWeightProfileThresholdSpec, PropertySpec, ResourceFlowSpec,
-    SpecError,
+    EmlGadgetInstanceSpec, NeedWeightProfileBindingSpec, NeedWeightProfileThresholdSpec,
+    PropertyKey, ResourceFlowSpec, SpecError,
 };
 
 use crate::arena_hierarchy::resolve_node_columns;
 use crate::arena_participant::ArenaParticipantScaffold;
 use crate::install::{find_simthing_mut, resolve_install_target, InstallError};
+use crate::resource_economy_compile::ResourceEconomyRegistry;
 use crate::scenario::Scenario;
-
-/// Namespace for the RF-5 need host property materialised at install.
-pub const NEED_PROPERTY_NAMESPACE: &str = "rf_need";
-/// Amount role on the need host — live need value written by EvalEML.
-pub const NEED_AMOUNT_ROLE: &str = "need";
+use simthing_gpu::SlotAllocator;
 
 const NEED_WEIGHT_TREE_BASE: u32 = 7_200_000;
 
-/// Fully resolved binding ready for seeding + EvalEML op build.
+/// Fully resolved binding ready for EvalEML op build + threshold injection.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedNeedWeightProfile {
     pub id: String,
     pub profile: String,
     pub participant_slot: u32,
     pub hosted_id: SimThingId,
+    /// ScenarioListed target_id used at resolve (for overlay host matching).
+    pub install_target_id: String,
     pub arena: String,
     pub arena_idx: u32,
-    /// Global column of the need Amount cell.
-    pub need_col: u32,
-    /// Optional AllocatorWeight global column on the arena flow property.
-    pub allocator_weight_col: Option<u32>,
-    /// Compiled EvalEML nodes for WeightedAccumulator with remapped columns.
+    /// Global column of the existing AllocatorWeight cell (live need).
+    pub need_col: ColumnIndex,
+    /// Global columns for WeightedAccumulator inputs (Amount roles).
+    pub input_cols: Vec<ColumnIndex>,
+    /// Global columns for WeightedAccumulator weights (Amount roles).
+    pub weight_cols: Vec<ColumnIndex>,
+    /// Compiled EvalEML nodes.
     pub nodes: Vec<EmlNodeGpu>,
-    pub weight_seeds: Vec<f32>,
-    pub weight_cols: Vec<u32>,
-    pub input_cols: Vec<u32>,
-    pub input_literals: Vec<Option<f32>>,
     pub threshold: Option<NeedWeightProfileThresholdSpec>,
+    /// Authored weight property keys (telemetry / proof identity).
+    pub weight_property_keys: Vec<PropertyKey>,
+    pub input_property_keys: Vec<PropertyKey>,
 }
 
 /// Extract the single WeightedAccumulator from an authored stack (fail-closed).
 pub fn extract_weighted_accumulator(
     binding: &NeedWeightProfileBindingSpec,
-) -> Result<(Vec<u32>, Vec<u32>, Option<u32>), InstallError> {
+) -> Result<(usize, usize), InstallError> {
     if binding.stack.gadgets.len() != 1 {
         return Err(InstallError::NeedWeightProfileInvalid {
             binding: binding.id.clone(),
@@ -66,7 +65,6 @@ pub fn extract_weighted_accumulator(
         EmlGadgetInstanceSpec::WeightedAccumulator {
             input_cols,
             weight_cols,
-            output_col,
             ..
         } => {
             if input_cols.is_empty() || input_cols.len() != weight_cols.len() {
@@ -75,14 +73,11 @@ pub fn extract_weighted_accumulator(
                     reason: "WeightedAccumulator input_cols/weight_cols length mismatch".into(),
                 });
             }
-            Ok((input_cols.clone(), weight_cols.clone(), *output_col))
+            Ok((input_cols.len(), weight_cols.len()))
         }
         other => Err(InstallError::NeedWeightProfileInvalid {
             binding: binding.id.clone(),
-            reason: format!(
-                "expected WeightedAccumulator, got `{}`",
-                other.kind_name()
-            ),
+            reason: format!("expected WeightedAccumulator, got `{}`", other.kind_name()),
         }),
     }
 }
@@ -92,7 +87,7 @@ pub fn resolve_need_weight_profiles(
     spec: &ResourceFlowSpec,
     scenario: &Scenario,
     root: &SimThing,
-    registry: &mut DimensionRegistry,
+    registry: &DimensionRegistry,
     scaffold: &ArenaParticipantScaffold,
 ) -> Result<Vec<ResolvedNeedWeightProfile>, InstallError> {
     let mut out = Vec::with_capacity(spec.need_weight_profiles.len());
@@ -107,47 +102,32 @@ fn resolve_one(
     spec: &ResourceFlowSpec,
     scenario: &Scenario,
     root: &SimThing,
-    registry: &mut DimensionRegistry,
+    registry: &DimensionRegistry,
     scaffold: &ArenaParticipantScaffold,
 ) -> Result<ResolvedNeedWeightProfile, InstallError> {
-    let (input_cols_local, weight_cols_local, _output_local) =
-        extract_weighted_accumulator(binding)?;
-
-    if binding.weight_seeds.is_empty() {
+    let (n_in, n_w) = extract_weighted_accumulator(binding)?;
+    if binding.weight_properties.is_empty() {
         return Err(InstallError::NeedWeightProfileInvalid {
             binding: binding.id.clone(),
-            reason: "weight_seeds empty — no default-weight fallback".into(),
+            reason: "weight_properties empty — no default-weight fallback".into(),
         });
     }
-    if binding.weight_seeds.len() != weight_cols_local.len() {
+    if binding.input_properties.is_empty() {
+        return Err(InstallError::NeedWeightProfileInvalid {
+            binding: binding.id.clone(),
+            reason: "input_properties empty — no synthetic input fallback".into(),
+        });
+    }
+    if binding.input_properties.len() != n_in || binding.weight_properties.len() != n_w {
         return Err(InstallError::NeedWeightProfileInvalid {
             binding: binding.id.clone(),
             reason: format!(
-                "weight_seeds len {} != weight_cols len {}",
-                binding.weight_seeds.len(),
-                weight_cols_local.len()
+                "property arity mismatch: inputs {}/{} weights {}/{}",
+                binding.input_properties.len(),
+                n_in,
+                binding.weight_properties.len(),
+                n_w
             ),
-        });
-    }
-    if binding.inputs.len() != input_cols_local.len() {
-        return Err(InstallError::NeedWeightProfileInvalid {
-            binding: binding.id.clone(),
-            reason: format!(
-                "inputs len {} != input_cols len {}",
-                binding.inputs.len(),
-                input_cols_local.len()
-            ),
-        });
-    }
-    if binding.weight_seeds.iter().any(|w| !w.is_finite())
-        || binding.inputs.iter().any(|i| match i {
-            NeedWeightProfileInputSpec::Literal(v) => !v.is_finite(),
-            NeedWeightProfileInputSpec::Property(_) => false,
-        })
-    {
-        return Err(InstallError::NeedWeightProfileInvalid {
-            binding: binding.id.clone(),
-            reason: "non-finite weight_seed or input literal".into(),
         });
     }
 
@@ -161,6 +141,15 @@ fn resolve_one(
             context: format!("need_weight_profiles.{}", binding.id),
         })?;
 
+    let install_target_id = match &binding.install {
+        simthing_spec::InstallTargetSpec::ScenarioListed { target_id } => target_id.clone(),
+        other => {
+            return Err(InstallError::NeedWeightProfileInvalid {
+                binding: binding.id.clone(),
+                reason: format!("need bindings require ScenarioListed install, got {other:?}"),
+            });
+        }
+    };
     let hosted_ids = resolve_install_target(&binding.install, scenario, root)?;
     if hosted_ids.is_empty() {
         return Err(InstallError::NoMatchingOwners {
@@ -197,66 +186,8 @@ fn resolve_one(
         })?
         .raw();
 
-    // Materialise a dedicated need host property (Amount + weight + input columns).
-    let need_property_id = ensure_need_host_property(binding, registry)?;
-    let layout = registry.property(need_property_id).layout.clone();
-    let need_offset = layout
-        .offset_of(&SubFieldRole::Amount)
-        .ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
-    let need_start = registry.column_range(need_property_id).start as u32;
-    let need_col = need_start + need_offset.lane() as u32;
-
-    // Remap authored local weight/input cols onto the need host's Named columns.
-    let mut weight_cols = Vec::with_capacity(weight_cols_local.len());
-    for (i, _) in weight_cols_local.iter().enumerate() {
-        let role = SubFieldRole::Named(format!("w_{i}"));
-        let off = layout.offset_of(&role).ok_or_else(|| {
-            InstallError::NeedWeightProfileInvalid {
-                binding: binding.id.clone(),
-                reason: format!("missing weight subfield w_{i}"),
-            }
-        })?;
-        weight_cols.push(need_start + off.lane() as u32);
-    }
-    let mut input_cols = Vec::with_capacity(input_cols_local.len());
-    let mut input_literals = Vec::with_capacity(input_cols_local.len());
-    for (i, input) in binding.inputs.iter().enumerate() {
-        match input {
-            NeedWeightProfileInputSpec::Literal(v) => {
-                // Still allocate a column so the WeightedAccumulator shape is uniform;
-                // the EvalEML tree uses LITERAL for these.
-                let role = SubFieldRole::Named(format!("in_{i}"));
-                let off = layout.offset_of(&role).ok_or_else(|| {
-                    InstallError::NeedWeightProfileInvalid {
-                        binding: binding.id.clone(),
-                        reason: format!("missing input subfield in_{i}"),
-                    }
-                })?;
-                input_cols.push(need_start + off.lane() as u32);
-                input_literals.push(Some(*v));
-            }
-            NeedWeightProfileInputSpec::Property(key) => {
-                let prop_id = registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
-                    InstallError::Spec(SpecError::UnknownResourceFlowProperty {
-                        property: format!("{}::{}", key.namespace, key.name),
-                    })
-                })?;
-                let prop_layout = &registry.property(prop_id).layout;
-                let off = prop_layout.offset_of(&SubFieldRole::Amount).ok_or_else(|| {
-                    InstallError::NeedWeightProfileInvalid {
-                        binding: binding.id.clone(),
-                        reason: format!(
-                            "input property {}::{} missing Amount",
-                            key.namespace, key.name
-                        ),
-                    }
-                })?;
-                let start = registry.column_range(prop_id).start as u32;
-                input_cols.push(start + off.lane() as u32);
-                input_literals.push(None);
-            }
-        }
-    }
+    let input_cols = resolve_amount_cols(registry, &binding.input_properties, &binding.id)?;
+    let weight_cols = resolve_amount_cols(registry, &binding.weight_properties, &binding.id)?;
 
     let flow_property_id = registry
         .id_of(&arena.flow_property.namespace, &arena.flow_property.name)
@@ -269,133 +200,104 @@ fn resolve_one(
             })
         })?;
     let flow_layout = &registry.property(flow_property_id).layout;
-    let cols = resolve_node_columns(flow_layout, &arena.name).map_err(|_| {
+    // Confirm AllocatorWeight exists via hierarchy, then mint ColumnIndex via col_for_role.
+    let _ = resolve_node_columns(flow_layout, &arena.name).map_err(|_| {
         InstallError::Spec(SpecError::UnknownResourceFlowProperty {
             property: format!("{} flow columns", arena.name),
         })
     })?;
-    let allocator_weight_col = Some(cols.weight_col);
+    let need_col = registry
+        .column_range(flow_property_id)
+        .col_for_role(&SubFieldRole::Named("weight".into()), flow_layout)
+        .ok_or_else(|| InstallError::NeedWeightProfileInvalid {
+            binding: binding.id.clone(),
+            reason: format!(
+                "arena `{}` flow property missing AllocatorWeight Named(\"weight\") cell",
+                arena.name
+            ),
+        })?;
 
-    let nodes = build_weighted_need_nodes(&input_cols, &input_literals, &weight_cols);
+    let nodes = build_weighted_need_nodes(&input_cols, &weight_cols);
 
     Ok(ResolvedNeedWeightProfile {
         id: binding.id.clone(),
         profile: binding.profile.clone(),
         participant_slot,
         hosted_id,
+        install_target_id,
         arena: arena.name.clone(),
         arena_idx: arena_idx as u32,
         need_col,
-        allocator_weight_col,
-        nodes,
-        weight_seeds: binding.weight_seeds.clone(),
-        weight_cols,
         input_cols,
-        input_literals,
+        weight_cols,
+        nodes,
         threshold: binding.threshold.clone(),
+        weight_property_keys: binding.weight_properties.clone(),
+        input_property_keys: binding.input_properties.clone(),
     })
 }
 
-fn ensure_need_host_property(
-    binding: &NeedWeightProfileBindingSpec,
-    registry: &mut DimensionRegistry,
-) -> Result<SimPropertyId, InstallError> {
-    let name = format!("need_{}", binding.id);
-    if let Some(id) = registry.id_of(NEED_PROPERTY_NAMESPACE, &name) {
-        return Ok(id);
+fn resolve_amount_cols(
+    registry: &DimensionRegistry,
+    keys: &[PropertyKey],
+    binding_id: &str,
+) -> Result<Vec<ColumnIndex>, InstallError> {
+    let mut out = Vec::with_capacity(keys.len());
+    for key in keys {
+        let prop_id = registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
+            InstallError::Spec(SpecError::UnknownResourceFlowProperty {
+                property: format!("{}::{}", key.namespace, key.name),
+            })
+        })?;
+        let layout = &registry.property(prop_id).layout;
+        let col = registry
+            .column_range(prop_id)
+            .col_for_role(&SubFieldRole::Amount, layout)
+            .ok_or_else(|| InstallError::NeedWeightProfileInvalid {
+                binding: binding_id.into(),
+                reason: format!(
+                    "property {}::{} missing Amount role",
+                    key.namespace, key.name
+                ),
+            })?;
+        out.push(col);
     }
-    let n_inputs = binding.inputs.len();
-    let n_weights = binding.weight_seeds.len();
-    let mut sub_fields = vec![SubFieldSpec {
-        role: SubFieldRole::Amount,
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default: 0.0,
-        display_name: NEED_AMOUNT_ROLE.into(),
-        display_range: None,
-        governed_by: None,
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: None,
-    }];
-    for i in 0..n_inputs {
-        sub_fields.push(SubFieldSpec {
-            role: SubFieldRole::Named(format!("in_{i}")),
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: format!("in_{i}"),
-            display_range: None,
-            governed_by: None,
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        });
-    }
-    for i in 0..n_weights {
-        sub_fields.push(SubFieldSpec {
-            role: SubFieldRole::Named(format!("w_{i}")),
-            width: 1,
-            clamp: ClampBehavior::Unbounded,
-            velocity_max: None,
-            default: 0.0,
-            display_name: format!("w_{i}"),
-            display_range: None,
-            governed_by: None,
-            reduction_override: None,
-            soft_aggregate_guard: None,
-            accumulator_spec: None,
-        });
-    }
-    let spec = PropertySpec {
-        id: format!("{NEED_PROPERTY_NAMESPACE}_{name}"),
-        namespace: NEED_PROPERTY_NAMESPACE.into(),
-        name,
-        display_name: format!("need {}", binding.id),
-        description: format!("RF-5 need host for weight_profile `{}`", binding.profile),
-        sub_fields,
-    };
-    let (id, _) = compile_property(&spec, registry)?;
-    Ok(id)
+    Ok(out)
 }
 
 fn build_weighted_need_nodes(
-    input_cols: &[u32],
-    input_literals: &[Option<f32>],
-    weight_cols: &[u32],
+    input_cols: &[ColumnIndex],
+    weight_cols: &[ColumnIndex],
 ) -> Vec<EmlNodeGpu> {
     let mut nodes = Vec::new();
-    for (i, (in_col, w_col)) in input_cols.iter().zip(weight_cols.iter()).enumerate() {
-        match input_literals.get(i).and_then(|x| *x) {
-            Some(lit) => nodes.push(literal(lit)),
-            None => nodes.push(slot_value(*in_col)),
-        }
-        nodes.push(slot_value(*w_col));
+    for (in_col, w_col) in input_cols.iter().zip(weight_cols.iter()) {
+        nodes.push(slot_value(in_col.raw_u32()));
+        nodes.push(slot_value(w_col.raw_u32()));
         nodes.push(op_node(eml_nodes::opcode::MUL));
     }
-    for _ in 1..input_cols.len().max(1) {
-        if input_cols.len() > 1 {
-            nodes.push(op_node(eml_nodes::opcode::ADD));
-        }
-    }
-    // Single input: no ADD needed. Zero inputs impossible (validated earlier).
-    if input_cols.len() > 1 {
-        // ADDs already folded above for pairs; for n inputs we need n-1 ADDs.
-        // The loop above runs 1..n which is n-1 times — correct.
+    for _ in 1..input_cols.len() {
+        nodes.push(op_node(eml_nodes::opcode::ADD));
     }
     nodes.push(op_node(eml_nodes::opcode::RETURN_TOP));
     nodes
 }
 
-/// Seed authored weight (and literal input) columns on the need host; attach
-/// the need property to the participant if missing.
-pub fn seed_need_weight_profiles(
+/// Materialize authored Amount values for input/weight properties onto the
+/// arena participant wrapper so slot-local EvalEML can read them.
+///
+/// Sources (in order, no invented defaults):
+/// 1. Hosted SimThing property map (if present)
+/// 2. Resource-economy Constant emissions for that property
+/// 3. GameMode OverlaySpec transforms targeting that property on the install host
+///
+/// Missing authored values remain 0 (fail-closed need, not a silent weight of 1.0).
+pub fn seed_need_weight_property_values_on_participants(
     resolved: &[ResolvedNeedWeightProfile],
     registry: &DimensionRegistry,
     root: &mut SimThing,
-    allocator: &simthing_gpu::SlotAllocator,
+    allocator: &SlotAllocator,
+    game_mode: &simthing_spec::GameModeSpec,
+    economy: Option<&ResourceEconomyRegistry>,
 ) -> Result<(), InstallError> {
     for binding in resolved {
         let participant_id = allocator
@@ -404,49 +306,118 @@ pub fn seed_need_weight_profiles(
                 binding: binding.id.clone(),
                 slot: binding.participant_slot,
             })?;
-        let Some(node) = find_simthing_mut(root, participant_id) else {
-            return Err(InstallError::NeedWeightProfileParticipantSlotMissing {
+        let host_id = binding.hosted_id;
+        let install_key = binding.install_target_id.clone();
+        let amounts: Vec<(simthing_core::SimPropertyId, f32)> = {
+            let host = find_simthing_mut(root, host_id).ok_or_else(|| {
+                InstallError::NeedWeightProfileInvalid {
+                    binding: binding.id.clone(),
+                    reason: format!("hosted SimThing {} missing for property copy", host_id.raw()),
+                }
+            })?;
+            let mut pairs = Vec::new();
+            for key in binding
+                .input_property_keys
+                .iter()
+                .chain(binding.weight_property_keys.iter())
+            {
+                let pid = registry.id_of(&key.namespace, &key.name).ok_or_else(|| {
+                    InstallError::Spec(SpecError::UnknownResourceFlowProperty {
+                        property: format!("{}::{}", key.namespace, key.name),
+                    })
+                })?;
+                let layout = &registry.property(pid).layout;
+                let mut amount = host
+                    .properties
+                    .get(&pid)
+                    .map(|v| v.get_role(&SubFieldRole::Amount, layout))
+                    .unwrap_or(0.0);
+                let amount_col = registry
+                    .column_range(pid)
+                    .col_for_role(&SubFieldRole::Amount, layout)
+                    .map(|c| c.raw_u32());
+                if let (Some(econ), Some(acol)) = (economy, amount_col) {
+                    for emission in &econ.registrations.emissions {
+                        if emission.source_col == acol {
+                            if let simthing_gpu::EmissionFormula::Constant { value } =
+                                emission.formula
+                            {
+                                amount = value;
+                            }
+                        }
+                    }
+                }
+                // Apply authored overlays targeting this property on the same install host.
+                let prop_ref = format!("{}::{}", key.namespace, key.name);
+                for overlay in &game_mode.overlays {
+                    let targets = match &overlay.targets_property {
+                        s if !s.is_empty() => s.as_str(),
+                        _ => continue,
+                    };
+                    if targets != prop_ref && targets != key.name {
+                        continue;
+                    }
+                    let overlay_host_ok = match &overlay.install {
+                        simthing_spec::InstallTargetSpec::ScenarioListed { target_id } => {
+                            target_id == &install_key
+                        }
+                        _ => false,
+                    };
+                    if !overlay_host_ok {
+                        continue;
+                    }
+                    for (role, op) in &overlay.sub_field_deltas {
+                        if *role != SubFieldRole::Amount {
+                            continue;
+                        }
+                        match op {
+                            simthing_core::TransformOp::Add(v) => amount += *v,
+                            simthing_core::TransformOp::Multiply(v) => amount *= *v,
+                            _ => {}
+                        }
+                    }
+                }
+                pairs.push((pid, amount));
+            }
+            pairs
+        };
+        let participant = find_simthing_mut(root, participant_id).ok_or_else(|| {
+            InstallError::NeedWeightProfileParticipantSlotMissing {
                 binding: binding.id.clone(),
                 slot: binding.participant_slot,
-            });
-        };
-        // Ensure the need host property instance exists on the participant.
-        let need_pid = registry
-            .column_owners
-            .get(binding.need_col as usize)
-            .map(|(pid, _)| *pid)
-            .ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
-        if !node.properties.contains_key(&need_pid) {
-            let prop = registry.property(need_pid);
-            node.properties.insert(need_pid, prop.default_value());
-        }
-        let value = node
-            .properties
-            .get_mut(&need_pid)
-            .ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
-        let layout = registry.property(need_pid).layout.clone();
-        for (i, seed) in binding.weight_seeds.iter().enumerate() {
-            let role = SubFieldRole::Named(format!("w_{i}"));
-            let off = layout.offset_of(&role).ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
-            value.set_lane_at_offset(off, *seed);
-        }
-        for (i, lit) in binding.input_literals.iter().enumerate() {
-            if let Some(v) = lit {
-                let role = SubFieldRole::Named(format!("in_{i}"));
-                let off = layout.offset_of(&role).ok_or(InstallError::Spec(SpecError::ValidationFailed))?;
-                value.set_lane_at_offset(off, *v);
             }
+        })?;
+        for (pid, amount) in amounts {
+            let prop = registry.property(pid);
+            let layout = prop.layout.clone();
+            let value = participant
+                .properties
+                .entry(pid)
+                .or_insert_with(|| prop.default_value());
+            value.set_role(&SubFieldRole::Amount, &layout, amount);
+        }
+        // Start the AllocatorWeight need cell at 0 so the first EvalEML write can
+        // Rising-cross an authored threshold (same posture as disruption presence).
+        if let Some(flow_pid) = registry.column_owners.get(binding.need_col.raw()).map(|(p, _)| *p)
+        {
+            let prop = registry.property(flow_pid);
+            let layout = prop.layout.clone();
+            let value = participant
+                .properties
+                .entry(flow_pid)
+                .or_insert_with(|| prop.default_value());
+            value.set_role(&SubFieldRole::Named("weight".into()), &layout, 0.0);
         }
     }
     Ok(())
 }
 
-/// Build EvalEML AccumulatorOps: need = Σ input×weight; optionally mirror to AllocatorWeight.
+/// Build EvalEML AccumulatorOps writing need into the existing AllocatorWeight cell.
 pub fn build_need_weight_profile_ops(
     resolved: &[ResolvedNeedWeightProfile],
     eml_registry: &mut EmlExpressionRegistry,
 ) -> Vec<AccumulatorOp> {
-    let mut ops = Vec::with_capacity(resolved.len() * 2);
+    let mut ops = Vec::with_capacity(resolved.len());
     for (idx, binding) in resolved.iter().enumerate() {
         let tree_id = EmlTreeId(NEED_WEIGHT_TREE_BASE + idx as u32);
         eml_registry
@@ -471,13 +442,15 @@ pub fn build_need_weight_profile_ops(
             )
             .expect("need weight profile formula registers");
 
-        // Source is a weight column (any slot value works as EvalEML entry);
-        // combine EvalEML writes need.
-        let source_col = binding.weight_cols.first().copied().unwrap_or(binding.need_col);
+        let source_col = binding
+            .weight_cols
+            .first()
+            .copied()
+            .unwrap_or(binding.need_col);
         ops.push(AccumulatorOp {
             source: SourceSpec::SlotValue {
                 slot: SlotIndex::new(binding.participant_slot),
-                col: ColumnIndex::new(source_col as usize),
+                col: source_col,
             },
             combine: CombineFn::EvalEML { tree_id: tree_id.0 },
             gate: GateSpec::OrderBand(0),
@@ -485,61 +458,46 @@ pub fn build_need_weight_profile_ops(
             consume: ConsumeMode::ResetTarget,
             targets: vec![(
                 SlotIndex::new(binding.participant_slot),
-                ColumnIndex::new(binding.need_col as usize),
+                binding.need_col,
             )],
         });
-
-        // Mirror need → AllocatorWeight so RF disburse sees the transported weight.
-        if let Some(weight_col) = binding.allocator_weight_col {
-            ops.push(AccumulatorOp {
-                source: SourceSpec::SlotValue {
-                    slot: SlotIndex::new(binding.participant_slot),
-                    col: ColumnIndex::new(binding.need_col as usize),
-                },
-                combine: CombineFn::Identity,
-                gate: GateSpec::OrderBand(0),
-                scale: ScaleSpec::Identity,
-                consume: ConsumeMode::ResetTarget,
-                targets: vec![(
-                    SlotIndex::new(binding.participant_slot),
-                    ColumnIndex::new(weight_col as usize),
-                )],
-            });
-        }
     }
     ops
 }
 
-/// Build threshold registrations for bindings that author a need threshold.
-pub fn need_weight_threshold_registrations(
+/// Inject sealed emit_on_threshold registrations for need thresholds into the
+/// existing resource-economy registry (same path as disruption FIELD_POLICY).
+pub fn inject_need_threshold_into_economy(
     resolved: &[ResolvedNeedWeightProfile],
-) -> Vec<simthing_gpu::ThresholdRegistration> {
-    use simthing_gpu::{DIR_UPWARD, THRESH_BUF_VALUES, ThresholdRegistration};
-    let mut out = Vec::new();
+    economy: &mut ResourceEconomyRegistry,
+) {
+    let mut injected = false;
     for binding in resolved {
         let Some(th) = &binding.threshold else {
             continue;
         };
-        out.push(ThresholdRegistration {
-            slot: binding.participant_slot,
+        let reg = EmitOnThresholdRegistration {
+            slot: SlotIndex::new(binding.participant_slot),
             col: binding.need_col,
             threshold: th.threshold,
-            direction: DIR_UPWARD,
+            direction: ThresholdDirection::Upward,
             event_kind: th.event_kind,
-            buffer: THRESH_BUF_VALUES,
-        });
+            buffer: EmitOnThresholdBuffer::Values,
+        };
+        // Validate builder shape (same as economy materialize).
+        let _ = rebuild_emit_on_threshold_ops(std::slice::from_ref(&reg));
+        economy.registrations.emit_on_threshold.push(reg);
+        economy
+            .registrations
+            .report
+            .threshold_emit_ids
+            .push(format!("{}_need_threshold", binding.id));
+        injected = true;
     }
-    out
-}
-
-fn literal(value: f32) -> EmlNodeGpu {
-    EmlNodeGpu {
-        opcode: eml_nodes::opcode::LITERAL_F32,
-        flags: 0,
-        a: value.to_bits(),
-        b: 0,
-        c: 0,
-        d: 0,
+    if injected {
+        economy.registrations.report.threshold_emit_count =
+            economy.registrations.emit_on_threshold.len();
+        economy.generation = economy.generation.saturating_add(1).max(2);
     }
 }
 
@@ -565,15 +523,17 @@ fn op_node(opcode: u32) -> EmlNodeGpu {
     }
 }
 
-/// Build a binding from a hydrated weight_profile + authored seeds (workshop/Studio helper).
+/// Build a binding from a hydrated stack + existing property keys (workshop/production helper).
+/// Callers must supply real PropertyKeys and InstallTargetSpec from authored data — never
+/// invent weight seeds or Studio constants.
 pub fn binding_from_hydrated_stack(
     id: impl Into<String>,
     profile: impl Into<String>,
     stack: simthing_spec::EmlGadgetStackSpec,
     arena: impl Into<String>,
-    install: InstallTargetSpec,
-    weight_seeds: Vec<f32>,
-    inputs: Vec<NeedWeightProfileInputSpec>,
+    install: simthing_spec::InstallTargetSpec,
+    input_properties: Vec<PropertyKey>,
+    weight_properties: Vec<PropertyKey>,
     threshold: Option<NeedWeightProfileThresholdSpec>,
 ) -> NeedWeightProfileBindingSpec {
     NeedWeightProfileBindingSpec {
@@ -582,8 +542,8 @@ pub fn binding_from_hydrated_stack(
         stack,
         arena: arena.into(),
         install,
-        weight_seeds,
-        inputs,
+        input_properties,
+        weight_properties,
         threshold,
     }
 }

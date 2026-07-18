@@ -1112,6 +1112,41 @@ impl WorldGpuState {
         }
     }
 
+    /// Re-run the sealed AccumulatorOp threshold scan after RF bands wrote need.
+    ///
+    /// Ordinary tick threshold scan runs *before* RF OrderBands. RF-5 need
+    /// EvalEML writes `AllocatorWeight` inside those bands; without this rescan,
+    /// Rising edges on post-RF need values would never emit in the same hot step.
+    pub fn rescan_accumulator_thresholds_after_resource_flow(&mut self) {
+        if self.n_thresholds == 0 {
+            return;
+        }
+        let Some(runtime) = self.accumulator_runtime.as_mut() else {
+            return;
+        };
+        let Some(mut session) = runtime.take_threshold_session() else {
+            return;
+        };
+        session.prepare_threshold_scan(&self.ctx);
+        let mut encoder = self
+            .ctx
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("post_rf_need_threshold_rescan"),
+            });
+        session.encode_threshold_scan_with_outputs_into(
+            &self.ctx,
+            &mut encoder,
+            &self.resolved.values(),
+            &self.resolved.previous_values(),
+            &self.resolved.output_vectors(),
+            &self.resolved.previous_output_vectors(),
+        );
+        self.ctx.queue.submit(Some(encoder.finish()));
+        session.finish_threshold_scan(&self.ctx);
+        runtime.restore_threshold_session(Some(session));
+    }
+
     pub fn append_accumulator_threshold_ops(
         &mut self,
         regs: &[ThresholdRegistration],

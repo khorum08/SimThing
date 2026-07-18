@@ -2192,7 +2192,7 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                             .as_deref()
                             .map(|id| {
                                 format!(
-                                    "{id} / {} seeds=[{}] live={} thr={} → {}",
+                                    "{id} / {} weights=[{}] live={} thr={} status={} decisions={}",
                                     recursive.need_profile_kind.as_deref().unwrap_or("--"),
                                     recursive.need_weight_seeds.as_deref().unwrap_or("--"),
                                     recursive
@@ -2204,9 +2204,11 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                                         .map(|v| format!("{v:.3}"))
                                         .unwrap_or_else(|| "--".into()),
                                     recursive.need_threshold_result.unwrap_or("--"),
+                                    // Authoritative sealed-event count (not value>=thr recompute).
+                                    bridge.last_decision_event_count,
                                 )
                             })
-                            .unwrap_or_else(|| "not bound".into()),
+                            .unwrap_or_else(|| "not bound (no admitted GameMode binding)".into()),
                     );
                     ui.end_row();
                 });

@@ -69,9 +69,7 @@ pub use disruption_readout::{
 pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
-pub use need_weight_profile::{
-    NeedWeightProfileBindingSpec, NeedWeightProfileInputSpec, NeedWeightProfileThresholdSpec,
-};
+pub use need_weight_profile::{NeedWeightProfileBindingSpec, NeedWeightProfileThresholdSpec};
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use fleet_presence::{
     fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,

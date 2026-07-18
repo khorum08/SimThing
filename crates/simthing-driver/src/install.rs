@@ -257,12 +257,6 @@ pub fn compile_and_install(
         let need_profiles = crate::need_weight_profile::resolve_need_weight_profiles(
             &resolved, scenario, root, registry, &scaffold,
         )?;
-        crate::need_weight_profile::seed_need_weight_profiles(
-            &need_profiles,
-            registry,
-            root,
-            allocator,
-        )?;
         state.resolved_need_weight_profiles = need_profiles;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
@@ -281,6 +275,40 @@ pub fn compile_and_install(
             root,
             allocator,
         )?);
+    }
+
+    // RF-5: after overlays/emissions land on hosted nodes, copy authored Amounts
+    // onto arena participant wrappers (EvalEML is slot-local), then inject sealed
+    // need thresholds into the economy emit_on_threshold list.
+    if !state.resolved_need_weight_profiles.is_empty() {
+        if state.resource_economy_registry.is_none() {
+            state.resource_economy_registry = Some(
+                crate::resource_economy_compile::ResourceEconomyRegistry {
+                    registrations: crate::resource_economy_compile::ResourceEconomyRegistrations {
+                        transfers: vec![],
+                        recipes: vec![],
+                        emissions: vec![],
+                        emit_on_threshold: vec![],
+                        report: Default::default(),
+                    },
+                    generation: 1,
+                },
+            );
+        }
+        crate::need_weight_profile::seed_need_weight_property_values_on_participants(
+            &state.resolved_need_weight_profiles,
+            registry,
+            root,
+            allocator,
+            game_mode,
+            state.resource_economy_registry.as_ref(),
+        )?;
+        if let Some(economy) = state.resource_economy_registry.as_mut() {
+            crate::need_weight_profile::inject_need_threshold_into_economy(
+                &state.resolved_need_weight_profiles,
+                economy,
+            );
+        }
     }
 
     // ── 5. Scripted events: one definition + N per-owner instances per

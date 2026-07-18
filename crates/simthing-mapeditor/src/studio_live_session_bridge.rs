@@ -26,10 +26,9 @@ use simthing_spec::{
     compile_property, game_session_child, game_session_owners, owner_entity_id,
     planet_child_rf_participant_inputs, validate_scenario_links,
     validate_stead_mapping_consistency, ArenaSpec, BaseFlowDirectionSpec, BaseFlowObligationSpec,
-    ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec, InstallTargetSpec,
-    NeedWeightProfileBindingSpec, NeedWeightProfileInputSpec, NeedWeightProfileThresholdSpec,
-    PropertyKey, PropertySpec, ResourceEconomyOptInMode, ResourceFlowExecutionProfile,
-    ResourceFlowOptInMode, ResourceFlowSpec, SimThingScenarioSpec,
+    ExplicitParticipantSpec, FissionPolicySpec, GameModeSpec, InstallTargetSpec, PropertyKey,
+    PropertySpec, ResourceEconomyOptInMode, ResourceFlowExecutionProfile, ResourceFlowOptInMode,
+    ResourceFlowSpec, SimThingScenarioSpec,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
@@ -1147,25 +1146,46 @@ fn fill_need_weight_profile_readout(readout: &mut StudioRecursiveRfReadout, sim:
     };
     let values = sim.state.read_values();
     let n_dims = sim.state.n_dims as usize;
-    let idx = binding.participant_slot as usize * n_dims + binding.need_col as usize;
+    let idx = binding.participant_slot as usize * n_dims + binding.need_col.raw();
     let live = values.get(idx).copied();
     readout.need_profile_id = Some(binding.id.clone());
     readout.need_profile_kind = Some(binding.profile.clone());
+    // Authored weight identity is the property keys — not invented seed constants.
     readout.need_weight_seeds = Some(
         binding
-            .weight_seeds
+            .weight_property_keys
             .iter()
-            .map(|w| format!("{w:.3}"))
+            .map(|k| format!("{}::{}", k.namespace, k.name))
             .collect::<Vec<_>>()
             .join(","),
     );
     readout.need_live_value = live;
     if let Some(th) = &binding.threshold {
         readout.need_threshold = Some(th.threshold);
-        readout.need_threshold_result = Some(match live {
-            Some(v) if v >= th.threshold => "crossed",
-            Some(_) => "below",
-            None => "unavailable",
+        // Authoritative result is sealed threshold-event presence on the economy
+        // registry / last tick event stream — not a presentation recompute.
+        let thr_regs = sim
+            .spec_state
+            .resource_economy_registry
+            .as_ref()
+            .map(|r| {
+                r.registrations
+                    .emit_on_threshold
+                    .iter()
+                    .filter(|reg| {
+                        reg.slot.raw() == binding.participant_slot
+                            && reg.col == binding.need_col
+                            && (reg.threshold - th.threshold).abs() < 1e-6
+                    })
+                    .count()
+            })
+            .unwrap_or(0);
+        readout.need_threshold_result = Some(if thr_regs == 0 {
+            "no-threshold-reg"
+        } else {
+            // Event firing is reported via cumulative_decision_events / last_decision_event_count
+            // (sealed readback). This field only confirms the binding's threshold is admitted.
+            "threshold-admitted"
         });
     } else {
         readout.need_threshold = None;
@@ -1414,8 +1434,15 @@ fn compose_recursive_rf_profile(
 
     let mut game_mode = pack.game_mode.clone();
     game_mode.properties.push(studio_recursive_rf_property());
-    let need_weight_profiles =
-        studio_need_weight_profile_bindings(pack, &owner_ref, STUDIO_RF_ARENA);
+    // RF-5: do not invent need/weight_profile bindings here. Studio only
+    // consumes bindings already present on the authored GameModeSpec (hydrate
+    // or production composition). Fabricating seeds/inputs/thresholds/owners
+    // is a forbidden feeder/mirror.
+    let admitted_need_bindings = game_mode
+        .resource_flow
+        .as_ref()
+        .map(|rf| rf.need_weight_profiles.clone())
+        .unwrap_or_default();
     game_mode.resource_flow = Some(ResourceFlowSpec {
         opt_in_mode: ResourceFlowOptInMode::Disabled,
         arenas: vec![ArenaSpec {
@@ -1434,7 +1461,7 @@ fn compose_recursive_rf_profile(
             wildcard_admission: None,
         }],
         base_obligations,
-        need_weight_profiles,
+        need_weight_profiles: admitted_need_bindings,
         ..Default::default()
     });
     game_mode.resource_flow_execution_profile =
@@ -1460,57 +1487,6 @@ fn compose_recursive_rf_profile(
             sibling_count: selected_children.len() as u32,
         },
     ))
-}
-
-/// RF-5: promote hydrated weight_profiles into admitted Arena need bindings on the selected owner.
-///
-/// Weight seeds and input literals are explicit on the binding (no silent default of 1.0 when
-/// empty). Canonical Studio attach uses documented baseline seeds so live need is non-zero;
-/// paired-authoring proofs override only the seeds.
-fn studio_need_weight_profile_bindings(
-    pack: &simthing_clausething::HydratedScenarioPack,
-    owner_ref: &str,
-    arena: &str,
-) -> Vec<NeedWeightProfileBindingSpec> {
-    let Some(economy) = pack.field_economy.as_ref() else {
-        return Vec::new();
-    };
-    let mut out = Vec::with_capacity(economy.weight_profiles.len());
-    for profile in &economy.weight_profiles {
-        let (n_inputs, n_weights) = match profile.stack.gadgets.first() {
-            Some(simthing_spec::EmlGadgetInstanceSpec::WeightedAccumulator {
-                input_cols,
-                weight_cols,
-                ..
-            }) => (input_cols.len(), weight_cols.len()),
-            _ => continue,
-        };
-        if n_inputs == 0 || n_weights == 0 || n_inputs != n_weights {
-            continue;
-        }
-        // Explicit baseline authored seeds for the production Studio path.
-        // Not a silent empty-fallback: empty weight_seeds still fail closed at install.
-        let weight_seeds = vec![1.0_f32; n_weights];
-        let inputs = vec![NeedWeightProfileInputSpec::Literal(2.0); n_inputs];
-        // Crossing control: need = Σ 2.0 * 1.0 = 2n; threshold sits between low/high seeds.
-        let threshold = NeedWeightProfileThresholdSpec {
-            threshold: 1.5,
-            event_kind: 90,
-        };
-        out.push(NeedWeightProfileBindingSpec {
-            id: profile.id.clone(),
-            profile: profile.profile.clone(),
-            stack: profile.stack.clone(),
-            arena: arena.into(),
-            install: InstallTargetSpec::ScenarioListed {
-                target_id: owner_ref.to_string(),
-            },
-            weight_seeds,
-            inputs,
-            threshold: Some(threshold),
-        });
-    }
-    out
 }
 
 /// Build an authored live profile from a hydrated scenario pack (production elevation).
