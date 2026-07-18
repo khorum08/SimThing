@@ -2,13 +2,16 @@
 
 ## Status
 
-**PROBATION — governed-integration remedial implementation and local evidence complete; ready for orchestration review** (2026-07-17).
+**DA-GRADUATED — RF-2A and resumed RF-2 accepted; evidence amended for delegated merge** (2026-07-18).
 
 Tested code commit: `15250f6f507225c37f4e6ce18d32893d3592b6f6`.
 
 Remand-3 admission-metadata commit: `f8effc10f1ac2b54753460bbde76bee225c43f04`.
 The two RF-2A falsifiers now use the registered open `birth_track` value
 `0.0.8.6-studio-live-ops`; no substantive implementation changed after the tested code commit.
+
+DA-audited head: `f3fae554f08ef6efa07ec89b8f920f962737da1e`. DA reproduced every
+load-bearing RF-2A and resumed RF-2 proof at that head and graduated both rungs.
 
 Expected clearance route: `DA-RESERVE(kernel-contract)`.
 
@@ -83,6 +86,20 @@ The same authored Arena run with `ResourceFlowExecutionProfile::DefaultDisabled`
 `AllocatedFlow`, and all leaf `AllocatedFlow` cells remain zero, proving the accepted opt-out is not
 bypassed by unconditional execution wiring.
 
+## Legacy ct_2a / ct_2c disclosure
+
+The legacy `gpu_micro_economy_matches_arena_allocation_oracle` test and its ct_2c sibling are **not
+green on a live GPU**. DA reproduced a plan-build panic with
+`EmptyParticipants { arena: "ct2a_food" }` and bisected the same signature through at least the 12.6
+merge `e4daf231`. The failure therefore predates RF-2A/RF-2 and is not a regression at the audited
+head.
+
+Their `open_from_spec_or_skip` path fail-opens on `NoAdapter`, so GPU-less CI reports a skip instead of
+exposing the participant-enrollment defect. `RF-LEGACY-RETIRE-REANCHOR-0 (RF-3)` owns both required
+repairs: restore the flat-star participant enrollment and convert ct_2a/ct_2c to fail closed. This rung
+does not claim those legacy executable tests are green and does not weaken their future fail-closed
+requirement.
+
 ## Verification
 
 - `cargo check -p simthing-spec` — **PASS** (pre-existing warnings only).
@@ -95,6 +112,9 @@ bypassed by unconditional execution wiring.
 - `cargo test -p simthing-spec --test runtime_rf_tick -- --nocapture` — **PASS**, 1 passed.
 - `cargo test -p simthing-spec --test runtime_tick_shell -- --nocapture` — **PASS**, 1 passed.
 - `cargo test -p simthing-spec --test runtime_tick_history -- --nocapture` — **PASS**, 1 passed.
+- ct_2a / ct_2c live-GPU execution — **PRE-EXISTING FAILURE**,
+  `EmptyParticipants { arena: "ct2a_food" }` at plan build; DA-bisected through `e4daf231`, repair
+  assigned to RF-3.
 - `bash scripts/ci/test_inventory_drift_check.sh` — **PASS**, unledgered `0`, stale `0`.
 - `bash scripts/ci/test_lifecycle_expiry_check.sh --schema` — **PASS**, expired `0`, audit `0`.
 - Exact-head doctrine scan is rerun after the final evidence commit and carried in the coder relay.
@@ -116,6 +136,8 @@ test remains unchanged and green.
 - RF-1 source, tests, independence fence, and bite remain unchanged.
 - The historical serialized profile name `FlatStarResourceFlow` remains compatible; the admitted tree
   already selects flat versus nested planning. RF-3 owns the broader legacy naming/doc sweep.
+- RF-3 also owns the pre-existing ct_2a/ct_2c participant-enrollment repair and replacement of their
+  `NoAdapter` fail-open skip with fail-closed execution evidence.
 - The pre-existing untracked generated scenario output was left untouched.
 
 ## Orientation receipt
