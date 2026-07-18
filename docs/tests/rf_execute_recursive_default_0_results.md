@@ -6,6 +6,10 @@
 
 Tested code commit: `15250f6f507225c37f4e6ce18d32893d3592b6f6`.
 
+Remand-3 admission-metadata commit: `f8effc10f1ac2b54753460bbde76bee225c43f04`.
+The two RF-2A falsifiers now use the registered open `birth_track` value
+`0.0.8.6-studio-live-ops`; no substantive implementation changed after the tested code commit.
+
 Expected clearance route: `DA-RESERVE(kernel-contract)`.
 
 The admitted Arena Resource Flow plan is now the `GameModeSpec` execution-profile default. Ordinary
@@ -92,6 +96,7 @@ bypassed by unconditional execution wiring.
 - `cargo test -p simthing-spec --test runtime_tick_shell -- --nocapture` — **PASS**, 1 passed.
 - `cargo test -p simthing-spec --test runtime_tick_history -- --nocapture` — **PASS**, 1 passed.
 - `bash scripts/ci/test_inventory_drift_check.sh` — **PASS**, unledgered `0`, stale `0`.
+- `bash scripts/ci/test_lifecycle_expiry_check.sh --schema` — **PASS**, expired `0`, audit `0`.
 - Exact-head doctrine scan is rerun after the final evidence commit and carried in the coder relay.
 - `bash scripts/ci/gen_orientation.sh --check` — **PASS** after regeneration.
 - `bash scripts/ci/doc_budget_check.sh --check` — **PASS**.
