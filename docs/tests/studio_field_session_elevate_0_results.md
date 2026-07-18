@@ -82,16 +82,16 @@ Owner PASS requires the same canonical scenario and executable, a later tick, fi
 
 ## Windows debug executable identity
 
-The executable is built only after the implementation/test SHA is frozen and all remands are clean. The executable is never committed. Final values are filled from that frozen SHA:
+The executable was built from a clean detached worktree at the frozen implementation/test SHA. The executable is never committed:
 
 | Field | Value |
 |---|---|
-| `ovl_exe_source_sha` | PENDING final frozen SHA |
-| `ovl_exe_sha256` | PENDING final build |
-| Full path | `C:\Users\mvorm\SimThing\target\debug\simthing-studio.exe` |
-| Byte size / UTC build time | PENDING final build |
+| `ovl_exe_source_sha` | `7df4319d6f24b0ae68c85817ca93238f4cb1c4da` |
+| `ovl_exe_sha256` | `da39bd3c4da799698e8e72d01ff95b37e2cf112b96e31ffcbb967778388112a5` |
+| Full path | `C:\Users\mvorm\SimThing\target\rf4-ovl-clean\target\debug\simthing-studio.exe` |
+| Byte size / UTC build time | `86773760` bytes / `2026-07-18T16:34:03Z` |
 | Build command | `cargo build -p simthing-mapeditor --bin simthing-studio` |
-| Working tree clean | PENDING final build |
+| Working tree clean | YES; detached worktree was clean immediately before and after the build |
 
 ## Verification ledger
 
@@ -102,7 +102,7 @@ The executable is built only after the implementation/test SHA is frozen and all
 | Studio bridge regression suite | PASS, 8/8 |
 | `cargo check -p simthing-spec` | PASS |
 | `cargo check -p simthing-mapeditor` | PASS |
-| Studio debug build | PENDING frozen-SHA build |
+| Studio debug build | PASS from clean detached worktree @ `7df4319d6f24b0ae68c85817ca93238f4cb1c4da`; executable identity above |
 | Doctrine PR scan | PASS; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
 | Agent scan | `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
 | Orientation | `gen_orientation --check: PASS` |
