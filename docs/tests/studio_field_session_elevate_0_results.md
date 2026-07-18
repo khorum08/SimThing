@@ -21,7 +21,8 @@
 | Emergency DA hold | [comment `5012226484`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012226484) |
 | GPU remedial handoff | [comment `5012228350`](https://github.com/khorum08/SimThing/pull/1413#issuecomment-5012228350) |
 | Superseded DX12-only remedial SHA | `b99fa6326b729cd6fb8a1e9adba364795015dccd` |
-| Owner-directed backend correction / tested-code SHA | `d6688bb704927d9fd909b0082d7265ffcb57f147` |
+| Superseded backend-all correction SHA | `d6688bb704927d9fd909b0082d7265ffcb57f147` |
+| Owner-directed DX12 load-crash fence / tested-code SHA | `4334acda94284622c4502bf67ff09c94f766b85a` |
 | Remedial evidence head | `b1785e0d455e517fd4f2b2e3a1b26c48259cee89` |
 | Doctrine scan base | `e60082b1e0358fe793257e4151d037c03da250ef` |
 
@@ -32,7 +33,7 @@
 - The RF property is pre-registered at the existing field-bearing column-zero seam before generic spec installation; there is no kernel, WGSL, grammar, planner, scenario API, execution-default, or driver API change.
 - Telemetry resolves actual Arena-participant cells. It exposes path, tick/play state, recursive profile/activity, a named child, its real Owner sibling aggregate, and loaded/live aggregate values. Emission loci remain a separate diagnostic table.
 - Structural-shell fallback, ClauseScript ingest, pause, authored emission, and threshold-only decision behavior remain covered by the focused suite.
-- Windows Studio renderer creation allows all Bevy-supported backends with high-performance adapter selection and Bevy's fallback request disabled. Post-init validation remains fail-closed unless the actual `RenderAdapterInfo` is exactly `NVIDIA GeForce RTX 4080 Laptop GPU`, NVIDIA vendor `0x10de`, and `DiscreteGpu`; backend is truthful telemetry, not an identity gate.
+- Windows Studio renderer creation allows Bevy-supported backends except DX12, with high-performance adapter selection and Bevy's fallback request disabled. Post-init validation remains fail-closed unless the actual `RenderAdapterInfo` is exactly `NVIDIA GeForce RTX 4080 Laptop GPU`, NVIDIA vendor `0x10de`, and `DiscreteGpu`, and independently rejects DX12 after initialization. The actual safe backend remains truthful telemetry.
 - Adapter telemetry state now exists before plugin `finish`; the actual adapter populates name, vendor/device, backend, device type, and an explicit policy row. Missing identity or any mismatch aborts startup with required and observed details.
 
 ## Load-bearing recursive proof
@@ -108,7 +109,7 @@ GPU adapter policy: satisfied: exact NVIDIA GeForce RTX 4080 Laptop GPU / NVIDIA
 
 Before the remedial, the Owner observed Vulkan validation/layer/version warnings, Vulkan-hidden adapters, and optional D3D12 debug-interface warning `0x887A002D`. The DX12-only remedial removed those startup warnings, but the Owner then reproduced a load-time DX12 descriptor allocator failure while creating a `StandardMaterial` bind group. That crash made the single-backend constraint unusable and is superseded by the correction below.
 
-## Owner-directed backend correction (pre-orchestration)
+## Superseded backend-all correction (pre-orchestration)
 
 Before a new orchestration handoff, the Owner removed the requirement that Studio launch only with DX12 and directed an immediate correction. Implementation `d6688bb704927d9fd909b0082d7265ffcb57f147` now requests `Backends::all()`, retains `HighPerformance`, validation, and nonfallback selection, and validates only the exact RTX/NVIDIA/discrete adapter identity. The actual backend remains populated from `RenderAdapterInfo` and is included in the policy row.
 
@@ -124,7 +125,15 @@ GPU device type: DiscreteGpu
 GPU adapter policy: satisfied: exact NVIDIA GeForce RTX 4080 Laptop GPU / NVIDIA / DiscreteGpu / backend: Vulkan
 ```
 
-Studio then loaded and rendered `scenarios/terran_pirate_galaxy.clause`: scenario `terran_pirate_galaxy`, 1,500 systems, 2,714 links, 1,500 occupied cells, STEAD valid, RF ready, and GPU index ready. The process remained live after scene/material creation; the DX12 `RangeAllocationError` / `StandardMaterial` validation panic did not recur.
+Studio initially loaded and rendered `scenarios/terran_pirate_galaxy.clause` on Vulkan. During Owner replacement-OVL capture, however, the same executable selected DX12 because `Backends::all()` permits rather than prefers Vulkan. The canonical load then reproduced `wgpu_hal::dx12::descriptor: Unable to allocate descriptors: RangeAllocationError` followed by the fatal `StandardMaterial` bind-group validation panic. The implementation, executable, and provenance capture are superseded.
+
+## Owner-directed DX12 load-crash fence (pre-orchestration)
+
+Implementation `4334acda94284622c4502bf67ff09c94f766b85a` removes `Backends::DX12` from the otherwise portable Bevy backend set. It retains `HighPerformance`, validation, nonfallback selection, and exact RTX/NVIDIA/discrete identity enforcement. Post-init validation also rejects an observed `Dx12` backend, so an environment or renderer-selection regression fails at startup rather than reaching scene material allocation.
+
+Focused tests prove that Vulkan and GL remain available, DX12 is absent from renderer settings, exact RTX identity on Vulkan/GL is accepted, and exact RTX identity on DX12 is rejected alongside Intel, software, and wrong-model adapters.
+
+Owner-local reproduction with the fresh executable below selected Vulkan and loaded the canonical 1,500-system / 2,714-link scene. All systems, links, and 1,500 occupied cells rendered; STEAD, RF, and GPU-index readiness remained valid. Studio remained live for an additional 60-second post-load stability interval with the GPU policy satisfied. The DX12 descriptor allocator and `StandardMaterial` panic cannot be reached through this renderer set.
 
 ## Superseded DX12-only debug executable identity
 
@@ -139,7 +148,7 @@ This executable successfully proved truthful adapter telemetry but crashed on th
 | Build command | `CARGO_TARGET_DIR=target/rf4-gpu-remedial-b99fa632 cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Working tree clean | YES for tracked files; pre-existing untracked `scenarios/terran_pirate_galaxy.from-clause.simthing-scenario.json` preserved unchanged |
 
-## Current OVL debug executable identity
+## Superseded backend-all debug executable identity
 
 | Field | Value |
 |---|---|
@@ -150,12 +159,25 @@ This executable successfully proved truthful adapter telemetry but crashed on th
 | Build command | `CARGO_TARGET_DIR=target/rf4-gpu-backend-d6688bb7 cargo build -p simthing-mapeditor --bin simthing-studio` |
 | Live load proof | PASS on Vulkan; canonical 1,500-system scenario rendered and process remained live |
 
+This executable later selected DX12 during Owner capture and reproduced the descriptor crash. Its Owner provenance capture is historical only and must not be submitted as replacement OVL.
+
+## Current crash-fenced OVL debug executable identity
+
+| Field | Value |
+|---|---|
+| `ovl_exe_source_sha` | `4334acda94284622c4502bf67ff09c94f766b85a` |
+| `ovl_exe_sha256` | `4f2fa46b3152974e7957117c99ef50190614a319ed3ba8fecda4a89b688ff4c9` |
+| Full path | `C:\Users\mvorm\SimThing\target\rf4-gpu-safe-4334acda\debug\simthing-studio.exe` |
+| Byte size / local build time | `86788608` bytes / `2026-07-18T13:54:46.527978100-05:00` |
+| Build command | `CARGO_TARGET_DIR=target/rf4-gpu-safe-4334acda cargo build -p simthing-mapeditor --bin simthing-studio` |
+| Live load proof | PASS on Vulkan; canonical 1,500-system scene rendered and remained live for an additional 60-second stability interval |
+
 ## Owner replacement OVL runbook
 
-Replacement OVL remains Owner-only and open. Use the current executable identity above; do not reuse `target/rf4-ovl-clean`, `target/rf4-gpu-remedial-b99fa632`, or any superseded image.
+Replacement OVL remains Owner-only and open. Use only the current crash-fenced executable identity above; do not reuse `target/rf4-ovl-clean`, `target/rf4-gpu-remedial-b99fa632`, `target/rf4-gpu-backend-d6688bb7`, or any superseded image.
 
-1. Capture `RF4_OVL_P_rebuilt_exe_provenance.png`: in Git Bash show the implementation SHA `d6688bb704927d9fd909b0082d7265ffcb57f147`, current branch head, `sha256sum`, byte size, UTC modify time, and full path for `target/rf4-gpu-backend-d6688bb7/debug/simthing-studio.exe`.
-2. Launch that executable from the repository root. Open Performance Telemetry, collapse Nameplate debug, and expand Render loop / GPU / VRAM. Capture `RF4_OVL_GPU_required_adapter.png` with actual RTX/NVIDIA/discrete identity, the actual Bevy-selected backend, the satisfied policy row, and no `unavailable` field. DX12 is not required.
+1. Capture `RF4_OVL_P_rebuilt_exe_provenance.png`: show implementation SHA `4334acda94284622c4502bf67ff09c94f766b85a`, current branch head, `sha256sum`, byte size, UTC modify time, and full path for `target/rf4-gpu-safe-4334acda/debug/simthing-studio.exe`.
+2. Launch that executable from the repository root. Open Performance Telemetry, collapse Nameplate debug, and expand Render loop / GPU / VRAM. Capture `RF4_OVL_GPU_required_adapter.png` with actual RTX/NVIDIA/discrete identity, a non-DX12 backend, the satisfied policy row, and no `unavailable` field.
 3. Load `scenarios/terran_pirate_galaxy.clause`, advance the ordinary field-bearing bridge to the recursive transition, pause, and open Studio_ops Telemetry. Capture `RF4_OVL_AB_recursive_transition_rebuilt.png` showing the canonical scenario, ordinary `open_from_spec + step_once`, recursive RF active, real `Owner terran / 3 siblings`, and retained loaded/live aggregate `0.000000 / 15.000000`.
 4. Post all three named images as the replacement Owner OVL. Only the Owner/orchestrator may close the OVL and lift DA-HOLD.
 
@@ -169,9 +191,9 @@ Replacement OVL remains Owner-only and open. Use the current executable identity
 | Focused GPU policy / telemetry | PASS, 8 selected tests; 0 failed (4 new biting tests plus 4 existing GPU-filter matches) |
 | `cargo check -p simthing-spec` | PASS |
 | `cargo check -p simthing-mapeditor` | PASS |
-| Studio debug build | PASS @ owner-correction SHA `d6688bb704927d9fd909b0082d7265ffcb57f147`; current executable identity above |
+| Studio debug build | PASS @ crash-fence SHA `4334acda94284622c4502bf67ff09c94f766b85a`; current executable identity above |
 | Owner-local exact-adapter launch | PASS; actual telemetry was RTX 4080 Laptop / `0x10de:0x27a0` / `DiscreteGpu` / `Vulkan` / policy satisfied |
-| Owner-local canonical scenario load | PASS; 1,500 systems and 2,714 links rendered; process remained live; prior DX12 descriptor crash absent |
+| Owner-local canonical scenario load | PASS; 1,500 systems and 2,714 links rendered on Vulkan; process remained live for an additional 60 seconds; DX12 excluded |
 | Doctrine PR scan | PASS at `e60082b1..b1785e0d`; `WORKSHOP-HOMING-DETECTION PASS 0`, `TEST-BUDGET PASS 0`, inspect `0` |
 | Agent scan | PASS at `e60082b1..b1785e0d`; `AGENT-SCAN-VERDICT: PASS delta_inspect=0` |
 | Orientation | `gen_orientation --check: PASS` |
