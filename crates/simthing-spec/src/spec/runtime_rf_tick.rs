@@ -215,7 +215,7 @@ pub fn evaluate_runtime_rf_tick(
         owner_silo_disburse_down_ready,
         runtime_local_allocation_ready,
 
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         scenario_authority_mutation_deferred: true,
         local_effect_application_deferred: true,
 
@@ -232,10 +232,6 @@ pub fn evaluate_runtime_rf_tick(
 
 fn default_deferrals() -> Vec<RuntimeRfTickDeferral> {
     vec![
-        RuntimeRfTickDeferral {
-            kind: RuntimeRfTickDeferralKind::EconomyExecutionDeferred,
-            reason: "full economy execution remains deferred".to_string(),
-        },
         RuntimeRfTickDeferral {
             kind: RuntimeRfTickDeferralKind::ScenarioAuthorityMutationDeferred,
             reason: "Scenario authority is not mutated by runtime RF tick report".to_string(),

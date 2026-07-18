@@ -46,7 +46,7 @@ pub fn compile_runtime_local_allocation_application_plan(
         disburse_down_plan,
         application_report,
         gpu_allocation_aggregate_proof_plans,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         scenario_authority_mutation_deferred: true,
     })
 }

@@ -194,7 +194,7 @@ pub fn local_participant_effects_from_allocations(
         satisfied_count,
         unsatisfied_count,
         effects,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         participant_property_mutation_deferred: true,
         scenario_authority_mutation_deferred: true,
         errors: Vec::new(),
@@ -238,7 +238,7 @@ fn empty_effects_report() -> LocalParticipantEffectsReport {
         satisfied_count: 0,
         unsatisfied_count: 0,
         effects: Vec::new(),
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         participant_property_mutation_deferred: true,
         scenario_authority_mutation_deferred: true,
         errors: Vec::new(),
@@ -248,10 +248,6 @@ fn empty_effects_report() -> LocalParticipantEffectsReport {
 
 fn default_deferrals() -> Vec<LocalParticipantEffectsDeferral> {
     vec![
-        LocalParticipantEffectsDeferral {
-            kind: LocalParticipantEffectsDeferralKind::EconomyExecutionDeferred,
-            reason: "full economy execution remains deferred".to_string(),
-        },
         LocalParticipantEffectsDeferral {
             kind: LocalParticipantEffectsDeferralKind::ParticipantPropertyMutationDeferred,
             reason: "participant SimThing properties are not mutated by effect previews"

@@ -164,6 +164,17 @@ pub fn plan_arena_allocation(
 }
 
 fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> AccumulatorOp {
+    let encoded_targets = [
+        (gpu.target0_slot, gpu.target0_col),
+        (gpu.target1_slot, gpu.target1_col),
+        (gpu.target2_slot, gpu.target2_col),
+        (gpu.target3_slot, gpu.target3_col),
+    ];
+    let targets = encoded_targets
+        .iter()
+        .take(gpu.n_targets.min(encoded_targets.len() as u32) as usize)
+        .map(|(slot, col)| (SlotIndex::new(*slot), ColumnIndex::new(*col as usize)))
+        .collect();
     AccumulatorOp {
         source: SourceSpec::SlotValue {
             slot: SlotIndex::new(gpu.source_slot),
@@ -178,10 +189,78 @@ fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> Accumula
         gate: GateSpec::OrderBand(gpu.gate_a),
         scale: ScaleSpec::Identity,
         consume: ConsumeMode::None,
-        targets: vec![(
-            SlotIndex::new(gpu.target0_slot),
-            ColumnIndex::new(gpu.target0_col as usize),
-        )],
+        targets,
+    }
+}
+
+pub(crate) fn append_residual_closure_ops(
+    layout: &ArenaTreeLayout,
+    ops_cpu: &mut Vec<AccumulatorOp>,
+) {
+    if layout.max_depth <= 1
+        || !layout
+            .iter_all()
+            .iter()
+            .any(|node| node.cols.balance_governing_col.is_some())
+    {
+        return;
+    }
+
+    let seed_band = layout.band_layout.integration_band - 4;
+    let add_allocated_band = seed_band + 1;
+    let negate_children_band = seed_band + 2;
+    let sum_children_band = seed_band + 3;
+    for parent in layout
+        .iter_all()
+        .into_iter()
+        .filter(|node| node.is_interior())
+    {
+        let Some(rate_col) = parent.cols.balance_governing_col else {
+            continue;
+        };
+        let budget_intrinsic_col = if parent.depth == 0 {
+            parent.cols.intrinsic_flow_col
+        } else {
+            parent.cols.intrinsic_flow_sum_col
+        };
+        ops_cpu.push(slot_value_op(
+            parent.participant_slot.raw(),
+            budget_intrinsic_col,
+            parent.participant_slot.raw(),
+            rate_col,
+            seed_band,
+            ConsumeMode::ResetTarget,
+            ScaleSpec::Identity,
+        ));
+        ops_cpu.push(slot_value_op(
+            parent.participant_slot.raw(),
+            parent.cols.allocated_flow_col,
+            parent.participant_slot.raw(),
+            rate_col,
+            add_allocated_band,
+            ConsumeMode::AddToTarget,
+            ScaleSpec::Identity,
+        ));
+        for child in &parent.children {
+            ops_cpu.push(slot_value_op(
+                child.participant_slot.raw(),
+                child.cols.allocated_flow_col,
+                child.participant_slot.raw(),
+                child.cols.propagated_allocated_flow_col,
+                negate_children_band,
+                ConsumeMode::ResetTarget,
+                ScaleSpec::Constant(-1.0),
+            ));
+        }
+        let (start, count) = child_range(parent);
+        ops_cpu.push(sum_accumulation_op(
+            start,
+            count,
+            parent.participant_slot.raw(),
+            parent.cols.propagated_allocated_flow_col,
+            rate_col,
+            sum_children_band,
+        ));
     }
 }
 
@@ -258,6 +337,53 @@ fn broadcast_op(
     }
 }
 
+fn slot_value_op(
+    src_slot: u32,
+    src_col: u32,
+    dst_slot: u32,
+    dst_col: u32,
+    band: u32,
+    consume: ConsumeMode,
+    scale: ScaleSpec,
+) -> AccumulatorOp {
+    AccumulatorOp {
+        source: SourceSpec::SlotValue {
+            slot: SlotIndex::new(src_slot),
+            col: ColumnIndex::new(src_col as usize),
+        },
+        combine: CombineFn::Identity,
+        gate: GateSpec::OrderBand(band),
+        scale,
+        consume,
+        targets: vec![(SlotIndex::new(dst_slot), ColumnIndex::new(dst_col as usize))],
+    }
+}
+
+fn sum_accumulation_op(
+    start: u32,
+    count: u32,
+    parent_slot: u32,
+    source_col: u32,
+    target_col: u32,
+    band: u32,
+) -> AccumulatorOp {
+    AccumulatorOp {
+        source: SourceSpec::SlotRange {
+            start: SlotIndex::new(start),
+            count,
+            col: ColumnIndex::new(source_col as usize),
+        },
+        combine: CombineFn::Sum,
+        gate: GateSpec::OrderBand(band),
+        scale: ScaleSpec::Identity,
+        consume: ConsumeMode::AddToTarget,
+        targets: vec![(
+            SlotIndex::new(parent_slot),
+            ColumnIndex::new(target_col as usize),
+        )],
+    }
+}
+
 fn const_broadcast_op(value: f32, dst_slot: u32, dst_col: u32, band: u32) -> AccumulatorOp {
     AccumulatorOp {
         source: SourceSpec::Constant(value),
@@ -310,6 +436,7 @@ mod tests {
             intrinsic_flow_sum_col: 4,
             allocated_flow_col: 1,
             balance_col: Some(3),
+            balance_governing_col: None,
             weight_col: 2,
             weight_sum_col: 5,
             propagated_intrinsic_flow_col: 6,
@@ -358,4 +485,45 @@ mod tests {
         .unwrap()
     }
 
+    #[test]
+    fn governed_adapter_preserves_authored_targets_and_orderband() {
+        let gpu = simthing_gpu::AccumulatorOpGpu {
+            source_kind: 1, // SLOT_VALUE
+            source_slot: 17,
+            source_col: 3,
+            source_count: 0,
+            combine_kind: 9, // INTEGRATE_CLAMP
+            combine_a: 9.0_f32.to_bits(),
+            combine_b: (-4.0_f32).to_bits(),
+            combine_c: 20.0_f32.to_bits(),
+            combine_d: 2,
+            gate_kind: 4, // ORDER_BAND
+            gate_a: 11,
+            gate_b: 0,
+            scale_kind: 0, // IDENTITY
+            scale_a: 0,
+            consume: 0, // NONE
+            target0_slot: 17,
+            target0_col: 4,
+            target1_slot: 17,
+            target1_col: 3,
+            target2_slot: 99,
+            target2_col: 98,
+            target3_slot: 97,
+            target3_col: 96,
+            n_targets: 2,
+            _pad: 0,
+        };
+
+        let cpu = cpu_op_from_integration_gpu(&gpu);
+        assert_eq!(cpu.gate, GateSpec::OrderBand(11));
+        assert_eq!(cpu.targets.len(), gpu.n_targets as usize);
+        assert_eq!(
+            cpu.targets,
+            vec![
+                (SlotIndex::new(17), ColumnIndex::new(4)),
+                (SlotIndex::new(17), ColumnIndex::new(3)),
+            ]
+        );
+    }
 }

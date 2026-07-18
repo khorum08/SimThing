@@ -106,7 +106,7 @@ pub fn evaluate_runtime_tick_history_entry(
         unmet_total: effects_report.unmet_total,
         satisfied_count: effects_report.satisfied_count,
         unsatisfied_count: effects_report.unsatisfied_count,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         participant_property_mutation_deferred: true,
         scenario_authority_mutation_deferred: true,
         local_effect_application_deferred: true,

@@ -60,7 +60,7 @@ pub fn compile_runtime_tick_shell_plan(
         runtime_rf_tick_plan,
         execution_report,
         gpu_stage_proof_summary,
-        economy_execution_deferred: true,
+        economy_execution_deferred: false,
         scenario_authority_mutation_deferred: true,
         local_effect_application_deferred: true,
     })

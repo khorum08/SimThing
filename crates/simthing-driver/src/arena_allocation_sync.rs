@@ -4,7 +4,9 @@ use simthing_core::{DimensionRegistry, EmlExpressionRegistry};
 use simthing_gpu::{build_governed_pairs, WorldGpuState};
 use simthing_sim::SimRuntimeTree;
 
-use crate::arena_allocation_plan::{plan_arena_allocation, ArenaAllocationPlan};
+use crate::arena_allocation_plan::{
+    append_residual_closure_ops, plan_arena_allocation, ArenaAllocationPlan,
+};
 use crate::arena_hierarchy::{
     build_execution_plan, resolve_node_columns, ArenaExecutionPlan, HierarchyError,
 };
@@ -75,13 +77,14 @@ pub fn sync_resource_flow_accumulator(
     let mut combined_cpu = Vec::new();
     let mut max_bands = 0u32;
     for arena in &plan.arenas {
-        let alloc =
+        let mut alloc =
             plan_arena_allocation(arena, &governed, state.n_slots).map_err(|e| match e {
                 crate::arena_allocation_plan::AllocationPlanError::Hierarchy(h) => h,
                 _ => HierarchyError::EmptyParticipants {
                     arena: arena_registry.arenas[arena.arena_idx as usize].name.clone(),
                 },
             })?;
+        append_residual_closure_ops(arena, &mut alloc.cpu_ops);
         max_bands = max_bands.max(alloc.n_bands);
         combined_cpu.extend(alloc.cpu_ops);
     }
@@ -119,12 +122,15 @@ pub fn build_plan_for_tests(
         .arenas
         .iter()
         .map(|arena| {
-            plan_arena_allocation(arena, &governed, n_slots).map_err(|e| match e {
-                crate::arena_allocation_plan::AllocationPlanError::Hierarchy(h) => h,
-                _ => HierarchyError::EmptyParticipants {
-                    arena: "test".into(),
-                },
-            })
+            let mut plan =
+                plan_arena_allocation(arena, &governed, n_slots).map_err(|e| match e {
+                    crate::arena_allocation_plan::AllocationPlanError::Hierarchy(h) => h,
+                    _ => HierarchyError::EmptyParticipants {
+                        arena: "test".into(),
+                    },
+                })?;
+            append_residual_closure_ops(arena, &mut plan.cpu_ops);
+            Ok(plan)
         })
         .collect()
 }

@@ -70,6 +70,7 @@ pub struct NodeColumnRefs {
     pub intrinsic_flow_sum_col: u32,
     pub allocated_flow_col: u32,
     pub balance_col: Option<u32>,
+    pub balance_governing_col: Option<u32>,
     pub weight_col: u32,
     pub weight_sum_col: u32,
     pub propagated_intrinsic_flow_col: u32,
@@ -91,12 +92,18 @@ pub struct ArenaBandLayout {
 
 impl ArenaBandLayout {
     pub fn for_depth(max_depth: u32) -> Self {
+        Self::for_depth_with_residual_closure(max_depth, false)
+    }
+
+    pub fn for_depth_with_residual_closure(max_depth: u32, has_residual_closure: bool) -> Self {
         let total = total_bands_for_depth(max_depth);
-        let integration = if max_depth <= 1 {
+        let base_integration = if max_depth <= 1 {
             total.saturating_sub(1)
         } else {
             integration_band_for_depth(max_depth)
         };
+        let residual_bands = u32::from(has_residual_closure && max_depth > 1) * 4;
+        let integration = base_integration.saturating_add(residual_bands);
         Self {
             reset_band: 0,
             upsweep_band_base: 1,
@@ -104,7 +111,7 @@ impl ArenaBandLayout {
             downsweep_band_base: max_depth,
             downsweep_band_count: 2 * max_depth.saturating_sub(1),
             integration_band: integration,
-            total_bands_used: total,
+            total_bands_used: total.saturating_add(residual_bands),
         }
     }
 
@@ -236,7 +243,19 @@ pub fn resolve_node_columns(
     .ok_or_else(|| HierarchyError::MissingAllocatorWeight {
         arena: arena.clone(),
     })?;
-    let balance_col = find_role_col(&expanded, |r| matches!(r, AccumulatorRole::Balance(_)));
+    let balance_subfield = expanded.sub_fields.iter().find(|subfield| {
+        subfield
+            .accumulator_spec
+            .as_ref()
+            .is_some_and(|spec| matches!(&spec.role, AccumulatorRole::Balance(_)))
+    });
+    let balance_col = balance_subfield
+        .and_then(|subfield| expanded.offset_of(&subfield.role))
+        .map(|offset| offset.lane() as u32);
+    let balance_governing_col = balance_subfield
+        .and_then(|subfield| subfield.governed_by.as_ref())
+        .and_then(|role| expanded.offset_of(role))
+        .map(|offset| offset.lane() as u32);
 
     let named = |s: &str| {
         expanded
@@ -248,6 +267,7 @@ pub fn resolve_node_columns(
         intrinsic_flow_sum_col: named("intrinsic_flow_sum").expect("E-8R column") as u32,
         allocated_flow_col,
         balance_col,
+        balance_governing_col,
         weight_col,
         weight_sum_col: named("weight_sum").expect("E-8R column") as u32,
         propagated_intrinsic_flow_col: named("propagated_intrinsic_flow").expect("E-8R column")
@@ -300,7 +320,10 @@ pub fn build_flat_star_layout(
     }
 
     let max_depth = if sibling_slots.len() <= 1 { 1 } else { 2 };
-    let bands = ArenaBandLayout::for_depth(max_depth);
+    let bands = ArenaBandLayout::for_depth_with_residual_closure(
+        max_depth,
+        cols.balance_governing_col.is_some(),
+    );
     if bands.total_bands_used > arena.max_orderband_depth {
         return Err(HierarchyError::OrderBandDepthExceeded {
             arena: arena.name.clone(),
@@ -388,7 +411,10 @@ pub fn build_nested_layout(
     }
 
     let max_depth = max_node_depth(&participant_roots).saturating_add(1);
-    let bands = ArenaBandLayout::for_depth(max_depth);
+    let bands = ArenaBandLayout::for_depth_with_residual_closure(
+        max_depth,
+        cols.balance_governing_col.is_some(),
+    );
     if bands.total_bands_used > arena.max_orderband_depth {
         return Err(HierarchyError::OrderBandDepthExceeded {
             arena: arena.name.clone(),
@@ -420,7 +446,7 @@ pub fn build_nested_layout(
 pub fn build_custom_layout(
     arena_idx: ArenaIdx,
     arena: &GpuArenaDescriptor,
-    _cols: NodeColumnRefs,
+    cols: NodeColumnRefs,
     arena_root_id: SimThingId,
     arena_root_slot: SlotId,
     roots: Vec<HierarchyNode>,
@@ -437,7 +463,10 @@ pub fn build_custom_layout(
             .unwrap_or(0)
             .saturating_add(1)
     };
-    let bands = ArenaBandLayout::for_depth(max_depth);
+    let bands = ArenaBandLayout::for_depth_with_residual_closure(
+        max_depth,
+        cols.balance_governing_col.is_some(),
+    );
     if bands.total_bands_used > arena.max_orderband_depth {
         return Err(HierarchyError::OrderBandDepthExceeded {
             arena: arena.name.clone(),
@@ -651,5 +680,4 @@ pub fn nested_hierarchy_materialization_report(
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }
