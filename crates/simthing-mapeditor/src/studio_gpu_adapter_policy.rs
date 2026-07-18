@@ -12,6 +12,7 @@ use crate::studio_performance_telemetry::StudioPerformanceTelemetry;
 pub const REQUIRED_STUDIO_GPU_ADAPTER_NAME: &str = "NVIDIA GeForce RTX 4080 Laptop GPU";
 pub const REQUIRED_STUDIO_GPU_VENDOR_ID: u32 = 0x10de;
 pub const REQUIRED_STUDIO_GPU_DEVICE_TYPE: &str = "DiscreteGpu";
+pub const BLOCKED_STUDIO_GPU_BACKEND: &str = "Dx12";
 pub const STUDIO_GPU_POLICY_SATISFIED_PREFIX: &str =
     "satisfied: exact NVIDIA GeForce RTX 4080 Laptop GPU / NVIDIA / DiscreteGpu / backend";
 
@@ -20,13 +21,15 @@ pub const STUDIO_GPU_POLICY_SATISFIED_PREFIX: &str =
 /// back or silently honoring an environment-selected downgrade.
 pub const STUDIO_GPU_FORCE_FALLBACK_ADAPTER: bool = false;
 
-/// Renderer settings that allow Bevy-supported backends while preferring the discrete adapter.
+/// Renderer settings that allow Bevy-supported backends except the load-crashing DX12 path.
 ///
 /// `VALIDATION` stays enabled. `DEBUG` is intentionally not requested because optional backend debug
 /// layers are host-dependent and must not turn a missing developer component into a startup warning.
 pub fn required_studio_wgpu_settings() -> WgpuSettings {
     let mut settings = WgpuSettings::default();
-    settings.backends = Some(Backends::all());
+    let mut backends = Backends::all();
+    backends.remove(Backends::DX12);
+    settings.backends = Some(backends);
     settings.power_preference = PowerPreference::HighPerformance;
     settings.instance_flags = InstanceFlags::VALIDATION;
     settings
@@ -95,11 +98,12 @@ impl fmt::Display for StudioGpuAdapterPolicyViolation {
         write!(
             f,
             "Studio GPU adapter policy mismatch ({}) — required name={:?}, vendor={:#06x}, \
-             device_type={}; observed {}",
+             device_type={}, blocked_backend={}; observed {}",
             self.mismatches.join(", "),
             REQUIRED_STUDIO_GPU_ADAPTER_NAME,
             REQUIRED_STUDIO_GPU_VENDOR_ID,
             REQUIRED_STUDIO_GPU_DEVICE_TYPE,
+            BLOCKED_STUDIO_GPU_BACKEND,
             self.observed.observed_details(),
         )
     }
@@ -119,6 +123,9 @@ pub fn validate_studio_gpu_adapter(
     }
     if observed.device_type != REQUIRED_STUDIO_GPU_DEVICE_TYPE {
         mismatches.push("device type");
+    }
+    if observed.backend == BLOCKED_STUDIO_GPU_BACKEND {
+        mismatches.push("blocked backend");
     }
     if mismatches.is_empty() {
         Ok(())
@@ -166,22 +173,22 @@ mod tests {
             REQUIRED_STUDIO_GPU_VENDOR_ID,
             0x2860,
             REQUIRED_STUDIO_GPU_DEVICE_TYPE,
-            "Dx12",
+            "Vulkan",
         )
     }
 
     #[test]
-    fn exact_adapter_policy_accepts_supported_backends_and_rejects_identity_mismatches() {
+    fn exact_adapter_policy_accepts_non_dx12_backends_and_rejects_identity_or_dx12() {
         assert_eq!(validate_studio_gpu_adapter(&exact_adapter()), Ok(()));
 
-        let vulkan_adapter = StudioGpuAdapterSnapshot::new(
+        let gl_adapter = StudioGpuAdapterSnapshot::new(
             REQUIRED_STUDIO_GPU_ADAPTER_NAME,
             REQUIRED_STUDIO_GPU_VENDOR_ID,
             0x2860,
             REQUIRED_STUDIO_GPU_DEVICE_TYPE,
-            "Vulkan",
+            "Gl",
         );
-        assert_eq!(validate_studio_gpu_adapter(&vulkan_adapter), Ok(()));
+        assert_eq!(validate_studio_gpu_adapter(&gl_adapter), Ok(()));
 
         let rejected = [
             StudioGpuAdapterSnapshot::new(
@@ -205,19 +212,29 @@ mod tests {
                 REQUIRED_STUDIO_GPU_DEVICE_TYPE,
                 "Vulkan",
             ),
+            StudioGpuAdapterSnapshot::new(
+                REQUIRED_STUDIO_GPU_ADAPTER_NAME,
+                REQUIRED_STUDIO_GPU_VENDOR_ID,
+                0x27a0,
+                REQUIRED_STUDIO_GPU_DEVICE_TYPE,
+                BLOCKED_STUDIO_GPU_BACKEND,
+            ),
         ];
         for adapter in rejected {
             let violation = validate_studio_gpu_adapter(&adapter)
-                .expect_err("every non-exact adapter identity must fail closed");
+                .expect_err("every identity mismatch or blocked DX12 backend must fail closed");
             assert_eq!(violation.observed(), &adapter);
             assert!(violation.to_string().contains("observed"));
         }
     }
 
     #[test]
-    fn renderer_settings_allow_all_backends_and_remain_high_performance_validated_nonfallback() {
+    fn renderer_settings_exclude_dx12_and_remain_high_performance_validated_nonfallback() {
         let settings = required_studio_wgpu_settings();
-        assert_eq!(settings.backends, Some(Backends::all()));
+        let backends = settings.backends.expect("explicit backend set");
+        assert!(backends.contains(Backends::VULKAN));
+        assert!(backends.contains(Backends::GL));
+        assert!(!backends.contains(Backends::DX12));
         assert_eq!(settings.power_preference, PowerPreference::HighPerformance);
         assert_eq!(settings.instance_flags, InstanceFlags::VALIDATION);
         assert!(!STUDIO_GPU_FORCE_FALLBACK_ADAPTER);
