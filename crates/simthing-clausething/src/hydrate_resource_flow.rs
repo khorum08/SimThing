@@ -127,6 +127,7 @@ pub fn hydrate_resource_flow_pack(
         base_obligations: vec![],
         capacity_budget: None,
         gated_rates: vec![],
+                need_weight_profiles: vec![],
     };
 
     Ok(HydratedResourceFlowPack {

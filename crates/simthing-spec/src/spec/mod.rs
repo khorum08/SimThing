@@ -16,6 +16,7 @@ pub mod local_allocation_recursive_rf_source;
 pub mod local_effect_application;
 pub mod local_effect_recursive_rf_source;
 pub mod local_participant_effects;
+pub mod need_weight_profile;
 pub mod overlay;
 pub mod owner_silo_disburse_down;
 pub mod owner_silo_recursive_rf_source;
@@ -68,6 +69,9 @@ pub use disruption_readout::{
 pub use domain_pack::DomainPackSpec;
 pub use effect::EffectSpec;
 pub use eml_gadget::{EmlGadgetInstanceSpec, EmlGadgetStackSpec};
+pub use need_weight_profile::{
+    NeedWeightProfileBindingSpec, NeedWeightProfileInputSpec, NeedWeightProfileThresholdSpec,
+};
 pub use event::{CooldownSpec, EventKey, EventPriority, EventSpec};
 pub use fleet_presence::{
     fleet_presence_snapshot, FleetPresenceLocation, FleetPresenceRecord, FleetPresenceSnapshot,

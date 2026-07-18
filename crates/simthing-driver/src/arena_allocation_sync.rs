@@ -44,6 +44,7 @@ pub fn sync_resource_flow_accumulator(
     root: &SimRuntimeTree,
     allocator: &simthing_gpu::SlotAllocator,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
+    need_weight_profiles: &[crate::need_weight_profile::ResolvedNeedWeightProfile],
     enabled: bool,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if !enabled || arena_registry.arenas.is_empty() {
@@ -89,14 +90,26 @@ pub fn sync_resource_flow_accumulator(
         combined_cpu.extend(alloc.cpu_ops);
     }
 
-    if !gated_rates.is_empty() {
+    let pre_band_ops = !gated_rates.is_empty() || !need_weight_profiles.is_empty();
+    if pre_band_ops {
         for op in &mut combined_cpu {
             if let simthing_core::GateSpec::OrderBand(band) = op.gate {
                 op.gate = simthing_core::GateSpec::OrderBand(band + 1);
             }
         }
-        let rate_ops = crate::gated_rates::build_gated_rate_ops(gated_rates, &mut eml_registry);
-        let mut all_ops = rate_ops;
+        let mut all_ops = Vec::new();
+        if !gated_rates.is_empty() {
+            all_ops.extend(crate::gated_rates::build_gated_rate_ops(
+                gated_rates,
+                &mut eml_registry,
+            ));
+        }
+        if !need_weight_profiles.is_empty() {
+            all_ops.extend(crate::need_weight_profile::build_need_weight_profile_ops(
+                need_weight_profiles,
+                &mut eml_registry,
+            ));
+        }
         all_ops.extend(combined_cpu);
         combined_cpu = all_ops;
         max_bands += 1;

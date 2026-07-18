@@ -378,6 +378,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 base_obligations: vec![],
                 capacity_budget: None,
                 gated_rates: vec![],
+                need_weight_profiles: vec![],
             });
             let mut alloc = SlotAllocator::new();
             alloc.populate_from_tree(&scenario.root);
@@ -409,6 +410,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 base_obligations: vec![],
                 capacity_budget: None,
                 gated_rates: vec![],
+                need_weight_profiles: vec![],
             });
             fill_explicit_roots(&mut mode, scenario);
         }
@@ -426,6 +428,7 @@ fn build_game_mode(fixture: &RfT2BurnInFixture, scenario: &Scenario) -> GameMode
                 base_obligations: vec![],
                 capacity_budget: None,
                 gated_rates: vec![],
+                need_weight_profiles: vec![],
             });
             if matches!(
                 fixture.enrollment,

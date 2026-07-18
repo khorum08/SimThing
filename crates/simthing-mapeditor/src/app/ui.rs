@@ -2186,7 +2186,28 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                     ));
                     ui.end_row();
                     ui.label("need / weight_profile");
-                    ui.label("not admitted in RF-4; bounded RF-5 split required");
+                    ui.label(
+                        recursive
+                            .need_profile_id
+                            .as_deref()
+                            .map(|id| {
+                                format!(
+                                    "{id} / {} seeds=[{}] live={} thr={} → {}",
+                                    recursive.need_profile_kind.as_deref().unwrap_or("--"),
+                                    recursive.need_weight_seeds.as_deref().unwrap_or("--"),
+                                    recursive
+                                        .need_live_value
+                                        .map(|v| format!("{v:.6}"))
+                                        .unwrap_or_else(|| "--".into()),
+                                    recursive
+                                        .need_threshold
+                                        .map(|v| format!("{v:.3}"))
+                                        .unwrap_or_else(|| "--".into()),
+                                    recursive.need_threshold_result.unwrap_or("--"),
+                                )
+                            })
+                            .unwrap_or_else(|| "not bound".into()),
+                    );
                     ui.end_row();
                 });
 

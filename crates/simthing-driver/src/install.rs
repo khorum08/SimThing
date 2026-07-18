@@ -106,6 +106,21 @@ pub enum InstallError {
 
     #[error("gated rate `{gated}` references unresolvable trigger property `{property}`")]
     GatedRateUnknownTriggerProperty { gated: String, property: String },
+
+    #[error("need weight profile `{binding}` invalid: {reason}")]
+    NeedWeightProfileInvalid { binding: String, reason: String },
+
+    #[error(
+        "need weight profile `{binding}` targets SimThing {subtree_root_id} which is not admitted to arena `{arena}`"
+    )]
+    NeedWeightProfileTargetNotAdmitted {
+        binding: String,
+        arena: String,
+        subtree_root_id: u32,
+    },
+
+    #[error("need weight profile `{binding}` participant slot {slot} has no owner")]
+    NeedWeightProfileParticipantSlotMissing { binding: String, slot: u32 },
 }
 
 /// Compile a `GameModeSpec` against the supplied scenario state and return a
@@ -239,6 +254,16 @@ pub fn compile_and_install(
         )?;
         crate::gated_rates::seed_gated_rate_base_columns(&gated, registry, root, allocator)?;
         state.resolved_gated_rates = gated;
+        let need_profiles = crate::need_weight_profile::resolve_need_weight_profiles(
+            &resolved, scenario, root, registry, &scaffold,
+        )?;
+        crate::need_weight_profile::seed_need_weight_profiles(
+            &need_profiles,
+            registry,
+            root,
+            allocator,
+        )?;
+        state.resolved_need_weight_profiles = need_profiles;
         state.arena_registry = arena_registry;
         state.arena_participant_scaffold = scaffold;
         state.resource_flow_capacity_budget = report.capacity_budget;

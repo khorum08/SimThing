@@ -154,6 +154,7 @@ fn galaxy_scale_game_mode() -> GameModeSpec {
                 readback_records: BUDGET_PARTICIPANTS_PER_ARENA,
             }),
             gated_rates: vec![],
+                need_weight_profiles: vec![],
         }),
         resource_economy: None,
         resource_flow_execution_profile: Default::default(),

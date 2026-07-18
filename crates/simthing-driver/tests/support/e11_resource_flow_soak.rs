@@ -103,6 +103,7 @@ pub fn run_flat_star_soak(
         &fx.session.proto.root,
         &fx.session.proto.allocator,
         &[],
+        &[],
         true,
     )
     .expect("initial soak sync");
