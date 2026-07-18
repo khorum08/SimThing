@@ -17,7 +17,7 @@ Remand `5013016439` corrections landed. Owner alone closes screenshot-C [OVL]. C
 | HD-RECEIPT | `9132665903e6` |
 | ORIENT-RECEIPT | `2c9fde39d1d6` (role=coding) |
 | Expected route | `DA-RESERVE(gate-wiring)` |
-| tested_code_sha | *(bind after final push)* |
+| tested_code_sha | df55d7d218008484846e70306d6ab95e7ad5e6e6 |
 | coverage_basis | PASS (workshop RF-5 4/4 + mapeditor RF-4 elevate + agent_scan) |
 
 ## Remand corrections
