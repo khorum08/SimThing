@@ -14,31 +14,16 @@ required_checks: ["cargo-check", "focused-tests", "gpu-proof", "agent-scan", "do
 stop_conditions: ["stale-orient-receipt", "scope-widening", "repair-requires-new-primitive-or-entrypoint", "matching-band-integration-still-bypasses-target1", "RF-1-oracle-fails-after-zero-initialized-residual"]
 ---
 ## BUILD
-- In `cpu_op_from_integration_gpu`, reconstruct governed integration with both authored targets:
-  `target0` amount and `target1` governed velocity/rate. Preserve its `OrderBand`; respect
-  `n_targets`; do not synthesize new semantics.
-- In `dispatch_one_op_for_band`, make `COMBINE_INTEGRATE_CLAMP` execute only when its authored
-  gate matches `current_band`. Preserve threshold and affine dispatch semantics.
-- Add biting tests: adapter round-trip requires two exact targets plus the exact gate; matching
-  band mutates amount/eligible velocity once; nonmatching band mutates neither.
-- Then resume only the blocked RF-2 proof: generate the residual from zero through Arena operations
-  in ordinary `SimSession::step_once`; RF-1 must close the governed-Balance integration invariant.
-  Remove the CPU-seeded residual from load-bearing evidence.
+- In `cpu_op_from_integration_gpu`, reconstruct governed integration with both authored targets (`target0` amount and `target1` governed velocity/rate), preserve its `OrderBand`, and respect `n_targets`; do not synthesize new semantics.
+- In `dispatch_one_op_for_band`, make `COMBINE_INTEGRATE_CLAMP` execute only when its authored gate matches `current_band`; preserve threshold and affine dispatch semantics.
+- Add biting tests: adapter round-trip requires two exact targets plus the exact gate; matching band mutates amount/eligible velocity once; nonmatching band mutates neither.
+- Resume only the blocked RF-2 proof: generate the residual from zero through Arena operations in ordinary `SimSession::step_once`; RF-1 must close the governed-Balance integration invariant, and CPU-seeded residual evidence is withdrawn.
 ## FENCES
-- This is a minimal existing-contract repair using the present `AccumulatorOpGpu` layout,
-  `IntegrateWithClamp`, and `GateSpec::OrderBand`. No new primitive, role, gate, combine, entry point,
-  serialization shape, planner, grammar, or scenario API.
-- Keep the accepted RF-2 default-execution implementation, explicit `DefaultDisabled` control,
-  D=3 sibling marginal proof, and RF-1 independence intact.
-- Scenario-specific proof remains in `simthing-workshop`; no Studio-side RF arithmetic and no
-  RUNTIME-0080 rehearsal transplant.
+- Minimal existing-contract repair only: present `AccumulatorOpGpu` layout, `IntegrateWithClamp`, and `GateSpec::OrderBand`; no new primitive, role, gate, combine, entry point, serialization shape, planner, grammar, or scenario API.
+- Keep the accepted RF-2 default-execution implementation, explicit `DefaultDisabled` control, D=3 sibling marginal proof, and RF-1 independence intact.
+- Scenario-specific proof remains in `simthing-workshop`; no Studio-side RF arithmetic and no RUNTIME-0080 rehearsal transplant.
 ## EXIT-PROOF
 - Adapter falsifier fails if `target1` is omitted/swapped, `n_targets` is wrong, or the band is lost.
-- GPU falsifiers prove matching-band governed integration executes exactly once and nonmatching-band
-  dispatch leaves both amount and velocity unchanged.
-- The RF-2 production proof starts governed rate at zero, derives the residual through admitted Arena
-  operations during ordinary `step_once`, and passes all RF-1 invariants; the `DefaultDisabled` and
-  D=3 selected-child marginal controls still bite.
-- At exact head: touched-crate checks, focused adapter/kernel/GPU/workshop tests, `agent_scan`,
-  doctrine scan, orientation check, and doc budget are green. Stamp results/PR as PROBATION with
-  `tested_code_sha`, `coverage_basis`, this HD receipt, and the carried ORIENT receipt.
+- GPU falsifiers prove matching-band governed integration executes exactly once and nonmatching-band dispatch leaves both amount and velocity unchanged.
+- The RF-2 production proof starts governed rate at zero, derives the residual through admitted Arena operations during ordinary `step_once`, and passes all RF-1 invariants; `DefaultDisabled` and the D=3 selected-child marginal controls still bite.
+- At exact head, touched-crate checks, focused adapter/kernel/GPU/workshop tests, `agent_scan`, doctrine scan, orientation check, and doc budget are green; stamp results/PR as PROBATION with `tested_code_sha`, `coverage_basis`, this HD receipt, and the carried ORIENT receipt.
