@@ -36,6 +36,9 @@ use crate::studio_antialiasing::{
 use crate::studio_frame_phase_gpu_telemetry::{
     read_frame_time_ms_from_diagnostics, record_frame_phase_timing,
 };
+use crate::studio_gpu_adapter_policy::{
+    populate_and_validate_studio_gpu_telemetry, StudioGpuAdapterSnapshot,
+};
 use crate::studio_performance_telemetry::{
     bytes_to_vram_mb, estimate_studio_allocated_vram_bytes, read_fps_from_diagnostics,
     StudioPerformanceTelemetry,
@@ -874,29 +877,58 @@ pub fn update_nameplate_diagnostics_system(
 pub struct StudioGpuIdentityInitPlugin;
 
 impl Plugin for StudioGpuIdentityInitPlugin {
-    fn build(&self, _app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        // `finish` runs before Startup schedules. The resource must exist here so initialized
+        // RenderAdapterInfo can never be dropped by initialization order.
+        app.init_resource::<StudioPerformanceTelemetryState>();
+    }
 
     fn finish(&self, app: &mut App) {
-        let adapter_info = app.get_sub_app(RenderApp).and_then(|render_sub_app| {
-            render_sub_app
-                .world()
-                .get_resource::<RenderAdapterInfo>()
-                .cloned()
-        });
-        let Some(adapter_info) = adapter_info else {
-            return;
-        };
-        let Some(mut state) = app
+        let adapter_info = app
+            .world()
+            .get_resource::<RenderAdapterInfo>()
+            .cloned()
+            .or_else(|| {
+                app.get_sub_app(RenderApp).and_then(|render_sub_app| {
+                    render_sub_app
+                        .world()
+                        .get_resource::<RenderAdapterInfo>()
+                        .cloned()
+                })
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "Studio GPU adapter policy could not read Bevy RenderAdapterInfo after renderer initialization"
+                )
+            });
+        let observed = StudioGpuAdapterSnapshot::from_render_adapter_info(&adapter_info);
+        let mut state = app
             .world_mut()
             .get_resource_mut::<StudioPerformanceTelemetryState>()
-        else {
-            return;
-        };
-        let info = &adapter_info.0;
-        state.telemetry.gpu_name = Some(info.name.clone());
-        state.telemetry.gpu_backend = Some(format!("{:?}", info.backend));
-        state.telemetry.gpu_vendor_id = Some(info.vendor);
-        state.telemetry.gpu_device_id = Some(info.device);
-        state.telemetry.gpu_device_type = Some(format!("{:?}", info.device_type));
+            .expect("Studio GPU telemetry resource must be created during plugin build");
+        if let Err(violation) =
+            populate_and_validate_studio_gpu_telemetry(&observed, &mut state.telemetry)
+        {
+            panic!("{violation}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod gpu_identity_init_tests {
+    use super::*;
+
+    #[test]
+    fn plugin_build_creates_telemetry_before_renderer_finish() {
+        let mut app = App::new();
+        app.add_plugins(StudioGpuIdentityInitPlugin);
+        let state = app
+            .world()
+            .get_resource::<StudioPerformanceTelemetryState>()
+            .expect("telemetry must exist before plugin finish reads RenderAdapterInfo");
+        assert_eq!(
+            state.telemetry.gpu_adapter_policy_status,
+            "pending renderer initialization"
+        );
     }
 }

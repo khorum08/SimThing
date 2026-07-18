@@ -185,6 +185,10 @@ pub fn gpu_context_settings_lines(telemetry: &StudioPerformanceTelemetry) -> Vec
                 .as_deref()
                 .unwrap_or("unavailable")
         ),
+        format!(
+            "GPU adapter policy: {}",
+            telemetry.gpu_adapter_policy_status
+        ),
         format_present_mode_label(telemetry.present_mode.as_deref()),
         format_window_resolution(telemetry.window_width, telemetry.window_height),
         format_render_scale(telemetry.render_scale),
@@ -323,5 +327,4 @@ pub const RESTORE_NORMAL_RENDER_BUTTON: &str = "Restore Normal Render";
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }
